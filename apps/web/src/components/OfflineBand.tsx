@@ -1,5 +1,13 @@
 import { fallsOnEarlierDay, formatDay, formatTimeOfDay, nextMidnight } from '@soirely/domain';
-import { type ReactNode, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import {
+  type ReactNode,
+  type Ref,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { dateLocale } from '../i18n/index.ts';
@@ -13,12 +21,62 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
 
 /** Under the header, taking its own room: what was in view stays in view, as `ReleaseBand` keeps it. */
 export function OfflineBand() {
-  const { t } = useTranslation();
   const { stale } = useContext(StaleScreen);
-  const [now, setNow] = useState(() => new Date());
-  const [said, setSaid] = useState('');
   const band = useRef<HTMLDivElement>(null);
   const before = useRef<{ edge: number; scrolled: boolean; field: Element | null } | null>(null);
+  const showing = stale != null;
+
+  // Measured while the band is away, so its arrival can be told apart from the browser's own scroll anchoring.
+  useLayoutEffect(() => {
+    if (showing) return;
+
+    const measure = () => {
+      if (band.current == null) return;
+
+      before.current = {
+        edge: band.current.getBoundingClientRect().bottom,
+        scrolled: window.scrollY > 0,
+        field: inView(document.activeElement) ? document.activeElement : null,
+      };
+    };
+    measure();
+    window.addEventListener('scroll', measure, { passive: true });
+    document.addEventListener('focusin', measure);
+
+    return () => {
+      window.removeEventListener('scroll', measure);
+      document.removeEventListener('focusin', measure);
+    };
+  }, [showing]);
+
+  useLayoutEffect(() => {
+    const was = before.current;
+
+    if (!showing || was == null || band.current == null) return;
+
+    before.current = null;
+    const moved = band.current.getBoundingClientRect().bottom - was.edge;
+    const pushedOut = was.field != null && !inView(was.field);
+
+    if (moved !== 0 && (was.scrolled || pushedOut)) window.scrollBy(0, moved);
+  }, [showing]);
+
+  return <StaleBand stale={stale} ref={band} />;
+}
+
+/** The band itself, for a load that keeps its own: the page's, or the bell's feed inside its popover. */
+export function StaleBand({
+  stale,
+  className = 'offline-band',
+  ref,
+}: {
+  stale: Stale | null;
+  className?: string;
+  ref?: Ref<HTMLDivElement>;
+}) {
+  const { t } = useTranslation();
+  const [now, setNow] = useState(() => new Date());
+  const [said, setSaid] = useState('');
   const at = stale?.at ?? null;
 
   useEffect(() => {
@@ -63,43 +121,8 @@ export function OfflineBand() {
     return () => window.clearTimeout(timer);
   }, [showing, unanswered]);
 
-  // Measured while the band is away, so its arrival can be told apart from the browser's own scroll anchoring.
-  useLayoutEffect(() => {
-    if (showing) return;
-
-    const measure = () => {
-      if (band.current == null) return;
-
-      before.current = {
-        edge: band.current.getBoundingClientRect().bottom,
-        scrolled: window.scrollY > 0,
-        field: inView(document.activeElement) ? document.activeElement : null,
-      };
-    };
-    measure();
-    window.addEventListener('scroll', measure, { passive: true });
-    document.addEventListener('focusin', measure);
-
-    return () => {
-      window.removeEventListener('scroll', measure);
-      document.removeEventListener('focusin', measure);
-    };
-  }, [showing]);
-
-  useLayoutEffect(() => {
-    const was = before.current;
-
-    if (!showing || was == null || band.current == null) return;
-
-    before.current = null;
-    const moved = band.current.getBoundingClientRect().bottom - was.edge;
-    const pushedOut = was.field != null && !inView(was.field);
-
-    if (moved !== 0 && (was.scrolled || pushedOut)) window.scrollBy(0, moved);
-  }, [showing]);
-
   return (
-    <div ref={band} className={showing ? 'offline-band' : undefined}>
+    <div ref={ref} className={showing ? className : undefined}>
       <div aria-live="polite" aria-atomic="true" className="visually-hidden">
         {said}
       </div>

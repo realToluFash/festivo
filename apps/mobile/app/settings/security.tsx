@@ -1,14 +1,17 @@
 import { primaryEmailAddress } from '@soirely/api-client';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
-import { AppFrame } from '../../src/components/AppFrame.tsx';
+import { AppFrame, besideRow } from '../../src/components/AppFrame.tsx';
+import { Refreshing } from '../../src/components/Refreshing.tsx';
 import { bodyEdges } from '../../src/components/bodyEdges.ts';
 import { DevicesCard } from '../../src/components/DevicesCard.tsx';
 import { Screen } from '../../src/components/Screen.tsx';
 import { SettingsSplit, useBackToSettings } from '../../src/components/SettingsList.tsx';
-import { Text } from '../../src/components/Text.tsx';
+import { Text, type TextHandle } from '../../src/components/Text.tsx';
+import { moveScreenReaderFocus } from '../../src/components/screenReaderFocus.ts';
+import { useOffline } from '../../src/offline.ts';
 import { TwoFactorCard } from '../../src/components/TwoFactorCard.tsx';
 import { WaysCard } from '../../src/components/WaysCard.tsx';
 import { type LayoutKind, settingsListBeside, useLayout } from '../../src/layout/useLayout.ts';
@@ -33,20 +36,43 @@ export default function Security() {
 
   const alone = !settingsListBeside(kind);
   const email = account == null ? '' : (primaryEmailAddress(account) ?? '');
+  const title = useRef<TextHandle>(null);
+  const [loaded, setLoaded] = useState(false);
+  const [refresh, setRefresh] = useState(0);
+  const { watch, stale, refreshing } = useOffline({
+    loaded,
+    reload: () => setRefresh((n) => n + 1),
+    focusTitle: () => moveScreenReaderFocus(title.current),
+  });
+
+  const refreshingWords = refreshing ? <Refreshing testID="security.refreshing" /> : null;
 
   return (
     <AppFrame
       current="settings"
       aboutTheAccount
+      offline={stale}
+      besideTitle={alone ? refreshingWords : undefined}
+      titleRef={alone ? title : undefined}
       title={alone ? t('security.title') : t('settings.title')}
       back={alone ? backToSettings(t('settings.title')) : undefined}
     >
       <SettingsSplit open="security">
         <Screen edges={bodyEdges(kind)} contentStyle={CONTENT[kind]}>
           {!alone && (
-            <Text size={tokens.typeTitlePage.size} weight="bold" accessibilityRole="header">
-              {t('security.title')}
-            </Text>
+            <View style={besideRow.row}>
+              <View style={styles.shrink}>
+                <Text
+                  ref={title}
+                  size={tokens.typeTitlePage.size}
+                  weight="bold"
+                  accessibilityRole="header"
+                >
+                  {t('security.title')}
+                </Text>
+              </View>
+              {refreshingWords}
+            </View>
           )}
           {account != null && (
             <View style={styles.cards}>
@@ -79,6 +105,9 @@ export default function Security() {
                 providers={account.providers}
                 kind={kind}
                 reload={sessionsEnded}
+                watch={watch}
+                refresh={refresh}
+                onLoaded={setLoaded}
                 onSignOutHere={signOutHere}
                 onEndedHere={endedHere}
                 onCodeSpent={codeSpent}
@@ -92,6 +121,7 @@ export default function Security() {
 }
 
 const styles = StyleSheet.create({
+  shrink: { flexShrink: 1, minWidth: 0 },
   phone: {
     gap: tokens.spaceLg,
     paddingTop: tokens.spaceXl,

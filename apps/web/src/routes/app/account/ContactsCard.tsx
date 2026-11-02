@@ -58,7 +58,19 @@ interface Confirming {
 }
 
 /** Settings > Account: email addresses and phone numbers (sc-113). A primary address signs in; nothing else here does. */
-export function ContactsCards({ onPrimaryChanged }: { onPrimaryChanged: () => Promise<void> }) {
+export function ContactsCards({
+  onPrimaryChanged,
+  watch,
+  refresh,
+  onLoaded,
+  onRead,
+}: {
+  onPrimaryChanged: () => Promise<void>;
+  watch: <T>(load: Promise<T>) => Promise<T>;
+  refresh: number;
+  onLoaded: (loaded: boolean) => void;
+  onRead: (account: Account) => void;
+}) {
   const [account, setAccount] = useState<Account | 'failed' | null>(null);
   const [twoFactorOn, setTwoFactorOn] = useState<boolean | null>(null);
   // Back from Google or Apple, started by "Make primary": once, on arrival.
@@ -102,10 +114,11 @@ export function ContactsCards({ onPrimaryChanged }: { onPrimaryChanged: () => Pr
   useEffect(() => {
     let live = true;
 
-    api
-      .me()
+    watch(api.me())
       .then((me) => {
-        if (live) setAccount(me);
+        if (!live) return;
+        setAccount(me);
+        onRead(me);
       })
       .catch(() => {
         if (live) setAccount((held) => held ?? 'failed');
@@ -116,13 +129,17 @@ export function ContactsCards({ onPrimaryChanged }: { onPrimaryChanged: () => Pr
         if (live) setTwoFactorOn(status.on);
       })
       .catch(() => {
-        if (live) setTwoFactorOn(false);
+        if (live) setTwoFactorOn((held) => held ?? false);
       });
 
     return () => {
       live = false;
     };
-  }, [attempt]);
+  }, [attempt, refresh, watch, onRead]);
+
+  const loaded = account != null && account !== 'failed';
+
+  useEffect(() => onLoaded(loaded), [loaded, onLoaded]);
 
   if (account === 'failed') {
     return <ContactsFailed retried={attempt > 0} lines={failedLines} onRetry={retry} />;

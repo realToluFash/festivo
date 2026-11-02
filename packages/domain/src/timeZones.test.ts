@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { exactZone, formerName, matchingZones, zoneLabel } from './timeZones.ts';
+import { exactZone, formerName, matchingZones, zoneLabel, zoneValue } from './timeZones.ts';
 
 const ZONES = [
   { id: 'Africa/Lagos', city: 'Lagos', country: 'Nigeria', offset: '+01:00' },
@@ -193,5 +193,40 @@ describe('cities in the reader’s language, and the names a zone once had', () 
     expect(exactZone(LOCAL, 'london')?.id).toBe('Europe/London');
     expect(exactZone(LOCAL, 'Londres')?.id).toBe('Europe/London');
     expect(exactZone(LOCAL, 'Calcutta')).toBeNull();
+  });
+});
+
+describe("the account's zone on its card", () => {
+  it('names a listed zone, with its id under the name', () => {
+    expect(zoneValue('Africa/Lagos', ZONES)).toEqual({
+      kind: 'shown',
+      name: 'Lagos (UTC+01:00)',
+      id: 'Africa/Lagos',
+    });
+  });
+
+  it('waits for the list rather than showing the id as the name', () => {
+    expect(zoneValue('Asia/Kolkata', null)).toEqual({ kind: 'waiting' });
+  });
+
+  it('never waits with no zone set', () => {
+    expect(zoneValue(null, null)).toEqual({ kind: 'unset' });
+  });
+
+  it("takes IANA's city when the list has no row for the zone, or never came", () => {
+    expect(zoneValue('Asia/Calcutta', ZONES)).toEqual({
+      kind: 'shown',
+      name: 'Calcutta',
+      id: 'Asia/Calcutta',
+    });
+    expect(zoneValue('America/Argentina/Buenos_Aires', [])).toEqual({
+      kind: 'shown',
+      name: 'Buenos Aires',
+      id: 'America/Argentina/Buenos Aires',
+    });
+  });
+
+  it('shows an id with no slash once', () => {
+    expect(zoneValue('UTC', [])).toEqual({ kind: 'shown', name: 'UTC', id: null });
   });
 });

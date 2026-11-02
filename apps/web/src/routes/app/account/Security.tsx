@@ -30,6 +30,8 @@ import { forgetSession, refreshAccount, rereadCredentials, useSession } from '..
 import { useFocusOnceShown, useStepFocus } from '../../../stepFocus.ts';
 import { useSignOut } from '../../../signOut.ts';
 import { Skeleton } from '../../../components/Skeleton.tsx';
+import { Refreshing } from '../../../components/OfflineBand.tsx';
+import { keepsWhatLoaded, useOffline } from '../../../offline.ts';
 import { ActionPair } from '../../../components/ActionPair.tsx';
 
 type Devices =
@@ -69,6 +71,13 @@ export function Security() {
   const [codesSpent, setCodesSpent] = useState(0);
   const codeSpent = () => setCodesSpent((n) => n + 1);
   const here = useSignOut(() => navigate('/sign-in'));
+  const title = useRef<HTMLHeadingElement>(null);
+  const [refresh, setRefresh] = useState(0);
+  const { watch, refreshing } = useOffline({
+    loaded: devices.kind === 'ready',
+    reload: () => setRefresh((n) => n + 1),
+    title,
+  });
 
   // Removed only once committed: React may abandon a render and run the initializer again.
   useEffect(() => {
@@ -79,19 +88,21 @@ export function Security() {
   useEffect(() => {
     let live = true;
 
-    api
-      .sessions()
+    watch(api.sessions())
       .then((sessions) => {
         if (live) setDevices({ kind: 'ready', sessions });
       })
-      .catch(() => {
-        if (live) setDevices({ kind: 'failed' });
+      .catch((error: unknown) => {
+        if (!live) return;
+        setDevices((was) =>
+          was.kind === 'ready' && keepsWhatLoaded(error) ? was : { kind: 'failed' },
+        );
       });
 
     return () => {
       live = false;
     };
-  }, [attempt]);
+  }, [attempt, refresh, watch]);
 
   async function end(device: DeviceSession): Promise<void> {
     setEndFailed(false);
@@ -153,7 +164,8 @@ export function Security() {
 
   return (
     <div className="account">
-      <AccountHeader title={t('account.title')} email={session.email} />
+      <AccountHeader title={t('account.title')} email={session.email} titleRef={title} />
+      {refreshing && <Refreshing />}
 
       <WaysCard
         email={session.email}
@@ -274,30 +286,32 @@ export function Security() {
                       <span className="mark mark-broken" aria-hidden="true">
                         ✕
                       </span>
-                      <div
-                        className="notice-body"
-                        ref={failedNotice}
-                        tabIndex={retried ? -1 : undefined}
-                      >
-                        <p className="notice-title">{t('devices.failedTitle')}</p>
-                        <p>{t('devices.failedBody')}</p>
+                      <div className="notice-body">
+                        <div
+                          className="notice-body"
+                          ref={failedNotice}
+                          tabIndex={retried ? -1 : undefined}
+                        >
+                          <p className="notice-title">{t('devices.failedTitle')}</p>
+                          <p>{t('devices.failedBody')}</p>
+                        </div>
+                        <button
+                          className="button"
+                          type="button"
+                          onClick={() => {
+                            setRetried(true);
+                            setDevices({ kind: 'loading' });
+                            setAttempt((n) => n + 1);
+                            land(
+                              () =>
+                                failedNotice.current ??
+                                (list.current == null ? null : devicesHeading.current),
+                            );
+                          }}
+                        >
+                          {t('error.retry')}
+                        </button>
                       </div>
-                      <button
-                        className="button"
-                        type="button"
-                        onClick={() => {
-                          setRetried(true);
-                          setDevices({ kind: 'loading' });
-                          setAttempt((n) => n + 1);
-                          land(
-                            () =>
-                              failedNotice.current ??
-                              (list.current == null ? null : devicesHeading.current),
-                          );
-                        }}
-                      >
-                        {t('error.retry')}
-                      </button>
                     </>
                   )}
                 </div>

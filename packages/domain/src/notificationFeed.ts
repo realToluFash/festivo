@@ -42,6 +42,37 @@ export function feedWithRead<Item extends FeedItem>(
   };
 }
 
+/** Reads that did not save put their rows back to unread, and the count up with them; a row no longer shown, or unread again, is left alone. */
+export function feedWithReadsUndone<Item extends FeedItem>(
+  feed: LoadedFeed<Item>,
+  ids: readonly string[],
+): LoadedFeed<Item> {
+  const undo = new Set(ids);
+  const undone = feed.items.filter((shown) => shown.read && undo.has(shown.id)).length;
+  if (undone === 0) return feed;
+
+  return {
+    ...feed,
+    items: feed.items.map((shown) =>
+      shown.read && undo.has(shown.id) ? { ...shown, read: false } : shown,
+    ),
+    unread: feed.unread + undone,
+  };
+}
+
+/** A refused Mark all read, never reloaded: with nothing arriving meanwhile the feed is as it was, and otherwise the rows it read go back, arrivals stay on top, and the count is the server's, which never heard the press. */
+export function feedWithAllReadRefused<Item extends FeedItem>(
+  current: LoadedFeed<Item>,
+  before: LoadedFeed<Item>,
+  arrivedSince: boolean,
+): LoadedFeed<Item> {
+  if (!arrivedSince) return before;
+
+  const read = before.items.filter((shown) => !shown.read).map((shown) => shown.id);
+
+  return { ...feedWithReadsUndone(current, read), unread: current.unread };
+}
+
 export function feedAllRead<Item extends FeedItem>(feed: LoadedFeed<Item>): LoadedFeed<Item> {
   return { ...feed, items: feed.items.map((item) => ({ ...item, read: true })), unread: 0 };
 }
@@ -109,6 +140,17 @@ function feedWithUpdate<Item extends FeedItem>(
         : shown,
     ),
   };
+}
+
+/** A page asked for before an arrival is missing it, and the count with it, so it is asked for again. */
+export async function readSettled<Page>(
+  read: () => Promise<Page>,
+  arrivalsSeen: () => number,
+): Promise<Page> {
+  const seen = arrivalsSeen();
+  const page = await read();
+
+  return arrivalsSeen() === seen ? page : readSettled(read, arrivalsSeen);
 }
 
 /** "at 14:05" today, the locale's date before today. */

@@ -6,7 +6,7 @@ import {
   settingFlipped,
   usageThresholdsIn,
 } from '@soirely/domain';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
@@ -14,6 +14,8 @@ import { currentLocale } from '../../../i18n/index.ts';
 import { AccountHeader } from '../../../components/AccountHeader.tsx';
 import { FieldError } from '../../../components/FieldError.tsx';
 import { Skeleton } from '../../../components/Skeleton.tsx';
+import { Refreshing } from '../../../components/OfflineBand.tsx';
+import { keepsWhatLoaded, useOffline } from '../../../offline.ts';
 
 type Channel = SettingChannel;
 
@@ -31,23 +33,33 @@ export function NotificationSettings() {
   const [unsaved, setUnsaved] = useState<{ category: NotificationCategory; channel: Channel }>();
   const [saving, setSaving] = useState<ReadonlySet<string>>(new Set());
   const blocked = typeof Notification !== 'undefined' && Notification.permission === 'denied';
+  const title = useRef<HTMLHeadingElement>(null);
+  const [refresh, setRefresh] = useState(0);
+  const { watch, refreshing } = useOffline({
+    loaded: grid.status === 'loaded',
+    reload: () => setRefresh((n) => n + 1),
+    title,
+  });
 
   useEffect(() => {
     let current = true;
 
-    api.notificationSettings().then(
+    watch(api.notificationSettings()).then(
       (settings) => {
         if (current) setGrid({ status: 'loaded', settings });
       },
-      () => {
-        if (current) setGrid({ status: 'failed' });
+      (error: unknown) => {
+        if (!current) return;
+        setGrid((was) =>
+          was.status === 'loaded' && keepsWhatLoaded(error) ? was : { status: 'failed' },
+        );
       },
     );
 
     return () => {
       current = false;
     };
-  }, [attempt]);
+  }, [attempt, refresh, watch]);
 
   async function change(category: NotificationCategory, channel: Channel, on: boolean) {
     const key = `${category}.${channel}`;
@@ -82,7 +94,8 @@ export function NotificationSettings() {
 
   return (
     <div className="account">
-      <AccountHeader title={t('notificationSettings.title')} />
+      <AccountHeader title={t('notificationSettings.title')} titleRef={title} />
+      {refreshing && <Refreshing />}
 
       <div className="visually-hidden" aria-live="polite">
         {said}

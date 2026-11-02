@@ -305,3 +305,86 @@ describe("the web bell's live line (sc-3980)", () => {
     expect(source.readyState).toBe(StubSource.CLOSED);
   });
 });
+
+describe('the live line beside the offline band (sc-27096)', () => {
+  type Soirely = 'answers' | 'unreachable' | 'broken';
+
+  function serving(): { soirely: Soirely; items: ReturnType<typeof item>[] } {
+    const state = { soirely: 'answers' as Soirely, items: [item('a')] };
+
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const line = `${init?.method ?? 'GET'} ${new URL(String(input)).pathname}`;
+      if (state.soirely === 'unreachable') throw new TypeError('Failed to fetch');
+      if (state.soirely === 'broken') return new Response('{}', { status: 503 });
+      if (line === 'POST /api/realtime/subscriptions') {
+        return json({ token: 'tok', expiresAt: new Date(Date.now() + 3_600_000).toISOString() });
+      }
+      if (line === 'GET /api/notifications') return json(page(state.items));
+      throw new TypeError('Failed to fetch');
+    });
+
+    return state;
+  }
+
+  const band = () => document.querySelector('.notifications-band');
+
+  async function offlineWithBand() {
+    const state = serving();
+    const { container } = bell();
+    const source = await line();
+    source.open();
+    fireEvent.click(await screen.findByRole('button', { name: 'Notifications, 1 unread' }));
+    await screen.findByText('Item a');
+
+    state.soirely = 'unreachable';
+    act(() => {
+      window.dispatchEvent(new Event('offline'));
+    });
+    await waitFor(() => expect(band()?.textContent).toMatch(/^Offline · as of /));
+    const words = band()?.querySelector('.offline-band-words')?.textContent;
+
+    return { state, source, container, words };
+  }
+
+  it('an item published while the band shows joins the top and is announced, and the band keeps its words', async () => {
+    const { source, container, words } = await offlineWithBand();
+
+    source.publish({ ...item('b'), unreadCount: 2 });
+
+    expect(await screen.findByText('Item b')).toBeTruthy();
+    expect(screen.getAllByText(/^Item /).map((title) => title.textContent)).toEqual([
+      'Item b',
+      'Item a',
+    ]);
+    expect(container.querySelector('[aria-live="polite"]')?.textContent).toBe(
+      'New notification: Item b',
+    );
+    expect(band()?.querySelector('.offline-band-words')?.textContent).toBe(words);
+  });
+
+  it('the line reopening keeps the band while its read fails, and takes it down once the read answers', async () => {
+    const { state, source, words } = await offlineWithBand();
+
+    source.open();
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 50)));
+    expect(band()?.querySelector('.offline-band-words')?.textContent).toBe(words);
+
+    state.soirely = 'answers';
+    state.items = [item('b'), item('a')];
+    source.open();
+
+    await waitFor(() => expect(band()).toBeNull());
+    expect(await screen.findByText('Item b')).toBeTruthy();
+  });
+
+  it('a read at a reopened line that Soirely answers with an error says the feed did not load, and the band goes', async () => {
+    const { state, source } = await offlineWithBand();
+
+    state.soirely = 'broken';
+    source.open();
+
+    expect(await screen.findByText('Your notifications did not load.')).toBeTruthy();
+    expect(band()).toBeNull();
+    expect(screen.queryByText('Item a')).toBeNull();
+  });
+});
