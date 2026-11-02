@@ -119,7 +119,7 @@ export function EditEventScreen({ eventId, at }: { eventId: string; at: EditAt |
       title={t('eventEdit.title')}
       titleRef={title}
       offline={stale}
-      refreshing={refreshing ? <Refreshing testID="eventForm.refreshing" /> : undefined}
+      refreshing={refreshing ? <Refreshing testID="eventForm.refreshing" /> : null}
       onCancel={() => leave(eventHref(eventId))}
       inEvent={{
         area: 'overview',
