@@ -5593,6 +5593,7 @@ describe("An event's timeline: Coming up and All dates (sc-3624)", () => {
           { headers: { ETag: '"2"' } },
         ),
     });
+    const read = vi.spyOn(api, 'eventTimeline');
     at('/app/events/ev_1');
 
     const panel = await comingUp();
@@ -5602,6 +5603,9 @@ describe("An event's timeline: Coming up and All dates (sc-3624)", () => {
     fireEvent.click(screen.getByRole('button', { name: 'Call off…' }));
     const dialog = await screen.findByRole('dialog', { name: 'Call off Adaeze and Tunde?' });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Call off' }));
+    // The ended event offers nothing from the first read, so the empty text shows before the second goes out.
+    await waitFor(() => expect(read).toHaveBeenCalledTimes(2));
+    await act(() => read.mock.results[1]!.value as Promise<unknown>);
 
     expect(
       await within(panel).findByText('Nothing coming up. Every date on this event has passed.'),
