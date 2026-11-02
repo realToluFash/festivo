@@ -26,11 +26,15 @@ appId: host.exp.Exponent
 - takeScreenshot: new-typed-in-view
 - pressKey: Enter
 - extendedWaitUntil:
-    visible: 'That is not your current password.*'
+    visible: '{{t:passwordCard.wrongCurrent}}'
     timeout: 15000
 - waitForAnimationToEnd:
     timeout: 2000
 - takeScreenshot: refused-keys
+- assertVisible: '(?i)(shift|delete)'
+- assertVisible:
+    id: 'password.new'
+    focused: true
 - runScript:
     file: ../batch/helper.js
     env:
@@ -56,6 +60,6 @@ appId: host.exp.Exponent
     env:
       ASK: /api?to=up
 - extendedWaitUntil:
-    visible: 'That is not your current password.*'
+    visible: '{{t:passwordCard.wrongCurrent}}'
     timeout: 30000
 - takeScreenshot: after-up
