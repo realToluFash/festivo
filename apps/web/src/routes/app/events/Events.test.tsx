@@ -5081,6 +5081,100 @@ describe('Every pick is held under Uploading… until the server has read it (sc
       expect(within(dialog).queryByText('Uploading…')).toBeNull();
     },
   );
+
+  it.each([
+    ['first.jpg', 'is read after it, shows the first'],
+    ['damaged.jpg', 'is refused after it, gives back the saved photo with its own refusal'],
+  ])(
+    'a second pick refused at sizing while a %s uploads leaves the first awaited: a first that %s',
+    async (first) => {
+      signedIn();
+      const { signed, answer } = serving(PHOTO);
+      const size = sizingEach({ 'small.jpg': 10 });
+      const dialog = await changing();
+
+      pickInDialog(jpeg(first));
+      await waitFor(() => expect(signed).toContain(first));
+      pickInDialog(jpeg('small.jpg'));
+      size('small.jpg');
+      expect(await within(dialog).findByText(TOO_SMALL)).toBeDefined();
+      expectHeld(dialog);
+
+      await answer(first);
+
+      if (first === 'first.jpg') {
+        await waitFor(() =>
+          expect(dialog.querySelector('.cover-frame img')?.getAttribute('src')).toBe(
+            'blob:first.jpg',
+          ),
+        );
+      } else {
+        expect(await within(dialog).findByText(DAMAGED)).toBeDefined();
+        expect(within(dialog).queryByText(TOO_SMALL)).toBeNull();
+        expect(dialog.querySelector('.cover-frame img')?.getAttribute('src')).toBe(
+          PHOTO.sizes[0]!.url,
+        );
+      }
+      expect(within(dialog).queryByText('Uploading…')).toBeNull();
+      expect(signed).not.toContain('small.jpg');
+    },
+  );
+
+  it('a second pick refused before it uploads, while the first is still being sized, gives back what the dialog held, and the next pick is one pick', async () => {
+    signedIn();
+    const { signed, answer } = serving(PHOTO);
+    const size = sizingEach({ 'first.jpg': 2400, 'small.jpg': 10 });
+    const dialog = await changing();
+
+    pickInDialog(jpeg('first.jpg'));
+    pickInDialog(jpeg('small.jpg'));
+    size('small.jpg');
+
+    expect(await within(dialog).findByText(TOO_SMALL)).toBeDefined();
+    expect(within(dialog).queryByText('Uploading…')).toBeNull();
+    expect(dialog.querySelector('.cover-frame img')?.getAttribute('src')).toBe(PHOTO.sizes[0]!.url);
+    const slider = within(dialog).getByLabelText('Photo position') as HTMLInputElement;
+    expect(slider.value).toBe('30');
+    size('first.jpg');
+    await sized();
+    expect(signed).toEqual([]);
+
+    fireEvent.change(slider, { target: { value: '70' } });
+    const describing = within(dialog).getByLabelText(/Describe the image/) as HTMLTextAreaElement;
+    fireEvent.change(describing, { target: { value: 'The arch at noon' } });
+    pickInDialog(jpeg('damaged.jpg'));
+    await waitFor(() => expect(within(dialog).getByText('Uploading…')).toBeDefined());
+    await answer('damaged.jpg');
+
+    expect(await within(dialog).findByText(DAMAGED)).toBeDefined();
+    expect(within(dialog).queryByText('Uploading…')).toBeNull();
+    expect(dialog.querySelector('.cover-frame img')?.getAttribute('src')).toBe(PHOTO.sizes[0]!.url);
+    expect(slider.value).toBe('70');
+    expect(describing.value).toBe('The arch at noon');
+  });
+
+  it('a second pick refused while the first is sized, with nothing saved, keeps focus on the picker', async () => {
+    signedIn();
+    const { answer } = serving(null);
+    const size = sizingEach({ 'first.jpg': 2400, 'small.jpg': 10 });
+    at('/app/events/ev_1/edit');
+    await screen.findByRole('heading', { level: 1, name: 'Edit details' });
+    fireEvent.change(document.getElementById('cover-file')!, {
+      target: { files: [jpeg('damaged.jpg')] },
+    });
+    const dialog = await screen.findByRole('dialog', { name: 'Cover photo' });
+    await answer('damaged.jpg');
+    await waitFor(() => expect(dialog.querySelector('.cover-choose')).not.toBeNull());
+
+    pickInDialog(jpeg('first.jpg'));
+    pickInDialog(jpeg('small.jpg'));
+    size('small.jpg');
+
+    expect(await within(dialog).findByText(TOO_SMALL)).toBeDefined();
+    await waitFor(() =>
+      expect(document.activeElement).toBe(dialog.querySelector('.cover-choose button')),
+    );
+  });
 });
 
 describe('Hosted by, in Edit details (sc-6713)', () => {

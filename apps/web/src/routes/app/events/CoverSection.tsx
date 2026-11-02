@@ -370,7 +370,8 @@ function CoverDialog({
 
     const mine = ++latest.current;
     awaited.current = mine;
-    if (busy.current) setChecking(true);
+    const overtaking = busy.current;
+    if (overtaking) setChecking(true);
     else {
       if (before.current.chosen !== chosen) drop(before.current.chosen);
       before.current = { position, description, chosen };
@@ -397,6 +398,8 @@ function CoverDialog({
       } else busy.current = false;
       setRefusal(message);
       picker.current?.focus();
+      // Ending the hold can move the picker into Choose a photo, so it is focused again after that commit.
+      if (overtaking) focusNext.current = 'picker';
       return;
     }
 
