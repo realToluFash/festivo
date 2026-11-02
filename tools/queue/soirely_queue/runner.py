@@ -543,9 +543,15 @@ def end_run(scratch, session, stop=leftovers.stop_run):
         shutil.rmtree(folder, ignore_errors=True)
 
 
-def stop_leftovers(db, home, platform, say, find=leftovers.ended, stop=leftovers.stop):
+def stop_leftovers(db, home, platform, say, find=leftovers.ended, stop=leftovers.stop,
+                   big=leftovers.oversized):
     """The tick's net under `end_run`: a process still up from an ended run is named and
-    stopped, and the owner told once for it."""
+    stopped, and the owner told once for it, as for a task output past its limit."""
+    for path, size in big():
+        said = f"{path} is {size >> 20} MB"
+        say(f"warning: task output past its limit: {said}")
+        if once(db, f"told:oversized:{path}", True):
+            platform.notify("Soirely: a task's output is past 1 GB", said)
     left = find(home)
     for each in left:
         said = leftovers.describe(each)

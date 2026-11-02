@@ -20,6 +20,10 @@ GRACE_SECONDS = 5
 # A task's output past this is a loop writing errors, as on 2 Nov, not a build log.
 TASK_OUTPUT_LIMIT = 1 << 30
 MAC_MARK = re.compile(rf"(?:^|\s){MARK}=(\S+)")
+# Servers a run starts on demand that every other run then shares: the adb server, the Gradle
+# and Kotlin daemons, the account's Claude daemon. They carry the mark of whichever run started
+# them, and are never that run's own.
+SHARED = re.compile(r"fork-server|GradleDaemon|KotlinCompileDaemon|claude\s+daemon")
 
 
 def marked(platform=sys.platform, proc="/proc", run=subprocess.run):
@@ -32,7 +36,7 @@ def marked(platform=sys.platform, proc="/proc", run=subprocess.run):
         for line in out.splitlines():
             pid, _, rest = line.strip().partition(" ")
             hit = MAC_MARK.search(rest)
-            if pid.isdigit() and hit:
+            if pid.isdigit() and hit and not SHARED.search(rest):
                 found[int(pid)] = hit.group(1)
         return found
     prefix = f"{MARK}=".encode()
@@ -43,9 +47,19 @@ def marked(platform=sys.platform, proc="/proc", run=subprocess.run):
             continue
         for pair in data.split(b"\0"):
             if pair.startswith(prefix):
+                if shared(path):
+                    break
                 found[int(path.split("/")[-2])] = pair[len(prefix):].decode(errors="replace")
                 break
     return found
+
+
+def shared(environ_path):
+    try:
+        command = pathlib.Path(environ_path).with_name("cmdline").read_bytes()
+    except OSError:
+        return False
+    return bool(SHARED.search(command.replace(b"\0", b" ").decode(errors="replace")))
 
 
 def alive(pid):

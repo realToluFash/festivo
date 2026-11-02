@@ -2,12 +2,13 @@ import json
 import os
 import pathlib
 import subprocess
+import sys
 import tempfile
 import time
 import unittest
 from unittest import mock
 
-from soirely_queue import leftovers, runner, store
+from soirely_queue import leftovers, runner, sessions, store
 
 from .test_runner import ON_ZERO, FakePlatform, config, work
 
@@ -24,6 +25,14 @@ def orphan(run_dir, seconds):
             return found
         time.sleep(0.1)
     raise AssertionError("the orphan never started")
+
+
+def gradle_daemon(run_dir):
+    """A stand-in for the Gradle daemon a QA run's build started and every later build shares."""
+    env = dict(os.environ, **{leftovers.MARK: str(run_dir)})
+    return subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)",
+                             "org.gradle.launcher.daemon.bootstrap.GradleDaemon"], env=env,
+                            start_new_session=True)
 
 
 class Leftovers(unittest.TestCase):
@@ -64,10 +73,47 @@ class Leftovers(unittest.TestCase):
                          [(pid, "dev-2", "22221738") for pid in self.left])
         self.assertIsInstance(found[0]["age"], int)
         said = []
-        runner.stop_leftovers(self.db, self.home, self.platform, said.append)
+        runner.stop_leftovers(self.db, self.home, self.platform, said.append, big=lambda: [])
         self.assertIn(f"pid {self.left[0]} from dev-2 item 22221738", said[0])
         self.assertEqual(self.platform.notes[0][0], "Soirely: a worker left a process running")
         self.assertEqual(leftovers.ended(self.home), [])
+
+    def test_a_shared_server_the_run_started_outlives_it(self):
+        scratch = runner.run_dir(self.home, "qa", 5)
+        daemon = gradle_daemon(scratch)
+        self.addCleanup(daemon.wait)
+        self.addCleanup(daemon.kill)
+        self.left += orphan(scratch, 3074)
+        self.assertEqual(sorted(runner.leftovers.stop_run(scratch, sleep=lambda _: None)),
+                         sorted(self.left))
+        self.assertEqual(leftovers.ended(self.home), [])
+        self.assertIsNone(daemon.poll())
+
+    def test_a_background_run_stopped_at_its_limit_ends_what_it_started(self):
+        tasks = self.root / "tmp" / "-home-x-soirely-ops" / "s-bg" / "tasks"
+        tasks.mkdir(parents=True)
+        self.left += orphan(runner.run_dir(self.home, "ops", 1), 3075)
+        sessions.begin(self.db, "ops", {"at": ON_ZERO, "item": 1, "role": "ops",
+                                        "session": "s-bg", "bg": "b1",
+                                        "folder": str(self.root / "claude")})
+        with mock.patch.dict("os.environ", {"SERVICE_RESULT": "timeout"}), \
+                mock.patch("soirely_queue.background.stop") as stopped, \
+                mock.patch.object(leftovers, "temp_roots", return_value=[str(self.root / "tmp")]):
+            runner.worker_ended(self.home, self.platform, "ops", 1, now=ON_ZERO, db=self.db)
+        stopped.assert_called_once()
+        self.assertFalse(tasks.exists())
+        time.sleep(0.2)
+        self.assertFalse([pid for pid in self.left if pid in leftovers.marked()])
+
+    def test_the_tick_tells_ops_once_of_task_output_past_the_limit(self):
+        big = lambda: [("/tmp/claude-1/p/s/tasks/b1.output", 3 << 30)]
+        said = []
+        for _ in range(2):
+            runner.stop_leftovers(self.db, self.home, self.platform, said.append,
+                                  find=lambda _: [], big=big)
+        self.assertEqual(len(said), 2)
+        self.assertEqual([n[0] for n in self.platform.notes],
+                         ["Soirely: a task's output is past 1 GB"])
 
     def test_a_running_run_is_not_a_leftover(self):
         live = runner.run_dir(self.home, "ops", 1)
