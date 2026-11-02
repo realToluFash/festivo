@@ -21,7 +21,7 @@ export function ProviderSignIn({ onFailed }: { onFailed?: (provider: string) => 
   const { t } = useTranslation();
 
   return (
-    <View style={styles.group}>
+    <View style={styles.sections}>
       <OrRule label={t('signIn.or')} />
       <ProviderButtons onFailed={onFailed} />
     </View>
@@ -198,7 +198,7 @@ function AppleMark() {
   );
 }
 
-/** Apple Design Resources' "Left White Logo Medium", cropped at the sides and the foot. */
+/** Apple Design Resources' "Left Black Logo Medium", cropped at the sides and the foot. */
 function AppleLogoIos() {
   return (
     <Svg
@@ -216,6 +216,7 @@ function AppleLogoIos() {
 
 const styles = StyleSheet.create({
   group: { gap: tokens.spaceXl },
+  sections: { gap: tokens.space3xl },
 
   or: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceLg },
   rule: { flex: 1, height: 1, backgroundColor: tokens.colorBorder },
@@ -234,8 +235,8 @@ const styles = StyleSheet.create({
   },
   google: { backgroundColor: brand.googleSurface, borderColor: brand.googleBorder },
   googleText: { color: brand.googleInk, lineHeight: brand.googleLineHeight },
-  apple: { backgroundColor: brand.appleSurface, borderColor: brand.appleSurface },
+  apple: { backgroundColor: brand.appleSurface, borderColor: brand.appleBorder },
   appleText: { color: brand.appleInk },
-  appleIos: { gap: brand.appleLogoGap, paddingVertical: 0, borderWidth: 0 },
+  appleIos: { gap: brand.appleLogoGap, paddingVertical: 0 },
   inactive: { opacity: brand.offOpacity },
 });

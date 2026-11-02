@@ -103,7 +103,7 @@ export function Field({
       style={styles.field}
     >
       <View style={styles.labelRow}>
-        <Text size={tokens.typeButton.size} weight="semibold" nativeID={labelID}>
+        <Text size={tokens.typeButton.size} weight="medium" nativeID={labelID}>
           {label}
         </Text>
         {pill != null && (
@@ -391,7 +391,7 @@ export const fieldStyles = StyleSheet.create({
 });
 
 const styles = StyleSheet.create({
-  field: { gap: tokens.spaceXs },
+  field: { gap: tokens.spaceSm },
   labelRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: tokens.spaceSm },
   pill: {
     minHeight: tokens.sizePill,
