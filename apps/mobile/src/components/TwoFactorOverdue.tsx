@@ -10,6 +10,7 @@ import { tokens } from '../theme/tokens.ts';
 import { AnswerHeading } from './AnswerHeading.tsx';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { bodyEdges } from './bodyEdges.ts';
+import { cardFrame } from './cardFrame.ts';
 import { Screen } from './Screen.tsx';
 import { Text } from './Text.tsx';
 
@@ -27,7 +28,7 @@ export function TwoFactorOverdue({
 
   return (
     <Screen edges={bodyEdges(kind)} contentStyle={CONTENT[kind]}>
-      <View style={[styles.card, kind !== 'phone' && styles.cardTablet]}>
+      <View style={[cardFrame(kind), styles.card, kind !== 'phone' && styles.cardTablet]}>
         <AnswerHeading size={tokens.typeTitleDialog.size} weight="bold" answer={answer}>
           {t('signInRules.overdueTitle')}
         </AnswerHeading>
@@ -74,12 +75,7 @@ const styles = StyleSheet.create({
     paddingBottom: tokens.space5xl,
   },
   card: {
-    gap: tokens.spaceLg,
     padding: tokens.spaceXxl,
-    borderRadius: tokens.radiusCardPhone,
-    borderWidth: 1,
-    borderColor: tokens.colorBorder,
-    backgroundColor: tokens.colorCard,
     ...(Platform.OS === 'ios'
       ? tokens.elevationNative.card.ios
       : tokens.elevationNative.card.android),
