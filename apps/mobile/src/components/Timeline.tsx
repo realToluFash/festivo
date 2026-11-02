@@ -9,7 +9,7 @@ import {
   serverClock,
 } from '@soirely/domain';
 import { type EventStatus, type OrganisationEvent } from '@soirely/api-client';
-import { type RefObject, useEffect, useLayoutEffect, useState } from 'react';
+import { type RefObject, useEffect, useState } from 'react';
 import { PixelRatio, Platform, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -17,7 +17,7 @@ import { api } from '../api.ts';
 import { dateLocale } from '../i18n/index.ts';
 import { SMALL_LINE, TITLE_LINE, rowsFloor } from '../layout/textSize.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
-import { type ScreenOffline, useOffline } from '../offline.ts';
+import { type ScreenOffline, useHandOffline, useOffline } from '../offline.ts';
 import { afterFailedLoad } from '../offlineLoad.ts';
 import { tokens } from '../theme/tokens.ts';
 import { QuietButton, SecondaryButton } from './Buttons.tsx';
@@ -213,9 +213,7 @@ export function AllDates({
   });
   if (loaded !== (load.kind === 'loaded')) setLoaded(load.kind === 'loaded');
 
-  useLayoutEffect(() => {
-    onOffline({ stale, refreshing });
-  }, [onOffline, stale, refreshing]);
+  useHandOffline(onOffline, { stale, refreshing });
 
   return (
     <View style={cardFrame(kind)} testID="timeline.allDates.page">

@@ -1,14 +1,7 @@
 import { ApiError, type TaggedEvent } from '@soirely/api-client';
 import { roleHolds } from '@soirely/domain';
 import { Redirect, router, useNavigation } from 'expo-router';
-import {
-  type ReactNode,
-  type RefObject,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from 'react';
+import { type ReactNode, type RefObject, useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -18,7 +11,13 @@ import { formTitles } from '../kit/formTitles.ts';
 import { goToArea, goUpToEvent } from '../kit/upToEvent.ts';
 import { markSaved } from '../kit/eventSaved.ts';
 import { type LayoutKind, useLayout } from '../layout/useLayout.ts';
-import { NOT_OFFLINE, type ScreenOffline, type Stale, useOffline } from '../offline.ts';
+import {
+  NOT_OFFLINE,
+  type ScreenOffline,
+  type Stale,
+  useHandOffline,
+  useOffline,
+} from '../offline.ts';
 import { formAfterLoad, formShownAt } from '../offlineLoad.ts';
 import { useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -142,9 +141,7 @@ function EditEventLoad({
     since: shownAt,
   });
 
-  useLayoutEffect(() => {
-    onOffline({ stale, refreshing });
-  }, [onOffline, stale, refreshing]);
+  useHandOffline(onOffline, { stale, refreshing });
 
   // Once the form shows, a load only asks whether Soirely answers: the form and the tag it saves against stay as opened (Decided, 2 Nov).
   useEffect(() => {

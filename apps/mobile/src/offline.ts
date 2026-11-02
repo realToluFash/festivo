@@ -62,3 +62,15 @@ export function useOffline({
 
   return { watch: offline.watch, stale, refreshing: state.out > 0 && loaded };
 }
+
+/** Hands a load's band up to the frame drawn around it, and takes it back when the load unmounts under that frame. */
+export function useHandOffline(
+  onOffline: (offline: ScreenOffline) => void,
+  { stale, refreshing }: ScreenOffline,
+): void {
+  useLayoutEffect(() => {
+    onOffline({ stale, refreshing });
+  }, [onOffline, stale, refreshing]);
+
+  useLayoutEffect(() => () => onOffline(NOT_OFFLINE), [onOffline]);
+}

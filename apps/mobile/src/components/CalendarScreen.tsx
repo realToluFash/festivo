@@ -30,7 +30,7 @@ import {
   weekdayNames,
 } from '@soirely/domain';
 import { Redirect, router } from 'expo-router';
-import { type RefObject, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { type RefObject, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
 import { type TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
@@ -40,7 +40,7 @@ import { dateLocale } from '../i18n/index.ts';
 import { DESTINATION_HREF } from '../kit/appNav.ts';
 import { PHASE_WORD } from '../kit/makeLive.ts';
 import { type LayoutKind, useLayout } from '../layout/useLayout.ts';
-import { NOT_OFFLINE, type ScreenOffline, useOffline } from '../offline.ts';
+import { NOT_OFFLINE, type ScreenOffline, useHandOffline, useOffline } from '../offline.ts';
 import { afterFailedLoad } from '../offlineLoad.ts';
 import { useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -153,9 +153,7 @@ function CalendarOf({
     focusTitle: () => moveScreenReaderFocus(heading.current),
   });
 
-  useLayoutEffect(() => {
-    onOffline({ stale, refreshing });
-  }, [onOffline, stale, refreshing]);
+  useHandOffline(onOffline, { stale, refreshing });
 
   useEffect(() => {
     let live = true;
