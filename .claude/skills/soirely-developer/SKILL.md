@@ -63,7 +63,9 @@ or to review, red checks), then the queue below. Something you have already read
 as a one-line reference; `--again` prints it in full, only when you truly need it again.
 When the work is finished, stop what you started in the background (a bundler, a watcher,
 a simulator), then `sq dev done <id> --note "…"`; the note is what your next run on the
-story sees.
+story sees. A story you build is finished when its pull request is open, every side of it
+built (the web and the app, when it asks for both). Split it only at a named blocker
+(`role-routine`, "The piece is the whole story").
 
 `/soirely-developer sc-56` (or `… dev3 sc-56`) builds that story: `sq dev claim sc-56`.
 With no story named, `sq dev queue` lists the queue in this order, and `next` takes its
