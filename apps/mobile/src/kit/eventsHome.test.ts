@@ -1,7 +1,13 @@
 import type { TFunction } from 'i18next';
 import { describe, expect, it } from 'vitest';
 
-import { eventDatesWords, nextStepWords, summaryWords } from './eventsHome.ts';
+import {
+  EVENT_CARD_GAP,
+  eventCardWidth,
+  eventDatesWords,
+  nextStepWords,
+  summaryWords,
+} from './eventsHome.ts';
 
 const t = ((key: string, values: Record<string, unknown> = {}) =>
   `${key} ${JSON.stringify(values)}`) as unknown as TFunction;
@@ -13,6 +19,29 @@ const EVENT = {
   timeZone: 'Europe/Madrid',
   concludedAt: null,
 };
+
+describe('eventCardWidth', () => {
+  it.each([
+    ['the iPhone SE', 'phone', 343, 166],
+    ['the phone', 'phone', 358, 174],
+    ['the 11-inch iPad upright', 'tabletPortrait', 778, 250],
+    ['the 10.9-inch iPad upright', 'tabletPortrait', 764, 245],
+    ['the iPad mini upright', 'tabletPortrait', 688, 220],
+    ['the 13-inch iPad upright', 'tabletPortrait', 968, 250],
+    ['the 11-inch iPad on its side', 'tabletLandscape', 926, 288],
+  ] as const)('%s', (_device, kind, room, width) => {
+    expect(eventCardWidth(kind, room)).toBe(width);
+  });
+
+  it('fits three to a row upright and two on the phones', () => {
+    const row = (kind: 'phone' | 'tabletPortrait', room: number, columns: number) =>
+      columns * eventCardWidth(kind, room) + (columns - 1) * EVENT_CARD_GAP[kind];
+
+    expect(row('phone', 343, 2)).toBeLessThanOrEqual(343);
+    expect(row('tabletPortrait', 688, 3)).toBeLessThanOrEqual(688);
+    expect(row('tabletPortrait', 778, 3)).toBe(778);
+  });
+});
 
 describe('summaryWords', () => {
   it('joins the parts whose count is not 0, in order', () => {

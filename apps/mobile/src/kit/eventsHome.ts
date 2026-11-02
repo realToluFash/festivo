@@ -8,6 +8,22 @@ import {
 } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 
+import type { LayoutKind } from '../layout/classify.ts';
+
+export const EVENT_CARD_GAP: Record<LayoutKind, number> = {
+  phone: 10,
+  tabletPortrait: 14,
+  tabletLandscape: 14,
+};
+
+/** A card on Events is a column wide and never grows, so one left alone in a row stays that wide (sc-22103). Upright keeps three to a row where 250 would not fit. */
+export function eventCardWidth(kind: LayoutKind, room: number): number {
+  const fitted = (columns: number) =>
+    Math.floor((room - EVENT_CARD_GAP[kind] * (columns - 1)) / columns);
+
+  return kind === 'phone' ? fitted(2) : kind === 'tabletPortrait' ? Math.min(250, fitted(3)) : 288;
+}
+
 /** "2 happening now · 3 upcoming · 1 draft", leaving out any part whose count is 0; null with nothing to count (sc-22103). */
 export function summaryWords(
   counts: { happeningNow: number; upcoming: number; drafts: number },
