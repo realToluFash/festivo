@@ -27,19 +27,28 @@ describe('eventCardWidth', () => {
     ['the 11-inch iPad upright', 'tabletPortrait', 778, 250],
     ['the 10.9-inch iPad upright', 'tabletPortrait', 764, 245],
     ['the iPad mini upright', 'tabletPortrait', 688, 220],
-    ['the 13-inch iPad upright', 'tabletPortrait', 968, 250],
-    ['the 11-inch iPad on its side', 'tabletLandscape', 926, 288],
+    ['the 13-inch iPad upright', 'tabletPortrait', 968, 313],
+    ['the 11-inch iPad on its side', 'tabletLandscape', 926, 299],
+    ['the iPad mini on its side', 'tabletLandscape', 865, 279],
   ] as const)('%s', (_device, kind, room, width) => {
     expect(eventCardWidth(kind, room)).toBe(width);
   });
 
-  it('fits three to a row upright and two on the phones', () => {
-    const row = (kind: 'phone' | 'tabletPortrait', room: number, columns: number) =>
-      columns * eventCardWidth(kind, room) + (columns - 1) * EVENT_CARD_GAP[kind];
+  it.each([
+    ['phone', 343, 2],
+    ['phone', 358, 2],
+    ['tabletPortrait', 688, 3],
+    ['tabletPortrait', 778, 3],
+    ['tabletPortrait', 968, 3],
+    ['tabletLandscape', 926, 3],
+    ['tabletLandscape', 865, 3],
+    ['tabletLandscape', 846, 3],
+    ['tabletLandscape', 756, 3],
+  ] as const)('%s with %i of room fills the row with %i cards', (kind, room, columns) => {
+    const row = columns * eventCardWidth(kind, room) + (columns - 1) * EVENT_CARD_GAP[kind];
 
-    expect(row('phone', 343, 2)).toBeLessThanOrEqual(343);
-    expect(row('tabletPortrait', 688, 3)).toBeLessThanOrEqual(688);
-    expect(row('tabletPortrait', 778, 3)).toBe(778);
+    expect(row).toBeLessThanOrEqual(room);
+    expect(room - row).toBeLessThan(columns);
   });
 });
 
