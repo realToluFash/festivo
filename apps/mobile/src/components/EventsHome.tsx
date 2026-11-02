@@ -8,24 +8,18 @@ import {
   nextStep,
   shownPhase,
 } from '@soirely/domain';
-import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { dateLocale, useShownLanguage } from '../i18n/index.ts';
-import {
-  EVENT_CARD_GAP,
-  eventCardWidth,
-  eventDatesWords,
-  nextStepWords,
-  summaryWords,
-} from '../kit/eventsHome.ts';
+import { eventDatesWords, nextStepWords, summaryWords } from '../kit/eventsHome.ts';
 import { useServerNow } from '../kit/serverNow.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { type WeightName } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
 import { tracking } from '../theme/tracking.ts';
 import { SecondaryButton } from './Buttons.tsx';
+import { EventCardGrid } from './EventCardGrid.tsx';
 import { EventState } from './Events.tsx';
 import { Notice } from './Notice.tsx';
 import { Placeholder } from './Placeholder.tsx';
@@ -110,7 +104,6 @@ export function EventsHome({
 }) {
   const { t } = useTranslation();
   const { grouped, now } = useEventsHome(load);
-  const [room, setRoom] = useState<number | null>(null);
   const counts: Record<EventsTab, number> = {
     upcoming: grouped.upcoming.length,
     drafts: grouped.drafts.length,
@@ -121,7 +114,7 @@ export function EventsHome({
   const phone = kind === 'phone';
 
   return (
-    <View style={styles.stack} onLayout={(layout) => setRoom(layout.nativeEvent.layout.width)}>
+    <View style={styles.stack}>
       <View style={styles.tiles}>
         <View
           style={[styles.tile, phone && styles.tileHalf]}
@@ -189,20 +182,21 @@ export function EventsHome({
           </Text>
         </View>
       ) : (
-        <View style={[styles.cards, { gap: EVENT_CARD_GAP[kind] }]}>
-          {room != null &&
+        <EventCardGrid kind={kind}>
+          {(width) =>
             events.map((event) => (
               <Card
                 key={event.id}
                 kind={kind}
-                width={eventCardWidth(kind, room)}
+                width={width}
                 event={event}
                 phase={shownPhase(event, load.at, now)}
                 now={now}
                 onOpen={() => onOpen(event.id, false)}
               />
-            ))}
-        </View>
+            ))
+          }
+        </EventCardGrid>
       )}
       {tab === 'past' && grouped.past.length < grouped.pastCount && (
         <SecondaryButton
@@ -499,7 +493,6 @@ const styles = StyleSheet.create({
     borderRadius: tokens.radiusCardLarge,
   },
   centred: { textAlign: 'center' },
-  cards: { flexDirection: 'row', flexWrap: 'wrap' },
   cardHead: { gap: tokens.spaceHair, alignSelf: 'stretch' },
   next: {
     alignSelf: 'stretch',
