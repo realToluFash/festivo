@@ -602,6 +602,12 @@ describe('the bell in [fd] (sc-23233)', () => {
     ).toMatch(/background: var\(--colorInset\);/u);
   });
 
+  it("marks the edge of More's knob with the board's shadow", () => {
+    expect(cssRule('.notification-mute .notification-switch-knob')).toMatch(
+      /box-shadow: var\(--shadowKnob\);/u,
+    );
+  });
+
   it("moves in the board's motion", () => {
     expect(cssRule('.notifications-panel')).toMatch(/animation: rise-in var\(--motionBase\)/u);
     expect(cssRule('.notification-mute')).toMatch(/animation: rise-in var\(--motionBase\)/u);

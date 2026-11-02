@@ -6207,6 +6207,7 @@ button.members-row {
   height: var(--sizeToggleKnob);
   border-radius: var(--radiusPill);
   background: var(--colorCard);
+  box-shadow: var(--shadowKnob);
   transition: transform var(--motionBase) var(--motionEase);
 }
 
