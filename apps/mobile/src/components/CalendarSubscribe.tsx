@@ -2,6 +2,7 @@ import { type CalendarFeedLink } from '@soirely/api-client';
 import { setStringAsync } from 'expo-clipboard';
 import { useEffect, useRef, useState } from 'react';
 import { Linking, ScrollView, StyleSheet, View, type ViewInstance } from 'react-native';
+import Svg, { Path, Rect } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
@@ -10,7 +11,15 @@ import { DestructiveButton, PrimaryButton, QuietButton, SecondaryButton } from '
 import { Notice } from './Notice.tsx';
 import { ReadOut } from './ReadOut.tsx';
 import { Sheet } from './Sheet.tsx';
+import { GlyphMark } from './StatusMark.tsx';
 import { Text } from './Text.tsx';
+
+const ATTENTION_MARK = {
+  glyph: '!',
+  fill: tokens.colorCard,
+  ring: tokens.colorAttentionText,
+  ink: tokens.colorAttentionText,
+};
 
 const IN_FEED = ['inName', 'inTimes', 'inVenue', 'inMilestones'] as const;
 
@@ -237,7 +246,7 @@ function SubscribePanel({
 
       {load.kind === 'loaded' && (
         <View style={styles.section}>
-          <Text size={tokens.typeSmall.size} weight="semibold" muted>
+          <Text size={tokens.typeSmall.size} weight="semibold" style={styles.label}>
             {t('calendarFeed.linkLabel')}
           </Text>
           <View style={styles.url}>
@@ -250,16 +259,22 @@ function SubscribePanel({
           )}
           {copyRefused && (
             <ReadOut words={t('calendarFeed.copyRefused')} accessibilityRole="alert">
-              <Text size={tokens.typeBodyPhone.size} style={styles.warning}>
-                {t('calendarFeed.copyRefused')}
-              </Text>
+              <View style={styles.line}>
+                <GlyphMark mark={ATTENTION_MARK} />
+                <Text size={tokens.typeBodyPhone.size} style={[styles.fill, styles.warning]}>
+                  {t('calendarFeed.copyRefused')}
+                </Text>
+              </View>
             </ReadOut>
           )}
           {noApp && (
             <ReadOut words={t('calendarFeed.noApp')} accessibilityRole="alert">
-              <Text size={tokens.typeBodyPhone.size} style={styles.warning}>
-                {t('calendarFeed.noApp')}
-              </Text>
+              <View style={styles.line}>
+                <GlyphMark mark={ATTENTION_MARK} />
+                <Text size={tokens.typeBodyPhone.size} style={[styles.fill, styles.warning]}>
+                  {t('calendarFeed.noApp')}
+                </Text>
+              </View>
             </ReadOut>
           )}
           <View style={phone ? styles.buttonsPhone : styles.buttons}>
@@ -274,9 +289,12 @@ function SubscribePanel({
               testID="calendarFeed.openInApp"
             />
           </View>
-          <Text size={tokens.typeBodyPhone.size} style={styles.warning}>
-            {t('calendarFeed.private')}
-          </Text>
+          <View style={styles.line}>
+            <LockMark />
+            <Text size={tokens.typeBodyPhone.size} style={[styles.fill, styles.warning]}>
+              {t('calendarFeed.private')}
+            </Text>
+          </View>
         </View>
       )}
 
@@ -315,7 +333,7 @@ function SubscribePanel({
             {t('calendarFeed.resetBody')}
           </Text>
           <SecondaryButton
-            label={t('calendarFeed.reset')}
+            label={t('calendarFeed.resetOpen')}
             onPress={() => {
               setNotReset(false);
               setAnnounce('');
@@ -331,17 +349,41 @@ function SubscribePanel({
   );
 }
 
+function LockMark() {
+  return (
+    <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+      <Svg
+        width={tokens.sizeMark}
+        height={tokens.sizeMark}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke={tokens.colorAttentionText}
+        strokeWidth={2.25}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <Rect x={5} y={11} width={14} height={10} rx={2} />
+        <Path d="M8 11V7a4 4 0 0 1 8 0v4" />
+      </Svg>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   scroll: { flexShrink: 1, flexGrow: 0 },
   panel: { gap: tokens.spaceXl, padding: tokens.space3xl },
   head: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceLg },
   fill: { flex: 1 },
   section: { gap: tokens.spaceSm },
+  label: { color: tokens.marks.info.ink },
   url: {
     padding: tokens.spaceLg,
-    borderRadius: tokens.radiusInset,
+    borderRadius: tokens.radiusField,
+    borderWidth: 1,
+    borderColor: tokens.colorFieldBorder,
     backgroundColor: tokens.colorInset,
   },
+  line: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceSm },
   warning: { color: tokens.colorAttentionText },
   buttons: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spaceSm },
   buttonsPhone: { gap: tokens.spaceSm },

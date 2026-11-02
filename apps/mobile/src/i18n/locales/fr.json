@@ -1915,6 +1915,7 @@
     "resetTitle": "Partagé par erreur ?",
     "resetBody": "Réinitialisez le lien et l’ancien cesse aussitôt de fonctionner.",
     "reset": "Réinitialiser le lien",
+    "resetOpen": "Réinitialiser le lien…",
     "confirmTitle": "Réinitialiser votre lien ?",
     "confirmBody": "Le lien actuel cessera de fonctionner immédiatement. Les agendas abonnés avec lui ne seront plus mis à jour, et vous devrez vous réabonner avec le nouveau lien.",
     "keep": "Garder ce lien",
