@@ -53,13 +53,8 @@ export default function Organisation() {
     if (organisationId == null) return;
     let live = true;
 
-    watch(api.organisations()).then(
-      (all) => {
-        if (!live) return;
-        const fresh = all.find((membership) => membership.id === organisationId);
-        if (fresh != null) replaceOrganisation(fresh);
-        setLoadedFor(organisationId);
-      },
+    rereadOrganisation(organisationId, watch).then(
+      () => live && setLoadedFor(organisationId),
       () => {},
     );
 
@@ -117,7 +112,7 @@ export default function Organisation() {
                   kind={kind}
                   onForbidden={(byRule) => {
                     setRefusedIn({ from: organisation, byRule });
-                    void rereadOrganisation(organisation.id);
+                    void rereadOrganisation(organisation.id).catch(() => {});
                   }}
                 />
               ) : (
@@ -150,14 +145,13 @@ export default function Organisation() {
   );
 }
 
-/** The role changed under the page; the signed-in state catches up so every other screen does too. */
-async function rereadOrganisation(id: string): Promise<void> {
-  try {
-    const fresh = (await api.organisations()).find((membership) => membership.id === id);
-    if (fresh != null) replaceOrganisation(fresh);
-  } catch {
-    // The refusal is already on screen; a failed reread leaves the rest of the page as it was.
-  }
+/** The page's load, and the reread after a refusal: the signed-in state catches up so every other screen does too. */
+async function rereadOrganisation(
+  id: string,
+  watch: <T>(load: Promise<T>) => Promise<T> = (load) => load,
+): Promise<void> {
+  const fresh = (await watch(api.organisations())).find((membership) => membership.id === id);
+  if (fresh != null) replaceOrganisation(fresh);
 }
 
 const styles = StyleSheet.create({

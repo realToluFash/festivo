@@ -64,13 +64,8 @@ export function General() {
     if (organisationId == null) return;
     let current = true;
 
-    watch(api.organisations()).then(
-      (all) => {
-        if (!current) return;
-        const fresh = all.find((membership) => membership.id === organisationId);
-        if (fresh != null) replaceOrganisation(fresh);
-        setLoadedFor(organisationId);
-      },
+    rereadOrganisation(organisationId, watch).then(
+      () => current && setLoadedFor(organisationId),
       () => {},
     );
 
@@ -202,7 +197,7 @@ function Editable({
 
       if (byRule || (error instanceof ApiError && error.is('permission_required'))) {
         onRefused(byRule ? 'refusedByRule' : 'refused');
-        void rereadOrganisation(organisation.id);
+        void rereadOrganisation(organisation.id).catch(() => {});
         return;
       }
 
@@ -407,14 +402,13 @@ function languageNameInSentence(t: TFunction, code: string): string {
   return t(`languageNamesInSentence.${code}`, { defaultValue: code });
 }
 
-/** The role may have changed under the page; the session catches up so every other screen does too. */
-async function rereadOrganisation(id: string): Promise<void> {
-  try {
-    const fresh = (await api.organisations()).find((membership) => membership.id === id);
-    if (fresh != null) replaceOrganisation(fresh);
-  } catch {
-    // The refusal is already on screen; a failed reread leaves the rest of the page as it was.
-  }
+/** The page's load, and the reread after a refusal: the session catches up so every other screen does too. */
+async function rereadOrganisation(
+  id: string,
+  watch: <T>(load: Promise<T>) => Promise<T> = (load) => load,
+): Promise<void> {
+  const fresh = (await watch(api.organisations())).find((membership) => membership.id === id);
+  if (fresh != null) replaceOrganisation(fresh);
 }
 
 function DefaultsNote() {
