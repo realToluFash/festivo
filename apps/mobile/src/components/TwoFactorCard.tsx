@@ -31,6 +31,7 @@ import { Sheet, SheetActions } from './Sheet.tsx';
 import { Text, type TextHandle } from './Text.tsx';
 import { useMarkSide } from './markSide.ts';
 import { Arrived, Skeleton } from './Skeleton.tsx';
+import { rereadOrganisations } from '../signedIn.ts';
 
 /** Said once, as the tap it answers lands; `AtRest` mounts again after every reload. */
 interface Refusal {
@@ -165,7 +166,10 @@ export function TwoFactorCard({
           />
           <SecondaryButton
             label={t('twoFactorCard.retry')}
-            onPress={() => reload('title')}
+            onPress={() => {
+              void rereadOrganisations();
+              reload('title');
+            }}
             testID="twoFactor.retry"
           />
         </>

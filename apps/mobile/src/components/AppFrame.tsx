@@ -49,7 +49,7 @@ import {
   useLayout,
   useNameLines,
 } from '../layout/useLayout.ts';
-import { joinOrganisation, switchOrganisation, useSignedIn } from '../signedIn.ts';
+import { joinOrganisation, onMovedOn, switchOrganisation, useSignedIn } from '../signedIn.ts';
 import { FrameSwitch, switchByTap, useFrameSwitch } from '../tappedSwitch.ts';
 import { switcherFocusBack } from '../kit/focusBack.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -261,6 +261,11 @@ export function AppFrame({
   const [created, setCreated] = useState<{ name: string; takesFocus: boolean } | null>(null);
   const createdWords = useRef<ViewInstance>(null);
   const switched = created == null ? null : t('switcher.switched', { name: created.name });
+  useEffect(
+    () =>
+      inFront ? onMovedOn((next) => setCreated({ name: next.name, takesFocus: false })) : undefined,
+    [inFront],
+  );
   const [backHidden, setBackHidden] = useState(false);
   const [edgeSwipe, setEdgeSwipe] = useState<EdgeSwipeHandlers | undefined>(undefined);
   const [backRow] = useState(() => backRowHiding(setBackHidden));

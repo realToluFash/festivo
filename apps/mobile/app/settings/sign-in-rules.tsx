@@ -21,7 +21,7 @@ import { dateLocale, useShownLanguage } from '../../src/i18n/index.ts';
 import { limitFromElsewhere, ruleValue } from '../../src/kit/signInRules.ts';
 import { type LayoutKind, settingsListBeside, useLayout } from '../../src/layout/useLayout.ts';
 import { markRulesSeen } from '../../src/signInRulesSeen.ts';
-import { useSignedIn } from '../../src/signedIn.ts';
+import { rereadOrganisations, useSignedIn } from '../../src/signedIn.ts';
 import { tokens } from '../../src/theme/tokens.ts';
 import { tracking } from '../../src/theme/tracking.ts';
 import { Arrived, Skeleton } from '../../src/components/Skeleton.tsx';
@@ -143,6 +143,7 @@ export default function SignInRules() {
               <SecondaryButton
                 label={t('signInRules.retry')}
                 onPress={() => {
+                  void rereadOrganisations();
                   retried.current = true;
                   setLoad({ kind: 'loading' });
                   setAttempt((n) => n + 1);

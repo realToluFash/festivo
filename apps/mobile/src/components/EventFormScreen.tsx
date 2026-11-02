@@ -19,7 +19,7 @@ import {
   useOffline,
 } from '../offline.ts';
 import { formAfterLoad, formShownAt } from '../offlineLoad.ts';
-import { useSignedIn } from '../signedIn.ts';
+import { rereadOrganisations, useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
 import { api } from '../api.ts';
 import { AppFrame, type InsideEvent, besideRow } from './AppFrame.tsx';
@@ -191,6 +191,7 @@ function EditEventLoad({
           <PrimaryButton
             label={t('eventsScreen.retry')}
             onPress={() => {
+              void rereadOrganisations();
               setLoad({ kind: 'loading' });
               setAttempt((n) => n + 1);
             }}

@@ -1,5 +1,5 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { EVENT_TYPES, connection, forgetEventsTab, serverClock } from '@soirely/domain';
 
@@ -1708,6 +1708,42 @@ describe("An event's Overview (sc-22103)", () => {
     expect(screen.getByRole('heading', { level: 2, name: 'Guests' })).toBeDefined();
     expect(screen.getByRole('button', { name: 'Make live' })).toBeDefined();
     expect(screen.queryByRole('region', { name: 'Details' })).toBeNull();
+  });
+});
+
+describe("A request one test leaves unanswered, in the next test's 20 s (sc-28117)", () => {
+  afterAll(() => {
+    vi.useRealTimers();
+  });
+
+  it('ends holding the read of the page', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['setTimeout', 'clearTimeout'] });
+    signedIn();
+    const held = vi.fn(() => new Promise<Response>(() => {}));
+    answering({ 'GET /api/events/ev_1': held });
+    at('/app/events/ev_1');
+
+    await waitFor(() => expect(held).toHaveBeenCalledOnce());
+  });
+
+  it('shows the event, lets 20 s pass, and the next answer brings no second read', async () => {
+    const ahead = { startsAt: '2030-11-14T16:00:00+01:00', endsAt: '2030-11-15T02:00:00+01:00' };
+    signedIn();
+    const sent = answering({
+      'GET /api/events/ev_1': () => json({ event: event(ahead) }),
+      'POST /api/events/ev_1/make-live': () =>
+        json({ event: event({ ...ahead, status: 'live', phase: 'live' }) }),
+    });
+    at('/app/events/ev_1');
+    await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
+
+    await act(() => vi.advanceTimersByTimeAsync(20_000));
+    fireEvent.click(screen.getByRole('button', { name: 'Make live' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Make Adaeze and Tunde live?' });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Make live' }));
+    await waitFor(() => expect(screen.getByRole('status').textContent).toBe('✓ Live'));
+
+    expect(sent.filter(({ line }) => line === 'GET /api/events/ev_1')).toHaveLength(1);
   });
 });
 

@@ -28,7 +28,7 @@ import {
 import { SettingsSplit, useBackToSettings } from '../../src/components/SettingsList.tsx';
 import { Text, type TextHandle } from '../../src/components/Text.tsx';
 import { DESTINATION_HREF } from '../../src/kit/appNav.ts';
-import { useSignedIn } from '../../src/signedIn.ts';
+import { rereadOrganisations, useSignedIn } from '../../src/signedIn.ts';
 import { settingsListBeside, useLayout } from '../../src/layout/useLayout.ts';
 import { tokens } from '../../src/theme/tokens.ts';
 import { Arrived, Skeleton } from '../../src/components/Skeleton.tsx';
@@ -188,6 +188,7 @@ export default function RolesScreen() {
         <SecondaryButton
           label={t('rolesScreen.retry')}
           onPress={() => {
+            void rereadOrganisations();
             retried.current = true;
             setClosed(stepClosed('title'));
             setLoad({ kind: 'loading' });

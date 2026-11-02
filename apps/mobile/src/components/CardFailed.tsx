@@ -7,6 +7,7 @@ import { SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { Notice } from './Notice.tsx';
 import { Text } from './Text.tsx';
+import { rereadOrganisations } from '../signedIn.ts';
 
 /** What a tap on Try again set: a failure it answers takes focus to the line, and a first one is read out. */
 export type Unread = { tapped: boolean };
@@ -41,7 +42,14 @@ export function CardFailed({
         answer={unread}
         takesFocus={unread.tapped}
       />
-      <SecondaryButton label={t('devices.retry')} onPress={onRetry} testID={testID} />
+      <SecondaryButton
+        label={t('devices.retry')}
+        onPress={() => {
+          void rereadOrganisations();
+          onRetry();
+        }}
+        testID={testID}
+      />
     </View>
   );
 }

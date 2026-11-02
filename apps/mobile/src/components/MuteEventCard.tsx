@@ -22,6 +22,7 @@ import { Notice } from './Notice.tsx';
 import { OnOffSwitch } from './OnOffSwitch.tsx';
 import { Text } from './Text.tsx';
 import { cardFrame } from './cardFrame.ts';
+import { rereadOrganisations } from '../signedIn.ts';
 
 /** `MuteEvent-*` (sc-3980): per person, on the event's page below its buttons, for everyone who can open it. */
 export function MuteEventCard({ kind, eventId }: { kind: LayoutKind; eventId: string }) {
@@ -109,6 +110,7 @@ export function MuteEventSwitch({ eventId, testID }: { eventId: string; testID: 
           action={{
             label: t('eventMute.tryAgain'),
             onPress: () => {
+              void rereadOrganisations();
               setMute({ status: 'loading' });
               setAttempt((tries) => tries + 1);
             },
