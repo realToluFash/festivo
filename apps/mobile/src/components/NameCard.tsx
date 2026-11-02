@@ -240,8 +240,8 @@ function Editing({
   }
 
   return (
-    <>
-      <View {...aboveKeyboard} {...hidden}>
+    <View {...aboveKeyboard} style={styles.editing}>
+      <View {...hidden}>
         <View ref={top} style={styles.editing}>
           <View {...fieldHidden}>
             <Field label={t('completeProfile.name')} error={error}>
@@ -285,7 +285,7 @@ function Editing({
         off={saving}
         testID="nameCard.cancel"
       />
-    </>
+    </View>
   );
 }
 
