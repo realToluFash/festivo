@@ -19,7 +19,7 @@ export function PauseButton({
   event: OrganisationEvent;
   phase: EventPhase;
   heading: RefObject<HTMLHeadingElement | null>;
-  onChange: (event: OrganisationEvent) => void;
+  onChange: (event: OrganisationEvent, tag: string) => void;
   onPaused: () => void;
 }) {
   const { t } = useTranslation();
@@ -69,7 +69,7 @@ export function PausedRow({
   phase: EventPhase;
   manages: boolean;
   heading: RefObject<HTMLHeadingElement | null>;
-  onChange: (event: OrganisationEvent) => void;
+  onChange: (event: OrganisationEvent, tag: string) => void;
   onResumed: () => void;
 }) {
   const { t } = useTranslation();
@@ -83,9 +83,9 @@ export function PausedRow({
     setState('pending');
     setChangedTo(null);
     api.resumeEvent(event.id).then(
-      ({ event: resumed }) => {
+      (resumed) => {
         setState('idle');
-        onChange(resumed);
+        onChange(resumed.event, resumed.tag);
         onResumed();
         window.setTimeout(() => heading.current?.focus(), 0);
       },
@@ -96,11 +96,11 @@ export function PausedRow({
           return;
         }
 
-        void api.event(event.id).then(
+        void api.taggedEvent(event.id).then(
           (latest) => {
             setState('idle');
-            setChangedTo(latest.status);
-            onChange(latest);
+            setChangedTo(latest.event.status);
+            onChange(latest.event, latest.tag);
             window.setTimeout(() => heading.current?.focus(), 0);
           },
           () => setState('failed'),

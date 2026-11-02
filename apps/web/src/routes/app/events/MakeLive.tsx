@@ -60,7 +60,7 @@ export function DraftRow({
   now: Date;
   manages: boolean;
   heading: RefObject<HTMLHeadingElement | null>;
-  onChange: (event: OrganisationEvent, tag?: string) => void;
+  onChange: (event: OrganisationEvent, tag: string) => void;
   onMadeLive: () => void;
 }) {
   const { t } = useTranslation();

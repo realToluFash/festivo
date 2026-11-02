@@ -1,0 +1,51 @@
+# sc-27950: the Calendar's subscribe panel opens with the link in its edged field, the lock line, the label, and Reset link… at its foot; Open in calendar app with no calendar app shows the attention-marked line; Reset link… opens Reset your link? with Keep this link and Reset link; Keep this link closes it; pressing and holding the link offers Copy.
+appId: host.exp.Exponent
+---
+- runFlow: ../return-home.yaml
+- tapOn:
+    id: 'frame.calendar'
+- extendedWaitUntil:
+    visible:
+      id: 'calendarFeed.open'
+    timeout: 30000
+- tapOn:
+    id: 'calendarFeed.open'
+- extendedWaitUntil:
+    visible:
+      id: 'calendarFeed.url'
+    timeout: 20000
+- waitForAnimationToEnd
+- assertVisible: '{{t:calendarFeed.private}}'
+- assertVisible: '{{t:calendarFeed.linkLabel}}'
+- takeScreenshot: panel
+- tapOn:
+    id: 'calendarFeed.openInApp'
+- waitForAnimationToEnd
+- assertVisible: '{{t:calendarFeed.noApp}}'
+- takeScreenshot: no-app
+- scrollUntilVisible:
+    element:
+      id: 'calendarFeed.reset'
+    direction: DOWN
+    timeout: 10000
+- takeScreenshot: panel-foot
+- tapOn:
+    id: 'calendarFeed.reset'
+- extendedWaitUntil:
+    visible:
+      id: 'calendarFeed.resetConfirm'
+    timeout: 10000
+- waitForAnimationToEnd
+- takeScreenshot: confirm
+- tapOn:
+    id: 'calendarFeed.keep'
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: 'calendarFeed.url'
+    direction: UP
+    timeout: 10000
+- longPressOn:
+    id: 'calendarFeed.url'
+- waitForAnimationToEnd
+- takeScreenshot: long-press

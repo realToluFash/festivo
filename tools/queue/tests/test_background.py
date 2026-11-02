@@ -50,8 +50,15 @@ class Command(unittest.TestCase):
         self.assertEqual(argv[:3], ["claude", "--bg", "--name"])
         self.assertEqual(argv[-2:], ["--", "Build sc-1."])
         self.assertLess(argv.index("--disallowedTools"), argv.index("--"))
-        self.assertEqual(env["SQ_RUN_DIR"], "/tmp/run")
         self.assertNotIn("--session-id", argv)
+
+    def test_the_run_s_mark_reaches_the_session_but_not_the_daemon_it_may_start(self):
+        argv, env = background.command(VALUES, "~/.claude-x", "dev item 7", "Build sc-1.",
+                                       extra={"SQ_RUN_DIR": "/tmp/run", "OTHER": "kept"})
+        self.assertNotIn("SQ_RUN_DIR", env)
+        self.assertEqual(env["OTHER"], "kept")
+        settings = json.loads(argv[argv.index("--settings") + 1])
+        self.assertEqual(settings["env"]["SQ_RUN_DIR"], "/tmp/run")
 
     def test_a_worker_s_artifact_calls_go_through_the_read_only_hook(self):
         argv, _ = background.command(VALUES, "~/.claude-x", "dev item 7", "Build sc-1.")

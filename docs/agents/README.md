@@ -176,6 +176,17 @@ against a misreading rather than an attack.
   Linux only. A background session is kept the same way on both: its process tree's memory,
   its time and its cost are polled every 5 seconds, since it runs under the daemon rather
   than the worker's unit.
+- **A run's processes end with it** (sc-28504). Every process a session starts, a
+  background Bash task and whatever it spawns, carries `SQ_RUN_DIR`, the run's scratch
+  folder, in its environment, on `-p` and `--bg` sessions alike. However a run ends (done,
+  limit, timeout, failure, or the unit stopped, through `worker-ended`), sq stops every
+  process carrying that run's folder, TERM then KILL after 5 seconds, wherever it was
+  reparented, and removes the scratch folder and the session's task-output folder
+  (`/tmp/claude-<uid>/<project>/<session>/tasks`, `$TMPDIR` on the Mac). A process found
+  later carrying an ended run's folder is a leak: every tick names it (pid, worker, item,
+  age) in the journal, notifies the owner once per item, and stops it, and `sq status`
+  warns of any still up. A task-output file past 1 GB is a warning in `sq status` too.
+  The mark is read from `/proc/<pid>/environ` on Linux and `ps -E` on the Mac.
 - **Spending.** A per-run ceiling (`--max-budget-usd`) can be set per role in
   `agents.json`. No role has one until the owner picks a number.
 - **No token, no tick.** The Shortcut token is read from `~/.config/soirely/env` (mode 600,

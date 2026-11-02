@@ -16,7 +16,7 @@ import subprocess
 import sys
 import time
 
-from . import launchd, machine, runner, sessions
+from . import launchd, leftovers, machine, runner, sessions
 
 POLL_SECONDS = 5
 # A background session in one of these has ended its turn: it will do nothing more unasked.
@@ -94,6 +94,9 @@ def command(values, folder, name, prompt, allowed=(), denied=(), extra=None, rea
     argv += ["--", prompt]
     env = runner.account_env(folder)
     env.update(extra or {})
+    # A daemon `claude --bg` starts would pass the mark to every session under the account,
+    # and the run's end would stop them all; the session gets it through --settings.
+    env.pop(leftovers.MARK, None)
     return argv, env
 
 

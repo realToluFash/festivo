@@ -1,0 +1,40 @@
+# Notifications on an iPad on its side, opened by link (a tap on the bell on its side lands on Expo Go's tools button): the band after a refused Mark all read, then Refreshing… while Try again is held (sc-27096). Needs unread items, and a trigger on 127.0.0.1:18999 that stops (/stop), starts then pauses (/hold) and unpauses (/unpause) the API, and screenshots the iPad (/shot-<name>).
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_RIGHT
+- openLink: ${METRO_URL}/--/notifications
+- extendedWaitUntil:
+    visible:
+      id: notifications.markAllRead
+    timeout: 30000
+- runFlow: ../developer-menu-close.yaml
+- runFlow:
+    when:
+      visible:
+        id: notifications.pushAsk.notNow
+    commands:
+      - tapOn:
+          id: notifications.pushAsk.notNow
+- waitForAnimationToEnd
+- takeScreenshot: side-online
+- evalScript: ${http.get('http://127.0.0.1:18999/stop').body}
+- tapOn:
+    id: notifications.markAllRead
+- extendedWaitUntil:
+    visible:
+      id: offline.band
+    timeout: 25000
+- takeScreenshot: side-band
+- evalScript: ${http.get('http://127.0.0.1:18999/hold').body}
+- tapOn:
+    id: offline.retry
+- evalScript: ${http.get('http://127.0.0.1:18999/shot-held-1').body}
+- takeScreenshot: side-refreshing
+- evalScript: ${http.get('http://127.0.0.1:18999/shot-held-2').body}
+- evalScript: ${http.get('http://127.0.0.1:18999/unpause').body}
+- extendedWaitUntil:
+    notVisible:
+      id: offline.band
+    timeout: 25000
+- takeScreenshot: side-after
+- setOrientation: PORTRAIT
