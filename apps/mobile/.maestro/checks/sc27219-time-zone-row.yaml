@@ -1,4 +1,4 @@
-# sc-27219: Settings › Account's Time zone row as the card first shows it, at 1.5s while the list is held, and settled. Needs GET /api/auth/timezones held back by hand for about three seconds (qa2 used a local proxy, with adb reverse tcp:28080 to it): the batch helper holds only the whole API.
+# sc-27219: Settings › Account's Time zone row as the card first shows it, while the list is held, and settled. Needs GET /api/auth/timezones held back by hand for about 20 seconds (qa2 used a local proxy, with adb reverse tcp:28080 to it): the batch helper holds only the whole API.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/settings/account
