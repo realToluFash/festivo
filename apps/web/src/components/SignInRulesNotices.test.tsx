@@ -69,8 +69,9 @@ describe('a notice closed with its own button (sc-11369)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Not now' }));
 
     const title = screen.getByText('Sign-in rules changed');
-    expect(document.activeElement).toBe(title.closest('.notice-body'));
+    expect(document.activeElement).toBe(title.closest('.notice-words'));
     expect(document.activeElement?.textContent).toMatch(/Ìrè Events/);
+    expect(document.activeElement?.textContent).not.toMatch(/See what changed/u);
     expect(title.hasAttribute('aria-describedby')).toBe(false);
   });
 
@@ -91,7 +92,7 @@ describe('a notice closed with its own button (sc-11369)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
 
     expect(document.activeElement).toBe(
-      screen.getByText('Sign-in rules changed').closest('.notice-body'),
+      screen.getByText('Sign-in rules changed').closest('.notice-words'),
     );
   });
 
@@ -104,5 +105,72 @@ describe('a notice closed with its own button (sc-11369)', () => {
     expect(document.activeElement).toBe(
       screen.getByRole('heading', { level: 1, name: 'Dashboard' }),
     );
+  });
+});
+
+describe('the notices in [fd] (sc-23252)', () => {
+  it('closes Sign-in rules changed with the worded Close this notice, not a bare mark', () => {
+    inside(changed('org_worded_close'));
+
+    expect(screen.getByRole('button', { name: 'Close this notice' }).textContent).toBe(
+      'Close this notice',
+    );
+    expect(screen.queryByText('✕')).toBeNull();
+  });
+
+  it('draws the way forward as a button and leaves Not now a text action beside it', () => {
+    inside(membership({ id: 'org_actions', ...GATED }));
+
+    const onward = screen.getByRole('link', { name: 'Turn on two-factor' });
+    const later = screen.getByRole('button', { name: 'Not now' });
+
+    expect(onward.classList.contains('button')).toBe(true);
+    expect(onward.getAttribute('href')).toBe('/app/account/security');
+    expect(later.classList.contains('link-button')).toBe(true);
+    expect(later.parentElement).toBe(onward.parentElement);
+  });
+
+  it('keeps the order: due, read-only, two-factor required, rules changed', () => {
+    inside({
+      ...changed('org_all_four'),
+      ...GATED,
+      readOnlyUntilLinked: true,
+      twoFactorDue: {
+        at: '2099-11-06T15:05:00+00:00',
+        written: 'Friday, Nov 6 at 16:05 WAT',
+        overdue: false,
+      },
+    });
+
+    expect(
+      Array.from(document.querySelectorAll('.notice-rule .notice-actions .button')).map(
+        (action) => action.textContent,
+      ),
+    ).toEqual(['Turn it on now', 'Link Google or Apple', 'Turn on two-factor', 'See what changed']);
+  });
+});
+
+describe('the overdue screen in [fd] (sc-23252)', () => {
+  it('takes the page, shows no notice, and draws Sign out as a secondary, never destructive', () => {
+    inside({
+      ...changed('org_overdue'),
+      twoFactorDue: {
+        at: '2020-01-01T00:00:00+00:00',
+        written: 'Wednesday, Jan 1 at 00:00 UTC',
+        overdue: true,
+      },
+    });
+
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe(
+      'Turn on two-factor to carry on',
+    );
+    expect(document.querySelector('.notice-rule')).toBeNull();
+    expect(screen.getByRole('link', { name: 'Turn on two-factor' }).className).toContain(
+      'button-primary',
+    );
+
+    const signOut = screen.getByRole('button', { name: 'Sign out' });
+    expect(signOut.classList.contains('button')).toBe(true);
+    expect(signOut.className).not.toMatch(/danger/u);
   });
 });
