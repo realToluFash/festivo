@@ -27,15 +27,37 @@ appId: host.exp.Exponent
       id: notifications.item.${MUTED_ID}.more.done
     timeout: 10000
 - waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: notifications.item.${MUTED_ID}.more.mute.switch
+      checked: true
+      enabled: true
+    timeout: 10000
 - takeScreenshot: more-on
 - tapOn:
     id: notifications.item.${MUTED_ID}.more.mute.switch
+- extendedWaitUntil:
+    visible:
+      id: notifications.item.${MUTED_ID}.more.mute.switch
+      checked: false
+      enabled: true
+    timeout: 10000
 - waitForAnimationToEnd
 - takeScreenshot: more-off
 - tapOn:
     id: notifications.item.${MUTED_ID}.more.mute.switch
+- extendedWaitUntil:
+    visible:
+      id: notifications.item.${MUTED_ID}.more.mute.switch
+      checked: true
+      enabled: true
+    timeout: 10000
 - waitForAnimationToEnd
 - takeScreenshot: more-on-again
 - tapOn:
     id: notifications.item.${MUTED_ID}.more.done
+- extendedWaitUntil:
+    notVisible:
+      id: notifications.item.${MUTED_ID}.more.done
+    timeout: 10000
 - takeScreenshot: more-closed

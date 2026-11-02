@@ -32,4 +32,8 @@ appId: host.exp.Exponent
 - takeScreenshot: more
 - tapOn:
     id: notifications.item.${MUTED_ID}.more.done
+- extendedWaitUntil:
+    notVisible:
+      id: notifications.item.${MUTED_ID}.more.done
+    timeout: 10000
 - waitForAnimationToEnd

@@ -29,6 +29,9 @@ appId: host.exp.Exponent
 - takeScreenshot: feed-muted-rows
 - tapOn:
     id: notifications.item.${GONE_ID}
+- extendedWaitUntil:
+    visible: '.*{{t:notifications.eventGone}}.*'
+    timeout: 10000
 - takeScreenshot: feed-gone
 - scrollUntilVisible:
     element:
