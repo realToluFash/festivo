@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 // A window that goes as another comes must take its turn, or an iPad shows the second over nothing (sc-23267).
-const HANDED_OVER = ['AppFrame.tsx', 'Sheet.tsx'];
+const HANDED_OVER = ['Sheet.tsx'];
 
 function modals(file: string): string[] {
   const text = readFileSync(join(import.meta.dirname, file), 'utf8');

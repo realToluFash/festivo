@@ -1,0 +1,65 @@
+# sc-28122: Time zone: Change, tap Find your time zone, type, keys up: matches, Save time zone and Cancel above the keys; a match takes a tap; Cancel with keys up closes, five in five. Needs ${METRO_URL}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/account
+- scrollUntilVisible:
+    element:
+      id: 'timeZone.change'
+    timeout: 30000
+    centerElement: true
+- waitForAnimationToEnd:
+    timeout: 3000
+- tapOn:
+    id: 'timeZone.change'
+- waitForAnimationToEnd:
+    timeout: 3000
+- tapOn:
+    id: 'timeZone.search'
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: tz-keys-up-empty
+- inputText: 'America'
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: tz-keys-up-many
+- eraseText: 20
+- inputText: 'Lisbon'
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: tz-keys-up-one
+- tapOn:
+    id: 'timeZone.option.Europe/Lisbon'
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertVisible:
+    id: 'timeZone.search'
+    text: 'Lisbon \(UTC.*\)'
+- takeScreenshot: tz-picked
+- repeat:
+    times: 5
+    commands:
+      - tapOn:
+          id: 'timeZone.cancel'
+          waitToSettleTimeoutMs: 0
+          retryTapIfNoChange: false
+      - waitForAnimationToEnd:
+          timeout: 3000
+      - takeScreenshot: tz-after-cancel
+      - assertNotVisible:
+          id: 'timeZone.cancel'
+      - tapOn:
+          id: 'timeZone.change'
+      - waitForAnimationToEnd:
+          timeout: 3000
+      - tapOn:
+          id: 'timeZone.search'
+      - inputText: 'Eu'
+      - waitForAnimationToEnd:
+          timeout: 3000
+      - takeScreenshot: tz-keys-up
+- tapOn:
+    id: 'timeZone.cancel'
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertNotVisible:
+    id: 'timeZone.cancel'

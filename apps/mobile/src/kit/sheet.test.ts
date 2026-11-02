@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { tokens } from '../theme/tokens.ts';
 import {
   sheetDragCloses,
+  sheetDragSpeed,
   sheetDragStarts,
   sheetKeysCover,
   sheetPadding,
@@ -116,13 +117,28 @@ describe('one sheet window at a time', () => {
 
 describe('dragging a sheet down', () => {
   it('starts only in the strip at its top, and only down or up', () => {
-    const frameTop = 500;
-    expect(sheetDragStarts({ frameTop, moveY: 530, dx: 0, dy: 20 })).toBe(true);
-    expect(sheetDragStarts({ frameTop, moveY: 524, dx: 2, dy: -20 })).toBe(true);
-    expect(sheetDragStarts({ frameTop, moveY: 565, dx: 0, dy: 20 })).toBe(false);
-    expect(sheetDragStarts({ frameTop, moveY: 490, dx: 0, dy: 20 })).toBe(false);
-    expect(sheetDragStarts({ frameTop, moveY: 530, dx: 30, dy: 20 })).toBe(false);
-    expect(sheetDragStarts({ frameTop, moveY: 514, dx: 0, dy: 4 })).toBe(false);
+    expect(sheetDragStarts({ from: 10, dx: 0, dy: 20 })).toBe(true);
+    expect(sheetDragStarts({ from: 44, dx: 2, dy: -20 })).toBe(true);
+    expect(sheetDragStarts({ from: 45, dx: 0, dy: 20 })).toBe(false);
+    expect(sheetDragStarts({ from: -10, dx: 0, dy: 20 })).toBe(false);
+    expect(sheetDragStarts({ from: 10, dx: 30, dy: 20 })).toBe(false);
+    expect(sheetDragStarts({ from: 10, dx: 0, dy: 4 })).toBe(false);
+  });
+
+  it('reads the speed over the last tenth of a second before the finger lifts', () => {
+    const flick = [0, 20, 40, 60, 80].map((t) => ({ y: t, t }));
+    expect(sheetDragSpeed(flick, { y: 100, t: 100 })).toBe(1);
+    const slow = [
+      { y: 0, t: 0 },
+      { y: 90, t: 900 },
+    ];
+    expect(sheetDragSpeed(slow, { y: 100, t: 1000 })).toBe(0.1);
+    const held = [
+      { y: 0, t: 0 },
+      { y: 60, t: 50 },
+    ];
+    expect(sheetDragSpeed(held, { y: 60, t: 1050 })).toBe(0);
+    expect(sheetDragSpeed([], { y: 5, t: 0 })).toBe(0);
   });
 
   it('closes at half the height or on a 1,000 pt/s flick, and springs back short of both', () => {

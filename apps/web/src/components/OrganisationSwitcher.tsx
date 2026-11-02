@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 
 import type { WaitingInvitations } from '../invitations.ts';
 import type { DomainOffer } from '../joinOffers.ts';
+import { leaveMenu } from '../leaving.ts';
 import { offButton } from '../offButton.ts';
 import { focusStep, useFocusOnceShown } from '../stepFocus.ts';
 import { InvitationRows } from './InvitationRows.tsx';
@@ -36,6 +37,7 @@ export function OrganisationSwitcher({
   const [open, setOpen] = useState(false);
   const container = useRef<HTMLDivElement>(null);
   const button = useRef<HTMLButtonElement>(null);
+  const menu = useRef<HTMLDivElement>(null);
   const role = roleName(t, current.role);
   const count = waitingInvitations(waiting.invitations, waiting.outcomes);
 
@@ -67,6 +69,14 @@ export function OrganisationSwitcher({
 
     return () => document.removeEventListener('focusin', elsewhere);
   }, []);
+
+  useLayoutEffect(() => {
+    const shown = menu.current;
+    const parent = container.current;
+    if (!open || shown == null || parent == null) return;
+
+    return () => leaveMenu(shown, parent);
+  }, [open]);
 
   function closeTo(organisationId: string): void {
     returnTo.current = organisationId;
@@ -128,7 +138,7 @@ export function OrganisationSwitcher({
       </button>
 
       {open && (
-        <div className="org-switcher-menu">
+        <div className="org-switcher-menu" ref={menu}>
           <p className="org-switcher-heading">{t('switcher.heading')}</p>
           <ul role="listbox" aria-label={t('switcher.heading')}>
             {organisations.map((organisation) => {

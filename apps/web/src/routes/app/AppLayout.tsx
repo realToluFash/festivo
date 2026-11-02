@@ -36,7 +36,7 @@ import { heldRegistration } from '../../pendingRegistration.ts';
 import { useTwoFactorStanding } from '../../twoFactorStanding.ts';
 import { useDialogKeys } from '../../dialogFocus.ts';
 import { PHONE_WIDTH } from '../../phoneWidth.ts';
-import { EventNav, useInsideEvent } from './events/EventNav.tsx';
+import { EventNav, useInsideEvent, useShownEventName } from './events/EventNav.tsx';
 
 /**
  * The signed-in shell, built for a desk.
@@ -186,6 +186,7 @@ function Shell() {
   );
 
   const atAccount = pathname.startsWith('/app/account');
+  const standingIn = !atAccount && (session.pausedIn != null || (organisation != null && overdue));
 
   // Every product page would open this page again, so it stands alone: only what works without an organisation, the account pages under the same header.
   if (organisation == null && session.pausedIn == null) {
@@ -245,10 +246,7 @@ function Shell() {
         <SkipLink inert={menuOpen} />
 
         <aside className="shell-sidebar" inert={menuOpen}>
-          <div className="shell-brand-row">
-            <Brand lockup />
-            <NotificationsBell userId={session.userId} />
-          </div>
+          <Brand lockup />
 
           {organisation != null && (
             <OrganisationSwitcher
@@ -289,6 +287,23 @@ function Shell() {
           </div>
         </aside>
 
+        <header className="shell-band" inert={menuOpen}>
+          <p className="shell-crumb">
+            {organisation?.name ?? session.pausedIn?.name}
+            {/* A screen standing in for the page leaves only the organisation (pm, 2 Nov). */}
+            {!standingIn && (
+              <>
+                <span aria-hidden="true"> / </span>
+                <b>
+                  <Destination />
+                </b>
+              </>
+            )}
+          </p>
+          <NotificationsBell userId={session.userId} />
+          <LanguagePicker automatic={false} pill />
+        </header>
+
         <main id="content" className="shell-content" inert={menuOpen}>
           <OfflineBand />
           <LinkedNotice />
@@ -324,7 +339,7 @@ function Shell() {
                 }}
                 onChoose={() => setChoosing((times) => times + 1)}
               />
-            ) : organisation != null && overdue && !atAccount ? (
+            ) : organisation != null && standingIn ? (
               <TwoFactorOverdue organisation={organisation} />
             ) : (
               <Outlet />
@@ -387,10 +402,28 @@ function ShellLinks({ onFollow }: { onFollow?: () => void }) {
       <div className="shell-account">
         <span>{session.name}</span>
         <span className="muted">{session.email}</span>
-        <LanguagePicker automatic={false} />
+        {/* Wider than a phone the picker is in the header band. */}
+        {onFollow != null && <LanguagePicker automatic={false} />}
       </div>
     </>
   );
+}
+
+/** Where the person is, after the organisation in the band's crumb: inside an event, its name once loaded. */
+function Destination() {
+  const { t } = useTranslation();
+  const { pathname } = useLocation();
+  const inside = useInsideEvent();
+  const eventName = useShownEventName(inside?.eventId);
+
+  if (inside != null) return eventName ?? t(`eventNav.${inside.area}`);
+  if (pathname.startsWith('/app/account')) return t('nav.account');
+
+  const section = ['events', 'calendar', 'guests', 'settings'].find((name) =>
+    pathname.startsWith(`/app/${name}`),
+  );
+
+  return t(`nav.${section ?? 'dashboard'}`);
 }
 
 /** `AppShell-Phone`'s sheet: a modal dialog, so focus goes back to Menu when it closes. */

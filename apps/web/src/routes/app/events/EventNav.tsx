@@ -1,5 +1,5 @@
 import { EVENT_AREAS, type EventArea, isPlaceholderEventArea } from '@soirely/domain';
-import { type MouseEvent } from 'react';
+import { type MouseEvent, useEffect, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useMatch, useNavigate } from 'react-router';
 
@@ -14,6 +14,41 @@ export function eventAreaPath(eventId: string, area: EventArea): string {
   const page = `/app/events/${encodeURIComponent(eventId)}`;
 
   return area === 'overview' ? page : `${page}/${area}`;
+}
+
+let shown: { eventId: string; name: string } | null = null;
+const heard = new Set<() => void>();
+
+function told(): void {
+  heard.forEach((listener) => listener());
+}
+
+/** The event's name, once its page has loaded it, for the header band's crumb. */
+export function useShowEventName(eventId: string, name: string | undefined): void {
+  useEffect(() => {
+    if (name == null) return;
+    const mine = { eventId, name };
+    shown = mine;
+    told();
+
+    return () => {
+      if (shown !== mine) return;
+      shown = null;
+      told();
+    };
+  }, [eventId, name]);
+}
+
+export function useShownEventName(eventId: string | undefined): string | undefined {
+  const now = useSyncExternalStore(
+    (listener) => {
+      heard.add(listener);
+      return () => heard.delete(listener);
+    },
+    () => shown,
+  );
+
+  return now != null && now.eventId === eventId ? now.name : undefined;
 }
 
 /** Inside an event: its page, an area, All dates, its Guests page and Edit details (sc-22103). */

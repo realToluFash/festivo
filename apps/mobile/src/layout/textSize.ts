@@ -13,6 +13,8 @@ const TITLE_STEPS: Readonly<Record<number, readonly [number, number]>> = {
   20: [31, 37],
   26: [38, 43],
   28: [38, 43],
+  30: [38, 43],
+  34: [38, 43],
 };
 
 /** The size a title is drawn at: the full scale below the accessibility sizes, iOS's own steps from them on. */
@@ -21,6 +23,16 @@ export function titleSize(size: number, fontScale: number): number {
   if (steps == null || !atAccessibilitySizes(fontScale)) return size * fontScale;
 
   return fontScale >= NINTH_STEP_SCALE ? steps[1] : steps[0];
+}
+
+// An iPhone SE or mini is 375 across; an iPhone 17 Pro, 402.
+const COMPACT_PHONE_SIDE = 390;
+
+/** The header band's title, the same on every screen: 34 on a phone, 30 on an SE and on a tablet (page 29, sc-26270). */
+export function frameTitleSize(tablet: boolean, shortSide: number): number {
+  return tablet || shortSide < COMPACT_PHONE_SIDE
+    ? tokens.typeTitleFrameCompact.size
+    : tokens.typeTitleFrame.size;
 }
 
 // WCAG 2.2 SC 1.4.4 asks for text at twice its size; past that the header's back stays put and only the title grows (sc-23361).

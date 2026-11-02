@@ -285,12 +285,43 @@ span {
 /* ── The signed-in shell ──────────────────────────────────────────────────── */
 
 .shell {
+  --shellBlock: var(--space4xl);
+  --shellInline: var(--space5xl);
+
   display: grid;
   flex: 1 0 auto;
   grid-template-columns: var(--sizeRail) minmax(0, 1fr);
+  grid-template-rows: auto 1fr;
+}
+
+/* Page 29's header band: the crumb, the bell and the language (sc-26270). */
+.shell-band {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceMd);
+  min-height: calc(var(--sizeHit) + 2 * var(--spaceSm));
+  box-sizing: border-box;
+  padding: var(--spaceSm) var(--shellInline);
+  background: var(--colorHeader);
+  border-bottom: var(--borderHeader);
+}
+
+.shell-crumb {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font: var(--typeBody);
+  color: var(--colorInkSecondary);
+  overflow-wrap: anywhere;
+}
+
+.shell-crumb b {
+  font-weight: 600;
+  color: var(--colorInk);
 }
 
 .shell-sidebar {
+  grid-row: 1 / span 2;
   display: flex;
   flex-direction: column;
   gap: var(--space3xl);
@@ -351,9 +382,6 @@ span {
 /* The width is used rather than reserved: a 1200px content column on a 2560px
    monitor is the layout this product exists to avoid. */
 .shell-content {
-  --shellBlock: var(--space4xl);
-  --shellInline: var(--space5xl);
-
   padding: var(--shellBlock) var(--shellInline);
   max-width: 100rem;
 }
@@ -720,11 +748,15 @@ span {
 @media (width <= 60rem) {
   /* One column filling the window would share the spare height with the sidebar. */
   .shell {
+    --shellBlock: var(--spaceXl);
+    --shellInline: var(--spaceXl);
+
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto 1fr;
+    grid-template-rows: auto auto 1fr;
   }
 
   .shell-sidebar {
+    grid-row: auto;
     border-right: 0;
     border-bottom: var(--borderCard);
   }
@@ -737,11 +769,6 @@ span {
     margin-top: 0;
   }
 
-  .shell-content {
-    --shellBlock: var(--spaceXl);
-    --shellInline: var(--spaceXl);
-  }
-
   .public-header {
     padding: var(--spaceXl);
   }
@@ -750,6 +777,27 @@ span {
 /* ── A phone: one bar, its links behind Menu (sc-13413) ───────────────────── */
 
 @media (width <= 40rem) {
+  /* The bar keeps the bell at its end; the crumb and the language go (the picker is in Menu's sheet). */
+  .shell {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto 1fr;
+  }
+
+  .shell-band {
+    padding: 0 var(--spaceLg) 0 0;
+    background: var(--colorCard);
+    border-bottom: var(--borderCard);
+  }
+
+  .shell-crumb,
+  .shell-band .language-pill {
+    display: none;
+  }
+
+  .shell-content {
+    grid-column: 1 / -1;
+  }
+
   .shell-sidebar {
     flex-direction: row;
     align-items: center;
@@ -1940,13 +1988,12 @@ span {
 
 .org-name,
 .org-role {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .org-name {
   font: var(--typeButton);
+  line-height: 1.5;
 }
 
 .org-role {
@@ -1976,7 +2023,8 @@ span {
   background: var(--colorCard);
   border: var(--borderCard);
   border-radius: var(--radiusCardDesktop);
-  box-shadow: var(--shadowPopover);
+  box-shadow: var(--shadowDialog);
+  animation: rise-in var(--motionBase) var(--motionEase);
 }
 
 .org-switcher-menu ul {
@@ -2001,7 +2049,7 @@ span {
   align-items: center;
   gap: var(--spaceLg);
   width: 100%;
-  min-height: var(--sizeHitPhonePrimary);
+  min-height: var(--sizeListRow);
   padding: var(--spaceXs) var(--spaceXl);
   border: 0;
   background: var(--colorCard);
@@ -2013,6 +2061,11 @@ span {
 .org-switcher-option:hover,
 .org-switcher-option-current {
   background: var(--colorInset);
+}
+
+/* The current row differs in fill and in weight, never by colour alone (1.4.1). */
+.org-switcher-option:not(.org-switcher-option-current) .org-name {
+  font-weight: 500;
 }
 
 .org-switcher-current {
@@ -2413,6 +2466,7 @@ span {
 
 @media (prefers-reduced-motion: reduce) {
   .dialog,
+  .org-switcher-menu,
   #content[data-enter] {
     animation-name: fade-in;
     animation-duration: var(--motionBase);
@@ -5656,14 +5710,7 @@ button.members-row {
   }
 }
 
-/* The bell (sc-3980): a popover from the sidebar, capped at the page width less 48px so
-   nothing in it scrolls sideways at 320. */
-.shell-brand-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--spaceSm);
-}
+/* The bell (sc-3980): capped at the page width less 48px so nothing in it scrolls sideways at 320. */
 
 .notifications {
   position: relative;
@@ -5728,6 +5775,12 @@ button.members-row {
   border-radius: var(--radiusCardDesktop);
   box-shadow: var(--shadowPopover);
   animation: rise-in var(--motionBase) var(--motionEase);
+}
+
+/* It opens from the header band's end, so it reaches back across the page. */
+.shell-band .notifications-panel {
+  right: 0;
+  left: auto;
 }
 
 .notifications-header {

@@ -25,28 +25,36 @@ export function leaveDialog(dialog: HTMLElement, scrim: Element | null, parent: 
   const host = parent.isConnected ? parent : document.body;
   const sheet = window.matchMedia(PHONE_WIDTH).matches && !lessMotion();
   const length = sheet ? duration('motionBase') : duration('motionFast');
-  const copies = [scrim, dialog].flatMap((node) => {
-    if (node == null) return [];
-    const copy = node.cloneNode(true) as HTMLElement;
-    copy.setAttribute('aria-hidden', 'true');
-    copy.inert = true;
-    copy.removeAttribute('id');
-    for (const named of copy.querySelectorAll('[id]')) named.removeAttribute('id');
-    copy.style.animation = 'none';
-    copy.style.pointerEvents = 'none';
-    host.append(copy);
-    return [copy];
-  });
-
-  for (const copy of copies) {
+  for (const node of [scrim, dialog]) {
+    if (node == null) continue;
     const frames =
-      sheet && copy.classList.contains('dialog')
+      sheet && node.classList.contains('dialog')
         ? [{ translate: '0 0' }, { translate: '0 100%' }]
         : [{ opacity: 1 }, { opacity: 0 }];
-    const run = copy.animate(frames, { duration: length, easing: easing(), fill: 'forwards' });
-    run.onfinish = () => copy.remove();
-    run.oncancel = () => copy.remove();
+    playCopy(node, host, frames, length);
   }
+}
+
+/** A menu that drops from its button fades out in its place, as `leaveDialog` does for a dialog. */
+export function leaveMenu(menu: HTMLElement, parent: Element): void {
+  if (typeof menu.animate !== 'function' || !parent.isConnected) return;
+
+  playCopy(menu, parent, [{ opacity: 1 }, { opacity: 0 }], duration('motionFast'));
+}
+
+function playCopy(node: Element, host: Element, frames: Keyframe[], length: number): void {
+  const copy = node.cloneNode(true) as HTMLElement;
+  copy.setAttribute('aria-hidden', 'true');
+  copy.inert = true;
+  copy.removeAttribute('id');
+  for (const named of copy.querySelectorAll('[id]')) named.removeAttribute('id');
+  copy.style.animation = 'none';
+  copy.style.pointerEvents = 'none';
+  host.append(copy);
+
+  const run = copy.animate(frames, { duration: length, easing: easing(), fill: 'forwards' });
+  run.onfinish = () => copy.remove();
+  run.oncancel = () => copy.remove();
 }
 
 export function rowArrives(row: HTMLElement | null): void {

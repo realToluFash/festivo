@@ -15,6 +15,7 @@ import {
 import {
   Animated,
   KeyboardAvoidingView,
+  type GestureResponderEvent,
   type LayoutChangeEvent,
   Modal,
   PanResponder,
@@ -27,6 +28,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
   sheetDragCloses,
+  sheetDragSpeed,
   sheetDragStarts,
   sheetKeysCover,
   sheetPadding,
@@ -329,12 +331,20 @@ type SheetDragNow = {
   onClose: () => void;
 };
 
+type SheetTouch = {
+  from: number;
+  x0: number;
+  y0: number;
+  samples: { y: number; t: number }[];
+  dragging: boolean;
+};
+
+/** Driven by the raw touches, which reach the frame from any child, so no responder negotiation can starve it (sc-27948). */
 function sheetDrag(first: SheetDragNow) {
   let now = first;
   // The scrim fills the modal's window from its top, so the frame's y there is where a touch's pageY meets it.
   let frame = { top: 0, height: 0 };
-  // The grant zeroes dy, so the travel that won the capture is carried over.
-  let before = 0;
+  let touch: SheetTouch | null = null;
   const back = () => {
     const { shift, fade, reduced } = now;
     if (!reduced) {
@@ -346,33 +356,58 @@ function sheetDrag(first: SheetDragNow) {
       glide(fade, 1, tokens.motionBase / 2).start();
     });
   };
+  // Claimed once the drag is the sheet's, so the content under the strip does not also act on it.
   const { panHandlers } = PanResponder.create({
-    onMoveShouldSetPanResponderCapture: (_, { moveY, dx, dy }) => {
-      const starts = sheetDragStarts({ frameTop: frame.top, moveY, dx, dy });
-      if (starts) before = dy;
-      return starts;
-    },
-    onPanResponderMove: (_, { dy }) => now.shift.setValue(Math.max(0, before + dy)),
-    onPanResponderRelease: (_, { dy, vy }) => {
-      const travelled = before + dy;
-      if (
-        sheetDragCloses({
-          dy: travelled,
-          vy,
-          height: frame.height,
-          keysCover: now.keysCover,
-          held: now.held,
-        })
-      )
-        now.onClose();
-      else back();
-    },
-    onPanResponderTerminate: back,
+    onMoveShouldSetPanResponderCapture: () => touch?.dragging === true,
     onPanResponderTerminationRequest: () => false,
   });
 
   return {
-    handlers: panHandlers,
+    handlers: {
+      ...panHandlers,
+      onTouchStart: ({ nativeEvent }: GestureResponderEvent) => {
+        const { pageX, pageY, timestamp, touches } = nativeEvent;
+        if (touch?.dragging) back();
+        touch =
+          touches.length === 1
+            ? {
+                from: pageY - frame.top,
+                x0: pageX,
+                y0: pageY,
+                samples: [{ y: pageY, t: timestamp }],
+                dragging: false,
+              }
+            : null;
+      },
+      onTouchMove: ({ nativeEvent }: GestureResponderEvent) => {
+        if (touch == null) return;
+        const { pageX, pageY, timestamp } = nativeEvent;
+        const dy = pageY - touch.y0;
+        touch.dragging ||= sheetDragStarts({ from: touch.from, dx: pageX - touch.x0, dy });
+        if (!touch.dragging) return;
+        touch.samples = [...touch.samples, { y: pageY, t: timestamp }];
+        now.shift.setValue(Math.max(0, dy));
+      },
+      onTouchEnd: ({ nativeEvent }: GestureResponderEvent) => {
+        const ended = touch;
+        touch = null;
+        if (!ended?.dragging) return;
+        const closes = sheetDragCloses({
+          dy: nativeEvent.pageY - ended.y0,
+          vy: sheetDragSpeed(ended.samples, { y: nativeEvent.pageY, t: nativeEvent.timestamp }),
+          height: frame.height,
+          keysCover: now.keysCover,
+          held: now.held,
+        });
+        if (closes) now.onClose();
+        else back();
+      },
+      onTouchCancel: () => {
+        const cancelled = touch;
+        touch = null;
+        if (cancelled?.dragging) back();
+      },
+    },
     onLayout: (event: LayoutChangeEvent) => {
       const { y, height } = event.nativeEvent.layout;
       frame = { top: y, height };
