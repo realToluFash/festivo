@@ -85,7 +85,10 @@ export function paddingToCentre(row: number, line: number): number {
 }
 
 export const BAND_MARK = 18;
-const BAND_PILL_EDGE = 1;
+export const BAND_MARK_GAP = tokens.spaceMd;
+export const BAND_GAP = tokens.spaceXl;
+export const BAND_PILL_PADDING = tokens.spaceXl;
+export const BAND_PILL_EDGE = 1;
 
 /** Where the offline band's Try again goes: beside while its widest word fits whole in the room Try again leaves, otherwise under, where a pill wider than the band's inner width takes that width and wraps. */
 export function bandPlace({
@@ -100,8 +103,8 @@ export function bandPlace({
   sidePadding: number;
 }): { beside: boolean; pillWraps: boolean } {
   const inner = band - sidePadding * 2;
-  const pill = tryAgain + (tokens.spaceXl + BAND_PILL_EDGE) * 2;
-  const room = inner - BAND_MARK - tokens.spaceMd - tokens.spaceXl - pill;
+  const pill = tryAgain + (BAND_PILL_PADDING + BAND_PILL_EDGE) * 2;
+  const room = inner - BAND_MARK - BAND_MARK_GAP - BAND_GAP - pill;
 
   return { beside: widestWord <= room, pillWraps: pill > inner };
 }

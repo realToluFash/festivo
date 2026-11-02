@@ -13,7 +13,11 @@ import Svg, { Path } from 'react-native-svg';
 
 import { dateLocale } from '../i18n/index.ts';
 import {
+  BAND_GAP,
   BAND_MARK,
+  BAND_MARK_GAP,
+  BAND_PILL_EDGE,
+  BAND_PILL_PADDING,
   TITLE_LINE,
   bandPlace,
   drawnLine,
@@ -196,7 +200,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
-    gap: tokens.spaceXl,
+    gap: BAND_GAP,
     minHeight: tokens.sizeHitPhonePrimary,
     paddingVertical: tokens.spaceXxs,
     backgroundColor: tokens.colorAttentionTint,
@@ -215,7 +219,7 @@ const styles = StyleSheet.create({
   words: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: tokens.spaceMd,
+    gap: BAND_MARK_GAP,
     flexShrink: 1,
   },
   wordsUnder: { alignSelf: 'stretch' },
@@ -225,9 +229,9 @@ const styles = StyleSheet.create({
     flexShrink: 0,
     minHeight: tokens.sizeHitPhonePrimary,
     justifyContent: 'center',
-    paddingHorizontal: tokens.spaceXl,
+    paddingHorizontal: BAND_PILL_PADDING,
     backgroundColor: tokens.colorCard,
-    borderWidth: 1,
+    borderWidth: BAND_PILL_EDGE,
     borderColor: tokens.colorAttentionText,
     borderRadius: tokens.radiusPill,
   },
