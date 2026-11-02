@@ -1,5 +1,6 @@
 import type { Membership } from '@soirely/api-client';
 import { router } from 'expo-router';
+import type { RefObject } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -12,16 +13,18 @@ import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { bodyEdges } from './bodyEdges.ts';
 import { cardFrame } from './cardFrame.ts';
 import { Screen } from './Screen.tsx';
-import { Text } from './Text.tsx';
+import { Text, type TextHandle } from './Text.tsx';
 
 /** `PolicySignIn-*` state `everyone_blocked`: in place of every screen of the organisation (sc-609). */
 export function TwoFactorOverdue({
   organisation,
   answer,
+  headingRef,
 }: {
   organisation: Membership;
   /** A tapped switch into the organisation, which takes screen reader focus to the heading (sc-11032). */
   answer: unknown;
+  headingRef?: RefObject<TextHandle | null>;
 }) {
   const { t } = useTranslation();
   const { kind } = useLayout();
@@ -29,7 +32,12 @@ export function TwoFactorOverdue({
   return (
     <Screen edges={bodyEdges(kind)} contentStyle={CONTENT[kind]}>
       <View style={[cardFrame(kind), styles.card, kind !== 'phone' && styles.cardTablet]}>
-        <AnswerHeading size={tokens.typeTitleDialog.size} weight="bold" answer={answer}>
+        <AnswerHeading
+          size={tokens.typeTitleDialog.size}
+          weight="bold"
+          answer={answer}
+          ref={headingRef}
+        >
           {t('signInRules.overdueTitle')}
         </AnswerHeading>
         <Text size={tokens.typeBodyPhone.size}>

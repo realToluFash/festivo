@@ -51,6 +51,7 @@ import {
 } from '../layout/useLayout.ts';
 import { joinOrganisation, switchOrganisation, useSignedIn } from '../signedIn.ts';
 import { FrameSwitch, switchByTap, useFrameSwitch } from '../tappedSwitch.ts';
+import { switcherFocusBack } from '../kit/focusBack.ts';
 import { tokens } from '../theme/tokens.ts';
 import { useTwoFactorStanding } from '../twoFactorStanding.ts';
 import { useModalOpen } from '../updateRequired.ts';
@@ -275,10 +276,25 @@ export function AppFrame({
   const waiting = useWaitingInvitations();
   const offer = useDomainOffer();
   const count = waitingInvitations(waiting.invitations, waiting.outcomes);
+  const overdue = useTwoFactorStanding(signedIn.organisation) === 'overdue';
+  const standIn = aboutTheAccount
+    ? null
+    : signedIn.pausedIn != null
+      ? 'paused'
+      : overdue && signedIn.organisation != null
+        ? 'overdue'
+        : null;
+  const overdueOn = standIn === 'overdue' ? signedIn.organisation?.id : undefined;
+  const [switcherOpenedOnOverdue, setSwitcherOpenedOnOverdue] = useState<string | undefined>(
+    undefined,
+  );
+  const overdueIn = useRef<string | undefined>(undefined);
+  const overdueHeading = useRef<TextHandle>(null);
   // It opens with one organisation too, because it ends with "Create an organisation" (sc-390).
   const openSwitcher =
     signedIn.organisation != null || waiting.invitations.length > 0 || offer.organisation != null
       ? (opener: RefObject<ViewInstance | null>) => {
+          setSwitcherOpenedOnOverdue(overdueOn);
           setCreated(null);
           setSwitcherFrom(opener);
           setToSheet(false);
@@ -291,11 +307,14 @@ export function AppFrame({
     () => ({
       get current() {
         if (toSheet) return null;
+        if (switcherFocusBack(switcherOpenedOnOverdue, overdueIn.current) === 'overdueHeading') {
+          return overdueHeading.current;
+        }
 
         return switcherFrom?.current ?? pill.current ?? frameTitle.current;
       },
     }),
-    [toSheet, switcherFrom, frameTitle],
+    [toSheet, switcherFrom, frameTitle, switcherOpenedOnOverdue],
   );
   const startOrganisation = (opener: RefObject<ViewInstance | null>) => {
     setCreated(null);
@@ -303,7 +322,6 @@ export function AppFrame({
     setCreating(true);
   };
   const email = signedIn.account == null ? '' : (primaryEmailAddress(signedIn.account) ?? '');
-  const overdue = useTwoFactorStanding(signedIn.organisation) === 'overdue';
   // The deadline passing with the screen open replaces it under a new heading, which takes focus (sc-11173).
   const [standingSeen, setStandingSeen] = useState({ id: signedIn.organisation?.id, overdue });
   const [lapsed, setLapsed] = useState<object | undefined>(undefined);
@@ -312,13 +330,9 @@ export function AppFrame({
     setLapsed(standingSeen.id === signedIn.organisation?.id && overdue ? {} : undefined);
   }
   const switchAnswer = useFrameSwitch();
-  const standIn = aboutTheAccount
-    ? null
-    : signedIn.pausedIn != null
-      ? 'paused'
-      : overdue && signedIn.organisation != null
-        ? 'overdue'
-        : null;
+  useEffect(() => {
+    overdueIn.current = overdueOn;
+  });
 
   return (
     <View
@@ -388,6 +402,7 @@ export function AppFrame({
                     <TwoFactorOverdue
                       organisation={signedIn.organisation}
                       answer={switchAnswer ?? lapsed}
+                      headingRef={overdueHeading}
                     />
                   ) : (
                     <FrameSwitch.Provider value={switchAnswer}>{children}</FrameSwitch.Provider>
