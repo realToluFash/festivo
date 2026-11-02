@@ -1993,6 +1993,7 @@ span {
 
 .org-name {
   font: var(--typeButton);
+  line-height: 1.5;
 }
 
 .org-role {
