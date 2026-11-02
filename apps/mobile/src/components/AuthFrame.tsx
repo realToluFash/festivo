@@ -1,10 +1,12 @@
 import type { ReactNode } from 'react';
 import { type StyleProp, StyleSheet, View, type ViewStyle } from 'react-native';
 
-import { type LayoutKind, useLayout } from '../layout/useLayout.ts';
+import { type LayoutKind, useAccessibilitySizes, useLayout } from '../layout/useLayout.ts';
+import { logo } from '../theme/logo.ts';
 import { tokens } from '../theme/tokens.ts';
 import { BackButton } from './AppFrame.tsx';
 import { Brand } from './Brand.tsx';
+import { FootnoteInAuthFrame } from './Buttons.tsx';
 import { LanguageChoice } from './LanguageChoice.tsx';
 import { useMarkSide } from './markSide.ts';
 import { useReadOut } from './ReadOut.tsx';
@@ -86,7 +88,8 @@ export interface AuthBack {
   testID: string;
 }
 
-const BRAND_WIDTH = 200;
+const BRAND_HEIGHT = 36;
+const BRAND_WIDTH = (BRAND_HEIGHT * logo.lockup.viewBox.width) / logo.lockup.viewBox.height;
 
 /** Every auth screen at three sizes: phone stacks with no card, portrait centres one, landscape splits saying from doing. */
 export function AuthFrame({
@@ -103,10 +106,14 @@ export function AuthFrame({
   children: ReactNode;
 }) {
   const { kind } = useLayout();
+  const stacked = useAccessibilitySizes();
 
   const brand = (
-    <View style={styles.brandRow}>
-      {back != null ? <BackButton {...back} /> : <Brand width={BRAND_WIDTH} lockup />}
+    <View style={stacked ? styles.topStacked : styles.topRow}>
+      <View style={styles.brandRow}>
+        {back != null ? <BackButton {...back} /> : <Brand width={BRAND_WIDTH} lockup />}
+      </View>
+      <LanguageChoice />
     </View>
   );
 
@@ -120,19 +127,15 @@ export function AuthFrame({
       <View style={landscape ? styles.landscapeLeft : undefined}>
         {brand}
         {landscape && <View style={styles.landscapeSaying}>{saying}</View>}
-        {landscape && <LanguageChoice />}
       </View>
       <View style={MAIN[kind]}>
         <View style={CARD[kind]}>
           {!landscape && saying}
           {phone && atFoot && <View style={styles.spacer} />}
-          <View style={styles.form}>{children}</View>
-        </View>
-        {!landscape && (
-          <View style={phone ? undefined : styles.tabletLanguage}>
-            <LanguageChoice />
+          <View style={phone ? styles.phoneForm : styles.form}>
+            <FootnoteInAuthFrame value={phone}>{children}</FootnoteInAuthFrame>
           </View>
-        )}
+        </View>
       </View>
     </Screen>
   );
@@ -154,7 +157,19 @@ const styles = StyleSheet.create({
     gap: tokens.space5xl,
     padding: tokens.space6xl,
   },
-  brandRow: { minHeight: tokens.sizeHit, alignItems: 'flex-start', justifyContent: 'center' },
+  topRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: tokens.spaceLg,
+  },
+  topStacked: { alignItems: 'flex-start', gap: tokens.spaceSm },
+  brandRow: {
+    flexShrink: 1,
+    minHeight: tokens.sizeHit,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+  },
   heading: { gap: tokens.spaceXs },
   title: { letterSpacing: -0.5 },
   secondary: { color: tokens.colorInkSecondary },
@@ -167,10 +182,10 @@ const styles = StyleSheet.create({
   },
   spacer: { flex: 1 },
   form: { gap: tokens.spaceXl },
+  phoneForm: { flexGrow: 1, gap: tokens.spaceXl },
   phoneMain: { flexGrow: 1, gap: tokens.spaceXl },
   phoneCard: { flexGrow: 1, gap: tokens.spaceXl },
   centred: { alignItems: 'center', gap: tokens.space3xl },
-  tabletLanguage: { width: CARD_WIDTH, maxWidth: '100%' },
   landscapeLeft: { flex: 1, gap: tokens.space3xl },
   landscapeSaying: { flex: 1, justifyContent: 'center', gap: tokens.spaceXl, maxWidth: 460 },
   landscapeRight: { width: FORM_COLUMN_WIDTH, maxWidth: '50%' },

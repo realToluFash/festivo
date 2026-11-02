@@ -1,4 +1,4 @@
-import { type Ref, useState } from 'react';
+import { type ReactNode, type Ref, createContext, useContext, useState } from 'react';
 import { Animated, Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
@@ -284,6 +284,13 @@ export function HeaderPrimary({
 }
 
 /** "New here? Create an account": the question, the action, and anything said after it. */
+const InAuthFrame = createContext<{ atFoot: boolean } | null>(null);
+
+/** In the signed-out frame a footnote has no rule above it, and on a phone it sits at the screen's foot (sc-28812). */
+export function FootnoteInAuthFrame({ value, children }: { value: boolean; children: ReactNode }) {
+  return <InAuthFrame.Provider value={{ atFoot: value }}>{children}</InAuthFrame.Provider>;
+}
+
 export function Footnote({
   question,
   action,
@@ -299,8 +306,16 @@ export function Footnote({
   testID: string;
   after?: string;
 }) {
+  const inAuthFrame = useContext(InAuthFrame);
+
   return (
-    <View style={styles.footnote}>
+    <View
+      style={[
+        styles.footnote,
+        inAuthFrame == null && styles.footnoteRuled,
+        inAuthFrame?.atFoot === true && styles.footnoteAtFoot,
+      ]}
+    >
       {question != null && (
         <Text size={tokens.typeBodyPhone.size} style={styles.secondaryInk}>
           {question}
@@ -380,10 +395,13 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     alignItems: 'center',
     columnGap: tokens.spaceXs,
+  },
+  footnoteRuled: {
     paddingTop: tokens.spaceLg,
     borderTopWidth: 1,
     borderTopColor: tokens.colorInsetBorder,
   },
+  footnoteAtFoot: { marginTop: 'auto' },
   footnoteAction: { minHeight: tokens.sizeHit, justifyContent: 'center' },
   label: { textAlign: 'center' },
   onAccent: { color: tokens.colorInkOnDark },
