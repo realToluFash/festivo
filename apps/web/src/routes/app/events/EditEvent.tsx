@@ -51,6 +51,7 @@ import {
   inputFor,
 } from './eventFieldOrder.ts';
 import { typeChoices } from './eventTypes.ts';
+import { useShowEventName } from './EventNav.tsx';
 import { HostsSection } from './HostsSection.tsx';
 import { useLeaveGuard } from './useLeaveGuard.tsx';
 import { useStartCarriesEnd } from './useStartCarriesEnd.ts';
@@ -262,6 +263,7 @@ function DetailsForm({
   const lockedBy = over ? 'event-schedule-over' : undefined;
 
   usePageTitle(pageTitle(t, [t('eventEdit.title'), saved.name]));
+  useShowEventName(saved.id, saved.name);
   const dirty = Object.keys(changes).length > 0;
   const busy = status === 'saving';
   const currencies = useMemo(

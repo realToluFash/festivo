@@ -36,7 +36,7 @@ import { heldRegistration } from '../../pendingRegistration.ts';
 import { useTwoFactorStanding } from '../../twoFactorStanding.ts';
 import { useDialogKeys } from '../../dialogFocus.ts';
 import { PHONE_WIDTH } from '../../phoneWidth.ts';
-import { EventNav, useInsideEvent } from './events/EventNav.tsx';
+import { EventNav, useInsideEvent, useShownEventName } from './events/EventNav.tsx';
 
 /**
  * The signed-in shell, built for a desk.
@@ -409,13 +409,14 @@ function ShellLinks({ onFollow }: { onFollow?: () => void }) {
   );
 }
 
-/** Where the person is, after the organisation in the band's crumb: the area inside an event. */
+/** Where the person is, after the organisation in the band's crumb: inside an event, its name once loaded. */
 function Destination() {
   const { t } = useTranslation();
   const { pathname } = useLocation();
   const inside = useInsideEvent();
+  const eventName = useShownEventName(inside?.eventId);
 
-  if (inside != null) return t(`eventNav.${inside.area}`);
+  if (inside != null) return eventName ?? t(`eventNav.${inside.area}`);
   if (pathname.startsWith('/app/account')) return t('nav.account');
 
   const section = ['events', 'calendar', 'guests', 'settings'].find((name) =>
