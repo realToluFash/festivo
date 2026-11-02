@@ -205,6 +205,9 @@ From `CLAUDE.md` and the foundations. Each one is a decision, not a preference:
   On the web, place a pair with `ActionPair` (`className` carries `dialog-actions` and the
   like), never with `column-reverse`, which turns the stack over for the eye and leaves Tab
   in the old order (WCAG 2.4.3; sc-23282).
+- **On the app, a load error's Try again is a move.** Use `CardFailed` or `EventsFailed`,
+  which call `rereadOrganisations()` before retrying; a button of your own calls it too,
+  or a member suspended while the screen was open sees nothing red (sc-28178).
 
 ## 7. What the stack cannot express
 
