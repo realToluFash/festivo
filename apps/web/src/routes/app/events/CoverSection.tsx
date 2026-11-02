@@ -191,15 +191,18 @@ function CheckIcon() {
   );
 }
 
-/** A pick on its way through the checks the server makes, never in the frame; `local` is null when this browser cannot show the file itself. */
-type Trying = { file: File; local: string | null };
+/** A pick on its way through the checks the server makes, never in the frame; `local` is null when this browser cannot show the file itself, and `pick` counts the picks so a later one always wins. */
+type Trying = { file: File; local: string | null; pick: number };
 
-function newTrying(file: File, shows: boolean): Trying {
-  return { file, local: shows ? URL.createObjectURL(file) : null };
+function newTrying(file: File, shows: boolean, pick: number): Trying {
+  return { file, local: shows ? URL.createObjectURL(file) : null, pick };
 }
 
 /** A pick the server has read: `url` is the browser's own object URL when `local`, otherwise the server's copy. */
 type Chosen = { key: string; url: string; local: boolean };
+
+/** An earlier pick's answer, kept out of the frame while a later pick is checked: what the server read, or null if it refused it. */
+type Parked = { chosen: Chosen | null };
 
 /** What the dialog held just before a pick, which a refusal of that pick gives back. */
 type Before = { position: number; description: string; chosen: Chosen | null };
@@ -234,9 +237,10 @@ function CoverDialog({
     description: saved?.description ?? '',
   };
   const [trying, setTrying] = useState<Trying | null>(() =>
-    file == null ? null : newTrying(file, shows),
+    file == null ? null : newTrying(file, shows, 0),
   );
   const [chosen, setChosen] = useState<Chosen | null>(null);
+  const [checking, setChecking] = useState(false);
   const [refusal, setRefusal] = useState<string | null>(null);
   const [position, setPosition] = useState(file == null ? savedFrame.position : COVER_MIDDLE);
   const [description, setDescription] = useState(file == null ? savedFrame.description : '');
@@ -252,8 +256,11 @@ function CoverDialog({
   const focusNext = useRef<'slider' | 'picker' | null>('slider');
   const held = useRef(new Set<Chosen>());
   const kept = useRef<Chosen | null>(null);
-  const superseded = useRef<Trying | null>(null);
-  const parked = useRef<Chosen | null>(null);
+  const latest = useRef(0);
+  const awaited = useRef(0);
+  const busy = useRef(file != null);
+  const uploading = useRef(trying);
+  const parked = useRef<Parked | null>(null);
   // Below 640 px the dialog fills the screen and Remove photo moves from the footer into the body.
   const fullScreen = usePhoneWidth();
   const drag = useRef<{ y: number; start: number } | null>(null);
@@ -275,6 +282,8 @@ function CoverDialog({
   );
 
   const refuse = useCallback((message: string) => {
+    busy.current = false;
+    uploading.current = null;
     setTrying(null);
     setChosen(before.current.chosen);
     setPosition(before.current.position);
@@ -286,7 +295,7 @@ function CoverDialog({
 
   useEffect(() => {
     if (trying == null) return;
-    drop(parked.current);
+    if (parked.current?.chosen != null) drop(parked.current.chosen);
     parked.current = null;
     const url = trying.local;
     let current = true;
@@ -310,15 +319,20 @@ function CoverDialog({
         promoted = true;
         const next = { key: signed.key, url: url ?? copy, local: url != null };
         held.current.add(next);
-        if (superseded.current === trying) {
-          parked.current = next;
+        uploading.current = null;
+        if (awaited.current !== trying.pick) {
+          parked.current = { chosen: next };
           return;
         }
+        busy.current = false;
         setChosen(next);
         setTrying(null);
       })
       .catch((error: unknown) => {
-        if (current) refuse(refusalOf(error, t));
+        if (!current) return;
+        uploading.current = null;
+        if (awaited.current !== trying.pick) parked.current = { chosen: null };
+        else refuse(refusalOf(error, t));
       });
 
     return () => {
@@ -354,26 +368,40 @@ function CoverDialog({
     event.target.value = '';
     if (next == null) return;
 
-    if (trying != null) superseded.current = trying;
+    const mine = ++latest.current;
+    awaited.current = mine;
+    if (busy.current) setChecking(true);
+    else {
+      if (before.current.chosen !== chosen) drop(before.current.chosen);
+      before.current = { position, description, chosen };
+      busy.current = true;
+    }
+
     const checked = await checkCoverPick(next);
+    if (mine !== latest.current) return;
+    setChecking(false);
+
     if (checked.refusal != null) {
-      const unshown = parked.current;
-      superseded.current = null;
+      const message = t(`eventCover.refused_${checked.refusal}`);
+      const earlier = parked.current;
       parked.current = null;
-      if (unshown != null) {
-        setChosen(unshown);
+      if (earlier?.chosen != null) {
+        busy.current = false;
+        setChosen(earlier.chosen);
         setTrying(null);
-      }
-      setRefusal(t(`eventCover.refused_${checked.refusal}`));
+      } else if (earlier != null) {
+        refuse(message);
+        return;
+      } else if (uploading.current != null) {
+        awaited.current = uploading.current.pick;
+      } else busy.current = false;
+      setRefusal(message);
       picker.current?.focus();
       return;
     }
 
-    if (trying == null) {
-      if (before.current.chosen !== chosen) drop(before.current.chosen);
-      before.current = { position, description, chosen };
-    }
-    setTrying(newTrying(next, checked.shows));
+    uploading.current = newTrying(next, checked.shows, mine);
+    setTrying(uploading.current);
     setRefusal(null);
     setPosition(COVER_MIDDLE);
     setDescription('');
@@ -381,15 +409,15 @@ function CoverDialog({
     focusNext.current = 'slider';
   }
 
-  const shown: CoverPhoto | null | 'choose' =
-    trying != null
-      ? null
-      : chosen != null
-        ? pickPhoto(chosen.url, position)
-        : saved != null
-          ? { ...saved, position }
-          : 'choose';
-  const ready = trying == null && shown !== 'choose';
+  const holding = trying != null || checking;
+  const shown: CoverPhoto | null | 'choose' = holding
+    ? null
+    : chosen != null
+      ? pickPhoto(chosen.url, position)
+      : saved != null
+        ? { ...saved, position }
+        : 'choose';
+  const ready = !holding && shown !== 'choose';
   const count = [...description].length;
 
   async function use(): Promise<void> {
@@ -523,7 +551,7 @@ function CoverDialog({
                 sizes="(width <= 40rem) 100vw, 45rem"
                 onFail={unseen}
               />
-              {trying != null && (
+              {holding && (
                 <p className="cover-frame-state" role="status">
                   {t('eventCover.uploading')}
                 </p>
