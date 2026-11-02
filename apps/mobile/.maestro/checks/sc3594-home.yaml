@@ -1,0 +1,115 @@
+# sc-3594: in ${ORG}, Events Home reads Happening now above Upcoming, Drafts and Past, Past pages with Show more, and the chosen tab is kept across an opened event and a trip Home, then reset by Switch organisation via ${OTHER}.
+appId: host.exp.Exponent
+---
+- runFlow:
+    file: ../switch-organisation.yaml
+    env:
+      ORG: ${ORG}
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible:
+      id: 'frame.events'
+    timeout: 30000
+- tapOn:
+    id: 'frame.events'
+- extendedWaitUntil:
+    visible:
+      id: 'events.tab.upcoming'
+    timeout: 30000
+- takeScreenshot: upcoming
+- scroll
+- takeScreenshot: upcoming-scrolled
+- scroll
+- takeScreenshot: upcoming-scrolled-2
+- swipe:
+    direction: DOWN
+- swipe:
+    direction: DOWN
+- swipe:
+    direction: DOWN
+- waitForAnimationToEnd
+- tapOn:
+    id: 'events.tab.drafts'
+- takeScreenshot: drafts
+- swipe:
+    direction: DOWN
+- swipe:
+    direction: DOWN
+- swipe:
+    direction: DOWN
+- waitForAnimationToEnd
+- tapOn:
+    id: 'events.tab.past'
+- takeScreenshot: past
+- scrollUntilVisible:
+    element:
+      id: 'events.past.more'
+    direction: DOWN
+- takeScreenshot: past-more
+- tapOn:
+    id: 'events.past.more'
+- waitForAnimationToEnd
+- takeScreenshot: past-all
+- assertNotVisible:
+    id: 'events.past.more'
+- swipe:
+    direction: DOWN
+- swipe:
+    direction: DOWN
+- swipe:
+    direction: DOWN
+- waitForAnimationToEnd
+- tapOn:
+    id: 'events.row\..+'
+    index: 0
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 20000
+- takeScreenshot: opened
+- runFlow:
+    when:
+      visible:
+        id: 'frame.back'
+    commands:
+      - tapOn:
+          id: 'frame.back'
+- runFlow:
+    when:
+      visible:
+        id: 'events.back'
+    commands:
+      - tapOn:
+          id: 'events.back'
+- waitForAnimationToEnd
+- takeScreenshot: back-kept
+- assertVisible:
+    id: 'events.tab.past'
+    selected: true
+- openLink: ${METRO_URL}/--/
+- tapOn:
+    id: 'frame.events'
+- waitForAnimationToEnd
+- takeScreenshot: home-and-back-kept
+- assertVisible:
+    id: 'events.tab.past'
+    selected: true
+- runFlow:
+    file: ../switch-organisation.yaml
+    env:
+      ORG: ${OTHER}
+- runFlow:
+    file: ../switch-organisation.yaml
+    env:
+      ORG: ${ORG}
+- openLink: ${METRO_URL}/--/
+- tapOn:
+    id: 'frame.events'
+- extendedWaitUntil:
+    visible:
+      id: 'events.tab.upcoming'
+    timeout: 30000
+- takeScreenshot: switched-reset
+- assertVisible:
+    id: 'events.tab.upcoming'
+    selected: true

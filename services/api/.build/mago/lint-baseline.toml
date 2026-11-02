@@ -1,0 +1,335 @@
+# Issues that existed when mago was adopted, so CI can block new ones.
+#
+# Every entry is one of psl-string-functions, psl-array-functions or
+# psl-regex-functions: a call to a native string, array or regex function where
+# writing-php says to use Psl. The rules are left on because that convention is
+# real; converting the call sites is sc-111.
+#
+# Do not add to this file by hand. A new entry means a new issue, and the point
+# of the baseline is that there are none.
+
+variant = "loose"
+
+[[issues]]
+file = "migrations/Version20261014202500.php"
+code = "psl-string-functions"
+message = "Use the Psl string function instead of the PHP counterpart."
+count = 2
+
+[[issues]]
+file = "src/AI/Availability.php"
+code = "psl-string-functions"
+message = "Use the Psl string function instead of the PHP counterpart."
+count = 1
+
+[[issues]]
+file = "src/AI/Controller/AssistantController.php"
+code = "psl-array-functions"
+message = "Use the Psl array function instead of the PHP counterpart."
+count = 10
+
+[[issues]]
+file = "src/AI/Controller/AssistantController.php"
+code = "psl-string-functions"
+message = "Use the Psl string function instead of the PHP counterpart."
+count = 8
+
+[[issues]]
+file = "src/AI/Factory/AssistantFactory.php"
+code = "psl-string-functions"
+message = "Use the Psl string function instead of the PHP counterpart."
+count = 1
+
+[[issues]]
+file = "src/AI/Model/Ask.php"
+code = "psl-array-functions"
+message = "Use the Psl array function instead of the PHP counterpart."
+count = 1
+
+[[issues]]
+file = "src/AI/ScriptedAssistant.php"
+code = "psl-array-functions"
+message = "Use the Psl array function instead of the PHP counterpart."
+count = 1
+
+[[issues]]
+file = "src/AI/ScriptedAssistant.php"
+code = "psl-string-functions"
+message = "Use the Psl string function instead of the PHP counterpart."
+count = 3
+
+[[issues]]
+file = "src/AI/SystemPrompt.php"
+code = "psl-string-functions"
+message = "Use the Psl string function instead of the PHP counterpart."
+count = 4
+
+[[issues]]
+file = "src/Address/AddressLookup.php"
+code = "psl-string-functions"
+message = "Use the Psl string function instead of the PHP counterpart."
+count = 4
+
+[[issues]]
+file = "src/Address/Controller/AddressController.php"
+code = "psl-array-functions"
+message = "Use the Psl array function instead of the PHP counterpart."
+count = 1
+
+[[issues]]
+file = "src/Audit/Auditor.php"
+code = "psl-array-functions"
+message = "Use the Psl array function instead of the PHP counterpart."
+count = 1
+
+[[issues]]
+file = "src/Doctrine/SoftDeleteFilter.php"
+code = "psl-array-functions"
+message = "Use the Psl array function instead of the PHP counterpart."
+count = 2
+
+[[issues]]
+file = "src/Doctrine/SoftDeleteFilter.php"
+code = "psl-string-functions"
+message = "Use the Psl string function instead of the PHP counterpart."
+count = 1
+
+[[issues]]
+file = "src/Enum/ErrorCode.php"
+code = "psl-string-functions"
+message = "Use the Psl string function instead of the PHP counterpart."
+count = 3
+
+[[issues]]
+file = "src/Enum/UploadPurpose.php"
+code = "psl-array-functions"
+message = "Use the Psl array function instead of the PHP counterpart."
+count = 1
+
+[[issues]]
+file = "src/Enum/UploadPurpose.php"
+code = "psl-string-functions"
+message = "Use the Psl string function instead of the PHP counterpart."
+count = 2
+
+[[issues]]
+file = "src/Health/HealthChecker.php"
+code = "psl-array-functions"
+message = "Use the Psl array function instead of the PHP counterpart."
+count = 1
+
+[[issues]]
+file = "src/Health/HealthChecker.php"
+code = "psl-regex-functions"
+message = "Use the Psl regex function instead of the PHP counterpart."
+count = 1
+
+[[issues]]
+file = "src/Health/HealthChecker.php"
+code = "psl-string-functions"
+message = "Use the Psl string function instead of the PHP counterpart."
+count = 1
+
+[[issues]]
+file = "src/Http/Input.php"
+code = "psl-string-functions"
+message = "Use the Psl string function instead of the PHP counterpart."
+count = 2
+
+[[issues]]
+file = "src/Http/Listener/JsonExceptionListener.php"
+code = "psl-string-functions"
+message = "Use the Psl string function instead of the PHP counterpart."
+count = 1
+
+[[issues]]
+file = "src/Integrations/Anthropic/AnthropicAssistant.php"
+code = "psl-array-functions"
+message = "Use the Psl array function instead of the PHP counterpart."
+count = 1
+
+[[issues]]
+file = "src/Integrations/Anthropic/AnthropicAssistant.php"
+code = "psl-string-functions"
+message = "Use the Psl string function instead of the PHP counterpart."
+count = 1
+
+[[issues]]
+file = "src/Integrations/Nominatim/NominatimProvider.php"
+code = "psl-string-functions"
+message = "Use the Psl string function instead of the PHP counterpart."
+count = 4
+
+[[issues]]
+file = "src/Locale/Listener/RequestLocaleListener.php"
+code = "psl-array-functions"
+message = "Use the Psl array function instead of the PHP counterpart."
+count = 2
+
+[[issues]]
+file = "src/Locale/Listener/RequestLocaleListener.php"
+code = "psl-string-functions"
+message = "Use the Psl string function instead of the PHP counterpart."
+count = 4
+
+[[issues]]
+file = "src/Locale/SupportedLocales.php"
+code = "psl-array-functions"
+message = "Use the Psl array function instead of the PHP counterpart."
+count = 2
+
+[[issues]]
+file = "src/Locale/SupportedLocales.php"
+code = "psl-string-functions"
+message = "Use the Psl string function instead of the PHP counterpart."
+count = 4
+
+[[issues]]
+file = "src/Storage/ObjectStore.php"
+code = "psl-regex-functions"
+message = "Use the Psl regex function instead of the PHP counterpart."
+count = 1
+
+[[issues]]
+file = "src/Storage/ObjectStore.php"
+code = "psl-string-functions"
+message = "Use the Psl string function instead of the PHP counterpart."
+count = 8
+
+[[issues]]
+file = "tests/Functional/AssistantTest.php"
+code = "psl-array-functions"
+message = "Use the Psl array function instead of the PHP counterpart."
+count = 2
+
+[[issues]]
+file = "tests/Functional/AssistantTest.php"
+code = "psl-string-functions"
+message = "Use the Psl string function instead of the PHP counterpart."
+count = 2
+
+[[issues]]
+file = "tests/Functional/AuditTest.php"
+code = "psl-array-functions"
+message = "Use the Psl array function instead of the PHP counterpart."
+count = 2
+
+[[issues]]
+file = "tests/Functional/AuditTest.php"
+code = "psl-string-functions"
+message = "Use the Psl string function instead of the PHP counterpart."
+count = 2
+
+[[issues]]
+file = "tests/Functional/ObjectStoreTest.php"
+code = "psl-string-functions"
+message = "Use the Psl string function instead of the PHP counterpart."
+count = 1
+
+[[issues]]
+file = "tests/Functional/SoftDeleteTest.php"
+code = "psl-array-functions"
+message = "Use the Psl array function instead of the PHP counterpart."
+count = 1
+
+[[issues]]
+file = "tests/Traits/ServiceAccessTrait.php"
+code = "psl-string-functions"
+message = "Use the Psl string function instead of the PHP counterpart."
+count = 2
+
+[[issues]]
+file = "tests/Unit/ActorReadableTest.php"
+code = "psl-array-functions"
+message = "Use the Psl array function instead of the PHP counterpart."
+count = 9
+
+[[issues]]
+file = "tests/Unit/ActorReadableTest.php"
+code = "psl-string-functions"
+message = "Use the Psl string function instead of the PHP counterpart."
+count = 4
+
+[[issues]]
+file = "tests/Unit/AssistantContextTest.php"
+code = "psl-array-functions"
+message = "Use the Psl array function instead of the PHP counterpart."
+count = 2
+
+[[issues]]
+file = "tests/Unit/AssistantContextTest.php"
+code = "psl-string-functions"
+message = "Use the Psl string function instead of the PHP counterpart."
+count = 2
+
+[[issues]]
+file = "tests/Unit/ErrorCodeCatalogueTest.php"
+code = "psl-array-functions"
+message = "Use the Psl array function instead of the PHP counterpart."
+count = 8
+
+[[issues]]
+file = "tests/Unit/ErrorCodeCatalogueTest.php"
+code = "psl-string-functions"
+message = "Use the Psl string function instead of the PHP counterpart."
+count = 3
+
+[[issues]]
+file = "tests/Unit/HealthCheckerTest.php"
+code = "psl-string-functions"
+message = "Use the Psl string function instead of the PHP counterpart."
+count = 2
+
+[[issues]]
+file = "tests/Unit/JsonExceptionListenerTest.php"
+code = "psl-array-functions"
+message = "Use the Psl array function instead of the PHP counterpart."
+count = 1
+
+[[issues]]
+file = "tests/Unit/RawDecodingTest.php"
+code = "psl-array-functions"
+message = "Use the Psl array function instead of the PHP counterpart."
+count = 1
+
+[[issues]]
+file = "tests/Unit/RawDecodingTest.php"
+code = "psl-string-functions"
+message = "Use the Psl string function instead of the PHP counterpart."
+count = 4
+
+[[issues]]
+file = "tests/Unit/ServerCatalogueParityTest.php"
+code = "psl-array-functions"
+message = "Use the Psl array function instead of the PHP counterpart."
+count = 9
+
+[[issues]]
+file = "tests/Unit/ServerCatalogueParityTest.php"
+code = "psl-regex-functions"
+message = "Use the Psl regex function instead of the PHP counterpart."
+count = 1
+
+[[issues]]
+file = "tests/Unit/ServerCatalogueParityTest.php"
+code = "psl-string-functions"
+message = "Use the Psl string function instead of the PHP counterpart."
+count = 3
+
+[[issues]]
+file = "tests/Unit/SupportedLocalesSourceTest.php"
+code = "psl-array-functions"
+message = "Use the Psl array function instead of the PHP counterpart."
+count = 3
+
+[[issues]]
+file = "tests/Unit/SystemPromptTest.php"
+code = "psl-array-functions"
+message = "Use the Psl array function instead of the PHP counterpart."
+count = 1
+
+[[issues]]
+file = "tests/Unit/SystemPromptTest.php"
+code = "psl-string-functions"
+message = "Use the Psl string function instead of the PHP counterpart."
+count = 2

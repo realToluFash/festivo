@@ -1,0 +1,21 @@
+# sc-23175: Ask to join sends from TOKEN's request link, ending on the sent notice. ORIENT=PORTRAIT|LANDSCAPE_LEFT. Reopening the link does not remount the screen, so the waiting state comes from sc23175-ask-state in a new batch.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/join/${TOKEN}
+- extendedWaitUntil:
+    visible:
+      id: requestToJoin.ask
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: requestToJoin.ask
+    centerElement: true
+- tapOn:
+    id: requestToJoin.ask
+- extendedWaitUntil:
+    visible:
+      id: requestToJoin.carryOn
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: sent

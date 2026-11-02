@@ -1,0 +1,6 @@
+{
+  "guests_one": "{{count, number}} guest",
+  "guests_other": "{{count, number}} guests",
+  "cap": "Up to {{most, number}} addresses",
+  "texted": "We texted a code to {{number}}."
+}

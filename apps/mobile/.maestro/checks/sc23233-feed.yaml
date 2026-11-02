@@ -1,0 +1,47 @@
+# The bell's Notifications screen in [fd]: push ask, card, marks, Show more, settings at the foot (sc-23233).
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: frame.bell
+    timeout: 30000
+- runFlow: ../developer-menu-close.yaml
+- takeScreenshot: bell-badge
+- openLink: ${METRO_URL}/--/notifications
+- extendedWaitUntil:
+    visible:
+      id: notifications.markAllRead
+    timeout: 15000
+- takeScreenshot: feed-first-open
+- runFlow:
+    when:
+      visible:
+        id: notifications.pushAsk.notNow
+    commands:
+      - tapOn:
+          id: notifications.pushAsk.notNow
+- takeScreenshot: feed-top
+- scrollUntilVisible:
+    element:
+      id: notifications.item.${GONE_ID}
+    timeout: 20000
+- takeScreenshot: feed-muted-rows
+- tapOn:
+    id: notifications.item.${GONE_ID}
+- extendedWaitUntil:
+    visible: '.*{{t:notifications.eventGone}}.*'
+    timeout: 10000
+- takeScreenshot: feed-gone
+- scrollUntilVisible:
+    element:
+      id: notifications.showMore
+    timeout: 30000
+- takeScreenshot: feed-show-more
+- tapOn:
+    id: notifications.showMore
+- scrollUntilVisible:
+    element:
+      id: notifications.settings
+    timeout: 30000
+- takeScreenshot: feed-foot

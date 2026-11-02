@@ -1,0 +1,40 @@
+# sc-15545: in New event, typing "Praca do Comercio Lisboa" in Address lists four suggestions, not the provider's six (two pairs read the same); choosing the first fills the address.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/new
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.name'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.venueAddress'
+    direction: DOWN
+- tapOn:
+    id: 'eventForm.venueAddress'
+- inputText: 'Praca do Comercio Lisboa'
+- waitForAnimationToEnd:
+    timeout: 5000
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.venueSuggestion.0'
+    direction: DOWN
+    timeout: 20000
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.venueSuggestion.3'
+    direction: DOWN
+- takeScreenshot: suggestions
+- assertNotVisible:
+    id: 'eventForm.venueSuggestion.4'
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.venueSuggestion.0'
+    direction: UP
+- tapOn:
+    id: 'eventForm.venueSuggestion.0'
+- waitForAnimationToEnd
+- assertNotVisible:
+    id: 'eventForm.venueSuggestions'
+- takeScreenshot: chosen

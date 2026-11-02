@@ -1,0 +1,14 @@
+# Settings' empty tablet pane says what Account holds, in portrait. sc-22839.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/settings
+- extendedWaitUntil:
+    visible:
+      id: 'settings.account'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible: '{{t:settings.choose}}'
+- assertVisible: '.*{{t:settings.chooseLine}}.*'
+- takeScreenshot: choose-portrait

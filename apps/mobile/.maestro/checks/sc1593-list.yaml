@@ -1,0 +1,16 @@
+# sc-1593: the events of the organisation ${ORG}, in order, at the orientation given.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- runFlow:
+    file: ../switch-organisation.yaml
+    env:
+      ORG: ${ORG}
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'events.row.${EVENT}'
+    timeout: 30000
+- takeScreenshot: list
+- scroll
+- takeScreenshot: list-scrolled

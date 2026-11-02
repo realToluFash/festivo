@@ -1,0 +1,33 @@
+# Ask to join: Message typed, keys up, API stopped, Ask to join tapped above the keys. The whole notice ends in view, keys up. sc-24496.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/join/${TOKEN}
+- extendedWaitUntil:
+    visible:
+      id: requestToJoin.message
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: requestToJoin.message
+    centerElement: true
+- tapOn:
+    id: requestToJoin.message
+- inputText: hello
+- waitForAnimationToEnd
+- assertVisible: '(?i)(shift|delete)'
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
+- scrollUntilVisible:
+    element:
+      id: requestToJoin.ask
+    centerElement: true
+- tapOn:
+    id: requestToJoin.ask
+- extendedWaitUntil:
+    visible: '.*{{t:requestToJoin.failedTitle}}.*'
+    timeout: 45000
+- waitForAnimationToEnd
+- takeScreenshot: answered
+- assertVisible: '(?i)(shift|delete)'

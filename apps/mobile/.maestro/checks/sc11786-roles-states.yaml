@@ -1,0 +1,23 @@
+# sc-11786: rolesScreen.loading held with the QA api paused, then rolesScreen.failedLoad with it killed. Needs the api switch on 127.0.0.1:18097.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/settings
+- extendedWaitUntil:
+    visible: '{{t:settings.title}}'
+    timeout: 30000
+- waitForAnimationToEnd
+- evalScript: ${http.get('http://127.0.0.1:18097/pause').body}
+- openLink: ${METRO_URL}/--/settings/roles
+- extendedWaitUntil:
+    visible: '{{t:rolesScreen.loading}}'
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: roles-loading
+- evalScript: ${http.get('http://127.0.0.1:18097/kill').body}
+- extendedWaitUntil:
+    visible: '{{t:rolesScreen.failedLoad}}'
+    timeout: 90000
+- waitForAnimationToEnd
+- takeScreenshot: roles-failed
+- evalScript: ${http.get('http://127.0.0.1:18097/start').body}

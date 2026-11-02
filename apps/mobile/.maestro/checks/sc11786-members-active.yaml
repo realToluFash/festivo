@@ -1,0 +1,13 @@
+# sc-11786: Members with Active chosen.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil:
+    visible:
+      id: 'members.filter.active'
+    timeout: 30000
+- tapOn:
+    id: 'members.filter.active'
+- waitForAnimationToEnd
+- takeScreenshot: members-active

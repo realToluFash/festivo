@@ -1,0 +1,21 @@
+# sc-22145: Duplicate on an event's page in the Live, Paused and Finished phases.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${LIVE}
+- scrollUntilVisible:
+    element:
+      id: 'events.page.duplicate'
+    timeout: 30000
+- takeScreenshot: live
+- openLink: ${METRO_URL}/--/events/${PAUSED}
+- scrollUntilVisible:
+    element:
+      id: 'events.page.duplicate'
+    timeout: 30000
+- takeScreenshot: paused
+- openLink: ${METRO_URL}/--/events/${FINISHED}
+- scrollUntilVisible:
+    element:
+      id: 'events.page.duplicate'
+    timeout: 30000
+- takeScreenshot: finished

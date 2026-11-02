@@ -1,0 +1,23 @@
+# role, top to bottom, at whatever text size the simulator is set to. sc-13281.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/roles
+- extendedWaitUntil:
+    visible:
+      id: 'roles.role.owner'
+    timeout: 30000
+- tapOn:
+    id: 'roles.role.owner'
+- extendedWaitUntil:
+    visible:
+      id: 'roles.area.events.*'
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: role-1
+- scroll
+- takeScreenshot: role-2
+- scroll
+- takeScreenshot: role-3
+- scroll
+- takeScreenshot: role-4

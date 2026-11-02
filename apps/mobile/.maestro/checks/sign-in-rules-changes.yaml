@@ -1,0 +1,13 @@
+# Sign-in rules, scrolled to What changed, newest first, for reading its rows.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/sign-in-rules
+- extendedWaitUntil:
+    visible: '{{t:settings.signInRules}}|{{t:signInRules.readTitle}}'
+    timeout: 30000
+- scrollUntilVisible:
+    element: '{{t:signInRules.changesTitle}}'
+    direction: DOWN
+- takeScreenshot: sign-in-rules-changes-top
+- scroll
+- takeScreenshot: sign-in-rules-changes

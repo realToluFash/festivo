@@ -1,0 +1,24 @@
+# Settings > Members > Suspended > a suspended member's page, scrolled to its Restore button, not tapped. sc-11042.
+#
+#   node .qa/bin/qa-env.mjs maestro member-restore-open --android EMAIL=… PASSWORD=… LANGUAGE=… MEMBER=<membership id> SHOT=…
+appId: host.exp.Exponent
+---
+- runFlow: sign-in-screen-language.yaml
+- runFlow: sign-in-any-language.yaml
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil:
+    visible:
+      id: 'members.filter.suspended'
+    timeout: 30000
+- tapOn:
+    id: 'members.filter.suspended'
+- scrollUntilVisible:
+    element:
+      id: 'members.row.${MEMBER}'
+- tapOn:
+    id: 'members.row.${MEMBER}'
+- scrollUntilVisible:
+    element:
+      id: 'members.restore'
+- waitForAnimationToEnd
+- takeScreenshot: ${SHOT}-before

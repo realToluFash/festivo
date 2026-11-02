@@ -1,0 +1,5 @@
+# The shared flows as steps of one flow: Settings, then the switcher.
+appId: host.exp.Exponent
+---
+- runFlow: open-settings.yaml
+- runFlow: open-switcher.yaml

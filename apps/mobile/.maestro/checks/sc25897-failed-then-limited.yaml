@@ -1,0 +1,44 @@
+# sc-25897 Android, an account at its limit: the not-created notice first (API stopped), scrolled under the title, then the API started and sent again. Too many new organisations for now shows wholly in its place.
+appId: host.exp.Exponent
+---
+- runFlow: ../open-create-organisation.yaml
+- tapOn:
+    id: 'createOrganisation.name'
+- inputText: 'Notice In View'
+- waitForAnimationToEnd
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
+- tapOn:
+    id: 'createOrganisation.create'
+- extendedWaitUntil:
+    visible: '.*{{t:createOrganisation.failed}}.*'
+    timeout: 45000
+- extendedWaitUntil:
+    visible:
+      id: 'sc25897.never'
+    timeout: 3000
+    optional: true
+- swipe:
+    from:
+      id: 'createOrganisation'
+    direction: UP
+- waitForAnimationToEnd
+- takeScreenshot: scrolled
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=up
+- tapOn:
+    id: 'createOrganisation.create'
+- extendedWaitUntil:
+    visible: '.*{{t:createOrganisation.limitedTitle}}.*'
+    timeout: 45000
+- extendedWaitUntil:
+    visible:
+      id: 'sc25897.never'
+    timeout: 3000
+    optional: true
+- takeScreenshot: again
+- assertNotVisible: '.*{{t:createOrganisation.failed}}.*'
