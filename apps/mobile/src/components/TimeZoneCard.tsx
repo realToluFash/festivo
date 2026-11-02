@@ -1,5 +1,5 @@
 import { ApiError, type TimeZoneOption } from '@soirely/api-client';
-import { exactZone, formerName, matchingZones, zoneLabel } from '@soirely/domain';
+import { exactZone, formerName, matchingZones, zoneLabel, zoneValue } from '@soirely/domain';
 import { type RefObject, useCallback, useEffect, useRef, useState } from 'react';
 import {
   Platform,
@@ -20,6 +20,7 @@ import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { useHeaderWithoutBack } from './AppFrame.tsx';
 import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
+import { Skeleton } from './Skeleton.tsx';
 import { SmallCapsLabel } from './SmallCapsLabel.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { Field, focusChecked, TextField } from './Field.tsx';
@@ -61,7 +62,8 @@ export function TimeZoneCard({
   onSaved: () => Promise<void>;
 }) {
   const { t } = useTranslation();
-  const [zones, setZones] = useState<TimeZoneOption[]>([]);
+  // Null until the list comes; a failed list is an empty one, so the row stops waiting (sc-27219).
+  const [zones, setZones] = useState<TimeZoneOption[] | null>(null);
   const [editing, setEditing] = useState(false);
   const [saved, setSaved] = useState<string | null>(null);
   const [savedFocused, setSavedFocused] = useState(false);
@@ -122,15 +124,17 @@ export function TimeZoneCard({
       .then((list) => {
         if (live) setZones(list);
       })
-      .catch(() => {});
+      .catch(() => {
+        if (live) setZones([]);
+      });
 
     return () => {
       live = false;
     };
   }, []);
 
-  const current = zones.find((zone) => zone.id === timezone);
-  const label = timezone == null ? null : current == null ? timezone : zoneLabel(current);
+  const value = zoneValue(timezone, zones);
+  const label = value.kind === 'shown' ? value.name : null;
   // The scrolls of a save's close move TalkBack's focus off Save to the nearest view in sight, and the zone name, the intro or the title there is said before the line (sc-18587).
   const offWhileSaving = savedClosing ? 'no-hide-descendants' : 'auto';
 
@@ -153,7 +157,10 @@ export function TimeZoneCard({
         {t('timeZone.intro')}
       </Text>
 
-      {(!editing || opening || closing || savedClosing) && (
+      {value.kind === 'waiting' && (
+        <Skeleton words={t('pending.loading')} shape="rows" rowHeight={56} rows={1} inCard />
+      )}
+      {value.kind !== 'waiting' && (!editing || opening || closing || savedClosing) && (
         <View style={styles.current}>
           <View style={[styles.group, styles.value]} {...savedHidden}>
             <Text
@@ -163,13 +170,13 @@ export function TimeZoneCard({
             >
               {label ?? t('timeZone.unset')}
             </Text>
-            {timezone != null && (
+            {value.kind === 'shown' && value.id != null && (
               <Text
                 size={tokens.typeSmall.size}
                 style={styles.secondary}
                 accessible={savedClosing ? false : undefined}
               >
-                {timezone.replace(/_/g, ' ')}
+                {value.id}
               </Text>
             )}
           </View>
@@ -206,7 +213,7 @@ export function TimeZoneCard({
       {editing && (
         <Choosing
           phone={kind === 'phone'}
-          zones={zones}
+          zones={zones ?? []}
           now={label}
           closing={closing || savedClosing}
           onSaved={async (zone, fromKeys) => {
