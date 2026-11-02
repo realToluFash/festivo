@@ -184,6 +184,7 @@ describe('The bell titles itself once, in the frame header (sc-3980)', () => {
 
 describe('The bell in [fd] (sc-23233)', () => {
   const feed = (): string => source(join(SRC, 'components', 'NotificationsFeed.tsx'));
+  const skeleton = (): string => source(join(SRC, 'components', 'Skeleton.tsx'));
 
   it('draws Muted with the slashed bell beside the word, hidden from a screen reader', () => {
     expect(feed()).toMatch(
@@ -308,6 +309,25 @@ describe('The bell in [fd] (sc-23233)', () => {
     expect(source).toMatch(
       /goneLine: \{ marginHorizontal: tokens\.spaceXl, marginBottom: tokens\.spaceLg \}/u,
     );
+  });
+
+  it('builds the badge to the frame, at the size and place the web has', () => {
+    const button = source(join(SRC, 'components', 'BellButton.tsx'));
+
+    expect(button).toMatch(/const BADGE_SIDE = 18;/u);
+    expect(button).toMatch(
+      /badge: \{\s*position: 'absolute',\s*top: tokens\.spaceXxs,\s*right: tokens\.spaceXxs,\s*minWidth: BADGE_SIDE,\s*minHeight: BADGE_SIDE,\s*paddingHorizontal: tokens\.spaceXxs,[\s\S]*?justifyContent: 'center',/u,
+    );
+    expect(button).toMatch(/<Text size=\{tokens\.typePill\.size\} weight="semibold"/u);
+  });
+
+  it('insets the skeleton once, its rules running to the card edge and its words with its rows', () => {
+    const source = feed();
+
+    expect(source).toMatch(/<View style=\{styles\.loading\}>\s*<Skeleton[^>]*inCard\s+edgeToEdge/u);
+    expect(source).toMatch(/loading: \{ paddingVertical: tokens\.spaceSm \}/u);
+    expect(skeleton()).toMatch(/wordsInset: \{ paddingHorizontal: tokens\.spaceXl \}/u);
+    expect(skeleton()).toMatch(/row: \{[^}]*paddingHorizontal: tokens\.spaceXl,/u);
   });
 
   it('starts Mark all read 12pt under the tablet Back, and leaves the phone as it was', () => {

@@ -27,7 +27,7 @@ export function BellButton() {
       <BellMark ink={tokens.colorInk} />
       {badge != null && (
         <View style={styles.badge} importantForAccessibility="no-hide-descendants">
-          <Text size={tokens.typeSmall.size} weight="semibold" style={styles.badgeInk}>
+          <Text size={tokens.typePill.size} weight="semibold" style={styles.badgeInk}>
             {badge}
           </Text>
         </View>
@@ -35,6 +35,8 @@ export function BellButton() {
     </Pressable>
   );
 }
+
+const BADGE_SIDE = 18;
 
 const styles = StyleSheet.create({
   bell: {
@@ -45,13 +47,15 @@ const styles = StyleSheet.create({
   },
   badge: {
     position: 'absolute',
-    top: 0,
-    right: 0,
-    minWidth: tokens.spaceXl,
+    top: tokens.spaceXxs,
+    right: tokens.spaceXxs,
+    minWidth: BADGE_SIDE,
+    minHeight: BADGE_SIDE,
     paddingHorizontal: tokens.spaceXxs,
     borderRadius: tokens.radiusPill,
     backgroundColor: tokens.colorDark,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   badgeInk: { color: tokens.colorInkOnDark },
 });

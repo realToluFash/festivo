@@ -23,12 +23,13 @@ type Shape =
   | { shape: 'cards'; cards: readonly CardShape[]; titled?: boolean }
   | { shape: 'month'; weeks: number };
 
-/** Nothing for a second, then the content's shape under its loading words; `inCard` draws inside a card already there. */
+/** Nothing for a second, then the content's shape under its loading words; `inCard` draws inside a card already there, `edgeToEdge` inside one with no side padding, so the words take the rows' inset. */
 export function Skeleton({
   words,
   inCard = false,
+  edgeToEdge = false,
   ...shape
-}: Shape & { words: string; inCard?: boolean }) {
+}: Shape & { words: string; inCard?: boolean; edgeToEdge?: boolean }) {
   const shown = useShownAfter(SKELETON_AFTER_MS);
   const pulse = usePulse(shown);
   const { kind } = useLayout();
@@ -75,7 +76,7 @@ export function Skeleton({
   return (
     <View accessibilityState={{ busy: true }} style={styles.skeleton}>
       {shown && (
-        <Text size={tokens.typeBodyPhone.size} muted>
+        <Text size={tokens.typeBodyPhone.size} muted style={edgeToEdge && styles.wordsInset}>
           {words}
         </Text>
       )}
@@ -198,6 +199,7 @@ function usePulse(running: boolean): Animated.Value {
 
 const styles = StyleSheet.create({
   skeleton: { gap: tokens.spaceLg },
+  wordsInset: { paddingHorizontal: tokens.spaceXl },
   blocks: { gap: tokens.spaceXl },
   rowsCard: { padding: 0, gap: 0, overflow: 'hidden' },
   row: {

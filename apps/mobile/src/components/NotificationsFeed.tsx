@@ -334,13 +334,14 @@ export function NotificationsFeed({
               )}
 
               {feed.status === 'loading' && (
-                <View style={styles.cardPart}>
+                <View style={styles.loading}>
                   <Skeleton
                     words={t('notifications.loading')}
                     shape="rows"
                     rowHeight={64}
                     rows={3}
                     inCard
+                    edgeToEdge
                   />
                 </View>
               )}
@@ -617,6 +618,7 @@ const styles = StyleSheet.create({
     paddingBottom: tokens.spaceLg,
     paddingHorizontal: tokens.spaceXl,
   },
+  loading: { paddingVertical: tokens.spaceSm },
   empty: {
     alignItems: 'center',
     gap: tokens.spaceSm,
