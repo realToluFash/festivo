@@ -11,10 +11,12 @@ appId: host.exp.Exponent
       id: 'twoFactor.retry'
     direction: DOWN
     timeout: 60000
+- assertVisible: '{{t:twoFactorCard.retry}}'
 - takeScreenshot: two-factor
 - scrollUntilVisible:
     element:
       id: 'devices.retry'
     direction: DOWN
     timeout: 30000
+- assertVisible: '{{t:devices.retry}}'
 - takeScreenshot: devices
