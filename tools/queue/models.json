@@ -1,0 +1,22 @@
+{
+  "claude-opus-5-5": {
+    "efforts": ["low", "medium", "high", "xhigh", "max"],
+    "usdPerMillion": { "input": 4, "output": 20 }
+  },
+  "claude-opus-5": {
+    "efforts": ["low", "medium", "high", "xhigh", "max"],
+    "usdPerMillion": { "input": 5, "output": 25 }
+  },
+  "claude-sonnet-5-5": {
+    "efforts": ["low", "medium", "high", "xhigh", "max"],
+    "usdPerMillion": { "input": 2, "output": 10 }
+  },
+  "claude-haiku-5-5": {
+    "efforts": ["low", "medium", "high", "xhigh", "max"],
+    "usdPerMillion": { "input": 0.1, "output": 0.5 }
+  },
+  "claude-fable-5-1": {
+    "efforts": ["low", "medium", "high", "xhigh", "max"],
+    "usdPerMillion": { "input": 10, "output": 50 }
+  }
+}

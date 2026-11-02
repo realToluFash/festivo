@@ -1,0 +1,17 @@
+# Settings > Organisation, read-only under Google or Apple only for a role that could change the details: the rule's line and Link Google or Apple, no role line.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/organisation
+- extendedWaitUntil:
+    visible: '{{t:orgGeneral.intro}}'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'organisation.link'
+    timeout: 20000
+- takeScreenshot: sc16265-linked-line
+- assertNotVisible:
+    id: 'organisation.turnOn'
+- assertNotVisible:
+    id: 'organisation.save'
+- assertNotVisible: '{{t:orgGeneral.readOnly}}'

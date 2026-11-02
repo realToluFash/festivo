@@ -1,0 +1,555 @@
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { useRef } from 'react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+import { setLanguage } from '../i18n/index.ts';
+import { OwnerClaimBanner } from './OwnerClaimBanner.tsx';
+
+const LAPSES = { at: '2026-10-31T09:00:00+00:00', written: 'Saturday 31 Oct at 10:00 WAT' };
+const PASSES = { at: '2026-10-27T09:00:00+00:00', written: 'Tuesday 27 Oct at 10:00 WAT' };
+
+// Every key OwnerClaimDescriber::forMembers writes; OwnerClaimTest asserts the same list.
+function banner(overrides: Record<string, unknown> = {}) {
+  return {
+    state: 'no_owner',
+    domain: 'ire.events',
+    claim: null,
+    stopped: null,
+    lapsed: null,
+    ...overrides,
+  };
+}
+
+function claim(mine: boolean, found = false) {
+  return {
+    id: 'claim_1',
+    claimant: { id: 'u_bisi', name: 'Bisi', email: 'bisi@ire.events' },
+    mine,
+    domain: 'ire.events',
+    record: mine
+      ? { type: 'TXT', name: '_soirely-verify.ire.events', value: 'soirely-claim=abc123' }
+      : null,
+    startedAt: LAPSES,
+    lapsesAt: LAPSES,
+    foundAt: found ? PASSES : null,
+    passesAt: found ? PASSES : null,
+  };
+}
+
+function json(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
+function problem(code: string, status = 409): Response {
+  return new Response(
+    JSON.stringify({ type: `https://soirely.com/errors/${code}`, title: 'Refused.', status }),
+    { status, headers: { 'Content-Type': 'application/problem+json' } },
+  );
+}
+
+function answering(answers: Record<string, () => Response>) {
+  const sent: { line: string; body: unknown }[] = [];
+
+  vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+    const line = `${init?.method ?? 'GET'} ${new URL(String(input)).pathname}`;
+    sent.push({ line, body: typeof init?.body === 'string' ? JSON.parse(init.body) : null });
+
+    const answer = answers[line];
+    if (answer == null) throw new TypeError('Failed to fetch');
+
+    return answer();
+  });
+
+  return sent;
+}
+
+const PATH = '/api/orgs/org_1/owner-claim';
+
+function Members() {
+  const heading = useRef<HTMLHeadingElement>(null);
+
+  return (
+    <>
+      <h1 ref={heading} tabIndex={-1}>
+        Members
+      </h1>
+      <OwnerClaimBanner organisationId="org_1" organisation="Ìrè Events" pageHeading={heading} />
+    </>
+  );
+}
+
+function open() {
+  return render(<Members />);
+}
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
+describe('the Members banner while no owner is active (sc-6640)', () => {
+  let picker: HTMLButtonElement | null = null;
+
+  afterEach(async () => {
+    picker?.remove();
+    picker = null;
+    await act(() => setLanguage(null));
+  });
+
+  it('shows nothing to somebody it is not for', async () => {
+    answering({ [`GET ${PATH}`]: () => json({ ownerClaim: null }) });
+    const { container } = open();
+
+    await waitFor(() => expect(container.querySelector('.owner-claim')).toBeNull());
+  });
+
+  it('starts the claim in one press, with no domain to pick, then shows the record', async () => {
+    const sent = answering({
+      [`GET ${PATH}`]: () => json({ ownerClaim: banner() }),
+      [`POST ${PATH}`]: () =>
+        json({ ownerClaim: banner({ state: 'open', claim: claim(true) }) }, 201),
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Become the owner' }));
+
+    const proving = await screen.findByRole('heading', { name: 'Prove you control ire.events' });
+    await waitFor(() => expect(document.activeElement).toBe(proving));
+    expect(screen.getByText('_soirely-verify.ire.events')).toBeTruthy();
+    expect(screen.getByText('soirely-claim=abc123')).toBeTruthy();
+    expect(
+      screen.getByText('We check every hour until Saturday 31 Oct at 10:00 WAT.'),
+    ).toBeTruthy();
+    expect(sent.find((one) => one.line === `POST ${PATH}`)?.body).toEqual({});
+  });
+
+  it('takes focus to the banner that loads when another Administrator’s claim started first', async () => {
+    let started = false;
+    answering({
+      [`GET ${PATH}`]: () =>
+        json({
+          ownerClaim: started ? banner({ state: 'open', claim: claim(false) }) : banner(),
+        }),
+      [`POST ${PATH}`]: () => {
+        started = true;
+        return problem('owner_claim_open');
+      },
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Become the owner' }));
+
+    const theirs = await screen.findByRole('heading', { name: /^Bisi is becoming the owner/ });
+    await waitFor(() => expect(document.activeElement).toBe(theirs));
+  });
+
+  it('leaves focus where it is when a later load follows a reload that failed', async () => {
+    let gets = 0;
+    answering({
+      [`GET ${PATH}`]: () => {
+        gets += 1;
+        if (gets === 2) throw new TypeError('Failed to fetch');
+
+        return json({
+          ownerClaim: gets === 1 ? banner() : banner({ state: 'open', claim: claim(false) }),
+        });
+      },
+      [`POST ${PATH}`]: () => problem('owner_claim_open'),
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Become the owner' }));
+    await waitFor(() => expect(gets).toBe(2));
+    await act(async () => {});
+
+    picker = document.body.appendChild(document.createElement('button'));
+    picker.focus();
+    await act(() => setLanguage('es'));
+
+    expect(await screen.findByRole('heading', { name: /^Bisi ha solicitado/ })).toBeTruthy();
+    expect(document.activeElement).toBe(picker);
+  });
+
+  it('takes focus to Record found once Check record finds it', async () => {
+    answering({
+      [`GET ${PATH}`]: () => json({ ownerClaim: banner({ state: 'open', claim: claim(true) }) }),
+      [`POST ${PATH}/check`]: () =>
+        json({ ownerClaim: banner({ state: 'found', claim: claim(true, true) }), found: true }),
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Check record' }));
+
+    const found = await screen.findByRole('heading', { name: /^Record found/ });
+    await waitFor(() => expect(document.activeElement).toBe(found));
+  });
+
+  it('says why when the claimant’s address is not at the domain', async () => {
+    answering({
+      [`GET ${PATH}`]: () => json({ ownerClaim: banner() }),
+      [`POST ${PATH}`]: () => problem('owner_claim_address'),
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Become the owner' }));
+
+    expect(
+      await screen.findByText('To become the owner, your main address must be at ire.events.'),
+    ).toBeTruthy();
+  });
+
+  it('gives the server’s refusal when the organisation lists no domain to name', async () => {
+    answering({
+      [`GET ${PATH}`]: () => json({ ownerClaim: banner({ domain: null }) }),
+      [`POST ${PATH}`]: () => problem('owner_claim_address'),
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Become the owner' }));
+
+    expect(await screen.findByText('Refused.')).toBeTruthy();
+    expect(screen.queryByText('That did not work. Please try again.')).toBeNull();
+  });
+
+  it('says the record is not found yet after Check record', async () => {
+    answering({
+      [`GET ${PATH}`]: () => json({ ownerClaim: banner({ state: 'open', claim: claim(true) }) }),
+      [`POST ${PATH}/check`]: () =>
+        json({ ownerClaim: banner({ state: 'open', claim: claim(true) }), found: false }),
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Check record' }));
+
+    expect(
+      await screen.findByText(
+        "We couldn't find the record yet. DNS changes can take up to 48 hours.",
+      ),
+    ).toBeTruthy();
+  });
+
+  it('lets another Administrator stop the claim, after confirming, and then the way is closed', async () => {
+    const sent = answering({
+      [`GET ${PATH}`]: () =>
+        json({ ownerClaim: banner({ state: 'found', claim: claim(false, true) }) }),
+      [`POST ${PATH}/stop`]: () =>
+        json({
+          ownerClaim: banner({
+            state: 'closed',
+            stopped: { by: 'Kemi', claimant: 'Bisi', mine: true, at: PASSES },
+          }),
+        }),
+    });
+    open();
+
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Bisi is becoming the owner. Ownership passes on Tuesday 27 Oct at 10:00 WAT.',
+      }),
+    ).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Stop this claim' }));
+    expect(document.activeElement).toBe(screen.getByText("Stop Bisi's claim?"));
+    expect(sent.some((one) => one.line === `POST ${PATH}/stop`)).toBe(false);
+    fireEvent.click(screen.getByRole('button', { name: 'Stop the claim' }));
+
+    const stopped = await screen.findByRole('heading', {
+      name: 'Ownership has to be restored by Soirely support.',
+    });
+    await waitFor(() => expect(document.activeElement).toBe(stopped));
+    expect(
+      screen.getByText("You stopped Bisi's claim. Everybody who was told is emailed."),
+    ).toBeTruthy();
+  });
+
+  it('says so when the claim ended before the stop arrived', async () => {
+    answering({
+      [`GET ${PATH}`]: () => json({ ownerClaim: banner({ state: 'open', claim: claim(false) }) }),
+      [`POST ${PATH}/stop`]: () => problem('owner_claim_ended'),
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Stop this claim' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Stop the claim' }));
+
+    const ended = await screen.findByText(
+      'This claim has already ended, so there was nothing to stop.',
+    );
+    await waitFor(() => expect(document.activeElement).toBe(ended));
+    expect(ended.closest('[role="alert"]')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Load Members again' })).toBeTruthy();
+  });
+
+  it('puts focus back on Stop this claim after Let it continue (sc-11369)', async () => {
+    answering({
+      [`GET ${PATH}`]: () => json({ ownerClaim: banner({ state: 'open', claim: claim(false) }) }),
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Stop this claim' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Let it continue' }));
+
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Stop this claim' }));
+  });
+
+  it('takes focus to the banner Load Members again brings, or to Members with none left (sc-11369)', async () => {
+    let gets = 0;
+    answering({
+      [`GET ${PATH}`]: () => {
+        gets += 1;
+        return json({
+          ownerClaim:
+            gets === 1
+              ? banner({ state: 'open', claim: claim(false) })
+              : gets === 2
+                ? banner({ state: 'found', claim: claim(false, true) })
+                : null,
+        });
+      },
+      [`POST ${PATH}/stop`]: () => problem('owner_claim_ended'),
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Stop this claim' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Stop the claim' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Load Members again' }));
+
+    const found = await screen.findByRole('heading', { name: /^Bisi is becoming the owner/ });
+    await waitFor(() => expect(document.activeElement).toBe(found));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Stop this claim' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Stop the claim' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Load Members again' }));
+
+    const members = screen.getByRole('heading', { name: 'Members' });
+    await waitFor(() => expect(document.activeElement).toBe(members));
+    expect(screen.queryByRole('heading', { name: /^Bisi is becoming the owner/ })).toBeNull();
+  });
+});
+
+describe('the claimant withdraws their own claim (sc-8204)', () => {
+  it('offers Withdraw my claim only to the claimant, before and after the record is found', async () => {
+    for (const [mine, found, offered] of [
+      [true, false, true],
+      [true, true, true],
+      [false, false, false],
+      [false, true, false],
+    ] as const) {
+      answering({
+        [`GET ${PATH}`]: () =>
+          json({
+            ownerClaim: banner({ state: found ? 'found' : 'open', claim: claim(mine, found) }),
+          }),
+      });
+      const { unmount } = open();
+
+      await screen.findByRole('heading', { level: 2 });
+      expect(screen.queryByRole('button', { name: 'Withdraw my claim' }) != null).toBe(offered);
+      unmount();
+      vi.restoreAllMocks();
+    }
+  });
+
+  it('asks first, and Keep my claim or Escape leaves the claim as it was', async () => {
+    const sent = answering({
+      [`GET ${PATH}`]: () => json({ ownerClaim: banner({ state: 'open', claim: claim(true) }) }),
+    });
+    open();
+
+    const withdraw = await screen.findByRole('button', { name: 'Withdraw my claim' });
+    fireEvent.click(withdraw);
+    const dialog = screen.getByRole('dialog', { name: 'Withdraw your claim?' });
+    expect(
+      screen.getByText(
+        "You won't become the owner of Ìrè Events. Any Administrator, you included, can start a new claim.",
+      ),
+    ).toBeTruthy();
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Keep my claim' }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Keep my claim' }));
+    expect(dialog.isConnected).toBe(false);
+    expect(document.activeElement).toBe(withdraw);
+
+    fireEvent.click(withdraw);
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(sent.some((one) => one.line === `POST ${PATH}/withdraw`)).toBe(false);
+    expect(screen.getByText('soirely-claim=abc123')).toBeTruthy();
+  });
+
+  it('after a withdrawal before the record is found, says so and offers Become the owner again', async () => {
+    answering({
+      [`GET ${PATH}`]: () => json({ ownerClaim: banner({ state: 'open', claim: claim(true) }) }),
+      [`POST ${PATH}/withdraw`]: () => json({ ownerClaim: banner(), withdrawn: { told: false } }),
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Withdraw my claim' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Withdraw' }));
+
+    const line = await screen.findByText('You withdrew your claim.');
+    expect(line.closest('.notice')).toBe(document.activeElement);
+    expect(line.closest('[role="status"]')).toBeNull();
+    expect(screen.queryByText(/Everybody who was told is emailed/)).toBeNull();
+    expect(screen.getByRole('heading', { name: 'Ìrè Events has no active owner' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Become the owner' })).toBeTruthy();
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('after a withdrawal once the record was found, says everybody told is emailed', async () => {
+    answering({
+      [`GET ${PATH}`]: () =>
+        json({ ownerClaim: banner({ state: 'found', claim: claim(true, true) }) }),
+      [`POST ${PATH}/withdraw`]: () => json({ ownerClaim: banner(), withdrawn: { told: true } }),
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Withdraw my claim' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Withdraw' }));
+
+    const line = await screen.findByText(
+      'You withdrew your claim. Everybody who was told is emailed.',
+    );
+    expect(line.closest('.notice')).toBe(document.activeElement);
+    expect(line.closest('[role="status"]')).toBeNull();
+  });
+
+  it('drops the withdrawn line once the claimant starts a new claim', async () => {
+    answering({
+      [`GET ${PATH}`]: () => json({ ownerClaim: banner({ state: 'open', claim: claim(true) }) }),
+      [`POST ${PATH}/withdraw`]: () => json({ ownerClaim: banner(), withdrawn: { told: false } }),
+      [`POST ${PATH}`]: () =>
+        json({ ownerClaim: banner({ state: 'open', claim: claim(true) }) }, 201),
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Withdraw my claim' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Withdraw' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Become the owner' }));
+
+    expect(
+      await screen.findByRole('heading', { name: 'Prove you control ire.events' }),
+    ).toBeTruthy();
+    expect(screen.queryByText('You withdrew your claim.')).toBeNull();
+  });
+
+  it('sends focus back to Withdraw my claim when the withdrawal fails', async () => {
+    answering({
+      [`GET ${PATH}`]: () => json({ ownerClaim: banner({ state: 'open', claim: claim(true) }) }),
+      [`POST ${PATH}/withdraw`]: () => problem('internal', 500),
+    });
+    open();
+
+    const withdraw = await screen.findByRole('button', { name: 'Withdraw my claim' });
+    fireEvent.click(withdraw);
+    fireEvent.click(screen.getByRole('button', { name: 'Withdraw' }));
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(document.activeElement).toBe(withdraw);
+  });
+
+  it('says so when the claim ended before the withdrawal arrived, and offers a reload', async () => {
+    answering({
+      [`GET ${PATH}`]: () =>
+        json({ ownerClaim: banner({ state: 'found', claim: claim(true, true) }) }),
+      [`POST ${PATH}/withdraw`]: () => problem('owner_claim_ended'),
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Withdraw my claim' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Withdraw' }));
+
+    const ended = await screen.findByText('This claim has already ended.');
+    await waitFor(() => expect(document.activeElement).toBe(ended));
+    expect(ended.closest('[role="alert"]')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Load Members again' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Withdraw my claim' })).toBeNull();
+  });
+
+  it('takes focus to the refusal when somebody else started the claim (sc-11369)', async () => {
+    answering({
+      [`GET ${PATH}`]: () => json({ ownerClaim: banner({ state: 'open', claim: claim(true) }) }),
+      [`POST ${PATH}/withdraw`]: () => problem('forbidden', 403),
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Withdraw my claim' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Withdraw' }));
+
+    const refused = await screen.findByText(
+      'Only the person who started this claim can withdraw it.',
+    );
+    await waitFor(() => expect(document.activeElement).toBe(refused));
+  });
+});
+
+describe('the claim’s dates after a language change (sc-9267)', () => {
+  const PASSES_IN: Record<string, string> = {
+    en: 'Tuesday 27 Oct at 10:00 WAT',
+    es: 'martes 27 oct a las 10:00 WAT',
+  };
+  const EN = 'Bisi is becoming the owner. Ownership passes on Tuesday 27 Oct at 10:00 WAT.';
+
+  afterEach(async () => {
+    await act(() => setLanguage(null));
+  });
+
+  function answeringIn(spanish: () => Promise<Response>): string[] {
+    const asked: string[] = [];
+
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      if (new URL(String(input)).pathname !== PATH) return new Response(null, { status: 500 });
+
+      const language = new Headers(init?.headers).get('Accept-Language') ?? '';
+      asked.push(language);
+
+      return language === 'es' ? spanish() : bannerIn(language);
+    });
+
+    return asked;
+  }
+
+  function bannerIn(language: string): Response {
+    const passes = { ...PASSES, written: PASSES_IN[language] ?? '' };
+
+    return json({
+      ownerClaim: banner({
+        state: 'open',
+        claim: { ...claim(false, true), foundAt: passes, passesAt: passes },
+      }),
+    });
+  }
+
+  it('is asked for again in the picked language, without a reload', async () => {
+    const asked = answeringIn(async () => bannerIn('es'));
+    open();
+    expect(await screen.findByRole('heading', { name: EN })).toBeTruthy();
+
+    await act(() => setLanguage('es'));
+
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Bisi ha solicitado la propiedad, que se transfiere el martes 27 oct a las 10:00 WAT.',
+      }),
+    ).toBeTruthy();
+    expect(asked).toEqual(['en', 'es']);
+  });
+
+  it('keeps the line it had after a failed ask, with no error', async () => {
+    const asked = answeringIn(async () => new Response(null, { status: 500 }));
+    open();
+    await screen.findByRole('heading', { name: EN });
+
+    await act(() => setLanguage('es'));
+    await waitFor(() => expect(asked).toEqual(['en', 'es']));
+    await act(async () => {});
+
+    expect(
+      screen.getByRole('heading', {
+        name: 'Bisi ha solicitado la propiedad, que se transfiere el Tuesday 27 Oct at 10:00 WAT.',
+      }),
+    ).toBeTruthy();
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+});

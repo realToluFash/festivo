@@ -1,0 +1,10 @@
+services:
+    App\Translation\LoggingTranslator:
+        decorates: translator
+        arguments:
+            $inner: '@.inner'
+            $logger: '@logger'
+        # Decorating replaces the service, and the tag does not come with it.
+        # Without this, LocaleAwareListener has nothing to push the request locale
+        # into and the translator answers in the default language forever.
+        tags: ['kernel.locale_aware']

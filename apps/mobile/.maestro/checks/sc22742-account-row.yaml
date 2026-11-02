@@ -1,0 +1,24 @@
+# Settings' Account row and its line, then tapping it opens Account. sc-22742.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings
+- extendedWaitUntil:
+    visible:
+      id: 'settings.account'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible: '.*{{t:settings.accountLine}}.*'
+- takeScreenshot: settings-top
+- scroll
+- takeScreenshot: settings-rest
+- scrollUntilVisible:
+    element:
+      id: 'settings.account'
+    direction: UP
+- tapOn:
+    id: 'settings.account'
+- extendedWaitUntil:
+    visible: '{{t:account.title}}'
+    timeout: 15000
+- takeScreenshot: account-opened

@@ -1,0 +1,24 @@
+# Settings' Account row and its line, on a tablet in landscape. sc-22742.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- openLink: ${METRO_URL}/--/settings
+- extendedWaitUntil:
+    visible:
+      id: 'settings.account'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible: '.*{{t:settings.accountLine}}.*'
+- takeScreenshot: settings-top
+- scrollUntilVisible:
+    element:
+      id: 'settings.account'
+    direction: UP
+- tapOn:
+    id: 'settings.account'
+- extendedWaitUntil:
+    visible: '{{t:account.title}}'
+    timeout: 15000
+- takeScreenshot: account-opened
+- setOrientation: PORTRAIT

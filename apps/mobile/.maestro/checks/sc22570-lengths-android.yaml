@@ -1,0 +1,165 @@
+# sc-22570: Duplicate {event}'s words for four lengths (1 hour, 2 hours, 45 minutes, 2 hours 30 minutes), its refusals, the ends line once a start is chosen, and Draft created.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${E1}
+- scrollUntilVisible:
+    element:
+      id: 'events.page.duplicate'
+    timeout: 30000
+- tapOn:
+    id: 'events.page.duplicate'
+- extendedWaitUntil:
+    visible: '{{t:eventDuplicate.copied}}'
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: 1h-top
+- repeat:
+    times: 15
+    while:
+      notVisible:
+        id: 'eventDuplicate.create'
+    commands:
+      - swipe:
+          start: 50%, 85%
+          end: 50%, 65%
+          duration: 400
+- assertVisible:
+    id: 'eventDuplicate.create'
+- takeScreenshot: 1h-unchosen
+- openLink: ${METRO_URL}/--/events/${E2}
+- scrollUntilVisible:
+    element:
+      id: 'events.page.duplicate'
+    timeout: 30000
+- tapOn:
+    id: 'events.page.duplicate'
+- extendedWaitUntil:
+    visible: '{{t:eventDuplicate.copied}}'
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: 2h-top
+- repeat:
+    times: 15
+    while:
+      notVisible:
+        id: 'eventDuplicate.create'
+    commands:
+      - swipe:
+          start: 50%, 85%
+          end: 50%, 65%
+          duration: 400
+- assertVisible:
+    id: 'eventDuplicate.create'
+- takeScreenshot: 2h-unchosen
+- openLink: ${METRO_URL}/--/events/${E3}
+- scrollUntilVisible:
+    element:
+      id: 'events.page.duplicate'
+    timeout: 30000
+- tapOn:
+    id: 'events.page.duplicate'
+- extendedWaitUntil:
+    visible: '{{t:eventDuplicate.copied}}'
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: 45m-top
+- repeat:
+    times: 15
+    while:
+      notVisible:
+        id: 'eventDuplicate.create'
+    commands:
+      - swipe:
+          start: 50%, 85%
+          end: 50%, 65%
+          duration: 400
+- assertVisible:
+    id: 'eventDuplicate.create'
+- takeScreenshot: 45m-unchosen
+- openLink: ${METRO_URL}/--/events/${E4}
+- scrollUntilVisible:
+    element:
+      id: 'events.page.duplicate'
+    timeout: 30000
+- tapOn:
+    id: 'events.page.duplicate'
+- extendedWaitUntil:
+    visible: '{{t:eventDuplicate.copied}}'
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: 2h30-top
+- repeat:
+    times: 15
+    while:
+      notVisible:
+        id: 'eventDuplicate.create'
+    commands:
+      - swipe:
+          start: 50%, 85%
+          end: 50%, 65%
+          duration: 400
+- assertVisible:
+    id: 'eventDuplicate.create'
+- takeScreenshot: 2h30-unchosen
+- tapOn:
+    id: 'eventDuplicate.create'
+- waitForAnimationToEnd
+- takeScreenshot: start-missing
+- repeat:
+    times: 15
+    while:
+      notVisible:
+        id: 'eventDuplicate.start.date'
+    commands:
+      - swipe:
+          start: 50%, 85%
+          end: 50%, 65%
+          duration: 400
+- tapOn:
+    id: 'eventDuplicate.start.date'
+- tapOn: 'OK'
+- waitForAnimationToEnd
+- repeat:
+    times: 15
+    while:
+      notVisible:
+        id: 'eventDuplicate.create'
+    commands:
+      - swipe:
+          start: 50%, 85%
+          end: 50%, 65%
+          duration: 400
+- tapOn:
+    id: 'eventDuplicate.create'
+- waitForAnimationToEnd
+- takeScreenshot: time-missing
+- repeat:
+    times: 15
+    while:
+      notVisible:
+        id: 'eventDuplicate.start.time'
+    commands:
+      - swipe:
+          start: 50%, 85%
+          end: 50%, 65%
+          duration: 400
+- tapOn:
+    id: 'eventDuplicate.start.time'
+- tapOn: 'OK'
+- waitForAnimationToEnd
+- repeat:
+    times: 15
+    while:
+      notVisible:
+        id: 'eventDuplicate.create'
+    commands:
+      - swipe:
+          start: 50%, 85%
+          end: 50%, 65%
+          duration: 400
+- assertVisible:
+    id: 'eventDuplicate.create'
+- takeScreenshot: 2h30-ends
+- tapOn:
+    id: 'eventDuplicate.create'
+- takeScreenshot: created

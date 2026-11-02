@@ -1,0 +1,23 @@
+# Android: the code step open more than five minutes, a code typed with the keys up, Make the owner swiped above the keys and tapped. Confirm it is you first. ends wholly in view. sc-24496.
+appId: host.exp.Exponent
+---
+- scrollUntilVisible:
+    element:
+      id: ownership.code
+    centerElement: true
+- tapOn:
+    id: ownership.code
+- inputText: ${CODE}
+- waitForAnimationToEnd
+- assertVisible: '(?i)(shift|delete|done|return)'
+- swipe:
+    start: 50%, 44%
+    end: 50%, 23%
+    duration: 600
+- waitForAnimationToEnd
+- tapOn:
+    id: ownership.transfer.send
+- extendedWaitUntil:
+    visible: '.*Confirm it is you first.*'
+    timeout: 30000
+- waitForAnimationToEnd

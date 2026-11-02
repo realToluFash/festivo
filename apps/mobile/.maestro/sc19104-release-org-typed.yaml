@@ -1,0 +1,10 @@
+# sc-19104, Android release build, Settings > Organisation open: a new name typed in Name and not saved.
+appId: com.soirely.app
+---
+- tapOn:
+    id: 'organisation.name'
+- eraseText: 120
+- inputText: 'Renamed Unsaved'
+- hideKeyboard
+- waitForAnimationToEnd
+- takeScreenshot: typed

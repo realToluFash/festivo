@@ -1,0 +1,34 @@
+# Android only. sc-25667: on an account at its limit, back does nothing while it sends, and once Too many new organisations for now. shows, back closes the sheet.
+appId: host.exp.Exponent
+---
+- runFlow: ../open-create-organisation.yaml
+- tapOn:
+    id: 'createOrganisation.name'
+- inputText: 'Held Back Limited'
+- hideKeyboard:
+    optional: true
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=paused
+- tapOn:
+    id: 'createOrganisation.create'
+- back
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertVisible:
+    id: 'createOrganisation'
+- takeScreenshot: limited-back-held
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=up
+- extendedWaitUntil:
+    visible: '{{t:createOrganisation.limitedTitle}}'
+    timeout: 30000
+- back
+- extendedWaitUntil:
+    notVisible:
+      id: 'createOrganisation'
+    timeout: 10000
+- takeScreenshot: limited-back-closed

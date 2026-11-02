@@ -1,0 +1,49 @@
+# Change your password: Save new password tapped with the keys up, API held, refused; keys stay up. sc-13408.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/security
+- scrollUntilVisible:
+    element:
+      id: 'password.change'
+    timeout: 60000
+    centerElement: true
+- tapOn:
+    id: 'password.change'
+- extendedWaitUntil:
+    visible:
+      id: 'password.current'
+    timeout: 15000
+- tapOn:
+    id: 'password.current'
+- inputText: 'not-my-password-at-all'
+- tapOn:
+    id: 'password.new'
+- inputText: 'a-long-new-password-2026'
+- waitForAnimationToEnd
+- takeScreenshot: keys-up
+- assertVisible: '(?i)(shift|delete)'
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=paused
+- tapOn:
+    id: 'password.save'
+- waitForAnimationToEnd
+- takeScreenshot: at-tap
+- assertVisible: '(?i)(shift|delete)'
+- assertVisible: '{{t:passwordCard.saving}}'
+- waitForAnimationToEnd:
+    timeout: 3000
+- waitForAnimationToEnd
+- takeScreenshot: while-held
+- assertVisible: '(?i)(shift|delete)'
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=up
+- extendedWaitUntil:
+    visible: '{{t:passwordCard.save}}'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: refused
+- assertVisible: '(?i)(shift|delete)'

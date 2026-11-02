@@ -1,0 +1,55 @@
+# Organisation: keys hidden, Save changes held then refused with a 422 on Contact address. The keys never open. sc-9674.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/organisation
+- extendedWaitUntil:
+    visible:
+      id: organisation.name
+    timeout: 30000
+- repeat:
+    times: 3
+    commands:
+      - tapOn:
+          id: organisation.contact
+      - eraseText: 80
+- inputText: a..b@ire.events
+- tapOn:
+    id: organisation.name
+- waitForAnimationToEnd
+- takeScreenshot: keys-up
+- assertVisible: '(?i)(shift|delete)'
+- tapOn:
+    point: '2%,45%'
+- waitForAnimationToEnd
+- takeScreenshot: keys-hidden
+- assertNotVisible: '(?i)(shift|delete)'
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=paused
+- scrollUntilVisible:
+    element:
+      id: organisation.save
+    centerElement: true
+- tapOn:
+    id: organisation.save
+- waitForAnimationToEnd
+- takeScreenshot: at-tap
+- assertNotVisible: '(?i)(shift|delete)'
+- assertVisible: '{{t:orgGeneral.saving}}'
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: while-held
+- assertNotVisible: '(?i)(shift|delete)'
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=up
+- extendedWaitUntil:
+    visible: '{{t:orgGeneral.contactInvalid}}'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 3000
+- waitForAnimationToEnd
+- takeScreenshot: refused
+- assertNotVisible: '(?i)(shift|delete)'

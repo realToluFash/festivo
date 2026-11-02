@@ -1,0 +1,47 @@
+# Add domain: nodot with the keys hidden. The client check opens the keys on the field and the next key goes in. sc-9674.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/organisation
+- extendedWaitUntil:
+    visible:
+      id: organisation.name
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: companyDomains.add
+    centerElement: true
+- swipe:
+    start: '50%,40%'
+    end: '50%,60%'
+- waitForAnimationToEnd
+- repeat:
+    times: 3
+    commands:
+      - tapOn:
+          id: companyDomains.domain
+      - eraseText: 80
+- inputText: 'nodot'
+- waitForAnimationToEnd
+- takeScreenshot: keys-up
+- assertVisible: '(?i)(shift|delete)'
+- tapOn:
+    point: '2%,45%'
+- waitForAnimationToEnd
+- takeScreenshot: keys-hidden
+- assertNotVisible: '(?i)(shift|delete)'
+- scrollUntilVisible:
+    element:
+      id: companyDomains.add
+    centerElement: true
+- tapOn:
+    id: companyDomains.add
+- extendedWaitUntil:
+    visible: '{{t:companyDomains.shape}}'
+    timeout: 10000
+- waitForAnimationToEnd
+- takeScreenshot: checked
+- assertVisible: '(?i)(shift|delete)'
+- inputText: x
+- assertVisible:
+    id: companyDomains.domain
+    text: 'nodotx'

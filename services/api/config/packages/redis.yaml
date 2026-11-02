@@ -1,0 +1,13 @@
+services:
+    Redis:
+        class: Redis
+        # Lazy, so the connection is attempted on first use rather than when the
+        # container builds the service. Without this a Redis that is down takes the
+        # whole application with it — including the health endpoint whose entire job
+        # is to report that Redis is down.
+        lazy: true
+        calls:
+            - connect:
+                  - '%env(REDIS_HOST)%'
+                  - '%env(int:REDIS_PORT_INTERNAL)%'
+                  - 2.0

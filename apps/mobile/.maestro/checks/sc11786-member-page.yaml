@@ -1,0 +1,18 @@
+# sc-11786: the page of the member ${MEMBER}.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil:
+    visible:
+      id: 'members.filter.active'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'members.row.${MEMBER}'
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: 'members.row.${MEMBER}'
+- waitForAnimationToEnd
+- takeScreenshot: member-page

@@ -1,0 +1,5 @@
+# sc-19104: a screenshot of what is on screen, after waiting for it to settle.
+appId: com.soirely.app
+---
+- waitForAnimationToEnd
+- takeScreenshot: shot

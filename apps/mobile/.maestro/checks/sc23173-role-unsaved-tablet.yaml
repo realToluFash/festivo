@@ -1,0 +1,47 @@
+# sc-23173: on a tablet, ${ROLE_ID} with Guests set to Change and not saved; Save and Discard changes at the foot. ORIENT=PORTRAIT|LANDSCAPE_LEFT. Swipes the detail pane, as the page-wide scroll does not move it.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/settings/roles
+- extendedWaitUntil:
+    visible:
+      id: 'roles.role.owner'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'roles.role.${ROLE_ID}'
+    direction: DOWN
+- tapOn:
+    id: 'roles.role.${ROLE_ID}'
+- extendedWaitUntil:
+    visible:
+      id: 'roles.area.events.*'
+    timeout: 15000
+- repeat:
+    while:
+      notVisible:
+        id: 'roles.area.guests.change'
+    times: 8
+    commands:
+      - swipe:
+          start: 85%, 80%
+          end: 85%, 35%
+- assertVisible:
+    id: 'roles.area.guests.change'
+- tapOn:
+    id: 'roles.area.guests.change'
+- waitForAnimationToEnd
+- takeScreenshot: role-guests-tapped
+- repeat:
+    while:
+      notVisible:
+        id: 'roles.discard'
+    times: 8
+    commands:
+      - swipe:
+          start: 85%, 80%
+          end: 85%, 35%
+- assertVisible:
+    id: 'roles.discard'
+- waitForAnimationToEnd
+- takeScreenshot: role-unsaved

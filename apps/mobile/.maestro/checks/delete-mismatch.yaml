@@ -1,0 +1,26 @@
+# Settings > Organisation, deleting it with the name typed wrong: the mismatch line under the field.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/organisation
+- extendedWaitUntil:
+    visible: '{{t:settings.organisation}}'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'ownership.delete'
+    timeout: 60000
+- tapOn:
+    id: 'ownership.delete'
+- extendedWaitUntil:
+    visible:
+      id: 'ownership.delete.name'
+    timeout: 15000
+- tapOn:
+    id: 'ownership.delete.name'
+- inputText: 'QA Organisatio'
+- hideKeyboard
+- tapOn:
+    id: 'ownership.delete.send'
+- waitForAnimationToEnd
+- assertVisible: '{{t:ownership.deleteMismatch}}'
+- takeScreenshot: delete-mismatch
