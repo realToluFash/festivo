@@ -21,8 +21,6 @@ import {
   useState,
 } from 'react';
 import {
-  Modal,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -41,8 +39,7 @@ import { DESTINATION_HREF, type Destination, destinations } from '../kit/appNav.
 import { backRowHiding } from '../kit/backRow.ts';
 import { EDGE_SWIPE_WIDTH, headerDrawsBack, stackSwipes } from '../kit/systemBack.ts';
 import { leaveThen } from '../leaveHeld.ts';
-import { TURNS_WITH_THE_APP } from '../layout/orientations.ts';
-import { backLabelSize, railWidth } from '../layout/textSize.ts';
+import { backLabelSize, frameTitleSize, railWidth } from '../layout/textSize.ts';
 import {
   type LayoutKind,
   useAccessibilitySizes,
@@ -54,7 +51,6 @@ import { FrameSwitch, switchByTap, useFrameSwitch } from '../tappedSwitch.ts';
 import { switcherFocusBack } from '../kit/focusBack.ts';
 import { tokens } from '../theme/tokens.ts';
 import { useTwoFactorStanding } from '../twoFactorStanding.ts';
-import { useModalOpen } from '../updateRequired.ts';
 import { BellButton } from './BellButton.tsx';
 import { Brand } from './Brand.tsx';
 import { CreateOrganisation } from './CreateOrganisation.tsx';
@@ -64,7 +60,7 @@ import {
   PrimaryButton,
   SecondaryButton,
 } from './Buttons.tsx';
-import { Sheet, useFocusBack, useWindowTurn } from './Sheet.tsx';
+import { Sheet } from './Sheet.tsx';
 import { InvitationRows } from './InvitationRows.tsx';
 import { Initials } from './Initials.tsx';
 import { Notice } from './Notice.tsx';
@@ -370,12 +366,12 @@ export function AppFrame({
           waiting={count}
           onSwitch={switchFromPill}
           pill={pill}
-          primary={primary}
-          underTitle={underTitle}
-          besideTitle={besideTitle}
-          besideBack={besideBack}
+          primary={standIn == null ? primary : undefined}
+          underTitle={standIn == null ? underTitle : undefined}
+          besideTitle={standIn == null ? besideTitle : undefined}
+          besideBack={standIn == null || besideBack === undefined ? besideBack : null}
         />
-        <OfflineBand stale={offline} inFront={inFront} />
+        <OfflineBand stale={standIn == null ? offline : null} inFront={inFront} />
         <View style={styles.body}>
           {switched != null &&
             (created?.takesFocus === true ? (
@@ -505,6 +501,8 @@ function FrameHeader({
   const top = { paddingTop: insets.top + (kind === 'tabletLandscape' ? 0 : tokens.spaceXxs) };
   const { read } = useFocusOnAnswer<TextHandle>(switchAnswer, titleRef);
   const large = useAccessibilitySizes();
+  const { width, height } = useLayout();
+  const titleSize = frameTitleSize(kind !== 'phone', Math.min(width, height));
 
   if (kind === 'tabletLandscape') {
     return (
@@ -512,7 +510,7 @@ function FrameHeader({
         <View style={[styles.titled, !large && styles.fill]}>
           <View style={styles.titleRow}>
             <View style={large ? styles.shrink : styles.fill}>
-              <Title size={tokens.typeTitlePhone.size} accessibilityRole="header" ref={read}>
+              <Title size={titleSize} accessibilityRole="header" ref={read}>
                 {title}
               </Title>
             </View>
@@ -565,7 +563,7 @@ function FrameHeader({
           <View style={styles.fill}>
             <View style={styles.titleRow}>
               <View style={styles.fill}>
-                <Title size={tokens.typeTitlePage.size} accessibilityRole="header" ref={read}>
+                <Title size={titleSize} accessibilityRole="header" ref={read}>
                   {title}
                 </Title>
               </View>
@@ -613,11 +611,7 @@ function FrameHeader({
         <View style={styles.fill}>
           <View style={styles.titleRow}>
             <View style={styles.fill}>
-              <Title
-                size={back == null ? tokens.typeTitlePage.size : tokens.typeTitlePhone.size}
-                accessibilityRole="header"
-                ref={read}
-              >
+              <Title size={titleSize} accessibilityRole="header" ref={read}>
                 {title}
               </Title>
             </View>
@@ -1048,10 +1042,8 @@ function Switcher({
   onCreate: () => void;
 }) {
   const { t } = useTranslation();
-  const { width, height } = useLayout();
   const large = useAccessibilitySizes();
   const lines = useNameLines();
-  const insets = useSafeAreaInsets();
   const invitationsHeading = useRef<TextHandle>(null);
   const remembered = useRef<TextHandle>(null);
   const [offerClosed, setOfferClosed] = useState<StepClosed | undefined>(undefined);
@@ -1064,140 +1056,97 @@ function Switcher({
     [],
   );
   useFocusBackToOpener(offerClosed, afterOffer);
-  useFocusBack(open, opener);
-  // Create an organisation opens as this goes, and its sheet waits for this window to go (sc-23267).
-  const { shown, gone } = useWindowTurn(useModalOpen(open));
-  // The modal runs behind the bars, the cutout and the home indicator, so the card keeps its margin from them, not from the edge.
-  const fit =
-    Platform.OS === 'android'
-      ? {
-          flex: 1,
-          paddingTop: insets.top + tokens.spaceXxl,
-          paddingBottom: insets.bottom + tokens.spaceXxl,
-          paddingLeft: insets.left + tokens.spaceXxl,
-          paddingRight: insets.right + tokens.spaceXxl,
-        }
-      : {
-          // Even on both sides, so a short card stays centred on the screen rather than in the safe area.
-          paddingVertical: Math.max(insets.top, insets.bottom) + tokens.spaceXxl,
-          paddingHorizontal: Math.max(insets.left, insets.right) + tokens.spaceXxl,
-          // Sized from the window: on an iPhone on its side the modal can keep its upright height (sc-10118).
-          width,
-          height,
-        };
 
   return (
-    <Modal
-      visible={shown}
-      transparent
-      animationType="fade"
-      supportedOrientations={TURNS_WITH_THE_APP}
-      // Android's modal window stops at the system bars unless told otherwise, leaving them undimmed.
-      statusBarTranslucent
-      navigationBarTranslucent
-      onRequestClose={onClose}
-      onDismiss={gone}
-    >
-      <View style={[styles.scrim, fit]} accessibilityViewIsModal onAccessibilityEscape={onClose}>
-        {/* A sibling, not a parent: iOS reads a labelled button as one item and nothing inside it (sc-10712).
-            VoiceOver closes the sheet from this Close or the two-finger escape on the scrim. */}
-        <Pressable
-          style={StyleSheet.absoluteFill}
-          onPress={onClose}
-          accessibilityRole="button"
-          accessibilityLabel={t('switcher.close')}
-        />
-        <View style={styles.sheetFrame}>
-          <ScrollView contentContainerStyle={styles.sheet}>
-            <Title
-              size={tokens.typeTitleDialog.size}
-              accessibilityRole="header"
-              testID="switcher.heading"
-            >
-              {t('switcher.heading')}
-            </Title>
-            {organisations.map((organisation) => {
-              const isCurrent = organisation.id === current?.id;
+    <Sheet open={open} onClose={onClose} scrimLabel={t('switcher.close')} opener={opener}>
+      <ScrollView contentContainerStyle={styles.sheet}>
+        <Title
+          size={tokens.typeTitleDialog.size}
+          accessibilityRole="header"
+          testID="switcher.heading"
+        >
+          {t('switcher.heading')}
+        </Title>
+        {organisations.map((organisation) => {
+          const isCurrent = organisation.id === current?.id;
 
-              return (
-                <Pressable
-                  key={organisation.id}
-                  style={[styles.option, isCurrent && styles.optionOn]}
-                  onPress={() => {
-                    onClose();
-                    if (!isCurrent) switchOrganisation(organisation.id);
-                  }}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: isCurrent }}
-                  testID={`switcher.${organisation.id}`}
-                >
-                  {!large && <OrgTile name={organisation.name} />}
-                  <View style={[styles.fill, styles.shrink]}>
-                    <Text size={tokens.typeBodyPhone.size} weight="semibold" numberOfLines={lines}>
-                      {organisation.name}
-                    </Text>
-                    <Text size={tokens.typeBody.size} muted numberOfLines={large ? 0 : 1}>
-                      {t('switcher.yourRole', { role: roleName(t, organisation.role) })}
-                    </Text>
-                    {isCurrent && large && <Current />}
-                  </View>
-                  {isCurrent && !large && <Current />}
-                </Pressable>
-              );
-            })}
-            {offer.organisation != null && (
-              <OfferCard
-                offer={offer}
-                email={email}
-                onDismissed={() => setOfferClosed(stepClosed('afterOffer'))}
-              />
-            )}
-            {waiting.invitations.length > 0 && (
-              <View style={styles.invitations}>
-                <Text
-                  ref={invitationsHeading}
-                  size={tokens.typeLabel.size}
-                  weight="semibold"
-                  muted
-                  accessibilityRole="header"
-                >
-                  {t('invitations.heading')}
+          return (
+            <Pressable
+              key={organisation.id}
+              style={[styles.option, isCurrent && styles.optionOn]}
+              onPress={() => {
+                onClose();
+                if (!isCurrent) switchOrganisation(organisation.id);
+              }}
+              accessibilityRole="button"
+              accessibilityState={{ selected: isCurrent }}
+              testID={`switcher.${organisation.id}`}
+            >
+              {!large && <OrgTile name={organisation.name} />}
+              <View style={[styles.fill, styles.shrink]}>
+                <Text size={tokens.typeBodyPhone.size} weight="semibold" numberOfLines={lines}>
+                  {organisation.name}
                 </Text>
-                <InvitationRows
-                  waiting={waiting}
-                  after={{
-                    open: (id) => {
-                      onClose();
-                      switchOrganisation(id);
-                    },
-                  }}
-                />
+                <Text size={tokens.typeBody.size} muted numberOfLines={large ? 0 : 1}>
+                  {t('switcher.yourRole', { role: roleName(t, organisation.role) })}
+                </Text>
+                {isCurrent && large && <Current />}
               </View>
-            )}
-            <Text ref={remembered} size={tokens.typeBody.size} muted>
-              {t('switcher.remembered')}
+              {isCurrent && !large && <Current />}
+            </Pressable>
+          );
+        })}
+        {offer.organisation != null && (
+          <OfferCard
+            offer={offer}
+            email={email}
+            onDismissed={() => setOfferClosed(stepClosed('afterOffer'))}
+          />
+        )}
+        {waiting.invitations.length > 0 && (
+          <View style={styles.invitations}>
+            <Text
+              ref={invitationsHeading}
+              size={tokens.typeLabel.size}
+              weight="semibold"
+              muted
+              accessibilityRole="header"
+            >
+              {t('invitations.heading')}
             </Text>
-            {current != null && (
-              <Pressable
-                style={[styles.option, styles.create]}
-                onPress={onCreate}
-                accessibilityRole="button"
-                testID="switcher.create"
-              >
-                <View style={[styles.tile, styles.createTile]}>
-                  <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
-                    <Path d="M12 5v14M5 12h14" {...STROKE} stroke={tokens.colorAccentText} />
-                  </Svg>
-                </View>
-                <Text size={tokens.typeBodyPhone.size} weight="semibold" style={styles.accent}>
-                  {t('createOrganisation.row')}
-                </Text>
-              </Pressable>
-            )}
-          </ScrollView>
-        </View>
-      </View>
-    </Modal>
+            <InvitationRows
+              waiting={waiting}
+              after={{
+                open: (id) => {
+                  onClose();
+                  switchOrganisation(id);
+                },
+              }}
+            />
+          </View>
+        )}
+        <Text ref={remembered} size={tokens.typeBody.size} muted>
+          {t('switcher.remembered')}
+        </Text>
+        {current != null && (
+          <Pressable
+            style={[styles.option, styles.create]}
+            onPress={onCreate}
+            accessibilityRole="button"
+            testID="switcher.create"
+          >
+            <View style={[styles.tile, styles.createTile]}>
+              <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+                <Path d="M12 5v14M5 12h14" {...STROKE} stroke={tokens.colorAccentText} />
+              </Svg>
+            </View>
+            <Text size={tokens.typeBodyPhone.size} weight="semibold" style={styles.accent}>
+              {t('createOrganisation.row')}
+            </Text>
+          </Pressable>
+        )}
+      </ScrollView>
+    </Sheet>
   );
 }
 
@@ -1476,7 +1425,7 @@ const styles = StyleSheet.create({
     maxWidth: '100%',
     height: tokens.sizeHit,
     paddingLeft: tokens.spaceXs,
-    paddingRight: 14,
+    paddingRight: tokens.spacePillEnd,
     borderRadius: tokens.sizeHit / 2,
   },
   orgRailed: {
@@ -1492,20 +1441,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: tokens.colorAccentTint,
-  },
-  scrim: {
-    justifyContent: 'center',
-    backgroundColor: tokens.scrimDialog,
-  },
-  sheetFrame: {
-    flexShrink: 1,
-    alignSelf: 'center',
-    width: '100%',
-    maxWidth: 480,
-    borderRadius: tokens.radiusCardPhone,
-    borderWidth: 1,
-    borderColor: tokens.colorBorder,
-    backgroundColor: tokens.colorCard,
   },
   sheet: {
     gap: tokens.spaceLg,

@@ -6,6 +6,7 @@ import {
   breakableEmail,
   drawnLine,
   fitWidest,
+  frameTitleSize,
   nameLines,
   paddingToCentre,
   railWidth,
@@ -34,9 +35,24 @@ describe('titleSize', () => {
   });
 
   it('never draws a title smaller than at the default size', () => {
-    for (const size of [20, 26, 28]) {
+    for (const size of [20, 26, 28, 30, 34]) {
       expect(titleSize(size, AX2)).toBeGreaterThan(size);
     }
+  });
+});
+
+describe('frameTitleSize', () => {
+  it.each([
+    [false, 402, 34],
+    [false, 390, 34],
+    [false, 375, 30],
+    [true, 834, 30],
+  ])('on a tablet %s, %s across, draws the title at %s', (tablet, side, size) => {
+    expect(frameTitleSize(tablet, side)).toBe(size);
+  });
+
+  it('draws it at 43 on a phone at the largest text', () => {
+    expect(titleSize(frameTitleSize(false, 402), AX2)).toBe(43);
   });
 });
 

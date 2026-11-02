@@ -78,6 +78,18 @@ export const tokens = {
     "lineHeight": 1.1,
     "letterSpacing": "-0.02em"
   },
+  "typeTitleFrame": {
+    "size": 34,
+    "weight": 700,
+    "lineHeight": 1.1,
+    "letterSpacing": "-0.02em"
+  },
+  "typeTitleFrameCompact": {
+    "size": 30,
+    "weight": 700,
+    "lineHeight": 1.1,
+    "letterSpacing": "-0.02em"
+  },
   "typeTitleSection": {
     "size": 16,
     "weight": 700,
@@ -185,6 +197,7 @@ export const tokens = {
   "space3xl": 24,
   "space4xl": 28,
   "space5xl": 32,
+  "spacePillEnd": 14,
   "space6xl": 40,
   "sizeHit": 44,
   "sizeHitPhonePrimary": 48,

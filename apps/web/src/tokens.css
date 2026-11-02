@@ -65,6 +65,10 @@
   --typeTitlePageTracking: -0.02em;
   --typeTitlePhone: 700 26px/1.1 var(--fontFamily);
   --typeTitlePhoneTracking: -0.02em;
+  --typeTitleFrame: 700 34px/1.1 var(--fontFamily);
+  --typeTitleFrameTracking: -0.02em;
+  --typeTitleFrameCompact: 700 30px/1.1 var(--fontFamily);
+  --typeTitleFrameCompactTracking: -0.02em;
   --typeTitleSection: 700 16px/1.3 var(--fontFamily);
   --typeTitleSectionTracking: 0;
   --typeTitleDialog: 700 20px/1.2 var(--fontFamily);
@@ -108,6 +112,7 @@
   --space3xl: 24px;
   --space4xl: 28px;
   --space5xl: 32px;
+  --spacePillEnd: 14px;
   --space6xl: 40px;
   --sizeHit: 44px;
   --sizeHitPhonePrimary: 48px;

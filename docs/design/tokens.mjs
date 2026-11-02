@@ -118,6 +118,8 @@ export const tokens = {
   typeDisplay: { size: 48, weight: 700, lineHeight: 1, letterSpacing: '-0.03em' }, // one big number per panel (Messaging reach, Import count); 52 once
   typeTitlePage: { size: 28, weight: 700, lineHeight: 1.1, letterSpacing: '-0.02em' }, // desktop page title; phone uses 26
   typeTitlePhone: { size: 26, weight: 700, lineHeight: 1.1, letterSpacing: '-0.02em' }, // phone page title (Events Home, RSVP use 26/28 inconsistently)
+  typeTitleFrame: { size: 34, weight: 700, lineHeight: 1.1, letterSpacing: '-0.02em' }, // the app's header band title on a phone, every screen (page 29, sc-26270)
+  typeTitleFrameCompact: { size: 30, weight: 700, lineHeight: 1.1, letterSpacing: '-0.02em' }, // the same on an iPhone SE and both iPads (page 29, sc-26270)
   typeTitleSection: { size: 16, weight: 700, lineHeight: 1.3, letterSpacing: '0' }, // card title
   typeTitleDialog: { size: 20, weight: 700, lineHeight: 1.2, letterSpacing: '0' }, // dialog and sheet titles; 22 on tablet sheets
   typeNumberTile: { size: 30, weight: 700, lineHeight: 1, letterSpacing: '-0.02em' }, // tile numbers; 32 and 34 also appear
@@ -152,6 +154,7 @@ export const tokens = {
   space3xl: 24, // desktop card padding
   space4xl: 28, // desktop content top padding
   space5xl: 32, // desktop content side padding
+  spacePillEnd: 14, // the app's organisation pill, from its chevron to its edge (sc-23301)
   space6xl: 40, // between frames (documentation canvas only)
 
   // ── Sizing (px) ────────────────────────────────────────────────────────────
