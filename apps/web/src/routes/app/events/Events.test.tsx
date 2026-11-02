@@ -1,7 +1,7 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
-import { EVENT_TYPES, forgetEventsTab, serverClock } from '@soirely/domain';
+import { EVENT_TYPES, connection, forgetEventsTab, serverClock } from '@soirely/domain';
 
 import { api } from '../../../api.ts';
 import { __setSessionState, type Session, switchOrganisation } from '../../../session.ts';
@@ -5027,6 +5027,8 @@ describe('Every pick is held under Uploading… until the server has read it (sc
   it.each(['first.jpg', 'damaged.jpg'])(
     'a %s answer landing before the second pick commits never strands the second behind a refused third',
     async (first) => {
+      // The offline band hears the first's answer and can re-render at SyncLane, which commits the second pick with it.
+      vi.spyOn(connection, 'observe').mockImplementation(() => {});
       signedIn();
       const { waiting, read, signed, answer } = serving(PHOTO);
       const sizers = new Map<string, () => void>();
