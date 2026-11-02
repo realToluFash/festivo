@@ -1,0 +1,37 @@
+# Mute this event on ${EVENT_ID}, turned on from the event's page and left on; a switch already on is turned off first, so it runs again on the same data (sc-3980).
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- scrollUntilVisible:
+    element:
+      id: events.mute
+    timeout: 30000
+# The switch is events.mute.switch; events.mute is the whole card. It is disabled while the mute loads or saves.
+- extendedWaitUntil:
+    visible:
+      id: events.mute.switch
+      enabled: true
+    timeout: 8000
+- runFlow:
+    when:
+      visible:
+        id: events.mute.switch
+        checked: true
+    commands:
+      - tapOn:
+          id: events.mute.switch
+      - extendedWaitUntil:
+          visible:
+            id: events.mute.switch
+            checked: false
+            enabled: true
+          timeout: 8000
+- tapOn:
+    id: events.mute.switch
+- extendedWaitUntil:
+    visible:
+      id: events.mute.switch
+      checked: true
+      enabled: true
+    timeout: 8000
+- takeScreenshot: event-mute-turned-on

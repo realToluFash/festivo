@@ -1,0 +1,10 @@
+# Taps the on-screen keyboard's return key on the iPad, not a hardware key event. sc-13408.
+#
+# By its place on an iPad in portrait: the key has no id.
+appId: host.exp.Exponent
+---
+- tapOn:
+    point: '94%,86%'
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: mobile-13408-return-tap

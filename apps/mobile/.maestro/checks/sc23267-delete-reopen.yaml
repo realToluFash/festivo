@@ -1,0 +1,36 @@
+# sc-23267, a second sheet through the one Sheet: on event ${EVENT_ID}'s page, Delete event's sheet opens, Keep closes it, and it opens and closes again. Needs an account owning that event.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- scrollUntilVisible:
+    element:
+      id: 'events.delete'
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    id: 'events.delete'
+- extendedWaitUntil:
+    visible:
+      id: 'events.deleteKeep'
+    timeout: 15000
+- takeScreenshot: delete-first-open
+- tapOn:
+    id: 'events.deleteKeep'
+- extendedWaitUntil:
+    notVisible:
+      id: 'events.deleteKeep'
+    timeout: 10000
+- takeScreenshot: delete-closed
+- tapOn:
+    id: 'events.delete'
+- extendedWaitUntil:
+    visible:
+      id: 'events.deleteKeep'
+    timeout: 15000
+- takeScreenshot: delete-second-open
+- tapOn:
+    id: 'events.deleteKeep'
+- extendedWaitUntil:
+    notVisible:
+      id: 'events.deleteKeep'
+    timeout: 10000

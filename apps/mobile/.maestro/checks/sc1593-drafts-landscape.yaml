@@ -1,0 +1,48 @@
+# sc-1593 tablet landscape (rotate the device first; this AVD is landscape at rotation 0): Drafts lists ${EVENT} (a draft in ${ORG}) at full width; it opens as its own page (sc-22103), and back returns to Drafts; switching to ${OTHER_ORG} leaves no page open.
+appId: host.exp.Exponent
+---
+- runFlow:
+    file: ../switch-organisation.yaml
+    env:
+      ORG: ${ORG}
+- tapOn:
+    id: 'frame.events'
+- extendedWaitUntil:
+    visible:
+      id: 'events.tab.drafts'
+    timeout: 30000
+- tapOn:
+    id: 'events.tab.drafts'
+- extendedWaitUntil:
+    visible:
+      id: 'events.row.${EVENT}'
+    timeout: 20000
+- assertNotVisible:
+    id: 'events.page'
+- takeScreenshot: nothing-selected
+- tapOn:
+    id: 'events.row.${EVENT}'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 20000
+- takeScreenshot: selected
+- tapOn:
+    id: 'events.back'
+- extendedWaitUntil:
+    visible:
+      id: 'events.tab.drafts'
+    timeout: 20000
+- runFlow:
+    file: ../switch-organisation.yaml
+    env:
+      ORG: ${OTHER_ORG}
+- tapOn:
+    id: 'frame.events'
+- extendedWaitUntil:
+    visible:
+      id: 'events.tab.upcoming'
+    timeout: 20000
+- assertNotVisible:
+    id: 'events.page'
+- takeScreenshot: after-switch

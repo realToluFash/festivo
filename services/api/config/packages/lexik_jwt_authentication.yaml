@@ -1,0 +1,11 @@
+lexik_jwt_authentication:
+    secret_key: '%env(resolve:JWT_SECRET_KEY)%'
+    public_key: '%env(resolve:JWT_PUBLIC_KEY)%'
+    pass_phrase: '%env(JWT_PASSPHRASE)%'
+
+    # 15 minutes. It is also how long an ended session keeps working when Redis
+    # is unreachable, since the revoked-session list fails open (sessions.md),
+    # and how long each entry on that list lasts. Lexik's default is 3600.
+    #
+    # The refresh token's own lifetime is REFRESH_TOKEN_TTL, 30 days.
+    token_ttl: '%env(int:JWT_TOKEN_TTL)%'

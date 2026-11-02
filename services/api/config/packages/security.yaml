@@ -1,0 +1,50 @@
+security:
+    password_hashers:
+        # Named explicitly rather than 'auto'. 'auto' picks bcrypt on a build
+        # without libsodium, and bcrypt silently truncates at 72 bytes — so a
+        # passphrase would be accepted, measured at its full length, and then
+        # hashed on its first 72 characters with nothing reporting it. NIST
+        # requires at least 64 characters to be honoured; this honours 4096.
+        App\Entity\User:
+            algorithm: sodium
+
+    providers:
+        # By id, which is what getUserIdentifier() answers. Not by address: a
+        # person may link several and change which is primary, so an address is
+        # not a stable name for an account.
+        users:
+            entity:
+                class: App\Entity\User
+                property: id
+
+    firewalls:
+        dev:
+            pattern: ^/(_profiler|_wdt|assets|build)/
+            security: false
+
+        # Stateless: no session, no cookie. A client sends the access token on
+        # every request. `lazy` so an unauthenticated public route does not pay
+        # for a user lookup it will not use.
+        api:
+            pattern: ^/api
+            stateless: true
+            lazy: true
+            provider: users
+            jwt: ~
+
+    # No access_control: every route declares its own policy on its controller,
+    # and a route without one does not load. See docs/architecture/access-control.md.
+
+when@test:
+    security:
+        password_hashers:
+            # Hashing is slow by design, and the suite registers accounts in
+            # dozens of tests. These are the lowest values libsodium accepts.
+            App\Entity\User:
+                algorithm: sodium
+                # 3 is libsodium's floor for opsLimit; anything lower throws
+                # "$opsLimit must be 3 or greater" at hash time rather than at
+                # configuration time, so it surfaces as a 500 on every
+                # registration in the suite.
+                time_cost: 3
+                memory_cost: 10240

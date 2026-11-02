@@ -1,0 +1,7 @@
+# Close Expo Go's developer menu where a fresh launch opened it over the app. iOS. sc-19752.
+appId: host.exp.Exponent
+---
+- runFlow:
+    file: developer-menu-sheet.yaml
+- runFlow:
+    file: developer-menu-close.yaml

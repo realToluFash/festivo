@@ -1,0 +1,37 @@
+# sc-25667: on an account at its limit, once Too many new organisations for now. shows after a held send, a tap on the scrim closes the sheet.
+appId: host.exp.Exponent
+---
+- runFlow: ../open-create-organisation.yaml
+- tapOn:
+    id: 'createOrganisation.name'
+- inputText: 'Held Scrim'
+- hideKeyboard:
+    optional: true
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=paused
+- tapOn:
+    id: 'createOrganisation.create'
+- tapOn:
+    point: '50%,8%'
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertVisible:
+    id: 'createOrganisation'
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=up
+- extendedWaitUntil:
+    visible: '{{t:createOrganisation.limitedTitle}}'
+    timeout: 30000
+- hideKeyboard:
+    optional: true
+- tapOn:
+    point: '50%,8%'
+- extendedWaitUntil:
+    notVisible:
+      id: 'createOrganisation'
+    timeout: 10000
+- takeScreenshot: limited-scrim-closed

@@ -1,0 +1,16 @@
+# Android only. sc-18108: a link to ${EVENT} shows not-found; Back to Events, then Back.
+appId: host.exp.Exponent
+---
+- runFlow: ../return-home.yaml
+- openLink: ${METRO_URL}/--/events/${EVENT}
+- extendedWaitUntil:
+    visible:
+      id: 'events.notFound'
+    timeout: 30000
+- tapOn:
+    id: 'events.backToEvents'
+- waitForAnimationToEnd
+- takeScreenshot: after-button
+- back
+- waitForAnimationToEnd
+- takeScreenshot: after-back

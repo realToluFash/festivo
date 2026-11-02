@@ -1,0 +1,12 @@
+framework:
+    default_locale: en
+    translator:
+        default_path: '%kernel.project_dir%/translations'
+        fallbacks:
+            - en
+        providers:
+
+    # The closed set. A locale outside it is never negotiated into, so a stray
+    # Accept-Language header cannot put the API into a language with no catalogue
+    # behind it — which renders as raw keys rather than as an error.
+    enabled_locales: ['en', 'es', 'fr', 'pt']

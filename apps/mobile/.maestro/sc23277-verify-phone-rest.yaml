@@ -1,0 +1,27 @@
+# The Check your messages half of sc23277-details-phone, from that screen.
+appId: host.exp.Exponent
+---
+- extendedWaitUntil:
+    visible:
+      id: 'verifyPhone.code'
+    timeout: 20000
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'verifyPhone.resendSoon'
+- takeScreenshot: verify-phone-whatsapp
+- tapOn:
+    id: 'verifyPhone.code'
+- inputText: '000000'
+- tapOn:
+    id: 'verifyPhone.submit'
+- waitForAnimationToEnd
+- takeScreenshot: verify-phone-wrong
+- runFlow:
+    when:
+      visible:
+        id: 'verifyPhone.textInstead'
+    commands:
+      - tapOn:
+          id: 'verifyPhone.textInstead'
+      - waitForAnimationToEnd
+      - takeScreenshot: verify-phone-sms-chosen

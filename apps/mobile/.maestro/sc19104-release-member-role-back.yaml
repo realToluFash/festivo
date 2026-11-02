@@ -1,0 +1,44 @@
+# sc-19104, Android release build, phone, Settings > Members open: a member's page, Back to Members; then Roles, a role's page, Back to Roles.
+appId: com.soirely.app
+---
+- tapOn:
+    id: 'members.row.*'
+- extendedWaitUntil:
+    visible:
+      id: 'members.goToOrganisation|members.role.*'
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: member-page
+- back
+- extendedWaitUntil:
+    visible:
+      id: 'members.filter.active'
+    timeout: 10000
+- takeScreenshot: member-back-members
+- back
+- scrollUntilVisible:
+    element:
+      id: 'settings.roles'
+    timeout: 10000
+- tapOn:
+    id: 'settings.roles'
+- extendedWaitUntil:
+    visible:
+      id: 'roles.role.owner'
+    timeout: 15000
+- tapOn:
+    id: 'roles.role.owner'
+- extendedWaitUntil:
+    visible:
+      id: 'roles.area.events.*'
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: role-page
+- back
+- extendedWaitUntil:
+    visible:
+      id: 'roles.role.owner'
+    timeout: 10000
+- assertNotVisible:
+    id: 'roles.area.events.*'
+- takeScreenshot: role-back-roles

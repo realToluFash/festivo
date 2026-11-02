@@ -1,0 +1,17 @@
+# sc-20824: ${EVENT_ID}'s Edit details with ' Offline' typed, scrolled to Save changes; the next flow taps it once the API is stopped.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}/edit
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.name'
+    timeout: 30000
+- tapOn:
+    id: 'eventForm.name'
+- inputText: ' Offline'
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.send'
+    direction: DOWN
+    centerElement: true

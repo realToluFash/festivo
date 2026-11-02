@@ -1,0 +1,121 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Http\Exception;
+
+use App\Enum\ErrorCode;
+use DateTimeImmutable;
+use DateTimeZone;
+use Psl\Math;
+use RuntimeException;
+use Throwable;
+
+class ApiException extends RuntimeException
+{
+    /**
+     * @param list<array{propertyPath: string, message: string, code: string, parameters?: array<string, string>}> $violations each message a key, its slots in parameters
+     * @param array<string, string>                                                                                $headers    Retry-After on a 429, and little else
+     * @param array<string, int|string|list<string>>                                                               $members    extra problem members, such as the permission
+     * @param array<string, int|string>                                                                            $parameters the slots in the message's key
+     */
+    public function __construct(
+        public readonly ErrorCode $errorCode,
+        string $message = '',
+        public readonly array $violations = [],
+        ?Throwable $previous = null,
+        public readonly array $headers = [],
+        public readonly array $members = [],
+        public readonly array $parameters = [],
+    ) {
+        parent::__construct($message, $errorCode->status(), $previous);
+    }
+
+    public static function notFound(string $message = ''): self
+    {
+        return new self(ErrorCode::NotFound, $message);
+    }
+
+    public static function forbidden(string $message = ''): self
+    {
+        return new self(ErrorCode::Forbidden, $message);
+    }
+
+    public static function conflict(string $message = ''): self
+    {
+        return new self(ErrorCode::Conflict, $message);
+    }
+
+    /** @param list<array{propertyPath: string, message: string, code: string, parameters?: array<string, string>}> $violations */
+    public static function validation(array $violations, string $message = ''): self
+    {
+        return new self(ErrorCode::ValidationFailed, $message, $violations);
+    }
+
+    /** A 429 that names the minute the window ends, in UTC and saying so: its key has {time}, and {hour} for the article es and pt agree with it. */
+    public static function tooManyAttempts(string $refusal, DateTimeImmutable $windowEnd): self
+    {
+        $minute = self::statedMinute($windowEnd)->setTimezone(new DateTimeZone('UTC'));
+
+        return new self(
+            ErrorCode::TooManyAttempts,
+            $refusal,
+            [],
+            null,
+            ['Retry-After' => (string) self::secondsUntil($windowEnd)],
+            [],
+            ['{time}' => $minute->format('H:i') . ' UTC', '{hour}' => (int) $minute->format('G')],
+        );
+    }
+
+    /**
+     * The same 429, its minute written for the reader ("Sunday, Oct 18 at 17:09 WAT"), carried as `retryAt` and
+     * given to the key's {when} slot.
+     *
+     * @param callable(DateTimeImmutable): string $written
+     */
+    public static function tooManyAttemptsUntil(string $refusal, DateTimeImmutable $windowEnd, callable $written): self
+    {
+        $when = $written(self::statedMinute($windowEnd));
+
+        return self::until($refusal, $windowEnd, $when, ['retryAt' => $when]);
+    }
+
+    /**
+     * The same 429 with its day and minute in the key's {when} slot only, for a limit no screen quotes (sc-12379).
+     *
+     * @param callable(DateTimeImmutable): string $written
+     */
+    public static function tooManyAttemptsOn(string $refusal, DateTimeImmutable $windowEnd, callable $written): self
+    {
+        return self::until($refusal, $windowEnd, $written(self::statedMinute($windowEnd)), []);
+    }
+
+    /** @param array<string, string> $members */
+    private static function until(string $refusal, DateTimeImmutable $windowEnd, string $when, array $members): self
+    {
+        return new self(
+            ErrorCode::TooManyAttempts,
+            $refusal,
+            [],
+            null,
+            ['Retry-After' => (string) self::secondsUntil($windowEnd)],
+            $members,
+            ['{when}' => $when],
+        );
+    }
+
+    /** Rounded up, as the clients round it: told 22:46, whoever tries at 22:46:01 gets in. */
+    private static function statedMinute(DateTimeImmutable $windowEnd): DateTimeImmutable
+    {
+        $lifts = $windowEnd->getTimestamp() + 1;
+
+        return $windowEnd->setTimestamp(Math\div($lifts + 59, 60) * 60);
+    }
+
+    /** One past the window's end: a fixed window still counts its hits at the end second itself. */
+    private static function secondsUntil(DateTimeImmutable $moment): int
+    {
+        return Math\maxva(1, $moment->getTimestamp() - new DateTimeImmutable()->getTimestamp() + 1);
+    }
+}

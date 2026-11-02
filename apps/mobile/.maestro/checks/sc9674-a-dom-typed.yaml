@@ -1,0 +1,19 @@
+# Android: Add a domain holds example.org with the keys up, for a send by hand. sc-9674.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/organisation
+- extendedWaitUntil:
+    visible:
+      id: organisation.name
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: companyDomains.add
+    centerElement: true
+- tapOn:
+    id: companyDomains.domain
+- eraseText: 80
+- inputText: 'example.org'
+- waitForAnimationToEnd
+- assertVisible: '(?i)(shift|delete)'
+- takeScreenshot: typed

@@ -1,0 +1,13 @@
+# Relaunches Expo Go on the bundle, keeping the session, so the app reloads the account. sc-12511.
+#
+#   node .qa/bin/qa-env.mjs maestro relaunch-signed-in --android
+appId: host.exp.Exponent
+---
+- launchApp:
+    appId: host.exp.Exponent
+    stopApp: true
+- openLink: ${METRO_URL}
+- extendedWaitUntil:
+    visible:
+      id: 'home.openSettings'
+    timeout: 90000

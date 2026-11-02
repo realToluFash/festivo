@@ -1,0 +1,36 @@
+# sc-17728: ${EV}'s All dates opened from Coming up with the API paused: ‹ Event is there beside timeline.allDates.loading and still returns to the event. Needs the batch helper's /api (sc-17894). Pass ORIENT.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- waitForAnimationToEnd:
+    timeout: 5000
+- openLink: ${METRO_URL}/--/events/${EV}
+- scrollUntilVisible:
+    element:
+      id: 'timeline.allDates'
+    direction: DOWN
+    timeout: 30000
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=paused
+- tapOn:
+    id: 'timeline.allDates'
+- extendedWaitUntil:
+    visible:
+      id: 'timeline.allDates.loading'
+    timeout: 45000
+- assertVisible:
+    id: 'timeline.allDates.back'
+- takeScreenshot: paused
+- tapOn:
+    id: 'timeline.allDates.back'
+- extendedWaitUntil:
+    notVisible:
+      id: 'timeline.allDates.page'
+    timeout: 15000
+- takeScreenshot: back
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=up

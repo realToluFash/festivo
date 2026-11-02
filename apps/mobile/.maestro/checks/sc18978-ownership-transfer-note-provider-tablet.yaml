@@ -1,0 +1,16 @@
+# sc-18978: on a tablet, an owner with no password reads ownership.transferNoteProvider under Transfer ownership in Settings > Organisation. Swipes the detail pane, as the page-wide scroll does not move it. Needs that owner signed in to ${ORG_NAME}, and PROVIDER as Google or Apple.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/organisation
+- waitForAnimationToEnd:
+    timeout: 10000
+- repeat:
+    while:
+      notVisible: '.*${ORG_NAME} .*${PROVIDER}.*'
+    times: 10
+    commands:
+      - swipe:
+          start: 85%, 80%
+          end: 85%, 30%
+- assertVisible: '.*${ORG_NAME} .*${PROVIDER}.*'
+- takeScreenshot: ownership-transfer-note-provider-tablet
