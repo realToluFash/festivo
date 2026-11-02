@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Outlet, RouterProvider, createMemoryRouter } from 'react-router';
 
 import { MuteSwitch } from './MuteSwitch.tsx';
-import { cssRule } from '../test-styles.ts';
+import { STYLES, cssRule } from '../test-styles.ts';
 import { NotificationsBell } from './NotificationsBell.tsx';
 
 function json(body: unknown): Response {
@@ -614,6 +614,12 @@ describe('the bell in [fd] (sc-23233)', () => {
     );
     expect(cssRule('.notification-mute .notification-switch-knob')).toMatch(
       /transition: transform var\(--motionBase\)/u,
+    );
+  });
+
+  it('fades, and holds the skeleton and the switch still, under Reduce Motion', () => {
+    expect(STYLES).toMatch(
+      /@media \(prefers-reduced-motion: reduce\) \{\s*\.notifications-panel,\s*\.notification-mute,\s*\.notifications-failure-line,\s*\.notifications-failed \{\s*animation-name: fade-in;\s*\}\s*\.notifications-skeleton \{\s*animation: none;\s*\}\s*\.notification-mute \.notification-switch-track,\s*\.notification-mute \.notification-switch-knob \{\s*transition: none;\s*\}\s*\}/u,
     );
   });
 });
