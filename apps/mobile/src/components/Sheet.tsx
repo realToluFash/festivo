@@ -385,9 +385,7 @@ function sheetDrag(first: SheetDragNow) {
         const dy = pageY - touch.y0;
         touch.dragging ||= sheetDragStarts({ from: touch.from, dx: pageX - touch.x0, dy });
         if (!touch.dragging) return;
-        touch.samples = [...touch.samples, { y: pageY, t: timestamp }].filter(
-          (sample) => timestamp - sample.t <= 100,
-        );
+        touch.samples = [...touch.samples, { y: pageY, t: timestamp }];
         now.shift.setValue(Math.max(0, dy));
       },
       onTouchEnd: ({ nativeEvent }: GestureResponderEvent) => {
@@ -396,7 +394,7 @@ function sheetDrag(first: SheetDragNow) {
         if (!ended?.dragging) return;
         const closes = sheetDragCloses({
           dy: nativeEvent.pageY - ended.y0,
-          vy: sheetDragSpeed(ended.samples),
+          vy: sheetDragSpeed(ended.samples, { y: nativeEvent.pageY, t: nativeEvent.timestamp }),
           height: frame.height,
           keysCover: now.keysCover,
           held: now.held,

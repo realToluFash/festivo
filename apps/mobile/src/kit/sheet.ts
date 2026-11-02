@@ -109,12 +109,14 @@ export function sheetDragStarts({
 }
 
 /** How fast the finger was moving down as it let go, in pt per ms, over its last tenth of a second. */
-export function sheetDragSpeed(samples: readonly { y: number; t: number }[]): number {
-  const last = samples.at(-1);
-  const first = samples.find((sample) => last != null && last.t - sample.t <= 100);
-  if (last == null || first == null || last.t === first.t) return 0;
+export function sheetDragSpeed(
+  moves: readonly { y: number; t: number }[],
+  letGo: { y: number; t: number },
+): number {
+  const first = [...moves, letGo].find((sample) => letGo.t - sample.t <= 100) ?? letGo;
+  if (letGo.t === first.t) return 0;
 
-  return (last.y - first.y) / (last.t - first.t);
+  return (letGo.y - first.y) / (letGo.t - first.t);
 }
 
 /** Let go at half the height the keys leave showing, or still moving down at 1,000 pt a second (vy is pt per ms), it closes; a held sheet never does (sc-25667). */

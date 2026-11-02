@@ -126,15 +126,19 @@ describe('dragging a sheet down', () => {
   });
 
   it('reads the speed over the last tenth of a second before the finger lifts', () => {
-    const flick = [0, 20, 40, 60, 80, 100].map((t) => ({ y: t, t }));
-    expect(sheetDragSpeed(flick)).toBe(1);
+    const flick = [0, 20, 40, 60, 80].map((t) => ({ y: t, t }));
+    expect(sheetDragSpeed(flick, { y: 100, t: 100 })).toBe(1);
     const slow = [
       { y: 0, t: 0 },
       { y: 90, t: 900 },
-      { y: 100, t: 1000 },
     ];
-    expect(sheetDragSpeed(slow)).toBe(0.1);
-    expect(sheetDragSpeed([{ y: 5, t: 0 }])).toBe(0);
+    expect(sheetDragSpeed(slow, { y: 100, t: 1000 })).toBe(0.1);
+    const held = [
+      { y: 0, t: 0 },
+      { y: 60, t: 50 },
+    ];
+    expect(sheetDragSpeed(held, { y: 60, t: 1050 })).toBe(0);
+    expect(sheetDragSpeed([], { y: 5, t: 0 })).toBe(0);
   });
 
   it('closes at half the height or on a 1,000 pt/s flick, and springs back short of both', () => {
