@@ -356,7 +356,7 @@ export function AppFrame({
           besideTitle={besideTitle}
           besideBack={besideBack}
         />
-        <OfflineBand stale={offline} />
+        <OfflineBand stale={offline} inFront={inFront} />
         <View style={styles.body}>
           {switched != null &&
             (created?.takesFocus === true ? (

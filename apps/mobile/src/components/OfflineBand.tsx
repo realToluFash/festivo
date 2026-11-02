@@ -15,12 +15,13 @@ import { dateLocale } from '../i18n/index.ts';
 import { TITLE_LINE, drawnLine, paddingToCentre } from '../layout/textSize.ts';
 import { useLayout } from '../layout/useLayout.ts';
 import { type Stale } from '../offline.ts';
+import { bandReadOut } from '../offlineLoad.ts';
 import { tokens } from '../theme/tokens.ts';
 import { readOut } from './ReadOut.tsx';
 import { Text } from './Text.tsx';
 
-/** Under the header, across the whole column; announced as it appears and after an unanswered Try again (sc-22586). */
-export function OfflineBand({ stale }: { stale: Stale | null }) {
+/** Under the header, across the whole column; announced as it appears and after an unanswered Try again (sc-22586), only from the screen in front (sc-27086). */
+export function OfflineBand({ stale, inFront }: { stale: Stale | null; inFront: boolean }) {
   const { t } = useTranslation();
   const { kind } = useLayout();
   const { fontScale } = useWindowDimensions();
@@ -57,7 +58,14 @@ export function OfflineBand({ stale }: { stale: Stale | null }) {
     wordsNow.current = words;
   });
 
-  useEffect(() => (showing ? readOut(wordsNow.current) : undefined), [showing, unanswered]);
+  const said = useRef<number | null>(null);
+
+  useEffect(() => {
+    const next = bandReadOut(said.current, { showing, unanswered, inFront });
+    said.current = next.said;
+
+    return next.speaks ? readOut(wordsNow.current) : undefined;
+  }, [showing, unanswered, inFront]);
 
   if (stale == null) return null;
 
