@@ -1,0 +1,25 @@
+# sc-19212 regression: on a tablet held upright, ${ORG}'s event ${EVENT} opens in front of the list, with Events back.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- runFlow:
+    file: ../switch-organisation.yaml
+    env:
+      ORG: ${ORG}
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'events.tab.drafts'
+    timeout: 30000
+- tapOn:
+    id: 'events.tab.drafts'
+- tapOn:
+    id: 'events.row.${EVENT}'
+- extendedWaitUntil:
+    visible:
+      id: 'events.back'
+    timeout: 20000
+- assertVisible:
+    id: 'events.page'
+- waitForAnimationToEnd
+- takeScreenshot: upright-opened

@@ -1,0 +1,65 @@
+# After request-link-hold.yaml: reopen the app, Sign in > Create an account with a fresh EMAIL, enter its code and Continue. sc-19752.
+# Pass NAME, EMAIL, PASSWORD and STOP (true: the app was force-quit since the hold).
+appId: host.exp.Exponent
+---
+- runFlow:
+    when:
+      true: ${STOP == 'true'}
+    file: request-link-reopen.yaml
+- runFlow:
+    when:
+      true: ${STOP != 'true'}
+    commands:
+      - openLink: ${METRO_URL}/--/sign-in
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.email'
+    timeout: 60000
+- scrollUntilVisible:
+    element:
+      id: 'signIn.register'
+- tapOn:
+    id: 'signIn.register'
+- extendedWaitUntil:
+    visible:
+      id: 'register.name'
+    timeout: 60000
+- tapOn:
+    id: 'register.name'
+- eraseText: 120
+- inputText: ${NAME}
+- tapOn:
+    id: 'register.email'
+- eraseText: 120
+- inputText: ${EMAIL}
+# The Next and Go keys, not taps: the keyboard covers Password and Create account (sc-18534).
+- pressKey: Enter
+- eraseText: 120
+- inputText: ${PASSWORD}
+- pressKey: Enter
+- extendedWaitUntil:
+    visible:
+      id: 'verifyEmail.code'
+    timeout: 30000
+- runScript: scripts/latest-code.js
+- tapOn:
+    id: 'verifyEmail.code'
+- eraseText: 20
+- inputText: ${output.code}
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: 'verifyEmail.submit'
+- tapOn:
+    id: 'verifyEmail.submit'
+- extendedWaitUntil:
+    visible:
+      id: 'verifyEmail.continue'
+    timeout: 30000
+- tapOn:
+    id: 'verifyEmail.continue'
+- extendedWaitUntil:
+    visible: 'A few details|Ask to join.*|This link does not work.*'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: request-link-held-registered

@@ -1,0 +1,25 @@
+# sc-23282: Turn off two-factor… opens its step with Turn it off on top of Keep it on; Keep it on leaves it on. Needs ${METRO_URL}, two-factor on and not required.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/security
+- scrollUntilVisible:
+    element:
+      id: 'twoFactor.turnOff'
+    timeout: 30000
+    centerElement: true
+- takeScreenshot: opener
+- tapOn:
+    id: 'twoFactor.turnOff'
+- scrollUntilVisible:
+    element:
+      id: 'twoFactor.keepItOn'
+    timeout: 15000
+    centerElement: true
+- takeScreenshot: step
+- tapOn:
+    id: 'twoFactor.keepItOn'
+- takeScreenshot: kept
+- assertVisible:
+    id: 'twoFactor.turnOff'
+- assertNotVisible:
+    id: 'twoFactor.keepItOn'

@@ -1,0 +1,35 @@
+# sc-23283: Remove… on ${ROW} (a verified email row, not the primary) opens its confirm in the row, then Keep it closes it.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/account
+- extendedWaitUntil:
+    visible:
+      id: 'nameCard.change'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'contacts.${ROW}.remove'
+    direction: DOWN
+    timeout: 20000
+- tapOn:
+    id: 'contacts.${ROW}.remove'
+- extendedWaitUntil:
+    visible:
+      id: 'contacts.${ROW}.keep'
+    timeout: 10000
+- swipe:
+    start: 50%, 70%
+    end: 50%, 40%
+- waitForAnimationToEnd
+- takeScreenshot: remove-confirm
+- tapOn:
+    id: 'contacts.${ROW}.keep'
+- extendedWaitUntil:
+    notVisible:
+      id: 'contacts.${ROW}.keep'
+    timeout: 10000
+- extendedWaitUntil:
+    visible:
+      id: 'contacts.${ROW}.remove'
+    timeout: 10000
+- takeScreenshot: remove-kept

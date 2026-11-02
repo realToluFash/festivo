@@ -1,0 +1,44 @@
+# The wordmark on the signed-out first screen and the sign-in lockup, in English then French. sc-23330.
+# The language is set by the shared chip flows, never assumed from the device's last choice.
+#
+#   node .qa/bin/qa-env.mjs maestro brand-signed-out [--ipad | --se | --android [--tablet]]
+appId: host.exp.Exponent
+---
+- runFlow: sign-in-screen-english.yaml
+- launchApp:
+    appId: host.exp.Exponent
+    stopApp: true
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible:
+      id: 'launch.brand'
+    timeout: 90000
+- takeScreenshot: brand-launch-en
+- tapOn:
+    id: 'home.openSignIn'
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.email'
+    timeout: 30000
+- takeScreenshot: brand-sign-in-en
+- runFlow:
+    file: sign-in-screen-language.yaml
+    env:
+      LANGUAGE: Français
+- launchApp:
+    appId: host.exp.Exponent
+    stopApp: true
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible:
+      id: 'launch.brand'
+    timeout: 30000
+- takeScreenshot: brand-launch-fr
+- tapOn:
+    id: 'home.openSignIn'
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.email'
+    timeout: 30000
+- takeScreenshot: brand-sign-in-fr
+- runFlow: sign-in-screen-english.yaml

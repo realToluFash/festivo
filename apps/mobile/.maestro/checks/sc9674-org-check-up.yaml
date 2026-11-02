@@ -1,0 +1,32 @@
+# Organisation: Name emptied, focus in Contact address, keys up, Save changes. Focus moves to Name with the keys up, the next key goes into it. sc-9674.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/organisation
+- extendedWaitUntil:
+    visible:
+      id: organisation.name
+    timeout: 30000
+- repeat:
+    times: 3
+    commands:
+      - tapOn:
+          id: organisation.name
+      - eraseText: 80
+- tapOn:
+    id: organisation.contact
+- waitForAnimationToEnd
+- assertVisible: '(?i)(shift|delete)'
+- scrollUntilVisible:
+    element:
+      id: organisation.save
+    centerElement: true
+- tapOn:
+    id: organisation.save
+- waitForAnimationToEnd
+- takeScreenshot: checked
+- assertVisible: '{{t:orgGeneral.nameBlank}}'
+- assertVisible: '(?i)(shift|delete)'
+- inputText: N
+- assertVisible:
+    id: organisation.name
+    text: N

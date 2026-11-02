@@ -1,0 +1,136 @@
+framework:
+    rate_limiter:
+        address_lookup:
+            # Per IP. An autocomplete field fires on keystrokes, so the budget is
+            # generous — but a budget that cannot be exhausted is a provider bill
+            # somebody else gets to set.
+            policy: token_bucket
+            limit: 60
+            rate: { interval: '1 minute', amount: 30 }
+
+        apple_app_attempt:
+            # Per IP: an Android sign-in with Apple starts here, and each start is a row
+            # until it is spent or runs out.
+            policy: fixed_window
+            limit: 30
+            interval: '15 minutes'
+
+        contact_add_account:
+            # Per account, spent by each address or number added from Settings > Account: each
+            # sends a code from our domain to an address the caller chose (sc-113).
+            policy: fixed_window
+            limit: 10
+            interval: '1 hour'
+
+        organisation_create_account:
+            # Per account, spent by each organisation created from the switcher (sc-390): a person
+            # makes one or two, and rarely in one sitting. Fixed, so the refusal's time holds still.
+            policy: fixed_window
+            limit: 5
+            interval: '1 hour'
+
+        join_request_account:
+            # Per account, spent by each request made through a request link (sc-562), across every
+            # organisation. Fixed, so the refusal's time holds still.
+            policy: fixed_window
+            limit: 5
+            interval: '24 hours'
+
+        join_request_organisation:
+            # Per organisation, so a shared link cannot bury its managers in requests. The refusal
+            # reads as the per-account one and does not say whose limit it is (#605).
+            policy: fixed_window
+            limit: 100
+            interval: '24 hours'
+
+        assistant_chat:
+            # Lower than the geocoder's and burstier than it looks: one thing an
+            # organiser asks for is several turns of an agent loop, each a
+            # request, so the burst has to cover a loop while the sustained rate
+            # does not cover a script. Per IP until there are accounts.
+            policy: token_bucket
+            limit: 20
+            rate: { interval: '1 minute', amount: 10 }
+
+        password_reset_address:
+            # Per address, keyed on what was typed whether or not it is an account, so
+            # the limit answers nothing about who is registered. Fixed, so the refusal
+            # states a time that holds still.
+            policy: fixed_window
+            limit: 3
+            interval: '15 minutes'
+
+        password_reset_ip:
+            # Per IP, wider, for one network asking about many addresses.
+            policy: fixed_window
+            limit: 20
+            interval: '15 minutes'
+
+        registration:
+            # Per IP, which is the only thing available: the endpoint exists
+            # because there is no account yet. Low, because a person registers
+            # once and a script registers in bulk. A fixed window, as sign-in's,
+            # because the refusal states a time and a fixed window's holds still.
+            policy: fixed_window
+            limit: 10
+            interval: '1 hour'
+
+        sign_in_ip:
+            # Per IP, and generous, because one network is a whole office. It is
+            # the per-account budget below that stops a password being guessed;
+            # this one stops a script walking a list of addresses.
+            #
+            # Fixed windows, spent only by a refused password: the refusal states
+            # a time, and a fixed window's is exact and holds still while nobody
+            # tries, where a sliding window's estimate drifts later.
+            policy: fixed_window
+            limit: 30
+            interval: '15 minutes'
+
+        sign_in_account:
+            # Per address, and tight, because this is the one that matters: a
+            # password is guessed by trying many against one account, not one
+            # against many. Keyed on the address rather than the account, so a
+            # miss on an address nobody has registered costs the same as a hit
+            # and the endpoint cannot be used to tell them apart.
+            policy: fixed_window
+            limit: 5
+            interval: '15 minutes'
+
+        password_change_account:
+            # Per account: the change checks the current password, so it is a guessing
+            # surface like sign-in. Spent only by a wrong current password, peeked first.
+            policy: fixed_window
+            limit: 5
+            interval: '15 minutes'
+
+        sign_out_elsewhere_account:
+            # Per account, spent by every proved call to sign out everywhere else: cheap to
+            # ask for, and each one ends sessions and writes to Redis. The proof is checked
+            # first, so whoever holds an unlocked device cannot spend the owner's budget.
+            policy: fixed_window
+            limit: 5
+            interval: '15 minutes'
+
+        password_set_account:
+            # Per account, for the code a Google or Apple account proves its address with
+            # before adding a password: five wrong codes per window, across resends.
+            policy: fixed_window
+            limit: 5
+            interval: '15 minutes'
+
+        two_factor_account:
+            # Per account, shared by every place a second factor is checked (sign-in,
+            # setup, turning it off), so guessing cannot move from one to another. Five
+            # wrong codes pause code entry until the window ends, and the refusal says when.
+            policy: fixed_window
+            limit: 5
+            interval: '15 minutes'
+
+        calendar_feed_token:
+            # Per calendar link, keyed on its token's hash so the token itself is never a cache key
+            # (sc-3626). A calendar app checks every few hours; a person adding the link on three
+            # devices and refreshing by hand stays well inside this, and a script does not.
+            policy: fixed_window
+            limit: 60
+            interval: '1 hour'

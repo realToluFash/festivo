@@ -1,0 +1,46 @@
+# sc-23777 regression on iOS: Duplicate of ${EVENT}, Create draft pressed with the API paused; the swipe from the left edge leaves Duplicate showing while it creates the copy, then the copy opens once the API is back.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT}
+- scrollUntilVisible:
+    element:
+      id: 'events.page.duplicate'
+    timeout: 30000
+- tapOn:
+    id: 'events.page.duplicate'
+- extendedWaitUntil:
+    visible: '{{t:eventDuplicate.copied}}'
+    timeout: 15000
+- swipe:
+    start: 50%, 80%
+    end: 50%, 20%
+    duration: 600
+- waitForAnimationToEnd
+- tapOn:
+    id: 'eventDuplicate.start.time'
+- tapOn:
+    id: 'eventDuplicate.start.done'
+- waitForAnimationToEnd
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=paused
+- tapOn:
+    id: 'eventDuplicate.create'
+- takeScreenshot: creating
+- runFlow: ../checks/sc23777/swipe.yaml
+- assertVisible:
+    id: 'eventDuplicate.create'
+- assertNotVisible:
+    id: 'events.page.duplicate'
+- takeScreenshot: creating-after-swipe
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=up
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: copy-opened

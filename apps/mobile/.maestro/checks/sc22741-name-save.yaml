@@ -1,0 +1,33 @@
+# sc-22741: a name with accents, apostrophe and hyphen saves as typed, the ends trimmed, and the confirmation line reads it.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/account
+- extendedWaitUntil:
+    visible:
+      id: 'nameCard.change'
+    timeout: 30000
+- tapOn:
+    id: 'nameCard.change'
+- extendedWaitUntil:
+    visible:
+      id: 'nameCard.field'
+    timeout: 5000
+- eraseText: 200
+- inputText: "  Zoë O'Brien-Núñez  "
+- takeScreenshot: typed
+- tapOn:
+    id: 'nameCard.save'
+- extendedWaitUntil:
+    visible: '.*Zoë O''Brien-Núñez\.'
+    timeout: 10000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: saved
+- openLink: ${METRO_URL}/--/settings
+- extendedWaitUntil:
+    visible:
+      id: 'settings.account'
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: settings

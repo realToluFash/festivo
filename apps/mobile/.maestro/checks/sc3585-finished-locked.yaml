@@ -1,0 +1,34 @@
+# sc-3585: ${EV_FIN}, Finished: Edit details' start, end and time zone open no picker when tapped.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV_FIN}
+- extendedWaitUntil:
+    visible:
+      id: 'events.phase.finished'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'events.page.edit'
+- tapOn:
+    id: 'events.page.edit'
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.scheduleOver'
+- tapOn:
+    id: 'eventForm.start.date'
+- waitForAnimationToEnd
+- assertNotVisible:
+    id: 'eventForm.start.sheet'
+- takeScreenshot: start-date-tapped
+- tapOn:
+    id: 'eventForm.end.time'
+- waitForAnimationToEnd
+- assertNotVisible:
+    id: 'eventForm.end.sheet'
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.timeZone'
+- tapOn:
+    id: 'eventForm.timeZone'
+- waitForAnimationToEnd
+- takeScreenshot: time-zone-tapped
