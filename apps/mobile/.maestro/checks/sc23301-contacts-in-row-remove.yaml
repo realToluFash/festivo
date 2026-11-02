@@ -1,0 +1,12 @@
+# sc-23301: Account's Email addresses card, a second unverified address's in-row Verify and Remove beside each other. Needs a second, unverified address on the account.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/account
+- extendedWaitUntil:
+    visible: '{{t:contacts.emailsTitle}}'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'contacts\..*\.remove'
+    timeout: 20000
+- takeScreenshot: contacts-remove
