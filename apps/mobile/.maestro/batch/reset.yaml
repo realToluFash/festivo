@@ -19,17 +19,18 @@ appId: host.exp.Exponent
     when:
       true: ${!output.helper.reloaded}
     file: reopen.yaml
-# Home, whatever link Expo Go reopens the experience at.
+# Home, whatever link Expo Go reopens the experience at. Four sign-in rule notices push the
+# card below the fold and the two-factor overdue screen replaces it, so either settles. sc-23252.
 - openLink: ${METRO_URL}/--/
 # Gone first, or the screen from before the reload passes the wait below.
 - extendedWaitUntil:
-    notVisible: '{{t:any:home.signedInTo}}|{{t:any:noOrganisation.title}}'
+    notVisible: '{{t:any:home.signedInTo}}|{{t:any:noOrganisation.title}}|{{t:any:signInRules.dueSetUp}}|{{t:any:signInRules.unlinkedLink}}|{{t:any:signInRules.gateTurnOn}}|{{t:any:signInRules.changedSee}}|{{t:any:signInRules.overdueTitle}}'
     timeout: 10000
     optional: true
 - runFlow:
     file: developer-menu.yaml
     env:
-      SETTLED: '{{t:any:home.signedInTo}}|{{t:any:noOrganisation.title}}'
+      SETTLED: '{{t:any:home.signedInTo}}|{{t:any:noOrganisation.title}}|{{t:any:signInRules.dueSetUp}}|{{t:any:signInRules.unlinkedLink}}|{{t:any:signInRules.gateTurnOn}}|{{t:any:signInRules.changedSee}}|{{t:any:signInRules.overdueTitle}}'
 # The first reload after signing in can close Expo Go rather than reload it. Asked of the
 # harness, since a notVisible condition waits out seven seconds from the last command.
 - runScript:
@@ -41,5 +42,5 @@ appId: host.exp.Exponent
       true: ${!output.helper.running}
     file: reopen.yaml
 - extendedWaitUntil:
-    visible: '{{t:any:home.signedInTo}}|{{t:any:noOrganisation.title}}'
+    visible: '{{t:any:home.signedInTo}}|{{t:any:noOrganisation.title}}|{{t:any:signInRules.dueSetUp}}|{{t:any:signInRules.unlinkedLink}}|{{t:any:signInRules.gateTurnOn}}|{{t:any:signInRules.changedSee}}|{{t:any:signInRules.overdueTitle}}'
     timeout: 10000
