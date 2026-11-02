@@ -263,9 +263,14 @@ export function countryChoices(locale: string): { code: string; name: string }[]
   );
 }
 
+/** "Buenos Aires" for America/Argentina/Buenos_Aires: IANA's English city, the part after the last slash. */
+export function zoneCity(identifier: string): string {
+  return identifier.split('/').at(-1)?.replaceAll('_', ' ') ?? identifier;
+}
+
 /** "Lagos · Africa/Lagos": the city a person recognises, then the identifier that is stored. */
 export function timezoneLabel(identifier: string): string {
-  const city = identifier.split('/').at(-1)?.replaceAll('_', ' ') ?? identifier;
+  const city = zoneCity(identifier);
 
   return city === identifier ? identifier : `${city} · ${identifier}`;
 }

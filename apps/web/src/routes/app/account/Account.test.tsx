@@ -106,8 +106,9 @@ function zoneChange(): HTMLElement {
   });
 }
 
+/** Change waits with the zone's name for the list (sc-27219). */
 async function findZoneChange(): Promise<HTMLElement> {
-  return within(await screen.findByRole('region', { name: 'Time zone' })).getByRole('button', {
+  return within(await screen.findByRole('region', { name: 'Time zone' })).findByRole('button', {
     name: 'Change',
   });
 }
@@ -163,6 +164,50 @@ describe("the account's time zone", () => {
 
     expect(await screen.findByText('Lagos (UTC+01:00)')).toBeDefined();
     expect(screen.getByRole('link', { name: 'Security' })).toBeDefined();
+  });
+
+  it('holds the zone row, Change with it, until the list names the zone (sc-27219)', async () => {
+    let release: (response: Response) => void = () => {};
+    answeringByLanguage(null, {}, new Promise((resolve) => (release = resolve)));
+    open();
+
+    const card = await screen.findByRole('region', { name: 'Time zone' });
+    expect(within(card).getByText(/^Times in the emails/)).toBeDefined();
+    expect(within(card).queryByText('Africa/Lagos')).toBeNull();
+    expect(within(card).queryByRole('button', { name: 'Change' })).toBeNull();
+    expect(card.querySelector('[aria-busy="true"]')).not.toBeNull();
+
+    await act(async () => release(json({ timezones: ZONES })));
+
+    expect(await within(card).findByText('Lagos (UTC+01:00)')).toBeDefined();
+    expect(within(card).getByText('Africa/Lagos')).toBeDefined();
+    expect(within(card).getByRole('button', { name: 'Change' })).toBeDefined();
+  });
+
+  it("names the zone by IANA's city when the list cannot be fetched", async () => {
+    answering({ 'GET /api/auth/timezones': () => json({}, 500) });
+    open();
+
+    const card = await screen.findByRole('region', { name: 'Time zone' });
+    expect(await within(card).findByText('Lagos')).toBeDefined();
+    expect(within(card).getByText('Africa/Lagos')).toBeDefined();
+    expect(within(card).getByRole('button', { name: 'Change' })).toBeDefined();
+  });
+
+  it('names a zone the list has no row for by its city, and an id with no slash once', async () => {
+    answering();
+    const { unmount } = open({ timezone: 'Asia/Calcutta' });
+
+    const card = await screen.findByRole('region', { name: 'Time zone' });
+    expect(await within(card).findByText('Calcutta')).toBeDefined();
+    expect(within(card).getByText('Asia/Calcutta')).toBeDefined();
+    unmount();
+
+    answering();
+    open({ timezone: 'UTC' });
+    const utc = await screen.findByRole('region', { name: 'Time zone' });
+    expect(await within(utc).findByText('UTC')).toBeDefined();
+    expect(within(utc).getAllByText('UTC')).toHaveLength(1);
   });
 
   it('says times reach an account with none in UTC', () => {
@@ -300,6 +345,7 @@ const ZONES_FR = [
 function answeringByLanguage(
   french: Promise<Response> | null = null,
   answers: Record<string, () => Response> = {},
+  english: Promise<Response> | null = null,
 ): string[] {
   const asked: string[] = [];
 
@@ -312,7 +358,7 @@ function answeringByLanguage(
     const language = new Headers(init?.headers).get('Accept-Language') ?? '';
     asked.push(language);
 
-    if (language !== 'fr') return json({ timezones: ZONES });
+    if (language !== 'fr') return english ?? json({ timezones: ZONES });
 
     return french ?? json({ timezones: ZONES_FR });
   });
@@ -331,11 +377,19 @@ describe('the time zone list after a language change', () => {
   });
 
   it('names the current zone in the new language with the card closed', async () => {
-    const asked = answeringByLanguage();
+    let release: (response: Response) => void = () => {};
+    const asked = answeringByLanguage(new Promise((resolve) => (release = resolve)));
     open({ timezone: 'Asia/Kolkata' });
     expect(await screen.findByText('Kolkata (UTC+05:30)')).toBeDefined();
 
     await act(() => setLanguage('fr'));
+
+    // Until the French list comes, the name already shown stays, with neither the id nor a skeleton in its place (sc-27219).
+    const card = screen.getByRole('region', { name: 'Fuseau horaire' });
+    expect(within(card).getByText('Kolkata (UTC+05:30)')).toBeDefined();
+    expect(card.querySelector('[aria-busy="true"]')).toBeNull();
+
+    await act(async () => release(json({ timezones: ZONES_FR })));
 
     expect(await screen.findByText('Calcutta (UTC+05:30)')).toBeDefined();
     expect(asked).toEqual(['en', 'fr']);
