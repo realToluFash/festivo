@@ -109,13 +109,17 @@ function EventOf({
     watch(api.taggedEvent(eventId)).then(
       ({ event, tag }) =>
         current &&
-        setLoad((was) =>
-          event.organisationId !== organisationId
-            ? { kind: 'notFound' }
-            : was.kind === 'loaded' && eventVersion(tag) < eventVersion(was.tag)
+        setLoad((was) => {
+          if (event.organisationId !== organisationId) return { kind: 'notFound' };
+
+          try {
+            return was.kind === 'loaded' && eventVersion(tag) < eventVersion(was.tag)
               ? was
-              : { kind: 'loaded', event, tag },
-        ),
+              : { kind: 'loaded', event, tag };
+          } catch {
+            return { kind: 'failed' };
+          }
+        }),
       (error: unknown) =>
         current &&
         setLoad((was) =>

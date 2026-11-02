@@ -3541,7 +3541,7 @@ describe('An older copy never replaces the change the page made (sc-28121)', () 
     },
   );
 
-  it('changes nothing when the read answers the version shown', async () => {
+  it('keeps the change when the read answers the version shown', async () => {
     signedIn();
     const { release } = await staleOn(draft, 'POST /api/events/ev_1/make-live', live);
 
@@ -3569,6 +3569,19 @@ describe('An older copy never replaces the change the page made (sc-28121)', () 
 
     expect(await screen.findByText('Happening now')).toBeDefined();
     expect(screen.queryByText('Live', { selector: '.pill-quiet' })).toBeNull();
+  });
+
+  it('shows the load error when a re-read is tagged with something that is not a version', async () => {
+    signedIn();
+    const { release } = await staleOn(draft, 'POST /api/events/ev_1/make-live', live);
+
+    confirm('Make live', 'Make live');
+    await waitFor(() =>
+      expect(screen.getByText('Live', { selector: '.pill-quiet' })).toBeDefined(),
+    );
+    await release(tagged({ event: live }, 'W/"2"'));
+
+    expect(await screen.findByText('The event did not load. Try again in a moment.')).toBeDefined();
   });
 
   it('still shows a newer copy, such as a change somebody else made', async () => {
