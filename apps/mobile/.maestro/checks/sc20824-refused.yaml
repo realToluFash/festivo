@@ -1,0 +1,43 @@
+# sc-20824 regression: ${EVENT_ID}'s Edit details with the name erased; Save changes is refused and the form stays open with the name's error.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 30000
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - scrollUntilVisible:
+          element:
+            id: 'events.page.edit'
+          direction: DOWN
+          centerElement: true
+- tapOn:
+    id: 'events.page.edit'
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.name'
+    timeout: 20000
+- tapOn:
+    id: 'eventForm.name'
+- eraseText: 120
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.send'
+    direction: DOWN
+- tapOn:
+    id: 'eventForm.send'
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.name'
+    direction: UP
+- assertVisible:
+    id: 'eventForm.name'
+- assertNotVisible:
+    id: 'events.page'
+- takeScreenshot: refused

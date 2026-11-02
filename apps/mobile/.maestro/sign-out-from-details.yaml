@@ -1,0 +1,4 @@
+# Signs out from A few details, which a new account opens before its profile is complete. sc-19752.
+appId: host.exp.Exponent
+---
+- runFlow: sign-out-from-complete-profile.yaml

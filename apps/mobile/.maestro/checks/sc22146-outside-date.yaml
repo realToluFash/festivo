@@ -1,0 +1,34 @@
+# sc-22146: on iOS, New event's Starts date sheet, a new day (DAY, the day's number, not today's) tapped and the sheet closed by a tap outside it; Starts' date shows DAY, as Done would.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/new
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.name'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.start.date'
+    direction: DOWN
+    centerElement: true
+- assertNotVisible:
+    id: 'eventForm.start.date'
+    text: '.*\b${DAY}\b.*'
+- tapOn:
+    id: 'eventForm.start.date'
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.start.done'
+    timeout: 10000
+- tapOn:
+    text: '${DAY}'
+- takeScreenshot: picked
+- tapOn:
+    point: '50%,8%'
+- waitForAnimationToEnd
+- assertNotVisible:
+    id: 'eventForm.start.done'
+- assertVisible:
+    id: 'eventForm.start.date'
+    text: '.*\b${DAY}\b.*'
+- takeScreenshot: kept

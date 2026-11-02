@@ -1,0 +1,9 @@
+# On Sign in: taps PROVIDER_ID (signIn.google or signIn.apple) and stops on the provider's page. sc-19634.
+appId: host.exp.Exponent
+---
+- tapOn:
+    id: ${PROVIDER_ID}
+- extendedWaitUntil:
+    visible: '.*own account.*'
+    timeout: 30000
+- takeScreenshot: ${SHOT}

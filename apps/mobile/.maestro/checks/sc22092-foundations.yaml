@@ -1,0 +1,52 @@
+# sc-22092: Events list chips, a Live event's buttons, the Call off sheet's order, and Delete event's type-to-confirm field at rest, focused with the keyboard up, and on an error.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'events\.phase\..+'
+    timeout: 30000
+- takeScreenshot: list
+- openLink: ${METRO_URL}/--/events/${EV_LIVE}
+- extendedWaitUntil:
+    visible:
+      id: 'events.phase.live'
+    timeout: 30000
+- takeScreenshot: event
+- scrollUntilVisible:
+    element:
+      id: 'events.end'
+- takeScreenshot: event-actions
+- tapOn:
+    id: 'events.end'
+- extendedWaitUntil:
+    visible:
+      id: 'events.endYes'
+    timeout: 10000
+- takeScreenshot: call-off-sheet
+- tapOn:
+    id: 'events.endNo'
+- extendedWaitUntil:
+    notVisible:
+      id: 'events.endYes'
+    timeout: 10000
+- scrollUntilVisible:
+    element:
+      id: 'events.delete'
+- tapOn:
+    id: 'events.delete'
+- extendedWaitUntil:
+    visible:
+      id: 'events.deleteName'
+    timeout: 10000
+- takeScreenshot: delete-sheet-rest
+- tapOn:
+    id: 'events.deleteName'
+- takeScreenshot: delete-sheet-focused-keyboard
+- inputText: 'wrong'
+- hideKeyboard
+- tapOn:
+    id: 'events.deleteGo'
+- takeScreenshot: delete-sheet-error
+- tapOn:
+    id: 'events.deleteKeep'

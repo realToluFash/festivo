@@ -1,0 +1,7 @@
+{
+  "guests_one": "{{count}} convidado",
+  "guests_other": "{{count}} convidados",
+  "guests_many": "{{count}} de convidados",
+  "hosts_other": "{{count}} anfitriões",
+  "hosts_many": "{{count}} de anfitriões"
+}

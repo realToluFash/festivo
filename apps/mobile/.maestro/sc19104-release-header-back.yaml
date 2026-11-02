@@ -1,0 +1,8 @@
+# sc-19104, Android release build: the header's back on a section in the phone layout.
+appId: com.soirely.app
+---
+- takeScreenshot: before-header-back
+- tapOn:
+    id: 'frame.back'
+- waitForAnimationToEnd
+- takeScreenshot: after-header-back

@@ -1,0 +1,54 @@
+doctrine:
+    dbal:
+        url: '%env(resolve:DATABASE_URL)%'
+        # Pinned so Doctrine does not open a connection to find out, and so the DDL
+        # it generates matches the server it will actually run against. Must track
+        # the Postgres image in compose.yaml.
+        server_version: '17'
+        profiling_collect_backtrace: '%kernel.debug%'
+    orm:
+        naming_strategy: doctrine.orm.naming_strategy.underscore_number_aware
+        identity_generation_preferences:
+            Doctrine\DBAL\Platforms\PostgreSQLPlatform: identity
+        auto_mapping: true
+        filters:
+            soft_delete:
+                class: App\Doctrine\SoftDeleteFilter
+                # Enabled by default. A deleted row being absent has to be what
+                # happens when nobody thinks about it, or the read that forgets
+                # leaks one into a list — which reads as the deletion not working.
+                enabled: true
+        mappings:
+            App:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/src/Entity'
+                prefix: 'App\Entity'
+                alias: App
+        controller_resolver:
+            auto_mapping: false
+
+when@test:
+    doctrine:
+        dbal:
+            # A suffix rather than a different name, so the test database is obviously
+            # the same database with a different tail and nobody points the suite at
+            # the development one by editing a single word.
+            dbname_suffix: '_test%env(default::TEST_TOKEN)%'
+
+when@prod:
+    doctrine:
+        orm:
+            query_cache_driver:
+                type: pool
+                pool: doctrine.system_cache_pool
+            result_cache_driver:
+                type: pool
+                pool: doctrine.result_cache_pool
+    framework:
+        cache:
+            pools:
+                doctrine.result_cache_pool:
+                    adapter: cache.app
+                doctrine.system_cache_pool:
+                    adapter: cache.system

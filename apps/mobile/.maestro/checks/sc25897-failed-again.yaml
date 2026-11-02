@@ -1,0 +1,40 @@
+# sc-25897 Android: the not-created notice showing, the body scrolled until it is under the title, Create organisation pressed again with the API still stopped. The notice comes wholly into view again.
+appId: host.exp.Exponent
+---
+- runFlow: ../open-create-organisation.yaml
+- tapOn:
+    id: 'createOrganisation.name'
+- inputText: 'Notice In View'
+- waitForAnimationToEnd
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
+- tapOn:
+    id: 'createOrganisation.create'
+- extendedWaitUntil:
+    visible: '.*{{t:createOrganisation.failed}}.*'
+    timeout: 45000
+- extendedWaitUntil:
+    visible:
+      id: 'sc25897.never'
+    timeout: 3000
+    optional: true
+- takeScreenshot: first
+- swipe:
+    from:
+      id: 'createOrganisation'
+    direction: UP
+- waitForAnimationToEnd
+- takeScreenshot: scrolled
+- tapOn:
+    id: 'createOrganisation.create'
+- extendedWaitUntil:
+    visible: '{{t:createOrganisation.create}}'
+    timeout: 45000
+- extendedWaitUntil:
+    visible:
+      id: 'sc25897.never'
+    timeout: 3000
+    optional: true
+- takeScreenshot: again

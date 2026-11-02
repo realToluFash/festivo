@@ -1,0 +1,13 @@
+# Signed out: a sign-up for A held on Check your email, then Sign in opened in place. sc-19634.
+appId: host.exp.Exponent
+---
+- launchApp:
+    appId: host.exp.Exponent
+    stopApp: true
+- runFlow: sign-in-screen-english.yaml
+- runFlow: sc19634-register.yaml
+- openLink: ${METRO_URL}/--/sign-in
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.email'
+    timeout: 30000

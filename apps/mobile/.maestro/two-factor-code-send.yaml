@@ -1,0 +1,30 @@
+# On a code step (sign-in or reset), types CODE, sends it, and screenshots the answer as SHOT.
+# Pass RECOVERY=true to switch to a recovery code first. sc-22740.
+appId: host.exp.Exponent
+---
+- runFlow:
+    when:
+      true: ${RECOVERY == 'true'}
+    commands:
+      - tapOn:
+          id: 'twoFactor.switch'
+- tapOn:
+    id: 'twoFactor.code'
+- eraseText: 30
+- inputText: ${CODE}
+# Return sends the form on iOS; hideKeyboard fails on an iPhone (sc-19584).
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - pressKey: Enter
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+      - tapOn:
+          id: 'twoFactor.verify'
+- waitForAnimationToEnd:
+    timeout: 6000
+- takeScreenshot: ${SHOT}

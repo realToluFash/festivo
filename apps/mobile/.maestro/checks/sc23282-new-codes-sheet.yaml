@@ -1,0 +1,37 @@
+# sc-23282: Make new codes asks with Make new codes on top of Keep current codes, then shows the ten codes in a sheet at its title, in JetBrains Mono, with Copy all only. Needs ${METRO_URL}, two-factor on, a batch holding TOTP_SECRET.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/security
+- scrollUntilVisible:
+    element:
+      id: 'twoFactor.newCodes'
+    timeout: 30000
+    centerElement: true
+- takeScreenshot: card-on
+- tapOn:
+    id: 'twoFactor.newCodes'
+- scrollUntilVisible:
+    element:
+      id: 'twoFactor.keepCodes'
+    timeout: 15000
+    centerElement: true
+- takeScreenshot: confirm
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /code
+- tapOn:
+    id: 'twoFactor.newCodesCode'
+- inputText: ${output.helper.code}
+- takeScreenshot: keyboard
+- tapOn:
+    id: 'twoFactor.confirmNewCodes'
+- extendedWaitUntil:
+    visible:
+      id: 'twoFactor.copyAll'
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: codes-sheet
+- tapOn:
+    id: 'twoFactor.copyAll'
+- takeScreenshot: copied

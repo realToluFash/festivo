@@ -1,0 +1,34 @@
+# sc-3586: a Live event after its start: Pause offered beside End now, paused, then resumed back to Happening now. Pass EV_NOW.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV_NOW}
+- extendedWaitUntil:
+    visible:
+      id: 'events.phase.happening_now'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'events.pause'
+- assertVisible:
+    id: 'events.end'
+- takeScreenshot: happening-pause-offered
+- tapOn:
+    id: 'events.pause'
+- extendedWaitUntil:
+    visible:
+      id: 'events.pauseYes'
+    timeout: 10000
+- tapOn:
+    id: 'events.pauseYes'
+- extendedWaitUntil:
+    visible:
+      id: 'events.phase.paused'
+    timeout: 10000
+- takeScreenshot: happening-paused
+- tapOn:
+    id: 'events.resume'
+- extendedWaitUntil:
+    visible:
+      id: 'events.phase.happening_now'
+    timeout: 10000
+- takeScreenshot: happening-resumed

@@ -1,0 +1,65 @@
+# Organisation: focus in Name, keys up, Save changes held then refused with a 422 on Contact address. Keys stay up, focus moves to Contact address, a key typed while held changes nothing. sc-9674.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/organisation
+- extendedWaitUntil:
+    visible:
+      id: organisation.name
+    timeout: 30000
+- repeat:
+    times: 3
+    commands:
+      - tapOn:
+          id: organisation.contact
+      - eraseText: 80
+- inputText: a..b@ire.events
+- tapOn:
+    id: organisation.name
+- waitForAnimationToEnd
+- takeScreenshot: keys-up
+- assertVisible: '(?i)(shift|delete)'
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=paused
+- scrollUntilVisible:
+    element:
+      id: organisation.save
+    centerElement: true
+- tapOn:
+    id: organisation.save
+- waitForAnimationToEnd
+- takeScreenshot: at-tap
+- assertVisible: '(?i)(shift|delete)'
+- assertVisible: '{{t:orgGeneral.saving}}'
+- inputText: Q
+- scrollUntilVisible:
+    element:
+      id: organisation.save
+    centerElement: true
+- tapOn:
+    id: organisation.save
+- waitForAnimationToEnd
+- takeScreenshot: while-held
+- assertVisible: '(?i)(shift|delete)'
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=up
+- extendedWaitUntil:
+    visible: '{{t:orgGeneral.contactInvalid}}'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: refused
+- assertVisible: '(?i)(shift|delete)'
+- assertVisible:
+    id: organisation.name
+    text: ${ORG_NAME}
+- inputText: Z
+- takeScreenshot: typed-after
+- assertVisible:
+    id: organisation.contact
+    text: a..b@ire.eventsZ
+- assertVisible:
+    id: organisation.name
+    text: ${ORG_NAME}

@@ -1,0 +1,23 @@
+# sc-25897 regression, Android: Create organisation with the name blank sends nothing and leaves the sheet open; then a name and Create organisation closes the sheet into the new organisation, Now working in it.
+appId: host.exp.Exponent
+---
+- runFlow: ../open-create-organisation.yaml
+- tapOn:
+    id: 'createOrganisation.create'
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'createOrganisation'
+- takeScreenshot: blank
+- tapOn:
+    id: 'createOrganisation.name'
+- inputText: 'Made After Notice'
+- tapOn:
+    id: 'createOrganisation.create'
+- extendedWaitUntil:
+    notVisible:
+      id: 'createOrganisation'
+    timeout: 30000
+- extendedWaitUntil:
+    visible: '{{t:switcher.switched}}'
+    timeout: 20000
+- takeScreenshot: created

@@ -1,0 +1,39 @@
+# sc-13861: a saved cover that fails to load shows its type's default (${TYPE}) on the row in Events and across the top of the event's page, and the description (${DESC}) is not read. EVENT is the event's id, TAB the Events tab that holds it (upcoming, drafts or past), NAME its name.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'frame.events'
+    timeout: 30000
+- tapOn:
+    id: 'events.tab.${TAB}'
+- scrollUntilVisible:
+    element:
+      id: 'events.row.${EVENT}'
+    direction: DOWN
+    timeout: 30000
+- extendedWaitUntil:
+    visible:
+      id: 'events.row.${EVENT}'
+      text: '.*${NAME}.*'
+    timeout: 15000
+- assertNotVisible:
+    text: '.*${DESC}.*'
+- takeScreenshot: list
+- tapOn:
+    id: 'events.row.${EVENT}'
+- scrollUntilVisible:
+    element:
+      id: 'events.page.cover'
+    direction: UP
+    timeout: 10000
+- extendedWaitUntil:
+    visible:
+      id: 'cover-default-${TYPE}'
+      childOf:
+        id: 'events.page.cover'
+    timeout: 15000
+- assertNotVisible:
+    text: '.*${DESC}.*'
+- takeScreenshot: page

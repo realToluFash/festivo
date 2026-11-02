@@ -1,0 +1,25 @@
+# sc-23777 regression on an iPhone: Settings > ${SECTION}; the swipe goes to the Settings list, as ‹ Settings does.
+appId: host.exp.Exponent
+---
+- runFlow: ../../return-home.yaml
+- tapOn:
+    id: 'frame.settings'
+- scrollUntilVisible:
+    element:
+      id: 'settings.${SECTION}'
+    timeout: 30000
+- tapOn:
+    id: 'settings.${SECTION}'
+- extendedWaitUntil:
+    visible:
+      id: 'frame.back'
+    timeout: 20000
+- takeScreenshot: ${SECTION}-before
+- runFlow: swipe.yaml
+- extendedWaitUntil:
+    visible:
+      id: 'settings.${SECTION}'
+    timeout: 10000
+- assertNotVisible:
+    id: 'home.openSettings'
+- takeScreenshot: ${SECTION}-after

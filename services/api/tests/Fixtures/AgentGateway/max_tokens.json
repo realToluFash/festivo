@@ -1,0 +1,115 @@
+{
+    "source": "documented",
+    "request": {
+        "max_tokens": 1024,
+        "messages": [
+            {
+                "content": "Write a detailed, ten-paragraph welcome letter for the guests of a garden party.",
+                "role": "user"
+            }
+        ],
+        "model": "claude-opus-5-5",
+        "output_config": {
+            "effort": "medium"
+        },
+        "system": [
+            {
+                "type": "text",
+                "text": "You are the assistant inside Soirely, an event management product. You are\ntalking to an organiser — somebody running a wedding, a conference, a funeral,\na birthday — about an event they are responsible for.\n\nAnswer the question that was asked. Be brief and concrete: an organiser is\nusually on a phone, mid-task, and wants the answer rather than the options.\n\nYou can see only what this conversation and the tools you have been given\ncontain. If answering needs something you have not been given, say what you\nneed instead of guessing. An invented guest count or table number is worse\nthan no answer, because it will be acted on.\n\nDo not offer to do things you have no tool for."
+            },
+            {
+                "type": "text",
+                "text": "## Today\n\nToday is Wednesday 21 October 2026 (UTC). Work out any relative date the organiser gives you, such as tomorrow or next Wednesday, from this date. If the exact day matters and their timezone would change the answer, ask.",
+                "cache_control": {
+                    "type": "ephemeral",
+                    "ttl": "5m"
+                }
+            },
+            {
+                "type": "text",
+                "text": "## Language\n\nAnswer in English (en), however the organiser writes to you. Keep names, venues and other proper nouns as they were given."
+            }
+        ],
+        "thinking": {
+            "type": "adaptive"
+        }
+    },
+    "worker": {
+        "output": {
+            "answer": {
+                "type": "text",
+                "text": "Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party."
+            }
+        },
+        "stopReason": "end_turn",
+        "usage": {
+            "inputTokens": 1690,
+            "outputTokens": 2400
+        }
+    },
+    "anthropic": {
+        "status": 200,
+        "body": {
+            "id": "msg_01SyntheticMaxTokens0000",
+            "type": "message",
+            "role": "assistant",
+            "model": "claude-opus-5-5",
+            "content": [
+                {
+                    "type": "thinking",
+                    "thinking": "",
+                    "signature": "EqQBCkYIBxgCKkBSyntheticSignature"
+                },
+                {
+                    "type": "text",
+                    "text": "Dear guests, welcome to our garden party. Dear guests, welcome"
+                }
+            ],
+            "stop_reason": "max_tokens",
+            "stop_sequence": null,
+            "usage": {
+                "input_tokens": 405,
+                "cache_creation_input_tokens": 0,
+                "cache_read_input_tokens": 0,
+                "cache_creation": {
+                    "ephemeral_5m_input_tokens": 0,
+                    "ephemeral_1h_input_tokens": 0
+                },
+                "output_tokens": 1024,
+                "service_tier": "standard"
+            }
+        }
+    },
+    "apiKey": null,
+    "gateway": {
+        "status": 200,
+        "headers": {
+            "x-soirely-usage": "estimated"
+        },
+        "body": {
+            "id": "msg_01Gateway0000000000001",
+            "type": "message",
+            "role": "assistant",
+            "model": "claude-opus-5-5",
+            "content": [
+                {
+                    "type": "text",
+                    "text": "Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, welcome to our garden party. Dear guests, "
+                }
+            ],
+            "stop_reason": "max_tokens",
+            "stop_sequence": null,
+            "usage": {
+                "input_tokens": 1690,
+                "output_tokens": 1024,
+                "cache_creation_input_tokens": 0,
+                "cache_read_input_tokens": 0,
+                "cache_creation": {
+                    "ephemeral_5m_input_tokens": 0,
+                    "ephemeral_1h_input_tokens": 0
+                },
+                "service_tier": "standard"
+            }
+        }
+    }
+}

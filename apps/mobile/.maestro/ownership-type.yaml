@@ -1,0 +1,22 @@
+# Types into one field of Ownership and leaving by its testID, replacing what it held. sc-12511.
+#
+#   node .qa/bin/qa-env.mjs maestro ownership-type --android ID=ownership.password TYPED=…
+appId: host.exp.Exponent
+---
+- tapOn:
+    id: ${ID}
+- eraseText: 120
+- inputText: ${TYPED}
+# On iOS Return, which sends nothing from this field and puts the keyboard away:
+# hideKeyboard fails on an iPhone (sc-19584). On Android Enter can type into the field
+# (sc-18648), so it hides the keyboard.
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - pressKey: Enter
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard

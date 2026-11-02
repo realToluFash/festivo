@@ -1,0 +1,64 @@
+# sc-21336: from Home, ${EVENT_ID}'s Edit details link; Cancel with nothing typed shows Home; again with ' Nope' typed, Leave without saving shows Home; no Saved anywhere.
+appId: host.exp.Exponent
+---
+- runFlow: ../return-home.yaml
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}/edit
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.name'
+    timeout: 30000
+- runFlow:
+    when:
+      visible:
+        id: 'frame.back'
+    commands:
+      - tapOn:
+          id: 'frame.back'
+- runFlow:
+    when:
+      visible:
+        id: 'eventForm.cancel'
+    commands:
+      - tapOn:
+          id: 'eventForm.cancel'
+- extendedWaitUntil:
+    visible:
+      id: 'home.openSettings'
+    timeout: 5000
+- assertNotVisible: '{{t:eventEdit.saved}}'
+- takeScreenshot: blank-home
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}/edit
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.name'
+    timeout: 30000
+- tapOn:
+    id: 'eventForm.name'
+- inputText: ' Nope'
+- hideKeyboard
+- runFlow:
+    when:
+      visible:
+        id: 'frame.back'
+    commands:
+      - tapOn:
+          id: 'frame.back'
+- runFlow:
+    when:
+      visible:
+        id: 'eventForm.cancel'
+    commands:
+      - tapOn:
+          id: 'eventForm.cancel'
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.leave.go'
+    timeout: 10000
+- tapOn:
+    id: 'eventForm.leave.go'
+- extendedWaitUntil:
+    visible:
+      id: 'home.openSettings'
+    timeout: 5000
+- assertNotVisible: '{{t:eventEdit.saved}}'
+- takeScreenshot: typed-home

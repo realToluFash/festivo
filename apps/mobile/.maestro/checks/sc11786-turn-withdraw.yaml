@@ -1,0 +1,38 @@
+# sc-11786: Withdraw your claim? opened in landscape beside the page of ${MEMBER}, then turned to portrait, then kept.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil:
+    visible:
+      id: 'ownerClaim.banner'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'members.row.${MEMBER}'
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: 'members.row.${MEMBER}'
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: ownerClaim.withdraw
+    direction: UP
+- tapOn:
+    id: ownerClaim.withdraw
+- extendedWaitUntil:
+    visible:
+      id: ownerClaim.withdrawConfirm
+    timeout: 5000
+- waitForAnimationToEnd
+- takeScreenshot: withdraw-before
+- setOrientation: PORTRAIT
+- waitForAnimationToEnd
+- assertVisible:
+    id: ownerClaim.withdrawConfirm
+- takeScreenshot: withdraw-after
+- tapOn:
+    id: ownerClaim.withdrawNo
+- waitForAnimationToEnd
+- takeScreenshot: withdraw-kept

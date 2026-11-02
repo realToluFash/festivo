@@ -1,0 +1,10 @@
+# On Cannot reach Soirely while signed out, picks LANGUAGE (its own name, such as Español) and
+# screenshots the words. sc-13256. Pass LANGUAGE and SHOT.
+appId: host.exp.Exponent
+---
+- tapOn: ${LANGUAGE}
+- extendedWaitUntil:
+    visible:
+      id: 'unreachable.retry'
+    timeout: 10000
+- takeScreenshot: ${SHOT}
