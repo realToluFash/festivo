@@ -552,7 +552,7 @@ describe('Settings > General, a request to get back in', () => {
 });
 
 describe('Settings > General, offline (sc-27088)', () => {
-  it('refuses a save pressed offline, keeps the typed name through the reload, and saves nothing on coming back', async () => {
+  it('refuses a save pressed offline, keeps the typed name through the fresh organisation Try again reads, and saves nothing on coming back', async () => {
     let reachable = true;
     const sent: string[] = [];
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
@@ -560,9 +560,14 @@ describe('Settings > General, offline (sc-27088)', () => {
       sent.push(line);
       if (!reachable) throw new TypeError('Failed to fetch');
 
-      return new Response(JSON.stringify(line === 'GET /api/orgs' ? { organisations: [] } : {}), {
-        status: 200,
-      });
+      return new Response(
+        JSON.stringify(
+          line === 'GET /api/orgs'
+            ? { organisations: [membership({ id: 'org_1', name: 'Ìrè Events' })] }
+            : {},
+        ),
+        { status: 200 },
+      );
     });
     settings();
     await waitFor(() => expect(sent).toContain('GET /api/orgs'));
@@ -587,11 +592,12 @@ describe('Settings > General, offline (sc-27088)', () => {
     ).toBe(false);
 
     reachable = true;
-    act(() => {
-      window.dispatchEvent(new Event('online'));
-    });
+    const rereadsBefore = sent.filter((line) => line === 'GET /api/orgs').length;
+    const band = document.querySelector('.offline-band') as HTMLElement;
+    fireEvent.click(within(band).getByRole('button', { name: 'Try again' }));
 
     await waitFor(() => expect(document.querySelector('.offline-band')).toBeNull());
+    expect(sent.filter((line) => line === 'GET /api/orgs').length).toBeGreaterThan(rereadsBefore);
     expect((screen.getByLabelText('Name') as HTMLInputElement).value).toBe('Ìrè Weddings');
     expect(sent.filter((line) => line === 'PATCH /api/orgs/org_1')).toHaveLength(1);
   });
