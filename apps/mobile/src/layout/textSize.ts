@@ -84,6 +84,28 @@ export function paddingToCentre(row: number, line: number): number {
   return Math.max(0, (row - line) / 2);
 }
 
+export const BAND_MARK = 18;
+const BAND_PILL_EDGE = 1;
+
+/** Where the offline band's Try again goes: beside while its widest word fits whole in the room Try again leaves, otherwise under, where a pill wider than the band's inner width takes that width and wraps. */
+export function bandPlace({
+  widestWord,
+  tryAgain,
+  band,
+  sidePadding,
+}: {
+  widestWord: number;
+  tryAgain: number;
+  band: number;
+  sidePadding: number;
+}): { beside: boolean; pillWraps: boolean } {
+  const inner = band - sidePadding * 2;
+  const pill = tryAgain + (tokens.spaceXl + BAND_PILL_EDGE) * 2;
+  const room = inner - BAND_MARK - tokens.spaceMd - tokens.spaceXl - pill;
+
+  return { beside: widestWord <= room, pillWraps: pill > inner };
+}
+
 /** The height of two upcoming rows, held while loading, failed or Finished so the panels below do not move; worked from the lines the rows are set in, not measured on one screen. */
 export function rowsFloor(fontScale: number, pixelRatio: number | null): number {
   const line = (height: number) => drawnLine(height, fontScale, pixelRatio);

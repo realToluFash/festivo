@@ -18,6 +18,36 @@ interface WordsLook {
   style?: StyleProp<TextStyle> | undefined;
 }
 
+/** Each of these words drawn hidden and unbounded, to know how wide it is before anything that shows it is laid out. */
+export function MeasuredWords({
+  words,
+  onWidth,
+  ...look
+}: Pick<TextProps, 'size' | 'weight' | 'style' | 'maxFontSizeMultiplier'> & {
+  words: readonly string[];
+  onWidth: (word: string, width: number) => void;
+}) {
+  return (
+    <View
+      style={styles.measure}
+      pointerEvents="none"
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+    >
+      {[...new Set(words)].map((word) => (
+        <Text
+          key={word}
+          {...look}
+          onLayout={(event) => onWidth(word, event.nativeEvent.layout.width)}
+          accessible={false}
+        >
+          {word}
+        </Text>
+      ))}
+    </View>
+  );
+}
+
 /** One size for several texts, from their words measured hidden at `start`, never below `size` (sc-13496). */
 export function useWholeWords(
   size: number,
@@ -54,29 +84,16 @@ export function useWholeWords(
   }
 
   const measure = (
-    <View
-      style={styles.measure}
-      pointerEvents="none"
-      accessibilityElementsHidden
-      importantForAccessibility="no-hide-descendants"
-    >
-      {[...new Set([...words, ...texts])].map((word) => (
-        <Text
-          key={word}
-          size={size}
-          weight={look.weight ?? 'regular'}
-          style={look.style ?? null}
-          maxFontSizeMultiplier={start / size}
-          onLayout={(event) => {
-            const { width } = event.nativeEvent.layout;
-            setMeasured((current) => ({ ...current, [`${start}|${word}`]: width }));
-          }}
-          accessible={false}
-        >
-          {word}
-        </Text>
-      ))}
-    </View>
+    <MeasuredWords
+      words={[...words, ...texts]}
+      size={size}
+      weight={look.weight ?? 'regular'}
+      style={look.style ?? null}
+      maxFontSizeMultiplier={start / size}
+      onWidth={(word, width) => {
+        setMeasured((current) => ({ ...current, [`${start}|${word}`]: width }));
+      }}
+    />
   );
 
   return {
