@@ -67,6 +67,15 @@ export function NewEventScreen() {
 
 /** An event's page > Edit details, `App event form` state Edit details (sc-3595), with its band and Refreshing… (sc-27086). */
 export function EditEventScreen({ eventId, at }: { eventId: string; at: EditAt | undefined }) {
+  const { organisation } = useSignedIn();
+
+  if (organisation != null && !roleHolds(organisation, 'events.manage'))
+    return <Redirect href={eventHref(eventId)} />;
+
+  return <EditEventLoad key={`${organisation?.id ?? ''}:${eventId}`} eventId={eventId} at={at} />;
+}
+
+function EditEventLoad({ eventId, at }: { eventId: string; at: EditAt | undefined }) {
   const { t } = useTranslation();
   const { kind } = useLayout();
   const { organisation } = useSignedIn();
@@ -110,8 +119,6 @@ export function EditEventScreen({ eventId, at }: { eventId: string; at: EditAt |
       live = false;
     };
   }, [eventId, organisationId, manages, attempt, refresh, watch]);
-
-  if (organisation != null && !manages) return <Redirect href={eventHref(eventId)} />;
 
   return (
     <FormFrame
