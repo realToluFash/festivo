@@ -1,5 +1,5 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { EVENT_TYPES, connection, forgetEventsTab, serverClock } from '@soirely/domain';
 
@@ -7,6 +7,7 @@ import { api } from '../../../api.ts';
 import { __setSessionState, type Session, switchOrganisation } from '../../../session.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
 import { WIDE_WIDTH } from '../../../phoneWidth.ts';
+import { SKELETON_AFTER_MS } from '../../../shownAfter.ts';
 import { breaksAnywhere } from '../../../test-wrapping.ts';
 import { routes } from '../../index.tsx';
 
@@ -2067,6 +2068,10 @@ describe("Editing an event's details (sc-3587)", () => {
   });
 
   it('announces Saved when the person moved focus while the event reloaded', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['setTimeout', 'clearTimeout'] });
+    onTestFinished(() => {
+      vi.useRealTimers();
+    });
     signedIn();
     let release = () => {};
     const reloaded = new Promise<void>((resolve) => {
@@ -2083,6 +2088,12 @@ describe("Editing an event's details (sc-3587)", () => {
 
     fireEvent.change(screen.getByLabelText('Event name'), { target: { value: 'Adé at 40' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    await waitFor(() => {
+      const patched = sent.findIndex(({ line }) => line.startsWith('PATCH'));
+      expect(patched).toBeGreaterThan(-1);
+      expect(sent.slice(patched + 1).map(({ line }) => line)).toContain('GET /api/events/ev_1');
+    });
+    await act(() => vi.advanceTimersByTimeAsync(SKELETON_AFTER_MS));
     await screen.findByText('Loading the event…');
     const [nav] = screen.getAllByRole('link', { name: 'Events' });
     act(() => nav!.focus());
