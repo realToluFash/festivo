@@ -37,6 +37,7 @@ import { type WaitingInvitations, useWaitingInvitations } from '../invitations.t
 import { type DomainOffer, useDomainOffer } from '../joinOffers.ts';
 import { DESTINATION_HREF, type Destination, destinations } from '../kit/appNav.ts';
 import { backRowHiding } from '../kit/backRow.ts';
+import { phonePillAlone } from '../kit/frameBand.ts';
 import { EDGE_SWIPE_WIDTH, headerDrawsBack, stackSwipes } from '../kit/systemBack.ts';
 import { leaveThen } from '../leaveHeld.ts';
 import { backLabelSize, frameTitleSize, railWidth } from '../layout/textSize.ts';
@@ -353,7 +354,6 @@ export function AppFrame({
       <View style={styles.column}>
         <FrameHeader
           kind={kind}
-          current={current}
           entries={entries}
           inEvent={inEvent != null}
           title={title}
@@ -366,6 +366,7 @@ export function AppFrame({
           waiting={count}
           onSwitch={switchFromPill}
           pill={pill}
+          pillAlone={phonePillAlone(current === 'home', primary != null, standIn != null)}
           primary={standIn == null ? primary : undefined}
           underTitle={standIn == null ? underTitle : undefined}
           besideTitle={standIn == null ? besideTitle : undefined}
@@ -459,7 +460,6 @@ export function AppFrame({
 
 function FrameHeader({
   kind,
-  current,
   entries,
   inEvent,
   title,
@@ -472,13 +472,15 @@ function FrameHeader({
   waiting,
   onSwitch,
   pill,
+  pillAlone,
   primary,
   underTitle,
   besideTitle,
   besideBack,
 }: {
   kind: LayoutKind;
-  current: Destination;
+  /** On a phone, the pill on a row of its own (`phonePillAlone`). */
+  pillAlone: boolean;
   primary: HeaderPrimaryProps | undefined;
   underTitle: ReactNode;
   besideTitle: ReactNode;
@@ -579,7 +581,7 @@ function FrameHeader({
 
   return (
     <View style={[styles.header, styles.phoneHeader, top]}>
-      {current === 'home' && organisation != null && primary == null && (
+      {pillAlone && organisation != null && (
         <OrgPill organisation={organisation} waiting={waiting} onSwitch={onSwitch} ref={pill} />
       )}
       {primary != null && (

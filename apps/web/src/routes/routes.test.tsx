@@ -387,6 +387,76 @@ describe('the application tree', () => {
     expect(stacked).toMatch(/grid-template-rows: auto auto 1fr;/u);
   });
 
+  describe("the band's crumb (sc-26270)", () => {
+    beforeEach(() => {
+      vi.spyOn(globalThis, 'fetch').mockReturnValue(new Promise(() => {}));
+    });
+
+    function crumb(): string | null | undefined {
+      return document.querySelector('.shell-crumb')?.textContent;
+    }
+
+    it('names the organisation and the page', () => {
+      at('/app/events');
+
+      expect(crumb()).toBe('Okonkwo Events / Events');
+    });
+
+    it('holds only the organisation while the overdue screen stands in', () => {
+      const overdue = {
+        ...MEMBERSHIP,
+        twoFactorDue: {
+          at: '2020-01-01T00:00:00+00:00',
+          written: 'Wednesday, Jan 1 at 00:00 UTC',
+          overdue: true,
+        },
+      };
+      __setSessionState({
+        status: 'signedIn',
+        session: { ...ADA, organisation: overdue, organisations: [overdue] },
+      });
+
+      at('/app/events');
+
+      expect(crumb()).toBe('Okonkwo Events');
+    });
+
+    it('holds only the organisation while a paused one stands in', () => {
+      const { id, name, countryCode, currency, timezone, contactAddress, locale } = membership({
+        id: 'org_3',
+        name: 'Lagos Weddings',
+      });
+      __setSessionState({
+        status: 'signedIn',
+        session: {
+          ...ADA,
+          organisation: null,
+          pausedIn: {
+            id,
+            name,
+            countryCode,
+            currency,
+            timezone,
+            contactAddress,
+            locale,
+            suspension: {
+              reason: 'address_gone',
+              domain: 'lagosweddings.ng',
+              since: { at: '2026-10-16T08:40:00+00:00', written: 'Friday, Oct 16 at 09:40 WAT' },
+              removesAt: null,
+              onlyOwner: false,
+            },
+            ownerClaim: null,
+          },
+        },
+      });
+
+      at('/app/events');
+
+      expect(crumb()).toBe('Lagos Weddings');
+    });
+  });
+
   describe("at a phone's width, the menu (sc-13413)", () => {
     beforeEach(() => {
       vi.spyOn(globalThis, 'fetch').mockReturnValue(new Promise(() => {}));
