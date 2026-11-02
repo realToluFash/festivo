@@ -43,6 +43,9 @@ export interface Screen {
   pressAnswered: () => void;
 }
 
+/** The watches started on each connection, so one screen's load answering does not reload another screen on the same page (sc-27096). */
+const watching = new WeakMap<Connection, Set<{ asking(): boolean }>>();
+
 export function createOfflineWatch({
   connection,
   now = () => new Date(),
@@ -59,6 +62,8 @@ export function createOfflineWatch({
   let stopped = false;
   const outLoads = new Set<{ lost: boolean }>();
   const listeners = new Set<() => void>();
+  const asking = () => [...outLoads].some((load) => !load.lost);
+  const self = { asking };
 
   const set = (change: Partial<OfflineState>) => {
     state = { ...state, ...change };
@@ -141,7 +146,12 @@ export function createOfflineWatch({
     },
     start() {
       stopped = false;
+      const others = watching.get(connection) ?? new Set();
+      watching.set(connection, others.add(self));
       const stop = connection.subscribe((change) => {
+        if (change === 'answered' && !asking() && [...others].some((other) => other.asking())) {
+          return;
+        }
         if (change !== 'lost') {
           askAgain();
           return;
@@ -153,6 +163,7 @@ export function createOfflineWatch({
 
       return () => {
         stop();
+        others.delete(self);
         stopped = true;
         if (askLater != null) clearTimeout(askLater);
         askLater = null;
