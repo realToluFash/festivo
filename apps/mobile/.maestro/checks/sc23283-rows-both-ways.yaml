@@ -1,0 +1,24 @@
+# sc-23283: a row's buttons at rest on the tablet, turned to LANDSCAPE_LEFT and to PORTRAIT, with ${ROW}'s address beside or over them.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/account
+- extendedWaitUntil:
+    visible:
+      id: 'nameCard.change'
+    timeout: 30000
+- setOrientation: LANDSCAPE_LEFT
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: 'contacts.${ROW}.remove'
+    direction: DOWN
+    timeout: 10000
+- takeScreenshot: rows-landscape-left
+- setOrientation: PORTRAIT
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: 'contacts.${ROW}.remove'
+    direction: DOWN
+    timeout: 10000
+- takeScreenshot: rows-portrait

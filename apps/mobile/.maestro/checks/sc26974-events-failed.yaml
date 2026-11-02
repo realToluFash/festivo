@@ -1,0 +1,13 @@
+# sc-26974: Events that cannot load at all, with its Try again, in the batch's language.
+appId: host.exp.Exponent
+---
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'events.retry'
+    timeout: 60000
+- takeScreenshot: failed

@@ -1,0 +1,17 @@
+# sc-16709: ${EV_EARLY}, a multi-day event ended after its start: Finished line, and All dates with its end at the moment it ended, both Passed.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV_EARLY}
+- scrollUntilVisible:
+    element:
+      id: 'timeline.finished'
+    direction: DOWN
+    timeout: 30000
+- takeScreenshot: ended-early-coming-up
+- tapOn:
+    id: 'timeline.allDates'
+- extendedWaitUntil:
+    visible:
+      id: 'timeline.row'
+    timeout: 15000
+- takeScreenshot: ended-early-all-dates

@@ -1,0 +1,10 @@
+{
+    "signInRules.rule.inactivity": "Toute personne qui n’a pas utilisé Soirely depuis {days, plural, one {{days, number, ::group-auto} jour} other {{days, number, ::group-auto} jours}} devra se reconnecter.",
+    "joinRequest.waiting.body": "{count, plural, one {{count, number, ::group-auto} personne attend une réponse à sa demande pour rejoindre {organisation} :} many {{count, number, ::group-auto} de personnes attendent une réponse à leur demande pour rejoindre {organisation} :} other {{count, number, ::group-auto} personnes attendent une réponse à leur demande pour rejoindre {organisation} :}}",
+    "time.dateAt": "{date} {hour, plural, other {à {time}}} {zone}",
+    "verification.expiry": "Il est valable {minutes, number, ::group-auto} minutes, et une seule fois.",
+    "verification.text": "Votre code Soirely est {code}. Il est valable {minutes, number, ::group-auto} minutes.",
+    "recovery.link.expiry": "Il fonctionne pendant {minutes, number, ::group-auto} minutes, et une seule fois.",
+    "password.code.expiry": "Il est valable {minutes, number, ::group-auto} minutes.",
+    "twoFactorRecovery.code.expiry": "Il est valable {minutes, number, ::group-auto} minutes."
+}

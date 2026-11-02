@@ -1,0 +1,113 @@
+# sc-23172 on an iPad, upright: the Settings list is its own screen; each section opens in its place with one back to the list.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- runFlow: ../open-settings.yaml
+- waitForAnimationToEnd
+- takeScreenshot: up-list
+- scrollUntilVisible:
+    element:
+      id: 'settings.account'
+    direction: DOWN
+- tapOn:
+    id: 'settings.account'
+- waitForAnimationToEnd
+- takeScreenshot: up-account
+- assertNotVisible:
+    id: 'settings.signOut'
+- tapOn:
+    id: 'frame.back'
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'settings.account'
+- scrollUntilVisible:
+    element:
+      id: 'settings.security'
+    direction: DOWN
+- tapOn:
+    id: 'settings.security'
+- waitForAnimationToEnd
+- takeScreenshot: up-security
+- assertNotVisible:
+    id: 'settings.signOut'
+- tapOn:
+    id: 'frame.back'
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'settings.security'
+- scrollUntilVisible:
+    element:
+      id: 'settings.notifications'
+    direction: DOWN
+- tapOn:
+    id: 'settings.notifications'
+- waitForAnimationToEnd
+- takeScreenshot: up-notifications
+- assertNotVisible:
+    id: 'settings.signOut'
+- tapOn:
+    id: 'frame.back'
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'settings.notifications'
+- scrollUntilVisible:
+    element:
+      id: 'settings.organisation'
+    direction: DOWN
+- tapOn:
+    id: 'settings.organisation'
+- waitForAnimationToEnd
+- takeScreenshot: up-organisation
+- assertNotVisible:
+    id: 'settings.signOut'
+- tapOn:
+    id: 'frame.back'
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'settings.organisation'
+- scrollUntilVisible:
+    element:
+      id: 'settings.members'
+    direction: DOWN
+- tapOn:
+    id: 'settings.members'
+- waitForAnimationToEnd
+- takeScreenshot: up-members
+- assertNotVisible:
+    id: 'settings.signOut'
+- tapOn:
+    id: 'frame.back'
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'settings.members'
+- scrollUntilVisible:
+    element:
+      id: 'settings.roles'
+    direction: DOWN
+- tapOn:
+    id: 'settings.roles'
+- waitForAnimationToEnd
+- takeScreenshot: up-roles
+- assertNotVisible:
+    id: 'settings.signOut'
+- tapOn:
+    id: 'frame.back'
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'settings.roles'
+- scrollUntilVisible:
+    element:
+      id: 'settings.signInRules'
+    direction: DOWN
+- tapOn:
+    id: 'settings.signInRules'
+- waitForAnimationToEnd
+- takeScreenshot: up-signInRules
+- assertNotVisible:
+    id: 'settings.signOut'
+- tapOn:
+    id: 'frame.back'
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'settings.signInRules'
+- takeScreenshot: up-list-after
