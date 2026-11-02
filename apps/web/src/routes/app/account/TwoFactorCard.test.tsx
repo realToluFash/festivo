@@ -437,6 +437,22 @@ describe('closing a step on Two-factor authentication', () => {
     expect(screen.queryByRole('alert')).toBeNull();
   });
 
+  it('puts Try again under the notice’s words, outside what focus reads', async () => {
+    answering({
+      'GET /api/auth/two-factor': () => {
+        throw new TypeError('Failed to fetch');
+      },
+    });
+    card();
+
+    await screen.findByRole('alert', undefined, UNDER_LOAD);
+    const words = screen.getByText('Two-factor did not load').parentElement;
+    const retry = screen.getByRole('button', { name: 'Try again' });
+
+    expect(words?.nextElementSibling).toBe(retry);
+    expect(retry.parentElement?.className).toBe('notice-body');
+  });
+
   it('takes Try again to the notice when it fails again, and to the heading once it loads', async () => {
     let reachable = false;
     answering({

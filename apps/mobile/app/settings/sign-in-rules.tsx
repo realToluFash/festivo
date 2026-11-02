@@ -6,13 +6,16 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '../../src/api.ts';
 import { AnswerHeading } from '../../src/components/AnswerHeading.tsx';
-import { AppFrame } from '../../src/components/AppFrame.tsx';
+import { AppFrame, besideRow } from '../../src/components/AppFrame.tsx';
+import { Refreshing } from '../../src/components/Refreshing.tsx';
 import { bodyEdges } from '../../src/components/bodyEdges.ts';
 import { SecondaryButton } from '../../src/components/Buttons.tsx';
 import { Notice } from '../../src/components/Notice.tsx';
 import { Screen } from '../../src/components/Screen.tsx';
 import { SettingsSplit, useBackToSettings } from '../../src/components/SettingsList.tsx';
-import { Text } from '../../src/components/Text.tsx';
+import { Text, type TextHandle } from '../../src/components/Text.tsx';
+import { moveScreenReaderFocus } from '../../src/components/screenReaderFocus.ts';
+import { useOffline } from '../../src/offline.ts';
 import { cardFrame } from '../../src/components/cardFrame.ts';
 import { dateLocale, useShownLanguage } from '../../src/i18n/index.ts';
 import { limitFromElsewhere, ruleValue } from '../../src/kit/signInRules.ts';
@@ -42,6 +45,13 @@ export default function SignInRules() {
   const language = useShownLanguage();
   const loadedFor = useRef<string | null>(null);
   const retried = useRef(false);
+  const heading = useRef<TextHandle>(null);
+  const [refresh, setRefresh] = useState(0);
+  const { watch, stale, refreshing } = useOffline({
+    loaded: load.kind === 'loaded',
+    reload: () => setRefresh((n) => n + 1),
+    focusTitle: () => moveScreenReaderFocus(heading.current),
+  });
 
   useEffect(() => {
     if (organisationId == null) return;
@@ -50,7 +60,7 @@ export default function SignInRules() {
     const tapped = retried.current;
     retried.current = false;
 
-    api.signInRules(organisationId).then(
+    watch(api.signInRules(organisationId)).then(
       (page) => {
         if (!live) return;
         loadedFor.current = organisationId;
@@ -66,7 +76,7 @@ export default function SignInRules() {
     return () => {
       live = false;
     };
-  }, [organisationId, attempt, language]);
+  }, [organisationId, attempt, refresh, language, watch]);
 
   useEffect(() => {
     if (organisation != null) markRulesSeen(organisation);
@@ -80,24 +90,35 @@ export default function SignInRules() {
     load.kind === 'loaded' && organisationId != null
       ? limitFromElsewhere(load.page.inactivityLimit, organisationId)
       : null;
+  const refreshingWords = refreshing ? <Refreshing testID="signInRules.refreshing" /> : null;
 
   return (
     <AppFrame
       current="settings"
+      offline={stale}
+      besideTitle={alone ? refreshingWords : undefined}
       title={alone ? t('settings.signInRules') : t('settings.title')}
       back={alone ? backToSettings(t('settings.title')) : undefined}
     >
       <SettingsSplit open="signInRules">
         <Screen edges={bodyEdges(kind)} contentStyle={CONTENT[kind]}>
-          <AnswerHeading
-            size={
-              kind === 'tabletLandscape' ? tokens.typeTitlePage.size : tokens.typeTitlePhone.size
-            }
-            weight="bold"
-            answer={load.kind === 'loaded' && load.tapped ? load : undefined}
-          >
-            {title}
-          </AnswerHeading>
+          <View style={besideRow.row}>
+            <View style={styles.shrink}>
+              <AnswerHeading
+                ref={heading}
+                size={
+                  kind === 'tabletLandscape'
+                    ? tokens.typeTitlePage.size
+                    : tokens.typeTitlePhone.size
+                }
+                weight="bold"
+                answer={load.kind === 'loaded' && load.tapped ? load : undefined}
+              >
+                {title}
+              </AnswerHeading>
+            </View>
+            {!alone && refreshingWords}
+          </View>
           <Text size={tokens.typeBodyPhone.size} style={styles.intro}>
             {t('signInRules.readIntro')}
           </Text>
@@ -240,6 +261,7 @@ function Rule({ label, value }: { label: string; value: string }) {
 }
 
 const styles = StyleSheet.create({
+  shrink: { flexShrink: 1, minWidth: 0 },
   phone: {
     gap: tokens.spaceLg,
     paddingTop: tokens.spaceXl,

@@ -6,7 +6,7 @@ import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../src/api.ts';
-import { AppFrame } from '../../src/components/AppFrame.tsx';
+import { AppFrame, besideRow } from '../../src/components/AppFrame.tsx';
 import { ComeForward, FocusWhenBehind } from '../../src/components/comeForward.ts';
 import { SecondaryButton } from '../../src/components/Buttons.tsx';
 import {
@@ -25,6 +25,7 @@ import { moveScreenReaderFocus } from '../../src/components/screenReaderFocus.ts
 import { type StepClosed, stepClosed, useFocusOnAnswer } from '../../src/components/Screen.tsx';
 import { SettingsSplit, useBackToSettings } from '../../src/components/SettingsList.tsx';
 import { SheetsAtRoot } from '../../src/components/Sheet.tsx';
+import { Refreshing } from '../../src/components/Refreshing.tsx';
 import { type TextHandle, Text } from '../../src/components/Text.tsx';
 import { useShownLanguage } from '../../src/i18n/index.ts';
 import { useOffline } from '../../src/offline.ts';
@@ -91,7 +92,7 @@ export default function MembersScreen() {
   );
   const language = useShownLanguage();
   const [refresh, setRefresh] = useState(0);
-  const { watch, stale } = useOffline({
+  const { watch, stale, refreshing } = useOffline({
     loaded: load.kind === 'loaded',
     reload: () => setRefresh((n) => n + 1),
     focusTitle: () => moveScreenReaderFocus(membersTitle.current),
@@ -161,17 +162,23 @@ export default function MembersScreen() {
         })
       : (organisation?.name ?? '');
 
+  const refreshingWords = refreshing ? <Refreshing testID="members.refreshing" /> : null;
   const heading = (
     <View style={styles.heading}>
       {!alone && (
-        <Text
-          ref={membersTitle}
-          size={tokens.typeTitlePhone.size}
-          weight="bold"
-          accessibilityRole="header"
-        >
-          {t('membersScreen.title')}
-        </Text>
+        <View style={besideRow.row}>
+          <View style={styles.shrink}>
+            <Text
+              ref={membersTitle}
+              size={tokens.typeTitlePhone.size}
+              weight="bold"
+              accessibilityRole="header"
+            >
+              {t('membersScreen.title')}
+            </Text>
+          </View>
+          {refreshingWords}
+        </View>
       )}
       <Text size={tokens.typeBody.size} muted>
         {subtitle}
@@ -258,6 +265,7 @@ export default function MembersScreen() {
     <AppFrame
       current="settings"
       offline={stale}
+      besideTitle={alone ? refreshingWords : undefined}
       title={
         phone
           ? (inFront?.user.name ?? t('membersScreen.title'))
@@ -312,6 +320,7 @@ export default function MembersScreen() {
 const styles = StyleSheet.create({
   stack: { gap: tokens.spaceMd },
   heading: { gap: tokens.spaceXxs },
+  shrink: { flexShrink: 1, minWidth: 0 },
   phone: {
     gap: tokens.spaceLg,
     paddingTop: tokens.spaceXl,

@@ -1,3 +1,5 @@
+import { zoneCity } from './regions.ts';
+
 export interface ZoneRow {
   id: string;
   /** In the reader's language, from CLDR (sc-986); `ianaCity` is IANA's own spelling, which search also finds. */
@@ -9,6 +11,27 @@ export interface ZoneRow {
   formerName?: string | null;
   country: string;
   offset: string;
+}
+
+/** The account's zone as its card shows it: waiting while the list that names it is on its way (sc-27219). */
+export type ZoneValue =
+  { kind: 'unset' } | { kind: 'waiting' } | { kind: 'shown'; name: string; id: string | null };
+
+/** With no row for the zone once the list has come or failed, IANA's city stands in, and an id that is only a city shows once. */
+export function zoneValue(timezone: string | null, zones: readonly ZoneRow[] | null): ZoneValue {
+  if (timezone == null) return { kind: 'unset' };
+
+  const row = zones?.find((zone) => zone.id === timezone);
+  if (row != null) return { kind: 'shown', name: zoneLabel(row), id: shownId(timezone) };
+  if (zones == null) return { kind: 'waiting' };
+
+  const city = zoneCity(timezone);
+
+  return { kind: 'shown', name: city, id: city === timezone ? null : shownId(timezone) };
+}
+
+function shownId(timezone: string): string {
+  return timezone.replace(/_/g, ' ');
 }
 
 /** "Lagos (UTC+01:00)", as Settings > Account labels every zone (sc-868). */

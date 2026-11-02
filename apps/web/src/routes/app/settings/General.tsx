@@ -12,7 +12,7 @@ import {
   roleName,
   timezoneLabel,
 } from '@soirely/domain';
-import { type FormEvent, useMemo, useState } from 'react';
+import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { type TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
@@ -26,6 +26,8 @@ import { RequestLinkCard } from './RequestLinkCard.tsx';
 import { SettingsSections } from '../../../components/SettingsSections.tsx';
 import { currentLocale } from '../../../i18n/index.ts';
 import { focusWhereSent, offField } from '../../../offField.ts';
+import { useOffline } from '../../../offline.ts';
+import { Refreshing } from '../../../components/OfflineBand.tsx';
 import { can, replaceOrganisation, useSession } from '../../../session.ts';
 import { useStepFocus } from '../../../stepFocus.ts';
 import { currencyChoices, timeZoneChoices } from '../../../zoneAndCurrencyChoices.ts';
@@ -47,6 +49,30 @@ export function General() {
   const organisation = session.organisation;
   const [refusedIn, setRefusedIn] = useState<{ id: string; refusal: Refusal } | null>(null);
   const [refusal, arriveAtRefusal] = useStepFocus<HTMLDivElement>();
+  const title = useRef<HTMLHeadingElement>(null);
+  const organisationId = organisation?.id;
+  const [loadedFor, setLoadedFor] = useState<string | null>(null);
+  const [refresh, setRefresh] = useState(0);
+  const { watch, refreshing } = useOffline({
+    loaded: loadedFor != null && loadedFor === organisationId,
+    reload: () => setRefresh((n) => n + 1),
+    title,
+  });
+
+  // The page draws the session's organisation; this read is what the offline band dates.
+  useEffect(() => {
+    if (organisationId == null) return;
+    let current = true;
+
+    rereadOrganisation(organisationId, watch).then(
+      () => current && setLoadedFor(organisationId),
+      () => {},
+    );
+
+    return () => {
+      current = false;
+    };
+  }, [organisationId, refresh, watch]);
 
   if (organisation == null) return null;
 
@@ -55,8 +81,11 @@ export function General() {
   return (
     <div className="settings settings-wide settings-general">
       <SettingsSections />
+      {refreshing && <Refreshing />}
       <div className="settings-heading">
-        <h1>{t('orgGeneral.title')}</h1>
+        <h1 ref={title} tabIndex={-1}>
+          {t('orgGeneral.title')}
+        </h1>
         <p className="settings-organisation">{organisation.name}</p>
         <p>{t('orgGeneral.intro')}</p>
       </div>
@@ -168,7 +197,7 @@ function Editable({
 
       if (byRule || (error instanceof ApiError && error.is('permission_required'))) {
         onRefused(byRule ? 'refusedByRule' : 'refused');
-        void rereadOrganisation(organisation.id);
+        void rereadOrganisation(organisation.id).catch(() => {});
         return;
       }
 
@@ -373,14 +402,13 @@ function languageNameInSentence(t: TFunction, code: string): string {
   return t(`languageNamesInSentence.${code}`, { defaultValue: code });
 }
 
-/** The role may have changed under the page; the session catches up so every other screen does too. */
-async function rereadOrganisation(id: string): Promise<void> {
-  try {
-    const fresh = (await api.organisations()).find((membership) => membership.id === id);
-    if (fresh != null) replaceOrganisation(fresh);
-  } catch {
-    // The refusal is already on screen; a failed reread leaves the rest of the page as it was.
-  }
+/** The page's load, and the reread after a refusal: the session catches up so every other screen does too. */
+async function rereadOrganisation(
+  id: string,
+  watch: <T>(load: Promise<T>) => Promise<T> = (load) => load,
+): Promise<void> {
+  const fresh = (await watch(api.organisations())).find((membership) => membership.id === id);
+  if (fresh != null) replaceOrganisation(fresh);
 }
 
 function DefaultsNote() {

@@ -1,6 +1,6 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { RouterProvider, createMemoryRouter } from 'react-router';
+import { Outlet, RouterProvider, createMemoryRouter } from 'react-router';
 
 import { MuteSwitch } from './MuteSwitch.tsx';
 import { cssRule } from '../test-styles.ts';
@@ -30,7 +30,7 @@ function item(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function answering(answers: Record<string, () => Response>) {
+function answering(answers: Record<string, () => Response | Promise<Response>>) {
   const sent: string[] = [];
 
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
@@ -297,7 +297,7 @@ describe('the bell (sc-3980)', () => {
     expect(mute.disabled).toBe(true);
     expect(screen.queryByText('Not saved. Try again.')).toBeNull();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Try again' }));
 
     await waitFor(() => expect(mute.checked).toBe(true));
     expect(mute.disabled).toBe(false);
@@ -488,5 +488,225 @@ describe('the heading at 320px (sc-21358)', () => {
     expect(cssRule('.notifications-header')).toMatch(/flex-wrap: wrap;/u);
     expect(cssRule('.notifications-header h2')).toMatch(/flex: none;/u);
     expect(cssRule('.notifications-header .link-button')).toMatch(/text-align: start;/u);
+  });
+});
+
+describe('offline (sc-27096)', () => {
+  function reachableFeed(answers: Record<string, () => Response> = {}) {
+    const net = { reachable: true, silent: false };
+    const guarded = Object.fromEntries(
+      Object.entries({
+        'GET /api/notifications': () => json({ items: [item()], unreadCount: 1, next: null }),
+        ...answers,
+      }).map(([line, answer]) => [
+        line,
+        () => {
+          if (net.silent) return new Promise<Response>(() => {});
+          if (!net.reachable) throw new TypeError('Failed to fetch');
+          return answer();
+        },
+      ]),
+    );
+    const sent = answering(guarded);
+
+    return { net, sent };
+  }
+
+  function goOffline(net: { reachable: boolean }): void {
+    net.reachable = false;
+    act(() => {
+      window.dispatchEvent(new Event('offline'));
+    });
+  }
+
+  const band = () => document.querySelector('.notifications-band');
+
+  it('shows its own band under the header, keeps the feed, and Try again reloads only the feed with what arrived meanwhile', async () => {
+    let unseen = false;
+    const { net, sent } = reachableFeed({
+      'GET /api/notifications': () =>
+        unseen
+          ? json({
+              items: [
+                item({ id: 'n2', title: 'Kemi replied', eventId: null, eventName: null }),
+                item(),
+              ],
+              unreadCount: 2,
+              next: null,
+            })
+          : json({ items: [item()], unreadCount: 1, next: null }),
+    });
+    bell();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Notifications, 1 unread' }));
+    await screen.findByText('Ada Obi changed the event');
+    goOffline(net);
+
+    expect(band()?.textContent).toMatch(/^Offline · as of /);
+    expect(band()?.previousElementSibling?.classList.contains('notifications-header')).toBe(true);
+    expect(screen.getByText('Ada Obi changed the event')).toBeTruthy();
+
+    net.reachable = true;
+    unseen = true;
+    sent.length = 0;
+    fireEvent.click(within(band() as HTMLElement).getByRole('button', { name: 'Try again' }));
+
+    await waitFor(() => expect(band()).toBeNull());
+    expect(sent).toEqual(['GET /api/notifications']);
+    const rows = screen.getAllByRole('button', {
+      name: /^(Kemi replied|Ada Obi changed the event)/,
+    });
+    expect(rows[0]?.textContent).toMatch(/^Kemi replied.*Unread/);
+    expect(rows[0]?.classList.contains('unread')).toBe(true);
+    expect(screen.getByRole('button', { name: 'Notifications, 2 unread' })).toBeTruthy();
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Notifications' })),
+    );
+  });
+
+  it('opened again while offline shows the band and the same feed, and sends nothing', async () => {
+    const { net, sent } = reachableFeed();
+    bell();
+
+    const opener = await screen.findByRole('button', { name: 'Notifications, 1 unread' });
+    fireEvent.click(opener);
+    await screen.findByText('Ada Obi changed the event');
+    goOffline(net);
+    fireEvent.click(opener);
+    sent.length = 0;
+    fireEvent.click(opener);
+
+    expect(band()?.classList.contains('still')).toBe(true);
+    expect(screen.getByText('Ada Obi changed the event')).toBeTruthy();
+    expect(sent).toEqual([]);
+  });
+
+  it('keeps the feed when Try again cannot reach Soirely, and announces the band again', async () => {
+    const { net } = reachableFeed();
+    bell();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Notifications, 1 unread' }));
+    await screen.findByText('Ada Obi changed the event');
+    goOffline(net);
+    const said = band()?.querySelector('[aria-live]') as HTMLElement;
+    await waitFor(() => expect(said.textContent).toMatch(/^Offline · as of /));
+    const heard: string[] = [];
+    const listening = new MutationObserver(() => heard.push(said.textContent ?? ''));
+    listening.observe(said, { childList: true, characterData: true, subtree: true });
+    fireEvent.click(within(band() as HTMLElement).getByRole('button', { name: 'Try again' }));
+
+    await waitFor(() => expect(heard.at(-1)).toMatch(/^Offline · as of /));
+    listening.disconnect();
+    expect(heard.slice(0, -1)).toContain('');
+    expect(screen.getByText('Ada Obi changed the event')).toBeTruthy();
+    expect(screen.queryByText('Your notifications did not load.')).toBeNull();
+  });
+
+  it('a refused Mark all read puts the rows and the number back, and keeps the feed', async () => {
+    const { net } = reachableFeed({ 'POST /api/notifications/read-all': () => json({}) });
+    bell();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Notifications, 1 unread' }));
+    await screen.findByText('Ada Obi changed the event');
+    goOffline(net);
+    fireEvent.click(screen.getByRole('button', { name: 'Mark all read' }));
+
+    expect(await screen.findByText('Could not mark them all read. Try again.')).toBeTruthy();
+    expect(screen.getByText('Unread')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Notifications, 1 unread' })).toBeTruthy();
+    expect(screen.queryByText('Your notifications did not load.')).toBeNull();
+  });
+
+  it('an unread notification opened offline opens its place and is unread again', async () => {
+    const { net } = reachableFeed();
+    const router = createMemoryRouter(
+      [
+        {
+          path: '/app',
+          element: (
+            <>
+              <NotificationsBell userId="u1" />
+              <Outlet />
+            </>
+          ),
+          children: [{ path: 'events/:id', element: <p>Event page</p> }],
+        },
+      ],
+      { initialEntries: ['/app'] },
+    );
+    render(<RouterProvider router={router} />);
+
+    const opener = await screen.findByRole('button', { name: 'Notifications, 1 unread' });
+    fireEvent.click(opener);
+    goOffline(net);
+    fireEvent.click(await screen.findByRole('button', { name: /^Ada Obi changed the event/ }));
+
+    expect(await screen.findByText('Event page')).toBeTruthy();
+    expect(router.state.location.pathname).toBe('/app/events/e1');
+    expect(await screen.findByRole('button', { name: 'Notifications, 1 unread' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Notifications, 1 unread' }));
+    expect(screen.getByText('Unread')).toBeTruthy();
+  });
+
+  it('shows no band over a feed that never loaded', async () => {
+    const { net } = reachableFeed();
+    net.reachable = false;
+    bell();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Notifications' }));
+
+    expect(await screen.findByText('Your notifications did not load.')).toBeTruthy();
+    act(() => {
+      window.dispatchEvent(new Event('offline'));
+    });
+    expect(band()).toBeNull();
+  });
+
+  it('shows Refreshing… beside the heading, outside it, while a reload is out', async () => {
+    const { net } = reachableFeed();
+    bell();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Notifications, 1 unread' }));
+    await screen.findByText('Ada Obi changed the event');
+    goOffline(net);
+    net.silent = true;
+    fireEvent.click(within(band() as HTMLElement).getByRole('button', { name: 'Try again' }));
+
+    const refreshing = await screen.findByText('Refreshing…');
+    const heading = screen.getByRole('heading', { name: 'Notifications' });
+    expect(heading.textContent).toBe('Notifications');
+    expect(heading.contains(refreshing)).toBe(false);
+    expect(refreshing.closest('.notifications-heading')).toBe(heading.parentElement);
+    expect(band()?.textContent).toMatch(/^Offline · as of /);
+    expect(cssRule('.notifications-heading')).toMatch(/flex-wrap: wrap;/u);
+    expect(cssRule('.notifications-band')).toMatch(/padding-inline: var\(--spaceXl\);/u);
+  });
+
+  it('shows the band above an empty feed, and Try again reloads it', async () => {
+    let arrived = false;
+    const { net, sent } = reachableFeed({
+      'GET /api/notifications': () =>
+        arrived
+          ? json({ items: [item()], unreadCount: 1, next: null })
+          : json({ items: [], unreadCount: 0, next: null }),
+    });
+    bell();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Notifications' }));
+    const empty = await screen.findByText(/Nothing yet/);
+    goOffline(net);
+
+    expect(band()?.textContent).toMatch(/^Offline · as of /);
+    expect(band()!.compareDocumentPosition(empty) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    net.reachable = true;
+    arrived = true;
+    sent.length = 0;
+    fireEvent.click(within(band() as HTMLElement).getByRole('button', { name: 'Try again' }));
+
+    expect(await screen.findByText('Ada Obi changed the event')).toBeTruthy();
+    expect(band()).toBeNull();
+    expect(sent).toEqual(['GET /api/notifications']);
+    expect(screen.queryByText(/Nothing yet/)).toBeNull();
   });
 });

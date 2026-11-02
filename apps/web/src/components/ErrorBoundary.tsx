@@ -45,7 +45,7 @@ function ErrorPanel({ error, onRetry }: { error: Error; onRetry: () => void }) {
     <div className="panel panel-error" role="alert">
       <h2>{t('error.title')}</h2>
       <p>{t('error.body')}</p>
-      <button type="button" onClick={onRetry}>
+      <button type="button" className="button" onClick={onRetry}>
         {t('error.retry')}
       </button>
       <details>

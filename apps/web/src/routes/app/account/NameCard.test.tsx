@@ -143,9 +143,14 @@ describe("the account's name", () => {
   });
 
   it('saves the name with its ends trimmed, says so, and the session reads it at once', async () => {
+    let saved = false;
     const sent = answering({
-      'PUT /api/auth/name': () => json({ name: 'Zoë  O’Brien-Núñez' }),
-      'GET /api/auth/me': () => me('Zoë  O’Brien-Núñez'),
+      'PUT /api/auth/name': () => {
+        saved = true;
+
+        return json({ name: 'Zoë  O’Brien-Núñez' });
+      },
+      'GET /api/auth/me': () => me(saved ? 'Zoë  O’Brien-Núñez' : 'Folake Ire'),
       'GET /api/orgs': () => json({ organisations: [MEMBERSHIP] }),
     });
     open();
@@ -168,9 +173,10 @@ describe("the account's name", () => {
 
   it('disables the field and both buttons while it saves', async () => {
     let answer: (response: Response) => void = () => {};
+    let answered = false;
     answering({
       'PUT /api/auth/name': () => new Promise((resolve) => (answer = resolve)),
-      'GET /api/auth/me': () => me('李小龍'),
+      'GET /api/auth/me': () => me(answered ? '李小龍' : 'Folake Ire'),
       'GET /api/orgs': () => json({ organisations: [MEMBERSHIP] }),
     });
     open();
@@ -187,6 +193,7 @@ describe("the account's name", () => {
     expect(field().readOnly).toBe(true);
     expect(field().getAttribute('aria-disabled')).toBe('true');
 
+    answered = true;
     await act(async () => answer(json({ name: '李小龍' })));
     expect(await within(card()).findByText('Name changed to 李小龍.')).toBeDefined();
   });

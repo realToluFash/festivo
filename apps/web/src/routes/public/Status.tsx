@@ -58,7 +58,7 @@ export function Status() {
           <p ref={answer} tabIndex={retried ? -1 : undefined}>
             {t('status.unreachable')}
           </p>
-          <button type="button" onClick={() => setAttempt((n) => n + 1)}>
+          <button type="button" className="button" onClick={() => setAttempt((n) => n + 1)}>
             {t('status.retry')}
           </button>
         </div>

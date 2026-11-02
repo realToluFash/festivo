@@ -20,6 +20,15 @@ function open() {
 afterEach(() => vi.restoreAllMocks());
 
 describe('Service status, Try again (sc-11369)', () => {
+  it('is a house button', async () => {
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(new TypeError('Failed to fetch'));
+    open();
+
+    const retry = await screen.findByRole('button', { name: 'Try again' });
+
+    expect(retry.classList.contains('button')).toBe(true);
+  });
+
   it('lands on the answer once the API answers, read once', async () => {
     const health = vi
       .spyOn(globalThis, 'fetch')

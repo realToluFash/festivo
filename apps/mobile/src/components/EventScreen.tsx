@@ -25,6 +25,7 @@ import { cardFrame } from './cardFrame.ts';
 import { EventNotFound, EventPage, EventTop, EventsFailed, usePhaseOf } from './Events.tsx';
 import { Notice } from './Notice.tsx';
 import { ReadOut } from './ReadOut.tsx';
+import { Refreshing } from './Refreshing.tsx';
 import { Screen, useScrolledToTop } from './Screen.tsx';
 import { Arrived, Skeleton } from './Skeleton.tsx';
 import { moveScreenReaderFocus } from './screenReaderFocus.ts';
@@ -186,24 +187,16 @@ export function EventScreen({
       />
     );
 
+  const refreshing = opened.refreshing ? <Refreshing testID="events.page.refreshing" /> : null;
+
   return (
     <AppFrame
       current="events"
       title={t(`eventNav.${area}`)}
       titleRef={title}
       offline={opened.stale}
-      underTitle={
-        opened.refreshing ? (
-          <Text
-            size={tokens.typeBodyPhone.size}
-            muted
-            accessibilityRole="text"
-            testID="events.page.refreshing"
-          >
-            {t('eventsScreen.refreshing')}
-          </Text>
-        ) : undefined
-      }
+      besideBack={phone ? refreshing : undefined}
+      besideTitle={phone ? undefined : refreshing}
       back={phone ? { label: backLabel, onPress: back } : undefined}
       backInBody
       inEvent={event == null ? undefined : { area, onArea: chooseArea }}

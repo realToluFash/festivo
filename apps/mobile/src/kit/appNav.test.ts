@@ -177,7 +177,7 @@ describe('The bell titles itself once, in the frame header (sc-3980)', () => {
     const feed = source(join(SRC, 'components', 'NotificationsFeed.tsx'));
 
     expect(screen).toMatch(/title=\{t\('notifications\.heading'\)\}\s*titleRef=\{title\}/u);
-    expect(screen).toMatch(/<NotificationsFeed heading=\{title\} \/>/u);
+    expect(screen).toMatch(/<NotificationsFeed heading=\{title\} onOffline=\{setOffline\} \/>/u);
     expect(feed).toMatch(/moveScreenReaderFocus\(heading\.current\)/u);
   });
 });

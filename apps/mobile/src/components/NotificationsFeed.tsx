@@ -1,15 +1,26 @@
 import type { NotificationItem } from '@soirely/api-client';
 import {
   feedAllRead,
+  feedWithAllReadRefused,
   feedWithArrival,
   feedWithLiveRead,
   feedWithMissed,
   feedWithPage,
   feedWithRead,
+  feedWithReadsUndone,
+  readSettled,
   whenShown,
 } from '@soirely/domain';
 import { router } from 'expo-router';
-import { type RefObject, memo, useCallback, useEffect, useRef, useState } from 'react';
+import {
+  type RefObject,
+  memo,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -24,8 +35,9 @@ import { api } from '../api.ts';
 import { markPushAsked, pushAskDue, turnOnAppPush } from '../appPush.ts';
 import { currentLocale } from '../i18n/index.ts';
 import { SECTION_HREF } from '../kit/appNav.ts';
-import { feedWithReadUndone, markAllRead, readSettled } from '../kit/notificationFeed.ts';
+import { markAllRead } from '../kit/notificationFeed.ts';
 import { appPlace } from '../kit/notificationPlace.ts';
+import { type Stale, keepsWhatLoaded, useOffline } from '../offline.ts';
 import { arrivalsSeen, countedSince, setUnread, useArrivals } from '../notificationsUnread.ts';
 import { tokens } from '../theme/tokens.ts';
 import { Footnote, PrimaryButton, QuietButton } from './Buttons.tsx';
@@ -42,8 +54,19 @@ type Feed =
   | { status: 'failed' }
   | { status: 'loaded'; items: NotificationItem[]; unread: number; next: string | null };
 
-/** `NotificationsBell-*` in the app (sc-3980): the feed, live, with its push ask, Mark all read and Show more; `heading` is the frame's title. */
-export function NotificationsFeed({ heading }: { heading: RefObject<TextHandle | null> }) {
+export interface FeedOffline {
+  stale: Stale | null;
+  refreshing: boolean;
+}
+
+/** `NotificationsBell-*` in the app (sc-3980): the feed, live, with its push ask, Mark all read and Show more; `heading` is the frame's title, and `onOffline` hands the screen the feed's band and Refreshing… (sc-27096). */
+export function NotificationsFeed({
+  heading,
+  onOffline,
+}: {
+  heading: RefObject<TextHandle | null>;
+  onOffline: (offline: FeedOffline) => void;
+}) {
   const { t } = useTranslation();
   const [feed, setFeed] = useState<Feed>({ status: 'loading' });
   const [gone, setGone] = useState<ReadonlySet<string>>(new Set());
@@ -51,20 +74,41 @@ export function NotificationsFeed({ heading }: { heading: RefObject<TextHandle |
   const [asking, setAsking] = useState(false);
   const [said, setSaid] = useState<{ words: string } | null>(null);
 
+  const refetch = useRef(() => {});
+  const { watch, stale, refreshing } = useOffline({
+    loaded: feed.status === 'loaded',
+    reload: () => refetch.current(),
+    focusTitle: () => moveScreenReaderFocus(heading.current),
+  });
+
+  useLayoutEffect(() => {
+    onOffline({ stale, refreshing });
+  }, [onOffline, stale, refreshing]);
+
+  /** Only a load Soirely never answered keeps the rows; an error it answered with replaces them, and takes the band down. */
+  const notLoaded = useCallback(
+    (error: unknown): void =>
+      setFeed((current) =>
+        current.status === 'loaded' && keepsWhatLoaded(error) ? current : { status: 'failed' },
+      ),
+    [],
+  );
+
   const fetchFeed = useCallback((): void => {
-    readSettled(() => api.notifications(), arrivalsSeen).then(
-      (loaded) => {
-        setFeed({
-          status: 'loaded',
-          items: loaded.items,
-          unread: loaded.unreadCount,
-          next: loaded.next,
-        });
-        setUnread(loaded.unreadCount);
-      },
-      () => setFeed({ status: 'failed' }),
-    );
-  }, []);
+    watch(readSettled(() => api.notifications(), arrivalsSeen)).then((loaded) => {
+      setFeed({
+        status: 'loaded',
+        items: loaded.items,
+        unread: loaded.unreadCount,
+        next: loaded.next,
+      });
+      setUnread(loaded.unreadCount);
+    }, notLoaded);
+  }, [watch, notLoaded]);
+
+  useEffect(() => {
+    refetch.current = fetchFeed;
+  }, [fetchFeed]);
 
   function load(): void {
     setFeed({ status: 'loading' });
@@ -84,19 +128,16 @@ export function NotificationsFeed({ heading }: { heading: RefObject<TextHandle |
   }, [fetchFeed]);
 
   const reread = (): void => {
-    readSettled(() => api.notifications(), arrivalsSeen).then(
-      (page) => {
-        setFeed((current) =>
-          current.status === 'loaded'
-            ? {
-                ...feedWithMissed(current, { items: page.items, unread: page.unreadCount }),
-                status: 'loaded',
-              }
-            : current,
-        );
-      },
-      () => undefined,
-    );
+    watch(readSettled(() => api.notifications(), arrivalsSeen)).then((page) => {
+      setFeed((current) =>
+        current.status === 'loaded'
+          ? {
+              ...feedWithMissed(current, { items: page.items, unread: page.unreadCount }),
+              status: 'loaded',
+            }
+          : current,
+      );
+    }, notLoaded);
   };
 
   useArrivals((arrival) => {
@@ -157,7 +198,7 @@ export function NotificationsFeed({ heading }: { heading: RefObject<TextHandle |
         () =>
           setFeed((current) =>
             current.status === 'loaded'
-              ? { ...feedWithReadUndone(current, item.id), status: 'loaded' }
+              ? { ...feedWithReadsUndone(current, [item.id]), status: 'loaded' }
               : current,
           ),
       );
@@ -175,12 +216,20 @@ export function NotificationsFeed({ heading }: { heading: RefObject<TextHandle |
   async function readAll(): Promise<void> {
     if (feed.status !== 'loaded' || feed.unread === 0) return;
 
+    const before = feed;
     setFeed({ ...feedAllRead(feed), status: 'loaded' });
     const seen = arrivalsSeen();
     const outcome = await markAllRead(api);
     setSaid({ words: t(outcome.said) });
     if (!('left' in outcome)) {
-      load();
+      setFeed((current) =>
+        current.status === 'loaded'
+          ? {
+              ...feedWithAllReadRefused(current, before, arrivalsSeen() !== seen),
+              status: 'loaded',
+            }
+          : current,
+      );
       return;
     }
 

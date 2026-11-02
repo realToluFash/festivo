@@ -1,0 +1,23 @@
+# sc-26974: the offline band's Try again beside its "as of" time on Events, in the batch's language.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'events.tab.upcoming'
+    timeout: 30000
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
+- swipe:
+    start: 50%, 35%
+    end: 50%, 85%
+    duration: 400
+- extendedWaitUntil:
+    visible:
+      id: 'offline.band'
+    timeout: 60000
+- assertVisible:
+    id: 'offline.retry'
+- takeScreenshot: band

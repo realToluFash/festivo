@@ -1,0 +1,13 @@
+# sc-26974: Settings > Sign-in rules that cannot load, with Try again.
+appId: host.exp.Exponent
+---
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
+- openLink: ${METRO_URL}/--/settings/sign-in-rules
+- extendedWaitUntil:
+    visible:
+      id: 'signInRules.retry'
+    timeout: 60000
+- takeScreenshot: failed

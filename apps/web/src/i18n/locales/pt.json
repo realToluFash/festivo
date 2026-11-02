@@ -4,8 +4,8 @@
     "skipToContent": "Ir para o conteúdo"
   },
   "offline": {
-    "asOf": "Sem ligação · atualizado às {{time}}",
-    "asOfDay": "Sem ligação · atualizado no {{day}}, às {{time}}",
+    "asOf": "Sem ligação · atualizado: {{time}}",
+    "asOfDay": "Sem ligação · atualizado: {{day}}, {{time}}",
     "refreshing": "A atualizar…"
   },
   "release": {

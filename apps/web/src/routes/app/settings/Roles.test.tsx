@@ -1193,3 +1193,61 @@ describe('opening Roles by a click while the list loads (sc-23303)', () => {
     );
   });
 });
+
+describe('offline (sc-27088)', () => {
+  function switchable(): { reach: (on: boolean) => void } {
+    let reachable = true;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async () => {
+      if (!reachable) throw new TypeError('Failed to fetch');
+
+      return new Response(JSON.stringify({ roles: ROLES, areas: AREAS }), { status: 200 });
+    });
+
+    return { reach: (on) => (reachable = on) };
+  }
+
+  it('keeps the roles under the band offline, and loads them again on Try again', async () => {
+    const soirely = switchable();
+    await roles();
+
+    soirely.reach(false);
+    act(() => {
+      window.dispatchEvent(new Event('offline'));
+    });
+
+    await waitFor(() =>
+      expect(document.querySelector('.offline-band')?.textContent).toMatch(/^Offline · as of /),
+    );
+    expect(screen.getByRole('button', { name: /^Door team/ })).toBeDefined();
+
+    const band = document.querySelector('.offline-band') as HTMLElement;
+    fireEvent.click(within(band).getByRole('button', { name: 'Try again' }));
+    await waitFor(() => expect(document.querySelector('.offline-refreshing')).toBeNull());
+    expect(document.querySelector('.offline-band')).not.toBeNull();
+
+    soirely.reach(true);
+    fireEvent.click(within(band).getByRole('button', { name: 'Try again' }));
+
+    await waitFor(() => expect(document.querySelector('.offline-band')).toBeNull());
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('heading', { level: 1, name: 'Roles' })),
+    );
+    expect(screen.getByRole('button', { name: /^Door team/ })).toBeDefined();
+  });
+
+  it('shows no band over roles that never loaded', async () => {
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(new TypeError('Failed to fetch'));
+    render(
+      <RouterProvider
+        router={createMemoryRouter(routes, { initialEntries: ['/app/settings/roles'] })}
+      />,
+    );
+
+    expect(await screen.findByText('The roles did not load. Try again in a moment.')).toBeDefined();
+    act(() => {
+      window.dispatchEvent(new Event('offline'));
+    });
+
+    expect(document.querySelector('.offline-band')).toBeNull();
+  });
+});

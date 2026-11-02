@@ -187,13 +187,20 @@ describe('Settings > General, ownership and leaving', () => {
 
   it('takes focus to the line that says who is now the owner (sc-11369)', async () => {
     signedIn();
+    let transferred = false;
     answering({
       'GET /api/orgs/org_1/members': () => json(MEMBERS),
       'POST /api/auth/proof': () => json({ proof: 'p_1', expiresAt: '2026-10-17T13:25:00+00:00' }),
-      'POST /api/orgs/org_1/ownership': () => new Response(null, { status: 204 }),
+      'POST /api/orgs/org_1/ownership': () => {
+        transferred = true;
+
+        return new Response(null, { status: 204 });
+      },
       'GET /api/auth/me': () => json(ME),
       'GET /api/orgs': () =>
-        json({ organisations: [{ ...IRE, role: ADMINISTRATOR, permissions: [] }] }),
+        json({
+          organisations: [transferred ? { ...IRE, role: ADMINISTRATOR, permissions: [] } : IRE],
+        }),
       'GET /api/invitations/mine': () => json({ invitations: [] }),
     });
     settings();

@@ -1,0 +1,20 @@
+# sc-26974: Settings > Security with its two-factor and devices cards failed, each with Try again.
+appId: host.exp.Exponent
+---
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
+- openLink: ${METRO_URL}/--/settings/security
+- scrollUntilVisible:
+    element:
+      id: 'twoFactor.retry'
+    direction: DOWN
+    timeout: 60000
+- takeScreenshot: two-factor
+- scrollUntilVisible:
+    element:
+      id: 'devices.retry'
+    direction: DOWN
+    timeout: 30000
+- takeScreenshot: devices

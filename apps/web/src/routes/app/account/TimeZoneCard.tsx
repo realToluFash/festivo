@@ -1,5 +1,5 @@
 import { ApiError, type TimeZoneOption } from '@soirely/api-client';
-import { exactZone, formerName, matchingZones, zoneLabel } from '@soirely/domain';
+import { exactZone, formerName, matchingZones, zoneLabel, zoneValue } from '@soirely/domain';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -7,6 +7,7 @@ import { api } from '../../../api.ts';
 import { useComboboxKeys } from '../../../comboboxKeys.ts';
 import { ActionPair } from '../../../components/ActionPair.tsx';
 import { FieldError } from '../../../components/FieldError.tsx';
+import { Skeleton } from '../../../components/Skeleton.tsx';
 import { currentLocale } from '../../../i18n/index.ts';
 import { useStepFocus } from '../../../stepFocus.ts';
 import { focusWhereSent, offField } from '../../../offField.ts';
@@ -24,7 +25,8 @@ export function TimeZoneCard({
 }) {
   const { t } = useTranslation();
   const locale = currentLocale();
-  const [zones, setZones] = useState<TimeZoneOption[]>([]);
+  // Null until the first list comes; a failed list is an empty one, so the row stops waiting (sc-27219).
+  const [zones, setZones] = useState<TimeZoneOption[] | null>(null);
   const [editing, setEditing] = useState(false);
   const [saved, setSaved] = useState<TimeZoneOption | null>(null);
   const [refocus, setRefocus] = useState(false);
@@ -45,16 +47,18 @@ export function TimeZoneCard({
       .then((list) => {
         if (live) setZones(list);
       })
-      .catch(() => {});
+      .catch(() => {
+        if (live) setZones((shown) => shown ?? []);
+      });
 
     return () => {
       live = false;
     };
   }, [locale]);
 
-  const current = zones.find((zone) => zone.id === timezone);
-  const label = timezone == null ? null : current == null ? timezone : zoneLabel(current);
-  const savedZone = saved == null ? null : (zones.find((zone) => zone.id === saved.id) ?? saved);
+  const value = zoneValue(timezone, zones);
+  const label = value.kind === 'shown' ? value.name : null;
+  const savedZone = saved == null ? null : (zones?.find((zone) => zone.id === saved.id) ?? saved);
 
   return (
     <section className="card account-card" aria-labelledby="tz-title">
@@ -63,7 +67,7 @@ export function TimeZoneCard({
 
       {editing ? (
         <Choosing
-          zones={zones}
+          zones={zones ?? []}
           now={label}
           onSaved={async (zone) => {
             await onSaved();
@@ -76,12 +80,16 @@ export function TimeZoneCard({
             setRefocus(true);
           }}
         />
+      ) : value.kind === 'waiting' ? (
+        <Skeleton words={t('pending.loading')} shape="rows" rowHeight={56} rows={1} inCard />
       ) : (
         <>
           <div className="current-value">
             <div className="current-value-text">
               <span className="current-value-label">{label ?? t('timeZone.unset')}</span>
-              {timezone != null && <span className="muted">{timezone.replace(/_/g, ' ')}</span>}
+              {value.kind === 'shown' && value.id != null && (
+                <span className="muted">{value.id}</span>
+              )}
             </div>
             <button
               className="button"

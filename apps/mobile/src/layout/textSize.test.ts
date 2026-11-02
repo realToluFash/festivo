@@ -6,9 +6,11 @@ import {
   drawnLine,
   fitWidest,
   nameLines,
+  paddingToCentre,
   railWidth,
   rowsFloor,
   sideListWidth,
+  TITLE_LINE,
   titleSize,
   wordsIn,
 } from './textSize.ts';
@@ -121,6 +123,27 @@ describe('drawnLine', () => {
       expect(drawnLine(height, scale, density) * density).toBeCloseTo(pixels);
     },
   );
+});
+
+describe('paddingToCentre', () => {
+  // The offline band's words on 15/600's line beside a 48 pt Try again, at iOS's default, eighth and ninth steps (sc-27142).
+  it.each([
+    [1, 14.25],
+    [1.79, 6.59],
+    [2.14, 3.14],
+    [0.82, 16.01],
+  ])('pads a title line at scale %s by %s', (scale, padding) => {
+    expect(paddingToCentre(48, drawnLine(TITLE_LINE, scale, null))).toBeCloseTo(padding, 1);
+  });
+
+  it('puts the middle of the first line at the middle of the row', () => {
+    const line = drawnLine(TITLE_LINE, 1.79, null);
+    expect(paddingToCentre(48, line) + line / 2).toBeCloseTo(24);
+  });
+
+  it('pads nothing once the line is taller than the row', () => {
+    expect(paddingToCentre(48, drawnLine(TITLE_LINE, 3.1, null))).toBe(0);
+  });
 });
 
 describe('rowsFloor', () => {

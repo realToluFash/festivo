@@ -155,6 +155,22 @@ export async function rereadCredentials(): Promise<void> {
   set({ status: 'signedIn', session: { ...state.session, hasPassword, providers } });
 }
 
+/** The account as a page just read it: the session's name, address and time zone follow, so its cards draw what was fetched. */
+export function followAccountRead(account: Account): void {
+  if (state.status !== 'signedIn') return;
+
+  const { session } = state;
+  set({
+    status: 'signedIn',
+    session: {
+      ...session,
+      name: account.name,
+      email: primaryEmailAddress(account) ?? session.email,
+      timezone: account.timezone,
+    },
+  });
+}
+
 let rereads = 0;
 
 const movedOn = new Set<(organisation: Membership) => void>();

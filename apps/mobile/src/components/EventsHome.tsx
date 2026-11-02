@@ -239,6 +239,24 @@ function Card({
   const next = nextStepWords(nextStep(event, phase, now), t);
   const phone = kind === 'phone';
   const small = phone ? tokens.typeMeta.size : tokens.typeSmall.size;
+  const when = (
+    <>
+      <WithSoon
+        line={dates.days}
+        soon={howSoonPhrase(event, phase, now, language, (time) =>
+          t('eventsScreen.endsIn', { time }),
+        )}
+        size={small}
+        weight="medium"
+        align={phone ? 'start' : 'end'}
+      />
+      {dates.time != null && (
+        <Text size={small} weight="medium" muted>
+          {dates.time}
+        </Text>
+      )}
+    </>
+  );
 
   return (
     <Pressable
@@ -254,22 +272,17 @@ function Card({
       accessibilityRole="button"
       testID={`events.row.${event.id}`}
     >
-      <View style={styles.when}>
-        <EventState phase={phase} />
-        <WithSoon
-          line={dates.days}
-          soon={howSoonPhrase(event, phase, now, language, (time) =>
-            t('eventsScreen.endsIn', { time }),
-          )}
-          size={small}
-          weight="medium"
-        />
-        {dates.time != null && (
-          <Text size={small} weight="medium" muted>
-            {dates.time}
-          </Text>
-        )}
-      </View>
+      {phone ? (
+        <View style={styles.when}>
+          <EventState phase={phase} />
+          {when}
+        </View>
+      ) : (
+        <View style={styles.whenAcross}>
+          <EventState phase={phase} />
+          <View style={styles.whenRight}>{when}</View>
+        </View>
+      )}
       <View style={styles.cardHead}>
         <Text
           size={phone ? tokens.typeRowTitle.size : tokens.typeTitleSection.size}
@@ -357,11 +370,13 @@ function WithSoon({
   soon,
   size = tokens.typeSmall.size,
   weight = 'regular',
+  align = 'start',
 }: {
   line: string;
   soon: string | null;
   size?: number;
   weight?: WeightName;
+  align?: 'start' | 'end';
 }) {
   const { t } = useTranslation();
 
@@ -374,7 +389,7 @@ function WithSoon({
   }
 
   return (
-    <View style={styles.withSoon}>
+    <View style={[styles.withSoon, align === 'end' && styles.withSoonEnd]}>
       <Text size={size} weight={weight} muted>
         {t('eventsScreen.thenSoon', { when: line })}
       </Text>
@@ -436,6 +451,13 @@ const styles = StyleSheet.create({
   cardWide: { flexGrow: 1, flexBasis: 260 },
   now: { paddingVertical: 14, paddingHorizontal: tokens.spaceXl },
   when: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: tokens.spaceXxs },
+  whenAcross: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: tokens.spaceXs,
+  },
+  whenRight: { flexShrink: 1, alignItems: 'flex-end', gap: tokens.spaceHair },
   tabs: {
     flexDirection: 'row',
     gap: tokens.spaceHair,
@@ -484,6 +506,7 @@ const styles = StyleSheet.create({
     borderTopColor: tokens.colorInsetBorder,
   },
   withSoon: { flexDirection: 'row', flexWrap: 'wrap', columnGap: tokens.spaceXs },
+  withSoonEnd: { justifyContent: 'flex-end' },
   figures: {
     flexDirection: 'row',
     flexWrap: 'wrap',

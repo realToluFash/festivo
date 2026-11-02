@@ -757,6 +757,23 @@ export function useStepClose(
 
   useEffect(() => () => cancel.current(), []);
 
+  // Known before Cancel is tapped, so a close starts in the tap itself: a close left waiting on the question kept every later close out when the answer never came (sc-27213).
+  const readerOn = useRef(false);
+  useEffect(() => {
+    let gone = false;
+    void AccessibilityInfo.isScreenReaderEnabled().then((on) => {
+      if (!gone) readerOn.current = on;
+    });
+    const changed = AccessibilityInfo.addEventListener('screenReaderChanged', (on: boolean) => {
+      readerOn.current = on;
+    });
+
+    return () => {
+      gone = true;
+      changed.remove();
+    };
+  }, []);
+
   // The opener showing above the step pushes it down, and a Cancel pushed out of sight under TalkBack's focus has TalkBack move that focus to the step's nearest view still in sight, and read it, before the opener takes it (sc-22357).
   useLayoutEffect(() => {
     if (!closing) return;
@@ -795,14 +812,11 @@ export function useStepClose(
         raisedBy.current,
       );
 
-      let gone = false;
+      const stop = run(stepCloseSteps(Platform.OS, readerOn.current));
       cancel.current = () => {
-        gone = true;
+        started.current = false;
+        stop();
       };
-      void AccessibilityInfo.isScreenReaderEnabled().then((on) => {
-        if (gone) return;
-        cancel.current = run(stepCloseSteps(Platform.OS, on));
-      });
     },
     [run],
   );

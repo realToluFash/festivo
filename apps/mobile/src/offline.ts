@@ -1,5 +1,5 @@
 import { connection, createOfflineWatch } from '@soirely/domain';
-import { useEffect, useLayoutEffect, useState, useSyncExternalStore } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { AppState } from 'react-native';
 
 export { keepsWhatLoaded } from '@soirely/domain';
@@ -41,10 +41,10 @@ export function useOffline({
   }, [offline]);
 
   const { at, unanswered } = state;
+  const stale = useMemo(
+    () => (state.stale && loaded && at != null ? { at, retry: offline.retry, unanswered } : null),
+    [state.stale, loaded, at, offline, unanswered],
+  );
 
-  return {
-    watch: offline.watch,
-    stale: state.stale && loaded && at != null ? { at, retry: offline.retry, unanswered } : null,
-    refreshing: state.out > 0 && loaded,
-  };
+  return { watch: offline.watch, stale, refreshing: state.out > 0 && loaded };
 }
