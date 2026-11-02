@@ -7,6 +7,7 @@
  */
 import { cleanup, configure } from '@testing-library/react';
 import { afterEach } from 'vitest';
+import { __freshConnection } from '@soirely/domain';
 
 import { __setConfig } from './config.ts';
 import { initI18n } from './i18n/index.ts';
@@ -45,4 +46,5 @@ window.matchMedia = (query) =>
 afterEach(() => {
   cleanup();
   __setSessionState({ status: 'unknown' });
+  __freshConnection();
 });
