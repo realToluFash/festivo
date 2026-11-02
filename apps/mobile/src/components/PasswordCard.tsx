@@ -23,6 +23,7 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../api.ts';
 import { dateLocale } from '../i18n/index.ts';
 import { useFormChecks } from '../kit/formChecks.ts';
+import { notesGiveWay } from '../kit/keyboard.ts';
 import { retryAfter } from '../kit/code.ts';
 import {
   type PasswordRefusal,
@@ -43,6 +44,7 @@ import {
   stepClosed,
   useAboveKeyboard,
   useFocusBackToOpener,
+  useRoomAboveKeyboard,
   useStepClose,
 } from './Screen.tsx';
 import { Text } from './Text.tsx';
@@ -245,6 +247,13 @@ function Changing({
   const [saving, setSaving] = useState(false);
   const [refusal, setRefusal] = useState<PasswordRefusal | null>(null);
   const aboveKeyboard = useAboveKeyboard(closing);
+  const room = useRoomAboveKeyboard();
+  const [step, setStep] = useState({ step: 0, notes: 0, away: false });
+  const notesHeight = useRef(0);
+  // A closing step keeps its notes as they were, so Cancel does not jump as the keys go down (sc-18588).
+  const [notesAway, setNotesAway] = useState(false);
+  const away = notesGiveWay({ room, ...step });
+  if (!closing && away !== notesAway) setNotesAway(away);
   const checks = useFormChecks(
     ['currentPassword', 'newPassword'] as const,
     (field, value) =>
@@ -290,7 +299,16 @@ function Changing({
     checks.errors.newPassword ?? (refusal?.field === 'newPassword' ? refusal.message : null);
 
   return (
-    <View style={styles.group}>
+    <View
+      style={styles.group}
+      onLayout={(event) =>
+        setStep({
+          step: event.nativeEvent.layout.height,
+          notes: notesHeight.current,
+          away: notesAway,
+        })
+      }
+    >
       <View {...hidden} style={styles.group}>
         <Title text={t('passwordCard.formTitle')} answer="changing" />
 
@@ -368,25 +386,40 @@ function Changing({
 
           <PasswordRule met={lengthMet} testID="password" />
 
-          <Text
-            size={tokens.typeBodyPhone.size}
-            style={styles.secondary}
-            accessible={closing ? false : undefined}
-          >
-            {t('passwordCard.signsOut')}
-          </Text>
-          <Text
-            size={tokens.typeBodyPhone.size}
-            style={styles.secondary}
-            accessible={closing ? false : undefined}
-          >
-            {t('passwordCard.emailed', { email })}
-          </Text>
+          {!notesAway && (
+            <View
+              style={styles.group}
+              onLayout={(event) => {
+                notesHeight.current = event.nativeEvent.layout.height + tokens.spaceLg;
+              }}
+            >
+              <Text
+                size={tokens.typeBodyPhone.size}
+                style={styles.secondary}
+                accessible={closing ? false : undefined}
+              >
+                {t('passwordCard.signsOut')}
+              </Text>
+              <Text
+                size={tokens.typeBodyPhone.size}
+                style={styles.secondary}
+                accessible={closing ? false : undefined}
+              >
+                {t('passwordCard.emailed', { email })}
+              </Text>
+            </View>
+          )}
 
           <PrimaryButton
             label={saving ? t('passwordCard.saving') : t('passwordCard.save')}
             onPress={() => void submit()}
             busy={saving}
+            // Screen readers reach Save before the notes, so while the notes are away Save says them (sc-28122).
+            accessibilityHint={
+              notesAway
+                ? `${t('passwordCard.signsOut')} ${t('passwordCard.emailed', { email })}`
+                : undefined
+            }
             testID="password.save"
           />
         </View>
