@@ -174,6 +174,14 @@ Take exact values from `docs/design/tokens.mjs`.
   none (**Sign it out**), and the dismissive one is a text action (**Keep it signed in**).
 - **Button order**: in a row the dismissive one first and the confirming one last; stacked,
   as in a sheet on the phone, the confirming one on top.
+- **A phone sheet that closes on a tap outside shows a grabber**, and no other sheet does
+  (pm, 2 Nov 2026, sc-27948): 40 × 5, fully rounded, `#D9DCE2` (`colorControlBorder`),
+  centred at the sheet's top inside a drag strip the sheet's full width and 44 tall. Dragged
+  from that strip it closes at half its height or on a flick of 1,000 pt a second, and
+  springs back short of that. The grabber is decoration (`aria-hidden`): the sheet still
+  closes on its labelled scrim, Android's back and its own button. A sheet that does not
+  close on a tap outside (a confirm such as **Delete …?**, **Cover photo**, **Save your
+  recovery codes**) draws none, and neither does the tablet's centred card.
 - **A text field's edge is `#80868F`** at rest and focused (3.67 on white, 3.39 on the page,
   3.20 on the header band). Focused, the ring sits outside it: 2px `#1E9A64` at a 2px
   offset. On an error the edge is `#C2410C`. A secondary button's and a chip's edge stay
