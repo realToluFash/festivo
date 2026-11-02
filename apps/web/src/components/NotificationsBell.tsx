@@ -56,6 +56,15 @@ export function NotificationsBell({ userId }: { userId: string }) {
     title: heading,
   });
 
+  /** Only a load Soirely never answered keeps the rows; an error it answered with replaces them, and takes the band down. */
+  const notLoaded = useCallback(
+    (error: unknown): void =>
+      setFeed((current) =>
+        current.status === 'loaded' && keepsWhatLoaded(error) ? current : { status: 'failed' },
+      ),
+    [],
+  );
+
   /** The feed's band is its own (sc-27096): every read of page one goes through `watch`, and one Soirely never answered keeps what the feed showed. */
   const load = useCallback((): Promise<void> => {
     return watch(
@@ -71,12 +80,9 @@ export function NotificationsBell({ userId }: { userId: string }) {
           unread: loaded.unreadCount,
           next: loaded.next,
         }),
-      (error: unknown) =>
-        setFeed((current) =>
-          current.status === 'loaded' && keepsWhatLoaded(error) ? current : { status: 'failed' },
-        ),
+      notLoaded,
     );
-  }, [watch]);
+  }, [watch, notLoaded]);
 
   useEffect(() => {
     reload.current = () => void load();
@@ -119,19 +125,16 @@ export function NotificationsBell({ userId }: { userId: string }) {
         () => api.notifications(),
         () => arrivals.current,
       ),
-    ).then(
-      (page) => {
-        setFeed((current) =>
-          current.status === 'loaded'
-            ? {
-                ...feedWithMissed(current, { items: page.items, unread: page.unreadCount }),
-                status: 'loaded',
-              }
-            : current,
-        );
-      },
-      () => undefined,
-    );
+    ).then((page) => {
+      setFeed((current) =>
+        current.status === 'loaded'
+          ? {
+              ...feedWithMissed(current, { items: page.items, unread: page.unreadCount }),
+              status: 'loaded',
+            }
+          : current,
+      );
+    }, notLoaded);
   }
 
   /** A count the server worked out before the latest arrival is one short, so it is dropped and the local count stands. */

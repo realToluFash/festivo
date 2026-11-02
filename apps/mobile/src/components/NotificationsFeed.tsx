@@ -85,23 +85,26 @@ export function NotificationsFeed({
     onOffline({ stale, refreshing });
   }, [onOffline, stale, refreshing]);
 
+  /** Only a load Soirely never answered keeps the rows; an error it answered with replaces them, and takes the band down. */
+  const notLoaded = useCallback(
+    (error: unknown): void =>
+      setFeed((current) =>
+        current.status === 'loaded' && keepsWhatLoaded(error) ? current : { status: 'failed' },
+      ),
+    [],
+  );
+
   const fetchFeed = useCallback((): void => {
-    watch(readSettled(() => api.notifications(), arrivalsSeen)).then(
-      (loaded) => {
-        setFeed({
-          status: 'loaded',
-          items: loaded.items,
-          unread: loaded.unreadCount,
-          next: loaded.next,
-        });
-        setUnread(loaded.unreadCount);
-      },
-      (error: unknown) =>
-        setFeed((current) =>
-          current.status === 'loaded' && keepsWhatLoaded(error) ? current : { status: 'failed' },
-        ),
-    );
-  }, [watch]);
+    watch(readSettled(() => api.notifications(), arrivalsSeen)).then((loaded) => {
+      setFeed({
+        status: 'loaded',
+        items: loaded.items,
+        unread: loaded.unreadCount,
+        next: loaded.next,
+      });
+      setUnread(loaded.unreadCount);
+    }, notLoaded);
+  }, [watch, notLoaded]);
 
   useEffect(() => {
     refetch.current = fetchFeed;
@@ -125,19 +128,16 @@ export function NotificationsFeed({
   }, [fetchFeed]);
 
   const reread = (): void => {
-    watch(readSettled(() => api.notifications(), arrivalsSeen)).then(
-      (page) => {
-        setFeed((current) =>
-          current.status === 'loaded'
-            ? {
-                ...feedWithMissed(current, { items: page.items, unread: page.unreadCount }),
-                status: 'loaded',
-              }
-            : current,
-        );
-      },
-      () => undefined,
-    );
+    watch(readSettled(() => api.notifications(), arrivalsSeen)).then((page) => {
+      setFeed((current) =>
+        current.status === 'loaded'
+          ? {
+              ...feedWithMissed(current, { items: page.items, unread: page.unreadCount }),
+              status: 'loaded',
+            }
+          : current,
+      );
+    }, notLoaded);
   };
 
   useArrivals((arrival) => {

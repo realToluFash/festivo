@@ -30,7 +30,7 @@ function item(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function answering(answers: Record<string, () => Response>) {
+function answering(answers: Record<string, () => Response | Promise<Response>>) {
   const sent: string[] = [];
 
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
@@ -493,7 +493,7 @@ describe('the heading at 320px (sc-21358)', () => {
 
 describe('offline (sc-27096)', () => {
   function reachableFeed(answers: Record<string, () => Response> = {}) {
-    const net = { reachable: true };
+    const net = { reachable: true, silent: false };
     const guarded = Object.fromEntries(
       Object.entries({
         'GET /api/notifications': () => json({ items: [item()], unreadCount: 1, next: null }),
@@ -501,6 +501,7 @@ describe('offline (sc-27096)', () => {
       }).map(([line, answer]) => [
         line,
         () => {
+          if (net.silent) return new Promise<Response>(() => {});
           if (!net.reachable) throw new TypeError('Failed to fetch');
           return answer();
         },
@@ -520,8 +521,21 @@ describe('offline (sc-27096)', () => {
 
   const band = () => document.querySelector('.notifications-band');
 
-  it('shows its own band under the header, keeps the feed, and Try again reloads only the feed', async () => {
-    const { net, sent } = reachableFeed();
+  it('shows its own band under the header, keeps the feed, and Try again reloads only the feed with what arrived meanwhile', async () => {
+    let unseen = false;
+    const { net, sent } = reachableFeed({
+      'GET /api/notifications': () =>
+        unseen
+          ? json({
+              items: [
+                item({ id: 'n2', title: 'Kemi replied', eventId: null, eventName: null }),
+                item(),
+              ],
+              unreadCount: 2,
+              next: null,
+            })
+          : json({ items: [item()], unreadCount: 1, next: null }),
+    });
     bell();
 
     fireEvent.click(await screen.findByRole('button', { name: 'Notifications, 1 unread' }));
@@ -533,11 +547,18 @@ describe('offline (sc-27096)', () => {
     expect(screen.getByText('Ada Obi changed the event')).toBeTruthy();
 
     net.reachable = true;
+    unseen = true;
     sent.length = 0;
     fireEvent.click(within(band() as HTMLElement).getByRole('button', { name: 'Try again' }));
 
     await waitFor(() => expect(band()).toBeNull());
     expect(sent).toEqual(['GET /api/notifications']);
+    const rows = screen.getAllByRole('button', {
+      name: /^(Kemi replied|Ada Obi changed the event)/,
+    });
+    expect(rows[0]?.textContent).toMatch(/^Kemi replied.*Unread/);
+    expect(rows[0]?.classList.contains('unread')).toBe(true);
+    expect(screen.getByRole('button', { name: 'Notifications, 2 unread' })).toBeTruthy();
     await waitFor(() =>
       expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Notifications' })),
     );
@@ -567,9 +588,16 @@ describe('offline (sc-27096)', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Notifications, 1 unread' }));
     await screen.findByText('Ada Obi changed the event');
     goOffline(net);
+    const said = band()?.querySelector('[aria-live]') as HTMLElement;
+    await waitFor(() => expect(said.textContent).toMatch(/^Offline · as of /));
+    const heard: string[] = [];
+    const listening = new MutationObserver(() => heard.push(said.textContent ?? ''));
+    listening.observe(said, { childList: true, characterData: true, subtree: true });
     fireEvent.click(within(band() as HTMLElement).getByRole('button', { name: 'Try again' }));
 
-    await waitFor(() => expect(band()?.textContent).toMatch(/^Offline · as of /));
+    await waitFor(() => expect(heard.at(-1)).toMatch(/^Offline · as of /));
+    listening.disconnect();
+    expect(heard.slice(0, -1)).toContain('');
     expect(screen.getByText('Ada Obi changed the event')).toBeTruthy();
     expect(screen.queryByText('Your notifications did not load.')).toBeNull();
   });
@@ -634,8 +662,51 @@ describe('offline (sc-27096)', () => {
     expect(band()).toBeNull();
   });
 
-  it('puts Refreshing… beside the heading, outside it', () => {
+  it('shows Refreshing… beside the heading, outside it, while a reload is out', async () => {
+    const { net } = reachableFeed();
+    bell();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Notifications, 1 unread' }));
+    await screen.findByText('Ada Obi changed the event');
+    goOffline(net);
+    net.silent = true;
+    fireEvent.click(within(band() as HTMLElement).getByRole('button', { name: 'Try again' }));
+
+    const refreshing = await screen.findByText('Refreshing…');
+    const heading = screen.getByRole('heading', { name: 'Notifications' });
+    expect(heading.textContent).toBe('Notifications');
+    expect(heading.contains(refreshing)).toBe(false);
+    expect(refreshing.closest('.notifications-heading')).toBe(heading.parentElement);
+    expect(band()?.textContent).toMatch(/^Offline · as of /);
     expect(cssRule('.notifications-heading')).toMatch(/flex-wrap: wrap;/u);
     expect(cssRule('.notifications-band')).toMatch(/padding-inline: var\(--spaceXl\);/u);
+  });
+
+  it('shows the band above an empty feed, and Try again reloads it', async () => {
+    let arrived = false;
+    const { net, sent } = reachableFeed({
+      'GET /api/notifications': () =>
+        arrived
+          ? json({ items: [item()], unreadCount: 1, next: null })
+          : json({ items: [], unreadCount: 0, next: null }),
+    });
+    bell();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Notifications' }));
+    const empty = await screen.findByText(/Nothing yet/);
+    goOffline(net);
+
+    expect(band()?.textContent).toMatch(/^Offline · as of /);
+    expect(band()!.compareDocumentPosition(empty) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    net.reachable = true;
+    arrived = true;
+    sent.length = 0;
+    fireEvent.click(within(band() as HTMLElement).getByRole('button', { name: 'Try again' }));
+
+    expect(await screen.findByText('Ada Obi changed the event')).toBeTruthy();
+    expect(band()).toBeNull();
+    expect(sent).toEqual(['GET /api/notifications']);
+    expect(screen.queryByText(/Nothing yet/)).toBeNull();
   });
 });
