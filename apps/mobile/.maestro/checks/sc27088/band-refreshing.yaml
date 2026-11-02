@@ -1,6 +1,6 @@
 # Android only. ${SCREEN} shows the offline band; the automatic reread when the phone comes
-# back is given up with the band still up, and only Try again's own load shows ${REFRESHING}
-# and takes the band away once Soirely answers.
+# back is given up with the band still up, and the band goes only after Try again's own load,
+# once Soirely answers.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/settings/${SCREEN}
@@ -29,6 +29,16 @@ appId: host.exp.Exponent
     visible:
       id: ${REFRESHING}
     timeout: 8000
+# A second "back online" event makes a second automatic load, so this covers two.
+- extendedWaitUntil:
+    notVisible:
+      id: ${REFRESHING}
+    timeout: 70000
+- extendedWaitUntil:
+    visible:
+      id: ${REFRESHING}
+    timeout: 3000
+    optional: true
 - extendedWaitUntil:
     notVisible:
       id: ${REFRESHING}

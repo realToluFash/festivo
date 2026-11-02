@@ -46,6 +46,16 @@ appId: host.exp.Exponent
     visible:
       id: 'organisation.refreshing'
     timeout: 8000
+# A second "back online" event makes a second automatic load, so this covers two.
+- extendedWaitUntil:
+    notVisible:
+      id: 'organisation.refreshing'
+    timeout: 70000
+- extendedWaitUntil:
+    visible:
+      id: 'organisation.refreshing'
+    timeout: 3000
+    optional: true
 - extendedWaitUntil:
     notVisible:
       id: 'organisation.refreshing'
