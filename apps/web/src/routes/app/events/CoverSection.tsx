@@ -252,7 +252,7 @@ function CoverDialog({
   const focusNext = useRef<'slider' | 'picker' | null>('slider');
   const held = useRef(new Set<Chosen>());
   const kept = useRef<Chosen | null>(null);
-  const superseding = useRef(false);
+  const superseded = useRef<Trying | null>(null);
   const parked = useRef<Chosen | null>(null);
   // Below 640 px the dialog fills the screen and Remove photo moves from the footer into the body.
   const fullScreen = usePhoneWidth();
@@ -286,7 +286,6 @@ function CoverDialog({
 
   useEffect(() => {
     if (trying == null) return;
-    superseding.current = false;
     drop(parked.current);
     parked.current = null;
     const url = trying.local;
@@ -311,7 +310,7 @@ function CoverDialog({
         promoted = true;
         const next = { key: signed.key, url: url ?? copy, local: url != null };
         held.current.add(next);
-        if (superseding.current) {
+        if (superseded.current === trying) {
           parked.current = next;
           return;
         }
@@ -355,11 +354,11 @@ function CoverDialog({
     event.target.value = '';
     if (next == null) return;
 
-    if (trying != null) superseding.current = true;
+    if (trying != null) superseded.current = trying;
     const checked = await checkCoverPick(next);
     if (checked.refusal != null) {
       const unshown = parked.current;
-      superseding.current = false;
+      superseded.current = null;
       parked.current = null;
       if (unshown != null) {
         setChosen(unshown);

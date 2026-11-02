@@ -4810,6 +4810,53 @@ describe('Every pick is held under Uploading… until the server has read it (sc
     );
   });
 
+  /** Picks `chosen` as soon as Uploading… is committed, before React runs that render's effects, so the pick lands ahead of the first upload starting. */
+  function pickOnceUploading(
+    dialog: HTMLElement,
+    chosen: File,
+  ): () => 'waiting' | 'early' | 'late' {
+    let picked: 'waiting' | 'early' | 'late' = 'waiting';
+    let started = false;
+    const sign = api.signEventCoverUpload.bind(api);
+    vi.spyOn(api, 'signEventCoverUpload').mockImplementation((...args) => {
+      started = true;
+      return sign(...args);
+    });
+    const watching = new MutationObserver(() => {
+      if (picked !== 'waiting' || within(dialog).queryByText('Uploading…') == null) return;
+      picked = started ? 'late' : 'early';
+      watching.disconnect();
+      pickInDialog(chosen);
+    });
+    watching.observe(dialog, { childList: true, subtree: true, characterData: true });
+
+    return () => picked;
+  }
+
+  it('a second pick that lands before the first upload has started never shows the first', async () => {
+    signedIn();
+    const { signed, answer, answerTaken } = serving(PHOTO);
+    const size = sizingLater('second.jpg', 2400);
+    const dialog = await changing();
+    const pickedSecond = pickOnceUploading(dialog, jpeg('second.jpg'));
+
+    pickInDialog(jpeg('first.jpg'));
+    await waitFor(() => expect(pickedSecond()).not.toBe('waiting'));
+    expect(pickedSecond()).toBe('early');
+    await answerTaken('first.jpg');
+    expectHeld(dialog);
+
+    size();
+    await waitFor(() => expect(signed).toContain('second.jpg'));
+    expectHeld(dialog);
+    await answer('second.jpg');
+
+    await waitFor(() =>
+      expect(dialog.querySelector('.cover-frame img')?.getAttribute('src')).toBe('blob:second.jpg'),
+    );
+    expect(within(dialog).queryByText('Uploading…')).toBeNull();
+  });
+
   it('a second pick refused before it uploads shows the first, read while the second was sized', async () => {
     signedIn();
     const { waiting, answerTaken } = serving(PHOTO);
