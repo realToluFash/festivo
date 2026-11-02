@@ -1,4 +1,4 @@
-# The wordmark on the signed-out first screen and the sign-in lockup, in English then French. sc-23330.
+# Dusk's wordmark on the signed-out first screen and its lockup on sign-in, in English then French. sc-28811.
 # The language is set by the shared chip flows, never assumed from the device's last choice.
 #
 #   node .qa/bin/qa-env.mjs maestro brand-signed-out [--ipad | --se | --android [--tablet]]

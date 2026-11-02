@@ -398,9 +398,9 @@ span {
   height: auto;
 }
 
-/* The lockup leaves the bell room in the sidebar's 192 px row. */
+/* The lockup leaves the bell room in the sidebar's 192 px row, 26 px high as the board's Web sidebar draws it. */
 .brand-lockup img {
-  width: 140px;
+  width: 82px;
 }
 
 /* Up to 40rem the brand shares a bar, so it is exactly as wide as the name it replaces. */
