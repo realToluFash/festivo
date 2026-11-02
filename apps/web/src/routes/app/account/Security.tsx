@@ -286,30 +286,32 @@ export function Security() {
                       <span className="mark mark-broken" aria-hidden="true">
                         ✕
                       </span>
-                      <div
-                        className="notice-body"
-                        ref={failedNotice}
-                        tabIndex={retried ? -1 : undefined}
-                      >
-                        <p className="notice-title">{t('devices.failedTitle')}</p>
-                        <p>{t('devices.failedBody')}</p>
+                      <div className="notice-body">
+                        <div
+                          className="notice-body"
+                          ref={failedNotice}
+                          tabIndex={retried ? -1 : undefined}
+                        >
+                          <p className="notice-title">{t('devices.failedTitle')}</p>
+                          <p>{t('devices.failedBody')}</p>
+                        </div>
+                        <button
+                          className="button"
+                          type="button"
+                          onClick={() => {
+                            setRetried(true);
+                            setDevices({ kind: 'loading' });
+                            setAttempt((n) => n + 1);
+                            land(
+                              () =>
+                                failedNotice.current ??
+                                (list.current == null ? null : devicesHeading.current),
+                            );
+                          }}
+                        >
+                          {t('error.retry')}
+                        </button>
                       </div>
-                      <button
-                        className="button"
-                        type="button"
-                        onClick={() => {
-                          setRetried(true);
-                          setDevices({ kind: 'loading' });
-                          setAttempt((n) => n + 1);
-                          land(
-                            () =>
-                              failedNotice.current ??
-                              (list.current == null ? null : devicesHeading.current),
-                          );
-                        }}
-                      >
-                        {t('error.retry')}
-                      </button>
                     </>
                   )}
                 </div>

@@ -137,17 +137,19 @@ export function TwoFactorCard({
             <span className="mark mark-broken" aria-hidden="true">
               ✕
             </span>
-            <div
-              className="notice-body"
-              ref={failedNotice}
-              tabIndex={stage.pressed ? -1 : undefined}
-            >
-              <p className="notice-title">{t('twoFactorCard.failedTitle')}</p>
-              <p>{t('twoFactorCard.failedBody')}</p>
+            <div className="notice-body">
+              <div
+                className="notice-body"
+                ref={failedNotice}
+                tabIndex={stage.pressed ? -1 : undefined}
+              >
+                <p className="notice-title">{t('twoFactorCard.failedTitle')}</p>
+                <p>{t('twoFactorCard.failedBody')}</p>
+              </div>
+              <button className="button" type="button" onClick={() => reload()}>
+                {t('error.retry')}
+              </button>
             </div>
-            <button className="button" type="button" onClick={() => reload()}>
-              {t('error.retry')}
-            </button>
           </div>
         </>
       )}
