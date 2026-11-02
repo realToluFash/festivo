@@ -31,6 +31,9 @@ appId: host.exp.Exponent
     id: 'timeZone.option.Europe/Lisbon'
 - waitForAnimationToEnd:
     timeout: 3000
+- assertVisible:
+    id: 'timeZone.search'
+    text: 'Lisbon \(UTC.*\)'
 - takeScreenshot: tz-picked
 - repeat:
     times: 5
