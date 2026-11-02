@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   backLabelSize,
+  bandPlace,
   breakableEmail,
   drawnLine,
   fitWidest,
@@ -143,6 +144,43 @@ describe('paddingToCentre', () => {
 
   it('pads nothing once the line is taller than the row', () => {
     expect(paddingToCentre(48, drawnLine(TITLE_LINE, 3.1, null))).toBe(0);
+  });
+});
+
+describe('bandPlace', () => {
+  const PRO = { band: 402, sidePadding: 16 };
+  const tryAgainLeaving = (room: number) => 370 - 18 - 10 - 16 - 34 - room;
+
+  // The widest word and the room beside Try again on the iPhone 17 Pro, from ux's sums (sc-27686).
+  it.each([
+    ['en at the ninth step', 100, 164, true],
+    ['es at the eighth step', 145, 168, true],
+    ['es at the ninth step', 174, 143, false],
+    ['pt at the eighth step', 137, 77, false],
+    ['pt at the ninth step', 164, 34, false],
+    ['"Wednesday," at the ninth step', 186, 164, false],
+    ['"dimanche" at the ninth step', 152, 148, false],
+    ['"segunda-feira," at the seventh step', 139, 129, false],
+  ])('places %s', (_, widestWord, room, beside) => {
+    expect(bandPlace({ ...PRO, widestWord, tryAgain: tryAgainLeaving(room) }).beside).toBe(beside);
+  });
+
+  it('keeps a word exactly as wide as the room beside', () => {
+    expect(bandPlace({ ...PRO, widestWord: 100, tryAgain: tryAgainLeaving(100) }).beside).toBe(
+      true,
+    );
+  });
+
+  it('takes the room from the band it is given, not the window', () => {
+    const asked = { widestWord: 164, tryAgain: 258, sidePadding: 24 };
+
+    expect(bandPlace({ ...asked, band: 402 }).beside).toBe(false);
+    expect(bandPlace({ ...asked, band: 894 }).beside).toBe(true);
+  });
+
+  it('wraps the pill only once it is wider than the inner width', () => {
+    expect(bandPlace({ ...PRO, widestWord: 164, tryAgain: 336 }).pillWraps).toBe(false);
+    expect(bandPlace({ ...PRO, widestWord: 164, tryAgain: 337 }).pillWraps).toBe(true);
   });
 });
 
