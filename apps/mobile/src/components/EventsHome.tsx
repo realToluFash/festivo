@@ -266,7 +266,7 @@ function Card({
 
   return (
     <Pressable
-      style={[styles.card, { width }]}
+      style={[styles.card, !phone && styles.cardTablet, { width }]}
       onPress={onOpen}
       accessibilityRole="button"
       testID={`events.row.${event.id}`}
@@ -445,6 +445,7 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colorCard,
     ...LIFT,
   },
+  cardTablet: { gap: tokens.spaceMd, padding: tokens.spaceXl },
   now: { paddingVertical: 14, paddingHorizontal: tokens.spaceXl },
   when: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: tokens.spaceXxs },
   whenAcross: {

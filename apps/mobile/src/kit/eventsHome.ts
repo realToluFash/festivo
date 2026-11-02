@@ -9,9 +9,10 @@ import {
 import type { TFunction } from 'i18next';
 
 import type { LayoutKind } from '../layout/classify.ts';
+import { tokens } from '../theme/tokens.ts';
 
 export const EVENT_CARD_GAP: Record<LayoutKind, number> = {
-  phone: 10,
+  phone: tokens.spaceMd,
   tabletPortrait: 14,
   tabletLandscape: 14,
 };
