@@ -13,7 +13,8 @@ import sys
 import threading
 import time
 
-from . import (background, checkout, drawing, harness, local, machine, permissions, review,
+from . import (background, checkout, drawing, harness, leftovers, local, machine, permissions,
+               review,
                roles, runlog, sessions, shared, store, sync, update)
 
 VERSION_EVERY_SECONDS = 10 * 60
@@ -175,6 +176,7 @@ def run(db, home, platform, sq, python, now=None, dry_run=False, say=print,
     local.checks(db, config, now, dry_run=dry_run)
     if not dry_run:
         local.sweep_scratch(db, config, now, say)
+        stop_leftovers(db, home, platform, say)
     refresh_work(db, now)
     if not dry_run:
         void_passes(db, now, say)
@@ -532,6 +534,28 @@ def told_stories(db, role):
     return set((store.get_meta(db, f"artifact:{role}") or {}).get("told") or ())
 
 
+def end_run(scratch, session, stop=leftovers.stop_run):
+    """Whatever way a run ends: every process its session started is stopped, and its
+    scratch and task-output folders go."""
+    stop(scratch)
+    shutil.rmtree(scratch, ignore_errors=True)
+    for folder in leftovers.task_folders(session) if session else []:
+        shutil.rmtree(folder, ignore_errors=True)
+
+
+def stop_leftovers(db, home, platform, say, find=leftovers.ended, stop=leftovers.stop):
+    """The tick's net under `end_run`: a process still up from an ended run is named and
+    stopped, and the owner told once for it."""
+    left = find(home)
+    for each in left:
+        said = leftovers.describe(each)
+        say(f"warning: stopped a leftover process: {said}")
+        if once(db, f"told:leftover:{each['worker']}", each["item"]):
+            platform.notify("Soirely: a worker left a process running", said)
+    if left:
+        stop([each["pid"] for each in left])
+
+
 def in_background(db, platform, name, entry, values, folder, text, cwd, ids, allowed, denied,
                   scratch, run_background):
     """The worker's item as a background session. Returns what `claude -p` would have:
@@ -644,7 +668,7 @@ def worker(db, home, platform, name, item_id, run_claude=run_until_done, load=ma
         platform.notify(f"Soirely: {name}'s worker stopped", entry["report"][:300])
         return entry
     finally:
-        shutil.rmtree(scratch, ignore_errors=True)
+        end_run(scratch, entry.get("session"))
         if cwd != path:
             review.remove(path)
     entry.update(runlog.from_result(result, code))
@@ -679,11 +703,12 @@ def worker_ended(home, platform, name, item_id, now=None, load=machine.load, db=
     """`ExecStopPost`: a run stopped by its memory or time limit, or a crash, writes no
     report of its own, so this leaves the record, and takes its review worktree away."""
     role = machine.worker_role(name)
-    shutil.rmtree(run_dir(home, name, item_id), ignore_errors=True)
     live = sessions.current(db, name) if db is not None else None
-    if live and live.get("bg") and live.get("item") == item_id:
+    ours = live if live and live.get("item") == item_id else {}
+    if ours.get("bg"):
         # The session runs under the daemon, so the worker's end does not end it.
-        background.stop(live["bg"], account_env(live["folder"]))
+        background.stop(ours["bg"], account_env(ours["folder"]))
+    end_run(run_dir(home, name, item_id), ours.get("session"))
     if role in review.ROLES:
         try:
             review.remove(machine.checkout(load(), role, name))
