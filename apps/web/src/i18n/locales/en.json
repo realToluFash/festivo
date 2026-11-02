@@ -2151,6 +2151,7 @@
     "resetTitle": "Shared it by mistake?",
     "resetBody": "Reset the link and the old one stops working straight away.",
     "reset": "Reset link",
+    "resetOpen": "Reset link…",
     "confirmTitle": "Reset your link?",
     "confirmBody": "The current link stops working at once. Any calendar subscribed with it stops updating, and you'll need to subscribe again with the new link.",
     "keep": "Keep this link",

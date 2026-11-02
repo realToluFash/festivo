@@ -1915,6 +1915,7 @@
     "resetTitle": "Partilhou-a por engano?",
     "resetBody": "Redefina a ligação e a antiga deixa de funcionar de imediato.",
     "reset": "Redefinir ligação",
+    "resetOpen": "Redefinir ligação…",
     "confirmTitle": "Redefinir a sua ligação?",
     "confirmBody": "A ligação atual deixa de funcionar de imediato. Os calendários subscritos com ela deixam de ser atualizados e terá de voltar a subscrever com a nova ligação.",
     "keep": "Manter esta ligação",

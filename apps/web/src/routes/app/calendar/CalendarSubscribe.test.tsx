@@ -145,7 +145,7 @@ describe('Subscribe in your calendar app (sc-3626)', () => {
     const panel = await openPanel();
     await within(panel).findByDisplayValue(`http://api.test${OLD}`);
 
-    fireEvent.click(within(panel).getByRole('button', { name: 'Reset link' }));
+    fireEvent.click(within(panel).getByRole('button', { name: 'Reset link…' }));
     const confirm = screen.getByRole('alertdialog', { name: 'Reset your link?' });
     fireEvent.click(within(confirm).getByRole('button', { name: 'Reset link' }));
 
@@ -164,14 +164,14 @@ describe('Subscribe in your calendar app (sc-3626)', () => {
     const panel = await openPanel();
     await within(panel).findByDisplayValue(`http://api.test${OLD}`);
 
-    fireEvent.click(within(panel).getByRole('button', { name: 'Reset link' }));
+    fireEvent.click(within(panel).getByRole('button', { name: 'Reset link…' }));
     fireEvent.click(screen.getByRole('button', { name: 'Keep this link' }));
 
     expect(screen.queryByRole('alertdialog')).toBeNull();
     expect(within(panel).getByRole('status').textContent).toBe('Link unchanged.');
     expect(sent.some((line) => line.startsWith('POST'))).toBe(false);
 
-    fireEvent.click(within(panel).getByRole('button', { name: 'Reset link' }));
+    fireEvent.click(within(panel).getByRole('button', { name: 'Reset link…' }));
     const confirm = screen.getByRole('alertdialog', { name: 'Reset your link?' });
     fireEvent.click(within(confirm).getByRole('button', { name: 'Reset link' }));
 

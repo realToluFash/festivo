@@ -43,6 +43,8 @@ type SheetProps = {
   held?: boolean;
   /** Where screen reader focus goes back to once the sheet has gone. */
   opener: RefObject<ScreenReaderTarget | null>;
+  /** Its heading takes screen reader focus as it opens, so TalkBack is given nothing to name the window by. */
+  headingTakesFocus?: boolean;
   testID?: string;
   children: ReactNode;
 };
@@ -113,6 +115,7 @@ function SheetFrame({
   scrimLabel,
   held = false,
   opener,
+  headingTakesFocus = false,
   testID,
   children,
 }: SheetProps) {
@@ -138,6 +141,7 @@ function SheetFrame({
     height,
   );
   const { shown, gone } = useWindowTurn(useModalOpen(present));
+  const unnamed = useUnnamedWindow(Platform.OS === 'android' && headingTakesFocus && shown);
   if (!shown && (onScreen || laidOut)) {
     setOnScreen(false);
     setLaidOut(false);
@@ -203,6 +207,7 @@ function SheetFrame({
               frame,
             ]}
             accessibilityViewIsModal
+            importantForAccessibility={unnamed ? 'no-hide-descendants' : 'auto'}
             onAccessibilityEscape={close}
             testID={testID}
           >
@@ -322,6 +327,21 @@ export function useWindowTurn(wanted: boolean): { shown: boolean; gone: () => vo
   useLayoutEffect(() => gone, [gone]);
 
   return { shown, gone };
+}
+
+/** Hidden until TalkBack has announced the window, a heading that takes focus is not also read as the window's name. */
+function useUnnamedWindow(opening: boolean): boolean {
+  const [announced, setAnnounced] = useState(false);
+  if (!opening && announced) setAnnounced(false);
+
+  useEffect(() => {
+    if (!opening) return;
+    const shown = setTimeout(() => setAnnounced(true), SETTLED_MS / 2);
+
+    return () => clearTimeout(shown);
+  }, [opening]);
+
+  return opening && !announced;
 }
 
 /** The keyboard's top edge in the sheet's window, or null while the keys are down. */

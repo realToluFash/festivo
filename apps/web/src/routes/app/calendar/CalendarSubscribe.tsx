@@ -205,6 +205,9 @@ function SubscribeDialog({
               )}
               {copyRefused && (
                 <p className="calendar-subscribe-line calendar-subscribe-warning" role="alert">
+                  <span className="mark mark-attention" aria-hidden="true">
+                    !
+                  </span>
                   {t('calendarFeed.copyRefused')}
                 </p>
               )}
@@ -225,6 +228,7 @@ function SubscribeDialog({
                 id="calendar-subscribe-private"
                 className="calendar-subscribe-line calendar-subscribe-warning"
               >
+                <LockIcon />
                 {t('calendarFeed.private')}
               </p>
             </div>
@@ -266,7 +270,7 @@ function SubscribeDialog({
                     setConfirming(true);
                   }}
                 >
-                  {t('calendarFeed.reset')}
+                  {t('calendarFeed.resetOpen')}
                 </button>
               </div>
             </div>
@@ -324,6 +328,24 @@ function CalendarIcon() {
     >
       <rect x="3" y="5" width="18" height="16" rx="2" />
       <path d="M3 10h18M8 3v4M16 3v4" />
+    </svg>
+  );
+}
+
+function LockIcon() {
+  return (
+    <svg
+      className="calendar-subscribe-icon"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.25"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <rect x="5" y="11" width="14" height="10" rx="2" />
+      <path d="M8 11V7a4 4 0 0 1 8 0v4" />
     </svg>
   );
 }

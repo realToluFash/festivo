@@ -7212,12 +7212,11 @@ button.members-row {
 }
 
 .calendar-subscribe-link label {
-  color: var(--colorInkSecondary);
-  font: var(--typeLabel);
+  color: var(--markInfoInk);
+  font: var(--typeButton);
 }
 
 .calendar-subscribe-url {
-  font-family: var(--fontFamilyMono);
   text-overflow: ellipsis;
 }
 
@@ -7234,6 +7233,15 @@ button.members-row {
 
 .calendar-subscribe-warning {
   color: var(--colorAttentionText);
+}
+
+.calendar-subscribe-line .mark {
+  width: var(--sizeMark);
+  height: var(--sizeMark);
+}
+
+.calendar-subscribe-line .calendar-subscribe-icon {
+  margin-top: 2px;
 }
 
 .calendar-subscribe-buttons {
@@ -7279,10 +7287,6 @@ button.members-row {
 
 .calendar-subscribe-reset p {
   color: var(--colorInkSecondary);
-}
-
-.calendar-subscribe-reset-button {
-  color: var(--colorBrokenText);
 }
 
 @media (width <= 40rem) {
