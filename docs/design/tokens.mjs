@@ -149,12 +149,12 @@ export const tokens = {
   spaceSm: 8, // the default gap (352 uses)
   spaceMd: 10, // row content gap on phone
   spaceLg: 12, // card inner stacks, grid gaps
+  spacePillEnd: 14, // the app's organisation pill, from its chevron to its edge (sc-23301)
   spaceXl: 16, // between cards, phone side padding
   spaceXxl: 20, // desktop content gap, phone card padding, column gaps
   space3xl: 24, // desktop card padding
   space4xl: 28, // desktop content top padding
   space5xl: 32, // desktop content side padding
-  spacePillEnd: 14, // the app's organisation pill, from its chevron to its edge (sc-23301)
   space6xl: 40, // between frames (documentation canvas only)
 
   // ── Sizing (px) ────────────────────────────────────────────────────────────
