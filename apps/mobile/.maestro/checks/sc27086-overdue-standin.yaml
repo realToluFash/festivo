@@ -43,6 +43,8 @@ appId: host.exp.Exponent
             id: 'twoFactorOverdue.signOut'
           timeout: 30000
           optional: true
+- assertVisible:
+    id: 'twoFactorOverdue.signOut'
 - waitForAnimationToEnd
 - takeScreenshot: standin
 - assertNotVisible:
@@ -63,6 +65,10 @@ appId: host.exp.Exponent
     notVisible:
       id: 'twoFactorOverdue.signOut'
     timeout: 20000
+- extendedWaitUntil:
+    visible:
+      id: 'calendar.today'
+    timeout: 30000
 - extendedWaitUntil:
     visible:
       id: 'never.there'
