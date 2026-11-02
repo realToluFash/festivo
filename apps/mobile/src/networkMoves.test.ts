@@ -3,7 +3,7 @@ import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 const network = vi.hoisted(() => ({
   listener: null as null | ((state: { isConnected?: boolean; type?: string }) => void),
-  atLaunch: { isConnected: true, type: 'WIFI' },
+  launchRead: async () => ({ isConnected: true, type: 'WIFI' }),
 }));
 
 vi.mock('expo-secure-store', () => ({
@@ -21,7 +21,7 @@ vi.mock('expo-network', () => ({
     network.listener = listener;
     return { remove: () => {} };
   },
-  getNetworkStateAsync: async () => network.atLaunch,
+  getNetworkStateAsync: () => network.launchRead(),
 }));
 vi.mock('./appAgent.ts', () => ({ appAgent: 'Soirely/test' }));
 vi.mock('./config.ts', () => ({ config: { apiBaseUrl: 'http://api.test' } }));
@@ -51,5 +51,24 @@ describe("the app's network reports", () => {
     network.listener!({ isConnected: true, type: 'WIFI' });
 
     expect(heard).toEqual([]);
+  });
+});
+
+describe('a launch read that answers after a move', () => {
+  it('is older than the move, so the move gets one load and no more', async () => {
+    vi.resetModules();
+    let answerLaunch!: (state: { isConnected: boolean; type: string }) => void;
+    network.launchRead = () => new Promise((resolve) => (answerLaunch = resolve));
+    const fresh = await import('@soirely/domain');
+    await import('./api.ts');
+    const changes: ConnectionChange[] = [];
+    fresh.connection.subscribe((change) => changes.push(change));
+
+    network.listener!({ isConnected: true, type: 'WIFI' });
+    network.listener!({ isConnected: true, type: 'CELLULAR' });
+    answerLaunch({ isConnected: true, type: 'WIFI' });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(changes).toEqual(['deviceBack']);
   });
 });
