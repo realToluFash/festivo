@@ -40,7 +40,8 @@ import { dateLocale } from '../i18n/index.ts';
 import { DESTINATION_HREF } from '../kit/appNav.ts';
 import { PHASE_WORD } from '../kit/makeLive.ts';
 import { type LayoutKind, useLayout } from '../layout/useLayout.ts';
-import { NOT_OFFLINE, type ScreenOffline, keepsWhatLoaded, useOffline } from '../offline.ts';
+import { NOT_OFFLINE, type ScreenOffline, useOffline } from '../offline.ts';
+import { afterFailedLoad } from '../offlineLoad.ts';
 import { useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
 import { AppFrame } from './AppFrame.tsx';
@@ -174,11 +175,7 @@ function CalendarOf({
 
     watch(api.allEvents(organisationId)).then(
       (events) => live && setLoad({ kind: 'loaded', events }),
-      (error: unknown) =>
-        live &&
-        setLoad((was) =>
-          was.kind === 'loaded' && keepsWhatLoaded(error) ? was : { kind: 'failed' },
-        ),
+      (error: unknown) => live && setLoad((was) => afterFailedLoad(was, error, { kind: 'failed' })),
     );
 
     return () => {

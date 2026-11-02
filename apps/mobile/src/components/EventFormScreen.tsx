@@ -12,6 +12,7 @@ import { goToArea, goUpToEvent } from '../kit/upToEvent.ts';
 import { markSaved } from '../kit/eventSaved.ts';
 import { type LayoutKind, useLayout } from '../layout/useLayout.ts';
 import { type Stale, useOffline } from '../offline.ts';
+import { formAfterLoad } from '../offlineLoad.ts';
 import { useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
 import { api } from '../api.ts';
@@ -87,7 +88,7 @@ export function EditEventScreen({ eventId, at }: { eventId: string; at: EditAt |
   useEffect(() => {
     if (organisationId == null || !manages) return;
     let live = true;
-    const settle = (read: Load) => live && setLoad((was) => ('event' in was ? was : read));
+    const settle = (read: Load) => live && setLoad((was) => formAfterLoad(was, read));
 
     watch(api.taggedEvent(eventId)).then(
       (tagged) =>
@@ -212,14 +213,6 @@ export function FormFrame({
   const { t } = useTranslation();
   const phone = kind === 'phone';
   const { bar, heading } = formTitles(kind, title, shortTitle, t('eventsScreen.title'));
-  const cancel = !phone && (
-    <QuietButton
-      label={t('eventEdit.cancel')}
-      onPress={onCancel}
-      off={cancelOff}
-      testID="eventForm.cancel"
-    />
-  );
 
   return (
     <AppFrame
@@ -239,13 +232,17 @@ export function FormFrame({
       <Screen edges={bodyEdges(kind)} contentStyle={CONTENT[kind]}>
         {heading != null && (
           <View style={styles.head}>
-            {!phone && refreshing != null ? (
+            {/* Cancel stays put as Refreshing… comes and goes, so TalkBack keeps its place there. */}
+            {!phone && (
               <View style={[besideRow.row, styles.across]}>
-                {cancel}
+                <QuietButton
+                  label={t('eventEdit.cancel')}
+                  onPress={onCancel}
+                  off={cancelOff}
+                  testID="eventForm.cancel"
+                />
                 {refreshing}
               </View>
-            ) : (
-              cancel
             )}
             {heading != null && (
               <Text

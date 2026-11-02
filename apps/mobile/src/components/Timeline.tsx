@@ -17,7 +17,8 @@ import { api } from '../api.ts';
 import { dateLocale } from '../i18n/index.ts';
 import { SMALL_LINE, TITLE_LINE, rowsFloor } from '../layout/textSize.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
-import { type ScreenOffline, keepsWhatLoaded, useOffline } from '../offline.ts';
+import { type ScreenOffline, useOffline } from '../offline.ts';
+import { afterFailedLoad } from '../offlineLoad.ts';
 import { tokens } from '../theme/tokens.ts';
 import { QuietButton, SecondaryButton } from './Buttons.tsx';
 import { Notice } from './Notice.tsx';
@@ -79,9 +80,7 @@ function useTimeline(
       (error: unknown) =>
         live &&
         setLoad((was) =>
-          watch != null && was.kind === 'loaded' && keepsWhatLoaded(error)
-            ? was
-            : { kind: 'failed' },
+          watch == null ? { kind: 'failed' } : afterFailedLoad(was, error, { kind: 'failed' }),
         ),
     );
 
