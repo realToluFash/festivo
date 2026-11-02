@@ -1,0 +1,33 @@
+# A wrong code, then a new one asked for, on Check your email after a sign-up. sc-56, sc-18534.
+# The refusal and the countdown are matched in English: neither has a testID of its own.
+#
+#   node .qa/bin/qa-env.mjs maestro verify-email-refused NAME=… EMAIL=… PASSWORD=…   EMAIL fresh
+appId: host.exp.Exponent
+---
+- runFlow: register-check-email.yaml
+- takeScreenshot: mobile-verify-email
+- tapOn:
+    id: 'verifyEmail.code'
+- eraseText: 20
+- inputText: '000000'
+- takeScreenshot: mobile-verify-email-keyboard
+- tapOn:
+    id: 'verifyEmail.submit'
+- extendedWaitUntil:
+    visible: 'That code does not match.*'
+    timeout: 15000
+- takeScreenshot: mobile-verify-email-wrong
+- extendedWaitUntil:
+    visible:
+      id: 'verifyEmail.resendSoon'
+      text: 'Send a new code'
+    timeout: 75000
+- tapOn:
+    id: 'verifyEmail.resendSoon'
+- extendedWaitUntil:
+    visible:
+      id: 'verifyEmail.resendSoon'
+      text: 'Send a new code in (1:00|0:[0-5][0-9])'
+    timeout: 15000
+- assertNotVisible: 'That code does not match.*'
+- takeScreenshot: mobile-verify-email-countdown

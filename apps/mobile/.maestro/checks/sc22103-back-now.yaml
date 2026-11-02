@@ -1,0 +1,31 @@
+# sc-22103: opened from Happening now while Drafts shows, All dates, two areas, Back to Overview, Back to Events still on Drafts. Needs ${METRO_URL}, ${DRAFT}, ${NOW}.
+appId: host.exp.Exponent
+---
+- runFlow: ../checks/sc22103/to-drafts.yaml
+- scrollUntilVisible:
+    element:
+      id: 'events.row.${DRAFT}'
+    centerElement: true
+    timeout: 20000
+- scrollUntilVisible:
+    element:
+      id: 'events.now.${NOW}'
+    direction: UP
+    centerElement: true
+    timeout: 20000
+- tapOn:
+    id: 'events.now.${NOW}'
+- runFlow: ../checks/sc22103/alldates-areas-back.yaml
+- extendedWaitUntil:
+    notVisible:
+      id: 'events.page'
+    timeout: 15000
+- takeScreenshot: landed
+- scrollUntilVisible:
+    element:
+      id: 'events.row.${DRAFT}'
+    centerElement: true
+    timeout: 20000
+- assertNotVisible:
+    id: 'events.page'
+- takeScreenshot: back-events-drafts

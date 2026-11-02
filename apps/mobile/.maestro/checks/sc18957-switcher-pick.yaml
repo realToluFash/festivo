@@ -1,0 +1,37 @@
+# Your organisations: picking QA Org 02 switches to it, then back to QA Organisation. sc-18957. Needs an account that holds QA Organisation and a second organisation named exactly QA Org 02, with QA Organisation current.
+# A row's testID is switcher.<organisation id>, which differs per account, so a row is tapped by its name; .* takes the rest of its merged label.
+appId: host.exp.Exponent
+---
+- assertVisible:
+    id: 'frame.organisation'
+    text: '.*QA Organisation, .*'
+- tapOn:
+    id: 'frame.organisation'
+- extendedWaitUntil:
+    visible:
+      id: 'switcher.heading'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 5000
+- tapOn: 'QA Org 02.*'
+- extendedWaitUntil:
+    notVisible:
+      id: 'switcher.heading'
+    timeout: 10000
+- assertVisible: 'QA Org 02.*'
+- takeScreenshot: switched
+- tapOn:
+    id: 'frame.organisation'
+- extendedWaitUntil:
+    visible:
+      id: 'switcher.heading'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 5000
+- tapOn: 'QA Organisation, .*'
+- extendedWaitUntil:
+    notVisible:
+      id: 'switcher.heading'
+    timeout: 10000
+- assertVisible: 'QA Organisation.*'
+- takeScreenshot: switched-back

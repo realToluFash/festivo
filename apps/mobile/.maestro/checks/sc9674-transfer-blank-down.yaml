@@ -1,0 +1,49 @@
+# Transfer ownership: password empty, keys hidden. The check opens the keys on Your password. sc-9674.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/organisation
+- extendedWaitUntil:
+    visible:
+      id: organisation.name
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: ownership.transfer
+    centerElement: true
+- tapOn:
+    id: ownership.transfer
+- scrollUntilVisible:
+    element:
+      id: ownership.owner.${MEMBER}
+    centerElement: true
+- tapOn:
+    id: ownership.owner.${MEMBER}
+- scrollUntilVisible:
+    element:
+      id: ownership.password
+    centerElement: true
+- tapOn:
+    id: ownership.password
+- tapOn:
+    point: '2%,45%'
+- waitForAnimationToEnd
+- takeScreenshot: keys-hidden
+- assertNotVisible: '(?i)(shift|delete)'
+- scrollUntilVisible:
+    element:
+      id: ownership.transfer.send
+    centerElement: true
+- tapOn:
+    id: ownership.transfer.send
+- extendedWaitUntil:
+    visible: '{{t:ownership.passwordBlank}}'
+    timeout: 10000
+- waitForAnimationToEnd
+- takeScreenshot: checked
+- assertVisible: '(?i)(shift|delete)'
+- inputText: abc
+- tapOn:
+    id: ownership.password.reveal
+- assertVisible:
+    id: ownership.password
+    text: 'abc'

@@ -1,0 +1,23 @@
+# The app opens, and reaches the API.
+#
+# The cheapest flow there is, and the one worth running first: it fails when the
+# bundler is down, when the simulator has no network, and when the API URL is
+# wrong — three things that otherwise look like a broken screen.
+#
+# The link carries `/--/`, which is how a route is named inside Expo Go. Without
+# it the app opens wherever it was left, and an assertion on the brand passes on
+# every screen in the product.
+appId: host.exp.Exponent
+---
+# Stopped and relaunched, because `openLink` reaches a route without remounting
+# the screen: a flow that does not do this inherits whatever the last run left
+# on it, which is how two runs of the same flow disagree.
+- launchApp:
+    appId: host.exp.Exponent
+    stopApp: true
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible: 'Service status'
+    timeout: 60000
+- assertVisible: 'All services are responding.'
+- takeScreenshot: mobile-launch

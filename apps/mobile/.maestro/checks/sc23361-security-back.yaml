@@ -1,0 +1,10 @@
+# sc-23361 on a phone: Settings › Security shows ‹ Settings on its back, whole.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/security
+- extendedWaitUntil:
+    visible:
+      id: 'frame.back'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: security-top

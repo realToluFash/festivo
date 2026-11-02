@@ -1,0 +1,32 @@
+# Android only. sc-18108: Settings > Roles > the role ${ROLE}; Back shows the Roles list, a second Back shows Settings.
+appId: host.exp.Exponent
+---
+- runFlow: ../open-settings.yaml
+- tapOn:
+    id: 'settings.roles'
+- extendedWaitUntil:
+    visible:
+      id: 'roles.role.owner'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'roles.role.${ROLE}'
+    direction: DOWN
+- tapOn:
+    id: 'roles.role.${ROLE}'
+- waitForAnimationToEnd
+- takeScreenshot: page
+- back
+- extendedWaitUntil:
+    visible:
+      id: 'roles.new'
+    timeout: 10000
+- takeScreenshot: after-back
+- back
+- extendedWaitUntil:
+    visible:
+      id: 'settings.members'
+    timeout: 10000
+- assertNotVisible:
+    id: 'roles.new'
+- takeScreenshot: after-second-back

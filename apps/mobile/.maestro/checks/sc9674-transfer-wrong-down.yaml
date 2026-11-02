@@ -1,0 +1,57 @@
+# Transfer ownership: wrong password, keys hidden, refused. Keys never open. sc-9674.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/organisation
+- extendedWaitUntil:
+    visible:
+      id: organisation.name
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: ownership.transfer
+    centerElement: true
+- tapOn:
+    id: ownership.transfer
+- scrollUntilVisible:
+    element:
+      id: ownership.owner.${MEMBER}
+    centerElement: true
+- tapOn:
+    id: ownership.owner.${MEMBER}
+- scrollUntilVisible:
+    element:
+      id: ownership.password
+    centerElement: true
+- tapOn:
+    id: ownership.password
+- inputText: not-my-password
+- tapOn:
+    point: '2%,45%'
+- waitForAnimationToEnd
+- takeScreenshot: keys-hidden
+- assertNotVisible: '(?i)(shift|delete)'
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=paused
+- scrollUntilVisible:
+    element:
+      id: ownership.transfer.send
+    centerElement: true
+- tapOn:
+    id: ownership.transfer.send
+- waitForAnimationToEnd
+- takeScreenshot: at-tap
+- assertNotVisible: '(?i)(shift|delete)'
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=up
+- extendedWaitUntil:
+    visible: '{{t:ownership.passwordWrong}}'
+    timeout: 45000
+- waitForAnimationToEnd:
+    timeout: 3000
+- waitForAnimationToEnd
+- takeScreenshot: refused
+- assertNotVisible: '(?i)(shift|delete)'

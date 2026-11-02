@@ -1,0 +1,27 @@
+# The signed-out app in LANGUAGE, by its chip on the sign-in screen (English, Español, Français,
+# Português), which keeps the device's last choice. Run before sign-in-any-language.yaml. sc-2939.
+appId: host.exp.Exponent
+---
+- launchApp:
+    appId: host.exp.Exponent
+    stopApp: true
+- openLink: ${METRO_URL}/--/sign-in
+# Expo Go can land the sign-in link on Home (sc-22740); its Sign in button opens the screen.
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.email|home.openSignIn'
+    timeout: 90000
+- runFlow:
+    when:
+      visible:
+        id: 'home.openSignIn'
+    commands:
+      - tapOn:
+          id: 'home.openSignIn'
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.email'
+    timeout: 20000
+- scrollUntilVisible:
+    element: '${LANGUAGE}'
+- tapOn: '${LANGUAGE}'

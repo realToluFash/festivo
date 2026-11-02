@@ -1,0 +1,57 @@
+# sc-26732: Events (summary, tiles, list, footer, drafts' next steps) and an event's tab bar and More sheet, in the account's language.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible:
+      id: 'frame.events'
+    timeout: 30000
+- tapOn:
+    id: 'frame.events'
+- extendedWaitUntil:
+    visible:
+      id: 'events.summary'
+    timeout: 30000
+- takeScreenshot: events-top
+- scrollUntilVisible:
+    element:
+      id: 'events.footer'
+    centerElement: true
+    timeout: 20000
+- takeScreenshot: events-footer
+- scrollUntilVisible:
+    element:
+      id: 'events.tab.drafts'
+    centerElement: true
+    direction: UP
+    timeout: 20000
+- tapOn:
+    id: 'events.tab.drafts'
+- waitForAnimationToEnd
+- takeScreenshot: drafts
+- scrollUntilVisible:
+    element:
+      id: 'events.footer'
+    centerElement: true
+    timeout: 20000
+- takeScreenshot: drafts-footer
+- openLink: ${METRO_URL}/--/events/${EVENT}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 30000
+- takeScreenshot: event-overview
+- tapOn:
+    id: 'event.nav.more'
+- extendedWaitUntil:
+    visible:
+      id: 'event.nav.moreSheet'
+    timeout: 15000
+- takeScreenshot: more-sheet
+- tapOn:
+    id: 'event.nav.more.staff'
+- extendedWaitUntil:
+    visible:
+      id: 'events.area.staff'
+    timeout: 15000
+- takeScreenshot: staff-coming

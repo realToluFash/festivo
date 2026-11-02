@@ -1,0 +1,53 @@
+# sc-11786: Remove {role}? on ${ROLE_ID} with ${MOVE_TO} picked under Move them to:, turned from ${FROM} to ${TO}, then kept.
+appId: host.exp.Exponent
+---
+- setOrientation: ${FROM}
+- openLink: ${METRO_URL}/--/settings/roles
+- extendedWaitUntil:
+    visible:
+      id: 'roles.role.owner'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'roles.role.${ROLE_ID}'
+    direction: DOWN
+- tapOn:
+    id: 'roles.role.${ROLE_ID}'
+- extendedWaitUntil:
+    visible:
+      id: 'roles.area.events.*'
+    timeout: 15000
+- scrollUntilVisible:
+    element:
+      id: 'roles.remove'
+    direction: DOWN
+- tapOn:
+    id: 'roles.remove'
+- repeat:
+    while:
+      notVisible:
+        id: 'roles.replacement.${MOVE_TO}'
+    times: 10
+    commands:
+      - swipe:
+          start: 75%, 70%
+          end: 75%, 35%
+- tapOn:
+    id: 'roles.replacement.${MOVE_TO}'
+- waitForAnimationToEnd
+- takeScreenshot: role-remove-before
+- setOrientation: ${TO}
+- waitForAnimationToEnd
+- takeScreenshot: role-remove-after
+- repeat:
+    while:
+      notVisible:
+        id: 'roles.remove.keep'
+    times: 10
+    commands:
+      - swipe:
+          start: 75%, 70%
+          end: 75%, 35%
+- takeScreenshot: role-remove-after-foot
+- tapOn:
+    id: 'roles.remove.keep'

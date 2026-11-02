@@ -1,0 +1,30 @@
+# Once the answer TEXT shows, CANCEL is live again and closes the form. Runs after
+# cancel-held, with the api unpaused or killed. sc-12545.
+#
+#   node .qa/bin/qa-env.mjs maestro cancel-after SAVE=… CANCEL=… TEXT=… NAME=…
+appId: host.exp.Exponent
+---
+- scrollUntilVisible:
+    element:
+      id: ${CANCEL}
+      enabled: true
+    centerElement: true
+    timeout: 60000
+- takeScreenshot: ${NAME}-live
+- scrollUntilVisible:
+    element: ${TEXT}
+    direction: UP
+    timeout: 20000
+- takeScreenshot: ${NAME}-answer
+- scrollUntilVisible:
+    element:
+      id: ${CANCEL}
+    centerElement: true
+- assertVisible:
+    id: ${CANCEL}
+    enabled: true
+- tapOn:
+    id: ${CANCEL}
+- assertNotVisible:
+    id: ${SAVE}
+- takeScreenshot: ${NAME}-closed

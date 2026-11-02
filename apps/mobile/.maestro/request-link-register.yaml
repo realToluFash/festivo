@@ -1,0 +1,32 @@
+# Signed out, open a request link and create an account, then force-quit at the code screen. sc-562.
+# Pass TOKEN, NAME, EMAIL and PASSWORD. request-link-register-dead.yaml carries on (sc-11741).
+# iPhone only: on Android the Enter can type into the field instead of submitting (sc-18648).
+appId: host.exp.Exponent
+---
+- launchApp:
+    appId: host.exp.Exponent
+    stopApp: true
+- openLink: ${METRO_URL}/--/join/${TOKEN}
+- extendedWaitUntil:
+    visible:
+      id: 'requestToJoin.register'
+    timeout: 60000
+- takeScreenshot: mobile-join-signed-out
+- tapOn:
+    id: 'requestToJoin.register'
+- tapOn:
+    id: 'register.name'
+- inputText: ${NAME}
+- tapOn:
+    id: 'register.email'
+- inputText: ${EMAIL}
+- pressKey: Enter
+- inputText: ${PASSWORD}
+# The Go key, not a tap on Create account: the tap sends nothing with the keyboard up (sc-18534).
+- pressKey: Enter
+- extendedWaitUntil:
+    visible:
+      id: 'verifyEmail.code'
+    timeout: 30000
+- takeScreenshot: mobile-register-code
+- stopApp: host.exp.Exponent

@@ -1,0 +1,49 @@
+# sc-22145: Duplicate {event} on an iPhone SE, signed in already: the title, the form's foot, a start chosen.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT}
+- extendedWaitUntil:
+    visible:
+      id: 'frame.back'
+    timeout: 90000
+- scrollUntilVisible:
+    element:
+      id: 'events.page.duplicate'
+    timeout: 30000
+- tapOn:
+    id: 'events.page.duplicate'
+- extendedWaitUntil:
+    visible: 'Cancel|Annuler'
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: se-form-top
+- swipe:
+    start: 50%, 80%
+    end: 50%, 15%
+    duration: 600
+- swipe:
+    start: 50%, 80%
+    end: 50%, 15%
+    duration: 600
+- waitForAnimationToEnd
+- tapOn:
+    id: 'eventDuplicate.create'
+- waitForAnimationToEnd
+- takeScreenshot: se-refused
+- tapOn:
+    id: 'eventDuplicate.start.date'
+- tapOn:
+    id: 'eventDuplicate.start.done'
+- tapOn:
+    id: 'eventDuplicate.start.time'
+- waitForAnimationToEnd
+- takeScreenshot: se-time-sheet
+- tapOn:
+    id: 'eventDuplicate.start.done'
+- waitForAnimationToEnd
+- swipe:
+    start: 50%, 80%
+    end: 50%, 15%
+    duration: 600
+- waitForAnimationToEnd
+- takeScreenshot: se-start-chosen

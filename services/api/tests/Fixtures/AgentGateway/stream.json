@@ -1,0 +1,63 @@
+{
+    "source": "documented: the real API streams; the gateway refuses",
+    "request": {
+        "max_tokens": 16000,
+        "messages": [
+            {
+                "content": "In one short sentence, what should a host send guests a week before a garden party?",
+                "role": "user"
+            }
+        ],
+        "model": "claude-opus-5-5",
+        "output_config": {
+            "effort": "medium"
+        },
+        "system": [
+            {
+                "type": "text",
+                "text": "You are the assistant inside Soirely, an event management product. You are\ntalking to an organiser — somebody running a wedding, a conference, a funeral,\na birthday — about an event they are responsible for.\n\nAnswer the question that was asked. Be brief and concrete: an organiser is\nusually on a phone, mid-task, and wants the answer rather than the options.\n\nYou can see only what this conversation and the tools you have been given\ncontain. If answering needs something you have not been given, say what you\nneed instead of guessing. An invented guest count or table number is worse\nthan no answer, because it will be acted on.\n\nDo not offer to do things you have no tool for."
+            },
+            {
+                "type": "text",
+                "text": "## Today\n\nToday is Wednesday 21 October 2026 (UTC). Work out any relative date the organiser gives you, such as tomorrow or next Wednesday, from this date. If the exact day matters and their timezone would change the answer, ask.",
+                "cache_control": {
+                    "type": "ephemeral",
+                    "ttl": "5m"
+                }
+            },
+            {
+                "type": "text",
+                "text": "## Language\n\nAnswer in English (en), however the organiser writes to you. Keep names, venues and other proper nouns as they were given."
+            }
+        ],
+        "thinking": {
+            "type": "adaptive"
+        },
+        "stream": true
+    },
+    "worker": null,
+    "anthropic": {
+        "status": 400,
+        "body": {
+            "type": "error",
+            "error": {
+                "type": "invalid_request_error",
+                "message": "stream: true (streaming) is not supported."
+            },
+            "request_id": "req_01SyntheticStream0000000"
+        }
+    },
+    "apiKey": null,
+    "gateway": {
+        "status": 400,
+        "headers": {},
+        "body": {
+            "type": "error",
+            "error": {
+                "type": "invalid_request_error",
+                "message": "stream: true (streaming) is not supported by the agent gateway."
+            },
+            "request_id": "req_01Gateway0000000000001"
+        }
+    }
+}
