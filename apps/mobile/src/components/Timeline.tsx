@@ -27,6 +27,7 @@ import { Text, type TextHandle } from './Text.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { distanceWords } from '../kit/distanceWords.ts';
 import { Arrived, Skeleton } from './Skeleton.tsx';
+import { rereadOrganisations } from '../signedIn.ts';
 
 type Load =
   | { kind: 'loading' }
@@ -288,7 +289,10 @@ function DatesFailed({
       />
       <SecondaryButton
         label={t('timeline.retry')}
-        onPress={onRetry}
+        onPress={() => {
+          void rereadOrganisations();
+          onRetry();
+        }}
         stacked={wide}
         testID={testID}
       />

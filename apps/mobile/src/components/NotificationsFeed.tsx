@@ -50,6 +50,7 @@ import { moveScreenReaderFocus } from './screenReaderFocus.ts';
 import { Sheet } from './Sheet.tsx';
 import { Text, type TextHandle } from './Text.tsx';
 import { Skeleton } from './Skeleton.tsx';
+import { rereadOrganisations } from '../signedIn.ts';
 
 type Feed =
   | { status: 'loading' }
@@ -351,7 +352,10 @@ export function NotificationsFeed({
                     wordsInTone
                     action={{
                       label: t('notifications.tryAgain'),
-                      onPress: load,
+                      onPress: () => {
+                        void rereadOrganisations();
+                        load();
+                      },
                       testID: 'notifications.tryAgain',
                     }}
                   />

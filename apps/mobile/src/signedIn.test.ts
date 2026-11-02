@@ -30,7 +30,9 @@ const {
   launchSignedIn,
   reloadSignedIn,
   replaceOrganisation,
+  onMovedOn,
   rereadAccount,
+  rereadOrganisations,
   signOutHere,
   switchOrganisation,
   useSignedIn,
@@ -388,5 +390,85 @@ describe('the organisations after a language change (sc-9267)', () => {
     await settle();
 
     expect(useSignedIn().pausedIn?.suspension.since.written).toBe('viernes 16 oct a las 08:40 GMT');
+  });
+});
+
+describe('the organisation being worked in, ended while the app is open (sc-28178)', () => {
+  const other = { ...organisation, id: 'org_2', name: 'Ọ̀ṣun Parties' };
+  const paused = {
+    ...organisation,
+    suspension: {
+      reason: 'address_gone' as const,
+      domain: 'ire.events',
+      since: { at: '2026-10-16T08:40:00+00:00', written: 'Friday 16 Oct at 08:40 GMT' },
+      removesAt: { at: '2026-11-15T08:40:00+00:00', written: 'Sunday 15 Nov at 08:40 GMT' },
+      onlyOwner: false,
+    },
+    ownerClaim: null,
+  };
+  const movedTo: string[] = [];
+  onMovedOn((next) => movedTo.push(next.id));
+
+  const workingIn = async (organisations: (typeof organisation)[]) => {
+    api.me.mockResolvedValue(account);
+    api.organisationsWithPaused.mockResolvedValue({ organisations, paused: [] });
+    await reloadSignedIn();
+    vi.clearAllMocks();
+    movedTo.length = 0;
+  };
+
+  beforeEach(() => workingIn([organisation, other]));
+
+  it('shows Access paused for it at the next move, though the member belongs to another', async () => {
+    api.organisationsWithPaused.mockResolvedValue({ organisations: [other], paused: [paused] });
+
+    await rereadOrganisations();
+
+    expect(useSignedIn().pausedIn?.id).toBe('org_1');
+    expect(movedTo).toEqual([]);
+  });
+
+  it('moves on into the first organisation left, and tells the frame, when it is gone', async () => {
+    api.organisationsWithPaused.mockResolvedValue({ organisations: [other], paused: [] });
+
+    await rereadOrganisations();
+
+    expect(useSignedIn().organisation?.id).toBe('org_2');
+    expect(useSignedIn().organisations.map(({ id }) => id)).toEqual(['org_2']);
+    expect(useSignedIn().pausedIn).toBeNull();
+    expect(movedTo).toEqual(['org_2']);
+  });
+
+  it('opens in no organisation when it was the only one', async () => {
+    await workingIn([organisation]);
+    api.organisationsWithPaused.mockResolvedValue({ organisations: [], paused: [] });
+
+    await rereadOrganisations();
+
+    expect(useSignedIn().organisation).toBeNull();
+    expect(router.replace).toHaveBeenCalledWith('/');
+    expect(movedTo).toEqual([]);
+  });
+
+  it('stays where it was when the read fails', async () => {
+    api.organisationsWithPaused.mockRejectedValue(new Error('offline'));
+
+    await rereadOrganisations();
+
+    expect(useSignedIn().organisation?.id).toBe('org_1');
+    expect(useSignedIn().pausedIn).toBeNull();
+  });
+
+  it('moves nothing when access is unchanged', async () => {
+    api.organisationsWithPaused.mockResolvedValue({
+      organisations: [organisation, other],
+      paused: [],
+    });
+
+    await rereadOrganisations();
+
+    expect(useSignedIn().organisation?.id).toBe('org_1');
+    expect(movedTo).toEqual([]);
+    expect(router.replace).not.toHaveBeenCalled();
   });
 });

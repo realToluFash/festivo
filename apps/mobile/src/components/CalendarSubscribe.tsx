@@ -13,6 +13,7 @@ import { ReadOut } from './ReadOut.tsx';
 import { Sheet } from './Sheet.tsx';
 import { GlyphMark } from './StatusMark.tsx';
 import { Text } from './Text.tsx';
+import { rereadOrganisations } from '../signedIn.ts';
 
 const ATTENTION_MARK = {
   glyph: '!',
@@ -236,6 +237,7 @@ function SubscribePanel({
           <SecondaryButton
             label={t('calendarFeed.retry')}
             onPress={() => {
+              void rereadOrganisations();
               setLoad({ kind: 'loading' });
               setAttempt((tries) => tries + 1);
             }}

@@ -24,6 +24,7 @@ import { useReadOut } from './ReadOut.tsx';
 import { Text } from './Text.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { Arrived, Skeleton } from './Skeleton.tsx';
+import { rereadOrganisations } from '../signedIn.ts';
 
 const CHANNELS: readonly Channel[] = ['push', 'email'];
 
@@ -89,6 +90,7 @@ export function NotificationSettingsGrid({
         action={{
           label: t('notificationSettings.tryAgain'),
           onPress: () => {
+            void rereadOrganisations();
             setGrid({ status: 'loading' });
             setAttempt((tries) => tries + 1);
           },

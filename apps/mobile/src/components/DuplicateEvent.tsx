@@ -11,7 +11,7 @@ import { duplicateEvent } from '../kit/eventDuplicate.ts';
 import { type Opened, openedOf } from '../kit/eventsOpen.ts';
 import { goUpToEvent } from '../kit/upToEvent.ts';
 import { type LayoutKind, useLayout } from '../layout/useLayout.ts';
-import { useSignedIn } from '../signedIn.ts';
+import { rereadOrganisations, useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
@@ -109,6 +109,7 @@ export function DuplicateEventScreen({ eventId }: { eventId: string }) {
           <SecondaryButton
             label={t('eventsScreen.retry')}
             onPress={() => {
+              void rereadOrganisations();
               setHeld({ kind: 'loading' });
               setAttempt((n) => n + 1);
             }}

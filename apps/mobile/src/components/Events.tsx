@@ -32,6 +32,7 @@ import { StepMark } from './StepMark.tsx';
 import { Text } from './Text.tsx';
 import { ComingUp } from './Timeline.tsx';
 import { cardFrame } from './cardFrame.ts';
+import { rereadOrganisations } from '../signedIn.ts';
 
 /** The phase the page shows: the server's, flipped by the corrected clock at the start and the end (sc-3585). */
 function useShownPhase(event: OrganisationEvent, now: Date): EventPhase {
@@ -138,7 +139,14 @@ export function EventsFailed({
         body={words ?? t('eventsScreen.failedLoad')}
         announce
       />
-      <PrimaryButton label={t('eventsScreen.retry')} onPress={onRetry} testID={testID} />
+      <PrimaryButton
+        label={t('eventsScreen.retry')}
+        onPress={() => {
+          void rereadOrganisations();
+          onRetry();
+        }}
+        testID={testID}
+      />
     </View>
   );
 }
