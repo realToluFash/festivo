@@ -218,17 +218,18 @@ describe('The bell in [fd] (sc-23233)', () => {
     }
   });
 
-  it('draws the rows in one card, its top and foot on whichever row or block is there', () => {
+  it('draws the rows in one card, its top on whichever row or block is first, its foot in the footer', () => {
     const source = feed();
 
     expect(source).toMatch(/opensCard=\{index === 0 && !asking\}/u);
-    expect(source).toMatch(/closesCard=\{index === rows\.length - 1\}/u);
+    expect(source).toMatch(/\[styles\.card, opensCard && styles\.cardTop\]/u);
     expect(source).toMatch(
-      /\[styles\.card, opensCard && styles\.cardTop, closesCard && styles\.cardFoot\]/u,
+      /\(asking \|\| rows\.length === 0\) && \(\s*<View style=\{\[styles\.card, styles\.cardTop\]\}>/u,
     );
     expect(source).toMatch(
-      /\(asking \|\| rows\.length === 0\) && \(\s*<View style=\{\[styles\.card, styles\.cardTop, rows\.length === 0 && styles\.cardFoot\]\}>/u,
+      /ListFooterComponent=\{\s*<View style=\{\[styles\.card, styles\.cardFoot\]\}>/u,
     );
+    expect(source.match(/styles\.cardFoot/gu)).toHaveLength(1);
     expect(source).toMatch(/cardTop: \{\s*paddingTop: tokens\.spaceXxs,/u);
     expect(source).toMatch(/borderTopLeftRadius: tokens\.radiusCardPhone/u);
     expect(source).not.toMatch(/ItemSeparatorComponent/u);
@@ -248,16 +249,65 @@ describe('The bell in [fd] (sc-23233)', () => {
     ]) {
       expect(source.indexOf(state)).toBeGreaterThan(card);
     }
-    expect(source).toMatch(/rowHeight=\{64\} inCard/u);
+    expect(source).toMatch(/rowHeight=\{64\}\s+rows=\{3\}\s+inCard/u);
   });
 
-  it('insets a row 12 by 16 under a rule, with no gap to the next', () => {
+  it('closes the card on Show more and Notification settings, each under a rule', () => {
+    const source = feed();
+    const foot = source.indexOf('ListFooterComponent={');
+
+    expect(source.indexOf("t('notifications.showMore')")).toBeGreaterThan(foot);
+    expect(source.indexOf("t('notifications.settings')")).toBeGreaterThan(foot);
+    expect(source).toMatch(
+      /more: \{\s*gap: tokens\.spaceSm,\s*paddingVertical: tokens\.spaceSm,\s*paddingHorizontal: tokens\.spaceXl,\s*borderTopWidth: 1,\s*borderTopColor: tokens\.colorInsetBorder,/u,
+    );
+    expect(source).toMatch(
+      /settings: \{\s*minHeight: tokens\.sizeHit,\s*justifyContent: 'center',\s*paddingHorizontal: tokens\.spaceXl,\s*borderTopWidth: 1,\s*borderTopColor: tokens\.colorInsetBorder,/u,
+    );
+    expect(source).toMatch(/accessibilityRole="link"\s+testID="notifications\.settings"/u);
+  });
+
+  it('centres the empty line under the bell', () => {
     const source = feed();
 
     expect(source).toMatch(
-      /row: \{\s*gap: tokens\.spaceXs,\s*paddingHorizontal: tokens\.spaceXl,\s*borderTopWidth: 1,\s*borderTopColor: tokens\.colorInsetBorder,/u,
+      /<BellMark ink=\{tokens\.colorInkSecondary\} \/>\s*<\/View>\s*<Text[^>]*style=\{styles\.centred\}>\s*\{t\('notifications\.empty'\)\}/u,
     );
-    expect(source).toMatch(/minHeight: tokens\.sizeHit,\s*paddingVertical: tokens\.spaceLg,/u);
+    expect(source).toMatch(
+      /empty: \{\s*alignItems: 'center',\s*gap: tokens\.spaceSm,\s*paddingVertical: tokens\.space3xl,\s*paddingHorizontal: tokens\.spaceXl,/u,
+    );
+  });
+
+  it("insets More's sheet as the app's other sheets", () => {
+    expect(feed()).toMatch(/sheet: \{ gap: tokens\.spaceLg, padding: tokens\.space3xl \}/u);
+  });
+
+  it('draws Unread in the accent, its mark 4 from the word', () => {
+    const source = feed();
+
+    expect(source).toMatch(
+      /<Text[^>]*style=\{styles\.accent\}>\s*\{t\('notifications\.unread'\)\}/u,
+    );
+    expect(source).toMatch(
+      /mark: \{ flexDirection: 'row', alignItems: 'center', gap: tokens\.spaceXxs \}/u,
+    );
+  });
+
+  it('insets a row 12 by 16 under a rule, with no gap to the next, and More 8 from the edge', () => {
+    const source = feed();
+
+    expect(source).toMatch(
+      /row: \{\s*borderTopWidth: 1,\s*borderTopColor: tokens\.colorInsetBorder,\s*\}/u,
+    );
+    expect(source).toMatch(
+      /minHeight: tokens\.sizeHit,\s*paddingVertical: tokens\.spaceLg,\s*paddingHorizontal: tokens\.spaceXl,/u,
+    );
+    expect(source).toMatch(
+      /moreButton: \{\s*marginTop: tokens\.spaceSm,\s*marginRight: tokens\.spaceSm,/u,
+    );
+    expect(source).toMatch(
+      /goneLine: \{ marginHorizontal: tokens\.spaceXl, marginBottom: tokens\.spaceLg \}/u,
+    );
   });
 
   it('starts Mark all read 12pt under the tablet Back, and leaves the phone as it was', () => {
