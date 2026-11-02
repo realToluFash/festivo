@@ -37,3 +37,4 @@ appId: host.exp.Exponent
       id: offline.band
     timeout: 25000
 - takeScreenshot: side-after
+- setOrientation: PORTRAIT
