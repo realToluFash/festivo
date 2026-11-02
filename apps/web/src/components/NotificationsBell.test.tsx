@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Outlet, RouterProvider, createMemoryRouter } from 'react-router';
 
 import { MuteSwitch } from './MuteSwitch.tsx';
-import { cssRule } from '../test-styles.ts';
+import { STYLES, cssRule } from '../test-styles.ts';
 import { NotificationsBell } from './NotificationsBell.tsx';
 
 function json(body: unknown): Response {
@@ -46,7 +46,7 @@ function answering(answers: Record<string, () => Response | Promise<Response>>) 
   return sent;
 }
 
-function bell() {
+function renderedBell() {
   const router = createMemoryRouter(
     [
       { path: '/app', element: <NotificationsBell userId="u1" /> },
@@ -55,9 +55,11 @@ function bell() {
     { initialEntries: ['/app'] },
   );
 
-  render(<RouterProvider router={router} />);
+  return { router, ...render(<RouterProvider router={router} />) };
+}
 
-  return router;
+function bell() {
+  return renderedBell().router;
 }
 
 afterEach(() => {
@@ -199,6 +201,114 @@ describe('the bell (sc-3980)', () => {
     expect(screen.queryByText('All read.')).toBeNull();
     expect(screen.getByRole('button', { name: 'Notifications, 1 unread' })).toBeTruthy();
     expect(screen.getByText('Unread')).toBeTruthy();
+  });
+
+  it('shows Mark all read that does not save with a mark, heard once as an alert, not in the polite region (sc-23233)', async () => {
+    answering({
+      'GET /api/notifications': () => json({ items: [item()], unreadCount: 1, next: null }),
+    });
+    const { container } = renderedBell();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Notifications, 1 unread' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Mark all read' }));
+
+    const line = await screen.findByRole('alert');
+    expect(line.textContent).toBe('!Could not mark them all read. Try again.');
+    expect(line.querySelector('.mark')?.getAttribute('aria-hidden')).toBe('true');
+    expect(container.querySelector('[aria-live="polite"]')?.textContent).toBe('');
+  });
+
+  it('keeps that line until the next action in the bell (sc-23233)', async () => {
+    answering({
+      'GET /api/notifications': () =>
+        json({
+          items: [item(), item({ id: 'n2', eventId: null, eventName: null, place: null })],
+          unreadCount: 2,
+          next: null,
+        }),
+      'POST /api/notifications/n2/read': () => json({ unreadCount: 1 }),
+    });
+    bell();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Notifications, 2 unread' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Mark all read' }));
+    await screen.findByRole('alert');
+
+    fireEvent.click(document.querySelector('[data-notification="n2"]') as Element);
+
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('keeps that line until the bell closes, and opening again does not bring it back (sc-23233)', async () => {
+    answering({
+      'GET /api/notifications': () => json({ items: [item()], unreadCount: 1, next: null }),
+    });
+    bell();
+
+    const bellButton = await screen.findByRole('button', { name: 'Notifications, 1 unread' });
+    fireEvent.click(bellButton);
+    fireEvent.click(await screen.findByRole('button', { name: 'Mark all read' }));
+    await screen.findByRole('alert');
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByRole('alert')).toBeNull();
+
+    fireEvent.click(bellButton);
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('says a Mark all read that fails after the bell has closed in the polite region, as no line can show (sc-23233)', async () => {
+    let refuse: (response: Response) => void = () => undefined;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) =>
+      init?.method === 'POST' && new URL(String(input)).pathname === '/api/notifications/read-all'
+        ? new Promise<Response>((resolve) => (refuse = resolve))
+        : json({ items: [item()], unreadCount: 1, next: null }),
+    );
+    const { container } = renderedBell();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Notifications, 1 unread' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Mark all read' }));
+    await waitFor(() =>
+      expect(vi.mocked(fetch)).toHaveBeenCalledWith(
+        expect.stringContaining('/api/notifications/read-all'),
+        expect.anything(),
+      ),
+    );
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    refuse(new Response('{}', { status: 500 }));
+
+    await waitFor(() =>
+      expect(container.querySelector('[aria-live="polite"]')?.textContent).toBe(
+        'Could not mark them all read. Try again.',
+      ),
+    );
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('a feed that did not load is the broken notice, the mark, the words and Try again under them (sc-23233)', async () => {
+    let attempts = 0;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async () => {
+      attempts += 1;
+      if (attempts === 1) return new Response('{}', { status: 500 });
+
+      return json({ items: [item()], unreadCount: 1, next: null });
+    });
+    bell();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Notifications' }));
+
+    const notice = await screen.findByRole('alert');
+    expect(notice.className).toContain('notice-broken');
+    expect(notice.querySelector('.mark-broken')?.getAttribute('aria-hidden')).toBe('true');
+    expect(within(notice).getByText('Your notifications did not load.').className).toBe(
+      'notice-title',
+    );
+
+    fireEvent.click(within(notice).getByRole('button', { name: 'Try again' }));
+
+    expect(await screen.findByText('Ada Obi changed the event')).toBeTruthy();
+    expect(screen.queryByRole('alert')).toBeNull();
   });
 
   it('More mutes the event, leaves the items already delivered unmarked, and Escape goes back to More', async () => {
@@ -480,6 +590,43 @@ describe('the push ask', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Notifications' }));
     expect(screen.queryByText('Turn on push?')).toBeNull();
+  });
+});
+
+describe('the bell in [fd] (sc-23233)', () => {
+  it("dims More's switch while the mute has not loaded, when nothing else would say it does nothing", () => {
+    expect(
+      cssRule(
+        '.notification-mute .notification-switch:has(input:disabled) .notification-switch-track',
+      ),
+    ).toMatch(/background: var\(--colorInset\);/u);
+  });
+
+  it("marks the edge of More's knob with the board's shadow", () => {
+    expect(cssRule('.notification-mute .notification-switch-knob')).toMatch(
+      /box-shadow: var\(--shadowKnob\);/u,
+    );
+  });
+
+  it("moves in the board's motion", () => {
+    expect(cssRule('.notifications-panel')).toMatch(/animation: rise-in var\(--motionBase\)/u);
+    expect(cssRule('.notification-mute')).toMatch(/animation: rise-in var\(--motionBase\)/u);
+    expect(cssRule('.notifications-failure-line')).toMatch(
+      /animation: drop-in var\(--motionFast\)/u,
+    );
+    expect(cssRule('.notifications-failed')).toMatch(/animation: drop-in var\(--motionFast\)/u);
+    expect(cssRule('.notifications-skeleton')).toMatch(
+      /animation: skeleton-pulse var\(--motionPulse\)/u,
+    );
+    expect(cssRule('.notification-mute .notification-switch-knob')).toMatch(
+      /transition: transform var\(--motionBase\)/u,
+    );
+  });
+
+  it('fades, and holds the skeleton and the switch still, under Reduce Motion', () => {
+    expect(STYLES).toMatch(
+      /@media \(prefers-reduced-motion: reduce\) \{\s*\.notifications-panel,\s*\.notification-mute,\s*\.notifications-failure-line,\s*\.notifications-failed \{\s*animation-name: fade-in;\s*\}\s*\.notifications-skeleton \{\s*animation: none;\s*\}\s*\.notification-mute \.notification-switch-track,\s*\.notification-mute \.notification-switch-knob \{\s*transition: none;\s*\}\s*\}/u,
+    );
   });
 });
 

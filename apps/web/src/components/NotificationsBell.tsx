@@ -13,7 +13,7 @@ import {
   whenShown,
 } from '@soirely/domain';
 import type { TFunction } from 'i18next';
-import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { type MouseEvent, useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router';
 
@@ -42,6 +42,8 @@ export function NotificationsBell({ userId }: { userId: string }) {
   const [said, setSaid] = useState('');
   const [more, setMore] = useState<'idle' | 'loading' | 'failed'>('idle');
   const [asking, setAsking] = useState(false);
+  const [notSaved, setNotSaved] = useState(false);
+  const bellOpen = useRef(false);
   const firstAdded = useRef<string | null>(null);
   const arrivals = useRef(0);
   const container = useRef<HTMLDivElement>(null);
@@ -155,7 +157,26 @@ export function NotificationsBell({ userId }: { userId: string }) {
     const due = !open && pushAskDue();
     if (due) markPushAsked();
     setAsking(due);
+    bellOpen.current = !open;
     setOpen(!open);
+    setNotSaved(false);
+  }
+
+  const closeBell = useCallback((): void => {
+    bellOpen.current = false;
+    setOpen(false);
+    setNotSaved(false);
+  }, []);
+
+  /** Mark all read's failure stays until the next thing done in the bell (sc-23233). */
+  function nextAction(event: MouseEvent<HTMLElement>): void {
+    if ((event.target as Element).closest('button, input') != null) setNotSaved(false);
+  }
+
+  function tryAgain(): void {
+    setFeed({ status: 'loading' });
+    heading.current?.focus();
+    void load();
   }
 
   async function answerPush(turnOn: boolean): Promise<void> {
@@ -179,7 +200,7 @@ export function NotificationsBell({ userId }: { userId: string }) {
   useEffect(() => {
     if (!open) return;
 
-    const close = (event: MouseEvent | KeyboardEvent): void => {
+    const close = (event: globalThis.MouseEvent | KeyboardEvent): void => {
       if (event instanceof KeyboardEvent) {
         if (
           event.key !== 'Escape' ||
@@ -187,11 +208,11 @@ export function NotificationsBell({ userId }: { userId: string }) {
         ) {
           return;
         }
-        setOpen(false);
+        closeBell();
         button.current?.focus();
         return;
       }
-      if (!container.current?.contains(event.target as Node)) setOpen(false);
+      if (!container.current?.contains(event.target as Node)) closeBell();
     };
 
     document.addEventListener('mousedown', close);
@@ -201,7 +222,7 @@ export function NotificationsBell({ userId }: { userId: string }) {
       document.removeEventListener('mousedown', close);
       document.removeEventListener('keydown', close);
     };
-  }, [open]);
+  }, [open, closeBell]);
 
   const unread = feed.status === 'loaded' ? feed.unread : 0;
   const badge = badgeOf(unread, t('notifications.overNinetyNine'));
@@ -231,7 +252,7 @@ export function NotificationsBell({ userId }: { userId: string }) {
     }
 
     if (item.place != null) {
-      setOpen(false);
+      closeBell();
       await navigate(item.place);
     }
   }
@@ -247,7 +268,8 @@ export function NotificationsBell({ userId }: { userId: string }) {
       countedSince(seen, await api.readAllNotifications());
       setSaid(t('notifications.allRead'));
     } catch {
-      setSaid(t('notifications.allReadNotSaved'));
+      if (bellOpen.current) setNotSaved(true);
+      else setSaid(t('notifications.allReadNotSaved'));
       setFeed((current) =>
         current.status === 'loaded'
           ? {
@@ -304,7 +326,11 @@ export function NotificationsBell({ userId }: { userId: string }) {
       </div>
 
       {open && (
-        <section className="notifications-panel" aria-labelledby={headingId}>
+        <section
+          className="notifications-panel"
+          aria-labelledby={headingId}
+          onClickCapture={nextAction}
+        >
           <header className="notifications-header">
             <div className="notifications-heading">
               <h2 id={headingId} ref={heading} tabIndex={-1}>
@@ -323,6 +349,8 @@ export function NotificationsBell({ userId }: { userId: string }) {
           </header>
 
           <FeedBand stale={stale} />
+
+          {notSaved && <AttentionLine words={t('notifications.allReadNotSaved')} />}
 
           {asking && (
             <section className="notifications-push-ask" aria-labelledby={`${headingId}-push`}>
@@ -357,11 +385,16 @@ export function NotificationsBell({ userId }: { userId: string }) {
           )}
 
           {feed.status === 'failed' && (
-            <div className="notifications-failed" role="alert">
-              <p>{t('notifications.couldNotLoad')}</p>
-              <button type="button" className="link-button" onClick={() => void load()}>
-                {t('notifications.tryAgain')}
-              </button>
+            <div className="notice notice-broken notifications-failed" role="alert">
+              <span className="mark mark-broken" aria-hidden="true">
+                ✕
+              </span>
+              <div className="notice-body">
+                <p className="notice-title">{t('notifications.couldNotLoad')}</p>
+                <button type="button" className="link-button" onClick={tryAgain}>
+                  {t('notifications.tryAgain')}
+                </button>
+              </div>
             </div>
           )}
 
@@ -440,26 +473,30 @@ export function NotificationsBell({ userId }: { userId: string }) {
               >
                 {t('notifications.showMore')}
               </button>
-              {more === 'failed' && (
-                <div className="notice notice-attention" role="alert">
-                  <span className="mark mark-attention" aria-hidden="true">
-                    !
-                  </span>
-                  <p className="notice-title">{t('notifications.moreFailed')}</p>
-                </div>
-              )}
+              {more === 'failed' && <AttentionLine words={t('notifications.moreFailed')} />}
             </div>
           )}
 
           <Link
             className="notifications-settings"
             to="/app/account/notifications"
-            onClick={() => setOpen(false)}
+            onClick={closeBell}
           >
             {t('notifications.settings')}
           </Link>
         </section>
       )}
+    </div>
+  );
+}
+
+function AttentionLine({ words }: { words: string }) {
+  return (
+    <div className="notice notice-attention notifications-failure-line" role="alert">
+      <span className="mark" aria-hidden="true">
+        !
+      </span>
+      <p>{words}</p>
     </div>
   );
 }

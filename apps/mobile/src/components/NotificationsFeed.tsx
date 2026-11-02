@@ -39,8 +39,10 @@ import { markAllRead } from '../kit/notificationFeed.ts';
 import { appPlace } from '../kit/notificationPlace.ts';
 import { type ScreenOffline, keepsWhatLoaded, useOffline } from '../offline.ts';
 import { arrivalsSeen, countedSince, setUnread, useArrivals } from '../notificationsUnread.ts';
+import { useLayout } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
-import { Footnote, PrimaryButton, QuietButton } from './Buttons.tsx';
+import { BellMark } from './BellMark.tsx';
+import { PrimaryButton, QuietButton } from './Buttons.tsx';
 import { MuteEventSwitch } from './MuteEventCard.tsx';
 import { Notice } from './Notice.tsx';
 import { useReadOut } from './ReadOut.tsx';
@@ -68,6 +70,9 @@ export function NotificationsFeed({
   const [more, setMore] = useState<'idle' | 'loading' | 'failed'>('idle');
   const [asking, setAsking] = useState(false);
   const [said, setSaid] = useState<{ words: string } | null>(null);
+  const [notSaved, setNotSaved] = useState<string | null>(null);
+  const { kind } = useLayout();
+  const nextAction = useCallback((): void => setNotSaved(null), []);
 
   const refetch = useRef(() => {});
   const { watch, stale, refreshing } = useOffline({
@@ -106,6 +111,7 @@ export function NotificationsFeed({
   }, [fetchFeed]);
 
   function load(): void {
+    nextAction();
     setFeed({ status: 'loading' });
     fetchFeed();
   }
@@ -170,12 +176,14 @@ export function NotificationsFeed({
   }, [feed]);
 
   async function answerPush(turnOn: boolean): Promise<void> {
+    nextAction();
     if (turnOn) await turnOnAppPush().catch(() => undefined);
     setAsking(false);
     moveScreenReaderFocus(heading.current);
   }
 
   function openItem(item: NotificationItem): void {
+    nextAction();
     if (!item.read) {
       setFeed((current) =>
         current.status === 'loaded'
@@ -212,11 +220,12 @@ export function NotificationsFeed({
     if (feed.status !== 'loaded' || feed.unread === 0) return;
 
     const before = feed;
+    nextAction();
     setFeed({ ...feedAllRead(feed), status: 'loaded' });
     const seen = arrivalsSeen();
     const outcome = await markAllRead(api);
-    setSaid({ words: t(outcome.said) });
     if (!('left' in outcome)) {
+      setNotSaved(t(outcome.said));
       setFeed((current) =>
         current.status === 'loaded'
           ? {
@@ -228,12 +237,14 @@ export function NotificationsFeed({
       return;
     }
 
+    setSaid({ words: t(outcome.said) });
     const { left } = outcome;
     if (!countedSince(seen, left)) return;
     setFeed((current) => (current.status === 'loaded' ? { ...current, unread: left } : current));
   }
 
   function showMore(after: string): void {
+    nextAction();
     setMore('loading');
     api.notifications(after).then(
       (page) => {
@@ -256,78 +267,113 @@ export function NotificationsFeed({
   const onOpen = useCallback((item: NotificationItem) => opening.current(item), []);
 
   const unread = feed.status === 'loaded' ? feed.unread : 0;
+  const rows = feed.status === 'loaded' ? feed.items : [];
 
   return (
     <FlatList
-      data={feed.status === 'loaded' ? feed.items : []}
+      data={rows}
       keyExtractor={(item) => item.id}
       extraData={gone}
-      renderItem={({ item }) => <FeedRow item={item} gone={gone.has(item.id)} onOpen={onOpen} />}
-      ItemSeparatorComponent={Between}
-      contentContainerStyle={styles.feed}
-      ListHeaderComponentStyle={styles.part}
-      ListFooterComponentStyle={styles.part}
+      renderItem={({ item, index }) => (
+        <FeedRow
+          item={item}
+          gone={gone.has(item.id)}
+          opensCard={index === 0 && !asking}
+          onOpen={onOpen}
+          onMore={nextAction}
+        />
+      )}
+      contentContainerStyle={[styles.feed, kind !== 'phone' && styles.feedUnderBack]}
       ListHeaderComponent={
         <>
-          <View style={styles.header}>
-            <QuietButton
-              label={t('notifications.markAllRead')}
-              onPress={() => void readAll()}
-              off={unread === 0}
-              testID="notifications.markAllRead"
-            />
+          <View style={styles.part}>
+            <View style={styles.header}>
+              <QuietButton
+                label={t('notifications.markAllRead')}
+                onPress={() => void readAll()}
+                off={unread === 0}
+                testID="notifications.markAllRead"
+              />
+            </View>
+
+            {notSaved != null && (
+              <Notice tone="attention" mark="!" body={notSaved} announce wordsInTone />
+            )}
           </View>
 
-          {asking && (
-            <View style={styles.ask} testID="notifications.pushAsk">
-              <Text size={tokens.typeRowTitle.size} weight="bold" accessibilityRole="header">
-                {t('notifications.pushAsk.title')}
-              </Text>
-              <Text size={tokens.typeBodyPhone.size}>{t('notifications.pushAsk.reason')}</Text>
-              <View style={styles.askActions}>
-                <PrimaryButton
-                  label={t('notifications.pushAsk.turnOn')}
-                  onPress={() => void answerPush(true)}
-                  testID="notifications.pushAsk.turnOn"
-                />
-                <QuietButton
-                  label={t('notifications.pushAsk.notNow')}
-                  onPress={() => void answerPush(false)}
-                  testID="notifications.pushAsk.notNow"
-                />
-              </View>
-            </View>
-          )}
+          {(asking || rows.length === 0) && (
+            <View style={[styles.card, styles.cardTop]}>
+              {asking && (
+                <View style={styles.cardPart}>
+                  <View style={styles.ask} testID="notifications.pushAsk">
+                    <Text size={tokens.typeRowTitle.size} weight="bold" accessibilityRole="header">
+                      {t('notifications.pushAsk.title')}
+                    </Text>
+                    <Text size={tokens.typeBodyPhone.size}>
+                      {t('notifications.pushAsk.reason')}
+                    </Text>
+                    <View style={styles.askActions}>
+                      <PrimaryButton
+                        label={t('notifications.pushAsk.turnOn')}
+                        onPress={() => void answerPush(true)}
+                        testID="notifications.pushAsk.turnOn"
+                      />
+                      <QuietButton
+                        label={t('notifications.pushAsk.notNow')}
+                        onPress={() => void answerPush(false)}
+                        testID="notifications.pushAsk.notNow"
+                      />
+                    </View>
+                  </View>
+                </View>
+              )}
 
-          {feed.status === 'loading' && (
-            <Skeleton words={t('notifications.loading')} shape="rows" rowHeight={64} />
-          )}
+              {feed.status === 'loading' && (
+                <View style={styles.loading}>
+                  <Skeleton
+                    words={t('notifications.loading')}
+                    shape="rows"
+                    rowHeight={64}
+                    rows={3}
+                    inCard
+                    edgeToEdge
+                  />
+                </View>
+              )}
 
-          {feed.status === 'failed' && (
-            <Notice
-              tone="broken"
-              mark={tokens.marks.broken.glyph}
-              body={t('notifications.couldNotLoad')}
-              announce
-              action={{
-                label: t('notifications.tryAgain'),
-                onPress: load,
-                testID: 'notifications.tryAgain',
-              }}
-            />
-          )}
+              {feed.status === 'failed' && (
+                <View style={styles.cardPart}>
+                  <Notice
+                    tone="broken"
+                    mark={tokens.marks.broken.glyph}
+                    body={t('notifications.couldNotLoad')}
+                    announce
+                    wordsInTone
+                    action={{
+                      label: t('notifications.tryAgain'),
+                      onPress: load,
+                      testID: 'notifications.tryAgain',
+                    }}
+                  />
+                </View>
+              )}
 
-          {feed.status === 'loaded' && feed.items.length === 0 && (
-            <View style={styles.empty}>
-              <Text size={tokens.typeBodyPhone.size} muted>
-                {t('notifications.empty')}
-              </Text>
+              {feed.status === 'loaded' && rows.length === 0 && (
+                <View style={styles.empty}>
+                  <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+                    <BellMark ink={tokens.colorInkSecondary} />
+                  </View>
+                  <Text size={tokens.typeBodyPhone.size} muted style={styles.centred}>
+                    {t('notifications.empty')}
+                  </Text>
+                </View>
+              )}
             </View>
           )}
         </>
       }
       ListFooterComponent={
-        <>
+        <View style={[styles.card, styles.cardFoot]}>
           {feed.status === 'loaded' && feed.next != null && (
             <View style={styles.more}>
               <Pressable
@@ -343,99 +389,125 @@ export function NotificationsFeed({
                 </Text>
               </Pressable>
               {more === 'failed' && (
-                <Notice tone="attention" mark="!" body={t('notifications.moreFailed')} announce />
+                <Notice
+                  tone="attention"
+                  mark="!"
+                  body={t('notifications.moreFailed')}
+                  announce
+                  wordsInTone
+                />
               )}
             </View>
           )}
 
-          <Footnote
-            action={t('notifications.settings')}
-            role="link"
-            onPress={() => router.push(SECTION_HREF.notifications)}
+          <Pressable
+            style={styles.settings}
+            onPress={() => {
+              nextAction();
+              router.push(SECTION_HREF.notifications);
+            }}
+            accessibilityRole="link"
             testID="notifications.settings"
-          />
-        </>
+          >
+            <Text size={tokens.typeButton.size} weight="semibold" style={styles.accent}>
+              {t('notifications.settings')}
+            </Text>
+          </Pressable>
+        </View>
       }
     />
   );
 }
 
-function Between() {
-  return <View style={styles.between} />;
-}
-
-/** One item of the feed; a page or a live arrival renders only the rows that changed. */
+/** One item of the feed, drawing its share of the one card so the list stays virtualised; a page or a live arrival renders only the rows that changed. */
 const FeedRow = memo(function FeedRow({
   item,
   gone,
+  opensCard,
   onOpen,
+  onMore,
 }: {
   item: NotificationItem;
   gone: boolean;
+  opensCard: boolean;
   onOpen: (item: NotificationItem) => void;
+  onMore: () => void;
 }) {
   const { t } = useTranslation();
 
   return (
-    <View style={styles.row}>
-      <View style={styles.itemRow}>
-        <Pressable
-          style={[styles.item, styles.fill]}
-          onPress={() => onOpen(item)}
-          accessibilityRole="button"
-          testID={`notifications.item.${item.id}`}
-        >
-          <Text size={tokens.typeBodyPhone.size} weight={item.read ? 'regular' : 'bold'}>
-            {item.title}
-          </Text>
-          {item.lines.map((line, index) => (
-            <Text key={index} size={tokens.typeBodyPhone.size}>
-              {line}
+    <View style={[styles.card, opensCard && styles.cardTop]}>
+      <View style={styles.row}>
+        <View style={styles.itemRow}>
+          <Pressable
+            style={[styles.item, styles.fill]}
+            onPress={() => onOpen(item)}
+            accessibilityRole="button"
+            testID={`notifications.item.${item.id}`}
+          >
+            <Text size={tokens.typeBodyPhone.size} weight={item.read ? 'regular' : 'bold'}>
+              {item.title}
             </Text>
-          ))}
-          <Text size={tokens.typeSmall.size} muted>
-            {item.eventName == null
-              ? when(item.createdAt)
-              : t('notifications.whereWhen', {
-                  event: item.eventName,
-                  when: when(item.createdAt),
-                })}
-          </Text>
-          {(!item.read || item.muted) && (
-            <View style={styles.marks}>
-              {!item.read && (
-                <View style={styles.mark}>
-                  <View style={styles.dot} />
-                  <Text size={tokens.typeSmall.size} weight="semibold">
-                    {t('notifications.unread')}
-                  </Text>
-                </View>
-              )}
-              {item.muted && (
-                <Text size={tokens.typeSmall.size} muted>
-                  {t('notifications.muted')}
-                </Text>
-              )}
-            </View>
+            {item.lines.map((line, index) => (
+              <Text key={index} size={tokens.typeBodyPhone.size}>
+                {line}
+              </Text>
+            ))}
+            <Text size={tokens.typeSmall.size} muted>
+              {item.eventName == null
+                ? when(item.createdAt)
+                : t('notifications.whereWhen', {
+                    event: item.eventName,
+                    when: when(item.createdAt),
+                  })}
+            </Text>
+            {(!item.read || item.muted) && (
+              <View style={styles.marks}>
+                {!item.read && (
+                  <View style={styles.mark}>
+                    <View style={styles.dot} />
+                    <Text size={tokens.typeSmall.size} weight="semibold" style={styles.accent}>
+                      {t('notifications.unread')}
+                    </Text>
+                  </View>
+                )}
+                {item.muted && (
+                  <View style={styles.mark}>
+                    <View
+                      accessibilityElementsHidden
+                      importantForAccessibility="no-hide-descendants"
+                    >
+                      <BellMark ink={tokens.colorInkSecondary} slashed side={MUTED_MARK_SIDE} />
+                    </View>
+                    <Text size={tokens.typeSmall.size} muted>
+                      {t('notifications.muted')}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            )}
+          </Pressable>
+          {item.eventId != null && item.eventAvailable && item.eventName != null && (
+            <MuteMore
+              eventId={item.eventId}
+              eventName={item.eventName}
+              label={t('notifications.more', { title: item.title, event: item.eventName })}
+              testID={`notifications.item.${item.id}.more`}
+              onOpened={onMore}
+            />
           )}
-        </Pressable>
-        {item.eventId != null && item.eventAvailable && item.eventName != null && (
-          <MuteMore
-            eventId={item.eventId}
-            eventName={item.eventName}
-            label={t('notifications.more', { title: item.title, event: item.eventName })}
-            testID={`notifications.item.${item.id}.more`}
-          />
+        </View>
+        {gone && (
+          <View style={styles.goneLine}>
+            <Notice
+              tone="quiet"
+              mark={tokens.marks.info.glyph}
+              body={t('notifications.eventGone')}
+              announce
+            />
+          </View>
         )}
       </View>
-      {gone && (
-        <Notice
-          tone="quiet"
-          mark={tokens.marks.info.glyph}
-          body={t('notifications.eventGone')}
-          announce
-        />
-      )}
     </View>
   );
 
@@ -452,11 +524,13 @@ function MuteMore({
   eventName,
   label,
   testID,
+  onOpened,
 }: {
   eventId: string;
   eventName: string;
   label: string;
   testID: string;
+  onOpened: () => void;
 }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
@@ -468,7 +542,10 @@ function MuteMore({
       <Pressable
         ref={opener}
         style={styles.moreButton}
-        onPress={() => setOpen(true)}
+        onPress={() => {
+          onOpened();
+          setOpen(true);
+        }}
         accessibilityRole="button"
         accessibilityLabel={label}
         accessibilityState={{ expanded: open }}
@@ -503,18 +580,52 @@ function MuteMore({
   );
 }
 
+const MUTED_MARK_SIDE = 14;
+
 const styles = StyleSheet.create({
   feed: {
     paddingTop: tokens.spaceXl,
     paddingHorizontal: tokens.spaceXl,
     paddingBottom: tokens.space3xl,
   },
+  feedUnderBack: { paddingTop: tokens.spaceXxs },
   part: { gap: tokens.spaceLg, paddingVertical: tokens.spaceSm },
-  between: { height: tokens.spaceLg },
+  card: {
+    overflow: 'hidden',
+    backgroundColor: tokens.colorCard,
+    borderColor: tokens.colorBorder,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+  },
+  cardTop: {
+    paddingTop: tokens.spaceXxs,
+    borderTopWidth: 1,
+    borderTopLeftRadius: tokens.radiusCardPhone,
+    borderTopRightRadius: tokens.radiusCardPhone,
+  },
+  cardFoot: {
+    borderBottomWidth: 1,
+    borderBottomLeftRadius: tokens.radiusCardPhone,
+    borderBottomRightRadius: tokens.radiusCardPhone,
+  },
+  cardPart: {
+    paddingTop: tokens.spaceSm,
+    paddingBottom: tokens.spaceLg,
+    paddingHorizontal: tokens.spaceXl,
+  },
+  loading: { paddingVertical: tokens.spaceSm },
+  empty: {
+    alignItems: 'center',
+    gap: tokens.spaceSm,
+    paddingVertical: tokens.space3xl,
+    paddingHorizontal: tokens.spaceXl,
+  },
+  centred: { textAlign: 'center' },
   header: { flexDirection: 'row', justifyContent: 'flex-end' },
   fill: { flex: 1 },
   textButton: {
     minHeight: tokens.sizeHit,
+    alignSelf: 'flex-start',
     flexDirection: 'row',
     alignItems: 'center',
     gap: tokens.spaceXs,
@@ -529,30 +640,47 @@ const styles = StyleSheet.create({
     borderColor: tokens.colorInsetBorder,
   },
   askActions: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: tokens.spaceLg },
-  empty: { paddingVertical: tokens.spaceXl },
-  row: { gap: tokens.spaceXs },
-  itemRow: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceSm },
+  row: {
+    borderTopWidth: 1,
+    borderTopColor: tokens.colorInsetBorder,
+  },
+  goneLine: { marginHorizontal: tokens.spaceXl, marginBottom: tokens.spaceLg },
+  itemRow: { flexDirection: 'row', alignItems: 'flex-start' },
   moreButton: {
+    marginTop: tokens.spaceSm,
+    marginRight: tokens.spaceSm,
     minWidth: tokens.sizeHit,
     minHeight: tokens.sizeHit,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  sheet: { gap: tokens.spaceLg },
+  sheet: { gap: tokens.spaceLg, padding: tokens.space3xl },
   item: {
     gap: tokens.spaceXxs,
     minHeight: tokens.sizeHit,
-    paddingVertical: tokens.spaceSm,
-    borderBottomWidth: 1,
-    borderBottomColor: tokens.colorInsetBorder,
+    paddingVertical: tokens.spaceLg,
+    paddingHorizontal: tokens.spaceXl,
   },
   marks: { flexDirection: 'row', gap: tokens.spaceLg },
-  mark: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXs },
+  mark: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXxs },
   dot: {
     width: tokens.spaceSm,
     height: tokens.spaceSm,
     borderRadius: tokens.spaceSm / 2,
     backgroundColor: tokens.colorAccent,
   },
-  more: { gap: tokens.spaceSm },
+  more: {
+    gap: tokens.spaceSm,
+    paddingVertical: tokens.spaceSm,
+    paddingHorizontal: tokens.spaceXl,
+    borderTopWidth: 1,
+    borderTopColor: tokens.colorInsetBorder,
+  },
+  settings: {
+    minHeight: tokens.sizeHit,
+    justifyContent: 'center',
+    paddingHorizontal: tokens.spaceXl,
+    borderTopWidth: 1,
+    borderTopColor: tokens.colorInsetBorder,
+  },
 });

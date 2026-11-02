@@ -27,6 +27,7 @@ export function Notice({
   takesFocus = false,
   readMs,
   wordsRef,
+  wordsInTone = false,
 }: {
   tone: NoticeTone;
   mark: string;
@@ -52,8 +53,11 @@ export function Notice({
   readMs?: number;
   /** Its words as one item, without the action, for screen reader focus to be moved to. */
   wordsRef?: Ref<ViewInstance> | undefined;
+  /** The body in the tone's own ink, semibold; an attention notice then also takes the solid amber mark and the tighter line (sc-23233). */
+  wordsInTone?: boolean;
 }) {
-  const markSide = useMarkSide(tokens.sizePill);
+  const line = wordsInTone && tone === 'attention';
+  const markSide = useMarkSide(line ? tokens.sizeMark : tokens.sizePill);
   useReadOut(
     !takesFocus && (announce || answer !== undefined)
       ? [title, body, detail].filter((line) => line != null).join('\n')
@@ -87,17 +91,22 @@ export function Notice({
     done: styles.accent,
   }[tone];
   const titleInk = accentTitle ? styles.accent : toneInk;
-  const bodyInk = tone === 'done' ? styles.accent : undefined;
+  const bodyInk = tone === 'done' ? styles.accent : wordsInTone ? toneInk : undefined;
 
   return (
-    <View ref={shown} style={[styles.notice, surface]}>
+    <View ref={shown} style={[styles.notice, surface, line && styles.line]}>
       {/* The words already say what the mark says (WCAG 2.2 SC 1.1.1). */}
       <View
-        style={[styles.mark, markSide, ring]}
+        style={[styles.mark, markSide, ring, line && styles.solidMark]}
         accessibilityElementsHidden
         importantForAccessibility="no-hide-descendants"
       >
-        <Text size={tokens.typePill.size} weight="bold" style={ink[markTone]} accessible={false}>
+        <Text
+          size={tokens.typePill.size}
+          weight="bold"
+          style={line ? styles.inkOnSolid : ink[markTone]}
+          accessible={false}
+        >
           {mark}
         </Text>
       </View>
@@ -120,7 +129,11 @@ export function Notice({
             </Text>
           )}
           {body != null && (
-            <Text size={tokens.typeBodyPhone.size} style={bodyInk}>
+            <Text
+              size={line ? tokens.typeBody.size : tokens.typeBodyPhone.size}
+              weight={wordsInTone ? 'semibold' : 'regular'}
+              style={bodyInk}
+            >
               {body}
             </Text>
           )}
@@ -164,6 +177,14 @@ const styles = StyleSheet.create({
   },
   broken: { backgroundColor: tokens.colorBrokenTint, borderColor: tokens.colorBroken },
   done: { backgroundColor: tokens.colorAccentTint, borderColor: tokens.colorAccentTintBorder },
+  line: {
+    gap: tokens.spaceSm,
+    paddingVertical: tokens.spaceMd,
+    paddingHorizontal: tokens.spaceLg,
+    borderRadius: tokens.radiusField,
+  },
+  solidMark: { borderWidth: 0, backgroundColor: tokens.colorAttention },
+  inkOnSolid: { color: tokens.colorInkOnDark },
   body: { flex: 1, gap: tokens.spaceHair },
   words: { gap: tokens.spaceHair },
   button: { marginTop: tokens.spaceSm },
