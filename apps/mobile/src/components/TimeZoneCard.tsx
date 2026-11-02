@@ -280,7 +280,7 @@ function Choosing({
   const input = useRef<TextInputInstance>(null);
   // A zone picked from the list takes the list's place, so focus goes to the field now holding it.
   useFocusOnAnswer(picked ?? undefined, input);
-  const aboveKeyboard = useAboveKeyboard(closing);
+  const { ref: lifted, onLayout: lift } = useAboveKeyboard(closing);
   const room = useRoomAboveKeyboard();
   // With no on-screen keyboard (a hardware one), nothing lifts, so the card is brought up on opening.
   const top = useScrolledToTop(opener);
@@ -351,13 +351,16 @@ function Choosing({
   }
 
   return (
-    <>
-      <View {...aboveKeyboard} {...hidden}>
-        <View
-          ref={top}
-          onLayout={(event) => setGroupHeight(event.nativeEvent.layout.height)}
-          style={styles.choosing}
-        >
+    <View
+      ref={lifted}
+      onLayout={(event) => {
+        lift();
+        setGroupHeight(event.nativeEvent.layout.height);
+      }}
+      style={styles.choosing}
+    >
+      <View {...hidden}>
+        <View ref={top} style={styles.choosing}>
           <View style={styles.choosing} {...fieldHidden}>
             <Field
               label={t('timeZone.find')}
@@ -455,7 +458,7 @@ function Choosing({
         off={saving}
         testID="timeZone.cancel"
       />
-    </>
+    </View>
   );
 }
 
