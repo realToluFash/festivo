@@ -15,7 +15,9 @@ import {
 import {
   Animated,
   KeyboardAvoidingView,
+  type LayoutChangeEvent,
   Modal,
+  PanResponder,
   Platform,
   Pressable,
   StyleSheet,
@@ -23,7 +25,14 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { sheetKeysCover, sheetPadding, sheetUnderKeys, sheetWindows } from '../kit/sheet.ts';
+import {
+  sheetDragCloses,
+  sheetDragStarts,
+  sheetKeysCover,
+  sheetPadding,
+  sheetUnderKeys,
+  sheetWindows,
+} from '../kit/sheet.ts';
 import { useLayout } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { glide } from '../motion.ts';
@@ -133,13 +142,15 @@ function SheetFrame({
   const reduced = useReducedMotion();
   const [onScreen, setOnScreen] = useState(false);
   const [laidOut, setLaidOut] = useState(false);
-  const { present, scrim, frame } = useSheetMotion(
+  const { present, scrim, frame, shift, fade } = useSheetMotion(
     open,
     { laidOut, onScreen },
     phone,
     reduced,
     height,
   );
+  const drags = phone && scrimLabel != null;
+  const drag = useSheetDrag({ shift, fade, reduced, held, onClose });
   const { shown, gone } = useWindowTurn(useModalOpen(present));
   const unnamed = useUnnamedWindow(Platform.OS === 'android' && headingTakesFocus && shown);
   if (!shown && (onScreen || laidOut)) {
@@ -209,9 +220,12 @@ function SheetFrame({
             accessibilityViewIsModal
             importantForAccessibility={unnamed ? 'no-hide-descendants' : 'auto'}
             onAccessibilityEscape={close}
+            onLayout={drag.onLayout}
+            {...(drags ? drag.handlers : {})}
             testID={testID}
           >
             {children}
+            {drags && <View style={styles.grabber} pointerEvents="none" />}
             {/* The avoiding view's padding can stop short of the keys as they rise, so card shows there, never the screen. */}
             {phone && !underKeys && (
               <View style={[styles.skirt, { height }]} pointerEvents="none" />
@@ -297,7 +311,68 @@ function useSheetMotion(
     return () => run.stop();
   }, [shown, laidOut, onScreen, present, slides, reduced, scrim, shift, fade]);
 
-  return { present, scrim, frame: { opacity: fade, transform: [{ translateY: shift }] } };
+  return {
+    present,
+    scrim,
+    shift,
+    fade,
+    frame: { opacity: fade, transform: [{ translateY: shift }] },
+  };
+}
+
+type SheetDragNow = {
+  shift: Animated.Value;
+  fade: Animated.Value;
+  reduced: boolean;
+  held: boolean;
+  onClose: () => void;
+};
+
+function sheetDrag(first: SheetDragNow) {
+  let now = first;
+  // The scrim fills the modal's window from its top, so the frame's y there is where a touch's pageY meets it.
+  let frame = { top: 0, height: 0 };
+  const back = () => {
+    const { shift, fade, reduced } = now;
+    if (!reduced) {
+      glide(shift, 0, tokens.motionBase).start();
+      return;
+    }
+    glide(fade, 0, tokens.motionBase / 2).start(() => {
+      shift.setValue(0);
+      glide(fade, 1, tokens.motionBase / 2).start();
+    });
+  };
+  const { panHandlers } = PanResponder.create({
+    onMoveShouldSetPanResponderCapture: (_, { y0, dx, dy }) =>
+      sheetDragStarts(y0 - frame.top, dx, dy),
+    onPanResponderMove: (_, { dy }) => now.shift.setValue(Math.max(0, dy)),
+    onPanResponderRelease: (_, { dy, vy }) => {
+      if (sheetDragCloses({ dy, vy, height: frame.height, held: now.held })) now.onClose();
+      else back();
+    },
+    onPanResponderTerminate: back,
+    onPanResponderTerminationRequest: () => false,
+  });
+
+  return {
+    handlers: panHandlers,
+    onLayout: (event: LayoutChangeEvent) => {
+      const { y, height } = event.nativeEvent.layout;
+      frame = { top: y, height };
+    },
+    follow: (next: SheetDragNow) => {
+      now = next;
+    },
+  };
+}
+
+/** A phone sheet that closes on a tap outside follows a drag down from its top strip, and closes past half or on a flick (sc-27948). */
+function useSheetDrag(now: SheetDragNow) {
+  const [drag] = useState(() => sheetDrag(now));
+  useEffect(() => drag.follow(now));
+
+  return drag;
 }
 
 /** Every modal window in the app, wherever it is drawn: iOS has one stack of them, not one per SheetsAtRoot. */
@@ -400,6 +475,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'flex-end',
     gap: tokens.spaceMd,
+  },
+  grabber: {
+    position: 'absolute',
+    top: tokens.spaceSm,
+    alignSelf: 'center',
+    width: 40,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: tokens.colorControlBorder,
   },
   skirt: {
     position: 'absolute',

@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
 import { tokens } from '../theme/tokens.ts';
-import { sheetKeysCover, sheetPadding, sheetUnderKeys, sheetWindows } from './sheet.ts';
+import {
+  sheetDragCloses,
+  sheetDragStarts,
+  sheetKeysCover,
+  sheetPadding,
+  sheetUnderKeys,
+  sheetWindows,
+} from './sheet.ts';
 
 const notched = { top: 59, bottom: 34, left: 0, right: 0 };
 const sideways = { top: 0, bottom: 21, left: 59, right: 59 };
@@ -104,5 +111,26 @@ describe('one sheet window at a time', () => {
     windows.lower('switcher');
 
     expect(heard).toBe(2);
+  });
+});
+
+describe('dragging a sheet down', () => {
+  it('starts only in the strip at its top, and only down or up', () => {
+    expect(sheetDragStarts(10, 0, 20)).toBe(true);
+    expect(sheetDragStarts(44, 2, -20)).toBe(true);
+    expect(sheetDragStarts(45, 0, 20)).toBe(false);
+    expect(sheetDragStarts(10, 30, 20)).toBe(false);
+    expect(sheetDragStarts(10, 0, 4)).toBe(false);
+  });
+
+  it('closes at half the height or on a 1,000 pt/s flick, and springs back short of both', () => {
+    const sheet = { height: 400, held: false };
+    expect(sheetDragCloses({ ...sheet, dy: 200, vy: 0 })).toBe(true);
+    expect(sheetDragCloses({ ...sheet, dy: 100, vy: 1 })).toBe(true);
+    expect(sheetDragCloses({ ...sheet, dy: 100, vy: 0.1 })).toBe(false);
+  });
+
+  it('never closes a held sheet', () => {
+    expect(sheetDragCloses({ dy: 400, vy: 3, height: 400, held: true })).toBe(false);
   });
 });

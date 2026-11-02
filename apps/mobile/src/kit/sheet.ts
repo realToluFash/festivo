@@ -91,3 +91,28 @@ export function sheetWindows(): SheetWindows {
     },
   };
 }
+
+/** The top of a phone sheet a drag that moves it starts in, Apple's minimum hit target (sc-27948). */
+export const SHEET_DRAG_STRIP = 44;
+
+/** A drag that starts in the strip and moves more down or up than across moves the sheet. */
+export function sheetDragStarts(fromTop: number, dx: number, dy: number): boolean {
+  return (
+    fromTop >= 0 && fromTop <= SHEET_DRAG_STRIP && Math.abs(dy) > 8 && Math.abs(dy) > Math.abs(dx)
+  );
+}
+
+/** Let go at half the sheet's height, or still moving down at 1,000 pt a second (vy is pt per ms), it closes; a held sheet never does (sc-25667). */
+export function sheetDragCloses({
+  dy,
+  vy,
+  height,
+  held,
+}: {
+  dy: number;
+  vy: number;
+  height: number;
+  held: boolean;
+}): boolean {
+  return !held && (dy >= height / 2 || vy >= 1);
+}
