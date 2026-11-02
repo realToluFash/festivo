@@ -23,6 +23,7 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../api.ts';
 import { dateLocale } from '../i18n/index.ts';
 import { useFormChecks } from '../kit/formChecks.ts';
+import { notesGiveWay } from '../kit/keyboard.ts';
 import { retryAfter } from '../kit/code.ts';
 import {
   type PasswordRefusal,
@@ -247,13 +248,11 @@ function Changing({
   const [refusal, setRefusal] = useState<PasswordRefusal | null>(null);
   const aboveKeyboard = useAboveKeyboard(closing);
   const room = useRoomAboveKeyboard();
-  // The step's height with its notes, measured with them or without them and their last height added back.
-  const [stepHeight, setStepHeight] = useState(0);
+  const [step, setStep] = useState({ step: 0, notes: 0, away: false });
   const notesHeight = useRef(0);
-  // While the keys are up, the notes give way when the field and both buttons could not fit above the keys with them (sc-28122).
-  // A closing step keeps them as they were, so Cancel does not jump as the keys go down (sc-18588).
+  // A closing step keeps its notes as they were, so Cancel does not jump as the keys go down (sc-18588).
   const [notesAway, setNotesAway] = useState(false);
-  const away = room != null && stepHeight > room;
+  const away = notesGiveWay({ room, ...step });
   if (!closing && away !== notesAway) setNotesAway(away);
   const checks = useFormChecks(
     ['currentPassword', 'newPassword'] as const,
@@ -303,7 +302,11 @@ function Changing({
     <View
       style={styles.group}
       onLayout={(event) =>
-        setStepHeight(event.nativeEvent.layout.height + (notesAway ? notesHeight.current : 0))
+        setStep({
+          step: event.nativeEvent.layout.height,
+          notes: notesHeight.current,
+          away: notesAway,
+        })
       }
     >
       <View {...hidden} style={styles.group}>
@@ -411,6 +414,12 @@ function Changing({
             label={saving ? t('passwordCard.saving') : t('passwordCard.save')}
             onPress={() => void submit()}
             busy={saving}
+            // Screen readers reach Save before the notes, so while the notes are away Save says them (sc-28122).
+            accessibilityHint={
+              notesAway
+                ? `${t('passwordCard.signsOut')} ${t('passwordCard.emailed', { email })}`
+                : undefined
+            }
             testID="password.save"
           />
         </View>

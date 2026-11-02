@@ -28,6 +28,7 @@ import {
   keysOver,
   liftNeeded,
   listRoom,
+  notesGiveWay,
   offsetAboveKeyboard,
   offsetIntoView,
   offsetToFocus,
@@ -359,6 +360,30 @@ describe('a list between a field and its button shrinks to fit above the keyboar
 
   it('never taller than with the keyboard down', () => {
     expect(listRoom({ ...smallPhone, room: 900 })).toBe(264);
+  });
+});
+
+describe("change password's notes give way while the keys are up (sc-28122)", () => {
+  const typing = { room: 400, step: 380, notes: 60, away: false };
+
+  it('stay while the step fits with them', () => {
+    expect(notesGiveWay(typing)).toBe(false);
+  });
+
+  it('go when it does not', () => {
+    expect(notesGiveWay({ ...typing, step: 420 })).toBe(true);
+  });
+
+  it('stay away while the step would not fit with them added back', () => {
+    expect(notesGiveWay({ ...typing, step: 360, away: true })).toBe(true);
+  });
+
+  it('come back once it would', () => {
+    expect(notesGiveWay({ ...typing, step: 320, away: true })).toBe(false);
+  });
+
+  it('come back as the keys go down', () => {
+    expect(notesGiveWay({ ...typing, room: null, step: 360, away: true })).toBe(false);
   });
 });
 
