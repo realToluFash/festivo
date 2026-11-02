@@ -1,0 +1,61 @@
+# sc-27088: Organisation keeps a typed name across offline, a refused Save, and Try again; nothing saved until pressed again.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/organisation
+- extendedWaitUntil:
+    visible:
+      id: 'organisation.name'
+    timeout: 30000
+- tapOn:
+    id: 'organisation.name'
+- eraseText: 120
+- inputText: 'Offline Org Name'
+- hideKeyboard
+- setAirplaneMode: enabled
+- extendedWaitUntil:
+    visible:
+      id: 'offline.band'
+    timeout: 8000
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
+- scrollUntilVisible:
+    element:
+      id: 'organisation.save'
+    direction: DOWN
+    timeout: 15000
+- assertVisible:
+    id: 'organisation.save'
+    enabled: true
+- tapOn:
+    id: 'organisation.save'
+- extendedWaitUntil:
+    visible: '{{t:orgGeneral.failed}}'
+    timeout: 60000
+- takeScreenshot: save-refused
+- assertVisible: 'Offline Org Name'
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=up
+- setAirplaneMode: disabled
+- extendedWaitUntil:
+    visible:
+      id: 'qa.never.there'
+    timeout: 6000
+    optional: true
+- tapOn:
+    id: 'offline.retry'
+    optional: true
+- extendedWaitUntil:
+    notVisible:
+      id: 'offline.band'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'organisation.name'
+    direction: UP
+    timeout: 15000
+- assertVisible: 'Offline Org Name'
+- takeScreenshot: name-kept

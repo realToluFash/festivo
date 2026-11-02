@@ -1,0 +1,47 @@
+# sc-27088: Settings > security shows the offline band, Refreshing… while Try again's load is out, then the band goes once Soirely answers.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/security
+- waitForAnimationToEnd:
+    timeout: 8000
+- extendedWaitUntil:
+    notVisible:
+      id: 'security.refreshing'
+    timeout: 20000
+- assertNotVisible:
+    id: 'offline.band'
+- takeScreenshot: online
+- setAirplaneMode: enabled
+- extendedWaitUntil:
+    visible:
+      id: 'offline.band'
+    timeout: 8000
+- takeScreenshot: offline
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=paused
+- setAirplaneMode: disabled
+- extendedWaitUntil:
+    visible:
+      id: 'qa.never.there'
+    timeout: 4000
+    optional: true
+- tapOn:
+    id: 'offline.retry'
+- extendedWaitUntil:
+    visible:
+      id: 'security.refreshing'
+    timeout: 8000
+- assertVisible:
+    id: 'offline.band'
+- takeScreenshot: refreshing
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=up
+- extendedWaitUntil:
+    notVisible:
+      id: 'offline.band'
+    timeout: 30000
+- takeScreenshot: reloaded
