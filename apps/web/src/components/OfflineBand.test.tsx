@@ -590,6 +590,63 @@ describe('the offline band on the planning screens (sc-27086)', () => {
       );
     });
 
+    it('keeps the minute the form opened after a Try again that answers, as the form keeps its fields', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['Date'] });
+      vi.setSystemTime(new Date(2026, 10, 10, 9, 0, 5));
+      signedIn();
+      const state = { soirely: 'answers' as Soirely, name: 'Adaeze and Tunde', tag: '"1"' };
+      servingEvent(state);
+      open('/app/events/ev_1/edit');
+      await typeName('Adaeze and Tunde at Eko');
+
+      vi.setSystemTime(new Date(2026, 10, 10, 9, 30, 0));
+      state.soirely = 'unreachable';
+      goOffline();
+      await waitFor(() => expect(band()?.textContent).toContain('Offline · as of 09:00'));
+
+      vi.setSystemTime(new Date(2026, 10, 10, 9, 35, 0));
+      state.soirely = 'answers';
+      act(() => screen.getByRole('button', { name: 'Try again' }).click());
+      await waitFor(() => expect(band()).toBeNull());
+
+      vi.setSystemTime(new Date(2026, 10, 10, 9, 40, 0));
+      state.soirely = 'unreachable';
+      goOffline();
+
+      await waitFor(() => expect(band()?.textContent).toContain('Offline · as of 09:00'));
+    });
+
+    it('moves the time to the minute the form took Show the latest', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['Date'] });
+      vi.setSystemTime(new Date(2026, 10, 10, 9, 0, 5));
+      signedIn();
+      const state = { soirely: 'answers' as Soirely, name: 'Adaeze and Tunde', tag: '"1"' };
+      servingEvent(state);
+      open('/app/events/ev_1/edit');
+      await typeName('Adaeze and Tunde at Eko');
+
+      state.name = 'Renamed by a co-host';
+      state.tag = '"2"';
+      fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+      await screen.findByText(/Somebody else changed this event since you opened it/);
+
+      vi.setSystemTime(new Date(2026, 10, 10, 9, 20, 0));
+      fireEvent.click(screen.getByRole('button', { name: 'Show the latest' }));
+      const dialog = await screen.findByRole('alertdialog', { name: 'Show the latest version?' });
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Show the latest' }));
+      await waitFor(() =>
+        expect(screen.getByLabelText<HTMLInputElement>('Event name').value).toBe(
+          'Renamed by a co-host',
+        ),
+      );
+
+      vi.setSystemTime(new Date(2026, 10, 10, 9, 30, 0));
+      state.soirely = 'unreachable';
+      goOffline();
+
+      await waitFor(() => expect(band()?.textContent).toContain('Offline · as of 09:20'));
+    });
+
     it('saves against the tag the form opened with, so a change made elsewhere meanwhile is still caught', async () => {
       signedIn();
       const state = { soirely: 'answers' as Soirely, name: 'Adaeze and Tunde', tag: '"1"' };

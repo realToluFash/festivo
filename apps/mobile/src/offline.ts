@@ -24,10 +24,13 @@ export function useOffline({
   loaded,
   reload,
   focusTitle,
+  since = null,
 }: {
   loaded: boolean;
   reload: () => void;
   focusTitle: () => void;
+  /** The minute of what the screen shows, where a load that answers does not replace it: Edit details. */
+  since?: Date | null;
 }): { watch: <T>(load: Promise<T>) => Promise<T>; stale: Stale | null; refreshing: boolean } {
   const [offline] = useState(() => createOfflineWatch({ connection }));
   const state = useSyncExternalStore(offline.subscribe, offline.state);
@@ -50,8 +53,11 @@ export function useOffline({
 
   const { at, unanswered } = state;
   const stale = useMemo(
-    () => (state.stale && loaded && at != null ? { at, retry: offline.retry, unanswered } : null),
-    [state.stale, loaded, at, offline, unanswered],
+    () =>
+      state.stale && loaded && at != null
+        ? { at: since ?? at, retry: offline.retry, unanswered }
+        : null,
+    [state.stale, loaded, at, since, offline, unanswered],
   );
 
   return { watch: offline.watch, stale, refreshing: state.out > 0 && loaded };

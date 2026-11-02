@@ -75,6 +75,7 @@ export function EditEventScreen({ eventId, at }: { eventId: string; at: EditAt |
   const [attempt, setAttempt] = useState(0);
   const [refresh, setRefresh] = useState(0);
   const [reads, setReads] = useState(0);
+  const [shownAt, setShownAt] = useState<Date | null>(null);
   const manages = organisation != null && roleHolds(organisation, 'events.manage');
   const navigation = useNavigation();
   const title = useRef<TextHandle>(null);
@@ -82,6 +83,7 @@ export function EditEventScreen({ eventId, at }: { eventId: string; at: EditAt |
     loaded: 'event' in load,
     reload: () => setRefresh((n) => n + 1),
     focusTitle: () => moveScreenReaderFocus(title.current),
+    since: shownAt,
   });
 
   // Once the form shows, a load only asks whether Soirely answers: the form and the tag it saves against stay as opened (Decided, 2 Nov).
@@ -91,8 +93,11 @@ export function EditEventScreen({ eventId, at }: { eventId: string; at: EditAt |
     const settle = (read: Load) => live && setLoad((was) => formAfterLoad(was, read));
 
     watch(api.taggedEvent(eventId)).then(
-      (tagged) =>
-        settle(tagged.event.organisationId === organisationId ? tagged : { kind: 'notFound' }),
+      (tagged) => {
+        const ours = tagged.event.organisationId === organisationId;
+        if (ours && live) setShownAt((was) => was ?? new Date());
+        settle(ours ? tagged : { kind: 'notFound' });
+      },
       (error: unknown) =>
         settle(
           error instanceof ApiError && (error.status === 404 || error.status === 403)
@@ -175,6 +180,7 @@ export function EditEventScreen({ eventId, at }: { eventId: string; at: EditAt |
             }}
             onLatest={(latest) => {
               setLoad(latest);
+              setShownAt(new Date());
               setReads((n) => n + 1);
             }}
           />

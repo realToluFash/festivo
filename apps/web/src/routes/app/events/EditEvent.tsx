@@ -95,6 +95,7 @@ function EditOf({ organisationId, eventId }: { organisationId: string; eventId: 
   const [attempt, setAttempt] = useState(0);
   const [refresh, setRefresh] = useState(0);
   const [reads, setReads] = useState(0);
+  const [shownAt, setShownAt] = useState<Date | null>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   const failedLine = useRef<HTMLParagraphElement>(null);
   const land = useFocusOnceShown();
@@ -103,6 +104,7 @@ function EditOf({ organisationId, eventId }: { organisationId: string; eventId: 
     loaded: 'event' in load,
     reload: () => setRefresh((n) => n + 1),
     title: heading,
+    since: shownAt,
   });
 
   // Once the form shows, a load only asks whether Soirely answers: the form and the tag it saves against stay as opened.
@@ -110,15 +112,12 @@ function EditOf({ organisationId, eventId }: { organisationId: string; eventId: 
     let current = true;
 
     watch(api.taggedEvent(eventId)).then(
-      (tagged) =>
-        current &&
-        setLoad((was) =>
-          'event' in was
-            ? was
-            : tagged.event.organisationId === organisationId
-              ? tagged
-              : { kind: 'notFound' },
-        ),
+      (tagged) => {
+        if (!current) return;
+        const ours = tagged.event.organisationId === organisationId;
+        if (ours) setShownAt((was) => was ?? new Date());
+        setLoad((was) => ('event' in was ? was : ours ? tagged : { kind: 'notFound' }));
+      },
       (error: unknown) =>
         current &&
         setLoad((was) =>
@@ -189,6 +188,7 @@ function EditOf({ organisationId, eventId }: { organisationId: string; eventId: 
             heading={heading}
             onLatest={(latest) => {
               setLoad(latest);
+              setShownAt(new Date());
               setReads((n) => n + 1);
             }}
           />
