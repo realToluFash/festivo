@@ -42,7 +42,7 @@ import { arrivalsSeen, countedSince, setUnread, useArrivals } from '../notificat
 import { useLayout } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { BellMark } from './BellMark.tsx';
-import { Footnote, PrimaryButton, QuietButton } from './Buttons.tsx';
+import { PrimaryButton, QuietButton } from './Buttons.tsx';
 import { MuteEventSwitch } from './MuteEventCard.tsx';
 import { Notice } from './Notice.tsx';
 import { useReadOut } from './ReadOut.tsx';
@@ -284,13 +284,11 @@ export function NotificationsFeed({
           item={item}
           gone={gone.has(item.id)}
           opensCard={index === 0 && !asking}
-          closesCard={index === rows.length - 1}
           onOpen={onOpen}
           onMore={nextAction}
         />
       )}
       contentContainerStyle={[styles.feed, kind !== 'phone' && styles.feedUnderBack]}
-      ListFooterComponentStyle={styles.part}
       ListHeaderComponent={
         <>
           <View style={styles.part}>
@@ -309,7 +307,7 @@ export function NotificationsFeed({
           </View>
 
           {(asking || rows.length === 0) && (
-            <View style={[styles.card, styles.cardTop, rows.length === 0 && styles.cardFoot]}>
+            <View style={[styles.card, styles.cardTop]}>
               {asking && (
                 <View style={styles.cardPart}>
                   <View style={styles.ask} testID="notifications.pushAsk">
@@ -337,7 +335,13 @@ export function NotificationsFeed({
 
               {feed.status === 'loading' && (
                 <View style={styles.cardPart}>
-                  <Skeleton words={t('notifications.loading')} shape="rows" rowHeight={64} inCard />
+                  <Skeleton
+                    words={t('notifications.loading')}
+                    shape="rows"
+                    rowHeight={64}
+                    rows={3}
+                    inCard
+                  />
                 </View>
               )}
 
@@ -359,8 +363,11 @@ export function NotificationsFeed({
               )}
 
               {feed.status === 'loaded' && rows.length === 0 && (
-                <View style={styles.cardPart}>
-                  <Text size={tokens.typeBodyPhone.size} muted>
+                <View style={styles.empty}>
+                  <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+                    <BellMark ink={tokens.colorInkSecondary} />
+                  </View>
+                  <Text size={tokens.typeBodyPhone.size} muted style={styles.centred}>
                     {t('notifications.empty')}
                   </Text>
                 </View>
@@ -370,7 +377,7 @@ export function NotificationsFeed({
         </>
       }
       ListFooterComponent={
-        <>
+        <View style={[styles.card, styles.cardFoot]}>
           {feed.status === 'loaded' && feed.next != null && (
             <View style={styles.more}>
               <Pressable
@@ -397,16 +404,20 @@ export function NotificationsFeed({
             </View>
           )}
 
-          <Footnote
-            action={t('notifications.settings')}
-            role="link"
+          <Pressable
+            style={styles.settings}
             onPress={() => {
               nextAction();
               router.push(SECTION_HREF.notifications);
             }}
+            accessibilityRole="link"
             testID="notifications.settings"
-          />
-        </>
+          >
+            <Text size={tokens.typeButton.size} weight="semibold" style={styles.accent}>
+              {t('notifications.settings')}
+            </Text>
+          </Pressable>
+        </View>
       }
     />
   );
@@ -417,21 +428,19 @@ const FeedRow = memo(function FeedRow({
   item,
   gone,
   opensCard,
-  closesCard,
   onOpen,
   onMore,
 }: {
   item: NotificationItem;
   gone: boolean;
   opensCard: boolean;
-  closesCard: boolean;
   onOpen: (item: NotificationItem) => void;
   onMore: () => void;
 }) {
   const { t } = useTranslation();
 
   return (
-    <View style={[styles.card, opensCard && styles.cardTop, closesCard && styles.cardFoot]}>
+    <View style={[styles.card, opensCard && styles.cardTop]}>
       <View style={styles.row}>
         <View style={styles.itemRow}>
           <Pressable
@@ -461,7 +470,7 @@ const FeedRow = memo(function FeedRow({
                 {!item.read && (
                   <View style={styles.mark}>
                     <View style={styles.dot} />
-                    <Text size={tokens.typeSmall.size} weight="semibold">
+                    <Text size={tokens.typeSmall.size} weight="semibold" style={styles.accent}>
                       {t('notifications.unread')}
                     </Text>
                   </View>
@@ -603,11 +612,23 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: tokens.radiusCardPhone,
     borderBottomRightRadius: tokens.radiusCardPhone,
   },
-  cardPart: { paddingVertical: tokens.spaceLg, paddingHorizontal: tokens.spaceXl },
+  cardPart: {
+    paddingTop: tokens.spaceSm,
+    paddingBottom: tokens.spaceLg,
+    paddingHorizontal: tokens.spaceXl,
+  },
+  empty: {
+    alignItems: 'center',
+    gap: tokens.spaceSm,
+    paddingVertical: tokens.space3xl,
+    paddingHorizontal: tokens.spaceXl,
+  },
+  centred: { textAlign: 'center' },
   header: { flexDirection: 'row', justifyContent: 'flex-end' },
   fill: { flex: 1 },
   textButton: {
     minHeight: tokens.sizeHit,
+    alignSelf: 'flex-start',
     flexDirection: 'row',
     alignItems: 'center',
     gap: tokens.spaceXs,
@@ -623,32 +644,46 @@ const styles = StyleSheet.create({
   },
   askActions: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: tokens.spaceLg },
   row: {
-    gap: tokens.spaceXs,
-    paddingHorizontal: tokens.spaceXl,
     borderTopWidth: 1,
     borderTopColor: tokens.colorInsetBorder,
   },
-  goneLine: { paddingBottom: tokens.spaceLg },
-  itemRow: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceSm },
+  goneLine: { marginHorizontal: tokens.spaceXl, marginBottom: tokens.spaceLg },
+  itemRow: { flexDirection: 'row', alignItems: 'flex-start' },
   moreButton: {
+    marginTop: tokens.spaceSm,
+    marginRight: tokens.spaceSm,
     minWidth: tokens.sizeHit,
     minHeight: tokens.sizeHit,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  sheet: { gap: tokens.spaceLg },
+  sheet: { gap: tokens.spaceLg, padding: tokens.space3xl },
   item: {
     gap: tokens.spaceXxs,
     minHeight: tokens.sizeHit,
     paddingVertical: tokens.spaceLg,
+    paddingHorizontal: tokens.spaceXl,
   },
   marks: { flexDirection: 'row', gap: tokens.spaceLg },
-  mark: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXs },
+  mark: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXxs },
   dot: {
     width: tokens.spaceSm,
     height: tokens.spaceSm,
     borderRadius: tokens.spaceSm / 2,
     backgroundColor: tokens.colorAccent,
   },
-  more: { gap: tokens.spaceSm },
+  more: {
+    gap: tokens.spaceSm,
+    paddingVertical: tokens.spaceSm,
+    paddingHorizontal: tokens.spaceXl,
+    borderTopWidth: 1,
+    borderTopColor: tokens.colorInsetBorder,
+  },
+  settings: {
+    minHeight: tokens.sizeHit,
+    justifyContent: 'center',
+    paddingHorizontal: tokens.spaceXl,
+    borderTopWidth: 1,
+    borderTopColor: tokens.colorInsetBorder,
+  },
 });
