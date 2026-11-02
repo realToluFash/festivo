@@ -14,6 +14,9 @@ import {
   useListAndPageLayout,
 } from '../../src/components/ListAndPage.tsx';
 import { Notice } from '../../src/components/Notice.tsx';
+import { moveScreenReaderFocus } from '../../src/components/screenReaderFocus.ts';
+import { useOffline } from '../../src/offline.ts';
+import { afterFailedLoad } from '../../src/offlineLoad.ts';
 import { RoleList, RolePage, RemoveRole } from '../../src/components/Roles.tsx';
 import {
   FocusBack,
@@ -69,21 +72,34 @@ export default function RolesScreen() {
   const retried = useRef(false);
   const phone = kind === 'phone';
   const landscape = kind === 'tabletLandscape';
+  const [refresh, setRefresh] = useState(0);
+  const { watch, stale } = useOffline({
+    loaded: load.kind === 'loaded',
+    reload: () => setRefresh((n) => n + 1),
+    focusTitle: () => moveScreenReaderFocus(rolesTitle.current),
+  });
 
   useEffect(() => {
     if (organisationId == null) return;
     let live = true;
 
-    api.roles(organisationId).then(
+    watch(api.roles(organisationId)).then(
       (catalogue) => live && setHeld({ in: organisationId, load: { kind: 'loaded', catalogue } }),
-      () =>
-        live && setHeld({ in: organisationId, load: { kind: 'failed', tapped: retried.current } }),
+      (error: unknown) =>
+        live &&
+        setHeld((before) => ({
+          in: organisationId,
+          load: afterFailedLoad(before.in === organisationId ? before.load : LOADING, error, {
+            kind: 'failed',
+            tapped: retried.current,
+          }),
+        })),
     );
 
     return () => {
       live = false;
     };
-  }, [organisationId, attempt]);
+  }, [organisationId, attempt, refresh, watch]);
 
   const opened = shown.in === organisationId ? shown.pane : null;
   const arrived = arrival != null && arrival.pane === opened ? arrival : null;
@@ -266,6 +282,7 @@ export default function RolesScreen() {
   return (
     <AppFrame
       current="settings"
+      offline={stale}
       title={
         phone
           ? inDetail

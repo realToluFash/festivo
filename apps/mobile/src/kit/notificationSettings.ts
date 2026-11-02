@@ -1,5 +1,5 @@
 import type { NotificationCategory, NotificationSetting } from '@soirely/api-client';
-import { type SettingChannel, settingFlipped } from '@soirely/domain';
+import { type SettingChannel, keepsWhatLoaded, settingFlipped } from '@soirely/domain';
 
 export type Channel = SettingChannel;
 
@@ -28,17 +28,23 @@ export interface SwitchesNotifications {
   ): Promise<NotificationSetting[]>;
 }
 
-export async function readSettings(client: SwitchesNotifications): Promise<SettingsGrid> {
+/** Applied to the grid as it stands when the read answers: a reload that never reached Soirely keeps what loaded (sc-27088). */
+export async function readSettings(
+  client: SwitchesNotifications,
+): Promise<(before: SettingsGrid) => SettingsGrid> {
   try {
-    return {
+    const settings = await client.notificationSettings();
+
+    return (before) => ({
       status: 'loaded',
-      settings: await client.notificationSettings(),
-      saving: [],
+      settings,
+      saving: before.status === 'loaded' ? before.saving : [],
       saved: false,
       unsaved: null,
-    };
-  } catch {
-    return { status: 'failed' };
+    });
+  } catch (error) {
+    return (before) =>
+      before.status === 'loaded' && keepsWhatLoaded(error) ? before : { status: 'failed' };
   }
 }
 

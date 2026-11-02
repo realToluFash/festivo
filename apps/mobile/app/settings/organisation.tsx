@@ -1,6 +1,6 @@
 import { type Membership } from '@soirely/api-client';
 import { roleHolds } from '@soirely/domain';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -14,7 +14,9 @@ import { OwnershipCard } from '../../src/components/OwnershipCard.tsx';
 import { RequestLinkCard } from '../../src/components/RequestLinkCard.tsx';
 import { Screen } from '../../src/components/Screen.tsx';
 import { SettingsSplit, useBackToSettings } from '../../src/components/SettingsList.tsx';
-import { Text } from '../../src/components/Text.tsx';
+import { Text, type TextHandle } from '../../src/components/Text.tsx';
+import { moveScreenReaderFocus } from '../../src/components/screenReaderFocus.ts';
+import { useOffline } from '../../src/offline.ts';
 import { type LayoutKind, settingsListBeside, useLayout } from '../../src/layout/useLayout.ts';
 import { replaceOrganisation, useSignedIn } from '../../src/signedIn.ts';
 import { tokens } from '../../src/theme/tokens.ts';
@@ -35,17 +37,53 @@ export default function Organisation() {
   const notAllowed = t(
     refusedIn?.byRule === true ? 'orgGeneral.refusedByRule' : 'orgGeneral.refused',
   );
+  const title = useRef<TextHandle>(null);
+  const organisationId = organisation?.id;
+  const [loadedFor, setLoadedFor] = useState<string | null>(null);
+  const [refresh, setRefresh] = useState(0);
+  const { watch, stale } = useOffline({
+    loaded: loadedFor != null && loadedFor === organisationId,
+    reload: () => setRefresh((n) => n + 1),
+    focusTitle: () => moveScreenReaderFocus(title.current),
+  });
+
+  // The page draws the signed-in organisation; this read is what the offline band dates.
+  useEffect(() => {
+    if (organisationId == null) return;
+    let live = true;
+
+    watch(api.organisations()).then(
+      (all) => {
+        if (!live) return;
+        const fresh = all.find((membership) => membership.id === organisationId);
+        if (fresh != null) replaceOrganisation(fresh);
+        setLoadedFor(organisationId);
+      },
+      () => {},
+    );
+
+    return () => {
+      live = false;
+    };
+  }, [organisationId, refresh, watch]);
 
   return (
     <AppFrame
       current="settings"
+      offline={stale}
+      titleRef={alone ? title : undefined}
       title={alone ? t('settings.organisation') : t('settings.title')}
       back={alone ? backToSettings(t('settings.title')) : undefined}
     >
       <SettingsSplit open="organisation">
         <Screen edges={bodyEdges(kind)} contentStyle={CONTENT[kind]}>
           {!alone && (
-            <Text size={tokens.typeTitlePage.size} weight="bold" accessibilityRole="header">
+            <Text
+              ref={title}
+              size={tokens.typeTitlePage.size}
+              weight="bold"
+              accessibilityRole="header"
+            >
               {t('settings.organisation')}
             </Text>
           )}

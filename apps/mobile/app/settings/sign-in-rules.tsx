@@ -12,7 +12,9 @@ import { SecondaryButton } from '../../src/components/Buttons.tsx';
 import { Notice } from '../../src/components/Notice.tsx';
 import { Screen } from '../../src/components/Screen.tsx';
 import { SettingsSplit, useBackToSettings } from '../../src/components/SettingsList.tsx';
-import { Text } from '../../src/components/Text.tsx';
+import { Text, type TextHandle } from '../../src/components/Text.tsx';
+import { moveScreenReaderFocus } from '../../src/components/screenReaderFocus.ts';
+import { useOffline } from '../../src/offline.ts';
 import { cardFrame } from '../../src/components/cardFrame.ts';
 import { dateLocale, useShownLanguage } from '../../src/i18n/index.ts';
 import { limitFromElsewhere, ruleValue } from '../../src/kit/signInRules.ts';
@@ -42,6 +44,13 @@ export default function SignInRules() {
   const language = useShownLanguage();
   const loadedFor = useRef<string | null>(null);
   const retried = useRef(false);
+  const heading = useRef<TextHandle>(null);
+  const [refresh, setRefresh] = useState(0);
+  const { watch, stale } = useOffline({
+    loaded: load.kind === 'loaded',
+    reload: () => setRefresh((n) => n + 1),
+    focusTitle: () => moveScreenReaderFocus(heading.current),
+  });
 
   useEffect(() => {
     if (organisationId == null) return;
@@ -50,7 +59,7 @@ export default function SignInRules() {
     const tapped = retried.current;
     retried.current = false;
 
-    api.signInRules(organisationId).then(
+    watch(api.signInRules(organisationId)).then(
       (page) => {
         if (!live) return;
         loadedFor.current = organisationId;
@@ -66,7 +75,7 @@ export default function SignInRules() {
     return () => {
       live = false;
     };
-  }, [organisationId, attempt, language]);
+  }, [organisationId, attempt, refresh, language, watch]);
 
   useEffect(() => {
     if (organisation != null) markRulesSeen(organisation);
@@ -84,12 +93,14 @@ export default function SignInRules() {
   return (
     <AppFrame
       current="settings"
+      offline={stale}
       title={alone ? t('settings.signInRules') : t('settings.title')}
       back={alone ? backToSettings(t('settings.title')) : undefined}
     >
       <SettingsSplit open="signInRules">
         <Screen edges={bodyEdges(kind)} contentStyle={CONTENT[kind]}>
           <AnswerHeading
+            ref={heading}
             size={
               kind === 'tabletLandscape' ? tokens.typeTitlePage.size : tokens.typeTitlePhone.size
             }
