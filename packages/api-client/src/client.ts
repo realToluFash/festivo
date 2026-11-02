@@ -486,6 +486,19 @@ export interface TaggedEvent {
   tag: string;
 }
 
+/** The event's version in its tag (`EntityTag::of`), with the coding Caddy suffixes a strong tag with (`"2-zstd"`) left off. */
+export function eventVersion(tag: string): number {
+  const version = /^"(\d+)(?:-(?:zstd|br|gzip))?"$/.exec(tag)?.[1];
+
+  if (version == null) {
+    throw new Error(
+      `The API tagged an event ${tag}, which is not a version. Check EntityTag in services/api.`,
+    );
+  }
+
+  return Number(version);
+}
+
 export interface Membership extends Organisation {
   role: MemberRole;
   /** What this role holds here, every registered one for Owner (sc-66): what a client may show. */

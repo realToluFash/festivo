@@ -23,7 +23,7 @@ export function EndButton({
   phase: EventPhase;
   now: Date;
   heading: RefObject<HTMLHeadingElement | null>;
-  onChange: (event: OrganisationEvent) => void;
+  onChange: (event: OrganisationEvent, tag: string) => void;
   onEnded: () => void;
 }) {
   const { t } = useTranslation();

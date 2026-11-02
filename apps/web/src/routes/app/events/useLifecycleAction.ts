@@ -1,4 +1,4 @@
-import { ApiError, type OrganisationEvent } from '@soirely/api-client';
+import { ApiError, type OrganisationEvent, type TaggedEvent } from '@soirely/api-client';
 import { changedWords } from '@soirely/domain';
 import { type RefObject, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -33,7 +33,7 @@ export function useLifecycleAction<C extends object>({
 }: {
   event: OrganisationEvent;
   heading: RefObject<HTMLHeadingElement | null>;
-  onChange: (event: OrganisationEvent) => void;
+  onChange: (event: OrganisationEvent, tag: string) => void;
   onDone: () => void;
   refusalOf?: (error: ApiError) => Refusal | null;
 }) {
@@ -66,12 +66,12 @@ export function useLifecycleAction<C extends object>({
     window.setTimeout(() => (opener.current ?? heading.current)?.focus(), 0);
   };
 
-  const go = (choice: C, call: () => Promise<{ event: OrganisationEvent }>) => {
+  const go = (choice: C, call: () => Promise<TaggedEvent>) => {
     setAsking(confirming(choice, true, false));
     call().then(
-      ({ event: moved }) => {
+      (moved) => {
         setAsking(null);
-        onChange(moved);
+        onChange(moved.event, moved.tag);
         onDone();
         window.setTimeout(() => heading.current?.focus(), 0);
       },
@@ -87,10 +87,10 @@ export function useLifecycleAction<C extends object>({
         } else if (!refusal.reload) {
           setAsking({ kind: 'refused', ...refusal.then(event) });
         } else {
-          void api.event(event.id).then(
+          void api.taggedEvent(event.id).then(
             (latest) => {
-              onChange(latest);
-              setAsking({ kind: 'refused', ...refusal.then(latest) });
+              onChange(latest.event, latest.tag);
+              setAsking({ kind: 'refused', ...refusal.then(latest.event) });
             },
             () => setAsking(confirming(choice, false, true)),
           );

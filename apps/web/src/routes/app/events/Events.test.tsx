@@ -3430,6 +3430,176 @@ describe('Pause and Resume (sc-3586)', () => {
   });
 });
 
+describe('An older copy never replaces the change the page made (sc-28121)', () => {
+  const AHEAD = { startsAt: '2030-11-14T16:00:00+01:00', endsAt: '2030-11-15T02:00:00+01:00' };
+  const HAPPENING = { startsAt: '2020-11-14T16:00:00+01:00', endsAt: '2030-11-15T02:00:00+01:00' };
+  const draft = event(AHEAD);
+  const live = event({ ...AHEAD, status: 'live', phase: 'live' });
+  const happening = event({ ...HAPPENING, status: 'live', phase: 'happening_now' });
+  const paused = event({
+    ...AHEAD,
+    status: 'paused',
+    phase: 'paused',
+    pausedAt: '2026-10-27T09:00:00+00:00',
+  });
+  const ended = { status: 'ended', phase: 'finished', concludedAt: '2030-10-13T10:00:00+01:00' };
+
+  function tagged(body: unknown, tag: string): Response {
+    return new Response(JSON.stringify(body), { status: 200, headers: { ETag: tag } });
+  }
+
+  /** The page shows `before` at version 1 and falls stale; every read after the first is held until `release` answers it. */
+  async function staleOn(before: unknown, change: string, after: unknown) {
+    const held: ((answer: Response) => void)[] = [];
+    let reads = 0;
+    answering({
+      'GET /api/events/ev_1': () =>
+        (reads += 1) === 1
+          ? tagged({ event: before }, '"1"')
+          : new Promise<Response>((resolve) => held.push(resolve)),
+      [change]: () => tagged({ event: after }, '"2-zstd"'),
+    });
+    at('/app/events/ev_1');
+    await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
+    act(() => connection.deviceOffline());
+
+    return {
+      release: async (answer: Response) => {
+        await waitFor(() => expect(held).toHaveLength(1));
+        await act(async () => held[0]!(answer));
+      },
+    };
+  }
+
+  function confirm(opener: string, button: string): void {
+    fireEvent.click(screen.getByRole('button', { name: opener }));
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: button }));
+  }
+
+  it.each([
+    {
+      change: 'Make live',
+      line: 'POST /api/events/ev_1/make-live',
+      before: draft,
+      after: live,
+      press: () => confirm('Make live', 'Make live'),
+      shown: 'Live',
+      gone: 'Make live',
+    },
+    {
+      change: 'Pause',
+      line: 'POST /api/events/ev_1/pause',
+      before: live,
+      after: paused,
+      press: () => confirm('Pause', 'Pause'),
+      shown: 'Paused',
+      gone: 'Pause',
+    },
+    {
+      change: 'Resume',
+      line: 'POST /api/events/ev_1/resume',
+      before: paused,
+      after: live,
+      press: () => fireEvent.click(screen.getByRole('button', { name: 'Resume' })),
+      shown: 'Live',
+      gone: 'Resume',
+    },
+    {
+      change: 'Call off',
+      line: 'POST /api/events/ev_1/end',
+      before: live,
+      after: { ...live, ...ended },
+      press: () => confirm('Call off…', 'Call off'),
+      shown: 'Finished',
+      gone: 'Call off…',
+    },
+    {
+      change: 'End now',
+      line: 'POST /api/events/ev_1/end',
+      before: happening,
+      after: { ...happening, ...ended },
+      press: () => confirm('End now…', 'End now'),
+      shown: 'Finished',
+      gone: 'End now…',
+    },
+  ])(
+    'keeps $change when the read it sets off answers the copy from before it',
+    async ({ line, before, after, press, shown, gone }) => {
+      signedIn();
+      const { release } = await staleOn(before, line, after);
+
+      press();
+      await waitFor(() =>
+        expect(screen.getByText(shown, { selector: '.pill-quiet' })).toBeDefined(),
+      );
+      expect(document.querySelector('.offline-band')).not.toBeNull();
+      await release(tagged({ event: before }, '"1"'));
+
+      expect(screen.getByText(shown, { selector: '.pill-quiet' })).toBeDefined();
+      expect(screen.queryByRole('button', { name: gone })).toBeNull();
+      await waitFor(() => expect(document.querySelector('.offline-band')).toBeNull());
+    },
+  );
+
+  it('keeps the change when the read answers the version shown', async () => {
+    signedIn();
+    const { release } = await staleOn(draft, 'POST /api/events/ev_1/make-live', live);
+
+    confirm('Make live', 'Make live');
+    await waitFor(() =>
+      expect(screen.getByText('Live', { selector: '.pill-quiet' })).toBeDefined(),
+    );
+    await release(tagged({ event: live }, '"2"'));
+
+    expect(screen.getByText('Live', { selector: '.pill-quiet' })).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Make live' })).toBeNull();
+  });
+
+  it('shows the phase the clock moved on when the read answers the version shown', async () => {
+    signedIn();
+    const startsLive = { ...happening, phase: 'live' };
+    const { release } = await staleOn(draft, 'POST /api/events/ev_1/make-live', startsLive);
+
+    confirm('Make live', 'Make live');
+    await waitFor(() =>
+      expect(screen.getByText('Live', { selector: '.pill-quiet' })).toBeDefined(),
+    );
+    expect(screen.queryByText('Happening now')).toBeNull();
+    await release(tagged({ event: happening }, '"2"'));
+
+    expect(await screen.findByText('Happening now')).toBeDefined();
+    expect(screen.queryByText('Live', { selector: '.pill-quiet' })).toBeNull();
+  });
+
+  it('shows the load error when a re-read is tagged with something that is not a version', async () => {
+    signedIn();
+    const { release } = await staleOn(draft, 'POST /api/events/ev_1/make-live', live);
+
+    confirm('Make live', 'Make live');
+    await waitFor(() =>
+      expect(screen.getByText('Live', { selector: '.pill-quiet' })).toBeDefined(),
+    );
+    await release(tagged({ event: live }, 'W/"2"'));
+
+    expect(await screen.findByText('The event did not load. Try again in a moment.')).toBeDefined();
+  });
+
+  it('still shows a newer copy, such as a change somebody else made', async () => {
+    signedIn();
+    const { release } = await staleOn(draft, 'POST /api/events/ev_1/make-live', live);
+
+    confirm('Make live', 'Make live');
+    await waitFor(() =>
+      expect(screen.getByText('Live', { selector: '.pill-quiet' })).toBeDefined(),
+    );
+    await release(tagged({ event: { ...live, name: 'Adaeze and Tunde, at last' } }, '"3"'));
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde, at last' }),
+    ).toBeDefined();
+  });
+});
+
 const TYPED = {
   formatted: '',
   line1: null,
