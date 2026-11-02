@@ -18,7 +18,7 @@ import {
 } from '@soirely/domain';
 import { type KeyboardEvent, type ReactNode, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useLocation, useNavigate } from 'react-router';
+import { Link, NavigationType, useLocation, useNavigate, useNavigationType } from 'react-router';
 
 import { api } from '../../../api.ts';
 import { Refreshing } from '../../../components/OfflineBand.tsx';
@@ -73,13 +73,16 @@ export function Events() {
   const organisation = session.organisation;
   const location = useLocation();
   const navigate = useNavigate();
-  const [notice, setNotice] = useState(() => arrival(location.state));
+  const returned = useNavigationType() === NavigationType.Pop;
+  const [notice, setNotice] = useState(() => (returned ? null : arrival(location.state)));
   const [shownAt, setShownAt] = useState(location.key);
 
   if (location.key !== shownAt) {
     setShownAt(location.key);
     setNotice(
-      arrival(location.state) ?? (notice?.replacing ? { ...notice, replacing: false } : null),
+      returned
+        ? null
+        : (arrival(location.state) ?? (notice?.replacing ? { ...notice, replacing: false } : null)),
     );
   }
 
@@ -597,7 +600,7 @@ function NextStep({ event, phase, now }: { event: ListedEvent; phase: EventPhase
   }
 }
 
-/** The deleted notice belongs to the entry Delete event lands on, which Events replaces once to drop its state, and to no other (sc-22103). */
+/** The deleted notice belongs to the entry Delete event lands on, which Events replaces once to drop its state, and to no other: Back, Forward or a reload can reach an entry whose replace never landed (sc-22103). */
 function arrival(state: unknown): { event: string; replacing: boolean } | null {
   const event = deletedEvent(state);
 
