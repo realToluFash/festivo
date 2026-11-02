@@ -40,3 +40,11 @@ appId: host.exp.Exponent
 - takeScreenshot: remove-confirm-back
 - tapOn:
     id: 'contacts.${ROW}.keep'
+- extendedWaitUntil:
+    notVisible:
+      id: 'contacts.${ROW}.keep'
+    timeout: 10000
+- extendedWaitUntil:
+    visible:
+      id: 'contacts.${ROW}.remove'
+    timeout: 10000
