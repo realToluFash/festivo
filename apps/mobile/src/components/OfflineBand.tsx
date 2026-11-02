@@ -31,6 +31,7 @@ import { tokens } from '../theme/tokens.ts';
 import { readOut } from './ReadOut.tsx';
 import { Text } from './Text.tsx';
 import { MeasuredWords } from './Title.tsx';
+import { rereadOrganisations } from '../signedIn.ts';
 
 const WORDS_SIZE = 15;
 
@@ -178,7 +179,10 @@ export function OfflineBand({ stale, inFront }: { stale: Stale | null; inFront: 
               placed.pillWraps && styles.retryWrapped,
               pressed && styles.retryPressed,
             ]}
-            onPress={stale.retry}
+            onPress={() => {
+              void rereadOrganisations();
+              stale.retry();
+            }}
             accessibilityRole="button"
             testID="offline.retry"
           >

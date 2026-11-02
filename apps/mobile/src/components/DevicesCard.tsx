@@ -41,6 +41,7 @@ import { ProviderButton } from './ProviderSignIn.tsx';
 import { type StepClosed, stepClosed, useAboveKeyboard, useFocusBackToOpener } from './Screen.tsx';
 import { Text, type TextHandle } from './Text.tsx';
 import { Arrived, Skeleton } from './Skeleton.tsx';
+import { rereadOrganisations } from '../signedIn.ts';
 
 type Devices =
   | { kind: 'loading' }
@@ -272,7 +273,14 @@ export function DevicesCard({
             answer={devices}
             takesFocus={devices.tapped}
           />
-          <SecondaryButton label={t('devices.retry')} onPress={retry} testID="devices.retry" />
+          <SecondaryButton
+            label={t('devices.retry')}
+            onPress={() => {
+              void rereadOrganisations();
+              retry();
+            }}
+            testID="devices.retry"
+          />
         </>
       )}
 

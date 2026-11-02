@@ -30,7 +30,7 @@ import { type TextHandle, Text } from '../../src/components/Text.tsx';
 import { useShownLanguage } from '../../src/i18n/index.ts';
 import { useOffline } from '../../src/offline.ts';
 import { DESTINATION_HREF, SECTION_HREF } from '../../src/kit/appNav.ts';
-import { useSignedIn } from '../../src/signedIn.ts';
+import { rereadOrganisations, useSignedIn } from '../../src/signedIn.ts';
 import { settingsListBeside, useLayout } from '../../src/layout/useLayout.ts';
 import { tokens } from '../../src/theme/tokens.ts';
 import { Arrived, Skeleton } from '../../src/components/Skeleton.tsx';
@@ -202,6 +202,7 @@ export default function MembersScreen() {
         <SecondaryButton
           label={t('membersScreen.retry')}
           onPress={() => {
+            void rereadOrganisations();
             setRetried({});
             setLoad({ kind: 'loading' });
             setAttempt((n) => n + 1);

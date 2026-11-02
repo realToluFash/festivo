@@ -13,6 +13,7 @@ import { UpdateGate } from '../src/components/UpdateRequired.tsx';
 import { initI18n } from '../src/i18n/index.ts';
 import { loadInstallId } from '../src/installId.ts';
 import { useReducedMotion } from '../src/reducedMotion.ts';
+import { useRereadOnMoves } from '../src/rereadOnMoves.ts';
 import { FONT_FACES, facesLoaded } from '../src/theme/fonts.ts';
 import { tokens } from '../src/theme/tokens.ts';
 
@@ -30,6 +31,7 @@ showPushInForeground();
 export default function RootLayout() {
   const [state, setState] = useState<'loading' | 'ready' | 'failed'>('loading');
   const reduced = useReducedMotion();
+  useRereadOnMoves();
   const [message, setMessage] = useState('');
 
   useEffect(() => {

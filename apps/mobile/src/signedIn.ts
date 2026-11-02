@@ -81,8 +81,18 @@ export async function rereadAccount(): Promise<void> {
 }
 
 let rereads = 0;
+const movedOn = new Set<(organisation: Membership) => void>();
 
-/** Read again in a newly picked language, so the dates the server wrote follow it; a failed read leaves them as they were (sc-9267). */
+/** Told when a read finds the organisation being worked in gone, and moves on into another (sc-28178). */
+export function onMovedOn(listener: (organisation: Membership) => void): () => void {
+  movedOn.add(listener);
+
+  return () => {
+    movedOn.delete(listener);
+  };
+}
+
+/** Read again on a language pick (sc-9267) and at each move (sc-28178); a failed read leaves everything as it was. */
 export async function rereadOrganisations(): Promise<void> {
   if (state.account == null) return;
 
@@ -99,9 +109,24 @@ export async function rereadOrganisations(): Promise<void> {
   )
     return;
 
-  const organisation =
-    read.organisations.find((membership) => membership.id === state.organisation?.id) ??
-    state.organisation;
+  const kept = read.organisations.find((membership) => membership.id === state.organisation?.id);
+
+  // The organisation being worked in is gone from the list: what a relaunch would open in its place (sc-28178).
+  if (kept == null && state.organisation != null && state.pausedIn == null) {
+    const lost = state.organisation.id;
+    const organisation = chooseOrganisation(read.organisations, lost);
+    const pausedIn = choosePaused(read.paused, lost, read.organisations.length);
+
+    forgetEventsTab();
+    set({ ...state, organisations: read.organisations, organisation, pausedIn });
+    if (pausedIn != null) return;
+    if (organisation == null) router.replace('/');
+    else for (const listener of movedOn) listener(organisation);
+
+    return;
+  }
+
+  const organisation = kept ?? state.organisation;
   const pausedIn =
     state.pausedIn == null
       ? null
