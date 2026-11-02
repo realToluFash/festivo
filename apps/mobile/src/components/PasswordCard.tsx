@@ -290,7 +290,7 @@ function Changing({
     checks.errors.newPassword ?? (refusal?.field === 'newPassword' ? refusal.message : null);
 
   return (
-    <>
+    <View style={styles.group}>
       <View {...hidden} style={styles.group}>
         <Title text={t('passwordCard.formTitle')} answer="changing" />
 
@@ -340,8 +340,10 @@ function Changing({
             testID="password.current"
           />
         </Field>
+      </View>
 
-        <View {...aboveKeyboard} style={styles.group}>
+      <View {...aboveKeyboard}>
+        <View {...hidden} style={styles.group}>
           <Field label={t('passwordCard.new')} error={nextError}>
             <PasswordField
               ref={nextInput}
@@ -388,15 +390,15 @@ function Changing({
             testID="password.save"
           />
         </View>
+        <QuietButton
+          label={t('passwordCard.cancel')}
+          ref={closer}
+          onPress={onCancel}
+          off={saving}
+          testID="password.cancel"
+        />
       </View>
-      <QuietButton
-        label={t('passwordCard.cancel')}
-        ref={closer}
-        onPress={onCancel}
-        off={saving}
-        testID="password.cancel"
-      />
-    </>
+    </View>
   );
 }
 
