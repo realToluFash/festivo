@@ -276,14 +276,25 @@ export function AppFrame({
   const waiting = useWaitingInvitations();
   const offer = useDomainOffer();
   const count = waitingInvitations(waiting.invitations, waiting.outcomes);
-  const [switcherOpenedIn, setSwitcherOpenedIn] = useState<string | undefined>(undefined);
+  const overdue = useTwoFactorStanding(signedIn.organisation) === 'overdue';
+  const standIn = aboutTheAccount
+    ? null
+    : signedIn.pausedIn != null
+      ? 'paused'
+      : overdue && signedIn.organisation != null
+        ? 'overdue'
+        : null;
+  const overdueOn = standIn === 'overdue' ? signedIn.organisation?.id : undefined;
+  const [switcherOpenedOnOverdue, setSwitcherOpenedOnOverdue] = useState<string | undefined>(
+    undefined,
+  );
   const overdueIn = useRef<string | undefined>(undefined);
   const overdueHeading = useRef<TextHandle>(null);
   // It opens with one organisation too, because it ends with "Create an organisation" (sc-390).
   const openSwitcher =
     signedIn.organisation != null || waiting.invitations.length > 0 || offer.organisation != null
       ? (opener: RefObject<ViewInstance | null>) => {
-          setSwitcherOpenedIn(signedIn.organisation?.id);
+          setSwitcherOpenedOnOverdue(overdueOn);
           setCreated(null);
           setSwitcherFrom(opener);
           setToSheet(false);
@@ -296,14 +307,14 @@ export function AppFrame({
     () => ({
       get current() {
         if (toSheet) return null;
-        if (switcherFocusBack(switcherOpenedIn, overdueIn.current) === 'overdueHeading') {
+        if (switcherFocusBack(switcherOpenedOnOverdue, overdueIn.current) === 'overdueHeading') {
           return overdueHeading.current;
         }
 
         return switcherFrom?.current ?? pill.current ?? frameTitle.current;
       },
     }),
-    [toSheet, switcherFrom, frameTitle, switcherOpenedIn],
+    [toSheet, switcherFrom, frameTitle, switcherOpenedOnOverdue],
   );
   const startOrganisation = (opener: RefObject<ViewInstance | null>) => {
     setCreated(null);
@@ -311,7 +322,6 @@ export function AppFrame({
     setCreating(true);
   };
   const email = signedIn.account == null ? '' : (primaryEmailAddress(signedIn.account) ?? '');
-  const overdue = useTwoFactorStanding(signedIn.organisation) === 'overdue';
   // The deadline passing with the screen open replaces it under a new heading, which takes focus (sc-11173).
   const [standingSeen, setStandingSeen] = useState({ id: signedIn.organisation?.id, overdue });
   const [lapsed, setLapsed] = useState<object | undefined>(undefined);
@@ -320,15 +330,8 @@ export function AppFrame({
     setLapsed(standingSeen.id === signedIn.organisation?.id && overdue ? {} : undefined);
   }
   const switchAnswer = useFrameSwitch();
-  const standIn = aboutTheAccount
-    ? null
-    : signedIn.pausedIn != null
-      ? 'paused'
-      : overdue && signedIn.organisation != null
-        ? 'overdue'
-        : null;
   useEffect(() => {
-    overdueIn.current = standIn === 'overdue' ? signedIn.organisation?.id : undefined;
+    overdueIn.current = overdueOn;
   });
 
   return (

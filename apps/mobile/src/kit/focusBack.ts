@@ -90,10 +90,10 @@ export function stepOpenSteps(
   ];
 }
 
-/** Where focus goes as the switcher closes, opened in `openedIn`: a switch into `overdueIn`, an organisation past its two-factor deadline, puts the overdue screen in place of what opened it, and its heading takes focus (sc-23252). */
+/** Where focus goes as the switcher closes, opened on `openedOnOverdue`'s overdue screen, or on another screen when undefined: a switch into `overdueIn`, an organisation past its two-factor deadline, puts the overdue screen in place of what opened it, and its heading takes focus (sc-23252). */
 export function switcherFocusBack(
-  openedIn: string | undefined,
+  openedOnOverdue: string | undefined,
   overdueIn: string | undefined,
 ): 'overdueHeading' | 'opener' {
-  return overdueIn != null && overdueIn !== openedIn ? 'overdueHeading' : 'opener';
+  return overdueIn != null && overdueIn !== openedOnOverdue ? 'overdueHeading' : 'opener';
 }

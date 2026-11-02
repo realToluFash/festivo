@@ -136,4 +136,8 @@ describe('focus as the switcher closes', () => {
   it('goes back to the opener after a switch into an organisation in good standing', () => {
     expect(switcherFocusBack('a', undefined)).toBe('opener');
   });
+
+  it('lands on the overdue heading after a switch from a screen that was not overdue, as the paused one', () => {
+    expect(switcherFocusBack(undefined, 'a')).toBe('overdueHeading');
+  });
 });
