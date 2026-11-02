@@ -1,7 +1,14 @@
 import { ApiError, type TaggedEvent } from '@soirely/api-client';
 import { roleHolds } from '@soirely/domain';
 import { Redirect, router, useNavigation } from 'expo-router';
-import { type ReactNode, type RefObject, useEffect, useRef, useState } from 'react';
+import {
+  type ReactNode,
+  type RefObject,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -11,7 +18,7 @@ import { formTitles } from '../kit/formTitles.ts';
 import { goToArea, goUpToEvent } from '../kit/upToEvent.ts';
 import { markSaved } from '../kit/eventSaved.ts';
 import { type LayoutKind, useLayout } from '../layout/useLayout.ts';
-import { type Stale, useOffline } from '../offline.ts';
+import { NOT_OFFLINE, type ScreenOffline, type Stale, useOffline } from '../offline.ts';
 import { formAfterLoad, formShownAt } from '../offlineLoad.ts';
 import { useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -67,17 +74,58 @@ export function NewEventScreen() {
 
 /** An event's page > Edit details, `App event form` state Edit details (sc-3595), with its band and Refreshing… (sc-27086). */
 export function EditEventScreen({ eventId, at }: { eventId: string; at: EditAt | undefined }) {
+  const { t } = useTranslation();
+  const { kind } = useLayout();
   const { organisation } = useSignedIn();
+  const navigation = useNavigation();
+  const title = useRef<TextHandle>(null);
+  const [offline, setOffline] = useState<ScreenOffline>(NOT_OFFLINE);
 
   if (organisation != null && !roleHolds(organisation, 'events.manage'))
     return <Redirect href={eventHref(eventId)} />;
 
-  return <EditEventLoad key={`${organisation?.id ?? ''}:${eventId}`} eventId={eventId} at={at} />;
+  return (
+    <FormFrame
+      kind={kind}
+      title={t('eventEdit.title')}
+      titleRef={title}
+      offline={offline.stale}
+      refreshing={offline.refreshing ? <Refreshing testID="eventForm.refreshing" /> : null}
+      onCancel={() => leave(eventHref(eventId))}
+      inEvent={{
+        area: 'overview',
+        onArea: (area) =>
+          area === 'overview'
+            ? goUpToEvent(navigation, router, eventId)
+            : goToArea(navigation, router, eventId, area),
+      }}
+    >
+      <EditEventLoad
+        key={`${organisation?.id ?? ''}:${eventId}`}
+        eventId={eventId}
+        at={at}
+        kind={kind}
+        heading={title}
+        onOffline={setOffline}
+      />
+    </FormFrame>
+  );
 }
 
-function EditEventLoad({ eventId, at }: { eventId: string; at: EditAt | undefined }) {
+function EditEventLoad({
+  eventId,
+  at,
+  kind,
+  heading,
+  onOffline,
+}: {
+  eventId: string;
+  at: EditAt | undefined;
+  kind: LayoutKind;
+  heading: RefObject<TextHandle | null>;
+  onOffline: (offline: ScreenOffline) => void;
+}) {
   const { t } = useTranslation();
-  const { kind } = useLayout();
   const { organisation } = useSignedIn();
   const organisationId = organisation?.id;
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
@@ -87,13 +135,16 @@ function EditEventLoad({ eventId, at }: { eventId: string; at: EditAt | undefine
   const [shownAt, setShownAt] = useState<Date | null>(null);
   const manages = organisation != null && roleHolds(organisation, 'events.manage');
   const navigation = useNavigation();
-  const title = useRef<TextHandle>(null);
   const { watch, stale, refreshing } = useOffline({
     loaded: 'event' in load,
     reload: () => setRefresh((n) => n + 1),
-    focusTitle: () => moveScreenReaderFocus(title.current),
+    focusTitle: () => moveScreenReaderFocus(heading.current),
     since: shownAt,
   });
+
+  useLayoutEffect(() => {
+    onOffline({ stale, refreshing });
+  }, [onOffline, stale, refreshing]);
 
   // Once the form shows, a load only asks whether Soirely answers: the form and the tag it saves against stay as opened (Decided, 2 Nov).
   useEffect(() => {
@@ -121,21 +172,7 @@ function EditEventLoad({ eventId, at }: { eventId: string; at: EditAt | undefine
   }, [eventId, organisationId, manages, attempt, refresh, watch]);
 
   return (
-    <FormFrame
-      kind={kind}
-      title={t('eventEdit.title')}
-      titleRef={title}
-      offline={stale}
-      refreshing={refreshing ? <Refreshing testID="eventForm.refreshing" /> : null}
-      onCancel={() => leave(eventHref(eventId))}
-      inEvent={{
-        area: 'overview',
-        onArea: (area) =>
-          area === 'overview'
-            ? goUpToEvent(navigation, router, eventId)
-            : goToArea(navigation, router, eventId, area),
-      }}
-    >
+    <>
       {'kind' in load && load.kind === 'loading' && (
         <Skeleton
           words={t('eventsScreen.loadingEvent')}
@@ -193,7 +230,7 @@ function EditEventLoad({ eventId, at }: { eventId: string; at: EditAt | undefine
           />
         </Arrived>
       )}
-    </FormFrame>
+    </>
   );
 }
 
