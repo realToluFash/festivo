@@ -27,7 +27,13 @@ export function BellButton() {
       <BellMark ink={tokens.colorInk} />
       {badge != null && (
         <View style={styles.badge} importantForAccessibility="no-hide-descendants">
-          <Text size={tokens.typePill.size} weight="semibold" style={styles.badgeInk}>
+          <Text
+            size={tokens.typePill.size}
+            weight="semibold"
+            numberOfLines={1}
+            maxFontSizeMultiplier={BADGE_TEXT_SCALE}
+            style={styles.badgeInk}
+          >
             {badge}
           </Text>
         </View>
@@ -37,6 +43,7 @@ export function BellButton() {
 }
 
 const BADGE_SIDE = 18;
+const BADGE_TEXT_SCALE = 1.25;
 
 const styles = StyleSheet.create({
   bell: {
