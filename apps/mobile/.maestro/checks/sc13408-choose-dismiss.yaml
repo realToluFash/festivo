@@ -1,0 +1,55 @@
+# Choose a password: keys hidden (dismiss), Save password tapped with the API stopped, refused. Keys stay down. sc-13408.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/security
+- scrollUntilVisible:
+    element:
+      id: 'password.set'
+    timeout: 60000
+    centerElement: true
+- tapOn:
+    id: 'password.set'
+- extendedWaitUntil:
+    visible:
+      id: 'password.setCode'
+    timeout: 15000
+- runScript:
+    file: ../scripts/latest-code.js
+- tapOn:
+    id: 'password.setCode'
+- inputText: ${output.code}
+- tapOn:
+    id: 'password.setContinue'
+- extendedWaitUntil:
+    visible:
+      id: 'password.setNew'
+    timeout: 15000
+- tapOn:
+    id: 'password.setNew'
+- inputText: 'a-long-new-password-2026'
+- waitForAnimationToEnd
+- takeScreenshot: keys-up
+- assertVisible: '(?i)(shift|delete)'
+- hideKeyboard
+- waitForAnimationToEnd
+- takeScreenshot: keys-hidden
+- assertNotVisible: '(?i)(shift|delete)'
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
+- tapOn:
+    id: 'password.setSave'
+- waitForAnimationToEnd
+- takeScreenshot: at-tap
+- assertNotVisible: '(?i)(shift|delete)'
+- extendedWaitUntil:
+    visible: '{{t:passwordCard.failedBody}}'
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: refused
+- assertNotVisible: '(?i)(shift|delete)'
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=up

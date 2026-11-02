@@ -1,0 +1,14 @@
+# Signs in to the code step (sign-in-code-step-open, LANGUAGE English) and runs sc23279-lost-back-code
+# then, signed in again, sc23279-lost-back-recovery. Pass EMAIL and PASSWORD of a two-factor account. sc-23279.
+appId: host.exp.Exponent
+---
+- runFlow:
+    file: sign-in-code-step-open.yaml
+    env:
+      LANGUAGE: English
+- runFlow: sc23279-lost-back-code.yaml
+- runFlow:
+    file: sign-in-code-step-open.yaml
+    env:
+      LANGUAGE: English
+- runFlow: sc23279-lost-back-recovery.yaml

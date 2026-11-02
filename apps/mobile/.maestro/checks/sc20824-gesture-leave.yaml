@@ -1,0 +1,75 @@
+# sc-20824: ${EVENT_ID}'s Edit details with ' Swipe' typed; the system back (iPhone edge swipe, Android back) asks Leave without saving?, Keep editing keeps it, and a second back then Leave without saving returns to the event's page with nothing saved.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 30000
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - scrollUntilVisible:
+          element:
+            id: 'events.page.edit'
+          direction: DOWN
+          centerElement: true
+- tapOn:
+    id: 'events.page.edit'
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.name'
+    timeout: 20000
+- tapOn:
+    id: 'eventForm.name'
+- inputText: ' Swipe'
+- hideKeyboard
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - back
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - swipe:
+          start: 1%, 50%
+          end: 80%, 50%
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.leave.keep'
+    timeout: 10000
+- takeScreenshot: asks
+- tapOn:
+    id: 'eventForm.leave.keep'
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'eventForm.name'
+    text: '.*Swipe'
+- takeScreenshot: kept
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - back
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - swipe:
+          start: 1%, 50%
+          end: 80%, 50%
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.leave.go'
+    timeout: 10000
+- tapOn:
+    id: 'eventForm.leave.go'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 5000
+- assertNotVisible: '.*Swipe.*'
+- takeScreenshot: left

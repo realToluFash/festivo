@@ -1,0 +1,391 @@
+import {
+  Fragment,
+  type ReactNode,
+  type RefObject,
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
+import {
+  Animated,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  StyleSheet,
+  View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { sheetKeysCover, sheetPadding, sheetUnderKeys, sheetWindows } from '../kit/sheet.ts';
+import { useLayout } from '../layout/useLayout.ts';
+import { tokens } from '../theme/tokens.ts';
+import { glide } from '../motion.ts';
+import { useReducedMotion } from '../reducedMotion.ts';
+import { useModalOpen } from '../updateRequired.ts';
+import { keyboardTopNow, useKeysUp, watchKeyboardTop } from './keyboardWatch.ts';
+import { SETTLED_MS } from './Screen.tsx';
+import { type ScreenReaderTarget, moveScreenReaderFocus } from './screenReaderFocus.ts';
+
+type SheetProps = {
+  open: boolean;
+  /** System back and VoiceOver's escape; the sheet's own buttons close it themselves. */
+  onClose: () => void;
+  /** Given, a tap on the scrim closes the sheet, and a screen reader names it so. */
+  scrimLabel?: string;
+  /** While a request that closing would not stop runs, back, the escape and the scrim do nothing (sc-25667). */
+  held?: boolean;
+  /** Where screen reader focus goes back to once the sheet has gone. */
+  opener: RefObject<ScreenReaderTarget | null>;
+  testID?: string;
+  children: ReactNode;
+};
+
+type SheetPlaces = {
+  put: (id: string, sheet: ReactNode) => void;
+  subscribe: (heard: () => void) => () => void;
+  current: () => ReadonlyMap<string, ReactNode>;
+};
+
+const Places = createContext<SheetPlaces | null>(null);
+
+function sheetPlaces(): SheetPlaces {
+  let sheets: ReadonlyMap<string, ReactNode> = new Map();
+  const listeners = new Set<() => void>();
+
+  return {
+    put: (id, sheet) => {
+      const next = new Map(sheets);
+      if (sheet == null) next.delete(id);
+      else next.set(id, sheet);
+      sheets = next;
+      listeners.forEach((heard) => heard());
+    },
+    subscribe: (heard) => {
+      listeners.add(heard);
+      return () => listeners.delete(heard);
+    },
+    current: () => sheets,
+  };
+}
+
+/** Draws every Sheet opened inside it here, so a part hidden with display: none keeps its sheet open (sc-11053). */
+export function SheetsAtRoot({ children }: { children: ReactNode }) {
+  const [places] = useState(sheetPlaces);
+
+  return (
+    <Places.Provider value={places}>
+      {children}
+      <PlacedSheets places={places} />
+    </Places.Provider>
+  );
+}
+
+function PlacedSheets({ places }: { places: SheetPlaces }) {
+  const sheets = useSyncExternalStore(places.subscribe, places.current);
+
+  return [...sheets].map(([id, sheet]) => <Fragment key={id}>{sheet}</Fragment>);
+}
+
+/** The app's one dialog frame (sc-8606): a bottom sheet on a phone, a centred card on a tablet. */
+export function Sheet(props: SheetProps) {
+  const places = useContext(Places);
+  const id = useId();
+  const sheet = <SheetFrame {...props} />;
+
+  useLayoutEffect(() => {
+    places?.put(id, sheet);
+  });
+  useLayoutEffect(() => () => places?.put(id, null), [places, id]);
+
+  return places == null ? sheet : null;
+}
+
+function SheetFrame({
+  open,
+  onClose,
+  scrimLabel,
+  held = false,
+  opener,
+  testID,
+  children,
+}: SheetProps) {
+  const close = held ? () => undefined : onClose;
+  const { kind, height } = useLayout();
+  const insets = useSafeAreaInsets();
+  const phone = kind === 'phone';
+  const underKeys = sheetUnderKeys(Platform.OS, phone);
+  const keysUp = useKeysUp();
+  const [windowHeight, setWindowHeight] = useState<number | null>(null);
+  const keysTop = useKeyboardTop();
+  const keysCover = sheetKeysCover({ underKeys, keysUp, windowHeight, keysTop });
+  const padding = sheetPadding({ phone, keysCover, insets });
+  useFocusBack(open, opener);
+  const reduced = useReducedMotion();
+  const [onScreen, setOnScreen] = useState(false);
+  const [laidOut, setLaidOut] = useState(false);
+  const { present, scrim, frame } = useSheetMotion(
+    open,
+    { laidOut, onScreen },
+    phone,
+    reduced,
+    height,
+  );
+  const { shown, gone } = useWindowTurn(useModalOpen(present));
+  if (!shown && (onScreen || laidOut)) {
+    setOnScreen(false);
+    setLaidOut(false);
+  }
+
+  return (
+    <Modal
+      visible={shown}
+      transparent
+      animationType="none"
+      // An iOS modal is portrait-only by default, and a rotation under it measures the keys sideways.
+      supportedOrientations={['portrait', 'landscape']}
+      // Load-bearing for the keys too: without them Android fits the modal to the bars and ends it at the keys.
+      statusBarTranslucent
+      navigationBarTranslucent
+      onRequestClose={close}
+      onShow={() => setOnScreen(true)}
+      onDismiss={gone}
+    >
+      {/* A modal is its own window: iOS never resizes it for the keyboard, Android not with the props above. */}
+      <KeyboardAvoidingView
+        style={styles.fill}
+        behavior="padding"
+        enabled={!underKeys}
+        onLayout={(event) => {
+          setWindowHeight(event.nativeEvent.layout.height);
+          setLaidOut(true);
+        }}
+      >
+        <View
+          style={[
+            styles.scrim,
+            phone ? styles.scrimPhone : styles.scrimTablet,
+            {
+              paddingTop: padding.scrimTop,
+              paddingLeft: padding.scrimLeft,
+              paddingRight: padding.scrimRight,
+            },
+          ]}
+        >
+          <Animated.View
+            style={[
+              StyleSheet.absoluteFill,
+              { backgroundColor: phone ? tokens.scrimSheet : tokens.scrimDialog, opacity: scrim },
+            ]}
+            pointerEvents="none"
+          />
+          {scrimLabel != null && (
+            <Pressable
+              style={StyleSheet.absoluteFill}
+              onPress={close}
+              disabled={held}
+              accessibilityRole="button"
+              accessibilityLabel={scrimLabel}
+              accessibilityState={{ disabled: held }}
+            />
+          )}
+          <Animated.View
+            style={[
+              styles.frame,
+              phone ? styles.framePhone : styles.frameTablet,
+              { paddingBottom: padding.frameBottom },
+              frame,
+            ]}
+            accessibilityViewIsModal
+            onAccessibilityEscape={close}
+            testID={testID}
+          >
+            {children}
+            {/* The avoiding view's padding can stop short of the keys as they rise, so card shows there, never the screen. */}
+            {phone && !underKeys && (
+              <View style={[styles.skirt, { height }]} pointerEvents="none" />
+            )}
+          </Animated.View>
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+}
+
+/** A dialog's buttons as [fd]'s dialog sets them: stacked on a phone, and on a tablet a row at the card's end. */
+export function SheetActions({ children }: { children: ReactNode }) {
+  const phone = useLayout().kind === 'phone';
+
+  return <View style={phone ? styles.actionsStacked : styles.actionsRow}>{children}</View>;
+}
+
+/** Keeps the Modal up until its exit has played, so the sheet can leave rather than vanish. */
+function useSheetMotion(
+  shown: boolean,
+  window: { laidOut: boolean; onScreen: boolean },
+  phone: boolean,
+  reduced: boolean,
+  height: number,
+) {
+  const { laidOut, onScreen } = window;
+  const [present, setPresent] = useState(shown);
+  const [scrim] = useState(() => new Animated.Value(0));
+  const [shift] = useState(() => new Animated.Value(0));
+  const [fade] = useState(() => new Animated.Value(0));
+  const slides = phone && !reduced;
+  const travel = useRef(0);
+
+  if (shown && !present) setPresent(true);
+
+  useEffect(() => {
+    travel.current = phone ? height : tokens.motionRise;
+  });
+
+  useEffect(() => {
+    if (!present) return;
+    const away = travel.current;
+
+    if (shown) {
+      // An entry started before the window's views exist is lost on an iPad, so it waits for their layout, and onShow, when it comes, replays it (sc-23267).
+      if (!laidOut || onScreen) {
+        scrim.setValue(0);
+        fade.setValue(0);
+      }
+      shift.setValue(reduced ? 0 : away);
+      if (!laidOut) return;
+
+      let run: Animated.CompositeAnimation | undefined;
+      const next = requestAnimationFrame(() => {
+        run = Animated.parallel([
+          glide(scrim, 1, tokens.motionBase),
+          glide(fade, 1, slides ? 0 : tokens.motionBase),
+          glide(shift, 0, slides ? tokens.motionSlow : tokens.motionBase),
+        ]);
+        run.start(({ finished }) => {
+          if (!finished) return;
+          scrim.setValue(1);
+          fade.setValue(1);
+          shift.setValue(0);
+        });
+      });
+
+      return () => {
+        cancelAnimationFrame(next);
+        run?.stop();
+      };
+    }
+
+    const leave = slides || reduced ? tokens.motionBase : tokens.motionFast;
+    const run = Animated.parallel([
+      glide(scrim, 0, leave),
+      slides ? glide(shift, away, leave) : glide(fade, 0, leave),
+    ]);
+    run.start(({ finished }) => {
+      if (finished) setPresent(false);
+    });
+    return () => run.stop();
+  }, [shown, laidOut, onScreen, present, slides, reduced, scrim, shift, fade]);
+
+  return { present, scrim, frame: { opacity: fade, transform: [{ translateY: shift }] } };
+}
+
+/** Every modal window in the app, wherever it is drawn: iOS has one stack of them, not one per SheetsAtRoot. */
+const appWindows = sheetWindows();
+
+/** iOS cannot put a window up while another is going, so a modal waits its turn; `gone` is its onDismiss (sc-23267). */
+export function useWindowTurn(wanted: boolean): { shown: boolean; gone: () => void } {
+  const id = useId();
+  const waits = useSyncExternalStore(appWindows.subscribe, () => appWindows.waits(id));
+  const shown = wanted && !waits;
+  const gone = useCallback(() => appWindows.lower(id), [id]);
+
+  useLayoutEffect(() => {
+    if (shown) {
+      appWindows.raise(id);
+      return;
+    }
+    if (Platform.OS !== 'ios') {
+      appWindows.lower(id);
+      return;
+    }
+    // onDismiss comes once iOS has taken the window down; the timer keeps a lost one from holding every sheet back.
+    const lost = setTimeout(() => appWindows.lower(id), SETTLED_MS);
+
+    return () => clearTimeout(lost);
+  }, [id, shown]);
+  useLayoutEffect(() => gone, [gone]);
+
+  return { shown, gone };
+}
+
+/** The keyboard's top edge in the sheet's window, or null while the keys are down. */
+function useKeyboardTop(): number | null {
+  const [top, setTop] = useState(() => keyboardTopNow(0));
+
+  useEffect(() => watchKeyboardTop(() => 0, setTop), []);
+
+  return top;
+}
+
+/** Hands screen reader focus back to `opener` once a sheet or dialog that was open has gone (WCAG 2.4.3). */
+export function useFocusBack(open: boolean, opener: RefObject<ScreenReaderTarget | null>): void {
+  const wasOpen = useRef(open);
+
+  useEffect(() => {
+    const closed = wasOpen.current && !open;
+    wasOpen.current = open;
+    if (!closed) return;
+
+    const focus = setTimeout(() => moveScreenReaderFocus(opener.current), SETTLED_MS);
+
+    return () => clearTimeout(focus);
+  }, [open, opener]);
+}
+
+const styles = StyleSheet.create({
+  fill: { flex: 1 },
+  scrim: { flex: 1 },
+  scrimPhone: { justifyContent: 'flex-end' },
+  scrimTablet: {
+    justifyContent: 'center',
+    padding: tokens.spaceXxl,
+  },
+  frame: {
+    flexShrink: 1,
+    borderWidth: 1,
+    borderColor: tokens.colorBorder,
+    backgroundColor: tokens.colorCard,
+  },
+  framePhone: {
+    borderBottomWidth: 0,
+    borderTopLeftRadius: tokens.radiusSheet,
+    borderTopRightRadius: tokens.radiusSheet,
+  },
+  frameTablet: {
+    alignSelf: 'center',
+    width: '100%',
+    maxWidth: 480,
+    borderRadius: tokens.radiusCardPhone,
+  },
+  actionsStacked: { gap: tokens.spaceSm },
+  actionsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: tokens.spaceMd,
+  },
+  skirt: {
+    position: 'absolute',
+    top: '100%',
+    left: -1,
+    right: -1,
+    backgroundColor: tokens.colorCard,
+  },
+});

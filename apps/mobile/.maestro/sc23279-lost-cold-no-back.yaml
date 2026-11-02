@@ -1,0 +1,11 @@
+# Cold-opens /lost-two-factor in the signed-out app, with nothing pushed under it, and checks it
+# shows no ‹ back control. sc-23279.
+appId: host.exp.Exponent
+---
+- runFlow: sign-in-screen-english.yaml
+- openLink: ${METRO_URL}/--/lost-two-factor
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: mobile-lost-cold
+- assertNotVisible:
+    id: 'lostTwoFactor.backToCode'

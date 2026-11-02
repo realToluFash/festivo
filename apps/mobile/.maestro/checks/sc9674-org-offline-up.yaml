@@ -1,0 +1,49 @@
+# Organisation: focus in Name, keys up, API stopped, Save changes. The error shows, keys stay up, the next key goes into Name. sc-9674.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/organisation
+- extendedWaitUntil:
+    visible:
+      id: organisation.name
+    timeout: 30000
+- tapOn:
+    id: organisation.name
+- waitForAnimationToEnd
+- assertVisible: '(?i)(shift|delete)'
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
+- scrollUntilVisible:
+    element:
+      id: organisation.save
+    centerElement: true
+- tapOn:
+    id: organisation.save
+- extendedWaitUntil:
+    visible: '{{t:orgGeneral.save}}'
+    timeout: 45000
+- waitForAnimationToEnd
+- takeScreenshot: answered
+- assertVisible: '(?i)(shift|delete)'
+- scrollUntilVisible:
+    element: '.*{{t:orgGeneral.failed}}.*'
+    direction: UP
+- waitForAnimationToEnd
+- takeScreenshot: refused
+- assertVisible: '(?i)(shift|delete)'
+- inputText: X
+- assertVisible:
+    id: organisation.name
+    text: ${ORG_NAME}X
+- scrollUntilVisible:
+    element:
+      id: organisation.save
+    centerElement: true
+- tapOn:
+    id: organisation.save
+- extendedWaitUntil:
+    visible: '{{t:orgGeneral.save}}'
+    timeout: 45000
+- takeScreenshot: sent-again
+- assertVisible: '(?i)(shift|delete)'

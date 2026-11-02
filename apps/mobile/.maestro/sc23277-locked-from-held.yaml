@@ -1,0 +1,47 @@
+# sign-in-locked, reached from a held sign-up on Check your email: Register again, then ‹ Sign in. sc-23277.
+# Starts on Check your email for EMAIL's held sign-up, as register-check-email leaves it; EMAIL is that account.
+appId: host.exp.Exponent
+---
+- tapOn: 'Register again with the right one'
+- extendedWaitUntil:
+    visible:
+      id: 'register.back'
+    timeout: 20000
+- takeScreenshot: register-fresh
+- tapOn:
+    id: 'register.back'
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.submit'
+    timeout: 20000
+- tapOn:
+    id: 'signIn.email'
+- eraseText: 120
+- inputText: ${EMAIL}
+- repeat:
+    times: 6
+    commands:
+      - runFlow:
+          when:
+            notVisible:
+              id: 'signIn.locked.reset'
+          commands:
+            - tapOn:
+                id: 'signIn.password'
+            - eraseText: 120
+            - inputText: 'not-the-password'
+            - tapOn:
+                id: 'signIn.submit'
+            - runFlow:
+                when:
+                  visible: 'Save Password?'
+                commands:
+                  - tapOn: 'Not Now'
+            - waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.locked.reset'
+    timeout: 30000
+- assertVisible: 'Try again at [0-2][0-9]:[0-5][0-9].*'
+- waitForAnimationToEnd
+- takeScreenshot: mobile-sign-in-locked

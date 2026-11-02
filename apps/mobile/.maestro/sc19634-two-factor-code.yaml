@@ -1,0 +1,14 @@
+# Types CODE on Enter your code and waits to be signed in. sc-19634.
+appId: host.exp.Exponent
+---
+- tapOn:
+    id: 'twoFactor.code'
+- inputText: ${CODE}
+- tapOn:
+    id: 'twoFactor.verify'
+- scrollUntilVisible:
+    element:
+      text: 'Signed in as.*'
+    direction: DOWN
+    timeout: 30000
+- takeScreenshot: ${SHOT}

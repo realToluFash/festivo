@@ -1,0 +1,11 @@
+# sc-23361 on a landscape-native Android tablet held upright (rotation 1): All dates of ${EVENT} shows ‹ Event at its top, whole.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- openLink: ${METRO_URL}/--/events/${EVENT}/dates
+- extendedWaitUntil:
+    visible:
+      id: 'timeline.allDates.page'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: tablet-dates-top
