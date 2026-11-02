@@ -150,6 +150,32 @@ describe('the notices in [fd] (sc-23252)', () => {
   });
 });
 
+describe('the ring where a closed notice lands (sc-23252)', () => {
+  it('marks only the words focus lands on, and only until focus leaves them', () => {
+    inside({ ...changed('org_ring'), ...GATED });
+
+    const words = screen.getByText('Sign-in rules changed').closest<HTMLElement>('.notice-words');
+    expect(words?.hasAttribute('data-notice-landing')).toBe(false);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Not now' }));
+    expect(document.activeElement).toBe(words);
+    expect(words?.hasAttribute('data-notice-landing')).toBe(true);
+
+    words?.blur();
+    expect(words?.hasAttribute('data-notice-landing')).toBe(false);
+  });
+
+  it('marks the page heading when no notice follows', () => {
+    inside(changed('org_ring_heading'));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close this notice' }));
+
+    const heading = screen.getByRole('heading', { level: 1 });
+    expect(document.activeElement).toBe(heading);
+    expect(heading.hasAttribute('data-notice-landing')).toBe(true);
+  });
+});
+
 describe('the overdue screen in [fd] (sc-23252)', () => {
   it('takes the page, shows no notice, and draws Sign out as a secondary, never destructive', () => {
     inside({

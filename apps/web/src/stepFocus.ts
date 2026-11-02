@@ -56,7 +56,11 @@ export function afterNotice(notice: HTMLElement | null): HTMLElement | null {
       (notice.compareDocumentPosition(candidate) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
   );
 
-  if (next != null && !next.hasAttribute('tabindex')) next.tabIndex = -1;
+  if (next == null) return null;
 
-  return next ?? null;
+  if (!next.hasAttribute('tabindex')) next.tabIndex = -1;
+  next.setAttribute('data-notice-landing', '');
+  next.addEventListener('blur', () => next.removeAttribute('data-notice-landing'), { once: true });
+
+  return next;
 }

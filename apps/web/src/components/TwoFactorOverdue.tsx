@@ -15,7 +15,9 @@ export function TwoFactorOverdue({ organisation }: { organisation: Membership })
   return (
     <section className="card two-factor-overdue" aria-labelledby="overdue-title">
       <h1 id="overdue-title">{t('signInRules.overdueTitle')}</h1>
-      <p>{t('signInRules.overdueBody', { organisation: organisation.name })}</p>
+      <p className="two-factor-overdue-reason">
+        {t('signInRules.overdueBody', { organisation: organisation.name })}
+      </p>
       <p className="muted">{t('signInRules.overdueElsewhere')}</p>
       {unreached && <StillSignedIn />}
       <div className="two-factor-overdue-actions">

@@ -2464,12 +2464,8 @@ span {
   font: var(--typeBody);
 }
 
-.notice-words .notice-title {
-  font: var(--typeRowTitle);
-}
-
-/* Focus only reaches the words from a closed notice, so a click on Close rings them as a key does. */
-.notice-words:focus {
+/* A click on Close rings where focus lands as a key does. A click on the words themselves does not. */
+[data-notice-landing]:focus {
   outline: 2px solid var(--colorAccent);
   outline-offset: 2px;
 }
@@ -2515,6 +2511,10 @@ span {
   letter-spacing: var(--typeTitlePageTracking);
 }
 
+.card > .two-factor-overdue-reason {
+  color: var(--colorInk);
+}
+
 .two-factor-overdue .notice-body {
   flex: 1;
   min-width: 0;
@@ -2533,6 +2533,10 @@ span {
 }
 
 @media (width <= 40rem) {
+  .shell-content > .notice-rule:has(+ :not(.notice)) {
+    margin-bottom: var(--spaceXl);
+  }
+
   .two-factor-overdue {
     padding: var(--spaceXxl);
   }
