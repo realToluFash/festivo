@@ -5176,13 +5176,21 @@ describe('Make live asks for a missing host (sc-22143)', () => {
 
   it('saves the typed name as the one host with the version read, then makes it live', async () => {
     signedIn();
+    let held = { event: event({ ...AHEAD, hosts: [] }), tag: '"1"' };
+    const hold = (next: typeof held) => {
+      held = next;
+
+      return tagged({ event: next.event }, next.tag);
+    };
     const { sent, dialog, host } = await asking({
-      [SAVE]: () => tagged({ event: event({ ...AHEAD, hosts: ['Funmi Adeyemi'] }) }, '"2"'),
+      // An earlier test's unanswered request can tell the page it lost Soirely, and it reads the event again.
+      'GET /api/events/ev_1': () => tagged({ event: held.event }, held.tag),
+      [SAVE]: () => hold({ event: event({ ...AHEAD, hosts: ['Funmi Adeyemi'] }), tag: '"2"' }),
       [LIVE]: () =>
-        tagged(
-          { event: event({ ...AHEAD, status: 'live', phase: 'live', hosts: ['Funmi Adeyemi'] }) },
-          '"3"',
-        ),
+        hold({
+          event: event({ ...AHEAD, status: 'live', phase: 'live', hosts: ['Funmi Adeyemi'] }),
+          tag: '"3"',
+        }),
     });
 
     fireEvent.change(host, { target: { value: ' Funmi Adeyemi ' } });
@@ -5593,6 +5601,7 @@ describe("An event's timeline: Coming up and All dates (sc-3624)", () => {
           { headers: { ETag: '"2"' } },
         ),
     });
+    const read = vi.spyOn(api, 'eventTimeline');
     at('/app/events/ev_1');
 
     const panel = await comingUp();
@@ -5602,6 +5611,9 @@ describe("An event's timeline: Coming up and All dates (sc-3624)", () => {
     fireEvent.click(screen.getByRole('button', { name: 'Call off…' }));
     const dialog = await screen.findByRole('dialog', { name: 'Call off Adaeze and Tunde?' });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Call off' }));
+    // The ended event offers nothing from the first read, so the empty text shows before the second goes out.
+    await waitFor(() => expect(read).toHaveBeenCalledTimes(2));
+    await act(() => read.mock.results[1]!.value as Promise<unknown>);
 
     expect(
       await within(panel).findByText('Nothing coming up. Every date on this event has passed.'),

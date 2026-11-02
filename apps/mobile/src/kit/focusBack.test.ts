@@ -8,6 +8,7 @@ import {
   scrollAsked,
   stepCloseSteps,
   stepOpenSteps,
+  switcherFocusBack,
   TALKBACK_FOCUS_BACK_MS,
   TALKBACK_FOCUS_TAKEN_MS,
 } from './focusBack.ts';
@@ -120,5 +121,23 @@ describe('a step opening from its opener', () => {
   it('opens at once with TalkBack off, and on iOS', () => {
     expect(stepOpenSteps('android', false, 500)).toEqual([{ do: 'finish', atMs: 0 }]);
     expect(stepOpenSteps('ios', true, 500)).toEqual([{ do: 'finish', atMs: 0 }]);
+  });
+});
+
+describe('focus as the switcher closes', () => {
+  it('lands on the overdue heading after a switch into an organisation past its deadline (sc-23252)', () => {
+    expect(switcherFocusBack('a', 'b')).toBe('overdueHeading');
+  });
+
+  it('goes back to the opener when nothing was switched, even on the overdue screen', () => {
+    expect(switcherFocusBack('b', 'b')).toBe('opener');
+  });
+
+  it('goes back to the opener after a switch into an organisation in good standing', () => {
+    expect(switcherFocusBack('a', undefined)).toBe('opener');
+  });
+
+  it('lands on the overdue heading after a switch from a screen that was not overdue, as the paused one', () => {
+    expect(switcherFocusBack(undefined, 'a')).toBe('overdueHeading');
   });
 });

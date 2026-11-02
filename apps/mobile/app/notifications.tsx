@@ -56,6 +56,6 @@ export default function Notifications() {
 }
 
 const styles = StyleSheet.create({
-  body: { padding: 0 },
+  body: { padding: 0, gap: 0 },
   back: { paddingTop: tokens.spaceXl, paddingHorizontal: tokens.spaceXl },
 });

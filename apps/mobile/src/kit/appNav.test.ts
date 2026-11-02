@@ -318,7 +318,9 @@ describe('The bell in [fd] (sc-23233)', () => {
     expect(button).toMatch(
       /badge: \{\s*position: 'absolute',\s*top: tokens\.spaceXxs,\s*right: tokens\.spaceXxs,\s*minWidth: BADGE_SIDE,\s*minHeight: BADGE_SIDE,\s*paddingHorizontal: tokens\.spaceXxs,[\s\S]*?justifyContent: 'center',/u,
     );
-    expect(button).toMatch(/<Text size=\{tokens\.typePill\.size\} weight="semibold"/u);
+    expect(button).toMatch(
+      /<Text\s+size=\{tokens\.typePill\.size\}\s+weight="semibold"\s+numberOfLines=\{1\}\s+maxFontSizeMultiplier=\{BADGE_TEXT_SCALE\}/u,
+    );
   });
 
   it('insets the skeleton once, its rules running to the card edge and its words with its rows', () => {
@@ -330,12 +332,15 @@ describe('The bell in [fd] (sc-23233)', () => {
     expect(skeleton()).toMatch(/row: \{[^}]*paddingHorizontal: tokens\.spaceXl,/u);
   });
 
-  it('starts Mark all read 12pt under the tablet Back, and leaves the phone as it was', () => {
+  it('starts Mark all read 12pt under the tablet Back, with no gap from the route body, and leaves the phone as it was', () => {
     const source = feed();
 
     expect(source).toMatch(/\[styles\.feed, kind !== 'phone' && styles\.feedUnderBack\]/u);
     expect(source).toMatch(/feedUnderBack: \{ paddingTop: tokens\.spaceXxs \}/u);
     expect(source).toMatch(/part: \{ gap: tokens\.spaceLg, paddingVertical: tokens\.spaceSm \}/u);
     expect(source).toMatch(/feed: \{\s*paddingTop: tokens\.spaceXl,/u);
+    expect(readFileSync(join(APP, 'notifications.tsx'), 'utf8')).toMatch(
+      /body: \{ padding: 0, gap: 0 \}/u,
+    );
   });
 });
