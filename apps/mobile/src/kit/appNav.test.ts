@@ -318,7 +318,9 @@ describe('The bell in [fd] (sc-23233)', () => {
     expect(button).toMatch(
       /badge: \{\s*position: 'absolute',\s*top: tokens\.spaceXxs,\s*right: tokens\.spaceXxs,\s*minWidth: BADGE_SIDE,\s*minHeight: BADGE_SIDE,\s*paddingHorizontal: tokens\.spaceXxs,[\s\S]*?justifyContent: 'center',/u,
     );
-    expect(button).toMatch(/<Text size=\{tokens\.typePill\.size\} weight="semibold"/u);
+    expect(button).toMatch(
+      /<Text\s+size=\{tokens\.typePill\.size\}\s+weight="semibold"\s+numberOfLines=\{1\}\s+maxFontSizeMultiplier=\{BADGE_TEXT_SCALE\}/u,
+    );
   });
 
   it('insets the skeleton once, its rules running to the card edge and its words with its rows', () => {
