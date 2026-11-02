@@ -89,8 +89,8 @@ describe('Settings > General > Company domain joining (sc-561)', () => {
     answering({ 'GET /api/orgs/org_1/domains': () => json(listed([])) });
     settings();
 
-    expect(await screen.findByRole('heading', { name: 'Company domain joining' })).toBeDefined();
-    expect(screen.getByText('Off')).toBeDefined();
+    expect(await screen.findByText('Off')).toBeDefined();
+    expect(screen.getByRole('heading', { name: 'Company domain joining' })).toBeDefined();
     expect(
       screen.getByText(
         'Only a domain your own address is at. Yours is folake@ire.events. Up to 5 domains.',
