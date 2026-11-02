@@ -5,6 +5,8 @@ appId: host.exp.Exponent
 ---
 # A check that turned the iPad and failed before turning it back leaves it turned.
 - setOrientation: PORTRAIT
+# A check that went offline and failed before coming back leaves the phone offline.
+- setAirplaneMode: disabled
 # Android's PORTRAIT is rotation 0, landscape on a landscape-native tablet: the harness turns it.
 - runScript:
     file: helper.js

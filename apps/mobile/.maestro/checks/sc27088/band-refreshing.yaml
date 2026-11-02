@@ -1,0 +1,56 @@
+# Android only. ${SCREEN} shows the offline band; the automatic reread when the phone comes
+# back is given up with the band still up, and only Try again's own load shows ${REFRESHING}
+# and takes the band away once Soirely answers.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/${SCREEN}
+- waitForAnimationToEnd:
+    timeout: 8000
+- extendedWaitUntil:
+    notVisible:
+      id: ${REFRESHING}
+    timeout: 20000
+- assertNotVisible:
+    id: 'offline.band'
+- takeScreenshot: online
+- setAirplaneMode: enabled
+- extendedWaitUntil:
+    visible:
+      id: 'offline.band'
+    timeout: 8000
+- takeScreenshot: offline
+- runScript:
+    file: ../../batch/helper.js
+    env:
+      ASK: /api?to=paused
+- setAirplaneMode: disabled
+# Coming back online rereads by itself; the paused API holds that load until it is given up.
+- extendedWaitUntil:
+    visible:
+      id: ${REFRESHING}
+    timeout: 8000
+- extendedWaitUntil:
+    notVisible:
+      id: ${REFRESHING}
+    timeout: 30000
+- assertNotVisible:
+    id: ${REFRESHING}
+- assertVisible:
+    id: 'offline.band'
+- tapOn:
+    id: 'offline.retry'
+- extendedWaitUntil:
+    visible:
+      id: ${REFRESHING}
+    timeout: 8000
+- assertVisible:
+    id: 'offline.band'
+- takeScreenshot: refreshing
+- runScript:
+    file: ../../batch/helper.js
+    env:
+      ASK: /api?to=up
+- extendedWaitUntil:
+    notVisible:
+      id: 'offline.band'
+    timeout: 30000

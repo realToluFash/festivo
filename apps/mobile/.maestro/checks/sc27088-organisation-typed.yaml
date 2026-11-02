@@ -1,4 +1,4 @@
-# sc-27088: Organisation keeps a typed name across offline, a refused Save, and Try again; nothing saved until pressed again.
+# sc-27088, Android only: Organisation keeps a typed name across offline, a refused Save, the automatic reread being given up, and a pressed Try again.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/settings/organisation
@@ -6,6 +6,7 @@ appId: host.exp.Exponent
     visible:
       id: 'organisation.name'
     timeout: 30000
+- assertNotVisible: 'Offline Org Name'
 - tapOn:
     id: 'organisation.name'
 - eraseText: 120
@@ -35,19 +36,28 @@ appId: host.exp.Exponent
     timeout: 60000
 - takeScreenshot: save-refused
 - assertVisible: 'Offline Org Name'
+# Paused, so the reread on coming back online is held until it is given up, band still up.
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=paused
+- setAirplaneMode: disabled
+- extendedWaitUntil:
+    visible:
+      id: 'organisation.refreshing'
+    timeout: 8000
+- extendedWaitUntil:
+    notVisible:
+      id: 'organisation.refreshing'
+    timeout: 30000
+- assertVisible:
+    id: 'offline.band'
 - runScript:
     file: ../batch/helper.js
     env:
       ASK: /api?to=up
-- setAirplaneMode: disabled
-- extendedWaitUntil:
-    visible:
-      id: 'qa.never.there'
-    timeout: 6000
-    optional: true
 - tapOn:
     id: 'offline.retry'
-    optional: true
 - extendedWaitUntil:
     notVisible:
       id: 'offline.band'
