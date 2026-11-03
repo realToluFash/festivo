@@ -1,0 +1,403 @@
+/* The design demo, loaded with its chunk only. Measurements are the board's (SignInWeb.dc.html, page 27). */
+
+.demo-home {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space3xl);
+  width: 100%;
+  max-width: 45rem;
+  margin: 0 auto;
+  padding: var(--space6xl) var(--spaceXl);
+}
+
+.demo-home-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spaceLg);
+}
+
+.demo-home h1 {
+  margin: 0;
+  font: var(--typeTitlePage);
+  letter-spacing: var(--typeTitlePageTracking);
+}
+
+.demo-home h2 {
+  margin: 0 0 var(--spaceXxs);
+  font: var(--typeSmall);
+  color: var(--colorInkSecondary);
+}
+
+.demo-home h3 {
+  margin: 0 0 var(--spaceSm);
+  font: var(--typeTitleSection);
+}
+
+.demo-home-line {
+  margin: 0;
+  font: var(--typeBodyPhone);
+  color: var(--colorInkSecondary);
+}
+
+.demo-home-line strong {
+  color: var(--colorInk);
+  font-weight: 600;
+}
+
+.demo-home-page {
+  padding: var(--space3xl);
+  background: var(--colorCard);
+  border: var(--borderCard);
+  border-radius: var(--radiusCardDesktop);
+}
+
+.demo-home-rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.demo-home-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spaceLg);
+  min-height: var(--sizeHit);
+  padding: 0 var(--spaceLg);
+  border-radius: var(--radiusNav);
+  color: var(--colorInk);
+  font: var(--typeRowTitle);
+  text-decoration: none;
+}
+
+.demo-home-row:hover {
+  background: var(--colorInset);
+}
+
+/* The board's page: header band, card, and the way back under it. */
+
+.demo-page {
+  display: flex;
+  flex: 1 0 auto;
+  flex-direction: column;
+  background: var(--colorPage);
+}
+
+.demo-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--sizeTopBar);
+  padding: 0 var(--space5xl);
+  background: var(--colorHeader);
+  border-bottom: var(--borderHeader);
+}
+
+/* The lockup at 36 high: the mark and the wordmark as the app's top row. */
+.demo-page-header .brand img {
+  width: 113.6px;
+}
+
+.demo-page-main {
+  display: flex;
+  flex: 1;
+  align-items: flex-start;
+  justify-content: center;
+  padding: var(--space6xl) var(--spaceXl);
+}
+
+.demo-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space3xl);
+  width: 100%;
+  max-width: 30rem;
+  padding: var(--space5xl);
+  background: var(--colorCard);
+  border: var(--borderCard);
+  border-radius: var(--radiusCardDesktop);
+  box-shadow: var(--shadowCard);
+}
+
+.demo-card p {
+  margin: 0;
+}
+
+.demo-heading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+}
+
+.demo-heading h1 {
+  margin: 0;
+  font: var(--typeTitlePage);
+  letter-spacing: var(--typeTitlePageTracking);
+}
+
+.demo-notice {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceHair);
+  font: var(--typeBodyPhone);
+  color: var(--colorInkSecondary);
+}
+
+.demo-notice .demo-notice-title {
+  font: var(--typeRowTitle);
+  color: var(--colorInk);
+}
+
+.demo-muted {
+  font: var(--typeBody);
+  color: var(--colorInkSecondary);
+}
+
+.demo-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space3xl);
+}
+
+.demo-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXl);
+}
+
+.demo-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+}
+
+.demo-field label {
+  font: var(--typeBody);
+  font-weight: 500;
+  color: var(--colorInk);
+}
+
+.demo-field-wrong label {
+  color: var(--colorBrokenText);
+}
+
+.demo-password {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXxs);
+}
+
+.demo-input {
+  width: 100%;
+  height: var(--sizeHit);
+  padding: 0 var(--spaceLg);
+  border: var(--borderField);
+  border-radius: var(--radiusField);
+  background: var(--colorCard);
+  color: var(--colorInk);
+  font: var(--typeBodyPhone);
+  caret-color: var(--colorInk);
+}
+
+/* Focus sits on the field's own edge, 2 px over its border, so nothing moves. */
+.demo-input:focus,
+.demo-input:focus-visible {
+  outline: 2px solid var(--colorAccent);
+  outline-offset: -2px;
+}
+
+.demo-input[aria-invalid='true'] {
+  border-color: var(--colorBroken);
+}
+
+.demo-input[aria-invalid='true']:focus {
+  outline-color: var(--colorBroken);
+}
+
+.demo-line {
+  font: var(--typeBody);
+  color: var(--colorBrokenText);
+}
+
+.demo-reveal {
+  position: relative;
+}
+
+.demo-reveal .demo-input {
+  padding-right: 4.5rem;
+}
+
+.demo-reveal-button {
+  position: absolute;
+  top: var(--spaceHair);
+  right: var(--spaceHair);
+  height: calc(var(--sizeHit) - 2 * var(--spaceHair));
+  padding: 0 var(--spaceLg) 0 var(--spaceSm);
+  border: 0;
+  border-radius: var(--radiusField);
+  background: transparent;
+  color: var(--colorAccentText);
+  font: var(--typeButton);
+  cursor: pointer;
+}
+
+/* A link on its own line: 28 high as drawn, over WCAG 2.5.8's 24. */
+.demo-card .demo-link {
+  align-self: flex-start;
+  min-height: var(--space4xl);
+}
+
+.demo-wide {
+  width: 100%;
+}
+
+.demo-providers {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceLg);
+}
+
+/* Apple's white button with its black outline, which pairs with Google's. */
+.button.demo-apple {
+  gap: var(--spaceXs);
+  background: var(--colorCard);
+  border-color: var(--brandAppleSurface);
+  color: var(--brandAppleSurface);
+  font-family: var(--brandAppleFont);
+  font-size: 0.9375rem;
+  font-weight: 500;
+}
+
+.button.demo-apple:hover {
+  background: var(--colorCard);
+}
+
+.demo-apple[aria-disabled='true'] {
+  cursor: default;
+  opacity: var(--brandOffOpacity);
+}
+
+.demo-apple svg {
+  display: block;
+  flex: none;
+}
+
+.demo-new-here {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceXs);
+  font: var(--typeBody);
+  color: var(--colorInkSecondary);
+}
+
+.demo-new-here .demo-link {
+  min-height: var(--space4xl);
+}
+
+/* The language button and its menu. */
+
+.demo-language {
+  position: relative;
+}
+
+.demo-language-button {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceXs);
+  height: var(--space6xl);
+  padding: 0 var(--spaceLg) 0 var(--spaceMd);
+  border: var(--borderControl);
+  border-radius: var(--radiusPill);
+  background: var(--colorCard);
+  color: var(--colorInk);
+  font: var(--typeButton);
+  cursor: pointer;
+}
+
+.demo-stroke,
+.demo-tick {
+  display: block;
+  flex: none;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.demo-stroke {
+  stroke: var(--colorInkSecondary);
+  stroke-width: 2;
+}
+
+.demo-tick {
+  stroke: var(--colorAccent);
+  stroke-width: 2.6;
+}
+
+.demo-language-menu {
+  position: absolute;
+  top: calc(100% + var(--spaceSm));
+  right: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceHair);
+  width: 300px;
+  padding: var(--spaceSm);
+  background: var(--colorCard);
+  border: var(--borderCard);
+  border-radius: var(--radiusInset);
+  box-shadow: var(--shadowPopover);
+}
+
+.demo-language-heading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXxs);
+  margin-bottom: var(--spaceXs);
+  padding: var(--spaceSm) var(--spaceLg) var(--spaceMd);
+  border-bottom: var(--borderDivider);
+}
+
+.demo-language-title {
+  font: var(--typeRowTitle);
+}
+
+.demo-language-line {
+  font: var(--typeSmall);
+  color: var(--colorInkSecondary);
+}
+
+.demo-language-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceLg);
+  width: 100%;
+  min-height: 48px;
+  padding: var(--spaceXs) var(--spaceLg);
+  border: 0;
+  border-radius: var(--radiusNav);
+  background: transparent;
+  color: var(--colorInk);
+  text-align: left;
+  cursor: pointer;
+}
+
+.demo-language-item:hover,
+.demo-language-item:focus {
+  background: var(--colorInset);
+}
+
+.demo-language-names {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 1px;
+  font: var(--typeRowTitle);
+  font-weight: 500;
+}
+
+.demo-language-english {
+  font: var(--typeSmall);
+  color: var(--colorInkSecondary);
+}

@@ -183,6 +183,11 @@ export const LITERAL_EXEMPT: readonly Exemption[] = [
     because:
       "The design demo's screens, opened only in development, QA and phone builds (src/demo/gate.ts). Its words are the boards' English by sc-28825's AC; the product screen built from it puts them in the four locales.",
   },
+  {
+    path: 'apps/web/src/demo/',
+    because:
+      "The web's design demo, opened only in the development, dev and QA environments (src/demo/gate.ts). Its words are the board's English by sc-28912's AC; the product screen built from it puts them in the four locales.",
+  },
 ];
 
 export function exempted(path: string): boolean {
