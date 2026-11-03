@@ -165,6 +165,38 @@ describe('the demo', () => {
     expect(screen.queryByRole('menu')).toBeNull();
   });
 
+  it('opens an account from the header and the footer pages as stand-ins (sc-28981)', async () => {
+    await signInBoard();
+
+    expect(screen.queryByText('New here?')).toBeNull();
+    fireEvent.click(screen.getByRole('link', { name: 'Create an account' }));
+    expect(await screen.findByRole('heading', { name: 'Create an account' })).toBeDefined();
+
+    fireEvent.click(screen.getByRole('link', { name: 'Terms' }));
+    expect(await screen.findByRole('heading', { name: 'Terms' })).toBeDefined();
+
+    fireEvent.click(screen.getByRole('link', { name: 'Privacy' }));
+    expect(await screen.findByRole('heading', { name: 'Privacy' })).toBeDefined();
+  });
+
+  it('leaves focus on the language button after a click outside the menu', async () => {
+    await signInBoard();
+    const button = screen.getByRole('button', { name: 'Language: English' });
+
+    fireEvent.click(button);
+    expect(screen.getByRole('menu')).toBeDefined();
+    fireEvent.mouseDown(document.body);
+
+    expect(screen.queryByRole('menu')).toBeNull();
+    expect(document.activeElement).toBe(button);
+  });
+
+  it('answers an unknown demo address with the not-found page (sc-28981)', async () => {
+    at('/demo/nope');
+
+    expect(await screen.findByRole('heading', { name: 'This page does not exist' })).toBeDefined();
+  });
+
   it('gives the form way to the providers when password sign-in is off', async () => {
     await signInBoard('provider-only');
 

@@ -3,6 +3,7 @@ import { Link, Route, Routes, useLocation, useNavigate, useSearchParams } from '
 
 import { Brand } from '../components/Brand.tsx';
 import { AppleMark, GoogleMark } from '../components/ProviderSignIn.tsx';
+import { NotFound } from '../routes/public/NotFound.tsx';
 import { offButton } from '../offButton.ts';
 import { offField } from '../offField.ts';
 import { LanguageMenu } from './LanguageMenu.tsx';
@@ -74,6 +75,7 @@ export default function Demo() {
       <Route path="sign-in" element={<SignInBoard />} />
       <Route path="signed-in" element={<SignedIn />} />
       <Route path="later" element={<Later />} />
+      <Route path="*" element={<NotFound />} />
     </Routes>
   );
 }
@@ -96,7 +98,7 @@ function DemoHome({ from }: { from: string }) {
 
       <section className="demo-home-page" aria-labelledby="demo-page-27">
         <h2 id="demo-page-27">27 · Sign in · desktop polish</h2>
-        <h3>Sign in · desktop · the polish</h3>
+        <h3>Sign in · desktop · second pass</h3>
         <ul className="demo-home-rows">
           {SIGN_IN_STATES.map((state) => (
             <li key={state.key}>
@@ -112,22 +114,39 @@ function DemoHome({ from }: { from: string }) {
   );
 }
 
-/** The board's page: the header band, the card, and the way back to the demo's home under it. */
+/** The board's page: the lockup and the way to an account, the form's column, the footer, and the way back under it. */
 function BoardPage({ children }: { children: ReactNode }) {
   return (
     <div className="demo-page">
       <header className="demo-page-header">
         <Brand lockup />
-        <LanguageMenu />
+        <div className="demo-page-new">
+          <span>New to Soirely?</span>
+          <Link className="button demo-dense" to="/demo/later?screen=register">
+            Create an account
+          </Link>
+        </div>
       </header>
       <main id="content" className="demo-page-main">
-        <section className="demo-card">{children}</section>
+        <section className="demo-column">{children}</section>
       </main>
-      <footer className="demo-way-in">
+      <footer className="demo-page-footer">
+        <span>© 2026 Soirely</span>
+        <nav className="demo-page-links" aria-label="Soirely">
+          <Link className="link-button demo-link" to="/demo/later?screen=terms">
+            Terms
+          </Link>
+          <Link className="link-button demo-link" to="/demo/later?screen=privacy">
+            Privacy
+          </Link>
+          <LanguageMenu />
+        </nav>
+      </footer>
+      <p className="demo-way-in">
         <Link className="link-button" to="/demo">
           All states in the demo
         </Link>
-      </footer>
+      </p>
     </div>
   );
 }
@@ -298,48 +317,44 @@ function SignInForm({ state }: { state: string }) {
                 )}
               </div>
 
-              <div className="demo-password">
-                <div
-                  className={lines.password == null ? 'demo-field' : 'demo-field demo-field-wrong'}
-                >
+              <div
+                className={lines.password == null ? 'demo-field' : 'demo-field demo-field-wrong'}
+              >
+                <div className="demo-label-row">
                   <label htmlFor="password">Password</label>
-                  <div className="demo-reveal">
-                    <input
-                      ref={password}
-                      className="demo-input"
-                      id="password"
-                      name="password"
-                      type={revealed ? 'text' : 'password'}
-                      autoComplete="current-password"
-                      {...offField(busy)}
-                      aria-invalid={lines.password != null}
-                      aria-describedby={
-                        lines.password != null || refused ? 'password-line' : undefined
-                      }
-                      onChange={() => edited('password')}
-                    />
-                    <button
-                      className="demo-reveal-button"
-                      type="button"
-                      aria-pressed={revealed}
-                      onClick={() => setRevealed((was) => !was)}
-                    >
-                      {revealed ? 'Hide' : 'Show'}
-                    </button>
-                  </div>
-                  {(lines.password != null || refused) && (
-                    <p
-                      className="demo-line"
-                      id="password-line"
-                      role={refused ? 'alert' : undefined}
-                    >
-                      {lines.password ?? 'That email and password do not match.'}
-                    </p>
-                  )}
+                  <Link className="link-button demo-link" to="/demo/later?screen=forgot">
+                    Forgot your password?
+                  </Link>
                 </div>
-                <Link className="link-button demo-link" to="/demo/later?screen=forgot">
-                  Forgot your password?
-                </Link>
+                <div className="demo-reveal">
+                  <input
+                    ref={password}
+                    className="demo-input"
+                    id="password"
+                    name="password"
+                    type={revealed ? 'text' : 'password'}
+                    autoComplete="current-password"
+                    {...offField(busy)}
+                    aria-invalid={lines.password != null}
+                    aria-describedby={
+                      lines.password != null || refused ? 'password-line' : undefined
+                    }
+                    onChange={() => edited('password')}
+                  />
+                  <button
+                    className="demo-reveal-button"
+                    type="button"
+                    aria-pressed={revealed}
+                    onClick={() => setRevealed((was) => !was)}
+                  >
+                    {revealed ? 'Hide' : 'Show'}
+                  </button>
+                </div>
+                {(lines.password != null || refused) && (
+                  <p className="demo-line" id="password-line" role={refused ? 'alert' : undefined}>
+                    {lines.password ?? 'That email and password do not match.'}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -361,13 +376,6 @@ function SignInForm({ state }: { state: string }) {
           <Providers busy={busy} onChoose={provider} />
         </>
       )}
-
-      <p className="demo-new-here">
-        <span>New here?</span>
-        <Link className="link-button demo-link" to="/demo/later?screen=register">
-          Create an account
-        </Link>
-      </p>
     </BoardPage>
   );
 }
@@ -417,15 +425,22 @@ function SignedIn() {
   );
 }
 
+const LATER: Record<string, string> = {
+  forgot: 'Forgot your password?',
+  register: 'Create an account',
+  terms: 'Terms',
+  privacy: 'Privacy',
+};
+
 function Later() {
   const [params] = useSearchParams();
-  const screen = params.get('screen') === 'forgot' ? 'Forgot your password?' : 'Create an account';
+  const screen = LATER[params.get('screen') ?? ''] ?? 'Create an account';
 
   return (
     <BoardPage>
       <div className="demo-heading">
         <h1>{screen}</h1>
-        <p className="demo-muted">A stand-in: this screen comes to the demo at its own step.</p>
+        <p className="demo-muted">A stand-in: this page comes to the demo at its own step.</p>
       </div>
       <Link className="button demo-wide" to="/demo/sign-in">
         Back to sign in
