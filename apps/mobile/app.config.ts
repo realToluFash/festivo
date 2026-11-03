@@ -1,7 +1,6 @@
 import type { ExpoConfig } from 'expo/config';
 
 import { withFontScaleKept } from './plugins/withFontScaleKept.ts';
-import { withSplashIconGround } from './plugins/withSplashIconGround.ts';
 import { tokens } from './src/theme/tokens.ts';
 
 /**
@@ -50,7 +49,7 @@ const config: ExpoConfig = {
     adaptiveIcon: {
       foregroundImage: './assets/adaptive-icon.png',
       monochromeImage: './assets/adaptive-icon-mono.png',
-      backgroundColor: tokens.colorBrandInk,
+      backgroundColor: tokens.colorAccent,
     },
     ...(appleAppLink == null
       ? {}
@@ -98,7 +97,7 @@ const config: ExpoConfig = {
       {
         backgroundColor: tokens.colorPage,
         // The owner put the symbol on iOS's launch screen too, departing from the HIG on purpose (sc-23302).
-        // expo-splash-screen centres the image on a 288 dp canvas, which Android fits to the 240 dp icon in its 160 dp circle.
+        // expo-splash-screen centres the image on a 288 dp canvas, which Android masks to a 192 dp circle.
         android: { image: './assets/splash-icon.png', imageWidth: 288 },
         ios: { image: './assets/launch-tile.png', imageWidth: 120 },
       },
@@ -129,4 +128,4 @@ const config: ExpoConfig = {
   },
 };
 
-export default withSplashIconGround(withFontScaleKept(config), { ground: tokens.colorBrandInk });
+export default withFontScaleKept(config);

@@ -2,7 +2,6 @@ import { createContext, type ReactNode, useContext, useState } from 'react';
 import { type StyleProp, StyleSheet, View, type ViewStyle } from 'react-native';
 
 import { type LayoutKind, useAccessibilitySizes, useLayout } from '../layout/useLayout.ts';
-import { logo } from '../theme/logo.ts';
 import { tokens } from '../theme/tokens.ts';
 import { BackButton } from './AppFrame.tsx';
 import { Brand } from './Brand.tsx';
@@ -98,8 +97,7 @@ export interface AuthBack {
   testID: string;
 }
 
-const BRAND_HEIGHT = 36;
-const BRAND_WIDTH = (BRAND_HEIGHT * logo.lockup.viewBox.width) / logo.lockup.viewBox.height;
+const BRAND_HEIGHT = 30;
 
 /** Every auth screen at three sizes: phone stacks with no card, portrait centres one, landscape splits saying from doing. */
 export function AuthFrame({
@@ -122,7 +120,7 @@ export function AuthFrame({
   const brand = (
     <View style={stacked ? styles.topStacked : styles.topRow}>
       <View style={styles.brandRow}>
-        {back != null ? <BackButton {...back} /> : <Brand width={BRAND_WIDTH} lockup />}
+        {back != null ? <BackButton {...back} /> : <Brand height={BRAND_HEIGHT} lockup />}
       </View>
       <LanguageChoice />
     </View>

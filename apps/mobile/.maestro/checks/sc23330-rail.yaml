@@ -1,4 +1,4 @@
-# sc-23330: the app frame's title is the wordmark, at ${ORIENT}. The wait matches the Brand's
+# sc-23330, sc-28811: the app frame's title is Dusk's wordmark, at ${ORIENT}. The wait matches the Brand's
 # accessibility label, which the plain-text name would match too; the rail shot checks the wordmark.
 appId: host.exp.Exponent
 ---

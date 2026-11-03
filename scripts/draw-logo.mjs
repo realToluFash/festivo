@@ -1,50 +1,74 @@
 #!/usr/bin/env node
-// Edit the geometry or a brand token, then run this: draw-logo.test.mjs fails on an image not redrawn.
+// Edit the geometry or a token, then run this: draw-logo.test.mjs fails on an image not redrawn.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { tokens } from '../docs/design/tokens.mjs';
-import { LOCKUP, WORDMARK } from '../docs/design/wordmark.mjs';
+import { LOCKUP, SYMBOL, WORDMARK } from '../docs/design/wordmark.mjs';
 import { encodePng } from './qa-env.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
-const BOX = 48;
-const DOT = 15;
-const EDGE = 6;
-const PITCH = 21;
+const GRID = SYMBOL.viewBox.width;
+const INK = tokens.colorInk;
+const SYMBOL_ON_GROUND = tokens.colorInkOnDark;
+const GROUND = tokens.colorAccent;
 
-const DOTS = [
-  { x: 0, y: 0, token: 'colorBrandPomegranate' },
-  { x: 1, y: 0, token: 'colorBrandSaffron' },
-  { x: 1, y: 1, token: 'colorBrandJade' },
-  { x: 0, y: 1, token: 'colorBrandUltramarine' },
-].map((dot) => ({ ...dot, colour: tokens[dot.token] }));
-
+/** Each image's symbol box is the board's, in px: `dusk-ios-1024`, `dusk-android-fg`, the launch screens, `dusk-favicon`. */
 export const IMAGES = {
   'apps/mobile/assets/icon.png': { size: 1024, box: 768, ground: 'full' },
-  // The dots must stay inside Android's 66 dp safe zone of 108.
-  'apps/mobile/assets/adaptive-icon.png': { size: 1024, box: (62.4 / 108) * 1024 },
-  'apps/mobile/assets/adaptive-icon-mono.png': {
-    size: 1024,
-    box: (62.4 / 108) * 1024,
-    mono: '#FFFFFF',
-  },
-  'apps/mobile/assets/splash-icon.png': { size: 960, box: (84 / 36) * BOX * 4, ground: 'full' },
+  'apps/mobile/assets/adaptive-icon.png': { size: 1024, box: (57.6 / 108) * 1024 },
+  'apps/mobile/assets/adaptive-icon-mono.png': { size: 1024, box: (57.6 / 108) * 1024 },
+  // Android masks the 288 dp image to a 192 dp circle, the board's, with the symbol 120 dp across.
+  'apps/mobile/assets/splash-icon.png': { size: 960, box: (120 / 288) * 960, ground: 'full' },
   'apps/mobile/assets/launch-tile.png': {
     size: 360,
-    box: 270,
+    box: 1.85 * GRID * 3,
     ground: 'tile',
     corners: 'continuous',
   },
   'apps/web/public/apple-touch-icon.png': { size: 180, box: 135, ground: 'full' },
-  // A box the favicon's size puts every dot edge on a whole pixel.
-  'apps/web/public/favicon-32.png': { size: 32, box: 32, ground: 'tile', corners: 0.22 },
-  'apps/web/public/favicon-16.png': { size: 16, box: 16, ground: 'tile', corners: 0.22 },
+  'apps/web/public/favicon-32.png': { size: 32, box: 0.56 * GRID, ground: 'tile', corners: 7 },
+  'apps/web/public/favicon-16.png': { size: 16, box: 0.29 * GRID, ground: 'tile', corners: 3.5 },
 };
 
-function rgb(hex) {
+const SUN = /^M([\d.]+) ([\d.]+)A([\d.]+) \3 0 0 1 ([\d.]+) \2Z$/;
+const BAR = /^M([\d.]+) ([\d.]+)h([\d.]+)a([\d.]+) \4 0 0 1 0 ([\d.]+)h-\3a\4 \4 0 0 1 0 -\5z$/;
+
+/** The symbol's paths as the shapes they draw, so the images are filled from the same outlines as the SVGs. */
+function symbolShapes() {
+  return SYMBOL.paths.map((d) => {
+    const sun = d.match(SUN);
+    if (sun != null) {
+      const [left, base, r, right] = sun.slice(1).map(Number);
+
+      return { kind: 'sun', cx: (left + right) / 2, cy: base, r };
+    }
+    const bar = d.match(BAR);
+    if (bar != null) {
+      const [x, y, length, r] = bar.slice(1).map(Number);
+
+      return { kind: 'bar', x0: x, x1: x + length, cy: y + r, r };
+    }
+    throw new Error(`draw-logo.mjs fills a half disc or a round-ended bar, not ${d}.`);
+  });
+}
+
+const SHAPES = symbolShapes();
+
+function inSymbol(u, v) {
+  return SHAPES.some((shape) => {
+    if (shape.kind === 'sun') {
+      return v <= shape.cy && (u - shape.cx) ** 2 + (v - shape.cy) ** 2 <= shape.r ** 2;
+    }
+    const nearest = Math.min(Math.max(u, shape.x0), shape.x1);
+
+    return (u - nearest) ** 2 + (v - shape.cy) ** 2 <= shape.r ** 2;
+  });
+}
+
+export function rgb(hex) {
   const value = parseInt(hex.slice(1), 16);
 
   return [(value >> 16) & 255, (value >> 8) & 255, value & 255];
@@ -56,27 +80,22 @@ function insideTile(x, y, size, corners) {
 
     return Math.abs((x - half) / half) ** 5 + Math.abs((y - half) / half) ** 5 <= 1;
   }
-  const radius = corners * size;
-  const cx = Math.min(Math.max(x, radius), size - radius);
-  const cy = Math.min(Math.max(y, radius), size - radius);
+  const cx = Math.min(Math.max(x, corners), size - corners);
+  const cy = Math.min(Math.max(y, corners), size - corners);
 
-  return (x - cx) ** 2 + (y - cy) ** 2 <= radius ** 2;
+  return (x - cx) ** 2 + (y - cy) ** 2 <= corners ** 2;
 }
 
-/** One pixel's colour at a point: a dot, the ink ground, or nothing. */
+/** One pixel's colour at a point: the symbol, the green ground, or nothing. */
 function sample(image, x, y) {
-  const { size, box, ground, corners, mono } = image;
-  const unit = box / BOX;
+  const { size, box, ground, corners } = image;
+  const unit = box / GRID;
   const origin = (size - box) / 2;
-  for (const dot of DOTS) {
-    const cx = origin + (EDGE + DOT / 2 + dot.x * PITCH) * unit;
-    const cy = origin + (EDGE + DOT / 2 + dot.y * PITCH) * unit;
-    if ((x - cx) ** 2 + (y - cy) ** 2 <= ((DOT / 2) * unit) ** 2) {
-      return rgb(mono ?? dot.colour);
-    }
+  if (inSymbol((x - origin) / unit, (y - origin) / unit)) {
+    return rgb(SYMBOL_ON_GROUND);
   }
   if (ground === 'full' || (ground === 'tile' && insideTile(x, y, size, corners))) {
-    return rgb(tokens.colorBrandInk);
+    return rgb(GROUND);
   }
 
   return null;
@@ -137,56 +156,36 @@ export function pixels(image) {
   return { size, channels, data: out };
 }
 
-/** The lockup's symbol: the four dots in the 48-unit box, with no ground. */
-const SYMBOL_DOTS = DOTS.map((dot) => ({
-  cx: EDGE + DOT / 2 + dot.x * PITCH,
-  cy: EDGE + DOT / 2 + dot.y * PITCH,
-  r: DOT / 2,
-  token: dot.token,
-}));
-
 function viewBox({ x, y, width, height }) {
   return `${x} ${y} ${width} ${height}`;
-}
-
-function wordmarkShapes() {
-  const { cx, cy, r, token } = WORDMARK.dot;
-
-  return [
-    ...WORDMARK.parts.map((part) => `<path d="${part.d}" fill="${tokens[part.token]}"/>`),
-    `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${tokens[token]}"/>`,
-  ].join('');
 }
 
 function svg(box, body) {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox(box)}" width="${box.width}" height="${box.height}">${body}</svg>\n`;
 }
 
+const symbolPaths = () => SYMBOL.paths.map((d) => `<path d="${d}" fill="${INK}"/>`).join('');
+const wordmarkPath = () => `<path d="${WORDMARK.d}" fill="${INK}"/>`;
+
 /** The SVG outlines the web shows, so no font loads with the logo. */
 export const SVGS = {
-  'apps/web/src/brand/wordmark.svg': () => svg(WORDMARK.viewBox, wordmarkShapes()),
+  'apps/web/src/brand/wordmark.svg': () => svg(WORDMARK.viewBox, wordmarkPath()),
   'apps/web/src/brand/lockup.svg': () => {
     const { symbol, word } = LOCKUP;
-    const dots = SYMBOL_DOTS.map(
-      ({ cx, cy, r, token }) => `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${tokens[token]}"/>`,
-    ).join('');
 
     return svg(
       LOCKUP.viewBox,
-      `<g transform="translate(${symbol.x} ${symbol.y}) scale(${symbol.scale})">${dots}</g>` +
-        `<g transform="translate(${word.x} 0)">${wordmarkShapes()}</g>`,
+      `<g transform="scale(${symbol.scale})">${symbolPaths()}</g>` +
+        `<g transform="translate(${word.x} ${word.y}) scale(${word.scale})">${wordmarkPath()}</g>`,
     );
   },
 };
 
-/** The app draws the same outlines with react-native-svg, each filled from its token. */
+/** The app draws the same outlines with react-native-svg, in the ink. */
 export const MOBILE_GEOMETRY = 'apps/mobile/src/theme/logo.ts';
 
 export function mobileGeometry() {
-  const logo = {
-    wordmark: WORDMARK,
-    lockup: { ...LOCKUP, symbol: { ...LOCKUP.symbol, dots: SYMBOL_DOTS } },
-  };
+  const logo = { symbol: SYMBOL, wordmark: WORDMARK, lockup: LOCKUP };
 
   return `// GENERATED by scripts/draw-logo.mjs from docs/design/wordmark.mjs. Do not edit.
 
