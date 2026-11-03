@@ -180,7 +180,7 @@ const styles = StyleSheet.create({
     gap: tokens.spaceLg,
     paddingHorizontal: tokens.spaceLg,
     paddingVertical: tokens.spaceSm,
-    borderRadius: tokens.radiusField,
+    borderRadius: tokens.radiusRow,
   },
   optionChosen: { backgroundColor: tokens.colorAccentTint },
   optionWords: { flex: 1, gap: tokens.spaceHair },

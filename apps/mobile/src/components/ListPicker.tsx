@@ -21,7 +21,7 @@ import { useLayout } from '../layout/useLayout.ts';
 import { inputFaced } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
 import { useModalOpen } from '../updateRequired.ts';
-import { useHeld } from './Field.tsx';
+import { FocusEdge, focusEdge, useFocusEdge, useHeld } from './Field.tsx';
 import { LIFT } from './keyboardWatch.ts';
 import { Screen } from './Screen.tsx';
 import { Text } from './Text.tsx';
@@ -66,6 +66,8 @@ export function ListPicker({
   const [search, setSearch] = useState('');
   const searchNameID = useId();
   const searching = useHeld(false, search, undefined, setSearch);
+  const searchEdge = useFocusEdge();
+  const fieldEdge = useFocusEdge();
   const { kind, width, height } = useLayout();
   const beside = searchBesideTitle({ os: Platform.OS, phone: kind === 'phone', width, height });
 
@@ -86,8 +88,9 @@ export function ListPicker({
         </Text>
       )}
       <TextInput
-        style={inputFaced(styles.search)}
+        style={inputFaced([styles.search, focusEdge(searchEdge.focused, false)])}
         {...searching}
+        {...searchEdge.edging}
         placeholder={searchLabel}
         placeholderTextColor={tokens.colorInkTertiary}
         cursorColor={tokens.colorInk}
@@ -109,6 +112,7 @@ export function ListPicker({
         ref={pickerRef}
         style={[styles.field, readOnly && styles.fieldReadOnly]}
         onPress={() => setOpen(true)}
+        {...fieldEdge.edging}
         disabled={disabled || readOnly}
         accessibilityRole={readOnly ? undefined : 'button'}
         accessibilityState={{ disabled: disabled || readOnly }}
@@ -119,6 +123,7 @@ export function ListPicker({
           {blank ? placeholder : chosen}
         </Text>
         {!readOnly && <Chevron />}
+        {fieldEdge.focused && <FocusEdge />}
       </Pressable>
 
       <Modal

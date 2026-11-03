@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 
-import { useHeld } from '../components/Field.tsx';
+import { FocusEdge, useHeld } from '../components/Field.tsx';
 import { Text } from '../components/Text.tsx';
 import { FIELD_DEFAULTS, fieldName, passwordProps } from '../kit/fields.ts';
 import { glide } from '../motion.ts';
@@ -138,9 +138,7 @@ export function InsideField({
           </Svg>
         </Pressable>
       )}
-      {focused && (
-        <View pointerEvents="none" style={[styles.ring, state === 'blank' && styles.ringBlank]} />
-      )}
+      {focused && <FocusEdge wrong={state === 'blank'} />}
     </View>
   );
 }
@@ -185,23 +183,12 @@ const styles = StyleSheet.create({
     minHeight: HEIGHT,
     borderWidth: 1,
     borderColor: tokens.colorFieldBorder,
-    borderRadius: tokens.radiusSmall,
+    borderRadius: tokens.radiusField,
     backgroundColor: tokens.colorCard,
     justifyContent: 'center',
   },
   tall: { minHeight: 132 },
   blank: { borderColor: tokens.colorBroken },
-  ring: {
-    position: 'absolute',
-    top: -1,
-    right: -1,
-    bottom: -1,
-    left: -1,
-    borderWidth: 2,
-    borderRadius: tokens.radiusSmall,
-    borderColor: tokens.colorAccent,
-  },
-  ringBlank: { borderColor: tokens.colorBroken },
   input: {
     minHeight: HEIGHT - 2,
     paddingHorizontal: tokens.spaceXl - 1,

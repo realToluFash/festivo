@@ -166,7 +166,7 @@ export function VenueFields({
 
 const styles = StyleSheet.create({
   suggestions: {
-    borderRadius: tokens.radiusField,
+    borderRadius: tokens.radiusRow,
     borderWidth: 1,
     borderColor: tokens.colorBorder,
     backgroundColor: tokens.colorCard,

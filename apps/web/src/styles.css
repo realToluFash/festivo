@@ -1663,7 +1663,7 @@ span {
   min-height: var(--sizeHitPhoneHero);
   padding: 0 var(--spaceLg);
   border: var(--borderField);
-  border-radius: var(--radiusInset);
+  border-radius: var(--radiusField);
   background: var(--colorCard);
   color: var(--colorInk);
   font: var(--typeTitleDialog);
@@ -1958,7 +1958,7 @@ span {
   min-height: var(--sizeHitPhonePrimary);
   padding: var(--spaceXxs) var(--spaceMd) var(--spaceXxs) var(--spaceXs);
   border: var(--borderControl);
-  border-radius: var(--radiusField);
+  border-radius: var(--radiusRow);
   background: var(--colorCard);
   color: var(--colorInk);
   text-align: left;
@@ -3417,7 +3417,7 @@ span {
   overflow-y: auto;
   list-style: none;
   border: 1px solid var(--colorBorder);
-  border-radius: var(--radiusField);
+  border-radius: var(--radiusRow);
   background: var(--colorCard);
 }
 
@@ -3470,7 +3470,7 @@ span {
   width: var(--sizeAvatar);
   height: var(--sizeAvatar);
   border: 1px solid var(--colorBorder);
-  border-radius: var(--radiusField);
+  border-radius: var(--radiusRow);
   background: var(--colorCard);
 }
 
@@ -5953,7 +5953,7 @@ button.members-row {
 .notifications-failure-line {
   gap: var(--spaceSm);
   padding: var(--spaceMd) var(--spaceLg);
-  border-radius: var(--radiusField);
+  border-radius: var(--radiusRow);
   color: var(--colorAttentionText);
   font: var(--typeBody);
   font-weight: 600;
@@ -7041,7 +7041,7 @@ button.members-row {
 
 .skeleton-field {
   height: 44px;
-  border-radius: var(--radiusField);
+  border-radius: var(--radiusRow);
 }
 
 .skeleton-option {
