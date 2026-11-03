@@ -1,0 +1,257 @@
+import { type Href, router } from 'expo-router';
+import { Pressable, StyleSheet, View } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
+
+import { Text } from '../../src/components/Text.tsx';
+import { DemoScreen, NavBar } from '../../src/demo/DemoScreen.tsx';
+import { Heading } from '../../src/demo/Lines.tsx';
+import { SAMPLE } from '../../src/demo/samples.ts';
+import { tokens } from '../../src/theme/tokens.ts';
+
+interface Board {
+  title: string;
+  what: string;
+  href: Href;
+}
+
+/** Every board in the design artifact, by its page, working on sample data. */
+const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
+  {
+    page: 'Sign-in',
+    boards: [
+      { title: 'Welcome', what: 'The app opens here signed out', href: '/demo/welcome' },
+      {
+        title: 'Welcome · signed out',
+        what: 'After a session ends',
+        href: '/demo/welcome?notice=signedOut',
+      },
+      {
+        title: 'Welcome · signed out by a rule',
+        what: 'Ire Events signs people out after 30 days',
+        href: '/demo/welcome?notice=byRule',
+      },
+      {
+        title: 'Sign in with email',
+        what: 'The checks, and the refused shake',
+        href: '/demo/sign-in',
+      },
+    ],
+  },
+  {
+    page: 'Onboarding · a new account',
+    boards: [
+      {
+        title: 'Create an account',
+        what: 'Name, email and password, then the codes',
+        href: '/demo/create',
+      },
+      {
+        title: 'Create an account · invited',
+        what: 'An invitation is waiting',
+        href: '/demo/create?after=invited',
+      },
+      { title: 'Apple, the first time', what: 'Apple didn’t share the name', href: '/demo/apple' },
+      {
+        title: 'Google, the first time',
+        what: 'Two steps',
+        href: '/demo/organisation?via=google',
+      },
+      { title: 'Join link · signed out', what: 'The same choices as welcome', href: '/demo/join' },
+      {
+        title: 'Join link · signed in',
+        what: 'A message of up to 500 characters',
+        href: '/demo/join-message',
+      },
+    ],
+  },
+  {
+    page: 'Onboarding · two-factor',
+    boards: [
+      { title: 'Enter your code', what: 'The authenticator’s code', href: '/demo/two-factor' },
+      {
+        title: 'Enter a recovery code',
+        what: 'The dash goes in by itself',
+        href: '/demo/recovery',
+      },
+      { title: 'Lost the authenticator', what: 'Email and text', href: '/demo/lost' },
+      {
+        title: 'Lost the authenticator · email only',
+        what: 'No verified mobile',
+        href: '/demo/lost?emailOnly=1',
+      },
+      {
+        title: 'Waiting for Ire Events',
+        what: 'Answer it from the demo',
+        href: '/demo/waiting',
+      },
+      { title: 'Two-factor is off', what: 'Confirmed', href: '/demo/ending?kind=approved' },
+      { title: 'Turned down', what: 'An ending', href: '/demo/ending?kind=turnedDown' },
+      { title: 'Ended', what: 'Nobody answered in 7 days', href: '/demo/ending?kind=ended' },
+      { title: 'Cancelled', what: 'An ending', href: '/demo/ending?kind=cancelled' },
+      { title: 'Replaced', what: 'A newer request', href: '/demo/ending?kind=replaced' },
+      {
+        title: 'Nobody can confirm',
+        what: 'Contact Soirely support',
+        href: '/demo/ending?kind=nobody',
+      },
+      {
+        title: 'Set up two-factor again',
+        what: 'After getting back in',
+        href: '/demo/tfa-again',
+      },
+    ],
+  },
+  {
+    page: 'Onboarding · the password',
+    boards: [
+      { title: 'Reset your password', what: 'Carries the email', href: '/demo/reset' },
+      {
+        title: 'Set a new password',
+        what: 'From the link in the email',
+        href: '/demo/new-password',
+      },
+      { title: 'This link has expired', what: 'One button', href: '/demo/link-expired' },
+    ],
+  },
+  {
+    page: 'Onboarding · no connection',
+    boards: [
+      {
+        title: 'Cannot reach Soirely · signed out',
+        what: 'On the brand',
+        href: '/demo/unreachable',
+      },
+      {
+        title: 'Cannot reach Soirely · signed in',
+        what: 'Says you still are',
+        href: '/demo/unreachable?signedIn=1',
+      },
+    ],
+  },
+];
+
+const VALUES = [
+  ['Email', SAMPLE.email],
+  ['Password', SAMPLE.password],
+  ['Codes we send', SAMPLE.code],
+  ['Authenticator', SAMPLE.authenticator],
+  ['Recovery code', SAMPLE.recovery],
+] as const;
+
+function leaveDemo(): void {
+  if (router.canGoBack()) router.back();
+  else router.replace('/');
+}
+
+export default function DemoHome() {
+  return (
+    <DemoScreen nav={<NavBar left="close" onLeft={leaveDemo} />}>
+      <Heading
+        title="Design demo"
+        intro="Each board from the design, working on sample data. Nothing here reaches the API."
+      />
+      <View style={styles.panel}>
+        {VALUES.map(([name, value]) => (
+          <View key={name} style={styles.value}>
+            <Text size={tokens.typeBody.size} style={styles.secondary}>
+              {name}
+            </Text>
+            <Text size={tokens.typeBody.size} weight="semibold" family="mono" selectable>
+              {value}
+            </Text>
+          </View>
+        ))}
+        <Text size={tokens.typeSmall.size} style={styles.secondary}>
+          Anything else is refused, so the errors can be tried.
+        </Text>
+      </View>
+      {PAGES.map(({ page, boards }) => (
+        <View key={page} style={styles.page}>
+          <Text
+            size={tokens.typeSmall.size}
+            weight="semibold"
+            accessibilityRole="header"
+            style={styles.secondary}
+          >
+            {page.toUpperCase()}
+          </Text>
+          <View style={styles.list}>
+            {boards.map((board, index) => (
+              <Pressable
+                key={board.title}
+                style={({ pressed }) => [
+                  styles.row,
+                  index > 0 && styles.divided,
+                  pressed && styles.pressed,
+                ]}
+                onPress={() => router.push(board.href)}
+                accessibilityRole="button"
+                accessibilityLabel={`${board.title}. ${board.what}`}
+                testID={`demo.board.${index}`}
+              >
+                <View style={styles.words}>
+                  <Text size={tokens.typeRowTitle.size} weight="semibold" accessible={false}>
+                    {board.title}
+                  </Text>
+                  <Text size={tokens.typeSmall.size} style={styles.secondary} accessible={false}>
+                    {board.what}
+                  </Text>
+                </View>
+                <Svg
+                  width={14}
+                  height={14}
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke={tokens.colorInkSecondary}
+                  strokeWidth={2.4}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <Path d="m9 6 6 6-6 6" />
+                </Svg>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+      ))}
+    </DemoScreen>
+  );
+}
+
+const styles = StyleSheet.create({
+  panel: {
+    marginTop: tokens.space3xl,
+    padding: tokens.spaceXl,
+    gap: tokens.spaceSm,
+    borderWidth: 1,
+    borderColor: tokens.colorBorder,
+    borderRadius: tokens.radiusInset,
+    backgroundColor: tokens.colorCard,
+  },
+  value: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: tokens.spaceSm,
+  },
+  secondary: { color: tokens.colorInkSecondary },
+  page: { marginTop: tokens.space4xl, gap: tokens.spaceSm },
+  list: {
+    borderWidth: 1,
+    borderColor: tokens.colorBorder,
+    borderRadius: tokens.radiusInset,
+    backgroundColor: tokens.colorCard,
+    overflow: 'hidden',
+  },
+  row: {
+    minHeight: tokens.sizeListRow,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spaceLg,
+    paddingHorizontal: tokens.spaceXl,
+    paddingVertical: tokens.spaceMd,
+  },
+  divided: { borderTopWidth: 1, borderTopColor: tokens.colorInsetBorder },
+  pressed: { backgroundColor: tokens.colorInset },
+  words: { flex: 1, gap: 2 },
+});
