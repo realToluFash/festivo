@@ -187,7 +187,7 @@ export default function DemoHome() {
                 onPress={() => router.push(board.href)}
                 accessibilityRole="button"
                 accessibilityLabel={`${board.title}. ${board.what}`}
-                testID={`demo.board.${index}`}
+                testID={`demo.board.${board.title}`}
               >
                 <View style={styles.words}>
                   <Text size={tokens.typeRowTitle.size} weight="semibold" accessible={false}>
