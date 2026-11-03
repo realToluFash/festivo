@@ -182,78 +182,83 @@ function Form({
         />
       )}
 
-      <Field label={t('register.name')} error={checks.errors.name ?? refusalWords(fields.name, t)}>
-        <TextField
-          ref={name}
-          wrong={checks.errors.name != null || fields.name != null}
-          submitting={busy}
-          autoComplete="name"
-          textContentType="name"
-          autoCapitalize="words"
-          maxLength={ACCOUNT_NAME_MAXIMUM}
-          onChangeText={(text) => {
-            typed.current.name = text;
-            checks.edited('name', text);
-          }}
-          onBlur={() => checks.left('name', typed.current.name)}
-          returnKeyType="next"
-          submitBehavior="submit"
-          onSubmitEditing={() => email.current?.focus()}
-          accessibilityLabel={t('register.name')}
-          testID="register.name"
-        />
-      </Field>
+      <View style={styles.fields}>
+        <Field
+          label={t('register.name')}
+          error={checks.errors.name ?? refusalWords(fields.name, t)}
+        >
+          <TextField
+            ref={name}
+            wrong={checks.errors.name != null || fields.name != null}
+            submitting={busy}
+            autoComplete="name"
+            textContentType="name"
+            autoCapitalize="words"
+            maxLength={ACCOUNT_NAME_MAXIMUM}
+            onChangeText={(text) => {
+              typed.current.name = text;
+              checks.edited('name', text);
+            }}
+            onBlur={() => checks.left('name', typed.current.name)}
+            returnKeyType="next"
+            submitBehavior="submit"
+            onSubmitEditing={() => email.current?.focus()}
+            accessibilityLabel={t('register.name')}
+            testID="register.name"
+          />
+        </Field>
 
-      <Field
-        label={t('register.email')}
-        error={checks.errors.email ?? refusalWords(fields.email, t)}
-      >
-        <TextField
-          ref={email}
-          wrong={checks.errors.email != null || fields.email != null}
-          submitting={busy}
-          keyboardType="email-address"
-          autoComplete="email"
-          textContentType="emailAddress"
-          autoCapitalize="none"
-          onChangeText={(text) => {
-            typed.current.email = text;
-            checks.edited('email', text);
-          }}
-          onBlur={() => checks.left('email', typed.current.email)}
-          returnKeyType="next"
-          submitBehavior="submit"
-          onSubmitEditing={() => password.current?.focus()}
-          accessibilityLabel={t('register.email')}
-          testID="register.email"
-        />
-      </Field>
+        <Field
+          label={t('register.email')}
+          error={checks.errors.email ?? refusalWords(fields.email, t)}
+        >
+          <TextField
+            ref={email}
+            wrong={checks.errors.email != null || fields.email != null}
+            submitting={busy}
+            keyboardType="email-address"
+            autoComplete="email"
+            textContentType="emailAddress"
+            autoCapitalize="none"
+            onChangeText={(text) => {
+              typed.current.email = text;
+              checks.edited('email', text);
+            }}
+            onBlur={() => checks.left('email', typed.current.email)}
+            returnKeyType="next"
+            submitBehavior="submit"
+            onSubmitEditing={() => password.current?.focus()}
+            accessibilityLabel={t('register.email')}
+            testID="register.email"
+          />
+        </Field>
 
-      <Field
-        label={t('register.password')}
-        error={checks.errors.password ?? refusalWords(fields.password, t)}
-      >
-        <PasswordField
-          ref={password}
-          wrong={checks.errors.password != null || fields.password != null}
-          submitting={busy}
-          autoComplete="new-password"
-          textContentType="newPassword"
-          onChangeText={(text) => {
-            typed.current.password = text;
-            setLengthMet(meetsPasswordLength(text));
-            checks.edited('password', text);
-          }}
-          onBlur={() => checks.left('password', typed.current.password)}
-          returnKeyType="done"
-          submitBehavior="submit"
-          onSubmitEditing={submit}
-          accessibilityLabel={t('register.password')}
-          testID="register.password"
-        />
-      </Field>
+        <Field
+          label={t('register.password')}
+          error={checks.errors.password ?? refusalWords(fields.password, t)}
+        >
+          <PasswordField
+            ref={password}
+            wrong={checks.errors.password != null || fields.password != null}
+            submitting={busy}
+            autoComplete="new-password"
+            textContentType="newPassword"
+            onChangeText={(text) => {
+              typed.current.password = text;
+              setLengthMet(meetsPasswordLength(text));
+              checks.edited('password', text);
+            }}
+            onBlur={() => checks.left('password', typed.current.password)}
+            returnKeyType="done"
+            submitBehavior="submit"
+            onSubmitEditing={submit}
+            accessibilityLabel={t('register.password')}
+            testID="register.password"
+          />
+        </Field>
 
-      <PasswordRule met={lengthMet} testID="register" />
+        <PasswordRule met={lengthMet} testID="register" />
+      </View>
 
       <PrimaryButton
         label={busy ? t('register.submitting') : t('register.submit')}
@@ -281,5 +286,6 @@ const styles = StyleSheet.create({
   accentText: { color: tokens.colorAccentText },
   onAccent: { color: tokens.colorInkOnDark },
   providers: { gap: tokens.spaceMd, paddingTop: tokens.spaceSm },
-  form: { gap: tokens.spaceXl },
+  form: { gap: tokens.space3xl },
+  fields: { gap: tokens.spaceXl },
 });

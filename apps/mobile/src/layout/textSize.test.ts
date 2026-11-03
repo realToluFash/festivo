@@ -4,6 +4,7 @@ import {
   backLabelSize,
   bandPlace,
   breakableEmail,
+  capUnderTitle,
   drawnLine,
   fitWidest,
   frameTitleSize,
@@ -38,6 +39,32 @@ describe('titleSize', () => {
     for (const size of [20, 26, 28, 30, 34]) {
       expect(titleSize(size, AX2)).toBeGreaterThan(size);
     }
+  });
+});
+
+describe('capUnderTitle', () => {
+  // A size drawn under a multiplier, as React Native draws it.
+  const drawn = (size: number, scale: number, multiplier: number) =>
+    size * Math.min(scale, multiplier);
+
+  it('never lets the words under a title draw larger than it, at any scale (sc-28812)', () => {
+    for (const scale of [1, 1.353, AX1, AX2, 3.1]) {
+      // Sign in's title, at its own size and stepped down to its default by a long word.
+      for (const title of [titleSize(26, scale), 26]) {
+        for (const size of [13, 14, 15, 16, 17, 20]) {
+          expect(drawn(size, scale, capUnderTitle(title, size))).toBeLessThanOrEqual(title);
+        }
+      }
+    }
+  });
+
+  it('keeps a smaller multiplier the text already had', () => {
+    expect(capUnderTitle(43, 15, 2)).toBe(2);
+    expect(capUnderTitle(43, 15)).toBeCloseTo(43 / 15);
+  });
+
+  it('never asks for less than the default size', () => {
+    expect(capUnderTitle(26, 28)).toBe(1);
   });
 });
 

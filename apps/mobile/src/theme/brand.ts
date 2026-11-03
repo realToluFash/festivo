@@ -10,8 +10,10 @@ export const brand = {
   googleInk: '#1F1F1F',
   googleTextSize: 14,
   googleLineHeight: 20,
-  appleSurface: '#000000',
-  appleInk: '#FFFFFF',
+  /** Apple's white outlined style, so the green Sign in stays the strongest button (sc-28812). */
+  appleSurface: '#FFFFFF',
+  appleBorder: '#000000',
+  appleInk: '#000000',
   /** Measured off iOS's own 48pt button, not the guidelines' 43%: 18.5pt words, the glyph drawn 14pt tall (11.4pt wide) 6.5pt before them. */
   appleTitleToHeight: 0.385,
   appleLogoHeight: 14,

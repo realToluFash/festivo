@@ -2,7 +2,11 @@
 # screenshots the words. sc-13256. Pass LANGUAGE and SHOT.
 appId: host.exp.Exponent
 ---
-- tapOn: ${LANGUAGE}
+- tapOn:
+    id: 'language.open'
+- tapOn:
+    id: 'language\.(en|es|fr|pt)'
+    text: ${LANGUAGE}
 - extendedWaitUntil:
     visible:
       id: 'unreachable.retry'

@@ -2,7 +2,7 @@ import { ApiError } from '@soirely/api-client';
 import { formatTimeOfDay, lockLiftsAt } from '@soirely/domain';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useRef, useState } from 'react';
-import { StyleSheet, type TextInputInstance, View } from 'react-native';
+import { StyleSheet, type TextInputInstance } from 'react-native';
 import { type TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 
@@ -110,7 +110,7 @@ export default function ForgotPassword() {
       back={back}
       saying={<AuthHeading title={t('recovery.title')} intro={t('recovery.intro')} />}
     >
-      <View style={styles.form}>
+      <>
         {status.kind === 'limited' && (
           <Notice
             tone="attention"
@@ -170,7 +170,7 @@ export default function ForgotPassword() {
           role="link"
           testID="recovery.signIn"
         />
-      </View>
+      </>
     </AuthFrame>
   );
 }
@@ -211,6 +211,5 @@ function refusalFrom(error: unknown, again: boolean): Status {
 }
 
 const styles = StyleSheet.create({
-  form: { gap: tokens.spaceXl },
   secondary: { color: tokens.colorInkSecondary },
 });

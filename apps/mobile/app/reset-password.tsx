@@ -202,7 +202,7 @@ export default function ResetPassword() {
         />
       }
     >
-      <View style={styles.form}>
+      <>
         {status.kind === 'failed' && (
           <Notice
             tone="broken"
@@ -213,29 +213,31 @@ export default function ResetPassword() {
           />
         )}
 
-        <Field label={t('recovery.newPassword')} error={error}>
-          <PasswordField
-            ref={passwordInput}
-            wrong={error != null}
-            submitting={saving}
-            autoComplete="new-password"
-            textContentType="newPassword"
-            onChangeText={(text) => {
-              typed.current = text;
-              setLengthMet(meetsPasswordLength(text));
-              setRefusal(null);
-              checks.edited('password', text);
-            }}
-            onBlur={() => checks.left('password', typed.current)}
-            returnKeyType="done"
-            submitBehavior="submit"
-            onSubmitEditing={() => void submit()}
-            accessibilityLabel={t('recovery.newPassword')}
-            testID="recovery.password"
-          />
-        </Field>
+        <View style={styles.fields}>
+          <Field label={t('recovery.newPassword')} error={error}>
+            <PasswordField
+              ref={passwordInput}
+              wrong={error != null}
+              submitting={saving}
+              autoComplete="new-password"
+              textContentType="newPassword"
+              onChangeText={(text) => {
+                typed.current = text;
+                setLengthMet(meetsPasswordLength(text));
+                setRefusal(null);
+                checks.edited('password', text);
+              }}
+              onBlur={() => checks.left('password', typed.current)}
+              returnKeyType="done"
+              submitBehavior="submit"
+              onSubmitEditing={() => void submit()}
+              accessibilityLabel={t('recovery.newPassword')}
+              testID="recovery.password"
+            />
+          </Field>
 
-        <PasswordRule met={lengthMet} testID="recovery" />
+          <PasswordRule met={lengthMet} testID="recovery" />
+        </View>
 
         <Notice tone="quiet" mark="i" body={t('recovery.signsOut')} />
 
@@ -245,7 +247,7 @@ export default function ResetPassword() {
           busy={saving}
           testID="recovery.save"
         />
-      </View>
+      </>
     </AuthFrame>
   );
 }
@@ -260,5 +262,5 @@ function deadFrom(error: unknown): 'used' | 'expired' | 'invalid' | null {
 }
 
 const styles = StyleSheet.create({
-  form: { gap: tokens.spaceXl },
+  fields: { gap: tokens.spaceXl },
 });
