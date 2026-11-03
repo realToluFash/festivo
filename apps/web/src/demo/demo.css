@@ -217,6 +217,12 @@
   gap: var(--spaceLg);
 }
 
+.demo-label-row .demo-link {
+  display: flex;
+  align-items: flex-end;
+  line-height: 1.5;
+}
+
 .demo-field label {
   font: var(--typeBody);
   font-weight: 500;
