@@ -318,41 +318,43 @@ function FoundOrganisation() {
           answer={failed}
         />
       )}
-      <Field
-        label={t('completeProfile.organisation')}
-        error={errors.organisationName}
-        help={t('completeProfile.organisationHelp')}
-      >
-        <TextField
-          ref={nameInput}
-          wrong={errors.organisationName != null}
-          submitting={saving}
-          value={name}
-          maxLength={ORGANISATION_NAME_MAXIMUM}
-          onChangeText={(text) => {
-            setName(text);
-            setErrors((previous) => ({ ...previous, organisationName: undefined }));
-          }}
-          autoComplete="organization"
-          textContentType="organizationName"
-          autoCapitalize="words"
-          accessibilityLabel={t('completeProfile.organisation')}
-          testID="completeProfile.organisation"
-        />
-      </Field>
-      <Field label={t('completeProfile.country')} error={errors.countryCode ?? errors.timezone}>
-        <CountryPicker
-          label={t('completeProfile.country')}
-          value={countryCode}
-          onChange={(code) => {
-            setCountryCode(code);
-            setErrors((previous) => ({ ...previous, countryCode: undefined }));
-          }}
-          disabled={saving}
-          pickerRef={countryPicker}
-          testID="completeProfile.country"
-        />
-      </Field>
+      <View style={styles.fields}>
+        <Field
+          label={t('completeProfile.organisation')}
+          error={errors.organisationName}
+          help={t('completeProfile.organisationHelp')}
+        >
+          <TextField
+            ref={nameInput}
+            wrong={errors.organisationName != null}
+            submitting={saving}
+            value={name}
+            maxLength={ORGANISATION_NAME_MAXIMUM}
+            onChangeText={(text) => {
+              setName(text);
+              setErrors((previous) => ({ ...previous, organisationName: undefined }));
+            }}
+            autoComplete="organization"
+            textContentType="organizationName"
+            autoCapitalize="words"
+            accessibilityLabel={t('completeProfile.organisation')}
+            testID="completeProfile.organisation"
+          />
+        </Field>
+        <Field label={t('completeProfile.country')} error={errors.countryCode ?? errors.timezone}>
+          <CountryPicker
+            label={t('completeProfile.country')}
+            value={countryCode}
+            onChange={(code) => {
+              setCountryCode(code);
+              setErrors((previous) => ({ ...previous, countryCode: undefined }));
+            }}
+            disabled={saving}
+            pickerRef={countryPicker}
+            testID="completeProfile.country"
+          />
+        </Field>
+      </View>
       <PrimaryButton
         label={saving ? t('completeProfile.saving') : t('completeProfile.save')}
         onPress={() => void found()}
@@ -690,80 +692,85 @@ function Details({
         />
       )}
 
-      {asksForOrganisation && (
-        <>
-          <Field
-            label={t('completeProfile.organisation')}
-            error={errors.organisationName}
-            help={t('completeProfile.organisationHelp')}
-          >
-            <TextField
-              ref={organisationInput}
-              wrong={errors.organisationName != null}
-              submitting={saving}
-              value={organisationName}
-              maxLength={ORGANISATION_NAME_MAXIMUM}
-              onChangeText={(text) => {
-                setOrganisationName(text);
-                setErrors((previous) => ({ ...previous, organisationName: undefined }));
-              }}
-              autoComplete="organization"
-              textContentType="organizationName"
-              autoCapitalize="words"
-              returnKeyType="next"
-              submitBehavior="submit"
-              onSubmitEditing={() => phoneInput.current?.focus()}
-              accessibilityLabel={t('completeProfile.organisation')}
-              testID="completeProfile.organisation"
-            />
-          </Field>
+      <View style={styles.fields}>
+        {asksForOrganisation && (
+          <>
+            <Field
+              label={t('completeProfile.organisation')}
+              error={errors.organisationName}
+              help={t('completeProfile.organisationHelp')}
+            >
+              <TextField
+                ref={organisationInput}
+                wrong={errors.organisationName != null}
+                submitting={saving}
+                value={organisationName}
+                maxLength={ORGANISATION_NAME_MAXIMUM}
+                onChangeText={(text) => {
+                  setOrganisationName(text);
+                  setErrors((previous) => ({ ...previous, organisationName: undefined }));
+                }}
+                autoComplete="organization"
+                textContentType="organizationName"
+                autoCapitalize="words"
+                returnKeyType="next"
+                submitBehavior="submit"
+                onSubmitEditing={() => phoneInput.current?.focus()}
+                accessibilityLabel={t('completeProfile.organisation')}
+                testID="completeProfile.organisation"
+              />
+            </Field>
 
-          <Field label={t('completeProfile.country')} error={errors.countryCode ?? errors.timezone}>
-            <CountryPicker
+            <Field
               label={t('completeProfile.country')}
-              value={countryCode}
-              onChange={(code) => {
-                setCountryCode(code);
-                // The code follows the Country until the person picks one themselves (sc-485).
-                setPhone((now) => followCountry(now, code));
-                // A chosen Country answers its own refusal, and the number's when the code follows it.
-                setErrors((previous) => ({
-                  ...previous,
-                  countryCode: undefined,
-                  phoneNumber: phone.picked ? previous.phoneNumber : undefined,
-                }));
-              }}
-              disabled={saving}
-              pickerRef={countryPicker}
-              testID="completeProfile.country"
-            />
-          </Field>
-        </>
-      )}
+              error={errors.countryCode ?? errors.timezone}
+            >
+              <CountryPicker
+                label={t('completeProfile.country')}
+                value={countryCode}
+                onChange={(code) => {
+                  setCountryCode(code);
+                  // The code follows the Country until the person picks one themselves (sc-485).
+                  setPhone((now) => followCountry(now, code));
+                  // A chosen Country answers its own refusal, and the number's when the code follows it.
+                  setErrors((previous) => ({
+                    ...previous,
+                    countryCode: undefined,
+                    phoneNumber: phone.picked ? previous.phoneNumber : undefined,
+                  }));
+                }}
+                disabled={saving}
+                pickerRef={countryPicker}
+                testID="completeProfile.country"
+              />
+            </Field>
+          </>
+        )}
 
-      <PhoneEntry
-        ref={phoneInput}
-        label={t('verifyPhone.numberLabel')}
-        pill={t('completeProfile.optional')}
-        help={t('completeProfile.mobileHelp')}
-        country={phoneCountryCode}
-        error={errors.phoneNumber ?? errors.phoneCountryCode}
-        submitting={saving}
-        onCountry={(code) => {
-          setPhone(pickPhoneCountry(code));
-          setErrors((previous) => ({
-            ...previous,
-            phoneCountryCode: undefined,
-            phoneNumber: undefined,
-          }));
-        }}
-        onNumber={(typed) => {
-          setPhoneNumber(typed);
-          setErrors((previous) => ({ ...previous, phoneNumber: undefined }));
-        }}
-        onSubmit={() => void save()}
-        testID="completeProfile.phone"
-      />
+        <PhoneEntry
+          ref={phoneInput}
+          label={t('verifyPhone.numberLabel')}
+          pill={t('completeProfile.optional')}
+          help={t('completeProfile.mobileHelp')}
+          country={phoneCountryCode}
+          error={errors.phoneNumber ?? errors.phoneCountryCode}
+          submitting={saving}
+          onCountry={(code) => {
+            setPhone(pickPhoneCountry(code));
+            setErrors((previous) => ({
+              ...previous,
+              phoneCountryCode: undefined,
+              phoneNumber: undefined,
+            }));
+          }}
+          onNumber={(typed) => {
+            setPhoneNumber(typed);
+            setErrors((previous) => ({ ...previous, phoneNumber: undefined }));
+          }}
+          onSubmit={() => void save()}
+          testID="completeProfile.phone"
+        />
+      </View>
 
       {!showOffers && (
         <PrimaryButton
@@ -799,6 +806,7 @@ function SignedInAs({ email }: { email: string }) {
 
 const styles = StyleSheet.create({
   form: { gap: tokens.space3xl },
+  fields: { gap: tokens.spaceXl },
   invitations: { gap: tokens.spaceMd },
   invitationsHead: { gap: tokens.spaceXxs },
   orRule: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceLg },
