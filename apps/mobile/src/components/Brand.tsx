@@ -1,38 +1,39 @@
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
-import Svg, { Circle, G, Path } from 'react-native-svg';
+import Svg, { G, Path } from 'react-native-svg';
 
 import { logo } from '../theme/logo.ts';
 import { tokens } from '../theme/tokens.ts';
+import { type BrandSize, brandSize } from './brandSize.ts';
 
 function Word() {
-  const { parts, dot } = logo.wordmark;
+  return <Path d={logo.wordmark.d} fill={tokens.colorInk} />;
+}
 
+function SymbolShapes() {
   return (
     <>
-      {parts.map((part) => (
-        <Path key={part.letter} d={part.d} fill={tokens[part.token]} />
+      {logo.symbol.paths.map((d) => (
+        <Path key={d} d={d} fill={tokens.colorInk} />
       ))}
-      <Circle cx={dot.cx} cy={dot.cy} r={dot.r} fill={tokens[dot.token]} />
     </>
   );
 }
 
 /** A fixed size, which a text-size change leaves as it is. The drawing is hidden: the view is read as the name. */
 export function Brand({
-  width,
   lockup = false,
   header = false,
   testID,
-}: {
-  width: number;
+  ...size
+}: BrandSize & {
   lockup?: boolean;
   header?: boolean;
   testID?: string;
 }) {
   const { t } = useTranslation();
   const box = lockup ? logo.lockup.viewBox : logo.wordmark.viewBox;
-  const height = (width * box.height) / box.width;
+  const { width, height } = brandSize(lockup, size);
   const { symbol, word } = logo.lockup;
 
   return (
@@ -52,18 +53,10 @@ export function Brand({
       >
         {lockup ? (
           <>
-            <G transform={`translate(${symbol.x} ${symbol.y}) scale(${symbol.scale})`}>
-              {symbol.dots.map((dot) => (
-                <Circle
-                  key={dot.token}
-                  cx={dot.cx}
-                  cy={dot.cy}
-                  r={dot.r}
-                  fill={tokens[dot.token]}
-                />
-              ))}
+            <G transform={`scale(${symbol.scale})`}>
+              <SymbolShapes />
             </G>
-            <G transform={`translate(${word.x} 0)`}>
+            <G transform={`translate(${word.x} ${word.y}) scale(${word.scale})`}>
               <Word />
             </G>
           </>

@@ -86,7 +86,7 @@ export interface AuthBack {
   testID: string;
 }
 
-const BRAND_WIDTH = 200;
+const BRAND_HEIGHT = 30;
 
 /** Every auth screen at three sizes: phone stacks with no card, portrait centres one, landscape splits saying from doing. */
 export function AuthFrame({
@@ -106,7 +106,7 @@ export function AuthFrame({
 
   const brand = (
     <View style={styles.brandRow}>
-      {back != null ? <BackButton {...back} /> : <Brand width={BRAND_WIDTH} lockup />}
+      {back != null ? <BackButton {...back} /> : <Brand height={BRAND_HEIGHT} lockup />}
     </View>
   );
 
