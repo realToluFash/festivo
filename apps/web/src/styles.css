@@ -932,6 +932,13 @@ span {
   box-shadow: var(--shadowCard);
 }
 
+/* The design demo's way in, at the foot of a signed-out page in development and QA only. */
+.demo-way-in {
+  display: flex;
+  justify-content: center;
+  padding: 0 var(--spaceXl) var(--space3xl);
+}
+
 /* ── Fields ───────────────────────────────────────────────────────────────── */
 
 .field {

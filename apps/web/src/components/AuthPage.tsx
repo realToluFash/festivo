@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 
+import { DemoLink } from '../demo/DemoEntry.tsx';
 import { type AuthBackTo, useAuthBack } from './AuthBack.tsx';
 import { Brand } from './Brand.tsx';
 import { LanguageChoice } from './LanguageChoice.tsx';
@@ -18,6 +19,8 @@ export function AuthPage({ back, children }: { back?: AuthBackTo; children: Reac
       <main id="content" className="auth-main">
         <section className="auth-card">{children}</section>
       </main>
+
+      <DemoLink />
     </div>
   );
 }
