@@ -260,6 +260,8 @@ Developers build the product's screen from it, so it has to be the board, workin
   such as answering for the organisation, goes in a dashed `DemoOnly` box.
 - **Sample data only**, from `src/demo/samples.ts`. The demo sends nothing to the API,
   signs nobody in and writes nothing to the device.
+- **The board's English only.** The i18n lint exempts the two demo folders; the developer
+  adds the four locales when building the product's screen.
 - **The app's own components and tokens**: `src/components`, `src/kit`,
   `src/theme/tokens.ts`. Where the kit has no pattern for what the board draws, build it
   inside `src/demo/`; the developer moves it into the product.
