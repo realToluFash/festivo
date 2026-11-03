@@ -1404,7 +1404,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: tokens.spaceLg,
     paddingHorizontal: tokens.spaceLg,
-    borderRadius: tokens.radiusField,
+    borderRadius: tokens.radiusRow,
   },
   railItemOn: { backgroundColor: tokens.colorNeutralFill },
   person: {
@@ -1442,7 +1442,7 @@ const styles = StyleSheet.create({
     minHeight: tokens.sizeHitPhoneHero,
     paddingLeft: tokens.spaceXs,
     paddingRight: tokens.spaceMd,
-    borderRadius: tokens.radiusField,
+    borderRadius: tokens.radiusRow,
   },
   tile: {
     width: tokens.space5xl,
@@ -1472,7 +1472,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: tokens.spaceLg,
     padding: tokens.spaceMd,
-    borderRadius: tokens.radiusField,
+    borderRadius: tokens.radiusRow,
   },
   optionOn: { backgroundColor: tokens.colorRowSelected },
   create: { borderTopWidth: 1, borderTopColor: tokens.colorInsetBorder, borderRadius: 0 },

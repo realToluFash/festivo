@@ -273,7 +273,7 @@ const styles = StyleSheet.create({
   sectionTablet: {
     paddingVertical: tokens.spaceSm,
     paddingHorizontal: 14,
-    borderRadius: tokens.radiusField,
+    borderRadius: tokens.radiusRow,
     borderWidth: 2,
     borderColor: 'transparent',
   },

@@ -477,7 +477,7 @@ const styles = StyleSheet.create({
   list: {
     borderWidth: LIST_BORDER,
     borderColor: tokens.colorBorder,
-    borderRadius: tokens.radiusField,
+    borderRadius: tokens.radiusRow,
     padding: LIST_PADDING,
   },
   option: {

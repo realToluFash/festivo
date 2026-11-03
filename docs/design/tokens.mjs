@@ -184,7 +184,8 @@ export const tokens = {
   radiusCardPhone: 18, // phone/tablet cards and tiles
   radiusCardLarge: 20, // emphasised panels (Messaging reach, Billing summary, landing dark card)
   radiusInset: 14,
-  radiusField: 12, // inputs; desktop Messaging uses 10 – accident
+  radiusField: 8, // inputs: text, code, select and search fields (sc-28849)
+  radiusRow: 12, // list rows, notices, inner boxes, skeletons; desktop Messaging uses 10 – accident
   radiusNav: 10, // sidebar items, small inset boxes
   radiusSmall: 8, // seat squares, small badges
   radiusCheckbox: 6, // 7 appears once

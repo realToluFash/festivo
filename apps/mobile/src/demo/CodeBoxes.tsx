@@ -8,7 +8,7 @@ import {
   View,
 } from 'react-native';
 
-import { useHeld } from '../components/Field.tsx';
+import { FocusEdge, useHeld } from '../components/Field.tsx';
 import { Text } from '../components/Text.tsx';
 import { codeProps, fieldName } from '../kit/fields.ts';
 import { inputFaced } from '../theme/fonts.ts';
@@ -79,18 +79,10 @@ export function CodeBoxes({
         importantForAccessibility="no-hide-descendants"
       >
         {Array.from({ length: CODE_LENGTH }, (_, index) => (
-          <View
-            key={index}
-            style={[
-              styles.box,
-              done && styles.boxDone,
-              focused &&
-                !done &&
-                !wrong &&
-                index === Math.min(digits.length, CODE_LENGTH - 1) &&
-                styles.ring,
-            ]}
-          >
+          <View key={index} style={[styles.box, done && styles.boxDone]}>
+            {focused && !done && !wrong && index === Math.min(digits.length, CODE_LENGTH - 1) && (
+              <FocusEdge />
+            )}
             <Text
               size={tokens.typeTitlePhone.size}
               weight="semibold"
@@ -145,12 +137,6 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colorCard,
   },
   boxDone: { borderColor: tokens.colorAccentHover, backgroundColor: tokens.colorAccentTint },
-  ring: {
-    outlineWidth: 2,
-    outlineOffset: 2,
-    outlineStyle: 'solid',
-    outlineColor: tokens.colorAccent,
-  },
   digitDone: { color: tokens.colorAccentText },
   input: {
     position: 'absolute',

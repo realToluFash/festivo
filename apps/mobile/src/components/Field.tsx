@@ -284,23 +284,33 @@ export function keysStayDown(): void {
   if (!Keyboard.isVisible()) TextInput.State.currentlyFocusedInput()?.blur();
 }
 
-/** [fd]'s focus ring: 2px of accent at a 2px offset, outside the field's own edge. */
-function useFocusRing(onFocus: TextInputProps['onFocus'], onBlur: TextInputProps['onBlur']) {
-  const [ringed, setRinged] = useState(false);
+/** Whether the field has focus, for drawing it on the field's own edge. */
+export function useFocusEdge<E>(onFocus?: (event: E) => void, onBlur?: (event: E) => void) {
+  const [focused, setFocused] = useState(false);
 
   return {
-    ringed,
-    ringing: {
-      onFocus: (event: Parameters<NonNullable<TextInputProps['onFocus']>>[0]) => {
-        setRinged(true);
+    focused,
+    edging: {
+      onFocus: (event: E) => {
+        setFocused(true);
         onFocus?.(event);
       },
-      onBlur: (event: Parameters<NonNullable<TextInputProps['onBlur']>>[0]) => {
-        setRinged(false);
+      onBlur: (event: E) => {
+        setFocused(false);
         onBlur?.(event);
       },
     },
   };
+}
+
+/** Focus on a bare input's own edge: its 1pt border drawn 2pt, green or red, with 1pt less padding so nothing moves. */
+export function focusEdge(focused: boolean, wrong: boolean) {
+  return [focused && fieldStyles.edge, wrong && fieldStyles.wrong];
+}
+
+/** Focus on the edge of a box that holds its input: laid over the box's 1pt border, so nothing moves. */
+export function FocusEdge({ wrong = false }: { wrong?: boolean }) {
+  return <View pointerEvents="none" style={[fieldStyles.over, wrong && fieldStyles.wrong]} />;
 }
 
 export function TextField({
@@ -314,7 +324,7 @@ export function TextField({
 }: TextFieldProps) {
   const holding = useHeld(submitting, value, rest.defaultValue, onChangeText);
   const labelID = useFieldLabel();
-  const { ringed, ringing } = useFocusRing(rest.onFocus, rest.onBlur);
+  const { focused, edging } = useFocusEdge(rest.onFocus, rest.onBlur);
 
   return (
     <TextInput
@@ -326,8 +336,8 @@ export function TextField({
       })}
       {...holding}
       ref={ref}
-      {...ringing}
-      style={inputFaced([styles.input, wrong && styles.wrong, ringed && styles.ring, style])}
+      {...edging}
+      style={inputFaced([styles.input, focusEdge(focused, wrong), style])}
       aria-invalid={wrong}
     />
   );
@@ -349,7 +359,7 @@ export function CodeField({
 }: CodeFieldProps) {
   const holding = useHeld(submitting, value, rest.defaultValue, onChangeText);
   const labelID = useFieldLabel();
-  const { ringed, ringing } = useFocusRing(rest.onFocus, rest.onBlur);
+  const { focused, edging } = useFocusEdge(rest.onFocus, rest.onBlur);
 
   return (
     <TextInput
@@ -362,8 +372,8 @@ export function CodeField({
       })}
       {...holding}
       ref={ref}
-      {...ringing}
-      style={inputFaced([styles.code, wrong && styles.wrong, ringed && styles.ring, style])}
+      {...edging}
+      style={inputFaced([styles.code, focusEdge(focused, wrong), style])}
       aria-invalid={wrong}
     />
   );
@@ -381,13 +391,23 @@ export const fieldStyles = StyleSheet.create({
     color: tokens.colorInk,
     fontSize: CONTROL_TEXT_SIZE,
   },
-  wrong: { borderColor: tokens.colorBroken },
-  ring: {
-    outlineWidth: 2,
-    outlineOffset: 2,
-    outlineStyle: 'solid',
-    outlineColor: tokens.colorAccent,
+  edge: {
+    paddingHorizontal: tokens.spaceLg - 1,
+    paddingVertical: tokens.spaceSm - 1,
+    borderWidth: 2,
+    borderColor: tokens.colorAccent,
   },
+  over: {
+    position: 'absolute',
+    top: -1,
+    right: -1,
+    bottom: -1,
+    left: -1,
+    borderWidth: 2,
+    borderRadius: tokens.radiusField,
+    borderColor: tokens.colorAccent,
+  },
+  wrong: { borderColor: tokens.colorBroken },
 });
 
 const styles = StyleSheet.create({
@@ -408,15 +428,13 @@ const styles = StyleSheet.create({
   action: { flexShrink: 1, minHeight: tokens.sizeHit, justifyContent: 'center' },
   trailing: { marginLeft: 'auto' },
   input: fieldStyles.input,
-  wrong: fieldStyles.wrong,
-  ring: fieldStyles.ring,
   code: {
     minHeight: tokens.sizeHitPhoneHero,
     paddingHorizontal: tokens.spaceLg,
     paddingVertical: tokens.spaceSm,
     borderWidth: 1,
     borderColor: tokens.colorFieldBorder,
-    borderRadius: tokens.radiusInset,
+    borderRadius: tokens.radiusField,
     backgroundColor: tokens.colorCard,
     color: tokens.colorInk,
     fontSize: tokens.typeTitleDialog.size,

@@ -15,7 +15,7 @@ import { useTranslation } from 'react-i18next';
 import { fieldName, passwordProps } from '../kit/fields.ts';
 import { inputFaced } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
-import { fieldStyles, useFieldLabel, useHeld } from './Field.tsx';
+import { fieldStyles, focusEdge, useFieldLabel, useFocusEdge, useHeld } from './Field.tsx';
 import { Text } from './Text.tsx';
 
 /** Room for "Show" or "Hide", so typed text never runs under the control. */
@@ -58,6 +58,7 @@ export function PasswordField({
   useFocusEffect(useCallback(() => () => setRevealed(false), []));
   const holding = useHeld(submitting, value, rest.defaultValue, onChangeText);
   const labelID = useFieldLabel();
+  const { focused, edging } = useFocusEdge(rest.onFocus, rest.onBlur);
 
   return (
     <View>
@@ -70,7 +71,13 @@ export function PasswordField({
         {...passwordProps(revealed)}
         {...holding}
         ref={ref}
-        style={inputFaced([fieldStyles.input, styles.withReveal, wrong && fieldStyles.wrong])}
+        {...edging}
+        style={inputFaced([
+          fieldStyles.input,
+          focusEdge(focused, wrong),
+          styles.withReveal,
+          focused && styles.withRevealEdge,
+        ])}
         aria-invalid={wrong}
         testID={testID}
         onSubmitEditing={(event) => {
@@ -96,6 +103,7 @@ export function PasswordField({
 
 const styles = StyleSheet.create({
   withReveal: { paddingRight: REVEAL_ROOM },
+  withRevealEdge: { paddingRight: REVEAL_ROOM - 1 },
   reveal: {
     position: 'absolute',
     top: 0,

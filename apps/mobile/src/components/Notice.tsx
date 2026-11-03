@@ -188,7 +188,7 @@ const styles = StyleSheet.create({
     gap: tokens.spaceSm,
     paddingVertical: tokens.spaceMd,
     paddingHorizontal: tokens.spaceLg,
-    borderRadius: tokens.radiusField,
+    borderRadius: tokens.radiusRow,
   },
   solidMark: { borderWidth: 0, backgroundColor: tokens.colorAttention },
   inkOnSolid: { color: tokens.colorInkOnDark },
