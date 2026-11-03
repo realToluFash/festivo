@@ -8,7 +8,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { tokens } from '../docs/design/tokens.mjs';
+import { schemes, tokens } from '../docs/design/tokens.mjs';
 import { NATIVE_OUT, WEB_OUT, onDisk, outputs } from './build-tokens.mjs';
 
 describe('generated tokens', () => {
@@ -320,4 +320,80 @@ describe('settled: motion is short, and both clients use it', () => {
     ]);
     expect(tokens.motionPulse * tokens.motionPulseTimes).toBeLessThan(5000);
   });
+});
+
+describe("B Confetti's schemes are held to the base's contrast", () => {
+  const SURFACES = [
+    'colorCard',
+    'colorPage',
+    'colorInset',
+    'colorRowHover',
+    'colorRowSelected',
+    'colorNeutralFill',
+    'colorInsetBorder',
+    'colorHeader',
+    'colorHeaderTrack',
+    'colorAccentTint',
+    'colorAttentionTint',
+    'colorAttentionWash',
+    'colorBrokenTint',
+  ];
+
+  it('has the eight the owner was shown', () => {
+    expect(Object.keys(schemes)).toEqual([
+      'violet',
+      'cobalt',
+      'garden',
+      'citrus',
+      'berry',
+      'blacktie',
+      'sorbet',
+      'terracotta',
+    ]);
+  });
+
+  for (const [name, scheme] of Object.entries(schemes)) {
+    const t = { ...tokens, ...scheme };
+
+    it(`${name} changes only colours the base has`, () => {
+      for (const key of Object.keys(scheme)) {
+        expect(key in tokens && key.startsWith('color'), key).toBe(true);
+        expect(scheme[key], key).toMatch(/^#[0-9A-F]{6}$/);
+      }
+    });
+
+    it(`${name} puts a white label on its button at 4.5:1, at rest and on hover`, () => {
+      expect(contrast(t.colorInkOnDark, t.colorAccentHover)).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(t.colorInkOnDark, t.colorPrimaryHover)).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(t.colorAccent, t.colorCard)).toBeGreaterThanOrEqual(3);
+    });
+
+    it(`${name} reads its links at 4.5:1 on the card, the page and its tint`, () => {
+      for (const surface of ['colorCard', 'colorPage', 'colorAccentTint']) {
+        expect(contrast(t.colorAccentText, t[surface]), surface).toBeGreaterThanOrEqual(4.5);
+      }
+    });
+
+    it(`${name} keeps the secondary ink at 4.5:1 on every light surface`, () => {
+      for (const surface of SURFACES) {
+        expect(contrast(t.colorInkSecondary, t[surface]), surface).toBeGreaterThanOrEqual(4.5);
+      }
+    });
+
+    it(`${name} draws a field's edge and an error at 3:1, and leaves a word's edge light`, () => {
+      for (const surface of ['colorCard', 'colorPage', 'colorHeader', 'colorInset']) {
+        expect(contrast(t.colorFieldBorder, t[surface]), surface).toBeGreaterThanOrEqual(3);
+        expect(contrast(t.colorBroken, t[surface]), surface).toBeGreaterThanOrEqual(3);
+      }
+      expect(contrast(t.colorControlBorder, t.colorCard)).toBeLessThan(3);
+      expect(contrast(t.colorBrokenText, t.colorBrokenTint)).toBeGreaterThanOrEqual(4.5);
+    });
+
+    it(`${name} lends no option its brand`, () => {
+      const options = Object.entries(t).filter(([k]) => k.startsWith('option'));
+      for (const [option, value] of options) {
+        expect(value, option).not.toBe(t.colorAccent);
+      }
+    });
+  }
 });
