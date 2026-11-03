@@ -86,7 +86,7 @@ export interface AuthBack {
   testID: string;
 }
 
-const BRAND_HEIGHT = 36;
+const BRAND_HEIGHT = 30;
 
 /** Every auth screen at three sizes: phone stacks with no card, portrait centres one, landscape splits saying from doing. */
 export function AuthFrame({
