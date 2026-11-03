@@ -1,14 +1,16 @@
 import { describe, expect, it } from 'vitest';
 
 import { tokens } from '../docs/design/tokens.mjs';
-import { IMAGES, MOBILE_GEOMETRY, SVGS, mobileGeometry, onDisk, pixels } from './draw-logo.mjs';
+import {
+  IMAGES,
+  MOBILE_GEOMETRY,
+  SVGS,
+  mobileGeometry,
+  onDisk,
+  pixels,
+  rgb,
+} from './draw-logo.mjs';
 import { decodePng } from './qa-env.mjs';
-
-function rgb(hex) {
-  const value = parseInt(hex.slice(1), 16);
-
-  return [(value >> 16) & 255, (value >> 8) & 255, value & 255];
-}
 
 describe('the logo images', () => {
   for (const [path, image] of Object.entries(IMAGES)) {

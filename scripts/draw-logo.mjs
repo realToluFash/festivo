@@ -68,7 +68,7 @@ function inSymbol(u, v) {
   });
 }
 
-function rgb(hex) {
+export function rgb(hex) {
   const value = parseInt(hex.slice(1), 16);
 
   return [(value >> 16) & 255, (value >> 8) & 255, value & 255];
