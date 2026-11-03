@@ -5,6 +5,7 @@ export const SAMPLE = {
   email: 'folake@ire.events',
   password: 'correct horse battery',
   organisation: 'Ire Events',
+  name: 'Folake Adeyemi',
 } as const;
 
 export const TRIES = 5;
