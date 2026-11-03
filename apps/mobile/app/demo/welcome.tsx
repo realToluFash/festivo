@@ -6,7 +6,7 @@ import { useReadOut } from '../../src/components/ReadOut.tsx';
 import { Text } from '../../src/components/Text.tsx';
 import { Choices } from '../../src/demo/Choices.tsx';
 import { LanguageButton } from '../../src/demo/LanguageButton.tsx';
-import { WelcomeFrame } from '../../src/demo/Welcome.tsx';
+import { displayLine, WelcomeFrame } from '../../src/demo/Welcome.tsx';
 import { useLayout } from '../../src/layout/useLayout.ts';
 import { tokens } from '../../src/theme/tokens.ts';
 
@@ -23,19 +23,28 @@ export default function Welcome() {
   const { kind } = useLayout();
   const { width } = useWindowDimensions();
   const said = notice != null ? NOTICES[notice] : undefined;
-  const mark = kind === 'phone' ? (width < 380 ? 92 : 112) : 150;
+  const mark = kind === 'phone' ? (width < 380 ? 92 : 112) : 140;
+  const line = kind === 'phone' ? (width < 380 ? 26 : 32) : 46;
 
   return (
     <WelcomeFrame
+      cover
       top={<LanguageButton />}
       brand={
         <>
-          <Brand width={mark} lockup header />
+          <Brand width={mark} lockup header ink={tokens.colorInkOnDark} />
           {said != null ? (
-            <Notice title={said[0]} body={said[1]} />
+            <Notice title={said[0]} body={said[1]} size={line} />
           ) : (
-            <Text size={tokens.typeBodyGuest.size} weight="medium" style={styles.tagline}>
-              Plan the event. Run the night.
+            <Text
+              family="display"
+              weight="bold"
+              size={line}
+              maxFontSizeMultiplier={1.25}
+              accessibilityRole="header"
+              style={[styles.onCover, displayLine(line)]}
+            >
+              {'Plan the event.\nRun the day.'}
             </Text>
           )}
         </>
@@ -53,15 +62,21 @@ export default function Welcome() {
 }
 
 /** Why the person is here again, in the tagline's place: no box and no mark. */
-function Notice({ title, body }: { title: string; body: string }) {
+function Notice({ title, body, size }: { title: string; body: string; size: number }) {
   useReadOut(`${title}. ${body}`);
 
   return (
     <View style={styles.notice}>
-      <Text size={18} weight="semibold" style={styles.centre}>
+      <Text
+        family="display"
+        weight="bold"
+        size={size}
+        maxFontSizeMultiplier={1.25}
+        style={[styles.onCover, displayLine(size)]}
+      >
         {title}
       </Text>
-      <Text size={CONTROL} style={[styles.centre, styles.secondary]}>
+      <Text size={size < 40 ? CONTROL : 19} style={[styles.onCover, styles.centre]}>
         {body}
       </Text>
     </View>
@@ -71,8 +86,7 @@ function Notice({ title, body }: { title: string; body: string }) {
 const CONTROL = 16;
 
 const styles = StyleSheet.create({
-  tagline: { textAlign: 'center', color: tokens.colorInkSecondary },
-  notice: { maxWidth: 310, gap: tokens.spaceXs, alignItems: 'center' },
+  onCover: { color: tokens.colorInkOnDark },
+  notice: { maxWidth: 330, gap: tokens.spaceSm, alignItems: 'center' },
   centre: { textAlign: 'center' },
-  secondary: { color: tokens.colorInkSecondary },
 });

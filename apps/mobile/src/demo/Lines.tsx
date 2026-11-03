@@ -7,6 +7,7 @@ import { StepMark } from '../components/StepMark.tsx';
 import { Text } from '../components/Text.tsx';
 import { Title } from '../components/Title.tsx';
 import { useReadOut } from '../components/ReadOut.tsx';
+import { useLayout } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 
 /** A step's title and the one line under it that says what to do. */
@@ -19,6 +20,8 @@ export function Heading({
   intro?: string;
   mark?: [MarkTone, string];
 }) {
+  const size = useLayout().kind === 'phone' ? 32 : 34;
+
   return (
     <View style={styles.heading}>
       {mark != null && (
@@ -26,7 +29,12 @@ export function Heading({
           <StatusMark tone={mark[0]} word={mark[1]} />
         </View>
       )}
-      <Title size={tokens.typeTitlePhone.size} accessibilityRole="header" style={styles.title}>
+      <Title
+        family="display"
+        size={size}
+        accessibilityRole="header"
+        style={{ letterSpacing: size * -0.04, lineHeight: Math.round(size * 1.08) }}
+      >
         {title}
       </Title>
       {intro != null && (
@@ -130,7 +138,6 @@ export function DemoOnly({ title, children }: { title: string; children: ReactNo
 const styles = StyleSheet.create({
   heading: { marginTop: tokens.spaceLg },
   mark: { marginBottom: tokens.spaceLg },
-  title: { letterSpacing: -0.5 },
   intro: { marginTop: tokens.spaceSm, color: tokens.colorInkSecondary, lineHeight: 23 },
   ink: { color: tokens.colorInk },
   secondary: { color: tokens.colorInkSecondary },
