@@ -23,13 +23,14 @@ export function AuthPage({
   const { t } = useTranslation();
   const control = useAuthBack(back);
   const { pathname } = useLocation();
-  const signedIn = useSessionState().status === 'signedIn';
+  const status = useSessionState().status;
+  const signedIn = status === 'signedIn';
 
   return (
     <div className={bare ? 'auth auth-bare' : 'auth'}>
       <header className="auth-header">
         {control ?? <Brand lockup />}
-        {!signedIn && pathname !== '/register' && (
+        {!signedIn && status !== 'unreachable' && pathname !== '/register' && (
           <div className="auth-new">
             <span>{t('auth.newTo')}</span>
             <Link className="button auth-new-button" to="/register">
