@@ -2,6 +2,8 @@ import { type KeyboardEvent, useEffect, useRef, useState } from 'react';
 
 import { LANGUAGES, nextItem } from './rules.ts';
 
+const FOCUSABLE = 'a[href], button, input, select, textarea, [tabindex]';
+
 /** The WAI-ARIA menu button. Choosing renames the button only: the demo's words stay English. */
 export function LanguageMenu() {
   const [chosen, setChosen] = useState(0);
@@ -21,6 +23,9 @@ export function LanguageMenu() {
       if (menu.current?.contains(target) || button.current?.contains(target)) return;
 
       setOpen(false);
+      if (target instanceof Element && target.closest(FOCUSABLE)) return;
+
+      event.preventDefault();
       button.current?.focus();
     };
     document.addEventListener('mousedown', outside);
