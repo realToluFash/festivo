@@ -140,6 +140,9 @@ overlays and the primary action all change form, not just size.
   **Disagreements** and **Accidents** need a recorded decision rather than a silent pick.
   Two live ones: `--sizeControlDense: 36px` contradicts the 44px rule, and `--typePill` is
   declared 12px where the screens mostly use 11px.
+- **A demo takes its languages from `LOCALES`** in `@soirely/domain`, as any screen does.
+  A list of languages typed into a demo is one more declaration that stays behind when a
+  locale is added or renamed.
 
 ### What a linter now refuses
 
