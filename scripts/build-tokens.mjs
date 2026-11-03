@@ -85,7 +85,16 @@ function buildCss() {
     }
   }
 
-  lines.push('}', '');
+  lines.push('}');
+
+  // A scheme is laid over the base by <html data-scheme>, which config.json sets at boot.
+  for (const [name, colours] of Object.entries(schemes)) {
+    lines.push('', `:root[data-scheme='${name}'] {`);
+    for (const [key, value] of Object.entries(colours)) lines.push(`  --${key}: ${value};`);
+    lines.push('}');
+  }
+
+  lines.push('');
   return lines.join('\n');
 }
 

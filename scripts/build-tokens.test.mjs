@@ -397,3 +397,23 @@ describe("B Confetti's schemes are held to the base's contrast", () => {
     });
   }
 });
+
+describe("the CSS lays each scheme over the base, for the web's look switch", () => {
+  const css = outputs()[WEB_OUT];
+  const block = (name) => {
+    const start = css.indexOf(`:root[data-scheme='${name}'] {`);
+    return start < 0 ? null : css.slice(start, css.indexOf('}', start) + 1);
+  };
+
+  it('keeps the base in :root, so a page with no scheme is unchanged', () => {
+    expect(css.indexOf(':root {')).toBeLessThan(css.indexOf(':root[data-scheme='));
+    expect(css).toContain(`--colorAccent: ${tokens.colorAccent};`);
+  });
+
+  for (const [name, scheme] of Object.entries(schemes)) {
+    it(`gives ${name} a block of its own colours and nothing else`, () => {
+      const lines = block(name)?.split('\n').slice(1, -1);
+      expect(lines, name).toEqual(Object.entries(scheme).map(([k, v]) => `  --${k}: ${v};`));
+    });
+  }
+});
