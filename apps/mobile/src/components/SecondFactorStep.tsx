@@ -147,7 +147,7 @@ export function SecondFactorStep({
         />
       }
     >
-      <View style={styles.form}>
+      <>
         {status.kind === 'paused' && (
           <View style={styles.paused}>
             <Notice
@@ -237,13 +237,12 @@ export function SecondFactorStep({
             {t('twoFactor.lostBoth')}
           </Text>
         )}
-      </View>
+      </>
     </AuthFrame>
   );
 }
 
 const styles = StyleSheet.create({
-  form: { gap: tokens.spaceXl },
   paused: { gap: tokens.spaceSm },
   figures: { fontVariant: ['tabular-nums'] },
   secondary: { color: tokens.colorInkSecondary },

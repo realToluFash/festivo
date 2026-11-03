@@ -245,69 +245,71 @@ function Credentials({
 
       {!providerOnly && (
         <>
-          <Field label={t('signIn.email')} error={checks.errors.email}>
-            <TextField
-              ref={email}
-              wrong={checks.errors.email != null}
-              submitting={busy}
-              defaultValue={keptEmail}
-              keyboardType="email-address"
-              autoComplete="email"
-              textContentType="emailAddress"
-              autoCapitalize="none"
-              onChangeText={(text) => {
-                typed.current.email = text;
-                checks.edited('email', text);
-              }}
-              onBlur={() => checks.left('email', typed.current.email)}
-              returnKeyType="next"
-              submitBehavior="submit"
-              onSubmitEditing={() => password.current?.focus()}
-              accessibilityLabel={t('signIn.email')}
-              testID="signIn.email"
-            />
-          </Field>
+          <View style={styles.fields}>
+            <Field label={t('signIn.email')} error={checks.errors.email}>
+              <TextField
+                ref={email}
+                wrong={checks.errors.email != null}
+                submitting={busy}
+                defaultValue={keptEmail}
+                keyboardType="email-address"
+                autoComplete="email"
+                textContentType="emailAddress"
+                autoCapitalize="none"
+                onChangeText={(text) => {
+                  typed.current.email = text;
+                  checks.edited('email', text);
+                }}
+                onBlur={() => checks.left('email', typed.current.email)}
+                returnKeyType="next"
+                submitBehavior="submit"
+                onSubmitEditing={() => password.current?.focus()}
+                accessibilityLabel={t('signIn.email')}
+                testID="signIn.email"
+              />
+            </Field>
 
-          <Field
-            label={t('signIn.password')}
-            labelAction={{
-              label: kind === 'phone' ? t('recovery.forgotShort') : t('recovery.forgot'),
-              onPress: () => router.push('/forgot-password'),
-              testID: 'signIn.forgot',
-            }}
-            error={
-              checks.errors.password ?? (status.kind === 'refused' ? t('signIn.refused') : null)
-            }
-            errorActions={
-              checks.errors.password == null && status.kind === 'refused'
-                ? [
-                    {
-                      label: t('signIn.lockedReset'),
-                      onPress: () => router.push('/forgot-password'),
-                      testID: 'signIn.refused.reset',
-                    },
-                  ]
-                : undefined
-            }
-          >
-            <PasswordField
-              ref={password}
-              wrong={status.kind === 'refused' || checks.errors.password != null}
-              submitting={busy}
-              autoComplete="current-password"
-              textContentType="password"
-              onChangeText={(text) => {
-                typed.current.password = text;
-                checks.edited('password', text);
+            <Field
+              label={t('signIn.password')}
+              labelAction={{
+                label: kind === 'phone' ? t('recovery.forgotShort') : t('recovery.forgot'),
+                onPress: () => router.push('/forgot-password'),
+                testID: 'signIn.forgot',
               }}
-              onBlur={() => checks.left('password', typed.current.password)}
-              returnKeyType="go"
-              submitBehavior="submit"
-              onSubmitEditing={submit}
-              accessibilityLabel={t('signIn.password')}
-              testID="signIn.password"
-            />
-          </Field>
+              error={
+                checks.errors.password ?? (status.kind === 'refused' ? t('signIn.refused') : null)
+              }
+              errorActions={
+                checks.errors.password == null && status.kind === 'refused'
+                  ? [
+                      {
+                        label: t('signIn.lockedReset'),
+                        onPress: () => router.push('/forgot-password'),
+                        testID: 'signIn.refused.reset',
+                      },
+                    ]
+                  : undefined
+              }
+            >
+              <PasswordField
+                ref={password}
+                wrong={status.kind === 'refused' || checks.errors.password != null}
+                submitting={busy}
+                autoComplete="current-password"
+                textContentType="password"
+                onChangeText={(text) => {
+                  typed.current.password = text;
+                  checks.edited('password', text);
+                }}
+                onBlur={() => checks.left('password', typed.current.password)}
+                returnKeyType="go"
+                submitBehavior="submit"
+                onSubmitEditing={submit}
+                accessibilityLabel={t('signIn.password')}
+                testID="signIn.password"
+              />
+            </Field>
+          </View>
 
           <PrimaryButton
             label={
@@ -389,5 +391,6 @@ function refusalFrom(error: unknown): Status {
 }
 
 const styles = StyleSheet.create({
-  form: { gap: tokens.spaceXl },
+  form: { flexGrow: 1, gap: tokens.space3xl },
+  fields: { gap: tokens.spaceXl },
 });

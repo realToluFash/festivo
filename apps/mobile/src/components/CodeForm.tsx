@@ -52,7 +52,7 @@ export function CodeForm({
   );
 
   return (
-    <View style={styles.form}>
+    <>
       {status.kind === 'expired' && (
         <Notice
           tone="attention"
@@ -152,12 +152,11 @@ export function CodeForm({
       )}
 
       {children}
-    </View>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  form: { gap: tokens.spaceXl },
   resend: { gap: tokens.spaceXs },
   secondary: { color: tokens.colorInkSecondary },
 });

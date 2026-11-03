@@ -9,7 +9,7 @@ import {
 
 import { type WeightName } from '../theme/fonts.ts';
 import { fitWidest, titleSize, wordsIn } from '../layout/textSize.ts';
-import { Text, type TextProps } from './Text.tsx';
+import { Text, TitleCap, type TextProps } from './Text.tsx';
 
 type WholeWordsProps = TextProps & { size: number; children: string };
 
@@ -28,23 +28,26 @@ export function MeasuredWords({
   onWidth: (word: string, width: number) => void;
 }) {
   return (
-    <View
-      style={styles.measure}
-      pointerEvents="none"
-      accessibilityElementsHidden
-      importantForAccessibility="no-hide-descendants"
-    >
-      {[...new Set(words)].map((word) => (
-        <Text
-          key={word}
-          {...look}
-          onLayout={(event) => onWidth(word, event.nativeEvent.layout.width)}
-          accessible={false}
-        >
-          {word}
-        </Text>
-      ))}
-    </View>
+    // Measured at their own size, never under a title's cap, or a stepped-down title would measure smaller and step up again.
+    <TitleCap.Provider value={null}>
+      <View
+        style={styles.measure}
+        pointerEvents="none"
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      >
+        {[...new Set(words)].map((word) => (
+          <Text
+            key={word}
+            {...look}
+            onLayout={(event) => onWidth(word, event.nativeEvent.layout.width)}
+            accessible={false}
+          >
+            {word}
+          </Text>
+        ))}
+      </View>
+    </TitleCap.Provider>
   );
 }
 
@@ -113,9 +116,13 @@ export function WholeWords({
   start,
   children,
   onLayout,
+  onDrawn,
   ...rest
-}: WholeWordsProps & { start: number }) {
+}: WholeWordsProps & { start: number; onDrawn?: ((size: number) => void) | undefined }) {
   const words = useWholeWords(size, start, [children], { weight: rest.weight, style: rest.style });
+  const drawnSize = words.maxFontSizeMultiplier * size;
+
+  useEffect(() => onDrawn?.(drawnSize), [onDrawn, drawnSize]);
 
   return (
     <>
@@ -136,7 +143,10 @@ export function WholeWords({
 }
 
 /** Grows less than other text at the accessibility sizes, and steps down rather than break a word (sc-13496). */
-export function Title({ size, ...rest }: WholeWordsProps) {
+export function Title({
+  size,
+  ...rest
+}: WholeWordsProps & { onDrawn?: ((size: number) => void) | undefined }) {
   const { fontScale } = useWindowDimensions();
 
   return <WholeWords weight="bold" {...rest} size={size} start={titleSize(size, fontScale)} />;

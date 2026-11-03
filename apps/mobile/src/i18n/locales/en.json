@@ -39,7 +39,8 @@
   },
   "language": {
     "label": "Language",
-    "automatic": "Automatic"
+    "automatic": "Automatic",
+    "follows": "Your language follows you to every device."
   },
   "layouts": {
     "title": "Layouts",
