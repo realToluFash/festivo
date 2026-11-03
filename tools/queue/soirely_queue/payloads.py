@@ -83,7 +83,8 @@ def inbox(p, db, row, story):
 def review(p, db, row, story, pr, cache):
     p.add(*V.header(story))
     V.notes(p, story)
-    V.description(p, story, always=(T.is_ac,), only=(T.is_ac,), outline_rest=True)
+    full = (T.is_ac, T.is_design) if pr and W.design_pr(pr) else (T.is_ac,)
+    V.description(p, story, always=full, only=full, outline_rest=True)
     V.comments(p, story)
     if not pr:
         p.add("", "No open pull request. Ask the developer with "

@@ -90,6 +90,17 @@ class Review(unittest.TestCase):
         self.assertIn("--to ops`", self.render(("ops",)))
         self.assertIn("--to dev2`", self.render(("dev2",)))
 
+    def test_a_design_pr_prints_the_design_section_in_full_beside_the_ac(self):
+        for branch, sections in (("ux/sc-9-sign-in", (T.is_ac, T.is_design)),
+                                 ("feature/sc-9/x", (T.is_ac,))):
+            pull = dict(pr(branch), head_sha="b0bd492", checks="green")
+            with mock.patch.object(payloads, "V") as views, \
+                    mock.patch.object(payloads, "cached_diff"), \
+                    mock.patch.object(payloads.W, "latest_verdict", return_value=None):
+                payloads.review(Lines("lead"), None, {"id": 5}, ticket(labels=()), pull, {})
+            views.description.assert_called_once_with(
+                mock.ANY, mock.ANY, always=sections, only=sections, outline_rest=True)
+
 
 if __name__ == "__main__":
     unittest.main()
