@@ -212,7 +212,7 @@
 
 .demo-label-row {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
   gap: var(--spaceLg);
 }

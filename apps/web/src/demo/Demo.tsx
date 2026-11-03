@@ -132,7 +132,7 @@ function BoardPage({ children }: { children: ReactNode }) {
       </main>
       <footer className="demo-page-footer">
         <span>© 2026 Soirely</span>
-        <nav className="demo-page-links" aria-label="Soirely">
+        <nav className="demo-page-links" aria-label="Legal and language">
           <Link className="link-button demo-link" to="/demo/later?screen=terms">
             Terms
           </Link>
