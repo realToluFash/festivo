@@ -1,0 +1,9 @@
+# Typed text survives a rotation on sign in (AuthFrame's one tree). The harness rotates between the two halves. sc-28812.
+appId: host.exp.Exponent
+---
+- runFlow: sign-in-screen-english.yaml
+- tapOn:
+    id: 'signIn.email'
+- inputText: 'kept@soirely.test'
+- hideKeyboard
+- takeScreenshot: polish-rotate-before
