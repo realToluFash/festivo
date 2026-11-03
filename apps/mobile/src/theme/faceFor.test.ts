@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import {
+  DISPLAY,
   GOOGLE_SANS,
   MONO,
   SANS,
@@ -46,6 +47,12 @@ describe('a weight draws from its own file', () => {
     expect(['400', '500', '600', '700'].map((weight) => faceFor(weight, 'googleSans'))).toEqual(
       Array(4).fill('GoogleSans-Medium'),
     );
+  });
+
+  it('sets a display title in Bricolage Grotesque ExtraBold, whatever weight it is asked for', () => {
+    expect(
+      [undefined, '400', '600', '700', '800'].map((weight) => faceFor(weight, 'display')),
+    ).toEqual(Array(5).fill('BricolageGrotesque-ExtraBold'));
   });
 });
 
@@ -114,6 +121,7 @@ describe('the faces ship inside the app', () => {
     ['instrument-sans', Object.values(SANS)],
     ['jetbrains-mono', Object.values(MONO)],
     ['google-sans', Object.values(GOOGLE_SANS)],
+    ['bricolage-grotesque', Object.values(DISPLAY)],
   ])('bundles every %s file the mapper names, beside its licence', (folder, families) => {
     expect(readFileSync(join(fonts, folder, 'OFL.txt'), 'utf8')).toContain(
       'SIL Open Font License, Version 1.1',

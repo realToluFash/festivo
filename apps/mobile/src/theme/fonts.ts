@@ -1,6 +1,14 @@
 import { Platform, StyleSheet, type StyleProp, type TextStyle } from 'react-native';
 
-import { GOOGLE_SANS, MONO, SANS, type Family, faceStyle, inputFaceStyle } from './faceFor.ts';
+import {
+  DISPLAY,
+  GOOGLE_SANS,
+  MONO,
+  SANS,
+  type Family,
+  faceStyle,
+  inputFaceStyle,
+} from './faceFor.ts';
 
 export { type Family, facesLoaded } from './faceFor.ts';
 
@@ -42,6 +50,7 @@ export const FONT_FACES = {
   [MONO[500]]: require('../../assets/fonts/jetbrains-mono/JetBrainsMono-Medium.ttf'),
   [MONO[700]]: require('../../assets/fonts/jetbrains-mono/JetBrainsMono-Bold.ttf'),
   [GOOGLE_SANS[500]]: require('../../assets/fonts/google-sans/GoogleSans-Medium.ttf'),
+  [DISPLAY[800]]: require('../../assets/fonts/bricolage-grotesque/BricolageGrotesque-ExtraBold.ttf'),
 } as Record<string, number>;
 
 /**

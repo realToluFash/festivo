@@ -18,7 +18,12 @@ export const GOOGLE_SANS = {
   500: 'GoogleSans-Medium',
 } as const;
 
-const FAMILIES = { sans: SANS, mono: MONO, googleSans: GOOGLE_SANS } as const;
+/** B Confetti's display face, for titles. Its one weight answers every weight asked of it. */
+export const DISPLAY = {
+  800: 'BricolageGrotesque-ExtraBold',
+} as const;
+
+const FAMILIES = { sans: SANS, mono: MONO, googleSans: GOOGLE_SANS, display: DISPLAY } as const;
 
 /** `system` is the platform's own font, for the words on Apple's sign-in button on iOS alone. */
 export type Family = keyof typeof FAMILIES | 'system';
