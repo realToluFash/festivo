@@ -179,14 +179,13 @@ describe('the demo', () => {
     expect(await screen.findByRole('heading', { name: 'Privacy' })).toBeDefined();
   });
 
-  it('leaves focus on the language button after a click outside the menu', async () => {
+  it('returns focus to the language button when a click outside closes the menu', async () => {
     await signInBoard();
     const button = screen.getByRole('button', { name: 'Language: English' });
+    fireEvent.keyDown(button, { key: 'ArrowDown' });
 
-    fireEvent.click(button);
-    expect(screen.getByRole('menu')).toBeDefined();
-    fireEvent.mouseDown(document.body);
-
+    const pressed = fireEvent.mouseDown(screen.getByRole('heading', { name: 'Sign in' }));
+    expect(pressed).toBe(false);
     expect(screen.queryByRole('menu')).toBeNull();
     expect(document.activeElement).toBe(button);
   });
