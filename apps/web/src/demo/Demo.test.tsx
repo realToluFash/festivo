@@ -165,6 +165,17 @@ describe('the demo', () => {
     expect(screen.queryByRole('menu')).toBeNull();
   });
 
+  it('returns focus to the language button when a click outside closes the menu', async () => {
+    await signInBoard();
+    const button = screen.getByRole('button', { name: 'Language: English' });
+    fireEvent.keyDown(button, { key: 'ArrowDown' });
+
+    const pressed = fireEvent.mouseDown(screen.getByRole('heading', { name: 'Sign in' }));
+    expect(pressed).toBe(false);
+    expect(screen.queryByRole('menu')).toBeNull();
+    expect(document.activeElement).toBe(button);
+  });
+
   it('gives the form way to the providers when password sign-in is off', async () => {
     await signInBoard('provider-only');
 
