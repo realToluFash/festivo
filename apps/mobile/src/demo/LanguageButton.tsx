@@ -1,3 +1,4 @@
+import { LOCALES } from '@soirely/domain';
 import { useRef, useState } from 'react';
 import { Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
@@ -8,7 +9,7 @@ import { Text } from '../components/Text.tsx';
 import { tokens } from '../theme/tokens.ts';
 import { SheetBody } from './Lines.tsx';
 
-const LANGUAGES = ['English', 'Español', 'Français', 'Português'];
+const LANGUAGES = LOCALES.map((locale) => locale.nativeName);
 
 /** Welcome's language button; the demo's words stay English, so its sheet only shows the choice. */
 export function LanguageButton() {

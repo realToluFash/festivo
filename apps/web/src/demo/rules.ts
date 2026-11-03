@@ -1,4 +1,4 @@
-import { emailProblem, formatTimeOfDay } from '@soirely/domain';
+import { emailProblem, formatTimeOfDay, LOCALES } from '@soirely/domain';
 
 /** What the demo is filled with and answers to. Nothing here reaches the API. */
 export const SAMPLE = {
@@ -47,12 +47,11 @@ export function timeOfDay(at: number): string {
   return formatTimeOfDay(new Date(at), 'en-GB');
 }
 
-export const LANGUAGES = [
-  { code: 'en', name: 'English', english: null },
-  { code: 'es', name: 'Español', english: 'Spanish' },
-  { code: 'fr', name: 'Français', english: 'French' },
-  { code: 'pt', name: 'Português', english: 'Portuguese' },
-] as const;
+export const LANGUAGES = LOCALES.map(({ code, name, nativeName }) => ({
+  code,
+  name: nativeName,
+  english: name === nativeName ? null : name,
+}));
 
 /** The item a menu's arrow keys land on, going round at either end. */
 export function nextItem(current: number, key: 'ArrowUp' | 'ArrowDown', count: number): number {

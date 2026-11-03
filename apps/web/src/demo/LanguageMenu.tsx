@@ -5,7 +5,7 @@ import { LANGUAGES, nextItem } from './rules.ts';
 /** The WAI-ARIA menu button. Choosing renames the button only: the demo's words stay English. */
 export function LanguageMenu() {
   const [chosen, setChosen] = useState(0);
-  const current = LANGUAGES[chosen] ?? LANGUAGES[0];
+  const current = LANGUAGES[chosen]?.name ?? '';
   const [open, setOpen] = useState(false);
   const button = useRef<HTMLButtonElement>(null);
   const menu = useRef<HTMLDivElement>(null);
@@ -61,12 +61,12 @@ export function LanguageMenu() {
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? 'demo-language-menu' : undefined}
-        aria-label={`Language: ${current.name}`}
+        aria-label={`Language: ${current}`}
         onClick={() => (open ? close() : setOpen(true))}
         onKeyDown={onButtonKey}
       >
         <GlobeMark />
-        <span>{current.name}</span>
+        <span>{current}</span>
         <ChevronMark />
       </button>
 
