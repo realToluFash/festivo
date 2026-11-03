@@ -7,6 +7,7 @@ import { NotFound } from '../routes/public/NotFound.tsx';
 import { offButton } from '../offButton.ts';
 import { offField } from '../offField.ts';
 import { LanguageMenu } from './LanguageMenu.tsx';
+import { Today } from './Today.tsx';
 import {
   type FieldLines,
   LOCK_MS,
@@ -23,6 +24,15 @@ const BUSY_MS = 900;
 type Notice = { title: string; body: string };
 
 /** The states the board draws, each opened from the demo's home. */
+const TODAY_MOMENTS: { key: string; name: string }[] = [
+  { key: 'plan', name: 'A planning day' },
+  { key: 'planNow', name: 'A planning day, built now' },
+  { key: 'day', name: 'The event day' },
+  { key: 'dayNow', name: 'The event day, built now' },
+  { key: 'quiet', name: 'A quiet week' },
+  { key: 'first', name: 'A first run' },
+];
+
 const SIGN_IN_STATES: { key: string; name: string; notice?: Notice }[] = [
   { key: 'first-visit', name: 'Signed out, first visit' },
   {
@@ -73,7 +83,7 @@ export default function Demo() {
     <Routes>
       <Route index element={<DemoHome from={from} />} />
       <Route path="sign-in" element={<SignInBoard />} />
-      <Route path="signed-in" element={<SignedIn />} />
+      <Route path="today" element={<Today />} />
       <Route path="later" element={<Later />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
@@ -95,6 +105,21 @@ function DemoHome({ from }: { from: string }) {
         The designs, working on sample data. Nothing is sent. Sign in with{' '}
         <strong>{SAMPLE.email}</strong> and <strong>{SAMPLE.password}</strong>.
       </p>
+
+      <section className="demo-home-page" aria-labelledby="demo-page-29">
+        <h2 id="demo-page-29">29 · Today · where signing in lands</h2>
+        <h3>Today in B Confetti · desktop</h3>
+        <ul className="demo-home-rows">
+          {TODAY_MOMENTS.map((moment) => (
+            <li key={moment.key}>
+              <Link className="demo-home-row" to={`today?moment=${moment.key}`}>
+                <span>{moment.name}</span>
+                <span aria-hidden="true">›</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-27">
         <h2 id="demo-page-27">27 · Sign in · desktop polish</h2>
@@ -219,7 +244,7 @@ function SignInForm({ state }: { state: string }) {
     setRevealed(false);
     after(() => {
       if (samplePair(typed.email, typed.password)) {
-        void navigate('/demo/signed-in');
+        void navigate('/demo/today');
         return;
       }
 
@@ -243,10 +268,10 @@ function SignInForm({ state }: { state: string }) {
     setLines((was) => ({ ...was, [field]: now[field] }));
   }
 
-  function provider(name: string): void {
+  function provider(): void {
     if (busy) return;
 
-    after(() => void navigate('/demo/signed-in', { state: { provider: name } }));
+    after(() => void navigate('/demo/today'));
   }
 
   const until = liftsAt == null ? null : timeOfDay(liftsAt);
@@ -380,14 +405,14 @@ function SignInForm({ state }: { state: string }) {
   );
 }
 
-function Providers({ busy, onChoose }: { busy: boolean; onChoose: (name: string) => void }) {
+function Providers({ busy, onChoose }: { busy: boolean; onChoose: () => void }) {
   return (
     <div className="demo-providers">
       <button
         className="button button-google demo-wide"
         type="button"
         {...offButton(busy, { dim: false })}
-        onClick={() => onChoose('Google')}
+        onClick={onChoose}
       >
         <GoogleMark />
         <span>Continue with Google</span>
@@ -396,32 +421,12 @@ function Providers({ busy, onChoose }: { busy: boolean; onChoose: (name: string)
         className="button demo-apple demo-wide"
         type="button"
         {...offButton(busy, { dim: false })}
-        onClick={() => onChoose('Apple')}
+        onClick={onChoose}
       >
         <AppleMark onLight />
         <span>Continue with Apple</span>
       </button>
     </div>
-  );
-}
-
-function SignedIn() {
-  const { state } = useLocation() as { state: { provider?: string } | null };
-
-  return (
-    <BoardPage>
-      <div className="demo-heading">
-        <h1>Signed in</h1>
-        <p className="demo-muted">
-          {state?.provider != null
-            ? `A stand-in: ${state.provider} is not wired in the demo, so this is where it would land.`
-            : `A stand-in for your events, signed in as ${SAMPLE.email}.`}
-        </p>
-      </div>
-      <Link className="button demo-wide" to="/demo/sign-in?state=signed-out">
-        Sign out
-      </Link>
-    </BoardPage>
   );
 }
 
