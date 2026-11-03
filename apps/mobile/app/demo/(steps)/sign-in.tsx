@@ -57,6 +57,7 @@ export default function SignIn() {
         passwordField.current?.setSelection(0, password.length);
         return;
       }
+      tap.done();
       if (params.after === 'tfaAgain') router.replace('/demo/tfa-again');
       else if (params.after === 'join') router.replace('/demo/join-message');
       else router.push({ pathname: '/demo/two-factor', params: { email: email.trim() } });
