@@ -154,7 +154,7 @@ export const USER_FACING_PROPS: readonly string[] = [
 ];
 
 export interface Exemption {
-  /** Path from the repository root. */
+  /** Path from the repository root; one ending in `/` covers the folder. */
   path: string;
   /** Why. Not optional — an exemption with no reason is a suppression. */
   because: string;
@@ -173,4 +173,20 @@ export const LITERAL_EXEMPT: readonly Exemption[] = [
     because:
       'The boot-failure screen. It renders when localisation itself failed to initialise, so there is no translator to render it with — English is the only option, and saying nothing would be a blank screen.',
   },
+  {
+    path: 'apps/mobile/src/demo/',
+    because:
+      "The design demo's parts, opened only in development, QA and phone builds (src/demo/gate.ts). Its words are the boards' English by sc-28825's AC; the product screen built from it puts them in the four locales.",
+  },
+  {
+    path: 'apps/mobile/app/demo/',
+    because:
+      "The design demo's screens, opened only in development, QA and phone builds (src/demo/gate.ts). Its words are the boards' English by sc-28825's AC; the product screen built from it puts them in the four locales.",
+  },
 ];
+
+export function exempted(path: string): boolean {
+  return LITERAL_EXEMPT.some((e) =>
+    e.path.endsWith('/') ? path.startsWith(e.path) : path === e.path,
+  );
+}
