@@ -11,9 +11,9 @@ appId: host.exp.Exponent
     id: 'demo.tryAgain'
 - takeScreenshot: unreachable-trying
 - extendedWaitUntil:
-    visible:
-      id: 'demo.tryAgain'
+    visible: 'Try again'
     timeout: 10000
+- assertVisible: 'Cannot reach Soirely'
 - tapOn:
     id: 'demo.connectionBack'
 - extendedWaitUntil:
