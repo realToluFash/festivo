@@ -21,7 +21,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { tokens } from '../docs/design/tokens.mjs';
+import { schemes, tokens } from '../docs/design/tokens.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -93,9 +93,21 @@ function buildNative() {
   return [
     `// ${BANNER}`,
     '',
-    `export const tokens = ${JSON.stringify(tokens, null, 2)} as const;`,
+    `const base = ${JSON.stringify(tokens, null, 2)} as const;`,
     '',
-    'export type Tokens = typeof tokens;',
+    `export const schemes = ${JSON.stringify(schemes, null, 2)} as const;`,
+    '',
+    'export type Scheme = keyof typeof schemes;',
+    '',
+    'export type Tokens = { [K in keyof typeof base]: K extends `color${string}` ? string : (typeof base)[K] };',
+    '',
+    '/** The base with a scheme laid over it; a name that is no scheme keeps the base. */',
+    'export function withScheme(name: string | undefined): Tokens {',
+    '  return name != null && Object.hasOwn(schemes, name) ? { ...base, ...schemes[name as Scheme] } : base;',
+    '}',
+    '',
+    '/** Expo writes EXPO_PUBLIC_SCHEME in at build time. */',
+    'export const tokens: Tokens = withScheme(process.env.EXPO_PUBLIC_SCHEME);',
     '',
     'export default tokens;',
     '',
