@@ -25,6 +25,11 @@ export function titleSize(size: number, fontScale: number): number {
   return fontScale >= NINTH_STEP_SCALE ? steps[1] : steps[0];
 }
 
+/** The most a text of `size` may grow so it never draws larger than a title drawn at `title`; React Native ignores a multiplier under 1. */
+export function capUnderTitle(title: number, size: number, own?: number): number {
+  return Math.max(1, Math.min(own ?? Infinity, title / size));
+}
+
 // An iPhone SE or mini is 375 across; an iPhone 17 Pro, 402.
 const COMPACT_PHONE_SIDE = 390;
 

@@ -1,4 +1,4 @@
-import { type Ref, useSyncExternalStore } from 'react';
+import { createContext, type Ref, useContext, useSyncExternalStore } from 'react';
 import {
   Text as RNText,
   StyleSheet,
@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 
 import { type Family, WEIGHTS, faced, type WeightName } from '../theme/fonts.ts';
+import { capUnderTitle } from '../layout/textSize.ts';
 import { tokens } from '../theme/tokens.ts';
 import { subscribeTextLaidOut, textLayoutsAtNewScale } from './textLaidOut.ts';
 
@@ -35,15 +36,20 @@ export interface TextProps extends Omit<RNTextProps, 'onPress' | 'onLongPress'> 
 
 export type TextHandle = TextInstance;
 
+/** The size a screen's title is drawn at: no text inside grows past it (sc-28812). */
+export const TitleCap = createContext<number | null>(null);
+
 export function Text({
   weight = 'regular',
   size = 16,
   muted = false,
   family = 'sans',
   style,
+  maxFontSizeMultiplier,
   ...rest
 }: TextProps) {
   const { fontScale } = useWindowDimensions();
+  const cap = useContext(TitleCap);
   const laidOut = useSyncExternalStore(subscribeTextLaidOut, textLayoutsAtNewScale);
 
   return (
@@ -60,6 +66,9 @@ export function Text({
         ],
         family,
       )}
+      maxFontSizeMultiplier={
+        cap == null ? maxFontSizeMultiplier : capUnderTitle(cap, size, maxFontSizeMultiplier)
+      }
       {...rest}
     />
   );
