@@ -67,6 +67,34 @@ describe('the account cards share one frame', () => {
   });
 });
 
+describe('a field shows focus on its own edge, drawn only in Field.tsx (sc-28849)', () => {
+  it('in every source', () => {
+    const offenders = sources(['src', 'app'])
+      .filter(({ path }) => !path.endsWith('components/Field.tsx'))
+      .filter(({ text }) => drawsFocusEdge(text))
+      .map(({ path }) => path);
+
+    expect(
+      offenders,
+      'Use focusEdge() or <FocusEdge /> from src/components/Field.tsx; no outline ring.',
+    ).toEqual([]);
+  });
+
+  it('notices an outline ring and an overlay of its own', () => {
+    expect(drawsFocusEdge('focused: { outlineWidth: 2, outlineColor: tokens.colorAccent },')).toBe(
+      true,
+    );
+    expect(
+      drawsFocusEdge(
+        "ring: {\n  position: 'absolute',\n  top: -1,\n  borderWidth: 2,\n  borderColor: tokens.colorAccent,\n},",
+      ),
+    ).toBe(true);
+    expect(drawsFocusEdge('ringOn: { borderWidth: 2, borderColor: tokens.colorAccent },')).toBe(
+      false,
+    );
+  });
+});
+
 describe('screen reader focus moves on both platforms', () => {
   it('is moved only in screenReaderFocus.ts', () => {
     const offenders = sources(['src', 'app'])
@@ -1717,4 +1745,16 @@ function showsPending(text: string, reading: string): boolean {
   const next = /\n\s*if \(/u.exec(rest);
 
   return /<Pending\b[^>]*\/>/u.test(rest.slice(0, next?.index));
+}
+
+function drawsFocusEdge(text: string): boolean {
+  return (
+    /\boutline(Width|Color)\b/u.test(text) ||
+    (text.match(/\{[^{}]*\}/gu) ?? []).some(
+      (style) =>
+        /position: 'absolute'/u.test(style) &&
+        /borderWidth: 2\b/u.test(style) &&
+        /borderColor: tokens\.colorAccent\b/u.test(style),
+    )
+  );
 }

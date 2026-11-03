@@ -380,7 +380,7 @@ const styles = StyleSheet.create({
   label: { color: tokens.marks.info.ink },
   url: {
     padding: tokens.spaceLg,
-    borderRadius: tokens.radiusField,
+    borderRadius: tokens.radiusRow,
     borderWidth: 1,
     borderColor: tokens.colorFieldBorder,
     backgroundColor: tokens.colorInset,

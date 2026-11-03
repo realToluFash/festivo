@@ -1310,7 +1310,7 @@ const styles = StyleSheet.create({
     gap: tokens.spaceLg,
     paddingVertical: tokens.spaceLg,
     paddingHorizontal: tokens.spaceSm,
-    borderRadius: tokens.radiusField,
+    borderRadius: tokens.radiusRow,
   },
   rowDivider: { borderTopWidth: 1, borderTopColor: tokens.colorInsetBorder },
   request: { gap: tokens.spaceMd, paddingVertical: tokens.spaceMd },

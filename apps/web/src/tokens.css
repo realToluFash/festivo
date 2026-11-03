@@ -134,7 +134,8 @@
   --radiusCardPhone: 18px;
   --radiusCardLarge: 20px;
   --radiusInset: 14px;
-  --radiusField: 12px;
+  --radiusField: 8px;
+  --radiusRow: 12px;
   --radiusNav: 10px;
   --radiusSmall: 8px;
   --radiusCheckbox: 6px;
