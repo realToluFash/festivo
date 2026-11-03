@@ -13,11 +13,11 @@ export function DemoLink() {
   if (!demoOpens(config().environment)) return null;
 
   return (
-    <footer className="demo-way-in">
+    <p className="demo-way-in">
       <Link className="link-button" to="/demo" state={{ from: pathname + search }}>
         Design demo
       </Link>
-    </footer>
+    </p>
   );
 }
 

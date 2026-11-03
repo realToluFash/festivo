@@ -151,6 +151,7 @@ export const tokens = {
 
   // ── Sizing (px) ────────────────────────────────────────────────────────────
   sizeHit: 44, // every button, chip, row, checkbox, stepper; desktop included (482 uses)
+  sizeControlDesktop: 40, // desktop web fields and buttons on the signed-out pages (sc-28983); the touch floor stays sizeHit
   sizeHitPhonePrimary: 48, // phone primary buttons and inputs
   sizeHitPhoneHero: 52, // one-per-screen phone CTA ("I'm here" uses 56 – accident)
   sizeListRow: 56, // sc-22092's List row, as the organisation switcher's rows (sc-26270)

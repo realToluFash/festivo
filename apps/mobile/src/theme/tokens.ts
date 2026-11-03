@@ -194,6 +194,7 @@ export const tokens = {
   "space5xl": 32,
   "space6xl": 40,
   "sizeHit": 44,
+  "sizeControlDesktop": 40,
   "sizeHitPhonePrimary": 48,
   "sizeHitPhoneHero": 52,
   "sizeListRow": 56,
