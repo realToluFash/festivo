@@ -7,7 +7,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 
-import { type WeightName } from '../theme/fonts.ts';
+import { type Family, type WeightName } from '../theme/fonts.ts';
 import { fitWidest, titleSize, wordsIn } from '../layout/textSize.ts';
 import { Text, TitleCap, type TextProps } from './Text.tsx';
 
@@ -16,6 +16,7 @@ type WholeWordsProps = TextProps & { size: number; children: string };
 interface WordsLook {
   weight?: WeightName | undefined;
   style?: StyleProp<TextStyle> | undefined;
+  family?: Family | undefined;
 }
 
 /** Each of these words drawn hidden and unbounded, to know how wide it is before anything that shows it is laid out. */
@@ -23,7 +24,7 @@ export function MeasuredWords({
   words,
   onWidth,
   ...look
-}: Pick<TextProps, 'size' | 'weight' | 'style' | 'maxFontSizeMultiplier'> & {
+}: Pick<TextProps, 'size' | 'weight' | 'style' | 'family' | 'maxFontSizeMultiplier'> & {
   words: readonly string[];
   onWidth: (word: string, width: number) => void;
 }) {
@@ -92,6 +93,7 @@ export function useWholeWords(
       size={size}
       weight={look.weight ?? 'regular'}
       style={look.style ?? null}
+      family={look.family ?? 'sans'}
       maxFontSizeMultiplier={start / size}
       onWidth={(word, width) => {
         setMeasured((current) => ({ ...current, [`${start}|${word}`]: width }));
@@ -119,7 +121,11 @@ export function WholeWords({
   onDrawn,
   ...rest
 }: WholeWordsProps & { start: number; onDrawn?: ((size: number) => void) | undefined }) {
-  const words = useWholeWords(size, start, [children], { weight: rest.weight, style: rest.style });
+  const words = useWholeWords(size, start, [children], {
+    weight: rest.weight,
+    style: rest.style,
+    family: rest.family,
+  });
   const drawnSize = words.maxFontSizeMultiplier * size;
 
   useEffect(() => onDrawn?.(drawnSize), [onDrawn, drawnSize]);
