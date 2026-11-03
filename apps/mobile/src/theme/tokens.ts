@@ -53,7 +53,6 @@ export const tokens = {
   "scrimDialog": "rgba(21,23,28,0.4)",
   "colorPrintInk": "#000000",
   "fontFamily": "'Instrument Sans', sans-serif",
-  "fontFamilyMono": "'JetBrains Mono', monospace",
   "typeDisplay": {
     "size": 48,
     "weight": 700,
@@ -166,7 +165,7 @@ export const tokens = {
     "size": 14,
     "weight": 600,
     "lineHeight": 1,
-    "letterSpacing": "0"
+    "letterSpacing": "0.04em"
   },
   "typeRoomNow": {
     "size": 64,
