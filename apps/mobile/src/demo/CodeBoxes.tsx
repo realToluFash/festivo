@@ -79,18 +79,10 @@ export function CodeBoxes({
         importantForAccessibility="no-hide-descendants"
       >
         {Array.from({ length: CODE_LENGTH }, (_, index) => (
-          <View
-            key={index}
-            style={[
-              styles.box,
-              done && styles.boxDone,
-              focused &&
-                !done &&
-                !wrong &&
-                index === Math.min(digits.length, CODE_LENGTH - 1) &&
-                styles.ring,
-            ]}
-          >
+          <View key={index} style={[styles.box, done && styles.boxDone]}>
+            {focused && !done && !wrong && index === Math.min(digits.length, CODE_LENGTH - 1) && (
+              <View pointerEvents="none" style={styles.ring} />
+            )}
             <Text
               size={tokens.typeTitlePhone.size}
               weight="semibold"
@@ -141,15 +133,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: tokens.colorFieldBorder,
-    borderRadius: tokens.radiusField,
+    borderRadius: tokens.radiusSmall,
     backgroundColor: tokens.colorCard,
   },
   boxDone: { borderColor: tokens.colorAccentHover, backgroundColor: tokens.colorAccentTint },
   ring: {
-    outlineWidth: 2,
-    outlineOffset: 2,
-    outlineStyle: 'solid',
-    outlineColor: tokens.colorAccent,
+    position: 'absolute',
+    top: -1,
+    right: -1,
+    bottom: -1,
+    left: -1,
+    borderWidth: 2,
+    borderRadius: tokens.radiusSmall,
+    borderColor: tokens.colorAccent,
   },
   digitDone: { color: tokens.colorAccentText },
   input: {

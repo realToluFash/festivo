@@ -73,14 +73,7 @@ export function InsideField({
   });
 
   return (
-    <View
-      style={[
-        styles.box,
-        multiline && styles.tall,
-        state === 'blank' && styles.blank,
-        focused && styles.ring,
-      ]}
-    >
+    <View style={[styles.box, multiline && styles.tall, state === 'blank' && styles.blank]}>
       <TextInput
         {...FIELD_DEFAULTS}
         {...(password && passwordProps(revealed))}
@@ -145,6 +138,9 @@ export function InsideField({
           </Svg>
         </Pressable>
       )}
+      {focused && (
+        <View pointerEvents="none" style={[styles.ring, state === 'blank' && styles.ringBlank]} />
+      )}
     </View>
   );
 }
@@ -189,18 +185,23 @@ const styles = StyleSheet.create({
     minHeight: HEIGHT,
     borderWidth: 1,
     borderColor: tokens.colorFieldBorder,
-    borderRadius: tokens.radiusField,
+    borderRadius: tokens.radiusSmall,
     backgroundColor: tokens.colorCard,
     justifyContent: 'center',
   },
   tall: { minHeight: 132 },
   blank: { borderColor: tokens.colorBroken },
   ring: {
-    outlineWidth: 2,
-    outlineOffset: 2,
-    outlineStyle: 'solid',
-    outlineColor: tokens.colorAccent,
+    position: 'absolute',
+    top: -1,
+    right: -1,
+    bottom: -1,
+    left: -1,
+    borderWidth: 2,
+    borderRadius: tokens.radiusSmall,
+    borderColor: tokens.colorAccent,
   },
+  ringBlank: { borderColor: tokens.colorBroken },
   input: {
     minHeight: HEIGHT - 2,
     paddingHorizontal: tokens.spaceXl - 1,

@@ -141,7 +141,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: tokens.spaceXl - 1,
     borderWidth: 1,
     borderColor: tokens.colorFieldBorder,
-    borderRadius: tokens.radiusField,
+    borderRadius: tokens.radiusSmall,
     backgroundColor: tokens.colorCard,
   },
   compact: { paddingHorizontal: tokens.spaceLg },
