@@ -56,14 +56,17 @@ Review` whose head moved past your pass comes back too: `sq` moves it to `In Rev
    itself.
 2. **A design pull request**, on a `ux/` branch: the designer's working demo of a board, in
    `apps/mobile/src/demo/` and `apps/mobile/app/demo/` only (`SHARED.md`, **Step three:
-   build it in the app's demo**). `sq lead next` hands it to you whatever its story's
-   state. Review it against its board rather than the story's AC. Check that:
+   build it in the app's demo**). `sq lead next` hands it to you once its checks are green,
+   whatever its story's state. Review it against its board rather than the story's AC.
+   Check that:
    - it is the board, working: every phone and tablet frame, state and interaction;
    - it runs on sample data and sends nothing to the API;
    - it is built from the app's own components and tokens;
    - its guard tests pass.
-     Your verdict stays on the pull request: the story keeps its state, and your findings go
-     to `ux`, who answers them and merges.
+
+   Your verdict stays on the pull request: the story keeps its state, and your findings go
+   to `ux`, who answers them and merges.
+
 3. Failing that, say nothing is waiting for review and stop. That is a complete answer.
 
 **Check the claim first.** In Review means somebody thinks it is ready. If the pull request
