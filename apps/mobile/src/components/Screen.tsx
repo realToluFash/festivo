@@ -135,6 +135,11 @@ export function WindowOrigin({ children }: { children: ReactNode }) {
   );
 }
 
+/** Where the app's root starts in measureInWindow's frame, for reading the keys' top against it. */
+export function useWindowOrigin(): number {
+  return useContext(Origin);
+}
+
 export interface AboveKeyboard {
   ref: RefObject<ViewInstance | null>;
   onLayout: () => void;

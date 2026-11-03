@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 
 import { findLiterals } from './literals.ts';
 import { sourcesOf } from './sources.ts';
-import { LITERAL_EXEMPT, ROOT, SURFACES } from './surfaces.ts';
+import { exempted, LITERAL_EXEMPT, ROOT, SURFACES } from './surfaces.ts';
 
 /**
  * No user-facing text written as a literal.
@@ -14,14 +14,12 @@ import { LITERAL_EXEMPT, ROOT, SURFACES } from './surfaces.ts';
  * perfectly in English, has no key, and is simply absent in the other three
  * languages. No type error, no failing request, no log line.
  */
-const exemptPaths = new Set(LITERAL_EXEMPT.map((e) => e.path));
-
 describe.each(SURFACES.filter((s) => s.sources.length > 0).map((s) => [s.name, s] as const))(
   '%s',
   (_name, surface) => {
     it('has no user-facing string literals', () => {
       const offenders = sourcesOf(surface.sources)
-        .filter(({ path }) => !exemptPaths.has(path))
+        .filter(({ path }) => !exempted(path))
         .flatMap(({ path, text }) =>
           findLiterals(path, text).map((f) => `${path}:${f.line} ${f.reason}: ${f.text}`),
         );
@@ -43,9 +41,11 @@ describe.each(SURFACES.filter((s) => s.sources.length > 0).map((s) => [s.name, s
  */
 it('has no stale exemptions', () => {
   const stale = LITERAL_EXEMPT.filter((exemption) => {
-    const text = readFileSync(join(ROOT, exemption.path), 'utf8');
+    const files = exemption.path.endsWith('/')
+      ? sourcesOf([exemption.path])
+      : [{ path: exemption.path, text: readFileSync(join(ROOT, exemption.path), 'utf8') }];
 
-    return findLiterals(exemption.path, text).length === 0;
+    return files.every(({ path, text }) => findLiterals(path, text).length === 0);
   }).map((e) => e.path);
 
   expect(stale, 'these no longer contain any literal — remove them from LITERAL_EXEMPT').toEqual(
