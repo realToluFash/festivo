@@ -1,9 +1,11 @@
+import { type ReactNode, useId } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Svg, { Defs, LinearGradient, RadialGradient, Rect, Stop } from 'react-native-svg';
 
 import { tokens } from '../theme/tokens.ts';
+import type { EventKey } from './today.ts';
 
-type Piece = readonly [
+export type Piece = readonly [
   x: number,
   y: number,
   shape: 'half' | 'bar',
@@ -35,15 +37,142 @@ const PIECES: readonly Piece[] = [
   [0.87, 0.77, 'bar', 44, 48, 'white'],
 ];
 
-const GLOWS = [
+interface Glow {
+  id: string;
+  x: string;
+  y: string;
+  r: string;
+  colour: string;
+  opacity: number;
+}
+
+const GLOWS: readonly Glow[] = [
   { id: 'nw', x: '0%', y: '0%', r: '70%', colour: tokens.colorInkOnDark, opacity: 0.32 },
   { id: 'ne', x: '100%', y: '8%', r: '62%', colour: tokens.optionRose, opacity: 0.9 },
   { id: 'se', x: '100%', y: '100%', r: '64%', colour: tokens.optionAmber, opacity: 0.85 },
   { id: 'sw', x: '0%', y: '96%', r: '60%', colour: tokens.optionBlue, opacity: 0.8 },
-] as const;
+];
 
-/** Soirely's cover for any hour: the brand colour as a soft mesh, and confetti cut from the mark's half disc and bar. */
-export function Cover({ scale = 1 }: { scale?: number }) {
+/** Each event's cover until a host adds a photo: its own colour, as a mesh. */
+const EVENT_MESH: Record<EventKey, { base: string; glows: readonly Glow[] }> = {
+  wed: {
+    base: tokens.optionRose,
+    glows: [
+      { id: 'a', x: '15%', y: '20%', r: '60%', colour: tokens.colorInkOnDark, opacity: 0.34 },
+      { id: 'b', x: '85%', y: '10%', r: '55%', colour: tokens.optionPurple, opacity: 0.45 },
+      { id: 'c', x: '70%', y: '95%', r: '60%', colour: tokens.optionAmber, opacity: 0.9 },
+    ],
+  },
+  ireti: {
+    base: tokens.optionTeal,
+    glows: [
+      { id: 'a', x: '20%', y: '15%', r: '60%', colour: tokens.optionGreen, opacity: 0.9 },
+      { id: 'b', x: '90%', y: '30%', r: '55%', colour: tokens.colorInkOnDark, opacity: 0.24 },
+      { id: 'c', x: '40%', y: '100%', r: '60%', colour: tokens.optionBlue, opacity: 0.45 },
+    ],
+  },
+  party: {
+    base: tokens.colorAccent,
+    glows: [
+      { id: 'a', x: '20%', y: '20%', r: '60%', colour: tokens.optionPurple, opacity: 0.8 },
+      { id: 'b', x: '85%', y: '15%', r: '55%', colour: tokens.optionBlue, opacity: 0.8 },
+      { id: 'c', x: '60%', y: '100%', r: '60%', colour: tokens.optionRose, opacity: 0.8 },
+    ],
+  },
+  draft: {
+    base: tokens.optionAmber,
+    glows: [
+      { id: 'a', x: '30%', y: '20%', r: '60%', colour: tokens.colorInkOnDark, opacity: 0.4 },
+      { id: 'b', x: '80%', y: '80%', r: '60%', colour: tokens.optionRose, opacity: 0.6 },
+    ],
+  },
+};
+
+/** Where the cover darkens behind white words: a band across the middle, the foot, the left side, or all of it on the day. */
+export type Shade = 'band' | 'foot' | 'side' | 'day' | 'none';
+
+const SHADES: Record<
+  Exclude<Shade, 'none'>,
+  { across: boolean; stops: readonly (readonly [number, number])[] }
+> = {
+  band: {
+    across: false,
+    stops: [
+      [0.1, 0],
+      [0.32, 0.26],
+      [0.62, 0.26],
+      [0.84, 0],
+    ],
+  },
+  foot: {
+    across: false,
+    stops: [
+      [0.25, 0],
+      [0.6, 0.28],
+      [1, 0.45],
+    ],
+  },
+  side: {
+    across: true,
+    stops: [
+      [0, 0.42],
+      [0.5, 0.26],
+      [0.8, 0],
+    ],
+  },
+  day: {
+    across: false,
+    stops: [
+      [0, 0.22],
+      [0.28, 0.5],
+      [1, 0.56],
+    ],
+  },
+};
+
+function Mesh({ base, glows, shade }: { base: string; glows: readonly Glow[]; shade: Shade }) {
+  const fall = shade === 'none' ? null : SHADES[shade];
+  // Several meshes share a screen, and an SVG id names its gradient for the whole document on the web.
+  const own = useId().replace(/[^a-z0-9]/giu, '');
+
+  return (
+    <Svg width="100%" height="100%" preserveAspectRatio="none" viewBox="0 0 100 100">
+      <Defs>
+        {glows.map((glow) => (
+          <RadialGradient key={glow.id} id={`${own}${glow.id}`} cx={glow.x} cy={glow.y} r={glow.r}>
+            <Stop offset="0" stopColor={glow.colour} stopOpacity={glow.opacity} />
+            <Stop offset="1" stopColor={glow.colour} stopOpacity={0} />
+          </RadialGradient>
+        ))}
+        {fall != null && (
+          <LinearGradient
+            id={`${own}shade`}
+            x1="0"
+            y1="0"
+            x2={fall.across ? '1' : '0'}
+            y2={fall.across ? '0' : '1'}
+          >
+            {fall.stops.map(([offset, opacity]) => (
+              <Stop
+                key={offset}
+                offset={String(offset)}
+                stopColor={tokens.colorInk}
+                stopOpacity={opacity}
+              />
+            ))}
+          </LinearGradient>
+        )}
+      </Defs>
+      <Rect width="100" height="100" fill={base} />
+      {glows.map((glow) => (
+        <Rect key={glow.id} width="100" height="100" fill={`url(#${own}${glow.id})`} />
+      ))}
+      {fall != null && <Rect width="100" height="100" fill={`url(#${own}shade)`} />}
+    </Svg>
+  );
+}
+
+function Hidden({ children }: { children: ReactNode }) {
   return (
     <View
       style={StyleSheet.absoluteFill}
@@ -51,28 +180,34 @@ export function Cover({ scale = 1 }: { scale?: number }) {
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
     >
-      <Svg width="100%" height="100%" preserveAspectRatio="none" viewBox="0 0 100 100">
-        <Defs>
-          {GLOWS.map((glow) => (
-            <RadialGradient key={glow.id} id={glow.id} cx={glow.x} cy={glow.y} r={glow.r}>
-              <Stop offset="0" stopColor={glow.colour} stopOpacity={glow.opacity} />
-              <Stop offset="1" stopColor={glow.colour} stopOpacity={0} />
-            </RadialGradient>
-          ))}
-          <LinearGradient id="band" x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0.1" stopColor={tokens.colorInk} stopOpacity={0} />
-            <Stop offset="0.32" stopColor={tokens.colorInk} stopOpacity={0.26} />
-            <Stop offset="0.62" stopColor={tokens.colorInk} stopOpacity={0.26} />
-            <Stop offset="0.84" stopColor={tokens.colorInk} stopOpacity={0} />
-          </LinearGradient>
-        </Defs>
-        <Rect width="100" height="100" fill={tokens.colorAccent} />
-        {GLOWS.map((glow) => (
-          <Rect key={glow.id} width="100" height="100" fill={`url(#${glow.id})`} />
-        ))}
-        <Rect width="100" height="100" fill="url(#band)" />
-      </Svg>
-      {PIECES.map(([x, y, shape, size, turn, tone]) => {
+      {children}
+    </View>
+  );
+}
+
+/** Soirely's cover for any hour: the brand colour as a soft mesh, and confetti cut from the mark's half disc and bar. */
+export function Cover({
+  scale = 1,
+  pieces = PIECES,
+  shade = 'band',
+}: {
+  scale?: number;
+  pieces?: readonly Piece[];
+  shade?: Shade;
+}) {
+  return (
+    <Hidden>
+      <Mesh base={tokens.colorAccent} glows={GLOWS} shade={shade} />
+      <Confetti pieces={pieces} scale={scale} />
+    </Hidden>
+  );
+}
+
+/** The pieces alone, placed by share of the box they are given. */
+export function Confetti({ pieces, scale = 1 }: { pieces: readonly Piece[]; scale?: number }) {
+  return (
+    <Hidden>
+      {pieces.map(([x, y, shape, size, turn, tone]) => {
         const n = Math.round(size * scale);
         const piece =
           shape === 'half'
@@ -97,8 +232,24 @@ export function Cover({ scale = 1 }: { scale?: number }) {
           />
         );
       })}
-    </View>
+    </Hidden>
   );
+}
+
+/** An event's own cover, drawn in its colour. */
+export function EventMesh({ event, shade = 'none' }: { event: EventKey; shade?: Shade }) {
+  const { base, glows } = EVENT_MESH[event];
+
+  return (
+    <Hidden>
+      <Mesh base={base} glows={glows} shade={shade} />
+    </Hidden>
+  );
+}
+
+/** The colour that stands for an event on a dot, a bar or a progress line. */
+export function eventColour(event: EventKey): string {
+  return EVENT_MESH[event].base;
 }
 
 const styles = StyleSheet.create({

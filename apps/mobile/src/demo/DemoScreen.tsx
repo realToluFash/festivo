@@ -50,7 +50,7 @@ export function closeFlow(to: Href = '/demo'): void {
 }
 
 export function finish(toast?: string): void {
-  router.replace(toast == null ? '/demo/home' : { pathname: '/demo/home', params: { toast } });
+  router.replace(toast == null ? '/demo/today' : { pathname: '/demo/today', params: { toast } });
 }
 
 export function useStepsInSheet(): boolean {

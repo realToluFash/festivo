@@ -17,6 +17,25 @@ interface Board {
 /** Every board in the design artifact, by its page, working on sample data. */
 const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
   {
+    page: 'Today · where signing in lands',
+    boards: [
+      { title: 'A planning day', what: 'Four things need you', href: '/demo/today' },
+      {
+        title: 'A planning day · built now',
+        what: 'Only what the events’ dates can say',
+        href: '/demo/today?moment=planNow',
+      },
+      { title: 'The event day', what: 'The cover is Now', href: '/demo/today?moment=day' },
+      {
+        title: 'The event day · built now',
+        what: 'The dates, and Open the event',
+        href: '/demo/today?moment=dayNow',
+      },
+      { title: 'A quiet week', what: 'Nothing due, nothing on', href: '/demo/today?moment=quiet' },
+      { title: 'A first run', what: 'No events yet', href: '/demo/today?moment=first' },
+    ],
+  },
+  {
     page: 'Sign-in',
     boards: [
       { title: 'Welcome', what: 'The app opens here signed out', href: '/demo/welcome' },

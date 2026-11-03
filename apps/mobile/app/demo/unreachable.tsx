@@ -27,7 +27,7 @@ export default function Unreachable() {
     if (!trying) return;
     const timer = setTimeout(() => {
       setTrying(false);
-      if (back) router.replace(stillIn ? '/demo/home' : '/demo/welcome');
+      if (back) router.replace(stillIn ? '/demo/today' : '/demo/welcome');
     }, 900);
 
     return () => clearTimeout(timer);

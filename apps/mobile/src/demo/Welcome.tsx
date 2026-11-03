@@ -153,7 +153,7 @@ function CoverFrame({
 }
 
 /** React Native keeps the status bar of the screen mounted last, so the cover sets its own on focus; a tablet's steps open over the cover and keep it. */
-function useCoverStatusBar(style: 'light' | 'dark', keepUnderSheet: boolean) {
+export function useCoverStatusBar(style: 'light' | 'dark', keepUnderSheet: boolean) {
   useFocusEffect(
     useCallback(() => {
       setStatusBarStyle(style);
