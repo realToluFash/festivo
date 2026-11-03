@@ -189,8 +189,8 @@ class RestCalls(unittest.TestCase):
             found = github.live(7)
         self.assertEqual(found, {"headRefOid": HEAD, "mergeable": "CONFLICTING",
                                  "mergeStateStatus": "DIRTY", "state": "OPEN",
-                                 "draft": False, "body": "", "story_id": None,
-                                 "mergeCommit": None})
+                                 "draft": False, "body": "", "branch": "feature/x",
+                                 "story_id": None, "mergeCommit": None})
 
     def test_a_merged_pull_request_gives_its_merge_commit(self):
         merged = {"mergeable": None, "head": {"sha": HEAD, "ref": "feature/sc-12/x"},
@@ -201,6 +201,18 @@ class RestCalls(unittest.TestCase):
         self.assertEqual((found["state"], found["mergeCommit"], found["mergeable"],
                           found["story_id"], found["body"]),
                          ("MERGED", MERGED, "UNKNOWN", 12, "## Risks\nNone."))
+
+    def test_files_name_a_renamed_files_old_path_too(self):
+        listed = [{"filename": "apps/mobile/src/demo/Card.tsx", "additions": 0, "deletions": 0,
+                   "status": "renamed", "previous_filename": "apps/mobile/src/ui/Card.tsx"},
+                  {"filename": "apps/mobile/app/demo/index.tsx", "additions": 3,
+                   "deletions": 1, "status": "modified"}]
+        fake = FakeGh(routes({"repos/o/n/pulls/7/files?per_page=100": listed}))
+        with mock.patch("soirely_queue.github.gh", fake):
+            found = github.files(7)
+        self.assertEqual([path for path, _, _ in found],
+                         ["apps/mobile/src/demo/Card.tsx", "apps/mobile/src/ui/Card.tsx",
+                          "apps/mobile/app/demo/index.tsx"])
 
     def compare(self, before, after):
         old, new = "b" * 40, HEAD

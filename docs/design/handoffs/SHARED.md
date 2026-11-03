@@ -13,7 +13,13 @@ Read this, then the per-epic file, then start.
 
 An epic's stories need screens. Some are already drawn in the design project; the rest are
 not. Your job is to find out which is which, design the missing ones **in the existing
-design's language**, and link each story to the artboard that covers it.
+design's language**, build each one, working, in the app's design demo, and link each story
+to the artboard and the demo flow that cover it.
+
+**A board is not done until it works in the app.** The owner, 3 Nov 2026: "every design in
+the artifact must also have an equivalent implemented in the app, which is more like the
+demo area, that way the devs can just pick from there." See **Step three: build it in the
+app's demo**. Desktop web boards have no demo: the owner asked for the app.
 
 Two things to hold onto throughout:
 
@@ -238,7 +244,44 @@ A form never sends a request it already knows will be refused. Draw this for **e
   own files back to check. This is both the type's instruction and a standing rule on this
   project. If you think a check is needed, ask first.
 
-## Step three: link it to the stories
+## Step three: build it in the app's demo
+
+The app has a design demo, kept apart from the product: `apps/mobile/app/demo/` for its
+routes and its list (`app/demo/index.tsx`), and `apps/mobile/src/demo/` for its components,
+rules and sample data. It opens only in development, QA and phone builds
+(`src/demo/gate.ts`): **Design demo** on the signed-out first screen, and a row in Settings.
+Developers build the product's screen from it, so it has to be the board, working:
+
+- **Every phone and tablet frame** of the board: phone, tablet portrait and tablet
+  landscape, each as the board draws it. Desktop web is out of scope.
+- **Every state and interaction** the board shows. Fields check before they send, sheets
+  open and choose, codes take paste, countdowns count. A state the board shows as a Tweak
+  is a link in the demo's list (a route parameter). A control the design does not have,
+  such as answering for the organisation, goes in a dashed `DemoOnly` box.
+- **Sample data only**, from `src/demo/samples.ts`. The demo sends nothing to the API,
+  signs nobody in and writes nothing to the device.
+- **The board's English only.** The i18n lint exempts the two demo folders; the developer
+  adds the four locales when building the product's screen.
+- **The app's own components and tokens**: `src/components`, `src/kit`,
+  `src/theme/tokens.ts`. Where the kit has no pattern for what the board draws, build it
+  inside `src/demo/`; the developer moves it into the product.
+- **The app's guard tests pass**: `npx vitest run`, the typecheck, `eslint`, `prettier` and
+  `npm run lint:comments`. Put the board's rules, such as what counts as a valid email, in
+  a pure file with its own tests.
+- **Rendered before it is reviewed**: run each flow on a phone and a tablet simulator, the
+  tablet in both orientations, and on Android. Keep one simulator booted at a time.
+
+**The pull request.** Build on a branch `ux/sc-N-<slug>` from `origin/main`, with commits per
+outcome (`making-commits`). Open the pull request with `sq ux pr-create`, its body in
+`create-pr`'s shape. The lead reviews it. Answer the lead's threads with `sq ux pr-reply`.
+Fix red checks and run them again with `sq ux rerun`. Once the lead has passed it at its
+head, its threads are resolved and its checks are green, merge it with `sq ux merge`. The
+merge refuses a pull request that changes anything outside the demo area.
+
+**The story keeps its state.** A design pull request does not move the story and does not
+tell QA: the story moves when the product is built.
+
+## Step four: link it to the stories
 
 For each story:
 
@@ -252,6 +295,8 @@ For each story:
 **Artboard:** `<name>.dc.html`, the proposal (beside it on the page: `<name>-fd.dc.html`,
 [fd] as drawn, and `<name>-App.dc.html`, the app today) · page `<epic number> · <area>` ·
 <artifact url>
+
+**Demo:** `<flow title>` in the app's Design demo (`/demo/<route>`) · PR #<number>
 
 **Layouts:** <desktop · tablet landscape · tablet portrait · phone>, and why that set.
 
@@ -292,8 +337,9 @@ section. A partial value deletes the rest.
   `/design-sync` skill, which only the user starts.
 - **Do not change a story's workflow state**, mark anything Done, or create or close
   stories.
-- **Do not commit or open a pull request.** This work lives in the artifact and in
-  Shortcut.
+- **Do not write code outside the demo area.** Not a product screen, not a kit component,
+  not a token file. The artifact, the demo and the story's Design section are the work;
+  `sq ux merge` refuses anything else.
 - **Do not build a screen for a story the design already covers.** Link the existing
   artboard instead. Two drawings of one screen is the drift this exercise exists to prevent.
 
@@ -314,7 +360,8 @@ section. A partial value deletes the rest.
 
 1. The coverage table. Then stop.
 2. After the go-ahead: the artifact link, which artboards you drew and which stories each
-   covers, and the disagreements you found, grouped so they can be decided together.
+   covers, the demo flows and their pull request, and the disagreements you found, grouped
+   so they can be decided together.
 3. **Anything the design shows that no story asks for.** A screen drawn and not ticketed
    matters as much as a story with no screen.
 4. Say plainly that you did not verify the artifact visually, because you were told not to.

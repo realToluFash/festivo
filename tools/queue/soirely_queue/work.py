@@ -367,24 +367,28 @@ def review_items(stories, prs):
             continue
         open_prs = by_story.get(story["id"], [])
         if story["state"] not in REVIEWED:
-            open_prs = [pr for pr in open_prs
-                        if side_pr(story, pr) or follow_up(story) and not linguists(story)]
+            open_prs = [pr for pr in open_prs if design_pr(pr) or side_pr(story, pr)
+                        or follow_up(story) and not linguists(story)]
             if not open_prs:
                 continue
-        merged = any(pr["story_id"] == story["id"] and pr["state"] == "merged" for pr in prs)
-        if not open_prs and not merged and story["state"] == "In Review":
+        merged = any(pr["story_id"] == story["id"] and pr["state"] == "merged"
+                     and not design_pr(pr) for pr in prs)
+        if not [pr for pr in open_prs if not design_pr(pr)] and not merged \
+                and story["state"] == "In Review":
             items.append(_item(f"lead:review:sc-{story['id']}:none:{story['moved_at']}", "lead",
                                ["lead"], "review",
                                f"sc-{story['id']} is In Review with no open pull request",
                                REVIEW, story))
         for pr in open_prs:
+            design = design_pr(pr)
             # On a follow-up the lead cannot send red checks back; the builder is woken.
-            if pr["checks"] == "pending" or pr["checks"] == "red" and follow_up(story):
+            if pr["checks"] == "pending" or pr["checks"] == "red" and (follow_up(story)
+                                                                       or design):
                 continue
             verdict = latest_verdict(pr)
             sha = pr["head_sha"]
             returned = verdict and verdict["verdict"] == "back" and not follow_up(story) \
-                and (story["moved_at"] or "") > verdict["at"]
+                and not design and (story["moved_at"] or "") > verdict["at"]
             if covers(verdict, sha, pr.get("carried")) and not returned:
                 continue
             if verdict and verdict["verdict"] == "pass":
@@ -393,9 +397,12 @@ def review_items(stories, prs):
                 why = "back in review after the last findings"
             else:
                 why = "not reviewed yet"
-            items.append(_item(f"lead:review:#{pr['number']}@{sha[:7]}:{story['moved_at']}",
+            # A design pull request's story moves for other reasons, never for its review.
+            moment = "design" if design else story["moved_at"]
+            items.append(_item(f"lead:review:#{pr['number']}@{sha[:7]}:{moment}",
                                "lead", ["lead"], "review",
-                               f"review sc-{story['id']}, PR #{pr['number']} at {sha[:7]}: {why}"
+                               f"review sc-{story['id']}, {'design ' if design else ''}"
+                               f"PR #{pr['number']} at {sha[:7]}: {why}"
                                f"{', checks red' if pr['checks'] == 'red' else ''}",
                                REVIEW, story, pr))
     # A review item already shows every open thread; otherwise a reply in an open thread
@@ -421,7 +428,14 @@ def side_pr(story, pr):
     """A developer's pull request on a linguist's ticket, such as a test that has to take the
     new wording. The lead reviews it and its developer merges it, while the ticket keeps the
     state the linguist gives it."""
-    return linguists(story) and not (pr.get("branch") or "").startswith("l10n/")
+    return linguists(story) and not (pr.get("branch") or "").startswith("l10n/") \
+        and not design_pr(pr)
+
+
+def design_pr(pr):
+    """The designer's pull request, from a ux/ branch: the lead reviews it and the designer
+    merges it whatever state its story is in, and the story stays there."""
+    return R.is_design_branch(pr.get("branch"))
 
 
 def linguists(story):
@@ -440,7 +454,7 @@ def voided_passes(stories, prs):
     for pr in prs:
         story = by_id.get(pr["story_id"])
         if not story or story["done"] or story["state"] != "Passed Code Review" \
-                or pr["state"] != "open" or side_pr(story, pr):
+                or pr["state"] != "open" or side_pr(story, pr) or design_pr(pr):
             continue
         verdict = latest_verdict(pr)
         if not (verdict and verdict["verdict"] == "pass"
@@ -456,8 +470,8 @@ def developer_items(stories, prs):
         story = by_id.get(pr["story_id"])
         if not story:
             continue
-        side, follow = side_pr(story, pr), follow_up(story)
-        own = linguists(story) and not side
+        side, follow, design = side_pr(story, pr), follow_up(story), design_pr(pr)
+        own = linguists(story) and not side and not design
         role = builder(story, pr)
         sha = pr["head_sha"][:7]
         verdict = latest_verdict(pr)
@@ -474,7 +488,7 @@ def developer_items(stories, prs):
                              "close it, saying why", f"{role}:close:#{number}")
             continue
         if pr["state"] == "merged":
-            if story["state"] in R.MERGING and not linguists(story):
+            if story["state"] in R.MERGING and not linguists(story) and not design:
                 if covered and verdict["verdict"] == "pass":
                     after = "Ready For QA" if role != "ops" or "needs qa" in story["labels"] \
                         else "Done"
@@ -495,7 +509,8 @@ def developer_items(stories, prs):
             elif pr["state"] == "open" and pr["checks"] == "green":
                 add("merge", f"PR #{number} is green at {sha}: merge it")
             continue
-        if pr["state"] != "open" or not (side or follow or story["state"] in BUILDING_PR):
+        if pr["state"] != "open" or not (side or follow or design
+                                         or story["state"] in BUILDING_PR):
             continue
         if pr["mergeable"] == "conflicting" and not pr.get("draft"):
             add("conflict", f"PR #{number} conflicts with main at {sha}: merge origin/main into "
@@ -503,10 +518,11 @@ def developer_items(stories, prs):
         elif pr["checks"] == "red":
             add("checks-red", f"PR #{number} checks are red at {sha}")
         elif pr["checks"] == "green" and story["state"] in ("In Progress", "Failed Code Review") \
-                and not covered and not linguists(story):
+                and not covered and not linguists(story) and not design:
             add("to-review", f"PR #{number} is green at {sha}: move sc-{story['id']} "
                              "to In Review")
-        elif pr["checks"] == "green" and (side or follow or story["state"] in R.MERGING
+        elif pr["checks"] == "green" and (side or follow or design
+                                          or story["state"] in R.MERGING
                                           and not linguists(story)) \
                 and covered and verdict["verdict"] == "pass":
             if open_threads(pr):
@@ -548,7 +564,7 @@ def unblocked_items(stories, prs, runs=None, raised=()):
     merged = {}
     for pr in prs:
         if pr["state"] == "merged" and pr["story_id"] and T.epoch(pr.get("merged_at")) \
-                and not (pr.get("branch") or "").startswith("l10n/"):
+                and not (pr.get("branch") or "").startswith("l10n/") and not design_pr(pr):
             merged.setdefault(pr["story_id"], []).append(pr)
     items = []
     for ticket in stories:
@@ -627,6 +643,8 @@ def machine_items(checks):
 
 
 def builder(story, pr):
+    if design_pr(pr):
+        return "ux"
     return "l10n" if linguists(story) and not side_pr(story, pr) else R.builder_of(story["labels"])
 
 
@@ -654,11 +672,12 @@ def waits_on(story, pr):
         if role != "l10n" and open_threads(pr):
             return role, f"{role} to answer its open threads, and lead to resolve them"
         return role, f"{role} to merge it"
-    returned = not story["done"] and story["state"] in REVIEWED \
+    returned = not story["done"] and story["state"] in REVIEWED and not design_pr(pr) \
         and (story["moved_at"] or "") > verdict["at"] if verdict else False
     if covered and verdict["verdict"] == "back" and not returned:
         return role, f"{role} to fix the findings and push"
-    if story["state"] in ("In Progress", "Failed Code Review") and not side_pr(story, pr):
+    if story["state"] in ("In Progress", "Failed Code Review") and not side_pr(story, pr) \
+            and not design_pr(pr):
         return role, f"{role} to move sc-{story['id']} to In Review"
     return "lead", "lead to review it"
 

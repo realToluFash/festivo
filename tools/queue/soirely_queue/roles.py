@@ -164,9 +164,24 @@ def author(text):
 
 
 # Every role that opens pull requests merges its own, once the lead has passed it.
-BUILDERS = DEVS + ("l10n", "ops")
+BUILDERS = DEVS + ("l10n", "ops", "ux")
 TESTERS = ("qa", "qa2", "qa3")
 LINGUISTS = ("l10n",)
+
+# The designer builds a story's boards, working, in the app's dev-only demo area, on a
+# branch of its own. Its pull request is the designer's to open and merge, and leaves the
+# story where it is.
+DESIGN_BRANCH = "ux/"
+DEMO = ("apps/mobile/src/demo/", "apps/mobile/app/demo/")
+
+
+def is_design_branch(branch):
+    return (branch or "").startswith(DESIGN_BRANCH)
+
+
+def demo_file(path):
+    return path.startswith(DEMO)
+
 
 NEEDS_IOS = "needs ios"
 IOS_NAME = re.compile(r"\s*(?:On an? (?:real )?(?:iPhone|iPad)\b|On iOS\b|iOS:)", re.IGNORECASE)
@@ -207,13 +222,13 @@ MAY = {
     "unclaim": TESTERS,
     "pr-create": BUILDERS,
     "review": ("lead",),
-    "pr-reply": DEVS + LINGUISTS + ("lead", "ops"),
+    "pr-reply": DEVS + LINGUISTS + ("lead", "ops", "ux"),
     "resolve": ("lead",),
     "merge": BUILDERS,
     "pr-close": BUILDERS,
     "pr-edit": BUILDERS,
     "to-qa": DEVS + ("ops",),
-    "rerun": DEVS + LINGUISTS + ("ops",),
+    "rerun": DEVS + LINGUISTS + ("ops", "ux"),
 }
 
 # The states each role may move a story into, and from. The product manager moves any

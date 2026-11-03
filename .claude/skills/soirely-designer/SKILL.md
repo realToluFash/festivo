@@ -1,12 +1,13 @@
 ---
 name: soirely-designer
-description: Design mode. Sweeps the backlog every run for stories that need design, audits which of an epic's stories already have screens, draws the missing ones in the established design language as a page per epic in one artifact, and links each story to the artboard that covers it — a proposal for review, never presented as the design. Use when asked to design a screen, to check what an epic's stories are missing, or when invoked as /soirely-designer.
+description: Design mode. Sweeps the backlog every run for stories that need design, audits which of an epic's stories already have screens, draws the missing ones in the established design language as a page per epic in one artifact, builds each one working in the app's design demo, and links each story to the artboard and the demo flow that cover it — a proposal for review, never presented as the design. Use when asked to design a screen, to check what an epic's stories are missing, or when invoked as /soirely-designer.
 user-invocable: true
 ---
 
 # Design mode
 
-You are drawing screens, not building them and not deciding what the product does.
+You are drawing screens and building them, working, in the app's design demo. You are not
+building the product, and you are not deciding what it does.
 
 **The design is the language; the ticket is the content.** You are not inventing a look, and
 you are not inventing product behaviour. Every screen is in the established language and
@@ -19,7 +20,7 @@ treated as the specification." Keep writing that line.
 
 **Tools.** Read and write Shortcut and GitHub only through `sq ux`; `sq ux help` lists what
 this role may run. Never call the Shortcut tools or `gh` directly. Git in your own checkout
-stays as it is.
+stays as it is. Your pull requests go through `sq ux` too, on `ux/` branches only.
 
 ## 1. The work is already written down. Read it rather than this file.
 
@@ -44,6 +45,14 @@ copies of it.
 - **Start from the epic page's proposal boards**, not from [fd] alone, older boards or
   today's app. A built screen moving to the new design keeps its ticket's functionality
   and AC; only its look and layout change.
+
+**And one from 3 Nov**, in `SHARED.md` under **Step three: build it in the app's demo**:
+a board is not done until it works in the app's design demo (`apps/mobile/src/demo/`,
+`apps/mobile/app/demo/`). That means every phone and tablet frame, its states and its
+interactions, on sample data, sending nothing to the API, built from the app's own
+components and tokens, and passing the app's guard tests. You open its pull request on
+`ux/sc-N-<slug>` with `sq ux pr-create`, and merge it with `sq ux merge` once the lead has
+passed it. Desktop web boards have no demo.
 
 ## 2. Pick the work
 
@@ -241,6 +250,8 @@ and leaves the rest of the description as it was. The house shape, in this order
 ```markdown
 **Artboard:** `VerifyEmail.dc.html`, the proposal (four layouts), beside `VerifyEmail-fd.dc.html` and `VerifyEmail-App.dc.html` · page `<epic number> · <area>` · <artifact url>
 
+**Demo:** `Verify your email` in the app's Design demo (`/demo/verify-email`) · PR #<number>
+
 **Layouts:** desktop web · tablet landscape · tablet portrait · phone, because …
 
 **What the design settles that this AC did not say**
@@ -264,11 +275,12 @@ artboard: `sq ux drawn sc-N`.
 
 ## 8. What this mode must not do
 
-- **No code.** Not a screen, not a token file, not "while I was in there". The artboards and
-  the story's Design section are the deliverable.
+- **No code outside the demo area.** Not a product screen, not a kit component, not a token
+  file, not "while I was in there". The artboards, the demo and the story's Design section
+  are the deliverable, and `sq ux merge` refuses a pull request that reaches further.
 - **No AC.** A criterion that is wrong or missing is a `[pm]` comment on the story, per
   `role-comments`. A field you cannot find the source of is a `[dev]` one.
-- **No state changes.** A story does not move because it has been drawn; it moves when the
-  work is built. Say in your report that the artboards need the user's review.
+- **No state changes.** A story does not move because it has been drawn, or because its
+  demo merged; it moves when the product is built. Say in your report that the artboards need the user's review.
 - **Do not delete an artboard somebody signed off.** Supersede it, and say what changed and
   on what date, the way the existing Design sections do.

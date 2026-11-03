@@ -83,13 +83,18 @@ def inbox(p, db, row, story):
 def review(p, db, row, story, pr, cache):
     p.add(*V.header(story))
     V.notes(p, story)
-    V.description(p, story, always=(T.is_ac,), only=(T.is_ac,), outline_rest=True)
+    full = (T.is_ac, T.is_design) if pr and W.design_pr(pr) else (T.is_ac,)
+    V.description(p, story, always=full, only=full, outline_rest=True)
     V.comments(p, story)
     if not pr:
         p.add("", "No open pull request. Ask the developer with "
                   f"`{SQ} lead comment sc-{story['id']} --to {R.builder_of(story['labels'])}`.")
         return next_lines(p, f"{SQ} lead done {row['id']} --note \"<one line>\"")
     V.pr_status(p, pr)
+    if W.design_pr(pr):
+        p.add("", f"A design pull request from {pr['branch']}: the story's boards built in the "
+                  f"app's demo area. It may change only {' and '.join(R.DEMO)}, the designer "
+                  f"merges it, and sc-{story['id']} stays {story['state']} whatever the verdict.")
     V.lead_threads(p, pr)
     V.pr_section(p, pr, "Risks", always=True)
     files = V.diff_files(cached_diff(cache, pr))
@@ -171,6 +176,9 @@ def merge(p, pr, story, row):
     if p.role in R.LINGUISTS:
         merges = ("merges it once it changes only locale files; then move the ticket to Ready "
                   "For QA if everything it covers is merged, as your skill's section 5 says")
+    elif W.design_pr(pr):
+        merges = (f"merges at the passed sha once it changes only {' and '.join(R.DEMO)}; "
+                  f"sc-{story['id']} stays {story['state']} and no tester is told")
     elif W.side_pr(story, pr) and not W.finished(story):
         merges = (f"merges at the passed sha; sc-{story['id']} is a translation ticket and "
                   "stays where the linguist put it, so the merge is still yours")
