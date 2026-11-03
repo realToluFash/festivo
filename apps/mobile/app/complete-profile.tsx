@@ -798,7 +798,7 @@ function SignedInAs({ email }: { email: string }) {
 }
 
 const styles = StyleSheet.create({
-  form: { gap: tokens.spaceXl },
+  form: { gap: tokens.space3xl },
   invitations: { gap: tokens.spaceMd },
   invitationsHead: { gap: tokens.spaceXxs },
   orRule: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceLg },
