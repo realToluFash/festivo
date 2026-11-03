@@ -398,9 +398,9 @@ span {
   height: auto;
 }
 
-/* The lockup leaves the bell room in the sidebar's 192 px row. */
+/* The lockup leaves the bell room in the sidebar's 192 px row, 26 px high as the board's Web sidebar draws it. */
 .brand-lockup img {
-  width: 140px;
+  width: 82px;
 }
 
 /* Up to 40rem the brand shares a bar, so it is exactly as wide as the name it replaces. */
@@ -930,6 +930,13 @@ span {
   border: var(--borderCard);
   border-radius: var(--radiusCardDesktop);
   box-shadow: var(--shadowCard);
+}
+
+/* The design demo's way in, at the foot of a signed-out page in development and QA only. */
+.demo-way-in {
+  display: flex;
+  justify-content: center;
+  padding: 0 var(--spaceXl) var(--space3xl);
 }
 
 /* ── Fields ───────────────────────────────────────────────────────────────── */
@@ -1663,7 +1670,7 @@ span {
   min-height: var(--sizeHitPhoneHero);
   padding: 0 var(--spaceLg);
   border: var(--borderField);
-  border-radius: var(--radiusInset);
+  border-radius: var(--radiusField);
   background: var(--colorCard);
   color: var(--colorInk);
   font: var(--typeTitleDialog);
@@ -1958,7 +1965,7 @@ span {
   min-height: var(--sizeHitPhonePrimary);
   padding: var(--spaceXxs) var(--spaceMd) var(--spaceXxs) var(--spaceXs);
   border: var(--borderControl);
-  border-radius: var(--radiusField);
+  border-radius: var(--radiusRow);
   background: var(--colorCard);
   color: var(--colorInk);
   text-align: left;
@@ -3417,7 +3424,7 @@ span {
   overflow-y: auto;
   list-style: none;
   border: 1px solid var(--colorBorder);
-  border-radius: var(--radiusField);
+  border-radius: var(--radiusRow);
   background: var(--colorCard);
 }
 
@@ -3470,7 +3477,7 @@ span {
   width: var(--sizeAvatar);
   height: var(--sizeAvatar);
   border: 1px solid var(--colorBorder);
-  border-radius: var(--radiusField);
+  border-radius: var(--radiusRow);
   background: var(--colorCard);
 }
 
@@ -5953,7 +5960,7 @@ button.members-row {
 .notifications-failure-line {
   gap: var(--spaceSm);
   padding: var(--spaceMd) var(--spaceLg);
-  border-radius: var(--radiusField);
+  border-radius: var(--radiusRow);
   color: var(--colorAttentionText);
   font: var(--typeBody);
   font-weight: 600;
@@ -7041,7 +7048,7 @@ button.members-row {
 
 .skeleton-field {
   height: 44px;
-  border-radius: var(--radiusField);
+  border-radius: var(--radiusRow);
 }
 
 .skeleton-option {

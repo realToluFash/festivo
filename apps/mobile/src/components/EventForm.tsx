@@ -73,7 +73,15 @@ import { DestructiveButton, PrimaryButton, QuietButton, SecondaryButton } from '
 import { cardFrame } from './cardFrame.ts';
 import { type CoverUse, CoverField, discardCoverUpload } from './CoverField.tsx';
 import { focusPicker } from './CountryPicker.tsx';
-import { CONTROL_TEXT_SIZE, Field, FieldError, TextField, focusChecked } from './Field.tsx';
+import {
+  CONTROL_TEXT_SIZE,
+  Field,
+  FieldError,
+  FocusEdge,
+  TextField,
+  focusChecked,
+  useFocusEdge,
+} from './Field.tsx';
 import { HostsSection } from './HostsSection.tsx';
 import { ListPicker } from './ListPicker.tsx';
 import { Notice } from './Notice.tsx';
@@ -719,6 +727,8 @@ export function Moment({
   const [openedBy, setOpenedBy] = useState<'date' | 'time'>('date');
   const ownTimePicker = useRef<ViewInstance>(null);
   const timePicker = timePickerRef ?? ownTimePicker;
+  const dateEdge = useFocusEdge();
+  const timeEdge = useFocusEdge();
   const skipped = skippedLine(date, time, timeZone, locale, t);
   const helpLines = [skipped, help].filter((line) => line != null);
 
@@ -778,6 +788,7 @@ export function Moment({
                 error != null && styles.pickWrong,
               ]}
               onPress={() => open('date')}
+              {...dateEdge.edging}
               disabled={disabled || readOnly}
               accessibilityRole={readOnly ? undefined : 'button'}
               accessibilityState={{ disabled: disabled || readOnly }}
@@ -793,6 +804,7 @@ export function Moment({
               <Text size={CONTROL_TEXT_SIZE} style={date === '' ? styles.placeholder : undefined}>
                 {dayWords}
               </Text>
+              {dateEdge.focused && <FocusEdge wrong={error != null} />}
             </Pressable>
           </Field>
         </View>
@@ -805,6 +817,7 @@ export function Moment({
               error != null && styles.pickWrong,
             ]}
             onPress={() => open('time')}
+            {...timeEdge.edging}
             disabled={disabled || readOnly}
             accessibilityRole={readOnly ? undefined : 'button'}
             accessibilityState={{ disabled: disabled || readOnly }}
@@ -820,6 +833,7 @@ export function Moment({
             <Text size={CONTROL_TEXT_SIZE} style={time === '' ? styles.placeholder : undefined}>
               {timeWords}
             </Text>
+            {timeEdge.focused && <FocusEdge wrong={error != null} />}
           </Pressable>
         </Field>
       </View>

@@ -1,6 +1,7 @@
 import { createBrowserRouter } from 'react-router';
 
 import { PageArrival } from '../components/PageArrival.tsx';
+import { DemoRoute } from '../demo/DemoEntry.tsx';
 
 import { Account } from './app/account/Account.tsx';
 import { Security } from './app/account/Security.tsx';
@@ -101,6 +102,7 @@ export const routes = [
         element: <GuestLayout />,
         children: [{ index: true, element: <Invitation /> }],
       },
+      { path: '/demo/*', element: <DemoRoute /> },
       { path: '*', element: <NotFound /> },
     ],
   },

@@ -815,7 +815,7 @@ const styles = StyleSheet.create({
   box: {
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: tokens.radiusField,
+    borderRadius: tokens.radiusRow,
     borderWidth: 1.5,
     borderColor: tokens.colorControlBorder,
   },

@@ -791,7 +791,7 @@ const styles = StyleSheet.create({
     minHeight: tokens.sizeHit,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: tokens.radiusField,
+    borderRadius: tokens.radiusRow,
     borderWidth: 1,
     borderColor: tokens.colorControlBorder,
     backgroundColor: tokens.colorCard,

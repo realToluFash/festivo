@@ -250,7 +250,7 @@ const styles = StyleSheet.create({
   title: { height: 24, width: '42%' },
   heading: { height: 18, width: '36%' },
   line: { height: 12 },
-  field: { height: 48, borderRadius: tokens.radiusField },
+  field: { height: 48, borderRadius: tokens.radiusRow },
   option: { height: 52 },
   monthHead: {
     alignItems: 'center',

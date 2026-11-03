@@ -101,14 +101,6 @@ export const tokens = {
   scrimDialog: 'rgba(21,23,28,0.4)', // centred dialogs
   // ── Colour · print (black and white only) ──────────────────────────────────
   colorPrintInk: '#000000',
-  // ── Colour · brand. The four-dot symbol and the wordmark, for the logo and brand assets only (sc-23302). ──
-  // Never for text or a control: saffron and jade fail 4.5:1, saffron fails 3:1; WCAG 1.4.3 exempts only a logo.
-  colorBrandInk: '#17151C', // logo and brand assets only: the symbol's ground. Not colorInk, which stays the app's text
-  colorBrandPomegranate: '#D62B4E', // logo and brand assets only: the symbol's top-left dot
-  colorBrandSaffron: '#F2B22C', // logo and brand assets only: the symbol's top-right dot
-  colorBrandJade: '#00A37A', // logo and brand assets only: the symbol's bottom-right dot. Not colorAccent, which stays the action colour
-  colorBrandUltramarine: '#3E3FD6', // logo and brand assets only: the symbol's bottom-left dot
-  colorBrandViolet: '#5B4FE6', // logo and brand assets only: the wordmark's dot after the y (sc-23330)
 
   // ── Type ───────────────────────────────────────────────────────────────────
   fontFamily: "'Instrument Sans', sans-serif", // all reading text, all names
@@ -192,7 +184,8 @@ export const tokens = {
   radiusCardPhone: 18, // phone/tablet cards and tiles
   radiusCardLarge: 20, // emphasised panels (Messaging reach, Billing summary, landing dark card)
   radiusInset: 14,
-  radiusField: 12, // inputs; desktop Messaging uses 10 – accident
+  radiusField: 8, // inputs: text, code, select and search fields (sc-28849)
+  radiusRow: 12, // list rows, notices, inner boxes, skeletons; desktop Messaging uses 10 – accident
   radiusNav: 10, // sidebar items, small inset boxes
   radiusSmall: 8, // seat squares, small badges
   radiusCheckbox: 6, // 7 appears once

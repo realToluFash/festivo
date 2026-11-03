@@ -39,7 +39,8 @@
   },
   "language": {
     "label": "Idioma",
-    "automatic": "Automático"
+    "automatic": "Automático",
+    "follows": "O seu idioma acompanha-o em todos os dispositivos."
   },
   "layouts": {
     "title": "Disposições",

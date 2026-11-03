@@ -6,7 +6,11 @@ import type { FieldAction } from './Field.tsx';
 import { useReadOut } from './ReadOut.tsx';
 import { useFocusOnAnswer } from './Screen.tsx';
 import { Text } from './Text.tsx';
+import { useAccessibilitySizes } from '../layout/useLayout.ts';
 import { useMarkSide } from './markSide.ts';
+
+/** A notice's mark grows with the text, to twice its size at most (sc-28812). */
+const MARK_MAX_SCALE = 2;
 
 export type NoticeTone = 'quiet' | 'attention' | 'broken' | 'done';
 
@@ -60,7 +64,9 @@ export function Notice({
   wordsInTone?: boolean;
 }) {
   const line = wordsInTone && tone === 'attention';
-  const markSide = useMarkSide(line ? tokens.sizeMark : tokens.sizePill);
+  const markSide = useMarkSide(line ? tokens.sizeMark : tokens.sizePill, MARK_MAX_SCALE);
+  // At the accessibility sizes the mark sits above the words, so they get the full width.
+  const markAbove = useAccessibilitySizes();
   useReadOut(
     !takesFocus && (announce || answer !== undefined)
       ? [title, body, detail].filter((line) => line != null).join('\n')
@@ -99,7 +105,13 @@ export function Notice({
   return (
     <View
       ref={shown}
-      style={[styles.notice, surface, line && styles.line, actions != null && styles.withActions]}
+      style={[
+        styles.notice,
+        surface,
+        line && styles.line,
+        actions != null && styles.withActions,
+        markAbove && styles.markAbove,
+      ]}
     >
       {/* The words already say what the mark says (WCAG 2.2 SC 1.1.1). */}
       <View
@@ -111,12 +123,19 @@ export function Notice({
           size={tokens.typePill.size}
           weight="bold"
           style={line ? styles.inkOnSolid : ink[markTone]}
+          maxFontSizeMultiplier={MARK_MAX_SCALE}
           accessible={false}
         >
           {mark}
         </Text>
       </View>
-      <View style={[styles.body, actions != null && styles.bodyWithActions]}>
+      <View
+        style={[
+          styles.body,
+          actions != null && styles.bodyWithActions,
+          markAbove && styles.bodyBelowMark,
+        ]}
+      >
         <View
           ref={takesFocus ? read : wordsRef}
           style={[styles.words, actions != null && styles.wordsWithActions]}
@@ -188,11 +207,13 @@ const styles = StyleSheet.create({
     gap: tokens.spaceSm,
     paddingVertical: tokens.spaceMd,
     paddingHorizontal: tokens.spaceLg,
-    borderRadius: tokens.radiusField,
+    borderRadius: tokens.radiusRow,
   },
   solidMark: { borderWidth: 0, backgroundColor: tokens.colorAttention },
   inkOnSolid: { color: tokens.colorInkOnDark },
+  markAbove: { flexDirection: 'column' },
   body: { flex: 1, gap: tokens.spaceHair },
+  bodyBelowMark: { flex: 0, alignSelf: 'stretch' },
   words: { gap: tokens.spaceHair },
   button: { marginTop: tokens.spaceSm },
   withActions: { paddingHorizontal: tokens.spaceXl },

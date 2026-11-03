@@ -18,6 +18,7 @@ import {
   settingsGroups,
 } from '../kit/appNav.ts';
 import { OPENED_IN_PLACE_OF_SETTINGS, sectionTakesBack } from '../kit/systemBack.ts';
+import { DemoRow, demoHere } from '../demo/DemoEntry.tsx';
 import { breakableEmail } from '../layout/textSize.ts';
 import {
   type LayoutKind,
@@ -148,6 +149,7 @@ export function SettingsList({ kind, open }: { kind: LayoutKind; open: SettingsS
       </View>
     )),
   }));
+  const demo = demoHere() && <DemoRow style={[styles.section, !alone && styles.sectionTablet]} />;
   const signOut = (
     <View style={[styles.foot, !alone && styles.footTablet]}>
       {kind !== 'tabletLandscape' && account != null && (
@@ -183,6 +185,7 @@ export function SettingsList({ kind, open }: { kind: LayoutKind; open: SettingsS
             <View style={styles.card}>{rows}</View>
           </Fragment>
         ))}
+        {demo !== false && <View style={styles.card}>{demo}</View>}
         {signOut}
       </View>
     );
@@ -201,6 +204,7 @@ export function SettingsList({ kind, open }: { kind: LayoutKind; open: SettingsS
           {rows}
         </Fragment>
       ))}
+      {demo}
       <View style={styles.fill} />
       {signOut}
     </ScrollView>
@@ -269,7 +273,7 @@ const styles = StyleSheet.create({
   sectionTablet: {
     paddingVertical: tokens.spaceSm,
     paddingHorizontal: 14,
-    borderRadius: tokens.radiusField,
+    borderRadius: tokens.radiusRow,
     borderWidth: 2,
     borderColor: 'transparent',
   },

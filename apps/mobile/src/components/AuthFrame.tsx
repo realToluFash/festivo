@@ -1,19 +1,23 @@
-import type { ReactNode } from 'react';
+import { createContext, type ReactNode, useContext, useState } from 'react';
 import { type StyleProp, StyleSheet, View, type ViewStyle } from 'react-native';
 
-import { type LayoutKind, useLayout } from '../layout/useLayout.ts';
+import { type LayoutKind, useAccessibilitySizes, useLayout } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { BackButton } from './AppFrame.tsx';
 import { Brand } from './Brand.tsx';
+import { FootnoteInAuthFrame } from './Buttons.tsx';
 import { LanguageChoice } from './LanguageChoice.tsx';
 import { useMarkSide } from './markSide.ts';
 import { useReadOut } from './ReadOut.tsx';
 import { Screen, useFocusOnAnswer } from './Screen.tsx';
-import { Text, type TextHandle } from './Text.tsx';
+import { Text, type TextHandle, TitleCap } from './Text.tsx';
 import { Title } from './Title.tsx';
 
 const CARD_WIDTH = 520;
 const FORM_COLUMN_WIDTH = 600;
+
+/** Where the heading says the size its title was drawn at, for the frame to cap the words under it. */
+const TitleDrawn = createContext<((size: number) => void) | null>(null);
 
 /** The screen's title, sized for the layout; `landscapeOnly` keeps the intro to a landscape tablet. */
 export function AuthHeading({
@@ -40,6 +44,7 @@ export function AuthHeading({
   const doneMarkSide = useMarkSide(tokens.sizeHitPhoneHero);
   const { shown, read } = useFocusOnAnswer<TextHandle>(answer);
   const { read: introRead } = useFocusOnAnswer<TextHandle>(introAnswer);
+  const titleDrawn = useContext(TitleDrawn);
   const size = kind === 'phone' ? tokens.typeTitlePhone.size : tokens.typeTitlePage.size;
   const showIntro = intro != null && (!landscapeOnly || kind === 'tabletLandscape');
   useReadOut(introLive && showIntro && introAnswer === undefined ? intro : null, {
@@ -65,7 +70,13 @@ export function AuthHeading({
         </View>
       )}
       <View ref={shown} style={styles.heading}>
-        <Title ref={read} size={size} style={styles.title} accessibilityRole="header">
+        <Title
+          ref={read}
+          size={size}
+          style={styles.title}
+          accessibilityRole="header"
+          onDrawn={titleDrawn ?? undefined}
+        >
           {title}
         </Title>
         {showIntro && (
@@ -86,7 +97,7 @@ export interface AuthBack {
   testID: string;
 }
 
-const BRAND_WIDTH = 200;
+const BRAND_HEIGHT = 30;
 
 /** Every auth screen at three sizes: phone stacks with no card, portrait centres one, landscape splits saying from doing. */
 export function AuthFrame({
@@ -103,10 +114,15 @@ export function AuthFrame({
   children: ReactNode;
 }) {
   const { kind } = useLayout();
+  const stacked = useAccessibilitySizes();
+  const [titleDrawn, setTitleDrawn] = useState<number | null>(null);
 
   const brand = (
-    <View style={styles.brandRow}>
-      {back != null ? <BackButton {...back} /> : <Brand width={BRAND_WIDTH} lockup />}
+    <View style={stacked ? styles.topStacked : styles.topRow}>
+      <View style={styles.brandRow}>
+        {back != null ? <BackButton {...back} /> : <Brand height={BRAND_HEIGHT} lockup />}
+      </View>
+      <LanguageChoice />
     </View>
   );
 
@@ -116,25 +132,25 @@ export function AuthFrame({
   const phone = kind === 'phone';
 
   return (
-    <Screen style={styles.page} contentStyle={CONTENT[kind]}>
-      <View style={landscape ? styles.landscapeLeft : undefined}>
-        {brand}
-        {landscape && <View style={styles.landscapeSaying}>{saying}</View>}
-        {landscape && <LanguageChoice />}
-      </View>
-      <View style={MAIN[kind]}>
-        <View style={CARD[kind]}>
-          {!landscape && saying}
-          {phone && atFoot && <View style={styles.spacer} />}
-          <View style={styles.form}>{children}</View>
-        </View>
-        {!landscape && (
-          <View style={phone ? undefined : styles.tabletLanguage}>
-            <LanguageChoice />
+    <TitleDrawn.Provider value={setTitleDrawn}>
+      <TitleCap.Provider value={titleDrawn}>
+        <Screen style={styles.page} contentStyle={CONTENT[kind]}>
+          <View style={landscape ? styles.landscapeLeft : undefined}>
+            {brand}
+            {landscape && <View style={styles.landscapeSaying}>{saying}</View>}
           </View>
-        )}
-      </View>
-    </Screen>
+          <View style={MAIN[kind]}>
+            <View style={CARD[kind]}>
+              {!landscape && saying}
+              {phone && atFoot && <View style={styles.spacer} />}
+              <View style={phone ? styles.phoneForm : styles.form}>
+                <FootnoteInAuthFrame atFoot={phone}>{children}</FootnoteInAuthFrame>
+              </View>
+            </View>
+          </View>
+        </Screen>
+      </TitleCap.Provider>
+    </TitleDrawn.Provider>
   );
 }
 
@@ -154,7 +170,19 @@ const styles = StyleSheet.create({
     gap: tokens.space5xl,
     padding: tokens.space6xl,
   },
-  brandRow: { minHeight: tokens.sizeHit, alignItems: 'flex-start', justifyContent: 'center' },
+  topRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: tokens.spaceLg,
+  },
+  topStacked: { alignItems: 'flex-start', gap: tokens.spaceSm },
+  brandRow: {
+    flexShrink: 1,
+    minHeight: tokens.sizeHit,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+  },
   heading: { gap: tokens.spaceXs },
   title: { letterSpacing: -0.5 },
   secondary: { color: tokens.colorInkSecondary },
@@ -166,11 +194,12 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colorAccent,
   },
   spacer: { flex: 1 },
-  form: { gap: tokens.spaceXl },
+  // Its children are sections, 24 apart; a screen groups its fields at 16 itself (sc-28812).
+  form: { gap: tokens.space3xl },
+  phoneForm: { flexGrow: 1, gap: tokens.space3xl },
   phoneMain: { flexGrow: 1, gap: tokens.spaceXl },
   phoneCard: { flexGrow: 1, gap: tokens.spaceXl },
   centred: { alignItems: 'center', gap: tokens.space3xl },
-  tabletLanguage: { width: CARD_WIDTH, maxWidth: '100%' },
   landscapeLeft: { flex: 1, gap: tokens.space3xl },
   landscapeSaying: { flex: 1, justifyContent: 'center', gap: tokens.spaceXl, maxWidth: 460 },
   landscapeRight: { width: FORM_COLUMN_WIDTH, maxWidth: '50%' },

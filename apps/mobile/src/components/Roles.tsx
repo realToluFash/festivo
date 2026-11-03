@@ -906,7 +906,7 @@ const styles = StyleSheet.create({
   pickDense: {
     minHeight: tokens.sizeHit + tokens.spaceXl,
     paddingHorizontal: tokens.spaceMd,
-    borderRadius: tokens.radiusField,
+    borderRadius: tokens.radiusRow,
   },
   pickOpen: {
     borderTopLeftRadius: 0,

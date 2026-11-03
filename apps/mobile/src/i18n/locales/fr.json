@@ -39,7 +39,8 @@
   },
   "language": {
     "label": "Langue",
-    "automatic": "Automatique"
+    "automatic": "Automatique",
+    "follows": "Votre langue vous suit sur tous vos appareils."
   },
   "layouts": {
     "title": "Mises en page",

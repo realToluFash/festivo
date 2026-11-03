@@ -41,7 +41,8 @@ import { fieldChecked, fieldFocused, fieldLeft } from './focusedField.ts';
 import { useReadOut } from './ReadOut.tsx';
 import { useFocusOnAnswer } from './Screen.tsx';
 import { moveScreenReaderFocus } from './screenReaderFocus.ts';
-import { Text, type TextHandle } from './Text.tsx';
+import { capUnderTitle } from '../layout/textSize.ts';
+import { Text, type TextHandle, TitleCap } from './Text.tsx';
 import { useMarkSide } from './markSide.ts';
 
 /** 16 is the smallest size iOS Safari will not zoom into on focus. */
@@ -103,7 +104,7 @@ export function Field({
       style={styles.field}
     >
       <View style={styles.labelRow}>
-        <Text size={tokens.typeButton.size} weight="semibold" nativeID={labelID}>
+        <Text size={tokens.typeButton.size} weight="medium" nativeID={labelID}>
           {label}
         </Text>
         {pill != null && (
@@ -284,23 +285,40 @@ export function keysStayDown(): void {
   if (!Keyboard.isVisible()) TextInput.State.currentlyFocusedInput()?.blur();
 }
 
-/** [fd]'s focus ring: 2px of accent at a 2px offset, outside the field's own edge. */
-function useFocusRing(onFocus: TextInputProps['onFocus'], onBlur: TextInputProps['onBlur']) {
-  const [ringed, setRinged] = useState(false);
+/** Whether the field has focus, for drawing it on the field's own edge. */
+export function useFocusEdge<E>(onFocus?: (event: E) => void, onBlur?: (event: E) => void) {
+  const [focused, setFocused] = useState(false);
 
   return {
-    ringed,
-    ringing: {
-      onFocus: (event: Parameters<NonNullable<TextInputProps['onFocus']>>[0]) => {
-        setRinged(true);
+    focused,
+    edging: {
+      onFocus: (event: E) => {
+        setFocused(true);
         onFocus?.(event);
       },
-      onBlur: (event: Parameters<NonNullable<TextInputProps['onBlur']>>[0]) => {
-        setRinged(false);
+      onBlur: (event: E) => {
+        setFocused(false);
         onBlur?.(event);
       },
     },
   };
+}
+
+/** Focus on a bare input's own edge: its 1pt border drawn 2pt, green or red, with 1pt less padding so nothing moves. */
+export function focusEdge(focused: boolean, wrong: boolean) {
+  return [focused && fieldStyles.edge, wrong && fieldStyles.wrong];
+}
+
+/** Focus on the edge of a box that holds its input: laid over the box's 1pt border, so nothing moves. */
+export function FocusEdge({ wrong = false }: { wrong?: boolean }) {
+  return <View pointerEvents="none" style={[fieldStyles.over, wrong && fieldStyles.wrong]} />;
+}
+
+/** Under a frame's title, typed text grows no larger than the title does, as a `Text` there does. */
+function useUnderTitle(size: number, own: number | undefined): number | undefined {
+  const cap = useContext(TitleCap);
+
+  return cap == null ? own : capUnderTitle(cap, size, own);
 }
 
 export function TextField({
@@ -314,7 +332,7 @@ export function TextField({
 }: TextFieldProps) {
   const holding = useHeld(submitting, value, rest.defaultValue, onChangeText);
   const labelID = useFieldLabel();
-  const { ringed, ringing } = useFocusRing(rest.onFocus, rest.onBlur);
+  const { focused, edging } = useFocusEdge(rest.onFocus, rest.onBlur);
 
   return (
     <TextInput
@@ -326,8 +344,12 @@ export function TextField({
       })}
       {...holding}
       ref={ref}
-      {...ringing}
-      style={inputFaced([styles.input, wrong && styles.wrong, ringed && styles.ring, style])}
+      {...edging}
+      style={inputFaced([styles.input, focusEdge(focused, wrong), style])}
+      maxFontSizeMultiplier={useUnderTitle(
+        StyleSheet.flatten(style)?.fontSize ?? CONTROL_TEXT_SIZE,
+        rest.maxFontSizeMultiplier,
+      )}
       aria-invalid={wrong}
     />
   );
@@ -349,7 +371,7 @@ export function CodeField({
 }: CodeFieldProps) {
   const holding = useHeld(submitting, value, rest.defaultValue, onChangeText);
   const labelID = useFieldLabel();
-  const { ringed, ringing } = useFocusRing(rest.onFocus, rest.onBlur);
+  const { focused, edging } = useFocusEdge(rest.onFocus, rest.onBlur);
 
   return (
     <TextInput
@@ -362,8 +384,12 @@ export function CodeField({
       })}
       {...holding}
       ref={ref}
-      {...ringing}
-      style={inputFaced([styles.code, wrong && styles.wrong, ringed && styles.ring, style])}
+      {...edging}
+      style={inputFaced([styles.code, focusEdge(focused, wrong), style])}
+      maxFontSizeMultiplier={useUnderTitle(
+        StyleSheet.flatten(style)?.fontSize ?? tokens.typeTitleDialog.size,
+        rest.maxFontSizeMultiplier,
+      )}
       aria-invalid={wrong}
     />
   );
@@ -381,17 +407,27 @@ export const fieldStyles = StyleSheet.create({
     color: tokens.colorInk,
     fontSize: CONTROL_TEXT_SIZE,
   },
-  wrong: { borderColor: tokens.colorBroken },
-  ring: {
-    outlineWidth: 2,
-    outlineOffset: 2,
-    outlineStyle: 'solid',
-    outlineColor: tokens.colorAccent,
+  edge: {
+    paddingHorizontal: tokens.spaceLg - 1,
+    paddingVertical: tokens.spaceSm - 1,
+    borderWidth: 2,
+    borderColor: tokens.colorAccent,
   },
+  over: {
+    position: 'absolute',
+    top: -1,
+    right: -1,
+    bottom: -1,
+    left: -1,
+    borderWidth: 2,
+    borderRadius: tokens.radiusField,
+    borderColor: tokens.colorAccent,
+  },
+  wrong: { borderColor: tokens.colorBroken },
 });
 
 const styles = StyleSheet.create({
-  field: { gap: tokens.spaceXs },
+  field: { gap: tokens.spaceSm },
   labelRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: tokens.spaceSm },
   pill: {
     minHeight: tokens.sizePill,
@@ -408,15 +444,13 @@ const styles = StyleSheet.create({
   action: { flexShrink: 1, minHeight: tokens.sizeHit, justifyContent: 'center' },
   trailing: { marginLeft: 'auto' },
   input: fieldStyles.input,
-  wrong: fieldStyles.wrong,
-  ring: fieldStyles.ring,
   code: {
     minHeight: tokens.sizeHitPhoneHero,
     paddingHorizontal: tokens.spaceLg,
     paddingVertical: tokens.spaceSm,
     borderWidth: 1,
     borderColor: tokens.colorFieldBorder,
-    borderRadius: tokens.radiusInset,
+    borderRadius: tokens.radiusField,
     backgroundColor: tokens.colorCard,
     color: tokens.colorInk,
     fontSize: tokens.typeTitleDialog.size,

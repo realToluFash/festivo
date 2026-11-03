@@ -111,6 +111,17 @@ def guard(c, command):
         raise Refused(f"{c.role} may not {command}: see `sq {c.role} help`")
 
 
+def design_only(c, command, branch, what):
+    """The designer's pull request work is on its own ux/ branches only. Returns whether the
+    branch is one."""
+    design = R.is_design_branch(branch)
+    if c.role == "ux" and not design:
+        raise Refused(f"ux may {command} only on a ux/sc-N-<slug> branch, which builds a "
+                      f"story's boards in the app's demo area ({', '.join(R.DEMO)}); {what} "
+                      f"is on {branch or 'no branch'}")
+    return design
+
+
 def post(c, story, to, body, parent=None):
     head = " ".join([*(f"[{t}]" for t in to), f"(from {signature(c.role)})"])
     return c.shortcut.comment(story["id"], f"{head}\n{body.strip()}", parent)
@@ -716,21 +727,23 @@ def review(c, a):
                                 [{"path": i["path"], "line": i["line"], "body": i["body"]}
                                  for i in items])
     url = posted.get("html_url", pr["url"])
+    design = W.design_pr(pr)
     # Only a story in review moves: a linguist's ticket, say, keeps its own state.
-    if story and story["state"] in W.REVIEWED and not W.side_pr(story, pr):
+    keeps = story and (W.side_pr(story, pr) or design)
+    if story and story["state"] in W.REVIEWED and not keeps:
         set_state(c, story, "Passed Code Review" if a.verdict == "pass" else "Failed Code Review")
     # A follow-up's story, or a linguist's ticket, keeps its state: a push alone wakes the lead.
     follow_up = story and W.follow_up(story)
     if story and a.verdict == "pass":
         # A developer's change on a linguist's ticket is not the ticket ready for QA.
-        if not W.side_pr(story, pr) and not follow_up:
+        if not keeps and not follow_up:
             post(c, story, ["qa"], f"PR #{a.pr} passed review at {head[:7]}: {pr['url']}\n\n"
                                    f"{a.qa or 'Nothing beyond the AC to look at hard.'}")
     elif story:
-        post(c, story, [R.builder_of(story["labels"])],
+        post(c, story, ["ux" if design else R.builder_of(story["labels"])],
              f"Review of PR #{a.pr} at {head[:7]}: {blocking} blocking. {url}\n"
              + ("Answer each finding in its thread, fix and push; the lead is woken by the push."
-                if follow_up or W.side_pr(story, pr) else
+                if follow_up or keeps else
                 "Answer each finding in its thread, fix, push, and hand it back to In Review."))
     stale = resync(c)
     if story:
@@ -749,6 +762,7 @@ def pr_reply(c, a):
     guard(c, "pr-reply")
     owner, name = c.repository()
     pr = c.pr(a.pr)
+    design_only(c, "pr-reply", pr.get("branch"), f"PR #{a.pr}")
     first = thread_of(pr, a.comment)["comments"][0]["id"]
     # Signed, so the queue knows whose word a thread ends on.
     github.reply(owner, name, a.pr, first, f"{a.text.rstrip()} (from {signature(c.role)})")
@@ -775,6 +789,9 @@ def pr_create(c, a):
     if a.draft:
         raise Refused("pull requests open ready for review, not as drafts, so the lead is "
                       "woken for them")
+    if design_only(c, "pr-create", a.head, "the pull request") and not github.STORY.search(a.head):
+        raise Refused(f"{a.head} names no story: name it ux/sc-N-<slug>, so the lead reviews it "
+                      "against the story")
     headings = {h.lower() for h, _, _ in T.sections(a.text)}
     if missing := [h for h in PR_SECTIONS if h.lower() not in headings]:
         deeper = {h.lower(): level for h, level, _ in T.sections(a.text, T.DEEPER) if level}
@@ -795,7 +812,7 @@ def needs_qa(story):
 def hand_to_qa(c, story, pr, merge_sha, note=""):
     """Returns where the story went."""
     others = [p["number"] for p in store.prs_for_story(c.db, story["id"])
-              if p["state"] == "open" and p["number"] != pr["number"]]
+              if p["state"] == "open" and p["number"] != pr["number"] and not W.design_pr(p)]
     if others:
         # The story is done when its last pull request is.
         c.refresh(story["id"])
@@ -863,7 +880,11 @@ def permission_ask(c, a):
 def merge(c, a):
     guard(c, "merge")
     pr = c.pr(a.pr)
-    if pr["state"] == "merged" and pr["story_id"] and c.role not in R.LINGUISTS:
+    design = design_only(c, "merge", pr.get("branch"), f"PR #{a.pr}")
+    if design and c.role != "ux":
+        raise Refused(f"PR #{a.pr} is on {pr['branch']}, the designer's: ux merges it, and its "
+                      "story keeps its state")
+    if pr["state"] == "merged" and pr["story_id"] and c.role not in R.LINGUISTS and not design:
         story = c.story(pr["story_id"])
         if story["state"] in R.MERGING and not W.linguists(story):
             return f"PR #{a.pr} was already merged; " + finish_handover(c, story, pr, a.text)
@@ -878,17 +899,24 @@ def merge(c, a):
                       "the push voids the pass, and the lead reviews the new head")
     if live["mergeable"] != "MERGEABLE":
         raise Refused(f"GitHub says {live['mergeable']}; try again in a minute")
-    if any(path == "tools/queue/permissions.json" for path, _, _ in github.files(a.pr)):
+    paths = [path for path, _, _ in github.files(a.pr)]
+    if "tools/queue/permissions.json" in paths:
         raise Refused("it changes tools/queue/permissions.json, which grants the workers "
                       "commands: only the owner merges it, even after the lead's pass")
     if c.role in R.LINGUISTS:
         mine = R.linguist_files()
-        stray = [path for path, _, _ in github.files(a.pr) if path not in mine]
+        stray = [path for path in paths if path not in mine]
         if stray:
             raise Refused(f"the linguist merges only locale files; this also changes "
                           f"{', '.join(stray[:5])}")
         github.merge(a.pr, head, delete_branch=True)
         return f"merged PR #{a.pr}"
+    if design:
+        stray = [path for path in paths if not R.demo_file(path)]
+        if stray:
+            raise Refused(f"a design pull request changes only the demo area "
+                          f"({', '.join(R.DEMO)}); this also changes {', '.join(stray)}. Move "
+                          "that work into the demo, or leave it to the story's developer")
     story = c.story(pr["story_id"]) if pr["story_id"] else None
     if not story:
         raise Refused(f"PR #{a.pr} names no story (sc-N in its branch or title), so nothing "
@@ -898,10 +926,10 @@ def merge(c, a):
                       f"`sq {c.role} pr-close {a.pr} --text \"<why>\"`")
     side = W.side_pr(story, pr)
     follow_up = not side and W.follow_up(story)
-    if story["state"] not in R.MERGING and not side and not follow_up:
+    if story["state"] not in R.MERGING and not side and not follow_up and not design:
         raise Refused(f"its story is {story['state']}, not Passed Code Review: move it to "
                       "In Review for the lead once its checks are green")
-    if R.builder_of(story["labels"]) != c.role and not (
+    if not design and R.builder_of(story["labels"]) != c.role and not (
             c.role in R.DEVS and R.builder_of(story["labels"]) in R.DEVS):
         raise Refused(f"sc-{story['id']} is {R.builder_of(story['labels'])}'s to merge")
     verdict = W.latest_verdict(pr)
@@ -915,6 +943,9 @@ def merge(c, a):
         github.ready(a.pr)
     github.merge(a.pr, head)
     merged = github.live(a.pr)["mergeCommit"]
+    if design:
+        return (f"merged PR #{a.pr} as {merged}; sc-{story['id']} stays {story['state']}, and "
+                f"no tester is told{resync(c)}")
     if side:
         return (f"merged PR #{a.pr} as {merged}; sc-{story['id']} stays {story['state']}, "
                 f"the linguist's to move, and the linguist is woken{resync(c)}")
@@ -930,11 +961,12 @@ def merge(c, a):
     return f"merged PR #{a.pr} as {merged}; sc-{story['id']} is {went}{told}{resync(c)}"
 
 
-def owns(c, story_id, refusal):
-    """The story's builder, or the developers on each other's, or ops on any."""
-    story = c.story(story_id) if story_id else None
-    builder = (None if not story else "l10n" if W.linguists(story)
-               else R.builder_of(story["labels"]))
+def owns(c, story_id, branch, refusal):
+    """The story's builder, or the developers on each other's, or ops on any. A design pull
+    request is the designer's."""
+    story = c.story(story_id) if story_id and not R.is_design_branch(branch) else None
+    builder = ("ux" if R.is_design_branch(branch) else None if not story
+               else "l10n" if W.linguists(story) else R.builder_of(story["labels"]))
     if c.role != "ops" and builder != c.role and not (
             c.role in R.DEVS and builder in R.DEVS):
         raise Refused(refusal.format(builder or "nobody"))
@@ -946,9 +978,10 @@ def pr_close(c, a):
     if not (a.text or "").strip():
         raise Refused("say why it closes unmerged: --text")
     pr = c.pr(a.pr)
+    design_only(c, "pr-close", pr.get("branch"), f"PR #{a.pr}")
     if pr["state"] != "open":
         raise Refused(f"PR #{a.pr} is {pr['state']}")
-    owns(c, pr["story_id"], f"PR #{a.pr} is {{}}'s to close; ask [ops]")
+    owns(c, pr["story_id"], pr.get("branch"), f"PR #{a.pr} is {{}}'s to close; ask [ops]")
     github.close(a.pr, f"{a.text.rstrip()} (from {signature(c.role)})")
     return f"closed PR #{a.pr} unmerged{resync(c)}"
 
@@ -963,9 +996,10 @@ def pr_edit(c, a):
         raise Refused(f"the text brings its own heading ({headed[0]}); send only the "
                       "section's text")
     live = github.live(a.pr)
+    design_only(c, "pr-edit", live.get("branch"), f"PR #{a.pr}")
     if live["state"] == "CLOSED":
         raise Refused(f"PR #{a.pr} is closed unmerged")
-    owns(c, live["story_id"], f"PR #{a.pr} is {{}}'s to edit; ask [ops]")
+    owns(c, live["story_id"], live.get("branch"), f"PR #{a.pr} is {{}}'s to edit; ask [ops]")
     found = [h for h in T.matching(live["body"], a.section) if h != T.TOP]
     if len(found) != 1:
         headings = "; ".join(h for h, _, _ in T.sections(live["body"]) if h != T.TOP)
@@ -982,7 +1016,8 @@ def to_qa(c, a):
     guard(c, "to-qa")
     story = c.story(a.story)
     linguists_own(c, story, "Ready For QA")
-    merged = [pr for pr in store.prs_for_story(c.db, story["id"]) if pr["state"] == "merged"]
+    merged = [pr for pr in store.prs_for_story(c.db, story["id"])
+              if pr["state"] == "merged" and not W.design_pr(pr)]
     if not merged:
         raise Refused(f"sc-{story['id']} has no merged pull request")
     return finish_handover(c, story, merged[-1], a.text)
@@ -992,6 +1027,11 @@ def rerun(c, a):
     guard(c, "rerun")
     if not (a.run or a.pr):
         raise Refused("say what to rerun: a pull request number, or --run <id>")
+    if c.role == "ux":
+        if a.run:
+            raise Refused("ux reruns by pull request number, so the run is known to be its "
+                          "own ux/ branch's: rerun <pr>")
+        design_only(c, "rerun", c.pr(a.pr).get("branch"), f"PR #{a.pr}")
     if a.run:
         github.rerun_failed(a.run)
         return f"rerunning the failed jobs of run {a.run}"

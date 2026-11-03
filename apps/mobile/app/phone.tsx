@@ -9,7 +9,7 @@ import {
 import { getLocales } from 'expo-localization';
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { StyleSheet, type TextInputInstance, View, type ViewInstance } from 'react-native';
+import { type TextInputInstance, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../src/api.ts';
@@ -21,7 +21,6 @@ import { focusPicker } from '../src/components/CountryPicker.tsx';
 import { focusChecked, keysStayDown } from '../src/components/Field.tsx';
 import { PhoneEntry } from '../src/components/PhoneEntry.tsx';
 import { phoneProblemMessage } from '../src/phoneProblem.ts';
-import { tokens } from '../src/theme/tokens.ts';
 
 export default function ChangePhone() {
   const { t } = useTranslation();
@@ -73,7 +72,7 @@ export default function ChangePhone() {
         </>
       }
     >
-      <View style={styles.form}>
+      <>
         {current != null && <Notice tone="quiet" mark="i" body={t('verifyPhone.changeNotice')} />}
 
         <NumberForm
@@ -90,7 +89,7 @@ export default function ChangePhone() {
             testID="phone.keep"
           />
         )}
-      </View>
+      </>
     </AuthFrame>
   );
 }
@@ -178,7 +177,3 @@ function NumberForm({
     </>
   );
 }
-
-const styles = StyleSheet.create({
-  form: { gap: tokens.spaceXl },
-});

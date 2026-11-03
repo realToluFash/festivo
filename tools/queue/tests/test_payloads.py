@@ -44,6 +44,12 @@ class Merge(unittest.TestCase):
         said = self.render("dev", ticket(labels=()), pr("feature/sc-9/x"))
         self.assertIn("moves the story to Ready For QA", said)
 
+    def test_the_designers_pr_merges_from_the_demo_area_and_leaves_the_story(self):
+        said = self.render("ux", ticket(labels=("dev2",)), pr("ux/sc-9-sign-in"))
+        self.assertIn("once it changes only apps/mobile/src/demo/ and apps/mobile/app/demo/", said)
+        self.assertIn("sc-9 stays In Progress and no tester is told", said)
+        self.assertNotIn("moves the story to Ready For QA", said)
+
     def test_a_conflicting_linguist_pr_is_told_of_no_lead_review(self):
         said = self.render("l10n", ticket(), pr("l10n/sc-9"), mergeable="CONFLICTING")
         self.assertIn("Merge origin/main into the branch and push", said)
@@ -83,6 +89,17 @@ class Review(unittest.TestCase):
     def test_with_no_pr_it_asks_whoever_builds_the_story(self):
         self.assertIn("--to ops`", self.render(("ops",)))
         self.assertIn("--to dev2`", self.render(("dev2",)))
+
+    def test_a_design_pr_prints_the_design_section_in_full_beside_the_ac(self):
+        for branch, sections in (("ux/sc-9-sign-in", (T.is_ac, T.is_design)),
+                                 ("feature/sc-9/x", (T.is_ac,))):
+            pull = dict(pr(branch), head_sha="b0bd492", checks="green")
+            with mock.patch.object(payloads, "V") as views, \
+                    mock.patch.object(payloads, "cached_diff"), \
+                    mock.patch.object(payloads.W, "latest_verdict", return_value=None):
+                payloads.review(Lines("lead"), None, {"id": 5}, ticket(labels=()), pull, {})
+            views.description.assert_called_once_with(
+                mock.ANY, mock.ANY, always=sections, only=sections, outline_rest=True)
 
 
 if __name__ == "__main__":
