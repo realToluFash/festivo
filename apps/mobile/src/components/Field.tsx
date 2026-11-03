@@ -41,7 +41,8 @@ import { fieldChecked, fieldFocused, fieldLeft } from './focusedField.ts';
 import { useReadOut } from './ReadOut.tsx';
 import { useFocusOnAnswer } from './Screen.tsx';
 import { moveScreenReaderFocus } from './screenReaderFocus.ts';
-import { Text, type TextHandle } from './Text.tsx';
+import { capUnderTitle } from '../layout/textSize.ts';
+import { Text, type TextHandle, TitleCap } from './Text.tsx';
 import { useMarkSide } from './markSide.ts';
 
 /** 16 is the smallest size iOS Safari will not zoom into on focus. */
@@ -303,6 +304,13 @@ function useFocusRing(onFocus: TextInputProps['onFocus'], onBlur: TextInputProps
   };
 }
 
+/** Under a frame's title, typed text grows no larger than the title does, as a `Text` there does. */
+function useUnderTitle(size: number, own: number | undefined): number | undefined {
+  const cap = useContext(TitleCap);
+
+  return cap == null ? own : capUnderTitle(cap, size, own);
+}
+
 export function TextField({
   wrong = false,
   submitting = false,
@@ -328,6 +336,10 @@ export function TextField({
       ref={ref}
       {...ringing}
       style={inputFaced([styles.input, wrong && styles.wrong, ringed && styles.ring, style])}
+      maxFontSizeMultiplier={useUnderTitle(
+        StyleSheet.flatten(style)?.fontSize ?? CONTROL_TEXT_SIZE,
+        rest.maxFontSizeMultiplier,
+      )}
       aria-invalid={wrong}
     />
   );
@@ -364,6 +376,10 @@ export function CodeField({
       ref={ref}
       {...ringing}
       style={inputFaced([styles.code, wrong && styles.wrong, ringed && styles.ring, style])}
+      maxFontSizeMultiplier={useUnderTitle(
+        StyleSheet.flatten(style)?.fontSize ?? tokens.typeTitleDialog.size,
+        rest.maxFontSizeMultiplier,
+      )}
       aria-invalid={wrong}
     />
   );
