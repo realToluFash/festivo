@@ -15,7 +15,7 @@ import { Screen } from '../src/components/Screen.tsx';
 import { GlyphMark, type Mark } from '../src/components/StatusMark.tsx';
 import { Text } from '../src/components/Text.tsx';
 import { config } from '../src/config.ts';
-import { demoOpens } from '../src/demo/gate.ts';
+import { DemoButton } from '../src/demo/DemoEntry.tsx';
 import { followAccount } from '../src/accountLanguage.ts';
 import { landingFor } from '../src/landing.ts';
 import { useLayout } from '../src/layout/useLayout.ts';
@@ -202,15 +202,7 @@ function SignedOut({ state, onRetry }: { state: State; onRetry: () => void }) {
           onPress={() => router.push('/sign-in')}
           testID="home.openSignIn"
         />
-        {demoOpens(config.environment) && (
-          <SecondaryButton
-            label="Design demo"
-            onPress={() => router.push('/demo')}
-            stacked
-            link
-            testID="home.designDemo"
-          />
-        )}
+        <DemoButton />
       </View>
     </Screen>
   );

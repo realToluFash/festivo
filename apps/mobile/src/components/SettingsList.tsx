@@ -18,8 +18,7 @@ import {
   settingsGroups,
 } from '../kit/appNav.ts';
 import { OPENED_IN_PLACE_OF_SETTINGS, sectionTakesBack } from '../kit/systemBack.ts';
-import { config } from '../config.ts';
-import { demoOpens } from '../demo/gate.ts';
+import { DemoRow, demoHere } from '../demo/DemoEntry.tsx';
 import { breakableEmail } from '../layout/textSize.ts';
 import {
   type LayoutKind,
@@ -150,32 +149,7 @@ export function SettingsList({ kind, open }: { kind: LayoutKind; open: SettingsS
       </View>
     )),
   }));
-  const demo = demoOpens(config.environment) && (
-    <Pressable
-      style={[styles.section, !alone && styles.sectionTablet]}
-      onPress={() => router.push('/demo')}
-      accessibilityRole="button"
-      testID="settings.designDemo"
-    >
-      <View style={styles.fill}>
-        <Text size={tokens.typeTitleSection.size} weight="semibold">
-          Design demo
-        </Text>
-        <Text size={tokens.typeBody.size} muted>
-          The designs, working on sample data
-        </Text>
-      </View>
-      <Text
-        size={tokens.typeTitleDialog.size}
-        muted
-        accessibilityElementsHidden
-        importantForAccessibility="no"
-        accessible={false}
-      >
-        ›
-      </Text>
-    </Pressable>
-  );
+  const demo = demoHere() && <DemoRow style={[styles.section, !alone && styles.sectionTablet]} />;
   const signOut = (
     <View style={[styles.foot, !alone && styles.footTablet]}>
       {kind !== 'tabletLandscape' && account != null && (
