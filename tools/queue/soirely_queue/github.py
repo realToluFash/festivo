@@ -362,8 +362,13 @@ def compare(owner, name, base, head):
 
 
 def files(number):
-    return [(f["filename"], f["additions"], f["deletions"])
-            for f in pages(f"{repo_path()}/pulls/{number}/files?per_page=100")]
+    """Every path the pull request changes: a rename's old path too, since it is deleted."""
+    found = []
+    for f in pages(f"{repo_path()}/pulls/{number}/files?per_page=100"):
+        found.append((f["filename"], f["additions"], f["deletions"]))
+        if f.get("previous_filename"):
+            found.append((f["previous_filename"], 0, 0))
+    return found
 
 
 def live(number):
@@ -373,6 +378,7 @@ def live(number):
             "mergeStateStatus": (pull.get("mergeable_state") or "unknown").upper(),
             "state": "MERGED" if pull.get("merged") else pull["state"].upper(),
             "draft": bool(pull.get("draft")), "body": pull.get("body") or "",
+            "branch": pull["head"]["ref"],
             "story_id": story_of(pull["head"]["ref"], pull.get("title")),
             "mergeCommit": pull["merge_commit_sha"] if pull.get("merged") else None}
 
