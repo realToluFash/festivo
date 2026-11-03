@@ -1752,3 +1752,255 @@ class FinishedStories(Base):
                 mock.patch("soirely_queue.sync.sync_github"):
             actions.pr_close(self.as_("dev2"), args(pr=9, text="sc-1 is archived"))
         close.assert_called_once_with(9, "sc-1 is archived (from dev2)")
+
+
+DESIGN = "ux/sc-1-sign-in"
+DEMO_FILES = [("apps/mobile/src/demo/SignIn.tsx", 40, 0), ("apps/mobile/app/demo/sign-in.tsx", 9, 0)]
+
+
+def design(verdict=None, branch=DESIGN, **kw):
+    return dict(pr(verdict, **kw), branch=branch)
+
+
+class DesignPullRequests(Base):
+    """The designer builds a story's boards in the app's demo area on a ux/ branch, opens and
+    merges its pull request itself after the lead's pass, and the story keeps its state."""
+
+    STATES = ("Needs Design", "Ready For Dev", "In Progress", "In Review", "Passed Code Review",
+              "Ready For QA", "Done")
+
+    def live(self, mergeable="MERGEABLE", head=HEAD):
+        return {"headRefOid": head, "mergeable": mergeable, "mergeStateStatus": "CLEAN",
+                "mergeCommit": "m" * 40, "state": "OPEN", "body": BODY, "story_id": 1,
+                "branch": DESIGN}
+
+    def merge(self, role="ux", files=DEMO_FILES, live=None):
+        with mock.patch("soirely_queue.github.live", return_value=live or self.live()), \
+                mock.patch("soirely_queue.github.files", return_value=files), \
+                mock.patch("soirely_queue.github.merge") as merged, \
+                mock.patch("soirely_queue.sync.sync_github"):
+            try:
+                return actions.merge(self.as_(role), args(pr=9, text=None)), merged
+            except actions.Refused:
+                merged.assert_not_called()
+                raise
+
+    def test_the_designer_may_run_its_pull_request_commands(self):
+        for command in ("pr-create", "pr-reply", "pr-edit", "pr-close", "merge", "rerun"):
+            self.assertTrue(roles.may("ux", command), command)
+            self.assertIn(command, cli.role_parser("ux").commands, command)
+        for command in ("review", "resolve", "to-qa"):
+            self.assertFalse(roles.may("ux", command), command)
+
+    def test_the_designer_is_refused_on_any_branch_but_its_own(self):
+        self.fake.add(1, "In Review", ["dev2"])
+        thread = {"id": "T1", "resolved": False, "path": "a", "line": 1,
+                  "comments": [{"id": 5, "at": "t", "text": "should: x"}]}
+        store.put_pr(self.db, dict(pr("pass", threads=[thread]), branch="feature/sc-1/thing"))
+        why = "ux may {} only on a ux/sc-N-<slug> branch.*PR #9 is on feature/sc-1/thing"
+        with mock.patch("soirely_queue.github.live",
+                        return_value=dict(self.live(), branch="feature/sc-1/thing")), \
+                mock.patch("soirely_queue.github.merge") as merged, \
+                mock.patch("soirely_queue.github.reply") as replied, \
+                mock.patch("soirely_queue.github.close") as closed, \
+                mock.patch("soirely_queue.github.edit_body") as edited, \
+                mock.patch("soirely_queue.github.rerun_failed") as reran, \
+                mock.patch("soirely_queue.github.create_pr") as created:
+            for command, call in (
+                    ("merge", lambda c: actions.merge(c, args(pr=9, text=None))),
+                    ("pr-reply", lambda c: actions.pr_reply(c, args(pr=9, comment=5, text="x"))),
+                    ("pr-close", lambda c: actions.pr_close(c, args(pr=9, text="why"))),
+                    ("pr-edit", lambda c: actions.pr_edit(c, args(pr=9, section="Risks",
+                                                                  text="- new"))),
+                    ("rerun", lambda c: actions.rerun(c, args(pr=9, run=None)))):
+                with self.assertRaisesRegex(actions.Refused, why.format(command)):
+                    call(self.as_("ux"))
+            with self.assertRaisesRegex(actions.Refused, "ux may pr-create only on a ux/"):
+                actions.pr_create(self.as_("ux"), args(head="feature/sc-1/thing", title="t",
+                                                       text=BODY, draft=False))
+            with self.assertRaisesRegex(actions.Refused, "names no story"):
+                actions.pr_create(self.as_("ux"), args(head="ux/sign-in", title="t", text=BODY,
+                                                       draft=False))
+            with self.assertRaisesRegex(actions.Refused, "by pull request number"):
+                actions.rerun(self.as_("ux"), args(pr=None, run=5))
+        for called in (merged, replied, closed, edited, reran, created):
+            called.assert_not_called()
+
+    def test_the_designer_works_its_own_ux_branch(self):
+        self.fake.add(1, "Ready For Dev", ["dev2"])
+        thread = {"id": "T1", "resolved": False, "path": "a", "line": 1,
+                  "comments": [{"id": 5, "at": "t", "text": "should: x"}]}
+        store.put_pr(self.db, design(threads=[thread]))
+        failed = [{"bucket": "fail", "link": "https://github.com/o/n/actions/runs/5/job/6"}]
+        with mock.patch("soirely_queue.github.live", return_value=self.live()), \
+                mock.patch("soirely_queue.github.create_pr", return_value="u") as created, \
+                mock.patch("soirely_queue.github.reply") as replied, \
+                mock.patch("soirely_queue.github.edit_body") as edited, \
+                mock.patch("soirely_queue.github.close") as closed, \
+                mock.patch("soirely_queue.github.pr_checks", return_value=failed), \
+                mock.patch("soirely_queue.github.rerun_failed") as reran, \
+                mock.patch("soirely_queue.sync.sync_github"):
+            ux = self.as_("ux")
+            actions.pr_create(ux, args(head=DESIGN, title="t", text=BODY, draft=False))
+            actions.pr_reply(ux, args(pr=9, comment=5, text="Fixed in abc."))
+            actions.pr_edit(ux, args(pr=9, section="Risks", text="- the demo only"))
+            actions.rerun(ux, args(pr=9, run=None))
+            actions.pr_close(ux, args(pr=9, text="drawn again in #10"))
+        created.assert_called_once()
+        replied.assert_called_once_with("owner", "repo", 9, 5, "Fixed in abc. (from ux)")
+        edited.assert_called_once()
+        reran.assert_called_once_with("5")
+        closed.assert_called_once_with(9, "drawn again in #10 (from ux)")
+        self.assertEqual(self.state(1), "Ready For Dev")
+
+    def test_a_design_merge_with_a_file_outside_the_demo_is_refused_and_names_each(self):
+        self.fake.add(1, "Ready For Dev", ["dev2"])
+        store.put_pr(self.db, design("pass"))
+        stray = DEMO_FILES + [("apps/mobile/src/ui/Button.tsx", 1, 1),
+                              ("apps/mobile/app/(auth)/sign-in.tsx", 2, 0)]
+        with self.assertRaisesRegex(actions.Refused, "changes only the demo area.*"
+                                    r"apps/mobile/src/ui/Button.tsx, apps/mobile/app/\(auth\)"
+                                    ) as refused:
+            self.merge(files=stray)
+        self.assertNotIn("SignIn.tsx", str(refused.exception))
+        self.assertEqual(self.state(1), "Ready For Dev")
+
+    def test_a_design_merge_with_only_demo_files_merges_at_the_head_and_leaves_the_story(self):
+        for state in self.STATES:
+            self.fake.add(1, state, ["dev2"])
+            store.put_pr(self.db, design("pass"))
+            said, merged = self.merge()
+            merged.assert_called_once_with(9, HEAD)
+            self.assertEqual(self.state(1), state)
+            self.assertIn(f"stays {state}, and no tester is told", said)
+            self.assertEqual(self.fake.comments, [], state)
+
+    def test_a_design_merge_keeps_every_other_guard(self):
+        self.fake.add(1, "Ready For Dev", ["dev2"])
+        held = {"resolved": False, "comments": []}
+        for stored, live, why in (
+                (design(), None, "no lead pass covers the head"),
+                (design("back"), None, "no lead pass covers the head"),
+                (design("pass", at=OLD), None, "no lead pass covers the head"),
+                (design("pass"), self.live(head="d" * 40), "no lead pass covers the head"),
+                (dict(design("pass"), checks="red"), None, "checks are red"),
+                (design("pass", threads=[held]), None, "1 review threads are open"),
+                (design("pass"), self.live("CONFLICTING"), "Merge origin/main"),
+                (dict(design("pass"), state="merged"), None, "PR #9 is merged")):
+            store.put_pr(self.db, stored)
+            with self.assertRaisesRegex(actions.Refused, why):
+                self.merge(live=live)
+        store.put_pr(self.db, design("pass"))
+        with self.assertRaisesRegex(actions.Refused, "permissions.json"):
+            self.merge(files=[("tools/queue/permissions.json", 1, 0)])
+        self.assertEqual(self.state(1), "Ready For Dev")
+
+    def test_no_other_role_merges_a_design_pull_request(self):
+        for state in ("In Review", "Passed Code Review"):
+            self.fake.add(1, state, ["dev2"])
+            store.put_pr(self.db, design("pass"))
+            for role in ("dev2", "dev", "ops", "l10n"):
+                with self.assertRaisesRegex(actions.Refused, "the designer's: ux merges it"):
+                    self.merge(role)
+            store.put_pr(self.db, dict(design("pass"), state="merged", merge_sha="m" * 40))
+            with self.assertRaisesRegex(actions.Refused, "ux merges it"):
+                self.merge("dev2")
+            self.assertEqual(self.state(1), state)
+            self.assertEqual(self.fake.comments, [])
+
+    def test_the_leads_pass_on_a_design_pr_leaves_the_story_and_tells_no_tester(self):
+        for state in ("In Progress", "In Review", "Passed Code Review", "Ready For Dev"):
+            self.fake.add(1, state, ["dev2"])
+            store.put_pr(self.db, design())
+            with mock.patch("soirely_queue.github.live", return_value=self.live()), \
+                    mock.patch("soirely_queue.github.post_review", return_value={}) as post, \
+                    mock.patch("soirely_queue.sync.sync_github"):
+                actions.review(self.as_("lead"), args(pr=9, verdict="pass", findings=None,
+                                                      qa=None, text="summary"))
+            self.assertEqual(self.state(1), state)
+            self.assertEqual(self.fake.comments, [], state)
+            passed = github.verdict({"body": post.call_args.args[4]})
+            self.assertEqual(passed, {"verdict": "pass", "sha": HEAD})
+            store.put_pr(self.db, design(passed["verdict"], at=passed["sha"]))
+            said, merged = self.merge()
+            merged.assert_called_once_with(9, HEAD)
+            self.assertEqual(self.state(1), state)
+
+    def test_the_leads_findings_on_a_design_pr_go_to_the_designer_and_leave_the_story(self):
+        for state in ("In Review", "Passed Code Review", "Needs Design"):
+            self.fake.add(1, state, ["dev2"])
+            store.put_pr(self.db, design())
+            told = len(self.fake.comments)
+            with mock.patch("soirely_queue.github.live", return_value=self.live()), \
+                    mock.patch("soirely_queue.github.post_review", return_value={}) as post, \
+                    mock.patch("soirely_queue.sync.sync_github"), \
+                    mock.patch("soirely_queue.actions.findings",
+                               return_value=[{"path": "apps/mobile/src/demo/SignIn.tsx",
+                                              "line": 1, "blocking": True, "body": "b"}]):
+                actions.review(self.as_("lead"), args(pr=9, verdict="back", findings="f",
+                                                      qa=None, text="summary"))
+            self.assertEqual(self.state(1), state)
+            self.assertEqual(len(self.fake.comments), told + 1)
+            said = self.fake.comments[-1][1]
+            self.assertTrue(said.startswith("[ux] (from lead)"), said)
+            self.assertIn("the lead is woken by the push", said)
+            self.assertEqual(github.verdict({"body": post.call_args.args[4],
+                                             "commit": {"oid": HEAD}})["verdict"], "back")
+
+    def test_an_open_design_pr_never_holds_the_developers_handover(self):
+        self.fake.add(1, "Passed Code Review", ["dev2"])
+        store.put_pr(self.db, dict(pr("pass"), branch="feature/sc-1/thing"))
+        store.put_pr(self.db, dict(design(), number=10))
+        with mock.patch("soirely_queue.github.live",
+                        return_value=dict(self.live(), branch="feature/sc-1/thing")), \
+                mock.patch("soirely_queue.github.merge") as merged, \
+                mock.patch("soirely_queue.sync.sync_github"):
+            said = actions.merge(self.as_("dev2"), args(pr=9, text=None))
+        merged.assert_called_once_with(9, HEAD)
+        self.assertEqual(self.state(1), "Ready For QA")
+        self.assertIn("QA is told", said)
+
+    def test_to_qa_hands_over_the_developers_merge_not_the_designers(self):
+        self.fake.add(1, "In Review", ["dev2"])
+        store.put_pr(self.db, {**pr("pass"), "branch": "feature/sc-1/thing", "state": "merged",
+                               "merge_sha": "m" * 40})
+        store.put_pr(self.db, {**design("pass"), "number": 10, "state": "merged",
+                               "merge_sha": "u" * 40})
+        actions.to_qa(self.as_("dev2"), args(story="sc-1", text=None))
+        self.assertEqual(self.state(1), "Ready For QA")
+        self.assertIn("PR #9 merged as " + "m" * 40, self.fake.comments[-1][1])
+
+    def test_a_design_pr_is_the_designers_to_close_or_ops(self):
+        self.fake.add(1, "In Review", ["dev2"])
+        store.put_pr(self.db, design())
+        with mock.patch("soirely_queue.github.close") as closed, \
+                mock.patch("soirely_queue.sync.sync_github"):
+            with self.assertRaisesRegex(actions.Refused, "ux's to close"):
+                actions.pr_close(self.as_("dev2"), args(pr=9, text="why"))
+            actions.pr_close(self.as_("ops"), args(pr=9, text="stranded"))
+        closed.assert_called_once_with(9, "stranded (from ops)")
+
+    def test_red_checks_and_findings_on_a_design_pr_wake_the_designer_not_the_developer(self):
+        self.fake.add(1, "In Progress", ["dev2"])
+        self.as_("dev2").story("sc-1")
+        unanswered = {"id": "T1", "resolved": False, "path": "a", "line": 1,
+                      "comments": [{"id": 5, "at": "t", "text": "blocking: x (from lead)"}]}
+        for stored, kind in ((dict(design(), checks="red"), "checks-red"),
+                             (design("pass", threads=[unanswered]), "answer-threads"),
+                             (design("pass"), "merge")):
+            store.put_prs(self.db, [stored])
+            cli.refresh_work(self.db, 10_000_000)
+            self.assertIn(kind, {w["kind"] for w in store.waiting(self.db, "ux")}, kind)
+            self.assertFalse([w for w in store.waiting(self.db, "dev2") if w["pr"] == 9], kind)
+
+    def test_the_lead_is_woken_for_a_design_pr_whatever_its_storys_state(self):
+        for n, state in enumerate(self.STATES, 1):
+            self.fake.add(n, state, ["dev2"])
+            self.as_("lead").story(f"sc-{n}")
+        store.put_prs(self.db, [dict(design(), number=20 + n, story_id=n,
+                                     branch=f"ux/sc-{n}-boards")
+                                for n in range(1, len(self.STATES) + 1)])
+        cli.refresh_work(self.db, 10_000_000)
+        reviews = {w["pr"] for w in store.waiting(self.db, "lead") if w["kind"] == "review"}
+        # The story In Review still has no pull request of its own, and is flagged as one.
+        self.assertEqual(reviews, set(range(21, 21 + len(self.STATES))) | {None})

@@ -44,6 +44,12 @@ class Merge(unittest.TestCase):
         said = self.render("dev", ticket(labels=()), pr("feature/sc-9/x"))
         self.assertIn("moves the story to Ready For QA", said)
 
+    def test_the_designers_pr_merges_from_the_demo_area_and_leaves_the_story(self):
+        said = self.render("ux", ticket(labels=("dev2",)), pr("ux/sc-9-sign-in"))
+        self.assertIn("once it changes only apps/mobile/src/demo/ and apps/mobile/app/demo/", said)
+        self.assertIn("sc-9 stays In Progress and no tester is told", said)
+        self.assertNotIn("moves the story to Ready For QA", said)
+
     def test_a_conflicting_linguist_pr_is_told_of_no_lead_review(self):
         said = self.render("l10n", ticket(), pr("l10n/sc-9"), mergeable="CONFLICTING")
         self.assertIn("Merge origin/main into the branch and push", said)

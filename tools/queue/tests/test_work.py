@@ -925,6 +925,120 @@ class FollowUps(unittest.TestCase):
             self.assertEqual(work.review_items([story(state=state)], [pr()]), [], state)
 
 
+
+class DesignPullRequests(unittest.TestCase):
+    """The designer's pull request, from a ux/ branch: the lead reviews it and the designer
+    is woken for it whatever state its story is in, and the story's developer never is."""
+
+    STATES = ("Backlog", "To Do", "Needs Design", "Ready For Dev", "In Progress", "In Review",
+              "Failed Code Review", "Passed Code Review", "Ready For QA", "In QA", "Failed QA",
+              "Done")
+
+    def on(self, state, labels=("dev2",), **kw):
+        return dict(story(state=state, labels=labels, **kw), done=state == "Done")
+
+    def design(self, **kw):
+        return dict(pr(40, 1, **kw), branch="ux/sc-1-sign-in")
+
+    def test_it_is_told_apart_by_its_branch_alone(self):
+        self.assertTrue(roles.is_design_branch("ux/sc-1-sign-in"))
+        for branch in ("feature/sc-1/x", "l10n/sc-1", "fix/ux/sc-1", "", None):
+            self.assertFalse(roles.is_design_branch(branch), branch)
+        self.assertTrue(work.design_pr(self.design()))
+        self.assertFalse(work.design_pr(pr()))
+
+    def test_the_lead_reviews_it_whatever_state_its_story_is_in(self):
+        for state in self.STATES:
+            items = [i for i in work.review_items([self.on(state)], [self.design()]) if i["pr"]]
+            self.assertEqual([(i["kind"], i["roles"], i["pr"]) for i in items],
+                             [("review", ["lead"], 40)], state)
+            self.assertIn("design PR #40", items[0]["reason"])
+            self.assertIn("not reviewed yet", items[0]["reason"])
+
+    def test_a_pass_at_the_head_needs_nothing_and_a_push_after_it_needs_a_review(self):
+        passed = self.design(lead=[verdict("pass", HEAD[:7])])
+        pushed = self.design(head=OLD, lead=[verdict("pass", HEAD[:7])])
+        for state in self.STATES:
+            self.assertEqual([i for i in work.review_items([self.on(state)], [passed])
+                              if i["pr"]], [], state)
+            items = [i for i in work.review_items([self.on(state)], [pushed]) if i["pr"]]
+            self.assertEqual(kinds(items), ["review"], state)
+            self.assertIn("pushed after the pass", items[0]["reason"])
+
+    def test_a_story_move_after_findings_is_no_hand_back_and_no_new_review(self):
+        back = self.design(lead=[verdict("back", HEAD[:7])])
+        for state in ("In Review", "Passed Code Review", "Ready For Dev"):
+            moved = self.on(state, moved_at="2026-10-19T10:00:00Z")
+            self.assertEqual([i for i in work.review_items([moved], [back]) if i["pr"]], [],
+                             state)
+        early, late = (work.review_items([self.on("Ready For Dev", moved_at=at)],
+                                         [self.design()])[0]["fingerprint"]
+                       for at in ("2026-10-18T10:00:00Z", "2026-10-19T10:00:00Z"))
+        self.assertEqual(early, late)
+
+    def test_red_checks_wake_the_designer_and_not_the_lead_or_the_developer(self):
+        red = self.design(checks="red")
+        for state in self.STATES:
+            self.assertEqual([i for i in work.review_items([self.on(state)], [red]) if i["pr"]],
+                             [], state)
+            items = work.developer_items([self.on(state)], [red])
+            self.assertEqual([(i["kind"], i["roles"]) for i in items], [("checks-red", ["ux"])],
+                             state)
+
+    def test_the_pass_open_threads_and_a_conflict_wake_the_designer_in_any_state(self):
+        passed = self.design(lead=[verdict("pass", HEAD[:7])])
+        held = self.design(lead=[verdict("pass", HEAD[:7])],
+                           threads=[thread("blocking: x (from lead)")])
+        conflicting = dict(self.design(), mergeable="conflicting")
+        for state in self.STATES:
+            for found, kind in ((passed, "merge"), (held, "answer-threads"),
+                                (conflicting, "conflict")):
+                items = work.developer_items([self.on(state)], [found])
+                self.assertEqual([(i["kind"], i["roles"]) for i in items], [(kind, ["ux"])],
+                                 (state, kind))
+
+    def test_no_one_is_told_to_move_the_story_to_review(self):
+        for state in ("In Progress", "Failed Code Review"):
+            self.assertEqual(work.developer_items([self.on(state)], [self.design()]), [])
+            self.assertEqual(work.waits_on(self.on(state), self.design()),
+                             ("lead", "lead to review it"))
+
+    def test_a_merged_design_pr_hands_nothing_to_qa_and_wakes_no_linguist(self):
+        merged = self.design(state="merged", lead=[verdict("pass", HEAD[:7])])
+        merged["merged_at"] = "2026-10-18T12:00:00Z"
+        for state in ("In Review", "Passed Code Review"):
+            self.assertEqual(work.developer_items([self.on(state)], [merged]), [], state)
+        ticket = dict(story(9, "In Progress", labels=["translation"]),
+                      links=[{"verb": "relates to", "subject": 9, "object": 1}])
+        self.assertEqual(work.unblocked_items([self.on("Ready For QA"), ticket], [merged]), [])
+
+    def test_a_push_after_the_pass_leaves_the_story_in_passed_code_review(self):
+        pushed = self.design(head=OLD, lead=[verdict("pass", HEAD[:7])])
+        self.assertEqual(work.voided_passes([self.on("Passed Code Review")], [pushed]), [])
+
+    def test_a_story_in_review_with_only_a_design_pr_still_has_none_of_its_own(self):
+        items = work.review_items([self.on("In Review")], [self.design()])
+        self.assertIn("with no open pull request", items[0]["reason"])
+        self.assertEqual(items[1]["pr"], 40)
+
+    def test_it_waits_on_the_designer_for_every_step_but_the_review(self):
+        passed = self.design(lead=[verdict("pass", HEAD[:7])])
+        back = self.design(lead=[verdict("back", HEAD[:7])])
+        for state in ("Ready For Dev", "In Review", "Done"):
+            self.assertEqual(work.waits_on(self.on(state), passed), ("ux", "ux to merge it"))
+            self.assertEqual(work.waits_on(self.on(state), back),
+                             ("ux", "ux to fix the findings and push"))
+            self.assertEqual(work.waits_on(self.on(state), dict(passed, checks="red"))[0], "ux")
+
+    def test_a_developers_or_a_linguists_pr_is_routed_as_before(self):
+        self.assertEqual(work.builder(self.on("In Review"), pr()), "dev2")
+        ticket = story(1, "In Progress", labels=["translation"])
+        self.assertEqual(work.builder(ticket, dict(pr(), branch="l10n/sc-1")), "l10n")
+        self.assertEqual(work.builder(ticket, pr()), "dev")
+        self.assertTrue(work.side_pr(ticket, pr()))
+        self.assertFalse(work.side_pr(ticket, self.design()))
+        self.assertEqual(work.builder(ticket, self.design()), "ux")
+
 class Stranded(unittest.TestCase):
     NOW = T.epoch("2026-10-25T12:00:00Z")
 
