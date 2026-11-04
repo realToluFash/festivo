@@ -253,9 +253,66 @@ describe('getting back in without the authenticator', () => {
     ).toBeDefined();
 
     fireEvent.click(screen.getByRole('button', { name: 'Cancel the request' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Cancel the request' }).at(-1)!);
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Request cancelled' }),
     ).toBeDefined();
+  });
+
+  it('asks before cancelling, and Keep waiting or Escape leaves the request waiting (sc-29957)', async () => {
+    const sent = await atTheStart({
+      'POST /api/auth/two-factor/recovery/opening': () =>
+        json({ ...OPENING, recovery: 'handle', state: WAITING }),
+      'POST /api/auth/two-factor/recovery/cancel': () =>
+        json({ state: { ...WAITING, status: 'cancelled' } }),
+    });
+    const cancels = () => sent.filter((request) => request.path.endsWith('/cancel'));
+    const link = screen.getByRole('button', { name: 'Cancel the request' });
+
+    fireEvent.click(link);
+    const dialog = screen.getByRole('alertdialog', { name: 'Cancel your request?' });
+    expect(screen.getByText('You’ll need to start again to get back in.')).toBeDefined();
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Keep waiting' }));
+    fireEvent.keyDown(dialog, { key: 'Escape' });
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+
+    fireEvent.click(link);
+    fireEvent.click(screen.getByRole('button', { name: 'Keep waiting' }));
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(screen.getByRole('heading', { level: 1, name: 'Waiting for your organisation' }));
+    expect(cancels()).toHaveLength(0);
+
+    fireEvent.click(link);
+    const confirm = screen.getAllByRole('button', { name: 'Cancel the request' }).at(-1);
+    fireEvent.click(confirm!);
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Request cancelled' }),
+    ).toBeDefined();
+    expect(cancels()).toHaveLength(1);
+  });
+
+  it('closes the dialog and shows the answer that arrives while it is open (sc-29957)', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    await atTheStart({
+      'POST /api/auth/two-factor/recovery/opening': () =>
+        json({ ...OPENING, recovery: 'handle', state: WAITING }),
+      'POST /api/auth/two-factor/recovery/state': () =>
+        json({ state: { ...WAITING, status: 'approved' } }),
+    });
+
+    try {
+      fireEvent.click(screen.getByRole('button', { name: 'Cancel the request' }));
+      expect(screen.getByRole('alertdialog')).toBeDefined();
+
+      await vi.advanceTimersByTimeAsync(20_000);
+
+      expect(
+        await screen.findByRole('heading', { level: 1, name: /Two-factor is off/ }),
+      ).toBeDefined();
+      expect(screen.queryByRole('alertdialog')).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('goes back to Enter your code from Start’s ‹ Back, beside Back to sign in (sc-29068)', async () => {
