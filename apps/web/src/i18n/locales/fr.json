@@ -466,7 +466,6 @@
   },
   "register": {
     "title": "Créez votre compte",
-    "back": "Retour à la connexion",
     "intro": "Ensuite, nous vous envoyons un code par e-mail pour vérifier que l’adresse est la vôtre.",
     "name": "Nom complet",
     "email": "Adresse e-mail",
@@ -486,7 +485,8 @@
     "failedTitle": "La création du compte n’a pas abouti",
     "failedBody": "Quelque chose s’est mal passé en route. Réessayez dans un instant.",
     "nameBlank": "Saisissez votre nom complet.",
-    "passwordBlank": "Saisissez un mot de passe."
+    "passwordBlank": "Saisissez un mot de passe.",
+    "tooShort": "Utilisez au moins {{count, number}} caractères."
   },
   "account": {
     "title": "Votre compte",
@@ -579,9 +579,6 @@
     "everywhereFailedBody": "Cela concerne l’accès à l’API et non votre compte. Réessayez."
   },
   "verifyEmail": {
-    "step1": "Vérifiez votre adresse e-mail",
-    "step1Done": "Adresse vérifiée · terminé",
-    "step2": "Vos informations",
     "title": "Consultez votre boîte mail",
     "intro": "Nous avons envoyé un code à {{address}}. Saisissez-le ici pour prouver que l’adresse est la vôtre.",
     "codeLabel": "Code reçu par e-mail",
@@ -596,19 +593,14 @@
     "exhaustedTitle": "Trop de tentatives incorrectes",
     "exhaustedBody": "Ce code ne fonctionne plus. Envoyez-en un nouveau pour continuer.",
     "wrongAddress": "Ce n’est pas votre adresse ?",
-    "wrongAddressBody": "et recréer votre compte avec la bonne adresse.",
-    "registerAgain": "Inscrivez-vous à nouveau avec la bonne adresse",
-    "signOut": "Se déconnecter",
     "doneTitle": "Adresse vérifiée",
     "doneBody": "{{address}} est confirmée. Ensuite, quelques informations pour que votre équipe sache qui est qui.",
     "doneBodyAlternative": "{{address}} est vérifiée. Elle ne deviendra votre adresse principale que si vous la définissez comme telle dans Compte.",
     "continue": "Continuer",
     "failedTitle": "Cela n’a pas fonctionné",
     "failedBody": "Quelque chose s’est mal passé en route. Réessayez dans un instant.",
-    "stepsLabel": "Avant de commencer",
     "codeBlank": "Saisissez le code à 6 chiffres de l’e-mail.",
-    "codeShort": "Le code compte 6 chiffres.",
-    "step1Google": "E-mail confirmé par {{provider}} · fait"
+    "codeShort": "Le code compte 6 chiffres."
   },
   "verifyPhone": {
     "title": "Consultez vos messages",
@@ -770,7 +762,6 @@
     "saving": "Enregistrement…",
     "failedTitle": "L’enregistrement n’a pas abouti",
     "failedBody": "Quelque chose s’est mal passé en route. Réessayez dans un instant.",
-    "signedInAs": "Connecté en tant que {{email}}.",
     "signOut": "Se déconnecter",
     "optional": "Facultatif",
     "mobileHelp": "C’est ainsi qu’on vous joint le soir même si quelque chose tourne mal. Si vous en ajoutez un, nous vous envoyons un code par SMS pour le vérifier.",
@@ -2246,5 +2237,10 @@
     "staffComing": "La gestion de l’équipe de cet événement arrive bientôt.",
     "budgetComing": "Le budget de cet événement arrive bientôt.",
     "reportsComing": "Les rapports de cet événement arrivent bientôt."
+  },
+  "onboarding": {
+    "step": "Étape {{step, number}} sur 2",
+    "back": "Retour",
+    "noCode": "Pas de code ?"
   }
 }

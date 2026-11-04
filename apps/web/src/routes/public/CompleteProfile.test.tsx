@@ -82,13 +82,16 @@ describe('a few details', () => {
     at('/complete-profile');
 
     expect(screen.getByRole('heading', { level: 1, name: 'A few details' })).toBeDefined();
-    expect(screen.getByText('Email verified · done')).toBeDefined();
+    expect(screen.getByText('Step 2 of 2')).toBeDefined();
     expect((screen.getByLabelText('Full name') as HTMLInputElement).value).toBe('Folake Adeyemi');
     expect((screen.getByLabelText('Full name') as HTMLInputElement).maxLength).toBe(180);
     expect(screen.getByLabelText('Organisation name')).toBeDefined();
     expect(screen.getByText('Your events belong to it. You can rename it later.')).toBeDefined();
     expect(screen.getByLabelText('Country')).toBeDefined();
-    expect(screen.getByText('Signed in as folake@ire.events.')).toBeDefined();
+    expect(within(screen.getByRole('banner')).getByText('folake@ire.events')).toBeDefined();
+    expect(
+      within(screen.getByRole('banner')).getByRole('button', { name: 'Sign out' }),
+    ).toBeDefined();
   });
 
   it('stays signed in and says so when signing out cannot reach Soirely', async () => {

@@ -1,6 +1,20 @@
 import { useTranslation } from 'react-i18next';
 
 import { SKELETON_AFTER_MS, useShownAfter } from '../shownAfter.ts';
+import { AuthPage } from './AuthPage.tsx';
+
+const IN_FRAME_AFTER_MS = 400;
+
+/** Creating an account's steps load inside their frame, and say so only after 400 ms. */
+export function PendingPage() {
+  const shown = useShownAfter(IN_FRAME_AFTER_MS);
+
+  return (
+    <AuthPage bare end={null}>
+      {shown && <Pending />}
+    </AuthPage>
+  );
+}
 
 /**
  * The shell's loading state.
