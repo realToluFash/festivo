@@ -8,6 +8,8 @@ import { api } from '../src/api.ts';
 import { PrimaryButton } from '../src/components/Buttons.tsx';
 import { LanguageChoice } from '../src/components/LanguageChoice.tsx';
 import { OnBrand, WelcomeBrand, WelcomeFrame } from '../src/components/Welcome.tsx';
+import { useLayout } from '../src/layout/useLayout.ts';
+import { tokens } from '../src/theme/tokens.ts';
 import { holdsSession } from '../src/tokens.ts';
 import { carryOn } from '../src/unreachable.ts';
 
@@ -15,6 +17,7 @@ import { carryOn } from '../src/unreachable.ts';
 export default function Unreachable() {
   const { t } = useTranslation();
   const { link } = useLocalSearchParams<{ link?: string }>();
+  const { kind } = useLayout();
   const [signedIn, setSignedIn] = useState<boolean | null>(null);
   const [retrying, setRetrying] = useState(false);
   const trying = useRef(false);
@@ -68,6 +71,9 @@ export default function Unreachable() {
             <OnBrand
               title={t('session.unreachableTitle')}
               body={t(signedIn ? 'session.unreachableBody' : 'session.unreachableBodySignedOut')}
+              size={
+                kind === 'phone' ? tokens.typeCoverTitle.size : tokens.typeCoverTitleTablet.size
+              }
             />
           )}
         </>

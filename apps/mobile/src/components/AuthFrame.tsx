@@ -7,6 +7,7 @@ import { BackButton } from './AppFrame.tsx';
 import { Brand } from './Brand.tsx';
 import { FootnoteInAuthFrame } from './Buttons.tsx';
 import { LanguageChoice } from './LanguageChoice.tsx';
+import { stepTitle, useStepTitleSize } from '../steps/Lines.tsx';
 import { useMarkSide } from './markSide.ts';
 import { useReadOut } from './ReadOut.tsx';
 import { Screen, useFocusOnAnswer } from './Screen.tsx';
@@ -45,7 +46,7 @@ export function AuthHeading({
   const { shown, read } = useFocusOnAnswer<TextHandle>(answer);
   const { read: introRead } = useFocusOnAnswer<TextHandle>(introAnswer);
   const titleDrawn = useContext(TitleDrawn);
-  const size = kind === 'phone' ? tokens.typeTitlePhone.size : tokens.typeTitlePage.size;
+  const size = useStepTitleSize();
   const showIntro = intro != null && (!landscapeOnly || kind === 'tabletLandscape');
   useReadOut(introLive && showIntro && introAnswer === undefined ? intro : null, {
     quietAtMount: true,
@@ -73,7 +74,7 @@ export function AuthHeading({
         <Title
           ref={read}
           size={size}
-          style={styles.title}
+          style={stepTitle(size)}
           accessibilityRole="header"
           onDrawn={titleDrawn ?? undefined}
         >
@@ -184,7 +185,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   heading: { gap: tokens.spaceXs },
-  title: { letterSpacing: -0.5 },
   secondary: { color: tokens.colorInkSecondary },
   onAccent: { color: tokens.colorInkOnDark },
   doneMark: {
