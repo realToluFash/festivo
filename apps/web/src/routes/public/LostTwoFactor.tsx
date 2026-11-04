@@ -53,6 +53,7 @@ type View =
   | ({ kind: 'request'; opening?: RecoveryOpening } & Asked)
   | { kind: 'replaced' }
   | { kind: 'signIn' }
+  | { kind: 'timedOut' }
   | { kind: 'failed' };
 
 /** Lost both the authenticator and the recovery codes (sc-509): nothing on this page signs anybody in. */
@@ -94,7 +95,7 @@ export function LostTwoFactor() {
         : { kind: 'start', opening, limitedUntil: null, sending: false };
     } catch (refusal) {
       return refusal instanceof ApiError && refusal.is('two_factor_challenge_invalid')
-        ? { kind: 'signIn' }
+        ? { kind: 'timedOut' }
         : { kind: 'failed' };
     }
   }, [challenge]);
@@ -128,7 +129,7 @@ export function LostTwoFactor() {
     } catch (refusal) {
       setView(
         refusal instanceof ApiError && refusal.is('two_factor_challenge_invalid')
-          ? { kind: 'signIn' }
+          ? { kind: 'timedOut' }
           : { kind: 'failed' },
       );
     }
@@ -165,7 +166,7 @@ export function LostTwoFactor() {
       } else if (refusal instanceof ApiError && refusal.is('recovery_nobody_to_approve')) {
         setView({ kind: 'nobody', supportAddress: opening.supportAddress });
       } else if (refusal instanceof ApiError && refusal.is('two_factor_challenge_invalid')) {
-        setView({ kind: 'signIn' });
+        setView({ kind: 'timedOut' });
       } else {
         setView({ kind: 'failed' });
       }
@@ -173,6 +174,10 @@ export function LostTwoFactor() {
   }
 
   if (view.kind === 'signIn') return <Navigate to="/sign-in" replace />;
+  if (view.kind === 'timedOut')
+    return (
+      <Navigate to="/sign-in" replace state={{ email: signingIn?.email, codeTimedOut: true }} />
+    );
   if (view.kind === 'loading') return <Pending />;
 
   return (

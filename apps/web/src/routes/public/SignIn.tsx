@@ -25,6 +25,7 @@ type Status =
   | { kind: 'providerFailed'; provider: string }
   | { kind: 'failed' }
   | { kind: 'sessionEnded' }
+  | { kind: 'codeTimedOut' }
   | { kind: 'timedOut'; rule: TimedOut }
   | ({ kind: 'providerOnly' } & ProviderOnly);
 
@@ -33,7 +34,12 @@ export function SignIn() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const { state: carried } = useLocation() as {
-    state: { timedOut?: TimedOut; providerOnly?: ProviderOnly; email?: string } | null;
+    state: {
+      timedOut?: TimedOut;
+      providerOnly?: ProviderOnly;
+      email?: string;
+      codeTimedOut?: boolean;
+    } | null;
   };
   const [status, setStatus] = useState<Status>(() => {
     const provider = params.get('provider-failed');
@@ -41,6 +47,7 @@ export function SignIn() {
     if (provider != null) return { kind: 'providerFailed', provider };
     if (carried?.timedOut != null) return { kind: 'timedOut', rule: carried.timedOut };
     if (carried?.providerOnly != null) return { kind: 'providerOnly', ...carried.providerOnly };
+    if (carried?.codeTimedOut === true) return { kind: 'codeTimedOut' };
 
     return params.has('signed-out') ? { kind: 'sessionEnded' } : { kind: 'ready' };
   });
@@ -241,6 +248,8 @@ function noticeFor(
   switch (status.kind) {
     case 'sessionEnded':
       return { title: t('signIn.endedTitle'), body: t('signIn.endedBody'), alert: false };
+    case 'codeTimedOut':
+      return { title: t('signIn.codeTimedOutTitle'), body: t('signIn.endedBody'), alert: false };
     case 'timedOut':
       return {
         title: t('signIn.timedOutTitle', { organisation: status.rule.organisation }),

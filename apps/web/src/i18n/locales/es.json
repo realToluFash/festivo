@@ -439,6 +439,7 @@
     "noMatch": "Ese correo electrónico y esa contraseña no coinciden.",
     "endedTitle": "Se ha cerrado su sesión",
     "endedBody": "Inicie sesión de nuevo para continuar.",
+    "codeTimedOutTitle": "That sign-in timed out",
     "lockedTitle": "Demasiados intentos",
     "lockedBody": "Inténtelo de nuevo a las {{time}}.",
     "lockedReset": "Restablecer su contraseña",
