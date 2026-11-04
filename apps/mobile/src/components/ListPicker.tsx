@@ -126,7 +126,10 @@ export function ListPicker({
         accessibilityLabel={blank ? label : `${label}: ${chosen}`}
         testID={testID}
       >
-        <Text size={CONTROL_TEXT_SIZE} style={blank ? styles.placeholder : styles.value}>
+        <Text
+          size={CONTROL_TEXT_SIZE}
+          style={[blank ? styles.placeholder : styles.value, drawn != null && styles.valueCompact]}
+        >
           {blank ? placeholder : (drawn ?? chosen)}
         </Text>
         {!readOnly && <Chevron />}
@@ -247,6 +250,8 @@ const styles = StyleSheet.create({
   fieldReadOnly: { backgroundColor: tokens.colorNeutralFill },
   fieldCompact: { minHeight: 56, borderColor: tokens.colorFieldBorder },
   value: { flex: 1, color: tokens.colorInk },
+  // A growing value in a field with no width of its own takes the whole row on Android.
+  valueCompact: { flex: 0 },
   placeholder: { flex: 1, color: tokens.colorInkSecondary },
   fill: { flex: 1 },
   page: { backgroundColor: tokens.colorPage },
