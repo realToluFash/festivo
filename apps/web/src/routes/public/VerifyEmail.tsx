@@ -461,6 +461,15 @@ function CodeScreen({
             </>
           )}
 
+          {back != null && (
+            <p className="auth-aside">
+              <span>{t('verifyEmail.wrongAddress')}</span>
+              <button className="link-button" type="button" onClick={back}>
+                {t('verifyEmail.registerAgain')}
+              </button>
+            </p>
+          )}
+
           {!onboarding && <RemoveInAccount kind="email" />}
 
           {stillSignedIn && <StillSignedIn />}
