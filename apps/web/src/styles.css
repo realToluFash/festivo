@@ -7735,6 +7735,10 @@ button.members-row {
   align-self: flex-start;
 }
 
+.auth-column .field-heading .link-button {
+  line-height: 1.5;
+}
+
 .auth-notice .auth-notice-title {
   font-weight: 600;
   color: var(--colorInk);
