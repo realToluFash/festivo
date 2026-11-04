@@ -1,0 +1,10 @@
+# sc-29089: the step marks on Events' first run, drawn in Instrument Sans. Needs ${METRO_URL}, an organisation with no events.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: '.*[Ee]vent.*'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: step-marks
