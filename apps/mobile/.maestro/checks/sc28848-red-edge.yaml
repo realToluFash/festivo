@@ -1,0 +1,31 @@
+# The demo's sign-in email: a blank, then a malformed address, focused after a refusal shows a red edge; the mobile number's country row at rest. sc-28848.
+# The mobile step opens with the number focused (autoFocus), so the country row is shot beside a focused number.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/sign-in
+- extendedWaitUntil:
+    visible:
+      id: 'demo.email'
+    timeout: 30000
+- tapOn:
+    id: 'demo.signIn'
+- assertVisible: 'Enter your email address.'
+- tapOn:
+    id: 'demo.email'
+- takeScreenshot: demo-blank-focused
+- inputText: 'folake@ire'
+- tapOn:
+    id: 'demo.signIn'
+- assertVisible: 'Enter an email address like name@example.com.'
+- tapOn:
+    id: 'demo.email'
+- takeScreenshot: demo-malformed-focused
+- openLink: ${METRO_URL}/--/demo/mobile
+- extendedWaitUntil:
+    visible:
+      id: 'demo.number'
+    timeout: 30000
+- takeScreenshot: demo-country-row-rest
+- tapOn:
+    id: 'demo.number'
+- takeScreenshot: demo-number-focused
