@@ -1,0 +1,108 @@
+# The signed-out welcome, email sign-in and a new account's steps in LANGUAGE (English, Español,
+# Français, Português), screenshotting each and asserting the step bar's and eye's screen-reader labels.
+# sc-29126. EMAIL must be fresh. STEP1 and STEP4 are the language's "Step 1 of 4" and "Step 4 of 4".
+# More than ten sign-ups an hour hits the registration limit: bin/console cache:pool:clear cache.rate_limiter.
+#
+#   node .qa/bin/qa-env.mjs maestro sc29126-steps-language --android LANGUAGE=Español L=es NAME=… EMAIL=… PASSWORD=… SHOW='Mostrar contraseña' HIDE='Ocultar contraseña' STEP1='Paso 1 de 4' STEP4='Paso 4 de 4' COUNTRY='Reino Unido' PHONE=7700900123
+appId: host.exp.Exponent
+---
+- launchApp:
+    appId: host.exp.Exponent
+    stopApp: true
+- openLink: ${METRO_URL}/--/welcome
+- extendedWaitUntil:
+    visible:
+      id: 'welcome.email'
+    timeout: 90000
+- tapOn:
+    id: 'language.open'
+- tapOn:
+    id: 'language\.(en|es|fr|pt)'
+    text: '${LANGUAGE}'
+- waitForAnimationToEnd
+- takeScreenshot: ${L}-welcome
+- tapOn:
+    id: 'welcome.email'
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.email'
+    timeout: 20000
+- assertVisible: '${SHOW}'
+- tapOn: '${SHOW}'
+- assertVisible: '${HIDE}'
+- takeScreenshot: ${L}-sign-in
+- tapOn:
+    id: 'signIn.back'
+- extendedWaitUntil:
+    visible:
+      id: 'welcome.register'
+    timeout: 20000
+- tapOn:
+    id: 'welcome.register'
+- extendedWaitUntil:
+    visible:
+      id: 'register.name'
+    timeout: 30000
+- assertVisible: '${STEP1}'
+- takeScreenshot: ${L}-register
+- tapOn:
+    id: 'register.name'
+- inputText: ${NAME}
+- tapOn:
+    id: 'register.email'
+- inputText: ${EMAIL}
+- tapOn:
+    id: 'register.password'
+- inputText: ${PASSWORD}
+- hideKeyboard
+- takeScreenshot: ${L}-register-filled
+- tapOn:
+    id: 'register.submit'
+- extendedWaitUntil:
+    visible:
+      id: 'verifyEmail.code'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: ${L}-verify-email
+- runScript: ../scripts/latest-code.js
+- tapOn:
+    id: 'verifyEmail.code'
+- inputText: ${output.code}
+- extendedWaitUntil:
+    visible:
+      id: 'completeProfile.organisation'
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: ${L}-organisation
+- tapOn:
+    id: 'completeProfile.organisation'
+- inputText: 'QA Strings Ltd'
+- tapOn:
+    id: 'completeProfile.country'
+- tapOn:
+    id: 'completeProfile.country.search'
+- inputText: '${COUNTRY}'
+- tapOn:
+    id: 'completeProfile.country.GB'
+- tapOn:
+    id: 'completeProfile.save'
+- extendedWaitUntil:
+    visible:
+      id: 'phone.number'
+    timeout: 20000
+- waitForAnimationToEnd
+- assertVisible: '${STEP4}'
+- hideKeyboard
+- takeScreenshot: ${L}-mobile
+- tapOn:
+    id: 'phone.number'
+- inputText: ${PHONE}
+- hideKeyboard
+- tapOn:
+    id: 'phone.send'
+- extendedWaitUntil:
+    visible:
+      id: 'verifyPhone'
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: ${L}-verify-phone
