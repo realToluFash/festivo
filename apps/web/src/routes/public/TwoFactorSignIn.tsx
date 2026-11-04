@@ -17,7 +17,7 @@ export function TwoFactorSignIn() {
   if (challenge?.challenge == null) return <Navigate to="/sign-in" replace />;
 
   return (
-    <AuthPage>
+    <AuthPage bare end={null}>
       <SecondFactorStep
         intro={t('twoFactor.intro', { email: challenge.email })}
         recoveryIntro={t('twoFactor.recoveryIntro')}
@@ -32,6 +32,7 @@ export function TwoFactorSignIn() {
         }
         onLostBoth={() => navigate('/two-factor/recovery', { state: challenge })}
         onExpired={() => navigate('/sign-in', { replace: true })}
+        onBack={() => navigate('/sign-in', { state: { email: challenge.email } })}
       />
     </AuthPage>
   );
