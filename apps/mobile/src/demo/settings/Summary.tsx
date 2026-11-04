@@ -118,6 +118,7 @@ export function SummaryPage({
       </ScrollView>
       {phone && (
         <>
+          <View style={[styles.statusStrip, { height: insets.top }]} pointerEvents="none" />
           <Fade />
           <PhoneTabBar bottom={foot} onTab={shell.onTab} at="Settings" />
         </>
@@ -397,6 +398,13 @@ export function FailedBlock({
 const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
   page: { flex: 1, backgroundColor: tokens.colorCard },
+  statusStrip: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: tokens.colorCard,
+  },
   pane: { paddingTop: 26, paddingHorizontal: 30, paddingBottom: tokens.space6xl * 2, gap: 18 },
   top: { flexDirection: 'row', alignItems: 'center' },
   title: { paddingTop: 14, paddingBottom: tokens.spaceXl },
