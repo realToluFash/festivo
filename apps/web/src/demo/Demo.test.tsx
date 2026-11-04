@@ -444,3 +444,206 @@ describe('the demo creates an account (sc-29061)', () => {
     expect(await screen.findByRole('heading', { name: 'Check your email' })).toBeDefined();
   });
 });
+
+describe('the demo signs in with two-factor (sc-29063)', () => {
+  beforeEach(() => {
+    inEnvironment('development');
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+  });
+
+  async function wait(ms = 1000): Promise<void> {
+    await act(() => vi.advanceTimersByTimeAsync(ms));
+  }
+
+  async function page(query: string, title: string) {
+    const router = at(`/demo/two-factor${query}`);
+    await screen.findByRole('heading', { level: 1, name: title });
+
+    return router;
+  }
+
+  it('lists the board on the demo home, with the authenticator and recovery codes', async () => {
+    at('/demo');
+    await screen.findByRole('heading', { name: 'Design demo' });
+
+    expect(screen.getByRole('heading', { name: 'Two-factor · desktop' })).toBeDefined();
+    expect(screen.getByRole('link', { name: /Too many wrong codes/ })).toBeDefined();
+    expect(screen.getByText(SAMPLE.authenticator)).toBeDefined();
+    expect(screen.getByText(SAMPLE.recovery)).toBeDefined();
+  });
+
+  it('walks from sign-in to the code, and Back returns with the email kept', async () => {
+    await signInBoard();
+    fireEvent.click(screen.getByRole('switch', { name: /uses two-factor/ }));
+    type('Email', SAMPLE.email);
+    type('Password', SAMPLE.password);
+    await press();
+
+    await screen.findByRole('heading', { name: 'Enter your code' });
+    expect(document.querySelector('.demo-page-new')).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Back to sign in' })).toBeNull();
+
+    fireEvent.click(screen.getByRole('link', { name: 'Back' }));
+    await screen.findByRole('heading', { name: 'Sign in' });
+    expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe(SAMPLE.email);
+  });
+
+  it('sends the code on Enter, keeps a wrong one selected, and signs in with the right one', async () => {
+    await page('?page=code', 'Enter your code');
+    type('Code', '1234567');
+    expect((screen.getByLabelText('Code') as HTMLInputElement).value).toBe('123456');
+
+    fireEvent.submit(screen.getByLabelText('Code'));
+    await wait();
+    const field = screen.getByLabelText('Code') as HTMLInputElement;
+    expect(screen.getByText(/^That code did not work/)).toBeDefined();
+    expect(field.value).toBe('123456');
+    expect(document.activeElement).toBe(field);
+    expect(field.selectionEnd! - field.selectionStart!).toBe(6);
+
+    type('Code', SAMPLE.authenticator);
+    fireEvent.click(screen.getByRole('button', { name: 'Verify and sign in' }));
+    await wait();
+    expect(screen.getByRole('heading', { name: 'Signed in' })).toBeDefined();
+  });
+
+  it('pauses after too many wrong codes, with the reset link, and lifts itself', async () => {
+    await page('?page=code', 'Enter your code');
+    for (let tries = 0; tries < TRIES; tries++) {
+      type('Code', '111111');
+      fireEvent.submit(screen.getByLabelText('Code'));
+      await wait();
+    }
+
+    expect(screen.getByText('Too many wrong codes')).toBeDefined();
+    expect((screen.getByLabelText('Code') as HTMLInputElement).value).toBe('');
+    const paused = screen.getByRole('button', { name: /^Try again at \d\d:\d\d$/ });
+    expect(paused.getAttribute('aria-disabled')).toBe('true');
+    expect(screen.getByRole('link', { name: 'Reset your password' })).toBeDefined();
+
+    await wait(61_000);
+    expect(screen.queryByText('Too many wrong codes')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Verify and sign in' })).toBeDefined();
+  });
+
+  it('takes a recovery code in any case with the dash put in, and says a used one is used', async () => {
+    await page('?page=code', 'Enter your code');
+    fireEvent.click(screen.getByRole('link', { name: 'Use a recovery code instead' }));
+    await screen.findByRole('heading', { name: 'Enter a recovery code' });
+
+    type('Recovery code', SAMPLE.usedRecovery.toUpperCase().replace('-', ''));
+    expect((screen.getByLabelText('Recovery code') as HTMLInputElement).value).toBe(
+      SAMPLE.usedRecovery,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Use this code' }));
+    await wait();
+    expect(screen.getByText(/already been used/)).toBeDefined();
+
+    type('Recovery code', SAMPLE.recovery.toUpperCase());
+    fireEvent.click(screen.getByRole('button', { name: 'Use this code' }));
+    await wait();
+    expect(screen.getByRole('heading', { name: 'Signed in' })).toBeDefined();
+  });
+
+  it('sends the codes from Start, and Back steps back through it to the code', async () => {
+    await page('?page=start', 'Get back in without your authenticator');
+    expect(screen.getAllByRole('listitem')).toHaveLength(3);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Send the codes' }));
+    await wait();
+    await screen.findByRole('heading', { name: 'Enter both codes' });
+    expect(screen.getByText(`Sent to ${SAMPLE.email}`)).toBeDefined();
+
+    fireEvent.click(screen.getByRole('link', { name: 'Back' }));
+    await screen.findByRole('heading', { name: 'Get back in without your authenticator' });
+    fireEvent.click(screen.getByRole('link', { name: 'Back' }));
+    expect(await screen.findByRole('heading', { name: 'Enter your code' })).toBeDefined();
+  });
+
+  it('says too many requests under the title at the fourth ask in a day', async () => {
+    for (let asks = 0; asks < 3; asks++) {
+      if (asks === 0) await page('?page=start', 'Get back in without your authenticator');
+      else fireEvent.click(screen.getByRole('link', { name: 'Back' }));
+      await screen.findByRole('heading', { name: 'Get back in without your authenticator' });
+      fireEvent.click(screen.getByRole('button', { name: 'Send the codes' }));
+      await wait();
+      await screen.findByRole('heading', { name: 'Enter both codes' });
+    }
+
+    fireEvent.click(screen.getByRole('link', { name: 'Back' }));
+    await screen.findByRole('heading', { name: 'Get back in without your authenticator' });
+    fireEvent.click(screen.getByRole('button', { name: 'Send the codes' }));
+    await wait();
+    expect(screen.getByText('Too many requests')).toBeDefined();
+  });
+
+  it('asks for only the email’s code without a verified phone, and both make the ask', async () => {
+    await page('?page=codes', 'Enter both codes');
+    fireEvent.click(screen.getByRole('switch', { name: /no verified phone/ }));
+    expect(screen.getByRole('heading', { name: 'Enter the code' })).toBeDefined();
+    expect(screen.queryByLabelText('Code from WhatsApp')).toBeNull();
+
+    fireEvent.click(screen.getByRole('switch', { name: /no verified phone/ }));
+    type('Code from the email', SAMPLE.code);
+    type('Code from WhatsApp', '000000');
+    fireEvent.click(screen.getByRole('button', { name: 'Ask to get back in' }));
+    await wait();
+    expect(screen.getByText(/newest WhatsApp message/)).toBeDefined();
+
+    type('Code from WhatsApp', SAMPLE.code);
+    fireEvent.click(screen.getByRole('button', { name: 'Ask to get back in' }));
+    await wait();
+    expect(screen.getByRole('heading', { name: 'Waiting for your organisation' })).toBeDefined();
+  });
+
+  it('waits with no Back, and finds the demo’s answer at the next look, 20 seconds on', async () => {
+    await page('?page=waiting', 'Waiting for your organisation');
+    expect(screen.queryByRole('link', { name: 'Back' })).toBeNull();
+    expect(screen.getByRole('link', { name: 'Back to sign in' })).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Demo: Turn down' }));
+    await wait(5000);
+    expect(screen.getByRole('heading', { name: 'Waiting for your organisation' })).toBeDefined();
+    await wait(20_000);
+    expect(screen.getByRole('heading', { name: 'Your request was turned down' })).toBeDefined();
+  });
+
+  it('cancels the request from the waiting page and says nothing changed', async () => {
+    await page('?page=waiting', 'Waiting for your organisation');
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel the request' }));
+    await wait();
+    expect(screen.getByRole('heading', { name: 'Request cancelled' })).toBeDefined();
+    expect(screen.getByText(/^Nothing changed/)).toBeDefined();
+  });
+
+  it.each([
+    ['ended', 'Your request ended', 'Ask again'],
+    ['replaced', 'A newer request replaced this one', 'Start again'],
+  ])('offers to start over when the request %s', async (ending, title, again) => {
+    await page(`?page=${ending}`, title);
+    fireEvent.click(screen.getByRole('link', { name: again }));
+    expect(
+      await screen.findByRole('heading', { name: 'Get back in without your authenticator' }),
+    ).toBeDefined();
+  });
+
+  it('signs in from Two-factor is off with the email filled, then asks to set it up again', async () => {
+    await page('?page=off', 'Two-factor is off');
+    fireEvent.click(screen.getByRole('link', { name: 'Sign in' }));
+    await screen.findByRole('heading', { name: 'Sign in' });
+    expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe(SAMPLE.email);
+
+    type('Password', SAMPLE.password);
+    await press();
+    await screen.findByRole('heading', { name: 'Set up two-factor again' });
+    expect(screen.getByText(/Your account › Security/)).toBeDefined();
+    expect(screen.getByRole('link', { name: 'Not now' })).toBeDefined();
+  });
+
+  it('does nothing on This wasn’t you? until the button, then says it is done', async () => {
+    await page('?page=not-me', 'This wasn’t you?');
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel and sign out everywhere' }));
+    await wait();
+    expect(screen.getByRole('heading', { name: 'Cancelled and signed out' })).toBeDefined();
+  });
+});
