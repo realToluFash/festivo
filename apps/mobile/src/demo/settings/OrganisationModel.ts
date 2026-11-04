@@ -153,8 +153,9 @@ export function countsLine(
   return `${each('events')}, ${each('guests')} and ${each('members')} are deleted with it.`;
 }
 
-/** Thirty days on, in the organisation's own zone and the reader's clock: Friday, Dec 4 at 10:15 AM GMT+1. */
-export function restoreDeadline(now: Date, locale: string, zone = SAMPLE_DETAILS.timezone): string {
+/** Thirty days on, in Lagos and the reader's clock, named WAT as the server names a zone: Friday, Dec 4 at 10:15 AM WAT. */
+export function restoreDeadline(now: Date, locale: string): string {
+  const zone = SAMPLE_DETAILS.timezone;
   const at = new Date(now.getTime() + RESTORE_DAYS * 24 * 60 * 60 * 1000);
   const day = new Intl.DateTimeFormat(locale, {
     weekday: 'long',
@@ -162,9 +163,9 @@ export function restoreDeadline(now: Date, locale: string, zone = SAMPLE_DETAILS
     day: 'numeric',
     timeZone: zone,
   });
-  const time = clockTime(locale, { timeZone: zone, timeZoneName: 'short' });
+  const time = clockTime(locale, { timeZone: zone });
 
-  return `${day.format(at)} at ${time.format(at)}`;
+  return `${day.format(at)} at ${time.format(at)} WAT`;
 }
 
 export function deleteBody(now: Date, locale: string): string {

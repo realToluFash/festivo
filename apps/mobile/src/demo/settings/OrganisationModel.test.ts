@@ -96,10 +96,10 @@ describe('deleting the organisation', () => {
   });
 
   it('writes the restore deadline in Lagos’s zone and the reader’s clock', () => {
-    expect(spaced(restoreDeadline(NOV_4, 'en-US'))).toBe('Friday, Dec 4 at 10:15 AM GMT+1');
-    expect(spaced(restoreDeadline(NOV_4, 'en-GB'))).toBe('Friday 4 Dec at 10:15 GMT+1');
+    expect(spaced(restoreDeadline(NOV_4, 'en-US'))).toBe('Friday, Dec 4 at 10:15 AM WAT');
+    expect(spaced(restoreDeadline(NOV_4, 'en-GB'))).toBe('Friday 4 Dec at 10:15 WAT');
     expect(spaced(deleteBody(NOV_4, 'en-US'))).toBe(
-      '4 events, 512 guests and 8 members are deleted with it. This deletes it for everybody now. Soirely support can restore it until Friday, Dec 4 at 10:15 AM GMT+1; after that it is gone for good.',
+      '4 events, 512 guests and 8 members are deleted with it. This deletes it for everybody now. Soirely support can restore it until Friday, Dec 4 at 10:15 AM WAT; after that it is gone for good.',
     );
   });
 });
