@@ -50,6 +50,10 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **4 Nov 2026. Los pasos de una cuenta nueva en la app** (`mobile:steps.*`, sc-29126 para
+  sc-29069). La barra dice «Paso {{step}} de {{steps}}»; Skip es «Omitir», nunca «Saltar»; Check
+  WhatsApp es «Revise WhatsApp», como «Revise su correo». "On the night" es «la noche del
+  evento» cuando nada antes nombra la noche, y «esa noche» solo detrás de ella.
 - **1 Nov 2026. Eventos y la navegación propia de un evento** (sc-26732 para sc-22103,
   `web:events.*`, `mobile:eventsScreen.*`, `eventNav.*` web y app). Las áreas: «Resumen»,
   «Invitados», «Menú», «Mesas», «Mensajes», «Programa», «Personal», «Presupuesto» e «Informes».
