@@ -179,6 +179,38 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
     ],
   },
   {
+    page: 'People on an event',
+    boards: [
+      { title: 'People', what: 'One list, the role in a sheet', href: '/demo/people' },
+      {
+        title: 'People · read only',
+        what: 'Ana, who can only read it',
+        href: '/demo/people?state=readOnly',
+      },
+      {
+        title: 'People · the lead',
+        what: 'Priya leads, and changes it',
+        href: '/demo/people?state=lead',
+      },
+      { title: 'People · nobody yet', what: 'A new event', href: '/demo/people?state=nobody' },
+      {
+        title: 'People · a role change fails',
+        what: 'Saving…, then the role holds',
+        href: '/demo/people?state=roleFails',
+      },
+      {
+        title: 'People · loading',
+        what: 'Loading the people on this event',
+        href: '/demo/people?state=loading',
+      },
+      {
+        title: 'People · failed',
+        what: 'Could not load, Try again',
+        href: '/demo/people?state=failed',
+      },
+    ],
+  },
+  {
     page: 'Sign-in',
     boards: [
       { title: 'Welcome', what: 'The app opens here signed out', href: '/demo/welcome' },
