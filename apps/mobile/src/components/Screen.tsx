@@ -36,6 +36,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
   barFits,
+  heightFromFocus,
   groupInWindow,
   keysOver,
   liftNeeded,
@@ -76,6 +77,8 @@ interface ScreenScrollView {
   ref: RefObject<ScrollViewInstance | null>;
   /** Called when the scroll view itself resizes, which a child's onLayout does not see. */
   resized: Set<() => void>;
+  /** Called with the height a lift group needs from the focused field's top to its own end, as the group lifts with focus inside it. */
+  focusedGroup: Set<(height: number) => void>;
   /** Where a view at the screen's top measures in the window. */
   origin: { current: number };
   /** The offset the native scroll view last reported. */
@@ -169,6 +172,8 @@ function liftAboveKeyboard(
         const focusTop =
           focusY == null ? undefined : groupInWindow({ scrollTop, contentY: focusY, offset });
         const group = { y: groupY, height };
+        const needed = focusY == null ? null : heightFromFocus({ contentY, height }, focusY);
+        if (needed != null) scroll.focusedGroup.forEach((needs) => needs(needed));
         if (!liftNeeded({ shown, group, focusTop, scrollTop, margin: tokens.spaceLg })) return;
 
         view.scrollTo({
@@ -969,6 +974,7 @@ export function useScreenScrollView() {
   const [screenScroll] = useState<ScreenScrollView>(() => ({
     ref: scrollView,
     resized: new Set(),
+    focusedGroup: new Set(),
     origin,
     offset,
     answering: (on) => {
