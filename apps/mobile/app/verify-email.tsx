@@ -24,7 +24,7 @@ import { type CodeStatus, codeRefusal, openingStatus, retryAfter } from '../src/
 import { useFormChecks } from '../src/kit/formChecks.ts';
 import { type Landing } from '../src/landing.ts';
 import { dropRegistration, heldRegistration } from '../src/pendingRegistration.ts';
-import { rereadAccount } from '../src/signedIn.ts';
+import { rereadAccount, signOutHere } from '../src/signedIn.ts';
 import { CodeStep, type CodeStepStatus, NEXT_STEP_MS } from '../src/steps/CodeStep.tsx';
 import { NavBar, StepScreen } from '../src/steps/StepScreen.tsx';
 import { useCountdown } from '../src/steps/useCountdown.ts';
@@ -99,11 +99,6 @@ function SignUpCode() {
     else router.replace({ pathname: '/register', params: { email: address } });
   }
 
-  async function signOut(): Promise<void> {
-    await api.signOut();
-    router.replace('/sign-in');
-  }
-
   async function verify(code: string): Promise<void> {
     keysStayDown();
     setStatus({ kind: 'verifying' });
@@ -162,9 +157,7 @@ function SignUpCode() {
     <StepScreen
       nav={
         <NavBar
-          left={
-            pending == null ? { label: t('steps.signOut'), onPress: () => void signOut() } : 'back'
-          }
+          left={pending == null ? { label: t('steps.signOut'), onPress: signOutHere } : 'back'}
           onLeft={() => void fixAddress()}
           step={[done ? 2.5 : 2, 4]}
           testID="verifyEmail"

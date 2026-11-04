@@ -28,7 +28,7 @@ screenshot. `shared-flows-chained-*` run them one after another, as a batch woul
 
 | Flow                       | Leaves the app on                | Screenshot                   |
 | -------------------------- | -------------------------------- | ---------------------------- |
-| `sign-out`                 | the sign-in screen               | `mobile-signed-out`          |
+| `sign-out`                 | welcome                          | `mobile-signed-out`          |
 | `open-settings`            | Settings                         | `mobile-settings`            |
 | `open-switcher`            | Your organisations               | `mobile-switcher`            |
 | `open-create-organisation` | the Create an organisation sheet | `mobile-create-organisation` |
@@ -61,7 +61,7 @@ landed, so a tap that went elsewhere, or no tap at all, fails rather than passin
 `sign-in-any-language`. `sign-in-screen-english` runs it with `LANGUAGE: English`, for a phone
 a run in another language left signed out: `sign-in`'s first wait is on the English 'Email'.
 `text-size-signed-out` starts with it too, so a change to the chip row lands in one flow.
-Where Expo Go lands the sign-in link on Home, it taps Home's Sign in first (sc-22740).
+It picks the language on welcome, then taps Sign in with email (sc-29076).
 
 Two flows tap one control by `testID`, passed as `ID`: `scroll-tap` scrolls to it from above
 or below, for a step inside another flow; `ownership-tap` takes a screenshot of what follows
@@ -72,7 +72,7 @@ Signing in, each on its own outcome:
 | Flow                   | Needs                                         | Leaves the app on                             |
 | ---------------------- | --------------------------------------------- | --------------------------------------------- |
 | `register-check-email` | `NAME`, `EMAIL` (a fresh address), `PASSWORD` | Check your email, after a sign-up on Register |
-| `register-back`        | nothing                                       | sign-in, after ‹ Sign in pushed and linked    |
+| `register-back`        | nothing                                       | welcome pushed, sign-in linked                |
 | `verify-email`         | the same                                      | A few details, verified with the newest code  |
 | `verify-email-refused` | the same                                      | Check your email, a new code counting down    |
 | `sign-in-locked`       | `EMAIL`, a fresh address                      | sign-in, past the limit                       |
@@ -134,6 +134,10 @@ To test the code step itself, outside a batch, three flows stop on it and send a
 | `sign-in-code-step-open` | `LANGUAGE`, `EMAIL`, `PASSWORD`           | the sign-in code step                   |
 | `reset-code-step-open`   | `LANGUAGE`, `TOKEN` (a reset link's)      | the reset link's code step              |
 | `two-factor-code-send`   | `CODE`, `SHOT`; `RECOVERY=true` if needed | the step's answer, screenshot as `SHOT` |
+
+`sc29076-back` checks every way back from email sign-in lands on welcome with the language chosen
+there held: Back pushed over welcome, Android's back gesture or iOS's edge swipe, and Back on a
+cold `/sign-in` link (sc-29076).
 
 The back controls getting back in (sc-23279): `sc23279-lost-back-code` and
 `sc23279-lost-back-recovery` start on the code step and check **‹ Enter your code** and

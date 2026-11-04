@@ -33,7 +33,7 @@ import { dateLocale } from '../src/i18n/index.ts';
 import { type WaitingInvitations, useInvitationsOnOpen } from '../src/invitations.ts';
 import { landingFor } from '../src/landing.ts';
 import { useLayout } from '../src/layout/useLayout.ts';
-import { rememberOrganisation } from '../src/signedIn.ts';
+import { rememberOrganisation, signOutHere } from '../src/signedIn.ts';
 import { InsideField } from '../src/steps/InsideField.tsx';
 import { Heading, Plain, Says } from '../src/steps/Lines.tsx';
 import { NavBar, StepScreen } from '../src/steps/StepScreen.tsx';
@@ -149,15 +149,10 @@ export default function CompleteProfile() {
 function OrganisationBar({ short }: { short: boolean }) {
   const { t } = useTranslation();
 
-  async function signOut(): Promise<void> {
-    await api.signOut();
-    router.replace('/sign-in');
-  }
-
   return (
     <NavBar
-      left={{ label: t('steps.signOut'), onPress: () => void signOut() }}
-      onLeft={() => void signOut()}
+      left={{ label: t('steps.signOut'), onPress: signOutHere }}
+      onLeft={signOutHere}
       step={short ? [1, 2] : [3, 4]}
       testID="completeProfile"
     />

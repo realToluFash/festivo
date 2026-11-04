@@ -1,4 +1,5 @@
 import type { Membership } from '@soirely/api-client';
+import { type TFunction } from 'i18next';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -8,6 +9,7 @@ import {
   ruleRefusal,
   ruleValue,
   rulesNotices,
+  saidOnWelcome,
   signInRoute,
 } from './signInRules.ts';
 
@@ -88,8 +90,10 @@ describe('why a rule sent somebody to sign-in (sc-69)', () => {
     }
   });
 
-  it('says only that the session ended when no rule ended it', () => {
-    expect(signInRoute(null, true)).toBe('/sign-in?signedOut=1');
+  it('says on welcome that the session ended, and on sign-in that a password was turned away (sc-29076)', () => {
+    expect(signInRoute(null, true)).toBe('/welcome?signedOut=1');
+    expect(signInRoute(ruleRefusal(TIMED_OUT), true)).toMatch(/^\/welcome\?/);
+    expect(signInRoute(ruleRefusal(PROVIDER_ONLY), true)).toMatch(/^\/sign-in\?/);
     expect(signInRoute(ruleRefusal(PROVIDER_ONLY), false)).not.toMatch(/signedOut/);
   });
 
@@ -99,6 +103,26 @@ describe('why a rule sent somebody to sign-in (sc-69)', () => {
     );
     expect(refusalFromParams({ rule: 'providerOnly' })).toBeNull();
     expect(refusalFromParams({ signedOut: '1' })).toBeNull();
+  });
+
+  it.each([
+    ['nothing', {}, null, null],
+    ['a plain sign-out', { signedOut: '1' }, null, 'signIn.endedTitle'],
+    ['a timed-out rule', TIMED_OUT_QUERY, null, 'signIn.timedOutTitle'],
+    [
+      'a timed-out rule, then Google failing',
+      TIMED_OUT_QUERY,
+      'Google',
+      'signIn.providerFailedTitle',
+    ],
+    [
+      'a plain sign-out, then Apple failing',
+      { signedOut: '1' },
+      'Apple',
+      'signIn.providerFailedTitle',
+    ],
+  ])('says on the welcome, after %s', (_, params, providerFailed, title) => {
+    expect(saidOnWelcome(params, providerFailed, KEYS)?.[0] ?? null).toBe(title);
   });
 
   it('names Google and Apple when the refusal named no provider', () => {
@@ -172,3 +196,11 @@ describe('what the rules ask of a member, on the home screen', () => {
     expect(limitFromElsewhere(null, 'org_1')).toBeNull();
   });
 });
+
+const KEYS = ((key: string) => key) as TFunction;
+const TIMED_OUT_QUERY = {
+  signedOut: '1',
+  rule: 'timedOut',
+  organisation: 'Ìrè Events',
+  days: '30',
+};

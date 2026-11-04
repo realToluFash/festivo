@@ -10,8 +10,6 @@
     "loading": "A carregar…"
   },
   "home": {
-    "subtitle": "A noite, a partir do seu bolso.",
-    "openSignIn": "Iniciar sessão",
     "signedInTo": "Tem sessão iniciada em {{name}}",
     "openSettings": "Abrir Definições",
     "switchOrganisation": "Mudar de organização"
@@ -42,6 +40,10 @@
     "automatic": "Automático",
     "follows": "O seu idioma acompanha-o em todos os dispositivos."
   },
+  "welcome": {
+    "tagline": "Plan the event. Run the day.",
+    "withEmail": "Sign in with email"
+  },
   "layouts": {
     "title": "Disposições",
     "intro": "Este ecrã existe para demonstrar que as três variantes são apresentadas. Pode ser removido numa única consolidação.",
@@ -58,7 +60,6 @@
   },
   "signIn": {
     "title": "Iniciar sessão",
-    "landscapeIntro": "Com o seu e-mail e a sua palavra-passe. O seu idioma acompanha-o em todos os dispositivos.",
     "email": "Endereço de e-mail",
     "password": "Palavra-passe",
     "reveal": "Mostrar",
@@ -70,16 +71,12 @@
     "endedTitle": "A sua sessão foi encerrada",
     "endedBody": "Inicie sessão novamente para continuar.",
     "lockedTitle": "Demasiadas tentativas",
-    "lockedBody": "Tente novamente às {{time}}.",
-    "lockedReset": "Redefinir a sua palavra-passe",
-    "or": "ou",
     "withGoogle": "Continuar com {{provider}}",
     "withApple": "Continuar com {{provider}}",
     "providerFailedTitle": "O início de sessão com {{provider}} não funcionou",
     "providerFailedBody": "Nada foi alterado. Tente novamente com {{provider}} ou inicie sessão com o seu e-mail e a sua palavra-passe.",
     "failedTitle": "Não foi possível iniciar sessão",
     "failedBody": "Algo falhou pelo caminho. Tente novamente dentro de um momento.",
-    "newHere": "É novo por aqui?",
     "createAccount": "Criar uma conta",
     "passwordBlank": "Introduza a sua palavra-passe.",
     "timedOutTitle": "Sessão encerrada por uma regra de {{organisation}}",
@@ -106,7 +103,6 @@
     "breached": "Esta palavra-passe apareceu numa fuga de dados conhecida. Escolha outra.",
     "limitedTitle": "Demasiados registos a partir desta rede",
     "limitedBody": "Tente novamente às {{time}}.",
-    "orWithEmail": "ou com o seu e-mail",
     "failedTitle": "Não foi possível criar a sua conta",
     "failedBody": "Algo falhou pelo caminho. Tente novamente dentro de um momento.",
     "nameBlank": "Introduza o seu nome completo.",
@@ -224,7 +220,6 @@
   },
   "recovery": {
     "forgot": "Esqueceu-se da palavra-passe?",
-    "forgotShort": "Esqueceu-se?",
     "title": "Reponha a sua palavra-passe",
     "intro": "Introduza o e-mail com que inicia sessão. Se tiver uma conta, enviamos-lhe uma ligação para definir uma nova palavra-passe.",
     "email": "E-mail",

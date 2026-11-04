@@ -4,6 +4,13 @@
 appId: host.exp.Exponent
 ---
 - runFlow: sign-in-screen-english.yaml
+# The language sheet is on welcome (sc-29076).
+- tapOn:
+    id: 'signIn.back'
+- extendedWaitUntil:
+    visible:
+      id: 'welcome.email'
+    timeout: 10000
 - tapOn:
     id: 'language.open'
 - extendedWaitUntil:
@@ -15,6 +22,12 @@ appId: host.exp.Exponent
 - assertNotVisible:
     id: 'language.done'
 - assertVisible: 'English'
+- tapOn:
+    id: 'welcome.email'
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.email'
+    timeout: 10000
 - tapOn:
     id: 'signIn.email'
 - inputText: ${EMAIL}
@@ -30,6 +43,6 @@ appId: host.exp.Exponent
 - takeScreenshot: polish-refused
 - scrollUntilVisible:
     element:
-      id: 'signIn.register'
+      id: 'signIn.forgot'
     direction: DOWN
 - takeScreenshot: polish-refused-foot

@@ -12,7 +12,6 @@ import { api } from '../src/api.ts';
 import { PrimaryButton } from '../src/components/Buttons.tsx';
 import { focusChecked, keysStayDown } from '../src/components/Field.tsx';
 import { Notice } from '../src/components/Notice.tsx';
-import { OrRule, ProviderButtons } from '../src/components/ProviderSignIn.tsx';
 import { dateLocale } from '../src/i18n/index.ts';
 import { emailMessage } from '../src/kit/formChecks.ts';
 import { holdRegistration } from '../src/pendingRegistration.ts';
@@ -142,10 +141,6 @@ export default function Register() {
           />
         </View>
       )}
-      <View style={styles.providers}>
-        <ProviderButtons />
-        <OrRule label={t('register.orWithEmail')} />
-      </View>
       <View style={styles.first}>
         <InsideField
           ref={nameField}
@@ -227,7 +222,6 @@ function refusalWords(
 
 const styles = StyleSheet.create({
   notice: { marginTop: tokens.spaceXl },
-  providers: { marginTop: tokens.space3xl, gap: tokens.spaceXl },
   first: { marginTop: tokens.spaceXl },
   next: { marginTop: tokens.spaceXl },
 });

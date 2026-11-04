@@ -71,12 +71,12 @@ export function Plain({
   );
 }
 
-/** What is wrong, in one line under the field, read out as it comes. */
-export function Says({ words }: { words: string }) {
+/** What is wrong, in one line under the field, read out as it comes; `quiet` for a notice that is not an error. */
+export function Says({ words, quiet = false }: { words: string; quiet?: boolean }) {
   useReadOut(words);
 
   return (
-    <Text size={tokens.typeBody.size} style={styles.says}>
+    <Text size={tokens.typeBody.size} style={[styles.says, quiet && styles.secondary]}>
       {words}
     </Text>
   );

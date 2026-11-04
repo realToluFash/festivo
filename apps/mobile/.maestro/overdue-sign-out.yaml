@@ -10,6 +10,6 @@ appId: host.exp.Exponent
     id: 'twoFactorOverdue.signOut'
 - extendedWaitUntil:
     visible:
-      id: 'home.openSignIn|signIn.email'
+      id: 'welcome.email'
     timeout: 30000
 - takeScreenshot: signed-out

@@ -10,8 +10,6 @@
     "loading": "Chargement…"
   },
   "home": {
-    "subtitle": "La soirée, depuis votre poche.",
-    "openSignIn": "Se connecter",
     "signedInTo": "Vous êtes connecté à {{name}}",
     "openSettings": "Ouvrir les Paramètres",
     "switchOrganisation": "Changer d’organisation"
@@ -42,6 +40,10 @@
     "automatic": "Automatique",
     "follows": "Votre langue vous suit sur tous vos appareils."
   },
+  "welcome": {
+    "tagline": "Plan the event. Run the day.",
+    "withEmail": "Sign in with email"
+  },
   "layouts": {
     "title": "Mises en page",
     "intro": "Cet écran existe pour démontrer que les trois variantes s’affichent. Il est supprimable en une seule validation.",
@@ -58,7 +60,6 @@
   },
   "signIn": {
     "title": "Se connecter",
-    "landscapeIntro": "Avec votre adresse e-mail et votre mot de passe. Votre langue vous suit sur tous vos appareils.",
     "email": "Adresse e-mail",
     "password": "Mot de passe",
     "reveal": "Afficher",
@@ -70,16 +71,12 @@
     "endedTitle": "Votre session a été fermée",
     "endedBody": "Reconnectez-vous pour continuer.",
     "lockedTitle": "Trop de tentatives",
-    "lockedBody": "Réessayez à {{time}}.",
-    "lockedReset": "Réinitialiser votre mot de passe",
-    "or": "ou",
     "withGoogle": "Continuer avec {{provider}}",
     "withApple": "Continuer avec {{provider}}",
     "providerFailedTitle": "La connexion avec {{provider}} n’a pas fonctionné",
     "providerFailedBody": "Rien n’a été modifié. Réessayez avec {{provider}}, ou connectez-vous avec votre adresse e-mail et votre mot de passe.",
     "failedTitle": "La connexion n’a pas abouti",
     "failedBody": "Quelque chose s’est mal passé en route. Réessayez dans un instant.",
-    "newHere": "Nouveau sur Soirely ?",
     "createAccount": "Créer un compte",
     "passwordBlank": "Saisissez votre mot de passe.",
     "timedOutTitle": "Session fermée par une règle de {{organisation}}",
@@ -106,7 +103,6 @@
     "breached": "Ce mot de passe apparaît dans une fuite de données connue. Choisissez-en un autre.",
     "limitedTitle": "Trop d’inscriptions depuis ce réseau",
     "limitedBody": "Réessayez à {{time}}.",
-    "orWithEmail": "ou avec votre e-mail",
     "failedTitle": "La création du compte n’a pas abouti",
     "failedBody": "Quelque chose s’est mal passé en route. Réessayez dans un instant.",
     "nameBlank": "Saisissez votre nom complet.",
@@ -224,7 +220,6 @@
   },
   "recovery": {
     "forgot": "Mot de passe oublié ?",
-    "forgotShort": "Oublié ?",
     "title": "Réinitialisez votre mot de passe",
     "intro": "Saisissez l’adresse e-mail avec laquelle vous vous connectez. Si elle a un compte, nous lui envoyons un lien pour choisir un nouveau mot de passe.",
     "email": "Adresse e-mail",

@@ -17,18 +17,18 @@ appId: host.exp.Exponent
 # Erased before each field is typed into, because `openLink` reaches the route
 # without remounting the screen: a field keeps what the last run left in it.
 - openLink: ${METRO_URL}/--/sign-in
-# The app can open on its landing screen first, with a Sign in button before the form. sc-23252.
+# The app can open on welcome first, with Sign in with email before the form. sc-29076.
 - extendedWaitUntil:
-    visible: 'Email|Sign in'
+    visible: 'Email|Sign in with email'
     timeout: 60000
     optional: true
 - runFlow:
     when:
       visible:
-        id: 'home.openSignIn'
+        id: 'welcome.email'
     commands:
       - tapOn:
-          id: 'home.openSignIn'
+          id: 'welcome.email'
 - extendedWaitUntil:
     visible: 'Email'
     timeout: 60000

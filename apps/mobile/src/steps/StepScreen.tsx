@@ -27,16 +27,24 @@ import { QuietButton } from '../components/Buttons.tsx';
 import { keyboardTopNow, useKeysUp, watchKeyboardTop } from '../components/keyboardWatch.ts';
 import { SETTLED_MS, useWindowOrigin } from '../components/Screen.tsx';
 import { keysOver } from '../kit/keyboard.ts';
+import { useLayout } from '../layout/useLayout.ts';
 import { glide } from '../motion.ts';
 import { useReducedMotion } from '../reducedMotion.ts';
 import { tokens } from '../theme/tokens.ts';
-import { stepFill } from './rules.ts';
+import { stepFill } from '../kit/stepFill.ts';
 
 /** Inside the iPad's sheet, which UIKit lifts away from the keys itself and which has no safe area of its own. */
 export const InSheet = createContext(false);
 
 export function useInSheet(): boolean {
   return useContext(InSheet);
+}
+
+/** On iPad the steps come up as a sheet; on a phone they fill the screen. */
+export function useStepsInSheet(): boolean {
+  const { kind } = useLayout();
+
+  return Platform.OS === 'ios' && kind !== 'phone';
 }
 
 export type NavLeft = 'back' | 'close' | { label: string; onPress: () => void } | null;

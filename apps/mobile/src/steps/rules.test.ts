@@ -8,7 +8,6 @@ import {
   passwordLongEnough,
   recoveryComplete,
   shapeRecovery,
-  stepFill,
 } from './rules.ts';
 
 describe('the demo checks what was typed as the app will', () => {
@@ -63,11 +62,5 @@ describe('the demo counts as the screens show it', () => {
 
   it('counts a message against 500', () => {
     expect(messageCount('Hi Ade, it’s Folake from the Lagos team.')).toBe('40 of 500 characters.');
-  });
-
-  it('fills the step bar a step at a time, short of full', () => {
-    expect(stepFill(1, 4)).toBeCloseTo(0.22, 2);
-    expect(stepFill(4, 4)).toBeLessThan(1);
-    expect(stepFill(0, 0)).toBe(0);
   });
 });
