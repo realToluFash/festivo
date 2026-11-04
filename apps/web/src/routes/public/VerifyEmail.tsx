@@ -5,7 +5,7 @@ import {
   type PendingRegistration,
   awaiting,
 } from '@soirely/api-client';
-import { cleanCode, codeProblem } from '@soirely/domain';
+import { cleanCode, codeDigits, codeProblem } from '@soirely/domain';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Navigate, useLocation, useNavigate, useSearchParams } from 'react-router';
@@ -434,7 +434,10 @@ function CodeScreen({
                     aria-invalid={codeError != null}
                     aria-describedby={codeError == null ? undefined : 'code-error'}
                     onBlur={(event) => checks.left('code', event.target.value)}
-                    onChange={(event) => checks.edited('code', event.target.value)}
+                    onChange={(event) => {
+                      event.target.value = codeDigits(event.target.value);
+                      checks.edited('code', event.target.value);
+                    }}
                   />
                   {codeError != null && <FieldError id="code-error" message={codeError} />}
                 </div>

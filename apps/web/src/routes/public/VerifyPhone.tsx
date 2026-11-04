@@ -6,7 +6,7 @@ import {
   phoneAwaitingCode,
   primaryEmailAddress,
 } from '@soirely/api-client';
-import { cleanCode, codeProblem, codeWording, formatPhone } from '@soirely/domain';
+import { cleanCode, codeDigits, codeProblem, codeWording, formatPhone } from '@soirely/domain';
 import { type FormEvent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router';
@@ -354,7 +354,10 @@ export function VerifyPhone() {
                     spellCheck={false}
                     aria-invalid={fieldError != null}
                     aria-describedby={fieldError == null ? undefined : 'code-error'}
-                    onChange={() => setCodeError(null)}
+                    onChange={(event) => {
+                      event.target.value = codeDigits(event.target.value);
+                      setCodeError(null);
+                    }}
                   />
                   {fieldError != null && <FieldError id="code-error" message={fieldError} />}
                 </div>
