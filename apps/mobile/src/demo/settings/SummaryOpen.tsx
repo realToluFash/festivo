@@ -1,0 +1,170 @@
+import type { ReactNode, Ref } from 'react';
+import { StyleSheet, View, type ViewInstance } from 'react-native';
+
+import { RadioMark } from '../../components/RadioMark.tsx';
+import { Text } from '../../components/Text.tsx';
+import { tokens } from '../../theme/tokens.ts';
+import { Glyph } from '../Glyph.tsx';
+import { Row, type TagKind } from './SummaryRows.tsx';
+
+const hidden = {
+  accessibilityElementsHidden: true,
+  importantForAccessibility: 'no-hide-descendants',
+} as const;
+
+export type Filled = 0 | 1 | 2;
+
+/** A level as two bars, none filled for the least and both for the most, always beside its word. */
+export function LevelMeter({ filled }: { filled: Filled }) {
+  return (
+    <View style={styles.meter} {...hidden}>
+      {[0, 1].map((bar) => (
+        <View key={bar} style={[styles.bar, bar < filled ? styles.barFilled : styles.barEmpty]} />
+      ))}
+    </View>
+  );
+}
+
+/** The meter, its word, and a lock when the viewer cannot change it; read out by the row it sits in. */
+export function LevelValue({
+  filled,
+  word,
+  locked = false,
+}: {
+  filled: Filled;
+  word: string;
+  locked?: boolean;
+}) {
+  return (
+    <View style={styles.value}>
+      <LevelMeter filled={filled} />
+      <Text size={15} weight="medium" accessible={false} style={styles.secondary}>
+        {word}
+      </Text>
+      {locked && (
+        <View {...hidden}>
+          <Glyph name="lock" size={14} ink={tokens.colorInkSecondary} weight={2.3} />
+        </View>
+      )}
+    </View>
+  );
+}
+
+/** A row that opens in place: shut, its value and a chevron down; open, what it holds under a Violet rule. */
+export function OpenRow({
+  title,
+  openLine,
+  value,
+  open,
+  onToggle,
+  below,
+  children,
+  accessibilityLabel,
+  testID,
+  ref,
+}: {
+  title: string;
+  openLine?: string | undefined;
+  value: ReactNode;
+  open: boolean;
+  onToggle: () => void;
+  below?: ReactNode;
+  children: ReactNode;
+  accessibilityLabel: string;
+  testID?: string;
+  ref?: Ref<ViewInstance>;
+}) {
+  const chevron = (
+    <View style={open && styles.flipped} {...hidden}>
+      <Glyph
+        name="down"
+        size={18}
+        ink={open ? tokens.colorAccent : tokens.colorInkTertiary}
+        weight={2.3}
+      />
+    </View>
+  );
+
+  return (
+    <View>
+      <Row
+        ref={ref}
+        title={title}
+        line={open ? openLine : undefined}
+        weight={open ? 'semibold' : 'medium'}
+        accent={open}
+        trail={
+          <>
+            {!open && value}
+            {chevron}
+          </>
+        }
+        onPress={onToggle}
+        accessibilityLabel={accessibilityLabel}
+        accessibilityState={{ expanded: open }}
+        testID={testID}
+      />
+      {open && (
+        <View style={styles.opened}>
+          {children}
+          {below != null && (
+            <>
+              <View style={styles.rule} />
+              {below}
+            </>
+          )}
+        </View>
+      )}
+    </View>
+  );
+}
+
+export function ChoiceRow({
+  title,
+  line,
+  on,
+  tag,
+  onPress,
+  testID,
+}: {
+  title: string;
+  line?: string;
+  on: boolean;
+  tag?: { kind: TagKind; word: string } | null;
+  onPress: () => void;
+  testID?: string;
+}) {
+  return (
+    <Row
+      title={title}
+      line={line}
+      lead={<RadioMark on={on} />}
+      tag={tag}
+      accent={on}
+      pad={tokens.spaceSm}
+      onPress={onPress}
+      accessibilityRole="radio"
+      accessibilityState={{ checked: on }}
+      testID={testID}
+    />
+  );
+}
+
+const styles = StyleSheet.create({
+  secondary: { color: tokens.colorInkSecondary },
+  meter: { flexDirection: 'row', gap: 3 },
+  bar: { width: 4, height: 14, borderRadius: 2 },
+  barFilled: { backgroundColor: tokens.colorInk },
+  barEmpty: { borderWidth: 1.5, borderColor: tokens.colorFieldBorder },
+  value: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  flipped: { transform: [{ rotate: '180deg' }] },
+  opened: {
+    marginLeft: 14,
+    paddingLeft: 14,
+    paddingTop: tokens.spaceHair,
+    paddingBottom: tokens.spaceSm,
+    borderLeftWidth: 2,
+    borderLeftColor: tokens.colorAccent,
+  },
+  rule: { height: 1, marginVertical: tokens.spaceXxs, backgroundColor: tokens.colorBorder },
+});

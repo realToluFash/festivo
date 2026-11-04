@@ -1,9 +1,10 @@
-import { type ReactNode, type RefObject, useEffect, useRef, useState } from 'react';
+import { type ReactNode, type Ref, type RefObject, useEffect, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Modal,
   Pressable,
   ScrollView,
+  type ScrollViewInstance,
   StyleSheet,
   View,
   type ViewInstance,
@@ -123,6 +124,7 @@ export interface FocusVerb {
   label: string;
   on: boolean;
   onPress: () => void;
+  removes?: boolean;
   testID?: string;
 }
 
@@ -136,6 +138,7 @@ export function FocusedScreen({
   opener,
   ask,
   toast,
+  scrollRef,
   children,
   testID,
 }: {
@@ -147,6 +150,7 @@ export function FocusedScreen({
   opener: Opener;
   ask?: AskProps | null;
   toast?: { words: string; onClose: () => void } | null;
+  scrollRef?: Ref<ScrollViewInstance>;
   children: ReactNode;
   testID?: string;
 }) {
@@ -175,6 +179,7 @@ export function FocusedScreen({
           >
             <FocusNav title={title} verb={verb} onCancel={onCancel} cancelTestID={cancelTestID} />
             <ScrollView
+              ref={scrollRef}
               style={phone ? styles.fill : styles.sheetBody}
               contentContainerStyle={[
                 styles.body,
@@ -257,7 +262,13 @@ function FocusNav({
           size={17}
           weight="semibold"
           accessible={false}
-          style={{ color: verb.on ? tokens.colorAccentText : tokens.colorInkTertiary }}
+          style={{
+            color: !verb.on
+              ? tokens.colorInkTertiary
+              : verb.removes === true
+                ? tokens.colorBroken
+                : tokens.colorAccentText,
+          }}
         >
           {verb.label}
         </Text>

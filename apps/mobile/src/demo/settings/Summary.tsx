@@ -20,7 +20,9 @@ import { Bell, Fade, Landscape, PHONE_TAB_BAR, PortraitTop, useShell } from './F
 import { Avatar, Back } from './parts.tsx';
 import { type MarkKind, StatusMark, TextAction } from './SummaryRows.tsx';
 
+export { ChoiceRow, type Filled, LevelMeter, LevelValue, OpenRow } from './SummaryOpen.tsx';
 export {
+  HeadCount,
   type ListItem,
   Line,
   type MarkKind,
@@ -245,6 +247,29 @@ export function CardSays({
   );
 }
 
+export function CardCounts({
+  counts,
+  label,
+}: {
+  counts: readonly { value: number; word: string }[];
+  label: string;
+}) {
+  return (
+    <View style={styles.counts} accessible accessibilityLabel={label}>
+      {counts.map(({ value, word }) => (
+        <View key={word}>
+          <Text size={30} weight="bold" accessible={false} style={[styles.white, styles.number]}>
+            {String(value)}
+          </Text>
+          <Text size={13} weight="semibold" accessible={false} style={styles.white}>
+            {word}
+          </Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
 export function OnCard({ text, strong = false }: { text: string; strong?: boolean }) {
   return (
     <Text size={14.5} weight={strong ? 'semibold' : 'medium'} style={styles.white}>
@@ -386,6 +411,8 @@ const styles = StyleSheet.create({
   columnTitle: { letterSpacing: 26 * -0.02 },
   white: { color: tokens.colorInkOnDark },
   says: { maxWidth: '80%' },
+  counts: { flexDirection: 'row', gap: 26 },
+  number: { lineHeight: 33, fontVariant: ['tabular-nums'] },
   accent: { color: tokens.colorAccentText },
   secondary: { color: tokens.colorInkSecondary },
   pressed: { opacity: tokens.opacityPressed },

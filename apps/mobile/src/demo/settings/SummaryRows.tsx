@@ -95,6 +95,14 @@ export function Tag({ kind, word }: { kind: TagKind; word: string }) {
   );
 }
 
+export function HeadCount({ text }: { text: string }) {
+  return (
+    <Text size={14.5} weight="medium" style={[styles.secondary, styles.count]}>
+      {text}
+    </Text>
+  );
+}
+
 export function SectionHead({ title, right }: { title: string; right?: ReactNode }) {
   return (
     <View style={styles.head}>
@@ -143,13 +151,14 @@ export interface RowProps {
   weight?: 'semibold' | 'medium';
   selected?: boolean;
   gutter?: number;
+  pad?: number;
   selectable?: boolean;
   onPress?: (() => void) | undefined;
   accessibilityLabel?: string;
   accessibilityRole?: AccessibilityRole;
   accessibilityState?: AccessibilityState;
   testID?: string | undefined;
-  ref?: Ref<ViewInstance>;
+  ref?: Ref<ViewInstance> | undefined;
 }
 
 /** B's one row: a face or an icon, the title with its tag, a line under it, and a chevron when it opens something. */
@@ -165,6 +174,7 @@ export function Row({
   weight = 'semibold',
   selected = false,
   gutter = 0,
+  pad = 11,
   selectable = false,
   onPress,
   accessibilityLabel,
@@ -174,12 +184,13 @@ export function Row({
   ref,
 }: RowProps) {
   const pressed = onPress != null;
+  const grouped = pressed || accessibilityLabel != null;
   const ring = selected ? 2 : 0;
   const box = [
     styles.row,
     {
       minHeight: line == null ? 52 : 64,
-      paddingVertical: 11 - ring,
+      paddingVertical: pad - ring,
       paddingHorizontal: gutter - ring,
     },
     selected && styles.rowSelected,
@@ -193,7 +204,7 @@ export function Row({
             size={16}
             weight={weight}
             selectable={selectable}
-            accessible={pressed ? false : undefined}
+            accessible={grouped ? false : undefined}
             style={[styles.title, (accent || selected) && styles.accent]}
           >
             {title}
@@ -204,7 +215,7 @@ export function Row({
           <Text
             size={14}
             weight="medium"
-            accessible={pressed ? false : undefined}
+            accessible={grouped ? false : undefined}
             style={styles.secondary}
           >
             {line}
@@ -215,7 +226,7 @@ export function Row({
         <Text
           size={15}
           weight="medium"
-          accessible={pressed ? false : undefined}
+          accessible={grouped ? false : undefined}
           style={styles.secondary}
         >
           {value}
@@ -235,7 +246,13 @@ export function Row({
 
   if (!pressed)
     return (
-      <View ref={ref} style={box} testID={testID}>
+      <View
+        ref={ref}
+        style={box}
+        accessible={grouped}
+        accessibilityLabel={accessibilityLabel}
+        testID={testID}
+      >
         {words}
       </View>
     );
@@ -405,6 +422,7 @@ const styles = StyleSheet.create({
     rowGap: 4,
   },
   title: { flexShrink: 1 },
+  count: { fontVariant: ['tabular-nums'] },
   hairline: { height: 1, backgroundColor: tokens.colorBorder },
   action: {
     minHeight: tokens.sizeHit,
