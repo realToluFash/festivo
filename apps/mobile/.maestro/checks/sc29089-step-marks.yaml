@@ -4,7 +4,8 @@ appId: host.exp.Exponent
 - openLink: ${METRO_URL}/--/events
 - waitForAnimationToEnd
 - extendedWaitUntil:
-    visible: '.*[Ee]vent.*'
+    visible:
+      id: 'events.firstRun'
     timeout: 30000
 - waitForAnimationToEnd
 - takeScreenshot: step-marks

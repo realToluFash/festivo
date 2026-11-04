@@ -8,7 +8,7 @@ appId: host.exp.Exponent
       ASK: /reload
 - extendedWaitUntil:
     visible:
-      id: 'launch.brand'
+      id: 'welcome.brand'
     timeout: 30000
 - waitForAnimationToEnd
 - takeScreenshot: start-screen
