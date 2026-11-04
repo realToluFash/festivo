@@ -1953,19 +1953,19 @@
   "steps": {
     "back": "Retour",
     "close": "Fermer",
-    "stepOf": "Step {{step, number}} of {{steps, number}}",
-    "skip": "Skip",
+    "stepOf": "Étape {{step, number}} sur {{steps, number}}",
+    "skip": "Passer",
     "signOut": "Se déconnecter",
     "continue": "Continuer",
-    "codeLabel": "Code, 6 digits",
-    "showPassword": "Show password",
-    "hidePassword": "Hide password",
-    "emailIntro": "We sent a code to {{address}}.",
-    "organisationTitle": "Your organisation",
-    "mobileTitle": "Your mobile number",
-    "mobileIntro": "So your team can reach you on the night if something goes wrong.",
-    "mobileLine": "We send it a code on WhatsApp, or by text if WhatsApp can’t reach you.",
-    "sendCode": "Send code",
-    "whatsAppTitle": "Check WhatsApp"
+    "codeLabel": "Code à 6 chiffres",
+    "showPassword": "Afficher le mot de passe",
+    "hidePassword": "Masquer le mot de passe",
+    "emailIntro": "Nous avons envoyé un code à {{address}}.",
+    "organisationTitle": "Votre organisation",
+    "mobileTitle": "Votre numéro de portable",
+    "mobileIntro": "Pour que votre équipe puisse vous joindre le soir de l’événement en cas de problème.",
+    "mobileLine": "Nous envoyons un code à ce numéro sur WhatsApp, ou par SMS si WhatsApp ne peut pas vous joindre.",
+    "sendCode": "Envoyer le code",
+    "whatsAppTitle": "Consultez WhatsApp"
   }
 }
