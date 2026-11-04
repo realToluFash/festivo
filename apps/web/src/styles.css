@@ -981,7 +981,7 @@ span {
 
 .field-heading {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: var(--spaceSm);
 }
 
@@ -1846,6 +1846,11 @@ span {
 
 .link-button:active {
   opacity: var(--opacityPressed);
+}
+
+.field-heading .link-button {
+  display: flex;
+  align-items: flex-end;
 }
 
 /* In secondary ink, underlined only under the pointer. */
@@ -7734,6 +7739,10 @@ button.members-row {
 
 .auth-notice .link-button {
   align-self: flex-start;
+}
+
+.auth-column .field-heading .link-button {
+  line-height: 1.5;
 }
 
 .auth-notice .auth-notice-title {

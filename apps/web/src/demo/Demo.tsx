@@ -1,15 +1,15 @@
-import { type FormEvent, type ReactNode, useEffect, useRef, useState } from 'react';
+import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { Link, Route, Routes, useLocation, useNavigate, useSearchParams } from 'react-router';
 
-import { Brand } from '../components/Brand.tsx';
-import { LanguageMenu } from '../components/LanguageMenu.tsx';
-import { AppleMark, GoogleMark } from '../components/ProviderSignIn.tsx';
 import { NotFound } from '../routes/public/NotFound.tsx';
 import { offButton } from '../offButton.ts';
 import { offField } from '../offField.ts';
+import { BoardPage, OrLine, Providers } from './BoardPage.tsx';
+import { NewAccountBoard } from './NewAccount.tsx';
 import {
   type FieldLines,
   LOCK_MS,
+  NEW_ACCOUNT_PAGES,
   SAMPLE,
   fieldLines,
   refuse,
@@ -73,6 +73,7 @@ export default function Demo() {
     <Routes>
       <Route index element={<DemoHome from={from} />} />
       <Route path="sign-in" element={<SignInBoard />} />
+      <Route path="create-account" element={<NewAccountBoard />} />
       <Route path="signed-in" element={<SignedIn />} />
       <Route path="later" element={<Later />} />
       <Route path="*" element={<NotFound />} />
@@ -93,7 +94,8 @@ function DemoHome({ from }: { from: string }) {
       </header>
       <p className="demo-home-line">
         The designs, working on sample data. Nothing is sent. Sign in with{' '}
-        <strong>{SAMPLE.email}</strong> and <strong>{SAMPLE.password}</strong>.
+        <strong>{SAMPLE.email}</strong> and <strong>{SAMPLE.password}</strong>. The code from the
+        email or the phone is <strong>{SAMPLE.code}</strong>.
       </p>
 
       <section className="demo-home-page" aria-labelledby="demo-page-27">
@@ -109,48 +111,25 @@ function DemoHome({ from }: { from: string }) {
             </li>
           ))}
         </ul>
+
+        <h3>Create an account · desktop</h3>
+        {NEW_ACCOUNT_PAGES.map((page) => (
+          <div key={page.name} className="demo-home-group">
+            <h4>{page.name}</h4>
+            <ul className="demo-home-rows">
+              {page.states.map((state) => (
+                <li key={state.to}>
+                  <Link className="demo-home-row" to={state.to}>
+                    <span>{state.name}</span>
+                    <span aria-hidden="true">›</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
       </section>
     </main>
-  );
-}
-
-/** The board's page: the lockup and the way to an account, the form's column, the footer, and the way back under it. */
-function BoardPage({ children }: { children: ReactNode }) {
-  const [language, setLanguage] = useState('en');
-
-  return (
-    <div className="demo-page">
-      <header className="demo-page-header">
-        <Brand lockup />
-        <div className="demo-page-new">
-          <span>New to Soirely?</span>
-          <Link className="button demo-dense" to="/demo/later?screen=register">
-            Create an account
-          </Link>
-        </div>
-      </header>
-      <main id="content" className="demo-page-main">
-        <section className="demo-column">{children}</section>
-      </main>
-      <footer className="demo-page-footer">
-        <span>© 2026 Soirely</span>
-        <nav className="demo-page-links" aria-label="Legal and language">
-          <Link className="link-button demo-link" to="/demo/later?screen=terms">
-            Terms
-          </Link>
-          <Link className="link-button demo-link" to="/demo/later?screen=privacy">
-            Privacy
-          </Link>
-          {/* Choosing renames the button only: the demo's words stay English. */}
-          <LanguageMenu current={language} onChoose={setLanguage} />
-        </nav>
-      </footer>
-      <p className="demo-way-in">
-        <Link className="link-button" to="/demo">
-          All states in the demo
-        </Link>
-      </p>
-    </div>
   );
 }
 
@@ -371,40 +350,11 @@ function SignInForm({ state }: { state: string }) {
             </button>
           </form>
 
-          <div className="auth-or">
-            <span className="auth-or-rule" />
-            <span>or</span>
-            <span className="auth-or-rule" />
-          </div>
+          <OrLine />
           <Providers busy={busy} onChoose={provider} />
         </>
       )}
     </BoardPage>
-  );
-}
-
-function Providers({ busy, onChoose }: { busy: boolean; onChoose: (name: string) => void }) {
-  return (
-    <div className="demo-providers">
-      <button
-        className="button button-google demo-wide"
-        type="button"
-        {...offButton(busy, { dim: false })}
-        onClick={() => onChoose('Google')}
-      >
-        <GoogleMark />
-        <span>Continue with Google</span>
-      </button>
-      <button
-        className="button demo-apple demo-wide"
-        type="button"
-        {...offButton(busy, { dim: false })}
-        onClick={() => onChoose('Apple')}
-      >
-        <AppleMark onLight />
-        <span>Continue with Apple</span>
-      </button>
-    </div>
   );
 }
 
@@ -430,14 +380,13 @@ function SignedIn() {
 
 const LATER: Record<string, string> = {
   forgot: 'Forgot your password?',
-  register: 'Create an account',
   terms: 'Terms',
   privacy: 'Privacy',
 };
 
 function Later() {
   const [params] = useSearchParams();
-  const screen = LATER[params.get('screen') ?? ''] ?? 'Create an account';
+  const screen = LATER[params.get('screen') ?? ''] ?? 'Forgot your password?';
 
   return (
     <BoardPage>
