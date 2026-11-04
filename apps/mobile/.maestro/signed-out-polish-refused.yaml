@@ -24,7 +24,9 @@ appId: host.exp.Exponent
 - hideKeyboard
 - tapOn:
     id: 'signIn.submit'
-- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: 'That email and password do not match. Check both, or reset your password.'
+    timeout: 30000
 - takeScreenshot: polish-refused
 - scrollUntilVisible:
     element:
