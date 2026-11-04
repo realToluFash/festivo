@@ -1,5 +1,12 @@
-import type { ReactElement, ReactNode } from 'react';
-import { Pressable, type StyleProp, StyleSheet, View, type ViewStyle } from 'react-native';
+import type { ReactElement, ReactNode, Ref } from 'react';
+import {
+  Pressable,
+  type StyleProp,
+  StyleSheet,
+  View,
+  type ViewInstance,
+  type ViewStyle,
+} from 'react-native';
 
 import { Text } from '../../components/Text.tsx';
 import type { SettingsSection } from '../../kit/appNav.ts';
@@ -93,6 +100,7 @@ export function Pill({
   height = tokens.sizeHitPhoneHero,
   accessibilityLabel,
   testID,
+  ref,
 }: {
   label: string;
   kind?: PillKind;
@@ -102,12 +110,14 @@ export function Pill({
   height?: number;
   accessibilityLabel?: string;
   testID?: string;
+  ref?: Ref<ViewInstance>;
 }) {
   const look = PILL[kind];
   const off = kind === 'off';
 
   return (
     <Pressable
+      ref={ref}
       onPress={off ? undefined : onPress}
       disabled={off}
       style={({ pressed }) => [
