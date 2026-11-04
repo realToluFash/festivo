@@ -140,15 +140,15 @@ function mayGrant(
   );
 }
 
-/** The roles a removed role's members may move to: only one whose every permission the caller holds (sc-66). */
-export function replacementsFor<R extends { id: string; permissions: readonly string[] }>(
-  roles: readonly R[],
-  removing: { id: string },
-  held: readonly string[],
-): R[] {
+/** The roles a removed role's members may move to: one whose every permission the caller holds (sc-66), never Owner (sc-29235). */
+export function replacementsFor<
+  R extends { id: string; seededAs: string | null; permissions: readonly string[] },
+>(roles: readonly R[], removing: { id: string }, held: readonly string[]): R[] {
   return roles.filter(
     (one) =>
-      one.id !== removing.id && one.permissions.every((permission) => held.includes(permission)),
+      one.id !== removing.id &&
+      one.seededAs !== 'owner' &&
+      one.permissions.every((permission) => held.includes(permission)),
   );
 }
 
