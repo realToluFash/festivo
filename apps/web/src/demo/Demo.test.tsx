@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
@@ -1096,5 +1096,168 @@ describe('Today at a desk (sc-29092)', () => {
     await today('nope');
 
     expect(screen.getByRole('region', { name: 'Needs you' })).toBeDefined();
+  });
+});
+
+describe('Settings at a desk (sc-29708)', () => {
+  beforeEach(() => inEnvironment('development'));
+
+  async function settings(path: string) {
+    at(path);
+    await screen.findByRole('navigation', { name: 'Settings' });
+  }
+
+  it('selects Settings in the sidebar and opens Members beside the list', async () => {
+    await settings('/demo/settings');
+
+    const list = screen.getByRole('navigation', { name: 'Settings' });
+    expect(within(list).getByRole('link', { name: 'Members' }).getAttribute('aria-current')).toBe(
+      'page',
+    );
+    const side = screen.getByRole('navigation', { name: 'Soirely' });
+    expect(within(side).getByRole('link', { name: 'Settings' }).getAttribute('aria-current')).toBe(
+      'page',
+    );
+    expect(within(side).getByRole('link', { name: 'Today' })).toBeDefined();
+    expect(screen.getByRole('heading', { level: 1, name: 'Members' })).toBeDefined();
+  });
+
+  it('says a section the boards do not draw has its own design, and opens nothing', async () => {
+    await settings('/demo/settings');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Security' }));
+    expect(screen.getByText('Security has its own design.')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Roles' }));
+    expect(screen.getByText('Roles has its own design.')).toBeDefined();
+    expect(screen.getByRole('heading', { level: 1, name: 'Members' })).toBeDefined();
+  });
+
+  it('names who is looking at the sidebar’s foot', async () => {
+    await settings('/demo/settings?as=tom');
+    expect(screen.getByRole('button', { name: 'Tom Becker, Door staff' })).toBeDefined();
+  });
+
+  it('leaves Members and Roles out of the list for a role that does not read them', async () => {
+    await settings('/demo/settings?as=ana');
+
+    const list = screen.getByRole('navigation', { name: 'Settings' });
+    expect(within(list).queryByRole('link', { name: 'Members' })).toBeNull();
+    expect(within(list).queryByRole('link', { name: 'Roles' })).toBeNull();
+    expect(within(list).getByRole('button', { name: 'General' })).toBeDefined();
+  });
+
+  it('counts the people and answers the first request from the card', async () => {
+    await settings('/demo/settings');
+    expect(screen.getByText('7 people · 1 waiting')).toBeDefined();
+
+    const answer = screen.getByRole('button', { name: 'Answer Lucía Gómez' });
+    answer.focus();
+    fireEvent.click(answer);
+    expect(screen.getByRole('dialog', { name: 'Lucía’s request' })).toBeDefined();
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    expect(screen.queryByRole('dialog')).toBeNull();
+    await waitFor(() => expect(document.activeElement).toBe(answer));
+  });
+
+  it('approves a request with the role picked and says who joined', async () => {
+    await settings('/demo/settings/members?state=request');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Approve' }));
+    expect(screen.getByText('Lucía Gómez joined as Read-only')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'See Lucía Gómez' }));
+    expect(screen.getByRole('heading', { level: 1, name: 'Lucía Gómez' })).toBeDefined();
+  });
+
+  it('asks before turning a request down', async () => {
+    await settings('/demo/settings/members?state=request');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Turn down the request…' }));
+    fireEvent.click(
+      within(screen.getByRole('alertdialog', { name: 'Turn down Lucía Gómez?' })).getByRole(
+        'button',
+        { name: 'Turn down' },
+      ),
+    );
+    expect(screen.getByText('You turned down Lucía Gómez')).toBeDefined();
+  });
+
+  it('opens a person from their row and changes their role', async () => {
+    await settings('/demo/settings');
+
+    fireEvent.click(screen.getByRole('button', { name: /^Priya Shah/u }));
+    expect(screen.getByRole('heading', { level: 1, name: 'Priya Shah' })).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Change role' }));
+    fireEvent.click(screen.getByRole('radio', { name: /^Coordinator/u }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(screen.getByText('Priya Shah is now Coordinator.')).toBeDefined();
+  });
+
+  it('steps back from the proof to the role, where Cancel asks before it drops Owner', async () => {
+    await settings('/demo/settings');
+
+    fireEvent.click(screen.getByRole('button', { name: /^Priya Shah/u }));
+    fireEvent.click(screen.getByRole('button', { name: 'Change role' }));
+    fireEvent.click(screen.getByRole('radio', { name: /^Owner/u }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(screen.getByRole('dialog', { name: 'Make Priya an owner' })).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(screen.getByRole('dialog', { name: 'Priya’s role' })).toBeDefined();
+    expect((screen.getByRole('radio', { name: /^Owner/u }) as HTMLInputElement).checked).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.getByRole('alertdialog', { name: 'Discard your change?' })).toBeDefined();
+  });
+
+  it('shows somebody who manages nothing the people but no requests or invite', async () => {
+    await settings('/demo/settings/members?as=tom');
+
+    expect(screen.getByText('7 people')).toBeDefined();
+    expect(screen.queryByRole('heading', { name: 'Waiting' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Invite somebody' })).toBeNull();
+  });
+
+  it('asks for an address before it sends an invitation', async () => {
+    await settings('/demo/settings/members?state=invite');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Send invitation' }));
+    expect(screen.getByText('Enter their email address.')).toBeDefined();
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'amara.o@gmail.com' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Send invitation' }));
+
+    expect(screen.getByText('Invitation sent to amara.o@gmail.com')).toBeDefined();
+  });
+
+  it('asks before it drops a half-typed invitation', async () => {
+    await settings('/demo/settings/members?state=invite');
+
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'amara' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Discard' }));
+
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('answers a section it does not draw with the not-found page', async () => {
+    at('/demo/settings/roles');
+
+    expect(await screen.findByRole('heading', { name: 'This page does not exist' })).toBeDefined();
+  });
+
+  it('checks a claim to the owner’s place and finds the record the second time', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    await settings('/demo/settings/members?as=julien&state=claim');
+
+    const claim = within(screen.getByRole('dialog', { name: 'Become the owner' }));
+    const check = () => fireEvent.click(claim.getByRole('button', { name: 'Check record' }));
+    check();
+    expect(screen.getByText('Checking the record')).toBeDefined();
+    await act(() => vi.advanceTimersByTimeAsync(1200));
+    expect(screen.getByText(/^We couldn’t find the record yet/u)).toBeDefined();
+    check();
+    await act(() => vi.advanceTimersByTimeAsync(1200));
+
+    expect(screen.getByText('Record found')).toBeDefined();
   });
 });
