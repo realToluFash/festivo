@@ -464,6 +464,187 @@ describe('the demo creates an account (sc-29061)', () => {
   });
 });
 
+describe('the demo’s other ways in (sc-29062)', () => {
+  beforeEach(() => {
+    inEnvironment('development');
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+  });
+
+  async function wait(): Promise<void> {
+    await act(() => vi.advanceTimersByTimeAsync(1000));
+  }
+
+  async function page(query: string, title: string) {
+    const router = at(`/demo/ways-in${query}`);
+    await screen.findByRole('heading', { level: 1, name: title });
+
+    return router;
+  }
+
+  it('lists the board on the demo home, with its organisation and inviter', async () => {
+    at('/demo');
+    await screen.findByRole('heading', { name: 'Design demo' });
+
+    expect(screen.getByRole('heading', { name: 'Other ways in · desktop' })).toBeDefined();
+    expect(screen.getByRole('heading', { name: 'An invitation' })).toBeDefined();
+    expect(screen.getByText(`${SAMPLE.inviter}, ${SAMPLE.role}`)).toBeDefined();
+    expect(screen.getByRole('link', { name: /Cooling off/ })).toBeDefined();
+  });
+
+  it('offers both ways in on a request link signed out, with the header’s end empty', async () => {
+    await page('', 'Ask to join Ire Events');
+
+    expect(screen.getByText('Request link')).toBeDefined();
+    const ways = screen.getAllByRole('link').map((link) => link.textContent);
+    expect(ways.indexOf('Sign in')).toBeLessThan(ways.indexOf('Create an account'));
+    expect(screen.queryByRole('link', { name: 'Sign out' })).toBeNull();
+    expect(screen.queryByText('New to Soirely?')).toBeNull();
+  });
+
+  it('counts the message live, refuses one over 500, and says the request went', async () => {
+    await page('?page=ask&state=signed-in', 'Ask to join Ire Events');
+    expect(screen.getByRole('link', { name: 'Sign out' })).toBeDefined();
+    expect(screen.getByText('0 of 500 characters.')).toBeDefined();
+
+    type('Message', 'x'.repeat(501));
+    expect(screen.getByText('501 of 500 characters.')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Ask to join' }));
+    expect(screen.getByText('Keep your message to 500 characters or fewer.')).toBeDefined();
+    expect(document.activeElement).toBe(screen.getByLabelText('Message'));
+
+    type('Message', 'Hi Ade, it’s Folake from the Lagos team.');
+    expect(screen.getByText('40 of 500 characters.')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Ask to join' }));
+    await wait();
+    expect(screen.getByText('Your request has gone to Ire Events')).toBeDefined();
+    expect(screen.getByRole('link', { name: 'Continue' })).toBeDefined();
+  });
+
+  it('says a dead link once, with one way on', async () => {
+    await page('?page=ask&state=dead', 'This link does not work');
+
+    expect(screen.getByText('Ask the organisation for a new one.')).toBeDefined();
+    expect(screen.queryByRole('status')).toBeNull();
+    expect(screen.getByRole('link', { name: 'Go to Soirely' })).toBeDefined();
+  });
+
+  it('joins from an invitation signed out, with the address fixed', async () => {
+    await page('?page=invitation', 'Join Ire Events');
+    expect(screen.getByText('Already have an account?')).toBeDefined();
+    const email = screen.getByLabelText('Email') as HTMLInputElement;
+    expect(email.value).toBe(SAMPLE.email);
+    expect(email.readOnly).toBe(true);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Create account and join' }));
+    expect(screen.getByText('Enter your full name.')).toBeDefined();
+    expect(document.activeElement).toBe(screen.getByLabelText('Full name'));
+
+    type('Full name', SAMPLE.name);
+    type('Password', SAMPLE.password);
+    fireEvent.click(screen.getByRole('button', { name: 'Create account and join' }));
+    await wait();
+    expect(await screen.findByRole('heading', { name: 'You are in' })).toBeDefined();
+    expect(screen.getByRole('link', { name: 'Open Ire Events' })).toBeDefined();
+  });
+
+  it('works the pressed answer and holds the other', async () => {
+    await page('?page=invitation&state=signed-in', 'Join Ire Events?');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Decline' }));
+    expect(screen.getByRole('button', { name: 'Declining…' })).toBeDefined();
+    expect(
+      screen.getByRole('button', { name: 'Accept and join' }).getAttribute('aria-disabled'),
+    ).toBe('true');
+
+    await wait();
+    expect(await screen.findByRole('heading', { name: 'Invitation declined' })).toBeDefined();
+  });
+
+  it.each([
+    ['expired', 'This invitation has expired'],
+    ['withdrawn', 'This invitation was withdrawn'],
+    ['declined', 'Already declined'],
+    ['not-yours', 'This invitation is for someone else'],
+    ['deleted', 'This organisation is gone'],
+  ])('refuses %s with the title, and a line that does not repeat it', async (state, title) => {
+    await page(`?page=invitation&state=${state}`, title);
+
+    const line = document.querySelector('.demo-heading .demo-muted')?.textContent ?? '';
+    expect(line).not.toBe('');
+    expect(line.includes(title)).toBe(false);
+  });
+
+  it('offers Sign out on an invitation that is not yours', async () => {
+    await page('?page=invitation&state=not-yours', 'This invitation is for someone else');
+
+    fireEvent.click(screen.getByRole('link', { name: `Sign out and use ${SAMPLE.email}` }));
+    expect(await screen.findByRole('heading', { name: 'Join Ire Events' })).toBeDefined();
+  });
+
+  it('holds the organisation fields and Save until the company offer is answered', async () => {
+    await page('?page=details&state=company', 'A few details');
+
+    expect(screen.getByText('Ire Events uses Soirely')).toBeDefined();
+    expect(screen.queryByLabelText('Organisation name')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Save and continue' })).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Start my own organisation' }));
+    expect(screen.getByLabelText('Organisation name')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Save and continue' })).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: /^Ask to join an organisation at/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Ask to join Ire Events' }));
+    await wait();
+    expect(
+      await screen.findByRole('heading', { name: 'Waiting for Ire Events to approve you' }),
+    ).toBeDefined();
+    expect(screen.getByText(`Waiting for approval · asked ${SAMPLE.askedOn}`)).toBeDefined();
+  });
+
+  it('answers a waiting invitation on the details page, with the fields under it', async () => {
+    await page('?page=details&state=invitation', 'A few details');
+
+    expect(screen.getByText('Or start your own organisation')).toBeDefined();
+    expect(screen.getByLabelText('Organisation name')).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Accept and join' }));
+    await wait();
+    expect(await screen.findByRole('heading', { name: 'You are in' })).toBeDefined();
+  });
+
+  it('holds the invitation’s answers while Save and continue is saving', async () => {
+    await page('?page=details&state=invitation', 'A few details');
+    type('Organisation name', SAMPLE.organisation);
+    type('Mobile number', SAMPLE.number);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save and continue' }));
+    const accept = screen.getByRole('button', { name: 'Accept and join' });
+    expect(accept.getAttribute('aria-disabled')).toBe('true');
+    fireEvent.click(accept);
+
+    expect(screen.queryByText('Joining…')).toBeNull();
+    await wait();
+    expect(screen.queryByRole('heading', { name: 'You are in' })).toBeNull();
+  });
+
+  it('says Google signed in under the title, with no Back', async () => {
+    await page('?page=details&state=google', 'A few details');
+
+    expect(screen.getByText('Signed in with Google')).toBeDefined();
+    expect((screen.getByLabelText('Full name') as HTMLInputElement).value).toBe(SAMPLE.name);
+    expect(screen.queryByRole('link', { name: 'Back' })).toBeNull();
+  });
+
+  it('opens Apple’s first sign-in with Full name empty and focused', async () => {
+    await page('?page=details&state=apple', 'A few details');
+
+    expect(screen.getByText('Signed in with Apple')).toBeDefined();
+    const name = screen.getByLabelText('Full name') as HTMLInputElement;
+    expect(name.value).toBe('');
+    expect(document.activeElement).toBe(name);
+  });
+});
+
 describe('Today at a desk (sc-29092)', () => {
   beforeEach(() => inEnvironment('development'));
 
