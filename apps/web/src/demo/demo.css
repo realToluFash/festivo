@@ -554,3 +554,150 @@
   font: var(--typeSmall);
   color: var(--colorInkSecondary);
 }
+
+/* The other-ways-in board's parts (WebWaysIn, page 27). */
+
+.demo-home-group + h3 {
+  margin-top: var(--space3xl);
+}
+
+.demo-text {
+  font: var(--typeBody);
+  color: var(--colorInk);
+}
+
+.demo-organisation {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceLg);
+}
+
+.demo-column .demo-organisation-name {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  font: 600 15px/1.35 var(--fontFamily);
+  color: var(--colorInk);
+}
+
+.demo-organisation-name .demo-help {
+  font-weight: 400;
+}
+
+.demo-choices {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceLg);
+}
+
+.demo-input.demo-message {
+  height: 96px;
+  padding: 9px var(--spaceLg);
+  resize: vertical;
+}
+
+.demo-input.demo-fixed {
+  background: var(--colorInset);
+}
+
+.demo-invited {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceLg);
+}
+
+.demo-invited-lines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceHair);
+}
+
+/* Signed out, the invitation's form is taller: it sits 56 under the header with 20 between its parts. */
+.demo-page-main:has(.demo-invitation-page) {
+  padding-top: 56px;
+}
+
+.demo-invitation-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXxl);
+}
+
+.demo-answers-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceLg);
+}
+
+.demo-answers {
+  display: flex;
+  gap: var(--spaceLg);
+}
+
+.demo-answers .button {
+  flex: 1;
+}
+
+.demo-answers-sized .button {
+  flex: none;
+}
+
+.demo-answers-sized .button-primary {
+  width: 180px;
+}
+
+.demo-answers-sized .button:not(.button-primary) {
+  width: 120px;
+}
+
+.demo-offer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXl);
+}
+
+.demo-offer-intro {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXxs);
+}
+
+.demo-offer-intro h2 {
+  margin: 0;
+  font: 600 16px/1.3 var(--fontFamily);
+}
+
+/* Hairlines in place of boxes. */
+.demo-offer-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceLg);
+  padding: 14px 0;
+  border-top: var(--borderInset);
+  border-bottom: var(--borderInset);
+}
+
+.demo-offer-row .demo-organisation {
+  flex: 1;
+  min-width: 0;
+}
+
+.demo-column .demo-offer-ask {
+  flex: none;
+  width: 120px;
+}
+
+.demo-invitation {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceLg);
+  padding-top: 14px;
+  border-top: var(--borderInset);
+}
+
+.demo-waiting {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+}

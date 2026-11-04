@@ -6,11 +6,13 @@ import { offButton } from '../offButton.ts';
 import { offField } from '../offField.ts';
 import { BoardPage, OrLine, Providers } from './BoardPage.tsx';
 import { NewAccountBoard } from './NewAccount.tsx';
+import { WaysInBoard } from './WaysIn.tsx';
 import {
   type FieldLines,
   LOCK_MS,
   NEW_ACCOUNT_PAGES,
   SAMPLE,
+  WAYS_IN_PAGES,
   fieldLines,
   refuse,
   samplePair,
@@ -74,6 +76,7 @@ export default function Demo() {
       <Route index element={<DemoHome from={from} />} />
       <Route path="sign-in" element={<SignInBoard />} />
       <Route path="create-account" element={<NewAccountBoard />} />
+      <Route path="ways-in" element={<WaysInBoard />} />
       <Route path="signed-in" element={<SignedIn />} />
       <Route path="later" element={<Later />} />
       <Route path="*" element={<NotFound />} />
@@ -113,24 +116,38 @@ function DemoHome({ from }: { from: string }) {
         </ul>
 
         <h3>Create an account · desktop</h3>
-        {NEW_ACCOUNT_PAGES.map((page) => (
-          <div key={page.name} className="demo-home-group">
-            <h4>{page.name}</h4>
-            <ul className="demo-home-rows">
-              {page.states.map((state) => (
-                <li key={state.to}>
-                  <Link className="demo-home-row" to={state.to}>
-                    <span>{state.name}</span>
-                    <span aria-hidden="true">›</span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
+        <BoardPages pages={NEW_ACCOUNT_PAGES} />
+
+        <h3>Other ways in · desktop</h3>
+        <p className="demo-home-line">
+          The organisation is <strong>{SAMPLE.organisation}</strong>, and the invitation is from{' '}
+          <strong>
+            {SAMPLE.inviter}, {SAMPLE.role}
+          </strong>
+          .
+        </p>
+        <BoardPages pages={WAYS_IN_PAGES} />
       </section>
     </main>
   );
+}
+
+function BoardPages({ pages }: { pages: typeof NEW_ACCOUNT_PAGES }) {
+  return pages.map((page) => (
+    <div key={page.name} className="demo-home-group">
+      <h4>{page.name}</h4>
+      <ul className="demo-home-rows">
+        {page.states.map((state) => (
+          <li key={state.to}>
+            <Link className="demo-home-row" to={state.to}>
+              <span>{state.name}</span>
+              <span aria-hidden="true">›</span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </div>
+  ));
 }
 
 function SignInBoard() {
