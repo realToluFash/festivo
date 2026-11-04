@@ -468,8 +468,6 @@ function SignedIn() {
 }
 
 const LATER: Record<string, string> = {
-  recovery: 'Enter a recovery code',
-  lost: 'Lost your authenticator and your recovery codes?',
   terms: 'Terms',
   privacy: 'Privacy',
   security: 'Your account › Security',

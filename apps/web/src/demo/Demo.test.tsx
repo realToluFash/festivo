@@ -593,6 +593,15 @@ describe('the demo gets a password back (sc-29064)', () => {
     await wait();
     expect(await screen.findByRole('heading', { name: 'Set a new password' })).toBeDefined();
   });
+
+  it.each([
+    ['Use a recovery code instead', 'Enter a recovery code'],
+    ['Lost your authenticator and your recovery codes?', 'Get back in without your authenticator'],
+  ])('follows “%s” to the two-factor board’s page', async (link, heading) => {
+    await page('?page=code', 'Enter your code');
+    fireEvent.click(screen.getByRole('link', { name: link }));
+    expect(await screen.findByRole('heading', { name: heading })).toBeDefined();
+  });
 });
 
 describe('the demo signs in with two-factor (sc-29063)', () => {

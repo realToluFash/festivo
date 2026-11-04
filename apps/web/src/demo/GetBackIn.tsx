@@ -13,7 +13,16 @@ import {
   fieldClass,
   useBusy,
 } from './parts.tsx';
-import { BREACHED, LOCK_MS, SAMPLE, backIn, emailLine, passwordLine, timeOfDay } from './rules.ts';
+import {
+  BREACHED,
+  LOCK_MS,
+  SAMPLE,
+  backIn,
+  emailLine,
+  passwordLine,
+  timeOfDay,
+  twoFactorAt,
+} from './rules.ts';
 
 /** What one page hands the next: the address, and the page the reset was opened from. */
 export type Reset = { email: string; back: string };
@@ -356,10 +365,10 @@ function CodeFirst({ email }: { email: string }) {
         onVerified={() => void navigate(backIn('new'), { state: { email } })}
       />
       <div className="demo-asides">
-        <Link className="link-button demo-link" to="/demo/later?screen=recovery">
+        <Link className="link-button demo-link" to={twoFactorAt('recovery')}>
           Use a recovery code instead
         </Link>
-        <Link className="link-button demo-link" to="/demo/later?screen=lost">
+        <Link className="link-button demo-link" to={twoFactorAt('start')}>
           Lost your authenticator and your recovery codes?
         </Link>
       </div>
