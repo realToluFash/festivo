@@ -3,6 +3,7 @@ import {
   callingCode,
   countryChoices,
   emailProblem,
+  formatDay,
   formatTimeOfDay,
   meetsPasswordLength,
   phoneLengthProblem,
@@ -18,6 +19,10 @@ export const SAMPLE = {
   code: '482913',
   country: 'GB',
   number: '7400 123456',
+  /** The authenticator's code, and the recovery codes: one unused, one used already. */
+  authenticator: '714302',
+  recovery: 'vtxp-rh7y',
+  usedRecovery: 'k3m9-q2wd',
   /** Refused as a known breach, as the API refuses one. */
   breachedPassword: 'passwordpassword',
   inviter: 'Ade Bankole',
@@ -77,6 +82,10 @@ export function timeOfDay(at: number): string {
   return formatTimeOfDay(new Date(at), 'en-GB');
 }
 
+export function dayOfTime(at: number): string {
+  return formatDay(new Date(at), 'en-GB');
+}
+
 export type AccountLines = { name?: string; email?: string; password?: string };
 
 /** Create your account's checks before anything is sent. */
@@ -105,6 +114,16 @@ export function passwordLine(password: string, blank: string): string | null {
 /** Only the digits of what was typed or pasted, at most a code's length. */
 export function codeDigits(typed: string): string {
   return typed.replace(/\D/g, '').slice(0, CODE_LENGTH);
+}
+
+/** Lower case, letters and digits, the dash put in after the fourth: "VTXPRH7Y" is "vtxp-rh7y". */
+export function shapeRecovery(typed: string): string {
+  const plain = typed
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '')
+    .slice(0, 8);
+
+  return plain.length > 4 ? `${plain.slice(0, 4)}-${plain.slice(4)}` : plain;
 }
 
 export function codeLine(code: string, from: string): string | null {
@@ -229,6 +248,56 @@ export const GET_BACK_IN_PAGES: { name: string; states: { name: string; to: stri
     ],
   },
   { name: 'A code first', states: [{ name: 'Enter your code', to: backIn('code') }] },
+];
+
+/** A page of the two-factor board, and one of its states. */
+export const twoFactorAt = (page: string, state?: string) =>
+  `/demo/two-factor?page=${page}${state == null ? '' : `&state=${state}`}`;
+
+export const TWO_FACTOR_PAGES: { name: string; states: { name: string; to: string }[] }[] = [
+  {
+    name: 'Enter your code',
+    states: [
+      { name: 'Enter your code', to: twoFactorAt('code') },
+      { name: 'A wrong code', to: twoFactorAt('code', 'wrong') },
+      { name: 'Too many wrong codes', to: twoFactorAt('code', 'paused') },
+    ],
+  },
+  {
+    name: 'A recovery code',
+    states: [
+      { name: 'Enter a recovery code', to: twoFactorAt('recovery') },
+      { name: 'A used code', to: twoFactorAt('recovery', 'used') },
+    ],
+  },
+  {
+    name: 'Lost authenticator',
+    states: [
+      { name: 'Start', to: twoFactorAt('start') },
+      { name: 'Too many requests', to: twoFactorAt('start', 'limited') },
+      { name: 'Both codes', to: twoFactorAt('codes') },
+      { name: 'Only the email’s code', to: twoFactorAt('codes', 'email-only') },
+    ],
+  },
+  {
+    name: 'Once asked',
+    states: [
+      { name: 'Waiting for your organisation', to: twoFactorAt('waiting') },
+      { name: 'Two-factor is off', to: twoFactorAt('off') },
+      { name: 'Turned down', to: twoFactorAt('turned-down') },
+      { name: 'Ended', to: twoFactorAt('ended') },
+      { name: 'Cancelled', to: twoFactorAt('cancelled') },
+      { name: 'Replaced', to: twoFactorAt('replaced') },
+    ],
+  },
+  {
+    name: 'After getting back in',
+    states: [
+      { name: 'Set up two-factor again', to: twoFactorAt('setup') },
+      { name: 'This wasn’t you?', to: twoFactorAt('not-me') },
+      { name: 'Cancelled and signed out', to: twoFactorAt('not-me', 'done') },
+    ],
+  },
 ];
 
 /** A page of the other-ways-in board, and one of its states. */

@@ -701,3 +701,67 @@
   flex-direction: column;
   gap: var(--spaceXs);
 }
+
+/* The two-factor board's parts (WebTwoFactor, page 27). */
+
+.demo-asides > .demo-link {
+  align-self: flex-start;
+}
+
+.demo-steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceMd);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font: var(--typeBody);
+}
+
+.demo-steps li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceMd);
+}
+
+.demo-step-number {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--sizePill);
+  height: var(--sizePill);
+  border: 1px solid var(--colorBorder);
+  border-radius: 50%;
+  background: var(--colorInset);
+  font: 600 12px/1 var(--fontFamily);
+  color: var(--colorInkSecondary);
+}
+
+.demo-lines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceHair);
+  font: var(--typeBody);
+}
+
+.demo-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceLg);
+}
+
+.demo-answer-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceSm);
+}
+
+/* Both codes is the board's tallest page: its column sits higher and tighter to fit 1280 × 800. */
+.demo-page-main.demo-backed.demo-tall {
+  padding-top: var(--space3xl);
+}
+
+.demo-tall .demo-column {
+  gap: var(--spaceXxl);
+}

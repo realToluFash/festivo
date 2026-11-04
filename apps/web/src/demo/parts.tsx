@@ -275,27 +275,15 @@ export function CodeForm({
   return (
     <>
       <form className="demo-form" noValidate onSubmit={verify}>
-        <div className={fieldClass(line != null)}>
-          <label htmlFor="code">{label}</label>
-          <input
-            ref={field}
-            className="demo-input demo-code"
-            id="code"
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            maxLength={CODE_LENGTH}
-            value={code}
-            {...offField(busy)}
-            aria-invalid={line != null}
-            aria-describedby={line == null ? undefined : 'code-line'}
-            onChange={(event) => setCode(codeDigits(event.target.value))}
-          />
-          {line != null && (
-            <p className="demo-line" id="code-line" role="alert">
-              {line}
-            </p>
-          )}
-        </div>
+        <CodeField
+          id="code"
+          label={label}
+          line={line}
+          field={field}
+          value={code}
+          busy={busy}
+          onChange={setCode}
+        />
         <button className="button button-primary demo-wide" type="submit" aria-busy={busy}>
           {sending ? 'Sending…' : busy ? 'Verifying…' : submit}
         </button>
@@ -310,9 +298,83 @@ export function CodeForm({
   );
 }
 
+/** The board's one code field: sign-in's code page, Enter your code and Both codes all render it. */
+export function CodeField({
+  id,
+  label,
+  sent,
+  line,
+  field,
+  value,
+  busy,
+  onChange,
+  inputMode = 'numeric',
+  shape = codeDigits,
+  maxLength = CODE_LENGTH,
+}: {
+  id: string;
+  label: string;
+  /** "Sent to …", under the field. */
+  sent?: string;
+  line: string | null | undefined;
+  field: RefObject<HTMLInputElement | null>;
+  value: string;
+  busy: boolean;
+  onChange: (code: string) => void;
+  inputMode?: 'numeric' | 'text';
+  shape?: (typed: string) => string;
+  maxLength?: number;
+}) {
+  const described = [line == null ? null : `${id}-line`, sent == null ? null : `${id}-sent`]
+    .filter((each) => each != null)
+    .join(' ');
+
+  return (
+    <div className={fieldClass(line != null)}>
+      <label htmlFor={id}>{label}</label>
+      <input
+        ref={field}
+        className="demo-input demo-code"
+        id={id}
+        inputMode={inputMode}
+        autoComplete="one-time-code"
+        autoCapitalize="none"
+        autoCorrect="off"
+        spellCheck={false}
+        maxLength={maxLength}
+        value={value}
+        {...offField(busy)}
+        aria-invalid={line != null}
+        aria-describedby={described === '' ? undefined : described}
+        onChange={(event) => onChange(shape(event.target.value))}
+      />
+      {line != null && (
+        <p className="demo-line" id={`${id}-line`} role="alert">
+          {line}
+        </p>
+      )}
+      {sent != null && (
+        <p className="demo-help" id={`${id}-sent`}>
+          {sent}
+        </p>
+      )}
+    </div>
+  );
+}
+
 /** "No code? Send a new code in 0:41", a link once the count ends; the note under it. */
-export function Resend({ onResend, children }: { onResend: () => void; children?: ReactNode }) {
+export function Resend({
+  onResend,
+  plural = false,
+  children,
+}: {
+  onResend: () => void;
+  /** "No codes? Send new codes", where two codes went. */
+  plural?: boolean;
+  children?: ReactNode;
+}) {
   const [left, setLeft] = useState(RESEND_SECONDS);
+  const send = plural ? 'Send new codes' : 'Send a new code';
 
   useEffect(() => {
     if (left <= 0) return;
@@ -325,16 +387,20 @@ export function Resend({ onResend, children }: { onResend: () => void; children?
   return (
     <div className="demo-resend">
       <p className="demo-resend-line">
-        <span>No code?</span>
+        <span>{plural ? 'No codes?' : 'No code?'}</span>
         {left > 0 ? (
-          <span className="demo-resend-wait">Send a new code in {formatCountdown(left)}</span>
+          <span className="demo-resend-wait">
+            {send} in {formatCountdown(left)}
+          </span>
         ) : (
           <button className="link-button demo-link" type="button" onClick={onResend}>
-            Send a new code
+            {send}
           </button>
         )}
       </p>
-      <p className="demo-resend-note">A new code replaces the last one.</p>
+      <p className="demo-resend-note">
+        {plural ? 'New codes replace the last ones.' : 'A new code replaces the last one.'}
+      </p>
       {children}
     </div>
   );
