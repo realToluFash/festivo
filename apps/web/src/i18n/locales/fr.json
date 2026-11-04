@@ -1605,27 +1605,27 @@
     "refused": {
       "invitation_expired": {
         "title": "Cette invitation a expiré",
-        "line": "Ask {{inviter}} to send a new one."
+        "line": "Demandez à {{inviter}} de vous en envoyer une nouvelle."
       },
       "invitation_revoked": {
         "title": "Cette invitation a été retirée",
-        "line": "If you think that is a mistake, ask whoever invited you."
+        "line": "S’il s’agit selon vous d’une erreur, adressez-vous à la personne à l’origine de l’invitation."
       },
       "invitation_accepted": {
         "title": "Déjà acceptée",
-        "line": "You are already a member of {{organisation}}."
+        "line": "Vous faites déjà partie de {{organisation}}."
       },
       "invitation_declined": {
         "title": "Déjà refusée",
-        "line": "Ask {{inviter}} to invite you again if you changed your mind."
+        "line": "Si vous avez changé d’avis, demandez à {{inviter}} de vous inviter de nouveau."
       },
       "invitation_not_yours": {
         "title": "Cette invitation est destinée à une autre personne",
-        "line": "It was sent to {{email}}. You are signed in as {{signedInAs}}."
+        "line": "Elle a été envoyée à {{email}}. Vous utilisez le compte {{signedInAs}}."
       },
       "organisation_deleted": {
         "title": "Cette organisation n’existe plus",
-        "line": "{{organisation}} no longer exists, so this invitation cannot be accepted."
+        "line": "L’invitation à rejoindre {{organisation}} ne peut plus être acceptée."
       }
     }
   },
@@ -1978,7 +1978,7 @@
     "limitedOnDay": "Trop de demandes pour le moment. Réessayez le {{day}} à {{time}}.",
     "limitedLater": "Trop de demandes pour le moment. Réessayez plus tard.",
     "deadTitle": "Ce lien ne fonctionne pas",
-    "deadLine": "Ask the organisation for a new one.",
+    "deadLine": "Demandez-en un nouveau à l’organisation.",
     "goHome": "Aller sur Soirely",
     "failedTitle": "La demande n’a pas abouti",
     "failedBody": "Un problème est survenu en cours de route. Réessayez dans un instant."
