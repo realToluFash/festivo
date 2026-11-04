@@ -27,6 +27,8 @@ async function start(): Promise<void> {
   try {
     await load();
     requireSameSiteApi(window.location.origin, config().apiBaseUrl);
+    const { scheme } = config();
+    if (scheme != null) document.documentElement.dataset.scheme = scheme;
     await initI18n();
   } catch (error) {
     // Rendered as plain text, in English, deliberately: this is the one failure

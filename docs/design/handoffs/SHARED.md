@@ -160,12 +160,11 @@ before anything is drawn.
 
 Take exact values from `docs/design/tokens.mjs`.
 
-- **Instrument Sans** for everything a person reads; **JetBrains Mono** only for step
-  numbers, keyboard shortcuts, and codes a person reads or copies character by character
-  (recovery codes, an authenticator setup key, a join code), never for money or counts.
-  A six-digit code typed into a field stays Instrument Sans with `tabular-nums`. Load both
-  from Google Fonts in `<helmet>`. Money and counts use Instrument Sans with
-  `font-variant-numeric: tabular-nums`.
+- **Instrument Sans** for everything a person reads, codes and step numbers included (owner,
+  3 Nov 2026: one face all through). A code read or copied character by character (recovery
+  codes, an authenticator setup key, a join code) takes `tabular-nums` and +0.04em
+  tracking. Load it from Google Fonts in `<helmet>`. Money and counts use Instrument Sans
+  with `font-variant-numeric: tabular-nums`.
 - **`#4B5563` is the label ink** (7.6:1 on white): form labels, card subheads and
   secondary icons, where the designer's screens use it. Secondary text stays `#5F6673`.
 - **Green `#1E9A64` is the only accent**, wherever no label sits on it: selected, done, and

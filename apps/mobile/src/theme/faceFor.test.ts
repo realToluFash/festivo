@@ -1,17 +1,9 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import {
-  GOOGLE_SANS,
-  MONO,
-  SANS,
-  faceFor,
-  faceStyle,
-  facesLoaded,
-  inputFaceStyle,
-} from './faceFor.ts';
+import { GOOGLE_SANS, SANS, faceFor, faceStyle, facesLoaded, inputFaceStyle } from './faceFor.ts';
 
 describe('a weight draws from its own file', () => {
   it('gives each of the four design weights a different Instrument Sans file', () => {
@@ -33,13 +25,6 @@ describe('a weight draws from its own file', () => {
   it('takes the nearest file for a weight the design does not ship', () => {
     expect(faceFor('300')).toBe('InstrumentSans-Regular');
     expect(faceFor('900')).toBe('InstrumentSans-Bold');
-  });
-
-  it('keeps JetBrains Mono to its two weights', () => {
-    expect(faceFor('500', 'mono')).toBe('JetBrainsMono-Medium');
-    expect(faceFor('700', 'mono')).toBe('JetBrainsMono-Bold');
-    expect(faceFor('400', 'mono')).toBe('JetBrainsMono-Medium');
-    expect(faceFor('600', 'mono')).toBe('JetBrainsMono-Bold');
   });
 
   it("sets Google's button in Google Sans Medium, whatever weight it is asked for", () => {
@@ -65,7 +50,6 @@ describe('a style reaches the platform with its face', () => {
       fontSize: 16,
     });
     expect(faceStyle({ fontWeight: '700' })).toEqual({ fontFamily: 'InstrumentSans-Bold' });
-    expect(faceStyle({ fontWeight: '700' }, 'mono')).toEqual({ fontFamily: 'JetBrainsMono-Bold' });
     expect(faceStyle({})).toEqual({ fontFamily: 'InstrumentSans-Regular' });
   });
 
@@ -100,8 +84,8 @@ describe("a field's style reaches the platform with its face", () => {
     expect(inputFaceStyle({ fontWeight: '700' }, 'sans', 'ios')).toEqual(
       faceStyle({ fontWeight: '700' }),
     );
-    expect(inputFaceStyle({ fontSize: 16 }, 'mono', 'web')).toEqual(
-      faceStyle({ fontSize: 16 }, 'mono'),
+    expect(inputFaceStyle({ fontSize: 16 }, 'googleSans', 'web')).toEqual(
+      faceStyle({ fontSize: 16 }, 'googleSans'),
     );
   });
 });
@@ -110,9 +94,12 @@ describe('the faces ship inside the app', () => {
   const fonts = join(import.meta.dirname, '../../assets/fonts');
   const fontsSource = readFileSync(join(import.meta.dirname, 'fonts.ts'), 'utf8');
 
+  it('ships Instrument Sans for every word, and Google Sans for its button alone (owner, 3 Nov 2026)', () => {
+    expect(readdirSync(fonts).sort()).toEqual(['google-sans', 'instrument-sans']);
+  });
+
   it.each([
     ['instrument-sans', Object.values(SANS)],
-    ['jetbrains-mono', Object.values(MONO)],
     ['google-sans', Object.values(GOOGLE_SANS)],
   ])('bundles every %s file the mapper names, beside its licence', (folder, families) => {
     expect(readFileSync(join(fonts, folder, 'OFL.txt'), 'utf8')).toContain(

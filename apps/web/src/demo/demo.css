@@ -78,7 +78,7 @@
 /* The board's page: no band and no card, the form in a column on white (page 27, second pass). */
 
 .demo-page {
-  --demoControl: 40px;
+  --demoControl: var(--sizeControlDesktop);
 
   display: flex;
   flex: 1 0 auto;
@@ -340,117 +340,4 @@
 .demo-apple svg {
   display: block;
   flex: none;
-}
-
-/* The language button and its menu. */
-
-.demo-language {
-  position: relative;
-}
-
-.demo-language-button {
-  display: flex;
-  align-items: center;
-  gap: var(--spaceXs);
-  min-height: var(--space3xl);
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--colorInkSecondary);
-  font: var(--typeSmall);
-  cursor: pointer;
-}
-
-.demo-stroke,
-.demo-tick {
-  display: block;
-  flex: none;
-  fill: none;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.demo-stroke {
-  stroke: var(--colorInkSecondary);
-  stroke-width: 2;
-}
-
-.demo-tick {
-  stroke: var(--colorAccent);
-  stroke-width: 2.6;
-}
-
-.demo-language-menu {
-  position: absolute;
-  right: 0;
-  bottom: calc(100% + var(--spaceSm));
-  z-index: 5;
-  display: flex;
-  flex-direction: column;
-  gap: var(--spaceHair);
-  width: 260px;
-  padding: var(--spaceSm);
-  background: var(--colorCard);
-  border: var(--borderCard);
-  border-radius: var(--radiusInset);
-  box-shadow: var(--shadowPopover);
-}
-
-.demo-language-heading {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spaceXxs);
-  margin-bottom: var(--spaceXs);
-  padding: var(--spaceSm) var(--spaceLg) var(--spaceMd);
-  border-bottom: var(--borderDivider);
-}
-
-.demo-language-title {
-  font: var(--typeRowTitle);
-}
-
-.demo-language-line {
-  font: var(--typeSmall);
-  color: var(--colorInkSecondary);
-}
-
-.demo-language-item {
-  display: flex;
-  align-items: center;
-  gap: var(--spaceLg);
-  width: 100%;
-  min-height: var(--sizeControlDense);
-  padding: 0 var(--spaceLg);
-  border: 0;
-  border-radius: var(--radiusNav);
-  background: transparent;
-  color: var(--colorInk);
-  text-align: left;
-  cursor: pointer;
-}
-
-.demo-language-item:hover,
-.demo-language-item:focus {
-  background: var(--colorInset);
-}
-
-/* The row the keyboard is on: 2 px green inside its edge. */
-.demo-language-item:focus-visible {
-  outline: 2px solid var(--colorAccent);
-  outline-offset: -2px;
-}
-
-.demo-language-names {
-  display: flex;
-  flex: 1;
-  align-items: baseline;
-  gap: var(--spaceSm);
-  font: var(--typeBody);
-  font-weight: 500;
-  color: var(--colorInk);
-}
-
-.demo-language-english {
-  font: var(--typeSmall);
-  color: var(--colorInkSecondary);
 }

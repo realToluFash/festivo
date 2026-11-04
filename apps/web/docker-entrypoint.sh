@@ -27,7 +27,8 @@ cat > "$TARGET" <<JSON
   "apple": {
     "authorizeUrl": "${SOIRELY_APPLE_AUTHORIZE_URL:-}",
     "clientId": "${SOIRELY_APPLE_CLIENT_ID:-}"
-  }
+  },
+  "scheme": "${SOIRELY_SCHEME:-}"
 }
 JSON
 

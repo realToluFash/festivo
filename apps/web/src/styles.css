@@ -34,6 +34,14 @@ body {
   background: var(--colorPage);
 }
 
+/* One face all through (owner, 3 Nov 2026): browsers draw these in a monospace of their own. */
+code,
+kbd,
+pre,
+samp {
+  font-family: var(--fontFamily);
+}
+
 h1 {
   font: var(--typeTitlePage);
   letter-spacing: var(--typeTitlePageTracking);
@@ -63,10 +71,8 @@ span {
   color: var(--colorInkSecondary);
 }
 
-/* Columns of money, counts and times are read downwards, and proportional
-   figures make that harder than it needs to be. Monospace is reserved for step
-   numbers, shortcuts and copied codes, so the answer is tabular figures in the
-   body face. */
+/* Columns of money, counts and times are read downwards, so they take tabular
+   figures. */
 .num {
   font-variant-numeric: tabular-nums;
 }
@@ -408,10 +414,6 @@ span {
   .brand img,
   .brand-lockup img {
     width: 51px;
-  }
-
-  .auth-header .brand img {
-    width: 63px;
   }
 }
 
@@ -894,8 +896,33 @@ span {
   gap: var(--spaceSm) var(--spaceLg);
   min-height: var(--sizeTopBar);
   padding: var(--spaceSm) var(--space5xl);
-  background: var(--colorHeader);
-  border-bottom: var(--borderHeader);
+}
+
+.auth-new {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceLg);
+  font: var(--typeBody);
+  color: var(--colorInkSecondary);
+}
+
+.button.auth-new-button {
+  --buttonHit: var(--sizeControlDense);
+
+  padding-block: 0;
+  text-decoration: none;
+}
+
+.auth-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spaceLg);
+  min-height: 56px;
+  padding: 0 var(--space5xl);
+  border-top: var(--borderDivider);
+  font: var(--typeSmall);
+  color: var(--colorInkSecondary);
 }
 
 .back-control {
@@ -935,6 +962,7 @@ span {
 /* The design demo's way in, at the foot of a signed-out page in development and QA only. */
 .demo-way-in {
   display: flex;
+  margin: 0;
   justify-content: center;
   padding: 0 var(--spaceXl) var(--space3xl);
 }
@@ -953,7 +981,7 @@ span {
 
 .field-heading {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: var(--spaceSm);
 }
 
@@ -1130,41 +1158,117 @@ span {
   color: var(--colorInkOnDark);
 }
 
-/* ── Choosing a language, as a control rather than a menu ─────────────────── */
+/* ── The language button and its menu, in a signed-out page's footer ───────── */
 
-.language-choice {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--spaceHair);
-  padding: var(--spaceXxs);
-  border-radius: var(--radiusPill);
-  background: var(--colorHeaderTrack);
+.language-menu {
+  position: relative;
 }
 
-.language-choice button {
-  position: relative;
-  flex: none;
-  min-height: var(--sizeSegmentInner);
-  padding: 0 var(--spaceLg);
+.language-menu-button {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceXs);
+  min-height: var(--space3xl);
+  padding: 0;
   border: 0;
-  border-radius: var(--radiusPill);
   background: transparent;
   color: var(--colorInkSecondary);
-  font: var(--typeButton);
+  font: var(--typeSmall);
   cursor: pointer;
 }
 
-/* Drawn at the segment's height; the target reaches the 44px floor beyond it. */
-.language-choice button::after {
-  position: absolute;
-  inset: calc((var(--sizeSegmentInner) - var(--sizeHit)) / 2) 0;
-  content: '';
+.language-menu-stroke,
+.language-menu-tick {
+  display: block;
+  flex: none;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
-.language-choice button[aria-pressed='true'] {
+.language-menu-stroke {
+  stroke: var(--colorInkSecondary);
+  stroke-width: 2;
+}
+
+.language-menu-tick {
+  stroke: var(--colorAccent);
+  stroke-width: 2.6;
+}
+
+.language-menu-popup {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + var(--spaceSm));
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceHair);
+  width: 260px;
+  padding: var(--spaceSm);
   background: var(--colorCard);
-  box-shadow: var(--shadowCard);
+  border: var(--borderCard);
+  border-radius: var(--radiusInset);
+  box-shadow: var(--shadowPopover);
+}
+
+.language-menu-heading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXxs);
+  margin-bottom: var(--spaceXs);
+  padding: var(--spaceSm) var(--spaceLg) var(--spaceMd);
+  border-bottom: var(--borderDivider);
+}
+
+.language-menu-title {
+  font: var(--typeRowTitle);
+}
+
+.language-menu-line {
+  font: var(--typeSmall);
+  color: var(--colorInkSecondary);
+}
+
+.language-menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceLg);
+  width: 100%;
+  min-height: var(--sizeControlDense);
+  padding: 0 var(--spaceLg);
+  border: 0;
+  border-radius: var(--radiusNav);
+  background: transparent;
   color: var(--colorInk);
+  text-align: left;
+  cursor: pointer;
+}
+
+.language-menu-item:hover,
+.language-menu-item:focus {
+  background: var(--colorInset);
+}
+
+/* The row the keyboard is on: 2 px green inside its edge. */
+.language-menu-item:focus-visible {
+  outline: 2px solid var(--colorAccent);
+  outline-offset: -2px;
+}
+
+.language-menu-names {
+  display: flex;
+  flex: 1;
+  align-items: baseline;
+  gap: var(--spaceSm);
+  font: var(--typeBody);
+  font-weight: 500;
+  color: var(--colorInk);
+}
+
+.language-menu-english {
+  font: var(--typeSmall);
+  color: var(--colorInkSecondary);
 }
 
 /* ── Your account ─────────────────────────────────────────────────────────── */
@@ -1378,32 +1482,11 @@ span {
   .auth-header {
     min-height: 0;
     padding: var(--spaceXl) var(--space3xl) 0;
-    background: none;
-    border-bottom: 0;
   }
 
   .auth-main {
     align-items: stretch;
     padding: var(--spaceSm) var(--space3xl) var(--space5xl);
-  }
-
-  .language-choice {
-    gap: var(--spaceSm);
-    padding: 0;
-    background: none;
-  }
-
-  .language-choice button {
-    min-height: var(--sizeHit);
-    border: var(--borderControl);
-    background: var(--colorCard);
-    color: var(--colorInk);
-  }
-
-  .language-choice button[aria-pressed='true'] {
-    background: var(--colorAccentTint);
-    border: var(--borderSelected);
-    box-shadow: none;
   }
 
   .auth-card {
@@ -1554,7 +1637,7 @@ span {
   height: var(--space3xl);
   border-radius: var(--radiusPill);
   font: var(--typePill);
-  font-family: var(--fontFamilyMono);
+  font-variant-numeric: tabular-nums;
 }
 
 .step-now .step-mark {
@@ -1763,6 +1846,11 @@ span {
 
 .link-button:active {
   opacity: var(--opacityPressed);
+}
+
+.field-heading .link-button {
+  display: flex;
+  align-items: flex-end;
 }
 
 /* In secondary ink, underlined only under the pointer. */
@@ -3252,7 +3340,6 @@ span {
 
 .two-factor-key,
 .recovery-codes {
-  font-family: var(--fontFamilyMono);
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.04em;
 }
@@ -3698,7 +3785,8 @@ span {
 .owner-claim-record-row code {
   flex: 1;
   min-width: 0;
-  font-family: var(--fontFamilyMono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
   word-break: break-all;
 }
 
@@ -7549,4 +7637,136 @@ button.members-row {
   padding: var(--spaceXl);
   border-radius: var(--radiusCardDesktop);
   box-shadow: none;
+}
+
+/* ── The desktop sign-in (sc-28983), last so its column outranks the shared rules ── */
+
+.auth-header .brand img {
+  width: auto;
+  height: 28px;
+}
+
+.auth-bare {
+  background: var(--colorCard);
+}
+
+.auth-bare .auth-main {
+  padding-top: 88px;
+}
+
+.auth-column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space3xl);
+  width: 100%;
+  max-width: 440px;
+}
+
+.auth-column h1 {
+  margin: 0;
+}
+
+.auth-column .auth-form {
+  gap: var(--space3xl);
+}
+
+.auth-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXl);
+}
+
+.auth-column .field label {
+  font: var(--typeBody);
+  font-weight: 500;
+}
+
+.auth-column .field-wrong label {
+  color: var(--colorBrokenText);
+}
+
+.auth-column .input,
+.auth-column .field-reveal button {
+  min-height: var(--sizeControlDesktop);
+  font: var(--typeBody);
+}
+
+.auth-column .field-reveal button {
+  font-weight: 600;
+}
+
+.auth-column .button {
+  --buttonHit: var(--sizeControlDesktop);
+
+  padding-block: 0;
+  font-size: 14px;
+}
+
+/* Focus sits on the field's own edge, 2 px over its border, so nothing moves; red while it is wrong. */
+.auth-column .input:focus,
+.auth-column .input:focus-visible {
+  outline: 2px solid var(--colorAccent);
+  outline-offset: -2px;
+}
+
+.auth-column .input-wrong:focus {
+  outline-color: var(--colorBroken);
+}
+
+.auth-column .field-error {
+  font: var(--typeSmall);
+}
+
+.auth-column .field-error .mark {
+  display: none;
+}
+
+.auth-column .link-button {
+  min-height: var(--space3xl);
+}
+
+.auth-column > .link-button {
+  align-self: flex-start;
+}
+
+.auth-notice {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceHair);
+  font: var(--typeBody);
+  color: var(--colorInkSecondary);
+}
+
+.auth-notice .link-button {
+  align-self: flex-start;
+}
+
+.auth-column .field-heading .link-button {
+  line-height: 1.5;
+}
+
+.auth-notice .auth-notice-title {
+  font-weight: 600;
+  color: var(--colorInk);
+}
+
+.auth-providers {
+  display: flex;
+  gap: var(--spaceLg);
+}
+
+.auth-providers .button {
+  flex: 1;
+  min-width: 0;
+}
+
+.button.button-apple-light {
+  gap: var(--spaceXs);
+  background: var(--colorCard);
+  border-color: var(--brandAppleSurface);
+  color: var(--brandAppleSurface);
+}
+
+.button.button-apple-light:hover {
+  background: var(--colorCard);
 }

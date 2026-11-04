@@ -6,15 +6,15 @@ import { logo } from '../theme/logo.ts';
 import { tokens } from '../theme/tokens.ts';
 import { type BrandSize, brandSize } from './brandSize.ts';
 
-function Word() {
-  return <Path d={logo.wordmark.d} fill={tokens.colorInk} />;
+function Word({ ink }: { ink: string }) {
+  return <Path d={logo.wordmark.d} fill={ink} />;
 }
 
-function SymbolShapes() {
+function SymbolShapes({ ink }: { ink: string }) {
   return (
     <>
       {logo.symbol.paths.map((d) => (
-        <Path key={d} d={d} fill={tokens.colorInk} />
+        <Path key={d} d={d} fill={ink} />
       ))}
     </>
   );
@@ -24,11 +24,14 @@ function SymbolShapes() {
 export function Brand({
   lockup = false,
   header = false,
+  ink = tokens.colorInk,
   testID,
   ...size
 }: BrandSize & {
   lockup?: boolean;
   header?: boolean;
+  /** White on a cover; ink everywhere else. */
+  ink?: string;
   testID?: string;
 }) {
   const { t } = useTranslation();
@@ -54,14 +57,14 @@ export function Brand({
         {lockup ? (
           <>
             <G transform={`scale(${symbol.scale})`}>
-              <SymbolShapes />
+              <SymbolShapes ink={ink} />
             </G>
             <G transform={`translate(${word.x} ${word.y}) scale(${word.scale})`}>
-              <Word />
+              <Word ink={ink} />
             </G>
           </>
         ) : (
-          <Word />
+          <Word ink={ink} />
         )}
       </Svg>
     </View>

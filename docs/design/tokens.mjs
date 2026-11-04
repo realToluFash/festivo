@@ -103,9 +103,8 @@ export const tokens = {
   colorPrintInk: '#000000',
 
   // ── Type ───────────────────────────────────────────────────────────────────
-  fontFamily: "'Instrument Sans', sans-serif", // all reading text, all names
-  fontFamilyMono: "'JetBrains Mono', monospace", // step numbers, keyboard shortcuts, codes read or copied by character; never money, counts or times (Instrument Sans, tabular-nums)
-  // Native: choose files by weight (Instrument Sans 400/500/600/700; JetBrains Mono 500/700), never by family name in a style.
+  fontFamily: "'Instrument Sans', sans-serif", // every word: one face all through (owner, 3 Nov 2026)
+  // Native: choose files by weight (Instrument Sans 400/500/600/700), never by family name in a style.
   // size · weight · line height · letter spacing. Roles come from where the screens use them.
   typeDisplay: { size: 48, weight: 700, lineHeight: 1, letterSpacing: '-0.03em' }, // one big number per panel (Messaging reach, Import count); 52 once
   typeTitlePage: { size: 28, weight: 700, lineHeight: 1.1, letterSpacing: '-0.02em' }, // desktop page title; phone uses 26
@@ -130,7 +129,7 @@ export const tokens = {
   typePill: { size: 12, weight: 600, lineHeight: 1, letterSpacing: '0' }, // status pills
   typePillWrapped: { size: 12, weight: 600, lineHeight: 1.25, letterSpacing: '0' }, // a status chip whose words wrap onto a second line at 320
   typeButton: { size: 14, weight: 600, lineHeight: 1, letterSpacing: '0' }, // 44px buttons; 15 on phone primaries; 13 inside dense rows
-  typeCode: { size: 14, weight: 600, lineHeight: 1, letterSpacing: '0' }, // codes read or copied by character, step numbers; never times, money or counts
+  typeCode: { size: 14, weight: 600, lineHeight: 1, letterSpacing: '0.04em' }, // codes read or copied by character, in Instrument Sans with tabular figures
   typeRoomNow: { size: 64, weight: 700, lineHeight: 1.05, letterSpacing: '-0.02em' }, // room screen only; 30 for "coming up", 20 for labels
   typeLandingH1: { size: 60, weight: 700, lineHeight: 1.02, letterSpacing: '-0.03em' }, // public pages only
 
@@ -151,6 +150,7 @@ export const tokens = {
 
   // ── Sizing (px) ────────────────────────────────────────────────────────────
   sizeHit: 44, // every button, chip, row, checkbox, stepper; desktop included (482 uses)
+  sizeControlDesktop: 40, // desktop web fields and buttons on the signed-out pages (sc-28983); the touch floor stays sizeHit
   sizeHitPhonePrimary: 48, // phone primary buttons and inputs
   sizeHitPhoneHero: 52, // one-per-screen phone CTA ("I'm here" uses 56 – accident)
   sizeListRow: 56, // sc-22092's List row, as the organisation switcher's rows (sc-26270)
@@ -358,6 +358,187 @@ export const tokens = {
   motionPulseTimes: 3, // SETTLED (sc-23303): 4.2 s of breathing, inside WCAG 2.2.2's five seconds, then still
   opacityPulse: 0.55, // SETTLED (sc-23303): how far a waiting skeleton dims at the middle of each breath
   toastLifetime: 10000, // ms · every undo toast in the screens lives 10 s (8 s on Insights – accident)
+};
+
+// ── B Confetti's colour schemes (owner, 3 Nov 2026; page 29, Colours.dc.html). ──
+// EXPO_PUBLIC_SCHEME lays one over the tokens above; unset, they stay as they are.
+export const schemes = {
+  violet: {
+    colorInk: '#0D0D12',
+    colorDark: '#0D0D12',
+    colorPage: '#FFFFFF',
+    colorInset: '#F4F4F7',
+    colorInsetBorder: '#EAEAF0',
+    colorBorder: '#E4E4EC',
+    colorControlBorder: '#D7D7DF',
+    colorNeutralFill: '#EFEFF4',
+    colorRowSelected: '#F7F5FE',
+    colorAccent: '#5A3DF0',
+    colorAccentHover: '#5A3DF0',
+    colorPrimaryHover: '#4A32C5',
+    colorAccentTint: '#EEECFE',
+    colorAccentTintBorder: '#DBD4FC',
+    colorAccentText: '#5A3DF0',
+    colorInkTertiary: '#9898A6',
+    colorInkSecondary: '#565666',
+    colorFieldBorder: '#888897',
+    colorBroken: '#C42B1C',
+    colorBrokenText: '#A3241A',
+  },
+  cobalt: {
+    colorInk: '#0B1220',
+    colorDark: '#0B1220',
+    colorPage: '#FFFFFF',
+    colorInset: '#F3F5FA',
+    colorInsetBorder: '#E7EBF4',
+    colorBorder: '#E1E6F0',
+    colorControlBorder: '#D4D9E4',
+    colorNeutralFill: '#EDF0F7',
+    colorRowSelected: '#F4F6FD',
+    colorAccent: '#1F47D6',
+    colorAccentHover: '#1F47D6',
+    colorPrimaryHover: '#193AAF',
+    colorAccentTint: '#E9EDFB',
+    colorAccentTintBorder: '#CED7F6',
+    colorAccentText: '#1F47D6',
+    colorInkTertiary: '#94A0B4',
+    colorInkSecondary: '#4A5568',
+    colorFieldBorder: '#838A97',
+    colorBroken: '#C42B1C',
+    colorBrokenText: '#A3241A',
+  },
+  garden: {
+    colorInk: '#17201B',
+    colorDark: '#17201B',
+    colorPage: '#FFFDF8',
+    colorInset: '#F6F2EA',
+    colorInsetBorder: '#ECE6DA',
+    colorBorder: '#E6E0D4',
+    colorControlBorder: '#DAD4C9',
+    colorNeutralFill: '#F1ECE2',
+    colorRowSelected: '#F4F8F6',
+    colorAccent: '#1E6B4F',
+    colorAccentHover: '#1E6B4F',
+    colorPrimaryHover: '#195841',
+    colorAccentTint: '#E8F0ED',
+    colorAccentTintBorder: '#CEDED8',
+    colorAccentText: '#1E6B4F',
+    colorInkTertiary: '#9AA39D',
+    colorInkSecondary: '#55605A',
+    colorFieldBorder: '#848C88',
+    colorBroken: '#C42B1C',
+    colorBrokenText: '#A3241A',
+  },
+  citrus: {
+    colorInk: '#1F140C',
+    colorDark: '#1F140C',
+    colorPage: '#FFFFFF',
+    colorInset: '#FBF5EF',
+    colorInsetBorder: '#F3EADF',
+    colorBorder: '#EFE4D8',
+    colorControlBorder: '#E3D8CC',
+    colorNeutralFill: '#F7F0E7',
+    colorRowSelected: '#FCF6F3',
+    colorAccent: '#C2410C',
+    colorAccentHover: '#C2410C',
+    colorPrimaryHover: '#9F350A',
+    colorAccentTint: '#F9ECE7',
+    colorAccentTintBorder: '#F2D5CA',
+    colorAccentText: '#C0400C',
+    colorInkTertiary: '#A3958A',
+    colorInkSecondary: '#5E5148',
+    colorFieldBorder: '#918882',
+    colorBroken: '#C42B1C',
+    colorBrokenText: '#A3241A',
+  },
+  berry: {
+    colorInk: '#1E0F16',
+    colorDark: '#1E0F16',
+    colorPage: '#FFFFFF',
+    colorInset: '#FBF4F6',
+    colorInsetBorder: '#F3E6EB',
+    colorBorder: '#EEDFE5',
+    colorControlBorder: '#E2D3D9',
+    colorNeutralFill: '#F7EDF0',
+    colorRowSelected: '#FBF3F7',
+    colorAccent: '#B5175A',
+    colorAccentHover: '#B5175A',
+    colorPrimaryHover: '#94134A',
+    colorAccentTint: '#F8E8EE',
+    colorAccentTintBorder: '#EFCCDB',
+    colorAccentText: '#B5175A',
+    colorInkTertiary: '#A3909A',
+    colorInkSecondary: '#5D4952',
+    colorFieldBorder: '#918389',
+    colorBroken: '#C42B1C',
+    colorBrokenText: '#A3241A',
+  },
+  blacktie: {
+    colorInk: '#141414',
+    colorDark: '#141414',
+    colorPage: '#FFFDF9',
+    colorInset: '#F4F1EA',
+    colorInsetBorder: '#EAE5DA',
+    colorBorder: '#E6E0D3',
+    colorControlBorder: '#D9D4C8',
+    colorNeutralFill: '#EFEBE2',
+    colorRowSelected: '#F3F3F3',
+    colorAccent: '#141414',
+    colorAccentHover: '#141414',
+    colorPrimaryHover: '#353535',
+    colorAccentTint: '#E8E8E8',
+    colorAccentTintBorder: '#CBCBCB',
+    colorAccentText: '#141414',
+    colorInkTertiary: '#A19A8D',
+    colorInkSecondary: '#5A554C',
+    colorFieldBorder: '#8D8983',
+    colorBroken: '#C42B1C',
+    colorBrokenText: '#A3241A',
+  },
+  sorbet: {
+    colorInk: '#22152E',
+    colorDark: '#22152E',
+    colorPage: '#FFFBF7',
+    colorInset: '#FBF3EE',
+    colorInsetBorder: '#F2E7E0',
+    colorBorder: '#EFE3DB',
+    colorControlBorder: '#E3D7D1',
+    colorNeutralFill: '#F6EDE7',
+    colorRowSelected: '#F7F4F9',
+    colorAccent: '#5B2A86',
+    colorAccentHover: '#5B2A86',
+    colorPrimaryHover: '#4B226E',
+    colorAccentTint: '#EFEAF3',
+    colorAccentTintBorder: '#DBD0E4',
+    colorAccentText: '#5B2A86',
+    colorInkTertiary: '#A396A9',
+    colorInkSecondary: '#5E5266',
+    colorFieldBorder: '#908795',
+    colorBroken: '#C42B1C',
+    colorBrokenText: '#A3241A',
+  },
+  terracotta: {
+    colorInk: '#221811',
+    colorDark: '#221811',
+    colorPage: '#FFFCF7',
+    colorInset: '#F7F0E6',
+    colorInsetBorder: '#EEE3D4',
+    colorBorder: '#EADFCF',
+    colorControlBorder: '#DED3C4',
+    colorNeutralFill: '#F2EADD',
+    colorRowSelected: '#FAF5F4',
+    colorAccent: '#A3401D',
+    colorAccentHover: '#A3401D',
+    colorPrimaryHover: '#863418',
+    colorAccentTint: '#F6ECE8',
+    colorAccentTintBorder: '#EBD5CD',
+    colorAccentText: '#A3401D',
+    colorInkTertiary: '#A39484',
+    colorInkSecondary: '#5F5246',
+    colorFieldBorder: '#918880',
+    colorBroken: '#C42B1C',
+    colorBrokenText: '#A3241A',
+  },
 };
 
 export default tokens;
