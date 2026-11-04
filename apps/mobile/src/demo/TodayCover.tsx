@@ -370,7 +370,7 @@ function NextAndArrived({ now }: { now: Now }) {
   return (
     <View style={styles.nextRow}>
       <View style={styles.next}>
-        <Text size={11.5} weight="bold" style={[styles.white, styles.soft, styles.nextLabel]}>
+        <Text size={12} weight="bold" style={[styles.white, styles.soft, styles.nextLabel]}>
           NEXT
         </Text>
         <View style={styles.nextLine}>
@@ -845,7 +845,7 @@ const styles = StyleSheet.create({
   ring: { transform: [{ rotate: '-90deg' }] },
   nextRow: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXl },
   next: { flex: 1, gap: 3 },
-  nextLabel: { letterSpacing: 11.5 * 0.08 },
+  nextLabel: { letterSpacing: 12 * 0.08 },
   nextLine: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'baseline', columnGap: 5 },
   arrived: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceMd },
   wideRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 36 },
