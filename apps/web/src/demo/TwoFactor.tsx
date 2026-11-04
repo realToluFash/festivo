@@ -11,6 +11,7 @@ import {
   TRIES,
   codeDigits,
   codeLine,
+  dayOfTime,
   fullNumber,
   shapeRecovery,
   timeOfDay,
@@ -21,7 +22,7 @@ const PHONE = fullNumber(SAMPLE.number, SAMPLE.country);
 const ASKS_A_DAY = 3;
 const POLL_MS = 20_000;
 
-/** Back to sign-in, the email filled; after a recovery, signing in goes on to Set up two-factor again. */
+/** Back to sign-in, the email filled. */
 const toSignIn = { to: '/demo/sign-in', state: { email: SAMPLE.email } };
 
 export function TwoFactorBoard() {
@@ -543,13 +544,7 @@ function Waiting() {
 }
 
 function when(at: number): string {
-  const day = new Date(at).toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'short',
-    day: 'numeric',
-  });
-
-  return `${day} at ${timeOfDay(at)}`;
+  return `${dayOfTime(at)} at ${timeOfDay(at)}`;
 }
 
 function TwoFactorOff() {
@@ -561,6 +556,7 @@ function TwoFactorOff() {
           Sign in, then set it up again.
         </p>
       </Heading>
+      {/* After a recovery, signing in goes on to Set up two-factor again. */}
       <Link
         className="button button-primary demo-wide"
         to={toSignIn.to}

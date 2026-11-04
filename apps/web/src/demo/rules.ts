@@ -3,6 +3,7 @@ import {
   callingCode,
   countryChoices,
   emailProblem,
+  formatDay,
   formatTimeOfDay,
   meetsPasswordLength,
   phoneLengthProblem,
@@ -72,6 +73,10 @@ export function refuse(
 
 export function timeOfDay(at: number): string {
   return formatTimeOfDay(new Date(at), 'en-GB');
+}
+
+export function dayOfTime(at: number): string {
+  return formatDay(new Date(at), 'en-GB');
 }
 
 export type AccountLines = { name?: string; email?: string; password?: string };
