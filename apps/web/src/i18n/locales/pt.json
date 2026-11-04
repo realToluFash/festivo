@@ -1582,20 +1582,16 @@
     "orgDeleted": "Eliminada",
     "invited": "{{inviter}} convidou {{email}} para aderir com a função {{role}}.",
     "worksUntil": "Até {{date}}, pode usar este convite.",
-    "createTitle": "Criar uma conta",
     "emailLocked": "É o endereço para onde o convite foi enviado. Já está confirmado, por isso não tem de introduzir nenhum código.",
     "passwordBlank": "Escolha uma palavra-passe.",
     "passwordShort": "Use pelo menos {{count, number}} carateres.",
     "createAndJoin": "Criar conta e aderir",
     "joining": "A aderir…",
     "failedTitle": "Não foi possível aderir",
-    "haveAccount": "Já tenho uma conta",
-    "emailTakenHeading": "Já tem uma conta",
     "emailTakenBody": "{{email}} já tem uma conta Soirely. Inicie sessão com essa conta e poderá aceitar o convite aí.",
     "signInToAccept": "Inicie sessão para aceitar",
     "forgotPassword": "Esqueceu-se da palavra-passe?",
     "invitedYou": "{{inviter}} enviou-lhe um convite para aderir com a função {{role}}.",
-    "signedInUntil": "Sessão iniciada como {{email}} · até {{date}}, pode usar este convite.",
     "accept": "Aceitar e aderir",
     "decline": "Recusar",
     "declineNote": "Se recusar, {{inviter}} fica a saber. Nada mais muda.",
@@ -1610,33 +1606,27 @@
     "refused": {
       "invitation_expired": {
         "title": "Este convite expirou",
-        "word": "Expirado",
-        "body": "Este convite expirou. Peça a {{inviter}} que lhe envie um novo."
+        "line": "Ask {{inviter}} to send a new one."
       },
       "invitation_revoked": {
         "title": "Este convite foi retirado",
-        "word": "Retirado",
-        "body": "{{organisation}} retirou este convite. Se acha que é um engano, fale com quem lhe enviou o convite."
+        "line": "If you think that is a mistake, ask whoever invited you."
       },
       "invitation_accepted": {
         "title": "Já aceite",
-        "word": "Já aceite",
-        "body": "Já aceitou este convite."
+        "line": "You are already a member of {{organisation}}."
       },
       "invitation_declined": {
         "title": "Já recusado",
-        "word": "Já recusado",
-        "body": "Recusou este convite. Se mudou de ideias, peça a {{inviter}} que lhe envie outro."
+        "line": "Ask {{inviter}} to invite you again if you changed your mind."
       },
       "invitation_not_yours": {
         "title": "Este convite destina-se a outra pessoa",
-        "word": "Sessão iniciada noutra conta",
-        "body": "Este convite destina-se a {{email}}. Tem sessão iniciada como {{signedInAs}}."
+        "line": "It was sent to {{email}}. You are signed in as {{signedInAs}}."
       },
       "organisation_deleted": {
         "title": "Esta organização já não existe",
-        "word": "Organização eliminada",
-        "body": "{{organisation}} já não existe, por isso este convite não pode ser aceite."
+        "line": "{{organisation}} no longer exists, so this invitation cannot be accepted."
       }
     }
   },
@@ -1989,7 +1979,7 @@
     "limitedOnDay": "Demasiados pedidos por agora. A partir de {{day}}, às {{time}}, pode tentar novamente.",
     "limitedLater": "Demasiados pedidos por agora. Tente novamente mais tarde.",
     "deadTitle": "Esta ligação não funciona",
-    "deadBody": "Esta ligação já não funciona. Peça uma nova à organização.",
+    "deadLine": "Ask the organisation for a new one.",
     "goHome": "Ir para a Soirely",
     "failedTitle": "Não foi possível enviar o pedido",
     "failedBody": "Algo correu mal pelo caminho. Tente de novo dentro de momentos."

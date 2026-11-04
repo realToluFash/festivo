@@ -1,11 +1,5 @@
 import { ApiError, type InvitationPreview, type InvitationRefusal } from '@soirely/api-client';
-import {
-  PASSWORD_MINIMUM_LENGTH,
-  formatDay,
-  initials,
-  meetsPasswordLength,
-  roleName,
-} from '@soirely/domain';
+import { PASSWORD_MINIMUM_LENGTH, formatDay, meetsPasswordLength, roleName } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 import { type FormEvent, type RefObject, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -14,9 +8,10 @@ import { Link, useNavigate, useParams } from 'react-router';
 import { api } from '../../api.ts';
 import { AuthPage } from '../../components/AuthPage.tsx';
 import { FieldError } from '../../components/FieldError.tsx';
+import { HaveAccount, OrganisationLine, SignedInAs } from '../../components/Onboarding.tsx';
 import { PasswordField } from '../../components/PasswordField.tsx';
 import { PasswordRule } from '../../components/PasswordRule.tsx';
-import { Pending } from '../../components/Pending.tsx';
+import { PendingPage } from '../../components/Pending.tsx';
 import { StillSignedIn } from '../../components/StillSignedIn.tsx';
 import { RequestToJoin } from './RequestToJoin.tsx';
 import { Unreachable } from '../../components/Unreachable.tsx';
@@ -126,27 +121,20 @@ function Invited({ token }: { token: string }) {
     };
   }, [settled, token, attempt, arriveAtStep]);
 
-  if (session.status === 'unreachable') return <Unreachable signedIn={false} />;
+  if (session.status === 'unreachable') return <Unreachable signedIn={false} bare />;
   if (view.kind === 'unreachable') {
-    return <Unreachable signedIn={session.status === 'signedIn'} retry={retry} />;
+    return <Unreachable signedIn={session.status === 'signedIn'} retry={retry} bare />;
   }
-  if (view.kind === 'loading') return <Pending />;
+  if (view.kind === 'loading') return <PendingPage />;
 
   if (view.kind === 'notFound') {
     return (
-      <AuthPage>
+      <AuthPage bare end={null}>
         <div className="auth-heading">
           <h1 ref={stepHeading} tabIndex={-1}>
             {t('join.notFoundTitle')}
           </h1>
-        </div>
-        <div className="notice notice-quiet" role={brought ? undefined : 'status'}>
-          <span className="mark mark-info" aria-hidden="true">
-            i
-          </span>
-          <div className="notice-body">
-            <p>{t('join.notFoundBody')}</p>
-          </div>
+          <p role={brought ? undefined : 'status'}>{t('join.notFoundBody')}</p>
         </div>
         <Link className="button" to="/">
           {t('join.goHome')}
@@ -197,31 +185,60 @@ function JoinPage({
   onReload: () => void;
 }) {
   const { t } = useTranslation();
+  const session = useSessionState();
   const { preview } = view;
   const words = useWords(preview);
   const deleted = view.kind === 'refused' && view.refusal === 'organisation_deleted';
+  const registering = view.kind === 'open' && preview.forYou == null;
+  const { signOut, unreached } = useSignOut(onReload);
+  const organisation = (
+    <OrganisationLine
+      name={words.organisation}
+      line={
+        deleted
+          ? t('join.orgDeleted')
+          : t('join.orgLine', { inviter: words.inviter, role: words.role })
+      }
+    />
+  );
 
   return (
-    <AuthPage>
+    <AuthPage
+      bare
+      end={
+        registering ? (
+          <HaveAccount onSignIn={() => holdInvitation(token)} />
+        ) : session.status === 'signedIn' ? (
+          <SignedInAs email={session.session.email} onSignOut={() => void signOut()} />
+        ) : null
+      }
+    >
       <div className="auth-heading">
         <h1 ref={headingRef} tabIndex={-1}>
           {title(t, view, words.organisation)}
         </h1>
+        {underTitle(t, view, words, brought)}
       </div>
 
-      <div className="join-org">
-        <span className="org-tile" aria-hidden="true">
-          {initials(words.organisation)}
-        </span>
-        <div className="org-naming">
-          <p className="org-name">{words.organisation}</p>
-          <p className="org-role">
-            {deleted
-              ? t('join.orgDeleted')
-              : t('join.orgLine', { inviter: words.inviter, role: words.role })}
-          </p>
+      {view.kind === 'open' ? (
+        <div className="auth-invited">
+          {organisation}
+          <div className="auth-invited-lines">
+            <p>
+              {registering
+                ? t('join.invited', {
+                    inviter: words.inviter,
+                    email: preview.email,
+                    role: words.role,
+                  })
+                : t('join.invitedYou', { inviter: words.inviter, role: words.role })}
+            </p>
+            <p className="muted">{t('join.worksUntil', { date: words.until })}</p>
+          </div>
         </div>
-      </div>
+      ) : (
+        organisation
+      )}
 
       {view.kind === 'open' && preview.forYou == null && (
         <Register token={token} preview={preview} onChange={onChange} />
@@ -229,16 +246,45 @@ function JoinPage({
       {view.kind === 'open' && preview.forYou === true && (
         <Answer preview={preview} onChange={onChange} />
       )}
-      {view.kind === 'emailTaken' && (
-        <EmailTaken token={token} email={preview.email} organisation={words.organisation} />
-      )}
+      {view.kind === 'emailTaken' && <EmailTaken token={token} organisation={words.organisation} />}
       {view.kind === 'accepted' && <Accepted preview={preview} />}
-      {view.kind === 'declined' && <Declined inviter={words.inviter} />}
+      {view.kind === 'declined' && <Declined />}
       {view.kind === 'refused' && (
-        <Refused preview={preview} refusal={view.refusal} brought={brought} onReload={onReload} />
+        <Refused preview={preview} refusal={view.refusal} onSignOut={() => void signOut()} />
       )}
+      {unreached && <StillSignedIn />}
     </AuthPage>
   );
+}
+
+/** The one line under the title: what happened, without saying the title again. */
+function underTitle(
+  t: TFunction,
+  view: Exclude<View, { kind: 'loading' | 'notFound' | 'unreachable' }>,
+  words: ReturnType<typeof useWords>,
+  brought: boolean,
+) {
+  const said = (text: string) => <p role={brought ? undefined : 'status'}>{text}</p>;
+
+  if (view.kind === 'accepted') {
+    return said(t('join.joined', { organisation: words.organisation, role: words.role }));
+  }
+  if (view.kind === 'declined') return said(t('join.declinedBody', { inviter: words.inviter }));
+  if (view.kind === 'emailTaken') {
+    return said(t('join.emailTakenBody', { email: view.preview.email }));
+  }
+  if (view.kind === 'refused') {
+    return said(
+      t(`join.refused.${view.refusal}.line`, {
+        inviter: words.inviter,
+        organisation: words.organisation,
+        email: view.preview.email,
+        signedInAs: view.preview.signedInAs ?? '',
+      }),
+    );
+  }
+
+  return null;
 }
 
 /** The names every sentence on the page is made of: the role worded in the reader's language. */
@@ -278,8 +324,6 @@ function Register({
   onChange: (next: View) => void;
 }) {
   const { t } = useTranslation();
-  const navigate = useNavigate();
-  const words = useWords(preview);
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -371,31 +415,16 @@ function Register({
     setFailed(true);
   }
 
-  function signIn(): void {
-    holdInvitation(token);
-    navigate('/sign-in');
-  }
-
   return (
     <>
-      <p>{t('join.invited', { inviter: words.inviter, email: preview.email, role: words.role })}</p>
-      <p className="muted">{t('join.worksUntil', { date: words.until })}</p>
-
       {failed && (
-        <div className="notice notice-broken" role="alert">
-          <span className="mark mark-broken" aria-hidden="true">
-            ✕
-          </span>
-          <div className="notice-body">
-            <p className="notice-title">{t('join.failedTitle')}</p>
-            <p>{t('register.failedBody')}</p>
-          </div>
+        <div className="auth-notice" role="alert">
+          <p className="auth-notice-title">{t('join.failedTitle')}</p>
+          <p>{t('register.failedBody')}</p>
         </div>
       )}
 
-      <h2 className="join-subheading">{t('join.createTitle')}</h2>
-
-      <form className="auth-form" noValidate onSubmit={(event) => void submit(event)}>
+      <form className="auth-form join-register" noValidate onSubmit={(event) => void submit(event)}>
         <div className="field">
           <label htmlFor="join-email">{t('register.email')}</label>
           <input
@@ -462,40 +491,16 @@ function Register({
           {busy ? t('join.joining') : t('join.createAndJoin')}
         </button>
       </form>
-
-      <div className="auth-footnote">
-        <span>{t('join.haveAccount')}</span>
-        <button className="link-button" type="button" onClick={signIn}>
-          {t('register.signIn')}
-        </button>
-      </div>
     </>
   );
 }
 
-function EmailTaken({
-  token,
-  email,
-  organisation,
-}: {
-  token: string;
-  email: string;
-  organisation: string;
-}) {
+function EmailTaken({ token, organisation }: { token: string; organisation: string }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
 
   return (
     <>
-      <div className="notice notice-quiet">
-        <span className="mark mark-info" aria-hidden="true">
-          i
-        </span>
-        <div className="notice-body">
-          <p className="notice-title">{t('join.emailTakenHeading')}</p>
-          <p>{t('join.emailTakenBody', { email })}</p>
-        </div>
-      </div>
       <button
         className="button button-primary"
         type="button"
@@ -556,44 +561,38 @@ function Answer({
 
   return (
     <>
-      <p>{t('join.invitedYou', { inviter: words.inviter, role: words.role })}</p>
-      <p className="muted">
-        {t('join.signedInUntil', { email: preview.signedInAs ?? '', date: words.until })}
-      </p>
-
       {failed && (
-        <div className="notice notice-broken" role="alert">
-          <span className="mark mark-broken" aria-hidden="true">
-            ✕
-          </span>
-          <div className="notice-body">
-            <p className="notice-title">{t('join.answerFailedTitle')}</p>
-            <p>{t('register.failedBody')}</p>
-          </div>
+        <div className="auth-notice" role="alert">
+          <p className="auth-notice-title">{t('join.answerFailedTitle')}</p>
+          <p>{t('register.failedBody')}</p>
         </div>
       )}
 
-      <button
-        className="button button-primary"
-        type="button"
-        aria-busy={busy === 'accept'}
-        disabled={busy === 'decline'}
-        {...offButton(busy === 'accept')}
-        onClick={() => void answer('accept')}
-      >
-        {t('join.accept')}
-      </button>
-      <button
-        className="button"
-        type="button"
-        aria-busy={busy === 'decline'}
-        disabled={busy === 'accept'}
-        {...offButton(busy === 'decline')}
-        onClick={() => void answer('decline')}
-      >
-        {t('join.decline')}
-      </button>
-      <p className="muted">{t('join.declineNote', { inviter: words.inviter })}</p>
+      <div className="auth-choices">
+        <div className="auth-answers">
+          <button
+            className="button button-primary"
+            type="button"
+            aria-busy={busy === 'accept'}
+            disabled={busy === 'decline'}
+            {...offButton(busy === 'accept')}
+            onClick={() => void answer('accept')}
+          >
+            {t('join.accept')}
+          </button>
+          <button
+            className="button"
+            type="button"
+            aria-busy={busy === 'decline'}
+            disabled={busy === 'accept'}
+            {...offButton(busy === 'decline')}
+            onClick={() => void answer('decline')}
+          >
+            {t('join.decline')}
+          </button>
+        </div>
+        <p className="muted">{t('join.declineNote', { inviter: words.inviter })}</p>
+      </div>
     </>
   );
 }
@@ -610,79 +609,38 @@ function Accepted({ preview }: { preview: InvitationPreview }) {
   const landing = useLanding();
 
   return (
-    <>
-      <div className="notice notice-done">
-        <span className="mark mark-done" aria-hidden="true">
-          ✓
-        </span>
-        <p>{t('join.joined', { organisation: words.organisation, role: words.role })}</p>
-      </div>
-      <Link className="button button-primary" to={landing}>
-        {t('join.open', { organisation: words.organisation })}
-      </Link>
-    </>
+    <Link className="button button-primary" to={landing}>
+      {t('join.open', { organisation: words.organisation })}
+    </Link>
   );
 }
 
-function Declined({ inviter }: { inviter: string }) {
+function Declined() {
   const { t } = useTranslation();
   const landing = useLanding();
 
   return (
-    <>
-      <div className="notice notice-quiet">
-        <span className="mark mark-info" aria-hidden="true">
-          –
-        </span>
-        <p>{t('join.declinedBody', { inviter })}</p>
-      </div>
-      <Link className="button" to={landing}>
-        {t('join.goToEvents')}
-      </Link>
-    </>
+    <Link className="button" to={landing}>
+      {t('join.goToEvents')}
+    </Link>
   );
 }
 
 function Refused({
   preview,
   refusal,
-  brought,
-  onReload,
+  onSignOut,
 }: {
   preview: InvitationPreview;
   refusal: Refusal;
-  brought: boolean;
-  onReload: () => void;
+  onSignOut: () => void;
 }) {
   const { t } = useTranslation();
   const words = useWords(preview);
   const landing = useLanding();
-  const attention = refusal === 'invitation_expired' || refusal === 'invitation_not_yours';
-  const done = refusal === 'invitation_accepted';
-  const tone = attention ? 'notice-attention' : done ? 'notice-done' : 'notice-quiet';
-  const mark = attention ? 'mark-attention' : done ? 'mark-done' : 'mark-info';
-
-  const { signOut: switchAccount, unreached } = useSignOut(onReload);
 
   return (
     <>
-      <div className={`notice ${tone}`} role={brought ? undefined : 'status'}>
-        <span className={`mark ${mark}`} aria-hidden="true">
-          {attention ? '!' : done ? '✓' : 'i'}
-        </span>
-        <div className="notice-body">
-          <p className="notice-title">{t(`join.refused.${refusal}.word`)}</p>
-          <p>
-            {t(`join.refused.${refusal}.body`, {
-              inviter: words.inviter,
-              organisation: words.organisation,
-              email: preview.email,
-              signedInAs: preview.signedInAs ?? '',
-            })}
-          </p>
-        </div>
-      </div>
-
       {refusal === 'invitation_accepted' && (
         <Link className="button button-primary" to={landing}>
           {t('join.open', { organisation: words.organisation })}
@@ -691,12 +649,7 @@ function Refused({
 
       {refusal === 'invitation_not_yours' && (
         <>
-          {unreached && <StillSignedIn />}
-          <button
-            className="button button-primary"
-            type="button"
-            onClick={() => void switchAccount()}
-          >
+          <button className="button button-primary" type="button" onClick={onSignOut}>
             {t('join.signOutAndUse', { email: preview.email })}
           </button>
           <Link className="link-button" to={landing}>

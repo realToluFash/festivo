@@ -174,32 +174,23 @@ function Waiting({
       </div>
 
       {failed && (
-        <div className="notice notice-broken" role="alert">
-          <span className="mark mark-broken" aria-hidden="true">
-            ✕
-          </span>
-          <div className="notice-body">
-            <p className="notice-title">{t('completeProfile.failedTitle')}</p>
-            <p>{t('completeProfile.failedBody')}</p>
-          </div>
+        <div className="auth-notice" role="alert">
+          <p className="auth-notice-title">{t('completeProfile.failedTitle')}</p>
+          <p>{t('completeProfile.failedBody')}</p>
         </div>
       )}
 
-      <div className="notice notice-attention" role={pressed ? undefined : 'status'}>
-        <span className="mark mark-attention" aria-hidden="true">
-          …
-        </span>
-        <p>
-          <strong>{t('domainJoining.waiting')}</strong>
+      <div className="auth-waiting">
+        <p role={pressed ? undefined : 'status'}>
+          {t('domainJoining.waiting')}
           {' · '}
           {t('domainJoining.asked', {
             day: formatDay(request.askedAt, locale),
             time: formatTimeOfDay(request.askedAt, locale),
           })}
         </p>
+        <p className="muted">{t('domainJoining.waitingBody', { organisation })}</p>
       </div>
-
-      <p>{t('domainJoining.waitingBody', { organisation })}</p>
 
       <button
         className="button"
@@ -270,6 +261,11 @@ function Details({
   const [unavailableNotice, arriveAtUnavailable] = useStepFocus<HTMLDivElement>();
   const startOwnButton = useRef<HTMLButtonElement>(null);
   const land = useFocusOnceShown();
+
+  // An account that came with no name, as Apple can send it, starts in the field it has to fill.
+  useEffect(() => {
+    if (name === '') nameInput.current?.focus();
+  }, [name]);
 
   useEffect(() => {
     if (!needsOrganisation) return;
@@ -425,14 +421,9 @@ function Details({
   return (
     <form className="auth-form" noValidate onSubmit={(event) => void save(event)}>
       {failed && (
-        <div className="notice notice-broken" role="alert">
-          <span className="mark mark-broken" aria-hidden="true">
-            ✕
-          </span>
-          <div className="notice-body">
-            <p className="notice-title">{t('completeProfile.failedTitle')}</p>
-            <p>{t('completeProfile.failedBody')}</p>
-          </div>
+        <div className="auth-notice" role="alert">
+          <p className="auth-notice-title">{t('completeProfile.failedTitle')}</p>
+          <p>{t('completeProfile.failedBody')}</p>
         </div>
       )}
 
@@ -493,10 +484,7 @@ function Details({
       )}
 
       {unavailable && (
-        <div className="notice notice-broken" ref={unavailableNotice} tabIndex={-1}>
-          <span className="mark mark-broken" aria-hidden="true">
-            ✕
-          </span>
+        <div className="auth-notice" ref={unavailableNotice} tabIndex={-1}>
           <p>{t('domainJoining.unavailable')}</p>
         </div>
       )}

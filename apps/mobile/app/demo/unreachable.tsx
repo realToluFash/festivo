@@ -8,7 +8,8 @@ import { useReadOut } from '../../src/components/ReadOut.tsx';
 import { Text } from '../../src/components/Text.tsx';
 import { LanguageButton } from '../../src/demo/LanguageButton.tsx';
 import { DemoOnly } from '../../src/steps/Lines.tsx';
-import { WelcomeFrame } from '../../src/components/Welcome.tsx';
+import { coverLine, WelcomeFrame } from '../../src/demo/Welcome.tsx';
+import { useLayout } from '../../src/layout/useLayout.ts';
 import { tokens } from '../../src/theme/tokens.ts';
 
 /** No connection, said on the brand; the app tries again by itself once the connection is back. */
@@ -19,12 +20,14 @@ export default function Unreachable() {
   const [back, setBack] = useState(false);
   const body = `${stillIn ? 'You are still signed in. ' : ''}Soirely is not answering, so nothing can load yet. Check your connection: the app tries again as soon as it’s back.`;
   useReadOut(`Cannot reach Soirely. ${body}`);
+  const tablet = useLayout().kind !== 'phone';
+  const line = tablet ? 40 : 28;
 
   useEffect(() => {
     if (!trying) return;
     const timer = setTimeout(() => {
       setTrying(false);
-      if (back) router.replace(stillIn ? '/demo/home' : '/demo/welcome');
+      if (back) router.replace(stillIn ? '/demo/today' : '/demo/welcome');
     }, 900);
 
     return () => clearTimeout(timer);
@@ -32,18 +35,35 @@ export default function Unreachable() {
 
   return (
     <WelcomeFrame
+      cover
       top={stillIn ? undefined : <LanguageButton />}
       brand={
         <>
-          <Brand width={112} lockup header />
+          <Brand width={tablet ? 140 : 112} lockup header ink={tokens.colorInkOnDark} />
           <View style={styles.words}>
-            <Text size={18} weight="semibold" style={styles.centre}>
+            <Text
+              weight="bold"
+              size={line}
+              maxFontSizeMultiplier={1.25}
+              accessibilityRole="header"
+              style={[styles.onCover, coverLine(line)]}
+            >
               Cannot reach Soirely
             </Text>
-            <Text size={16} style={[styles.centre, styles.secondary]}>
+            <Text size={tablet ? 19 : 16} style={[styles.centre, styles.onCover]}>
               {body}
             </Text>
           </View>
+        </>
+      }
+      choices={
+        <View style={styles.choices}>
+          <PrimaryButton
+            label={trying ? 'Trying again…' : 'Try again'}
+            busy={trying}
+            onPress={() => setTrying(true)}
+            testID="demo.tryAgain"
+          />
           <DemoOnly title="Demo: the connection">
             <SecondaryButton
               label="Bring it back"
@@ -54,22 +74,15 @@ export default function Unreachable() {
               testID="demo.connectionBack"
             />
           </DemoOnly>
-        </>
-      }
-      choices={
-        <PrimaryButton
-          label={trying ? 'Trying again…' : 'Try again'}
-          busy={trying}
-          onPress={() => setTrying(true)}
-          testID="demo.tryAgain"
-        />
+        </View>
       }
     />
   );
 }
 
 const styles = StyleSheet.create({
-  words: { maxWidth: 320, gap: tokens.spaceXs, alignItems: 'center' },
+  words: { maxWidth: 340, gap: tokens.spaceSm, alignItems: 'center' },
   centre: { textAlign: 'center' },
-  secondary: { color: tokens.colorInkSecondary },
+  onCover: { color: tokens.colorInkOnDark },
+  choices: { gap: tokens.spaceLg },
 });
