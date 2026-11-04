@@ -66,11 +66,12 @@ export function SecondFactorStep({
   useEffect(() => {
     if (liftsAt == null) return;
 
+    const land = focusWhereSent();
     const lift = window.setTimeout(
       () => {
         setTyped('');
         setStatus({ kind: 'ready' });
-        document.getElementById('code')?.focus();
+        land('code');
       },
       Math.max(0, liftsAt - Date.now()),
     );
@@ -283,7 +284,7 @@ export function SecondFactorStep({
             autoCorrect="off"
             spellCheck={false}
             value={typed}
-            {...offField(checking)}
+            {...offField(checking || status.kind === 'paused')}
             aria-invalid={error != null}
             aria-describedby={error == null ? undefined : 'code-error'}
             onChange={(event) => type(event.target.value)}

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
@@ -202,6 +202,56 @@ describe('a sign-in that asks for a second factor', () => {
     expect(screen.getByRole('link', { name: 'Reset your password' }).getAttribute('href')).toBe(
       '/forgot-password',
     );
+  });
+
+  it('lifts the pause by itself when its time comes, the field empty and focused (sc-29068)', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      await atTheCodeScreen({
+        'POST /api/auth/two-factor/verify': () =>
+          problem('too_many_attempts', 429, { 'Retry-After': '600' }),
+      });
+
+      screen.getByRole('button', { name: 'Verify and sign in' }).focus();
+      enter('000000');
+      await screen.findByRole('button', { name: /^Try again at \d\d:\d\d$/ });
+      const field = screen.getByRole('textbox') as HTMLInputElement;
+      expect(field.readOnly).toBe(true);
+
+      await act(() => vi.advanceTimersByTimeAsync(11 * 60_000));
+
+      const button = screen.getByRole('button', { name: 'Verify and sign in' });
+      expect(button.getAttribute('aria-disabled')).toBe('false');
+      expect(field.readOnly).toBe(false);
+      expect(field.value).toBe('');
+      expect(document.activeElement).toBe(field);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('leaves focus where it was moved to during the pause (sc-29068)', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      await atTheCodeScreen({
+        'POST /api/auth/two-factor/verify': () =>
+          problem('too_many_attempts', 429, { 'Retry-After': '600' }),
+      });
+
+      screen.getByRole('button', { name: 'Verify and sign in' }).focus();
+      enter('000000');
+      await screen.findByRole('button', { name: /^Try again at \d\d:\d\d$/ });
+      await act(() => vi.advanceTimersByTimeAsync(60_000));
+      const elsewhere = screen.getByRole('button', { name: 'Use a recovery code instead' });
+      elsewhere.focus();
+
+      await act(() => vi.advanceTimersByTimeAsync(11 * 60_000));
+
+      expect(screen.getByRole('button', { name: 'Verify and sign in' })).toBeDefined();
+      expect(document.activeElement).toBe(elsewhere);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('comes back to it from Reset your password (sc-23279)', async () => {
