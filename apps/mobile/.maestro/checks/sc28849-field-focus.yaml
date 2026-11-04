@@ -1,4 +1,6 @@
-# Name on Account at rest, focused (green edge), then emptied and saved so it errors, and focused again (red edge). sc-28849.
+# Name on Account at rest, focused (green edge), then emptied and saved so it errors (red edge). sc-28849.
+# A blank save focuses the field (focusChecked), so the wrong state is shot focused only: no wrong-at-rest shot.
+# Android only: the unconditional hideKeyboard stops the flow on an iPhone.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/settings/account
@@ -19,7 +21,4 @@ appId: host.exp.Exponent
 - eraseText: 80
 - tapOn:
     id: 'nameCard.save'
-- takeScreenshot: name-wrong-blurred
-- tapOn:
-    id: 'nameCard.field'
 - takeScreenshot: name-wrong-focused

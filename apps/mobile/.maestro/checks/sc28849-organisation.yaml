@@ -1,4 +1,5 @@
 # Organisation details: text field and picker rows at rest, the name focused, and the country picker's search focused. sc-28849.
+# Android only: the unconditional hideKeyboard stops the flow on an iPhone.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/settings/organisation
