@@ -1,261 +1,204 @@
-import { type Level, levelOf, withExtra, withLevel } from '@soirely/domain';
-import { Fragment } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { levelOf, withExtra, withLevel } from '@soirely/domain';
+import type { Ref, RefObject } from 'react';
+import type { ViewInstance } from 'react-native';
 
-import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
-import { Glyph } from '../Glyph.tsx';
-import { Caps, Card } from './parts.tsx';
-import { AREAS, type Extra, extrasFor, LEVEL_WORDS, levelsFor, lockedLine } from './RolesSample.ts';
+import { ConfettiSwitch } from './NotificationsSwitch.tsx';
+import {
+  type Area,
+  AREAS,
+  extrasFor,
+  extrasLine,
+  LEVEL_FILLED,
+  LEVEL_WORDS,
+  levelLine,
+  levelsFor,
+  lockedLine,
+} from './RolesSample.ts';
+import { ChoiceRow, HeadCount, LevelValue, OpenRow, Row, RowList, Section } from './Summary.tsx';
 
-const SEGMENT_HEIGHT = tokens.sizeHit;
-const SEGMENT_BESIDE = 264;
+const OWNER_FOOT = 'Owner is given one person at a time, from Members.';
 
-interface Option<T extends string> {
-  value: T;
-  label: string;
-}
-
-/** Nothing, Read and Change as one control: each a 44 pt radio, the chosen one white on the track. */
-export function Segment<T extends string>({
-  name,
-  options,
-  value,
-  onPick,
-  testID,
+/** The role's areas as rows that read: each level beside its word, and a tap opens editing on that area. */
+export function AccessRows({
+  grant,
+  owner,
+  rowRefs,
+  onOpen,
 }: {
-  name: string;
-  options: readonly Option<T>[];
-  value: T;
-  onPick: (value: T) => void;
-  testID: string;
+  grant: readonly string[];
+  owner: boolean;
+  rowRefs: RefObject<Record<string, ViewInstance | null>>;
+  onOpen: (area: string) => void;
 }) {
   return (
-    <View style={styles.segment} accessibilityRole="radiogroup">
-      {options.map((option) => {
-        const on = option.value === value;
+    <Section
+      title="Access"
+      right={<HeadCount text={`${AREAS.length} areas`} />}
+      foot={owner ? OWNER_FOOT : undefined}
+    >
+      <RowList
+        items={AREAS.map((area) => {
+          const level = levelOf(grant, area.area);
+          const line = extrasLine(grant, area);
 
-        return (
-          <Pressable
-            key={option.value}
-            style={[styles.cell, on && styles.cellOn]}
-            onPress={() => onPick(option.value)}
-            accessibilityRole="radio"
-            accessibilityState={{ checked: on }}
-            accessibilityLabel={`${name}, ${option.label}`}
-            testID={`${testID}.${option.value}`}
-          >
-            {on && <Glyph name="tick" size={14} ink={tokens.colorAccentText} weight={2.6} />}
-            <Text
-              size={14.5}
-              weight={on ? 'semibold' : 'medium'}
-              numberOfLines={1}
-              accessible={false}
-              style={on ? styles.accent : styles.secondary}
-            >
-              {option.label}
-            </Text>
-          </Pressable>
-        );
-      })}
-    </View>
+          return {
+            key: area.area,
+            row: (
+              <Row
+                ref={(node) => {
+                  rowRefs.current[area.area] = node;
+                }}
+                title={area.name}
+                line={line}
+                weight="medium"
+                trail={<LevelValue filled={LEVEL_FILLED[level]} word={LEVEL_WORDS[level]} />}
+                opens={!owner}
+                onPress={owner ? undefined : () => onOpen(area.area)}
+                accessibilityLabel={[area.name, LEVEL_WORDS[level], line]
+                  .filter(Boolean)
+                  .join('. ')}
+                testID={`roles.access.${area.area}`}
+              />
+            ),
+          };
+        })}
+      />
+    </Section>
   );
 }
 
-function GridRow<T extends string>({
-  phone,
-  name,
-  means,
-  fixed,
-  options,
-  value,
-  onPick,
-  locked,
-  extra = false,
-  testID,
+/** Editing: one area open at a time, its levels as radios and its extras as switches; what the viewer cannot set is locked. */
+export function AreaRows({
+  grant,
+  saved,
+  held,
+  open,
+  rowRefs,
+  onOpen,
+  onChange,
 }: {
-  phone: boolean;
-  name: string;
-  means: string;
-  fixed: string | null;
-  options: readonly Option<T>[];
-  value: T;
-  onPick: (value: T) => void;
-  locked: string | null;
-  extra?: boolean;
-  testID: string;
+  grant: string[];
+  saved: readonly string[] | null;
+  held: readonly string[];
+  open: string | null;
+  rowRefs: RefObject<Record<string, ViewInstance | null>>;
+  onOpen: (area: string | null) => void;
+  onChange: (grant: string[]) => void;
 }) {
-  const words = (
-    <View style={phone ? styles.wordsStacked : styles.wordsBeside}>
-      <Text size={extra ? 15.5 : 16} weight="semibold">
-        {name}
-      </Text>
-      <Text size={13.5} weight="medium" style={styles.secondary}>
-        {means}
-      </Text>
-    </View>
+  return (
+    <RowList
+      items={AREAS.map((area) => ({
+        key: area.area,
+        row: (
+          <AreaRow
+            area={area}
+            grant={grant}
+            saved={saved}
+            held={held}
+            open={open === area.area}
+            rowRef={(node) => {
+              rowRefs.current[area.area] = node;
+            }}
+            onToggle={() => onOpen(open === area.area ? null : area.area)}
+            onChange={onChange}
+          />
+        ),
+      }))}
+    />
   );
-  const control =
-    fixed != null ? (
-      <View style={[styles.fixed, !phone && styles.fixedBeside]}>
-        <Text size={15.5} weight="semibold" testID={`${testID}.fixed`}>
-          {fixed}
-        </Text>
-      </View>
-    ) : (
-      <View style={phone ? undefined : styles.beside}>
-        <Segment name={name} options={options} value={value} onPick={onPick} testID={testID} />
-      </View>
+}
+
+function AreaRow({
+  area,
+  grant,
+  saved,
+  held,
+  open,
+  rowRef,
+  onToggle,
+  onChange,
+}: {
+  area: Area;
+  grant: string[];
+  saved: readonly string[] | null;
+  held: readonly string[];
+  open: boolean;
+  rowRef: Ref<ViewInstance>;
+  onToggle: () => void;
+  onChange: (grant: string[]) => void;
+}) {
+  const level = levelOf(grant, area.area);
+  const levels = levelsFor(grant, held, area);
+  const value = (
+    <LevelValue filled={LEVEL_FILLED[level]} word={LEVEL_WORDS[level]} locked={levels.length < 2} />
+  );
+
+  if (levels.length < 2)
+    return (
+      <Row
+        ref={rowRef}
+        title={area.name}
+        line={lockedLine(area.name)}
+        weight="medium"
+        trail={value}
+        accessibilityLabel={`${area.name}. ${LEVEL_WORDS[level]}. ${lockedLine(area.name)}`}
+        testID={`roles.area.${area.area}.fixed`}
+      />
     );
 
-  return (
-    <View style={styles.rowStack}>
-      <View style={phone ? styles.stacked : styles.inline}>
-        {words}
-        {control}
-      </View>
-      {locked != null && (
-        <Text size={13} weight="medium" style={styles.secondary}>
-          {lockedLine(locked)}
-        </Text>
-      )}
-    </View>
-  );
-}
+  const now = saved == null ? null : levelOf(saved, area.area);
+  const extras = level === 'nothing' ? [] : extrasFor(area);
 
-/** One row per area, each extra set in under its area while the area is not Nothing. */
-export function Grid({
-  grant,
-  held,
-  editable,
-  phone,
-  onChange,
-}: {
-  grant: string[];
-  held: string[];
-  editable: boolean;
-  phone: boolean;
-  onChange: (grant: string[]) => void;
-}) {
   return (
-    <Card gap={0}>
-      <Caps text="In each area, this role can" top={2} />
-      {AREAS.map((area, index) => {
-        const level = levelOf(grant, area.area);
-        const levels = editable ? levelsFor(grant, held, area) : [];
-        const locked = editable && levels.length < 2;
-        const extras = level === 'nothing' ? [] : extrasFor(area);
+    <OpenRow
+      ref={rowRef}
+      title={area.name}
+      openLine={area.means}
+      value={value}
+      open={open}
+      onToggle={onToggle}
+      accessibilityLabel={`${area.name}. ${LEVEL_WORDS[level]}`}
+      testID={`roles.area.${area.area}`}
+      below={
+        extras.length === 0
+          ? undefined
+          : extras.map((extra) => {
+              const on = grant.includes(extra.permission);
+              const locked = !held.includes(extra.permission);
 
-        return (
-          <Fragment key={area.area}>
-            {index > 0 && <View style={styles.rule} />}
-            <View style={styles.area}>
-              <GridRow<Level>
-                phone={phone}
-                name={area.name}
-                means={area.means}
-                fixed={editable && !locked ? null : LEVEL_WORDS[level]}
-                options={levels.map((value) => ({ value, label: LEVEL_WORDS[value] }))}
-                value={level}
-                onPick={(value) => onChange(withLevel(grant, area.area, value, area.permissions))}
-                locked={locked ? area.name : null}
-                testID={`roles.area.${area.area}`}
-              />
-              {extras.map((extra) => (
-                <ExtraRow
+              return (
+                <Row
                   key={extra.permission}
-                  extra={extra}
-                  grant={grant}
-                  locked={editable && !held.includes(extra.permission)}
-                  editable={editable}
-                  phone={phone}
-                  onChange={onChange}
+                  title={extra.name}
+                  line={locked ? lockedLine(extra.name) : extra.means}
+                  pad={tokens.spaceSm}
+                  trail={
+                    <ConfettiSwitch
+                      on={on}
+                      words={{ on: extra.on, off: extra.off }}
+                      label={extra.name}
+                      locked={locked}
+                      onChange={(next) => onChange(withExtra(grant, extra.permission, next))}
+                      testID={`roles.extra.${extra.permission}`}
+                    />
+                  }
                 />
-              ))}
-            </View>
-          </Fragment>
-        );
-      })}
-    </Card>
+              );
+            })
+      }
+    >
+      {levels.map((choice) => (
+        <ChoiceRow
+          key={choice}
+          title={LEVEL_WORDS[choice]}
+          line={levelLine(choice, area)}
+          on={choice === level}
+          tag={choice === now ? { kind: 'now', word: 'Now' } : null}
+          onPress={() => onChange(withLevel(grant, area.area, choice, area.permissions))}
+          testID={`roles.area.${area.area}.${choice}`}
+        />
+      ))}
+    </OpenRow>
   );
 }
-
-function ExtraRow({
-  extra,
-  grant,
-  locked,
-  editable,
-  phone,
-  onChange,
-}: {
-  extra: Extra;
-  grant: string[];
-  locked: boolean;
-  editable: boolean;
-  phone: boolean;
-  onChange: (grant: string[]) => void;
-}) {
-  const on = grant.includes(extra.permission);
-
-  return (
-    <View style={styles.extra}>
-      <GridRow<'off' | 'on'>
-        phone={phone}
-        extra
-        name={extra.name}
-        means={extra.means}
-        fixed={editable && !locked ? null : on ? extra.on : extra.off}
-        options={[
-          { value: 'off', label: extra.off },
-          { value: 'on', label: extra.on },
-        ]}
-        value={on ? 'on' : 'off'}
-        onPick={(value) => onChange(withExtra(grant, extra.permission, value === 'on'))}
-        locked={locked ? extra.name : null}
-        testID={`roles.extra.${extra.permission}`}
-      />
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  segment: {
-    alignSelf: 'stretch',
-    minHeight: SEGMENT_HEIGHT,
-    flexDirection: 'row',
-    borderRadius: SEGMENT_HEIGHT / 2,
-    backgroundColor: tokens.colorNeutralFill,
-  },
-  cell: {
-    flex: 1,
-    minHeight: SEGMENT_HEIGHT,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 5,
-    paddingHorizontal: tokens.spaceMd,
-    borderRadius: SEGMENT_HEIGHT / 2,
-    borderWidth: 3,
-    borderColor: tokens.colorNeutralFill,
-  },
-  cellOn: { backgroundColor: tokens.colorCard },
-  accent: { color: tokens.colorAccentText },
-  secondary: { color: tokens.colorInkSecondary },
-  wordsStacked: { gap: 2 },
-  wordsBeside: { flex: 1, minWidth: 0, gap: 2 },
-  rowStack: { gap: tokens.spaceSm },
-  stacked: { gap: tokens.spaceMd },
-  inline: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXl },
-  beside: { width: SEGMENT_BESIDE },
-  fixed: { minHeight: tokens.sizeHit, justifyContent: 'center' },
-  fixedBeside: { width: SEGMENT_BESIDE, alignItems: 'flex-end' },
-  area: { paddingVertical: 14 },
-  rule: { height: 1, backgroundColor: tokens.colorBorder },
-  extra: {
-    marginTop: tokens.spaceLg,
-    marginLeft: tokens.spaceXs,
-    paddingLeft: 14,
-    borderLeftWidth: 2,
-    borderLeftColor: tokens.colorBorder,
-  },
-});
