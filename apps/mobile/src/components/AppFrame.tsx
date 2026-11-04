@@ -199,6 +199,7 @@ export function AppFrame({
   titleRef,
   aboutTheAccount = false,
   bodyTakesSwitch = false,
+  ownChrome = false,
   inEvent,
   primary,
   underTitle,
@@ -227,6 +228,8 @@ export function AppFrame({
   aboutTheAccount?: boolean;
   /** A heading in the body takes screen reader focus after a tapped switch of organisation, in place of the title (sc-11032). */
   bodyTakesSwitch?: boolean;
+  /** The body draws its own header and tabs, as Today does (sc-29090); a stand-in still gets the frame's. */
+  ownChrome?: boolean;
   /** The page this one was opened from, drawn in the header where `headerDrawsBack` says, as Security's "Settings"; with `systemBack`, Android's Back runs it too. */
   back?: { label: string; onPress: () => void; systemBack?: boolean; off?: boolean } | undefined;
   /** On a tablet, the body draws this page's back, and is false while that back is off. */
@@ -335,13 +338,14 @@ export function AppFrame({
   useEffect(() => {
     overdueIn.current = overdueOn;
   });
+  const framed = !ownChrome || standIn != null;
 
   return (
     <View
       style={[styles.root, kind === 'tabletLandscape' && styles.row]}
       importantForAccessibility={inFront ? 'auto' : 'no-hide-descendants'}
     >
-      {kind === 'tabletLandscape' && (
+      {framed && kind === 'tabletLandscape' && (
         <Rail
           entries={entries}
           inEvent={inEvent != null}
@@ -352,26 +356,28 @@ export function AppFrame({
         />
       )}
       <View style={styles.column}>
-        <FrameHeader
-          kind={kind}
-          entries={entries}
-          inEvent={inEvent != null}
-          title={title}
-          titleRef={frameTitle}
-          switchAnswer={bodyTakesSwitch || standIn != null ? undefined : switchAnswer}
-          back={headerDrawsBack(kind, back, backInBody)}
-          backHidden={backHidden}
-          email={email}
-          organisation={signedIn.organisation}
-          waiting={count}
-          onSwitch={switchFromPill}
-          pill={pill}
-          pillAlone={phonePillAlone(current === 'home', primary != null, standIn != null)}
-          primary={standIn == null ? primary : undefined}
-          underTitle={standIn == null ? underTitle : undefined}
-          besideTitle={standIn == null ? besideTitle : undefined}
-          besideBack={standIn == null || besideBack === undefined ? besideBack : null}
-        />
+        {framed && (
+          <FrameHeader
+            kind={kind}
+            entries={entries}
+            inEvent={inEvent != null}
+            title={title}
+            titleRef={frameTitle}
+            switchAnswer={bodyTakesSwitch || standIn != null ? undefined : switchAnswer}
+            back={headerDrawsBack(kind, back, backInBody)}
+            backHidden={backHidden}
+            email={email}
+            organisation={signedIn.organisation}
+            waiting={count}
+            onSwitch={switchFromPill}
+            pill={pill}
+            pillAlone={phonePillAlone(current === 'home', primary != null, standIn != null)}
+            primary={standIn == null ? primary : undefined}
+            underTitle={standIn == null ? underTitle : undefined}
+            besideTitle={standIn == null ? besideTitle : undefined}
+            besideBack={standIn == null || besideBack === undefined ? besideBack : null}
+          />
+        )}
         <OfflineBand stale={standIn == null ? offline : null} inFront={inFront} />
         <View style={styles.body}>
           {switched != null &&
@@ -414,7 +420,7 @@ export function AppFrame({
             </StartOrganisation.Provider>
           </OpenSwitcher.Provider>
         </View>
-        {kind === 'phone' && <TabBar entries={entries} inEvent={inEvent} />}
+        {framed && kind === 'phone' && <TabBar entries={entries} inEvent={inEvent} />}
       </View>
       {edgeSwipe != null && (
         <View

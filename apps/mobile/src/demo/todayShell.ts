@@ -15,6 +15,8 @@ export interface TodayShell {
   organisation: string;
   person: { name: string; role: string };
   unread: number;
+  /** The sidebar's Search, which the app does not have yet. */
+  search: boolean;
   open: (opens: Opens) => void;
 }
 
@@ -45,17 +47,8 @@ export function demoShell(tell: (words: string) => void): TodayShell {
     organisation: SAMPLE.organisation,
     person: { name: SAMPLE.name, role: 'Owner' },
     unread: 3,
+    search: true,
     open: (opens) =>
       tell(opens.to === 'event' ? `${opens.name} has its own design.` : DEMO_WORDS[opens.to]),
   };
-}
-
-/** `Ire Events` is IE, `Folake Adeyemi` is FA. */
-export function initials(name: string): string {
-  return name
-    .split(/\s+/u)
-    .filter((word) => word !== '')
-    .slice(0, 2)
-    .map((word) => [...word][0]?.toLocaleUpperCase() ?? '')
-    .join('');
 }

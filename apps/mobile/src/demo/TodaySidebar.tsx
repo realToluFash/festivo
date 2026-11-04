@@ -8,7 +8,8 @@ import { EventMesh, eventColour } from './Cover.tsx';
 import { Glyph, type GlyphName } from './Glyph.tsx';
 import { sample, type ShownEvent } from './today.ts';
 import type { Tab } from './TodayCover.tsx';
-import { initials, useTodayShell } from './todayShell.ts';
+import { Initials } from '../components/Initials.tsx';
+import { useTodayShell } from './todayShell.ts';
 
 const PLACES: readonly (readonly [Tab, GlyphName])[] = [
   ['Today', 'today'],
@@ -66,7 +67,7 @@ export function TodaySidebar({
   onPerson?: () => void;
 }) {
   const { t } = useTranslation();
-  const { organisation, person, open } = useTodayShell();
+  const { organisation, person, search, open } = useTodayShell();
 
   return (
     <View style={styles.side}>
@@ -84,31 +85,36 @@ export function TodaySidebar({
           accessibilityElementsHidden
           importantForAccessibility="no-hide-descendants"
         >
-          <Text size={12} weight="bold" accessible={false} style={styles.onAccent}>
-            {initials(organisation)}
-          </Text>
+          <Initials name={organisation} size={12} weight="bold" style={styles.onAccent} />
         </View>
         <Text size={15} weight="semibold" accessible={false} style={styles.grow}>
           {organisation}
         </Text>
         <Glyph name="updown" size={15} ink={tokens.colorInkSecondary} />
       </Pressable>
-      <Pressable
-        onPress={() => open({ to: 'search' })}
-        style={styles.search}
-        accessibilityRole="search"
-        accessibilityLabel={t('todayScreen.search')}
-      >
-        <Glyph name="search" size={16} ink={tokens.colorInkSecondary} />
-        <Text size={14} weight="medium" accessible={false} style={[styles.grow, styles.secondary]}>
-          {t('todayScreen.search')}
-        </Text>
-        <View style={styles.key}>
-          <Text size={12} weight="medium" accessible={false} style={styles.secondary}>
-            ⌘K
+      {search && (
+        <Pressable
+          onPress={() => open({ to: 'search' })}
+          style={styles.search}
+          accessibilityRole="search"
+          accessibilityLabel={t('todayScreen.search')}
+        >
+          <Glyph name="search" size={16} ink={tokens.colorInkSecondary} />
+          <Text
+            size={14}
+            weight="medium"
+            accessible={false}
+            style={[styles.grow, styles.secondary]}
+          >
+            {t('todayScreen.search')}
           </Text>
-        </View>
-      </Pressable>
+          <View style={styles.key}>
+            <Text size={12} weight="medium" accessible={false} style={styles.secondary}>
+              ⌘K
+            </Text>
+          </View>
+        </Pressable>
+      )}
       <View style={styles.places} accessibilityRole="tablist">
         {PLACES.map(([label, glyph]) => (
           <Place key={label} label={label} glyph={glyph} onTab={onTab} at={at} />
@@ -158,9 +164,7 @@ export function TodaySidebar({
           importantForAccessibility="no-hide-descendants"
         >
           <EventMesh event={sample('draft')} />
-          <Text size={12} weight="bold" accessible={false}>
-            {initials(person.name)}
-          </Text>
+          <Initials name={person.name} size={12} weight="bold" />
         </View>
         <View style={styles.grow}>
           <Text size={14} weight="semibold" accessible={false}>

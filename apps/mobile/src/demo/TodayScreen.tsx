@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { type ReactNode, useCallback, useMemo, useRef, useState } from 'react';
 import {
   Animated,
   type NativeScrollEvent,
@@ -32,13 +32,22 @@ const BELOW_HEAD = 28;
 const WORDS_GO = 96;
 
 /** Today, drawn for the device: a cover the sheet rises over on a phone and an upright iPad, a sidebar and a banner on its side. */
-export function TodayScreen({ moment, onTab }: { moment: Moment; onTab: (tab: Tab) => void }) {
+export function TodayScreen({
+  moment,
+  onTab,
+  notices,
+}: {
+  moment: Moment;
+  onTab: (tab: Tab) => void;
+  /** The account's and the organisation's notices, at the top of the page. */
+  notices?: ReactNode;
+}) {
   const { kind } = useLayout();
 
   return kind === 'tabletLandscape' ? (
-    <Landscape moment={moment} onTab={onTab} />
+    <Landscape moment={moment} onTab={onTab} notices={notices} />
   ) : (
-    <Scrolled moment={moment} onTab={onTab} phone={kind === 'phone'} />
+    <Scrolled moment={moment} onTab={onTab} phone={kind === 'phone'} notices={notices} />
   );
 }
 
@@ -81,10 +90,12 @@ function Scrolled({
   moment,
   onTab,
   phone,
+  notices,
 }: {
   moment: Moment;
   onTab: (tab: Tab) => void;
   phone: boolean;
+  notices: ReactNode;
 }) {
   const insets = useSafeAreaInsets();
   const layout = phone ? 'phone' : 'portrait';
@@ -151,6 +162,7 @@ function Scrolled({
           />
         </View>
         <View style={[styles.sheet, phone ? styles.sheetPhone : styles.sheetTablet]}>
+          {notices}
           <Body moment={moment} wide={!phone} />
         </View>
       </Animated.ScrollView>
@@ -188,7 +200,15 @@ function Fade() {
   );
 }
 
-function Landscape({ moment, onTab }: { moment: Moment; onTab: (tab: Tab) => void }) {
+function Landscape({
+  moment,
+  onTab,
+  notices,
+}: {
+  moment: Moment;
+  onTab: (tab: Tab) => void;
+  notices: ReactNode;
+}) {
   const insets = useSafeAreaInsets();
   const events = moment.events.map(({ event }) => event);
   const below = moment.needs == null ? 0 : BELOW_HEAD;
@@ -199,6 +219,7 @@ function Landscape({ moment, onTab }: { moment: Moment; onTab: (tab: Tab) => voi
       <View style={[styles.pageCard, { marginBottom: Math.max(insets.bottom, tokens.spaceMd) }]}>
         <ScrollView contentContainerStyle={styles.cardPage} showsVerticalScrollIndicator={false}>
           <TodayCover moment={moment} layout="landscape" top={0} onTab={onTab} />
+          {notices}
           {moment.kind === 'first' ? (
             <View style={styles.firstPad}>
               <FirstRun wide />

@@ -16,7 +16,8 @@ import { Confetti, Cover, type Piece } from '../components/Cover.tsx';
 import { EventMesh } from './Cover.tsx';
 import { Glyph } from './Glyph.tsx';
 import type { Moment, Now } from './today.ts';
-import { initials, useTodayShell } from './todayShell.ts';
+import { Initials } from '../components/Initials.tsx';
+import { useTodayShell } from './todayShell.ts';
 
 export type CoverLayout = 'phone' | 'portrait' | 'landscape';
 
@@ -122,9 +123,12 @@ function OrgTileWhite({ side = 28 }: { side?: number }) {
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
     >
-      <Text size={Math.round(side * 0.4)} weight="bold" accessible={false} style={styles.accent}>
-        {initials(organisation)}
-      </Text>
+      <Initials
+        name={organisation}
+        size={Math.round(side * 0.4)}
+        weight="bold"
+        style={styles.accent}
+      />
     </View>
   );
 }
