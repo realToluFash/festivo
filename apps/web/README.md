@@ -41,6 +41,7 @@ somewhere else is a variable rather than a rebuild.
 | `SOIRELY_MERCURE_URL` | no       | Where Mercure is, from the browser                                                  |
 | `SOIRELY_STORAGE_URL` | no       | The object store's public origin, which receives uploads and serves uploaded images |
 | `SOIRELY_ENVIRONMENT` | no       | A name, so a support conversation can establish which deployment                    |
+| `SOIRELY_SCHEME`      | no       | One of B Confetti's colour schemes, such as `violet`; unset keeps today's colours   |
 
 A missing `SOIRELY_API_URL` stops the container. That is deliberate: a default
 would be a browser quietly talking to the wrong host, which looks like an
@@ -51,6 +52,12 @@ the URL as a Vite build argument, so it ended up inside the JavaScript;
 changing it in compose did nothing, with no error and no warning, and cost an
 afternoon. `src/config.ts` says so at the top, and `configIsNotBaked.test.ts`
 fails if an API URL is read through `import.meta.env` again.
+
+**`SOIRELY_SCHEME` is the web's look switch**, as `EXPO_PUBLIC_SCHEME` is the
+app's. `tokens.css` carries every scheme in `docs/design/tokens.mjs` as a
+`:root[data-scheme]` block, and `main.tsx` puts the configured name on `<html>`
+before the first render. With `npm run dev`, add `"scheme": "violet"` to
+`public/config.json`; a name with no block keeps the base.
 
 ## The session, and the headers it depends on
 
