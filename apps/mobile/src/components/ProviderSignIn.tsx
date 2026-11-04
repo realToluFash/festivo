@@ -19,32 +19,9 @@ const APPLE_IOS_LOGO_SCALE = APPLE_IOS.logoHeight / 19;
 // The glyph is centred at 20 units; a band ending at 40.8 centres it at 20.4, putting the glyph 0.3pt above the fill's centre, as on iOS's own.
 const APPLE_IOS_LOGO_BAND = 40.8;
 
-export function ProviderSignIn({ onFailed }: { onFailed?: (provider: string) => void }) {
-  const { t } = useTranslation();
-
-  return (
-    <View style={styles.sections}>
-      <OrRule label={t('signIn.or')} />
-      <ProviderButtons onFailed={onFailed} />
-    </View>
-  );
-}
-
-/** Away from sign-in, a failure is said there; on it, the screen says it itself. */
+/** Away from welcome, a failure is said there; on it, the screen says it itself. */
 function failedElsewhere(provider: string): void {
-  router.replace(`/sign-in?providerFailed=${provider}`);
-}
-
-export function OrRule({ label }: { label: string }) {
-  return (
-    <View style={styles.or}>
-      <View style={styles.rule} />
-      <Text size={tokens.typeSmall.size} style={styles.orText}>
-        {label}
-      </Text>
-      <View style={styles.rule} />
-    </View>
-  );
+  router.replace(`/welcome?providerFailed=${provider}`);
 }
 
 /** Built to each owner's published specification; the marks are copied, not redrawn. */
@@ -74,26 +51,30 @@ export function ProviderButtons({
   const shows = (provider: Provider): boolean =>
     only == null || only.length === 0 || only.includes(provider);
 
+  const google = shows('google') && (
+    <ProviderButton
+      provider="google"
+      label={t('signIn.withGoogle', { provider: 'Google' })}
+      onPress={() => void continueWith('google')}
+      busy={busy}
+      testID="signIn.google"
+    />
+  );
+  const apple = shows('apple') && (
+    <ProviderButton
+      provider="apple"
+      label={t('signIn.withApple', { provider: 'Apple' })}
+      onPress={() => void continueWith('apple')}
+      busy={busy}
+      testID="signIn.apple"
+    />
+  );
+
+  // Apple then Google on iPhone, Google then Apple on Android (sc-29076).
   return (
     <View style={styles.group}>
-      {shows('google') && (
-        <ProviderButton
-          provider="google"
-          label={t('signIn.withGoogle', { provider: 'Google' })}
-          onPress={() => void continueWith('google')}
-          busy={busy}
-          testID="signIn.google"
-        />
-      )}
-      {shows('apple') && (
-        <ProviderButton
-          provider="apple"
-          label={t('signIn.withApple', { provider: 'Apple' })}
-          onPress={() => void continueWith('apple')}
-          busy={busy}
-          testID="signIn.apple"
-        />
-      )}
+      {Platform.OS === 'android' ? google : apple}
+      {Platform.OS === 'android' ? apple : google}
     </View>
   );
 }
@@ -217,12 +198,7 @@ function AppleLogoIos() {
 }
 
 const styles = StyleSheet.create({
-  group: { gap: tokens.spaceXl },
-  sections: { gap: tokens.space3xl },
-
-  or: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceLg },
-  rule: { flex: 1, height: 1, backgroundColor: tokens.colorBorder },
-  orText: { color: tokens.colorInkSecondary },
+  group: { gap: tokens.spaceLg },
 
   button: {
     minHeight: tokens.sizeHitPhonePrimary,

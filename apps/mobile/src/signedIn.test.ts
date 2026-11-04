@@ -86,12 +86,12 @@ describe('"Sign out" on the Settings list and the "This device" row', () => {
     expect(api.signOut).toHaveBeenCalledTimes(1);
   });
 
-  it('opens sign-in with no "You were signed out" banner', async () => {
+  it('opens welcome with no "You were signed out" banner', async () => {
     signOutHere();
     await settle();
 
     expect(router.replace).toHaveBeenCalledTimes(1);
-    expect(router.replace).toHaveBeenCalledWith('/sign-in');
+    expect(router.replace).toHaveBeenCalledWith('/welcome');
   });
 
   it('forgets the account, and a frame still on screen does not ask for it again', async () => {
@@ -173,12 +173,12 @@ describe('opening the signed-in home at launch', () => {
     expect(useSignedIn().pausedIn).toEqual(paused);
   });
 
-  it('is not, and opens sign-in, when the account cannot be read', async () => {
+  it('is not, and opens welcome, when the account cannot be read', async () => {
     api.me.mockRejectedValue(new Error('unauthorised'));
     api.organisationsWithPaused.mockResolvedValue({ organisations: [organisation], paused: [] });
 
     await expect(launchSignedIn()).resolves.toBe(false);
-    expect(router.replace).toHaveBeenCalledWith('/sign-in');
+    expect(router.replace).toHaveBeenCalledWith('/welcome');
   });
 });
 

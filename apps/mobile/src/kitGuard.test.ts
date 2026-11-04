@@ -664,7 +664,7 @@ describe('a refused submit leaves the keyboard as it was, unless dropsKeysAfter 
 
   it.each(HELD_FORMS)('%s holds its fields rather than disabling them', (file) => {
     const text = readFileSync(join(...file.split('/')), 'utf8');
-    const fields = [...KIT_FIELDS, 'PhoneEntry', 'CodeForm'].flatMap((name) =>
+    const fields = [...KIT_FIELDS, 'PhoneEntry', 'CodeForm', 'InsideField'].flatMap((name) =>
       selfClosing(name, text),
     );
 

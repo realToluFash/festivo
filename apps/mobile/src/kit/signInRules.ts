@@ -39,8 +39,11 @@ export function ruleRefusal(why: Problem | undefined): RuleRefusal | null {
   return null;
 }
 
-/** Sign-in, carrying the refusal in its query; `ended` adds "You were signed out" when no rule says more. */
-export function signInRoute(refusal: RuleRefusal | null, ended: boolean): `/sign-in?${string}` {
+/** Welcome when the session ended, sign-in when a rule turned a password away, carrying the refusal in its query; `ended` adds "You were signed out" when no rule says more. */
+export function signInRoute(
+  refusal: RuleRefusal | null,
+  ended: boolean,
+): `/sign-in?${string}` | `/welcome?${string}` {
   const query = new URLSearchParams(ended ? { signedOut: '1' } : {});
 
   if (refusal?.kind === 'timedOut') {
@@ -57,7 +60,9 @@ export function signInRoute(refusal: RuleRefusal | null, ended: boolean): `/sign
     query.set('email', refusal.email);
   }
 
-  return `/sign-in?${query.toString()}`;
+  return refusal?.kind === 'providerOnly'
+    ? `/sign-in?${query.toString()}`
+    : `/welcome?${query.toString()}`;
 }
 
 /** The refusal back out of sign-in's query, or null when it carries none or a malformed one. */

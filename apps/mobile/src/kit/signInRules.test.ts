@@ -88,8 +88,10 @@ describe('why a rule sent somebody to sign-in (sc-69)', () => {
     }
   });
 
-  it('says only that the session ended when no rule ended it', () => {
-    expect(signInRoute(null, true)).toBe('/sign-in?signedOut=1');
+  it('says on welcome that the session ended, and on sign-in that a password was turned away (sc-29076)', () => {
+    expect(signInRoute(null, true)).toBe('/welcome?signedOut=1');
+    expect(signInRoute(ruleRefusal(TIMED_OUT), true)).toMatch(/^\/welcome\?/);
+    expect(signInRoute(ruleRefusal(PROVIDER_ONLY), true)).toMatch(/^\/sign-in\?/);
     expect(signInRoute(ruleRefusal(PROVIDER_ONLY), false)).not.toMatch(/signedOut/);
   });
 

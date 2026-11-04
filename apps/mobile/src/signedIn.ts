@@ -177,7 +177,7 @@ function load(): Promise<boolean> {
     })
     .catch(() => {
       loading = null;
-      router.replace('/sign-in');
+      router.replace('/welcome');
 
       return false;
     });
@@ -237,7 +237,7 @@ export function replaceOrganisation(saved: Membership): void {
 export function signOutHere(): void {
   void api.signOut().finally(() => {
     forget();
-    router.replace('/sign-in');
+    router.replace('/welcome');
   });
 }
 
@@ -245,7 +245,7 @@ export function signOutHere(): void {
 export function endedHere(): void {
   void Promise.resolve(tokens.clear()).finally(() => {
     forget();
-    router.replace('/sign-in');
+    router.replace('/welcome');
   });
 }
 

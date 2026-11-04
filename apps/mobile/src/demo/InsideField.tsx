@@ -32,15 +32,21 @@ export function InsideField({
   onChangeText,
   password = false,
   state = 'plain',
+  submitting = false,
   multiline = false,
+  revealLabels = ['Show password', 'Hide password'],
   ref,
   testID,
   ...rest
 }: Omit<TextInputProps, 'value' | 'onChangeText' | 'style'> & {
+  /** The eye's words, in the app's language outside the demo. */
+  revealLabels?: readonly [string, string];
   label: string;
   value: string;
-  onChangeText: (text: string) => void;
+  onChangeText?: (text: string) => void;
   password?: boolean;
+  /** Held while a submit runs: focused and the keys up, but nothing typed is taken. */
+  submitting?: boolean;
   /** Blank or malformed: a thin red edge and a red label. A refusal shakes the field and leaves its edge. */
   state?: FieldState;
   multiline?: boolean;
@@ -53,7 +59,7 @@ export function InsideField({
   const [revealed, setRevealed] = useState(false);
   const raised = focused || value !== '' || multiline;
   const [lift] = useState(() => new Animated.Value(raised ? 1 : 0));
-  const holding = useHeld(false, value, undefined, onChangeText);
+  const holding = useHeld(submitting, value, undefined, onChangeText);
   const labelLine = LABEL_SMALL * 1.35 * fontScale;
 
   useEffect(() => {
@@ -119,7 +125,7 @@ export function InsideField({
           style={styles.eye}
           onPress={() => setRevealed((shown) => !shown)}
           accessibilityRole="button"
-          accessibilityLabel={revealed ? 'Hide password' : 'Show password'}
+          accessibilityLabel={revealed ? revealLabels[1] : revealLabels[0]}
           testID={`${testID}.reveal`}
         >
           <Svg

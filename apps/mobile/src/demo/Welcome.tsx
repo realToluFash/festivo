@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { StyleSheet, useWindowDimensions, View } from 'react-native';
+import { ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useLayout } from '../layout/useLayout.ts';
@@ -26,39 +26,36 @@ export function WelcomeFrame({
     paddingRight: Math.max(insets.right, side),
   };
 
-  if (kind === 'tabletLandscape')
-    return (
-      <View style={[styles.page, pad]}>
-        <View style={styles.top}>{top}</View>
-        <View style={styles.beside}>
-          <View style={styles.half}>{brand}</View>
-          <View style={[styles.half, styles.choicesBeside]}>{choices}</View>
-        </View>
+  const body =
+    kind === 'tabletLandscape' ? (
+      <View style={styles.beside}>
+        <View style={styles.half}>{brand}</View>
+        <View style={[styles.half, styles.choicesBeside]}>{choices}</View>
       </View>
+    ) : kind === 'tabletPortrait' ? (
+      <View style={styles.middle}>
+        {brand}
+        <View style={styles.tabletChoices}>{choices}</View>
+      </View>
+    ) : (
+      <>
+        <View style={styles.middle}>{brand}</View>
+        {choices}
+      </>
     );
 
-  if (kind === 'tabletPortrait')
-    return (
-      <View style={[styles.page, pad]}>
-        <View style={styles.top}>{top}</View>
-        <View style={styles.middle}>
-          {brand}
-          <View style={styles.tabletChoices}>{choices}</View>
-        </View>
-      </View>
-    );
-
+  // Scrolls only when it overflows, as at the largest text sizes or under the developer tools.
   return (
-    <View style={[styles.page, pad]}>
+    <ScrollView style={styles.page} contentContainerStyle={[styles.fill, pad]}>
       <View style={styles.top}>{top}</View>
-      <View style={styles.middle}>{brand}</View>
-      {choices}
-    </View>
+      {body}
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: tokens.colorPage },
+  fill: { flexGrow: 1 },
   top: { minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end' },
   middle: {
     flex: 1,

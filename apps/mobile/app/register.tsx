@@ -12,11 +12,8 @@ import { Field, focusChecked, keysStayDown, TextField } from '../src/components/
 import { Notice } from '../src/components/Notice.tsx';
 import { PasswordField } from '../src/components/PasswordField.tsx';
 import { PasswordRule } from '../src/components/PasswordRule.tsx';
-import { OrRule, ProviderButtons } from '../src/components/ProviderSignIn.tsx';
-import { Text } from '../src/components/Text.tsx';
 import { dateLocale } from '../src/i18n/index.ts';
 import { emailMessage, useFormChecks } from '../src/kit/formChecks.ts';
-import { useLayout } from '../src/layout/useLayout.ts';
 import {
   type RegistrationFieldError,
   type RegistrationStatus,
@@ -25,7 +22,6 @@ import {
 import { tokens } from '../src/theme/tokens.ts';
 
 export default function Register() {
-  const { kind } = useLayout();
   const { t } = useTranslation();
   const [status, setStatus] = useState<RegistrationStatus>({ kind: 'ready' });
 
@@ -72,44 +68,9 @@ export default function Register() {
     />
   );
 
-  // Where Google sits differs by size: beside the form on landscape, under it on portrait, above it on a phone.
-  if (kind === 'tabletLandscape') {
-    return (
-      <AuthFrame
-        back={back}
-        saying={
-          <>
-            {heading}
-            <View style={styles.providers}>
-              <ProviderButtons />
-              <Text size={tokens.typeBody.size} style={styles.secondary}>
-                {t('register.landscapeNote')}
-              </Text>
-            </View>
-          </>
-        }
-      >
-        {form}
-        {haveAccount}
-      </AuthFrame>
-    );
-  }
-
-  if (kind === 'tabletPortrait') {
-    return (
-      <AuthFrame saying={heading} back={back}>
-        {form}
-        <OrRule key="or" label={t('signIn.or')} />
-        <ProviderButtons key="providers" />
-        {haveAccount}
-      </AuthFrame>
-    );
-  }
-
+  // Google and Apple are on welcome, so this is the email way alone (sc-29076).
   return (
     <AuthFrame saying={heading} back={back}>
-      <ProviderButtons key="providers" />
-      <OrRule key="or" label={t('register.orWithEmail')} />
       {form}
       {haveAccount}
     </AuthFrame>
@@ -282,10 +243,8 @@ function refusalWords(
 }
 
 const styles = StyleSheet.create({
-  secondary: { color: tokens.colorInkSecondary },
   accentText: { color: tokens.colorAccentText },
   onAccent: { color: tokens.colorInkOnDark },
-  providers: { gap: tokens.spaceMd, paddingTop: tokens.spaceSm },
   form: { gap: tokens.space3xl },
   fields: { gap: tokens.spaceXl },
 });

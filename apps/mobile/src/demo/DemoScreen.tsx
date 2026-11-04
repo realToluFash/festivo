@@ -66,8 +66,11 @@ export function NavBar({
   onLeft,
   step,
   right,
+  backLabel = 'Back',
 }: {
   left?: NavLeft;
+  /** The words a screen reader hears for ‹, in the app's language outside the demo. */
+  backLabel?: string;
   onLeft?: () => void;
   /** Which step of how many; a half step is a step just done, its bar part way to the next. */
   step?: readonly [number, number];
@@ -80,7 +83,7 @@ export function NavBar({
           style={styles.icon}
           onPress={onLeft ?? (left === 'back' ? goBack : () => closeFlow())}
           accessibilityRole="button"
-          accessibilityLabel={left === 'back' ? 'Back' : 'Close'}
+          accessibilityLabel={left === 'back' ? backLabel : 'Close'}
           hitSlop={tokens.spaceXxs}
           testID={`demo.${left}`}
         >
