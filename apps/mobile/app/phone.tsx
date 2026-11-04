@@ -63,13 +63,7 @@ export default function ChangePhone() {
       (one) => one.provider === 'google' || one.provider === 'apple',
     );
 
-    return (
-      <MobileStep
-        account={account}
-        initialCountry={phoneScreenCountry(account, device)}
-        short={short}
-      />
-    );
+    return <MobileStep initialCountry={phoneScreenCountry(account, device)} short={short} />;
   }
 
   return (
@@ -110,15 +104,7 @@ export default function ChangePhone() {
 }
 
 /** The last step, which Skip at the top right passes, saving no number. */
-function MobileStep({
-  account,
-  initialCountry,
-  short,
-}: {
-  account: Account;
-  initialCountry: string;
-  short: boolean;
-}) {
+function MobileStep({ initialCountry, short }: { initialCountry: string; short: boolean }) {
   const { t } = useTranslation();
   const [country, setCountry] = useState(initialCountry);
   const [number, setNumber] = useState('');
@@ -146,8 +132,7 @@ function MobileStep({
           step={short ? [2, 2] : [4, 4]}
           right={{
             label: t('steps.skip'),
-            onPress: () =>
-              void skipPhone(account).catch(() => setError(t('verifyPhone.failedBody'))),
+            onPress: () => void skipPhone().catch(() => setError(t('verifyPhone.failedBody'))),
           }}
           testID="phone"
         />

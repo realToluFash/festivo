@@ -196,7 +196,7 @@ export default function VerifyPhone() {
             step={short ? [done ? 2.4 : 2, 2] : [done ? 4.4 : 4, 4]}
             right={{
               label: t('steps.skip'),
-              onPress: () => void skipPhone(account).catch(() => setStatus({ kind: 'failed' })),
+              onPress: () => void skipPhone().catch(() => setStatus({ kind: 'failed' })),
             }}
             testID="verifyPhone"
           />
