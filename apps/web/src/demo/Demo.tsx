@@ -2,11 +2,11 @@ import { type FormEvent, type ReactNode, useEffect, useRef, useState } from 'rea
 import { Link, Route, Routes, useLocation, useNavigate, useSearchParams } from 'react-router';
 
 import { Brand } from '../components/Brand.tsx';
+import { LanguageMenu } from '../components/LanguageMenu.tsx';
 import { AppleMark, GoogleMark } from '../components/ProviderSignIn.tsx';
 import { NotFound } from '../routes/public/NotFound.tsx';
 import { offButton } from '../offButton.ts';
 import { offField } from '../offField.ts';
-import { LanguageMenu } from './LanguageMenu.tsx';
 import {
   type FieldLines,
   LOCK_MS,
@@ -116,6 +116,8 @@ function DemoHome({ from }: { from: string }) {
 
 /** The board's page: the lockup and the way to an account, the form's column, the footer, and the way back under it. */
 function BoardPage({ children }: { children: ReactNode }) {
+  const [language, setLanguage] = useState('en');
+
   return (
     <div className="demo-page">
       <header className="demo-page-header">
@@ -139,7 +141,8 @@ function BoardPage({ children }: { children: ReactNode }) {
           <Link className="link-button demo-link" to="/demo/later?screen=privacy">
             Privacy
           </Link>
-          <LanguageMenu />
+          {/* Choosing renames the button only: the demo's words stay English. */}
+          <LanguageMenu current={language} onChoose={setLanguage} />
         </nav>
       </footer>
       <p className="demo-way-in">
