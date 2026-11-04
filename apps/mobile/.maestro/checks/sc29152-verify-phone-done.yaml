@@ -2,8 +2,8 @@
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/demo/settings/account?state=verifyPhoneDone
-- extendedWaitUntil:
-    visible:
+- scrollUntilVisible:
+    element:
       text: 'Number verified'
     timeout: 30000
 - waitForAnimationToEnd:

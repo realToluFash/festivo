@@ -2,8 +2,8 @@
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/demo/settings/organisation?state=delete
-- extendedWaitUntil:
-    visible:
+- scrollUntilVisible:
+    element:
       id: 'demo.organisation.delete.name'
     timeout: 30000
 - waitForAnimationToEnd:

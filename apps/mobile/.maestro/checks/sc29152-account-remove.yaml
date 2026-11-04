@@ -2,8 +2,8 @@
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/demo/settings/account?state=remove
-- extendedWaitUntil:
-    visible:
+- scrollUntilVisible:
+    element:
       text: 'Remove this address\?'
     timeout: 30000
 - waitForAnimationToEnd:

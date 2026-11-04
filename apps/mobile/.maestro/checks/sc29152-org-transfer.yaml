@@ -2,8 +2,8 @@
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/demo/settings/organisation?state=transfer
-- extendedWaitUntil:
-    visible:
+- scrollUntilVisible:
+    element:
       id: 'demo.organisation.transfer.password'
     timeout: 30000
 - waitForAnimationToEnd:

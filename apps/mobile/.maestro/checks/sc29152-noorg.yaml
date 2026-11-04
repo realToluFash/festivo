@@ -4,12 +4,12 @@ appId: host.exp.Exponent
 - openLink: ${METRO_URL}/--/demo/settings?as=noOrg
 - extendedWaitUntil:
     visible:
-      id: 'settings.notifications'
+      text: 'Your account\. [^,]+, [^,]+'
     timeout: 30000
 - waitForAnimationToEnd:
     timeout: 8000
 - assertNotVisible:
-    id: 'settings.signInRules'
+    id: 'settings.organisation'
 - takeScreenshot: noorg
 - swipe:
     start: 85%, 80%

@@ -2,8 +2,8 @@
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/demo/settings/security
-- extendedWaitUntil:
-    visible:
+- scrollUntilVisible:
+    element:
       text: 'Two-factor authentication'
     timeout: 30000
 - waitForAnimationToEnd:

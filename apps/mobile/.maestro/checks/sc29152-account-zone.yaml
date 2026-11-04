@@ -2,8 +2,8 @@
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/demo/settings/account?state=zone
-- extendedWaitUntil:
-    visible:
+- scrollUntilVisible:
+    element:
       id: 'demo.account.zone.Europe/San_Marino'
     timeout: 30000
 - waitForAnimationToEnd:
