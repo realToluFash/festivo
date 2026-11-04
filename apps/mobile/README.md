@@ -31,6 +31,12 @@ The base URL comes from configuration, never a literal. It is read by
 | `EXPO_PUBLIC_MERCURE_URL` | Where the Mercure hub is **from the device**                |
 | `EXPO_PUBLIC_ENVIRONMENT` | A name, so a support conversation can establish which build |
 
+**A colour scheme.** `EXPO_PUBLIC_SCHEME` names one of B Confetti's eight
+schemes from `docs/design/tokens.mjs` (`violet`, `cobalt`, `garden`, `citrus`,
+`berry`, `blacktie`, `sorbet`, `terracotta`), and the whole build takes it.
+Unset, the app keeps its tokens as they are. Restart Metro with `--clear` after
+changing it, because Expo writes it in when it bundles.
+
 **On a simulator or emulator** nothing needs setting — the fallbacks are
 `http://localhost:8080` and `http://localhost:3000/.well-known/mercure`, which
 reach the host machine.

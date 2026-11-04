@@ -21,7 +21,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { tokens } from '../docs/design/tokens.mjs';
+import { schemes, tokens } from '../docs/design/tokens.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -38,6 +38,39 @@ const MS = /^(motion(Fast|Base|Slow|Max|Pulse)|toastLifetime)$/;
 const isTypeStyle = (k, v) => k.startsWith('type') && v !== null && typeof v === 'object';
 /** Tables of meaning, flattened per entry rather than emitted as objects. */
 const MEANING = ['marks', 'replyStates', 'seatStates'];
+
+// Borders, marks and seats carry base colours' hexes inside them. Each hex is
+// swapped in one pass, so citrus's accent, which is the base broken red, is not
+// swapped twice; a hex two colours share that a scheme splits cannot be guessed.
+function laidOver(colours) {
+  const into = {};
+  for (const [key, value] of Object.entries(tokens)) {
+    if (!key.startsWith('color') || typeof value !== 'string') continue;
+    (into[value.toUpperCase()] ??= new Set()).add(colours[key] ?? value);
+  }
+  const swap = (v) =>
+    typeof v === 'string'
+      ? v.replace(/#[0-9A-F]{6}\b/gi, (hex) => {
+          const laid = into[hex.toUpperCase()];
+          if (laid === undefined) return hex;
+          if (laid.size > 1) throw new Error(`${hex} becomes ${[...laid].join(' or ')}`);
+          return [...laid][0];
+        })
+      : v !== null && typeof v === 'object'
+        ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, swap(x)]))
+        : v;
+  const derived = {};
+  for (const [key, value] of Object.entries(tokens)) {
+    if (key.startsWith('color') || value === null || typeof value === 'number') continue;
+    const laid = swap(value);
+    if (JSON.stringify(laid) !== JSON.stringify(value)) derived[key] = laid;
+  }
+  return { ...derived, ...colours };
+}
+
+export const laidSchemes = Object.fromEntries(
+  Object.entries(schemes).map(([name, colours]) => [name, laidOver(colours)]),
+);
 
 function cssValue(key, value) {
   if (typeof value === 'number') {
@@ -56,6 +89,22 @@ function typeStyleLines(key, style) {
   ];
 }
 
+// Meaning tables flatten to one variable per field, because a component
+// reaches for one of them at a time: --markDoneFill, --replyHeldRing.
+function meaningLines(table, entries) {
+  const prefix = table === 'marks' ? 'mark' : table === 'replyStates' ? 'reply' : 'seat';
+  const lines = [];
+  for (const [name, entry] of Object.entries(entries)) {
+    for (const [field, fieldValue] of Object.entries(entry)) {
+      if (field === 'glyph' || field === 'word') continue; // content, not style: these come from the catalogue
+      const upper = name[0].toUpperCase() + name.slice(1);
+      const cap = field[0].toUpperCase() + field.slice(1);
+      lines.push(`  --${prefix}${upper}${cap}: ${fieldValue};`);
+    }
+  }
+  return lines;
+}
+
 function buildCss() {
   const lines = [`/* ${BANNER} */`, ':root {'];
 
@@ -70,21 +119,23 @@ function buildCss() {
     lines.push(`  --${key}: ${cssValue(key, value)};`);
   }
 
-  // Meaning tables flatten to one variable per field, because a component
-  // reaches for one of them at a time: --markDoneFill, --replyHeldRing.
-  for (const table of MEANING) {
-    const prefix = table === 'marks' ? 'mark' : table === 'replyStates' ? 'reply' : 'seat';
-    for (const [name, entry] of Object.entries(tokens[table])) {
-      for (const [field, fieldValue] of Object.entries(entry)) {
-        if (field === 'glyph' || field === 'word') continue; // content, not style: these come from the catalogue
-        const upper = name[0].toUpperCase() + name.slice(1);
-        const cap = field[0].toUpperCase() + field.slice(1);
-        lines.push(`  --${prefix}${upper}${cap}: ${fieldValue};`);
-      }
+  for (const table of MEANING) lines.push(...meaningLines(table, tokens[table]));
+
+  lines.push('}');
+  const base = new Set(lines);
+
+  // A scheme is laid over the base by <html data-scheme>, which config.json sets at boot.
+  for (const [name, laid] of Object.entries(laidSchemes)) {
+    lines.push('', `:root[data-scheme='${name}'] {`);
+    for (const [key, value] of Object.entries(laid)) {
+      if (MEANING.includes(key))
+        lines.push(...meaningLines(key, value).filter((l) => !base.has(l)));
+      else lines.push(`  --${key}: ${value};`);
     }
+    lines.push('}');
   }
 
-  lines.push('}', '');
+  lines.push('');
   return lines.join('\n');
 }
 
@@ -92,9 +143,25 @@ function buildNative() {
   return [
     `// ${BANNER}`,
     '',
-    `export const tokens = ${JSON.stringify(tokens, null, 2)} as const;`,
+    `const base = ${JSON.stringify(tokens, null, 2)} as const;`,
     '',
-    'export type Tokens = typeof tokens;',
+    `export const schemes = ${JSON.stringify(laidSchemes, null, 2)} as const;`,
+    '',
+    'export type Scheme = keyof typeof schemes;',
+    '',
+    'type Widen<T> = T extends string ? string : { [K in keyof T]: Widen<T[K]> };',
+    '',
+    'type Laid = `color${string}` | keyof (typeof schemes)[Scheme];',
+    '',
+    'export type Tokens = { [K in keyof typeof base]: K extends Laid ? Widen<(typeof base)[K]> : (typeof base)[K] };',
+    '',
+    '/** The base with a scheme laid over it; a name that is no scheme keeps the base. */',
+    'export function withScheme(name: string | undefined): Tokens {',
+    '  return name != null && Object.hasOwn(schemes, name) ? { ...base, ...schemes[name as Scheme] } : base;',
+    '}',
+    '',
+    '/** Expo writes EXPO_PUBLIC_SCHEME in at build time. */',
+    'export const tokens: Tokens = withScheme(process.env.EXPO_PUBLIC_SCHEME);',
     '',
     'export default tokens;',
     '',
