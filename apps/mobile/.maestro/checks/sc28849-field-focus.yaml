@@ -1,0 +1,25 @@
+# Name on Account at rest, focused (green edge), then emptied and saved so it errors, and focused again (red edge). sc-28849.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/account
+- extendedWaitUntil:
+    visible: '{{t:account.title}}'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'nameCard.change'
+    timeout: 30000
+- tapOn:
+    id: 'nameCard.change'
+- hideKeyboard
+- takeScreenshot: name-rest
+- tapOn:
+    id: 'nameCard.field'
+- takeScreenshot: name-focused
+- eraseText: 80
+- tapOn:
+    id: 'nameCard.save'
+- takeScreenshot: name-wrong-blurred
+- tapOn:
+    id: 'nameCard.field'
+- takeScreenshot: name-wrong-focused

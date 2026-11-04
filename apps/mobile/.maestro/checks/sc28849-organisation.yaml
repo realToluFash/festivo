@@ -1,0 +1,20 @@
+# Organisation details: text field and picker rows at rest, the name focused, and the country picker's search focused. sc-28849.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/organisation
+- extendedWaitUntil:
+    visible:
+      id: 'organisation.name'
+    timeout: 30000
+- takeScreenshot: organisation-rest
+- tapOn:
+    id: 'organisation.name'
+- takeScreenshot: organisation-name-focused
+- hideKeyboard
+- tapOn:
+    id: 'organisation.country'
+- waitForAnimationToEnd
+- takeScreenshot: country-search-rest
+- tapOn:
+    id: 'organisation.country.search'
+- takeScreenshot: country-search-focused
