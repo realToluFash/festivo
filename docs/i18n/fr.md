@@ -695,3 +695,4 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
 - **Le cadre des pages hors session** (sc-29037) : « New to Soirely? » est « Pas encore de
   compte ? », avant « Créer un compte » ; « Nouveau sur Soirely ? » s’accorde avec un genre.
   « © {{year}} Soirely » reste identique à l’anglais. Le bouton de langue se lit « Langue : {{language}} ».
+- **Annuler une demande pour revenir** (sc-29979) : « Annuler votre demande ? » ; la sortie est « Continuer d’attendre », jamais « Annuler », et la confirmation reprend « Annuler la demande ».
