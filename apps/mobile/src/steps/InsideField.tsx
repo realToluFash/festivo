@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
+import { useTranslation } from 'react-i18next';
 
 import { FocusEdge, useHeld } from '../components/Field.tsx';
 import { Text } from '../components/Text.tsx';
@@ -47,6 +48,7 @@ export function InsideField({
   ref?: Ref<TextInputInstance> | undefined;
   testID: string;
 }) {
+  const { t } = useTranslation();
   const labelID = useId();
   const { fontScale } = useWindowDimensions();
   const [focused, setFocused] = useState(false);
@@ -119,7 +121,7 @@ export function InsideField({
           style={styles.eye}
           onPress={() => setRevealed((shown) => !shown)}
           accessibilityRole="button"
-          accessibilityLabel={revealed ? 'Hide password' : 'Show password'}
+          accessibilityLabel={revealed ? t('steps.hidePassword') : t('steps.showPassword')}
           testID={`${testID}.reveal`}
         >
           <Svg

@@ -7,7 +7,7 @@ import { SecondaryButton } from '../../src/components/Buttons.tsx';
 import { Toast } from '../../src/components/Toast.tsx';
 import { useSystemBack } from '../../src/components/useSystemBack.ts';
 import { DemoScreen } from '../../src/demo/DemoScreen.tsx';
-import { Heading, Plain } from '../../src/demo/Lines.tsx';
+import { Heading, Plain } from '../../src/steps/Lines.tsx';
 import { SAMPLE } from '../../src/demo/samples.ts';
 import { tokens } from '../../src/theme/tokens.ts';
 

@@ -2,7 +2,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 
 import { QuietButton, SecondaryButton } from '../../../src/components/Buttons.tsx';
 import { DemoScreen, NavBar } from '../../../src/demo/DemoScreen.tsx';
-import { DemoOnly, Heading, Plain } from '../../../src/demo/Lines.tsx';
+import { DemoOnly, Heading, Plain } from '../../../src/steps/Lines.tsx';
 import { SAMPLE } from '../../../src/demo/samples.ts';
 import { tokens } from '../../../src/theme/tokens.ts';
 

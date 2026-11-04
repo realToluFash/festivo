@@ -5,9 +5,9 @@ import { PrimaryButton } from '../../../src/components/Buttons.tsx';
 import { OrgTile } from '../../../src/components/OrgTile.tsx';
 import { Text } from '../../../src/components/Text.tsx';
 import { DemoScreen, NavBar, finish } from '../../../src/demo/DemoScreen.tsx';
-import { InsideField } from '../../../src/demo/InsideField.tsx';
-import { Plain } from '../../../src/demo/Lines.tsx';
-import { MESSAGE_MOST, messageCount } from '../../../src/demo/rules.ts';
+import { InsideField } from '../../../src/steps/InsideField.tsx';
+import { Plain } from '../../../src/steps/Lines.tsx';
+import { MESSAGE_MOST, messageCount } from '../../../src/steps/rules.ts';
 import { SAMPLE } from '../../../src/demo/samples.ts';
 import { tokens } from '../../../src/theme/tokens.ts';
 

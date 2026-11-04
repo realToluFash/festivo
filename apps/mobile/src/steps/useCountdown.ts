@@ -21,3 +21,17 @@ export function useCountdown(seconds: number): { left: number; restart: () => vo
 
   return { left, restart };
 }
+
+/** Seconds until a new code can be sent, as the server last said, counting down. */
+export function useCooldown(): [number, (seconds: number) => void] {
+  const [cooldown, setCooldown] = useState(0);
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const tick = setTimeout(() => setCooldown((left) => left - 1), 1000);
+
+    return () => clearTimeout(tick);
+  }, [cooldown]);
+
+  return [cooldown, setCooldown];
+}

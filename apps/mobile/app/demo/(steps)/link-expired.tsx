@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 
 import { PrimaryButton } from '../../../src/components/Buttons.tsx';
 import { DemoScreen, NavBar } from '../../../src/demo/DemoScreen.tsx';
-import { Heading } from '../../../src/demo/Lines.tsx';
+import { Heading } from '../../../src/steps/Lines.tsx';
 
 /** A link expired or used says so in the title, with one button. */
 export default function LinkExpired() {
