@@ -17,6 +17,17 @@ describe('a build picks its colour scheme', () => {
     expect(violet.spaceLg).toBe(tokens.spaceLg);
   });
 
+  it('takes the accent into a selected border, the done mark, a taken seat and a yes', () => {
+    const violet = withScheme('violet');
+
+    expect(violet.borderSelected).toBe('2px solid #5A3DF0');
+    expect(violet.marks.done.fill).toBe('#5A3DF0');
+    expect(violet.marks.done.glyph).toBe(tokens.marks.done.glyph);
+    expect(violet.marks.broken).toEqual(tokens.marks.broken);
+    expect(violet.seatStates.taken.ring).toBe('1px solid #5A3DF0');
+    expect(violet.replyStates.coming.dot).toBe('#5A3DF0');
+  });
+
   it('keeps the base for a name that is no scheme', () => {
     expect(withScheme('green')).toEqual(withScheme(undefined));
     expect(withScheme('toString')).toEqual(withScheme(undefined));

@@ -224,6 +224,12 @@
 }
 
 :root[data-scheme='violet'] {
+  --borderSelected: 2px solid #5A3DF0;
+  --markDoneFill: #5A3DF0;
+  --markDoneRing: #5A3DF0;
+  --replyComingDot: #5A3DF0;
+  --seatTakenFill: #5A3DF0;
+  --seatTakenRing: 1px solid #5A3DF0;
   --colorInk: #0D0D12;
   --colorDark: #0D0D12;
   --colorPage: #FFFFFF;
@@ -247,6 +253,12 @@
 }
 
 :root[data-scheme='cobalt'] {
+  --borderSelected: 2px solid #1F47D6;
+  --markDoneFill: #1F47D6;
+  --markDoneRing: #1F47D6;
+  --replyComingDot: #1F47D6;
+  --seatTakenFill: #1F47D6;
+  --seatTakenRing: 1px solid #1F47D6;
   --colorInk: #0B1220;
   --colorDark: #0B1220;
   --colorPage: #FFFFFF;
@@ -270,6 +282,12 @@
 }
 
 :root[data-scheme='garden'] {
+  --borderSelected: 2px solid #1E6B4F;
+  --markDoneFill: #1E6B4F;
+  --markDoneRing: #1E6B4F;
+  --replyComingDot: #1E6B4F;
+  --seatTakenFill: #1E6B4F;
+  --seatTakenRing: 1px solid #1E6B4F;
   --colorInk: #17201B;
   --colorDark: #17201B;
   --colorPage: #FFFDF8;
@@ -293,6 +311,12 @@
 }
 
 :root[data-scheme='citrus'] {
+  --borderSelected: 2px solid #C2410C;
+  --markDoneFill: #C2410C;
+  --markDoneRing: #C2410C;
+  --replyComingDot: #C2410C;
+  --seatTakenFill: #C2410C;
+  --seatTakenRing: 1px solid #C2410C;
   --colorInk: #1F140C;
   --colorDark: #1F140C;
   --colorPage: #FFFFFF;
@@ -316,6 +340,12 @@
 }
 
 :root[data-scheme='berry'] {
+  --borderSelected: 2px solid #B5175A;
+  --markDoneFill: #B5175A;
+  --markDoneRing: #B5175A;
+  --replyComingDot: #B5175A;
+  --seatTakenFill: #B5175A;
+  --seatTakenRing: 1px solid #B5175A;
   --colorInk: #1E0F16;
   --colorDark: #1E0F16;
   --colorPage: #FFFFFF;
@@ -339,6 +369,12 @@
 }
 
 :root[data-scheme='blacktie'] {
+  --borderSelected: 2px solid #141414;
+  --markDoneFill: #141414;
+  --markDoneRing: #141414;
+  --replyComingDot: #141414;
+  --seatTakenFill: #141414;
+  --seatTakenRing: 1px solid #141414;
   --colorInk: #141414;
   --colorDark: #141414;
   --colorPage: #FFFDF9;
@@ -362,6 +398,12 @@
 }
 
 :root[data-scheme='sorbet'] {
+  --borderSelected: 2px solid #5B2A86;
+  --markDoneFill: #5B2A86;
+  --markDoneRing: #5B2A86;
+  --replyComingDot: #5B2A86;
+  --seatTakenFill: #5B2A86;
+  --seatTakenRing: 1px solid #5B2A86;
   --colorInk: #22152E;
   --colorDark: #22152E;
   --colorPage: #FFFBF7;
@@ -385,6 +427,12 @@
 }
 
 :root[data-scheme='terracotta'] {
+  --borderSelected: 2px solid #A3401D;
+  --markDoneFill: #A3401D;
+  --markDoneRing: #A3401D;
+  --replyComingDot: #A3401D;
+  --seatTakenFill: #A3401D;
+  --seatTakenRing: 1px solid #A3401D;
   --colorInk: #221811;
   --colorDark: #221811;
   --colorPage: #FFFCF7;

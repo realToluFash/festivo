@@ -465,6 +465,122 @@ const base = {
 
 export const schemes = {
   "violet": {
+    "borderSelected": "2px solid #5A3DF0",
+    "marks": {
+      "done": {
+        "glyph": "✓",
+        "word": "Done",
+        "fill": "#5A3DF0",
+        "ring": "#5A3DF0",
+        "ink": "#FFFFFF"
+      },
+      "progress": {
+        "glyph": "…",
+        "word": "In progress",
+        "fill": "#FBF1DC",
+        "ring": "#B7791F",
+        "ink": "#B7791F"
+      },
+      "broken": {
+        "glyph": "✕",
+        "word": "Broken",
+        "fill": "#FFFFFF",
+        "ring": "#C2410C",
+        "ink": "#C2410C"
+      },
+      "notStarted": {
+        "glyph": "",
+        "word": "Not started",
+        "fill": "#FFFFFF",
+        "ring": "#C9CED6",
+        "ink": "transparent"
+      },
+      "skipped": {
+        "glyph": "–",
+        "word": "Skipped",
+        "fill": "#F1F2F4",
+        "ring": "#C9CED6",
+        "ink": "#6B7280"
+      },
+      "allergy": {
+        "glyph": "!",
+        "word": "Allergy",
+        "fill": "#FFFFFF",
+        "ring": "#C2410C",
+        "ink": "#C2410C"
+      },
+      "info": {
+        "glyph": "i",
+        "word": "",
+        "fill": "#FFFFFF",
+        "ring": "#4B5563",
+        "ink": "#4B5563"
+      }
+    },
+    "replyStates": {
+      "coming": {
+        "word": "Coming",
+        "dot": "#5A3DF0",
+        "ring": "0"
+      },
+      "maybe": {
+        "word": "Maybe",
+        "dot": "#FBF1DC",
+        "ring": "3px solid #B7791F"
+      },
+      "notComing": {
+        "word": "Not coming",
+        "dot": "#6B7280",
+        "ring": "0"
+      },
+      "held": {
+        "word": "Held",
+        "dot": "half #6B7280 / #FFFFFF",
+        "ring": "1px solid #6B7280"
+      },
+      "noReply": {
+        "word": "No reply",
+        "dot": "transparent",
+        "ring": "1.5px solid #6B7280"
+      }
+    },
+    "seatStates": {
+      "taken": {
+        "glyph": "✓",
+        "word": "Taken",
+        "fill": "#5A3DF0",
+        "ring": "1px solid #5A3DF0",
+        "ink": "#FFFFFF"
+      },
+      "proposed": {
+        "glyph": "?",
+        "word": "Proposed",
+        "fill": "#FFFDF7",
+        "ring": "1.5px dashed #B7791F",
+        "ink": "#8A5A12"
+      },
+      "held": {
+        "glyph": "",
+        "word": "Held for a companion",
+        "fill": "half #6B7280 / #FFFFFF",
+        "ring": "1px solid #6B7280",
+        "ink": "transparent"
+      },
+      "empty": {
+        "glyph": "",
+        "word": "Empty",
+        "fill": "#FFFFFF",
+        "ring": "1px solid #C9CED6",
+        "ink": "transparent"
+      },
+      "unusable": {
+        "glyph": "✕",
+        "word": "Unusable",
+        "fill": "#F1F2F4",
+        "ring": "1px solid #C9CED6",
+        "ink": "#6B7280"
+      }
+    },
     "colorInk": "#0D0D12",
     "colorDark": "#0D0D12",
     "colorPage": "#FFFFFF",
@@ -487,6 +603,122 @@ export const schemes = {
     "colorBrokenText": "#A3241A"
   },
   "cobalt": {
+    "borderSelected": "2px solid #1F47D6",
+    "marks": {
+      "done": {
+        "glyph": "✓",
+        "word": "Done",
+        "fill": "#1F47D6",
+        "ring": "#1F47D6",
+        "ink": "#FFFFFF"
+      },
+      "progress": {
+        "glyph": "…",
+        "word": "In progress",
+        "fill": "#FBF1DC",
+        "ring": "#B7791F",
+        "ink": "#B7791F"
+      },
+      "broken": {
+        "glyph": "✕",
+        "word": "Broken",
+        "fill": "#FFFFFF",
+        "ring": "#C2410C",
+        "ink": "#C2410C"
+      },
+      "notStarted": {
+        "glyph": "",
+        "word": "Not started",
+        "fill": "#FFFFFF",
+        "ring": "#C9CED6",
+        "ink": "transparent"
+      },
+      "skipped": {
+        "glyph": "–",
+        "word": "Skipped",
+        "fill": "#F1F2F4",
+        "ring": "#C9CED6",
+        "ink": "#6B7280"
+      },
+      "allergy": {
+        "glyph": "!",
+        "word": "Allergy",
+        "fill": "#FFFFFF",
+        "ring": "#C2410C",
+        "ink": "#C2410C"
+      },
+      "info": {
+        "glyph": "i",
+        "word": "",
+        "fill": "#FFFFFF",
+        "ring": "#4B5563",
+        "ink": "#4B5563"
+      }
+    },
+    "replyStates": {
+      "coming": {
+        "word": "Coming",
+        "dot": "#1F47D6",
+        "ring": "0"
+      },
+      "maybe": {
+        "word": "Maybe",
+        "dot": "#FBF1DC",
+        "ring": "3px solid #B7791F"
+      },
+      "notComing": {
+        "word": "Not coming",
+        "dot": "#6B7280",
+        "ring": "0"
+      },
+      "held": {
+        "word": "Held",
+        "dot": "half #6B7280 / #FFFFFF",
+        "ring": "1px solid #6B7280"
+      },
+      "noReply": {
+        "word": "No reply",
+        "dot": "transparent",
+        "ring": "1.5px solid #6B7280"
+      }
+    },
+    "seatStates": {
+      "taken": {
+        "glyph": "✓",
+        "word": "Taken",
+        "fill": "#1F47D6",
+        "ring": "1px solid #1F47D6",
+        "ink": "#FFFFFF"
+      },
+      "proposed": {
+        "glyph": "?",
+        "word": "Proposed",
+        "fill": "#FFFDF7",
+        "ring": "1.5px dashed #B7791F",
+        "ink": "#8A5A12"
+      },
+      "held": {
+        "glyph": "",
+        "word": "Held for a companion",
+        "fill": "half #6B7280 / #FFFFFF",
+        "ring": "1px solid #6B7280",
+        "ink": "transparent"
+      },
+      "empty": {
+        "glyph": "",
+        "word": "Empty",
+        "fill": "#FFFFFF",
+        "ring": "1px solid #C9CED6",
+        "ink": "transparent"
+      },
+      "unusable": {
+        "glyph": "✕",
+        "word": "Unusable",
+        "fill": "#F1F2F4",
+        "ring": "1px solid #C9CED6",
+        "ink": "#6B7280"
+      }
+    },
     "colorInk": "#0B1220",
     "colorDark": "#0B1220",
     "colorPage": "#FFFFFF",
@@ -509,6 +741,122 @@ export const schemes = {
     "colorBrokenText": "#A3241A"
   },
   "garden": {
+    "borderSelected": "2px solid #1E6B4F",
+    "marks": {
+      "done": {
+        "glyph": "✓",
+        "word": "Done",
+        "fill": "#1E6B4F",
+        "ring": "#1E6B4F",
+        "ink": "#FFFFFF"
+      },
+      "progress": {
+        "glyph": "…",
+        "word": "In progress",
+        "fill": "#FBF1DC",
+        "ring": "#B7791F",
+        "ink": "#B7791F"
+      },
+      "broken": {
+        "glyph": "✕",
+        "word": "Broken",
+        "fill": "#FFFFFF",
+        "ring": "#C2410C",
+        "ink": "#C2410C"
+      },
+      "notStarted": {
+        "glyph": "",
+        "word": "Not started",
+        "fill": "#FFFFFF",
+        "ring": "#C9CED6",
+        "ink": "transparent"
+      },
+      "skipped": {
+        "glyph": "–",
+        "word": "Skipped",
+        "fill": "#F1F2F4",
+        "ring": "#C9CED6",
+        "ink": "#6B7280"
+      },
+      "allergy": {
+        "glyph": "!",
+        "word": "Allergy",
+        "fill": "#FFFFFF",
+        "ring": "#C2410C",
+        "ink": "#C2410C"
+      },
+      "info": {
+        "glyph": "i",
+        "word": "",
+        "fill": "#FFFFFF",
+        "ring": "#4B5563",
+        "ink": "#4B5563"
+      }
+    },
+    "replyStates": {
+      "coming": {
+        "word": "Coming",
+        "dot": "#1E6B4F",
+        "ring": "0"
+      },
+      "maybe": {
+        "word": "Maybe",
+        "dot": "#FBF1DC",
+        "ring": "3px solid #B7791F"
+      },
+      "notComing": {
+        "word": "Not coming",
+        "dot": "#6B7280",
+        "ring": "0"
+      },
+      "held": {
+        "word": "Held",
+        "dot": "half #6B7280 / #FFFFFF",
+        "ring": "1px solid #6B7280"
+      },
+      "noReply": {
+        "word": "No reply",
+        "dot": "transparent",
+        "ring": "1.5px solid #6B7280"
+      }
+    },
+    "seatStates": {
+      "taken": {
+        "glyph": "✓",
+        "word": "Taken",
+        "fill": "#1E6B4F",
+        "ring": "1px solid #1E6B4F",
+        "ink": "#FFFFFF"
+      },
+      "proposed": {
+        "glyph": "?",
+        "word": "Proposed",
+        "fill": "#FFFDF7",
+        "ring": "1.5px dashed #B7791F",
+        "ink": "#8A5A12"
+      },
+      "held": {
+        "glyph": "",
+        "word": "Held for a companion",
+        "fill": "half #6B7280 / #FFFFFF",
+        "ring": "1px solid #6B7280",
+        "ink": "transparent"
+      },
+      "empty": {
+        "glyph": "",
+        "word": "Empty",
+        "fill": "#FFFFFF",
+        "ring": "1px solid #C9CED6",
+        "ink": "transparent"
+      },
+      "unusable": {
+        "glyph": "✕",
+        "word": "Unusable",
+        "fill": "#F1F2F4",
+        "ring": "1px solid #C9CED6",
+        "ink": "#6B7280"
+      }
+    },
     "colorInk": "#17201B",
     "colorDark": "#17201B",
     "colorPage": "#FFFDF8",
@@ -531,6 +879,122 @@ export const schemes = {
     "colorBrokenText": "#A3241A"
   },
   "citrus": {
+    "borderSelected": "2px solid #C2410C",
+    "marks": {
+      "done": {
+        "glyph": "✓",
+        "word": "Done",
+        "fill": "#C2410C",
+        "ring": "#C2410C",
+        "ink": "#FFFFFF"
+      },
+      "progress": {
+        "glyph": "…",
+        "word": "In progress",
+        "fill": "#FBF1DC",
+        "ring": "#B7791F",
+        "ink": "#B7791F"
+      },
+      "broken": {
+        "glyph": "✕",
+        "word": "Broken",
+        "fill": "#FFFFFF",
+        "ring": "#C2410C",
+        "ink": "#C2410C"
+      },
+      "notStarted": {
+        "glyph": "",
+        "word": "Not started",
+        "fill": "#FFFFFF",
+        "ring": "#C9CED6",
+        "ink": "transparent"
+      },
+      "skipped": {
+        "glyph": "–",
+        "word": "Skipped",
+        "fill": "#F1F2F4",
+        "ring": "#C9CED6",
+        "ink": "#6B7280"
+      },
+      "allergy": {
+        "glyph": "!",
+        "word": "Allergy",
+        "fill": "#FFFFFF",
+        "ring": "#C2410C",
+        "ink": "#C2410C"
+      },
+      "info": {
+        "glyph": "i",
+        "word": "",
+        "fill": "#FFFFFF",
+        "ring": "#4B5563",
+        "ink": "#4B5563"
+      }
+    },
+    "replyStates": {
+      "coming": {
+        "word": "Coming",
+        "dot": "#C2410C",
+        "ring": "0"
+      },
+      "maybe": {
+        "word": "Maybe",
+        "dot": "#FBF1DC",
+        "ring": "3px solid #B7791F"
+      },
+      "notComing": {
+        "word": "Not coming",
+        "dot": "#6B7280",
+        "ring": "0"
+      },
+      "held": {
+        "word": "Held",
+        "dot": "half #6B7280 / #FFFFFF",
+        "ring": "1px solid #6B7280"
+      },
+      "noReply": {
+        "word": "No reply",
+        "dot": "transparent",
+        "ring": "1.5px solid #6B7280"
+      }
+    },
+    "seatStates": {
+      "taken": {
+        "glyph": "✓",
+        "word": "Taken",
+        "fill": "#C2410C",
+        "ring": "1px solid #C2410C",
+        "ink": "#FFFFFF"
+      },
+      "proposed": {
+        "glyph": "?",
+        "word": "Proposed",
+        "fill": "#FFFDF7",
+        "ring": "1.5px dashed #B7791F",
+        "ink": "#8A5A12"
+      },
+      "held": {
+        "glyph": "",
+        "word": "Held for a companion",
+        "fill": "half #6B7280 / #FFFFFF",
+        "ring": "1px solid #6B7280",
+        "ink": "transparent"
+      },
+      "empty": {
+        "glyph": "",
+        "word": "Empty",
+        "fill": "#FFFFFF",
+        "ring": "1px solid #C9CED6",
+        "ink": "transparent"
+      },
+      "unusable": {
+        "glyph": "✕",
+        "word": "Unusable",
+        "fill": "#F1F2F4",
+        "ring": "1px solid #C9CED6",
+        "ink": "#6B7280"
+      }
+    },
     "colorInk": "#1F140C",
     "colorDark": "#1F140C",
     "colorPage": "#FFFFFF",
@@ -553,6 +1017,122 @@ export const schemes = {
     "colorBrokenText": "#A3241A"
   },
   "berry": {
+    "borderSelected": "2px solid #B5175A",
+    "marks": {
+      "done": {
+        "glyph": "✓",
+        "word": "Done",
+        "fill": "#B5175A",
+        "ring": "#B5175A",
+        "ink": "#FFFFFF"
+      },
+      "progress": {
+        "glyph": "…",
+        "word": "In progress",
+        "fill": "#FBF1DC",
+        "ring": "#B7791F",
+        "ink": "#B7791F"
+      },
+      "broken": {
+        "glyph": "✕",
+        "word": "Broken",
+        "fill": "#FFFFFF",
+        "ring": "#C2410C",
+        "ink": "#C2410C"
+      },
+      "notStarted": {
+        "glyph": "",
+        "word": "Not started",
+        "fill": "#FFFFFF",
+        "ring": "#C9CED6",
+        "ink": "transparent"
+      },
+      "skipped": {
+        "glyph": "–",
+        "word": "Skipped",
+        "fill": "#F1F2F4",
+        "ring": "#C9CED6",
+        "ink": "#6B7280"
+      },
+      "allergy": {
+        "glyph": "!",
+        "word": "Allergy",
+        "fill": "#FFFFFF",
+        "ring": "#C2410C",
+        "ink": "#C2410C"
+      },
+      "info": {
+        "glyph": "i",
+        "word": "",
+        "fill": "#FFFFFF",
+        "ring": "#4B5563",
+        "ink": "#4B5563"
+      }
+    },
+    "replyStates": {
+      "coming": {
+        "word": "Coming",
+        "dot": "#B5175A",
+        "ring": "0"
+      },
+      "maybe": {
+        "word": "Maybe",
+        "dot": "#FBF1DC",
+        "ring": "3px solid #B7791F"
+      },
+      "notComing": {
+        "word": "Not coming",
+        "dot": "#6B7280",
+        "ring": "0"
+      },
+      "held": {
+        "word": "Held",
+        "dot": "half #6B7280 / #FFFFFF",
+        "ring": "1px solid #6B7280"
+      },
+      "noReply": {
+        "word": "No reply",
+        "dot": "transparent",
+        "ring": "1.5px solid #6B7280"
+      }
+    },
+    "seatStates": {
+      "taken": {
+        "glyph": "✓",
+        "word": "Taken",
+        "fill": "#B5175A",
+        "ring": "1px solid #B5175A",
+        "ink": "#FFFFFF"
+      },
+      "proposed": {
+        "glyph": "?",
+        "word": "Proposed",
+        "fill": "#FFFDF7",
+        "ring": "1.5px dashed #B7791F",
+        "ink": "#8A5A12"
+      },
+      "held": {
+        "glyph": "",
+        "word": "Held for a companion",
+        "fill": "half #6B7280 / #FFFFFF",
+        "ring": "1px solid #6B7280",
+        "ink": "transparent"
+      },
+      "empty": {
+        "glyph": "",
+        "word": "Empty",
+        "fill": "#FFFFFF",
+        "ring": "1px solid #C9CED6",
+        "ink": "transparent"
+      },
+      "unusable": {
+        "glyph": "✕",
+        "word": "Unusable",
+        "fill": "#F1F2F4",
+        "ring": "1px solid #C9CED6",
+        "ink": "#6B7280"
+      }
+    },
     "colorInk": "#1E0F16",
     "colorDark": "#1E0F16",
     "colorPage": "#FFFFFF",
@@ -575,6 +1155,122 @@ export const schemes = {
     "colorBrokenText": "#A3241A"
   },
   "blacktie": {
+    "borderSelected": "2px solid #141414",
+    "marks": {
+      "done": {
+        "glyph": "✓",
+        "word": "Done",
+        "fill": "#141414",
+        "ring": "#141414",
+        "ink": "#FFFFFF"
+      },
+      "progress": {
+        "glyph": "…",
+        "word": "In progress",
+        "fill": "#FBF1DC",
+        "ring": "#B7791F",
+        "ink": "#B7791F"
+      },
+      "broken": {
+        "glyph": "✕",
+        "word": "Broken",
+        "fill": "#FFFFFF",
+        "ring": "#C2410C",
+        "ink": "#C2410C"
+      },
+      "notStarted": {
+        "glyph": "",
+        "word": "Not started",
+        "fill": "#FFFFFF",
+        "ring": "#C9CED6",
+        "ink": "transparent"
+      },
+      "skipped": {
+        "glyph": "–",
+        "word": "Skipped",
+        "fill": "#F1F2F4",
+        "ring": "#C9CED6",
+        "ink": "#6B7280"
+      },
+      "allergy": {
+        "glyph": "!",
+        "word": "Allergy",
+        "fill": "#FFFFFF",
+        "ring": "#C2410C",
+        "ink": "#C2410C"
+      },
+      "info": {
+        "glyph": "i",
+        "word": "",
+        "fill": "#FFFFFF",
+        "ring": "#4B5563",
+        "ink": "#4B5563"
+      }
+    },
+    "replyStates": {
+      "coming": {
+        "word": "Coming",
+        "dot": "#141414",
+        "ring": "0"
+      },
+      "maybe": {
+        "word": "Maybe",
+        "dot": "#FBF1DC",
+        "ring": "3px solid #B7791F"
+      },
+      "notComing": {
+        "word": "Not coming",
+        "dot": "#6B7280",
+        "ring": "0"
+      },
+      "held": {
+        "word": "Held",
+        "dot": "half #6B7280 / #FFFFFF",
+        "ring": "1px solid #6B7280"
+      },
+      "noReply": {
+        "word": "No reply",
+        "dot": "transparent",
+        "ring": "1.5px solid #6B7280"
+      }
+    },
+    "seatStates": {
+      "taken": {
+        "glyph": "✓",
+        "word": "Taken",
+        "fill": "#141414",
+        "ring": "1px solid #141414",
+        "ink": "#FFFFFF"
+      },
+      "proposed": {
+        "glyph": "?",
+        "word": "Proposed",
+        "fill": "#FFFDF7",
+        "ring": "1.5px dashed #B7791F",
+        "ink": "#8A5A12"
+      },
+      "held": {
+        "glyph": "",
+        "word": "Held for a companion",
+        "fill": "half #6B7280 / #FFFFFF",
+        "ring": "1px solid #6B7280",
+        "ink": "transparent"
+      },
+      "empty": {
+        "glyph": "",
+        "word": "Empty",
+        "fill": "#FFFFFF",
+        "ring": "1px solid #C9CED6",
+        "ink": "transparent"
+      },
+      "unusable": {
+        "glyph": "✕",
+        "word": "Unusable",
+        "fill": "#F1F2F4",
+        "ring": "1px solid #C9CED6",
+        "ink": "#6B7280"
+      }
+    },
     "colorInk": "#141414",
     "colorDark": "#141414",
     "colorPage": "#FFFDF9",
@@ -597,6 +1293,122 @@ export const schemes = {
     "colorBrokenText": "#A3241A"
   },
   "sorbet": {
+    "borderSelected": "2px solid #5B2A86",
+    "marks": {
+      "done": {
+        "glyph": "✓",
+        "word": "Done",
+        "fill": "#5B2A86",
+        "ring": "#5B2A86",
+        "ink": "#FFFFFF"
+      },
+      "progress": {
+        "glyph": "…",
+        "word": "In progress",
+        "fill": "#FBF1DC",
+        "ring": "#B7791F",
+        "ink": "#B7791F"
+      },
+      "broken": {
+        "glyph": "✕",
+        "word": "Broken",
+        "fill": "#FFFFFF",
+        "ring": "#C2410C",
+        "ink": "#C2410C"
+      },
+      "notStarted": {
+        "glyph": "",
+        "word": "Not started",
+        "fill": "#FFFFFF",
+        "ring": "#C9CED6",
+        "ink": "transparent"
+      },
+      "skipped": {
+        "glyph": "–",
+        "word": "Skipped",
+        "fill": "#F1F2F4",
+        "ring": "#C9CED6",
+        "ink": "#6B7280"
+      },
+      "allergy": {
+        "glyph": "!",
+        "word": "Allergy",
+        "fill": "#FFFFFF",
+        "ring": "#C2410C",
+        "ink": "#C2410C"
+      },
+      "info": {
+        "glyph": "i",
+        "word": "",
+        "fill": "#FFFFFF",
+        "ring": "#4B5563",
+        "ink": "#4B5563"
+      }
+    },
+    "replyStates": {
+      "coming": {
+        "word": "Coming",
+        "dot": "#5B2A86",
+        "ring": "0"
+      },
+      "maybe": {
+        "word": "Maybe",
+        "dot": "#FBF1DC",
+        "ring": "3px solid #B7791F"
+      },
+      "notComing": {
+        "word": "Not coming",
+        "dot": "#6B7280",
+        "ring": "0"
+      },
+      "held": {
+        "word": "Held",
+        "dot": "half #6B7280 / #FFFFFF",
+        "ring": "1px solid #6B7280"
+      },
+      "noReply": {
+        "word": "No reply",
+        "dot": "transparent",
+        "ring": "1.5px solid #6B7280"
+      }
+    },
+    "seatStates": {
+      "taken": {
+        "glyph": "✓",
+        "word": "Taken",
+        "fill": "#5B2A86",
+        "ring": "1px solid #5B2A86",
+        "ink": "#FFFFFF"
+      },
+      "proposed": {
+        "glyph": "?",
+        "word": "Proposed",
+        "fill": "#FFFDF7",
+        "ring": "1.5px dashed #B7791F",
+        "ink": "#8A5A12"
+      },
+      "held": {
+        "glyph": "",
+        "word": "Held for a companion",
+        "fill": "half #6B7280 / #FFFFFF",
+        "ring": "1px solid #6B7280",
+        "ink": "transparent"
+      },
+      "empty": {
+        "glyph": "",
+        "word": "Empty",
+        "fill": "#FFFFFF",
+        "ring": "1px solid #C9CED6",
+        "ink": "transparent"
+      },
+      "unusable": {
+        "glyph": "✕",
+        "word": "Unusable",
+        "fill": "#F1F2F4",
+        "ring": "1px solid #C9CED6",
+        "ink": "#6B7280"
+      }
+    },
     "colorInk": "#22152E",
     "colorDark": "#22152E",
     "colorPage": "#FFFBF7",
@@ -619,6 +1431,122 @@ export const schemes = {
     "colorBrokenText": "#A3241A"
   },
   "terracotta": {
+    "borderSelected": "2px solid #A3401D",
+    "marks": {
+      "done": {
+        "glyph": "✓",
+        "word": "Done",
+        "fill": "#A3401D",
+        "ring": "#A3401D",
+        "ink": "#FFFFFF"
+      },
+      "progress": {
+        "glyph": "…",
+        "word": "In progress",
+        "fill": "#FBF1DC",
+        "ring": "#B7791F",
+        "ink": "#B7791F"
+      },
+      "broken": {
+        "glyph": "✕",
+        "word": "Broken",
+        "fill": "#FFFFFF",
+        "ring": "#C2410C",
+        "ink": "#C2410C"
+      },
+      "notStarted": {
+        "glyph": "",
+        "word": "Not started",
+        "fill": "#FFFFFF",
+        "ring": "#C9CED6",
+        "ink": "transparent"
+      },
+      "skipped": {
+        "glyph": "–",
+        "word": "Skipped",
+        "fill": "#F1F2F4",
+        "ring": "#C9CED6",
+        "ink": "#6B7280"
+      },
+      "allergy": {
+        "glyph": "!",
+        "word": "Allergy",
+        "fill": "#FFFFFF",
+        "ring": "#C2410C",
+        "ink": "#C2410C"
+      },
+      "info": {
+        "glyph": "i",
+        "word": "",
+        "fill": "#FFFFFF",
+        "ring": "#4B5563",
+        "ink": "#4B5563"
+      }
+    },
+    "replyStates": {
+      "coming": {
+        "word": "Coming",
+        "dot": "#A3401D",
+        "ring": "0"
+      },
+      "maybe": {
+        "word": "Maybe",
+        "dot": "#FBF1DC",
+        "ring": "3px solid #B7791F"
+      },
+      "notComing": {
+        "word": "Not coming",
+        "dot": "#6B7280",
+        "ring": "0"
+      },
+      "held": {
+        "word": "Held",
+        "dot": "half #6B7280 / #FFFFFF",
+        "ring": "1px solid #6B7280"
+      },
+      "noReply": {
+        "word": "No reply",
+        "dot": "transparent",
+        "ring": "1.5px solid #6B7280"
+      }
+    },
+    "seatStates": {
+      "taken": {
+        "glyph": "✓",
+        "word": "Taken",
+        "fill": "#A3401D",
+        "ring": "1px solid #A3401D",
+        "ink": "#FFFFFF"
+      },
+      "proposed": {
+        "glyph": "?",
+        "word": "Proposed",
+        "fill": "#FFFDF7",
+        "ring": "1.5px dashed #B7791F",
+        "ink": "#8A5A12"
+      },
+      "held": {
+        "glyph": "",
+        "word": "Held for a companion",
+        "fill": "half #6B7280 / #FFFFFF",
+        "ring": "1px solid #6B7280",
+        "ink": "transparent"
+      },
+      "empty": {
+        "glyph": "",
+        "word": "Empty",
+        "fill": "#FFFFFF",
+        "ring": "1px solid #C9CED6",
+        "ink": "transparent"
+      },
+      "unusable": {
+        "glyph": "✕",
+        "word": "Unusable",
+        "fill": "#F1F2F4",
+        "ring": "1px solid #C9CED6",
+        "ink": "#6B7280"
+      }
+    },
     "colorInk": "#221811",
     "colorDark": "#221811",
     "colorPage": "#FFFCF7",
@@ -644,7 +1572,11 @@ export const schemes = {
 
 export type Scheme = keyof typeof schemes;
 
-export type Tokens = { [K in keyof typeof base]: K extends `color${string}` ? string : (typeof base)[K] };
+type Widen<T> = T extends string ? string : { [K in keyof T]: Widen<T[K]> };
+
+type Laid = `color${string}` | keyof (typeof schemes)[Scheme];
+
+export type Tokens = { [K in keyof typeof base]: K extends Laid ? Widen<(typeof base)[K]> : (typeof base)[K] };
 
 /** The base with a scheme laid over it; a name that is no scheme keeps the base. */
 export function withScheme(name: string | undefined): Tokens {

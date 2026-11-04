@@ -411,9 +411,19 @@ describe("the CSS lays each scheme over the base, for the web's look switch", ()
   });
 
   for (const [name, scheme] of Object.entries(schemes)) {
-    it(`gives ${name} a block of its own colours and nothing else`, () => {
+    it(`gives ${name} its own colours, and its accent wherever the base carries the green`, () => {
       const lines = block(name)?.split('\n').slice(1, -1);
-      expect(lines, name).toEqual(Object.entries(scheme).map(([k, v]) => `  --${k}: ${v};`));
+      const accent = scheme.colorAccent;
+      expect(lines, name).toEqual([
+        `  --borderSelected: 2px solid ${accent};`,
+        `  --markDoneFill: ${accent};`,
+        `  --markDoneRing: ${accent};`,
+        `  --replyComingDot: ${accent};`,
+        `  --seatTakenFill: ${accent};`,
+        `  --seatTakenRing: 1px solid ${accent};`,
+        ...Object.entries(scheme).map(([k, v]) => `  --${k}: ${v};`),
+      ]);
+      expect(lines.join('\n'), name).not.toContain(tokens.colorAccent);
     });
   }
 });
