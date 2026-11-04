@@ -204,7 +204,7 @@ describe('a sign-in that asks for a second factor', () => {
     );
   });
 
-  it('has no back control of its own, and Reset your password comes back to it (sc-23279)', async () => {
+  it('comes back to it from Reset your password (sc-23279)', async () => {
     await atTheCodeScreen({
       'POST /api/auth/two-factor/verify': () =>
         problem('too_many_attempts', 429, { 'Retry-After': '600' }),
@@ -217,6 +217,39 @@ describe('a sign-in that asks for a second factor', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Enter your code' }));
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Enter your code' })).toBeDefined();
+  });
+
+  it('goes back to sign-in from ‹ Back with the email kept, in place of Back to sign in (sc-29068)', async () => {
+    await atTheCodeScreen({});
+
+    expect(screen.queryByRole('link', { name: 'Back to sign in' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+
+    await screen.findByRole('heading', { level: 1, name: 'Sign in' });
+    expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe('folake@ire.events');
+  });
+
+  it('keeps a wrong code selected, so typing replaces it (sc-29068)', async () => {
+    await atTheCodeScreen({
+      'POST /api/auth/two-factor/verify': () => problem('two_factor_code_invalid', 422),
+    });
+
+    const field = screen.getByRole('textbox') as HTMLInputElement;
+    field.focus();
+    enter('000000');
+
+    await screen.findByText('That code did not work. Enter the code your app shows now.');
+    expect(document.activeElement).toBe(field);
+    expect([field.selectionStart, field.selectionEnd]).toEqual([0, 6]);
+  });
+
+  it('shapes a recovery code as it is typed, the dash put in (sc-29068)', async () => {
+    await atTheCodeScreen({});
+
+    fireEvent.click(screen.getByRole('button', { name: 'Use a recovery code instead' }));
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'ABCDEFGH' } });
+
+    expect((screen.getByRole('textbox') as HTMLInputElement).value).toBe('abcd-efgh');
   });
 
   it('goes back to sign-in when the challenge has run out', async () => {
