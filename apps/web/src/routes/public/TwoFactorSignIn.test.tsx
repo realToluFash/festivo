@@ -322,6 +322,31 @@ describe('a sign-in that asks for a second factor', () => {
     },
   );
 
+  it('says the sign-in timed out when the right code comes after a pause lifts (sc-29956)', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      let paused = true;
+      await atTheCodeScreen({
+        'POST /api/auth/two-factor/verify': () =>
+          paused
+            ? problem('too_many_attempts', 429, { 'Retry-After': '600' })
+            : problem('two_factor_challenge_invalid', 401),
+      });
+
+      enter('000000');
+      await screen.findByRole('button', { name: /^Try again at \d\d:\d\d$/ });
+      paused = false;
+      await act(() => vi.advanceTimersByTimeAsync(11 * 60_000));
+      enter('123456');
+
+      expect(await screen.findByText('That sign-in timed out')).toBeDefined();
+      expect(screen.getByRole('heading', { level: 1, name: 'Sign in' })).toBeDefined();
+      expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe('folake@ire.events');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('is not reachable without a challenge', async () => {
     render(
       <RouterProvider router={createMemoryRouter(routes, { initialEntries: ['/sign-in/code'] })} />,
