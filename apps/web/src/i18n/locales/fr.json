@@ -2231,6 +2231,6 @@
   "onboarding": {
     "step": "Étape {{step, number}} sur 2",
     "back": "Retour",
-    "noCode": "Pas de code ?"
+    "noCode": "Vous n’avez pas reçu le code ?"
   }
 }
