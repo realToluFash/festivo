@@ -12,20 +12,14 @@ import { useTranslation } from 'react-i18next';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router';
 
 import { api } from '../../api.ts';
-import { type CodeStatus, codeRefusal, openingStatus } from '../../codeScreen.ts';
+import { type CodeStatus, codeRefusal, openingStatus, selectCode } from '../../codeScreen.ts';
 import { AuthPage } from '../../components/AuthPage.tsx';
 import {
   BackToAccount,
   BackToAccountButton,
   RemoveInAccount,
 } from '../../components/BackToAccount.tsx';
-import {
-  ResendLine,
-  SignedInAs,
-  StepLine,
-  Tick,
-  selectCode,
-} from '../../components/Onboarding.tsx';
+import { ResendLine, SignedInAs, StepLine, Tick } from '../../components/Onboarding.tsx';
 import { PendingPage } from '../../components/Pending.tsx';
 import { Unreachable } from '../../components/Unreachable.tsx';
 import { StillSignedIn } from '../../components/StillSignedIn.tsx';

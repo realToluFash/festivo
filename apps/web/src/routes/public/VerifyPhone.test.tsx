@@ -416,13 +416,13 @@ describe('verifying a number added from Settings > Account', () => {
     at('/verify-phone?from=onboarding');
     await screen.findByLabelText('Code from the text');
 
-    expect(screen.getByRole('list', { name: 'Before you start' })).toBeDefined();
+    expect(screen.getByText('Step 2 of 2')).toBeDefined();
     expect(screen.queryByRole('link', { name: 'Back to Account' })).toBeNull();
     fireEvent.change(screen.getByLabelText('Code from the text'), { target: { value: '184231' } });
     fireEvent.click(screen.getByRole('button', { name: 'Verify number' }));
 
     expect(await screen.findByRole('button', { name: 'Continue to Soirely' })).toBeDefined();
-    expect(screen.getByRole('list', { name: 'Before you start' })).toBeDefined();
+    expect(screen.getByText('Step 2 of 2')).toBeDefined();
   });
 });
 
@@ -591,7 +591,7 @@ describe('where focus goes once a code is refused or sent again (sc-11369)', () 
     await screen.findByText('Too many wrong tries');
     fireEvent.click(screen.getByRole('button', { name: 'Send a new code' }));
 
-    const notice = (await screen.findByText('That did not work')).closest('.notice-body');
+    const notice = (await screen.findByText('That did not work')).closest('.auth-notice');
     await waitFor(() => expect(document.activeElement).toBe(notice));
     expect(screen.queryByRole('alert')).toBeNull();
   });

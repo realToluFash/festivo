@@ -456,7 +456,6 @@
   },
   "register": {
     "title": "Create your account",
-    "back": "Back to sign in",
     "intro": "Next, we email you a code to check the address is yours.",
     "name": "Full name",
     "email": "Email",
@@ -561,9 +560,6 @@
     "everywhereFailedBody": "This is about reaching the API rather than about your account. Try again."
   },
   "verifyEmail": {
-    "step1": "Verify your email",
-    "step1Done": "Email verified · done",
-    "step2": "Your details",
     "title": "Check your email",
     "intro": "We sent a code to {{address}}. Enter it here to show the address is yours.",
     "codeLabel": "Code from the email",
@@ -578,19 +574,14 @@
     "exhaustedTitle": "Too many wrong tries",
     "exhaustedBody": "That code no longer works. Send a new one to carry on.",
     "wrongAddress": "Not your address?",
-    "wrongAddressBody": "and create your account again with the right one.",
-    "registerAgain": "Register again with the right one",
-    "signOut": "Sign out",
     "doneTitle": "Email verified",
     "doneBody": "{{address}} is confirmed. Next, a few details so your team knows who is who.",
     "doneBodyAlternative": "{{address}} is verified. It stays an alternative address until you make it primary in Account.",
     "continue": "Continue",
     "failedTitle": "That did not work",
     "failedBody": "Something went wrong on the way. Try again in a moment.",
-    "stepsLabel": "Before you start",
     "codeBlank": "Enter the 6-digit code from the email.",
-    "codeShort": "The code is 6 digits.",
-    "step1Google": "Email confirmed by {{provider}} · done"
+    "codeShort": "The code is 6 digits."
   },
   "verifyPhone": {
     "title": "Check your messages",
@@ -749,7 +740,6 @@
     "saving": "Saving…",
     "failedTitle": "Saving did not work",
     "failedBody": "Something went wrong on the way. Try again in a moment.",
-    "signedInAs": "Signed in as {{email}}.",
     "signOut": "Sign out",
     "optional": "Optional",
     "mobileHelp": "How you are reached on the night if something goes wrong. If you add one, we text it a code to check it.",

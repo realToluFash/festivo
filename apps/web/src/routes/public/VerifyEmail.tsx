@@ -11,7 +11,7 @@ import { useTranslation } from 'react-i18next';
 import { Navigate, useLocation, useNavigate, useSearchParams } from 'react-router';
 
 import { api } from '../../api.ts';
-import { type CodeStatus, codeRefusal, openingStatus } from '../../codeScreen.ts';
+import { type CodeStatus, codeRefusal, openingStatus, selectCode } from '../../codeScreen.ts';
 import { AuthPage } from '../../components/AuthPage.tsx';
 import {
   BackToAccount,
@@ -24,7 +24,6 @@ import {
   SignedInAs,
   StepLine,
   Tick,
-  selectCode,
 } from '../../components/Onboarding.tsx';
 import { Pending, PendingPage } from '../../components/Pending.tsx';
 import { StillSignedIn } from '../../components/StillSignedIn.tsx';

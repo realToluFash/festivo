@@ -466,7 +466,6 @@
   },
   "register": {
     "title": "Crie a sua conta",
-    "back": "Voltar ao início de sessão",
     "intro": "A seguir, enviamos-lhe um código por e-mail para confirmar que o endereço é seu.",
     "name": "Nome completo",
     "email": "Endereço de e-mail",
@@ -580,9 +579,6 @@
     "everywhereFailedBody": "Isto é sobre o acesso à API e não sobre a sua conta. Tente novamente."
   },
   "verifyEmail": {
-    "step1": "Verifique o seu e-mail",
-    "step1Done": "E-mail verificado · concluído",
-    "step2": "Os seus dados",
     "title": "Veja o seu e-mail",
     "intro": "Enviámos um código para {{address}}. Introduza-o aqui para mostrar que o endereço é seu.",
     "codeLabel": "Código do e-mail",
@@ -597,19 +593,14 @@
     "exhaustedTitle": "Demasiadas tentativas erradas",
     "exhaustedBody": "Esse código já não funciona. Envie um novo para continuar.",
     "wrongAddress": "Não é o seu endereço?",
-    "wrongAddressBody": "e criar novamente a sua conta com o endereço correto.",
-    "registerAgain": "Registe-se novamente com o endereço correto",
-    "signOut": "Encerrar sessão",
     "doneTitle": "E-mail verificado",
     "doneBody": "{{address}} está confirmado. A seguir, alguns dados para que a sua equipa saiba quem é quem.",
     "doneBodyAlternative": "{{address}} está verificado. Continua a ser um endereço alternativo até o tornar principal em Conta.",
     "continue": "Continuar",
     "failedTitle": "Não funcionou",
     "failedBody": "Algo falhou pelo caminho. Tente novamente dentro de um momento.",
-    "stepsLabel": "Antes de começar",
     "codeBlank": "Introduza o código de 6 dígitos do e-mail.",
-    "codeShort": "O código tem 6 dígitos.",
-    "step1Google": "E-mail confirmado pela conta {{provider}} · concluído"
+    "codeShort": "O código tem 6 dígitos."
   },
   "verifyPhone": {
     "title": "Veja as suas mensagens",
@@ -771,7 +762,6 @@
     "saving": "A guardar…",
     "failedTitle": "Não foi possível guardar",
     "failedBody": "Algo falhou pelo caminho. Tente novamente dentro de um momento.",
-    "signedInAs": "Sessão iniciada como {{email}}.",
     "signOut": "Encerrar sessão",
     "optional": "Opcional",
     "mobileHelp": "É assim que o contactamos na noite do evento se algo correr mal. Se indicar um, enviamos-lhe um código por SMS para o confirmar.",

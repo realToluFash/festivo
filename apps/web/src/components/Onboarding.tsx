@@ -67,13 +67,6 @@ function Chevron() {
   );
 }
 
-/** A wrong code stays where it was typed, selected, so typing replaces it. */
-export function selectCode(): void {
-  const field = document.getElementById('code');
-
-  if (field instanceof HTMLInputElement && document.activeElement === field) field.select();
-}
-
 /** "No code? Send a new code in 0:41", the countdown's button a link once it ends; the note under it. */
 export function ResendLine({
   resending,

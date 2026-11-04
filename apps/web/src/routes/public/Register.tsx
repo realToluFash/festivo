@@ -232,6 +232,10 @@ function RuleLine({ met }: { met: boolean }) {
       <p className={met ? 'auth-rule-line auth-rule-met' : 'auth-rule-line'}>
         {met ? <Tick /> : <span className="auth-ring" aria-hidden="true" />}
         {t('register.ruleLength', { count: PASSWORD_MINIMUM_LENGTH })}
+        {/* The mark's shape says it to the eye; the word says it to a screen reader. */}
+        <span className="visually-hidden">
+          {met ? t('register.ruleMet') : t('register.ruleNotYet')}
+        </span>
       </p>
       <p className="auth-rule-note">{t('register.ruleNote')}</p>
     </div>
