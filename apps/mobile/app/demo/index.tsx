@@ -149,12 +149,37 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
       },
       {
         title: 'Sign-in rules',
-        what: 'What changed, the rules in force',
+        what: 'Julien meets every rule',
         href: '/demo/settings/sign-in-rules',
       },
       {
+        title: 'Sign-in rules · two-factor needs you',
+        what: 'Julien without two-factor',
+        href: '/demo/settings/sign-in-rules?state=twoFactorDue',
+      },
+      {
+        title: 'Sign-in rules · doesn’t apply',
+        what: 'Priya is not a manager',
+        href: '/demo/settings/sign-in-rules?state=notYours',
+      },
+      {
+        title: 'Sign-in rules · two-factor for everyone',
+        what: 'A deadline, and a new change',
+        href: '/demo/settings/sign-in-rules?state=everyone',
+      },
+      {
+        title: 'Sign-in rules · Google or Apple only',
+        what: 'Ana signs in with a password',
+        href: '/demo/settings/sign-in-rules?state=googleOnly',
+      },
+      {
+        title: 'Sign-in rules · a new change',
+        what: 'One change not seen yet',
+        href: '/demo/settings/sign-in-rules?state=newChange',
+      },
+      {
         title: 'Sign-in rules · no changes yet',
-        what: 'Only the rules in force',
+        what: 'The rules every organisation starts with',
         href: '/demo/settings/sign-in-rules?state=noChanges',
       },
       {
