@@ -133,24 +133,28 @@ export function FocusedScreen({
   open,
   title,
   verb,
+  back,
   onCancel,
   cancelTestID,
   opener,
   ask,
   toast,
   scrollRef,
+  fills = false,
   children,
   testID,
 }: {
   open: boolean;
   title: string;
-  verb: FocusVerb;
+  verb: FocusVerb | null;
+  back?: string | undefined;
   onCancel: () => void;
   cancelTestID?: string;
   opener: Opener;
   ask?: AskProps | null;
   toast?: { words: string; onClose: () => void } | null;
   scrollRef?: Ref<ScrollViewInstance>;
+  fills?: boolean;
   children: ReactNode;
   testID?: string;
 }) {
@@ -158,6 +162,7 @@ export function FocusedScreen({
   const insets = useSafeAreaInsets();
   const phone = layout === 'phone';
   const asking = ask != null;
+  const bottom = phone ? insets.bottom : 0;
 
   return (
     <Window open={open} onClose={asking ? ask.onKeep : onCancel} opener={opener} slides={phone}>
@@ -177,19 +182,29 @@ export function FocusedScreen({
             importantForAccessibility={asking ? 'no-hide-descendants' : 'auto'}
             testID={testID}
           >
-            <FocusNav title={title} verb={verb} onCancel={onCancel} cancelTestID={cancelTestID} />
-            <ScrollView
-              ref={scrollRef}
-              style={phone ? styles.fill : styles.sheetBody}
-              contentContainerStyle={[
-                styles.body,
-                { paddingBottom: (phone ? insets.bottom : 0) + tokens.space5xl },
-              ]}
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}
-            >
-              {children}
-            </ScrollView>
+            <FocusNav
+              key={`${back ?? ''}:${title}`}
+              title={title}
+              verb={verb}
+              back={back}
+              onCancel={onCancel}
+              cancelTestID={cancelTestID}
+            />
+            {fills ? (
+              <View style={[phone ? styles.fill : styles.sheetFill, { paddingBottom: bottom }]}>
+                {children}
+              </View>
+            ) : (
+              <ScrollView
+                ref={scrollRef}
+                style={phone ? styles.fill : styles.sheetBody}
+                contentContainerStyle={[styles.body, { paddingBottom: bottom + tokens.space5xl }]}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+              >
+                {children}
+              </ScrollView>
+            )}
           </View>
           {toast != null && (
             <View style={[styles.toast, { bottom: Math.max(insets.bottom, tokens.spaceLg) }]}>
@@ -203,18 +218,23 @@ export function FocusedScreen({
   );
 }
 
+/** In a list opened from the screen, ‹ and where it goes back to in Cancel's place; "Back" when the title needs the room, as iOS does. */
 function FocusNav({
   title,
   verb,
+  back,
   onCancel,
   cancelTestID,
 }: {
   title: string;
-  verb: FocusVerb;
+  verb: FocusVerb | null;
+  back: string | undefined;
   onCancel: () => void;
   cancelTestID?: string | undefined;
 }) {
   const [sides, setSides] = useState({ cancel: 0, verb: 0 });
+  const [short, setShort] = useState(false);
+  const fits = back == null || short;
 
   return (
     <View style={styles.nav}>
@@ -224,13 +244,18 @@ function FocusNav({
           const width = event.nativeEvent.layout.width;
           setSides((now) => ({ ...now, cancel: width }));
         }}
-        style={({ pressed }) => [styles.navButton, pressed && styles.pressed]}
+        style={({ pressed }) => [
+          styles.navButton,
+          back != null && styles.navBack,
+          pressed && styles.pressed,
+        ]}
         accessibilityRole="button"
-        accessibilityLabel="Cancel"
+        accessibilityLabel={back ?? 'Cancel'}
         testID={cancelTestID}
       >
+        {back != null && <Glyph name="back" size={20} ink={tokens.colorAccentText} weight={2.4} />}
         <Text size={17} weight="medium" accessible={false} style={styles.accent}>
-          Cancel
+          {back == null ? 'Cancel' : short ? 'Back' : back}
         </Text>
       </Pressable>
       <View
@@ -240,39 +265,53 @@ function FocusNav({
         ]}
         pointerEvents="none"
       >
-        <Text size={17} weight="bold" numberOfLines={1} accessibilityRole="header">
+        <Text
+          size={17}
+          weight="bold"
+          numberOfLines={fits ? 1 : undefined}
+          onTextLayout={
+            fits
+              ? undefined
+              : (event) => {
+                  if (event.nativeEvent.lines.length > 1) setShort(true);
+                }
+          }
+          accessibilityRole="header"
+        >
           {title}
         </Text>
       </View>
       <View style={styles.grow} />
-      <Pressable
-        onPress={verb.on ? verb.onPress : undefined}
-        disabled={!verb.on}
-        onLayout={(event) => {
-          const width = event.nativeEvent.layout.width;
-          setSides((now) => ({ ...now, verb: width }));
-        }}
-        style={({ pressed }) => [styles.navButton, pressed && styles.pressed]}
-        accessibilityRole="button"
-        accessibilityLabel={verb.label}
-        accessibilityState={{ disabled: !verb.on }}
-        testID={verb.testID}
-      >
-        <Text
-          size={17}
-          weight="semibold"
-          accessible={false}
-          style={{
-            color: !verb.on
-              ? tokens.colorInkTertiary
-              : verb.removes === true
-                ? tokens.colorBroken
-                : tokens.colorAccentText,
+      {verb != null && (
+        <Pressable
+          onPress={verb.on ? verb.onPress : undefined}
+          disabled={!verb.on}
+          onLayout={(event) => {
+            const width = event.nativeEvent.layout.width;
+            setSides((now) => ({ ...now, verb: width }));
           }}
+          style={({ pressed }) => [styles.navButton, pressed && styles.pressed]}
+          accessibilityRole="button"
+          accessibilityLabel={verb.label}
+          accessibilityState={{ disabled: !verb.on }}
+          testID={verb.testID}
         >
-          {verb.label}
-        </Text>
-      </Pressable>
+          <Text
+            size={17}
+            weight="semibold"
+            accessible={false}
+            style={{
+              color: !verb.on
+                ? tokens.colorInkTertiary
+                : verb.removes === true
+                  ? tokens.colorBroken
+                  : tokens.colorAccentText,
+            }}
+          >
+            {verb.label}
+          </Text>
+        </Pressable>
+      )}
     </View>
   );
 }
@@ -442,6 +481,7 @@ const styles = StyleSheet.create({
     elevation: tokens.elevationNative.popover.android.elevation,
   },
   sheetBody: { flexGrow: 0 },
+  sheetFill: { flexShrink: 1, minHeight: 0 },
   body: { paddingTop: tokens.spaceXl, paddingHorizontal: tokens.spaceXxl, gap: tokens.spaceLg },
   nav: {
     height: 52,
@@ -457,6 +497,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: tokens.spaceLg,
   },
+  navBack: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceHair, paddingLeft: 6 },
   navTitle: {
     position: 'absolute',
     top: 0,

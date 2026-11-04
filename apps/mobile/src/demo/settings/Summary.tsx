@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useReadOut } from '../../components/ReadOut.tsx';
 import { Text } from '../../components/Text.tsx';
+import { Toast } from '../../components/Toast.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { CARD_PIECES, Confetti, Cover } from '../Cover.tsx';
 import { Glyph } from '../Glyph.tsx';
@@ -55,12 +56,14 @@ export function SummaryPage({
   back,
   column,
   scrollRef,
+  toast,
   children,
 }: {
   title?: string;
   back?: { label: string; onPress: () => void } | null;
   column?: ReactNode;
   scrollRef?: Ref<ScrollViewInstance>;
+  toast?: PageToastProps | null | undefined;
   children: ReactNode;
 }) {
   const shell = useShell();
@@ -80,6 +83,7 @@ export function SummaryPage({
           {title != null && <PageTitle text={title} size={28} />}
           {children}
         </ScrollView>
+        {toast != null && <PageToast {...toast} bottom={tokens.spaceLg} />}
       </Landscape>
     );
 
@@ -123,6 +127,27 @@ export function SummaryPage({
           <PhoneTabBar bottom={foot} onTab={shell.onTab} at="Settings" />
         </>
       )}
+      {toast != null && (
+        <PageToast
+          {...toast}
+          bottom={
+            phone ? foot + PHONE_TAB_BAR + tokens.spaceLg : Math.max(insets.bottom, tokens.spaceLg)
+          }
+        />
+      )}
+    </View>
+  );
+}
+
+export interface PageToastProps {
+  words: string;
+  onClose: () => void;
+}
+
+function PageToast({ words, onClose, bottom }: PageToastProps & { bottom: number }) {
+  return (
+    <View style={[styles.toast, { bottom }]}>
+      <Toast key={words} words={words} onClose={onClose} />
     </View>
   );
 }
@@ -350,20 +375,31 @@ export function LoadingBlock({ words, height = 200 }: { words: string; height?: 
   return (
     <View style={styles.blocks} accessible accessibilityLabel={words}>
       <View style={[styles.sunkCard, { height }]} />
-      <View>
-        {ROW_BARS.map(([first, second], index) => (
-          <View key={index}>
-            {index > 0 && <View style={styles.loadingRule} />}
-            <View style={styles.loadingRow}>
-              <View style={styles.disc} />
-              <View style={styles.bars}>
-                <View style={[styles.barThick, { width: first }]} />
-                <View style={[styles.barThin, { width: second }]} />
-              </View>
+      <RowShapes />
+    </View>
+  );
+}
+
+/** Rows' shapes where a section's rows go while they load; with `words`, a screen reader stops on them and hears those. */
+export function RowShapes({ count = ROW_BARS.length, words }: { count?: number; words?: string }) {
+  return (
+    <View
+      accessible={words != null}
+      accessibilityLabel={words}
+      accessibilityState={words == null ? undefined : { busy: true }}
+    >
+      {ROW_BARS.slice(0, count).map(([first, second], index) => (
+        <View key={index}>
+          {index > 0 && <View style={styles.loadingRule} />}
+          <View style={styles.loadingRow}>
+            <View style={styles.disc} />
+            <View style={styles.bars}>
+              <View style={[styles.barThick, { width: first }]} />
+              <View style={[styles.barThin, { width: second }]} />
             </View>
           </View>
-        ))}
-      </View>
+        </View>
+      ))}
     </View>
   );
 }
@@ -452,4 +488,5 @@ const styles = StyleSheet.create({
   barThick: { height: 14, borderRadius: 7, backgroundColor: tokens.colorNeutralFill },
   barThin: { height: 12, borderRadius: 6, backgroundColor: tokens.colorNeutralFill },
   failed: { gap: tokens.spaceSm, paddingTop: tokens.spaceXs },
+  toast: { position: 'absolute', left: tokens.spaceXl, right: tokens.spaceXl },
 });
