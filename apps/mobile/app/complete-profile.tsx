@@ -131,15 +131,7 @@ export default function CompleteProfile() {
   }
 
   return (
-    <Details
-      account={account}
-      nav={nav}
-      nameInput={nameInput}
-      onAsked={(asked) => {
-        setAccount(asked);
-        setTapped({});
-      }}
-    >
+    <Details account={account} nav={nav} nameInput={nameInput}>
       <LinkedNotice onDismissed={() => setLinkedClosed(stepClosed('afterLinked'))} />
       {provider != null && (
         <Notice
@@ -353,13 +345,11 @@ function Details({
   account,
   nav,
   nameInput,
-  onAsked,
   children,
 }: {
   account: Account;
   nav: ReactNode;
   nameInput: RefObject<TextInputInstance | null>;
-  onAsked: (account: Account) => void;
   /** Notices above the fields. */
   children: ReactNode;
 }) {
@@ -479,10 +469,10 @@ function Details({
       });
 
       if (firstJoined != null) await rememberOrganisation(firstJoined);
-      // The number is saved on a step of its own, which Skip passes.
-      if (saved.account.waitingFor != null) onAsked(saved.account);
-      else if (awaiting(saved.account) == null) router.replace('/phone?from=onboarding');
-      else router.replace(landingFor(awaiting(saved.account)));
+      // The number is saved on a step of its own, which Skip passes; a request to join waits after it.
+      if (saved.account.waitingFor != null || awaiting(saved.account) == null) {
+        router.replace('/phone?from=onboarding');
+      } else router.replace(landingFor(awaiting(saved.account)));
     } catch (error) {
       setSaving(false);
 
