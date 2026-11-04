@@ -1,5 +1,21 @@
+import { greetingAt } from '@soirely/domain';
+import type { TFunction } from 'i18next';
+
+import {
+  addDays,
+  daysFrom,
+  type EventCard,
+  type MeshKey,
+  type Moment,
+  type MomentName,
+  type Need,
+  type Now,
+  type ShownEvent,
+  type StripBar,
+  type StripDay,
+} from '../kit/today.ts';
+
 export type EventKey = 'wed' | 'ireti' | 'party' | 'draft';
-export type MomentName = 'plan' | 'planNow' | 'day' | 'dayNow' | 'quiet' | 'first';
 
 export const MOMENTS: readonly MomentName[] = [
   'plan',
@@ -16,6 +32,7 @@ interface SampleEvent {
   last: string;
   place: string;
   draft: boolean;
+  mesh: MeshKey;
 }
 
 export const EVENTS: Record<EventKey, SampleEvent> = {
@@ -25,6 +42,7 @@ export const EVENTS: Record<EventKey, SampleEvent> = {
     last: '2026-11-08',
     place: 'The Landmark, London',
     draft: false,
+    mesh: 'rose',
   },
   ireti: {
     name: 'Ireti at 40',
@@ -32,6 +50,7 @@ export const EVENTS: Record<EventKey, SampleEvent> = {
     last: '2026-11-15',
     place: 'Hackney, London',
     draft: false,
+    mesh: 'teal',
   },
   party: {
     name: 'Ire Events end-of-year party',
@@ -39,6 +58,7 @@ export const EVENTS: Record<EventKey, SampleEvent> = {
     last: '2026-11-28',
     place: 'Clerkenwell, London',
     draft: false,
+    mesh: 'accent',
   },
   draft: {
     name: 'Bisi & Kola’s engagement',
@@ -46,8 +66,13 @@ export const EVENTS: Record<EventKey, SampleEvent> = {
     last: '2027-01-09',
     place: '',
     draft: true,
+    mesh: 'amber',
   },
 };
+
+export function sample(key: EventKey): ShownEvent {
+  return { id: key, name: EVENTS[key].name, mesh: EVENTS[key].mesh, photo: null };
+}
 
 /** Dates as `2026-11-03` and times as `18:00`, written the reader's way. */
 export interface Say {
@@ -85,14 +110,6 @@ export function sayIn(locale: string, thisYear = 2026): Say {
   };
 }
 
-export function daysFrom(from: string, to: string): number {
-  return Math.round((Date.parse(`${to}T00:00Z`) - Date.parse(`${from}T00:00Z`)) / 86_400_000);
-}
-
-export function addDays(date: string, days: number): string {
-  return new Date(Date.parse(`${date}T00:00Z`) + days * 86_400_000).toISOString().slice(0, 10);
-}
-
 export function howFar(today: string, date: string): string {
   const days = daysFrom(today, date);
 
@@ -107,99 +124,6 @@ export function dueWords(today: string, due: string, say: Say): { words: string;
   if (days === 1) return { words: 'Due tomorrow', late: false };
 
   return { words: `Due ${say.day(due)}`, late: false };
-}
-
-export interface Need {
-  event: EventKey;
-  title: string;
-  due: string;
-  late: boolean;
-  action: string;
-}
-
-export interface AgendaItem {
-  time: string;
-  title: string;
-  event: EventKey;
-  note: string;
-}
-
-export interface AgendaDay {
-  date: string;
-  day: string;
-  when: string;
-  today: boolean;
-  items: AgendaItem[];
-}
-
-export interface StripDay {
-  weekday: string;
-  number: string;
-  today: boolean;
-  dots: EventKey[];
-}
-
-export interface StripBar {
-  event: EventKey;
-  start: number;
-  span: number;
-  label: string;
-  /** Started before the week shown, so it runs in from the left edge. */
-  openLeft: boolean;
-}
-
-export interface EventCard {
-  event: EventKey;
-  name: string;
-  dates: string;
-  count: string;
-  live: boolean;
-  draft: boolean;
-  stage: string | null;
-  ready: { words: string; percent: number } | null;
-}
-
-export interface RailStop {
-  time: string;
-  name: string;
-  state: 'done' | 'now' | 'next' | 'later';
-}
-
-export interface Now {
-  event: EventKey;
-  name: string;
-  live: string;
-  happening: string;
-  until: string;
-  behind: string;
-  next: { time: string; title: string };
-  arrived: number;
-  expected: number;
-  rail: RailStop[];
-  /** Where the moment sits along the rail, from 0 at its first stop to 1 at its last. */
-  at: number;
-  ends: string;
-}
-
-export interface Moment {
-  name: MomentName;
-  kind: 'plan' | 'day' | 'quiet' | 'first';
-  /** False draws only what the product can show today, from the events' own dates. */
-  full: boolean;
-  time: string;
-  eyebrow: string;
-  hello: string;
-  lead: string | null;
-  sub: string;
-  /** Null when the product has nothing to say yet; empty when nothing needs you. */
-  needs: Need[] | null;
-  days: StripDay[];
-  bars: StripBar[];
-  agenda: AgendaDay[];
-  nothing: string;
-  nextUp: { event: EventKey; name: string; when: string } | null;
-  events: EventCard[];
-  now: Now | null;
 }
 
 type Item = readonly [time: string, title: string, event: EventKey, note: string];
@@ -285,12 +209,6 @@ export function railAt(stops: readonly string[], time: string): number {
   return (after - 1 + share) / (stops.length - 1);
 }
 
-function greeting(time: string): string {
-  const hour = Number(time.slice(0, 2));
-
-  return hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
-}
-
 function eventDates(event: SampleEvent, say: Say): string {
   return event.first === event.last
     ? say.day(event.first)
@@ -311,7 +229,7 @@ function card(key: EventKey, today: string, moment: MomentName, say: Say): Event
   const ready = READY[moment]?.[key];
 
   return {
-    event: key,
+    event: sample(key),
     name: event.name,
     dates: eventDates(event, say),
     count,
@@ -357,7 +275,7 @@ function week(
       const openLeft = event.first < today;
 
       return {
-        event: key,
+        event: sample(key),
         start,
         span: end - start + 1,
         label: openLeft ? `day ${1 - daysFrom(today, event.first)} of ${length}` : `${length} days`,
@@ -365,13 +283,13 @@ function week(
       };
     });
   const covered = (key: EventKey, index: number) =>
-    bars.some((bar) => bar.event === key && index >= bar.start && index < bar.start + bar.span);
+    bars.some((bar) => bar.event.id === key && index >= bar.start && index < bar.start + bar.span);
   const days = Array.from({ length: 7 }, (_, index) => {
     const date = addDays(today, index);
     const items = agenda.find(([day]) => day === date)?.[1] ?? [];
-    const dots = [...new Set(items.map(([, , event]) => event))].filter(
-      (event) => !covered(event, index),
-    );
+    const dots = [...new Set(items.map(([, , event]) => event))]
+      .filter((event) => !covered(event, index))
+      .map(sample);
 
     return { weekday: say.weekday(date), number: say.number(date), today: index === 0, dots };
   });
@@ -392,7 +310,7 @@ function needs(name: MomentName, today: string, say: Say): Need[] | null {
   const row = (event: EventKey, title: string, due: string, action: string): Need => {
     const { words, late } = dueWords(today, due, say);
 
-    return { event, title, due: words, late, action };
+    return { event: sample(event), title, due: words, late, action };
   };
 
   if (name === 'plan')
@@ -401,7 +319,7 @@ function needs(name: MomentName, today: string, say: Say): Need[] | null {
       row('wed', 'Final numbers to the caterer', '2026-11-04', 'Review'),
       row('wed', 'Seat the last 12 guests', '2026-11-05', 'Seat'),
       {
-        event: 'ireti',
+        event: sample('ireti'),
         title: 'Chase 21 replies',
         due: `Replies close ${say.day('2026-11-06')}`,
         late: false,
@@ -411,7 +329,7 @@ function needs(name: MomentName, today: string, say: Say): Need[] | null {
   if (name === 'day')
     return [
       {
-        event: 'wed',
+        event: sample('wed'),
         title: 'Choose meals for 3 guests',
         due: `Before dinner at ${say.clock('18:00')}`,
         late: false,
@@ -433,7 +351,7 @@ function now(today: string, time: string, say: Say): Now {
   const tomorrow = addDays(today, 1);
 
   return {
-    event: 'wed',
+    event: sample('wed'),
     name: event.name,
     live: `Day ${daysFrom(event.first, today) + 1} of ${daysFrom(event.first, event.last) + 1} · ${event.place}`,
     happening: 'Drinks reception',
@@ -455,7 +373,7 @@ function now(today: string, time: string, say: Say): Now {
   };
 }
 
-export function momentOf(name: MomentName, say: Say): Moment {
+export function momentOf(name: MomentName, say: Say, t: TFunction): Moment {
   const { date: today, time } = TODAY[name];
   const kind = name === 'planNow' ? 'plan' : name === 'dayNow' ? 'day' : (name as Moment['kind']);
   const full = name !== 'planNow' && name !== 'dayNow';
@@ -471,7 +389,10 @@ export function momentOf(name: MomentName, say: Say): Moment {
     full,
     time,
     eyebrow: say.long(today),
-    hello: name === 'first' ? 'Welcome, Folake' : `${greeting(time)}, Folake`,
+    hello: t(
+      `todayScreen.helloName.${name === 'first' ? 'welcome' : greetingAt(Number(time.slice(0, 2)))}`,
+      { name: 'Folake' },
+    ),
     lead:
       waiting != null && waiting.length > 0
         ? `${waiting.length} ${waiting.length === 1 ? 'thing needs' : 'things need'} you.`
@@ -493,7 +414,7 @@ export function momentOf(name: MomentName, say: Say): Moment {
       items: items.map(([at, title, event, note]) => ({
         time: at === '' ? 'All day' : say.clock(at),
         title,
-        event,
+        event: sample(event),
         note,
       })),
     })),
@@ -501,7 +422,7 @@ export function momentOf(name: MomentName, say: Say): Moment {
     nextUp:
       name === 'quiet'
         ? {
-            event: 'party',
+            event: sample('party'),
             name: party.name,
             when: `${say.day(party.first)} · ${howFar(today, party.first)}`,
           }

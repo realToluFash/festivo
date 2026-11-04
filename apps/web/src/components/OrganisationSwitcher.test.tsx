@@ -314,6 +314,10 @@ describe('a 100-character name (sc-486)', () => {
     expect(cssRule('.org-naming')).toMatch(/min-width: 0;/u);
   });
 
+  it("keeps the name and its line free of a paragraph's margins (sc-29066)", () => {
+    expect(cssRule('.org-name,\n.org-role')).toMatch(/margin: 0;/u);
+  });
+
   it('never lets the frame grow past the viewport, nor the open list', () => {
     expect(cssRule('.shell')).toMatch(
       /grid-template-columns: var\(--sizeRail\) minmax\(0, 1fr\);/u,

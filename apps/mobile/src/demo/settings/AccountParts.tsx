@@ -4,7 +4,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
-import { Glyph, type GlyphName } from '../Glyph.tsx';
+import { Glyph, type GlyphName } from '../../components/Glyph.tsx';
 import { Pill, type PillKind, TYPE } from './parts.tsx';
 import type { SettingsLayout } from './sample.ts';
 

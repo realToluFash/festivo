@@ -12,18 +12,32 @@ const PLACES: readonly (readonly [string, GlyphName])[] = [
   ['Calendar', 'calendar'],
 ];
 
-/** The iPad's sidebar at a desk: the places, your events by colour, and the person at its foot. */
+const FOLAKE: SidebarPerson = { name: SAMPLE.name, initials: 'FA', role: 'Owner' };
+
+export interface SidebarPerson {
+  name: string;
+  initials: string;
+  role: string;
+}
+
+/** The iPad's sidebar at a desk: the places, your events by colour, and the person at its foot. Settings selects Settings and names who is looking. */
 export function TodaySidebar({
   events,
   tell,
   onToday,
+  settings = false,
+  person = FOLAKE,
+  inert = false,
 }: {
   events: readonly EventKey[];
   tell: Tell;
-  onToday: () => void;
+  onToday?: () => void;
+  settings?: boolean;
+  person?: SidebarPerson;
+  inert?: boolean;
 }) {
   return (
-    <nav className="today-side" aria-label="Soirely">
+    <nav className="today-side" aria-label="Soirely" inert={inert}>
       <div className="today-logo">
         <Brand lockup />
       </div>
@@ -52,15 +66,24 @@ export function TodaySidebar({
       <ul className="today-places">
         {PLACES.map(([label, glyph]) => (
           <li key={label}>
-            <button
-              type="button"
-              className={label === 'Today' ? 'today-place is-on' : 'today-place'}
-              aria-current={label === 'Today' ? 'page' : undefined}
-              onClick={() => (label === 'Today' ? onToday() : tell(`${label} has its own design.`))}
-            >
-              <Glyph name={glyph} />
-              {label}
-            </button>
+            {settings && label === 'Today' ? (
+              <Link className="today-place" to="/demo/today">
+                <Glyph name={glyph} />
+                {label}
+              </Link>
+            ) : (
+              <button
+                type="button"
+                className={label === 'Today' ? 'today-place is-on' : 'today-place'}
+                aria-current={label === 'Today' ? 'page' : undefined}
+                onClick={() =>
+                  label === 'Today' ? onToday?.() : tell(`${label} has its own design.`)
+                }
+              >
+                <Glyph name={glyph} />
+                {label}
+              </button>
+            )}
           </li>
         ))}
       </ul>
@@ -85,22 +108,26 @@ export function TodaySidebar({
       )}
       <div className="today-grow" />
       <div className="today-places">
-        <Link className="today-place" to="/demo">
+        <Link
+          className={settings ? 'today-place is-on' : 'today-place'}
+          to={settings ? '/demo/settings' : '/demo'}
+          aria-current={settings ? 'page' : undefined}
+        >
           <Glyph name="settings" />
           Settings
         </Link>
         <button
           type="button"
           className="today-person"
-          aria-label={`${SAMPLE.name}, Owner`}
+          aria-label={`${person.name}, ${person.role}`}
           onClick={() => tell('Your account has its own design.')}
         >
           <span className="today-avatar today-cover is-draft" aria-hidden="true">
-            FA
+            {person.initials}
           </span>
           <span className="today-grow today-person-words" aria-hidden="true">
-            <span className="today-person-name">{SAMPLE.name}</span>
-            <span className="today-person-role">Owner</span>
+            <span className="today-person-name">{person.name}</span>
+            <span className="today-person-role">{person.role}</span>
           </span>
           <Glyph name="updown" size={15} />
         </button>

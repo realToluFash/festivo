@@ -2042,6 +2042,7 @@ span {
 
 .org-name,
 .org-role {
+  margin: 0;
   overflow-wrap: anywhere;
 }
 
@@ -7865,7 +7866,14 @@ button.members-row {
 .auth-asides {
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
   gap: var(--spaceSm);
+}
+
+/* A button drawn as the demo's link: its own width, underlined. */
+.auth-column .auth-asides > .link-button {
+  text-align: start;
+  text-decoration: underline;
 }
 
 /* The code beside the number on one row, "Optional" at the label's end. */
