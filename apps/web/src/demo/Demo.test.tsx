@@ -1098,3 +1098,49 @@ describe('Today at a desk (sc-29092)', () => {
     expect(screen.getByRole('region', { name: 'Needs you' })).toBeDefined();
   });
 });
+
+describe('Settings at a desk (sc-29708)', () => {
+  beforeEach(() => inEnvironment('development'));
+
+  async function settings(path: string) {
+    at(path);
+    await screen.findByRole('navigation', { name: 'Settings' });
+  }
+
+  it('selects Settings in the sidebar and opens Members beside the list', async () => {
+    await settings('/demo/settings');
+
+    const list = screen.getByRole('navigation', { name: 'Settings' });
+    expect(within(list).getByRole('link', { name: 'Members' }).getAttribute('aria-current')).toBe(
+      'page',
+    );
+    const side = screen.getByRole('navigation', { name: 'Soirely' });
+    expect(within(side).getByRole('link', { name: 'Settings' }).getAttribute('aria-current')).toBe(
+      'page',
+    );
+    expect(within(side).getByRole('link', { name: 'Today' })).toBeDefined();
+    expect(screen.getByRole('heading', { level: 1, name: 'Members' })).toBeDefined();
+  });
+
+  it('says a section the boards do not draw has its own design, and opens nothing', async () => {
+    await settings('/demo/settings');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Security' }));
+    expect(screen.getByText('Security has its own design.')).toBeDefined();
+    expect(screen.getByRole('heading', { level: 1, name: 'Members' })).toBeDefined();
+  });
+
+  it('names who is looking at the sidebar’s foot', async () => {
+    await settings('/demo/settings?as=tom');
+    expect(screen.getByRole('button', { name: 'Tom Becker, Door staff' })).toBeDefined();
+  });
+
+  it('leaves Members and Roles out of the list for a role that does not read them', async () => {
+    await settings('/demo/settings?as=ana');
+
+    const list = screen.getByRole('navigation', { name: 'Settings' });
+    expect(within(list).queryByRole('link', { name: 'Members' })).toBeNull();
+    expect(within(list).queryByRole('link', { name: 'Roles' })).toBeNull();
+    expect(within(list).getByRole('button', { name: 'General' })).toBeDefined();
+  });
+});

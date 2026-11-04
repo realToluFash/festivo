@@ -1,0 +1,162 @@
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link, useParams, useSearchParams } from 'react-router';
+
+import { Toast } from '../components/Toast.tsx';
+import { Glyph, type GlyphName } from './Glyph.tsx';
+import {
+  type Drawn,
+  type Section,
+  SECTION_NAMES,
+  SIDEBAR_EVENTS,
+  type Viewer,
+  drawnOf,
+  groupsFor,
+  isDrawn,
+  settingsPath,
+  viewerOf,
+} from './settings.ts';
+import { LayersContext } from './layers.ts';
+import { TitleRow } from './SettingsParts.tsx';
+import type { Tell } from './TodayParts.tsx';
+import { TodaySidebar } from './TodaySidebar.tsx';
+import './today.css';
+import './settings.css';
+
+const TILES: Record<Exclude<Section, 'account' | 'general'>, GlyphName> = {
+  security: 'shield',
+  notifications: 'bell',
+  members: 'users',
+  roles: 'key',
+  signInRules: 'lock',
+};
+
+/** Settings at a desk in B · Summary first (Web-Settings.dc.html, page 29), on sample data. */
+export function Settings() {
+  const { section } = useParams();
+  const [params] = useSearchParams();
+  const viewer = viewerOf(params.get('as'));
+  const open = drawnOf(section);
+  const state = params.get('state') ?? '';
+  const [told, setTold] = useState<string | null>(null);
+  const tell = useCallback<Tell>((words) => setTold(words), []);
+  const [stack, setStack] = useState<readonly string[]>([]);
+  const push = useCallback(
+    (id: string) => setStack((now) => [...now.filter((one) => one !== id), id]),
+    [],
+  );
+  const pop = useCallback((id: string) => setStack((now) => now.filter((one) => one !== id)), []);
+  const layers = useMemo(() => ({ stack, push, pop }), [stack, push, pop]);
+  const covered = stack.length > 0;
+
+  useEffect(() => {
+    const search = (event: KeyboardEvent) => {
+      if (event.key.toLowerCase() !== 'k' || !(event.metaKey || event.ctrlKey)) return;
+
+      event.preventDefault();
+      tell('Search has its own design.');
+    };
+
+    window.addEventListener('keydown', search);
+
+    return () => window.removeEventListener('keydown', search);
+  }, [tell]);
+
+  return (
+    <LayersContext value={layers}>
+      <div className="today desk">
+        <TodaySidebar
+          events={SIDEBAR_EVENTS}
+          tell={tell}
+          settings
+          person={viewer}
+          inert={covered}
+        />
+        <main id="content" className="desk-main" inert={covered}>
+          <SettingsList open={viewer.reads ? open : null} viewer={viewer} tell={tell} />
+          <div className="desk-page">
+            {viewer.reads && (
+              <SectionPage
+                key={`${open}:${viewer.key}:${state}`}
+                open={open}
+                viewer={viewer}
+                state={state}
+                tell={tell}
+              />
+            )}
+          </div>
+        </main>
+        {told != null && <Toast key={told} words={told} onClose={() => setTold(null)} />}
+      </div>
+    </LayersContext>
+  );
+}
+
+function SectionPage({ open, tell }: { open: Drawn; viewer: Viewer; state: string; tell: Tell }) {
+  return (
+    <div className="desk-column">
+      <TitleRow title={SECTION_NAMES[open]} tell={tell} />
+    </div>
+  );
+}
+
+/** Your account's sections, then the organisation's: a tile and the name, the open one Tint with a Violet ring. */
+function SettingsList({ open, viewer, tell }: { open: Drawn | null; viewer: Viewer; tell: Tell }) {
+  return (
+    <nav className="desk-list" aria-label="Settings">
+      {groupsFor(viewer).map((group) => (
+        <div key={group.name} className="desk-group">
+          <h2 className="desk-caps">{group.name}</h2>
+          <ul className="desk-sections">
+            {group.sections.map((section) => (
+              <li key={section}>
+                {isDrawn(section) ? (
+                  <Link
+                    className={section === open ? 'desk-section is-on' : 'desk-section'}
+                    to={settingsPath(section, viewer)}
+                    aria-current={section === open ? 'page' : undefined}
+                  >
+                    <Tile section={section} viewer={viewer} />
+                    <span className="today-grow">{SECTION_NAMES[section]}</span>
+                  </Link>
+                ) : (
+                  <button
+                    type="button"
+                    className="desk-section"
+                    onClick={() => tell(`${SECTION_NAMES[section]} has its own design.`)}
+                  >
+                    <Tile section={section} viewer={viewer} />
+                    <span className="today-grow">{SECTION_NAMES[section]}</span>
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </nav>
+  );
+}
+
+function Tile({ section, viewer }: { section: Section; viewer: Viewer }) {
+  if (section === 'account')
+    return (
+      <span className="desk-tile is-account" aria-hidden="true">
+        {viewer.initials}
+      </span>
+    );
+  if (section === 'general')
+    return (
+      <span className="desk-tile is-general" aria-hidden="true">
+        IE
+      </span>
+    );
+
+  return (
+    <span
+      className={`desk-tile is-${section === 'signInRules' ? 'sign-in-rules' : section}`}
+      aria-hidden="true"
+    >
+      <Glyph name={TILES[section]} size={17} />
+    </span>
+  );
+}

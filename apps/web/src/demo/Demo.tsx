@@ -7,6 +7,8 @@ import { offField } from '../offField.ts';
 import { BoardPage, OrLine, Providers } from './BoardPage.tsx';
 import { GetBackInBoard } from './GetBackIn.tsx';
 import { NewAccountBoard } from './NewAccount.tsx';
+import { Settings } from './Settings.tsx';
+import { SETTINGS_PAGES } from './settings.ts';
 import { Today } from './Today.tsx';
 import { TwoFactorBoard } from './TwoFactor.tsx';
 import { WaysInBoard } from './WaysIn.tsx';
@@ -97,6 +99,8 @@ export default function Demo() {
       <Route path="ways-in" element={<WaysInBoard />} />
       <Route path="signed-in" element={<SignedIn />} />
       <Route path="today" element={<Today />} />
+      <Route path="settings" element={<Settings />} />
+      <Route path="settings/:section" element={<Settings />} />
       <Route path="later" element={<Later />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
@@ -137,6 +141,12 @@ function DemoHome({ from }: { from: string }) {
         </ul>
       </section>
 
+      <section className="demo-home-page" aria-labelledby="demo-page-28">
+        <h2 id="demo-page-28">28 · Organisations and access · Settings at a desk</h2>
+        <h3>Settings in B · Summary first · desktop</h3>
+        <BoardPages pages={SETTINGS_PAGES} />
+      </section>
+
       <section className="demo-home-page" aria-labelledby="demo-page-27">
         <h2 id="demo-page-27">27 · Sign in · desktop polish</h2>
         <h3>Sign in · desktop · second pass</h3>
@@ -174,7 +184,11 @@ function DemoHome({ from }: { from: string }) {
   );
 }
 
-function BoardPages({ pages }: { pages: typeof NEW_ACCOUNT_PAGES }) {
+function BoardPages({
+  pages,
+}: {
+  pages: readonly { name: string; states: readonly { to: string; name: string }[] }[];
+}) {
   return pages.map((page) => (
     <div key={page.name} className="demo-home-group">
       <h4>{page.name}</h4>
