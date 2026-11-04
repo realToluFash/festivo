@@ -1,0 +1,15 @@
+# Join link signed in: the optional message counts its characters.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/join-message
+- extendedWaitUntil:
+    visible:
+      id: 'demo.message'
+    timeout: 20000
+- takeScreenshot: join-message
+- tapOn:
+    id: 'demo.message'
+- eraseText: 100
+- inputText: 'Hello'
+- assertVisible: '.*5 of 500 characters.*'
+- takeScreenshot: join-message-count

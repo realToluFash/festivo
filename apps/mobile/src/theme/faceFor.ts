@@ -7,18 +7,12 @@ export const SANS = {
   700: 'InstrumentSans-Bold',
 } as const;
 
-/** JetBrains Mono is for step numbers, keyboard shortcuts and codes copied character by character, never for money or counts. */
-export const MONO = {
-  500: 'JetBrainsMono-Medium',
-  700: 'JetBrainsMono-Bold',
-} as const;
-
 /** Google's own typeface for the words on its sign-in button, and nowhere else. Google publishes the one weight. */
 export const GOOGLE_SANS = {
   500: 'GoogleSans-Medium',
 } as const;
 
-const FAMILIES = { sans: SANS, mono: MONO, googleSans: GOOGLE_SANS } as const;
+const FAMILIES = { sans: SANS, googleSans: GOOGLE_SANS } as const;
 
 /** `system` is the platform's own font, for the words on Apple's sign-in button on iOS alone. */
 export type Family = keyof typeof FAMILIES | 'system';

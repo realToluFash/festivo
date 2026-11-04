@@ -134,7 +134,7 @@ Two things to know before changing it:
   found in production instead of at commit time.
 - **Google Fonts is the one third party the page loads** — the stylesheet from
   `fonts.googleapis.com`, the font files it names from `fonts.gstatic.com`. Self-hosting
-  Instrument Sans and JetBrains Mono would remove both sources and is the better end
+  Instrument Sans would remove both sources and is the better end
   state.
 - The object store's public origin is in `connect-src`, because the browser uploads a cover
   or avatar with a `PUT` to it, and in `img-src` beside `'self' data: blob:`, because it

@@ -34,6 +34,14 @@ body {
   background: var(--colorPage);
 }
 
+/* One face all through (owner, 3 Nov 2026): browsers draw these in a monospace of their own. */
+code,
+kbd,
+pre,
+samp {
+  font-family: var(--fontFamily);
+}
+
 h1 {
   font: var(--typeTitlePage);
   letter-spacing: var(--typeTitlePageTracking);
@@ -63,10 +71,8 @@ span {
   color: var(--colorInkSecondary);
 }
 
-/* Columns of money, counts and times are read downwards, and proportional
-   figures make that harder than it needs to be. Monospace is reserved for step
-   numbers, shortcuts and copied codes, so the answer is tabular figures in the
-   body face. */
+/* Columns of money, counts and times are read downwards, so they take tabular
+   figures. */
 .num {
   font-variant-numeric: tabular-nums;
 }
@@ -1631,7 +1637,7 @@ span {
   height: var(--space3xl);
   border-radius: var(--radiusPill);
   font: var(--typePill);
-  font-family: var(--fontFamilyMono);
+  font-variant-numeric: tabular-nums;
 }
 
 .step-now .step-mark {
@@ -3329,7 +3335,6 @@ span {
 
 .two-factor-key,
 .recovery-codes {
-  font-family: var(--fontFamilyMono);
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.04em;
 }
@@ -3775,7 +3780,8 @@ span {
 .owner-claim-record-row code {
   flex: 1;
   min-width: 0;
-  font-family: var(--fontFamilyMono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
   word-break: break-all;
 }
 
