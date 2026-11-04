@@ -13,9 +13,9 @@ import { Text } from '../components/Text.tsx';
 import { codeProps, fieldName } from '../kit/fields.ts';
 import { inputFaced } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
-import { tap } from './haptics.ts';
+import { tap } from '../components/haptics.ts';
 import { CODE_LENGTH, codeDigits } from './rules.ts';
-import { useShake } from './shake.ts';
+import { useShake } from '../components/shake.ts';
 
 export type CodeState = 'typing' | 'wrong' | 'done';
 

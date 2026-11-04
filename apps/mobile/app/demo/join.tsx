@@ -4,9 +4,9 @@ import { StyleSheet, View } from 'react-native';
 import { OrgTile } from '../../src/components/OrgTile.tsx';
 import { Text } from '../../src/components/Text.tsx';
 import { Choices } from '../../src/demo/Choices.tsx';
-import { NavBar } from '../../src/demo/DemoScreen.tsx';
+import { NavBar } from '../../src/demo/flow.tsx';
 import { SAMPLE } from '../../src/demo/samples.ts';
-import { WelcomeFrame } from '../../src/demo/Welcome.tsx';
+import { WelcomeFrame } from '../../src/components/Welcome.tsx';
 import { tokens } from '../../src/theme/tokens.ts';
 
 /** An organisation's join link opened signed out: welcome's choices under its tile. */

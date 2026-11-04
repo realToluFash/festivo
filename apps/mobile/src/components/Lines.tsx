@@ -2,11 +2,11 @@ import type { ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
-import { StatusMark, type MarkTone } from '../components/StatusMark.tsx';
-import { StepMark } from '../components/StepMark.tsx';
-import { Text } from '../components/Text.tsx';
-import { Title } from '../components/Title.tsx';
-import { useReadOut } from '../components/ReadOut.tsx';
+import { StatusMark, type MarkTone } from './StatusMark.tsx';
+import { StepMark } from './StepMark.tsx';
+import { Text } from './Text.tsx';
+import { Title } from './Title.tsx';
+import { useReadOut } from './ReadOut.tsx';
 import { tokens } from '../theme/tokens.ts';
 
 /** A step's title and the one line under it that says what to do. */

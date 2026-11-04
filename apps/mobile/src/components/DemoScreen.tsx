@@ -1,4 +1,3 @@
-import { type Href, router } from 'expo-router';
 import {
   createContext,
   type ReactNode,
@@ -20,37 +19,25 @@ import {
   View,
   type ViewInstance,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
-import { QuietButton } from '../components/Buttons.tsx';
-import { keyboardTopNow, useKeysUp, watchKeyboardTop } from '../components/keyboardWatch.ts';
-import { SETTLED_MS, useWindowOrigin } from '../components/Screen.tsx';
+import { QuietButton } from './Buttons.tsx';
+import { keyboardTopNow, useKeysUp, watchKeyboardTop } from './keyboardWatch.ts';
+import { SETTLED_MS, useWindowOrigin } from './Screen.tsx';
 import { keysOver } from '../kit/keyboard.ts';
 import { useLayout } from '../layout/useLayout.ts';
 import { glide } from '../motion.ts';
 import { useReducedMotion } from '../reducedMotion.ts';
 import { tokens } from '../theme/tokens.ts';
-import { stepFill } from './rules.ts';
+import { stepFill } from '../kit/stepFill.ts';
 
 /** Inside the iPad's sheet, which UIKit lifts away from the keys itself and which has no safe area of its own. */
 export const InSheet = createContext(false);
 
 export function useInSheet(): boolean {
   return useContext(InSheet);
-}
-
-export function goBack(): void {
-  if (router.canGoBack()) router.back();
-  else router.replace('/demo');
-}
-
-export function closeFlow(to: Href = '/demo'): void {
-  router.dismissTo(to);
-}
-
-export function finish(toast?: string): void {
-  router.replace(toast == null ? '/demo/home' : { pathname: '/demo/home', params: { toast } });
 }
 
 export function useStepsInSheet(): boolean {
@@ -66,24 +53,23 @@ export function NavBar({
   onLeft,
   step,
   right,
-  backLabel = 'Back',
 }: {
   left?: NavLeft;
-  /** The words a screen reader hears for ‹, in the app's language outside the demo. */
-  backLabel?: string;
   onLeft?: () => void;
   /** Which step of how many; a half step is a step just done, its bar part way to the next. */
   step?: readonly [number, number];
   right?: { label: string; onPress: () => void };
 }) {
+  const { t } = useTranslation();
+
   return (
     <View style={styles.bar}>
       {left === 'back' || left === 'close' ? (
         <Pressable
           style={styles.icon}
-          onPress={onLeft ?? (left === 'back' ? goBack : () => closeFlow())}
+          onPress={onLeft}
           accessibilityRole="button"
-          accessibilityLabel={left === 'back' ? backLabel : 'Close'}
+          accessibilityLabel={left === 'back' ? t('signIn.back') : t('signIn.close')}
           hitSlop={tokens.spaceXxs}
           testID={`demo.${left}`}
         >

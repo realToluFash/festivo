@@ -3,9 +3,10 @@ import { useRef, useState } from 'react';
 import { StyleSheet, type TextInputInstance, View } from 'react-native';
 
 import { PrimaryButton } from '../../../src/components/Buttons.tsx';
-import { DemoScreen, NavBar } from '../../../src/demo/DemoScreen.tsx';
-import { InsideField } from '../../../src/demo/InsideField.tsx';
-import { Heading, Says } from '../../../src/demo/Lines.tsx';
+import { DemoScreen } from '../../../src/components/DemoScreen.tsx';
+import { NavBar } from '../../../src/demo/flow.tsx';
+import { InsideField } from '../../../src/components/InsideField.tsx';
+import { Heading, Says } from '../../../src/components/Lines.tsx';
 import { emailLooksRight } from '../../../src/demo/rules.ts';
 import { tokens } from '../../../src/theme/tokens.ts';
 

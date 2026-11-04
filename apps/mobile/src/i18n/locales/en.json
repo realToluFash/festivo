@@ -87,7 +87,8 @@
     "anotherAccount": "Sign in with another account",
     "back": "Back",
     "showPassword": "Show password",
-    "hidePassword": "Hide password"
+    "hidePassword": "Hide password",
+    "close": "Close"
   },
   "register": {
     "title": "Create your account",

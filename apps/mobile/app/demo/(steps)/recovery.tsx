@@ -3,13 +3,14 @@ import { useRef, useState } from 'react';
 import { Animated, StyleSheet, type TextInputInstance, View } from 'react-native';
 
 import { PrimaryButton, QuietButton } from '../../../src/components/Buttons.tsx';
-import { DemoScreen, NavBar, finish, goBack } from '../../../src/demo/DemoScreen.tsx';
-import { tap } from '../../../src/demo/haptics.ts';
-import { InsideField } from '../../../src/demo/InsideField.tsx';
-import { Heading, Plain, Says } from '../../../src/demo/Lines.tsx';
+import { DemoScreen } from '../../../src/components/DemoScreen.tsx';
+import { NavBar, finish, goBack } from '../../../src/demo/flow.tsx';
+import { tap } from '../../../src/components/haptics.ts';
+import { InsideField } from '../../../src/components/InsideField.tsx';
+import { Heading, Plain, Says } from '../../../src/components/Lines.tsx';
 import { recoveryComplete, shapeRecovery } from '../../../src/demo/rules.ts';
 import { SAMPLE } from '../../../src/demo/samples.ts';
-import { useShake } from '../../../src/demo/shake.ts';
+import { useShake } from '../../../src/components/shake.ts';
 import { tokens } from '../../../src/theme/tokens.ts';
 
 /** A recovery code typed as it was printed: capitals or not, the dash put in as it goes. */

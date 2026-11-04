@@ -7,8 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../src/api.ts';
 import { PrimaryButton } from '../src/components/Buttons.tsx';
 import { LanguageChoice } from '../src/components/LanguageChoice.tsx';
-import { OnBrand, WelcomeBrand } from '../src/components/Welcome.tsx';
-import { WelcomeFrame } from '../src/demo/Welcome.tsx';
+import { OnBrand, WelcomeBrand, WelcomeFrame } from '../src/components/Welcome.tsx';
 import { holdsSession } from '../src/tokens.ts';
 import { carryOn } from '../src/unreachable.ts';
 

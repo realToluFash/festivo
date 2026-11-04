@@ -89,7 +89,8 @@
     "anotherAccount": "Iniciar sesión con otra cuenta",
     "back": "Back",
     "showPassword": "Show password",
-    "hidePassword": "Hide password"
+    "hidePassword": "Hide password",
+    "close": "Close"
   },
   "register": {
     "title": "Cree su cuenta",

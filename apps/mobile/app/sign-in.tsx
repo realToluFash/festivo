@@ -10,11 +10,11 @@ import { PrimaryButton, QuietButton } from '../src/components/Buttons.tsx';
 import { focusChecked, focusRefused, keysStayDown } from '../src/components/Field.tsx';
 import { ProviderButtons } from '../src/components/ProviderSignIn.tsx';
 import { Text } from '../src/components/Text.tsx';
-import { DemoScreen, InSheet, NavBar, useStepsInSheet } from '../src/demo/DemoScreen.tsx';
-import { tap } from '../src/demo/haptics.ts';
-import { InsideField } from '../src/demo/InsideField.tsx';
-import { Heading, Says } from '../src/demo/Lines.tsx';
-import { useShake } from '../src/demo/shake.ts';
+import { DemoScreen, InSheet, NavBar, useStepsInSheet } from '../src/components/DemoScreen.tsx';
+import { tap } from '../src/components/haptics.ts';
+import { InsideField } from '../src/components/InsideField.tsx';
+import { Heading, Says } from '../src/components/Lines.tsx';
+import { useShake } from '../src/components/shake.ts';
 import { currentLocale, dateLocale } from '../src/i18n/index.ts';
 import { emailMessage, useFormChecks } from '../src/kit/formChecks.ts';
 import { tokens } from '../src/theme/tokens.ts';
@@ -127,12 +127,11 @@ export default function SignIn() {
       pathname: '/forgot-password',
       params: email.trim() === '' ? {} : { email: email.trim() },
     });
-  const reveal = [t('signIn.showPassword'), t('signIn.hidePassword')] as const;
 
   return (
     <InSheet value={sheet}>
       <DemoScreen
-        nav={<NavBar left="back" onLeft={back} backLabel={t('signIn.back')} />}
+        nav={<NavBar left="back" onLeft={back} />}
         foot={
           refusal?.kind === 'providerOnly' ? undefined : (
             <PrimaryButton
@@ -236,7 +235,6 @@ export default function SignIn() {
                 }}
                 onBlur={() => checks.left('password', password)}
                 password
-                revealLabels={reveal}
                 state={checks.errors.password == null ? 'plain' : 'blank'}
                 submitting={busy}
                 autoComplete="current-password"

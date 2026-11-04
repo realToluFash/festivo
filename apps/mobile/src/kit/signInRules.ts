@@ -87,6 +87,28 @@ export function refusalFromParams(params: Partial<Record<string, string>>): Rule
   return null;
 }
 
+/** What takes the welcome's tagline: a provider failing, then a rule's sign-out, then a plain one. */
+export function saidOnWelcome(
+  params: Partial<Record<string, string>>,
+  providerFailed: string | null,
+  t: TFunction,
+): [string, string] | null {
+  if (providerFailed != null)
+    return [
+      t('signIn.providerFailedTitle', { provider: providerFailed }),
+      t('signIn.providerFailedBody', { provider: providerFailed }),
+    ];
+
+  const refusal = refusalFromParams(params);
+  if (refusal?.kind === 'timedOut')
+    return [
+      t('signIn.timedOutTitle', { organisation: refusal.organisation }),
+      t('signIn.timedOutBody', { organisation: refusal.organisation, count: refusal.days }),
+    ];
+
+  return params.signedOut == null ? null : [t('signIn.endedTitle'), t('signIn.endedBody')];
+}
+
 /** The providers named in the refusal, Google and Apple when it named none. */
 export function providerNames(providers: readonly string[]): string[] {
   const names: Record<string, string> = { google: 'Google', apple: 'Apple' };

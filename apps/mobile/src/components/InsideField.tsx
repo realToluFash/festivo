@@ -10,10 +10,11 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import Svg, { Circle, Path } from 'react-native-svg';
 
-import { FocusEdge, useHeld } from '../components/Field.tsx';
-import { Text } from '../components/Text.tsx';
+import { FocusEdge, useHeld } from './Field.tsx';
+import { Text } from './Text.tsx';
 import { FIELD_DEFAULTS, fieldName, passwordProps } from '../kit/fields.ts';
 import { glide } from '../motion.ts';
 import { inputFaced } from '../theme/fonts.ts';
@@ -34,13 +35,10 @@ export function InsideField({
   state = 'plain',
   submitting = false,
   multiline = false,
-  revealLabels = ['Show password', 'Hide password'],
   ref,
   testID,
   ...rest
 }: Omit<TextInputProps, 'value' | 'onChangeText' | 'style'> & {
-  /** The eye's words, in the app's language outside the demo. */
-  revealLabels?: readonly [string, string];
   label: string;
   value: string;
   onChangeText?: (text: string) => void;
@@ -53,6 +51,7 @@ export function InsideField({
   ref?: Ref<TextInputInstance> | undefined;
   testID: string;
 }) {
+  const { t } = useTranslation();
   const labelID = useId();
   const { fontScale } = useWindowDimensions();
   const [focused, setFocused] = useState(false);
@@ -125,7 +124,7 @@ export function InsideField({
           style={styles.eye}
           onPress={() => setRevealed((shown) => !shown)}
           accessibilityRole="button"
-          accessibilityLabel={revealed ? revealLabels[1] : revealLabels[0]}
+          accessibilityLabel={revealed ? t('signIn.hidePassword') : t('signIn.showPassword')}
           testID={`${testID}.reveal`}
         >
           <Svg

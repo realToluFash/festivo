@@ -1,11 +1,10 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { type TFunction } from 'i18next';
 import { type ReactNode, useState } from 'react';
-import { StyleSheet, useWindowDimensions, View } from 'react-native';
+import { ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { WelcomeFrame } from '../demo/Welcome.tsx';
-import { refusalFromParams } from '../kit/signInRules.ts';
+import { saidOnWelcome } from '../kit/signInRules.ts';
 import { useLayout } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { Brand } from './Brand.tsx';
@@ -71,6 +70,54 @@ export function Welcome({ devTools }: { devTools?: ReactNode }) {
   );
 }
 
+/** The brand in the middle and the choices in thumb reach; beside each other on a landscape tablet. */
+export function WelcomeFrame({
+  top,
+  brand,
+  choices,
+}: {
+  top?: ReactNode;
+  brand: ReactNode;
+  choices: ReactNode;
+}) {
+  const insets = useSafeAreaInsets();
+  const { kind } = useLayout();
+  const { width } = useWindowDimensions();
+  const side = width < 380 ? tokens.spaceXl : tokens.space3xl;
+  const pad = {
+    paddingTop: insets.top,
+    paddingBottom: Math.max(insets.bottom, tokens.spaceLg),
+    paddingLeft: Math.max(insets.left, side),
+    paddingRight: Math.max(insets.right, side),
+  };
+
+  const body =
+    kind === 'tabletLandscape' ? (
+      <View style={styles.beside}>
+        <View style={styles.half}>{brand}</View>
+        <View style={[styles.half, styles.choicesBeside]}>{choices}</View>
+      </View>
+    ) : kind === 'tabletPortrait' ? (
+      <View style={styles.middle}>
+        {brand}
+        <View style={styles.tabletChoices}>{choices}</View>
+      </View>
+    ) : (
+      <>
+        <View style={styles.middle}>{brand}</View>
+        {choices}
+      </>
+    );
+
+  // Scrolls only when it overflows, as at the largest text sizes or under the developer tools.
+  return (
+    <ScrollView style={styles.page} contentContainerStyle={[styles.fill, pad]}>
+      <View style={styles.top}>{top}</View>
+      {body}
+    </ScrollView>
+  );
+}
+
 export function WelcomeBrand() {
   const { kind } = useLayout();
   const { width } = useWindowDimensions();
@@ -101,28 +148,21 @@ export function OnBrand({ title, body }: { title: string; body: string }) {
   );
 }
 
-function saidOnWelcome(
-  params: Partial<Record<string, string>>,
-  providerFailed: string | null,
-  t: TFunction,
-): [string, string] | null {
-  if (providerFailed != null)
-    return [
-      t('signIn.providerFailedTitle', { provider: providerFailed }),
-      t('signIn.providerFailedBody', { provider: providerFailed }),
-    ];
-
-  const refusal = refusalFromParams(params);
-  if (refusal?.kind === 'timedOut')
-    return [
-      t('signIn.timedOutTitle', { organisation: refusal.organisation }),
-      t('signIn.timedOutBody', { organisation: refusal.organisation, count: refusal.days }),
-    ];
-
-  return params.signedOut == null ? null : [t('signIn.endedTitle'), t('signIn.endedBody')];
-}
-
 const styles = StyleSheet.create({
+  page: { flex: 1, backgroundColor: tokens.colorPage },
+  fill: { flexGrow: 1 },
+  top: { minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end' },
+  middle: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: tokens.spaceXxl,
+    paddingBottom: tokens.spaceLg,
+  },
+  tabletChoices: { width: 400, marginTop: tokens.space6xl },
+  beside: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: tokens.space6xl },
+  half: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: tokens.spaceXxl },
+  choicesBeside: { alignItems: 'stretch', maxWidth: 400 },
   tagline: { textAlign: 'center', color: tokens.colorInkSecondary },
   notice: { maxWidth: 320, gap: tokens.spaceXs, alignItems: 'center' },
   centre: { textAlign: 'center' },
