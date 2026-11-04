@@ -1,9 +1,11 @@
-import { router, useLocalSearchParams } from 'expo-router';
-import { type ReactNode, useState } from 'react';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { setStatusBarStyle } from 'expo-status-bar';
+import { createContext, type ReactNode, useCallback, useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { Cover } from '../demo/Cover.tsx';
 import { saidOnWelcome } from '../kit/signInRules.ts';
 import { useLayout } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -14,7 +16,13 @@ import { ProviderButtons } from './ProviderSignIn.tsx';
 import { useReadOut } from './ReadOut.tsx';
 import { Text } from './Text.tsx';
 
-/** Signed out: the brand once, large, and the ways in at the foot (sc-29076). */
+/** True for what sits on the cover, which draws in white. */
+export const OnCover = createContext(false);
+
+const SHEET_RISE = 28;
+const COVER_SHARE = 0.68;
+
+/** Signed out: the brand on Soirely's cover, and the ways in on a sheet over its foot (sc-29076, sc-29078). */
 export function Welcome({ devTools }: { devTools?: ReactNode }) {
   const { t } = useTranslation();
   const params = useLocalSearchParams<{
@@ -27,19 +35,26 @@ export function Welcome({ devTools }: { devTools?: ReactNode }) {
   }>();
   const [providerFailed, setProviderFailed] = useState(params.providerFailed ?? null);
   const said = saidOnWelcome(params, providerFailed, t);
+  const line = useLineSize();
 
   return (
     <WelcomeFrame
-      top={<LanguageChoice />}
+      top={<LanguageChoice onCover />}
       brand={
         <>
           <WelcomeBrand />
           {said == null ? (
-            <Text size={tokens.typeBodyGuest.size} weight="medium" style={styles.tagline}>
+            <Text
+              size={line}
+              weight="bold"
+              maxFontSizeMultiplier={1.25}
+              accessibilityRole="header"
+              style={[styles.onCover, coverLine(line)]}
+            >
               {t('welcome.tagline')}
             </Text>
           ) : (
-            <OnBrand title={said[0]} body={said[1]} />
+            <OnBrand title={said[0]} body={said[1]} size={line} />
           )}
         </>
       }
@@ -70,7 +85,24 @@ export function Welcome({ devTools }: { devTools?: ReactNode }) {
   );
 }
 
-/** The brand in the middle and the choices in thumb reach; beside each other on a landscape tablet. */
+/** The welcome's line: 32 on a phone, 26 under 380 wide, and 46 on a tablet. */
+function useLineSize() {
+  const { kind } = useLayout();
+  const { width } = useWindowDimensions();
+
+  return kind === 'phone' ? (width < 380 ? 26 : 32) : 46;
+}
+
+/** The big lines on the cover, in Instrument Sans Bold: set close, and tracked in by 2% of their size. */
+export function coverLine(size: number) {
+  return {
+    textAlign: 'center',
+    lineHeight: Math.round(size * 1.1),
+    letterSpacing: size * -0.02,
+  } as const;
+}
+
+/** The brand on Soirely's cover and the choices on a sheet over its foot; the cover on the left half of a landscape tablet. */
 export function WelcomeFrame({
   top,
   brand,
@@ -82,40 +114,87 @@ export function WelcomeFrame({
 }) {
   const insets = useSafeAreaInsets();
   const { kind } = useLayout();
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const side = width < 380 ? tokens.spaceXl : tokens.space3xl;
-  const pad = {
-    paddingTop: insets.top,
-    paddingBottom: Math.max(insets.bottom, tokens.spaceLg),
-    paddingLeft: Math.max(insets.left, side),
-    paddingRight: Math.max(insets.right, side),
-  };
+  const tablet = kind !== 'phone';
+  const left = Math.max(insets.left, side);
+  const right = Math.max(insets.right, side);
+  const foot = Math.max(insets.bottom, tokens.spaceLg);
+  useCoverStatusBar(kind === 'tabletLandscape' ? 'dark' : 'light', kind === 'tabletPortrait');
 
-  const body =
-    kind === 'tabletLandscape' ? (
-      <View style={styles.beside}>
-        <View style={styles.half}>{brand}</View>
-        <View style={[styles.half, styles.choicesBeside]}>{choices}</View>
+  if (kind === 'tabletLandscape')
+    return (
+      <View style={[styles.cardPage, styles.row]}>
+        <View
+          style={[styles.cover, styles.coverHalf, { paddingTop: insets.top, paddingLeft: left }]}
+        >
+          <Cover scale={1.5} />
+          <OnCover.Provider value>
+            <View style={styles.brandBeside}>{brand}</View>
+          </OnCover.Provider>
+        </View>
+        <ScrollView
+          style={styles.half}
+          contentContainerStyle={[
+            styles.fill,
+            { paddingTop: insets.top, paddingRight: right, paddingBottom: foot },
+          ]}
+        >
+          <View style={[styles.top, styles.topWide]}>{top}</View>
+          <View style={styles.choicesMiddle}>
+            <View style={styles.choicesWidth}>{choices}</View>
+          </View>
+        </ScrollView>
       </View>
-    ) : kind === 'tabletPortrait' ? (
-      <View style={styles.middle}>
-        {brand}
-        <View style={styles.tabletChoices}>{choices}</View>
-      </View>
-    ) : (
-      <>
-        <View style={styles.middle}>{brand}</View>
-        {choices}
-      </>
     );
 
   // Scrolls only when it overflows, as at the largest text sizes or under the developer tools.
   return (
-    <ScrollView style={styles.page} contentContainerStyle={[styles.fill, pad]}>
-      <View style={styles.top}>{top}</View>
-      {body}
+    <ScrollView style={styles.cardPage} contentContainerStyle={styles.fill}>
+      <View
+        style={[
+          styles.cover,
+          tablet ? { height: Math.round(height * COVER_SHARE) } : styles.coverPhone,
+        ]}
+      >
+        <Cover scale={tablet ? 1.5 : side < tokens.space3xl ? 0.76 : 1} />
+        <OnCover.Provider value>
+          <View
+            style={[styles.top, { marginTop: insets.top, paddingLeft: left, paddingRight: right }]}
+          >
+            {top}
+          </View>
+          <View style={[styles.brandOnCover, { paddingLeft: left, paddingRight: right }]}>
+            {brand}
+          </View>
+        </OnCover.Provider>
+      </View>
+      <View
+        style={[
+          styles.sheet,
+          tablet
+            ? styles.sheetTablet
+            : { paddingLeft: left, paddingRight: right, paddingBottom: foot },
+        ]}
+      >
+        {tablet ? <View style={styles.choicesWidth}>{choices}</View> : choices}
+      </View>
     </ScrollView>
   );
+}
+
+/** React Native keeps the status bar of the screen mounted last, so the cover sets its own on focus; a tablet's steps open over the cover and keep it. */
+export function useCoverStatusBar(style: 'light' | 'dark', keepUnderSheet: boolean) {
+  useFocusEffect(
+    useCallback(() => {
+      setStatusBarStyle(style);
+
+      return () => {
+        if (!keepUnderSheet) setStatusBarStyle('dark');
+      };
+    }, [style, keepUnderSheet]),
+  );
+  useEffect(() => () => setStatusBarStyle('dark'), []);
 }
 
 export function WelcomeBrand() {
@@ -124,24 +203,34 @@ export function WelcomeBrand() {
 
   return (
     <Brand
-      width={kind === 'phone' ? (width < 380 ? 92 : 112) : 150}
+      width={kind === 'phone' ? (width < 380 ? 92 : 112) : 140}
       lockup
       header
+      ink={tokens.colorInkOnDark}
       testID="welcome.brand"
     />
   );
 }
 
-/** Why somebody is here, in the tagline's place: no box and no mark. */
-export function OnBrand({ title, body }: { title: string; body: string }) {
+/** Why somebody is here, in the line's place and at its size: no box and no mark. */
+export function OnBrand({ title, body, size }: { title: string; body: string; size: number }) {
   useReadOut(`${title}. ${body}`);
 
   return (
     <View style={styles.notice} testID="welcome.notice">
-      <Text size={tokens.typeTitleSection.size} weight="semibold" style={styles.centre}>
+      <Text
+        size={size}
+        weight="bold"
+        maxFontSizeMultiplier={1.25}
+        accessibilityRole="header"
+        style={[styles.onCover, coverLine(size)]}
+      >
         {title}
       </Text>
-      <Text size={tokens.typeBodyGuest.size} style={[styles.centre, styles.secondary]}>
+      <Text
+        size={size < 40 ? tokens.typeBodyGuest.size : 19}
+        style={[styles.onCover, styles.centre]}
+      >
         {body}
       </Text>
     </View>
@@ -149,24 +238,36 @@ export function OnBrand({ title, body }: { title: string; body: string }) {
 }
 
 const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: tokens.colorPage },
+  cardPage: { flex: 1, backgroundColor: tokens.colorCard },
   fill: { flexGrow: 1 },
+  row: { flexDirection: 'row' },
   top: { minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end' },
-  middle: {
-    flex: 1,
+  topWide: { minHeight: 60 },
+  half: { flex: 1 },
+  cover: { overflow: 'hidden', backgroundColor: tokens.colorAccent },
+  coverPhone: { flexGrow: 1 },
+  coverHalf: { flex: 1 },
+  brandOnCover: {
+    flexGrow: 1,
     alignItems: 'center',
     justifyContent: 'center',
     gap: tokens.spaceXxl,
-    paddingBottom: tokens.spaceLg,
+    paddingBottom: SHEET_RISE + tokens.spaceXxl,
   },
-  tabletChoices: { width: 400, marginTop: tokens.space6xl },
-  beside: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: tokens.space6xl },
-  half: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: tokens.spaceXxl },
-  choicesBeside: { alignItems: 'stretch', maxWidth: 400 },
-  tagline: { textAlign: 'center', color: tokens.colorInkSecondary },
-  notice: { maxWidth: 320, gap: tokens.spaceXs, alignItems: 'center' },
+  brandBeside: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: tokens.spaceXxl },
+  sheet: {
+    marginTop: -SHEET_RISE,
+    paddingTop: tokens.spaceXxl,
+    borderTopLeftRadius: SHEET_RISE,
+    borderTopRightRadius: SHEET_RISE,
+    backgroundColor: tokens.colorCard,
+  },
+  sheetTablet: { flexGrow: 1, alignItems: 'center', paddingTop: tokens.space6xl },
+  choicesMiddle: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  choicesWidth: { width: 400, maxWidth: '100%' },
+  onCover: { color: tokens.colorInkOnDark },
+  notice: { maxWidth: 330, gap: tokens.spaceSm, alignItems: 'center' },
   centre: { textAlign: 'center' },
-  secondary: { color: tokens.colorInkSecondary },
   choices: { gap: tokens.spaceSm },
   buttons: { gap: tokens.spaceLg },
 });
