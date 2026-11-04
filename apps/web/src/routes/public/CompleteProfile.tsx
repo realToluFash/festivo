@@ -69,7 +69,7 @@ export function CompleteProfile() {
   }, []);
 
   if (state.status === 'signedOut') return <Navigate to="/sign-in" replace />;
-  if (state.status === 'unreachable') return <Unreachable signedIn bare />;
+  if (state.status === 'unreachable') return <Unreachable signedIn={false} bare />;
   if (state.status !== 'signedIn') return <PendingPage />;
 
   // Only the gate it is behind: an unverified account verifies first, a complete one is let in.

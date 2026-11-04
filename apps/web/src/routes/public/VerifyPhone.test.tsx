@@ -2,7 +2,25 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
+import { __setSessionState, type Session } from '../../session.ts';
 import { routes } from '../index.tsx';
+
+const SIGNED_IN: Session = {
+  name: 'Folake Adeyemi',
+  email: 'folake@ire.events',
+  verified: true,
+  complete: false,
+  awaiting: 'phone' as const,
+  providers: [],
+  userId: 'u1',
+  needsOrganisation: true,
+  hasPassword: true,
+  organisation: null,
+  organisations: [],
+  organisationCountry: null,
+  timezone: null,
+  waitingFor: null,
+};
 
 const PHONE = {
   id: 'p1',
@@ -73,6 +91,7 @@ function problem(status: number, code: string): Response {
 
 afterEach(() => {
   vi.restoreAllMocks();
+  __setSessionState({ status: 'unknown' });
 });
 
 describe('check your messages', () => {
@@ -487,6 +506,8 @@ describe('change your mobile number', () => {
 
     expect(await screen.findByText('Cannot reach Soirely')).toBeDefined();
     expect(router.state.location.pathname).toBe('/phone');
+    // This tab never read the account, so it cannot say the session is still there (sc-29065).
+    expect(screen.queryByText(/You are still signed in/)).toBeNull();
 
     reachable = true;
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
@@ -494,6 +515,17 @@ describe('change your mobile number', () => {
     expect(await screen.findByLabelText('Mobile number')).toBeDefined();
     expect(sent.filter((request) => request.path === '/api/auth/me').length).toBeGreaterThan(1);
   });
+
+  it.each(['/phone', '/verify-phone'])(
+    'says still signed in on %s when this tab had read the account as signed in (sc-29065)',
+    async (path) => {
+      __setSessionState({ status: 'signedIn', session: SIGNED_IN });
+      answering({});
+      at(path);
+
+      expect(await screen.findByText(/You are still signed in\./)).toBeDefined();
+    },
+  );
 
   it('shows the current number, says it keeps working until the new one is verified, and starts on its country', async () => {
     answering({ 'GET /api/auth/me': () => json(account([{ ...PHONE, verified: true }])) });

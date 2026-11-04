@@ -23,7 +23,7 @@ import { ResendLine, SignedInAs, StepLine, Tick } from '../../components/Onboard
 import { PendingPage } from '../../components/Pending.tsx';
 import { Unreachable } from '../../components/Unreachable.tsx';
 import { StillSignedIn } from '../../components/StillSignedIn.tsx';
-import { refreshAccount } from '../../session.ts';
+import { refreshAccount, useSessionState } from '../../session.ts';
 import { useFocusOnceShown, useStepFocus } from '../../stepFocus.ts';
 import { FieldError } from '../../components/FieldError.tsx';
 import { focusWhereSent } from '../../offField.ts';
@@ -41,6 +41,7 @@ export function VerifyPhone() {
   const [account, setAccount] = useState<Account | 'none' | 'unreachable' | null>(null);
   const [attempt, setAttempt] = useState(0);
   const { signOut, unreached } = useSignOut(() => navigate('/sign-in'));
+  const session = useSessionState();
   const [status, setStatus] = useState<CodeStatus>({ kind: 'entering' });
   const resending = useResendCountdown({
     resend: 'verifyPhone.resend',
@@ -106,7 +107,7 @@ export function VerifyPhone() {
   if (account === 'unreachable')
     return (
       <Unreachable
-        signedIn
+        signedIn={session.status === 'signedIn'}
         bare
         retry={{
           retrying: false,
