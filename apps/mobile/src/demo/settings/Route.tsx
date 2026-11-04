@@ -15,19 +15,23 @@ import { PHONE_TAB_BAR, type Shell, ShellContext } from './Frame.tsx';
 import { MembersSection } from './Members.tsx';
 import { NotificationsSection } from './Notifications.tsx';
 import { OrganisationSection } from './Organisation.tsx';
-import { RolesSection } from './Roles.tsx';
-import { isViewer, SECTIONS, type SettingsLayout, type Viewer } from './sample.ts';
+import {
+  type DemoSection,
+  SECTIONS,
+  type SettingsLayout,
+  type Viewer,
+  viewerOf,
+} from './sample.ts';
 import { SecuritySection } from './Security.tsx';
 import { SettingsColumn, SettingsHome, sectionsFor } from './SettingsHome.tsx';
 import { SignInRulesSection } from './SignInRules.tsx';
 
-const PAGES: Record<SettingsSection, ComponentType> = {
+const PAGES: Record<DemoSection, ComponentType> = {
   account: AccountSection,
   security: SecuritySection,
   notifications: NotificationsSection,
   organisation: OrganisationSection,
   members: MembersSection,
-  roles: RolesSection,
   signInRules: SignInRulesSection,
 };
 
@@ -36,7 +40,7 @@ export function slugOf(section: SettingsSection): string {
   return SECTION_HREF[section].slice('/settings/'.length);
 }
 
-export function sectionOfSlug(slug: string | undefined): SettingsSection | null {
+export function sectionOfSlug(slug: string | undefined): DemoSection | null {
   return SECTIONS.find((section) => slugOf(section) === slug) ?? null;
 }
 
@@ -53,12 +57,12 @@ function layoutOf(kind: ReturnType<typeof useLayout>['kind']): SettingsLayout {
 }
 
 /** Settings in B, on sample data: the list, and each section's page under it. */
-export function SettingsRoute({ section }: { section: SettingsSection | null }) {
+export function SettingsRoute({ section }: { section: DemoSection | null }) {
   const params = useLocalSearchParams<{ as?: string }>();
-  const viewer: Viewer = isViewer(params.as) ? params.as : 'owner';
   const layout = layoutOf(useLayout().kind);
   const [told, setTold] = useState<string>();
   const tell = useCallback<Tell>((words) => setTold(words), []);
+  const viewer = viewerOf(params.as);
   const shown = section != null && sectionsFor(viewer).includes(section) ? section : null;
 
   useCoverStatusBar('dark', false);

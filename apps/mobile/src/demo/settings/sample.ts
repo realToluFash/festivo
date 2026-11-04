@@ -1,29 +1,34 @@
-import type { SettingsSection } from '../../kit/appNav.ts';
+import { type SettingsGroup, type SettingsSection, settingsGroups } from '../../kit/appNav.ts';
 import { SAMPLE } from '../samples.ts';
 
 /** Settings' three arrangements, from the app's layout kinds. */
 export type SettingsLayout = 'phone' | 'portrait' | 'landscape';
 
-/** Who is looking: an owner sees every section, a planner only what the role holds, and somebody with no organisation only their own. */
-export type Viewer = 'owner' | 'planner' | 'noOrg';
+/** Who is looking: an owner sees every section, a member only their own and Sign-in rules, and somebody with no organisation only their own. */
+export type Viewer = 'owner' | 'member' | 'noOrg';
 
-export const VIEWERS: readonly Viewer[] = ['owner', 'planner', 'noOrg'];
+export const VIEWERS: readonly Viewer[] = ['owner', 'member', 'noOrg'];
 
-export function isViewer(name: string | undefined): name is Viewer {
-  return VIEWERS.some((viewer) => viewer === name);
+/** `as=planner` is the link the demo gave a member before sc-29859 left three roles. */
+export function viewerOf(name: string | undefined): Viewer {
+  if (name === 'planner') return 'member';
+
+  return VIEWERS.find((viewer) => viewer === name) ?? 'owner';
 }
 
-export const SECTIONS: readonly SettingsSection[] = [
+/** sc-29859 leaves no Roles section: what each role does is fixed. */
+export type DemoSection = Exclude<SettingsSection, 'roles'>;
+
+export const SECTIONS: readonly DemoSection[] = [
   'account',
   'security',
   'notifications',
   'organisation',
   'members',
-  'roles',
   'signInRules',
 ];
 
-export function isSection(name: string | undefined): name is SettingsSection {
+export function isSection(name: string | undefined): name is DemoSection {
   return SECTIONS.some((section) => section === name);
 }
 
@@ -37,8 +42,31 @@ export const YOU = {
 /** What each viewer's role holds, for settingsGroups to decide the sections as the app does. */
 export const VIEWER_ORGANISATION: Record<Viewer, { role: string; permissions: string[] } | null> = {
   owner: { role: 'Owner', permissions: ['members.read', 'members.manage', 'organisation.manage'] },
-  planner: { role: 'Planner', permissions: [] },
+  member: { role: 'Member', permissions: [] },
   noOrg: null,
+};
+
+/** settingsGroups, ahead of the app as sc-29859 has it: no Roles, and the organisation's own row only for whoever manages it. */
+export function demoGroups(
+  viewer: Viewer,
+): { heading: SettingsGroup['heading']; sections: DemoSection[] }[] {
+  const organisation = VIEWER_ORGANISATION[viewer];
+  const manages = organisation?.permissions.includes('organisation.manage') === true;
+
+  return settingsGroups(organisation).map(({ heading, sections }) => ({
+    heading,
+    sections: sections.filter(
+      (section): section is DemoSection =>
+        section !== 'roles' && (manages || section !== 'organisation'),
+    ),
+  }));
+}
+
+/** Who the card at the top of Settings is: the member is Priya, as the board draws her. */
+export const VIEWER_PERSON: Record<Viewer, { name: string; initials: string; email: string }> = {
+  owner: YOU,
+  member: { name: 'Priya Shah', initials: 'PS', email: 'priya@ire.events' },
+  noOrg: YOU,
 };
 
 export type MemberStatus =

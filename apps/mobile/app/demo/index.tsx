@@ -44,9 +44,9 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/settings',
       },
       {
-        title: 'Settings · a planner',
-        what: 'Only the sections the role holds',
-        href: '/demo/settings?as=planner',
+        title: 'Settings · a member',
+        what: 'Priya: her own sections and Sign-in rules',
+        href: '/demo/settings?as=member',
       },
       {
         title: 'Settings · no organisation',
@@ -131,22 +131,6 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         what: 'Could not load, Try again',
         href: '/demo/settings/members?state=failed',
       },
-      { title: 'Roles', what: 'What each role may do', href: '/demo/settings/roles' },
-      {
-        title: 'Roles · locked areas',
-        what: 'Julien cannot give what he lacks',
-        href: '/demo/settings/roles?state=locked',
-      },
-      {
-        title: 'Roles · loading',
-        what: 'Loading the roles',
-        href: '/demo/settings/roles?state=loading',
-      },
-      {
-        title: 'Roles · failed',
-        what: 'Could not load, Try again',
-        href: '/demo/settings/roles?state=failed',
-      },
       {
         title: 'Sign-in rules',
         what: 'Julien meets every rule',
@@ -159,7 +143,7 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
       },
       {
         title: 'Sign-in rules · doesn’t apply',
-        what: 'Priya is not a manager',
+        what: 'Priya is a member',
         href: '/demo/settings/sign-in-rules?state=notYours',
       },
       {

@@ -2,16 +2,23 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Text } from '../../components/Text.tsx';
-import { type SettingsSection, settingsGroups } from '../../kit/appNav.ts';
+import type { SettingsSection } from '../../kit/appNav.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { CARD_PIECES, Confetti, Cover } from '../Cover.tsx';
 import { Glyph } from '../Glyph.tsx';
 import { Glass } from '../TodayCover.tsx';
 import { Bell, Landscape, PHONE_TAB_BAR, useShell } from './Frame.tsx';
 import { Caps, Pill, Tile, TYPE } from './parts.tsx';
-import { VIEWER_ORGANISATION, type Viewer, YOU } from './sample.ts';
+import {
+  type DemoSection,
+  demoGroups,
+  VIEWER_ORGANISATION,
+  VIEWER_PERSON,
+  type Viewer,
+  YOU,
+} from './sample.ts';
 
-type Listed = Exclude<SettingsSection, 'account'>;
+type Listed = Exclude<DemoSection, 'account'>;
 
 /** The app's rows and lines; the organisation's row carries its name. */
 const ROWS: Record<Listed, { title: string; line: string }> = {
@@ -19,22 +26,21 @@ const ROWS: Record<Listed, { title: string; line: string }> = {
   notifications: { title: 'Notifications', line: 'Push and email, for each kind of notification' },
   organisation: { title: YOU.organisation, line: 'Name, contact address, currency, time zone' },
   members: { title: 'Members', line: 'Who is in it, and their roles' },
-  roles: { title: 'Roles', line: 'What each role may do' },
   signInRules: { title: 'Sign-in rules', line: 'How people sign in, and for how long' },
 };
 
 const HEADINGS = { yourAccount: 'Your account', organisationHeading: 'Organisation' } as const;
 
-/** The sections a viewer sees, as settingsGroups decides them; Your account is the card at the top. */
+/** The sections a viewer sees; Your account is the card at the top. */
 export function groupsFor(viewer: Viewer) {
-  return settingsGroups(VIEWER_ORGANISATION[viewer]).map(({ heading, sections }) => ({
+  return demoGroups(viewer).map(({ heading, sections }) => ({
     heading: HEADINGS[heading],
     sections: sections.filter((section): section is Listed => section !== 'account'),
   }));
 }
 
-export function sectionsFor(viewer: Viewer): readonly SettingsSection[] {
-  return settingsGroups(VIEWER_ORGANISATION[viewer]).flatMap(({ sections }) => sections);
+export function sectionsFor(viewer: Viewer): readonly DemoSection[] {
+  return demoGroups(viewer).flatMap(({ sections }) => sections);
 }
 
 interface Handlers {
@@ -52,6 +58,7 @@ export function PersonCard({
 }) {
   const shell = useShell();
   const organisation = VIEWER_ORGANISATION[shell.viewer];
+  const you = VIEWER_PERSON[shell.viewer];
   const look = {
     phone: { height: 148, avatar: 60, name: 22, mail: 15, radius: 26, scale: 1 },
     portrait: { height: 180, avatar: 76, name: 28, mail: 16, radius: 28, scale: 1.3 },
@@ -70,7 +77,7 @@ export function PersonCard({
       ]}
       accessibilityRole="button"
       accessibilityState={{ selected: open }}
-      accessibilityLabel={`Your account. ${YOU.name}, ${YOU.email}${role == null ? '' : `, ${organisation?.role} of ${YOU.organisation}`}`}
+      accessibilityLabel={`Your account. ${you.name}, ${you.email}${role == null ? '' : `, ${organisation?.role} of ${YOU.organisation}`}`}
     >
       <View
         style={[
@@ -95,7 +102,7 @@ export function PersonCard({
           accessible={false}
           style={styles.accent}
         >
-          {YOU.initials}
+          {you.initials}
         </Text>
       </View>
       <View style={styles.personWords}>
@@ -105,10 +112,10 @@ export function PersonCard({
           accessible={false}
           style={[styles.white, styles.tight]}
         >
-          {YOU.name}
+          {you.name}
         </Text>
         <Text size={look.mail} weight="medium" accessible={false} style={styles.white}>
-          {YOU.email}
+          {you.email}
         </Text>
         {role != null && size !== 'column' && (
           <Glass height={28} style={styles.roleChip}>

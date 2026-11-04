@@ -9,10 +9,9 @@ import {
 } from 'react-native';
 
 import { Text } from '../../components/Text.tsx';
-import type { SettingsSection } from '../../kit/appNav.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { Glyph, type GlyphName } from '../Glyph.tsx';
-import type { SettingsLayout } from './sample.ts';
+import type { DemoSection, SettingsLayout } from './sample.ts';
 
 export const TYPE = {
   titlePhone: 34,
@@ -219,15 +218,13 @@ export function RoundButton({
   );
 }
 
-const TILES: Record<
-  Exclude<SettingsSection, 'account'> | 'demo',
-  { glyph: GlyphName; fill: string }
-> = {
+type TileOf = Exclude<DemoSection, 'account'> | 'demo';
+
+const TILES: Record<TileOf, { glyph: GlyphName; fill: string }> = {
   security: { glyph: 'shield', fill: tokens.optionTeal },
   notifications: { glyph: 'bell', fill: tokens.optionRose },
   organisation: { glyph: 'settings', fill: tokens.colorAccent },
   members: { glyph: 'users', fill: tokens.optionBlue },
-  roles: { glyph: 'key', fill: tokens.optionAmber },
   signInRules: { glyph: 'lock', fill: tokens.optionPurple },
   demo: { glyph: 'sparkle', fill: tokens.colorInk },
 };
@@ -237,7 +234,7 @@ export function Tile({
   side = 36,
   initials,
 }: {
-  of: Exclude<SettingsSection, 'account'> | 'demo';
+  of: TileOf;
   side?: number;
   initials?: string | undefined;
 }) {
