@@ -360,6 +360,8 @@ describe('the demo creates an account (sc-29061)', () => {
 
     for (let second = 0; second <= 60; second++) await act(() => vi.advanceTimersByTimeAsync(1000));
     fireEvent.click(screen.getByRole('button', { name: 'Send a new code' }));
+    expect(screen.getByRole('button', { name: 'Sending…' })).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Verifying…' })).toBeNull();
     await act(() => vi.advanceTimersByTimeAsync(1000));
 
     expect(screen.getByText('Send a new code in 1:00')).toBeDefined();

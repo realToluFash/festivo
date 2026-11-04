@@ -125,6 +125,7 @@ export function CodeForm({
   );
   const [wrongs, setWrongs] = useState(opening === 'wrong' ? 1 : 0);
   const [busy, after] = useBusy();
+  const [sending, setSending] = useState(false);
   const [countFrom, setCountFrom] = useState(() => Date.now());
   const field = useRef<HTMLInputElement>(null);
 
@@ -165,7 +166,11 @@ export function CodeForm({
   }
 
   function sendNew(): void {
+    if (busy) return;
+
+    setSending(true);
     after(() => {
+      setSending(false);
       setDead(null);
       setCode('');
       setLine(null);
@@ -188,9 +193,7 @@ export function CodeForm({
           className="button button-primary demo-wide"
           type="button"
           aria-busy={busy}
-          onClick={() => {
-            if (!busy) sendNew();
-          }}
+          onClick={sendNew}
         >
           {busy ? 'Sending…' : 'Send a new code'}
         </button>
@@ -223,7 +226,7 @@ export function CodeForm({
           )}
         </div>
         <button className="button button-primary demo-wide" type="submit" aria-busy={busy}>
-          {busy ? 'Verifying…' : submit}
+          {sending ? 'Sending…' : busy ? 'Verifying…' : submit}
         </button>
       </form>
       <Resend key={countFrom} onResend={sendNew}>
