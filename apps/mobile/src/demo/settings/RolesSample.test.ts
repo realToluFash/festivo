@@ -100,9 +100,8 @@ describe('Roles in the demo', () => {
     );
   });
 
-  it('offers an owner every other role to move Door staff’s people to', () => {
+  it('offers an owner every other role but Owner to move Door staff’s people to', () => {
     expect(replacements(roles, role('Door staff'), FOLAKE.held).map(({ name }) => name)).toEqual([
-      'Owner',
       'Administrator',
       'Event manager',
       'Coordinator',
