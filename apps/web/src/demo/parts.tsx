@@ -398,9 +398,12 @@ export function Answers({
   pressed,
   onAnswer,
   sized = false,
+  held = false,
 }: {
   pressed: Answer | null;
   onAnswer: (answer: Answer) => void;
+  /** Both answers wait while another form on the page is working. */
+  held?: boolean;
   /** Each button its own width, inside a row of the details page, rather than half the column. */
   sized?: boolean;
 }) {
@@ -411,8 +414,8 @@ export function Answers({
           className="button button-primary"
           type="button"
           aria-busy={pressed === 'accept'}
-          {...offButton(pressed === 'decline')}
-          onClick={() => pressed == null && onAnswer('accept')}
+          {...offButton(held || pressed === 'decline')}
+          onClick={() => !held && pressed == null && onAnswer('accept')}
         >
           {pressed === 'accept' ? 'Joining…' : 'Accept and join'}
         </button>
@@ -420,8 +423,8 @@ export function Answers({
           className="button"
           type="button"
           aria-busy={pressed === 'decline'}
-          {...offButton(pressed === 'accept')}
-          onClick={() => pressed == null && onAnswer('decline')}
+          {...offButton(held || pressed === 'accept')}
+          onClick={() => !held && pressed == null && onAnswer('decline')}
         >
           {pressed === 'decline' ? 'Declining…' : 'Decline'}
         </button>

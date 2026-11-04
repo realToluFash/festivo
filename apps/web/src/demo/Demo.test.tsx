@@ -612,6 +612,21 @@ describe('the demo’s other ways in (sc-29062)', () => {
     expect(await screen.findByRole('heading', { name: 'You are in' })).toBeDefined();
   });
 
+  it('holds the invitation’s answers while Save and continue is saving', async () => {
+    await page('?page=details&state=invitation', 'A few details');
+    type('Organisation name', SAMPLE.organisation);
+    type('Mobile number', SAMPLE.number);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save and continue' }));
+    const accept = screen.getByRole('button', { name: 'Accept and join' });
+    expect(accept.getAttribute('aria-disabled')).toBe('true');
+    fireEvent.click(accept);
+
+    expect(screen.queryByText('Joining…')).toBeNull();
+    await wait();
+    expect(screen.queryByRole('heading', { name: 'You are in' })).toBeNull();
+  });
+
   it('says Google signed in under the title, with no Back', async () => {
     await page('?page=details&state=google', 'A few details');
 

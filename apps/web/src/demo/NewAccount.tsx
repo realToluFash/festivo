@@ -517,6 +517,7 @@ export function Details({
   }
 
   function answer(chosen: Answer): void {
+    if (busy) return;
     setPressed(chosen);
     after(() => {
       setPressed(null);
@@ -597,7 +598,13 @@ export function Details({
             <DomainOffer busy={busy} onAsk={ask} onStartOwn={() => setOffer(null)} />
           ) : (
             <>
-              {offer === 'invitation' && <WaitingInvitation pressed={pressed} onAnswer={answer} />}
+              {offer === 'invitation' && (
+                <WaitingInvitation
+                  pressed={pressed}
+                  held={busy && pressed == null}
+                  onAnswer={answer}
+                />
+              )}
               {offer === 'declined' && (
                 <p className="demo-muted" role="status">
                   You declined. {SAMPLE.inviter} will see that you said no.
@@ -728,9 +735,11 @@ function DomainOffer({
 
 function WaitingInvitation({
   pressed,
+  held,
   onAnswer,
 }: {
   pressed: Answer | null;
+  held: boolean;
   onAnswer: (answer: Answer) => void;
 }) {
   return (
@@ -746,7 +755,7 @@ function WaitingInvitation({
         <Organisation
           line={`Invitation from ${SAMPLE.inviter} · ${SAMPLE.role} · works until ${SAMPLE.invitedUntil}`}
         />
-        <Answers pressed={pressed} onAnswer={onAnswer} sized />
+        <Answers pressed={pressed} held={held} onAnswer={onAnswer} sized />
       </div>
       <OrLine words="Or start your own organisation" />
     </section>
