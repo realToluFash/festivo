@@ -1,0 +1,14 @@
+# The language sheet in LANGUAGE (English, Español, Français, Português) shows the line under its heading, the
+# line FOLLOWS the language's own words. sc-28816.
+appId: host.exp.Exponent
+---
+- runFlow: sign-in-screen-language.yaml
+- tapOn:
+    id: 'language.open'
+- extendedWaitUntil:
+    visible:
+      id: 'language.sheet'
+    timeout: 10000
+- assertVisible:
+    text: '${FOLLOWS}'
+- takeScreenshot: ${OUT}
