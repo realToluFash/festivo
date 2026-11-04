@@ -3,38 +3,45 @@ import { getLocales } from 'expo-localization';
 import { useLocalSearchParams } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
-import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { useShell } from './Frame.tsx';
 import { useLoad } from './MembersLoading.tsx';
 import {
   ASK_OWNER,
-  type Change,
-  changeWhen,
-  limitApplies,
-  READ_HERE,
-  type Rule,
-  SET_BY,
+  type ChangeRow,
+  changeRows,
+  type Mark,
+  type RuleRow,
+  ruleLabel,
+  rulesCard,
   type SignInRulesStart,
   signInRulesStart,
   signInRulesStateOf,
+  standFoot,
   TITLE,
+  whereYouStand,
 } from './SignInRulesSample.ts';
 import {
   CardSays,
   FailedBlock,
-  HeadCount,
-  Line,
   LoadingBlock,
   OnCard,
   Row,
   RowList,
   Section,
+  StatusMark,
   SummaryCard,
   SummaryPage,
 } from './Summary.tsx';
 
-/** Sign-in rules in B, summary first: read only for everyone, who sets them on the card, what changed, then the rules in force. */
+const MARK = 22;
+
+const hidden = {
+  accessibilityElementsHidden: true,
+  importantForAccessibility: 'no-hide-descendants',
+} as const;
+
+/** Sign-in rules in B, where you stand: read only for everyone, each rule with a mark and a line about you, then what changed. */
 export function SignInRulesSection() {
   const { state } = useLocalSearchParams<{ state?: string }>();
   const name = signInRulesStateOf(state);
@@ -43,7 +50,7 @@ export function SignInRulesSection() {
 }
 
 function SignInRulesPage({ start }: { start: SignInRulesStart }) {
-  const { layout } = useShell();
+  const shell = useShell();
   const { load, retry } = useLoad(start.load);
   const locale = formattingLocale('en', getLocales()[0]?.languageTag);
 
@@ -63,93 +70,108 @@ function SignInRulesPage({ start }: { start: SignInRulesStart }) {
       </SummaryPage>
     );
 
+  const { page, viewer } = start;
+  const rules = whereYouStand(page, viewer, locale);
+  const card = rulesCard(rules, viewer);
+  const pane = shell.layout === 'landscape';
+
   return (
     <SummaryPage title={TITLE}>
       <SummaryCard
-        size={layout === 'portrait' ? 'wide' : 'page'}
-        height={200}
+        size={shell.layout === 'portrait' ? 'wide' : 'page'}
+        height={card.step == null ? 170 : 210}
+        step={
+          card.step == null
+            ? null
+            : {
+                label: card.step,
+                onPress: () => shell.openSection('security'),
+                testID: 'signInRules.step',
+              }
+        }
         testID="signInRules.card"
       >
-        <CardSays text={SET_BY} heading />
-        <OnCard text={READ_HERE} />
-        {start.limit != null && (
-          <OnCard text={limitApplies(start.limit.days, start.limit.organisation)} strong />
-        )}
+        <CardSays text={card.says} size={pane ? 26 : 24} heading />
+        <OnCard text={card.line} />
       </SummaryCard>
-      <Changes changes={start.changes} locale={locale} />
-      <InForce rules={start.rules} />
+      <Section title="Where you stand" foot={standFoot(page)}>
+        <RowList
+          items={rules.map((rule) => ({
+            key: rule.key,
+            inset: MARK + tokens.spaceLg,
+            row: <RuleLine rule={rule} />,
+          }))}
+        />
+      </Section>
+      <Section title="What changed" foot={viewer.setsRules ? undefined : ASK_OWNER}>
+        <Changes changes={changeRows(page.changes, viewer.seen, locale)} />
+      </Section>
     </SummaryPage>
   );
 }
 
-function Changes({ changes, locale }: { changes: readonly Change[]; locale: string }) {
-  if (changes.length === 0)
-    return (
-      <Section title="What changed">
-        <View style={styles.none}>
-          <Text size={16} weight="semibold">
-            No changes yet
-          </Text>
-          <Line size={14} text="These are the rules every organisation starts with." />
-        </View>
-      </Section>
-    );
-
+function RuleLine({ rule }: { rule: RuleRow }) {
   return (
-    <Section title="What changed" right={<HeadCount text="Newest first" />}>
-      <RowList
-        items={changes.map((change) => {
-          const when = changeWhen(change, locale);
-          const was = `was: ${change.was}`;
-
-          return {
-            key: change.at,
-            row: (
-              <View
-                style={styles.change}
-                accessible
-                accessibilityLabel={`${change.now}. ${was}. ${when}`}
-                testID={`signInRules.change.${change.at}`}
-              >
-                <Text size={16} weight="semibold" accessible={false}>
-                  {change.now}
-                </Text>
-                <Text size={14} weight="medium" accessible={false} style={styles.secondary}>
-                  {was}
-                </Text>
-                <Text
-                  size={13}
-                  weight="medium"
-                  accessible={false}
-                  style={[styles.secondary, styles.figures]}
-                >
-                  {when}
-                </Text>
-              </View>
-            ),
-          };
-        })}
-      />
-    </Section>
+    <Row
+      lead={<RuleMark mark={rule.mark} />}
+      title={rule.title}
+      line={rule.line}
+      accessibilityLabel={ruleLabel(rule)}
+      testID={`signInRules.rule.${rule.key}`}
+    />
   );
 }
 
-function InForce({ rules }: { rules: readonly Rule[] }) {
+/** Met is the green tick, needs you the amber half disc, and doesn't apply a Sunk disc with a bar. */
+function RuleMark({ mark }: { mark: Mark }) {
+  if (mark === 'met') return <StatusMark kind="yes" side={MARK} ink={tokens.marks.done.ink} />;
+  if (mark === 'needs')
+    return <StatusMark kind="waiting" side={MARK} ink={tokens.colorAttentionText} />;
+
   return (
-    <Section title="In force" foot={ASK_OWNER}>
-      <RowList
-        items={rules.map((rule) => ({
-          key: rule.label,
-          row: <Row title={rule.value} line={rule.label} weight="medium" />,
-        }))}
-      />
-    </Section>
+    <View style={styles.notApplicable} {...hidden}>
+      <View style={styles.bar} />
+    </View>
+  );
+}
+
+function Changes({ changes }: { changes: readonly ChangeRow[] }) {
+  if (changes.length === 0)
+    return (
+      <Row title="No changes yet" line="These are the rules every organisation starts with." />
+    );
+
+  return (
+    <RowList
+      items={changes.map((change) => ({
+        key: change.at,
+        row: (
+          <Row
+            title={change.title}
+            tag={change.isNew ? { kind: 'now', word: 'New' } : null}
+            line={change.line}
+            accessibilityLabel={change.label}
+            testID={`signInRules.change.${change.at}`}
+          />
+        ),
+      }))}
+    />
   );
 }
 
 const styles = StyleSheet.create({
-  secondary: { color: tokens.colorInkSecondary },
-  figures: { fontVariant: ['tabular-nums'] },
-  none: { gap: 3, paddingVertical: tokens.spaceXs },
-  change: { gap: 3, paddingVertical: 11 },
+  notApplicable: {
+    width: MARK,
+    height: MARK,
+    borderRadius: MARK / 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: tokens.colorNeutralFill,
+  },
+  bar: {
+    width: Math.round(MARK * 0.45),
+    height: 2,
+    borderRadius: 1,
+    backgroundColor: tokens.colorInkSecondary,
+  },
 });
