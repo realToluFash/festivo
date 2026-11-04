@@ -15,23 +15,24 @@ The rules every locale shares are in `.claude/skills/locale-parity`.
 One way to say each recurring thing, everywhere. Seeded from the catalogues as they stood on
 17 October 2026; the linguist reviews each row and marks it settled in Notes.
 
-| English                       | Portuguese                   | Notes                                                            |
-| ----------------------------- | ---------------------------- | ---------------------------------------------------------------- |
-| Settings                      | Definições                   |                                                                  |
-| Organisation                  | Organização                  |                                                                  |
-| Sign in                       | Iniciar sessão               |                                                                  |
-| Sign out                      | Encerrar sessão              | Settled 17 Oct 2026. "A sessão foi encerrada", never "terminada" |
-| Email                         | Endereço de e-mail           |                                                                  |
-| Password                      | Palavra-passe                |                                                                  |
-| Continue                      | Continuar                    |                                                                  |
-| Cancel                        | Cancelar                     |                                                                  |
-| Two-factor authentication     | Autenticação de dois fatores | In a comma list of Security's contents, "dois fatores" alone     |
-| Home (tab)                    | Início                       | Settled 17 Oct 2026. Not "Página inicial": too long for the tab  |
-| Recovery code                 | Código de recuperação        |                                                                  |
-| Phone (device)                | Telemóvel                    | Settled 18 Oct 2026. Never "celular"                             |
-| Account (Settings section)    | Conta                        | Settled 18 Oct 2026. A bare label: "em Conta", "Voltar a Conta"  |
-| Alternative (address, number) | alternativo                  | Settled 18 Oct 2026. Not primary; never "secundário"             |
-| Try again (button)            | Tentar novamente             | Settled 1 Nov 2026, sc-26974                                     |
+| English                       | Portuguese                            | Notes                                                                |
+| ----------------------------- | ------------------------------------- | -------------------------------------------------------------------- |
+| Settings                      | Definições                            |                                                                      |
+| Organisation                  | Organização                           |                                                                      |
+| Sign in                       | Iniciar sessão                        |                                                                      |
+| Sign out                      | Encerrar sessão                       | Settled 17 Oct 2026. "A sessão foi encerrada", never "terminada"     |
+| Email                         | Endereço de e-mail                    |                                                                      |
+| Password                      | Palavra-passe                         |                                                                      |
+| Continue                      | Continuar                             |                                                                      |
+| Cancel                        | Cancelar                              |                                                                      |
+| Two-factor authentication     | Autenticação de dois fatores          | In a comma list of Security's contents, "dois fatores" alone         |
+| Home (tab)                    | Início                                | Settled 17 Oct 2026. Not "Página inicial": too long for the tab      |
+| Recovery code                 | Código de recuperação                 |                                                                      |
+| Phone (device)                | Telemóvel                             | Settled 18 Oct 2026. Never "celular"                                 |
+| Account (Settings section)    | Conta                                 | Settled 18 Oct 2026. A bare label: "em Conta", "Voltar a Conta"      |
+| Alternative (address, number) | alternativo                           | Settled 18 Oct 2026. Not primary; never "secundário"                 |
+| Try again (button)            | Tentar novamente                      | Settled 1 Nov 2026, sc-26974                                         |
+| Owner / Admin / Member        | Proprietário / Administrador / Membro | Settled 5 Nov 2026, sc-29914. In a sentence "a função Administrador" |
 
 ## Never translated
 
