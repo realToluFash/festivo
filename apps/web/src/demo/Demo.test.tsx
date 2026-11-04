@@ -464,6 +464,137 @@ describe('the demo creates an account (sc-29061)', () => {
   });
 });
 
+describe('the demo gets a password back (sc-29064)', () => {
+  beforeEach(() => {
+    inEnvironment('development');
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+  });
+
+  async function wait(): Promise<void> {
+    await act(() => vi.advanceTimersByTimeAsync(1000));
+  }
+
+  async function page(query: string, title: string) {
+    const router = at(`/demo/get-back-in${query}`);
+    await screen.findByRole('heading', { level: 1, name: title });
+
+    return router;
+  }
+
+  it('lists the board on the demo home', async () => {
+    at('/demo');
+    await screen.findByRole('heading', { name: 'Design demo' });
+
+    expect(screen.getByRole('heading', { name: 'Getting back in · desktop' })).toBeDefined();
+    expect(screen.getByRole('link', { name: /This link has already been used/ })).toBeDefined();
+  });
+
+  it('opens from sign-in with the email typed there, and Back returns to that sign-in', async () => {
+    await signInBoard('signed-out');
+    type('Email', 'ade@ire.events');
+    fireEvent.click(screen.getByRole('link', { name: 'Forgot your password?' }));
+
+    await screen.findByRole('heading', { name: 'Reset your password' });
+    expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe('ade@ire.events');
+    expect(screen.getByText('Remembered it?')).toBeDefined();
+
+    fireEvent.click(screen.getByRole('link', { name: 'Back' }));
+    await screen.findByRole('heading', { name: 'Sign in' });
+    expect(screen.getByText('You were signed out')).toBeDefined();
+  });
+
+  it('says a link already sent still works when there are too many requests', async () => {
+    await page('?page=reset&state=limited', 'Reset your password');
+
+    expect(screen.getByText('Too many requests')).toBeDefined();
+    expect(screen.getByText(/Any link already sent still works\.$/)).toBeDefined();
+  });
+
+  it('sends the link, sends it again on the same page, and Back keeps the address', async () => {
+    await page('', 'Reset your password');
+    type('Email', '');
+    fireEvent.click(screen.getByRole('button', { name: 'Send the link' }));
+    expect(screen.getByText('Enter your email address.')).toBeDefined();
+
+    type('Email', 'ade@ire.events');
+    fireEvent.click(screen.getByRole('button', { name: 'Send the link' }));
+    await wait();
+    await screen.findByRole('heading', { name: 'Check your email' });
+    expect(screen.queryByRole('link', { name: 'Sign in' })).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'send it again' }));
+    await wait();
+    expect(screen.getByRole('heading', { name: 'Check your email' })).toBeDefined();
+    expect(screen.getByText('Sent again.')).toBeDefined();
+
+    fireEvent.click(screen.getByRole('link', { name: 'Back' }));
+    await screen.findByRole('heading', { name: 'Reset your password' });
+    expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe('ade@ire.events');
+  });
+
+  it('refuses a short new password, ticks the rule at 15, and signs in', async () => {
+    await page('?page=new', 'Set a new password');
+    expect(screen.queryByRole('link', { name: 'Back' })).toBeNull();
+    type('New password', 'nine char');
+    fireEvent.click(screen.getByRole('button', { name: 'Set password and sign in' }));
+
+    expect(screen.getByText('Use at least 15 characters.')).toBeDefined();
+    expect(document.activeElement).toBe(screen.getByLabelText('New password'));
+    expect(document.querySelector('.demo-rule-met')).toBeNull();
+
+    type('New password', SAMPLE.password);
+    expect(document.querySelector('.demo-rule-met')).not.toBeNull();
+    fireEvent.submit(screen.getByLabelText('New password'));
+    await wait();
+
+    await screen.findByRole('heading', { name: 'Password changed' });
+    expect(screen.getByRole('link', { name: 'Sign out' })).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Continue to Soirely' }));
+    expect(await screen.findByRole('navigation', { name: 'Soirely' })).toBeDefined();
+  });
+
+  it.each([
+    ['expired', 'This link has expired'],
+    ['used', 'This link has already been used'],
+    ['broken', 'This link doesn’t work'],
+  ])('gives a %s link its own title and one button for a new link', async (state, title) => {
+    await page(`?page=link&state=${state}`, title);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Send a new link' }));
+    await wait();
+    expect(await screen.findByRole('heading', { name: 'Check your email' })).toBeDefined();
+  });
+
+  it('shows Cannot reach Soirely while the link is read, until the switch brings it back', async () => {
+    await page('?page=link&state=offline', 'Cannot reach Soirely');
+
+    fireEvent.click(screen.getByRole('switch', { name: /connection is back/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    await wait();
+    expect(await screen.findByRole('heading', { name: 'Set a new password' })).toBeDefined();
+  });
+
+  it('asks for the code first, and changes nothing until it passes', async () => {
+    await page('?page=code', 'Enter your code');
+    expect(screen.queryByText(/No code\?/)).toBeNull();
+    expect(
+      screen.getByRole('link', { name: 'Lost your authenticator and your recovery codes?' }),
+    ).toBeDefined();
+
+    for (let tries = 0; tries <= TRIES; tries++) {
+      type('Code', '111111');
+      fireEvent.click(screen.getByRole('button', { name: 'Continue to a new password' }));
+      await wait();
+    }
+    expect(screen.getByText(/That code did not work/)).toBeDefined();
+
+    type('Code', SAMPLE.code);
+    fireEvent.click(screen.getByRole('button', { name: 'Continue to a new password' }));
+    await wait();
+    expect(await screen.findByRole('heading', { name: 'Set a new password' })).toBeDefined();
+  });
+});
+
 describe('Today at a desk (sc-29092)', () => {
   beforeEach(() => inEnvironment('development'));
 

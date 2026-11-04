@@ -36,7 +36,7 @@ export function Heading({
   done = false,
   children,
 }: {
-  step?: 1 | 2;
+  step?: 1 | 2 | undefined;
   title: string;
   done?: boolean;
   children?: ReactNode;
@@ -105,6 +105,7 @@ export function CodeForm({
   onVerified,
   below,
   resendNote,
+  resend = true,
 }: {
   opening: string;
   label: string;
@@ -117,6 +118,8 @@ export function CodeForm({
   /** Under the resend line while the field shows. */
   below?: ReactNode;
   resendNote?: ReactNode;
+  /** False for an authenticator's code: nothing to send, so no resend and no end to the tries. */
+  resend?: boolean;
 }) {
   const [code, setCode] = useState(opening === 'wrong' ? '482193' : '');
   const [line, setLine] = useState<string | null>(opening === 'wrong' ? wrong : null);
@@ -161,7 +164,7 @@ export function CodeForm({
         return;
       }
 
-      if (wrongs + 1 >= TRIES) {
+      if (resend && wrongs + 1 >= TRIES) {
         setDead('exhausted');
         return;
       }
@@ -237,9 +240,11 @@ export function CodeForm({
           {sending ? 'Sending…' : busy ? 'Verifying…' : submit}
         </button>
       </form>
-      <Resend key={countFrom} onResend={sendNew}>
-        {resendNote}
-      </Resend>
+      {resend && (
+        <Resend key={countFrom} onResend={sendNew}>
+          {resendNote}
+        </Resend>
+      )}
       {below}
     </>
   );
@@ -282,7 +287,7 @@ export function Verified({
   action,
   onContinue,
 }: {
-  step: 1 | 2;
+  step?: 1 | 2;
   title: string;
   body: string;
   action: string;

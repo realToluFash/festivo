@@ -5,13 +5,16 @@ import { NotFound } from '../routes/public/NotFound.tsx';
 import { offButton } from '../offButton.ts';
 import { offField } from '../offField.ts';
 import { BoardPage, OrLine, Providers } from './BoardPage.tsx';
+import { GetBackInBoard } from './GetBackIn.tsx';
 import { NewAccountBoard } from './NewAccount.tsx';
 import { Today } from './Today.tsx';
 import {
   type FieldLines,
+  GET_BACK_IN_PAGES,
   LOCK_MS,
   NEW_ACCOUNT_PAGES,
   SAMPLE,
+  backIn,
   fieldLines,
   refuse,
   samplePair,
@@ -84,6 +87,7 @@ export default function Demo() {
       <Route index element={<DemoHome from={from} />} />
       <Route path="sign-in" element={<SignInBoard />} />
       <Route path="create-account" element={<NewAccountBoard />} />
+      <Route path="get-back-in" element={<GetBackInBoard />} />
       <Route path="signed-in" element={<SignedIn />} />
       <Route path="today" element={<Today />} />
       <Route path="later" element={<Later />} />
@@ -139,24 +143,31 @@ function DemoHome({ from }: { from: string }) {
         </ul>
 
         <h3>Create an account · desktop</h3>
-        {NEW_ACCOUNT_PAGES.map((page) => (
-          <div key={page.name} className="demo-home-group">
-            <h4>{page.name}</h4>
-            <ul className="demo-home-rows">
-              {page.states.map((state) => (
-                <li key={state.to}>
-                  <Link className="demo-home-row" to={state.to}>
-                    <span>{state.name}</span>
-                    <span aria-hidden="true">›</span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
+        <BoardPages pages={NEW_ACCOUNT_PAGES} />
+
+        <h3>Getting back in · desktop</h3>
+        <BoardPages pages={GET_BACK_IN_PAGES} />
       </section>
     </main>
   );
+}
+
+function BoardPages({ pages }: { pages: typeof NEW_ACCOUNT_PAGES }) {
+  return pages.map((page) => (
+    <div key={page.name} className="demo-home-group">
+      <h4>{page.name}</h4>
+      <ul className="demo-home-rows">
+        {page.states.map((state) => (
+          <li key={state.to}>
+            <Link className="demo-home-row" to={state.to}>
+              <span>{state.name}</span>
+              <span aria-hidden="true">›</span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </div>
+  ));
 }
 
 function SignInBoard() {
@@ -330,7 +341,19 @@ function SignInForm({ state }: { state: string }) {
               >
                 <div className="demo-label-row">
                   <label htmlFor="password">Password</label>
-                  <Link className="link-button demo-link" to="/demo/later?screen=forgot">
+                  <Link
+                    className="link-button demo-link"
+                    to={backIn('reset')}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      void navigate(backIn('reset'), {
+                        state: {
+                          email: email.current?.value ?? '',
+                          back: `/demo/sign-in?state=${state}`,
+                        },
+                      });
+                    }}
+                  >
                     Forgot your password?
                   </Link>
                 </div>
@@ -405,14 +428,15 @@ function SignedIn() {
 }
 
 const LATER: Record<string, string> = {
-  forgot: 'Forgot your password?',
+  recovery: 'Enter a recovery code',
+  lost: 'Lost your authenticator and your recovery codes?',
   terms: 'Terms',
   privacy: 'Privacy',
 };
 
 function Later() {
   const [params] = useSearchParams();
-  const screen = LATER[params.get('screen') ?? ''] ?? 'Forgot your password?';
+  const screen = LATER[params.get('screen') ?? ''] ?? 'Terms';
 
   return (
     <BoardPage>

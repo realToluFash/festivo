@@ -83,10 +83,10 @@ function NewHere() {
   );
 }
 
-export function HaveAccount() {
+export function HaveAccount({ question = 'Already have an account?' }: { question?: string }) {
   return (
     <>
-      <span>Already have an account?</span>
+      <span>{question}</span>
       <Link className="button demo-dense" to="/demo/sign-in">
         Sign in
       </Link>
