@@ -431,6 +431,9 @@ describe("the CSS lays each scheme over the base, for the web's look switch", ()
           ...Object.entries(scheme).map(([k, v]) => `  --${k}: ${v};`),
         ]),
       );
+      for (const line of lines) {
+        expect(line, name).toMatch(/^ {2}--\w+: (\d+(\.\d+)?px solid )?#[0-9A-F]{6};$/i);
+      }
       expect(lines.join('\n'), name).not.toContain(tokens.colorAccent);
     });
   }
