@@ -2,17 +2,20 @@ import { formattingLocale } from '@soirely/domain';
 import { getLocales } from 'expo-localization';
 import { router, useFocusEffect, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Toast } from '../../src/components/Toast.tsx';
 import { useSystemBack } from '../../src/components/useSystemBack.ts';
 import { useLayout } from '../../src/layout/useLayout.ts';
-import { MOMENTS, type MomentName, momentOf, sayIn } from '../../src/demo/today.ts';
-import type { Tab } from '../../src/demo/TodayCover.tsx';
-import type { Tell } from '../../src/demo/TodayParts.tsx';
-import { TAB_BAR, TodayScreen } from '../../src/demo/TodayScreen.tsx';
-import { demoShell, TodayShellProvider } from '../../src/demo/todayShell.ts';
+import { MOMENTS, momentOf, sayIn } from '../../src/demo/today.ts';
+import type { MomentName } from '../../src/kit/today.ts';
+import type { Tab } from '../../src/components/TodayCover.tsx';
+import type { Tell } from '../../src/components/TodayParts.tsx';
+import { TAB_BAR, TodayScreen } from '../../src/components/TodayScreen.tsx';
+import { TodayShellProvider } from '../../src/components/todayShell.ts';
+import { demoShell } from '../../src/demo/demoShell.ts';
 import { useCoverStatusBar } from '../../src/demo/Welcome.tsx';
 import { tokens } from '../../src/theme/tokens.ts';
 
@@ -23,10 +26,16 @@ function isMoment(name: string | undefined): name is MomentName {
 export default function DemoTodayScreen() {
   const params = useLocalSearchParams<{ moment?: string; toast?: string }>();
   const name = isMoment(params.moment) ? params.moment : 'plan';
+  const { i18n } = useTranslation();
   // The demo's words are English, so its dates are too, in the phone's own region.
   const moment = useMemo(
-    () => momentOf(name, sayIn(formattingLocale('en', getLocales()[0]?.languageTag))),
-    [name],
+    () =>
+      momentOf(
+        name,
+        sayIn(formattingLocale('en', getLocales()[0]?.languageTag)),
+        i18n.getFixedT('en'),
+      ),
+    [name, i18n],
   );
   const { kind } = useLayout();
   const [told, setTold] = useState(params.toast);

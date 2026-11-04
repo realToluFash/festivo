@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next';
 import { DESTINATION_HREF } from '../kit/appNav.ts';
 import { stepOpeners } from '../kit/stepOpeners.ts';
 import { type LayoutKind, useLayout } from '../layout/useLayout.ts';
+import { NOT_OFFLINE, type ScreenOffline } from '../offline.ts';
 import { useSignedIn } from '../signedIn.ts';
 import { useTappedSwitch } from '../tappedSwitch.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -32,21 +33,41 @@ export function Home() {
     account != null && organisation != null && roleHolds(organisation, 'events.read')
       ? { account, organisation }
       : null;
+  const [offline, setOffline] = useState<ScreenOffline>(NOT_OFFLINE);
 
   return (
-    <AppFrame current="home" title={t('frame.home')} bodyTakesSwitch ownChrome={today != null}>
-      {today == null ? <HomeBody /> : <TodayBody {...today} />}
+    <AppFrame
+      current="home"
+      title={t('frame.home')}
+      bodyTakesSwitch
+      ownChrome={today != null}
+      offline={offline.stale}
+    >
+      {today == null ? (
+        <HomeBody />
+      ) : (
+        <TodayBody key={today.organisation.id} {...today} onOffline={setOffline} />
+      )}
     </AppFrame>
   );
 }
 
-function TodayBody({ account, organisation }: { account: Account; organisation: Membership }) {
+function TodayBody({
+  account,
+  organisation,
+  onOffline,
+}: {
+  account: Account;
+  organisation: Membership;
+  onOffline: (offline: ScreenOffline) => void;
+}) {
   const { place, onClosed } = useNextAfterClosed();
 
   return (
     <TodayLanding
       account={account}
       organisation={organisation}
+      onOffline={onOffline}
       notices={
         <View style={styles.notices}>
           <LinkedNotice wordsRef={place('linked')} onDismissed={() => onClosed('linked')} />

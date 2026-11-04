@@ -11,7 +11,7 @@ import {
 import { Text } from '../../components/Text.tsx';
 import type { SettingsSection } from '../../kit/appNav.ts';
 import { tokens } from '../../theme/tokens.ts';
-import { Glyph, type GlyphName } from '../Glyph.tsx';
+import { Glyph, type GlyphName } from '../../components/Glyph.tsx';
 import type { SettingsLayout } from './sample.ts';
 
 export const TYPE = {

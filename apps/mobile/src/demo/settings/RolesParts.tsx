@@ -5,7 +5,7 @@ import { Field, FieldError, TextField } from '../../components/Field.tsx';
 import { RadioMark } from '../../components/RadioMark.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
-import { Glyph } from '../Glyph.tsx';
+import { Glyph } from '../../components/Glyph.tsx';
 import { Avatar, Card, CardHead, Chip, Pair, Pill, TYPE } from './parts.tsx';
 import {
   type DemoRole,

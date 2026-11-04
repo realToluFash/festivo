@@ -3,22 +3,25 @@ import { roleName, serverClock } from '@soirely/domain';
 import { router } from 'expo-router';
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { StyleSheet, View, type ViewInstance } from 'react-native';
+import { AppState, StyleSheet, View, type ViewInstance } from 'react-native';
 
 import { api } from '../api.ts';
-import type { Tab } from '../demo/TodayCover.tsx';
-import { TodayScreen } from '../demo/TodayScreen.tsx';
-import { type Opens, type TodayShell, TodayShellProvider } from '../demo/todayShell.ts';
+import type { Tab } from './TodayCover.tsx';
+import { TodayScreen } from './TodayScreen.tsx';
+import { type Opens, type TodayShell, TodayShellProvider } from './todayShell.ts';
 import { dateLocale } from '../i18n/index.ts';
 import { DESTINATION_HREF, SECTION_HREF } from '../kit/appNav.ts';
 import { todayMoment } from '../kit/todayMoment.ts';
 import { SKELETON_AFTER_MS } from '../kit/skeleton.ts';
 import { useLayout } from '../layout/useLayout.ts';
 import { useUnread } from '../notificationsUnread.ts';
+import { type ScreenOffline, useHandOffline, useOffline } from '../offline.ts';
+import { afterFailedLoad } from '../offlineLoad.ts';
 import { tokens } from '../theme/tokens.ts';
 import { useOpenSwitcher } from './AppFrame.tsx';
 import { EventsFailed } from './Events.tsx';
 import { Pending } from './Pending.tsx';
+import { Refreshing } from './Refreshing.tsx';
 import { useCoverStatusBar } from './Welcome.tsx';
 
 type Load =
@@ -37,10 +40,12 @@ export function TodayLanding({
   account,
   organisation,
   notices,
+  onOffline,
 }: {
   account: Account;
   organisation: Membership;
   notices: ReactNode;
+  onOffline: (offline: ScreenOffline) => void;
 }) {
   const { t } = useTranslation();
   const { kind } = useLayout();
@@ -49,21 +54,38 @@ export function TodayLanding({
   const switchFrom = useRef<ViewInstance>(null);
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
+  const [refresh, setRefresh] = useState(0);
+  const reload = useCallback(() => setRefresh((n) => n + 1), []);
+  const { watch, stale, refreshing } = useOffline({
+    loaded: load.kind === 'loaded',
+    reload,
+    focusTitle: () => undefined,
+  });
 
+  useHandOffline(onOffline, { stale, refreshing });
   useCoverStatusBar(kind === 'tabletLandscape' ? 'dark' : 'light', false);
+
+  // The greeting and the week are the hour's and the day's, so coming back to the app reads them again.
+  useEffect(() => {
+    const foreground = AppState.addEventListener('change', (now) => {
+      if (now === 'active') reload();
+    });
+
+    return () => foreground.remove();
+  }, [reload]);
 
   useEffect(() => {
     let live = true;
 
-    api.allEvents(organisation.id).then(
+    watch(api.allEvents(organisation.id)).then(
       (events) => live && setLoad({ kind: 'loaded', events, at: serverClock.now() }),
-      () => live && setLoad({ kind: 'failed' }),
+      (error: unknown) => live && setLoad((was) => afterFailedLoad(was, error, { kind: 'failed' })),
     );
 
     return () => {
       live = false;
     };
-  }, [organisation.id, attempt]);
+  }, [organisation.id, attempt, refresh, watch]);
 
   const open = useCallback(
     (opens: Opens) => {
@@ -134,7 +156,16 @@ export function TodayLanding({
 
   return (
     <TodayShellProvider value={shell}>
-      <TodayScreen moment={moment} onTab={onTab} notices={notices} />
+      <TodayScreen
+        moment={moment}
+        onTab={onTab}
+        notices={
+          <>
+            {refreshing && <Refreshing testID="today.refreshing" />}
+            {notices}
+          </>
+        }
+      />
     </TodayShellProvider>
   );
 }

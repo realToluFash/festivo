@@ -14,7 +14,7 @@ import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
 import { useLayout } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
-import type { Moment } from './today.ts';
+import type { Moment } from '../kit/today.ts';
 import {
   Band,
   bandBody,

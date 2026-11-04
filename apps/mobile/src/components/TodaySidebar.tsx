@@ -1,14 +1,14 @@
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { Brand } from '../components/Brand.tsx';
-import { Text } from '../components/Text.tsx';
+import { Brand } from './Brand.tsx';
+import { Text } from './Text.tsx';
 import { tokens } from '../theme/tokens.ts';
-import { EventMesh, eventColour } from './Cover.tsx';
+import { EventMesh, eventColour } from './EventMesh.tsx';
 import { Glyph, type GlyphName } from './Glyph.tsx';
-import { sample, type ShownEvent } from './today.ts';
-import type { Tab } from './TodayCover.tsx';
-import { Initials } from '../components/Initials.tsx';
+import type { ShownEvent } from '../kit/today.ts';
+import { SETTINGS_ID, type Tab } from './TodayCover.tsx';
+import { Initials } from './Initials.tsx';
 import { useTodayShell } from './todayShell.ts';
 
 const PLACES: readonly (readonly [Tab, GlyphName])[] = [
@@ -40,6 +40,7 @@ function Place({
       accessibilityRole="tab"
       accessibilityState={{ selected: on }}
       accessibilityLabel={words}
+      testID={SETTINGS_ID[label]}
     >
       <Glyph name={glyph} ink={ink} />
       <Text
@@ -79,6 +80,7 @@ export function TodaySidebar({
         style={styles.org}
         accessibilityRole="button"
         accessibilityLabel={t('todayScreen.switchOrganisation', { name: organisation })}
+        testID="home.switchOrganisation"
       >
         <View
           style={styles.orgTile}
@@ -163,7 +165,7 @@ export function TodaySidebar({
           accessibilityElementsHidden
           importantForAccessibility="no-hide-descendants"
         >
-          <EventMesh event={sample('draft')} />
+          <EventMesh event={{ mesh: 'amber', photo: null }} />
           <Initials name={person.name} size={12} weight="bold" />
         </View>
         <View style={styles.grow}>

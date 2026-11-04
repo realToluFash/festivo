@@ -12,7 +12,7 @@ import {
   type Now,
   type ShownEvent,
   type StripBar,
-} from '../demo/today.ts';
+} from './today.ts';
 import { eventDatesWords } from './eventsHome.ts';
 
 export interface Reader {

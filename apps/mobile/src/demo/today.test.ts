@@ -1,6 +1,17 @@
+import { createInstance } from 'i18next';
 import { describe, expect, it } from 'vitest';
 
+import en from '../i18n/locales/en.json';
 import { dueWords, momentOf, railAt, sayIn } from './today.ts';
+
+const i18n = createInstance();
+void i18n.init({
+  resources: { en: { translation: en } },
+  lng: 'en',
+  interpolation: { escapeValue: false },
+  initAsync: false,
+});
+const t = i18n.t;
 
 const us = sayIn('en-US');
 const gb = sayIn('en-GB');
@@ -22,7 +33,7 @@ describe('Today’s dates follow the locale', () => {
 });
 
 describe('a planning day', () => {
-  const plan = momentOf('plan', us);
+  const plan = momentOf('plan', us, t);
 
   it('puts the late item first, and says how late', () => {
     expect(plan.needs?.map(({ due, late }) => [due, late])).toEqual([
@@ -60,7 +71,7 @@ describe('a planning day', () => {
   });
 
   it('shows only what the product can say, built now', () => {
-    const now = momentOf('planNow', us);
+    const now = momentOf('planNow', us, t);
 
     expect(now.needs).toBeNull();
     expect(now.lead).toBeNull();
@@ -70,7 +81,7 @@ describe('a planning day', () => {
 });
 
 describe('the event day', () => {
-  const day = momentOf('day', us);
+  const day = momentOf('day', us, t);
 
   it('runs the wedding’s bar in from the left', () => {
     expect(day.bars.map((bar) => ({ ...bar, event: bar.event.id }))).toEqual([
@@ -97,7 +108,7 @@ describe('the event day', () => {
 
 describe('the quiet states', () => {
   it('a quiet week has nothing due, and says what is next', () => {
-    const quiet = momentOf('quiet', us);
+    const quiet = momentOf('quiet', us, t);
 
     expect(quiet.needs).toEqual([]);
     expect(quiet.bars).toEqual([]);
@@ -106,7 +117,7 @@ describe('the quiet states', () => {
   });
 
   it('a first run has no events', () => {
-    const first = momentOf('first', us);
+    const first = momentOf('first', us, t);
 
     expect(first.hello).toBe('Welcome, Folake');
     expect(first.events).toEqual([]);

@@ -10,13 +10,13 @@ import {
 } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 
-import { Text } from '../components/Text.tsx';
+import { Text } from './Text.tsx';
 import { tokens } from '../theme/tokens.ts';
-import { Confetti, Cover, type Piece } from '../components/Cover.tsx';
-import { EventMesh } from './Cover.tsx';
+import { Confetti, Cover, type Piece } from './Cover.tsx';
+import { EventMesh } from './EventMesh.tsx';
 import { Glyph } from './Glyph.tsx';
-import type { Moment, Now } from './today.ts';
-import { Initials } from '../components/Initials.tsx';
+import type { Moment, Now } from '../kit/today.ts';
+import { Initials } from './Initials.tsx';
 import { useTodayShell } from './todayShell.ts';
 
 export type CoverLayout = 'phone' | 'portrait' | 'landscape';
@@ -97,6 +97,9 @@ export const TABS = [
 
 export type Tab = (typeof TABS)[number][0];
 
+/** The ways out that the Maestro flows open Settings and the switcher by, from the signed-in home before Today too. */
+export const SETTINGS_ID: Partial<Record<Tab, string>> = { Settings: 'home.openSettings' };
+
 export function Glass({
   children,
   height = 40,
@@ -143,6 +146,7 @@ export function OrgButton({ compact = false }: { compact?: boolean }) {
       accessibilityRole="button"
       accessibilityLabel={t('todayScreen.switchOrganisation', { name: organisation })}
       hitSlop={tokens.spaceXxs}
+      testID="home.switchOrganisation"
     >
       {compact ? (
         <Glass style={styles.orgCompact}>
@@ -202,6 +206,7 @@ export function TabCapsule({ onTab, at = 'Today' }: { onTab: (tab: Tab) => void;
             accessibilityRole="tab"
             accessibilityState={{ selected: on }}
             accessibilityLabel={t(`todayScreen.tab.${glyph}`)}
+            testID={SETTINGS_ID[label]}
           >
             <Glyph name={glyph} ink={ink} />
             <Text size={15} weight="semibold" accessible={false} style={{ color: ink }}>
@@ -724,6 +729,7 @@ export function PhoneTabBar({
             accessibilityRole="tab"
             accessibilityState={{ selected: on }}
             accessibilityLabel={t(`todayScreen.tab.${glyph}`)}
+            testID={SETTINGS_ID[label]}
           >
             <Glyph name={glyph} size={22} ink={ink} />
             <Text

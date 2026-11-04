@@ -9,9 +9,9 @@ import {
   type ViewStyle,
 } from 'react-native';
 
-import { Text } from '../components/Text.tsx';
+import { Text } from './Text.tsx';
 import { tokens } from '../theme/tokens.ts';
-import { EventMesh, eventColour } from './Cover.tsx';
+import { EventMesh, eventColour } from './EventMesh.tsx';
 import { Glyph } from './Glyph.tsx';
 import {
   type AgendaDay,
@@ -20,7 +20,7 @@ import {
   type Need,
   type ShownEvent,
   type StripBar,
-} from './today.ts';
+} from '../kit/today.ts';
 import { useTodayShell } from './todayShell.ts';
 
 /** The board's type, in Instrument Sans: titles at 700 and set close, rows from 13 to 16. */

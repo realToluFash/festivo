@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
-import { Glyph } from '../Glyph.tsx';
+import { Glyph } from '../../components/Glyph.tsx';
 import { Caps, Card } from './parts.tsx';
 import { AREAS, type Extra, extrasFor, LEVEL_WORDS, levelsFor, lockedLine } from './RolesSample.ts';
 
