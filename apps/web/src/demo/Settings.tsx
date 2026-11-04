@@ -15,7 +15,7 @@ import {
   viewerOf,
 } from './settings.ts';
 import { LayersContext } from './layers.ts';
-import { TitleRow } from './SettingsParts.tsx';
+import { Members } from './Members.tsx';
 import type { Tell } from './TodayParts.tsx';
 import { TodaySidebar } from './TodaySidebar.tsx';
 import './today.css';
@@ -43,7 +43,8 @@ export function Settings() {
     [],
   );
   const pop = useCallback((id: string) => setStack((now) => now.filter((one) => one !== id)), []);
-  const layers = useMemo(() => ({ stack, push, pop }), [stack, push, pop]);
+  const [host, setHost] = useState<HTMLDivElement | null>(null);
+  const layers = useMemo(() => ({ stack, push, pop, host }), [stack, push, pop, host]);
   const covered = stack.length > 0;
 
   useEffect(() => {
@@ -71,29 +72,21 @@ export function Settings() {
         />
         <main id="content" className="desk-main" inert={covered}>
           <SettingsList open={viewer.reads ? open : null} viewer={viewer} tell={tell} />
-          <div className="desk-page">
-            {viewer.reads && (
-              <SectionPage
-                key={`${open}:${viewer.key}:${state}`}
-                open={open}
-                viewer={viewer}
-                state={state}
-                tell={tell}
-              />
-            )}
-          </div>
+          {viewer.reads ? (
+            <Members
+              key={`${open}:${viewer.key}:${state}`}
+              viewer={viewer}
+              state={state}
+              tell={tell}
+            />
+          ) : (
+            <div className="desk-page" />
+          )}
         </main>
+        <div ref={setHost} className="desk-layers" />
         {told != null && <Toast key={told} words={told} onClose={() => setTold(null)} />}
       </div>
     </LayersContext>
-  );
-}
-
-function SectionPage({ open, tell }: { open: Drawn; viewer: Viewer; state: string; tell: Tell }) {
-  return (
-    <div className="desk-column">
-      <TitleRow title={SECTION_NAMES[open]} tell={tell} />
-    </div>
   );
 }
 

@@ -56,6 +56,13 @@ const GLYPHS = {
   ],
   lock: [{ x: 3, y: 11, w: 18, h: 11, rx: 2 }, { d: 'M7 11V7a5 5 0 0 1 10 0v4' }],
   back: [{ d: 'm15 18-6-6 6-6' }],
+  chevdown: [{ d: 'm6 9 6 6 6-6' }],
+  chevup: [{ d: 'm18 15-6-6-6 6' }],
+  alert: [{ cx: 12, cy: 12, r: 10 }, { d: 'M12 8v4' }, { d: 'M12 16h.01' }],
+  copy: [
+    { x: 8, y: 8, w: 14, h: 14, rx: 2 },
+    { d: 'M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2' },
+  ],
 } satisfies Record<string, readonly Shape[]>;
 
 export type GlyphName = keyof typeof GLYPHS;

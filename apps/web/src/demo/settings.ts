@@ -152,4 +152,80 @@ export const SETTINGS_PAGES: readonly { name: string; states: readonly DemoLink[
       { to: settingsPath('members', VIEWERS.ana), name: 'Does not read Members' },
     ],
   },
+  {
+    name: 'Members',
+    states: [
+      members('menu', 'The filter menu open'),
+      members('nobodySuspended', 'Nobody is suspended'),
+      members('nobodyLeft', 'Nobody has left'),
+      members('invited', 'Invited'),
+      members('revoked', 'After Revoke'),
+      members('loading', 'Loading'),
+      members('failed', 'Failed'),
+      members('invite', 'Invite somebody'),
+      members('inviteBlank', 'Invite, nothing typed'),
+      members('inviteShape', 'Invite, not an address'),
+      members('sent', 'Invitation sent'),
+    ],
+  },
+  {
+    name: 'A request to join',
+    states: [
+      members('request', 'Lucía’s request'),
+      members('turningDown', 'Turning down'),
+      members('requestDiscard', 'Cancel after a change'),
+      members('approved', 'Approved'),
+      members('turnedDown', 'Turned down'),
+      members('removed', 'Removed'),
+      members('former', 'See Former'),
+    ],
+  },
+  {
+    name: 'A person',
+    states: [
+      members('priya', 'Priya Shah (from 1536 wide, beside the list)'),
+      members('role', 'Priya’s role, just opened'),
+      members('roleCoordinator', 'Priya’s role, Coordinator picked'),
+      members('roleDiscard', 'Priya’s role, cancel after a change'),
+      members('removing', 'Removing Priya'),
+      members('priya', 'Read only, Tom sees Priya', VIEWERS.tom),
+      members('self', 'Your own page, an owner'),
+      members('self', 'Your own page, not an owner', VIEWERS.tom),
+      members('folake', 'Julien sees Folake, the only owner', VIEWERS.julien),
+    ],
+  },
+  {
+    name: 'Owners, suspending and restoring',
+    states: [
+      members('makeOwner', 'Make Ana an owner'),
+      members('makeOwnerBlank', 'Make owner, nothing typed'),
+      members('makeOwnerWrong', 'Make owner, a wrong code'),
+      members('marta', 'Marta Silva, suspended by the domain'),
+      members('martaNo', 'Marta, may not restore', VIEWERS.julien),
+      members('suspending', 'Suspending Priya'),
+      members('justSuspended', 'Priya, just suspended'),
+      members('suspended', 'Priya, suspended by hand'),
+      members('restored', 'Priya, restored'),
+    ],
+  },
+  {
+    name: 'No active owner',
+    states: [
+      members('noOwner', 'No active owner', VIEWERS.julien),
+      members('claim', 'Become the owner', VIEWERS.julien),
+      members('claimCopied', 'The value copied', VIEWERS.julien),
+      members('claimChecking', 'Checking the record', VIEWERS.julien),
+      members('claimMissing', 'Not found yet', VIEWERS.julien),
+      members('claimOpen', 'Your claim is open', VIEWERS.julien),
+      members('withdrawing', 'Withdrawing', VIEWERS.julien),
+      members('withdrawn', 'Withdrawn', VIEWERS.julien),
+      members('found', 'Record found', VIEWERS.julien),
+      members('lapsed', 'A claim lapsed', VIEWERS.julien),
+      members('stopped', 'The claim was stopped', VIEWERS.julien),
+    ],
+  },
 ];
+
+function members(state: string, name: string, viewer: Viewer = VIEWERS.folake): DemoLink {
+  return { to: settingsPath('members', viewer, state), name };
+}

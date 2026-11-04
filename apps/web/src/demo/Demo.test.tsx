@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
@@ -1144,5 +1144,88 @@ describe('Settings at a desk (sc-29708)', () => {
     expect(within(list).queryByRole('link', { name: 'Members' })).toBeNull();
     expect(within(list).queryByRole('link', { name: 'Roles' })).toBeNull();
     expect(within(list).getByRole('button', { name: 'General' })).toBeDefined();
+  });
+
+  it('counts the people and answers the first request from the card', async () => {
+    await settings('/demo/settings');
+    expect(screen.getByText('7 people · 1 waiting')).toBeDefined();
+
+    const answer = screen.getByRole('button', { name: 'Answer Lucía Gómez' });
+    answer.focus();
+    fireEvent.click(answer);
+    expect(screen.getByRole('dialog', { name: 'Lucía’s request' })).toBeDefined();
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    expect(screen.queryByRole('dialog')).toBeNull();
+    await waitFor(() => expect(document.activeElement).toBe(answer));
+  });
+
+  it('approves a request with the role picked and says who joined', async () => {
+    await settings('/demo/settings/members?state=request');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Approve' }));
+    expect(screen.getByText('Lucía Gómez joined as Read-only')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'See Lucía Gómez' }));
+    expect(screen.getByRole('heading', { level: 1, name: 'Lucía Gómez' })).toBeDefined();
+  });
+
+  it('asks before turning a request down', async () => {
+    await settings('/demo/settings/members?state=request');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Turn down the request…' }));
+    fireEvent.click(
+      within(screen.getByRole('alertdialog', { name: 'Turn down Lucía Gómez?' })).getByRole(
+        'button',
+        { name: 'Turn down' },
+      ),
+    );
+    expect(screen.getByText('You turned down Lucía Gómez')).toBeDefined();
+  });
+
+  it('opens a person from their row and changes their role', async () => {
+    await settings('/demo/settings');
+
+    fireEvent.click(screen.getByRole('button', { name: /^Priya Shah/u }));
+    expect(screen.getByRole('heading', { level: 1, name: 'Priya Shah' })).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Change role' }));
+    fireEvent.click(screen.getByRole('radio', { name: /^Coordinator/u }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(screen.getByText('Priya Shah is now Coordinator.')).toBeDefined();
+  });
+
+  it('shows somebody who manages nothing the people but no requests or invite', async () => {
+    await settings('/demo/settings/members?as=tom');
+
+    expect(screen.getByText('7 people')).toBeDefined();
+    expect(screen.queryByRole('heading', { name: 'Waiting' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Invite somebody' })).toBeNull();
+  });
+
+  it('asks for an address before it sends an invitation', async () => {
+    await settings('/demo/settings/members?state=invite');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Send invitation' }));
+    expect(screen.getByText('Enter their email address.')).toBeDefined();
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'amara.o@gmail.com' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Send invitation' }));
+
+    expect(screen.getByText('Invitation sent to amara.o@gmail.com')).toBeDefined();
+  });
+
+  it('checks a claim to the owner’s place and finds the record the second time', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    await settings('/demo/settings/members?as=julien&state=claim');
+
+    const claim = within(screen.getByRole('dialog', { name: 'Become the owner' }));
+    const check = () => fireEvent.click(claim.getByRole('button', { name: 'Check record' }));
+    check();
+    expect(screen.getByText('Checking the record')).toBeDefined();
+    await act(() => vi.advanceTimersByTimeAsync(1200));
+    expect(screen.getByText(/^We couldn’t find the record yet/u)).toBeDefined();
+    check();
+    await act(() => vi.advanceTimersByTimeAsync(1200));
+
+    expect(screen.getByText('Record found')).toBeDefined();
   });
 });
