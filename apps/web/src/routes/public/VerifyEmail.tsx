@@ -26,7 +26,7 @@ import {
   Tick,
   selectCode,
 } from '../../components/Onboarding.tsx';
-import { Pending } from '../../components/Pending.tsx';
+import { Pending, PendingPage } from '../../components/Pending.tsx';
 import { StillSignedIn } from '../../components/StillSignedIn.tsx';
 import { Unreachable } from '../../components/Unreachable.tsx';
 import { dropRegistration, heldRegistration } from '../../pendingRegistration.ts';
@@ -154,8 +154,8 @@ function ForSession() {
   }, []);
 
   if (state.status === 'signedOut') return <Navigate to="/sign-in" replace />;
-  if (state.status === 'unreachable') return <Unreachable signedIn />;
-  if (state.status !== 'signedIn') return <Pending />;
+  if (state.status === 'unreachable') return <Unreachable signedIn bare />;
+  if (state.status !== 'signedIn') return <PendingPage />;
 
   return (
     <CodeScreen

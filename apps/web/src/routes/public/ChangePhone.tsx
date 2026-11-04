@@ -1,4 +1,9 @@
-import { type Account, ApiError } from '@soirely/api-client';
+import {
+  type Account,
+  ApiError,
+  ApiUnreachableError,
+  primaryEmailAddress,
+} from '@soirely/api-client';
 import {
   deviceCountry,
   formatPhone,
@@ -14,8 +19,12 @@ import { api } from '../../api.ts';
 import { phoneProblemMessage } from '../../phoneProblem.ts';
 import { focusWhereSent } from '../../offField.ts';
 import { AuthPage } from '../../components/AuthPage.tsx';
-import { Pending } from '../../components/Pending.tsx';
+import { ColumnBack, SignedInAs } from '../../components/Onboarding.tsx';
+import { PendingPage } from '../../components/Pending.tsx';
+import { Unreachable } from '../../components/Unreachable.tsx';
 import { PhoneEntry } from '../../components/PhoneEntry.tsx';
+import { StillSignedIn } from '../../components/StillSignedIn.tsx';
+import { useSignOut } from '../../signOut.ts';
 
 /** "Change your mobile number", which is also where a first number is entered. */
 export function ChangePhone() {
@@ -23,7 +32,9 @@ export function ChangePhone() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const onboarding = params.get('from') === 'onboarding';
-  const [account, setAccount] = useState<Account | 'none' | null>(null);
+  const [account, setAccount] = useState<Account | 'none' | 'unreachable' | null>(null);
+  const [attempt, setAttempt] = useState(0);
+  const { signOut, unreached } = useSignOut(() => navigate('/sign-in'));
 
   useEffect(() => {
     let live = true;
@@ -33,45 +44,62 @@ export function ChangePhone() {
       .then((me) => {
         if (live) setAccount(me);
       })
-      .catch(() => {
-        if (live) setAccount('none');
+      .catch((error: unknown) => {
+        if (live) setAccount(error instanceof ApiUnreachableError ? 'unreachable' : 'none');
       });
 
     return () => {
       live = false;
     };
-  }, []);
+  }, [attempt]);
 
   if (account === 'none') return <Navigate to="/sign-in" replace />;
-  if (account == null) return <Pending />;
+  if (account === 'unreachable')
+    return (
+      <Unreachable
+        signedIn
+        bare
+        retry={{
+          retrying: false,
+          again: () => {
+            setAccount(null);
+            setAttempt((was) => was + 1);
+          },
+        }}
+      />
+    );
+  if (account == null) return <PendingPage />;
 
   const current = account.phoneNumbers.find((phone) => phone.primary) ?? null;
+  const toCode = onboarding ? '/verify-phone?from=onboarding' : '/verify-phone';
 
   return (
-    <AuthPage>
+    <AuthPage
+      bare
+      end={
+        <SignedInAs email={primaryEmailAddress(account) ?? ''} onSignOut={() => void signOut()} />
+      }
+    >
+      {current != null && <ColumnBack onClick={() => navigate(toCode)} />}
       <div className="auth-heading">
         <h1>{t('verifyPhone.changeTitle')}</h1>
         {current != null && (
-          <p>
-            {t(current.verified ? 'verifyPhone.nowVerified' : 'verifyPhone.nowUnverified', {
-              number: formatPhone(current.number),
-            })}
-          </p>
+          <>
+            <p>
+              {t(current.verified ? 'verifyPhone.nowVerified' : 'verifyPhone.nowUnverified', {
+                number: formatPhone(current.number),
+              })}
+            </p>
+            <p className="auth-tight">{t('verifyPhone.changeNotice')}</p>
+          </>
         )}
       </div>
 
-      {current != null && (
-        <div className="notice notice-quiet">
-          <span className="mark mark-info" aria-hidden="true">
-            i
-          </span>
-          <p>{t('verifyPhone.changeNotice')}</p>
-        </div>
-      )}
+      {unreached && <StillSignedIn />}
 
       <NumberForm
         initialCountry={phoneScreenCountry(account, deviceCountry(navigator.languages))}
-        onTexted={() => navigate(onboarding ? '/verify-phone?from=onboarding' : '/verify-phone')}
+        onTexted={() => navigate(toCode)}
       />
 
       {current != null && (
