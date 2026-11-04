@@ -156,7 +156,12 @@ export default function DemoHome() {
             <Text size={tokens.typeBody.size} style={styles.secondary}>
               {name}
             </Text>
-            <Text size={tokens.typeBody.size} weight="semibold" family="mono" selectable>
+            <Text
+              size={tokens.typeBody.size}
+              weight="semibold"
+              selectable
+              style={styles.sampleValue}
+            >
               {value}
             </Text>
           </View>
@@ -235,6 +240,7 @@ const styles = StyleSheet.create({
     gap: tokens.spaceSm,
   },
   secondary: { color: tokens.colorInkSecondary },
+  sampleValue: { fontVariant: ['tabular-nums'], letterSpacing: tokens.typeBody.size * 0.04 },
   page: { marginTop: tokens.space4xl, gap: tokens.spaceSm },
   list: {
     borderWidth: 1,

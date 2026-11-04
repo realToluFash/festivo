@@ -16,13 +16,7 @@ export function StepMark({ step, state }: { step: number; state: StepState }) {
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
     >
-      <Text
-        size={tokens.typePill.size}
-        weight="bold"
-        family="mono"
-        style={INK[state]}
-        accessible={false}
-      >
+      <Text size={tokens.typePill.size} weight="bold" style={INK[state]} accessible={false}>
         {state === 'done' ? '✓' : step}
       </Text>
     </View>
