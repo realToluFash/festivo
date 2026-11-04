@@ -298,18 +298,18 @@ describe('an invitation that can no longer be answered', () => {
     [
       'invitation_revoked',
       'This invitation was withdrawn',
-      'If you think that is a mistake, ask whoever invited you.',
+      'If you think this is a mistake, ask the person who invited you.',
     ],
     ['invitation_accepted', 'Already accepted', 'You are already a member of Ìrè Events.'],
     [
       'invitation_declined',
       'Already declined',
-      'Ask Bisi Adeyemi to invite you again if you changed your mind.',
+      'If you have changed your mind, ask Bisi Adeyemi to invite you again.',
     ],
     [
       'organisation_deleted',
       'This organisation is gone',
-      'Ìrè Events no longer exists, so this invitation cannot be accepted.',
+      'The invitation to Ìrè Events can no longer be accepted.',
     ],
   ] as const;
 

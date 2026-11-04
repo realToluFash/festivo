@@ -1573,7 +1573,7 @@
       },
       "invitation_revoked": {
         "title": "This invitation was withdrawn",
-        "line": "If you think that is a mistake, ask whoever invited you."
+        "line": "If you think this is a mistake, ask the person who invited you."
       },
       "invitation_accepted": {
         "title": "Already accepted",
@@ -1581,7 +1581,7 @@
       },
       "invitation_declined": {
         "title": "Already declined",
-        "line": "Ask {{inviter}} to invite you again if you changed your mind."
+        "line": "If you have changed your mind, ask {{inviter}} to invite you again."
       },
       "invitation_not_yours": {
         "title": "This invitation is for someone else",
@@ -1589,7 +1589,7 @@
       },
       "organisation_deleted": {
         "title": "This organisation is gone",
-        "line": "{{organisation}} no longer exists, so this invitation cannot be accepted."
+        "line": "The invitation to {{organisation}} can no longer be accepted."
       }
     }
   },
@@ -1620,7 +1620,7 @@
       },
       "invitation_revoked": {
         "word": "Withdrawn",
-        "body": "This invitation was withdrawn by {{organisation}}. If you think that is a mistake, ask whoever invited you."
+        "body": "This invitation was withdrawn by {{organisation}}. If you think this is a mistake, ask the person who invited you."
       },
       "invitation_accepted": {
         "word": "Already accepted",
@@ -1628,8 +1628,8 @@
       },
       "invitation_declined": {
         "word": "Already declined",
-        "body": "You declined this invitation. Ask {{inviter}} to invite you again if you changed your mind.",
-        "bodyNobody": "You declined this invitation. Ask whoever invited you to invite you again if you changed your mind."
+        "body": "You declined this invitation. If you have changed your mind, ask {{inviter}} to invite you again.",
+        "bodyNobody": "You declined this invitation. If you have changed your mind, ask the person who invited you to invite you again."
       },
       "invitation_not_yours": {
         "word": "Signed in as someone else",
