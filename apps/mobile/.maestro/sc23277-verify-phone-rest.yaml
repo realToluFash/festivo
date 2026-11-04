@@ -1,4 +1,4 @@
-# The Check your messages half of sc23277-details-phone, from that screen.
+# The code step after Your mobile number, from that screen: WhatsApp, the resend counting down, a wrong code, Text me instead.
 appId: host.exp.Exponent
 ---
 - extendedWaitUntil:
@@ -7,13 +7,11 @@ appId: host.exp.Exponent
     timeout: 20000
 - waitForAnimationToEnd
 - assertVisible:
-    id: 'verifyPhone.resendSoon'
+    id: 'verifyPhone.resend'
 - takeScreenshot: verify-phone-whatsapp
 - tapOn:
     id: 'verifyPhone.code'
 - inputText: '000000'
-- tapOn:
-    id: 'verifyPhone.submit'
 - waitForAnimationToEnd
 - takeScreenshot: verify-phone-wrong
 - runFlow:
