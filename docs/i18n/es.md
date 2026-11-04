@@ -15,30 +15,30 @@ The rules every locale shares are in `.claude/skills/locale-parity`.
 One way to say each recurring thing, everywhere. Seeded from the catalogues as they stood on
 17 October 2026; the linguist reviews each row and marks it settled in Notes.
 
-| English                                                         | Spanish                                                                      | Notes                                                |
-| --------------------------------------------------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------- |
-| Settings                                                        | Configuración                                                                |                                                      |
-| Organisation                                                    | Organización                                                                 |                                                      |
-| Sign in                                                         | Iniciar sesión                                                               |                                                      |
-| Sign out                                                        | Cerrar sesión                                                                |                                                      |
-| Email                                                           | Correo electrónico                                                           |                                                      |
-| Password                                                        | Contraseña                                                                   |                                                      |
-| Continue                                                        | Continuar                                                                    |                                                      |
-| Cancel                                                          | Cancelar                                                                     |                                                      |
-| Two-factor authentication                                       | Verificación en dos pasos                                                    |                                                      |
-| Recovery code                                                   | Código de recuperación                                                       |                                                      |
-| Home (tab)                                                      | Inicio                                                                       | Settled, sc-1420                                     |
-| Account (Settings row)                                          | Cuenta                                                                       | Settled, sc-1420; the screen title stays «Su cuenta» |
-| Security                                                        | Seguridad                                                                    | Settled, sc-1420                                     |
-| Signed-in devices                                               | Dispositivos con sesión abierta                                              | Settled, sc-1420                                     |
-| Switch organisation                                             | Cambiar de organización                                                      | Settled, sc-1420                                     |
-| Your role                                                       | Su función                                                                   | Settled, web switcher                                |
-| Owner / Administrator / Event manager / Coordinator / Read-only | Propietario / Administrador / Gestor de eventos / Coordinador / Solo lectura | Settled; app and web say the same                    |
-| Currency                                                        | Moneda                                                                       | Settled, sc-1585                                     |
-| Time zone                                                       | Zona horaria                                                                 | Settled, sc-1585                                     |
-| Contact address                                                 | Dirección de contacto                                                        | Settled, sc-1585                                     |
-| Role (Settings > Roles), built-in role                          | Rol, rol predefinido                                                         | Settled, sc-2150; the switcher's «Su función» is not |
-| Try again (button)                                              | Reintentar                                                                   | Settled, sc-26974; never «Inténtelo de nuevo»        |
+| English                                | Spanish                               | Notes                                                                                                     |
+| -------------------------------------- | ------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| Settings                               | Configuración                         |                                                                                                           |
+| Organisation                           | Organización                          |                                                                                                           |
+| Sign in                                | Iniciar sesión                        |                                                                                                           |
+| Sign out                               | Cerrar sesión                         |                                                                                                           |
+| Email                                  | Correo electrónico                    |                                                                                                           |
+| Password                               | Contraseña                            |                                                                                                           |
+| Continue                               | Continuar                             |                                                                                                           |
+| Cancel                                 | Cancelar                              |                                                                                                           |
+| Two-factor authentication              | Verificación en dos pasos             |                                                                                                           |
+| Recovery code                          | Código de recuperación                |                                                                                                           |
+| Home (tab)                             | Inicio                                | Settled, sc-1420                                                                                          |
+| Account (Settings row)                 | Cuenta                                | Settled, sc-1420; the screen title stays «Su cuenta»                                                      |
+| Security                               | Seguridad                             | Settled, sc-1420                                                                                          |
+| Signed-in devices                      | Dispositivos con sesión abierta       | Settled, sc-1420                                                                                          |
+| Switch organisation                    | Cambiar de organización               | Settled, sc-1420                                                                                          |
+| Your role                              | Su función                            | Settled, web switcher                                                                                     |
+| Owner / Admin / Member                 | Propietario / Administrador / Miembro | Settled 5 Nov 2026, sc-29914: English "Admin" stays «Administrador»; in a sentence «el rol Administrador» |
+| Currency                               | Moneda                                | Settled, sc-1585                                                                                          |
+| Time zone                              | Zona horaria                          | Settled, sc-1585                                                                                          |
+| Contact address                        | Dirección de contacto                 | Settled, sc-1585                                                                                          |
+| Role (Settings > Roles), built-in role | Rol, rol predefinido                  | Settled, sc-2150; the switcher's «Su función» is not                                                      |
+| Try again (button)                     | Reintentar                            | Settled, sc-26974; never «Inténtelo de nuevo»                                                             |
 
 ## Never translated
 
