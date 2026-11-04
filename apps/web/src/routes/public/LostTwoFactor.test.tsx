@@ -558,6 +558,83 @@ describe('getting back in without the authenticator', () => {
   });
 });
 
+describe('a sign-in that has run out (sc-29956)', () => {
+  const RAN_OUT = () => problem('two_factor_challenge_invalid', 401);
+
+  async function timedOutOnSignIn() {
+    expect(await screen.findByText('That sign-in timed out', {}, THE_WAY_IN)).toBeDefined();
+    expect(screen.getByRole('heading', { level: 1, name: 'Sign in' })).toBeDefined();
+    expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe('folake@ire.events');
+  }
+
+  it('says so on sign-in when opened after it ran out', async () => {
+    answering({
+      'POST /api/auth/login': () => json(CHALLENGE, 202),
+      'POST /api/auth/two-factor/recovery/opening': RAN_OUT,
+    });
+    render(
+      <RouterProvider router={createMemoryRouter(routes, { initialEntries: ['/sign-in'] })} />,
+    );
+
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'folake@ire.events' } });
+    fireEvent.change(screen.getByLabelText('Password'), {
+      target: { value: 'a decent passphrase' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+    fireEvent.click(
+      await screen.findByRole(
+        'button',
+        { name: 'Lost your authenticator and your recovery codes?' },
+        THE_WAY_IN,
+      ),
+    );
+
+    await timedOutOnSignIn();
+  });
+
+  it('says so on sign-in when Send the codes finds it ran out', async () => {
+    await atTheStart({ 'POST /api/auth/two-factor/recovery': RAN_OUT });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Send the codes' }));
+
+    await timedOutOnSignIn();
+  });
+
+  it('says so on sign-in when Start again on a replaced request finds it ran out', async () => {
+    let openings = 0;
+    await atTheStart({
+      'POST /api/auth/two-factor/recovery/opening': () =>
+        ++openings === 1 ? json(OPENING) : RAN_OUT(),
+      'POST /api/auth/two-factor/recovery': () =>
+        json(
+          {
+            recovery: 'handle',
+            state: { ...PROVING, codes: { ...PROVING.codes, cooldownSeconds: 0 } },
+          },
+          201,
+        ),
+      'POST /api/auth/two-factor/recovery/resend': () =>
+        problem('recovery_request_replaced', 409, { requestStatus: 'replaced' }),
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Send the codes' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Send new codes' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Start again' }));
+
+    await timedOutOnSignIn();
+  });
+
+  it('goes to sign-in with no notice when opened with no sign-in in hand', async () => {
+    render(
+      <RouterProvider
+        router={createMemoryRouter(routes, { initialEntries: ['/two-factor/recovery'] })}
+      />,
+    );
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Sign in' })).toBeDefined();
+    expect(screen.queryByText('That sign-in timed out')).toBeNull();
+  });
+});
+
 describe('after an approved request', () => {
   it('asks to set two-factor up again first, and "Not now" carries on', async () => {
     const sent = answering({

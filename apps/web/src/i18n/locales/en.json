@@ -430,6 +430,7 @@
     "noMatch": "That email and password do not match.",
     "endedTitle": "You were signed out",
     "endedBody": "Sign in again to carry on.",
+    "codeTimedOutTitle": "That sign-in timed out",
     "lockedTitle": "Too many tries",
     "lockedBody": "Try again at {{time}}.",
     "lockedReset": "Reset your password",
