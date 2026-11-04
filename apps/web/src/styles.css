@@ -71,10 +71,8 @@ span {
   color: var(--colorInkSecondary);
 }
 
-/* Columns of money, counts and times are read downwards, and proportional
-   figures make that harder than it needs to be. Monospace is reserved for step
-   numbers, shortcuts and copied codes, so the answer is tabular figures in the
-   body face. */
+/* Columns of money, counts and times are read downwards, so they take tabular
+   figures. */
 .num {
   font-variant-numeric: tabular-nums;
 }

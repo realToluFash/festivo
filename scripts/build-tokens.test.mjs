@@ -50,7 +50,7 @@ describe('the CSS output', () => {
     expect(css).toContain('--typeBodyTracking: 0;');
   });
 
-  it('uses the mono family for the one mono style', () => {
+  it('draws typeCode in the body face, and names no mono family', () => {
     expect(css).toContain('--typeCode: 600 14px/1 var(--fontFamily);');
     expect(css).not.toContain('Mono');
   });
