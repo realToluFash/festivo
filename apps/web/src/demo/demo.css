@@ -75,6 +75,18 @@
   background: var(--colorInset);
 }
 
+.demo-home h4 {
+  margin: var(--spaceLg) 0 var(--spaceXxs);
+  padding: 0 var(--spaceLg);
+  font: var(--typeSmall);
+  font-weight: 600;
+  color: var(--colorInkSecondary);
+}
+
+.demo-home-rows + h3 {
+  margin-top: var(--space3xl);
+}
+
 /* The board's page: no band and no card, the form in a column on white (page 27, second pass). */
 
 .demo-page {
@@ -155,7 +167,40 @@
 }
 
 .demo-page .demo-way-in {
+  align-items: center;
+  gap: var(--spaceXl);
   margin: 0;
+}
+
+/* Back is 20 high with the column's 24 under it, so the title stays 88 under the header (WebNewAccount, page 27). */
+.demo-page-main.demo-backed {
+  padding-top: 44px;
+}
+
+.demo-back {
+  display: inline-flex;
+  align-self: flex-start;
+  align-items: center;
+  gap: var(--spaceXxs);
+  height: 20px;
+  margin-left: calc(-1 * var(--spaceHair));
+  font: 500 14px/20px var(--fontFamily);
+  color: var(--colorInk);
+  text-decoration: none;
+}
+
+.demo-back:hover {
+  text-decoration: underline;
+}
+
+.demo-chevron {
+  display: block;
+  flex: none;
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .demo-column p {
@@ -340,4 +385,172 @@
 .demo-apple svg {
   display: block;
   flex: none;
+}
+
+.demo-tick {
+  display: block;
+  flex: none;
+  fill: none;
+  stroke: var(--colorAccent);
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* The create-account board's parts (WebNewAccount, page 27), shared by the rest of onboarding. */
+
+.demo-column .demo-step {
+  font: 500 13px/18px var(--fontFamily);
+  color: var(--colorInkSecondary);
+}
+
+.demo-done {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceMd);
+}
+
+.demo-heading .demo-tight {
+  margin-top: calc(-1 * var(--spaceSm));
+}
+
+.demo-rule {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceHair);
+  margin-top: var(--spaceHair);
+}
+
+.demo-column .demo-rule-line {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceXs);
+  font: var(--typeSmall);
+  font-weight: 500;
+  color: var(--colorInkSecondary);
+}
+
+.demo-column .demo-rule-met {
+  color: var(--colorAccentText);
+}
+
+.demo-ring {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid var(--colorFieldBorder);
+  border-radius: 50%;
+}
+
+.demo-rule-note,
+.demo-help,
+.demo-column .demo-resend-note {
+  font: var(--typeSmall);
+  color: var(--colorInkSecondary);
+}
+
+/* One field the width of its answer, six digits (GOV.UK). */
+.demo-input.demo-code {
+  width: 200px;
+  font: 500 18px/1 var(--fontFamily);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.32em;
+}
+
+.demo-resend {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceHair);
+}
+
+.demo-resend-line,
+.demo-aside {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--spaceXs);
+  font: var(--typeBody);
+  color: var(--colorInkSecondary);
+}
+
+.demo-resend-wait {
+  font-weight: 500;
+}
+
+.demo-asides {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+}
+
+.demo-select {
+  appearance: auto;
+}
+
+.demo-optional {
+  font: var(--typeSmall);
+  line-height: 20px;
+  color: var(--colorInkSecondary);
+}
+
+.demo-number {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+}
+
+.demo-number-row {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--spaceLg);
+}
+
+.demo-number-row > .demo-field:last-child {
+  flex: 1;
+  min-width: 0;
+}
+
+.demo-number-code {
+  flex: none;
+  width: 200px;
+}
+
+.demo-loading {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceMd);
+  padding-top: var(--spaceXxs);
+  font: var(--typeBody);
+  color: var(--colorInkSecondary);
+}
+
+.demo-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--colorInset);
+  border-top-color: var(--colorAccent);
+  border-radius: 50%;
+  animation: demo-spin 0.9s linear infinite;
+}
+
+@keyframes demo-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .demo-spinner {
+    animation: none;
+  }
+}
+
+.demo-switch {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceSm);
+  min-height: var(--space3xl);
+  font: var(--typeSmall);
+  color: var(--colorInkSecondary);
 }
