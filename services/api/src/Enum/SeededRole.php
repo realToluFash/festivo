@@ -9,17 +9,15 @@ use Elao\Enum\ReadableEnumInterface;
 use Elao\Enum\ReadableEnumTrait;
 use Psl\Iter;
 
-/** The five roles every organisation is given at creation (sc-66), in the order they are listed. */
+/** An organisation's three roles, the same in every organisation and never edited (sc-29912), in the order they are listed. */
 #[ReadableEnum(prefix: 'seeded_role.', useValueAsDefault: true)]
 enum SeededRole: string implements ReadableEnumInterface
 {
     use ReadableEnumTrait;
 
     case Owner = 'owner';
-    case Administrator = 'administrator';
-    case EventManager = 'event_manager';
-    case Coordinator = 'coordinator';
-    case ReadOnly = 'read_only';
+    case Admin = 'administrator';
+    case Member = 'member';
 
     /** @return list<Permission> */
     public function defaults(): array

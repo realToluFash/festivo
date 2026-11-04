@@ -26,7 +26,24 @@ final readonly class Audience
         public array $only = [],
         public array $except = [],
         public array $conditions = [],
+        public ?Uuid $eventId = null,
     ) {
+    }
+
+    /**
+     * Owners and Admins holding it, and Members whose role on the event holds it (sc-29912).
+     *
+     * @param list<Uuid> $except
+     */
+    public static function membersOfEvent(Uuid $organisationId, Uuid $eventId, Permission $permission, array $except = []): self
+    {
+        return new self(NotificationAudienceKind::Member, $organisationId, permission: $permission, except: $except, eventId: $eventId);
+    }
+
+    /** One member, while they still reach the event with the permission when it goes. */
+    public static function memberOfEvent(Uuid $organisationId, Uuid $eventId, Permission $permission, Uuid $userId): self
+    {
+        return new self(NotificationAudienceKind::Member, $organisationId, permission: $permission, only: [$userId], eventId: $eventId);
     }
 
     /** @param list<Uuid> $except */
@@ -70,6 +87,7 @@ final readonly class Audience
             'only' => Vec\map($this->only, static fn (Uuid $id): string => $id->toRfc4122()),
             'except' => Vec\map($this->except, static fn (Uuid $id): string => $id->toRfc4122()),
             'conditions' => $this->conditions,
+            'eventId' => $this->eventId?->toRfc4122(),
         ];
     }
 
@@ -84,7 +102,9 @@ final readonly class Audience
             'only' => Type\vec(Type\string()),
             'except' => Type\vec(Type\string()),
             'conditions' => Type\dict(Type\string(), Type\mixed()),
+            'eventId' => Type\optional(Type\nullable(Type\string())),
         ])->coerce($stored);
+        $eventId = $shape['eventId'] ?? null;
 
         return new self(
             $shape['kind'],
@@ -94,6 +114,7 @@ final readonly class Audience
             Vec\map($shape['only'], Uuid::fromString(...)),
             Vec\map($shape['except'], Uuid::fromString(...)),
             $shape['conditions'],
+            null === $eventId ? null : Uuid::fromString($eventId),
         );
     }
 }

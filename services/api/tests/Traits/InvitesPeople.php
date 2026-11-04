@@ -30,7 +30,7 @@ trait InvitesPeople
     private const string INVITER_PASSWORD = 'an inviter passphrase';
 
     /** @return array{Invitation, string} the invitation, and the plain token its link carries */
-    protected static function invitationTo(string $email, ?Organisation $organisation = null, SeededRole $as = SeededRole::EventManager): array
+    protected static function invitationTo(string $email, ?Organisation $organisation = null, SeededRole $as = SeededRole::Member): array
     {
         $entityManager = self::service(EntityManagerInterface::class);
         $organisation ??= self::organisationFor(self::inviter('inviter-' . \bin2hex(SecureRandom\bytes(4)) . '@example.com'));

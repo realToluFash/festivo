@@ -12,7 +12,7 @@
     "contacts.limit_email": "Una cuenta admite {count, number, ::group-auto} direcciones de correo electrónico. Quite una para añadir otra.",
     "contacts.limit_phone": "Una cuenta admite {count, number, ::group-auto} números de teléfono. Quite uno para añadir otro.",
     "proof.required": "Para esto hace falta que haya confirmado su contraseña o iniciado sesión con Google o Apple en los últimos {minutes, number, ::group-auto} minutos, además de su código de verificación en dos pasos si la tiene activada.",
-    "roles.name_too_long": "Acorte el nombre a {count, number, ::group-auto} caracteres como máximo.",
+    "people.job_label_too_long": "Acorte la etiqueta del puesto a {count, number, ::group-auto} caracteres o menos.",
     "validation.event_name_too_long": "Acorte el nombre a {count, number, ::group-auto} caracteres como máximo.",
     "validation.name_too_long": "Acorte su nombre a {count, number, ::group-auto} caracteres como máximo.",
     "validation.event_venue_address_too_long": "Acorte la dirección a {count, number, ::group-auto} caracteres como máximo.",

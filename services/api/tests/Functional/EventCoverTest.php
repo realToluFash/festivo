@@ -12,12 +12,14 @@ use App\Entity\Membership;
 use App\Entity\Organisation;
 use App\Entity\Role;
 use App\Entity\User;
+use App\Enum\EventRole;
 use App\Enum\MembershipStatus;
 use App\Enum\SeededRole;
 use App\Enum\UploadPurpose;
 use App\Storage\ObjectStore;
 use App\Tests\ApiTestCase;
 use App\Tests\Traits\OnboardsAccounts;
+use App\Tests\Traits\PutsPeopleOnEvents;
 use DateTimeImmutable;
 use Doctrine\DBAL\Connection;
 use Imagick;
@@ -37,6 +39,7 @@ use Psl\Vec;
 final class EventCoverTest extends ApiTestCase
 {
     use OnboardsAccounts;
+    use PutsPeopleOnEvents;
 
     /** @mago-expect lint:no-literal-password */
     private const string PASSWORD = 'a decent passphrase';
@@ -393,7 +396,7 @@ final class EventCoverTest extends ApiTestCase
     #[Test]
     public function onlySomeoneWhoManagesEventsChangesTheCover(): void
     {
-        $reader = $this->member('reader@ire.events', SeededRole::ReadOnly);
+        $reader = $this->member('reader@ire.events', SeededRole::Member, $this->eventId, EventRole::CanView);
 
         $this->as($reader, 'POST', $this->path('event-cover-uploads'), ['contentType' => 'image/jpeg', 'size' => 1000, 'filename' => 'photo.jpg']);
         self::assertSame(403, $this->statusCode());
@@ -410,7 +413,9 @@ final class EventCoverTest extends ApiTestCase
         $this->as($reader, 'POST', $this->path('event-cover-uploads/preview'), ['uploadKey' => $this->upload(self::photo(1600, 900), 'image/jpeg')]);
         self::assertSame(403, $this->statusCode());
 
-        $coordinator = $this->member('coordinator@ire.events', SeededRole::Coordinator);
+        $coordinator = $this->member('coordinator@ire.events', SeededRole::Member, $this->eventId, EventRole::CanEdit);
+        $this->as($coordinator, 'POST', $this->path('event-cover-uploads'), ['contentType' => 'image/jpeg', 'size' => 1000, 'filename' => 'photo.jpg']);
+        self::assertSame(201, $this->statusCode(), 'a Member who edits an event uploads its photo');
         $this->as($coordinator, 'PUT', $this->coverPath(), ['uploadKey' => $this->upload(self::photo(1600, 900), 'image/jpeg'), 'position' => 50]);
         self::assertSame(200, $this->statusCode());
     }
@@ -592,13 +597,17 @@ final class EventCoverTest extends ApiTestCase
         return $user;
     }
 
-    private function member(string $address, SeededRole $seeded): User
+    private function member(string $address, SeededRole $seeded, ?string $eventId = null, ?EventRole $on = null): User
     {
         $user = $this->account($address);
         $role = self::em()->getRepository(Role::class)->findOneBy(['organisation' => $this->organisation, 'seededAs' => $seeded]);
         $organisation = self::em()->find(Organisation::class, $this->organisation->getId()) ?? self::fail('no organisation');
         self::em()->persist(new Membership($organisation, $user, Type\instance_of(Role::class)->coerce($role), MembershipStatus::Active, new DateTimeImmutable()));
         self::em()->flush();
+
+        if (null !== $eventId && null !== $on) {
+            self::onEvent($user, $eventId, $on);
+        }
 
         return $user;
     }

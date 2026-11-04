@@ -18,11 +18,13 @@ use App\Entity\Role;
 use App\Entity\User;
 use App\Enum\DeletedKind;
 use App\Enum\ErrorCode;
+use App\Enum\EventRole;
 use App\Enum\MembershipStatus;
 use App\Enum\SeededRole;
 use App\Storage\ObjectStore;
 use App\Tests\ApiTestCase;
 use App\Tests\Traits\OnboardsAccounts;
+use App\Tests\Traits\PutsPeopleOnEvents;
 use DateTimeImmutable;
 use Doctrine\DBAL\Connection;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
@@ -42,6 +44,7 @@ final class EventDeletionTest extends ApiTestCase
 {
     use ClockSensitiveTrait;
     use OnboardsAccounts;
+    use PutsPeopleOnEvents;
 
     /** @mago-expect lint:no-literal-password */
     private const string PASSWORD = 'a decent passphrase';
@@ -137,21 +140,21 @@ final class EventDeletionTest extends ApiTestCase
         self::assertSame(200, $this->statusCode());
     }
 
-    /** @return iterable<string, array{SeededRole, bool}> */
+    /** @return iterable<string, array{SeededRole, ?EventRole, bool}> */
     public static function deleters(): iterable
     {
-        yield 'an administrator' => [SeededRole::Administrator, true];
-        yield 'an event manager' => [SeededRole::EventManager, true];
-        yield 'a coordinator' => [SeededRole::Coordinator, false];
-        yield 'a read-only member' => [SeededRole::ReadOnly, false];
+        yield 'an administrator' => [SeededRole::Admin, null, true];
+        yield 'a lead' => [SeededRole::Member, EventRole::Lead, false];
+        yield 'can edit' => [SeededRole::Member, EventRole::CanEdit, false];
+        yield 'can view' => [SeededRole::Member, EventRole::CanView, false];
     }
 
     #[Test]
     #[DataProvider('deleters')]
-    public function onlyCreateEventsDeletes(SeededRole $seeded, bool $deletes): void
+    public function onlyCreateEventsDeletes(SeededRole $seeded, ?EventRole $on, bool $deletes): void
     {
         $id = $this->live(self::NAME);
-        $member = $this->member('member@ire.events', $seeded);
+        $member = $this->member('member@ire.events', $seeded, $id, $on);
 
         $this->as($member, 'GET', '/api/events/' . $id . '/deletion');
         self::assertSame($deletes ? 200 : 403, $this->statusCode());
@@ -169,7 +172,7 @@ final class EventDeletionTest extends ApiTestCase
     {
         $id = $this->live(self::NAME);
         $this->delete($id, self::NAME);
-        $reader = $this->member('reader@ire.events', SeededRole::ReadOnly);
+        $reader = $this->member('reader@ire.events', SeededRole::Member);
 
         $this->as($reader, 'GET', '/api/events/0193f5a8-0000-7000-8000-000000000000');
         $none = [$this->statusCode(), $this->last()['code'] ?? null, $this->last()['detail'] ?? null];
@@ -185,7 +188,8 @@ final class EventDeletionTest extends ApiTestCase
     {
         $kept = $this->draft('Kept');
         $id = $this->draft(self::NAME);
-        $colleague = $this->member('bisi@ire.events', SeededRole::Coordinator);
+        $colleague = $this->member('bisi@ire.events', SeededRole::Member, $kept, EventRole::CanView);
+        self::onEvent($colleague, $id, EventRole::CanView);
         self::assertSame([self::NAME, 'Kept'], $this->names($colleague));
         self::assertSame(2, $this->as($this->owner, 'GET', $this->path('/deletion'))['events'] ?? null);
 
@@ -417,13 +421,17 @@ final class EventDeletionTest extends ApiTestCase
         return $user;
     }
 
-    private function member(string $address, SeededRole $seeded): User
+    private function member(string $address, SeededRole $seeded, ?string $eventId = null, ?EventRole $on = null): User
     {
         $user = $this->account($address, 'Africa/Lagos');
         $organisation = self::em()->find(Organisation::class, $this->organisation->getId()) ?? self::fail('no organisation');
         $role = self::em()->getRepository(Role::class)->findOneBy(['organisation' => $organisation, 'seededAs' => $seeded]) ?? self::fail('no role');
         self::em()->persist(new Membership($organisation, $user, $role, MembershipStatus::Active, new DateTimeImmutable()));
         self::em()->flush();
+
+        if (null !== $eventId && null !== $on) {
+            self::onEvent($user, $eventId, $on);
+        }
 
         return $user;
     }

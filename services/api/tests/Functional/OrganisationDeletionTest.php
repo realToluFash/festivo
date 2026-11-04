@@ -66,7 +66,7 @@ final class OrganisationDeletionTest extends ApiTestCase
     #[Test]
     public function theConfirmationCountsWhatGoesAndSaysUntilWhenSupportCanRestoreIt(): void
     {
-        $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Coordinator);
+        $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Member);
 
         $body = $this->as($this->owner, 'GET', $this->path('/deletion'));
 
@@ -81,11 +81,11 @@ final class OrganisationDeletionTest extends ApiTestCase
     #[Test]
     public function theConfirmationCountsOnlyActiveMembers(): void
     {
-        $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Coordinator);
-        $this->member('tunde@ire.events', 'Tunde Bakare', SeededRole::Coordinator);
-        $this->member('ada@ire.events', 'Ada Obi', SeededRole::Coordinator, status: MembershipStatus::PendingApproval);
-        $this->member('kemi@ire.events', 'Kemi Ola', SeededRole::Coordinator, status: MembershipStatus::Suspended);
-        $this->member('femi@ire.events', 'Femi Ade', SeededRole::Coordinator, status: MembershipStatus::LeftOrRemoved);
+        $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Member);
+        $this->member('tunde@ire.events', 'Tunde Bakare', SeededRole::Member);
+        $this->member('ada@ire.events', 'Ada Obi', SeededRole::Member, status: MembershipStatus::PendingApproval);
+        $this->member('kemi@ire.events', 'Kemi Ola', SeededRole::Member, status: MembershipStatus::Suspended);
+        $this->member('femi@ire.events', 'Femi Ade', SeededRole::Member, status: MembershipStatus::LeftOrRemoved);
 
         $body = $this->as($this->owner, 'GET', $this->path('/deletion'));
 
@@ -175,8 +175,8 @@ final class OrganisationDeletionTest extends ApiTestCase
     #[Test]
     public function onlyAnOwnerDeletes(): void
     {
-        $admin = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Administrator);
-        $coordinator = $this->member('chidi@ire.events', 'Chidi Okoro', SeededRole::Coordinator);
+        $admin = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Admin);
+        $coordinator = $this->member('chidi@ire.events', 'Chidi Okoro', SeededRole::Member);
 
         $this->delete($admin, 'Ìrè Events');
         self::assertSame(ErrorCode::OwnerRequired->type(), $this->last()['type'] ?? null);
@@ -193,7 +193,7 @@ final class OrganisationDeletionTest extends ApiTestCase
     #[Test]
     public function aDeletedOrganisationIsRefusedToEveryMemberAtOnce(): void
     {
-        $admin = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Administrator);
+        $admin = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Admin);
         $this->found($this->owner, 'Elsewhere');
         $this->found($admin, 'Bisi Events');
 
@@ -233,7 +233,7 @@ final class OrganisationDeletionTest extends ApiTestCase
     #[Test]
     public function everyMemberIsToldInTheirOwnZone(): void
     {
-        $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Coordinator, 'Europe/London');
+        $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Member, 'Europe/London');
 
         $this->delete($this->owner, 'Ìrè Events');
 
@@ -273,7 +273,7 @@ final class OrganisationDeletionTest extends ApiTestCase
     #[Test]
     public function supportRestoresItWholeInsideTheWindow(): void
     {
-        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Coordinator);
+        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Member);
         $before = $this->as($bisi, 'GET', $this->path('/permissions'));
         $this->delete($this->owner, 'Ìrè Events');
 
@@ -282,7 +282,7 @@ final class OrganisationDeletionTest extends ApiTestCase
 
         self::assertSame($before, $this->as($bisi, 'GET', $this->path('/permissions')));
         self::assertSame(200, $this->permissionsStatus($this->owner));
-        self::assertSame(['owner', 'administrator', 'event_manager', 'coordinator', 'read_only'], Vec\map(
+        self::assertSame(['owner', 'administrator', 'member'], Vec\map(
             Type\vec(Type\shape(['seededAs' => Type\nullable(Type\string())], true))->coerce($this->as($this->owner, 'GET', $this->path('/roles'))['roles']),
             static fn (array $role): ?string => $role['seededAs'],
         ));
@@ -331,7 +331,7 @@ final class OrganisationDeletionTest extends ApiTestCase
     #[Test]
     public function theDeletionCascadesWhenTheWindowClosesAndNotBefore(): void
     {
-        $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Coordinator);
+        $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Member);
         $this->delete($this->owner, 'Ìrè Events');
         $pruner = self::service(Pruner::class);
 

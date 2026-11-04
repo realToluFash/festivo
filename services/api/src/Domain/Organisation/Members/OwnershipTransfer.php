@@ -51,7 +51,7 @@ final readonly class OwnershipTransfer
         $before = $to->getRole();
         $this->roleAssignment->assign($to, $this->role($organisation, SeededRole::Owner));
         $this->entityManager->flush();
-        $this->roleAssignment->assign($previous, $this->role($organisation, SeededRole::Administrator));
+        $this->roleAssignment->assign($previous, $this->role($organisation, SeededRole::Admin));
         $this->auditor->record(self::TRANSFERRED, 'Organisation', $organisation->getId(), Actor::User, $by->getId(), $by->getName(), [
             'owner' => [$by->getId()->toRfc4122(), $to->getUser()->getId()->toRfc4122()],
             'newOwnerRoleId' => [$before->getId()->toRfc4122(), $to->getRole()->getId()->toRfc4122()],

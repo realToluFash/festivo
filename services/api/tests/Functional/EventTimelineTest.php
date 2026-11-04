@@ -12,13 +12,15 @@ use App\Entity\Membership;
 use App\Entity\Organisation;
 use App\Entity\Role;
 use App\Entity\User;
+use App\Enum\EventRole;
 use App\Enum\MembershipStatus;
 use App\Enum\MilestoneOwner;
-use App\Enum\Permission;
 use App\Enum\PermissionArea;
+use App\Enum\SeededRole;
 use App\Tests\ApiTestCase;
 use App\Tests\Double\ScriptedMilestones;
 use App\Tests\Traits\OnboardsAccounts;
+use App\Tests\Traits\PutsPeopleOnEvents;
 use DateTimeImmutable;
 use Doctrine\DBAL\Connection;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
@@ -30,6 +32,7 @@ use Psl\Vec;
 final class EventTimelineTest extends ApiTestCase
 {
     use OnboardsAccounts;
+    use PutsPeopleOnEvents;
 
     /** @mago-expect lint:no-literal-password */
     private const string PASSWORD = 'a decent passphrase';
@@ -100,8 +103,8 @@ final class EventTimelineTest extends ApiTestCase
         $id = $this->create('Owambe', '2030-11-14T16:00', '2030-11-14T23:00', 'Africa/Lagos');
         $this->add($id, '2030-11-10T12:00:00+01:00', 'Seating locked', PermissionArea::Seating, MilestoneOwner::Automatic);
         $this->add($id, '2030-11-12T12:00:00+01:00', 'Balance due', PermissionArea::Budget, MilestoneOwner::You);
-        $eventsOnly = $this->member('events@ire.events', Role::custom($this->organisation, 'Events only', [Permission::EventsRead]));
-        $seating = $this->member('seating@ire.events', Role::custom($this->organisation, 'Seating', [Permission::EventsRead, Permission::SeatingRead]));
+        $eventsOnly = $this->member('events@ire.events', $id, EventRole::CanCheckIn);
+        $seating = $this->member('seating@ire.events', $id, EventRole::CanView);
 
         self::assertSame(['Owambe starts'], $this->titles($eventsOnly, $id));
         self::assertSame(['Seating locked', 'Owambe starts'], $this->titles($seating, $id));
@@ -109,14 +112,15 @@ final class EventTimelineTest extends ApiTestCase
     }
 
     #[Test]
-    public function withoutEventsReadThereIsNoTimeline(): void
+    public function aMemberWithNoRoleOnTheEventFindsNoTimeline(): void
     {
         $id = $this->create('Owambe', '2030-11-14T16:00', '2030-11-14T23:00', 'Africa/Lagos');
-        $guestsOnly = $this->member('guests@ire.events', Role::custom($this->organisation, 'Guests only', [Permission::GuestsRead]));
+        $sibling = $this->create('Naming', '2030-12-14T16:00', '2030-12-14T23:00', 'Africa/Lagos');
+        $elsewhere = $this->member('guests@ire.events', $sibling, EventRole::CanView);
 
-        $this->as($guestsOnly, '/api/events/' . $id . '/timeline');
+        $this->as($elsewhere, '/api/events/' . $id . '/timeline');
 
-        self::assertSame(403, $this->client->getResponse()->getStatusCode());
+        self::assertSame(404, $this->client->getResponse()->getStatusCode());
     }
 
     #[Test]
@@ -252,12 +256,14 @@ final class EventTimelineTest extends ApiTestCase
         return $user;
     }
 
-    private function member(string $address, Role $role): User
+    private function member(string $address, string $eventId, EventRole $on): User
     {
         $user = $this->account($address);
-        self::em()->persist($role);
-        self::em()->persist(new Membership($this->organisation, $user, $role, MembershipStatus::Active, new DateTimeImmutable()));
+        $organisation = self::em()->find(Organisation::class, $this->organisation->getId()) ?? self::fail('no organisation');
+        $role = self::em()->getRepository(Role::class)->findOneBy(['organisation' => $organisation, 'seededAs' => SeededRole::Member]) ?? self::fail('no role');
+        self::em()->persist(new Membership($organisation, $user, $role, MembershipStatus::Active, new DateTimeImmutable()));
         self::em()->flush();
+        self::onEvent($user, $eventId, $on);
 
         return $user;
     }

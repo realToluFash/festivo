@@ -19,7 +19,7 @@ use Psl\Vec;
 final readonly class RecoveryApprovers
 {
     /** By the seeded role, not its permissions: an organisation can change what Administrator holds, not this duty. */
-    public const array ROLES = [SeededRole::Owner, SeededRole::Administrator];
+    public const array ROLES = [SeededRole::Owner, SeededRole::Admin];
 
     public function __construct(
         private EntityManagerInterface $entityManager,
