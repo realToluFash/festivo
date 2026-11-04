@@ -9,6 +9,7 @@ import {
   LOCK_MS,
   SAMPLE,
   TRIES,
+  backIn,
   codeDigits,
   codeLine,
   dayOfTime,
@@ -208,7 +209,7 @@ function CodeEntry({ recovery, state }: { recovery: boolean; state: string }) {
         {locked && (
           <p className="demo-aside">
             <span>Not you trying?</span>
-            <Link className="link-button demo-link" to="/demo/later?screen=forgot">
+            <Link className="link-button demo-link" to={backIn('reset')}>
               Reset your password
             </Link>
           </p>

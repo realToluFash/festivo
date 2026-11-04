@@ -87,6 +87,11 @@ story tagged `[ux]` and build neither silently. A screen with no demo, such as a
 before its client's demo rule, is built from the board as the rest of this file says. The
 desktop web demos filed for developers before sc-29077 (sc-29061 to sc-29064) stay theirs.
 
+**A demo page takes its fields from `parts.tsx`.** The password field, its Show/Hide, its
+line and its rule are `PasswordField`, and the breach line is `BREACHED` in `rules.ts`. A
+page that writes them out again is the third copy the next copy change misses, so grep
+`parts.tsx` before writing any field a demo page already has.
+
 ## 2. Four layouts, and the codebase that owns each
 
 This is the part most often got wrong, because "build all four layouts" is true of the

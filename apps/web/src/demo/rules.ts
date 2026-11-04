@@ -95,11 +95,20 @@ export function accountLines(name: string, email: string, password: string): Acc
 
   if (name.trim() === '') lines.name = 'Enter your full name.';
   if (emailRefusal != null) lines.email = emailRefusal;
-  if (password === '') lines.password = 'Enter a password.';
-  else if (!meetsPasswordLength(password))
-    lines.password = `Use at least ${PASSWORD_MINIMUM_LENGTH} characters.`;
+  const passwordRefusal = passwordLine(password, 'Enter a password.');
+  if (passwordRefusal != null) lines.password = passwordRefusal;
 
   return lines;
+}
+
+export const BREACHED = 'This password has appeared in a known data breach. Choose another.';
+
+export function passwordLine(password: string, blank: string): string | null {
+  if (password === '') return blank;
+
+  return meetsPasswordLength(password)
+    ? null
+    : `Use at least ${PASSWORD_MINIMUM_LENGTH} characters.`;
 }
 
 /** Only the digits of what was typed or pasted, at most a code's length. */
@@ -205,6 +214,40 @@ export const NEW_ACCOUNT_PAGES: { name: string; states: { name: string; to: stri
       { name: 'Cannot reach Soirely, signed in', to: at('email', 'offline') },
     ],
   },
+];
+
+/** A page of the getting-back-in board, and one of its states. */
+export const backIn = (page: string, state?: string) =>
+  `/demo/get-back-in?page=${page}${state == null ? '' : `&state=${state}`}`;
+
+export const GET_BACK_IN_PAGES: { name: string; states: { name: string; to: string }[] }[] = [
+  {
+    name: 'Reset your password',
+    states: [
+      { name: 'Reset your password', to: backIn('reset') },
+      { name: 'Too many requests', to: backIn('reset', 'limited') },
+      { name: 'That did not work', to: backIn('reset', 'failed') },
+    ],
+  },
+  { name: 'Check your email', states: [{ name: 'Check your email', to: backIn('sent') }] },
+  {
+    name: 'Set a new password',
+    states: [
+      { name: 'Set a new password', to: backIn('new') },
+      { name: 'Too short', to: backIn('new', 'short') },
+      { name: 'Password changed', to: backIn('done') },
+    ],
+  },
+  {
+    name: 'A link that does not work',
+    states: [
+      { name: 'This link has expired', to: backIn('link', 'expired') },
+      { name: 'This link has already been used', to: backIn('link', 'used') },
+      { name: 'This link doesn’t work', to: backIn('link', 'broken') },
+      { name: 'Cannot reach Soirely', to: backIn('link', 'offline') },
+    ],
+  },
+  { name: 'A code first', states: [{ name: 'Enter your code', to: backIn('code') }] },
 ];
 
 /** A page of the two-factor board, and one of its states. */

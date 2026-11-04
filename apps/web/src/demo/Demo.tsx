@@ -5,17 +5,20 @@ import { NotFound } from '../routes/public/NotFound.tsx';
 import { offButton } from '../offButton.ts';
 import { offField } from '../offField.ts';
 import { BoardPage, OrLine, Providers } from './BoardPage.tsx';
+import { GetBackInBoard } from './GetBackIn.tsx';
 import { NewAccountBoard } from './NewAccount.tsx';
 import { Today } from './Today.tsx';
 import { TwoFactorBoard } from './TwoFactor.tsx';
 import { WaysInBoard } from './WaysIn.tsx';
 import {
   type FieldLines,
+  GET_BACK_IN_PAGES,
   LOCK_MS,
   NEW_ACCOUNT_PAGES,
   SAMPLE,
   TWO_FACTOR_PAGES,
   WAYS_IN_PAGES,
+  backIn,
   fieldLines,
   refuse,
   samplePair,
@@ -89,6 +92,7 @@ export default function Demo() {
       <Route index element={<DemoHome from={from} />} />
       <Route path="sign-in" element={<SignInBoard />} />
       <Route path="create-account" element={<NewAccountBoard />} />
+      <Route path="get-back-in" element={<GetBackInBoard />} />
       <Route path="two-factor" element={<TwoFactorBoard />} />
       <Route path="ways-in" element={<WaysInBoard />} />
       <Route path="signed-in" element={<SignedIn />} />
@@ -149,6 +153,9 @@ function DemoHome({ from }: { from: string }) {
 
         <h3>Create an account · desktop</h3>
         <BoardPages pages={NEW_ACCOUNT_PAGES} />
+
+        <h3>Getting back in · desktop</h3>
+        <BoardPages pages={GET_BACK_IN_PAGES} />
 
         <h3>Two-factor · desktop</h3>
         <BoardPages pages={TWO_FACTOR_PAGES} />
@@ -374,7 +381,19 @@ function SignInForm({ state }: { state: string }) {
               >
                 <div className="demo-label-row">
                   <label htmlFor="password">Password</label>
-                  <Link className="link-button demo-link" to="/demo/later?screen=forgot">
+                  <Link
+                    className="link-button demo-link"
+                    to={backIn('reset')}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      void navigate(backIn('reset'), {
+                        state: {
+                          email: email.current?.value ?? '',
+                          back: `/demo/sign-in?state=${state}`,
+                        },
+                      });
+                    }}
+                  >
                     Forgot your password?
                   </Link>
                 </div>
@@ -449,7 +468,6 @@ function SignedIn() {
 }
 
 const LATER: Record<string, string> = {
-  forgot: 'Forgot your password?',
   terms: 'Terms',
   privacy: 'Privacy',
   security: 'Your account › Security',
@@ -457,7 +475,7 @@ const LATER: Record<string, string> = {
 
 function Later() {
   const [params] = useSearchParams();
-  const screen = LATER[params.get('screen') ?? ''] ?? 'Forgot your password?';
+  const screen = LATER[params.get('screen') ?? ''] ?? 'Terms';
 
   return (
     <BoardPage>
