@@ -55,14 +55,4 @@ final class EventPersonRepository extends ServiceEntityRepository implements Eve
     {
         return $this->findBy(['membership' => $membership]);
     }
-
-    public function deleteFor(Membership $membership): void
-    {
-        $this->createQueryBuilder('p')
-            ->delete()
-            ->where('p.membership = :membership')
-            ->setParameter('membership', $membership)
-            ->getQuery()
-            ->execute();
-    }
 }

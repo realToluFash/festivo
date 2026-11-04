@@ -228,7 +228,7 @@ final class EventRolesTest extends ApiTestCase
         $kept = $this->member('kept@ire.events', SeededRole::Member);
         $gone = $this->member('gone@ire.events', SeededRole::Member);
         self::onEvent($kept, $this->owambe, EventRole::CanEdit);
-        self::onEvent($gone, $this->owambe, EventRole::CanEdit);
+        $goneRole = self::onEvent($gone, $this->owambe, EventRole::CanEdit)->getId();
 
         $this->as($this->owner, 'POST', $this->path('members/' . $this->membershipOf($kept) . '/suspend'));
         self::assertSame(204, $this->statusCode());
@@ -244,6 +244,8 @@ final class EventRolesTest extends ApiTestCase
         $this->as($this->owner, 'DELETE', $this->path('members/' . $this->membershipOf($gone)));
         self::assertSame(204, $this->statusCode());
         self::assertNull($this->personOf($gone, $this->owambe));
+        $removed = self::em()->getRepository(AuditEntry::class)->findOneBy(['subjectId' => $goneRole, 'action' => 'event_person.removed']);
+        self::assertSame(['active', 'left_or_removed'], $removed?->getChanges()['membershipStatus'] ?? null, 'the removal from the organisation is in the trail');
     }
 
     #[Test]

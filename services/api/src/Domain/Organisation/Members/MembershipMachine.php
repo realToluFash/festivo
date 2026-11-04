@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Organisation\Members;
 
+use App\Audit\Auditor;
 use App\Domain\Organisation\DomainJoining\JoinOfferFinder;
 use App\Domain\Organisation\DomainJoining\RemovalClock;
 use App\Entity\Membership;
@@ -11,6 +12,7 @@ use App\Entity\MembershipTransition;
 use App\Entity\Organisation;
 use App\Entity\Role;
 use App\Entity\User;
+use App\Enum\Actor;
 use App\Enum\ErrorCode;
 use App\Enum\MembershipChannel;
 use App\Enum\MembershipStatus;
@@ -35,6 +37,7 @@ final readonly class MembershipMachine
         private ClockInterface $clock,
         private RemovalClock $removalClock,
         private EventPersonRepository $eventPersonRepository,
+        private Auditor $auditor,
     ) {
     }
 
@@ -93,7 +96,15 @@ final readonly class MembershipMachine
 
         // A suspension keeps the roles on events, for a restore to bring back; leaving or removal ends them (sc-29912).
         if (MembershipStatus::LeftOrRemoved === $to) {
-            $this->eventPersonRepository->deleteFor($membership);
+            foreach ($this->eventPersonRepository->findFor($membership) as $person) {
+                $this->auditor->record('event_person.removed', 'EventPerson', $person->getId(), null === $actor ? Actor::System : Actor::User, $actor?->getId(), $actor?->getName(), [
+                    'eventId' => [null, $person->getEvent()->getId()->toRfc4122()],
+                    'membershipId' => [null, $membership->getId()->toRfc4122()],
+                    'role' => [$person->getRole()->value, null],
+                    'membershipStatus' => [$from->value, $to->value],
+                ]);
+                $this->entityManager->remove($person);
+            }
         }
 
         $this->record($membership, $from, $to, $channel, $actor, $now);
