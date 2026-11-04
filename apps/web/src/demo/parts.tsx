@@ -1,7 +1,8 @@
-import { PASSWORD_MINIMUM_LENGTH, formatCountdown } from '@soirely/domain';
+import { PASSWORD_MINIMUM_LENGTH, formatCountdown, initials } from '@soirely/domain';
 import { type FormEvent, type ReactNode, type RefObject, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 
+import { offButton } from '../offButton.ts';
 import { offField } from '../offField.ts';
 import { useShownAfter } from '../shownAfter.ts';
 import { BoardPage, Tick } from './BoardPage.tsx';
@@ -429,5 +430,74 @@ export function Unreachable({ to, signedIn }: { to: string; signedIn: boolean })
         {busy ? 'Trying again…' : 'Try again'}
       </button>
     </BoardPage>
+  );
+}
+
+/** The organisation on one line: its tile, its name, and how you came. */
+export function Organisation({
+  line,
+  name = SAMPLE.organisation,
+  title = name,
+}: {
+  line: string;
+  name?: string;
+  /** The bold line, where it says more than the name. */
+  title?: string;
+}) {
+  return (
+    <div className="demo-organisation">
+      <span className="org-tile" aria-hidden="true">
+        {initials(name)}
+      </span>
+      <p className="demo-organisation-name">
+        <span>{title}</span>
+        <span className="demo-help">{line}</span>
+      </p>
+    </div>
+  );
+}
+
+export type Answer = 'accept' | 'decline';
+
+/** Accept and join and Decline: two answers to one question, the pressed one working and the other waiting. */
+export function Answers({
+  pressed,
+  onAnswer,
+  sized = false,
+  held = false,
+}: {
+  pressed: Answer | null;
+  onAnswer: (answer: Answer) => void;
+  /** Both answers wait while another form on the page is working. */
+  held?: boolean;
+  /** Each button its own width, inside a row of the details page, rather than half the column. */
+  sized?: boolean;
+}) {
+  return (
+    <div className="demo-answers-block">
+      <div className={sized ? 'demo-answers demo-answers-sized' : 'demo-answers'}>
+        <button
+          className="button button-primary"
+          type="button"
+          aria-busy={pressed === 'accept'}
+          {...offButton(held || pressed === 'decline')}
+          onClick={() => !held && pressed == null && onAnswer('accept')}
+        >
+          {pressed === 'accept' ? 'Joining…' : 'Accept and join'}
+        </button>
+        <button
+          className="button"
+          type="button"
+          aria-busy={pressed === 'decline'}
+          {...offButton(held || pressed === 'accept')}
+          onClick={() => !held && pressed == null && onAnswer('decline')}
+        >
+          {pressed === 'decline' ? 'Declining…' : 'Decline'}
+        </button>
+      </div>
+      <p className="demo-help">
+        Declining tells {SAMPLE.inviter} you said no. Nothing else changes.
+      </p>
+    </div>
   );
 }

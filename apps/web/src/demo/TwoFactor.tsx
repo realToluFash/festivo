@@ -495,7 +495,7 @@ function Waiting() {
     <BoardPage
       end={null}
       controls={
-        <div className="demo-answers" role="group" aria-label="Demo: answer the request">
+        <div className="demo-answer-controls" role="group" aria-label="Demo: answer the request">
           {ANSWERS.map((each) => (
             <button
               key={each.answer}

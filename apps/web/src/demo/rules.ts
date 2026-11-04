@@ -25,6 +25,13 @@ export const SAMPLE = {
   usedRecovery: 'k3m9-q2wd',
   /** Refused as a known breach, as the API refuses one. */
   breachedPassword: 'passwordpassword',
+  inviter: 'Ade Bankole',
+  role: 'Coordinator',
+  invitedUntil: 'Tuesday, Nov 17',
+  askedOn: 'Tuesday, Nov 3 at 14:05',
+  askAgainFrom: 'Tuesday, Dec 1',
+  /** Signed in with the wrong address, on an invitation that is not theirs. */
+  otherEmail: 'folake.adeyemi@gmail.com',
 } as const;
 
 export const CODE_LENGTH = 6;
@@ -246,6 +253,54 @@ export const TWO_FACTOR_PAGES: { name: string; states: { name: string; to: strin
       { name: 'Set up two-factor again', to: twoFactorAt('setup') },
       { name: 'This wasn’t you?', to: twoFactorAt('not-me') },
       { name: 'Cancelled and signed out', to: twoFactorAt('not-me', 'done') },
+    ],
+  },
+];
+
+/** A page of the other-ways-in board, and one of its states. */
+export const way = (page: string, state?: string) =>
+  `/demo/ways-in?page=${page}${state == null ? '' : `&state=${state}`}`;
+
+/** The other-ways-in board's pages as the demo's home lists them. */
+export const WAYS_IN_PAGES: { name: string; states: { name: string; to: string }[] }[] = [
+  {
+    name: 'Ask to join',
+    states: [
+      { name: 'Signed out', to: way('ask') },
+      { name: 'Signed in', to: way('ask', 'signed-in') },
+      { name: 'Request sent', to: way('ask', 'sent') },
+      { name: 'Already asked', to: way('ask', 'asked') },
+      { name: 'Already a member', to: way('ask', 'member') },
+      { name: 'Cooling off', to: way('ask', 'cooling') },
+      { name: 'The link does not work', to: way('ask', 'dead') },
+    ],
+  },
+  {
+    name: 'An invitation',
+    states: [
+      { name: 'Signed out', to: way('invitation') },
+      { name: 'Signed in', to: way('invitation', 'signed-in') },
+      { name: 'You are in', to: way('invitation', 'joined') },
+      { name: 'Expired', to: way('invitation', 'expired') },
+      { name: 'Withdrawn', to: way('invitation', 'withdrawn') },
+      { name: 'Already declined', to: way('invitation', 'declined') },
+      { name: 'Not yours', to: way('invitation', 'not-yours') },
+      { name: 'Deleted', to: way('invitation', 'deleted') },
+    ],
+  },
+  {
+    name: 'Your details',
+    states: [
+      { name: 'Your company is here', to: way('details', 'company') },
+      { name: 'An invitation waiting', to: way('details', 'invitation') },
+      { name: 'Waiting for Ire Events', to: way('waiting') },
+    ],
+  },
+  {
+    name: 'First sign-in',
+    states: [
+      { name: 'With Google', to: way('details', 'google') },
+      { name: 'With Apple, no name', to: way('details', 'apple') },
     ],
   },
 ];
