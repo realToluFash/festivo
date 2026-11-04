@@ -11,13 +11,13 @@ appId: host.exp.Exponent
 - runFlow:
     file: developer-menu.yaml
     env:
-      SETTLED: '{{t:any:home.signedInTo}}|{{t:any:noOrganisation.title}}|{{t:any:settings.signedInAs}}|{{t:any:noOrganisation.signedInAs}}|{{t:any:completeProfile.title}}|{{t:any:status.title}}|{{t:any:signIn.title}}|{{t:any:signInRules.overdueTitle}}'
+      SETTLED: '{{t:any:home.signedInTo}}|{{t:any:noOrganisation.title}}|{{t:any:settings.signedInAs}}|{{t:any:noOrganisation.signedInAs}}|{{t:any:steps.organisationTitle}}|{{t:any:status.title}}|{{t:any:signIn.title}}|{{t:any:signInRules.overdueTitle}}'
 - extendedWaitUntil:
-    visible: '{{t:any:home.signedInTo}}|{{t:any:noOrganisation.title}}|{{t:any:settings.signedInAs}}|{{t:any:noOrganisation.signedInAs}}|{{t:any:completeProfile.title}}|{{t:any:status.title}}|{{t:any:signIn.title}}|{{t:any:signInRules.overdueTitle}}'
+    visible: '{{t:any:home.signedInTo}}|{{t:any:noOrganisation.title}}|{{t:any:settings.signedInAs}}|{{t:any:noOrganisation.signedInAs}}|{{t:any:steps.organisationTitle}}|{{t:any:status.title}}|{{t:any:signIn.title}}|{{t:any:signInRules.overdueTitle}}'
     timeout: 60000
 - runFlow:
     when:
-      visible: '{{t:any:completeProfile.title}}'
+      visible: '{{t:any:steps.organisationTitle}}'
     file: ../sign-out-from-complete-profile.yaml
 - runFlow:
     when:

@@ -41,7 +41,6 @@ export function useInSheet(): boolean {
 
 export type NavLeft = 'back' | 'close' | { label: string; onPress: () => void } | null;
 
-/** Back, or Close, and the step bar, with a quiet word at the right such as Skip. */
 export function NavBar({
   left = 'back',
   onLeft,
@@ -184,7 +183,6 @@ function useKeysCover(
   return cover;
 }
 
-/** One job a screen: the bar, the step's own content, and its button kept above the keys. */
 export function StepScreen({
   nav,
   children,
