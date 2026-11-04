@@ -13,22 +13,41 @@ set -eu
 
 : "${SOIRELY_API_URL:?SOIRELY_API_URL is required — the browser has no other way to find the API}"
 
+# A quote or backslash left raw ends the JSON string early, and the web then
+# refuses to start with nothing in this log saying why.
+json_string() {
+    if [ "$(printf '%s' "$2" | tr -d '[:cntrl:]')" != "$2" ]; then
+        echo "soirely: $1 contains a control character" >&2
+        exit 1
+    fi
+    printf '"%s"' "$(printf '%s' "$2" | sed 's/[\\"]/\\&/g')"
+}
+
+API_URL="$(json_string SOIRELY_API_URL "$SOIRELY_API_URL")"
+MERCURE_URL="$(json_string SOIRELY_MERCURE_URL "${SOIRELY_MERCURE_URL:-}")"
+ENVIRONMENT="$(json_string SOIRELY_ENVIRONMENT "${SOIRELY_ENVIRONMENT:-unknown}")"
+GOOGLE_AUTHORIZE_URL="$(json_string SOIRELY_GOOGLE_AUTHORIZE_URL "${SOIRELY_GOOGLE_AUTHORIZE_URL:-}")"
+GOOGLE_CLIENT_ID="$(json_string SOIRELY_GOOGLE_CLIENT_ID "${SOIRELY_GOOGLE_CLIENT_ID:-}")"
+APPLE_AUTHORIZE_URL="$(json_string SOIRELY_APPLE_AUTHORIZE_URL "${SOIRELY_APPLE_AUTHORIZE_URL:-}")"
+APPLE_CLIENT_ID="$(json_string SOIRELY_APPLE_CLIENT_ID "${SOIRELY_APPLE_CLIENT_ID:-}")"
+SCHEME="$(json_string SOIRELY_SCHEME "${SOIRELY_SCHEME:-}")"
+
 TARGET=/usr/share/nginx/html/config.json
 
 cat > "$TARGET" <<JSON
 {
-  "apiBaseUrl": "${SOIRELY_API_URL}",
-  "mercureUrl": "${SOIRELY_MERCURE_URL:-}",
-  "environment": "${SOIRELY_ENVIRONMENT:-unknown}",
+  "apiBaseUrl": ${API_URL},
+  "mercureUrl": ${MERCURE_URL},
+  "environment": ${ENVIRONMENT},
   "google": {
-    "authorizeUrl": "${SOIRELY_GOOGLE_AUTHORIZE_URL:-}",
-    "clientId": "${SOIRELY_GOOGLE_CLIENT_ID:-}"
+    "authorizeUrl": ${GOOGLE_AUTHORIZE_URL},
+    "clientId": ${GOOGLE_CLIENT_ID}
   },
   "apple": {
-    "authorizeUrl": "${SOIRELY_APPLE_AUTHORIZE_URL:-}",
-    "clientId": "${SOIRELY_APPLE_CLIENT_ID:-}"
+    "authorizeUrl": ${APPLE_AUTHORIZE_URL},
+    "clientId": ${APPLE_CLIENT_ID}
   },
-  "scheme": "${SOIRELY_SCHEME:-}"
+  "scheme": ${SCHEME}
 }
 JSON
 
@@ -43,15 +62,18 @@ echo "soirely: wrote $TARGET for ${SOIRELY_ENVIRONMENT:-unknown} (api ${SOIRELY_
 WELL_KNOWN=/usr/share/nginx/html/.well-known
 if [ -n "${SOIRELY_ANDROID_CERT_SHA256:-}" ]; then
     mkdir -p "$WELL_KNOWN"
-    FINGERPRINTS="$(printf '%s' "$SOIRELY_ANDROID_CERT_SHA256" | sed 's/[[:space:]]//g; s/,/","/g')"
+    FINGERPRINTS="$(printf '%s' "$SOIRELY_ANDROID_CERT_SHA256" | sed 's/[[:space:]]//g')"
+    FINGERPRINTS="$(json_string SOIRELY_ANDROID_CERT_SHA256 "$FINGERPRINTS")"
+    FINGERPRINTS="$(printf '%s' "$FINGERPRINTS" | sed 's/,/","/g')"
+    PACKAGE="$(json_string SOIRELY_ANDROID_PACKAGE "${SOIRELY_ANDROID_PACKAGE:-com.soirely.app}")"
     cat > "$WELL_KNOWN/assetlinks.json" <<JSON
 [
   {
     "relation": ["delegate_permission/common.handle_all_urls"],
     "target": {
       "namespace": "android_app",
-      "package_name": "${SOIRELY_ANDROID_PACKAGE:-com.soirely.app}",
-      "sha256_cert_fingerprints": ["${FINGERPRINTS}"]
+      "package_name": ${PACKAGE},
+      "sha256_cert_fingerprints": [${FINGERPRINTS}]
     }
   }
 ]
