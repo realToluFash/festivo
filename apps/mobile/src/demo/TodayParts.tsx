@@ -492,7 +492,7 @@ function CountChip({
   const { t } = useTranslation();
   const size = small ? 12 : TYPE.meta;
   const words = card.live
-    ? t('todayScreen.liveCount', { count: card.count.toLocaleLowerCase() })
+    ? t('todayScreen.liveCount', { words: card.count.toLocaleLowerCase() })
     : card.count;
   const dark = card.draft && onCover;
 

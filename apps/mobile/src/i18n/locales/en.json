@@ -1971,7 +1971,7 @@
     "openRunOfShow": "Open run of show",
     "nowLine": "Now · {{happening}}, {{until}}",
     "liveName": "Live · {{name}}",
-    "liveCount": "Live · {{count}}",
+    "liveCount": "Live · {{words}}",
     "needsYou": "Needs you",
     "nothingNeedsYou": "Nothing needs you",
     "upToDate": "You’re up to date on every event.",
