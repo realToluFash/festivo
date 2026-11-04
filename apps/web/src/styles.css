@@ -975,7 +975,7 @@ span {
 
 .field-heading {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: var(--spaceSm);
 }
 
@@ -1840,6 +1840,11 @@ span {
 
 .link-button:active {
   opacity: var(--opacityPressed);
+}
+
+.field-heading .link-button {
+  display: flex;
+  align-items: flex-end;
 }
 
 /* In secondary ink, underlined only under the pointer. */
