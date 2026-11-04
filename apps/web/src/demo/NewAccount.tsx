@@ -1,36 +1,33 @@
-import {
-  formatCountdown,
-  followCountry,
-  meetsPasswordLength,
-  pickPhoneCountry,
-} from '@soirely/domain';
-import { type FormEvent, type ReactNode, type RefObject, useEffect, useRef, useState } from 'react';
+import { followCountry, meetsPasswordLength, pickPhoneCountry } from '@soirely/domain';
+import { type FormEvent, type RefObject, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router';
 
 import { offButton } from '../offButton.ts';
 import { offField } from '../offField.ts';
-import { useShownAfter } from '../shownAfter.ts';
-import { BoardPage, HaveAccount, OrLine, Providers, SignedInAs, Tick } from './BoardPage.tsx';
+import { BoardPage, HaveAccount, OrLine, Providers, SignedInAs } from './BoardPage.tsx';
+import {
+  CodeForm,
+  Heading,
+  Loading,
+  Notice,
+  PasswordRule,
+  Unreachable,
+  Verified,
+  fieldClass,
+  useBusy,
+} from './parts.tsx';
 import {
   type AccountLines,
-  CODE_LENGTH,
   COUNTRIES,
   LOCK_MS,
-  RESEND_SECONDS,
   SAMPLE,
-  TRIES,
   accountLines,
   at,
   codeChoice,
-  codeDigits,
-  codeLine,
   fullNumber,
   numberLine,
   timeOfDay,
 } from './rules.ts';
-
-const BUSY_MS = 900;
-const LOADING_AFTER_MS = 400;
 
 /** What one page hands the next: who is signing up, and the number being checked. */
 type Flow = { name: string; email: string; phone: string };
@@ -51,7 +48,7 @@ export function NewAccountBoard() {
   const signedIn = page !== 'register';
 
   if (state === 'loading') return <Loading key={key} />;
-  if (state === 'offline') return <Unreachable key={key} page={page} signedIn={signedIn} />;
+  if (state === 'offline') return <Unreachable key={key} to={at(page)} signedIn={signedIn} />;
 
   switch (page) {
     case 'email':
@@ -65,64 +62,6 @@ export function NewAccountBoard() {
     default:
       return <CreateAccount key={key} state={state} flow={flow} />;
   }
-}
-
-function useBusy(): [boolean, (then: () => void) => void] {
-  const [busy, setBusy] = useState(false);
-  const pending = useRef<number | undefined>(undefined);
-
-  useEffect(() => () => window.clearTimeout(pending.current), []);
-
-  return [
-    busy,
-    (then) => {
-      setBusy(true);
-      pending.current = window.setTimeout(() => {
-        setBusy(false);
-        then();
-      }, BUSY_MS);
-    },
-  ];
-}
-
-function Heading({
-  step,
-  title,
-  done = false,
-  children,
-}: {
-  step?: 1 | 2;
-  title: string;
-  done?: boolean;
-  children?: ReactNode;
-}) {
-  return (
-    <div className="demo-heading">
-      {step != null && <p className="demo-step">Step {step} of 2</p>}
-      {done ? (
-        <div className="demo-done">
-          <Tick size={26} />
-          <h1>{title}</h1>
-        </div>
-      ) : (
-        <h1>{title}</h1>
-      )}
-      {children}
-    </div>
-  );
-}
-
-function Notice({ title, body, alert = false }: { title: string; body?: string; alert?: boolean }) {
-  return (
-    <div className="demo-notice" role={alert ? 'alert' : 'status'}>
-      <p className="demo-notice-title">{title}</p>
-      {body != null && <p>{body}</p>}
-    </div>
-  );
-}
-
-function fieldClass(wrong: boolean): string {
-  return wrong ? 'demo-field demo-field-wrong' : 'demo-field';
 }
 
 /* Create your account */
@@ -330,228 +269,6 @@ function CreateAccount({ state, flow }: { state: string; flow: Flow }) {
   );
 }
 
-function PasswordRule({ met }: { met: boolean }) {
-  return (
-    <div className="demo-rule" id="password-rule">
-      <p className={met ? 'demo-rule-line demo-rule-met' : 'demo-rule-line'}>
-        {met ? <Tick /> : <span className="demo-ring" aria-hidden="true" />}
-        At least 15 characters
-      </p>
-      <p className="demo-rule-note">
-        That is the only rule. When you submit, we also check the password has not appeared in a
-        known data breach.
-      </p>
-    </div>
-  );
-}
-
-/* The code pages, email and phone */
-
-type Dead = 'expired' | 'exhausted';
-
-function CodeForm({
-  opening,
-  label,
-  submit,
-  from,
-  wrong,
-  expired,
-  onVerified,
-  below,
-  resendNote,
-}: {
-  opening: string;
-  label: string;
-  submit: string;
-  /** "the email", "WhatsApp": where the code came from. */
-  from: string;
-  wrong: string;
-  expired: string;
-  onVerified: () => void;
-  /** Under the resend line while the field shows. */
-  below?: ReactNode;
-  resendNote?: ReactNode;
-}) {
-  const [code, setCode] = useState(opening === 'wrong' ? '482193' : '');
-  const [line, setLine] = useState<string | null>(opening === 'wrong' ? wrong : null);
-  const [dead, setDead] = useState<Dead | null>(
-    opening === 'expired' || opening === 'exhausted' ? opening : null,
-  );
-  const [wrongs, setWrongs] = useState(opening === 'wrong' ? 1 : 0);
-  const [busy, after] = useBusy();
-  const [countFrom, setCountFrom] = useState(() => Date.now());
-  const field = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (opening !== 'wrong') return;
-
-    field.current?.focus();
-    field.current?.select();
-  }, [opening]);
-
-  function verify(event: FormEvent<HTMLFormElement>): void {
-    event.preventDefault();
-    if (busy) return;
-
-    const refused = codeLine(code, from);
-    setLine(refused);
-    if (refused != null) {
-      field.current?.focus();
-      return;
-    }
-
-    after(() => {
-      if (code === SAMPLE.code) {
-        onVerified();
-        return;
-      }
-
-      if (wrongs + 1 >= TRIES) {
-        setDead('exhausted');
-        return;
-      }
-
-      setWrongs(wrongs + 1);
-      setLine(wrong);
-      field.current?.focus();
-      field.current?.select();
-    });
-  }
-
-  function sendNew(): void {
-    after(() => {
-      setDead(null);
-      setCode('');
-      setLine(null);
-      setWrongs(0);
-      setCountFrom(Date.now());
-      window.setTimeout(() => field.current?.focus());
-    });
-  }
-
-  if (dead != null) {
-    return (
-      <>
-        <Notice
-          title={dead === 'expired' ? 'That code has expired' : 'Too many wrong tries'}
-          body={
-            dead === 'expired' ? expired : 'That code no longer works. Send a new one to carry on.'
-          }
-        />
-        <button
-          className="button button-primary demo-wide"
-          type="button"
-          aria-busy={busy}
-          onClick={() => {
-            if (!busy) sendNew();
-          }}
-        >
-          {busy ? 'Sending…' : 'Send a new code'}
-        </button>
-      </>
-    );
-  }
-
-  return (
-    <>
-      <form className="demo-form" noValidate onSubmit={verify}>
-        <div className={fieldClass(line != null)}>
-          <label htmlFor="code">{label}</label>
-          <input
-            ref={field}
-            className="demo-input demo-code"
-            id="code"
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            maxLength={CODE_LENGTH}
-            value={code}
-            {...offField(busy)}
-            aria-invalid={line != null}
-            aria-describedby={line == null ? undefined : 'code-line'}
-            onChange={(event) => setCode(codeDigits(event.target.value))}
-          />
-          {line != null && (
-            <p className="demo-line" id="code-line" role="alert">
-              {line}
-            </p>
-          )}
-        </div>
-        <button className="button button-primary demo-wide" type="submit" aria-busy={busy}>
-          {busy ? 'Verifying…' : submit}
-        </button>
-      </form>
-      <Resend key={countFrom} onResend={() => setCountFrom(Date.now())}>
-        {resendNote}
-      </Resend>
-      {below}
-    </>
-  );
-}
-
-/** "No code? Send a new code in 0:41", a link once the count ends; the note under it. */
-function Resend({ onResend, children }: { onResend: () => void; children?: ReactNode }) {
-  const [left, setLeft] = useState(RESEND_SECONDS);
-
-  useEffect(() => {
-    if (left <= 0) return;
-
-    const tick = window.setTimeout(() => setLeft(left - 1), 1000);
-
-    return () => window.clearTimeout(tick);
-  }, [left]);
-
-  return (
-    <div className="demo-resend">
-      <p className="demo-resend-line">
-        <span>No code?</span>
-        {left > 0 ? (
-          <span className="demo-resend-wait">Send a new code in {formatCountdown(left)}</span>
-        ) : (
-          <button className="link-button demo-link" type="button" onClick={onResend}>
-            Send a new code
-          </button>
-        )}
-      </p>
-      <p className="demo-resend-note">A new code replaces the last one.</p>
-      {children}
-    </div>
-  );
-}
-
-function Verified({
-  step,
-  title,
-  body,
-  action,
-  onContinue,
-}: {
-  step: 1 | 2;
-  title: string;
-  body: string;
-  action: string;
-  onContinue: () => void;
-}) {
-  const button = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => button.current?.focus(), []);
-
-  return (
-    <>
-      <Heading step={step} title={title} done>
-        <p className="demo-muted">{body}</p>
-      </Heading>
-      <button
-        ref={button}
-        className="button button-primary demo-wide"
-        type="button"
-        onClick={onContinue}
-      >
-        {action}
-      </button>
-    </>
-  );
-}
-
 function EmailCode({ state, flow }: { state: string; flow: Flow }) {
   const navigate = useNavigate();
   const [verified, setVerified] = useState(state === 'verified');
@@ -632,7 +349,7 @@ function PhoneCode({ state, flow }: { state: string; flow: Flow }) {
         submit="Verify number"
         from="WhatsApp"
         wrong="That code does not match. Check the newest WhatsApp message from Soirely and try again."
-        expired="Codes only work for a while. Send a new one and use the code in the newest text."
+        expired="Codes only work for a while. Send a new one and use the code in the newest message."
         onVerified={() => setVerified(true)}
         resendNote={
           !texted && (
@@ -949,64 +666,6 @@ function ChangeNumber({ flow }: { flow: Flow }) {
       <Link className="link-button demo-link" to={toCode.to} state={toCode.state}>
         Keep my current number
       </Link>
-    </BoardPage>
-  );
-}
-
-/* Every page */
-
-function Loading() {
-  const shown = useShownAfter(LOADING_AFTER_MS);
-
-  return (
-    <BoardPage end={null}>
-      {shown && (
-        <p className="demo-loading" role="status">
-          <span className="demo-spinner" aria-hidden="true" />
-          Loading…
-        </p>
-      )}
-    </BoardPage>
-  );
-}
-
-function Unreachable({ page, signedIn }: { page: string; signedIn: boolean }) {
-  const navigate = useNavigate();
-  const { state } = useLocation();
-  const [online, setOnline] = useState(false);
-  const [busy, after] = useBusy();
-
-  return (
-    <BoardPage
-      end={null}
-      controls={
-        <label className="demo-switch">
-          <input
-            type="checkbox"
-            role="switch"
-            checked={online}
-            onChange={(event) => setOnline(event.target.checked)}
-          />
-          Demo: the connection is back
-        </label>
-      }
-    >
-      <Heading title="Cannot reach Soirely">
-        <p className="demo-muted">
-          {signedIn && 'You are still signed in. '}
-          Soirely is not answering, so nothing can load yet. Check your connection, then try again.
-        </p>
-      </Heading>
-      <button
-        className="button button-primary demo-wide"
-        type="button"
-        aria-busy={busy}
-        onClick={() => {
-          if (!busy) after(() => online && void navigate(at(page), { replace: true, state }));
-        }}
-      >
-        {busy ? 'Trying again…' : 'Try again'}
-      </button>
     </BoardPage>
   );
 }

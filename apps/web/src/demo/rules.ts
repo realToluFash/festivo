@@ -30,16 +30,21 @@ export const LOCK_MS = 60_000;
 
 export type FieldLines = { email?: string; password?: string };
 
-export function fieldLines(email: string, password: string): FieldLines {
-  const lines: FieldLines = {};
+export function emailLine(email: string): string | null {
   const problem = emailProblem(email);
 
-  if (problem != null) {
-    lines.email =
-      problem === 'blank'
-        ? 'Enter your email address.'
-        : 'That does not look like an email address. Check it has an @ and a domain.';
-  }
+  if (problem == null) return null;
+
+  return problem === 'blank'
+    ? 'Enter your email address.'
+    : 'That does not look like an email address. Check it has an @ and a domain.';
+}
+
+export function fieldLines(email: string, password: string): FieldLines {
+  const lines: FieldLines = {};
+  const line = emailLine(email);
+
+  if (line != null) lines.email = line;
   if (password === '') lines.password = 'Enter your password.';
 
   return lines;
@@ -70,10 +75,10 @@ export type AccountLines = { name?: string; email?: string; password?: string };
 /** Create your account's checks before anything is sent. */
 export function accountLines(name: string, email: string, password: string): AccountLines {
   const lines: AccountLines = {};
-  const emailLine = fieldLines(email, 'x').email;
+  const emailRefusal = emailLine(email);
 
   if (name.trim() === '') lines.name = 'Enter your full name.';
-  if (emailLine != null) lines.email = emailLine;
+  if (emailRefusal != null) lines.email = emailRefusal;
   if (password === '') lines.password = 'Enter a password.';
   else if (!meetsPasswordLength(password))
     lines.password = `Use at least ${PASSWORD_MINIMUM_LENGTH} characters.`;

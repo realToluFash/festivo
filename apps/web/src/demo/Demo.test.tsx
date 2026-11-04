@@ -354,13 +354,17 @@ describe('the demo creates an account (sc-29061)', () => {
     expect(screen.getByText('Too many wrong tries')).toBeDefined();
   });
 
-  it('counts the resend down to a link', async () => {
-    await page('?page=email', 'Check your email');
+  it('counts the resend down to a link, and a new code clears the wrong one', async () => {
+    await page('?page=email&state=wrong', 'Check your email');
     expect(screen.getByText('Send a new code in 1:00')).toBeDefined();
 
     for (let second = 0; second <= 60; second++) await act(() => vi.advanceTimersByTimeAsync(1000));
     fireEvent.click(screen.getByRole('button', { name: 'Send a new code' }));
+    await act(() => vi.advanceTimersByTimeAsync(1000));
+
     expect(screen.getByText('Send a new code in 1:00')).toBeDefined();
+    expect(screen.queryByText(/That code does not match/)).toBeNull();
+    expect((screen.getByLabelText('Code from the email') as HTMLInputElement).value).toBe('');
   });
 
   it('refuses no organisation and a short number on Save, with focus on the organisation', async () => {
