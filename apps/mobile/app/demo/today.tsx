@@ -68,13 +68,12 @@ export default function DemoTodayScreen() {
   );
   useCoverStatusBar(kind === 'tabletLandscape' ? 'dark' : 'light', false);
 
-  // The design demo lives in Settings, so Settings goes back to its list.
   const onTab = useCallback(
     (tab: Tab) => {
-      if (tab === 'Settings') toList();
+      if (tab === 'Settings') router.replace('/demo/settings');
       else if (tab !== 'Today') tell(`${tab} has its own design.`);
     },
-    [tell, toList],
+    [tell],
   );
 
   const layout =

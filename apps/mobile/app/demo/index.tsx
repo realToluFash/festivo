@@ -36,6 +36,45 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
     ],
   },
   {
+    page: 'Settings · B Confetti',
+    boards: [
+      {
+        title: 'Settings',
+        what: 'You as a Confetti card, rows with a tile',
+        href: '/demo/settings',
+      },
+      {
+        title: 'Settings · a planner',
+        what: 'Only the sections the role holds',
+        href: '/demo/settings?as=planner',
+      },
+      {
+        title: 'Settings · no organisation',
+        what: 'Only your own sections',
+        href: '/demo/settings?as=noOrg',
+      },
+      { title: 'Your account', what: 'Under a Confetti band', href: '/demo/settings/account' },
+      { title: 'Security', what: 'Ways in, two-factor, devices', href: '/demo/settings/security' },
+      {
+        title: 'Notifications',
+        what: 'Push and email for each kind',
+        href: '/demo/settings/notifications',
+      },
+      {
+        title: 'Organisation',
+        what: 'Details, joining, ownership',
+        href: '/demo/settings/organisation',
+      },
+      { title: 'Members', what: 'Requests, people, roles', href: '/demo/settings/members' },
+      { title: 'Roles', what: 'What each role may do', href: '/demo/settings/roles' },
+      {
+        title: 'Sign-in rules',
+        what: 'What changed, the rules in force',
+        href: '/demo/settings/sign-in-rules',
+      },
+    ],
+  },
+  {
     page: 'Sign-in',
     boards: [
       { title: 'Welcome', what: 'The app opens here signed out', href: '/demo/welcome' },
