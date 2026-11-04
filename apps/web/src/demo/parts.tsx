@@ -1,4 +1,9 @@
-import { PASSWORD_MINIMUM_LENGTH, formatCountdown, initials } from '@soirely/domain';
+import {
+  PASSWORD_MINIMUM_LENGTH,
+  formatCountdown,
+  initials,
+  meetsPasswordLength,
+} from '@soirely/domain';
 import { type FormEvent, type ReactNode, type RefObject, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 
@@ -37,7 +42,7 @@ export function Heading({
   done = false,
   children,
 }: {
-  step?: 1 | 2;
+  step?: 1 | 2 | undefined;
   title: string;
   done?: boolean;
   children?: ReactNode;
@@ -94,6 +99,60 @@ export function PasswordRule({ met }: { met: boolean }) {
   );
 }
 
+export function PasswordField({
+  label,
+  field,
+  password,
+  line,
+  busy,
+  revealed,
+  onReveal,
+  onChange,
+}: {
+  label: string;
+  field: RefObject<HTMLInputElement | null>;
+  password: string;
+  line: string | null;
+  busy: boolean;
+  revealed: boolean;
+  onReveal: (revealed: boolean) => void;
+  onChange: (password: string) => void;
+}) {
+  return (
+    <div className={fieldClass(line != null)}>
+      <label htmlFor="password">{label}</label>
+      <div className="demo-reveal">
+        <input
+          ref={field}
+          className="demo-input"
+          id="password"
+          type={revealed ? 'text' : 'password'}
+          autoComplete="new-password"
+          value={password}
+          {...offField(busy)}
+          aria-invalid={line != null}
+          aria-describedby={line == null ? 'password-rule' : 'password-line password-rule'}
+          onChange={(event) => onChange(event.target.value)}
+        />
+        <button
+          className="demo-reveal-button"
+          type="button"
+          aria-pressed={revealed}
+          onClick={() => onReveal(!revealed)}
+        >
+          {revealed ? 'Hide' : 'Show'}
+        </button>
+      </div>
+      {line != null && (
+        <p className="demo-line" id="password-line">
+          {line}
+        </p>
+      )}
+      <PasswordRule met={meetsPasswordLength(password)} />
+    </div>
+  );
+}
+
 type Dead = 'expired' | 'exhausted';
 
 export function CodeForm({
@@ -106,6 +165,7 @@ export function CodeForm({
   onVerified,
   below,
   resendNote,
+  resend = true,
 }: {
   opening: string;
   label: string;
@@ -118,6 +178,8 @@ export function CodeForm({
   /** Under the resend line while the field shows. */
   below?: ReactNode;
   resendNote?: ReactNode;
+  /** False for an authenticator's code: nothing to send, so no resend and no end to the tries. */
+  resend?: boolean;
 }) {
   const [code, setCode] = useState(opening === 'wrong' ? '482193' : '');
   const [line, setLine] = useState<string | null>(opening === 'wrong' ? wrong : null);
@@ -162,7 +224,7 @@ export function CodeForm({
         return;
       }
 
-      if (wrongs + 1 >= TRIES) {
+      if (resend && wrongs + 1 >= TRIES) {
         setDead('exhausted');
         return;
       }
@@ -226,9 +288,11 @@ export function CodeForm({
           {sending ? 'Sending…' : busy ? 'Verifying…' : submit}
         </button>
       </form>
-      <Resend key={countFrom} onResend={sendNew}>
-        {resendNote}
-      </Resend>
+      {resend && (
+        <Resend key={countFrom} onResend={sendNew}>
+          {resendNote}
+        </Resend>
+      )}
       {below}
     </>
   );
@@ -349,7 +413,7 @@ export function Verified({
   action,
   onContinue,
 }: {
-  step: 1 | 2;
+  step?: 1 | 2;
   title: string;
   body: string;
   action: string;

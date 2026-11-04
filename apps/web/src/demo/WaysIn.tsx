@@ -1,4 +1,4 @@
-import { REQUEST_MESSAGE_MAXIMUM, meetsPasswordLength } from '@soirely/domain';
+import { REQUEST_MESSAGE_MAXIMUM } from '@soirely/domain';
 import { type FormEvent, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router';
 
@@ -11,11 +11,11 @@ import {
   Heading,
   Notice,
   Organisation,
-  PasswordRule,
+  PasswordField,
   fieldClass,
   useBusy,
 } from './parts.tsx';
-import { type AccountLines, SAMPLE, accountLines, way } from './rules.ts';
+import { type AccountLines, BREACHED, SAMPLE, accountLines, way } from './rules.ts';
 
 const FLOW: Flow = { name: SAMPLE.name, email: SAMPLE.email, phone: '' };
 const INVITED_BY = `Invitation from ${SAMPLE.inviter} · ${SAMPLE.role}`;
@@ -328,9 +328,7 @@ function JoinAsNew() {
     setLines((was) => ({ ...was, [field]: now[field] }));
   }
 
-  const passwordLine =
-    lines.password ??
-    (breached ? 'This password has appeared in a known data breach. Choose another.' : null);
+  const passwordLine = lines.password ?? (breached ? BREACHED : null);
 
   return (
     <BoardPage end={<HaveAccount />}>
@@ -378,43 +376,20 @@ function JoinAsNew() {
               )}
             </div>
 
-            <div className={fieldClass(passwordLine != null)}>
-              <label htmlFor="password">Password</label>
-              <div className="demo-reveal">
-                <input
-                  ref={passwordField}
-                  className="demo-input"
-                  id="password"
-                  type={revealed ? 'text' : 'password'}
-                  autoComplete="new-password"
-                  value={password}
-                  {...offField(busy)}
-                  aria-invalid={passwordLine != null}
-                  aria-describedby={
-                    passwordLine == null ? 'password-rule' : 'password-line password-rule'
-                  }
-                  onChange={(event) => {
-                    setPassword(event.target.value);
-                    setBreached(false);
-                    edited('password', accountLines(name, SAMPLE.email, event.target.value));
-                  }}
-                />
-                <button
-                  className="demo-reveal-button"
-                  type="button"
-                  aria-pressed={revealed}
-                  onClick={() => setRevealed((was) => !was)}
-                >
-                  {revealed ? 'Hide' : 'Show'}
-                </button>
-              </div>
-              {passwordLine != null && (
-                <p className="demo-line" id="password-line">
-                  {passwordLine}
-                </p>
-              )}
-              <PasswordRule met={meetsPasswordLength(password)} />
-            </div>
+            <PasswordField
+              label="Password"
+              field={passwordField}
+              password={password}
+              line={passwordLine}
+              busy={busy}
+              revealed={revealed}
+              onReveal={setRevealed}
+              onChange={(typed) => {
+                setPassword(typed);
+                setBreached(false);
+                edited('password', accountLines(name, SAMPLE.email, typed));
+              }}
+            />
           </div>
 
           <button className="button button-primary demo-wide" type="submit" aria-busy={busy}>
