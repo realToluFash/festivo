@@ -4,7 +4,6 @@ import {
   fallsOnLaterDay,
   formatDay,
   formatTimeOfDay,
-  initials,
   lockLiftsAt,
 } from '@soirely/domain';
 import { type FormEvent, type RefObject, useEffect, useRef, useState } from 'react';
@@ -14,13 +13,16 @@ import { Link, useNavigate } from 'react-router';
 import { api } from '../../api.ts';
 import { AuthPage } from '../../components/AuthPage.tsx';
 import { FieldError } from '../../components/FieldError.tsx';
-import { Pending } from '../../components/Pending.tsx';
+import { OrganisationLine, SignedInAs } from '../../components/Onboarding.tsx';
+import { PendingPage } from '../../components/Pending.tsx';
+import { StillSignedIn } from '../../components/StillSignedIn.tsx';
 import { Unreachable } from '../../components/Unreachable.tsx';
 import { useFormChecks } from '../../formChecks.ts';
 import { dropHeldInvitation, holdInvitation } from '../../heldInvitation.ts';
 import { dateLocale } from '../../i18n/index.ts';
 import { useLinkRetry } from '../../linkRetry.ts';
 import { landingFor, refreshAccount, restoreSession, useSessionState } from '../../session.ts';
+import { useSignOut } from '../../signOut.ts';
 import { useStepFocus } from '../../stepFocus.ts';
 
 type View =
@@ -46,6 +48,8 @@ export function RequestToJoin({ token }: { token: string }) {
     retryArrives.current = true;
     setAttempt((n) => n + 1);
   });
+  // Signed out, the link reads again: what it shows depended on who was asking.
+  const { signOut, unreached } = useSignOut(() => setAttempt((n) => n + 1));
 
   useEffect(() => {
     dropHeldInvitation();
@@ -95,14 +99,21 @@ export function RequestToJoin({ token }: { token: string }) {
     }
   }
 
-  if (session.status === 'unreachable') return <Unreachable signedIn={false} />;
+  if (session.status === 'unreachable') return <Unreachable signedIn={false} bare />;
   if (view.kind === 'unreachable') {
-    return <Unreachable signedIn={session.status === 'signedIn'} retry={retry} />;
+    return <Unreachable signedIn={session.status === 'signedIn'} retry={retry} bare />;
   }
-  if (view.kind === 'loading') return <Pending />;
+  if (view.kind === 'loading') return <PendingPage />;
 
   return (
-    <AuthPage>
+    <AuthPage
+      bare
+      end={
+        session.status === 'signedIn' && view.kind !== 'dead' ? (
+          <SignedInAs email={session.session.email} onSignOut={() => void signOut()} />
+        ) : null
+      }
+    >
       {view.kind === 'dead' ? (
         <Dead brought={brought} headingRef={heading} />
       ) : (
@@ -116,6 +127,7 @@ export function RequestToJoin({ token }: { token: string }) {
           onChange={change}
         />
       )}
+      {unreached && <StillSignedIn />}
     </AuthPage>
   );
 }
@@ -136,12 +148,7 @@ function Dead({
         <h1 ref={headingRef} tabIndex={-1}>
           {t('requestToJoin.deadTitle')}
         </h1>
-      </div>
-      <div className="notice notice-quiet" role={brought ? undefined : 'status'}>
-        <span className="mark mark-info" aria-hidden="true">
-          i
-        </span>
-        <p>{t('requestToJoin.deadBody')}</p>
+        <p role={brought ? undefined : 'status'}>{t('requestToJoin.deadLine')}</p>
       </div>
       <Link className="button" to="/">
         {t('requestToJoin.goHome')}
@@ -180,15 +187,7 @@ function Asking({
         </h1>
       </div>
 
-      <div className="join-org">
-        <span className="org-tile" aria-hidden="true">
-          {initials(organisation)}
-        </span>
-        <div className="org-naming">
-          <p className="org-name">{organisation}</p>
-          <p className="org-role">{t('requestToJoin.requestLink')}</p>
-        </div>
-      </div>
+      <OrganisationLine name={organisation} line={t('requestToJoin.requestLink')} />
 
       {view.kind === 'sent' && <Sent organisation={organisation} answer={answer} />}
       {view.kind === 'limited' && <Limited until={view.until} answer={answer} />}
@@ -216,12 +215,14 @@ function SignedOut({ token, organisation }: { token: string; organisation: strin
   return (
     <>
       <p>{t('requestToJoin.signedOut', { organisation })}</p>
-      <button className="button button-primary" type="button" onClick={() => go('/sign-in')}>
-        {t('requestToJoin.signIn')}
-      </button>
-      <button className="button" type="button" onClick={() => go('/register')}>
-        {t('requestToJoin.register')}
-      </button>
+      <div className="auth-choices">
+        <button className="button button-primary" type="button" onClick={() => go('/sign-in')}>
+          {t('requestToJoin.signIn')}
+        </button>
+        <button className="button" type="button" onClick={() => go('/register')}>
+          {t('requestToJoin.register')}
+        </button>
+      </div>
     </>
   );
 }
@@ -322,22 +323,19 @@ function Ask({
   return (
     <>
       {failed && (
-        <div className="notice notice-broken" role="alert">
-          <span className="mark mark-broken" aria-hidden="true">
-            ✕
-          </span>
-          <div className="notice-body">
-            <p className="notice-title">{t('requestToJoin.failedTitle')}</p>
-            <p>{t('requestToJoin.failedBody')}</p>
-          </div>
+        <div className="auth-notice" role="alert">
+          <p className="auth-notice-title">{t('requestToJoin.failedTitle')}</p>
+          <p>{t('requestToJoin.failedBody')}</p>{' '}
         </div>
       )}
 
       <form className="auth-form" noValidate onSubmit={(event) => void submit(event)}>
         <div className="field">
           <label htmlFor="request-message">
-            {t('requestToJoin.message')}{' '}
-            <span className="pill-quiet">{t('requestToJoin.optional')}</span>
+            <span className="auth-label-row">
+              {t('requestToJoin.message')}
+              <span className="auth-optional">{t('requestToJoin.optional')}</span>
+            </span>
           </label>
           <textarea
             className={error == null ? 'input' : 'input input-wrong'}
@@ -366,10 +364,12 @@ function Ask({
           </p>
         </div>
 
-        <button className="button button-primary" type="submit" aria-busy={busy}>
-          {busy ? t('requestToJoin.asking') : t('requestToJoin.ask')}
-        </button>
-        <p className="muted">{t('requestToJoin.whatTheySee', { organisation })}</p>
+        <div className="auth-choices">
+          <button className="button button-primary" type="submit" aria-busy={busy}>
+            {busy ? t('requestToJoin.asking') : t('requestToJoin.ask')}
+          </button>
+          <p className="muted">{t('requestToJoin.whatTheySee', { organisation })}</p>
+        </div>
       </form>
     </>
   );
@@ -395,10 +395,7 @@ function Sent({ organisation, answer }: { organisation: string; answer: Answer }
 
   return (
     <>
-      <div className="notice notice-done" {...answering(answer)}>
-        <span className="mark mark-done" aria-hidden="true">
-          ✓
-        </span>
+      <div className="auth-notice" {...answering(answer)}>
         <p>{t('requestToJoin.sent', { organisation })}</p>
       </div>
       <Link className="button button-primary" to={landing}>
@@ -414,10 +411,7 @@ function Limited({ until, answer }: { until: Date | null; answer: Answer }) {
 
   return (
     <>
-      <div className="notice notice-attention" {...answering(answer)}>
-        <span className="mark mark-attention" aria-hidden="true">
-          !
-        </span>
+      <div className="auth-notice" {...answering(answer)}>
         <p>
           {until == null
             ? t('requestToJoin.limitedLater')
@@ -463,10 +457,7 @@ function Standing({
 
   return (
     <>
-      <div className="notice notice-quiet" {...answering(answer, brought)}>
-        <span className="mark mark-info" aria-hidden="true">
-          i
-        </span>
+      <div className="auth-notice" {...answering(answer, brought)}>
         <p>{body}</p>
       </div>
       <Link className="button button-primary" to={landing}>
