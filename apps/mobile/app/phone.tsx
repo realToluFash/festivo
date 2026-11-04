@@ -19,7 +19,7 @@ import { Notice } from '../src/components/Notice.tsx';
 import { CountryPicker, focusPicker } from '../src/components/CountryPicker.tsx';
 import { focusChecked, keysStayDown } from '../src/components/Field.tsx';
 import { PhoneEntry } from '../src/components/PhoneEntry.tsx';
-import { useAboveKeyboard } from '../src/components/Screen.tsx';
+import { AboveKeyboardView } from '../src/components/Screen.tsx';
 import { phoneProblemMessage } from '../src/phoneProblem.ts';
 import { InsideField } from '../src/steps/InsideField.tsx';
 import { skipPhone } from '../src/steps/skipPhone.ts';
@@ -113,7 +113,6 @@ function MobileStep({ initialCountry, short }: { initialCountry: string; short: 
   const [sending, setSending] = useState(false);
   const numberInput = useRef<TextInputInstance>(null);
   const countryPicker = useRef<ViewInstance>(null);
-  const aboveKeyboard = useAboveKeyboard();
   const send = useSend(
     country,
     number,
@@ -149,7 +148,7 @@ function MobileStep({ initialCountry, short }: { initialCountry: string; short: 
       }
     >
       <Heading title={t('steps.mobileTitle')} intro={t('steps.mobileIntro')} />
-      <View {...aboveKeyboard}>
+      <AboveKeyboardView>
         <View style={styles.row}>
           <CountryPicker
             label={t('verifyPhone.countryLabel')}
@@ -187,7 +186,7 @@ function MobileStep({ initialCountry, short }: { initialCountry: string; short: 
           </View>
         </View>
         {error != null && <Says words={error} />}
-      </View>
+      </AboveKeyboardView>
       <Plain>{t('steps.mobileLine')}</Plain>
     </StepScreen>
   );
