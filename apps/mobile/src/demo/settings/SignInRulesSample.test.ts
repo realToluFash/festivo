@@ -4,6 +4,8 @@ import {
   CHANGES,
   changeWhen,
   limitApplies,
+  READ_HERE,
+  SET_BY,
   signInRulesStart,
   signInRulesStateOf,
   TITLE,
@@ -29,7 +31,9 @@ describe('Sign-in rules in the demo', () => {
   });
 
   it('keeps en.json’s words', () => {
-    expect(TITLE).toBe('Ire Events’s sign-in rules');
+    expect(TITLE).toBe('Sign-in rules');
+    expect(SET_BY).toBe('Set by Ire Events’ owners');
+    expect(READ_HERE).toBe('You can read them here; only they can change them.');
     expect(limitApplies(7, 'Lumen Studio')).toBe(
       'For you, sign-ins end after 7 days without use: Lumen Studio’s rule, the shortest of your organisations.',
     );

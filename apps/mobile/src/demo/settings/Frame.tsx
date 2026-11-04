@@ -41,7 +41,6 @@ const SIDEBAR_EVENTS: readonly EventKey[] = ['wed', 'ireti', 'party', 'draft'];
 /** A Settings page in B: on its side, `column` takes the Settings list's place, as givesWay does in the app. */
 export function SettingsPage({
   title,
-  sub,
   back,
   right,
   children,
@@ -51,7 +50,6 @@ export function SettingsPage({
   scrollRef,
 }: {
   title: string;
-  sub?: string;
   back?: { label: string; onPress: () => void } | null;
   right?: ReactNode;
   children: ReactNode;
@@ -86,11 +84,6 @@ export function SettingsPage({
             </Text>
             {right}
           </View>
-          {sub != null && (
-            <Text size={TYPE.body} weight="medium" style={styles.secondary}>
-              {sub}
-            </Text>
-          )}
           <View style={styles.cardsPane}>{children}</View>
         </ScrollView>
         {dock != null && <View style={styles.dockTablet}>{dock}</View>}
@@ -136,11 +129,6 @@ export function SettingsPage({
             {right}
             {phone && <Bell tell={shell.tell} />}
           </View>
-          {sub != null && (
-            <Text size={phone ? TYPE.body : 16} weight="medium" style={styles.secondary}>
-              {sub}
-            </Text>
-          )}
         </View>
         <View style={phone ? styles.cardsPhone : styles.cardsPortrait}>{children}</View>
       </ScrollView>

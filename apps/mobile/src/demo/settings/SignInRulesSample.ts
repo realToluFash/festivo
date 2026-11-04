@@ -1,9 +1,9 @@
 import type { Load } from './RolesSample.ts';
 import { YOU } from './sample.ts';
 
-export const TITLE = `${YOU.organisation}’s sign-in rules`;
-export const INTRO =
-  'Set by the organisation’s owners. You can read them here; only they can change them.';
+export const TITLE = 'Sign-in rules';
+export const SET_BY = `Set by ${YOU.organisation}’ owners`;
+export const READ_HERE = 'You can read them here; only they can change them.';
 
 const VALUES = {
   anyMethod: 'Any method: email and password, Google or Apple',

@@ -1,29 +1,40 @@
 import { formattingLocale } from '@soirely/domain';
 import { getLocales } from 'expo-localization';
 import { useLocalSearchParams } from 'expo-router';
-import { Fragment } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { Notice } from '../../components/Notice.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
-import { SettingsPage } from './Frame.tsx';
-import { Failed, LoadingCards, useLoad } from './MembersLoading.tsx';
-import { Card, CardHead, TYPE } from './parts.tsx';
+import { useShell } from './Frame.tsx';
+import { useLoad } from './MembersLoading.tsx';
 import {
   ASK_OWNER,
   type Change,
   changeWhen,
-  INTRO,
   limitApplies,
+  READ_HERE,
   type Rule,
+  SET_BY,
   type SignInRulesStart,
   signInRulesStart,
   signInRulesStateOf,
   TITLE,
 } from './SignInRulesSample.ts';
+import {
+  CardSays,
+  FailedBlock,
+  HeadCount,
+  Line,
+  LoadingBlock,
+  OnCard,
+  Row,
+  RowList,
+  Section,
+  SummaryCard,
+  SummaryPage,
+} from './Summary.tsx';
 
-/** Sign-in rules in B: read only for everyone, what changed first, then the rules in force. */
+/** Sign-in rules in B, summary first: read only for everyone, who sets them on the card, what changed, then the rules in force. */
 export function SignInRulesSection() {
   const { state } = useLocalSearchParams<{ state?: string }>();
   const name = signInRulesStateOf(state);
@@ -31,111 +42,114 @@ export function SignInRulesSection() {
   return <SignInRulesPage key={name} start={signInRulesStart(name)} />;
 }
 
-const LOADING_CARDS = [
-  { head: '46%', options: 2 },
-  { head: '52%', options: 2 },
-  { head: '40%', options: 1 },
-] as const;
-
 function SignInRulesPage({ start }: { start: SignInRulesStart }) {
+  const { layout } = useShell();
   const { load, retry } = useLoad(start.load);
   const locale = formattingLocale('en', getLocales()[0]?.languageTag);
 
+  if (load !== 'loaded')
+    return (
+      <SummaryPage title={TITLE}>
+        {load === 'failed' ? (
+          <FailedBlock
+            title="We could not load the sign-in rules."
+            line="Check your connection and try again."
+            onRetry={retry}
+            testID="signInRules.retry"
+          />
+        ) : (
+          <LoadingBlock words="Loading the sign-in rules…" />
+        )}
+      </SummaryPage>
+    );
+
   return (
-    <SettingsPage title={TITLE} sub={INTRO}>
-      {load === 'loaded' ? (
-        <>
-          {start.limit != null && (
-            <Notice
-              tone="quiet"
-              mark={tokens.marks.info.glyph}
-              body={limitApplies(start.limit.days, start.limit.organisation)}
-            />
-          )}
-          <Changes changes={start.changes} locale={locale} />
-          <InForce rules={start.rules} />
-        </>
-      ) : load === 'failed' ? (
-        <Failed
-          words="The sign-in rules did not load."
-          onRetry={retry}
-          testID="signInRules.retry"
-        />
-      ) : (
-        <LoadingCards words="Loading the sign-in rules…" cards={LOADING_CARDS} />
-      )}
-    </SettingsPage>
+    <SummaryPage title={TITLE}>
+      <SummaryCard
+        size={layout === 'portrait' ? 'wide' : 'page'}
+        height={200}
+        testID="signInRules.card"
+      >
+        <CardSays text={SET_BY} heading />
+        <OnCard text={READ_HERE} />
+        {start.limit != null && (
+          <OnCard text={limitApplies(start.limit.days, start.limit.organisation)} strong />
+        )}
+      </SummaryCard>
+      <Changes changes={start.changes} locale={locale} />
+      <InForce rules={start.rules} />
+    </SummaryPage>
   );
 }
 
 function Changes({ changes, locale }: { changes: readonly Change[]; locale: string }) {
   if (changes.length === 0)
     return (
-      <Card>
-        <CardHead
-          title="What changed, newest first"
-          line="No changes yet. These are the rules every organisation starts with."
-        />
-      </Card>
+      <Section title="What changed">
+        <View style={styles.none}>
+          <Text size={16} weight="semibold">
+            No changes yet
+          </Text>
+          <Line size={14} text="These are the rules every organisation starts with." />
+        </View>
+      </Section>
     );
 
   return (
-    <Card>
-      <CardHead title="What changed, newest first" />
-      <View style={styles.rows}>
-        {changes.map((change, index) => (
-          <Fragment key={change.at}>
-            {index > 0 && <View style={styles.rule} />}
-            <View style={styles.change}>
-              <Text size={13} weight="medium" style={[styles.secondary, styles.figures]}>
-                {changeWhen(change, locale)}
-              </Text>
-              <Text size={15.5} weight="semibold">
-                {change.now}
-              </Text>
-              <Text size={14} weight="medium" style={styles.secondary}>
-                {`was: ${change.was}`}
-              </Text>
-            </View>
-          </Fragment>
-        ))}
-      </View>
-    </Card>
+    <Section title="What changed" right={<HeadCount text="Newest first" />}>
+      <RowList
+        items={changes.map((change) => {
+          const when = changeWhen(change, locale);
+          const was = `was: ${change.was}`;
+
+          return {
+            key: change.at,
+            row: (
+              <View
+                style={styles.change}
+                accessible
+                accessibilityLabel={`${change.now}. ${was}. ${when}`}
+                testID={`signInRules.change.${change.at}`}
+              >
+                <Text size={16} weight="semibold" accessible={false}>
+                  {change.now}
+                </Text>
+                <Text size={14} weight="medium" accessible={false} style={styles.secondary}>
+                  {was}
+                </Text>
+                <Text
+                  size={13}
+                  weight="medium"
+                  accessible={false}
+                  style={[styles.secondary, styles.figures]}
+                >
+                  {when}
+                </Text>
+              </View>
+            ),
+          };
+        })}
+      />
+    </Section>
   );
 }
 
 function InForce({ rules }: { rules: readonly Rule[] }) {
   return (
-    <Card>
-      <CardHead title="The rules in force" />
-      <View style={styles.rows}>
-        {rules.map((rule, index) => (
-          <Fragment key={rule.label}>
-            {index > 0 && <View style={styles.rule} />}
-            <View style={styles.inForce}>
-              <Text size={12} weight="semibold" style={[styles.secondary, styles.caps]}>
-                {rule.label.toUpperCase()}
-              </Text>
-              <Text size={15.5} weight="medium">
-                {rule.value}
-              </Text>
-            </View>
-          </Fragment>
-        ))}
-      </View>
-      <Text size={TYPE.line} weight="medium" style={styles.secondary}>
-        {ASK_OWNER}
-      </Text>
-    </Card>
+    <Section title="In force" foot={ASK_OWNER}>
+      <RowList
+        items={rules.map((rule) => ({
+          key: rule.label,
+          row: <Row title={rule.value} line={rule.label} weight="medium" />,
+        }))}
+      />
+    </Section>
   );
 }
 
 const styles = StyleSheet.create({
-  rows: { gap: 14 },
-  rule: { height: 1, backgroundColor: tokens.colorBorder },
-  change: { gap: 3 },
-  inForce: { gap: 5 },
   secondary: { color: tokens.colorInkSecondary },
   figures: { fontVariant: ['tabular-nums'] },
-  caps: { letterSpacing: 12 * 0.08 },
+  none: { gap: 3, paddingVertical: tokens.spaceXs },
+  change: { gap: 3, paddingVertical: 11 },
 });
