@@ -2,7 +2,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
-import { Confetti, Cover, type Piece } from '../Cover.tsx';
+import { Confetti, Cover, type Piece } from '../../components/Cover.tsx';
 import { YOU } from './sample.ts';
 
 const BAND_PIECES: readonly Piece[] = [

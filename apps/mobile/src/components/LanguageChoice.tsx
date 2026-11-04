@@ -1,5 +1,5 @@
 import { LOCALES } from '@soirely/domain';
-import { useRef, useState } from 'react';
+import { useContext, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import Svg, { Circle, Path } from 'react-native-svg';
@@ -7,11 +7,13 @@ import Svg, { Circle, Path } from 'react-native-svg';
 import { chooseLanguage } from '../accountLanguage.ts';
 import { currentLocale } from '../i18n/index.ts';
 import { tokens } from '../theme/tokens.ts';
+import { OnCover } from './Cover.tsx';
 import { Sheet } from './Sheet.tsx';
 import { Text } from './Text.tsx';
 
 /** The signed-out screens' language: the current one on a button, as dark glass on the cover, and the four in a sheet from the foot. */
-export function LanguageChoice({ onCover = false }: { onCover?: boolean }) {
+export function LanguageChoice() {
+  const onCover = useContext(OnCover);
   const { t } = useTranslation();
   const current = currentLocale();
   const [open, setOpen] = useState(false);

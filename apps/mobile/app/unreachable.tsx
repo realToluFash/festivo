@@ -9,6 +9,7 @@ import { PrimaryButton } from '../src/components/Buttons.tsx';
 import { LanguageChoice } from '../src/components/LanguageChoice.tsx';
 import { OnBrand, WelcomeBrand, WelcomeFrame } from '../src/components/Welcome.tsx';
 import { useLayout } from '../src/layout/useLayout.ts';
+import { tokens } from '../src/theme/tokens.ts';
 import { holdsSession } from '../src/tokens.ts';
 import { carryOn } from '../src/unreachable.ts';
 
@@ -62,7 +63,7 @@ export default function Unreachable() {
 
   return (
     <WelcomeFrame
-      top={signedIn === false ? <LanguageChoice onCover /> : undefined}
+      top={signedIn === false ? <LanguageChoice /> : undefined}
       brand={
         <>
           <WelcomeBrand />
@@ -70,7 +71,9 @@ export default function Unreachable() {
             <OnBrand
               title={t('session.unreachableTitle')}
               body={t(signedIn ? 'session.unreachableBody' : 'session.unreachableBodySignedOut')}
-              size={kind === 'phone' ? 28 : 40}
+              size={
+                kind === 'phone' ? tokens.typeCoverTitle.size : tokens.typeCoverTitleTablet.size
+              }
             />
           )}
         </>

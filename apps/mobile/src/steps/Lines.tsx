@@ -49,9 +49,9 @@ export function Heading({
 
 const CONTROL = 16;
 
-/** A sign-in step's title: 32 on a phone and 34 in a tablet's sheet. */
+/** A sign-in step's title, a size larger in a tablet's sheet. */
 export function useStepTitleSize() {
-  return useLayout().kind === 'phone' ? 32 : 34;
+  return useLayout().kind === 'phone' ? tokens.typeTitleStep.size : tokens.typeTitleFrame.size;
 }
 
 /** Tracked in by 2% of its size. */

@@ -83,6 +83,48 @@ const base = {
     "lineHeight": 1.1,
     "letterSpacing": "-0.02em"
   },
+  "typeTitleStep": {
+    "size": 32,
+    "weight": 700,
+    "lineHeight": 1.1,
+    "letterSpacing": "-0.02em"
+  },
+  "typeCoverLine": {
+    "size": 32,
+    "weight": 700,
+    "lineHeight": 1.1,
+    "letterSpacing": "-0.02em"
+  },
+  "typeCoverLineCompact": {
+    "size": 26,
+    "weight": 700,
+    "lineHeight": 1.1,
+    "letterSpacing": "-0.02em"
+  },
+  "typeCoverLineTablet": {
+    "size": 46,
+    "weight": 700,
+    "lineHeight": 1.1,
+    "letterSpacing": "-0.02em"
+  },
+  "typeCoverTitle": {
+    "size": 28,
+    "weight": 700,
+    "lineHeight": 1.1,
+    "letterSpacing": "-0.02em"
+  },
+  "typeCoverTitleTablet": {
+    "size": 40,
+    "weight": 700,
+    "lineHeight": 1.1,
+    "letterSpacing": "-0.02em"
+  },
+  "typeCoverBodyTablet": {
+    "size": 19,
+    "weight": 400,
+    "lineHeight": 1.5,
+    "letterSpacing": "0"
+  },
   "typeTitleSection": {
     "size": 16,
     "weight": 700,

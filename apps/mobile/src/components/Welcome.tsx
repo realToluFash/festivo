@@ -1,11 +1,11 @@
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { setStatusBarStyle } from 'expo-status-bar';
-import { createContext, type ReactNode, useCallback, useEffect, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Cover } from '../demo/Cover.tsx';
+import { Cover, OnCover } from './Cover.tsx';
 import { saidOnWelcome } from '../kit/signInRules.ts';
 import { useLayout } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -16,10 +16,7 @@ import { ProviderButtons } from './ProviderSignIn.tsx';
 import { useReadOut } from './ReadOut.tsx';
 import { Text } from './Text.tsx';
 
-/** True for what sits on the cover, which draws in white. */
-export const OnCover = createContext(false);
-
-const SHEET_RISE = 28;
+const SHEET_RISE = tokens.radiusSheet;
 const COVER_SHARE = 0.68;
 
 /** Signed out: the brand on Soirely's cover, and the ways in on a sheet over its foot (sc-29076, sc-29078). */
@@ -39,7 +36,7 @@ export function Welcome({ devTools }: { devTools?: ReactNode }) {
 
   return (
     <WelcomeFrame
-      top={<LanguageChoice onCover />}
+      top={<LanguageChoice />}
       brand={
         <>
           <WelcomeBrand />
@@ -48,7 +45,6 @@ export function Welcome({ devTools }: { devTools?: ReactNode }) {
               size={line}
               weight="bold"
               maxFontSizeMultiplier={1.25}
-              accessibilityRole="header"
               style={[styles.onCover, coverLine(line)]}
             >
               {t('welcome.tagline')}
@@ -85,12 +81,14 @@ export function Welcome({ devTools }: { devTools?: ReactNode }) {
   );
 }
 
-/** The welcome's line: 32 on a phone, 26 under 380 wide, and 46 on a tablet. */
-function useLineSize() {
+/** The welcome's line, smaller under 380 wide and larger on a tablet. */
+export function useLineSize() {
   const { kind } = useLayout();
   const { width } = useWindowDimensions();
 
-  return kind === 'phone' ? (width < 380 ? 26 : 32) : 46;
+  if (kind !== 'phone') return tokens.typeCoverLineTablet.size;
+
+  return width < 380 ? tokens.typeCoverLineCompact.size : tokens.typeCoverLine.size;
 }
 
 /** The big lines on the cover, in Instrument Sans Bold: set close, and tracked in by 2% of their size. */
@@ -214,6 +212,7 @@ export function WelcomeBrand() {
 
 /** Why somebody is here, in the line's place and at its size: no box and no mark. */
 export function OnBrand({ title, body, size }: { title: string; body: string; size: number }) {
+  const { kind } = useLayout();
   useReadOut(`${title}. ${body}`);
 
   return (
@@ -222,13 +221,12 @@ export function OnBrand({ title, body, size }: { title: string; body: string; si
         size={size}
         weight="bold"
         maxFontSizeMultiplier={1.25}
-        accessibilityRole="header"
         style={[styles.onCover, coverLine(size)]}
       >
         {title}
       </Text>
       <Text
-        size={size < 40 ? tokens.typeBodyGuest.size : 19}
+        size={kind === 'phone' ? tokens.typeBodyGuest.size : tokens.typeCoverBodyTablet.size}
         style={[styles.onCover, styles.centre]}
       >
         {body}

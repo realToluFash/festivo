@@ -11,7 +11,8 @@ import Svg, { Circle } from 'react-native-svg';
 
 import { Text } from '../components/Text.tsx';
 import { tokens } from '../theme/tokens.ts';
-import { Confetti, Cover, EventMesh, type Piece } from './Cover.tsx';
+import { Confetti, Cover, type Piece } from '../components/Cover.tsx';
+import { EventMesh } from './Cover.tsx';
 import { Glyph } from './Glyph.tsx';
 import type { Moment, Now } from './today.ts';
 import type { Tell } from './TodayParts.tsx';

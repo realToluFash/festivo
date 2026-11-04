@@ -6,7 +6,7 @@ import { WelcomeFrame as CoverFrame } from '../components/Welcome.tsx';
 import { useLayout } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 
-export { coverLine, OnCover, useCoverStatusBar } from '../components/Welcome.tsx';
+export { coverLine, useCoverStatusBar } from '../components/Welcome.tsx';
 
 /** The app's cover frame, or without `cover` the brand on the page, as the join link draws it. */
 export function WelcomeFrame({
