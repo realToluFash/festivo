@@ -32,7 +32,8 @@ APPLE_AUTHORIZE_URL="$(json_string SOIRELY_APPLE_AUTHORIZE_URL "${SOIRELY_APPLE_
 APPLE_CLIENT_ID="$(json_string SOIRELY_APPLE_CLIENT_ID "${SOIRELY_APPLE_CLIENT_ID:-}")"
 SCHEME="$(json_string SOIRELY_SCHEME "${SOIRELY_SCHEME:-}")"
 
-TARGET=/usr/share/nginx/html/config.json
+ROOT="${SOIRELY_WEB_ROOT:-/usr/share/nginx/html}"
+TARGET="$ROOT/config.json"
 
 cat > "$TARGET" <<JSON
 {
@@ -59,7 +60,7 @@ echo "soirely: wrote $TARGET for ${SOIRELY_ENVIRONMENT:-unknown} (api ${SOIRELY_
 # host, and Android opens it in the app only if this file names the app and its
 # release signing certificate. Written only when a fingerprint is configured, so
 # a deployment without one serves a 404 here, never a file that verifies nothing.
-WELL_KNOWN=/usr/share/nginx/html/.well-known
+WELL_KNOWN="$ROOT/.well-known"
 if [ -n "${SOIRELY_ANDROID_CERT_SHA256:-}" ]; then
     mkdir -p "$WELL_KNOWN"
     FINGERPRINTS="$(printf '%s' "$SOIRELY_ANDROID_CERT_SHA256" | sed 's/[[:space:]]//g')"
@@ -111,7 +112,7 @@ if [ -n "$STORAGE_ORIGIN" ]; then
     IMG="$IMG $STORAGE_ORIGIN"
 fi
 
-HEADERS=/etc/nginx/soirely-security-headers.conf
+HEADERS="${SOIRELY_HEADERS_FILE:-/etc/nginx/soirely-security-headers.conf}"
 
 # Google Fonts is the one third party the page loads: the stylesheet comes from
 # fonts.googleapis.com and the font files it names come from fonts.gstatic.com.
