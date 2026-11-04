@@ -181,11 +181,11 @@ const REFUSED: Record<string, { title: string; body: string; line?: string }> = 
   },
   withdrawn: {
     title: 'This invitation was withdrawn',
-    body: 'If you think that is a mistake, ask whoever invited you.',
+    body: 'If you think this is a mistake, ask the person who invited you.',
   },
   declined: {
     title: 'Already declined',
-    body: `Ask ${SAMPLE.inviter} to invite you again if you changed your mind.`,
+    body: `If you have changed your mind, ask ${SAMPLE.inviter} to invite you again.`,
   },
   'not-yours': {
     title: 'This invitation is for someone else',
@@ -193,7 +193,7 @@ const REFUSED: Record<string, { title: string; body: string; line?: string }> = 
   },
   deleted: {
     title: 'This organisation is gone',
-    body: `${SAMPLE.organisation} no longer exists, so this invitation cannot be accepted.`,
+    body: `The invitation to ${SAMPLE.organisation} can no longer be accepted.`,
     line: 'Deleted',
   },
 };
