@@ -4,8 +4,11 @@ import { Link, Navigate, useNavigate } from 'react-router';
 
 import { api } from '../../api.ts';
 import { AuthPage } from '../../components/AuthPage.tsx';
+import { SignedInAs } from '../../components/Onboarding.tsx';
 import { Pending } from '../../components/Pending.tsx';
+import { StillSignedIn } from '../../components/StillSignedIn.tsx';
 import { refreshAccount, useSessionState } from '../../session.ts';
+import { useSignOut } from '../../signOut.ts';
 
 /** After an approved recovery (sc-509): set two-factor up again, or carry on and find it in Security. */
 export function TwoFactorAgain() {
@@ -13,6 +16,7 @@ export function TwoFactorAgain() {
   const navigate = useNavigate();
   const state = useSessionState();
   const [skipping, setSkipping] = useState(false);
+  const { signOut, unreached } = useSignOut(() => navigate('/sign-in'));
 
   if (state.status === 'signedOut') return <Navigate to="/sign-in" replace />;
   if (state.status !== 'signedIn') return <Pending />;
@@ -25,18 +29,24 @@ export function TwoFactorAgain() {
   }
 
   return (
-    <AuthPage>
+    <AuthPage
+      bare
+      end={<SignedInAs email={state.session.email} onSignOut={() => void signOut()} />}
+    >
       <div className="auth-heading">
         <h1>{t('lostTwoFactor.setupTitle')}</h1>
         <p>{t('lostTwoFactor.setupIntro')}</p>
       </div>
-      <Link className="button button-primary" to="/app/account/security">
-        {t('lostTwoFactor.setup')}
-      </Link>
-      <button className="button" type="button" aria-busy={skipping} onClick={() => void notNow()}>
-        {t('lostTwoFactor.notNow')}
-      </button>
+      <div className="auth-buttons">
+        <Link className="button button-primary" to="/app/account/security">
+          {t('lostTwoFactor.setup')}
+        </Link>
+        <button className="button" type="button" aria-busy={skipping} onClick={() => void notNow()}>
+          {t('lostTwoFactor.notNow')}
+        </button>
+      </div>
       <p className="field-help">{t('lostTwoFactor.notNowNote')}</p>
+      {unreached && <StillSignedIn />}
     </AuthPage>
   );
 }
