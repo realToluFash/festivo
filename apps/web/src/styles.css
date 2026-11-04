@@ -1610,23 +1610,7 @@ span {
   flex: none;
 }
 
-/* ── Before you start: the two gates, as a strip ──────────────────────────── */
-
-.steps {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--spaceSm) var(--spaceXxl);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.step {
-  display: flex;
-  align-items: center;
-  gap: var(--spaceSm);
-  font: var(--typeButton);
-}
+/* ── A numbered step's mark ─────────────────────────────────────────────── */
 
 .step-mark {
   display: flex;
@@ -1638,31 +1622,6 @@ span {
   border-radius: var(--radiusPill);
   font: var(--typePill);
   font-variant-numeric: tabular-nums;
-}
-
-.step-now .step-mark {
-  background: var(--colorDark);
-  color: var(--colorInkOnDark);
-}
-
-.step-done .step-mark {
-  background: var(--colorAccent);
-  color: var(--colorInkOnDark);
-  font-family: var(--fontFamily);
-}
-
-.step-done {
-  color: var(--colorAccentText);
-}
-
-.step-later .step-mark {
-  border: var(--borderMark) var(--colorMarkEmpty);
-  background: var(--colorCard);
-  color: var(--colorInkSecondary);
-}
-
-.step-later {
-  color: var(--colorInkSecondary);
 }
 
 /* ── Getting back in without the second factor (sc-509) ─────────────────── */
@@ -3247,14 +3206,6 @@ span {
   flex-wrap: wrap;
   align-items: baseline;
   justify-content: space-between;
-  gap: var(--spaceSm);
-}
-
-/* ── A label with a pill beside it ─────────────────────────────────────────── */
-
-.label-row {
-  display: inline-flex;
-  align-items: center;
   gap: var(--spaceSm);
 }
 
