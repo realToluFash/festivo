@@ -1,0 +1,13 @@
+# sc-29152: the design demo's Settings in B Confetti, /roles. Needs ${METRO_URL}; run under EXPO_PUBLIC_SCHEME=violet.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/settings/roles
+- extendedWaitUntil:
+    visible: '.*'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: roles
+- scroll
+- waitForAnimationToEnd
+- takeScreenshot: roles-scrolled
