@@ -84,7 +84,7 @@ export default function PhoneCode() {
           <QuietButton
             label={left > 0 ? `Send a new code in ${minutesSeconds(left)}` : 'Send a new code'}
             off={left > 0}
-            onPress={restart}
+            onPress={() => restart()}
             testID="demo.resend"
           />
         </View>

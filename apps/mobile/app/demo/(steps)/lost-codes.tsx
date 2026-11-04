@@ -105,7 +105,7 @@ export default function LostCodes() {
               : `Send new ${emailOnly ? 'code' : 'codes'}`
           }
           off={left > 0}
-          onPress={restart}
+          onPress={() => restart()}
           testID="demo.resend"
         />
       </View>

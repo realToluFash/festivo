@@ -27,7 +27,7 @@ import { dropRegistration, heldRegistration } from '../src/pendingRegistration.t
 import { rereadAccount } from '../src/signedIn.ts';
 import { CodeStep, type CodeStepStatus, NEXT_STEP_MS } from '../src/steps/CodeStep.tsx';
 import { NavBar, StepScreen } from '../src/steps/StepScreen.tsx';
-import { useCooldown } from '../src/steps/useCountdown.ts';
+import { useCountdown } from '../src/steps/useCountdown.ts';
 
 /** "Check your email": a new account's step, or an address added from Settings > Account (sc-113), by its id. */
 export default function VerifyEmail() {
@@ -42,7 +42,7 @@ function SignUpCode() {
   // Undefined while it is read; null for an account that is signed in, with no handle.
   const [pending, setPending] = useState<PendingRegistration | null | undefined>(undefined);
   const [status, setStatus] = useState<CodeStepStatus>({ kind: 'entering' });
-  const [cooldown, setCooldown] = useCooldown();
+  const { left: cooldown, restart: setCooldown } = useCountdown(0);
   const [address, setAddress] = useState('');
 
   useEffect(() => {
@@ -192,7 +192,7 @@ type Status = CodeStatus | { kind: 'verified'; tapped?: boolean };
 function AddedAddress({ alternative }: { alternative: string }) {
   const { t } = useTranslation();
   const [status, setStatus] = useState<Status>({ kind: 'entering' });
-  const [cooldown, setCooldown] = useCooldown();
+  const { left: cooldown, restart: setCooldown } = useCountdown(0);
   const [address, setAddress] = useState('');
   const codeInput = useRef<TextInputInstance>(null);
   const checks = useFormChecks(

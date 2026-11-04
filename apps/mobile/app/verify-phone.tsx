@@ -27,6 +27,7 @@ import { rereadAccount } from '../src/signedIn.ts';
 import { CodeStep, NEXT_STEP_MS } from '../src/steps/CodeStep.tsx';
 import { Says } from '../src/steps/Lines.tsx';
 import { skipPhone } from '../src/steps/skipPhone.ts';
+import { useCountdown } from '../src/steps/useCountdown.ts';
 import { NavBar, StepScreen } from '../src/steps/StepScreen.tsx';
 import { tokens } from '../src/theme/tokens.ts';
 
@@ -38,7 +39,7 @@ export default function VerifyPhone() {
   const onboarding = from === 'onboarding' && alternative == null;
   const [account, setAccount] = useState<Account | 'none' | null>(null);
   const [status, setStatus] = useState<Status>({ kind: 'entering' });
-  const [cooldown, setCooldown] = useState(0);
+  const { left: cooldown, restart: setCooldown } = useCountdown(0);
   const [codeError, setCodeError] = useState<string | null>(null);
   const codeInput = useRef<TextInputInstance>(null);
   const [route, setRoute] = useState<PhoneCodeRoute | null>(null);
@@ -74,7 +75,7 @@ export default function VerifyPhone() {
     return () => {
       live = false;
     };
-  }, [alternative]);
+  }, [alternative, setCooldown]);
 
   // While the code is on WhatsApp, the server may hand it to SMS: the line follows within a few seconds.
   useEffect(() => {
@@ -89,14 +90,6 @@ export default function VerifyPhone() {
 
     return () => clearInterval(watching);
   }, [wording.watch, alternative]);
-
-  useEffect(() => {
-    if (cooldown <= 0) return;
-
-    const tick = setTimeout(() => setCooldown((left) => left - 1), 1000);
-
-    return () => clearTimeout(tick);
-  }, [cooldown]);
 
   if (account === 'none') return <Redirect href="/sign-in" />;
   if (account == null) return null;
