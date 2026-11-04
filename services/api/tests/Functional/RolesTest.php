@@ -127,32 +127,51 @@ final class RolesTest extends ApiTestCase
     }
 
     #[Test]
-    public function onlyAnOwnerMovesPeopleOntoOwner(): void
+    public function aMemberMovesARolesPeopleOnlyOntoARoleTheyHoldAllOf(): void
     {
         $admin = $this->member('admin@ire.events', SeededRole::Administrator);
+        $accounts = Type\string()->coerce($this->as($this->owner, 'POST', $this->path('roles'), ['name' => 'Accounts', 'permissions' => ['billing.read', 'billing.manage']])['id']);
         $door = Type\string()->coerce($this->as($admin, 'POST', $this->path('roles'), ['name' => 'Door team', 'permissions' => ['events.read']])['id']);
         $this->member('tope@ire.events', null, $door);
 
-        $this->as($admin, 'DELETE', $this->path('roles/' . $door), ['replacement' => $this->seeded(SeededRole::Owner)]);
+        $this->as($admin, 'DELETE', $this->path('roles/' . $door), ['replacement' => $accounts]);
         self::assertSame(403, $this->statusCode());
         self::assertSame(ErrorCode::GrantNotHeld->type(), $this->last()['type'] ?? null);
 
-        $this->as($this->owner, 'DELETE', $this->path('roles/' . $door), ['replacement' => $this->seeded(SeededRole::Owner)]);
+        $this->as($this->owner, 'DELETE', $this->path('roles/' . $door), ['replacement' => $accounts]);
         self::assertSame(204, $this->statusCode(), Json\encode($this->last()));
     }
 
     #[Test]
-    public function anAdministratorHoldingEveryPermissionStillCannotMovePeopleOntoOwner(): void
+    public function removingARoleNeverMovesItsPeopleOntoOwnerEvenForAnOwner(): void
     {
         $administrator = self::em()->find(Role::class, $this->seeded(SeededRole::Administrator)) ?? self::fail('no administrator role');
         $administrator->setPermissions(Permission::cases());
         $admin = $this->member('admin@ire.events', SeededRole::Administrator);
-        $door = Type\string()->coerce($this->as($admin, 'POST', $this->path('roles'), ['name' => 'Door team', 'permissions' => ['events.read']])['id']);
-        $this->member('tope@ire.events', null, $door);
+        $door = Type\string()->coerce($this->as($this->owner, 'POST', $this->path('roles'), ['name' => 'Door team', 'permissions' => ['events.read']])['id']);
+        $people = [
+            $this->member('tope@ire.events', null, $door),
+            $this->member('ada@okeke.ng', null, $door, MembershipStatus::PendingApproval),
+            $this->member('femi@ire.events', null, $door, MembershipStatus::Suspended),
+        ];
+        $this->as($this->owner, 'POST', $this->path('members/invite'), ['email' => 'kemi@bello.ng', 'roleId' => $door]);
+        self::assertSame(201, $this->statusCode(), Json\encode($this->last()));
 
-        $this->as($admin, 'DELETE', $this->path('roles/' . $door), ['replacement' => $this->seeded(SeededRole::Owner)]);
+        foreach ([$this->owner, $admin] as $caller) {
+            $this->as($caller, 'DELETE', $this->path('roles/' . $door), ['replacement' => $this->seeded(SeededRole::Owner)]);
+            self::assertSame(422, $this->statusCode(), Json\encode($this->last()));
+            self::assertSame('Move them to another role, then make them owners from Members, one at a time.', $this->violation('replacement'));
+        }
 
-        self::assertSame(ErrorCode::GrantNotHeld->type(), $this->last()['type'] ?? null);
+        self::assertContains($door, Vec\map($this->roles(), static fn (array $role): mixed => $role['id'] ?? null));
+        foreach ($people as $user) {
+            $membership = self::em()->getRepository(Membership::class)->findOneBy(['user' => $user]) ?? self::fail('no membership');
+            self::em()->refresh($membership);
+            self::assertSame($door, $membership->getRole()->getId()->toRfc4122());
+        }
+        $invitation = self::em()->getRepository(Invitation::class)->findOneBy(['email' => 'kemi@bello.ng']) ?? self::fail('no invitation');
+        self::em()->refresh($invitation);
+        self::assertSame($door, $invitation->getRole()?->getId()->toRfc4122());
     }
 
     #[Test]
