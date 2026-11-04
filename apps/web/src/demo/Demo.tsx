@@ -8,12 +8,14 @@ import { BoardPage, OrLine, Providers } from './BoardPage.tsx';
 import { GetBackInBoard } from './GetBackIn.tsx';
 import { NewAccountBoard } from './NewAccount.tsx';
 import { Today } from './Today.tsx';
+import { WaysInBoard } from './WaysIn.tsx';
 import {
   type FieldLines,
   GET_BACK_IN_PAGES,
   LOCK_MS,
   NEW_ACCOUNT_PAGES,
   SAMPLE,
+  WAYS_IN_PAGES,
   backIn,
   fieldLines,
   refuse,
@@ -88,6 +90,7 @@ export default function Demo() {
       <Route path="sign-in" element={<SignInBoard />} />
       <Route path="create-account" element={<NewAccountBoard />} />
       <Route path="get-back-in" element={<GetBackInBoard />} />
+      <Route path="ways-in" element={<WaysInBoard />} />
       <Route path="signed-in" element={<SignedIn />} />
       <Route path="today" element={<Today />} />
       <Route path="later" element={<Later />} />
@@ -147,6 +150,15 @@ function DemoHome({ from }: { from: string }) {
 
         <h3>Getting back in · desktop</h3>
         <BoardPages pages={GET_BACK_IN_PAGES} />
+        <h3>Other ways in · desktop</h3>
+        <p className="demo-home-line">
+          The organisation is <strong>{SAMPLE.organisation}</strong>, and the invitation is from{' '}
+          <strong>
+            {SAMPLE.inviter}, {SAMPLE.role}
+          </strong>
+          .
+        </p>
+        <BoardPages pages={WAYS_IN_PAGES} />
       </section>
     </main>
   );

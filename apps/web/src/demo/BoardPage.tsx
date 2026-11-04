@@ -139,11 +139,11 @@ export function Providers({ busy, onChoose }: { busy: boolean; onChoose: (name: 
   );
 }
 
-export function OrLine() {
+export function OrLine({ words = 'or' }: { words?: string }) {
   return (
     <div className="auth-or">
       <span className="auth-or-rule" />
-      <span>or</span>
+      <span>{words}</span>
       <span className="auth-or-rule" />
     </div>
   );

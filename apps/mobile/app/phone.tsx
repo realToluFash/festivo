@@ -19,6 +19,7 @@ import { Notice } from '../src/components/Notice.tsx';
 import { CountryPicker, focusPicker } from '../src/components/CountryPicker.tsx';
 import { focusChecked, keysStayDown } from '../src/components/Field.tsx';
 import { PhoneEntry } from '../src/components/PhoneEntry.tsx';
+import { useAboveKeyboard } from '../src/components/Screen.tsx';
 import { phoneProblemMessage } from '../src/phoneProblem.ts';
 import { InsideField } from '../src/steps/InsideField.tsx';
 import { skipPhone } from '../src/steps/skipPhone.ts';
@@ -112,6 +113,7 @@ function MobileStep({ initialCountry, short }: { initialCountry: string; short: 
   const [sending, setSending] = useState(false);
   const numberInput = useRef<TextInputInstance>(null);
   const countryPicker = useRef<ViewInstance>(null);
+  const aboveKeyboard = useAboveKeyboard();
   const send = useSend(
     country,
     number,
@@ -147,43 +149,45 @@ function MobileStep({ initialCountry, short }: { initialCountry: string; short: 
       }
     >
       <Heading title={t('steps.mobileTitle')} intro={t('steps.mobileIntro')} />
-      <View style={styles.row}>
-        <CountryPicker
-          label={t('verifyPhone.countryLabel')}
-          value={country}
-          onChange={(code) => {
-            setCountry(code);
-            setError(null);
-          }}
-          disabled={sending}
-          withCallingCode
-          compact
-          pickerRef={countryPicker}
-          testID="phone.country"
-        />
-        <View style={styles.number}>
-          <InsideField
-            ref={numberInput}
-            label={t('verifyPhone.numberLabel')}
-            value={number}
-            onChangeText={(typed) => {
-              setNumber(typed);
+      <View {...aboveKeyboard}>
+        <View style={styles.row}>
+          <CountryPicker
+            label={t('verifyPhone.countryLabel')}
+            value={country}
+            onChange={(code) => {
+              setCountry(code);
               setError(null);
             }}
-            state={error != null ? 'blank' : 'plain'}
-            submitting={sending}
-            keyboardType="phone-pad"
-            textContentType="telephoneNumber"
-            autoComplete="tel"
-            returnKeyType="done"
-            submitBehavior="submit"
-            onSubmitEditing={() => void send()}
-            autoFocus
-            testID="phone.number"
+            disabled={sending}
+            withCallingCode
+            compact
+            pickerRef={countryPicker}
+            testID="phone.country"
           />
+          <View style={styles.number}>
+            <InsideField
+              ref={numberInput}
+              label={t('verifyPhone.numberLabel')}
+              value={number}
+              onChangeText={(typed) => {
+                setNumber(typed);
+                setError(null);
+              }}
+              state={error != null ? 'blank' : 'plain'}
+              submitting={sending}
+              keyboardType="phone-pad"
+              textContentType="telephoneNumber"
+              autoComplete="tel"
+              returnKeyType="done"
+              submitBehavior="submit"
+              onSubmitEditing={() => void send()}
+              autoFocus
+              testID="phone.number"
+            />
+          </View>
         </View>
+        {error != null && <Says words={error} />}
       </View>
-      {error != null && <Says words={error} />}
       <Plain>{t('steps.mobileLine')}</Plain>
     </StepScreen>
   );

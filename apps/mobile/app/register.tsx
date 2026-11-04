@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../src/api.ts';
 import { PrimaryButton } from '../src/components/Buttons.tsx';
 import { focusChecked, keysStayDown } from '../src/components/Field.tsx';
+import { useAboveKeyboard } from '../src/components/Screen.tsx';
 import { Notice } from '../src/components/Notice.tsx';
 import { dateLocale } from '../src/i18n/index.ts';
 import { emailMessage } from '../src/kit/formChecks.ts';
@@ -40,6 +41,9 @@ export default function Register() {
   const nameField = useRef<TextInputInstance>(null);
   const emailField = useRef<TextInputInstance>(null);
   const passwordField = useRef<TextInputInstance>(null);
+  const nameGroup = useAboveKeyboard();
+  const emailGroup = useAboveKeyboard();
+  const passwordGroup = useAboveKeyboard();
   const long = meetsPasswordLength(password);
   const busy = status.kind === 'submitting';
   const locked = status.kind === 'rateLimited';
@@ -141,7 +145,7 @@ export default function Register() {
           />
         </View>
       )}
-      <View style={styles.first}>
+      <View style={styles.first} {...nameGroup}>
         <InsideField
           ref={nameField}
           label={t('register.name')}
@@ -161,7 +165,7 @@ export default function Register() {
         />
         {said.name != null && <Says words={said.name} />}
       </View>
-      <View style={styles.next}>
+      <View style={styles.next} {...emailGroup}>
         <InsideField
           ref={emailField}
           label={t('register.email')}
@@ -181,7 +185,7 @@ export default function Register() {
         />
         {said.email != null && <Says words={said.email} />}
       </View>
-      <View style={styles.next}>
+      <View style={styles.next} {...passwordGroup}>
         <InsideField
           ref={passwordField}
           label={t('register.password')}

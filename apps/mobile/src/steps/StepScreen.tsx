@@ -25,7 +25,12 @@ import Svg, { Path } from 'react-native-svg';
 
 import { QuietButton } from '../components/Buttons.tsx';
 import { keyboardTopNow, useKeysUp, watchKeyboardTop } from '../components/keyboardWatch.ts';
-import { SETTLED_MS, useWindowOrigin } from '../components/Screen.tsx';
+import {
+  ScreenScroll,
+  SETTLED_MS,
+  useScreenScrollView,
+  useWindowOrigin,
+} from '../components/Screen.tsx';
 import { keysOver } from '../kit/keyboard.ts';
 import { useLayout } from '../layout/useLayout.ts';
 import { glide } from '../motion.ts';
@@ -213,6 +218,7 @@ export function StepScreen({
   const page = useRef<ViewInstance>(null);
   const measured = ANDROID || inSheet;
   const cover = useKeysCover(page, measured, inSheet ? insets.top + SHEET_LIFTED_GAP : 0);
+  const { screenScroll, scrollProps } = useScreenScrollView();
 
   return (
     <View
@@ -226,6 +232,7 @@ export function StepScreen({
           </View>
         )}
         <ScrollView
+          {...scrollProps}
           style={styles.grow}
           contentContainerStyle={[
             styles.content,
@@ -235,7 +242,9 @@ export function StepScreen({
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="interactive"
         >
-          <View style={styles.column}>{children}</View>
+          <ScreenScroll.Provider value={screenScroll}>
+            <View style={styles.column}>{children}</View>
+          </ScreenScroll.Provider>
         </ScrollView>
         {foot != null && (
           <View
