@@ -1,83 +1,42 @@
 import { setStringAsync } from 'expo-clipboard';
-import { useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
+import { type RefObject, useEffect, useState } from 'react';
 
-import { Notice } from '../../components/Notice.tsx';
-import { readOut } from '../../components/ReadOut.tsx';
-import { Sheet } from '../../components/Sheet.tsx';
-import { Text } from '../../components/Text.tsx';
-import { tokens } from '../../theme/tokens.ts';
-import { Glyph } from '../Glyph.tsx';
-import { CLAIM_RECORD, DEADLINES, DOMAIN, type MembersSay, ORGANISATION } from './MembersSample.ts';
-import { Card, CardHead, Pair, Pill, TYPE } from './parts.tsx';
-import type { SettingsLayout } from './sample.ts';
+import { useReadOut } from '../../components/ReadOut.tsx';
+import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
+import {
+  CLAIM_RECORD,
+  type ClaimState,
+  DEADLINES,
+  DOMAIN,
+  KEEPS_WORKING,
+  type MembersSay,
+  ORGANISATION,
+} from './MembersSample.ts';
+import { FocusedScreen, Line, Row, RowList, Section, TextAction } from './Summary.tsx';
 
-export type Claim = 'open' | 'withdrawn';
-
-const KEEPS_WORKING =
-  'Events, guests and your permissions keep working. Only Owner actions, such as billing, wait for an owner.';
 const CHECK_MS = 900;
 
-/** Julien's claim to own Ire Events while its only owner is suspended: prove the domain, or withdraw. */
-export function OwnerClaim({
-  claim,
-  withdrawing,
-  layout,
-  say,
-  onClaim,
-}: {
-  claim: Claim;
-  withdrawing: boolean;
-  layout: SettingsLayout;
-  say: MembersSay;
-  onClaim: (claim: Claim) => void;
-}) {
-  const phone = layout === 'phone';
-  const height = tokens.sizeHitPhoneHero;
+type Check = 'resting' | 'checking' | 'notFound';
 
-  if (claim === 'withdrawn')
-    return (
-      <>
-        <Notice
-          tone="done"
-          mark={tokens.marks.done.glyph}
-          body="You withdrew your claim. Everybody who was told is emailed."
-          announce
-        />
-        <Card>
-          <Notice tone="attention" mark="!" title={`${ORGANISATION} has no active owner`} heading />
-          <Words text="To become the owner, you publish a DNS record on your company domain to prove you control it." />
-          <Pill
-            label="Become the owner"
-            full={phone}
-            height={height}
-            onPress={() => onClaim('open')}
-            testID="ownerClaim.become"
-          />
-          <Notice tone="quiet" mark={tokens.marks.info.glyph} body={KEEPS_WORKING} />
-        </Card>
-      </>
-    );
-
-  return <OpenClaim withdrawing={withdrawing} layout={layout} say={say} onClaim={onClaim} />;
+export interface OwnerClaim {
+  claim: ClaimState | null;
+  screen: boolean;
+  asking: boolean;
+  check: Check;
+  become: () => void;
+  checkRecord: () => void;
+  close: () => void;
+  ask: (asking: boolean) => void;
+  withdraw: () => void;
+  moveOn: () => void;
 }
 
-function OpenClaim({
-  withdrawing,
-  layout,
-  say,
-  onClaim,
-}: {
-  withdrawing: boolean;
-  layout: SettingsLayout;
-  say: MembersSay;
-  onClaim: (claim: Claim) => void;
-}) {
-  const phone = layout === 'phone';
-  const height = tokens.sizeHitPhoneHero;
-  const [check, setCheck] = useState<'resting' | 'checking' | 'notFound'>('resting');
+/** Julien's claim to own Ire Events while its only owner is suspended: open it, prove the domain, or withdraw. */
+export function useOwnerClaim(start: ClaimState | null, withdrawing: boolean): OwnerClaim {
+  const [claim, setClaim] = useState(start);
+  const [screen, setScreen] = useState(withdrawing);
   const [asking, setAsking] = useState(withdrawing);
-  const opener = useRef<ViewInstance>(null);
+  const [check, setCheck] = useState<Check>('resting');
 
   useEffect(() => {
     if (check !== 'checking') return;
@@ -86,169 +45,132 @@ function OpenClaim({
     return () => clearTimeout(timer);
   }, [check]);
 
-  return (
-    <Card>
-      <CardHead
-        title={`Prove you control ${DOMAIN}`}
-        line={`Add this TXT record to the DNS for ${DOMAIN}. The value is new for this claim.`}
-      />
-      <RecordPanel />
-      {check === 'notFound' && (
-        <Notice
-          tone="attention"
-          mark="!"
-          body={`We couldn't find the record yet. DNS changes can take up to 48 hours.`}
-          announce
-        />
-      )}
-      <Words text={`We check every hour until ${say.deadline(DEADLINES.claim)}.`} quiet />
-      <Pill
-        label={check === 'checking' ? 'Checking the record' : 'Check record'}
-        full={phone}
-        height={height}
-        onPress={() => {
-          if (check !== 'checking') setCheck('checking');
-        }}
-        testID="ownerClaim.check"
-      />
-      <Pill
-        ref={opener}
-        label="Withdraw my claim"
-        kind="secondary"
-        height={height}
-        full={phone}
-        onPress={() => setAsking(true)}
-        testID="ownerClaim.withdraw"
-      />
-      <Notice tone="quiet" mark={tokens.marks.info.glyph} body={KEEPS_WORKING} />
-      <Sheet
-        open={asking}
-        onClose={() => setAsking(false)}
-        opener={opener}
-        testID="ownerClaim.withdrawConfirm"
-      >
-        <View style={styles.sheet}>
-          <Text size={22} weight="bold" accessibilityRole="header">
-            Withdraw your claim?
-          </Text>
-          <Words
-            text={`You won't become the owner of ${ORGANISATION}. Any Administrator, you included, can start a new claim.`}
-          />
-          <Pair
-            layout={layout}
-            dismiss={
-              <Pill
-                label="Keep my claim"
-                kind="quiet"
-                full={phone}
-                height={height}
-                onPress={() => setAsking(false)}
-                testID="ownerClaim.withdrawNo"
-              />
-            }
-            confirm={
-              <Pill
-                label="Withdraw"
-                kind="danger"
-                full={phone}
-                height={height}
-                onPress={() => {
-                  setAsking(false);
-                  onClaim('withdrawn');
-                }}
-                testID="ownerClaim.withdrawYes"
-              />
-            }
-          />
-        </View>
-      </Sheet>
-    </Card>
-  );
+  return {
+    claim,
+    screen,
+    asking,
+    check,
+    become: () => {
+      setClaim('open');
+      setScreen(true);
+    },
+    checkRecord: () => {
+      setScreen(true);
+      if (check !== 'checking') setCheck('checking');
+    },
+    close: () => setScreen(false),
+    ask: setAsking,
+    withdraw: () => {
+      setAsking(false);
+      setScreen(false);
+      setCheck('resting');
+      setClaim('withdrawn');
+    },
+    moveOn: () => {
+      if (claim === 'withdrawn') setClaim('unclaimed');
+    },
+  };
 }
 
-function RecordPanel() {
-  const [copied, setCopied] = useState<string | null>(null);
+/** Become the owner, on its own screen: the record to publish, checking it, and withdrawing the claim. */
+export function ClaimScreen({
+  owner,
+  say,
+  opener,
+}: {
+  owner: OwnerClaim;
+  say: MembersSay;
+  opener: RefObject<ScreenReaderTarget | null>;
+}) {
+  const [copied, setCopied] = useState<(typeof CLAIM_RECORD)[number] | null>(null);
+  const checking = owner.check === 'checking';
 
   function copy(row: (typeof CLAIM_RECORD)[number]): void {
     setStringAsync(row.value).then(
-      () => {
-        setCopied(row.label);
-        readOut(row.copied);
-      },
+      () => setCopied(row),
       () => setCopied(null),
     );
   }
 
   return (
-    <View style={styles.record}>
-      {CLAIM_RECORD.map((row, index) => (
-        <View key={row.label} style={[styles.recordRow, index > 0 && styles.divided]}>
-          <View style={styles.recordWords}>
-            <Text size={TYPE.small} weight="medium" style={styles.secondary}>
-              {row.label}
-            </Text>
-            <Text size={TYPE.row} weight="semibold" selectable style={styles.value}>
-              {row.value}
-            </Text>
-          </View>
-          <Pressable
-            onPress={() => copy(row)}
-            style={({ pressed }) => [styles.copy, pressed && styles.pressed]}
-            accessibilityRole="button"
-            accessibilityLabel={copied === row.label ? `${row.label}, copied` : `Copy ${row.label}`}
-            testID={`ownerClaim.copy.${row.label.toLowerCase()}`}
-          >
-            <Glyph
-              name={copied === row.label ? 'tick' : 'copy'}
-              size={16}
-              ink={tokens.colorAccentText}
-              weight={2.2}
-            />
-            <Text size={TYPE.line} weight="semibold" accessible={false} style={styles.accent}>
-              {copied === row.label ? 'Copied' : 'Copy'}
-            </Text>
-          </Pressable>
-        </View>
-      ))}
-    </View>
+    <FocusedScreen
+      open={owner.screen}
+      title="Become the owner"
+      verb={{
+        label: 'Check record',
+        on: !checking,
+        onPress: owner.checkRecord,
+        testID: 'ownerClaim.check',
+      }}
+      onCancel={owner.close}
+      cancelTestID="ownerClaim.cancel"
+      opener={opener}
+      ask={
+        owner.asking
+          ? {
+              title: 'Withdraw your claim?',
+              line: `You won't become the owner of ${ORGANISATION}. Any Administrator, you included, can start a new claim.`,
+              keep: { label: 'Keep my claim', testID: 'ownerClaim.withdrawNo' },
+              confirm: { label: 'Withdraw', testID: 'ownerClaim.withdrawYes', removes: true },
+              onKeep: () => owner.ask(false),
+              onConfirm: owner.withdraw,
+              testID: 'ownerClaim.withdrawConfirm',
+            }
+          : null
+      }
+      toast={copied == null ? null : { words: copied.copied, onClose: () => setCopied(null) }}
+    >
+      <Line
+        quiet={false}
+        text="To become the owner, you publish a DNS record on your company domain to prove you control it."
+      />
+      <Section
+        title={`Prove you control ${DOMAIN}`}
+        foot={`We check every hour until ${say.deadline(DEADLINES.claim)}.`}
+      >
+        <Line
+          text={`Add this TXT record to the DNS for ${DOMAIN}. The value is new for this claim.`}
+        />
+        <RowList
+          items={CLAIM_RECORD.map((row) => ({
+            key: row.label,
+            row: (
+              <Row
+                title={row.value}
+                line={row.label}
+                selectable
+                trail={
+                  <TextAction
+                    label={copied?.label === row.label ? 'Copied' : 'Copy'}
+                    glyph={copied?.label === row.label ? 'tick' : 'copy'}
+                    onPress={() => copy(row)}
+                    accessibilityLabel={
+                      copied?.label === row.label ? `${row.label}, copied` : `Copy ${row.label}`
+                    }
+                    testID={`ownerClaim.copy.${row.label.toLowerCase()}`}
+                  />
+                }
+              />
+            ),
+          }))}
+        />
+      </Section>
+      {checking && <Said text="Checking the record" />}
+      {owner.check === 'notFound' && (
+        <Said text="We couldn't find the record yet. DNS changes can take up to 48 hours." />
+      )}
+      <TextAction
+        label="Withdraw my claim"
+        onPress={() => owner.ask(true)}
+        testID="ownerClaim.withdraw"
+      />
+      <Line text={KEEPS_WORKING} />
+    </FocusedScreen>
   );
 }
 
-function Words({ text, quiet = false }: { text: string; quiet?: boolean }) {
-  return (
-    <Text size={TYPE.body} weight="medium" style={quiet ? styles.secondary : undefined}>
-      {text}
-    </Text>
-  );
-}
+function Said({ text }: { text: string }) {
+  useReadOut(text);
 
-const styles = StyleSheet.create({
-  secondary: { color: tokens.colorInkSecondary },
-  accent: { color: tokens.colorAccentText },
-  pressed: { opacity: 0.8 },
-  record: {
-    borderRadius: 18,
-    backgroundColor: tokens.colorCard,
-    paddingHorizontal: tokens.spaceXl,
-    paddingVertical: tokens.spaceXxs,
-  },
-  recordRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.spaceLg,
-    paddingVertical: tokens.spaceLg,
-  },
-  divided: { borderTopWidth: 1, borderTopColor: tokens.colorBorder },
-  recordWords: { flex: 1, minWidth: 0, gap: 2 },
-  value: { flexShrink: 1, fontVariant: ['tabular-nums'] },
-  copy: {
-    minHeight: tokens.sizeHit,
-    minWidth: tokens.sizeHit,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.spaceXs,
-    paddingHorizontal: tokens.spaceMd,
-    borderRadius: tokens.sizeHit / 2,
-  },
-  sheet: { gap: tokens.spaceLg, padding: tokens.space3xl },
-});
+  return <Line quiet={false} text={text} />;
+}

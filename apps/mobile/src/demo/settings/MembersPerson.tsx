@@ -1,42 +1,41 @@
 import type { MemberStanding } from '@soirely/domain';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
-import { type ScrollViewInstance, StyleSheet, type TextInputInstance, View } from 'react-native';
+import { type ScrollViewInstance, StyleSheet, View, type ViewInstance } from 'react-native';
 
-import {
-  CodeField,
-  Field,
-  FieldError,
-  focusChecked,
-  focusRefused,
-} from '../../components/Field.tsx';
-import { Notice } from '../../components/Notice.tsx';
-import { PasswordField } from '../../components/PasswordField.tsx';
-import { Text } from '../../components/Text.tsx';
-import { tokens } from '../../theme/tokens.ts';
-import { SAMPLE } from '../samples.ts';
-import { SettingsPage, useShell } from './Frame.tsx';
+import { FieldError } from '../../components/Field.tsx';
+import { readOut } from '../../components/ReadOut.tsx';
+import { useShell } from './Frame.tsx';
+import { RoleScreen, TAKES_EFFECT } from './MembersRole.tsx';
 import {
   changedRole,
   DEADLINES,
   DOMAIN,
-  grantable,
+  firstName,
+  markOf,
   type MembersSay,
   type MembersViewer,
   ORGANISATION,
   type Person,
   type PersonStep,
-  PROOF_MINUTES,
-  proofProblem,
   restored,
-  ROLE_MEANS,
   standingOf,
   statusWord,
+  whenWord,
 } from './MembersSample.ts';
-import { Avatar, Card, CardHead, Chip, Pair, Pill, TYPE } from './parts.tsx';
-import { RadioCards } from './RolesParts.tsx';
-import type { SettingsLayout } from './sample.ts';
-
-const TAKES_EFFECT = 'Takes effect on their next request; nobody is signed out.';
+import {
+  Ask,
+  CardFace,
+  CardSays,
+  GlassTag,
+  Line,
+  OnCard,
+  Row,
+  RowList,
+  Section,
+  SummaryCard,
+  SummaryPage,
+  TextAction,
+} from './Summary.tsx';
 
 export interface PersonOpening {
   step: PersonStep;
@@ -56,22 +55,15 @@ export function PersonPage({
   back: { label: string; onPress: () => void } | null;
 }) {
   const scroll = useRef<ScrollViewInstance>(null);
-  const toRemove = rest.opening.step === 'removing';
 
   useEffect(() => {
-    if (!toRemove) {
-      scroll.current?.scrollTo({ y: 0, animated: false });
-      return;
-    }
-    const frame = requestAnimationFrame(() => scroll.current?.scrollToEnd({ animated: false }));
-
-    return () => cancelAnimationFrame(frame);
-  }, [person.id, visit, toRemove]);
+    scroll.current?.scrollTo({ y: 0, animated: false });
+  }, [person.id, visit]);
 
   return (
-    <SettingsPage title={person.name} back={back} column={column} scrollRef={scroll}>
+    <SummaryPage back={back} column={column} scrollRef={scroll}>
       <PersonBody key={`${person.id}.${visit}`} person={person} {...rest} />
-    </SettingsPage>
+    </SummaryPage>
   );
 }
 
@@ -87,7 +79,7 @@ interface PersonProps {
   onRemoved: (person: Person) => void;
 }
 
-/** Who they are, their role, a suspension, and removing them. */
+/** Who they are on the card with the one next step, the details, and removing them. */
 function PersonBody({
   person,
   people,
@@ -100,138 +92,187 @@ function PersonBody({
   onRemoved,
 }: PersonProps) {
   const shell = useShell();
-  const layout = shell.layout;
+  const pane = shell.layout === 'landscape';
   const standing = standingOf(person, people, viewer);
   const acts = standing === 'manageable' || standing === 'suspendedOnlyOwner';
   const suspendedNow = person.status === 'suspended' || person.status === 'domainSuspended';
-  const [restoredAs, setRestoredAs] = useState<{ byHand: boolean; role: string } | null>(null);
+  const changes = standing === 'manageable' && !suspendedNow;
+  const [said, setSaid] = useState<readonly string[]>([]);
+  const [roleVisit, setRoleVisit] = useState(0);
+  const [roleOpen, setRoleOpen] = useState(opening.step === 'proving');
+  const [removing, setRemoving] = useState(opening.step === 'removing');
+  const [refused, setRefused] = useState(false);
+  const stepRef = useRef<ViewInstance>(null);
+  const removeRef = useRef<ViewInstance>(null);
+
+  function tell(lines: readonly string[]): void {
+    setSaid(lines);
+    readOut(lines.join(' '));
+  }
 
   function restore(): void {
-    setRestoredAs({ byHand: person.status === 'suspended', role: person.role ?? '' });
+    const role = person.role ?? '';
+    tell(
+      person.status === 'suspended'
+        ? [
+            `${person.name} has access again, as ${role}.`,
+            `They can use ${ORGANISATION} from their next request, and they're emailed in their language.`,
+          ]
+        : [`${person.name}'s access to ${ORGANISATION} is restored.`],
+    );
     onPeople(restored(people, person.id));
   }
 
+  const step = changes
+    ? {
+        label: 'Change role',
+        onPress: () => {
+          setRoleVisit((count) => count + 1);
+          setRoleOpen(true);
+        },
+        testID: 'members.changeRole',
+        ref: stepRef,
+      }
+    : suspendedNow && acts
+      ? {
+          label: person.status === 'suspended' ? 'Restore access' : 'Restore',
+          onPress: restore,
+          testID: 'members.restore',
+          ref: stepRef,
+        }
+      : null;
+  const lines =
+    said.length > 0 ? said : suspendedNow ? suspensionLines(person, standing, acts, say) : [];
+  const { word } = statusWord(person);
+
   return (
     <>
-      <PersonHead person={person} self={person.id === viewer.id} layout={layout} />
-      {restoredAs?.byHand === true && (
-        <Notice
-          tone="done"
-          mark={tokens.marks.done.glyph}
-          title={`${person.name} has access again, as ${restoredAs.role}.`}
-          body={`They can use ${ORGANISATION} from their next request, and they're emailed in their language.`}
-          announce
+      <SummaryCard
+        height={pane ? 196 : 216}
+        step={step}
+        testID={`members.person.${person.initials}`}
+      >
+        <View style={styles.who}>
+          <CardFace initials={person.initials} side={pane ? 64 : 56} />
+          <View style={styles.whoWords}>
+            <CardSays text={person.name} size={pane ? 26 : 22} heading />
+            <OnCard text={person.email} />
+          </View>
+        </View>
+        <View style={styles.tags}>
+          <GlassTag word={person.role ?? 'No role yet'} />
+          <GlassTag word={word} mark={markOf(person)} />
+        </View>
+        {lines.map((line) => (
+          <OnCard key={line} text={line} />
+        ))}
+      </SummaryCard>
+      <Section title="Details">
+        <RowList
+          items={[
+            {
+              key: 'how',
+              row: <Row title={person.how} line="How they joined" weight="medium" />,
+            },
+            {
+              key: 'when',
+              row: <Row title={say.date(person.when)} line={whenWord(person)} weight="medium" />,
+            },
+          ]}
         />
-      )}
-      <Card>
-        <CardHead title="Role" />
-        {standing === 'manageable' && suspendedNow ? (
-          <>
-            <FixedRoleWord role={person.role} />
-            <Line
-              text={`Their role is kept while they're suspended. You can change it once their access is restored.`}
-            />
-          </>
-        ) : standing === 'manageable' ? (
-          <RoleChooser
-            person={person}
-            viewer={viewer}
-            opening={opening}
-            layout={layout}
-            proved={proved}
-            onProved={onProved}
-            onChange={(role) => onPeople(changedRole(people, person.id, role))}
-          />
-        ) : (
-          <FixedRole
-            standing={standing}
-            person={person}
-            viewer={viewer}
-            suspended={suspendedNow}
-            onGoToOrganisation={() => shell.openSection('organisation')}
-          />
-        )}
-      </Card>
-      {restoredAs?.byHand === false ? (
-        <Notice
-          tone="done"
-          mark={tokens.marks.done.glyph}
-          body={`${person.name}'s access to ${ORGANISATION} is restored.`}
-          announce
-        />
-      ) : (
-        suspendedNow && (
-          <Suspension
-            person={person}
-            onlyOwner={standing === 'suspendedOnlyOwner'}
-            acts={acts}
-            standing={standing}
-            layout={layout}
-            say={say}
-            onRestore={restore}
-          />
-        )
-      )}
+      </Section>
+      <FixedRole
+        standing={standing}
+        person={person}
+        viewer={viewer}
+        suspended={suspendedNow}
+        onGoToOrganisation={() => shell.openSection('organisation')}
+      />
       {acts && (
-        <Remove
+        <View>
+          <TextAction
+            ref={removeRef}
+            label={`Remove from ${ORGANISATION}…`}
+            removes
+            onPress={() =>
+              standing === 'suspendedOnlyOwner' ? setRefused(true) : setRemoving(true)
+            }
+            consequence={`They lose access on their next request. Their events stay with ${ORGANISATION}.`}
+            testID="members.remove"
+          />
+          {refused && (
+            <FieldError message={`${person.name} is the only owner, so they cannot be removed.`} />
+          )}
+        </View>
+      )}
+      <Ask
+        open={removing}
+        opener={removeRef}
+        title={`Remove ${person.name} from ${ORGANISATION}?`}
+        line={`They lose access on their next request. Their events stay with ${ORGANISATION}.`}
+        keep={{ label: `Keep ${firstName(person)}`, testID: 'members.remove.keep' }}
+        confirm={{ label: 'Remove', testID: 'members.remove.confirm', removes: true }}
+        onKeep={() => setRemoving(false)}
+        onConfirm={() => {
+          setRemoving(false);
+          onRemoved(person);
+        }}
+      />
+      {changes && (
+        <RoleScreen
+          key={roleVisit}
           person={person}
-          onlyOwner={standing === 'suspendedOnlyOwner'}
-          removing={opening.step === 'removing'}
-          layout={layout}
-          onRemove={() => onRemoved(person)}
+          viewer={viewer}
+          open={roleOpen}
+          startsProving={roleVisit === 0 && opening.step === 'proving'}
+          startsPicked={roleVisit === 0 ? opening.picked : null}
+          proved={proved}
+          opener={stepRef}
+          onProved={onProved}
+          onClose={() => setRoleOpen(false)}
+          onChange={(role) => {
+            setRoleOpen(false);
+            onPeople(changedRole(people, person.id, role));
+            tell([`${person.name} is now ${role}. ${TAKES_EFFECT}`]);
+          }}
         />
       )}
     </>
   );
 }
 
-function PersonHead({
-  person,
-  self,
-  layout,
-}: {
-  person: Person;
-  self: boolean;
-  layout: SettingsLayout;
-}) {
-  const { word, kind } = statusWord(person);
-  const role = person.role ?? 'No role yet';
-  const side = { phone: 56, portrait: 64, landscape: 48 }[layout];
+function suspensionLines(
+  person: Person,
+  standing: MemberStanding,
+  acts: boolean,
+  say: MembersSay,
+): string[] {
+  const why =
+    person.status === 'suspended'
+      ? [`They can't use ${ORGANISATION}. Their role, their events and their history are kept.`]
+      : [
+          `${person.name}'s ${DOMAIN} address is no longer on their account.`,
+          `If nobody answers by ${say.deadline(DEADLINES.marta)}, they are removed.`,
+        ];
+  const onlyOwner =
+    standing === 'suspendedOnlyOwner'
+      ? [
+          `${person.name} is the only owner of ${ORGANISATION}, so they stay suspended, still an owner, and are not removed.`,
+        ]
+      : [];
+  const cannot =
+    acts || (standing !== 'ownerOnly' && standing !== 'beyondGrant')
+      ? []
+      : [standing === 'ownerOnly' ? OWNER_ONLY : BEYOND_GRANT];
 
-  return (
-    <View style={styles.head} testID={`members.person.${person.initials}`}>
-      <Avatar initials={person.initials} side={side} tone={person.tone} />
-      <View style={styles.headWords}>
-        <View style={styles.headLine}>
-          <Text size={TYPE.row} weight="semibold">
-            {self ? `You · ${role}` : role}
-          </Text>
-          <Chip word={word} kind={kind} />
-        </View>
-        <Text size={TYPE.line} weight="medium" style={styles.secondary}>
-          {person.email}
-        </Text>
-      </View>
-    </View>
-  );
+  return [...why, ...onlyOwner, ...cannot];
 }
 
-function FixedRoleWord({ role }: { role: string | null }) {
-  return (
-    <Text size={17} weight="semibold">
-      {role ?? 'No role yet'}
-    </Text>
-  );
-}
+const OWNER_ONLY = `Only an owner can change an owner's role or remove them.`;
+const BEYOND_GRANT =
+  'Their role holds a permission yours does not, so you cannot change their role or their access.';
 
-function Line({ text }: { text: string }) {
-  return (
-    <Text size={TYPE.body} weight="medium" style={styles.secondary}>
-      {text}
-    </Text>
-  );
-}
-
+/** Why the role cannot change here, under Details, in the words the current build uses. */
 function FixedRole({
   standing,
   person,
@@ -239,380 +280,55 @@ function FixedRole({
   suspended,
   onGoToOrganisation,
 }: {
-  standing: Exclude<MemberStanding, 'manageable'>;
+  standing: MemberStanding;
   person: Person;
   viewer: MembersViewer;
   suspended: boolean;
   onGoToOrganisation: () => void;
 }) {
-  return (
-    <>
-      <FixedRoleWord role={person.role} />
-      {standing === 'selfOwner' && (
-        <>
+  switch (standing) {
+    case 'selfOwner':
+      return (
+        <View>
           <Line text="You cannot change your own role. Another owner can, or you can hand ownership to somebody in Organisation." />
-          <Pill
-            label="Go to Organisation ›"
-            kind="quiet"
-            full={false}
-            height={tokens.sizeHit}
+          <TextAction
+            label="Go to Organisation"
+            after="chevron"
             onPress={onGoToOrganisation}
             testID="members.goToOrganisation"
           />
-        </>
-      )}
-      {standing === 'self' && <Line text="You cannot change your own role. An owner can." />}
-      {standing === 'onlyOwner' && (
-        <>
-          <Notice
-            tone="quiet"
-            mark={tokens.marks.info.glyph}
-            body={`${person.name} is the only owner. An organisation always has one, so their role cannot change and they cannot be removed until somebody else is an owner too.`}
+        </View>
+      );
+    case 'self':
+      return <Line text="You cannot change your own role. An owner can." />;
+    case 'onlyOwner':
+      return (
+        <View style={styles.lines}>
+          <Line
+            text={`${person.name} is the only owner. An organisation always has one, so their role cannot change and they cannot be removed until somebody else is an owner too.`}
           />
           {!viewer.owns && (
             <Line text={`Only an owner can make somebody else an owner. Ask ${person.name}.`} />
           )}
-        </>
-      )}
-      {!suspended && standing === 'ownerOnly' && (
-        <Line text={`Only an owner can change an owner's role or remove them.`} />
-      )}
-      {!suspended && standing === 'beyondGrant' && (
-        <Line text="Their role holds a permission yours does not, so you cannot change their role or their access." />
-      )}
-    </>
-  );
-}
-
-/** Only the roles the viewer may give; an owner made here asks for the viewer's proof first. */
-function RoleChooser({
-  person,
-  viewer,
-  opening,
-  layout,
-  proved,
-  onProved,
-  onChange,
-}: {
-  person: Person;
-  viewer: MembersViewer;
-  opening: PersonOpening;
-  layout: SettingsLayout;
-  proved: boolean;
-  onProved: () => void;
-  onChange: (role: string) => void;
-}) {
-  const [picked, setPicked] = useState(opening.picked ?? person.role ?? '');
-  const [proving, setProving] = useState(opening.step === 'proving');
-  const [done, setDone] = useState<string | null>(null);
-  const changed = picked !== person.role;
-  const phone = layout === 'phone';
-
-  function apply(): void {
-    setProving(false);
-    setDone(`${person.name} is now ${picked}. ${TAKES_EFFECT}`);
-    onChange(picked);
-  }
-
-  function save(): void {
-    if (!changed) return;
-    if (picked === 'Owner' && !proved) setProving(true);
-    else apply();
-  }
-
-  if (proving)
-    return (
-      <ConfirmItsYou
-        layout={layout}
-        onProved={() => {
-          onProved();
-          apply();
-        }}
-        onCancel={() => setProving(false)}
-      />
-    );
-
-  return (
-    <>
-      {done != null && <Notice tone="done" mark={tokens.marks.done.glyph} body={done} announce />}
-      <RadioCards
-        choices={grantable(viewer).map((name) => ({ value: name, name, means: ROLE_MEANS[name] }))}
-        picked={picked}
-        onPick={(role) => {
-          setDone(null);
-          setPicked(role);
-        }}
-        twoUp={!phone}
-        testID="members.role"
-      />
-      <View style={phone ? styles.footStacked : styles.footBeside}>
-        <View style={phone ? undefined : styles.grow}>
-          <Line text={TAKES_EFFECT} />
         </View>
-        <Pill
-          label={changed ? `Change their role to ${picked}` : 'Pick a different role'}
-          kind={changed ? 'primary' : 'off'}
-          full={phone}
-          height={tokens.sizeHitPhoneHero}
-          onPress={save}
-          testID="members.role.save"
-        />
-      </View>
-    </>
-  );
-}
-
-const PASSWORD_LABEL = 'Your password';
-const CODE_LABEL = 'Code';
-
-/** Confirm it's you, on the sample's password and its authenticator or recovery code. */
-function ConfirmItsYou({
-  layout,
-  onProved,
-  onCancel,
-}: {
-  layout: SettingsLayout;
-  onProved: () => void;
-  onCancel: () => void;
-}) {
-  const password = useRef('');
-  const code = useRef('');
-  const passwordInput = useRef<TextInputInstance>(null);
-  const codeInput = useRef<TextInputInstance>(null);
-  const [problem, setProblem] = useState<ReturnType<typeof proofProblem>>(null);
-  const phone = layout === 'phone';
-
-  function submit(): void {
-    const found = proofProblem(password.current, code.current, SAMPLE);
-    if (found == null) {
-      onProved();
-      return;
-    }
-    setProblem(found);
-    const field = found.field === 'password' ? passwordInput : codeInput;
-    const blank = (found.field === 'password' ? password.current : code.current.trim()) === '';
-    // A blank is the client's check; a wrong password or code stands in for the server's refusal.
-    if (blank) focusChecked(field);
-    else focusRefused(field);
+      );
+    case 'ownerOnly':
+      return suspended ? null : <Line text={OWNER_ONLY} />;
+    case 'beyondGrant':
+      return suspended ? null : <Line text={BEYOND_GRANT} />;
+    case 'manageable':
+      return suspended ? (
+        <Line text="Their role is kept while they're suspended. You can change it once their access is restored." />
+      ) : null;
+    case 'suspendedOnlyOwner':
+    case 'readOnly':
+      return null;
   }
-
-  return (
-    <View style={styles.prove}>
-      <Text size={TYPE.card} weight="bold" accessibilityRole="header">
-        {`Confirm it's you`}
-      </Text>
-      <Line
-        text={`To make somebody an owner of ${ORGANISATION}, confirm it's you. You won't be asked again for ${PROOF_MINUTES} minutes.`}
-      />
-      <Field label={PASSWORD_LABEL} error={problem?.field === 'password' ? problem.message : null}>
-        <PasswordField
-          ref={passwordInput}
-          wrong={problem?.field === 'password'}
-          autoComplete="current-password"
-          textContentType="password"
-          onChangeText={(text) => {
-            password.current = text;
-          }}
-          returnKeyType="next"
-          onSubmitEditing={() => codeInput.current?.focus()}
-          submitBehavior="submit"
-          accessibilityLabel={PASSWORD_LABEL}
-          testID="members.prove.password"
-        />
-      </Field>
-      <Field
-        label={CODE_LABEL}
-        error={problem?.field === 'code' ? problem.message : null}
-        help="From your authenticator app, or one of your recovery codes."
-      >
-        <CodeField
-          ref={codeInput}
-          takesRecoveryCode
-          wrong={problem?.field === 'code'}
-          autoComplete="one-time-code"
-          textContentType="oneTimeCode"
-          onChangeText={(text) => {
-            code.current = text;
-          }}
-          returnKeyType="done"
-          onSubmitEditing={submit}
-          submitBehavior="submit"
-          accessibilityLabel={CODE_LABEL}
-          testID="members.prove.code"
-        />
-      </Field>
-      <Pair
-        layout={layout}
-        dismiss={
-          <Pill
-            label="Cancel"
-            kind="secondary"
-            full={phone}
-            height={tokens.sizeHitPhoneHero}
-            onPress={onCancel}
-            testID="members.prove.cancel"
-          />
-        }
-        confirm={
-          <Pill
-            label="Continue"
-            full={phone}
-            height={tokens.sizeHitPhoneHero}
-            onPress={submit}
-            testID="members.prove.continue"
-          />
-        }
-      />
-    </View>
-  );
-}
-
-function Suspension({
-  person,
-  onlyOwner,
-  acts,
-  standing,
-  layout,
-  say,
-  onRestore,
-}: {
-  person: Person;
-  onlyOwner: boolean;
-  acts: boolean;
-  standing: MemberStanding;
-  layout: SettingsLayout;
-  say: MembersSay;
-  onRestore: () => void;
-}) {
-  const byHand = person.status === 'suspended';
-  const phone = layout === 'phone';
-
-  return (
-    <Card>
-      {byHand ? (
-        <CardHead
-          title={`Access for ${person.name} is suspended`}
-          line={`They can't use ${ORGANISATION}. Their role, their events and their history are kept.`}
-        />
-      ) : (
-        <Notice
-          tone="attention"
-          mark="!"
-          title={`${person.name}'s ${DOMAIN} address is no longer on their account.`}
-          body={`If nobody answers by ${say.deadline(DEADLINES.marta)}, they are removed.`}
-        />
-      )}
-      {onlyOwner && (
-        <Line
-          text={`${person.name} is the only owner of ${ORGANISATION}, so they stay suspended, still an owner, and are not removed.`}
-        />
-      )}
-      {acts ? (
-        <Pill
-          label={byHand ? 'Restore access' : 'Restore'}
-          full={phone}
-          height={tokens.sizeHitPhoneHero}
-          onPress={onRestore}
-          testID="members.restore"
-        />
-      ) : (
-        (standing === 'ownerOnly' || standing === 'beyondGrant') && (
-          <Line
-            text={
-              standing === 'ownerOnly'
-                ? `Only an owner can change an owner's role or remove them.`
-                : 'Their role holds a permission yours does not, so you cannot change their role or their access.'
-            }
-          />
-        )
-      )}
-    </Card>
-  );
-}
-
-/** Remove asks first; the suspended only owner is refused, as the server refuses them. */
-function Remove({
-  person,
-  onlyOwner,
-  removing,
-  layout,
-  onRemove,
-}: {
-  person: Person;
-  onlyOwner: boolean;
-  removing: boolean;
-  layout: SettingsLayout;
-  onRemove: () => void;
-}) {
-  const [asking, setAsking] = useState(removing);
-  const [refused, setRefused] = useState(false);
-  const phone = layout === 'phone';
-  const height = tokens.sizeHitPhoneHero;
-
-  if (asking)
-    return (
-      <Card>
-        <Text size={22} weight="bold" accessibilityRole="header" style={styles.removeTitle}>
-          {`Remove ${person.name}?`}
-        </Text>
-        <Text size={TYPE.body} weight="medium">
-          {`${person.name} stops having access to ${ORGANISATION} on their next request. Their events stay with ${ORGANISATION}, and everything they did is kept.`}
-        </Text>
-        <Pair
-          layout={layout}
-          dismiss={
-            <Pill
-              label={`Keep ${person.name}`}
-              kind="quiet"
-              full={phone}
-              height={height}
-              onPress={() => setAsking(false)}
-              testID="members.remove.keep"
-            />
-          }
-          confirm={
-            <Pill
-              label={`Remove ${person.name}`}
-              kind="danger"
-              full={phone}
-              height={height}
-              onPress={onRemove}
-              testID="members.remove.confirm"
-            />
-          }
-        />
-      </Card>
-    );
-
-  return (
-    <Card>
-      <CardHead
-        title={`Remove ${person.name}`}
-        line={`They lose access on their next request. Their events stay with ${ORGANISATION}.`}
-      />
-      {refused && (
-        <FieldError message={`${person.name} is the only owner, so they cannot be removed.`} />
-      )}
-      <Pill
-        label={`Remove from ${ORGANISATION}…`}
-        kind="dangerQuiet"
-        full={phone}
-        height={height}
-        onPress={() => (onlyOwner ? setRefused(true) : setAsking(true))}
-        testID="members.remove"
-      />
-    </Card>
-  );
 }
 
 const styles = StyleSheet.create({
-  secondary: { color: tokens.colorInkSecondary },
-  head: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  headWords: { flex: 1, minWidth: 0, gap: tokens.spaceXxs },
-  headLine: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: tokens.spaceSm },
-  prove: { gap: 14 },
-  grow: { flex: 1, minWidth: 0 },
-  footStacked: { gap: 14 },
-  footBeside: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXl },
-  removeTitle: { letterSpacing: 22 * -0.015 },
+  who: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  whoWords: { flex: 1, minWidth: 0, gap: 2 },
+  tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  lines: { gap: 8 },
 });

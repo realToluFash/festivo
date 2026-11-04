@@ -6,16 +6,22 @@ import {
   counts,
   DEADLINES,
   grantable,
+  membersCard,
   membersSayIn,
   membersStart,
   membersStateOf,
+  personLine,
   proofProblem,
+  removed,
   rowLine,
   samplePeople,
   standingOf,
   subtitle,
+  tagOf,
   turnedDown,
   VIEWERS,
+  waitingLine,
+  whenWord,
 } from './MembersSample.ts';
 
 const us = membersSayIn('en-US');
@@ -113,4 +119,71 @@ describe('Members in the demo', () => {
     expect(counts(membersStart('nobodyLeft').people).former).toBe(0);
     expect(membersStart('withdraw').withdrawing).toBe(true);
   });
+
+  it('says the count on the card, with who waits and the step to answer them', () => {
+    const card = membersCard({ ...plainCard, people });
+    expect(card.says).toBe('7 people · 1 waiting');
+    expect(card.faces.map((one) => one.initials)).toEqual(['FA', 'JM', 'PS', 'AS', 'TB']);
+    expect(card.more).toBe(2);
+    expect(card.step).toEqual({ label: 'Answer Lucía Gómez', does: 'answer' });
+    expect(membersCard({ ...plainCard, people, viewer: VIEWERS.tom })).toMatchObject({
+      says: '7 people',
+      step: null,
+    });
+  });
+
+  it('says an answer or a removal on the card until the person moves on', () => {
+    const lucia = person('Lucía Gómez').id;
+    const priya = person('Priya Shah');
+    expect(
+      membersCard({ ...plainCard, people, request: { approved: lucia, role: 'Read-only' } }),
+    ).toMatchObject({ says: 'Lucía Gómez joined as Read-only', step: { does: 'seePerson' } });
+    expect(membersCard({ ...plainCard, people, request: { turnedDown: lucia } })).toMatchObject({
+      says: 'You turned down Lucía Gómez',
+      line: 'They are listed under Former.',
+      step: { label: 'See Former' },
+    });
+    expect(membersCard({ ...plainCard, people: removed(people, priya.id), gone: priya }).says).toBe(
+      'Priya Shah was removed',
+    );
+  });
+
+  it('says the claim on the card while nobody owns the organisation', () => {
+    const { people: claimed } = membersStart('claim');
+    const card = (claim: 'unclaimed' | 'open' | 'withdrawn') =>
+      membersCard({ ...plainCard, people: claimed, viewer: VIEWERS.julien, claim });
+    expect(card('unclaimed')).toMatchObject({
+      says: 'Ire Events has no active owner',
+      step: { label: 'Become the owner' },
+    });
+    expect(card('open')).toMatchObject({
+      says: 'Your claim is open',
+      line: 'We check every hour until Wednesday, Nov 11 at 9:41 AM WAT.',
+      step: { label: 'Check record' },
+    });
+    expect(card('withdrawn').says).toBe('You withdrew your claim');
+    expect(membersStart('claim').claim).toBe('unclaimed');
+    expect(membersStart('withdraw').claim).toBe('open');
+  });
+
+  it('tags only who is off the rule, and keeps the dates for their page', () => {
+    expect(tagOf(person('Priya Shah'))).toBeNull();
+    expect(tagOf(person('Marta Silva'))).toEqual({
+      kind: 'paused',
+      word: 'Suspended: company domain',
+    });
+    expect(tagOf(person('Daniel Kim'))).toEqual({ kind: 'ended', word: 'Left' });
+    expect(personLine(person('Folake Adeyemi'), VIEWERS.folake.id)).toBe('Owner · you');
+    expect(waitingLine(person('Lucía Gómez'), us)).toBe('lucia.gomez@outlook.com · asked Nov 2');
+    expect(whenWord(person('Priya Shah'))).toBe('Member since');
+    expect(us.date(person('Priya Shah').when)).toBe('Jun 3, 2025');
+  });
 });
+
+const plainCard = {
+  viewer: VIEWERS.folake,
+  request: 'resting',
+  gone: null,
+  claim: null,
+  say: us,
+} as const;

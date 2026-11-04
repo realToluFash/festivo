@@ -1,199 +1,129 @@
-import { useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import type { Ref } from 'react';
+import { StyleSheet, View, type ViewInstance } from 'react-native';
 
-import { Notice } from '../../components/Notice.tsx';
+import { useReadOut } from '../../components/ReadOut.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
-import { Glyph } from '../Glyph.tsx';
 import {
-  approvalRoles,
+  type CardStep,
   DEADLINES,
   type Filter,
   FILTERS,
+  type MembersCard,
   type MembersSay,
   ORGANISATION,
   type Person,
-  type Request,
-  ROLE_MEANS,
-  rowLine,
-  statusWord,
+  personLine,
+  tagOf,
+  waitingLine,
 } from './MembersSample.ts';
-import { Avatar, Card, CardHead, Chip, Pair, Pill, TYPE } from './parts.tsx';
-import { RadioCards } from './RolesParts.tsx';
-import type { SettingsLayout } from './sample.ts';
+import { Avatar } from './parts.tsx';
+import {
+  CardSays,
+  Faces,
+  FilterMenu,
+  type ListItem,
+  OnCard,
+  Row,
+  RowList,
+  Section,
+  SummaryCard,
+  TextAction,
+} from './Summary.tsx';
 
-const hidden = {
-  accessibilityElementsHidden: true,
-  importantForAccessibility: 'no-hide-descendants',
-} as const;
+export const FROM_THE_WEB = 'To invite somebody, use Soirely on the web.';
 
-/** A person: initials, the name with its status chip, the email, then role · you · how · when. */
-export function MemberRow({
+const STEP_IDS: Record<CardStep, string> = {
+  answer: 'members.answer',
+  seePerson: 'members.awaiting.see',
+  seeFormer: 'members.awaiting.former',
+  becomeOwner: 'ownerClaim.become',
+  checkRecord: 'ownerClaim.open',
+};
+
+/** The Members card: how things stand, the faces that show it, and the one next step. */
+export function MembersCardView({
+  card,
+  compact,
+  wide,
+  stepRef,
+  onStep,
+}: {
+  card: MembersCard;
+  compact: boolean;
+  wide: boolean;
+  stepRef: Ref<ViewInstance>;
+  onStep: (step: CardStep) => void;
+}) {
+  const step = card.step;
+
+  useReadOut(card.readsOut ? [card.says, card.line].filter(Boolean).join('. ') : null, {
+    quietAtMount: true,
+  });
+
+  return (
+    <SummaryCard
+      size={compact ? 'compact' : wide ? 'wide' : 'page'}
+      height={compact ? 156 : 200}
+      step={
+        step == null
+          ? null
+          : {
+              label: step.label,
+              onPress: () => onStep(step.does),
+              testID: STEP_IDS[step.does],
+              ref: stepRef,
+            }
+      }
+      testID="members.card"
+    >
+      <CardSays text={card.says} size={compact ? 20 : 24} heading />
+      {card.line != null && <OnCard text={card.line} />}
+      {card.faces.length > 0 && (
+        <Faces
+          faces={card.faces.map(({ initials, tone }) => ({ initials, tone }))}
+          more={card.more}
+        />
+      )}
+    </SummaryCard>
+  );
+}
+
+/** Who asked to join, shown only to those who manage members; the row opens the request. */
+export function Waiting({
   person,
-  you,
-  open,
   dense,
-  first,
   say,
   onOpen,
+  rowRef,
 }: {
   person: Person;
-  you: string;
-  open: boolean;
   dense: boolean;
-  first: boolean;
   say: MembersSay;
   onOpen: () => void;
+  rowRef: Ref<ViewInstance>;
 }) {
-  const { word, kind } = statusWord(person);
-  const line = rowLine(person, you, say);
-  const former = person.status === 'former';
-  const avatar = dense ? 36 : 40;
-  const words = (
-    <>
-      {!first && !open && (
-        <View style={[styles.rule, { left: (dense ? 12 : tokens.spaceXl) + avatar + 12 }]} />
-      )}
-      <Avatar initials={person.initials} side={avatar} tone={person.tone} />
-      <View style={styles.rowWords}>
-        <View style={styles.nameRow}>
-          <Text
-            size={dense ? 15.5 : TYPE.row}
-            weight="semibold"
-            accessible={false}
-            style={open ? styles.accent : undefined}
-          >
-            {person.name}
-          </Text>
-          <Chip word={word} kind={kind} />
-        </View>
-        <Text
-          size={dense ? TYPE.small : 14}
-          weight="medium"
-          accessible={false}
-          style={styles.secondary}
-        >
-          {person.email}
-        </Text>
-        <Text size={13} weight="medium" accessible={false} style={styles.secondary}>
-          {line}
-        </Text>
-      </View>
-    </>
-  );
-  const label = `${person.name}, ${word}. ${person.email}. ${line}`;
-
-  if (former)
-    return (
-      <View style={[styles.row, dense && styles.rowDense]} accessible accessibilityLabel={label}>
-        {words}
-      </View>
-    );
+  const side = dense ? 36 : 40;
 
   return (
-    <Pressable
-      onPress={onOpen}
-      style={({ pressed }) => [
-        styles.row,
-        dense && styles.rowDense,
-        open && styles.rowOpen,
-        pressed && !open && styles.pressed,
-      ]}
-      accessibilityRole="button"
-      accessibilityState={{ selected: open }}
-      accessibilityLabel={label}
-      testID={`members.row.${person.initials}`}
+    <Section
+      title="Waiting"
+      foot={`Removed on ${say.deadline(DEADLINES.lucia)} if nobody answers.`}
     >
-      {words}
-      <View style={styles.chevron}>
-        <Glyph
-          name="chevron"
-          size={18}
-          ink={open ? tokens.colorAccent : tokens.colorInkTertiary}
-          weight={2.2}
+      <View style={dense && styles.bleed}>
+        <Row
+          ref={rowRef}
+          title={person.name}
+          line={waitingLine(person, say)}
+          lead={<Avatar initials={person.initials} side={side} tone={person.tone} />}
+          tag={tagOf(person)}
+          opens
+          gutter={dense ? 10 : 0}
+          onPress={onOpen}
+          testID="members.approve"
         />
       </View>
-    </Pressable>
-  );
-}
-
-export function MemberRows({
-  people,
-  you,
-  open,
-  dense,
-  say,
-  onOpen,
-}: {
-  people: readonly Person[];
-  you: string;
-  open: string | null;
-  dense: boolean;
-  say: MembersSay;
-  onOpen: (id: string) => void;
-}) {
-  return (
-    <View style={styles.rows}>
-      {people.map((person, index) => (
-        <MemberRow
-          key={person.id}
-          person={person}
-          you={you}
-          open={person.id === open}
-          dense={dense}
-          first={index === 0 || people[index - 1]?.id === open}
-          say={say}
-          onOpen={() => onOpen(person.id)}
-        />
-      ))}
-    </View>
-  );
-}
-
-export function Filters({
-  on,
-  counts,
-  onPick,
-}: {
-  on: Filter;
-  counts: Record<Filter, number>;
-  onPick: (filter: Filter) => void;
-}) {
-  return (
-    <View style={styles.filters}>
-      {FILTERS.map(({ filter, word }) => {
-        const chosen = filter === on;
-
-        return (
-          <Pressable
-            key={filter}
-            onPress={() => onPick(filter)}
-            style={[styles.filter, chosen && styles.filterOn]}
-            accessibilityRole="button"
-            accessibilityState={{ selected: chosen }}
-            accessibilityLabel={`${word}, ${counts[filter]}`}
-            testID={`members.filter.${filter}`}
-          >
-            <Text
-              size={TYPE.line}
-              weight="semibold"
-              accessible={false}
-              style={chosen ? styles.accent : undefined}
-            >
-              {word}
-            </Text>
-            <Text
-              size={TYPE.line}
-              weight="medium"
-              accessible={false}
-              style={[chosen ? styles.accent : styles.secondary, styles.figures]}
-            >
-              {String(counts[filter])}
-            </Text>
-          </Pressable>
-        );
-      })}
-    </View>
+    </Section>
   );
 }
 
@@ -210,227 +140,98 @@ const EMPTY: Record<Filter, { title: string; body?: string }> = {
   },
 };
 
-export function Empty({ filter, onShowEveryone }: { filter: Filter; onShowEveryone: () => void }) {
+export function People({
+  listed,
+  counts,
+  filter,
+  you,
+  open,
+  dense,
+  manages,
+  onFilter,
+  onOpen,
+}: {
+  listed: readonly Person[];
+  counts: Record<Filter, number>;
+  filter: Filter;
+  you: string;
+  open: string | null;
+  dense: boolean;
+  manages: boolean;
+  onFilter: (filter: Filter) => void;
+  onOpen: (id: string) => void;
+}) {
+  const side = dense ? 36 : 40;
+  const gutter = dense ? 10 : 0;
+  const items: ListItem[] = listed.map((person) => {
+    const selected = person.id === open;
+
+    return {
+      key: person.id,
+      inset: side + tokens.spaceLg,
+      selected,
+      row: (
+        <Row
+          title={person.name}
+          line={personLine(person, you)}
+          lead={<Avatar initials={person.initials} side={side} tone={person.tone} />}
+          tag={tagOf(person)}
+          opens={person.status !== 'former'}
+          selected={selected}
+          gutter={gutter}
+          onPress={person.status === 'former' ? undefined : () => onOpen(person.id)}
+          testID={`members.row.${person.initials}`}
+        />
+      ),
+    };
+  });
+
+  return (
+    <Section
+      title="People"
+      right={
+        <FilterMenu
+          choices={FILTERS.map(({ filter: value, word }) => ({
+            value,
+            word,
+            count: counts[value],
+          }))}
+          value={filter}
+          onChoose={onFilter}
+          name="Show"
+          testID="members.filter"
+        />
+      }
+      foot={manages ? FROM_THE_WEB : undefined}
+    >
+      {listed.length === 0 ? (
+        <Empty filter={filter} onShowEveryone={() => onFilter('all')} />
+      ) : (
+        <View style={dense && styles.bleed}>
+          <RowList items={items} gutter={gutter} />
+        </View>
+      )}
+    </Section>
+  );
+}
+
+function Empty({ filter, onShowEveryone }: { filter: Filter; onShowEveryone: () => void }) {
   const { title, body } = EMPTY[filter];
 
   return (
-    <Card gap={10}>
-      <Text size={17} weight="semibold" accessibilityRole="header">
+    <View style={styles.empty}>
+      <Text size={16} weight="semibold">
         {title}
       </Text>
       {body != null && (
-        <Text size={TYPE.body} weight="medium" style={styles.secondary}>
+        <Text size={15} weight="medium" style={styles.secondary}>
           {body}
         </Text>
       )}
       {filter !== 'all' && (
-        <Pill
-          label="Show everyone"
-          kind="secondary"
-          onPress={onShowEveryone}
-          testID="members.showEveryone"
-        />
+        <TextAction label="Show everyone" onPress={onShowEveryone} testID="members.showEveryone" />
       )}
-    </Card>
-  );
-}
-
-const AWAITING_NOTE =
-  'Only people who manage members see these requests. Nobody is added until one of you approves them.';
-
-/** Requests to join, answered in place: Approve with a role, Read-only first; Turn down asks first. */
-export function Awaiting({
-  person,
-  answered,
-  request,
-  layout,
-  dense,
-  say,
-  onRequest,
-  onApprove,
-  onTurnDown,
-  onSee,
-}: {
-  person: Person | null;
-  answered: Person | null;
-  request: Request;
-  layout: SettingsLayout;
-  dense: boolean;
-  say: MembersSay;
-  onRequest: (request: Request) => void;
-  onApprove: (person: Person, role: string) => void;
-  onTurnDown: (person: Person) => void;
-  onSee: (request: Request) => void;
-}) {
-  const [role, setRole] = useState('Read-only');
-  const tablet = layout !== 'phone' && !dense;
-  const pairLayout = dense ? 'phone' : layout;
-  const height = tablet ? tokens.sizeHitPhonePrimary : tokens.sizeHitPhoneHero;
-
-  if (typeof request === 'object') {
-    const name = answered?.name ?? '';
-    const words =
-      'approved' in request
-        ? {
-            title: `${name} is now a member, as ${request.role}.`,
-            label: `See ${name}`,
-            testID: 'members.awaiting.see',
-          }
-        : {
-            title: `${name}’s request is turned down.`,
-            label: 'See Former',
-            testID: 'members.awaiting.former',
-          };
-
-    return (
-      <Card>
-        <CardHead title="Awaiting approval" line={AWAITING_NOTE} />
-        <Notice
-          tone="done"
-          mark={tokens.marks.done.glyph}
-          title={words.title}
-          action={{ label: words.label, onPress: () => onSee(request), testID: words.testID }}
-          announce
-        />
-      </Card>
-    );
-  }
-
-  if (person == null) return null;
-
-  const actions =
-    request === 'approving' ? (
-      <View style={styles.stack}>
-        <RadioCards
-          choices={approvalRoles().map((name) => ({
-            value: name,
-            name,
-            means: ROLE_MEANS[name],
-          }))}
-          picked={role}
-          onPick={setRole}
-          twoUp={tablet}
-          testID="members.approveAs"
-        />
-        <Pair
-          layout={pairLayout}
-          dismiss={
-            <Pill
-              label="Cancel"
-              kind="secondary"
-              full={!tablet}
-              height={height}
-              onPress={() => onRequest('resting')}
-              testID="members.approve.cancel"
-            />
-          }
-          confirm={
-            <Pill
-              label={`Approve as ${role}`}
-              full={!tablet}
-              height={height}
-              onPress={() => onApprove(person, role)}
-              testID="members.approve.confirm"
-            />
-          }
-        />
-      </View>
-    ) : request === 'turningDown' ? (
-      <View style={styles.ask}>
-        <Text size={18} weight="bold" accessibilityRole="header">
-          {`Turn down ${person.name}?`}
-        </Text>
-        <Text size={TYPE.body} weight="medium">
-          {`${person.name} is emailed that their request to join ${ORGANISATION} was turned down. The email does not say who turned it down.`}
-        </Text>
-        <Pair
-          layout={pairLayout}
-          dismiss={
-            <Pill
-              label="Keep the request"
-              kind="quiet"
-              full={!tablet}
-              height={height}
-              onPress={() => onRequest('resting')}
-              testID="members.turnDown.keep"
-            />
-          }
-          confirm={
-            <Pill
-              label={`Turn down ${person.name}`}
-              kind="danger"
-              full={!tablet}
-              height={height}
-              onPress={() => onTurnDown(person)}
-              testID="members.turnDown.confirm"
-            />
-          }
-        />
-      </View>
-    ) : tablet ? (
-      <View style={styles.endRow}>
-        <Pill
-          label="Turn down"
-          kind="secondary"
-          full={false}
-          height={tokens.sizeHitPhonePrimary}
-          onPress={() => onRequest('turningDown')}
-          testID="members.turnDown"
-        />
-        <Pill
-          label="Approve"
-          full={false}
-          height={tokens.sizeHitPhonePrimary}
-          onPress={() => onRequest('approving')}
-          testID="members.approve"
-        />
-      </View>
-    ) : (
-      <View style={styles.two}>
-        <View style={styles.half}>
-          <Pill
-            label="Approve"
-            height={tokens.sizeHitPhonePrimary}
-            onPress={() => onRequest('approving')}
-            testID="members.approve"
-          />
-        </View>
-        <View style={styles.half}>
-          <Pill
-            label="Turn down"
-            kind="secondary"
-            height={tokens.sizeHitPhonePrimary}
-            onPress={() => onRequest('turningDown')}
-            testID="members.turnDown"
-          />
-        </View>
-      </View>
-    );
-
-  return (
-    <Card style={dense ? styles.cardDense : undefined}>
-      <CardHead title="Awaiting approval" line={AWAITING_NOTE} />
-      <View style={styles.request}>
-        <View style={styles.requestHead}>
-          <Avatar initials={person.initials} side={dense ? 36 : 40} tone={person.tone} />
-          <View style={styles.rowWords}>
-            <Text size={dense ? 15.5 : TYPE.row} weight="semibold">
-              {person.name}
-            </Text>
-            <Text size={dense ? TYPE.small : 14} weight="medium" style={styles.secondary}>
-              {person.email}
-            </Text>
-            <Text size={13} weight="medium" style={styles.secondary}>
-              {`${person.how} · asked ${say.date(person.when)}`}
-            </Text>
-            <Text size={13} weight="medium" style={styles.secondary}>
-              {`Removed on ${say.deadline(DEADLINES.lucia)} if nobody answers`}
-            </Text>
-          </View>
-        </View>
-        {actions}
-      </View>
-    </Card>
+    </View>
   );
 }
 
@@ -438,98 +239,17 @@ export function Awaiting({
 export function NobodyPicked() {
   return (
     <View style={styles.nobody}>
-      <View style={styles.nobodyMark} {...hidden}>
-        <Glyph name="users" size={30} ink={tokens.colorAccent} weight={2} />
-      </View>
-      <Text size={18} weight="semibold" style={styles.nobodyWords}>
+      <Text size={15} weight="medium" style={[styles.secondary, styles.centred]}>
         Choose somebody in the list to see them here.
       </Text>
     </View>
   );
 }
 
-export const FROM_THE_WEB = 'To invite somebody, use Soirely on the web.';
-
 const styles = StyleSheet.create({
-  accent: { color: tokens.colorAccentText },
   secondary: { color: tokens.colorInkSecondary },
-  figures: { fontVariant: ['tabular-nums'] },
-  pressed: { backgroundColor: tokens.colorNeutralFill },
-  stack: { gap: 14 },
-  ask: { gap: tokens.spaceMd },
-  rows: {
-    borderRadius: tokens.space3xl,
-    backgroundColor: tokens.colorInset,
-    padding: tokens.spaceXxs,
-  },
-  row: {
-    minHeight: 72,
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: tokens.spaceLg,
-    paddingVertical: 14,
-    paddingLeft: tokens.spaceXl,
-    paddingRight: 14,
-    borderRadius: tokens.spaceXl,
-  },
-  rowDense: { paddingVertical: tokens.spaceLg, paddingLeft: 14, paddingRight: tokens.spaceLg },
-  rowOpen: {
-    backgroundColor: tokens.colorAccentTint,
-    borderWidth: 2,
-    borderColor: tokens.colorAccent,
-  },
-  rule: { position: 'absolute', right: 0, top: 0, height: 1, backgroundColor: tokens.colorBorder },
-  rowWords: { flex: 1, minWidth: 0, gap: 3 },
-  nameRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    columnGap: 8,
-    rowGap: 4,
-  },
-  chevron: { alignSelf: 'center' },
-  filters: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spaceSm },
-  filter: {
-    minHeight: tokens.sizeHit,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 7,
-    paddingHorizontal: 15,
-    borderRadius: tokens.sizeHit / 2,
-    borderWidth: 1.5,
-    borderColor: tokens.colorBorder,
-    backgroundColor: tokens.colorCard,
-  },
-  filterOn: {
-    borderWidth: 2,
-    borderColor: tokens.colorAccent,
-    backgroundColor: tokens.colorAccentTint,
-  },
-  cardDense: { padding: 18 },
-  request: {
-    gap: 14,
-    padding: 14,
-    borderRadius: 18,
-    backgroundColor: tokens.colorCard,
-  },
-  requestHead: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceLg },
-  two: { flexDirection: 'row', gap: tokens.spaceMd },
-  half: { flex: 1, minWidth: 0 },
-  endRow: { flexDirection: 'row', justifyContent: 'flex-end', gap: tokens.spaceMd },
-  nobody: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 18,
-    paddingHorizontal: tokens.space3xl,
-  },
-  nobodyMark: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: tokens.colorAccentTint,
-  },
-  nobodyWords: { maxWidth: 320, textAlign: 'center' },
+  centred: { textAlign: 'center' },
+  bleed: { marginHorizontal: -10 },
+  empty: { gap: tokens.spaceXs, paddingTop: tokens.spaceXs },
+  nobody: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: tokens.space5xl },
 });

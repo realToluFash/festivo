@@ -1,47 +1,39 @@
 import { formattingLocale } from '@soirely/domain';
 import { getLocales } from 'expo-localization';
 import { useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { StyleSheet } from 'react-native';
+import { type RefObject, useEffect, useRef, useState } from 'react';
+import type { ViewInstance } from 'react-native';
 
-import { Notice } from '../../components/Notice.tsx';
-import { Text } from '../../components/Text.tsx';
-import { tokens } from '../../theme/tokens.ts';
-import { Landscape, SectionColumn, SettingsPage, useShell } from './Frame.tsx';
-import { type Claim, OwnerClaim } from './MembersClaim.tsx';
-import { Failed, LoadingRows, useLoad } from './MembersLoading.tsx';
-import {
-  Awaiting,
-  Empty,
-  Filters,
-  FROM_THE_WEB,
-  MemberRows,
-  NobodyPicked,
-} from './MembersParts.tsx';
+import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
+
+import { Landscape, useShell } from './Frame.tsx';
+import { ClaimScreen, useOwnerClaim } from './MembersClaim.tsx';
+import { useLoad } from './MembersLoading.tsx';
+import { MembersCardView, NobodyPicked, People, Waiting } from './MembersParts.tsx';
 import { type PersonOpening, PersonPage } from './MembersPerson.tsx';
+import { RequestScreen } from './MembersRequest.tsx';
 import {
   approved,
+  type CardStep,
   counts,
   type Filter,
   isShown,
-  type MembersSay,
+  membersCard,
   membersSayIn,
   type MembersStart,
   membersStart,
   membersStateOf,
-  ORGANISATION,
   type Person,
   PROOF_MINUTES,
   removed,
   type Request,
-  subtitle,
   turnedDown,
 } from './MembersSample.ts';
-import { TYPE } from './parts.tsx';
+import { FailedBlock, LoadingBlock, SummaryColumn, SummaryPage } from './Summary.tsx';
 
 const PLAIN: PersonOpening = { step: 'resting', picked: null };
 
-/** Members in B: requests answered in place, the chips, a member's page and the owner claim, on sample data. */
+/** Members in B, summary first: the card, who waits, the people, a member's page and the owner claim, on sample data. */
 export function MembersSection() {
   const { state } = useLocalSearchParams<{ state?: string }>();
   const name = membersStateOf(state);
@@ -58,14 +50,23 @@ function MembersScreen({ start }: { start: MembersStart }) {
   const [people, setPeople] = useState<Person[]>(start.people);
   const [filter, setFilter] = useState<Filter>(start.filter);
   const [request, setRequest] = useState<Request>(start.request);
+  const [requestVisit, setRequestVisit] = useState(0);
   const [open, setOpen] = useState<string | null>(start.open);
   const [opening, setOpening] = useState<PersonOpening>(start);
   const [visit, setVisit] = useState(0);
   const [gone, setGone] = useState<Person | null>(null);
-  const [claim, setClaim] = useState<Claim | null>(start.claim);
-  const [withdrawing, setWithdrawing] = useState(start.withdrawing);
   const [provedAt, setProvedAt] = useState<number | null>(null);
+  const owner = useOwnerClaim(start.claim, start.withdrawing);
+  const waitingRow = useRef<ViewInstance>(null);
+  const cardStep = useRef<ViewInstance>(null);
+  const focusBack = useRef<ScreenReaderTarget | null>(null);
+  const [askedId] = useState(
+    () => start.people.find((one) => one.status === 'pendingApproval')?.id ?? null,
+  );
   const person = open == null ? null : (people.find((one) => one.id === open) ?? null);
+  const asked = viewer.manages ? (people.find((one) => one.id === askedId) ?? null) : null;
+  const asking = asked?.status === 'pendingApproval' ? asked : null;
+  const card = membersCard({ people, viewer, request, gone, claim: owner.claim, say });
 
   useEffect(() => {
     if (provedAt == null) return;
@@ -74,211 +75,171 @@ function MembersScreen({ start }: { start: MembersStart }) {
     return () => clearTimeout(timer);
   }, [provedAt]);
 
+  /** An answer, a removal or a withdrawn claim stays on the card until the person moves on. */
+  function moveOn(): void {
+    if (typeof request === 'object') setRequest('resting');
+    setGone(null);
+    owner.moveOn();
+  }
+
   function openPerson(id: string | null, with_: PersonOpening = PLAIN): void {
+    moveOn();
     setOpen(id);
     setOpening(with_);
     setVisit((count) => count + 1);
-    setGone(null);
   }
 
-  function see(answer: Request): void {
-    setRequest('resting');
-    if (typeof answer === 'object' && 'approved' in answer) openPerson(answer.approved);
-    else setFilter('former');
+  function showFilter(next: Filter): void {
+    moveOn();
+    setFilter(next);
   }
 
+  function from(opener: RefObject<ViewInstance | null>): void {
+    focusBack.current = opener.current;
+  }
+
+  function openRequest(opener: RefObject<ViewInstance | null>): void {
+    from(opener);
+    setRequestVisit((count) => count + 1);
+    setRequest('approving');
+  }
+
+  function onStep(step: CardStep): void {
+    switch (step) {
+      case 'answer':
+        openRequest(cardStep);
+        return;
+      case 'seePerson':
+        if (typeof request === 'object' && 'approved' in request) openPerson(request.approved);
+        return;
+      case 'seeFormer':
+        showFilter('former');
+        return;
+      case 'becomeOwner':
+        from(cardStep);
+        owner.become();
+        return;
+      case 'checkRecord':
+        from(cardStep);
+        owner.checkRecord();
+    }
+  }
+
+  const listed = people.filter((one) => isShown(one.status, filter));
   const list = (
-    <MembersList
-      people={people}
-      viewer={viewer}
-      filter={filter}
-      request={request}
-      open={landscape ? open : null}
-      dense={landscape}
-      say={say}
-      gone={gone}
-      claim={claim}
-      withdrawing={withdrawing}
-      onClaim={(next) => {
-        setClaim(next);
-        setWithdrawing(false);
-      }}
-      onFilter={setFilter}
-      onRequest={setRequest}
-      onApprove={(one, role) => {
-        setPeople((before) => approved(before, one.id, role));
-        setRequest({ approved: one.id, role });
-      }}
-      onTurnDown={(one) => {
-        setPeople((before) => turnedDown(before, one.id));
-        setRequest({ turnedDown: one.id });
-      }}
-      onSee={see}
-      onOpen={(id) => openPerson(id)}
-    />
+    <>
+      <MembersCardView
+        card={card}
+        compact={landscape}
+        wide={shell.layout === 'portrait'}
+        stepRef={cardStep}
+        onStep={onStep}
+      />
+      {asking != null && (
+        <Waiting
+          person={asking}
+          dense={landscape}
+          say={say}
+          onOpen={() => openRequest(waitingRow)}
+          rowRef={waitingRow}
+        />
+      )}
+      <People
+        listed={listed}
+        counts={counts(people)}
+        filter={filter}
+        you={viewer.id}
+        open={landscape ? open : null}
+        dense={landscape}
+        manages={viewer.manages}
+        onFilter={showFilter}
+        onOpen={(id) => openPerson(id)}
+      />
+    </>
   );
-  const column = landscape ? (
-    <SectionColumn title="Members" sub={subtitle(people)}>
-      {list}
-    </SectionColumn>
-  ) : undefined;
+  const overlays = (
+    <>
+      {asked != null && (
+        <RequestScreen
+          key={requestVisit}
+          person={asked}
+          open={request === 'approving' || request === 'turningDown'}
+          turningDown={request === 'turningDown'}
+          say={say}
+          opener={focusBack}
+          onTurningDown={(yes) => setRequest(yes ? 'turningDown' : 'approving')}
+          onClose={() => setRequest('resting')}
+          onApprove={(role) => {
+            setPeople((before) => approved(before, asked.id, role));
+            setRequest({ approved: asked.id, role });
+          }}
+          onTurnDown={() => {
+            setPeople((before) => turnedDown(before, asked.id));
+            setRequest({ turnedDown: asked.id });
+          }}
+        />
+      )}
+      {owner.claim != null && <ClaimScreen owner={owner} say={say} opener={focusBack} />}
+    </>
+  );
 
-  if (load !== 'loaded')
-    return (
-      <SettingsPage title="Members">
-        {load === 'failed' ? (
-          <Failed
-            words="We could not load the members. Check your connection and try again."
-            onRetry={retry}
-            testID="members.retry"
-          />
-        ) : (
-          <LoadingRows words="Loading members…" />
-        )}
-      </SettingsPage>
+  if (load !== 'loaded') {
+    const block =
+      load === 'failed' ? (
+        <FailedBlock
+          title="We could not load the members."
+          line="Check your connection and try again."
+          onRetry={retry}
+          testID="members.retry"
+        />
+      ) : (
+        <LoadingBlock words="Loading members…" height={landscape ? 156 : 200} />
+      );
+
+    return landscape ? (
+      <Landscape column={<SummaryColumn title="Members">{block}</SummaryColumn>}>{null}</Landscape>
+    ) : (
+      <SummaryPage title="Members">{block}</SummaryPage>
     );
+  }
+
+  const column = landscape ? <SummaryColumn title="Members">{list}</SummaryColumn> : undefined;
 
   if (person != null)
     return (
-      <PersonPage
-        person={person}
-        visit={visit}
-        people={people}
-        viewer={viewer}
-        opening={opening}
-        say={say}
-        column={column}
-        back={landscape ? null : { label: 'Members', onPress: () => openPerson(null) }}
-        proved={provedAt != null}
-        onProved={() => setProvedAt(Date.now())}
-        onPeople={setPeople}
-        onRemoved={(one) => {
-          setPeople((before) => removed(before, one.id));
-          openPerson(null);
-          setGone(one);
-        }}
-      />
+      <>
+        <PersonPage
+          person={person}
+          visit={visit}
+          people={people}
+          viewer={viewer}
+          opening={opening}
+          say={say}
+          column={column}
+          back={landscape ? null : { label: 'Members', onPress: () => openPerson(null) }}
+          proved={provedAt != null}
+          onProved={() => setProvedAt(Date.now())}
+          onPeople={setPeople}
+          onRemoved={(one) => {
+            setPeople((before) => removed(before, one.id));
+            openPerson(null);
+            setGone(one);
+          }}
+        />
+        {overlays}
+      </>
     );
-
-  if (landscape)
-    return (
-      <Landscape column={column}>
-        <NobodyPicked />
-      </Landscape>
-    );
-
-  return (
-    <SettingsPage title="Members" sub={subtitle(people)}>
-      {list}
-    </SettingsPage>
-  );
-}
-
-function MembersList({
-  people,
-  viewer,
-  filter,
-  request,
-  open,
-  dense,
-  say,
-  gone,
-  claim,
-  withdrawing,
-  onClaim,
-  onFilter,
-  onRequest,
-  onApprove,
-  onTurnDown,
-  onSee,
-  onOpen,
-}: {
-  people: readonly Person[];
-  viewer: MembersStart['viewer'];
-  filter: Filter;
-  request: Request;
-  open: string | null;
-  dense: boolean;
-  say: MembersSay;
-  gone: Person | null;
-  claim: Claim | null;
-  withdrawing: boolean;
-  onClaim: (claim: Claim) => void;
-  onFilter: (filter: Filter) => void;
-  onRequest: (request: Request) => void;
-  onApprove: (person: Person, role: string) => void;
-  onTurnDown: (person: Person) => void;
-  onSee: (request: Request) => void;
-  onOpen: (id: string) => void;
-}) {
-  const shell = useShell();
-  const listed = people.filter((one) => isShown(one.status, filter));
-  const asking = people.find((one) => one.status === 'pendingApproval') ?? null;
-  const answeredId =
-    typeof request === 'object'
-      ? 'approved' in request
-        ? request.approved
-        : request.turnedDown
-      : null;
-  const answered = people.find((one) => one.id === answeredId) ?? null;
-  const ownerActive = people.some((one) => one.role === 'Owner' && one.status === 'active');
 
   return (
     <>
-      {claim != null && !ownerActive && (
-        <OwnerClaim
-          claim={claim}
-          withdrawing={withdrawing}
-          layout={dense ? 'phone' : shell.layout}
-          say={say}
-          onClaim={onClaim}
-        />
-      )}
-      {gone != null && (
-        <Notice
-          tone="done"
-          mark={tokens.marks.done.glyph}
-          title={`${gone.name} was removed. Their events stay with ${ORGANISATION}.`}
-          body="They are listed under Former in Members, with everything they did kept."
-          announce
-        />
-      )}
-      {viewer.manages && (
-        <Awaiting
-          person={asking}
-          answered={answered}
-          request={request}
-          layout={shell.layout}
-          dense={dense}
-          say={say}
-          onRequest={onRequest}
-          onApprove={onApprove}
-          onTurnDown={onTurnDown}
-          onSee={onSee}
-        />
-      )}
-      <Filters on={filter} counts={counts(people)} onPick={onFilter} />
-      {listed.length === 0 ? (
-        <Empty filter={filter} onShowEveryone={() => onFilter('all')} />
+      {landscape ? (
+        <Landscape column={column}>
+          <NobodyPicked />
+        </Landscape>
       ) : (
-        <MemberRows
-          people={listed}
-          you={viewer.id}
-          open={open}
-          dense={dense}
-          say={say}
-          onOpen={onOpen}
-        />
+        <SummaryPage title="Members">{list}</SummaryPage>
       )}
-      {viewer.manages && (
-        <Text size={TYPE.line} weight="medium" style={styles.secondary}>
-          {FROM_THE_WEB}
-        </Text>
-      )}
+      {overlays}
     </>
   );
 }
-
-const styles = StyleSheet.create({
-  secondary: { color: tokens.colorInkSecondary },
-});

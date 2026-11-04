@@ -1,7 +1,8 @@
 import { memberStanding, type MemberStanding } from '@soirely/domain';
 
 import type { ChipKind } from './parts.tsx';
-import { grantFor, type Load } from './RolesSample.ts';
+import { grantFor, type Load, people as headcount } from './RolesSample.ts';
+import type { MarkKind } from './SummaryRows.tsx';
 import { MEMBERS, type MemberStatus, ROLES, type SampleMember, YOU } from './sample.ts';
 
 export const ORGANISATION = YOU.organisation;
@@ -87,6 +88,7 @@ export function statusWord(person: Pick<Person, 'status' | 'gone'>): {
 /** Dates as the server writes them for the organisation, in the reader's English. */
 export interface MembersSay {
   date(day: string): string;
+  day(at: string): string;
   deadline(at: string): string;
 }
 
@@ -94,11 +96,13 @@ export function membersSayIn(locale: string): MembersSay {
   const format = (options: Intl.DateTimeFormatOptions) =>
     new Intl.DateTimeFormat(locale, { ...options, timeZone: 'UTC' });
   const date = format({ month: 'short', day: 'numeric', year: 'numeric' });
+  const dayOnly = format({ month: 'short', day: 'numeric' });
   const day = format({ weekday: 'long', month: 'short', day: 'numeric' });
   const clock = format({ hour: 'numeric', minute: '2-digit' });
 
   return {
     date: (at) => date.format(new Date(`${at}T00:00Z`)),
+    day: (at) => dayOnly.format(new Date(`${at}T00:00Z`)),
     // The sample's deadlines are wall clock in Lagos, so they are read in UTC and named WAT.
     deadline: (at) =>
       `${day.format(new Date(`${at}Z`))} at ${clock.format(new Date(`${at}Z`))} WAT`,
@@ -132,6 +136,52 @@ export function rowLine(person: Person, you: string, say: MembersSay): string {
     person.how,
     `${verb(person)} ${say.date(person.when)}`,
   ].join(' · ');
+}
+
+const MARKS: Record<MemberStatus, MarkKind> = {
+  active: 'yes',
+  pendingApproval: 'waiting',
+  suspended: 'paused',
+  domainSuspended: 'paused',
+  former: 'ended',
+};
+
+export function markOf(person: Pick<Person, 'status'>): MarkKind {
+  return MARKS[person.status];
+}
+
+export function tagOf(
+  person: Pick<Person, 'status' | 'gone'>,
+): { kind: MarkKind; word: string } | null {
+  return person.status === 'active'
+    ? null
+    : { kind: markOf(person), word: statusWord(person).word };
+}
+
+export function personLine(person: Person, you: string): string {
+  return [person.role ?? 'No role yet', ...(person.id === you ? ['you'] : [])].join(' · ');
+}
+
+export function waitingLine(person: Person, say: MembersSay): string {
+  return `${person.email} · asked ${say.day(person.when)}`;
+}
+
+export function whenWord(person: Pick<Person, 'status' | 'gone'>): string {
+  switch (person.status) {
+    case 'active':
+      return 'Member since';
+    case 'pendingApproval':
+      return 'Asked on';
+    case 'suspended':
+    case 'domainSuspended':
+      return 'Suspended since';
+    case 'former':
+      return person.gone === 'removed' ? 'Removed on' : 'Left on';
+  }
+}
+
+export function firstName(person: Pick<Person, 'name'>): string {
+  return person.name.split(' ')[0] ?? person.name;
 }
 
 export const ROLE_MEANS: Record<string, string> = {
@@ -253,8 +303,118 @@ export interface MembersStart {
   request: Request;
   step: PersonStep;
   picked: string | null;
-  claim: 'open' | null;
+  claim: ClaimState | null;
   withdrawing: boolean;
+}
+
+export type ClaimState = 'unclaimed' | 'open' | 'withdrawn';
+
+export const KEEPS_WORKING =
+  'Events, guests and your permissions keep working. Only Owner actions, such as billing, wait for an owner.';
+
+export type CardStep = 'answer' | 'seePerson' | 'seeFormer' | 'becomeOwner' | 'checkRecord';
+
+export interface MembersCard {
+  says: string;
+  line: string | null;
+  step: { label: string; does: CardStep } | null;
+  faces: Person[];
+  more: number;
+  readsOut: boolean;
+}
+
+export function ownerActive(people: readonly Person[]): boolean {
+  return people.some((one) => one.role === 'Owner' && one.status === 'active');
+}
+
+export function membersCard({
+  people,
+  viewer,
+  request,
+  gone,
+  claim,
+  say,
+}: {
+  people: readonly Person[];
+  viewer: MembersViewer;
+  request: Request;
+  gone: Person | null;
+  claim: ClaimState | null;
+  say: MembersSay;
+}): MembersCard {
+  const quiet = { line: null, faces: [], more: 0, readsOut: true };
+  const seeFormer = { label: 'See Former', does: 'seeFormer' } as const;
+
+  if (typeof request === 'object') {
+    const id = 'approved' in request ? request.approved : request.turnedDown;
+    const name = people.find((one) => one.id === id)?.name ?? '';
+
+    return 'approved' in request
+      ? {
+          ...quiet,
+          says: `${name} joined as ${request.role}`,
+          step: { label: `See ${name}`, does: 'seePerson' },
+        }
+      : {
+          ...quiet,
+          says: `You turned down ${name}`,
+          line: 'They are listed under Former.',
+          step: seeFormer,
+        };
+  }
+  if (gone != null)
+    return {
+      ...quiet,
+      says: `${gone.name} was removed`,
+      line: `Their events stay with ${ORGANISATION}. They are listed under Former, with everything they did kept.`,
+      step: seeFormer,
+    };
+  if (claim != null && !ownerActive(people)) {
+    const become = { label: 'Become the owner', does: 'becomeOwner' } as const;
+
+    switch (claim) {
+      case 'unclaimed':
+        return {
+          ...quiet,
+          says: `${ORGANISATION} has no active owner`,
+          line: KEEPS_WORKING,
+          step: become,
+          readsOut: false,
+        };
+      case 'open':
+        return {
+          ...quiet,
+          says: 'Your claim is open',
+          line: `We check every hour until ${say.deadline(DEADLINES.claim)}.`,
+          step: { label: 'Check record', does: 'checkRecord' },
+          readsOut: false,
+        };
+      case 'withdrawn':
+        return {
+          ...quiet,
+          says: 'You withdrew your claim',
+          line: 'Everybody who was told is emailed.',
+          step: become,
+        };
+    }
+  }
+
+  const all = people.filter((one) => isShown(one.status, 'all'));
+  const waiting = viewer.manages ? people.filter((one) => one.status === 'pendingApproval') : [];
+  const asking = waiting[0];
+  const faces = all.slice(0, 5);
+
+  return {
+    says: [
+      headcount(all.length),
+      ...(waiting.length > 0 ? [`${waiting.length} waiting`] : []),
+    ].join(' · '),
+    line: null,
+    step: asking == null ? null : { label: `Answer ${asking.name}`, does: 'answer' },
+    faces,
+    more: all.length - faces.length,
+    readsOut: false,
+  };
 }
 
 export function approved(people: readonly Person[], id: string, role: string): Person[] {
@@ -339,7 +499,7 @@ export function membersStart(state: MembersState): MembersStart {
         ...base,
         viewer: VIEWERS.julien,
         people: people.map((one) => (one.id === YOU.email ? { ...one, status: 'suspended' } : one)),
-        claim: 'open',
+        claim: state === 'claim' ? 'unclaimed' : 'open',
         withdrawing: state === 'withdraw',
       };
   }
