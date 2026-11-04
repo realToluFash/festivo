@@ -195,6 +195,11 @@ describe('verifying an email address', () => {
     await waitFor(() => expect(screen.getByRole('alert').textContent).toMatch(/does not match/));
     expect(screen.getByLabelText('Code from the email').className).toMatch(/input-wrong/);
     expect(screen.getByLabelText('Code from the email').getAttribute('aria-invalid')).toBe('true');
+
+    const field = screen.getByLabelText<HTMLInputElement>('Code from the email');
+    expect(field.value).toBe('000000');
+    expect(document.activeElement).toBe(field);
+    expect([field.selectionStart, field.selectionEnd]).toEqual([0, 6]);
   });
 
   it('offers a new code when this one has expired', async () => {

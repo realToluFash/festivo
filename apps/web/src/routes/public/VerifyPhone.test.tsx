@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
@@ -33,6 +33,13 @@ function account(phoneNumbers: unknown[] = [PHONE]) {
 
 function at(path: string) {
   return render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: [path] })} />);
+}
+
+function routedAt(path: string) {
+  const router = createMemoryRouter(routes, { initialEntries: [path] });
+  render(<RouterProvider router={router} />);
+
+  return router;
 }
 
 function answering(answers: Record<string, (body: unknown) => Response>) {
@@ -199,6 +206,10 @@ describe('check your messages', () => {
     fireEvent.change(screen.getByLabelText('Code from the text'), { target: { value: '000000' } });
     fireEvent.click(screen.getByRole('button', { name: 'Verify number' }));
     await waitFor(() => expect(screen.getByText(/That code does not match/)).toBeDefined());
+    const field = screen.getByLabelText<HTMLInputElement>('Code from the text');
+    expect(field.value).toBe('000000');
+    expect(document.activeElement).toBe(field);
+    expect([field.selectionStart, field.selectionEnd]).toEqual([0, 6]);
 
     fireEvent.change(screen.getByLabelText('Code from the text'), { target: { value: '184231' } });
     fireEvent.click(screen.getByRole('button', { name: 'Verify number' }));
@@ -426,7 +437,64 @@ describe('verifying a number added from Settings > Account', () => {
   });
 });
 
+describe('the address and Sign out at the header’s end (sc-29065)', () => {
+  it.each(['/verify-phone', '/phone'])('on %s', async (path) => {
+    answering({
+      'GET /api/auth/me': () => json(account()),
+      'GET /api/auth/verify/phone/resend': () => json({ cooldownSeconds: 0 }),
+    });
+    at(path);
+
+    const address = await screen.findByText('folake@ire.events');
+    const header = screen.getByRole('banner');
+    expect(header.contains(address)).toBe(true);
+    expect(within(header).getByRole('button', { name: 'Sign out' })).toBeDefined();
+  });
+});
+
 describe('change your mobile number', () => {
+  it('goes Back to the code, keeping the onboarding route, when a number is held (sc-29065)', async () => {
+    answering({
+      'GET /api/auth/me': () => json(account()),
+      'GET /api/auth/verify/phone/resend': () => json({ cooldownSeconds: 0 }),
+    });
+    const router = routedAt('/phone?from=onboarding');
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Back' }));
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/verify-phone'));
+    expect(router.state.location.search).toBe('?from=onboarding');
+    expect(await screen.findByLabelText('Code from the text')).toBeDefined();
+  });
+
+  it('has no Back on a first number (sc-29065)', async () => {
+    answering({ 'GET /api/auth/me': () => json(account([])) });
+    at('/phone');
+
+    await screen.findByLabelText('Mobile number');
+    expect(screen.queryByRole('button', { name: 'Back' })).toBeNull();
+  });
+
+  it('says Soirely cannot be reached rather than signing out, and Try again reads the account again (sc-29065)', async () => {
+    let reachable = false;
+    const sent = answering({
+      'GET /api/auth/me': () => {
+        if (!reachable) throw new TypeError('Failed to fetch');
+        return json(account());
+      },
+    });
+    const router = routedAt('/phone');
+
+    expect(await screen.findByText('Cannot reach Soirely')).toBeDefined();
+    expect(router.state.location.pathname).toBe('/phone');
+
+    reachable = true;
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+    expect(await screen.findByLabelText('Mobile number')).toBeDefined();
+    expect(sent.filter((request) => request.path === '/api/auth/me').length).toBeGreaterThan(1);
+  });
+
   it('shows the current number, says it keeps working until the new one is verified, and starts on its country', async () => {
     answering({ 'GET /api/auth/me': () => json(account([{ ...PHONE, verified: true }])) });
     at('/phone');
