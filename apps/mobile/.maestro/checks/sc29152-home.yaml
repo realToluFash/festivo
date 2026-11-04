@@ -3,11 +3,14 @@ appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/demo/settings
 - extendedWaitUntil:
-    visible: '.*'
+    visible:
+      id: 'settings.roles'
     timeout: 30000
 - waitForAnimationToEnd:
     timeout: 8000
 - takeScreenshot: home
-- scroll
+- swipe:
+    start: 85%, 80%
+    end: 85%, 30%
 - waitForAnimationToEnd
 - takeScreenshot: home-scrolled

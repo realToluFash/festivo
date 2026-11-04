@@ -3,11 +3,14 @@ appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/demo/settings/security?state=forgot
 - extendedWaitUntil:
-    visible: '.*'
+    visible:
+      id: 'demo.security.forgotEmail'
     timeout: 30000
 - waitForAnimationToEnd:
     timeout: 8000
 - takeScreenshot: security-forgot
-- scroll
+- swipe:
+    start: 85%, 80%
+    end: 85%, 30%
 - waitForAnimationToEnd
 - takeScreenshot: security-forgot-scrolled

@@ -3,11 +3,14 @@ appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/demo/settings/account?state=verifyPhoneDone
 - extendedWaitUntil:
-    visible: '.*'
+    visible:
+      text: 'Number verified'
     timeout: 30000
 - waitForAnimationToEnd:
     timeout: 8000
 - takeScreenshot: verify-phone-done
-- scroll
+- swipe:
+    start: 85%, 80%
+    end: 85%, 30%
 - waitForAnimationToEnd
 - takeScreenshot: verify-phone-done-scrolled

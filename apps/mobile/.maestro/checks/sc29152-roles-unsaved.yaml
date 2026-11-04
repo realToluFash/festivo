@@ -3,11 +3,14 @@ appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/demo/settings/roles?state=unsaved
 - extendedWaitUntil:
-    visible: '.*'
+    visible:
+      id: 'roles.discard'
     timeout: 30000
 - waitForAnimationToEnd:
     timeout: 8000
 - takeScreenshot: roles-unsaved
-- scroll
+- swipe:
+    start: 85%, 80%
+    end: 85%, 30%
 - waitForAnimationToEnd
 - takeScreenshot: roles-unsaved-scrolled

@@ -3,11 +3,14 @@ appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/demo/settings/account?state=zone
 - extendedWaitUntil:
-    visible: '.*'
+    visible:
+      id: 'demo.account.zone.Europe/San_Marino'
     timeout: 30000
 - waitForAnimationToEnd:
     timeout: 8000
 - takeScreenshot: account-zone
-- scroll
+- swipe:
+    start: 85%, 80%
+    end: 85%, 30%
 - waitForAnimationToEnd
 - takeScreenshot: account-zone-scrolled

@@ -3,11 +3,16 @@ appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/demo/settings?as=noOrg
 - extendedWaitUntil:
-    visible: '.*'
+    visible:
+      id: 'settings.notifications'
     timeout: 30000
 - waitForAnimationToEnd:
     timeout: 8000
+- assertNotVisible:
+    id: 'settings.signInRules'
 - takeScreenshot: noorg
-- scroll
+- swipe:
+    start: 85%, 80%
+    end: 85%, 30%
 - waitForAnimationToEnd
 - takeScreenshot: noorg-scrolled
