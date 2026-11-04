@@ -65,6 +65,12 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **4 Nov 2026. An invitation's refusal lines on the desktop web** (`web:join.refused.*.line`,
+  `web:requestToJoin.deadLine`, sc-29487 for sc-29066). Each line sits under its refusal's
+  title and never restates it: a deleted organisation's line is "The invitation to
+  {{organisation}} can no longer be accepted.", not "… no longer exists", which the title says.
+  Whoever sent it is "the person who invited you", never "whoever invited you"; a change of
+  mind leads the sentence, "If you have changed your mind, ask {{inviter}} …".
 - **4 Nov 2026. The app's new-account steps** (`mobile:steps.*`, sc-29126 for sc-29069).
   The step bar's screen-reader label is "Step {{step}} of {{steps}}", and the top bar's way past
   an optional step is "Skip". The mobile step says "cannot", not "can't", as every other
