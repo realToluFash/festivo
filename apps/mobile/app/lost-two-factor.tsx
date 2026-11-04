@@ -16,11 +16,11 @@ import {
   useRef,
   useState,
 } from 'react';
-import { Linking, StyleSheet, type TextInputInstance, View } from 'react-native';
+import { Linking, StyleSheet, type TextInputInstance, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../src/api.ts';
-import { heldChallenge } from '../src/challenge.ts';
+import { heldChallenge, timedOutSignIn } from '../src/challenge.ts';
 import { type AuthBack, AuthFrame, AuthHeading } from '../src/components/AuthFrame.tsx';
 import { PrimaryButton, QuietButton, SecondaryButton } from '../src/components/Buttons.tsx';
 import {
@@ -31,6 +31,7 @@ import {
   focusRefused,
   keysStayDown,
 } from '../src/components/Field.tsx';
+import { LifecycleSheet } from '../src/components/LifecycleSheet.tsx';
 import { Notice } from '../src/components/Notice.tsx';
 import { Pending } from '../src/components/Pending.tsx';
 import { useFocusOnAnswer } from '../src/components/Screen.tsx';
@@ -50,6 +51,7 @@ import {
   startRefusal,
   wrongRecoveryCodes,
 } from '../src/kit/recovery.ts';
+import { useLayout } from '../src/layout/useLayout.ts';
 import { tokens } from '../src/theme/tokens.ts';
 import { useMarkSide } from '../src/components/markSide.ts';
 
@@ -61,7 +63,8 @@ const Tapped = createContext<object | undefined>(undefined);
 /** Lost both the authenticator and the recovery codes (sc-509): nothing on this screen signs anybody in. */
 export default function LostTwoFactor() {
   const back = useBackToCode();
-  const challenge = heldChallenge()?.challenge ?? null;
+  const held = heldChallenge();
+  const challenge = held?.challenge ?? null;
   const [view, setShown] = useState<Shown>({ kind: 'loading' });
   const [tapped, setTapped] = useState<object | undefined>(undefined);
   const tapping = useRef(false);
@@ -119,7 +122,7 @@ export default function LostTwoFactor() {
       setView({ kind: 'start', opening, limitedUntil: null, sending: false });
     } catch (refusal) {
       markTap();
-      setView(startRefusal(refusal) === 'signIn' ? { kind: 'signIn' } : { kind: 'failed' });
+      setView(startRefusal(refusal) === 'timedOut' ? { kind: 'timedOut' } : { kind: 'failed' });
     }
   }
 
@@ -151,7 +154,7 @@ export default function LostTwoFactor() {
         setView({ kind: 'nobody', supportAddress: opening.supportAddress });
       } else {
         markTap();
-        setView(why === 'signIn' ? { kind: 'signIn' } : { kind: 'failed' });
+        setView(why === 'timedOut' ? { kind: 'timedOut' } : { kind: 'failed' });
       }
     }
   }
@@ -160,6 +163,7 @@ export default function LostTwoFactor() {
 
   function shown(): ReactNode {
     if (view.kind === 'signIn') return <Redirect href="/sign-in" />;
+    if (view.kind === 'timedOut') return <Redirect href={timedOutSignIn(held?.email ?? '')} />;
     if (view.kind === 'loading')
       return (
         <AuthFrame back={back}>
@@ -492,22 +496,11 @@ function Request({
         <Text size={tokens.typeBodyPhone.size} weight="semibold">
           {t('lostTwoFactor.notYou')}
         </Text>
-        <SecondaryButton
-          label={t('lostTwoFactor.cancel')}
-          onPress={() => {
-            api
-              .cancelRecovery(recovery)
-              .then((cancelled) => {
-                onTap();
-                onState(cancelled);
-              })
-              .catch((refusal: unknown) => {
-                if (!replacedElsewhere(refusal)) return;
-                onTap();
-                onReplaced();
-              });
-          }}
-          testID="lostTwoFactor.cancel"
+        <CancelRequest
+          recovery={recovery}
+          onTap={onTap}
+          onState={onState}
+          onReplaced={onReplaced}
         />
         <BackToSignIn />
       </AuthFrame>
@@ -608,6 +601,72 @@ function Request({
   );
 }
 
+/** Cancel the request asks first in the app's own sheet (sc-29961); an answer arriving meanwhile replaces the waiting step, sheet and all. */
+function CancelRequest({
+  recovery,
+  onTap,
+  onState,
+  onReplaced,
+}: {
+  recovery: string;
+  onTap: () => void;
+  onState: (state: RecoveryState) => void;
+  onReplaced: () => void;
+}) {
+  const { t } = useTranslation();
+  const phone = useLayout().kind === 'phone';
+  const opener = useRef<ViewInstance>(null);
+  // New with each opening, so the sheet's title takes screen reader focus as it opens.
+  const [asked, setAsked] = useState<object | null>(null);
+  const [cancelling, setCancelling] = useState(false);
+  const keep = () => !cancelling && setAsked(null);
+
+  const cancel = () => {
+    setCancelling(true);
+    api
+      .cancelRecovery(recovery)
+      .then((cancelled) => {
+        onTap();
+        onState(cancelled);
+      })
+      .catch((refusal: unknown) => {
+        setCancelling(false);
+        if (!replacedElsewhere(refusal)) return;
+        onTap();
+        onReplaced();
+      });
+  };
+
+  return (
+    <>
+      <SecondaryButton
+        ref={opener}
+        label={t('lostTwoFactor.cancel')}
+        onPress={() => setAsked({})}
+        testID="lostTwoFactor.cancel"
+      />
+      <LifecycleSheet
+        phone={phone}
+        open={asked != null}
+        opener={opener}
+        testID="lostTwoFactor.cancel"
+        title={t('lostTwoFactor.cancelTitle')}
+        lines={[t('lostTwoFactor.cancelBody')]}
+        confirm={{
+          label: t('lostTwoFactor.cancel'),
+          keep: t('lostTwoFactor.keepWaiting'),
+          pending: cancelling,
+          ends: true,
+          onGo: cancel,
+        }}
+        retold={asked ?? undefined}
+        scrimLabel={t('lostTwoFactor.keepWaiting')}
+        onClose={keep}
+      />
+    </>
+  );
+}
+
 function Codes({
   recovery,
   state,
@@ -674,6 +733,19 @@ function Codes({
     chosen: t('lostTwoFactor.sentChosen', { number }),
     texted: t('lostTwoFactor.sentText', { number }),
   }[wording.line];
+
+  // Email only, one code goes out, so the resend says one in Verify your email's words (sc-29961).
+  const resendWords = hasPhone
+    ? {
+        resend: t('lostTwoFactor.resend'),
+        resendIn: (time: string) => t('lostTwoFactor.resendIn', { time }),
+        note: t('lostTwoFactor.resendNote'),
+      }
+    : {
+        resend: t('verifyEmail.resend'),
+        resendIn: (time: string) => t('verifyEmail.resendIn', { time }),
+        note: t('verifyEmail.resendNote'),
+      };
 
   // The line is help under the field, not a live region, so the fallback is read out by hand.
   useEffect(() => {
@@ -858,7 +930,7 @@ function Codes({
 
       {spent ? (
         <PrimaryButton
-          label={t('lostTwoFactor.resend')}
+          label={resendWords.resend}
           onPress={() => {
             setResentInPlace({});
             void resend();
@@ -903,16 +975,14 @@ function Codes({
           />
           <SecondaryButton
             label={
-              cooldown > 0
-                ? t('lostTwoFactor.resendIn', { time: formatCountdown(cooldown) })
-                : t('lostTwoFactor.resend')
+              cooldown > 0 ? resendWords.resendIn(formatCountdown(cooldown)) : resendWords.resend
             }
             onPress={() => void resend()}
             off={cooldown > 0}
             testID="lostTwoFactor.resend"
           />
           <Text size={tokens.typeSmall.size} style={styles.secondary}>
-            {t('lostTwoFactor.resendNote')}
+            {resendWords.note}
           </Text>
           {hasPhone && wording.offerText && (
             <SecondaryButton
