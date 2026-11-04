@@ -4,7 +4,7 @@ import Svg, { Path } from 'react-native-svg';
 
 import { Text } from '../../src/components/Text.tsx';
 import { DemoScreen, NavBar } from '../../src/demo/DemoScreen.tsx';
-import { Heading } from '../../src/demo/Lines.tsx';
+import { Heading } from '../../src/steps/Lines.tsx';
 import { SAMPLE } from '../../src/demo/samples.ts';
 import { tokens } from '../../src/theme/tokens.ts';
 

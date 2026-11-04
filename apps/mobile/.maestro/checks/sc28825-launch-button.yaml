@@ -1,4 +1,4 @@
-# Signed out, the launch screen shows Design demo under Sign in; it opens the demo, and Close returns to launch.
+# Signed out, welcome shows Design demo under its ways in; it opens the demo, and Close returns to welcome.
 appId: host.exp.Exponent
 ---
 - runFlow: ../sign-out.yaml
@@ -6,7 +6,7 @@ appId: host.exp.Exponent
 - openLink: ${METRO_URL}
 - extendedWaitUntil:
     visible:
-      id: 'home.openSignIn'
+      id: 'welcome.email'
     timeout: 30000
 - extendedWaitUntil:
     visible:

@@ -65,6 +65,10 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **4 Nov 2026. The app's new-account steps** (`mobile:steps.*`, sc-29126 for sc-29069).
+  The step bar's screen-reader label is "Step {{step}} of {{steps}}", and the top bar's way past
+  an optional step is "Skip". The mobile step says "cannot", not "can't", as every other
+  sentence on these steps does.
 - **1 Nov 2026. Events and an event's own navigation** (sc-26732 for sc-22103,
   `web:events.*`, `mobile:eventsScreen.*`, `eventNav.*` web and app). Settled as sc-22103 wrote
   it, except one line: `staffComing` reads "Staffing for this event is coming.", since "The staff

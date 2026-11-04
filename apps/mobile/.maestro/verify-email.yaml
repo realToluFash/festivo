@@ -10,17 +10,9 @@ appId: host.exp.Exponent
     id: 'verifyEmail.code'
 - eraseText: 20
 - inputText: ${output.code}
-- tapOn:
-    id: 'verifyEmail.submit'
-- extendedWaitUntil:
-    visible:
-      id: 'verifyEmail.continue'
-    timeout: 15000
 - takeScreenshot: mobile-verify-email-done
-- tapOn:
-    id: 'verifyEmail.continue'
 - extendedWaitUntil:
-    visible: 'A few details'
+    visible: 'Your organisation'
     timeout: 15000
 - waitForAnimationToEnd
 - takeScreenshot: mobile-verify-email-continued

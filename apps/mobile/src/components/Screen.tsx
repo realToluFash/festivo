@@ -92,7 +92,7 @@ interface ScreenScrollView {
   answeringNow(): boolean;
 }
 
-const ScreenScroll = createContext<ScreenScrollView | null>(null);
+export const ScreenScroll = createContext<ScreenScrollView | null>(null);
 
 interface ScreenDock {
   /** The height between the scroll view's top and the keys, or null while the keys are down. */
@@ -955,7 +955,7 @@ export function FocusBack({
 }
 
 /** The scroll context a ScrollView provides, and the props that keep it in step with that view. */
-function useScreenScrollView() {
+export function useScreenScrollView() {
   const windowOrigin = useContext(Origin);
   const origin = useRef(windowOrigin);
   const scrollView = useRef<ScrollViewInstance>(null);

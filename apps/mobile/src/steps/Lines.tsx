@@ -7,6 +7,8 @@ import { StepMark } from '../components/StepMark.tsx';
 import { Text } from '../components/Text.tsx';
 import { Title } from '../components/Title.tsx';
 import { useReadOut } from '../components/ReadOut.tsx';
+import { useFocusOnAnswer } from '../components/Screen.tsx';
+import type { TextHandle } from '../components/Text.tsx';
 import { tokens } from '../theme/tokens.ts';
 
 /** A step's title and the one line under it that says what to do. */
@@ -14,19 +16,29 @@ export function Heading({
   title,
   intro,
   mark,
+  answer,
 }: {
   title: string;
   intro?: string;
   mark?: [MarkTone, string];
+  /** The tap this step answers: the title takes screen reader focus as it shows. */
+  answer?: unknown;
 }) {
+  const { shown, read } = useFocusOnAnswer<TextHandle>(answer);
+
   return (
-    <View style={styles.heading}>
+    <View ref={shown} style={styles.heading}>
       {mark != null && (
         <View style={styles.mark}>
           <StatusMark tone={mark[0]} word={mark[1]} />
         </View>
       )}
-      <Title size={tokens.typeTitlePhone.size} accessibilityRole="header" style={styles.title}>
+      <Title
+        ref={read}
+        size={tokens.typeTitlePhone.size}
+        accessibilityRole="header"
+        style={styles.title}
+      >
         {title}
       </Title>
       {intro != null && (
@@ -59,12 +71,12 @@ export function Plain({
   );
 }
 
-/** What is wrong, in one line under the field, read out as it comes. */
-export function Says({ words }: { words: string }) {
+/** What is wrong, in one line under the field, read out as it comes; `quiet` for a notice that is not an error. */
+export function Says({ words, quiet = false }: { words: string; quiet?: boolean }) {
   useReadOut(words);
 
   return (
-    <Text size={tokens.typeBody.size} style={styles.says}>
+    <Text size={tokens.typeBody.size} style={[styles.says, quiet && styles.secondary]}>
       {words}
     </Text>
   );

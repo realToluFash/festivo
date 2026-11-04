@@ -13,13 +13,14 @@ Read this, then the per-epic file, then start.
 
 An epic's stories need screens. Some are already drawn in the design project; the rest are
 not. Your job is to find out which is which, design the missing ones **in the existing
-design's language**, build each one, working, in the app's design demo, and link each story
-to the artboard and the demo flow that cover it.
+design's language**, build each one, working, in its design demo (the app's, or the web's
+for a desktop web board), and link each story to the artboard and the demo flow that cover
+it.
 
-**A board is not done until it works in the app.** The owner, 3 Nov 2026: "every design in
+**A board is not done until it works in its demo.** The owner, 3 Nov 2026: "every design in
 the artifact must also have an equivalent implemented in the app, which is more like the
-demo area, that way the devs can just pick from there." See **Step three: build it in the
-app's demo**. Desktop web boards have no demo: the owner asked for the app.
+demo area, that way the devs can just pick from there." sc-29077 gave desktop web boards the
+same rule, in the web's demo. See **Step three: build it in the demo**.
 
 Two things to hold onto throughout:
 
@@ -243,7 +244,12 @@ A form never sends a request it already knows will be refused. Draw this for **e
   own files back to check. This is both the type's instruction and a standing rule on this
   project. If you think a check is needed, ask first.
 
-## Step three: build it in the app's demo
+## Step three: build it in the demo
+
+A phone or tablet board goes in the app's demo, and a desktop web board in the web's
+(below). The rules are the same for both.
+
+### The app's demo
 
 The app has a design demo, kept apart from the product: `apps/mobile/app/demo/` for its
 routes and its list (`app/demo/index.tsx`), and `apps/mobile/src/demo/` for its components,
@@ -252,7 +258,7 @@ rules and sample data. It opens only in development, QA and phone builds
 Developers build the product's screen from it, so it has to be the board, working:
 
 - **Every phone and tablet frame** of the board: phone, tablet portrait and tablet
-  landscape, each as the board draws it. Desktop web is out of scope.
+  landscape, each as the board draws it.
 - **Every state and interaction** the board shows. Fields check before they send, sheets
   open and choose, codes take paste, countdowns count. A state the board shows as a Tweak
   is a link in the demo's list (a route parameter). A control the design does not have,
@@ -270,12 +276,32 @@ Developers build the product's screen from it, so it has to be the board, workin
 - **Rendered before it is reviewed**: run each flow on a phone and a tablet simulator, the
   tablet in both orientations, and on Android. Keep one simulator booted at a time.
 
+### The web's demo
+
+The web has a design demo too (sc-28912), all of it in `apps/web/src/demo/`: its pages and
+their list in `Demo.tsx`, mounted at `/demo/*`, its rules in `rules.ts`, its styles in
+`demo.css`. It opens only in the development, dev and QA environments (`src/demo/gate.ts`).
+A desktop web board is not done until it works there:
+
+- **Every 1280 × 800 frame** of the board, at that size.
+- **Every state** at its own `?state=`, linked from the demo's home, and **every
+  interaction** the board shows.
+- **Sample data only.** The demo sends nothing to the API and signs nobody in.
+- **The web's own components and tokens**: `src/components` and `src/tokens.css`. A part
+  the web has no pattern for is built inside `src/demo/`; the developer moves it into the
+  product.
+- **The web's guards pass**: no inline `style` (eslint), `npm run typecheck` and `npm test`
+  in `apps/web`, and the i18n lint, which already exempts `apps/web/src/demo/` for the
+  board's English. **24 px targets** (WCAG 2.5.8) are checked by eye at 1280 × 800: no test
+  enforces them.
+
 **The pull request.** Build on a branch `ux/sc-N-<slug>` from `origin/main`, with commits per
 outcome (`making-commits`). Open the pull request with `sq ux pr-create`, its body in
 `create-pr`'s shape. The lead reviews it. Answer the lead's threads with `sq ux pr-reply`.
 Fix red checks and run them again with `sq ux rerun`. Once the lead has passed it at its
 head, its threads are resolved and its checks are green, merge it with `sq ux merge`. The
-merge refuses a pull request that changes anything outside the demo area.
+merge refuses a pull request that changes anything outside the two demos
+(`apps/mobile/src/demo/`, `apps/mobile/app/demo/`, `apps/web/src/demo/`).
 
 **The story keeps its state.** A design pull request does not move the story and does not
 tell QA: the story moves when the product is built.
@@ -295,7 +321,9 @@ For each story:
 [fd] as drawn, and `<name>-App.dc.html`, the app today) · page `<epic number> · <area>` ·
 <artifact url>
 
-**Demo:** `<flow title>` in the app's Design demo (`/demo/<route>`) · PR #<number>
+**Demo:** `<flow title>` in the app's Design demo (`/demo/<route>`), and for a desktop web
+board `<page title>` in the web's demo (`/demo/<page>`, states `?state=<a>`, `?state=<b>`) ·
+PR #<number>
 
 **Layouts:** <desktop · tablet landscape · tablet portrait · phone>, and why that set.
 
@@ -336,7 +364,7 @@ section. A partial value deletes the rest.
   `/design-sync` skill, which only the user starts.
 - **Do not change a story's workflow state**, mark anything Done, or create or close
   stories.
-- **Do not write code outside the demo area.** Not a product screen, not a kit component,
+- **Do not write code outside the two demos.** Not a product screen, not a kit component,
   not a token file. The artifact, the demo and the story's Design section are the work;
   `sq ux merge` refuses anything else.
 - **Do not build a screen for a story the design already covers.** Link the existing

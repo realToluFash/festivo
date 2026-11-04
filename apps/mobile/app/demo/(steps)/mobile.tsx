@@ -4,8 +4,8 @@ import { StyleSheet, type TextInputInstance, View } from 'react-native';
 
 import { PrimaryButton } from '../../../src/components/Buttons.tsx';
 import { DemoScreen, NavBar, finish } from '../../../src/demo/DemoScreen.tsx';
-import { InsideField } from '../../../src/demo/InsideField.tsx';
-import { Heading, Plain, Says } from '../../../src/demo/Lines.tsx';
+import { InsideField } from '../../../src/steps/InsideField.tsx';
+import { Heading, Plain, Says } from '../../../src/steps/Lines.tsx';
 import { COUNTRIES, SelectRow } from '../../../src/demo/SelectRow.tsx';
 import { tokens } from '../../../src/theme/tokens.ts';
 

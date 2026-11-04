@@ -4,9 +4,9 @@ import { StyleSheet, type TextInputInstance, View } from 'react-native';
 
 import { PrimaryButton } from '../../../src/components/Buttons.tsx';
 import { DemoScreen, NavBar } from '../../../src/demo/DemoScreen.tsx';
-import { FieldLine, InsideField } from '../../../src/demo/InsideField.tsx';
-import { Heading, Says } from '../../../src/demo/Lines.tsx';
-import { emailLooksRight, passwordLongEnough } from '../../../src/demo/rules.ts';
+import { FieldLine, InsideField } from '../../../src/steps/InsideField.tsx';
+import { Heading, Says } from '../../../src/steps/Lines.tsx';
+import { emailLooksRight, passwordLongEnough } from '../../../src/steps/rules.ts';
 import { tokens } from '../../../src/theme/tokens.ts';
 
 type Blank = { field: 'name' | 'email' | 'password'; words: string } | null;
