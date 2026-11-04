@@ -27,9 +27,9 @@ import {
 
 const NOTE =
   'Only people who manage members see these requests. Nobody is added until one of you approves them.';
-const FIRST_ROLE = 'Read-only';
+const FIRST_ROLE = 'Member';
 
-/** A request to join, on its own screen: Approve with a role, Read-only first; turning it down asks first. */
+/** A request to join, on its own screen: Approve with a role, Member first; turning it down asks first. */
 export function RequestScreen({
   person,
   open,
