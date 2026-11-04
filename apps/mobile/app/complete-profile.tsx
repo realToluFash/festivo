@@ -505,7 +505,7 @@ function Details({
     <StepScreen
       nav={nav}
       foot={
-        !showOffers && (
+        showOffers ? undefined : (
           <PrimaryButton
             label={saving ? t('completeProfile.saving') : t('steps.continue')}
             onPress={() => void save()}
@@ -540,7 +540,7 @@ function Details({
                 setErrors((previous) => ({ ...previous, name: undefined }));
               }}
               state={errors.name != null ? 'blank' : 'plain'}
-              editable={!saving}
+              submitting={saving}
               autoComplete="name"
               textContentType="name"
               autoCapitalize="words"
@@ -681,7 +681,7 @@ function Details({
                   setErrors((previous) => ({ ...previous, organisationName: undefined }));
                 }}
                 state={errors.organisationName != null ? 'blank' : 'plain'}
-                editable={!saving}
+                submitting={saving}
                 maxLength={ORGANISATION_NAME_MAXIMUM}
                 autoComplete="organization"
                 textContentType="organizationName"

@@ -27,9 +27,11 @@ export function useStepsInSheet(): boolean {
 }
 
 /** The steps' bar, with Back and Close leaving within the demo. */
-export function NavBar(props: Omit<ComponentProps<typeof StepsNavBar>, 'onLeft' | 'testID'> & {
-  onLeft?: () => void;
-}) {
+export function NavBar(
+  props: Omit<ComponentProps<typeof StepsNavBar>, 'onLeft' | 'testID'> & {
+    onLeft?: () => void;
+  },
+) {
   const left = props.left ?? 'back';
 
   return (

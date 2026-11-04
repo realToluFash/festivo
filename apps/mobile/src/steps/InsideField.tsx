@@ -33,6 +33,7 @@ export function InsideField({
   onChangeText,
   password = false,
   state = 'plain',
+  submitting = false,
   multiline = false,
   ref,
   testID,
@@ -44,6 +45,8 @@ export function InsideField({
   password?: boolean;
   /** Blank or malformed: a thin red edge and a red label. A refusal shakes the field and leaves its edge. */
   state?: FieldState;
+  /** A request runs: what was typed is held, and the focus and the keys stay. */
+  submitting?: boolean;
   multiline?: boolean;
   ref?: Ref<TextInputInstance> | undefined;
   testID: string;
@@ -55,7 +58,7 @@ export function InsideField({
   const [revealed, setRevealed] = useState(false);
   const raised = focused || value !== '' || multiline;
   const [lift] = useState(() => new Animated.Value(raised ? 1 : 0));
-  const holding = useHeld(false, value, undefined, onChangeText);
+  const holding = useHeld(submitting, value, undefined, onChangeText);
   const labelLine = LABEL_SMALL * 1.35 * fontScale;
 
   useEffect(() => {

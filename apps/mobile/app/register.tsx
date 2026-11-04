@@ -10,7 +10,7 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '../src/api.ts';
 import { PrimaryButton } from '../src/components/Buttons.tsx';
-import { keysStayDown } from '../src/components/Field.tsx';
+import { focusChecked, keysStayDown } from '../src/components/Field.tsx';
 import { Notice } from '../src/components/Notice.tsx';
 import { OrRule, ProviderButtons } from '../src/components/ProviderSignIn.tsx';
 import { dateLocale } from '../src/i18n/index.ts';
@@ -38,11 +38,9 @@ export default function Register() {
   const [password, setPassword] = useState('');
   // Checked before sending; a refusal from the server shows the same way.
   const [checked, setChecked] = useState<Partial<Record<Which, string>>>({});
-  const fields = {
-    name: useRef<TextInputInstance>(null),
-    email: useRef<TextInputInstance>(null),
-    password: useRef<TextInputInstance>(null),
-  };
+  const nameField = useRef<TextInputInstance>(null);
+  const emailField = useRef<TextInputInstance>(null);
+  const passwordField = useRef<TextInputInstance>(null);
   const long = meetsPasswordLength(password);
   const busy = status.kind === 'submitting';
   const locked = status.kind === 'rateLimited';
@@ -61,7 +59,7 @@ export default function Register() {
     return checked[which] ?? refusalWords(refused[which], t);
   }
 
-  async function create(): Promise<void> {
+  async function submit(): Promise<void> {
     if (busy || locked) return;
 
     const found: Partial<Record<Which, string>> = {};
@@ -75,7 +73,7 @@ export default function Register() {
 
     const first = (['name', 'email', 'password'] as const).find((which) => which in found);
     if (first != null) {
-      fields[first].current?.focus();
+      focusChecked({ name: nameField, email: emailField, password: passwordField }[first]);
       return;
     }
 
@@ -114,7 +112,7 @@ export default function Register() {
       foot={
         <PrimaryButton
           label={busy ? t('register.submitting') : t('register.submit')}
-          onPress={() => void create()}
+          onPress={() => void submit()}
           busy={busy}
           off={locked}
           testID="register.submit"
@@ -150,19 +148,19 @@ export default function Register() {
       </View>
       <View style={styles.first}>
         <InsideField
-          ref={fields.name}
+          ref={nameField}
           label={t('register.name')}
           value={name}
           onChangeText={typed('name', setName)}
           state={said.name != null ? 'blank' : 'plain'}
-          editable={!busy}
+          submitting={busy}
           maxLength={ACCOUNT_NAME_MAXIMUM}
           autoCapitalize="words"
           autoComplete="name"
           textContentType="name"
           returnKeyType="next"
           submitBehavior="submit"
-          onSubmitEditing={() => fields.email.current?.focus()}
+          onSubmitEditing={() => emailField.current?.focus()}
           autoFocus={params.email == null}
           testID="register.name"
         />
@@ -170,19 +168,19 @@ export default function Register() {
       </View>
       <View style={styles.next}>
         <InsideField
-          ref={fields.email}
+          ref={emailField}
           label={t('register.email')}
           value={email}
           onChangeText={typed('email', setEmail)}
           state={said.email != null ? 'blank' : 'plain'}
-          editable={!busy}
+          submitting={busy}
           keyboardType="email-address"
           autoCapitalize="none"
           autoComplete="email"
           textContentType="emailAddress"
           returnKeyType="next"
           submitBehavior="submit"
-          onSubmitEditing={() => fields.password.current?.focus()}
+          onSubmitEditing={() => passwordField.current?.focus()}
           autoFocus={params.email != null}
           testID="register.email"
         />
@@ -190,18 +188,18 @@ export default function Register() {
       </View>
       <View style={styles.next}>
         <InsideField
-          ref={fields.password}
+          ref={passwordField}
           label={t('register.password')}
           value={password}
           onChangeText={typed('password', setPassword)}
           password
           state={said.password != null ? 'blank' : 'plain'}
-          editable={!busy}
+          submitting={busy}
           autoComplete="new-password"
           textContentType="newPassword"
           returnKeyType="go"
           submitBehavior="submit"
-          onSubmitEditing={() => void create()}
+          onSubmitEditing={() => void submit()}
           testID="register.password"
         />
         {said.password != null && said.password !== '' ? (
