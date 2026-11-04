@@ -486,7 +486,8 @@
     "failedTitle": "La création du compte n’a pas abouti",
     "failedBody": "Quelque chose s’est mal passé en route. Réessayez dans un instant.",
     "nameBlank": "Saisissez votre nom complet.",
-    "passwordBlank": "Saisissez un mot de passe."
+    "passwordBlank": "Saisissez un mot de passe.",
+    "tooShort": "Utilisez au moins {{count, number}} caractères."
   },
   "account": {
     "title": "Votre compte",
@@ -2246,5 +2247,10 @@
     "staffComing": "La gestion de l’équipe de cet événement arrive bientôt.",
     "budgetComing": "Le budget de cet événement arrive bientôt.",
     "reportsComing": "Les rapports de cet événement arrivent bientôt."
+  },
+  "onboarding": {
+    "step": "Étape {{step, number}} sur 2",
+    "back": "Retour",
+    "noCode": "Pas de code ?"
   }
 }

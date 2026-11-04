@@ -476,7 +476,8 @@
     "failedTitle": "Creating your account did not work",
     "failedBody": "Something went wrong on the way. Try again in a moment.",
     "nameBlank": "Enter your full name.",
-    "passwordBlank": "Enter a password."
+    "passwordBlank": "Enter a password.",
+    "tooShort": "Use at least {{count, number}} characters."
   },
   "account": {
     "title": "Your account",
@@ -2189,5 +2190,10 @@
     "staffComing": "Staffing for this event is coming.",
     "budgetComing": "The budget for this event is coming.",
     "reportsComing": "Reports for this event are coming."
+  },
+  "onboarding": {
+    "step": "Step {{step, number}} of 2",
+    "back": "Back",
+    "noCode": "No code?"
   }
 }

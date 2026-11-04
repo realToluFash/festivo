@@ -486,7 +486,8 @@
     "failedTitle": "No se ha podido crear su cuenta",
     "failedBody": "Algo ha fallado en el camino. Inténtelo de nuevo en un momento.",
     "nameBlank": "Introduzca su nombre completo.",
-    "passwordBlank": "Introduzca una contraseña."
+    "passwordBlank": "Introduzca una contraseña.",
+    "tooShort": "Usa al menos {{count, number}} caracteres."
   },
   "account": {
     "title": "Su cuenta",
@@ -2246,5 +2247,10 @@
     "staffComing": "La organización del personal de este evento llegará pronto.",
     "budgetComing": "El presupuesto de este evento llegará pronto.",
     "reportsComing": "Los informes de este evento llegarán pronto."
+  },
+  "onboarding": {
+    "step": "Paso {{step, number}} de 2",
+    "back": "Atrás",
+    "noCode": "¿No te ha llegado el código?"
   }
 }
