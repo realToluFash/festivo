@@ -617,6 +617,28 @@ describe('the ten recovery codes show in the sheet, a dialog on an iPad (sc-2328
   });
 });
 
+describe('every field reports its focus to the lift (sc-29076)', () => {
+  // An InsideField that never reported left every step's dock at `group: 0`, unseen until tablet landscape.
+  const REPORTED_ELSEWHERE = {
+    'src/components/PasswordField.tsx': 'rendered inside a Field, which reports',
+    'src/components/ListPicker.tsx': 'rendered inside a Field, which reports',
+    'src/steps/CodeBoxes.tsx': 'only on steps with no useAboveKeyboard',
+  };
+
+  it('in every component that renders a TextInput', () => {
+    const offenders = sources(['src', 'app'])
+      .filter(({ text }) => selfClosing('TextInput', text).length > 0)
+      .filter(({ text }) => !/<Field\b|fieldFocused\(/u.test(text))
+      .map(({ path }) => path.replace(/^.*\/apps\/mobile\//u, ''))
+      .filter((path) => !(path in REPORTED_ELSEWHERE));
+
+    expect(
+      offenders,
+      'Render the TextInput inside <Field>, or call fieldFocused on focus.',
+    ).toEqual([]);
+  });
+});
+
 const FOCUS_THROUGH =
   'A refusal focuses through focusChecked or focusRefused: focus() skips a field Android left focused with the keys hidden.';
 
