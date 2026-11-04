@@ -35,7 +35,7 @@ final class EventsCreateGrantTest extends FunctionalTestCase
 
         $this->migrate();
 
-        self::assertSame(1, $this->held(SeededRole::Administrator, $organisation));
+        self::assertSame(1, $this->held(SeededRole::Admin, $organisation));
         self::assertSame(1, $this->held(SeededRole::EventManager, $organisation));
         self::assertSame(0, $this->held(SeededRole::Coordinator, $organisation));
         self::assertSame(0, $this->held(SeededRole::ReadOnly, $organisation));
@@ -50,7 +50,7 @@ final class EventsCreateGrantTest extends FunctionalTestCase
         $this->migrate();
         $this->migrate();
 
-        self::assertSame(1, $this->held(SeededRole::Administrator, $organisation));
+        self::assertSame(1, $this->held(SeededRole::Admin, $organisation));
         self::assertSame(1, $this->held(SeededRole::EventManager, $organisation));
     }
 
@@ -63,7 +63,7 @@ final class EventsCreateGrantTest extends FunctionalTestCase
         self::em()->flush();
 
         foreach (self::em()->getRepository(Role::class)->findBy(['organisation' => $organisation]) as $role) {
-            if (SeededRole::Administrator !== $role->getSeededAs()) {
+            if (SeededRole::Admin !== $role->getSeededAs()) {
                 $role->setPermissions(Vec\filter($role->getPermissions(), static fn (Permission $permission): bool => Permission::EventsCreate !== $permission));
             }
         }

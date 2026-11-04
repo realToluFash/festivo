@@ -33,9 +33,9 @@ final class NotificationWorkerTest extends MessagingTestCase
     public function aMemberAudienceIsTheMembersHoldingThePermissionWhenItIsSent(): void
     {
         $this->member('manager', SeededRole::EventManager);
-        $leaving = $this->member('leaving', SeededRole::Administrator);
+        $leaving = $this->member('leaving', SeededRole::Admin);
         self::scheduler()->schedule('test.notice', 'budget:1', 'payment-1', Trigger::at(new DateTimeImmutable('-1 minute')), $this->budgetHolders(), ['line' => 'Pay the florist']);
-        $this->member('joined', SeededRole::Administrator);
+        $this->member('joined', SeededRole::Admin);
         $membership = self::em()->getRepository(Membership::class)->findOneBy(['user' => $leaving]) ?? self::fail('no membership');
         $membership->setStatus(MembershipStatus::LeftOrRemoved, new DateTimeImmutable());
         self::em()->flush();

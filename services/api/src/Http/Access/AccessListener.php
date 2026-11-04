@@ -68,23 +68,27 @@ final readonly class AccessListener
         $this->require($request, $this->account($route), $organisationId, $policy->permission);
     }
 
-    /** The event is found first, and its organisation's membership checked before any permission. */
+    /** The event is found first, then the caller's grants on it: a Member with no role on it gets the same 404 as an event that does not exist (sc-29912). */
     private function inEvent(Request $request, string $route, InEvent $policy): void
     {
         $eventId = self::uuid($request, $policy->parameter);
         $user = $this->account($route);
         $organisationId = $this->eventDirectory->organisationOf($eventId) ?? throw self::notFound();
 
-        $this->require($request, $user, $organisationId, $policy->permission);
+        $grants = $this->membershipDirectory->grantsOnEvent($user, $organisationId, $eventId) ?? throw self::notFound();
+        $this->check($request, $grants, $policy->permission);
 
         $request->attributes->set(self::EVENT, $eventId);
     }
 
-    /** Not a member reads as not found: a 403 would confirm the organisation or event exists. */
+    /** Not a member reads as not found: a 403 would confirm the organisation exists. */
     private function require(Request $request, User $user, Uuid $organisationId, ?Permission $permission): void
     {
-        $grants = $this->membershipDirectory->grantsIn($user, $organisationId) ?? throw self::notFound();
+        $this->check($request, $this->membershipDirectory->grantsIn($user, $organisationId) ?? throw self::notFound(), $permission);
+    }
 
+    private function check(Request $request, Grants $grants, ?Permission $permission): void
+    {
         if ($grants->isHeldForTwoFactor()) {
             throw new ApiException(ErrorCode::OrganisationTwoFactorOverdue, 'access.two_factor_overdue');
         }

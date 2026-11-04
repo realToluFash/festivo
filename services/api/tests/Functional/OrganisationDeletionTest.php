@@ -175,7 +175,7 @@ final class OrganisationDeletionTest extends ApiTestCase
     #[Test]
     public function onlyAnOwnerDeletes(): void
     {
-        $admin = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Administrator);
+        $admin = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Admin);
         $coordinator = $this->member('chidi@ire.events', 'Chidi Okoro', SeededRole::Coordinator);
 
         $this->delete($admin, 'Ìrè Events');
@@ -193,7 +193,7 @@ final class OrganisationDeletionTest extends ApiTestCase
     #[Test]
     public function aDeletedOrganisationIsRefusedToEveryMemberAtOnce(): void
     {
-        $admin = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Administrator);
+        $admin = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Admin);
         $this->found($this->owner, 'Elsewhere');
         $this->found($admin, 'Bisi Events');
 

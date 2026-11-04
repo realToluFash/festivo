@@ -37,6 +37,8 @@ enum Permission: string
     case BillingRead = 'billing.read';
     case BillingManage = 'billing.manage';
     case OrganisationManage = 'organisation.manage';
+    case PeopleRead = 'people.read';
+    case PeopleManage = 'people.manage';
 
     public function area(): PermissionArea
     {
@@ -55,23 +57,9 @@ enum Permission: string
         return self::EventsCreate === $this || Str\ends_with($this->value, '.manage');
     }
 
-    /** @return list<SeededRole> where a new organisation starts it; Owner holds every one regardless */
+    /** @return list<SeededRole> the organisation roles holding it everywhere: a Member holds nothing but what their roles on events give (sc-29912) */
     public function defaultRoles(): array
     {
-        $everyone = [SeededRole::Owner, SeededRole::Administrator, SeededRole::EventManager, SeededRole::Coordinator, SeededRole::ReadOnly];
-        $managers = [SeededRole::Owner, SeededRole::Administrator, SeededRole::EventManager];
-        $running = [...$managers, SeededRole::Coordinator];
-        $admins = [SeededRole::Owner, SeededRole::Administrator];
-
-        return match ($this) {
-            self::EventsRead, self::GuestsRead, self::SeatingRead, self::MenuRead, self::RunOfShowRead, self::StaffRead,
-            self::MessagesRead, self::ReportsRead, self::BudgetRead => $everyone,
-            self::EventsManage, self::GuestsManage, self::SeatingManage, self::MenuManage, self::RunOfShowManage,
-            self::MessagesManage => $running,
-            self::EventsCreate, self::StaffManage, self::ReportsManage, self::BudgetManage => $managers,
-            self::BudgetMargin, self::VendorsRead, self::VendorsManage, self::MembersRead, self::MembersManage,
-            self::BillingRead, self::OrganisationManage => $admins,
-            self::BillingManage => [SeededRole::Owner],
-        };
+        return self::BillingManage === $this ? [SeededRole::Owner] : [SeededRole::Owner, SeededRole::Admin];
     }
 }

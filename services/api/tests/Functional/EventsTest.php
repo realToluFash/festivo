@@ -331,7 +331,7 @@ final class EventsTest extends ApiTestCase
     /** @return iterable<string, array{SeededRole, bool}> */
     public static function creators(): iterable
     {
-        yield 'an administrator' => [SeededRole::Administrator, true];
+        yield 'an administrator' => [SeededRole::Admin, true];
         yield 'an event manager' => [SeededRole::EventManager, true];
         yield 'a coordinator' => [SeededRole::Coordinator, false];
         yield 'a read-only member' => [SeededRole::ReadOnly, false];
@@ -1130,7 +1130,7 @@ final class EventsTest extends ApiTestCase
     /** @return iterable<string, array{SeededRole, bool}> */
     public static function editors(): iterable
     {
-        yield 'an administrator' => [SeededRole::Administrator, true];
+        yield 'an administrator' => [SeededRole::Admin, true];
         yield 'an event manager' => [SeededRole::EventManager, true];
         yield 'a coordinator' => [SeededRole::Coordinator, true];
         yield 'a read-only member' => [SeededRole::ReadOnly, false];

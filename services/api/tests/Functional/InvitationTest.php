@@ -374,7 +374,7 @@ final class InvitationTest extends ApiTestCase
     {
         [$organisation] = $this->organisation();
         $admin = self::inviter('admin@ire.events', 'Bisi Adeyemi');
-        self::service(MembershipMachine::class)->join($organisation, $admin, $this->role($organisation, SeededRole::Administrator), MembershipStatus::Active, MembershipChannel::Invitation, $admin);
+        self::service(MembershipMachine::class)->join($organisation, $admin, $this->role($organisation, SeededRole::Admin), MembershipStatus::Active, MembershipChannel::Invitation, $admin);
         self::em()->flush();
 
         $body = $this->as($admin)->invite($organisation, 'kemi@example.com', SeededRole::Owner);
@@ -386,7 +386,7 @@ final class InvitationTest extends ApiTestCase
     public function anAdministratorHoldingEveryPermissionStillCannotInviteAnOwner(): void
     {
         [$organisation] = $this->organisation();
-        $administrator = $this->role($organisation, SeededRole::Administrator);
+        $administrator = $this->role($organisation, SeededRole::Admin);
         $administrator->setPermissions(Permission::cases());
         $admin = self::inviter('admin@ire.events', 'Bisi Adeyemi');
         self::service(MembershipMachine::class)->join($organisation, $admin, $administrator, MembershipStatus::Active, MembershipChannel::Invitation, $admin);

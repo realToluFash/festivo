@@ -368,7 +368,7 @@ final class JoinRequestsTest extends ApiTestCase
     {
         self::mockTime(self::ASKED);
         [, $organisation] = $this->organisation();
-        $this->member($organisation, 'tunde@ire.events', SeededRole::Administrator);
+        $this->member($organisation, 'tunde@ire.events', SeededRole::Admin);
         $this->member($organisation, 'bola@ire.events', SeededRole::Coordinator);
         $subject = 'Somebody is waiting to join Ìrè Events';
 

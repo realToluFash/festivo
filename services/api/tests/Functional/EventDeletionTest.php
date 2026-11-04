@@ -140,7 +140,7 @@ final class EventDeletionTest extends ApiTestCase
     /** @return iterable<string, array{SeededRole, bool}> */
     public static function deleters(): iterable
     {
-        yield 'an administrator' => [SeededRole::Administrator, true];
+        yield 'an administrator' => [SeededRole::Admin, true];
         yield 'an event manager' => [SeededRole::EventManager, true];
         yield 'a coordinator' => [SeededRole::Coordinator, false];
         yield 'a read-only member' => [SeededRole::ReadOnly, false];

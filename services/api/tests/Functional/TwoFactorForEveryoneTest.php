@@ -154,7 +154,7 @@ final class TwoFactorForEveryoneTest extends ApiTestCase
     #[Test]
     public function aMemberWithoutTwoFactorIsHeldBackOnceTheSevenDaysAreOver(): void
     {
-        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Administrator);
+        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Admin);
         $this->turnOnTwoFactor($this->owner);
         $this->set(['everyoneNeedsTwoFactor' => true]);
 

@@ -758,7 +758,7 @@ final class EventChangesTest extends MessagingTestCase
 
     private function named(string $name): User
     {
-        $user = $this->member(Str\lowercase(Str\split($name, ' ')[0]), SeededRole::Administrator);
+        $user = $this->member(Str\lowercase(Str\split($name, ' ')[0]), SeededRole::Admin);
         $user->setName($name);
         self::em()->flush();
 

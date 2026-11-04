@@ -78,12 +78,12 @@ final class MembershipMachineTest extends FunctionalTestCase
         $this->machine()->move($membership, MembershipStatus::LeftOrRemoved, MembershipChannel::Invitation, $member);
         self::em()->flush();
 
-        $again = $this->machine()->join($organisation, $member, $this->role($organisation, SeededRole::Administrator), MembershipStatus::Active, MembershipChannel::Invitation, $member);
+        $again = $this->machine()->join($organisation, $member, $this->role($organisation, SeededRole::Admin), MembershipStatus::Active, MembershipChannel::Invitation, $member);
         self::em()->flush();
 
         self::assertTrue($again->getId()->equals($membership->getId()), 'the same row');
         self::assertSame(MembershipStatus::Active, $again->getStatus());
-        self::assertSame(SeededRole::Administrator, $again->getRole()->getSeededAs(), 'with the role they came back with');
+        self::assertSame(SeededRole::Admin, $again->getRole()->getSeededAs(), 'with the role they came back with');
         self::assertCount(1, self::em()->getRepository(Membership::class)->findBy(['organisation' => $organisation, 'user' => $member]));
         self::assertSame(
             [[null, 'active'], ['active', 'left_or_removed'], ['left_or_removed', 'active']],

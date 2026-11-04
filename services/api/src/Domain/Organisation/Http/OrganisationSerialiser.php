@@ -42,8 +42,7 @@ final readonly class OrganisationSerialiser
         return self::organisation($organisation) + [
             'role' => [
                 'id' => $role->getId()->toRfc4122(),
-                'seededAs' => $role->getSeededAs()?->value,
-                'name' => $role->getName(),
+                'seededAs' => $role->getSeededAs()->value,
             ],
             // The same as GET /api/orgs/{id}/permissions, so a client hides what it cannot use without asking twice.
             'permissions' => Vec\map(Vec\filter($role->getPermissions(), $grants->allows(...)), $name),

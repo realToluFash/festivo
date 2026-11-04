@@ -71,20 +71,20 @@ final class RolesTest extends ApiTestCase
         $everything = Vec\map(Permission::cases(), static fn (Permission $permission): string => $permission->value);
         self::assertSame($everything, $this->as($this->owner, 'GET', $this->path('permissions'))['permissions']);
 
-        foreach ([SeededRole::Administrator, SeededRole::EventManager, SeededRole::Coordinator, SeededRole::ReadOnly] as $seeded) {
+        foreach ([SeededRole::Admin, SeededRole::EventManager, SeededRole::Coordinator, SeededRole::ReadOnly] as $seeded) {
             $member = $this->member(Str\format('%s@ire.events', $seeded->value), $seeded);
             $held = Type\vec(Type\string())->coerce($this->as($member, 'GET', $this->path('permissions'))['permissions']);
 
             self::assertSame(Vec\map($seeded->defaults(), static fn (Permission $permission): string => $permission->value), $held, $seeded->value);
-            self::assertSame(SeededRole::Administrator === $seeded, Iter\contains($held, 'budget.margin'), $seeded->value);
-            self::assertSame(SeededRole::Administrator === $seeded, Iter\contains($held, 'vendors.manage'), $seeded->value);
+            self::assertSame(SeededRole::Admin === $seeded, Iter\contains($held, 'budget.margin'), $seeded->value);
+            self::assertSame(SeededRole::Admin === $seeded, Iter\contains($held, 'vendors.manage'), $seeded->value);
         }
     }
 
     #[Test]
     public function aPermittedMemberEditsASeededRoleAndItsHoldersFollow(): void
     {
-        $admin = $this->member('admin@ire.events', SeededRole::Administrator);
+        $admin = $this->member('admin@ire.events', SeededRole::Admin);
         $coordinator = $this->member('coordinator@ire.events', SeededRole::Coordinator);
         $role = $this->seeded(SeededRole::Coordinator);
 
@@ -97,8 +97,8 @@ final class RolesTest extends ApiTestCase
     #[Test]
     public function aMemberGrantsAndWithdrawsOnlyWhatTheyHold(): void
     {
-        $admin = $this->member('admin@ire.events', SeededRole::Administrator);
-        $administrator = $this->seeded(SeededRole::Administrator);
+        $admin = $this->member('admin@ire.events', SeededRole::Admin);
+        $administrator = $this->seeded(SeededRole::Admin);
         $held = $this->as($admin, 'GET', $this->path('permissions'))['permissions'];
         $raised = [...Type\vec(Type\string())->coerce($held), 'billing.manage'];
 
@@ -129,7 +129,7 @@ final class RolesTest extends ApiTestCase
     #[Test]
     public function aMemberMovesARolesPeopleOnlyOntoARoleTheyHoldAllOf(): void
     {
-        $admin = $this->member('admin@ire.events', SeededRole::Administrator);
+        $admin = $this->member('admin@ire.events', SeededRole::Admin);
         $accounts = Type\string()->coerce($this->as($this->owner, 'POST', $this->path('roles'), ['name' => 'Accounts', 'permissions' => ['billing.read', 'billing.manage']])['id']);
         $door = Type\string()->coerce($this->as($admin, 'POST', $this->path('roles'), ['name' => 'Door team', 'permissions' => ['events.read']])['id']);
         $this->member('tope@ire.events', null, $door);
@@ -145,9 +145,9 @@ final class RolesTest extends ApiTestCase
     #[Test]
     public function removingARoleNeverMovesItsPeopleOntoOwnerEvenForAnOwner(): void
     {
-        $administrator = self::em()->find(Role::class, $this->seeded(SeededRole::Administrator)) ?? self::fail('no administrator role');
+        $administrator = self::em()->find(Role::class, $this->seeded(SeededRole::Admin)) ?? self::fail('no administrator role');
         $administrator->setPermissions(Permission::cases());
-        $admin = $this->member('admin@ire.events', SeededRole::Administrator);
+        $admin = $this->member('admin@ire.events', SeededRole::Admin);
         $door = Type\string()->coerce($this->as($this->owner, 'POST', $this->path('roles'), ['name' => 'Door team', 'permissions' => ['events.read']])['id']);
         $people = [
             $this->member('tope@ire.events', null, $door),
@@ -289,7 +289,7 @@ final class RolesTest extends ApiTestCase
     #[Test]
     public function renamingNeedsOnlyRoleManagementNotWhatTheRoleHolds(): void
     {
-        $admin = $this->member('admin@ire.events', SeededRole::Administrator);
+        $admin = $this->member('admin@ire.events', SeededRole::Admin);
         $finance = Type\string()->coerce($this->as($this->owner, 'POST', $this->path('roles'), ['name' => 'Finance', 'permissions' => ['billing.read', 'billing.manage']])['id']);
 
         $this->as($admin, 'PATCH', $this->path('roles/' . $finance), ['name' => 'Accounts', 'permissions' => ['billing.read', 'billing.manage']]);
@@ -491,7 +491,7 @@ final class RolesTest extends ApiTestCase
     public function theLastOwnerCannotBeMovedOffOwner(): void
     {
         $membership = self::em()->getRepository(Membership::class)->findOneBy(['user' => $this->owner]) ?? self::fail('no membership');
-        $admin = self::em()->getRepository(Role::class)->findOneBy(['organisation' => $this->organisation, 'seededAs' => SeededRole::Administrator]) ?? self::fail('no role');
+        $admin = self::em()->getRepository(Role::class)->findOneBy(['organisation' => $this->organisation, 'seededAs' => SeededRole::Admin]) ?? self::fail('no role');
 
         try {
             self::service(RoleAssignment::class)->assign($membership, $admin);
@@ -559,7 +559,7 @@ final class RolesTest extends ApiTestCase
     #[Test]
     public function anAdministratorAnswersRequestsToGetBackIn(): void
     {
-        $admin = $this->member('admin@ire.events', SeededRole::Administrator);
+        $admin = $this->member('admin@ire.events', SeededRole::Admin);
         $person = $this->member('person@ire.events', SeededRole::Coordinator);
 
         $approvers = Vec\map(self::service(RecoveryApprovers::class)->for($person), static fn (User $user): string => $user->getId()->toRfc4122());

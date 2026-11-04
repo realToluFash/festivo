@@ -17,6 +17,7 @@ use App\Enum\MembershipStatus;
 use App\Enum\SeededRole;
 use App\Enum\Suspension;
 use App\Http\Exception\ApiException;
+use App\Repository\EventPersonRepository;
 use App\Repository\MembershipRepository;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
@@ -33,6 +34,7 @@ final readonly class MembershipMachine
         private TranslatorInterface $translator,
         private ClockInterface $clock,
         private RemovalClock $removalClock,
+        private EventPersonRepository $eventPersonRepository,
     ) {
     }
 
@@ -66,13 +68,13 @@ final readonly class MembershipMachine
         return $existing;
     }
 
-    /** A request to join, through any channel, waits for somebody who manages members (sc-392), as Read-only until they choose a role. */
+    /** A request to join, through any channel, waits for somebody who manages members (sc-392), as Member until they choose a role. */
     public function ask(Organisation $organisation, User $user, MembershipChannel $channel): Membership
     {
-        $readOnly = $this->entityManager->getRepository(Role::class)->findOneBy(['organisation' => $organisation, 'seededAs' => SeededRole::ReadOnly])
+        $member = $this->entityManager->getRepository(Role::class)->findOneBy(['organisation' => $organisation, 'seededAs' => SeededRole::Member])
             ?? throw new ApiException(ErrorCode::InternalError, 'The organisation is missing a seeded role.');
 
-        return $this->join($organisation, $user, $readOnly, MembershipStatus::PendingApproval, $channel, $user);
+        return $this->join($organisation, $user, $member, MembershipStatus::PendingApproval, $channel, $user);
     }
 
     /** `$at` is the instant it happened, when that is not now: a request removed at its deadline (sc-392). A move to suspended says why. */
@@ -87,6 +89,11 @@ final readonly class MembershipMachine
         } else {
             $membership->setSuspension(null, null);
             $membership->setRemovesAt(null);
+        }
+
+        // A suspension keeps the roles on events, for a restore to bring back; leaving or removal ends them (sc-29912).
+        if (MembershipStatus::LeftOrRemoved === $to) {
+            $this->eventPersonRepository->deleteFor($membership);
         }
 
         $this->record($membership, $from, $to, $channel, $actor, $now);

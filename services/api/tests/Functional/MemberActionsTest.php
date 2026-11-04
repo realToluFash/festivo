@@ -61,7 +61,7 @@ final class MemberActionsTest extends ApiTestCase
     #[Test]
     public function aDemotedMemberLosesThePermissionOnTheirNextRequest(): void
     {
-        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Administrator);
+        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Admin);
         $token = $this->token($bisi);
         $this->bearing($token, 'GET', $this->path('/members'));
         self::assertSame(200, $this->statusCode());
@@ -78,7 +78,7 @@ final class MemberActionsTest extends ApiTestCase
     #[Test]
     public function nobodyChangesTheirOwnRoleOrRemovesThemselves(): void
     {
-        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Administrator);
+        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Admin);
         $own = $this->membershipOf($bisi);
 
         $changed = $this->as($bisi, 'PATCH', $this->path('/members/' . $own), ['roleId' => $this->roleId(SeededRole::Coordinator)]);
@@ -87,14 +87,14 @@ final class MemberActionsTest extends ApiTestCase
 
         $this->as($bisi, 'DELETE', $this->path('/members/' . $own));
         self::assertSame(409, $this->statusCode());
-        self::assertSame(SeededRole::Administrator, $this->roleOf($bisi));
+        self::assertSame(SeededRole::Admin, $this->roleOf($bisi));
     }
 
     #[Test]
     public function onlyAnOwnerChangesAnOwnersRole(): void
     {
         $this->member('kemi@ire.events', 'Kemi Lawal', SeededRole::Owner);
-        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Administrator);
+        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Admin);
 
         $body = $this->as($bisi, 'PATCH', $this->path('/members/' . $this->membershipOf($this->owner)), ['roleId' => $this->roleId(SeededRole::ReadOnly)]);
 
@@ -106,9 +106,9 @@ final class MemberActionsTest extends ApiTestCase
     #[Test]
     public function anAdministratorMakesNobodyAnOwner(): void
     {
-        $this->role(SeededRole::Administrator)->setPermissions(Permission::cases());
+        $this->role(SeededRole::Admin)->setPermissions(Permission::cases());
         self::em()->flush();
-        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Administrator);
+        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Admin);
         $chidi = $this->member('chidi@ire.events', 'Chidi Okoro', SeededRole::Coordinator);
 
         $body = $this->as($bisi, 'PATCH', $this->path('/members/' . $this->membershipOf($chidi)), ['roleId' => $this->roleId(SeededRole::Owner)]);
@@ -122,7 +122,7 @@ final class MemberActionsTest extends ApiTestCase
     #[Test]
     public function anAdministratorWithAProofStillMakesNobodyAnOwner(): void
     {
-        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Administrator);
+        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Admin);
         $chidi = $this->member('chidi@ire.events', 'Chidi Okoro', SeededRole::Coordinator);
         $proof = $this->as($bisi, 'POST', '/api/auth/proof', ['password' => self::PASSWORD])['proof'] ?? null;
 
@@ -136,20 +136,20 @@ final class MemberActionsTest extends ApiTestCase
     #[Test]
     public function anOwnerMakesAnotherOwnerOnlyWithARecentProof(): void
     {
-        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Administrator);
+        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Admin);
         $chidi = $this->member('chidi@ire.events', 'Chidi Okoro', SeededRole::Coordinator);
         $toOwner = ['roleId' => $this->roleId(SeededRole::Owner)];
 
         $refused = $this->as($this->owner, 'PATCH', $this->path('/members/' . $this->membershipOf($bisi)), $toOwner);
         self::assertSame(403, $this->statusCode(), Json\encode($refused));
         self::assertSame(ErrorCode::ProofRequired->type(), $refused['type'] ?? null);
-        self::assertSame(SeededRole::Administrator, $this->roleOf($bisi));
+        self::assertSame(SeededRole::Admin, $this->roleOf($bisi));
         self::assertSame(0, $this->audited(MemberActions::ROLE_CHANGED));
 
         $theirs = $this->as($bisi, 'POST', '/api/auth/proof', ['password' => self::PASSWORD])['proof'] ?? null;
         $this->as($this->owner, 'PATCH', $this->path('/members/' . $this->membershipOf($bisi)), [...$toOwner, 'proof' => $theirs]);
         self::assertSame(403, $this->statusCode());
-        self::assertSame(SeededRole::Administrator, $this->roleOf($bisi));
+        self::assertSame(SeededRole::Admin, $this->roleOf($bisi));
 
         $proof = $this->as($this->owner, 'POST', '/api/auth/proof', ['password' => self::PASSWORD])['proof'] ?? null;
         $this->as($this->owner, 'PATCH', $this->path('/members/' . $this->membershipOf($bisi)), [...$toOwner, 'proof' => $proof]);
@@ -164,7 +164,7 @@ final class MemberActionsTest extends ApiTestCase
     #[Test]
     public function nobodyChangesSuspendsOrRemovesAMemberWhoseRoleHoldsWhatTheyLack(): void
     {
-        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Administrator);
+        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Admin);
         $chidi = $this->member('chidi@ire.events', 'Chidi Okoro', SeededRole::Coordinator);
         $this->financeFor($chidi);
         $membership = $this->membershipOf($chidi);
@@ -190,7 +190,7 @@ final class MemberActionsTest extends ApiTestCase
     #[Test]
     public function nobodyRestoresAMemberWhoseRoleHoldsWhatTheyLack(): void
     {
-        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Administrator);
+        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Admin);
         $chidi = $this->member('chidi@ire.events', 'Chidi Okoro', SeededRole::Coordinator);
         $this->financeFor($chidi);
         $this->as($this->owner, 'POST', $this->path('/members/' . $this->membershipOf($chidi) . '/suspend'));
@@ -326,13 +326,13 @@ final class MemberActionsTest extends ApiTestCase
     #[Test]
     public function aTransferNeedsTheOwnerToProveItIsThemFirst(): void
     {
-        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Administrator);
+        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Admin);
 
         $body = $this->as($this->owner, 'POST', $this->path('/ownership'), ['membershipId' => $this->membershipOf($bisi)]);
 
         self::assertSame(403, $this->statusCode(), Json\encode($body));
         self::assertSame(ErrorCode::ProofRequired->type(), $body['type'] ?? null);
-        self::assertSame([SeededRole::Owner, SeededRole::Administrator], [$this->roleOf($this->owner), $this->roleOf($bisi)]);
+        self::assertSame([SeededRole::Owner, SeededRole::Admin], [$this->roleOf($this->owner), $this->roleOf($bisi)]);
     }
 
     #[Test]
@@ -343,7 +343,7 @@ final class MemberActionsTest extends ApiTestCase
         $this->transfer($this->membershipOf($chidi));
         self::assertSame(204, $this->statusCode());
 
-        self::assertSame([SeededRole::Administrator, SeededRole::Owner], [$this->roleOf($this->owner), $this->roleOf($chidi)]);
+        self::assertSame([SeededRole::Admin, SeededRole::Owner], [$this->roleOf($this->owner), $this->roleOf($chidi)]);
         $mails = Vec\filter(self::getMailerMessages(), static fn (object $message): bool => $message instanceof Email && 'Ìrè Events has a new owner' === $message->getSubject());
         self::assertSame(
             ['chidi@ire.events', 'folake@ire.events'],
@@ -355,7 +355,7 @@ final class MemberActionsTest extends ApiTestCase
     #[Test]
     public function aTransferIsWithheldFromAnOwnerWithoutTheTwoFactorTheOrganisationRequires(): void
     {
-        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Administrator);
+        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Admin);
         $this->organisation->setAdministratorsNeedTwoFactor(true);
         self::em()->flush();
 
@@ -363,7 +363,7 @@ final class MemberActionsTest extends ApiTestCase
 
         self::assertSame(403, $this->statusCode(), Json\encode($body));
         self::assertSame(ErrorCode::OrganisationTwoFactorRequired->type(), $body['type'] ?? null);
-        self::assertSame([SeededRole::Owner, SeededRole::Administrator], [$this->roleOf($this->owner), $this->roleOf($bisi)]);
+        self::assertSame([SeededRole::Owner, SeededRole::Admin], [$this->roleOf($this->owner), $this->roleOf($bisi)]);
     }
 
     #[Test]
@@ -378,7 +378,7 @@ final class MemberActionsTest extends ApiTestCase
     #[Test]
     public function onlyAnOwnerTransfers(): void
     {
-        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Administrator);
+        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Admin);
         $chidi = $this->member('chidi@ire.events', 'Chidi Okoro', SeededRole::Coordinator);
         $proof = $this->as($bisi, 'POST', '/api/auth/proof', ['password' => self::PASSWORD]);
 
@@ -429,7 +429,7 @@ final class MemberActionsTest extends ApiTestCase
     public function nobodySuspendsThemselvesOrAnOwnerOrWithoutManagingMembers(): void
     {
         $kemi = $this->member('kemi@ire.events', 'Kemi Lawal', SeededRole::Owner);
-        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Administrator);
+        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Admin);
         $chidi = $this->member('chidi@ire.events', 'Chidi Okoro', SeededRole::Coordinator);
 
         foreach ([[$bisi, $bisi], [$this->owner, $kemi], [$bisi, $this->owner], [$chidi, $bisi]] as [$by, $whom]) {
@@ -463,7 +463,7 @@ final class MemberActionsTest extends ApiTestCase
     public function restoringWaitsForAFreeTeamSeatAndSuspendingFreesOne(): void
     {
         $this->seats('2');
-        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Administrator);
+        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Admin);
         $chidi = $this->member('chidi@ire.events', 'Chidi Okoro', SeededRole::Coordinator);
         $this->as($this->owner, 'POST', $this->path('/members/' . $this->membershipOf($chidi) . '/suspend'));
 
@@ -486,7 +486,7 @@ final class MemberActionsTest extends ApiTestCase
         $chidi = $this->member('chidi@ire.events', 'Chidi Okoro', SeededRole::Coordinator);
         $this->as($this->owner, 'POST', $this->path('/members/' . $this->membershipOf($chidi) . '/suspend'));
 
-        $refused = $this->as($this->owner, 'PATCH', $this->path('/members/' . $this->membershipOf($chidi)), ['roleId' => $this->roleId(SeededRole::Administrator)]);
+        $refused = $this->as($this->owner, 'PATCH', $this->path('/members/' . $this->membershipOf($chidi)), ['roleId' => $this->roleId(SeededRole::Admin)]);
 
         self::assertSame(409, $this->statusCode(), Json\encode($refused));
         self::assertSame(ErrorCode::Conflict->type(), $refused['type'] ?? null);
@@ -511,7 +511,7 @@ final class MemberActionsTest extends ApiTestCase
         $this->as($this->owner, 'DELETE', $this->path('/domains/ire.events'));
         self::assertSame(200, $this->statusCode());
 
-        $refused = $this->as($this->owner, 'PATCH', $this->path('/members/' . $this->membershipOf($chidi)), ['roleId' => $this->roleId(SeededRole::Administrator)]);
+        $refused = $this->as($this->owner, 'PATCH', $this->path('/members/' . $this->membershipOf($chidi)), ['roleId' => $this->roleId(SeededRole::Admin)]);
 
         self::assertSame(409, $this->statusCode(), Json\encode($refused));
         self::assertSame(ErrorCode::Conflict->type(), $refused['type'] ?? null);
