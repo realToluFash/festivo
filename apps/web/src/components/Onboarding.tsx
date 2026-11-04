@@ -87,11 +87,14 @@ function Chevron() {
 /** "No code? Send a new code in 0:41", the countdown's button a link once it ends; the note under it. */
 export function ResendLine({
   resending,
+  lead,
   note,
   onResend,
   children,
 }: {
   resending: ReturnType<typeof useResendCountdown>;
+  /** In place of "No code?". */
+  lead?: string;
   note: string;
   onResend: () => void;
   children?: ReactNode;
@@ -101,7 +104,7 @@ export function ResendLine({
   return (
     <div className="auth-resend">
       <p className="auth-resend-line">
-        <span>{t('onboarding.noCode')}</span>
+        <span>{lead ?? t('onboarding.noCode')}</span>
         <button className="link-button" type="button" {...resending.button} onClick={onResend}>
           {resending.label}
         </button>

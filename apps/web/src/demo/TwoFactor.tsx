@@ -1,3 +1,4 @@
+import { shapeRecovery } from '@soirely/domain';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router';
 
@@ -14,7 +15,6 @@ import {
   codeLine,
   dayOfTime,
   fullNumber,
-  shapeRecovery,
   timeOfDay,
   twoFactorAt,
 } from './rules.ts';

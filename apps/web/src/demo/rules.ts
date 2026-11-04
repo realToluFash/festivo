@@ -116,16 +116,6 @@ export function codeDigits(typed: string): string {
   return typed.replace(/\D/g, '').slice(0, CODE_LENGTH);
 }
 
-/** Lower case, letters and digits, the dash put in after the fourth: "VTXPRH7Y" is "vtxp-rh7y". */
-export function shapeRecovery(typed: string): string {
-  const plain = typed
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, '')
-    .slice(0, 8);
-
-  return plain.length > 4 ? `${plain.slice(0, 4)}-${plain.slice(4)}` : plain;
-}
-
 export function codeLine(code: string, from: string): string | null {
   if (code === '') return `Enter the ${CODE_LENGTH}-digit code from ${from}.`;
   if (code.length < CODE_LENGTH) return `The code is ${CODE_LENGTH} digits.`;
