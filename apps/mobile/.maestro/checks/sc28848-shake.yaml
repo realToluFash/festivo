@@ -1,4 +1,4 @@
-# The demo's two-factor boxes: a wrong code shakes them; judge on the recording, with animations on. sc-28848.
+# The demo's two-factor boxes: a wrong code shakes them; judge on the recording, with animations on. Needs ${METRO_URL}. sc-28848.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/demo/two-factor
