@@ -315,6 +315,21 @@ describe('getting back in without the authenticator', () => {
     }
   });
 
+  it('counts one code with no verified phone (sc-29957)', async () => {
+    await atTheStart({
+      'POST /api/auth/two-factor/recovery/opening': () => json({ ...OPENING, phone: null }),
+      'POST /api/auth/two-factor/recovery': () =>
+        json({ recovery: 'handle', state: { ...PROVING, phone: null } }, 201),
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Send the codes' }));
+    await screen.findByRole('heading', { level: 1, name: 'Enter the code' });
+
+    expect(screen.getByText('No code?')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Send a new code in 0:42' })).toBeDefined();
+    expect(screen.getByText('A new code replaces the last one.')).toBeDefined();
+    expect(screen.queryByText(/new codes/i)).toBeNull();
+  });
+
   it('goes back to Enter your code from Start’s ‹ Back, beside Back to sign in (sc-29068)', async () => {
     await atTheStart({});
 
