@@ -10,11 +10,11 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import { useTranslation } from 'react-i18next';
 import Svg, { Circle, Path } from 'react-native-svg';
+import { useTranslation } from 'react-i18next';
 
-import { FocusEdge, useHeld } from './Field.tsx';
-import { Text } from './Text.tsx';
+import { FocusEdge, useHeld } from '../components/Field.tsx';
+import { Text } from '../components/Text.tsx';
 import { FIELD_DEFAULTS, fieldName, passwordProps } from '../kit/fields.ts';
 import { glide } from '../motion.ts';
 import { inputFaced } from '../theme/fonts.ts';
@@ -46,10 +46,10 @@ export function InsideField({
   defaultValue?: string;
   onChangeText?: (text: string) => void;
   password?: boolean;
-  /** Held while a submit runs: focused and the keys up, but nothing typed is taken. */
-  submitting?: boolean;
   /** Blank or malformed: a thin red edge and a red label. A refusal shakes the field and leaves its edge. */
   state?: FieldState;
+  /** A request runs: what was typed is held, and the focus and the keys stay. */
+  submitting?: boolean;
   multiline?: boolean;
   ref?: Ref<TextInputInstance> | undefined;
   testID: string;
@@ -131,7 +131,7 @@ export function InsideField({
           style={styles.eye}
           onPress={() => setRevealed((shown) => !shown)}
           accessibilityRole="button"
-          accessibilityLabel={revealed ? t('signIn.hidePassword') : t('signIn.showPassword')}
+          accessibilityLabel={revealed ? t('steps.hidePassword') : t('steps.showPassword')}
           testID={`${testID}.reveal`}
         >
           <Svg

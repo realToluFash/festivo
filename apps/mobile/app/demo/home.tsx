@@ -6,8 +6,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SecondaryButton } from '../../src/components/Buttons.tsx';
 import { Toast } from '../../src/components/Toast.tsx';
 import { useSystemBack } from '../../src/components/useSystemBack.ts';
-import { DemoScreen } from '../../src/components/DemoScreen.tsx';
-import { Heading, Plain } from '../../src/components/Lines.tsx';
+import { DemoScreen } from '../../src/demo/DemoScreen.tsx';
+import { Heading, Plain } from '../../src/steps/Lines.tsx';
 import { SAMPLE } from '../../src/demo/samples.ts';
 import { tokens } from '../../src/theme/tokens.ts';
 

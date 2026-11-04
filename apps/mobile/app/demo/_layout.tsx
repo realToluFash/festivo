@@ -1,7 +1,7 @@
 import { Redirect, Stack } from 'expo-router';
 
 import { config } from '../../src/config.ts';
-import { useStepsInSheet } from '../../src/components/DemoScreen.tsx';
+import { useStepsInSheet } from '../../src/demo/DemoScreen.tsx';
 import { demoOpens } from '../../src/demo/gate.ts';
 import { useReducedMotion } from '../../src/reducedMotion.ts';
 import { tokens } from '../../src/theme/tokens.ts';

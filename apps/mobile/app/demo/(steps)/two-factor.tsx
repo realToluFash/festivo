@@ -3,10 +3,9 @@ import { useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { QuietButton } from '../../../src/components/Buttons.tsx';
-import { CodeBoxes, type CodeBoxesHandle } from '../../../src/demo/CodeBoxes.tsx';
-import { DemoScreen } from '../../../src/components/DemoScreen.tsx';
-import { NavBar, finish } from '../../../src/demo/flow.tsx';
-import { Confirmed, Heading, Says } from '../../../src/components/Lines.tsx';
+import { CodeBoxes, type CodeBoxesHandle } from '../../../src/steps/CodeBoxes.tsx';
+import { DemoScreen, NavBar, finish } from '../../../src/demo/DemoScreen.tsx';
+import { Confirmed, Heading, Says } from '../../../src/steps/Lines.tsx';
 import { SAMPLE } from '../../../src/demo/samples.ts';
 import { tokens } from '../../../src/theme/tokens.ts';
 

@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import {
   createContext,
   type ReactNode,
@@ -19,13 +20,12 @@ import {
   View,
   type ViewInstance,
 } from 'react-native';
-import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
-import { QuietButton } from './Buttons.tsx';
-import { keyboardTopNow, useKeysUp, watchKeyboardTop } from './keyboardWatch.ts';
-import { SETTLED_MS, useWindowOrigin } from './Screen.tsx';
+import { QuietButton } from '../components/Buttons.tsx';
+import { keyboardTopNow, useKeysUp, watchKeyboardTop } from '../components/keyboardWatch.ts';
+import { SETTLED_MS, useWindowOrigin } from '../components/Screen.tsx';
 import { keysOver } from '../kit/keyboard.ts';
 import { useLayout } from '../layout/useLayout.ts';
 import { glide } from '../motion.ts';
@@ -40,6 +40,7 @@ export function useInSheet(): boolean {
   return useContext(InSheet);
 }
 
+/** On iPad the steps come up as a sheet; on a phone they fill the screen. */
 export function useStepsInSheet(): boolean {
   const { kind } = useLayout();
 
@@ -53,12 +54,14 @@ export function NavBar({
   onLeft,
   step,
   right,
+  testID = 'steps',
 }: {
   left?: NavLeft;
-  onLeft?: () => void;
+  onLeft: () => void;
   /** Which step of how many; a half step is a step just done, its bar part way to the next. */
   step?: readonly [number, number];
   right?: { label: string; onPress: () => void };
+  testID?: string;
 }) {
   const { t } = useTranslation();
 
@@ -69,9 +72,9 @@ export function NavBar({
           style={styles.icon}
           onPress={onLeft}
           accessibilityRole="button"
-          accessibilityLabel={left === 'back' ? t('signIn.back') : t('signIn.close')}
+          accessibilityLabel={left === 'back' ? t('steps.back') : t('steps.close')}
           hitSlop={tokens.spaceXxs}
-          testID={`demo.${left}`}
+          testID={`${testID}.${left}`}
         >
           <Svg
             width={tokens.space3xl}
@@ -87,13 +90,13 @@ export function NavBar({
           </Svg>
         </Pressable>
       ) : left != null ? (
-        <QuietButton label={left.label} onPress={left.onPress} testID="demo.left" />
+        <QuietButton label={left.label} onPress={left.onPress} testID={`${testID}.left`} />
       ) : (
         <View style={styles.spare} />
       )}
       {step != null ? <StepBar step={step[0]} steps={step[1]} /> : <View style={styles.grow} />}
       {right != null ? (
-        <QuietButton label={right.label} onPress={right.onPress} testID="demo.right" />
+        <QuietButton label={right.label} onPress={right.onPress} testID={`${testID}.right`} />
       ) : (
         <View style={styles.spare} />
       )}
@@ -109,6 +112,7 @@ const CLOSE = 'M6 6l12 12M18 6 6 18';
 
 /** Fills from the step before to this one as the screen comes in; a screen reader hears "Step 2 of 4". */
 export function StepBar({ step, steps }: { step: number; steps: number }) {
+  const { t } = useTranslation();
   const reduced = useReducedMotion();
   const whole = Math.ceil(step);
   const [fill] = useState(() => new Animated.Value(stepFill(Math.max(0, step - 1), steps)));
@@ -132,7 +136,7 @@ export function StepBar({ step, steps }: { step: number; steps: number }) {
       style={styles.track}
       accessible
       accessibilityRole="progressbar"
-      accessibilityLabel={`Step ${Math.min(whole, steps)} of ${steps}`}
+      accessibilityLabel={t('steps.stepOf', { step: Math.min(whole, steps), steps })}
       accessibilityValue={{ min: 0, max: steps, now: Math.min(whole, steps) }}
     >
       <Animated.View style={[styles.fill, { transform: [{ scaleX: fill }] }]} />
@@ -187,7 +191,7 @@ function useKeysCover(
   return cover;
 }
 
-export function DemoScreen({
+export function StepScreen({
   nav,
   children,
   foot,

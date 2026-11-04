@@ -1,7 +1,6 @@
 import { PrimaryButton, QuietButton } from '../../../src/components/Buttons.tsx';
-import { DemoScreen } from '../../../src/components/DemoScreen.tsx';
-import { finish } from '../../../src/demo/flow.tsx';
-import { Heading, Plain } from '../../../src/components/Lines.tsx';
+import { DemoScreen, finish } from '../../../src/demo/DemoScreen.tsx';
+import { Heading, Plain } from '../../../src/steps/Lines.tsx';
 import { tokens } from '../../../src/theme/tokens.ts';
 
 /** Signed in after a confirmed request: set it up again, or not now. */

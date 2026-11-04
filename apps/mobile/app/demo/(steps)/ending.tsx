@@ -3,9 +3,8 @@ import { useState } from 'react';
 
 import { PrimaryButton } from '../../../src/components/Buttons.tsx';
 import type { MarkTone } from '../../../src/components/StatusMark.tsx';
-import { DemoScreen } from '../../../src/components/DemoScreen.tsx';
-import { NavBar } from '../../../src/demo/flow.tsx';
-import { Heading, Plain } from '../../../src/components/Lines.tsx';
+import { DemoScreen, NavBar } from '../../../src/demo/DemoScreen.tsx';
+import { Heading, Plain } from '../../../src/steps/Lines.tsx';
 import { SAMPLE } from '../../../src/demo/samples.ts';
 import { tokens } from '../../../src/theme/tokens.ts';
 

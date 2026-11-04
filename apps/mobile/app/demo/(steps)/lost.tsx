@@ -1,9 +1,8 @@
 import { router, useLocalSearchParams } from 'expo-router';
 
 import { PrimaryButton } from '../../../src/components/Buttons.tsx';
-import { DemoScreen } from '../../../src/components/DemoScreen.tsx';
-import { NavBar } from '../../../src/demo/flow.tsx';
-import { Heading, Plain, Steps } from '../../../src/components/Lines.tsx';
+import { DemoScreen, NavBar } from '../../../src/demo/DemoScreen.tsx';
+import { Heading, Plain, Steps } from '../../../src/steps/Lines.tsx';
 import { SAMPLE } from '../../../src/demo/samples.ts';
 import { tokens } from '../../../src/theme/tokens.ts';
 

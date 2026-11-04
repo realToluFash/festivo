@@ -43,6 +43,7 @@ export function ListPicker({
   onChange,
   disabled = false,
   readOnly = false,
+  shown: drawn,
   pickerRef,
   testID,
 }: {
@@ -55,6 +56,8 @@ export function ListPicker({
   disabled?: boolean;
   /** Drawn and announced as a field that can't change, not as one that is only busy. */
   readOnly?: boolean;
+  /** Drawn in place of the chosen name, as a phone's "🇬🇧 +44" is; the screen reader still hears the name. */
+  shown?: string | undefined;
   /** For moving screen-reader focus here when it is the field refused first. */
   pickerRef?: Ref<ViewInstance> | undefined;
   testID: string;
@@ -110,7 +113,11 @@ export function ListPicker({
     <>
       <Pressable
         ref={pickerRef}
-        style={[styles.field, readOnly && styles.fieldReadOnly]}
+        style={[
+          styles.field,
+          readOnly && styles.fieldReadOnly,
+          drawn != null && styles.fieldCompact,
+        ]}
         onPress={() => setOpen(true)}
         {...fieldEdge.edging}
         disabled={disabled || readOnly}
@@ -120,7 +127,7 @@ export function ListPicker({
         testID={testID}
       >
         <Text size={CONTROL_TEXT_SIZE} style={blank ? styles.placeholder : styles.value}>
-          {blank ? placeholder : chosen}
+          {blank ? placeholder : (drawn ?? chosen)}
         </Text>
         {!readOnly && <Chevron />}
         {fieldEdge.focused && <FocusEdge />}
@@ -238,6 +245,7 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colorCard,
   },
   fieldReadOnly: { backgroundColor: tokens.colorNeutralFill },
+  fieldCompact: { minHeight: 56, borderColor: tokens.colorFieldBorder },
   value: { flex: 1, color: tokens.colorInk },
   placeholder: { flex: 1, color: tokens.colorInkSecondary },
   fill: { flex: 1 },

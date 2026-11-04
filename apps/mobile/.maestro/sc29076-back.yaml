@@ -11,7 +11,7 @@ appId: host.exp.Exponent
       LANGUAGE: Français
 # Back, over welcome
 - tapOn:
-    id: 'demo.back'
+    id: 'signIn.back'
 - extendedWaitUntil:
     visible:
       id: 'welcome.email'
@@ -57,7 +57,7 @@ appId: host.exp.Exponent
       id: 'signIn.email'
     timeout: 60000
 - tapOn:
-    id: 'demo.back'
+    id: 'signIn.back'
 - extendedWaitUntil:
     visible:
       id: 'welcome.email'

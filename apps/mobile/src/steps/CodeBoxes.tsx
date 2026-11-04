@@ -13,9 +13,9 @@ import { Text } from '../components/Text.tsx';
 import { codeProps, fieldName } from '../kit/fields.ts';
 import { inputFaced } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
-import { tap } from '../components/haptics.ts';
+import { tap } from './haptics.ts';
 import { CODE_LENGTH, codeDigits } from './rules.ts';
-import { useShake } from '../components/shake.ts';
+import { useShake } from './shake.ts';
 
 export type CodeState = 'typing' | 'wrong' | 'done';
 
@@ -27,7 +27,7 @@ export interface CodeBoxesHandle {
 
 /** One field drawn as six boxes, so a paste or the code offered above the keys fills all six; the sixth digit sends it. */
 export function CodeBoxes({
-  label = 'Code, 6 digits',
+  label,
   value,
   onChange,
   onFull,
@@ -36,7 +36,7 @@ export function CodeBoxes({
   ref,
   testID,
 }: {
-  label?: string;
+  label: string;
   value: string;
   onChange: (code: string) => void;
   onFull?: (code: string) => void;

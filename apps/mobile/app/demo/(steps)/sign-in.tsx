@@ -3,14 +3,13 @@ import { useRef, useState } from 'react';
 import { Animated, StyleSheet, type TextInputInstance, View } from 'react-native';
 
 import { PrimaryButton, QuietButton } from '../../../src/components/Buttons.tsx';
-import { DemoScreen, useInSheet } from '../../../src/components/DemoScreen.tsx';
-import { NavBar, goBack } from '../../../src/demo/flow.tsx';
-import { tap } from '../../../src/components/haptics.ts';
-import { type FieldState, InsideField } from '../../../src/components/InsideField.tsx';
-import { Heading, Says } from '../../../src/components/Lines.tsx';
-import { emailLooksRight } from '../../../src/demo/rules.ts';
+import { DemoScreen, NavBar, goBack, useInSheet } from '../../../src/demo/DemoScreen.tsx';
+import { tap } from '../../../src/steps/haptics.ts';
+import { type FieldState, InsideField } from '../../../src/steps/InsideField.tsx';
+import { Heading, Says } from '../../../src/steps/Lines.tsx';
+import { emailLooksRight } from '../../../src/steps/rules.ts';
 import { SAMPLE } from '../../../src/demo/samples.ts';
-import { useShake } from '../../../src/components/shake.ts';
+import { useShake } from '../../../src/steps/shake.ts';
 import { tokens } from '../../../src/theme/tokens.ts';
 
 type Wrong = { field: 'email' | 'password'; state: FieldState | 'refused'; words: string } | null;

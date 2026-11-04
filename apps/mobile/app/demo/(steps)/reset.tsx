@@ -3,11 +3,10 @@ import { useRef, useState } from 'react';
 import { StyleSheet, type TextInputInstance, View } from 'react-native';
 
 import { PrimaryButton } from '../../../src/components/Buttons.tsx';
-import { DemoScreen } from '../../../src/components/DemoScreen.tsx';
-import { NavBar } from '../../../src/demo/flow.tsx';
-import { InsideField } from '../../../src/components/InsideField.tsx';
-import { Heading, Says } from '../../../src/components/Lines.tsx';
-import { emailLooksRight } from '../../../src/demo/rules.ts';
+import { DemoScreen, NavBar } from '../../../src/demo/DemoScreen.tsx';
+import { InsideField } from '../../../src/steps/InsideField.tsx';
+import { Heading, Says } from '../../../src/steps/Lines.tsx';
+import { emailLooksRight } from '../../../src/steps/rules.ts';
 import { tokens } from '../../../src/theme/tokens.ts';
 
 /** Forgot your password? brings the email typed on sign-in. */

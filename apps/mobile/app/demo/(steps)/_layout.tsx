@@ -1,7 +1,7 @@
 import { Stack } from 'expo-router';
 import { useNavigationState } from 'expo-router/react-navigation';
 
-import { InSheet, useStepsInSheet } from '../../../src/components/DemoScreen.tsx';
+import { InSheet, useStepsInSheet } from '../../../src/demo/DemoScreen.tsx';
 import { useReducedMotion } from '../../../src/reducedMotion.ts';
 import { tokens } from '../../../src/theme/tokens.ts';
 

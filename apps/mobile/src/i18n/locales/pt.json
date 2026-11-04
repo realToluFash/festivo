@@ -86,15 +86,10 @@
     "providerOnlyTitle": "{{organisation}}: início de sessão só com Google ou Apple",
     "providerOnlyBody": "O início de sessão com palavra-passe está desativado em {{organisation}}. Em vez disso, utilize {{providers}}.",
     "providerOnlyFootnote": "Uma regra definida por {{organisation}}: o início de sessão com palavra-passe está desativado para todos os membros.",
-    "anotherAccount": "Iniciar sessão com outra conta",
-    "back": "Back",
-    "showPassword": "Show password",
-    "hidePassword": "Hide password",
-    "close": "Close"
+    "anotherAccount": "Iniciar sessão com outra conta"
   },
   "register": {
     "title": "Crie a sua conta",
-    "intro": "A seguir, enviamos-lhe um código por e-mail para confirmar que o endereço é seu.",
     "name": "Nome completo",
     "email": "Endereço de e-mail",
     "password": "Palavra-passe",
@@ -105,21 +100,15 @@
     "ruleNote": "É a única regra. Ao enviar, verificamos também que a palavra-passe não apareceu numa fuga de dados conhecida.",
     "submit": "Criar conta",
     "submitting": "A criar a conta…",
-    "signIn": "Iniciar sessão",
     "breached": "Esta palavra-passe apareceu numa fuga de dados conhecida. Escolha outra.",
     "limitedTitle": "Demasiados registos a partir desta rede",
     "limitedBody": "Tente novamente às {{time}}.",
-    "haveAccount": "Já tem uma conta?",
-    "back": "Voltar ao início de sessão",
     "failedTitle": "Não foi possível criar a sua conta",
     "failedBody": "Algo falhou pelo caminho. Tente novamente dentro de um momento.",
     "nameBlank": "Introduza o seu nome completo.",
     "passwordBlank": "Introduza uma palavra-passe."
   },
   "verifyEmail": {
-    "step1": "Verifique o seu e-mail",
-    "step1Done": "E-mail verificado · concluído",
-    "step2": "Os seus dados",
     "title": "Veja o seu e-mail",
     "intro": "Enviámos um código para {{address}}. Introduza-o aqui para mostrar que o endereço é seu.",
     "codeLabel": "Código do e-mail",
@@ -134,18 +123,12 @@
     "exhaustedTitle": "Demasiadas tentativas erradas",
     "exhaustedBody": "Esse código já não funciona. Envie um novo para continuar.",
     "wrongAddress": "Não é o seu endereço?",
-    "wrongAddressBody": "e criar novamente a sua conta com o endereço correto.",
-    "registerAgain": "Registe-se novamente com o endereço correto",
-    "signOut": "Encerrar sessão",
     "doneTitle": "E-mail verificado",
-    "doneBody": "{{address}} está confirmado. A seguir, alguns dados para que a sua equipa saiba quem é quem.",
     "doneBodyAlternative": "{{address}} está verificado. Continua a ser um endereço alternativo até o tornar principal em Conta.",
-    "continue": "Continuar",
     "failedTitle": "Não funcionou",
     "failedBody": "Algo falhou pelo caminho. Tente novamente dentro de um momento.",
     "codeBlank": "Introduza o código de 6 dígitos do e-mail.",
-    "codeShort": "O código tem 6 dígitos.",
-    "step1Google": "E-mail confirmado pela conta {{provider}} · concluído"
+    "codeShort": "O código tem 6 dígitos."
   },
   "verifyPhone": {
     "title": "Veja as suas mensagens",
@@ -167,8 +150,6 @@
     "failedBody": "Algo falhou pelo caminho. Tente novamente dentro de um momento.",
     "wrongNumber": "Número errado?",
     "changeIt": "Alterá-lo",
-    "cantGetTexts": "Não recebe SMS neste número?",
-    "carryOnWithout": "Continuar sem ele",
     "doneTitle": "Número verificado",
     "doneBody": "A Soirely pode contactar o {{number}} se algo correr mal na noite do evento.",
     "doneBodyAlternative": "{{number}} está verificado. Continua a ser um número alternativo até o tornar principal em Conta.",
@@ -207,8 +188,6 @@
     "close": "Concluído"
   },
   "completeProfile": {
-    "title": "Alguns dados",
-    "intro": "Para que as pessoas com quem trabalha saibam quem é quem.",
     "name": "Nome completo",
     "nameBlank": "Adicione o seu nome para continuar.",
     "organisation": "Nome da organização",
@@ -228,10 +207,6 @@
     "saving": "A guardar…",
     "failedTitle": "Não foi possível guardar",
     "failedBody": "Algo falhou pelo caminho. Tente novamente dentro de um momento.",
-    "signedInAs": "Sessão iniciada como {{email}}.",
-    "signOut": "Encerrar sessão",
-    "optional": "Opcional",
-    "mobileHelp": "É assim que o contactamos na noite do evento se algo correr mal. Se indicar um, enviamos-lhe um código por SMS para o confirmar.",
     "providerConfirmed": "Sessão iniciada com a sua conta {{provider}}. A conta {{provider}} já confirmou {{email}}, por isso não há nenhum código a introduzir."
   },
   "forms": {
@@ -1969,5 +1944,23 @@
   "toast": {
     "undo": "Anular",
     "close": "Fechar"
+  },
+  "steps": {
+    "back": "Voltar",
+    "close": "Fechar",
+    "stepOf": "Step {{step, number}} of {{steps, number}}",
+    "skip": "Skip",
+    "signOut": "Encerrar sessão",
+    "continue": "Continuar",
+    "codeLabel": "Code, 6 digits",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
+    "emailIntro": "We sent a code to {{address}}.",
+    "organisationTitle": "Your organisation",
+    "mobileTitle": "Your mobile number",
+    "mobileIntro": "So your team can reach you on the night if something goes wrong.",
+    "mobileLine": "We send it a code on WhatsApp, or by text if WhatsApp can’t reach you.",
+    "sendCode": "Send code",
+    "whatsAppTitle": "Check WhatsApp"
   }
 }

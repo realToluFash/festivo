@@ -163,13 +163,12 @@ two-factor account); `sc23279-reset-loading` opens a reset link and needs nothin
 Signing in and signing up (sc-23277), as qa posted them. None starts from a cold `/sign-in`
 link, which in Expo Go lands on Home (sc-22740): each starts from Home or from a held screen.
 
-| Flow                        | Checks                                                                                                                                   | Needs                                                                                    | Starts from                                           |
-| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ----------------------------------------------------- |
-| `sc23277-details-phone`     | A few details (blank refused, Country and Code lists), then Verify your phone by WhatsApp, resend countdown, wrong code, Text me instead | `EMAIL`, `PASSWORD` (verified, profile not complete), `NUMBER` (UK mobile, no leading 0) | the signed-out app, through `sign-in-screen-english`  |
-| `sc23277-verify-phone-rest` | the Check your messages half of `sc23277-details-phone`                                                                                  | nothing                                                                                  | Check your messages, held there                       |
-| `sc23277-locked-from-held`  | Register again, then ‹ Sign in, reaches sign-in-locked after six wrong passwords                                                         | `EMAIL`, the held sign-up's account                                                      | Check your email, as `register-check-email` leaves it |
-| `sc23277-pending-resume`    | a sign-up held on Check your email resumes there after the app is quit and reopened (sc-927)                                             | `NAME`, `EMAIL` (fresh), `PASSWORD`                                                      | the signed-out app, through `register-check-email`    |
-| `sc23277-register-turn`     | Create your account keeps what was typed when the iPad turns, both ways (sc-565); run with `--ipad`                                      | `NAME`, `EMAIL`                                                                          | Home, relaunched                                      |
+| Flow                        | Checks                                                                                                    | Needs                               | Starts from                                           |
+| --------------------------- | --------------------------------------------------------------------------------------------------------- | ----------------------------------- | ----------------------------------------------------- |
+| `sc23277-verify-phone-rest` | the code step after Your mobile number: WhatsApp, the resend counting down, a wrong code, Text me instead | nothing                             | the phone code step, held there                       |
+| `sc23277-locked-from-held`  | Register again, then ‹ Sign in, reaches sign-in-locked after six wrong passwords                          | `EMAIL`, the held sign-up's account | Check your email, as `register-check-email` leaves it |
+| `sc23277-pending-resume`    | a sign-up held on Check your email resumes there after the app is quit and reopened (sc-927)              | `NAME`, `EMAIL` (fresh), `PASSWORD` | the signed-out app, through `register-check-email`    |
+| `sc23277-register-turn`     | Create your account keeps what was typed when the iPad turns, both ways (sc-565); run with `--ipad`       | `NAME`, `EMAIL`                     | Home, relaunched                                      |
 
 ## Writing one
 

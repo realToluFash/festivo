@@ -2,12 +2,11 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 
 import { PrimaryButton, QuietButton } from '../../../src/components/Buttons.tsx';
-import { DemoScreen } from '../../../src/components/DemoScreen.tsx';
-import { NavBar } from '../../../src/demo/flow.tsx';
-import { DemoOnly, Heading, Plain } from '../../../src/components/Lines.tsx';
-import { minutesSeconds, RESEND_SECONDS } from '../../../src/demo/rules.ts';
+import { DemoScreen, NavBar } from '../../../src/demo/DemoScreen.tsx';
+import { DemoOnly, Heading, Plain } from '../../../src/steps/Lines.tsx';
+import { minutesSeconds, RESEND_SECONDS } from '../../../src/steps/rules.ts';
 import { SAMPLE } from '../../../src/demo/samples.ts';
-import { useCountdown } from '../../../src/demo/useCountdown.ts';
+import { useCountdown } from '../../../src/steps/useCountdown.ts';
 import { tokens } from '../../../src/theme/tokens.ts';
 
 /** The mail app is where the person goes next, so Open Mail leads. */

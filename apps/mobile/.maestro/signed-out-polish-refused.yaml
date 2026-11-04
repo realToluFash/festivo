@@ -6,7 +6,7 @@ appId: host.exp.Exponent
 - runFlow: sign-in-screen-english.yaml
 # The language sheet is on welcome (sc-29076).
 - tapOn:
-    id: 'demo.back'
+    id: 'signIn.back'
 - extendedWaitUntil:
     visible:
       id: 'welcome.email'

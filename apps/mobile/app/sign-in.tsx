@@ -10,11 +10,11 @@ import { PrimaryButton, QuietButton } from '../src/components/Buttons.tsx';
 import { focusChecked, focusRefused, keysStayDown } from '../src/components/Field.tsx';
 import { ProviderButtons } from '../src/components/ProviderSignIn.tsx';
 import { Text } from '../src/components/Text.tsx';
-import { DemoScreen, InSheet, NavBar, useStepsInSheet } from '../src/components/DemoScreen.tsx';
-import { tap } from '../src/components/haptics.ts';
-import { InsideField } from '../src/components/InsideField.tsx';
-import { Heading, Says } from '../src/components/Lines.tsx';
-import { useShake } from '../src/components/shake.ts';
+import { tap } from '../src/steps/haptics.ts';
+import { InsideField } from '../src/steps/InsideField.tsx';
+import { Heading, Says } from '../src/steps/Lines.tsx';
+import { useShake } from '../src/steps/shake.ts';
+import { InSheet, NavBar, StepScreen, useStepsInSheet } from '../src/steps/StepScreen.tsx';
 import { currentLocale, dateLocale } from '../src/i18n/index.ts';
 import { emailMessage, useFormChecks } from '../src/kit/formChecks.ts';
 import { tokens } from '../src/theme/tokens.ts';
@@ -131,8 +131,8 @@ export default function SignIn() {
 
   return (
     <InSheet value={sheet}>
-      <DemoScreen
-        nav={<NavBar left="back" onLeft={back} />}
+      <StepScreen
+        nav={<NavBar left="back" onLeft={back} testID="signIn" />}
         foot={
           refusal?.kind === 'providerOnly' ? undefined : (
             <PrimaryButton
@@ -256,7 +256,7 @@ export default function SignIn() {
             </View>
           </>
         )}
-      </DemoScreen>
+      </StepScreen>
     </InSheet>
   );
 }

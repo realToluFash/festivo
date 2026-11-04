@@ -7,7 +7,7 @@ appId: host.exp.Exponent
 - takeScreenshot: polish-sign-in-en
 # Back to welcome, where the language button and Create an account are (sc-29076).
 - tapOn:
-    id: 'demo.back'
+    id: 'signIn.back'
 - extendedWaitUntil:
     visible:
       id: 'welcome.register'

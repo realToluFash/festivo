@@ -3,10 +3,9 @@ import { useRef, useState } from 'react';
 import { StyleSheet, type TextInputInstance, View } from 'react-native';
 
 import { PrimaryButton } from '../../../src/components/Buttons.tsx';
-import { DemoScreen } from '../../../src/components/DemoScreen.tsx';
-import { NavBar, finish } from '../../../src/demo/flow.tsx';
-import { InsideField } from '../../../src/components/InsideField.tsx';
-import { Heading, Plain, Says } from '../../../src/components/Lines.tsx';
+import { DemoScreen, NavBar, finish } from '../../../src/demo/DemoScreen.tsx';
+import { InsideField } from '../../../src/steps/InsideField.tsx';
+import { Heading, Plain, Says } from '../../../src/steps/Lines.tsx';
 import { COUNTRIES, SelectRow } from '../../../src/demo/SelectRow.tsx';
 import { tokens } from '../../../src/theme/tokens.ts';
 

@@ -4,7 +4,7 @@ import { StyleSheet, View } from 'react-native';
 import { OrgTile } from '../../src/components/OrgTile.tsx';
 import { Text } from '../../src/components/Text.tsx';
 import { Choices } from '../../src/demo/Choices.tsx';
-import { NavBar } from '../../src/demo/flow.tsx';
+import { NavBar } from '../../src/demo/DemoScreen.tsx';
 import { SAMPLE } from '../../src/demo/samples.ts';
 import { WelcomeFrame } from '../../src/components/Welcome.tsx';
 import { tokens } from '../../src/theme/tokens.ts';

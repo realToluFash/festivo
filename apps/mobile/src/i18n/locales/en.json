@@ -84,15 +84,10 @@
     "providerOnlyTitle": "{{organisation}} signs in with Google or Apple only",
     "providerOnlyBody": "Password sign-in is off in {{organisation}}. Use {{providers}} instead.",
     "providerOnlyFootnote": "A rule set by {{organisation}}: password sign-in is off for everyone in it.",
-    "anotherAccount": "Sign in with another account",
-    "back": "Back",
-    "showPassword": "Show password",
-    "hidePassword": "Hide password",
-    "close": "Close"
+    "anotherAccount": "Sign in with another account"
   },
   "register": {
     "title": "Create your account",
-    "intro": "Next, we email you a code to check the address is yours.",
     "name": "Full name",
     "email": "Email",
     "password": "Password",
@@ -103,21 +98,15 @@
     "ruleNote": "That is the only rule. When you submit, we also check the password has not appeared in a known data breach.",
     "submit": "Create account",
     "submitting": "Creating account…",
-    "signIn": "Sign in",
     "breached": "This password has appeared in a known data breach. Choose another.",
     "limitedTitle": "Too many sign-ups from this network",
     "limitedBody": "Try again at {{time}}.",
-    "haveAccount": "Already have an account?",
-    "back": "Back to sign in",
     "failedTitle": "Creating your account did not work",
     "failedBody": "Something went wrong on the way. Try again in a moment.",
     "nameBlank": "Enter your full name.",
     "passwordBlank": "Enter a password."
   },
   "verifyEmail": {
-    "step1": "Verify your email",
-    "step1Done": "Email verified · done",
-    "step2": "Your details",
     "title": "Check your email",
     "intro": "We sent a code to {{address}}. Enter it here to show the address is yours.",
     "codeLabel": "Code from the email",
@@ -132,18 +121,12 @@
     "exhaustedTitle": "Too many wrong tries",
     "exhaustedBody": "That code no longer works. Send a new one to carry on.",
     "wrongAddress": "Not your address?",
-    "wrongAddressBody": "and create your account again with the right one.",
-    "registerAgain": "Register again with the right one",
-    "signOut": "Sign out",
     "doneTitle": "Email verified",
-    "doneBody": "{{address}} is confirmed. Next, a few details so your team knows who is who.",
     "doneBodyAlternative": "{{address}} is verified. It stays an alternative address until you make it primary in Account.",
-    "continue": "Continue",
     "failedTitle": "That did not work",
     "failedBody": "Something went wrong on the way. Try again in a moment.",
     "codeBlank": "Enter the 6-digit code from the email.",
-    "codeShort": "The code is 6 digits.",
-    "step1Google": "Email confirmed by {{provider}} · done"
+    "codeShort": "The code is 6 digits."
   },
   "verifyPhone": {
     "title": "Check your messages",
@@ -165,8 +148,6 @@
     "failedBody": "Something went wrong on the way. Try again in a moment.",
     "wrongNumber": "Wrong number?",
     "changeIt": "Change it",
-    "cantGetTexts": "Can't get texts on this number?",
-    "carryOnWithout": "Carry on without it",
     "doneTitle": "Number verified",
     "doneBody": "Soirely can reach you on {{number}} if something goes wrong on the night.",
     "doneBodyAlternative": "{{number}} is verified. It stays an alternative number until you make it primary in Account.",
@@ -205,8 +186,6 @@
     "close": "Done"
   },
   "completeProfile": {
-    "title": "A few details",
-    "intro": "So the people you work with know who is who.",
     "name": "Full name",
     "nameBlank": "Add your name to carry on.",
     "organisation": "Organisation name",
@@ -225,10 +204,6 @@
     "saving": "Saving…",
     "failedTitle": "Saving did not work",
     "failedBody": "Something went wrong on the way. Try again in a moment.",
-    "signedInAs": "Signed in as {{email}}.",
-    "signOut": "Sign out",
-    "optional": "Optional",
-    "mobileHelp": "How you are reached on the night if something goes wrong. If you add one, we text it a code to check it.",
     "providerConfirmed": "Signed in with {{provider}}. {{provider}} has already confirmed {{email}}, so there is no email code to enter."
   },
   "forms": {
@@ -1918,5 +1893,23 @@
   "toast": {
     "undo": "Undo",
     "close": "Close"
+  },
+  "steps": {
+    "back": "Back",
+    "close": "Close",
+    "stepOf": "Step {{step, number}} of {{steps, number}}",
+    "skip": "Skip",
+    "signOut": "Sign out",
+    "continue": "Continue",
+    "codeLabel": "Code, 6 digits",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
+    "emailIntro": "We sent a code to {{address}}.",
+    "organisationTitle": "Your organisation",
+    "mobileTitle": "Your mobile number",
+    "mobileIntro": "So your team can reach you on the night if something goes wrong.",
+    "mobileLine": "We send it a code on WhatsApp, or by text if WhatsApp can’t reach you.",
+    "sendCode": "Send code",
+    "whatsAppTitle": "Check WhatsApp"
   }
 }
