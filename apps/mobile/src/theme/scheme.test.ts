@@ -15,6 +15,8 @@ describe('a build picks its colour scheme', () => {
     expect(violet.colorInk).toBe('#0D0D12');
     expect(violet.colorAttention).toBe(tokens.colorAttention);
     expect(violet.spaceLg).toBe(tokens.spaceLg);
+    expect(violet.typeBody).toEqual(tokens.typeBody);
+    expect(violet.elevationNative).toEqual(tokens.elevationNative);
   });
 
   it('takes the accent into a selected border, the done mark, a taken seat and a yes', () => {

@@ -130,7 +130,7 @@ function buildCss() {
     for (const [key, value] of Object.entries(laid)) {
       if (MEANING.includes(key))
         lines.push(...meaningLines(key, value).filter((l) => !base.has(l)));
-      else if (typeof value === 'string') lines.push(`  --${key}: ${value};`);
+      else lines.push(`  --${key}: ${value};`);
     }
     lines.push('}');
   }
