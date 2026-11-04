@@ -465,7 +465,226 @@ const base = {
 
 export const schemes = {
   "violet": {
+    "typeDisplay": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "-0.03em"
+    },
+    "typeTitlePage": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "-0.02em"
+    },
+    "typeTitlePhone": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "-0.02em"
+    },
+    "typeTitleFrame": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "-0.02em"
+    },
+    "typeTitleFrameCompact": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "-0.02em"
+    },
+    "typeTitleSection": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeTitleDialog": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeNumberTile": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "-0.02em"
+    },
+    "typeBody": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeBodyPhone": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeBodyGuest": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeRowTitle": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeSmall": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeMeta": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeLabel": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0.1em"
+    },
+    "typePill": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typePillWrapped": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeButton": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeCode": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeRoomNow": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "-0.02em"
+    },
+    "typeLandingH1": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "-0.03em"
+    },
+    "borderCard": "1px solid #E4E4EC",
+    "borderControl": "1px solid #D7D7DF",
+    "borderField": "1px solid #888897",
+    "borderInset": "1px solid #EAEAF0",
+    "borderDivider": "1px solid #EFEFF4",
     "borderSelected": "2px solid #5A3DF0",
+    "borderAllergy": "1.5px solid #C42B1C",
+    "borderGuestControl": "1.5px solid #D7D7DF",
+    "elevationNative": {
+      "card": {
+        "ios": {
+          "shadowColor": "#14161C",
+          "shadowOpacity": {},
+          "shadowRadius": {},
+          "shadowOffset": {
+            "width": {},
+            "height": {}
+          }
+        },
+        "android": {
+          "elevation": {}
+        }
+      },
+      "raised": {
+        "ios": {
+          "shadowColor": "#14161C",
+          "shadowOpacity": {},
+          "shadowRadius": {},
+          "shadowOffset": {
+            "width": {},
+            "height": {}
+          }
+        },
+        "android": {
+          "elevation": {}
+        }
+      },
+      "popover": {
+        "ios": {
+          "shadowColor": "#14161C",
+          "shadowOpacity": {},
+          "shadowRadius": {},
+          "shadowOffset": {
+            "width": {},
+            "height": {}
+          }
+        },
+        "android": {
+          "elevation": {}
+        }
+      },
+      "dialog": {
+        "ios": {
+          "shadowColor": "#14161C",
+          "shadowOpacity": {},
+          "shadowRadius": {},
+          "shadowOffset": {
+            "width": {},
+            "height": {}
+          }
+        },
+        "android": {
+          "elevation": {}
+        }
+      },
+      "sheet": {
+        "ios": {
+          "shadowColor": "#14161C",
+          "shadowOpacity": {},
+          "shadowRadius": {},
+          "shadowOffset": {
+            "width": {},
+            "height": {}
+          }
+        },
+        "android": {
+          "elevation": {}
+        }
+      },
+      "toast": {
+        "ios": {
+          "shadowColor": "#14161C",
+          "shadowOpacity": {},
+          "shadowRadius": {},
+          "shadowOffset": {
+            "width": {},
+            "height": {}
+          }
+        },
+        "android": {
+          "elevation": {}
+        }
+      }
+    },
     "marks": {
       "done": {
         "glyph": "✓",
@@ -485,8 +704,8 @@ export const schemes = {
         "glyph": "✕",
         "word": "Broken",
         "fill": "#FFFFFF",
-        "ring": "#C2410C",
-        "ink": "#C2410C"
+        "ring": "#C42B1C",
+        "ink": "#C42B1C"
       },
       "notStarted": {
         "glyph": "",
@@ -498,7 +717,7 @@ export const schemes = {
       "skipped": {
         "glyph": "–",
         "word": "Skipped",
-        "fill": "#F1F2F4",
+        "fill": "#EFEFF4",
         "ring": "#C9CED6",
         "ink": "#6B7280"
       },
@@ -506,8 +725,8 @@ export const schemes = {
         "glyph": "!",
         "word": "Allergy",
         "fill": "#FFFFFF",
-        "ring": "#C2410C",
-        "ink": "#C2410C"
+        "ring": "#C42B1C",
+        "ink": "#C42B1C"
       },
       "info": {
         "glyph": "i",
@@ -576,7 +795,7 @@ export const schemes = {
       "unusable": {
         "glyph": "✕",
         "word": "Unusable",
-        "fill": "#F1F2F4",
+        "fill": "#EFEFF4",
         "ring": "1px solid #C9CED6",
         "ink": "#6B7280"
       }
@@ -603,7 +822,226 @@ export const schemes = {
     "colorBrokenText": "#A3241A"
   },
   "cobalt": {
+    "typeDisplay": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "-0.03em"
+    },
+    "typeTitlePage": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "-0.02em"
+    },
+    "typeTitlePhone": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "-0.02em"
+    },
+    "typeTitleFrame": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "-0.02em"
+    },
+    "typeTitleFrameCompact": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "-0.02em"
+    },
+    "typeTitleSection": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeTitleDialog": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeNumberTile": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "-0.02em"
+    },
+    "typeBody": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeBodyPhone": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeBodyGuest": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeRowTitle": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeSmall": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeMeta": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeLabel": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0.1em"
+    },
+    "typePill": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typePillWrapped": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeButton": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeCode": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeRoomNow": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "-0.02em"
+    },
+    "typeLandingH1": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "-0.03em"
+    },
+    "borderCard": "1px solid #E1E6F0",
+    "borderControl": "1px solid #D4D9E4",
+    "borderField": "1px solid #838A97",
+    "borderInset": "1px solid #E7EBF4",
+    "borderDivider": "1px solid #EDF0F7",
     "borderSelected": "2px solid #1F47D6",
+    "borderAllergy": "1.5px solid #C42B1C",
+    "borderGuestControl": "1.5px solid #D4D9E4",
+    "elevationNative": {
+      "card": {
+        "ios": {
+          "shadowColor": "#14161C",
+          "shadowOpacity": {},
+          "shadowRadius": {},
+          "shadowOffset": {
+            "width": {},
+            "height": {}
+          }
+        },
+        "android": {
+          "elevation": {}
+        }
+      },
+      "raised": {
+        "ios": {
+          "shadowColor": "#14161C",
+          "shadowOpacity": {},
+          "shadowRadius": {},
+          "shadowOffset": {
+            "width": {},
+            "height": {}
+          }
+        },
+        "android": {
+          "elevation": {}
+        }
+      },
+      "popover": {
+        "ios": {
+          "shadowColor": "#14161C",
+          "shadowOpacity": {},
+          "shadowRadius": {},
+          "shadowOffset": {
+            "width": {},
+            "height": {}
+          }
+        },
+        "android": {
+          "elevation": {}
+        }
+      },
+      "dialog": {
+        "ios": {
+          "shadowColor": "#14161C",
+          "shadowOpacity": {},
+          "shadowRadius": {},
+          "shadowOffset": {
+            "width": {},
+            "height": {}
+          }
+        },
+        "android": {
+          "elevation": {}
+        }
+      },
+      "sheet": {
+        "ios": {
+          "shadowColor": "#14161C",
+          "shadowOpacity": {},
+          "shadowRadius": {},
+          "shadowOffset": {
+            "width": {},
+            "height": {}
+          }
+        },
+        "android": {
+          "elevation": {}
+        }
+      },
+      "toast": {
+        "ios": {
+          "shadowColor": "#14161C",
+          "shadowOpacity": {},
+          "shadowRadius": {},
+          "shadowOffset": {
+            "width": {},
+            "height": {}
+          }
+        },
+        "android": {
+          "elevation": {}
+        }
+      }
+    },
     "marks": {
       "done": {
         "glyph": "✓",
@@ -623,8 +1061,8 @@ export const schemes = {
         "glyph": "✕",
         "word": "Broken",
         "fill": "#FFFFFF",
-        "ring": "#C2410C",
-        "ink": "#C2410C"
+        "ring": "#C42B1C",
+        "ink": "#C42B1C"
       },
       "notStarted": {
         "glyph": "",
@@ -636,7 +1074,7 @@ export const schemes = {
       "skipped": {
         "glyph": "–",
         "word": "Skipped",
-        "fill": "#F1F2F4",
+        "fill": "#EDF0F7",
         "ring": "#C9CED6",
         "ink": "#6B7280"
       },
@@ -644,8 +1082,8 @@ export const schemes = {
         "glyph": "!",
         "word": "Allergy",
         "fill": "#FFFFFF",
-        "ring": "#C2410C",
-        "ink": "#C2410C"
+        "ring": "#C42B1C",
+        "ink": "#C42B1C"
       },
       "info": {
         "glyph": "i",
@@ -714,7 +1152,7 @@ export const schemes = {
       "unusable": {
         "glyph": "✕",
         "word": "Unusable",
-        "fill": "#F1F2F4",
+        "fill": "#EDF0F7",
         "ring": "1px solid #C9CED6",
         "ink": "#6B7280"
       }
@@ -741,7 +1179,226 @@ export const schemes = {
     "colorBrokenText": "#A3241A"
   },
   "garden": {
+    "typeDisplay": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "-0.03em"
+    },
+    "typeTitlePage": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "-0.02em"
+    },
+    "typeTitlePhone": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "-0.02em"
+    },
+    "typeTitleFrame": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "-0.02em"
+    },
+    "typeTitleFrameCompact": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "-0.02em"
+    },
+    "typeTitleSection": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeTitleDialog": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeNumberTile": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "-0.02em"
+    },
+    "typeBody": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeBodyPhone": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeBodyGuest": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeRowTitle": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeSmall": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeMeta": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeLabel": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0.1em"
+    },
+    "typePill": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typePillWrapped": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeButton": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeCode": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeRoomNow": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "-0.02em"
+    },
+    "typeLandingH1": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "-0.03em"
+    },
+    "borderCard": "1px solid #E6E0D4",
+    "borderControl": "1px solid #DAD4C9",
+    "borderField": "1px solid #848C88",
+    "borderInset": "1px solid #ECE6DA",
+    "borderDivider": "1px solid #F1ECE2",
     "borderSelected": "2px solid #1E6B4F",
+    "borderAllergy": "1.5px solid #C42B1C",
+    "borderGuestControl": "1.5px solid #DAD4C9",
+    "elevationNative": {
+      "card": {
+        "ios": {
+          "shadowColor": "#14161C",
+          "shadowOpacity": {},
+          "shadowRadius": {},
+          "shadowOffset": {
+            "width": {},
+            "height": {}
+          }
+        },
+        "android": {
+          "elevation": {}
+        }
+      },
+      "raised": {
+        "ios": {
+          "shadowColor": "#14161C",
+          "shadowOpacity": {},
+          "shadowRadius": {},
+          "shadowOffset": {
+            "width": {},
+            "height": {}
+          }
+        },
+        "android": {
+          "elevation": {}
+        }
+      },
+      "popover": {
+        "ios": {
+          "shadowColor": "#14161C",
+          "shadowOpacity": {},
+          "shadowRadius": {},
+          "shadowOffset": {
+            "width": {},
+            "height": {}
+          }
+        },
+        "android": {
+          "elevation": {}
+        }
+      },
+      "dialog": {
+        "ios": {
+          "shadowColor": "#14161C",
+          "shadowOpacity": {},
+          "shadowRadius": {},
+          "shadowOffset": {
+            "width": {},
+            "height": {}
+          }
+        },
+        "android": {
+          "elevation": {}
+        }
+      },
+      "sheet": {
+        "ios": {
+          "shadowColor": "#14161C",
+          "shadowOpacity": {},
+          "shadowRadius": {},
+          "shadowOffset": {
+            "width": {},
+            "height": {}
+          }
+        },
+        "android": {
+          "elevation": {}
+        }
+      },
+      "toast": {
+        "ios": {
+          "shadowColor": "#14161C",
+          "shadowOpacity": {},
+          "shadowRadius": {},
+          "shadowOffset": {
+            "width": {},
+            "height": {}
+          }
+        },
+        "android": {
+          "elevation": {}
+        }
+      }
+    },
     "marks": {
       "done": {
         "glyph": "✓",
@@ -761,8 +1418,8 @@ export const schemes = {
         "glyph": "✕",
         "word": "Broken",
         "fill": "#FFFFFF",
-        "ring": "#C2410C",
-        "ink": "#C2410C"
+        "ring": "#C42B1C",
+        "ink": "#C42B1C"
       },
       "notStarted": {
         "glyph": "",
@@ -774,7 +1431,7 @@ export const schemes = {
       "skipped": {
         "glyph": "–",
         "word": "Skipped",
-        "fill": "#F1F2F4",
+        "fill": "#F1ECE2",
         "ring": "#C9CED6",
         "ink": "#6B7280"
       },
@@ -782,8 +1439,8 @@ export const schemes = {
         "glyph": "!",
         "word": "Allergy",
         "fill": "#FFFFFF",
-        "ring": "#C2410C",
-        "ink": "#C2410C"
+        "ring": "#C42B1C",
+        "ink": "#C42B1C"
       },
       "info": {
         "glyph": "i",
@@ -852,7 +1509,7 @@ export const schemes = {
       "unusable": {
         "glyph": "✕",
         "word": "Unusable",
-        "fill": "#F1F2F4",
+        "fill": "#F1ECE2",
         "ring": "1px solid #C9CED6",
         "ink": "#6B7280"
       }
@@ -879,7 +1536,226 @@ export const schemes = {
     "colorBrokenText": "#A3241A"
   },
   "citrus": {
+    "typeDisplay": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "-0.03em"
+    },
+    "typeTitlePage": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "-0.02em"
+    },
+    "typeTitlePhone": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "-0.02em"
+    },
+    "typeTitleFrame": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "-0.02em"
+    },
+    "typeTitleFrameCompact": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "-0.02em"
+    },
+    "typeTitleSection": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeTitleDialog": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeNumberTile": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "-0.02em"
+    },
+    "typeBody": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeBodyPhone": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeBodyGuest": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeRowTitle": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeSmall": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeMeta": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeLabel": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0.1em"
+    },
+    "typePill": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typePillWrapped": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeButton": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeCode": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeRoomNow": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "-0.02em"
+    },
+    "typeLandingH1": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "-0.03em"
+    },
+    "borderCard": "1px solid #EFE4D8",
+    "borderControl": "1px solid #E3D8CC",
+    "borderField": "1px solid #918882",
+    "borderInset": "1px solid #F3EADF",
+    "borderDivider": "1px solid #F7F0E7",
     "borderSelected": "2px solid #C2410C",
+    "borderAllergy": "1.5px solid #C42B1C",
+    "borderGuestControl": "1.5px solid #E3D8CC",
+    "elevationNative": {
+      "card": {
+        "ios": {
+          "shadowColor": "#14161C",
+          "shadowOpacity": {},
+          "shadowRadius": {},
+          "shadowOffset": {
+            "width": {},
+            "height": {}
+          }
+        },
+        "android": {
+          "elevation": {}
+        }
+      },
+      "raised": {
+        "ios": {
+          "shadowColor": "#14161C",
+          "shadowOpacity": {},
+          "shadowRadius": {},
+          "shadowOffset": {
+            "width": {},
+            "height": {}
+          }
+        },
+        "android": {
+          "elevation": {}
+        }
+      },
+      "popover": {
+        "ios": {
+          "shadowColor": "#14161C",
+          "shadowOpacity": {},
+          "shadowRadius": {},
+          "shadowOffset": {
+            "width": {},
+            "height": {}
+          }
+        },
+        "android": {
+          "elevation": {}
+        }
+      },
+      "dialog": {
+        "ios": {
+          "shadowColor": "#14161C",
+          "shadowOpacity": {},
+          "shadowRadius": {},
+          "shadowOffset": {
+            "width": {},
+            "height": {}
+          }
+        },
+        "android": {
+          "elevation": {}
+        }
+      },
+      "sheet": {
+        "ios": {
+          "shadowColor": "#14161C",
+          "shadowOpacity": {},
+          "shadowRadius": {},
+          "shadowOffset": {
+            "width": {},
+            "height": {}
+          }
+        },
+        "android": {
+          "elevation": {}
+        }
+      },
+      "toast": {
+        "ios": {
+          "shadowColor": "#14161C",
+          "shadowOpacity": {},
+          "shadowRadius": {},
+          "shadowOffset": {
+            "width": {},
+            "height": {}
+          }
+        },
+        "android": {
+          "elevation": {}
+        }
+      }
+    },
     "marks": {
       "done": {
         "glyph": "✓",
@@ -899,8 +1775,8 @@ export const schemes = {
         "glyph": "✕",
         "word": "Broken",
         "fill": "#FFFFFF",
-        "ring": "#C2410C",
-        "ink": "#C2410C"
+        "ring": "#C42B1C",
+        "ink": "#C42B1C"
       },
       "notStarted": {
         "glyph": "",
@@ -912,7 +1788,7 @@ export const schemes = {
       "skipped": {
         "glyph": "–",
         "word": "Skipped",
-        "fill": "#F1F2F4",
+        "fill": "#F7F0E7",
         "ring": "#C9CED6",
         "ink": "#6B7280"
       },
@@ -920,8 +1796,8 @@ export const schemes = {
         "glyph": "!",
         "word": "Allergy",
         "fill": "#FFFFFF",
-        "ring": "#C2410C",
-        "ink": "#C2410C"
+        "ring": "#C42B1C",
+        "ink": "#C42B1C"
       },
       "info": {
         "glyph": "i",
@@ -990,7 +1866,7 @@ export const schemes = {
       "unusable": {
         "glyph": "✕",
         "word": "Unusable",
-        "fill": "#F1F2F4",
+        "fill": "#F7F0E7",
         "ring": "1px solid #C9CED6",
         "ink": "#6B7280"
       }
@@ -1017,7 +1893,226 @@ export const schemes = {
     "colorBrokenText": "#A3241A"
   },
   "berry": {
+    "typeDisplay": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "-0.03em"
+    },
+    "typeTitlePage": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "-0.02em"
+    },
+    "typeTitlePhone": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "-0.02em"
+    },
+    "typeTitleFrame": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "-0.02em"
+    },
+    "typeTitleFrameCompact": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "-0.02em"
+    },
+    "typeTitleSection": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeTitleDialog": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeNumberTile": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "-0.02em"
+    },
+    "typeBody": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeBodyPhone": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeBodyGuest": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeRowTitle": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeSmall": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeMeta": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeLabel": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0.1em"
+    },
+    "typePill": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typePillWrapped": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeButton": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeCode": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeRoomNow": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "-0.02em"
+    },
+    "typeLandingH1": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "-0.03em"
+    },
+    "borderCard": "1px solid #EEDFE5",
+    "borderControl": "1px solid #E2D3D9",
+    "borderField": "1px solid #918389",
+    "borderInset": "1px solid #F3E6EB",
+    "borderDivider": "1px solid #F7EDF0",
     "borderSelected": "2px solid #B5175A",
+    "borderAllergy": "1.5px solid #C42B1C",
+    "borderGuestControl": "1.5px solid #E2D3D9",
+    "elevationNative": {
+      "card": {
+        "ios": {
+          "shadowColor": "#14161C",
+          "shadowOpacity": {},
+          "shadowRadius": {},
+          "shadowOffset": {
+            "width": {},
+            "height": {}
+          }
+        },
+        "android": {
+          "elevation": {}
+        }
+      },
+      "raised": {
+        "ios": {
+          "shadowColor": "#14161C",
+          "shadowOpacity": {},
+          "shadowRadius": {},
+          "shadowOffset": {
+            "width": {},
+            "height": {}
+          }
+        },
+        "android": {
+          "elevation": {}
+        }
+      },
+      "popover": {
+        "ios": {
+          "shadowColor": "#14161C",
+          "shadowOpacity": {},
+          "shadowRadius": {},
+          "shadowOffset": {
+            "width": {},
+            "height": {}
+          }
+        },
+        "android": {
+          "elevation": {}
+        }
+      },
+      "dialog": {
+        "ios": {
+          "shadowColor": "#14161C",
+          "shadowOpacity": {},
+          "shadowRadius": {},
+          "shadowOffset": {
+            "width": {},
+            "height": {}
+          }
+        },
+        "android": {
+          "elevation": {}
+        }
+      },
+      "sheet": {
+        "ios": {
+          "shadowColor": "#14161C",
+          "shadowOpacity": {},
+          "shadowRadius": {},
+          "shadowOffset": {
+            "width": {},
+            "height": {}
+          }
+        },
+        "android": {
+          "elevation": {}
+        }
+      },
+      "toast": {
+        "ios": {
+          "shadowColor": "#14161C",
+          "shadowOpacity": {},
+          "shadowRadius": {},
+          "shadowOffset": {
+            "width": {},
+            "height": {}
+          }
+        },
+        "android": {
+          "elevation": {}
+        }
+      }
+    },
     "marks": {
       "done": {
         "glyph": "✓",
@@ -1037,8 +2132,8 @@ export const schemes = {
         "glyph": "✕",
         "word": "Broken",
         "fill": "#FFFFFF",
-        "ring": "#C2410C",
-        "ink": "#C2410C"
+        "ring": "#C42B1C",
+        "ink": "#C42B1C"
       },
       "notStarted": {
         "glyph": "",
@@ -1050,7 +2145,7 @@ export const schemes = {
       "skipped": {
         "glyph": "–",
         "word": "Skipped",
-        "fill": "#F1F2F4",
+        "fill": "#F7EDF0",
         "ring": "#C9CED6",
         "ink": "#6B7280"
       },
@@ -1058,8 +2153,8 @@ export const schemes = {
         "glyph": "!",
         "word": "Allergy",
         "fill": "#FFFFFF",
-        "ring": "#C2410C",
-        "ink": "#C2410C"
+        "ring": "#C42B1C",
+        "ink": "#C42B1C"
       },
       "info": {
         "glyph": "i",
@@ -1128,7 +2223,7 @@ export const schemes = {
       "unusable": {
         "glyph": "✕",
         "word": "Unusable",
-        "fill": "#F1F2F4",
+        "fill": "#F7EDF0",
         "ring": "1px solid #C9CED6",
         "ink": "#6B7280"
       }
@@ -1155,7 +2250,226 @@ export const schemes = {
     "colorBrokenText": "#A3241A"
   },
   "blacktie": {
+    "typeDisplay": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "-0.03em"
+    },
+    "typeTitlePage": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "-0.02em"
+    },
+    "typeTitlePhone": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "-0.02em"
+    },
+    "typeTitleFrame": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "-0.02em"
+    },
+    "typeTitleFrameCompact": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "-0.02em"
+    },
+    "typeTitleSection": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeTitleDialog": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeNumberTile": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "-0.02em"
+    },
+    "typeBody": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeBodyPhone": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeBodyGuest": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeRowTitle": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeSmall": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeMeta": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeLabel": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0.1em"
+    },
+    "typePill": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typePillWrapped": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeButton": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeCode": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeRoomNow": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "-0.02em"
+    },
+    "typeLandingH1": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "-0.03em"
+    },
+    "borderCard": "1px solid #E6E0D3",
+    "borderControl": "1px solid #D9D4C8",
+    "borderField": "1px solid #8D8983",
+    "borderInset": "1px solid #EAE5DA",
+    "borderDivider": "1px solid #EFEBE2",
     "borderSelected": "2px solid #141414",
+    "borderAllergy": "1.5px solid #C42B1C",
+    "borderGuestControl": "1.5px solid #D9D4C8",
+    "elevationNative": {
+      "card": {
+        "ios": {
+          "shadowColor": "#14161C",
+          "shadowOpacity": {},
+          "shadowRadius": {},
+          "shadowOffset": {
+            "width": {},
+            "height": {}
+          }
+        },
+        "android": {
+          "elevation": {}
+        }
+      },
+      "raised": {
+        "ios": {
+          "shadowColor": "#14161C",
+          "shadowOpacity": {},
+          "shadowRadius": {},
+          "shadowOffset": {
+            "width": {},
+            "height": {}
+          }
+        },
+        "android": {
+          "elevation": {}
+        }
+      },
+      "popover": {
+        "ios": {
+          "shadowColor": "#14161C",
+          "shadowOpacity": {},
+          "shadowRadius": {},
+          "shadowOffset": {
+            "width": {},
+            "height": {}
+          }
+        },
+        "android": {
+          "elevation": {}
+        }
+      },
+      "dialog": {
+        "ios": {
+          "shadowColor": "#14161C",
+          "shadowOpacity": {},
+          "shadowRadius": {},
+          "shadowOffset": {
+            "width": {},
+            "height": {}
+          }
+        },
+        "android": {
+          "elevation": {}
+        }
+      },
+      "sheet": {
+        "ios": {
+          "shadowColor": "#14161C",
+          "shadowOpacity": {},
+          "shadowRadius": {},
+          "shadowOffset": {
+            "width": {},
+            "height": {}
+          }
+        },
+        "android": {
+          "elevation": {}
+        }
+      },
+      "toast": {
+        "ios": {
+          "shadowColor": "#14161C",
+          "shadowOpacity": {},
+          "shadowRadius": {},
+          "shadowOffset": {
+            "width": {},
+            "height": {}
+          }
+        },
+        "android": {
+          "elevation": {}
+        }
+      }
+    },
     "marks": {
       "done": {
         "glyph": "✓",
@@ -1175,8 +2489,8 @@ export const schemes = {
         "glyph": "✕",
         "word": "Broken",
         "fill": "#FFFFFF",
-        "ring": "#C2410C",
-        "ink": "#C2410C"
+        "ring": "#C42B1C",
+        "ink": "#C42B1C"
       },
       "notStarted": {
         "glyph": "",
@@ -1188,7 +2502,7 @@ export const schemes = {
       "skipped": {
         "glyph": "–",
         "word": "Skipped",
-        "fill": "#F1F2F4",
+        "fill": "#EFEBE2",
         "ring": "#C9CED6",
         "ink": "#6B7280"
       },
@@ -1196,8 +2510,8 @@ export const schemes = {
         "glyph": "!",
         "word": "Allergy",
         "fill": "#FFFFFF",
-        "ring": "#C2410C",
-        "ink": "#C2410C"
+        "ring": "#C42B1C",
+        "ink": "#C42B1C"
       },
       "info": {
         "glyph": "i",
@@ -1266,7 +2580,7 @@ export const schemes = {
       "unusable": {
         "glyph": "✕",
         "word": "Unusable",
-        "fill": "#F1F2F4",
+        "fill": "#EFEBE2",
         "ring": "1px solid #C9CED6",
         "ink": "#6B7280"
       }
@@ -1293,7 +2607,226 @@ export const schemes = {
     "colorBrokenText": "#A3241A"
   },
   "sorbet": {
+    "typeDisplay": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "-0.03em"
+    },
+    "typeTitlePage": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "-0.02em"
+    },
+    "typeTitlePhone": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "-0.02em"
+    },
+    "typeTitleFrame": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "-0.02em"
+    },
+    "typeTitleFrameCompact": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "-0.02em"
+    },
+    "typeTitleSection": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeTitleDialog": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeNumberTile": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "-0.02em"
+    },
+    "typeBody": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeBodyPhone": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeBodyGuest": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeRowTitle": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeSmall": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeMeta": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeLabel": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0.1em"
+    },
+    "typePill": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typePillWrapped": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeButton": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeCode": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeRoomNow": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "-0.02em"
+    },
+    "typeLandingH1": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "-0.03em"
+    },
+    "borderCard": "1px solid #EFE3DB",
+    "borderControl": "1px solid #E3D7D1",
+    "borderField": "1px solid #908795",
+    "borderInset": "1px solid #F2E7E0",
+    "borderDivider": "1px solid #F6EDE7",
     "borderSelected": "2px solid #5B2A86",
+    "borderAllergy": "1.5px solid #C42B1C",
+    "borderGuestControl": "1.5px solid #E3D7D1",
+    "elevationNative": {
+      "card": {
+        "ios": {
+          "shadowColor": "#14161C",
+          "shadowOpacity": {},
+          "shadowRadius": {},
+          "shadowOffset": {
+            "width": {},
+            "height": {}
+          }
+        },
+        "android": {
+          "elevation": {}
+        }
+      },
+      "raised": {
+        "ios": {
+          "shadowColor": "#14161C",
+          "shadowOpacity": {},
+          "shadowRadius": {},
+          "shadowOffset": {
+            "width": {},
+            "height": {}
+          }
+        },
+        "android": {
+          "elevation": {}
+        }
+      },
+      "popover": {
+        "ios": {
+          "shadowColor": "#14161C",
+          "shadowOpacity": {},
+          "shadowRadius": {},
+          "shadowOffset": {
+            "width": {},
+            "height": {}
+          }
+        },
+        "android": {
+          "elevation": {}
+        }
+      },
+      "dialog": {
+        "ios": {
+          "shadowColor": "#14161C",
+          "shadowOpacity": {},
+          "shadowRadius": {},
+          "shadowOffset": {
+            "width": {},
+            "height": {}
+          }
+        },
+        "android": {
+          "elevation": {}
+        }
+      },
+      "sheet": {
+        "ios": {
+          "shadowColor": "#14161C",
+          "shadowOpacity": {},
+          "shadowRadius": {},
+          "shadowOffset": {
+            "width": {},
+            "height": {}
+          }
+        },
+        "android": {
+          "elevation": {}
+        }
+      },
+      "toast": {
+        "ios": {
+          "shadowColor": "#14161C",
+          "shadowOpacity": {},
+          "shadowRadius": {},
+          "shadowOffset": {
+            "width": {},
+            "height": {}
+          }
+        },
+        "android": {
+          "elevation": {}
+        }
+      }
+    },
     "marks": {
       "done": {
         "glyph": "✓",
@@ -1313,8 +2846,8 @@ export const schemes = {
         "glyph": "✕",
         "word": "Broken",
         "fill": "#FFFFFF",
-        "ring": "#C2410C",
-        "ink": "#C2410C"
+        "ring": "#C42B1C",
+        "ink": "#C42B1C"
       },
       "notStarted": {
         "glyph": "",
@@ -1326,7 +2859,7 @@ export const schemes = {
       "skipped": {
         "glyph": "–",
         "word": "Skipped",
-        "fill": "#F1F2F4",
+        "fill": "#F6EDE7",
         "ring": "#C9CED6",
         "ink": "#6B7280"
       },
@@ -1334,8 +2867,8 @@ export const schemes = {
         "glyph": "!",
         "word": "Allergy",
         "fill": "#FFFFFF",
-        "ring": "#C2410C",
-        "ink": "#C2410C"
+        "ring": "#C42B1C",
+        "ink": "#C42B1C"
       },
       "info": {
         "glyph": "i",
@@ -1404,7 +2937,7 @@ export const schemes = {
       "unusable": {
         "glyph": "✕",
         "word": "Unusable",
-        "fill": "#F1F2F4",
+        "fill": "#F6EDE7",
         "ring": "1px solid #C9CED6",
         "ink": "#6B7280"
       }
@@ -1431,7 +2964,226 @@ export const schemes = {
     "colorBrokenText": "#A3241A"
   },
   "terracotta": {
+    "typeDisplay": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "-0.03em"
+    },
+    "typeTitlePage": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "-0.02em"
+    },
+    "typeTitlePhone": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "-0.02em"
+    },
+    "typeTitleFrame": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "-0.02em"
+    },
+    "typeTitleFrameCompact": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "-0.02em"
+    },
+    "typeTitleSection": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeTitleDialog": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeNumberTile": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "-0.02em"
+    },
+    "typeBody": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeBodyPhone": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeBodyGuest": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeRowTitle": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeSmall": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeMeta": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeLabel": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0.1em"
+    },
+    "typePill": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typePillWrapped": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeButton": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeCode": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "0"
+    },
+    "typeRoomNow": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "-0.02em"
+    },
+    "typeLandingH1": {
+      "size": {},
+      "weight": {},
+      "lineHeight": {},
+      "letterSpacing": "-0.03em"
+    },
+    "borderCard": "1px solid #EADFCF",
+    "borderControl": "1px solid #DED3C4",
+    "borderField": "1px solid #918880",
+    "borderInset": "1px solid #EEE3D4",
+    "borderDivider": "1px solid #F2EADD",
     "borderSelected": "2px solid #A3401D",
+    "borderAllergy": "1.5px solid #C42B1C",
+    "borderGuestControl": "1.5px solid #DED3C4",
+    "elevationNative": {
+      "card": {
+        "ios": {
+          "shadowColor": "#14161C",
+          "shadowOpacity": {},
+          "shadowRadius": {},
+          "shadowOffset": {
+            "width": {},
+            "height": {}
+          }
+        },
+        "android": {
+          "elevation": {}
+        }
+      },
+      "raised": {
+        "ios": {
+          "shadowColor": "#14161C",
+          "shadowOpacity": {},
+          "shadowRadius": {},
+          "shadowOffset": {
+            "width": {},
+            "height": {}
+          }
+        },
+        "android": {
+          "elevation": {}
+        }
+      },
+      "popover": {
+        "ios": {
+          "shadowColor": "#14161C",
+          "shadowOpacity": {},
+          "shadowRadius": {},
+          "shadowOffset": {
+            "width": {},
+            "height": {}
+          }
+        },
+        "android": {
+          "elevation": {}
+        }
+      },
+      "dialog": {
+        "ios": {
+          "shadowColor": "#14161C",
+          "shadowOpacity": {},
+          "shadowRadius": {},
+          "shadowOffset": {
+            "width": {},
+            "height": {}
+          }
+        },
+        "android": {
+          "elevation": {}
+        }
+      },
+      "sheet": {
+        "ios": {
+          "shadowColor": "#14161C",
+          "shadowOpacity": {},
+          "shadowRadius": {},
+          "shadowOffset": {
+            "width": {},
+            "height": {}
+          }
+        },
+        "android": {
+          "elevation": {}
+        }
+      },
+      "toast": {
+        "ios": {
+          "shadowColor": "#14161C",
+          "shadowOpacity": {},
+          "shadowRadius": {},
+          "shadowOffset": {
+            "width": {},
+            "height": {}
+          }
+        },
+        "android": {
+          "elevation": {}
+        }
+      }
+    },
     "marks": {
       "done": {
         "glyph": "✓",
@@ -1451,8 +3203,8 @@ export const schemes = {
         "glyph": "✕",
         "word": "Broken",
         "fill": "#FFFFFF",
-        "ring": "#C2410C",
-        "ink": "#C2410C"
+        "ring": "#C42B1C",
+        "ink": "#C42B1C"
       },
       "notStarted": {
         "glyph": "",
@@ -1464,7 +3216,7 @@ export const schemes = {
       "skipped": {
         "glyph": "–",
         "word": "Skipped",
-        "fill": "#F1F2F4",
+        "fill": "#F2EADD",
         "ring": "#C9CED6",
         "ink": "#6B7280"
       },
@@ -1472,8 +3224,8 @@ export const schemes = {
         "glyph": "!",
         "word": "Allergy",
         "fill": "#FFFFFF",
-        "ring": "#C2410C",
-        "ink": "#C2410C"
+        "ring": "#C42B1C",
+        "ink": "#C42B1C"
       },
       "info": {
         "glyph": "i",
@@ -1542,7 +3294,7 @@ export const schemes = {
       "unusable": {
         "glyph": "✕",
         "word": "Unusable",
-        "fill": "#F1F2F4",
+        "fill": "#F2EADD",
         "ring": "1px solid #C9CED6",
         "ink": "#6B7280"
       }

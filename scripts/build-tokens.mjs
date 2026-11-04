@@ -39,17 +39,29 @@ const isTypeStyle = (k, v) => k.startsWith('type') && v !== null && typeof v ===
 /** Tables of meaning, flattened per entry rather than emitted as objects. */
 const MEANING = ['marks', 'replyStates', 'seatStates'];
 
-// borderSelected, the done mark and a taken seat carry the accent's hex inside
-// them; without this they stay green under every scheme.
+// Borders, marks and seats carry base colours' hexes inside them. Each hex is
+// swapped in one pass, so citrus's accent, which is the base broken red, is not
+// swapped twice; a hex two colours share that a scheme splits cannot be guessed.
 function laidOver(colours) {
+  const into = {};
+  for (const [key, value] of Object.entries(tokens)) {
+    if (!key.startsWith('color') || typeof value !== 'string') continue;
+    (into[value.toUpperCase()] ??= new Set()).add(colours[key] ?? value);
+  }
   const swap = (v) =>
     typeof v === 'string'
-      ? v.replaceAll(tokens.colorAccent, colours.colorAccent)
+      ? v.replace(/#[0-9A-F]{6}\b/gi, (hex) => {
+          const laid = into[hex.toUpperCase()];
+          if (laid === undefined) return hex;
+          if (laid.size > 1) throw new Error(`${hex} becomes ${[...laid].join(' or ')}`);
+          return [...laid][0];
+        })
       : Object.fromEntries(Object.entries(v).map(([k, x]) => [k, swap(x)]));
   const derived = {};
   for (const [key, value] of Object.entries(tokens)) {
     if (key.startsWith('color') || value === null || typeof value === 'number') continue;
-    if (JSON.stringify(value).includes(tokens.colorAccent)) derived[key] = swap(value);
+    const laid = swap(value);
+    if (JSON.stringify(laid) !== JSON.stringify(value)) derived[key] = laid;
   }
   return { ...derived, ...colours };
 }
@@ -117,7 +129,7 @@ function buildCss() {
     for (const [key, value] of Object.entries(laid)) {
       if (MEANING.includes(key))
         lines.push(...meaningLines(key, value).filter((l) => !base.has(l)));
-      else lines.push(`  --${key}: ${value};`);
+      else if (typeof value === 'string') lines.push(`  --${key}: ${value};`);
     }
     lines.push('}');
   }
