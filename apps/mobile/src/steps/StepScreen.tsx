@@ -247,6 +247,17 @@ export function StepScreen({
     });
   }, [keysUp]);
 
+  // The field's own lines, a rule or an error under it, have to fit above a docked foot too.
+  useEffect(() => {
+    const needs = (height: number) =>
+      setSizes((was) => (was.field === height ? was : { ...was, field: height }));
+    screenScroll.focusedGroup.add(needs);
+
+    return () => {
+      screenScroll.focusedGroup.delete(needs);
+    };
+  }, [screenScroll]);
+
   // The foot remounts as it moves, and a press on it that sent the keys down would leave the screen reader on nothing.
   useEffect(() => {
     const docking = wasInline.current && !inline;
