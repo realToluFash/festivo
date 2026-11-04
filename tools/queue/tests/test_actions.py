@@ -1756,6 +1756,7 @@ class FinishedStories(Base):
 
 DESIGN = "ux/sc-1-sign-in"
 DEMO_FILES = [("apps/mobile/src/demo/SignIn.tsx", 40, 0), ("apps/mobile/app/demo/sign-in.tsx", 9, 0)]
+WEB_DEMO_FILES = [("apps/web/src/demo/EventsBoard.tsx", 60, 0), ("apps/web/src/demo/Demo.tsx", 4, 1)]
 
 
 def design(verdict=None, branch=DESIGN, **kw):
@@ -1763,7 +1764,7 @@ def design(verdict=None, branch=DESIGN, **kw):
 
 
 class DesignPullRequests(Base):
-    """The designer builds a story's boards in the app's demo area on a ux/ branch, opens and
+    """The designer builds a story's boards in the design demos on a ux/ branch, opens and
     merges its pull request itself after the lead's pass, and the story keeps its state."""
 
     STATES = ("Needs Design", "Ready For Dev", "In Progress", "In Review", "Passed Code Review",
@@ -1858,7 +1859,7 @@ class DesignPullRequests(Base):
         store.put_pr(self.db, design("pass"))
         stray = DEMO_FILES + [("apps/mobile/src/ui/Button.tsx", 1, 1),
                               ("apps/mobile/app/(auth)/sign-in.tsx", 2, 0)]
-        with self.assertRaisesRegex(actions.Refused, "changes only the demo area.*"
+        with self.assertRaisesRegex(actions.Refused, "changes only the design demos.*"
                                     r"apps/mobile/src/ui/Button.tsx, apps/mobile/app/\(auth\)"
                                     ) as refused:
             self.merge(files=stray)
@@ -1874,6 +1875,22 @@ class DesignPullRequests(Base):
             self.assertEqual(self.state(1), state)
             self.assertIn(f"stays {state}, and no tester is told", said)
             self.assertEqual(self.fake.comments, [], state)
+
+    def test_a_design_merge_of_the_web_demo_merges(self):
+        self.fake.add(1, "Ready For Dev", ["dev2"])
+        store.put_pr(self.db, design("pass"))
+        said, merged = self.merge(files=DEMO_FILES + WEB_DEMO_FILES)
+        merged.assert_called_once_with(9, HEAD)
+        self.assertEqual(self.state(1), "Ready For Dev")
+
+    def test_a_design_merge_that_also_changes_a_web_route_is_refused(self):
+        self.fake.add(1, "Ready For Dev", ["dev2"])
+        store.put_pr(self.db, design("pass"))
+        with self.assertRaisesRegex(actions.Refused, "changes only the design demos.*"
+                                    "apps/web/src/routes/host/Events.tsx") as refused:
+            self.merge(files=WEB_DEMO_FILES + [("apps/web/src/routes/host/Events.tsx", 3, 1)])
+        self.assertNotIn("EventsBoard.tsx", str(refused.exception))
+        self.assertEqual(self.state(1), "Ready For Dev")
 
     def test_a_design_merge_keeps_every_other_guard(self):
         self.fake.add(1, "Ready For Dev", ["dev2"])
