@@ -26,8 +26,8 @@ describe('the Settings list at a desk (sc-29708)', () => {
 
   it('names who is looking and the state in the link, and leaves the owner out', () => {
     expect(settingsPath('members', VIEWERS.folake)).toBe('/demo/settings/members');
-    expect(settingsPath('roles', VIEWERS.julien, 'locked')).toBe(
-      '/demo/settings/roles?as=julien&state=locked',
+    expect(settingsPath('members', VIEWERS.julien, 'claim')).toBe(
+      '/demo/settings/members?as=julien&state=claim',
     );
   });
 

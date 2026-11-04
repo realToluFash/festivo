@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useParams, useSearchParams } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 
 import { Toast } from '../components/Toast.tsx';
 import { Glyph, type GlyphName } from './Glyph.tsx';
@@ -9,7 +9,6 @@ import {
   SECTION_NAMES,
   SIDEBAR_EVENTS,
   type Viewer,
-  drawnOf,
   groupsFor,
   isDrawn,
   settingsPath,
@@ -32,10 +31,9 @@ const TILES: Record<Exclude<Section, 'account' | 'general'>, GlyphName> = {
 
 /** Settings at a desk in B · Summary first (Web-Settings.dc.html, page 29), on sample data. */
 export function Settings() {
-  const { section } = useParams();
   const [params] = useSearchParams();
   const viewer = viewerOf(params.get('as'));
-  const open = drawnOf(section);
+  const open: Drawn = 'members';
   const state = params.get('state') ?? '';
   const [told, setTold] = useState<string | null>(null);
   const tell = useCallback<Tell>((words) => setTold(words), []);

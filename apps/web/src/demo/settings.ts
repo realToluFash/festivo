@@ -4,8 +4,8 @@ import type { EventKey } from './today.ts';
 export type Section =
   'account' | 'security' | 'notifications' | 'general' | 'members' | 'roles' | 'signInRules';
 
-/** The two sections the boards draw; the others each have their own design. */
-export type Drawn = 'members' | 'roles';
+/** The one section the boards draw; the others, Roles among them, each have their own design. */
+export type Drawn = 'members';
 
 export const SECTION_NAMES: Record<Section, string> = {
   account: 'Account',
@@ -98,12 +98,8 @@ export function groupsFor(viewer: Pick<Viewer, 'reads'>): SectionGroup[] {
   }));
 }
 
-export function drawnOf(name: string | undefined): Drawn {
-  return name === 'roles' ? 'roles' : 'members';
-}
-
 export function isDrawn(section: Section): section is Drawn {
-  return section === 'members' || section === 'roles';
+  return section === 'members';
 }
 
 export function settingsPath(section: Drawn, viewer: Pick<Viewer, 'key'>, state?: string): string {

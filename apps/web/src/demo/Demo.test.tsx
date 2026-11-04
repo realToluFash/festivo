@@ -1127,6 +1127,8 @@ describe('Settings at a desk (sc-29708)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Security' }));
     expect(screen.getByText('Security has its own design.')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Roles' }));
+    expect(screen.getByText('Roles has its own design.')).toBeDefined();
     expect(screen.getByRole('heading', { level: 1, name: 'Members' })).toBeDefined();
   });
 
