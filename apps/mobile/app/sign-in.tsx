@@ -71,6 +71,7 @@ export default function SignIn() {
   const refusal = status.kind === 'ruled' ? status.refusal : null;
   const liftsAt = locked ? status.liftsAt : null;
   const liftLock = useCallback(() => setStatus({ kind: 'ready' }), []);
+  const [passwordsWiped, wipePassword] = useState(0);
 
   useEffect(() => {
     if (liftsAt == null) return;
@@ -78,7 +79,7 @@ export default function SignIn() {
     const lift = setTimeout(
       () => {
         typed.current.password = '';
-        passwordField.current?.clear();
+        wipePassword((wiped) => wiped + 1);
         liftLock();
       },
       Math.max(0, liftsAt - Date.now()),
@@ -229,6 +230,7 @@ export default function SignIn() {
             </Animated.View>
             <Animated.View style={[styles.next, shaken]}>
               <InsideField
+                key={passwordsWiped}
                 ref={passwordField}
                 label={t('signIn.password')}
                 onChangeText={(text) => {
