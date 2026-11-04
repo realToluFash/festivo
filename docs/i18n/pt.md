@@ -655,3 +655,4 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
 - **A moldura das páginas sem sessão** (sc-29037): "New to Soirely?" é "Ainda não tem conta?",
   antes de "Criar uma conta"; "É novo…?" concorda com um género. "© {{year}} Soirely" fica igual
   ao inglês. O botão de idioma lê-se "Idioma: {{language}}".
+- **Cancelar um pedido para voltar a entrar** (sc-29979): "Cancelar o seu pedido?"; a saída é "Continuar à espera", nunca "Cancelar", e a confirmação reutiliza "Cancelar o pedido".
