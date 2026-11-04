@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Animated,
   Pressable,
@@ -9,14 +10,14 @@ import {
 } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 
-import { Text } from '../components/Text.tsx';
+import { Text } from './Text.tsx';
 import { tokens } from '../theme/tokens.ts';
-import { Confetti, Cover, type Piece } from '../components/Cover.tsx';
-import { EventMesh } from './Cover.tsx';
+import { Confetti, Cover, type Piece } from './Cover.tsx';
+import { EventMesh } from './EventMesh.tsx';
 import { Glyph } from './Glyph.tsx';
-import type { Moment, Now } from './today.ts';
-import type { Tell } from './TodayParts.tsx';
-import { SAMPLE } from './samples.ts';
+import type { Moment, Now } from '../kit/today.ts';
+import { Initials } from './Initials.tsx';
+import { useTodayShell } from './todayShell.ts';
 
 export type CoverLayout = 'phone' | 'portrait' | 'landscape';
 
@@ -96,6 +97,9 @@ export const TABS = [
 
 export type Tab = (typeof TABS)[number][0];
 
+/** The ways out that the Maestro flows open Settings and the switcher by, from the signed-in home before Today too. */
+export const SETTINGS_ID: Partial<Record<Tab, string>> = { Settings: 'home.openSettings' };
+
 export function Glass({
   children,
   height = 40,
@@ -114,26 +118,35 @@ export function Glass({
 }
 
 function OrgTileWhite({ side = 28 }: { side?: number }) {
+  const { organisation } = useTodayShell();
+
   return (
     <View
       style={[styles.orgTile, { width: side, height: side, borderRadius: Math.round(side * 0.32) }]}
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
     >
-      <Text size={Math.round(side * 0.4)} weight="bold" accessible={false} style={styles.accent}>
-        IE
-      </Text>
+      <Initials
+        name={organisation}
+        size={Math.round(side * 0.4)}
+        weight="bold"
+        style={styles.accent}
+      />
     </View>
   );
 }
 
-export function OrgButton({ compact = false, tell }: { compact?: boolean; tell: Tell }) {
+export function OrgButton({ compact = false }: { compact?: boolean }) {
+  const { t } = useTranslation();
+  const { organisation, open } = useTodayShell();
+
   return (
     <Pressable
-      onPress={() => tell('Switching organisation has its own design.')}
+      onPress={() => open({ to: 'organisation' })}
       accessibilityRole="button"
-      accessibilityLabel={`${SAMPLE.organisation}. Switch organisation`}
+      accessibilityLabel={t('todayScreen.switchOrganisation', { name: organisation })}
       hitSlop={tokens.spaceXxs}
+      testID="home.switchOrganisation"
     >
       {compact ? (
         <Glass style={styles.orgCompact}>
@@ -143,7 +156,7 @@ export function OrgButton({ compact = false, tell }: { compact?: boolean; tell: 
         <Glass style={styles.orgWide}>
           <OrgTileWhite />
           <Text size={15} weight="semibold" accessible={false} style={styles.white}>
-            {SAMPLE.organisation}
+            {organisation}
           </Text>
           <Glyph name="updown" size={14} ink={tokens.colorInkOnDark} />
         </Glass>
@@ -152,17 +165,24 @@ export function OrgButton({ compact = false, tell }: { compact?: boolean; tell: 
   );
 }
 
-export function BellButton({ tell }: { tell: Tell }) {
+export function BellButton() {
+  const { t } = useTranslation();
+  const { unread, open } = useTodayShell();
+
   return (
     <Pressable
-      onPress={() => tell('Notifications have their own design.')}
+      onPress={() => open({ to: 'notifications' })}
       accessibilityRole="button"
-      accessibilityLabel="Notifications, 3 unread"
+      accessibilityLabel={
+        unread > 0
+          ? t('todayScreen.notificationsUnread', { count: unread })
+          : t('todayScreen.notifications')
+      }
       hitSlop={tokens.spaceXxs}
     >
       <Glass style={styles.bell}>
         <Glyph name="bell" size={19} ink={tokens.colorInkOnDark} />
-        <View style={styles.unread} />
+        {unread > 0 && <View style={styles.unread} />}
       </Glass>
     </Pressable>
   );
@@ -170,6 +190,8 @@ export function BellButton({ tell }: { tell: Tell }) {
 
 /** iPadOS 26's tab bar, in glass at the top of the cover. */
 export function TabCapsule({ onTab, at = 'Today' }: { onTab: (tab: Tab) => void; at?: Tab }) {
+  const { t } = useTranslation();
+
   return (
     <Glass height={46} style={styles.capsule}>
       {TABS.map(([label, glyph]) => {
@@ -183,11 +205,12 @@ export function TabCapsule({ onTab, at = 'Today' }: { onTab: (tab: Tab) => void;
             style={[styles.capsuleTab, on && styles.capsuleOn]}
             accessibilityRole="tab"
             accessibilityState={{ selected: on }}
-            accessibilityLabel={label}
+            accessibilityLabel={t(`todayScreen.tab.${glyph}`)}
+            testID={SETTINGS_ID[label]}
           >
             <Glyph name={glyph} ink={ink} />
             <Text size={15} weight="semibold" accessible={false} style={{ color: ink }}>
-              {label}
+              {t(`todayScreen.tab.${glyph}`)}
             </Text>
           </Pressable>
         );
@@ -259,6 +282,8 @@ function WhiteButton({
 }
 
 function Chips({ now }: { now: Now }) {
+  const { t } = useTranslation();
+
   return (
     <View style={styles.chips}>
       <View style={[styles.chip, styles.chipLight]}>
@@ -266,7 +291,7 @@ function Chips({ now }: { now: Now }) {
           <View style={styles.liveDot} />
         </View>
         <Text size={13} weight="semibold">
-          Live now
+          {t('todayScreen.liveNow')}
         </Text>
       </View>
       <View style={[styles.chip, styles.chipDark]}>
@@ -368,11 +393,13 @@ function Ring({ share, side = 44, line = 4 }: { share: number; side?: number; li
 }
 
 function NextAndArrived({ now }: { now: Now }) {
+  const { t } = useTranslation();
+
   return (
     <View style={styles.nextRow}>
       <View style={styles.next}>
         <Text size={12} weight="bold" style={[styles.white, styles.soft, styles.nextLabel]}>
-          NEXT
+          {t('todayScreen.next').toLocaleUpperCase()}
         </Text>
         <View style={styles.nextLine}>
           <Text size={16} weight="bold" style={[styles.white, styles.figures]}>
@@ -404,7 +431,7 @@ function NextAndArrived({ now }: { now: Now }) {
             </Text>
           </View>
           <Text size={12.5} weight="medium" accessible={false} style={[styles.white, styles.soft]}>
-            arrived
+            {t('todayScreen.arrivedCount')}
           </Text>
         </View>
       </View>
@@ -412,7 +439,9 @@ function NextAndArrived({ now }: { now: Now }) {
   );
 }
 
-export function NowBlock({ moment, wide, tell }: { moment: Moment; wide: boolean; tell: Tell }) {
+export function NowBlock({ moment, wide }: { moment: Moment; wide: boolean }) {
+  const { t } = useTranslation();
+  const { open: go } = useTodayShell();
   const { now } = moment;
 
   if (now == null) return null;
@@ -438,7 +467,10 @@ export function NowBlock({ moment, wide, tell }: { moment: Moment; wide: boolean
       </>
     );
     const open = (
-      <WhiteButton label="Open the event" onPress={() => tell(`${now.name} has its own design.`)} />
+      <WhiteButton
+        label={t('todayScreen.openEvent')}
+        onPress={() => go({ to: 'event', id: now.event.id, name: now.name })}
+      />
     );
 
     return wide ? (
@@ -483,8 +515,8 @@ export function NowBlock({ moment, wide, tell }: { moment: Moment; wide: boolean
   );
   const open = (
     <WhiteButton
-      label="Open run of show"
-      onPress={() => tell('The run of show has its own design.')}
+      label={t('todayScreen.openRunOfShow')}
+      onPress={() => go({ to: 'event', id: now.event.id, name: now.name })}
     />
   );
 
@@ -542,14 +574,12 @@ export function TodayCover({
   moment,
   layout,
   top,
-  tell,
   onTab,
   words = 1,
 }: {
   moment: Moment;
   layout: CoverLayout;
   top: number;
-  tell: Tell;
   onTab: (tab: Tab) => void;
   /** How much of the top row and the words still show: they go as the cover scrolls up, before the band comes. */
   words?: Animated.AnimatedInterpolation<number> | number;
@@ -567,11 +597,11 @@ export function TodayCover({
           shade="side"
         />
         <View style={styles.bannerBell}>
-          <BellButton tell={tell} />
+          <BellButton />
         </View>
         <View style={day ? styles.bannerNow : styles.bannerGreeting}>
           {day ? (
-            <NowBlock moment={moment} wide tell={tell} />
+            <NowBlock moment={moment} wide />
           ) : (
             <Greeting moment={moment} size={38} sub={17} gap={tokens.spaceSm} />
           )}
@@ -595,9 +625,9 @@ export function TodayCover({
       />
       <Animated.View style={[styles.coverWords, { opacity: words }]}>
         <View style={[phone ? styles.topPhone : styles.topTablet, { marginTop: top }]}>
-          <OrgButton tell={tell} />
+          <OrgButton />
           <View style={styles.grow} />
-          <BellButton tell={tell} />
+          <BellButton />
           {!phone && (
             <View style={styles.capsuleAt} pointerEvents="box-none">
               <TabCapsule onTab={onTab} />
@@ -607,7 +637,7 @@ export function TodayCover({
         <View style={[styles.grow, { minHeight: footClear(moment, phone) }]} />
         <View style={phone ? styles.footPhone : day ? styles.footTabletNow : styles.footTablet}>
           {day ? (
-            <NowBlock moment={moment} wide={!phone} tell={tell} />
+            <NowBlock moment={moment} wide={!phone} />
           ) : phone ? (
             <Greeting moment={moment} size={32} sub={16} gap={tokens.spaceSm} />
           ) : (
@@ -623,15 +653,14 @@ export function Band({
   moment,
   layout,
   top,
-  tell,
   onTab,
 }: {
   moment: Moment;
   layout: Exclude<CoverLayout, 'landscape'>;
   top: number;
-  tell: Tell;
   onTab: (tab: Tab) => void;
 }) {
+  const { t } = useTranslation();
   const { now } = moment;
   const phone = layout === 'phone';
 
@@ -648,13 +677,13 @@ export function Band({
         <EventMesh event={now.event} shade="day" />
       )}
       <View style={[phone ? styles.topPhone : styles.topTablet, { marginTop: top }]}>
-        <OrgButton compact tell={tell} />
+        <OrgButton compact />
         <View style={styles.grow} />
-        <BellButton tell={tell} />
+        <BellButton />
         <View style={phone ? styles.bandTitle : styles.capsuleAt} pointerEvents="box-none">
           {phone ? (
             <Text size={17} weight="semibold" accessibilityRole="header" style={styles.white}>
-              Today
+              {t('todayScreen.today')}
             </Text>
           ) : (
             <TabCapsule onTab={onTab} />
@@ -665,7 +694,9 @@ export function Band({
         <View style={styles.bandNow}>
           <View style={styles.liveDot} />
           <Text size={13.5} weight="semibold" numberOfLines={1} style={styles.white}>
-            {moment.full ? `Now · ${now.happening}, ${now.until}` : `Live · ${now.name}`}
+            {moment.full
+              ? t('todayScreen.nowLine', { happening: now.happening, until: now.until })
+              : t('todayScreen.liveName', { name: now.name })}
           </Text>
         </View>
       )}
@@ -682,6 +713,8 @@ export function PhoneTabBar({
   onTab: (tab: Tab) => void;
   at?: Tab;
 }) {
+  const { t } = useTranslation();
+
   return (
     <View style={[styles.tabBar, { bottom }]} accessibilityRole="tablist">
       {TABS.map(([label, glyph]) => {
@@ -695,7 +728,8 @@ export function PhoneTabBar({
             style={[styles.tab, on && styles.tabOn]}
             accessibilityRole="tab"
             accessibilityState={{ selected: on }}
-            accessibilityLabel={label}
+            accessibilityLabel={t(`todayScreen.tab.${glyph}`)}
+            testID={SETTINGS_ID[label]}
           >
             <Glyph name={glyph} size={22} ink={ink} />
             <Text
@@ -704,7 +738,7 @@ export function PhoneTabBar({
               accessible={false}
               style={{ color: ink }}
             >
-              {label}
+              {t(`todayScreen.tab.${glyph}`)}
             </Text>
           </Pressable>
         );

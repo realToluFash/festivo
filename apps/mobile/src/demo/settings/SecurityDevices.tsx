@@ -9,7 +9,7 @@ import { Notice } from '../../components/Notice.tsx';
 import { PasswordField } from '../../components/PasswordField.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
-import { Glyph } from '../Glyph.tsx';
+import { Glyph } from '../../components/Glyph.tsx';
 import { CODE_FIGURES, Note, RowPill, StepPill, WhiteRows } from './AccountParts.tsx';
 import { passwordProblem, plural, secondFactorProblem } from './AccountSample.ts';
 import { Card, CardHead, Chip, Pair, Pill, TYPE } from './parts.tsx';

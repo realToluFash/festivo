@@ -8,7 +8,7 @@ import { Text } from '../../components/Text.tsx';
 import { TURNS_WITH_THE_APP } from '../../layout/orientations.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { useModalOpen } from '../../updateRequired.ts';
-import { Glyph } from '../Glyph.tsx';
+import { Glyph } from '../../components/Glyph.tsx';
 import { DETAILS_WORDS } from './OrganisationWords.ts';
 
 export interface Choice {

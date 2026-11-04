@@ -1,14 +1,15 @@
+import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { Brand } from '../components/Brand.tsx';
-import { Text } from '../components/Text.tsx';
+import { Brand } from './Brand.tsx';
+import { Text } from './Text.tsx';
 import { tokens } from '../theme/tokens.ts';
-import { EventMesh, eventColour } from './Cover.tsx';
+import { EventMesh, eventColour } from './EventMesh.tsx';
 import { Glyph, type GlyphName } from './Glyph.tsx';
-import { EVENTS, type EventKey } from './today.ts';
-import type { Tab } from './TodayCover.tsx';
-import type { Tell } from './TodayParts.tsx';
-import { SAMPLE } from './samples.ts';
+import type { ShownEvent } from '../kit/today.ts';
+import { SETTINGS_ID, type Tab } from './TodayCover.tsx';
+import { Initials } from './Initials.tsx';
+import { useTodayShell } from './todayShell.ts';
 
 const PLACES: readonly (readonly [Tab, GlyphName])[] = [
   ['Today', 'today'],
@@ -17,26 +18,29 @@ const PLACES: readonly (readonly [Tab, GlyphName])[] = [
 ];
 
 function Place({
-  label,
+  tab,
   glyph,
   onTab,
   at,
 }: {
-  label: Tab;
+  tab: Tab;
   glyph: GlyphName;
   onTab: (tab: Tab) => void;
   at: Tab;
 }) {
-  const on = label === at;
+  const { t } = useTranslation();
+  const on = tab === at;
   const ink = on ? tokens.colorInk : tokens.colorInkSecondary;
+  const words = t(`todayScreen.tab.${glyph}`);
 
   return (
     <Pressable
-      onPress={() => onTab(label)}
+      onPress={() => onTab(tab)}
       style={({ pressed }) => [styles.place, on && styles.placeOn, pressed && styles.pressed]}
       accessibilityRole="tab"
       accessibilityState={{ selected: on }}
-      accessibilityLabel={label}
+      accessibilityLabel={words}
+      testID={SETTINGS_ID[tab]}
     >
       <Glyph name={glyph} ink={ink} />
       <Text
@@ -45,7 +49,7 @@ function Place({
         accessible={false}
         style={{ color: ink }}
       >
-        {label}
+        {words}
       </Text>
     </Pressable>
   );
@@ -55,60 +59,67 @@ function Place({
 export function TodaySidebar({
   events,
   onTab,
-  tell,
   at = 'Today',
-  onPerson = () => tell('Your account has its own design.'),
+  onPerson,
 }: {
-  events: readonly EventKey[];
+  events: readonly ShownEvent[];
   onTab: (tab: Tab) => void;
-  tell: Tell;
   at?: Tab;
   onPerson?: () => void;
 }) {
+  const { t } = useTranslation();
+  const { organisation, person, search, open } = useTodayShell();
+
   return (
     <View style={styles.side}>
       <View style={styles.logo}>
         <Brand lockup height={24} />
       </View>
       <Pressable
-        onPress={() => tell('Switching organisation has its own design.')}
+        onPress={() => open({ to: 'organisation' })}
         style={styles.org}
         accessibilityRole="button"
-        accessibilityLabel={`${SAMPLE.organisation}. Switch organisation`}
+        accessibilityLabel={t('todayScreen.switchOrganisation', { name: organisation })}
+        testID="home.switchOrganisation"
       >
         <View
           style={styles.orgTile}
           accessibilityElementsHidden
           importantForAccessibility="no-hide-descendants"
         >
-          <Text size={12} weight="bold" accessible={false} style={styles.onAccent}>
-            IE
-          </Text>
+          <Initials name={organisation} size={12} weight="bold" style={styles.onAccent} />
         </View>
         <Text size={15} weight="semibold" accessible={false} style={styles.grow}>
-          {SAMPLE.organisation}
+          {organisation}
         </Text>
         <Glyph name="updown" size={15} ink={tokens.colorInkSecondary} />
       </Pressable>
-      <Pressable
-        onPress={() => tell('Search has its own design.')}
-        style={styles.search}
-        accessibilityRole="search"
-        accessibilityLabel="Search"
-      >
-        <Glyph name="search" size={16} ink={tokens.colorInkSecondary} />
-        <Text size={14} weight="medium" accessible={false} style={[styles.grow, styles.secondary]}>
-          Search
-        </Text>
-        <View style={styles.key}>
-          <Text size={12} weight="medium" accessible={false} style={styles.secondary}>
-            ⌘K
+      {search && (
+        <Pressable
+          onPress={() => open({ to: 'search' })}
+          style={styles.search}
+          accessibilityRole="search"
+          accessibilityLabel={t('todayScreen.search')}
+        >
+          <Glyph name="search" size={16} ink={tokens.colorInkSecondary} />
+          <Text
+            size={14}
+            weight="medium"
+            accessible={false}
+            style={[styles.grow, styles.secondary]}
+          >
+            {t('todayScreen.search')}
           </Text>
-        </View>
-      </Pressable>
+          <View style={styles.key}>
+            <Text size={12} weight="medium" accessible={false} style={styles.secondary}>
+              ⌘K
+            </Text>
+          </View>
+        </Pressable>
+      )}
       <View style={styles.places} accessibilityRole="tablist">
         {PLACES.map(([label, glyph]) => (
-          <Place key={label} label={label} glyph={glyph} onTab={onTab} at={at} />
+          <Place key={label} tab={label} glyph={glyph} onTab={onTab} at={at} />
         ))}
       </View>
       <View>
@@ -118,17 +129,17 @@ export function TodaySidebar({
           accessibilityRole="header"
           style={[styles.secondary, styles.caps]}
         >
-          YOUR EVENTS
+          {t('todayScreen.yourEvents').toLocaleUpperCase()}
         </Text>
-        {events.map((key) => (
+        {events.map((event) => (
           <Pressable
-            key={key}
-            onPress={() => tell(`${EVENTS[key].name} has its own design.`)}
+            key={event.id}
+            onPress={() => open({ to: 'event', id: event.id, name: event.name })}
             style={({ pressed }) => [styles.event, pressed && styles.pressed]}
             accessibilityRole="button"
-            accessibilityLabel={EVENTS[key].name}
+            accessibilityLabel={event.name}
           >
-            <View style={[styles.dot, { backgroundColor: eventColour(key) }]} />
+            <View style={[styles.dot, { backgroundColor: eventColour(event) }]} />
             <Text
               size={14}
               weight="medium"
@@ -136,35 +147,33 @@ export function TodaySidebar({
               accessible={false}
               style={[styles.grow, styles.secondary]}
             >
-              {EVENTS[key].name}
+              {event.name}
             </Text>
           </Pressable>
         ))}
       </View>
       <View style={styles.grow} />
-      <Place label="Settings" glyph="settings" onTab={onTab} at={at} />
+      <Place tab="Settings" glyph="settings" onTab={onTab} at={at} />
       <Pressable
-        onPress={onPerson}
+        onPress={onPerson ?? (() => open({ to: 'account' }))}
         style={styles.person}
         accessibilityRole="button"
-        accessibilityLabel={`${SAMPLE.name}, Owner`}
+        accessibilityLabel={t('todayScreen.personRole', person)}
       >
         <View
           style={styles.avatar}
           accessibilityElementsHidden
           importantForAccessibility="no-hide-descendants"
         >
-          <EventMesh event="draft" />
-          <Text size={12} weight="bold" accessible={false}>
-            FA
-          </Text>
+          <EventMesh event={{ mesh: 'amber', photo: null }} />
+          <Initials name={person.name} size={12} weight="bold" />
         </View>
         <View style={styles.grow}>
           <Text size={14} weight="semibold" accessible={false}>
-            {SAMPLE.name}
+            {person.name}
           </Text>
           <Text size={12} weight="medium" accessible={false} style={styles.secondary}>
-            Owner
+            {person.role}
           </Text>
         </View>
         <Glyph name="updown" size={15} ink={tokens.colorInkSecondary} />

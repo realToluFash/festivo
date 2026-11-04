@@ -9,7 +9,7 @@ import { Notice } from '../../components/Notice.tsx';
 import { Sheet } from '../../components/Sheet.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
-import { Glyph } from '../Glyph.tsx';
+import { Glyph } from '../../components/Glyph.tsx';
 import { SAMPLE } from '../samples.ts';
 import {
   CODE_FIGURES,

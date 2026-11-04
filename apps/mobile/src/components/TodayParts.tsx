@@ -1,4 +1,5 @@
 import { type ReactNode, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Pressable,
   ScrollView,
@@ -8,19 +9,19 @@ import {
   type ViewStyle,
 } from 'react-native';
 
-import { Text } from '../components/Text.tsx';
+import { Text } from './Text.tsx';
 import { tokens } from '../theme/tokens.ts';
-import { EventMesh, eventColour } from './Cover.tsx';
+import { EventMesh, eventColour } from './EventMesh.tsx';
 import { Glyph } from './Glyph.tsx';
 import {
   type AgendaDay,
   type EventCard,
-  type EventKey,
-  EVENTS,
   type Moment,
   type Need,
+  type ShownEvent,
   type StripBar,
-} from './today.ts';
+} from '../kit/today.ts';
+import { useTodayShell } from './todayShell.ts';
 
 /** The board's type, in Instrument Sans: titles at 700 and set close, rows from 13 to 16. */
 export const TYPE = {
@@ -96,7 +97,7 @@ export function EventThumb({
   side,
   radius = tokens.radiusInset,
 }: {
-  event: EventKey;
+  event: ShownEvent;
   side: number;
   radius?: number;
 }) {
@@ -143,15 +144,14 @@ function NeedRow({
   first,
   last,
   wide,
-  tell,
 }: {
   need: Need;
   first: boolean;
   last: boolean;
   wide: boolean;
-  tell: Tell;
 }) {
-  const { name } = EVENTS[need.event];
+  const { open } = useTodayShell();
+  const { id, name } = need.event;
   const due = (
     <View style={styles.due}>
       {need.late && <Glyph name="clock" size={13} ink={tokens.colorBroken} weight={2.4} />}
@@ -192,23 +192,14 @@ function NeedRow({
       <ActionButton
         label={need.action}
         filled={first}
-        onPress={() => tell(`${need.action} opens in ${name}, which has its own design.`)}
+        onPress={() => open({ to: 'event', id, name })}
       />
     </View>
   );
 }
 
-export function NeedsYou({
-  moment,
-  wide,
-  top,
-  tell,
-}: {
-  moment: Moment;
-  wide: boolean;
-  top: number;
-  tell: Tell;
-}) {
+export function NeedsYou({ moment, wide, top }: { moment: Moment; wide: boolean; top: number }) {
+  const { t } = useTranslation();
   const { needs } = moment;
 
   if (needs == null) return null;
@@ -216,7 +207,7 @@ export function NeedsYou({
   if (needs.length === 0)
     return (
       <>
-        <SectionHead title="Needs you" top={top} />
+        <SectionHead title={t('todayScreen.needsYou')} top={top} />
         <Panel>
           <View style={styles.clear}>
             <View style={styles.tick}>
@@ -224,10 +215,10 @@ export function NeedsYou({
             </View>
             <View style={styles.words}>
               <Text size={TYPE.row} weight="semibold">
-                Nothing needs you
+                {t('todayScreen.nothingNeedsYou')}
               </Text>
               <Text size={14} weight="medium" style={styles.secondary}>
-                You’re up to date on every event.
+                {t('todayScreen.upToDate')}
               </Text>
             </View>
           </View>
@@ -237,7 +228,7 @@ export function NeedsYou({
 
   return (
     <>
-      <SectionHead title="Needs you" count={needs.length} top={top} />
+      <SectionHead title={t('todayScreen.needsYou')} count={needs.length} top={top} />
       <Panel style={wide && styles.panelWide}>
         {needs.map((need, index) => (
           <NeedRow
@@ -246,7 +237,6 @@ export function NeedsYou({
             first={index === 0}
             last={index === needs.length - 1}
             wide={wide}
-            tell={tell}
           />
         ))}
       </Panel>
@@ -284,7 +274,7 @@ function Bar({ bar, wide }: { bar: StripBar; wide: boolean }) {
       >
         <View style={[StyleSheet.absoluteFill, styles.tint, { backgroundColor: colour }]} />
         <Text size={12} weight="semibold" numberOfLines={1} style={styles.barName}>
-          {EVENTS[bar.event].name}
+          {bar.event.name}
         </Text>
         <Text
           size={12}
@@ -304,7 +294,9 @@ function Bar({ bar, wide }: { bar: StripBar; wide: boolean }) {
 }
 
 function Strip({ moment, wide }: { moment: Moment; wide: boolean }) {
+  const { t } = useTranslation();
   const circle = wide ? 38 : 34;
+  const today = t('todayScreen.today');
 
   return (
     <Panel style={[styles.strip, moment.bars.length > 0 && styles.stripWithBars]}>
@@ -314,10 +306,8 @@ function Strip({ moment, wide }: { moment: Moment; wide: boolean }) {
             key={day.number}
             style={styles.dayColumn}
             accessible
-            accessibilityLabel={`${day.today ? 'Today' : day.weekday} ${day.number}${
-              day.dots.length > 0
-                ? `, ${day.dots.map((event) => EVENTS[event].name).join(', ')}`
-                : ''
+            accessibilityLabel={`${day.today ? today : day.weekday} ${day.number}${
+              day.dots.length > 0 ? `, ${day.dots.map((event) => event.name).join(', ')}` : ''
             }`}
           >
             <Text
@@ -326,7 +316,7 @@ function Strip({ moment, wide }: { moment: Moment; wide: boolean }) {
               accessible={false}
               style={[styles.weekday, day.today ? styles.accent : styles.secondary]}
             >
-              {(day.today ? 'Today' : day.weekday).toUpperCase()}
+              {(day.today ? today : day.weekday).toLocaleUpperCase()}
             </Text>
             <View
               style={[
@@ -346,7 +336,10 @@ function Strip({ moment, wide }: { moment: Moment; wide: boolean }) {
             </View>
             <View style={styles.dots}>
               {day.dots.map((event) => (
-                <View key={event} style={[styles.dot, { backgroundColor: eventColour(event) }]} />
+                <View
+                  key={event.id}
+                  style={[styles.dot, { backgroundColor: eventColour(event) }]}
+                />
               ))}
             </View>
           </View>
@@ -355,7 +348,7 @@ function Strip({ moment, wide }: { moment: Moment; wide: boolean }) {
       {moment.bars.length > 0 && (
         <View style={[styles.bars, { height: (wide ? 32 : 30) + tokens.spaceXs }]}>
           {moment.bars.map((bar) => (
-            <Bar key={bar.event} bar={bar} wide={wide} />
+            <Bar key={bar.event.id} bar={bar} wide={wide} />
           ))}
         </View>
       )}
@@ -418,7 +411,7 @@ function AgendaDays({
                         {item.title}
                       </Text>
                       <Text size={13} weight="medium" style={styles.secondary} numberOfLines={1}>
-                        {EVENTS[item.event].name + (item.note === '' ? '' : ` · ${item.note}`)}
+                        {item.event.name + (item.note === '' ? '' : ` · ${item.note}`)}
                       </Text>
                     </View>
                   </View>
@@ -432,25 +425,17 @@ function AgendaDays({
   );
 }
 
-export function ThisWeek({
-  moment,
-  wide,
-  top,
-  tell,
-}: {
-  moment: Moment;
-  wide: boolean;
-  top: number;
-  tell: Tell;
-}) {
+export function ThisWeek({ moment, wide, top }: { moment: Moment; wide: boolean; top: number }) {
+  const { t } = useTranslation();
+  const { open } = useTodayShell();
   const { nextUp } = moment;
 
   return (
     <>
       <SectionHead
-        title="This week"
-        link="Calendar"
-        onLink={() => tell('Calendar has its own design.')}
+        title={t('todayScreen.thisWeek')}
+        link={t('todayScreen.tab.calendar')}
+        onLink={() => open({ to: 'calendar' })}
         top={top}
       />
       <Strip moment={moment} wide={wide} />
@@ -459,13 +444,16 @@ export function ThisWeek({
       ) : (
         <Panel style={styles.quiet}>
           <Text size={TYPE.row} weight="semibold" style={styles.quietLine}>
-            Nothing on this week
+            {t('todayScreen.nothingOnThisWeek')}
           </Text>
           <Pressable
-            onPress={() => tell(`${nextUp.name} has its own design.`)}
+            onPress={() => open({ to: 'event', id: nextUp.event.id, name: nextUp.name })}
             style={({ pressed }) => [styles.nextUp, pressed && styles.pressed]}
             accessibilityRole="button"
-            accessibilityLabel={`Next up: ${nextUp.name}, ${nextUp.when}`}
+            accessibilityLabel={t('todayScreen.nextUpLabel', {
+              name: nextUp.name,
+              when: nextUp.when,
+            })}
           >
             <EventThumb event={nextUp.event} side={48} />
             <View style={styles.words}>
@@ -475,7 +463,7 @@ export function ThisWeek({
                 accessible={false}
                 style={[styles.secondary, styles.caps]}
               >
-                NEXT UP
+                {t('todayScreen.nextUp').toLocaleUpperCase()}
               </Text>
               <Text size={15} weight="semibold" accessible={false}>
                 {nextUp.name}
@@ -501,8 +489,11 @@ function CountChip({
   onCover: boolean;
   small: boolean;
 }) {
+  const { t } = useTranslation();
   const size = small ? 12 : TYPE.meta;
-  const words = card.live ? `Live · ${card.count.toLowerCase()}` : card.count;
+  const words = card.live
+    ? t('todayScreen.liveCount', { words: card.count.toLocaleLowerCase() })
+    : card.count;
   const dark = card.draft && onCover;
 
   return (
@@ -565,10 +556,12 @@ function Readiness({ card, full }: { card: EventCard; full: boolean }) {
   );
 }
 
-function Tile({ card, full, tell }: { card: EventCard; full: boolean; tell: Tell }) {
+function Tile({ card, full }: { card: EventCard; full: boolean }) {
+  const { open } = useTodayShell();
+
   return (
     <Pressable
-      onPress={() => tell(`${card.name} has its own design.`)}
+      onPress={() => open({ to: 'event', id: card.event.id, name: card.name })}
       style={({ pressed }) => [styles.tile, pressed && styles.pressed]}
       accessibilityRole="button"
     >
@@ -592,20 +585,12 @@ function Tile({ card, full, tell }: { card: EventCard; full: boolean; tell: Tell
   );
 }
 
-function Row({
-  card,
-  full,
-  last,
-  tell,
-}: {
-  card: EventCard;
-  full: boolean;
-  last: boolean;
-  tell: Tell;
-}) {
+function Row({ card, full, last }: { card: EventCard; full: boolean; last: boolean }) {
+  const { open } = useTodayShell();
+
   return (
     <Pressable
-      onPress={() => tell(`${card.name} has its own design.`)}
+      onPress={() => open({ to: 'event', id: card.event.id, name: card.name })}
       style={({ pressed }) => [styles.eventRow, !last && styles.ruled, pressed && styles.pressed]}
       accessibilityRole="button"
     >
@@ -631,21 +616,21 @@ export function YourEvents({
   moment,
   layout,
   top,
-  tell,
 }: {
   moment: Moment;
   layout: 'carousel' | 'list';
   top: number;
-  tell: Tell;
 }) {
+  const { t } = useTranslation();
+  const { open } = useTodayShell();
   const { events, full } = moment;
 
   return (
     <>
       <SectionHead
-        title="Your events"
-        link="All events"
-        onLink={() => tell('Events has its own design.')}
+        title={t('todayScreen.yourEvents')}
+        link={t('todayScreen.allEvents')}
+        onLink={() => open({ to: 'events' })}
         top={top}
       />
       {layout === 'carousel' ? (
@@ -656,19 +641,13 @@ export function YourEvents({
           contentContainerStyle={styles.carouselRow}
         >
           {events.map((card) => (
-            <Tile key={card.event} card={card} full={full} tell={tell} />
+            <Tile key={card.event.id} card={card} full={full} />
           ))}
         </ScrollView>
       ) : (
         <Panel style={styles.list}>
           {events.map((card, index) => (
-            <Row
-              key={card.event}
-              card={card}
-              full={full}
-              last={index === events.length - 1}
-              tell={tell}
-            />
+            <Row key={card.event.id} card={card} full={full} last={index === events.length - 1} />
           ))}
         </Panel>
       )}
@@ -676,22 +655,21 @@ export function YourEvents({
   );
 }
 
-const STEPS = [
-  ['1', 'Name it and give it a date', 'One day, or several.'],
-  ['2', 'Add where it is', 'An address, or “to be confirmed” for now.'],
-  ['3', 'Make it live', 'It stays a draft until you do.'],
-] as const;
+const STEPS = ['name', 'place', 'live'] as const;
 
-export function FirstRun({ wide, tell }: { wide: boolean; tell: Tell }) {
+export function FirstRun({ wide }: { wide: boolean }) {
+  const { t } = useTranslation();
+  const { open } = useTodayShell();
+
   return (
     <View style={[styles.first, wide && styles.firstWide]}>
-      <SectionHead title="Set up your first event" size={24} top={tokens.spaceXxs} />
+      <SectionHead title={t('todayScreen.firstTitle')} size={24} top={tokens.spaceXxs} />
       <Text size={15} weight="medium" style={[styles.secondary, styles.firstIntro]}>
-        Give it a name, a date and a place. What needs you, and what’s coming, shows here.
+        {t('todayScreen.firstIntro')}
       </Text>
       <Panel style={styles.list}>
-        {STEPS.map(([number, title, body], index) => (
-          <View key={number} style={[styles.step, index < STEPS.length - 1 && styles.ruled]}>
+        {STEPS.map((step, index) => (
+          <View key={step} style={[styles.step, index < STEPS.length - 1 && styles.ruled]}>
             <View
               style={styles.stepNumber}
               accessibilityElementsHidden
@@ -703,33 +681,33 @@ export function FirstRun({ wide, tell }: { wide: boolean; tell: Tell }) {
                 accessible={false}
                 style={[styles.accent, styles.figures]}
               >
-                {number}
+                {t('todayScreen.stepNumber', { n: index + 1 })}
               </Text>
             </View>
             <View style={styles.words}>
               <Text size={TYPE.row} weight="semibold">
-                {title}
+                {t(`todayScreen.firstStep.${step}Title`)}
               </Text>
               <Text size={14} weight="medium" style={styles.secondary}>
-                {body}
+                {t(`todayScreen.firstStep.${step}Body`)}
               </Text>
             </View>
           </View>
         ))}
       </Panel>
       <Pressable
-        onPress={() => tell('Create an event has its own design.')}
+        onPress={() => open({ to: 'create' })}
         style={({ pressed }) => [
           styles.create,
           wide && styles.createWide,
           pressed && styles.pressed,
         ]}
         accessibilityRole="button"
-        accessibilityLabel="Create an event"
+        accessibilityLabel={t('todayScreen.createEvent')}
       >
         <Glyph name="plus" ink={tokens.colorInkOnDark} />
         <Text size={TYPE.row} weight="semibold" accessible={false} style={styles.onAccent}>
-          Create an event
+          {t('todayScreen.createEvent')}
         </Text>
       </Pressable>
     </View>
