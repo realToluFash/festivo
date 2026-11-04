@@ -1,4 +1,4 @@
-import { followCountry, meetsPasswordLength, pickPhoneCountry } from '@soirely/domain';
+import { followCountry, pickPhoneCountry } from '@soirely/domain';
 import { type FormEvent, type RefObject, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router';
 
@@ -6,11 +6,14 @@ import { offButton } from '../offButton.ts';
 import { offField } from '../offField.ts';
 import { BoardPage, HaveAccount, OrLine, Providers, SignedInAs } from './BoardPage.tsx';
 import {
+  type Answer,
+  Answers,
   CodeForm,
   Heading,
   Loading,
   Notice,
-  PasswordRule,
+  Organisation,
+  PasswordField,
   Unreachable,
   Verified,
   fieldClass,
@@ -18,6 +21,7 @@ import {
 } from './parts.tsx';
 import {
   type AccountLines,
+  BREACHED,
   COUNTRIES,
   LOCK_MS,
   SAMPLE,
@@ -27,10 +31,11 @@ import {
   fullNumber,
   numberLine,
   timeOfDay,
+  way,
 } from './rules.ts';
 
 /** What one page hands the next: who is signing up, and the number being checked. */
-type Flow = { name: string; email: string; phone: string };
+export type Flow = { name: string; email: string; phone: string };
 
 const SAMPLE_FLOW: Flow = {
   name: SAMPLE.name,
@@ -143,16 +148,17 @@ function CreateAccount({ state, flow }: { state: string; flow: Flow }) {
     setLines((was) => ({ ...was, [field]: now[field] }));
   }
 
-  const passwordLine =
-    lines.password ??
-    (breached ? 'This password has appeared in a known data breach. Choose another.' : null);
+  const passwordLine = lines.password ?? (breached ? BREACHED : null);
   const until = liftsAt == null ? null : timeOfDay(liftsAt);
 
   return (
     <BoardPage end={<HaveAccount />}>
       <Heading title="Create your account">
-        <p className="demo-muted">Next, we email you a code to check the address is yours.</p>
-        {breached && <Notice title="Creating your account did not work" alert />}
+        {breached ? (
+          <Notice title="Creating your account did not work" alert />
+        ) : (
+          <p className="demo-muted">Next, we email you a code to check the address is yours.</p>
+        )}
         {until != null && (
           <Notice title="Too many sign-ups from this network" body={`Try again at ${until}.`} />
         )}
@@ -209,43 +215,20 @@ function CreateAccount({ state, flow }: { state: string; flow: Flow }) {
             )}
           </div>
 
-          <div className={fieldClass(passwordLine != null)}>
-            <label htmlFor="password">Password</label>
-            <div className="demo-reveal">
-              <input
-                ref={passwordField}
-                className="demo-input"
-                id="password"
-                type={revealed ? 'text' : 'password'}
-                autoComplete="new-password"
-                value={password}
-                {...offField(busy)}
-                aria-invalid={passwordLine != null}
-                aria-describedby={
-                  passwordLine == null ? 'password-rule' : 'password-line password-rule'
-                }
-                onChange={(event) => {
-                  setPassword(event.target.value);
-                  setBreached(false);
-                  edited('password', accountLines(name, email, event.target.value));
-                }}
-              />
-              <button
-                className="demo-reveal-button"
-                type="button"
-                aria-pressed={revealed}
-                onClick={() => setRevealed((was) => !was)}
-              >
-                {revealed ? 'Hide' : 'Show'}
-              </button>
-            </div>
-            {passwordLine != null && (
-              <p className="demo-line" id="password-line">
-                {passwordLine}
-              </p>
-            )}
-            <PasswordRule met={meetsPasswordLength(password)} />
-          </div>
+          <PasswordField
+            label="Password"
+            field={passwordField}
+            password={password}
+            line={passwordLine}
+            busy={busy}
+            revealed={revealed}
+            onReveal={setRevealed}
+            onChange={(typed) => {
+              setPassword(typed);
+              setBreached(false);
+              edited('password', accountLines(name, email, typed));
+            }}
+          />
         </div>
 
         <button
@@ -436,26 +419,47 @@ function NumberRow({
             autoComplete="tel-national"
             value={number}
             aria-invalid={line != null}
-            aria-describedby={line == null ? 'phone-help' : 'phone-line phone-help'}
+            aria-describedby={line == null ? 'phone-help' : 'phone-line'}
             onChange={(event) => onNumber(event.target.value)}
           />
         </div>
       </div>
-      {line != null && (
+      {line == null ? (
+        <p className="demo-help" id="phone-help">
+          {help}
+        </p>
+      ) : (
         <p className="demo-line" id="phone-line">
           {line}
         </p>
       )}
-      <p className="demo-help" id="phone-help">
-        {help}
-      </p>
     </div>
   );
 }
 
-function Details({ state, flow }: { state: string; flow: Flow }) {
+/** How the account came without an email code, said under the title. */
+export type Arrival = 'Google' | 'Apple';
+
+/** What the page offers before the organisation fields: the company at the address's domain, or an invitation. */
+export type Offer = 'company' | 'invitation';
+
+const DOMAIN = SAMPLE.email.split('@')[1] ?? '';
+
+export function Details({
+  state,
+  flow,
+  arrival,
+  offer: offered,
+}: {
+  state: string;
+  flow: Flow;
+  arrival?: Arrival;
+  offer?: Offer;
+}) {
   const navigate = useNavigate();
   const refusedAtOpening = state === 'refused';
+  const [offer, setOffer] = useState<Offer | 'declined' | null>(offered ?? null);
+  const [pressed, setPressed] = useState<Answer | null>(null);
   const [name, setName] = useState(flow.name);
   const [organisation, setOrganisation] = useState('');
   const [country, setCountry] = useState<string>(SAMPLE.country);
@@ -473,11 +477,38 @@ function Details({ state, flow }: { state: string; flow: Flow }) {
 
   useEffect(() => {
     if (refusedAtOpening) organisationField.current?.focus();
-  }, [refusedAtOpening]);
+    if (arrival != null && nameField.current?.value === '') nameField.current.focus();
+  }, [refusedAtOpening, arrival]);
+
+  function ask(): void {
+    if (busy) return;
+
+    if (name.trim() === '') {
+      setLines({ name: 'Enter your full name.' });
+      nameField.current?.focus();
+      return;
+    }
+
+    after(() => void navigate(way('waiting')));
+  }
+
+  function answer(chosen: Answer): void {
+    if (busy) return;
+    setPressed(chosen);
+    after(() => {
+      setPressed(null);
+      if (chosen === 'accept') {
+        void navigate(way('invitation', 'joined'));
+        return;
+      }
+
+      setOffer('declined');
+    });
+  }
 
   function submit(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
-    if (busy) return;
+    if (busy || offer === 'company') return;
 
     const found = detailsLines(name, organisation, number, phone.code);
     setLines(found);
@@ -510,6 +541,12 @@ function Details({ state, flow }: { state: string; flow: Flow }) {
     <BoardPage end={<SignedInAs email={flow.email} />}>
       <Heading step={2} title="A few details">
         <p className="demo-muted">So the people you work with know who is who.</p>
+        {arrival != null && (
+          <Notice
+            title={`Signed in with ${arrival}`}
+            body={`${arrival} has already confirmed ${flow.email}, so there is no email code to enter.`}
+          />
+        )}
       </Heading>
       <form className="demo-form" noValidate onSubmit={submit}>
         <div className="demo-fields">
@@ -533,69 +570,171 @@ function Details({ state, flow }: { state: string; flow: Flow }) {
             )}
           </div>
 
-          <div className={fieldClass(lines.organisation != null)}>
-            <label htmlFor="organisation">Organisation name</label>
-            <input
-              ref={organisationField}
-              className="demo-input"
-              id="organisation"
-              autoComplete="organization"
-              value={organisation}
-              {...offField(busy)}
-              aria-invalid={lines.organisation != null}
-              aria-describedby={
-                lines.organisation == null
-                  ? 'organisation-help'
-                  : 'organisation-line organisation-help'
-              }
-              onChange={(event) => setOrganisation(event.target.value)}
-            />
-            {lines.organisation != null && (
-              <p className="demo-line" id="organisation-line">
-                {lines.organisation}
-              </p>
-            )}
-            <p className="demo-help" id="organisation-help">
-              Your events belong to it. You can rename it later.
-            </p>
-          </div>
+          {offer === 'company' ? (
+            <DomainOffer busy={busy} onAsk={ask} onStartOwn={() => setOffer(null)} />
+          ) : (
+            <>
+              {offer === 'invitation' && (
+                <WaitingInvitation
+                  pressed={pressed}
+                  held={busy && pressed == null}
+                  onAnswer={answer}
+                />
+              )}
+              {offer === 'declined' && (
+                <p className="demo-muted" role="status">
+                  You declined. {SAMPLE.inviter} will see that you said no.
+                </p>
+              )}
 
-          <div className="demo-field">
-            <label htmlFor="country">Country</label>
-            <select
-              className="demo-input demo-select"
-              id="country"
-              value={country}
-              onChange={(event) => {
-                setCountry(event.target.value);
-                setPhone((was) => followCountry(was, event.target.value));
-              }}
-            >
-              {COUNTRIES.map((each) => (
-                <option key={each.code} value={each.code}>
-                  {each.name}
-                </option>
-              ))}
-            </select>
-          </div>
+              <div className={fieldClass(lines.organisation != null)}>
+                <label htmlFor="organisation">Organisation name</label>
+                <input
+                  ref={organisationField}
+                  className="demo-input"
+                  id="organisation"
+                  autoComplete="organization"
+                  value={organisation}
+                  {...offField(busy)}
+                  aria-invalid={lines.organisation != null}
+                  aria-describedby={
+                    lines.organisation == null ? 'organisation-help' : 'organisation-line'
+                  }
+                  onChange={(event) => setOrganisation(event.target.value)}
+                />
+                {lines.organisation == null ? (
+                  <p className="demo-help" id="organisation-help">
+                    Your events belong to it. You can rename it later.
+                  </p>
+                ) : (
+                  <p className="demo-line" id="organisation-line">
+                    {lines.organisation}
+                  </p>
+                )}
+              </div>
 
-          <NumberRow
-            code={phone.code}
-            onCode={(code) => setPhone(pickPhoneCountry(code))}
-            number={number}
-            onNumber={setNumber}
-            line={lines.number ?? null}
-            help="How you are reached on the night if something goes wrong. If you add one, we text it a code to check it."
-            optional
-            numberField={numberField}
-          />
+              <div className="demo-field">
+                <label htmlFor="country">Country</label>
+                <select
+                  className="demo-input demo-select"
+                  id="country"
+                  value={country}
+                  onChange={(event) => {
+                    setCountry(event.target.value);
+                    setPhone((was) => followCountry(was, event.target.value));
+                  }}
+                >
+                  {COUNTRIES.map((each) => (
+                    <option key={each.code} value={each.code}>
+                      {each.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <NumberRow
+                code={phone.code}
+                onCode={(code) => setPhone(pickPhoneCountry(code))}
+                number={number}
+                onNumber={setNumber}
+                line={lines.number ?? null}
+                help="How you are reached on the night if something goes wrong. If you add one, we text it a code to check it."
+                optional
+                numberField={numberField}
+              />
+              {offered === 'company' && (
+                <button
+                  className="link-button demo-link"
+                  type="button"
+                  onClick={() => setOffer('company')}
+                >
+                  Ask to join an organisation at {DOMAIN} instead
+                </button>
+              )}
+            </>
+          )}
         </div>
 
-        <button className="button button-primary demo-wide" type="submit" aria-busy={busy}>
-          {busy ? 'Saving…' : 'Save and continue'}
-        </button>
+        {offer !== 'company' && (
+          <button
+            className="button button-primary demo-wide"
+            type="submit"
+            aria-busy={busy && pressed == null}
+            {...offButton(pressed != null)}
+          >
+            {busy && pressed == null ? 'Saving…' : 'Save and continue'}
+          </button>
+        )}
       </form>
     </BoardPage>
+  );
+}
+
+function DomainOffer({
+  busy,
+  onAsk,
+  onStartOwn,
+}: {
+  busy: boolean;
+  onAsk: () => void;
+  onStartOwn: () => void;
+}) {
+  return (
+    <section className="demo-offer" aria-labelledby="offer-heading">
+      <div className="demo-offer-intro">
+        <h2 id="offer-heading">Your organisation</h2>
+        <p className="demo-muted">
+          Your address is at {DOMAIN}. Ask to join your company’s organisation, or start your own.
+        </p>
+      </div>
+      <div className="demo-offer-row">
+        <Organisation
+          title={`${SAMPLE.organisation} uses Soirely`}
+          line="Somebody there approves you before you see anything."
+        />
+        <button
+          className="button button-primary demo-offer-ask"
+          type="button"
+          aria-label={`Ask to join ${SAMPLE.organisation}`}
+          aria-busy={busy}
+          onClick={onAsk}
+        >
+          {busy ? 'Asking…' : 'Ask to join'}
+        </button>
+      </div>
+      <button className="button demo-wide" type="button" {...offButton(busy)} onClick={onStartOwn}>
+        Start my own organisation
+      </button>
+    </section>
+  );
+}
+
+function WaitingInvitation({
+  pressed,
+  held,
+  onAnswer,
+}: {
+  pressed: Answer | null;
+  held: boolean;
+  onAnswer: (answer: Answer) => void;
+}) {
+  return (
+    <section className="demo-offer" aria-labelledby="invitations-heading">
+      <div className="demo-offer-intro">
+        <h2 id="invitations-heading">Invitations</h2>
+        <p className="demo-muted">
+          You have an invitation waiting. Accept it to join that organisation, or start your own
+          below.
+        </p>
+      </div>
+      <div className="demo-invitation">
+        <Organisation
+          line={`Invitation from ${SAMPLE.inviter} · ${SAMPLE.role} · works until ${SAMPLE.invitedUntil}`}
+        />
+        <Answers pressed={pressed} held={held} onAnswer={onAnswer} sized />
+      </div>
+      <OrLine words="Or start your own organisation" />
+    </section>
   );
 }
 

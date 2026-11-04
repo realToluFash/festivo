@@ -22,7 +22,8 @@ import { FieldError } from '../../components/FieldError.tsx';
 import { InvitationRows } from '../../components/InvitationRows.tsx';
 import { LinkedNotice } from '../../components/LinkedNotice.tsx';
 import { AuthPage } from '../../components/AuthPage.tsx';
-import { Pending } from '../../components/Pending.tsx';
+import { SignedInAs, StepLine } from '../../components/Onboarding.tsx';
+import { PendingPage } from '../../components/Pending.tsx';
 import { PhoneEntry } from '../../components/PhoneEntry.tsx';
 import { StillSignedIn } from '../../components/StillSignedIn.tsx';
 import { Unreachable } from '../../components/Unreachable.tsx';
@@ -68,8 +69,8 @@ export function CompleteProfile() {
   }, []);
 
   if (state.status === 'signedOut') return <Navigate to="/sign-in" replace />;
-  if (state.status === 'unreachable') return <Unreachable signedIn />;
-  if (state.status !== 'signedIn') return <Pending />;
+  if (state.status === 'unreachable') return <Unreachable signedIn bare />;
+  if (state.status !== 'signedIn') return <PendingPage />;
 
   // Only the gate it is behind: an unverified account verifies first, a complete one is let in.
   const landing = landingFor(state.session.awaiting);
@@ -78,24 +79,10 @@ export function CompleteProfile() {
   if (landing !== '/complete-profile') return <Navigate to={landing} replace />;
 
   return (
-    <AuthPage>
-      <ol className="steps" aria-label={t('verifyEmail.stepsLabel')}>
-        <li className="step step-done">
-          <span className="step-mark" aria-hidden="true">
-            ✓
-          </span>
-          {provider != null
-            ? t('verifyEmail.step1Google', { provider })
-            : t('verifyEmail.step1Done')}
-        </li>
-        <li className="step step-now">
-          <span className="step-mark" aria-hidden="true">
-            2
-          </span>
-          {t('verifyEmail.step2')}
-        </li>
-      </ol>
-
+    <AuthPage
+      bare
+      end={<SignedInAs email={state.session.email} onSignOut={() => void signOut()} />}
+    >
       <LinkedNotice />
 
       {state.session.waitingFor != null ? (
@@ -108,23 +95,20 @@ export function CompleteProfile() {
       ) : (
         <>
           <div className="auth-heading">
+            <StepLine step={2} />
             <h1 tabIndex={-1}>{t('completeProfile.title')}</h1>
             <p>{t('completeProfile.intro')}</p>
+            {provider != null && (
+              <div className="auth-notice" role="status">
+                <p>
+                  {t('completeProfile.providerConfirmed', {
+                    provider,
+                    email: state.session.email,
+                  })}
+                </p>
+              </div>
+            )}
           </div>
-
-          {provider != null && (
-            <div className="notice notice-quiet" role="status">
-              <span className="mark mark-info" aria-hidden="true">
-                i
-              </span>
-              <p>
-                {t('completeProfile.providerConfirmed', {
-                  provider,
-                  email: state.session.email,
-                })}
-              </p>
-            </div>
-          )}
 
           <Details
             name={state.session.name}
@@ -144,13 +128,6 @@ export function CompleteProfile() {
       )}
 
       {unreached && <StillSignedIn />}
-
-      <div className="auth-footnote">
-        <span>{t('completeProfile.signedInAs', { email: state.session.email })}</span>
-        <button className="link-button" type="button" onClick={() => void signOut()}>
-          {t('completeProfile.signOut')}
-        </button>
-      </div>
     </AuthPage>
   );
 }
@@ -197,32 +174,23 @@ function Waiting({
       </div>
 
       {failed && (
-        <div className="notice notice-broken" role="alert">
-          <span className="mark mark-broken" aria-hidden="true">
-            ✕
-          </span>
-          <div className="notice-body">
-            <p className="notice-title">{t('completeProfile.failedTitle')}</p>
-            <p>{t('completeProfile.failedBody')}</p>
-          </div>
+        <div className="auth-notice" role="alert">
+          <p className="auth-notice-title">{t('completeProfile.failedTitle')}</p>
+          <p>{t('completeProfile.failedBody')}</p>
         </div>
       )}
 
-      <div className="notice notice-attention" role={pressed ? undefined : 'status'}>
-        <span className="mark mark-attention" aria-hidden="true">
-          …
-        </span>
-        <p>
-          <strong>{t('domainJoining.waiting')}</strong>
+      <div className="auth-waiting">
+        <p role={pressed ? undefined : 'status'}>
+          {t('domainJoining.waiting')}
           {' · '}
           {t('domainJoining.asked', {
             day: formatDay(request.askedAt, locale),
             time: formatTimeOfDay(request.askedAt, locale),
           })}
         </p>
+        <p className="muted">{t('domainJoining.waitingBody', { organisation })}</p>
       </div>
-
-      <p>{t('domainJoining.waitingBody', { organisation })}</p>
 
       <button
         className="button"
@@ -293,6 +261,11 @@ function Details({
   const [unavailableNotice, arriveAtUnavailable] = useStepFocus<HTMLDivElement>();
   const startOwnButton = useRef<HTMLButtonElement>(null);
   const land = useFocusOnceShown();
+
+  // An account that came with no name, as Apple can send it, starts in the field it has to fill.
+  useEffect(() => {
+    if (name === '') nameInput.current?.focus();
+  }, [name]);
 
   useEffect(() => {
     if (!needsOrganisation) return;
@@ -448,14 +421,9 @@ function Details({
   return (
     <form className="auth-form" noValidate onSubmit={(event) => void save(event)}>
       {failed && (
-        <div className="notice notice-broken" role="alert">
-          <span className="mark mark-broken" aria-hidden="true">
-            ✕
-          </span>
-          <div className="notice-body">
-            <p className="notice-title">{t('completeProfile.failedTitle')}</p>
-            <p>{t('completeProfile.failedBody')}</p>
-          </div>
+        <div className="auth-notice" role="alert">
+          <p className="auth-notice-title">{t('completeProfile.failedTitle')}</p>
+          <p>{t('completeProfile.failedBody')}</p>
         </div>
       )}
 
@@ -516,10 +484,7 @@ function Details({
       )}
 
       {unavailable && (
-        <div className="notice notice-broken" ref={unavailableNotice} tabIndex={-1}>
-          <span className="mark mark-broken" aria-hidden="true">
-            ✕
-          </span>
+        <div className="auth-notice" ref={unavailableNotice} tabIndex={-1}>
           <p>{t('domainJoining.unavailable')}</p>
         </div>
       )}
@@ -643,9 +608,9 @@ function Details({
 
       <PhoneEntry
         label={
-          <span className="label-row">
+          <span className="auth-label-row">
             {t('verifyPhone.numberLabel')}
-            <span className="pill-quiet">{t('completeProfile.optional')}</span>
+            <span className="auth-optional">{t('completeProfile.optional')}</span>
           </span>
         }
         country={values.phoneCountryCode}

@@ -1,24 +1,15 @@
-import { ApiUnreachableError, type Health, awaiting } from '@soirely/api-client';
+import { ApiUnreachableError, awaiting } from '@soirely/api-client';
 import { router, useLocalSearchParams, useNavigation } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
-import { useTranslation } from 'react-i18next';
+import { useEffect, useRef, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
 
 import { api, meAtLaunch } from '../src/api.ts';
-import { Brand } from '../src/components/Brand.tsx';
 import { Home as SignedInHome } from '../src/components/Home.tsx';
-import { PrimaryButton, SecondaryButton } from '../src/components/Buttons.tsx';
-import { cardFrame } from '../src/components/cardFrame.ts';
-import { Notice } from '../src/components/Notice.tsx';
 import { Pending } from '../src/components/Pending.tsx';
-import { Screen } from '../src/components/Screen.tsx';
-import { GlyphMark, type Mark } from '../src/components/StatusMark.tsx';
-import { Text } from '../src/components/Text.tsx';
-import { config } from '../src/config.ts';
-import { DemoButton } from '../src/demo/DemoEntry.tsx';
+import { DevTools } from '../src/components/DevTools.tsx';
+import { Welcome } from '../src/components/Welcome.tsx';
 import { followAccount } from '../src/accountLanguage.ts';
 import { landingFor } from '../src/landing.ts';
-import { useLayout } from '../src/layout/useLayout.ts';
 import { dropRegistration, heldRegistration } from '../src/pendingRegistration.ts';
 import { launchRoute } from '../src/resumeSignUp.ts';
 import { ruleRefusal, signInRoute } from '../src/kit/signInRules.ts';
@@ -28,20 +19,12 @@ import { tokens } from '../src/theme/tokens.ts';
 import { unreachableFrom } from '../src/unreachable.ts';
 
 /**
- * Launch: the signed-in home once somebody is in (sc-722), else the health endpoint, rendered.
- *
- * Its job is to prove three things at once that otherwise only get proved in
- * production: the shared client package resolves and runs on this platform, the
- * configured base URL is reachable, and CORS permits it from web.
+ * Launch: the signed-in home once somebody is in (sc-722), else welcome (sc-29076).
  */
-type State = { kind: 'loading' } | { kind: 'ok'; health: Health } | { kind: 'failed' };
-
 /** Who is launching: nothing is drawn until that is known, so a signed-in person never sees the placeholder. */
 type Launching = 'deciding' | 'signedIn' | 'signedOut';
 
 export default function Home() {
-  const [state, setState] = useState<State>({ kind: 'loading' });
-  const [attempt, setAttempt] = useState(0);
   const { tapped } = useLocalSearchParams<{ tapped?: string }>();
   const [resumed] = useState(() => resumesSession(tapped));
   const [launching, setLaunching] = useState<Launching>(resumed ? 'signedIn' : 'deciding');
@@ -56,15 +39,6 @@ export default function Home() {
       }),
     [navigation],
   );
-
-  // The loading state belongs to the event that causes the reload, not to the
-  // effect. Setting it in the effect body made every attempt two renders
-  // instead of one, and on mount it set a state that was already the initial
-  // one.
-  const retry = useCallback(() => {
-    setState({ kind: 'loading' });
-    setAttempt((n) => n + 1);
-  }, []);
 
   useEffect(() => {
     if (resumed) return;
@@ -119,25 +93,7 @@ export default function Home() {
     return () => {
       live = false;
     };
-  }, [attempt, navigation, resumed]);
-
-  useEffect(() => {
-    let live = true;
-
-    api
-      .health()
-      .then((health) => {
-        if (live) setState({ kind: 'ok', health });
-      })
-      .catch(() => {
-        // The thrown message names a host and a port, which is internal detail.
-        if (live) setState({ kind: 'failed' });
-      });
-
-    return () => {
-      live = false;
-    };
-  }, [attempt]);
+  }, [navigation, resumed]);
 
   if (launching === 'signedIn') return <SignedInHome />;
 
@@ -149,129 +105,13 @@ export default function Home() {
       </View>
     );
 
-  return <SignedOut state={state} onRetry={retry} />;
+  return <SignedOut />;
 }
 
-const ATTENTION: Mark = {
-  glyph: '!',
-  fill: tokens.colorAttentionWash,
-  ring: tokens.colorAttention,
-  ink: tokens.colorAttentionText,
-};
-
-const BROKEN: Mark = {
-  glyph: '!',
-  fill: tokens.colorBrokenTint,
-  ring: tokens.colorBroken,
-  ink: tokens.colorBrokenText,
-};
-
-function SignedOut({ state, onRetry }: { state: State; onRetry: () => void }) {
-  const { t } = useTranslation();
-  const { kind, width } = useLayout();
-  const phone = kind === 'phone';
-  const brandWidth = phone ? (width < 390 ? 185 : 199) : 225;
-
-  return (
-    <Screen contentStyle={phone ? styles.phone : styles.tablet}>
-      <View style={phone ? styles.stack : styles.column}>
-        <View style={styles.heading}>
-          <Brand width={brandWidth} header testID="launch.brand" />
-          <Text size={tokens.typeBodyPhone.size} muted>
-            {t('home.subtitle')}
-          </Text>
-        </View>
-
-        {/* Said out loud rather than left to be discovered on a device, where the
-            symptom is a request that times out with no explanation. */}
-        {config.usingFallbackApiUrl && (
-          <Notice tone="attention" mark={ATTENTION.glyph} body={t('status.usingFallback')} />
-        )}
-
-        <View style={cardFrame(kind)}>
-          <Text size={tokens.typeTitleSection.size} weight="bold">
-            {t('status.title')}
-          </Text>
-          <HealthCheck state={state} onRetry={onRetry} />
-        </View>
-
-        {phone && <View style={styles.foot} />}
-
-        <PrimaryButton
-          label={t('home.openSignIn')}
-          onPress={() => router.push('/sign-in')}
-          testID="home.openSignIn"
-        />
-        <DemoButton />
-      </View>
-    </Screen>
-  );
+/** Signed out: welcome, with the service check and the design demo in development and QA builds only. */
+function SignedOut() {
+  return <Welcome devTools={<DevTools />} />;
 }
-
-function HealthCheck({ state, onRetry }: { state: State; onRetry: () => void }) {
-  const { t } = useTranslation();
-
-  if (state.kind === 'loading') {
-    return (
-      <View style={styles.line}>
-        <ActivityIndicator color={tokens.colorAccent} />
-        <Text size={tokens.typeBodyPhone.size} muted>
-          {t('status.checking')}
-        </Text>
-      </View>
-    );
-  }
-
-  if (state.kind === 'failed') {
-    return (
-      <Notice
-        tone="broken"
-        mark={BROKEN.glyph}
-        body={t('status.unreachable')}
-        announce
-        interrupts
-        button={<SecondaryButton label={t('status.retry')} onPress={onRetry} testID="home.retry" />}
-      />
-    );
-  }
-
-  const healthy = state.health.status === 'ok';
-
-  return (
-    <View style={styles.checks}>
-      <View style={styles.line}>
-        <GlyphMark mark={healthy ? tokens.marks.done : ATTENTION} />
-        <Text size={tokens.typeBodyPhone.size} weight="semibold">
-          {healthy ? t('status.healthy') : t('status.degraded')}
-        </Text>
-      </View>
-      {/* Names and statuses are the API's own words, untranslated; a check's error text is never shown. */}
-      {Object.entries(state.health.checks).map(([name, check]) => {
-        const ok = check.status === 'ok';
-
-        return (
-          <View key={name} style={styles.check}>
-            <Text size={tokens.typeSmall.size} style={styles.checkName}>
-              {name}
-            </Text>
-            <View style={[styles.line, styles.checkStatus]}>
-              <GlyphMark mark={ok ? tokens.marks.done : BROKEN} />
-              <Text
-                size={tokens.typeSmall.size}
-                weight="semibold"
-                style={ok ? styles.okInk : styles.brokenInk}
-              >
-                {check.status}
-              </Text>
-            </View>
-          </View>
-        );
-      })}
-    </View>
-  );
-}
-
-const TABLET_COLUMN_WIDTH = 520;
 
 const styles = StyleSheet.create({
   deciding: {
@@ -280,25 +120,4 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: tokens.colorPage,
   },
-  phone: { flexGrow: 1 },
-  tablet: { flexGrow: 1, justifyContent: 'center', alignItems: 'center' },
-  stack: { flexGrow: 1, gap: tokens.spaceXl },
-  column: { width: '100%', maxWidth: TABLET_COLUMN_WIDTH, gap: tokens.spaceXl },
-  heading: { gap: tokens.spaceXs },
-  foot: { flexGrow: 1 },
-  line: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
-  checks: { gap: tokens.spaceXs },
-  check: {
-    minHeight: tokens.sizeHit,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    columnGap: tokens.spaceLg,
-    borderTopWidth: 1,
-    borderTopColor: tokens.colorInsetBorder,
-  },
-  checkName: { flexShrink: 1, color: tokens.colorInkSecondary },
-  checkStatus: { flexShrink: 0 },
-  brokenInk: { color: tokens.colorBrokenText },
-  okInk: { color: tokens.colorAccentText },
 });

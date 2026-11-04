@@ -466,7 +466,6 @@
   },
   "register": {
     "title": "Crie a sua conta",
-    "back": "Voltar ao início de sessão",
     "intro": "A seguir, enviamos-lhe um código por e-mail para confirmar que o endereço é seu.",
     "name": "Nome completo",
     "email": "Endereço de e-mail",
@@ -486,7 +485,8 @@
     "failedTitle": "Não foi possível criar a sua conta",
     "failedBody": "Algo falhou pelo caminho. Tente novamente dentro de um momento.",
     "nameBlank": "Introduza o seu nome completo.",
-    "passwordBlank": "Introduza uma palavra-passe."
+    "passwordBlank": "Introduza uma palavra-passe.",
+    "tooShort": "Use pelo menos {{count, number}} caracteres."
   },
   "account": {
     "title": "A sua conta",
@@ -579,9 +579,6 @@
     "everywhereFailedBody": "Isto é sobre o acesso à API e não sobre a sua conta. Tente novamente."
   },
   "verifyEmail": {
-    "step1": "Verifique o seu e-mail",
-    "step1Done": "E-mail verificado · concluído",
-    "step2": "Os seus dados",
     "title": "Veja o seu e-mail",
     "intro": "Enviámos um código para {{address}}. Introduza-o aqui para mostrar que o endereço é seu.",
     "codeLabel": "Código do e-mail",
@@ -596,19 +593,14 @@
     "exhaustedTitle": "Demasiadas tentativas erradas",
     "exhaustedBody": "Esse código já não funciona. Envie um novo para continuar.",
     "wrongAddress": "Não é o seu endereço?",
-    "wrongAddressBody": "e criar novamente a sua conta com o endereço correto.",
-    "registerAgain": "Registe-se novamente com o endereço correto",
-    "signOut": "Encerrar sessão",
     "doneTitle": "E-mail verificado",
     "doneBody": "{{address}} está confirmado. A seguir, alguns dados para que a sua equipa saiba quem é quem.",
     "doneBodyAlternative": "{{address}} está verificado. Continua a ser um endereço alternativo até o tornar principal em Conta.",
     "continue": "Continuar",
     "failedTitle": "Não funcionou",
     "failedBody": "Algo falhou pelo caminho. Tente novamente dentro de um momento.",
-    "stepsLabel": "Antes de começar",
     "codeBlank": "Introduza o código de 6 dígitos do e-mail.",
-    "codeShort": "O código tem 6 dígitos.",
-    "step1Google": "E-mail confirmado pela conta {{provider}} · concluído"
+    "codeShort": "O código tem 6 dígitos."
   },
   "verifyPhone": {
     "title": "Veja as suas mensagens",
@@ -770,7 +762,6 @@
     "saving": "A guardar…",
     "failedTitle": "Não foi possível guardar",
     "failedBody": "Algo falhou pelo caminho. Tente novamente dentro de um momento.",
-    "signedInAs": "Sessão iniciada como {{email}}.",
     "signOut": "Encerrar sessão",
     "optional": "Opcional",
     "mobileHelp": "É assim que o contactamos na noite do evento se algo correr mal. Se indicar um, enviamos-lhe um código por SMS para o confirmar.",
@@ -1083,6 +1074,7 @@
     "resend": "Enviar códigos novos",
     "resendIn": "Enviar códigos novos dentro de {{time}}",
     "resendNote": "Os códigos novos substituem os anteriores.",
+    "noCodes": "Não recebeu os códigos?",
     "textInstead": "Enviar-mo por SMS",
     "textInsteadFailed": "Esse código já não pode ser enviado por SMS. Envie códigos novos.",
     "expiredTitle": "Esses códigos expiraram",
@@ -1127,7 +1119,7 @@
     "setupIntro": "A autenticação de dois fatores foi desativada para poder voltar a entrar. Configure-a de novo para que uma palavra-passe sozinha não abra a sua conta.",
     "setup": "Configurar a autenticação de dois fatores",
     "notNow": "Agora não",
-    "notNowNote": "Pode configurá-la a qualquer momento em Definições › Segurança.",
+    "notNowNote": "Pode configurá-la a qualquer momento em A sua conta › Segurança.",
     "notMeTitle": "Não foi você?",
     "notMeIntro": "Isto cancela qualquer pedido pendente para entrar na sua conta sem a autenticação de dois fatores e encerra todas as sessões.",
     "notMeButton": "Cancelar e encerrar todas as sessões",
@@ -1590,20 +1582,16 @@
     "orgDeleted": "Eliminada",
     "invited": "{{inviter}} convidou {{email}} para aderir com a função {{role}}.",
     "worksUntil": "Até {{date}}, pode usar este convite.",
-    "createTitle": "Criar uma conta",
     "emailLocked": "É o endereço para onde o convite foi enviado. Já está confirmado, por isso não tem de introduzir nenhum código.",
     "passwordBlank": "Escolha uma palavra-passe.",
     "passwordShort": "Use pelo menos {{count, number}} carateres.",
     "createAndJoin": "Criar conta e aderir",
     "joining": "A aderir…",
     "failedTitle": "Não foi possível aderir",
-    "haveAccount": "Já tenho uma conta",
-    "emailTakenHeading": "Já tem uma conta",
     "emailTakenBody": "{{email}} já tem uma conta Soirely. Inicie sessão com essa conta e poderá aceitar o convite aí.",
     "signInToAccept": "Inicie sessão para aceitar",
     "forgotPassword": "Esqueceu-se da palavra-passe?",
     "invitedYou": "{{inviter}} enviou-lhe um convite para aderir com a função {{role}}.",
-    "signedInUntil": "Sessão iniciada como {{email}} · até {{date}}, pode usar este convite.",
     "accept": "Aceitar e aderir",
     "decline": "Recusar",
     "declineNote": "Se recusar, {{inviter}} fica a saber. Nada mais muda.",
@@ -1618,33 +1606,27 @@
     "refused": {
       "invitation_expired": {
         "title": "Este convite expirou",
-        "word": "Expirado",
-        "body": "Este convite expirou. Peça a {{inviter}} que lhe envie um novo."
+        "line": "Peça a {{inviter}} que lhe envie um novo."
       },
       "invitation_revoked": {
         "title": "Este convite foi retirado",
-        "word": "Retirado",
-        "body": "{{organisation}} retirou este convite. Se acha que é um engano, fale com quem lhe enviou o convite."
+        "line": "Se acha que é um engano, fale com quem lhe enviou o convite."
       },
       "invitation_accepted": {
         "title": "Já aceite",
-        "word": "Já aceite",
-        "body": "Já aceitou este convite."
+        "line": "Já é membro de {{organisation}}."
       },
       "invitation_declined": {
         "title": "Já recusado",
-        "word": "Já recusado",
-        "body": "Recusou este convite. Se mudou de ideias, peça a {{inviter}} que lhe envie outro."
+        "line": "Se mudou de ideias, peça a {{inviter}} que lhe envie outro."
       },
       "invitation_not_yours": {
         "title": "Este convite destina-se a outra pessoa",
-        "word": "Sessão iniciada noutra conta",
-        "body": "Este convite destina-se a {{email}}. Tem sessão iniciada como {{signedInAs}}."
+        "line": "Foi enviado para {{email}}. Tem sessão iniciada como {{signedInAs}}."
       },
       "organisation_deleted": {
         "title": "Esta organização já não existe",
-        "word": "Organização eliminada",
-        "body": "{{organisation}} já não existe, por isso este convite não pode ser aceite."
+        "line": "O convite para aderir a {{organisation}} já não pode ser aceite."
       }
     }
   },
@@ -1997,7 +1979,7 @@
     "limitedOnDay": "Demasiados pedidos por agora. A partir de {{day}}, às {{time}}, pode tentar novamente.",
     "limitedLater": "Demasiados pedidos por agora. Tente novamente mais tarde.",
     "deadTitle": "Esta ligação não funciona",
-    "deadBody": "Esta ligação já não funciona. Peça uma nova à organização.",
+    "deadLine": "Peça uma nova à organização.",
     "goHome": "Ir para a Soirely",
     "failedTitle": "Não foi possível enviar o pedido",
     "failedBody": "Algo correu mal pelo caminho. Tente de novo dentro de momentos."
@@ -2246,5 +2228,10 @@
     "staffComing": "A gestão da equipa deste evento estará disponível em breve.",
     "budgetComing": "O orçamento deste evento estará disponível em breve.",
     "reportsComing": "Os relatórios deste evento estarão disponíveis em breve."
+  },
+  "onboarding": {
+    "step": "Passo {{step, number}} de 2",
+    "back": "Voltar",
+    "noCode": "Não recebeu o código?"
   }
 }

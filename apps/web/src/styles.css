@@ -1610,23 +1610,7 @@ span {
   flex: none;
 }
 
-/* ── Before you start: the two gates, as a strip ──────────────────────────── */
-
-.steps {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--spaceSm) var(--spaceXxl);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.step {
-  display: flex;
-  align-items: center;
-  gap: var(--spaceSm);
-  font: var(--typeButton);
-}
+/* ── A numbered step's mark ─────────────────────────────────────────────── */
 
 .step-mark {
   display: flex;
@@ -1638,31 +1622,6 @@ span {
   border-radius: var(--radiusPill);
   font: var(--typePill);
   font-variant-numeric: tabular-nums;
-}
-
-.step-now .step-mark {
-  background: var(--colorDark);
-  color: var(--colorInkOnDark);
-}
-
-.step-done .step-mark {
-  background: var(--colorAccent);
-  color: var(--colorInkOnDark);
-  font-family: var(--fontFamily);
-}
-
-.step-done {
-  color: var(--colorAccentText);
-}
-
-.step-later .step-mark {
-  border: var(--borderMark) var(--colorMarkEmpty);
-  background: var(--colorCard);
-  color: var(--colorInkSecondary);
-}
-
-.step-later {
-  color: var(--colorInkSecondary);
 }
 
 /* ── Getting back in without the second factor (sc-509) ─────────────────── */
@@ -3247,14 +3206,6 @@ span {
   flex-wrap: wrap;
   align-items: baseline;
   justify-content: space-between;
-  gap: var(--spaceSm);
-}
-
-/* ── A label with a pill beside it ─────────────────────────────────────────── */
-
-.label-row {
-  display: inline-flex;
-  align-items: center;
   gap: var(--spaceSm);
 }
 
@@ -7769,4 +7720,316 @@ button.members-row {
 
 .button.button-apple-light:hover {
   background: var(--colorCard);
+}
+
+/* ── Creating an account, the desktop pages (sc-29065, WebNewAccount page 27) ── */
+
+.auth-column .auth-heading {
+  gap: var(--spaceSm);
+}
+
+.auth-column .auth-heading .auth-tight {
+  margin-top: calc(-1 * var(--spaceSm));
+}
+
+.auth-column .auth-step {
+  font: 500 13px/18px var(--fontFamily);
+  color: var(--colorInkSecondary);
+}
+
+/* Back is 20 high with the column's 24 under it, so the title stays 88 under the header. */
+.auth-bare .auth-main:has(.auth-column-back) {
+  padding-top: 44px;
+}
+
+.auth-column .link-button.auth-column-back {
+  display: inline-flex;
+  align-self: flex-start;
+  align-items: center;
+  gap: var(--spaceXxs);
+  height: 20px;
+  min-height: 20px;
+  margin-left: calc(-1 * var(--spaceHair));
+  font: 500 14px/20px var(--fontFamily);
+  color: var(--colorInk);
+  text-decoration: none;
+}
+
+.auth-column .link-button.auth-column-back:hover {
+  text-decoration: underline;
+}
+
+.auth-chevron,
+.auth-tick {
+  display: block;
+  flex: none;
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.auth-tick {
+  stroke: var(--colorAccent);
+  stroke-width: 2.6;
+}
+
+.auth-done {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceMd);
+}
+
+/* The length rule: a mark and the words, never colour alone. */
+.auth-rule {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceHair);
+  margin-top: var(--spaceHair);
+}
+
+.auth-rule p {
+  margin: 0;
+}
+
+.auth-rule-line {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceXs);
+  font: var(--typeSmall);
+  font-weight: 500;
+  color: var(--colorInkSecondary);
+}
+
+.auth-rule-met {
+  color: var(--colorAccentText);
+}
+
+.auth-ring {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid var(--colorFieldBorder);
+  border-radius: 50%;
+}
+
+.auth-rule-note,
+.auth-resend-note {
+  font: var(--typeSmall);
+  color: var(--colorInkSecondary);
+}
+
+/* One field the width of its answer, six digits (GOV.UK). */
+.auth-column .input.code-field {
+  width: 200px;
+  font: 500 18px/1 var(--fontFamily);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.32em;
+}
+
+.auth-resend {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceHair);
+}
+
+.auth-resend p {
+  margin: 0;
+}
+
+.auth-resend-line,
+.auth-aside {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--spaceXs);
+  margin: 0;
+  font: var(--typeBody);
+  color: var(--colorInkSecondary);
+}
+
+.auth-column .auth-resend .link-button {
+  font-variant-numeric: tabular-nums;
+}
+
+/* While it counts down it is words, not a link. */
+.auth-column .auth-resend .link-button[aria-disabled='true'] {
+  font-weight: 500;
+  color: var(--colorInkSecondary);
+  text-decoration: none;
+  cursor: default;
+}
+
+.auth-asides {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+}
+
+/* The code beside the number on one row, "Optional" at the label's end. */
+.auth-column .phone-entry {
+  flex-wrap: nowrap;
+  align-items: flex-end;
+  gap: var(--spaceLg);
+}
+
+.auth-column .phone-country {
+  flex: none;
+  width: 200px;
+}
+
+.auth-column .phone-number {
+  flex: 1;
+  min-width: 0;
+}
+
+.auth-label-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--spaceLg);
+}
+
+.auth-optional {
+  font: var(--typeSmall);
+  font-weight: 400;
+  line-height: 20px;
+  color: var(--colorInkSecondary);
+}
+
+/* ── Two-factor at sign-in, the desktop pages (sc-29068, WebTwoFactor page 27) ── */
+
+.auth-column .steps-list {
+  font: var(--typeBody);
+}
+
+.auth-column .steps-list .step-mark {
+  width: var(--sizePill);
+  height: var(--sizePill);
+  border: 1px solid var(--colorBorder);
+  background: var(--colorInset);
+  font: 600 12px/1 var(--fontFamily);
+}
+
+.auth-lines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceHair);
+  font: var(--typeBody);
+}
+
+.auth-lines p {
+  margin: 0;
+}
+
+.auth-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceLg);
+}
+
+/* ── Other ways in, the desktop pages (sc-29066, WebWaysIn page 27) ───────── */
+
+/* The organisation on one line, with no box round it. */
+.auth-column .join-org {
+  gap: var(--spaceLg);
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+.auth-column .join-org .org-name {
+  font: 600 15px/1.35 var(--fontFamily);
+}
+
+.auth-column .join-org .org-role {
+  font: var(--typeSmall);
+}
+
+.auth-choices,
+.auth-invited {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceLg);
+}
+
+.auth-invited-lines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceHair);
+}
+
+.auth-waiting {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+}
+
+.auth-choices p,
+.auth-invited-lines p,
+.auth-waiting p {
+  margin: 0;
+}
+
+.auth-answers {
+  display: flex;
+  gap: var(--spaceLg);
+}
+
+.auth-answers .button {
+  flex: 1;
+}
+
+/* Signed out, the invitation's form is taller: 56 under the header, 20 between its parts. */
+.auth-bare .auth-main:has(.join-register) {
+  padding-top: 56px;
+}
+
+.auth-column:has(.join-register) {
+  gap: var(--spaceXxl);
+}
+
+/* The domain offer and waiting invitations: hairlines in place of boxes. */
+.auth-column .join-offers,
+.auth-column .profile-invitations {
+  gap: var(--spaceXl);
+}
+
+.auth-column .join-offers-heading,
+.auth-column .profile-invitations-heading {
+  font: 600 16px/1.3 var(--fontFamily);
+}
+
+.auth-column .join-offers-intro .field-help,
+.auth-column .profile-invitations-intro {
+  font: var(--typeBody);
+}
+
+.auth-column .join-offer {
+  flex-wrap: nowrap;
+  gap: var(--spaceLg);
+  padding: 14px 0;
+  border: 0;
+  border-block: var(--borderInset);
+  border-radius: 0;
+  background: none;
+}
+
+.auth-column .join-offer + .join-offer {
+  border-top: 0;
+}
+
+.auth-column .join-offer .button {
+  flex: none;
+  width: 120px;
+}
+
+.auth-column .invitation-row {
+  padding: 14px 0 0;
+  border: 0;
+  border-top: var(--borderInset);
+  border-radius: 0;
+  background: none;
 }

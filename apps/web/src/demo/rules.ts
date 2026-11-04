@@ -3,6 +3,7 @@ import {
   callingCode,
   countryChoices,
   emailProblem,
+  formatDay,
   formatTimeOfDay,
   meetsPasswordLength,
   phoneLengthProblem,
@@ -18,8 +19,19 @@ export const SAMPLE = {
   code: '482913',
   country: 'GB',
   number: '7400 123456',
+  /** The authenticator's code, and the recovery codes: one unused, one used already. */
+  authenticator: '714302',
+  recovery: 'vtxp-rh7y',
+  usedRecovery: 'k3m9-q2wd',
   /** Refused as a known breach, as the API refuses one. */
   breachedPassword: 'passwordpassword',
+  inviter: 'Ade Bankole',
+  role: 'Coordinator',
+  invitedUntil: 'Tuesday, Nov 17',
+  askedOn: 'Tuesday, Nov 3 at 14:05',
+  askAgainFrom: 'Tuesday, Dec 1',
+  /** Signed in with the wrong address, on an invitation that is not theirs. */
+  otherEmail: 'folake.adeyemi@gmail.com',
 } as const;
 
 export const CODE_LENGTH = 6;
@@ -70,6 +82,10 @@ export function timeOfDay(at: number): string {
   return formatTimeOfDay(new Date(at), 'en-GB');
 }
 
+export function dayOfTime(at: number): string {
+  return formatDay(new Date(at), 'en-GB');
+}
+
 export type AccountLines = { name?: string; email?: string; password?: string };
 
 /** Create your account's checks before anything is sent. */
@@ -79,11 +95,20 @@ export function accountLines(name: string, email: string, password: string): Acc
 
   if (name.trim() === '') lines.name = 'Enter your full name.';
   if (emailRefusal != null) lines.email = emailRefusal;
-  if (password === '') lines.password = 'Enter a password.';
-  else if (!meetsPasswordLength(password))
-    lines.password = `Use at least ${PASSWORD_MINIMUM_LENGTH} characters.`;
+  const passwordRefusal = passwordLine(password, 'Enter a password.');
+  if (passwordRefusal != null) lines.password = passwordRefusal;
 
   return lines;
+}
+
+export const BREACHED = 'This password has appeared in a known data breach. Choose another.';
+
+export function passwordLine(password: string, blank: string): string | null {
+  if (password === '') return blank;
+
+  return meetsPasswordLength(password)
+    ? null
+    : `Use at least ${PASSWORD_MINIMUM_LENGTH} characters.`;
 }
 
 /** Only the digits of what was typed or pasted, at most a code's length. */
@@ -177,6 +202,138 @@ export const NEW_ACCOUNT_PAGES: { name: string; states: { name: string; to: stri
       { name: 'Loading', to: at('register', 'loading') },
       { name: 'Cannot reach Soirely, signed out', to: at('register', 'offline') },
       { name: 'Cannot reach Soirely, signed in', to: at('email', 'offline') },
+    ],
+  },
+];
+
+/** A page of the getting-back-in board, and one of its states. */
+export const backIn = (page: string, state?: string) =>
+  `/demo/get-back-in?page=${page}${state == null ? '' : `&state=${state}`}`;
+
+export const GET_BACK_IN_PAGES: { name: string; states: { name: string; to: string }[] }[] = [
+  {
+    name: 'Reset your password',
+    states: [
+      { name: 'Reset your password', to: backIn('reset') },
+      { name: 'Too many requests', to: backIn('reset', 'limited') },
+      { name: 'That did not work', to: backIn('reset', 'failed') },
+    ],
+  },
+  { name: 'Check your email', states: [{ name: 'Check your email', to: backIn('sent') }] },
+  {
+    name: 'Set a new password',
+    states: [
+      { name: 'Set a new password', to: backIn('new') },
+      { name: 'Too short', to: backIn('new', 'short') },
+      { name: 'Password changed', to: backIn('done') },
+    ],
+  },
+  {
+    name: 'A link that does not work',
+    states: [
+      { name: 'This link has expired', to: backIn('link', 'expired') },
+      { name: 'This link has already been used', to: backIn('link', 'used') },
+      { name: 'This link doesn’t work', to: backIn('link', 'broken') },
+      { name: 'Cannot reach Soirely', to: backIn('link', 'offline') },
+    ],
+  },
+  { name: 'A code first', states: [{ name: 'Enter your code', to: backIn('code') }] },
+];
+
+/** A page of the two-factor board, and one of its states. */
+export const twoFactorAt = (page: string, state?: string) =>
+  `/demo/two-factor?page=${page}${state == null ? '' : `&state=${state}`}`;
+
+export const TWO_FACTOR_PAGES: { name: string; states: { name: string; to: string }[] }[] = [
+  {
+    name: 'Enter your code',
+    states: [
+      { name: 'Enter your code', to: twoFactorAt('code') },
+      { name: 'A wrong code', to: twoFactorAt('code', 'wrong') },
+      { name: 'Too many wrong codes', to: twoFactorAt('code', 'paused') },
+    ],
+  },
+  {
+    name: 'A recovery code',
+    states: [
+      { name: 'Enter a recovery code', to: twoFactorAt('recovery') },
+      { name: 'A used code', to: twoFactorAt('recovery', 'used') },
+    ],
+  },
+  {
+    name: 'Lost authenticator',
+    states: [
+      { name: 'Start', to: twoFactorAt('start') },
+      { name: 'Too many requests', to: twoFactorAt('start', 'limited') },
+      { name: 'Both codes', to: twoFactorAt('codes') },
+      { name: 'Only the email’s code', to: twoFactorAt('codes', 'email-only') },
+    ],
+  },
+  {
+    name: 'Once asked',
+    states: [
+      { name: 'Waiting for your organisation', to: twoFactorAt('waiting') },
+      { name: 'Two-factor is off', to: twoFactorAt('off') },
+      { name: 'Turned down', to: twoFactorAt('turned-down') },
+      { name: 'Ended', to: twoFactorAt('ended') },
+      { name: 'Cancelled', to: twoFactorAt('cancelled') },
+      { name: 'Replaced', to: twoFactorAt('replaced') },
+    ],
+  },
+  {
+    name: 'After getting back in',
+    states: [
+      { name: 'Set up two-factor again', to: twoFactorAt('setup') },
+      { name: 'This wasn’t you?', to: twoFactorAt('not-me') },
+      { name: 'Cancelled and signed out', to: twoFactorAt('not-me', 'done') },
+    ],
+  },
+];
+
+/** A page of the other-ways-in board, and one of its states. */
+export const way = (page: string, state?: string) =>
+  `/demo/ways-in?page=${page}${state == null ? '' : `&state=${state}`}`;
+
+/** The other-ways-in board's pages as the demo's home lists them. */
+export const WAYS_IN_PAGES: { name: string; states: { name: string; to: string }[] }[] = [
+  {
+    name: 'Ask to join',
+    states: [
+      { name: 'Signed out', to: way('ask') },
+      { name: 'Signed in', to: way('ask', 'signed-in') },
+      { name: 'Request sent', to: way('ask', 'sent') },
+      { name: 'Already asked', to: way('ask', 'asked') },
+      { name: 'Already a member', to: way('ask', 'member') },
+      { name: 'Cooling off', to: way('ask', 'cooling') },
+      { name: 'The link does not work', to: way('ask', 'dead') },
+    ],
+  },
+  {
+    name: 'An invitation',
+    states: [
+      { name: 'Signed out', to: way('invitation') },
+      { name: 'Signed in', to: way('invitation', 'signed-in') },
+      { name: 'You are in', to: way('invitation', 'joined') },
+      { name: 'Expired', to: way('invitation', 'expired') },
+      { name: 'Withdrawn', to: way('invitation', 'withdrawn') },
+      { name: 'Already declined', to: way('invitation', 'declined') },
+      { name: 'Not yours', to: way('invitation', 'not-yours') },
+      { name: 'Deleted', to: way('invitation', 'deleted') },
+    ],
+  },
+  {
+    name: 'Your details',
+    states: [
+      { name: 'Your company is here', to: way('details', 'company') },
+      { name: 'An invitation waiting', to: way('details', 'invitation') },
+      { name: 'Waiting for Ire Events', to: way('waiting') },
+    ],
+  },
+  {
+    name: 'First sign-in',
+    states: [
+      { name: 'With Google', to: way('details', 'google') },
+      { name: 'With Apple, no name', to: way('details', 'apple') },
     ],
   },
 ];

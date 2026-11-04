@@ -4,7 +4,7 @@ import Svg, { Path } from 'react-native-svg';
 
 import { Text } from '../../src/components/Text.tsx';
 import { DemoScreen, NavBar } from '../../src/demo/DemoScreen.tsx';
-import { Heading } from '../../src/demo/Lines.tsx';
+import { Heading } from '../../src/steps/Lines.tsx';
 import { SAMPLE } from '../../src/demo/samples.ts';
 import { tokens } from '../../src/theme/tokens.ts';
 
@@ -16,6 +16,159 @@ interface Board {
 
 /** Every board in the design artifact, by its page, working on sample data. */
 const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
+  {
+    page: 'Today · where signing in lands',
+    boards: [
+      { title: 'A planning day', what: 'Four things need you', href: '/demo/today' },
+      {
+        title: 'A planning day · built now',
+        what: 'Only what the events’ dates can say',
+        href: '/demo/today?moment=planNow',
+      },
+      { title: 'The event day', what: 'The cover is Now', href: '/demo/today?moment=day' },
+      {
+        title: 'The event day · built now',
+        what: 'The dates, and Open the event',
+        href: '/demo/today?moment=dayNow',
+      },
+      { title: 'A quiet week', what: 'Nothing due, nothing on', href: '/demo/today?moment=quiet' },
+      { title: 'A first run', what: 'No events yet', href: '/demo/today?moment=first' },
+    ],
+  },
+  {
+    page: 'Settings · B Confetti',
+    boards: [
+      {
+        title: 'Settings',
+        what: 'You as a Confetti card, rows with a tile',
+        href: '/demo/settings',
+      },
+      {
+        title: 'Settings · a planner',
+        what: 'Only the sections the role holds',
+        href: '/demo/settings?as=planner',
+      },
+      {
+        title: 'Settings · no organisation',
+        what: 'Only your own sections',
+        href: '/demo/settings?as=noOrg',
+      },
+      { title: 'Your account', what: 'Under a Confetti band', href: '/demo/settings/account' },
+      {
+        title: 'Your account · an expired code',
+        what: 'Verify email, sent again',
+        href: '/demo/settings/account?state=verifyEmailExpired',
+      },
+      { title: 'Security', what: 'Ways in, two-factor, devices', href: '/demo/settings/security' },
+      {
+        title: 'Security · Google only',
+        what: 'The only way in, no password',
+        href: '/demo/settings/security?state=googleOnly',
+      },
+      {
+        title: 'Security · kept by a rule',
+        what: 'Google and two-factor stay on',
+        href: '/demo/settings/security?state=keptByRule',
+      },
+      {
+        title: 'Notifications',
+        what: 'Push and email for each kind',
+        href: '/demo/settings/notifications',
+      },
+      {
+        title: 'Notifications · push blocked',
+        what: 'Pushes are off on this device',
+        href: '/demo/settings/notifications?state=pushBlocked',
+      },
+      {
+        title: 'Notifications · a save fails',
+        what: 'The switch goes back, with the error',
+        href: '/demo/settings/notifications?state=saveFailed',
+      },
+      {
+        title: 'Notifications · loading',
+        what: 'The skeleton, then the grid',
+        href: '/demo/settings/notifications?state=loading',
+      },
+      {
+        title: 'Notifications · failed',
+        what: 'Could not be loaded, Try again',
+        href: '/demo/settings/notifications?state=failed',
+      },
+      {
+        title: 'Organisation',
+        what: 'Details, joining, ownership',
+        href: '/demo/settings/organisation',
+      },
+      {
+        title: 'Organisation · cards loading',
+        what: 'Domains loading, the link failed',
+        href: '/demo/settings/organisation?state=cardsLoading',
+      },
+      {
+        title: 'Organisation · the only owner',
+        what: 'Leave asks you to transfer first',
+        href: '/demo/settings/organisation?state=onlyOwner',
+      },
+      { title: 'Members', what: 'Requests, people, roles', href: '/demo/settings/members' },
+      {
+        title: 'Members · read only',
+        what: 'Somebody who cannot manage members',
+        href: '/demo/settings/members?state=readOnly',
+      },
+      {
+        title: 'Members · the owner claim',
+        what: 'Julien claims Ire Events by its domain',
+        href: '/demo/settings/members?state=claim',
+      },
+      {
+        title: 'Members · loading',
+        what: 'Loading members',
+        href: '/demo/settings/members?state=loading',
+      },
+      {
+        title: 'Members · failed',
+        what: 'Could not load, Try again',
+        href: '/demo/settings/members?state=failed',
+      },
+      { title: 'Roles', what: 'What each role may do', href: '/demo/settings/roles' },
+      {
+        title: 'Roles · locked areas',
+        what: 'Julien cannot give what he lacks',
+        href: '/demo/settings/roles?state=locked',
+      },
+      {
+        title: 'Roles · loading',
+        what: 'Loading the roles',
+        href: '/demo/settings/roles?state=loading',
+      },
+      {
+        title: 'Roles · failed',
+        what: 'Could not load, Try again',
+        href: '/demo/settings/roles?state=failed',
+      },
+      {
+        title: 'Sign-in rules',
+        what: 'What changed, the rules in force',
+        href: '/demo/settings/sign-in-rules',
+      },
+      {
+        title: 'Sign-in rules · no changes yet',
+        what: 'Only the rules in force',
+        href: '/demo/settings/sign-in-rules?state=noChanges',
+      },
+      {
+        title: 'Sign-in rules · loading',
+        what: 'Loading the rules',
+        href: '/demo/settings/sign-in-rules?state=loading',
+      },
+      {
+        title: 'Sign-in rules · failed',
+        what: 'Could not load, Try again',
+        href: '/demo/settings/sign-in-rules?state=failed',
+      },
+    ],
+  },
   {
     page: 'Sign-in',
     boards: [

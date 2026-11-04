@@ -8,6 +8,7 @@ import { StatusBar } from 'expo-status-bar';
 
 import { showPushInForeground } from '../src/appPush.ts';
 import { WindowOrigin } from '../src/components/Screen.tsx';
+import { useStepsInSheet } from '../src/steps/StepScreen.tsx';
 import { Text } from '../src/components/Text.tsx';
 import { UpdateGate } from '../src/components/UpdateRequired.tsx';
 import { initI18n } from '../src/i18n/index.ts';
@@ -31,6 +32,7 @@ showPushInForeground();
 export default function RootLayout() {
   const [state, setState] = useState<'loading' | 'ready' | 'failed'>('loading');
   const reduced = useReducedMotion();
+  const sheet = useStepsInSheet();
   useRereadOnMoves();
   const [message, setMessage] = useState('');
 
@@ -90,7 +92,15 @@ export default function RootLayout() {
                 headerShown: false,
                 ...(reduced && { animation: 'fade', animationDuration: tokens.motionBase }),
               }}
-            />
+            >
+              {/* On an iPad, email sign-in opens as a sheet over welcome and rises with the keys (sc-29076). */}
+              <Stack.Screen
+                name="sign-in"
+                options={({ navigation }) => ({
+                  presentation: sheet && navigation.canGoBack() ? 'formSheet' : 'card',
+                })}
+              />
+            </Stack>
           </UpdateGate>
         </WindowOrigin>
       </ThemeProvider>

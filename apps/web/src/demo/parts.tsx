@@ -1,7 +1,13 @@
-import { PASSWORD_MINIMUM_LENGTH, formatCountdown } from '@soirely/domain';
-import { type FormEvent, type ReactNode, useEffect, useRef, useState } from 'react';
+import {
+  PASSWORD_MINIMUM_LENGTH,
+  formatCountdown,
+  initials,
+  meetsPasswordLength,
+} from '@soirely/domain';
+import { type FormEvent, type ReactNode, type RefObject, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 
+import { offButton } from '../offButton.ts';
 import { offField } from '../offField.ts';
 import { useShownAfter } from '../shownAfter.ts';
 import { BoardPage, Tick } from './BoardPage.tsx';
@@ -36,7 +42,7 @@ export function Heading({
   done = false,
   children,
 }: {
-  step?: 1 | 2;
+  step?: 1 | 2 | undefined;
   title: string;
   done?: boolean;
   children?: ReactNode;
@@ -93,6 +99,60 @@ export function PasswordRule({ met }: { met: boolean }) {
   );
 }
 
+export function PasswordField({
+  label,
+  field,
+  password,
+  line,
+  busy,
+  revealed,
+  onReveal,
+  onChange,
+}: {
+  label: string;
+  field: RefObject<HTMLInputElement | null>;
+  password: string;
+  line: string | null;
+  busy: boolean;
+  revealed: boolean;
+  onReveal: (revealed: boolean) => void;
+  onChange: (password: string) => void;
+}) {
+  return (
+    <div className={fieldClass(line != null)}>
+      <label htmlFor="password">{label}</label>
+      <div className="demo-reveal">
+        <input
+          ref={field}
+          className="demo-input"
+          id="password"
+          type={revealed ? 'text' : 'password'}
+          autoComplete="new-password"
+          value={password}
+          {...offField(busy)}
+          aria-invalid={line != null}
+          aria-describedby={line == null ? 'password-rule' : 'password-line password-rule'}
+          onChange={(event) => onChange(event.target.value)}
+        />
+        <button
+          className="demo-reveal-button"
+          type="button"
+          aria-pressed={revealed}
+          onClick={() => onReveal(!revealed)}
+        >
+          {revealed ? 'Hide' : 'Show'}
+        </button>
+      </div>
+      {line != null && (
+        <p className="demo-line" id="password-line">
+          {line}
+        </p>
+      )}
+      <PasswordRule met={meetsPasswordLength(password)} />
+    </div>
+  );
+}
+
 type Dead = 'expired' | 'exhausted';
 
 export function CodeForm({
@@ -105,6 +165,7 @@ export function CodeForm({
   onVerified,
   below,
   resendNote,
+  resend = true,
 }: {
   opening: string;
   label: string;
@@ -117,6 +178,8 @@ export function CodeForm({
   /** Under the resend line while the field shows. */
   below?: ReactNode;
   resendNote?: ReactNode;
+  /** False for an authenticator's code: nothing to send, so no resend and no end to the tries. */
+  resend?: boolean;
 }) {
   const [code, setCode] = useState(opening === 'wrong' ? '482193' : '');
   const [line, setLine] = useState<string | null>(opening === 'wrong' ? wrong : null);
@@ -128,6 +191,14 @@ export function CodeForm({
   const [sending, setSending] = useState(false);
   const [countFrom, setCountFrom] = useState(() => Date.now());
   const field = useRef<HTMLInputElement>(null);
+  const focusOnMount = useRef(false);
+
+  useEffect(() => {
+    if (!focusOnMount.current || field.current == null) return;
+
+    focusOnMount.current = false;
+    field.current.focus();
+  });
 
   useEffect(() => {
     if (opening !== 'wrong') return;
@@ -153,7 +224,7 @@ export function CodeForm({
         return;
       }
 
-      if (wrongs + 1 >= TRIES) {
+      if (resend && wrongs + 1 >= TRIES) {
         setDead('exhausted');
         return;
       }
@@ -176,7 +247,7 @@ export function CodeForm({
       setLine(null);
       setWrongs(0);
       setCountFrom(Date.now());
-      window.setTimeout(() => field.current?.focus());
+      focusOnMount.current = true;
     });
   }
 
@@ -204,42 +275,106 @@ export function CodeForm({
   return (
     <>
       <form className="demo-form" noValidate onSubmit={verify}>
-        <div className={fieldClass(line != null)}>
-          <label htmlFor="code">{label}</label>
-          <input
-            ref={field}
-            className="demo-input demo-code"
-            id="code"
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            maxLength={CODE_LENGTH}
-            value={code}
-            {...offField(busy)}
-            aria-invalid={line != null}
-            aria-describedby={line == null ? undefined : 'code-line'}
-            onChange={(event) => setCode(codeDigits(event.target.value))}
-          />
-          {line != null && (
-            <p className="demo-line" id="code-line" role="alert">
-              {line}
-            </p>
-          )}
-        </div>
+        <CodeField
+          id="code"
+          label={label}
+          line={line}
+          field={field}
+          value={code}
+          busy={busy}
+          onChange={setCode}
+        />
         <button className="button button-primary demo-wide" type="submit" aria-busy={busy}>
           {sending ? 'Sending…' : busy ? 'Verifying…' : submit}
         </button>
       </form>
-      <Resend key={countFrom} onResend={sendNew}>
-        {resendNote}
-      </Resend>
+      {resend && (
+        <Resend key={countFrom} onResend={sendNew}>
+          {resendNote}
+        </Resend>
+      )}
       {below}
     </>
   );
 }
 
+/** The board's one code field: sign-in's code page, Enter your code and Both codes all render it. */
+export function CodeField({
+  id,
+  label,
+  sent,
+  line,
+  field,
+  value,
+  busy,
+  onChange,
+  inputMode = 'numeric',
+  shape = codeDigits,
+  maxLength = CODE_LENGTH,
+}: {
+  id: string;
+  label: string;
+  /** "Sent to …", under the field. */
+  sent?: string;
+  line: string | null | undefined;
+  field: RefObject<HTMLInputElement | null>;
+  value: string;
+  busy: boolean;
+  onChange: (code: string) => void;
+  inputMode?: 'numeric' | 'text';
+  shape?: (typed: string) => string;
+  maxLength?: number;
+}) {
+  const described = [line == null ? null : `${id}-line`, sent == null ? null : `${id}-sent`]
+    .filter((each) => each != null)
+    .join(' ');
+
+  return (
+    <div className={fieldClass(line != null)}>
+      <label htmlFor={id}>{label}</label>
+      <input
+        ref={field}
+        className="demo-input demo-code"
+        id={id}
+        inputMode={inputMode}
+        autoComplete="one-time-code"
+        autoCapitalize="none"
+        autoCorrect="off"
+        spellCheck={false}
+        maxLength={maxLength}
+        value={value}
+        {...offField(busy)}
+        aria-invalid={line != null}
+        aria-describedby={described === '' ? undefined : described}
+        onChange={(event) => onChange(shape(event.target.value))}
+      />
+      {line != null && (
+        <p className="demo-line" id={`${id}-line`} role="alert">
+          {line}
+        </p>
+      )}
+      {sent != null && (
+        <p className="demo-help" id={`${id}-sent`}>
+          {sent}
+        </p>
+      )}
+    </div>
+  );
+}
+
 /** "No code? Send a new code in 0:41", a link once the count ends; the note under it. */
-export function Resend({ onResend, children }: { onResend: () => void; children?: ReactNode }) {
+export function Resend({
+  onResend,
+  plural = false,
+  children,
+}: {
+  onResend: () => void;
+  /** "No codes? Send new codes", where two codes went. */
+  plural?: boolean;
+  children?: ReactNode;
+}) {
   const [left, setLeft] = useState(RESEND_SECONDS);
+  const send = plural ? 'Send new codes' : 'Send a new code';
 
   useEffect(() => {
     if (left <= 0) return;
@@ -252,16 +387,20 @@ export function Resend({ onResend, children }: { onResend: () => void; children?
   return (
     <div className="demo-resend">
       <p className="demo-resend-line">
-        <span>No code?</span>
+        <span>{plural ? 'No codes?' : 'No code?'}</span>
         {left > 0 ? (
-          <span className="demo-resend-wait">Send a new code in {formatCountdown(left)}</span>
+          <span className="demo-resend-wait">
+            {send} in {formatCountdown(left)}
+          </span>
         ) : (
           <button className="link-button demo-link" type="button" onClick={onResend}>
-            Send a new code
+            {send}
           </button>
         )}
       </p>
-      <p className="demo-resend-note">A new code replaces the last one.</p>
+      <p className="demo-resend-note">
+        {plural ? 'New codes replace the last ones.' : 'A new code replaces the last one.'}
+      </p>
       {children}
     </div>
   );
@@ -274,7 +413,7 @@ export function Verified({
   action,
   onContinue,
 }: {
-  step: 1 | 2;
+  step?: 1 | 2;
   title: string;
   body: string;
   action: string;
@@ -355,5 +494,74 @@ export function Unreachable({ to, signedIn }: { to: string; signedIn: boolean })
         {busy ? 'Trying again…' : 'Try again'}
       </button>
     </BoardPage>
+  );
+}
+
+/** The organisation on one line: its tile, its name, and how you came. */
+export function Organisation({
+  line,
+  name = SAMPLE.organisation,
+  title = name,
+}: {
+  line: string;
+  name?: string;
+  /** The bold line, where it says more than the name. */
+  title?: string;
+}) {
+  return (
+    <div className="demo-organisation">
+      <span className="org-tile" aria-hidden="true">
+        {initials(name)}
+      </span>
+      <p className="demo-organisation-name">
+        <span>{title}</span>
+        <span className="demo-help">{line}</span>
+      </p>
+    </div>
+  );
+}
+
+export type Answer = 'accept' | 'decline';
+
+/** Accept and join and Decline: two answers to one question, the pressed one working and the other waiting. */
+export function Answers({
+  pressed,
+  onAnswer,
+  sized = false,
+  held = false,
+}: {
+  pressed: Answer | null;
+  onAnswer: (answer: Answer) => void;
+  /** Both answers wait while another form on the page is working. */
+  held?: boolean;
+  /** Each button its own width, inside a row of the details page, rather than half the column. */
+  sized?: boolean;
+}) {
+  return (
+    <div className="demo-answers-block">
+      <div className={sized ? 'demo-answers demo-answers-sized' : 'demo-answers'}>
+        <button
+          className="button button-primary"
+          type="button"
+          aria-busy={pressed === 'accept'}
+          {...offButton(held || pressed === 'decline')}
+          onClick={() => !held && pressed == null && onAnswer('accept')}
+        >
+          {pressed === 'accept' ? 'Joining…' : 'Accept and join'}
+        </button>
+        <button
+          className="button"
+          type="button"
+          aria-busy={pressed === 'decline'}
+          {...offButton(held || pressed === 'accept')}
+          onClick={() => !held && pressed == null && onAnswer('decline')}
+        >
+          {pressed === 'decline' ? 'Declining…' : 'Decline'}
+        </button>
+      </div>
+      <p className="demo-help">
+        Declining tells {SAMPLE.inviter} you said no. Nothing else changes.
+      </p>
+    </div>
   );
 }

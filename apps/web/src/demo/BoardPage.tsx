@@ -13,6 +13,7 @@ export function BoardPage({
   end = <NewHere />,
   back,
   controls,
+  tall = false,
 }: {
   children: ReactNode;
   /** The header's right end; null leaves it empty. */
@@ -21,6 +22,8 @@ export function BoardPage({
   back?: { to: string; state?: unknown };
   /** Demo-only switches, under the page with the way back. */
   controls?: ReactNode;
+  /** Sits higher and tighter, for the board's tallest page. */
+  tall?: boolean;
 }) {
   const [language, setLanguage] = useState('en');
 
@@ -30,7 +33,12 @@ export function BoardPage({
         <Brand lockup />
         {end != null && <div className="demo-page-new">{end}</div>}
       </header>
-      <main id="content" className={back == null ? 'demo-page-main' : 'demo-page-main demo-backed'}>
+      <main
+        id="content"
+        className={['demo-page-main', back != null && 'demo-backed', tall && 'demo-tall']
+          .filter(Boolean)
+          .join(' ')}
+      >
         <section className="demo-column">
           {back != null && (
             <Link className="demo-back" to={back.to} state={back.state}>
@@ -83,10 +91,10 @@ function NewHere() {
   );
 }
 
-export function HaveAccount() {
+export function HaveAccount({ question = 'Already have an account?' }: { question?: string }) {
   return (
     <>
-      <span>Already have an account?</span>
+      <span>{question}</span>
       <Link className="button demo-dense" to="/demo/sign-in">
         Sign in
       </Link>
@@ -139,11 +147,11 @@ export function Providers({ busy, onChoose }: { busy: boolean; onChoose: (name: 
   );
 }
 
-export function OrLine() {
+export function OrLine({ words = 'or' }: { words?: string }) {
   return (
     <div className="auth-or">
       <span className="auth-or-rule" />
-      <span>or</span>
+      <span>{words}</span>
       <span className="auth-or-rule" />
     </div>
   );

@@ -4,12 +4,12 @@ import { Animated, StyleSheet, type TextInputInstance, View } from 'react-native
 
 import { PrimaryButton, QuietButton } from '../../../src/components/Buttons.tsx';
 import { DemoScreen, NavBar, goBack, useInSheet } from '../../../src/demo/DemoScreen.tsx';
-import { tap } from '../../../src/demo/haptics.ts';
-import { type FieldState, InsideField } from '../../../src/demo/InsideField.tsx';
-import { Heading, Says } from '../../../src/demo/Lines.tsx';
-import { emailLooksRight } from '../../../src/demo/rules.ts';
+import { tap } from '../../../src/steps/haptics.ts';
+import { type FieldState, InsideField } from '../../../src/steps/InsideField.tsx';
+import { Heading, Says } from '../../../src/steps/Lines.tsx';
+import { emailLooksRight } from '../../../src/steps/rules.ts';
 import { SAMPLE } from '../../../src/demo/samples.ts';
-import { useShake } from '../../../src/demo/shake.ts';
+import { useShake } from '../../../src/steps/shake.ts';
 import { tokens } from '../../../src/theme/tokens.ts';
 
 type Wrong = { field: 'email' | 'password'; state: FieldState | 'refused'; words: string } | null;

@@ -111,6 +111,13 @@ export const tokens = {
   typeTitlePhone: { size: 26, weight: 700, lineHeight: 1.1, letterSpacing: '-0.02em' }, // phone page title (Events Home, RSVP use 26/28 inconsistently)
   typeTitleFrame: { size: 34, weight: 700, lineHeight: 1.1, letterSpacing: '-0.02em' }, // the app's header band title on a phone, every screen (page 29, sc-26270)
   typeTitleFrameCompact: { size: 30, weight: 700, lineHeight: 1.1, letterSpacing: '-0.02em' }, // the same on an iPhone SE and both iPads (page 29, sc-26270)
+  typeTitleStep: { size: 32, weight: 700, lineHeight: 1.1, letterSpacing: '-0.02em' }, // a sign-in step's title on a phone (B Confetti, sc-29078); a tablet's sheet takes typeTitleFrame
+  typeCoverLine: { size: 32, weight: 700, lineHeight: 1.1, letterSpacing: '-0.02em' }, // the line under the brand on the sign-in cover, on a phone (sc-29078)
+  typeCoverLineCompact: { size: 26, weight: 700, lineHeight: 1.1, letterSpacing: '-0.02em' }, // the same under 380 wide (sc-29078)
+  typeCoverLineTablet: { size: 46, weight: 700, lineHeight: 1.1, letterSpacing: '-0.02em' }, // the same on a tablet (sc-29078)
+  typeCoverTitle: { size: 28, weight: 700, lineHeight: 1.1, letterSpacing: '-0.02em' }, // No connection's title on the cover, on a phone (sc-29078)
+  typeCoverTitleTablet: { size: 40, weight: 700, lineHeight: 1.1, letterSpacing: '-0.02em' }, // the same on a tablet (sc-29078)
+  typeCoverBodyTablet: { size: 19, weight: 400, lineHeight: 1.5, letterSpacing: '0' }, // the words under a cover title on a tablet; a phone's take typeBodyGuest (sc-29078)
   typeTitleSection: { size: 16, weight: 700, lineHeight: 1.3, letterSpacing: '0' }, // card title
   typeTitleDialog: { size: 20, weight: 700, lineHeight: 1.2, letterSpacing: '0' }, // dialog and sheet titles; 22 on tablet sheets
   typeNumberTile: { size: 30, weight: 700, lineHeight: 1, letterSpacing: '-0.02em' }, // tile numbers; 32 and 34 also appear
