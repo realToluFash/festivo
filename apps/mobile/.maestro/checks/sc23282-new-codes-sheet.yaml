@@ -20,6 +20,10 @@ appId: host.exp.Exponent
     file: ../batch/helper.js
     env:
       ASK: /code
+- scrollUntilVisible:
+    element:
+      id: 'twoFactor.newCodesCode'
+    centerElement: true
 - tapOn:
     id: 'twoFactor.newCodesCode'
 - inputText: ${output.helper.code}
