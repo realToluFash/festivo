@@ -246,8 +246,18 @@ export function CodeForm({
 }
 
 /** "No code? Send a new code in 0:41", a link once the count ends; the note under it. */
-export function Resend({ onResend, children }: { onResend: () => void; children?: ReactNode }) {
+export function Resend({
+  onResend,
+  plural = false,
+  children,
+}: {
+  onResend: () => void;
+  /** "No codes? Send new codes", where two codes went. */
+  plural?: boolean;
+  children?: ReactNode;
+}) {
   const [left, setLeft] = useState(RESEND_SECONDS);
+  const send = plural ? 'Send new codes' : 'Send a new code';
 
   useEffect(() => {
     if (left <= 0) return;
@@ -260,16 +270,20 @@ export function Resend({ onResend, children }: { onResend: () => void; children?
   return (
     <div className="demo-resend">
       <p className="demo-resend-line">
-        <span>No code?</span>
+        <span>{plural ? 'No codes?' : 'No code?'}</span>
         {left > 0 ? (
-          <span className="demo-resend-wait">Send a new code in {formatCountdown(left)}</span>
+          <span className="demo-resend-wait">
+            {send} in {formatCountdown(left)}
+          </span>
         ) : (
           <button className="link-button demo-link" type="button" onClick={onResend}>
-            Send a new code
+            {send}
           </button>
         )}
       </p>
-      <p className="demo-resend-note">A new code replaces the last one.</p>
+      <p className="demo-resend-note">
+        {plural ? 'New codes replace the last ones.' : 'A new code replaces the last one.'}
+      </p>
       {children}
     </div>
   );

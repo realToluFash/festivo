@@ -6,15 +6,18 @@ import { offButton } from '../offButton.ts';
 import { offField } from '../offField.ts';
 import { BoardPage, OrLine, Providers } from './BoardPage.tsx';
 import { NewAccountBoard } from './NewAccount.tsx';
+import { TwoFactorBoard } from './TwoFactor.tsx';
 import {
   type FieldLines,
   LOCK_MS,
   NEW_ACCOUNT_PAGES,
   SAMPLE,
+  TWO_FACTOR_PAGES,
   fieldLines,
   refuse,
   samplePair,
   timeOfDay,
+  twoFactorAt,
 } from './rules.ts';
 import './demo.css';
 
@@ -74,6 +77,7 @@ export default function Demo() {
       <Route index element={<DemoHome from={from} />} />
       <Route path="sign-in" element={<SignInBoard />} />
       <Route path="create-account" element={<NewAccountBoard />} />
+      <Route path="two-factor" element={<TwoFactorBoard />} />
       <Route path="signed-in" element={<SignedIn />} />
       <Route path="later" element={<Later />} />
       <Route path="*" element={<NotFound />} />
@@ -95,7 +99,9 @@ function DemoHome({ from }: { from: string }) {
       <p className="demo-home-line">
         The designs, working on sample data. Nothing is sent. Sign in with{' '}
         <strong>{SAMPLE.email}</strong> and <strong>{SAMPLE.password}</strong>. The code from the
-        email or the phone is <strong>{SAMPLE.code}</strong>.
+        email or the phone is <strong>{SAMPLE.code}</strong>. The authenticator’s code is{' '}
+        <strong>{SAMPLE.authenticator}</strong>, a recovery code <strong>{SAMPLE.recovery}</strong>,
+        and <strong>{SAMPLE.usedRecovery}</strong> one used already.
       </p>
 
       <section className="demo-home-page" aria-labelledby="demo-page-27">
@@ -128,6 +134,23 @@ function DemoHome({ from }: { from: string }) {
             </ul>
           </div>
         ))}
+
+        <h3>Two-factor · desktop</h3>
+        {TWO_FACTOR_PAGES.map((page) => (
+          <div key={page.name} className="demo-home-group">
+            <h4>{page.name}</h4>
+            <ul className="demo-home-rows">
+              {page.states.map((state) => (
+                <li key={state.to}>
+                  <Link className="demo-home-row" to={state.to}>
+                    <span>{state.name}</span>
+                    <span aria-hidden="true">›</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
       </section>
     </main>
   );
@@ -140,8 +163,13 @@ function SignInBoard() {
   return <SignInForm key={key} state={key} />;
 }
 
+/** Where a page sends sign-in from: the email to keep, and whether two-factor was just turned off. */
+type Arrival = { email?: string; recovered?: boolean };
+
 function SignInForm({ state }: { state: string }) {
   const navigate = useNavigate();
+  const arrival = (useLocation().state as Arrival | null) ?? {};
+  const [twoFactor, setTwoFactor] = useState(false);
   const drawn = SIGN_IN_STATES.find((each) => each.key === state);
   const [notice, setNotice] = useState<Notice | null>(drawn?.notice ?? null);
   const [providerOnly, setProviderOnly] = useState(state === 'provider-only');
@@ -156,7 +184,7 @@ function SignInForm({ state }: { state: string }) {
   const email = useRef<HTMLInputElement>(null);
   const password = useRef<HTMLInputElement>(null);
   const pending = useRef<number | undefined>(undefined);
-  const knownEmail = state === 'rule' || state === 'provider-only' ? SAMPLE.email : undefined;
+  const knownEmail = state === 'rule' || state === 'provider-only' ? SAMPLE.email : arrival.email;
   const locked = liftsAt != null;
 
   useEffect(() => () => window.clearTimeout(pending.current), []);
@@ -201,7 +229,8 @@ function SignInForm({ state }: { state: string }) {
     setRevealed(false);
     after(() => {
       if (samplePair(typed.email, typed.password)) {
-        void navigate('/demo/signed-in');
+        if (arrival.recovered === true) void navigate(twoFactorAt('setup'));
+        else void navigate(twoFactor ? twoFactorAt('code') : '/demo/signed-in');
         return;
       }
 
@@ -236,7 +265,19 @@ function SignInForm({ state }: { state: string }) {
     until == null ? notice : { title: 'Too many tries', body: `Try again at ${until}.` };
 
   return (
-    <BoardPage>
+    <BoardPage
+      controls={
+        <label className="demo-switch">
+          <input
+            type="checkbox"
+            role="switch"
+            checked={twoFactor}
+            onChange={(event) => setTwoFactor(event.target.checked)}
+          />
+          Demo: this account uses two-factor
+        </label>
+      }
+    >
       <div className="demo-heading">
         <h1>Sign in</h1>
         {shown != null && (
@@ -382,6 +423,7 @@ const LATER: Record<string, string> = {
   forgot: 'Forgot your password?',
   terms: 'Terms',
   privacy: 'Privacy',
+  security: 'Your account › Security',
 };
 
 function Later() {
