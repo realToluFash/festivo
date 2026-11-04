@@ -1074,6 +1074,7 @@
     "resend": "Enviar códigos novos",
     "resendIn": "Enviar códigos novos dentro de {{time}}",
     "resendNote": "Os códigos novos substituem os anteriores.",
+    "noCodes": "No codes?",
     "textInstead": "Enviar-mo por SMS",
     "textInsteadFailed": "Esse código já não pode ser enviado por SMS. Envie códigos novos.",
     "expiredTitle": "Esses códigos expiraram",

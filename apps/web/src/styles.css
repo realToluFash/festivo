@@ -7898,3 +7898,34 @@ button.members-row {
   line-height: 20px;
   color: var(--colorInkSecondary);
 }
+
+/* ── Two-factor at sign-in, the desktop pages (sc-29068, WebTwoFactor page 27) ── */
+
+.auth-column .steps-list {
+  font: var(--typeBody);
+}
+
+.auth-column .steps-list .step-mark {
+  width: var(--sizePill);
+  height: var(--sizePill);
+  border: 1px solid var(--colorBorder);
+  background: var(--colorInset);
+  font: 600 12px/1 var(--fontFamily);
+}
+
+.auth-lines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceHair);
+  font: var(--typeBody);
+}
+
+.auth-lines p {
+  margin: 0;
+}
+
+.auth-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceLg);
+}
