@@ -15,10 +15,9 @@ import { Glyph } from './Glyph.tsx';
 import {
   type AgendaDay,
   type EventCard,
-  type EventKey,
-  EVENTS,
   type Moment,
   type Need,
+  type ShownEvent,
   type StripBar,
 } from './today.ts';
 
@@ -96,7 +95,7 @@ export function EventThumb({
   side,
   radius = tokens.radiusInset,
 }: {
-  event: EventKey;
+  event: ShownEvent;
   side: number;
   radius?: number;
 }) {
@@ -151,7 +150,7 @@ function NeedRow({
   wide: boolean;
   tell: Tell;
 }) {
-  const { name } = EVENTS[need.event];
+  const { name } = need.event;
   const due = (
     <View style={styles.due}>
       {need.late && <Glyph name="clock" size={13} ink={tokens.colorBroken} weight={2.4} />}
@@ -284,7 +283,7 @@ function Bar({ bar, wide }: { bar: StripBar; wide: boolean }) {
       >
         <View style={[StyleSheet.absoluteFill, styles.tint, { backgroundColor: colour }]} />
         <Text size={12} weight="semibold" numberOfLines={1} style={styles.barName}>
-          {EVENTS[bar.event].name}
+          {bar.event.name}
         </Text>
         <Text
           size={12}
@@ -315,9 +314,7 @@ function Strip({ moment, wide }: { moment: Moment; wide: boolean }) {
             style={styles.dayColumn}
             accessible
             accessibilityLabel={`${day.today ? 'Today' : day.weekday} ${day.number}${
-              day.dots.length > 0
-                ? `, ${day.dots.map((event) => EVENTS[event].name).join(', ')}`
-                : ''
+              day.dots.length > 0 ? `, ${day.dots.map((event) => event.name).join(', ')}` : ''
             }`}
           >
             <Text
@@ -346,7 +343,10 @@ function Strip({ moment, wide }: { moment: Moment; wide: boolean }) {
             </View>
             <View style={styles.dots}>
               {day.dots.map((event) => (
-                <View key={event} style={[styles.dot, { backgroundColor: eventColour(event) }]} />
+                <View
+                  key={event.id}
+                  style={[styles.dot, { backgroundColor: eventColour(event) }]}
+                />
               ))}
             </View>
           </View>
@@ -355,7 +355,7 @@ function Strip({ moment, wide }: { moment: Moment; wide: boolean }) {
       {moment.bars.length > 0 && (
         <View style={[styles.bars, { height: (wide ? 32 : 30) + tokens.spaceXs }]}>
           {moment.bars.map((bar) => (
-            <Bar key={bar.event} bar={bar} wide={wide} />
+            <Bar key={bar.event.id} bar={bar} wide={wide} />
           ))}
         </View>
       )}
@@ -418,7 +418,7 @@ function AgendaDays({
                         {item.title}
                       </Text>
                       <Text size={13} weight="medium" style={styles.secondary} numberOfLines={1}>
-                        {EVENTS[item.event].name + (item.note === '' ? '' : ` · ${item.note}`)}
+                        {item.event.name + (item.note === '' ? '' : ` · ${item.note}`)}
                       </Text>
                     </View>
                   </View>
@@ -656,14 +656,14 @@ export function YourEvents({
           contentContainerStyle={styles.carouselRow}
         >
           {events.map((card) => (
-            <Tile key={card.event} card={card} full={full} tell={tell} />
+            <Tile key={card.event.id} card={card} full={full} tell={tell} />
           ))}
         </ScrollView>
       ) : (
         <Panel style={styles.list}>
           {events.map((card, index) => (
             <Row
-              key={card.event}
+              key={card.event.id}
               card={card}
               full={full}
               last={index === events.length - 1}

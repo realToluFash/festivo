@@ -1,3 +1,6 @@
+import type { EventCover } from '@soirely/api-client';
+import type { EventType } from '@soirely/domain';
+
 export type EventKey = 'wed' | 'ireti' | 'party' | 'draft';
 export type MomentName = 'plan' | 'planNow' | 'day' | 'dayNow' | 'quiet' | 'first';
 
@@ -48,6 +51,18 @@ export const EVENTS: Record<EventKey, SampleEvent> = {
     draft: true,
   },
 };
+
+/** An event as Today draws it, a sample or a real one: its name, its colour, and its photo once it has one. */
+export interface ShownEvent {
+  id: string;
+  name: string;
+  mesh: EventKey;
+  photo: { cover: EventCover; type: EventType } | null;
+}
+
+export function sample(key: EventKey): ShownEvent {
+  return { id: key, name: EVENTS[key].name, mesh: key, photo: null };
+}
 
 /** Dates as `2026-11-03` and times as `18:00`, written the reader's way. */
 export interface Say {
@@ -110,7 +125,7 @@ export function dueWords(today: string, due: string, say: Say): { words: string;
 }
 
 export interface Need {
-  event: EventKey;
+  event: ShownEvent;
   title: string;
   due: string;
   late: boolean;
@@ -120,7 +135,7 @@ export interface Need {
 export interface AgendaItem {
   time: string;
   title: string;
-  event: EventKey;
+  event: ShownEvent;
   note: string;
 }
 
@@ -136,11 +151,11 @@ export interface StripDay {
   weekday: string;
   number: string;
   today: boolean;
-  dots: EventKey[];
+  dots: ShownEvent[];
 }
 
 export interface StripBar {
-  event: EventKey;
+  event: ShownEvent;
   start: number;
   span: number;
   label: string;
@@ -149,7 +164,7 @@ export interface StripBar {
 }
 
 export interface EventCard {
-  event: EventKey;
+  event: ShownEvent;
   name: string;
   dates: string;
   count: string;
@@ -166,7 +181,7 @@ export interface RailStop {
 }
 
 export interface Now {
-  event: EventKey;
+  event: ShownEvent;
   name: string;
   live: string;
   happening: string;
@@ -197,7 +212,7 @@ export interface Moment {
   bars: StripBar[];
   agenda: AgendaDay[];
   nothing: string;
-  nextUp: { event: EventKey; name: string; when: string } | null;
+  nextUp: { event: ShownEvent; name: string; when: string } | null;
   events: EventCard[];
   now: Now | null;
 }
@@ -311,7 +326,7 @@ function card(key: EventKey, today: string, moment: MomentName, say: Say): Event
   const ready = READY[moment]?.[key];
 
   return {
-    event: key,
+    event: sample(key),
     name: event.name,
     dates: eventDates(event, say),
     count,
@@ -357,7 +372,7 @@ function week(
       const openLeft = event.first < today;
 
       return {
-        event: key,
+        event: sample(key),
         start,
         span: end - start + 1,
         label: openLeft ? `day ${1 - daysFrom(today, event.first)} of ${length}` : `${length} days`,
@@ -365,13 +380,13 @@ function week(
       };
     });
   const covered = (key: EventKey, index: number) =>
-    bars.some((bar) => bar.event === key && index >= bar.start && index < bar.start + bar.span);
+    bars.some((bar) => bar.event.id === key && index >= bar.start && index < bar.start + bar.span);
   const days = Array.from({ length: 7 }, (_, index) => {
     const date = addDays(today, index);
     const items = agenda.find(([day]) => day === date)?.[1] ?? [];
-    const dots = [...new Set(items.map(([, , event]) => event))].filter(
-      (event) => !covered(event, index),
-    );
+    const dots = [...new Set(items.map(([, , event]) => event))]
+      .filter((event) => !covered(event, index))
+      .map(sample);
 
     return { weekday: say.weekday(date), number: say.number(date), today: index === 0, dots };
   });
@@ -392,7 +407,7 @@ function needs(name: MomentName, today: string, say: Say): Need[] | null {
   const row = (event: EventKey, title: string, due: string, action: string): Need => {
     const { words, late } = dueWords(today, due, say);
 
-    return { event, title, due: words, late, action };
+    return { event: sample(event), title, due: words, late, action };
   };
 
   if (name === 'plan')
@@ -401,7 +416,7 @@ function needs(name: MomentName, today: string, say: Say): Need[] | null {
       row('wed', 'Final numbers to the caterer', '2026-11-04', 'Review'),
       row('wed', 'Seat the last 12 guests', '2026-11-05', 'Seat'),
       {
-        event: 'ireti',
+        event: sample('ireti'),
         title: 'Chase 21 replies',
         due: `Replies close ${say.day('2026-11-06')}`,
         late: false,
@@ -411,7 +426,7 @@ function needs(name: MomentName, today: string, say: Say): Need[] | null {
   if (name === 'day')
     return [
       {
-        event: 'wed',
+        event: sample('wed'),
         title: 'Choose meals for 3 guests',
         due: `Before dinner at ${say.clock('18:00')}`,
         late: false,
@@ -433,7 +448,7 @@ function now(today: string, time: string, say: Say): Now {
   const tomorrow = addDays(today, 1);
 
   return {
-    event: 'wed',
+    event: sample('wed'),
     name: event.name,
     live: `Day ${daysFrom(event.first, today) + 1} of ${daysFrom(event.first, event.last) + 1} · ${event.place}`,
     happening: 'Drinks reception',
@@ -493,7 +508,7 @@ export function momentOf(name: MomentName, say: Say): Moment {
       items: items.map(([at, title, event, note]) => ({
         time: at === '' ? 'All day' : say.clock(at),
         title,
-        event,
+        event: sample(event),
         note,
       })),
     })),
@@ -501,7 +516,7 @@ export function momentOf(name: MomentName, say: Say): Moment {
     nextUp:
       name === 'quiet'
         ? {
-            event: 'party',
+            event: sample('party'),
             name: party.name,
             when: `${say.day(party.first)} · ${howFar(today, party.first)}`,
           }

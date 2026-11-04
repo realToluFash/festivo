@@ -1,6 +1,9 @@
+import { StyleSheet, View } from 'react-native';
+
 import { Hidden, Mesh, type Glow, type Piece, type Shade } from '../components/Cover.tsx';
+import { EventCover } from '../components/EventCover.tsx';
 import { tokens } from '../theme/tokens.ts';
-import type { EventKey } from './today.ts';
+import type { EventKey, ShownEvent } from './today.ts';
 
 /** The Settings card's pieces, by share of a Confetti card: they keep to its right side, clear of the words. */
 export const CARD_PIECES: readonly Piece[] = [
@@ -47,18 +50,38 @@ const EVENT_MESH: Record<EventKey, { base: string; glows: readonly Glow[] }> = {
   },
 };
 
-/** An event's own cover, drawn in its colour. */
-export function EventMesh({ event, shade = 'none' }: { event: EventKey; shade?: Shade }) {
-  const { base, glows } = EVENT_MESH[event];
+/** An event's own cover: its photo once a host adds one, else its colour as a mesh. */
+export function EventMesh({ event, shade = 'none' }: { event: ShownEvent; shade?: Shade }) {
+  const { base, glows } = EVENT_MESH[event.mesh];
 
   return (
     <Hidden>
-      <Mesh base={base} glows={glows} shade={shade} />
+      {event.photo == null ? (
+        <Mesh base={base} glows={glows} shade={shade} />
+      ) : (
+        <>
+          <EventCover cover={event.photo.cover} type={event.photo.type} radius={0} fill />
+          {shade !== 'none' && (
+            <View style={StyleSheet.absoluteFill}>
+              <Mesh base="transparent" glows={[]} shade={shade} />
+            </View>
+          )}
+        </>
+      )}
     </Hidden>
   );
 }
 
 /** The colour that stands for an event on a dot, a bar or a progress line. */
-export function eventColour(event: EventKey): string {
-  return EVENT_MESH[event].base;
+export function eventColour(event: ShownEvent): string {
+  return EVENT_MESH[event.mesh].base;
+}
+
+const MESHES = Object.keys(EVENT_MESH) as EventKey[];
+
+/** A real event's colour, the same one every time it is drawn. */
+export function meshFor(id: string): EventKey {
+  const sum = [...id].reduce((total, char) => (total * 31 + char.charCodeAt(0)) >>> 0, 7);
+
+  return MESHES[sum % MESHES.length] ?? 'party';
 }

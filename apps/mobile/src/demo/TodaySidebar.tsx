@@ -5,7 +5,7 @@ import { Text } from '../components/Text.tsx';
 import { tokens } from '../theme/tokens.ts';
 import { EventMesh, eventColour } from './Cover.tsx';
 import { Glyph, type GlyphName } from './Glyph.tsx';
-import { EVENTS, type EventKey } from './today.ts';
+import { sample, type ShownEvent } from './today.ts';
 import type { Tab } from './TodayCover.tsx';
 import type { Tell } from './TodayParts.tsx';
 import { SAMPLE } from './samples.ts';
@@ -59,7 +59,7 @@ export function TodaySidebar({
   at = 'Today',
   onPerson = () => tell('Your account has its own design.'),
 }: {
-  events: readonly EventKey[];
+  events: readonly ShownEvent[];
   onTab: (tab: Tab) => void;
   tell: Tell;
   at?: Tab;
@@ -120,15 +120,15 @@ export function TodaySidebar({
         >
           YOUR EVENTS
         </Text>
-        {events.map((key) => (
+        {events.map((event) => (
           <Pressable
-            key={key}
-            onPress={() => tell(`${EVENTS[key].name} has its own design.`)}
+            key={event.id}
+            onPress={() => tell(`${event.name} has its own design.`)}
             style={({ pressed }) => [styles.event, pressed && styles.pressed]}
             accessibilityRole="button"
-            accessibilityLabel={EVENTS[key].name}
+            accessibilityLabel={event.name}
           >
-            <View style={[styles.dot, { backgroundColor: eventColour(key) }]} />
+            <View style={[styles.dot, { backgroundColor: eventColour(event) }]} />
             <Text
               size={14}
               weight="medium"
@@ -136,7 +136,7 @@ export function TodaySidebar({
               accessible={false}
               style={[styles.grow, styles.secondary]}
             >
-              {EVENTS[key].name}
+              {event.name}
             </Text>
           </Pressable>
         ))}
@@ -154,7 +154,7 @@ export function TodaySidebar({
           accessibilityElementsHidden
           importantForAccessibility="no-hide-descendants"
         >
-          <EventMesh event="draft" />
+          <EventMesh event={sample('draft')} />
           <Text size={12} weight="bold" accessible={false}>
             FA
           </Text>

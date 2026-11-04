@@ -36,10 +36,10 @@ describe('a planning day', () => {
   });
 
   it('draws the wedding as one bar, and the other milestones as dots', () => {
-    expect(plan.bars).toEqual([
+    expect(plan.bars.map((bar) => ({ ...bar, event: bar.event.id }))).toEqual([
       { event: 'wed', start: 3, span: 3, label: '3 days', openLeft: false },
     ]);
-    expect(plan.days.map(({ dots }) => dots)).toEqual([
+    expect(plan.days.map(({ dots }) => dots.map(({ id }) => id))).toEqual([
       ['ireti'],
       [],
       ['wed'],
@@ -73,7 +73,7 @@ describe('the event day', () => {
   const day = momentOf('day', us);
 
   it('runs the wedding’s bar in from the left', () => {
-    expect(day.bars).toEqual([
+    expect(day.bars.map((bar) => ({ ...bar, event: bar.event.id }))).toEqual([
       { event: 'wed', start: 0, span: 2, label: 'day 2 of 3', openLeft: true },
     ]);
     expect(day.events[0]).toMatchObject({ count: 'Day 2 of 3', live: true, stage: null });
@@ -102,7 +102,7 @@ describe('the quiet states', () => {
     expect(quiet.needs).toEqual([]);
     expect(quiet.bars).toEqual([]);
     expect(quiet.nextUp?.when).toBe('Sat, Nov 28 · in 10 days');
-    expect(quiet.events.map(({ event }) => event)).toEqual(['party', 'draft']);
+    expect(quiet.events.map(({ event }) => event.id)).toEqual(['party', 'draft']);
   });
 
   it('a first run has no events', () => {

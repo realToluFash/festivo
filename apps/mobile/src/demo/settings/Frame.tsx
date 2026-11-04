@@ -8,7 +8,7 @@ import type { SettingsSection } from '../../kit/appNav.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { Glyph } from '../Glyph.tsx';
 import { SAMPLE } from '../samples.ts';
-import type { EventKey } from '../today.ts';
+import { sample } from '../today.ts';
 import { PhoneTabBar, TABS, type Tab } from '../TodayCover.tsx';
 import type { Tell } from '../TodayParts.tsx';
 import { TodaySidebar } from '../TodaySidebar.tsx';
@@ -36,7 +36,7 @@ export function useShell(): Shell {
 }
 
 export const PHONE_TAB_BAR = 64;
-const SIDEBAR_EVENTS: readonly EventKey[] = ['wed', 'ireti', 'party', 'draft'];
+const SIDEBAR_EVENTS = (['wed', 'ireti', 'party', 'draft'] as const).map(sample);
 
 /** A Settings page in B: on its side, `column` takes the Settings list's place, as givesWay does in the app. */
 export function SettingsPage({
