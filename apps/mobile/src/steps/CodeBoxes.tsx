@@ -27,7 +27,7 @@ export interface CodeBoxesHandle {
 
 /** One field drawn as six boxes, so a paste or the code offered above the keys fills all six; the sixth digit sends it. */
 export function CodeBoxes({
-  label = 'Code, 6 digits',
+  label,
   value,
   onChange,
   onFull,
@@ -36,7 +36,7 @@ export function CodeBoxes({
   ref,
   testID,
 }: {
-  label?: string;
+  label: string;
   value: string;
   onChange: (code: string) => void;
   onFull?: (code: string) => void;

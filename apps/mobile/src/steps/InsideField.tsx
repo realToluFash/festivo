@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
+import { useTranslation } from 'react-i18next';
 
 import { FocusEdge, useHeld } from '../components/Field.tsx';
 import { Text } from '../components/Text.tsx';
@@ -32,6 +33,7 @@ export function InsideField({
   onChangeText,
   password = false,
   state = 'plain',
+  submitting = false,
   multiline = false,
   ref,
   testID,
@@ -43,17 +45,20 @@ export function InsideField({
   password?: boolean;
   /** Blank or malformed: a thin red edge and a red label. A refusal shakes the field and leaves its edge. */
   state?: FieldState;
+  /** A request runs: what was typed is held, and the focus and the keys stay. */
+  submitting?: boolean;
   multiline?: boolean;
   ref?: Ref<TextInputInstance> | undefined;
   testID: string;
 }) {
+  const { t } = useTranslation();
   const labelID = useId();
   const { fontScale } = useWindowDimensions();
   const [focused, setFocused] = useState(false);
   const [revealed, setRevealed] = useState(false);
   const raised = focused || value !== '' || multiline;
   const [lift] = useState(() => new Animated.Value(raised ? 1 : 0));
-  const holding = useHeld(false, value, undefined, onChangeText);
+  const holding = useHeld(submitting, value, undefined, onChangeText);
   const labelLine = LABEL_SMALL * 1.35 * fontScale;
 
   useEffect(() => {
@@ -119,7 +124,7 @@ export function InsideField({
           style={styles.eye}
           onPress={() => setRevealed((shown) => !shown)}
           accessibilityRole="button"
-          accessibilityLabel={revealed ? 'Hide password' : 'Show password'}
+          accessibilityLabel={revealed ? t('steps.hidePassword') : t('steps.showPassword')}
           testID={`${testID}.reveal`}
         >
           <Svg

@@ -7,7 +7,7 @@ import { PrimaryButton, SecondaryButton } from '../../src/components/Buttons.tsx
 import { useReadOut } from '../../src/components/ReadOut.tsx';
 import { Text } from '../../src/components/Text.tsx';
 import { LanguageButton } from '../../src/demo/LanguageButton.tsx';
-import { DemoOnly } from '../../src/demo/Lines.tsx';
+import { DemoOnly } from '../../src/steps/Lines.tsx';
 import { WelcomeFrame } from '../../src/demo/Welcome.tsx';
 import { tokens } from '../../src/theme/tokens.ts';
 

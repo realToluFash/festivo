@@ -93,7 +93,6 @@
   },
   "register": {
     "title": "Créez votre compte",
-    "intro": "Ensuite, nous vous envoyons un code par e-mail pour vérifier que l’adresse est la vôtre.",
     "name": "Nom complet",
     "email": "Adresse e-mail",
     "password": "Mot de passe",
@@ -104,23 +103,16 @@
     "ruleNote": "C’est la seule règle. À l’envoi, nous vérifions aussi que le mot de passe n’apparaît dans aucune fuite de données connue.",
     "submit": "Créer le compte",
     "submitting": "Création du compte…",
-    "signIn": "Se connecter",
     "breached": "Ce mot de passe apparaît dans une fuite de données connue. Choisissez-en un autre.",
     "limitedTitle": "Trop d’inscriptions depuis ce réseau",
     "limitedBody": "Réessayez à {{time}}.",
     "orWithEmail": "ou avec votre e-mail",
-    "landscapeNote": "Ou utilisez votre adresse e-mail et un mot de passe, à droite.",
-    "haveAccount": "Vous avez déjà un compte ?",
-    "back": "Retour à la connexion",
     "failedTitle": "La création du compte n’a pas abouti",
     "failedBody": "Quelque chose s’est mal passé en route. Réessayez dans un instant.",
     "nameBlank": "Saisissez votre nom complet.",
     "passwordBlank": "Saisissez un mot de passe."
   },
   "verifyEmail": {
-    "step1": "Vérifiez votre adresse e-mail",
-    "step1Done": "Adresse vérifiée · terminé",
-    "step2": "Vos informations",
     "title": "Consultez votre boîte mail",
     "intro": "Nous avons envoyé un code à {{address}}. Saisissez-le ici pour prouver que l’adresse est la vôtre.",
     "codeLabel": "Code reçu par e-mail",
@@ -135,18 +127,12 @@
     "exhaustedTitle": "Trop de tentatives incorrectes",
     "exhaustedBody": "Ce code ne fonctionne plus. Envoyez-en un nouveau pour continuer.",
     "wrongAddress": "Ce n’est pas votre adresse ?",
-    "wrongAddressBody": "et recréer votre compte avec la bonne adresse.",
-    "registerAgain": "Inscrivez-vous à nouveau avec la bonne adresse",
-    "signOut": "Se déconnecter",
     "doneTitle": "Adresse vérifiée",
-    "doneBody": "{{address}} est confirmée. Ensuite, quelques informations pour que votre équipe sache qui est qui.",
     "doneBodyAlternative": "{{address}} est vérifiée. Elle ne deviendra votre adresse principale que si vous la définissez comme telle dans Compte.",
-    "continue": "Continuer",
     "failedTitle": "Cela n’a pas fonctionné",
     "failedBody": "Quelque chose s’est mal passé en route. Réessayez dans un instant.",
     "codeBlank": "Saisissez le code à 6 chiffres de l’e-mail.",
-    "codeShort": "Le code compte 6 chiffres.",
-    "step1Google": "E-mail confirmé par {{provider}} · fait"
+    "codeShort": "Le code compte 6 chiffres."
   },
   "verifyPhone": {
     "title": "Consultez vos messages",
@@ -168,8 +154,6 @@
     "failedBody": "Quelque chose s’est mal passé en route. Réessayez dans un instant.",
     "wrongNumber": "Mauvais numéro ?",
     "changeIt": "Le changer",
-    "cantGetTexts": "Vous ne recevez pas de SMS sur ce numéro ?",
-    "carryOnWithout": "Continuer sans",
     "doneTitle": "Numéro vérifié",
     "doneBody": "Soirely peut vous joindre au {{number}} si un problème survient le soir même.",
     "doneBodyAlternative": "{{number}} est vérifié. Il ne deviendra votre numéro principal que si vous le définissez comme tel dans Compte.",
@@ -208,8 +192,6 @@
     "close": "Terminé"
   },
   "completeProfile": {
-    "title": "Quelques informations",
-    "intro": "Pour que les personnes avec qui vous travaillez sachent qui est qui.",
     "name": "Nom complet",
     "nameBlank": "Ajoutez votre nom pour continuer.",
     "organisation": "Nom de l’organisation",
@@ -229,10 +211,6 @@
     "saving": "Enregistrement…",
     "failedTitle": "L’enregistrement n’a pas abouti",
     "failedBody": "Quelque chose s’est mal passé en route. Réessayez dans un instant.",
-    "signedInAs": "Connecté en tant que {{email}}.",
-    "signOut": "Se déconnecter",
-    "optional": "Facultatif",
-    "mobileHelp": "C’est ainsi qu’on vous joint le soir même si quelque chose tourne mal. Si vous en ajoutez un, nous vous envoyons un code par SMS pour le vérifier.",
     "providerConfirmed": "Connecté avec {{provider}}. {{provider}} a déjà confirmé {{email}}, il n’y a donc aucun code à saisir."
   },
   "forms": {
@@ -1971,5 +1949,23 @@
   "toast": {
     "undo": "Annuler",
     "close": "Fermer"
+  },
+  "steps": {
+    "back": "Retour",
+    "close": "Fermer",
+    "stepOf": "Step {{step, number}} of {{steps, number}}",
+    "skip": "Skip",
+    "signOut": "Se déconnecter",
+    "continue": "Continuer",
+    "codeLabel": "Code, 6 digits",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
+    "emailIntro": "We sent a code to {{address}}.",
+    "organisationTitle": "Your organisation",
+    "mobileTitle": "Your mobile number",
+    "mobileIntro": "So your team can reach you on the night if something goes wrong.",
+    "mobileLine": "We send it a code on WhatsApp, or by text if WhatsApp can’t reach you.",
+    "sendCode": "Send code",
+    "whatsAppTitle": "Check WhatsApp"
   }
 }
