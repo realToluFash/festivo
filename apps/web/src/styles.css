@@ -2042,6 +2042,7 @@ span {
 
 .org-name,
 .org-role {
+  margin: 0;
   overflow-wrap: anywhere;
 }
 
