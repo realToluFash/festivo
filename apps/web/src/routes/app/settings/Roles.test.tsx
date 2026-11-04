@@ -309,7 +309,7 @@ describe('Settings > Roles', () => {
 
     expect(screen.getByText('Choose the role these people move to.')).toBeDefined();
     expect(sent.some((request) => request.method === 'DELETE')).toBe(false);
-    expect(screen.getByLabelText(/^Owner/)).toBeDefined();
+    expect(screen.queryByLabelText(/^Owner/)).toBeNull();
 
     fireEvent.click(screen.getByLabelText(/^Read-only/));
     fireEvent.click(screen.getByRole('button', { name: 'Move them and remove Door team' }));
