@@ -41,8 +41,8 @@
     "follows": "O seu idioma acompanha-o em todos os dispositivos."
   },
   "welcome": {
-    "tagline": "Plan the event. Run the day.",
-    "withEmail": "Sign in with email"
+    "tagline": "Planeie o evento. Conduza o dia.",
+    "withEmail": "Iniciar sessão com e-mail"
   },
   "layouts": {
     "title": "Disposições",
@@ -179,8 +179,8 @@
   },
   "session": {
     "unreachableTitle": "Não é possível contactar a Soirely",
-    "unreachableBody": "A sua sessão continua iniciada. A Soirely não está a responder, por isso ainda não é possível carregar nada. Verifique a ligação e tente novamente.",
-    "unreachableBodySignedOut": "A Soirely não está a responder, por isso ainda não é possível carregar nada. Verifique a ligação e tente novamente.",
+    "unreachableBody": "A sua sessão continua iniciada. A Soirely não está a responder, por isso ainda não é possível carregar nada. Verifique a ligação: a aplicação volta a tentar assim que for restabelecida.",
+    "unreachableBodySignedOut": "A Soirely não está a responder, por isso ainda não é possível carregar nada. Verifique a ligação: a aplicação volta a tentar assim que for restabelecida.",
     "retrying": "A tentar novamente…"
   },
   "countryPicker": {
