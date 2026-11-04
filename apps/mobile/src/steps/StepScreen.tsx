@@ -10,14 +10,17 @@ import {
   useState,
 } from 'react';
 import {
+  AccessibilityInfo,
   Animated,
   KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
+  TextInput,
   useWindowDimensions,
   View,
+  type LayoutChangeEvent,
   type ViewInstance,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -25,13 +28,14 @@ import Svg, { Path } from 'react-native-svg';
 
 import { QuietButton } from '../components/Buttons.tsx';
 import { keyboardTopNow, useKeysUp, watchKeyboardTop } from '../components/keyboardWatch.ts';
+import { moveScreenReaderFocus } from '../components/screenReaderFocus.ts';
 import {
   ScreenScroll,
   SETTLED_MS,
   useScreenScrollView,
   useWindowOrigin,
 } from '../components/Screen.tsx';
-import { keysOver } from '../kit/keyboard.ts';
+import { barFits, keysOver } from '../kit/keyboard.ts';
 import { useLayout } from '../layout/useLayout.ts';
 import { glide } from '../motion.ts';
 import { useReducedMotion } from '../reducedMotion.ts';
@@ -219,6 +223,54 @@ export function StepScreen({
   const measured = ANDROID || inSheet;
   const cover = useKeysCover(page, measured, inSheet ? insets.top + SHEET_LIFTED_GAP : 0);
   const { screenScroll, scrollProps } = useScreenScrollView();
+  const [sizes, setSizes] = useState({ shown: 0, foot: 0, field: 0 });
+  const measuredAs = (key: 'shown' | 'foot') => (event: LayoutChangeEvent) => {
+    const height = event.nativeEvent.layout.height;
+    setSizes((was) => (was[key] === height ? was : { ...was, [key]: height }));
+  };
+  const [inline, setInline] = useState(false);
+  // While docked the scroll view ends at the foot, while in place at the keys.
+  const room = sizes.shown + (inline ? 0 : sizes.foot);
+  const nextInline =
+    foot != null &&
+    keysUp &&
+    sizes.field > 0 &&
+    !barFits({ room, field: sizes.field, bar: sizes.foot, margin: tokens.spaceLg });
+  if (nextInline !== inline) setInline(nextInline);
+  const footRef = useRef<ViewInstance>(null);
+  const wasInline = useRef(inline);
+
+  useEffect(() => {
+    if (!keysUp) return;
+    TextInput.State.currentlyFocusedInput()?.measure((_x, _y, _w, height) => {
+      setSizes((was) => (was.field === height ? was : { ...was, field: height }));
+    });
+  }, [keysUp]);
+
+  // The foot remounts as it moves, and a press on it that sent the keys down would leave the screen reader on nothing.
+  useEffect(() => {
+    const docking = wasInline.current && !inline;
+    wasInline.current = inline;
+    if (!docking) return;
+    void AccessibilityInfo.isScreenReaderEnabled().then((on) => {
+      if (on) moveScreenReaderFocus(footRef.current);
+    });
+  }, [inline]);
+
+  const footView = (
+    <View
+      style={[
+        styles.edge,
+        styles.foot,
+        inline ? styles.inlineFoot : { paddingHorizontal: side, paddingBottom: bottom },
+      ]}
+      onLayout={inline ? undefined : measuredAs('foot')}
+    >
+      <View ref={footRef} style={[styles.column, styles.footColumn]}>
+        {foot}
+      </View>
+    </View>
+  );
 
   return (
     <View
@@ -233,6 +285,10 @@ export function StepScreen({
         )}
         <ScrollView
           {...scrollProps}
+          onLayout={(event) => {
+            scrollProps.onLayout();
+            measuredAs('shown')(event);
+          }}
           style={styles.grow}
           contentContainerStyle={[
             styles.content,
@@ -244,15 +300,10 @@ export function StepScreen({
         >
           <ScreenScroll.Provider value={screenScroll}>
             <View style={styles.column}>{children}</View>
+            {inline && footView}
           </ScreenScroll.Provider>
         </ScrollView>
-        {foot != null && (
-          <View
-            style={[styles.edge, styles.foot, { paddingHorizontal: side, paddingBottom: bottom }]}
-          >
-            <View style={[styles.column, styles.footColumn]}>{foot}</View>
-          </View>
-        )}
+        {foot != null && !inline && footView}
       </KeyboardAvoidingView>
     </View>
   );
@@ -267,6 +318,7 @@ const styles = StyleSheet.create({
   content: { flexGrow: 1, alignItems: 'center', paddingBottom: tokens.spaceXl },
   centred: { justifyContent: 'center' },
   foot: { paddingTop: tokens.spaceLg },
+  inlineFoot: { width: '100%' },
   bar: { minHeight: tokens.sizeHit, flexDirection: 'row', alignItems: 'center' },
   icon: {
     width: tokens.sizeHit,
