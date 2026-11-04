@@ -1,0 +1,48 @@
+# Sign in with email: blank and malformed refused; a wrong pair says one line; the right pair goes to two-factor; a wrong code is refused; the right one reaches Home.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/sign-in
+- extendedWaitUntil:
+    visible:
+      id: 'demo.email'
+    timeout: 20000
+- takeScreenshot: sign-in-empty
+- tapOn:
+    id: 'demo.signIn'
+- assertVisible: 'Enter your email address.'
+- takeScreenshot: sign-in-blank
+- tapOn:
+    id: 'demo.email'
+- inputText: 'folake@ire'
+- pressKey: Enter
+- tapOn:
+    id: 'demo.signIn'
+- assertVisible: 'Enter an email address like name@example.com.'
+- takeScreenshot: sign-in-malformed
+- tapOn:
+    id: 'demo.email'
+- inputText: '.events'
+- pressKey: Enter
+- inputText: 'wrong password'
+- pressKey: Enter
+- extendedWaitUntil:
+    visible: 'That email and password do not match.'
+    timeout: 5000
+- takeScreenshot: sign-in-wrong-pair
+- eraseText: 40
+- inputText: 'correct horse battery'
+- pressKey: Enter
+- extendedWaitUntil:
+    visible: 'Enter your code'
+    timeout: 5000
+- inputText: '111111'
+- extendedWaitUntil:
+    visible: 'That code does not match.*'
+    timeout: 5000
+- takeScreenshot: two-factor-wrong
+- inputText: '714302'
+- extendedWaitUntil:
+    visible:
+      id: 'demo.list'
+    timeout: 5000
+- takeScreenshot: demo-home-after-sign-in
