@@ -11,7 +11,7 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../src/api.ts';
 import { PrimaryButton } from '../src/components/Buttons.tsx';
 import { focusChecked, keysStayDown } from '../src/components/Field.tsx';
-import { useAboveKeyboard } from '../src/components/Screen.tsx';
+import { AboveKeyboardView } from '../src/components/Screen.tsx';
 import { Notice } from '../src/components/Notice.tsx';
 import { dateLocale } from '../src/i18n/index.ts';
 import { emailMessage } from '../src/kit/formChecks.ts';
@@ -41,9 +41,6 @@ export default function Register() {
   const nameField = useRef<TextInputInstance>(null);
   const emailField = useRef<TextInputInstance>(null);
   const passwordField = useRef<TextInputInstance>(null);
-  const nameGroup = useAboveKeyboard();
-  const emailGroup = useAboveKeyboard();
-  const passwordGroup = useAboveKeyboard();
   const long = meetsPasswordLength(password);
   const busy = status.kind === 'submitting';
   const locked = status.kind === 'rateLimited';
@@ -145,7 +142,7 @@ export default function Register() {
           />
         </View>
       )}
-      <View style={styles.first} {...nameGroup}>
+      <AboveKeyboardView style={styles.first}>
         <InsideField
           ref={nameField}
           label={t('register.name')}
@@ -164,8 +161,8 @@ export default function Register() {
           testID="register.name"
         />
         {said.name != null && <Says words={said.name} />}
-      </View>
-      <View style={styles.next} {...emailGroup}>
+      </AboveKeyboardView>
+      <AboveKeyboardView style={styles.next}>
         <InsideField
           ref={emailField}
           label={t('register.email')}
@@ -184,8 +181,8 @@ export default function Register() {
           testID="register.email"
         />
         {said.email != null && <Says words={said.email} />}
-      </View>
-      <View style={styles.next} {...passwordGroup}>
+      </AboveKeyboardView>
+      <AboveKeyboardView style={styles.next}>
         <InsideField
           ref={passwordField}
           label={t('register.password')}
@@ -209,7 +206,7 @@ export default function Register() {
             tone={long ? 'met' : said.password != null ? 'wrong' : 'unmet'}
           />
         )}
-      </View>
+      </AboveKeyboardView>
     </StepScreen>
   );
 }

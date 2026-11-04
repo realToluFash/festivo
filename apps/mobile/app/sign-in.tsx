@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '../src/api.ts';
 import { PrimaryButton, QuietButton } from '../src/components/Buttons.tsx';
-import { AnswerInView, useAboveKeyboard } from '../src/components/Screen.tsx';
+import { AboveKeyboardView, AnswerInView } from '../src/components/Screen.tsx';
 import { focusChecked, focusRefused, keysStayDown } from '../src/components/Field.tsx';
 import { ProviderButtons } from '../src/components/ProviderSignIn.tsx';
 import { Text } from '../src/components/Text.tsx';
@@ -131,9 +131,6 @@ export default function SignIn() {
     router.push({ pathname: '/forgot-password', params: email === '' ? {} : { email } });
   };
 
-  // A refusal answered before the keys come up: once they do, the reset link lifts with the field above the docked foot.
-  const refusedGroup = useAboveKeyboard(status.kind !== 'refused');
-
   const forgotLink = (
     <View style={styles.forgot}>
       <QuietButton label={t('recovery.forgot')} onPress={forgot} testID="signIn.forgot" />
@@ -238,7 +235,8 @@ export default function SignIn() {
               />
               {checks.errors.email != null && <Says words={checks.errors.email} />}
             </Animated.View>
-            <View {...refusedGroup}>
+            {/* A refusal answered before the keys come up: once they do, the reset link lifts with the field above the docked foot. */}
+            <AboveKeyboardView still={status.kind !== 'refused'}>
               <Animated.View style={[styles.next, shaken]}>
                 <InsideField
                   key={passwordsWiped}
@@ -272,7 +270,7 @@ export default function SignIn() {
               ) : (
                 forgotLink
               )}
-            </View>
+            </AboveKeyboardView>
           </>
         )}
       </StepScreen>

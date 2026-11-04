@@ -245,6 +245,11 @@ export function useAboveKeyboard(still = false): AboveKeyboard {
   };
 }
 
+/** A View that spreads useAboveKeyboard, for a screen that renders its own StepScreen: the hook finds its scroll from where it is called, and above the StepScreen there is none (sc-29069). */
+export function AboveKeyboardView({ still = false, ...props }: ViewProps & { still?: boolean }) {
+  return <View {...props} {...useAboveKeyboard(still)} />;
+}
+
 /** The height a group may take between the scroll view's top and the keyboard, or null while the keys are down. */
 export function useRoomAboveKeyboard(): number | null {
   const room = useContext(Dock)?.room;
