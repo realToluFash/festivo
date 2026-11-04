@@ -177,8 +177,8 @@
   },
   "session": {
     "unreachableTitle": "Cannot reach Soirely",
-    "unreachableBody": "You are still signed in. Soirely is not answering, so nothing can load yet. Check your connection: the app tries again as soon as it’s back.",
-    "unreachableBodySignedOut": "Soirely is not answering, so nothing can load yet. Check your connection: the app tries again as soon as it’s back.",
+    "unreachableBody": "You are still signed in. Soirely is not answering, so nothing can load yet. Check your connection: the app tries again as soon as it is back.",
+    "unreachableBodySignedOut": "Soirely is not answering, so nothing can load yet. Check your connection: the app tries again as soon as it is back.",
     "retrying": "Trying again…"
   },
   "countryPicker": {
