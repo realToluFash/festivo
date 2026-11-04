@@ -1,11 +1,10 @@
 # A new account's four steps, one job a screen (sc-29069): blank fields refused, a wrong
 # email code refused, the right one goes on, the organisation saved, and Skip on the mobile step.
-# Starts signed in or signed out. EMAIL must be fresh.
+# Run signed out. EMAIL must be fresh.
 #
 #   node .qa/bin/qa-env.mjs maestro sc29069-new-account-walk --android NAME=… EMAIL=… PASSWORD=…
 appId: host.exp.Exponent
 ---
-- runFlow: batch/sign-out.yaml
 - runFlow: sign-in-screen-english.yaml
 - openLink: ${METRO_URL}/--/register
 - extendedWaitUntil:

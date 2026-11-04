@@ -1,9 +1,8 @@
 # sc-29069: error lines stay above the keys on sign-in and Your mobile number.
-# Starts signed in or signed out. EMAIL must be fresh.
+# Run signed out. EMAIL must be fresh.
 #   node .qa/bin/qa-env.mjs maestro sc29069-keys-up-errors --android NAME=… EMAIL=… PASSWORD=…
 appId: host.exp.Exponent
 ---
-- runFlow: batch/sign-out.yaml
 - runFlow: sign-in-screen-english.yaml
 - tapOn:
     id: 'signIn.email'
