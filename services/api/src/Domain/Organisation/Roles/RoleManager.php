@@ -203,6 +203,11 @@ final readonly class RoleManager
             throw $this->invalid('replacement', 'roles.replacement_invalid');
         }
 
+        // Owner is granted one person at a time behind a recent proof (sc-18930), never as a side effect.
+        if ($replacement->isOwner()) {
+            throw $this->invalid('replacement', 'roles.replacement_not_owner');
+        }
+
         return $replacement;
     }
 
