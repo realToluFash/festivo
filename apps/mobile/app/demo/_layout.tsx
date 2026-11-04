@@ -21,7 +21,7 @@ export default function DemoLayout() {
       }}
     >
       <Stack.Screen name="(steps)" options={{ presentation: sheet ? 'formSheet' : 'card' }} />
-      <Stack.Screen name="home" options={{ gestureEnabled: false }} />
+      <Stack.Screen name="today" options={{ gestureEnabled: false }} />
     </Stack>
   );
 }

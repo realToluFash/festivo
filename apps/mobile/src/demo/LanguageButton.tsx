@@ -1,5 +1,5 @@
 import { LOCALES } from '@soirely/domain';
-import { useRef, useState } from 'react';
+import { useContext, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 
@@ -8,6 +8,7 @@ import { Sheet } from '../components/Sheet.tsx';
 import { Text } from '../components/Text.tsx';
 import { tokens } from '../theme/tokens.ts';
 import { SheetBody } from '../steps/Lines.tsx';
+import { OnCover } from './Welcome.tsx';
 
 const LANGUAGES = LOCALES.map((locale) => locale.nativeName);
 
@@ -15,12 +16,14 @@ const LANGUAGES = LOCALES.map((locale) => locale.nativeName);
 export function LanguageButton() {
   const opener = useRef<ViewInstance>(null);
   const [open, setOpen] = useState(false);
+  const onCover = useContext(OnCover);
+  const ink = onCover ? tokens.colorInkOnDark : tokens.colorInkSecondary;
 
   return (
     <>
       <Pressable
         ref={opener}
-        style={styles.button}
+        style={[styles.button, onCover && styles.glass]}
         onPress={() => setOpen(true)}
         accessibilityRole="button"
         accessibilityLabel="Language: English"
@@ -31,7 +34,7 @@ export function LanguageButton() {
           height={16}
           viewBox="0 0 24 24"
           fill="none"
-          stroke={tokens.colorInkSecondary}
+          stroke={ink}
           strokeWidth={1.8}
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -39,7 +42,12 @@ export function LanguageButton() {
           <Circle cx={12} cy={12} r={9.5} />
           <Path d="M2.5 12h19M12 2.5c2.6 2.6 3.9 5.8 3.9 9.5s-1.3 6.9-3.9 9.5c-2.6-2.6-3.9-5.8-3.9-9.5s1.3-6.9 3.9-9.5z" />
         </Svg>
-        <Text size={tokens.typeButton.size} weight="semibold" accessible={false}>
+        <Text
+          size={tokens.typeButton.size}
+          weight="semibold"
+          accessible={false}
+          style={onCover && styles.onCover}
+        >
           English
         </Text>
         <Svg
@@ -47,7 +55,7 @@ export function LanguageButton() {
           height={12}
           viewBox="0 0 24 24"
           fill="none"
-          stroke={tokens.colorInkSecondary}
+          stroke={ink}
           strokeWidth={2.4}
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -100,6 +108,8 @@ const styles = StyleSheet.create({
     borderRadius: tokens.radiusPill,
     backgroundColor: tokens.colorCard,
   },
+  glass: { borderColor: tokens.scrimDialog, backgroundColor: tokens.scrimDialog },
+  onCover: { color: tokens.colorInkOnDark },
   note: { marginTop: tokens.spaceXs, color: tokens.colorInkSecondary },
   list: { marginTop: tokens.spaceLg },
   choice: {
