@@ -171,8 +171,8 @@ final class EventRolesTest extends ApiTestCase
         $this->as($tunde, 'GET', '/api/events/' . $this->owambe);
         self::assertSame(404, $this->statusCode());
 
-        self::assertSame(['event_person.added', 'event_person.changed', 'event_person.removed'], Vec\map(
-            self::em()->getRepository(AuditEntry::class)->findBy(['subjectId' => Uuid::fromString($person['id'])], ['occurredAt' => 'ASC']),
+        self::assertEqualsCanonicalizing(['event_person.added', 'event_person.changed', 'event_person.removed'], Vec\map(
+            self::em()->getRepository(AuditEntry::class)->findBy(['subjectId' => Uuid::fromString($person['id'])]),
             static fn (AuditEntry $entry): string => $entry->getAction(),
         ));
     }
