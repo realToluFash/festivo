@@ -30,6 +30,7 @@ export type FieldState = 'plain' | 'blank';
 export function InsideField({
   label,
   value,
+  defaultValue,
   onChangeText,
   password = false,
   state = 'plain',
@@ -38,9 +39,11 @@ export function InsideField({
   ref,
   testID,
   ...rest
-}: Omit<TextInputProps, 'value' | 'onChangeText' | 'style'> & {
+}: Omit<TextInputProps, 'value' | 'defaultValue' | 'onChangeText' | 'style'> & {
   label: string;
-  value: string;
+  /** A typed field takes `defaultValue` instead: a value handed back on every key drops characters. */
+  value?: string;
+  defaultValue?: string;
   onChangeText?: (text: string) => void;
   password?: boolean;
   /** Held while a submit runs: focused and the keys up, but nothing typed is taken. */
@@ -56,9 +59,13 @@ export function InsideField({
   const { fontScale } = useWindowDimensions();
   const [focused, setFocused] = useState(false);
   const [revealed, setRevealed] = useState(false);
-  const raised = focused || value !== '' || multiline;
+  const [typed, setTyped] = useState(value ?? defaultValue ?? '');
+  const raised = focused || (value ?? typed) !== '' || multiline;
   const [lift] = useState(() => new Animated.Value(raised ? 1 : 0));
-  const holding = useHeld(submitting, value, undefined, onChangeText);
+  const holding = useHeld(submitting, value, defaultValue, (text) => {
+    setTyped(text);
+    onChangeText?.(text);
+  });
   const labelLine = LABEL_SMALL * 1.35 * fontScale;
 
   useEffect(() => {

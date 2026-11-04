@@ -54,8 +54,8 @@ export default function SignIn() {
 
     return refusal?.kind === 'providerOnly' ? { kind: 'ruled', refusal } : { kind: 'ready' };
   });
-  const [email, setEmail] = useState(params.email ?? '');
-  const [password, setPassword] = useState('');
+  const [carried] = useState(params.email ?? '');
+  const typed = useRef({ email: carried, password: '' });
   const emailField = useRef<TextInputInstance>(null);
   const passwordField = useRef<TextInputInstance>(null);
   const { shaken, shake } = useShake();
@@ -77,7 +77,8 @@ export default function SignIn() {
 
     const lift = setTimeout(
       () => {
-        setPassword('');
+        typed.current.password = '';
+        passwordField.current?.clear();
         liftLock();
       },
       Math.max(0, liftsAt - Date.now()),
@@ -87,6 +88,7 @@ export default function SignIn() {
   }, [liftsAt, liftLock]);
 
   function submit(): void {
+    const { email, password } = typed.current;
     if (
       status.kind === 'signingIn' ||
       status.kind === 'rateLimited' ||
@@ -105,7 +107,7 @@ export default function SignIn() {
       .signIn(address, typed)
       .then(nextAfterSignIn)
       .then((next) => {
-        tap.done();
+        tap.light();
         router.replace(next);
       })
       .catch((error: unknown) => {
@@ -122,11 +124,10 @@ export default function SignIn() {
   }
 
   const back = () => (router.canGoBack() ? router.back() : router.replace('/welcome'));
-  const forgot = () =>
-    router.push({
-      pathname: '/forgot-password',
-      params: email.trim() === '' ? {} : { email: email.trim() },
-    });
+  const forgot = () => {
+    const email = typed.current.email.trim();
+    router.push({ pathname: '/forgot-password', params: email === '' ? {} : { email } });
+  };
 
   return (
     <InSheet value={sheet}>
@@ -193,7 +194,10 @@ export default function SignIn() {
             <QuietButton
               label={t('signIn.anotherAccount')}
               // The form comes back with its address field focused on arrival.
-              onPress={() => setStatus({ kind: 'ready' })}
+              onPress={() => {
+                typed.current = { email: carried, password: '' };
+                setStatus({ kind: 'ready' });
+              }}
               testID="signIn.anotherAccount"
             />
           </View>
@@ -203,12 +207,12 @@ export default function SignIn() {
               <InsideField
                 ref={emailField}
                 label={t('signIn.email')}
-                value={email}
+                defaultValue={carried}
                 onChangeText={(text) => {
-                  setEmail(text);
+                  typed.current.email = text;
                   checks.edited('email', text);
                 }}
-                onBlur={() => checks.left('email', email)}
+                onBlur={() => checks.left('email', typed.current.email)}
                 state={checks.errors.email == null ? 'plain' : 'blank'}
                 submitting={busy}
                 keyboardType="email-address"
@@ -218,7 +222,7 @@ export default function SignIn() {
                 returnKeyType="next"
                 submitBehavior="submit"
                 onSubmitEditing={() => passwordField.current?.focus()}
-                autoFocus={email === ''}
+                autoFocus={carried === ''}
                 testID="signIn.email"
               />
               {checks.errors.email != null && <Says words={checks.errors.email} />}
@@ -227,13 +231,12 @@ export default function SignIn() {
               <InsideField
                 ref={passwordField}
                 label={t('signIn.password')}
-                value={password}
                 onChangeText={(text) => {
-                  setPassword(text);
+                  typed.current.password = text;
                   checks.edited('password', text);
                   if (status.kind === 'refused') setStatus({ kind: 'ready' });
                 }}
-                onBlur={() => checks.left('password', password)}
+                onBlur={() => checks.left('password', typed.current.password)}
                 password
                 state={checks.errors.password == null ? 'plain' : 'blank'}
                 submitting={busy}
@@ -242,7 +245,7 @@ export default function SignIn() {
                 returnKeyType="go"
                 submitBehavior="submit"
                 onSubmitEditing={submit}
-                autoFocus={email !== ''}
+                autoFocus={carried !== ''}
                 testID="signIn.password"
               />
             </Animated.View>
