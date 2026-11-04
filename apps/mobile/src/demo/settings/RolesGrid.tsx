@@ -236,6 +236,7 @@ const styles = StyleSheet.create({
   },
   cell: {
     flexGrow: 1,
+    flexShrink: 1,
     minHeight: SEGMENT_HEIGHT,
     alignItems: 'center',
     justifyContent: 'center',
