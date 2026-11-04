@@ -486,6 +486,26 @@ describe('a request link that did not load (sc-11488)', () => {
     expect(notice?.getAttribute('role')).toBeNull();
   });
 
+  it('signs out from the header and puts focus on the heading of the page signed out', async () => {
+    signedIn();
+    answering({
+      [LINK]: () => json(PREVIEW),
+      'POST /api/auth/logout': () => new Response(null, { status: 204 }),
+    });
+    open();
+
+    await screen.findByRole('heading', { level: 1, name: 'Ask to join Ìrè Events' });
+    fireEvent.click(screen.getByRole('button', { name: 'Sign out' }));
+
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole('heading', { level: 1, name: 'Ask to join Ìrè Events' }),
+      ),
+    );
+    expect(screen.getByRole('button', { name: 'Sign in' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Create an account' })).toBeDefined();
+  });
+
   it('keeps the full words signed in', async () => {
     signedIn();
     answering({});

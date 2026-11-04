@@ -49,7 +49,10 @@ export function RequestToJoin({ token }: { token: string }) {
     setAttempt((n) => n + 1);
   });
   // Signed out, the link reads again: what it shows depended on who was asking.
-  const { signOut, unreached } = useSignOut(() => setAttempt((n) => n + 1));
+  const { signOut, unreached } = useSignOut(() => {
+    retryArrives.current = true;
+    setAttempt((n) => n + 1);
+  });
 
   useEffect(() => {
     dropHeldInvitation();
@@ -325,7 +328,7 @@ function Ask({
       {failed && (
         <div className="auth-notice" role="alert">
           <p className="auth-notice-title">{t('requestToJoin.failedTitle')}</p>
-          <p>{t('requestToJoin.failedBody')}</p>{' '}
+          <p>{t('requestToJoin.failedBody')}</p>
         </div>
       )}
 

@@ -119,6 +119,17 @@ describe('an invitation, signed out', () => {
     ).toBeDefined();
   });
 
+  it('holds the invitation when the header’s Sign in is followed', async () => {
+    __setSessionState({ status: 'signedOut', ended: false });
+    answering({ [LINK]: () => json(PREVIEW) });
+    open();
+
+    await screen.findByRole('heading', { level: 1, name: 'Join Ìrè Events' });
+    fireEvent.click(screen.getByRole('link', { name: 'Sign in' }));
+
+    expect(sessionStorage.getItem('soirely.invitation')).toBe(TOKEN);
+  });
+
   it('says what is missing on the first press, and sends nothing', async () => {
     __setSessionState({ status: 'signedOut', ended: false });
     const sent = answering({ [LINK]: () => json(PREVIEW) });

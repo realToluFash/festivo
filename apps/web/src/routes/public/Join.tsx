@@ -420,7 +420,7 @@ function Register({
       {failed && (
         <div className="auth-notice" role="alert">
           <p className="auth-notice-title">{t('join.failedTitle')}</p>
-          <p>{t('register.failedBody')}</p>{' '}
+          <p>{t('register.failedBody')}</p>
         </div>
       )}
 
@@ -564,7 +564,7 @@ function Answer({
       {failed && (
         <div className="auth-notice" role="alert">
           <p className="auth-notice-title">{t('join.answerFailedTitle')}</p>
-          <p>{t('register.failedBody')}</p>{' '}
+          <p>{t('register.failedBody')}</p>
         </div>
       )}
 
