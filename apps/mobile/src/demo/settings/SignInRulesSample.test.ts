@@ -70,11 +70,11 @@ describe('Sign-in rules: where you stand', () => {
     ]);
     expect(card).toEqual({
       says: '1 rule needs you',
-      line: 'Until it’s on, changes to members, roles, billing or security wait. Your events keep working.',
+      line: 'Until it’s on, changes to members, billing or security wait. Your events keep working.',
       step: 'Turn on two-factor',
     });
     expect(ruleLabel(rules[2]!)).toBe(
-      'Needs you. Two-factor for managers. Not on yet. Changes to members and roles wait until it is.',
+      'Needs you. Two-factor for managers. Not on yet. Changes to members wait until it is.',
     );
   });
 
@@ -82,7 +82,7 @@ describe('Sign-in rules: where you stand', () => {
     const { viewer, rules, card } = seen('notYours');
 
     expect(ruleLabel(rules[2]!)).toBe(
-      'Doesn’t apply. Two-factor for managers. Doesn’t apply to your role, Event manager.',
+      'Doesn’t apply. Two-factor for managers. Doesn’t apply to your role, Member.',
     );
     expect(rules[1]!.line).toBe('After 30 days without Soirely, you sign in again.');
     expect(card).toEqual({
@@ -177,12 +177,14 @@ describe('Sign-in rules: where you stand', () => {
       line: 'Yours is on.',
     });
     expect(
-      rule({ ownTwoFactor: false }, 'twoFactor', { manages: ['members', 'roles', 'billing'] }).line,
-    ).toBe('Not on yet. Changes to members, roles and billing wait until it is.');
+      rule({ ownTwoFactor: false }, 'twoFactor', { manages: ['members', 'billing', 'security'] })
+        .line,
+    ).toBe('Not on yet. Changes to members, billing and security wait until it is.');
   });
 
   it('explains managers only while that rule is the one in force', () => {
     expect(standFoot(seen('rules').page)).toBe(MANAGERS_ARE);
+    expect(MANAGERS_ARE).toBe('Managers are owners and admins.');
     expect(standFoot(seen('everyone').page)).toBeUndefined();
     expect(standFoot(seen('noChanges').page)).toBeUndefined();
     expect(ASK_OWNER).toBe('Questions? Ask an owner of Ire Events.');

@@ -8,8 +8,7 @@ const ORG = YOU.organisation;
 const THIS_YEAR = 2026;
 
 export const ASK_OWNER = `Questions? Ask an owner of ${ORG}.`;
-export const MANAGERS_ARE =
-  'Managers are people who can manage members, roles, billing or security.';
+export const MANAGERS_ARE = 'Managers are owners and admins.';
 
 export type Change = Pick<SignInRuleChange, 'rule' | 'now' | 'was'> & {
   /** Wall clock where the reader is; the sample has no zone of its own. */
@@ -29,7 +28,7 @@ export interface RulesPage {
   changes: readonly Change[];
 }
 
-export type Area = 'members' | 'roles' | 'billing' | 'security';
+export type Area = 'members' | 'billing' | 'security';
 
 /** Who is looking, from the session, the account's linked ways and signInRulesSeen. */
 export interface RulesViewer {
@@ -171,7 +170,7 @@ function twoFactor(page: RulesPage, viewer: RulesViewer, locale: string): RuleRo
           'needs',
           'Two-factor for managers',
           `Not on yet. Changes to ${andList(viewer.manages)} wait until it is.`,
-          'Until it’s on, changes to members, roles, billing or security wait. Your events keep working.',
+          'Until it’s on, changes to members, billing or security wait. Your events keep working.',
         );
   }
 
@@ -319,15 +318,15 @@ const RULES: RulesPage = {
 const ONLY_HERE = { organisation: ORG, days: 30 };
 
 const JULIEN: RulesViewer = {
-  role: 'Administrator',
-  manages: ['members', 'roles'],
+  role: 'Admin',
+  manages: ['members'],
   setsRules: true,
   linked: 'Google',
   seen: '2026-10-28T15:12',
 };
 
 const PRIYA: RulesViewer = {
-  role: 'Event manager',
+  role: 'Member',
   manages: [],
   setsRules: false,
   linked: null,
@@ -335,7 +334,7 @@ const PRIYA: RulesViewer = {
 };
 
 const ANA: RulesViewer = {
-  role: 'Coordinator',
+  role: 'Member',
   manages: [],
   setsRules: false,
   linked: null,
