@@ -10,6 +10,8 @@ import { AREAS, type Extra, extrasFor, LEVEL_WORDS, levelsFor, lockedLine } from
 
 const SEGMENT_HEIGHT = tokens.sizeHit;
 const SEGMENT_BESIDE = 264;
+const TICK = 14;
+const TICK_GAP = 5;
 
 interface Option<T extends string> {
   value: T;
@@ -45,16 +47,22 @@ export function Segment<T extends string>({
             accessibilityLabel={`${name}, ${option.label}`}
             testID={`${testID}.${option.value}`}
           >
-            {on && <Glyph name="tick" size={14} ink={tokens.colorAccentText} weight={2.6} />}
-            <Text
-              size={14.5}
-              weight={on ? 'semibold' : 'medium'}
-              numberOfLines={1}
-              accessible={false}
-              style={on ? styles.accent : styles.secondary}
-            >
-              {option.label}
-            </Text>
+            <View>
+              {on && (
+                <View style={styles.tick}>
+                  <Glyph name="tick" size={TICK} ink={tokens.colorAccentText} weight={2.6} />
+                </View>
+              )}
+              <Text
+                size={14.5}
+                weight={on ? 'semibold' : 'medium'}
+                numberOfLines={1}
+                accessible={false}
+                style={on ? styles.accent : styles.secondary}
+              >
+                {option.label}
+              </Text>
+            </View>
           </Pressable>
         );
       })}
@@ -227,18 +235,24 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colorNeutralFill,
   },
   cell: {
-    flex: 1,
+    flexGrow: 1,
     minHeight: SEGMENT_HEIGHT,
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 5,
-    paddingHorizontal: tokens.spaceMd,
+    paddingHorizontal: tokens.spaceXxl,
     borderRadius: SEGMENT_HEIGHT / 2,
     borderWidth: 3,
     borderColor: tokens.colorNeutralFill,
   },
   cellOn: { backgroundColor: tokens.colorCard },
+  tick: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    right: '100%',
+    marginRight: TICK_GAP,
+    justifyContent: 'center',
+  },
   accent: { color: tokens.colorAccentText },
   secondary: { color: tokens.colorInkSecondary },
   wordsStacked: { gap: 2 },
@@ -246,9 +260,9 @@ const styles = StyleSheet.create({
   rowStack: { gap: tokens.spaceSm },
   stacked: { gap: tokens.spaceMd },
   inline: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXl },
-  beside: { width: SEGMENT_BESIDE },
+  beside: { minWidth: SEGMENT_BESIDE },
   fixed: { minHeight: tokens.sizeHit, justifyContent: 'center' },
-  fixedBeside: { width: SEGMENT_BESIDE, alignItems: 'flex-end' },
+  fixedBeside: { minWidth: SEGMENT_BESIDE, alignItems: 'flex-end' },
   area: { paddingVertical: 14 },
   rule: { height: 1, backgroundColor: tokens.colorBorder },
   extra: {
