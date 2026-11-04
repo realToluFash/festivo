@@ -86,7 +86,7 @@ const TABLET_BAND_PIECES: readonly Piece[] = [
   [0.86, 0.64, 'half', 14, 30, 'rose'],
 ];
 
-const TABS = [
+export const TABS = [
   ['Today', 'today'],
   ['Events', 'events'],
   ['Calendar', 'calendar'],
@@ -168,11 +168,11 @@ export function BellButton({ tell }: { tell: Tell }) {
 }
 
 /** iPadOS 26's tab bar, in glass at the top of the cover. */
-export function TabCapsule({ onTab }: { onTab: (tab: Tab) => void }) {
+export function TabCapsule({ onTab, at = 'Today' }: { onTab: (tab: Tab) => void; at?: Tab }) {
   return (
     <Glass height={46} style={styles.capsule}>
       {TABS.map(([label, glyph]) => {
-        const on = label === 'Today';
+        const on = label === at;
         const ink = on ? tokens.colorAccent : tokens.colorInkOnDark;
 
         return (
@@ -672,11 +672,19 @@ export function Band({
   );
 }
 
-export function PhoneTabBar({ bottom, onTab }: { bottom: number; onTab: (tab: Tab) => void }) {
+export function PhoneTabBar({
+  bottom,
+  onTab,
+  at = 'Today',
+}: {
+  bottom: number;
+  onTab: (tab: Tab) => void;
+  at?: Tab;
+}) {
   return (
     <View style={[styles.tabBar, { bottom }]} accessibilityRole="tablist">
       {TABS.map(([label, glyph]) => {
-        const on = label === 'Today';
+        const on = label === at;
         const ink = on ? tokens.colorAccent : tokens.colorInkSecondary;
 
         return (

@@ -20,12 +20,14 @@ function Place({
   label,
   glyph,
   onTab,
+  at,
 }: {
   label: Tab;
   glyph: GlyphName;
   onTab: (tab: Tab) => void;
+  at: Tab;
 }) {
-  const on = label === 'Today';
+  const on = label === at;
   const ink = on ? tokens.colorInk : tokens.colorInkSecondary;
 
   return (
@@ -54,10 +56,14 @@ export function TodaySidebar({
   events,
   onTab,
   tell,
+  at = 'Today',
+  onPerson = () => tell('Your account has its own design.'),
 }: {
   events: readonly EventKey[];
   onTab: (tab: Tab) => void;
   tell: Tell;
+  at?: Tab;
+  onPerson?: () => void;
 }) {
   return (
     <View style={styles.side}>
@@ -102,7 +108,7 @@ export function TodaySidebar({
       </Pressable>
       <View style={styles.places} accessibilityRole="tablist">
         {PLACES.map(([label, glyph]) => (
-          <Place key={label} label={label} glyph={glyph} onTab={onTab} />
+          <Place key={label} label={label} glyph={glyph} onTab={onTab} at={at} />
         ))}
       </View>
       <View>
@@ -136,9 +142,9 @@ export function TodaySidebar({
         ))}
       </View>
       <View style={styles.grow} />
-      <Place label="Settings" glyph="settings" onTab={onTab} />
+      <Place label="Settings" glyph="settings" onTab={onTab} at={at} />
       <Pressable
-        onPress={() => tell('Your account has its own design.')}
+        onPress={onPerson}
         style={styles.person}
         accessibilityRole="button"
         accessibilityLabel={`${SAMPLE.name}, Owner`}
