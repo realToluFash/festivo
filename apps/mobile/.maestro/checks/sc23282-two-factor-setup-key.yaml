@@ -48,6 +48,7 @@ appId: host.exp.Exponent
 - scrollUntilVisible:
     element:
       id: 'twoFactor.turnOn'
+    direction: UP
     timeout: 15000
 - assertVisible:
     id: 'twoFactor.turnOn'
