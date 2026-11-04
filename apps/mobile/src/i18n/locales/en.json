@@ -1913,7 +1913,7 @@
     "organisationTitle": "Your organisation",
     "mobileTitle": "Your mobile number",
     "mobileIntro": "So your team can reach you on the night if something goes wrong.",
-    "mobileLine": "We send it a code on WhatsApp, or by text if WhatsApp can’t reach you.",
+    "mobileLine": "We send it a code on WhatsApp, or by text if WhatsApp cannot reach you.",
     "sendCode": "Send code",
     "whatsAppTitle": "Check WhatsApp"
   }
