@@ -42,6 +42,10 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **4 Nov 2026. Os passos de uma conta nova na app** (`mobile:steps.*`, sc-29126 para
+  sc-29069). A barra diz "Passo {{step}} de {{steps}}"; Skip é "Saltar", nunca "Ignorar"; Check
+  WhatsApp é "Veja o WhatsApp", como "Veja o seu e-mail". Quem a equipa contacta é "falar
+  consigo", nunca "contactá-lo", cujo clítico supõe um homem.
 - **1 Nov 2026. Os eventos e a navegação própria de um evento** (sc-26732 para sc-22103,
   `web:events.*`, `mobile:eventsScreen.*`, `eventNav.*` web e app). As áreas: "Vista geral",
   "Convidados", "Menu", "Mesas", "Mensagens", "Programa", "Equipa", "Orçamento" e "Relatórios".
@@ -643,3 +647,6 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   preposição: "no {{day}}" falha de segunda a sexta ("na"), e "às" falha à 01:00 (2 Nov, de QA). "Sem ligação", não "offline" nem "sem conexão".
   "Atualizado" diz de quando é o que se vê, em vez de decalcar "as of". Ao tentar de novo,
   "A atualizar…", como na app.
+- **A moldura das páginas sem sessão** (sc-29037): "New to Soirely?" é "Ainda não tem conta?",
+  antes de "Criar uma conta"; "É novo…?" concorda com um género. "© {{year}} Soirely" fica igual
+  ao inglês. O botão de idioma lê-se "Idioma: {{language}}".

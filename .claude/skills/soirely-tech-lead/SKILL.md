@@ -55,13 +55,15 @@ open one for that story. With no argument:
 Review` whose head moved past your pass comes back too: `sq` moves it to `In Review` by
    itself.
 2. **A design pull request**, on a `ux/` branch: the designer's working demo of a board, in
-   `apps/mobile/src/demo/` and `apps/mobile/app/demo/` only (`SHARED.md`, **Step three:
-   build it in the app's demo**). `sq lead next` hands it to you once its checks are green,
-   whatever its story's state. Review it against its board rather than the story's AC.
+   the app's demo (`apps/mobile/src/demo/`, `apps/mobile/app/demo/`), the web's
+   (`apps/web/src/demo/`) for a desktop web board, or both, and nowhere else (`SHARED.md`,
+   **Step three: build it in the demo**). `sq lead next` hands it to you once its checks are
+   green, whatever its story's state. Review it against its board rather than the story's AC.
    Check that:
-   - it is the board, working: every phone and tablet frame, state and interaction;
+   - it is the board, working: every phone and tablet frame, every 1280 × 800 desktop
+     frame and its `?state=`, and every interaction;
    - it runs on sample data and sends nothing to the API;
-   - it is built from the app's own components and tokens;
+   - it is built from its own client's components and tokens;
    - its guard tests pass.
 
    Your verdict stays on the pull request: the story keeps its state, and your findings go

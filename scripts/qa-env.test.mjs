@@ -2109,14 +2109,14 @@ describe('the flows a batch runs', () => {
           expect(line.replace('{{email}}', 'other@soirely.test')).toMatch(homeSettled);
           expect(line.replace('{{email}}', 'other@soirely.test')).toMatch(someoneSignedIn);
         }
-        expect(catalogues[code].completeProfile.title).toMatch(homeSettled);
+        expect(catalogues[code].steps.organisationTitle).toMatch(homeSettled);
       }
       const onDetails = new RegExp(
         `^(?:${signOut.match(/when:\s+visible: '(.*)'\s+file: \.\.\/sign-out-from-complete-profile\.yaml/)[1].replaceAll("''", "'")})$`,
       );
       for (const code of ['en', 'es', 'fr', 'pt']) {
-        expect(catalogues[code].completeProfile.title).toMatch(onDetails);
-        expect(catalogues[code].completeProfile.title).not.toMatch(someoneSignedIn);
+        expect(catalogues[code].steps.organisationTitle).toMatch(onDetails);
+        expect(catalogues[code].steps.organisationTitle).not.toMatch(someoneSignedIn);
       }
       const detailsAt = signOut.indexOf('file: ../sign-out-from-complete-profile.yaml');
       expect(detailsAt).toBeGreaterThan(-1);

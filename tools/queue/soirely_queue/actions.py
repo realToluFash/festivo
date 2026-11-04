@@ -117,7 +117,7 @@ def design_only(c, command, branch, what):
     design = R.is_design_branch(branch)
     if c.role == "ux" and not design:
         raise Refused(f"ux may {command} only on a ux/sc-N-<slug> branch, which builds a "
-                      f"story's boards in the app's demo area ({', '.join(R.DEMO)}); {what} "
+                      f"story's boards in the design demos ({', '.join(R.DEMO)}); {what} "
                       f"is on {branch or 'no branch'}")
     return design
 
@@ -914,7 +914,7 @@ def merge(c, a):
     if design:
         stray = [path for path in paths if not R.demo_file(path)]
         if stray:
-            raise Refused(f"a design pull request changes only the demo area "
+            raise Refused(f"a design pull request changes only the design demos "
                           f"({', '.join(R.DEMO)}); this also changes {', '.join(stray)}. Move "
                           "that work into the demo, or leave it to the story's developer")
     story = c.story(pr["story_id"]) if pr["story_id"] else None

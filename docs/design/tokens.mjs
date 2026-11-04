@@ -103,9 +103,8 @@ export const tokens = {
   colorPrintInk: '#000000',
 
   // ── Type ───────────────────────────────────────────────────────────────────
-  fontFamily: "'Instrument Sans', sans-serif", // all reading text, all names
-  fontFamilyMono: "'JetBrains Mono', monospace", // step numbers, keyboard shortcuts, codes read or copied by character; never money, counts or times (Instrument Sans, tabular-nums)
-  // Native: choose files by weight (Instrument Sans 400/500/600/700; JetBrains Mono 500/700), never by family name in a style.
+  fontFamily: "'Instrument Sans', sans-serif", // every word: one face all through (owner, 3 Nov 2026)
+  // Native: choose files by weight (Instrument Sans 400/500/600/700), never by family name in a style.
   // size · weight · line height · letter spacing. Roles come from where the screens use them.
   typeDisplay: { size: 48, weight: 700, lineHeight: 1, letterSpacing: '-0.03em' }, // one big number per panel (Messaging reach, Import count); 52 once
   typeTitlePage: { size: 28, weight: 700, lineHeight: 1.1, letterSpacing: '-0.02em' }, // desktop page title; phone uses 26
@@ -130,7 +129,7 @@ export const tokens = {
   typePill: { size: 12, weight: 600, lineHeight: 1, letterSpacing: '0' }, // status pills
   typePillWrapped: { size: 12, weight: 600, lineHeight: 1.25, letterSpacing: '0' }, // a status chip whose words wrap onto a second line at 320
   typeButton: { size: 14, weight: 600, lineHeight: 1, letterSpacing: '0' }, // 44px buttons; 15 on phone primaries; 13 inside dense rows
-  typeCode: { size: 14, weight: 600, lineHeight: 1, letterSpacing: '0' }, // codes read or copied by character, step numbers; never times, money or counts
+  typeCode: { size: 14, weight: 600, lineHeight: 1, letterSpacing: '0.04em' }, // codes read or copied by character, in Instrument Sans with tabular figures
   typeRoomNow: { size: 64, weight: 700, lineHeight: 1.05, letterSpacing: '-0.02em' }, // room screen only; 30 for "coming up", 20 for labels
   typeLandingH1: { size: 60, weight: 700, lineHeight: 1.02, letterSpacing: '-0.03em' }, // public pages only
 
@@ -151,6 +150,7 @@ export const tokens = {
 
   // ── Sizing (px) ────────────────────────────────────────────────────────────
   sizeHit: 44, // every button, chip, row, checkbox, stepper; desktop included (482 uses)
+  sizeControlDesktop: 40, // desktop web fields and buttons on the signed-out pages (sc-28983); the touch floor stays sizeHit
   sizeHitPhonePrimary: 48, // phone primary buttons and inputs
   sizeHitPhoneHero: 52, // one-per-screen phone CTA ("I'm here" uses 56 – accident)
   sizeListRow: 56, // sc-22092's List row, as the organisation switcher's rows (sc-26270)

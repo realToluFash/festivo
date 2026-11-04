@@ -1,4 +1,4 @@
-# After request-link-hold.yaml: reopen the app, Sign in > Create an account with a fresh EMAIL, enter its code and Continue. sc-19752.
+# After request-link-hold.yaml: reopen the app, welcome > Create an account with a fresh EMAIL, enter its code and Continue. sc-19752.
 # Pass NAME, EMAIL, PASSWORD and STOP (true: the app was force-quit since the hold).
 appId: host.exp.Exponent
 ---
@@ -10,16 +10,13 @@ appId: host.exp.Exponent
     when:
       true: ${STOP != 'true'}
     commands:
-      - openLink: ${METRO_URL}/--/sign-in
+      - openLink: ${METRO_URL}/--/welcome
 - extendedWaitUntil:
     visible:
-      id: 'signIn.email'
+      id: 'welcome.register'
     timeout: 60000
-- scrollUntilVisible:
-    element:
-      id: 'signIn.register'
 - tapOn:
-    id: 'signIn.register'
+    id: 'welcome.register'
 - extendedWaitUntil:
     visible:
       id: 'register.name'
@@ -46,20 +43,8 @@ appId: host.exp.Exponent
     id: 'verifyEmail.code'
 - eraseText: 20
 - inputText: ${output.code}
-- hideKeyboard
-- scrollUntilVisible:
-    element:
-      id: 'verifyEmail.submit'
-- tapOn:
-    id: 'verifyEmail.submit'
 - extendedWaitUntil:
-    visible:
-      id: 'verifyEmail.continue'
-    timeout: 30000
-- tapOn:
-    id: 'verifyEmail.continue'
-- extendedWaitUntil:
-    visible: 'A few details|Ask to join.*|This link does not work.*'
+    visible: 'Your organisation|Ask to join.*|This link does not work.*'
     timeout: 30000
 - waitForAnimationToEnd
 - takeScreenshot: request-link-held-registered

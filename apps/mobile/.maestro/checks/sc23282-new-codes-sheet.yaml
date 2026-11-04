@@ -1,4 +1,4 @@
-# sc-23282: Make new codes asks with Make new codes on top of Keep current codes, then shows the ten codes in a sheet at its title, in JetBrains Mono, with Copy all only. Needs ${METRO_URL}, two-factor on, a batch holding TOTP_SECRET.
+# sc-23282: Make new codes asks with Make new codes on top of Keep current codes, then shows the ten codes in a sheet at its title, with Copy all only. Needs ${METRO_URL}, two-factor on, a batch holding TOTP_SECRET.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/settings/security

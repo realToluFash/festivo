@@ -3,36 +3,24 @@ import {
   ACCOUNT_NAME_MAXIMUM,
   answeringInvitation,
   deviceRegion,
-  followCountry,
   formatDay,
   formatTimeOfDay,
-  phoneLengthProblem,
-  pickPhoneCountry,
-  startingPhoneCountry,
   waitingInvitations,
 } from '@soirely/domain';
 import { getCalendars, getLocales } from 'expo-localization';
 import { router } from 'expo-router';
-import { type RefObject, useEffect, useMemo, useRef, useState } from 'react';
+import { type ReactNode, type RefObject, useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, type TextInputInstance, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../src/api.ts';
 import { AnswerHeading } from '../src/components/AnswerHeading.tsx';
-import { AuthFrame, AuthHeading } from '../src/components/AuthFrame.tsx';
-import {
-  Footnote,
-  PrimaryButton,
-  QuietButton,
-  SecondaryButton,
-} from '../src/components/Buttons.tsx';
+import { PrimaryButton, QuietButton, SecondaryButton } from '../src/components/Buttons.tsx';
 import { CountryPicker, focusPicker } from '../src/components/CountryPicker.tsx';
 import { Field, focusChecked, keysStayDown, TextField } from '../src/components/Field.tsx';
 import { InvitationRows } from '../src/components/InvitationRows.tsx';
 import { LinkedNotice } from '../src/components/LinkedNotice.tsx';
 import { Notice } from '../src/components/Notice.tsx';
-import { OnboardingSteps } from '../src/components/OnboardingSteps.tsx';
-import { PhoneEntry } from '../src/components/PhoneEntry.tsx';
 import {
   type StepClosed,
   stepClosed,
@@ -45,21 +33,20 @@ import { dateLocale } from '../src/i18n/index.ts';
 import { type WaitingInvitations, useInvitationsOnOpen } from '../src/invitations.ts';
 import { landingFor } from '../src/landing.ts';
 import { useLayout } from '../src/layout/useLayout.ts';
-import { phoneProblemMessage } from '../src/phoneProblem.ts';
-import { rememberOrganisation } from '../src/signedIn.ts';
+import { rememberOrganisation, signOutHere } from '../src/signedIn.ts';
+import { InsideField } from '../src/steps/InsideField.tsx';
+import { Heading, Plain, Says } from '../src/steps/Lines.tsx';
+import { NavBar, StepScreen } from '../src/steps/StepScreen.tsx';
 import { tokens } from '../src/theme/tokens.ts';
 
 /** The API's OrganisationRules::NAME_MAXIMUM. */
 const ORGANISATION_NAME_MAXIMUM = 100;
 
 type Errors = Partial<
-  Record<
-    'name' | 'organisationName' | 'countryCode' | 'timezone' | 'phoneCountryCode' | 'phoneNumber',
-    string | undefined
-  >
+  Record<'name' | 'organisationName' | 'countryCode' | 'timezone', string | undefined>
 >;
 
-/** The second gate. Opens when the API says `profile_incomplete`, or after verifying. */
+/** Your organisation, the third of four steps, or the first of two after Google or Apple. Opens when the API says `profile_incomplete`, or after verifying; your mobile number follows. */
 export default function CompleteProfile() {
   const { t } = useTranslation();
   const [account, setAccount] = useState<Account | null>(null);
@@ -107,33 +94,22 @@ export default function CompleteProfile() {
   const vouched = (name: string) => account.providers.some((p) => p.provider === name);
   const provider = vouched('google') ? 'Google' : vouched('apple') ? 'Apple' : undefined;
   const primaryEmail = account.emailAddresses.find((address) => address.primary)?.address ?? '';
+  const nav = <OrganisationBar short={provider != null} />;
 
   if (account.waitingFor != null || founding) {
     const request = account.waitingFor;
 
     return (
-      <AuthFrame
-        saying={
-          <>
-            <OnboardingSteps at="details" confirmedBy={provider} />
-            {request != null ? (
-              <AuthHeading
-                title={t('domainJoining.waitingTitle', {
-                  organisation: request.organisation.name,
-                })}
-                intro={t('domainJoining.waitingIntro', { email: primaryEmail })}
-                answer={tapped}
-              />
-            ) : (
-              <AuthHeading
-                title={t('completeProfile.title')}
-                intro={t('completeProfile.intro')}
-                answer={tapped}
-              />
-            )}
-          </>
-        }
-      >
+      <StepScreen nav={nav}>
+        {request != null ? (
+          <Heading
+            title={t('domainJoining.waitingTitle', { organisation: request.organisation.name })}
+            intro={t('domainJoining.waitingIntro', { email: primaryEmail })}
+            answer={tapped}
+          />
+        ) : (
+          <Heading title={t('steps.organisationTitle')} answer={tapped} />
+        )}
         {request != null ? (
           <Waiting
             organisation={request.organisation.name}
@@ -150,20 +126,12 @@ export default function CompleteProfile() {
         ) : (
           <FoundOrganisation />
         )}
-        <SignedInAs email={primaryEmail} />
-      </AuthFrame>
+      </StepScreen>
     );
   }
 
   return (
-    <AuthFrame
-      saying={
-        <>
-          <OnboardingSteps at="details" confirmedBy={provider} />
-          <AuthHeading title={t('completeProfile.title')} intro={t('completeProfile.intro')} />
-        </>
-      }
-    >
+    <Details account={account} nav={nav} nameInput={nameInput}>
       <LinkedNotice onDismissed={() => setLinkedClosed(stepClosed('afterLinked'))} />
       {provider != null && (
         <Notice
@@ -173,18 +141,21 @@ export default function CompleteProfile() {
           wordsRef={providerWords}
         />
       )}
-      <Details
-        account={account}
-        nameInput={nameInput}
-        onAsked={(asked) => {
-          setAccount(asked);
-          setTapped({});
-        }}
-      />
-      <SignedInAs
-        email={account.emailAddresses.find((address) => address.primary)?.address ?? ''}
-      />
-    </AuthFrame>
+    </Details>
+  );
+}
+
+/** Back would leave the account, so the bar's left says Sign out. */
+function OrganisationBar({ short }: { short: boolean }) {
+  const { t } = useTranslation();
+
+  return (
+    <NavBar
+      left={{ label: t('steps.signOut'), onPress: signOutHere }}
+      onLeft={signOutHere}
+      step={short ? [1, 2] : [3, 4]}
+      testID="completeProfile"
+    />
   );
 }
 
@@ -367,12 +338,15 @@ function FoundOrganisation() {
 
 function Details({
   account,
+  nav,
   nameInput,
-  onAsked,
+  children,
 }: {
   account: Account;
+  nav: ReactNode;
   nameInput: RefObject<TextInputInstance | null>;
-  onAsked: (account: Account) => void;
+  /** Notices above the fields. */
+  children: ReactNode;
 }) {
   const { t } = useTranslation();
   const { kind } = useLayout();
@@ -385,20 +359,12 @@ function Details({
         getLocales().map((locale) => locale.languageTag),
       ) ?? '',
   );
-  const [phone, setPhone] = useState(() =>
-    startingPhoneCountry(
-      account.needsOrganisation ? countryCode : null,
-      account.organisationCountry,
-      countryCode,
-    ),
-  );
-  const phoneCountryCode = phone.code;
-  const [phoneNumber, setPhoneNumber] = useState('');
+  // Not asked twice: only when the sign-up, or Apple, left it blank.
+  const [asksName] = useState(() => account.name.trim() === '');
   const [errors, setErrors] = useState<Errors>({});
   const [saving, setSaving] = useState(false);
   const [failed, setFailed] = useState<object | null>(null);
   const organisationInput = useRef<TextInputInstance>(null);
-  const phoneInput = useRef<TextInputInstance>(null);
   const countryPicker = useRef<ViewInstance>(null);
 
   // Read once, when the screen opens asking for an organisation; the rows stay until the person leaves (sc-3353).
@@ -447,7 +413,6 @@ function Details({
   const offers = offered?.offers ?? [];
   const showOffers = needsOne && offers.length > 0 && !own;
   const asksForOrganisation = needsOne && !showOffers;
-  const afterName = asksForOrganisation ? organisationInput : phoneInput;
 
   async function save(askToJoin: string | null = null): Promise<void> {
     if (saving || answering) return;
@@ -466,15 +431,6 @@ function Details({
     }
     // Nothing named a country, so the field started blank: the person chooses rather than us guessing.
     if (founds && countryCode === '') checked.countryCode = t('forms.countryBlank');
-    // Optional: an empty field is no phone, so only a typed number is checked.
-    if (phoneNumber.trim() !== '') {
-      const problem = phoneProblemMessage(
-        phoneLengthProblem(phoneNumber, phoneCountryCode),
-        phoneCountryCode,
-        t,
-      );
-      if (problem != null) checked.phoneNumber = problem;
-    }
 
     if (Object.keys(checked).length > 0) {
       setErrors(checked);
@@ -485,13 +441,7 @@ function Details({
         return;
       }
 
-      const first =
-        checked.name != null
-          ? nameInput
-          : checked.organisationName != null
-            ? organisationInput
-            : phoneInput;
-      focusChecked(first);
+      focusChecked(checked.name != null ? nameInput : organisationInput);
       return;
     }
 
@@ -511,15 +461,13 @@ function Details({
               timezone: getCalendars()[0]?.timeZone ?? 'UTC',
             }
           : {}),
-        phoneCountryCode,
-        phoneNumber: phoneNumber.trim(),
       });
 
       if (firstJoined != null) await rememberOrganisation(firstJoined);
-      // A changed number is texted even while the account still counts as verified.
-      if (saved.verificationNeeded) router.replace('/verify-phone?from=onboarding');
-      else if (saved.account.waitingFor != null) onAsked(saved.account);
-      else router.replace(landingFor(awaiting(saved.account)));
+      // The number is saved on a step of its own, which Skip passes; a request to join waits after it.
+      if (saved.account.waitingFor != null || awaiting(saved.account) == null) {
+        router.replace('/phone?from=onboarding');
+      } else router.replace(landingFor(awaiting(saved.account)));
     } catch (error) {
       setSaving(false);
 
@@ -534,192 +482,202 @@ function Details({
         return;
       }
 
-      if (error instanceof ApiError && error.is('phone_taken')) {
-        setErrors({ phoneNumber: t('verifyPhone.taken') });
-        return;
-      }
-
       setFailed({});
     }
   }
 
   return (
-    <View style={styles.form}>
-      {failed != null && (
-        <Notice
-          tone="broken"
-          mark={tokens.marks.broken.glyph}
-          title={t('completeProfile.failedTitle')}
-          body={t('completeProfile.failedBody')}
-          answer={failed}
-        />
-      )}
-
-      <Field label={t('completeProfile.name')} error={errors.name}>
-        <TextField
-          ref={nameInput}
-          wrong={errors.name != null}
-          submitting={saving}
-          value={name}
-          onChangeText={(text) => {
-            setName(text);
-            setErrors((previous) => ({ ...previous, name: undefined }));
-          }}
-          autoComplete="name"
-          textContentType="name"
-          autoCapitalize="words"
-          maxLength={ACCOUNT_NAME_MAXIMUM}
-          returnKeyType="next"
-          submitBehavior="submit"
-          onSubmitEditing={() => afterName.current?.focus()}
-          accessibilityLabel={t('completeProfile.name')}
-          testID="completeProfile.name"
-        />
-      </Field>
-
-      {loaded.invitations.length > 0 && (
-        <View style={styles.invitations}>
-          <View style={styles.invitationsHead}>
-            <Text size={tokens.typeButton.size} weight="semibold" accessibilityRole="header">
-              {t('invitations.heading')}
-            </Text>
-            <Text size={tokens.typeSmall.size} muted>
-              {firstJoined != null
-                ? t('completeProfile.invitationsJoined')
-                : stillOpen === 0
-                  ? t('completeProfile.invitationsNone')
-                  : t('completeProfile.invitationsWaiting', { count: stillOpen })}
-            </Text>
-          </View>
-          <InvitationRows
-            waiting={waiting}
-            after={{
-              note: (id) => {
-                const outcome = loaded.outcomes[id];
-                const first =
-                  outcome?.kind === 'accepted' && outcome.organisationId === firstJoined;
-
-                return t(
-                  first ? 'completeProfile.joinedGoesThere' : 'completeProfile.joinedSwitchLater',
-                );
-              },
-            }}
+    <StepScreen
+      nav={nav}
+      foot={
+        showOffers ? undefined : (
+          <PrimaryButton
+            label={saving ? t('completeProfile.saving') : t('steps.continue')}
+            onPress={() => void save()}
+            busy={saving}
+            off={answering}
+            testID="completeProfile.save"
           />
-        </View>
-      )}
+        )
+      }
+    >
+      <Heading title={t('steps.organisationTitle')} />
+      <View style={styles.form}>
+        {children}
+        {failed != null && (
+          <Notice
+            tone="broken"
+            mark={tokens.marks.broken.glyph}
+            title={t('completeProfile.failedTitle')}
+            body={t('completeProfile.failedBody')}
+            answer={failed}
+          />
+        )}
 
-      {needsOne && stillOpen > 0 && (
-        <View style={styles.orRule}>
-          <View style={styles.rule} />
-          <Text size={tokens.typeButton.size} weight="semibold" muted>
-            {t('completeProfile.orStartOwn')}
-          </Text>
-          <View style={styles.rule} />
-        </View>
-      )}
-
-      {unavailable != null && (
-        <Notice
-          tone="broken"
-          mark={tokens.marks.broken.glyph}
-          body={t('domainJoining.unavailable')}
-          answer={unavailable}
-          takesFocus
-        />
-      )}
-
-      {showOffers && (
-        <View style={styles.offers}>
-          <View style={styles.offersIntro}>
-            <AnswerHeading size={tokens.typeButton.size} weight="semibold" answer={askedInstead}>
-              {t('domainJoining.heading')}
-            </AnswerHeading>
-            <Text size={tokens.typeSmall.size} muted>
-              {t('domainJoining.intro', { domain: offered?.domain ?? '' })}
-            </Text>
+        {asksName && (
+          <View>
+            <InsideField
+              ref={nameInput}
+              label={t('completeProfile.name')}
+              value={name}
+              onChangeText={(text) => {
+                setName(text);
+                setErrors((previous) => ({ ...previous, name: undefined }));
+              }}
+              state={errors.name != null ? 'blank' : 'plain'}
+              submitting={saving}
+              autoComplete="name"
+              textContentType="name"
+              autoCapitalize="words"
+              maxLength={ACCOUNT_NAME_MAXIMUM}
+              returnKeyType="next"
+              submitBehavior="submit"
+              onSubmitEditing={() => organisationInput.current?.focus()}
+              testID="completeProfile.name"
+            />
+            {errors.name != null && <Says words={errors.name} />}
           </View>
-          {offers.map((offer) => (
-            <View key={offer.id} style={[styles.offer, kind === 'phone' && styles.offerPhone]}>
-              <View style={[styles.offerText, kind === 'phone' && styles.offerTextPhone]}>
-                <Text size={tokens.typeRowTitle.size} weight="semibold">
-                  {t('domainJoining.usesSoirely', { organisation: offer.name })}
-                </Text>
-                <Text size={tokens.typeSmall.size} muted>
-                  {t('domainJoining.approvesFirst')}
-                </Text>
-              </View>
-              {offers.length === 1 ? (
-                <PrimaryButton
-                  label={t('domainJoining.ask')}
-                  accessibilityLabel={t('domainJoining.askLabel', { organisation: offer.name })}
-                  busy={saving}
-                  onPress={() => void save(offer.id)}
-                  testID={`completeProfile.ask.${offer.id}`}
-                />
-              ) : (
-                <SecondaryButton
-                  label={t('domainJoining.ask')}
-                  accessibilityLabel={t('domainJoining.askLabel', { organisation: offer.name })}
-                  off={saving}
-                  onPress={() => void save(offer.id)}
-                  testID={`completeProfile.ask.${offer.id}`}
-                />
-              )}
+        )}
+
+        {loaded.invitations.length > 0 && (
+          <View style={styles.invitations}>
+            <View style={styles.invitationsHead}>
+              <Text size={tokens.typeButton.size} weight="semibold" accessibilityRole="header">
+                {t('invitations.heading')}
+              </Text>
+              <Text size={tokens.typeSmall.size} muted>
+                {firstJoined != null
+                  ? t('completeProfile.invitationsJoined')
+                  : stillOpen === 0
+                    ? t('completeProfile.invitationsNone')
+                    : t('completeProfile.invitationsWaiting', { count: stillOpen })}
+              </Text>
             </View>
-          ))}
-          <SecondaryButton
-            label={t('domainJoining.startOwn')}
-            off={saving}
-            onPress={() => {
-              setOwn(true);
-              setAskedInstead(undefined);
-              setStartedOwn({});
-            }}
-            testID="completeProfile.startOwn"
+            <InvitationRows
+              waiting={waiting}
+              after={{
+                note: (id) => {
+                  const outcome = loaded.outcomes[id];
+                  const first =
+                    outcome?.kind === 'accepted' && outcome.organisationId === firstJoined;
+
+                  return t(
+                    first ? 'completeProfile.joinedGoesThere' : 'completeProfile.joinedSwitchLater',
+                  );
+                },
+              }}
+            />
+          </View>
+        )}
+
+        {needsOne && stillOpen > 0 && (
+          <View style={styles.orRule}>
+            <View style={styles.rule} />
+            <Text size={tokens.typeButton.size} weight="semibold" muted>
+              {t('completeProfile.orStartOwn')}
+            </Text>
+            <View style={styles.rule} />
+          </View>
+        )}
+
+        {unavailable != null && (
+          <Notice
+            tone="broken"
+            mark={tokens.marks.broken.glyph}
+            body={t('domainJoining.unavailable')}
+            answer={unavailable}
+            takesFocus
           />
-        </View>
-      )}
+        )}
 
-      {needsOne && offers.length > 0 && own && (
-        <QuietButton
-          label={t('domainJoining.askInstead', { domain: offered?.domain ?? '' })}
-          onPress={() => {
-            setOwn(false);
-            setStartedOwn(undefined);
-            setAskedInstead({});
-          }}
-          testID="completeProfile.askInstead"
-        />
-      )}
+        {showOffers && (
+          <View style={styles.offers}>
+            <View style={styles.offersIntro}>
+              <AnswerHeading size={tokens.typeButton.size} weight="semibold" answer={askedInstead}>
+                {t('domainJoining.heading')}
+              </AnswerHeading>
+              <Text size={tokens.typeSmall.size} muted>
+                {t('domainJoining.intro', { domain: offered?.domain ?? '' })}
+              </Text>
+            </View>
+            {offers.map((offer) => (
+              <View key={offer.id} style={[styles.offer, kind === 'phone' && styles.offerPhone]}>
+                <View style={[styles.offerText, kind === 'phone' && styles.offerTextPhone]}>
+                  <Text size={tokens.typeRowTitle.size} weight="semibold">
+                    {t('domainJoining.usesSoirely', { organisation: offer.name })}
+                  </Text>
+                  <Text size={tokens.typeSmall.size} muted>
+                    {t('domainJoining.approvesFirst')}
+                  </Text>
+                </View>
+                {offers.length === 1 ? (
+                  <PrimaryButton
+                    label={t('domainJoining.ask')}
+                    accessibilityLabel={t('domainJoining.askLabel', { organisation: offer.name })}
+                    busy={saving}
+                    onPress={() => void save(offer.id)}
+                    testID={`completeProfile.ask.${offer.id}`}
+                  />
+                ) : (
+                  <SecondaryButton
+                    label={t('domainJoining.ask')}
+                    accessibilityLabel={t('domainJoining.askLabel', { organisation: offer.name })}
+                    off={saving}
+                    onPress={() => void save(offer.id)}
+                    testID={`completeProfile.ask.${offer.id}`}
+                  />
+                )}
+              </View>
+            ))}
+            <SecondaryButton
+              label={t('domainJoining.startOwn')}
+              off={saving}
+              onPress={() => {
+                setOwn(true);
+                setAskedInstead(undefined);
+                setStartedOwn({});
+              }}
+              testID="completeProfile.startOwn"
+            />
+          </View>
+        )}
 
-      <View style={styles.fields}>
+        {needsOne && offers.length > 0 && own && (
+          <QuietButton
+            label={t('domainJoining.askInstead', { domain: offered?.domain ?? '' })}
+            onPress={() => {
+              setOwn(false);
+              setStartedOwn(undefined);
+              setAskedInstead({});
+            }}
+            testID="completeProfile.askInstead"
+          />
+        )}
+
         {asksForOrganisation && (
-          <>
-            <Field
-              label={t('completeProfile.organisation')}
-              error={errors.organisationName}
-              help={t('completeProfile.organisationHelp')}
-            >
-              <TextField
+          <View style={styles.fields}>
+            <View>
+              <InsideField
                 ref={organisationInput}
-                wrong={errors.organisationName != null}
-                submitting={saving}
+                label={t('completeProfile.organisation')}
                 value={organisationName}
-                maxLength={ORGANISATION_NAME_MAXIMUM}
                 onChangeText={(text) => {
                   setOrganisationName(text);
                   setErrors((previous) => ({ ...previous, organisationName: undefined }));
                 }}
+                state={errors.organisationName != null ? 'blank' : 'plain'}
+                submitting={saving}
+                maxLength={ORGANISATION_NAME_MAXIMUM}
                 autoComplete="organization"
                 textContentType="organizationName"
                 autoCapitalize="words"
-                returnKeyType="next"
-                submitBehavior="submit"
-                onSubmitEditing={() => phoneInput.current?.focus()}
-                accessibilityLabel={t('completeProfile.organisation')}
+                returnKeyType="done"
+                autoFocus={!asksName && stillOpen === 0}
                 testID="completeProfile.organisation"
               />
-            </Field>
+              {errors.organisationName != null && <Says words={errors.organisationName} />}
+              <Plain>{t('completeProfile.organisationHelp')}</Plain>
+            </View>
 
             <Field
               label={t('completeProfile.country')}
@@ -730,77 +688,17 @@ function Details({
                 value={countryCode}
                 onChange={(code) => {
                   setCountryCode(code);
-                  // The code follows the Country until the person picks one themselves (sc-485).
-                  setPhone((now) => followCountry(now, code));
-                  // A chosen Country answers its own refusal, and the number's when the code follows it.
-                  setErrors((previous) => ({
-                    ...previous,
-                    countryCode: undefined,
-                    phoneNumber: phone.picked ? previous.phoneNumber : undefined,
-                  }));
+                  setErrors((previous) => ({ ...previous, countryCode: undefined }));
                 }}
                 disabled={saving}
                 pickerRef={countryPicker}
                 testID="completeProfile.country"
               />
             </Field>
-          </>
+          </View>
         )}
-
-        <PhoneEntry
-          ref={phoneInput}
-          label={t('verifyPhone.numberLabel')}
-          pill={t('completeProfile.optional')}
-          help={t('completeProfile.mobileHelp')}
-          country={phoneCountryCode}
-          error={errors.phoneNumber ?? errors.phoneCountryCode}
-          submitting={saving}
-          onCountry={(code) => {
-            setPhone(pickPhoneCountry(code));
-            setErrors((previous) => ({
-              ...previous,
-              phoneCountryCode: undefined,
-              phoneNumber: undefined,
-            }));
-          }}
-          onNumber={(typed) => {
-            setPhoneNumber(typed);
-            setErrors((previous) => ({ ...previous, phoneNumber: undefined }));
-          }}
-          onSubmit={() => void save()}
-          testID="completeProfile.phone"
-        />
       </View>
-
-      {!showOffers && (
-        <PrimaryButton
-          label={saving ? t('completeProfile.saving') : t('completeProfile.save')}
-          onPress={() => void save()}
-          busy={saving}
-          off={answering}
-          testID="completeProfile.save"
-        />
-      )}
-    </View>
-  );
-}
-
-/** Sign out is on every gate screen, so a wrong account is never a dead end. */
-function SignedInAs({ email }: { email: string }) {
-  const { t } = useTranslation();
-
-  async function signOut(): Promise<void> {
-    await api.signOut();
-    router.replace('/sign-in');
-  }
-
-  return (
-    <Footnote
-      question={t('completeProfile.signedInAs', { email })}
-      action={t('completeProfile.signOut')}
-      onPress={() => void signOut()}
-      testID="completeProfile.signOut"
-    />
+    </StepScreen>
   );
 }
 

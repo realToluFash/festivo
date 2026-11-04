@@ -4,6 +4,7 @@ import { createContext, useCallback, useEffect, type ReactNode } from 'react';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { WelcomeFrame as Frame } from '../components/Welcome.tsx';
 import { useLayout } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { Cover } from './Cover.tsx';
@@ -22,7 +23,7 @@ export function coverLine(size: number) {
   } as const;
 }
 
-/** The brand in the middle and the choices in thumb reach; beside each other on a landscape tablet. */
+/** The app's welcome frame, or with `cover` B's. */
 export function WelcomeFrame({
   top,
   brand,
@@ -35,48 +36,12 @@ export function WelcomeFrame({
   /** B's welcome: the brand on Soirely's cover, the choices on a sheet over its foot. */
   cover?: boolean;
 }) {
-  const insets = useSafeAreaInsets();
-  const { kind } = useLayout();
   const { width } = useWindowDimensions();
   const side = width < 380 ? tokens.spaceXl : tokens.space3xl;
-  const pad = {
-    paddingTop: insets.top,
-    paddingBottom: Math.max(insets.bottom, tokens.spaceLg),
-    paddingLeft: Math.max(insets.left, side),
-    paddingRight: Math.max(insets.right, side),
-  };
 
   if (cover) return <CoverFrame top={top} brand={brand} choices={choices} side={side} />;
 
-  if (kind === 'tabletLandscape')
-    return (
-      <View style={[styles.page, pad]}>
-        <View style={styles.top}>{top}</View>
-        <View style={styles.beside}>
-          <View style={styles.half}>{brand}</View>
-          <View style={[styles.half, styles.choicesBeside]}>{choices}</View>
-        </View>
-      </View>
-    );
-
-  if (kind === 'tabletPortrait')
-    return (
-      <View style={[styles.page, pad]}>
-        <View style={styles.top}>{top}</View>
-        <View style={styles.middle}>
-          {brand}
-          <View style={styles.tabletChoices}>{choices}</View>
-        </View>
-      </View>
-    );
-
-  return (
-    <View style={[styles.page, pad]}>
-      <View style={styles.top}>{top}</View>
-      <View style={styles.middle}>{brand}</View>
-      {choices}
-    </View>
-  );
+  return <Frame top={top} brand={brand} choices={choices} />;
 }
 
 function CoverFrame({
@@ -171,22 +136,11 @@ function confettiScale(side: number) {
 }
 
 const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: tokens.colorPage },
   cardPage: { flex: 1, backgroundColor: tokens.colorCard },
   row: { flexDirection: 'row' },
   top: { minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end' },
   topWide: { minHeight: 60 },
-  middle: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: tokens.spaceXxl,
-    paddingBottom: tokens.spaceLg,
-  },
-  tabletChoices: { width: 400, marginTop: tokens.space6xl },
-  beside: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: tokens.space6xl },
   half: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: tokens.spaceXxl },
-  choicesBeside: { alignItems: 'stretch', maxWidth: 400 },
   cover: { overflow: 'hidden', backgroundColor: tokens.colorAccent },
   coverPhone: { flex: 1 },
   coverTablet: { height: '68%' },

@@ -10,9 +10,9 @@ appId: host.exp.Exponent
 - runFlow:
     file: developer-menu.yaml
     env:
-      SETTLED: '{{t:any:home.signedInTo}}|{{t:any:noOrganisation.title}}|{{t:any:status.title}}|{{t:any:signIn.title}}|{{t:any:signInRules.overdueTitle}}'
+      SETTLED: '{{t:any:home.signedInTo}}|{{t:any:noOrganisation.title}}|{{t:any:status.title}}|{{t:any:signIn.title}}|{{t:any:welcome.withEmail}}|{{t:any:signInRules.overdueTitle}}'
 - extendedWaitUntil:
-    visible: '{{t:any:home.signedInTo}}|{{t:any:noOrganisation.title}}|{{t:any:status.title}}|{{t:any:signIn.title}}|{{t:any:signInRules.overdueTitle}}'
+    visible: '{{t:any:home.signedInTo}}|{{t:any:noOrganisation.title}}|{{t:any:status.title}}|{{t:any:signIn.title}}|{{t:any:welcome.withEmail}}|{{t:any:signInRules.overdueTitle}}'
     timeout: 60000
     optional: true
 # The two-factor overdue screen names no account, so the batch signs out there and back in. sc-28435.
@@ -23,7 +23,7 @@ appId: host.exp.Exponent
 # The reload before this can crash an Expo Go that has only just opened.
 - runFlow:
     when:
-      notVisible: '{{t:any:home.signedInTo}}|{{t:any:noOrganisation.title}}|{{t:any:status.title}}|{{t:any:signIn.title}}|{{t:any:signInRules.overdueTitle}}'
+      notVisible: '{{t:any:home.signedInTo}}|{{t:any:noOrganisation.title}}|{{t:any:status.title}}|{{t:any:signIn.title}}|{{t:any:welcome.withEmail}}|{{t:any:signInRules.overdueTitle}}'
     file: reopen.yaml
 - runFlow:
     when:

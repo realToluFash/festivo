@@ -380,7 +380,9 @@
   "language": {
     "label": "Langue",
     "automatic": "Automatique",
-    "automaticHint": "Suivre la langue demandée par votre navigateur"
+    "automaticHint": "Suivre la langue demandée par votre navigateur",
+    "current": "Langue : {{language}}",
+    "follows": "Votre langue vous suit sur tous vos appareils."
   },
   "public": {
     "tagline": "Préparez l’événement. Menez la soirée.",
@@ -434,7 +436,7 @@
     "submit": "Se connecter",
     "submitting": "Connexion…",
     "lockedUntil": "Réessayez à {{time}}",
-    "refused": "Cette adresse e-mail et ce mot de passe ne correspondent pas. Vérifiez les deux, ou réinitialisez votre mot de passe.",
+    "noMatch": "Cette adresse e-mail et ce mot de passe ne correspondent pas.",
     "endedTitle": "Votre session a été fermée",
     "endedBody": "Reconnectez-vous pour continuer.",
     "lockedTitle": "Trop de tentatives",
@@ -447,7 +449,6 @@
     "providerFailedBody": "Rien n’a été modifié. Réessayez avec {{provider}}, ou connectez-vous avec votre adresse e-mail et votre mot de passe.",
     "failedTitle": "La connexion n’a pas abouti",
     "failedBody": "Quelque chose s’est mal passé en route. Réessayez dans un instant.",
-    "newHere": "Nouveau sur Soirely ?",
     "createAccount": "Créer un compte",
     "passwordBlank": "Saisissez votre mot de passe.",
     "timedOutTitle": "Session fermée par une règle de {{organisation}}",
@@ -458,6 +459,10 @@
     "providerOnlyBody": "La connexion par mot de passe est désactivée dans {{organisation}}. Utilisez plutôt {{providers}}.",
     "anotherAccount": "Se connecter avec un autre compte",
     "providerOnlyFootnote": "Une règle fixée par {{organisation}} : la connexion par mot de passe y est désactivée pour tout le monde."
+  },
+  "auth": {
+    "newTo": "Pas encore de compte ?",
+    "copyright": "© {{year}} Soirely"
   },
   "register": {
     "title": "Créez votre compte",
@@ -782,7 +787,6 @@
   },
   "recovery": {
     "forgot": "Mot de passe oublié ?",
-    "forgotShort": "Oublié ?",
     "title": "Réinitialisez votre mot de passe",
     "intro": "Saisissez l’adresse e-mail avec laquelle vous vous connectez. Si elle a un compte, nous lui envoyons un lien pour choisir un nouveau mot de passe.",
     "email": "Adresse e-mail",
