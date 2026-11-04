@@ -52,7 +52,7 @@ export function settingsHref(viewer: Viewer, section: SettingsSection | null): H
   ) as Href;
 }
 
-function layoutOf(kind: ReturnType<typeof useLayout>['kind']): SettingsLayout {
+export function layoutOf(kind: ReturnType<typeof useLayout>['kind']): SettingsLayout {
   return kind === 'phone' ? 'phone' : kind === 'tabletPortrait' ? 'portrait' : 'landscape';
 }
 

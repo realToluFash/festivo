@@ -294,7 +294,7 @@ export function Bell({ tell }: { tell: Tell }) {
   );
 }
 
-export function PortraitTop() {
+export function PortraitTop({ at = 'Settings' }: { at?: Tab }) {
   const shell = useShell();
   const insets = useSafeAreaInsets();
 
@@ -317,7 +317,7 @@ export function PortraitTop() {
       <View style={[styles.capsuleAt, { top: insets.top + 7 }]} pointerEvents="box-none">
         <View style={styles.capsule} accessibilityRole="tablist">
           {TABS.map(([label, glyph]) => {
-            const on = label === 'Settings';
+            const on = label === at;
             const ink = on ? tokens.colorAccent : tokens.colorInkSecondary;
 
             return (

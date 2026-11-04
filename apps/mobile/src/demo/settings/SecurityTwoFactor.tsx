@@ -319,6 +319,19 @@ function TurningOff({
   );
 }
 
+/** The app's checkbox, as TwoFactorCard draws it; its state is read by the control it sits in. */
+export function CheckMark({ on }: { on: boolean }) {
+  return (
+    <View
+      style={[styles.box, on && styles.boxOn]}
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+    >
+      {on && <Glyph name="tick" size={15} ink={tokens.colorInkOnDark} weight={3} />}
+    </View>
+  );
+}
+
 /** The recovery codes, once: the app's Sheet, a bottom sheet on a phone and a centred card on a tablet. */
 function SavingCodes({ phone, onFinish }: { phone: boolean; onFinish: () => void }) {
   const [saved, setSaved] = useState(false);
@@ -362,13 +375,7 @@ function SavingCodes({ phone, onFinish }: { phone: boolean; onFinish: () => void
           accessibilityState={{ checked: saved }}
           testID="demo.security.savedCodes"
         >
-          <View
-            style={[styles.box, saved && styles.boxOn]}
-            accessibilityElementsHidden
-            importantForAccessibility="no-hide-descendants"
-          >
-            {saved && <Glyph name="tick" size={15} ink={tokens.colorInkOnDark} weight={3} />}
-          </View>
+          <CheckMark on={saved} />
           <Text size={15.5} weight="medium" style={styles.grow}>
             I have saved these codes somewhere safe
           </Text>

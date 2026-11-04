@@ -283,15 +283,17 @@ const AVATAR_TONES = [
   { fill: tokens.colorNeutralFill, ink: tokens.colorInk },
 ] as const;
 
-/** A person's initials in a soft disc, toned by their place in the list; always beside their name. */
+/** A person's initials in a soft disc, toned by their place in the list, or a glyph when there are none; always beside their name. */
 export function Avatar({
   initials,
   side = 40,
   tone = 0,
+  glyph,
 }: {
   initials: string;
   side?: number;
   tone?: number;
+  glyph?: GlyphName | undefined;
 }) {
   const look = AVATAR_TONES[tone % AVATAR_TONES.length] ?? AVATAR_TONES[0];
 
@@ -304,14 +306,18 @@ export function Avatar({
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
     >
-      <Text
-        size={Math.max(12, Math.round(side * 0.36))}
-        weight="bold"
-        accessible={false}
-        style={{ color: look.ink }}
-      >
-        {initials}
-      </Text>
+      {glyph == null ? (
+        <Text
+          size={Math.max(12, Math.round(side * 0.36))}
+          weight="bold"
+          accessible={false}
+          style={{ color: look.ink }}
+        >
+          {initials}
+        </Text>
+      ) : (
+        <Glyph name={glyph} size={Math.round(side * 0.45)} ink={look.ink} weight={2.2} />
+      )}
     </View>
   );
 }

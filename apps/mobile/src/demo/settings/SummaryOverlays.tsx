@@ -1,6 +1,7 @@
 import { type ReactNode, type Ref, type RefObject, useEffect, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
+  type LayoutChangeEvent,
   Modal,
   Pressable,
   ScrollView,
@@ -128,16 +129,23 @@ export interface FocusVerb {
   testID?: string;
 }
 
+export interface Layer {
+  layer: ReactNode;
+  onClose: () => void;
+}
+
 /** A task's own screen: Cancel, the title and the verb across the top; the whole screen on a phone, a sheet on an iPad. */
 export function FocusedScreen({
   open,
   title,
   verb,
   back,
+  cancels = true,
   onCancel,
   cancelTestID,
   opener,
   ask,
+  over,
   toast,
   scrollRef,
   fills = false,
@@ -148,10 +156,14 @@ export function FocusedScreen({
   title: string;
   verb: FocusVerb | null;
   back?: string | undefined;
+  /** False for a sheet that applies what is tapped: nothing at the left, and the verb closes it. */
+  cancels?: boolean;
   onCancel: () => void;
   cancelTestID?: string;
   opener: Opener;
   ask?: AskProps | null;
+  /** Drawn over the screen in its own window, as the Ask is, since iOS shows one window at a time. */
+  over?: Layer | null;
   toast?: { words: string; onClose: () => void } | null;
   scrollRef?: Ref<ScrollViewInstance>;
   fills?: boolean;
@@ -162,10 +174,12 @@ export function FocusedScreen({
   const insets = useSafeAreaInsets();
   const phone = layout === 'phone';
   const asking = ask != null;
+  const covered = asking || over != null;
   const bottom = phone ? insets.bottom : 0;
+  const close = asking ? ask.onKeep : over != null ? over.onClose : onCancel;
 
   return (
-    <Window open={open} onClose={asking ? ask.onKeep : onCancel} opener={opener} slides={phone}>
+    <Window open={open} onClose={close} opener={opener} slides={phone}>
       {/* Whatever the keys take from the bottom stays the screen's white, or the dimmed page on an iPad. */}
       <KeyboardAvoidingView
         style={[styles.fill, phone ? styles.screen : styles.dimmed]}
@@ -178,8 +192,8 @@ export function FocusedScreen({
             }
             accessibilityViewIsModal
             onAccessibilityEscape={onCancel}
-            accessibilityElementsHidden={asking}
-            importantForAccessibility={asking ? 'no-hide-descendants' : 'auto'}
+            accessibilityElementsHidden={covered}
+            importantForAccessibility={covered ? 'no-hide-descendants' : 'auto'}
             testID={testID}
           >
             <FocusNav
@@ -187,6 +201,7 @@ export function FocusedScreen({
               title={title}
               verb={verb}
               back={back}
+              cancels={cancels}
               onCancel={onCancel}
               cancelTestID={cancelTestID}
             />
@@ -211,6 +226,7 @@ export function FocusedScreen({
               <Toast key={toast.words} words={toast.words} onClose={toast.onClose} />
             </View>
           )}
+          {over?.layer}
           {asking && <AskLayer {...ask} />}
         </View>
       </KeyboardAvoidingView>
@@ -223,41 +239,50 @@ function FocusNav({
   title,
   verb,
   back,
+  cancels,
   onCancel,
   cancelTestID,
 }: {
   title: string;
   verb: FocusVerb | null;
   back: string | undefined;
+  cancels: boolean;
   onCancel: () => void;
   cancelTestID?: string | undefined;
 }) {
   const [sides, setSides] = useState({ cancel: 0, verb: 0 });
   const [short, setShort] = useState(false);
   const fits = back == null || short;
+  const cancelLaid = (event: LayoutChangeEvent) => {
+    const width = event.nativeEvent.layout.width;
+    setSides((now) => ({ ...now, cancel: width }));
+  };
 
   return (
     <View style={styles.nav}>
-      <Pressable
-        onPress={onCancel}
-        onLayout={(event) => {
-          const width = event.nativeEvent.layout.width;
-          setSides((now) => ({ ...now, cancel: width }));
-        }}
-        style={({ pressed }) => [
-          styles.navButton,
-          back != null && styles.navBack,
-          pressed && styles.pressed,
-        ]}
-        accessibilityRole="button"
-        accessibilityLabel={back ?? 'Cancel'}
-        testID={cancelTestID}
-      >
-        {back != null && <Glyph name="back" size={20} ink={tokens.colorAccentText} weight={2.4} />}
-        <Text size={17} weight="medium" accessible={false} style={styles.accent}>
-          {back == null ? 'Cancel' : short ? 'Back' : back}
-        </Text>
-      </Pressable>
+      {cancels ? (
+        <Pressable
+          onPress={onCancel}
+          onLayout={cancelLaid}
+          style={({ pressed }) => [
+            styles.navButton,
+            back != null && styles.navBack,
+            pressed && styles.pressed,
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel={back ?? 'Cancel'}
+          testID={cancelTestID}
+        >
+          {back != null && (
+            <Glyph name="back" size={20} ink={tokens.colorAccentText} weight={2.4} />
+          )}
+          <Text size={17} weight="medium" accessible={false} style={styles.accent}>
+            {back == null ? 'Cancel' : short ? 'Back' : back}
+          </Text>
+        </Pressable>
+      ) : (
+        <View style={styles.navButton} onLayout={cancelLaid} />
+      )}
       <View
         style={[
           styles.navTitle,
