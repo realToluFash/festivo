@@ -381,8 +381,8 @@
     "label": "Idioma",
     "automatic": "Automático",
     "automaticHint": "Seguir o idioma pedido pelo seu navegador",
-    "current": "Language: {{language}}",
-    "follows": "Your language follows you to every device."
+    "current": "Idioma: {{language}}",
+    "follows": "O seu idioma mantém-se em todos os seus dispositivos."
   },
   "public": {
     "tagline": "Planeie o evento. Conduza a noite.",
@@ -436,7 +436,7 @@
     "submit": "Iniciar sessão",
     "submitting": "A iniciar sessão…",
     "lockedUntil": "Tente novamente às {{time}}",
-    "noMatch": "That email and password do not match.",
+    "noMatch": "Esse e-mail e essa palavra-passe não correspondem.",
     "endedTitle": "A sua sessão foi encerrada",
     "endedBody": "Inicie sessão novamente para continuar.",
     "lockedTitle": "Demasiadas tentativas",
@@ -461,7 +461,7 @@
     "providerOnlyFootnote": "Uma regra definida por {{organisation}}: o início de sessão com palavra-passe está desativado para todos os membros."
   },
   "auth": {
-    "newTo": "New to Soirely?",
+    "newTo": "Ainda não tem conta?",
     "copyright": "© {{year}} Soirely"
   },
   "register": {
