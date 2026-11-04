@@ -486,7 +486,7 @@
     "failedBody": "Algo ha fallado en el camino. Inténtelo de nuevo en un momento.",
     "nameBlank": "Introduzca su nombre completo.",
     "passwordBlank": "Introduzca una contraseña.",
-    "tooShort": "Usa al menos {{count, number}} caracteres."
+    "tooShort": "Use al menos {{count, number}} caracteres."
   },
   "account": {
     "title": "Su cuenta",
@@ -2241,6 +2241,6 @@
   "onboarding": {
     "step": "Paso {{step, number}} de 2",
     "back": "Atrás",
-    "noCode": "¿No te ha llegado el código?"
+    "noCode": "¿No ha recibido el código?"
   }
 }
