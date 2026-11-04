@@ -17,33 +17,34 @@ The rules every locale shares are in `.claude/skills/locale-parity`.
 One way to say each recurring thing, everywhere. Seeded from the catalogues as they stood on
 17 October 2026; the linguist reviews each row and marks it settled in Notes.
 
-| English                   | French                  | Notes                            |
-| ------------------------- | ----------------------- | -------------------------------- |
-| Settings                  | Paramètres              | Settled: also the app's tab      |
-| Home                      | Accueil                 | Settled: the app's tab           |
-| Account / Security        | Compte / Sécurité       | Settled: section names           |
-| Ways to sign in           | Moyens de connexion     | Settled                          |
-| Signed-in devices         | Appareils connectés     | Settled                          |
-| Start again               | Recommencer             | Settled                          |
-| Organisation              | Organisation            | Settled: section name, same word |
-| Sign in                   | Se connecter            |                                  |
-| Sign out                  | Déconnecter             |                                  |
-| Email                     | Adresse e-mail          | Settled 29 Oct: plain hyphen     |
-| Password                  | Mot de passe            |                                  |
-| Continue                  | Continuer               |                                  |
-| Cancel                    | Annuler                 |                                  |
-| Two-factor authentication | Double authentification | Settled: also "two-factor" alone |
-| Recovery code             | Code de récupération    |                                  |
-| Primary (address, number) | Principale / principal  | Settled 18 Oct: agrees with noun |
-| Other addresses, numbers  | Les autres adresses     | Settled 18 Oct: never secondaire |
-| Phone number              | Numéro de téléphone     | Settled 18 Oct: any number       |
-| Mobile number             | Numéro de portable      | Settled 18 Oct: the SMS field    |
-| Remove (from the account) | Retirer                 | Settled 18 Oct: not Supprimer    |
-| Linked (to an account)    | Associé                 | Settled 18 Oct: as `waysCard`    |
-| Unverified                | À vérifier              | Settled 18 Oct: no agreement     |
-| Account mail              | Les e-mails du compte   | Settled 18 Oct                   |
-| Sign-in rules             | Règles de connexion     | Settled 19 Oct                   |
-| Try again (button)        | Réessayer               | Settled 1 Nov, sc-26974          |
+| English                   | French                                 | Notes                            |
+| ------------------------- | -------------------------------------- | -------------------------------- |
+| Settings                  | Paramètres                             | Settled: also the app's tab      |
+| Home                      | Accueil                                | Settled: the app's tab           |
+| Account / Security        | Compte / Sécurité                      | Settled: section names           |
+| Ways to sign in           | Moyens de connexion                    | Settled                          |
+| Signed-in devices         | Appareils connectés                    | Settled                          |
+| Start again               | Recommencer                            | Settled                          |
+| Organisation              | Organisation                           | Settled: section name, same word |
+| Sign in                   | Se connecter                           |                                  |
+| Sign out                  | Déconnecter                            |                                  |
+| Email                     | Adresse e-mail                         | Settled 29 Oct: plain hyphen     |
+| Password                  | Mot de passe                           |                                  |
+| Continue                  | Continuer                              |                                  |
+| Cancel                    | Annuler                                |                                  |
+| Two-factor authentication | Double authentification                | Settled: also "two-factor" alone |
+| Recovery code             | Code de récupération                   |                                  |
+| Primary (address, number) | Principale / principal                 | Settled 18 Oct: agrees with noun |
+| Other addresses, numbers  | Les autres adresses                    | Settled 18 Oct: never secondaire |
+| Phone number              | Numéro de téléphone                    | Settled 18 Oct: any number       |
+| Mobile number             | Numéro de portable                     | Settled 18 Oct: the SMS field    |
+| Remove (from the account) | Retirer                                | Settled 18 Oct: not Supprimer    |
+| Linked (to an account)    | Associé                                | Settled 18 Oct: as `waysCard`    |
+| Unverified                | À vérifier                             | Settled 18 Oct: no agreement     |
+| Account mail              | Les e-mails du compte                  | Settled 18 Oct                   |
+| Sign-in rules             | Règles de connexion                    | Settled 19 Oct                   |
+| Try again (button)        | Réessayer                              | Settled 1 Nov, sc-26974          |
+| Owner / Admin / Member    | Propriétaire / Administrateur / Membre | Settled 5 Nov, sc-29914          |
 
 - **« e-mail » keeps a plain hyphen (U+002D)**, never U+2011, even where it wraps as « e- » /
   « mail » (sc-20577, #20957). A break at a hyphen is ordinary French typography; U+2011 is
