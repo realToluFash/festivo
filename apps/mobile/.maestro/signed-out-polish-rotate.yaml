@@ -1,0 +1,11 @@
+# Typed text survives a rotation on sign in (AuthFrame's one tree). sc-28812.
+# This is only the half before the rotation. Afterwards, rotate the phone by hand with adb
+# and check that signIn.email still reads kept@soirely.test.
+appId: host.exp.Exponent
+---
+- runFlow: sign-in-screen-english.yaml
+- tapOn:
+    id: 'signIn.email'
+- inputText: 'kept@soirely.test'
+- hideKeyboard
+- takeScreenshot: polish-rotate-before

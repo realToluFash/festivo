@@ -371,7 +371,9 @@
   "language": {
     "label": "Language",
     "automatic": "Automatic",
-    "automaticHint": "Follow the language your browser asks for"
+    "automaticHint": "Follow the language your browser asks for",
+    "current": "Language: {{language}}",
+    "follows": "Your language follows you to every device."
   },
   "public": {
     "tagline": "Plan the event. Run the night.",
@@ -425,7 +427,7 @@
     "submit": "Sign in",
     "submitting": "Signing in…",
     "lockedUntil": "Try again at {{time}}",
-    "refused": "That email and password do not match. Check both, or reset your password.",
+    "noMatch": "That email and password do not match.",
     "endedTitle": "You were signed out",
     "endedBody": "Sign in again to carry on.",
     "lockedTitle": "Too many tries",
@@ -438,7 +440,6 @@
     "providerFailedBody": "Nothing was changed. Try {{provider}} again, or sign in with your email and password.",
     "failedTitle": "Signing in did not work",
     "failedBody": "Something went wrong on the way. Try again in a moment.",
-    "newHere": "New here?",
     "createAccount": "Create an account",
     "passwordBlank": "Enter your password.",
     "timedOutTitle": "Signed out by {{organisation}}’s rule",
@@ -448,6 +449,10 @@
     "providerOnlyBody": "Password sign-in is off in {{organisation}}. Use {{providers}} instead.",
     "anotherAccount": "Sign in with another account",
     "providerOnlyFootnote": "A rule set by {{organisation}}: password sign-in is off for everyone in it."
+  },
+  "auth": {
+    "newTo": "New to Soirely?",
+    "copyright": "© {{year}} Soirely"
   },
   "register": {
     "title": "Create your account",
@@ -760,7 +765,6 @@
   },
   "recovery": {
     "forgot": "Forgot your password?",
-    "forgotShort": "Forgot it?",
     "title": "Reset your password",
     "intro": "Enter the email you sign in with. If it has an account, we send it a link to set a new password.",
     "email": "Email",

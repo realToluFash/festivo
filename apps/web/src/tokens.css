@@ -52,7 +52,6 @@
   --scrimDialog: rgba(21,23,28,0.4);
   --colorPrintInk: #000000;
   --fontFamily: 'Instrument Sans', sans-serif;
-  --fontFamilyMono: 'JetBrains Mono', monospace;
   --typeDisplay: 700 48px/1 var(--fontFamily);
   --typeDisplayTracking: -0.03em;
   --typeTitlePage: 700 28px/1.1 var(--fontFamily);
@@ -89,8 +88,8 @@
   --typePillWrappedTracking: 0;
   --typeButton: 600 14px/1 var(--fontFamily);
   --typeButtonTracking: 0;
-  --typeCode: 600 14px/1 var(--fontFamilyMono);
-  --typeCodeTracking: 0;
+  --typeCode: 600 14px/1 var(--fontFamily);
+  --typeCodeTracking: 0.04em;
   --typeRoomNow: 700 64px/1.05 var(--fontFamily);
   --typeRoomNowTracking: -0.02em;
   --typeLandingH1: 700 60px/1.02 var(--fontFamily);
@@ -109,6 +108,7 @@
   --space5xl: 32px;
   --space6xl: 40px;
   --sizeHit: 44px;
+  --sizeControlDesktop: 40px;
   --sizeHitPhonePrimary: 48px;
   --sizeHitPhoneHero: 52px;
   --sizeListRow: 56px;

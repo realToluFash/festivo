@@ -429,13 +429,7 @@ function SettingUp({
       <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
         {phone ? t('twoFactorCard.phoneCantScan') : t('twoFactorCard.cantScan')}
       </Text>
-      <Text
-        size={tokens.typeBodyPhone.size}
-        weight="semibold"
-        family="mono"
-        selectable
-        style={styles.key}
-      >
+      <Text size={tokens.typeBodyPhone.size} weight="semibold" selectable style={styles.key}>
         {keyInGroups(enrolment.secret)}
       </Text>
 
@@ -510,13 +504,7 @@ function SavingCodes({
 
         <View style={styles.codes}>
           {codes.map((code) => (
-            <Text
-              key={code}
-              size={tokens.typeBodyPhone.size}
-              family="mono"
-              selectable
-              style={styles.code}
-            >
+            <Text key={code} size={tokens.typeBodyPhone.size} selectable style={styles.code}>
               {code}
             </Text>
           ))}
@@ -796,7 +784,7 @@ const styles = StyleSheet.create({
     borderColor: tokens.colorBorder,
     backgroundColor: tokens.colorCard,
   },
-  key: { fontVariant: ['tabular-nums'], letterSpacing: 1 },
+  key: { fontVariant: ['tabular-nums'], letterSpacing: tokens.typeBodyPhone.size * 0.04 },
   codes: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -805,7 +793,11 @@ const styles = StyleSheet.create({
     borderRadius: tokens.radiusInset,
     backgroundColor: tokens.colorInset,
   },
-  code: { width: '50%', fontVariant: ['tabular-nums'], letterSpacing: 1 },
+  code: {
+    width: '50%',
+    fontVariant: ['tabular-nums'],
+    letterSpacing: tokens.typeBodyPhone.size * 0.04,
+  },
   checkbox: {
     flexDirection: 'row',
     alignItems: 'center',
