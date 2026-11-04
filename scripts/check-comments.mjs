@@ -80,18 +80,26 @@ export function newToBoth(addedToOurs, addedToTheirs) {
   });
 }
 
+/** Each changed file, with the path it was moved from, so a moved file counts only what changed in it. */
 function changedFiles(ref) {
   const args = ref
-    ? ['diff', '--name-only', '--diff-filter=ACMR', `${ref}...HEAD`]
-    : ['diff', '--cached', '--name-only', '--diff-filter=ACMR'];
+    ? ['diff', '-M', '--name-status', '--diff-filter=ACMR', `${ref}...HEAD`]
+    : ['diff', '-M', '--cached', '--name-status', '--diff-filter=ACMR'];
 
-  return git(args).split('\n').filter(Boolean);
+  return git(args)
+    .split('\n')
+    .filter(Boolean)
+    .map((line) => {
+      const [, ...paths] = line.split('\t');
+
+      return { file: paths.at(-1), paths };
+    });
 }
 
-function addedLines(file, ref, base = 'HEAD') {
+function addedLines(paths, ref, base = 'HEAD') {
   const args = ref
-    ? ['diff', '-U0', `${ref}...HEAD`, '--', file]
-    : ['diff', '--cached', '-U0', base, '--', file];
+    ? ['diff', '-M', '-U0', `${ref}...HEAD`, '--', ...paths]
+    : ['diff', '-M', '--cached', '-U0', base, '--', ...paths];
 
   return git(args)
     .split('\n')
@@ -129,13 +137,13 @@ if (process.argv[1] != null && import.meta.url.endsWith(process.argv[1].split('/
 
   const merging = against == null && resolves('MERGE_HEAD');
   const problems = changedFiles(against)
-    .filter(isChecked)
-    .flatMap((file) =>
+    .filter(({ file }) => isChecked(file))
+    .flatMap(({ file, paths }) =>
       problemsFor(
         file,
         merging
-          ? newToBoth(addedLines(file, null), addedLines(file, null, 'MERGE_HEAD'))
-          : addedLines(file, against),
+          ? newToBoth(addedLines(paths, null), addedLines(paths, null, 'MERGE_HEAD'))
+          : addedLines(paths, against),
       ),
     );
 
