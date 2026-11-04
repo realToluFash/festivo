@@ -26,6 +26,7 @@ import { Link, Navigate, useLocation, useNavigate } from 'react-router';
 
 import { api } from '../../api.ts';
 import { AuthPage } from '../../components/AuthPage.tsx';
+import { ConfirmDialog } from '../../components/ConfirmDialog.tsx';
 import { FieldError } from '../../components/FieldError.tsx';
 import { ColumnBack, ResendLine, Tick } from '../../components/Onboarding.tsx';
 import { offButton } from '../../offButton.ts';
@@ -427,6 +428,8 @@ function Request({
   const organisations = listed(state.organisations, 'conjunction');
   const anyOf = listed(state.organisations, 'disjunction');
   const waiting = state.status === 'waiting';
+  const [confirming, setConfirming] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
 
   // Waiting, the answer arrives on its own; the page follows it within half a minute.
   useEffect(() => {
@@ -476,22 +479,36 @@ function Request({
         )}
         <p className="auth-aside">
           <span>{t('lostTwoFactor.notYou')}</span>
-          <button
-            className="link-button"
-            type="button"
-            onClick={() => {
+          <button className="link-button" type="button" onClick={() => setConfirming(true)}>
+            {t('lostTwoFactor.cancel')}
+          </button>
+        </p>
+        <BackToSignIn />
+        {confirming && (
+          <ConfirmDialog
+            id="cancel-request"
+            title={t('lostTwoFactor.cancelTitle')}
+            keep={t('lostTwoFactor.keepWaiting')}
+            go={t('lostTwoFactor.cancel')}
+            pending={cancelling}
+            onKeep={() => setConfirming(false)}
+            onGo={() => {
+              setCancelling(true);
               api
                 .cancelRecovery(recovery)
                 .then(onState)
                 .catch((refusal: unknown) => {
                   if (replacedElsewhere(refusal)) onReplaced();
+                })
+                .finally(() => {
+                  setCancelling(false);
+                  setConfirming(false);
                 });
             }}
           >
-            {t('lostTwoFactor.cancel')}
-          </button>
-        </p>
-        <BackToSignIn />
+            <p>{t('lostTwoFactor.cancelBody')}</p>
+          </ConfirmDialog>
+        )}
       </>
     );
   }
@@ -595,8 +612,9 @@ function Codes({
   const [asking, setAsking] = useState(false);
   const [failed, setFailed] = useState(false);
   const [textingFailed, setTextingFailed] = useState(false);
+  const resendWords = hasPhone ? 'lostTwoFactor' : 'verifyEmail';
   const resending = useResendCountdown(
-    { resend: 'lostTwoFactor.resend', resendIn: 'lostTwoFactor.resendIn' },
+    { resend: `${resendWords}.resend`, resendIn: `${resendWords}.resendIn` },
     codes?.cooldownSeconds ?? 0,
   );
 
@@ -803,7 +821,7 @@ function Codes({
 
       {spent ? (
         <button className="button button-primary" type="button" onClick={() => void resend()}>
-          {t('lostTwoFactor.resend')}
+          {t(`${resendWords}.resend`)}
         </button>
       ) : (
         <>
@@ -869,7 +887,7 @@ function Codes({
           <ResendLine
             resending={resending}
             lead={hasPhone ? t('lostTwoFactor.noCodes') : t('onboarding.noCode')}
-            note={t('lostTwoFactor.resendNote')}
+            note={t(`${resendWords}.resendNote`)}
             onResend={() => void resend()}
           >
             {hasPhone && wording.offerText && (
