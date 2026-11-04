@@ -12,8 +12,8 @@ import { useLocation, useNavigate } from 'react-router';
 
 import { api } from '../../api.ts';
 import { AuthPage } from '../../components/AuthPage.tsx';
-import { Tick } from '../../components/Onboarding.tsx';
 import { PasswordField } from '../../components/PasswordField.tsx';
+import { PasswordRuleLine } from '../../components/PasswordRule.tsx';
 import { ProviderSignIn } from '../../components/ProviderSignIn.tsx';
 import { offButton } from '../../offButton.ts';
 import { focusWhereSent, offField } from '../../offField.ts';
@@ -204,7 +204,7 @@ export function Register() {
               describedBy={fields.password ? 'password-error password-rule' : 'password-rule'}
             />
             {fields.password && <FieldRefusal id="password-error" error={fields.password} />}
-            <RuleLine met={lengthMet} />
+            <PasswordRuleLine met={lengthMet} id="password-rule" />
           </div>
         </div>
 
@@ -220,25 +220,6 @@ export function Register() {
 
       <ProviderSignIn pair />
     </AuthPage>
-  );
-}
-
-/** The length rule on one line under the field, ticked once it is met. */
-function RuleLine({ met }: { met: boolean }) {
-  const { t } = useTranslation();
-
-  return (
-    <div className="auth-rule" id="password-rule">
-      <p className={met ? 'auth-rule-line auth-rule-met' : 'auth-rule-line'}>
-        {met ? <Tick /> : <span className="auth-ring" aria-hidden="true" />}
-        {t('register.ruleLength', { count: PASSWORD_MINIMUM_LENGTH })}
-        {/* The mark's shape says it to the eye; the word says it to a screen reader. */}
-        <span className="visually-hidden">
-          {met ? t('register.ruleMet') : t('register.ruleNotYet')}
-        </span>
-      </p>
-      <p className="auth-rule-note">{t('register.ruleNote')}</p>
-    </div>
   );
 }
 
