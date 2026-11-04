@@ -21,6 +21,7 @@ import { focusChecked, keysStayDown } from '../src/components/Field.tsx';
 import { PhoneEntry } from '../src/components/PhoneEntry.tsx';
 import { phoneProblemMessage } from '../src/phoneProblem.ts';
 import { InsideField } from '../src/steps/InsideField.tsx';
+import { skipPhone } from '../src/steps/skipPhone.ts';
 import { Heading, Plain, Says } from '../src/steps/Lines.tsx';
 import { NavBar, StepScreen } from '../src/steps/StepScreen.tsx';
 import { tokens } from '../src/theme/tokens.ts';
@@ -62,7 +63,13 @@ export default function ChangePhone() {
       (one) => one.provider === 'google' || one.provider === 'apple',
     );
 
-    return <MobileStep initialCountry={phoneScreenCountry(account, device)} short={short} />;
+    return (
+      <MobileStep
+        account={account}
+        initialCountry={phoneScreenCountry(account, device)}
+        short={short}
+      />
+    );
   }
 
   return (
@@ -103,7 +110,15 @@ export default function ChangePhone() {
 }
 
 /** The last step, which Skip at the top right passes, saving no number. */
-function MobileStep({ initialCountry, short }: { initialCountry: string; short: boolean }) {
+function MobileStep({
+  account,
+  initialCountry,
+  short,
+}: {
+  account: Account;
+  initialCountry: string;
+  short: boolean;
+}) {
   const { t } = useTranslation();
   const [country, setCountry] = useState(initialCountry);
   const [number, setNumber] = useState('');
@@ -129,7 +144,11 @@ function MobileStep({ initialCountry, short }: { initialCountry: string; short: 
           left={null}
           onLeft={() => {}}
           step={short ? [2, 2] : [4, 4]}
-          right={{ label: t('steps.skip'), onPress: () => router.replace('/') }}
+          right={{
+            label: t('steps.skip'),
+            onPress: () =>
+              void skipPhone(account).catch(() => setError(t('verifyPhone.failedBody'))),
+          }}
           testID="phone"
         />
       }

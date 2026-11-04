@@ -26,6 +26,7 @@ import { type CodeStatus, codeRefusal, openingStatus, retryAfter } from '../src/
 import { rereadAccount } from '../src/signedIn.ts';
 import { CodeStep, NEXT_STEP_MS } from '../src/steps/CodeStep.tsx';
 import { Says } from '../src/steps/Lines.tsx';
+import { skipPhone } from '../src/steps/skipPhone.ts';
 import { NavBar, StepScreen } from '../src/steps/StepScreen.tsx';
 import { tokens } from '../src/theme/tokens.ts';
 
@@ -164,16 +165,6 @@ export default function VerifyPhone() {
     }
   }
 
-  // Saving the details with no number removes the phone, so the gate rests on the email again.
-  async function withoutPhone(name: string): Promise<void> {
-    try {
-      await api.completeProfile({ name });
-      router.replace('/');
-    } catch {
-      setStatus({ kind: 'failed' });
-    }
-  }
-
   async function textInstead(): Promise<void> {
     setTextingFailed(null);
     setTextedByTap({});
@@ -210,7 +201,10 @@ export default function VerifyPhone() {
               router.canGoBack() ? router.back() : router.replace('/phone?from=onboarding')
             }
             step={short ? [done ? 2.4 : 2, 2] : [done ? 4.4 : 4, 4]}
-            right={{ label: t('steps.skip'), onPress: () => void withoutPhone(account.name) }}
+            right={{
+              label: t('steps.skip'),
+              onPress: () => void skipPhone(account).catch(() => setStatus({ kind: 'failed' })),
+            }}
             testID="verifyPhone"
           />
         }
