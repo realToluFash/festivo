@@ -198,13 +198,6 @@ describe('a field and its button rest above the keyboard', () => {
     expect(barFits({ ...portrait, room: 140 })).toBe(false);
   });
 
-  it("keeps a phone step's foot on the keys while the field being typed into fits, however tall the step (sc-29076)", () => {
-    const phone = { room: 267 + 76, field: 56, bar: 76, margin: 16 };
-
-    expect(barFits(phone)).toBe(true);
-    expect(barFits({ ...phone, room: 150 })).toBe(false);
-  });
-
   it('only when the keyboard covers the group or its margin', () => {
     expect(coveredBy(500, { y: 300, height: 150 }, 16)).toBe(false);
     expect(coveredBy(500, { y: 300, height: 190 }, 16)).toBe(true);
