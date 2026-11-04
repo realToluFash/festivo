@@ -1,5 +1,5 @@
 import { PASSWORD_MINIMUM_LENGTH, formatCountdown } from '@soirely/domain';
-import { type FormEvent, type ReactNode, useEffect, useRef, useState } from 'react';
+import { type FormEvent, type ReactNode, type RefObject, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 
 import { offField } from '../offField.ts';
@@ -212,27 +212,15 @@ export function CodeForm({
   return (
     <>
       <form className="demo-form" noValidate onSubmit={verify}>
-        <div className={fieldClass(line != null)}>
-          <label htmlFor="code">{label}</label>
-          <input
-            ref={field}
-            className="demo-input demo-code"
-            id="code"
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            maxLength={CODE_LENGTH}
-            value={code}
-            {...offField(busy)}
-            aria-invalid={line != null}
-            aria-describedby={line == null ? undefined : 'code-line'}
-            onChange={(event) => setCode(codeDigits(event.target.value))}
-          />
-          {line != null && (
-            <p className="demo-line" id="code-line" role="alert">
-              {line}
-            </p>
-          )}
-        </div>
+        <CodeField
+          id="code"
+          label={label}
+          line={line}
+          field={field}
+          value={code}
+          busy={busy}
+          onChange={setCode}
+        />
         <button className="button button-primary demo-wide" type="submit" aria-busy={busy}>
           {sending ? 'Sending…' : busy ? 'Verifying…' : submit}
         </button>
@@ -242,6 +230,70 @@ export function CodeForm({
       </Resend>
       {below}
     </>
+  );
+}
+
+/** The board's one code field: sign-in's code page, Enter your code and Both codes all render it. */
+export function CodeField({
+  id,
+  label,
+  sent,
+  line,
+  field,
+  value,
+  busy,
+  onChange,
+  inputMode = 'numeric',
+  shape = codeDigits,
+  maxLength = CODE_LENGTH,
+}: {
+  id: string;
+  label: string;
+  /** "Sent to …", under the field. */
+  sent?: string;
+  line: string | null | undefined;
+  field: RefObject<HTMLInputElement | null>;
+  value: string;
+  busy: boolean;
+  onChange: (code: string) => void;
+  inputMode?: 'numeric' | 'text';
+  shape?: (typed: string) => string;
+  maxLength?: number;
+}) {
+  const described = [line == null ? null : `${id}-line`, sent == null ? null : `${id}-sent`]
+    .filter((each) => each != null)
+    .join(' ');
+
+  return (
+    <div className={fieldClass(line != null)}>
+      <label htmlFor={id}>{label}</label>
+      <input
+        ref={field}
+        className="demo-input demo-code"
+        id={id}
+        inputMode={inputMode}
+        autoComplete="one-time-code"
+        autoCapitalize="none"
+        autoCorrect="off"
+        spellCheck={false}
+        maxLength={maxLength}
+        value={value}
+        {...offField(busy)}
+        aria-invalid={line != null}
+        aria-describedby={described === '' ? undefined : described}
+        onChange={(event) => onChange(shape(event.target.value))}
+      />
+      {line != null && (
+        <p className="demo-line" id={`${id}-line`} role="alert">
+          {line}
+        </p>
+      )}
+      {sent != null && (
+        <p className="demo-help" id={`${id}-sent`}>
+          {sent}
+        </p>
+      )}
+    </div>
   );
 }
 

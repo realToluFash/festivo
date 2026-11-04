@@ -1,10 +1,9 @@
-import { type FormEvent, type RefObject, useEffect, useRef, useState } from 'react';
+import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router';
 
 import { offButton } from '../offButton.ts';
-import { offField } from '../offField.ts';
 import { BoardPage, SignedInAs } from './BoardPage.tsx';
-import { Heading, Notice, Resend, fieldClass, useBusy } from './parts.tsx';
+import { CodeField, Heading, Notice, Resend, useBusy } from './parts.tsx';
 import {
   CODE_LENGTH,
   LOCK_MS,
@@ -25,13 +24,11 @@ const POLL_MS = 20_000;
 /** Back to sign-in, the email filled; after a recovery, signing in goes on to Set up two-factor again. */
 const toSignIn = { to: '/demo/sign-in', state: { email: SAMPLE.email } };
 
-/** How many times "Send the codes" was pressed, carried page to page for the limit of three a day. */
-type Asks = { asks?: number };
-
 export function TwoFactorBoard() {
   const [params] = useSearchParams();
   const location = useLocation();
-  const asks = (location.state as Asks | null)?.asks ?? 0;
+  /** How many times "Send the codes" was pressed, for the limit of three a day: the board stays mounted page to page. */
+  const [asks, setAsks] = useState(0);
   const page = params.get('page') ?? 'code';
   const state = params.get('state') ?? '';
   const key = `${page}:${state}:${location.key}`;
@@ -40,9 +37,9 @@ export function TwoFactorBoard() {
     case 'recovery':
       return <CodeEntry key={key} recovery state={state} />;
     case 'start':
-      return <Start key={key} state={state} asks={asks} />;
+      return <Start key={key} state={state} asks={asks} onAsk={() => setAsks(asks + 1)} />;
     case 'codes':
-      return <BothCodes key={key} state={state} asks={asks} />;
+      return <BothCodes key={key} state={state} />;
     case 'waiting':
       return <Waiting key={key} />;
     case 'off':
@@ -172,32 +169,18 @@ function CodeEntry({ recovery, state }: { recovery: boolean; state: string }) {
       </Heading>
 
       <form className="demo-form" noValidate onSubmit={verify}>
-        <div className={fieldClass(line != null)}>
-          <label htmlFor="code">{recovery ? 'Recovery code' : 'Code'}</label>
-          <input
-            ref={field}
-            className="demo-input demo-code"
-            id="code"
-            inputMode={recovery ? 'text' : 'numeric'}
-            autoComplete="one-time-code"
-            autoCapitalize="none"
-            autoCorrect="off"
-            spellCheck={false}
-            maxLength={recovery ? 9 : CODE_LENGTH}
-            value={code}
-            {...offField(busy || locked)}
-            aria-invalid={line != null}
-            aria-describedby={line == null ? undefined : 'code-line'}
-            onChange={(event) =>
-              setCode((recovery ? shapeRecovery : codeDigits)(event.target.value))
-            }
-          />
-          {line != null && (
-            <p className="demo-line" id="code-line" role="alert">
-              {line}
-            </p>
-          )}
-        </div>
+        <CodeField
+          id="code"
+          label={recovery ? 'Recovery code' : 'Code'}
+          line={line}
+          field={field}
+          value={code}
+          busy={busy || locked}
+          onChange={setCode}
+          inputMode={recovery ? 'text' : 'numeric'}
+          shape={recovery ? shapeRecovery : codeDigits}
+          maxLength={recovery ? 9 : CODE_LENGTH}
+        />
         <button
           className="button button-primary demo-wide"
           type="submit"
@@ -244,7 +227,7 @@ function BackToSignIn() {
   );
 }
 
-function Start({ state, asks }: { state: string; asks: number }) {
+function Start({ state, asks, onAsk }: { state: string; asks: number; onAsk: () => void }) {
   const navigate = useNavigate();
   /** When asking opens again: a day after the third ask. */
   const [opensAt, setOpensAt] = useState<number | null>(() =>
@@ -262,7 +245,8 @@ function Start({ state, asks }: { state: string; asks: number }) {
         return;
       }
 
-      void navigate(twoFactorAt('codes'), { state: { asks: asks + 1 } });
+      onAsk();
+      void navigate(twoFactorAt('codes'));
     });
   }
 
@@ -325,7 +309,7 @@ function Start({ state, asks }: { state: string; asks: number }) {
 
 type Lines = { email?: string; phone?: string };
 
-function BothCodes({ state, asks }: { state: string; asks: number }) {
+function BothCodes({ state }: { state: string }) {
   const navigate = useNavigate();
   const [emailOnly, setEmailOnly] = useState(state === 'email-only');
   const [emailCode, setEmailCode] = useState('');
@@ -400,7 +384,7 @@ function BothCodes({ state, asks }: { state: string; asks: number }) {
   return (
     <BoardPage
       end={null}
-      back={{ to: twoFactorAt('start'), state: { asks } }}
+      back={{ to: twoFactorAt('start') }}
       tall
       controls={
         <label className="demo-switch">
@@ -473,53 +457,6 @@ function BothCodes({ state, asks }: { state: string; asks: number }) {
         )}
       </Resend>
     </BoardPage>
-  );
-}
-
-function CodeField({
-  id,
-  label,
-  sent,
-  line,
-  field,
-  value,
-  busy,
-  onChange,
-}: {
-  id: string;
-  label: string;
-  sent: string;
-  line: string | undefined;
-  field: RefObject<HTMLInputElement | null>;
-  value: string;
-  busy: boolean;
-  onChange: (code: string) => void;
-}) {
-  return (
-    <div className={fieldClass(line != null)}>
-      <label htmlFor={id}>{label}</label>
-      <input
-        ref={field}
-        className="demo-input demo-code"
-        id={id}
-        inputMode="numeric"
-        autoComplete="one-time-code"
-        maxLength={CODE_LENGTH}
-        value={value}
-        {...offField(busy)}
-        aria-invalid={line != null}
-        aria-describedby={line == null ? `${id}-sent` : `${id}-line ${id}-sent`}
-        onChange={(event) => onChange(codeDigits(event.target.value))}
-      />
-      {line != null && (
-        <p className="demo-line" id={`${id}-line`} role="alert">
-          {line}
-        </p>
-      )}
-      <p className="demo-help" id={`${id}-sent`}>
-        {sent}
-      </p>
-    </div>
   );
 }
 

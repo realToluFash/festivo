@@ -596,6 +596,27 @@ describe('the demo signs in with two-factor (sc-29063)', () => {
     expect(screen.getByText('Too many requests')).toBeDefined();
   });
 
+  it('counts every ask toward the fourth, through the code page and back', async () => {
+    await page('?page=start', 'Get back in without your authenticator');
+    for (let asks = 0; asks < 3; asks++) {
+      fireEvent.click(screen.getByRole('button', { name: 'Send the codes' }));
+      await wait();
+      await screen.findByRole('heading', { name: 'Enter both codes' });
+      fireEvent.click(screen.getByRole('link', { name: 'Back' }));
+      await screen.findByRole('heading', { name: 'Get back in without your authenticator' });
+      fireEvent.click(screen.getByRole('link', { name: 'Back' }));
+      await screen.findByRole('heading', { name: 'Enter your code' });
+      fireEvent.click(
+        screen.getByRole('link', { name: 'Lost your authenticator and your recovery codes?' }),
+      );
+      await screen.findByRole('heading', { name: 'Get back in without your authenticator' });
+    }
+
+    fireEvent.click(screen.getByRole('button', { name: 'Send the codes' }));
+    await wait();
+    expect(screen.getByText('Too many requests')).toBeDefined();
+  });
+
   it('asks for only the email’s code without a verified phone, and both make the ask', async () => {
     await page('?page=codes', 'Enter both codes');
     fireEvent.click(screen.getByRole('switch', { name: /no verified phone/ }));
