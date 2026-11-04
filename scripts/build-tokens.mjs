@@ -56,7 +56,9 @@ function laidOver(colours) {
           if (laid.size > 1) throw new Error(`${hex} becomes ${[...laid].join(' or ')}`);
           return [...laid][0];
         })
-      : Object.fromEntries(Object.entries(v).map(([k, x]) => [k, swap(x)]));
+      : v !== null && typeof v === 'object'
+        ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, swap(x)]))
+        : v;
   const derived = {};
   for (const [key, value] of Object.entries(tokens)) {
     if (key.startsWith('color') || value === null || typeof value === 'number') continue;
