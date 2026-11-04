@@ -306,7 +306,7 @@ export function Bell({ tell }: { tell: Tell }) {
   );
 }
 
-function PortraitTop() {
+export function PortraitTop() {
   const shell = useShell();
   const insets = useSafeAreaInsets();
 
@@ -355,7 +355,7 @@ function PortraitTop() {
   );
 }
 
-function Fade() {
+export function Fade() {
   return (
     <View style={styles.fade} pointerEvents="none">
       <Svg width="100%" height="100%">

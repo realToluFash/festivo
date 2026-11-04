@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '../../components/Text.tsx';
 import { type SettingsSection, settingsGroups } from '../../kit/appNav.ts';
 import { tokens } from '../../theme/tokens.ts';
-import { Confetti, Cover, type Piece } from '../Cover.tsx';
+import { CARD_PIECES, Confetti, Cover } from '../Cover.tsx';
 import { Glyph } from '../Glyph.tsx';
 import { Glass } from '../TodayCover.tsx';
 import { Bell, Landscape, PHONE_TAB_BAR, useShell } from './Frame.tsx';
@@ -36,15 +36,6 @@ export function groupsFor(viewer: Viewer) {
 export function sectionsFor(viewer: Viewer): readonly SettingsSection[] {
   return settingsGroups(VIEWER_ORGANISATION[viewer]).flatMap(({ sections }) => sections);
 }
-
-const CARD_PIECES: readonly Piece[] = [
-  [0.67, 0.05, 'half', 22, -18, 'sun'],
-  [0.83, 0.11, 'bar', 26, 24, 'white'],
-  [0.96, 0.2, 'half', 14, 200, 'rose'],
-  [0.81, 0.73, 'half', 20, 32, 'rose'],
-  [0.92, 0.84, 'bar', 24, -40, 'sun'],
-  [0.58, 0.9, 'bar', 16, 62, 'white'],
-];
 
 interface Handlers {
   onSignOut: () => void;
