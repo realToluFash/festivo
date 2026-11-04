@@ -1,10 +1,10 @@
-import type { ReactNode } from 'react';
+import { type ReactNode, useState } from 'react';
 import { Link } from 'react-router';
 
 import { Brand } from '../components/Brand.tsx';
+import { LanguageMenu } from '../components/LanguageMenu.tsx';
 import { AppleMark, GoogleMark } from '../components/ProviderSignIn.tsx';
 import { offButton } from '../offButton.ts';
-import { LanguageMenu } from './LanguageMenu.tsx';
 import { SAMPLE } from './rules.ts';
 
 /** The board's page: the lockup and the header's right end, the form's column, the footer, and the way back under it. */
@@ -22,6 +22,8 @@ export function BoardPage({
   /** Demo-only switches, under the page with the way back. */
   controls?: ReactNode;
 }) {
+  const [language, setLanguage] = useState('en');
+
   return (
     <div className="demo-page">
       <header className="demo-page-header">
@@ -56,7 +58,8 @@ export function BoardPage({
           <Link className="link-button demo-link" to="/demo/later?screen=privacy">
             Privacy
           </Link>
-          <LanguageMenu />
+          {/* Choosing renames the button only: the demo's words stay English. */}
+          <LanguageMenu current={language} onChoose={setLanguage} />
         </nav>
       </footer>
       <div className="demo-way-in">

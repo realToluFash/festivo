@@ -681,3 +681,6 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
 - **Le bandeau hors ligne** (sc-22586) : « Hors ligne · mis à jour à {{time}} », et « … le {{day}}
   à {{time}} » quand le chargement date d’un autre jour. « Mis à jour » dit de quand date ce qui
   s’affiche, plutôt que de calquer « as of ». Pendant la nouvelle tentative, « Actualisation… ».
+- **Le cadre des pages hors session** (sc-29037) : « New to Soirely? » est « Pas encore de
+  compte ? », avant « Créer un compte » ; « Nouveau sur Soirely ? » s’accorde avec un genre.
+  « © {{year}} Soirely » reste identique à l’anglais. Le bouton de langue se lit « Langue : {{language}} ».

@@ -615,3 +615,6 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
 - **La banda sin conexión** (sc-22586): «Sin conexión · actualizado a las {{time}}», y «… el {{day}}
   a las {{time}}» cuando la carga fue otro día. «Actualizado» dice de cuándo es lo que se ve, en
   vez de calcar «as of». Mientras se reintenta, «Actualizando…», como en la app.
+- **El marco de las páginas sin sesión** (sc-29037): "New to Soirely?" es «¿Aún no tiene cuenta?»,
+  antes de «Crear una cuenta»; «¿Es nuevo…?» concuerda con un género. «© {{year}} Soirely» queda
+  igual que en inglés. El botón de idioma se lee «Idioma: {{language}}».

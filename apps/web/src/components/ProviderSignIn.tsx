@@ -6,23 +6,18 @@ import { startProviderSignIn } from '../providerSignIn.ts';
 type Provider = 'google' | 'apple';
 
 /** Both are built to their owners' published specification; the marks are copied, not redrawn. */
-export function ProviderSignIn({ only }: { only?: readonly string[] } = {}) {
+export function ProviderSignIn({
+  only,
+  pair = false,
+}: { only?: readonly string[]; pair?: boolean } = {}) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const shown = (['google', 'apple'] as const).filter(
     (provider: Provider) => only == null || only.length === 0 || only.includes(provider),
   );
 
-  return (
+  const buttons = (
     <>
-      {only == null && (
-        <div className="auth-or">
-          <span className="auth-or-rule" />
-          <span>{t('signIn.or')}</span>
-          <span className="auth-or-rule" />
-        </div>
-      )}
-
       {shown.includes('google') && (
         <button
           className="button button-google"
@@ -40,7 +35,7 @@ export function ProviderSignIn({ only }: { only?: readonly string[] } = {}) {
 
       {shown.includes('apple') && (
         <button
-          className="button button-apple"
+          className={pair ? 'button button-apple button-apple-light' : 'button button-apple'}
           type="button"
           onClick={() => {
             void startProviderSignIn('apple').catch(() =>
@@ -48,10 +43,24 @@ export function ProviderSignIn({ only }: { only?: readonly string[] } = {}) {
             );
           }}
         >
-          <AppleMark />
+          <AppleMark onLight={pair} />
           <span>{t('signIn.withApple', { provider: 'Apple' })}</span>
         </button>
       )}
+    </>
+  );
+
+  return (
+    <>
+      {only == null && (
+        <div className="auth-or">
+          <span className="auth-or-rule" />
+          <span>{t('signIn.or')}</span>
+          <span className="auth-or-rule" />
+        </div>
+      )}
+
+      {pair ? <div className="auth-providers">{buttons}</div> : buttons}
     </>
   );
 }

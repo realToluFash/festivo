@@ -4,7 +4,6 @@ import {
   countryChoices,
   emailProblem,
   formatTimeOfDay,
-  LOCALES,
   meetsPasswordLength,
   phoneLengthProblem,
 } from '@soirely/domain';
@@ -64,17 +63,6 @@ export function refuse(
 
 export function timeOfDay(at: number): string {
   return formatTimeOfDay(new Date(at), 'en-GB');
-}
-
-export const LANGUAGES = LOCALES.map(({ code, name, nativeName }) => ({
-  code,
-  name: nativeName,
-  english: name === nativeName ? null : name,
-}));
-
-/** The item a menu's arrow keys land on, going round at either end. */
-export function nextItem(current: number, key: 'ArrowUp' | 'ArrowDown', count: number): number {
-  return (current + (key === 'ArrowDown' ? 1 : -1) + count) % count;
 }
 
 export type AccountLines = { name?: string; email?: string; password?: string };
