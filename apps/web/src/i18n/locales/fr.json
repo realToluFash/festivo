@@ -381,8 +381,8 @@
     "label": "Langue",
     "automatic": "Automatique",
     "automaticHint": "Suivre la langue demandée par votre navigateur",
-    "current": "Language: {{language}}",
-    "follows": "Your language follows you to every device."
+    "current": "Langue : {{language}}",
+    "follows": "Votre langue vous suit sur tous vos appareils."
   },
   "public": {
     "tagline": "Préparez l’événement. Menez la soirée.",
@@ -436,7 +436,7 @@
     "submit": "Se connecter",
     "submitting": "Connexion…",
     "lockedUntil": "Réessayez à {{time}}",
-    "noMatch": "That email and password do not match.",
+    "noMatch": "Cette adresse e-mail et ce mot de passe ne correspondent pas.",
     "endedTitle": "Votre session a été fermée",
     "endedBody": "Reconnectez-vous pour continuer.",
     "lockedTitle": "Trop de tentatives",
@@ -461,7 +461,7 @@
     "providerOnlyFootnote": "Une règle fixée par {{organisation}} : la connexion par mot de passe y est désactivée pour tout le monde."
   },
   "auth": {
-    "newTo": "New to Soirely?",
+    "newTo": "Pas encore de compte ?",
     "copyright": "© {{year}} Soirely"
   },
   "register": {
