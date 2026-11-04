@@ -220,7 +220,8 @@ export function RoleDialog({
         on={proving != null || changed}
         first={proving == null ? none : proving.problem?.field === 'code' ? code : password}
         onDismiss={() => {
-          if (proving == null && changed) setAsking(true);
+          if (proving != null) setProving(null);
+          else if (changed) setAsking(true);
           else onClose();
         }}
         onConfirm={() => {

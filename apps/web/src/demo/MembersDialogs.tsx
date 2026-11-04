@@ -53,59 +53,73 @@ export function InviteDialog({
   const [role, setRole] = useState(start.role);
   const [problem, setProblem] = useState(start.problem);
   const [proving, setProving, password, code, proofOk] = useProof(null);
+  const [asking, setAsking] = useState(false);
   const field = useRef<HTMLInputElement>(null);
   const owner = role === 'Owner' && !proved;
+  const changed = email !== start.email || role !== start.role;
 
   return (
-    <Dialog
-      title="Invite somebody"
-      verb="Send invitation"
-      first={field}
-      onDismiss={onClose}
-      onConfirm={() => {
-        const wrong = inviteProblem(email);
-        setProblem(wrong);
-        if (wrong != null) return field.current?.focus();
-        if (!proofOk()) return;
+    <>
+      <Dialog
+        title="Invite somebody"
+        verb="Send invitation"
+        first={field}
+        onDismiss={() => (changed ? setAsking(true) : onClose())}
+        onConfirm={() => {
+          const wrong = inviteProblem(email);
+          setProblem(wrong);
+          if (wrong != null) return field.current?.focus();
+          if (!proofOk()) return;
 
-        onInvited(email, role, owner);
-        onClose();
-      }}
-    >
-      <div className="desk-group-in">
-        <Head title="Who to invite" level={3} />
-        <Field
-          label="Email"
-          value={email}
-          inputMode="email"
-          autoComplete="email"
-          inputRef={field}
-          error={problem}
-          onChange={(value) => {
-            setEmail(value);
-            setProblem(null);
+          onInvited(email, role, owner);
+          onClose();
+        }}
+      >
+        <div className="desk-group-in">
+          <Head title="Who to invite" level={3} />
+          <Field
+            label="Email"
+            value={email}
+            inputMode="email"
+            autoComplete="email"
+            inputRef={field}
+            error={problem}
+            onChange={(value) => {
+              setEmail(value);
+              setProblem(null);
+            }}
+          />
+        </div>
+        <Choices
+          legend="Role"
+          choices={grantable(viewer).map((name) => ({ name, line: roleMeans(name) }))}
+          picked={role}
+          onPick={(name) => {
+            setRole(name);
+            setProving(
+              name === 'Owner' && !proved ? { password: '', code: '', problem: null } : null,
+            );
           }}
         />
-      </div>
-      <Choices
-        legend="Role"
-        choices={grantable(viewer).map((name) => ({ name, line: roleMeans(name) }))}
-        picked={role}
-        onPick={(name) => {
-          setRole(name);
-          setProving(
-            name === 'Owner' && !proved ? { password: '', code: '', problem: null } : null,
-          );
-        }}
-      />
-      <p className="desk-line is-small">{inviteNote(role)}</p>
-      {owner && proving != null && (
-        <>
-          <Note>{PROOF_LINE}</Note>
-          <ProofFields proving={proving} onChange={setProving} password={password} code={code} />
-        </>
+        <p className="desk-line is-small">{inviteNote(role)}</p>
+        {owner && proving != null && (
+          <>
+            <Note>{PROOF_LINE}</Note>
+            <ProofFields proving={proving} onChange={setProving} password={password} code={code} />
+          </>
+        )}
+      </Dialog>
+      {asking && (
+        <Ask
+          title="Discard your change?"
+          line="Nobody is invited."
+          keep="Keep editing"
+          go="Discard"
+          onKeep={() => setAsking(false)}
+          onGo={onClose}
+        />
       )}
-    </Dialog>
+    </>
   );
 }
 

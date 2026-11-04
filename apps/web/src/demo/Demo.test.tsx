@@ -1194,6 +1194,22 @@ describe('Settings at a desk (sc-29708)', () => {
     expect(screen.getByText('Priya Shah is now Coordinator.')).toBeDefined();
   });
 
+  it('steps back from the proof to the role, where Cancel asks before it drops Owner', async () => {
+    await settings('/demo/settings');
+
+    fireEvent.click(screen.getByRole('button', { name: /^Priya Shah/u }));
+    fireEvent.click(screen.getByRole('button', { name: 'Change role' }));
+    fireEvent.click(screen.getByRole('radio', { name: /^Owner/u }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(screen.getByRole('dialog', { name: 'Make Priya an owner' })).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(screen.getByRole('dialog', { name: 'Priya’s role' })).toBeDefined();
+    expect((screen.getByRole('radio', { name: /^Owner/u }) as HTMLInputElement).checked).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.getByRole('alertdialog', { name: 'Discard your change?' })).toBeDefined();
+  });
+
   it('shows somebody who manages nothing the people but no requests or invite', async () => {
     await settings('/demo/settings/members?as=tom');
 
@@ -1211,6 +1227,22 @@ describe('Settings at a desk (sc-29708)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Send invitation' }));
 
     expect(screen.getByText('Invitation sent to amara.o@gmail.com')).toBeDefined();
+  });
+
+  it('asks before it drops a half-typed invitation', async () => {
+    await settings('/demo/settings/members?state=invite');
+
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'amara' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Discard' }));
+
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('answers a section it does not draw with the not-found page', async () => {
+    at('/demo/settings/roles');
+
+    expect(await screen.findByRole('heading', { name: 'This page does not exist' })).toBeDefined();
   });
 
   it('checks a claim to the owner’s place and finds the record the second time', async () => {

@@ -100,7 +100,7 @@ export default function Demo() {
       <Route path="signed-in" element={<SignedIn />} />
       <Route path="today" element={<Today />} />
       <Route path="settings" element={<Settings />} />
-      <Route path="settings/:section" element={<Settings />} />
+      <Route path="settings/members" element={<Settings />} />
       <Route path="later" element={<Later />} />
       <Route path="*" element={<NotFound />} />
     </Routes>

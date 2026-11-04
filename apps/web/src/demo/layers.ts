@@ -6,10 +6,10 @@ import {
   useId,
   useLayoutEffect,
   useRef,
-  useSyncExternalStore,
 } from 'react';
 
 import { keepFocusIn } from '../dialogFocus.ts';
+import { useMatches } from '../phoneWidth.ts';
 
 interface Layers {
   stack: readonly string[];
@@ -92,17 +92,7 @@ export function useDeskDialog(
   return covered;
 }
 
-const SPLIT = '(width >= 96rem)';
-
 /** From 1536, Members' list and the picked person sit side by side. */
 export function useDeskSplit(): boolean {
-  return useSyncExternalStore(
-    (changed) => {
-      const query = window.matchMedia(SPLIT);
-      query.addEventListener('change', changed);
-
-      return () => query.removeEventListener('change', changed);
-    },
-    () => window.matchMedia(SPLIT).matches,
-  );
+  return useMatches('(width >= 96rem)');
 }
