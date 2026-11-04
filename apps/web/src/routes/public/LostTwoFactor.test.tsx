@@ -142,8 +142,8 @@ describe('getting back in without the authenticator', () => {
     ).toBeDefined();
     expect(screen.getByLabelText('Code from the email')).toBeDefined();
     expect(screen.getByLabelText('Code from the text')).toBeDefined();
-    // An outlined button, as before [fd] (sc-26512).
-    expect(screen.getByRole('button', { name: 'Send new codes in 0:42' }).className).toBe('button');
+    expect(screen.getByText('No codes?')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Send new codes in 0:42' })).toBeDefined();
     expect(screen.getByText('New codes replace the last ones.')).toBeDefined();
   });
 
@@ -244,7 +244,9 @@ describe('getting back in without the authenticator', () => {
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Waiting for your organisation' }),
     ).toBeDefined();
-    expect(screen.getByText('Waiting for an answer').previousElementSibling?.textContent).toBe('…');
+    // A title and its lines, with no mark row and no Back (sc-29068).
+    expect(screen.queryByText('Waiting for an answer')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Back' })).toBeNull();
     expect(screen.getByText('Asked Saturday, Oct 17 at 14:20 WAT.')).toBeDefined();
     expect(
       screen.getByText('If nobody answers by Saturday, Oct 24 at 14:20 WAT, the request ends.'),
@@ -256,13 +258,36 @@ describe('getting back in without the authenticator', () => {
     ).toBeDefined();
   });
 
-  it('goes back to Enter your code from ‹ Enter your code, beside Back to sign in (sc-23279)', async () => {
+  it('goes back to Enter your code from Start’s ‹ Back, beside Back to sign in (sc-29068)', async () => {
     await atTheStart({});
 
     expect(screen.getByRole('link', { name: 'Back to sign in' })).toBeDefined();
-    fireEvent.click(screen.getByRole('button', { name: 'Enter your code' }));
+    expect(screen.queryByRole('button', { name: 'Enter your code' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Enter your code' })).toBeDefined();
+  });
+
+  it('goes back to Start from both codes, and the codes already sent still work (sc-29068)', async () => {
+    const sent = await atTheStart({
+      'POST /api/auth/two-factor/recovery': () => json({ recovery: 'handle', state: PROVING }, 201),
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Send the codes' }));
+    await screen.findByRole('heading', { level: 1, name: 'Enter both codes' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+    await screen.findByRole('heading', {
+      level: 1,
+      name: 'Get back in without your authenticator',
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Send the codes' }));
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Enter both codes' }),
+    ).toBeDefined();
+    expect(sent.filter((request) => request.path === '/api/auth/two-factor/recovery')).toHaveLength(
+      1,
+    );
   });
 
   it('says nobody can confirm it when the last approver left while the codes were out', async () => {
@@ -353,7 +378,7 @@ describe('getting back in without the authenticator', () => {
       screen.getByText('Nobody in your organisation can confirm this. Contact Soirely support.'),
     ).toBeDefined();
     expect(screen.queryByText(/Ask an owner or admin of/)).toBeNull();
-    expect(screen.getByText('Turned down').previousElementSibling?.textContent).toBe('✕');
+    expect(screen.queryByText('Turned down')).toBeNull();
     expect(screen.getAllByRole('link', { name: 'Email support@soirely.com' })).toHaveLength(1);
   });
 
@@ -370,7 +395,7 @@ describe('getting back in without the authenticator', () => {
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Your request ended' }),
     ).toBeDefined();
-    expect(screen.getByText('Ended')).toBeDefined();
+    expect(screen.queryByText('Ended')).toBeNull();
     expect(
       screen.getByText('Nobody in your organisation can confirm this. Contact Soirely support.'),
     ).toBeDefined();
@@ -614,7 +639,9 @@ describe('"This wasn\'t me" from an email', () => {
   });
 
   it('takes focus to the line that says the link no longer works, read once', async () => {
-    answering({});
+    answering({
+      'POST /api/auth/two-factor/recovery/not-me': () => problem('recovery_request_invalid', 403),
+    });
     render(
       <RouterProvider
         router={createMemoryRouter(routes, {
@@ -628,5 +655,26 @@ describe('"This wasn\'t me" from an email', () => {
     const broken = await screen.findByText(/That link doesn’t work/);
     await waitFor(() => expect(document.activeElement).toBe(broken));
     expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('says Soirely cannot be reached when the press fails on the network, and Try again presses again', async () => {
+    const sent = answering({});
+    render(
+      <RouterProvider
+        router={createMemoryRouter(routes, {
+          initialEntries: ['/two-factor/not-me?request=rq_1&token=signed'],
+        })}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel and sign out everywhere' }));
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Cannot reach Soirely' }),
+    ).toBeDefined();
+    expect(screen.queryByText(/That link doesn’t work/)).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    await waitFor(() => expect(sent).toHaveLength(2));
   });
 });

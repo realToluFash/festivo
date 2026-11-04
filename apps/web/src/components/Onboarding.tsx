@@ -1,3 +1,4 @@
+import { initials } from '@soirely/domain';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
@@ -20,15 +21,31 @@ export function SignedInAs({ email, onSignOut }: { email: string; onSignOut: () 
   );
 }
 
-export function HaveAccount() {
+/** `onSignIn` runs before the way to sign-in, as an invitation holds its link there. */
+export function HaveAccount({ onSignIn }: { onSignIn?: () => void }) {
   const { t } = useTranslation();
 
   return (
     <div className="auth-new">
       <span>{t('register.haveAccount')}</span>
-      <Link className="button auth-new-button" to="/sign-in">
+      <Link className="button auth-new-button" to="/sign-in" onClick={onSignIn}>
         {t('register.signIn')}
       </Link>
+    </div>
+  );
+}
+
+/** The organisation on one line under the title: its tile, its name, and how you came. */
+export function OrganisationLine({ name, line }: { name: string; line: string }) {
+  return (
+    <div className="join-org">
+      <span className="org-tile" aria-hidden="true">
+        {initials(name)}
+      </span>
+      <div className="org-naming">
+        <p className="org-name">{name}</p>
+        <p className="org-role">{line}</p>
+      </div>
     </div>
   );
 }
@@ -70,11 +87,14 @@ function Chevron() {
 /** "No code? Send a new code in 0:41", the countdown's button a link once it ends; the note under it. */
 export function ResendLine({
   resending,
+  lead,
   note,
   onResend,
   children,
 }: {
   resending: ReturnType<typeof useResendCountdown>;
+  /** In place of "No code?". */
+  lead?: string;
   note: string;
   onResend: () => void;
   children?: ReactNode;
@@ -84,7 +104,7 @@ export function ResendLine({
   return (
     <div className="auth-resend">
       <p className="auth-resend-line">
-        <span>{t('onboarding.noCode')}</span>
+        <span>{lead ?? t('onboarding.noCode')}</span>
         <button className="link-button" type="button" {...resending.button} onClick={onResend}>
           {resending.label}
         </button>

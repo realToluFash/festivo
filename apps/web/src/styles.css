@@ -7898,3 +7898,138 @@ button.members-row {
   line-height: 20px;
   color: var(--colorInkSecondary);
 }
+
+/* ── Two-factor at sign-in, the desktop pages (sc-29068, WebTwoFactor page 27) ── */
+
+.auth-column .steps-list {
+  font: var(--typeBody);
+}
+
+.auth-column .steps-list .step-mark {
+  width: var(--sizePill);
+  height: var(--sizePill);
+  border: 1px solid var(--colorBorder);
+  background: var(--colorInset);
+  font: 600 12px/1 var(--fontFamily);
+}
+
+.auth-lines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceHair);
+  font: var(--typeBody);
+}
+
+.auth-lines p {
+  margin: 0;
+}
+
+.auth-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceLg);
+}
+
+/* ── Other ways in, the desktop pages (sc-29066, WebWaysIn page 27) ───────── */
+
+/* The organisation on one line, with no box round it. */
+.auth-column .join-org {
+  gap: var(--spaceLg);
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+.auth-column .join-org .org-name {
+  font: 600 15px/1.35 var(--fontFamily);
+}
+
+.auth-column .join-org .org-role {
+  font: var(--typeSmall);
+}
+
+.auth-choices,
+.auth-invited {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceLg);
+}
+
+.auth-invited-lines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceHair);
+}
+
+.auth-waiting {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+}
+
+.auth-choices p,
+.auth-invited-lines p,
+.auth-waiting p {
+  margin: 0;
+}
+
+.auth-answers {
+  display: flex;
+  gap: var(--spaceLg);
+}
+
+.auth-answers .button {
+  flex: 1;
+}
+
+/* Signed out, the invitation's form is taller: 56 under the header, 20 between its parts. */
+.auth-bare .auth-main:has(.join-register) {
+  padding-top: 56px;
+}
+
+.auth-column:has(.join-register) {
+  gap: var(--spaceXxl);
+}
+
+/* The domain offer and waiting invitations: hairlines in place of boxes. */
+.auth-column .join-offers,
+.auth-column .profile-invitations {
+  gap: var(--spaceXl);
+}
+
+.auth-column .join-offers-heading,
+.auth-column .profile-invitations-heading {
+  font: 600 16px/1.3 var(--fontFamily);
+}
+
+.auth-column .join-offers-intro .field-help,
+.auth-column .profile-invitations-intro {
+  font: var(--typeBody);
+}
+
+.auth-column .join-offer {
+  flex-wrap: nowrap;
+  gap: var(--spaceLg);
+  padding: 14px 0;
+  border: 0;
+  border-block: var(--borderInset);
+  border-radius: 0;
+  background: none;
+}
+
+.auth-column .join-offer + .join-offer {
+  border-top: 0;
+}
+
+.auth-column .join-offer .button {
+  flex: none;
+  width: 120px;
+}
+
+.auth-column .invitation-row {
+  padding: 14px 0 0;
+  border: 0;
+  border-top: var(--borderInset);
+  border-radius: 0;
+  background: none;
+}

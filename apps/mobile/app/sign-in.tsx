@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '../src/api.ts';
 import { PrimaryButton, QuietButton } from '../src/components/Buttons.tsx';
-import { AnswerInView } from '../src/components/Screen.tsx';
+import { AboveKeyboardView, AnswerInView } from '../src/components/Screen.tsx';
 import { focusChecked, focusRefused, keysStayDown } from '../src/components/Field.tsx';
 import { ProviderButtons } from '../src/components/ProviderSignIn.tsx';
 import { Text } from '../src/components/Text.tsx';
@@ -235,39 +235,42 @@ export default function SignIn() {
               />
               {checks.errors.email != null && <Says words={checks.errors.email} />}
             </Animated.View>
-            <Animated.View style={[styles.next, shaken]}>
-              <InsideField
-                key={passwordsWiped}
-                ref={passwordField}
-                label={t('signIn.password')}
-                onChangeText={(text) => {
-                  typed.current.password = text;
-                  checks.edited('password', text);
-                  if (status.kind === 'refused') setStatus({ kind: 'ready' });
-                }}
-                onBlur={() => checks.left('password', typed.current.password)}
-                password
-                state={checks.errors.password == null ? 'plain' : 'blank'}
-                submitting={busy}
-                autoComplete="current-password"
-                textContentType="password"
-                returnKeyType="go"
-                submitBehavior="submit"
-                onSubmitEditing={submit}
-                autoFocus={carried !== ''}
-                testID="signIn.password"
-              />
-            </Animated.View>
-            {checks.errors.password != null && <Says words={checks.errors.password} />}
-            {status.kind === 'refused' ? (
-              // The answer brings the reset link into sight too, above a foot docked on the keys.
-              <AnswerInView>
-                <Says words={t('signIn.refused')} />
-                {forgotLink}
-              </AnswerInView>
-            ) : (
-              forgotLink
-            )}
+            {/* A refusal answered before the keys come up: once they do, the reset link lifts with the field above the docked foot. */}
+            <AboveKeyboardView still={status.kind !== 'refused'}>
+              <Animated.View style={[styles.next, shaken]}>
+                <InsideField
+                  key={passwordsWiped}
+                  ref={passwordField}
+                  label={t('signIn.password')}
+                  onChangeText={(text) => {
+                    typed.current.password = text;
+                    checks.edited('password', text);
+                    if (status.kind === 'refused') setStatus({ kind: 'ready' });
+                  }}
+                  onBlur={() => checks.left('password', typed.current.password)}
+                  password
+                  state={checks.errors.password == null ? 'plain' : 'blank'}
+                  submitting={busy}
+                  autoComplete="current-password"
+                  textContentType="password"
+                  returnKeyType="go"
+                  submitBehavior="submit"
+                  onSubmitEditing={submit}
+                  autoFocus={carried !== ''}
+                  testID="signIn.password"
+                />
+              </Animated.View>
+              {checks.errors.password != null && <Says words={checks.errors.password} />}
+              {status.kind === 'refused' ? (
+                // The answer brings the reset link into sight too, above a foot docked on the keys.
+                <AnswerInView>
+                  <Says words={t('signIn.refused')} />
+                  {forgotLink}
+                </AnswerInView>
+              ) : (
+                forgotLink
+              )}
+            </AboveKeyboardView>
           </>
         )}
       </StepScreen>

@@ -12,13 +12,22 @@ import {
   recoveryFirstStep,
   recoveryIntroKey,
 } from '@soirely/domain';
-import { type FormEvent, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import {
+  type FormEvent,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router';
 
 import { api } from '../../api.ts';
 import { AuthPage } from '../../components/AuthPage.tsx';
 import { FieldError } from '../../components/FieldError.tsx';
+import { ColumnBack, ResendLine, Tick } from '../../components/Onboarding.tsx';
 import { offButton } from '../../offButton.ts';
 import { focusWhereSent, offField } from '../../offField.ts';
 import { useOneAtATime } from '../../oneAtATime.ts';
@@ -27,19 +36,29 @@ import { Pending } from '../../components/Pending.tsx';
 import { dropRecovery, heldRecovery, holdRecovery } from '../../heldRecovery.ts';
 import { currentLocale } from '../../i18n/index.ts';
 
+/** A request whose codes are out, kept while Start shows again so those codes still work. */
+type Asked = { recovery: string; state: RecoveryState };
+
 type View =
   | { kind: 'loading' }
-  | { kind: 'start'; opening: RecoveryOpening; limitedUntil: string | null; sending: boolean }
+  | {
+      kind: 'start';
+      opening: RecoveryOpening;
+      limitedUntil: string | null;
+      sending: boolean;
+      asked?: Asked;
+    }
   | { kind: 'nobody'; supportAddress: string }
-  | { kind: 'request'; recovery: string; state: RecoveryState }
+  | ({ kind: 'request'; opening?: RecoveryOpening } & Asked)
   | { kind: 'replaced' }
   | { kind: 'signIn' }
   | { kind: 'failed' };
 
 /** Lost both the authenticator and the recovery codes (sc-509): nothing on this page signs anybody in. */
 export function LostTwoFactor() {
-  const { t } = useTranslation();
-  const challenge = (useLocation().state as TwoFactorChallenge | null)?.challenge ?? null;
+  const navigate = useNavigate();
+  const signingIn = useLocation().state as TwoFactorChallenge | null;
+  const challenge = signingIn?.challenge ?? null;
   const [view, setView] = useState<View>({ kind: 'loading' });
   const starting = useOneAtATime();
 
@@ -66,7 +85,7 @@ export function LostTwoFactor() {
 
       if (opening.open != null) {
         holdRecovery(opening.open.recovery);
-        return { kind: 'request', ...opening.open };
+        return { kind: 'request', opening, ...opening.open };
       }
 
       return opening.nobody
@@ -114,9 +133,15 @@ export function LostTwoFactor() {
     }
   }
 
-  const start = (opening: RecoveryOpening): Promise<void> => starting(() => startOnce(opening));
+  const start = (opening: RecoveryOpening, asked?: Asked): Promise<void> =>
+    starting(() => startOnce(opening, asked));
 
-  async function startOnce(opening: RecoveryOpening): Promise<void> {
+  async function startOnce(opening: RecoveryOpening, asked?: Asked): Promise<void> {
+    if (asked != null) {
+      setView({ kind: 'request', opening, ...asked });
+      return;
+    }
+
     if (challenge == null) {
       setView({ kind: 'signIn' });
       return;
@@ -127,7 +152,7 @@ export function LostTwoFactor() {
     try {
       const started = await api.startRecovery(challenge);
       holdRecovery(started.recovery);
-      setView({ kind: 'request', ...started });
+      setView({ kind: 'request', opening, ...started });
     } catch (refusal) {
       if (refusal instanceof ApiError && refusal.is('too_many_attempts')) {
         setView({
@@ -150,13 +175,14 @@ export function LostTwoFactor() {
   if (view.kind === 'loading') return <Pending />;
 
   return (
-    <AuthPage back={{ label: t('twoFactor.title') }}>
+    <AuthPage bare end={null}>
       {view.kind === 'start' && (
         <Start
           opening={view.opening}
           limitedUntil={view.limitedUntil}
           sending={view.sending}
-          onSend={() => void start(view.opening)}
+          onSend={() => void start(view.opening, view.asked)}
+          onBack={() => void navigate('/sign-in/code', { state: signingIn })}
         />
       )}
       {view.kind === 'nobody' && <Nobody supportAddress={view.supportAddress} />}
@@ -166,6 +192,18 @@ export function LostTwoFactor() {
           recovery={view.recovery}
           state={view.state}
           onState={(state) => setView({ ...view, state })}
+          onBack={
+            view.opening == null
+              ? undefined
+              : () =>
+                  setView({
+                    kind: 'start',
+                    opening: view.opening!,
+                    limitedUntil: null,
+                    sending: false,
+                    asked: { recovery: view.recovery, state: view.state },
+                  })
+          }
           onNobody={() => {
             dropRecovery();
             setView({ kind: 'nobody', supportAddress: view.state.supportAddress });
@@ -185,33 +223,51 @@ export function LostTwoFactor() {
   );
 }
 
-function Heading({ title, intro, mark }: { title: string; intro: string; mark?: Mark }) {
+function Heading({
+  title,
+  intro,
+  done = false,
+  children,
+}: {
+  title: string;
+  intro: string;
+  done?: boolean;
+  /** A notice, under the title's lines. */
+  children?: ReactNode;
+}) {
   const heading = useRef<HTMLHeadingElement>(null);
 
   useLayoutEffect(() => heading.current?.focus(), [title]);
 
+  const h1 = (
+    <h1 ref={heading} tabIndex={-1}>
+      {title}
+    </h1>
+  );
+
   return (
     <div className="auth-heading">
-      {mark != null && (
-        <p className={`request-state request-state-${mark.tone}`}>
-          <span className={`mark mark-${mark.tone}`} aria-hidden="true">
-            {mark.glyph}
-          </span>
-          <span>{mark.word}</span>
-        </p>
+      {done ? (
+        <div className="auth-done">
+          <Tick size={26} />
+          {h1}
+        </div>
+      ) : (
+        h1
       )}
-      <h1 ref={heading} tabIndex={-1}>
-        {title}
-      </h1>
       <p>{intro}</p>
+      {children}
     </div>
   );
 }
 
-interface Mark {
-  tone: 'attention' | 'done' | 'broken' | 'ended';
-  glyph: string;
-  word: string;
+function Notice({ title, body, alert = false }: { title: string; body: string; alert?: boolean }) {
+  return (
+    <div className="auth-notice" role={alert ? 'alert' : 'status'}>
+      <p className="auth-notice-title">{title}</p>
+      <p>{body}</p>
+    </div>
+  );
 }
 
 /** A newer request was started on another device (pm #1267): its codes went there, so this one starts again. */
@@ -220,12 +276,8 @@ function Replaced({ onStartAgain }: { onStartAgain: () => void }) {
 
   return (
     <>
-      <Heading
-        title={t('lostTwoFactor.replacedTitle')}
-        intro={t('lostTwoFactor.replacedIntro')}
-        mark={{ tone: 'ended', glyph: '–', word: t('lostTwoFactor.replacedMark') }}
-      />
-      <p className="muted">{t('lostTwoFactor.replacedNote')}</p>
+      <Heading title={t('lostTwoFactor.replacedTitle')} intro={t('lostTwoFactor.replacedIntro')} />
+      <p className="field-help">{t('lostTwoFactor.replacedNote')}</p>
       <button className="button button-primary" type="button" onClick={onStartAgain}>
         {t('lostTwoFactor.startAgain')}
       </button>
@@ -253,34 +305,33 @@ function Start({
   limitedUntil,
   sending,
   onSend,
+  onBack,
 }: {
   opening: RecoveryOpening;
   limitedUntil: string | null;
   sending: boolean;
   onSend: () => void;
+  onBack: () => void;
 }) {
   const { t } = useTranslation();
   const organisations = listed(opening.organisations, 'disjunction');
 
   return (
     <>
-      <Heading title={t('lostTwoFactor.startTitle')} intro={t('lostTwoFactor.startIntro')} />
-
-      {limitedUntil != null && (
-        <div className="notice notice-attention" role="status">
-          <span className="mark mark-attention" aria-hidden="true">
-            !
-          </span>
-          <div className="notice-body">
-            <p className="notice-title">{t('lostTwoFactor.limitedTitle')}</p>
-            <p>
-              {limitedUntil === ''
+      <ColumnBack onClick={onBack} />
+      <Heading title={t('lostTwoFactor.startTitle')} intro={t('lostTwoFactor.startIntro')}>
+        {limitedUntil != null && (
+          <Notice
+            title={t('lostTwoFactor.limitedTitle')}
+            body={
+              limitedUntil === ''
                 ? t('lostTwoFactor.limitedBodyLater')
-                : t('lostTwoFactor.limitedBody', { when: limitedUntil })}
-            </p>
-          </div>
-        </div>
-      )}
+                : t('lostTwoFactor.limitedBody', { when: limitedUntil })
+            }
+            alert
+          />
+        )}
+      </Heading>
 
       <ol className="steps-list">
         <li>
@@ -309,7 +360,7 @@ function Start({
           <span>{t('lostTwoFactor.step3', { organisations })}</span>
         </li>
       </ol>
-      <p>{t('lostTwoFactor.startNote')}</p>
+      <p className="field-help">{t('lostTwoFactor.startNote')}</p>
 
       <button
         className="button button-primary"
@@ -344,15 +395,7 @@ function Failed({ onRetry }: { onRetry: () => void }) {
 
   return (
     <>
-      <div className="notice notice-broken" role="alert">
-        <span className="mark mark-broken" aria-hidden="true">
-          ✕
-        </span>
-        <div className="notice-body">
-          <p className="notice-title">{t('lostTwoFactor.failedTitle')}</p>
-          <p>{t('lostTwoFactor.failedBody')}</p>
-        </div>
-      </div>
+      <Notice title={t('lostTwoFactor.failedTitle')} body={t('lostTwoFactor.failedBody')} alert />
       <button className="button" type="button" onClick={onRetry}>
         {t('lostTwoFactor.retry')}
       </button>
@@ -368,6 +411,7 @@ function Request({
   onNobody,
   onAskAgain,
   onReplaced,
+  onBack,
 }: {
   recovery: string;
   state: RecoveryState;
@@ -375,6 +419,7 @@ function Request({
   onNobody: () => void;
   onAskAgain: () => void;
   onReplaced: () => void;
+  onBack: (() => void) | undefined;
 }) {
   const supportAddress = state.supportAddress;
   const { t } = useTranslation();
@@ -407,6 +452,7 @@ function Request({
         onState={onState}
         onNobody={onNobody}
         onReplaced={onReplaced}
+        onBack={onBack}
       />
     );
   }
@@ -417,21 +463,18 @@ function Request({
         <Heading
           title={t('lostTwoFactor.waitingTitle')}
           intro={t(recoveryIntroKey('waiting', state.nobody), { organisations })}
-          mark={{ tone: 'attention', glyph: '…', word: t('lostTwoFactor.waitingMark') }}
         />
-        <div className="notice notice-quiet">
-          <div className="notice-body">
-            <p>{t('lostTwoFactor.asked', { when: state.asked })}</p>
-            <p>{t('lostTwoFactor.endsBy', { when: state.expires })}</p>
-          </div>
+        <div className="auth-lines">
+          <p>{t('lostTwoFactor.asked', { when: state.asked })}</p>
+          <p className="muted">{t('lostTwoFactor.endsBy', { when: state.expires })}</p>
         </div>
-        <p>{t('lostTwoFactor.stayOut', { email: state.email })}</p>
+        <p className="muted">{t('lostTwoFactor.stayOut', { email: state.email })}</p>
         {state.nobody && supportAddress !== '' && (
           <a className="button" href={`mailto:${supportAddress}`}>
             {t('lostTwoFactor.emailSupport', { address: supportAddress })}
           </a>
         )}
-        <div className="auth-footnote">
+        <p className="auth-aside">
           <span>{t('lostTwoFactor.notYou')}</span>
           <button
             className="link-button"
@@ -447,7 +490,7 @@ function Request({
           >
             {t('lostTwoFactor.cancel')}
           </button>
-        </div>
+        </p>
         <BackToSignIn />
       </>
     );
@@ -459,7 +502,7 @@ function Request({
         <Heading
           title={t('lostTwoFactor.approvedTitle')}
           intro={t(recoveryIntroKey('approved', state.nobody), { organisations: anyOf })}
-          mark={{ tone: 'done', glyph: '✓', word: t('lostTwoFactor.approvedMark') }}
+          done
         />
         <button
           className="button button-primary"
@@ -481,7 +524,6 @@ function Request({
         <Heading
           title={t('lostTwoFactor.turnedDownTitle')}
           intro={t(recoveryIntroKey('turned_down', state.nobody), { organisations: anyOf })}
-          mark={{ tone: 'broken', glyph: '✕', word: t('lostTwoFactor.turnedDownMark') }}
         />
         {supportAddress !== '' && (
           <a className="button" href={`mailto:${supportAddress}`}>
@@ -499,7 +541,6 @@ function Request({
         <Heading
           title={t('lostTwoFactor.endedTitle')}
           intro={t(recoveryIntroKey('expired', state.nobody))}
-          mark={{ tone: 'ended', glyph: '–', word: t('lostTwoFactor.endedMark') }}
         />
         {state.nobody && supportAddress !== '' && (
           <a className="button" href={`mailto:${supportAddress}`}>
@@ -521,7 +562,6 @@ function Request({
       <Heading
         title={t('lostTwoFactor.cancelledTitle')}
         intro={t('lostTwoFactor.cancelledIntro')}
-        mark={{ tone: 'ended', glyph: '–', word: t('lostTwoFactor.cancelledMark') }}
       />
       <BackToSignIn />
     </>
@@ -536,12 +576,14 @@ function Codes({
   onState,
   onNobody,
   onReplaced,
+  onBack,
 }: {
   recovery: string;
   state: RecoveryState;
   onState: (state: RecoveryState) => void;
   onNobody: () => void;
   onReplaced: () => void;
+  onBack: (() => void) | undefined;
 }) {
   const { t } = useTranslation();
   const codes = state.codes;
@@ -721,6 +763,7 @@ function Codes({
 
   return (
     <>
+      {onBack != null && <ColumnBack onClick={onBack} />}
       <Heading
         title={hasPhone ? t('lostTwoFactor.codesTitle') : t('lostTwoFactor.codesTitleEmailOnly')}
         intro={
@@ -728,21 +771,16 @@ function Codes({
             ? t('lostTwoFactor.codesIntro', { email: state.email, phone: number })
             : t('lostTwoFactor.codesIntroEmailOnly', { email: state.email })
         }
-      />
-
-      {spent && (
-        <div className="notice notice-attention" role="status">
-          <span className="mark mark-attention" aria-hidden="true">
-            !
-          </span>
-          <div className="notice-body">
-            <p className="notice-title">
-              {codes?.state === 'expired'
+      >
+        {spent && (
+          <Notice
+            title={
+              codes?.state === 'expired'
                 ? t('lostTwoFactor.expiredTitle')
-                : t('lostTwoFactor.exhaustedTitle')}
-            </p>
-            <p>
-              {codes?.state === 'exhausted'
+                : t('lostTwoFactor.exhaustedTitle')
+            }
+            body={
+              codes?.state === 'exhausted'
                 ? t('lostTwoFactor.exhaustedBody')
                 : hasPhone
                   ? t('lostTwoFactor.expiredBody', {
@@ -750,105 +788,103 @@ function Codes({
                         ? t('lostTwoFactor.lastWhatsApp')
                         : t('lostTwoFactor.lastText'),
                     })
-                  : t('lostTwoFactor.expiredBodyEmailOnly')}
-            </p>
-          </div>
-        </div>
-      )}
-
-      {failed && (
-        <div className="notice notice-broken" role="alert">
-          <span className="mark mark-broken" aria-hidden="true">
-            ✕
-          </span>
-          <div className="notice-body">
-            <p className="notice-title">{t('lostTwoFactor.failedTitle')}</p>
-            <p>{t('lostTwoFactor.failedBody')}</p>
-          </div>
-        </div>
-      )}
+                  : t('lostTwoFactor.expiredBodyEmailOnly')
+            }
+          />
+        )}
+        {failed && (
+          <Notice
+            title={t('lostTwoFactor.failedTitle')}
+            body={t('lostTwoFactor.failedBody')}
+            alert
+          />
+        )}
+      </Heading>
 
       {spent ? (
         <button className="button button-primary" type="button" onClick={() => void resend()}>
           {t('lostTwoFactor.resend')}
         </button>
       ) : (
-        <form className="auth-form" noValidate onSubmit={(event) => void submit(event)}>
-          {fields.map((field) => (
-            <div className="field" key={field}>
-              <label htmlFor={field}>
-                {field === 'emailCode'
-                  ? t('lostTwoFactor.emailLabel')
-                  : wording.fromWhatsApp
-                    ? t('lostTwoFactor.phoneLabelWhatsApp')
-                    : t('lostTwoFactor.phoneLabel')}
-              </label>
-              {field === 'emailCode' ? (
-                <span className="field-help">
-                  {t('lostTwoFactor.sentTo', { email: state.email })}
-                </span>
-              ) : (
-                // One live element whose text changes, so a fallback is announced without moving focus.
-                <span className="field-help" aria-live="polite">
-                  {sent}
-                </span>
-              )}
-              <input
-                className={errors[field] == null ? 'code-input' : 'code-input input-wrong'}
-                id={field}
-                name={field}
-                type="text"
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                autoCorrect="off"
-                spellCheck={false}
-                maxLength={7}
-                value={typed[field]}
-                {...offField(asking)}
-                aria-invalid={errors[field] != null}
-                aria-describedby={errors[field] == null ? undefined : `${field}-error`}
-                onChange={(event) => {
-                  setTyped((now) => ({ ...now, [field]: event.target.value }));
-                  setErrors((now) => ({ ...now, [field]: undefined }));
-                }}
-              />
-              {errors[field] != null && (
-                <FieldError id={`${field}-error`} message={errors[field]} />
-              )}
+        <>
+          <form className="auth-form" noValidate onSubmit={(event) => void submit(event)}>
+            <div className="auth-fields">
+              {fields.map((field) => (
+                <div className={errors[field] == null ? 'field' : 'field field-wrong'} key={field}>
+                  <label htmlFor={field}>
+                    {field === 'emailCode'
+                      ? t('lostTwoFactor.emailLabel')
+                      : wording.fromWhatsApp
+                        ? t('lostTwoFactor.phoneLabelWhatsApp')
+                        : t('lostTwoFactor.phoneLabel')}
+                  </label>
+                  <input
+                    className={
+                      errors[field] == null ? 'input code-field' : 'input code-field input-wrong'
+                    }
+                    id={field}
+                    name={field}
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    maxLength={7}
+                    value={typed[field]}
+                    {...offField(asking)}
+                    aria-invalid={errors[field] != null}
+                    aria-describedby={[
+                      errors[field] == null ? null : `${field}-error`,
+                      `${field}-sent`,
+                    ]
+                      .filter((id) => id != null)
+                      .join(' ')}
+                    onChange={(event) => {
+                      setTyped((now) => ({ ...now, [field]: event.target.value }));
+                      setErrors((now) => ({ ...now, [field]: undefined }));
+                    }}
+                  />
+                  {errors[field] != null && (
+                    <FieldError id={`${field}-error`} message={errors[field]} />
+                  )}
+                  {field === 'emailCode' ? (
+                    <span className="field-help" id={`${field}-sent`}>
+                      {t('lostTwoFactor.sentTo', { email: state.email })}
+                    </span>
+                  ) : (
+                    // One live element whose text changes, so a fallback is announced without moving focus.
+                    <span className="field-help" id={`${field}-sent`} aria-live="polite">
+                      {sent}
+                    </span>
+                  )}
+                </div>
+              ))}
             </div>
-          ))}
 
-          <button className="button button-primary" type="submit" aria-busy={asking}>
-            {asking ? t('lostTwoFactor.asking') : t('lostTwoFactor.ask')}
-          </button>
-
-          <div className="resend">
-            <button
-              className="button"
-              type="button"
-              {...resending.button}
-              onClick={() => void resend()}
-            >
-              {resending.label}
+            <button className="button button-primary" type="submit" aria-busy={asking}>
+              {asking ? t('lostTwoFactor.asking') : t('lostTwoFactor.ask')}
             </button>
-            <p>{t('lostTwoFactor.resendNote')}</p>
-            <span className="visually-hidden" role="status">
-              {resending.status}
-            </span>
-          </div>
+          </form>
 
-          {hasPhone && wording.offerText && (
-            <button className="button" type="button" onClick={() => void textInstead()}>
-              {t('lostTwoFactor.textInstead')}
-            </button>
-          )}
-          {textingFailed && (
-            <FieldError id="text-instead-error" message={t('lostTwoFactor.textInsteadFailed')} />
-          )}
-        </form>
+          <ResendLine
+            resending={resending}
+            lead={hasPhone ? t('lostTwoFactor.noCodes') : t('onboarding.noCode')}
+            note={t('lostTwoFactor.resendNote')}
+            onResend={() => void resend()}
+          >
+            {hasPhone && wording.offerText && (
+              <button className="link-button" type="button" onClick={() => void textInstead()}>
+                {t('lostTwoFactor.textInstead')}
+              </button>
+            )}
+            {textingFailed && (
+              <FieldError id="text-instead-error" message={t('lostTwoFactor.textInsteadFailed')} />
+            )}
+          </ResendLine>
+        </>
       )}
 
-      <BackToSignIn />
+      {onBack == null && <BackToSignIn />}
     </>
   );
 }

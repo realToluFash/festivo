@@ -33,7 +33,7 @@ export function SignIn() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const { state: carried } = useLocation() as {
-    state: { timedOut?: TimedOut; providerOnly?: ProviderOnly } | null;
+    state: { timedOut?: TimedOut; providerOnly?: ProviderOnly; email?: string } | null;
   };
   const [status, setStatus] = useState<Status>(() => {
     const provider = params.get('provider-failed');
@@ -165,7 +165,7 @@ export function SignIn() {
                   autoComplete="email"
                   autoCorrect="off"
                   spellCheck={false}
-                  defaultValue={status.kind === 'timedOut' ? status.rule.email : undefined}
+                  defaultValue={status.kind === 'timedOut' ? status.rule.email : carried?.email}
                   {...offField(busy)}
                   required
                   aria-invalid={checks.errors.email != null}

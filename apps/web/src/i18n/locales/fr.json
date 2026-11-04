@@ -1074,6 +1074,7 @@
     "resend": "Envoyer de nouveaux codes",
     "resendIn": "Envoyer de nouveaux codes dans {{time}}",
     "resendNote": "Les nouveaux codes remplacent les précédents.",
+    "noCodes": "Vous n’avez pas reçu les codes ?",
     "textInstead": "Me l’envoyer par SMS",
     "textInsteadFailed": "Ce code ne peut plus être envoyé par SMS. Envoyez de nouveaux codes.",
     "expiredTitle": "Ces codes ont expiré",
@@ -1118,7 +1119,7 @@
     "setupIntro": "La double authentification a été désactivée pour vous permettre de revenir. Configurez-la à nouveau pour qu’un mot de passe seul ne suffise pas à ouvrir votre compte.",
     "setup": "Configurer la double authentification",
     "notNow": "Pas maintenant",
-    "notNowNote": "Vous pouvez la configurer à tout moment dans Paramètres › Sécurité.",
+    "notNowNote": "Vous pouvez la configurer à tout moment dans Votre compte › Sécurité.",
     "notMeTitle": "Ce n’était pas vous ?",
     "notMeIntro": "Cela annule toute demande en attente pour accéder à votre compte sans la double authentification, et déconnecte toutes les sessions.",
     "notMeButton": "Annuler et me déconnecter partout",
@@ -1581,20 +1582,16 @@
     "orgDeleted": "Supprimée",
     "invited": "{{inviter}} a invité {{email}} à rejoindre l’organisation avec le rôle {{role}}.",
     "worksUntil": "Jusqu’au {{date}}, cette invitation reste valable.",
-    "createTitle": "Créer un compte",
     "emailLocked": "C’est l’adresse à laquelle l’invitation a été envoyée. Elle est déjà confirmée : aucun code à saisir.",
     "passwordBlank": "Choisissez un mot de passe.",
     "passwordShort": "Utilisez au moins {{count, number}} caractères.",
     "createAndJoin": "Créer le compte et rejoindre",
     "joining": "Adhésion en cours…",
     "failedTitle": "L’adhésion n’a pas abouti",
-    "haveAccount": "J’ai déjà un compte",
-    "emailTakenHeading": "Vous avez déjà un compte",
     "emailTakenBody": "{{email}} a déjà un compte Soirely. Connectez-vous avec ce compte pour y accepter l’invitation.",
     "signInToAccept": "Connectez-vous pour accepter",
     "forgotPassword": "Mot de passe oublié ?",
     "invitedYou": "{{inviter}} vous invite à rejoindre l’organisation avec le rôle {{role}}.",
-    "signedInUntil": "Connexion avec {{email}} · jusqu’au {{date}}, cette invitation reste valable.",
     "accept": "Accepter et rejoindre",
     "decline": "Refuser",
     "declineNote": "Si vous refusez, {{inviter}} le saura. Rien d’autre ne change.",
@@ -1609,33 +1606,27 @@
     "refused": {
       "invitation_expired": {
         "title": "Cette invitation a expiré",
-        "word": "Expirée",
-        "body": "Cette invitation a expiré. Demandez à {{inviter}} de vous en envoyer une nouvelle."
+        "line": "Demandez à {{inviter}} de vous en envoyer une nouvelle."
       },
       "invitation_revoked": {
         "title": "Cette invitation a été retirée",
-        "word": "Retirée",
-        "body": "L’organisation {{organisation}} a retiré cette invitation. S’il s’agit selon vous d’une erreur, adressez-vous à la personne à l’origine de l’invitation."
+        "line": "S’il s’agit selon vous d’une erreur, adressez-vous à la personne à l’origine de l’invitation."
       },
       "invitation_accepted": {
         "title": "Déjà acceptée",
-        "word": "Déjà acceptée",
-        "body": "Vous avez déjà accepté cette invitation."
+        "line": "Vous faites déjà partie de {{organisation}}."
       },
       "invitation_declined": {
         "title": "Déjà refusée",
-        "word": "Déjà refusée",
-        "body": "Vous avez refusé cette invitation. Si vous avez changé d’avis, demandez à {{inviter}} de vous inviter de nouveau."
+        "line": "Si vous avez changé d’avis, demandez à {{inviter}} de vous inviter de nouveau."
       },
       "invitation_not_yours": {
         "title": "Cette invitation est destinée à une autre personne",
-        "word": "Connexion avec un autre compte",
-        "body": "Cette invitation est destinée à {{email}}. Vous utilisez le compte {{signedInAs}}."
+        "line": "Elle a été envoyée à {{email}}. Vous utilisez le compte {{signedInAs}}."
       },
       "organisation_deleted": {
         "title": "Cette organisation n’existe plus",
-        "word": "Organisation supprimée",
-        "body": "L’organisation {{organisation}} n’existe plus : cette invitation ne peut donc pas être acceptée."
+        "line": "L’invitation à rejoindre {{organisation}} ne peut plus être acceptée."
       }
     }
   },
@@ -1988,7 +1979,7 @@
     "limitedOnDay": "Trop de demandes pour le moment. Réessayez le {{day}} à {{time}}.",
     "limitedLater": "Trop de demandes pour le moment. Réessayez plus tard.",
     "deadTitle": "Ce lien ne fonctionne pas",
-    "deadBody": "Ce lien ne fonctionne plus. Demandez-en un nouveau à l’organisation.",
+    "deadLine": "Demandez-en un nouveau à l’organisation.",
     "goHome": "Aller sur Soirely",
     "failedTitle": "La demande n’a pas abouti",
     "failedBody": "Un problème est survenu en cours de route. Réessayez dans un instant."
@@ -2241,6 +2232,6 @@
   "onboarding": {
     "step": "Étape {{step, number}} sur 2",
     "back": "Retour",
-    "noCode": "Pas de code ?"
+    "noCode": "Vous n’avez pas reçu le code ?"
   }
 }

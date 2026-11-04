@@ -486,7 +486,7 @@
     "failedBody": "Algo ha fallado en el camino. Inténtelo de nuevo en un momento.",
     "nameBlank": "Introduzca su nombre completo.",
     "passwordBlank": "Introduzca una contraseña.",
-    "tooShort": "Usa al menos {{count, number}} caracteres."
+    "tooShort": "Use al menos {{count, number}} caracteres."
   },
   "account": {
     "title": "Su cuenta",
@@ -1074,6 +1074,7 @@
     "resend": "Enviar códigos nuevos",
     "resendIn": "Enviar códigos nuevos en {{time}}",
     "resendNote": "Los códigos nuevos sustituyen a los anteriores.",
+    "noCodes": "¿No ha recibido los códigos?",
     "textInstead": "Enviármelo por SMS",
     "textInsteadFailed": "Ese código ya no se puede enviar por SMS. Envíe códigos nuevos.",
     "expiredTitle": "Esos códigos han caducado",
@@ -1118,7 +1119,7 @@
     "setupIntro": "Se desactivó la verificación en dos pasos para que pudiera volver a entrar. Configúrela de nuevo para que una contraseña sola no abra su cuenta.",
     "setup": "Configurar la verificación en dos pasos",
     "notNow": "Ahora no",
-    "notNowNote": "Puede configurarla en cualquier momento en Ajustes › Seguridad.",
+    "notNowNote": "Puede configurarla en cualquier momento en Su cuenta › Seguridad.",
     "notMeTitle": "¿No ha sido usted?",
     "notMeIntro": "Esto cancela cualquier solicitud pendiente para entrar en su cuenta sin la verificación en dos pasos y cierra todas las sesiones.",
     "notMeButton": "Cancelar y cerrar todas las sesiones",
@@ -1581,20 +1582,16 @@
     "orgDeleted": "Eliminada",
     "invited": "{{inviter}} ha invitado a {{email}} a unirse con el rol {{role}}.",
     "worksUntil": "Esta invitación es válida hasta el {{date}}.",
-    "createTitle": "Crear una cuenta",
     "emailLocked": "Es la dirección a la que se envió la invitación. Ya está confirmada, así que no hay que introducir ningún código.",
     "passwordBlank": "Elija una contraseña.",
     "passwordShort": "Use al menos {{count, number}} caracteres.",
     "createAndJoin": "Crear cuenta y unirse",
     "joining": "Uniéndose…",
     "failedTitle": "No se ha podido unir",
-    "haveAccount": "Ya tengo una cuenta",
-    "emailTakenHeading": "Ya tiene una cuenta",
     "emailTakenBody": "{{email}} ya tiene una cuenta de Soirely. Inicie sesión con ella y podrá aceptar la invitación allí.",
     "signInToAccept": "Inicie sesión para aceptar",
     "forgotPassword": "¿Ha olvidado su contraseña?",
     "invitedYou": "{{inviter}} le ha invitado a unirse con el rol {{role}}.",
-    "signedInUntil": "Sesión iniciada como {{email}} · esta invitación es válida hasta el {{date}}.",
     "accept": "Aceptar y unirse",
     "decline": "Rechazar",
     "declineNote": "Si la rechaza, {{inviter}} sabrá que ha dicho que no. No cambia nada más.",
@@ -1609,33 +1606,27 @@
     "refused": {
       "invitation_expired": {
         "title": "Esta invitación ha caducado",
-        "word": "Caducada",
-        "body": "Esta invitación ha caducado. Pida a {{inviter}} que le envíe una nueva."
+        "line": "Pida a {{inviter}} que le envíe una nueva."
       },
       "invitation_revoked": {
         "title": "Esta invitación se ha retirado",
-        "word": "Retirada",
-        "body": "{{organisation}} ha retirado esta invitación. Si cree que es un error, consúltelo con quien le invitó."
+        "line": "Si cree que es un error, consúltelo con quien le invitó."
       },
       "invitation_accepted": {
         "title": "Ya aceptada",
-        "word": "Ya aceptada",
-        "body": "Ya ha aceptado esta invitación."
+        "line": "Ya forma parte de {{organisation}}."
       },
       "invitation_declined": {
         "title": "Ya rechazada",
-        "word": "Ya rechazada",
-        "body": "Ha rechazado esta invitación. Si ha cambiado de idea, pida a {{inviter}} que le vuelva a invitar."
+        "line": "Si ha cambiado de idea, pida a {{inviter}} que le vuelva a invitar."
       },
       "invitation_not_yours": {
         "title": "Esta invitación es para otra persona",
-        "word": "Sesión iniciada con otra cuenta",
-        "body": "Esta invitación es para {{email}}. Ha iniciado sesión como {{signedInAs}}."
+        "line": "Se envió a {{email}}. Ha iniciado sesión como {{signedInAs}}."
       },
       "organisation_deleted": {
         "title": "Esta organización ya no existe",
-        "word": "Organización eliminada",
-        "body": "{{organisation}} ya no existe, así que no se puede aceptar esta invitación."
+        "line": "Ya no se puede aceptar la invitación a {{organisation}}."
       }
     }
   },
@@ -1988,7 +1979,7 @@
     "limitedOnDay": "Demasiadas solicitudes por ahora. Inténtelo de nuevo el {{day}} a las {{time}}.",
     "limitedLater": "Demasiadas solicitudes por ahora. Inténtelo de nuevo más tarde.",
     "deadTitle": "Este enlace no funciona",
-    "deadBody": "Este enlace ya no funciona. Pida uno nuevo a la organización.",
+    "deadLine": "Pida uno nuevo a la organización.",
     "goHome": "Ir a Soirely",
     "failedTitle": "No se ha podido enviar la solicitud",
     "failedBody": "Algo ha fallado por el camino. Vuelva a intentarlo en un momento."
@@ -2241,6 +2232,6 @@
   "onboarding": {
     "step": "Paso {{step, number}} de 2",
     "back": "Atrás",
-    "noCode": "¿No te ha llegado el código?"
+    "noCode": "¿No ha recibido el código?"
   }
 }

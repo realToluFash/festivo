@@ -42,6 +42,11 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **4 Nov 2026. As linhas sob cada recusa de um convite na web de secretária**
+  (`web:join.refused.*.line`, `web:requestToJoin.deadLine`, sc-29487 para sc-29066). Cada linha
+  não repete o seu título: a de uma organização eliminada é "O convite para aderir a
+  {{organisation}} já não pode ser aceite". Já aceite diz "Já é membro de {{organisation}}", como
+  `requestToJoin.member`; quem o enviou é "quem lhe enviou o convite".
 - **4 Nov 2026. Os passos de uma conta nova na app** (`mobile:steps.*`, sc-29126 para
   sc-29069). A barra diz "Passo {{step}} de {{steps}}"; Skip é "Saltar", nunca "Ignorar"; Check
   WhatsApp é "Veja o WhatsApp", como "Veja o seu e-mail". Quem a equipa contacta é "falar

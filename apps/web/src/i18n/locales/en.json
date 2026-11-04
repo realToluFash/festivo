@@ -1047,6 +1047,7 @@
     "resend": "Send new codes",
     "resendIn": "Send new codes in {{time}}",
     "resendNote": "New codes replace the last ones.",
+    "noCodes": "No codes?",
     "textInstead": "Text it to me instead",
     "textInsteadFailed": "That code can’t be texted now. Send new codes.",
     "expiredTitle": "Those codes have expired",
@@ -1091,7 +1092,7 @@
     "setupIntro": "Two-factor was turned off to let you back in. Set it up again so a password alone can’t open your account.",
     "setup": "Set up two-factor",
     "notNow": "Not now",
-    "notNowNote": "You can set it up any time in Settings › Security.",
+    "notNowNote": "You can set it up any time in Your account › Security.",
     "notMeTitle": "This wasn’t you?",
     "notMeIntro": "This cancels any request to get into your account without two-factor that is still waiting, and signs out every session.",
     "notMeButton": "Cancel and sign out everywhere",
@@ -1545,20 +1546,16 @@
     "orgDeleted": "Deleted",
     "invited": "{{inviter}} invited {{email}} to join as {{role}}.",
     "worksUntil": "This invitation works until {{date}}.",
-    "createTitle": "Create an account",
     "emailLocked": "This is the address the invitation was sent to. It is already confirmed, so there is no code to enter.",
     "passwordBlank": "Choose a password.",
     "passwordShort": "Use at least {{count, number}} characters.",
     "createAndJoin": "Create account and join",
     "joining": "Joining…",
     "failedTitle": "Joining did not work",
-    "haveAccount": "I already have an account",
-    "emailTakenHeading": "You already have an account",
     "emailTakenBody": "{{email}} already has a Soirely account. Sign in with it, and you can accept the invitation there.",
     "signInToAccept": "Sign in to accept",
     "forgotPassword": "Forgot your password?",
     "invitedYou": "{{inviter}} invited you to join as {{role}}.",
-    "signedInUntil": "Signed in as {{email}} · this invitation works until {{date}}.",
     "accept": "Accept and join",
     "decline": "Decline",
     "declineNote": "Declining tells {{inviter}} you said no. Nothing else changes.",
@@ -1573,33 +1570,27 @@
     "refused": {
       "invitation_expired": {
         "title": "This invitation has expired",
-        "word": "Expired",
-        "body": "This invitation has expired. Ask {{inviter}} to send a new one."
+        "line": "Ask {{inviter}} to send a new one."
       },
       "invitation_revoked": {
         "title": "This invitation was withdrawn",
-        "word": "Withdrawn",
-        "body": "This invitation was withdrawn by {{organisation}}. If you think that is a mistake, ask whoever invited you."
+        "line": "If you think this is a mistake, ask the person who invited you."
       },
       "invitation_accepted": {
         "title": "Already accepted",
-        "word": "Already accepted",
-        "body": "You already accepted this invitation."
+        "line": "You are already a member of {{organisation}}."
       },
       "invitation_declined": {
         "title": "Already declined",
-        "word": "Already declined",
-        "body": "You declined this invitation. Ask {{inviter}} to invite you again if you changed your mind."
+        "line": "If you have changed your mind, ask {{inviter}} to invite you again."
       },
       "invitation_not_yours": {
         "title": "This invitation is for someone else",
-        "word": "Signed in as someone else",
-        "body": "This invitation is for {{email}}. You are signed in as {{signedInAs}}."
+        "line": "It was sent to {{email}}. You are signed in as {{signedInAs}}."
       },
       "organisation_deleted": {
         "title": "This organisation is gone",
-        "word": "Organisation deleted",
-        "body": "{{organisation}} no longer exists, so this invitation cannot be accepted."
+        "line": "The invitation to {{organisation}} can no longer be accepted."
       }
     }
   },
@@ -1630,7 +1621,7 @@
       },
       "invitation_revoked": {
         "word": "Withdrawn",
-        "body": "This invitation was withdrawn by {{organisation}}. If you think that is a mistake, ask whoever invited you."
+        "body": "This invitation was withdrawn by {{organisation}}. If you think this is a mistake, ask the person who invited you."
       },
       "invitation_accepted": {
         "word": "Already accepted",
@@ -1638,8 +1629,8 @@
       },
       "invitation_declined": {
         "word": "Already declined",
-        "body": "You declined this invitation. Ask {{inviter}} to invite you again if you changed your mind.",
-        "bodyNobody": "You declined this invitation. Ask whoever invited you to invite you again if you changed your mind."
+        "body": "You declined this invitation. If you have changed your mind, ask {{inviter}} to invite you again.",
+        "bodyNobody": "You declined this invitation. If you have changed your mind, ask the person who invited you to invite you again."
       },
       "invitation_not_yours": {
         "word": "Signed in as someone else",
@@ -1937,7 +1928,7 @@
     "limitedOnDay": "Too many requests for now. Try again on {{day}} at {{time}}.",
     "limitedLater": "Too many requests for now. Try again later.",
     "deadTitle": "This link does not work",
-    "deadBody": "This link does not work any more. Ask the organisation for a new one.",
+    "deadLine": "Ask the organisation for a new one.",
     "goHome": "Go to Soirely",
     "failedTitle": "Asking did not work",
     "failedBody": "Something went wrong on the way. Try again in a moment."

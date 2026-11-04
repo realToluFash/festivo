@@ -191,7 +191,7 @@ describe('an invitation in the organisation switcher', () => {
     expect(await within(row).findByText('Withdrawn')).toBeDefined();
     expect(
       within(row).getByText(
-        'This invitation was withdrawn by Adunni Weddings. If you think that is a mistake, ask whoever invited you.',
+        'This invitation was withdrawn by Adunni Weddings. If you think this is a mistake, ask the person who invited you.',
       ),
     ).toBeDefined();
   });

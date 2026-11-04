@@ -1,4 +1,4 @@
-import { type Ref, useEffect, useId, useState } from 'react';
+import { type Ref, useEffect, useId, useRef, useState } from 'react';
 import {
   Animated,
   Platform,
@@ -9,11 +9,13 @@ import {
   type TextInputProps,
   useWindowDimensions,
   View,
+  type ViewInstance,
 } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
 
 import { FocusEdge, useHeld } from '../components/Field.tsx';
+import { fieldFocused, fieldLeft } from '../components/focusedField.ts';
 import { Text } from '../components/Text.tsx';
 import { FIELD_DEFAULTS, fieldName, passwordProps } from '../kit/fields.ts';
 import { glide } from '../motion.ts';
@@ -67,6 +69,13 @@ export function InsideField({
     onChangeText?.(text);
   });
   const labelLine = LABEL_SMALL * 1.35 * fontScale;
+  const box = useRef<ViewInstance>(null);
+
+  useEffect(() => {
+    const mounted = box.current;
+
+    return () => fieldLeft(mounted);
+  }, []);
 
   useEffect(() => {
     const run = glide(lift, raised ? 1 : 0, tokens.motionFast);
@@ -85,7 +94,12 @@ export function InsideField({
   });
 
   return (
-    <View style={[styles.box, multiline && styles.tall, state === 'blank' && styles.blank]}>
+    <View
+      ref={box}
+      onFocus={() => fieldFocused(box.current)}
+      onBlur={() => fieldLeft(box.current)}
+      style={[styles.box, multiline && styles.tall, state === 'blank' && styles.blank]}
+    >
       <TextInput
         {...FIELD_DEFAULTS}
         {...(password && passwordProps(revealed))}

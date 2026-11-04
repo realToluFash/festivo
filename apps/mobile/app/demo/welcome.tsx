@@ -1,10 +1,11 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { StyleSheet } from 'react-native';
 
+import { LanguageChoice } from '../../src/components/LanguageChoice.tsx';
 import { Text } from '../../src/components/Text.tsx';
+import { OnBrand, useLineSize, WelcomeBrand } from '../../src/components/Welcome.tsx';
 import { Choices } from '../../src/demo/Choices.tsx';
-import { LanguageButton } from '../../src/demo/LanguageButton.tsx';
-import { OnBrand, WelcomeBrand, WelcomeFrame } from '../../src/components/Welcome.tsx';
+import { coverLine, WelcomeFrame } from '../../src/demo/Welcome.tsx';
 import { tokens } from '../../src/theme/tokens.ts';
 
 const NOTICES = {
@@ -18,18 +19,25 @@ const NOTICES = {
 export default function Welcome() {
   const { notice } = useLocalSearchParams<{ notice?: keyof typeof NOTICES }>();
   const said = notice != null ? NOTICES[notice] : undefined;
+  const line = useLineSize();
 
   return (
     <WelcomeFrame
-      top={<LanguageButton />}
+      cover
+      top={<LanguageChoice />}
       brand={
         <>
           <WelcomeBrand />
           {said != null ? (
-            <OnBrand title={said[0]} body={said[1]} />
+            <OnBrand title={said[0]} body={said[1]} size={line} />
           ) : (
-            <Text size={tokens.typeBodyGuest.size} weight="medium" style={styles.tagline}>
-              Plan the event. Run the night.
+            <Text
+              weight="bold"
+              size={line}
+              maxFontSizeMultiplier={1.25}
+              style={[styles.onCover, coverLine(line)]}
+            >
+              {'Plan the event.\nRun the day.'}
             </Text>
           )}
         </>
@@ -47,5 +55,5 @@ export default function Welcome() {
 }
 
 const styles = StyleSheet.create({
-  tagline: { textAlign: 'center', color: tokens.colorInkSecondary },
+  onCover: { color: tokens.colorInkOnDark },
 });

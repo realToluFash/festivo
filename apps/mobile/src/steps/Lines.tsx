@@ -9,6 +9,7 @@ import { Title } from '../components/Title.tsx';
 import { useReadOut } from '../components/ReadOut.tsx';
 import { useFocusOnAnswer } from '../components/Screen.tsx';
 import type { TextHandle } from '../components/Text.tsx';
+import { useLayout } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 
 /** A step's title and the one line under it that says what to do. */
@@ -25,6 +26,7 @@ export function Heading({
   answer?: unknown;
 }) {
   const { shown, read } = useFocusOnAnswer<TextHandle>(answer);
+  const size = useStepTitleSize();
 
   return (
     <View ref={shown} style={styles.heading}>
@@ -33,12 +35,7 @@ export function Heading({
           <StatusMark tone={mark[0]} word={mark[1]} />
         </View>
       )}
-      <Title
-        ref={read}
-        size={tokens.typeTitlePhone.size}
-        accessibilityRole="header"
-        style={styles.title}
-      >
+      <Title ref={read} size={size} accessibilityRole="header" style={stepTitle(size)}>
         {title}
       </Title>
       {intro != null && (
@@ -51,6 +48,16 @@ export function Heading({
 }
 
 const CONTROL = 16;
+
+/** A sign-in step's title, a size larger in a tablet's sheet. */
+export function useStepTitleSize() {
+  return useLayout().kind === 'phone' ? tokens.typeTitleStep.size : tokens.typeTitleFrame.size;
+}
+
+/** Tracked in by 2% of its size. */
+export function stepTitle(size: number) {
+  return { letterSpacing: size * -0.02 };
+}
 
 export function Plain({
   children,
@@ -142,7 +149,6 @@ export function DemoOnly({ title, children }: { title: string; children: ReactNo
 const styles = StyleSheet.create({
   heading: { marginTop: tokens.spaceLg },
   mark: { marginBottom: tokens.spaceLg },
-  title: { letterSpacing: -0.5 },
   intro: { marginTop: tokens.spaceSm, color: tokens.colorInkSecondary, lineHeight: 23 },
   ink: { color: tokens.colorInk },
   secondary: { color: tokens.colorInkSecondary },

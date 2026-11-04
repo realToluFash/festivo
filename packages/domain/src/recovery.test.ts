@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { recoveryFirstStep, recoveryIntroKey } from './recovery.ts';
+import { recoveryFirstStep, recoveryIntroKey, shapeRecovery } from './recovery.ts';
 
 describe('where the lost-two-factor screen starts', () => {
   it('asks for the signed-in person’s own request, never showing one held for somebody else', () => {
@@ -27,5 +27,14 @@ describe('the sentence under an asked request’s heading', () => {
     expect(recoveryIntroKey('approved', true)).toBe('lostTwoFactor.approvedIntroNobody');
     expect(recoveryIntroKey('turned_down', true)).toBe('lostTwoFactor.nobodyIntro');
     expect(recoveryIntroKey('expired', true)).toBe('lostTwoFactor.nobodyIntro');
+  });
+});
+
+describe('a recovery code as it is typed', () => {
+  it('is lower case, letters and digits, with the dash after the fourth', () => {
+    expect(shapeRecovery('VTXP')).toBe('vtxp');
+    expect(shapeRecovery('VTXPR')).toBe('vtxp-r');
+    expect(shapeRecovery('vtxp-rh7y')).toBe('vtxp-rh7y');
+    expect(shapeRecovery('vt xp_rh7y9')).toBe('vtxp-rh7y');
   });
 });

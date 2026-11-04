@@ -94,6 +94,19 @@ describe('a few details', () => {
     ).toBeDefined();
   });
 
+  it('starts in an empty Full name when Apple sent no name, under the line that says so', () => {
+    at('/complete-profile', {
+      ...FOLAKE,
+      name: '',
+      providers: [{ provider: 'apple', email: null }],
+    });
+
+    const name = screen.getByLabelText('Full name') as HTMLInputElement;
+    expect(name.value).toBe('');
+    expect(document.activeElement).toBe(name);
+    expect(screen.getByRole('status').textContent).toMatch(/^Signed in with Apple\./u);
+  });
+
   it('stays signed in and says so when signing out cannot reach Soirely', async () => {
     Element.prototype.scrollIntoView = vi.fn();
     answering({});
@@ -859,7 +872,7 @@ describe('where focus goes on a few details (sc-11369)', () => {
     const line = await screen.findByText(
       'You cannot ask to join that organisation. Start your own, or ask somebody there to invite you.',
     );
-    await waitFor(() => expect(document.activeElement).toBe(line.closest('.notice')));
+    await waitFor(() => expect(document.activeElement).toBe(line.closest('.auth-notice')));
     expect(line.closest('[role]')).toBeNull();
   });
 
