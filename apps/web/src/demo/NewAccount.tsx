@@ -151,8 +151,11 @@ function CreateAccount({ state, flow }: { state: string; flow: Flow }) {
   return (
     <BoardPage end={<HaveAccount />}>
       <Heading title="Create your account">
-        <p className="demo-muted">Next, we email you a code to check the address is yours.</p>
-        {breached && <Notice title="Creating your account did not work" alert />}
+        {breached ? (
+          <Notice title="Creating your account did not work" alert />
+        ) : (
+          <p className="demo-muted">Next, we email you a code to check the address is yours.</p>
+        )}
         {until != null && (
           <Notice title="Too many sign-ups from this network" body={`Try again at ${until}.`} />
         )}
@@ -436,19 +439,20 @@ function NumberRow({
             autoComplete="tel-national"
             value={number}
             aria-invalid={line != null}
-            aria-describedby={line == null ? 'phone-help' : 'phone-line phone-help'}
+            aria-describedby={line == null ? 'phone-help' : 'phone-line'}
             onChange={(event) => onNumber(event.target.value)}
           />
         </div>
       </div>
-      {line != null && (
+      {line == null ? (
+        <p className="demo-help" id="phone-help">
+          {help}
+        </p>
+      ) : (
         <p className="demo-line" id="phone-line">
           {line}
         </p>
       )}
-      <p className="demo-help" id="phone-help">
-        {help}
-      </p>
     </div>
   );
 }
@@ -544,20 +548,19 @@ function Details({ state, flow }: { state: string; flow: Flow }) {
               {...offField(busy)}
               aria-invalid={lines.organisation != null}
               aria-describedby={
-                lines.organisation == null
-                  ? 'organisation-help'
-                  : 'organisation-line organisation-help'
+                lines.organisation == null ? 'organisation-help' : 'organisation-line'
               }
               onChange={(event) => setOrganisation(event.target.value)}
             />
-            {lines.organisation != null && (
+            {lines.organisation == null ? (
+              <p className="demo-help" id="organisation-help">
+                Your events belong to it. You can rename it later.
+              </p>
+            ) : (
               <p className="demo-line" id="organisation-line">
                 {lines.organisation}
               </p>
             )}
-            <p className="demo-help" id="organisation-help">
-              Your events belong to it. You can rename it later.
-            </p>
           </div>
 
           <div className="demo-field">

@@ -132,7 +132,7 @@
   flex: 1;
   align-items: flex-start;
   justify-content: center;
-  padding: 88px var(--spaceXl) var(--space6xl);
+  padding: 88px var(--spaceXl) 0;
 }
 
 .demo-column {

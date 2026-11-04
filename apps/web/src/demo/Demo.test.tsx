@@ -272,6 +272,7 @@ describe('the demo creates an account (sc-29061)', () => {
     await wait();
 
     expect(screen.getByText('Creating your account did not work')).toBeDefined();
+    expect(screen.queryByText(/we email you a code/)).toBeNull();
     expect(screen.getByText(/appeared in a known data breach. Choose another/)).toBeDefined();
     expect(document.activeElement).toBe(screen.getByLabelText('Password'));
   });
@@ -338,7 +339,7 @@ describe('the demo creates an account (sc-29061)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Send a new code' }));
     await wait();
-    expect(screen.getByLabelText('Code from the email')).toBeDefined();
+    expect(document.activeElement).toBe(screen.getByLabelText('Code from the email'));
     expect(screen.getByText('Send a new code in 1:00')).toBeDefined();
   });
 
@@ -379,6 +380,8 @@ describe('the demo creates an account (sc-29061)', () => {
 
     expect(screen.getByText('Add your organisation’s name to carry on.')).toBeDefined();
     expect(screen.getByText(/too short for United Kingdom/)).toBeDefined();
+    expect(screen.queryByText(/Your events belong to it/)).toBeNull();
+    expect(screen.queryByText(/How you are reached on the night/)).toBeNull();
     expect(document.activeElement).toBe(screen.getByLabelText('Organisation name'));
   });
 

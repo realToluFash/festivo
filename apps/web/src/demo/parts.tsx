@@ -128,6 +128,14 @@ export function CodeForm({
   const [sending, setSending] = useState(false);
   const [countFrom, setCountFrom] = useState(() => Date.now());
   const field = useRef<HTMLInputElement>(null);
+  const focusOnMount = useRef(false);
+
+  useEffect(() => {
+    if (!focusOnMount.current || field.current == null) return;
+
+    focusOnMount.current = false;
+    field.current.focus();
+  });
 
   useEffect(() => {
     if (opening !== 'wrong') return;
@@ -176,7 +184,7 @@ export function CodeForm({
       setLine(null);
       setWrongs(0);
       setCountFrom(Date.now());
-      window.setTimeout(() => field.current?.focus());
+      focusOnMount.current = true;
     });
   }
 
