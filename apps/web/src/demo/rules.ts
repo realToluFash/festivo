@@ -79,11 +79,20 @@ export function accountLines(name: string, email: string, password: string): Acc
 
   if (name.trim() === '') lines.name = 'Enter your full name.';
   if (emailRefusal != null) lines.email = emailRefusal;
-  if (password === '') lines.password = 'Enter a password.';
-  else if (!meetsPasswordLength(password))
-    lines.password = `Use at least ${PASSWORD_MINIMUM_LENGTH} characters.`;
+  const passwordRefusal = passwordLine(password, 'Enter a password.');
+  if (passwordRefusal != null) lines.password = passwordRefusal;
 
   return lines;
+}
+
+export const BREACHED = 'This password has appeared in a known data breach. Choose another.';
+
+export function passwordLine(password: string, blank: string): string | null {
+  if (password === '') return blank;
+
+  return meetsPasswordLength(password)
+    ? null
+    : `Use at least ${PASSWORD_MINIMUM_LENGTH} characters.`;
 }
 
 /** Only the digits of what was typed or pasted, at most a code's length. */

@@ -1,5 +1,5 @@
-import { PASSWORD_MINIMUM_LENGTH, formatCountdown } from '@soirely/domain';
-import { type FormEvent, type ReactNode, useEffect, useRef, useState } from 'react';
+import { PASSWORD_MINIMUM_LENGTH, formatCountdown, meetsPasswordLength } from '@soirely/domain';
+import { type FormEvent, type ReactNode, type RefObject, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 
 import { offField } from '../offField.ts';
@@ -89,6 +89,60 @@ export function PasswordRule({ met }: { met: boolean }) {
         That is the only rule. When you submit, we also check the password has not appeared in a
         known data breach.
       </p>
+    </div>
+  );
+}
+
+export function PasswordField({
+  label,
+  field,
+  password,
+  line,
+  busy,
+  revealed,
+  onReveal,
+  onChange,
+}: {
+  label: string;
+  field: RefObject<HTMLInputElement | null>;
+  password: string;
+  line: string | null;
+  busy: boolean;
+  revealed: boolean;
+  onReveal: (revealed: boolean) => void;
+  onChange: (password: string) => void;
+}) {
+  return (
+    <div className={fieldClass(line != null)}>
+      <label htmlFor="password">{label}</label>
+      <div className="demo-reveal">
+        <input
+          ref={field}
+          className="demo-input"
+          id="password"
+          type={revealed ? 'text' : 'password'}
+          autoComplete="new-password"
+          value={password}
+          {...offField(busy)}
+          aria-invalid={line != null}
+          aria-describedby={line == null ? 'password-rule' : 'password-line password-rule'}
+          onChange={(event) => onChange(event.target.value)}
+        />
+        <button
+          className="demo-reveal-button"
+          type="button"
+          aria-pressed={revealed}
+          onClick={() => onReveal(!revealed)}
+        >
+          {revealed ? 'Hide' : 'Show'}
+        </button>
+      </div>
+      {line != null && (
+        <p className="demo-line" id="password-line">
+          {line}
+        </p>
+      )}
+      <PasswordRule met={meetsPasswordLength(password)} />
     </div>
   );
 }

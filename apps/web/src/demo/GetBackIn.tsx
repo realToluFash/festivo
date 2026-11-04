@@ -1,4 +1,3 @@
-import { PASSWORD_MINIMUM_LENGTH, meetsPasswordLength } from '@soirely/domain';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router';
 
@@ -8,13 +7,13 @@ import {
   CodeForm,
   Heading,
   Notice,
-  PasswordRule,
+  PasswordField,
   Unreachable,
   Verified,
   fieldClass,
   useBusy,
 } from './parts.tsx';
-import { LOCK_MS, SAMPLE, backIn, emailLine, timeOfDay } from './rules.ts';
+import { BREACHED, LOCK_MS, SAMPLE, backIn, emailLine, passwordLine, timeOfDay } from './rules.ts';
 
 /** What one page hands the next: the address, and the page the reset was opened from. */
 export type Reset = { email: string; back: string };
@@ -180,19 +179,22 @@ function Sent({ reset }: { reset: Reset }) {
       <div className="demo-asides">
         <p className="demo-aside">
           <span>Nothing there? Check your spam folder first, then</span>
-          <button
-            className="link-button demo-link"
-            type="button"
-            aria-busy={busy}
-            onClick={() => {
-              if (busy) return;
+          <span>
+            <button
+              className="link-button demo-link"
+              type="button"
+              aria-busy={busy}
+              onClick={() => {
+                if (busy) return;
 
-              setSentAgain(false);
-              after(() => setSentAgain(true));
-            }}
-          >
-            {busy ? 'Sending…' : 'send it again'}
-          </button>
+                setSentAgain(false);
+                after(() => setSentAgain(true));
+              }}
+            >
+              {busy ? 'Sending…' : 'send it again'}
+            </button>
+            .
+          </span>
           <span role="status">{sentAgain && 'Sent again.'}</span>
         </p>
         <p className="demo-muted">
@@ -210,19 +212,15 @@ function Sent({ reset }: { reset: Reset }) {
   );
 }
 
-const TOO_SHORT = `Use at least ${PASSWORD_MINIMUM_LENGTH} characters.`;
-
-function passwordLine(password: string): string | null {
-  if (password === '') return 'Enter a new password.';
-
-  return meetsPasswordLength(password) ? null : TOO_SHORT;
-}
+const BLANK = 'Enter a new password.';
 
 /** Opened from the link, so it has no Back. */
 function NewPassword({ state, email }: { state: string; email: string }) {
   const navigate = useNavigate();
   const [password, setPassword] = useState(state === 'short' ? 'nine char' : '');
-  const [line, setLine] = useState<string | null>(state === 'short' ? TOO_SHORT : null);
+  const [line, setLine] = useState<string | null>(
+    state === 'short' ? passwordLine('nine char', BLANK) : null,
+  );
   const [breached, setBreached] = useState(false);
   const [revealed, setRevealed] = useState(false);
   const [busy, after] = useBusy();
@@ -236,7 +234,7 @@ function NewPassword({ state, email }: { state: string; email: string }) {
     event.preventDefault();
     if (busy) return;
 
-    const refused = passwordLine(password);
+    const refused = passwordLine(password, BLANK);
     setLine(refused);
     setBreached(false);
     if (refused != null) {
@@ -256,9 +254,7 @@ function NewPassword({ state, email }: { state: string; email: string }) {
     });
   }
 
-  const shown =
-    line ??
-    (breached ? 'This password has appeared in a known data breach. Choose another.' : null);
+  const shown = line ?? (breached ? BREACHED : null);
 
   return (
     <BoardPage end={null}>
@@ -266,41 +262,21 @@ function NewPassword({ state, email }: { state: string; email: string }) {
         <p className="demo-muted">For {email}.</p>
       </Heading>
       <form className="demo-form" noValidate onSubmit={submit}>
-        <div className={fieldClass(shown != null)}>
-          <label htmlFor="password">New password</label>
-          <div className="demo-reveal">
-            <input
-              ref={field}
-              className="demo-input"
-              id="password"
-              type={revealed ? 'text' : 'password'}
-              autoComplete="new-password"
-              value={password}
-              {...offField(busy)}
-              aria-invalid={shown != null}
-              aria-describedby={shown == null ? 'password-rule' : 'password-line password-rule'}
-              onChange={(event) => {
-                setPassword(event.target.value);
-                setBreached(false);
-                if (line != null) setLine(passwordLine(event.target.value));
-              }}
-            />
-            <button
-              className="demo-reveal-button"
-              type="button"
-              aria-pressed={revealed}
-              onClick={() => setRevealed((was) => !was)}
-            >
-              {revealed ? 'Hide' : 'Show'}
-            </button>
-          </div>
-          {shown != null && (
-            <p className="demo-line" id="password-line">
-              {shown}
-            </p>
-          )}
-          <PasswordRule met={meetsPasswordLength(password)} />
-        </div>
+        <PasswordField
+          label="New password"
+          field={field}
+          password={password}
+          line={shown}
+          busy={busy}
+          revealed={revealed}
+          onReveal={setRevealed}
+          onChange={(typed) => {
+            setPassword(typed);
+            setBreached(false);
+            if (line != null) setLine(passwordLine(typed, BLANK));
+          }}
+        />
+
         <p className="demo-muted">
           Setting it signs you out on every other device. This one stays signed in.
         </p>
