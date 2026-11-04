@@ -66,9 +66,9 @@ export function Unreachable({
       <AuthPage bare end={null}>
         <div
           className="auth-heading"
-          ref={notice}
+          ref={linked ? linkNotice : notice}
           role={pressed ? undefined : 'status'}
-          tabIndex={pressed ? -1 : undefined}
+          tabIndex={pressed || linked ? -1 : undefined}
         >
           <h1>{t('session.unreachableTitle')}</h1>
           <p>{signedIn ? t('session.unreachableBody') : t('session.unreachableBodySignedOut')}</p>
