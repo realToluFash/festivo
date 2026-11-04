@@ -76,12 +76,3 @@ export function EventMesh({ event, shade = 'none' }: { event: ShownEvent; shade?
 export function eventColour(event: ShownEvent): string {
   return EVENT_MESH[event.mesh].base;
 }
-
-const MESHES = Object.keys(EVENT_MESH) as EventKey[];
-
-/** A real event's colour, the same one every time it is drawn. */
-export function meshFor(id: string): EventKey {
-  const sum = [...id].reduce((total, char) => (total * 31 + char.charCodeAt(0)) >>> 0, 7);
-
-  return MESHES[sum % MESHES.length] ?? 'party';
-}

@@ -64,6 +64,15 @@ export function sample(key: EventKey): ShownEvent {
   return { id: key, name: EVENTS[key].name, mesh: key, photo: null };
 }
 
+const MESHES = Object.keys(EVENTS) as EventKey[];
+
+/** A real event's colour until it has a photo, the same one every time it is drawn. */
+export function meshFor(id: string): EventKey {
+  const sum = [...id].reduce((total, char) => (total * 31 + char.charCodeAt(0)) >>> 0, 7);
+
+  return MESHES[sum % MESHES.length] ?? 'party';
+}
+
 /** Dates as `2026-11-03` and times as `18:00`, written the reader's way. */
 export interface Say {
   long(date: string): string;

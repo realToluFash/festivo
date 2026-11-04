@@ -1962,5 +1962,50 @@
     "mobileLine": "Nous envoyons un code à ce numéro sur WhatsApp, ou par SMS si WhatsApp ne peut pas vous joindre.",
     "sendCode": "Envoyer le code",
     "whatsAppTitle": "Consultez WhatsApp"
+  },
+  "todayScreen": {
+    "today": "Today",
+    "tomorrow": "tomorrow",
+    "allDay": "All day",
+    "starts": "{{name}} starts",
+    "ends": "{{name}} ends",
+    "continues": "{{name}} continues",
+    "dayOf": "day {{day, number}} of {{total, number}}",
+    "dayOfCapital": "Day {{day, number}} of {{total, number}}",
+    "draft": "Draft",
+    "tomorrowCapital": "Tomorrow",
+    "finalWeek": "Final week",
+    "dayAndPlace": "{{day}} · {{place}}",
+    "endsToday": "Ends today at {{time}}",
+    "endsTomorrow": "Ends tomorrow, {{date}} at {{time}}",
+    "endsOn": "Ends {{date}} at {{time}}",
+    "firstSub": "Your first event starts here.",
+    "nothingThisWeek": "Nothing on this week.",
+    "startsOnWeekday": "{{name}} starts on {{weekday}}.",
+    "startsOnDate": "{{name}} starts on {{date}}.",
+    "hello": {
+      "morning": "Good morning",
+      "afternoon": "Good afternoon",
+      "evening": "Good evening",
+      "welcome": "Welcome"
+    },
+    "helloName": {
+      "morning": "Good morning, {{name}}",
+      "afternoon": "Good afternoon, {{name}}",
+      "evening": "Good evening, {{name}}",
+      "welcome": "Welcome, {{name}}"
+    },
+    "nothingElseToday": "Nothing else today",
+    "nothingToday": "Nothing today",
+    "dateAndHowFar": "{{date}} · {{far}}",
+    "inDays_one": "in {{count, number}} day",
+    "inDays_other": "in {{count, number}} days",
+    "inDays_many": "in {{count, number}} days",
+    "inDaysCapital_one": "In {{count, number}} day",
+    "inDaysCapital_other": "In {{count, number}} days",
+    "inDaysCapital_many": "In {{count, number}} days",
+    "days_one": "{{count, number}} day",
+    "days_other": "{{count, number}} days",
+    "days_many": "{{count, number}} days"
   }
 }
