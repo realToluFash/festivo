@@ -12,13 +12,19 @@ import {
 import {
   Animated,
   KeyboardAvoidingView,
+  type LayoutChangeEvent,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
   Platform,
   Pressable,
   ScrollView,
+  type ScrollViewInstance,
+  type StyleProp,
   StyleSheet,
   useWindowDimensions,
   View,
   type ViewInstance,
+  type ViewStyle,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
@@ -26,7 +32,7 @@ import Svg, { Path } from 'react-native-svg';
 import { QuietButton } from '../components/Buttons.tsx';
 import { keyboardTopNow, useKeysUp, watchKeyboardTop } from '../components/keyboardWatch.ts';
 import { SETTLED_MS, useWindowOrigin } from '../components/Screen.tsx';
-import { keysOver } from '../kit/keyboard.ts';
+import { keysOver, offsetIntoView } from '../kit/keyboard.ts';
 import { useLayout } from '../layout/useLayout.ts';
 import { glide } from '../motion.ts';
 import { useReducedMotion } from '../reducedMotion.ts';
@@ -191,6 +197,75 @@ function useKeysCover(
   return cover;
 }
 
+const KeepInView = createContext<((group: ViewInstance | null) => void) | null>(null);
+
+/** A field and the lines under it: while its field has focus, the whole group stays in sight above the keys. */
+export function StepGroup({
+  style,
+  children,
+}: {
+  style?: StyleProp<ViewStyle>;
+  children: ReactNode;
+}) {
+  const keep = useContext(KeepInView);
+  const group = useRef<ViewInstance>(null);
+
+  return (
+    <View
+      ref={group}
+      style={style}
+      onFocus={() => keep?.(group.current)}
+      onBlur={() => keep?.(null)}
+    >
+      {children}
+    </View>
+  );
+}
+
+/** Scrolls the focused StepGroup wholly into sight, now and each time the scroll view resizes, as it does when the keys rise. */
+function useKeptGroup() {
+  const scroll = useRef<ScrollViewInstance>(null);
+  const offset = useRef(0);
+  const shown = useRef(0);
+  const group = useRef<ViewInstance | null>(null);
+
+  const bring = useCallback(() => {
+    const content = scroll.current?.getInnerViewRef();
+    if (content == null || group.current == null) return;
+    group.current.measureLayout(content, (_x, contentY, _w, height) => {
+      const to = offsetIntoView({
+        contentY,
+        height,
+        offset: offset.current,
+        shown: shown.current,
+        margin: tokens.spaceLg,
+      });
+      if (to != null) scroll.current?.scrollTo({ y: to, animated: true });
+    });
+  }, []);
+
+  const keep = useCallback(
+    (next: ViewInstance | null) => {
+      group.current = next;
+      bring();
+    },
+    [bring],
+  );
+
+  const onLayout = useCallback(
+    (event: LayoutChangeEvent) => {
+      shown.current = event.nativeEvent.layout.height;
+      bring();
+    },
+    [bring],
+  );
+  const onScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    offset.current = event.nativeEvent.contentOffset.y;
+  }, []);
+
+  return { scroll, onLayout, onScroll, keep };
+}
+
 export function StepScreen({
   nav,
   children,
@@ -213,6 +288,7 @@ export function StepScreen({
   const page = useRef<ViewInstance>(null);
   const measured = ANDROID || inSheet;
   const cover = useKeysCover(page, measured, inSheet ? insets.top + SHEET_LIFTED_GAP : 0);
+  const { scroll, onLayout, onScroll, keep } = useKeptGroup();
 
   return (
     <View
@@ -226,6 +302,10 @@ export function StepScreen({
           </View>
         )}
         <ScrollView
+          ref={scroll}
+          onLayout={onLayout}
+          onScroll={onScroll}
+          scrollEventThrottle={16}
           style={styles.grow}
           contentContainerStyle={[
             styles.content,
@@ -235,7 +315,9 @@ export function StepScreen({
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="interactive"
         >
-          <View style={styles.column}>{children}</View>
+          <View style={styles.column}>
+            <KeepInView.Provider value={keep}>{children}</KeepInView.Provider>
+          </View>
         </ScrollView>
         {foot != null && (
           <View

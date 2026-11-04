@@ -22,7 +22,7 @@ import {
 } from '../src/registration.ts';
 import { FieldLine, InsideField } from '../src/steps/InsideField.tsx';
 import { Heading, Says } from '../src/steps/Lines.tsx';
-import { NavBar, StepScreen } from '../src/steps/StepScreen.tsx';
+import { NavBar, StepGroup, StepScreen } from '../src/steps/StepScreen.tsx';
 import { tokens } from '../src/theme/tokens.ts';
 
 type Which = 'name' | 'email' | 'password';
@@ -141,7 +141,7 @@ export default function Register() {
           />
         </View>
       )}
-      <View style={styles.first}>
+      <StepGroup style={styles.first}>
         <InsideField
           ref={nameField}
           label={t('register.name')}
@@ -160,8 +160,8 @@ export default function Register() {
           testID="register.name"
         />
         {said.name != null && <Says words={said.name} />}
-      </View>
-      <View style={styles.next}>
+      </StepGroup>
+      <StepGroup style={styles.next}>
         <InsideField
           ref={emailField}
           label={t('register.email')}
@@ -180,8 +180,8 @@ export default function Register() {
           testID="register.email"
         />
         {said.email != null && <Says words={said.email} />}
-      </View>
-      <View style={styles.next}>
+      </StepGroup>
+      <StepGroup style={styles.next}>
         <InsideField
           ref={passwordField}
           label={t('register.password')}
@@ -205,7 +205,7 @@ export default function Register() {
             tone={long ? 'met' : said.password != null ? 'wrong' : 'unmet'}
           />
         )}
-      </View>
+      </StepGroup>
     </StepScreen>
   );
 }
