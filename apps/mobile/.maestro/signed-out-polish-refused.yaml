@@ -1,0 +1,35 @@
+# Sign in's wrong-password notice, and the language sheet closed by a tap outside it, unchanged. sc-28812.
+#
+#   node .qa/bin/qa-env.mjs maestro signed-out-polish-refused EMAIL=… [--android]
+appId: host.exp.Exponent
+---
+- runFlow: sign-in-screen-english.yaml
+- tapOn:
+    id: 'language.open'
+- extendedWaitUntil:
+    visible:
+      id: 'language.done'
+    timeout: 10000
+- tapOn:
+    point: '50%,8%'
+- assertNotVisible:
+    id: 'language.done'
+- assertVisible: 'English'
+- tapOn:
+    id: 'signIn.email'
+- inputText: ${EMAIL}
+- tapOn:
+    id: 'signIn.password'
+- inputText: 'not-the-password-at-all'
+- hideKeyboard
+- tapOn:
+    id: 'signIn.submit'
+- extendedWaitUntil:
+    visible: 'That email and password do not match. Check both, or reset your password.'
+    timeout: 30000
+- takeScreenshot: polish-refused
+- scrollUntilVisible:
+    element:
+      id: 'signIn.register'
+    direction: DOWN
+- takeScreenshot: polish-refused-foot

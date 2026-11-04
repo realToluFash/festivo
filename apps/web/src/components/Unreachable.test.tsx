@@ -70,3 +70,12 @@ describe('Cannot reach Soirely, Try again (sc-11369)', () => {
     expect(screen.queryByRole('status')).toBeNull();
   });
 });
+
+describe('Cannot reach Soirely, signed in (sc-28983)', () => {
+  it('offers no "Create an account", which would tell a signed-in host they are signed out', () => {
+    open();
+
+    expect(screen.getByRole('heading', { name: 'Cannot reach Soirely' })).toBeDefined();
+    expect(screen.queryByRole('link', { name: 'Create an account' })).toBeNull();
+  });
+});

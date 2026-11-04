@@ -251,7 +251,7 @@ function HealthCheck({ state, onRetry }: { state: State; onRetry: () => void }) 
 
         return (
           <View key={name} style={styles.check}>
-            <Text size={tokens.typeSmall.size} family="mono" style={styles.checkName}>
+            <Text size={tokens.typeSmall.size} style={styles.checkName}>
               {name}
             </Text>
             <View style={[styles.line, styles.checkStatus]}>
