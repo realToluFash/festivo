@@ -223,7 +223,7 @@ export function StepScreen({
   const measured = ANDROID || inSheet;
   const cover = useKeysCover(page, measured, inSheet ? insets.top + SHEET_LIFTED_GAP : 0);
   const { screenScroll, scrollProps } = useScreenScrollView();
-  const [sizes, setSizes] = useState({ shown: 0, foot: 0, field: 0 });
+  const [sizes, setSizes] = useState({ shown: 0, foot: 0, field: 0, group: 0 });
   const measuredAs = (key: 'shown' | 'foot') => (event: LayoutChangeEvent) => {
     const height = event.nativeEvent.layout.height;
     setSizes((was) => (was[key] === height ? was : { ...was, [key]: height }));
@@ -235,7 +235,12 @@ export function StepScreen({
     foot != null &&
     keysUp &&
     sizes.field > 0 &&
-    !barFits({ room, field: sizes.field, bar: sizes.foot, margin: tokens.spaceLg });
+    !barFits({
+      room,
+      field: Math.max(sizes.field, sizes.group),
+      bar: sizes.foot,
+      margin: tokens.spaceLg,
+    });
   if (nextInline !== inline) setInline(nextInline);
   const footRef = useRef<ViewInstance>(null);
   const wasInline = useRef(inline);
@@ -245,12 +250,16 @@ export function StepScreen({
     TextInput.State.currentlyFocusedInput()?.measure((_x, _y, _w, height) => {
       setSizes((was) => (was.field === height ? was : { ...was, field: height }));
     });
+
+    return () => {
+      setSizes((was) => (was.group === 0 ? was : { ...was, group: 0 }));
+    };
   }, [keysUp]);
 
-  // The field's own lines, a rule or an error under it, have to fit above a docked foot too.
+  // The field's own lines, a rule or an error under it, have to fit above a docked foot too, kept apart from the input height so whichever lands last cannot undo the other.
   useEffect(() => {
     const needs = (height: number) =>
-      setSizes((was) => (was.field === height ? was : { ...was, field: height }));
+      setSizes((was) => (was.group === height ? was : { ...was, group: height }));
     screenScroll.focusedGroup.add(needs);
 
     return () => {
