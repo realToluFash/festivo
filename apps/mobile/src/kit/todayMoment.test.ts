@@ -123,6 +123,14 @@ describe('todayMoment', () => {
     expect(day.events[0]).toMatchObject({ count: 'Day 2 of 3', live: true, stage: null });
   });
 
+  it('Now ends today on the last day, and on a date two days out', () => {
+    const ends = (now: string) =>
+      moment([event('Wedding', { phase: 'happening_now' })], new Date(now)).now?.ends;
+
+    expect(ends('2026-11-08T09:00:00Z')).toBe('Ends today at 14:00');
+    expect(ends('2026-11-06T20:00:00Z')).toBe('Ends Sun 8 Nov at 14:00');
+  });
+
   it('a quiet week says so and shows what is next', () => {
     const quiet = moment([
       event('Party', {

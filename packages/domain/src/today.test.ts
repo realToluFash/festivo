@@ -59,6 +59,23 @@ describe('today', () => {
     expect(shown.now?.name).toBe('on');
   });
 
+  it('takes Now from the event under way that started first, and keeps the other in the list', () => {
+    const shown = today(
+      {
+        events: [
+          event('second', { phase: 'happening_now', startsAt: '2026-11-03T08:00:00Z' }),
+          event('first', { phase: 'happening_now', startsAt: '2026-11-02T10:00:00Z' }),
+        ],
+        at: NOW,
+      },
+      NOW,
+      LONDON,
+    );
+
+    expect(shown.now?.name).toBe('first');
+    expect(names(shown.events)).toEqual(['first', 'second']);
+  });
+
   it('marks seven days from today, each with its event days and milestones', () => {
     const wedding = event('wedding', {
       milestones: [milestone('2026-11-05T09:00:00Z', 'Meal choices close')],
