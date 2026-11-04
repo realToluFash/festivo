@@ -233,7 +233,7 @@ export function replaceOrganisation(saved: Membership): void {
   });
 }
 
-/** "Sign out" on the Settings list and on the "This device" row: no confirmation, straight to sign-in. */
+/** Every "Sign out": no confirmation, straight to welcome. */
 export function signOutHere(): void {
   void api.signOut().finally(() => {
     forget();
