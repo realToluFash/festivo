@@ -5,11 +5,14 @@ appId: host.exp.Exponent
 ---
 - runFlow: sign-in-screen-english.yaml
 - takeScreenshot: polish-sign-in-en
-- scrollUntilVisible:
-    element:
-      id: 'signIn.register'
-    direction: DOWN
-- takeScreenshot: polish-sign-in-en-foot
+# Back to welcome, where the language button and Create an account are (sc-29076).
+- tapOn:
+    id: 'demo.back'
+- extendedWaitUntil:
+    visible:
+      id: 'welcome.register'
+    timeout: 10000
+- takeScreenshot: polish-welcome-en
 - tapOn:
     id: 'language.open'
 - extendedWaitUntil:
@@ -31,7 +34,7 @@ appId: host.exp.Exponent
 - assertNotVisible:
     id: 'language.done'
 - assertVisible: '${NAME}'
-- takeScreenshot: polish-sign-in-${CODE}
+- takeScreenshot: polish-welcome-${CODE}
 - tapOn:
     id: 'language.open'
 - extendedWaitUntil:
@@ -42,7 +45,7 @@ appId: host.exp.Exponent
 - tapOn:
     id: 'language.done'
 - tapOn:
-    id: 'signIn.register'
+    id: 'welcome.register'
 - extendedWaitUntil:
     visible:
       id: 'register.name'
@@ -51,8 +54,15 @@ appId: host.exp.Exponent
 - back
 - extendedWaitUntil:
     visible:
+      id: 'welcome.email'
+    timeout: 10000
+- tapOn:
+    id: 'welcome.email'
+- extendedWaitUntil:
+    visible:
       id: 'signIn.email'
     timeout: 10000
+- takeScreenshot: polish-sign-in-${CODE}
 - tapOn:
     id: 'signIn.forgot'
 - extendedWaitUntil:

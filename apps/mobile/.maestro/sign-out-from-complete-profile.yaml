@@ -14,5 +14,5 @@ appId: host.exp.Exponent
     id: 'completeProfile.signOut'
 - extendedWaitUntil:
     visible:
-      id: 'signIn.email'
+      id: 'welcome.email'
     timeout: 30000
