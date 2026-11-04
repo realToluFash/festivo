@@ -128,7 +128,7 @@ function CodeEntry({ recovery, state }: { recovery: boolean; state: string }) {
 
     after(() => {
       if (code === (recovery ? SAMPLE.recovery : SAMPLE.authenticator)) {
-        void navigate('/demo/signed-in');
+        void navigate('/demo/today');
         return;
       }
 
@@ -699,7 +699,7 @@ function SetUpAgain() {
         <Link className="button button-primary demo-wide" to="/demo/later?screen=security">
           Set up two-factor
         </Link>
-        <Link className="button demo-wide" to="/demo/signed-in">
+        <Link className="button demo-wide" to="/demo/today">
           Not now
         </Link>
       </div>

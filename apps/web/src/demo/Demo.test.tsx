@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
@@ -81,6 +81,10 @@ describe('the demo', () => {
     await screen.findByRole('heading', { name: 'Design demo' });
 
     expect(screen.getByRole('heading', { name: '27 · Sign in · desktop polish' })).toBeDefined();
+    expect(
+      screen.getByRole('heading', { name: '29 · Today · where signing in lands' }),
+    ).toBeDefined();
+    expect(screen.getByRole('link', { name: /A quiet week/ })).toBeDefined();
     expect(screen.getByRole('link', { name: /Too many tries/ })).toBeDefined();
     expect(screen.getByText(SAMPLE.email)).toBeDefined();
     expect(screen.getByText(SAMPLE.password)).toBeDefined();
@@ -128,7 +132,7 @@ describe('the demo', () => {
     expect(screen.getByRole('button', { name: 'Sign in' })).toBeDefined();
   });
 
-  it('lands the sample pair on the stand-in, and Sign out comes back signed out', async () => {
+  it('lands the sample pair on Today, and Settings goes back to the list (sc-29092)', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     await signInBoard();
     type('Email', SAMPLE.email);
@@ -138,8 +142,23 @@ describe('the demo', () => {
     expect(screen.getByRole('button', { name: 'Signing in…' })).toBeDefined();
     await act(() => vi.advanceTimersByTimeAsync(1000));
 
-    fireEvent.click(await screen.findByRole('link', { name: 'Sign out' }));
-    expect(await screen.findByText('You were signed out')).toBeDefined();
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Good morning, Folake' }),
+    ).toBeDefined();
+    fireEvent.click(screen.getByRole('link', { name: 'Settings' }));
+    expect(await screen.findByRole('heading', { name: 'Design demo' })).toBeDefined();
+  });
+
+  it('lands Google and Apple on Today too', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    await signInBoard();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Continue with Apple' }));
+    await act(() => vi.advanceTimersByTimeAsync(1000));
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Good morning, Folake' }),
+    ).toBeDefined();
   });
 
   it('opens the language menu from the keyboard and returns focus to its button', async () => {
@@ -504,7 +523,7 @@ describe('the demo signs in with two-factor (sc-29063)', () => {
     type('Code', SAMPLE.authenticator);
     fireEvent.click(screen.getByRole('button', { name: 'Verify and sign in' }));
     await wait();
-    expect(screen.getByRole('heading', { name: 'Signed in' })).toBeDefined();
+    expect(await screen.findByRole('heading', { level: 1, name: /Folake/ })).toBeDefined();
   });
 
   it('pauses after too many wrong codes, with the reset link, and lifts itself', async () => {
@@ -542,7 +561,7 @@ describe('the demo signs in with two-factor (sc-29063)', () => {
     type('Recovery code', SAMPLE.recovery.toUpperCase());
     fireEvent.click(screen.getByRole('button', { name: 'Use this code' }));
     await wait();
-    expect(screen.getByRole('heading', { name: 'Signed in' })).toBeDefined();
+    expect(await screen.findByRole('heading', { level: 1, name: /Folake/ })).toBeDefined();
   });
 
   it('sends the codes from Start, and Back steps back through it to the code', async () => {
@@ -645,5 +664,95 @@ describe('the demo signs in with two-factor (sc-29063)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Cancel and sign out everywhere' }));
     await wait();
     expect(screen.getByRole('heading', { name: 'Cancelled and signed out' })).toBeDefined();
+  });
+});
+
+describe('Today at a desk (sc-29092)', () => {
+  beforeEach(() => inEnvironment('development'));
+
+  async function today(moment: string) {
+    at(`/demo/today?moment=${moment}`);
+    await screen.findByRole('navigation', { name: 'Soirely' });
+  }
+
+  it('opens a planning day with Needs you first, its late item in words, and one filled button', async () => {
+    await today('plan');
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Good morning, Folake' })).toBeDefined();
+    expect(screen.getByText('4 things need you.')).toBeDefined();
+    const needs = screen.getByRole('region', { name: 'Needs you' });
+    const rows = within(needs).getAllByRole('listitem');
+    expect(rows).toHaveLength(4);
+    expect(within(rows[0] as HTMLElement).getByText('3 days late')).toBeDefined();
+    expect(needs.querySelectorAll('.today-act.is-primary')).toHaveLength(1);
+    expect(screen.getByRole('button', { name: 'Send, Send the invitations' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'New event' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Today' }).getAttribute('aria-current')).toBe('page');
+  });
+
+  it('says what a press opens, and ⌘K opens search', async () => {
+    await today('plan');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Review, Final numbers to the caterer' }));
+    expect(
+      screen.getByText('Review opens in Adaeze & Tunde’s wedding, which has its own design.'),
+    ).toBeDefined();
+
+    fireEvent.keyDown(window, { key: 'k', metaKey: true });
+    expect(screen.getByText('Search has its own design.')).toBeDefined();
+  });
+
+  it('shows only what the product can say, built now', async () => {
+    await today('planNow');
+
+    expect(screen.queryByRole('region', { name: 'Needs you' })).toBeNull();
+    expect(screen.getByText('The wedding starts on Friday.')).toBeDefined();
+    expect(screen.queryByText(/replied/)).toBeNull();
+  });
+
+  it('makes the banner Now on the event day, with the run of show', async () => {
+    await today('day');
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Drinks reception' })).toBeDefined();
+    expect(screen.getByText('Live now')).toBeDefined();
+    expect(screen.getByRole('img', { name: '141 of 152 arrived' })).toBeDefined();
+    expect(screen.getByRole('img', { name: /^2 PM Ceremony, 3 PM Photos/ })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Open run of show' })).toBeDefined();
+  });
+
+  it('opens the event from Now, built now', async () => {
+    await today('dayNow');
+
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Adaeze & Tunde’s wedding' }),
+    ).toBeDefined();
+    expect(screen.getByText('Ends tomorrow, Sun, Nov 8 at 2:00 PM')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Open the event' })).toBeDefined();
+  });
+
+  it('says so when nothing needs you and nothing is on', async () => {
+    await today('quiet');
+
+    expect(screen.getByText('Nothing needs you')).toBeDefined();
+    expect(screen.getByText('Nothing on this week')).toBeDefined();
+    expect(
+      screen.getByRole('button', { name: /^Next up Ire Events end-of-year party/ }),
+    ).toBeDefined();
+  });
+
+  it('shows a first run how to start, with no events and no New event', async () => {
+    await today('first');
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Welcome, Folake' })).toBeDefined();
+    expect(screen.getByRole('heading', { name: 'Set up your first event' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Create an event' })).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'New event' })).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Your events' })).toBeNull();
+  });
+
+  it('opens a planning day for a moment it does not know', async () => {
+    await today('nope');
+
+    expect(screen.getByRole('region', { name: 'Needs you' })).toBeDefined();
   });
 });
