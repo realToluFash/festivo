@@ -1944,6 +1944,7 @@
       "evening": "Good evening, {{name}}",
       "welcome": "Welcome, {{name}}"
     },
+    "arrivedCount": "arrived",
     "nothingElseToday": "Nothing else today",
     "nothingToday": "Nothing today",
     "dateAndHowFar": "{{date}} · {{far}}",

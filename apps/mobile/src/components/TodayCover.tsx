@@ -431,7 +431,7 @@ function NextAndArrived({ now }: { now: Now }) {
             </Text>
           </View>
           <Text size={12.5} weight="medium" accessible={false} style={[styles.white, styles.soft]}>
-            arrived
+            {t('todayScreen.arrivedCount')}
           </Text>
         </View>
       </View>

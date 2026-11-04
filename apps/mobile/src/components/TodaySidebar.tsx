@@ -18,29 +18,29 @@ const PLACES: readonly (readonly [Tab, GlyphName])[] = [
 ];
 
 function Place({
-  label,
+  tab,
   glyph,
   onTab,
   at,
 }: {
-  label: Tab;
+  tab: Tab;
   glyph: GlyphName;
   onTab: (tab: Tab) => void;
   at: Tab;
 }) {
   const { t } = useTranslation();
-  const on = label === at;
+  const on = tab === at;
   const ink = on ? tokens.colorInk : tokens.colorInkSecondary;
   const words = t(`todayScreen.tab.${glyph}`);
 
   return (
     <Pressable
-      onPress={() => onTab(label)}
+      onPress={() => onTab(tab)}
       style={({ pressed }) => [styles.place, on && styles.placeOn, pressed && styles.pressed]}
       accessibilityRole="tab"
       accessibilityState={{ selected: on }}
       accessibilityLabel={words}
-      testID={SETTINGS_ID[label]}
+      testID={SETTINGS_ID[tab]}
     >
       <Glyph name={glyph} ink={ink} />
       <Text
@@ -119,7 +119,7 @@ export function TodaySidebar({
       )}
       <View style={styles.places} accessibilityRole="tablist">
         {PLACES.map(([label, glyph]) => (
-          <Place key={label} label={label} glyph={glyph} onTab={onTab} at={at} />
+          <Place key={label} tab={label} glyph={glyph} onTab={onTab} at={at} />
         ))}
       </View>
       <View>
@@ -153,7 +153,7 @@ export function TodaySidebar({
         ))}
       </View>
       <View style={styles.grow} />
-      <Place label="Settings" glyph="settings" onTab={onTab} at={at} />
+      <Place tab="Settings" glyph="settings" onTab={onTab} at={at} />
       <Pressable
         onPress={onPerson ?? (() => open({ to: 'account' }))}
         style={styles.person}
