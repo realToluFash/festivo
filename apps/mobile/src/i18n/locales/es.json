@@ -1951,12 +1951,12 @@
     "close": "Cerrar"
   },
   "steps": {
-    "back": "Back",
-    "close": "Close",
+    "back": "Volver",
+    "close": "Cerrar",
     "stepOf": "Step {{step, number}} of {{steps, number}}",
     "skip": "Skip",
-    "signOut": "Sign out",
-    "continue": "Continue",
+    "signOut": "Cerrar sesión",
+    "continue": "Continuar",
     "codeLabel": "Code, 6 digits",
     "showPassword": "Show password",
     "hidePassword": "Hide password",
