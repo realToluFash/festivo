@@ -308,7 +308,7 @@ function Rail({ now }: { now: Now }) {
         {now.rail.map((stop, index) => (
           <Text
             key={stop.time}
-            size={11}
+            size={12}
             weight={stop.state === 'now' || stop.state === 'next' ? 'semibold' : 'medium'}
             accessible={false}
             numberOfLines={1}
@@ -698,7 +698,7 @@ export function PhoneTabBar({
           >
             <Glyph name={glyph} size={22} ink={ink} />
             <Text
-              size={11}
+              size={12}
               weight={on ? 'semibold' : 'medium'}
               accessible={false}
               style={{ color: ink }}

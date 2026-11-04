@@ -81,7 +81,7 @@ export function TodaySidebar({
           accessibilityElementsHidden
           importantForAccessibility="no-hide-descendants"
         >
-          <Text size={11} weight="bold" accessible={false} style={styles.onAccent}>
+          <Text size={12} weight="bold" accessible={false} style={styles.onAccent}>
             IE
           </Text>
         </View>
@@ -113,7 +113,7 @@ export function TodaySidebar({
       </View>
       <View>
         <Text
-          size={11}
+          size={12}
           weight="semibold"
           accessibilityRole="header"
           style={[styles.secondary, styles.caps]}
