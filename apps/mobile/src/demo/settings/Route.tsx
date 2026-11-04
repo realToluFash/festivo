@@ -16,7 +16,7 @@ import { MembersSection } from './Members.tsx';
 import { NotificationsSection } from './Notifications.tsx';
 import { OrganisationSection } from './Organisation.tsx';
 import { RolesSection } from './Roles.tsx';
-import { isViewer, SECTIONS, type SettingsLayout, type Viewer } from './sample.ts';
+import { isViewer, type SettingsLayout, type Viewer } from './sample.ts';
 import { SecuritySection } from './Security.tsx';
 import { SettingsColumn, SettingsHome, sectionsFor } from './SettingsHome.tsx';
 import { SignInRulesSection } from './SignInRules.tsx';
@@ -37,7 +37,10 @@ export function slugOf(section: SettingsSection): string {
 }
 
 export function sectionOfSlug(slug: string | undefined): SettingsSection | null {
-  return SECTIONS.find((section) => slugOf(section) === slug) ?? null;
+  return (
+    (Object.keys(SECTION_HREF) as SettingsSection[]).find((section) => slugOf(section) === slug) ??
+    null
+  );
 }
 
 export function settingsHref(viewer: Viewer, section: SettingsSection | null): Href {

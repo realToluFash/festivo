@@ -1,4 +1,3 @@
-import type { SettingsSection } from '../../kit/appNav.ts';
 import { SAMPLE } from '../samples.ts';
 
 /** Settings' three arrangements, from the app's layout kinds. */
@@ -11,20 +10,6 @@ export const VIEWERS: readonly Viewer[] = ['owner', 'planner', 'noOrg'];
 
 export function isViewer(name: string | undefined): name is Viewer {
   return VIEWERS.some((viewer) => viewer === name);
-}
-
-export const SECTIONS: readonly SettingsSection[] = [
-  'account',
-  'security',
-  'notifications',
-  'organisation',
-  'members',
-  'roles',
-  'signInRules',
-];
-
-export function isSection(name: string | undefined): name is SettingsSection {
-  return SECTIONS.some((section) => section === name);
 }
 
 export const YOU = {
