@@ -1,6 +1,6 @@
 # Landscape, wrong pair with the keys down, then keys up: with no scroll, Forgot your password? stays in sight above an in-line Sign in, and opens Reset. sc-29076 after #1320.
 #
-#   Landscape first (on a landscape-native tablet: adb shell settings put system user_rotation 0). Then:
+#   Landscape first (on a landscape-native tablet: adb shell wm user-rotation lock 0). Then:
 #   node .qa/bin/qa-env.mjs maestro sc29076-qa-refused-keys-up-no-scroll --android EMAIL=… PASSWORD=… SHOT=…
 appId: host.exp.Exponent
 ---
@@ -31,7 +31,6 @@ appId: host.exp.Exponent
 - takeScreenshot: ${SHOT}-keys-down
 - tapOn:
     id: 'signIn.password'
-- waitForAnimationToEnd
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: ${SHOT}-keys-up

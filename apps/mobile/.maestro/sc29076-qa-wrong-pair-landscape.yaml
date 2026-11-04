@@ -1,5 +1,6 @@
 # Landscape, wrong pair, keys up: the refused line and Forgot your password? scroll into sight and Forgot can be tapped. sc-29076.
 #
+#   Landscape first (on a landscape-native tablet: adb shell wm user-rotation lock 0). Then:
 #   node .qa/bin/qa-env.mjs maestro sc29076-qa-wrong-pair-landscape --android EMAIL=… PASSWORD=… SHOT=…
 appId: host.exp.Exponent
 ---
@@ -32,11 +33,12 @@ appId: host.exp.Exponent
     id: 'signIn.password'
 - waitForAnimationToEnd
 - takeScreenshot: ${SHOT}-keys-up
-- scrollUntilVisible:
-    element:
-      id: 'signIn.forgot'
-    direction: DOWN
-    centerElement: true
+# From above the keys: in landscape the screen's centre is on the keyboard.
+- swipe:
+    start: 50%, 35%
+    end: 50%, 10%
+    duration: 600
+- waitForAnimationToEnd
 - takeScreenshot: ${SHOT}-forgot-in-sight
 - tapOn:
     id: 'signIn.forgot'
