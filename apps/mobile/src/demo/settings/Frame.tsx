@@ -12,6 +12,7 @@ import { sample } from '../today.ts';
 import { PhoneTabBar, TABS, type Tab } from '../TodayCover.tsx';
 import type { Tell } from '../TodayParts.tsx';
 import { TodaySidebar } from '../TodaySidebar.tsx';
+import { demoShell, TodayShellProvider } from '../todayShell.ts';
 import { Back, RoundButton, Tile, TYPE } from './parts.tsx';
 import type { SettingsLayout, Viewer } from './sample.ts';
 
@@ -180,13 +181,14 @@ export function Landscape({
 
   return (
     <View style={[styles.chrome, { paddingTop: insets.top }]}>
-      <TodaySidebar
-        events={SIDEBAR_EVENTS}
-        onTab={shell.onTab}
-        tell={shell.tell}
-        at="Settings"
-        onPerson={() => shell.openSection('account')}
-      />
+      <TodayShellProvider value={demoShell(shell.tell)}>
+        <TodaySidebar
+          events={SIDEBAR_EVENTS}
+          onTab={shell.onTab}
+          at="Settings"
+          onPerson={() => shell.openSection('account')}
+        />
+      </TodayShellProvider>
       <View style={[styles.main, { marginBottom: Math.max(insets.bottom, tokens.spaceMd) }]}>
         <View style={styles.column}>{column}</View>
         <View style={styles.grow}>{children}</View>

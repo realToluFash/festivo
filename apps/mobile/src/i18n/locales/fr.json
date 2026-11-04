@@ -2006,6 +2006,47 @@
     "inDaysCapital_many": "In {{count, number}} days",
     "days_one": "{{count, number}} day",
     "days_other": "{{count, number}} days",
-    "days_many": "{{count, number}} days"
+    "days_many": "{{count, number}} days",
+    "tab": {
+      "today": "Today",
+      "events": "Events",
+      "calendar": "Calendar",
+      "settings": "Settings"
+    },
+    "switchOrganisation": "{{name}}. Switch organisation",
+    "notifications": "Notifications",
+    "notificationsUnread_one": "Notifications, {{count, number}} unread",
+    "notificationsUnread_other": "Notifications, {{count, number}} unread",
+    "notificationsUnread_many": "Notifications, {{count, number}} unread",
+    "search": "Search",
+    "personRole": "{{name}}, {{role}}",
+    "liveNow": "Live now",
+    "next": "Next",
+    "openEvent": "Open the event",
+    "openRunOfShow": "Open run of show",
+    "nowLine": "Now · {{happening}}, {{until}}",
+    "liveName": "Live · {{name}}",
+    "liveCount": "Live · {{count}}",
+    "needsYou": "Needs you",
+    "nothingNeedsYou": "Nothing needs you",
+    "upToDate": "You’re up to date on every event.",
+    "thisWeek": "This week",
+    "nothingOnThisWeek": "Nothing on this week",
+    "nextUp": "Next up",
+    "nextUpLabel": "Next up: {{name}}, {{when}}",
+    "yourEvents": "Your events",
+    "allEvents": "All events",
+    "firstTitle": "Set up your first event",
+    "firstIntro": "Give it a name, a date and a place. What needs you, and what’s coming, shows here.",
+    "firstStep": {
+      "nameTitle": "Name it and give it a date",
+      "nameBody": "One day, or several.",
+      "placeTitle": "Add where it is",
+      "placeBody": "An address, or “to be confirmed” for now.",
+      "liveTitle": "Make it live",
+      "liveBody": "It stays a draft until you do."
+    },
+    "createEvent": "Create an event",
+    "stepNumber": "{{n, number}}"
   }
 }
