@@ -10,12 +10,14 @@ import {
   useState,
 } from 'react';
 import {
+  AccessibilityInfo,
   Animated,
   KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
+  TextInput,
   useWindowDimensions,
   View,
   type LayoutChangeEvent,
@@ -26,13 +28,14 @@ import Svg, { Path } from 'react-native-svg';
 
 import { QuietButton } from '../components/Buttons.tsx';
 import { keyboardTopNow, useKeysUp, watchKeyboardTop } from '../components/keyboardWatch.ts';
+import { moveScreenReaderFocus } from '../components/screenReaderFocus.ts';
 import {
   ScreenScroll,
   SETTLED_MS,
   useScreenScrollView,
   useWindowOrigin,
 } from '../components/Screen.tsx';
-import { footInline, keysOver } from '../kit/keyboard.ts';
+import { barFits, keysOver } from '../kit/keyboard.ts';
 import { useLayout } from '../layout/useLayout.ts';
 import { glide } from '../motion.ts';
 import { useReducedMotion } from '../reducedMotion.ts';
@@ -220,17 +223,40 @@ export function StepScreen({
   const measured = ANDROID || inSheet;
   const cover = useKeysCover(page, measured, inSheet ? insets.top + SHEET_LIFTED_GAP : 0);
   const { screenScroll, scrollProps } = useScreenScrollView();
-  const [sizes, setSizes] = useState({ shown: 0, content: 0, foot: 0, inline: false });
-  const measuredAs = (key: 'shown' | 'content' | 'foot') => (event: LayoutChangeEvent) => {
+  const [sizes, setSizes] = useState({ shown: 0, foot: 0, field: 0 });
+  const measuredAs = (key: 'shown' | 'foot') => (event: LayoutChangeEvent) => {
     const height = event.nativeEvent.layout.height;
-    setSizes((was) => {
-      const next = { ...was, [key]: height };
-      next.inline = footInline({ keysUp, ...next });
-
-      return next.inline === was.inline && next[key] === was[key] ? was : next;
-    });
+    setSizes((was) => (was[key] === height ? was : { ...was, [key]: height }));
   };
-  const inline = foot != null && keysUp && sizes.inline;
+  const [inline, setInline] = useState(false);
+  // While docked the scroll view ends at the foot, while in place at the keys.
+  const room = sizes.shown + (inline ? 0 : sizes.foot);
+  const nextInline =
+    foot != null &&
+    keysUp &&
+    sizes.field > 0 &&
+    !barFits({ room, field: sizes.field, bar: sizes.foot, margin: tokens.spaceLg });
+  if (nextInline !== inline) setInline(nextInline);
+  const footRef = useRef<ViewInstance>(null);
+  const wasInline = useRef(inline);
+
+  useEffect(() => {
+    if (!keysUp) return;
+    TextInput.State.currentlyFocusedInput()?.measure((_x, _y, _w, height) => {
+      setSizes((was) => (was.field === height ? was : { ...was, field: height }));
+    });
+  }, [keysUp]);
+
+  // The foot remounts as it moves, and a press on it that sent the keys down would leave the screen reader on nothing.
+  useEffect(() => {
+    const docking = wasInline.current && !inline;
+    wasInline.current = inline;
+    if (!docking) return;
+    void AccessibilityInfo.isScreenReaderEnabled().then((on) => {
+      if (on) moveScreenReaderFocus(footRef.current);
+    });
+  }, [inline]);
+
   const footView = (
     <View
       style={[
@@ -240,7 +266,9 @@ export function StepScreen({
       ]}
       onLayout={inline ? undefined : measuredAs('foot')}
     >
-      <View style={[styles.column, styles.footColumn]}>{foot}</View>
+      <View ref={footRef} style={[styles.column, styles.footColumn]}>
+        {foot}
+      </View>
     </View>
   );
 
@@ -271,9 +299,7 @@ export function StepScreen({
           keyboardDismissMode="interactive"
         >
           <ScreenScroll.Provider value={screenScroll}>
-            <View style={styles.column} onLayout={measuredAs('content')}>
-              {children}
-            </View>
+            <View style={styles.column}>{children}</View>
             {inline && footView}
           </ScreenScroll.Provider>
         </ScrollView>

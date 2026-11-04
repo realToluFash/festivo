@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '../src/api.ts';
 import { PrimaryButton, QuietButton } from '../src/components/Buttons.tsx';
+import { AnswerInView } from '../src/components/Screen.tsx';
 import { focusChecked, focusRefused, keysStayDown } from '../src/components/Field.tsx';
 import { ProviderButtons } from '../src/components/ProviderSignIn.tsx';
 import { Text } from '../src/components/Text.tsx';
@@ -130,6 +131,12 @@ export default function SignIn() {
     router.push({ pathname: '/forgot-password', params: email === '' ? {} : { email } });
   };
 
+  const forgotLink = (
+    <View style={styles.forgot}>
+      <QuietButton label={t('recovery.forgot')} onPress={forgot} testID="signIn.forgot" />
+    </View>
+  );
+
   return (
     <InSheet value={sheet}>
       <StepScreen
@@ -252,10 +259,15 @@ export default function SignIn() {
               />
             </Animated.View>
             {checks.errors.password != null && <Says words={checks.errors.password} />}
-            {status.kind === 'refused' && <Says words={t('signIn.refused')} />}
-            <View style={styles.forgot}>
-              <QuietButton label={t('recovery.forgot')} onPress={forgot} testID="signIn.forgot" />
-            </View>
+            {status.kind === 'refused' ? (
+              // The answer brings the reset link into sight too, above a foot docked on the keys.
+              <AnswerInView>
+                <Says words={t('signIn.refused')} />
+                {forgotLink}
+              </AnswerInView>
+            ) : (
+              forgotLink
+            )}
           </>
         )}
       </StepScreen>
