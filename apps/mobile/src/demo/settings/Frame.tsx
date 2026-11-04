@@ -242,11 +242,13 @@ export function SectionColumn({
 /** Task screens stay white and calm, as the approved sign-in board keeps them: no Confetti, no tab bar. */
 export function TaskPage({
   back,
+  mark,
   title,
   sub,
   children,
 }: {
-  back: { label: string; onPress: () => void };
+  back?: { label: string; onPress: () => void } | null;
+  mark?: ReactNode;
   title: string;
   sub?: string;
   children: ReactNode;
@@ -270,8 +272,9 @@ export function TaskPage({
         automaticallyAdjustKeyboardInsets
         showsVerticalScrollIndicator={false}
       >
-        <Back label={back.label} onPress={back.onPress} />
+        {back != null && <Back label={back.label} onPress={back.onPress} />}
         <View style={styles.taskHead}>
+          {mark}
           <Text
             size={tablet ? 36 : 30}
             weight="bold"
