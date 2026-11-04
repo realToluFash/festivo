@@ -290,9 +290,10 @@ A desktop web board is not done until it works there:
 - **The web's own components and tokens**: `src/components` and `src/tokens.css`. A part
   the web has no pattern for is built inside `src/demo/`; the developer moves it into the
   product.
-- **The web's guards pass**: 24 px targets, no inline `style` (eslint), `npm run typecheck`
-  and `npm test` in `apps/web`, and the i18n lint, which already exempts `apps/web/src/demo/`
-  for the board's English.
+- **The web's guards pass**: no inline `style` (eslint), `npm run typecheck` and `npm test`
+  in `apps/web`, and the i18n lint, which already exempts `apps/web/src/demo/` for the
+  board's English. **24 px targets** (WCAG 2.5.8) are checked by eye at 1280 × 800: no test
+  enforces them.
 
 **The pull request.** Build on a branch `ux/sc-N-<slug>` from `origin/main`, with commits per
 outcome (`making-commits`). Open the pull request with `sq ux pr-create`, its body in
@@ -320,9 +321,9 @@ For each story:
 [fd] as drawn, and `<name>-App.dc.html`, the app today) · page `<epic number> · <area>` ·
 <artifact url>
 
-**Demo:** `<flow title>` in the app's Design demo (`/demo/<route>`) · PR #<number>, and for a
-desktop web board `<page title>` in the web's demo (`/demo/<page>`, states `?state=<a>`,
-`?state=<b>`) · PR #<number>
+**Demo:** `<flow title>` in the app's Design demo (`/demo/<route>`), and for a desktop web
+board `<page title>` in the web's demo (`/demo/<page>`, states `?state=<a>`, `?state=<b>`) ·
+PR #<number>
 
 **Layouts:** <desktop · tablet landscape · tablet portrait · phone>, and why that set.
 
