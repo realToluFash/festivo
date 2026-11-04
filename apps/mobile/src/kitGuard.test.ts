@@ -639,6 +639,31 @@ describe('every field reports its focus to the lift (sc-29076)', () => {
   });
 });
 
+describe('a step lifts inside its own StepScreen (sc-29069)', () => {
+  it('in every component that renders a StepScreen', () => {
+    const offenders = sources(['src', 'app']).flatMap(({ path, text }) =>
+      text
+        .split(/^(?=(?:export )?(?:default )?function )/mu)
+        .filter((component) => component.includes('<StepScreen') && liftsHere(component))
+        .map(() => path.replace(/^.*\/apps\/mobile\//u, '')),
+    );
+
+    expect(
+      offenders,
+      'useAboveKeyboard above the StepScreen finds no scroll: use <AboveKeyboardView>.',
+    ).toEqual([]);
+  });
+
+  it('notices a hook called beside the StepScreen it renders', () => {
+    expect(liftsHere('const group = useAboveKeyboard();\nreturn <StepScreen />;')).toBe(true);
+    expect(liftsHere('return <StepScreen><AboveKeyboardView /></StepScreen>;')).toBe(false);
+  });
+});
+
+function liftsHere(component: string): boolean {
+  return /\buseAboveKeyboard\(/u.test(component);
+}
+
 const FOCUS_THROUGH =
   'A refusal focuses through focusChecked or focusRefused: focus() skips a field Android left focused with the keys hidden.';
 
