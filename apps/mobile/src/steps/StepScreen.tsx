@@ -18,6 +18,7 @@ import {
   StyleSheet,
   useWindowDimensions,
   View,
+  type LayoutChangeEvent,
   type ViewInstance,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -31,7 +32,7 @@ import {
   useScreenScrollView,
   useWindowOrigin,
 } from '../components/Screen.tsx';
-import { keysOver } from '../kit/keyboard.ts';
+import { footInline, keysOver } from '../kit/keyboard.ts';
 import { useLayout } from '../layout/useLayout.ts';
 import { glide } from '../motion.ts';
 import { useReducedMotion } from '../reducedMotion.ts';
@@ -219,6 +220,29 @@ export function StepScreen({
   const measured = ANDROID || inSheet;
   const cover = useKeysCover(page, measured, inSheet ? insets.top + SHEET_LIFTED_GAP : 0);
   const { screenScroll, scrollProps } = useScreenScrollView();
+  const [sizes, setSizes] = useState({ shown: 0, content: 0, foot: 0, inline: false });
+  const measuredAs = (key: 'shown' | 'content' | 'foot') => (event: LayoutChangeEvent) => {
+    const height = event.nativeEvent.layout.height;
+    setSizes((was) => {
+      const next = { ...was, [key]: height };
+      next.inline = footInline({ keysUp, ...next });
+
+      return next.inline === was.inline && next[key] === was[key] ? was : next;
+    });
+  };
+  const inline = foot != null && keysUp && sizes.inline;
+  const footView = (
+    <View
+      style={[
+        styles.edge,
+        styles.foot,
+        inline ? styles.inlineFoot : { paddingHorizontal: side, paddingBottom: bottom },
+      ]}
+      onLayout={inline ? undefined : measuredAs('foot')}
+    >
+      <View style={[styles.column, styles.footColumn]}>{foot}</View>
+    </View>
+  );
 
   return (
     <View
@@ -233,6 +257,10 @@ export function StepScreen({
         )}
         <ScrollView
           {...scrollProps}
+          onLayout={(event) => {
+            scrollProps.onLayout();
+            measuredAs('shown')(event);
+          }}
           style={styles.grow}
           contentContainerStyle={[
             styles.content,
@@ -243,16 +271,13 @@ export function StepScreen({
           keyboardDismissMode="interactive"
         >
           <ScreenScroll.Provider value={screenScroll}>
-            <View style={styles.column}>{children}</View>
+            <View style={styles.column} onLayout={measuredAs('content')}>
+              {children}
+            </View>
+            {inline && footView}
           </ScreenScroll.Provider>
         </ScrollView>
-        {foot != null && (
-          <View
-            style={[styles.edge, styles.foot, { paddingHorizontal: side, paddingBottom: bottom }]}
-          >
-            <View style={[styles.column, styles.footColumn]}>{foot}</View>
-          </View>
-        )}
+        {foot != null && !inline && footView}
       </KeyboardAvoidingView>
     </View>
   );
@@ -267,6 +292,7 @@ const styles = StyleSheet.create({
   content: { flexGrow: 1, alignItems: 'center', paddingBottom: tokens.spaceXl },
   centred: { justifyContent: 'center' },
   foot: { paddingTop: tokens.spaceLg },
+  inlineFoot: { width: '100%' },
   bar: { minHeight: tokens.sizeHit, flexDirection: 'row', alignItems: 'center' },
   icon: {
     width: tokens.sizeHit,

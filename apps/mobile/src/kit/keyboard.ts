@@ -43,6 +43,24 @@ export function barFits({ room, field, bar, margin }: DockRoom): boolean {
   return field + 2 * margin + bar <= room;
 }
 
+/** The foot rides the keys only while what it sits under still fits above it; where it does not, as on a tablet in landscape, it follows the content so nothing is hidden behind it (sc-29076). */
+export function footInline({
+  keysUp,
+  shown,
+  content,
+  foot,
+  inline,
+}: {
+  keysUp: boolean;
+  /** The scroll view's height, with the foot inside it when `inline`. */
+  shown: number;
+  content: number;
+  foot: number;
+  inline: boolean;
+}): boolean {
+  return keysUp && content > (inline ? shown - foot : shown);
+}
+
 export interface ScrollInsets {
   automaticallyAdjustKeyboardInsets: boolean;
   contentInset: { bottom: number } | undefined;

@@ -19,6 +19,7 @@ import {
 import {
   barFits,
   coveredBy,
+  footInline,
   fieldKeptInSight,
   groupInWindow,
   keyboardInWindow,
@@ -196,6 +197,16 @@ describe('a field and its button rest above the keyboard', () => {
     expect(barFits({ ...portrait, room: 312 })).toBe(true);
     expect(barFits({ ...portrait, room: 311 })).toBe(false);
     expect(barFits({ ...portrait, room: 140 })).toBe(false);
+  });
+
+  it("a step's foot follows its content once the content no longer fits above it (sc-29076)", () => {
+    const landscape = { keysUp: true, shown: 240, content: 300, foot: 88, inline: false };
+
+    expect(footInline(landscape)).toBe(true);
+    expect(footInline({ ...landscape, shown: 328, inline: true })).toBe(true);
+    expect(footInline({ ...landscape, shown: 300 })).toBe(false);
+    expect(footInline({ ...landscape, shown: 388, inline: true })).toBe(false);
+    expect(footInline({ ...landscape, keysUp: false })).toBe(false);
   });
 
   it('only when the keyboard covers the group or its margin', () => {
