@@ -1,7 +1,10 @@
 import type { ExpoConfig } from 'expo/config';
 
 import { withFontScaleKept } from './plugins/withFontScaleKept.ts';
-import { tokens } from './src/theme/tokens.ts';
+import { withScheme } from './src/theme/tokens.ts';
+
+// icon.png and splash-icon.png are drawn on the base, so the native shell keeps it under every scheme.
+const tokens = withScheme(undefined);
 
 /**
  * Expo configuration, as code so it can read the environment.
