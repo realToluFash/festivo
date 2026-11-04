@@ -1,0 +1,76 @@
+# Welcome first, then email sign-in as its own step: blank, wrong pair, forgot, back, success. Needs EMAIL, PASSWORD, ${METRO_URL}. sc-29076.
+#
+#   node .qa/bin/qa-env.mjs maestro sc29076-qa-welcome --android EMAIL=… PASSWORD=…
+appId: host.exp.Exponent
+---
+- runFlow: sign-in-screen-english.yaml
+- launchApp:
+    appId: host.exp.Exponent
+    stopApp: true
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible:
+      id: 'welcome.brand'
+    timeout: 90000
+- assertVisible: 'Plan the event. Run the day.'
+- assertVisible:
+    id: 'welcome.email'
+- assertVisible:
+    id: 'welcome.register'
+- takeScreenshot: qa-welcome-en
+- tapOn:
+    id: 'welcome.email'
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.email'
+    timeout: 30000
+- assertNotVisible:
+    id: 'welcome.brand'
+- assertNotVisible: 'or'
+- takeScreenshot: qa-email-step-arrival
+- tapOn:
+    id: 'signIn.submit'
+- takeScreenshot: qa-email-step-blank
+- tapOn:
+    id: 'signIn.email'
+- eraseText: 120
+- inputText: ${EMAIL}
+- tapOn:
+    id: 'signIn.password'
+- eraseText: 120
+- inputText: 'wrong-password-123'
+- tapOn:
+    id: 'signIn.submit'
+- extendedWaitUntil:
+    visible: 'That email and password do not match.*'
+    timeout: 10000
+- takeScreenshot: qa-email-step-wrong-pair
+- tapOn:
+    id: 'signIn.forgot'
+- extendedWaitUntil:
+    visible: '.*Reset.*'
+    timeout: 10000
+- takeScreenshot: qa-forgot-carries-email
+- back
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.password'
+    timeout: 10000
+- tapOn:
+    id: 'signIn.password'
+- eraseText: 120
+- inputText: ${PASSWORD}
+- tapOn:
+    id: 'signIn.submit'
+- scrollUntilVisible:
+    element:
+      text: 'Signed in as.*'
+    direction: DOWN
+    timeout: 30000
+- takeScreenshot: qa-signed-in
+- runFlow: sign-out.yaml
+- extendedWaitUntil:
+    visible:
+      id: 'welcome.email'
+    timeout: 20000
+- takeScreenshot: qa-signed-out-welcome
