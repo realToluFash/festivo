@@ -25,7 +25,6 @@ const TILES: Record<Exclude<Section, 'account' | 'general'>, GlyphName> = {
   security: 'shield',
   notifications: 'bell',
   members: 'users',
-  roles: 'key',
   signInRules: 'lock',
 };
 
@@ -71,8 +70,8 @@ export function Settings() {
           inert={covered}
         />
         <main id="content" className="desk-main" inert={covered}>
-          <SettingsList open={viewer.reads ? open : null} viewer={viewer} tell={tell} />
-          {viewer.reads ? (
+          <SettingsList open={viewer.manages ? open : null} viewer={viewer} tell={tell} />
+          {viewer.manages ? (
             <Members
               key={`${open}:${viewer.key}:${state}`}
               viewer={viewer}
@@ -90,7 +89,7 @@ export function Settings() {
   );
 }
 
-/** Your account's sections, then the organisation's: a tile and the name, the open one Tint with a Violet ring. */
+/** Your account's sections, then the organisation's: a tile and the name, the open one Tint with its name in Violet. */
 function SettingsList({ open, viewer, tell }: { open: Drawn | null; viewer: Viewer; tell: Tell }) {
   return (
     <nav className="desk-list" aria-label="Settings">

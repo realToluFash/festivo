@@ -55,11 +55,11 @@ describe('Members at a desk (sc-29708)', () => {
   it('opens each state the boards draw where they draw it', () => {
     expect(membersStart('menu', VIEWERS.folake).menu).toBe(true);
     expect(membersStart('revoked', VIEWERS.folake).filter).toBe('invited');
-    expect(membersStart('martaNo', VIEWERS.julien)).toMatchObject({
-      open: MARTA,
-      withholds: ['Coordinator'],
+    expect(membersStart('self', VIEWERS.julien).open).toBe(VIEWERS.julien.id);
+    expect(membersStart('roleAdmin', VIEWERS.folake).dialog).toMatchObject({
+      kind: 'role',
+      picked: 'Admin',
     });
-    expect(membersStart('self', VIEWERS.tom).open).toBe(VIEWERS.tom.id);
     expect(membersStart('makeOwnerWrong', VIEWERS.folake).dialog).toMatchObject({
       kind: 'role',
       id: ANA,
@@ -82,7 +82,7 @@ describe('Members at a desk (sc-29708)', () => {
       step: { label: 'Answer Lucía Gómez', does: 'answer', id: LUCIA },
       more: 2,
     });
-    expect(card('', VIEWERS.tom)).toMatchObject({ says: '7 people', step: null });
+    expect(card('', VIEWERS.julien).says).toBe('7 people · 1 waiting');
   });
 
   it('tells what just happened, and that nobody owns it while it is so', () => {
@@ -103,18 +103,18 @@ describe('Members at a desk (sc-29708)', () => {
       suspend: true,
     });
     expect(viewOf(MARTA)).toMatchObject({ step: { label: 'Restore' }, kept: true });
-    expect(viewOf(PRIYA, VIEWERS.tom)).toMatchObject({ step: null, suspend: false, remove: null });
+    expect(viewOf(PRIYA, VIEWERS.julien).step).toMatchObject({ does: 'role' });
     expect(viewOf(SAMPLE.email, VIEWERS.julien).after).toContain(
       'Only an owner can make somebody else an owner. Ask Folake Adeyemi.',
     );
-    expect(viewOf(MARTA, VIEWERS.julien, 'martaNo').lines).toContain(
-      'Their role holds a permission yours does not, so you cannot change their role or their access.',
-    );
+    expect(viewOf(VIEWERS.julien.id, VIEWERS.julien).after).toEqual([
+      'You cannot change your own role. An owner or another admin can.',
+    ]);
   });
 
   it('shows Awaiting approval only to those who manage members', () => {
     expect(filtersFor(VIEWERS.folake)).toContain('waiting');
-    expect(filtersFor(VIEWERS.tom)).not.toContain('waiting');
+    expect(filtersFor(VIEWERS.ana)).not.toContain('waiting');
     expect(counts(samplePeople(), sampleInvitations())).toEqual({
       all: 7,
       active: 6,
@@ -125,10 +125,11 @@ describe('Members at a desk (sc-29708)', () => {
     });
   });
 
-  it('lets an administrator give every role but Owner, and approve as Read-only first', () => {
-    expect(grantable(VIEWERS.julien)).not.toContain('Owner');
-    expect(grantable(VIEWERS.tom)).toEqual([]);
-    expect(approvalRoles(VIEWERS.folake)[0]).toBe('Read-only');
+  it('lets an owner give all three roles, an admin Admin and Member, and approve as Member first', () => {
+    expect(grantable(VIEWERS.folake)).toEqual(['Owner', 'Admin', 'Member']);
+    expect(grantable(VIEWERS.julien)).toEqual(['Admin', 'Member']);
+    expect(grantable(VIEWERS.ana)).toEqual([]);
+    expect(approvalRoles(VIEWERS.folake)).toEqual(['Member', 'Admin']);
   });
 
   it('tags a person by how they stand', () => {
@@ -145,7 +146,7 @@ describe('Members at a desk (sc-29708)', () => {
 
     expect(invitationRow(pending, samplePeople(), VIEWERS.folake, say)).toEqual({
       tag: null,
-      line: 'Coordinator · invited by you',
+      line: 'Member · invited by you',
       dates: 'Sent Nov 2, 2026 · expires Nov 9, 2026',
     });
     expect(invitationRow(expired, samplePeople(), VIEWERS.folake, say).tag).toBe('Expired');

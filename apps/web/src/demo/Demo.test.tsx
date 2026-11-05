@@ -1127,17 +1127,18 @@ describe('Settings at a desk (sc-29708)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Security' }));
     expect(screen.getByText('Security has its own design.')).toBeDefined();
-    fireEvent.click(screen.getByRole('button', { name: 'Roles' }));
-    expect(screen.getByText('Roles has its own design.')).toBeDefined();
     expect(screen.getByRole('heading', { level: 1, name: 'Members' })).toBeDefined();
+    expect(
+      within(screen.getByRole('navigation', { name: 'Settings' })).queryByText('Roles'),
+    ).toBeNull();
   });
 
   it('names who is looking at the sidebar’s foot', async () => {
-    await settings('/demo/settings?as=tom');
-    expect(screen.getByRole('button', { name: 'Tom Becker, Door staff' })).toBeDefined();
+    await settings('/demo/settings?as=julien');
+    expect(screen.getByRole('button', { name: 'Julien Moreau, Admin' })).toBeDefined();
   });
 
-  it('leaves Members and Roles out of the list for a role that does not read them', async () => {
+  it('lists no Members and no Roles for a member', async () => {
     await settings('/demo/settings?as=ana');
 
     const list = screen.getByRole('navigation', { name: 'Settings' });
@@ -1164,7 +1165,7 @@ describe('Settings at a desk (sc-29708)', () => {
     await settings('/demo/settings/members?state=request');
 
     fireEvent.click(screen.getByRole('button', { name: 'Approve' }));
-    expect(screen.getByText('Lucía Gómez joined as Read-only')).toBeDefined();
+    expect(screen.getByText('Lucía Gómez joined as Member')).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: 'See Lucía Gómez' }));
     expect(screen.getByRole('heading', { level: 1, name: 'Lucía Gómez' })).toBeDefined();
   });
@@ -1188,10 +1189,10 @@ describe('Settings at a desk (sc-29708)', () => {
     fireEvent.click(screen.getByRole('button', { name: /^Priya Shah/u }));
     expect(screen.getByRole('heading', { level: 1, name: 'Priya Shah' })).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: 'Change role' }));
-    fireEvent.click(screen.getByRole('radio', { name: /^Coordinator/u }));
+    fireEvent.click(screen.getByRole('radio', { name: /^Admin/u }));
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
-    expect(screen.getByText('Priya Shah is now Coordinator.')).toBeDefined();
+    expect(screen.getByText('Priya Shah is now Admin.')).toBeDefined();
   });
 
   it('steps back from the proof to the role, where Cancel asks before it drops Owner', async () => {
@@ -1210,12 +1211,21 @@ describe('Settings at a desk (sc-29708)', () => {
     expect(screen.getByRole('alertdialog', { name: 'Discard your change?' })).toBeDefined();
   });
 
-  it('shows somebody who manages nothing the people but no requests or invite', async () => {
-    await settings('/demo/settings/members?as=tom');
+  it('opens no Members page for a member, even from its link', async () => {
+    await settings('/demo/settings/members?as=ana');
 
-    expect(screen.getByText('7 people')).toBeDefined();
-    expect(screen.queryByRole('heading', { name: 'Waiting' })).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Invite somebody' })).toBeNull();
+    expect(screen.queryByRole('heading', { level: 1, name: 'Members' })).toBeNull();
+    expect(screen.queryByText('7 people')).toBeNull();
+  });
+
+  it('offers an admin Admin and Member, and says only an owner makes an owner', async () => {
+    await settings('/demo/settings/members?as=julien&state=role');
+
+    const dialog = within(screen.getByRole('dialog', { name: 'Priya’s role' }));
+    expect(
+      dialog.getAllByRole('radio').map((radio) => radio.closest('label')?.textContent),
+    ).toEqual([expect.stringMatching(/^Admin/u), expect.stringMatching(/^Member/u)]);
+    expect(dialog.getByText(/^Only an owner makes someone an owner\./u)).toBeDefined();
   });
 
   it('asks for an address before it sends an invitation', async () => {
@@ -1239,7 +1249,7 @@ describe('Settings at a desk (sc-29708)', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
-  it('answers a section it does not draw with the not-found page', async () => {
+  it('answers Roles, retired, with the not-found page', async () => {
     at('/demo/settings/roles');
 
     expect(await screen.findByRole('heading', { name: 'This page does not exist' })).toBeDefined();

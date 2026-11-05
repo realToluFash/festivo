@@ -33,6 +33,7 @@ export const ANA = VIEWERS.ana.id;
 export const MARTA = 'marta.silva@ire.events';
 export const LUCIA = 'lucia.gomez@outlook.com';
 const DANIEL = 'daniel.kim@ire.events';
+const TOM = 'tom.becker@gmail.com';
 
 function person(
   id: string,
@@ -58,27 +59,25 @@ function person(
 export function samplePeople(): Person[] {
   return [
     person(FOLAKE, SAMPLE.name, 'Owner', [{ what: `Created ${ORGANISATION}`, when: '2025-03-02' }]),
-    person(JULIEN, 'Julien Moreau', 'Administrator', [
+    person(JULIEN, 'Julien Moreau', 'Admin', [
       { what: 'Invited by', by: FOLAKE, when: '2025-04-12' },
       { what: 'Accepted the invitation', when: '2025-04-14' },
     ]),
-    person(PRIYA, 'Priya Shah', 'Event manager', [
+    person(PRIYA, 'Priya Shah', 'Member', [
       { what: 'Joined with a company email address', when: '2025-06-03' },
     ]),
-    person(ANA, 'Ana Souza', 'Coordinator', [
-      { what: 'Joined with a join code', when: '2025-08-21' },
-    ]),
-    person(VIEWERS.tom.id, 'Tom Becker', 'Door staff', [
+    person(ANA, 'Ana Souza', 'Member', [{ what: 'Joined with a join code', when: '2025-08-21' }]),
+    person(TOM, 'Tom Becker', 'Member', [
       { what: 'Asked to join', when: '2026-02-06' },
       { what: 'Approved by', by: FOLAKE, when: '2026-02-09' },
     ]),
-    person('kofi@ire.events', 'Kofi Mensah', 'Read-only', [
+    person('kofi@ire.events', 'Kofi Mensah', 'Member', [
       { what: 'Joined from the company directory', when: '2026-09-15' },
     ]),
     person(
       MARTA,
       'Marta Silva',
-      'Coordinator',
+      'Member',
       [
         { what: 'Joined with a company email address', when: '2026-05-11' },
         { what: 'Suspended: company domain', when: '2026-10-28' },
@@ -95,7 +94,7 @@ export function samplePeople(): Person[] {
     person(
       DANIEL,
       'Daniel Kim',
-      'Coordinator',
+      'Member',
       [{ what: `Left ${ORGANISATION}`, when: '2026-09-30' }],
       'former',
     ),
@@ -115,7 +114,7 @@ export function sampleInvitations(): Invitation[] {
   return [
     {
       email: 'nnamdi.eze@ire.events',
-      role: 'Coordinator',
+      role: 'Member',
       by: FOLAKE,
       status: 'pending',
       sent: '2026-11-02',
@@ -123,7 +122,7 @@ export function sampleInvitations(): Invitation[] {
     },
     {
       email: 'sofia.ramos@gmail.com',
-      role: 'Read-only',
+      role: 'Member',
       by: JULIEN,
       status: 'expired',
       sent: '2026-10-12',
@@ -131,7 +130,7 @@ export function sampleInvitations(): Invitation[] {
     },
     {
       email: 'kwame.asante@outlook.com',
-      role: 'Event manager',
+      role: 'Admin',
       by: FOLAKE,
       status: 'declined',
       sent: '2026-09-28',
@@ -303,22 +302,16 @@ export function invitationRow(
   };
 }
 
-export const ROLE_NAMES = [
-  'Owner',
-  'Administrator',
-  'Event manager',
-  'Coordinator',
-  'Read-only',
-  'Door staff',
-] as const;
+/** The three roles sc-29859 leaves an organisation, the most first. */
+export const ROLE_NAMES = ['Owner', 'Admin', 'Member'] as const;
 
 const ROLE_MEANS: Record<string, string> = {
   Owner: 'Everything, including billing and deleting the organisation.',
-  Administrator: 'Everything in events, plus members and roles. Not billing.',
-  'Event manager': 'Everything inside events, and manages the budget. Never the margin.',
-  Coordinator: 'Runs events. Reads the budget, never the margin.',
-  'Read-only': 'Sees events. Changes nothing.',
+  Admin: 'Everything except billing. Sees every event and manages members.',
+  Member: 'Works on the events they’re added to, and sees no others.',
 };
+
+export const WHERE_EVENTS = 'A member’s events come from each event’s People.';
 
 export function roleMeans(role: string): string | null {
   return role === 'Owner'
@@ -326,28 +319,29 @@ export function roleMeans(role: string): string | null {
     : (ROLE_MEANS[role] ?? null);
 }
 
-/** As the sample's grants give it: an owner may give every role, an administrator every one but Owner. */
+/** An owner may give every role, an admin Admin or Member. */
 export function grantable(viewer: Pick<Viewer, 'owns' | 'manages'>): string[] {
   if (!viewer.manages) return [];
 
   return ROLE_NAMES.filter((role) => viewer.owns || role !== 'Owner');
 }
 
-/** Never Owner, and Read-only first: the least a person can be let in with. */
+/** Never Owner, and Member first: the least a person can be let in with. */
 export function approvalRoles(viewer: Pick<Viewer, 'owns' | 'manages'>): string[] {
-  const offered = grantable(viewer).filter((role) => role !== 'Owner');
+  return grantable(viewer)
+    .filter((role) => role !== 'Owner')
+    .reverse();
+}
 
-  return [
-    ...offered.filter((role) => role === 'Read-only'),
-    ...offered.filter((role) => role !== 'Read-only'),
-  ];
+/** Under the role choice: where a member's events come from, and for an admin who gives Owner. */
+export function underRoles(viewer: Pick<Viewer, 'owns'>): string {
+  return viewer.owns ? WHERE_EVENTS : `Only an owner makes someone an owner. ${WHERE_EVENTS}`;
 }
 
 export function standingOf(
   person: Person,
   people: readonly Person[],
   viewer: Viewer,
-  withholds: readonly string[] = [],
 ): MemberStanding {
   const owners = people.filter((one) => one.role === 'Owner').length;
   const shaped = (one: Person) => ({
@@ -363,10 +357,7 @@ export function standingOf(
     role: { id: one.role ?? '', seededAs: one.role === 'Owner' ? 'owner' : one.role },
     suspension: suspended(one.status) ? { onlyOwner: one.role === 'Owner' && owners === 1 } : null,
   });
-  const withheld = [
-    ...ROLE_NAMES.filter((role) => !grantable(viewer).includes(role)),
-    ...withholds,
-  ];
+  const withheld = ROLE_NAMES.filter((role) => !grantable(viewer).includes(role));
 
   return memberStanding(shaped(person), people.map(shaped), {
     owns: viewer.owns,
@@ -564,14 +555,12 @@ export function personView({
   person,
   people,
   viewer,
-  withholds,
   event,
   say,
 }: {
   person: Person;
   people: readonly Person[];
   viewer: Viewer;
-  withholds: readonly string[];
   event: PersonEvent | null;
   say: SettingsSay;
 }): PersonView {
@@ -585,9 +574,12 @@ export function personView({
     remove: null,
   };
 
-  switch (standingOf(person, people, viewer, withholds)) {
+  switch (standingOf(person, people, viewer)) {
     case 'self':
-      return { ...view, after: ['You cannot change your own role. An owner can.'] };
+      return {
+        ...view,
+        after: ['You cannot change your own role. An owner or another admin can.'],
+      };
     case 'selfOwner':
       return {
         ...view,
@@ -609,16 +601,9 @@ export function personView({
             : []),
         ],
       };
-    case 'beyondGrant':
-      return {
-        ...view,
-        lines: [
-          ...view.lines,
-          'Their role holds a permission yours does not, so you cannot change their role or their access.',
-        ],
-      };
     case 'ownerOnly':
       return { ...view, after: ['Only an owner can change an owner’s role or remove them.'] };
+    case 'beyondGrant':
     case 'readOnly':
       return view;
     case 'manageable':
@@ -789,7 +774,6 @@ export interface MembersStart {
   load: Load;
   people: Person[];
   invitations: Invitation[];
-  withholds: string[];
   filter: Filter;
   menu: boolean;
   open: string | null;
@@ -820,7 +804,7 @@ export const MEMBERS_STATES = [
   'former',
   'priya',
   'role',
-  'roleCoordinator',
+  'roleAdmin',
   'roleDiscard',
   'removing',
   'self',
@@ -829,7 +813,6 @@ export const MEMBERS_STATES = [
   'makeOwnerBlank',
   'makeOwnerWrong',
   'marta',
-  'martaNo',
   'suspending',
   'justSuspended',
   'suspended',
@@ -864,11 +847,11 @@ const CLAIMS: Partial<Record<MembersState, Claim>> = {
 };
 
 function dialogOf(state: MembersState): MembersDialog | null {
-  const request = { kind: 'request', id: LUCIA, picked: 'Read-only', ask: null } as const;
+  const request = { kind: 'request', id: LUCIA, picked: 'Member', ask: null } as const;
   const role = {
     kind: 'role',
     id: PRIYA,
-    picked: 'Event manager',
+    picked: 'Member',
     ask: false,
     proving: null,
   } as const;
@@ -877,14 +860,14 @@ function dialogOf(state: MembersState): MembersDialog | null {
 
   switch (state) {
     case 'invite':
-      return { kind: 'invite', email: '', role: 'Coordinator', problem: null };
+      return { kind: 'invite', email: '', role: 'Member', problem: null };
     case 'inviteBlank':
-      return { kind: 'invite', email: '', role: 'Coordinator', problem: inviteProblem('') };
+      return { kind: 'invite', email: '', role: 'Member', problem: inviteProblem('') };
     case 'inviteShape':
       return {
         kind: 'invite',
         email: 'chidi.okafor',
-        role: 'Coordinator',
+        role: 'Member',
         problem: inviteProblem('chidi.okafor'),
       };
     case 'request':
@@ -892,13 +875,13 @@ function dialogOf(state: MembersState): MembersDialog | null {
     case 'turningDown':
       return { ...request, ask: 'turnDown' };
     case 'requestDiscard':
-      return { ...request, picked: 'Coordinator', ask: 'discard' };
+      return { ...request, picked: 'Admin', ask: 'discard' };
     case 'role':
       return role;
-    case 'roleCoordinator':
-      return { ...role, picked: 'Coordinator' };
+    case 'roleAdmin':
+      return { ...role, picked: 'Admin' };
     case 'roleDiscard':
-      return { ...role, picked: 'Coordinator', ask: true };
+      return { ...role, picked: 'Admin', ask: true };
     case 'removing':
       return { kind: 'remove', id: PRIYA };
     case 'suspending':
@@ -942,7 +925,7 @@ function openOf(state: MembersState, viewer: Pick<Viewer, 'id'>): string | null 
   switch (state) {
     case 'priya':
     case 'role':
-    case 'roleCoordinator':
+    case 'roleAdmin':
     case 'roleDiscard':
     case 'removing':
     case 'suspending':
@@ -955,7 +938,6 @@ function openOf(state: MembersState, viewer: Pick<Viewer, 'id'>): string | null 
     case 'makeOwnerWrong':
       return ANA;
     case 'marta':
-    case 'martaNo':
       return MARTA;
     case 'self':
       return viewer.id;
@@ -980,7 +962,7 @@ function peopleOf(state: MembersState, viewer: Pick<Viewer, 'id'>): Person[] {
     case 'nobodyLeft':
       return people.filter((one) => one.id !== DANIEL);
     case 'approved':
-      return approved(people, LUCIA, 'Read-only', viewer.id);
+      return approved(people, LUCIA, 'Member', viewer.id);
     case 'turnedDown':
       return removed(people, LUCIA);
     case 'removed':
@@ -1003,7 +985,7 @@ function noticeOf(state: MembersState): Notice | null {
     case 'sent':
       return { kind: 'sent', email: 'chidi.okafor@ire.events' };
     case 'approved':
-      return { kind: 'approved', id: LUCIA, role: 'Read-only' };
+      return { kind: 'approved', id: LUCIA, role: 'Member' };
     case 'turnedDown':
       return { kind: 'turnedDown', id: LUCIA };
     case 'removed':
@@ -1034,7 +1016,6 @@ export function membersStart(name: string, viewer: Pick<Viewer, 'id'>): MembersS
     load: 'loaded',
     people: samplePeople(),
     invitations,
-    withholds: [],
     filter: 'all',
     menu: false,
     open: null,
@@ -1054,9 +1035,8 @@ export function membersStart(name: string, viewer: Pick<Viewer, 'id'>): MembersS
       state === 'revoked'
         ? revoked(invitations, 'nnamdi.eze@ire.events')
         : state === 'sent'
-          ? invited(invitations, 'chidi.okafor@ire.events', 'Coordinator', viewer.id)
+          ? invited(invitations, 'chidi.okafor@ire.events', 'Member', viewer.id)
           : invitations,
-    withholds: state === 'martaNo' ? ['Coordinator'] : [],
     filter: FILTERS[state] ?? 'all',
     menu: state === 'menu',
     open: openOf(state, viewer),
