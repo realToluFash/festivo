@@ -33,6 +33,7 @@ export function ContactsSection({
   promoteRef,
   removeRef,
   onAdd,
+  onBlock,
   onToggle,
   onVerify,
   onMakePrimary,
@@ -43,6 +44,7 @@ export function ContactsSection({
   opened: string | null;
   addRef: Ref<ViewInstance>;
   onAdd: () => void;
+  onBlock: (id: string, block: ViewInstance | null) => void;
   onToggle: (id: string) => void;
   onVerify: (row: Contact) => void;
   onMakePrimary: (row: Contact) => void;
@@ -87,28 +89,30 @@ export function ContactsSection({
                 testID={`account.${row.id}`}
               />
             ) : (
-              <OpenRow
-                title={row.shown}
-                line={line}
-                lead={lead}
-                tag={tag}
-                weight="semibold"
-                lit
-                open={open}
-                onToggle={() => onToggle(row.id)}
-                accessibilityLabel={label}
-                testID={`account.${row.id}`}
-              >
-                <Offers
-                  row={row}
-                  sendRef={sendRef}
-                  promoteRef={promoteRef}
-                  removeRef={removeRef}
-                  onVerify={onVerify}
-                  onMakePrimary={onMakePrimary}
-                  onRemove={onRemove}
-                />
-              </OpenRow>
+              <View ref={(block) => onBlock(row.id, block)} collapsable={false}>
+                <OpenRow
+                  title={row.shown}
+                  line={line}
+                  lead={lead}
+                  tag={tag}
+                  weight="semibold"
+                  lit
+                  open={open}
+                  onToggle={() => onToggle(row.id)}
+                  accessibilityLabel={label}
+                  testID={`account.${row.id}`}
+                >
+                  <Offers
+                    row={row}
+                    sendRef={sendRef}
+                    promoteRef={promoteRef}
+                    removeRef={removeRef}
+                    onVerify={onVerify}
+                    onMakePrimary={onMakePrimary}
+                    onRemove={onRemove}
+                  />
+                </OpenRow>
+              </View>
             ),
           };
         })}
