@@ -51,7 +51,7 @@ export function EventScreen({
   const { kind } = useLayout();
   const { account, organisation } = useSignedIn();
   const organisationId = organisation?.id;
-  const reads = organisation != null && roleHolds(organisation, 'events.read');
+  const reads = organisation != null;
   const creates = organisation != null && roleHolds(organisation, 'events.create');
   const manages = organisation != null && roleHolds(organisation, 'events.manage');
   const deletes = offersDelete(organisation);

@@ -81,10 +81,8 @@ describe('the event open, before asking the API', () => {
     expect(openedWithoutAsking(true, null)).toEqual({ kind: 'notFound' });
   });
 
-  it('shows not found to a role that cannot read events', () => {
-    expect(openedWithoutAsking(true, { permissions: ['members.read'] })).toEqual({
-      kind: 'notFound',
-    });
+  it('asks the API for a Member, whose events it scopes (sc-29914)', () => {
+    expect(openedWithoutAsking(true, { permissions: [] })).toBeNull();
   });
 
   it('asks the API for a role that reads events', () => {

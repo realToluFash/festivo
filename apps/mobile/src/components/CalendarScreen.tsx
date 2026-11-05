@@ -90,7 +90,7 @@ export function CalendarScreen() {
   const { organisation } = useSignedIn();
   const title = useRef<TextHandle>(null);
   const [offline, setOffline] = useState<ScreenOffline>(NOT_OFFLINE);
-  const reads = organisation != null && roleHolds(organisation, 'events.read');
+  const reads = organisation != null;
 
   if (organisation != null && !reads) return <Redirect href={DESTINATION_HREF.home} />;
 

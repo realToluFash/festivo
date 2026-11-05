@@ -41,8 +41,8 @@ describe('the frame shows only what is built', () => {
     ]);
   });
 
-  it('leaves Events out for a role whose Events level is Nothing, and with no organisation (sc-1593)', () => {
-    expect(destinations({ permissions: ['members.read'] })).toEqual(['home', 'settings']);
+  it('shows Events to a Member, who holds nothing across the organisation, and not with no organisation (sc-29914)', () => {
+    expect(destinations({ permissions: [] })).toEqual(['home', 'events', 'calendar', 'settings']);
     expect(destinations(null)).toEqual(['home', 'settings']);
   });
 

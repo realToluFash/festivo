@@ -1,5 +1,4 @@
 import { ApiError, type OrganisationEvent } from '@soirely/api-client';
-import { roleHolds } from '@soirely/domain';
 
 /** The event open, and the organisation it was opened in: undefined while the account was still loading. */
 export interface Selection {
@@ -39,7 +38,7 @@ export function openedOf(
     : { kind: 'failed' };
 }
 
-/** Settled without asking the API: loading until the account has loaded, then not found with no organisation or for a role that cannot read events, as the API would answer. */
+/** Settled without asking the API: loading until the account has loaded, then not found with no organisation, as the API would answer; a Member's events are the API's to scope (sc-29914). */
 export function openedWithoutAsking(
   accountLoaded: boolean,
   organisation: { permissions: readonly string[] } | null,
@@ -47,7 +46,7 @@ export function openedWithoutAsking(
   if (!accountLoaded) return { kind: 'loading' };
   if (organisation == null) return { kind: 'notFound' };
 
-  return roleHolds(organisation, 'events.read') ? null : { kind: 'notFound' };
+  return null;
 }
 
 /** What the Events list shows in place of its rows, as far as the pane beside it is concerned. */
