@@ -1125,8 +1125,8 @@ describe('Settings at a desk (sc-29708)', () => {
   it('says a section the boards do not draw has its own design, and opens nothing', async () => {
     await settings('/demo/settings');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Security' }));
-    expect(screen.getByText('Security has its own design.')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Notifications' }));
+    expect(screen.getByText('Notifications has its own design.')).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: 'Roles' }));
     expect(screen.getByText('Roles has its own design.')).toBeDefined();
     expect(screen.getByRole('heading', { level: 1, name: 'Members' })).toBeDefined();
