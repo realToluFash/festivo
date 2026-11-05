@@ -73,10 +73,32 @@ export interface AskProps {
   testID?: string;
 }
 
-/** B's one question: what happens, in words, then the way back first and the verb last, red when it removes. */
+/** B's one question: what happens, in words, then the way back first and the verb last, red when it removes. Two actions too wide for one line stack with the verb on top (sc-22092). */
 export function AskLayer({ title, line, keep, confirm, onKeep, onConfirm, testID }: AskProps) {
   const { layout } = useShell();
   const heading = useRef<TextHandle>(null);
+  const [widths, setWidths] = useState({ room: 0, keep: 0, confirm: 0 });
+  const measured = widths.room > 0 && widths.keep > 0 && widths.confirm > 0;
+  const stacked = measured && widths.keep + tokens.space3xl + widths.confirm > widths.room;
+  const laid = (part: keyof typeof widths) => (event: LayoutChangeEvent) => {
+    const width = event.nativeEvent.layout.width;
+    setWidths((now) => (now[part] === width ? now : { ...now, [part]: width }));
+  };
+  const keepAction = (
+    <View key="keep" onLayout={laid('keep')}>
+      <TextAction label={keep.label} onPress={onKeep} testID={keep.testID} />
+    </View>
+  );
+  const confirmAction = (
+    <View key="confirm" onLayout={laid('confirm')}>
+      <TextAction
+        label={confirm.label}
+        onPress={onConfirm}
+        removes={confirm.removes ?? false}
+        testID={confirm.testID}
+      />
+    </View>
+  );
 
   useEffect(() => {
     const focus = setTimeout(() => moveScreenReaderFocus(heading.current), SETTLED_MS);
@@ -98,14 +120,11 @@ export function AskLayer({ title, line, keep, confirm, onKeep, onConfirm, testID
         <Text size={15} weight="medium" style={styles.secondary}>
           {line}
         </Text>
-        <View style={styles.askActions}>
-          <TextAction label={keep.label} onPress={onKeep} testID={keep.testID} />
-          <TextAction
-            label={confirm.label}
-            onPress={onConfirm}
-            removes={confirm.removes ?? false}
-            testID={confirm.testID}
-          />
+        <View
+          style={[stacked ? styles.askStack : styles.askActions, !measured && styles.unmeasured]}
+          onLayout={laid('room')}
+        >
+          {stacked ? [confirmAction, keepAction] : [keepAction, confirmAction]}
         </View>
       </View>
     </View>
@@ -478,11 +497,12 @@ const styles = StyleSheet.create({
   },
   askActions: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     justifyContent: 'flex-end',
     columnGap: tokens.space3xl,
     paddingTop: tokens.spaceXs,
   },
+  askStack: { alignItems: 'flex-end', paddingTop: tokens.spaceXs },
+  unmeasured: { opacity: 0 },
   screen: { flex: 1, backgroundColor: tokens.colorCard },
   sheetScrim: {
     flex: 1,
