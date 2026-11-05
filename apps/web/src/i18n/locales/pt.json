@@ -1293,9 +1293,7 @@
     "roleMeans": {
       "owner": "Tudo, incluindo a faturação e a eliminação da organização.",
       "administrator": "Tudo nos eventos, mais membros e funções. Sem faturação.",
-      "event_manager": "Tudo dentro dos eventos, e gere o orçamento. Nunca a margem.",
-      "coordinator": "Organiza eventos. Consulta o orçamento, nunca a margem.",
-      "read_only": "Vê os eventos. Não altera nada."
+      "member": "Works on the events they’re added to, and sees no others."
     },
     "inviteNote": "Esta pessoa recebe um e-mail no seu idioma, com uma ligação para aderir a {{organisation}} com a função {{role}}. O e-mail indica até quando a ligação funciona.",
     "send": "Enviar convite",
@@ -1304,7 +1302,8 @@
     "sendFailed": "Não foi possível enviar o convite. Verifique a ligação e tente novamente.",
     "roleTitle": "Função",
     "roleFor": "Função de {{name}}",
-    "seeRoles": "Ver o que cada função permite ›",
+    "eventsFromPeople": "A member’s events come from each event’s People.",
+    "ownerMakesOwner": "Only an owner makes someone an owner.",
     "roleTakesEffect": "Aplica-se assim que essa pessoa voltar a usar a Soirely; nenhuma sessão é encerrada.",
     "rolePick": "Escolha outra função",
     "roleSave": "Atribuir a função {{role}}",
@@ -1796,7 +1795,8 @@
     "overdueBody": "{{organisation}} exige a autenticação de dois fatores e o prazo para a ativar já terminou.",
     "overdueElsewhere": "As suas outras organizações e o seu acesso a eventos individuais não são afetados.",
     "overdueTurnOn": "Ativar a autenticação de dois fatores",
-    "overdueSignOut": "Encerrar sessão"
+    "overdueSignOut": "Encerrar sessão",
+    "managersAre": "Managers are owners and admins."
   },
   "languageNames": {
     "en": "Inglês",

@@ -1264,10 +1264,8 @@
     "emailShape": "That does not look like an email address. Check it has an @ and a domain, like amara.o@gmail.com.",
     "roleMeans": {
       "owner": "Everything, including billing and deleting the organisation.",
-      "administrator": "Everything in events, plus members and roles. Not billing.",
-      "event_manager": "Everything inside events, and manages the budget. Never the margin.",
-      "coordinator": "Runs events. Reads the budget, never the margin.",
-      "read_only": "Sees events. Changes nothing."
+      "administrator": "Everything except billing. Sees every event and manages members.",
+      "member": "Works on the events they’re added to, and sees no others."
     },
     "inviteNote": "They get an email in their language with a link to join {{organisation}} as {{role}}. The email says when the link stops working.",
     "send": "Send invitation",
@@ -1276,7 +1274,8 @@
     "sendFailed": "We could not send the invitation. Check your connection and try again.",
     "roleTitle": "Role",
     "roleFor": "Role for {{name}}",
-    "seeRoles": "See exactly what each role can do ›",
+    "eventsFromPeople": "A member’s events come from each event’s People.",
+    "ownerMakesOwner": "Only an owner makes someone an owner.",
     "roleTakesEffect": "Takes effect on their next request; nobody is signed out.",
     "rolePick": "Pick a different role",
     "roleSave": "Change their role to {{role}}",
@@ -1751,7 +1750,8 @@
     "overdueBody": "{{organisation}} requires two-factor, and the time to turn it on has passed.",
     "overdueElsewhere": "Your other organisations and single-event access are not affected.",
     "overdueTurnOn": "Turn on two-factor",
-    "overdueSignOut": "Sign out"
+    "overdueSignOut": "Sign out",
+    "managersAre": "Managers are owners and admins."
   },
   "languageNames": {
     "en": "English",

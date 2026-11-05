@@ -15,7 +15,6 @@ import { Events } from './app/events/Events.tsx';
 import { NewEvent } from './app/events/NewEvent.tsx';
 import { General } from './app/settings/General.tsx';
 import { Members } from './app/settings/Members.tsx';
-import { Roles } from './app/settings/Roles.tsx';
 import { SignInRules } from './app/settings/SignInRules.tsx';
 import { GuestLayout } from './guest/GuestLayout.tsx';
 import { Invitation } from './guest/Invitation.tsx';
@@ -93,7 +92,6 @@ export const routes = [
           { path: 'account/notifications', element: <NotificationSettings /> },
           { path: 'settings', element: <General /> },
           { path: 'settings/members', element: <Members /> },
-          { path: 'settings/roles', element: <Roles /> },
           { path: 'settings/sign-in-rules', element: <SignInRules /> },
         ],
       },

@@ -142,7 +142,7 @@ describe('Settings > General', () => {
 
   it('turns read-only under the refusal when the role lost the permission while the page was open', async () => {
     const coordinator = membership({
-      role: { id: 'role_2', seededAs: 'coordinator', name: null },
+      role: { id: 'role_2', seededAs: 'member', name: null },
       permissions: ['events.read'],
     });
     const refusal = {
@@ -180,7 +180,7 @@ describe('Settings > General', () => {
     expect(readOnlyLanguage().textContent).toBe('English');
     await waitFor(() =>
       expect(
-        screen.getByText(/Your role, Coordinator, can see these but not change them/),
+        screen.getByText(/Your role, Member, can see these but not change them/),
       ).toBeDefined(),
     );
   });
@@ -320,7 +320,7 @@ describe('Settings > General', () => {
   it('shows the details as text, with no controls, to a role that cannot change them', () => {
     signedIn(
       membership({
-        role: { id: 'role_2', seededAs: 'coordinator', name: null },
+        role: { id: 'role_2', seededAs: 'member', name: null },
         permissions: ['events.read', 'events.manage', 'budget.read'],
       }),
     );
@@ -329,9 +329,7 @@ describe('Settings > General', () => {
     expect(screen.getByText('hello@ire.events')).toBeDefined();
     expect(screen.queryByRole('textbox')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Save changes' })).toBeNull();
-    expect(
-      screen.getByText(/Your role, Coordinator, can see these but not change them/),
-    ).toBeDefined();
+    expect(screen.getByText(/Your role, Member, can see these but not change them/)).toBeDefined();
   });
 
   it('names Google or Apple, not the role, to an Owner the rule keeps read-only', () => {
@@ -384,10 +382,10 @@ describe('Settings > General', () => {
     expect(within(detailsCard()).queryByText(/Your role/)).toBeNull();
   });
 
-  it('keeps the role line for a Coordinator the Google-or-Apple rule also holds', () => {
+  it('keeps the role line for a Member the Google-or-Apple rule also holds', () => {
     signedIn(
       membership({
-        role: { id: 'role_2', seededAs: 'coordinator', name: null },
+        role: { id: 'role_2', seededAs: 'member', name: null },
         permissions: ['events.read'],
         readOnlyUntilLinked: true,
         withheldUntilLinked: ['events.manage'],
@@ -395,9 +393,7 @@ describe('Settings > General', () => {
     );
     settings();
 
-    expect(
-      screen.getByText(/Your role, Coordinator, can see these but not change them/),
-    ).toBeDefined();
+    expect(screen.getByText(/Your role, Member, can see these but not change them/)).toBeDefined();
     expect(within(detailsCard()).queryByRole('link', { name: 'Link Google or Apple' })).toBeNull();
   });
 
@@ -436,7 +432,7 @@ describe('Settings > General', () => {
   it('lists the details in the order of the form, then the defaults note, then the role line', () => {
     signedIn(
       membership({
-        role: { id: 'role_2', seededAs: 'coordinator', name: null },
+        role: { id: 'role_2', seededAs: 'member', name: null },
         permissions: ['events.read'],
       }),
     );
@@ -456,7 +452,7 @@ describe('Settings > General', () => {
     const note = screen.getByText(
       'Currency and time zone: new events start with these. Events you already have keep theirs.',
     );
-    const role = screen.getByText(/Your role, Coordinator, can see these but not change them/);
+    const role = screen.getByText(/Your role, Member, can see these but not change them/);
     const list = document.querySelector('dl.settings-read-only');
 
     expect(list?.compareDocumentPosition(note)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);

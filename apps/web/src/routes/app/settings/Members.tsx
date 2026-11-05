@@ -1684,9 +1684,10 @@ function RolePicker({
           </label>
         ))}
       </fieldset>
-      <Link className="link-button" to="/app/settings/roles">
-        {t('membersScreen.seeRoles')}
-      </Link>
+      <p className="muted">{t('membersScreen.eventsFromPeople')}</p>
+      {organisation.role.seededAs !== 'owner' && (
+        <p className="muted">{t('membersScreen.ownerMakesOwner')}</p>
+      )}
       <p className="muted">{t('membersScreen.roleTakesEffect')}</p>
       {failed != null && <FieldError id="role-failed" message={failed} />}
       <div className="actions">
@@ -1728,7 +1729,7 @@ function Invite({
   const { t } = useTranslation();
   const startingRole =
     roles.find((role) => role.id === roleId) ??
-    roles.find((role) => role.seededAs === 'coordinator') ??
+    roles.find((role) => role.seededAs === 'member') ??
     roles[0];
   const [picked, setPicked] = useState(startingRole?.id ?? '');
   const [busy, setBusy] = useState(false);

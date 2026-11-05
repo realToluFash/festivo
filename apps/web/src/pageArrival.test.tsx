@@ -200,8 +200,8 @@ describe('opening another page (sc-11370)', () => {
     await setLanguage('fr');
 
     expect(
-      pageTitle(i18next.t, [i18next.t('settings.sectionRoles'), i18next.t('nav.settings')]),
-    ).toBe('Rôles – Paramètres – Soirely');
+      pageTitle(i18next.t, [i18next.t('settings.sectionMembers'), i18next.t('nav.settings')]),
+    ).toBe('Membres – Paramètres – Soirely');
   });
 });
 
@@ -298,7 +298,6 @@ describe('the pages Soirely has, signed in', () => {
   it.each([
     ['/app/settings', 'General – Settings – Soirely'],
     ['/app/settings/members', 'Members – Settings – Soirely'],
-    ['/app/settings/roles', 'Roles – Settings – Soirely'],
     ['/app/settings/sign-in-rules', 'Sign-in rules – Settings – Soirely'],
     ['/app/account', 'Account – Your account – Soirely'],
     ['/app/account/security', 'Security – Your account – Soirely'],

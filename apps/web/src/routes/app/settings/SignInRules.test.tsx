@@ -9,7 +9,7 @@ import { membership } from '../../../test-memberships.ts';
 import { routes } from '../../index.tsx';
 
 const OWNER = { id: 'role_1', seededAs: 'owner', name: null };
-const COORDINATOR = { id: 'role_4', seededAs: 'coordinator', name: null };
+const COORDINATOR = { id: 'role_4', seededAs: 'member', name: null };
 
 const PAGE = {
   providerOnly: false,
@@ -108,7 +108,7 @@ describe('Settings > Sign-in rules, for someone who manages the organisation', (
 
     expect(screen.getByText('2 people sign in with a password only')).toBeDefined();
     const affected = within(screen.getByRole('list', { name: 'People affected' }));
-    expect(affected.getByText('Bisi Adeyemi · Administrator · password')).toBeDefined();
+    expect(affected.getByText('Bisi Adeyemi · Admin · password')).toBeDefined();
     expect(screen.getByText(/asked to sign in again with it/)).toBeDefined();
     expect(
       screen.getByText(/Bisi Adeyemi and Chidi Okoro can read but not change/).textContent,
@@ -526,7 +526,7 @@ describe('Two-factor for everyone (sc-609), for someone who manages the organisa
       ),
     ).toBeDefined();
     const without = within(screen.getByRole('list', { name: 'People without two-factor' }));
-    expect(without.getByText('Chidi Okoro · Coordinator')).toBeDefined();
+    expect(without.getByText('Chidi Okoro · Member')).toBeDefined();
 
     fireEvent.click(screen.getByRole('button', { name: 'Save rules' }));
 
@@ -551,7 +551,7 @@ describe('Two-factor for everyone (sc-609), for someone who manages the organisa
     expect(screen.getByText('3 people don’t have two-factor yet')).toBeDefined();
     const without = within(screen.getByRole('list', { name: 'People without two-factor' }));
     expect(without.getAllByRole('listitem')).toHaveLength(3);
-    expect(without.getByText('Bisi Adeyemi · Coordinator')).toBeDefined();
+    expect(without.getByText('Bisi Adeyemi · Member')).toBeDefined();
     expect(
       screen.getByText(
         'When you save, each gets an email and sees a banner. They have until Saturday, Oct 24 at 14:20 WAT to turn it on. After that they can’t open anything in Ìrè Events until they do. Their other organisations aren’t affected.',

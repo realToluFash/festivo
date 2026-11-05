@@ -12,7 +12,7 @@ const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
 const ADUNNI = membership({
   id: 'org_7',
   name: 'Adunni Weddings',
-  role: { id: 'role_3', seededAs: 'event_manager', name: null },
+  role: { id: 'role_3', seededAs: 'administrator', name: null },
 });
 
 // Every key InvitationsController::preview writes, as GET /api/invitations lists them.
@@ -20,7 +20,7 @@ const PREVIEW = {
   id: 'inv_1',
   organisation: { id: 'org_7', name: 'Adunni Weddings' },
   email: 'folake@ire.events',
-  role: { id: 'role_3', seededAs: 'event_manager', name: null },
+  role: { id: 'role_3', seededAs: 'administrator', name: null },
   invitedBy: { name: 'Bisi Adeyemi' },
   expiresAt: '2026-10-23T09:00:00+00:00',
   refusal: null,
@@ -113,7 +113,7 @@ describe('an invitation in the organisation switcher', () => {
     fireEvent.click(trigger);
     const row = screen.getByRole('group', { name: 'Adunni Weddings' });
 
-    expect(within(row).getByText('Invitation from Bisi Adeyemi · Event manager')).toBeDefined();
+    expect(within(row).getByText('Invitation from Bisi Adeyemi · Admin')).toBeDefined();
     expect(within(row).getByText('Works until Friday, Oct 23')).toBeDefined();
     expect(
       within(row).getByText('Declining tells Bisi Adeyemi you said no. Nothing else changes.'),
@@ -134,9 +134,7 @@ describe('an invitation in the organisation switcher', () => {
     const row = await openSwitcher();
     fireEvent.click(within(row).getByRole('button', { name: 'Accept and join Adunni Weddings' }));
 
-    expect(
-      await within(row).findByText('You joined Adunni Weddings as Event manager.'),
-    ).toBeDefined();
+    expect(await within(row).findByText('You joined Adunni Weddings as Admin.')).toBeDefined();
     expect(sent).toContain(ACCEPT);
     expect(screen.getByRole('option', { name: /Adunni Weddings/ })).toBeDefined();
     expect(screen.getByRole('option', { name: /Ìrè Events/ }).getAttribute('aria-selected')).toBe(
@@ -220,7 +218,7 @@ describe('an invitation in the organisation switcher', () => {
 
     const row = await openSwitcher();
 
-    expect(within(row).getByText('Invitation · Event manager')).toBeDefined();
+    expect(within(row).getByText('Invitation · Admin')).toBeDefined();
     expect(
       within(row).getByText('Works until Friday, Oct 23 · Sent to folake.o@gmail.com'),
     ).toBeDefined();
