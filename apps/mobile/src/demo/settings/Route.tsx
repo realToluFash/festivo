@@ -15,7 +15,6 @@ import { PHONE_TAB_BAR, type Shell, ShellContext } from './Frame.tsx';
 import { MembersSection } from './Members.tsx';
 import { NotificationsSection } from './Notifications.tsx';
 import { OrganisationSection } from './Organisation.tsx';
-import { RolesSection } from './Roles.tsx';
 import { isViewer, type SettingsLayout, type Viewer } from './sample.ts';
 import { SecuritySection } from './Security.tsx';
 import { SettingsColumn, SettingsHome, sectionsFor } from './SettingsHome.tsx';
@@ -27,7 +26,6 @@ const PAGES: Record<SettingsSection, ComponentType> = {
   notifications: NotificationsSection,
   organisation: OrganisationSection,
   members: MembersSection,
-  roles: RolesSection,
   signInRules: SignInRulesSection,
 };
 

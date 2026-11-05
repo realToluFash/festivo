@@ -61,6 +61,16 @@ describe('how a member got here', () => {
     expect(historyLine({ ...step, by: 'u1' }, 'u1')).toEqual({ key: 'left', named: false });
   });
 
+  it('offers Member first and never Owner when approving', () => {
+    const roles = [
+      { id: 'r1', seededAs: 'owner' },
+      { id: 'r2', seededAs: 'administrator' },
+      { id: 'r3', seededAs: 'member' },
+    ];
+
+    expect(approvalRoles(roles).map((role) => role.id)).toEqual(['r3', 'r2']);
+  });
+
   it('offers Read-only first and never Owner when approving', () => {
     const roles = [
       { id: 'r1', seededAs: 'owner' },

@@ -20,7 +20,6 @@ const ROWS: Record<Listed, { title: string; line: string }> = {
   notifications: { title: 'Notifications', line: 'Push and email, for each kind of notification' },
   organisation: { title: YOU.organisation, line: 'Name, contact address, currency, time zone' },
   members: { title: 'Members', line: 'Who is in it, and their roles' },
-  roles: { title: 'Roles', line: 'What each role may do' },
   signInRules: { title: 'Sign-in rules', line: 'How people sign in, and for how long' },
 };
 

@@ -131,22 +131,6 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         what: 'Could not load, Try again',
         href: '/demo/settings/members?state=failed',
       },
-      { title: 'Roles', what: 'What each role may do', href: '/demo/settings/roles' },
-      {
-        title: 'Roles · locked areas',
-        what: 'Julien cannot give what he lacks',
-        href: '/demo/settings/roles?state=locked',
-      },
-      {
-        title: 'Roles · loading',
-        what: 'Loading the roles',
-        href: '/demo/settings/roles?state=loading',
-      },
-      {
-        title: 'Roles · failed',
-        what: 'Could not load, Try again',
-        href: '/demo/settings/roles?state=failed',
-      },
       {
         title: 'Sign-in rules',
         what: 'What changed, the rules in force',

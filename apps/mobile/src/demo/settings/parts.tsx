@@ -227,7 +227,6 @@ const TILES: Record<
   notifications: { glyph: 'bell', fill: tokens.optionRose },
   organisation: { glyph: 'settings', fill: tokens.colorAccent },
   members: { glyph: 'users', fill: tokens.optionBlue },
-  roles: { glyph: 'key', fill: tokens.optionAmber },
   signInRules: { glyph: 'lock', fill: tokens.optionPurple },
   demo: { glyph: 'sparkle', fill: tokens.colorInk },
 };

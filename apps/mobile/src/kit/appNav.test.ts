@@ -106,11 +106,10 @@ describe('the Settings list', () => {
     ]);
   });
 
-  it('shows Roles only to a role that can change them (sc-1931)', () => {
+  it('shows no Roles, even to a role that changes members (sc-29914)', () => {
     expect(
       settingsGroups({ permissions: ['members.read', 'members.manage'] })[1]?.sections,
-    ).toEqual(['organisation', 'members', 'roles', 'signInRules']);
-    expect(settingsGroups({ permissions: ['members.read'] })[1]?.sections).not.toContain('roles');
+    ).toEqual(['organisation', 'members', 'signInRules']);
   });
 
   it('leaves the Organisation rows out while the account is in no organisation', () => {
@@ -122,11 +121,6 @@ describe('the Settings list', () => {
   it('opens the Organisation page under Settings', () => {
     expect(SECTION_HREF.organisation).toBe('/settings/organisation');
     expect(destinationOf(SECTION_HREF.organisation)).toBe('settings');
-  });
-
-  it('opens Roles under Settings (sc-1931)', () => {
-    expect(SECTION_HREF.roles).toBe('/settings/roles');
-    expect(destinationOf(SECTION_HREF.roles)).toBe('settings');
   });
 
   it('opens Members under Settings (sc-3404)', () => {

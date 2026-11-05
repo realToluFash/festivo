@@ -26,7 +26,7 @@ export function destinations(
 }
 
 export type SettingsSection =
-  'account' | 'security' | 'notifications' | 'organisation' | 'members' | 'roles' | 'signInRules';
+  'account' | 'security' | 'notifications' | 'organisation' | 'members' | 'signInRules';
 
 export const SECTION_HREF = {
   account: '/settings/account',
@@ -34,7 +34,6 @@ export const SECTION_HREF = {
   notifications: '/settings/notifications',
   organisation: '/settings/organisation',
   members: '/settings/members',
-  roles: '/settings/roles',
   signInRules: '/settings/sign-in-rules',
 } as const satisfies Record<SettingsSection, string>;
 
@@ -61,7 +60,7 @@ export interface SettingsGroup {
   sections: readonly SettingsSection[];
 }
 
-/** Members only for a role that can read them, as on the web; Roles only for one that can change them (sc-1931). */
+/** Members only for a role that can read them, as on the web: an Owner or an Admin (sc-29914). */
 export function settingsGroups(
   organisation: { permissions: readonly string[] } | null,
 ): readonly SettingsGroup[] {
@@ -78,7 +77,6 @@ export function settingsGroups(
       sections: [
         'organisation',
         ...(roleHolds(organisation, 'members.read') ? (['members'] as const) : []),
-        ...(roleHolds(organisation, 'members.manage') ? (['roles'] as const) : []),
         'signInRules',
       ],
     },

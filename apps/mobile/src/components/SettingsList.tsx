@@ -80,7 +80,6 @@ export function SettingsList({ kind, open }: { kind: LayoutKind; open: SettingsS
     notifications: t('settings.notificationsLine'),
     organisation: t('settings.organisationLine', { name: organisation?.name ?? '' }),
     members: t('settings.membersLine', { name: organisation?.name ?? '' }),
-    roles: t('settings.rolesLine', { name: organisation?.name ?? '' }),
     signInRules: t('settings.signInRulesLine', { name: organisation?.name ?? '' }),
   };
   const groups = settingsGroups(organisation).map(({ heading, sections }, group) => ({
