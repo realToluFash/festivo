@@ -53,6 +53,7 @@ import {
   androidFlows,
   androidPackage,
   androidSdk,
+  missingCmdlineTools,
   branchForStory,
   clearApiCache,
   defaultNetwork,
@@ -2422,5 +2423,20 @@ describe('the API taken from the device', () => {
       }),
     ).rejects.toThrow('pause failed');
     expect(ran).toEqual(['reverse --remove tcp:18080', 'reverse tcp:18080 tcp:18080']);
+  });
+});
+
+describe('missingCmdlineTools', () => {
+  const message = missingCmdlineTools('/sdk');
+
+  it('names the avdmanager path setup expected', () => {
+    expect(message).toContain('/sdk/cmdline-tools/latest/bin/avdmanager');
+  });
+
+  it('gives both ways to install the tools and says to run setup again', () => {
+    expect(message).toContain('Android SDK Command-line Tools (latest)');
+    expect(message).toContain('/sdk/cmdline-tools/latest/bin');
+    expect(message).toContain('developer.android.com/studio#command-tools');
+    expect(message).toContain('run `node scripts/qa-env.mjs setup` again');
   });
 });
