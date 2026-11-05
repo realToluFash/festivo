@@ -5,12 +5,13 @@ import { Link, useLocation, useMatch, useNavigate } from 'react-router';
 
 export interface InsideEvent {
   eventId: string;
-  area: EventArea;
+  /** People (sc-29915) is the web's own entry after the areas, which both clients share. */
+  area: EventArea | 'people';
   /** The event's page itself, on Overview: an area chosen from here is the one entry Back returns past. */
   onPage: boolean;
 }
 
-export function eventAreaPath(eventId: string, area: EventArea): string {
+export function eventAreaPath(eventId: string, area: EventArea | 'people'): string {
   const page = `/app/events/${encodeURIComponent(eventId)}`;
 
   return area === 'overview' ? page : `${page}/${area}`;
@@ -65,7 +66,7 @@ export function useInsideEvent(): InsideEvent | null {
 
   if (eventId == null) return null;
   if (name === 'edit' || name === 'dates') return { eventId, area: 'overview', onPage: false };
-  if (name === 'guests' || isPlaceholderEventArea(name)) {
+  if (name === 'guests' || name === 'people' || isPlaceholderEventArea(name)) {
     return { eventId, area: name, onPage: false };
   }
 
@@ -98,7 +99,7 @@ export function EventNav({
       <Link to="/app/events" onClick={onFollow}>
         {t('eventNav.back')}
       </Link>
-      {EVENT_AREAS.map((area) => {
+      {[...EVENT_AREAS, 'people' as const].map((area) => {
         const current = area === inside.area;
 
         return (

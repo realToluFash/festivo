@@ -31,6 +31,7 @@ import { DraftRow, StatusPill } from './MakeLive.tsx';
 import { MuteEvent } from './MuteEvent.tsx';
 import { PauseButton, PausedRow } from './PauseEvent.tsx';
 import { OutcomeLine } from './OutcomeLine.tsx';
+import { EventPeople } from './EventPeople.tsx';
 import { Placeholder } from './Placeholder.tsx';
 import { typeLabel } from './eventTypes.ts';
 import { ComingUp, AllDates } from './Timeline.tsx';
@@ -44,7 +45,7 @@ type Load =
   | { kind: 'notFound' }
   | { kind: 'loaded'; event: OrganisationEvent; tag: string };
 
-type Page = 'event' | 'guests' | 'dates' | PlaceholderEventArea;
+type Page = 'event' | 'guests' | 'dates' | 'people' | PlaceholderEventArea;
 
 export function EventView() {
   return <ForEvent page="event" />;
@@ -56,6 +57,10 @@ export function EventGuests() {
 
 export function EventDates() {
   return <ForEvent page="dates" />;
+}
+
+export function EventPeoplePage() {
+  return <ForEvent page="people" />;
 }
 
 /** One of the areas not built yet: its panel says it is coming (sc-22103). */
@@ -205,6 +210,7 @@ function EventOf({
           )}
           {page === 'guests' && <GuestsComing event={load.event} />}
           {page === 'dates' && <AllDatesPage event={load.event} heading={heading} />}
+          {page === 'people' && <PeoplePage event={load.event} />}
           {isPlaceholderEventArea(page) && <AreaComing event={load.event} area={page} />}
         </Arrived>
       )}
@@ -602,6 +608,14 @@ function GuestsComing({ event }: { event: OrganisationEvent }) {
       <p>{t('eventPage.guestsComing')}</p>
     </section>
   );
+}
+
+function PeoplePage({ event }: { event: OrganisationEvent }) {
+  const { t } = useTranslation();
+
+  usePageTitle(pageTitle(t, [t('eventPeople.title'), event.name]));
+
+  return <EventPeople event={event} />;
 }
 
 function AreaComing({ event, area }: { event: OrganisationEvent; area: PlaceholderEventArea }) {

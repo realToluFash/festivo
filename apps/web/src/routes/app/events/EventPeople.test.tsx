@@ -1,0 +1,387 @@
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { RouterProvider, createMemoryRouter } from 'react-router';
+
+import { __setSessionState, type Session } from '../../../session.ts';
+import { membership } from '../../../test-memberships.ts';
+import { routes } from '../../index.tsx';
+
+const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
+const MEMBER = membership({
+  ...IRE,
+  role: { id: 'role_3', seededAs: 'member', name: null },
+  permissions: [],
+});
+
+const EVENT = {
+  id: 'ev_1',
+  organisationId: 'org_1',
+  name: 'Adaeze and Tunde',
+  type: 'wedding',
+  status: 'live',
+  startsAt: '2030-11-14T16:00:00+01:00',
+  endsAt: '2030-11-15T02:00:00+01:00',
+  timeZone: 'Africa/Lagos',
+  dayCount: 2,
+  currency: 'NGN',
+  cover: null,
+  venue: null,
+  hosts: [],
+  madeLiveAt: '2026-10-26T15:00:00+00:00',
+  pausedAt: null,
+  phase: 'live',
+  concludedAt: null,
+  createdAt: '2026-10-21T09:00:00+00:00',
+};
+
+function person(id: string, name: string, role: string, jobLabel: string | null = null) {
+  return {
+    id: `p_${id}`,
+    membershipId: `m_${id}`,
+    user: { id: `u_${id}`, name },
+    role,
+    jobLabel,
+    outside: false,
+  };
+}
+
+const TOM = person('tom', 'Tom Becker', 'can_check_in', 'Bar and drinks');
+const PRIYA = person('priya', 'Priya Shah', 'lead');
+const ANA = person('ana', 'Ana Souza', 'can_edit');
+
+function member(id: string, name: string, seededAs: string) {
+  return {
+    id: `m_${id}`,
+    user: { id: `u_${id}`, name, email: `${id}@ire.events` },
+    role: { id: `role_${seededAs}`, seededAs, name: null },
+    status: 'active',
+    former: null,
+    channel: 'invitation',
+    message: null,
+    since: '2026-05-28T09:00:00+00:00',
+    removesAt: null,
+    invitedBy: null,
+    invitedAt: null,
+    self: id === 'folake',
+    history: [],
+  };
+}
+
+const MEMBERS = {
+  members: [
+    member('folake', 'Folake Adeyemi', 'owner'),
+    member('julien', 'Julien Moreau', 'administrator'),
+    member('tom', 'Tom Becker', 'member'),
+    member('kofi', 'Kofi Mensah', 'member'),
+    member('sade', 'Sade Bello', 'member'),
+  ],
+  invitations: [],
+};
+
+function role(seededAs: string, names: string[]) {
+  return {
+    id: `role_${seededAs}`,
+    seededAs,
+    permissions: [],
+    holders: names.length,
+    holderNames: names.map((name) => ({ name, suspended: false })),
+  };
+}
+
+const ROLES = {
+  roles: [
+    role('owner', ['Folake Adeyemi']),
+    role('administrator', ['Julien Moreau']),
+    role('member', ['Tom Becker', 'Kofi Mensah']),
+  ],
+  areas: [],
+};
+
+function signedIn(organisation = IRE, userId = 'u_folake'): void {
+  const session: Session = {
+    name: 'Folake Adeyemi',
+    email: 'folake@ire.events',
+    verified: true,
+    complete: true,
+    awaiting: null,
+    providers: [],
+    userId,
+    needsOrganisation: false,
+    hasPassword: true,
+    organisation,
+    organisations: [organisation],
+    organisationCountry: null,
+    timezone: null,
+    waitingFor: null,
+  };
+
+  __setSessionState({ status: 'signedIn', session });
+}
+
+function json(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ETag: '"1"', 'Content-Type': 'application/json' },
+  });
+}
+
+type Answer = (body: unknown) => Response;
+
+async function onPeople(
+  people: unknown[],
+  answers: Record<string, Answer> = {},
+): Promise<{ line: string; body: unknown }[]> {
+  const sent: { line: string; body: unknown }[] = [];
+
+  vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+    const line = `${init?.method ?? 'GET'} ${new URL(String(input)).pathname}`;
+    const body = typeof init?.body === 'string' ? (JSON.parse(init.body) as unknown) : null;
+    sent.push({ line, body });
+
+    const answer = answers[line];
+    if (answer != null) return answer(body);
+    if (line === 'GET /api/events/ev_1') return json({ event: EVENT });
+    if (line === 'GET /api/events/ev_1/people') return json({ people });
+    if (line === 'GET /api/orgs/org_1/members') return json(MEMBERS);
+    if (line === 'GET /api/orgs/org_1/roles') return json(ROLES);
+
+    return json({});
+  });
+  render(
+    <RouterProvider
+      router={createMemoryRouter(routes, { initialEntries: ['/app/events/ev_1/people'] })}
+    />,
+  );
+  await screen.findByRole('heading', { level: 2, name: 'People' });
+
+  return sent;
+}
+
+function people(): HTMLElement {
+  return screen.getByRole('region', { name: 'People' });
+}
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
+describe('People on an event, at a desk (sc-29915)', () => {
+  it('lists everyone by role, then by name, each with their role and job label', async () => {
+    signedIn();
+    await onPeople([TOM, ANA, PRIYA]);
+
+    const rows = within(people())
+      .getAllByRole('listitem')
+      .map((row) => row.textContent);
+
+    expect(rows).toEqual([
+      expect.stringContaining('Priya ShahLead'),
+      expect.stringContaining('Ana SouzaCan edit'),
+      expect.stringContaining('Tom BeckerCan check guests in · Bar and drinks'),
+    ]);
+    expect(within(people()).getByText('3 people')).toBeDefined();
+    expect(
+      await within(people()).findByText(
+        'Folake Adeyemi and Julien Moreau see every event, as owners and admins of Ìrè Events.',
+      ),
+    ).toBeDefined();
+    expect(
+      screen
+        .getAllByRole('link', { name: 'People' })
+        .some((link) => link.getAttribute('aria-current') === 'page'),
+    ).toBe(true);
+  });
+
+  it('shows a new event as nobody on it, with Add for an owner', async () => {
+    signedIn();
+    await onPeople([]);
+
+    expect(within(people()).getByText('Nobody is on this event yet.')).toBeDefined();
+    expect(await within(people()).findByRole('button', { name: 'Add people' })).toBeDefined();
+  });
+
+  it('gives somebody who only reads it no Add, nothing that opens, and who changes it', async () => {
+    signedIn(MEMBER, 'u_ana');
+    const sent = await onPeople([PRIYA, ANA]);
+
+    expect(within(people()).queryByRole('button')).toBeNull();
+    expect(within(people()).getByText('Can edit · You')).toBeDefined();
+    expect(
+      within(people()).getByText('Only owners, admins and the lead change who’s on this event.'),
+    ).toBeDefined();
+    expect(
+      within(people()).getByText('The owners and admins of Ìrè Events see every event.'),
+    ).toBeDefined();
+    expect(sent.some((one) => one.line.startsWith('GET /api/orgs/org_1/members'))).toBe(false);
+  });
+
+  it('lets the event’s lead open everyone but themselves', async () => {
+    signedIn(MEMBER, 'u_priya');
+    await onPeople([PRIYA, ANA]);
+
+    expect(within(people()).getByText('Lead · You')).toBeDefined();
+    expect(within(people()).getByRole('button', { name: /Ana Souza/ })).toBeDefined();
+    expect(within(people()).queryByRole('button', { name: /Priya Shah/ })).toBeNull();
+  });
+
+  it('saves a role as it is picked, keeps the dialog open, and Done returns focus', async () => {
+    signedIn();
+    const sent = await onPeople([PRIYA, TOM], {
+      'PATCH /api/events/ev_1/people/p_tom': () => json({ person: { ...TOM, role: 'can_view' } }),
+    });
+    const row = within(people()).getByRole('button', { name: /Tom Becker/ });
+
+    fireEvent.click(row);
+    const dialog = screen.getByRole('dialog', { name: 'Tom Becker' });
+    const group = within(dialog).getByRole('group', { name: 'Tom Becker’s role on this event' });
+
+    expect(document.activeElement).toBe(
+      within(group).getByRole('radio', { name: /Can check guests in/ }),
+    );
+
+    fireEvent.click(within(group).getByRole('radio', { name: /Can view/ }));
+
+    expect(await within(dialog).findByText('Saved. Tom Becker can view now.')).toBeDefined();
+    expect(sent.find((one) => one.line === 'PATCH /api/events/ev_1/people/p_tom')?.body).toEqual({
+      role: 'can_view',
+    });
+    expect(screen.getByRole('dialog', { name: 'Tom Becker' })).toBeDefined();
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Done' }));
+
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(document.activeElement).toBe(
+      within(people()).getByRole('button', { name: /Tom Becker/ }),
+    );
+    expect(within(people()).getByText('Can view · Bar and drinks')).toBeDefined();
+  });
+
+  it('puts the radio back and says so when a change fails', async () => {
+    signedIn();
+    await onPeople([TOM], {
+      'PATCH /api/events/ev_1/people/p_tom': () => {
+        throw new TypeError('offline');
+      },
+    });
+
+    fireEvent.click(within(people()).getByRole('button', { name: /Tom Becker/ }));
+    const dialog = screen.getByRole('dialog', { name: 'Tom Becker' });
+    fireEvent.click(within(dialog).getByRole('radio', { name: /Can edit/ }));
+
+    expect(
+      await within(dialog).findByText(
+        'We couldn’t change Tom Becker’s role, so it’s still Can check guests in. Check your connection and pick again.',
+      ),
+    ).toBeDefined();
+    expect(
+      (within(dialog).getByRole('radio', { name: /Can check guests in/ }) as HTMLInputElement)
+        .checked,
+    ).toBe(true);
+  });
+
+  it('asks before removing, then says the person is off this event', async () => {
+    signedIn();
+    const sent = await onPeople([PRIYA, TOM], {
+      'DELETE /api/events/ev_1/people/p_tom': () => new Response(null, { status: 204 }),
+    });
+
+    fireEvent.click(within(people()).getByRole('button', { name: /Tom Becker/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove from this event…' }));
+    const ask = screen.getByRole('alertdialog', { name: 'Remove Tom Becker from this event?' });
+
+    expect(
+      within(ask).getByText('They lose this event on their next request. They stay in Ìrè Events.'),
+    ).toBeDefined();
+    expect(document.activeElement).toBe(
+      within(ask).getByRole('button', { name: 'Keep Tom Becker' }),
+    );
+
+    fireEvent.click(within(ask).getByRole('button', { name: 'Remove' }));
+
+    expect(await screen.findByText('Tom Becker is off this event.')).toBeDefined();
+    expect(sent.some((one) => one.line === 'DELETE /api/events/ev_1/people/p_tom')).toBe(true);
+    expect(within(people()).queryByText('Tom Becker')).toBeNull();
+  });
+
+  it('adds members not yet on the event at the role picked, by keyboard alone', async () => {
+    signedIn();
+    const sent = await onPeople([TOM], {
+      'POST /api/events/ev_1/people': (body) => {
+        const { membershipId, role: picked } = body as { membershipId: string; role: string };
+        const one = MEMBERS.members.find((each) => each.id === membershipId);
+
+        return json(
+          { person: { ...person(membershipId.slice(2), one?.user.name ?? '', picked) } },
+          201,
+        );
+      },
+    });
+
+    const add = await within(people()).findByRole('button', { name: 'Add people' });
+    add.focus();
+    fireEvent.click(add);
+    const dialog = screen.getByRole('dialog', { name: 'Add people' });
+    const find = within(dialog).getByRole('searchbox', { name: 'Name' });
+
+    expect(document.activeElement).toBe(find);
+    expect(within(dialog).queryByRole('checkbox', { name: /Tom Becker/ })).toBeNull();
+    expect(
+      (within(dialog).getByRole('radio', { name: /Can view/ }) as HTMLInputElement).checked,
+    ).toBe(true);
+    expect(within(dialog).getByRole('button', { name: 'Add' }).getAttribute('aria-disabled')).toBe(
+      'true',
+    );
+
+    fireEvent.change(find, { target: { value: 'zz' } });
+    expect(within(dialog).getByText('Nobody in Ìrè Events matches “zz”.')).toBeDefined();
+
+    fireEvent.change(find, { target: { value: '' } });
+    fireEvent.click(within(dialog).getByRole('radio', { name: /Can edit/ }));
+    fireEvent.click(within(dialog).getByRole('checkbox', { name: /Kofi Mensah/ }));
+    fireEvent.click(within(dialog).getByRole('checkbox', { name: /Sade Bello/ }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Add' }));
+
+    expect(await screen.findByText('2 people can edit now.')).toBeDefined();
+    expect(
+      sent.filter((one) => one.line === 'POST /api/events/ev_1/people').map((one) => one.body),
+    ).toEqual([
+      { membershipId: 'm_kofi', role: 'can_edit' },
+      { membershipId: 'm_sade', role: 'can_edit' },
+    ]);
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(document.activeElement).toBe(add);
+  });
+
+  it('keeps Tab inside an open dialog, and asks before discarding a tick', async () => {
+    signedIn();
+    await onPeople([TOM]);
+
+    fireEvent.click(await within(people()).findByRole('button', { name: 'Add people' }));
+    const dialog = screen.getByRole('dialog', { name: 'Add people' });
+    const add = within(dialog).getByRole('button', { name: 'Add' });
+    add.focus();
+    fireEvent.keyDown(document, { key: 'Tab' });
+
+    expect(dialog.contains(document.activeElement)).toBe(true);
+
+    fireEvent.click(within(dialog).getByRole('checkbox', { name: /Kofi Mensah/ }));
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    expect(screen.getByRole('alertdialog', { name: 'Discard your changes?' })).toBeDefined();
+  });
+
+  it('says it could not load, and loads again on Try again', async () => {
+    signedIn();
+    let calls = 0;
+    await onPeople([TOM], {
+      'GET /api/events/ev_1/people': () => {
+        calls += 1;
+        return calls === 1 ? json({}, 500) : json({ people: [TOM] });
+      },
+    }).catch(() => undefined);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Try again' }));
+
+    await waitFor(() => expect(within(people()).getByText('Tom Becker')).toBeDefined());
+  });
+});

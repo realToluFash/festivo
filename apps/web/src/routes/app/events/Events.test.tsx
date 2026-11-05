@@ -1443,6 +1443,7 @@ describe("Inside an event, the navigation menu is the event's (sc-22103)", () =>
     'Staff',
     'Budget',
     'Reports',
+    'People',
   ];
 
   function eventNav() {
