@@ -4,8 +4,10 @@ import type { EventKey } from './today.ts';
 export type Section =
   'account' | 'security' | 'notifications' | 'general' | 'members' | 'roles' | 'signInRules';
 
-/** The one section the boards draw; the others, Roles among them, each have their own design. */
-export type Drawn = 'members';
+/** The sections the boards draw; the others, Roles among them, each have their own design. */
+export type Drawn = 'members' | 'signInRules';
+
+const PATHS: Record<Drawn, string> = { members: 'members', signInRules: 'sign-in-rules' };
 
 export const SECTION_NAMES: Record<Section, string> = {
   account: 'Account',
@@ -99,7 +101,7 @@ export function groupsFor(viewer: Pick<Viewer, 'reads'>): SectionGroup[] {
 }
 
 export function isDrawn(section: Section): section is Drawn {
-  return section === 'members';
+  return section === 'members' || section === 'signInRules';
 }
 
 export function settingsPath(section: Drawn, viewer: Pick<Viewer, 'key'>, state?: string): string {
@@ -108,7 +110,7 @@ export function settingsPath(section: Drawn, viewer: Pick<Viewer, 'key'>, state?
   if (state != null) query.set('state', state);
   const search = query.toString();
 
-  return `/demo/settings/${section}${search === '' ? '' : `?${search}`}`;
+  return `/demo/settings/${PATHS[section]}${search === '' ? '' : `?${search}`}`;
 }
 
 export const SIDEBAR_EVENTS: readonly EventKey[] = ['wed', 'ireti', 'party', 'draft'];
