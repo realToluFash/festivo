@@ -17,6 +17,8 @@ import { describe, expect, it } from 'vitest';
 
 import {
   allowCleartext,
+  emulatorUnitGone,
+  waitForBoot,
   apiControl,
   withoutReverse,
   apiMoves,
@@ -2422,5 +2424,47 @@ describe('the API taken from the device', () => {
       }),
     ).rejects.toThrow('pause failed');
     expect(ran).toEqual(['reverse --remove tcp:18080', 'reverse tcp:18080 tcp:18080']);
+  });
+});
+
+describe('waitForBoot', () => {
+  const pause = async () => {};
+
+  it('fails on the first pass after the emulator stops, with the reason', async () => {
+    let passes = 0;
+    const gone = () => (++passes > 2 ? 'the unit stopped' : null);
+    await expect(
+      waitForBoot({ name: 'qa_pixel', booted: () => false, gone, pause }),
+    ).rejects.toThrow('qa_pixel: the unit stopped');
+    expect(passes).toBe(3);
+  });
+
+  it('returns once the device reports booted while the emulator runs', async () => {
+    let passes = 0;
+    const booted = () => ++passes === 5;
+    await waitForBoot({ name: 'qa_pixel', booted, gone: () => null, pause });
+    expect(passes).toBe(5);
+  });
+
+  it('still gives up after its tries when the emulator neither boots nor stops', async () => {
+    await expect(
+      waitForBoot({ name: 'qa_pixel', booted: () => false, gone: () => null, pause, tries: 3 }),
+    ).rejects.toThrow('qa_pixel did not boot within three minutes');
+  });
+});
+
+describe('emulatorUnitGone', () => {
+  const journal = () => 'emulator: core dumped';
+
+  it('keeps waiting while the unit is active or activating', () => {
+    expect(emulatorUnitGone('soirely-qa-emulator', 'active', journal)).toBeNull();
+    expect(emulatorUnitGone('soirely-qa-emulator', 'activating', journal)).toBeNull();
+  });
+
+  it('names the unit and prints its journal once it has failed or been collected', () => {
+    expect(emulatorUnitGone('soirely-qa-emulator', 'failed', journal)).toBe(
+      'the emulator unit soirely-qa-emulator stopped (failed) before it booted:\nemulator: core dumped',
+    );
+    expect(emulatorUnitGone('soirely-qa-emulator', '', journal)).toContain('stopped (gone)');
   });
 });
