@@ -7,6 +7,8 @@ import { offField } from '../offField.ts';
 import { BoardPage, OrLine, Providers } from './BoardPage.tsx';
 import { GetBackInBoard } from './GetBackIn.tsx';
 import { NewAccountBoard } from './NewAccount.tsx';
+import { People } from './People.tsx';
+import { PEOPLE_PAGES } from './people.ts';
 import { Settings } from './Settings.tsx';
 import { SETTINGS_PAGES } from './settings.ts';
 import { Today } from './Today.tsx';
@@ -101,6 +103,7 @@ export default function Demo() {
       <Route path="today" element={<Today />} />
       <Route path="settings" element={<Settings />} />
       <Route path="settings/members" element={<Settings />} />
+      <Route path="people" element={<People />} />
       <Route path="later" element={<Later />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
@@ -145,6 +148,8 @@ function DemoHome({ from }: { from: string }) {
         <h2 id="demo-page-28">28 · Organisations and access · Settings at a desk</h2>
         <h3>Settings in B · Summary first · desktop</h3>
         <BoardPages pages={SETTINGS_PAGES} />
+        <h3>People on an event · desktop</h3>
+        <BoardPages pages={PEOPLE_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-27">

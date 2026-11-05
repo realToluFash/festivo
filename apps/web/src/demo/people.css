@@ -1,0 +1,228 @@
+/* People on an event at a desk, in B Confetti. Measurements are the board's (Web-People.dc.html, page 28); colours are tokens, so a scheme recolours it. */
+
+.people-event {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+  padding-top: var(--spaceXs);
+}
+
+.people-back {
+  gap: var(--spaceSm);
+  color: var(--colorAccent);
+  font-weight: 600;
+}
+
+.people-event-card {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceMd);
+  padding: var(--spaceSm);
+  border: 1px solid var(--colorBorder);
+  border-radius: var(--radiusInset);
+  background: var(--colorCard);
+}
+
+.people-event-cover {
+  width: var(--space6xl);
+  height: var(--space6xl);
+  border-radius: var(--radiusNav);
+}
+
+.people-event-name,
+.people-event-when {
+  display: block;
+}
+
+.people-event-name {
+  font: 600 14px/1.3 var(--fontFamily);
+}
+
+.people-event-when {
+  color: var(--colorInkSecondary);
+  font: 500 13px/1.35 var(--fontFamily);
+}
+
+.people-title {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--spaceXxs);
+  min-width: 0;
+}
+
+.people-add {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceMd);
+  box-sizing: border-box;
+  width: 100%;
+  height: 52px;
+  padding: 0 var(--spaceXl);
+  border-radius: var(--radiusInset);
+  box-shadow: inset 0 0 0 1.5px var(--colorFieldBorder);
+  color: var(--colorInkSecondary);
+  font: 500 16px/1 var(--fontFamily);
+}
+
+.people-add-bone {
+  height: 52px;
+  border-radius: var(--radiusInset);
+}
+
+.people-add svg {
+  color: var(--colorAccent);
+}
+
+.people-add:hover {
+  background: var(--deskHover);
+}
+
+.people-count {
+  flex: none;
+  color: var(--colorInkSecondary);
+  font: 600 16px/1 var(--fontFamily);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The person in context stays lit while their dialog is open and a moment after, then the Tint fades. */
+.people-rows .desk-row {
+  transition: background-color 0.4s ease;
+}
+
+.people-nobody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+}
+
+.people-foot {
+  display: flex;
+  flex-direction: column;
+}
+
+.people-who {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceLg);
+}
+
+.people-who .desk-avatar {
+  width: var(--sizeHit);
+  height: var(--sizeHit);
+}
+
+.people-saving {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--spaceXs);
+  color: var(--colorInkSecondary);
+  font: 600 13px/1 var(--fontFamily);
+  white-space: nowrap;
+}
+
+.people-saving.is-saved {
+  color: var(--deskGreen);
+}
+
+.people-spinner {
+  box-sizing: border-box;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--colorInsetBorder);
+  border-top-color: var(--colorAccent);
+  border-radius: 50%;
+  animation: people-turn 0.8s linear infinite;
+}
+
+@keyframes people-turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.people-ends {
+  margin-top: calc(-1 * var(--spaceXs));
+}
+
+.people-lost {
+  align-items: flex-start;
+}
+
+.desk-row.is-off {
+  cursor: default;
+}
+
+.desk-row.is-off .desk-row-name {
+  color: var(--colorInkTertiary);
+}
+
+.desk-row.is-off:hover {
+  background: none;
+}
+
+.desk-radio:disabled {
+  border-color: var(--colorInsetBorder);
+  background: var(--colorInsetBorder);
+}
+
+.people-remove {
+  padding-top: var(--spaceLg);
+  border-top: 1px solid var(--colorBorder);
+}
+
+.people-remove .desk-text {
+  min-height: var(--sizeHit);
+}
+
+/* Add keeps its full height, so the dialog holds still while the names under it filter. */
+.desk-dialog:has(.people-add-body) {
+  height: auto;
+}
+
+.people-add-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXxl);
+}
+
+.people-check {
+  display: grid;
+  flex: none;
+  place-content: center;
+  box-sizing: border-box;
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  border: 2px solid var(--colorFieldBorder);
+  border-radius: var(--radiusCheckbox);
+  background: var(--colorCard);
+  color: var(--colorInkOnDark);
+  appearance: none;
+}
+
+.people-check:checked {
+  border-color: var(--colorAccent);
+  background: var(--colorAccent);
+}
+
+.people-check:checked::after {
+  width: 10px;
+  height: 5px;
+  margin-top: -2px;
+  border-bottom: 2.4px solid currentcolor;
+  border-left: 2.4px solid currentcolor;
+  transform: rotate(-45deg);
+  content: '';
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .people-rows .desk-row {
+    transition: none;
+  }
+
+  .people-spinner {
+    animation: none;
+  }
+}
