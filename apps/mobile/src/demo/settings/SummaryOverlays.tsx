@@ -1,4 +1,13 @@
-import { type ReactNode, type Ref, type RefObject, useEffect, useRef, useState } from 'react';
+import { useIsFocused } from 'expo-router';
+import {
+  type ReactNode,
+  type Ref,
+  type RefObject,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import {
   KeyboardAvoidingView,
   type LayoutChangeEvent,
@@ -30,22 +39,57 @@ import { TextAction } from './SummaryRows.tsx';
 
 type Opener = RefObject<ScreenReaderTarget | null>;
 
+/** A window taken down with its page is still going for a moment, and iOS loses one put up meanwhile. */
+const going = { until: 0 };
+const GOING_MS = SETTLED_MS * 2;
+
+function useClearOfGoing(): boolean {
+  const [clear, setClear] = useState(false);
+
+  useEffect(() => {
+    const wait = setTimeout(() => setClear(true), Math.max(0, going.until - Date.now()));
+
+    return () => clearTimeout(wait);
+  }, []);
+
+  return clear;
+}
+
+/** Up only while its page is the one showing; an Ask or a menu closes when another page comes over it, a task's screen waits. */
 function Window({
   open,
   onClose,
   opener,
   slides = false,
+  waitsAway = false,
   children,
 }: {
   open: boolean;
   onClose: () => void;
   opener: Opener;
   slides?: boolean;
+  waitsAway?: boolean;
   children: ReactNode;
 }) {
   useFocusBack(open, opener);
   const reduced = useReducedMotion();
-  const { shown, gone } = useWindowTurn(useModalOpen(open));
+  const here = useIsFocused();
+  const clear = useClearOfGoing();
+  const { shown, gone } = useWindowTurn(useModalOpen(open && here && clear));
+  const showing = useRef(false);
+
+  useLayoutEffect(() => {
+    showing.current = shown;
+  }, [shown]);
+  useLayoutEffect(
+    () => () => {
+      if (showing.current) going.until = Date.now() + GOING_MS;
+    },
+    [],
+  );
+  useEffect(() => {
+    if (open && !here && !waitsAway) onClose();
+  }, [open, here, waitsAway, onClose]);
 
   return (
     <Modal
@@ -198,7 +242,7 @@ export function FocusedScreen({
   const close = asking ? ask.onKeep : over != null ? over.onClose : onCancel;
 
   return (
-    <Window open={open} onClose={close} opener={opener} slides={phone}>
+    <Window open={open} onClose={close} opener={opener} slides={phone} waitsAway>
       {/* Whatever the keys take from the bottom stays the screen's white, or the dimmed page on an iPad. */}
       <KeyboardAvoidingView
         style={[styles.fill, phone ? styles.screen : styles.dimmed]}
