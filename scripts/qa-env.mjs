@@ -2124,13 +2124,36 @@ export function composeBatch(
     writeFileSync(path, localise(readFileSync(path, 'utf8'), catalogues, 'any', { email }));
   }
   mkdirSync(join(target, '_checks'));
+  const subFlows = (flow, language) =>
+    flow.replace(
+      /^(\s*(?:-\s*runFlow|file):\s*)(['"]?)([\w.-]+)\.ya?ml\2(?=\s*$)/gm,
+      (line, key, quote, name) => {
+        if (!existsSync(join(source, 'checks', `${name}.yaml`))) return line;
+        const id = `${checkId(name, language)}.flow`;
+        const path = join(target, '_checks', `${id}.yaml`);
+        if (!existsSync(path)) {
+          writeFileSync(path, '');
+          const sub = readFileSync(join(source, 'checks', `${name}.yaml`), 'utf8');
+          writeFileSync(
+            path,
+            finish(subFlows(localise(sub, catalogues, language, { email }), language)),
+          );
+        }
+        return `${key}${id}.yaml`;
+      },
+    );
   for (const run of batchRuns(checks, languages)) {
     const { check, language, repeat } = run;
-    const flow = localise(
-      readFileSync(join(source, 'checks', `${check}.yaml`), 'utf8'),
-      catalogues,
+    const flow = subFlows(
+      localise(
+        readFileSync(join(source, 'checks', `${check}.yaml`), 'utf8'),
+        catalogues,
+        language,
+        {
+          email,
+        },
+      ),
       language,
-      { email },
     );
     const id = runId(run);
     writeFileSync(
