@@ -9,14 +9,7 @@ import { tokens } from '../../theme/tokens.ts';
 import { Glyph } from '../Glyph.tsx';
 import { useShell } from '../settings/Frame.tsx';
 import { useLoad } from '../settings/MembersLoading.tsx';
-import {
-  FailedBlock,
-  Line,
-  Row,
-  RowList,
-  SectionHead,
-  SELECTED_ROW,
-} from '../settings/Summary.tsx';
+import { FailedBlock, Line, Row, RowList, SectionHead } from '../settings/Summary.tsx';
 import { AddScreen } from './PeopleAdd.tsx';
 import { PeopleLoading, PeoplePage } from './PeopleFrame.tsx';
 import { Face, RoleSheet } from './PeopleRole.tsx';
@@ -183,7 +176,7 @@ function PeopleScreen({ start }: { start: PeopleStart }) {
                       {isLit && (
                         <Animated.View
                           pointerEvents="none"
-                          style={[StyleSheet.absoluteFill, SELECTED_ROW, { opacity: litFade }]}
+                          style={[styles.lit, { opacity: litFade }]}
                         />
                       )}
                       <Row
@@ -281,6 +274,15 @@ const styles = StyleSheet.create({
   count: { fontVariant: ['tabular-nums'] },
   pressed: { opacity: tokens.opacityPressed },
   nobody: { gap: tokens.spaceXs },
+  lit: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: -tokens.spaceMd,
+    right: -tokens.spaceMd,
+    borderRadius: tokens.radiusRow,
+    backgroundColor: tokens.colorAccentTint,
+  },
   foot: { gap: tokens.spaceSm },
   addBox: {
     height: 52,

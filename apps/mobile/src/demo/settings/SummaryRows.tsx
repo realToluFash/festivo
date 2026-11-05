@@ -501,6 +501,3 @@ const styles = StyleSheet.create({
     gap: 5,
   },
 });
-
-/** The selected row's look on its own, for a layer that fades it in place. */
-export const SELECTED_ROW = styles.rowSelected;
