@@ -361,6 +361,19 @@ export interface RolesCatalogue {
   areas: { area: string; permissions: string[] }[];
 }
 
+export const EVENT_ROLES = ['lead', 'can_edit', 'can_view', 'can_check_in'] as const;
+export type EventRole = (typeof EVENT_ROLES)[number];
+
+/** Somebody with a role on an event (sc-29912); `outside` is someone from outside the organisation. */
+export interface EventPerson {
+  id: string;
+  membershipId: string;
+  user: { id: string; name: string };
+  role: EventRole;
+  jobLabel: string | null;
+  outside: boolean;
+}
+
 /** Stored, as /event-states.json declares them; what the clock makes of it is its phase (sc-3584). */
 export type EventStatus = EventState;
 
@@ -1925,6 +1938,46 @@ export class ApiClient {
     };
   }
 
+  async eventPeople(eventId: string): Promise<EventPerson[]> {
+    const raw = await this.get<{ people?: unknown }>(
+      `/api/events/${encodeURIComponent(eventId)}/people`,
+    );
+
+    return eventPeopleOf(raw?.people, 'GET /api/events/{id}/people');
+  }
+
+  async addEventPerson(
+    eventId: string,
+    person: { membershipId: string; role: EventRole; jobLabel?: string | null },
+  ): Promise<EventPerson> {
+    const raw = await this.post<{ person?: unknown }>(
+      `/api/events/${encodeURIComponent(eventId)}/people`,
+      person,
+    );
+
+    return eventPeopleOf([raw?.person], 'POST /api/events/{id}/people')[0] as EventPerson;
+  }
+
+  /** Applies on the person's next request; nobody is signed out. */
+  async changeEventPerson(
+    eventId: string,
+    personId: string,
+    change: { role?: EventRole; jobLabel?: string | null },
+  ): Promise<EventPerson> {
+    const raw = await this.patch<{ person?: unknown }>(
+      `/api/events/${encodeURIComponent(eventId)}/people/${encodeURIComponent(personId)}`,
+      change,
+    );
+
+    return eventPeopleOf([raw?.person], 'PATCH /api/events/{id}/people/{id}')[0] as EventPerson;
+  }
+
+  async removeEventPerson(eventId: string, personId: string): Promise<void> {
+    await this.delete<unknown>(
+      `/api/events/${encodeURIComponent(eventId)}/people/${encodeURIComponent(personId)}`,
+    );
+  }
+
   /** `name` is needed unless it is a Draft: refused with a violation on `name`, code `event_name_mismatch`, unless it matches. */
   async deleteEvent(eventId: string, name?: string): Promise<void> {
     await this.request<unknown>(`/api/events/${encodeURIComponent(eventId)}`, {
@@ -2933,6 +2986,35 @@ function asRoleHolder(raw: unknown): RoleHolder | null {
   const { name, suspended } = raw as Record<string, unknown>;
 
   return typeof name === 'string' && typeof suspended === 'boolean' ? { name, suspended } : null;
+}
+
+function asEventPerson(raw: unknown): EventPerson | null {
+  if (typeof raw !== 'object' || raw == null) return null;
+
+  const { id, membershipId, user, role, jobLabel, outside } = raw as Record<string, unknown>;
+  const { id: userId, name } = (user ?? {}) as Record<string, unknown>;
+
+  return typeof id === 'string' &&
+    typeof membershipId === 'string' &&
+    typeof userId === 'string' &&
+    typeof name === 'string' &&
+    EVENT_ROLES.includes(role as EventRole) &&
+    (jobLabel === null || typeof jobLabel === 'string') &&
+    typeof outside === 'boolean'
+    ? { id, membershipId, user: { id: userId, name }, role: role as EventRole, jobLabel, outside }
+    : null;
+}
+
+function eventPeopleOf(raw: unknown, route: string): EventPerson[] {
+  const people = Array.isArray(raw) ? raw.map(asEventPerson) : null;
+
+  if (people == null || people.some((person) => person == null)) {
+    throw new Error(
+      `The API answered ${route} in a shape this client does not know. Check EventPeopleController in services/api.`,
+    );
+  }
+
+  return people as EventPerson[];
 }
 
 function asRolesCatalogue(raw: unknown): RolesCatalogue | null {

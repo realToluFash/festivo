@@ -1062,6 +1062,53 @@ describe('a browser never holds the refresh token', () => {
     ]);
   });
 
+  test("reads and changes an event's people, and refuses a shape it does not know (sc-29914)", async () => {
+    const tom = {
+      id: 'p_1',
+      membershipId: 'm_1',
+      user: { id: 'u_1', name: 'Tom Becker' },
+      role: 'can_view',
+      jobLabel: null,
+      outside: false,
+    };
+    const sent: { method: string | undefined; path: string; body: unknown }[] = [];
+    let answer: unknown = { people: [tom] };
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens: store('good', null),
+      fetch: async (input, init) => {
+        sent.push({
+          method: init?.method,
+          path: new URL(String(input)).pathname,
+          body: init?.body == null ? null : JSON.parse(String(init.body)),
+        });
+
+        if (init?.method === 'DELETE') return new Response(null, { status: 204 });
+
+        return json(init?.method === 'GET' ? answer : { person: { ...tom, role: 'lead' } });
+      },
+    });
+
+    expect(await client.eventPeople('e_1')).toEqual([tom]);
+    expect((await client.addEventPerson('e_1', { membershipId: 'm_1', role: 'lead' })).role).toBe(
+      'lead',
+    );
+    await client.changeEventPerson('e_1', 'p_1', { role: 'can_edit' });
+    await client.removeEventPerson('e_1', 'p_1');
+    answer = { people: [{ ...tom, role: 'owner' }] };
+
+    await expect(client.eventPeople('e_1')).rejects.toThrow('EventPeopleController');
+    expect(sent.slice(1, 4)).toEqual([
+      {
+        method: 'POST',
+        path: '/api/events/e_1/people',
+        body: { membershipId: 'm_1', role: 'lead' },
+      },
+      { method: 'PATCH', path: '/api/events/e_1/people/p_1', body: { role: 'can_edit' } },
+      { method: 'DELETE', path: '/api/events/e_1/people/p_1', body: null },
+    ]);
+  });
+
   test('a membership carries what the sign-in rules keep back', async () => {
     const client = new ApiClient({
       baseUrl: () => 'http://api.test',
