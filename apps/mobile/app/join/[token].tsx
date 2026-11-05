@@ -132,6 +132,8 @@ function Dead({ answer }: { answer?: object | undefined }) {
 function SignedOut({ token, organisation }: { token: string; organisation: string }) {
   const { t } = useTranslation();
   const size = useStepTitleSize();
+  // A failed Google or Apple sign-in stays on the link rather than going to welcome (sc-29070).
+  const [failed, setFailed] = useState<{ provider: string } | null>(null);
 
   async function go(to: '/sign-in' | '/register'): Promise<void> {
     await holdLink(token);
@@ -163,13 +165,26 @@ function SignedOut({ token, organisation }: { token: string; organisation: strin
       }
       choices={
         <View style={styles.choices}>
+          {failed != null && (
+            <Notice
+              tone="broken"
+              mark={tokens.marks.broken.glyph}
+              title={t('signIn.providerFailedTitle', { provider: failed.provider })}
+              body={t('signIn.providerFailedBody', { provider: failed.provider })}
+              answer={failed}
+              takesFocus
+            />
+          )}
           <View style={styles.buttons}>
             <PrimaryButton
               label={t('welcome.withEmail')}
               onPress={() => void go('/sign-in')}
               testID="requestToJoin.signIn"
             />
-            <ProviderButtons before={() => holdLink(token)} />
+            <ProviderButtons
+              before={() => holdLink(token)}
+              onFailed={(provider) => setFailed({ provider })}
+            />
           </View>
           <QuietButton
             label={t('signIn.createAccount')}
