@@ -42,7 +42,8 @@ export interface SecurityPage {
   on: boolean;
   unused: number;
   devices: readonly string[];
-  rule: boolean;
+  providerRule: boolean;
+  twoFactorRule: boolean;
 }
 
 export const PROVIDERS: readonly Provider[] = ['Google', 'Apple'];
@@ -352,7 +353,7 @@ export function onlyWayIn(ways: Ways, provider: Provider): boolean {
 }
 
 export function keptByRule(page: SecurityPage, provider: Provider): boolean {
-  return page.rule && page.ways[provider] && linkedProviders(page.ways).length === 1;
+  return page.providerRule && page.ways[provider] && linkedProviders(page.ways).length === 1;
 }
 
 export function otherProvider(provider: Provider): Provider {
@@ -637,7 +638,8 @@ export const REST_PAGE: SecurityPage = {
   on: true,
   unused: 8,
   devices: ALL_DEVICES,
-  rule: false,
+  providerRule: false,
+  twoFactorRule: false,
 };
 
 /** What a state link opens on; one the page does not know opens it at rest. */
@@ -647,7 +649,7 @@ export function securityStart(state: string, viewer: Viewer = VIEWERS.folake): S
   const REST: SecurityStart = { page: REST_PAGE, said: null, open: null, ask: null, dialog: null };
   const page = (more: Partial<SecurityPage>) => ({ ...REST_PAGE, ...more });
   const googleOnly = page({ ways: { password: false, Google: true, Apple: false }, on: false });
-  const kept = page({ rule: true });
+  const kept = page({ providerRule: true, twoFactorRule: true });
   const here = DEVICES.filter((device) => device.here).map((device) => device.id);
   const change = (typed: string, second: string, more: Partial<DialogStart> = {}) => ({
     ...REST,
@@ -715,7 +717,10 @@ export function securityStart(state: string, viewer: Viewer = VIEWERS.folake): S
         said: RESULT_WORDS.added('Google'),
       };
     case 'linkPick':
-      return { ...REST, page: page({ ways: { password: true, Google: false, Apple: false } }) };
+      return {
+        ...REST,
+        page: page({ ways: { password: true, Google: false, Apple: false }, providerRule: true }),
+      };
     case 'link':
       return { ...REST, open: 'Apple', dialog: prove('link', 'Apple') };
     case 'linkWrong':

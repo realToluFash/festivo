@@ -225,7 +225,7 @@ export function Security({ viewer, state, tell }: { viewer: Viewer; state: strin
                 onToggle={() => toggle('auth')}
               >
                 <div className="account-acts">
-                  {page.rule ? (
+                  {page.twoFactorRule ? (
                     <Off label={W.turnOffKept} />
                   ) : (
                     <button
@@ -238,7 +238,7 @@ export function Security({ viewer, state, tell }: { viewer: Viewer; state: strin
                   )}
                 </div>
                 <p className="desk-note">
-                  {page.rule ? W.keptTwoFactor : W.turnOffLine(you.email)}
+                  {page.twoFactorRule ? W.keptTwoFactor : W.turnOffLine(you.email)}
                 </p>
               </Openable>
               <Openable

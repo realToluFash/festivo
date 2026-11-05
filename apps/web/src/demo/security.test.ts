@@ -181,11 +181,16 @@ describe('Security’s sample (sc-30223)', () => {
     expect(heldStepPath(HOLDS.linking.step, VIEWERS.julien)).toBe(
       '/demo/settings/security?as=julien&state=linkPick',
     );
-    expect(securityStart('linkPick')).toMatchObject({
-      page: { ways: { password: true, Google: false, Apple: false } },
+    const pick = securityStart('linkPick');
+    expect(pick).toMatchObject({
+      page: { ways: { password: true, Google: false, Apple: false }, twoFactorRule: false },
       open: null,
       dialog: null,
     });
+    expect(keptByRule(pick.page, 'Google')).toBe(false);
+    expect(keptByRule({ ...pick.page, ways: { ...pick.page.ways, Google: true } }, 'Google')).toBe(
+      true,
+    );
     expect(heldStepPath('Something else', VIEWERS.folake)).toBe('/demo/settings/security');
   });
 });

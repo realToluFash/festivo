@@ -211,6 +211,31 @@ describe('Security at a desk (sc-30223)', () => {
     ).toBeDefined();
   });
 
+  it('carries the Google or Apple rule on linkPick, keeping Unlink once one is linked', async () => {
+    await security('/demo/settings/security?state=linkPick');
+    const auth = open('Two-factor authentication', /Authenticator app/);
+    expect(within(auth).getByRole('button', { name: 'Turn off two-factor…' })).toBeDefined();
+
+    const google = open('Ways to sign in', /Google/);
+    fireEvent.click(within(google).getByRole('button', { name: 'Link Google' }));
+    type('Your password', SAMPLE.password);
+    type('Code', SAMPLE.authenticator);
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'Continue' }));
+    expect(
+      await screen.findByText(
+        'Google is linked. We emailed your verified addresses to say so.',
+        undefined,
+        SLOW,
+      ),
+    ).toBeDefined();
+
+    const linked = open('Ways to sign in', /Google/);
+    expect(
+      within(linked).getByRole('button', { name: 'Unlink' }).getAttribute('aria-disabled'),
+    ).toBe('true');
+    expect(within(linked).getByText(/A rule set by Ire Events/)).toBeDefined();
+  });
+
   it('gives the last way in no way to remove it', async () => {
     await security('/demo/settings/security?state=googleOnly');
 
