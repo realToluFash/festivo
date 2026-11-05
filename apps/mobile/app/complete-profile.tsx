@@ -12,6 +12,7 @@ import {
   formatDay,
   formatTimeOfDay,
   type InvitationOutcome,
+  organisationStep,
   refusalBody,
   roleName,
   waitingInvitations,
@@ -420,14 +421,17 @@ function Details({
   }, [account.needsOrganisation]);
 
   const offers = offered?.offers ?? [];
-  // An invitation takes the step's place, and a domain offer shows only when none waits (sc-29070).
-  const invited = needsOne && stillOpen > 0 && !own;
-  const single = loaded.invitations.length === 1 ? loaded.invitations[0] : undefined;
-  const listsInvitations =
-    loaded.invitations.length > 1 && !own && (invited || firstJoined != null);
-  const showOffers = needsOne && !invited && offers.length > 0 && !own;
-  const asksForOrganisation = needsOne && !invited && !showOffers;
-  const singleOffer = showOffers && offers.length === 1 ? offers[0] : undefined;
+  const step = organisationStep({
+    needsOrganisation: account.needsOrganisation,
+    invitations: loaded.invitations.length,
+    stillOpen,
+    offers: offers.length,
+    own,
+    joined: firstJoined != null,
+  });
+  const { invited, listsInvitations, asksForOrganisation, showsOffers: showOffers } = step;
+  const single = step.showsSingleInvitation ? loaded.invitations[0] : undefined;
+  const singleOffer = step.singleOffer ? offers[0] : undefined;
   const singleOutcome = single == null ? undefined : loaded.outcomes[single.id];
   const accepting = singleOutcome?.kind === 'busy';
 
@@ -570,9 +574,9 @@ function Details({
 
   return (
     <StepScreen nav={nav} foot={foot}>
-      {(single != null && !own) || listsInvitations ? (
+      {step.heading === 'invited' ? (
         <Heading title={t('steps.invitedTitle')} intro={t('steps.invitedIntro')} />
-      ) : showOffers ? (
+      ) : step.heading === 'offers' ? (
         <Heading
           title={t('steps.organisationTitle')}
           intro={t('domainJoining.intro', { domain: offered?.domain ?? '' })}
@@ -618,7 +622,7 @@ function Details({
           </View>
         )}
 
-        {single != null && !own && (
+        {single != null && (
           <SingleInvitation
             invitation={single}
             outcome={singleOutcome}
