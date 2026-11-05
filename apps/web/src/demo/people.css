@@ -170,10 +170,6 @@
 }
 
 /* Add keeps its full height, so the dialog holds still while the names under it filter. */
-.desk-dialog:has(.people-add-body) {
-  height: auto;
-}
-
 .people-add-body {
   display: flex;
   flex-direction: column;
