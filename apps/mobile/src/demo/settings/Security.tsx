@@ -112,7 +112,7 @@ function SecurityPage({ start }: { start: SecurityStart }) {
   const others = devices.filter((device) => !device.here);
   const provider: Provider = opened === 'Apple' ? 'Apple' : 'Google';
   const openedDevice = devices.find((device) => device.id === opened && !device.here) ?? null;
-  const startBlock = start.ask === 'everywhere' ? EVERYWHERE : start.opened;
+  const startBlock = start.opened ?? start.inView;
 
   useEffect(() => {
     if (said != null) scroll.current?.scrollTo({ y: 0, animated: true });

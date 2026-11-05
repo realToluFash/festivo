@@ -87,7 +87,7 @@ function SignInRulesPage({ start }: { start: SignInRulesStart }) {
             : {
                 label: card.step,
                 onPress: () =>
-                  shell.openSection('security', asking === 'method' ? 'link' : 'setup'),
+                  shell.openSection('security', asking === 'method' ? 'linkPick' : 'setup'),
                 testID: 'signInRules.step',
               }
         }
