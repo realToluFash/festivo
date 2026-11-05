@@ -235,6 +235,68 @@ export function OnBrand({ title, body, size }: { title: string; body: string; si
   );
 }
 
+/** The brand on the page rather than the cover, its choices under it, as a join link draws them. */
+export function PageFrame({
+  top,
+  brand,
+  choices,
+}: {
+  top?: ReactNode;
+  brand: ReactNode;
+  choices: ReactNode;
+}) {
+  const insets = useSafeAreaInsets();
+  const { kind } = useLayout();
+  const { width } = useWindowDimensions();
+  const side = width < 380 ? tokens.spaceXl : tokens.space3xl;
+  const pad = {
+    paddingTop: insets.top,
+    paddingBottom: Math.max(insets.bottom, tokens.spaceLg),
+    paddingLeft: Math.max(insets.left, side),
+    paddingRight: Math.max(insets.right, side),
+  };
+
+  const body =
+    kind === 'tabletLandscape' ? (
+      <View style={pageStyles.beside}>
+        <View style={pageStyles.half}>{brand}</View>
+        <View style={[pageStyles.half, pageStyles.choicesBeside]}>{choices}</View>
+      </View>
+    ) : kind === 'tabletPortrait' ? (
+      <View style={pageStyles.middle}>
+        {brand}
+        <View style={pageStyles.tabletChoices}>{choices}</View>
+      </View>
+    ) : (
+      <>
+        <View style={pageStyles.middle}>{brand}</View>
+        {choices}
+      </>
+    );
+
+  return (
+    <ScrollView style={pageStyles.page} contentContainerStyle={[styles.fill, pad]}>
+      <View style={styles.top}>{top}</View>
+      {body}
+    </ScrollView>
+  );
+}
+
+const pageStyles = StyleSheet.create({
+  page: { flex: 1, backgroundColor: tokens.colorPage },
+  middle: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: tokens.spaceXxl,
+    paddingBottom: tokens.spaceLg,
+  },
+  tabletChoices: { width: 400, marginTop: tokens.space6xl },
+  beside: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: tokens.space6xl },
+  half: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: tokens.spaceXxl },
+  choicesBeside: { alignItems: 'stretch', maxWidth: 400 },
+});
+
 const styles = StyleSheet.create({
   cardPage: { flex: 1, backgroundColor: tokens.colorCard },
   fill: { flexGrow: 1 },
