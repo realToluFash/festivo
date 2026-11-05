@@ -84,6 +84,9 @@ describe('Sign-in rules at a desk (sc-30064)', () => {
     expect(within(block('What changed')).getAllByText('New')).toHaveLength(1);
     fireEvent.click(screen.getByRole('button', { name: 'Link Google or Apple' }));
     expect(await screen.findByRole('heading', { level: 1, name: 'Security' })).toBeDefined();
+    expect(screen.queryByRole('dialog')).toBeNull();
+    fireEvent.click(within(block('Ways to sign in')).getByRole('button', { name: /Apple/ }));
+    fireEvent.click(within(block('Ways to sign in')).getByRole('button', { name: 'Link Apple' }));
     expect(screen.getByRole('dialog', { name: 'Confirm it’s you' })).toBeDefined();
   });
 

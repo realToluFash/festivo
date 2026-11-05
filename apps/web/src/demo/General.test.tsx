@@ -89,12 +89,19 @@ describe('General at a desk (sc-30063)', () => {
     expect(screen.getByRole('dialog', { name: 'Set up two-factor' })).toBeDefined();
   });
 
-  it('holds an admin until Google or Apple is linked, the step opening Security at the link', async () => {
+  it('holds an admin until Google or Apple is linked, the step opening Security on both', async () => {
     const router = await general('/demo/settings/general?state=heldLinked&as=julien');
 
     fireEvent.click(screen.getByRole('button', { name: 'Link Google or Apple' }));
     expect(await screen.findByRole('heading', { level: 1, name: 'Security' })).toBeDefined();
-    expect(router.state.location.search).toBe('?as=julien&state=link');
+    expect(router.state.location.search).toBe('?as=julien&state=linkPick');
+    expect(screen.queryByRole('dialog')).toBeNull();
+    const ways = within(block('Ways to sign in'));
+    expect(ways.getAllByText('Not linked')).toHaveLength(2);
+    expect(ways.queryByRole('group')).toBeNull();
+
+    fireEvent.click(ways.getByRole('button', { name: /Google/ }));
+    fireEvent.click(ways.getByRole('button', { name: 'Link Google' }));
     expect(screen.getByRole('dialog', { name: 'Confirm it’s you' })).toBeDefined();
   });
 

@@ -609,6 +609,7 @@ export const WEB_MOMENTS = [
   'setPasswordWrong',
   'choosePassword',
   'added',
+  'linkPick',
   'linkWrong',
   'linked',
   'unlinkProve',
@@ -713,6 +714,8 @@ export function securityStart(state: string, viewer: Viewer = VIEWERS.folake): S
         page: page({ on: false }),
         said: RESULT_WORDS.added('Google'),
       };
+    case 'linkPick':
+      return { ...REST, page: page({ ways: { password: true, Google: false, Apple: false } }) };
     case 'link':
       return { ...REST, open: 'Apple', dialog: prove('link', 'Apple') };
     case 'linkWrong':
@@ -794,7 +797,7 @@ export function securityStart(state: string, viewer: Viewer = VIEWERS.folake): S
 
 /** A held step elsewhere in Settings opens Security on the moment that ends the hold. */
 export function heldStepPath(step: string, viewer: Pick<Viewer, 'key'>): string {
-  const to = step === W.turnOn ? 'setup' : step === 'Link Google or Apple' ? 'link' : undefined;
+  const to = step === W.turnOn ? 'setup' : step === 'Link Google or Apple' ? 'linkPick' : undefined;
 
   return settingsPath('security', viewer, to);
 }
@@ -840,6 +843,7 @@ export const SECURITY_PAGES: readonly { name: string; states: readonly DemoLink[
       security('setPasswordWrong', 'Set a password, a wrong code'),
       security('choosePassword', 'Choose a password'),
       security('added', 'Password added'),
+      security('linkPick', 'Neither linked, a held step’s landing'),
       security('link', 'Link Apple, Confirm it’s you'),
       security('linkWrong', 'Confirm it’s you, a wrong code'),
       security('linked', 'Apple linked'),
