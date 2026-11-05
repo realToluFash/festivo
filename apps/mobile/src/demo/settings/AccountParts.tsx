@@ -177,14 +177,6 @@ export function given<T extends Record<string, unknown>>(
   };
 }
 
-export function DoneMark({ side = 64 }: { side?: number }) {
-  return (
-    <View {...HIDDEN} style={[styles.done, { width: side, height: side, borderRadius: side / 2 }]}>
-      <Glyph name="tick" size={Math.round(side * 0.5)} ink={tokens.marks.done.ink} weight={3} />
-    </View>
-  );
-}
-
 export function Footnote({
   text,
   link,
@@ -305,7 +297,6 @@ const styles = StyleSheet.create({
     padding: tokens.spaceXl,
   },
   tight: { letterSpacing: -0.17 },
-  done: { backgroundColor: tokens.marks.done.fill, alignItems: 'center', justifyContent: 'center' },
   footnote: {
     flexDirection: 'row',
     flexWrap: 'wrap',

@@ -372,6 +372,7 @@ export function TextAction({
   onPress,
   removes = false,
   off = false,
+  figures = false,
   glyph,
   after,
   consequence,
@@ -383,6 +384,7 @@ export function TextAction({
   onPress: () => void;
   removes?: boolean;
   off?: boolean;
+  figures?: boolean;
   glyph?: GlyphName;
   after?: GlyphName;
   consequence?: string;
@@ -403,7 +405,12 @@ export function TextAction({
       testID={testID}
     >
       {glyph != null && <Glyph name={glyph} size={17} ink={ink} weight={2.3} />}
-      <Text size={15} weight="semibold" accessible={false} style={{ color: ink }}>
+      <Text
+        size={15}
+        weight="semibold"
+        accessible={false}
+        style={[{ color: ink }, figures && styles.figures]}
+      >
         {label}
       </Text>
       {after != null && <Glyph name={after} size={16} ink={ink} weight={2.4} />}
@@ -492,6 +499,7 @@ const styles = StyleSheet.create({
   title: { flexShrink: 1 },
   count: { fontVariant: ['tabular-nums'] },
   hairline: { height: 1, backgroundColor: tokens.colorBorder },
+  figures: { fontVariant: ['tabular-nums'] },
   action: {
     minHeight: tokens.sizeHit,
     minWidth: tokens.sizeHit,

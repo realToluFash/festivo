@@ -1,185 +1,317 @@
 import { useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { createRef, type RefObject, useEffect, useMemo, useRef, useState } from 'react';
+import type { ScrollViewInstance, ViewInstance } from 'react-native';
 
+import { SETTLED_MS } from '../../components/Screen.tsx';
+import {
+  type ScreenReaderTarget,
+  moveScreenReaderFocus,
+} from '../../components/screenReaderFocus.ts';
+import type { TextHandle } from '../../components/Text.tsx';
 import { SAMPLE } from '../samples.ts';
-import { AccountBand } from './AccountBand.tsx';
-import { type Asking, ContactsCard } from './AccountContacts.tsx';
-import { NameCard } from './AccountName.tsx';
-import { type Contact, EMAILS, HOME_ZONE, PHONES, SECOND_PHONE } from './AccountSample.ts';
-import { VerifyTask, type VerifyStart } from './AccountVerify.tsx';
-import { TimeZoneCard } from './AccountZone.tsx';
-import { SettingsPage, useShell } from './Frame.tsx';
+import { AddScreen } from './AccountAdd.tsx';
+import { AboutSection, YouCard } from './AccountCard.tsx';
+import { ConfirmScreen } from './AccountConfirm.tsx';
+import { ContactsSection } from './AccountContacts.tsx';
+import {
+  type AccountScreen,
+  type AccountStart,
+  accountStart,
+  accountStateOf,
+  cardLine,
+  type ContactKind,
+  firstUnverified,
+  KIND_WORDS,
+  keepPrimary,
+  primaryOf,
+  promoteLine,
+  RESULTS,
+  verifiedWords,
+  type Verifying,
+  WORDS,
+} from './AccountModel.ts';
+import { NameScreen } from './AccountName.tsx';
+import { type Contact, HOME_ZONE } from './AccountSample.ts';
+import { VerifyScreen } from './AccountVerify.tsx';
+import { ZoneScreen } from './AccountZone.tsx';
+import { useShell } from './Frame.tsx';
+import { Ask, SummaryPage } from './Summary.tsx';
 
-/** Each starting state a board frame drew, as `/demo/settings/account?state=<name>`. */
-export const ACCOUNT_STATES = [
-  'rest',
-  'name',
-  'promote',
-  'confirm',
-  'remove',
-  'addEmail',
-  'addPhone',
-  'zone',
-  'verifyEmail',
-  'verifyEmailWrong',
-  'verifyEmailExpired',
-  'verifyEmailDone',
-  'verifyPhone',
-  'verifyPhoneExpired',
-  'verifyPhoneDone',
-] as const;
+export { ACCOUNT_STATES } from './AccountModel.ts';
 
-type Start = (typeof ACCOUNT_STATES)[number];
+type Target =
+  'card' | 'step' | 'name' | 'zone' | 'addEmail' | 'addPhone' | 'send' | 'promote' | 'remove';
 
-interface Task {
-  kind: 'email' | 'phone';
-  id: string;
-  start: VerifyStart;
-}
-
-const SECOND_EMAIL_ID = 'email-2';
-const SECOND_PHONE_ID = 'phone-2';
-
+/** Settings › Your account in B, summary first, on sample data that stays on the device. */
 export function AccountSection() {
   const { state } = useLocalSearchParams<{ state?: string }>();
-  const start = ACCOUNT_STATES.find((name) => name === state) ?? 'rest';
+  const name = accountStateOf(state);
 
-  return <AccountPage key={start} start={start} />;
+  return <AccountPage key={name} start={accountStart(name)} />;
 }
 
-function startingEmails(start: Start): Contact[] {
-  if (start === 'addEmail') return EMAILS.filter((row) => row.primary);
-  const proved = ['promote', 'confirm', 'remove', 'verifyEmailDone'].includes(start);
-
-  return EMAILS.map((row) => (row.id === SECOND_EMAIL_ID ? { ...row, verified: proved } : row));
-}
-
-function startingPhones(start: Start): Contact[] {
-  if (!start.startsWith('verifyPhone')) return [...PHONES];
-
-  return [
-    ...PHONES,
-    {
-      id: SECOND_PHONE_ID,
-      shown: SECOND_PHONE,
-      verified: start === 'verifyPhoneDone',
-      primary: false,
-    },
-  ];
-}
-
-function startingTask(start: Start): Task | null {
-  const email = { kind: 'email', id: SECOND_EMAIL_ID } as const;
-  const phone = { kind: 'phone', id: SECOND_PHONE_ID } as const;
-
-  switch (start) {
-    case 'verifyEmail':
-      return { ...email, start: 'entering' };
-    case 'verifyEmailWrong':
-      return { ...email, start: 'wrong' };
-    case 'verifyEmailExpired':
-      return { ...email, start: 'expired' };
-    case 'verifyEmailDone':
-      return { ...email, start: 'done' };
-    case 'verifyPhone':
-      return { ...phone, start: 'entering' };
-    case 'verifyPhoneExpired':
-      return { ...phone, start: 'expired' };
-    case 'verifyPhoneDone':
-      return { ...phone, start: 'done' };
-    default:
-      return null;
-  }
-}
-
-function startingAsk(start: Start): Asking {
-  if (start === 'promote') return { id: SECOND_EMAIL_ID, what: 'promote' };
-  if (start === 'confirm') return { id: SECOND_EMAIL_ID, what: 'prove' };
-  if (start === 'remove') return { id: SECOND_EMAIL_ID, what: 'remove' };
-
-  return null;
-}
-
-function verifiedIn(rows: Contact[], id: string): Contact[] {
-  return rows.map((row) => (row.id === id ? { ...row, verified: true } : row));
-}
-
-function AccountPage({ start }: { start: Start }) {
-  const { layout } = useShell();
-  const [opening, setOpening] = useState<Start>(start);
+function AccountPage({ start }: { start: AccountStart }) {
+  const shell = useShell();
   const [name, setName] = useState<string>(SAMPLE.name);
-  const [emails, setEmails] = useState(() => startingEmails(start));
-  const [phones, setPhones] = useState(() => startingPhones(start));
   const [zone, setZone] = useState(HOME_ZONE);
-  const [task, setTask] = useState<Task | null>(() => startingTask(start));
-  const [arrived, setArrived] = useState<string | null>(() => {
-    const opened = startingTask(start);
+  const [emails, setEmails] = useState(start.emails);
+  const [phones, setPhones] = useState(start.phones);
+  const [said, setSaid] = useState(start.said);
+  const [opened, setOpened] = useState(start.opened);
+  const [ask, setAsk] = useState(start.ask);
+  const [screen, setScreen] = useState<AccountScreen | null>(start.screen);
+  const [verifying, setVerifying] = useState<Verifying | null>(start.verifying);
+  const [visit, setVisit] = useState(0);
+  const scroll = useRef<ScrollViewInstance>(null);
+  const [targets] = useState(() => ({
+    card: createRef<TextHandle>(),
+    step: createRef<ViewInstance>(),
+    name: createRef<ViewInstance>(),
+    zone: createRef<ViewInstance>(),
+    addEmail: createRef<ViewInstance>(),
+    addPhone: createRef<ViewInstance>(),
+    send: createRef<ViewInstance>(),
+    promote: createRef<ViewInstance>(),
+    remove: createRef<ViewInstance>(),
+  }));
+  const from = useRef<Target>(startTarget(start));
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const opener = useMemo<RefObject<ScreenReaderTarget | null>>(
+    () => ({
+      get current() {
+        return targets[from.current].current ?? targets.card.current;
+      },
+    }),
+    [targets],
+  );
+  const first = visit === 0;
+  const waiting = firstUnverified(emails, phones);
+  const primaryEmail = primaryOf(emails)?.shown ?? SAMPLE.email;
+  const openedRow = [...emails, ...phones].find((row) => row.id === opened) ?? null;
 
-    return opened?.start === 'done' ? opened.id : null;
-  });
-  const primaryEmail = emails.find((row) => row.primary)?.shown ?? SAMPLE.email;
+  useEffect(() => {
+    if (said != null) scroll.current?.scrollTo({ y: 0, animated: true });
+  }, [said]);
 
-  function verify(kind: 'email' | 'phone', row: Contact): void {
-    // The start's open step was for the board's frame; coming back from the task finds the page at rest.
-    setOpening('rest');
-    setArrived(null);
-    setTask({ kind, id: row.id, start: 'entering' });
+  useEffect(() => () => clearTimeout(timer.current), []);
+
+  function show(next: AccountScreen, target: Target): void {
+    from.current = target;
+    setVisit((count) => count + 1);
+    setScreen(next);
   }
 
-  if (task != null) {
-    const rows = task.kind === 'email' ? emails : phones;
+  function done(words: string): void {
+    from.current = 'card';
+    setSaid(words);
+    setOpened(null);
+    setAsk(null);
+    setScreen(null);
+  }
+
+  function doneAtOnce(words: string): void {
+    done(words);
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => moveScreenReaderFocus(targets.card.current), SETTLED_MS);
+  }
+
+  function rowsOf(kind: ContactKind): [Contact[], (rows: Contact[]) => void] {
+    return kind === 'email' ? [emails, setEmails] : [phones, setPhones];
+  }
+
+  function verify(kind: ContactKind, row: Contact, target: Target): void {
+    setVerifying({ kind, id: row.id, stage: 'entering' });
+    show('verify', target);
+  }
+
+  function makePrimary(kind: ContactKind, id: string): void {
+    const [rows, setRows] = rowsOf(kind);
+    setRows(rows.map((row) => ({ ...row, primary: row.id === id })));
+    const shown = rows.find((row) => row.id === id)?.shown ?? '';
+    if (kind === 'email') done(RESULTS.primary(kind, shown));
+    else doneAtOnce(RESULTS.primary(kind, shown));
+  }
+
+  function remove(kind: ContactKind, row: Contact, atOnce: boolean): void {
+    const [rows, setRows] = rowsOf(kind);
+    setRows(rows.filter((each) => each.id !== row.id));
+    if (atOnce) doneAtOnce(RESULTS.removed(row.shown));
+    else done(RESULTS.removed(row.shown));
+  }
+
+  const contacts = (kind: ContactKind) => {
+    const [rows] = rowsOf(kind);
+    const adding = kind === 'email' ? 'addEmail' : 'addPhone';
 
     return (
-      <VerifyTask
-        key={`${task.kind}.${task.id}`}
-        kind={task.kind}
-        shown={rows.find((row) => row.id === task.id)?.shown ?? ''}
-        start={task.start}
-        onPassed={() => {
-          if (task.kind === 'email') setEmails(verifiedIn(emails, task.id));
-          else setPhones(verifiedIn(phones, task.id));
-          setArrived(task.id);
+      <ContactsSection
+        kind={kind}
+        rows={rows}
+        opened={opened}
+        addRef={targets[adding]}
+        sendRef={targets.send}
+        promoteRef={targets.promote}
+        removeRef={targets.remove}
+        onAdd={() => show(adding, adding)}
+        onToggle={(id) => setOpened((now) => (now === id ? null : id))}
+        onVerify={(row) => verify(kind, row, 'send')}
+        onMakePrimary={(row) => {
+          from.current = 'promote';
+          if (kind === 'email') setAsk('promote');
+          else makePrimary(kind, row.id);
         }}
-        onBack={() => {
-          setOpening('rest');
-          setTask(null);
+        onRemove={(row) => {
+          from.current = 'remove';
+          if (row.verified) setAsk('remove');
+          else remove(kind, row, true);
         }}
       />
     );
-  }
+  };
+
+  const verifyRows = verifying == null ? [] : rowsOf(verifying.kind)[0];
+  const openedKind: ContactKind = emails.some((row) => row.id === opened) ? 'email' : 'phone';
 
   return (
-    <SettingsPage title="Your account">
-      {layout !== 'landscape' && (
-        <AccountBand name={name} email={primaryEmail} portrait={layout === 'portrait'} />
-      )}
-      <NameCard layout={layout} name={name} startEditing={opening === 'name'} onSaved={setName} />
-      <ContactsCard
-        kind="email"
-        layout={layout}
-        rows={emails}
-        onRows={setEmails}
-        arrived={arrived}
-        startAsking={startingAsk(opening)}
-        startAdding={opening === 'addEmail'}
-        onVerify={(row) => verify('email', row)}
+    <>
+      <SummaryPage title={WORDS.title} scrollRef={scroll}>
+        <YouCard
+          name={name}
+          email={primaryEmail}
+          line={cardLine(emails, phones, said)}
+          wide={shell.layout === 'portrait'}
+          nameRef={targets.card}
+          step={
+            waiting == null
+              ? null
+              : {
+                  label: WORDS.sendCode,
+                  onPress: () => verify(waiting.kind, waiting.row, 'step'),
+                  testID: 'account.step',
+                  ref: targets.step,
+                }
+          }
+        />
+        <AboutSection
+          name={name}
+          zone={zone}
+          nameRef={targets.name}
+          zoneRef={targets.zone}
+          onName={() => show('name', 'name')}
+          onZone={() => show('zone', 'zone')}
+        />
+        {contacts('email')}
+        {contacts('phone')}
+      </SummaryPage>
+      <Ask
+        open={ask === 'promote' && openedRow != null}
+        opener={opener}
+        title={WORDS.promoteTitle}
+        line={promoteLine(primaryEmail)}
+        keep={{ label: keepPrimary(primaryEmail), testID: 'account.promote.keep' }}
+        confirm={{ label: WORDS.makeItPrimary, testID: 'account.promote.confirm' }}
+        onKeep={() => setAsk(null)}
+        onConfirm={() => {
+          setAsk(null);
+          show('confirm', 'promote');
+        }}
+        testID="account.promote"
       />
-      <ContactsCard
-        kind="phone"
-        layout={layout}
-        rows={phones}
-        onRows={setPhones}
-        arrived={arrived}
-        startAsking={null}
-        startAdding={opening === 'addPhone'}
-        onVerify={(row) => verify('phone', row)}
+      <Ask
+        open={ask === 'remove' && openedRow != null}
+        opener={opener}
+        title={KIND_WORDS[openedKind].removeTitle}
+        line={WORDS.removeLine}
+        keep={{ label: WORDS.keepIt, testID: 'account.remove.keep' }}
+        confirm={{ label: WORDS.removeIt, testID: 'account.remove.confirm', removes: true }}
+        onKeep={() => setAsk(null)}
+        onConfirm={() => {
+          if (openedRow != null) remove(openedKind, openedRow, false);
+        }}
+        testID="account.remove"
       />
-      <TimeZoneCard
-        layout={layout}
-        zone={zone}
-        onSaved={setZone}
-        startTyped={opening === 'zone' ? 'San' : null}
+      <NameScreen
+        key={`name.${visit}`}
+        open={screen === 'name'}
+        held={name}
+        opener={opener}
+        onClose={() => setScreen(null)}
+        onSaved={(next) => {
+          setName(next);
+          done(RESULTS.name(next));
+        }}
       />
-    </SettingsPage>
+      <ZoneScreen
+        key={`zone.${visit}`}
+        open={screen === 'zone'}
+        held={zone}
+        startTyped={first ? start.typedZone : ''}
+        opener={opener}
+        onClose={() => setScreen(null)}
+        onSaved={(next) => {
+          setZone(next);
+          done(RESULTS.zone(next));
+        }}
+      />
+      {(['email', 'phone'] as const).map((kind) => (
+        <AddScreen
+          key={`${kind}.${visit}`}
+          kind={kind}
+          open={screen === (kind === 'email' ? 'addEmail' : 'addPhone')}
+          rows={rowsOf(kind)[0]}
+          opener={opener}
+          onClose={() => setScreen(null)}
+          onAdded={(row) => {
+            const [rows, setRows] = rowsOf(kind);
+            setRows([...rows, row]);
+            done(WORDS.added);
+          }}
+        />
+      ))}
+      <ConfirmScreen
+        key={`confirm.${visit}`}
+        open={screen === 'confirm' && openedRow != null}
+        opener={opener}
+        onClose={() => setScreen(null)}
+        onProved={() => {
+          if (openedRow != null) makePrimary('email', openedRow.id);
+        }}
+      />
+      <VerifyScreen
+        key={`verify.${verifying?.id ?? ''}.${visit}`}
+        open={screen === 'verify' && verifying != null}
+        kind={verifying?.kind ?? 'email'}
+        shown={verifyRows.find((row) => row.id === verifying?.id)?.shown ?? ''}
+        start={first && verifying != null ? verifying.stage : 'entering'}
+        opener={opener}
+        onClose={() => setScreen(null)}
+        onVerified={() => {
+          if (verifying == null) return;
+          const [rows, setRows] = rowsOf(verifying.kind);
+          const row = rows.find((each) => each.id === verifying.id);
+          setRows(
+            rows.map((each) => (each.id === verifying.id ? { ...each, verified: true } : each)),
+          );
+          done(verifiedWords(row?.shown ?? '', verifying.kind));
+        }}
+      />
+    </>
   );
+}
+
+function startTarget(start: AccountStart): Target {
+  if (start.ask != null) return start.ask;
+  switch (start.screen) {
+    case 'name':
+    case 'zone':
+    case 'addEmail':
+    case 'addPhone':
+      return start.screen;
+    case 'confirm':
+      return 'promote';
+    case 'verify':
+      return 'step';
+    case null:
+      return 'card';
+  }
 }

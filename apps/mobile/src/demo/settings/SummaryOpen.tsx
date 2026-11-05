@@ -5,7 +5,7 @@ import { RadioMark } from '../../components/RadioMark.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { Glyph } from '../Glyph.tsx';
-import { Row, type TagKind } from './SummaryRows.tsx';
+import { Row, type RowProps, type TagKind } from './SummaryRows.tsx';
 
 const hidden = {
   accessibilityElementsHidden: true,
@@ -53,7 +53,12 @@ export function LevelValue({
 /** A row that opens in place: shut, its value and a chevron down; open, what it holds under a Violet rule. */
 export function OpenRow({
   title,
+  line,
   openLine,
+  lead,
+  tag,
+  weight,
+  lit = false,
   value,
   open,
   onToggle,
@@ -64,8 +69,13 @@ export function OpenRow({
   ref,
 }: {
   title: string;
+  line?: string | undefined;
   openLine?: string | undefined;
-  value: ReactNode;
+  lead?: ReactNode;
+  tag?: RowProps['tag'];
+  weight?: RowProps['weight'];
+  lit?: boolean;
+  value?: ReactNode;
   open: boolean;
   onToggle: () => void;
   below?: ReactNode;
@@ -87,23 +97,28 @@ export function OpenRow({
 
   return (
     <View>
-      <Row
-        ref={ref}
-        title={title}
-        line={open ? openLine : undefined}
-        weight={open ? 'semibold' : 'medium'}
-        accent={open}
-        trail={
-          <>
-            {!open && value}
-            {chevron}
-          </>
-        }
-        onPress={onToggle}
-        accessibilityLabel={accessibilityLabel}
-        accessibilityState={{ expanded: open }}
-        testID={testID}
-      />
+      <View>
+        {open && lit && <View pointerEvents="none" style={styles.lit} />}
+        <Row
+          ref={ref}
+          title={title}
+          line={open && openLine != null ? openLine : line}
+          lead={lead}
+          tag={tag}
+          weight={weight ?? (open ? 'semibold' : 'medium')}
+          accent={open}
+          trail={
+            <>
+              {!open && value}
+              {chevron}
+            </>
+          }
+          onPress={onToggle}
+          accessibilityLabel={accessibilityLabel}
+          accessibilityState={{ expanded: open }}
+          testID={testID}
+        />
+      </View>
       {open && (
         <View style={styles.opened}>
           {children}
@@ -158,6 +173,15 @@ const styles = StyleSheet.create({
   barEmpty: { borderWidth: 1.5, borderColor: tokens.colorFieldBorder },
   value: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   flipped: { transform: [{ rotate: '180deg' }] },
+  lit: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: -tokens.spaceMd,
+    right: -tokens.spaceMd,
+    borderRadius: tokens.radiusRow,
+    backgroundColor: tokens.colorAccentTint,
+  },
   opened: {
     marginLeft: 14,
     paddingLeft: 14,

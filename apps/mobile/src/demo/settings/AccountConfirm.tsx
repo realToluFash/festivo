@@ -1,24 +1,110 @@
-import { useRef, useState } from 'react';
+import { type RefObject, useRef, useState } from 'react';
+import type { TextInputInstance } from 'react-native';
 
-import { CodeField, Field } from '../../components/Field.tsx';
+import { CodeField, Field, focusChecked, focusRefused } from '../../components/Field.tsx';
 import { PasswordField } from '../../components/PasswordField.tsx';
-import { passwordProblem, secondFactorProblem } from './AccountSample.ts';
+import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
+import { CODE_SAYS, type ConfirmSays, confirmSays, PASSWORD_SAYS, WORDS } from './AccountModel.ts';
 import { Lead, Note, StepPill, SubHead } from './AccountParts.tsx';
+import { passwordProblem, secondFactorProblem } from './AccountSample.ts';
 import { Pair } from './parts.tsx';
 import type { SettingsLayout } from './sample.ts';
+import { FocusedScreen, Line } from './Summary.tsx';
 
 const PASSWORD_LABEL = 'Your password';
 const CODE_LABEL = 'Code';
 
-const PASSWORD_SAYS = {
-  blank: 'Enter your password.',
-  wrong: 'That is not your password. Try again, or reset it by email.',
-} as const;
+const CODE_HELP = 'From your authenticator app, or one of your recovery codes.';
 
-const CODE_SAYS = {
-  blank: 'Enter a code from your app, or a recovery code.',
-  wrong: 'That code did not work. Check your app and try again.',
-} as const;
+/** Confirm it's you before the address you sign in with changes: Cancel · Confirm it's you · Continue. */
+export function ConfirmScreen({
+  open,
+  opener,
+  onClose,
+  onProved,
+}: {
+  open: boolean;
+  opener: RefObject<ScreenReaderTarget | null>;
+  onClose: () => void;
+  onProved: () => void;
+}) {
+  const password = useRef('');
+  const code = useRef('');
+  const passwordField = useRef<TextInputInstance>(null);
+  const codeField = useRef<TextInputInstance>(null);
+  const [says, setSays] = useState<ConfirmSays>({
+    password: null,
+    code: null,
+    checked: false,
+  });
+
+  function proceed(): void {
+    const next = confirmSays(password.current, code.current);
+    setSays(next);
+    const field = next.password != null ? passwordField : next.code != null ? codeField : null;
+    if (field == null) {
+      onProved();
+      return;
+    }
+    if (next.checked) focusChecked(field);
+    else focusRefused(field);
+  }
+
+  return (
+    <FocusedScreen
+      open={open}
+      title={WORDS.confirmTitle}
+      verb={{
+        label: WORDS.continue,
+        on: true,
+        onPress: proceed,
+        testID: 'account.confirm.continue',
+      }}
+      onCancel={onClose}
+      cancelTestID="account.confirm.cancel"
+      opener={opener}
+      testID="account.confirm.screen"
+    >
+      <Line text={WORDS.confirmLead} />
+      <Field label={PASSWORD_LABEL} error={says.password}>
+        <PasswordField
+          ref={passwordField}
+          wrong={says.password != null}
+          autoFocus
+          autoComplete="current-password"
+          textContentType="password"
+          onChangeText={(text) => {
+            password.current = text;
+            if (says.password != null) setSays({ ...says, password: null });
+          }}
+          returnKeyType="next"
+          onSubmitEditing={() => codeField.current?.focus()}
+          submitBehavior="submit"
+          accessibilityLabel={PASSWORD_LABEL}
+          testID="account.confirm.password"
+        />
+      </Field>
+      <Field label={CODE_LABEL} error={says.code} help={CODE_HELP}>
+        <CodeField
+          ref={codeField}
+          takesRecoveryCode
+          wrong={says.code != null}
+          autoComplete="one-time-code"
+          textContentType="oneTimeCode"
+          onChangeText={(text) => {
+            code.current = text;
+            if (says.code != null) setSays({ ...says, code: null });
+          }}
+          returnKeyType="done"
+          onSubmitEditing={proceed}
+          submitBehavior="submit"
+          accessibilityLabel={CODE_LABEL}
+          testID="account.confirm.code"
+        />
+      </Field>
+    </FocusedScreen>
+  );
+}
 
 /** Confirm it's you: the password, then the second factor, before a change to how you sign in. */
 export function ConfirmItsYou({
@@ -80,11 +166,7 @@ export function ConfirmItsYou({
         />
       </Field>
       {twoFactorOn && (
-        <Field
-          label={CODE_LABEL}
-          error={errors.code}
-          help="From your authenticator app, or one of your recovery codes."
-        >
+        <Field label={CODE_LABEL} error={errors.code} help={CODE_HELP}>
           <CodeField
             takesRecoveryCode
             wrong={errors.code != null}
