@@ -957,6 +957,10 @@ export function databaseCommands(console_, afterMigrations, keepData) {
     [...console_, 'doctrine:migrations:migrate', '-n', '--allow-no-migration'],
     // Recreated, so a health check failed while waiting for the schema does not end --wait at once.
     ...(waiting ? [['compose', 'up', '-d', '--wait', '--force-recreate', ...afterMigrations]] : []),
+    // The test database holds nothing worth keeping, so --keep-data never spares it.
+    [...console_, 'doctrine:database:drop', '--env=test', '--if-exists', '--force'],
+    [...console_, 'doctrine:database:create', '--env=test'],
+    [...console_, 'doctrine:migrations:migrate', '--env=test', '-n', '--allow-no-migration'],
   ];
 }
 
