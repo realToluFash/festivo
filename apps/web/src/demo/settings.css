@@ -1076,6 +1076,10 @@
   cursor: default;
 }
 
+.desk-nav-cancel.is-none {
+  visibility: hidden;
+}
+
 .desk-nav-title {
   flex: 1;
   min-width: 0;
@@ -1195,6 +1199,13 @@
 
 .desk-label {
   font: 600 14px/1.3 var(--fontFamily);
+}
+
+.desk-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-block: calc(-1 * var(--spaceMd));
 }
 
 .desk-box {
