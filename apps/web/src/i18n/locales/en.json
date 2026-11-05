@@ -403,7 +403,7 @@
   },
   "forbidden": {
     "title": "You do not have access to this",
-    "body": "Your account does not have permission for this page. If you believe it should, ask an administrator of this organisation.",
+    "body": "Your account does not have permission for this page. If you believe it should, ask an admin of this organisation.",
     "back": "Back to the dashboard"
   },
   "notFound": {
@@ -669,11 +669,8 @@
   },
   "roles": {
     "owner": "Owner",
-    "administrator": "Administrator",
-    "member": "Member",
-    "event_manager": "Event manager",
-    "coordinator": "Coordinator",
-    "read_only": "Read-only"
+    "administrator": "Admin",
+    "member": "Member"
   },
   "noOrganisation": {
     "title": "You are not in an organisation",
@@ -1680,7 +1677,7 @@
     "turnOn": "Turn on",
     "turnOff": "Turn off",
     "twoFactorOn": "Anyone without two-factor keeps working events and is asked to turn it on before their next change to members, roles, billing or security.",
-    "twoFactorOff": "Off. Anyone with an owner’s or administrator’s password can change members, roles and billing.",
+    "twoFactorOff": "Off. Anyone with an owner’s or admin’s password can change members and billing.",
     "needsOwnTitle": "Turn on two-factor for yourself first",
     "needsOwnBody": "Then you can require it here.",
     "needsOwnTurnOn": "Turn on two-factor",
@@ -1773,7 +1770,7 @@
     "transfer": "Transfer ownership",
     "transferNote": "Hand {{organisation}} to another member. Asks for your password first.",
     "transferNoteProvider": "Hand {{organisation}} to another member. Asks you to confirm with {{provider}} first.",
-    "transferBody": "The new owner can change billing, members, roles and these settings, and can delete {{organisation}}. You become an Administrator.",
+    "transferBody": "The new owner can change billing, members and these settings, and can delete {{organisation}}. You become an admin.",
     "newOwner": "New owner",
     "ownerBlank": "Choose who becomes the owner.",
     "password": "Your password",
@@ -1786,7 +1783,7 @@
     "theNewOwner": "the new owner",
     "makeOwner": "Make {{name}} the owner",
     "keep": "Keep ownership",
-    "transferred": "{{name}} is now the owner of {{organisation}}. You are an Administrator. You both have an email saying so.",
+    "transferred": "{{name}} is now the owner of {{organisation}}. You are an admin. You both have an email saying so.",
     "leave": "Leave {{organisation}}",
     "leaveOpener": "Leave {{organisation}}…",
     "leaveNote": "You lose access to its events. Everything you made stays with {{organisation}}.",
@@ -1982,7 +1979,7 @@
     "pausedStopped": "You stopped {{claimant}}'s claim. Ownership of {{organisation}} now has to be restored by Soirely support.",
     "withdraw": "Withdraw my claim",
     "withdrawTitle": "Withdraw your claim?",
-    "withdrawBody": "You won't become the owner of {{organisation}}. Any Administrator, you included, can start a new claim.",
+    "withdrawBody": "You won't become the owner of {{organisation}}. Any admin, you included, can start a new claim.",
     "withdrawYes": "Withdraw",
     "withdrawNo": "Keep my claim",
     "withdrawing": "Withdrawing",

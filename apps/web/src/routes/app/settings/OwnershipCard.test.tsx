@@ -212,7 +212,7 @@ describe('Settings > General, ownership and leaving', () => {
 
     const notice = (
       await screen.findByText(
-        'Bisi Adeyemi is now the owner of Ìrè Events. You are an Administrator. You both have an email saying so.',
+        'Bisi Adeyemi is now the owner of Ìrè Events. You are an admin. You both have an email saying so.',
       )
     ).closest('.notice');
     await waitFor(() => expect(document.activeElement).toBe(notice));
