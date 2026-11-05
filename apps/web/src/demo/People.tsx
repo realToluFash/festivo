@@ -52,7 +52,7 @@ const AREAS: readonly (readonly [string, GlyphName])[] = [
   ['Messages', 'messages'],
   ['Schedule', 'clock'],
   ['Staff', 'staff'],
-  ['People', 'users'],
+  ['People', 'people'],
   ['Budget', 'budget'],
   ['Reports', 'reports'],
 ];
