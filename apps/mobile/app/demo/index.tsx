@@ -155,6 +155,11 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/settings/security?state=link',
       },
       {
+        title: 'Security · link Google or Apple',
+        what: 'Password only; you pick which to link',
+        href: '/demo/settings/security?state=linkPick',
+      },
+      {
         title: 'Security · unlink Google?',
         what: 'The Ask over the opened row',
         href: '/demo/settings/security?state=unlink',

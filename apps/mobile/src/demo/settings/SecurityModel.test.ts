@@ -32,7 +32,7 @@ const NEW_PASSWORD = 'a much longer passphrase';
 
 describe('a state link', () => {
   it('opens the state it names, and the page at rest for anything else', () => {
-    expect(SECURITY_STATES).toHaveLength(15);
+    expect(SECURITY_STATES).toHaveLength(16);
     expect(securityStateOf('forgotSent')).toBe('forgotSent');
     expect(securityStateOf('nonsense')).toBe('rest');
     expect(securityStateOf(undefined)).toBe('rest');
@@ -46,6 +46,14 @@ describe('a state link', () => {
       opened: 'Google',
     });
     expect(securityStart('link')).toMatchObject({ opened: 'Apple', screen: 'confirm' });
+    expect(securityStart('linkPick')).toMatchObject({
+      ways: { password: true, Google: false, Apple: false },
+      rules: { providerOnly: true },
+      opened: null,
+      inView: 'Apple',
+      screen: null,
+      proof: null,
+    });
     expect(securityStart('recovery')).toMatchObject({ twoFactor: true, codesLeft: 10 });
     expect(securityStart('setup')).toMatchObject({ twoFactor: false, screen: 'setup' });
     expect(securityStart('signOutDevice')).toMatchObject({ opened: 'safari', ask: 'signOut' });

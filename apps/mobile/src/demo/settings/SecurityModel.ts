@@ -25,6 +25,7 @@ export const SECURITY_STATES = [
   'changePassword',
   'setPassword',
   'link',
+  'linkPick',
   'unlink',
   'setup',
   'recovery',
@@ -58,6 +59,7 @@ export interface SecurityStart {
   codesLeft: number;
   rules: Rules;
   opened: string | null;
+  inView: string | null;
   ask: SecurityAsk | null;
   screen: SecurityScreen | null;
   proof: Proof | null;
@@ -449,12 +451,14 @@ export function resetSays(email: string): string | null {
 /** Where each state starts: the sample's ways, two-factor and rules, and what is open over the page. */
 export function securityStart(state: SecurityState): SecurityStart {
   const googleOnly = state === 'googleOnly' || state === 'setPassword';
+  const picking = state === 'linkPick';
   const start: SecurityStart = {
-    ways: { password: !googleOnly, Google: true, Apple: false },
+    ways: { password: !googleOnly, Google: !picking, Apple: false },
     twoFactor: !googleOnly && state !== 'setup',
     codesLeft: state === 'recovery' ? RECOVERY_CODES.length : RECOVERY_LEFT,
-    rules: { providerOnly: state === 'keptByRule', twoFactor: state === 'keptByRule' },
+    rules: { providerOnly: state === 'keptByRule' || picking, twoFactor: state === 'keptByRule' },
     opened: null,
+    inView: null,
     ask: null,
     screen: null,
     proof: null,
@@ -469,6 +473,8 @@ export function securityStart(state: SecurityState): SecurityStart {
       return { ...start, screen: 'setPassword' };
     case 'link':
       return { ...start, opened: 'Apple', screen: 'confirm', proof: 'link' };
+    case 'linkPick':
+      return { ...start, inView: 'Apple' };
     case 'unlink':
       return { ...start, opened: 'Google', ask: 'unlink' };
     case 'setup':
@@ -482,7 +488,7 @@ export function securityStart(state: SecurityState): SecurityStart {
     case 'signOutDevice':
       return { ...start, opened: 'safari', ask: 'signOut' };
     case 'everywhere':
-      return { ...start, ask: 'everywhere' };
+      return { ...start, ask: 'everywhere', inView: 'everywhere' };
     case 'forgot':
       return { ...start, screen: 'forgot' };
     case 'forgotSent':
