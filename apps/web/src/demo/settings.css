@@ -5,7 +5,7 @@
   --deskColumn: 680px;
   --deskRing:
     0 0 0 2px var(--colorAccent), 0 0 0 5px color-mix(in srgb, var(--colorAccent) 18%, transparent);
-  --deskSelected: inset 0 0 0 2px var(--colorAccent);
+  --deskHover: var(--colorNeutralFill);
   --deskSplit: 360px;
   --deskDialog: 540px;
   --deskAsk: 400px;
@@ -86,18 +86,14 @@
   text-decoration: none;
 }
 
+/* Under the pointer a grey wash; open, the Tint and a Violet name with no ring, so the keyboard's ring is the only ring. */
 .desk-section:hover {
-  background: var(--colorAccentTint);
+  background: var(--deskHover);
 }
 
 .desk-section.is-on {
   background: var(--colorAccentTint);
-  box-shadow: var(--deskSelected);
   color: var(--colorAccentText);
-}
-
-.desk-section.is-on:focus-visible {
-  box-shadow: var(--deskSelected), var(--deskRing);
 }
 
 .desk-tile {
@@ -141,10 +137,6 @@
 
 .desk-tile.is-members {
   background: var(--optionBlue);
-}
-
-.desk-tile.is-roles {
-  background: var(--optionAmber);
 }
 
 .desk-tile.is-sign-in-rules {
@@ -777,25 +769,21 @@
   min-height: 52px;
 }
 
+/* A row that opens reaches 10 past its words each side, so the lit one reads as a Tint pill, radius 12. */
 :is(button, label).desk-row {
-  width: calc(100% + 24px);
-  margin: 0 -12px;
-  padding-inline: 12px;
-  border-radius: var(--spaceXl);
+  width: calc(100% + 2 * var(--spaceMd));
+  margin: 0 calc(-1 * var(--spaceMd));
+  padding-inline: var(--spaceMd);
+  border-radius: var(--radiusRow);
   cursor: pointer;
 }
 
 :is(button, label).desk-row:hover {
-  background: var(--colorAccentTint);
+  background: var(--deskHover);
 }
 
 .desk-row.is-on {
   background: var(--colorAccentTint);
-  box-shadow: var(--deskSelected);
-}
-
-.desk-row.is-on:focus-visible {
-  box-shadow: var(--deskSelected), var(--deskRing);
 }
 
 .desk-row-words {
@@ -906,7 +894,7 @@
 }
 
 .desk-menu-item:hover {
-  background: var(--colorAccentTint);
+  background: var(--deskHover);
 }
 
 .desk-menu-item[aria-checked='true'] {
@@ -1074,6 +1062,13 @@
 .desk-nav-verb.is-off {
   color: var(--colorInkTertiary);
   cursor: default;
+}
+
+.desk-nav-verb.is-room {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  visibility: hidden;
 }
 
 .desk-nav-title {
