@@ -1,5 +1,5 @@
 import { formattingLocale } from '@soirely/domain';
-import { type ReactNode, useId, useMemo, useState } from 'react';
+import { type ReactNode, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 
 import { offButton } from '../offButton.ts';
@@ -76,6 +76,7 @@ export function Security({ viewer, state, tell }: { viewer: Viewer; state: strin
   const [dialog, setDialog] = useState<DialogStart | null>(start.dialog);
   const [proved, setProved] = useState(false);
   const later = useLater();
+  const column = useRef<HTMLDivElement>(null);
   const card = cardOf(page, said);
   const devices = devicesOf(page);
   const others = othersOf(page);
@@ -118,11 +119,17 @@ export function Security({ viewer, state, tell }: { viewer: Viewer; state: strin
     done(R.device(device.name), { devices: page.devices.filter((id) => id !== device.id) });
   }
 
+  useEffect(() => {
+    if (start.open == null) return;
+    const opened = column.current?.querySelector('.account-open');
+    if (opened != null && 'scrollIntoView' in opened) opened.scrollIntoView({ block: 'center' });
+  }, [start.open]);
+
   const toggle = (key: string) => setOpen((now) => (now === key ? null : key));
 
   return (
     <div className="desk-page">
-      <div className="desk-column">
+      <div ref={column} className="desk-column">
         <TitleRow title={W.title} tell={tell} />
         <Card size="person">
           <div>
