@@ -1,5 +1,10 @@
 # sc-27088, Android only: Organisation keeps a typed name across offline, a refused Save, the automatic rereads being refused, and a pressed Try again.
 appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
 ---
 # organisation.name is drawn before the read answers, so only the band proves the screen had
 # loaded. A try that went offline too early leaves no band and nothing reads again, so each

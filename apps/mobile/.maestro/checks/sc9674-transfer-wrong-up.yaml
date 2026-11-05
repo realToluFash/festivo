@@ -1,5 +1,10 @@
 # Transfer ownership: wrong password, keys up, held, refused. Keys stay up, the next key goes into Your password. sc-9674.
 appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
 ---
 - openLink: ${METRO_URL}/--/settings/organisation
 - extendedWaitUntil:

@@ -1,5 +1,10 @@
 # sc-27213 regression: a wrong current password sent by the return key is refused with the field focused and the keys up (sc-13408); then, with the API paused, Save leaves Cancel off and a tap on it closes nothing (sc-12545). Needs ${METRO_URL}.
 appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
 ---
 - openLink: ${METRO_URL}/--/settings/security
 - scrollUntilVisible:
