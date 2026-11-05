@@ -43,6 +43,10 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **5 Nov 2026. An event's People refusals** (`errors:own_event_role`, `messages:people.*`,
+  sc-30009). dev2's draft said "Você", "em um evento" and "Essa pessoa"; it now reads "Não
+  pode", "num evento", "Esta pessoa". Who can act is "alguém com a função Proprietário ou
+  Administrador, ou a pessoa responsável pelo evento". The job label is "o nome do cargo".
 - **4 Nov 2026. As linhas sob cada recusa de um convite na web de secretária**
   (`web:join.refused.*.line`, `web:requestToJoin.deadLine`, sc-29487 para sc-29066). Cada linha
   não repete o seu título: a de uma organização eliminada é "O convite para aderir a

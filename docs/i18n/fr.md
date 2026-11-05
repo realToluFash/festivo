@@ -61,6 +61,10 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **5 Nov 2026. An event's People refusals** (`messages:people.*`, sc-30009). Who can act is
+  « une personne ayant le rôle Propriétaire ou Administrateur, ou la personne responsable de
+  l’événement », so nothing agrees with a gender. The event role Lead in a sentence is « la
+  personne responsable de l’événement ». The job label is « l’intitulé du poste ».
 - **4 nov. 2026. Les lignes sous chaque refus d’invitation sur le web de bureau**
   (`web:join.refused.*.line`, `web:requestToJoin.deadLine`, sc-29487 pour sc-29066). Chaque
   ligne ne répète pas son titre : celle d’une organisation supprimée est « L’invitation à
