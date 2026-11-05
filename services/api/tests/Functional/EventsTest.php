@@ -16,6 +16,7 @@ use App\Entity\Organisation;
 use App\Entity\Role;
 use App\Entity\User;
 use App\Enum\ErrorCode;
+use App\Enum\EventRole;
 use App\Enum\EventType;
 use App\Enum\MembershipStatus;
 use App\Enum\SeededRole;
@@ -25,6 +26,7 @@ use App\Tests\Double\ScriptedActiveEventsLimit;
 use App\Tests\Double\ScriptedAddressProvider;
 use App\Tests\Double\ScriptedEventAmounts;
 use App\Tests\Traits\OnboardsAccounts;
+use App\Tests\Traits\PutsPeopleOnEvents;
 use DateTimeImmutable;
 use Doctrine\DBAL\Connection;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
@@ -40,6 +42,7 @@ use Psl\Vec;
 final class EventsTest extends ApiTestCase
 {
     use OnboardsAccounts;
+    use PutsPeopleOnEvents;
 
     /** @mago-expect lint:no-literal-password */
     private const string PASSWORD = 'a decent passphrase';
@@ -328,20 +331,21 @@ final class EventsTest extends ApiTestCase
         self::assertSame([['at' => '2030-11-14T16:00:00+01:00', 'title' => 'Owambe starts', 'note' => null, 'owner' => 'event', 'area' => 'events', 'action' => null]], $listed[0]['milestones']);
     }
 
-    /** @return iterable<string, array{SeededRole, bool}> */
+    /** @return iterable<string, array{SeededRole, ?EventRole, bool}> */
     public static function creators(): iterable
     {
-        yield 'an administrator' => [SeededRole::Administrator, true];
-        yield 'an event manager' => [SeededRole::EventManager, true];
-        yield 'a coordinator' => [SeededRole::Coordinator, false];
-        yield 'a read-only member' => [SeededRole::ReadOnly, false];
+        yield 'an administrator' => [SeededRole::Admin, null, true];
+        yield 'a lead' => [SeededRole::Member, EventRole::Lead, false];
+        yield 'can edit' => [SeededRole::Member, EventRole::CanEdit, false];
+        yield 'can view' => [SeededRole::Member, EventRole::CanView, false];
     }
 
     #[Test]
     #[DataProvider('creators')]
-    public function onlyCreateEventsCreates(SeededRole $seeded, bool $creates): void
+    public function onlyCreateEventsCreates(SeededRole $seeded, ?EventRole $on, bool $creates): void
     {
-        $member = $this->member('member@ire.events', $seeded);
+        $id = $this->create('Naming', '2026-11-21T16:00');
+        $member = $this->member('member@ire.events', $seeded, $id, $on);
 
         $this->as($member, 'POST', $this->path('events'), self::valid());
 
@@ -353,10 +357,11 @@ final class EventsTest extends ApiTestCase
     }
 
     #[Test]
-    public function everyMemberSeesAndOpensTheOrganisationsEvents(): void
+    public function aMemberSeesAndOpensTheEventsTheyHaveARoleOn(): void
     {
         $id = $this->create('Owambe', '2026-11-14T16:00');
-        $reader = $this->member('reader@ire.events', SeededRole::ReadOnly);
+        $this->create('Naming', '2026-11-21T16:00');
+        $reader = $this->member('reader@ire.events', SeededRole::Member, $id, EventRole::CanView);
 
         self::assertSame(['Owambe'], Vec\map(Type\vec(Type\shape(['name' => Type\string()], true))->coerce($this->as($reader, 'GET', $this->path('events'))['events']), static fn (array $event): string => $event['name']));
         $this->as($reader, 'GET', '/api/events/' . $id);
@@ -691,10 +696,10 @@ final class EventsTest extends ApiTestCase
 
     #[Test]
     #[DataProvider('editors')]
-    public function onlyEventsManageMakesLive(SeededRole $seeded, bool $manages): void
+    public function onlyEventsManageMakesLive(SeededRole $seeded, ?EventRole $on, bool $manages): void
     {
         $id = $this->hosted($this->create('Owambe', self::AHEAD));
-        $member = $this->member('member@ire.events', $seeded);
+        $member = $this->member('member@ire.events', $seeded, $id, $on);
 
         $this->as($member, 'POST', '/api/events/' . $id . '/make-live');
 
@@ -853,10 +858,10 @@ final class EventsTest extends ApiTestCase
 
     #[Test]
     #[DataProvider('editors')]
-    public function onlyEventsManageEnds(SeededRole $seeded, bool $manages): void
+    public function onlyEventsManageEnds(SeededRole $seeded, ?EventRole $on, bool $manages): void
     {
         $event = $this->live(self::AHEAD, '2030-11-15T02:00');
-        $member = $this->member('member@ire.events', $seeded);
+        $member = $this->member('member@ire.events', $seeded, $event['id'], $on);
 
         $this->as($member, 'POST', '/api/events/' . $event['id'] . '/end');
 
@@ -987,10 +992,10 @@ final class EventsTest extends ApiTestCase
 
     #[Test]
     #[DataProvider('editors')]
-    public function onlyEventsManagePausesAndResumes(SeededRole $seeded, bool $manages): void
+    public function onlyEventsManagePausesAndResumes(SeededRole $seeded, ?EventRole $on, bool $manages): void
     {
         $event = $this->live(self::AHEAD, '2030-11-15T02:00');
-        $member = $this->member('member@ire.events', $seeded);
+        $member = $this->member('member@ire.events', $seeded, $event['id'], $on);
 
         $this->as($member, 'POST', '/api/events/' . $event['id'] . '/pause');
         self::assertSame($manages ? 200 : 403, $this->statusCode());
@@ -1127,22 +1132,23 @@ final class EventsTest extends ApiTestCase
         self::assertSame(['Renamed', '2020-11-14T19:00:00+01:00'], [$this->event($this->last())['name'], $this->event($this->last())['concludedAt']]);
     }
 
-    /** @return iterable<string, array{SeededRole, bool}> */
+    /** @return iterable<string, array{SeededRole, ?EventRole, bool}> */
     public static function editors(): iterable
     {
-        yield 'an administrator' => [SeededRole::Administrator, true];
-        yield 'an event manager' => [SeededRole::EventManager, true];
-        yield 'a coordinator' => [SeededRole::Coordinator, true];
-        yield 'a read-only member' => [SeededRole::ReadOnly, false];
+        yield 'an administrator' => [SeededRole::Admin, null, true];
+        yield 'a lead' => [SeededRole::Member, EventRole::Lead, true];
+        yield 'can edit' => [SeededRole::Member, EventRole::CanEdit, true];
+        yield 'can view' => [SeededRole::Member, EventRole::CanView, false];
+        yield 'can check guests in' => [SeededRole::Member, EventRole::CanCheckIn, false];
     }
 
     #[Test]
     #[DataProvider('editors')]
-    public function onlyEventsManageEdits(SeededRole $seeded, bool $edits): void
+    public function onlyEventsManageEdits(SeededRole $seeded, ?EventRole $on, bool $edits): void
     {
         $id = $this->create('Owambe', '2026-11-14T16:00');
         $tag = $this->tagOf($id);
-        $member = $this->member('member@ire.events', $seeded);
+        $member = $this->member('member@ire.events', $seeded, $id, $on);
 
         $this->as($member, 'PATCH', '/api/events/' . $id, ['name' => 'Theirs'], $tag);
 
@@ -1522,11 +1528,11 @@ final class EventsTest extends ApiTestCase
 
     #[Test]
     #[DataProvider('editors')]
-    public function onlyEventsManageNamesTheHosts(SeededRole $seeded, bool $edits): void
+    public function onlyEventsManageNamesTheHosts(SeededRole $seeded, ?EventRole $on, bool $edits): void
     {
         $id = $this->create('Owambe', self::AHEAD);
         $tag = $this->tagOf($id);
-        $member = $this->member('member@ire.events', $seeded);
+        $member = $this->member('member@ire.events', $seeded, $id, $on);
 
         $this->as($member, 'PATCH', '/api/events/' . $id, ['hosts' => ['Theirs']], $tag);
 
@@ -1740,13 +1746,17 @@ final class EventsTest extends ApiTestCase
         return $user;
     }
 
-    private function member(string $address, SeededRole $seeded): User
+    private function member(string $address, SeededRole $seeded, ?string $eventId = null, ?EventRole $on = null): User
     {
         $user = $this->account($address);
         $role = self::em()->getRepository(Role::class)->findOneBy(['organisation' => $this->organisation, 'seededAs' => $seeded]);
         $organisation = self::em()->find(Organisation::class, $this->organisation->getId()) ?? self::fail('no organisation');
         self::em()->persist(new Membership($organisation, $user, Type\instance_of(Role::class)->coerce($role), MembershipStatus::Active, new DateTimeImmutable()));
         self::em()->flush();
+
+        if (null !== $eventId && null !== $on) {
+            self::onEvent($user, $eventId, $on);
+        }
 
         return $user;
     }

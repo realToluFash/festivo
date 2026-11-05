@@ -12,7 +12,7 @@
     "contacts.limit_email": "An account holds {count, number, ::group-auto} email addresses. Remove one to add another.",
     "contacts.limit_phone": "An account holds {count, number, ::group-auto} phone numbers. Remove one to add another.",
     "proof.required": "This needs your password, or a sign-in with Google or Apple, in the last {minutes, number, ::group-auto} minutes, and your two-factor code if two-factor is on.",
-    "roles.name_too_long": "Shorten the name to {count, number, ::group-auto} characters or fewer.",
+    "people.job_label_too_long": "Shorten the job label to {count, number, ::group-auto} characters or fewer.",
     "validation.event_name_too_long": "Shorten the name to {count, number, ::group-auto} characters or fewer.",
     "validation.name_too_long": "Shorten your name to {count, number, ::group-auto} characters or fewer.",
     "validation.event_venue_address_too_long": "Shorten the address to {count, number, ::group-auto} characters or fewer.",

@@ -56,10 +56,9 @@ final readonly class InvitationMailer
 
     private function roleName(Invitation $invitation, string $locale): string
     {
-        $role = $invitation->getRole();
-        $seeded = $role?->getSeededAs();
+        $seeded = $invitation->getRole()?->getSeededAs();
 
-        return null === $seeded ? $role?->getName() ?? '' : $this->seededRoleLabels->label($seeded, $locale);
+        return null === $seeded ? '' : $this->seededRoleLabels->label($seeded, $locale);
     }
 
     /** The organisation's zone: a stranger has none of their own. */

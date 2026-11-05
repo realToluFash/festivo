@@ -83,7 +83,7 @@ final class InAppNotificationsTest extends MessagingTestCase
     public function aMuteIsOnlyItsOwnersAndLeavesTheOtherMembersDeliveriesAsTheyWere(): void
     {
         $event = $this->event();
-        $other = $this->member('other', SeededRole::Administrator);
+        $other = $this->member('other', SeededRole::Admin);
         self::service(EventMuter::class)->set($this->owner, $event, true);
         self::scheduler()->schedule('test.bell', 'bell:1', 'bell-1', Trigger::at(new DateTimeImmutable('-1 minute')), $this->everyone(), [], $event);
 

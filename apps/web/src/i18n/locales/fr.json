@@ -690,6 +690,7 @@
   "roles": {
     "owner": "Propriétaire",
     "administrator": "Administrateur",
+    "member": "Membre",
     "event_manager": "Responsable d’événements",
     "coordinator": "Coordinateur",
     "read_only": "Lecture seule"

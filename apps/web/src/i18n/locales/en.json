@@ -670,6 +670,7 @@
   "roles": {
     "owner": "Owner",
     "administrator": "Administrator",
+    "member": "Member",
     "event_manager": "Event manager",
     "coordinator": "Coordinator",
     "read_only": "Read-only"

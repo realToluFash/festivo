@@ -98,6 +98,6 @@ final class MembershipStatusTest extends TestCase
     {
         $organisation = new Organisation('Ìrè Events', 'NG', 'NGN', 'Africa/Lagos', 'hello@ire.events', 'en');
 
-        return new Membership($organisation, new User('Kemi', null, AccountOrigin::SelfRegistered), Role::seeded($organisation, SeededRole::Coordinator), $status, new DateTimeImmutable());
+        return new Membership($organisation, new User('Kemi', null, AccountOrigin::SelfRegistered), new Role($organisation, SeededRole::Member), $status, new DateTimeImmutable());
     }
 }
