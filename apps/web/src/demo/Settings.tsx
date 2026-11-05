@@ -14,6 +14,7 @@ import {
   settingsPath,
   viewerOf,
 } from './settings.ts';
+import { Account } from './Account.tsx';
 import { General } from './General.tsx';
 import { LayersContext } from './layers.ts';
 import { Members } from './Members.tsx';
@@ -77,7 +78,9 @@ export function Settings({ open = 'members' }: { open?: Drawn }) {
             viewer={viewer}
             tell={tell}
           />
-          {open === 'general' ? (
+          {open === 'account' ? (
+            <Account key={`${viewer.key}:${state}`} viewer={viewer} state={state} tell={tell} />
+          ) : open === 'general' ? (
             <General key={`${viewer.key}:${state}`} viewer={viewer} state={state} tell={tell} />
           ) : open === 'signInRules' ? (
             <SignInRules key={`${viewer.key}:${state}`} viewer={viewer} state={state} tell={tell} />

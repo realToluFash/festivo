@@ -246,6 +246,7 @@ export function Field({
   inputRef,
   autoComplete,
   inputMode,
+  placeholder,
 }: {
   label: string;
   value: string;
@@ -256,6 +257,7 @@ export function Field({
   inputRef?: RefObject<HTMLInputElement | null>;
   autoComplete?: string;
   inputMode?: 'email' | 'numeric' | 'text';
+  placeholder?: string;
 }) {
   const id = useId();
   const [shown, setShown] = useState(false);
@@ -276,6 +278,7 @@ export function Field({
           value={value}
           autoComplete={autoComplete}
           inputMode={inputMode}
+          placeholder={placeholder}
           spellCheck={false}
           aria-invalid={error != null}
           aria-describedby={told === '' ? undefined : told}

@@ -5,9 +5,10 @@ export type Section =
   'account' | 'security' | 'notifications' | 'general' | 'members' | 'roles' | 'signInRules';
 
 /** The sections the boards draw; the others, Roles among them, each have their own design. */
-export type Drawn = 'general' | 'members' | 'signInRules';
+export type Drawn = 'account' | 'general' | 'members' | 'signInRules';
 
 const PATHS: Record<Drawn, string> = {
+  account: 'account',
   general: 'general',
   members: 'members',
   signInRules: 'sign-in-rules',
@@ -105,7 +106,12 @@ export function groupsFor(viewer: Pick<Viewer, 'reads'>): SectionGroup[] {
 }
 
 export function isDrawn(section: Section): section is Drawn {
-  return section === 'general' || section === 'members' || section === 'signInRules';
+  return (
+    section === 'account' ||
+    section === 'general' ||
+    section === 'members' ||
+    section === 'signInRules'
+  );
 }
 
 export function settingsPath(section: Drawn, viewer: Pick<Viewer, 'key'>, state?: string): string {

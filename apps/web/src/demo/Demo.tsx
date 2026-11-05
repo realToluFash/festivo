@@ -5,6 +5,7 @@ import { NotFound } from '../routes/public/NotFound.tsx';
 import { offButton } from '../offButton.ts';
 import { offField } from '../offField.ts';
 import { BoardPage, OrLine, Providers } from './BoardPage.tsx';
+import { ACCOUNT_PAGES } from './account.ts';
 import { GENERAL_PAGES } from './general.ts';
 import { GetBackInBoard } from './GetBackIn.tsx';
 import { NewAccountBoard } from './NewAccount.tsx';
@@ -103,6 +104,7 @@ export default function Demo() {
       <Route path="today" element={<Today />} />
       <Route path="settings" element={<Settings />} />
       <Route path="settings/members" element={<Settings />} />
+      <Route path="settings/account" element={<Settings open="account" />} />
       <Route path="settings/general" element={<Settings open="general" />} />
       <Route path="settings/sign-in-rules" element={<Settings open="signInRules" />} />
       <Route path="later" element={<Later />} />
@@ -149,6 +151,8 @@ function DemoHome({ from }: { from: string }) {
         <h2 id="demo-page-28">28 · Organisations and access · Settings at a desk</h2>
         <h3>Settings in B · Summary first · desktop</h3>
         <BoardPages pages={SETTINGS_PAGES} />
+        <h3>Your account in B · Summary first · desktop</h3>
+        <BoardPages pages={ACCOUNT_PAGES} />
         <h3>General in B · Summary first · desktop</h3>
         <BoardPages pages={GENERAL_PAGES} />
         <h3>Sign-in rules in B · Where you stand · desktop</h3>
