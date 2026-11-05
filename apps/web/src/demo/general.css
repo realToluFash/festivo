@@ -1,0 +1,169 @@
+/* General at a desk, in B · Summary first: the app's Organisation, with its tile, its switch and its pickers. */
+
+.desk-disc.general-tile {
+  border-radius: var(--radiusCardPhone);
+}
+
+.general-lock {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+}
+
+.general-lock > svg {
+  flex: none;
+  margin-top: var(--spaceHair);
+}
+
+.desk-rows.general-domains > * + * {
+  background-position: 34px 0;
+  background-size: calc(100% - 34px) 1px;
+}
+
+.general-globe {
+  display: flex;
+  flex: none;
+  color: var(--colorInkSecondary);
+}
+
+.desk-sunk.general-globe-bone {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radiusPill);
+}
+
+.general-link {
+  font-variant-numeric: tabular-nums;
+  user-select: text;
+}
+
+.general-pair {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--spaceXl);
+}
+
+.general-switch {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--spaceSm);
+  min-height: var(--sizeHit);
+  padding: 0 var(--spaceXxs);
+  border: 0;
+  border-radius: var(--radiusSmall);
+  background: none;
+  cursor: pointer;
+}
+
+.general-switch[aria-busy='true'] {
+  cursor: progress;
+}
+
+.general-track {
+  position: relative;
+  flex: none;
+  width: var(--sizeToggleW);
+  height: var(--sizeToggleH);
+  border-radius: var(--radiusPill);
+  background: var(--colorTrack);
+  transition: background var(--motionBase) var(--motionEase);
+}
+
+.general-knob {
+  position: absolute;
+  top: var(--spaceHair);
+  left: var(--spaceHair);
+  width: var(--sizeToggleKnob);
+  height: var(--sizeToggleKnob);
+  border-radius: var(--radiusPill);
+  background: var(--colorCard);
+  box-shadow: var(--shadowKnob);
+  transition: transform var(--motionBase) var(--motionEase);
+}
+
+.general-switch[aria-checked='true'] .general-track {
+  background: var(--colorAccent);
+}
+
+.general-switch[aria-checked='true'] .general-knob {
+  transform: translateX(calc(var(--sizeToggleW) - var(--sizeToggleKnob) - var(--spaceHair) * 2));
+}
+
+.general-word {
+  min-width: 26px;
+  color: var(--colorInkSecondary);
+  font: var(--typeButton);
+  text-align: start;
+}
+
+.general-switch[aria-checked='true'] .general-word {
+  color: var(--colorAccentText);
+}
+
+.desk-rows > .general-step {
+  padding-block: var(--spaceXxs) var(--spaceLg);
+}
+
+.general-step > .desk-note {
+  margin-top: calc(-1 * var(--spaceXxs));
+}
+
+.desk-dialog:has(~ .general-picker) {
+  visibility: hidden;
+}
+
+.desk-dialog.general-picker {
+  height: calc(100vh - 2 * var(--space6xl));
+}
+
+.general-picker .desk-nav.actions-pair {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+}
+
+.desk-nav-cancel.general-back {
+  display: inline-flex;
+  justify-self: start;
+  align-items: center;
+  gap: var(--spaceHair);
+  padding-inline-start: var(--spaceXs);
+}
+
+.general-search {
+  flex: none;
+  padding: var(--spaceLg) var(--spaceXxl) var(--spaceXs);
+}
+
+.general-search .desk-box {
+  gap: var(--spaceSm);
+  color: var(--colorInkSecondary);
+}
+
+.general-search input::-webkit-search-cancel-button {
+  appearance: none;
+}
+
+.desk-dialog-body.general-choices {
+  flex: 1;
+  gap: 0;
+  padding-top: var(--spaceXs);
+}
+
+.general-choices .desk-row > svg {
+  flex: none;
+  color: var(--colorAccent);
+}
+
+.general-typed {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+}
+
+.general-matches {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceXs);
+}

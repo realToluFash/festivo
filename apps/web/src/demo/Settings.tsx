@@ -14,6 +14,7 @@ import {
   settingsPath,
   viewerOf,
 } from './settings.ts';
+import { General } from './General.tsx';
 import { LayersContext } from './layers.ts';
 import { Members } from './Members.tsx';
 import { SignInRules } from './SignInRules.tsx';
@@ -72,11 +73,13 @@ export function Settings({ open = 'members' }: { open?: Drawn }) {
         />
         <main id="content" className="desk-main" inert={covered}>
           <SettingsList
-            open={open === 'signInRules' || viewer.reads ? open : null}
+            open={open !== 'members' || viewer.reads ? open : null}
             viewer={viewer}
             tell={tell}
           />
-          {open === 'signInRules' ? (
+          {open === 'general' ? (
+            <General key={`${viewer.key}:${state}`} viewer={viewer} state={state} tell={tell} />
+          ) : open === 'signInRules' ? (
             <SignInRules key={`${viewer.key}:${state}`} viewer={viewer} state={state} tell={tell} />
           ) : viewer.reads ? (
             <Members

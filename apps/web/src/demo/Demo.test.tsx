@@ -1143,7 +1143,7 @@ describe('Settings at a desk (sc-29708)', () => {
     const list = screen.getByRole('navigation', { name: 'Settings' });
     expect(within(list).queryByRole('link', { name: 'Members' })).toBeNull();
     expect(within(list).queryByRole('link', { name: 'Roles' })).toBeNull();
-    expect(within(list).getByRole('button', { name: 'General' })).toBeDefined();
+    expect(within(list).getByRole('link', { name: 'General' })).toBeDefined();
   });
 
   it('counts the people and answers the first request from the card', async () => {
