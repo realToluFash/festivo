@@ -391,16 +391,42 @@ export interface ConfirmSays {
   checked: boolean;
 }
 
+/** What Confirm it's you asks for: in place of both fields, the provider you sign in with. */
+export interface ProofAsks {
+  lead: string;
+  note?: string | undefined;
+  password: boolean;
+  code: boolean;
+  codeHelp: string;
+  codeWrong: string;
+  instead: string | null;
+}
+
+export const CODE_HELP = 'From your authenticator app, or one of your recovery codes.';
+
+export const ACCOUNT_PROOF: ProofAsks = {
+  lead: WORDS.confirmLead,
+  password: true,
+  code: true,
+  codeHelp: CODE_HELP,
+  codeWrong: CODE_SAYS.wrong,
+  instead: null,
+};
+
 /** The blanks first, both at once, as the client knows them; then the server's answer, one field at a time. */
-export function confirmSays(password: string, code: string): ConfirmSays {
+export function confirmSays(
+  password: string,
+  code: string,
+  asks: Pick<ProofAsks, 'password' | 'code' | 'codeWrong'> = ACCOUNT_PROOF,
+): ConfirmSays {
   const blank = {
-    password: password === '' ? PASSWORD_SAYS.blank : null,
-    code: code.trim() === '' ? CODE_SAYS.blank : null,
+    password: asks.password && password === '' ? PASSWORD_SAYS.blank : null,
+    code: asks.code && code.trim() === '' ? CODE_SAYS.blank : null,
   };
   if (blank.password != null || blank.code != null) return { ...blank, checked: true };
-  if (passwordProblem(password) != null)
+  if (asks.password && passwordProblem(password) != null)
     return { password: PASSWORD_SAYS.wrong, code: null, checked: false };
-  const wrongCode = secondFactorProblem(code) == null ? null : CODE_SAYS.wrong;
+  const wrongCode = asks.code && secondFactorProblem(code) != null ? asks.codeWrong : null;
 
   return { password: null, code: wrongCode, checked: false };
 }
