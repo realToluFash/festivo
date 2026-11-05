@@ -193,13 +193,6 @@
     "organisation": "Nome da organização",
     "organisationHelp": "Os seus eventos pertencem-lhe. Pode mudar-lhe o nome mais tarde.",
     "organisationBlank": "Adicione o nome da sua organização para continuar.",
-    "organisationOrInvitation": "Adicione o nome da sua organização ou aceite um convite pendente.",
-    "invitationsWaiting_one": "Tem um convite pendente. Aceite-o para entrar nessa organização ou crie a sua mais abaixo.",
-    "invitationsWaiting_other": "Tem {{count, number}} convites pendentes. Aceite um para entrar na organização que o enviou, ou crie a sua mais abaixo.",
-    "invitationsWaiting_many": "Tem {{count, number}} de convites pendentes. Aceite um para entrar na organização que o enviou, ou crie a sua mais abaixo.",
-    "invitationsJoined": "Por agora, não precisa de criar uma organização.",
-    "invitationsNone": "Já não há convites pendentes. Adicione o nome da sua organização mais abaixo.",
-    "orStartOwn": "Ou crie a sua própria organização",
     "joinedGoesThere": "Selecione «Guardar e continuar» para entrar nela.",
     "joinedSwitchLater": "Já está nas suas organizações. Pode mudar para ela mais tarde.",
     "country": "País",
@@ -1120,13 +1113,11 @@
     "failed": "Não foi possível concluir, por isso nada foi alterado. Tente novamente."
   },
   "domainJoining": {
-    "heading": "A sua organização",
     "intro": "O seu endereço é do domínio {{domain}}. Peça para aderir à organização da sua empresa ou crie a sua.",
     "usesSoirely": "{{organisation}} usa a Soirely",
     "approvesFirst": "O pedido tem de ser aprovado por alguém da organização antes de ter acesso a qualquer conteúdo.",
     "ask": "Pedir para aderir",
     "askLabel": "Pedir para aderir a {{organisation}}",
-    "startOwn": "Criar a minha própria organização",
     "askInstead": "Prefiro pedir para aderir a uma organização de {{domain}}",
     "unavailable": "Não pode pedir para aderir a essa organização. Crie a sua ou peça um convite a alguém dessa organização.",
     "waitingTitle": "A aguardar a aprovação de {{organisation}}",
@@ -1351,12 +1342,6 @@
   },
   "requestToJoin": {
     "title": "Pedir para aderir a {{organisation}}",
-    "requestLink": "Ligação de adesão",
-    "signedOut": "Inicie sessão ou crie uma conta para pedir para aderir a {{organisation}}. Depois, regressa a esta página.",
-    "signIn": "Iniciar sessão",
-    "register": "Criar uma conta",
-    "message": "Mensagem",
-    "optional": "Opcional",
     "messageHelp": "{{length, number}} de {{count, number}} caracteres.",
     "messageLong": "Encurte a mensagem para um máximo de {{count, number}} caracteres.",
     "ask": "Pedir para aderir",
@@ -1376,7 +1361,9 @@
     "deadBody": "Esta ligação já não funciona. Peça uma nova à organização.",
     "goHome": "Ir para a Soirely",
     "failedTitle": "Não foi possível enviar o pedido",
-    "failedBody": "Algo correu mal pelo caminho. Tente de novo dentro de momentos."
+    "failedBody": "Algo correu mal pelo caminho. Tente de novo dentro de momentos.",
+    "messageOptional": "Message · optional",
+    "signedOutLine": "Sign in or create an account to ask. You come back here after."
   },
   "ownerClaim": {
     "loading": "A carregar",
@@ -1961,7 +1948,12 @@
     "mobileIntro": "Para que a sua equipa consiga falar consigo na noite do evento, se algo correr mal.",
     "mobileLine": "Enviamos um código para este número por WhatsApp, ou por SMS se o WhatsApp não chegar até si.",
     "sendCode": "Enviar código",
-    "whatsAppTitle": "Veja o WhatsApp"
+    "whatsAppTitle": "Veja o WhatsApp",
+    "invitedTitle": "You’re invited",
+    "invitedIntro": "Join your team, or start your own organisation.",
+    "invitationFor": "An invitation for {{email}}",
+    "join": "Join {{organisation}}",
+    "startOwnInstead": "Start my own instead"
   },
   "todayScreen": {
     "today": "Today",

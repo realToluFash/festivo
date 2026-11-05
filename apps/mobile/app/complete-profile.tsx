@@ -1,10 +1,19 @@
-import { ApiError, type Account, type JoinOffers, awaiting } from '@soirely/api-client';
+import {
+  ApiError,
+  type Account,
+  type InvitationPreview,
+  type JoinOffers,
+  awaiting,
+} from '@soirely/api-client';
 import {
   ACCOUNT_NAME_MAXIMUM,
   answeringInvitation,
   deviceRegion,
   formatDay,
   formatTimeOfDay,
+  type InvitationOutcome,
+  refusalBody,
+  roleName,
   waitingInvitations,
 } from '@soirely/domain';
 import { getCalendars, getLocales } from 'expo-localization';
@@ -14,13 +23,13 @@ import { StyleSheet, type TextInputInstance, View, type ViewInstance } from 'rea
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../src/api.ts';
-import { AnswerHeading } from '../src/components/AnswerHeading.tsx';
 import { PrimaryButton, QuietButton, SecondaryButton } from '../src/components/Buttons.tsx';
 import { CountryPicker, focusPicker } from '../src/components/CountryPicker.tsx';
 import { Field, focusChecked, keysStayDown, TextField } from '../src/components/Field.tsx';
 import { InvitationRows } from '../src/components/InvitationRows.tsx';
 import { LinkedNotice } from '../src/components/LinkedNotice.tsx';
 import { Notice } from '../src/components/Notice.tsx';
+import { OrgTile } from '../src/components/OrgTile.tsx';
 import {
   type StepClosed,
   stepClosed,
@@ -411,23 +420,51 @@ function Details({
   }, [account.needsOrganisation]);
 
   const offers = offered?.offers ?? [];
-  const showOffers = needsOne && offers.length > 0 && !own;
-  const asksForOrganisation = needsOne && !showOffers;
+  // An invitation takes the step's place, and a domain offer shows only when none waits (sc-29070).
+  const invited = needsOne && stillOpen > 0 && !own;
+  const single = loaded.invitations.length === 1 ? loaded.invitations[0] : undefined;
+  const listsInvitations =
+    loaded.invitations.length > 1 && !own && (invited || firstJoined != null);
+  const showOffers = needsOne && !invited && offers.length > 0 && !own;
+  const asksForOrganisation = needsOne && !invited && !showOffers;
+  const singleOffer = showOffers && offers.length === 1 ? offers[0] : undefined;
+  const singleOutcome = single == null ? undefined : loaded.outcomes[single.id];
+  const accepting = singleOutcome?.kind === 'busy';
 
-  async function save(askToJoin: string | null = null): Promise<void> {
+  function startOwn(): void {
+    setOwn(true);
+    setAskedInstead(undefined);
+    setStartedOwn({});
+  }
+
+  function nameChecked(): boolean {
+    if (name.trim() !== '') return true;
+
+    setErrors({ name: t('completeProfile.nameBlank') });
+    focusChecked(nameInput);
+
+    return false;
+  }
+
+  /** Join on the one invitation: accepted, then the step saved, on to Your mobile number. */
+  async function join(invitation: InvitationPreview): Promise<void> {
+    if (saving || answering || !nameChecked()) return;
+
+    const outcome = await waiting.answer(invitation, 'accept');
+    if (outcome.kind === 'accepted') await save({ joined: outcome.organisationId });
+  }
+
+  async function save(choice: { askToJoin?: string; joined?: string } = {}): Promise<void> {
     if (saving || answering) return;
+    const { askToJoin = null, joined = null } = choice;
     if (showOffers && askToJoin == null) return;
 
-    const founds = asksForOrganisation && askToJoin == null;
+    const founds = joined == null && asksForOrganisation && askToJoin == null;
     // Checked before sending, every field at once, and the first that needs attention is focused.
     const checked: Errors = {};
     if (name.trim() === '') checked.name = t('completeProfile.nameBlank');
     if (founds && organisationName.trim() === '') {
-      checked.organisationName = t(
-        stillOpen > 0
-          ? 'completeProfile.organisationOrInvitation'
-          : 'completeProfile.organisationBlank',
-      );
+      checked.organisationName = t('completeProfile.organisationBlank');
     }
     // Nothing named a country, so the field started blank: the person chooses rather than us guessing.
     if (founds && countryCode === '') checked.countryCode = t('forms.countryBlank');
@@ -463,7 +500,8 @@ function Details({
           : {}),
       });
 
-      if (firstJoined != null) await rememberOrganisation(firstJoined);
+      const landsIn = joined ?? firstJoined;
+      if (landsIn != null) await rememberOrganisation(landsIn);
       // The number is saved on a step of its own, which Skip passes; a request to join waits after it.
       if (saved.account.waitingFor != null || awaiting(saved.account) == null) {
         router.replace('/phone?from=onboarding');
@@ -486,22 +524,63 @@ function Details({
     }
   }
 
+  const startOwnButton = (
+    <QuietButton
+      label={t('steps.startOwnInstead')}
+      off={saving || answering}
+      onPress={startOwn}
+      testID="completeProfile.startOwn"
+    />
+  );
+
+  let foot: ReactNode = (
+    <PrimaryButton
+      label={saving ? t('completeProfile.saving') : t('steps.continue')}
+      onPress={() => void save()}
+      busy={saving}
+      off={answering}
+      testID="completeProfile.save"
+    />
+  );
+  if (invited && single != null) {
+    foot = (
+      <>
+        <PrimaryButton
+          label={t('steps.join', { organisation: single.organisation.name })}
+          onPress={() => void join(single)}
+          busy={saving || accepting}
+          testID="completeProfile.join"
+        />
+        {startOwnButton}
+      </>
+    );
+  } else if (singleOffer != null) {
+    foot = (
+      <>
+        <PrimaryButton
+          label={t('domainJoining.askLabel', { organisation: singleOffer.name })}
+          onPress={() => void save({ askToJoin: singleOffer.id })}
+          busy={saving}
+          testID={`completeProfile.ask.${singleOffer.id}`}
+        />
+        {startOwnButton}
+      </>
+    );
+  } else if (invited || showOffers) foot = undefined;
+
   return (
-    <StepScreen
-      nav={nav}
-      foot={
-        showOffers ? undefined : (
-          <PrimaryButton
-            label={saving ? t('completeProfile.saving') : t('steps.continue')}
-            onPress={() => void save()}
-            busy={saving}
-            off={answering}
-            testID="completeProfile.save"
-          />
-        )
-      }
-    >
-      <Heading title={t('steps.organisationTitle')} />
+    <StepScreen nav={nav} foot={foot}>
+      {(single != null && !own) || listsInvitations ? (
+        <Heading title={t('steps.invitedTitle')} intro={t('steps.invitedIntro')} />
+      ) : showOffers ? (
+        <Heading
+          title={t('steps.organisationTitle')}
+          intro={t('domainJoining.intro', { domain: offered?.domain ?? '' })}
+          answer={askedInstead}
+        />
+      ) : (
+        <Heading title={t('steps.organisationTitle')} />
+      )}
       <View style={styles.form}>
         {children}
         {failed != null && (
@@ -539,20 +618,16 @@ function Details({
           </View>
         )}
 
-        {loaded.invitations.length > 0 && (
+        {single != null && !own && (
+          <SingleInvitation
+            invitation={single}
+            outcome={singleOutcome}
+            note={t('completeProfile.joinedGoesThere')}
+          />
+        )}
+
+        {listsInvitations && (
           <View style={styles.invitations}>
-            <View style={styles.invitationsHead}>
-              <Text size={tokens.typeButton.size} weight="semibold" accessibilityRole="header">
-                {t('invitations.heading')}
-              </Text>
-              <Text size={tokens.typeSmall.size} muted>
-                {firstJoined != null
-                  ? t('completeProfile.invitationsJoined')
-                  : stillOpen === 0
-                    ? t('completeProfile.invitationsNone')
-                    : t('completeProfile.invitationsWaiting', { count: stillOpen })}
-              </Text>
-            </View>
             <InvitationRows
               waiting={waiting}
               after={{
@@ -567,16 +642,7 @@ function Details({
                 },
               }}
             />
-          </View>
-        )}
-
-        {needsOne && stillOpen > 0 && (
-          <View style={styles.orRule}>
-            <View style={styles.rule} />
-            <Text size={tokens.typeButton.size} weight="semibold" muted>
-              {t('completeProfile.orStartOwn')}
-            </Text>
-            <View style={styles.rule} />
+            {invited && startOwnButton}
           </View>
         )}
 
@@ -590,16 +656,16 @@ function Details({
           />
         )}
 
-        {showOffers && (
+        {singleOffer != null && (
+          <Panel
+            organisation={singleOffer.name}
+            title={t('domainJoining.usesSoirely', { organisation: singleOffer.name })}
+            line={t('domainJoining.approvesFirst')}
+          />
+        )}
+
+        {showOffers && singleOffer == null && (
           <View style={styles.offers}>
-            <View style={styles.offersIntro}>
-              <AnswerHeading size={tokens.typeButton.size} weight="semibold" answer={askedInstead}>
-                {t('domainJoining.heading')}
-              </AnswerHeading>
-              <Text size={tokens.typeSmall.size} muted>
-                {t('domainJoining.intro', { domain: offered?.domain ?? '' })}
-              </Text>
-            </View>
             {offers.map((offer) => (
               <View key={offer.id} style={[styles.offer, kind === 'phone' && styles.offerPhone]}>
                 <View style={[styles.offerText, kind === 'phone' && styles.offerTextPhone]}>
@@ -610,39 +676,20 @@ function Details({
                     {t('domainJoining.approvesFirst')}
                   </Text>
                 </View>
-                {offers.length === 1 ? (
-                  <PrimaryButton
-                    label={t('domainJoining.ask')}
-                    accessibilityLabel={t('domainJoining.askLabel', { organisation: offer.name })}
-                    busy={saving}
-                    onPress={() => void save(offer.id)}
-                    testID={`completeProfile.ask.${offer.id}`}
-                  />
-                ) : (
-                  <SecondaryButton
-                    label={t('domainJoining.ask')}
-                    accessibilityLabel={t('domainJoining.askLabel', { organisation: offer.name })}
-                    off={saving}
-                    onPress={() => void save(offer.id)}
-                    testID={`completeProfile.ask.${offer.id}`}
-                  />
-                )}
+                <SecondaryButton
+                  label={t('domainJoining.ask')}
+                  accessibilityLabel={t('domainJoining.askLabel', { organisation: offer.name })}
+                  off={saving}
+                  onPress={() => void save({ askToJoin: offer.id })}
+                  testID={`completeProfile.ask.${offer.id}`}
+                />
               </View>
             ))}
-            <SecondaryButton
-              label={t('domainJoining.startOwn')}
-              off={saving}
-              onPress={() => {
-                setOwn(true);
-                setAskedInstead(undefined);
-                setStartedOwn({});
-              }}
-              testID="completeProfile.startOwn"
-            />
+            {startOwnButton}
           </View>
         )}
 
-        {needsOne && offers.length > 0 && own && (
+        {needsOne && stillOpen === 0 && offers.length > 0 && own && (
           <QuietButton
             label={t('domainJoining.askInstead', { domain: offered?.domain ?? '' })}
             onPress={() => {
@@ -672,7 +719,7 @@ function Details({
                 textContentType="organizationName"
                 autoCapitalize="words"
                 returnKeyType="done"
-                autoFocus={!asksName && stillOpen === 0}
+                autoFocus={!asksName && loaded.invitations.length === 0 && !own}
                 testID="completeProfile.organisation"
               />
               {errors.organisationName != null && <Says words={errors.organisationName} />}
@@ -702,15 +749,89 @@ function Details({
   );
 }
 
+/** An organisation's tile, its name, and one line under it, as the onboarding's panels draw them. */
+function Panel({
+  organisation,
+  title = organisation,
+  line,
+}: {
+  organisation: string;
+  title?: string;
+  line: string;
+}) {
+  return (
+    <View style={styles.panel} accessible>
+      <OrgTile name={organisation} size="card" />
+      <View style={styles.panelWords}>
+        <Text size={tokens.typeRowTitle.size} weight="semibold">
+          {title}
+        </Text>
+        <Text size={tokens.typeSmall.size} muted>
+          {line}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+/** The one invitation waiting, and what came of Join: refused, not sent, or joined. */
+function SingleInvitation({
+  invitation,
+  outcome,
+  note,
+}: {
+  invitation: InvitationPreview;
+  outcome: InvitationOutcome | undefined;
+  note: string;
+}) {
+  const { t } = useTranslation();
+  const organisation = invitation.organisation.name;
+  const inviter = invitation.invitedBy?.name ?? '';
+  const role = invitation.role == null ? '' : roleName(t, invitation.role);
+
+  return (
+    <View style={styles.invitations}>
+      <Panel
+        organisation={organisation}
+        line={t('steps.invitationFor', { email: invitation.email })}
+      />
+      {outcome?.kind === 'failed' && (
+        <Notice tone="broken" mark="✕" body={t('invitations.failed')} answer={outcome} takesFocus />
+      )}
+      {outcome?.kind === 'accepted' && (
+        <Notice
+          tone="done"
+          mark="✓"
+          title={t('invitations.joined', { organisation, role })}
+          body={note}
+          answer={outcome}
+          takesFocus
+        />
+      )}
+      {outcome?.kind === 'refused' && (
+        <Notice
+          tone={outcome.refusal === 'invitation_expired' ? 'attention' : 'quiet'}
+          mark={outcome.refusal === 'invitation_expired' ? '!' : 'i'}
+          title={t(`invitations.refused.${outcome.refusal}.word`)}
+          body={t(refusalBody(outcome.refusal, invitation.invitedBy != null), {
+            inviter,
+            organisation,
+            email: invitation.email,
+            signedInAs: invitation.signedInAs ?? '',
+          })}
+          answer={outcome}
+          takesFocus
+        />
+      )}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   form: { gap: tokens.space3xl },
   fields: { gap: tokens.spaceXl },
   invitations: { gap: tokens.spaceMd },
-  invitationsHead: { gap: tokens.spaceXxs },
-  orRule: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceLg },
-  rule: { flex: 1, height: 1, backgroundColor: tokens.colorInsetBorder },
   offers: { gap: tokens.spaceMd },
-  offersIntro: { gap: tokens.spaceXxs },
   offer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -726,4 +847,15 @@ const styles = StyleSheet.create({
   offerText: { flexGrow: 1, flexShrink: 1, flexBasis: 180, minWidth: 0, gap: tokens.spaceHair },
   offerPhone: { flexDirection: 'column', alignItems: 'flex-start' },
   offerTextPhone: { flexBasis: 'auto', alignSelf: 'stretch' },
+  panel: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spaceLg,
+    padding: tokens.spaceXl,
+    borderWidth: 1,
+    borderColor: tokens.colorBorder,
+    borderRadius: tokens.radiusInset,
+    backgroundColor: tokens.colorCard,
+  },
+  panelWords: { flex: 1, minWidth: 0, gap: tokens.spaceHair },
 });
