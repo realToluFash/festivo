@@ -16,21 +16,23 @@
 }
 
 .desk-rows.general-domains > * + * {
-  background-position: 34px 0;
-  background-size: calc(100% - 34px) 1px;
+  background-position: 40px 0;
+  background-size: calc(100% - 40px) 1px;
 }
 
 .general-globe {
   display: flex;
   flex: none;
+  justify-content: center;
+  width: 28px;
   color: var(--colorInkSecondary);
 }
 
 .desk-sunk.general-globe-bone {
   flex: none;
-  width: 22px;
-  height: 22px;
-  border-radius: var(--radiusPill);
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radiusSmall);
 }
 
 .general-link {
@@ -102,12 +104,13 @@
   color: var(--colorAccentText);
 }
 
-.desk-rows > .general-step {
-  padding-block: var(--spaceXxs) var(--spaceLg);
-}
-
-.general-step > .desk-note {
-  margin-top: calc(-1 * var(--spaceXxs));
+.general-steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceMd);
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
 .desk-dialog:has(~ .general-picker) {
@@ -120,7 +123,7 @@
 
 .general-picker .desk-nav.actions-pair {
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  grid-template-columns: minmax(max-content, 1fr) auto minmax(0, 1fr);
 }
 
 .desk-nav-cancel.general-back {

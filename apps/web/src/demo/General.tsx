@@ -425,9 +425,9 @@ function Ownership({
   return (
     <section className="desk-block">
       <Head title={O.title} />
-      <ul className="desk-rows">
+      <ul className="general-steps">
         {ownershipSteps(role).map((step) => (
-          <li key={step} className="desk-red general-step">
+          <li key={step} className="desk-red">
             <TextAction
               label={STEPS[step].label}
               red={STEPS[step].red}
