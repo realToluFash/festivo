@@ -5,7 +5,7 @@
     "not_found": "Não encontrámos aquilo que solicitou.",
     "conflict": "Isso entra em conflito com algo que já existe.",
     "phone_taken": "Este número já está verificado noutra conta Soirely.",
-    "own_event_role": "Você não pode alterar a sua própria função em um evento.",
+    "own_event_role": "Não pode alterar a sua própria função num evento.",
     "last_owner": "Uma organização tem sempre pelo menos um proprietário.",
     "owner_required": "Só alguém com a função Proprietário na organização pode fazer isto.",
     "grant_not_held": "Uma função só pode receber o que você tem.",
