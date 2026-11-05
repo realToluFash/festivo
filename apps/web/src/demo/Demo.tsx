@@ -9,6 +9,7 @@ import { GetBackInBoard } from './GetBackIn.tsx';
 import { NewAccountBoard } from './NewAccount.tsx';
 import { Settings } from './Settings.tsx';
 import { SETTINGS_PAGES } from './settings.ts';
+import { SIGN_IN_RULES_PAGES } from './signInRules.ts';
 import { Today } from './Today.tsx';
 import { TwoFactorBoard } from './TwoFactor.tsx';
 import { WaysInBoard } from './WaysIn.tsx';
@@ -101,6 +102,7 @@ export default function Demo() {
       <Route path="today" element={<Today />} />
       <Route path="settings" element={<Settings />} />
       <Route path="settings/members" element={<Settings />} />
+      <Route path="settings/sign-in-rules" element={<Settings open="signInRules" />} />
       <Route path="later" element={<Later />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
@@ -145,6 +147,8 @@ function DemoHome({ from }: { from: string }) {
         <h2 id="demo-page-28">28 · Organisations and access · Settings at a desk</h2>
         <h3>Settings in B · Summary first · desktop</h3>
         <BoardPages pages={SETTINGS_PAGES} />
+        <h3>Sign-in rules in B · Where you stand · desktop</h3>
+        <BoardPages pages={SIGN_IN_RULES_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-27">

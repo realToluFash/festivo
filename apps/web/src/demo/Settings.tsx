@@ -16,6 +16,7 @@ import {
 } from './settings.ts';
 import { LayersContext } from './layers.ts';
 import { Members } from './Members.tsx';
+import { SignInRules } from './SignInRules.tsx';
 import type { Tell } from './TodayParts.tsx';
 import { TodaySidebar } from './TodaySidebar.tsx';
 import './today.css';
@@ -30,10 +31,9 @@ const TILES: Record<Exclude<Section, 'account' | 'general'>, GlyphName> = {
 };
 
 /** Settings at a desk in B · Summary first (Web-Settings.dc.html, page 29), on sample data. */
-export function Settings() {
+export function Settings({ open = 'members' }: { open?: Drawn }) {
   const [params] = useSearchParams();
   const viewer = viewerOf(params.get('as'));
-  const open: Drawn = 'members';
   const state = params.get('state') ?? '';
   const [told, setTold] = useState<string | null>(null);
   const tell = useCallback<Tell>((words) => setTold(words), []);
@@ -71,8 +71,14 @@ export function Settings() {
           inert={covered}
         />
         <main id="content" className="desk-main" inert={covered}>
-          <SettingsList open={viewer.reads ? open : null} viewer={viewer} tell={tell} />
-          {viewer.reads ? (
+          <SettingsList
+            open={open === 'signInRules' || viewer.reads ? open : null}
+            viewer={viewer}
+            tell={tell}
+          />
+          {open === 'signInRules' ? (
+            <SignInRules key={`${viewer.key}:${state}`} viewer={viewer} state={state} tell={tell} />
+          ) : viewer.reads ? (
             <Members
               key={`${open}:${viewer.key}:${state}`}
               viewer={viewer}
