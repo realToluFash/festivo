@@ -10,6 +10,7 @@ import {
   DOMAIN_WORDS as D,
   DOMAINS_MOST,
   type GeneralStart,
+  HOLDS,
   LINK_WORDS as L,
   LOADING,
   LOADING_MS,
@@ -32,6 +33,7 @@ import {
 } from './general.ts';
 import { AddDomainDialog, DeleteDialog, DetailsDialog, TransferDialog } from './GeneralDialogs.tsx';
 import { Glyph } from './Glyph.tsx';
+import { heldStepPath } from './security.ts';
 import type { Viewer } from './settings.ts';
 import {
   Ask,
@@ -49,11 +51,11 @@ import type { Tell } from './TodayParts.tsx';
 import { useLater } from './useLater.ts';
 import './general.css';
 
-const SECURITY = 'Security has its own design.';
 const DETAIL_ROWS: readonly Picked[] = ['countryCode', 'currency', 'timezone', 'locale'];
 
 /** General at a desk in B · Summary first (Web-General-*.dc.html): the app's Organisation, in Owner, Admin and Member. */
 export function General({ viewer, state, tell }: { viewer: Viewer; state: string; tell: Tell }) {
+  const navigate = useNavigate();
   const locale = useMemo(() => formattingLocale('en', navigator.language), []);
   const [start] = useState(() => generalStart(state, viewer));
   const [details, setDetails] = useState(SAMPLE_DETAILS);
@@ -71,10 +73,11 @@ export function General({ viewer, state, tell }: { viewer: Viewer; state: string
         <OrganisationCard
           words={words}
           onStep={() => {
-            if (start.hold != null || !changes) {
-              tell(SECURITY);
+            if (start.hold != null) {
+              void navigate(heldStepPath(HOLDS[start.hold].step, viewer));
               return;
             }
+            if (!changes) return;
             setVisit((count) => count + 1);
             setEditing(true);
           }}

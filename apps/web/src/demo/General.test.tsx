@@ -80,12 +80,22 @@ describe('General at a desk (sc-30063)', () => {
   });
 
   it('holds an admin until two-factor is on, the card’s step going to Security', async () => {
-    await general('/demo/settings/general?state=heldTwoFactor&as=julien');
+    const router = await general('/demo/settings/general?state=heldTwoFactor&as=julien');
 
     expect(screen.queryByRole('heading', { level: 2, name: 'Requests to join' })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Turn on two-factor' }));
-    expect(screen.getByText('Security has its own design.')).toBeDefined();
-    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Security' })).toBeDefined();
+    expect(router.state.location.search).toBe('?as=julien&state=setup');
+    expect(screen.getByRole('dialog', { name: 'Set up two-factor' })).toBeDefined();
+  });
+
+  it('holds an admin until Google or Apple is linked, the step opening Security at the link', async () => {
+    const router = await general('/demo/settings/general?state=heldLinked&as=julien');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Link Google or Apple' }));
+    expect(await screen.findByRole('heading', { level: 1, name: 'Security' })).toBeDefined();
+    expect(router.state.location.search).toBe('?as=julien&state=link');
+    expect(screen.getByRole('dialog', { name: 'Confirm it’s you' })).toBeDefined();
   });
 
   it('opens a state it does not know as the page with no state', async () => {

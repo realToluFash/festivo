@@ -81,9 +81,10 @@ describe('Sign-in rules at a desk (sc-30064)', () => {
     await rules('/demo/settings/sign-in-rules?state=googleOnly&as=ana');
 
     expect(screen.getByText('1 rule needs you')).toBeDefined();
-    fireEvent.click(screen.getByRole('button', { name: 'Link Google or Apple' }));
-    expect(screen.getByText('Security has its own design.')).toBeDefined();
     expect(within(block('What changed')).getAllByText('New')).toHaveLength(1);
+    fireEvent.click(screen.getByRole('button', { name: 'Link Google or Apple' }));
+    expect(await screen.findByRole('heading', { level: 1, name: 'Security' })).toBeDefined();
+    expect(screen.getByRole('dialog', { name: 'Confirm it’s you' })).toBeDefined();
   });
 
   it('holds an admin’s changes until their own two-factor is on', async () => {

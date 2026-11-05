@@ -1,8 +1,10 @@
 import { formattingLocale } from '@soirely/domain';
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router';
 
 import { Glyph } from './Glyph.tsx';
 import type { Load } from './members.ts';
+import { heldStepPath } from './security.ts';
 import type { Viewer } from './settings.ts';
 import {
   Ask,
@@ -50,7 +52,6 @@ import type { Tell } from './TodayParts.tsx';
 import './signInRules.css';
 
 const RETRY_MS = 1200;
-const SECURITY = 'Security has its own design.';
 
 function wallClock(at: Date): string {
   const two = (value: number) => String(value).padStart(2, '0');
@@ -68,6 +69,7 @@ export function SignInRules({
   state: string;
   tell: Tell;
 }) {
+  const navigate = useNavigate();
   const locale = useMemo(() => formattingLocale('en', navigator.language), []);
   const [now] = useState(() => wallClock(new Date()));
   const [start] = useState(() => signInRulesStart(state, viewer.name, now));
@@ -97,6 +99,9 @@ export function SignInRules({
   const card = rulesCard(rows, role, hold);
   const changedFootLine = changedFoot(hold);
   const standFootLine = standFoot(page);
+  const toSecurity = (step: string | null) => {
+    if (step != null) void navigate(heldStepPath(step, viewer));
+  };
   const save = (next: Edit) => {
     const after = { ...page, ...applied(next.key, next.picked, page) };
     const moved = changesBetween(page, after, wallClock(new Date()), viewer.name);
@@ -111,7 +116,7 @@ export function SignInRules({
       <Card>
         <Says>{card.says}</Says>
         <OnCard>{card.line}</OnCard>
-        {card.step != null && <CardStep label={card.step} onClick={() => tell(SECURITY)} />}
+        {card.step != null && <CardStep label={card.step} onClick={() => toSecurity(card.step)} />}
       </Card>
       <section className="desk-block">
         <Head title="Where you stand" />
@@ -148,7 +153,7 @@ export function SignInRules({
         <EditDialog
           edit={edit}
           page={page}
-          tell={tell}
+          onStep={toSecurity}
           onEdit={setEdit}
           onClose={() => setEdit(null)}
           onSave={save}
@@ -222,14 +227,14 @@ function Changes({ changes }: { changes: readonly ChangeRow[] }) {
 function EditDialog({
   edit,
   page,
-  tell,
+  onStep,
   onEdit,
   onClose,
   onSave,
 }: {
   edit: Edit;
   page: RulesPage;
-  tell: Tell;
+  onStep: (step: string) => void;
   onEdit: (edit: Edit) => void;
   onClose: () => void;
   onSave: (edit: Edit) => void;
@@ -275,7 +280,7 @@ function EditDialog({
             <div className="desk-after">
               <p className="desk-empty-title">{refused.title}</p>
               <p className="desk-line">{refused.line}</p>
-              <TextAction label={refused.step} onClick={() => tell(SECURITY)} />
+              <TextAction label={refused.step} onClick={() => onStep(refused.step)} />
             </div>
           </div>
         )}
