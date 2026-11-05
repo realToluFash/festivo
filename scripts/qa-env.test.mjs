@@ -75,6 +75,7 @@ import {
   runHeld,
   maestroTarget,
   parseTarget,
+  hardwareKeyboardOff,
   passwordAutoFillFiles,
   passwordAutoFillOff,
   playImage,
@@ -683,6 +684,17 @@ describe('a release build', () => {
       ['-insert', 'restrictedBool', '-dictionary', files[0]],
       ['-insert', 'restrictedBool.allowPasswordAutoFill', '-dictionary', files[0]],
       ['-replace', 'restrictedBool.allowPasswordAutoFill.value', '-bool', 'NO', files[0]],
+    ]);
+  });
+
+  it('turns the hardware keyboard off globally and for each QA simulator', () => {
+    expect(hardwareKeyboardOff('/p.plist', ['A-1', 'B-2'])).toEqual([
+      ['-replace', 'ConnectHardwareKeyboard', '-bool', 'NO', '/p.plist'],
+      ['-insert', 'DevicePreferences', '-dictionary', '/p.plist'],
+      ['-insert', 'DevicePreferences.A-1', '-dictionary', '/p.plist'],
+      ['-replace', 'DevicePreferences.A-1.ConnectHardwareKeyboard', '-bool', 'NO', '/p.plist'],
+      ['-insert', 'DevicePreferences.B-2', '-dictionary', '/p.plist'],
+      ['-replace', 'DevicePreferences.B-2.ConnectHardwareKeyboard', '-bool', 'NO', '/p.plist'],
     ]);
   });
 
