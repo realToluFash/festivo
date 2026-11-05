@@ -343,6 +343,12 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # expo-router's typed routes live in .expo/types, which only the dev
+      # server writes. Without them tsc sees untyped routes and passes errors
+      # a developer's machine reports.
+      - name: Generate typed routes
+        working-directory: apps/mobile
+        run: npx expo customize tsconfig.json
       - run: npm run typecheck --workspace @soirely/mobile
       - run: npm run test --workspace @soirely/mobile
       # The web target, because it is the one a runner can build without a
