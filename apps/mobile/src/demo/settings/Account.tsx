@@ -1,6 +1,7 @@
 import { useLocalSearchParams } from 'expo-router';
 import { createRef, type RefObject, useEffect, useMemo, useRef, useState } from 'react';
 import type { ScrollViewInstance, ViewInstance } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { SETTLED_MS } from '../../components/Screen.tsx';
 import {
@@ -8,6 +9,7 @@ import {
   moveScreenReaderFocus,
 } from '../../components/screenReaderFocus.ts';
 import type { TextHandle } from '../../components/Text.tsx';
+import { tokens } from '../../theme/tokens.ts';
 import { SAMPLE } from '../samples.ts';
 import { AddScreen } from './AccountAdd.tsx';
 import { AboutSection, YouCard } from './AccountCard.tsx';
@@ -34,7 +36,7 @@ import { NameScreen } from './AccountName.tsx';
 import { type Contact, HOME_ZONE } from './AccountSample.ts';
 import { VerifyScreen } from './AccountVerify.tsx';
 import { ZoneScreen } from './AccountZone.tsx';
-import { useShell } from './Frame.tsx';
+import { PHONE_TAB_BAR, useShell } from './Frame.tsx';
 import { Ask, SummaryPage } from './Summary.tsx';
 
 export { ACCOUNT_STATES } from './AccountModel.ts';
@@ -52,6 +54,11 @@ export function AccountSection() {
 
 function AccountPage({ start }: { start: AccountStart }) {
   const shell = useShell();
+  const insets = useSafeAreaInsets();
+  const clear =
+    Math.max(insets.bottom, tokens.spaceLg) +
+    (shell.layout === 'phone' ? PHONE_TAB_BAR + tokens.spaceLg : 0) +
+    tokens.spaceLg;
   const [name, setName] = useState<string>(SAMPLE.name);
   const [zone, setZone] = useState(HOME_ZONE);
   const [emails, setEmails] = useState(start.emails);
@@ -63,6 +70,7 @@ function AccountPage({ start }: { start: AccountStart }) {
   const [verifying, setVerifying] = useState<Verifying | null>(start.verifying);
   const [visit, setVisit] = useState(0);
   const scroll = useRef<ScrollViewInstance>(null);
+  const blocks = useRef<Partial<Record<string, ViewInstance | null>>>({});
   const [targets] = useState(() => ({
     card: createRef<TextHandle>(),
     step: createRef<ViewInstance>(),
@@ -95,6 +103,15 @@ function AccountPage({ start }: { start: AccountStart }) {
 
   useEffect(() => () => clearTimeout(timer.current), []);
 
+  useEffect(() => {
+    if (start.opened == null) return;
+    const frame = requestAnimationFrame(() =>
+      bringIntoView(blocks.current[start.opened ?? ''], scroll.current, clear, false),
+    );
+
+    return () => cancelAnimationFrame(frame);
+  }, [start.opened, clear]);
+
   function show(next: AccountScreen, target: Target): void {
     from.current = target;
     setVisit((count) => count + 1);
@@ -113,6 +130,11 @@ function AccountPage({ start }: { start: AccountStart }) {
     done(words);
     clearTimeout(timer.current);
     timer.current = setTimeout(() => moveScreenReaderFocus(targets.card.current), SETTLED_MS);
+  }
+
+  function asking(question: 'promote' | 'remove', row: Contact): void {
+    setAsk(question);
+    bringIntoView(blocks.current[row.id], scroll.current, clear, true);
   }
 
   function rowsOf(kind: ContactKind): [Contact[], (rows: Contact[]) => void] {
@@ -153,16 +175,19 @@ function AccountPage({ start }: { start: AccountStart }) {
         promoteRef={targets.promote}
         removeRef={targets.remove}
         onAdd={() => show(adding, adding)}
+        onBlock={(id, block) => {
+          blocks.current[id] = block;
+        }}
         onToggle={(id) => setOpened((now) => (now === id ? null : id))}
         onVerify={(row) => verify(kind, row, 'send')}
         onMakePrimary={(row) => {
           from.current = 'promote';
-          if (kind === 'email') setAsk('promote');
+          if (kind === 'email') asking('promote', row);
           else makePrimary(kind, row.id);
         }}
         onRemove={(row) => {
           from.current = 'remove';
-          if (row.verified) setAsk('remove');
+          if (row.verified) asking('remove', row);
           else remove(kind, row, true);
         }}
       />
@@ -297,6 +322,26 @@ function AccountPage({ start }: { start: AccountStart }) {
       />
     </>
   );
+}
+
+/** The opened row's foot just clear of the tab bar, so its lit fill and actions show under the Ask's centred dialog. */
+function bringIntoView(
+  block: ViewInstance | null | undefined,
+  scroll: ScrollViewInstance | null,
+  clear: number,
+  animated: boolean,
+): void {
+  const content = scroll?.getInnerViewRef();
+  if (block == null || scroll == null || content == null) return;
+  block.measureLayout(content, (_x, y, _width, height) => {
+    content.measure((_cx, _cy, _cw, contentHeight) => {
+      scroll.measure((_sx, _sy, _sw, shown) => {
+        const most = Math.max(0, contentHeight - shown);
+        const low = y + height - (shown - clear);
+        scroll.scrollTo({ y: Math.min(most, Math.max(0, low)), animated });
+      });
+    });
+  });
 }
 
 function startTarget(start: AccountStart): Target {
