@@ -87,6 +87,16 @@ export function refusalFromParams(params: Partial<Record<string, string>>): Rule
   return null;
 }
 
+/** Sign-in once the held challenge has run out: it says the sign-in timed out, with the address kept (sc-29961). */
+export function timedOutSignIn(email: string) {
+  return { pathname: '/sign-in', params: { email, codeTimedOut: '1' } } as const;
+}
+
+/** Whether sign-in's query says a two-factor sign-in ran out, as `timedOutSignIn` writes it. */
+export function codeTimedOutFromParams(params: Partial<Record<string, string>>): boolean {
+  return params.codeTimedOut != null;
+}
+
 /** What takes the welcome's tagline: a provider failing, then a rule's sign-out, then a plain one. */
 export function saidOnWelcome(
   params: Partial<Record<string, string>>,

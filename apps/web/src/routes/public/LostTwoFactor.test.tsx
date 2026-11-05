@@ -253,9 +253,81 @@ describe('getting back in without the authenticator', () => {
     ).toBeDefined();
 
     fireEvent.click(screen.getByRole('button', { name: 'Cancel the request' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Cancel the request' }).at(-1)!);
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Request cancelled' }),
     ).toBeDefined();
+  });
+
+  it('asks before cancelling, and Keep waiting or Escape leaves the request waiting (sc-29957)', async () => {
+    const sent = await atTheStart({
+      'POST /api/auth/two-factor/recovery/opening': () =>
+        json({ ...OPENING, recovery: 'handle', state: WAITING }),
+      'POST /api/auth/two-factor/recovery/cancel': () =>
+        json({ state: { ...WAITING, status: 'cancelled' } }),
+    });
+    const cancels = () => sent.filter((request) => request.path.endsWith('/cancel'));
+    const link = screen.getByRole('button', { name: 'Cancel the request' });
+
+    fireEvent.click(link);
+    const dialog = screen.getByRole('alertdialog', { name: 'Cancel your request?' });
+    expect(screen.getByText('You’ll need to start again to get back in.')).toBeDefined();
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Keep waiting' }));
+    fireEvent.keyDown(dialog, { key: 'Escape' });
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+
+    fireEvent.click(link);
+    fireEvent.click(screen.getByRole('button', { name: 'Keep waiting' }));
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(screen.getByRole('heading', { level: 1, name: 'Waiting for your organisation' }));
+    expect(cancels()).toHaveLength(0);
+
+    fireEvent.click(link);
+    const confirm = screen.getAllByRole('button', { name: 'Cancel the request' }).at(-1);
+    fireEvent.click(confirm!);
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Request cancelled' }),
+    ).toBeDefined();
+    expect(cancels()).toHaveLength(1);
+  });
+
+  it('closes the dialog and shows the answer that arrives while it is open (sc-29957)', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    await atTheStart({
+      'POST /api/auth/two-factor/recovery/opening': () =>
+        json({ ...OPENING, recovery: 'handle', state: WAITING }),
+      'POST /api/auth/two-factor/recovery/state': () =>
+        json({ state: { ...WAITING, status: 'approved' } }),
+    });
+
+    try {
+      fireEvent.click(screen.getByRole('button', { name: 'Cancel the request' }));
+      expect(screen.getByRole('alertdialog')).toBeDefined();
+
+      await vi.advanceTimersByTimeAsync(20_000);
+
+      expect(
+        await screen.findByRole('heading', { level: 1, name: /Two-factor is off/ }),
+      ).toBeDefined();
+      expect(screen.queryByRole('alertdialog')).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('counts one code with no verified phone (sc-29957)', async () => {
+    await atTheStart({
+      'POST /api/auth/two-factor/recovery/opening': () => json({ ...OPENING, phone: null }),
+      'POST /api/auth/two-factor/recovery': () =>
+        json({ recovery: 'handle', state: { ...PROVING, phone: null } }, 201),
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Send the codes' }));
+    await screen.findByRole('heading', { level: 1, name: 'Enter the code' });
+
+    expect(screen.getByText('No code?')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Send a new code in 0:42' })).toBeDefined();
+    expect(screen.getByText('A new code replaces the last one.')).toBeDefined();
+    expect(screen.queryByText(/new codes/i)).toBeNull();
   });
 
   it('goes back to Enter your code from Start’s ‹ Back, beside Back to sign in (sc-29068)', async () => {
@@ -555,6 +627,83 @@ describe('getting back in without the authenticator', () => {
     expect(
       screen.getByRole('button', { name: 'Send the codes' }).getAttribute('aria-disabled'),
     ).toBe('true');
+  });
+});
+
+describe('a sign-in that has run out (sc-29956)', () => {
+  const RAN_OUT = () => problem('two_factor_challenge_invalid', 401);
+
+  async function timedOutOnSignIn() {
+    expect(await screen.findByText('That sign-in timed out', {}, THE_WAY_IN)).toBeDefined();
+    expect(screen.getByRole('heading', { level: 1, name: 'Sign in' })).toBeDefined();
+    expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe('folake@ire.events');
+  }
+
+  it('says so on sign-in when opened after it ran out', async () => {
+    answering({
+      'POST /api/auth/login': () => json(CHALLENGE, 202),
+      'POST /api/auth/two-factor/recovery/opening': RAN_OUT,
+    });
+    render(
+      <RouterProvider router={createMemoryRouter(routes, { initialEntries: ['/sign-in'] })} />,
+    );
+
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'folake@ire.events' } });
+    fireEvent.change(screen.getByLabelText('Password'), {
+      target: { value: 'a decent passphrase' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+    fireEvent.click(
+      await screen.findByRole(
+        'button',
+        { name: 'Lost your authenticator and your recovery codes?' },
+        THE_WAY_IN,
+      ),
+    );
+
+    await timedOutOnSignIn();
+  });
+
+  it('says so on sign-in when Send the codes finds it ran out', async () => {
+    await atTheStart({ 'POST /api/auth/two-factor/recovery': RAN_OUT });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Send the codes' }));
+
+    await timedOutOnSignIn();
+  });
+
+  it('says so on sign-in when Start again on a replaced request finds it ran out', async () => {
+    let openings = 0;
+    await atTheStart({
+      'POST /api/auth/two-factor/recovery/opening': () =>
+        ++openings === 1 ? json(OPENING) : RAN_OUT(),
+      'POST /api/auth/two-factor/recovery': () =>
+        json(
+          {
+            recovery: 'handle',
+            state: { ...PROVING, codes: { ...PROVING.codes, cooldownSeconds: 0 } },
+          },
+          201,
+        ),
+      'POST /api/auth/two-factor/recovery/resend': () =>
+        problem('recovery_request_replaced', 409, { requestStatus: 'replaced' }),
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Send the codes' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Send new codes' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Start again' }));
+
+    await timedOutOnSignIn();
+  });
+
+  it('goes to sign-in with no notice when opened with no sign-in in hand', async () => {
+    render(
+      <RouterProvider
+        router={createMemoryRouter(routes, { initialEntries: ['/two-factor/recovery'] })}
+      />,
+    );
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Sign in' })).toBeDefined();
+    expect(screen.queryByText('That sign-in timed out')).toBeNull();
   });
 });
 

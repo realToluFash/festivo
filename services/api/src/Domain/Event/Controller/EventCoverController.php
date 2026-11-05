@@ -35,9 +35,9 @@ final readonly class EventCoverController
     ) {
     }
 
-    /** In the organisation rather than the event, because a new event's form uploads before the event exists. */
+    /** In the organisation rather than the event, because a new event's form uploads before the event exists; a Member who edits any event uploads too. */
     #[Route('/api/orgs/{organisationId}/event-cover-uploads', name: 'event_cover_uploads_create', methods: ['POST'])]
-    #[InOrganisation(Permission::EventsManage)]
+    #[InOrganisation(Permission::EventsManage, orOnAnEvent: true)]
     public function signUpload(Request $request, string $organisationId): JsonResponse
     {
         $body = Input::body($request, Type\shape([
@@ -54,7 +54,7 @@ final readonly class EventCoverController
     }
 
     #[Route('/api/orgs/{organisationId}/event-cover-uploads', name: 'event_cover_uploads_discard', methods: ['DELETE'])]
-    #[InOrganisation(Permission::EventsManage)]
+    #[InOrganisation(Permission::EventsManage, orOnAnEvent: true)]
     public function discardUpload(Request $request, string $organisationId): Response
     {
         $body = Input::body($request, Type\shape(['uploadKey' => Type\string()]));
@@ -66,7 +66,7 @@ final readonly class EventCoverController
 
     /** The photo uploaded and not yet saved, re-encoded, for a browser that cannot show the original (sc-13861). */
     #[Route('/api/orgs/{organisationId}/event-cover-uploads/preview', name: 'event_cover_uploads_preview', methods: ['POST'])]
-    #[InOrganisation(Permission::EventsManage)]
+    #[InOrganisation(Permission::EventsManage, orOnAnEvent: true)]
     public function preview(Request $request, string $organisationId): JsonResponse
     {
         $body = Input::body($request, Type\shape(['uploadKey' => Type\string()]));

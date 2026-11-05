@@ -15,23 +15,24 @@ The rules every locale shares are in `.claude/skills/locale-parity`.
 One way to say each recurring thing, everywhere. Seeded from the catalogues as they stood on
 17 October 2026; the linguist reviews each row and marks it settled in Notes.
 
-| English                       | Portuguese                   | Notes                                                            |
-| ----------------------------- | ---------------------------- | ---------------------------------------------------------------- |
-| Settings                      | Definições                   |                                                                  |
-| Organisation                  | Organização                  |                                                                  |
-| Sign in                       | Iniciar sessão               |                                                                  |
-| Sign out                      | Encerrar sessão              | Settled 17 Oct 2026. "A sessão foi encerrada", never "terminada" |
-| Email                         | Endereço de e-mail           |                                                                  |
-| Password                      | Palavra-passe                |                                                                  |
-| Continue                      | Continuar                    |                                                                  |
-| Cancel                        | Cancelar                     |                                                                  |
-| Two-factor authentication     | Autenticação de dois fatores | In a comma list of Security's contents, "dois fatores" alone     |
-| Home (tab)                    | Início                       | Settled 17 Oct 2026. Not "Página inicial": too long for the tab  |
-| Recovery code                 | Código de recuperação        |                                                                  |
-| Phone (device)                | Telemóvel                    | Settled 18 Oct 2026. Never "celular"                             |
-| Account (Settings section)    | Conta                        | Settled 18 Oct 2026. A bare label: "em Conta", "Voltar a Conta"  |
-| Alternative (address, number) | alternativo                  | Settled 18 Oct 2026. Not primary; never "secundário"             |
-| Try again (button)            | Tentar novamente             | Settled 1 Nov 2026, sc-26974                                     |
+| English                       | Portuguese                            | Notes                                                                |
+| ----------------------------- | ------------------------------------- | -------------------------------------------------------------------- |
+| Settings                      | Definições                            |                                                                      |
+| Organisation                  | Organização                           |                                                                      |
+| Sign in                       | Iniciar sessão                        |                                                                      |
+| Sign out                      | Encerrar sessão                       | Settled 17 Oct 2026. "A sessão foi encerrada", never "terminada"     |
+| Email                         | Endereço de e-mail                    |                                                                      |
+| Password                      | Palavra-passe                         |                                                                      |
+| Continue                      | Continuar                             |                                                                      |
+| Cancel                        | Cancelar                              |                                                                      |
+| Two-factor authentication     | Autenticação de dois fatores          | In a comma list of Security's contents, "dois fatores" alone         |
+| Home (tab)                    | Início                                | Settled 17 Oct 2026. Not "Página inicial": too long for the tab      |
+| Recovery code                 | Código de recuperação                 |                                                                      |
+| Phone (device)                | Telemóvel                             | Settled 18 Oct 2026. Never "celular"                                 |
+| Account (Settings section)    | Conta                                 | Settled 18 Oct 2026. A bare label: "em Conta", "Voltar a Conta"      |
+| Alternative (address, number) | alternativo                           | Settled 18 Oct 2026. Not primary; never "secundário"                 |
+| Try again (button)            | Tentar novamente                      | Settled 1 Nov 2026, sc-26974                                         |
+| Owner / Admin / Member        | Proprietário / Administrador / Membro | Settled 5 Nov 2026, sc-29914. In a sentence "a função Administrador" |
 
 ## Never translated
 
@@ -42,6 +43,10 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **5 Nov 2026. An event's People refusals** (`errors:own_event_role`, `messages:people.*`,
+  sc-30009). dev2's draft said "Você", "em um evento" and "Essa pessoa"; it now reads "Não
+  pode", "num evento", "Esta pessoa". Who can act is "alguém com a função Proprietário ou
+  Administrador, ou a pessoa responsável pelo evento". The job label is "o nome do cargo".
 - **4 Nov 2026. As linhas sob cada recusa de um convite na web de secretária**
   (`web:join.refused.*.line`, `web:requestToJoin.deadLine`, sc-29487 para sc-29066). Cada linha
   não repete o seu título: a de uma organização eliminada é "O convite para aderir a
@@ -655,3 +660,4 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
 - **A moldura das páginas sem sessão** (sc-29037): "New to Soirely?" é "Ainda não tem conta?",
   antes de "Criar uma conta"; "É novo…?" concorda com um género. "© {{year}} Soirely" fica igual
   ao inglês. O botão de idioma lê-se "Idioma: {{language}}".
+- **Cancelar um pedido para voltar a entrar** (sc-29979): "Cancelar o seu pedido?"; a saída é "Continuar à espera", nunca "Cancelar", e a confirmação reutiliza "Cancelar o pedido".

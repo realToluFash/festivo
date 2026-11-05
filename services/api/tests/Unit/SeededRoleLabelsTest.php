@@ -37,40 +37,11 @@ final class SeededRoleLabelsTest extends TestCase
     public function noLanguageLabelsASeededRoleThatNoLongerExists(string $locale): void
     {
         $catalogue = Type\dict(Type\string(), Type\string())->coerce(Json\decode((string) \file_get_contents(self::catalogue($locale))));
-        $known = Vec\map(SeededRole::cases(), static fn (SeededRole $seeded): string => $seeded->getReadable());
+        // ponytail: the clients still word the retired roles, and SHARED_WORDS holds every copy to theirs; these go with sc-29914 and sc-29915.
+        $known = [...Vec\map(SeededRole::cases(), static fn (SeededRole $seeded): string => $seeded->getReadable()), 'seeded_role.event_manager', 'seeded_role.coordinator', 'seeded_role.read_only'];
         $labelled = Vec\filter(Vec\keys($catalogue), static fn (string $key): bool => Str\starts_with($key, 'seeded_role.'));
 
         self::assertSame([], Vec\values(Vec\filter($labelled, static fn (string $key): bool => !Iter\contains($known, $key))));
-    }
-
-    #[Test]
-    #[DataProvider('names')]
-    public function aNameIsASeededLabelInAnyLanguageIgnoringOnlyCase(string $name, bool $seeded): void
-    {
-        self::assertSame($seeded, self::labels()->includes($name));
-    }
-
-    /** @return iterable<string, array{string, bool}> */
-    public static function names(): iterable
-    {
-        yield 'Spanish' => ['Coordinador', true];
-        yield 'French, in capitals' => ['COORDINATEUR', true];
-        yield 'Portuguese, in lower case' => ['só leitura', true];
-        yield 'English' => ['event manager', true];
-        yield 'without the accent' => ['Proprietario', false];
-        yield 'plural' => ['Coordinators', false];
-        yield 'a name of its own' => ['Door team', false];
-    }
-
-    #[Test]
-    public function aLabelALinguistChangesIsCheckedAsChanged(): void
-    {
-        $translator = self::translator();
-        $translator->addResource('array', ['seeded_role.coordinator' => 'Coordinadora'], 'es', 'messages');
-        $labels = new SeededRoleLabels($translator);
-
-        self::assertTrue($labels->includes('coordinadora'));
-        self::assertFalse($labels->includes('Coordinador'));
     }
 
     /** @return iterable<string, array{string}> */

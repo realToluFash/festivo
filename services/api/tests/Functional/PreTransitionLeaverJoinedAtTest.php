@@ -135,7 +135,7 @@ final class PreTransitionLeaverJoinedAtTest extends FunctionalTestCase
         $organisation = self::service(OrganisationFounder::class)->found($owner, 'Ìrè Events', 'NG', 'Africa/Lagos');
         $user = self::service(UserRegistrar::class)->register('lola-' . \bin2hex(SecureRandom\bytes(4)) . '@example.com', 'Lola Legacy', self::PASSWORD)->user;
         self::em()->flush();
-        $role = Type\instance_of(Role::class)->coerce(self::em()->getRepository(Role::class)->findOneBy(['organisation' => $organisation, 'seededAs' => SeededRole::ReadOnly]));
+        $role = Type\instance_of(Role::class)->coerce(self::em()->getRepository(Role::class)->findOneBy(['organisation' => $organisation, 'seededAs' => SeededRole::Member]));
 
         $id = Type\string()->coerce(self::em()->getConnection()->fetchOne('SELECT gen_random_uuid()::text'));
         self::em()->getConnection()->executeStatement(

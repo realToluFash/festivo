@@ -22,6 +22,7 @@ import { tokens } from '../src/theme/tokens.ts';
 import { nextAfterSignIn } from '../src/challenge.ts';
 import {
   type RuleRefusal,
+  codeTimedOutFromParams,
   providerNames,
   refusalFromParams,
   ruleRefusal,
@@ -35,6 +36,8 @@ type Status =
   /** Tapped on the provider buttons a rule left, which give way to the form. */
   | { kind: 'providerFailed'; provider: string }
   | { kind: 'failed' }
+  /** A two-factor sign-in that ran out before its code was taken (sc-29961). */
+  | { kind: 'codeTimedOut' }
   | { kind: 'ruled'; refusal: RuleRefusal };
 
 /** Email sign-in, its own step after welcome: no logo, no Google or Apple, and no "or" (sc-29076). */
@@ -49,11 +52,14 @@ export default function SignIn() {
     days?: string;
     email?: string;
     providers?: string;
+    codeTimedOut?: string;
   }>();
   const [status, setStatus] = useState<Status>(() => {
     const refusal = refusalFromParams(params);
 
-    return refusal?.kind === 'providerOnly' ? { kind: 'ruled', refusal } : { kind: 'ready' };
+    if (refusal?.kind === 'providerOnly') return { kind: 'ruled', refusal };
+
+    return codeTimedOutFromParams(params) ? { kind: 'codeTimedOut' } : { kind: 'ready' };
   });
   const [carried] = useState(params.email ?? '');
   const typed = useRef({ email: carried, password: '' });
@@ -162,6 +168,9 @@ export default function SignIn() {
         <Heading title={t('signIn.title')} />
 
         {locked && <Line words={t('signIn.lockedTitle')} />}
+        {status.kind === 'codeTimedOut' && (
+          <Line words={`${t('signIn.codeTimedOutTitle')}. ${t('signIn.endedBody')}`} />
+        )}
         {status.kind === 'failed' && (
           <Says words={`${t('signIn.failedTitle')}. ${t('signIn.failedBody')}`} />
         )}

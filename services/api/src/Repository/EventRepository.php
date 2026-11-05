@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Repository;
 
 use App\Entity\Event;
+use App\Entity\EventPerson;
+use App\Entity\Membership;
 use App\Entity\Organisation;
 use App\Enum\EventStatus;
 use DateTimeImmutable;
@@ -25,12 +27,14 @@ final class EventRepository extends ServiceEntityRepository
     /**
      * Finished is Ended, or Live or Paused past its close: EventPhase's rule, as the clients group by it (sc-3594).
      *
+     * `$onlyFor` narrows them to the events a Member has a role on (sc-29912).
+     *
      * @return list<Event> unfinished soonest first, Finished most recently closed first, then by name
      */
-    public function findPageInOrganisation(Organisation $organisation, bool $finished, DateTimeImmutable $now, int $page, int $perPage): array
+    public function findPageInOrganisation(Organisation $organisation, bool $finished, DateTimeImmutable $now, int $page, int $perPage, ?Membership $onlyFor = null): array
     {
         /** @var list<Event> */
-        return $this->phaseIn($organisation, $finished, $now)
+        return $this->phaseIn($organisation, $finished, $now, $onlyFor)
             ->orderBy($finished ? 'e.closesAt' : 'e.startsAtUtc', $finished ? 'DESC' : 'ASC')
             ->addOrderBy('e.name', 'ASC')
             ->addOrderBy('e.id', 'ASC')
@@ -40,9 +44,9 @@ final class EventRepository extends ServiceEntityRepository
             ->getResult();
     }
 
-    public function countPhaseInOrganisation(Organisation $organisation, bool $finished, DateTimeImmutable $now): int
+    public function countPhaseInOrganisation(Organisation $organisation, bool $finished, DateTimeImmutable $now, ?Membership $onlyFor = null): int
     {
-        return (int) $this->phaseIn($organisation, $finished, $now)
+        return (int) $this->phaseIn($organisation, $finished, $now, $onlyFor)
             ->select('COUNT(e.id)')
             ->getQuery()
             ->getSingleScalarResult();
@@ -68,11 +72,11 @@ final class EventRepository extends ServiceEntityRepository
             ->getSingleScalarResult();
     }
 
-    private function phaseIn(Organisation $organisation, bool $finished, DateTimeImmutable $now): QueryBuilder
+    private function phaseIn(Organisation $organisation, bool $finished, DateTimeImmutable $now, ?Membership $onlyFor): QueryBuilder
     {
         $over = 'e.status = :ended OR (e.status IN (:active) AND e.closesAt <= :now)';
 
-        return $this->createQueryBuilder('e')
+        return $this->onlyFor($this->createQueryBuilder('e'), $onlyFor)
             ->andWhere('e.organisation = :organisation')
             ->andWhere($finished ? $over : 'NOT (' . $over . ')')
             ->setParameter('organisation', $organisation)
@@ -86,7 +90,7 @@ final class EventRepository extends ServiceEntityRepository
      *
      * @return list<Event> soonest first
      */
-    public function findForCalendarFeed(Organisation $organisation, DateTimeImmutable $deletedAfter): array
+    public function findForCalendarFeed(Organisation $organisation, DateTimeImmutable $deletedAfter, ?Membership $onlyFor = null): array
     {
         $filters = $this->getEntityManager()->getFilters();
         $filtered = $filters->isEnabled('soft_delete');
@@ -97,7 +101,7 @@ final class EventRepository extends ServiceEntityRepository
 
         try {
             /** @var list<Event> */
-            return $this->createQueryBuilder('e')
+            return $this->onlyFor($this->createQueryBuilder('e'), $onlyFor)
                 ->andWhere('e.organisation = :organisation')
                 ->andWhere('e.deletedAt IS NULL OR e.deletedAt > :since')
                 ->setParameter('organisation', $organisation)
@@ -123,5 +127,16 @@ final class EventRepository extends ServiceEntityRepository
             ->getOneOrNullResult();
 
         return \is_array($id) && \is_string($id[1] ?? null) ? Uuid::fromString($id[1]) : null;
+    }
+
+    private function onlyFor(QueryBuilder $query, ?Membership $member): QueryBuilder
+    {
+        if (null === $member) {
+            return $query;
+        }
+
+        return $query
+            ->andWhere('EXISTS (SELECT 1 FROM ' . EventPerson::class . ' p WHERE p.event = e AND p.membership = :member)')
+            ->setParameter('member', $member);
     }
 }

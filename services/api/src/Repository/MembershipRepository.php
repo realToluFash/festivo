@@ -145,7 +145,7 @@ final class MembershipRepository extends ServiceEntityRepository
             ->andWhere('m.organisation = :organisation')
             ->andWhere('r.seededAs IN (:administrators)')
             ->setParameter('organisation', $organisation)
-            ->setParameter('administrators', [SeededRole::Owner->value, SeededRole::Administrator->value])
+            ->setParameter('administrators', [SeededRole::Owner->value, SeededRole::Admin->value])
             ->orderBy('m.createdAt', 'ASC')
             ->addOrderBy('m.id', 'ASC')
             ->getQuery()

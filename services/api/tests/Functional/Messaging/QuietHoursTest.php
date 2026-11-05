@@ -40,7 +40,7 @@ final class QuietHoursTest extends MessagingTestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->member = $this->member('ada', SeededRole::Administrator);
+        $this->member = $this->member('ada', SeededRole::Admin);
         $this->member->setTimezone(self::ZONE);
         self::em()->flush();
     }

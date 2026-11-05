@@ -44,11 +44,9 @@ final readonly class MemberAccessMailer
     {
         $user = $membership->getUser();
         $locale = $this->userMailer->localeFor($user);
-        $role = $membership->getRole();
-        $seeded = $role->getSeededAs();
         $named = [
             '{organisation}' => $membership->getOrganisation()->getName(),
-            '{role}' => null === $seeded ? $role->getName() ?? '' : $this->seededRoleLabels->label($seeded, $locale),
+            '{role}' => $this->seededRoleLabels->label($membership->getRole()->getSeededAs(), $locale),
         ];
 
         $this->send($membership, $locale, 'memberRestored.subject', [

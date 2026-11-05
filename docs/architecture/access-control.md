@@ -16,12 +16,12 @@ every one of them names a policy.**
 
 ## The four policies
 
-| Attribute                       | Who gets through                                                                                       |
-| ------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `#[PublicAccess]`               | anybody, signed in or not                                                                              |
-| `#[Authenticated]`              | any signed-in account                                                                                  |
-| `#[InOrganisation(permission)]` | an active member of the organisation in `{organisationId}`, holding it; with `null`, any active member |
-| `#[InEvent(permission)]`        | an active member of the organisation that owns the event in `{eventId}`                                |
+| Attribute                       | Who gets through                                                                                        |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `#[PublicAccess]`               | anybody, signed in or not                                                                               |
+| `#[Authenticated]`              | any signed-in account                                                                                   |
+| `#[InOrganisation(permission)]` | an active member of the organisation in `{organisationId}`, holding it; with `null`, any active member  |
+| `#[InEvent(permission)]`        | an Owner or Admin of the organisation that owns the event in `{eventId}`, or a Member with a role on it |
 
 All four live in `App\Http\Access\Policy`. One goes on the controller class or on the
 method; the method's wins, and two on the same level is refused at boot. A route that
@@ -32,37 +32,63 @@ A permission is a case of `App\Enum\Permission`. A policy takes the enum, not a 
 a permission that is not in the registry cannot be asked for: it does not compile.
 
 Each case names its **area** (a row of the roles screen's grid, `PermissionArea`) and the
-**seeded roles it starts on** (`defaultRoles()`). Areas hold a `read` and a `manage`
-permission, `budget.margin` sits beside Budget's and `events.create` beside Events'. `PermissionRegistryTest` fails for a
-permission that reaches no seeded role but Owner, unless it is listed there as Owner-only
-on purpose (`billing.manage`). A story that adds one names its defaults, and a migration
-grants it once to those seeded roles in every existing organisation (sc-66).
+**roles that hold it** (`defaultRoles()`). Areas hold a `read` and a `manage` permission,
+`budget.margin` sits beside Budget's and `events.create` beside Events'.
 
-What each seeded role starts with. Owner holds everything, including what is added later.
-These are defaults, written when the organisation is founded, and the organisation changes
-them afterwards on Settings > Roles:
+### Three organisation roles (sc-29912)
 
-| Area         | Administrator      | Event manager      | Coordinator | Read-only |
-| ------------ | ------------------ | ------------------ | ----------- | --------- |
-| Events       | manage, and create | manage, and create | manage      | read      |
-| Guests       | manage             | manage             | manage      | read      |
-| Seating      | manage             | manage             | manage      | read      |
-| Menu         | manage             | manage             | manage      | read      |
-| Run of show  | manage             | manage             | manage      | read      |
-| Staff        | manage             | manage             | read        | read      |
-| Messages     | manage             | manage             | manage      | read      |
-| Reports      | manage             | manage             | read        | read      |
-| Budget       | manage, and margin | manage             | read        | read      |
-| Vendors      | manage             | none               | none        | none      |
-| Members      | manage             | none               | none        | none      |
-| Billing      | read               | none               | none        | none      |
-| Organisation | manage             | none               | none        | none      |
+Every organisation has exactly three roles, `SeededRole`, and nothing creates, renames,
+edits or removes one: the roles screen only lists them.
 
-**Nobody grants what they do not hold.** Creating or editing a role, a caller may add or
-remove only permissions their own role holds, and a deleted role's people may move only to
-a role holding nothing the caller lacks. So only an Owner can name Owner. Anything else is
-`403 grant_not_held` (OWASP least privilege, NIST RBAC). Inviting somebody into a role (sc-67) is held to the same rule.
-Putting a person in a role, by any path, goes through `RoleManager::mayGrant()`, its one owner.
+| Role   | Holds across the organisation                                                                                                    |
+| ------ | -------------------------------------------------------------------------------------------------------------------------------- |
+| Owner  | everything, including what is added later                                                                                        |
+| Admin  | everything but `billing.manage`; it never transfers ownership or deletes the organisation, which ask for an Owner (`OwnerCheck`) |
+| Member | nothing                                                                                                                          |
+
+What a role holds is fixed in code (`Role::getPermissions()` reads `defaultRoles()`), not
+stored, so a permission added later reaches Owner and Admin with no migration.
+`PermissionRegistryTest` fails for a permission that reaches neither, unless it is listed
+there as Owner-only on purpose (`billing.manage`). Admin's stored value stays
+`administrator`, which the clients already read.
+
+### Roles on an event
+
+A Member reaches an event only through a role on it, an `EventPerson` row
+(`event_people`): their membership, the event, an `EventRole` and an optional job label.
+Owners and Admins reach every event and need no row.
+
+| Area        | Lead   | Can edit | Can view | Can check guests in |
+| ----------- | ------ | -------- | -------- | ------------------- |
+| Events      | manage | manage   | read     | read                |
+| Guests      | manage | manage   | read     | read                |
+| Seating     | manage | manage   | read     | none                |
+| Menu        | manage | manage   | read     | none                |
+| Run of show | manage | manage   | read     | none                |
+| Staff       | manage | manage   | read     | none                |
+| Messages    | manage | manage   | read     | none                |
+| Reports     | manage | manage   | read     | none                |
+| Budget      | manage | none     | none     | none                |
+| People      | manage | read     | read     | read                |
+
+No event role holds `events.create`, Vendors, Members, Billing or Organisation, so only an
+Owner or an Admin starts, duplicates or deletes an event. `EventRole::permissions()` is the
+table above, and `EventRoleTest` holds it to it.
+
+People (`/api/events/{eventId}/people`) is read by everyone on the event. An Owner, an Admin
+or the event's Lead adds, changes and removes people (`people.manage`); nobody changes or
+removes their own role (`403 own_event_role`). People adds members of the organisation only:
+Lead for somebody from outside it waits on sc-71. A change applies on the person's next
+request, since nothing about it is in their token.
+
+Removing somebody from the organisation deletes their event roles
+(`MembershipMachine::move`). Suspending them keeps the roles, so a restore gives them back.
+
+**Nobody grants what they do not hold.** Inviting, approving a request and changing a role
+accept Admin and Member, and a caller may put somebody only in a role holding nothing the
+caller lacks. So only an Owner can make an Owner. Anything else is `403 grant_not_held`
+(OWASP least privilege, NIST RBAC). Putting a person in a role, by any path, goes through
+`RoleManager::mayGrant()`, its one owner.
 
 ## When it is checked
 
@@ -92,7 +118,9 @@ For `#[InEvent]`:
 2. **Membership of that organisation is checked.** An account that is not an active member
    gets **404**, the same as an event that does not exist. A 403 would confirm the event
    exists to somebody outside it.
-3. **Then the permission.** A member without it gets **403 `permission_required`**, with
+3. **A Member's role on the event is found.** A Member with no role on it gets the same
+   **404**. An Owner's or an Admin's grants are the organisation's.
+4. **Then the permission**, from the role on the event for a Member. A member without it gets **403 `permission_required`**, with
    the permission named in a `permission` member of the problem. Never an internal policy
    name, never a trace.
 
@@ -166,11 +194,17 @@ The listener asks two interfaces:
 - `MembershipDirectoryInterface::grantsIn($user, $organisationId)`: the active
   membership's `Grants`, or null when there is none. Owner holds every permission,
   including ones added later.
+- `MembershipDirectoryInterface::grantsOnEvent($user, $organisationId, $eventId)`: the
+  grants on one event, from the role on it for a Member, or null when they have none.
+- `MembershipDirectoryInterface::eventScopeIn($user, $organisationId)`: an `EventScope`
+  for a list, saying whether it is narrowed to one Member's events (`onlyFor`) and the
+  grants on each. Every list of events, the calendar feed and an event's notification
+  audience read it, so a Member sees only the events they have a role on.
 - `EventDirectoryInterface::organisationOf($eventId)`: the event's organisation, or null.
 
 `App\Domain\Organisation\MembershipDirectory` answers the first from the `memberships`
-table: only an `active` membership counts, and it grants what the member's role holds as
-the organisation last set it (`roles.permissions`). Owner holds everything.
+table: only an `active` membership counts, and it grants what the member's role holds, and
+for a Member on an event, what their `event_people` row's role holds.
 
 `App\Domain\Event\EventDirectory` answers the second from the `events` table, so an
 unknown event and another organisation's are the same 404.

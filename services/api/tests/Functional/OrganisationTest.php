@@ -298,7 +298,7 @@ final class OrganisationTest extends ApiTestCase
         $organisation = $this->found($owner, 'Ìrè Events', 'NG', 'Africa/Lagos');
         $coordinator = $this->account('coordinator@example.com');
         $role = Type\instance_of(Role::class)->coerce(
-            self::service(EntityManagerInterface::class)->getRepository(Role::class)->findOneBy(['organisation' => $organisation->getId(), 'seededAs' => SeededRole::Coordinator]),
+            self::service(EntityManagerInterface::class)->getRepository(Role::class)->findOneBy(['organisation' => $organisation->getId(), 'seededAs' => SeededRole::Member]),
         );
         self::service(MembershipMachine::class)->join($organisation, $coordinator, $role, MembershipStatus::Active, MembershipChannel::Invitation, $coordinator);
         $this->signIn($coordinator);
