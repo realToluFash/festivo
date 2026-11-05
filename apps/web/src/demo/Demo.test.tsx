@@ -1366,12 +1366,13 @@ describe('People on an event at a desk (sc-29915)', () => {
     );
   });
 
-  it('adds members by name, with the role picked', async () => {
+  it('adds members by name, with the role picked, and never offers you', async () => {
     await people();
 
     fireEvent.click(screen.getByRole('button', { name: 'Add by name' }));
     const add = within(screen.getByRole('dialog', { name: 'Add people' }));
     expect(add.getByRole('button', { name: 'Add' }).getAttribute('aria-disabled')).toBe('true');
+    expect(add.queryByRole('checkbox', { name: /Julien Moreau/u })).toBeNull();
     fireEvent.change(add.getByLabelText('Name'), { target: { value: 'ko' } });
     fireEvent.click(add.getByRole('checkbox', { name: /Kofi Mensah/u }));
     fireEvent.click(add.getByRole('radio', { name: /^Can edit/u }));

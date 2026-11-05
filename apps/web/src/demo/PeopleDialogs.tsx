@@ -232,7 +232,7 @@ export function AddDialog({
   const [ticked, setTicked] = useState<readonly string[]>([]);
   const [asking, setAsking] = useState(false);
   const nameBox = useRef<HTMLInputElement>(null);
-  const offered = offeredMembers(members, onEvent, typed, ticked);
+  const offered = offeredMembers(members, onEvent, viewer, typed, ticked);
   const changed = ticked.length > 0 || role !== FIRST_ROLE;
 
   function tick(id: string): void {
@@ -277,7 +277,7 @@ export function AddDialog({
                   <li key={one.id}>
                     <label className={ticked.includes(one.id) ? 'desk-row is-picked' : 'desk-row'}>
                       <Avatar initials={one.initials} tone={one.tone} />
-                      <RowWords title={one.name} lines={one.id === viewer.id ? ['You'] : []} />
+                      <RowWords title={one.name} lines={[]} />
                       <input
                         type="checkbox"
                         className="people-check"

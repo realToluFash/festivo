@@ -222,6 +222,7 @@ function plain(text: string): string {
 export function offeredMembers(
   members: readonly OrgMember[],
   onEvent: readonly OnEvent[],
+  viewer: Pick<PeopleViewer, 'id'>,
   typed: string,
   ticked: readonly string[] = [],
 ): OrgMember[] {
@@ -231,6 +232,7 @@ export function offeredMembers(
     .filter(
       (one) =>
         one.active &&
+        one.id !== viewer.id &&
         !onEvent.some((there) => there.id === one.id) &&
         (ticked.includes(one.id) || plain(one.name).includes(wanted)),
     )

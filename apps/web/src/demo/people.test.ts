@@ -48,20 +48,25 @@ describe('People on an event at a desk (sc-29915)', () => {
     );
   });
 
-  it('offers active members not on it yet, by name only, and keeps a tick in view', () => {
+  it('offers active members not on it yet, by name only, less you, and keeps a tick in view', () => {
     const members = sampleMembers();
     const onEvent = sampleOnEvent();
+    const julien = PEOPLE_VIEWERS.julien;
 
-    expect(names(offeredMembers(members, onEvent, ''))).toEqual([
+    expect(names(offeredMembers(members, onEvent, julien, ''))).toEqual([
+      'Folake Adeyemi',
+      'Kofi Mensah',
+    ]);
+    expect(names(offeredMembers(members, onEvent, PEOPLE_VIEWERS.priya, ''))).toEqual([
       'Folake Adeyemi',
       'Julien Moreau',
       'Kofi Mensah',
     ]);
-    expect(names(offeredMembers(members, onEvent, 'kofi'))).toEqual(['Kofi Mensah']);
-    expect(offeredMembers(members, onEvent, 'ire.events')).toEqual([]);
-    expect(names(offeredMembers(members, onEvent, 'zzz', ['julien@ire.events']))).toEqual([
-      'Julien Moreau',
-    ]);
+    expect(names(offeredMembers(members, onEvent, julien, 'kofi'))).toEqual(['Kofi Mensah']);
+    expect(offeredMembers(members, onEvent, julien, 'ire.events')).toEqual([]);
+    expect(
+      names(offeredMembers(members, onEvent, PEOPLE_VIEWERS.priya, 'zzz', ['julien@ire.events'])),
+    ).toEqual(['Julien Moreau']);
   });
 
   it('marks you on your row, and keeps Lead for members', () => {
