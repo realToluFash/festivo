@@ -53,11 +53,80 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         what: 'Only your own sections',
         href: '/demo/settings?as=noOrg',
       },
-      { title: 'Your account', what: 'Under a Confetti band', href: '/demo/settings/account' },
+      {
+        title: 'Your account',
+        what: 'You on the card, what is left to verify',
+        href: '/demo/settings/account',
+      },
+      {
+        title: 'Your account · name',
+        what: 'Cancel · Name · Save',
+        href: '/demo/settings/account?state=name',
+      },
+      {
+        title: 'Your account · make primary?',
+        what: 'The Ask on a verified address',
+        href: '/demo/settings/account?state=promote',
+      },
+      {
+        title: 'Your account · confirm it’s you',
+        what: 'Password and code, after the Ask',
+        href: '/demo/settings/account?state=confirm',
+      },
+      {
+        title: 'Your account · remove?',
+        what: 'The Ask on a verified address',
+        href: '/demo/settings/account?state=remove',
+      },
+      {
+        title: 'Your account · add an email address',
+        what: 'Only the primary held',
+        href: '/demo/settings/account?state=addEmail',
+      },
+      {
+        title: 'Your account · add a phone number',
+        what: 'The country, then the number',
+        href: '/demo/settings/account?state=addPhone',
+      },
+      {
+        title: 'Your account · time zone',
+        what: 'San typed, the matches under it',
+        href: '/demo/settings/account?state=zone',
+      },
+      {
+        title: 'Your account · check your email',
+        what: 'The code for the second address',
+        href: '/demo/settings/account?state=verifyEmail',
+      },
+      {
+        title: 'Your account · a wrong code',
+        what: '482170 refused on the field',
+        href: '/demo/settings/account?state=verifyEmailWrong',
+      },
       {
         title: 'Your account · an expired code',
-        what: 'Verify email, sent again',
+        what: 'Send a new code in its place',
         href: '/demo/settings/account?state=verifyEmailExpired',
+      },
+      {
+        title: 'Your account · email verified',
+        what: 'The card says so',
+        href: '/demo/settings/account?state=verifyEmailDone',
+      },
+      {
+        title: 'Your account · check your messages',
+        what: 'A second number, on WhatsApp',
+        href: '/demo/settings/account?state=verifyPhone',
+      },
+      {
+        title: 'Your account · an expired text',
+        what: 'The second number’s code expired',
+        href: '/demo/settings/account?state=verifyPhoneExpired',
+      },
+      {
+        title: 'Your account · number verified',
+        what: 'Both numbers verified',
+        href: '/demo/settings/account?state=verifyPhoneDone',
       },
       { title: 'Security', what: 'Ways in, two-factor, devices', href: '/demo/settings/security' },
       {
