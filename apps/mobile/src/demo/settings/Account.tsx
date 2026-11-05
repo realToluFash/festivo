@@ -1,7 +1,6 @@
 import { useLocalSearchParams } from 'expo-router';
 import { createRef, type RefObject, useEffect, useMemo, useRef, useState } from 'react';
 import type { ScrollViewInstance, ViewInstance } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { SETTLED_MS } from '../../components/Screen.tsx';
 import {
@@ -9,7 +8,6 @@ import {
   moveScreenReaderFocus,
 } from '../../components/screenReaderFocus.ts';
 import type { TextHandle } from '../../components/Text.tsx';
-import { tokens } from '../../theme/tokens.ts';
 import { SAMPLE } from '../samples.ts';
 import { AddScreen } from './AccountAdd.tsx';
 import { AboutSection, YouCard } from './AccountCard.tsx';
@@ -36,8 +34,8 @@ import { NameScreen } from './AccountName.tsx';
 import { type Contact, HOME_ZONE } from './AccountSample.ts';
 import { VerifyScreen } from './AccountVerify.tsx';
 import { ZoneScreen } from './AccountZone.tsx';
-import { PHONE_TAB_BAR, useShell } from './Frame.tsx';
-import { Ask, SummaryPage } from './Summary.tsx';
+import { useShell } from './Frame.tsx';
+import { Ask, bringIntoView, SummaryPage, useRowClear } from './Summary.tsx';
 
 export { ACCOUNT_STATES } from './AccountModel.ts';
 
@@ -54,11 +52,7 @@ export function AccountSection() {
 
 function AccountPage({ start }: { start: AccountStart }) {
   const shell = useShell();
-  const insets = useSafeAreaInsets();
-  const clear =
-    Math.max(insets.bottom, tokens.spaceLg) +
-    (shell.layout === 'phone' ? PHONE_TAB_BAR + tokens.spaceLg : 0) +
-    tokens.spaceLg;
+  const clear = useRowClear();
   const [name, setName] = useState<string>(SAMPLE.name);
   const [zone, setZone] = useState(HOME_ZONE);
   const [emails, setEmails] = useState(start.emails);
@@ -322,26 +316,6 @@ function AccountPage({ start }: { start: AccountStart }) {
       />
     </>
   );
-}
-
-/** The opened row's foot just clear of the tab bar, so its lit fill and actions show under the Ask's centred dialog. */
-function bringIntoView(
-  block: ViewInstance | null | undefined,
-  scroll: ScrollViewInstance | null,
-  clear: number,
-  animated: boolean,
-): void {
-  const content = scroll?.getInnerViewRef();
-  if (block == null || scroll == null || content == null) return;
-  block.measureLayout(content, (_x, y, _width, height) => {
-    content.measure((_cx, _cy, _cw, contentHeight) => {
-      scroll.measure((_sx, _sy, _sw, shown) => {
-        const most = Math.max(0, contentHeight - shown);
-        const low = y + height - (shown - clear);
-        scroll.scrollTo({ y: Math.min(most, Math.max(0, low)), animated });
-      });
-    });
-  });
 }
 
 function startTarget(start: AccountStart): Target {

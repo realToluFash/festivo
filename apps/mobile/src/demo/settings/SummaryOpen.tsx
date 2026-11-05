@@ -1,10 +1,12 @@
 import type { ReactNode, Ref } from 'react';
-import { StyleSheet, View, type ViewInstance } from 'react-native';
+import { type ScrollViewInstance, StyleSheet, View, type ViewInstance } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { RadioMark } from '../../components/RadioMark.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { Glyph } from '../Glyph.tsx';
+import { PHONE_TAB_BAR, useShell } from './Frame.tsx';
 import { Row, type RowProps, type TagKind } from './SummaryRows.tsx';
 
 const hidden = {
@@ -132,6 +134,38 @@ export function OpenRow({
       )}
     </View>
   );
+}
+
+/** How far above the screen's foot an opened row has to end to be clear of the tab bar. */
+export function useRowClear(): number {
+  const shell = useShell();
+  const insets = useSafeAreaInsets();
+
+  return (
+    Math.max(insets.bottom, tokens.spaceLg) +
+    (shell.layout === 'phone' ? PHONE_TAB_BAR + tokens.spaceLg : 0) +
+    tokens.spaceLg
+  );
+}
+
+/** The opened row's foot just clear of the tab bar, so its lit fill and actions show under the Ask's centred dialog. */
+export function bringIntoView(
+  block: ViewInstance | null | undefined,
+  scroll: ScrollViewInstance | null,
+  clear: number,
+  animated: boolean,
+): void {
+  const content = scroll?.getInnerViewRef();
+  if (block == null || scroll == null || content == null) return;
+  block.measureLayout(content, (_x, y, _width, height) => {
+    content.measure((_cx, _cy, _cw, contentHeight) => {
+      scroll.measure((_sx, _sy, _sw, shown) => {
+        const most = Math.max(0, contentHeight - shown);
+        const low = y + height - (shown - clear);
+        scroll.scrollTo({ y: Math.min(most, Math.max(0, low)), animated });
+      });
+    });
+  });
 }
 
 export function ChoiceRow({

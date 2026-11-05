@@ -21,7 +21,15 @@ import { Bell, Fade, Landscape, PHONE_TAB_BAR, PortraitTop, useShell } from './F
 import { Avatar, Back } from './parts.tsx';
 import { type MarkKind, StatusMark, TextAction } from './SummaryRows.tsx';
 
-export { ChoiceRow, type Filled, LevelMeter, LevelValue, OpenRow } from './SummaryOpen.tsx';
+export {
+  bringIntoView,
+  ChoiceRow,
+  type Filled,
+  LevelMeter,
+  LevelValue,
+  OpenRow,
+  useRowClear,
+} from './SummaryOpen.tsx';
 export {
   HeadCount,
   type ListItem,
