@@ -168,14 +168,7 @@ describe('Settings > Roles', () => {
     answering();
     await roles();
 
-    for (const name of [
-      'Owner',
-      'Administrator',
-      'Event manager',
-      'Coordinator',
-      'Read-only',
-      'Door team',
-    ])
+    for (const name of ['Owner', 'Admin', 'Event manager', 'Coordinator', 'Read-only', 'Door team'])
       expect(screen.getByRole('button', { name: new RegExp(`^${name}`) })).toBeDefined();
     expect(screen.getByRole('button', { name: /^Coordinator.*2 people/ })).toBeDefined();
   });
@@ -472,7 +465,7 @@ describe('Settings > Roles', () => {
     answering();
     await roles();
 
-    for (const name of ['Owner', 'Administrator', 'Coordinator']) {
+    for (const name of ['Owner', 'Admin', 'Coordinator']) {
       pick(new RegExp(`^${name}`));
 
       expect(screen.getByRole('heading', { level: 2, name })).toBeDefined();
@@ -547,7 +540,7 @@ describe('Settings > Roles', () => {
     ).toBeDefined();
     expect(
       screen.getByText(
-        'You can change only what your role, Administrator, holds. Billing stays as it is when you save.',
+        'You can change only what your role, Admin, holds. Billing stays as it is when you save.',
       ),
     ).toBeDefined();
 
@@ -557,7 +550,7 @@ describe('Settings > Roles', () => {
     expect(screen.getByLabelText(/^Read-only/)).toBeDefined();
     expect(screen.queryByLabelText(/^Owner/)).toBeNull();
     expect(screen.queryByLabelText(/^Finance/)).toBeNull();
-    expect(screen.getByLabelText(/^Administrator/)).toBeDefined();
+    expect(screen.getByLabelText(/^Admin/)).toBeDefined();
   });
 
   it('leaves out of the locked notice an extra the grid has no words for', async () => {
@@ -631,7 +624,7 @@ describe('Settings > Roles', () => {
     );
     answering();
     await roles();
-    pick(/^Administrator/);
+    pick(/^Admin/);
 
     expect(level('Budget', 'Read')).toBeDefined();
     expect(
@@ -992,7 +985,7 @@ describe('where focus goes once a click on Roles is answered (sc-11369)', () => 
 
       await waitFor(() =>
         expect(document.activeElement).toBe(
-          screen.getByRole('heading', { level: 2, name: 'Administrator' }),
+          screen.getByRole('heading', { level: 2, name: 'Admin' }),
         ),
       );
     });
@@ -1020,9 +1013,7 @@ describe('where focus goes once a click on Roles is answered (sc-11369)', () => 
       fireEvent.click(screen.getByRole('button', { name: 'Remove role…' }));
       fireEvent.click(screen.getByLabelText(/^Read-only/));
       fireEvent.click(screen.getByRole('button', { name: 'Move them and remove Door team' }));
-      await waitFor(() =>
-        expect(screen.queryByRole('button', { name: /^Administrator/ })).toBeNull(),
-      );
+      await waitFor(() => expect(screen.queryByRole('button', { name: /^Admin/ })).toBeNull());
 
       fireEvent.click(screen.getByRole('button', { name: /Roles$/ }));
 
