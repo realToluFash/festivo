@@ -19,7 +19,8 @@ export interface Shell {
   layout: SettingsLayout;
   viewer: Viewer;
   open: SettingsSection | null;
-  openSection: (section: SettingsSection) => void;
+  /** A state opens the section where a step on another page left off: Security's setup. */
+  openSection: (section: SettingsSection, state?: string) => void;
   toSettings: () => void;
   tell: Tell;
   onTab: (tab: Tab) => void;

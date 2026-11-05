@@ -40,12 +40,17 @@ export function sectionOfSlug(slug: string | undefined): SettingsSection | null 
   return SECTIONS.find((section) => slugOf(section) === slug) ?? null;
 }
 
-export function settingsHref(viewer: Viewer, section: SettingsSection | null): Href {
-  const as = viewer === 'owner' ? '' : `?as=${viewer}`;
+export function settingsHref(
+  viewer: Viewer,
+  section: SettingsSection | null,
+  state?: string,
+): Href {
+  const query = [state == null ? '' : `state=${state}`, viewer === 'owner' ? '' : `as=${viewer}`]
+    .filter((part) => part !== '')
+    .join('&');
+  const path = section == null ? '/demo/settings' : `/demo/settings/${slugOf(section)}`;
 
-  return (
-    section == null ? `/demo/settings${as}` : `/demo/settings/${slugOf(section)}${as}`
-  ) as Href;
+  return `${path}${query === '' ? '' : `?${query}`}` as Href;
 }
 
 function layoutOf(kind: ReturnType<typeof useLayout>['kind']): SettingsLayout {
@@ -64,11 +69,11 @@ export function SettingsRoute({ section }: { section: SettingsSection | null }) 
   useCoverStatusBar('dark', false);
 
   const openSection = useCallback(
-    (next: SettingsSection) => {
-      if (next === shown) return;
+    (next: SettingsSection, state?: string) => {
+      if (next === shown && state == null) return;
       // On its side the list stays put, so a row changes the page beside it rather than stacking one.
-      if (layout === 'landscape') router.replace(settingsHref(viewer, next));
-      else router.push(settingsHref(viewer, next));
+      if (layout === 'landscape') router.replace(settingsHref(viewer, next, state));
+      else router.push(settingsHref(viewer, next, state));
     },
     [layout, shown, viewer],
   );
