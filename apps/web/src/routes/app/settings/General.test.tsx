@@ -180,7 +180,9 @@ describe('Settings > General', () => {
     expect(readOnlyLanguage().textContent).toBe('English');
     await waitFor(() =>
       expect(
-        screen.getByText(/Your role, Member, can see these but not change them/),
+        screen.getByText(
+          'Your role, Member, can see these but not change them. Owners and admins can.',
+        ),
       ).toBeDefined(),
     );
   });
