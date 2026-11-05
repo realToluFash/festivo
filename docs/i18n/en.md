@@ -66,6 +66,9 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **5 Nov 2026. An event's People refusals** (`errors:own_event_role`, `messages:people.*`,
+  sc-30009 for sc-29912). Kept as dev2 wrote them. The event role Lead is "the event's lead" in
+  running text, lower case, as "an owner, an admin".
 - **4 Nov 2026. An invitation's refusal lines on the desktop web** (`web:join.refused.*.line`,
   `web:requestToJoin.deadLine`, sc-29487 for sc-29066). Each line sits under its refusal's
   title and should not restate it. Proposed to `[dev]` on sc-29066, since `Join.test.tsx` pins
