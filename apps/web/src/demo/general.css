@@ -28,6 +28,15 @@
   color: var(--colorInkSecondary);
 }
 
+.desk-rows.general-domains > li.desk-row.is-bones {
+  min-height: 64px;
+  padding-top: 0;
+}
+
+.desk-rows.general-domains > li.desk-row.is-bones + li.desk-row.is-bones {
+  padding-top: 1px;
+}
+
 .desk-sunk.general-globe-bone {
   flex: none;
   width: 28px;
