@@ -134,7 +134,6 @@ export function RoleDialog({
         <div className="people-who">
           <Avatar initials={person.initials} tone={person.tone} size="face" />
           <RowWords title={person.name} lines={[sheetLine(person)]} />
-          <SavingTag saving={saving} />
         </div>
         {person.outside && <p className="desk-line people-ends">{OUTSIDE_ENDS}</p>}
         {lost != null && (
@@ -157,7 +156,11 @@ export function RoleDialog({
               return (
                 <li key={role}>
                   <label className={rowClass.join(' ')}>
-                    <RowWords title={role} lines={[isOff ? LEAD_OFF : ROLE_LINES[role]]} />
+                    <RowWords
+                      title={role}
+                      tag={role === picked && <SavingTag saving={saving} />}
+                      lines={[isOff ? LEAD_OFF : ROLE_LINES[role]]}
+                    />
                     <input
                       ref={role === picked ? first : undefined}
                       type="radio"
@@ -199,7 +202,7 @@ function SavingTag({ saving }: { saving: Saving }) {
   if (saving === 'idle') return null;
 
   return (
-    <span className={`people-saving is-${saving}`} aria-hidden="true">
+    <span className={`desk-tag ${saving === 'saving' ? 'is-now' : 'is-yes'}`} aria-hidden="true">
       {saving === 'saving' ? (
         <span className="people-spinner" />
       ) : (

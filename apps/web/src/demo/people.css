@@ -112,20 +112,6 @@
   height: var(--sizeHit);
 }
 
-.people-saving {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  gap: var(--spaceXs);
-  color: var(--colorInkSecondary);
-  font: 600 13px/1 var(--fontFamily);
-  white-space: nowrap;
-}
-
-.people-saving.is-saved {
-  color: var(--deskGreen);
-}
-
 .people-spinner {
   box-sizing: border-box;
   width: 14px;
