@@ -140,6 +140,66 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/settings/security?state=keptByRule',
       },
       {
+        title: 'Security · change password',
+        what: 'Current and new, the one rule',
+        href: '/demo/settings/security?state=changePassword',
+      },
+      {
+        title: 'Security · set a password',
+        what: 'A code by email first',
+        href: '/demo/settings/security?state=setPassword',
+      },
+      {
+        title: 'Security · link Apple',
+        what: 'Confirm it’s you, then Apple',
+        href: '/demo/settings/security?state=link',
+      },
+      {
+        title: 'Security · unlink Google?',
+        what: 'The Ask over the opened row',
+        href: '/demo/settings/security?state=unlink',
+      },
+      {
+        title: 'Security · set up two-factor',
+        what: 'The QR, the key, the app’s code',
+        href: '/demo/settings/security?state=setup',
+      },
+      {
+        title: 'Security · recovery codes',
+        what: 'Saved once; Finish waits for the box',
+        href: '/demo/settings/security?state=recovery',
+      },
+      {
+        title: 'Security · new codes?',
+        what: 'The Ask over Recovery codes',
+        href: '/demo/settings/security?state=newCodes',
+      },
+      {
+        title: 'Security · turn off two-factor?',
+        what: 'The Ask over Authenticator app',
+        href: '/demo/settings/security?state=turnOff',
+      },
+      {
+        title: 'Security · sign out a device?',
+        what: 'Safari on macOS, no proof',
+        href: '/demo/settings/security?state=signOutDevice',
+      },
+      {
+        title: 'Security · everywhere else?',
+        what: 'Then your password and a code',
+        href: '/demo/settings/security?state=everywhere',
+      },
+      {
+        title: 'Security · reset your password',
+        what: 'From Forgot it?',
+        href: '/demo/settings/security?state=forgot',
+      },
+      {
+        title: 'Security · reset sent',
+        what: 'Check your email, Done',
+        href: '/demo/settings/security?state=forgotSent',
+      },
+      {
         title: 'Notifications',
         what: 'Push and email for each kind',
         href: '/demo/settings/notifications',

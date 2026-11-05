@@ -73,6 +73,7 @@ function SignInRulesPage({ start }: { start: SignInRulesStart }) {
   const { page, viewer } = start;
   const rules = whereYouStand(page, viewer, locale);
   const card = rulesCard(rules, viewer);
+  const asking = rules.find((rule) => rule.ask != null)?.key;
   const pane = shell.layout === 'landscape';
 
   return (
@@ -85,7 +86,8 @@ function SignInRulesPage({ start }: { start: SignInRulesStart }) {
             ? null
             : {
                 label: card.step,
-                onPress: () => shell.openSection('security'),
+                onPress: () =>
+                  shell.openSection('security', asking === 'method' ? 'link' : 'setup'),
                 testID: 'signInRules.step',
               }
         }
