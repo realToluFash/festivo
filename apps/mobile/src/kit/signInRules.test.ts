@@ -3,6 +3,7 @@ import { type TFunction } from 'i18next';
 import { describe, expect, it } from 'vitest';
 
 import {
+  codeTimedOutFromParams,
   limitFromElsewhere,
   providerNames,
   refusalFromParams,
@@ -11,6 +12,7 @@ import {
   rulesNotices,
   saidOnWelcome,
   signInRoute,
+  timedOutSignIn,
 } from './signInRules.ts';
 
 const TIMED_OUT = {
@@ -123,6 +125,14 @@ describe('why a rule sent somebody to sign-in (sc-69)', () => {
     ],
   ])('says on the welcome, after %s', (_, params, providerFailed, title) => {
     expect(saidOnWelcome(params, providerFailed, KEYS)?.[0] ?? null).toBe(title);
+  });
+
+  it('says on sign-in that a two-factor sign-in ran out, the address kept (sc-29961)', () => {
+    const { params } = timedOutSignIn('ada@example.com');
+
+    expect(codeTimedOutFromParams(params)).toBe(true);
+    expect(params.email).toBe('ada@example.com');
+    expect(codeTimedOutFromParams({ signedOut: '1' })).toBe(false);
   });
 
   it('names Google and Apple when the refusal named no provider', () => {

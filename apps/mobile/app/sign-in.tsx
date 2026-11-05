@@ -22,6 +22,7 @@ import { tokens } from '../src/theme/tokens.ts';
 import { nextAfterSignIn } from '../src/challenge.ts';
 import {
   type RuleRefusal,
+  codeTimedOutFromParams,
   providerNames,
   refusalFromParams,
   ruleRefusal,
@@ -58,7 +59,7 @@ export default function SignIn() {
 
     if (refusal?.kind === 'providerOnly') return { kind: 'ruled', refusal };
 
-    return params.codeTimedOut == null ? { kind: 'ready' } : { kind: 'codeTimedOut' };
+    return codeTimedOutFromParams(params) ? { kind: 'codeTimedOut' } : { kind: 'ready' };
   });
   const [carried] = useState(params.email ?? '');
   const typed = useRef({ email: carried, password: '' });

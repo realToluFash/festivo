@@ -20,7 +20,8 @@ import { Linking, StyleSheet, type TextInputInstance, View, type ViewInstance } 
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../src/api.ts';
-import { heldChallenge, timedOutSignIn } from '../src/challenge.ts';
+import { heldChallenge } from '../src/challenge.ts';
+import { timedOutSignIn } from '../src/kit/signInRules.ts';
 import { type AuthBack, AuthFrame, AuthHeading } from '../src/components/AuthFrame.tsx';
 import { PrimaryButton, QuietButton, SecondaryButton } from '../src/components/Buttons.tsx';
 import {

@@ -55,8 +55,3 @@ export async function nextAfterRegistration(
 
   return link == null ? landingFor(awaiting(account)) : `/join/${link}`;
 }
-
-/** Sign-in once the held challenge has run out: it says the sign-in timed out, with the address kept (sc-29961). */
-export function timedOutSignIn(email: string) {
-  return { pathname: '/sign-in', params: { email, codeTimedOut: '1' } } as const;
-}
