@@ -167,30 +167,40 @@ export function SettingsPage({
   );
 }
 
+/** On its side: the app's sidebar, or an area's own in its place, beside the main card. */
 export function Landscape({
   column,
   children,
   overlay,
+  at = 'Settings',
+  sidebar,
+  onEvent,
 }: {
   column: ReactNode;
   children: ReactNode;
   overlay?: ReactNode;
+  at?: Tab;
+  sidebar?: ReactNode;
+  onEvent?: (key: EventKey) => void;
 }) {
   const shell = useShell();
   const insets = useSafeAreaInsets();
 
   return (
     <View style={[styles.chrome, { paddingTop: insets.top }]}>
-      <TodaySidebar
-        events={SIDEBAR_EVENTS}
-        onTab={shell.onTab}
-        tell={shell.tell}
-        at="Settings"
-        onPerson={() => shell.openSection('account')}
-        person={shell.looking}
-      />
+      {sidebar ?? (
+        <TodaySidebar
+          events={SIDEBAR_EVENTS}
+          onTab={shell.onTab}
+          tell={shell.tell}
+          at={at}
+          onPerson={() => shell.openSection('account')}
+          onEvent={onEvent}
+          person={shell.looking}
+        />
+      )}
       <View style={[styles.main, { marginBottom: Math.max(insets.bottom, tokens.spaceMd) }]}>
-        <View style={styles.column}>{column}</View>
+        {column != null && <View style={styles.column}>{column}</View>}
         <View style={styles.grow}>{children}</View>
       </View>
       {overlay}

@@ -12,7 +12,7 @@ import Svg, { Circle } from 'react-native-svg';
 import { Text } from '../components/Text.tsx';
 import { tokens } from '../theme/tokens.ts';
 import { Confetti, Cover, EventMesh, type Piece } from './Cover.tsx';
-import { Glyph } from './Glyph.tsx';
+import { Glyph, type GlyphName } from './Glyph.tsx';
 import type { Moment, Now } from './today.ts';
 import type { Tell } from './TodayParts.tsx';
 import { SAMPLE } from './samples.ts';
@@ -672,18 +672,20 @@ export function Band({
   );
 }
 
-export function PhoneTabBar({
+export function TabBar<T extends string>({
+  tabs,
   bottom,
   onTab,
-  at = 'Today',
+  at,
 }: {
+  tabs: readonly (readonly [T, GlyphName])[];
   bottom: number;
-  onTab: (tab: Tab) => void;
-  at?: Tab;
+  onTab: (tab: T) => void;
+  at: T;
 }) {
   return (
     <View style={[styles.tabBar, { bottom }]} accessibilityRole="tablist">
-      {TABS.map(([label, glyph]) => {
+      {tabs.map(([label, glyph]) => {
         const on = label === at;
         const ink = on ? tokens.colorAccent : tokens.colorInkSecondary;
 
@@ -695,6 +697,7 @@ export function PhoneTabBar({
             accessibilityRole="tab"
             accessibilityState={{ selected: on }}
             accessibilityLabel={label}
+            testID={`tab-${label.toLowerCase()}`}
           >
             <Glyph name={glyph} size={22} ink={ink} />
             <Text
@@ -710,6 +713,18 @@ export function PhoneTabBar({
       })}
     </View>
   );
+}
+
+export function PhoneTabBar({
+  bottom,
+  onTab,
+  at = 'Today',
+}: {
+  bottom: number;
+  onTab: (tab: Tab) => void;
+  at?: Tab;
+}) {
+  return <TabBar tabs={TABS} bottom={bottom} onTab={onTab} at={at} />;
 }
 
 const styles = StyleSheet.create({

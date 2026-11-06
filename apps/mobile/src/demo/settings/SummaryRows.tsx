@@ -204,7 +204,7 @@ export interface RowProps {
   lead?: ReactNode;
   tag?: RowTag | null | undefined;
   opens?: boolean;
-  value?: string;
+  value?: string | undefined;
   trail?: ReactNode;
   accent?: boolean;
   off?: boolean;
@@ -361,11 +361,12 @@ export function RowList({ items, gutter = 0 }: { items: readonly ListItem[]; gut
   );
 }
 
-/** B's action: Violet text, or red for anything that removes, with what it does on the line under it. */
+/** B's action: Violet text, or red for anything that removes, with what it does on the line under it; `plain` is Ink, as Manage's Duplicate and Pause. */
 export function TextAction({
   label,
   onPress,
   removes = false,
+  plain = false,
   off = false,
   figures = false,
   glyph,
@@ -378,6 +379,7 @@ export function TextAction({
   label: string;
   onPress: () => void;
   removes?: boolean;
+  plain?: boolean;
   off?: boolean;
   figures?: boolean;
   glyph?: GlyphName;
@@ -387,7 +389,13 @@ export function TextAction({
   testID?: string | undefined;
   ref?: Ref<ViewInstance>;
 }) {
-  const ink = off ? tokens.colorInkTertiary : removes ? tokens.colorBroken : tokens.colorAccentText;
+  const ink = off
+    ? tokens.colorInkTertiary
+    : removes
+      ? tokens.colorBroken
+      : plain
+        ? tokens.colorInk
+        : tokens.colorAccentText;
   const action = (
     <Pressable
       ref={ref}

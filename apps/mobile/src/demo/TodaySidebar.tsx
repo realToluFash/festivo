@@ -1,4 +1,5 @@
-import { Pressable, StyleSheet, View } from 'react-native';
+import type { ReactNode } from 'react';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { Brand } from '../components/Brand.tsx';
 import { Text } from '../components/Text.tsx';
@@ -16,6 +17,8 @@ export interface SidebarPerson {
   role: string | null;
 }
 
+export const SIDEBAR_WIDTH = 252;
+
 const YOU: SidebarPerson = { name: SAMPLE.name, initials: 'FA', role: 'Owner' };
 
 const PLACES: readonly (readonly [Tab, GlyphName])[] = [
@@ -24,27 +27,29 @@ const PLACES: readonly (readonly [Tab, GlyphName])[] = [
   ['Calendar', 'calendar'],
 ];
 
-function Place({
+export function SidebarPlace({
   label,
   glyph,
-  onTab,
-  at,
+  on,
+  onPress,
+  testID,
 }: {
-  label: Tab;
+  label: string;
   glyph: GlyphName;
-  onTab: (tab: Tab) => void;
-  at: Tab;
+  on: boolean;
+  onPress: () => void;
+  testID?: string;
 }) {
-  const on = label === at;
   const ink = on ? tokens.colorInk : tokens.colorInkSecondary;
 
   return (
     <Pressable
-      onPress={() => onTab(label)}
+      onPress={onPress}
       style={({ pressed }) => [styles.place, on && styles.placeOn, pressed && styles.pressed]}
       accessibilityRole="tab"
       accessibilityState={{ selected: on }}
       accessibilityLabel={label}
+      testID={testID}
     >
       <Glyph name={glyph} ink={ink} />
       <Text
@@ -59,24 +64,25 @@ function Place({
   );
 }
 
-/** iPad landscape's sidebar: the places, your events by colour, and the person at its foot. */
-export function TodaySidebar({
-  events,
+function Place({
+  label,
+  glyph,
   onTab,
-  tell,
-  at = 'Today',
-  onPerson = () => tell('Your account has its own design.'),
-  person = YOU,
+  at,
 }: {
-  events: readonly EventKey[];
+  label: Tab;
+  glyph: GlyphName;
   onTab: (tab: Tab) => void;
-  tell: Tell;
-  at?: Tab;
-  onPerson?: () => void;
-  person?: SidebarPerson;
+  at: Tab;
 }) {
   return (
-    <View style={styles.side}>
+    <SidebarPlace label={label} glyph={glyph} on={label === at} onPress={() => onTab(label)} />
+  );
+}
+
+export function SidebarHead({ tell, search = true }: { tell: Tell; search?: boolean }) {
+  return (
+    <>
       <View style={styles.logo}>
         <Brand lockup height={24} />
       </View>
@@ -100,59 +106,52 @@ export function TodaySidebar({
         </Text>
         <Glyph name="updown" size={15} ink={tokens.colorInkSecondary} />
       </Pressable>
-      <Pressable
-        onPress={() => tell('Search has its own design.')}
-        style={styles.search}
-        accessibilityRole="search"
-        accessibilityLabel="Search"
-      >
-        <Glyph name="search" size={16} ink={tokens.colorInkSecondary} />
-        <Text size={14} weight="medium" accessible={false} style={[styles.grow, styles.secondary]}>
-          Search
-        </Text>
-        <View style={styles.key}>
-          <Text size={12} weight="medium" accessible={false} style={styles.secondary}>
-            ⌘K
-          </Text>
-        </View>
-      </Pressable>
-      <View style={styles.places} accessibilityRole="tablist">
-        {PLACES.map(([label, glyph]) => (
-          <Place key={label} label={label} glyph={glyph} onTab={onTab} at={at} />
-        ))}
-      </View>
-      <View>
-        <Text
-          size={11}
-          weight="semibold"
-          accessibilityRole="header"
-          style={[styles.secondary, styles.caps]}
+      {search && (
+        <Pressable
+          onPress={() => tell('Search has its own design.')}
+          style={styles.search}
+          accessibilityRole="search"
+          accessibilityLabel="Search"
         >
-          YOUR EVENTS
-        </Text>
-        {events.map((key) => (
-          <Pressable
-            key={key}
-            onPress={() => tell(`${EVENTS[key].name} has its own design.`)}
-            style={({ pressed }) => [styles.event, pressed && styles.pressed]}
-            accessibilityRole="button"
-            accessibilityLabel={EVENTS[key].name}
+          <Glyph name="search" size={16} ink={tokens.colorInkSecondary} />
+          <Text
+            size={14}
+            weight="medium"
+            accessible={false}
+            style={[styles.grow, styles.secondary]}
           >
-            <View style={[styles.dot, { backgroundColor: eventColour(key) }]} />
-            <Text
-              size={14}
-              weight="medium"
-              numberOfLines={1}
-              accessible={false}
-              style={[styles.grow, styles.secondary]}
-            >
-              {EVENTS[key].name}
+            Search
+          </Text>
+          <View style={styles.key}>
+            <Text size={12} weight="medium" accessible={false} style={styles.secondary}>
+              ⌘K
             </Text>
-          </Pressable>
-        ))}
-      </View>
-      <View style={styles.grow} />
-      <Place label="Settings" glyph="settings" onTab={onTab} at={at} />
+          </View>
+        </Pressable>
+      )}
+    </>
+  );
+}
+
+export function SidebarFoot({
+  onTab,
+  at,
+  onPerson,
+  person = YOU,
+}: {
+  onTab: (tab: Tab) => void;
+  at: Tab | null;
+  onPerson: () => void;
+  person?: SidebarPerson;
+}) {
+  return (
+    <>
+      <SidebarPlace
+        label="Settings"
+        glyph="settings"
+        on={at === 'Settings'}
+        onPress={() => onTab('Settings')}
+      />
       <Pressable
         onPress={onPerson}
         style={styles.person}
@@ -181,6 +180,88 @@ export function TodaySidebar({
         </View>
         <Glyph name="updown" size={15} ink={tokens.colorInkSecondary} />
       </Pressable>
+    </>
+  );
+}
+
+export function SidebarColumn({ children }: { children: ReactNode }) {
+  return (
+    <ScrollView
+      style={styles.column}
+      contentContainerStyle={[styles.side, styles.fills]}
+      showsVerticalScrollIndicator={false}
+    >
+      {children}
+    </ScrollView>
+  );
+}
+
+export function SidebarPlaces({ children }: { children: ReactNode }) {
+  return (
+    <View style={styles.places} accessibilityRole="tablist">
+      {children}
+    </View>
+  );
+}
+
+/** iPad landscape's sidebar: the places, your events by colour, and the person at its foot. */
+export function TodaySidebar({
+  events,
+  onTab,
+  tell,
+  at = 'Today',
+  onPerson = () => tell('Your account has its own design.'),
+  onEvent = (key) => tell(`${EVENTS[key].name} has its own design.`),
+  person = YOU,
+}: {
+  events: readonly EventKey[];
+  onTab: (tab: Tab) => void;
+  tell: Tell;
+  at?: Tab;
+  onPerson?: () => void;
+  onEvent?: ((key: EventKey) => void) | undefined;
+  person?: SidebarPerson;
+}) {
+  return (
+    <View style={styles.side}>
+      <SidebarHead tell={tell} />
+      <View style={styles.places} accessibilityRole="tablist">
+        {PLACES.map(([label, glyph]) => (
+          <Place key={label} label={label} glyph={glyph} onTab={onTab} at={at} />
+        ))}
+      </View>
+      <View>
+        <Text
+          size={11}
+          weight="semibold"
+          accessibilityRole="header"
+          style={[styles.secondary, styles.caps]}
+        >
+          YOUR EVENTS
+        </Text>
+        {events.map((key) => (
+          <Pressable
+            key={key}
+            onPress={() => onEvent(key)}
+            style={({ pressed }) => [styles.event, pressed && styles.pressed]}
+            accessibilityRole="button"
+            accessibilityLabel={EVENTS[key].name}
+          >
+            <View style={[styles.dot, { backgroundColor: eventColour(key) }]} />
+            <Text
+              size={14}
+              weight="medium"
+              numberOfLines={1}
+              accessible={false}
+              style={[styles.grow, styles.secondary]}
+            >
+              {EVENTS[key].name}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+      <View style={styles.grow} />
+      <SidebarFoot onTab={onTab} at={at} onPerson={onPerson} person={person} />
     </View>
   );
 }
@@ -196,7 +277,7 @@ const styles = StyleSheet.create({
   },
   pressed: { opacity: 0.7 },
   side: {
-    width: 252,
+    width: SIDEBAR_WIDTH,
     paddingTop: 22,
     paddingHorizontal: tokens.spacePillEnd,
     paddingBottom: tokens.spacePillEnd,
@@ -235,6 +316,8 @@ const styles = StyleSheet.create({
     borderColor: tokens.colorBorder,
   },
   places: { gap: tokens.spaceHair },
+  column: { width: SIDEBAR_WIDTH, flexGrow: 0 },
+  fills: { flexGrow: 1 },
   place: {
     height: tokens.sizeHit,
     flexDirection: 'row',

@@ -47,6 +47,9 @@ export {
   TurningMark,
 } from './SummaryRows.tsx';
 export {
+  type Anchor,
+  AnchoredMenu,
+  anchorUnder,
   Ask,
   AskLayer,
   type AskProps,
@@ -212,21 +215,33 @@ export function SummaryCard({
   size = 'page',
   height,
   step,
+  backdrop,
+  gap,
   children,
   testID,
 }: {
   size?: CardSize;
   height: number;
   step?: StepProps | null;
+  /** In the Confetti's place: an event's own cover or colour, with its scrim. */
+  backdrop?: ReactNode;
+  gap?: number;
   children: ReactNode;
   testID?: string;
 }) {
   const look = CARD[size];
 
   return (
-    <View style={[styles.card, look.padding, { minHeight: height, gap: look.gap }]} testID={testID}>
-      <Cover shade="side" pieces={[]} />
-      <Confetti pieces={CARD_PIECES} scale={look.scale} />
+    <View
+      style={[styles.card, look.padding, { minHeight: height, gap: gap ?? look.gap }]}
+      testID={testID}
+    >
+      {backdrop ?? (
+        <>
+          <Cover shade="side" pieces={[]} />
+          <Confetti pieces={CARD_PIECES} scale={look.scale} />
+        </>
+      )}
       {children}
       {step != null && <StepButton {...step} />}
     </View>
