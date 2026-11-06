@@ -1122,15 +1122,13 @@ describe('Settings at a desk (sc-29708)', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Members' })).toBeDefined();
   });
 
-  it('says a section the boards do not draw has its own design, and opens nothing', async () => {
+  it('draws every section as a link, and has no Roles', async () => {
     await settings('/demo/settings');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Security' }));
-    expect(screen.getByText('Security has its own design.')).toBeDefined();
+    const list = screen.getByRole('navigation', { name: 'Settings' });
+    expect(within(list).queryAllByRole('button')).toHaveLength(0);
+    expect(within(list).queryByText('Roles')).toBeNull();
     expect(screen.getByRole('heading', { level: 1, name: 'Members' })).toBeDefined();
-    expect(
-      within(screen.getByRole('navigation', { name: 'Settings' })).queryByText('Roles'),
-    ).toBeNull();
   });
 
   it('names who is looking at the sidebar’s foot', async () => {
@@ -1144,7 +1142,7 @@ describe('Settings at a desk (sc-29708)', () => {
     const list = screen.getByRole('navigation', { name: 'Settings' });
     expect(within(list).queryByRole('link', { name: 'Members' })).toBeNull();
     expect(within(list).queryByRole('link', { name: 'Roles' })).toBeNull();
-    expect(within(list).getByRole('button', { name: 'General' })).toBeDefined();
+    expect(within(list).getByRole('link', { name: 'General' })).toBeDefined();
   });
 
   it('counts the people and answers the first request from the card', async () => {

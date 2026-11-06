@@ -596,8 +596,9 @@
 }
 
 .desk-tag.is-yes {
-  background: color-mix(in srgb, var(--optionTeal) 16%, var(--colorCard));
-  color: var(--deskGreen);
+  border: 1px solid var(--colorBorder);
+  background: var(--colorCard);
+  color: var(--colorInk);
 }
 
 .desk-tag.is-now {
@@ -1064,10 +1065,7 @@
   cursor: default;
 }
 
-.desk-nav-verb.is-room {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
+.desk-nav-cancel.is-none {
   visibility: hidden;
 }
 
@@ -1190,6 +1188,13 @@
 
 .desk-label {
   font: 600 14px/1.3 var(--fontFamily);
+}
+
+.desk-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-block: calc(-1 * var(--spaceMd));
 }
 
 .desk-box {

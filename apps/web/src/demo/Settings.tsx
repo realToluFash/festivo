@@ -14,10 +14,17 @@ import {
   settingsPath,
   viewerOf,
 } from './settings.ts';
+import { Account } from './Account.tsx';
+import { General } from './General.tsx';
 import { LayersContext } from './layers.ts';
 import { Members } from './Members.tsx';
+import { Notifications } from './Notifications.tsx';
+import { AccessPaused } from './OrgSwitcher.tsx';
+import { Security } from './Security.tsx';
+import { SignInRules } from './SignInRules.tsx';
 import type { Tell } from './TodayParts.tsx';
 import { TodaySidebar } from './TodaySidebar.tsx';
+import { usePaused, useSwitcherStart } from './switcher.ts';
 import './today.css';
 import './settings.css';
 
@@ -29,11 +36,12 @@ const TILES: Record<Exclude<Section, 'account' | 'general'>, GlyphName> = {
 };
 
 /** Settings at a desk in B · Summary first (Web-Settings.dc.html, page 29), on sample data. */
-export function Settings() {
+export function Settings({ open = 'members' }: { open?: Drawn }) {
   const [params] = useSearchParams();
   const viewer = viewerOf(params.get('as'));
-  const open: Drawn = 'members';
   const state = params.get('state') ?? '';
+  useSwitcherStart();
+  const paused = usePaused();
   const [told, setTold] = useState<string | null>(null);
   const tell = useCallback<Tell>((words) => setTold(words), []);
   const [stack, setStack] = useState<readonly string[]>([]);
@@ -70,16 +78,48 @@ export function Settings() {
           inert={covered}
         />
         <main id="content" className="desk-main" inert={covered}>
-          <SettingsList open={viewer.manages ? open : null} viewer={viewer} tell={tell} />
-          {viewer.manages ? (
-            <Members
-              key={`${open}:${viewer.key}:${state}`}
-              viewer={viewer}
-              state={state}
-              tell={tell}
-            />
+          {paused && open !== 'account' ? (
+            <div className="desk-page">
+              <AccessPaused />
+            </div>
           ) : (
-            <div className="desk-page" />
+            <>
+              <SettingsList
+                open={open !== 'members' || viewer.manages ? open : null}
+                viewer={viewer}
+                tell={tell}
+              />
+              {open === 'account' ? (
+                <Account key={`${viewer.key}:${state}`} viewer={viewer} state={state} tell={tell} />
+              ) : open === 'security' ? (
+                <Security
+                  key={`${viewer.key}:${state}`}
+                  viewer={viewer}
+                  state={state}
+                  tell={tell}
+                />
+              ) : open === 'notifications' ? (
+                <Notifications key={`${viewer.key}:${state}`} state={state} tell={tell} />
+              ) : open === 'general' ? (
+                <General key={`${viewer.key}:${state}`} viewer={viewer} state={state} tell={tell} />
+              ) : open === 'signInRules' ? (
+                <SignInRules
+                  key={`${viewer.key}:${state}`}
+                  viewer={viewer}
+                  state={state}
+                  tell={tell}
+                />
+              ) : viewer.manages ? (
+                <Members
+                  key={`${open}:${viewer.key}:${state}`}
+                  viewer={viewer}
+                  state={state}
+                  tell={tell}
+                />
+              ) : (
+                <div className="desk-page" />
+              )}
+            </>
           )}
         </main>
         <div ref={setHost} className="desk-layers" />

@@ -3,6 +3,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { Toast } from '../components/Toast.tsx';
+import { AccessPaused, Switched } from './OrgSwitcher.tsx';
+import { usePaused, useSwitcherStart } from './switcher.ts';
 import { MOMENTS, type MomentName, momentOf, sayIn } from './today.ts';
 import { Banner, NowBanner } from './TodayBanner.tsx';
 import { FirstRun, NeedsYou, type Tell, ThisWeek, YourEvents } from './TodayParts.tsx';
@@ -26,6 +28,8 @@ export function Today() {
   const [told, setTold] = useState<string | null>(null);
   const tell = useCallback<Tell>((words) => setTold(words), []);
   const page = useRef<HTMLElement>(null);
+  useSwitcherStart();
+  const paused = usePaused();
 
   useEffect(() => {
     const search = (event: KeyboardEvent) => {
@@ -48,23 +52,30 @@ export function Today() {
         onToday={() => page.current?.scrollTo({ top: 0 })}
       />
       <main id="content" ref={page} className="today-main">
-        {moment.now != null ? (
-          <NowBanner now={moment.now} full={moment.full} tell={tell} />
+        <Switched />
+        {paused ? (
+          <AccessPaused />
         ) : (
-          <Banner moment={moment} tell={tell} />
-        )}
-        {moment.kind === 'first' ? (
-          <FirstRun tell={tell} />
-        ) : (
-          <div className="today-columns">
-            <div className="today-left">
-              <NeedsYou moment={moment} tell={tell} />
-              <ThisWeek moment={moment} tell={tell} />
-            </div>
-            <div className="today-right">
-              <YourEvents moment={moment} tell={tell} />
-            </div>
-          </div>
+          <>
+            {moment.now != null ? (
+              <NowBanner now={moment.now} full={moment.full} tell={tell} />
+            ) : (
+              <Banner moment={moment} tell={tell} />
+            )}
+            {moment.kind === 'first' ? (
+              <FirstRun tell={tell} />
+            ) : (
+              <div className="today-columns">
+                <div className="today-left">
+                  <NeedsYou moment={moment} tell={tell} />
+                  <ThisWeek moment={moment} tell={tell} />
+                </div>
+                <div className="today-right">
+                  <YourEvents moment={moment} tell={tell} />
+                </div>
+              </div>
+            )}
+          </>
         )}
       </main>
       {told != null && <Toast key={told} words={told} onClose={() => setTold(null)} />}

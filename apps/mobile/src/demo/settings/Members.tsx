@@ -1,12 +1,12 @@
 import { formattingLocale } from '@soirely/domain';
 import { getLocales } from 'expo-localization';
 import { useLocalSearchParams } from 'expo-router';
-import { type RefObject, useEffect, useRef, useState } from 'react';
+import { type RefObject, useEffect, useMemo, useRef, useState } from 'react';
 import type { ViewInstance } from 'react-native';
 
 import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
 
-import { Landscape, useShell } from './Frame.tsx';
+import { Landscape, SeenBy, useShell } from './Frame.tsx';
 import { ClaimScreen, useOwnerClaim } from './MembersClaim.tsx';
 import { useLoad } from './MembersLoading.tsx';
 import { MembersCardView, NobodyPicked, People, Waiting } from './MembersParts.tsx';
@@ -29,6 +29,7 @@ import {
   type Request,
   turnedDown,
 } from './MembersSample.ts';
+import { memberLooking } from './sample.ts';
 import { FailedBlock, LoadingBlock, SummaryColumn, SummaryPage } from './Summary.tsx';
 
 const PLAIN: PersonOpening = { step: 'resting', picked: null };
@@ -37,8 +38,14 @@ const PLAIN: PersonOpening = { step: 'resting', picked: null };
 export function MembersSection() {
   const { state } = useLocalSearchParams<{ state?: string }>();
   const name = membersStateOf(state);
+  const start = useMemo(() => membersStart(name), [name]);
+  const looking = useMemo(() => memberLooking(start.viewer.id), [start]);
 
-  return <MembersScreen key={name} start={membersStart(name)} />;
+  return (
+    <SeenBy looking={looking}>
+      <MembersScreen key={name} start={start} />
+    </SeenBy>
+  );
 }
 
 function MembersScreen({ start }: { start: MembersStart }) {

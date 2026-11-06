@@ -1,236 +1,161 @@
+import {
+  countryChoices,
+  currencyChoices,
+  languageChoices,
+  timezoneLabel,
+  withCurrent,
+} from '@soirely/domain';
 import { useState } from 'react';
-import { FlatList, Modal, Pressable, StyleSheet, View } from 'react-native';
-import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { FlatList, StyleSheet, View } from 'react-native';
 
 import { TextField } from '../../components/Field.tsx';
 import { LIFT } from '../../components/keyboardWatch.ts';
-import { Text } from '../../components/Text.tsx';
-import { TURNS_WITH_THE_APP } from '../../layout/orientations.ts';
 import { tokens } from '../../theme/tokens.ts';
-import { useModalOpen } from '../../updateRequired.ts';
 import { Glyph } from '../../components/Glyph.tsx';
-import { DETAILS_WORDS } from './OrganisationWords.ts';
+import { type Picked, SAMPLE_DETAILS } from './OrganisationModel.ts';
+import { DETAILS_WORDS as W, LANGUAGE_NAMES } from './OrganisationWords.ts';
+import { Row } from './Summary.tsx';
 
 export interface Choice {
   code: string;
   name: string;
 }
 
-const FIELD_HEIGHT = 52;
+const SHOWN_IN = 'en';
 
-/** A picker is a field with a chevron; it opens a white full-screen list that slides up, in a 640 column on a tablet. */
-export function OrganisationPicker({
-  label,
-  searchLabel,
-  choices,
-  value,
-  onChange,
-  startsOpen = false,
-  tablet,
-  testID,
-}: {
-  label: string;
-  searchLabel: string;
-  choices: readonly Choice[];
-  value: string;
-  onChange: (code: string) => void;
-  startsOpen?: boolean;
-  tablet: boolean;
-  testID: string;
-}) {
-  const [open, setOpen] = useState(startsOpen);
-  const shown = useModalOpen(open);
-  const chosen = choices.find((choice) => choice.code === value)?.name ?? value;
-  const close = () => setOpen(false);
+let made: Record<Picked, readonly Choice[]> | null = null;
 
-  return (
-    <>
-      <Pressable
-        onPress={() => setOpen(true)}
-        style={({ pressed }) => [styles.field, pressed && styles.pressed]}
-        accessibilityRole="button"
-        accessibilityLabel={`${label}: ${chosen}`}
-        testID={testID}
-      >
-        <Text size={16} weight="medium" style={styles.grow}>
-          {chosen}
-        </Text>
-        <Glyph name="down" size={18} ink={tokens.colorInkSecondary} weight={2.2} />
-      </Pressable>
-      <Modal
-        visible={shown}
-        animationType="slide"
-        supportedOrientations={TURNS_WITH_THE_APP}
-        onRequestClose={close}
-      >
-        <SafeAreaProvider>
-          <View style={styles.fill} collapsable={false} onAccessibilityEscape={close}>
-            <PickerPage
-              label={label}
-              searchLabel={searchLabel}
-              choices={choices}
-              value={value}
-              tablet={tablet}
-              onChoose={(code) => {
-                onChange(code);
-                close();
-              }}
-              onClose={close}
-              testID={testID}
-            />
-          </View>
-        </SafeAreaProvider>
-      </Modal>
-    </>
-  );
+/** Every list the details pick from, made once: naming every country, currency and zone is slow on a phone. */
+export function organisationChoices(): Record<Picked, readonly Choice[]> {
+  made ??= {
+    countryCode: countryChoices(SHOWN_IN),
+    currency: currencyChoices(SAMPLE_DETAILS.currency, SHOWN_IN, W.currencyRetired),
+    timezone: withCurrent(Intl.supportedValuesOf('timeZone'), SAMPLE_DETAILS.timezone).map(
+      (zone) => ({ code: zone, name: timezoneLabel(zone) }),
+    ),
+    locale: languageChoices((key) => LANGUAGE_NAMES[key] ?? key),
+  };
+
+  return made;
 }
 
-function PickerPage({
-  label,
-  searchLabel,
-  choices,
+export function choiceName(field: Picked, code: string): string {
+  return organisationChoices()[field].find((choice) => choice.code === code)?.name ?? code;
+}
+
+export const PICKERS: Record<Picked, { label: string; search: string; testID: string }> = {
+  countryCode: { label: W.country, search: W.searchCountry, testID: 'organisation.country' },
+  currency: { label: W.currency, search: W.searchCurrency, testID: 'organisation.currency' },
+  timezone: { label: W.timezone, search: W.searchTimezone, testID: 'organisation.timezone' },
+  locale: { label: W.language, search: W.searchLanguage, testID: 'organisation.language' },
+};
+
+/** A row of 52 and the hairline under it, so the list can open on the current choice. */
+const ROW = 53;
+
+const hidden = {
+  accessibilityElementsHidden: true,
+  importantForAccessibility: 'no-hide-descendants',
+} as const;
+
+/** A field's list in the details screen's own surface: search, then rows of 52, the current one ticked. */
+export function PickerList({
+  field,
   value,
-  tablet,
   onChoose,
-  onClose,
-  testID,
 }: {
-  label: string;
-  searchLabel: string;
-  choices: readonly Choice[];
+  field: Picked;
   value: string;
-  tablet: boolean;
   onChoose: (code: string) => void;
-  onClose: () => void;
-  testID: string;
 }) {
-  const insets = useSafeAreaInsets();
+  const { search, testID } = PICKERS[field];
+  const choices = organisationChoices()[field];
   const [needle, setNeedle] = useState('');
-  const wanted = needle.trim().toLocaleLowerCase('en');
+  const wanted = needle.trim().toLocaleLowerCase(SHOWN_IN);
   const shown =
     wanted === ''
       ? choices
-      : choices.filter((choice) => choice.name.toLocaleLowerCase('en').includes(wanted));
+      : choices.filter((choice) => choice.name.toLocaleLowerCase(SHOWN_IN).includes(wanted));
+  const [current] = useState(() => choices.findIndex((choice) => choice.code === value));
 
   return (
-    <View
-      style={[
-        styles.page,
-        { paddingTop: insets.top + (tablet ? 28 : tokens.spaceSm), paddingBottom: insets.bottom },
-      ]}
-    >
-      <View style={[styles.column, tablet ? styles.columnTablet : styles.columnPhone]}>
-        <View style={styles.head}>
-          <Text size={22} weight="bold" accessibilityRole="header" style={styles.title}>
-            {label}
-          </Text>
-          <Pressable
-            onPress={onClose}
-            style={({ pressed }) => [styles.done, pressed && styles.pressed]}
-            accessibilityRole="button"
-            testID={`${testID}.close`}
-          >
-            <Text size={16} weight="semibold" style={styles.accent}>
-              {DETAILS_WORDS.done}
-            </Text>
-          </Pressable>
-        </View>
-        <View>
-          <TextField
-            accessibilityLabel={searchLabel}
-            placeholder={searchLabel}
-            placeholderTextColor={tokens.colorInkSecondary}
-            defaultValue=""
-            onChangeText={setNeedle}
-            autoCapitalize="none"
-            returnKeyType="search"
-            style={styles.search}
-            testID={`${testID}.search`}
-          />
-          <View style={styles.searchMark} pointerEvents="none">
-            <Glyph name="search" size={18} ink={tokens.colorInkSecondary} weight={2.2} />
-          </View>
-        </View>
-        <FlatList
-          data={shown}
-          keyExtractor={(choice) => choice.code}
-          keyboardShouldPersistTaps="handled"
-          automaticallyAdjustKeyboardInsets={LIFT.adjustScrollInsets}
-          style={styles.list}
-          renderItem={({ item }) => {
-            const on = item.code === value;
-
-            return (
-              <Pressable
-                onPress={() => onChoose(item.code)}
-                style={({ pressed }) => [
-                  styles.option,
-                  on && styles.optionOn,
-                  pressed && styles.pressed,
-                ]}
-                accessibilityRole="button"
-                accessibilityState={{ selected: on }}
-                testID={`${testID}.${item.code}`}
-              >
-                <Text size={16} weight={on ? 'semibold' : 'medium'} style={styles.grow}>
-                  {item.name}
-                </Text>
-                {on && <Glyph name="tick" size={18} ink={tokens.colorAccentText} weight={2.6} />}
-              </Pressable>
-            );
-          }}
+    <View style={styles.fill}>
+      <View style={styles.searchBox}>
+        <TextField
+          accessibilityLabel={search}
+          placeholder={search}
+          defaultValue=""
+          onChangeText={setNeedle}
+          autoCapitalize="none"
+          autoCorrect={false}
+          spellCheck={false}
+          returnKeyType="search"
+          style={styles.search}
+          testID={`${testID}.search`}
         />
+        <View style={styles.searchMark} pointerEvents="none" {...hidden}>
+          <Glyph name="search" size={18} ink={tokens.colorInkSecondary} weight={2.2} />
+        </View>
       </View>
+      <FlatList
+        data={shown}
+        keyExtractor={(choice) => choice.code}
+        getItemLayout={(_, index) => ({ length: ROW, offset: ROW * index, index })}
+        initialScrollIndex={current > 2 ? current - 2 : undefined}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        automaticallyAdjustKeyboardInsets={LIFT.adjustScrollInsets}
+        style={styles.list}
+        contentContainerStyle={styles.rows}
+        ItemSeparatorComponent={Hairline}
+        renderItem={({ item }) => {
+          const on = item.code === value;
+
+          return (
+            <Row
+              title={item.name}
+              weight={on ? 'semibold' : 'medium'}
+              accent={on}
+              pad={tokens.spaceSm}
+              trail={
+                on ? (
+                  <View {...hidden}>
+                    <Glyph name="tick" size={18} ink={tokens.colorAccentText} weight={2.6} />
+                  </View>
+                ) : undefined
+              }
+              onPress={() => onChoose(item.code)}
+              accessibilityLabel={item.name}
+              accessibilityState={{ selected: on }}
+              testID={`${testID}.${item.code}`}
+            />
+          );
+        }}
+      />
     </View>
   );
 }
 
+function Hairline() {
+  return <View style={styles.hairline} />;
+}
+
 const styles = StyleSheet.create({
-  grow: { flex: 1, minWidth: 0 },
-  fill: { flex: 1 },
-  pressed: { opacity: 0.8 },
-  field: {
-    minHeight: FIELD_HEIGHT,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.spaceMd,
-    paddingVertical: tokens.spaceSm,
-    paddingHorizontal: tokens.spaceXl,
-    borderWidth: 1,
-    borderColor: tokens.colorFieldBorder,
-    borderRadius: tokens.radiusField,
-    backgroundColor: tokens.colorCard,
+  fill: { flexShrink: 1, flexGrow: 1, minHeight: 0 },
+  searchBox: {
+    paddingTop: tokens.spaceLg,
+    paddingBottom: tokens.spaceSm,
+    paddingHorizontal: tokens.spaceXxl,
   },
-  page: { flex: 1, backgroundColor: tokens.colorCard },
-  column: { flex: 1, gap: 14 },
-  columnPhone: { paddingHorizontal: tokens.spaceXxl },
-  columnTablet: { width: '100%', maxWidth: 640, alignSelf: 'center', gap: tokens.spaceXl },
-  head: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceMd },
-  title: { flex: 1, letterSpacing: 22 * -0.015 },
-  done: {
-    minHeight: tokens.sizeHit,
-    justifyContent: 'center',
-    paddingHorizontal: tokens.spaceSm,
-  },
-  accent: { color: tokens.colorAccentText },
-  search: { minHeight: FIELD_HEIGHT, paddingLeft: 44 },
+  search: { minHeight: 48, paddingLeft: 44 },
   searchMark: {
     position: 'absolute',
-    left: tokens.spaceXl,
-    top: 0,
-    bottom: 0,
+    left: tokens.spaceXxl + tokens.spaceLg,
+    top: tokens.spaceLg,
+    bottom: tokens.spaceSm,
     justifyContent: 'center',
   },
-  list: { flex: 1 },
-  option: {
-    minHeight: FIELD_HEIGHT,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.spaceMd,
-    paddingVertical: tokens.spaceSm,
-    paddingHorizontal: tokens.spaceXl,
-    borderBottomWidth: 1,
-    borderBottomColor: tokens.colorBorder,
-  },
-  optionOn: { backgroundColor: tokens.colorAccentTint },
+  list: { flexGrow: 0, flexShrink: 1 },
+  rows: { paddingHorizontal: tokens.spaceXxl, paddingBottom: tokens.space5xl },
+  hairline: { height: 1, backgroundColor: tokens.colorBorder },
 });

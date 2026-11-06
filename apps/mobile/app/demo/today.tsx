@@ -9,6 +9,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Toast } from '../../src/components/Toast.tsx';
 import { useSystemBack } from '../../src/components/useSystemBack.ts';
 import { useLayout } from '../../src/layout/useLayout.ts';
+import { OrgSwitcherProvider, SwitchedNotice } from '../../src/demo/OrgSwitcher.tsx';
+import { switcherStateOf } from '../../src/demo/OrgSwitcherModel.ts';
 import { MOMENTS, momentOf, sayIn } from '../../src/demo/today.ts';
 import type { MomentName } from '../../src/kit/today.ts';
 import type { Tab } from '../../src/components/TodayCover.tsx';
@@ -16,15 +18,21 @@ import type { Tell } from '../../src/components/TodayParts.tsx';
 import { TAB_BAR, TodayScreen } from '../../src/components/TodayScreen.tsx';
 import { TodayShellProvider } from '../../src/components/todayShell.ts';
 import { demoShell } from '../../src/demo/demoShell.ts';
+import { openEvent } from '../../src/demo/events/EventsList.tsx';
+import { EVENT_OF_KEY } from '../../src/demo/events/EventsSample.ts';
 import { useCoverStatusBar } from '../../src/demo/Welcome.tsx';
 import { tokens } from '../../src/theme/tokens.ts';
+
+function toEvents() {
+  router.replace('/demo/events');
+}
 
 function isMoment(name: string | undefined): name is MomentName {
   return MOMENTS.some((moment) => moment === name);
 }
 
 export default function DemoTodayScreen() {
-  const params = useLocalSearchParams<{ moment?: string; toast?: string }>();
+  const params = useLocalSearchParams<{ moment?: string; toast?: string; switcher?: string }>();
   const name = isMoment(params.moment) ? params.moment : 'plan';
   const { i18n } = useTranslation();
   // The demo's words are English, so its dates are too, in the phone's own region.
@@ -40,7 +48,10 @@ export default function DemoTodayScreen() {
   const { kind } = useLayout();
   const [told, setTold] = useState(params.toast);
   const tell = useCallback<Tell>((words) => setTold(words), []);
-  const shell = useMemo(() => demoShell(tell), [tell]);
+  const shell = useMemo(
+    () => demoShell(tell, { events: toEvents, event: (key) => openEvent(EVENT_OF_KEY[key]) }),
+    [tell],
+  );
   const toList = useCallback(() => router.dismissTo('/demo'), []);
   const navigation = useNavigation();
 
@@ -60,20 +71,29 @@ export default function DemoTodayScreen() {
   const onTab = useCallback(
     (tab: Tab) => {
       if (tab === 'Settings') router.replace('/demo/settings');
+      else if (tab === 'Events') toEvents();
       else if (tab !== 'Today') tell(`${tab} has its own design.`);
     },
     [tell],
   );
 
   return (
-    <TodayShellProvider value={shell}>
-      <View style={styles.fill}>
-        <TodayScreen moment={moment} onTab={onTab} />
-        {told != null && (
-          <Told words={told} phone={kind === 'phone'} onClose={() => setTold(undefined)} />
-        )}
-      </View>
-    </TodayShellProvider>
+    <OrgSwitcherProvider state={switcherStateOf(params.switcher)} tell={tell}>
+      <TodayShellProvider value={shell}>
+        <View style={styles.fill}>
+          <TodayScreen
+            moment={moment}
+            onTab={onTab}
+            notices={
+              <SwitchedNotice style={kind === 'tabletLandscape' ? undefined : styles.switched} />
+            }
+          />
+          {told != null && (
+            <Told words={told} phone={kind === 'phone'} onClose={() => setTold(undefined)} />
+          )}
+        </View>
+      </TodayShellProvider>
+    </OrgSwitcherProvider>
   );
 }
 
@@ -90,5 +110,6 @@ function Told({ words, phone, onClose }: { words: string; phone: boolean; onClos
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
+  switched: { marginBottom: tokens.spaceXl },
   toast: { position: 'absolute', left: tokens.spaceXl, right: tokens.spaceXl },
 });
