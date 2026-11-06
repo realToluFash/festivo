@@ -7,7 +7,7 @@ import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { Glyph } from '../Glyph.tsx';
-import { type Anchor, AnchoredMenu, TextAction } from '../settings/Summary.tsx';
+import { type Anchor, AnchoredMenu } from '../settings/Summary.tsx';
 import {
   type Filters,
   NO_FILTERS,
@@ -149,13 +149,17 @@ export function EventsFilterMenu({
           {filtered(filters) && (
             <>
               <View style={styles.rule} />
-              <View style={styles.clear}>
-                <TextAction
-                  label={W.clearFilters}
-                  onPress={() => onFilters(NO_FILTERS)}
-                  testID="events.filter.clear"
-                />
-              </View>
+              <Pressable
+                onPress={() => onFilters(NO_FILTERS)}
+                style={({ pressed }) => [styles.top, pressed && styles.rowPressed]}
+                accessibilityRole="button"
+                accessibilityLabel={W.clearFilters}
+                testID="events.filter.clear"
+              >
+                <Text size={16} weight="medium" accessible={false} style={styles.on}>
+                  {W.clearFilters}
+                </Text>
+              </Pressable>
             </>
           )}
         </>
@@ -195,7 +199,7 @@ export function EventsFilterMenu({
             <View style={styles.between}>
               {(['from', 'to'] as const).map((end) => (
                 <View key={end} style={styles.day}>
-                  <Text size={13} weight="semibold" style={styles.secondary}>
+                  <Text size={13} weight="semibold">
                     {end === 'from' ? W.from : W.to}
                   </Text>
                   <MomentBox
@@ -257,7 +261,7 @@ function TopRow({
       accessibilityLabel={`${title}, ${value}`}
       testID={testID}
     >
-      <Text size={16} weight="semibold" accessible={false} style={styles.grow}>
+      <Text size={16} weight="medium" accessible={false} style={styles.grow}>
         {title}
       </Text>
       <Text
@@ -269,7 +273,7 @@ function TopRow({
       >
         {value}
       </Text>
-      <Glyph name="chevron" size={17} ink={tokens.colorInkTertiary} weight={2.3} />
+      <Glyph name="chevron" size={16} ink={tokens.colorInkTertiary} weight={2.3} />
     </Pressable>
   );
 }
@@ -326,7 +330,12 @@ function Check({
       <View style={[styles.box, on ? styles.boxOn : styles.boxOff]}>
         {on && <Glyph name="tick" size={14} ink={tokens.colorInkOnDark} weight={3} />}
       </View>
-      <Text size={16} weight="medium" accessible={false} style={styles.grow}>
+      <Text
+        size={16}
+        weight={on ? 'semibold' : 'medium'}
+        accessible={false}
+        style={[styles.grow, on && styles.on]}
+      >
         {word}
       </Text>
     </Pressable>
@@ -354,7 +363,12 @@ function Radio({
       testID={testID}
     >
       <RadioMark on={on} />
-      <Text size={16} weight="medium" accessible={false} style={styles.grow}>
+      <Text
+        size={16}
+        weight={on ? 'semibold' : 'medium'}
+        accessible={false}
+        style={[styles.grow, on && styles.on]}
+      >
         {word}
       </Text>
     </Pressable>
@@ -381,35 +395,35 @@ const styles = StyleSheet.create({
     minHeight: tokens.sizeHitPhonePrimary,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: tokens.spaceSm,
-    paddingHorizontal: tokens.spaceXl,
+    gap: tokens.spaceMd,
+    paddingHorizontal: tokens.spacePillEnd,
   },
+  on: { color: tokens.colorAccentText },
   value: { maxWidth: 120 },
-  rule: { height: 1, marginVertical: tokens.spaceXxs, backgroundColor: tokens.colorBorder },
-  clear: { paddingHorizontal: tokens.spaceXl },
+  rule: { height: 1, marginVertical: tokens.spaceXs, backgroundColor: tokens.colorBorder },
   back: {
-    minHeight: tokens.sizeHit,
+    minHeight: tokens.sizeHitPhonePrimary,
     flexDirection: 'row',
     alignItems: 'center',
     gap: tokens.spaceXs,
-    paddingHorizontal: tokens.spaceLg,
+    paddingHorizontal: tokens.spaceMd,
   },
   choice: {
     minHeight: tokens.sizeHit,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: tokens.spaceLg,
-    paddingHorizontal: tokens.spaceXl,
+    gap: tokens.spaceMd,
+    paddingHorizontal: tokens.spacePillEnd,
   },
   box: { width: 22, height: 22, borderRadius: 7, alignItems: 'center', justifyContent: 'center' },
   boxOn: { backgroundColor: tokens.colorAccent },
   boxOff: { borderWidth: 2, borderColor: tokens.colorFieldBorder },
   between: {
     flexDirection: 'row',
-    gap: tokens.spaceMd,
-    paddingHorizontal: tokens.spaceXl,
-    paddingTop: tokens.spaceXs,
-    paddingBottom: tokens.spaceSm,
+    gap: tokens.spaceSm,
+    paddingHorizontal: tokens.spacePillEnd,
+    paddingTop: tokens.spaceXxs,
+    paddingBottom: tokens.spaceMd,
   },
-  day: { flex: 1, gap: tokens.spaceXs },
+  day: { flex: 1, gap: 5 },
 });
