@@ -149,7 +149,6 @@ export function EventFrame({
           styles.blocks,
           phone
             ? {
-                paddingTop: tokens.spaceMd,
                 paddingHorizontal: tokens.spaceXxl,
                 paddingBottom: foot + PHONE_TAB_BAR + tokens.space6xl * 2,
               }
@@ -198,12 +197,24 @@ function MoreSheet({
   onArea: (area: AreaKey) => void;
 }) {
   const opener = useRef<ViewInstance>(null);
+  const insets = useSafeAreaInsets();
 
   return (
-    <Sheet open={open} onClose={onClose} opener={opener} testID="event.more">
-      <View style={styles.more}>
+    <Sheet
+      open={open}
+      onClose={onClose}
+      opener={opener}
+      scrimLabel={W.closeMore}
+      testID="event.more"
+    >
+      <View style={[styles.more, { paddingBottom: Math.max(MORE_FOOT - insets.bottom, 0) }]}>
         <View style={styles.moreHead}>
-          <Text size={18} weight="bold" accessibilityRole="header" style={styles.grow}>
+          <Text
+            size={22}
+            weight="bold"
+            accessibilityRole="header"
+            style={[styles.grow, styles.moreTitle]}
+          >
             {W.more}
           </Text>
           <Pressable
@@ -355,33 +366,47 @@ export function AreaPage({
   event: Shown;
   locale: string;
 }) {
+  const { layout } = useShell();
   return (
     <>
-      <Text size={30} weight="bold" accessibilityRole="header" style={styles.title}>
+      <Text
+        size={30}
+        weight="bold"
+        accessibilityRole="header"
+        style={[styles.title, styles.areaTitle, AREA_TITLE[layout]]}
+      >
         {AREA_WORDS[area]}
       </Text>
       <View style={styles.strip}>
         <EventThumb event={event} side={40} radius={12} />
-        <View style={styles.grow}>
-          <Text size={15} weight="semibold">
+        <View style={[styles.grow, styles.stripWords]}>
+          <Text size={16} weight="semibold" style={styles.stripName}>
             {event.name}
           </Text>
-          <Text size={14} weight="medium" style={styles.secondary}>
+          <Text size={14} weight="medium" style={[styles.secondary, styles.stripLine]}>
             {rowLine(event, locale, false)}
           </Text>
         </View>
       </View>
       <View style={styles.coming} testID={`event.coming.${area}`}>
-        <Text size={16} weight="bold">
+        <Text size={17} weight="semibold" style={styles.comingTitle}>
           {AREA_WORDS[area]}
         </Text>
-        <Text size={15} weight="medium" style={styles.secondary}>
+        <Text size={15} weight="medium" style={[styles.secondary, styles.comingLine]}>
           {COMING[area]}
         </Text>
       </View>
     </>
   );
 }
+
+const MORE_FOOT = 116;
+
+const AREA_TITLE = {
+  phone: { paddingTop: 14, marginBottom: -tokens.spaceHair },
+  portrait: { marginBottom: tokens.spaceXl },
+  landscape: {},
+};
 
 const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
@@ -392,7 +417,8 @@ const styles = StyleSheet.create({
   top: { flexDirection: 'row', alignItems: 'center' },
   blocks: { gap: 18 },
   pane: { paddingTop: 26, paddingHorizontal: 30, paddingBottom: tokens.space6xl * 2, gap: 18 },
-  more: { gap: tokens.spaceXs, padding: tokens.spaceXl, paddingTop: tokens.spaceSm },
+  more: { gap: tokens.spaceXl, paddingHorizontal: tokens.spaceXxl, paddingTop: 31 },
+  moreTitle: { letterSpacing: 22 * -0.015, lineHeight: 22 * 1.2 },
   moreHead: { minHeight: tokens.sizeHit, flexDirection: 'row', alignItems: 'center' },
   close: {
     width: tokens.sizeHit,
@@ -435,10 +461,23 @@ const styles = StyleSheet.create({
     borderRadius: tokens.spaceXl,
     backgroundColor: tokens.colorCard,
   },
-  strip: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceLg },
+  areaTitle: { lineHeight: 30 * 1.12 },
+  strip: {
+    minHeight: 64,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spaceLg,
+    paddingVertical: tokens.spaceXxs,
+  },
+  stripWords: { gap: 3 },
+  stripName: { lineHeight: 16 * 1.3 },
+  stripLine: { lineHeight: 14 * 1.4 },
+  comingTitle: { lineHeight: 17 * 1.3 },
+  comingLine: { lineHeight: 15 * 1.45 },
   coming: {
-    gap: tokens.spaceXs,
-    padding: tokens.spaceXxl,
+    gap: tokens.spaceXxs,
+    paddingVertical: 18,
+    paddingHorizontal: tokens.spaceXxl,
     borderRadius: tokens.radiusCardLarge,
     backgroundColor: tokens.colorInset,
   },
