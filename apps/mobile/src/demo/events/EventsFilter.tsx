@@ -119,6 +119,7 @@ export function EventsFilterMenu({
       onClose={close}
       opener={opener}
       width={272}
+      align="start"
       over={
         picking != null && (
           <PickerLayer picking={picking} locale={locale} onClose={() => setPicking(null)} />

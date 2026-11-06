@@ -6,7 +6,7 @@ import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { Ask, type AskProps, FocusedScreen, SectionHead } from '../settings/Summary.tsx';
-import { EventField } from './EventEdits.tsx';
+import { ASK_WIDTH, EventField, useEditGap } from './EventEdits.tsx';
 import { wallOf } from './EventsModel.ts';
 import { BoxField, MomentBox, type Picking, PickerLayer, pick } from './EventsPick.tsx';
 import { RESTORE_UNTIL, type SampleEvent } from './EventsSample.ts';
@@ -39,6 +39,7 @@ export function LifecycleAsk({
       open={ask != null}
       opener={opener}
       {...words}
+      width={ASK_WIDTH}
       onKeep={onKeep}
       onConfirm={() => onConfirm(shown)}
       testID={`event.ask.${shown}`}
@@ -109,10 +110,11 @@ export function DeleteScreen({
   const [left, setLeft] = useState(start === 'deleteMismatch');
   const matches = typedNameMatches(typed, event.name);
   const mismatch = left && typed !== '' && !matches;
+  const gap = useEditGap();
 
   return (
     <FocusedScreen
-      gap={tokens.spaceXl}
+      gap={gap}
       open={open}
       title={W.deleteEvent}
       verb={{
@@ -192,10 +194,11 @@ export function DuplicateScreen({
   const [picking, setPicking] = useState<Picking | null>(null);
   const choose = (mode: 'date' | 'time') =>
     pick({ title: say.timesIn(event.timeZone), mode, field: starts, take: setStarts }, setPicking);
+  const gap = useEditGap();
 
   return (
     <FocusedScreen
-      gap={tokens.spaceXl}
+      gap={gap}
       open={open}
       title={W.duplicate}
       verb={{

@@ -117,10 +117,20 @@ export interface AskProps {
   onKeep: () => void;
   onConfirm: () => void;
   testID?: string;
+  width?: number;
 }
 
 /** B's one question: what happens, in words, then the way back first and the verb last, red when it removes. Two actions too wide for one line stack with the verb on top (sc-22092). */
-export function AskLayer({ title, line, keep, confirm, onKeep, onConfirm, testID }: AskProps) {
+export function AskLayer({
+  title,
+  line,
+  keep,
+  confirm,
+  onKeep,
+  onConfirm,
+  testID,
+  width,
+}: AskProps) {
   const { layout } = useShell();
   const heading = useRef<TextHandle>(null);
   const [widths, setWidths] = useState({ room: 0, keep: 0, confirm: 0 });
@@ -155,7 +165,7 @@ export function AskLayer({ title, line, keep, confirm, onKeep, onConfirm, testID
   return (
     <View style={[StyleSheet.absoluteFill, styles.askScrim]}>
       <View
-        style={[styles.dialog, { maxWidth: layout === 'phone' ? 340 : 400 }]}
+        style={[styles.dialog, { maxWidth: width ?? (layout === 'phone' ? 340 : 400) }]}
         accessibilityViewIsModal
         onAccessibilityEscape={onKeep}
         testID={testID}
@@ -442,6 +452,7 @@ export function AnchoredMenu({
   onClose,
   opener,
   width = MENU_WIDTH,
+  align = 'end',
   over,
   scrollRef,
   children,
@@ -451,6 +462,7 @@ export function AnchoredMenu({
   onClose: () => void;
   opener: Opener;
   width?: number;
+  align?: 'start' | 'end';
   /** Drawn over the menu in its window, as FocusedScreen's `over` is. */
   over?: ReactNode;
   scrollRef?: Ref<ScrollViewInstance>;
@@ -476,7 +488,12 @@ export function AnchoredMenu({
         <View
           style={[
             styles.menu,
-            { top, left: menuLeft(at, width), width, maxHeight: Math.max(room, MENU_LEAST) },
+            {
+              top,
+              left: menuLeft(at, width, align, frame.width),
+              width,
+              maxHeight: Math.max(room, MENU_LEAST),
+            },
           ]}
           accessibilityViewIsModal
           onAccessibilityEscape={onClose}
@@ -575,7 +592,8 @@ export function FilterMenu<T extends string>({
   );
 }
 
-function menuLeft(at: Anchor, width: number): number {
+function menuLeft(at: Anchor, width: number, align: 'start' | 'end', across: number): number {
+  if (align === 'start' && at.x + width <= across - tokens.spaceXxl) return at.x;
   return Math.max(tokens.spaceLg, at.x + at.width - width);
 }
 

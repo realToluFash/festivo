@@ -20,6 +20,7 @@ import { tokens } from '../../theme/tokens.ts';
 import { EventMesh } from '../Cover.tsx';
 import { Glyph } from '../Glyph.tsx';
 import { LineIcon } from '../settings/AccountCard.tsx';
+import { useShell } from '../settings/Frame.tsx';
 import { Pill } from '../settings/parts.tsx';
 import { type AskProps, FocusedScreen, Row, RowList, TextAction } from '../settings/Summary.tsx';
 import { MESH_EVENT, PhotoFill } from './EventCard.tsx';
@@ -81,6 +82,12 @@ export function EditScreen({ part, ...edit }: EditProps & { part: EditPart }) {
   }
 }
 
+export const ASK_WIDTH = 340;
+
+export function useEditGap(): number {
+  return useShell().layout === 'phone' ? tokens.spaceXl : tokens.spaceLg;
+}
+
 function EditShell({
   part,
   verb = W.save,
@@ -104,6 +111,7 @@ function EditShell({
 }) {
   const [discarding, setDiscarding] = useState(edit.start === 'discard');
   const testID = `event.edit.${part}`;
+  const gap = useEditGap();
   const discard: AskProps | null = discarding
     ? {
         title: W.discardTitle,
@@ -114,17 +122,18 @@ function EditShell({
         onConfirm: edit.onClose,
       }
     : null;
+  const asked = latest ?? discard;
 
   return (
     <FocusedScreen
-      gap={tokens.spaceXl}
+      gap={gap}
       open={edit.open}
       title={TITLES[part]}
       verb={{ label: verb, on: changed, onPress: onSave, testID: `${testID}.save` }}
       onCancel={() => (changed ? setDiscarding(true) : edit.onClose())}
       cancelTestID={`${testID}.cancel`}
       opener={edit.opener}
-      ask={latest ?? discard}
+      ask={asked && { ...asked, width: ASK_WIDTH }}
       over={over ?? null}
       toast={toast ?? null}
       testID={testID}
