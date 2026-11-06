@@ -18,6 +18,7 @@ import { Account } from './Account.tsx';
 import { General } from './General.tsx';
 import { LayersContext } from './layers.ts';
 import { Members } from './Members.tsx';
+import { Notifications } from './Notifications.tsx';
 import { Security } from './Security.tsx';
 import { SignInRules } from './SignInRules.tsx';
 import type { Tell } from './TodayParts.tsx';
@@ -83,6 +84,8 @@ export function Settings({ open = 'members' }: { open?: Drawn }) {
             <Account key={`${viewer.key}:${state}`} viewer={viewer} state={state} tell={tell} />
           ) : open === 'security' ? (
             <Security key={`${viewer.key}:${state}`} viewer={viewer} state={state} tell={tell} />
+          ) : open === 'notifications' ? (
+            <Notifications key={`${viewer.key}:${state}`} state={state} tell={tell} />
           ) : open === 'general' ? (
             <General key={`${viewer.key}:${state}`} viewer={viewer} state={state} tell={tell} />
           ) : open === 'signInRules' ? (

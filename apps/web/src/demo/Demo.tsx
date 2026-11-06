@@ -9,6 +9,7 @@ import { ACCOUNT_PAGES } from './account.ts';
 import { GENERAL_PAGES } from './general.ts';
 import { GetBackInBoard } from './GetBackIn.tsx';
 import { NewAccountBoard } from './NewAccount.tsx';
+import { NOTIFICATIONS_PAGES } from './notifications.ts';
 import { SECURITY_PAGES } from './security.ts';
 import { Settings } from './Settings.tsx';
 import { SETTINGS_PAGES } from './settings.ts';
@@ -107,6 +108,7 @@ export default function Demo() {
       <Route path="settings/members" element={<Settings />} />
       <Route path="settings/account" element={<Settings open="account" />} />
       <Route path="settings/security" element={<Settings open="security" />} />
+      <Route path="settings/notifications" element={<Settings open="notifications" />} />
       <Route path="settings/general" element={<Settings open="general" />} />
       <Route path="settings/sign-in-rules" element={<Settings open="signInRules" />} />
       <Route path="later" element={<Later />} />
@@ -157,6 +159,8 @@ function DemoHome({ from }: { from: string }) {
         <BoardPages pages={ACCOUNT_PAGES} />
         <h3>Security in B · Summary first · desktop</h3>
         <BoardPages pages={SECURITY_PAGES} />
+        <h3>Notification settings in B · Summary first · desktop</h3>
+        <BoardPages pages={NOTIFICATIONS_PAGES} />
         <h3>General in B · Summary first · desktop</h3>
         <BoardPages pages={GENERAL_PAGES} />
         <h3>Sign-in rules in B · Where you stand · desktop</h3>
