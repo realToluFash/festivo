@@ -246,14 +246,9 @@ export function Row({
 }: RowProps) {
   const pressed = onPress != null;
   const grouped = pressed || accessibilityLabel != null;
-  const ring = selected ? 2 : 0;
   const box = [
     styles.row,
-    {
-      minHeight: line == null ? 52 : 64,
-      paddingVertical: pad - ring,
-      paddingHorizontal: gutter - ring,
-    },
+    { minHeight: line == null ? 52 : 64, paddingVertical: pad, paddingHorizontal: gutter },
     selected && styles.rowSelected,
   ];
   const words = (
@@ -481,12 +476,8 @@ const styles = StyleSheet.create({
   headTitle: { flex: 1, minWidth: 0, letterSpacing: -0.18 },
   foot: { paddingTop: tokens.spaceXs },
   row: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceLg },
-  rowSelected: {
-    borderRadius: tokens.spaceXl,
-    borderWidth: 2,
-    borderColor: tokens.colorAccent,
-    backgroundColor: tokens.colorAccentTint,
-  },
+  // Lit like People's row, with no ring: the owner found the ring weird (6 Nov 2026).
+  rowSelected: { borderRadius: tokens.radiusRow, backgroundColor: tokens.colorAccentTint },
   rowPressed: { opacity: tokens.opacityPressed },
   words: { flex: 1, minWidth: 0, gap: 3 },
   titleRow: {
