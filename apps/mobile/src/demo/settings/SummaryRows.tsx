@@ -272,7 +272,7 @@ export function Row({
             size={14}
             weight="medium"
             accessible={grouped ? false : undefined}
-            style={styles.secondary}
+            style={[styles.secondary, styles.line]}
           >
             {line}
           </Text>
@@ -481,7 +481,7 @@ const styles = StyleSheet.create({
   },
   tagTurning: { gap: tokens.spaceXs },
   head: { minHeight: tokens.sizeHit, flexDirection: 'row', alignItems: 'center', gap: 10 },
-  headTitle: { flex: 1, minWidth: 0, letterSpacing: -0.18 },
+  headTitle: { flex: 1, minWidth: 0, letterSpacing: -0.18, lineHeight: 18 * 1.25 },
   foot: { paddingTop: tokens.spaceXs },
   row: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceLg },
   // Lit like People's row, with no ring: the owner found the ring weird (6 Nov 2026).
@@ -495,7 +495,8 @@ const styles = StyleSheet.create({
     columnGap: 8,
     rowGap: 4,
   },
-  title: { flexShrink: 1 },
+  title: { flexShrink: 1, lineHeight: 16 * 1.3 },
+  line: { lineHeight: 14 * 1.4 },
   count: { fontVariant: ['tabular-nums'] },
   hairline: { height: 1, backgroundColor: tokens.colorBorder },
   figures: { fontVariant: ['tabular-nums'] },

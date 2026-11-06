@@ -16,6 +16,7 @@ import { TextField } from '../../components/Field.tsx';
 import { useReadOut } from '../../components/ReadOut.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
+import { Cover } from '../Cover.tsx';
 import { Glyph } from '../Glyph.tsx';
 import { PhoneTabBar } from '../TodayCover.tsx';
 import {
@@ -40,7 +41,7 @@ import {
   TextAction,
   anchorUnder,
 } from '../settings/Summary.tsx';
-import { EventCard, EventThumb } from './EventCard.tsx';
+import { CardPieces, EventCard, EventThumb } from './EventCard.tsx';
 import { EventsFilterMenu, FilterButton } from './EventsFilter.tsx';
 import {
   type CardStep,
@@ -180,7 +181,17 @@ export function EventsList({
     return (
       <ListFrame offline={null}>
         {top}
-        <SummaryCard size={wide ? 'wide' : 'page'} height={200} testID="events.first">
+        <SummaryCard
+          size={wide ? 'wide' : 'page'}
+          height={200}
+          backdrop={
+            <>
+              <Cover shade="side" pieces={[]} />
+              <CardPieces />
+            </>
+          }
+          testID="events.first"
+        >
           <CardSays text={W.firstRunTitle} size={wide ? 28 : 24} heading />
           <View style={styles.cardFoot}>
             <StepButton
@@ -243,7 +254,7 @@ export function EventsList({
           />
         </View>
         {offline && (
-          <Text size={14} weight="medium" style={styles.secondary}>
+          <Text size={14} weight="medium" style={[styles.secondary, styles.said]}>
             {W.searchOffline}
           </Text>
         )}
@@ -279,7 +290,7 @@ export function EventsList({
             />
           )}
           {shownMore > 0 && <Said words={say.moreShown(shownMore)} />}
-          <Text size={14} weight="medium" style={[styles.secondary, styles.figures]}>
+          <Text size={14} weight="medium" style={[styles.secondary, styles.figures, styles.said]}>
             {say.footer(tabEvents.length)}
           </Text>
         </>
@@ -293,7 +304,7 @@ export function EventsList({
               <Text size={18} weight="bold" accessibilityRole="header" style={styles.noMatchTitle}>
                 {W.noMatch}
               </Text>
-              <Text size={15} weight="medium" style={styles.secondary}>
+              <Text size={15} weight="medium" style={[styles.secondary, styles.noMatchLine]}>
                 {noMatchLine(searched, filters, locale)}
               </Text>
               <View style={styles.noMatchActions}>
@@ -421,7 +432,7 @@ function ListTop({
   onBell: (words: string) => void;
 }) {
   return (
-    <View style={styles.top}>
+    <View>
       {org && (
         <View style={styles.orgRow}>
           <OrgPill tell={onBell} />
@@ -434,7 +445,7 @@ function ListTop({
           size={wide ? 34 : 30}
           weight="bold"
           accessibilityRole="header"
-          style={[styles.grow, styles.title]}
+          style={[styles.grow, titled(wide ? 34 : 30)]}
         >
           {W.events}
         </Text>
@@ -461,12 +472,16 @@ function ListTop({
         {bell && !org && <Bell tell={onBell} />}
       </View>
       {summary != null && (
-        <Text size={15} weight="medium" style={[styles.secondary, styles.figures]}>
+        <Text size={15} weight="medium" style={[styles.secondary, styles.figures, styles.summary]}>
           {summary}
         </Text>
       )}
     </View>
   );
+}
+
+function titled(size: number) {
+  return { lineHeight: size * 1.12, letterSpacing: size * -0.02 };
 }
 
 function SearchField({
@@ -681,7 +696,7 @@ function Said({ words }: { words: string }) {
   useReadOut(words);
 
   return (
-    <Text size={14} weight="medium" style={styles.secondary}>
+    <Text size={14} weight="medium" style={[styles.secondary, styles.said]}>
       {words}
     </Text>
   );
@@ -724,10 +739,10 @@ const styles = StyleSheet.create({
   pressed: { opacity: tokens.opacityPressed },
   blocks: { gap: 18 },
   pane: { paddingTop: 26, paddingHorizontal: 30, paddingBottom: tokens.space6xl * 2, gap: 18 },
-  top: { gap: tokens.spaceHair },
   orgRow: { flexDirection: 'row', alignItems: 'center', marginBottom: tokens.spaceSm },
   titleRow: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: tokens.spaceMd },
-  title: { letterSpacing: -0.6 },
+  summary: { marginTop: tokens.spaceHair, lineHeight: 15 * 1.45 },
+  said: { lineHeight: 14 * 1.45 },
   newRound: {
     width: tokens.sizeHit,
     height: tokens.sizeHit,
@@ -816,7 +831,7 @@ const styles = StyleSheet.create({
   count: { opacity: 0.8, fontVariant: ['tabular-nums'] },
   tabWords: { flexDirection: 'row', alignItems: 'baseline', gap: tokens.spaceXxs },
   cardFoot: { marginTop: 'auto' },
-  results: { gap: tokens.spaceXs },
+  results: { gap: 18 },
   countRow: {
     minHeight: tokens.sizeHit,
     flexDirection: 'row',
@@ -825,7 +840,8 @@ const styles = StyleSheet.create({
   },
   groups: { gap: tokens.spaceMd },
   noMatch: { gap: tokens.spaceXs, paddingTop: tokens.spaceXxs },
-  noMatchTitle: { letterSpacing: -0.18 },
+  noMatchTitle: { letterSpacing: -0.18, lineHeight: 18 * 1.25 },
+  noMatchLine: { lineHeight: 15 * 1.45 },
   noMatchActions: { flexDirection: 'row', flexWrap: 'wrap', columnGap: tokens.space3xl },
   band: {
     minHeight: tokens.sizeHit,
