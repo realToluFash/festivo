@@ -1,4 +1,10 @@
 import { useEffect, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
+
+import { Text } from '../../components/Text.tsx';
+import { tokens } from '../../theme/tokens.ts';
+import { type Channel, expiredLine, WORDS } from './AccountModel.ts';
+import { Line } from './Summary.tsx';
 
 /** Seconds until a new code may be sent; an expired code starts with none to wait. */
 export function useCountdown(
@@ -30,3 +36,19 @@ export function useCountdown(
 }
 
 export const CODE_FIGURES = { fontVariant: ['tabular-nums' as const], letterSpacing: 1.5 };
+
+/** An expired code takes the field's place until a new one is sent. */
+export function CodeExpired({ channel }: { channel: Channel }) {
+  return (
+    <View style={styles.expired}>
+      <Text size={16} weight="semibold">
+        {WORDS.expiredTitle}
+      </Text>
+      <Line text={expiredLine(channel)} />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  expired: { gap: tokens.spaceXxs, paddingTop: tokens.spaceXs },
+});
