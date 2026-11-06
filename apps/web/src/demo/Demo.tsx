@@ -5,6 +5,9 @@ import { NotFound } from '../routes/public/NotFound.tsx';
 import { offButton } from '../offButton.ts';
 import { offField } from '../offField.ts';
 import { BoardPage, OrLine, Providers } from './BoardPage.tsx';
+import { EventPage } from './EventPage.tsx';
+import { Events } from './Events.tsx';
+import { EVENTS_PAGES } from './events.ts';
 import { ACCOUNT_PAGES } from './account.ts';
 import { GENERAL_PAGES } from './general.ts';
 import { GetBackInBoard } from './GetBackIn.tsx';
@@ -104,6 +107,8 @@ export default function Demo() {
       <Route path="ways-in" element={<WaysInBoard />} />
       <Route path="signed-in" element={<SignedIn />} />
       <Route path="today" element={<Today />} />
+      <Route path="events" element={<Events />} />
+      <Route path="events/:id" element={<EventPage />} />
       <Route path="settings" element={<Settings />} />
       <Route path="settings/members" element={<Settings />} />
       <Route path="settings/account" element={<Settings open="account" />} />
@@ -149,6 +154,8 @@ function DemoHome({ from }: { from: string }) {
             </li>
           ))}
         </ul>
+        <h3>Events in A · Summary first · desktop</h3>
+        <BoardPages pages={EVENTS_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-28">
