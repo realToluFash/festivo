@@ -604,8 +604,9 @@
 }
 
 .desk-tag.is-yes {
-  background: color-mix(in srgb, var(--optionTeal) 16%, var(--colorCard));
-  color: var(--deskGreen);
+  border: 1px solid var(--colorBorder);
+  background: var(--colorCard);
+  color: var(--colorInk);
 }
 
 .desk-tag.is-now {
