@@ -11,22 +11,20 @@ appId: host.exp.Exponent
 - eraseText: 20
 - inputText: '000000'
 - takeScreenshot: mobile-verify-email-keyboard
-- tapOn:
-    id: 'verifyEmail.submit'
 - extendedWaitUntil:
     visible: 'That code does not match.*'
     timeout: 15000
 - takeScreenshot: mobile-verify-email-wrong
 - extendedWaitUntil:
     visible:
-      id: 'verifyEmail.resendSoon'
+      id: 'verifyEmail.resend'
       text: 'Send a new code'
     timeout: 75000
 - tapOn:
-    id: 'verifyEmail.resendSoon'
+    id: 'verifyEmail.resend'
 - extendedWaitUntil:
     visible:
-      id: 'verifyEmail.resendSoon'
+      id: 'verifyEmail.resend'
       text: 'Send a new code in (1:00|0:[0-5][0-9])'
     timeout: 15000
 - assertNotVisible: 'That code does not match.*'

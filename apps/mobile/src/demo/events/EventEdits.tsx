@@ -17,13 +17,13 @@ import { useReadOut } from '../../components/ReadOut.tsx';
 import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
-import { EventMesh } from '../Cover.tsx';
-import { Glyph } from '../Glyph.tsx';
+import { EventMesh } from '../../components/EventMesh.tsx';
+import { Glyph } from '../../components/Glyph.tsx';
 import { LineIcon } from '../settings/AccountCard.tsx';
 import { useShell } from '../settings/Frame.tsx';
 import { Pill } from '../settings/parts.tsx';
 import { type AskProps, FocusedScreen, Row, RowList, TextAction } from '../settings/Summary.tsx';
-import { MESH_EVENT, PhotoFill } from './EventCard.tsx';
+import { PhotoFill } from './EventCard.tsx';
 import { type EditPart, type EventDemoState, folded, instantOf, wallOf } from './EventsModel.ts';
 import { SearchField } from './EventsList.tsx';
 import { BoxField, MomentBox, type Picking, PickerLayer, pick } from './EventsPick.tsx';
@@ -997,7 +997,7 @@ function CoverEdit(edit: EditProps) {
             <Glyph name="photo" size={56} ink={tokens.colorInkOnDark} weight={1.6} />
           </>
         ) : (
-          <EventMesh event={MESH_EVENT[meshFor(event.id)]} />
+          <EventMesh event={{ mesh: meshFor(event.id), photo: null }} />
         )}
       </View>
       {photo ? (

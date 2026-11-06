@@ -4,9 +4,9 @@ import { StyleSheet, type TextInputInstance, View } from 'react-native';
 
 import { PrimaryButton } from '../../../src/components/Buttons.tsx';
 import { DemoScreen, NavBar } from '../../../src/demo/DemoScreen.tsx';
-import { InsideField } from '../../../src/demo/InsideField.tsx';
-import { Heading, Says } from '../../../src/demo/Lines.tsx';
-import { emailLooksRight } from '../../../src/demo/rules.ts';
+import { InsideField } from '../../../src/steps/InsideField.tsx';
+import { Heading, Says } from '../../../src/steps/Lines.tsx';
+import { emailLooksRight } from '../../../src/steps/rules.ts';
 import { tokens } from '../../../src/theme/tokens.ts';
 
 /** Forgot your password? brings the email typed on sign-in. */

@@ -10,8 +10,6 @@
     "loading": "Loading…"
   },
   "home": {
-    "subtitle": "The night, from your pocket.",
-    "openSignIn": "Sign in",
     "signedInTo": "You’re signed in to {{name}}",
     "openSettings": "Open Settings",
     "switchOrganisation": "Switch organisation"
@@ -42,6 +40,10 @@
     "automatic": "Automatic",
     "follows": "Your language follows you to every device."
   },
+  "welcome": {
+    "tagline": "Plan the event. Run the day.",
+    "withEmail": "Sign in with email"
+  },
   "layouts": {
     "title": "Layouts",
     "intro": "This screen exists to prove the three branches render. It is removable in one commit.",
@@ -57,7 +59,6 @@
   },
   "signIn": {
     "title": "Sign in",
-    "landscapeIntro": "With your email and password. Your language follows you to every device.",
     "email": "Email",
     "password": "Password",
     "reveal": "Show",
@@ -68,17 +69,14 @@
     "refused": "That email and password do not match. Check both, or reset your password.",
     "endedTitle": "You were signed out",
     "endedBody": "Sign in again to carry on.",
+    "codeTimedOutTitle": "That sign-in timed out",
     "lockedTitle": "Too many tries",
-    "lockedBody": "Try again at {{time}}.",
-    "lockedReset": "Reset your password",
-    "or": "or",
     "withGoogle": "Continue with {{provider}}",
     "withApple": "Continue with {{provider}}",
     "providerFailedTitle": "{{provider}} sign-in did not work",
     "providerFailedBody": "Nothing was changed. Try {{provider}} again, or sign in with your email and password.",
     "failedTitle": "Signing in did not work",
     "failedBody": "Something went wrong on the way. Try again in a moment.",
-    "newHere": "New here?",
     "createAccount": "Create an account",
     "passwordBlank": "Enter your password.",
     "timedOutTitle": "Signed out by {{organisation}}’s rule",
@@ -91,7 +89,6 @@
   },
   "register": {
     "title": "Create your account",
-    "intro": "Next, we email you a code to check the address is yours.",
     "name": "Full name",
     "email": "Email",
     "password": "Password",
@@ -102,23 +99,15 @@
     "ruleNote": "That is the only rule. When you submit, we also check the password has not appeared in a known data breach.",
     "submit": "Create account",
     "submitting": "Creating account…",
-    "signIn": "Sign in",
     "breached": "This password has appeared in a known data breach. Choose another.",
     "limitedTitle": "Too many sign-ups from this network",
     "limitedBody": "Try again at {{time}}.",
-    "orWithEmail": "or with email",
-    "landscapeNote": "Or use your email and a password on the right.",
-    "haveAccount": "Already have an account?",
-    "back": "Back to sign in",
     "failedTitle": "Creating your account did not work",
     "failedBody": "Something went wrong on the way. Try again in a moment.",
     "nameBlank": "Enter your full name.",
     "passwordBlank": "Enter a password."
   },
   "verifyEmail": {
-    "step1": "Verify your email",
-    "step1Done": "Email verified · done",
-    "step2": "Your details",
     "title": "Check your email",
     "intro": "We sent a code to {{address}}. Enter it here to show the address is yours.",
     "codeLabel": "Code from the email",
@@ -133,18 +122,12 @@
     "exhaustedTitle": "Too many wrong tries",
     "exhaustedBody": "That code no longer works. Send a new one to carry on.",
     "wrongAddress": "Not your address?",
-    "wrongAddressBody": "and create your account again with the right one.",
-    "registerAgain": "Register again with the right one",
-    "signOut": "Sign out",
     "doneTitle": "Email verified",
-    "doneBody": "{{address}} is confirmed. Next, a few details so your team knows who is who.",
     "doneBodyAlternative": "{{address}} is verified. It stays an alternative address until you make it primary in Account.",
-    "continue": "Continue",
     "failedTitle": "That did not work",
     "failedBody": "Something went wrong on the way. Try again in a moment.",
     "codeBlank": "Enter the 6-digit code from the email.",
-    "codeShort": "The code is 6 digits.",
-    "step1Google": "Email confirmed by {{provider}} · done"
+    "codeShort": "The code is 6 digits."
   },
   "verifyPhone": {
     "title": "Check your messages",
@@ -166,8 +149,6 @@
     "failedBody": "Something went wrong on the way. Try again in a moment.",
     "wrongNumber": "Wrong number?",
     "changeIt": "Change it",
-    "cantGetTexts": "Can't get texts on this number?",
-    "carryOnWithout": "Carry on without it",
     "doneTitle": "Number verified",
     "doneBody": "Soirely can reach you on {{number}} if something goes wrong on the night.",
     "doneBodyAlternative": "{{number}} is verified. It stays an alternative number until you make it primary in Account.",
@@ -197,8 +178,8 @@
   },
   "session": {
     "unreachableTitle": "Cannot reach Soirely",
-    "unreachableBody": "You are still signed in. Soirely is not answering, so nothing can load yet. Check your connection, then try again.",
-    "unreachableBodySignedOut": "Soirely is not answering, so nothing can load yet. Check your connection, then try again.",
+    "unreachableBody": "You are still signed in. Soirely is not answering, so nothing can load yet. Check your connection: the app tries again as soon as it is back.",
+    "unreachableBodySignedOut": "Soirely is not answering, so nothing can load yet. Check your connection: the app tries again as soon as it is back.",
     "retrying": "Trying again…"
   },
   "countryPicker": {
@@ -206,8 +187,6 @@
     "close": "Done"
   },
   "completeProfile": {
-    "title": "A few details",
-    "intro": "So the people you work with know who is who.",
     "name": "Full name",
     "nameBlank": "Add your name to carry on.",
     "organisation": "Organisation name",
@@ -226,10 +205,6 @@
     "saving": "Saving…",
     "failedTitle": "Saving did not work",
     "failedBody": "Something went wrong on the way. Try again in a moment.",
-    "signedInAs": "Signed in as {{email}}.",
-    "signOut": "Sign out",
-    "optional": "Optional",
-    "mobileHelp": "How you are reached on the night if something goes wrong. If you add one, we text it a code to check it.",
     "providerConfirmed": "Signed in with {{provider}}. {{provider}} has already confirmed {{email}}, so there is no email code to enter."
   },
   "forms": {
@@ -243,7 +218,6 @@
   },
   "recovery": {
     "forgot": "Forgot your password?",
-    "forgotShort": "Forgot it?",
     "title": "Reset your password",
     "intro": "Enter the email you sign in with. If it has an account, we send it a link to set a new password.",
     "email": "Email",
@@ -561,6 +535,9 @@
     "stayOut": "You stay signed out until somebody answers. We’ll email {{email}} either way.",
     "notYou": "This wasn’t you?",
     "cancel": "Cancel the request",
+    "cancelTitle": "Cancel your request?",
+    "cancelBody": "You’ll need to start again to get back in.",
+    "keepWaiting": "Keep waiting",
     "cancelledMark": "Cancelled",
     "replacedMark": "Replaced",
     "replacedTitle": "A newer request replaced this one",
@@ -750,6 +727,7 @@
   "roles": {
     "owner": "Owner",
     "administrator": "Administrator",
+    "member": "Member",
     "event_manager": "Event manager",
     "coordinator": "Coordinator",
     "read_only": "Read-only"
@@ -943,7 +921,7 @@
     "currencyBlank": "Choose a currency.",
     "contactBlank": "Enter a contact email address.",
     "contactInvalid": "That does not look like an email address. Check it has an @ and a domain.",
-    "readOnly": "Your role, {{role}}, can see these but not change them. Owners can.",
+    "readOnly": "Your role, {{role}}, can see these but not change them. Owners and admins can.",
     "readOnlyUntilLinked": "{{organisation}} signs in with Google or Apple only. Until you link one, you can see these but not change them.",
     "readOnlyUntilTwoFactor": "{{organisation}} asks people who can manage members, roles, billing or security to use two-factor. Until you turn it on, you can see these but not change them.",
     "failed": "Saving did not work. Nothing was changed. Try again in a moment.",
@@ -983,7 +961,7 @@
       },
       "invitation_revoked": {
         "word": "Withdrawn",
-        "body": "This invitation was withdrawn by {{organisation}}. If you think that is a mistake, ask whoever invited you."
+        "body": "This invitation was withdrawn by {{organisation}}. If you think this is a mistake, ask the person who invited you."
       },
       "invitation_accepted": {
         "word": "Already accepted",
@@ -991,8 +969,8 @@
       },
       "invitation_declined": {
         "word": "Already declined",
-        "body": "You declined this invitation. Ask {{inviter}} to invite you again if you changed your mind.",
-        "bodyNobody": "You declined this invitation. Ask whoever invited you to invite you again if you changed your mind."
+        "body": "You declined this invitation. If you have changed your mind, ask {{inviter}} to invite you again.",
+        "bodyNobody": "You declined this invitation. If you have changed your mind, ask the person who invited you to invite you again."
       },
       "invitation_not_yours": {
         "word": "Signed in as someone else",
@@ -1920,5 +1898,106 @@
   "toast": {
     "undo": "Undo",
     "close": "Close"
+  },
+  "steps": {
+    "back": "Back",
+    "close": "Close",
+    "stepOf": "Step {{step, number}} of {{steps, number}}",
+    "skip": "Skip",
+    "signOut": "Sign out",
+    "continue": "Continue",
+    "codeLabel": "Code, 6 digits",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
+    "emailIntro": "We sent a code to {{address}}.",
+    "organisationTitle": "Your organisation",
+    "mobileTitle": "Your mobile number",
+    "mobileIntro": "So your team can reach you on the night if something goes wrong.",
+    "mobileLine": "We send it a code on WhatsApp, or by text if WhatsApp cannot reach you.",
+    "sendCode": "Send code",
+    "whatsAppTitle": "Check WhatsApp"
+  },
+  "todayScreen": {
+    "today": "Today",
+    "tomorrow": "tomorrow",
+    "allDay": "All day",
+    "starts": "{{name}} starts",
+    "ends": "{{name}} ends",
+    "continues": "{{name}} continues",
+    "dayOf": "day {{day, number}} of {{total, number}}",
+    "dayOfCapital": "Day {{day, number}} of {{total, number}}",
+    "draft": "Draft",
+    "tomorrowCapital": "Tomorrow",
+    "finalWeek": "Final week",
+    "dayAndPlace": "{{day}} · {{place}}",
+    "endsToday": "Ends today at {{time}}",
+    "endsTomorrow": "Ends tomorrow, {{date}} at {{time}}",
+    "endsOn": "Ends {{date}} at {{time}}",
+    "firstSub": "Your first event starts here.",
+    "nothingThisWeek": "Nothing on this week.",
+    "startsOnWeekday": "{{name}} starts on {{weekday}}.",
+    "startsOnDate": "{{name}} starts on {{date}}.",
+    "hello": {
+      "morning": "Good morning",
+      "afternoon": "Good afternoon",
+      "evening": "Good evening",
+      "welcome": "Welcome"
+    },
+    "helloName": {
+      "morning": "Good morning, {{name}}",
+      "afternoon": "Good afternoon, {{name}}",
+      "evening": "Good evening, {{name}}",
+      "welcome": "Welcome, {{name}}"
+    },
+    "arrivedCount": "arrived",
+    "nothingElseToday": "Nothing else today",
+    "nothingToday": "Nothing today",
+    "dateAndHowFar": "{{date}} · {{far}}",
+    "inDays_one": "in {{count, number}} day",
+    "inDays_other": "in {{count, number}} days",
+    "inDaysCapital_one": "In {{count, number}} day",
+    "inDaysCapital_other": "In {{count, number}} days",
+    "days_one": "{{count, number}} day",
+    "days_other": "{{count, number}} days",
+    "tab": {
+      "today": "Today",
+      "events": "Events",
+      "calendar": "Calendar",
+      "settings": "Settings"
+    },
+    "switchOrganisation": "{{name}}. Switch organisation",
+    "notifications": "Notifications",
+    "notificationsUnread_one": "Notifications, {{count, number}} unread",
+    "notificationsUnread_other": "Notifications, {{count, number}} unread",
+    "search": "Search",
+    "personRole": "{{name}}, {{role}}",
+    "liveNow": "Live now",
+    "next": "Next",
+    "openEvent": "Open the event",
+    "openRunOfShow": "Open run of show",
+    "nowLine": "Now · {{happening}}, {{until}}",
+    "liveName": "Live · {{name}}",
+    "liveCount": "Live · {{words}}",
+    "needsYou": "Needs you",
+    "nothingNeedsYou": "Nothing needs you",
+    "upToDate": "You’re up to date on every event.",
+    "thisWeek": "This week",
+    "nothingOnThisWeek": "Nothing on this week",
+    "nextUp": "Next up",
+    "nextUpLabel": "Next up: {{name}}, {{when}}",
+    "yourEvents": "Your events",
+    "allEvents": "All events",
+    "firstTitle": "Set up your first event",
+    "firstIntro": "Give it a name, a date and a place. What needs you, and what’s coming, shows here.",
+    "firstStep": {
+      "nameTitle": "Name it and give it a date",
+      "nameBody": "One day, or several.",
+      "placeTitle": "Add where it is",
+      "placeBody": "An address, or “to be confirmed” for now.",
+      "liveTitle": "Make it live",
+      "liveBody": "It stays a draft until you do."
+    },
+    "createEvent": "Create an event",
+    "stepNumber": "{{n, number}}"
   }
 }

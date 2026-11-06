@@ -25,6 +25,7 @@ __setConfig({
     authorizeUrl: 'http://sandbox.test/apple/authorize',
     clientId: 'soirely-web.test',
   },
+  scheme: null,
 });
 
 await initI18n();

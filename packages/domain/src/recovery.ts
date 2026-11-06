@@ -23,3 +23,13 @@ export function recoveryIntroKey(status: AskedRecovery, nobody: boolean): string
 
   return status === 'waiting' ? 'lostTwoFactor.waitingIntro' : 'lostTwoFactor.turnedDownIntro';
 }
+
+/** Lower case, letters and digits, the dash put in after the fourth: "VTXPRH7Y" is "vtxp-rh7y". */
+export function shapeRecovery(typed: string): string {
+  const plain = typed
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '')
+    .slice(0, 8);
+
+  return plain.length > 4 ? `${plain.slice(0, 4)}-${plain.slice(4)}` : plain;
+}

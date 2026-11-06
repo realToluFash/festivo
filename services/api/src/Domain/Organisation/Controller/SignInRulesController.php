@@ -183,7 +183,7 @@ final readonly class SignInRulesController
     /** @return array<string, mixed> a seeded role by its key, which each client words itself */
     private static function role(Role $role): array
     {
-        return ['id' => $role->getId()->toRfc4122(), 'seededAs' => $role->getSeededAs()?->value, 'name' => $role->getName()];
+        return ['id' => $role->getId()->toRfc4122(), 'seededAs' => $role->getSeededAs()->value];
     }
 
     private function organisation(string $id): Organisation

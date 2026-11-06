@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '../src/api.ts';
 import { heldChallenge, nextAfterSignIn } from '../src/challenge.ts';
+import { timedOutSignIn } from '../src/kit/signInRules.ts';
 import { SecondFactorStep } from '../src/components/SecondFactorStep.tsx';
 import { codePassed } from '../src/providerSignIn.ts';
 
@@ -26,7 +27,7 @@ export default function SignInCode() {
         );
       }}
       onLostBoth={(from) => router.push(`/lost-two-factor?from=${from}`)}
-      onExpired={() => router.replace('/sign-in')}
+      onExpired={() => router.replace(timedOutSignIn(challenge.email))}
     />
   );
 }

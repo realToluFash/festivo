@@ -6,7 +6,7 @@ import { RadioMark } from '../../components/RadioMark.tsx';
 import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
-import { Glyph } from '../Glyph.tsx';
+import { Glyph } from '../../components/Glyph.tsx';
 import { type Anchor, AnchoredMenu } from '../settings/Summary.tsx';
 import {
   type Filters,

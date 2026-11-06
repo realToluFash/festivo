@@ -5,7 +5,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { Text } from '../../components/Text.tsx';
 import { type Channel, isSaving } from '../../kit/notificationSettings.ts';
 import { tokens } from '../../theme/tokens.ts';
-import { Glyph, type GlyphName } from '../Glyph.tsx';
+import { Glyph, type GlyphName } from '../../components/Glyph.tsx';
 import { LEAD_INSET, LineIcon } from './AccountCard.tsx';
 import {
   CATEGORY_NAMES,

@@ -98,9 +98,9 @@ final class SignInRulesTest extends ApiTestCase
     #[Test]
     public function theStrandingListNamesEveryUnlinkedMemberForWhoeverCanChangeTheRules(): void
     {
-        $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Administrator);
-        $this->member('chidi@ire.events', 'Chidi Okoro', SeededRole::Coordinator);
-        $linked = $this->member('tope@ire.events', 'Tope Bello', SeededRole::ReadOnly);
+        $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Admin);
+        $this->member('chidi@ire.events', 'Chidi Okoro', SeededRole::Member);
+        $linked = $this->member('tope@ire.events', 'Tope Bello', SeededRole::Member);
         $this->linkProvider($linked, 'g-tope');
 
         $body = $this->as($this->owner, 'GET', $this->path());
@@ -116,7 +116,7 @@ final class SignInRulesTest extends ApiTestCase
     #[Test]
     public function anUnlinkedMemberStillSignsInWithAPasswordAndReadsButCannotChange(): void
     {
-        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Administrator);
+        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Admin);
         $this->set(['providerOnly' => true]);
 
         $this->signIn('bisi@ire.events');
@@ -137,8 +137,8 @@ final class SignInRulesTest extends ApiTestCase
     #[Test]
     public function anUnlinkedMemberIsToldWhichOfTheirRolesChangesWaitOnLinking(): void
     {
-        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Administrator);
-        $chidi = $this->member('chidi@ire.events', 'Chidi Okoro', SeededRole::Coordinator);
+        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Admin);
+        $chidi = $this->member('chidi@ire.events', 'Chidi Okoro', SeededRole::Member);
         $permissions = '/api/orgs/' . $this->organisation->getId()->toRfc4122() . '/permissions';
         self::assertSame([], $this->as($bisi, 'GET', $permissions)['withheldUntilLinked'] ?? null);
         $this->set(['providerOnly' => true]);
@@ -147,9 +147,9 @@ final class SignInRulesTest extends ApiTestCase
             Vec\filter($seeded->defaults(), static fn (Permission $permission): bool => $permission->isChange()),
             static fn (Permission $permission): string => $permission->value,
         );
-        self::assertSame($changes(SeededRole::Administrator), $this->as($bisi, 'GET', $permissions)['withheldUntilLinked'] ?? null);
+        self::assertSame($changes(SeededRole::Admin), $this->as($bisi, 'GET', $permissions)['withheldUntilLinked'] ?? null);
         self::assertContains('organisation.manage', $this->standingOf($bisi)['withheldUntilLinked']);
-        self::assertSame($changes(SeededRole::Coordinator), $this->standingOf($chidi)['withheldUntilLinked']);
+        self::assertSame($changes(SeededRole::Member), $this->standingOf($chidi)['withheldUntilLinked']);
         self::assertNotContains('organisation.manage', $this->standingOf($chidi)['withheldUntilLinked']);
 
         $this->linkProvider($bisi, 'g-bisi');
@@ -159,7 +159,7 @@ final class SignInRulesTest extends ApiTestCase
     #[Test]
     public function linkingAProviderLiftsReadOnlyOnTheNextRequest(): void
     {
-        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Administrator);
+        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Admin);
         $this->set(['providerOnly' => true]);
         $this->linkProvider($bisi, 'g-bisi');
 
@@ -172,7 +172,7 @@ final class SignInRulesTest extends ApiTestCase
     #[Test]
     public function thePasswordSessionAProviderIsLinkedFromCarriesOnPastItsRefreshes(): void
     {
-        $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Administrator);
+        $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Admin);
         $this->set(['providerOnly' => true]);
         $session = $this->signIn('bisi@ire.events');
         $accessToken = Type\string()->coerce($session['accessToken'] ?? null);
@@ -249,7 +249,7 @@ final class SignInRulesTest extends ApiTestCase
         $lumen = self::service(OrganisationFounder::class)->found($other, 'Studio Lumen', 'GB', 'Europe/London');
         self::em()->flush();
         $this->as($other, 'PATCH', '/api/orgs/' . $lumen->getId()->toRfc4122() . '/sign-in-rules', ['inactivityTimeoutDays' => 7]);
-        $this->join($this->owner, $lumen, SeededRole::Coordinator);
+        $this->join($this->owner, $lumen, SeededRole::Member);
 
         $limit = Type\shape(['organisation' => Type\string(), 'days' => Type\int()], true)->coerce($this->as($this->owner, 'GET', $this->path())['inactivityLimit'] ?? null);
         self::assertSame(['Studio Lumen', 7], [$limit['organisation'], $limit['days']]);
@@ -265,7 +265,7 @@ final class SignInRulesTest extends ApiTestCase
     #[Test]
     public function requiredTwoFactorWithholdsAdministrationAndNothingElse(): void
     {
-        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Administrator);
+        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Admin);
         $this->turnOnTwoFactor($this->owner);
         $this->set(['administratorsNeedTwoFactor' => true]);
 
@@ -280,7 +280,7 @@ final class SignInRulesTest extends ApiTestCase
             $held['withheldUntilTwoFactor'] ?? null,
         );
         self::assertSame(
-            Vec\filter(SeededRole::Administrator->defaults(), static fn (Permission $permission): bool => !$permission->isAdministrative()),
+            Vec\filter(SeededRole::Admin->defaults(), static fn (Permission $permission): bool => !$permission->isAdministrative()),
             Vec\map(Type\vec(Type\string())->coerce($held['permissions']), Permission::from(...)),
         );
     }
@@ -288,7 +288,7 @@ final class SignInRulesTest extends ApiTestCase
     #[Test]
     public function aMemberWithNoAdministrativePermissionIsUntouchedByRequiredTwoFactor(): void
     {
-        $chidi = $this->member('chidi@ire.events', 'Chidi Okoro', SeededRole::Coordinator);
+        $chidi = $this->member('chidi@ire.events', 'Chidi Okoro', SeededRole::Member);
         $before = $this->as($chidi, 'GET', '/api/orgs/' . $this->organisation->getId()->toRfc4122() . '/permissions');
         $this->turnOnTwoFactor($this->owner);
         $this->set(['administratorsNeedTwoFactor' => true]);
@@ -300,7 +300,7 @@ final class SignInRulesTest extends ApiTestCase
     #[Test]
     public function settingUpTwoFactorRestoresAdministrationOnTheNextRequest(): void
     {
-        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Administrator);
+        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Admin);
         $this->turnOnTwoFactor($this->owner);
         $this->set(['administratorsNeedTwoFactor' => true]);
         $this->turnOnTwoFactor($bisi);
@@ -349,7 +349,7 @@ final class SignInRulesTest extends ApiTestCase
     #[Test]
     public function requiringGoogleOrAppleIsRefusedToSomebodyWithNeitherLinkedAndChangesNothing(): void
     {
-        $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Administrator);
+        $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Admin);
         $this->unlink($this->owner);
         self::assertFalse($this->as($this->owner, 'GET', $this->path())['ownProvider'] ?? null);
 
@@ -384,7 +384,7 @@ final class SignInRulesTest extends ApiTestCase
     #[Test]
     public function theStrandingListNeverNamesTheMemberReadingIt(): void
     {
-        $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Administrator);
+        $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Admin);
         $this->unlink($this->owner);
 
         $body = $this->as($this->owner, 'GET', $this->path());
@@ -411,8 +411,8 @@ final class SignInRulesTest extends ApiTestCase
     #[Test]
     public function aChangeIsRecordedWithWhoAndWhenAndEveryMemberIsEmailed(): void
     {
-        $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Administrator);
-        $this->member('chidi@ire.events', 'Chidi Okoro', SeededRole::Coordinator);
+        $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Admin);
+        $this->member('chidi@ire.events', 'Chidi Okoro', SeededRole::Member);
 
         $body = $this->set(['providerOnly' => true, 'inactivityTimeoutDays' => 30]);
 
@@ -616,7 +616,7 @@ final class SignInRulesTest extends ApiTestCase
     #[Test]
     public function changingTheRulesNeedsOrganisationManage(): void
     {
-        $chidi = $this->member('chidi@ire.events', 'Chidi Okoro', SeededRole::Coordinator);
+        $chidi = $this->member('chidi@ire.events', 'Chidi Okoro', SeededRole::Member);
 
         $this->as($chidi, 'PATCH', $this->path(), ['providerOnly' => true]);
         self::assertSame(403, $this->statusCode());
@@ -629,7 +629,7 @@ final class SignInRulesTest extends ApiTestCase
     #[Test]
     public function anOrganisationWithNoRulesBehavesAsBefore(): void
     {
-        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Administrator);
+        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Admin);
         $refreshToken = $this->signedInToken('bisi@ire.events');
 
         self::mockTime('+29 days');
@@ -645,7 +645,7 @@ final class SignInRulesTest extends ApiTestCase
     #[Test]
     public function aMembersOtherOrganisationsAreUntouched(): void
     {
-        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Administrator);
+        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Admin);
         $own = self::service(OrganisationFounder::class)->found($this->fresh($bisi), 'Bisi Studio', 'NG', 'Africa/Lagos');
         self::em()->flush();
         $this->turnOnTwoFactor($this->owner);
@@ -677,7 +677,7 @@ final class SignInRulesTest extends ApiTestCase
     #[Test]
     public function anUnlinkedMembersResetStillSignsThemIn(): void
     {
-        $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Administrator);
+        $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Admin);
         $this->set(['providerOnly' => true]);
 
         $this->forgot('bisi@ire.events');
@@ -730,7 +730,7 @@ final class SignInRulesTest extends ApiTestCase
     #[Test]
     public function aReadOnlyMemberIsOfferedNoChange(): void
     {
-        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Administrator);
+        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Admin);
         $this->set(['providerOnly' => true]);
 
         $offered = Type\vec(Type\string())->coerce($this->as($bisi, 'GET', '/api/orgs/' . $this->organisation->getId()->toRfc4122() . '/permissions')['permissions'] ?? null);

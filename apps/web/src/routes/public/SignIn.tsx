@@ -1,5 +1,6 @@
 import { formatTimeOfDay, lockLiftsAt } from '@soirely/domain';
 import { ApiError } from '@soirely/api-client';
+import type { TFunction } from 'i18next';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router';
@@ -24,6 +25,7 @@ type Status =
   | { kind: 'providerFailed'; provider: string }
   | { kind: 'failed' }
   | { kind: 'sessionEnded' }
+  | { kind: 'codeTimedOut' }
   | { kind: 'timedOut'; rule: TimedOut }
   | ({ kind: 'providerOnly' } & ProviderOnly);
 
@@ -32,7 +34,12 @@ export function SignIn() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const { state: carried } = useLocation() as {
-    state: { timedOut?: TimedOut; providerOnly?: ProviderOnly } | null;
+    state: {
+      timedOut?: TimedOut;
+      providerOnly?: ProviderOnly;
+      email?: string;
+      codeTimedOut?: boolean;
+    } | null;
   };
   const [status, setStatus] = useState<Status>(() => {
     const provider = params.get('provider-failed');
@@ -40,6 +47,7 @@ export function SignIn() {
     if (provider != null) return { kind: 'providerFailed', provider };
     if (carried?.timedOut != null) return { kind: 'timedOut', rule: carried.timedOut };
     if (carried?.providerOnly != null) return { kind: 'providerOnly', ...carried.providerOnly };
+    if (carried?.codeTimedOut === true) return { kind: 'codeTimedOut' };
 
     return params.has('signed-out') ? { kind: 'sessionEnded' } : { kind: 'ready' };
   });
@@ -93,106 +101,33 @@ export function SignIn() {
     } catch (error) {
       const refusal = refusalFrom(error, values.email);
       setStatus(refusal);
-      if (refusal.kind === 'refused') land('password');
+      if (refusal.kind === 'refused') {
+        land('password');
+        const password = document.getElementById('password');
+        if (password instanceof HTMLInputElement && document.activeElement === password)
+          password.select();
+      }
     }
   }
 
+  const notice = noticeFor(status, t);
+
   return (
-    <AuthPage>
-      <h1>{t('signIn.title')}</h1>
-
-      {status.kind === 'sessionEnded' && (
-        <div className="notice notice-quiet" role="status">
-          <span className="mark mark-info" aria-hidden="true">
-            i
-          </span>
-          <div className="notice-body">
-            <p className="notice-title">{t('signIn.endedTitle')}</p>
-            <p>{t('signIn.endedBody')}</p>
-          </div>
-        </div>
-      )}
-
-      {status.kind === 'timedOut' && (
-        <div className="notice notice-quiet" role="status">
-          <span className="mark mark-info" aria-hidden="true">
-            i
-          </span>
-          <div className="notice-body">
-            <p className="notice-title">
-              {t('signIn.timedOutTitle', { organisation: status.rule.organisation })}
-            </p>
-            <p>
-              {t('signIn.timedOutBody', {
-                organisation: status.rule.organisation,
-                count: status.rule.days,
-              })}
-            </p>
-          </div>
-        </div>
-      )}
-
-      {status.kind === 'providerOnly' && (
-        <div className="notice notice-quiet" role="alert">
-          <span className="mark mark-info" aria-hidden="true">
-            i
-          </span>
-          <div className="notice-body">
-            <p className="notice-title">
-              {t('signIn.providerOnlyTitle', { organisation: status.organisation })}
-            </p>
-            <p>
-              {t('signIn.providerOnlyBody', {
-                organisation: status.organisation,
-                providers: providerList(status.providers),
-              })}
-            </p>
-          </div>
-        </div>
-      )}
-
-      {status.kind === 'failed' && (
-        <div className="notice notice-broken" role="alert">
-          <span className="mark mark-broken" aria-hidden="true">
-            ✕
-          </span>
-          <div className="notice-body">
-            <p className="notice-title">{t('signIn.failedTitle')}</p>
-            <p>{t('signIn.failedBody')}</p>
-          </div>
-        </div>
-      )}
-
-      {status.kind === 'rateLimited' && (
-        <div className="notice notice-attention" role="alert">
-          <span className="mark mark-attention" aria-hidden="true">
-            !
-          </span>
-          <div className="notice-body">
-            <p className="notice-title">{t('signIn.lockedTitle')}</p>
-            <p>{t('signIn.lockedBody', { time: status.retryAt })}</p>
-            <p className="notice-action">
+    <AuthPage bare>
+      <div className="auth-heading">
+        <h1>{t('signIn.title')}</h1>
+        {notice != null && (
+          <div className="auth-notice" role={notice.alert ? 'alert' : 'status'}>
+            <p className="auth-notice-title">{notice.title}</p>
+            <p>{notice.body}</p>
+            {status.kind === 'rateLimited' && (
               <Link className="link-button" to="/forgot-password">
                 {t('signIn.lockedReset')}
               </Link>
-            </p>
+            )}
           </div>
-        </div>
-      )}
-
-      {status.kind === 'providerFailed' && (
-        <div className="notice notice-broken" role="alert">
-          <span className="mark mark-broken" aria-hidden="true">
-            ✕
-          </span>
-          <div className="notice-body">
-            <p className="notice-title">
-              {t('signIn.providerFailedTitle', { provider: status.provider })}
-            </p>
-            <p>{t('signIn.providerFailedBody', { provider: status.provider })}</p>
-          </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* A password cannot sign this account in, so the form gives way to the buttons it has linked. */}
       {status.kind === 'providerOnly' ? (
@@ -204,7 +139,7 @@ export function SignIn() {
             </div>
           )}
 
-          <ProviderSignIn only={status.providers} />
+          <ProviderSignIn only={status.providers} pair />
 
           <p className="muted">
             {t('signIn.providerOnlyFootnote', { organisation: status.organisation })}
@@ -226,70 +161,63 @@ export function SignIn() {
             noValidate
             onSubmit={(event) => void submit(event)}
           >
-            <div className="field">
-              <label htmlFor="email">{t('signIn.email')}</label>
-              <input
-                className={checks.errors.email == null ? 'input' : 'input input-wrong'}
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                autoCorrect="off"
-                spellCheck={false}
-                defaultValue={status.kind === 'timedOut' ? status.rule.email : undefined}
-                {...offField(busy)}
-                required
-                aria-invalid={checks.errors.email != null}
-                aria-describedby={checks.errors.email == null ? undefined : 'email-error'}
-                onBlur={(event) => checks.left('email', event.target.value)}
-                onChange={(event) => checks.edited('email', event.target.value)}
-              />
-              {checks.errors.email != null && (
-                <FieldError id="email-error" message={checks.errors.email} />
-              )}
-            </div>
-
-            <div className="field">
-              <div className="field-heading">
-                <label htmlFor="password">{t('signIn.password')}</label>
-                {/* Shorter on a phone, as drawn; the name a screen reader hears stays the whole question. */}
-                <Link
-                  className="link-button"
-                  to="/forgot-password"
-                  aria-label={t('recovery.forgot')}
-                >
-                  <span className="wide-only">{t('recovery.forgot')}</span>
-                  <span className="narrow-only">{t('recovery.forgotShort')}</span>
-                </Link>
+            <div className="auth-fields">
+              <div className={checks.errors.email == null ? 'field' : 'field field-wrong'}>
+                <label htmlFor="email">{t('signIn.email')}</label>
+                <input
+                  className={checks.errors.email == null ? 'input' : 'input input-wrong'}
+                  id="email"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  defaultValue={status.kind === 'timedOut' ? status.rule.email : carried?.email}
+                  {...offField(busy)}
+                  required
+                  aria-invalid={checks.errors.email != null}
+                  aria-describedby={checks.errors.email == null ? undefined : 'email-error'}
+                  onBlur={(event) => checks.left('email', event.target.value)}
+                  onChange={(event) => checks.edited('email', event.target.value)}
+                />
+                {checks.errors.email != null && (
+                  <FieldError id="email-error" message={checks.errors.email} />
+                )}
               </div>
-              <PasswordField
-                id="password"
-                autoComplete="current-password"
-                wrong={status.kind === 'refused' || checks.errors.password != null}
-                disabled={busy}
-                submitting={busy}
-                describedBy={
-                  status.kind === 'refused' || checks.errors.password != null
-                    ? 'password-error'
-                    : undefined
-                }
-                onBlur={(value) => checks.left('password', value)}
-                onChange={(value) => checks.edited('password', value)}
-              />
 
-              {/* One message for a wrong address and a wrong password, because
+              <div className={checks.errors.password == null ? 'field' : 'field field-wrong'}>
+                <div className="field-heading">
+                  <label htmlFor="password">{t('signIn.password')}</label>
+                  <Link className="link-button" to="/forgot-password">
+                    {t('recovery.forgot')}
+                  </Link>
+                </div>
+                {/* A refusal turns no field red: it does not say which of the two is wrong. */}
+                <PasswordField
+                  id="password"
+                  autoComplete="current-password"
+                  wrong={checks.errors.password != null}
+                  disabled={busy}
+                  submitting={busy}
+                  describedBy={
+                    status.kind === 'refused' || checks.errors.password != null
+                      ? 'password-error'
+                      : undefined
+                  }
+                  onBlur={(value) => checks.left('password', value)}
+                  onChange={(value) => checks.edited('password', value)}
+                />
+
+                {/* One message for a wrong address and a wrong password, because
                       two messages answer "is this address registered". */}
-              {checks.errors.password != null ? (
-                <FieldError id="password-error" message={checks.errors.password} />
-              ) : (
-                status.kind === 'refused' && (
-                  <FieldError id="password-error" message={t('signIn.refused')}>
-                    <Link className="link-button" to="/forgot-password">
-                      {t('signIn.lockedReset')}
-                    </Link>
-                  </FieldError>
-                )
-              )}
+                {checks.errors.password != null ? (
+                  <FieldError id="password-error" message={checks.errors.password} />
+                ) : (
+                  status.kind === 'refused' && (
+                    <FieldError id="password-error" message={t('signIn.noMatch')} />
+                  )
+                )}
+              </div>
             </div>
 
             <button
@@ -305,18 +233,58 @@ export function SignIn() {
                   : t('signIn.submit')}
             </button>
           </form>
-          <ProviderSignIn />
+          <ProviderSignIn pair />
         </>
       )}
-
-      <div className="auth-footnote">
-        <span>{t('signIn.newHere')}</span>
-        <Link className="link-button" to="/register">
-          {t('signIn.createAccount')}
-        </Link>
-      </div>
     </AuthPage>
   );
+}
+
+/** The line under the title, in the words each state has always had. */
+function noticeFor(
+  status: Status,
+  t: TFunction,
+): { title: string; body: string; alert: boolean } | null {
+  switch (status.kind) {
+    case 'sessionEnded':
+      return { title: t('signIn.endedTitle'), body: t('signIn.endedBody'), alert: false };
+    case 'codeTimedOut':
+      return { title: t('signIn.codeTimedOutTitle'), body: t('signIn.endedBody'), alert: false };
+    case 'timedOut':
+      return {
+        title: t('signIn.timedOutTitle', { organisation: status.rule.organisation }),
+        body: t('signIn.timedOutBody', {
+          organisation: status.rule.organisation,
+          count: status.rule.days,
+        }),
+        alert: false,
+      };
+    case 'providerOnly':
+      return {
+        title: t('signIn.providerOnlyTitle', { organisation: status.organisation }),
+        body: t('signIn.providerOnlyBody', {
+          organisation: status.organisation,
+          providers: providerList(status.providers),
+        }),
+        alert: true,
+      };
+    case 'failed':
+      return { title: t('signIn.failedTitle'), body: t('signIn.failedBody'), alert: true };
+    case 'rateLimited':
+      return {
+        title: t('signIn.lockedTitle'),
+        body: t('signIn.lockedBody', { time: status.retryAt }),
+        alert: true,
+      };
+    case 'providerFailed':
+      return {
+        title: t('signIn.providerFailedTitle', { provider: status.provider }),
+        body: t('signIn.providerFailedBody', { provider: status.provider }),
+        alert: true,
+      };
+    default:
+      return null;
+  }
 }
 
 function refusalFrom(error: unknown, typed: string): Status {

@@ -14,7 +14,7 @@ import { CodeField, Field, focusChecked, focusRefused } from '../../components/F
 import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
-import { Glyph } from '../Glyph.tsx';
+import { Glyph } from '../../components/Glyph.tsx';
 import { LEAD_INSET, LineIcon } from './AccountCard.tsx';
 import { CODE_FIGURES } from './AccountParts.tsx';
 import { authenticatorProblem } from './AccountSample.ts';

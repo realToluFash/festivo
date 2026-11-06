@@ -6,8 +6,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { SettingsSection } from '../../kit/appNav.ts';
 import { useLayout } from '../../layout/useLayout.ts';
 import { tokens } from '../../theme/tokens.ts';
-import type { Tab } from '../TodayCover.tsx';
-import type { Tell } from '../TodayParts.tsx';
+import type { Tab } from '../../components/TodayCover.tsx';
+import type { Tell } from '../../components/TodayParts.tsx';
+import { OrgSwitcherProvider } from '../OrgSwitcher.tsx';
 import { useCoverStatusBar } from '../Welcome.tsx';
 import { type Shell, ShellContext } from '../settings/Frame.tsx';
 import { layoutOf, settingsHref } from '../settings/Route.tsx';
@@ -55,16 +56,18 @@ export function PeopleRoute() {
 
   return (
     <ShellContext.Provider value={shell}>
-      <View style={styles.fill}>
-        <PeopleSection />
-        {told != null && (
-          <PageToast
-            words={told}
-            onClose={() => setTold(undefined)}
-            bottom={Math.max(insets.bottom, tokens.spaceLg)}
-          />
-        )}
-      </View>
+      <OrgSwitcherProvider state={null} tell={tell}>
+        <View style={styles.fill}>
+          <PeopleSection />
+          {told != null && (
+            <PageToast
+              words={told}
+              onClose={() => setTold(undefined)}
+              bottom={Math.max(insets.bottom, tokens.spaceLg)}
+            />
+          )}
+        </View>
+      </OrgSwitcherProvider>
     </ShellContext.Provider>
   );
 }

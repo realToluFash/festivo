@@ -13,6 +13,7 @@ use App\Entity\Event;
 use App\Entity\Organisation;
 use App\Enum\EventPhase;
 use App\Enum\FeedEntryStatus;
+use App\Http\Access\EventScope;
 use App\Http\Access\Grants;
 use DateTimeImmutable;
 use DateTimeZone;
@@ -37,8 +38,8 @@ final readonly class CalendarFeedWriter
     ) {
     }
 
-    /** @param list<Event> $events every event of the organisation, deleted ones included */
-    public function write(Organisation $organisation, array $events, Grants $grants, DateTimeImmutable $now): string
+    /** @param list<Event> $events every event of the organisation the member reaches, deleted ones included */
+    public function write(Organisation $organisation, array $events, EventScope $scope, DateTimeImmutable $now): string
     {
         $entries = [];
         $instants = [];
@@ -52,7 +53,7 @@ final readonly class CalendarFeedWriter
             }
 
             $zone = new DateTimeZone($event->getTimeZone());
-            $milestones = FeedEntryStatus::Confirmed === $status ? $this->areaMilestones($event, $grants) : [];
+            $milestones = FeedEntryStatus::Confirmed === $status ? $this->areaMilestones($event, $scope->on($event->getId()) ?? Grants::only([])) : [];
             $entries = [...$entries, ...$this->event($event, $zone, $status, $now)];
 
             foreach ($milestones as $milestone) {

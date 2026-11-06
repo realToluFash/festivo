@@ -92,36 +92,23 @@ describe('the way back from Create your account (sc-23277)', () => {
     return router;
   }
 
-  it('reads ‹ Sign in, and is heard as Back to sign in', () => {
-    from(['/register']);
-
-    const back = screen.getByRole('button', { name: 'Back to sign in' });
-    expect(back.textContent).toBe('‹Sign in');
-  });
-
-  it('sits in the header in place of the brand', () => {
+  it('keeps the brand in the header, with Already have an account? Sign in at its end (sc-29065)', () => {
     from(['/register']);
 
     const header = screen.getByRole('banner');
-    expect(within(header).getByRole('button', { name: 'Back to sign in' })).toBeTruthy();
-    expect(within(header).queryByText('Soirely')).toBeNull();
+    expect(within(header).getByText('Already have an account?')).toBeTruthy();
+    expect(within(header).getByRole('link', { name: 'Sign in' }).getAttribute('href')).toBe(
+      '/sign-in',
+    );
+    expect(screen.queryByRole('button', { name: 'Back to sign in' })).toBeNull();
   });
 
-  it('does what the browser’s Back does, when there is a page to go back to', async () => {
-    const router = from(['/sign-in', '/forgot-password', '/register']);
-
-    fireEvent.click(screen.getByRole('button', { name: 'Back to sign in' }));
-
-    await waitFor(() => expect(router.state.location.pathname).toBe('/forgot-password'));
-  });
-
-  it('opens Sign in when the account form was the first page opened', async () => {
+  it('opens Sign in from the header', async () => {
     const router = from(['/register']);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Back to sign in' }));
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('link', { name: 'Sign in' }));
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/sign-in'));
-    expect(router.state.historyAction).toBe('REPLACE');
   });
 });
 
@@ -235,7 +222,7 @@ describe('creating an account, for real', () => {
     expect(sessionStorage.getItem('soirely.registration')).toBeNull();
   });
 
-  it('offers to register again, not to sign out, when the address is wrong', async () => {
+  it('comes Back from the email code with the name and email kept, and the password empty (sc-29065)', async () => {
     answering({
       'POST /api/auth/register': () =>
         json({ registration: 'the-handle', email: 'folake@ire.events' }, 202),
@@ -244,13 +231,25 @@ describe('creating an account, for real', () => {
 
     at('/register');
     fillIn();
-    fireEvent.click(
-      await screen.findByRole('button', { name: 'Register again with the right one' }),
-    );
+    fireEvent.click(await screen.findByRole('button', { name: 'Back' }));
 
-    await waitFor(() => expect(sessionStorage.getItem('soirely.registration')).toBeNull());
-    expect(screen.queryByRole('button', { name: 'Sign out' })).toBeNull();
-    expect(screen.queryByText(/create your account again/)).toBeNull();
+    await screen.findByRole('heading', { level: 1, name: 'Create your account' });
+    expect(sessionStorage.getItem('soirely.registration')).toBeNull();
+    expect((screen.getByLabelText('Full name') as HTMLInputElement).value).toBe('Folake Adeyemi');
+    expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe('folake@ire.events');
+    expect((screen.getByLabelText('Password') as HTMLInputElement).value).toBe('');
+    expect(screen.queryByText('Register again with the right one')).toBeNull();
+  });
+
+  it('says a short password is short on submit, and sends nothing (sc-29065)', () => {
+    const sent = answering({});
+    at('/register');
+
+    fillIn('lagos-evening-');
+
+    expect(screen.getByText('Use at least 15 characters.')).toBeDefined();
+    expect(document.activeElement).toBe(screen.getByLabelText('Password'));
+    expect(sent).toEqual([]);
   });
 
   /** A taken address gets no code, so its every code reads like this one: there is no "taken" to show. */

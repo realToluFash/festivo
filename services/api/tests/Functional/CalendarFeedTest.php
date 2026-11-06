@@ -12,14 +12,16 @@ use App\Entity\Membership;
 use App\Entity\Organisation;
 use App\Entity\Role;
 use App\Entity\User;
+use App\Enum\EventRole;
 use App\Enum\MembershipStatus;
 use App\Enum\MilestoneOwner;
-use App\Enum\Permission;
 use App\Enum\PermissionArea;
+use App\Enum\SeededRole;
 use App\Tests\ApiTestCase;
 use App\Tests\Double\RefusingRateLimiterFactory;
 use App\Tests\Double\ScriptedMilestones;
 use App\Tests\Traits\OnboardsAccounts;
+use App\Tests\Traits\PutsPeopleOnEvents;
 use DateTimeImmutable;
 use DateTimeZone;
 use Doctrine\DBAL\Connection;
@@ -48,6 +50,7 @@ use Symfony\Contracts\Translation\TranslatorInterface;
 final class CalendarFeedTest extends ApiTestCase
 {
     use OnboardsAccounts;
+    use PutsPeopleOnEvents;
 
     /** @mago-expect lint:no-literal-password */
     private const string PASSWORD = 'a decent passphrase';
@@ -168,7 +171,7 @@ final class CalendarFeedTest extends ApiTestCase
     {
         $id = $this->create('Adé at 40', '2030-11-14T16:00', '2030-11-14T23:00', 'Africa/Lagos');
         $this->patch($id, ['hosts' => ['Chief Adébáyọ̀ Ọlábísí', 'Mrs Fúnmi Ọlábísí']]);
-        $this->member('planner@ire.events', $this->role('Planner', [Permission::EventsRead]));
+        $this->member('planner@ire.events');
 
         $body = $this->fetch($this->link($this->owner));
 
@@ -184,7 +187,7 @@ final class CalendarFeedTest extends ApiTestCase
     {
         $id = $this->create('Owambe', '2030-11-14T16:00', '2030-11-14T23:00', 'Africa/Lagos');
         $this->balanceDue($id, '2030-11-10T12:00:00+01:00');
-        $eventsOnly = $this->member('events@ire.events', $this->role('Events only', [Permission::EventsRead]));
+        $eventsOnly = $this->member('events@ire.events', $id, EventRole::CanCheckIn);
         $stranger = $this->account('stranger@elsewhere.events');
         $elsewhere = self::service(OrganisationFounder::class)->found($stranger, 'Elsewhere', 'NG', 'Africa/Lagos');
         self::em()->flush();
@@ -216,9 +219,8 @@ final class CalendarFeedTest extends ApiTestCase
     #[Test]
     public function aMemberWhoLosesAccessGetsANotFoundOnTheNextFetch(): void
     {
-        $this->create('Owambe', '2030-11-14T16:00', '2030-11-14T23:00', 'Africa/Lagos');
-        $role = $this->role('Planner', [Permission::EventsRead]);
-        $planner = $this->member('planner@ire.events', $role);
+        $id = $this->create('Owambe', '2030-11-14T16:00', '2030-11-14T23:00', 'Africa/Lagos');
+        $planner = $this->member('planner@ire.events', $id, EventRole::CanView);
         $path = $this->link($planner);
         $connection = self::service(Connection::class);
 
@@ -233,12 +235,12 @@ final class CalendarFeedTest extends ApiTestCase
         $this->fetch($path);
         self::assertSame(200, $this->statusCode(), 'back again');
 
-        $connection->executeStatement("UPDATE roles SET permissions = '[\"guests.read\"]' WHERE id = :role", ['role' => $role->getId()->toRfc4122()]);
-        self::em()->clear();
-        $this->fetch($path);
-        self::assertSame(404, $this->statusCode(), 'without events.read');
+        self::assertSame(['Owambe'], $this->summaries($path), 'back again with its role on the event');
 
-        $connection->executeStatement("UPDATE roles SET permissions = '[\"events.read\"]' WHERE id = :role", ['role' => $role->getId()->toRfc4122()]);
+        $connection->executeStatement('DELETE FROM event_people WHERE event_id = :event', ['event' => $id]);
+        self::em()->clear();
+        self::assertSame([], $this->summaries($path), 'without a role on the event');
+
         $connection->executeStatement("UPDATE memberships SET status = 'left_or_removed' WHERE user_id = :user", ['user' => $planner->getId()->toRfc4122()]);
         self::em()->clear();
         $this->fetch($path);
@@ -248,7 +250,7 @@ final class CalendarFeedTest extends ApiTestCase
     #[Test]
     public function aDeletedAccountsLinkIsNotFound(): void
     {
-        $planner = $this->member('planner@ire.events', $this->role('Planner', [Permission::EventsRead]));
+        $planner = $this->member('planner@ire.events');
         $path = $this->link($planner);
 
         self::service(Connection::class)->executeStatement('UPDATE users SET deleted_at = NOW() WHERE id = :user', ['user' => $planner->getId()->toRfc4122()]);
@@ -262,7 +264,7 @@ final class CalendarFeedTest extends ApiTestCase
     public function theLinksTokenIsLongRandomAndStoredOnlyAsAHash(): void
     {
         $path = $this->link($this->owner);
-        $other = $this->link($this->member('planner@ire.events', $this->role('Planner', [Permission::EventsRead])));
+        $other = $this->link($this->member('planner@ire.events'));
         $token = Str\strip_suffix(Str\strip_prefix($path, FeedLinkIssuer::PATH), FeedLinkIssuer::SUFFIX);
 
         self::assertMatchesRegularExpression('/^[A-Za-z0-9_-]{43}$/', $token, '256 bits, base64url');
@@ -307,7 +309,7 @@ final class CalendarFeedTest extends ApiTestCase
         };
         self::getContainer()->set('limiter.calendar_feed_token', $limits);
         $path = $this->link($this->owner);
-        $other = $this->link($this->member('planner@ire.events', $this->role('Planner', [Permission::EventsRead])));
+        $other = $this->link($this->member('planner@ire.events'));
         $limits->spent = FeedLinkIssuer::hash(Str\strip_suffix(Str\strip_prefix($path, FeedLinkIssuer::PATH), FeedLinkIssuer::SUFFIX));
 
         $this->fetch($path);
@@ -330,15 +332,19 @@ final class CalendarFeedTest extends ApiTestCase
         self::assertSame(60, $accepted);
     }
 
+    /** sc-29912: everybody in the organisation has a feed; a Member's holds only the events they have a role on. */
     #[Test]
-    public function thePanelNeedsEventsRead(): void
+    public function aMembersFeedHoldsOnlyTheEventsTheyHaveARoleOn(): void
     {
-        $guestsOnly = $this->member('guests@ire.events', $this->role('Guests only', [Permission::GuestsRead]));
+        $id = $this->create('Owambe', '2030-11-14T16:00', '2030-11-14T23:00', 'Africa/Lagos');
+        $this->create('Naming', '2030-11-21T16:00', '2030-11-21T23:00', 'Africa/Lagos');
+        $member = $this->member('member@ire.events', $id, EventRole::CanView);
+        $nowhere = $this->member('nowhere@ire.events');
 
-        $this->request($guestsOnly, 'GET', $this->panel());
-        self::assertSame(403, $this->statusCode());
-        $this->request($guestsOnly, 'POST', $this->panel() . '/reset');
-        self::assertSame(403, $this->statusCode());
+        self::assertSame(['Owambe'], $this->summaries($this->link($member)));
+        self::assertSame([], $this->summaries($this->link($nowhere)));
+        $this->request($nowhere, 'POST', $this->panel() . '/reset');
+        self::assertSame(200, $this->statusCode());
     }
 
     #[Test]
@@ -540,18 +546,17 @@ final class CalendarFeedTest extends ApiTestCase
         return $user;
     }
 
-    /** @param list<Permission> $permissions */
-    private function role(string $name, array $permissions): Role
-    {
-        return Role::custom(self::em()->find(Organisation::class, $this->organisation->getId()) ?? self::fail('no organisation'), $name, $permissions);
-    }
-
-    private function member(string $address, Role $role): User
+    private function member(string $address, ?string $eventId = null, EventRole $on = EventRole::CanView): User
     {
         $user = $this->account($address);
-        self::em()->persist($role);
-        self::em()->persist(new Membership($role->getOrganisation(), $user, $role, MembershipStatus::Active, new DateTimeImmutable()));
+        $organisation = self::em()->find(Organisation::class, $this->organisation->getId()) ?? self::fail('no organisation');
+        $role = self::em()->getRepository(Role::class)->findOneBy(['organisation' => $organisation, 'seededAs' => SeededRole::Member]) ?? self::fail('no role');
+        self::em()->persist(new Membership($organisation, $user, $role, MembershipStatus::Active, new DateTimeImmutable()));
         self::em()->flush();
+
+        if (null !== $eventId) {
+            self::onEvent($user, $eventId, $on);
+        }
 
         return $user;
     }

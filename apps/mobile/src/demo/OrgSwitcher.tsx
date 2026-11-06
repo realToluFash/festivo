@@ -33,7 +33,9 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { EventMesh, eventColour } from '../components/EventMesh.tsx';
 import { TextField } from '../components/Field.tsx';
+import { Glyph } from '../components/Glyph.tsx';
 import { Initials } from '../components/Initials.tsx';
 import { Notice } from '../components/Notice.tsx';
 import { useReadOut } from '../components/ReadOut.tsx';
@@ -41,21 +43,21 @@ import { SETTLED_MS } from '../components/Screen.tsx';
 import { moveScreenReaderFocus } from '../components/screenReaderFocus.ts';
 import { useFocusBack, useWindowTurn } from '../components/Sheet.tsx';
 import { Text, type TextHandle } from '../components/Text.tsx';
+import { Glass } from '../components/TodayCover.tsx';
+import type { Tell } from '../components/TodayParts.tsx';
+import type { OpenerAt } from '../components/todayShell.ts';
+import type { MeshKey } from '../kit/today.ts';
 import { TURNS_WITH_THE_APP } from '../layout/orientations.ts';
 import { useAccessibilitySizes, useLayout } from '../layout/useLayout.ts';
 import { glide } from '../motion.ts';
 import { useReducedMotion } from '../reducedMotion.ts';
 import { tokens } from '../theme/tokens.ts';
 import { useModalOpen } from '../updateRequired.ts';
-import { EventMesh, eventColour } from './Cover.tsx';
 import { scrimFor } from './events/EventsModel.ts';
-import { Glyph } from './Glyph.tsx';
-import type { EventKey } from './today.ts';
 import {
   CELL_GAP,
   type DropFrame,
   type Invite,
-  ORG_COVER,
   type Offer,
   type Place,
   SW,
@@ -86,7 +88,6 @@ import {
   waitingOf,
 } from './OrgSwitcherModel.ts';
 import { Pill } from './settings/parts.tsx';
-import type { Tell } from './TodayParts.tsx';
 
 const store = {
   session: sessionFor('populated'),
@@ -304,7 +305,7 @@ export function SwitchedNotice({ style }: { style?: StyleProp<ViewStyle> }) {
 }
 
 interface Wash {
-  cover: EventKey;
+  cover: MeshKey;
   ink: string;
   strength: number;
 }
@@ -315,8 +316,8 @@ function washOf(id: string): Wash {
   const known = washes.get(id);
   if (known != null) return known;
 
-  const cover = ORG_COVER[orgMesh(id)];
-  const scrim = scrimFor(eventColour(cover), false, tokens.colorInk);
+  const cover = orgMesh(id);
+  const scrim = scrimFor(eventColour({ mesh: cover }), false, tokens.colorInk);
   const wash = { cover, ink: scrim.ink, strength: scrim.middle };
   washes.set(id, wash);
 
@@ -362,7 +363,7 @@ export function OrgMark({
 function Washed({ wash }: { wash: Wash }) {
   return (
     <>
-      <EventMesh event={wash.cover} />
+      <EventMesh event={{ mesh: wash.cover, photo: null }} />
       <View
         style={[StyleSheet.absoluteFill, { backgroundColor: wash.ink, opacity: wash.strength }]}
       />
@@ -411,6 +412,55 @@ export function OpenerWords({
 }
 
 export const OPENER = { rest: tokens.sizeHit, waiting: 56 } as const;
+
+/** Today's openers: glass on the cover and the band, and the sidebar's head. */
+export function DemoOrgOpener({ at }: { at: OpenerAt }) {
+  const ref = useRef<ViewInstance>(null);
+  const org = useOrgOpener(ref, at !== 'band');
+  const shared = {
+    ref,
+    onPress: org.onPress,
+    accessibilityRole: 'button',
+    accessibilityLabel: org.label,
+    accessibilityState: { expanded: org.expanded },
+  } as const;
+
+  if (at === 'sidebar')
+    return (
+      <Pressable
+        {...shared}
+        style={({ pressed }) => [
+          styles.sideOrg,
+          org.waiting > 0 && styles.sideOrgWaiting,
+          (org.expanded || pressed) && styles.sideOrgOpen,
+        ]}
+        testID="org.switch"
+      >
+        <OrgMark id={org.place.id} name={org.place.name} side={28} />
+        <OpenerWords opener={org} grow />
+        <Glyph name="updown" size={14} ink={tokens.colorInkSecondary} />
+      </Pressable>
+    );
+
+  if (at === 'band')
+    return (
+      <Pressable {...shared} hitSlop={tokens.spaceXxs} testID="org.switch.band">
+        <Glass style={styles.bandOrg}>
+          <OrgMark id={org.place.id} name={org.place.name} side={30} glass />
+        </Glass>
+      </Pressable>
+    );
+
+  return (
+    <Pressable {...shared} hitSlop={tokens.spaceXxs} testID="org.switch">
+      <Glass height={org.waiting > 0 ? OPENER.waiting : 40} style={styles.coverGlass}>
+        <OrgMark id={org.place.id} name={org.place.name} side={28} glass />
+        <OpenerWords opener={org} onDark />
+        <Glyph name="updown" size={14} ink={tokens.colorInkOnDark} />
+      </Glass>
+    </Pressable>
+  );
+}
 
 const GROW_FROM = 0.92;
 const LEAVE = Easing.bezier(0.4, 0, 1, 1);
@@ -1275,6 +1325,28 @@ const styles = StyleSheet.create({
   mark: { alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   markGlass: { backgroundColor: tokens.colorInkOnDark },
   openerWords: { flexShrink: 1, minWidth: 0, gap: tokens.spaceHair },
+  coverGlass: {
+    flexShrink: 1,
+    gap: tokens.spaceSm,
+    paddingLeft: tokens.spaceSm,
+    paddingRight: tokens.spacePillEnd,
+  },
+  bandOrg: { paddingHorizontal: 5 },
+  sideOrg: {
+    minHeight: OPENER.rest,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spaceMd,
+    paddingLeft: tokens.spaceSm,
+    paddingRight: tokens.spaceMd,
+    borderRadius: tokens.radiusRow,
+  },
+  sideOrgWaiting: { minHeight: OPENER.waiting },
+  sideOrgOpen: {
+    backgroundColor: tokens.colorCard,
+    ...tokens.elevationNative.card.ios,
+    elevation: tokens.elevationNative.card.android.elevation,
+  },
   openerName: { lineHeight: 15 * 1.25 },
   waitingLine: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXs },
   waitingRing: { width: 11, height: 11, borderRadius: 5.5, borderWidth: 2 },

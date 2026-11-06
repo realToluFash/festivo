@@ -15,6 +15,7 @@ use App\Entity\Organisation;
 use App\Entity\User;
 use App\Enum\ErrorCode;
 use App\Enum\Permission;
+use App\Http\Access\Grants;
 use App\Http\Access\Interfaces\MembershipDirectoryInterface;
 use App\Http\Access\Policy\InEvent;
 use App\Http\Access\Policy\InOrganisation;
@@ -54,9 +55,9 @@ final readonly class EventsController
     ) {
     }
 
-    /** A page of the unfinished, or with `finished=true` the Finished, each with its timeline's milestones (sc-3594). */
+    /** A page of the unfinished, or with `finished=true` the Finished, each with its timeline's milestones (sc-3594). A Member's has only the events they have a role on (sc-29912). */
     #[Route('/api/orgs/{organisationId}/events', name: 'events_list', methods: ['GET'])]
-    #[InOrganisation(Permission::EventsRead)]
+    #[InOrganisation(null)]
     public function list(Request $request, string $organisationId): JsonResponse
     {
         $query = Input::query($request, Type\shape([
@@ -65,16 +66,16 @@ final readonly class EventsController
             'itemsPerPage' => Type\optional(Type\positive_int()),
         ]));
         $organisation = $this->organisation($organisationId);
-        $grants = $this->membershipDirectory->grantsIn($this->user(), $organisation->getId()) ?? throw ApiException::notFound('access.not_found');
+        $scope = $this->membershipDirectory->eventScopeIn($this->user(), $organisation->getId()) ?? throw ApiException::notFound('access.not_found');
         $finished = 'true' === ($query['finished'] ?? 'false');
         $page = $query['page'] ?? 1;
         $perPage = Math\minva($query['itemsPerPage'] ?? self::PER_PAGE, self::MOST_PER_PAGE);
         $now = $this->clock->now();
-        $events = $this->eventRepository->findPageInOrganisation($organisation, $finished, $now, $page, $perPage);
+        $events = $this->eventRepository->findPageInOrganisation($organisation, $finished, $now, $page, $perPage, $scope->onlyFor);
 
         return new JsonResponse([
-            'events' => Vec\map(Vec\zip($events, $this->eventSerialiser->events($events)), fn (array $pair): array => [...$pair[1], 'milestones' => $this->milestoneSerialiser->milestones($pair[0], $grants)]),
-            'total' => $this->eventRepository->countPhaseInOrganisation($organisation, $finished, $now),
+            'events' => Vec\map(Vec\zip($events, $this->eventSerialiser->events($events)), fn (array $pair): array => [...$pair[1], 'milestones' => $this->milestoneSerialiser->milestones($pair[0], $scope->on($pair[0]->getId()) ?? Grants::only([]))]),
+            'total' => $this->eventRepository->countPhaseInOrganisation($organisation, $finished, $now, $scope->onlyFor),
             'page' => $page,
             'itemsPerPage' => $perPage,
         ]);

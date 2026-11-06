@@ -1,7 +1,6 @@
 import { type InvitationOutcome, isWaiting, waitingInvitations } from '@soirely/domain';
 
 import { meshFor, type MeshKey } from './events/EventsSample.ts';
-import type { EventKey } from './today.ts';
 
 export interface Place {
   id: string;
@@ -339,14 +338,6 @@ export function pick(session: Session, id: string): Session {
 export function orgMesh(id: string): MeshKey {
   return meshFor(id);
 }
-
-/** Each mesh drawn as the B cover it is named for, as an event's card draws it. */
-export const ORG_COVER: Record<MeshKey, EventKey> = {
-  rose: 'wed',
-  teal: 'ireti',
-  accent: 'party',
-  amber: 'draft',
-};
 
 export function untilIn(locale: string, day: string): string {
   return new Intl.DateTimeFormat(locale, {

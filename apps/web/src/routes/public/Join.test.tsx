@@ -119,6 +119,17 @@ describe('an invitation, signed out', () => {
     ).toBeDefined();
   });
 
+  it('holds the invitation when the header’s Sign in is followed', async () => {
+    __setSessionState({ status: 'signedOut', ended: false });
+    answering({ [LINK]: () => json(PREVIEW) });
+    open();
+
+    await screen.findByRole('heading', { level: 1, name: 'Join Ìrè Events' });
+    fireEvent.click(screen.getByRole('link', { name: 'Sign in' }));
+
+    expect(sessionStorage.getItem('soirely.invitation')).toBe(TOKEN);
+  });
+
   it('says what is missing on the first press, and sends nothing', async () => {
     __setSessionState({ status: 'signedOut', ended: false });
     const sent = answering({ [LINK]: () => json(PREVIEW) });
@@ -207,7 +218,6 @@ describe('an invitation, signed out', () => {
 
     const signIn = await screen.findByRole('heading', { level: 1, name: 'Sign in to accept' });
     await waitFor(() => expect(document.activeElement).toBe(signIn));
-    expect(screen.getByText('You already have an account')).toBeDefined();
     expect(screen.queryByRole('status')).toBeNull();
     expect(
       screen.getByText(
@@ -284,26 +294,22 @@ describe('an invitation, signed out', () => {
 
 describe('an invitation that can no longer be answered', () => {
   const cases = [
-    [
-      'invitation_expired',
-      'This invitation has expired',
-      'This invitation has expired. Ask Bisi Adeyemi to send a new one.',
-    ],
+    ['invitation_expired', 'This invitation has expired', 'Ask Bisi Adeyemi to send a new one.'],
     [
       'invitation_revoked',
       'This invitation was withdrawn',
-      'This invitation was withdrawn by Ìrè Events. If you think that is a mistake, ask whoever invited you.',
+      'If you think this is a mistake, ask the person who invited you.',
     ],
-    ['invitation_accepted', 'Already accepted', 'You already accepted this invitation.'],
+    ['invitation_accepted', 'Already accepted', 'You are already a member of Ìrè Events.'],
     [
       'invitation_declined',
       'Already declined',
-      'You declined this invitation. Ask Bisi Adeyemi to invite you again if you changed your mind.',
+      'If you have changed your mind, ask Bisi Adeyemi to invite you again.',
     ],
     [
       'organisation_deleted',
       'This organisation is gone',
-      'Ìrè Events no longer exists, so this invitation cannot be accepted.',
+      'The invitation to Ìrè Events can no longer be accepted.',
     ],
   ] as const;
 
@@ -335,11 +341,7 @@ describe('an invitation, signed in', () => {
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Join Ìrè Events?' }),
     ).toBeDefined();
-    expect(
-      screen.getByText(
-        'Signed in as kemi.l@gmail.com · this invitation works until Friday, Oct 23.',
-      ),
-    ).toBeDefined();
+    expect(screen.getByText('This invitation works until Friday, Oct 23.')).toBeDefined();
     expect(
       screen.getByText('Declining tells Bisi Adeyemi you said no. Nothing else changes.'),
     ).toBeDefined();
@@ -434,9 +436,7 @@ describe('an invitation, signed in', () => {
       await screen.findByRole('heading', { level: 1, name: 'This invitation is for someone else' }),
     ).toBeDefined();
     expect(
-      screen.getByText(
-        'This invitation is for kemi.l@gmail.com. You are signed in as folake@ire.events.',
-      ),
+      screen.getByText('It was sent to kemi.l@gmail.com. You are signed in as folake@ire.events.'),
     ).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Accept and join' })).toBeNull();
 
@@ -542,7 +542,7 @@ describe('an invitation, signed in', () => {
     expect(
       await screen.findByRole('heading', { level: 1, name: 'This invitation is for someone else' }),
     ).toBeDefined();
-    expect(screen.queryByText('You already accepted this invitation.')).toBeNull();
+    expect(screen.queryByText('You are already a member of Ìrè Events.')).toBeNull();
     expect(screen.queryByRole('button', { name: /^Open/ })).toBeNull();
     expect(screen.queryByRole('link', { name: /^Open/ })).toBeNull();
   });
@@ -643,9 +643,7 @@ describe('an invitation whose link did not load (sc-11488)', () => {
       name: 'This invitation has expired',
     });
     await waitFor(() => expect(document.activeElement).toBe(heading));
-    expect(
-      screen.getByText('This invitation has expired. Ask Bisi Adeyemi to send a new one.'),
-    ).toBeDefined();
+    expect(screen.getByText('Ask Bisi Adeyemi to send a new one.')).toBeDefined();
     expect(screen.queryByRole('status')).toBeNull();
   });
 

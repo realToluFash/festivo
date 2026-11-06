@@ -4,9 +4,9 @@ import { StyleSheet, type TextInputInstance, View } from 'react-native';
 
 import { PrimaryButton } from '../../../src/components/Buttons.tsx';
 import { DemoScreen, NavBar, finish } from '../../../src/demo/DemoScreen.tsx';
-import { FieldLine, InsideField } from '../../../src/demo/InsideField.tsx';
-import { Heading, Plain } from '../../../src/demo/Lines.tsx';
-import { passwordLongEnough } from '../../../src/demo/rules.ts';
+import { FieldLine, InsideField } from '../../../src/steps/InsideField.tsx';
+import { Heading, Plain } from '../../../src/steps/Lines.tsx';
+import { passwordLongEnough } from '../../../src/steps/rules.ts';
 import { SAMPLE } from '../../../src/demo/samples.ts';
 import { tokens } from '../../../src/theme/tokens.ts';
 

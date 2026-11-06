@@ -3,9 +3,9 @@ import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
-import { Confetti, EventMesh, type Piece, eventColour } from '../Cover.tsx';
-import { Glyph } from '../Glyph.tsx';
-import type { EventKey } from '../today.ts';
+import { Confetti, type Piece } from '../../components/Cover.tsx';
+import { EventMesh, eventColour } from '../../components/EventMesh.tsx';
+import { Glyph } from '../../components/Glyph.tsx';
 import { useShell } from '../settings/Frame.tsx';
 import { CardSays, GlassTag, OnCard, StepButton, SummaryCard } from '../settings/Summary.tsx';
 import {
@@ -18,16 +18,7 @@ import {
   rowLine,
   scrimFor,
 } from './EventsModel.ts';
-import type { MeshKey } from './EventsSample.ts';
 import { W } from './EventsWords.ts';
-
-/** Today's meshes, by the colour main's meshFor gives an event's id. */
-export const MESH_EVENT: Record<MeshKey, EventKey> = {
-  rose: 'wed',
-  teal: 'ireti',
-  accent: 'party',
-  amber: 'draft',
-};
 
 type Layout = ReturnType<typeof useShell>['layout'];
 
@@ -149,7 +140,7 @@ export function EventThumb({
           />
         </>
       ) : (
-        <EventMesh event={MESH_EVENT[event.mesh]} />
+        <EventMesh event={{ mesh: event.mesh, photo: null }} />
       )}
     </View>
   );
@@ -167,7 +158,7 @@ export function CardPieces() {
 
 /** Under the card's words: the cover or the colour, a scrim measured so white keeps 4.5:1, and Confetti on the colour. */
 function CardBackdrop({ event }: { event: Shown }) {
-  const scrim = scrimFor(eventColour(MESH_EVENT[event.mesh]), event.photo, tokens.colorInk);
+  const scrim = scrimFor(eventColour(event), event.photo, tokens.colorInk);
   const id = `scrim-${event.id}`;
 
   return (
@@ -180,7 +171,7 @@ function CardBackdrop({ event }: { event: Shown }) {
           </View>
         </>
       ) : (
-        <EventMesh event={MESH_EVENT[event.mesh]} />
+        <EventMesh event={{ mesh: event.mesh, photo: null }} />
       )}
       <Fill
         id={id}

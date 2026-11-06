@@ -380,7 +380,9 @@
   "language": {
     "label": "Langue",
     "automatic": "Automatique",
-    "automaticHint": "Suivre la langue demandée par votre navigateur"
+    "automaticHint": "Suivre la langue demandée par votre navigateur",
+    "current": "Langue : {{language}}",
+    "follows": "Votre langue vous suit sur tous vos appareils."
   },
   "public": {
     "tagline": "Préparez l’événement. Menez la soirée.",
@@ -434,9 +436,10 @@
     "submit": "Se connecter",
     "submitting": "Connexion…",
     "lockedUntil": "Réessayez à {{time}}",
-    "refused": "Cette adresse e-mail et ce mot de passe ne correspondent pas. Vérifiez les deux, ou réinitialisez votre mot de passe.",
+    "noMatch": "Cette adresse e-mail et ce mot de passe ne correspondent pas.",
     "endedTitle": "Votre session a été fermée",
     "endedBody": "Reconnectez-vous pour continuer.",
+    "codeTimedOutTitle": "That sign-in timed out",
     "lockedTitle": "Trop de tentatives",
     "lockedBody": "Réessayez à {{time}}.",
     "lockedReset": "Réinitialiser votre mot de passe",
@@ -447,7 +450,6 @@
     "providerFailedBody": "Rien n’a été modifié. Réessayez avec {{provider}}, ou connectez-vous avec votre adresse e-mail et votre mot de passe.",
     "failedTitle": "La connexion n’a pas abouti",
     "failedBody": "Quelque chose s’est mal passé en route. Réessayez dans un instant.",
-    "newHere": "Nouveau sur Soirely ?",
     "createAccount": "Créer un compte",
     "passwordBlank": "Saisissez votre mot de passe.",
     "timedOutTitle": "Session fermée par une règle de {{organisation}}",
@@ -459,9 +461,12 @@
     "anotherAccount": "Se connecter avec un autre compte",
     "providerOnlyFootnote": "Une règle fixée par {{organisation}} : la connexion par mot de passe y est désactivée pour tout le monde."
   },
+  "auth": {
+    "newTo": "Pas encore de compte ?",
+    "copyright": "© {{year}} Soirely"
+  },
   "register": {
     "title": "Créez votre compte",
-    "back": "Retour à la connexion",
     "intro": "Ensuite, nous vous envoyons un code par e-mail pour vérifier que l’adresse est la vôtre.",
     "name": "Nom complet",
     "email": "Adresse e-mail",
@@ -481,7 +486,8 @@
     "failedTitle": "La création du compte n’a pas abouti",
     "failedBody": "Quelque chose s’est mal passé en route. Réessayez dans un instant.",
     "nameBlank": "Saisissez votre nom complet.",
-    "passwordBlank": "Saisissez un mot de passe."
+    "passwordBlank": "Saisissez un mot de passe.",
+    "tooShort": "Utilisez au moins {{count, number}} caractères."
   },
   "account": {
     "title": "Votre compte",
@@ -574,9 +580,6 @@
     "everywhereFailedBody": "Cela concerne l’accès à l’API et non votre compte. Réessayez."
   },
   "verifyEmail": {
-    "step1": "Vérifiez votre adresse e-mail",
-    "step1Done": "Adresse vérifiée · terminé",
-    "step2": "Vos informations",
     "title": "Consultez votre boîte mail",
     "intro": "Nous avons envoyé un code à {{address}}. Saisissez-le ici pour prouver que l’adresse est la vôtre.",
     "codeLabel": "Code reçu par e-mail",
@@ -591,19 +594,14 @@
     "exhaustedTitle": "Trop de tentatives incorrectes",
     "exhaustedBody": "Ce code ne fonctionne plus. Envoyez-en un nouveau pour continuer.",
     "wrongAddress": "Ce n’est pas votre adresse ?",
-    "wrongAddressBody": "et recréer votre compte avec la bonne adresse.",
-    "registerAgain": "Inscrivez-vous à nouveau avec la bonne adresse",
-    "signOut": "Se déconnecter",
     "doneTitle": "Adresse vérifiée",
     "doneBody": "{{address}} est confirmée. Ensuite, quelques informations pour que votre équipe sache qui est qui.",
     "doneBodyAlternative": "{{address}} est vérifiée. Elle ne deviendra votre adresse principale que si vous la définissez comme telle dans Compte.",
     "continue": "Continuer",
     "failedTitle": "Cela n’a pas fonctionné",
     "failedBody": "Quelque chose s’est mal passé en route. Réessayez dans un instant.",
-    "stepsLabel": "Avant de commencer",
     "codeBlank": "Saisissez le code à 6 chiffres de l’e-mail.",
-    "codeShort": "Le code compte 6 chiffres.",
-    "step1Google": "E-mail confirmé par {{provider}} · fait"
+    "codeShort": "Le code compte 6 chiffres."
   },
   "verifyPhone": {
     "title": "Consultez vos messages",
@@ -692,6 +690,7 @@
   "roles": {
     "owner": "Propriétaire",
     "administrator": "Administrateur",
+    "member": "Membre",
     "event_manager": "Responsable d’événements",
     "coordinator": "Coordinateur",
     "read_only": "Lecture seule"
@@ -733,7 +732,7 @@
     "currencyBlank": "Choisissez une devise.",
     "contactBlank": "Indiquez une adresse e-mail de contact.",
     "contactInvalid": "Cela ne ressemble pas à une adresse e-mail. Vérifiez qu’elle contient un @ et un domaine.",
-    "readOnly": "Votre rôle, {{role}}, permet de voir ces informations mais pas de les modifier. Les propriétaires le peuvent.",
+    "readOnly": "Votre rôle, {{role}}, permet de voir ces informations mais pas de les modifier. Les rôles Propriétaire et Administrateur le permettent.",
     "readOnlyUntilLinked": "{{organisation}} n’accepte que la connexion avec Google ou Apple. Tant que vous n’avez pas associé l’un des deux, vous pouvez voir ces informations mais pas les modifier.",
     "readOnlyUntilTwoFactor": "{{organisation}} demande la double authentification aux personnes qui peuvent gérer les membres, les rôles, la facturation ou la sécurité. Tant que vous ne l’avez pas activée, vous pouvez voir ces informations mais pas les modifier.",
     "failed": "L’enregistrement n’a pas abouti. Rien n’a été modifié. Réessayez dans un instant.",
@@ -765,7 +764,6 @@
     "saving": "Enregistrement…",
     "failedTitle": "L’enregistrement n’a pas abouti",
     "failedBody": "Quelque chose s’est mal passé en route. Réessayez dans un instant.",
-    "signedInAs": "Connecté en tant que {{email}}.",
     "signOut": "Se déconnecter",
     "optional": "Facultatif",
     "mobileHelp": "C’est ainsi qu’on vous joint le soir même si quelque chose tourne mal. Si vous en ajoutez un, nous vous envoyons un code par SMS pour le vérifier.",
@@ -782,7 +780,6 @@
   },
   "recovery": {
     "forgot": "Mot de passe oublié ?",
-    "forgotShort": "Oublié ?",
     "title": "Réinitialisez votre mot de passe",
     "intro": "Saisissez l’adresse e-mail avec laquelle vous vous connectez. Si elle a un compte, nous lui envoyons un lien pour choisir un nouveau mot de passe.",
     "email": "Adresse e-mail",
@@ -1079,6 +1076,7 @@
     "resend": "Envoyer de nouveaux codes",
     "resendIn": "Envoyer de nouveaux codes dans {{time}}",
     "resendNote": "Les nouveaux codes remplacent les précédents.",
+    "noCodes": "Vous n’avez pas reçu les codes ?",
     "textInstead": "Me l’envoyer par SMS",
     "textInsteadFailed": "Ce code ne peut plus être envoyé par SMS. Envoyez de nouveaux codes.",
     "expiredTitle": "Ces codes ont expiré",
@@ -1096,6 +1094,9 @@
     "stayOut": "Vous restez déconnecté jusqu’à ce que quelqu’un réponde. Nous écrirons à {{email}} dans tous les cas.",
     "notYou": "Ce n’était pas vous ?",
     "cancel": "Annuler la demande",
+    "cancelTitle": "Annuler votre demande ?",
+    "cancelBody": "Vous devrez recommencer pour récupérer l’accès à votre compte.",
+    "keepWaiting": "Continuer d’attendre",
     "cancelledMark": "Annulée",
     "replacedMark": "Remplacée",
     "replacedTitle": "Une demande plus récente a remplacé celle-ci",
@@ -1123,7 +1124,7 @@
     "setupIntro": "La double authentification a été désactivée pour vous permettre de revenir. Configurez-la à nouveau pour qu’un mot de passe seul ne suffise pas à ouvrir votre compte.",
     "setup": "Configurer la double authentification",
     "notNow": "Pas maintenant",
-    "notNowNote": "Vous pouvez la configurer à tout moment dans Paramètres › Sécurité.",
+    "notNowNote": "Vous pouvez la configurer à tout moment dans Votre compte › Sécurité.",
     "notMeTitle": "Ce n’était pas vous ?",
     "notMeIntro": "Cela annule toute demande en attente pour accéder à votre compte sans la double authentification, et déconnecte toutes les sessions.",
     "notMeButton": "Annuler et me déconnecter partout",
@@ -1586,20 +1587,16 @@
     "orgDeleted": "Supprimée",
     "invited": "{{inviter}} a invité {{email}} à rejoindre l’organisation avec le rôle {{role}}.",
     "worksUntil": "Jusqu’au {{date}}, cette invitation reste valable.",
-    "createTitle": "Créer un compte",
     "emailLocked": "C’est l’adresse à laquelle l’invitation a été envoyée. Elle est déjà confirmée : aucun code à saisir.",
     "passwordBlank": "Choisissez un mot de passe.",
     "passwordShort": "Utilisez au moins {{count, number}} caractères.",
     "createAndJoin": "Créer le compte et rejoindre",
     "joining": "Adhésion en cours…",
     "failedTitle": "L’adhésion n’a pas abouti",
-    "haveAccount": "J’ai déjà un compte",
-    "emailTakenHeading": "Vous avez déjà un compte",
     "emailTakenBody": "{{email}} a déjà un compte Soirely. Connectez-vous avec ce compte pour y accepter l’invitation.",
     "signInToAccept": "Connectez-vous pour accepter",
     "forgotPassword": "Mot de passe oublié ?",
     "invitedYou": "{{inviter}} vous invite à rejoindre l’organisation avec le rôle {{role}}.",
-    "signedInUntil": "Connexion avec {{email}} · jusqu’au {{date}}, cette invitation reste valable.",
     "accept": "Accepter et rejoindre",
     "decline": "Refuser",
     "declineNote": "Si vous refusez, {{inviter}} le saura. Rien d’autre ne change.",
@@ -1614,33 +1611,27 @@
     "refused": {
       "invitation_expired": {
         "title": "Cette invitation a expiré",
-        "word": "Expirée",
-        "body": "Cette invitation a expiré. Demandez à {{inviter}} de vous en envoyer une nouvelle."
+        "line": "Demandez à {{inviter}} de vous en envoyer une nouvelle."
       },
       "invitation_revoked": {
         "title": "Cette invitation a été retirée",
-        "word": "Retirée",
-        "body": "L’organisation {{organisation}} a retiré cette invitation. S’il s’agit selon vous d’une erreur, adressez-vous à la personne à l’origine de l’invitation."
+        "line": "S’il s’agit selon vous d’une erreur, adressez-vous à la personne à l’origine de l’invitation."
       },
       "invitation_accepted": {
         "title": "Déjà acceptée",
-        "word": "Déjà acceptée",
-        "body": "Vous avez déjà accepté cette invitation."
+        "line": "Vous faites déjà partie de {{organisation}}."
       },
       "invitation_declined": {
         "title": "Déjà refusée",
-        "word": "Déjà refusée",
-        "body": "Vous avez refusé cette invitation. Si vous avez changé d’avis, demandez à {{inviter}} de vous inviter de nouveau."
+        "line": "Si vous avez changé d’avis, demandez à {{inviter}} de vous inviter de nouveau."
       },
       "invitation_not_yours": {
         "title": "Cette invitation est destinée à une autre personne",
-        "word": "Connexion avec un autre compte",
-        "body": "Cette invitation est destinée à {{email}}. Vous utilisez le compte {{signedInAs}}."
+        "line": "Elle a été envoyée à {{email}}. Vous utilisez le compte {{signedInAs}}."
       },
       "organisation_deleted": {
         "title": "Cette organisation n’existe plus",
-        "word": "Organisation supprimée",
-        "body": "L’organisation {{organisation}} n’existe plus : cette invitation ne peut donc pas être acceptée."
+        "line": "L’invitation à rejoindre {{organisation}} ne peut plus être acceptée."
       }
     }
   },
@@ -1993,7 +1984,7 @@
     "limitedOnDay": "Trop de demandes pour le moment. Réessayez le {{day}} à {{time}}.",
     "limitedLater": "Trop de demandes pour le moment. Réessayez plus tard.",
     "deadTitle": "Ce lien ne fonctionne pas",
-    "deadBody": "Ce lien ne fonctionne plus. Demandez-en un nouveau à l’organisation.",
+    "deadLine": "Demandez-en un nouveau à l’organisation.",
     "goHome": "Aller sur Soirely",
     "failedTitle": "La demande n’a pas abouti",
     "failedBody": "Un problème est survenu en cours de route. Réessayez dans un instant."
@@ -2242,5 +2233,10 @@
     "staffComing": "La gestion de l’équipe de cet événement arrive bientôt.",
     "budgetComing": "Le budget de cet événement arrive bientôt.",
     "reportsComing": "Les rapports de cet événement arrivent bientôt."
+  },
+  "onboarding": {
+    "step": "Étape {{step, number}} sur 2",
+    "back": "Retour",
+    "noCode": "Vous n’avez pas reçu le code ?"
   }
 }

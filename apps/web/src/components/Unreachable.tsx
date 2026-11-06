@@ -8,7 +8,15 @@ import { focusStep, useStepFocus } from '../stepFocus.ts';
 import { AuthPage } from './AuthPage.tsx';
 
 /** No sign-in heading or form, which would tell somebody signed in otherwise. Without `retry`, Try again reads the account. */
-export function Unreachable({ signedIn, retry }: { signedIn: boolean; retry?: LinkRetry }) {
+export function Unreachable({
+  signedIn,
+  retry,
+  bare = false,
+}: {
+  signedIn: boolean;
+  retry?: LinkRetry;
+  bare?: boolean;
+}) {
   const { t } = useTranslation();
   const state = useSessionState();
   const retrying = retry?.retrying ?? (state.status === 'unreachable' && state.retrying);
@@ -40,6 +48,36 @@ export function Unreachable({ signedIn, retry }: { signedIn: boolean; retry?: Li
     arriveAtNotice();
   }
 
+  const tryAgain = (
+    <button
+      className="button button-primary"
+      type="button"
+      disabled={retrying}
+      aria-busy={retrying}
+      onClick={() => void (retry == null ? retryAccount() : retry.again())}
+    >
+      {retrying ? t('session.retrying') : t('error.retry')}
+    </button>
+  );
+
+  // Creating an account's steps draw it as the page itself (WebNewAccount, page 27).
+  if (bare) {
+    return (
+      <AuthPage bare end={null}>
+        <div
+          className="auth-heading"
+          ref={linked ? linkNotice : notice}
+          role={pressed ? undefined : 'status'}
+          tabIndex={pressed || linked ? -1 : undefined}
+        >
+          <h1>{t('session.unreachableTitle')}</h1>
+          <p>{signedIn ? t('session.unreachableBody') : t('session.unreachableBodySignedOut')}</p>
+        </div>
+        {tryAgain}
+      </AuthPage>
+    );
+  }
+
   return (
     <AuthPage>
       <div
@@ -57,15 +95,7 @@ export function Unreachable({ signedIn, retry }: { signedIn: boolean; retry?: Li
         </div>
       </div>
 
-      <button
-        className="button button-primary"
-        type="button"
-        disabled={retrying}
-        aria-busy={retrying}
-        onClick={() => void (retry == null ? retryAccount() : retry.again())}
-      >
-        {retrying ? t('session.retrying') : t('error.retry')}
-      </button>
+      {tryAgain}
     </AuthPage>
   );
 }

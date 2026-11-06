@@ -16,10 +16,10 @@ import { TextField } from '../../components/Field.tsx';
 import { useReadOut } from '../../components/ReadOut.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
-import { Cover } from '../Cover.tsx';
-import { Glyph } from '../Glyph.tsx';
+import { Cover } from '../../components/Cover.tsx';
+import { Glyph } from '../../components/Glyph.tsx';
 import { SwitchedNotice } from '../OrgSwitcher.tsx';
-import { PhoneTabBar } from '../TodayCover.tsx';
+import { PhoneTabBar } from '../../components/TodayCover.tsx';
 import {
   Bell,
   Fade,

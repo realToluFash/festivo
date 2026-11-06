@@ -32,7 +32,7 @@ final readonly class EventTimelineController
     public function show(string $eventId): JsonResponse
     {
         $event = $this->eventRepository->find($eventId) ?? throw ApiException::notFound('access.not_found');
-        $grants = $this->membershipDirectory->grantsIn($this->user(), $event->getOrganisation()->getId()) ?? throw ApiException::notFound('access.not_found');
+        $grants = $this->membershipDirectory->grantsOnEvent($this->user(), $event->getOrganisation()->getId(), $event->getId()) ?? throw ApiException::notFound('access.not_found');
 
         return new JsonResponse([
             'timeZone' => $event->getTimeZone(),

@@ -24,7 +24,7 @@ import {
 import { Text } from '../../components/Text.tsx';
 import { checkAll, type FieldErrors } from '../../kit/formChecks.ts';
 import { tokens } from '../../theme/tokens.ts';
-import { Glyph } from '../Glyph.tsx';
+import { Glyph } from '../../components/Glyph.tsx';
 import {
   type CardSaid,
   cardWords,

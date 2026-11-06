@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Enum;
 
-/** A row of the roles screen's grid (sc-66), in the order it draws them. */
+/** What a permission is about, in the order a client lists them. */
 enum PermissionArea: string
 {
     case Events = 'events';
@@ -20,6 +20,7 @@ enum PermissionArea: string
     case Members = 'members';
     case Billing = 'billing';
     case Organisation = 'organisation';
+    case People = 'people';
 
     /** What lets a member see the area's milestones on an event's timeline (sc-3624). The organisation's settings have no read of their own. */
     public function reading(): Permission

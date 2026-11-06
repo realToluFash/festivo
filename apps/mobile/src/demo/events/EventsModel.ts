@@ -501,8 +501,6 @@ export const TAB_WORDS: Record<ListTab, string> = {
   past: W.past,
 };
 
-// States, as the spec names them, shared with the web's demo.
-
 export const LIST_STATES = [
   'first',
   'drafts',

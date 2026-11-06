@@ -39,8 +39,11 @@ export function ruleRefusal(why: Problem | undefined): RuleRefusal | null {
   return null;
 }
 
-/** Sign-in, carrying the refusal in its query; `ended` adds "You were signed out" when no rule says more. */
-export function signInRoute(refusal: RuleRefusal | null, ended: boolean): `/sign-in?${string}` {
+/** Welcome when the session ended, sign-in when a rule turned a password away, carrying the refusal in its query; `ended` adds "You were signed out" when no rule says more. */
+export function signInRoute(
+  refusal: RuleRefusal | null,
+  ended: boolean,
+): `/sign-in?${string}` | `/welcome?${string}` {
   const query = new URLSearchParams(ended ? { signedOut: '1' } : {});
 
   if (refusal?.kind === 'timedOut') {
@@ -57,7 +60,9 @@ export function signInRoute(refusal: RuleRefusal | null, ended: boolean): `/sign
     query.set('email', refusal.email);
   }
 
-  return `/sign-in?${query.toString()}`;
+  return refusal?.kind === 'providerOnly'
+    ? `/sign-in?${query.toString()}`
+    : `/welcome?${query.toString()}`;
 }
 
 /** The refusal back out of sign-in's query, or null when it carries none or a malformed one. */
@@ -80,6 +85,38 @@ export function refusalFromParams(params: Partial<Record<string, string>>): Rule
   }
 
   return null;
+}
+
+/** Sign-in once the held challenge has run out: it says the sign-in timed out, with the address kept (sc-29961). */
+export function timedOutSignIn(email: string) {
+  return { pathname: '/sign-in', params: { email, codeTimedOut: '1' } } as const;
+}
+
+/** Whether sign-in's query says a two-factor sign-in ran out, as `timedOutSignIn` writes it. */
+export function codeTimedOutFromParams(params: Partial<Record<string, string>>): boolean {
+  return params.codeTimedOut != null;
+}
+
+/** What takes the welcome's tagline: a provider failing, then a rule's sign-out, then a plain one. */
+export function saidOnWelcome(
+  params: Partial<Record<string, string>>,
+  providerFailed: string | null,
+  t: TFunction,
+): [string, string] | null {
+  if (providerFailed != null)
+    return [
+      t('signIn.providerFailedTitle', { provider: providerFailed }),
+      t('signIn.providerFailedBody', { provider: providerFailed }),
+    ];
+
+  const refusal = refusalFromParams(params);
+  if (refusal?.kind === 'timedOut')
+    return [
+      t('signIn.timedOutTitle', { organisation: refusal.organisation }),
+      t('signIn.timedOutBody', { organisation: refusal.organisation, count: refusal.days }),
+    ];
+
+  return params.signedOut == null ? null : [t('signIn.endedTitle'), t('signIn.endedBody')];
 }
 
 /** The providers named in the refusal, Google and Apple when it named none. */

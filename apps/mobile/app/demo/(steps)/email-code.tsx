@@ -3,12 +3,12 @@ import { useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { QuietButton } from '../../../src/components/Buttons.tsx';
-import { CodeBoxes, type CodeBoxesHandle } from '../../../src/demo/CodeBoxes.tsx';
+import { CodeBoxes, type CodeBoxesHandle } from '../../../src/steps/CodeBoxes.tsx';
 import { DemoScreen, NavBar } from '../../../src/demo/DemoScreen.tsx';
-import { Confirmed, Heading, Plain, Says } from '../../../src/demo/Lines.tsx';
-import { minutesSeconds, RESEND_SECONDS } from '../../../src/demo/rules.ts';
+import { Confirmed, Heading, Plain, Says } from '../../../src/steps/Lines.tsx';
+import { minutesSeconds, RESEND_SECONDS } from '../../../src/steps/rules.ts';
 import { SAMPLE } from '../../../src/demo/samples.ts';
-import { useCountdown } from '../../../src/demo/useCountdown.ts';
+import { useCountdown } from '../../../src/steps/useCountdown.ts';
 import { tokens } from '../../../src/theme/tokens.ts';
 
 const NEXT = { invited: '/demo/invited', join: '/demo/join-message' } as const;
@@ -40,6 +40,7 @@ export default function EmailCode() {
       <View style={styles.boxes}>
         <CodeBoxes
           ref={boxes}
+          label="Code, 6 digits"
           value={code}
           onChange={(next) => {
             setCode(next);
