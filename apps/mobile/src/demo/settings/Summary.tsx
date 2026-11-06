@@ -17,7 +17,7 @@ import { tokens } from '../../theme/tokens.ts';
 import { CARD_PIECES, Confetti, Cover } from '../Cover.tsx';
 import { Glyph, type GlyphName } from '../Glyph.tsx';
 import { Glass, PhoneTabBar } from '../TodayCover.tsx';
-import { Bell, Fade, Landscape, PHONE_TAB_BAR, PortraitTop, useShell } from './Frame.tsx';
+import { Bell, Fade, Landscape, OrgPill, PHONE_TAB_BAR, PortraitTop, useShell } from './Frame.tsx';
 import { Avatar, Back } from './parts.tsx';
 import { type MarkKind, StatusMark, TextAction } from './SummaryRows.tsx';
 
@@ -128,6 +128,7 @@ export function SummaryPage({
       >
         <View style={styles.top}>
           {backTo != null && <Back label={backTo.label} onPress={backTo.onPress} />}
+          {phone && backTo == null && <OrgPill tell={shell.tell} />}
           <View style={styles.grow} />
           {phone && <Bell tell={shell.tell} />}
         </View>

@@ -6,8 +6,8 @@ import type { SettingsSection } from '../../kit/appNav.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { CARD_PIECES, Confetti, Cover } from '../Cover.tsx';
 import { Glyph } from '../Glyph.tsx';
-import { Glass } from '../TodayCover.tsx';
-import { Bell, Landscape, PHONE_TAB_BAR, useShell } from './Frame.tsx';
+import { Glass, PhoneTabBar } from '../TodayCover.tsx';
+import { Bell, Fade, Landscape, OrgPill, PHONE_TAB_BAR, useShell } from './Frame.tsx';
 import { Caps, Pill, Tile, TYPE } from './parts.tsx';
 import { type DemoSection, demoGroups, type Viewer, YOU } from './sample.ts';
 
@@ -294,39 +294,49 @@ export function SettingsHome({ onSignOut, onDemo }: Handlers) {
     const foot = Math.max(insets.bottom - tokens.spaceXxs, tokens.spaceLg);
 
     return (
-      <ScrollView
-        contentContainerStyle={{
-          paddingTop: insets.top + tokens.spaceXs,
-          paddingHorizontal: tokens.spaceXxl,
-          paddingBottom: foot + PHONE_TAB_BAR + tokens.space6xl,
-        }}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.titleRow}>
-          <Text
-            size={TYPE.titlePhone}
-            weight="bold"
-            accessibilityRole="header"
-            style={[styles.grow, styles.title]}
-          >
-            Settings
-          </Text>
-          <Bell tell={shell.tell} />
-        </View>
-        <PersonCard size="phone" />
-        {groups.map(({ heading, sections }) =>
-          sections.length === 0 ? null : (
-            <View key={heading}>
-              <Caps text={heading} top={26} />
-              <Group sections={sections} dense={false} open={null} />
-            </View>
-          ),
-        )}
-        <View style={styles.footPhone}>
-          <DemoRow dense={false} onDemo={onDemo} />
-          <SignOut height={tokens.sizeHitPhoneHero} onSignOut={onSignOut} />
-        </View>
-      </ScrollView>
+      <View style={styles.phonePage}>
+        <ScrollView
+          style={styles.grow}
+          contentContainerStyle={{
+            paddingTop: insets.top + tokens.spaceXs,
+            paddingHorizontal: tokens.spaceXxl,
+            paddingBottom: foot + PHONE_TAB_BAR + tokens.space6xl,
+          }}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.orgRow}>
+            <OrgPill tell={shell.tell} />
+            <View style={styles.grow} />
+            <Bell tell={shell.tell} />
+          </View>
+          <View style={styles.titleRow}>
+            <Text
+              size={TYPE.titlePhone}
+              weight="bold"
+              accessibilityRole="header"
+              style={[styles.grow, styles.title]}
+            >
+              Settings
+            </Text>
+          </View>
+          <PersonCard size="phone" />
+          {groups.map(({ heading, sections }) =>
+            sections.length === 0 ? null : (
+              <View key={heading}>
+                <Caps text={heading} top={26} />
+                <Group sections={sections} dense={false} open={null} />
+              </View>
+            ),
+          )}
+          <View style={styles.footPhone}>
+            <DemoRow dense={false} onDemo={onDemo} />
+            <SignOut height={tokens.sizeHitPhoneHero} onSignOut={onSignOut} />
+          </View>
+        </ScrollView>
+        <View style={[styles.statusStrip, { height: insets.top }]} pointerEvents="none" />
+        <Fade />
+        <PhoneTabBar bottom={foot} onTab={shell.onTab} at="Settings" />
+      </View>
     );
   }
 
@@ -430,6 +440,15 @@ function ChooseASection() {
 
 const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
+  phonePage: { flex: 1, backgroundColor: tokens.colorCard },
+  statusStrip: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: tokens.colorCard,
+  },
+  orgRow: { flexDirection: 'row', alignItems: 'center', marginBottom: tokens.spaceSm },
   title: { letterSpacing: -0.5 },
   titleRow: {
     flexDirection: 'row',

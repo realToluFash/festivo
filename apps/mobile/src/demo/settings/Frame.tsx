@@ -318,24 +318,32 @@ export function Bell({ tell }: { tell: Tell }) {
   );
 }
 
+/** The organisation switcher on white, at the top of every top-level page. */
+export function OrgPill({ tell }: { tell: Tell }) {
+  return (
+    <Pressable
+      onPress={() => tell('Switching organisation has its own design.')}
+      style={({ pressed }) => [styles.org, pressed && styles.orgPressed]}
+      accessibilityRole="button"
+      accessibilityLabel={`${SAMPLE.organisation}. Switch organisation`}
+      testID="org.switch"
+    >
+      <Tile of="organisation" side={28} initials="IE" />
+      <Text size={TYPE.body} weight="semibold" accessible={false}>
+        {SAMPLE.organisation}
+      </Text>
+      <Glyph name="updown" size={14} ink={tokens.colorInkSecondary} />
+    </Pressable>
+  );
+}
+
 export function PortraitTop({ at = 'Settings' }: { at?: Tab }) {
   const shell = useShell();
   const insets = useSafeAreaInsets();
 
   return (
     <View style={[styles.portraitTop, { paddingTop: insets.top + tokens.spaceMd }]}>
-      <Pressable
-        onPress={() => shell.tell('Switching organisation has its own design.')}
-        style={styles.org}
-        accessibilityRole="button"
-        accessibilityLabel={`${SAMPLE.organisation}. Switch organisation`}
-      >
-        <Tile of="organisation" side={28} initials="IE" />
-        <Text size={TYPE.body} weight="semibold" accessible={false}>
-          {SAMPLE.organisation}
-        </Text>
-        <Glyph name="updown" size={14} ink={tokens.colorInkSecondary} />
-      </Pressable>
+      <OrgPill tell={shell.tell} />
       <View style={styles.grow} />
       <Bell tell={shell.tell} />
       <View style={[styles.capsuleAt, { top: insets.top + 7 }]} pointerEvents="box-none">
@@ -447,6 +455,7 @@ const styles = StyleSheet.create({
     borderRadius: tokens.sizeHit / 2,
     backgroundColor: tokens.colorInset,
   },
+  orgPressed: { backgroundColor: tokens.colorNeutralFill },
   capsuleAt: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
   capsule: {
     height: 46,
