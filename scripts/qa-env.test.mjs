@@ -48,6 +48,8 @@ import {
   runAsync,
   runBudgetMs,
   startHelper,
+  membershipChanges,
+  domainPause,
   STEP_MS,
   totp,
   androidFlows,
@@ -1637,6 +1639,35 @@ describe('the batch helper', () => {
       server.close();
     }
   });
+  it('hands a membership change to the batch, once the API is up', async () => {
+    const asked = [];
+    const { server, ask } = await helperFor('running', undefined, {
+      changeMembership: async (change, org) => {
+        asked.push([change, org]);
+        return { membership: change, org };
+      },
+    });
+    try {
+      expect(await ask('/membership?change=suspend&org=Alpha%20Hall')).toEqual({
+        membership: 'suspend',
+        org: 'Alpha Hall',
+      });
+      expect(asked).toEqual([['suspend', 'Alpha Hall']]);
+    } finally {
+      server.close();
+    }
+  });
+
+  it('refuses a membership change in a batch that makes none', async () => {
+    const { server, ask } = await helperFor('running');
+    try {
+      expect(await ask('/membership?change=pause&org=Alpha')).toEqual({
+        error: 'this batch makes no membership change',
+      });
+    } finally {
+      server.close();
+    }
+  });
 });
 
 describe('a batch flow', () => {
@@ -2422,5 +2453,113 @@ describe('the API taken from the device', () => {
       }),
     ).rejects.toThrow('pause failed');
     expect(ran).toEqual(['reverse --remove tcp:18080', 'reverse tcp:18080 tcp:18080']);
+  });
+});
+
+describe('a membership change a check asks for', () => {
+  const MEMBERSHIP = '01a1ae45-86aa-7b0a-b43c-1524b2b5e0ab';
+  const changesFor = () => {
+    const calls = [];
+    const statements = [];
+    let made = 0;
+    let owners = 0;
+    const owner = async (path, options = {}) => {
+      calls.push(`owner ${options.method ?? 'POST'} ${path}`);
+      if (path === '/api/orgs') return { organisation: { id: `org-${++made}` } };
+      if (path.endsWith('/roles')) {
+        return {
+          roles: [
+            { id: 'r-owner', seededAs: 'owner' },
+            { id: 'r-member', seededAs: 'member' },
+          ],
+        };
+      }
+      if (path.endsWith('/members/invite')) return { invitation: { id: `inv-${made}` } };
+      if (path.endsWith('/members') && options.method === 'GET') {
+        return {
+          members: [
+            { id: 'other', user: { email: 'owner@soirely.test' } },
+            { id: MEMBERSHIP, user: { email: 'qa@soirely.test' } },
+          ],
+        };
+      }
+      return null;
+    };
+    const change = membershipChanges({
+      email: 'qa@soirely.test',
+      member: async (path) => calls.push(`member ${path}`),
+      ownerOf: async () => {
+        owners += 1;
+        return owner;
+      },
+      sql: async (statement) => statements.push(statement),
+    });
+    return { change, calls, statements, owners: () => owners };
+  };
+
+  it('makes the organisation and the batch account a member of it', async () => {
+    const { change, calls } = changesFor();
+    expect(await change('join', 'Alpha Hall')).toEqual({ membership: 'join', org: 'Alpha Hall' });
+    expect(calls).toEqual([
+      'owner POST /api/orgs',
+      'owner GET /api/orgs/org-1/roles',
+      'owner POST /api/orgs/org-1/members/invite',
+      'member /api/invitations/inv-1/accept',
+    ]);
+  });
+
+  it('registers one owner for every organisation in the batch', async () => {
+    const { change, owners } = changesFor();
+    await change('join', 'Alpha Hall');
+    await change('join', 'Bravo');
+    expect(owners()).toBe(1);
+  });
+
+  it('suspends and removes the batch account through the API as the owner', async () => {
+    const { change, calls } = changesFor();
+    await change('join', 'Alpha Hall');
+    calls.length = 0;
+    await change('suspend', 'Alpha Hall');
+    await change('remove', 'Alpha Hall');
+    expect(calls).toEqual([
+      'owner GET /api/orgs/org-1/members',
+      `owner POST /api/orgs/org-1/members/${MEMBERSHIP}/suspend`,
+      'owner GET /api/orgs/org-1/members',
+      `owner DELETE /api/orgs/org-1/members/${MEMBERSHIP}`,
+    ]);
+  });
+
+  it("pauses through the database, the batch account's membership only", async () => {
+    const { change, statements } = changesFor();
+    await change('join', 'Alpha Hall');
+    await change('pause', 'Alpha Hall');
+    expect(statements).toEqual([domainPause(MEMBERSHIP, 'qa@soirely.test')]);
+    expect(statements[0]).toContain(`WHERE id = '${MEMBERSHIP}'`);
+    expect(statements[0]).toContain("suspension = 'domain_closed'");
+  });
+
+  it('deletes the organisation it made, and a name joined again is a new one', async () => {
+    const { change, calls } = changesFor();
+    await change('join', 'Alpha Hall');
+    await change('pause', 'Alpha Hall');
+    calls.length = 0;
+    await change('join', 'Alpha Hall');
+    expect(calls.slice(0, 2)).toEqual(['owner DELETE /api/orgs/org-1', 'owner POST /api/orgs']);
+    await change('delete', 'Alpha Hall');
+    await expect(change('suspend', 'Alpha Hall')).rejects.toThrow('was not joined in this batch');
+  });
+
+  it('refuses a change it does not know, or one with no organisation', async () => {
+    const { change } = changesFor();
+    await expect(change('wipe', 'Alpha Hall')).rejects.toThrow('no membership change wipe');
+    await expect(change('suspend', null)).rejects.toThrow('in which organisation?');
+    await expect(change('remove', 'Nowhere')).rejects.toThrow('Nowhere was not joined');
+  });
+
+  it('writes no statement from an id or an address that is not one', () => {
+    expect(() => domainPause("x'; DROP TABLE memberships; --", 'qa@soirely.test')).toThrow(
+      'not a membership id',
+    );
+    expect(() => domainPause(MEMBERSHIP, "qa@x'; --")).toThrow('no domain');
   });
 });
