@@ -25,6 +25,7 @@ import {
   batchFlow,
   batchRuns,
   afterRun,
+  assertBundler,
   batchSummary,
   physicalSize,
   portraitRotation,
@@ -1797,7 +1798,40 @@ describe('Expo Go after a reload', () => {
   });
 });
 
+describe('a batch with no bundler', () => {
+  it('stops before any Maestro run, naming the port and how to start it', async () => {
+    const asked = [];
+    await expect(
+      assertBundler(18081, async (port) => {
+        asked.push(port);
+        return false;
+      }),
+    ).rejects.toThrow('no bundler on 18081: start it with `node .qa/bin/qa-env.mjs serve`');
+    expect(asked).toEqual([18081]);
+  });
+
+  it('goes on when the bundler answers', async () => {
+    await expect(assertBundler(18081, async () => true)).resolves.toBeUndefined();
+  });
+});
+
 describe('the list a batch ends with', () => {
+  it('names the bundler once when it went away and the batch stopped resuming', () => {
+    expect(
+      batchSummary(['home', 'settings', 'roles'], {
+        passed: new Set(['home']),
+        begun: ['home', 'settings'],
+        crashed: ['settings'],
+        noBundlerPort: 18081,
+      }),
+    ).toEqual([
+      '✓ home',
+      "✗ settings: Maestro's driver stopped answering (a driver crash)",
+      '✗ roles: not run',
+      'Not resumed: no bundler on 18081: start it with `node .qa/bin/qa-env.mjs serve`',
+    ]);
+  });
+
   it('names the check the driver died in, and those it never reached', () => {
     expect(
       batchSummary(['home', 'settings', 'roles', 'members'], {
@@ -1994,20 +2028,57 @@ describe('what a Maestro run that lost its driver leaves to resume', () => {
 
   it('stops resuming after the cap when every resume crashes on the same check', async () => {
     let resumes = 0;
-    await resumeBatch(runs, async (rest) => {
-      resumes++;
-      return { rest: resumes > 20 ? [] : rest };
-    });
+    await resumeBatch(
+      runs,
+      async (rest) => {
+        resumes++;
+        return { rest: resumes > 20 ? [] : rest };
+      },
+      { bundler: async () => true },
+    );
     expect(resumes).toBe(MAX_RESUMES);
   });
 
   it('stops resuming once a resume leaves nothing to run', async () => {
     let resumes = 0;
-    await resumeBatch(runs, async () => {
-      resumes++;
-      return { rest: [] };
-    });
+    await resumeBatch(
+      runs,
+      async () => {
+        resumes++;
+        return { rest: [] };
+      },
+      { bundler: async () => true },
+    );
     expect(resumes).toBe(1);
+  });
+
+  it('makes no further resume once the bundler has gone, and says so', async () => {
+    let resumes = 0;
+    const answers = [true, false];
+    const resumed = await resumeBatch(
+      runs,
+      async (rest) => {
+        resumes++;
+        return { rest };
+      },
+      { bundler: async () => answers.shift() },
+    );
+    expect(resumes).toBe(1);
+    expect(resumed).toEqual({ bundlerGone: true });
+  });
+
+  it('starts no resume when the bundler is gone after the first run', async () => {
+    let resumes = 0;
+    const resumed = await resumeBatch(
+      runs,
+      async (rest) => {
+        resumes++;
+        return { rest };
+      },
+      { bundler: async () => false },
+    );
+    expect(resumes).toBe(0);
+    expect(resumed).toEqual({ bundlerGone: true });
   });
 });
 
