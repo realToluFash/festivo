@@ -1,0 +1,181 @@
+/* General at a desk, in B · Summary first: the app's Organisation, with its tile, its switch and its pickers. */
+
+.desk-disc.general-tile {
+  border-radius: var(--radiusCardPhone);
+}
+
+.general-lock {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+}
+
+.general-lock > svg {
+  flex: none;
+  margin-top: var(--spaceHair);
+}
+
+.desk-rows.general-domains > * + * {
+  background-position: 40px 0;
+  background-size: calc(100% - 40px) 1px;
+}
+
+.general-globe {
+  display: flex;
+  flex: none;
+  justify-content: center;
+  width: 28px;
+  color: var(--colorInkSecondary);
+}
+
+.desk-rows.general-domains > li.desk-row.is-bones {
+  min-height: 64px;
+  padding-top: 0;
+}
+
+.desk-rows.general-domains > li.desk-row.is-bones + li.desk-row.is-bones {
+  padding-top: 1px;
+}
+
+.desk-sunk.general-globe-bone {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radiusSmall);
+}
+
+.general-link {
+  font-variant-numeric: tabular-nums;
+  user-select: text;
+}
+
+.general-pair {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--spaceXl);
+}
+
+.general-switch {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--spaceSm);
+  min-height: var(--sizeHit);
+  padding: 0 var(--spaceXxs);
+  border: 0;
+  border-radius: var(--radiusSmall);
+  background: none;
+  cursor: pointer;
+}
+
+.general-switch[aria-busy='true'] {
+  cursor: progress;
+}
+
+.general-track {
+  position: relative;
+  flex: none;
+  width: var(--sizeToggleW);
+  height: var(--sizeToggleH);
+  border-radius: var(--radiusPill);
+  background: var(--colorTrack);
+  transition: background var(--motionBase) var(--motionEase);
+}
+
+.general-knob {
+  position: absolute;
+  top: var(--spaceHair);
+  left: var(--spaceHair);
+  width: var(--sizeToggleKnob);
+  height: var(--sizeToggleKnob);
+  border-radius: var(--radiusPill);
+  background: var(--colorCard);
+  box-shadow: var(--shadowKnob);
+  transition: transform var(--motionBase) var(--motionEase);
+}
+
+.general-switch[aria-checked='true'] .general-track {
+  background: var(--colorAccent);
+}
+
+.general-switch[aria-checked='true'] .general-knob {
+  transform: translateX(calc(var(--sizeToggleW) - var(--sizeToggleKnob) - var(--spaceHair) * 2));
+}
+
+.general-word {
+  min-width: 26px;
+  color: var(--colorInkSecondary);
+  font: var(--typeButton);
+  text-align: start;
+}
+
+.general-switch[aria-checked='true'] .general-word {
+  color: var(--colorAccentText);
+}
+
+.general-steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceMd);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.desk-dialog:has(~ .general-picker) {
+  visibility: hidden;
+}
+
+.desk-dialog.general-picker {
+  height: calc(100vh - 2 * var(--space6xl));
+}
+
+.general-picker .desk-nav.actions-pair {
+  display: grid;
+  grid-template-columns: minmax(max-content, 1fr) auto minmax(0, 1fr);
+}
+
+.desk-nav-cancel.general-back {
+  display: inline-flex;
+  justify-self: start;
+  align-items: center;
+  gap: var(--spaceHair);
+  padding-inline-start: var(--spaceXs);
+}
+
+.general-search {
+  flex: none;
+  padding: var(--spaceLg) var(--spaceXxl) var(--spaceXs);
+}
+
+.general-search .desk-box {
+  gap: var(--spaceSm);
+  color: var(--colorInkSecondary);
+}
+
+.general-search input::-webkit-search-cancel-button {
+  appearance: none;
+}
+
+.desk-dialog-body.general-choices {
+  flex: 1;
+  gap: 0;
+  padding-top: var(--spaceXs);
+}
+
+.general-choices .desk-row > svg {
+  flex: none;
+  color: var(--colorAccent);
+}
+
+.general-typed {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+}
+
+.general-matches {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceXs);
+}

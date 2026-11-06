@@ -73,9 +73,10 @@ export function useDeskDialog(
     const back = (tries: number): void => {
       const to = opener.current;
       if (open.current) return;
-      if (!(to instanceof HTMLElement) || !to.isConnected)
-        document.querySelector<HTMLElement>('.desk-main h1')?.focus();
-      else if (to.closest('[inert]') == null) to.focus();
+      const lost = document.activeElement == null || document.activeElement === document.body;
+      if (!(to instanceof HTMLElement) || !to.isConnected) {
+        if (lost) document.querySelector<HTMLElement>('.desk-main h1')?.focus();
+      } else if (to.closest('[inert]') == null) to.focus();
       else if (tries > 0) window.requestAnimationFrame(() => back(tries - 1));
     };
 
