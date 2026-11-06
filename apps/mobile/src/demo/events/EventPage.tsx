@@ -91,7 +91,7 @@ export function EventScreen({
   const [mute, setMute] = useState<Mute>(
     state === 'muteNotLoaded' ? 'notLoaded' : state === 'muteNotSaved' ? 'notSaved' : 'ok',
   );
-  const [told, setTold] = useState<string | null>(null);
+  const [told, setTold] = useState<string | null>(state === 'saved' ? W.saved : null);
   const refs = useRef<Partial<Record<string, ViewInstance | null>>>({});
   const from = useRef('card');
   const opener = useMemo<RefObject<ScreenReaderTarget | null>>(

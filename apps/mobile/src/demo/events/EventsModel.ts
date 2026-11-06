@@ -566,6 +566,7 @@ export const EVENT_STATES = [
   'discard',
   'changedElsewhere',
   'showLatest',
+  'saved',
   'venue',
   'venueSuggestions',
   'venueZone',

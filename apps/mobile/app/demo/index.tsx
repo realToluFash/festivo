@@ -455,6 +455,11 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         what: 'The Ask before your change goes',
         href: '/demo/events/evt-wed-4?state=showLatest',
       },
+      {
+        title: 'Saved',
+        what: 'The page again, with Saved',
+        href: '/demo/events/evt-wed-4?state=saved',
+      },
       { title: 'Venue', what: 'Name and address', href: '/demo/events/evt-wed-4?state=venue' },
       {
         title: 'Venue · suggestions',

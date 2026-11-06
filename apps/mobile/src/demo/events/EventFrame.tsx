@@ -92,7 +92,9 @@ export function EventFrame({
       words={toast.words}
       onClose={toast.onClose}
       bottom={
-        phone ? foot + PHONE_TAB_BAR + tokens.spaceMd : Math.max(insets.bottom, tokens.spaceLg)
+        phone
+          ? foot + PHONE_TAB_BAR + tokens.spaceXl + tokens.spaceHair
+          : Math.max(insets.bottom, tokens.spaceLg)
       }
     />
   );
