@@ -2248,6 +2248,80 @@ function apiSession(email, password, secret) {
   return (path, options) => session((token) => api(path, { ...options, token }));
 }
 
+export const MEMBERSHIP_CHANGES = ['join', 'pause', 'suspend', 'remove', 'delete'];
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+// One owner for the whole batch: sign-ups are limited to ten an hour per address.
+export function membershipChanges({ email, member, ownerOf, sql }) {
+  let owning = null;
+  const owner = (path, options) => {
+    owning ??= ownerOf().catch((error) => {
+      owning = null;
+      throw error;
+    });
+    return owning.then((session) => session(path, options));
+  };
+  const joined = new Map();
+  const find = (name) => {
+    const id = joined.get(name);
+    if (!id) throw new Error(`${name} was not joined in this batch: /membership?change=join first`);
+    return id;
+  };
+  const membershipIn = async (id) => {
+    const { members } = await owner(`/api/orgs/${id}/members`, { method: 'GET' });
+    const mine = members.find((m) => m.user.email === email)?.id;
+    if (!UUID.test(mine ?? '')) throw new Error(`${email} holds no membership in ${id}`);
+    return mine;
+  };
+  const changes = {
+    // Or a name joined again would show twice in the switcher.
+    join: async (name) => {
+      if (joined.has(name)) await changes.delete(name);
+      const { organisation } = await owner('/api/orgs', {
+        body: { name, countryCode: 'GB', timezone: 'Europe/London' },
+      });
+      const { id } = organisation;
+      const { roles } = await owner(`/api/orgs/${id}/roles`, { method: 'GET' });
+      const roleId = roles.find((r) => r.seededAs === 'member').id;
+      const { invitation } = await owner(`/api/orgs/${id}/members/invite`, {
+        body: { email, roleId },
+      });
+      await member(`/api/invitations/${invitation.id}/accept`, {});
+      joined.set(name, id);
+    },
+    pause: async (name) => sql(domainPause(await membershipIn(find(name)), email)),
+    suspend: async (name) => {
+      const id = find(name);
+      await owner(`/api/orgs/${id}/members/${await membershipIn(id)}/suspend`, {});
+    },
+    remove: async (name) => {
+      const id = find(name);
+      await owner(`/api/orgs/${id}/members/${await membershipIn(id)}`, { method: 'DELETE' });
+    },
+    delete: async (name) => {
+      const id = find(name);
+      await owner(`/api/orgs/${id}`, { method: 'DELETE', body: { name } });
+      joined.delete(name);
+    },
+  };
+  return async (change, name) => {
+    if (!MEMBERSHIP_CHANGES.includes(change)) {
+      throw new Error(`no membership change ${change}: ${MEMBERSHIP_CHANGES.join(', ')}`);
+    }
+    if (!name) throw new Error(`${change} in which organisation? /membership?change=…&org=…`);
+    await changes[change](name);
+    return { membership: change, org: name };
+  };
+}
+
+// The API has no route to pause through a domain; this is what DomainSuspender writes.
+export function domainPause(membershipId, email) {
+  if (!UUID.test(membershipId)) throw new Error(`not a membership id: ${membershipId}`);
+  const domain = email.split('@')[1];
+  if (!/^[a-z0-9.-]+$/i.test(domain ?? '')) throw new Error(`no domain in ${email}`);
+  return `UPDATE memberships SET status = 'suspended', suspension = 'domain_closed', domain = '${domain.toLowerCase()}', suspended_at = now(), removes_at = now() + interval '30 days' WHERE id = '${membershipId}'`;
+}
+
 async function reloadApp() {
   const Socket = globalThis.WebSocket ?? (await import('ws')).WebSocket;
   return new Promise((done, failed) => {
@@ -2466,6 +2540,7 @@ export function startHelper({
   heard,
   device,
   onAndroid,
+  changeMembership,
   open = openOnEmulator,
   reload = reloadOnEmulator,
   portrait = portraitOnEmulator,
@@ -2514,6 +2589,14 @@ export function startHelper({
           throw new Error(`no API state ${to}: ${API_STATES.join(', ')}`);
         if (!(await within(8000, apiState.move(to)))) return reply(200, { wait: true });
         return reply(200, { api: to });
+      }
+      if (url.pathname === '/membership') {
+        if (!changeMembership) throw new Error('this batch makes no membership change');
+        if (!(await within(8000, apiState.move('up')))) return reply(200, { wait: true });
+        return reply(
+          200,
+          await changeMembership(url.searchParams.get('change'), url.searchParams.get('org')),
+        );
       }
       if (url.pathname === '/started') {
         if (!(await within(8000, apiState.move('up')))) return reply(200, { wait: true });
@@ -2637,6 +2720,18 @@ async function batch(args) {
     await apiState.move('up');
     await signedIn('/api/auth/locale', { method: 'PUT', body: { locale } });
   };
+  const changeMembership = membershipChanges({
+    email,
+    member: apiSession(email, password, secret),
+    ownerOf: () => organisationOwner(root),
+    sql: async (statement) => {
+      const psql = ['compose', 'exec', '-T', 'postgres', 'psql', '-U', 'soirely', '-d', 'soirely'];
+      const answer = capture('docker', [...psql, '-v', 'ON_ERROR_STOP=1', '-c', statement], {
+        cwd: root,
+      });
+      if (answer !== 'UPDATE 1') throw new Error(`the database changed no membership: ${answer}`);
+    },
+  });
   const helper = await startHelper({
     email,
     secret,
@@ -2647,6 +2742,7 @@ async function batch(args) {
     heard,
     device,
     onAndroid,
+    changeMembership,
   });
   // The secret stays with the helper: no flow is handed it.
   const env = {
@@ -2864,6 +2960,21 @@ async function account(args) {
     await api('/api/auth/two-factor/activate', { token, body: { code } });
   }
   console.log(readyReport({ email, password, secret, accessToken: token, sessionId }));
+}
+
+async function organisationOwner(root) {
+  const made = capture('node', ['scripts/qa-account.mjs', '--json'], {
+    cwd: root,
+    env: { ...process.env, SOIRELY_API_URL: CONFIG.urls.api, MAILPIT_URL: CONFIG.urls.mailpit },
+  });
+  if (made === null) throw new Error('scripts/qa-account.mjs registered no owner');
+  const { email, password, name, accessToken: token } = JSON.parse(made);
+  await api('/api/auth/complete-profile', {
+    method: 'PATCH',
+    token,
+    body: { name, organisationName: 'QA Owner', countryCode: 'GB', timezone: 'Europe/London' },
+  });
+  return apiSession(email, password, null);
 }
 
 // The session it signed in with is printed, so a flow can end it from outside the phone.
