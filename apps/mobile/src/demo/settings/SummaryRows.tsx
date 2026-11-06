@@ -425,7 +425,7 @@ export function TextAction({
   return (
     <View>
       {action}
-      <Text size={14} weight="medium" style={styles.secondary}>
+      <Text size={14} weight="medium" style={[styles.secondary, styles.consequence]}>
         {consequence}
       </Text>
     </View>
@@ -497,6 +497,7 @@ const styles = StyleSheet.create({
   },
   title: { flexShrink: 1, lineHeight: 16 * 1.3 },
   line: { lineHeight: 14 * 1.4 },
+  consequence: { lineHeight: 14 * 1.45 },
   count: { fontVariant: ['tabular-nums'] },
   hairline: { height: 1, backgroundColor: tokens.colorBorder },
   figures: { fontVariant: ['tabular-nums'] },

@@ -488,13 +488,15 @@ function titled(size: number) {
   return { lineHeight: size * 1.12, letterSpacing: size * -0.02 };
 }
 
-function SearchField({
+export function SearchField({
   typed,
   off,
   width,
   onTyped,
   onSearch,
   onClear,
+  label = W.search,
+  testID = 'events.search',
   ref,
 }: {
   typed: string;
@@ -503,7 +505,9 @@ function SearchField({
   onTyped: (typed: string) => void;
   onSearch: () => void;
   onClear: () => void;
-  ref: Ref<TextInputInstance>;
+  label?: string;
+  testID?: string;
+  ref?: Ref<TextInputInstance>;
 }) {
   const [focused, setFocused] = useState(false);
 
@@ -527,7 +531,7 @@ function SearchField({
           ref={ref}
           value={typed}
           editable={!off}
-          placeholder={W.search}
+          placeholder={label}
           placeholderTextColor={off ? tokens.colorInkTertiary : tokens.colorInkSecondary}
           onChangeText={onTyped}
           onSubmitEditing={onSearch}
@@ -536,9 +540,9 @@ function SearchField({
           returnKeyType="search"
           autoCorrect={false}
           autoCapitalize="none"
-          accessibilityLabel={W.search}
+          accessibilityLabel={label}
           style={styles.searchInput}
-          testID="events.search"
+          testID={testID}
         />
         {typed !== '' && (
           <Pressable
@@ -546,7 +550,7 @@ function SearchField({
             style={styles.clear}
             accessibilityRole="button"
             accessibilityLabel={W.clearSearch}
-            testID="events.search.clear"
+            testID={`${testID}.clear`}
           >
             <View style={styles.clearDot}>
               <Glyph name="x" size={12} ink={tokens.colorInkOnDark} weight={3} />

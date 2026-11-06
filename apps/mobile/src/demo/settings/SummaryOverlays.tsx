@@ -117,10 +117,20 @@ export interface AskProps {
   onKeep: () => void;
   onConfirm: () => void;
   testID?: string;
+  width?: number;
 }
 
 /** B's one question: what happens, in words, then the way back first and the verb last, red when it removes. Two actions too wide for one line stack with the verb on top (sc-22092). */
-export function AskLayer({ title, line, keep, confirm, onKeep, onConfirm, testID }: AskProps) {
+export function AskLayer({
+  title,
+  line,
+  keep,
+  confirm,
+  onKeep,
+  onConfirm,
+  testID,
+  width,
+}: AskProps) {
   const { layout } = useShell();
   const heading = useRef<TextHandle>(null);
   const [widths, setWidths] = useState({ room: 0, keep: 0, confirm: 0 });
@@ -155,15 +165,21 @@ export function AskLayer({ title, line, keep, confirm, onKeep, onConfirm, testID
   return (
     <View style={[StyleSheet.absoluteFill, styles.askScrim]}>
       <View
-        style={[styles.dialog, { maxWidth: layout === 'phone' ? 340 : 400 }]}
+        style={[styles.dialog, { maxWidth: width ?? (layout === 'phone' ? 340 : 400) }]}
         accessibilityViewIsModal
         onAccessibilityEscape={onKeep}
         testID={testID}
       >
-        <Text ref={heading} size={18} weight="bold" accessibilityRole="header">
+        <Text
+          ref={heading}
+          size={18}
+          weight="bold"
+          accessibilityRole="header"
+          style={styles.askTitle}
+        >
           {title}
         </Text>
-        <Text size={15} weight="medium" style={styles.secondary}>
+        <Text size={15} weight="medium" style={[styles.secondary, styles.askLine]}>
           {line}
         </Text>
         <View
@@ -214,6 +230,7 @@ export function FocusedScreen({
   toast,
   scrollRef,
   fills = false,
+  gap = tokens.spaceLg,
   children,
   testID,
 }: {
@@ -232,6 +249,7 @@ export function FocusedScreen({
   toast?: { words: string; onClose: () => void } | null;
   scrollRef?: Ref<ScrollViewInstance>;
   fills?: boolean;
+  gap?: number;
   children: ReactNode;
   testID?: string;
 }) {
@@ -278,7 +296,10 @@ export function FocusedScreen({
               <ScrollView
                 ref={scrollRef}
                 style={phone ? styles.fill : styles.sheetBody}
-                contentContainerStyle={[styles.body, { paddingBottom: bottom + tokens.space5xl }]}
+                contentContainerStyle={[
+                  styles.body,
+                  { gap, paddingBottom: bottom + tokens.space5xl },
+                ]}
                 keyboardShouldPersistTaps="handled"
                 showsVerticalScrollIndicator={false}
               >
@@ -431,6 +452,7 @@ export function AnchoredMenu({
   onClose,
   opener,
   width = MENU_WIDTH,
+  align = 'end',
   over,
   scrollRef,
   children,
@@ -440,6 +462,7 @@ export function AnchoredMenu({
   onClose: () => void;
   opener: Opener;
   width?: number;
+  align?: 'start' | 'end';
   /** Drawn over the menu in its window, as FocusedScreen's `over` is. */
   over?: ReactNode;
   scrollRef?: Ref<ScrollViewInstance>;
@@ -465,7 +488,12 @@ export function AnchoredMenu({
         <View
           style={[
             styles.menu,
-            { top, left: menuLeft(at, width), width, maxHeight: Math.max(room, MENU_LEAST) },
+            {
+              top,
+              left: menuLeft(at, width, align, frame.width),
+              width,
+              maxHeight: Math.max(room, MENU_LEAST),
+            },
           ]}
           accessibilityViewIsModal
           onAccessibilityEscape={onClose}
@@ -564,7 +592,8 @@ export function FilterMenu<T extends string>({
   );
 }
 
-function menuLeft(at: Anchor, width: number): number {
+function menuLeft(at: Anchor, width: number, align: 'start' | 'end', across: number): number {
+  if (align === 'start' && at.x + width <= across - tokens.spaceXxl) return at.x;
   return Math.max(tokens.spaceLg, at.x + at.width - width);
 }
 
@@ -626,6 +655,8 @@ const styles = StyleSheet.create({
     borderRadius: tokens.space3xl,
     backgroundColor: tokens.colorCard,
   },
+  askTitle: { letterSpacing: 18 * -0.01, lineHeight: 18 * 1.3 },
+  askLine: { lineHeight: 15 * 1.45 },
   askActions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
@@ -658,7 +689,7 @@ const styles = StyleSheet.create({
   },
   sheetBody: { flexGrow: 0 },
   sheetFill: { flexShrink: 1, minHeight: 0 },
-  body: { paddingTop: tokens.spaceXl, paddingHorizontal: tokens.spaceXxl, gap: tokens.spaceLg },
+  body: { paddingTop: tokens.spaceXl, paddingHorizontal: tokens.spaceXxl },
   nav: {
     height: 52,
     flexDirection: 'row',

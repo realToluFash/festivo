@@ -8,11 +8,11 @@ import {
   keepsLastHost,
   startMoved,
 } from '@soirely/domain';
-import { type ReactNode, type RefObject, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { type ReactNode, type RefObject, useEffect, useRef, useState } from 'react';
+import { Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
 
-import { Field, TextField } from '../../components/Field.tsx';
-import { Notice } from '../../components/Notice.tsx';
+import { fieldFocused, fieldLeft } from '../../components/focusedField.ts';
+import { RadioMark } from '../../components/RadioMark.tsx';
 import { useReadOut } from '../../components/ReadOut.tsx';
 import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
 import { Text } from '../../components/Text.tsx';
@@ -20,18 +20,13 @@ import { tokens } from '../../theme/tokens.ts';
 import { EventMesh } from '../Cover.tsx';
 import { Glyph } from '../Glyph.tsx';
 import { LineIcon } from '../settings/AccountCard.tsx';
+import { useShell } from '../settings/Frame.tsx';
 import { Pill } from '../settings/parts.tsx';
-import {
-  type AskProps,
-  ChoiceRow,
-  FocusedScreen,
-  Row,
-  RowList,
-  TextAction,
-} from '../settings/Summary.tsx';
+import { type AskProps, FocusedScreen, Row, RowList, TextAction } from '../settings/Summary.tsx';
 import { MESH_EVENT, PhotoFill } from './EventCard.tsx';
 import { type EditPart, type EventDemoState, folded, instantOf, wallOf } from './EventsModel.ts';
-import { MomentBox, type Picking, PickerLayer, pick } from './EventsPick.tsx';
+import { SearchField } from './EventsList.tsx';
+import { BoxField, MomentBox, type Picking, PickerLayer, pick } from './EventsPick.tsx';
 import {
   CURRENCIES,
   PHOTO_DESCRIPTION,
@@ -87,6 +82,12 @@ export function EditScreen({ part, ...edit }: EditProps & { part: EditPart }) {
   }
 }
 
+export const ASK_WIDTH = 340;
+
+export function useEditGap(): number {
+  return useShell().layout === 'phone' ? tokens.spaceXl : tokens.spaceLg;
+}
+
 function EditShell({
   part,
   verb = W.save,
@@ -110,6 +111,7 @@ function EditShell({
 }) {
   const [discarding, setDiscarding] = useState(edit.start === 'discard');
   const testID = `event.edit.${part}`;
+  const gap = useEditGap();
   const discard: AskProps | null = discarding
     ? {
         title: W.discardTitle,
@@ -120,16 +122,18 @@ function EditShell({
         onConfirm: edit.onClose,
       }
     : null;
+  const asked = latest ?? discard;
 
   return (
     <FocusedScreen
+      gap={gap}
       open={edit.open}
       title={TITLES[part]}
       verb={{ label: verb, on: changed, onPress: onSave, testID: `${testID}.save` }}
       onCancel={() => (changed ? setDiscarding(true) : edit.onClose())}
       cancelTestID={`${testID}.cancel`}
       opener={edit.opener}
-      ask={latest ?? discard}
+      ask={asked && { ...asked, width: ASK_WIDTH }}
       over={over ?? null}
       toast={toast ?? null}
       testID={testID}
@@ -139,15 +143,114 @@ function EditShell({
   );
 }
 
-export function AlertLine({ text }: { text: string }) {
+/** B's notice: its tint, the mark in a solid disc, the words in Ink and any way on under them. */
+function EventNotice({
+  tone,
+  words,
+  actions,
+}: {
+  tone: 'quiet' | 'broken';
+  words: string;
+  actions?: ReactNode;
+}) {
+  const broken = tone === 'broken';
+  useReadOut(words);
+
+  return (
+    <View style={[styles.notice, broken ? styles.noticeBroken : styles.noticeQuiet]}>
+      <View
+        style={[styles.disc, broken ? styles.discBroken : styles.discQuiet]}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      >
+        {broken ? (
+          <Glyph name="x" size={15} ink={tokens.colorInkOnDark} weight={3} />
+        ) : (
+          <Text size={14} weight="bold" accessible={false} style={styles.onDisc}>
+            i
+          </Text>
+        )}
+      </View>
+      <View style={styles.noticeWords}>
+        <Text size={15} weight="semibold" style={styles.noticeHead}>
+          {words}
+        </Text>
+        {actions != null && <View style={styles.noticeActions}>{actions}</View>}
+      </View>
+    </View>
+  );
+}
+
+export function AlertLine({ text, small = false }: { text: string; small?: boolean }) {
   return (
     <View style={styles.alert} accessibilityRole="alert">
-      <View style={styles.alertMark}>
+      <View style={small ? styles.alertMarkSmall : styles.alertMark}>
         <Glyph name="alert" size={15} ink={tokens.colorBroken} weight={2.2} />
       </View>
-      <Text size={14} weight="medium" style={[styles.grow, styles.broken]}>
+      <Text
+        size={small ? 13.5 : 14}
+        weight="medium"
+        style={[styles.grow, styles.broken, small ? styles.hint : styles.said]}
+      >
         {text}
       </Text>
+    </View>
+  );
+}
+
+/** A typed field as the boards draw it: the label and any Optional, the box, then its error or its help. */
+export function EventField({
+  label,
+  optional = false,
+  error = null,
+  help,
+  children,
+}: {
+  label: string;
+  optional?: boolean;
+  error?: string | null;
+  help?: string | undefined;
+  children: ReactNode;
+}) {
+  const field = useRef<ViewInstance>(null);
+  useReadOut(error);
+  useEffect(() => {
+    const mounted = field.current;
+
+    return () => fieldLeft(mounted);
+  }, []);
+
+  return (
+    <View
+      ref={field}
+      onFocus={() => fieldFocused(field.current)}
+      onBlur={() => fieldLeft(field.current)}
+      style={styles.labelled}
+    >
+      <View
+        style={styles.fieldHead}
+        accessible
+        accessibilityLabel={optional ? `${label}, ${W.optional}` : label}
+      >
+        <Text size={14} weight="semibold" style={styles.label}>
+          {label}
+        </Text>
+        {optional && (
+          <Text size={14} weight="medium" style={[styles.secondary, styles.label]}>
+            {` · ${W.optional}`}
+          </Text>
+        )}
+      </View>
+      {children}
+      {error != null ? (
+        <AlertLine text={error} small />
+      ) : (
+        help != null && (
+          <Text size={13.5} weight="medium" style={[styles.secondary, styles.hint]}>
+            {help}
+          </Text>
+        )
+      )}
     </View>
   );
 }
@@ -156,7 +259,7 @@ export function AlertLine({ text }: { text: string }) {
 function TellGuests() {
   return (
     <View style={styles.tell}>
-      <Text size={13.5} weight="semibold" style={styles.secondary}>
+      <Text size={13.5} weight="semibold" style={[styles.secondary, styles.hint]}>
         {W.tellGuests}
       </Text>
       <AcPill words={W.tellGuestsPill} />
@@ -174,10 +277,44 @@ export function AcPill({ words }: { words: string }) {
   );
 }
 
+/** The event's choices: each a row with its radio at the right, ruled apart. */
+function Choices<Key extends string>({
+  items,
+  on,
+  onPick,
+  testID,
+}: {
+  items: readonly { key: Key; title: string }[];
+  on: Key;
+  onPick: (key: Key) => void;
+  testID: string;
+}) {
+  return (
+    <View accessibilityRole="radiogroup">
+      <RowList
+        items={items.map((one) => ({
+          key: one.key,
+          row: (
+            <Row
+              title={one.title}
+              trail={<RadioMark on={one.key === on} />}
+              accent={one.key === on}
+              onPress={() => onPick(one.key)}
+              accessibilityRole="radio"
+              accessibilityState={{ checked: one.key === on }}
+              testID={`${testID}.${one.key}`}
+            />
+          ),
+        }))}
+      />
+    </View>
+  );
+}
+
 function Labelled({ label, children }: { label: string; children: ReactNode }) {
   return (
     <View style={styles.labelled}>
-      <Text size={14} weight="semibold">
+      <Text size={14} weight="semibold" style={styles.label}>
         {label}
       </Text>
       {children}
@@ -314,16 +451,16 @@ function DatesEdit(edit: EditProps) {
       }
     >
       {elsewhere && (
-        <Notice
+        <EventNotice
           tone="broken"
-          mark={tokens.marks.broken.glyph}
-          body={W.changedElsewhere}
-          action={{
-            label: W.showLatest,
-            onPress: () => setShowing(true),
-            testID: 'event.edit.dates.latest',
-          }}
-          announce
+          words={W.changedElsewhere}
+          actions={
+            <TextAction
+              label={W.showLatest}
+              onPress={() => setShowing(true)}
+              testID="event.edit.dates.latest"
+            />
+          }
         />
       )}
       <Labelled label={W.starts}>
@@ -373,11 +510,11 @@ function DatesEdit(edit: EditProps) {
       {wrong ? (
         <AlertLine text={W.endBeforeStart} />
       ) : moved != null ? (
-        <Text size={13.5} weight="semibold">
+        <Text size={13.5} weight="semibold" style={styles.hint}>
           {moved}
         </Text>
       ) : (
-        <Text size={13.5} weight="medium" style={styles.secondary}>
+        <Text size={13.5} weight="medium" style={[styles.secondary, styles.hint]}>
           {W.endsHint}
         </Text>
       )}
@@ -395,25 +532,20 @@ function DatesEdit(edit: EditProps) {
           </Text>
           <Glyph name="down" size={18} ink={tokens.colorInkSecondary} weight={2.3} />
         </Pressable>
-        <Text size={13.5} weight="medium" style={styles.secondary}>
+        <Text size={13.5} weight="medium" style={[styles.secondary, styles.hint]}>
           {say.timesIn(zone)}
         </Text>
       </Labelled>
       {zonesOpen && (
-        <View accessibilityRole="radiogroup">
-          {ZONES.map((one) => (
-            <ChoiceRow
-              key={one}
-              title={one}
-              on={one === zone}
-              onPress={() => {
-                setZone(one);
-                setZonesOpen(false);
-              }}
-              testID={`event.edit.dates.zone.${one}`}
-            />
-          ))}
-        </View>
+        <Choices
+          items={ZONES.map((one) => ({ key: one, title: one }))}
+          on={zone}
+          onPick={(one) => {
+            setZone(one);
+            setZonesOpen(false);
+          }}
+          testID="event.edit.dates.zone"
+        />
       )}
       <TellGuests />
     </EditShell>
@@ -485,20 +617,21 @@ function VenueEdit(edit: EditProps) {
       }
       edit={edit}
     >
-      <Field label={`${W.venueName} · ${W.optional}`}>
-        <TextField
+      <EventField label={W.venueName} optional>
+        <BoxField
           value={name}
           onChangeText={setName}
           autoCorrect={false}
           accessibilityLabel={`${W.venueName} · ${W.optional}`}
           testID="event.edit.venue.name"
         />
-      </Field>
-      <Field
-        label={`${W.address} · ${W.optional}`}
-        help={down || words != null ? undefined : W.venueAddressHint}
+      </EventField>
+      <EventField
+        label={W.address}
+        optional
+        help={down || words != null || offer ? undefined : W.venueAddressHint}
       >
-        <TextField
+        <BoxField
           value={address}
           autoFocus={start === 'venueSuggestions' || down}
           onChangeText={(typed) => {
@@ -510,11 +643,11 @@ function VenueEdit(edit: EditProps) {
           accessibilityLabel={`${W.address} · ${W.optional}`}
           testID="event.edit.venue.address"
         />
-      </Field>
+      </EventField>
       {down && <AlertLine text={W.venueLookupDown} />}
       {words != null && (
         <>
-          <Text size={13.5} weight="medium" style={styles.secondary}>
+          <Text size={13.5} weight="medium" style={[styles.secondary, styles.hint]}>
             {words}
           </Text>
           <RowList
@@ -540,11 +673,9 @@ function VenueEdit(edit: EditProps) {
         </>
       )}
       {offer && chosen != null && (
-        <Notice
+        <EventNotice
           tone="quiet"
-          mark="i"
-          body={say.zoneOffer(chosen.timeZone)}
-          announce
+          words={say.zoneOffer(chosen.timeZone)}
           actions={
             <View style={styles.offer}>
               <TextAction
@@ -564,7 +695,7 @@ function VenueEdit(edit: EditProps) {
           }
         />
       )}
-      {!looking && !offer && <TellGuests />}
+      {words == null && !offer && !down && <TellGuests />}
     </EditShell>
   );
 }
@@ -612,7 +743,7 @@ function HostsEdit(edit: EditProps) {
 
   return (
     <EditShell part="hosts" changed={changed} onSave={save} edit={edit}>
-      <Text size={15} weight="medium" style={styles.secondary}>
+      <Text size={15} weight="medium" style={[styles.secondary, styles.lines]}>
         {W.hostsExplainer}
       </Text>
       {hosts.map((host, index) => {
@@ -642,10 +773,13 @@ function HostsEdit(edit: EditProps) {
             </View>
             <View style={styles.hostRow}>
               <View style={styles.grow}>
-                <TextField
+                <BoxField
                   value={host.name}
                   wrong={error != null}
-                  autoFocus={start === 'hostsDuplicate' && index === 2}
+                  autoFocus={
+                    (start === 'hostsDuplicate' && index === 2) ||
+                    (start === 'lastHost' && index === 0)
+                  }
                   onChangeText={(typed) =>
                     setHosts(
                       hosts.map((one) => (one.key === host.key ? { ...one, name: typed } : one)),
@@ -679,12 +813,12 @@ function HostsEdit(edit: EditProps) {
         );
       })}
       {kept && (
-        <Text size={14} weight="medium" style={styles.secondary}>
+        <Text size={14} weight="medium" style={[styles.secondary, styles.said]}>
           {W.lastHost}
         </Text>
       )}
       {hosts.length >= HOSTS_MAXIMUM ? (
-        <Text size={14} weight="medium" style={styles.secondary}>
+        <Text size={14} weight="medium" style={[styles.secondary, styles.said]}>
           {W.hostsMost}
         </Text>
       ) : (
@@ -698,7 +832,9 @@ function HostsEdit(edit: EditProps) {
           testID="event.edit.hosts.add"
         />
       )}
-      <TellGuests />
+      {!kept && hosts.length < HOSTS_MAXIMUM && problems.every((problem) => problem == null) && (
+        <TellGuests />
+      )}
     </EditShell>
   );
 }
@@ -745,27 +881,24 @@ function TypeEdit(edit: EditProps) {
       onSave={() => edit.onSaved({ ...edit.event, type })}
       edit={edit}
     >
-      <View accessibilityRole="search">
-        <TextField
-          value={typed}
-          onChangeText={setTyped}
-          placeholder={W.searchTypes}
-          autoCorrect={false}
-          accessibilityLabel={W.searchTypes}
+      <View style={styles.searchRow}>
+        <SearchField
+          typed={typed}
+          off={false}
+          width={null}
+          onTyped={setTyped}
+          onSearch={() => undefined}
+          onClear={() => setTyped('')}
+          label={W.searchTypes}
           testID="event.edit.type.search"
         />
       </View>
-      <View accessibilityRole="radiogroup">
-        {shown.map((one) => (
-          <ChoiceRow
-            key={one}
-            title={TYPE_WORDS[one]}
-            on={one === type}
-            onPress={() => setType(one)}
-            testID={`event.edit.type.${one}`}
-          />
-        ))}
-      </View>
+      <Choices
+        items={shown.map((one) => ({ key: one, title: TYPE_WORDS[one] }))}
+        on={type}
+        onPick={setType}
+        testID="event.edit.type"
+      />
     </EditShell>
   );
 }
@@ -782,20 +915,13 @@ function CurrencyEdit(edit: EditProps) {
       onSave={() => (refused ? setRefusal(true) : edit.onSaved({ ...edit.event, currency: code }))}
       edit={edit}
     >
-      {refusal && (
-        <Notice tone="broken" mark={tokens.marks.broken.glyph} body={W.currencyInUse} announce />
-      )}
-      <View accessibilityRole="radiogroup">
-        {CURRENCIES.map((one) => (
-          <ChoiceRow
-            key={one.code}
-            title={`${one.code} · ${one.name}`}
-            on={one.code === code}
-            onPress={() => setCode(one.code)}
-            testID={`event.edit.currency.${one.code}`}
-          />
-        ))}
-      </View>
+      {refusal && <EventNotice tone="broken" words={W.currencyInUse} />}
+      <Choices
+        items={CURRENCIES.map((one) => ({ key: one.code, title: `${one.code} · ${one.name}` }))}
+        on={code}
+        onPick={setCode}
+        testID="event.edit.currency"
+      />
     </EditShell>
   );
 }
@@ -811,12 +937,12 @@ function NameEdit(edit: EditProps) {
       onSave={() => !blank && edit.onSaved({ ...edit.event, name: name.trim() })}
       edit={edit}
     >
-      <Field
+      <EventField
         label={W.eventName}
         error={blank ? W.nameBlank : null}
-        help={blank ? undefined : say.nameCount([...name].length)}
+        help={say.nameCount([...name].length)}
       >
-        <TextField
+        <BoxField
           value={name}
           wrong={blank}
           autoFocus
@@ -825,7 +951,7 @@ function NameEdit(edit: EditProps) {
           accessibilityLabel={W.eventName}
           testID="event.edit.name.field"
         />
-      </Field>
+      </EventField>
       <TellGuests />
     </EditShell>
   );
@@ -883,11 +1009,8 @@ function CoverEdit(edit: EditProps) {
             testID="event.edit.cover.change"
           />
           <PositionSlider position={position} onPosition={setPosition} />
-          <Field
-            label={`${W.describe} · ${W.optional}`}
-            help={[W.describeHint, say.describeCount([...described].length)]}
-          >
-            <TextField
+          <EventField label={W.describe} optional help={W.describeHint}>
+            <BoxField
               value={described}
               onChangeText={setDescribed}
               multiline
@@ -895,7 +1018,10 @@ function CoverEdit(edit: EditProps) {
               accessibilityLabel={`${W.describe} · ${W.optional}`}
               testID="event.edit.cover.describe"
             />
-          </Field>
+          </EventField>
+          <Text size={13.5} weight="medium" style={[styles.secondary, styles.hint, styles.figures]}>
+            {say.describeCount([...described].length)}
+          </Text>
           <TextAction
             label={W.removePhoto}
             removes
@@ -910,9 +1036,9 @@ function CoverEdit(edit: EditProps) {
       ) : (
         <>
           {refused ? (
-            <Notice tone="broken" mark={tokens.marks.broken.glyph} body={W.coverRefused} announce />
+            <EventNotice tone="broken" words={W.coverRefused} />
           ) : (
-            <Text size={15} weight="medium" style={styles.secondary}>
+            <Text size={15} weight="medium" style={[styles.secondary, styles.lines]}>
               {W.coverDefaultLine}
             </Text>
           )}
@@ -926,7 +1052,7 @@ function CoverEdit(edit: EditProps) {
             }}
             testID="event.edit.cover.upload"
           />
-          <Text size={13.5} weight="medium" style={styles.secondary}>
+          <Text size={13.5} weight="medium" style={[styles.secondary, styles.hint]}>
             {W.accepted}
           </Text>
         </>
@@ -953,7 +1079,7 @@ function PositionSlider({
 
   return (
     <View style={styles.slider}>
-      <Text size={14} weight="semibold">
+      <Text size={14} weight="semibold" style={styles.label}>
         {W.position}
       </Text>
       <View style={styles.track}>
@@ -996,7 +1122,7 @@ function PositionSlider({
           {W.bottom}
         </Text>
       </View>
-      <Text size={13.5} weight="medium" style={styles.secondary}>
+      <Text size={13.5} weight="medium" style={[styles.secondary, styles.hint]}>
         {SHOWING[position]}
       </Text>
     </View>
@@ -1005,11 +1131,39 @@ function PositionSlider({
 
 const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
+  searchRow: { flexDirection: 'row' },
   secondary: { color: tokens.colorInkSecondary },
   broken: { color: tokens.colorBroken },
   pressed: { opacity: tokens.opacityPressed },
   alert: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceXs },
+  notice: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: tokens.spaceLg,
+    paddingVertical: tokens.spacePillEnd,
+    paddingHorizontal: tokens.spaceXl,
+    borderRadius: tokens.radiusCardPhone,
+  },
+  noticeQuiet: { backgroundColor: tokens.colorAccentTint },
+  noticeBroken: { backgroundColor: tokens.colorBrokenTint },
+  disc: {
+    width: 26,
+    height: 26,
+    marginTop: -1,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  discQuiet: { backgroundColor: tokens.colorAccent },
+  discBroken: { backgroundColor: tokens.colorBroken },
+  onDisc: { color: tokens.colorInkOnDark },
+  noticeWords: { flex: 1, minWidth: 0, gap: 3 },
+  noticeHead: { lineHeight: 15 * 1.4 },
+  noticeActions: { marginTop: tokens.spaceHair },
   alertMark: { paddingTop: tokens.spaceHair },
+  alertMarkSmall: { paddingTop: 1 },
+  fieldHead: { flexDirection: 'row', flexWrap: 'wrap' },
+  figures: { fontVariant: ['tabular-nums'] },
   tell: { gap: tokens.spaceXs, alignItems: 'flex-start' },
   acPill: {
     minHeight: 26,
@@ -1022,14 +1176,18 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colorCard,
   },
   labelled: { gap: 7 },
+  label: { lineHeight: 14 * 1.3 },
+  hint: { lineHeight: 13.5 * 1.4 },
+  said: { lineHeight: 14 * 1.45 },
+  lines: { lineHeight: 15 * 1.45 },
   pair: { flexDirection: 'row', gap: tokens.spaceSm },
   select: {
     minHeight: 52,
     flexDirection: 'row',
     alignItems: 'center',
     gap: tokens.spaceMd,
-    paddingLeft: tokens.spaceXl,
-    paddingRight: 14,
+    paddingLeft: 14.5,
+    paddingRight: 12.5,
     borderWidth: 1.5,
     borderColor: tokens.colorFieldBorder,
     borderRadius: 14,

@@ -317,6 +317,7 @@ describe('the states', () => {
     expect(editOf(eventStateOf('showLatest'))).toBe('dates');
     expect(editOf(eventStateOf('lastHost'))).toBe('hosts');
     expect(editOf(eventStateOf('pause'))).toBeNull();
+    expect(editOf(eventStateOf('saved'))).toBeNull();
   });
 });
 
