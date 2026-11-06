@@ -1,14 +1,14 @@
-import { copyEndsLine, typedNameMatches } from '@soirely/domain';
+import { addDays, copyEndsLine, typedNameMatches } from '@soirely/domain';
 import { type RefObject, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { Field, TextField } from '../../components/Field.tsx';
 import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { Ask, type AskProps, FocusedScreen, SectionHead } from '../settings/Summary.tsx';
+import { EventField } from './EventEdits.tsx';
 import { wallOf } from './EventsModel.ts';
-import { MomentBox, type Picking, PickerLayer, pick } from './EventsPick.tsx';
+import { BoxField, MomentBox, type Picking, PickerLayer, pick } from './EventsPick.tsx';
 import { RESTORE_UNTIL, type SampleEvent } from './EventsSample.ts';
 import { W, say, t } from './EventsWords.ts';
 
@@ -112,6 +112,7 @@ export function DeleteScreen({
 
   return (
     <FocusedScreen
+      gap={tokens.spaceXl}
       open={open}
       title={W.deleteEvent}
       verb={{
@@ -130,25 +131,25 @@ export function DeleteScreen({
         {say.deleteTitle(event.name)}
       </Text>
       <View style={styles.tight}>
-        <Text size={15} weight="semibold">
+        <Text size={15} weight="semibold" style={styles.lines}>
           {W.removes}
         </Text>
         <Text size={15} weight="medium" style={styles.bullet}>
           {`• ${W.removesEvent}`}
         </Text>
       </View>
-      <Text size={15} weight="medium" style={styles.secondary}>
+      <Text size={15} weight="medium" style={[styles.secondary, styles.lines]}>
         {W.deleteGuests}
       </Text>
-      <Text size={15} weight="medium" style={styles.secondary}>
+      <Text size={15} weight="medium" style={[styles.secondary, styles.lines]}>
         {say.deleteWindow(RESTORE_UNTIL)}
       </Text>
-      <Field
+      <EventField
         label={say.deleteType(event.name)}
         error={mismatch ? say.deleteMismatch(event.name) : null}
         help={mismatch ? undefined : W.typeHint}
       >
-        <TextField
+        <BoxField
           value={typed}
           wrong={mismatch}
           autoFocus={start !== 'deleteMismatch'}
@@ -162,7 +163,7 @@ export function DeleteScreen({
           accessibilityLabel={say.deleteType(event.name)}
           testID="event.delete.field"
         />
-      </Field>
+      </EventField>
     </FocusedScreen>
   );
 }
@@ -185,7 +186,7 @@ export function DuplicateScreen({
 }) {
   const begins = wallOf(event.startsAt, event.timeZone);
   const [starts, setStarts] = useState({
-    date: `${Number(begins.date.slice(0, 4)) + 1}${begins.date.slice(4)}`,
+    date: addDays(begins.date, 52 * 7),
     time: begins.time,
   });
   const [picking, setPicking] = useState<Picking | null>(null);
@@ -194,6 +195,7 @@ export function DuplicateScreen({
 
   return (
     <FocusedScreen
+      gap={tokens.spaceXl}
       open={open}
       title={W.duplicate}
       verb={{
@@ -220,13 +222,13 @@ export function DuplicateScreen({
       <Text size={22} weight="bold" accessibilityRole="header" style={styles.title}>
         {say.duplicateTitle(event.name)}
       </Text>
-      <Text size={15} weight="medium" style={styles.secondary}>
+      <Text size={15} weight="medium" style={[styles.secondary, styles.lines]}>
         {W.duplicateLine}
       </Text>
       <Listed title={W.copied} items={W.copiedList} />
       <Listed title={W.notCopied} items={W.notCopiedList} />
       <View style={styles.starts}>
-        <Text size={14} weight="semibold">
+        <Text size={14} weight="semibold" style={styles.label}>
           {W.starts}
         </Text>
         <View style={styles.pair}>
@@ -249,7 +251,7 @@ export function DuplicateScreen({
           />
         </View>
       </View>
-      <Text size={14} weight="medium" style={styles.secondary}>
+      <Text size={14} weight="medium" style={[styles.secondary, styles.said]}>
         {copyEndsLine(starts.date, starts.time, event, locale, t)}
       </Text>
     </FocusedScreen>
@@ -271,9 +273,12 @@ function Listed({ title, items }: { title: string; items: readonly string[] }) {
 
 const styles = StyleSheet.create({
   secondary: { color: tokens.colorInkSecondary },
-  title: { letterSpacing: 22 * -0.015 },
+  title: { letterSpacing: 22 * -0.015, lineHeight: 22 * 1.2 },
   tight: { gap: tokens.spaceHair },
-  bullet: { paddingLeft: tokens.spaceXxs },
+  bullet: { lineHeight: 15 * 1.45 },
+  lines: { lineHeight: 15 * 1.45 },
+  label: { lineHeight: 14 * 1.3 },
+  said: { lineHeight: 14 * 1.45 },
   starts: { gap: 7 },
   pair: { flexDirection: 'row', gap: tokens.spaceSm },
 });
