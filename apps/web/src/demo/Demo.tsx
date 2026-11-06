@@ -17,6 +17,7 @@ import { SECURITY_PAGES } from './security.ts';
 import { Settings } from './Settings.tsx';
 import { SETTINGS_PAGES } from './settings.ts';
 import { SIGN_IN_RULES_PAGES } from './signInRules.ts';
+import { SWITCHER_PAGES } from './switcher.ts';
 import { Today } from './Today.tsx';
 import { TwoFactorBoard } from './TwoFactor.tsx';
 import { WaysInBoard } from './WaysIn.tsx';
@@ -156,6 +157,8 @@ function DemoHome({ from }: { from: string }) {
         </ul>
         <h3>Events in A · Summary first · desktop</h3>
         <BoardPages pages={EVENTS_PAGES} />
+        <h3>The organisation switcher in B · Places · desktop</h3>
+        <BoardPages pages={SWITCHER_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-28">
