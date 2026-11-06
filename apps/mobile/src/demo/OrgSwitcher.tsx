@@ -376,10 +376,12 @@ export function OpenerWords({
   opener,
   onDark = false,
   grow = false,
+  wrap = false,
 }: {
   opener: OrgOpener;
   onDark?: boolean;
   grow?: boolean;
+  wrap?: boolean;
 }) {
   const ink = { color: onDark ? tokens.colorInkOnDark : tokens.colorInk };
 
@@ -388,7 +390,7 @@ export function OpenerWords({
       <Text
         size={15}
         weight="semibold"
-        numberOfLines={1}
+        numberOfLines={wrap ? undefined : 1}
         accessible={false}
         style={[styles.openerName, ink]}
       >
@@ -417,6 +419,7 @@ export const OPENER = { rest: tokens.sizeHit, waiting: 56 } as const;
 export function DemoOrgOpener({ at }: { at: OpenerAt }) {
   const ref = useRef<ViewInstance>(null);
   const org = useOrgOpener(ref, at !== 'band');
+  const phone = useLayout().kind === 'phone';
   const shared = {
     ref,
     onPress: org.onPress,
@@ -451,11 +454,20 @@ export function DemoOrgOpener({ at }: { at: OpenerAt }) {
       </Pressable>
     );
 
+  const tall = org.waiting > 0 ? OPENER.waiting : 40;
+  // Clear of the bell by the cover's side margin; the phone's row already sets a gap either side of its spacer.
+  const clear = phone ? tokens.spaceXl - 2 * tokens.spaceSm : tokens.space3xl;
+
   return (
-    <Pressable {...shared} hitSlop={tokens.spaceXxs} testID="org.switch">
-      <Glass height={org.waiting > 0 ? OPENER.waiting : 40} style={styles.coverGlass}>
+    <Pressable
+      {...shared}
+      hitSlop={tokens.spaceXxs}
+      style={[styles.coverOrg, { marginRight: clear }]}
+      testID="org.switch"
+    >
+      <Glass height={tall} style={[styles.coverGlass, { height: undefined, minHeight: tall }]}>
         <OrgMark id={org.place.id} name={org.place.name} side={28} glass />
-        <OpenerWords opener={org} onDark />
+        <OpenerWords opener={org} onDark wrap />
         <Glyph name="updown" size={14} ink={tokens.colorInkOnDark} />
       </Glass>
     </Pressable>
@@ -1325,9 +1337,11 @@ const styles = StyleSheet.create({
   mark: { alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   markGlass: { backgroundColor: tokens.colorInkOnDark },
   openerWords: { flexShrink: 1, minWidth: 0, gap: tokens.spaceHair },
+  coverOrg: { flexShrink: 1 },
   coverGlass: {
     flexShrink: 1,
     gap: tokens.spaceSm,
+    paddingVertical: tokens.spaceXs,
     paddingLeft: tokens.spaceSm,
     paddingRight: tokens.spacePillEnd,
   },
