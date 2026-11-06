@@ -714,3 +714,18 @@ export function scrimContrast(base: string, photo: boolean, ink: string): number
 
   return contrast(WHITE, mixed(lightest, rgbOf(scrim.ink), scrim.middle));
 }
+
+/** Each tab's width as CSS shares a row: an equal share of the room, or the tab's own words where they need more. */
+export function tabWidths(room: number, mins: readonly number[]): number[] {
+  const fixed = mins.map(() => false);
+
+  for (;;) {
+    const free = fixed.filter((f) => !f).length;
+    const left = room - mins.reduce((sum, min, i) => (fixed[i] ? sum + min : sum), 0);
+    const share = free > 0 ? left / free : 0;
+    const grown = mins.findIndex((min, i) => !fixed[i] && min > share);
+
+    if (grown < 0) return mins.map((min, i) => (fixed[i] ? min : share));
+    fixed[grown] = true;
+  }
+}

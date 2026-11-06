@@ -30,6 +30,7 @@ import {
   scrimContrast,
   shownEvent,
   summaryLine,
+  tabWidths,
   wallOf,
   whenSpan,
 } from './EventsModel.ts';
@@ -352,5 +353,19 @@ describe('the wall clock and the instant', () => {
     expect(eventHref('evt-wed-4', { state: 'dates', area: 'guests' })).toBe(
       '/demo/events/evt-wed-4?state=dates&area=guests',
     );
+  });
+});
+
+describe('the tabs’ widths', () => {
+  it('grows the lit tab to its words and shares the rest, as the board’s 350 row does', () => {
+    expect(tabWidths(340, [128, 79, 75])).toEqual([128, 106, 106]);
+  });
+
+  it('shares the room equally when every tab’s words fit', () => {
+    expect(tabWidths(340, [90, 79, 75])).toEqual([340 / 3, 340 / 3, 340 / 3]);
+  });
+
+  it('keeps every tab’s words when the room is too small for them', () => {
+    expect(tabWidths(200, [128, 79, 75])).toEqual([128, 79, 75]);
   });
 });

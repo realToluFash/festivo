@@ -18,7 +18,15 @@ import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { Glyph } from '../Glyph.tsx';
 import { PhoneTabBar } from '../TodayCover.tsx';
-import { Bell, Fade, Landscape, PHONE_TAB_BAR, PortraitTop, useShell } from '../settings/Frame.tsx';
+import {
+  Bell,
+  Fade,
+  Landscape,
+  OrgPill,
+  PHONE_TAB_BAR,
+  PortraitTop,
+  useShell,
+} from '../settings/Frame.tsx';
 import { Pill } from '../settings/parts.tsx';
 import {
   type Anchor,
@@ -56,6 +64,7 @@ import {
   rowTag,
   searching,
   summaryLine,
+  tabWidths,
 } from './EventsModel.ts';
 import { CLOCKS, EVENTS, EVENT_OF_KEY, OFFLINE_AS_OF } from './EventsSample.ts';
 import { W, say } from './EventsWords.ts';
@@ -63,6 +72,9 @@ import { W, say } from './EventsWords.ts';
 const SEARCH_PAUSE_MS = 300;
 const MENU_AFTER_MS = 700;
 const TABS: readonly ListTab[] = ['upcoming', 'drafts', 'past'];
+const CELL_PAD = 12;
+const TRACK_PAD = 3;
+const TAB_GAP = 2;
 
 export function openEvent(id: string, query?: Readonly<Record<string, string>>): void {
   router.push(eventHref(id, query) as Href);
@@ -158,6 +170,7 @@ export function EventsList({
       summary={first ? null : summaryLine(home)}
       wide={wide}
       bell={shell.layout !== 'portrait'}
+      org={shell.layout === 'phone'}
       onNew={() => shell.tell(say.ownDesign(W.newEvent))}
       onBell={shell.tell}
     />
@@ -396,17 +409,26 @@ function ListTop({
   summary,
   wide,
   bell,
+  org,
   onNew,
   onBell,
 }: {
   summary: string | null;
   wide: boolean;
   bell: boolean;
+  org: boolean;
   onNew: () => void;
   onBell: (words: string) => void;
 }) {
   return (
     <View style={styles.top}>
+      {org && (
+        <View style={styles.orgRow}>
+          <OrgPill tell={onBell} />
+          <View style={styles.grow} />
+          {bell && <Bell tell={onBell} />}
+        </View>
+      )}
       <View style={styles.titleRow}>
         <Text
           size={wide ? 34 : 30}
@@ -436,7 +458,7 @@ function ListTop({
             <Glyph name="plus" size={20} ink={tokens.colorInkOnDark} weight={2.6} />
           </Pressable>
         )}
-        {bell && <Bell tell={onBell} />}
+        {bell && !org && <Bell tell={onBell} />}
       </View>
       {summary != null && (
         <Text size={15} weight="medium" style={[styles.secondary, styles.figures]}>
@@ -527,45 +549,97 @@ function Segment({
   counts: Record<ListTab, number>;
   onTab: (tab: ListTab) => void;
 }) {
+  // Yoga neither keeps a tab's min-content width nor shares the rest as CSS does, so the tabs are sized here,
+  // from copies no tab squeezes.
+  const [words, setWords] = useState<Partial<Record<ListTab, number>>>({});
+  const [track, setTrack] = useState<number>();
+  const mins = TABS.map((each) => words[each]);
+  const sized =
+    track != null && mins.every((w) => w != null)
+      ? tabWidths(
+          track - 2 * TRACK_PAD - (TABS.length - 1) * TAB_GAP,
+          mins.map((w) => (w ?? 0) + 2 * CELL_PAD),
+        )
+      : undefined;
+
   return (
-    <View style={styles.segment} accessibilityRole="tablist">
-      {TABS.map((each) => {
+    <View
+      style={styles.segment}
+      accessibilityRole="tablist"
+      onLayout={(event) => setTrack(event.nativeEvent.layout.width)}
+    >
+      {TABS.map((each, i) => {
         const on = each === tab;
-        const ink = on ? tokens.colorAccentText : tokens.colorInkSecondary;
+        const width = sized?.[i];
 
         return (
           <Pressable
             key={each}
             onPress={() => onTab(each)}
-            style={[styles.cell, on && styles.cellOn]}
+            style={[
+              styles.cell,
+              width != null && {
+                flexBasis: width,
+                minWidth: width,
+                maxWidth: width,
+                flexGrow: 0,
+                flexShrink: 0,
+              },
+              on && styles.cellOn,
+            ]}
             accessibilityRole="tab"
             accessibilityState={{ selected: on }}
             accessibilityLabel={`${TAB_WORDS[each]}, ${counts[each]}`}
             testID={`events.tab.${each}`}
           >
-            {on && <Glyph name="tick" size={14} ink={tokens.colorAccent} weight={2.8} />}
-            <View style={styles.tabWords}>
-              <Text
-                size={14.5}
-                weight={on ? 'semibold' : 'medium'}
-                numberOfLines={1}
-                accessible={false}
-                style={{ color: ink }}
-              >
-                {TAB_WORDS[each]}
-              </Text>
-              <Text
-                size={14.5}
-                weight={on ? 'semibold' : 'medium'}
-                accessible={false}
-                style={[{ color: ink }, styles.count]}
-              >
-                {String(counts[each])}
-              </Text>
-            </View>
+            <TabWords tab={each} on={on} count={counts[each]} />
           </Pressable>
         );
       })}
+      <View
+        style={styles.tabMeasures}
+        pointerEvents="none"
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      >
+        {TABS.map((each) => (
+          <View
+            key={each}
+            style={styles.tabMeasure}
+            onLayout={(event) => {
+              const width = Math.ceil(event.nativeEvent.layout.width);
+              setWords((was) => (was[each] === width ? was : { ...was, [each]: width }));
+            }}
+          >
+            <TabWords tab={each} on={each === tab} count={counts[each]} />
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+function TabWords({ tab, on, count }: { tab: ListTab; on: boolean; count: number }) {
+  const ink = on ? tokens.colorAccentText : tokens.colorInkSecondary;
+  const weight = on ? 'semibold' : 'medium';
+
+  return (
+    <View style={styles.tabContent}>
+      {on && <Glyph name="tick" size={14} ink={tokens.colorAccent} weight={2.6} />}
+      <View style={styles.tabWords}>
+        <Text
+          size={14.5}
+          weight={weight}
+          numberOfLines={1}
+          accessible={false}
+          style={{ color: ink }}
+        >
+          {TAB_WORDS[tab]}
+        </Text>
+        <Text size={14.5} weight={weight} accessible={false} style={[{ color: ink }, styles.count]}>
+          {String(count)}
+        </Text>
+      </View>
     </View>
   );
 }
@@ -651,6 +725,7 @@ const styles = StyleSheet.create({
   blocks: { gap: 18 },
   pane: { paddingTop: 26, paddingHorizontal: 30, paddingBottom: tokens.space6xl * 2, gap: 18 },
   top: { gap: tokens.spaceHair },
+  orgRow: { flexDirection: 'row', alignItems: 'center', marginBottom: tokens.spaceSm },
   titleRow: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: tokens.spaceMd },
   title: { letterSpacing: -0.6 },
   newRound: {
@@ -711,22 +786,35 @@ const styles = StyleSheet.create({
   segment: {
     height: tokens.sizeHit,
     flexDirection: 'row',
-    padding: 3,
+    gap: TAB_GAP,
+    padding: TRACK_PAD,
     borderRadius: 22,
-    backgroundColor: tokens.colorNeutralFill,
+    backgroundColor: tokens.colorInsetBorder,
   },
   cell: {
-    flex: 1,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: 0,
     height: 38,
+    paddingHorizontal: CELL_PAD,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 5,
     borderRadius: 19,
   },
-  cellOn: { backgroundColor: tokens.colorCard, ...tokens.elevationNative.raised.ios },
+  cellOn: {
+    backgroundColor: tokens.colorCard,
+    shadowColor: tokens.colorInk,
+    shadowOpacity: 0.12,
+    shadowRadius: 1.5,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 2,
+  },
+  tabContent: { flexShrink: 0, flexDirection: 'row', alignItems: 'center', gap: 5 },
+  tabMeasures: { position: 'absolute', top: 0, left: 0, right: 0, opacity: 0 },
+  tabMeasure: { position: 'absolute', top: 0, left: 0 },
   count: { opacity: 0.8, fontVariant: ['tabular-nums'] },
-  tabWords: { flexDirection: 'row', alignItems: 'baseline', gap: tokens.spaceXxs, minWidth: 0 },
+  tabWords: { flexDirection: 'row', alignItems: 'baseline', gap: tokens.spaceXxs },
   cardFoot: { marginTop: 'auto' },
   results: { gap: tokens.spaceXs },
   countRow: {
