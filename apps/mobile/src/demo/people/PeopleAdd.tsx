@@ -14,42 +14,29 @@ import {
   type AskProps,
   FocusedScreen,
   type Layer,
-  Line,
   Row,
   RowList,
   SectionHead,
 } from '../settings/Summary.tsx';
 import {
-  type Adding,
-  type Address,
   addView,
   type EventRole,
   FIRST_ROLE,
-  FROM_OUTSIDE,
-  fieldLabel,
   IN_ORGANISATION,
-  JOB_LABEL,
-  JOB_LIMIT,
-  jobHelp,
-  LEAD_MEMBERS,
-  linkLine,
-  NOT_AN_ADDRESS,
+  NAME_LABEL,
   noMatchLine,
   offerLine,
   type OnEvent,
   type OrgMember,
-  OUT_FOOT,
-  outsiderFor,
   type PeopleViewer,
-  PICK_ANOTHER,
   ROLE_LINES,
 } from './PeopleSample.ts';
-import { DoneAction, EventRoles, Face } from './PeopleRole.tsx';
+import { DoneAction, EventRoles } from './PeopleRole.tsx';
 
 const THEIR_ROLE = 'Their role';
 const TICKED_INSET = 24 + tokens.spaceLg + 40 + tokens.spaceLg;
 
-/** Add people on its own screen: their role first, then members to tick or someone from outside by their address. */
+/** Add people on its own screen: their role first, then members found by name to tick. */
 export function AddScreen({
   open,
   members,
@@ -65,30 +52,20 @@ export function AddScreen({
   viewer: PeopleViewer;
   opener: RefObject<ScreenReaderTarget | null>;
   onClose: () => void;
-  onAdd: (role: EventRole, adding: Adding) => void;
+  onAdd: (role: EventRole, adding: readonly OrgMember[]) => void;
 }) {
   const [role, setRole] = useState<EventRole>(FIRST_ROLE);
   const [picking, setPicking] = useState(false);
   const [typed, setTyped] = useState('');
   const [ticked, setTicked] = useState<readonly string[]>([]);
-  const [outsideOff, setOutsideOff] = useState(false);
-  const [job, setJob] = useState<{ of: string; text: string } | null>(null);
   const [discarding, setDiscarding] = useState(false);
   const roleRow = useRef<ViewInstance>(null);
-  const view = addView(role, typed, members, onEvent);
+  const view = addView(typed, members, onEvent);
   const tickedMembers = members.filter((one) => ticked.includes(one.id));
-  const address = view.kind === 'outside' && !outsideOff ? view.address : null;
-  const jobText = (outsider: OnEvent): string =>
-    job?.of === outsider.id ? job.text : (outsider.label ?? '');
-  const canAdd =
-    (view.kind === 'members' && tickedMembers.length > 0) ||
-    (view.kind === 'outside' && (address != null || tickedMembers.length > 0));
+  const canAdd = view.kind === 'members' && tickedMembers.length > 0;
 
   function add(): void {
-    if (!canAdd) return;
-    const outside =
-      address == null ? null : { address, label: jobText(outsiderFor(address, onEvent)) };
-    onAdd(role, { members: tickedMembers, outside });
+    if (canAdd) onAdd(role, tickedMembers);
   }
 
   function cancel(): void {
@@ -155,66 +132,45 @@ export function AddScreen({
           testID="people.add.role"
         />
       </View>
-      <Field label={fieldLabel(role)}>
+      <Field label={NAME_LABEL}>
         <TextField
           autoFocus
-          autoCapitalize="none"
+          autoCapitalize="words"
           autoComplete="off"
-          onChangeText={(text) => {
-            setTyped(text);
-            setOutsideOff(false);
-          }}
+          onChangeText={setTyped}
           returnKeyType="done"
           submitBehavior="submit"
           onSubmitEditing={add}
-          accessibilityLabel={fieldLabel(role)}
+          accessibilityLabel={NAME_LABEL}
           testID="people.add.who"
         />
       </Field>
-      {view.kind === 'members' && (
-        <>
-          {view.offered.length > 0 && (
-            <View>
-              <SectionHead title={IN_ORGANISATION} />
-              <RowList
-                items={view.offered.map((member) => ({
-                  key: member.id,
-                  inset: TICKED_INSET,
-                  row: (
-                    <Ticked
-                      on={ticked.includes(member.id)}
-                      face={<Avatar initials={member.initials} side={40} tone={member.tone} />}
-                      title={member.name}
-                      line={offerLine(member, viewer)}
-                      onPress={() => tick(member.id)}
-                      testID={`people.add.member.${member.id}`}
-                    />
-                  ),
-                }))}
-              />
-            </View>
-          )}
-          <Line text={role === 'Lead' ? LEAD_MEMBERS : OUT_FOOT} size={14} />
-        </>
-      )}
-      {view.kind === 'outside' && (
-        <Outsider
-          address={view.address}
-          outsider={outsiderFor(view.address, onEvent)}
-          on={!outsideOff}
-          job={jobText(outsiderFor(view.address, onEvent))}
-          onTick={() => setOutsideOff((now) => !now)}
-          onJob={(of, text) => setJob({ of, text })}
-          onSubmit={add}
-        />
+      {view.kind === 'members' && view.offered.length > 0 && (
+        <View>
+          <SectionHead title={IN_ORGANISATION} />
+          <RowList
+            items={view.offered.map((member) => ({
+              key: member.id,
+              inset: TICKED_INSET,
+              row: (
+                <Ticked
+                  on={ticked.includes(member.id)}
+                  face={<Avatar initials={member.initials} side={40} tone={member.tone} />}
+                  title={member.name}
+                  line={offerLine(member, viewer)}
+                  onPress={() => tick(member.id)}
+                  testID={`people.add.member.${member.id}`}
+                />
+              ),
+            }))}
+          />
+        </View>
       )}
       {view.kind === 'nobody' && (
-        <Pair
-          title={noMatchLine(view.typed)}
-          line={view.notAnAddress ? NOT_AN_ADDRESS : undefined}
-        />
+        <Text size={16} weight="semibold">
+          {noMatchLine(view.typed)}
+        </Text>
       )}
-      {view.kind === 'leadAddress' && <Pair title={LEAD_MEMBERS} line={PICK_ANOTHER} />}
     </FocusedScreen>
   );
 }
@@ -253,66 +209,6 @@ function Ticked({
   );
 }
 
-/** Someone from outside, by the address typed: ticked to start, and the job label beside their name. */
-function Outsider({
-  address,
-  outsider,
-  on,
-  job,
-  onTick,
-  onJob,
-  onSubmit,
-}: {
-  address: Address;
-  outsider: OnEvent;
-  on: boolean;
-  job: string;
-  onTick: () => void;
-  onJob: (of: string, text: string) => void;
-  onSubmit: () => void;
-}) {
-  return (
-    <>
-      <View>
-        <SectionHead title={FROM_OUTSIDE} />
-        <Ticked
-          on={on}
-          face={<Face person={outsider} side={40} />}
-          title={address.text}
-          line={linkLine(address)}
-          onPress={onTick}
-          testID="people.add.outside"
-        />
-      </View>
-      <Field label={JOB_LABEL} help={jobHelp(job.length)}>
-        <TextField
-          key={outsider.id}
-          defaultValue={job}
-          maxLength={JOB_LIMIT}
-          autoCapitalize="sentences"
-          onChangeText={(text) => onJob(outsider.id, text)}
-          returnKeyType="done"
-          submitBehavior="submit"
-          onSubmitEditing={onSubmit}
-          accessibilityLabel={JOB_LABEL}
-          testID="people.add.job"
-        />
-      </Field>
-    </>
-  );
-}
-
-function Pair({ title, line }: { title: string; line?: string | undefined }) {
-  return (
-    <View style={styles.pair}>
-      <Text size={16} weight="semibold">
-        {title}
-      </Text>
-      {line != null && <Line text={line} />}
-    </View>
-  );
-}
-
 /** A sheet over the screen inside its window: the bottom sheet on a phone, a 540 card on an iPad; Done or a tap on the dimmed screen closes it. */
 function RoleLayer({ onClose, children }: { onClose: () => void; children: ReactNode }) {
   const { layout } = useShell();
@@ -347,7 +243,6 @@ const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
   ticked: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceLg },
   layerHead: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceLg },
-  pair: { gap: tokens.spaceXs },
   under: { justifyContent: 'flex-end', backgroundColor: tokens.scrimSheet },
   underCard: {
     alignItems: 'center',

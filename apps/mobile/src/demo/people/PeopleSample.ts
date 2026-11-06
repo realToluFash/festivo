@@ -1,5 +1,3 @@
-import { emailProblem, phoneLengthProblem } from '@soirely/domain';
-
 import { ORGANISATION } from '../settings/MembersSample.ts';
 import type { Load } from '../settings/RolesSample.ts';
 import { MEMBERS } from '../settings/sample.ts';
@@ -7,8 +5,6 @@ import { MEMBERS } from '../settings/sample.ts';
 export { ORGANISATION };
 
 export const EVENT = 'Adaeze & Tunde’s wedding';
-/** The organisation's country, which a mobile number typed without its +code is read in. */
-export const ORGANISATION_COUNTRY = 'GB';
 
 export const EVENT_ROLES = ['Lead', 'Can edit', 'Can view', 'Can check guests in'] as const;
 export type EventRole = (typeof EVENT_ROLES)[number];
@@ -28,7 +24,7 @@ const NOW_CAN: Record<EventRole, { one: string; several: string }> = {
   'Can check guests in': { one: 'can check guests in now.', several: 'can check guests in now.' },
 };
 
-export const ADD_PROMPT = 'Add by name, email or mobile';
+export const ADD_PROMPT = 'Add by name';
 export const ON_EVENT = 'On this event';
 export const EMPTY_TITLE = 'Nobody is on this event yet.';
 export const EMPTY_LINE = 'Add the people working on it. Owners and admins see it already.';
@@ -36,15 +32,10 @@ export const READ_ONLY = 'Only owners, admins and the lead change who’s on thi
 export const OUTSIDE_TAG = `Outside ${ORGANISATION}`;
 export const OUTSIDE_ENDS = 'Their access ends when the event does.';
 export const LEAD_OFF = `For members of ${ORGANISATION} only.`;
-export const LEAD_MEMBERS = `Lead is for members of ${ORGANISATION}.`;
-export const PICK_ANOTHER = 'Pick another role to add someone from outside.';
-export const OUT_FOOT = `To add someone from outside ${ORGANISATION}, type their email or mobile number.`;
-export const NOT_AN_ADDRESS =
-  'That isn’t an email address or a mobile number we can use. Add stays off until it is one.';
 export const IN_ORGANISATION = `In ${ORGANISATION}`;
 export const FROM_OUTSIDE = `From outside ${ORGANISATION}`;
-export const JOB_LABEL = 'Job label (optional)';
-export const JOB_LIMIT = 60;
+/** People adds members only, found by name, until sc-71 adds someone from outside by their address (pm, 5 Nov 2026). */
+export const NAME_LABEL = 'Name';
 export const LOADING_WORDS = 'Loading the people on this event…';
 export const FAILED_TITLE = 'We could not load the people on this event.';
 export const FAILED_LINE = 'Check your connection and try again.';
@@ -182,9 +173,7 @@ export function seesEveryEvent(members: readonly OrgMember[]): string {
   return `${andList(names)} ${names.length === 1 ? 'sees' : 'see'} every event, as ${andList(roles)} of ${ORGANISATION}.`;
 }
 
-export function firstName(person: Pick<OnEvent, 'name' | 'id'>): string {
-  if (person.name === person.id) return person.name;
-
+export function firstName(person: Pick<OnEvent, 'name'>): string {
   return person.name.split(' ')[0] ?? person.name;
 }
 
@@ -223,14 +212,6 @@ export function addedToast(names: readonly string[], role: EventRole): string {
     : `${names.length} people ${NOW_CAN[role].several}`;
 }
 
-export function fieldLabel(role: EventRole): string {
-  return role === 'Lead' ? 'Name' : 'Name, email or mobile number';
-}
-
-export function jobHelp(count: number): string {
-  return `What they’re there for, shown beside their name. It grants nothing. ${count} of ${JOB_LIMIT}.`;
-}
-
 export function noMatchLine(typed: string): string {
   return `Nobody in ${ORGANISATION} matches “${typed}”.`;
 }
@@ -241,38 +222,11 @@ export function offerLine(member: OrgMember, viewer: PeopleViewer): string {
   return member.id === viewer.id ? `${held} · you` : held;
 }
 
-export interface Address {
-  kind: 'email' | 'mobile';
-  text: string;
-}
-
-const DIALLED = /^\+?[\d\s().-]+$/u;
-
-/** An email by the app's own check, or a number with a length the country uses; whether it reaches anyone is the API's to say. */
-export function addressOf(typed: string, country: string): Address | null {
-  const text = typed.trim();
-  if (emailProblem(text) == null) return { kind: 'email', text };
-  if (DIALLED.test(text) && /\d/u.test(text) && phoneLengthProblem(text, country) == null)
-    return { kind: 'mobile', text };
-
-  return null;
-}
-
-export function linkLine(address: Address): string {
-  return `We send them a link by ${address.kind === 'email' ? 'email' : 'text'}. Their account is made from it.`;
-}
-
-function addressKey(text: string): string {
-  const trimmed = text.trim().toLowerCase();
-
-  return trimmed.includes('@') ? trimmed : trimmed.replace(/[^\d+]/gu, '');
-}
-
 function plain(text: string): string {
   return text.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().trim();
 }
 
-/** Active members not on the event yet, members before the owners and admins who see it anyway, filtered by name or email. */
+/** Active members not on the event yet, members before the owners and admins who see it anyway, filtered by name. */
 export function offeredMembers(
   members: readonly OrgMember[],
   onEvent: readonly OnEvent[],
@@ -283,7 +237,7 @@ export function offeredMembers(
     (one) =>
       one.active &&
       !onEvent.some((there) => there.id === one.id) &&
-      (wanted === '' || plain(one.name).includes(wanted) || plain(one.id).includes(wanted)),
+      (wanted === '' || plain(one.name).includes(wanted)),
   );
 
   return [
@@ -292,31 +246,17 @@ export function offeredMembers(
   ];
 }
 
-export type AddView =
-  | { kind: 'members'; offered: OrgMember[] }
-  | { kind: 'outside'; address: Address }
-  | { kind: 'leadAddress' }
-  | { kind: 'nobody'; typed: string; notAnAddress: boolean };
+export type AddView = { kind: 'members'; offered: OrgMember[] } | { kind: 'nobody'; typed: string };
 
-/** What Add shows for what is typed: members to tick, someone from outside, or why nobody can be added yet. Lead takes members only. */
+/** What Add shows for the name typed: the members it finds to tick, or that nobody matches. */
 export function addView(
-  role: EventRole,
   typed: string,
   members: readonly OrgMember[],
   onEvent: readonly OnEvent[],
 ): AddView {
   const text = typed.trim();
-  const lead = role === 'Lead';
-  const address = addressOf(text, ORGANISATION_COUNTRY);
-  const aMember =
-    address != null && members.some((one) => addressKey(one.id) === addressKey(address.text));
-
-  if (address != null && !aMember)
-    return lead ? { kind: 'leadAddress' } : { kind: 'outside', address };
-
   const offered = offeredMembers(members, onEvent, text);
-  if (text !== '' && offered.length === 0)
-    return { kind: 'nobody', typed: text, notAnAddress: !lead && address == null };
+  if (text !== '' && offered.length === 0) return { kind: 'nobody', typed: text };
 
   return { kind: 'members', offered };
 }
@@ -329,45 +269,13 @@ export function without(onEvent: readonly OnEvent[], id: string): OnEvent[] {
   return onEvent.filter((one) => one.id !== id);
 }
 
-function addressInitials(address: Address): string | null {
-  if (address.kind === 'mobile') return null;
-  const parts = (address.text.split('@')[0] ?? '').split(/[._+-]/u).filter((part) => part !== '');
-
-  return parts
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? '')
-    .join('');
-}
-
-export function outsiderFor(address: Address, onEvent: readonly OnEvent[]): OnEvent {
-  const key = addressKey(address.text);
-  const there = onEvent.find((one) => one.outside && addressKey(one.id) === key);
-
-  return (
-    there ?? {
-      id: address.text,
-      name: address.text,
-      initials: addressInitials(address),
-      tone: 3 + (onEvent.filter((one) => one.outside).length % 2),
-      role: FIRST_ROLE,
-      outside: true,
-      label: null,
-    }
-  );
-}
-
-export interface Adding {
-  members: readonly OrgMember[];
-  outside: { address: Address; label: string } | null;
-}
-
-/** Everyone ticked, at the role picked; an address already on the event moves to it with the label as typed, as sharing a document again does. */
+/** Everyone ticked, at the role picked. */
 export function withAdded(
   onEvent: readonly OnEvent[],
   role: EventRole,
-  adding: Adding,
+  adding: readonly OrgMember[],
 ): { onEvent: OnEvent[]; names: string[] } {
-  const members: OnEvent[] = adding.members.map(({ id, name, initials, tone }) => ({
+  const added: OnEvent[] = adding.map(({ id, name, initials, tone }) => ({
     id,
     name,
     initials,
@@ -376,20 +284,8 @@ export function withAdded(
     outside: false,
     label: null,
   }));
-  const names = adding.members.map(({ name }) => name);
-  const next = [...onEvent, ...members];
 
-  if (adding.outside == null) return { onEvent: next, names };
-
-  const person = outsiderFor(adding.outside.address, onEvent);
-  const label = adding.outside.label.trim();
-  const placed = { ...person, role, label: label === '' ? null : label };
-  const there = next.some((one) => one.id === person.id);
-
-  return {
-    onEvent: there ? next.map((one) => (one.id === person.id ? placed : one)) : [...next, placed],
-    names: [...names, person.name],
-  };
+  return { onEvent: [...onEvent, ...added], names: adding.map(({ name }) => name) };
 }
 
 export const PEOPLE_STATES = [

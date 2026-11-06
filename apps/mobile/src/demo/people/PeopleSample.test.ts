@@ -1,13 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  ADD_PROMPT,
   addedToast,
-  addressOf,
   addView,
-  fieldLabel,
   firstName,
-  jobHelp,
-  linkLine,
   listed,
   manages,
   noMatchLine,
@@ -16,7 +13,6 @@ import {
   offerLine,
   type OnEvent,
   opens,
-  outsiderFor,
   PEOPLE_VIEWERS,
   peopleStart,
   peopleStateOf,
@@ -180,26 +176,24 @@ describe('a person’s sheet', () => {
     expect(removedToast(tom)).toBe('Tom Becker is off this event.');
   });
 
-  it('calls someone by their first name, and an address by itself', () => {
+  it('calls someone by their first name', () => {
     expect(firstName(tom)).toBe('Tom');
-    expect(firstName({ id: '07700 900123', name: '07700 900123' })).toBe('07700 900123');
   });
 });
 
 describe('adding people', () => {
-  it('asks for a name only under Lead', () => {
-    expect(fieldLabel('Lead')).toBe('Name');
-    expect(fieldLabel('Can view')).toBe('Name, email or mobile number');
+  it('adds members only, found by name, until sc-71', () => {
+    expect(ADD_PROMPT).toBe('Add by name');
   });
 
-  it('offers active members not on the event, members first, filtered by name or email', () => {
+  it('offers active members not on the event, members first, filtered by name', () => {
     expect(names(offeredMembers(members, onEvent, ''))).toEqual([
       'Kofi Mensah',
       'Folake Adeyemi',
       'Julien Moreau',
     ]);
     expect(names(offeredMembers(members, onEvent, 'JUL'))).toEqual(['Julien Moreau']);
-    expect(names(offeredMembers(members, onEvent, 'kofi@'))).toEqual(['Kofi Mensah']);
+    expect(names(offeredMembers(members, onEvent, 'kofi@'))).toEqual([]);
     expect(names(offeredMembers(members, [], 'lucia'))).toEqual([]);
     expect(names(offeredMembers(members, [], 'souza'))).toEqual(['Ana Souza']);
   });
@@ -222,66 +216,25 @@ describe('adding people', () => {
     ]);
   });
 
-  it('tells an email address and a mobile number from half of one', () => {
-    expect(addressOf('kemi.okafor@example.com', 'GB')).toEqual({
-      kind: 'email',
-      text: 'kemi.okafor@example.com',
-    });
-    expect(addressOf(' 07700 900123 ', 'GB')).toEqual({ kind: 'mobile', text: '07700 900123' });
-    expect(addressOf('+44 7700 900123', 'GB')?.kind).toBe('mobile');
-    expect(addressOf('+234 803 123 4567', 'GB')?.kind).toBe('mobile');
-    expect(addressOf('kemi.okafor@exa', 'GB')).toBeNull();
-    expect(addressOf('0770', 'GB')).toBeNull();
-    expect(addressOf('Kofi', 'GB')).toBeNull();
-    expect(linkLine({ kind: 'email', text: 'a@b.example' })).toBe(
-      'We send them a link by email. Their account is made from it.',
-    );
-    expect(linkLine({ kind: 'mobile', text: '07700 900123' })).toBe(
-      'We send them a link by text. Their account is made from it.',
-    );
-  });
-
-  it('shows members, someone from outside, or nobody, for what is typed', () => {
-    expect(addView('Can view', '', members, onEvent).kind).toBe('members');
-    expect(addView('Can view', 'kemi.okafor@example.com', members, onEvent)).toEqual({
-      kind: 'outside',
-      address: { kind: 'email', text: 'kemi.okafor@example.com' },
-    });
-    expect(addView('Can view', 'kemi.okafor@exa', members, onEvent)).toEqual({
-      kind: 'nobody',
-      typed: 'kemi.okafor@exa',
-      notAnAddress: true,
-    });
-    expect(addView('Can view', 'kofi@ire.events', members, onEvent)).toEqual({
+  it('shows the members a name finds, or that nobody matches, an address included', () => {
+    expect(addView('', members, onEvent).kind).toBe('members');
+    expect(addView(' kofi ', members, onEvent)).toEqual({
       kind: 'members',
       offered: [member('Kofi Mensah')],
     });
-    expect(noMatchLine('kemi.okafor@exa')).toBe('Nobody in Ire Events matches “kemi.okafor@exa”.');
-  });
-
-  it('takes members only under Lead, and says why an address is not one', () => {
-    expect(addView('Lead', 'kemi.okafor@example.com', members, onEvent)).toEqual({
-      kind: 'leadAddress',
-    });
-    expect(addView('Lead', 'kofi@ire.events', members, onEvent).kind).toBe('members');
-    expect(addView('Lead', 'nobody here', members, onEvent)).toEqual({
+    expect(addView('kemi.okafor@example.com', members, onEvent)).toEqual({
       kind: 'nobody',
-      typed: 'nobody here',
-      notAnAddress: false,
+      typed: 'kemi.okafor@example.com',
     });
-  });
-
-  it('counts the job label against its limit', () => {
-    expect(jobHelp('Bar and drinks'.length)).toBe(
-      'What they’re there for, shown beside their name. It grants nothing. 14 of 60.',
-    );
+    expect(noMatchLine('Kemi')).toBe('Nobody in Ire Events matches “Kemi”.');
   });
 
   it('adds the ticked members under the role, in their place, and says how many', () => {
-    const added = withAdded(onEvent, 'Can view', {
-      members: [member('Kofi Mensah'), member('Folake Adeyemi'), member('Julien Moreau')],
-      outside: null,
-    });
+    const added = withAdded(onEvent, 'Can view', [
+      member('Kofi Mensah'),
+      member('Folake Adeyemi'),
+      member('Julien Moreau'),
+    ]);
 
     expect(names(listed(added.onEvent))).toEqual([
       'Priya Shah',
@@ -298,45 +251,5 @@ describe('adding people', () => {
     expect(addedToast(['Kofi Mensah', 'Julien Moreau'], 'Lead')).toBe(
       '2 people lead this event now.',
     );
-  });
-
-  it('adds someone from outside by their address, with their job label', () => {
-    const address = { kind: 'email', text: 'dj@sounds.example' } as const;
-    const added = withAdded([], 'Can view', { members: [], outside: { address, label: ' DJ ' } });
-
-    expect(added.names).toEqual(['dj@sounds.example']);
-    expect(added.onEvent).toEqual([
-      {
-        id: 'dj@sounds.example',
-        name: 'dj@sounds.example',
-        initials: 'D',
-        tone: 3,
-        role: 'Can view',
-        outside: true,
-        label: 'DJ',
-      },
-    ]);
-    expect(outsiderFor({ kind: 'mobile', text: '07700 900123' }, []).initials).toBeNull();
-  });
-
-  it('moves someone from outside already on the event, with the label as typed', () => {
-    const address = { kind: 'email', text: 'Kemi.Okafor@example.com' } as const;
-    const kemi = outsiderFor(address, onEvent);
-    const moved = withAdded(onEvent, 'Can view', {
-      members: [],
-      outside: { address, label: kemi.label ?? '' },
-    });
-    const cleared = withAdded(onEvent, 'Can view', {
-      members: [],
-      outside: { address, label: '' },
-    });
-
-    expect(kemi).toBe(on('Kemi Okafor'));
-    expect(moved.onEvent.filter((one) => one.id === kemi.id)).toEqual([
-      { ...kemi, role: 'Can view' },
-    ]);
-    expect(moved.onEvent).toHaveLength(onEvent.length);
-    expect(moved.names).toEqual(['Kemi Okafor']);
-    expect(cleared.onEvent.find((one) => one.id === kemi.id)?.label).toBeNull();
   });
 });
