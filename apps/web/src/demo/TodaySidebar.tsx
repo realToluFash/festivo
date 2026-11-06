@@ -1,6 +1,7 @@
 import { Link } from 'react-router';
 
 import { Brand } from '../components/Brand.tsx';
+import { TODAY_IDS } from './events.ts';
 import { Glyph, type GlyphName } from './Glyph.tsx';
 import { SAMPLE } from './rules.ts';
 import { EVENTS, type EventKey } from './today.ts';
@@ -20,12 +21,13 @@ export interface SidebarPerson {
   role: string;
 }
 
-/** The iPad's sidebar at a desk: the places, your events by colour, and the person at its foot. Settings selects Settings and names who is looking. */
+/** The iPad's sidebar at a desk: the places, your events by colour, and the person at its foot. Events or Settings selects its place; Settings names who is looking. */
 export function TodaySidebar({
   events,
   tell,
   onToday,
   settings = false,
+  listing = false,
   person = FOLAKE,
   inert = false,
 }: {
@@ -33,6 +35,7 @@ export function TodaySidebar({
   tell: Tell;
   onToday?: () => void;
   settings?: boolean;
+  listing?: boolean;
   person?: SidebarPerson;
   inert?: boolean;
 }) {
@@ -66,7 +69,16 @@ export function TodaySidebar({
       <ul className="today-places">
         {PLACES.map(([label, glyph]) => (
           <li key={label}>
-            {settings && label === 'Today' ? (
+            {label === 'Events' ? (
+              <Link
+                className={listing ? 'today-place is-on' : 'today-place'}
+                to="/demo/events"
+                aria-current={listing ? 'page' : undefined}
+              >
+                <Glyph name={glyph} />
+                {label}
+              </Link>
+            ) : (settings || listing) && label === 'Today' ? (
               <Link className="today-place" to="/demo/today">
                 <Glyph name={glyph} />
                 {label}
@@ -93,14 +105,10 @@ export function TodaySidebar({
           <ul className="today-places">
             {events.map((key) => (
               <li key={key}>
-                <button
-                  type="button"
-                  className="today-place"
-                  onClick={() => tell(`${EVENTS[key].name} has its own design.`)}
-                >
+                <Link className="today-place" to={`/demo/events/${TODAY_IDS[key]}`}>
                   <span className={`today-dot is-${key} is-side`} aria-hidden="true" />
                   <span className="today-grow today-ellipsis">{EVENTS[key].name}</span>
-                </button>
+                </Link>
               </li>
             ))}
           </ul>
