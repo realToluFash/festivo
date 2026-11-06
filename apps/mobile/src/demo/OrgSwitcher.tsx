@@ -503,7 +503,11 @@ function DropDown({
       glide(fade, 1, tokens.motionBase),
       glide(grow, 1, reduced ? 0 : tokens.motionBase),
     ]).start();
-    const focus = setTimeout(() => moveScreenReaderFocus(heading.current), SETTLED_MS);
+    const typing = searchable(store.session) && store.session.query !== '';
+    const focus = setTimeout(
+      () => (typing ? field.current?.focus() : moveScreenReaderFocus(heading.current)),
+      SETTLED_MS,
+    );
 
     return () => clearTimeout(focus);
   }, [open, fade, grow, reduced]);
@@ -638,14 +642,16 @@ function DropDown({
                 >
                   {SW.noMatch(query.trim())}
                 </Text>
-                <Pill
-                  label={SW.clearSearch}
-                  kind="quiet"
-                  full={false}
-                  height={tokens.sizeHit}
-                  onPress={clear}
-                  testID="switcher.search.clearAll"
-                />
+                <View style={styles.noneClear}>
+                  <Pill
+                    label={SW.clearSearch}
+                    kind="quiet"
+                    full={false}
+                    height={tokens.sizeHit}
+                    onPress={clear}
+                    testID="switcher.search.clearAll"
+                  />
+                </View>
               </View>
             )}
             <View style={large && styles.list}>
@@ -1072,7 +1078,6 @@ function InvitationPanel({
         <View style={styles.buttonsUnder}>
           <Pill
             label={SW.open(invite.name)}
-            full={full}
             height={full ? tokens.sizeHitPhoneHero : tokens.sizeHit}
             onPress={onOpen}
             testID={`switcher.invitation.${invite.id}.open`}
@@ -1343,6 +1348,7 @@ const styles = StyleSheet.create({
     paddingBottom: tokens.spaceSm,
   },
   noneWords: { textAlign: 'center', lineHeight: 15 * 1.4 },
+  noneClear: { alignSelf: 'center' },
   list: { gap: tokens.spaceXxs },
   row: { flexDirection: 'row', alignItems: 'stretch', gap: CELL_GAP },
   rowGap: { marginTop: tokens.spaceSm },
