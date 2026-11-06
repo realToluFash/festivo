@@ -421,7 +421,6 @@ export interface Anchor {
   width: number;
 }
 
-/** Where a menu opens: under the trigger, measured in the window. */
 export function anchorUnder(trigger: RefObject<ViewInstance | null>, then: (at: Anchor) => void) {
   trigger.current?.measureInWindow((x, y, width, height) => then({ x, y: y + height, width }));
 }
