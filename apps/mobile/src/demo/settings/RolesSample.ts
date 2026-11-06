@@ -228,6 +228,18 @@ export function idOf(name: string): string {
   return name.toLowerCase().replace(/[^a-z]+/gu, '-');
 }
 
+/** Who held which built-in role before sc-29859 left three; nothing on screen reads it. */
+const HELD_BEFORE: Record<string, string> = {
+  'Folake Adeyemi': 'Owner',
+  'Julien Moreau': 'Administrator',
+  'Priya Shah': 'Event manager',
+  'Ana Souza': 'Coordinator',
+  'Tom Becker': 'Door staff',
+  'Kofi Mensah': 'Read-only',
+  'Marta Silva': 'Coordinator',
+  'Daniel Kim': 'Coordinator',
+};
+
 export function sampleRoles(): DemoRole[] {
   return ROLES.map((role) => ({
     id: idOf(role.name),
@@ -236,7 +248,7 @@ export function sampleRoles(): DemoRole[] {
     owner: role.name === 'Owner',
     grant: GRANTS[role.name] ?? [],
     holders: MEMBERS.filter(
-      (member) => member.role === role.name && member.status !== 'former',
+      (member) => HELD_BEFORE[member.name] === role.name && member.status !== 'former',
     ).map(({ name }) => name),
   }));
 }

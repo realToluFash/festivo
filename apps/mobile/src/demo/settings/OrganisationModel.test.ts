@@ -62,26 +62,26 @@ describe('a state link', () => {
     });
   });
 
-  it('opens transferred with the viewer an Administrator and the card saying who owns it', () => {
+  it('opens transferred with the viewer an Admin and the card saying who owns it', () => {
     const start = organisationStart('transferred', 'Owner');
 
-    expect(start.role).toBe('Administrator');
+    expect(start.role).toBe('Admin');
     expect(start.said).toEqual({ kind: 'transferred', to: 'Priya Shah' });
     expect(TRANSFERRED_TO).toBe('Priya Shah');
   });
 
-  it('asks the only owner to hand over first, and lets a planner leave', () => {
+  it('asks the only owner to hand over first, and lets a member leave', () => {
     expect(organisationStart('leave', 'Owner').ask).toBe('onlyOwner');
     expect(organisationStart('onlyOwner', 'Owner').ask).toBe('onlyOwner');
-    expect(organisationStart('leave', 'Planner').ask).toBe('leave');
+    expect(organisationStart('leave', 'Member').ask).toBe('leave');
   });
 
-  it('opens an owner’s state on the page at rest for a planner', () => {
-    const rest = organisationStart(null, 'Planner');
+  it('opens an owner’s state on the page at rest for a member', () => {
+    const rest = organisationStart(null, 'Member');
 
-    expect(organisationStart('edit', 'Planner')).toEqual(rest);
-    expect(organisationStart('delete', 'Planner')).toEqual(rest);
-    expect(rest).toMatchObject({ role: 'Planner', screen: null, ask: null, link: 'on' });
+    expect(organisationStart('edit', 'Member')).toEqual(rest);
+    expect(organisationStart('delete', 'Member')).toEqual(rest);
+    expect(rest).toMatchObject({ role: 'Member', screen: null, ask: null, link: 'on' });
   });
 });
 
@@ -104,7 +104,7 @@ describe('the card', () => {
     });
     expect(cardWords(SAMPLE_DETAILS, { kind: 'transferred', to: TRANSFERRED_TO })).toEqual({
       says: 'Priya Shah is now the owner',
-      line: 'You are an Administrator. You both have an email saying so.',
+      line: 'You are an Admin. You both have an email saying so.',
       said: true,
     });
   });
@@ -160,19 +160,19 @@ describe('company domain joining', () => {
 describe('ownership and leaving', () => {
   it('offers an owner all three, and anybody else only leaving', () => {
     expect(ownershipSteps('Owner')).toEqual(['transfer', 'leave', 'delete']);
-    expect(ownershipSteps('Administrator')).toEqual(['leave']);
-    expect(ownershipSteps('Planner')).toEqual(['leave']);
+    expect(ownershipSteps('Admin')).toEqual(['leave']);
+    expect(ownershipSteps('Member')).toEqual(['leave']);
   });
 });
 
 describe('transferring ownership', () => {
-  it('offers the active members other than the owner', () => {
-    expect(CANDIDATES.map((member) => member.name)).toEqual([
-      'Julien Moreau',
-      'Priya Shah',
-      'Ana Souza',
-      'Tom Becker',
-      'Kofi Mensah',
+  it('offers the active members other than the owner, each with one of the three roles', () => {
+    expect(CANDIDATES.map((member) => [member.name, member.role])).toEqual([
+      ['Julien Moreau', 'Admin'],
+      ['Priya Shah', 'Member'],
+      ['Ana Souza', 'Member'],
+      ['Tom Becker', 'Member'],
+      ['Kofi Mensah', 'Member'],
     ]);
   });
 

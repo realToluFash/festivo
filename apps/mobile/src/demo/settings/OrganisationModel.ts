@@ -68,7 +68,7 @@ const AT_REST: Omit<OrganisationStart, 'role'> = {
   deleteMistyped: false,
 };
 
-/** What a state link opens on; an owner's states open on the page at rest for a planner, who has no way to them. */
+/** What a state link opens on; an owner's states open on the page at rest for a member, who has no way to them. */
 export function organisationStart(
   state: OrganisationState | null,
   role: string,
@@ -103,7 +103,7 @@ export function organisationStart(
     case 'transfer':
       return { ...page, screen: 'transfer', transferPicked: true };
     case 'transferred':
-      return { ...page, role: 'Administrator', said: { kind: 'transferred', to: TRANSFERRED_TO } };
+      return { ...page, role: 'Admin', said: { kind: 'transferred', to: TRANSFERRED_TO } };
     case 'delete':
       return { ...page, screen: 'delete', deleteMistyped: true };
   }

@@ -19,17 +19,9 @@ export interface Person extends SampleMember {
 /** The three roles sc-29859 leaves an organisation, from the least to the most a person holds. */
 export const ORG_ROLES = ['Member', 'Admin', 'Owner'] as const;
 
-/** The sample's owner and administrator keep theirs, and everyone else with a role is a member. */
-function threeRoles(role: string | null): string | null {
-  if (role == null) return null;
-
-  return role === 'Owner' ? 'Owner' : role === 'Administrator' ? 'Admin' : 'Member';
-}
-
 export function samplePeople(): Person[] {
   return MEMBERS.map((member, index) => ({
     ...member,
-    role: threeRoles(member.role),
     id: member.email,
     tone: index,
     gone: member.status === 'former' ? 'left' : null,

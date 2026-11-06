@@ -25,12 +25,12 @@ import { DETAILS_WORDS } from './OrganisationWords.ts';
 import { VIEWER_ORGANISATION } from './sample.ts';
 import { SummaryPage } from './Summary.tsx';
 
-/** Settings › Organisation in B, summary first, on sample data. A planner reads the details and may only leave. */
+/** Settings › Organisation in B, summary first, on sample data. A member reads the details and may only leave. */
 export function OrganisationSection() {
   const { state } = useLocalSearchParams<{ state?: string }>();
   const { viewer } = useShell();
   const name = organisationStateOf(state);
-  const role = VIEWER_ORGANISATION[viewer]?.role ?? 'Planner';
+  const role = VIEWER_ORGANISATION[viewer]?.role ?? 'Member';
 
   return (
     <OrganisationPage
@@ -89,7 +89,7 @@ function OrganisationPage({ start, manages }: { start: OrganisationStart; manage
           role={role}
           locale={locale}
           onTransferred={(to) => {
-            setRole('Administrator');
+            setRole('Admin');
             setSaid({ kind: 'transferred', to });
           }}
         />
