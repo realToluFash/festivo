@@ -4,6 +4,7 @@ import { Brand } from '../components/Brand.tsx';
 import { AREAS, type Area, type Card, type SampleEvent, cardOf } from './events.ts';
 import { Thumb } from './EventParts.tsx';
 import { Glyph, type GlyphName } from './Glyph.tsx';
+import { OrgSwitcher } from './OrgSwitcher.tsx';
 import { SAMPLE } from './rules.ts';
 import type { Tell } from './TodayParts.tsx';
 
@@ -43,18 +44,7 @@ export function EventSidebar({
       <div className="today-logo">
         <Brand lockup />
       </div>
-      <button
-        type="button"
-        className="today-org"
-        aria-label={`${SAMPLE.organisation}. Switch organisation`}
-        onClick={() => tell('Switching organisation has its own design.')}
-      >
-        <span className="today-org-tile" aria-hidden="true">
-          IE
-        </span>
-        <span className="today-grow">{SAMPLE.organisation}</span>
-        <Glyph name="updown" size={15} />
-      </button>
+      <OrgSwitcher tell={tell} toast />
       <button
         type="button"
         className="today-search"

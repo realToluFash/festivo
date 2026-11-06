@@ -45,6 +45,7 @@ import { Glyph, type GlyphName } from './Glyph.tsx';
 import { LayersContext } from './layers.ts';
 import { Ask, Bell, Chevron, Head, RowWords, TextAction } from './SettingsParts.tsx';
 import type { Tell } from './TodayParts.tsx';
+import { useSwitcherStart } from './switcher.ts';
 
 const LOCALE = 'en-US';
 
@@ -87,6 +88,7 @@ export function EventPage() {
   const { id } = useParams();
   const [params] = useSearchParams();
   const raw = params.get('state');
+  useSwitcherStart();
 
   return <EventAt key={`${id ?? ''}|${raw ?? ''}`} id={id} raw={raw} />;
 }

@@ -33,7 +33,9 @@ import { Glyph } from './Glyph.tsx';
 import { Bell, CardStep, Head, TextAction } from './SettingsParts.tsx';
 import type { Tell } from './TodayParts.tsx';
 import { TodaySidebar } from './TodaySidebar.tsx';
+import { AccessPaused, Switched } from './OrgSwitcher.tsx';
 import { SIDEBAR_EVENTS } from './settings.ts';
+import { usePaused, useSwitcherStart } from './switcher.ts';
 
 const TAB_WORDS: Record<Tab, string> = { upcoming: W.upcoming, drafts: W.drafts, past: W.past };
 
@@ -43,6 +45,8 @@ export function Events() {
   const location = useLocation();
   const navigate = useNavigate();
   const state = listStateOf(params.get('state'));
+  useSwitcherStart();
+  const paused = usePaused();
   const [told] = useState(() => (location.state as { told?: string } | null)?.told ?? null);
   const [start] = useState(() => {
     if (params.has('state')) resetSample();
@@ -70,7 +74,7 @@ export function Events() {
         />
       )}
     >
-      {(tell) => <EventsList start={start} tell={tell} />}
+      {(tell) => (paused ? <PausedPage /> : <EventsList start={start} tell={tell} />)}
     </EventsShell>
   );
 }
@@ -118,6 +122,7 @@ function EventsList({ start, tell }: { start: ReturnType<typeof listStart>; tell
       <div className="desk-page">
         <div className="ev-column">
           <ListTop tell={tell} />
+          <Switched />
           <FirstRun tell={tell} />
         </div>
       </div>
@@ -137,6 +142,7 @@ function EventsList({ start, tell }: { start: ReturnType<typeof listStart>; tell
           <ListTop tell={tell} />
           <p className="desk-line">{W.summary(upcoming.length, lists.drafts.length)}</p>
         </div>
+        <Switched />
         <SearchRow
           filters={filters}
           offline={offline}
@@ -209,6 +215,15 @@ function EventsList({ start, tell }: { start: ReturnType<typeof listStart>; tell
           }}
         />
       )}
+    </div>
+  );
+}
+
+function PausedPage() {
+  return (
+    <div className="desk-page">
+      <Switched />
+      <AccessPaused />
     </div>
   );
 }

@@ -110,21 +110,9 @@
   color: var(--colorInkSecondary);
 }
 
-.today-org-tile {
-  display: flex;
-  flex: none;
-  align-items: center;
-  justify-content: center;
-  width: var(--space4xl);
-  height: var(--space4xl);
-  border-radius: var(--radiusSmall);
-  background: var(--colorAccent);
-  color: var(--colorInkOnDark);
-  font: 700 11px/1 var(--fontFamily);
-}
-
 .today-search {
   display: flex;
+  flex: none;
   align-items: center;
   gap: var(--spaceMd);
   box-sizing: border-box;

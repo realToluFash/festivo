@@ -3,6 +3,7 @@ import { Link } from 'react-router';
 import { Brand } from '../components/Brand.tsx';
 import { TODAY_IDS } from './events.ts';
 import { Glyph, type GlyphName } from './Glyph.tsx';
+import { OrgSwitcher } from './OrgSwitcher.tsx';
 import { SAMPLE } from './rules.ts';
 import { EVENTS, type EventKey } from './today.ts';
 import type { Tell } from './TodayParts.tsx';
@@ -44,18 +45,7 @@ export function TodaySidebar({
       <div className="today-logo">
         <Brand lockup />
       </div>
-      <button
-        type="button"
-        className="today-org"
-        aria-label={`${SAMPLE.organisation}. Switch organisation`}
-        onClick={() => tell('Switching organisation has its own design.')}
-      >
-        <span className="today-org-tile" aria-hidden="true">
-          IE
-        </span>
-        <span className="today-grow">{SAMPLE.organisation}</span>
-        <Glyph name="updown" size={15} />
-      </button>
+      <OrgSwitcher tell={tell} toast={settings} />
       <button
         type="button"
         className="today-search"
