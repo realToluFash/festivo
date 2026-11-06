@@ -632,22 +632,19 @@ export function YourEvents({
   layout,
   top,
   tell,
+  onAll = () => tell('Events has its own design.'),
 }: {
   moment: Moment;
   layout: 'carousel' | 'list';
   top: number;
   tell: Tell;
+  onAll?: () => void;
 }) {
   const { events, full } = moment;
 
   return (
     <>
-      <SectionHead
-        title="Your events"
-        link="All events"
-        onLink={() => tell('Events has its own design.')}
-        top={top}
-      />
+      <SectionHead title="Your events" link="All events" onLink={onAll} top={top} />
       {layout === 'carousel' ? (
         <ScrollView
           horizontal

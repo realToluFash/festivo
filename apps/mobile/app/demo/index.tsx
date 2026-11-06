@@ -338,6 +338,245 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
     ],
   },
   {
+    page: 'Events · A Summary first',
+    boards: [
+      { title: 'Events', what: 'Upcoming, the soonest as the card', href: '/demo/events' },
+      { title: 'Events · drafts', what: 'Drafts, newest first', href: '/demo/events?state=drafts' },
+      { title: 'Events · past', what: 'Past, ten at a time', href: '/demo/events?state=past' },
+      {
+        title: 'Events · past, more shown',
+        what: 'After Show more',
+        href: '/demo/events?state=pastMore',
+      },
+      {
+        title: 'Events · searching',
+        what: '“lucia”, across every tab',
+        href: '/demo/events?state=search',
+      },
+      {
+        title: 'Events · filtered',
+        what: 'Weddings and birthdays',
+        href: '/demo/events?state=filtered',
+      },
+      {
+        title: 'Events · the Filter menu',
+        what: 'Type, When and Hosted by',
+        href: '/demo/events?state=filterOpen',
+      },
+      {
+        title: 'Events · no match',
+        what: 'Search and a filter, both to clear',
+        href: '/demo/events?state=noMatch',
+      },
+      {
+        title: 'Events · offline',
+        what: 'As of 09:32, Try again',
+        href: '/demo/events?state=offline',
+      },
+      { title: 'Events · a first run', what: 'No events yet', href: '/demo/events?state=first' },
+      {
+        title: 'An event · draft',
+        what: 'Make live is the step',
+        href: '/demo/events/evt-draft-4?state=draft',
+      },
+      {
+        title: 'An event · draft, dates gone',
+        what: 'Change the dates',
+        href: '/demo/events/evt-shower-2?state=draftPast',
+      },
+      { title: 'An event · live', what: 'The wedding, in 2 days', href: '/demo/events/evt-wed-4' },
+      {
+        title: 'An event · happening now',
+        what: 'Day 2 of 3',
+        href: '/demo/events/evt-wed-4?state=now',
+      },
+      {
+        title: 'An event · paused',
+        what: 'Resume is the step',
+        href: '/demo/events/evt-party-2?state=paused',
+      },
+      {
+        title: 'An event · finished',
+        what: 'Duplicate is the step',
+        href: '/demo/events/evt-wed-4?state=finished',
+      },
+      {
+        title: 'An event · called off',
+        what: 'Nothing to do but duplicate',
+        href: '/demo/events/evt-off?state=calledOff',
+      },
+      {
+        title: 'An event · your photo',
+        what: 'The cover is a photo',
+        href: '/demo/events/evt-wed-4?state=photo',
+      },
+      {
+        title: 'An event · More',
+        what: 'The areas the tab bar has no room for',
+        href: '/demo/events/evt-wed-4?state=more',
+      },
+      {
+        title: 'An event · Guests',
+        what: 'Guests is coming',
+        href: '/demo/events/evt-wed-4?area=guests',
+      },
+      {
+        title: 'An event · Budget',
+        what: 'Budget is coming',
+        href: '/demo/events/evt-wed-4?area=budget',
+      },
+      {
+        title: 'Dates',
+        what: 'Start, end and time zone',
+        href: '/demo/events/evt-wed-4?state=dates',
+      },
+      {
+        title: 'Dates · changed',
+        what: 'The end moved with the start',
+        href: '/demo/events/evt-wed-4?state=datesChanged',
+      },
+      {
+        title: 'Dates · ends before it starts',
+        what: 'The end, in red',
+        href: '/demo/events/evt-wed-4?state=datesError',
+      },
+      {
+        title: 'Dates · discard?',
+        what: 'Discard your change?',
+        href: '/demo/events/evt-wed-4?state=discard',
+      },
+      {
+        title: 'Dates · changed elsewhere',
+        what: 'Show the latest',
+        href: '/demo/events/evt-wed-4?state=changedElsewhere',
+      },
+      {
+        title: 'Dates · show the latest?',
+        what: 'The Ask before your change goes',
+        href: '/demo/events/evt-wed-4?state=showLatest',
+      },
+      { title: 'Venue', what: 'Name and address', href: '/demo/events/evt-wed-4?state=venue' },
+      {
+        title: 'Venue · suggestions',
+        what: 'From three letters',
+        href: '/demo/events/evt-wed-4?state=venueSuggestions',
+      },
+      {
+        title: 'Venue · another time zone',
+        what: 'Use the venue’s, or keep',
+        href: '/demo/events/evt-wed-4?state=venueZone',
+      },
+      {
+        title: 'Venue · suggestions down',
+        what: 'Type it in full',
+        href: '/demo/events/evt-wed-4?state=venueDown',
+      },
+      {
+        title: 'Hosted by',
+        what: 'The hosts, in order',
+        href: '/demo/events/evt-wed-4?state=hosts',
+      },
+      {
+        title: 'Hosted by · a name twice',
+        what: 'The second, in red',
+        href: '/demo/events/evt-wed-4?state=hostsDuplicate',
+      },
+      {
+        title: 'Hosted by · six',
+        what: 'The most an event has',
+        href: '/demo/events/evt-wed-4?state=hostsSix',
+      },
+      {
+        title: 'Hosted by · the last host',
+        what: 'Nothing to remove',
+        href: '/demo/events/evt-party-2?state=lastHost',
+      },
+      { title: 'Type', what: 'One of the types', href: '/demo/events/evt-wed-4?state=type' },
+      {
+        title: 'Currency',
+        what: 'One of the currencies',
+        href: '/demo/events/evt-wed-4?state=currency',
+      },
+      {
+        title: 'Currency · refused',
+        what: 'Prices are set',
+        href: '/demo/events/evt-wed-4?state=currencyRefused',
+      },
+      {
+        title: 'Event name',
+        what: 'The name, with its count',
+        href: '/demo/events/evt-wed-4?state=name',
+      },
+      {
+        title: 'Event name · blank',
+        what: 'The name, in red',
+        href: '/demo/events/evt-wed-4?state=nameBlank',
+      },
+      {
+        title: 'Cover',
+        what: 'Soirely’s cover, in its own colours',
+        href: '/demo/events/evt-wed-4?state=cover',
+      },
+      {
+        title: 'Cover · refused',
+        what: 'The photo could not be used',
+        href: '/demo/events/evt-wed-4?state=coverRefused',
+      },
+      {
+        title: 'Cover · your photo',
+        what: 'Position and a description',
+        href: '/demo/events/evt-wed-4?state=coverPhoto',
+      },
+      {
+        title: 'Pause?',
+        what: 'The Ask on a live event',
+        href: '/demo/events/evt-wed-4?state=pause',
+      },
+      {
+        title: 'Call off?',
+        what: 'The Ask before it starts',
+        href: '/demo/events/evt-party-2?state=callOff',
+      },
+      {
+        title: 'End now?',
+        what: 'The Ask while it is on',
+        href: '/demo/events/evt-wed-4?state=endNow',
+      },
+      {
+        title: 'Delete the draft?',
+        what: 'The Ask on a draft',
+        href: '/demo/events/evt-draft-4?state=deleteDraft',
+      },
+      { title: 'Delete event', what: 'Type its name', href: '/demo/events/evt-wed-4?state=delete' },
+      {
+        title: 'Delete event · not the name',
+        what: 'The name, in red',
+        href: '/demo/events/evt-wed-4?state=deleteMismatch',
+      },
+      {
+        title: 'Delete event · the name',
+        what: 'Delete is on',
+        href: '/demo/events/evt-wed-4?state=deleteTyped',
+      },
+      {
+        title: 'Duplicate',
+        what: 'What is copied, and when it starts',
+        href: '/demo/events/evt-wed-4?state=duplicate',
+      },
+      { title: 'Mute · on', what: 'Just for you', href: '/demo/events/evt-wed-4?state=muted' },
+      {
+        title: 'Mute · not loaded',
+        what: 'Try again',
+        href: '/demo/events/evt-wed-4?state=muteNotLoaded',
+      },
+      {
+        title: 'Mute · not saved',
+        what: 'The switch holds',
+        href: '/demo/events/evt-wed-4?state=muteNotSaved',
+      },
+    ],
+  },
+  {
     page: 'People on an event',
     boards: [
       { title: 'People', what: 'One list, the role in a sheet', href: '/demo/people' },

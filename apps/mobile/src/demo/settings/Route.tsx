@@ -91,7 +91,8 @@ export function SettingsRoute({ section }: { section: DemoSection | null }) {
       if (tab === 'Today') router.replace('/demo/today');
       else if (tab === 'Settings') {
         if (shown != null) toSettings();
-      } else tell(`${tab} has its own design.`);
+      } else if (tab === 'Events') router.replace('/demo/events');
+      else tell(`${tab} has its own design.`);
     },
     [shown, tell, toSettings],
   );

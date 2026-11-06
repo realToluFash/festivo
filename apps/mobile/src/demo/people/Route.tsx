@@ -33,6 +33,7 @@ export function PeopleRoute() {
     (tab: Tab) => {
       if (tab === 'Today') router.replace('/demo/today');
       else if (tab === 'Settings') toSettings();
+      else if (tab === 'Events') router.replace('/demo/events');
       else tell(`${tab} has its own design.`);
     },
     [tell, toSettings],

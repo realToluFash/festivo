@@ -30,12 +30,18 @@ import {
 } from '../../src/demo/TodayCover.tsx';
 import { FirstRun, NeedsYou, type Tell, ThisWeek, YourEvents } from '../../src/demo/TodayParts.tsx';
 import { TodaySidebar } from '../../src/demo/TodaySidebar.tsx';
+import { openEvent } from '../../src/demo/events/EventsList.tsx';
+import { EVENT_OF_KEY } from '../../src/demo/events/EventsSample.ts';
 import { useCoverStatusBar } from '../../src/demo/Welcome.tsx';
 import { tokens } from '../../src/theme/tokens.ts';
 
 const TAB_BAR = 64;
 const BELOW_HEAD = 28;
 const WORDS_GO = 96;
+
+function toEvents() {
+  router.replace('/demo/events');
+}
 
 function isMoment(name: string | undefined): name is MomentName {
   return MOMENTS.some((moment) => moment === name);
@@ -71,6 +77,7 @@ export default function DemoTodayScreen() {
   const onTab = useCallback(
     (tab: Tab) => {
       if (tab === 'Settings') router.replace('/demo/settings');
+      else if (tab === 'Events') toEvents();
       else if (tab !== 'Today') tell(`${tab} has its own design.`);
     },
     [tell],
@@ -117,7 +124,13 @@ function Body({ moment, wide, tell }: { moment: Moment; wide: boolean; tell: Tel
       <>
         {needs}
         <ThisWeek moment={moment} wide={false} top={below} tell={tell} />
-        <YourEvents moment={moment} layout="carousel" top={BELOW_HEAD} tell={tell} />
+        <YourEvents
+          moment={moment}
+          layout="carousel"
+          top={BELOW_HEAD}
+          tell={tell}
+          onAll={toEvents}
+        />
       </>
     );
 
@@ -132,7 +145,7 @@ function Body({ moment, wide, tell }: { moment: Moment; wide: boolean; tell: Tel
           <ThisWeek moment={moment} wide top={below} tell={tell} />
         </View>
         <View style={styles.grow}>
-          <YourEvents moment={moment} layout="list" top={below} tell={tell} />
+          <YourEvents moment={moment} layout="list" top={below} tell={tell} onAll={toEvents} />
         </View>
       </View>
     </>
@@ -267,7 +280,12 @@ function Landscape({
 
   return (
     <View style={[styles.chrome, { paddingTop: insets.top }]}>
-      <TodaySidebar events={events} onTab={onTab} tell={tell} />
+      <TodaySidebar
+        events={events}
+        onTab={onTab}
+        tell={tell}
+        onEvent={(key) => openEvent(EVENT_OF_KEY[key])}
+      />
       <View style={[styles.pageCard, { marginBottom: Math.max(insets.bottom, tokens.spaceMd) }]}>
         <ScrollView contentContainerStyle={styles.cardPage} showsVerticalScrollIndicator={false}>
           <TodayCover moment={moment} layout="landscape" top={0} tell={tell} onTab={onTab} />
@@ -282,7 +300,7 @@ function Landscape({
                 <ThisWeek moment={moment} wide top={below} tell={tell} />
               </View>
               <View style={styles.events}>
-                <YourEvents moment={moment} layout="list" top={0} tell={tell} />
+                <YourEvents moment={moment} layout="list" top={0} tell={tell} onAll={toEvents} />
               </View>
             </View>
           )}
