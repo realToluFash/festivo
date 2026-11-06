@@ -163,17 +163,53 @@ def masked(text):
     return text if len(text) <= WANTED_CHARS else text[:WANTED_CHARS - 1] + "…"
 
 
-def wanted(short, seen, folder):
-    """What the session held on its prompt wanted to run, from its listing or else its job's
-    `state.json`, masked; None when neither says."""
-    needs = seen.get("needs")
+def pending_call(lines):
+    """The last tool call the session made that nothing answered: the one its prompt holds."""
+    answered, pending = set(), None
+    for line in lines:
+        if line.get("isSidechain"):
+            continue
+        for part in (line.get("message") or {}).get("content") or []:
+            if not isinstance(part, dict):
+                continue
+            if part.get("type") == "tool_use" and line.get("type") == "assistant":
+                pending = part
+            elif part.get("type") == "tool_result":
+                answered.add(part.get("tool_use_id"))
+    if not pending or pending.get("id") in answered:
+        return None
+    return {"tool": pending.get("name"), "input": pending.get("input") or {}}
+
+
+def asked(short, seen, folder, lines=()):
+    """`(wanted, gap)`: what the session held on its prompt wanted to run, masked, from its
+    listing, its job's `state.json` or the unanswered call in its transcript, in that order;
+    when none says, `wanted` is None and `gap` names each source and how it was empty."""
+    gaps = []
+    needs = needs_text(seen.get("needs"))
     if not needs:
+        gaps.append("the listing had no `needs`")
         path = pathlib.Path(folder).expanduser() / "jobs" / short / "state.json"
         try:
-            needs = json.loads(path.read_text()).get("needs")
-        except (OSError, ValueError, AttributeError):
-            needs = None
-    return masked(needs_text(needs)) or None
+            needs = needs_text(json.loads(path.read_text()).get("needs"))
+            if not needs:
+                gaps.append("the job's state.json had no `needs`")
+        except OSError:
+            gaps.append("the job's state.json was gone")
+        except (ValueError, AttributeError):
+            gaps.append("the job's state.json could not be read")
+    if not needs:
+        needs = needs_text(pending_call(lines))
+        if not needs:
+            gaps.append("the transcript ended in no unanswered tool call" if lines
+                        else "the transcript was empty or gone")
+    said = masked(needs) if needs else ""
+    return (said, None) if said else (None, "; ".join(gaps))
+
+
+def wanted(short, seen, folder, lines=()):
+    """What the session held on its prompt wanted to run, masked; None when nothing says."""
+    return asked(short, seen, folder, lines)[0]
 
 
 def stop(short, env, run=subprocess.run):
@@ -366,6 +402,6 @@ def run(values, folder, name, prompt, cwd, finished, allowed=(), denied=(), extr
     result = summary(lines, values["model"])
     result["artifact_read"], result["artifact_refused"] = board_read(lines)
     if why == "prompt":
-        result["wanted"] = wanted(short, seen, folder)
+        result["wanted"], result["unnamed"] = asked(short, seen, folder, lines)
     code = 0 if why in ("ended", "settled") and not result["is_error"] else 1
     return result, code, why, session

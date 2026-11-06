@@ -28,6 +28,16 @@ def tools(*names):
                                                  "addedNames": list(names)}}
 
 
+def call(call_id, name, **given):
+    return {"type": "assistant", "message": {"id": f"m-{call_id}", "content": [
+        {"type": "tool_use", "id": call_id, "name": name, "input": given}]}}
+
+
+def answer(call_id):
+    return {"type": "user", "message": {"content": [
+        {"type": "tool_result", "tool_use_id": call_id, "content": "ok"}]}}
+
+
 GIVEN = tools("ArtifactComments", "ArtifactData", "WebFetch")
 
 
@@ -237,6 +247,40 @@ class Wanted(unittest.TestCase):
     def test_nothing_said_is_none(self):
         self.assertIsNone(background.wanted("x", {}, "/nowhere"))
 
+    def test_an_empty_needs_takes_the_unanswered_bash_call_from_the_transcript(self):
+        lines = [GIVEN, call("t1", "Bash", command="git status"), answer("t1"),
+                 call("t2", "Bash", command="GH_TOKEN=ghp_s3cret gh api /user")]
+        with tempfile.TemporaryDirectory() as folder:
+            job = pathlib.Path(folder) / "jobs" / "1d923fe2"
+            job.mkdir(parents=True)
+            (job / "state.json").write_text(json.dumps({"state": "blocked", "needs": ""}))
+            said, gap = background.asked("1d923fe2", {}, folder, lines)
+        self.assertEqual((said, gap), ("GH_TOKEN=… gh api /user", None))
+
+    def test_an_answered_last_call_is_not_the_one_held(self):
+        lines = [call("t1", "Bash", command="git status"), answer("t1")]
+        self.assertIsNone(background.pending_call(lines))
+
+    def test_a_call_without_a_command_is_named_by_its_tool(self):
+        lines = [call("t1", "Write", file_path="/etc/hosts", content="x")]
+        self.assertEqual(background.wanted("x", {}, "/nowhere", lines), "Write: /etc/hosts")
+
+    def test_when_every_source_is_empty_the_gap_names_each(self):
+        with tempfile.TemporaryDirectory() as folder:
+            job = pathlib.Path(folder) / "jobs" / "1d923fe2"
+            job.mkdir(parents=True)
+            (job / "state.json").write_text(json.dumps({"state": "blocked"}))
+            said, gap = background.asked("1d923fe2", {}, folder,
+                                         [GIVEN, assistant("m1", "Done.")])
+        self.assertIsNone(said)
+        self.assertEqual(gap, "the listing had no `needs`; the job's state.json had no "
+                              "`needs`; the transcript ended in no unanswered tool call")
+
+    def test_a_job_directory_already_gone_is_said_so(self):
+        self.assertEqual(background.asked("x", {}, "/nowhere")[1],
+                         "the listing had no `needs`; the job's state.json was gone; "
+                         "the transcript was empty or gone")
+
     def test_a_tool_without_a_command_is_named_with_its_target(self):
         self.assertEqual(background.needs_text({"toolName": "Write",
                                                 "input": {"file_path": "/etc/hosts"}}),
@@ -303,6 +347,19 @@ class Run(unittest.TestCase):
             lines_of=lambda _: [GIVEN, assistant("m1", "Committing.", output_tokens=10)])
         self.assertEqual((why, code, result["wanted"]), ("prompt", 1, "rm node_modules"))
         self.assertEqual(commands[-1], ["claude", "stop", "1d923fe2"])
+
+
+    def test_a_prompt_with_no_needs_names_the_transcript_s_pending_command(self):
+        clock = Clock()
+        listing = {"1d923fe2": {"state": "blocked", "waitingFor": "permission prompt",
+                                "pid": 4, "sessionId": SESSION}}
+        result, _, why, _ = background.run(
+            VALUES, "/nowhere", "dev item 7", "Build.", "/x", lambda: False,
+            run_command=lambda *_, **__: said("backgrounded · 1d923fe2 · dev item 7\n"),
+            clock=clock, sleep=clock.sleep, ls=lambda _: listing, rss=lambda _: 0,
+            lines_of=lambda _: [GIVEN, call("t1", "Bash", command="rm -rf build")])
+        self.assertEqual((why, result["wanted"], result["unnamed"]),
+                         ("prompt", "rm -rf build", None))
 
 
 class ArtifactTools(unittest.TestCase):
