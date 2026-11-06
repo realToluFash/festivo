@@ -436,6 +436,16 @@ export function ProveDialog({
   );
 }
 
+/** An expired code, in the field's place: what happened, and to use the newest code. */
+export function ExpiredCode({ newest }: { newest: string }) {
+  return (
+    <div className="account-expired" role="alert">
+      <p className="account-expired-title">{V.expired}</p>
+      <p className="desk-line">{V.expiredLine(newest)}</p>
+    </div>
+  );
+}
+
 /** Check your email or messages: the code, then Send a new code once its count ends; an expired code takes the field's place. */
 export function VerifyDialog({
   start,
@@ -498,10 +508,7 @@ export function VerifyDialog({
     >
       <Note>{words.intro(row.shown)}</Note>
       {expired ? (
-        <div className="account-expired" role="alert">
-          <p className="account-expired-title">{V.expired}</p>
-          <p className="desk-line">{V.expiredLine(words.newest)}</p>
-        </div>
+        <ExpiredCode newest={words.newest} />
       ) : (
         <div className="desk-fields">
           <Field

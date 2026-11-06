@@ -59,6 +59,7 @@ describe('Security’s sample (sc-30223)', () => {
       'keptByRule',
       'changePassword',
       'setPassword',
+      'setPasswordExpired',
       'link',
       'unlink',
       'setup',

@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import { offButton } from '../offButton.ts';
 import { DISCARD, VERIFY_WORDS as V } from './account.ts';
+import { ExpiredCode } from './AccountDialogs.tsx';
 import { Glyph } from './Glyph.tsx';
 import {
   ASK_WORDS,
@@ -236,20 +237,22 @@ export function SetCodeDialog({
 }) {
   const later = useLater();
   const input = useRef<HTMLInputElement>(null);
+  const resend = useRef<HTMLButtonElement>(null);
   const [typed, setTyped] = useState(start.typed);
   const [error, setError] = useState(() => (start.tried ? emailedCodeRefusal(start.typed) : null));
-  const [left, setLeft] = useState(RESEND_FROM);
+  const [expired, setExpired] = useState(start.expired);
+  const [left, setLeft] = useState(start.expired ? 0 : RESEND_FROM);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (left <= 0) return;
+    if (expired || left <= 0) return;
     const tick = window.setTimeout(() => setLeft(left - 1), 1000);
 
     return () => window.clearTimeout(tick);
-  }, [left]);
+  }, [expired, left]);
 
   function go(): void {
-    if (busy) return;
+    if (busy || expired) return;
     const refusal = emailedCodeRefusal(typed);
     setError(refusal);
     if (refusal != null) return input.current?.focus();
@@ -261,36 +264,42 @@ export function SetCodeDialog({
     <Dialog
       title={P.codeTitle}
       verb={P.codeVerb}
-      on={!busy}
-      first={input}
+      on={!expired && !busy}
+      first={expired ? resend : input}
       onDismiss={onClose}
       onConfirm={go}
     >
       <Note>{P.codeIntro(email)}</Note>
-      <div className="desk-fields security-fields">
-        <Field
-          label={P.codeField}
-          value={typed}
-          inputMode="numeric"
-          autoComplete="one-time-code"
-          inputRef={input}
-          error={error}
-          onChange={(value) => {
-            setTyped(value);
-            setError(null);
-          }}
-        />
-      </div>
+      {expired ? (
+        <ExpiredCode newest={P.codeNewest} />
+      ) : (
+        <div className="desk-fields security-fields">
+          <Field
+            label={P.codeField}
+            value={typed}
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            inputRef={input}
+            error={error}
+            onChange={(value) => {
+              setTyped(value);
+              setError(null);
+            }}
+          />
+        </div>
+      )}
       <div className="desk-red">
         <button
+          ref={resend}
           type="button"
           className={left > 0 ? 'desk-text account-wait' : 'desk-text'}
           {...offButton(left > 0, { dim: false })}
           onClick={() => {
             setTyped('');
             setError(null);
+            setExpired(false);
             setLeft(RESEND_FROM);
-            input.current?.focus();
+            window.requestAnimationFrame(() => input.current?.focus());
           }}
         >
           {left > 0 ? V.resendIn(left) : V.resend}

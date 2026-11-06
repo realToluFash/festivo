@@ -179,6 +179,24 @@ describe('Security at a desk (sc-30223)', () => {
     ).toBeDefined();
   });
 
+  it('shows an expired code in the field’s place, as Your account does, and a new one brings it back', async () => {
+    await security('/demo/settings/security?state=setPasswordExpired');
+
+    expect(within(dialog()).getByRole('heading', { name: 'Check your email' })).toBeDefined();
+    expect(within(dialog()).getByRole('alert').textContent).toBe(
+      'That code has expiredCodes only work for a while. Send a new one and use the code in the newest email.',
+    );
+    expect(within(dialog()).queryByLabelText('Code from the email')).toBeNull();
+    expect(
+      within(dialog()).getByRole('button', { name: 'Continue' }).getAttribute('aria-disabled'),
+    ).toBe('true');
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'Send a new code' }));
+
+    expect(within(dialog()).getByLabelText('Code from the email')).toHaveProperty('value', '');
+    expect(within(dialog()).getByText('Send a new code in 0:42')).toBeDefined();
+    expect(within(dialog()).queryByRole('alert')).toBeNull();
+  });
+
   it('closes a proof at once on Cancel, whatever is typed', async () => {
     await security('/demo/settings/security?state=unlinkProve');
     type('Your password', SAMPLE.password);

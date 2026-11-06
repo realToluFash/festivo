@@ -248,6 +248,7 @@ export const PASSWORD_WORDS = {
   codeVerb: 'Continue',
   codeIntro: (email: string) => `We sent a 6-digit code to ${email} to make sure it's you.`,
   codeField: CHANNEL_WORDS.email.field,
+  codeNewest: CHANNEL_WORDS.email.newest,
   codeNote: "Adding a password needs this, so someone using this device without you can't add one.",
   codeBlank: CHANNEL_WORDS.email.blank,
   codeShort: VERIFY_WORDS.short,
@@ -550,6 +551,7 @@ export interface DialogStart {
   discarding: boolean;
   copied: boolean;
   saved: boolean;
+  expired: boolean;
 }
 
 export function opening(kind: DialogKind, more: Partial<DialogStart> = {}): DialogStart {
@@ -563,6 +565,7 @@ export function opening(kind: DialogKind, more: Partial<DialogStart> = {}): Dial
     discarding: false,
     copied: false,
     saved: false,
+    expired: false,
     ...more,
   };
 }
@@ -583,6 +586,7 @@ export const SECURITY_STATES = [
   'keptByRule',
   'changePassword',
   'setPassword',
+  'setPasswordExpired',
   'link',
   'unlink',
   'setup',
@@ -702,6 +706,8 @@ export function securityStart(state: string, viewer: Viewer = VIEWERS.folake): S
       return { ...REST, dialog: opening('sent') };
     case 'setPassword':
       return { ...REST, page: googleOnly, dialog: opening('setCode') };
+    case 'setPasswordExpired':
+      return { ...REST, page: googleOnly, dialog: opening('setCode', { expired: true }) };
     case 'setPasswordWrong':
       return {
         ...REST,
@@ -846,6 +852,7 @@ export const SECURITY_PAGES: readonly { name: string; states: readonly DemoLink[
     states: [
       security('setPassword', 'Set a password, the code'),
       security('setPasswordWrong', 'Set a password, a wrong code'),
+      security('setPasswordExpired', 'Set a password, the code expired'),
       security('choosePassword', 'Choose a password'),
       security('added', 'Password added'),
       security('linkPick', 'Neither linked, a held step’s landing'),
