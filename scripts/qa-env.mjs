@@ -2248,26 +2248,37 @@ function apiSession(email, password, secret) {
   return (path, options) => session((token) => api(path, { ...options, token }));
 }
 
-export const MEMBERSHIP_CHANGES = ['join', 'pause', 'suspend', 'remove', 'delete'];
+export const MEMBERSHIP_CHANGES = ['join', 'pause', 'suspend', 'remove', 'delete', 'clear'];
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
-// One owner for the whole batch: sign-ups are limited to ten an hour per address.
+// Owners are registered as few as possible: sign-ups are limited to ten an hour per address.
 export function membershipChanges({ email, member, ownerOf, sql }) {
   let owning = null;
-  const owner = (path, options) => {
-    owning ??= ownerOf().catch((error) => {
+  const newOwner = () =>
+    (owning = ownerOf().catch((error) => {
       owning = null;
       throw error;
-    });
-    return owning.then((session) => session(path, options));
+    }));
+  // Each owner may make five organisations an hour, so a refused one hands over to a new owner.
+  const create = async (name) => {
+    const body = { name, countryCode: 'GB', timezone: 'Europe/London' };
+    const owner = await (owning ?? newOwner());
+    try {
+      return { owner, ...(await owner('/api/orgs', { body })) };
+    } catch (error) {
+      if (error.status !== 429) throw error;
+      const next = await newOwner();
+      return { owner: next, ...(await next('/api/orgs', { body })) };
+    }
   };
   const joined = new Map();
   const find = (name) => {
-    const id = joined.get(name);
-    if (!id) throw new Error(`${name} was not joined in this batch: /membership?change=join first`);
-    return id;
+    const org = joined.get(name);
+    if (!org)
+      throw new Error(`${name} was not joined in this batch: /membership?change=join first`);
+    return org;
   };
-  const membershipIn = async (id) => {
+  const membershipIn = async ({ id, owner }) => {
     const { members } = await owner(`/api/orgs/${id}/members`, { method: 'GET' });
     const mine = members.find((m) => m.user.email === email)?.id;
     if (!UUID.test(mine ?? '')) throw new Error(`${email} holds no membership in ${id}`);
@@ -2277,40 +2288,48 @@ export function membershipChanges({ email, member, ownerOf, sql }) {
     // Or a name joined again would show twice in the switcher.
     join: async (name) => {
       if (joined.has(name)) await changes.delete(name);
-      const { organisation } = await owner('/api/orgs', {
-        body: { name, countryCode: 'GB', timezone: 'Europe/London' },
-      });
-      const { id } = organisation;
+      const {
+        owner,
+        organisation: { id },
+      } = await create(name);
       const { roles } = await owner(`/api/orgs/${id}/roles`, { method: 'GET' });
       const roleId = roles.find((r) => r.seededAs === 'member').id;
       const { invitation } = await owner(`/api/orgs/${id}/members/invite`, {
         body: { email, roleId },
       });
       await member(`/api/invitations/${invitation.id}/accept`, {});
-      joined.set(name, id);
+      joined.set(name, { id, owner });
+      return { id };
     },
     pause: async (name) => sql(domainPause(await membershipIn(find(name)), email)),
     suspend: async (name) => {
-      const id = find(name);
-      await owner(`/api/orgs/${id}/members/${await membershipIn(id)}/suspend`, {});
+      const org = find(name);
+      await org.owner(`/api/orgs/${org.id}/members/${await membershipIn(org)}/suspend`, {});
     },
     remove: async (name) => {
-      const id = find(name);
-      await owner(`/api/orgs/${id}/members/${await membershipIn(id)}`, { method: 'DELETE' });
+      const org = find(name);
+      await org.owner(`/api/orgs/${org.id}/members/${await membershipIn(org)}`, {
+        method: 'DELETE',
+      });
     },
     delete: async (name) => {
-      const id = find(name);
+      const { id, owner } = find(name);
       await owner(`/api/orgs/${id}`, { method: 'DELETE', body: { name } });
       joined.delete(name);
     },
+  };
+  // Access paused has no way out, so a batch deletes what it joined before each check and after.
+  const clear = async () => {
+    for (const name of [...joined.keys()]) await changes.delete(name);
+    return { membership: 'clear' };
   };
   return async (change, name) => {
     if (!MEMBERSHIP_CHANGES.includes(change)) {
       throw new Error(`no membership change ${change}: ${MEMBERSHIP_CHANGES.join(', ')}`);
     }
+    if (change === 'clear') return clear();
     if (!name) throw new Error(`${change} in which organisation? /membership?change=…&org=…`);
-    await changes[change](name);
-    return { membership: change, org: name };
+    return { membership: change, org: name, ...(await changes[change](name)) };
   };
 }
 
@@ -2809,6 +2828,9 @@ async function batch(args) {
     await apiState
       .move('up')
       .catch((error) => console.error(`\nThe API is still held: ${error.message}`));
+    await changeMembership('clear').catch((error) =>
+      console.error(`\nAn organisation this batch joined is left: ${error.message}`),
+    );
     // The app follows the account's language when it next opens, and later flows expect English.
     if (named) await setLocale(before ?? 'en');
   }

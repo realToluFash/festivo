@@ -2463,43 +2463,59 @@ describe('a membership change a check asks for', () => {
     const statements = [];
     let made = 0;
     let owners = 0;
-    const owner = async (path, options = {}) => {
-      calls.push(`owner ${options.method ?? 'POST'} ${path}`);
-      if (path === '/api/orgs') return { organisation: { id: `org-${++made}` } };
-      if (path.endsWith('/roles')) {
-        return {
-          roles: [
-            { id: 'r-owner', seededAs: 'owner' },
-            { id: 'r-member', seededAs: 'member' },
-          ],
-        };
-      }
-      if (path.endsWith('/members/invite')) return { invitation: { id: `inv-${made}` } };
-      if (path.endsWith('/members') && options.method === 'GET') {
-        return {
-          members: [
-            { id: 'other', user: { email: 'owner@soirely.test' } },
-            { id: MEMBERSHIP, user: { email: 'qa@soirely.test' } },
-          ],
-        };
-      }
-      return null;
-    };
+    let refusing = false;
+    const ownerNumbered =
+      (n) =>
+      async (path, options = {}) => {
+        calls.push(`owner${n === 1 ? '' : `-${n}`} ${options.method ?? 'POST'} ${path}`);
+        if (path === '/api/orgs' && options.method !== 'GET') {
+          if (refusing) {
+            refusing = false;
+            throw Object.assign(new Error('Too many new organisations'), { status: 429 });
+          }
+          return { organisation: { id: `org-${++made}` } };
+        }
+        if (path.endsWith('/roles')) {
+          return {
+            roles: [
+              { id: 'r-owner', seededAs: 'owner' },
+              { id: 'r-member', seededAs: 'member' },
+            ],
+          };
+        }
+        if (path.endsWith('/members/invite')) return { invitation: { id: `inv-${made}` } };
+        if (path.endsWith('/members') && options.method === 'GET') {
+          return {
+            members: [
+              { id: 'other', user: { email: 'owner@soirely.test' } },
+              { id: MEMBERSHIP, user: { email: 'qa@soirely.test' } },
+            ],
+          };
+        }
+        return null;
+      };
     const change = membershipChanges({
       email: 'qa@soirely.test',
       member: async (path) => calls.push(`member ${path}`),
       ownerOf: async () => {
         owners += 1;
-        return owner;
+        return ownerNumbered(owners);
       },
       sql: async (statement) => statements.push(statement),
     });
-    return { change, calls, statements, owners: () => owners };
+    const refuseNextCreate = () => {
+      refusing = true;
+    };
+    return { change, calls, statements, owners: () => owners, refuseNextCreate };
   };
 
   it('makes the organisation and the batch account a member of it', async () => {
     const { change, calls } = changesFor();
-    expect(await change('join', 'Alpha Hall')).toEqual({ membership: 'join', org: 'Alpha Hall' });
+    expect(await change('join', 'Alpha Hall')).toEqual({
+      membership: 'join',
+      org: 'Alpha Hall',
+      id: 'org-1',
+    });
     expect(calls).toEqual([
       'owner POST /api/orgs',
       'owner GET /api/orgs/org-1/roles',
@@ -2547,6 +2563,34 @@ describe('a membership change a check asks for', () => {
     expect(calls.slice(0, 2)).toEqual(['owner DELETE /api/orgs/org-1', 'owner POST /api/orgs']);
     await change('delete', 'Alpha Hall');
     await expect(change('suspend', 'Alpha Hall')).rejects.toThrow('was not joined in this batch');
+  });
+
+  it('hands over to a new owner once one may make no more organisations', async () => {
+    const { change, calls, owners, refuseNextCreate } = changesFor();
+    await change('join', 'Alpha Hall');
+    refuseNextCreate();
+    await change('join', 'Bravo');
+    expect(owners()).toBe(2);
+    calls.length = 0;
+    await change('suspend', 'Alpha Hall');
+    await change('suspend', 'Bravo');
+    expect(calls.filter((call) => call.includes('GET'))).toEqual([
+      'owner GET /api/orgs/org-1/members',
+      'owner-2 GET /api/orgs/org-2/members',
+    ]);
+  });
+
+  it('clears every organisation the batch joined, and none twice', async () => {
+    const { change, calls, owners } = changesFor();
+    expect(await change('clear')).toEqual({ membership: 'clear' });
+    expect(owners()).toBe(0);
+    await change('join', 'Alpha Hall');
+    await change('join', 'Bravo');
+    await change('suspend', 'Alpha Hall');
+    calls.length = 0;
+    await change('clear');
+    await change('clear');
+    expect(calls).toEqual(['owner DELETE /api/orgs/org-1', 'owner DELETE /api/orgs/org-2']);
   });
 
   it('refuses a change it does not know, or one with no organisation', async () => {
