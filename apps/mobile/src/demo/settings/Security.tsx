@@ -350,7 +350,8 @@ function SecurityPage({ start }: { start: SecurityStart }) {
       />
       <SetPasswordScreen
         key={`set.${visit}`}
-        open={screen === 'setPassword'}
+        open={screen === 'setPassword' || screen === 'setPasswordExpired'}
+        start={screen === 'setPasswordExpired' ? 'expired' : 'entering'}
         opener={opener}
         onClose={() => setScreen(null)}
         onSaved={() => {
@@ -417,6 +418,7 @@ function startTarget(start: SecurityStart): Target {
     case 'forgot':
     case 'forgotSent':
     case 'setPassword':
+    case 'setPasswordExpired':
       return 'password';
     case 'confirm':
       return 'link';

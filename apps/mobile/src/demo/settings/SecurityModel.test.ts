@@ -32,7 +32,7 @@ const NEW_PASSWORD = 'a much longer passphrase';
 
 describe('a state link', () => {
   it('opens the state it names, and the page at rest for anything else', () => {
-    expect(SECURITY_STATES).toHaveLength(16);
+    expect(SECURITY_STATES).toHaveLength(17);
     expect(securityStateOf('forgotSent')).toBe('forgotSent');
     expect(securityStateOf('nonsense')).toBe('rest');
     expect(securityStateOf(undefined)).toBe('rest');
@@ -41,6 +41,10 @@ describe('a state link', () => {
   it('starts each state with what its board drew', () => {
     expect(securityStart('rest')).toMatchObject({ ways: both, twoFactor: true, codesLeft: 8 });
     expect(securityStart('googleOnly')).toMatchObject({ ways: googleOnly, twoFactor: false });
+    expect(securityStart('setPasswordExpired')).toMatchObject({
+      ways: googleOnly,
+      screen: 'setPasswordExpired',
+    });
     expect(securityStart('keptByRule')).toMatchObject({
       rules: { providerOnly: true, twoFactor: true },
       opened: 'Google',

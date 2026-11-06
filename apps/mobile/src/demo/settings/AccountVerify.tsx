@@ -4,7 +4,6 @@ import { StyleSheet, type TextInputInstance, View } from 'react-native';
 
 import { CodeField, Field, focusChecked, focusRefused } from '../../components/Field.tsx';
 import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
-import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import {
   type Channel,
@@ -12,13 +11,12 @@ import {
   codeMessage,
   type ContactKind,
   COUNTDOWN_SECONDS,
-  expiredLine,
   verifyLead,
   type VerifyStage,
   WORDS,
   WRONG_CODE,
 } from './AccountModel.ts';
-import { useCountdown } from './AccountParts.tsx';
+import { CodeExpired, useCountdown } from './AccountParts.tsx';
 import { sentCodeProblem } from './AccountSample.ts';
 import { FocusedScreen, Line, TextAction } from './Summary.tsx';
 
@@ -96,12 +94,7 @@ export function VerifyScreen({
     >
       <Line text={verifyLead(channel, shown)} />
       {expired ? (
-        <View style={styles.expired}>
-          <Text size={16} weight="semibold">
-            {WORDS.expiredTitle}
-          </Text>
-          <Line text={expiredLine(channel)} />
-        </View>
+        <CodeExpired channel={channel} />
       ) : (
         <View style={styles.field}>
           <Field label={words.label} error={error}>
@@ -143,5 +136,4 @@ export function VerifyScreen({
 
 const styles = StyleSheet.create({
   field: { paddingTop: tokens.spaceXs },
-  expired: { gap: tokens.spaceXxs, paddingTop: tokens.spaceXs },
 });

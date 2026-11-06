@@ -150,6 +150,11 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/settings/security?state=setPassword',
       },
       {
+        title: 'Security · an expired code',
+        what: 'Set a password’s emailed code expired',
+        href: '/demo/settings/security?state=setPasswordExpired',
+      },
+      {
         title: 'Security · link Apple',
         what: 'Confirm it’s you, then Apple',
         href: '/demo/settings/security?state=link',

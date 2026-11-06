@@ -24,6 +24,7 @@ export const SECURITY_STATES = [
   'keptByRule',
   'changePassword',
   'setPassword',
+  'setPasswordExpired',
   'link',
   'linkPick',
   'unlink',
@@ -45,7 +46,14 @@ export function securityStateOf(param: string | undefined): SecurityState {
 
 export type SecurityAsk = 'unlink' | 'turnOff' | 'newCodes' | 'signOut' | 'everywhere';
 export type SecurityScreen =
-  'change' | 'forgot' | 'forgotSent' | 'setPassword' | 'confirm' | 'setup' | 'recovery';
+  | 'change'
+  | 'forgot'
+  | 'forgotSent'
+  | 'setPassword'
+  | 'setPasswordExpired'
+  | 'confirm'
+  | 'setup'
+  | 'recovery';
 export type Proof = 'link' | 'unlink' | 'everywhere' | 'turnOff' | 'newCodes';
 
 export interface Rules {
@@ -450,7 +458,8 @@ export function resetSays(email: string): string | null {
 
 /** Where each state starts: the sample's ways, two-factor and rules, and what is open over the page. */
 export function securityStart(state: SecurityState): SecurityStart {
-  const googleOnly = state === 'googleOnly' || state === 'setPassword';
+  const googleOnly =
+    state === 'googleOnly' || state === 'setPassword' || state === 'setPasswordExpired';
   const picking = state === 'linkPick';
   const start: SecurityStart = {
     ways: { password: !googleOnly, Google: !picking, Apple: false },
@@ -470,7 +479,8 @@ export function securityStart(state: SecurityState): SecurityStart {
     case 'changePassword':
       return { ...start, screen: 'change' };
     case 'setPassword':
-      return { ...start, screen: 'setPassword' };
+    case 'setPasswordExpired':
+      return { ...start, screen: state };
     case 'link':
       return { ...start, opened: 'Apple', screen: 'confirm', proof: 'link' };
     case 'linkPick':

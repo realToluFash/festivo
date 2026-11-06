@@ -16,7 +16,7 @@ import { tokens } from '../../theme/tokens.ts';
 import { SAMPLE } from '../samples.ts';
 import { COUNTDOWN_SECONDS, WORDS as ACCOUNT } from './AccountModel.ts';
 import { discardAsk } from './AccountName.tsx';
-import { useCountdown } from './AccountParts.tsx';
+import { CodeExpired, useCountdown } from './AccountParts.tsx';
 import { sentCodeProblem } from './AccountSample.ts';
 import { SentBody } from './SecurityForgot.tsx';
 import {
@@ -249,11 +249,13 @@ export function ChangePasswordScreen({
 /** For somebody with no password: a code by email first, then Choose a password in the same screen. */
 export function SetPasswordScreen({
   open,
+  start,
   opener,
   onClose,
   onSaved,
 }: {
   open: boolean;
+  start: 'entering' | 'expired';
   opener: Opener;
   onClose: () => void;
   onSaved: () => void;
@@ -269,7 +271,8 @@ export function SetPasswordScreen({
   const [met, setMet] = useState(false);
   const [typed, setTyped] = useState(false);
   const [discarding, setDiscarding] = useState(false);
-  const countdown = useCountdown(COUNTDOWN_SECONDS);
+  const [expired, setExpired] = useState(start === 'expired');
+  const countdown = useCountdown(COUNTDOWN_SECONDS, start !== 'expired');
 
   function proceed(): void {
     const said = emailedCodeSays(code.current);
@@ -333,7 +336,7 @@ export function SetPasswordScreen({
       title={WORDS.codeTitle}
       verb={{
         label: ACCOUNT.continue,
-        on: true,
+        on: !expired,
         onPress: proceed,
         testID: 'security.code.continue',
       }}
@@ -343,25 +346,29 @@ export function SetPasswordScreen({
       testID="security.code.screen"
     >
       <Line text={WORDS.codeLead} />
-      <Field label={WORDS.codeLabel} error={codeSays}>
-        <CodeField
-          key={sent}
-          ref={codeField}
-          wrong={codeSays != null}
-          autoFocus
-          autoComplete="one-time-code"
-          textContentType="oneTimeCode"
-          returnKeyType="done"
-          onChangeText={(text) => {
-            code.current = text;
-            if (codeSays != null) setCodeSays(null);
-          }}
-          onSubmitEditing={proceed}
-          submitBehavior="submit"
-          accessibilityLabel={WORDS.codeLabel}
-          testID="security.code.field"
-        />
-      </Field>
+      {expired ? (
+        <CodeExpired channel="email" />
+      ) : (
+        <Field label={WORDS.codeLabel} error={codeSays}>
+          <CodeField
+            key={sent}
+            ref={codeField}
+            wrong={codeSays != null}
+            autoFocus={start === 'entering' || sent > 0}
+            autoComplete="one-time-code"
+            textContentType="oneTimeCode"
+            returnKeyType="done"
+            onChangeText={(text) => {
+              code.current = text;
+              if (codeSays != null) setCodeSays(null);
+            }}
+            onSubmitEditing={proceed}
+            submitBehavior="submit"
+            accessibilityLabel={WORDS.codeLabel}
+            testID="security.code.field"
+          />
+        </Field>
+      )}
       <TextAction
         label={
           countdown.left > 0
@@ -373,6 +380,7 @@ export function SetPasswordScreen({
         onPress={() => {
           code.current = '';
           setCodeSays(null);
+          setExpired(false);
           setSent((count) => count + 1);
           countdown.restart();
         }}
