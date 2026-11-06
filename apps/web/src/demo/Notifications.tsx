@@ -45,7 +45,7 @@ import './notifications.css';
 const LEADS: Record<Category, GlyphName> = {
   guest_replies: 'users',
   messages: 'message',
-  event_day: 'today',
+  event_day: 'day',
   event_changes: 'calendar',
   money: 'wallet',
   account_security: 'shield',
