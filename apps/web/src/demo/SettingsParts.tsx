@@ -383,10 +383,11 @@ export function Dialog(props: DialogProps) {
 interface DialogProps {
   title: string;
   verb: string;
+  /** False for a dialog that applies each pick at once: Done closes it, and nothing sits at its left. */
+  cancel?: boolean;
   on?: boolean;
   red?: boolean;
   locked?: boolean;
-  cancel?: boolean;
   first?: RefObject<HTMLElement | null>;
   onDismiss: () => void;
   onConfirm: () => void;
@@ -396,10 +397,10 @@ interface DialogProps {
 function DialogBox({
   title,
   verb,
+  cancel = true,
   on = true,
   red = false,
   locked = false,
-  cancel = true,
   first,
   onDismiss,
   onConfirm,

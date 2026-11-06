@@ -14,6 +14,8 @@ import { GetBackInBoard } from './GetBackIn.tsx';
 import { NewAccountBoard } from './NewAccount.tsx';
 import { NOTIFICATIONS_PAGES } from './notifications.ts';
 import { SECURITY_PAGES } from './security.ts';
+import { People } from './People.tsx';
+import { PEOPLE_PAGES } from './people.ts';
 import { Settings } from './Settings.tsx';
 import { SETTINGS_PAGES } from './settings.ts';
 import { SIGN_IN_RULES_PAGES } from './signInRules.ts';
@@ -117,6 +119,7 @@ export default function Demo() {
       <Route path="settings/notifications" element={<Settings open="notifications" />} />
       <Route path="settings/general" element={<Settings open="general" />} />
       <Route path="settings/sign-in-rules" element={<Settings open="signInRules" />} />
+      <Route path="people" element={<People />} />
       <Route path="later" element={<Later />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
@@ -175,6 +178,8 @@ function DemoHome({ from }: { from: string }) {
         <BoardPages pages={GENERAL_PAGES} />
         <h3>Sign-in rules in B · Where you stand · desktop</h3>
         <BoardPages pages={SIGN_IN_RULES_PAGES} />
+        <h3>People on an event · desktop</h3>
+        <BoardPages pages={PEOPLE_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-27">
