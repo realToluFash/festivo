@@ -18,7 +18,7 @@ appId: host.exp.Exponent
     id: roles.remove
 - extendedWaitUntil:
     visible:
-      id: roles.replacement.owner
+      id: roles.replacement.read_only
     timeout: 10000
 - takeScreenshot: role-remove-panel
 - repeat:

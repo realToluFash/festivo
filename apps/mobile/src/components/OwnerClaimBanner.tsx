@@ -558,7 +558,7 @@ function RecordPanel({ record }: { record: NonNullable<OwnerClaim['record']> }) 
           <Text size={tokens.typeBody.size} muted>
             {row.label}
           </Text>
-          <Text size={tokens.typeBodyPhone.size} family="mono" selectable style={styles.wraps}>
+          <Text size={tokens.typeBodyPhone.size} selectable style={[styles.wraps, styles.code]}>
             {row.text}
           </Text>
           <QuietButton
@@ -701,4 +701,5 @@ const styles = StyleSheet.create({
   },
   clearOfClose: { marginRight: tokens.sizeHit },
   wraps: { flexShrink: 1 },
+  code: { fontVariant: ['tabular-nums'], letterSpacing: tokens.typeBodyPhone.size * 0.04 },
 });

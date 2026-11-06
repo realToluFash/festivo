@@ -18,7 +18,6 @@ use App\Entity\User;
 use App\Enum\ErrorCode;
 use App\Enum\MembershipChannel;
 use App\Enum\MembershipStatus;
-use App\Enum\Permission;
 use App\Enum\SeededRole;
 use App\Repository\MembershipRepository;
 use App\Tests\ApiTestCase;
@@ -55,12 +54,12 @@ final class JoinRequestsTest extends ApiTestCase
         $asker = $this->asks($organisation, 'ada@okeke.ng');
         $this->signIn($owner);
 
-        $this->send('POST', $this->path($organisation, $asker, '/approve'), ['roleId' => $this->role($organisation, SeededRole::Coordinator)->getId()->toRfc4122()]);
+        $this->send('POST', $this->path($organisation, $asker, '/approve'), ['roleId' => $this->role($organisation, SeededRole::Member)->getId()->toRfc4122()]);
 
         self::assertResponseStatusCodeSame(204);
         $membership = $this->membershipOf($asker, $organisation);
         self::assertSame(MembershipStatus::Active, $membership->getStatus());
-        self::assertSame(SeededRole::Coordinator, $membership->getRole()->getSeededAs());
+        self::assertSame(SeededRole::Member, $membership->getRole()->getSeededAs());
         self::assertNull($membership->getRequestExpiresAt());
         self::assertSame(MembershipStatus::Active, $this->lastStep($membership)->getToStatus());
         self::assertSame('membership.approved', $this->audited($membership)->getAction());
@@ -74,7 +73,7 @@ final class JoinRequestsTest extends ApiTestCase
         $asker = $this->asks($organisation, 'ada@okeke.ng');
         $this->signIn($owner);
 
-        $this->send('POST', $this->path($organisation, $asker, '/approve'), ['roleId' => $this->role($organisation, SeededRole::ReadOnly)->getId()->toRfc4122()]);
+        $this->send('POST', $this->path($organisation, $asker, '/approve'), ['roleId' => $this->role($organisation, SeededRole::Member)->getId()->toRfc4122()]);
 
         $listed = Iter\first(Vec\filter($this->listed($organisation), static fn (array $member): bool => 'ada@okeke.ng' === ($member['user']['email'] ?? null)));
         self::assertSame(['active', 'request'], [$listed['status'] ?? null, $listed['channel'] ?? null]);
@@ -84,12 +83,11 @@ final class JoinRequestsTest extends ApiTestCase
     public function nobodyApprovesIntoARoleTheyCouldNotGrant(): void
     {
         [, $organisation] = $this->organisation();
-        $manager = $this->member($organisation, 'tunde@ire.events', SeededRole::Coordinator);
-        $this->role($organisation, SeededRole::Coordinator)->setPermissions([Permission::MembersRead, Permission::MembersManage]);
+        $manager = $this->member($organisation, 'tunde@ire.events', SeededRole::Member);
         $asker = $this->asks($organisation, 'ada@okeke.ng');
         $this->signIn($manager);
 
-        $this->send('POST', $this->path($organisation, $asker, '/approve'), ['roleId' => $this->role($organisation, SeededRole::EventManager)->getId()->toRfc4122()]);
+        $this->send('POST', $this->path($organisation, $asker, '/approve'), ['roleId' => $this->role($organisation, SeededRole::Member)->getId()->toRfc4122()]);
 
         self::assertResponseStatusCodeSame(403);
         self::assertSame(MembershipStatus::PendingApproval, $this->membershipOf($asker, $organisation)->getStatus());
@@ -113,7 +111,7 @@ final class JoinRequestsTest extends ApiTestCase
         );
         $membership = $this->membershipOf($asker, $organisation);
         self::assertSame(MembershipStatus::PendingApproval, $membership->getStatus());
-        self::assertSame(SeededRole::ReadOnly, $membership->getRole()->getSeededAs());
+        self::assertSame(SeededRole::Member, $membership->getRole()->getSeededAs());
         self::assertNull(self::service(EntityManagerInterface::class)->getRepository(AuditEntry::class)->findOneBy(['subjectId' => $membership->getId(), 'action' => 'membership.approved']));
         self::assertCount($mailed, self::getMailerMessages());
     }
@@ -144,55 +142,26 @@ final class JoinRequestsTest extends ApiTestCase
         $this->signIn($owner);
         $this->send('POST', $this->path($organisation, $asker, '/turn-down'));
 
-        $body = $this->send('POST', $this->path($organisation, $asker, '/approve'), ['roleId' => $this->role($organisation, SeededRole::ReadOnly)->getId()->toRfc4122()]);
+        $body = $this->send('POST', $this->path($organisation, $asker, '/approve'), ['roleId' => $this->role($organisation, SeededRole::Member)->getId()->toRfc4122()]);
 
         self::assertResponseStatusCodeSame(409);
         self::assertSame(ErrorCode::JoinRequestAnswered->type(), $body['type'] ?? null);
     }
 
     #[Test]
-    public function withoutThePermissionPendingPeopleCannotBeSeenOrAnswered(): void
+    public function aMemberCannotSeeOrAnswerPendingPeople(): void
     {
         [, $organisation] = $this->organisation();
-        $coordinator = $this->member($organisation, 'tunde@ire.events', SeededRole::Coordinator);
-        $reads = $this->role($organisation, SeededRole::Coordinator);
-        $reads->setPermissions([...$reads->getPermissions(), Permission::MembersRead]);
+        $member = $this->member($organisation, 'tunde@ire.events', SeededRole::Member);
         $asker = $this->asks($organisation, 'ada@okeke.ng');
-        $this->signIn($coordinator);
+        $this->signIn($member);
 
-        $listed = $this->listed($organisation);
-
-        self::assertFalse(Iter\any($listed, static fn (array $member): bool => 'pending_approval' === $member['status']));
-        $this->send('POST', $this->path($organisation, $asker, '/approve'), ['roleId' => $this->role($organisation, SeededRole::ReadOnly)->getId()->toRfc4122()]);
+        $this->send('GET', Str\format('/api/orgs/%s/members', $organisation->getId()->toRfc4122()));
+        self::assertResponseStatusCodeSame(403);
+        $this->send('POST', $this->path($organisation, $asker, '/approve'), ['roleId' => $this->role($organisation, SeededRole::Member)->getId()->toRfc4122()]);
         self::assertResponseStatusCodeSame(403);
         $this->send('POST', $this->path($organisation, $asker, '/turn-down'));
         self::assertResponseStatusCodeSame(403);
-    }
-
-    #[Test]
-    public function aRequesterNeverLetInIsNowhereForAViewerWhoCannotManageMembers(): void
-    {
-        self::mockTime(self::ASKED);
-        [$owner, $organisation] = $this->organisation();
-        $coordinator = $this->member($organisation, 'tunde@ire.events', SeededRole::Coordinator);
-        $reads = $this->role($organisation, SeededRole::Coordinator);
-        $reads->setPermissions([...$reads->getPermissions(), Permission::MembersRead]);
-        $turnedDown = $this->asks($organisation, 'kemi@lawal.ng');
-        $expired = $this->asks($organisation, 'ada@okeke.ng');
-        $this->signIn($owner);
-        $this->send('POST', $this->path($organisation, $turnedDown, '/turn-down'));
-        self::mockTime('2026-11-11 08:40:00');
-        $this->runJob();
-        $this->signIn($coordinator);
-
-        $this->listed($organisation);
-        $content = (string) $this->client->getResponse()->getContent();
-
-        foreach ([$turnedDown, $expired] as $requester) {
-            self::assertSame(MembershipStatus::LeftOrRemoved, $this->membershipOf($requester, $organisation)->getStatus());
-            self::assertStringNotContainsString($requester->getId()->toRfc4122(), $content);
-            self::assertStringNotContainsString($this->membershipOf($requester, $organisation)->getId()->toRfc4122(), $content);
-        }
     }
 
     #[Test]
@@ -216,20 +185,16 @@ final class JoinRequestsTest extends ApiTestCase
     }
 
     #[Test]
-    public function aFormerMemberWhoAskedAgainStillShowsUnderFormerToAViewerWhoCannotManageMembers(): void
+    public function aFormerMemberWhoAskedAgainAndWasTurnedDownShowsUnderFormer(): void
     {
         [$owner, $organisation] = $this->organisation();
-        $coordinator = $this->member($organisation, 'tunde@ire.events', SeededRole::Coordinator);
-        $reads = $this->role($organisation, SeededRole::Coordinator);
-        $reads->setPermissions([...$reads->getPermissions(), Permission::MembersRead]);
-        $removed = $this->member($organisation, 'bola@ire.events', SeededRole::ReadOnly);
-        $returning = $this->member($organisation, 'chidi@ire.events', SeededRole::ReadOnly);
+        $removed = $this->member($organisation, 'bola@ire.events', SeededRole::Member);
+        $returning = $this->member($organisation, 'chidi@ire.events', SeededRole::Member);
         $this->signIn($owner);
         $this->send('DELETE', $this->path($organisation, $removed, ''));
         $this->send('DELETE', $this->path($organisation, $returning, ''));
         self::service(MembershipMachine::class)->ask($this->membershipOf($returning, $organisation)->getOrganisation(), $this->fresh($returning), MembershipChannel::Request);
         $this->send('POST', $this->path($organisation, $returning, '/turn-down'));
-        $this->signIn($coordinator);
 
         $former = Vec\filter($this->listed($organisation), static fn (array $member): bool => 'left_or_removed' === $member['status']);
 
@@ -240,21 +205,18 @@ final class JoinRequestsTest extends ApiTestCase
     public function aRoleCountsOnlyThePeopleWhoHoldIt(): void
     {
         [$owner, $organisation] = $this->organisation();
-        $coordinator = $this->member($organisation, 'tunde@ire.events', SeededRole::Coordinator);
-        $reads = $this->role($organisation, SeededRole::Coordinator);
-        $reads->setPermissions([...$reads->getPermissions(), Permission::MembersRead]);
+        $this->member($organisation, 'tunde@ire.events', SeededRole::Member);
         $this->asks($organisation, 'ada@okeke.ng');
         $turnedDown = $this->asks($organisation, 'kemi@lawal.ng');
         $this->signIn($owner);
         $this->send('POST', $this->path($organisation, $turnedDown, '/turn-down'));
         self::service(EntityManagerInterface::class)->flush();
-        $this->signIn($coordinator);
 
         $roles = Type\vec(Type\shape(['seededAs' => Type\nullable(Type\string()), 'holders' => Type\int()], true))
             ->coerce($this->send('GET', Str\format('/api/orgs/%s/roles', $organisation->getId()->toRfc4122()))['roles'] ?? null);
 
-        $readOnly = Iter\first(Vec\filter($roles, static fn (array $role): bool => SeededRole::ReadOnly->value === $role['seededAs']));
-        self::assertSame(0, $readOnly['holders'] ?? null);
+        $member = Iter\first(Vec\filter($roles, static fn (array $role): bool => SeededRole::Member->value === $role['seededAs']));
+        self::assertSame(1, $member['holders'] ?? null, 'Tunde, and neither the request waiting nor the one turned down');
     }
 
     #[Test]
@@ -266,7 +228,7 @@ final class JoinRequestsTest extends ApiTestCase
 
         $this->send('DELETE', $this->path($organisation, $asker, ''));
         self::assertResponseStatusCodeSame(404);
-        $this->send('PATCH', $this->path($organisation, $asker, ''), ['roleId' => $this->role($organisation, SeededRole::Coordinator)->getId()->toRfc4122()]);
+        $this->send('PATCH', $this->path($organisation, $asker, ''), ['roleId' => $this->role($organisation, SeededRole::Member)->getId()->toRfc4122()]);
         self::assertResponseStatusCodeSame(404);
         self::assertSame(MembershipStatus::PendingApproval, $this->membershipOf($asker, $organisation)->getStatus());
     }
@@ -318,7 +280,7 @@ final class JoinRequestsTest extends ApiTestCase
 
         self::mockTime('2026-11-11 08:39:59');
         $this->runJob();
-        $this->send('POST', $this->path($organisation, $asker, '/approve'), ['roleId' => $this->role($organisation, SeededRole::ReadOnly)->getId()->toRfc4122()]);
+        $this->send('POST', $this->path($organisation, $asker, '/approve'), ['roleId' => $this->role($organisation, SeededRole::Member)->getId()->toRfc4122()]);
 
         self::assertResponseStatusCodeSame(204);
     }
@@ -335,7 +297,7 @@ final class JoinRequestsTest extends ApiTestCase
         $this->signIn($owner);
 
         self::mockTime('2026-11-11 08:40:00');
-        $body = $this->send('POST', $this->path($organisation, $asker, '/approve'), ['roleId' => $this->role($organisation, SeededRole::ReadOnly)->getId()->toRfc4122()]);
+        $body = $this->send('POST', $this->path($organisation, $asker, '/approve'), ['roleId' => $this->role($organisation, SeededRole::Member)->getId()->toRfc4122()]);
 
         self::assertResponseStatusCodeSame(409);
         self::assertSame(ErrorCode::JoinRequestAnswered->type(), $body['type'] ?? null);
@@ -368,8 +330,8 @@ final class JoinRequestsTest extends ApiTestCase
     {
         self::mockTime(self::ASKED);
         [, $organisation] = $this->organisation();
-        $this->member($organisation, 'tunde@ire.events', SeededRole::Administrator);
-        $this->member($organisation, 'bola@ire.events', SeededRole::Coordinator);
+        $this->member($organisation, 'tunde@ire.events', SeededRole::Admin);
+        $this->member($organisation, 'bola@ire.events', SeededRole::Member);
         $subject = 'Somebody is waiting to join Ìrè Events';
 
         $this->asks($organisation, 'ada@okeke.ng');
@@ -396,13 +358,13 @@ final class JoinRequestsTest extends ApiTestCase
     public function activeMembersAndTheirRoutesAreUnchanged(): void
     {
         [$owner, $organisation] = $this->organisation();
-        $coordinator = $this->member($organisation, 'tunde@ire.events', SeededRole::Coordinator);
+        $coordinator = $this->member($organisation, 'tunde@ire.events', SeededRole::Member);
         $this->signIn($owner);
 
         $listed = Iter\first(Vec\filter($this->listed($organisation), static fn (array $member): bool => 'tunde@ire.events' === ($member['user']['email'] ?? null)));
         self::assertArrayHasKey('removesAt', $listed ?? []);
         self::assertNull($listed['removesAt'] ?? null);
-        $this->send('POST', $this->path($organisation, $coordinator, '/approve'), ['roleId' => $this->role($organisation, SeededRole::ReadOnly)->getId()->toRfc4122()]);
+        $this->send('POST', $this->path($organisation, $coordinator, '/approve'), ['roleId' => $this->role($organisation, SeededRole::Member)->getId()->toRfc4122()]);
         self::assertResponseStatusCodeSame(409);
         $this->send('DELETE', $this->path($organisation, $coordinator, ''));
         self::assertResponseStatusCodeSame(204);

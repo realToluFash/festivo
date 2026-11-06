@@ -20,6 +20,12 @@ member management behind a new permission to stop event staff editing the compan
 A hired waiter should never become a member of your company. A venue coordinator should
 be able to see one event without joining anybody's organisation.
 
+**Inside the organisation, a role is one of three (sc-29912)**: Owner, Admin and Member.
+Owners and Admins reach every event. A Member holds nothing across the organisation and
+reaches an event only through a role on it (Lead, Can edit, Can view, Can check guests in),
+given on the event's People. Removing a member ends their event roles; suspending one keeps
+them, so a restore gives them back. `access-control.md` has what each role holds.
+
 A third grant will be wanted eventually — **cross-organisation collaboration**, where a
 caterer's or venue's organisation is granted scoped access to an event without either side
 absorbing the other. It is out of scope for now, but the two grants above should not make
@@ -130,11 +136,11 @@ loses access without anybody remembering to revoke it.
 
 - The member list with roles, and every pending invitation with its delivery status
 - The audit trail: who invited whom, who changed a role, who removed somebody
-- To restore an owner when self-serve cannot (sc-6666): no active Administrator, a domain
+- To restore an owner when self-serve cannot (sc-6666): no active Admin, a domain
   nobody can prove, or a claim somebody stopped. Otherwise an organisation whose only Owner is
-  suspended gets one back by itself (sc-6640): an active Administrator with a verified address
+  suspended gets one back by itself (sc-6640): an active Admin with a verified address
   at the domain publishes a fresh TXT record, and ownership passes 72 hours after it is found
-  unless an Administrator or the suspended Owner stops it
+  unless an Admin or the suspended Owner stops it
 - To issue **emergency event access** mid-event, which is time-critical in a way nothing
   else here is
 - To undo an organisation deletion inside its recovery window

@@ -82,13 +82,12 @@ final readonly class MemberSerialiser
         ];
     }
 
-    /** @return array{id: string, seededAs: ?string, name: ?string} a seeded role is named by its key, which each client words */
+    /** @return array{id: string, seededAs: string} named by its key, which each client words */
     public static function role(Role $role): array
     {
         return [
             'id' => $role->getId()->toRfc4122(),
-            'seededAs' => $role->getSeededAs()?->value,
-            'name' => $role->getName(),
+            'seededAs' => $role->getSeededAs()->value,
         ];
     }
 

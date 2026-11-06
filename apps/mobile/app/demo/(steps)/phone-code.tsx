@@ -3,12 +3,12 @@ import { useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { QuietButton } from '../../../src/components/Buttons.tsx';
-import { CodeBoxes, type CodeBoxesHandle } from '../../../src/demo/CodeBoxes.tsx';
+import { CodeBoxes, type CodeBoxesHandle } from '../../../src/steps/CodeBoxes.tsx';
 import { DemoScreen, NavBar, finish } from '../../../src/demo/DemoScreen.tsx';
-import { Confirmed, Heading, Says } from '../../../src/demo/Lines.tsx';
-import { minutesSeconds, RESEND_SECONDS } from '../../../src/demo/rules.ts';
+import { Confirmed, Heading, Says } from '../../../src/steps/Lines.tsx';
+import { minutesSeconds, RESEND_SECONDS } from '../../../src/steps/rules.ts';
 import { SAMPLE } from '../../../src/demo/samples.ts';
-import { useCountdown } from '../../../src/demo/useCountdown.ts';
+import { useCountdown } from '../../../src/steps/useCountdown.ts';
 import { tokens } from '../../../src/theme/tokens.ts';
 
 /** WhatsApp first, and by text on asking; the right code ends the flow on Home. */
@@ -51,6 +51,7 @@ export default function PhoneCode() {
       <View style={styles.boxes}>
         <CodeBoxes
           ref={boxes}
+          label="Code, 6 digits"
           value={code}
           onChange={(next) => {
             setCode(next);
@@ -83,7 +84,7 @@ export default function PhoneCode() {
           <QuietButton
             label={left > 0 ? `Send a new code in ${minutesSeconds(left)}` : 'Send a new code'}
             off={left > 0}
-            onPress={restart}
+            onPress={() => restart()}
             testID="demo.resend"
           />
         </View>

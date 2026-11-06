@@ -110,7 +110,7 @@ final readonly class EventChangeRecorder
             'created_at' => $now,
         ], ['event_day' => Types::BOOLEAN, 'restorable_until' => Types::DATETIME_IMMUTABLE, 'created_at' => Types::DATETIME_IMMUTABLE]);
 
-        $audience = Audience::membersWithPermission($event->getOrganisation()->getId(), Permission::EventsRead);
+        $audience = Audience::membersOfEvent($event->getOrganisation()->getId(), $event->getId(), Permission::EventsRead);
         $source = 'event-change:' . $id->toRfc4122();
         $eventId = $event->getId()->toRfc4122();
 
@@ -125,7 +125,7 @@ final readonly class EventChangeRecorder
                 $key = $type . ':' . $eventId . ':' . $member->toRfc4122() . ':' . $since;
                 $action = $kind->isAction() || true === ($pending['action'] ?? false);
                 $dueAt = $action ? $now : $now->add(new DateInterval(self::SETTLE));
-                $alone = Audience::memberWithPermission($event->getOrganisation()->getId(), Permission::EventsRead, $member);
+                $alone = Audience::memberOfEvent($event->getOrganisation()->getId(), $event->getId(), Permission::EventsRead, $member);
                 $this->notificationScheduler->schedule($type, $key, $source, Trigger::at($dueAt), $alone, ['eventId' => $eventId, 'since' => $since, 'action' => $action], $event);
             }
         }
@@ -134,7 +134,7 @@ final readonly class EventChangeRecorder
     /** @return list<Uuid> each member's push and email wait on a window of their own, so their own change never moves it (AC 1) */
     private function othersThan(Event $event, ?User $by): array
     {
-        $audience = Audience::membersWithPermission($event->getOrganisation()->getId(), Permission::EventsRead, null === $by ? [] : [$by->getId()]);
+        $audience = Audience::membersOfEvent($event->getOrganisation()->getId(), $event->getId(), Permission::EventsRead, null === $by ? [] : [$by->getId()]);
         $members = [];
 
         do {

@@ -1,5 +1,5 @@
 import { LOCALES } from '@soirely/domain';
-import { useRef, useState } from 'react';
+import { useContext, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import Svg, { Circle, Path } from 'react-native-svg';
@@ -7,11 +7,13 @@ import Svg, { Circle, Path } from 'react-native-svg';
 import { chooseLanguage } from '../accountLanguage.ts';
 import { currentLocale } from '../i18n/index.ts';
 import { tokens } from '../theme/tokens.ts';
+import { OnCover } from './Cover.tsx';
 import { Sheet } from './Sheet.tsx';
 import { Text } from './Text.tsx';
 
-/** The signed-out screens' language: the current one on a button, the four in a sheet from the foot. */
+/** The signed-out screens' language: the current one on a button, as dark glass on the cover, and the four in a sheet from the foot. */
 export function LanguageChoice() {
+  const onCover = useContext(OnCover);
   const { t } = useTranslation();
   const current = currentLocale();
   const [open, setOpen] = useState(false);
@@ -23,18 +25,22 @@ export function LanguageChoice() {
     <>
       <Pressable
         ref={opener}
-        style={styles.button}
+        style={[styles.button, onCover && styles.glass]}
         onPress={() => setOpen(true)}
         accessibilityRole="button"
         accessibilityLabel={t('language.label')}
         accessibilityValue={{ text: currentName }}
         testID="language.open"
       >
-        <Globe />
-        <Text size={tokens.typeButton.size} weight="medium" style={styles.ink}>
+        <Globe ink={onCover ? tokens.colorInkOnDark : tokens.colorInk} />
+        <Text
+          size={tokens.typeButton.size}
+          weight="medium"
+          style={onCover ? styles.onCover : styles.ink}
+        >
           {currentName}
         </Text>
-        <Chevron />
+        <Chevron ink={onCover ? tokens.colorInkOnDark : tokens.colorInkSecondary} />
       </Pressable>
 
       <Sheet
@@ -104,13 +110,13 @@ export function LanguageChoice() {
   );
 }
 
-function Globe() {
+function Globe({ ink }: { ink: string }) {
   return (
     <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" accessible={false}>
-      <Circle cx={12} cy={12} r={9} stroke={tokens.colorInk} strokeWidth={1.75} />
+      <Circle cx={12} cy={12} r={9} stroke={ink} strokeWidth={1.75} />
       <Path
         d="M3 12h18M12 3c2.5 2.6 3.75 5.6 3.75 9S14.5 18.4 12 21c-2.5-2.6-3.75-5.6-3.75-9S9.5 5.6 12 3Z"
-        stroke={tokens.colorInk}
+        stroke={ink}
         strokeWidth={1.75}
         strokeLinejoin="round"
       />
@@ -118,12 +124,12 @@ function Globe() {
   );
 }
 
-function Chevron() {
+function Chevron({ ink }: { ink: string }) {
   return (
     <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" accessible={false}>
       <Path
         d="m6 9 6 6 6-6"
-        stroke={tokens.colorInkSecondary}
+        stroke={ink}
         strokeWidth={2}
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -158,7 +164,9 @@ const styles = StyleSheet.create({
     borderRadius: tokens.radiusPill,
     backgroundColor: tokens.colorCard,
   },
+  glass: { borderColor: tokens.scrimDialog, backgroundColor: tokens.scrimDialog },
   ink: { color: tokens.colorInk },
+  onCover: { color: tokens.colorInkOnDark },
   secondary: { color: tokens.colorInkSecondary },
   accent: { color: tokens.colorAccentText },
   heading: {

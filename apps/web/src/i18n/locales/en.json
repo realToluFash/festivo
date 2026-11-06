@@ -371,7 +371,9 @@
   "language": {
     "label": "Language",
     "automatic": "Automatic",
-    "automaticHint": "Follow the language your browser asks for"
+    "automaticHint": "Follow the language your browser asks for",
+    "current": "Language: {{language}}",
+    "follows": "Your language follows you to every device."
   },
   "public": {
     "tagline": "Plan the event. Run the night.",
@@ -425,9 +427,10 @@
     "submit": "Sign in",
     "submitting": "Signing in…",
     "lockedUntil": "Try again at {{time}}",
-    "refused": "That email and password do not match. Check both, or reset your password.",
+    "noMatch": "That email and password do not match.",
     "endedTitle": "You were signed out",
     "endedBody": "Sign in again to carry on.",
+    "codeTimedOutTitle": "That sign-in timed out",
     "lockedTitle": "Too many tries",
     "lockedBody": "Try again at {{time}}.",
     "lockedReset": "Reset your password",
@@ -438,7 +441,6 @@
     "providerFailedBody": "Nothing was changed. Try {{provider}} again, or sign in with your email and password.",
     "failedTitle": "Signing in did not work",
     "failedBody": "Something went wrong on the way. Try again in a moment.",
-    "newHere": "New here?",
     "createAccount": "Create an account",
     "passwordBlank": "Enter your password.",
     "timedOutTitle": "Signed out by {{organisation}}’s rule",
@@ -449,9 +451,12 @@
     "anotherAccount": "Sign in with another account",
     "providerOnlyFootnote": "A rule set by {{organisation}}: password sign-in is off for everyone in it."
   },
+  "auth": {
+    "newTo": "New to Soirely?",
+    "copyright": "© {{year}} Soirely"
+  },
   "register": {
     "title": "Create your account",
-    "back": "Back to sign in",
     "intro": "Next, we email you a code to check the address is yours.",
     "name": "Full name",
     "email": "Email",
@@ -471,7 +476,8 @@
     "failedTitle": "Creating your account did not work",
     "failedBody": "Something went wrong on the way. Try again in a moment.",
     "nameBlank": "Enter your full name.",
-    "passwordBlank": "Enter a password."
+    "passwordBlank": "Enter a password.",
+    "tooShort": "Use at least {{count, number}} characters."
   },
   "account": {
     "title": "Your account",
@@ -555,9 +561,6 @@
     "everywhereFailedBody": "This is about reaching the API rather than about your account. Try again."
   },
   "verifyEmail": {
-    "step1": "Verify your email",
-    "step1Done": "Email verified · done",
-    "step2": "Your details",
     "title": "Check your email",
     "intro": "We sent a code to {{address}}. Enter it here to show the address is yours.",
     "codeLabel": "Code from the email",
@@ -572,19 +575,14 @@
     "exhaustedTitle": "Too many wrong tries",
     "exhaustedBody": "That code no longer works. Send a new one to carry on.",
     "wrongAddress": "Not your address?",
-    "wrongAddressBody": "and create your account again with the right one.",
-    "registerAgain": "Register again with the right one",
-    "signOut": "Sign out",
     "doneTitle": "Email verified",
     "doneBody": "{{address}} is confirmed. Next, a few details so your team knows who is who.",
     "doneBodyAlternative": "{{address}} is verified. It stays an alternative address until you make it primary in Account.",
     "continue": "Continue",
     "failedTitle": "That did not work",
     "failedBody": "Something went wrong on the way. Try again in a moment.",
-    "stepsLabel": "Before you start",
     "codeBlank": "Enter the 6-digit code from the email.",
-    "codeShort": "The code is 6 digits.",
-    "step1Google": "Email confirmed by {{provider}} · done"
+    "codeShort": "The code is 6 digits."
   },
   "verifyPhone": {
     "title": "Check your messages",
@@ -672,6 +670,7 @@
   "roles": {
     "owner": "Owner",
     "administrator": "Administrator",
+    "member": "Member",
     "event_manager": "Event manager",
     "coordinator": "Coordinator",
     "read_only": "Read-only"
@@ -712,7 +711,7 @@
     "currencyBlank": "Choose a currency.",
     "contactBlank": "Enter a contact email address.",
     "contactInvalid": "That does not look like an email address. Check it has an @ and a domain.",
-    "readOnly": "Your role, {{role}}, can see these but not change them. Owners can.",
+    "readOnly": "Your role, {{role}}, can see these but not change them. Owners and admins can.",
     "readOnlyUntilLinked": "{{organisation}} signs in with Google or Apple only. Until you link one, you can see these but not change them.",
     "readOnlyUntilTwoFactor": "{{organisation}} asks people who can manage members, roles, billing or security to use two-factor. Until you turn it on, you can see these but not change them.",
     "failed": "Saving did not work. Nothing was changed. Try again in a moment.",
@@ -743,7 +742,6 @@
     "saving": "Saving…",
     "failedTitle": "Saving did not work",
     "failedBody": "Something went wrong on the way. Try again in a moment.",
-    "signedInAs": "Signed in as {{email}}.",
     "signOut": "Sign out",
     "optional": "Optional",
     "mobileHelp": "How you are reached on the night if something goes wrong. If you add one, we text it a code to check it.",
@@ -760,7 +758,6 @@
   },
   "recovery": {
     "forgot": "Forgot your password?",
-    "forgotShort": "Forgot it?",
     "title": "Reset your password",
     "intro": "Enter the email you sign in with. If it has an account, we send it a link to set a new password.",
     "email": "Email",
@@ -1052,6 +1049,7 @@
     "resend": "Send new codes",
     "resendIn": "Send new codes in {{time}}",
     "resendNote": "New codes replace the last ones.",
+    "noCodes": "No codes?",
     "textInstead": "Text it to me instead",
     "textInsteadFailed": "That code can’t be texted now. Send new codes.",
     "expiredTitle": "Those codes have expired",
@@ -1069,6 +1067,9 @@
     "stayOut": "You stay signed out until somebody answers. We’ll email {{email}} either way.",
     "notYou": "This wasn’t you?",
     "cancel": "Cancel the request",
+    "cancelTitle": "Cancel your request?",
+    "cancelBody": "You’ll need to start again to get back in.",
+    "keepWaiting": "Keep waiting",
     "cancelledMark": "Cancelled",
     "replacedMark": "Replaced",
     "replacedTitle": "A newer request replaced this one",
@@ -1096,7 +1097,7 @@
     "setupIntro": "Two-factor was turned off to let you back in. Set it up again so a password alone can’t open your account.",
     "setup": "Set up two-factor",
     "notNow": "Not now",
-    "notNowNote": "You can set it up any time in Settings › Security.",
+    "notNowNote": "You can set it up any time in Your account › Security.",
     "notMeTitle": "This wasn’t you?",
     "notMeIntro": "This cancels any request to get into your account without two-factor that is still waiting, and signs out every session.",
     "notMeButton": "Cancel and sign out everywhere",
@@ -1550,20 +1551,16 @@
     "orgDeleted": "Deleted",
     "invited": "{{inviter}} invited {{email}} to join as {{role}}.",
     "worksUntil": "This invitation works until {{date}}.",
-    "createTitle": "Create an account",
     "emailLocked": "This is the address the invitation was sent to. It is already confirmed, so there is no code to enter.",
     "passwordBlank": "Choose a password.",
     "passwordShort": "Use at least {{count, number}} characters.",
     "createAndJoin": "Create account and join",
     "joining": "Joining…",
     "failedTitle": "Joining did not work",
-    "haveAccount": "I already have an account",
-    "emailTakenHeading": "You already have an account",
     "emailTakenBody": "{{email}} already has a Soirely account. Sign in with it, and you can accept the invitation there.",
     "signInToAccept": "Sign in to accept",
     "forgotPassword": "Forgot your password?",
     "invitedYou": "{{inviter}} invited you to join as {{role}}.",
-    "signedInUntil": "Signed in as {{email}} · this invitation works until {{date}}.",
     "accept": "Accept and join",
     "decline": "Decline",
     "declineNote": "Declining tells {{inviter}} you said no. Nothing else changes.",
@@ -1578,33 +1575,27 @@
     "refused": {
       "invitation_expired": {
         "title": "This invitation has expired",
-        "word": "Expired",
-        "body": "This invitation has expired. Ask {{inviter}} to send a new one."
+        "line": "Ask {{inviter}} to send a new one."
       },
       "invitation_revoked": {
         "title": "This invitation was withdrawn",
-        "word": "Withdrawn",
-        "body": "This invitation was withdrawn by {{organisation}}. If you think that is a mistake, ask whoever invited you."
+        "line": "If you think this is a mistake, ask the person who invited you."
       },
       "invitation_accepted": {
         "title": "Already accepted",
-        "word": "Already accepted",
-        "body": "You already accepted this invitation."
+        "line": "You are already a member of {{organisation}}."
       },
       "invitation_declined": {
         "title": "Already declined",
-        "word": "Already declined",
-        "body": "You declined this invitation. Ask {{inviter}} to invite you again if you changed your mind."
+        "line": "If you have changed your mind, ask {{inviter}} to invite you again."
       },
       "invitation_not_yours": {
         "title": "This invitation is for someone else",
-        "word": "Signed in as someone else",
-        "body": "This invitation is for {{email}}. You are signed in as {{signedInAs}}."
+        "line": "It was sent to {{email}}. You are signed in as {{signedInAs}}."
       },
       "organisation_deleted": {
         "title": "This organisation is gone",
-        "word": "Organisation deleted",
-        "body": "{{organisation}} no longer exists, so this invitation cannot be accepted."
+        "line": "The invitation to {{organisation}} can no longer be accepted."
       }
     }
   },
@@ -1635,7 +1626,7 @@
       },
       "invitation_revoked": {
         "word": "Withdrawn",
-        "body": "This invitation was withdrawn by {{organisation}}. If you think that is a mistake, ask whoever invited you."
+        "body": "This invitation was withdrawn by {{organisation}}. If you think this is a mistake, ask the person who invited you."
       },
       "invitation_accepted": {
         "word": "Already accepted",
@@ -1643,8 +1634,8 @@
       },
       "invitation_declined": {
         "word": "Already declined",
-        "body": "You declined this invitation. Ask {{inviter}} to invite you again if you changed your mind.",
-        "bodyNobody": "You declined this invitation. Ask whoever invited you to invite you again if you changed your mind."
+        "body": "You declined this invitation. If you have changed your mind, ask {{inviter}} to invite you again.",
+        "bodyNobody": "You declined this invitation. If you have changed your mind, ask the person who invited you to invite you again."
       },
       "invitation_not_yours": {
         "word": "Signed in as someone else",
@@ -1942,7 +1933,7 @@
     "limitedOnDay": "Too many requests for now. Try again on {{day}} at {{time}}.",
     "limitedLater": "Too many requests for now. Try again later.",
     "deadTitle": "This link does not work",
-    "deadBody": "This link does not work any more. Ask the organisation for a new one.",
+    "deadLine": "Ask the organisation for a new one.",
     "goHome": "Go to Soirely",
     "failedTitle": "Asking did not work",
     "failedBody": "Something went wrong on the way. Try again in a moment."
@@ -2185,5 +2176,10 @@
     "staffComing": "Staffing for this event is coming.",
     "budgetComing": "The budget for this event is coming.",
     "reportsComing": "Reports for this event are coming."
+  },
+  "onboarding": {
+    "step": "Step {{step, number}} of 2",
+    "back": "Back",
+    "noCode": "No code?"
   }
 }

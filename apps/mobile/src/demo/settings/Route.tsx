@@ -7,8 +7,8 @@ import { Toast } from '../../components/Toast.tsx';
 import { SECTION_HREF, type SettingsSection } from '../../kit/appNav.ts';
 import { useLayout } from '../../layout/useLayout.ts';
 import { tokens } from '../../theme/tokens.ts';
-import type { Tab } from '../TodayCover.tsx';
-import type { Tell } from '../TodayParts.tsx';
+import type { Tab } from '../../components/TodayCover.tsx';
+import type { Tell } from '../../components/TodayParts.tsx';
 import { useCoverStatusBar } from '../Welcome.tsx';
 import { AccountSection } from './Account.tsx';
 import { PHONE_TAB_BAR, type Shell, ShellContext } from './Frame.tsx';
@@ -16,7 +16,7 @@ import { MembersSection } from './Members.tsx';
 import { NotificationsSection } from './Notifications.tsx';
 import { OrganisationSection } from './Organisation.tsx';
 import { RolesSection } from './Roles.tsx';
-import { isViewer, SECTIONS, type SettingsLayout, type Viewer } from './sample.ts';
+import { isViewer, type SettingsLayout, type Viewer } from './sample.ts';
 import { SecuritySection } from './Security.tsx';
 import { SettingsColumn, SettingsHome, sectionsFor } from './SettingsHome.tsx';
 import { SignInRulesSection } from './SignInRules.tsx';
@@ -37,7 +37,10 @@ export function slugOf(section: SettingsSection): string {
 }
 
 export function sectionOfSlug(slug: string | undefined): SettingsSection | null {
-  return SECTIONS.find((section) => slugOf(section) === slug) ?? null;
+  return (
+    (Object.keys(SECTION_HREF) as SettingsSection[]).find((section) => slugOf(section) === slug) ??
+    null
+  );
 }
 
 export function settingsHref(

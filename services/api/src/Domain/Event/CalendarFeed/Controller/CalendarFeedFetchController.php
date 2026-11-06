@@ -8,7 +8,6 @@ use App\Deletion\RestoreWindow;
 use App\Domain\Event\CalendarFeed\CalendarFeedWriter;
 use App\Domain\Event\CalendarFeed\FeedLinkIssuer;
 use App\Domain\User\Mail\AccountLanguage;
-use App\Enum\Permission;
 use App\Http\Access\Interfaces\MembershipDirectoryInterface;
 use App\Http\Access\Policy\PublicAccess;
 use App\Http\EntityTag;
@@ -25,7 +24,7 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Translation\LocaleSwitcher;
 
 /**
- * The subscription a calendar app fetches (sc-3626). The token is its only credential, so whose it is and what they may see are read again on every fetch: a member who left, was suspended or lost events.read gets the same 404 as a link that never existed.
+ * The subscription a calendar app fetches (sc-3626). The token is its only credential, so whose it is and what they may see are read again on every fetch: a member who left or was suspended gets the same 404, and a Member's has only the events they have a role on (sc-29912) as a link that never existed.
  */
 #[PublicAccess]
 final readonly class CalendarFeedFetchController
@@ -56,17 +55,17 @@ final readonly class CalendarFeedFetchController
         $feed = $this->calendarFeedRepository->findOneByTokenHash($hash) ?? throw ApiException::notFound('access.not_found');
         $user = $feed->getUser();
         $organisation = $feed->getOrganisation();
-        $grants = $this->membershipDirectory->grantsIn($user, $organisation->getId());
+        $scope = $this->membershipDirectory->eventScopeIn($user, $organisation->getId()) ?? throw ApiException::notFound('access.not_found');
 
-        if (null === $grants || !$grants->holds(Permission::EventsRead)) {
+        if ($scope->organisation->isHeldForTwoFactor()) {
             throw ApiException::notFound('access.not_found');
         }
 
         $now = $this->clock->now();
-        $events = $this->eventRepository->findForCalendarFeed($organisation, RestoreWindow::openForDeletionsAfter($now));
+        $events = $this->eventRepository->findForCalendarFeed($organisation, RestoreWindow::openForDeletionsAfter($now), $scope->onlyFor);
         $body = $this->localeSwitcher->runWithLocale(
             $this->accountLanguage->of($user),
-            fn (): string => $this->calendarFeedWriter->write($organisation, $events, $grants, $now),
+            fn (): string => $this->calendarFeedWriter->write($organisation, $events, $scope, $now),
         );
         $tag = '"' . Str\slice(\hash('sha256', $body), 0, 32) . '"';
         $headers = ['ETag' => $tag, 'Cache-Control' => 'private, no-cache'];

@@ -12,13 +12,23 @@ import {
   BackToAccountButton,
   RemoveInAccount,
 } from '../src/components/BackToAccount.tsx';
-import { Footnote, Footnotes, PrimaryButton, SecondaryButton } from '../src/components/Buttons.tsx';
+import {
+  Footnote,
+  Footnotes,
+  PrimaryButton,
+  QuietButton,
+  SecondaryButton,
+} from '../src/components/Buttons.tsx';
 import { CodeForm } from '../src/components/CodeForm.tsx';
 import { focusChecked, keysStayDown } from '../src/components/Field.tsx';
 import { Notice } from '../src/components/Notice.tsx';
-import { OnboardingSteps } from '../src/components/OnboardingSteps.tsx';
 import { type CodeStatus, codeRefusal, openingStatus, retryAfter } from '../src/kit/code.ts';
 import { rereadAccount } from '../src/signedIn.ts';
+import { CodeStep, NEXT_STEP_MS } from '../src/steps/CodeStep.tsx';
+import { Says } from '../src/steps/Lines.tsx';
+import { skipPhone } from '../src/steps/skipPhone.ts';
+import { useCountdown } from '../src/steps/useCountdown.ts';
+import { NavBar, StepScreen } from '../src/steps/StepScreen.tsx';
 import { tokens } from '../src/theme/tokens.ts';
 
 type Status = CodeStatus | { kind: 'verified'; tapped?: boolean };
@@ -29,7 +39,7 @@ export default function VerifyPhone() {
   const onboarding = from === 'onboarding' && alternative == null;
   const [account, setAccount] = useState<Account | 'none' | null>(null);
   const [status, setStatus] = useState<Status>({ kind: 'entering' });
-  const [cooldown, setCooldown] = useState(0);
+  const { left: cooldown, restart: setCooldown } = useCountdown(0);
   const [codeError, setCodeError] = useState<string | null>(null);
   const codeInput = useRef<TextInputInstance>(null);
   const [route, setRoute] = useState<PhoneCodeRoute | null>(null);
@@ -65,7 +75,7 @@ export default function VerifyPhone() {
     return () => {
       live = false;
     };
-  }, [alternative]);
+  }, [alternative, setCooldown]);
 
   // While the code is on WhatsApp, the server may hand it to SMS: the line follows within a few seconds.
   useEffect(() => {
@@ -81,14 +91,6 @@ export default function VerifyPhone() {
     return () => clearInterval(watching);
   }, [wording.watch, alternative]);
 
-  useEffect(() => {
-    if (cooldown <= 0) return;
-
-    const tick = setTimeout(() => setCooldown((left) => left - 1), 1000);
-
-    return () => clearTimeout(tick);
-  }, [cooldown]);
-
   if (account === 'none') return <Redirect href="/sign-in" />;
   if (account == null) return null;
 
@@ -102,6 +104,8 @@ export default function VerifyPhone() {
 
   const number = formatPhone(phone.number);
   const verified = status.kind === 'verified' || phone.verified;
+  // The step's green boxes are its only word that it worked: a number already proved goes on.
+  if (onboarding && phone.verified && status.kind !== 'verified') return <Redirect href="/" />;
 
   async function verify(typed: string): Promise<void> {
     const problem = codeProblem(typed);
@@ -127,6 +131,7 @@ export default function VerifyPhone() {
     try {
       setMadePrimary((await api.verifyPhone(code, alternative)).primary);
       setStatus({ kind: 'verified', tapped: true });
+      if (onboarding) setTimeout(() => router.replace('/'), NEXT_STEP_MS);
       // Account, under this screen, shows the row verified however it is reached.
       if (alternative != null) void rereadAccount().catch(() => {});
     } catch (error) {
@@ -153,16 +158,6 @@ export default function VerifyPhone() {
     }
   }
 
-  // Saving the details with no number removes the phone, so the gate rests on the email again.
-  async function withoutPhone(name: string): Promise<void> {
-    try {
-      await api.completeProfile({ name });
-      router.replace('/');
-    } catch {
-      setStatus({ kind: 'failed' });
-    }
-  }
-
   async function textInstead(): Promise<void> {
     setTextingFailed(null);
     setTextedByTap({});
@@ -185,12 +180,57 @@ export default function VerifyPhone() {
     texted: t('verifyPhone.intro', { number }),
   }[wording.line];
 
+  if (onboarding) {
+    const short = account.providers.some(
+      (one) => one.provider === 'google' || one.provider === 'apple',
+    );
+    const done = status.kind === 'verified';
+
+    return (
+      <StepScreen
+        nav={
+          <NavBar
+            onLeft={() =>
+              router.canGoBack() ? router.back() : router.replace('/phone?from=onboarding')
+            }
+            step={short ? [done ? 2.4 : 2, 2] : [done ? 4.4 : 4, 4]}
+            right={{
+              label: t('steps.skip'),
+              onPress: () => void skipPhone().catch(() => setStatus({ kind: 'failed' })),
+            }}
+            testID="verifyPhone"
+          />
+        }
+      >
+        <CodeStep
+          copy="verifyPhone"
+          title={wording.fromWhatsApp ? t('steps.whatsAppTitle') : t('verifyPhone.title')}
+          intro={line}
+          wrong={wrong}
+          status={status}
+          cooldown={cooldown}
+          onCode={(code) => void verify(code)}
+          onResend={() => void resend()}
+          testID="verifyPhone"
+        >
+          {wording.offerText && (
+            <QuietButton
+              label={t('verifyPhone.textInstead')}
+              onPress={() => void textInstead()}
+              testID="verifyPhone.textInstead"
+            />
+          )}
+          {textingFailed != null && <Says words={t('verifyPhone.textInsteadFailed')} />}
+        </CodeStep>
+      </StepScreen>
+    );
+  }
+
   return (
     <AuthFrame
       atFoot={verified}
       saying={
         <>
-          {onboarding && <OnboardingSteps at="details" />}
           {alternative != null && !verified && <BackToAccount />}
           <AuthHeading
             done={verified}
@@ -253,20 +293,11 @@ export default function VerifyPhone() {
               <Footnote
                 question={t('verifyPhone.wrongNumber')}
                 action={t('verifyPhone.changeIt')}
-                onPress={() => router.push(onboarding ? '/phone?from=onboarding' : '/phone')}
+                onPress={() => router.push('/phone')}
                 testID="verifyPhone.change"
               />
             ) : (
               <RemoveInAccount kind="phone" />
-            )}
-
-            {onboarding && (
-              <Footnote
-                question={t('verifyPhone.cantGetTexts')}
-                action={t('verifyPhone.carryOnWithout')}
-                onPress={() => void withoutPhone(account.name)}
-                testID="verifyPhone.carryOn"
-              />
             )}
           </Footnotes>
         </CodeForm>

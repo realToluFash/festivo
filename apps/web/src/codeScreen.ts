@@ -15,6 +15,13 @@ export function openingStatus(now: CodeStatus, state: CodeState): CodeStatus {
   return state === 'live' || now.kind !== 'entering' ? now : { kind: state };
 }
 
+/** A wrong code stays where it was typed, selected, so typing replaces it. */
+export function selectCode(): void {
+  const field = document.getElementById('code');
+
+  if (field instanceof HTMLInputElement && document.activeElement === field) field.select();
+}
+
 /** What a refused code means to the person, the same for an email and a phone. */
 export function codeRefusal(error: unknown): CodeStatus {
   if (!(error instanceof ApiError)) return { kind: 'failed' };

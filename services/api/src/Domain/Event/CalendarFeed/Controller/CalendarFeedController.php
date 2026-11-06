@@ -8,7 +8,6 @@ use App\Domain\Event\CalendarFeed\FeedLinkIssuer;
 use App\Entity\Organisation;
 use App\Entity\User;
 use App\Enum\ErrorCode;
-use App\Enum\Permission;
 use App\Http\Access\Policy\InOrganisation;
 use App\Http\Exception\ApiException;
 use App\Repository\OrganisationRepository;
@@ -18,7 +17,7 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
 
 /** Calendar > Subscribe in your calendar app (sc-3626): the reader's own link for this organisation, and resetting it. */
-#[InOrganisation(Permission::EventsRead)]
+#[InOrganisation(null)]
 final readonly class CalendarFeedController
 {
     public function __construct(

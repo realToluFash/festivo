@@ -50,8 +50,9 @@ describe('the CSS output', () => {
     expect(css).toContain('--typeBodyTracking: 0;');
   });
 
-  it('uses the mono family for the one mono style', () => {
-    expect(css).toContain('--typeCode: 600 14px/1 var(--fontFamilyMono);');
+  it('draws typeCode in the body face, and names no mono family', () => {
+    expect(css).toContain('--typeCode: 600 14px/1 var(--fontFamily);');
+    expect(css).not.toContain('Mono');
   });
 
   it('leaves native elevation out, because a CSS variable for it would be a lie', () => {
@@ -394,6 +395,46 @@ describe("B Confetti's schemes are held to the base's contrast", () => {
       for (const [option, value] of options) {
         expect(value, option).not.toBe(t.colorAccent);
       }
+    });
+  }
+});
+
+describe("the CSS lays each scheme over the base, for the web's look switch", () => {
+  const css = outputs()[WEB_OUT];
+  const block = (name) => {
+    const start = css.indexOf(`:root[data-scheme='${name}'] {`);
+    return start < 0 ? null : css.slice(start, css.indexOf('}', start) + 1);
+  };
+
+  it('keeps the base in :root, so a page with no scheme is unchanged', () => {
+    expect(css.indexOf(':root {')).toBeLessThan(css.indexOf(':root[data-scheme='));
+    expect(css).toContain(`--colorAccent: ${tokens.colorAccent};`);
+  });
+
+  for (const [name, scheme] of Object.entries(schemes)) {
+    it(`gives ${name} its own colours, wherever the base carries one of them`, () => {
+      const lines = block(name)?.split('\n').slice(1, -1);
+      const { colorAccent: accent, colorBroken: broken } = scheme;
+      expect(lines, name).toEqual(
+        expect.arrayContaining([
+          `  --borderSelected: 2px solid ${accent};`,
+          `  --borderCard: 1px solid ${scheme.colorBorder};`,
+          `  --borderAllergy: 1.5px solid ${broken};`,
+          `  --markDoneFill: ${accent};`,
+          `  --markDoneRing: ${accent};`,
+          `  --markBrokenRing: ${broken};`,
+          `  --markBrokenInk: ${broken};`,
+          `  --markAllergyRing: ${broken};`,
+          `  --replyComingDot: ${accent};`,
+          `  --seatTakenFill: ${accent};`,
+          `  --seatTakenRing: 1px solid ${accent};`,
+          ...Object.entries(scheme).map(([k, v]) => `  --${k}: ${v};`),
+        ]),
+      );
+      for (const line of lines) {
+        expect(line, name).toMatch(/^ {2}--\w+: (\d+(\.\d+)?px solid )?#[0-9A-F]{6};$/i);
+      }
+      expect(lines.join('\n'), name).not.toContain(tokens.colorAccent);
     });
   }
 });

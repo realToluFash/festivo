@@ -33,7 +33,7 @@ import { TURNS_WITH_THE_APP } from '../../layout/orientations.ts';
 import { useReducedMotion } from '../../reducedMotion.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { useModalOpen } from '../../updateRequired.ts';
-import { Glyph } from '../Glyph.tsx';
+import { Glyph } from '../../components/Glyph.tsx';
 import { useShell } from './Frame.tsx';
 import { TextAction } from './SummaryRows.tsx';
 

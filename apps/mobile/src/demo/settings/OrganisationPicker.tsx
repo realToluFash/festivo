@@ -11,7 +11,7 @@ import { FlatList, StyleSheet, View } from 'react-native';
 import { TextField } from '../../components/Field.tsx';
 import { LIFT } from '../../components/keyboardWatch.ts';
 import { tokens } from '../../theme/tokens.ts';
-import { Glyph } from '../Glyph.tsx';
+import { Glyph } from '../../components/Glyph.tsx';
 import { type Picked, SAMPLE_DETAILS } from './OrganisationModel.ts';
 import { DETAILS_WORDS as W, LANGUAGE_NAMES } from './OrganisationWords.ts';
 import { Row } from './Summary.tsx';

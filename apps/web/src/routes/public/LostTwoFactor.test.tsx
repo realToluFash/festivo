@@ -142,8 +142,8 @@ describe('getting back in without the authenticator', () => {
     ).toBeDefined();
     expect(screen.getByLabelText('Code from the email')).toBeDefined();
     expect(screen.getByLabelText('Code from the text')).toBeDefined();
-    // An outlined button, as before [fd] (sc-26512).
-    expect(screen.getByRole('button', { name: 'Send new codes in 0:42' }).className).toBe('button');
+    expect(screen.getByText('No codes?')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Send new codes in 0:42' })).toBeDefined();
     expect(screen.getByText('New codes replace the last ones.')).toBeDefined();
   });
 
@@ -244,25 +244,122 @@ describe('getting back in without the authenticator', () => {
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Waiting for your organisation' }),
     ).toBeDefined();
-    expect(screen.getByText('Waiting for an answer').previousElementSibling?.textContent).toBe('…');
+    // A title and its lines, with no mark row and no Back (sc-29068).
+    expect(screen.queryByText('Waiting for an answer')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Back' })).toBeNull();
     expect(screen.getByText('Asked Saturday, Oct 17 at 14:20 WAT.')).toBeDefined();
     expect(
       screen.getByText('If nobody answers by Saturday, Oct 24 at 14:20 WAT, the request ends.'),
     ).toBeDefined();
 
     fireEvent.click(screen.getByRole('button', { name: 'Cancel the request' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Cancel the request' }).at(-1)!);
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Request cancelled' }),
     ).toBeDefined();
   });
 
-  it('goes back to Enter your code from ‹ Enter your code, beside Back to sign in (sc-23279)', async () => {
+  it('asks before cancelling, and Keep waiting or Escape leaves the request waiting (sc-29957)', async () => {
+    const sent = await atTheStart({
+      'POST /api/auth/two-factor/recovery/opening': () =>
+        json({ ...OPENING, recovery: 'handle', state: WAITING }),
+      'POST /api/auth/two-factor/recovery/cancel': () =>
+        json({ state: { ...WAITING, status: 'cancelled' } }),
+    });
+    const cancels = () => sent.filter((request) => request.path.endsWith('/cancel'));
+    const link = screen.getByRole('button', { name: 'Cancel the request' });
+
+    fireEvent.click(link);
+    const dialog = screen.getByRole('alertdialog', { name: 'Cancel your request?' });
+    expect(screen.getByText('You’ll need to start again to get back in.')).toBeDefined();
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Keep waiting' }));
+    fireEvent.keyDown(dialog, { key: 'Escape' });
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+
+    fireEvent.click(link);
+    fireEvent.click(screen.getByRole('button', { name: 'Keep waiting' }));
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(screen.getByRole('heading', { level: 1, name: 'Waiting for your organisation' }));
+    expect(cancels()).toHaveLength(0);
+
+    fireEvent.click(link);
+    const confirm = screen.getAllByRole('button', { name: 'Cancel the request' }).at(-1);
+    fireEvent.click(confirm!);
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Request cancelled' }),
+    ).toBeDefined();
+    expect(cancels()).toHaveLength(1);
+  });
+
+  it('closes the dialog and shows the answer that arrives while it is open (sc-29957)', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    await atTheStart({
+      'POST /api/auth/two-factor/recovery/opening': () =>
+        json({ ...OPENING, recovery: 'handle', state: WAITING }),
+      'POST /api/auth/two-factor/recovery/state': () =>
+        json({ state: { ...WAITING, status: 'approved' } }),
+    });
+
+    try {
+      fireEvent.click(screen.getByRole('button', { name: 'Cancel the request' }));
+      expect(screen.getByRole('alertdialog')).toBeDefined();
+
+      await vi.advanceTimersByTimeAsync(20_000);
+
+      expect(
+        await screen.findByRole('heading', { level: 1, name: /Two-factor is off/ }),
+      ).toBeDefined();
+      expect(screen.queryByRole('alertdialog')).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('counts one code with no verified phone (sc-29957)', async () => {
+    await atTheStart({
+      'POST /api/auth/two-factor/recovery/opening': () => json({ ...OPENING, phone: null }),
+      'POST /api/auth/two-factor/recovery': () =>
+        json({ recovery: 'handle', state: { ...PROVING, phone: null } }, 201),
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Send the codes' }));
+    await screen.findByRole('heading', { level: 1, name: 'Enter the code' });
+
+    expect(screen.getByText('No code?')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Send a new code in 0:42' })).toBeDefined();
+    expect(screen.getByText('A new code replaces the last one.')).toBeDefined();
+    expect(screen.queryByText(/new codes/i)).toBeNull();
+  });
+
+  it('goes back to Enter your code from Start’s ‹ Back, beside Back to sign in (sc-29068)', async () => {
     await atTheStart({});
 
     expect(screen.getByRole('link', { name: 'Back to sign in' })).toBeDefined();
-    fireEvent.click(screen.getByRole('button', { name: 'Enter your code' }));
+    expect(screen.queryByRole('button', { name: 'Enter your code' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Enter your code' })).toBeDefined();
+  });
+
+  it('goes back to Start from both codes, and the codes already sent still work (sc-29068)', async () => {
+    const sent = await atTheStart({
+      'POST /api/auth/two-factor/recovery': () => json({ recovery: 'handle', state: PROVING }, 201),
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Send the codes' }));
+    await screen.findByRole('heading', { level: 1, name: 'Enter both codes' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+    await screen.findByRole('heading', {
+      level: 1,
+      name: 'Get back in without your authenticator',
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Send the codes' }));
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Enter both codes' }),
+    ).toBeDefined();
+    expect(sent.filter((request) => request.path === '/api/auth/two-factor/recovery')).toHaveLength(
+      1,
+    );
   });
 
   it('says nobody can confirm it when the last approver left while the codes were out', async () => {
@@ -353,7 +450,7 @@ describe('getting back in without the authenticator', () => {
       screen.getByText('Nobody in your organisation can confirm this. Contact Soirely support.'),
     ).toBeDefined();
     expect(screen.queryByText(/Ask an owner or admin of/)).toBeNull();
-    expect(screen.getByText('Turned down').previousElementSibling?.textContent).toBe('✕');
+    expect(screen.queryByText('Turned down')).toBeNull();
     expect(screen.getAllByRole('link', { name: 'Email support@soirely.com' })).toHaveLength(1);
   });
 
@@ -370,7 +467,7 @@ describe('getting back in without the authenticator', () => {
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Your request ended' }),
     ).toBeDefined();
-    expect(screen.getByText('Ended')).toBeDefined();
+    expect(screen.queryByText('Ended')).toBeNull();
     expect(
       screen.getByText('Nobody in your organisation can confirm this. Contact Soirely support.'),
     ).toBeDefined();
@@ -533,6 +630,83 @@ describe('getting back in without the authenticator', () => {
   });
 });
 
+describe('a sign-in that has run out (sc-29956)', () => {
+  const RAN_OUT = () => problem('two_factor_challenge_invalid', 401);
+
+  async function timedOutOnSignIn() {
+    expect(await screen.findByText('That sign-in timed out', {}, THE_WAY_IN)).toBeDefined();
+    expect(screen.getByRole('heading', { level: 1, name: 'Sign in' })).toBeDefined();
+    expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe('folake@ire.events');
+  }
+
+  it('says so on sign-in when opened after it ran out', async () => {
+    answering({
+      'POST /api/auth/login': () => json(CHALLENGE, 202),
+      'POST /api/auth/two-factor/recovery/opening': RAN_OUT,
+    });
+    render(
+      <RouterProvider router={createMemoryRouter(routes, { initialEntries: ['/sign-in'] })} />,
+    );
+
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'folake@ire.events' } });
+    fireEvent.change(screen.getByLabelText('Password'), {
+      target: { value: 'a decent passphrase' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+    fireEvent.click(
+      await screen.findByRole(
+        'button',
+        { name: 'Lost your authenticator and your recovery codes?' },
+        THE_WAY_IN,
+      ),
+    );
+
+    await timedOutOnSignIn();
+  });
+
+  it('says so on sign-in when Send the codes finds it ran out', async () => {
+    await atTheStart({ 'POST /api/auth/two-factor/recovery': RAN_OUT });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Send the codes' }));
+
+    await timedOutOnSignIn();
+  });
+
+  it('says so on sign-in when Start again on a replaced request finds it ran out', async () => {
+    let openings = 0;
+    await atTheStart({
+      'POST /api/auth/two-factor/recovery/opening': () =>
+        ++openings === 1 ? json(OPENING) : RAN_OUT(),
+      'POST /api/auth/two-factor/recovery': () =>
+        json(
+          {
+            recovery: 'handle',
+            state: { ...PROVING, codes: { ...PROVING.codes, cooldownSeconds: 0 } },
+          },
+          201,
+        ),
+      'POST /api/auth/two-factor/recovery/resend': () =>
+        problem('recovery_request_replaced', 409, { requestStatus: 'replaced' }),
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Send the codes' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Send new codes' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Start again' }));
+
+    await timedOutOnSignIn();
+  });
+
+  it('goes to sign-in with no notice when opened with no sign-in in hand', async () => {
+    render(
+      <RouterProvider
+        router={createMemoryRouter(routes, { initialEntries: ['/two-factor/recovery'] })}
+      />,
+    );
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Sign in' })).toBeDefined();
+    expect(screen.queryByText('That sign-in timed out')).toBeNull();
+  });
+});
+
 describe('after an approved request', () => {
   it('asks to set two-factor up again first, and "Not now" carries on', async () => {
     const sent = answering({
@@ -614,7 +788,9 @@ describe('"This wasn\'t me" from an email', () => {
   });
 
   it('takes focus to the line that says the link no longer works, read once', async () => {
-    answering({});
+    answering({
+      'POST /api/auth/two-factor/recovery/not-me': () => problem('recovery_request_invalid', 403),
+    });
     render(
       <RouterProvider
         router={createMemoryRouter(routes, {
@@ -628,5 +804,26 @@ describe('"This wasn\'t me" from an email', () => {
     const broken = await screen.findByText(/That link doesn’t work/);
     await waitFor(() => expect(document.activeElement).toBe(broken));
     expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('says Soirely cannot be reached when the press fails on the network, and Try again presses again', async () => {
+    const sent = answering({});
+    render(
+      <RouterProvider
+        router={createMemoryRouter(routes, {
+          initialEntries: ['/two-factor/not-me?request=rq_1&token=signed'],
+        })}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel and sign out everywhere' }));
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Cannot reach Soirely' }),
+    ).toBeDefined();
+    expect(screen.queryByText(/That link doesn’t work/)).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    await waitFor(() => expect(sent).toHaveLength(2));
   });
 });

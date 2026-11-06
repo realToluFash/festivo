@@ -1,20 +1,31 @@
-import { type FormEvent, type ReactNode, useEffect, useRef, useState } from 'react';
+import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { Link, Route, Routes, useLocation, useNavigate, useSearchParams } from 'react-router';
 
-import { Brand } from '../components/Brand.tsx';
-import { AppleMark, GoogleMark } from '../components/ProviderSignIn.tsx';
 import { NotFound } from '../routes/public/NotFound.tsx';
 import { offButton } from '../offButton.ts';
 import { offField } from '../offField.ts';
-import { LanguageMenu } from './LanguageMenu.tsx';
+import { BoardPage, OrLine, Providers } from './BoardPage.tsx';
+import { GetBackInBoard } from './GetBackIn.tsx';
+import { NewAccountBoard } from './NewAccount.tsx';
+import { Settings } from './Settings.tsx';
+import { SETTINGS_PAGES } from './settings.ts';
+import { Today } from './Today.tsx';
+import { TwoFactorBoard } from './TwoFactor.tsx';
+import { WaysInBoard } from './WaysIn.tsx';
 import {
   type FieldLines,
+  GET_BACK_IN_PAGES,
   LOCK_MS,
+  NEW_ACCOUNT_PAGES,
   SAMPLE,
+  TWO_FACTOR_PAGES,
+  WAYS_IN_PAGES,
+  backIn,
   fieldLines,
   refuse,
   samplePair,
   timeOfDay,
+  twoFactorAt,
 } from './rules.ts';
 import './demo.css';
 
@@ -23,6 +34,15 @@ const BUSY_MS = 900;
 type Notice = { title: string; body: string };
 
 /** The states the board draws, each opened from the demo's home. */
+const TODAY_MOMENTS: { key: string; name: string }[] = [
+  { key: 'plan', name: 'A planning day' },
+  { key: 'planNow', name: 'A planning day, built now' },
+  { key: 'day', name: 'The event day' },
+  { key: 'dayNow', name: 'The event day, built now' },
+  { key: 'quiet', name: 'A quiet week' },
+  { key: 'first', name: 'A first run' },
+];
+
 const SIGN_IN_STATES: { key: string; name: string; notice?: Notice }[] = [
   { key: 'first-visit', name: 'Signed out, first visit' },
   {
@@ -73,7 +93,14 @@ export default function Demo() {
     <Routes>
       <Route index element={<DemoHome from={from} />} />
       <Route path="sign-in" element={<SignInBoard />} />
+      <Route path="create-account" element={<NewAccountBoard />} />
+      <Route path="get-back-in" element={<GetBackInBoard />} />
+      <Route path="two-factor" element={<TwoFactorBoard />} />
+      <Route path="ways-in" element={<WaysInBoard />} />
       <Route path="signed-in" element={<SignedIn />} />
+      <Route path="today" element={<Today />} />
+      <Route path="settings" element={<Settings />} />
+      <Route path="settings/members" element={<Settings />} />
       <Route path="later" element={<Later />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
@@ -93,8 +120,32 @@ function DemoHome({ from }: { from: string }) {
       </header>
       <p className="demo-home-line">
         The designs, working on sample data. Nothing is sent. Sign in with{' '}
-        <strong>{SAMPLE.email}</strong> and <strong>{SAMPLE.password}</strong>.
+        <strong>{SAMPLE.email}</strong> and <strong>{SAMPLE.password}</strong>. The code from the
+        email or the phone is <strong>{SAMPLE.code}</strong>. The authenticator’s code is{' '}
+        <strong>{SAMPLE.authenticator}</strong>, a recovery code <strong>{SAMPLE.recovery}</strong>,
+        and <strong>{SAMPLE.usedRecovery}</strong> one used already.
       </p>
+
+      <section className="demo-home-page" aria-labelledby="demo-page-29">
+        <h2 id="demo-page-29">29 · Today · where signing in lands</h2>
+        <h3>Today in B Confetti · desktop</h3>
+        <ul className="demo-home-rows">
+          {TODAY_MOMENTS.map((moment) => (
+            <li key={moment.key}>
+              <Link className="demo-home-row" to={`today?moment=${moment.key}`}>
+                <span>{moment.name}</span>
+                <span aria-hidden="true">›</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section className="demo-home-page" aria-labelledby="demo-page-28">
+        <h2 id="demo-page-28">28 · Organisations and access · Settings at a desk</h2>
+        <h3>Settings in B · Summary first · desktop</h3>
+        <BoardPages pages={SETTINGS_PAGES} />
+      </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-27">
         <h2 id="demo-page-27">27 · Sign in · desktop polish</h2>
@@ -109,46 +160,50 @@ function DemoHome({ from }: { from: string }) {
             </li>
           ))}
         </ul>
+
+        <h3>Create an account · desktop</h3>
+        <BoardPages pages={NEW_ACCOUNT_PAGES} />
+
+        <h3>Getting back in · desktop</h3>
+        <BoardPages pages={GET_BACK_IN_PAGES} />
+
+        <h3>Two-factor · desktop</h3>
+        <BoardPages pages={TWO_FACTOR_PAGES} />
+
+        <h3>Other ways in · desktop</h3>
+        <p className="demo-home-line">
+          The organisation is <strong>{SAMPLE.organisation}</strong>, and the invitation is from{' '}
+          <strong>
+            {SAMPLE.inviter}, {SAMPLE.role}
+          </strong>
+          .
+        </p>
+        <BoardPages pages={WAYS_IN_PAGES} />
       </section>
     </main>
   );
 }
 
-/** The board's page: the lockup and the way to an account, the form's column, the footer, and the way back under it. */
-function BoardPage({ children }: { children: ReactNode }) {
-  return (
-    <div className="demo-page">
-      <header className="demo-page-header">
-        <Brand lockup />
-        <div className="demo-page-new">
-          <span>New to Soirely?</span>
-          <Link className="button demo-dense" to="/demo/later?screen=register">
-            Create an account
-          </Link>
-        </div>
-      </header>
-      <main id="content" className="demo-page-main">
-        <section className="demo-column">{children}</section>
-      </main>
-      <footer className="demo-page-footer">
-        <span>© 2026 Soirely</span>
-        <nav className="demo-page-links" aria-label="Legal and language">
-          <Link className="link-button demo-link" to="/demo/later?screen=terms">
-            Terms
-          </Link>
-          <Link className="link-button demo-link" to="/demo/later?screen=privacy">
-            Privacy
-          </Link>
-          <LanguageMenu />
-        </nav>
-      </footer>
-      <p className="demo-way-in">
-        <Link className="link-button" to="/demo">
-          All states in the demo
-        </Link>
-      </p>
+function BoardPages({
+  pages,
+}: {
+  pages: readonly { name: string; states: readonly { to: string; name: string }[] }[];
+}) {
+  return pages.map((page) => (
+    <div key={page.name} className="demo-home-group">
+      <h4>{page.name}</h4>
+      <ul className="demo-home-rows">
+        {page.states.map((state) => (
+          <li key={state.to}>
+            <Link className="demo-home-row" to={state.to}>
+              <span>{state.name}</span>
+              <span aria-hidden="true">›</span>
+            </Link>
+          </li>
+        ))}
+      </ul>
     </div>
-  );
+  ));
 }
 
 function SignInBoard() {
@@ -158,8 +213,13 @@ function SignInBoard() {
   return <SignInForm key={key} state={key} />;
 }
 
+/** Where a page sends sign-in from: the email to keep, and whether two-factor was just turned off. */
+type Arrival = { email?: string; recovered?: boolean };
+
 function SignInForm({ state }: { state: string }) {
   const navigate = useNavigate();
+  const arrival = (useLocation().state as Arrival | null) ?? {};
+  const [twoFactor, setTwoFactor] = useState(false);
   const drawn = SIGN_IN_STATES.find((each) => each.key === state);
   const [notice, setNotice] = useState<Notice | null>(drawn?.notice ?? null);
   const [providerOnly, setProviderOnly] = useState(state === 'provider-only');
@@ -174,7 +234,7 @@ function SignInForm({ state }: { state: string }) {
   const email = useRef<HTMLInputElement>(null);
   const password = useRef<HTMLInputElement>(null);
   const pending = useRef<number | undefined>(undefined);
-  const knownEmail = state === 'rule' || state === 'provider-only' ? SAMPLE.email : undefined;
+  const knownEmail = state === 'rule' || state === 'provider-only' ? SAMPLE.email : arrival.email;
   const locked = liftsAt != null;
 
   useEffect(() => () => window.clearTimeout(pending.current), []);
@@ -219,7 +279,8 @@ function SignInForm({ state }: { state: string }) {
     setRevealed(false);
     after(() => {
       if (samplePair(typed.email, typed.password)) {
-        void navigate('/demo/signed-in');
+        if (arrival.recovered === true) void navigate(twoFactorAt('setup'));
+        else void navigate(twoFactor ? twoFactorAt('code') : '/demo/today');
         return;
       }
 
@@ -243,10 +304,10 @@ function SignInForm({ state }: { state: string }) {
     setLines((was) => ({ ...was, [field]: now[field] }));
   }
 
-  function provider(name: string): void {
+  function provider(): void {
     if (busy) return;
 
-    after(() => void navigate('/demo/signed-in', { state: { provider: name } }));
+    after(() => void navigate('/demo/today'));
   }
 
   const until = liftsAt == null ? null : timeOfDay(liftsAt);
@@ -254,7 +315,19 @@ function SignInForm({ state }: { state: string }) {
     until == null ? notice : { title: 'Too many tries', body: `Try again at ${until}.` };
 
   return (
-    <BoardPage>
+    <BoardPage
+      controls={
+        <label className="demo-switch">
+          <input
+            type="checkbox"
+            role="switch"
+            checked={twoFactor}
+            onChange={(event) => setTwoFactor(event.target.checked)}
+          />
+          Demo: this account uses two-factor
+        </label>
+      }
+    >
       <div className="demo-heading">
         <h1>Sign in</h1>
         {shown != null && (
@@ -322,7 +395,19 @@ function SignInForm({ state }: { state: string }) {
               >
                 <div className="demo-label-row">
                   <label htmlFor="password">Password</label>
-                  <Link className="link-button demo-link" to="/demo/later?screen=forgot">
+                  <Link
+                    className="link-button demo-link"
+                    to={backIn('reset')}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      void navigate(backIn('reset'), {
+                        state: {
+                          email: email.current?.value ?? '',
+                          back: `/demo/sign-in?state=${state}`,
+                        },
+                      });
+                    }}
+                  >
                     Forgot your password?
                   </Link>
                 </div>
@@ -368,40 +453,11 @@ function SignInForm({ state }: { state: string }) {
             </button>
           </form>
 
-          <div className="auth-or">
-            <span className="auth-or-rule" />
-            <span>or</span>
-            <span className="auth-or-rule" />
-          </div>
+          <OrLine />
           <Providers busy={busy} onChoose={provider} />
         </>
       )}
     </BoardPage>
-  );
-}
-
-function Providers({ busy, onChoose }: { busy: boolean; onChoose: (name: string) => void }) {
-  return (
-    <div className="demo-providers">
-      <button
-        className="button button-google demo-wide"
-        type="button"
-        {...offButton(busy, { dim: false })}
-        onClick={() => onChoose('Google')}
-      >
-        <GoogleMark />
-        <span>Continue with Google</span>
-      </button>
-      <button
-        className="button demo-apple demo-wide"
-        type="button"
-        {...offButton(busy, { dim: false })}
-        onClick={() => onChoose('Apple')}
-      >
-        <AppleMark onLight />
-        <span>Continue with Apple</span>
-      </button>
-    </div>
   );
 }
 
@@ -426,15 +482,14 @@ function SignedIn() {
 }
 
 const LATER: Record<string, string> = {
-  forgot: 'Forgot your password?',
-  register: 'Create an account',
   terms: 'Terms',
   privacy: 'Privacy',
+  security: 'Your account › Security',
 };
 
 function Later() {
   const [params] = useSearchParams();
-  const screen = LATER[params.get('screen') ?? ''] ?? 'Create an account';
+  const screen = LATER[params.get('screen') ?? ''] ?? 'Terms';
 
   return (
     <BoardPage>

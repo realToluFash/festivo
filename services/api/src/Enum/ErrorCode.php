@@ -14,8 +14,7 @@ enum ErrorCode: string
     case NotFound = 'not_found';
     case Conflict = 'conflict';
     case PhoneTaken = 'phone_taken';
-    case OwnerRoleFixed = 'owner_role_fixed';
-    case SeededRoleKept = 'seeded_role_kept';
+    case OwnEventRole = 'own_event_role';
     case LastOwner = 'last_owner';
     case OwnerRequired = 'owner_required';
     case GrantNotHeld = 'grant_not_held';
@@ -115,7 +114,7 @@ enum ErrorCode: string
             self::ResetLinkUsed, self::ResetLinkExpired, self::RegistrationExpired => 410,
             self::Conflict, self::PhoneTaken, self::ProviderTaken, self::LastSignInMethod, self::ProviderKeptByRule, self::TwoFactorAlreadyOn, self::TwoFactorNotEnrolled, self::TwoFactorOff, self::TwoFactorKeptByRule => 409,
             self::RecoveryNobodyToApprove, self::RecoveryRequestClosed, self::RecoveryRequestProved, self::RecoveryRequestReplaced => 409,
-            self::OwnerRoleFixed, self::SeededRoleKept, self::LastOwner => 409,
+            self::LastOwner => 409,
             self::AlreadyLinked, self::AddressLimitReached, self::AddressNotVerified, self::PrimaryAddress, self::LastVerifiedAddress => 409,
             self::RecoveryRequestInvalid => 404,
             self::AlreadyAMember, self::EmailTaken, self::InvitationAccepted, self::InvitationDeclined, self::JoinOfferUnavailable, self::RestoreNeedsAddress, self::TeamSeatsInUse => 409,
@@ -130,7 +129,7 @@ enum ErrorCode: string
             self::EventCurrencyInUse, self::EventStateInvalid, self::EventConcluded, self::EventHostRequired => 409,
             self::PlanLimit => 403,
             self::Unauthenticated, self::InvalidCredentials, self::InvalidRefreshToken, self::OAuthTokenInvalid, self::TwoFactorChallengeInvalid, self::SessionTimedOut => 401,
-            self::Forbidden, self::PermissionRequired, self::GrantNotHeld, self::AccountUnverified, self::ProfileIncomplete, self::TwoFactorRequired, self::ProofRequired => 403,
+            self::Forbidden, self::PermissionRequired, self::GrantNotHeld, self::OwnEventRole, self::AccountUnverified, self::ProfileIncomplete, self::TwoFactorRequired, self::ProofRequired => 403,
             self::OAuthOnly, self::OAuthOnlyUnlinked, self::OrganisationTwoFactorRequired, self::OrganisationTwoFactorOverdue, self::OwnerRequired => 403,
             self::TooManyAttempts => 429,
             self::VerificationCodeInvalid, self::VerificationCodeExpired => 422,

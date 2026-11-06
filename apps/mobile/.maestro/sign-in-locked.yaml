@@ -1,8 +1,8 @@
-# Past the sign-in limit the form says when to try again, and offers a reset. sc-55.
+# Past the sign-in limit the form says when to try again, and Sign in turns off until then. sc-55, sc-29076.
 #
 # Six wrong passwords, because the limit is five per address; a fresh address
 # from `node scripts/qa-account.mjs` so no other run's budget is spent. The time
-# is matched in English: the notice has no testID but its reset button.
+# is matched in English: the notice has no testID, so the turned-off Sign in is waited on.
 #
 #   node .qa/bin/qa-env.mjs maestro sign-in-locked EMAIL=…
 appId: host.exp.Exponent
@@ -25,7 +25,8 @@ appId: host.exp.Exponent
       - runFlow:
           when:
             notVisible:
-              id: 'signIn.locked.reset'
+              id: 'signIn.submit'
+              enabled: false
           commands:
             - tapOn:
                 id: 'signIn.password'
@@ -41,7 +42,8 @@ appId: host.exp.Exponent
             - waitForAnimationToEnd
 - extendedWaitUntil:
     visible:
-      id: 'signIn.locked.reset'
+      id: 'signIn.submit'
+      enabled: false
     timeout: 30000
 - assertVisible: 'Try again at [0-2][0-9]:[0-5][0-9].*'
 - waitForAnimationToEnd

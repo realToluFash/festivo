@@ -1,14 +1,22 @@
 import { ApiError, type SecondFactor } from '@soirely/api-client';
-import { cleanCode, codeProblem, formatTimeOfDay, lockLiftsAt } from '@soirely/domain';
+import {
+  cleanCode,
+  codeProblem,
+  formatTimeOfDay,
+  lockLiftsAt,
+  shapeRecovery,
+} from '@soirely/domain';
 import { type FormEvent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
+import { selectCode } from '../codeScreen.ts';
 import { dateLocale } from '../i18n/index.ts';
 import { offButton } from '../offButton.ts';
 import { focusWhereSent, offField } from '../offField.ts';
 import type { ForgotFrom } from '../forgotFrom.ts';
 import { FieldError } from './FieldError.tsx';
+import { ColumnBack } from './Onboarding.tsx';
 
 type Mode = 'app' | 'recovery';
 
@@ -30,6 +38,7 @@ export function SecondFactorStep({
   onLostBoth,
   onVerify,
   onExpired,
+  onBack,
 }: {
   intro: string;
   recoveryIntro: string;
@@ -41,6 +50,8 @@ export function SecondFactorStep({
   onLostBoth?: () => void;
   onVerify: (factor: SecondFactor) => Promise<void>;
   onExpired: () => void;
+  /** A sign-in's page (WebTwoFactor, page 27): the column's ‹ Back in place of the foot's "Back to sign in". */
+  onBack?: () => void;
 }) {
   const { t } = useTranslation();
   const [mode, setMode] = useState<Mode>('app');
@@ -55,10 +66,12 @@ export function SecondFactorStep({
   useEffect(() => {
     if (liftsAt == null) return;
 
+    const land = focusWhereSent();
     const lift = window.setTimeout(
       () => {
         setTyped('');
         setStatus({ kind: 'ready' });
+        land('code');
       },
       Math.max(0, liftsAt - Date.now()),
     );
@@ -69,6 +82,12 @@ export function SecondFactorStep({
   function switchTo(next: Mode): void {
     setMode(next);
     setTyped('');
+    setBlank(null);
+    if (status.kind === 'wrong') setStatus({ kind: 'ready' });
+  }
+
+  function type(value: string): void {
+    setTyped(mode === 'recovery' ? shapeRecovery(value) : value);
     setBlank(null);
     if (status.kind === 'wrong') setStatus({ kind: 'ready' });
   }
@@ -111,8 +130,100 @@ export function SecondFactorStep({
 
       const next = statusFrom(refusal, mode, t);
       setStatus(next);
-      if (next.kind === 'wrong') land('code');
+      if (next.kind === 'wrong') {
+        land('code');
+        selectCode();
+      }
     }
+  }
+
+  if (onBack != null) {
+    return (
+      <>
+        <ColumnBack onClick={onBack} />
+        <div className="auth-heading">
+          <h1>{mode === 'app' ? t('twoFactor.title') : t('twoFactor.recoveryTitle')}</h1>
+          <p>{mode === 'app' ? intro : recoveryIntro}</p>
+          {(status.kind === 'paused' || status.kind === 'failed') && (
+            <div className="auth-notice" role="alert">
+              <p className="auth-notice-title">
+                {status.kind === 'paused' ? t('twoFactor.pausedTitle') : failedTitle}
+              </p>
+              <p>
+                {status.kind === 'paused'
+                  ? t('twoFactor.pausedBody', { time: status.time })
+                  : failedBody}
+              </p>
+            </div>
+          )}
+        </div>
+
+        <form className="auth-form" noValidate onSubmit={(event) => void submit(event)}>
+          <div className={error == null ? 'field' : 'field field-wrong'}>
+            <label htmlFor="code">
+              {mode === 'app' ? t('twoFactor.code') : t('twoFactor.recoveryCode')}
+            </label>
+            <input
+              className={error == null ? 'input code-field' : 'input code-field input-wrong'}
+              id="code"
+              name="code"
+              type="text"
+              {...(mode === 'app'
+                ? { inputMode: 'numeric' as const, autoComplete: 'one-time-code' }
+                : { autoComplete: 'off', autoCapitalize: 'none', maxLength: 9 })}
+              autoCorrect="off"
+              spellCheck={false}
+              value={typed}
+              {...offField(checking || status.kind === 'paused')}
+              aria-invalid={error != null}
+              aria-describedby={error == null ? undefined : 'code-error'}
+              onChange={(event) => type(event.target.value)}
+            />
+            {error != null && <FieldError id="code-error" message={error} />}
+          </div>
+
+          <button
+            className="button button-primary"
+            type="submit"
+            aria-busy={checking}
+            {...offButton(status.kind === 'paused')}
+          >
+            {status.kind === 'paused'
+              ? t('twoFactor.tryAgainAt', { time: status.time })
+              : mode === 'app'
+                ? submitLabel
+                : t('twoFactor.useThisCode')}
+          </button>
+        </form>
+
+        <div className="auth-asides">
+          <button
+            className="link-button"
+            type="button"
+            onClick={() => switchTo(mode === 'app' ? 'recovery' : 'app')}
+          >
+            {mode === 'app' ? t('twoFactor.useRecovery') : t('twoFactor.useApp')}
+          </button>
+          {onLostBoth != null && (
+            <button className="link-button" type="button" onClick={onLostBoth}>
+              {t('twoFactor.lostBoth')}
+            </button>
+          )}
+          {status.kind === 'paused' && (
+            <p className="auth-aside">
+              <span>{t('twoFactor.notYou')}</span>
+              <Link
+                className="link-button"
+                to="/forgot-password"
+                state={{ back: 'code' } satisfies ForgotFrom}
+              >
+                {t('twoFactor.resetPassword')}
+              </Link>
+            </p>
+          )}
+        </div>
+      </>
+    );
   }
 
   return (
@@ -173,14 +284,10 @@ export function SecondFactorStep({
             autoCorrect="off"
             spellCheck={false}
             value={typed}
-            {...offField(checking)}
+            {...offField(checking || status.kind === 'paused')}
             aria-invalid={error != null}
             aria-describedby={error == null ? undefined : 'code-error'}
-            onChange={(event) => {
-              setTyped(event.target.value);
-              setBlank(null);
-              if (status.kind === 'wrong') setStatus({ kind: 'ready' });
-            }}
+            onChange={(event) => type(event.target.value)}
           />
           {error != null && <FieldError id="code-error" message={error} />}
         </div>

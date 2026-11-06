@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Fixtures\Access;
 
 use App\Entity\User;
+use App\Http\Access\EventScope;
 use App\Http\Access\Grants;
 use App\Http\Access\Interfaces\EventDirectoryInterface;
 use App\Http\Access\Interfaces\MembershipDirectoryInterface;
@@ -26,6 +27,18 @@ final class FixtureDirectories implements MembershipDirectoryInterface, EventDir
     public function grantsIn(User $user, Uuid $organisationId): ?Grants
     {
         return $this->grants[$organisationId->toRfc4122()] ?? null;
+    }
+
+    public function grantsOnEvent(User $user, Uuid $organisationId, Uuid $eventId): ?Grants
+    {
+        return $this->grantsIn($user, $organisationId);
+    }
+
+    public function eventScopeIn(User $user, Uuid $organisationId): ?EventScope
+    {
+        $grants = $this->grantsIn($user, $organisationId);
+
+        return null === $grants ? null : new EventScope(null, $grants);
     }
 
     public function organisationOf(Uuid $eventId): ?Uuid

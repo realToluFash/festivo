@@ -15,11 +15,14 @@ export function EventCover({
   cover,
   type,
   radius = tokens.radiusInset,
+  fill = false,
   testID,
 }: {
   cover: Cover | null;
   type: EventType;
   radius?: number;
+  /** Fills its parent, whatever its shape, rather than keeping to 16:9. */
+  fill?: boolean;
   testID?: string;
 }) {
   const [frame, setFrame] = useState<{ width: number; height: number } | null>(null);
@@ -38,7 +41,7 @@ export function EventCover({
 
   return (
     <View
-      style={[styles.frame, { borderRadius: radius }]}
+      style={[styles.frame, fill && styles.fill, { borderRadius: radius }]}
       onLayout={({ nativeEvent }) => setFrame(nativeEvent.layout)}
       accessible={described != null}
       accessibilityRole={described == null ? undefined : 'image'}
@@ -261,6 +264,15 @@ const styles = StyleSheet.create({
     aspectRatio: 16 / 9,
     overflow: 'hidden',
     backgroundColor: tokens.colorInset,
+  },
+  fill: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    width: undefined,
+    aspectRatio: undefined,
   },
   photo: {
     position: 'absolute',

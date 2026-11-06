@@ -82,6 +82,16 @@ export function liftNeeded({ shown, group, focusTop, scrollTop, margin }: LiftCh
   return coveredBy(shown, group, margin) || (focusTop != null && focusTop < scrollTop);
 }
 
+/** The height a group needs above a docked bar, from the focused field's top to the group's end, or null when focus is outside it; both tops inside the scroll content. */
+export function heightFromFocus(
+  group: { contentY: number; height: number },
+  focusY: number,
+): number | null {
+  const end = group.contentY + group.height;
+
+  return focusY >= group.contentY && focusY < end ? end - focusY : null;
+}
+
 export interface GroupInScroll {
   /** The scroll view's top in the window. */
   scrollTop: number;

@@ -72,27 +72,45 @@ describe('signing in', () => {
     expect(screen.queryByRole('status')).toBeNull();
   });
 
-  it('offers all four languages, each in its own language', () => {
+  it('offers all four languages, each in its own language, from the footer', () => {
     at('/sign-in');
 
-    const choice = screen.getByRole('group', { name: 'Language' });
-    const names = buttonsIn(choice).map((button) => button.textContent);
+    const button = screen.getByRole('button', { name: 'Language: English' });
+    expect(screen.getByRole('contentinfo').contains(button)).toBe(true);
 
-    expect(names).toEqual(['English', 'Español', 'Français', 'Português']);
+    fireEvent.click(button);
+    const names = screen.getAllByRole('menuitemradio').map((item) => item.getAttribute('lang'));
+
+    expect(names).toEqual(['en', 'es', 'fr', 'pt']);
   });
 
   it('marks the language in use rather than only colouring it', () => {
     at('/sign-in');
 
-    const english = screen.getByRole('button', { name: 'English' });
+    fireEvent.click(screen.getByRole('button', { name: 'Language: English' }));
 
-    expect(english.getAttribute('aria-pressed')).toBe('true');
+    expect(
+      screen.getAllByRole('menuitemradio').map((item) => item.getAttribute('aria-checked')),
+    ).toEqual(['true', 'false', 'false', 'false']);
+  });
+
+  it('changes the language from the menu', async () => {
+    at('/sign-in');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Language: English' }));
+    fireEvent.click(screen.getByRole('menuitemradio', { name: /Español/ }));
+
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { level: 1 }).textContent).not.toBe('Sign in'),
+    );
+    fireEvent.click(screen.getByRole('button', { name: /Español/ }));
+    fireEvent.click(screen.getByRole('menuitemradio', { name: /English/ }));
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Sign in'),
+    );
+    localStorage.clear();
   });
 });
-
-function buttonsIn(element: HTMLElement): HTMLElement[] {
-  return [...element.querySelectorAll('button')];
-}
 
 const ORGANISATION = {
   id: 'org_1',
@@ -265,11 +283,17 @@ describe('signing in, for real', () => {
     at('/sign-in');
     fillIn();
 
-    await waitFor(() => expect(screen.getByRole('alert').textContent).toMatch(/do not match/));
-    expect(screen.getByRole('alert').textContent).not.toMatch(/address|account/i);
-    expect(screen.getByRole('link', { name: 'Reset your password' }).getAttribute('href')).toBe(
-      '/forgot-password',
+    await waitFor(() =>
+      expect(screen.getByRole('alert').textContent).toContain(
+        'That email and password do not match.',
+      ),
     );
+    const password = screen.getByLabelText('Password') as HTMLInputElement;
+    expect(document.activeElement).toBe(password);
+    expect(password.selectionEnd! - password.selectionStart!).toBe(password.value.length);
+    expect(password.getAttribute('aria-invalid')).toBe('false');
+    expect(screen.getByLabelText('Email').getAttribute('aria-invalid')).toBe('false');
+    expect(screen.queryByRole('link', { name: 'Reset your password' })).toBeNull();
   });
 
   it('says when to try again after too many tries, from the header', async () => {
@@ -528,40 +552,50 @@ describe('signing in under an organisation’s sign-in rules (sc-69)', () => {
   });
 });
 
-describe('the frame from before [fd] (sc-26511)', () => {
-  function phoneWide(matches: boolean): void {
-    vi.spyOn(window, 'matchMedia').mockImplementation(
-      (query) =>
-        ({ matches, media: query, addEventListener() {}, removeEventListener() {} }) as never,
-    );
-  }
-
-  it.each([false, true])('keeps the brand and the languages in the header (phone: %s)', (phone) => {
-    phoneWide(phone);
+describe('the desktop page (sc-28983)', () => {
+  it('keeps the brand and the way to an account in the header, the language in the footer', () => {
     at('/sign-in');
 
     const header = screen.getByRole('banner');
+    const createAccount = screen.getByRole('link', { name: 'Create an account' });
 
     expect(header.textContent).toContain('Soirely');
-    expect(header.contains(screen.getByRole('group', { name: 'Language' }))).toBe(true);
+    expect(header.textContent).toContain('New to Soirely?');
+    expect(header.contains(createAccount)).toBe(true);
+    expect(createAccount.getAttribute('href')).toBe('/register');
+    expect(screen.queryByText('New here?')).toBeNull();
+    expect(screen.getByRole('contentinfo').textContent).toContain(
+      `© ${new Date().getFullYear()} Soirely`,
+    );
   });
 
-  it('sets New here? as the card’s last line', () => {
+  it('stands the form on the page, with no card', () => {
     at('/sign-in');
 
-    const createAccount = screen.getByRole('link', { name: 'Create an account' });
-    const card = screen.getByRole('heading', { name: 'Sign in' }).closest('section');
+    const column = screen.getByRole('heading', { name: 'Sign in' }).closest('section');
 
-    expect(card?.contains(createAccount)).toBe(true);
+    expect(column?.className).toBe('auth-column');
   });
 
-  it('asks Forgot your password? whole, and shows Forgot it? only at phone width', () => {
+  it('asks Forgot your password? on the Password label’s row', () => {
     at('/sign-in');
 
     const forgot = screen.getByRole('link', { name: 'Forgot your password?' });
 
-    expect(forgot.querySelector('.wide-only')?.textContent).toBe('Forgot your password?');
-    expect(forgot.querySelector('.narrow-only')?.textContent).toBe('Forgot it?');
+    expect(forgot.textContent).toBe('Forgot your password?');
+    expect(forgot.parentElement?.contains(screen.getByText('Password'))).toBe(true);
+  });
+
+  it('sets Google and Apple side by side, Apple white', () => {
+    at('/sign-in');
+
+    const apple = screen.getByRole('button', { name: 'Continue with Apple' });
+
+    expect(apple.parentElement?.className).toBe('auth-providers');
+    expect(
+      apple.parentElement?.contains(screen.getByRole('button', { name: 'Continue with Google' })),
+    ).toBe(true);
+    expect(apple.classList.contains('button-apple-light')).toBe(true);
   });
 });
 

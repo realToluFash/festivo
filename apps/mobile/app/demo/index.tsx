@@ -4,7 +4,7 @@ import Svg, { Path } from 'react-native-svg';
 
 import { Text } from '../../src/components/Text.tsx';
 import { DemoScreen, NavBar } from '../../src/demo/DemoScreen.tsx';
-import { Heading } from '../../src/demo/Lines.tsx';
+import { Heading } from '../../src/steps/Lines.tsx';
 import { SAMPLE } from '../../src/demo/samples.ts';
 import { tokens } from '../../src/theme/tokens.ts';
 
@@ -483,7 +483,12 @@ export default function DemoHome() {
             <Text size={tokens.typeBody.size} style={styles.secondary}>
               {name}
             </Text>
-            <Text size={tokens.typeBody.size} weight="semibold" family="mono" selectable>
+            <Text
+              size={tokens.typeBody.size}
+              weight="semibold"
+              selectable
+              style={styles.sampleValue}
+            >
               {value}
             </Text>
           </View>
@@ -562,6 +567,7 @@ const styles = StyleSheet.create({
     gap: tokens.spaceSm,
   },
   secondary: { color: tokens.colorInkSecondary },
+  sampleValue: { fontVariant: ['tabular-nums'], letterSpacing: tokens.typeBody.size * 0.04 },
   page: { marginTop: tokens.space4xl, gap: tokens.spaceSm },
   list: {
     borderWidth: 1,

@@ -2,17 +2,18 @@ import { ApiError } from '@soirely/api-client';
 import {
   ACCOUNT_NAME_MAXIMUM,
   formatTimeOfDay,
+  PASSWORD_MINIMUM_LENGTH,
   lockLiftsAt,
   meetsPasswordLength,
 } from '@soirely/domain';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate } from 'react-router';
+import { useLocation, useNavigate } from 'react-router';
 
 import { api } from '../../api.ts';
 import { AuthPage } from '../../components/AuthPage.tsx';
 import { PasswordField } from '../../components/PasswordField.tsx';
-import { PasswordRule } from '../../components/PasswordRule.tsx';
+import { PasswordRuleLine } from '../../components/PasswordRule.tsx';
 import { ProviderSignIn } from '../../components/ProviderSignIn.tsx';
 import { offButton } from '../../offButton.ts';
 import { focusWhereSent, offField } from '../../offField.ts';
@@ -31,12 +32,17 @@ type Status =
 type FieldError = 'breached' | { message: string };
 type FieldErrors = Partial<Record<'name' | 'email' | 'password', FieldError>>;
 
+/** What Back from the email code brings back to the form; never the password. */
+export type Carried = { name?: string; email?: string };
+
 export function Register() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [status, setStatus] = useState<Status>({ kind: 'ready' });
   const [password, setPassword] = useState('');
+  const [short, setShort] = useState(false);
   const passwordInput = useRef<HTMLInputElement>(null);
+  const carried = useLocation().state as Carried | null;
 
   const busy = status.kind === 'submitting';
   const locked = status.kind === 'rateLimited';
@@ -55,6 +61,9 @@ export function Register() {
   // The client's message, where it has one, stands in for the server's.
   const fields: FieldErrors = {
     ...(status.kind === 'refused' ? status.fields : {}),
+    ...(short && {
+      password: { message: t('register.tooShort', { count: PASSWORD_MINIMUM_LENGTH }) },
+    }),
     ...Object.fromEntries(
       Object.entries(checks.errors).map(([field, message]) => [field, { message }]),
     ),
@@ -82,10 +91,12 @@ export function Register() {
       password,
     };
 
+    setShort(false);
     if (!checks.passes(values)) return;
 
     // The rule is stated before submit, so a short password is never sent.
     if (!lengthMet) {
+      setShort(true);
       passwordInput.current?.focus();
       return;
     }
@@ -96,7 +107,7 @@ export function Register() {
     try {
       // Every address gets this same answer, so where it goes next says nothing either.
       holdRegistration(await api.register(values.email.trim(), values.name.trim(), password));
-      navigate('/verify-email');
+      navigate('/verify-email', { state: { name: values.name } satisfies Carried });
     } catch (error) {
       const refusal = refusalFrom(error);
       setStatus(refusal);
@@ -109,98 +120,93 @@ export function Register() {
     }
   }
 
+  const breached = fields.password === 'breached';
+
   return (
-    <AuthPage back={{ label: t('signIn.title'), heard: t('register.back'), fallback: '/sign-in' }}>
+    <AuthPage bare>
       <div className="auth-heading">
         <h1>{t('register.title')}</h1>
-        <p>{t('register.intro')}</p>
-      </div>
-
-      {status.kind === 'rateLimited' && (
-        <div className="notice notice-attention" role="alert">
-          <span className="mark mark-attention" aria-hidden="true">
-            !
-          </span>
-          <div className="notice-body">
-            <p className="notice-title">{t('register.limitedTitle')}</p>
+        {status.kind === 'failed' || breached ? (
+          <div className="auth-notice" role="alert">
+            <p className="auth-notice-title">{t('register.failedTitle')}</p>
+            {status.kind === 'failed' && <p>{t('register.failedBody')}</p>}
+          </div>
+        ) : (
+          <p>{t('register.intro')}</p>
+        )}
+        {status.kind === 'rateLimited' && (
+          <div className="auth-notice" role="alert">
+            <p className="auth-notice-title">{t('register.limitedTitle')}</p>
             <p>{t('register.limitedBody', { time: status.retryAt })}</p>
           </div>
-        </div>
-      )}
-
-      {status.kind === 'failed' && (
-        <div className="notice notice-broken" role="alert">
-          <span className="mark mark-broken" aria-hidden="true">
-            ✕
-          </span>
-          <div className="notice-body">
-            <p className="notice-title">{t('register.failedTitle')}</p>
-            <p>{t('register.failedBody')}</p>
-          </div>
-        </div>
-      )}
+        )}
+      </div>
 
       <form className="auth-form" noValidate onSubmit={(event) => void submit(event)}>
-        <div className="field">
-          <label htmlFor="name">{t('register.name')}</label>
-          <input
-            className={fields.name ? 'input input-wrong' : 'input'}
-            id="name"
-            name="name"
-            type="text"
-            autoComplete="name"
-            autoCorrect="off"
-            spellCheck={false}
-            maxLength={ACCOUNT_NAME_MAXIMUM}
-            {...offField(busy)}
-            aria-invalid={fields.name != null}
-            aria-describedby={fields.name ? 'name-error' : undefined}
-            onBlur={(event) => checks.left('name', event.target.value)}
-            onChange={(event) => checks.edited('name', event.target.value)}
-          />
-          {fields.name && <FieldRefusal id="name-error" error={fields.name} />}
-        </div>
+        <div className="auth-fields">
+          <div className={fields.name ? 'field field-wrong' : 'field'}>
+            <label htmlFor="name">{t('register.name')}</label>
+            <input
+              className={fields.name ? 'input input-wrong' : 'input'}
+              id="name"
+              name="name"
+              type="text"
+              autoComplete="name"
+              autoCorrect="off"
+              spellCheck={false}
+              maxLength={ACCOUNT_NAME_MAXIMUM}
+              defaultValue={carried?.name}
+              {...offField(busy)}
+              aria-invalid={fields.name != null}
+              aria-describedby={fields.name ? 'name-error' : undefined}
+              onBlur={(event) => checks.left('name', event.target.value)}
+              onChange={(event) => checks.edited('name', event.target.value)}
+            />
+            {fields.name && <FieldRefusal id="name-error" error={fields.name} />}
+          </div>
 
-        <div className="field">
-          <label htmlFor="email">{t('register.email')}</label>
-          <input
-            className={fields.email ? 'input input-wrong' : 'input'}
-            id="email"
-            name="email"
-            type="email"
-            autoComplete="email"
-            autoCorrect="off"
-            spellCheck={false}
-            {...offField(busy)}
-            aria-invalid={fields.email != null}
-            aria-describedby={fields.email ? 'email-error' : undefined}
-            onBlur={(event) => checks.left('email', event.target.value)}
-            onChange={(event) => checks.edited('email', event.target.value)}
-          />
-          {fields.email && <FieldRefusal id="email-error" error={fields.email} />}
-        </div>
+          <div className={fields.email ? 'field field-wrong' : 'field'}>
+            <label htmlFor="email">{t('register.email')}</label>
+            <input
+              className={fields.email ? 'input input-wrong' : 'input'}
+              id="email"
+              name="email"
+              type="email"
+              autoComplete="email"
+              autoCorrect="off"
+              spellCheck={false}
+              defaultValue={carried?.email}
+              {...offField(busy)}
+              aria-invalid={fields.email != null}
+              aria-describedby={fields.email ? 'email-error' : undefined}
+              onBlur={(event) => checks.left('email', event.target.value)}
+              onChange={(event) => checks.edited('email', event.target.value)}
+            />
+            {fields.email && <FieldRefusal id="email-error" error={fields.email} />}
+          </div>
 
-        <div className="field">
-          <label htmlFor="password">{t('register.password')}</label>
-          <PasswordField
-            id="password"
-            autoComplete="new-password"
-            inputRef={passwordInput}
-            value={password}
-            onChange={(value) => {
-              setPassword(value);
-              checks.edited('password', value);
-            }}
-            onBlur={(value) => checks.left('password', value)}
-            wrong={fields.password != null}
-            disabled={busy}
-            submitting={busy}
-            describedBy={fields.password ? 'password-error password-rule' : 'password-rule'}
-          />
-          {fields.password && <FieldRefusal id="password-error" error={fields.password} />}
+          <div className={fields.password ? 'field field-wrong' : 'field'}>
+            <label htmlFor="password">{t('register.password')}</label>
+            <PasswordField
+              id="password"
+              autoComplete="new-password"
+              inputRef={passwordInput}
+              value={password}
+              onChange={(value) => {
+                setPassword(value);
+                if (meetsPasswordLength(value)) setShort(false);
+                checks.edited('password', value);
+              }}
+              onBlur={(value) => checks.left('password', value)}
+              wrong={fields.password != null}
+              disabled={busy}
+              submitting={busy}
+              describedBy={fields.password ? 'password-error password-rule' : 'password-rule'}
+            />
+            {fields.password && <FieldRefusal id="password-error" error={fields.password} />}
+            <PasswordRuleLine met={lengthMet} id="password-rule" />
+          </div>
         </div>
-
-        <PasswordRule met={lengthMet} id="password-rule" />
 
         <button
           className="button button-primary"
@@ -212,14 +218,7 @@ export function Register() {
         </button>
       </form>
 
-      <ProviderSignIn />
-
-      <div className="auth-footnote">
-        <span>{t('register.haveAccount')}</span>
-        <Link className="link-button" to="/sign-in">
-          {t('register.signIn')}
-        </Link>
-      </div>
+      <ProviderSignIn pair />
     </AuthPage>
   );
 }

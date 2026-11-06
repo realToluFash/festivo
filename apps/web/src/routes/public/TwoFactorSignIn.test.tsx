@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
@@ -204,7 +204,57 @@ describe('a sign-in that asks for a second factor', () => {
     );
   });
 
-  it('has no back control of its own, and Reset your password comes back to it (sc-23279)', async () => {
+  it('lifts the pause by itself when its time comes, the field empty and focused (sc-29068)', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      await atTheCodeScreen({
+        'POST /api/auth/two-factor/verify': () =>
+          problem('too_many_attempts', 429, { 'Retry-After': '600' }),
+      });
+
+      screen.getByRole('button', { name: 'Verify and sign in' }).focus();
+      enter('000000');
+      await screen.findByRole('button', { name: /^Try again at \d\d:\d\d$/ });
+      const field = screen.getByRole('textbox') as HTMLInputElement;
+      expect(field.readOnly).toBe(true);
+
+      await act(() => vi.advanceTimersByTimeAsync(11 * 60_000));
+
+      const button = screen.getByRole('button', { name: 'Verify and sign in' });
+      expect(button.getAttribute('aria-disabled')).toBe('false');
+      expect(field.readOnly).toBe(false);
+      expect(field.value).toBe('');
+      expect(document.activeElement).toBe(field);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('leaves focus where it was moved to during the pause (sc-29068)', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      await atTheCodeScreen({
+        'POST /api/auth/two-factor/verify': () =>
+          problem('too_many_attempts', 429, { 'Retry-After': '600' }),
+      });
+
+      screen.getByRole('button', { name: 'Verify and sign in' }).focus();
+      enter('000000');
+      await screen.findByRole('button', { name: /^Try again at \d\d:\d\d$/ });
+      await act(() => vi.advanceTimersByTimeAsync(60_000));
+      const elsewhere = screen.getByRole('button', { name: 'Use a recovery code instead' });
+      elsewhere.focus();
+
+      await act(() => vi.advanceTimersByTimeAsync(11 * 60_000));
+
+      expect(screen.getByRole('button', { name: 'Verify and sign in' })).toBeDefined();
+      expect(document.activeElement).toBe(elsewhere);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('comes back to it from Reset your password (sc-23279)', async () => {
     await atTheCodeScreen({
       'POST /api/auth/two-factor/verify': () =>
         problem('too_many_attempts', 429, { 'Retry-After': '600' }),
@@ -219,16 +269,82 @@ describe('a sign-in that asks for a second factor', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Enter your code' })).toBeDefined();
   });
 
-  it('goes back to sign-in when the challenge has run out', async () => {
+  it('goes back to sign-in from ‹ Back with the email kept, in place of Back to sign in (sc-29068)', async () => {
+    await atTheCodeScreen({});
+
+    expect(screen.queryByRole('link', { name: 'Back to sign in' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+
+    await screen.findByRole('heading', { level: 1, name: 'Sign in' });
+    expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe('folake@ire.events');
+  });
+
+  it('keeps a wrong code selected, so typing replaces it (sc-29068)', async () => {
     await atTheCodeScreen({
-      'POST /api/auth/two-factor/verify': () => problem('two_factor_challenge_invalid', 401),
+      'POST /api/auth/two-factor/verify': () => problem('two_factor_code_invalid', 422),
     });
 
-    enter('123456');
+    const field = screen.getByRole('textbox') as HTMLInputElement;
+    field.focus();
+    enter('000000');
 
-    await waitFor(() =>
-      expect(screen.getByRole('heading', { level: 1, name: 'Sign in' })).toBeDefined(),
-    );
+    await screen.findByText('That code did not work. Enter the code your app shows now.');
+    expect(document.activeElement).toBe(field);
+    expect([field.selectionStart, field.selectionEnd]).toEqual([0, 6]);
+  });
+
+  it('shapes a recovery code as it is typed, the dash put in (sc-29068)', async () => {
+    await atTheCodeScreen({});
+
+    fireEvent.click(screen.getByRole('button', { name: 'Use a recovery code instead' }));
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'ABCDEFGH' } });
+
+    expect((screen.getByRole('textbox') as HTMLInputElement).value).toBe('abcd-efgh');
+  });
+
+  it.each([
+    ['the right code', '123456', undefined, 'Verify and sign in'],
+    ['a recovery code', 'abcd-efgh', 'Use a recovery code instead', 'Use this code'],
+  ])(
+    'says the sign-in timed out, keeping the email, when %s comes after it ran out (sc-29956)',
+    async (_, code, switchTo, button) => {
+      await atTheCodeScreen({
+        'POST /api/auth/two-factor/verify': () => problem('two_factor_challenge_invalid', 401),
+      });
+
+      if (switchTo != null) fireEvent.click(screen.getByRole('button', { name: switchTo }));
+      enter(code, button);
+
+      expect(await screen.findByText('That sign-in timed out')).toBeDefined();
+      expect(screen.getByRole('heading', { level: 1, name: 'Sign in' })).toBeDefined();
+      expect(screen.getByText('Sign in again to carry on.')).toBeDefined();
+      expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe('folake@ire.events');
+    },
+  );
+
+  it('says the sign-in timed out when the right code comes after a pause lifts (sc-29956)', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      let paused = true;
+      await atTheCodeScreen({
+        'POST /api/auth/two-factor/verify': () =>
+          paused
+            ? problem('too_many_attempts', 429, { 'Retry-After': '600' })
+            : problem('two_factor_challenge_invalid', 401),
+      });
+
+      enter('000000');
+      await screen.findByRole('button', { name: /^Try again at \d\d:\d\d$/ });
+      paused = false;
+      await act(() => vi.advanceTimersByTimeAsync(11 * 60_000));
+      enter('123456');
+
+      expect(await screen.findByText('That sign-in timed out')).toBeDefined();
+      expect(screen.getByRole('heading', { level: 1, name: 'Sign in' })).toBeDefined();
+      expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe('folake@ire.events');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('is not reachable without a challenge', async () => {
@@ -239,5 +355,6 @@ describe('a sign-in that asks for a second factor', () => {
     await waitFor(() =>
       expect(screen.getByRole('heading', { level: 1, name: 'Sign in' })).toBeDefined(),
     );
+    expect(screen.queryByText('That sign-in timed out')).toBeNull();
   });
 });

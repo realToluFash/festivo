@@ -68,7 +68,7 @@ final class TwoFactorForEveryoneTest extends ApiTestCase
     #[Test]
     public function switchingItOnIsRefusedToSomebodyWithoutTwoFactorAndChangesNothing(): void
     {
-        $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Coordinator);
+        $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Member);
 
         $body = $this->set(['everyoneNeedsTwoFactor' => true]);
 
@@ -82,8 +82,8 @@ final class TwoFactorForEveryoneTest extends ApiTestCase
     #[Test]
     public function switchingItOnEmailsEveryMemberWithoutTwoFactorTheDeadline(): void
     {
-        $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Coordinator);
-        $tope = $this->member('tope@ire.events', 'Tope Bello', SeededRole::ReadOnly);
+        $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Member);
+        $tope = $this->member('tope@ire.events', 'Tope Bello', SeededRole::Member);
         $this->turnOnTwoFactor($tope);
         $this->turnOnTwoFactor($this->owner);
 
@@ -118,7 +118,7 @@ final class TwoFactorForEveryoneTest extends ApiTestCase
     public function theDueEmailGivesTheDeadlineInTheMembersZoneEverywhereItAppears(string $zone, string $written): void
     {
         self::mockTime('2026-10-24 13:20:00 UTC');
-        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Coordinator);
+        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Member);
         $this->zone($bisi, $zone);
         $this->turnOnTwoFactor($this->owner);
 
@@ -141,7 +141,7 @@ final class TwoFactorForEveryoneTest extends ApiTestCase
     #[Test]
     public function aMemberWithoutTwoFactorIsShownTheDeadlineAndOneWithItIsNot(): void
     {
-        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Coordinator);
+        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Member);
         $this->turnOnTwoFactor($this->owner);
         $this->set(['everyoneNeedsTwoFactor' => true]);
 
@@ -154,7 +154,7 @@ final class TwoFactorForEveryoneTest extends ApiTestCase
     #[Test]
     public function aMemberWithoutTwoFactorIsHeldBackOnceTheSevenDaysAreOver(): void
     {
-        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Administrator);
+        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Admin);
         $this->turnOnTwoFactor($this->owner);
         $this->set(['everyoneNeedsTwoFactor' => true]);
 
@@ -176,7 +176,7 @@ final class TwoFactorForEveryoneTest extends ApiTestCase
     #[Test]
     public function aGoogleSessionIsHeldBackTheSameAsAPasswordOne(): void
     {
-        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Coordinator);
+        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Member);
         $this->turnOnTwoFactor($this->owner);
         $this->set(['everyoneNeedsTwoFactor' => true]);
         $google = self::service(TokenIssuer::class)->issueFor($this->fresh($bisi), null, IdentityProvider::Google);
@@ -191,11 +191,11 @@ final class TwoFactorForEveryoneTest extends ApiTestCase
     #[Test]
     public function heldBackInOneOrganisationLeavesTheOthersUntouched(): void
     {
-        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Coordinator);
+        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Member);
         $other = $this->account('ada@lumen.studio', 'Ada Okoye');
         $lumen = self::service(OrganisationFounder::class)->found($other, 'Studio Lumen', 'GB', 'Europe/London');
         self::em()->flush();
-        $this->join($bisi, $lumen, SeededRole::Coordinator);
+        $this->join($bisi, $lumen, SeededRole::Member);
         $this->turnOnTwoFactor($this->owner);
         $this->set(['everyoneNeedsTwoFactor' => true]);
 
@@ -210,11 +210,11 @@ final class TwoFactorForEveryoneTest extends ApiTestCase
     #[Test]
     public function oneSetUpSatisfiesEveryOrganisationThatRequiresIt(): void
     {
-        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Coordinator);
+        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Member);
         $other = $this->account('ada@lumen.studio', 'Ada Okoye');
         $lumen = self::service(OrganisationFounder::class)->found($other, 'Studio Lumen', 'GB', 'Europe/London');
         self::em()->flush();
-        $this->join($bisi, $lumen, SeededRole::Coordinator);
+        $this->join($bisi, $lumen, SeededRole::Member);
         $this->turnOnTwoFactor($this->owner);
         $this->turnOnTwoFactor($other);
         $this->set(['everyoneNeedsTwoFactor' => true]);
@@ -250,7 +250,7 @@ final class TwoFactorForEveryoneTest extends ApiTestCase
         $this->set(['everyoneNeedsTwoFactor' => true]);
 
         self::mockTime('+5 days');
-        $chidi = $this->member('chidi@ire.events', 'Chidi Okoro', SeededRole::Coordinator);
+        $chidi = $this->member('chidi@ire.events', 'Chidi Okoro', SeededRole::Member);
 
         self::mockTime('+6 days');
         $this->as($chidi, 'GET', $this->path());
@@ -264,7 +264,7 @@ final class TwoFactorForEveryoneTest extends ApiTestCase
     #[Test]
     public function aMemberWhoLeftAndIsInvitedBackHasSevenDaysFromReturning(): void
     {
-        $chidi = $this->member('chidi@ire.events', 'Chidi Okoro', SeededRole::Coordinator);
+        $chidi = $this->member('chidi@ire.events', 'Chidi Okoro', SeededRole::Member);
         $membership = $this->membershipOf($chidi);
         self::service(MembershipMachine::class)->move($membership, MembershipStatus::LeftOrRemoved, MembershipChannel::Settings, $chidi);
         self::em()->flush();
@@ -306,8 +306,8 @@ final class TwoFactorForEveryoneTest extends ApiTestCase
     #[Test]
     public function aLagosAndALondonMemberSeeTheSameInstantInTheirOwnZones(): void
     {
-        $lagos = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Coordinator);
-        $london = $this->member('ada@ire.events', 'Ada Okoye', SeededRole::Coordinator);
+        $lagos = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Member);
+        $london = $this->member('ada@ire.events', 'Ada Okoye', SeededRole::Member);
         $this->zone($lagos, 'Africa/Lagos');
         $this->zone($london, 'Europe/London');
         $this->turnOnTwoFactor($this->owner);
@@ -326,7 +326,7 @@ final class TwoFactorForEveryoneTest extends ApiTestCase
     #[Test]
     public function switchingOnAndOffIsAuditedAndSoIsEachMemberHeldBack(): void
     {
-        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Coordinator);
+        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Member);
         $this->turnOnTwoFactor($this->owner);
         $this->set(['everyoneNeedsTwoFactor' => true]);
 
@@ -364,7 +364,7 @@ final class TwoFactorForEveryoneTest extends ApiTestCase
     #[Test]
     public function theDeadlineIsWrittenInTheLanguageTheRequestAsksForOverTheStoredOne(): void
     {
-        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Coordinator);
+        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Member);
         $this->turnOnTwoFactor($this->owner);
         $this->set(['everyoneNeedsTwoFactor' => true]);
         $this->fresh($this->owner)->setLocale('en');
@@ -412,7 +412,7 @@ final class TwoFactorForEveryoneTest extends ApiTestCase
     #[Test]
     public function anOrganisationWithoutTheRuleHoldsNobodyBack(): void
     {
-        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Coordinator);
+        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Member);
 
         self::mockTime('+30 days');
 
@@ -457,7 +457,7 @@ final class TwoFactorForEveryoneTest extends ApiTestCase
 
     private function rejoin(User $user, MembershipStatus $entry, MembershipChannel $channel): void
     {
-        $role = self::em()->getRepository(Role::class)->findOneBy(['organisation' => $this->organisation->getId(), 'seededAs' => SeededRole::Coordinator]);
+        $role = self::em()->getRepository(Role::class)->findOneBy(['organisation' => $this->organisation->getId(), 'seededAs' => SeededRole::Member]);
         $managed = self::em()->find(Organisation::class, $this->organisation->getId()) ?? self::fail('no organisation');
         self::service(MembershipMachine::class)->join($managed, $this->fresh($user), Type\instance_of(Role::class)->coerce($role), $entry, $channel, $this->fresh($user));
         self::em()->flush();

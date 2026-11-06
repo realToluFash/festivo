@@ -1,9 +1,11 @@
+import { ApiError } from '@soirely/api-client';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useSearchParams } from 'react-router';
 
 import { api } from '../../api.ts';
 import { AuthPage } from '../../components/AuthPage.tsx';
+import { Unreachable } from '../../components/Unreachable.tsx';
 import { dropRecovery } from '../../heldRecovery.ts';
 import { useStepFocus } from '../../stepFocus.ts';
 
@@ -11,6 +13,7 @@ type Status =
   | { kind: 'asking' }
   | { kind: 'working' }
   | { kind: 'done' }
+  | { kind: 'unreachable'; retrying: boolean }
   | { kind: 'broken'; pressed: boolean };
 
 /** "This wasn't me" from a recovery email. It waits for a press: a mail scanner opening the link must not sign anybody out. */
@@ -26,21 +29,38 @@ export function RecoveryNotMe() {
   const [brokenLine, arriveAtBroken] = useStepFocus<HTMLParagraphElement>();
 
   async function confirm(): Promise<void> {
-    setStatus({ kind: 'working' });
+    setStatus((now) =>
+      now.kind === 'unreachable' ? { kind: 'unreachable', retrying: true } : { kind: 'working' },
+    );
 
     try {
       await api.recoveryNotMe(request, token);
       dropRecovery();
       setStatus({ kind: 'done' });
       arriveAtDone();
-    } catch {
+    } catch (refusal) {
+      if (!(refusal instanceof ApiError)) {
+        setStatus({ kind: 'unreachable', retrying: false });
+        return;
+      }
+
       setStatus({ kind: 'broken', pressed: true });
       arriveAtBroken();
     }
   }
 
+  if (status.kind === 'unreachable') {
+    return (
+      <Unreachable
+        signedIn={false}
+        bare
+        retry={{ retrying: status.retrying, again: () => void confirm() }}
+      />
+    );
+  }
+
   return (
-    <AuthPage>
+    <AuthPage bare end={null}>
       {status.kind === 'done' ? (
         <div className="auth-heading">
           <h1 ref={doneHeading} tabIndex={-1}>

@@ -46,7 +46,7 @@ class Merge(unittest.TestCase):
 
     def test_the_designers_pr_merges_from_the_demo_area_and_leaves_the_story(self):
         said = self.render("ux", ticket(labels=("dev2",)), pr("ux/sc-9-sign-in"))
-        self.assertIn("once it changes only apps/mobile/src/demo/ and apps/mobile/app/demo/", said)
+        self.assertIn("once it changes only apps/mobile/src/demo/, apps/mobile/app/demo/, apps/web/src/demo/", said)
         self.assertIn("sc-9 stays In Progress and no tester is told", said)
         self.assertNotIn("moves the story to Ready For QA", said)
 
