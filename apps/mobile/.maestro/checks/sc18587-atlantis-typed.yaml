@@ -1,0 +1,8 @@
+# Find your time zone open, "Atlantis" typed, nothing picked, keys still up on the field. sc-18587.
+appId: host.exp.Exponent
+---
+- runFlow:
+    file: ../time-zone-typed.yaml
+    env:
+      QUERY: 'Atlantis'
+- takeScreenshot: time-zone-atlantis-typed
