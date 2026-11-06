@@ -1,11 +1,12 @@
-import type { ReactNode } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { type ReactNode, useRef } from 'react';
+import { Pressable, ScrollView, StyleSheet, View, type ViewInstance } from 'react-native';
 
 import { Brand } from '../components/Brand.tsx';
 import { Text } from '../components/Text.tsx';
 import { tokens } from '../theme/tokens.ts';
 import { EventMesh, eventColour } from './Cover.tsx';
 import { Glyph, type GlyphName } from './Glyph.tsx';
+import { OpenerWords, OPENER, OrgMark, useOrgOpener } from './OrgSwitcher.tsx';
 import { EVENTS, type EventKey } from './today.ts';
 import type { Tab } from './TodayCover.tsx';
 import type { Tell } from './TodayParts.tsx';
@@ -80,6 +81,31 @@ function Place({
   );
 }
 
+function SidebarOrg() {
+  const ref = useRef<ViewInstance>(null);
+  const org = useOrgOpener(ref);
+
+  return (
+    <Pressable
+      ref={ref}
+      onPress={org.onPress}
+      style={({ pressed }) => [
+        styles.org,
+        org.waiting > 0 && styles.orgWaiting,
+        (org.expanded || pressed) && styles.orgOpen,
+      ]}
+      accessibilityRole="button"
+      accessibilityLabel={org.label}
+      accessibilityState={{ expanded: org.expanded }}
+      testID="org.switch"
+    >
+      <OrgMark id={org.place.id} name={org.place.name} side={28} />
+      <OpenerWords opener={org} grow />
+      <Glyph name="updown" size={14} ink={tokens.colorInkSecondary} />
+    </Pressable>
+  );
+}
+
 export function SidebarHead({
   tell,
   search = true,
@@ -94,28 +120,7 @@ export function SidebarHead({
       <View style={styles.logo}>
         <Brand lockup height={24} />
       </View>
-      {org && (
-        <Pressable
-          onPress={() => tell('Switching organisation has its own design.')}
-          style={styles.org}
-          accessibilityRole="button"
-          accessibilityLabel={`${SAMPLE.organisation}. Switch organisation`}
-        >
-          <View
-            style={styles.orgTile}
-            accessibilityElementsHidden
-            importantForAccessibility="no-hide-descendants"
-          >
-            <Text size={11} weight="bold" accessible={false} style={styles.onAccent}>
-              IE
-            </Text>
-          </View>
-          <Text size={15} weight="semibold" accessible={false} style={styles.grow}>
-            {SAMPLE.organisation}
-          </Text>
-          <Glyph name="updown" size={15} ink={tokens.colorInkSecondary} />
-        </Pressable>
-      )}
+      {org && <SidebarOrg />}
       {search && (
         <Pressable
           onPress={() => tell('Search has its own design.')}
@@ -281,7 +286,6 @@ export function TodaySidebar({
 const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
   secondary: { color: tokens.colorInkSecondary },
-  onAccent: { color: tokens.colorInkOnDark },
   caps: {
     letterSpacing: 11 * 0.08,
     paddingHorizontal: tokens.spaceLg,
@@ -297,19 +301,19 @@ const styles = StyleSheet.create({
   },
   logo: { height: 30, justifyContent: 'center', paddingHorizontal: tokens.spaceMd },
   org: {
-    minHeight: tokens.sizeHit,
+    minHeight: OPENER.rest,
     flexDirection: 'row',
     alignItems: 'center',
     gap: tokens.spaceMd,
-    paddingHorizontal: tokens.spaceSm,
+    paddingLeft: tokens.spaceSm,
+    paddingRight: tokens.spaceMd,
+    borderRadius: tokens.radiusRow,
   },
-  orgTile: {
-    width: tokens.space4xl,
-    height: tokens.space4xl,
-    borderRadius: 9,
-    backgroundColor: tokens.colorAccent,
-    alignItems: 'center',
-    justifyContent: 'center',
+  orgWaiting: { minHeight: OPENER.waiting },
+  orgOpen: {
+    backgroundColor: tokens.colorCard,
+    ...tokens.elevationNative.card.ios,
+    elevation: tokens.elevationNative.card.android.elevation,
   },
   search: {
     height: tokens.sizeHit,

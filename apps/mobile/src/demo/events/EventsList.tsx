@@ -18,6 +18,7 @@ import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { Cover } from '../Cover.tsx';
 import { Glyph } from '../Glyph.tsx';
+import { SwitchedNotice } from '../OrgSwitcher.tsx';
 import { PhoneTabBar } from '../TodayCover.tsx';
 import {
   Bell,
@@ -167,14 +168,17 @@ export function EventsList({
   });
 
   const top = (
-    <ListTop
-      summary={first ? null : summaryLine(home)}
-      wide={wide}
-      bell={shell.layout !== 'portrait'}
-      org={shell.layout === 'phone'}
-      onNew={() => shell.tell(say.ownDesign(W.newEvent))}
-      onBell={shell.tell}
-    />
+    <>
+      <ListTop
+        summary={first ? null : summaryLine(home)}
+        wide={wide}
+        bell={shell.layout !== 'portrait'}
+        org={shell.layout === 'phone'}
+        onNew={() => shell.tell(say.ownDesign(W.newEvent))}
+        onBell={shell.tell}
+      />
+      <SwitchedNotice />
+    </>
   );
 
   if (first)
@@ -435,7 +439,7 @@ function ListTop({
     <View>
       {org && (
         <View style={styles.orgRow}>
-          <OrgPill tell={onBell} />
+          <OrgPill />
           <View style={styles.grow} />
           {bell && <Bell tell={onBell} />}
         </View>

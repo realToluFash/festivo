@@ -1,5 +1,12 @@
-import { createContext, type ReactNode, type Ref, useContext, useMemo } from 'react';
-import { Pressable, ScrollView, type ScrollViewInstance, StyleSheet, View } from 'react-native';
+import { createContext, type ReactNode, type Ref, useContext, useMemo, useRef } from 'react';
+import {
+  Pressable,
+  ScrollView,
+  type ScrollViewInstance,
+  StyleSheet,
+  View,
+  type ViewInstance,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
@@ -7,12 +14,12 @@ import { Text } from '../../components/Text.tsx';
 import type { SettingsSection } from '../../kit/appNav.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { Glyph } from '../Glyph.tsx';
-import { SAMPLE } from '../samples.ts';
+import { OpenerWords, OPENER, OrgMark, useOrgOpener } from '../OrgSwitcher.tsx';
 import type { EventKey } from '../today.ts';
 import { PhoneTabBar, TABS, type Tab } from '../TodayCover.tsx';
 import type { Tell } from '../TodayParts.tsx';
 import { TodaySidebar } from '../TodaySidebar.tsx';
-import { Back, RoundButton, Tile, TYPE } from './parts.tsx';
+import { Back, RoundButton, TYPE } from './parts.tsx';
 import { type Looking, type SettingsLayout, type Viewer, viewerOfRole } from './sample.ts';
 
 export interface Shell {
@@ -320,21 +327,29 @@ export function Bell({ tell }: { tell: Tell }) {
 }
 
 /** The organisation switcher on white, at the top of every top-level page. */
-export function OrgPill({ tell }: { tell: Tell }) {
-  if (useShell().viewer === 'noOrg') return null;
+export function OrgPill() {
+  const { viewer } = useShell();
+  const ref = useRef<ViewInstance>(null);
+  const org = useOrgOpener(ref);
+
+  if (viewer === 'noOrg') return null;
 
   return (
     <Pressable
-      onPress={() => tell('Switching organisation has its own design.')}
-      style={({ pressed }) => [styles.org, pressed && styles.orgPressed]}
+      ref={ref}
+      onPress={org.onPress}
+      style={({ pressed }) => [
+        styles.org,
+        org.waiting > 0 && styles.orgWaiting,
+        pressed && styles.orgPressed,
+      ]}
       accessibilityRole="button"
-      accessibilityLabel={`${SAMPLE.organisation}. Switch organisation`}
+      accessibilityLabel={org.label}
+      accessibilityState={{ expanded: org.expanded }}
       testID="org.switch"
     >
-      <Tile of="organisation" side={28} initials="IE" />
-      <Text size={TYPE.body} weight="semibold" accessible={false}>
-        {SAMPLE.organisation}
-      </Text>
+      <OrgMark id={org.place.id} name={org.place.name} side={28} />
+      <OpenerWords opener={org} />
       <Glyph name="updown" size={14} ink={tokens.colorInkSecondary} />
     </Pressable>
   );
@@ -346,7 +361,7 @@ export function PortraitTop({ at = 'Settings' }: { at?: Tab }) {
 
   return (
     <View style={[styles.portraitTop, { paddingTop: insets.top + tokens.spaceMd }]}>
-      <OrgPill tell={shell.tell} />
+      <OrgPill />
       <View style={styles.grow} />
       <Bell tell={shell.tell} />
       <View style={[styles.capsuleAt, { top: insets.top + 7 }]} pointerEvents="box-none">
@@ -449,15 +464,17 @@ const styles = StyleSheet.create({
     paddingBottom: tokens.spaceXxs,
   },
   org: {
-    height: tokens.sizeHit,
+    height: OPENER.rest,
+    flexShrink: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: tokens.spaceSm,
-    paddingLeft: tokens.spaceXs,
-    paddingRight: tokens.spaceLg,
-    borderRadius: tokens.sizeHit / 2,
+    paddingLeft: tokens.spaceSm,
+    paddingRight: tokens.spacePillEnd,
+    borderRadius: OPENER.rest / 2,
     backgroundColor: tokens.colorInset,
   },
+  orgWaiting: { height: OPENER.waiting, borderRadius: OPENER.waiting / 2 },
   orgPressed: { backgroundColor: tokens.colorNeutralFill },
   capsuleAt: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
   capsule: {

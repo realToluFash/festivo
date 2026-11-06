@@ -128,7 +128,7 @@ export function SummaryPage({
       >
         <View style={styles.top}>
           {backTo != null && <Back label={backTo.label} onPress={backTo.onPress} />}
-          {phone && backTo == null && <OrgPill tell={shell.tell} />}
+          {phone && backTo == null && <OrgPill />}
           <View style={styles.grow} />
           {phone && <Bell tell={shell.tell} />}
         </View>

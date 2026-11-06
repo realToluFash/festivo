@@ -6,6 +6,7 @@ import type { SettingsSection } from '../../kit/appNav.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { CARD_PIECES, Confetti, Cover } from '../Cover.tsx';
 import { Glyph } from '../Glyph.tsx';
+import { SwitchedNotice } from '../OrgSwitcher.tsx';
 import { Glass, PhoneTabBar } from '../TodayCover.tsx';
 import { Bell, Fade, Landscape, OrgPill, PHONE_TAB_BAR, PortraitTop, useShell } from './Frame.tsx';
 import { Caps, Pill, Tile, TYPE } from './parts.tsx';
@@ -305,7 +306,7 @@ export function SettingsHome({ onSignOut, onDemo }: Handlers) {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.orgRow}>
-            <OrgPill tell={shell.tell} />
+            <OrgPill />
             <View style={styles.grow} />
             <Bell tell={shell.tell} />
           </View>
@@ -319,6 +320,7 @@ export function SettingsHome({ onSignOut, onDemo }: Handlers) {
               Settings
             </Text>
           </View>
+          <SwitchedNotice style={styles.switched} />
           <PersonCard size="phone" />
           {groups.map(({ heading, sections }) =>
             sections.length === 0 ? null : (
@@ -375,6 +377,7 @@ export function SettingsHome({ onSignOut, onDemo }: Handlers) {
         >
           Settings
         </Text>
+        <SwitchedNotice style={styles.switched} />
         <PersonCard size="portrait" />
         {organisation == null ? (
           <View style={styles.single}>{left}</View>
@@ -461,6 +464,7 @@ const styles = StyleSheet.create({
     paddingBottom: 18,
   },
   portraitTitle: { paddingTop: 30, paddingBottom: 22, paddingHorizontal: tokens.spaceHair },
+  switched: { marginBottom: tokens.spaceXl },
   secondary: { color: tokens.colorInkSecondary },
   accent: { color: tokens.colorAccent },
   white: { color: tokens.colorInkOnDark },

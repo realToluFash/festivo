@@ -1,10 +1,11 @@
-import type { ReactNode } from 'react';
+import { type ReactNode, useRef } from 'react';
 import {
   Animated,
   Pressable,
   type StyleProp,
   StyleSheet,
   View,
+  type ViewInstance,
   type ViewStyle,
 } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
@@ -13,9 +14,9 @@ import { Text } from '../components/Text.tsx';
 import { tokens } from '../theme/tokens.ts';
 import { Confetti, Cover, EventMesh, type Piece } from './Cover.tsx';
 import { Glyph, type GlyphName } from './Glyph.tsx';
+import { OPENER, OpenerWords, OrgMark, useOrgOpener } from './OrgSwitcher.tsx';
 import type { Moment, Now } from './today.ts';
 import type { Tell } from './TodayParts.tsx';
-import { SAMPLE } from './samples.ts';
 
 export type CoverLayout = 'phone' | 'portrait' | 'landscape';
 
@@ -112,38 +113,28 @@ export function Glass({
   );
 }
 
-function OrgTileWhite({ side = 28 }: { side?: number }) {
-  return (
-    <View
-      style={[styles.orgTile, { width: side, height: side, borderRadius: Math.round(side * 0.32) }]}
-      accessibilityElementsHidden
-      importantForAccessibility="no-hide-descendants"
-    >
-      <Text size={Math.round(side * 0.4)} weight="bold" accessible={false} style={styles.accent}>
-        IE
-      </Text>
-    </View>
-  );
-}
+export function OrgButton({ compact = false }: { compact?: boolean }) {
+  const ref = useRef<ViewInstance>(null);
+  const org = useOrgOpener(ref, !compact);
 
-export function OrgButton({ compact = false, tell }: { compact?: boolean; tell: Tell }) {
   return (
     <Pressable
-      onPress={() => tell('Switching organisation has its own design.')}
+      ref={ref}
+      onPress={org.onPress}
       accessibilityRole="button"
-      accessibilityLabel={`${SAMPLE.organisation}. Switch organisation`}
+      accessibilityLabel={org.label}
+      accessibilityState={{ expanded: org.expanded }}
       hitSlop={tokens.spaceXxs}
+      testID={compact ? 'org.switch.band' : 'org.switch'}
     >
       {compact ? (
         <Glass style={styles.orgCompact}>
-          <OrgTileWhite side={30} />
+          <OrgMark id={org.place.id} name={org.place.name} side={30} glass />
         </Glass>
       ) : (
-        <Glass style={styles.orgWide}>
-          <OrgTileWhite />
-          <Text size={15} weight="semibold" accessible={false} style={styles.white}>
-            {SAMPLE.organisation}
-          </Text>
+        <Glass height={org.waiting > 0 ? OPENER.waiting : 40} style={styles.orgWide}>
+          <OrgMark id={org.place.id} name={org.place.name} side={28} glass />
+          <OpenerWords opener={org} onDark />
           <Glyph name="updown" size={14} ink={tokens.colorInkOnDark} />
         </Glass>
       )}
@@ -594,7 +585,7 @@ export function TodayCover({
       />
       <Animated.View style={[styles.coverWords, { opacity: words }]}>
         <View style={[phone ? styles.topPhone : styles.topTablet, { marginTop: top }]}>
-          <OrgButton tell={tell} />
+          <OrgButton />
           <View style={styles.grow} />
           <BellButton tell={tell} />
           {!phone && (
@@ -647,7 +638,7 @@ export function Band({
         <EventMesh event={now.event} shade="day" />
       )}
       <View style={[phone ? styles.topPhone : styles.topTablet, { marginTop: top }]}>
-        <OrgButton compact tell={tell} />
+        <OrgButton compact />
         <View style={styles.grow} />
         <BellButton tell={tell} />
         <View style={phone ? styles.bandTitle : styles.capsuleAt} pointerEvents="box-none">
@@ -730,7 +721,6 @@ export function PhoneTabBar({
 const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
   white: { color: tokens.colorInkOnDark },
-  accent: { color: tokens.colorAccent },
   soft: { opacity: 0.84 },
   figures: { fontVariant: ['tabular-nums'] },
   tight: { marginLeft: 1 },
@@ -742,13 +732,13 @@ const styles = StyleSheet.create({
   gapXl: { gap: 22 },
   glass: { flexDirection: 'row', alignItems: 'center', overflow: 'hidden' },
   glassFill: { backgroundColor: tokens.colorInkOnDark, opacity: 0.22 },
-  orgWide: { gap: tokens.spaceSm, paddingLeft: tokens.spaceXs, paddingRight: tokens.spaceLg },
-  orgCompact: { paddingHorizontal: 5 },
-  orgTile: {
-    backgroundColor: tokens.colorInkOnDark,
-    alignItems: 'center',
-    justifyContent: 'center',
+  orgWide: {
+    flexShrink: 1,
+    gap: tokens.spaceSm,
+    paddingLeft: tokens.spaceSm,
+    paddingRight: tokens.spacePillEnd,
   },
+  orgCompact: { paddingHorizontal: 5 },
   bell: { width: 40, justifyContent: 'center' },
   unread: {
     position: 'absolute',
