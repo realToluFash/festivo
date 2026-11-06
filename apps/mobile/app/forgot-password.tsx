@@ -30,13 +30,13 @@ type Status =
 /** "Reset your password": an address in, and the same answer whether or not it has an account. */
 export default function ForgotPassword() {
   const { t } = useTranslation();
-  const { from } = useLocalSearchParams<{ from?: ForgotFrom }>();
+  const { from, email: carried } = useLocalSearchParams<{ from?: ForgotFrom; email?: string }>();
   const { kind } = useLayout();
   const [status, setStatus] = useState<Status>({ kind: 'asking' });
   // Uncontrolled: a `value` prop re-renders between keystrokes and drops characters.
-  const typed = useRef('');
-  // What the field remounts with after Check your email, as it was typed.
-  const [kept, setKept] = useState('');
+  const typed = useRef(carried ?? '');
+  // What the field remounts with after Check your email, as it was typed; at first, the address sign-in carried.
+  const [kept, setKept] = useState(carried ?? '');
   const emailInput = useRef<TextInputInstance>(null);
   const checks = useFormChecks(
     ['email'] as const,

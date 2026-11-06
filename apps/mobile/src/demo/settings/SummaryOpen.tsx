@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RadioMark } from '../../components/RadioMark.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
-import { Glyph } from '../Glyph.tsx';
+import { Glyph } from '../../components/Glyph.tsx';
 import { PHONE_TAB_BAR, useShell } from './Frame.tsx';
 import { Row, type RowProps, type TagKind } from './SummaryRows.tsx';
 

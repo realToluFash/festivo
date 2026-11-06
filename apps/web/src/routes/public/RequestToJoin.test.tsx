@@ -267,11 +267,7 @@ describe('a request link (sc-562)', () => {
     answering({ [LINK]: () => problem(404, 'request_link_dead') });
     open();
 
-    expect(
-      await screen.findByText(
-        'This link does not work any more. Ask the organisation for a new one.',
-      ),
-    ).toBeDefined();
+    expect(await screen.findByText('Ask the organisation for a new one.')).toBeDefined();
     expect(screen.queryByText(/Ìrè Events/)).toBeNull();
   });
 
@@ -293,9 +289,7 @@ describe('a request link (sc-562)', () => {
       name: 'This link does not work',
     });
     await waitFor(() => expect(document.activeElement).toBe(heading));
-    const body = screen.getByText(
-      'This link does not work any more. Ask the organisation for a new one.',
-    );
+    const body = screen.getByText('Ask the organisation for a new one.');
     expect(body.closest('[role]')).toBeNull();
     expect(screen.getByRole('link', { name: 'Go to Soirely' })).toBeDefined();
     expect(screen.queryByText(/Ìrè Events/)).toBeNull();
@@ -360,7 +354,7 @@ describe('where focus goes once Ask to join is answered (sc-11369)', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'Ask to join' }));
 
-    const notice = (await screen.findByText(said)).closest('.notice');
+    const notice = (await screen.findByText(said)).closest('.auth-notice');
     await waitFor(() => expect(document.activeElement).toBe(notice));
     expect(notice?.getAttribute('role')).toBeNull();
     expect(notice?.nextElementSibling?.textContent).toBe(next);
@@ -372,7 +366,7 @@ describe('where focus goes once Ask to join is answered (sc-11369)', () => {
     open();
 
     const notice = (await screen.findByText('You already belong to Ìrè Events.')).closest(
-      '.notice',
+      '.auth-notice',
     );
     expect(notice?.getAttribute('role')).toBe('status');
     expect(document.activeElement).toBe(document.body);
@@ -487,9 +481,29 @@ describe('a request link that did not load (sc-11488)', () => {
       await screen.findByText(
         "You have already asked to join Ìrè Events. We'll email you when they answer.",
       )
-    ).closest('.notice');
+    ).closest('.auth-notice');
     await waitFor(() => expect(document.activeElement).toBe(notice));
     expect(notice?.getAttribute('role')).toBeNull();
+  });
+
+  it('signs out from the header and puts focus on the heading of the page signed out', async () => {
+    signedIn();
+    answering({
+      [LINK]: () => json(PREVIEW),
+      'POST /api/auth/logout': () => new Response(null, { status: 204 }),
+    });
+    open();
+
+    await screen.findByRole('heading', { level: 1, name: 'Ask to join Ìrè Events' });
+    fireEvent.click(screen.getByRole('button', { name: 'Sign out' }));
+
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole('heading', { level: 1, name: 'Ask to join Ìrè Events' }),
+      ),
+    );
+    expect(screen.getByRole('button', { name: 'Sign in' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Create an account' })).toBeDefined();
   });
 
   it('keeps the full words signed in', async () => {

@@ -55,7 +55,7 @@ final class MembershipMachineTest extends FunctionalTestCase
     {
         $organisation = self::organisationFor(self::inviter('owner-waiting@example.com'));
         $asker = self::inviter('asker@example.com', 'Ngozi Eze');
-        $this->machine()->join($organisation, $asker, $this->role($organisation, SeededRole::ReadOnly), MembershipStatus::PendingApproval, MembershipChannel::Request, $asker);
+        $this->machine()->join($organisation, $asker, $this->role($organisation, SeededRole::Member), MembershipStatus::PendingApproval, MembershipChannel::Request, $asker);
         self::em()->flush();
 
         self::assertNull(self::service(MembershipDirectoryInterface::class)->grantsIn($asker, $organisation->getId()));
@@ -78,12 +78,12 @@ final class MembershipMachineTest extends FunctionalTestCase
         $this->machine()->move($membership, MembershipStatus::LeftOrRemoved, MembershipChannel::Invitation, $member);
         self::em()->flush();
 
-        $again = $this->machine()->join($organisation, $member, $this->role($organisation, SeededRole::Administrator), MembershipStatus::Active, MembershipChannel::Invitation, $member);
+        $again = $this->machine()->join($organisation, $member, $this->role($organisation, SeededRole::Admin), MembershipStatus::Active, MembershipChannel::Invitation, $member);
         self::em()->flush();
 
         self::assertTrue($again->getId()->equals($membership->getId()), 'the same row');
         self::assertSame(MembershipStatus::Active, $again->getStatus());
-        self::assertSame(SeededRole::Administrator, $again->getRole()->getSeededAs(), 'with the role they came back with');
+        self::assertSame(SeededRole::Admin, $again->getRole()->getSeededAs(), 'with the role they came back with');
         self::assertCount(1, self::em()->getRepository(Membership::class)->findBy(['organisation' => $organisation, 'user' => $member]));
         self::assertSame(
             [[null, 'active'], ['active', 'left_or_removed'], ['left_or_removed', 'active']],
@@ -108,7 +108,7 @@ final class MembershipMachineTest extends FunctionalTestCase
     public function aSecondMembershipForOneAccountIsRefusedByTheDatabase(): void
     {
         [$organisation, $member] = $this->member();
-        self::em()->persist(new Membership($organisation, $member, $this->role($organisation, SeededRole::ReadOnly), MembershipStatus::Active, new DateTimeImmutable()));
+        self::em()->persist(new Membership($organisation, $member, $this->role($organisation, SeededRole::Member), MembershipStatus::Active, new DateTimeImmutable()));
 
         $this->expectException(UniqueConstraintViolationException::class);
         self::em()->flush();
@@ -122,7 +122,7 @@ final class MembershipMachineTest extends FunctionalTestCase
         $this->expectException(NotNullConstraintViolationException::class);
         self::em()->getConnection()->executeStatement(
             "INSERT INTO memberships (id, organisation_id, user_id, role_id, status, created_at, updated_at) VALUES (gen_random_uuid(), ?, NULL, ?, 'active', NOW(), NOW())",
-            [$organisation->getId()->toRfc4122(), $this->role($organisation, SeededRole::ReadOnly)->getId()->toRfc4122()],
+            [$organisation->getId()->toRfc4122(), $this->role($organisation, SeededRole::Member)->getId()->toRfc4122()],
         );
     }
 
@@ -131,7 +131,7 @@ final class MembershipMachineTest extends FunctionalTestCase
     {
         $organisation = self::organisationFor(self::inviter('owner-' . \spl_object_id($this) . '@example.com'));
         $member = self::inviter('member-' . \spl_object_id($this) . '@example.com', 'Kemi Lawal');
-        $membership = $this->machine()->join($organisation, $member, $this->role($organisation, SeededRole::Coordinator), MembershipStatus::Active, MembershipChannel::Invitation, $member);
+        $membership = $this->machine()->join($organisation, $member, $this->role($organisation, SeededRole::Member), MembershipStatus::Active, MembershipChannel::Invitation, $member);
         self::em()->flush();
 
         return [$organisation, $member, $membership];

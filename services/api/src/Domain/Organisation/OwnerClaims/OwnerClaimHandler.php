@@ -92,7 +92,7 @@ final readonly class OwnerClaimHandler
     {
         $membership = $this->membershipRepository->findActive($user, $organisation->getId());
 
-        return SeededRole::Administrator === $membership?->getRole()->getSeededAs() ? $membership : null;
+        return SeededRole::Admin === $membership?->getRole()->getSeededAs() ? $membership : null;
     }
 
     public function isSuspendedOwner(User $user, Organisation $organisation): bool
@@ -398,7 +398,7 @@ final readonly class OwnerClaimHandler
         $organisation = $claim->getOrganisation();
         $administrators = Vec\filter(
             $this->membershipRepository->findAdministratorsIn($organisation),
-            static fn (Membership $membership): bool => SeededRole::Administrator === $membership->getRole()->getSeededAs(),
+            static fn (Membership $membership): bool => SeededRole::Admin === $membership->getRole()->getSeededAs(),
         );
         $owners = Vec\filter(
             $this->membershipRepository->findOwnersIn($organisation),

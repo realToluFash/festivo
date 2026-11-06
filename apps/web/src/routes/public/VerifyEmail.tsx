@@ -6,19 +6,26 @@ import {
   awaiting,
 } from '@soirely/api-client';
 import { cleanCode, codeProblem } from '@soirely/domain';
-import { type FormEvent, type RefObject, useEffect, useRef, useState } from 'react';
+import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Navigate, useNavigate, useSearchParams } from 'react-router';
+import { Navigate, useLocation, useNavigate, useSearchParams } from 'react-router';
 
 import { api } from '../../api.ts';
-import { type CodeStatus, codeRefusal, openingStatus } from '../../codeScreen.ts';
+import { type CodeStatus, codeRefusal, openingStatus, selectCode } from '../../codeScreen.ts';
 import { AuthPage } from '../../components/AuthPage.tsx';
 import {
   BackToAccount,
   BackToAccountButton,
   RemoveInAccount,
 } from '../../components/BackToAccount.tsx';
-import { Pending } from '../../components/Pending.tsx';
+import {
+  ColumnBack,
+  ResendLine,
+  SignedInAs,
+  StepLine,
+  Tick,
+} from '../../components/Onboarding.tsx';
+import { Pending, PendingPage } from '../../components/Pending.tsx';
 import { StillSignedIn } from '../../components/StillSignedIn.tsx';
 import { Unreachable } from '../../components/Unreachable.tsx';
 import { dropRegistration, heldRegistration } from '../../pendingRegistration.ts';
@@ -37,6 +44,7 @@ import { focusWhereSent } from '../../offField.ts';
 import { useResendCountdown } from '../../resendCountdown.ts';
 import { useFormChecks } from '../../formChecks.ts';
 import { useSignOut } from '../../signOut.ts';
+import type { Carried } from './Register.tsx';
 
 /** "Check your email": for a sign-up, by its registration handle; for an older unverified account, by its session. */
 export function VerifyEmail() {
@@ -92,6 +100,7 @@ function ForRegistration({ pending }: { pending: PendingRegistration }) {
   const navigate = useNavigate();
   const session = useSessionState();
   const [account, setAccount] = useState<Account | null>(null);
+  const carried = useLocation().state as Carried | null;
 
   return (
     <CodeScreen
@@ -121,11 +130,15 @@ function ForRegistration({ pending }: { pending: PendingRegistration }) {
         const link = heldInvitation();
         navigate(link == null ? landingFor(awaiting(account)) : `/join/${link}`, { replace: true });
       }}
-      wrongAddress={() => {
+      back={() => {
         dropRegistration();
-        navigate('/register');
+        navigate('/register', { state: { name: carried?.name, email: pending.email } });
       }}
-      registersAgain
+      signOut={() => {
+        // A sign-up has no session yet: signing out lets go of the held one.
+        dropRegistration();
+        navigate('/sign-in');
+      }}
     />
   );
 }
@@ -140,8 +153,8 @@ function ForSession() {
   }, []);
 
   if (state.status === 'signedOut') return <Navigate to="/sign-in" replace />;
-  if (state.status === 'unreachable') return <Unreachable signedIn />;
-  if (state.status !== 'signedIn') return <Pending />;
+  if (state.status === 'unreachable') return <Unreachable signedIn bare />;
+  if (state.status !== 'signedIn') return <PendingPage />;
 
   return (
     <CodeScreen
@@ -158,7 +171,7 @@ function ForSession() {
         await refreshAccount();
         navigate('/app');
       }}
-      wrongAddress={signOut}
+      signOut={() => void signOut()}
       stillSignedIn={unreached}
     />
   );
@@ -173,8 +186,8 @@ function CodeScreen({
   onExpired,
   onGone,
   carryOn,
-  wrongAddress,
-  registersAgain = false,
+  back,
+  signOut,
   stillSignedIn = false,
   fromAccount,
 }: {
@@ -187,9 +200,10 @@ function CodeScreen({
   /** The sign-up had already run out when the screen opened: nothing to resume, so signed out. */
   onGone?: () => void;
   carryOn?: () => void | Promise<void>;
-  wrongAddress?: () => void | Promise<void>;
-  /** A sign-up has no session to sign out of: it starts again at Register. */
-  registersAgain?: boolean;
+  /** A sign-up's way back to Register, with what was typed there. */
+  back?: () => void;
+  /** The header's Sign out; an address added in Account has none. */
+  signOut?: () => void;
   stillSignedIn?: boolean;
   /** The id of an address added in Account: Account's way back replaces the steps and the way on. */
   fromAccount?: string;
@@ -270,7 +284,10 @@ function CodeScreen({
       const refusal = codeRefusal(error);
       setStatus(refusal);
       if (refusal.kind === 'expired' || refusal.kind === 'exhausted') answer();
-      if (refusal.kind === 'wrong') landWhereSent('code');
+      if (refusal.kind === 'wrong') {
+        landWhereSent('code');
+        selectCode();
+      }
     }
   }
 
@@ -317,43 +334,34 @@ function CodeScreen({
 
   const codeError = checks.errors.code ?? (status.kind === 'wrong' ? t('verifyEmail.wrong') : null);
 
+  const onboarding = fromAccount == null;
+  const dead = status.kind === 'expired' || status.kind === 'exhausted';
+
   return (
-    <AuthPage>
-      {fromAccount == null ? (
-        <ol className="steps" aria-label={t('verifyEmail.stepsLabel')}>
-          <li className={verified ? 'step step-done' : 'step step-now'}>
-            <span className="step-mark" aria-hidden="true">
-              {verified ? '✓' : '1'}
-            </span>
-            {verified ? t('verifyEmail.step1Done') : t('verifyEmail.step1')}
-          </li>
-          <li className="step step-later">
-            <span className="step-mark" aria-hidden="true">
-              2
-            </span>
-            {t('verifyEmail.step2')}
-          </li>
-        </ol>
-      ) : (
-        !verified && <BackToAccount />
-      )}
+    <AuthPage
+      bare
+      end={signOut == null ? undefined : <SignedInAs email={address} onSignOut={signOut} />}
+    >
+      {!onboarding && !verified && <BackToAccount />}
+      {onboarding && !verified && back != null && <ColumnBack onClick={back} />}
 
       {verified ? (
         <>
-          <span className="verified-mark" aria-hidden="true">
-            ✓
-          </span>
-          <div>
-            <h1 ref={doneHeading} tabIndex={-1}>
-              {t('verifyEmail.doneTitle')}
-            </h1>
-            <p className="muted">
-              {fromAccount == null
+          <div className="auth-heading">
+            {onboarding && <StepLine step={1} />}
+            <div className="auth-done">
+              <Tick size={26} />
+              <h1 ref={doneHeading} tabIndex={-1}>
+                {t('verifyEmail.doneTitle')}
+              </h1>
+            </div>
+            <p>
+              {onboarding
                 ? t('verifyEmail.doneBody', { address })
                 : t('verifyEmail.doneBodyAlternative', { address })}
             </p>
           </div>
-          {fromAccount == null ? (
+          {onboarding ? (
             <button
               className="button button-primary"
               type="button"
@@ -367,142 +375,94 @@ function CodeScreen({
         </>
       ) : (
         <>
-          <div>
+          <div className="auth-heading">
+            {onboarding && <StepLine step={1} />}
             <h1>{t('verifyEmail.title')}</h1>
-            <p className="muted">{t('verifyEmail.intro', { address })}</p>
+            <p>{t('verifyEmail.intro', { address })}</p>
+            {(dead || status.kind === 'failed') && (
+              <div
+                className="auth-notice"
+                role={answered ? undefined : 'alert'}
+                ref={answerNotice}
+                tabIndex={answered ? -1 : undefined}
+              >
+                <p className="auth-notice-title">
+                  {status.kind === 'expired'
+                    ? t('verifyEmail.expiredTitle')
+                    : status.kind === 'exhausted'
+                      ? t('verifyEmail.exhaustedTitle')
+                      : t('verifyEmail.failedTitle')}
+                </p>
+                <p>
+                  {status.kind === 'expired'
+                    ? t('verifyEmail.expiredBody')
+                    : status.kind === 'exhausted'
+                      ? t('verifyEmail.exhaustedBody')
+                      : t('verifyEmail.failedBody')}
+                </p>
+              </div>
+            )}
           </div>
 
-          {status.kind === 'expired' && (
-            <Banner
-              title={t('verifyEmail.expiredTitle')}
-              body={t('verifyEmail.expiredBody')}
-              action={t('verifyEmail.resend')}
-              answered={answered}
-              bodyRef={answerNotice}
-              onAction={() => void resendInPlace()}
-            />
-          )}
-
-          {status.kind === 'exhausted' && (
-            <Banner
-              title={t('verifyEmail.exhaustedTitle')}
-              body={t('verifyEmail.exhaustedBody')}
-              action={t('verifyEmail.resend')}
-              answered={answered}
-              bodyRef={answerNotice}
-              onAction={() => void resendInPlace()}
-            />
-          )}
-
-          {status.kind === 'failed' && (
-            <div className="notice notice-broken" role={answered ? undefined : 'alert'}>
-              <span className="mark mark-broken" aria-hidden="true">
-                ✕
-              </span>
-              <div className="notice-body" ref={answerNotice} tabIndex={answered ? -1 : undefined}>
-                <p className="notice-title">{t('verifyEmail.failedTitle')}</p>
-                <p>{t('verifyEmail.failedBody')}</p>
-              </div>
-            </div>
+          {dead && (
+            <button
+              className="button button-primary"
+              type="button"
+              onClick={() => void resendInPlace()}
+            >
+              {t('verifyEmail.resend')}
+            </button>
           )}
 
           {entering && (
-            <form className="auth-form" noValidate onSubmit={(event) => void submit(event)}>
-              <div className="field">
-                <label htmlFor="code">{t('verifyEmail.codeLabel')}</label>
-                <input
-                  className={codeError == null ? 'code-input' : 'code-input input-wrong'}
-                  id="code"
-                  name="code"
-                  type="text"
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
-                  autoCorrect="off"
-                  spellCheck={false}
-                  required
-                  aria-invalid={codeError != null}
-                  aria-describedby={codeError == null ? undefined : 'code-error'}
-                  onBlur={(event) => checks.left('code', event.target.value)}
-                  onChange={(event) => checks.edited('code', event.target.value)}
-                />
-                {codeError != null && <FieldError id="code-error" message={codeError} />}
-              </div>
+            <>
+              <form className="auth-form" noValidate onSubmit={(event) => void submit(event)}>
+                <div className={codeError == null ? 'field' : 'field field-wrong'}>
+                  <label htmlFor="code">{t('verifyEmail.codeLabel')}</label>
+                  <input
+                    className={
+                      codeError == null ? 'input code-field' : 'input code-field input-wrong'
+                    }
+                    id="code"
+                    name="code"
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    required
+                    aria-invalid={codeError != null}
+                    aria-describedby={codeError == null ? undefined : 'code-error'}
+                    onBlur={(event) => checks.left('code', event.target.value)}
+                    onChange={(event) => checks.edited('code', event.target.value)}
+                  />
+                  {codeError != null && <FieldError id="code-error" message={codeError} />}
+                </div>
 
-              <button
-                className="button button-primary"
-                type="submit"
-                {...offButton(status.kind === 'verifying')}
-              >
-                {status.kind === 'verifying'
-                  ? t('verifyEmail.submitting')
-                  : t('verifyEmail.submit')}
-              </button>
-
-              <div className="resend">
                 <button
-                  className="button"
-                  type="button"
-                  {...resending.button}
-                  onClick={() => void resend()}
+                  className="button button-primary"
+                  type="submit"
+                  {...offButton(status.kind === 'verifying')}
                 >
-                  {resending.label}
+                  {status.kind === 'verifying'
+                    ? t('verifyEmail.submitting')
+                    : t('verifyEmail.submit')}
                 </button>
-                <p>{t('verifyEmail.resendNote')}</p>
-                <span className="visually-hidden" role="status">
-                  {resending.status}
-                </span>
-              </div>
-            </form>
+              </form>
+
+              <ResendLine
+                resending={resending}
+                note={t('verifyEmail.resendNote')}
+                onResend={() => void resend()}
+              />
+            </>
           )}
 
-          {fromAccount != null && <RemoveInAccount kind="email" />}
+          {!onboarding && <RemoveInAccount kind="email" />}
 
           {stillSignedIn && <StillSignedIn />}
-
-          {wrongAddress != null && (
-            <div className="auth-footnote">
-              <span>{t('verifyEmail.wrongAddress')}</span>
-              <button className="link-button" type="button" onClick={() => void wrongAddress()}>
-                {registersAgain ? t('verifyEmail.registerAgain') : t('verifyEmail.signOut')}
-              </button>
-              {!registersAgain && <span>{t('verifyEmail.wrongAddressBody')}</span>}
-            </div>
-          )}
         </>
       )}
     </AuthPage>
-  );
-}
-
-function Banner({
-  title,
-  body,
-  action,
-  answered,
-  bodyRef,
-  onAction,
-}: {
-  title: string;
-  body: string;
-  action: string;
-  answered: boolean;
-  bodyRef: RefObject<HTMLDivElement | null>;
-  onAction: () => void;
-}) {
-  return (
-    <>
-      <div className="notice notice-attention" role={answered ? undefined : 'alert'}>
-        <span className="mark mark-attention" aria-hidden="true">
-          !
-        </span>
-        <div className="notice-body" ref={bodyRef} tabIndex={answered ? -1 : undefined}>
-          <p className="notice-title">{title}</p>
-          <p>{body}</p>
-        </div>
-      </div>
-      <button className="button button-primary" type="button" onClick={onAction}>
-        {action}
-      </button>
-    </>
   );
 }

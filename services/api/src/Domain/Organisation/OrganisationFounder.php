@@ -54,7 +54,7 @@ final readonly class OrganisationFounder
             $fields['locale'],
         );
         $this->entityManager->persist($organisation);
-        $roles = Vec\map(SeededRole::cases(), static fn (SeededRole $seeded): Role => Role::seeded($organisation, $seeded));
+        $roles = Vec\map(SeededRole::cases(), static fn (SeededRole $seeded): Role => new Role($organisation, $seeded));
 
         foreach ($roles as $role) {
             $this->entityManager->persist($role);

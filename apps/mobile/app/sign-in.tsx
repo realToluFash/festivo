@@ -1,370 +1,295 @@
 import { ApiError } from '@soirely/api-client';
 import { formatTimeOfDay, lockLiftsAt } from '@soirely/domain';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { StyleSheet, type TextInputInstance, View } from 'react-native';
+import { Animated, StyleSheet, type TextInputInstance, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../src/api.ts';
-import { AuthFrame, AuthHeading } from '../src/components/AuthFrame.tsx';
-import { Footnote, PrimaryButton, QuietButton } from '../src/components/Buttons.tsx';
-import { Field, focusChecked, keysStayDown, TextField } from '../src/components/Field.tsx';
-import { Notice } from '../src/components/Notice.tsx';
-import { useFocusOnAnswer } from '../src/components/Screen.tsx';
+import { PrimaryButton, QuietButton } from '../src/components/Buttons.tsx';
+import { AboveKeyboardView, AnswerInView } from '../src/components/Screen.tsx';
+import { focusChecked, focusRefused, keysStayDown } from '../src/components/Field.tsx';
+import { ProviderButtons } from '../src/components/ProviderSignIn.tsx';
 import { Text } from '../src/components/Text.tsx';
-import { PasswordField } from '../src/components/PasswordField.tsx';
-import { ProviderButtons, ProviderSignIn } from '../src/components/ProviderSignIn.tsx';
+import { tap } from '../src/steps/haptics.ts';
+import { InsideField } from '../src/steps/InsideField.tsx';
+import { Heading, Says } from '../src/steps/Lines.tsx';
+import { useShake } from '../src/steps/shake.ts';
+import { InSheet, NavBar, StepScreen, useStepsInSheet } from '../src/steps/StepScreen.tsx';
 import { currentLocale, dateLocale } from '../src/i18n/index.ts';
 import { emailMessage, useFormChecks } from '../src/kit/formChecks.ts';
 import { tokens } from '../src/theme/tokens.ts';
 import { nextAfterSignIn } from '../src/challenge.ts';
 import {
   type RuleRefusal,
+  codeTimedOutFromParams,
   providerNames,
   refusalFromParams,
   ruleRefusal,
 } from '../src/kit/signInRules.ts';
-import { useLayout } from '../src/layout/useLayout.ts';
 
 type Status =
-  /** `another`: Sign in with another account brought the form back in its place. */
-  | { kind: 'ready'; another?: true }
+  | { kind: 'ready' }
   | { kind: 'signingIn' }
   | { kind: 'refused' }
   | { kind: 'rateLimited'; retryAt: string; liftsAt: number }
-  /** `ruled`: tapped on the provider buttons a rule left, which give way to the form. */
-  | { kind: 'providerFailed'; provider: string; ruled?: true }
+  /** Tapped on the provider buttons a rule left, which give way to the form. */
+  | { kind: 'providerFailed'; provider: string }
   | { kind: 'failed' }
-  | { kind: 'sessionEnded' }
+  /** A two-factor sign-in that ran out before its code was taken (sc-29961). */
+  | { kind: 'codeTimedOut' }
   | { kind: 'ruled'; refusal: RuleRefusal };
 
+/** Email sign-in, its own step after welcome: no logo, no Google or Apple, and no "or" (sc-29076). */
 export default function SignIn() {
   const { t } = useTranslation();
+  const navigation = useNavigation();
+  const [below] = useState(() => navigation.canGoBack());
+  const sheet = useStepsInSheet() && below;
   const params = useLocalSearchParams<{
-    signedOut?: string;
-    providerFailed?: string;
     rule?: string;
     organisation?: string;
     days?: string;
     email?: string;
     providers?: string;
+    codeTimedOut?: string;
   }>();
   const [status, setStatus] = useState<Status>(() => {
     const refusal = refusalFromParams(params);
 
-    if (params.providerFailed != null)
-      return { kind: 'providerFailed', provider: params.providerFailed };
-    if (refusal != null) return { kind: 'ruled', refusal };
+    if (refusal?.kind === 'providerOnly') return { kind: 'ruled', refusal };
 
-    return params.signedOut == null ? { kind: 'ready' } : { kind: 'sessionEnded' };
+    return codeTimedOutFromParams(params) ? { kind: 'codeTimedOut' } : { kind: 'ready' };
   });
-
-  async function signIn(email: string, password: string): Promise<void> {
-    setStatus({ kind: 'signingIn' });
-
-    try {
-      router.replace(await nextAfterSignIn(await api.signIn(email, password)));
-    } catch (error) {
-      setStatus(refusalFrom(error));
-    }
-  }
-
-  const liftLock = useCallback(() => setStatus({ kind: 'ready' }), []);
-
-  return (
-    <AuthFrame
-      saying={
-        <AuthHeading title={t('signIn.title')} intro={t('signIn.landscapeIntro')} landscapeOnly />
-      }
-    >
-      <Credentials
-        status={status}
-        onSubmit={signIn}
-        onLockLifted={liftLock}
-        onProviderFailed={(provider) =>
-          setStatus({
-            kind: 'providerFailed',
-            provider,
-            ...(status.kind === 'ruled' &&
-              status.refusal.kind === 'providerOnly' && { ruled: true }),
-          })
-        }
-        onAnotherAccount={() => setStatus({ kind: 'ready', another: true })}
-      />
-    </AuthFrame>
-  );
-}
-
-function Credentials({
-  status,
-  onSubmit,
-  onLockLifted,
-  onProviderFailed,
-  onAnotherAccount,
-}: {
-  status: Status;
-  onSubmit: (email: string, password: string) => void;
-  onLockLifted: () => void;
-  onProviderFailed: (provider: string) => void;
-  onAnotherAccount: () => void;
-}) {
-  const { t } = useTranslation();
-  const { kind } = useLayout();
-  const email = useRef<TextInputInstance>(null);
-  const password = useRef<TextInputInstance>(null);
-
-  // Read once: the field is uncontrolled, and a later status must not clear what was typed.
-  const [keptEmail] = useState(() =>
-    status.kind === 'ruled' && status.refusal.kind === 'timedOut' ? status.refusal.email : '',
-  );
-  // Uncontrolled: a `value` prop re-renders between keystrokes and drops characters.
-  const typed = useRef({ email: keptEmail, password: '' });
+  const [carried] = useState(params.email ?? '');
+  const typed = useRef({ email: carried, password: '' });
+  const emailField = useRef<TextInputInstance>(null);
+  const passwordField = useRef<TextInputInstance>(null);
+  const { shaken, shake } = useShake();
   const checks = useFormChecks(
     ['email', 'password'] as const,
     (field, value) =>
       field === 'email' ? emailMessage(value, t) : value === '' ? t('signIn.passwordBlank') : null,
-    (field) => focusChecked(field === 'email' ? email : password),
+    (field) => focusChecked(field === 'email' ? emailField : passwordField),
   );
 
-  const submit = (): void => {
-    if (
-      status.kind === 'signingIn' ||
-      status.kind === 'rateLimited' ||
-      !checks.passes(typed.current)
-    )
-      return;
-
-    keysStayDown();
-    onSubmit(typed.current.email.trim(), typed.current.password);
-  };
-
-  // What the screen opened with was not an answer to a tap, so it is not read out.
-  const [opened] = useState(status);
-  const answer = status === opened ? undefined : status;
   const busy = status.kind === 'signingIn';
-  const refusal = status.kind === 'ruled' ? status.refusal : null;
-  // A password cannot sign this account in, so the form gives way to the provider buttons.
-  const providerOnly = refusal?.kind === 'providerOnly';
   const locked = status.kind === 'rateLimited';
-  // Where the tap's button went, its answer takes focus (sc-11173).
-  useFocusOnAnswer<TextInputInstance>(
-    status.kind === 'ready' && status.another ? status : undefined,
-    email,
-  );
-  const liftsAt = status.kind === 'rateLimited' ? status.liftsAt : null;
+  const refusal = status.kind === 'ruled' ? status.refusal : null;
+  const liftsAt = locked ? status.liftsAt : null;
+  const liftLock = useCallback(() => setStatus({ kind: 'ready' }), []);
+  const [passwordsWiped, wipePassword] = useState(0);
 
   useEffect(() => {
     if (liftsAt == null) return;
 
     const lift = setTimeout(
       () => {
-        password.current?.clear();
         typed.current.password = '';
-        onLockLifted();
+        wipePassword((wiped) => wiped + 1);
+        liftLock();
       },
       Math.max(0, liftsAt - Date.now()),
     );
 
     return () => clearTimeout(lift);
-  }, [liftsAt, onLockLifted]);
+  }, [liftsAt, liftLock]);
+
+  function submit(): void {
+    const { email, password } = typed.current;
+    if (
+      status.kind === 'signingIn' ||
+      status.kind === 'rateLimited' ||
+      !checks.passes({ email, password })
+    )
+      return;
+
+    keysStayDown();
+    onSubmit(email.trim(), password);
+  }
+
+  function onSubmit(address: string, typed: string): void {
+    setStatus({ kind: 'signingIn' });
+
+    void api
+      .signIn(address, typed)
+      .then(nextAfterSignIn)
+      .then((next) => {
+        tap.light();
+        router.replace(next);
+      })
+      .catch((error: unknown) => {
+        const refused = refusalFrom(error);
+        setStatus(refused);
+        if (refused.kind !== 'refused') return;
+
+        // A wrong pair: both fields shake once, the password kept and selected to type again.
+        tap.wrong();
+        shake();
+        focusRefused(passwordField);
+        passwordField.current?.setSelection(0, typed.length);
+      });
+  }
+
+  const back = () => (router.canGoBack() ? router.back() : router.replace('/welcome'));
+  const forgot = () => {
+    const email = typed.current.email.trim();
+    router.push({ pathname: '/forgot-password', params: email === '' ? {} : { email } });
+  };
+
+  const forgotLink = (
+    <View style={styles.forgot}>
+      <QuietButton label={t('recovery.forgot')} onPress={forgot} testID="signIn.forgot" />
+    </View>
+  );
 
   return (
-    <View style={styles.form}>
-      {status.kind === 'sessionEnded' && (
-        <Notice
-          tone="quiet"
-          mark={tokens.marks.info.glyph}
-          title={t('signIn.endedTitle')}
-          body={t('signIn.endedBody')}
-        />
-      )}
+    <InSheet value={sheet}>
+      <StepScreen
+        nav={<NavBar left="back" onLeft={back} testID="signIn" />}
+        foot={
+          refusal?.kind === 'providerOnly' ? undefined : (
+            <PrimaryButton
+              label={
+                locked
+                  ? t('signIn.lockedUntil', { time: status.retryAt })
+                  : busy
+                    ? t('signIn.submitting')
+                    : t('signIn.submit')
+              }
+              onPress={submit}
+              busy={busy}
+              off={locked}
+              testID="signIn.submit"
+            />
+          )
+        }
+      >
+        <Heading title={t('signIn.title')} />
 
-      {refusal?.kind === 'timedOut' && (
-        <Notice
-          tone="quiet"
-          mark={tokens.marks.info.glyph}
-          title={t('signIn.timedOutTitle', { organisation: refusal.organisation })}
-          body={t('signIn.timedOutBody', {
-            organisation: refusal.organisation,
-            count: refusal.days,
-          })}
-        />
-      )}
+        {locked && <Line words={t('signIn.lockedTitle')} />}
+        {status.kind === 'codeTimedOut' && (
+          <Line words={`${t('signIn.codeTimedOutTitle')}. ${t('signIn.endedBody')}`} />
+        )}
+        {status.kind === 'failed' && (
+          <Says words={`${t('signIn.failedTitle')}. ${t('signIn.failedBody')}`} />
+        )}
+        {status.kind === 'providerFailed' && (
+          <Says
+            words={`${t('signIn.providerFailedTitle', { provider: status.provider })}. ${t('signIn.providerFailedBody', { provider: status.provider })}`}
+          />
+        )}
 
-      {refusal?.kind === 'providerOnly' && (
-        <Notice
-          tone="quiet"
-          mark={tokens.marks.info.glyph}
-          title={t('signIn.providerOnlyTitle', { organisation: refusal.organisation })}
-          body={t('signIn.providerOnlyBody', {
-            organisation: refusal.organisation,
-            providers: new Intl.ListFormat(currentLocale(), { type: 'disjunction' }).format(
-              providerNames(refusal.providers),
-            ),
-          })}
-          answer={answer}
-          takesFocus={answer !== undefined}
-        />
-      )}
-
-      {status.kind === 'failed' && (
-        <Notice
-          tone="broken"
-          mark={tokens.marks.broken.glyph}
-          title={t('signIn.failedTitle')}
-          body={t('signIn.failedBody')}
-          answer={answer}
-        />
-      )}
-
-      {status.kind === 'rateLimited' && (
-        <Notice
-          tone="attention"
-          mark="!"
-          title={t('signIn.lockedTitle')}
-          body={t('signIn.lockedBody', { time: status.retryAt })}
-          action={{
-            label: t('signIn.lockedReset'),
-            onPress: () => router.push('/forgot-password'),
-            testID: 'signIn.locked.reset',
-          }}
-          answer={answer}
-        />
-      )}
-
-      {status.kind === 'providerFailed' && (
-        <Notice
-          tone="broken"
-          mark={tokens.marks.broken.glyph}
-          title={t('signIn.providerFailedTitle', { provider: status.provider })}
-          body={t('signIn.providerFailedBody', { provider: status.provider })}
-          answer={answer}
-          takesFocus={status.ruled === true}
-        />
-      )}
-
-      {!providerOnly && (
-        <>
-          <View style={styles.fields}>
-            <Field label={t('signIn.email')} error={checks.errors.email}>
-              <TextField
-                ref={email}
-                wrong={checks.errors.email != null}
-                submitting={busy}
-                defaultValue={keptEmail}
-                keyboardType="email-address"
-                autoComplete="email"
-                textContentType="emailAddress"
-                autoCapitalize="none"
+        {refusal?.kind === 'providerOnly' ? (
+          <View style={styles.providerOnly}>
+            <Line
+              words={`${t('signIn.providerOnlyTitle', { organisation: refusal.organisation })}. ${t(
+                'signIn.providerOnlyBody',
+                {
+                  organisation: refusal.organisation,
+                  providers: new Intl.ListFormat(currentLocale(), { type: 'disjunction' }).format(
+                    providerNames(refusal.providers),
+                  ),
+                },
+              )}`}
+            />
+            {refusal.email !== '' && (
+              <InsideField
+                label={t('signIn.email')}
+                value={refusal.email}
+                editable={false}
+                testID="signIn.email"
+              />
+            )}
+            <ProviderButtons
+              only={refusal.providers}
+              onFailed={(provider) => setStatus({ kind: 'providerFailed', provider })}
+            />
+            <Text size={tokens.typeSmall.size} muted>
+              {t('signIn.providerOnlyFootnote', { organisation: refusal.organisation })}
+            </Text>
+            <QuietButton
+              label={t('signIn.anotherAccount')}
+              // The form comes back with its address field focused on arrival.
+              onPress={() => {
+                typed.current = { email: carried, password: '' };
+                setStatus({ kind: 'ready' });
+              }}
+              testID="signIn.anotherAccount"
+            />
+          </View>
+        ) : (
+          <>
+            <Animated.View style={[styles.first, shaken]}>
+              <InsideField
+                ref={emailField}
+                label={t('signIn.email')}
+                defaultValue={carried}
                 onChangeText={(text) => {
                   typed.current.email = text;
                   checks.edited('email', text);
                 }}
                 onBlur={() => checks.left('email', typed.current.email)}
+                state={checks.errors.email == null ? 'plain' : 'blank'}
+                submitting={busy}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoComplete="email"
+                textContentType="username"
                 returnKeyType="next"
                 submitBehavior="submit"
-                onSubmitEditing={() => password.current?.focus()}
-                accessibilityLabel={t('signIn.email')}
+                onSubmitEditing={() => passwordField.current?.focus()}
+                autoFocus={carried === ''}
                 testID="signIn.email"
               />
-            </Field>
-
-            <Field
-              label={t('signIn.password')}
-              labelAction={{
-                label: kind === 'phone' ? t('recovery.forgotShort') : t('recovery.forgot'),
-                onPress: () => router.push('/forgot-password'),
-                testID: 'signIn.forgot',
-              }}
-              error={
-                checks.errors.password ?? (status.kind === 'refused' ? t('signIn.refused') : null)
-              }
-              errorActions={
-                checks.errors.password == null && status.kind === 'refused'
-                  ? [
-                      {
-                        label: t('signIn.lockedReset'),
-                        onPress: () => router.push('/forgot-password'),
-                        testID: 'signIn.refused.reset',
-                      },
-                    ]
-                  : undefined
-              }
-            >
-              <PasswordField
-                ref={password}
-                wrong={status.kind === 'refused' || checks.errors.password != null}
-                submitting={busy}
-                autoComplete="current-password"
-                textContentType="password"
-                onChangeText={(text) => {
-                  typed.current.password = text;
-                  checks.edited('password', text);
-                }}
-                onBlur={() => checks.left('password', typed.current.password)}
-                returnKeyType="go"
-                submitBehavior="submit"
-                onSubmitEditing={submit}
-                accessibilityLabel={t('signIn.password')}
-                testID="signIn.password"
-              />
-            </Field>
-          </View>
-
-          <PrimaryButton
-            label={
-              locked
-                ? t('signIn.lockedUntil', { time: status.retryAt })
-                : busy
-                  ? t('signIn.submitting')
-                  : t('signIn.submit')
-            }
-            onPress={submit}
-            busy={busy}
-            off={locked}
-            testID="signIn.submit"
-          />
-        </>
-      )}
-
-      {refusal?.kind === 'providerOnly' ? (
-        <>
-          {refusal.email !== '' && (
-            <Field label={t('signIn.email')}>
-              <TextField
-                editable={false}
-                defaultValue={refusal.email}
-                accessibilityLabel={t('signIn.email')}
-                testID="signIn.email"
-              />
-            </Field>
-          )}
-
-          <ProviderButtons only={refusal.providers} onFailed={onProviderFailed} />
-
-          <Text size={tokens.typeSmall.size} muted>
-            {t('signIn.providerOnlyFootnote', { organisation: refusal.organisation })}
-          </Text>
-
-          <QuietButton
-            label={t('signIn.anotherAccount')}
-            onPress={onAnotherAccount}
-            testID="signIn.anotherAccount"
-          />
-        </>
-      ) : (
-        <ProviderSignIn onFailed={onProviderFailed} />
-      )}
-
-      <Footnote
-        question={t('signIn.newHere')}
-        action={t('signIn.createAccount')}
-        onPress={() => router.push('/register')}
-        role="link"
-        testID="signIn.register"
-      />
-    </View>
+              {checks.errors.email != null && <Says words={checks.errors.email} />}
+            </Animated.View>
+            {/* A refusal answered before the keys come up: once they do, the reset link lifts with the field above the docked foot. */}
+            <AboveKeyboardView still={status.kind !== 'refused'}>
+              <Animated.View style={[styles.next, shaken]}>
+                <InsideField
+                  key={passwordsWiped}
+                  ref={passwordField}
+                  label={t('signIn.password')}
+                  onChangeText={(text) => {
+                    typed.current.password = text;
+                    checks.edited('password', text);
+                    if (status.kind === 'refused') setStatus({ kind: 'ready' });
+                  }}
+                  onBlur={() => checks.left('password', typed.current.password)}
+                  password
+                  state={checks.errors.password == null ? 'plain' : 'blank'}
+                  submitting={busy}
+                  autoComplete="current-password"
+                  textContentType="password"
+                  returnKeyType="go"
+                  submitBehavior="submit"
+                  onSubmitEditing={submit}
+                  autoFocus={carried !== ''}
+                  testID="signIn.password"
+                />
+              </Animated.View>
+              {checks.errors.password != null && <Says words={checks.errors.password} />}
+              {status.kind === 'refused' ? (
+                // The answer brings the reset link into sight too, above a foot docked on the keys.
+                <AnswerInView>
+                  <Says words={t('signIn.refused')} />
+                  {forgotLink}
+                </AnswerInView>
+              ) : (
+                forgotLink
+              )}
+            </AboveKeyboardView>
+          </>
+        )}
+      </StepScreen>
+    </InSheet>
   );
+}
+
+/** A notice as one plain line under the title: no box and no mark. */
+function Line({ words }: { words: string }) {
+  return <Says words={words} quiet />;
 }
 
 function refusalFrom(error: unknown): Status {
@@ -373,7 +298,7 @@ function refusalFrom(error: unknown): Status {
   if (error.is('invalid_credentials')) return { kind: 'refused' };
 
   const refusal = ruleRefusal(error.problem);
-  if (refusal != null) return { kind: 'ruled', refusal };
+  if (refusal?.kind === 'providerOnly') return { kind: 'ruled', refusal };
 
   if (error.is('too_many_attempts')) {
     const liftsAt = lockLiftsAt(Number(error.response?.headers.get('Retry-After')));
@@ -391,6 +316,8 @@ function refusalFrom(error: unknown): Status {
 }
 
 const styles = StyleSheet.create({
-  form: { flexGrow: 1, gap: tokens.space3xl },
-  fields: { gap: tokens.spaceXl },
+  first: { marginTop: tokens.space3xl },
+  next: { marginTop: tokens.spaceXl },
+  forgot: { marginTop: tokens.spaceSm, alignItems: 'flex-start' },
+  providerOnly: { marginTop: tokens.space3xl, gap: tokens.spaceXl },
 });

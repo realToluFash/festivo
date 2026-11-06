@@ -10,7 +10,7 @@ import {
 
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
-import { Glyph, type GlyphName } from '../Glyph.tsx';
+import { Glyph, type GlyphName } from '../../components/Glyph.tsx';
 import type { DemoSection, SettingsLayout } from './sample.ts';
 
 export const TYPE = {

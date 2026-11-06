@@ -1,0 +1,16 @@
+# sc-29152: the design demo's Settings in B Confetti, /security?state=everywhere. Needs ${METRO_URL}; run under EXPO_PUBLIC_SCHEME=violet.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/settings/security?state=everywhere
+- extendedWaitUntil:
+    visible:
+      id: 'demo.security.everywhere.password'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: security-everywhere
+- swipe:
+    start: 85%, 80%
+    end: 85%, 30%
+- waitForAnimationToEnd
+- takeScreenshot: security-everywhere-scrolled

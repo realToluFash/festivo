@@ -438,13 +438,16 @@ export function nameProblem(typed: string, roles: readonly DemoRole[], except: s
   return problem == null ? null : NAME_PROBLEMS[problem];
 }
 
-/** Owner is never offered: it is given one person at a time, with a recent proof (owner, 4 Nov 2026). */
 export function replacements(roles: readonly DemoRole[], removing: DemoRole, held: string[]) {
   return replacementsFor(
-    roles.map((role) => ({ ...role, permissions: role.grant })),
+    roles.map((role) => ({
+      ...role,
+      seededAs: role.owner ? 'owner' : null,
+      permissions: role.grant,
+    })),
     removing,
     held,
-  ).filter((role) => !role.owner);
+  );
 }
 
 export function removeLine(holders: number): string {

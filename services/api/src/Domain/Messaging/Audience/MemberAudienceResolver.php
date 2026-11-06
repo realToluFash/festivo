@@ -9,10 +9,12 @@ use App\Domain\Messaging\Model\Audience;
 use App\Domain\Messaging\Model\Recipient;
 use App\Domain\User\Mail\AccountLanguage;
 use App\Entity\User;
+use App\Enum\EventRole;
 use App\Enum\MembershipStatus;
 use App\Enum\NotificationAudienceKind;
 use App\Enum\SeededRole;
 use App\Http\Access\Interfaces\MembershipDirectoryInterface;
+use BackedEnum;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\ParameterType;
@@ -22,7 +24,7 @@ use Psl\Type;
 use Psl\Vec;
 use Symfony\Component\Uid\Uuid;
 
-/** An organisation's active members, by permission, by role, or named, read when the notification goes. */
+/** An organisation's active members, by permission, by role, or named, and on one event when the audience names it (sc-29912), read when the notification goes. */
 final readonly class MemberAudienceResolver implements AudienceResolverInterface
 {
     public function __construct(
@@ -53,7 +55,9 @@ final readonly class MemberAudienceResolver implements AudienceResolverInterface
             return null;
         }
 
-        $grants = $this->membershipDirectory->grantsIn($user, $organisationId);
+        $grants = null === $audience->eventId
+            ? $this->membershipDirectory->grantsIn($user, $organisationId)
+            : $this->membershipDirectory->grantsOnEvent($user, $organisationId, $audience->eventId);
         $stillIn = null !== $grants
             && (null === $audience->permission || $grants->holds($audience->permission))
             && [] !== $this->matching($audience, null, $id, 1);
@@ -87,7 +91,12 @@ final readonly class MemberAudienceResolver implements AudienceResolverInterface
                   AND m.status = :active
                   AND u.deleted_at IS NULL
                   AND o.deleted_at IS NULL
-                  AND (CAST(:permission AS TEXT) IS NULL OR r.seeded_as = :owner OR jsonb_exists(r.permissions::jsonb, CAST(:permission AS TEXT)))
+                  AND (CAST(:event AS UUID) IS NULL OR r.seeded_as <> :member OR EXISTS (
+                      SELECT 1 FROM event_people p WHERE p.event_id = CAST(:event AS UUID) AND p.membership_id = m.id
+                  ))
+                  AND (CAST(:permission AS TEXT) IS NULL OR r.seeded_as IN (:holding) OR EXISTS (
+                      SELECT 1 FROM event_people p WHERE p.event_id = CAST(:event AS UUID) AND p.membership_id = m.id AND p.role IN (:eventRoles)
+                  ))
                   AND (CAST(:role AS UUID) IS NULL OR r.id = CAST(:role AS UUID))
                   AND (:anyNamed = 0 OR m.user_id IN (:named))
                   AND m.user_id NOT IN (:except)
@@ -99,8 +108,11 @@ final readonly class MemberAudienceResolver implements AudienceResolverInterface
             [
                 'organisation' => $organisationId->toRfc4122(),
                 'active' => MembershipStatus::Active->value,
-                'owner' => SeededRole::Owner->value,
+                'member' => SeededRole::Member->value,
+                'event' => $audience->eventId?->toRfc4122(),
                 'permission' => $audience->permission?->value,
+                'holding' => self::values(null === $audience->permission ? [] : $audience->permission->defaultRoles()),
+                'eventRoles' => self::values(null === $audience->permission ? [] : EventRole::holding($audience->permission)),
                 'role' => $audience->roleId?->toRfc4122(),
                 'anyNamed' => [] === $audience->only ? 0 : 1,
                 'named' => self::ids($audience->only),
@@ -111,6 +123,8 @@ final readonly class MemberAudienceResolver implements AudienceResolverInterface
             ],
             [
                 'named' => ArrayParameterType::STRING,
+                'holding' => ArrayParameterType::STRING,
+                'eventRoles' => ArrayParameterType::STRING,
                 'except' => ArrayParameterType::STRING,
                 'anyNamed' => ParameterType::INTEGER,
                 'limit' => ParameterType::INTEGER,
@@ -118,6 +132,18 @@ final readonly class MemberAudienceResolver implements AudienceResolverInterface
         );
 
         return Vec\map($ids, static fn (mixed $id): Uuid => Uuid::fromString(Type\string()->coerce($id)));
+    }
+
+    /**
+     * An empty string stands in for an empty list, which `IN ()` cannot be: it matches no role.
+     *
+     * @param list<BackedEnum> $cases
+     *
+     * @return non-empty-list<string>
+     */
+    private static function values(array $cases): array
+    {
+        return [] === $cases ? [''] : Vec\map($cases, static fn (BackedEnum $case): string => (string) $case->value);
     }
 
     /**

@@ -21,6 +21,7 @@ import {
   coveredBy,
   fieldKeptInSight,
   groupInWindow,
+  heightFromFocus,
   keyboardInWindow,
   keyboardLift,
   keysDownThen,
@@ -196,6 +197,15 @@ describe('a field and its button rest above the keyboard', () => {
     expect(barFits({ ...portrait, room: 312 })).toBe(true);
     expect(barFits({ ...portrait, room: 311 })).toBe(false);
     expect(barFits({ ...portrait, room: 140 })).toBe(false);
+  });
+
+  it('only when the focused field and the lines under it fit, a rule or an error (sc-29069)', () => {
+    const password = { contentY: 300, height: 120 };
+
+    expect(heightFromFocus(password, 300)).toBe(120);
+    expect(heightFromFocus(password, 340)).toBe(80);
+    expect(heightFromFocus(password, 420)).toBeNull();
+    expect(heightFromFocus(password, 200)).toBeNull();
   });
 
   it('only when the keyboard covers the group or its margin', () => {

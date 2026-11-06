@@ -168,11 +168,11 @@ BUILDERS = DEVS + ("l10n", "ops", "ux")
 TESTERS = ("qa", "qa2", "qa3")
 LINGUISTS = ("l10n",)
 
-# The designer builds a story's boards, working, in the app's dev-only demo area, on a
-# branch of its own. Its pull request is the designer's to open and merge, and leaves the
-# story where it is.
+# The designer builds a story's boards, working, in the dev-only design demos (the app's,
+# and the web's for desktop web boards), on a branch of its own. Its pull request is the
+# designer's to open and merge, and leaves the story where it is.
 DESIGN_BRANCH = "ux/"
-DEMO = ("apps/mobile/src/demo/", "apps/mobile/app/demo/")
+DEMO = ("apps/mobile/src/demo/", "apps/mobile/app/demo/", "apps/web/src/demo/")
 
 
 def is_design_branch(branch):

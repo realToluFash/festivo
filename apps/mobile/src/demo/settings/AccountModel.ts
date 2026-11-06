@@ -275,7 +275,6 @@ export function zoneLine(zone: ZoneRow): string {
   return `Time zone · ${zone.id.replace(/_/gu, ' ')}`;
 }
 
-/** Under a section's rows: how many more fit, or that the account holds the most. */
 export function contactsFoot(kind: ContactKind, rows: readonly Contact[]): string {
   const left = contactsLeft(rows);
   if (left === 0)
@@ -391,7 +390,6 @@ export interface ConfirmSays {
   checked: boolean;
 }
 
-/** What Confirm it's you asks for: in place of both fields, the provider you sign in with. */
 export interface ProofAsks {
   lead: string;
   note?: string | undefined;

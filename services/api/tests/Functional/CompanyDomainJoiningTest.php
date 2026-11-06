@@ -20,7 +20,6 @@ use App\Entity\User;
 use App\Enum\ErrorCode;
 use App\Enum\MembershipChannel;
 use App\Enum\MembershipStatus;
-use App\Enum\Permission;
 use App\Enum\SeededRole;
 use App\Repository\JoinOfferDismissalRepository;
 use App\Repository\MembershipRepository;
@@ -162,7 +161,7 @@ final class CompanyDomainJoiningTest extends ApiTestCase
     public function aRoleThatCannotManageMembersCannotSeeOrChangeTheList(): void
     {
         [$owner, $organisation] = $this->organisation('folake@ire.events', 'Ìrè Events');
-        $coordinator = $this->member($organisation, 'tunde@ire.events', SeededRole::Coordinator);
+        $coordinator = $this->member($organisation, 'tunde@ire.events', SeededRole::Member);
         $this->signIn($coordinator);
 
         $this->send('GET', $this->domains($organisation));
@@ -291,7 +290,7 @@ final class CompanyDomainJoiningTest extends ApiTestCase
         );
         $membership = $this->membershipOf($newcomer, $organisation);
         self::assertSame(MembershipStatus::PendingApproval, $membership->getStatus());
-        self::assertSame(SeededRole::ReadOnly, $membership->getRole()->getSeededAs(), 'least privilege until somebody chooses');
+        self::assertSame(SeededRole::Member, $membership->getRole()->getSeededAs(), 'least privilege until somebody chooses');
         self::assertSame(MembershipChannel::Domain, $this->lastStep($membership)->getChannel());
         self::assertSame(['organisation' => [null, $organisation->getId()->toRfc4122()]], $this->audited('domain_join.asked', $membership)->getChanges());
     }
@@ -461,15 +460,12 @@ final class CompanyDomainJoiningTest extends ApiTestCase
     {
         [$owner, $organisation] = $this->organisation('folake@ire.events', 'Ìrè Events');
         $this->list($organisation, 'ire.events');
-        $reader = $this->member($organisation, 'tunde@ire.events', SeededRole::Coordinator);
-        $role = Type\instance_of(Role::class)->coerce(
-            self::service(EntityManagerInterface::class)->getRepository(Role::class)->findOneBy(['organisation' => $organisation, 'seededAs' => SeededRole::Coordinator]),
-        );
-        $role->setPermissions([...$role->getPermissions(), Permission::MembersRead]);
+        $member = $this->member($organisation, 'tunde@ire.events', SeededRole::Member);
         self::service(JoinRequester::class)->ask($this->newcomer('ada@okafor.family', 'ada@ire.events'), $organisation);
 
-        $this->signIn($reader);
-        self::assertNotContains('pending_approval', $this->statuses($organisation), 'a reader who cannot decide');
+        $this->signIn($member);
+        $this->send('GET', '/api/orgs/' . $organisation->getId()->toRfc4122() . '/members');
+        self::assertResponseStatusCodeSame(403, 'a Member does not see the members');
 
         $this->signIn($owner);
         self::assertContains('pending_approval', $this->statuses($organisation));

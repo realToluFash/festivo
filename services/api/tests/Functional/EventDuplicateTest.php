@@ -16,12 +16,14 @@ use App\Entity\Organisation;
 use App\Entity\Role;
 use App\Entity\User;
 use App\Enum\ErrorCode;
+use App\Enum\EventRole;
 use App\Enum\MembershipStatus;
 use App\Enum\SeededRole;
 use App\Storage\ObjectStore;
 use App\Tests\ApiTestCase;
 use App\Tests\Double\ScriptedActiveEventsLimit;
 use App\Tests\Traits\OnboardsAccounts;
+use App\Tests\Traits\PutsPeopleOnEvents;
 use DateTimeImmutable;
 use Doctrine\DBAL\Connection;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
@@ -37,6 +39,7 @@ final class EventDuplicateTest extends ApiTestCase
 {
     use ClockSensitiveTrait;
     use OnboardsAccounts;
+    use PutsPeopleOnEvents;
 
     /** @mago-expect lint:no-literal-password */
     private const string PASSWORD = 'a decent passphrase';
@@ -218,21 +221,21 @@ final class EventDuplicateTest extends ApiTestCase
         self::assertNotNull($this->violation('startsAt'));
     }
 
-    /** @return iterable<string, array{SeededRole, bool}> */
+    /** @return iterable<string, array{SeededRole, ?EventRole, bool}> */
     public static function creators(): iterable
     {
-        yield 'an administrator' => [SeededRole::Administrator, true];
-        yield 'an event manager' => [SeededRole::EventManager, true];
-        yield 'a coordinator' => [SeededRole::Coordinator, false];
-        yield 'a read-only member' => [SeededRole::ReadOnly, false];
+        yield 'an administrator' => [SeededRole::Admin, null, true];
+        yield 'a lead' => [SeededRole::Member, EventRole::Lead, false];
+        yield 'can edit' => [SeededRole::Member, EventRole::CanEdit, false];
+        yield 'can view' => [SeededRole::Member, EventRole::CanView, false];
     }
 
     #[Test]
     #[DataProvider('creators')]
-    public function onlyCreateEventsDuplicates(SeededRole $seeded, bool $creates): void
+    public function onlyCreateEventsDuplicates(SeededRole $seeded, ?EventRole $on, bool $creates): void
     {
         $id = $this->original();
-        $member = $this->member('member@ire.events', $seeded);
+        $member = $this->member('member@ire.events', $seeded, $id, $on);
 
         $this->as($member, 'POST', '/api/events/' . $id . '/duplicate', ['startsAt' => '2027-05-15T16:00']);
 
@@ -384,13 +387,17 @@ final class EventDuplicateTest extends ApiTestCase
         return $user;
     }
 
-    private function member(string $address, SeededRole $seeded): User
+    private function member(string $address, SeededRole $seeded, ?string $eventId = null, ?EventRole $on = null): User
     {
         $user = $this->account($address);
         $organisation = self::em()->find(Organisation::class, $this->organisation->getId()) ?? self::fail('no organisation');
         $role = self::em()->getRepository(Role::class)->findOneBy(['organisation' => $organisation, 'seededAs' => $seeded]) ?? self::fail('no role');
         self::em()->persist(new Membership($organisation, $user, $role, MembershipStatus::Active, new DateTimeImmutable()));
         self::em()->flush();
+
+        if (null !== $eventId && null !== $on) {
+            self::onEvent($user, $eventId, $on);
+        }
 
         return $user;
     }

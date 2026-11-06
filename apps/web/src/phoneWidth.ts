@@ -14,7 +14,7 @@ export function useWideWidth(): boolean {
   return useMatches(WIDE_WIDTH);
 }
 
-function useMatches(media: string): boolean {
+export function useMatches(media: string): boolean {
   return useSyncExternalStore(
     (changed) => {
       const query = window.matchMedia(media);

@@ -13,15 +13,17 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Sheet } from '../../components/Sheet.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
-import { Glyph, type GlyphName } from '../Glyph.tsx';
-import { TabBar } from '../TodayCover.tsx';
+import { Glyph, type GlyphName } from '../../components/Glyph.tsx';
+import { TabBar } from '../../components/TodayCover.tsx';
 import {
   SidebarColumn,
   SidebarFoot,
   SidebarHead,
   SidebarPlace,
   SidebarPlaces,
-} from '../TodaySidebar.tsx';
+} from '../../components/TodaySidebar.tsx';
+import { TodayShellProvider } from '../../components/todayShell.ts';
+import { demoShell } from '../demoShell.ts';
 import { LineIcon } from '../settings/AccountCard.tsx';
 import { Bell, Fade, Landscape, PHONE_TAB_BAR, useShell } from '../settings/Frame.tsx';
 import { Back } from '../settings/parts.tsx';
@@ -306,55 +308,57 @@ function EventSidebar({
   const tags = cardTags(event, now).map((tag) => tag.word);
 
   return (
-    <SidebarColumn>
-      <SidebarHead tell={shell.tell} search={false} />
-      <Pressable
-        onPress={backToEvents}
-        style={({ pressed }) => [styles.sideBack, pressed && styles.pressed]}
-        accessibilityRole="button"
-        accessibilityLabel={`Back to ${W.events}`}
-        testID="event.side.back"
-      >
-        <Glyph name="back" size={17} ink={tokens.colorInkSecondary} weight={2.4} />
-        <Text size={14} weight="semibold" accessible={false} style={styles.secondary}>
-          {W.events}
-        </Text>
-      </Pressable>
-      <View
-        style={styles.sideCard}
-        accessible
-        accessibilityLabel={`${event.name}. ${tags.join(', ')}`}
-      >
-        <EventThumb event={event} side={40} radius={12} />
-        <View style={styles.grow}>
-          <Text size={14} weight="bold" numberOfLines={2} accessible={false}>
-            {event.name}
+    <TodayShellProvider value={{ ...demoShell(shell.tell), person: shell.looking }}>
+      <SidebarColumn>
+        <SidebarHead search={false} />
+        <Pressable
+          onPress={backToEvents}
+          style={({ pressed }) => [styles.sideBack, pressed && styles.pressed]}
+          accessibilityRole="button"
+          accessibilityLabel={`Back to ${W.events}`}
+          testID="event.side.back"
+        >
+          <Glyph name="back" size={17} ink={tokens.colorInkSecondary} weight={2.4} />
+          <Text size={14} weight="semibold" accessible={false} style={styles.secondary}>
+            {W.events}
           </Text>
-          <Text size={12.5} weight="medium" accessible={false} style={styles.secondary}>
-            {tags.join(' · ')}
-          </Text>
+        </Pressable>
+        <View
+          style={styles.sideCard}
+          accessible
+          accessibilityLabel={`${event.name}. ${tags.join(', ')}`}
+        >
+          <EventThumb event={event} side={40} radius={12} />
+          <View style={styles.grow}>
+            <Text size={14} weight="bold" numberOfLines={2} accessible={false}>
+              {event.name}
+            </Text>
+            <Text size={12.5} weight="medium" accessible={false} style={styles.secondary}>
+              {tags.join(' · ')}
+            </Text>
+          </View>
         </View>
-      </View>
-      <SidebarPlaces>
-        {AREAS.map((one) => (
-          <SidebarPlace
-            key={one}
-            label={AREA_WORDS[one]}
-            glyph={AREA_GLYPH[one]}
-            on={one === area}
-            onPress={() => toArea(one, onArea)}
-            testID={`event.side.${one}`}
-          />
-        ))}
-      </SidebarPlaces>
-      <View style={styles.grow} />
-      <SidebarFoot
-        onTab={shell.onTab}
-        at={null}
-        onPerson={() => shell.openSection('account')}
-        person={shell.looking}
-      />
-    </SidebarColumn>
+        <SidebarPlaces>
+          {AREAS.map((one) => (
+            <SidebarPlace
+              key={one}
+              label={AREA_WORDS[one]}
+              glyph={AREA_GLYPH[one]}
+              on={one === area}
+              onPress={() => toArea(one, onArea)}
+              testID={`event.side.${one}`}
+            />
+          ))}
+        </SidebarPlaces>
+        <View style={styles.grow} />
+        <SidebarFoot
+          onTab={shell.onTab}
+          at={null}
+          onPerson={() => shell.openSection('account')}
+          person={shell.looking}
+        />
+      </SidebarColumn>
+    </TodayShellProvider>
   );
 }
 

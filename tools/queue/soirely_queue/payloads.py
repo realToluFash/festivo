@@ -93,7 +93,7 @@ def review(p, db, row, story, pr, cache):
     V.pr_status(p, pr)
     if W.design_pr(pr):
         p.add("", f"A design pull request from {pr['branch']}: the story's boards built in the "
-                  f"app's demo area. It may change only {' and '.join(R.DEMO)}, the designer "
+                  f"design demos. It may change only {', '.join(R.DEMO)}, the designer "
                   f"merges it, and sc-{story['id']} stays {story['state']} whatever the verdict.")
     V.lead_threads(p, pr)
     V.pr_section(p, pr, "Risks", always=True)
@@ -177,7 +177,7 @@ def merge(p, pr, story, row):
         merges = ("merges it once it changes only locale files; then move the ticket to Ready "
                   "For QA if everything it covers is merged, as your skill's section 5 says")
     elif W.design_pr(pr):
-        merges = (f"merges at the passed sha once it changes only {' and '.join(R.DEMO)}; "
+        merges = (f"merges at the passed sha once it changes only {', '.join(R.DEMO)}; "
                   f"sc-{story['id']} stays {story['state']} and no tester is told")
     elif W.side_pr(story, pr) and not W.finished(story):
         merges = (f"merges at the passed sha; sc-{story['id']} is a translation ticket and "

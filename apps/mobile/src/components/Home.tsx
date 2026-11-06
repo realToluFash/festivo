@@ -1,5 +1,5 @@
-import { type Membership, primaryEmailAddress } from '@soirely/api-client';
-import { roleName } from '@soirely/domain';
+import { type Account, type Membership, primaryEmailAddress } from '@soirely/api-client';
+import { roleHolds, roleName } from '@soirely/domain';
 import { router } from 'expo-router';
 import { type Ref, type RefObject, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View, type ViewInstance } from 'react-native';
@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next';
 import { DESTINATION_HREF } from '../kit/appNav.ts';
 import { stepOpeners } from '../kit/stepOpeners.ts';
 import { type LayoutKind, useLayout } from '../layout/useLayout.ts';
+import { NOT_OFFLINE, type ScreenOffline } from '../offline.ts';
 import { useSignedIn } from '../signedIn.ts';
 import { useTappedSwitch } from '../tappedSwitch.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -22,15 +23,63 @@ import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import { NOTICE_PLACES, type NoticePlace, SignInRulesNotices } from './SignInRulesNotices.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { Text, type TextHandle } from './Text.tsx';
+import { TodayLanding } from './TodayLanding.tsx';
 
 /** The signed-in home, `AppSettings-*` state `home`: where the app opens once somebody is in. */
 export function Home() {
   const { t } = useTranslation();
+  const { account, organisation } = useSignedIn();
+  const today =
+    account != null && organisation != null && roleHolds(organisation, 'events.read')
+      ? { account, organisation }
+      : null;
+  const [offline, setOffline] = useState<ScreenOffline>(NOT_OFFLINE);
 
   return (
-    <AppFrame current="home" title={t('frame.home')} bodyTakesSwitch>
-      <HomeBody />
+    <AppFrame
+      current="home"
+      title={t('frame.home')}
+      bodyTakesSwitch
+      ownChrome={today != null}
+      offline={offline.stale}
+    >
+      {today == null ? (
+        <HomeBody />
+      ) : (
+        <TodayBody key={today.organisation.id} {...today} onOffline={setOffline} />
+      )}
     </AppFrame>
+  );
+}
+
+function TodayBody({
+  account,
+  organisation,
+  onOffline,
+}: {
+  account: Account;
+  organisation: Membership;
+  onOffline: (offline: ScreenOffline) => void;
+}) {
+  const { place, onClosed } = useNextAfterClosed();
+
+  return (
+    <TodayLanding
+      account={account}
+      organisation={organisation}
+      onOffline={onOffline}
+      notices={
+        <View style={styles.notices}>
+          <LinkedNotice wordsRef={place('linked')} onDismissed={() => onClosed('linked')} />
+          <SignInRulesNotices
+            key={organisation.id}
+            organisation={organisation}
+            place={place}
+            onClosed={onClosed}
+          />
+        </View>
+      }
+    />
   );
 }
 
@@ -156,6 +205,7 @@ const styles = StyleSheet.create({
     paddingBottom: tokens.space6xl,
   },
   lines: { gap: tokens.spaceXxs },
+  notices: { gap: tokens.spaceMd },
   actions: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: tokens.spaceSm },
 });
 

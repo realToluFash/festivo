@@ -1,4 +1,4 @@
-# sc-11741: after request-link-register.yaml and the link replaced elsewhere: verify the address, Continue, and land on the dead-link screen. Pass CODE.
+# sc-11741: after request-link-register.yaml and the link replaced elsewhere: verify the address and land on the dead-link screen. Pass CODE.
 appId: host.exp.Exponent
 ---
 - launchApp:
@@ -11,17 +11,6 @@ appId: host.exp.Exponent
 - tapOn:
     id: 'verifyEmail.code'
 - inputText: ${CODE}
-- scrollUntilVisible:
-    element:
-      id: 'verifyEmail.submit'
-- tapOn:
-    id: 'verifyEmail.submit'
-- extendedWaitUntil:
-    visible:
-      id: 'verifyEmail.continue'
-    timeout: 30000
-- tapOn:
-    id: 'verifyEmail.continue'
 - extendedWaitUntil:
     visible:
       id: 'requestToJoin.home'

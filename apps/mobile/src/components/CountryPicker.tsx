@@ -14,6 +14,7 @@ export function CountryPicker({
   onChange,
   disabled = false,
   withCallingCode = false,
+  compact = false,
   pickerRef,
   testID,
 }: {
@@ -23,6 +24,8 @@ export function CountryPicker({
   disabled?: boolean;
   /** For a phone: "+234 Nigeria", and only countries that can be dialled. */
   withCallingCode?: boolean;
+  /** Only the flag and the calling code, "🇬🇧 +44", beside a number. */
+  compact?: boolean;
   /** For moving screen-reader focus here when it is the field refused first. */
   pickerRef?: Ref<ViewInstance> | undefined;
   testID: string;
@@ -48,10 +51,18 @@ export function CountryPicker({
       value={value}
       onChange={onChange}
       disabled={disabled}
+      shown={compact ? `${flag(value)} ${callingCode(value) ?? ''}`.trim() : undefined}
       pickerRef={pickerRef}
       testID={testID}
     />
   );
+}
+
+/** A country's flag, from the regional indicator letters of its code. */
+function flag(country: string): string {
+  if (!/^[A-Z]{2}$/u.test(country)) return '';
+
+  return String.fromCodePoint(...[...country].map((letter) => 0x1f1a5 + letter.charCodeAt(0)));
 }
 
 /** A refused Country is no text field: the keyboard closes and the screen reader lands on the picker. With `field`, that Field comes wholly into view: on New event that is any refusal the form focuses, a server's as well as a client check's. */

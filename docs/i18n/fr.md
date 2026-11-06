@@ -17,33 +17,34 @@ The rules every locale shares are in `.claude/skills/locale-parity`.
 One way to say each recurring thing, everywhere. Seeded from the catalogues as they stood on
 17 October 2026; the linguist reviews each row and marks it settled in Notes.
 
-| English                   | French                  | Notes                            |
-| ------------------------- | ----------------------- | -------------------------------- |
-| Settings                  | Paramètres              | Settled: also the app's tab      |
-| Home                      | Accueil                 | Settled: the app's tab           |
-| Account / Security        | Compte / Sécurité       | Settled: section names           |
-| Ways to sign in           | Moyens de connexion     | Settled                          |
-| Signed-in devices         | Appareils connectés     | Settled                          |
-| Start again               | Recommencer             | Settled                          |
-| Organisation              | Organisation            | Settled: section name, same word |
-| Sign in                   | Se connecter            |                                  |
-| Sign out                  | Déconnecter             |                                  |
-| Email                     | Adresse e-mail          | Settled 29 Oct: plain hyphen     |
-| Password                  | Mot de passe            |                                  |
-| Continue                  | Continuer               |                                  |
-| Cancel                    | Annuler                 |                                  |
-| Two-factor authentication | Double authentification | Settled: also "two-factor" alone |
-| Recovery code             | Code de récupération    |                                  |
-| Primary (address, number) | Principale / principal  | Settled 18 Oct: agrees with noun |
-| Other addresses, numbers  | Les autres adresses     | Settled 18 Oct: never secondaire |
-| Phone number              | Numéro de téléphone     | Settled 18 Oct: any number       |
-| Mobile number             | Numéro de portable      | Settled 18 Oct: the SMS field    |
-| Remove (from the account) | Retirer                 | Settled 18 Oct: not Supprimer    |
-| Linked (to an account)    | Associé                 | Settled 18 Oct: as `waysCard`    |
-| Unverified                | À vérifier              | Settled 18 Oct: no agreement     |
-| Account mail              | Les e-mails du compte   | Settled 18 Oct                   |
-| Sign-in rules             | Règles de connexion     | Settled 19 Oct                   |
-| Try again (button)        | Réessayer               | Settled 1 Nov, sc-26974          |
+| English                   | French                                 | Notes                            |
+| ------------------------- | -------------------------------------- | -------------------------------- |
+| Settings                  | Paramètres                             | Settled: also the app's tab      |
+| Home                      | Accueil                                | Settled: the app's tab           |
+| Account / Security        | Compte / Sécurité                      | Settled: section names           |
+| Ways to sign in           | Moyens de connexion                    | Settled                          |
+| Signed-in devices         | Appareils connectés                    | Settled                          |
+| Start again               | Recommencer                            | Settled                          |
+| Organisation              | Organisation                           | Settled: section name, same word |
+| Sign in                   | Se connecter                           |                                  |
+| Sign out                  | Déconnecter                            |                                  |
+| Email                     | Adresse e-mail                         | Settled 29 Oct: plain hyphen     |
+| Password                  | Mot de passe                           |                                  |
+| Continue                  | Continuer                              |                                  |
+| Cancel                    | Annuler                                |                                  |
+| Two-factor authentication | Double authentification                | Settled: also "two-factor" alone |
+| Recovery code             | Code de récupération                   |                                  |
+| Primary (address, number) | Principale / principal                 | Settled 18 Oct: agrees with noun |
+| Other addresses, numbers  | Les autres adresses                    | Settled 18 Oct: never secondaire |
+| Phone number              | Numéro de téléphone                    | Settled 18 Oct: any number       |
+| Mobile number             | Numéro de portable                     | Settled 18 Oct: the SMS field    |
+| Remove (from the account) | Retirer                                | Settled 18 Oct: not Supprimer    |
+| Linked (to an account)    | Associé                                | Settled 18 Oct: as `waysCard`    |
+| Unverified                | À vérifier                             | Settled 18 Oct: no agreement     |
+| Account mail              | Les e-mails du compte                  | Settled 18 Oct                   |
+| Sign-in rules             | Règles de connexion                    | Settled 19 Oct                   |
+| Try again (button)        | Réessayer                              | Settled 1 Nov, sc-26974          |
+| Owner / Admin / Member    | Propriétaire / Administrateur / Membre | Settled 5 Nov, sc-29914          |
 
 - **« e-mail » keeps a plain hyphen (U+002D)**, never U+2011, even where it wraps as « e- » /
   « mail » (sc-20577, #20957). A break at a hyphen is ordinary French typography; U+2011 is
@@ -60,6 +61,21 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **5 Nov 2026. An event's People refusals** (`messages:people.*`, sc-30009). Who can act is
+  « une personne ayant le rôle Propriétaire ou Administrateur, ou la personne responsable de
+  l’événement », so nothing agrees with a gender. The event role Lead in a sentence is « la
+  personne responsable de l’événement ». The job label is « l’intitulé du poste ».
+- **4 nov. 2026. Les lignes sous chaque refus d’invitation sur le web de bureau**
+  (`web:join.refused.*.line`, `web:requestToJoin.deadLine`, sc-29487 pour sc-29066). Chaque
+  ligne ne répète pas son titre : celle d’une organisation supprimée est « L’invitation à
+  rejoindre {{organisation}} ne peut plus être acceptée ». Déjà acceptée dit « Vous faites déjà
+  partie de {{organisation}} », comme `requestToJoin.member` ; rien n’accorde avec le lecteur
+  (« la personne à l’origine de l’invitation », « Vous utilisez le compte {{signedInAs}} »).
+- **4 nov. 2026. Les étapes d’un nouveau compte dans l’app** (`mobile:steps.*`, sc-29126 pour
+  sc-29069). La barre dit « Étape {{step}} sur {{steps}} » ; Skip est « Passer », jamais
+  « Ignorer » ; Check WhatsApp est « Consultez WhatsApp », comme « Consultez votre boîte mail ».
+  "On the night" est « le soir de l’événement » quand rien avant ne nomme le soir, « le soir
+  même » seulement après.
 - **1 nov. 2026. Les événements et la navigation propre à un événement** (sc-26732 pour
   sc-22103, `web:events.*`, `mobile:eventsScreen.*`, `eventNav.*`, web et app). Les espaces :
   « Aperçu », « Invités », « Menu », « Plan de table », « Messages », « Programme », « Équipe »,
@@ -681,3 +697,7 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
 - **Le bandeau hors ligne** (sc-22586) : « Hors ligne · mis à jour à {{time}} », et « … le {{day}}
   à {{time}} » quand le chargement date d’un autre jour. « Mis à jour » dit de quand date ce qui
   s’affiche, plutôt que de calquer « as of ». Pendant la nouvelle tentative, « Actualisation… ».
+- **Le cadre des pages hors session** (sc-29037) : « New to Soirely? » est « Pas encore de
+  compte ? », avant « Créer un compte » ; « Nouveau sur Soirely ? » s’accorde avec un genre.
+  « © {{year}} Soirely » reste identique à l’anglais. Le bouton de langue se lit « Langue : {{language}} ».
+- **Annuler une demande pour revenir** (sc-29979) : « Annuler votre demande ? » ; la sortie est « Continuer d’attendre », jamais « Annuler », et la confirmation reprend « Annuler la demande ».

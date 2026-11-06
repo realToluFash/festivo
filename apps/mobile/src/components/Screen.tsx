@@ -36,6 +36,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
   barFits,
+  heightFromFocus,
   groupInWindow,
   keysOver,
   liftNeeded,
@@ -76,6 +77,8 @@ interface ScreenScrollView {
   ref: RefObject<ScrollViewInstance | null>;
   /** Called when the scroll view itself resizes, which a child's onLayout does not see. */
   resized: Set<() => void>;
+  /** Called with the height a lift group needs from the focused field's top to its own end, as the group lifts with focus inside it. */
+  focusedGroup: Set<(height: number) => void>;
   /** Where a view at the screen's top measures in the window. */
   origin: { current: number };
   /** The offset the native scroll view last reported. */
@@ -92,7 +95,7 @@ interface ScreenScrollView {
   answeringNow(): boolean;
 }
 
-const ScreenScroll = createContext<ScreenScrollView | null>(null);
+export const ScreenScroll = createContext<ScreenScrollView | null>(null);
 
 interface ScreenDock {
   /** The height between the scroll view's top and the keys, or null while the keys are down. */
@@ -169,6 +172,8 @@ function liftAboveKeyboard(
         const focusTop =
           focusY == null ? undefined : groupInWindow({ scrollTop, contentY: focusY, offset });
         const group = { y: groupY, height };
+        const needed = focusY == null ? null : heightFromFocus({ contentY, height }, focusY);
+        if (needed != null) scroll.focusedGroup.forEach((needs) => needs(needed));
         if (!liftNeeded({ shown, group, focusTop, scrollTop, margin: tokens.spaceLg })) return;
 
         view.scrollTo({
@@ -238,6 +243,11 @@ export function useAboveKeyboard(still = false): AboveKeyboard {
       if (!still) liftAboveKeyboard(scroll, ref.current, keyboardTop.current);
     },
   };
+}
+
+/** A View that spreads useAboveKeyboard, for a screen that renders its own StepScreen: the hook finds its scroll from where it is called, and above the StepScreen there is none (sc-29069). */
+export function AboveKeyboardView({ still = false, ...props }: ViewProps & { still?: boolean }) {
+  return <View {...props} {...useAboveKeyboard(still)} />;
 }
 
 /** The height a group may take between the scroll view's top and the keyboard, or null while the keys are down. */
@@ -955,7 +965,7 @@ export function FocusBack({
 }
 
 /** The scroll context a ScrollView provides, and the props that keep it in step with that view. */
-function useScreenScrollView() {
+export function useScreenScrollView() {
   const windowOrigin = useContext(Origin);
   const origin = useRef(windowOrigin);
   const scrollView = useRef<ScrollViewInstance>(null);
@@ -969,6 +979,7 @@ function useScreenScrollView() {
   const [screenScroll] = useState<ScreenScrollView>(() => ({
     ref: scrollView,
     resized: new Set(),
+    focusedGroup: new Set(),
     origin,
     offset,
     answering: (on) => {

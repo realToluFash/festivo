@@ -15,7 +15,7 @@ appId: host.exp.Exponent
 - openLink: ${METRO_URL}/--/
 - extendedWaitUntil:
     visible:
-      id: 'signIn.email'
+      id: 'welcome.email'
     timeout: 60000
 - assertVisible: 'You were signed out'
 - assertVisible: 'Sign in again to carry on.'
