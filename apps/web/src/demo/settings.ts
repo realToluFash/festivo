@@ -5,11 +5,13 @@ export type Section =
   'account' | 'security' | 'notifications' | 'general' | 'members' | 'roles' | 'signInRules';
 
 /** The sections the boards draw; the others, Roles among them, each have their own design. */
-export type Drawn = 'account' | 'security' | 'general' | 'members' | 'signInRules';
+export type Drawn =
+  'account' | 'security' | 'notifications' | 'general' | 'members' | 'signInRules';
 
 const PATHS: Record<Drawn, string> = {
   account: 'account',
   security: 'security',
+  notifications: 'notifications',
   general: 'general',
   members: 'members',
   signInRules: 'sign-in-rules',
@@ -110,6 +112,7 @@ export function isDrawn(section: Section): section is Drawn {
   return (
     section === 'account' ||
     section === 'security' ||
+    section === 'notifications' ||
     section === 'general' ||
     section === 'members' ||
     section === 'signInRules'
