@@ -17,6 +17,7 @@ import { NotificationsSection } from './Notifications.tsx';
 import { OrganisationSection } from './Organisation.tsx';
 import {
   type DemoSection,
+  lookingAs,
   SECTIONS,
   type SettingsLayout,
   type Viewer,
@@ -105,6 +106,7 @@ export function SettingsRoute({ section }: { section: DemoSection | null }) {
     () => ({
       layout,
       viewer,
+      looking: lookingAs(viewer),
       open: shown,
       openSection,
       toSettings,

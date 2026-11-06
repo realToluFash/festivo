@@ -1,4 +1,4 @@
-import { createContext, type ReactNode, type Ref, useContext } from 'react';
+import { createContext, type ReactNode, type Ref, useContext, useMemo } from 'react';
 import { Pressable, ScrollView, type ScrollViewInstance, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
@@ -13,11 +13,12 @@ import { PhoneTabBar, TABS, type Tab } from '../TodayCover.tsx';
 import type { Tell } from '../TodayParts.tsx';
 import { TodaySidebar } from '../TodaySidebar.tsx';
 import { Back, RoundButton, Tile, TYPE } from './parts.tsx';
-import type { SettingsLayout, Viewer } from './sample.ts';
+import { type Looking, type SettingsLayout, type Viewer, viewerOfRole } from './sample.ts';
 
 export interface Shell {
   layout: SettingsLayout;
   viewer: Viewer;
+  looking: Looking;
   open: SettingsSection | null;
   /** A state opens the section where a step on another page left off: Security's setup. */
   openSection: (section: SettingsSection, state?: string) => void;
@@ -34,6 +35,17 @@ export function useShell(): Shell {
   if (shell == null) throw new Error('A Settings page is drawn inside the demo’s Settings route.');
 
   return shell;
+}
+
+/** A page whose sample someone else sees: the Settings card, its rows and the sidebar's foot follow them. */
+export function SeenBy({ looking, children }: { looking: Looking; children: ReactNode }) {
+  const shell = useShell();
+  const seen = useMemo(
+    () => ({ ...shell, looking, viewer: viewerOfRole(looking.role) }),
+    [shell, looking],
+  );
+
+  return <ShellContext.Provider value={seen}>{children}</ShellContext.Provider>;
 }
 
 export const PHONE_TAB_BAR = 64;
@@ -175,6 +187,7 @@ export function Landscape({
         tell={shell.tell}
         at="Settings"
         onPerson={() => shell.openSection('account')}
+        person={shell.looking}
       />
       <View style={[styles.main, { marginBottom: Math.max(insets.bottom, tokens.spaceMd) }]}>
         <View style={styles.column}>{column}</View>

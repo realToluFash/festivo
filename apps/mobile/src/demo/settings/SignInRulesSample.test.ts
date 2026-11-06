@@ -18,6 +18,7 @@ import {
   wasWords,
   whereYouStand,
 } from './SignInRulesSample.ts';
+import { memberLooking } from './sample.ts';
 
 const BY = { name: 'Folake Adeyemi' };
 
@@ -278,5 +279,17 @@ describe('Sign-in rules: what changed', () => {
     expect(signInRulesStateOf(undefined)).toBe('rules');
     expect(signInRulesStart('failed').load).toBe('failed');
     expect(signInRulesStart('loading').load).toBe('loading');
+  });
+
+  it('is seen by a member of the sample, whose role the page reads', () => {
+    const looking = (state: SignInRulesState) => {
+      const { viewer } = signInRulesStart(state);
+
+      return { ...memberLooking(viewer.id), held: viewer.role };
+    };
+
+    expect(looking('rules')).toMatchObject({ name: 'Julien Moreau', role: 'Admin', held: 'Admin' });
+    expect(looking('notYours')).toMatchObject({ name: 'Priya Shah', held: 'Member' });
+    expect(looking('googleOnly')).toMatchObject({ name: 'Ana Souza', held: 'Member' });
   });
 });

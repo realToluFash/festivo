@@ -11,6 +11,7 @@ import type { Tell } from '../TodayParts.tsx';
 import { useCoverStatusBar } from '../Welcome.tsx';
 import { type Shell, ShellContext } from '../settings/Frame.tsx';
 import { layoutOf, settingsHref } from '../settings/Route.tsx';
+import { lookingAs } from '../settings/sample.ts';
 import { PageToast } from '../settings/Summary.tsx';
 import { PeopleSection } from './People.tsx';
 
@@ -40,6 +41,7 @@ export function PeopleRoute() {
     () => ({
       layout,
       viewer: 'owner',
+      looking: lookingAs('owner'),
       open: null,
       openSection,
       toSettings,

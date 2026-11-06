@@ -1,11 +1,13 @@
 import { formattingLocale } from '@soirely/domain';
 import { getLocales } from 'expo-localization';
 import { useLocalSearchParams } from 'expo-router';
+import { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { tokens } from '../../theme/tokens.ts';
-import { useShell } from './Frame.tsx';
+import { SeenBy, useShell } from './Frame.tsx';
 import { useLoad } from './MembersLoading.tsx';
+import { memberLooking } from './sample.ts';
 import {
   ASK_OWNER,
   type ChangeRow,
@@ -45,8 +47,14 @@ const hidden = {
 export function SignInRulesSection() {
   const { state } = useLocalSearchParams<{ state?: string }>();
   const name = signInRulesStateOf(state);
+  const start = useMemo(() => signInRulesStart(name), [name]);
+  const looking = useMemo(() => memberLooking(start.viewer.id), [start]);
 
-  return <SignInRulesPage key={name} start={signInRulesStart(name)} />;
+  return (
+    <SeenBy looking={looking}>
+      <SignInRulesPage key={name} start={start} />
+    </SeenBy>
+  );
 }
 
 function SignInRulesPage({ start }: { start: SignInRulesStart }) {

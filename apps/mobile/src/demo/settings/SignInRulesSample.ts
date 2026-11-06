@@ -32,6 +32,8 @@ export type Area = 'members' | 'billing' | 'security';
 
 /** Who is looking, from the session, the account's linked ways and signInRulesSeen. */
 export interface RulesViewer {
+  /** Their email, as Members keys a person. */
+  id: string;
   role: string;
   manages: readonly Area[];
   /** organisation.manage: may change the rules, on the web. */
@@ -318,6 +320,7 @@ const RULES: RulesPage = {
 const ONLY_HERE = { organisation: ORG, days: 30 };
 
 const JULIEN: RulesViewer = {
+  id: 'julien@ire.events',
   role: 'Admin',
   manages: ['members'],
   setsRules: true,
@@ -326,6 +329,7 @@ const JULIEN: RulesViewer = {
 };
 
 const PRIYA: RulesViewer = {
+  id: 'priya@ire.events',
   role: 'Member',
   manages: [],
   setsRules: false,
@@ -334,6 +338,7 @@ const PRIYA: RulesViewer = {
 };
 
 const ANA: RulesViewer = {
+  id: 'ana.souza@ire.events',
   role: 'Member',
   manages: [],
   setsRules: false,

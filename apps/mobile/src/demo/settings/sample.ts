@@ -69,6 +69,25 @@ export const VIEWER_PERSON: Record<Viewer, { name: string; initials: string; ema
   noOrg: YOU,
 };
 
+/** Who is looking, as the Settings card and the sidebar's foot show them: no role outside an organisation. */
+export interface Looking {
+  name: string;
+  initials: string;
+  email: string;
+  role: string | null;
+}
+
+export function lookingAs(viewer: Viewer): Looking {
+  return { ...VIEWER_PERSON[viewer], role: VIEWER_ORGANISATION[viewer]?.role ?? null };
+}
+
+/** The sections follow the role: an admin manages as an owner does. */
+export function viewerOfRole(role: string | null): Viewer {
+  if (role == null) return 'noOrg';
+
+  return role === 'Member' ? 'member' : 'owner';
+}
+
 export type MemberStatus =
   'active' | 'pendingApproval' | 'suspended' | 'domainSuspended' | 'former';
 
@@ -166,6 +185,14 @@ export const MEMBERS: readonly SampleMember[] = [
     when: '2026-09-30',
   },
 ];
+
+/** A member of Ire Events as the one looking, for a page whose sample someone else sees. */
+export function memberLooking(email: string): Looking {
+  const member = MEMBERS.find((one) => one.email === email);
+  if (member == null) throw new Error(`${email} is not one of the sample’s members.`);
+
+  return { name: member.name, initials: member.initials, email: member.email, role: member.role };
+}
 
 export interface SampleRole {
   name: string;

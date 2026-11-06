@@ -25,6 +25,7 @@ import {
   waitingLine,
   whenWord,
 } from './MembersSample.ts';
+import { memberLooking } from './sample.ts';
 
 const us = membersSayIn('en-US');
 const gb = membersSayIn('en-GB');
@@ -158,6 +159,20 @@ describe('Members in the demo', () => {
     expect(membersStart('self').people.every((one) => one.status !== 'suspended')).toBe(true);
     expect(own('selfOwner').you.name).toBe('Folake Adeyemi');
     expect(own('selfOwner').standing).toBe('selfOwner');
+  });
+
+  it('puts whoever looks at the sidebar’s foot: Julien in self and claim, Tom read only', () => {
+    const foot = (state: Parameters<typeof membersStart>[0]) => {
+      const { name, role } = memberLooking(membersStart(state).viewer.id);
+
+      return `${name} · ${role}`;
+    };
+
+    expect(foot('self')).toBe('Julien Moreau · Admin');
+    expect(foot('claim')).toBe('Julien Moreau · Admin');
+    expect(foot('withdraw')).toBe('Julien Moreau · Admin');
+    expect(foot('readOnly')).toBe('Tom Becker · Member');
+    expect(foot('list')).toBe('Folake Adeyemi · Owner');
   });
 
   it('says the count on the card, with who waits and the step to answer them', () => {

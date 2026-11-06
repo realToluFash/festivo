@@ -10,6 +10,14 @@ import type { Tab } from './TodayCover.tsx';
 import type { Tell } from './TodayParts.tsx';
 import { SAMPLE } from './samples.ts';
 
+export interface SidebarPerson {
+  name: string;
+  initials: string;
+  role: string | null;
+}
+
+const YOU: SidebarPerson = { name: SAMPLE.name, initials: 'FA', role: 'Owner' };
+
 const PLACES: readonly (readonly [Tab, GlyphName])[] = [
   ['Today', 'today'],
   ['Events', 'events'],
@@ -58,12 +66,14 @@ export function TodaySidebar({
   tell,
   at = 'Today',
   onPerson = () => tell('Your account has its own design.'),
+  person = YOU,
 }: {
   events: readonly EventKey[];
   onTab: (tab: Tab) => void;
   tell: Tell;
   at?: Tab;
   onPerson?: () => void;
+  person?: SidebarPerson;
 }) {
   return (
     <View style={styles.side}>
@@ -147,7 +157,7 @@ export function TodaySidebar({
         onPress={onPerson}
         style={styles.person}
         accessibilityRole="button"
-        accessibilityLabel={`${SAMPLE.name}, Owner`}
+        accessibilityLabel={person.role == null ? person.name : `${person.name}, ${person.role}`}
       >
         <View
           style={styles.avatar}
@@ -156,16 +166,18 @@ export function TodaySidebar({
         >
           <EventMesh event="draft" />
           <Text size={12} weight="bold" accessible={false}>
-            FA
+            {person.initials}
           </Text>
         </View>
         <View style={styles.grow}>
           <Text size={14} weight="semibold" accessible={false}>
-            {SAMPLE.name}
+            {person.name}
           </Text>
-          <Text size={12} weight="medium" accessible={false} style={styles.secondary}>
-            Owner
-          </Text>
+          {person.role != null && (
+            <Text size={12} weight="medium" accessible={false} style={styles.secondary}>
+              {person.role}
+            </Text>
+          )}
         </View>
         <Glyph name="updown" size={15} ink={tokens.colorInkSecondary} />
       </Pressable>
