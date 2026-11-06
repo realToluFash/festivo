@@ -15,7 +15,7 @@ import { Text } from '../../components/Text.tsx';
 import { Toast } from '../../components/Toast.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { CARD_PIECES, Confetti, Cover } from '../Cover.tsx';
-import { Glyph } from '../Glyph.tsx';
+import { Glyph, type GlyphName } from '../Glyph.tsx';
 import { Glass, PhoneTabBar } from '../TodayCover.tsx';
 import { Bell, Fade, Landscape, PHONE_TAB_BAR, PortraitTop, useShell } from './Frame.tsx';
 import { Avatar, Back } from './parts.tsx';
@@ -361,6 +361,25 @@ export function CardFace({ initials, side }: { initials: string; side: number })
   );
 }
 
+/** A glyph in a white disc on Confetti, ringed in glass that takes no room, as a section's card opens. */
+export function CardGlyph({ name, side }: { name: GlyphName; side: number }) {
+  const ringed = side + RING * 2;
+
+  return (
+    <View
+      style={[styles.glyphRing, { width: ringed, height: ringed, borderRadius: ringed / 2 }]}
+      {...hidden}
+    >
+      <View style={[StyleSheet.absoluteFill, styles.ringFill]} />
+      <View style={[styles.cardFace, { width: side, height: side, borderRadius: side / 2 }]}>
+        <Glyph name={name} size={Math.round(side * 0.46)} ink={tokens.colorAccent} weight={2.2} />
+      </View>
+    </View>
+  );
+}
+
+const RING = 3;
+
 export function GlassTag({ word, mark }: { word: string; mark?: MarkKind | undefined }) {
   return (
     <Glass height={28} style={[styles.glassTag, mark != null && styles.glassMarked]}>
@@ -379,31 +398,58 @@ const ROW_BARS: readonly [DimensionValue, DimensionValue][] = [
   ['50%', '44%'],
 ];
 
-/** A Sunk block where the card goes and four rows' shapes, heard as the words alone. */
-export function LoadingBlock({ words, height = 200 }: { words: string; height?: number }) {
+const ICON_BARS: readonly [DimensionValue, DimensionValue][] = [
+  ['44%', '36%'],
+  ['38%', '30%'],
+  ['34%', '40%'],
+  ['46%', '32%'],
+  ['30%', '36%'],
+  ['52%', '44%'],
+];
+
+/** A Sunk block where the card goes and the rows' shapes, heard as the words alone. */
+export function LoadingBlock({
+  words,
+  height = 200,
+  icons = false,
+}: {
+  words: string;
+  height?: number;
+  icons?: boolean;
+}) {
   useReadOut(words);
 
   return (
     <View style={styles.blocks} accessible accessibilityLabel={words}>
       <View style={[styles.sunkCard, { height }]} />
-      <RowShapes />
+      <RowShapes icons={icons} />
     </View>
   );
 }
 
 /** Rows' shapes where a section's rows go while they load; with `words`, a screen reader stops on them and hears those. */
-export function RowShapes({ count = ROW_BARS.length, words }: { count?: number; words?: string }) {
+export function RowShapes({
+  count,
+  words,
+  icons = false,
+}: {
+  count?: number;
+  words?: string;
+  icons?: boolean;
+}) {
+  const bars = icons ? ICON_BARS : ROW_BARS;
+
   return (
     <View
       accessible={words != null}
       accessibilityLabel={words}
       accessibilityState={words == null ? undefined : { busy: true }}
     >
-      {ROW_BARS.slice(0, count).map(([first, second], index) => (
+      {bars.slice(0, count ?? bars.length).map(([first, second], index) => (
         <View key={index}>
-          {index > 0 && <View style={styles.loadingRule} />}
+          {index > 0 && <View style={[styles.loadingRule, icons && styles.iconRule]} />}
           <View style={styles.loadingRow}>
-            <View style={styles.disc} />
+            <View style={icons ? styles.iconShape : styles.disc} />
             <View style={styles.bars}>
               <View style={[styles.barThick, { width: first }]} />
               <View style={[styles.barThin, { width: second }]} />
@@ -489,12 +535,16 @@ const styles = StyleSheet.create({
   overlap: { marginLeft: -14 },
   more: { alignItems: 'center', justifyContent: 'center', backgroundColor: tokens.colorCard },
   cardFace: { alignItems: 'center', justifyContent: 'center', backgroundColor: tokens.colorCard },
+  glyphRing: { alignItems: 'center', justifyContent: 'center', margin: -RING, overflow: 'hidden' },
+  ringFill: { backgroundColor: tokens.colorInkOnDark, opacity: 0.28 },
   glassTag: { alignSelf: 'flex-start', gap: tokens.spaceXs, paddingHorizontal: 11 },
   glassMarked: { paddingLeft: 9 },
   sunkCard: { borderRadius: 26, backgroundColor: tokens.colorNeutralFill },
   loadingRule: { height: 1, marginLeft: 52, backgroundColor: tokens.colorBorder },
   loadingRow: { minHeight: 64, flexDirection: 'row', alignItems: 'center', gap: tokens.spaceLg },
   disc: { width: 40, height: 40, borderRadius: 20, backgroundColor: tokens.colorNeutralFill },
+  iconShape: { width: 28, height: 28, borderRadius: 8, backgroundColor: tokens.colorNeutralFill },
+  iconRule: { marginLeft: 40 },
   bars: { flex: 1, gap: tokens.spaceSm },
   barThick: { height: 14, borderRadius: 7, backgroundColor: tokens.colorNeutralFill },
   barThin: { height: 12, borderRadius: 6, backgroundColor: tokens.colorNeutralFill },

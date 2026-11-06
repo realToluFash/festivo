@@ -4,14 +4,8 @@ import { StyleSheet, View } from 'react-native';
 import { useReadOut } from '../../components/ReadOut.tsx';
 import { type TextHandle, Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
-import { Glyph } from '../Glyph.tsx';
 import type { SecurityLine } from './SecurityModel.ts';
-import { OnCard, StatusMark, type StepProps, SummaryCard } from './Summary.tsx';
-
-const hidden = {
-  accessibilityElementsHidden: true,
-  importantForAccessibility: 'no-hide-descendants',
-} as const;
+import { CardGlyph, OnCard, StatusMark, type StepProps, SummaryCard } from './Summary.tsx';
 
 /** How you are protected on Confetti: the shield, two-factor on or off and what signs you in, then what just happened or why it matters. */
 export function SecurityCard({
@@ -37,17 +31,7 @@ export function SecurityCard({
   return (
     <SummaryCard size={wide ? 'wide' : 'page'} height={200} step={step} testID="security.card">
       <View style={styles.face}>
-        <View
-          style={[styles.disc, { width: face, height: face, borderRadius: face / 2 }]}
-          {...hidden}
-        >
-          <Glyph
-            name="shield"
-            size={Math.round(face * 0.46)}
-            ink={tokens.colorAccent}
-            weight={2.2}
-          />
-        </View>
+        <CardGlyph name="shield" side={face} />
         <View style={styles.words}>
           <Text
             ref={saysRef}
@@ -82,7 +66,6 @@ export function SecurityCard({
 
 const styles = StyleSheet.create({
   face: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  disc: { alignItems: 'center', justifyContent: 'center', backgroundColor: tokens.colorCard },
   words: { flex: 1, minWidth: 0, gap: tokens.spaceHair },
   white: { color: tokens.colorInkOnDark },
   done: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceSm },

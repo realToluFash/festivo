@@ -49,9 +49,7 @@ export function ConfettiSwitch({
       style={[stacked ? styles.stacked : styles.beside, width != null && { width }]}
       testID={testID}
     >
-      <View style={[styles.track, on && styles.trackOn]}>
-        <View style={[styles.knob, on && styles.knobOn]} />
-      </View>
+      <SwitchTrack on={on} />
       <View style={styles.word}>
         <Text
           size={13.5}
@@ -64,6 +62,15 @@ export function ConfettiSwitch({
         {locked && <Glyph name="lock" size={13} ink={tokens.colorInkSecondary} weight={2.4} />}
       </View>
     </Pressable>
+  );
+}
+
+/** The track and its knob alone, for a row that carries the switch's name and word itself. */
+export function SwitchTrack({ on }: { on: boolean }) {
+  return (
+    <View style={[styles.track, on && styles.trackOn]}>
+      <View style={[styles.knob, on && styles.knobOn]} />
+    </View>
   );
 }
 

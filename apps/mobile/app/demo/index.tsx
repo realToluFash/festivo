@@ -211,13 +211,23 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
       },
       {
         title: 'Notifications',
-        what: 'Push and email for each kind',
+        what: 'How you hear, a row per kind',
         href: '/demo/settings/notifications',
       },
       {
         title: 'Notifications · push blocked',
-        what: 'Pushes are off on this device',
+        what: 'Struck bell, Open device settings',
         href: '/demo/settings/notifications?state=pushBlocked',
+      },
+      {
+        title: 'Notifications · saving',
+        what: 'Messages email off, Saving…',
+        href: '/demo/settings/notifications?state=saving',
+      },
+      {
+        title: 'Notifications · saved',
+        what: 'Messages email off, Saved',
+        href: '/demo/settings/notifications?state=saved',
       },
       {
         title: 'Notifications · a save fails',
@@ -226,7 +236,7 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
       },
       {
         title: 'Notifications · loading',
-        what: 'The skeleton, then the grid',
+        what: 'The card and rows’ shapes, then the page',
         href: '/demo/settings/notifications?state=loading',
       },
       {
