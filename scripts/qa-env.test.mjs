@@ -2464,6 +2464,7 @@ describe('a membership change a check asks for', () => {
     let made = 0;
     let owners = 0;
     let refusing = false;
+    const invited = [];
     const ownerNumbered =
       (n) =>
       async (path, options = {}) => {
@@ -2479,11 +2480,15 @@ describe('a membership change a check asks for', () => {
           return {
             roles: [
               { id: 'r-owner', seededAs: 'owner' },
+              { id: 'r-administrator', seededAs: 'administrator' },
               { id: 'r-member', seededAs: 'member' },
             ],
           };
         }
-        if (path.endsWith('/members/invite')) return { invitation: { id: `inv-${made}` } };
+        if (path.endsWith('/members/invite')) {
+          invited.push(options.body.roleId);
+          return { invitation: { id: `inv-${made}` } };
+        }
         if (path.endsWith('/members') && options.method === 'GET') {
           return {
             members: [
@@ -2506,11 +2511,11 @@ describe('a membership change a check asks for', () => {
     const refuseNextCreate = () => {
       refusing = true;
     };
-    return { change, calls, statements, owners: () => owners, refuseNextCreate };
+    return { change, calls, statements, invited, owners: () => owners, refuseNextCreate };
   };
 
-  it('makes the organisation and the batch account a member of it', async () => {
-    const { change, calls } = changesFor();
+  it('makes the organisation and the batch account an administrator in it', async () => {
+    const { change, calls, invited } = changesFor();
     expect(await change('join', 'Alpha Hall')).toEqual({
       membership: 'join',
       org: 'Alpha Hall',
@@ -2522,6 +2527,7 @@ describe('a membership change a check asks for', () => {
       'owner POST /api/orgs/org-1/members/invite',
       'member /api/invitations/inv-1/accept',
     ]);
+    expect(invited).toEqual(['r-administrator']);
   });
 
   it('registers one owner for every organisation in the batch', async () => {

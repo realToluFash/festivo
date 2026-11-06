@@ -2293,7 +2293,8 @@ export function membershipChanges({ email, member, ownerOf, sql }) {
         organisation: { id },
       } = await create(name);
       const { roles } = await owner(`/api/orgs/${id}/roles`, { method: 'GET' });
-      const roleId = roles.find((r) => r.seededAs === 'member').id;
+      // A seeded member reads no events, so it would have no Events or Calendar to move to.
+      const roleId = roles.find((r) => r.seededAs === 'administrator').id;
       const { invitation } = await owner(`/api/orgs/${id}/members/invite`, {
         body: { email, roleId },
       });
