@@ -898,7 +898,7 @@ def admin(argv):
             return None
         sys.exit(agents.down(db, home(), platform, now=a.now))
     elif a.command == "sync":
-        errors = sync.sync(db, force=True, full=a.full)
+        errors = sync.sync(db, force=True, full=a.full, budget=None)
         refresh_work(db, time.time())
         print("error: " + "; ".join(errors) if errors else "synced")
     else:

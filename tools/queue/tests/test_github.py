@@ -289,3 +289,27 @@ class Verdicts(unittest.TestCase):
                       "commit": {"oid": HEAD}}
             self.assertEqual(github.verdict(review),
                              {"verdict": "back", "sha": HEAD, "blocking": 2}, line)
+
+
+class Deadline(unittest.TestCase):
+    """gh inside a sync's deadline stops there, so a slow GitHub cannot hold the tick."""
+
+    def test_gh_after_the_deadline_never_runs(self):
+        with mock.patch("subprocess.run") as ran, github.deadline(10.0, lambda: 12.0):
+            with self.assertRaises(github.OutOfTime):
+                github.gh("api", "user")
+        ran.assert_not_called()
+
+    def test_gh_gets_the_time_left_and_a_timeout_is_out_of_time(self):
+        expired = subprocess.TimeoutExpired(["gh"], 4.0)
+        with mock.patch("subprocess.run", side_effect=expired) as ran, \
+                github.deadline(10.0, lambda: 6.0):
+            with self.assertRaises(github.OutOfTime):
+                github.gh("api", "user")
+        self.assertEqual(ran.call_args.kwargs["timeout"], 4.0)
+
+    def test_outside_a_deadline_gh_waits_as_long_as_it_takes(self):
+        done = subprocess.CompletedProcess(["gh"], 0, "{}", "")
+        with mock.patch("subprocess.run", return_value=done) as ran:
+            github.gh("api", "user")
+        self.assertIsNone(ran.call_args.kwargs["timeout"])
