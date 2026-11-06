@@ -9,14 +9,7 @@ import { Glyph } from '../Glyph.tsx';
 import { Glass } from '../TodayCover.tsx';
 import { Bell, Landscape, PHONE_TAB_BAR, useShell } from './Frame.tsx';
 import { Caps, Pill, Tile, TYPE } from './parts.tsx';
-import {
-  type DemoSection,
-  demoGroups,
-  VIEWER_ORGANISATION,
-  VIEWER_PERSON,
-  type Viewer,
-  YOU,
-} from './sample.ts';
+import { type DemoSection, demoGroups, type Viewer, YOU } from './sample.ts';
 
 type Listed = Exclude<DemoSection, 'account'>;
 
@@ -57,27 +50,50 @@ export function PersonCard({
   open?: boolean;
 }) {
   const shell = useShell();
-  const organisation = VIEWER_ORGANISATION[shell.viewer];
-  const you = VIEWER_PERSON[shell.viewer];
+  const you = shell.looking;
   const look = {
-    phone: { height: 148, avatar: 60, name: 22, mail: 15, radius: 26, scale: 1 },
-    portrait: { height: 180, avatar: 76, name: 28, mail: 16, radius: 28, scale: 1.3 },
-    column: { height: 104, avatar: 48, name: 18, mail: 13.5, radius: 22, scale: 0.8 },
+    phone: {
+      height: 148,
+      avatar: 60,
+      name: 22,
+      mail: 15,
+      radius: 26,
+      scale: 1,
+      pad: tokens.spaceXl,
+    },
+    portrait: {
+      height: 180,
+      avatar: 76,
+      name: 28,
+      mail: 16,
+      radius: 28,
+      scale: 1.3,
+      pad: tokens.spaceXl,
+    },
+    column: {
+      height: 104,
+      avatar: 48,
+      name: 18,
+      mail: 13.5,
+      radius: 22,
+      scale: 0.8,
+      pad: tokens.spaceLg,
+    },
   }[size];
-  const role = organisation == null ? null : `${organisation.role} · ${YOU.organisation}`;
+  const role = you.role == null ? null : `${you.role} · ${YOU.organisation}`;
 
   return (
     <Pressable
       onPress={() => shell.openSection('account')}
       style={({ pressed }) => [
         styles.person,
-        { minHeight: look.height, borderRadius: look.radius },
+        { minHeight: look.height, borderRadius: look.radius, paddingVertical: look.pad },
         open && styles.personOpen,
         pressed && styles.pressed,
       ]}
       accessibilityRole="button"
       accessibilityState={{ selected: open }}
-      accessibilityLabel={`Your account. ${you.name}, ${you.email}${role == null ? '' : `, ${organisation?.role} of ${YOU.organisation}`}`}
+      accessibilityLabel={`Your account. ${you.name}, ${you.email}${you.role == null ? '' : `, ${you.role} of ${YOU.organisation}`}`}
     >
       <View
         style={[
@@ -117,7 +133,7 @@ export function PersonCard({
         <Text size={look.mail} weight="medium" accessible={false} style={styles.white}>
           {you.email}
         </Text>
-        {role != null && size !== 'column' && (
+        {role != null && (
           <Glass height={28} style={styles.roleChip}>
             <Text size={13} weight="semibold" accessible={false} style={styles.white}>
               {role}
@@ -434,7 +450,6 @@ const styles = StyleSheet.create({
     gap: tokens.spaceXl,
     paddingLeft: tokens.spaceXxl,
     paddingRight: tokens.spaceXl,
-    paddingVertical: tokens.spaceXl,
   },
   personOpen: { borderWidth: 3, borderColor: tokens.colorAccent },
   personAvatar: {
