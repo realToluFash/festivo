@@ -197,6 +197,7 @@ export function Landscape({
           onPerson={() => shell.openSection('account')}
           onEvent={onEvent}
           person={shell.looking}
+          org={shell.viewer !== 'noOrg'}
         />
       )}
       <View style={[styles.main, { marginBottom: Math.max(insets.bottom, tokens.spaceMd) }]}>
@@ -320,6 +321,8 @@ export function Bell({ tell }: { tell: Tell }) {
 
 /** The organisation switcher on white, at the top of every top-level page. */
 export function OrgPill({ tell }: { tell: Tell }) {
+  if (useShell().viewer === 'noOrg') return null;
+
   return (
     <Pressable
       onPress={() => tell('Switching organisation has its own design.')}

@@ -7,7 +7,7 @@ import { tokens } from '../../theme/tokens.ts';
 import { CARD_PIECES, Confetti, Cover } from '../Cover.tsx';
 import { Glyph } from '../Glyph.tsx';
 import { Glass, PhoneTabBar } from '../TodayCover.tsx';
-import { Bell, Fade, Landscape, OrgPill, PHONE_TAB_BAR, useShell } from './Frame.tsx';
+import { Bell, Fade, Landscape, OrgPill, PHONE_TAB_BAR, PortraitTop, useShell } from './Frame.tsx';
 import { Caps, Pill, Tile, TYPE } from './parts.tsx';
 import { type DemoSection, demoGroups, type Viewer, YOU } from './sample.ts';
 
@@ -294,7 +294,7 @@ export function SettingsHome({ onSignOut, onDemo }: Handlers) {
     const foot = Math.max(insets.bottom - tokens.spaceXxs, tokens.spaceLg);
 
     return (
-      <View style={styles.phonePage}>
+      <View style={styles.page}>
         <ScrollView
           style={styles.grow}
           contentContainerStyle={{
@@ -357,35 +357,38 @@ export function SettingsHome({ onSignOut, onDemo }: Handlers) {
   );
 
   return (
-    <ScrollView
-      contentContainerStyle={{
-        paddingTop: insets.top + tokens.spaceMd,
-        paddingHorizontal: tokens.space5xl,
-        paddingBottom: insets.bottom + tokens.space6xl,
-      }}
-      showsVerticalScrollIndicator={false}
-    >
-      <Text
-        size={TYPE.titlePortrait}
-        weight="bold"
-        accessibilityRole="header"
-        style={[styles.title, styles.portraitTitle]}
+    <View style={styles.page}>
+      <PortraitTop at="Settings" />
+      <ScrollView
+        style={styles.grow}
+        contentContainerStyle={{
+          paddingHorizontal: tokens.space5xl,
+          paddingBottom: insets.bottom + tokens.space6xl,
+        }}
+        showsVerticalScrollIndicator={false}
       >
-        Settings
-      </Text>
-      <PersonCard size="portrait" />
-      {organisation == null ? (
-        <View style={styles.single}>{left}</View>
-      ) : (
-        <View style={styles.columns}>
-          <View style={styles.grow}>{left}</View>
-          <View style={styles.grow}>
-            <Caps text={organisation.heading} top={tokens.space4xl} />
-            <Group sections={organisation.sections} dense={false} open={null} />
+        <Text
+          size={TYPE.titlePortrait}
+          weight="bold"
+          accessibilityRole="header"
+          style={[styles.title, styles.portraitTitle]}
+        >
+          Settings
+        </Text>
+        <PersonCard size="portrait" />
+        {organisation == null ? (
+          <View style={styles.single}>{left}</View>
+        ) : (
+          <View style={styles.columns}>
+            <View style={styles.grow}>{left}</View>
+            <View style={styles.grow}>
+              <Caps text={organisation.heading} top={tokens.space4xl} />
+              <Group sections={organisation.sections} dense={false} open={null} />
+            </View>
           </View>
-        </View>
-      )}
-    </ScrollView>
+        )}
+      </ScrollView>
+    </View>
   );
 }
 
@@ -440,7 +443,7 @@ function ChooseASection() {
 
 const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
-  phonePage: { flex: 1, backgroundColor: tokens.colorCard },
+  page: { flex: 1, backgroundColor: tokens.colorCard },
   statusStrip: {
     position: 'absolute',
     top: 0,

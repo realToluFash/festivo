@@ -80,32 +80,42 @@ function Place({
   );
 }
 
-export function SidebarHead({ tell, search = true }: { tell: Tell; search?: boolean }) {
+export function SidebarHead({
+  tell,
+  search = true,
+  org = true,
+}: {
+  tell: Tell;
+  search?: boolean;
+  org?: boolean;
+}) {
   return (
     <>
       <View style={styles.logo}>
         <Brand lockup height={24} />
       </View>
-      <Pressable
-        onPress={() => tell('Switching organisation has its own design.')}
-        style={styles.org}
-        accessibilityRole="button"
-        accessibilityLabel={`${SAMPLE.organisation}. Switch organisation`}
-      >
-        <View
-          style={styles.orgTile}
-          accessibilityElementsHidden
-          importantForAccessibility="no-hide-descendants"
+      {org && (
+        <Pressable
+          onPress={() => tell('Switching organisation has its own design.')}
+          style={styles.org}
+          accessibilityRole="button"
+          accessibilityLabel={`${SAMPLE.organisation}. Switch organisation`}
         >
-          <Text size={11} weight="bold" accessible={false} style={styles.onAccent}>
-            IE
+          <View
+            style={styles.orgTile}
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+          >
+            <Text size={11} weight="bold" accessible={false} style={styles.onAccent}>
+              IE
+            </Text>
+          </View>
+          <Text size={15} weight="semibold" accessible={false} style={styles.grow}>
+            {SAMPLE.organisation}
           </Text>
-        </View>
-        <Text size={15} weight="semibold" accessible={false} style={styles.grow}>
-          {SAMPLE.organisation}
-        </Text>
-        <Glyph name="updown" size={15} ink={tokens.colorInkSecondary} />
-      </Pressable>
+          <Glyph name="updown" size={15} ink={tokens.colorInkSecondary} />
+        </Pressable>
+      )}
       {search && (
         <Pressable
           onPress={() => tell('Search has its own design.')}
@@ -213,6 +223,7 @@ export function TodaySidebar({
   onPerson = () => tell('Your account has its own design.'),
   onEvent = (key) => tell(`${EVENTS[key].name} has its own design.`),
   person = YOU,
+  org = true,
 }: {
   events: readonly EventKey[];
   onTab: (tab: Tab) => void;
@@ -221,10 +232,11 @@ export function TodaySidebar({
   onPerson?: () => void;
   onEvent?: ((key: EventKey) => void) | undefined;
   person?: SidebarPerson;
+  org?: boolean;
 }) {
   return (
     <View style={styles.side}>
-      <SidebarHead tell={tell} />
+      <SidebarHead tell={tell} org={org} />
       <View style={styles.places} accessibilityRole="tablist">
         {PLACES.map(([label, glyph]) => (
           <Place key={label} label={label} glyph={glyph} onTab={onTab} at={at} />
