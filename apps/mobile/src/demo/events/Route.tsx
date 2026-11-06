@@ -6,6 +6,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { SettingsSection } from '../../kit/appNav.ts';
 import { useLayout } from '../../layout/useLayout.ts';
 import { tokens } from '../../theme/tokens.ts';
+import { OrgSwitcherProvider } from '../OrgSwitcher.tsx';
+import { switcherStateOf } from '../OrgSwitcherModel.ts';
 import type { Tab } from '../TodayCover.tsx';
 import type { Tell } from '../TodayParts.tsx';
 import { useCoverStatusBar } from '../Welcome.tsx';
@@ -23,9 +25,11 @@ import { say } from './EventsWords.ts';
 /** Events on sample data, in Settings' shell: Today and Settings a tab away, and anything unbuilt said so. */
 function EventsShell({
   told: start,
+  switcher,
   children,
 }: {
   told?: string | undefined;
+  switcher?: string | undefined;
   children: ReactNode;
 }) {
   const layout = layoutOf(useLayout().kind);
@@ -67,34 +71,37 @@ function EventsShell({
 
   return (
     <ShellContext.Provider value={shell}>
-      <View style={styles.fill}>
-        {children}
-        {told != null && (
-          <PageToast
-            words={told}
-            onClose={() => setTold(undefined)}
-            bottom={
-              layout === 'phone'
-                ? foot + PHONE_TAB_BAR + tokens.spaceMd
-                : Math.max(insets.bottom, tokens.spaceLg)
-            }
-          />
-        )}
-      </View>
+      <OrgSwitcherProvider state={switcherStateOf(switcher)} tell={tell}>
+        <View style={styles.fill}>
+          {children}
+          {told != null && (
+            <PageToast
+              words={told}
+              onClose={() => setTold(undefined)}
+              bottom={
+                layout === 'phone'
+                  ? foot + PHONE_TAB_BAR + tokens.spaceMd
+                  : Math.max(insets.bottom, tokens.spaceLg)
+              }
+            />
+          )}
+        </View>
+      </OrgSwitcherProvider>
     </ShellContext.Provider>
   );
 }
 
 /** /demo/events: the list, with ?state= for each of its states and ?deleted= after a delete. */
 export function EventsRoute() {
-  const params = useLocalSearchParams<{ state?: string; deleted?: string }>();
+  const params = useLocalSearchParams<{ state?: string; deleted?: string; switcher?: string }>();
   const state = listStateOf(params.state);
   const deleted = sampleEvent(params.deleted);
 
   return (
     <EventsShell
-      key={`${state ?? ''}:${deleted?.id ?? ''}`}
+      key={`${state ?? ''}:${deleted?.id ?? ''}:${params.switcher ?? ''}`}
       told={deleted == null ? undefined : say.deleted(deleted.name)}
+      switcher={params.switcher}
     >
       <EventsList state={state} deleted={deleted?.id ?? null} />
     </EventsShell>
@@ -103,12 +110,17 @@ export function EventsRoute() {
 
 /** /demo/events/[id]: one event, with ?state= for each phase, edit and question, and ?area= for an area. */
 export function EventRoute() {
-  const params = useLocalSearchParams<{ id?: string; state?: string; area?: string }>();
+  const params = useLocalSearchParams<{
+    id?: string;
+    state?: string;
+    area?: string;
+    switcher?: string;
+  }>();
   const state = eventStateOf(params.state);
   const area = areaOf(params.area);
 
   return (
-    <EventsShell>
+    <EventsShell switcher={params.switcher}>
       <EventScreen
         key={`${params.id ?? ''}:${state ?? ''}:${area ?? ''}`}
         id={params.id}

@@ -18,6 +18,8 @@ import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { Toast } from '../../src/components/Toast.tsx';
 import { useSystemBack } from '../../src/components/useSystemBack.ts';
 import { useLayout } from '../../src/layout/useLayout.ts';
+import { OrgSwitcherProvider, SwitchedNotice } from '../../src/demo/OrgSwitcher.tsx';
+import { switcherStateOf } from '../../src/demo/OrgSwitcherModel.ts';
 import { MOMENTS, type Moment, type MomentName, momentOf, sayIn } from '../../src/demo/today.ts';
 import {
   Band,
@@ -48,7 +50,7 @@ function isMoment(name: string | undefined): name is MomentName {
 }
 
 export default function DemoTodayScreen() {
-  const params = useLocalSearchParams<{ moment?: string; toast?: string }>();
+  const params = useLocalSearchParams<{ moment?: string; toast?: string; switcher?: string }>();
   const name = isMoment(params.moment) ? params.moment : 'plan';
   // The demo's words are English, so its dates are too, in the phone's own region.
   const moment = useMemo(
@@ -91,12 +93,14 @@ export default function DemoTodayScreen() {
     );
 
   return (
-    <View style={styles.fill}>
-      {layout}
-      {told != null && (
-        <Told words={told} phone={kind === 'phone'} onClose={() => setTold(undefined)} />
-      )}
-    </View>
+    <OrgSwitcherProvider state={switcherStateOf(params.switcher)} tell={tell}>
+      <View style={styles.fill}>
+        {layout}
+        {told != null && (
+          <Told words={told} phone={kind === 'phone'} onClose={() => setTold(undefined)} />
+        )}
+      </View>
+    </OrgSwitcherProvider>
   );
 }
 
@@ -228,6 +232,7 @@ function Scrolled({
           />
         </View>
         <View style={[styles.sheet, phone ? styles.sheetPhone : styles.sheetTablet]}>
+          <SwitchedNotice style={styles.switched} />
           <Body moment={moment} wide={!phone} tell={tell} />
         </View>
       </Animated.ScrollView>
@@ -289,6 +294,7 @@ function Landscape({
       <View style={[styles.pageCard, { marginBottom: Math.max(insets.bottom, tokens.spaceMd) }]}>
         <ScrollView contentContainerStyle={styles.cardPage} showsVerticalScrollIndicator={false}>
           <TodayCover moment={moment} layout="landscape" top={0} tell={tell} onTab={onTab} />
+          <SwitchedNotice />
           {moment.kind === 'first' ? (
             <View style={styles.firstPad}>
               <FirstRun wide tell={tell} />
@@ -322,6 +328,7 @@ const styles = StyleSheet.create({
   },
   sheetPhone: { paddingTop: 22, paddingHorizontal: tokens.spaceXxl },
   sheetTablet: { paddingTop: 26, paddingHorizontal: BELOW_HEAD },
+  switched: { marginBottom: tokens.spaceXl },
   side: { flexDirection: 'row', alignItems: 'flex-start', gap: BELOW_HEAD },
   band: { position: 'absolute', left: 0, right: 0, top: 0 },
   fade: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 150 },

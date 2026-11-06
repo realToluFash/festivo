@@ -7,6 +7,8 @@ import { Toast } from '../../components/Toast.tsx';
 import { SECTION_HREF, type SettingsSection } from '../../kit/appNav.ts';
 import { useLayout } from '../../layout/useLayout.ts';
 import { tokens } from '../../theme/tokens.ts';
+import { OrgSwitcherProvider } from '../OrgSwitcher.tsx';
+import { switcherStateOf } from '../OrgSwitcherModel.ts';
 import type { Tab } from '../TodayCover.tsx';
 import type { Tell } from '../TodayParts.tsx';
 import { useCoverStatusBar } from '../Welcome.tsx';
@@ -64,7 +66,7 @@ export function layoutOf(kind: ReturnType<typeof useLayout>['kind']): SettingsLa
 
 /** Settings in B, on sample data: the list, and each section's page under it. */
 export function SettingsRoute({ section }: { section: DemoSection | null }) {
-  const params = useLocalSearchParams<{ as?: string }>();
+  const params = useLocalSearchParams<{ as?: string; switcher?: string }>();
   const layout = layoutOf(useLayout().kind);
   const [told, setTold] = useState<string>();
   const tell = useCallback<Tell>((words) => setTold(words), []);
@@ -121,12 +123,14 @@ export function SettingsRoute({ section }: { section: DemoSection | null }) {
 
   return (
     <ShellContext.Provider value={shell}>
-      <View style={styles.fill}>
-        {Page == null ? <SettingsHome {...handlers} /> : <Page />}
-        {told != null && (
-          <Told words={told} phone={layout === 'phone'} onClose={() => setTold(undefined)} />
-        )}
-      </View>
+      <OrgSwitcherProvider state={switcherStateOf(params.switcher)} tell={tell}>
+        <View style={styles.fill}>
+          {Page == null ? <SettingsHome {...handlers} /> : <Page />}
+          {told != null && (
+            <Told words={told} phone={layout === 'phone'} onClose={() => setTold(undefined)} />
+          )}
+        </View>
+      </OrgSwitcherProvider>
     </ShellContext.Provider>
   );
 }
