@@ -20,7 +20,7 @@ import {
   wallDay,
 } from '@soirely/domain';
 
-import type { MarkKind, RowTag } from '../settings/SummaryRows.tsx';
+import type { RowTag } from '../settings/SummaryRows.tsx';
 import {
   CLOCKS,
   type MeshKey,
@@ -187,9 +187,11 @@ export function dayTiles(event: Shown, now: Date, locale: string): DayTile[] | n
   });
 }
 
+export type PhaseMark = 'draft' | 'live' | 'now' | 'paused' | 'finished' | 'calledOff';
+
 export interface CardTag {
   word: string;
-  mark?: MarkKind;
+  mark?: PhaseMark;
 }
 
 export function cardTags(event: Shown, now: Date): CardTag[] {
@@ -198,9 +200,9 @@ export function cardTags(event: Shown, now: Date): CardTag[] {
 
   switch (event.phase) {
     case 'draft':
-      return [{ word: W.draft, mark: 'notyet' }, ...soonTag];
+      return [{ word: W.draft, mark: 'draft' }, ...soonTag];
     case 'live':
-      return [{ word: W.live, mark: 'yes' }, ...soonTag];
+      return [{ word: W.live, mark: 'live' }, ...soonTag];
     case 'paused':
       return [{ word: W.paused, mark: 'paused' }, ...soonTag];
     case 'happening_now': {
@@ -208,11 +210,13 @@ export function cardTags(event: Shown, now: Date): CardTag[] {
       const count = dayCount(event);
 
       return count > 1
-        ? [{ word: W.happeningNow }, { word: say.dayOf(day, count) }]
-        : [{ word: W.happeningNow }];
+        ? [{ word: W.happeningNow, mark: 'now' }, { word: say.dayOf(day, count) }]
+        : [{ word: W.happeningNow, mark: 'now' }];
     }
     case 'finished':
-      return [{ word: event.calledOff ? W.calledOff : W.finished, mark: 'ended' }];
+      return event.calledOff
+        ? [{ word: W.calledOff, mark: 'calledOff' }]
+        : [{ word: W.finished, mark: 'finished' }];
   }
 }
 

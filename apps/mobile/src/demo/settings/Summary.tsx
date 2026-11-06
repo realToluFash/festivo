@@ -325,7 +325,7 @@ export function CardCounts({
 
 export function OnCard({ text, strong = false }: { text: string; strong?: boolean }) {
   return (
-    <Text size={14.5} weight={strong ? 'semibold' : 'medium'} style={styles.white}>
+    <Text size={14.5} weight={strong ? 'semibold' : 'medium'} style={[styles.white, styles.onCard]}>
       {text}
     </Text>
   );
@@ -396,10 +396,18 @@ export function CardGlyph({ name, side }: { name: GlyphName; side: number }) {
 
 const RING = 3;
 
-export function GlassTag({ word, mark }: { word: string; mark?: MarkKind | undefined }) {
+export function GlassTag({
+  word,
+  mark,
+  shape,
+}: {
+  word: string;
+  mark?: MarkKind | undefined;
+  shape?: ReactNode;
+}) {
   return (
-    <Glass height={28} style={[styles.glassTag, mark != null && styles.glassMarked]}>
-      {mark != null && <StatusMark kind={mark} side={13} ink={tokens.colorInkOnDark} />}
+    <Glass height={28} style={styles.glassTag}>
+      {shape ?? (mark != null && <StatusMark kind={mark} side={13} ink={tokens.colorInkOnDark} />)}
       <Text size={13} weight="semibold" numberOfLines={1} style={styles.white}>
         {word}
       </Text>
@@ -528,6 +536,7 @@ const styles = StyleSheet.create({
   columnTitle: { letterSpacing: 26 * -0.02 },
   white: { color: tokens.colorInkOnDark },
   says: { maxWidth: '80%' },
+  onCard: { lineHeight: 14.5 * 1.4 },
   counts: { flexDirection: 'row', gap: 26 },
   number: { lineHeight: 33, fontVariant: ['tabular-nums'] },
   accent: { color: tokens.colorAccentText },
@@ -553,8 +562,7 @@ const styles = StyleSheet.create({
   cardFace: { alignItems: 'center', justifyContent: 'center', backgroundColor: tokens.colorCard },
   glyphRing: { alignItems: 'center', justifyContent: 'center', margin: -RING, overflow: 'hidden' },
   ringFill: { backgroundColor: tokens.colorInkOnDark, opacity: 0.28 },
-  glassTag: { alignSelf: 'flex-start', gap: tokens.spaceXs, paddingHorizontal: 11 },
-  glassMarked: { paddingLeft: 9 },
+  glassTag: { alignSelf: 'flex-start', gap: tokens.spaceXs, paddingLeft: 9, paddingRight: 11 },
   sunkCard: { borderRadius: 26, backgroundColor: tokens.colorNeutralFill },
   loadingRule: { height: 1, marginLeft: 52, backgroundColor: tokens.colorBorder },
   loadingRow: { minHeight: 64, flexDirection: 'row', alignItems: 'center', gap: tokens.spaceLg },

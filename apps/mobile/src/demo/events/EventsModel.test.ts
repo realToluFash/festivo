@@ -151,15 +151,19 @@ describe('the card’s one step, by nextStep', () => {
 
   it('carries the phase and how soon, or the day it is on', () => {
     expect(cardTags(shown('evt-wed-4'), reader)).toEqual([
-      { word: 'Live', mark: 'yes' },
+      { word: 'Live', mark: 'live' },
       { word: 'in 2 days' },
     ]);
     expect(cardTags(shown('evt-wed-4', happening), happening)).toEqual([
-      { word: 'Happening now' },
+      { word: 'Happening now', mark: 'now' },
       { word: 'Day 2 of 3' },
     ]);
-    expect(cardTags(shown('evt-shower-2'), reader)).toEqual([{ word: 'Draft', mark: 'notyet' }]);
-    expect(cardTags(shown('evt-off'), reader)).toEqual([{ word: 'Called off', mark: 'ended' }]);
+    expect(cardTags(shown('evt-shower-2'), reader)).toEqual([{ word: 'Draft', mark: 'draft' }]);
+    expect(cardTags(shown('evt-off'), reader)).toEqual([{ word: 'Called off', mark: 'calledOff' }]);
+    expect(cardTags(shown('evt-wed-4', finished), finished)).toEqual([
+      { word: 'Finished', mark: 'finished' },
+    ]);
+    expect(cardTags(shown('evt-party-2'), reader)[0]).toEqual({ word: 'Paused', mark: 'paused' });
   });
 
   it('draws a tile per day only for an event over several days that is not over', () => {
