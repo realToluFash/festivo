@@ -3,8 +3,10 @@ import { formatEventDate, formatWallClock, formatWallDay } from '@soirely/domain
 import { type Ref, useState } from 'react';
 import { Platform, Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
 
+import { TextField, type TextFieldProps } from '../../components/Field.tsx';
 import { Text } from '../../components/Text.tsx';
 import { pickedInto, pickerValue } from '../../kit/eventForm.ts';
+import { weight } from '../../theme/fonts.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { Pill } from '../settings/parts.tsx';
 import { W } from './EventsWords.ts';
@@ -110,6 +112,8 @@ export function MomentBox({
       : year
         ? formatEventDate(`${value}T12:00:00Z`, 'UTC', locale)
         : formatWallDay(value, locale);
+  const tall = height > tokens.sizeHit;
+  const inside = (tall ? tokens.spacePillEnd : tokens.spaceLg) - (wrong ? 2 : 1.5);
 
   return (
     <Pressable
@@ -117,7 +121,11 @@ export function MomentBox({
       onPress={onPress}
       style={({ pressed }) => [
         styles.box,
-        { minHeight: height, borderRadius: height > tokens.sizeHit ? 14 : tokens.radiusRow },
+        {
+          minHeight: height,
+          paddingHorizontal: inside,
+          borderRadius: tall ? tokens.radiusInset : tokens.radiusRow,
+        },
         width == null ? styles.grow : { width },
         wrong && styles.wrong,
         pressed && styles.pressed,
@@ -126,10 +134,38 @@ export function MomentBox({
       accessibilityLabel={`${label}, ${words}`}
       testID={testID}
     >
-      <Text size={15} weight="medium" accessible={false} style={styles.figures}>
+      <Text size={tall ? 16 : 15} weight="medium" accessible={false} style={styles.figures}>
         {words}
       </Text>
     </Pressable>
+  );
+}
+
+/** A typed field in the event's own box, as tall and as round as the date and time boxes beside it. */
+export function BoxField({
+  wrong = false,
+  accessibilityLabel,
+  onFocus,
+  onBlur,
+  ...rest
+}: TextFieldProps & { accessibilityLabel: string }) {
+  const [focused, setFocused] = useState(false);
+
+  return (
+    <TextField
+      {...rest}
+      accessibilityLabel={accessibilityLabel}
+      wrong={wrong}
+      onFocus={(event) => {
+        setFocused(true);
+        onFocus?.(event);
+      }}
+      onBlur={(event) => {
+        setFocused(false);
+        onBlur?.(event);
+      }}
+      style={[styles.field, (focused || wrong) && styles.fieldLit]}
+    />
   );
 }
 
@@ -153,10 +189,18 @@ const styles = StyleSheet.create({
   },
   box: {
     justifyContent: 'center',
-    paddingHorizontal: 14,
     borderWidth: 1.5,
     borderColor: tokens.colorFieldBorder,
     backgroundColor: tokens.colorCard,
   },
   wrong: { borderWidth: 2, borderColor: tokens.colorBroken },
+  field: {
+    minHeight: 52,
+    paddingLeft: 14.5,
+    paddingRight: 10.5,
+    borderWidth: 1.5,
+    borderRadius: tokens.radiusInset,
+    ...weight('medium'),
+  },
+  fieldLit: { paddingLeft: tokens.spacePillEnd, paddingRight: tokens.spaceMd, borderWidth: 2 },
 });

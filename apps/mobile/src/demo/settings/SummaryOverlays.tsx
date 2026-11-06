@@ -160,10 +160,16 @@ export function AskLayer({ title, line, keep, confirm, onKeep, onConfirm, testID
         onAccessibilityEscape={onKeep}
         testID={testID}
       >
-        <Text ref={heading} size={18} weight="bold" accessibilityRole="header">
+        <Text
+          ref={heading}
+          size={18}
+          weight="bold"
+          accessibilityRole="header"
+          style={styles.askTitle}
+        >
           {title}
         </Text>
-        <Text size={15} weight="medium" style={styles.secondary}>
+        <Text size={15} weight="medium" style={[styles.secondary, styles.askLine]}>
           {line}
         </Text>
         <View
@@ -214,6 +220,7 @@ export function FocusedScreen({
   toast,
   scrollRef,
   fills = false,
+  gap = tokens.spaceLg,
   children,
   testID,
 }: {
@@ -232,6 +239,7 @@ export function FocusedScreen({
   toast?: { words: string; onClose: () => void } | null;
   scrollRef?: Ref<ScrollViewInstance>;
   fills?: boolean;
+  gap?: number;
   children: ReactNode;
   testID?: string;
 }) {
@@ -278,7 +286,10 @@ export function FocusedScreen({
               <ScrollView
                 ref={scrollRef}
                 style={phone ? styles.fill : styles.sheetBody}
-                contentContainerStyle={[styles.body, { paddingBottom: bottom + tokens.space5xl }]}
+                contentContainerStyle={[
+                  styles.body,
+                  { gap, paddingBottom: bottom + tokens.space5xl },
+                ]}
                 keyboardShouldPersistTaps="handled"
                 showsVerticalScrollIndicator={false}
               >
@@ -626,6 +637,8 @@ const styles = StyleSheet.create({
     borderRadius: tokens.space3xl,
     backgroundColor: tokens.colorCard,
   },
+  askTitle: { letterSpacing: 18 * -0.01, lineHeight: 18 * 1.3 },
+  askLine: { lineHeight: 15 * 1.45 },
   askActions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
@@ -658,7 +671,7 @@ const styles = StyleSheet.create({
   },
   sheetBody: { flexGrow: 0 },
   sheetFill: { flexShrink: 1, minHeight: 0 },
-  body: { paddingTop: tokens.spaceXl, paddingHorizontal: tokens.spaceXxl, gap: tokens.spaceLg },
+  body: { paddingTop: tokens.spaceXl, paddingHorizontal: tokens.spaceXxl },
   nav: {
     height: 52,
     flexDirection: 'row',
