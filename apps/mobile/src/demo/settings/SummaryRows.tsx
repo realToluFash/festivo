@@ -1,14 +1,18 @@
-import type { ReactNode, Ref } from 'react';
+import { type ReactNode, type Ref, useEffect, useState } from 'react';
 import {
   type AccessibilityRole,
   type AccessibilityState,
+  Animated,
+  Easing,
   Pressable,
   StyleSheet,
   View,
   type ViewInstance,
 } from 'react-native';
+import Svg, { Circle, Path } from 'react-native-svg';
 
 import { Text } from '../../components/Text.tsx';
+import { useReducedMotion } from '../../reducedMotion.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { Glyph, type GlyphName } from '../Glyph.tsx';
 
@@ -20,6 +24,11 @@ const hidden = {
 /** A state shape, always beside its word: a tick, a ring, a half ring, two bars, a ring struck through. */
 export type MarkKind = 'yes' | 'notyet' | 'waiting' | 'paused' | 'ended';
 export type TagKind = MarkKind | 'now';
+export interface RowTag {
+  kind: TagKind;
+  word: string;
+  turning?: boolean;
+}
 
 const TAGS: Record<TagKind, { fill: string; ink: string; ring?: string }> = {
   yes: { fill: tokens.colorCard, ink: tokens.colorInk, ring: tokens.colorBorder },
@@ -75,18 +84,68 @@ export function StatusMark({
   );
 }
 
+const TURN_MS = 900;
+
+/** Something being sent: a 12 pt ring with a quarter turning, still where motion is reduced. */
+export function TurningMark({ side = 12 }: { side?: number }) {
+  const reduced = useReducedMotion();
+  const [turn] = useState(() => new Animated.Value(0));
+
+  useEffect(() => {
+    if (reduced) return;
+    const loop = Animated.loop(
+      Animated.timing(turn, {
+        toValue: 1,
+        duration: TURN_MS,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      }),
+    );
+    loop.start();
+
+    return () => loop.stop();
+  }, [reduced, turn]);
+
+  const rotate = turn.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
+
+  return (
+    <Animated.View {...hidden} style={{ width: side, height: side, transform: [{ rotate }] }}>
+      <Svg width={side} height={side} viewBox="0 0 24 24">
+        <Circle cx={12} cy={12} r={9} fill="none" stroke={tokens.colorBorder} strokeWidth={3.4} />
+        <Path
+          d="M12 3a9 9 0 0 1 9 9"
+          fill="none"
+          stroke={tokens.colorInkSecondary}
+          strokeWidth={3.4}
+          strokeLinecap="round"
+        />
+      </Svg>
+    </Animated.View>
+  );
+}
+
 /** Beside a title, only when the state is not the rule: a 12 pt shape and its word on a tint. */
-export function Tag({ kind, word }: { kind: TagKind; word: string }) {
+export function Tag({
+  kind,
+  word,
+  turning = false,
+}: {
+  kind: TagKind;
+  word: string;
+  turning?: boolean | undefined;
+}) {
   const look = TAGS[kind];
 
   return (
     <View
       style={[
         styles.tag,
-        { backgroundColor: look.fill, paddingLeft: kind === 'now' ? 9 : 7 },
+        { backgroundColor: look.fill, paddingLeft: kind === 'now' && !turning ? 9 : 7 },
+        turning && styles.tagTurning,
         look.ring != null && { borderWidth: 1, borderColor: look.ring },
       ]}
     >
+      {turning && <TurningMark />}
       {kind !== 'now' && <StatusMark kind={kind} ink={look.ink} />}
       <Text size={12.5} weight="semibold" numberOfLines={1} style={{ color: look.ink }}>
         {word}
@@ -143,11 +202,12 @@ export interface RowProps {
   title: string;
   line?: string | undefined;
   lead?: ReactNode;
-  tag?: { kind: TagKind; word: string } | null | undefined;
+  tag?: RowTag | null | undefined;
   opens?: boolean;
   value?: string;
   trail?: ReactNode;
   accent?: boolean;
+  off?: boolean;
   weight?: 'semibold' | 'medium';
   selected?: boolean;
   gutter?: number;
@@ -171,6 +231,7 @@ export function Row({
   value,
   trail,
   accent = false,
+  off = false,
   weight = 'semibold',
   selected = false,
   gutter = 0,
@@ -205,11 +266,11 @@ export function Row({
             weight={weight}
             selectable={selectable}
             accessible={grouped ? false : undefined}
-            style={[styles.title, (accent || selected) && styles.accent]}
+            style={[styles.title, (accent || selected) && styles.accent, off && styles.off]}
           >
             {title}
           </Text>
-          {tag != null && <Tag kind={tag.kind} word={tag.word} />}
+          {tag != null && <Tag kind={tag.kind} word={tag.word} turning={tag.turning} />}
         </View>
         {line != null && (
           <Text
@@ -261,9 +322,14 @@ export function Row({
     <Pressable
       ref={ref}
       onPress={onPress}
+      disabled={off}
       style={({ pressed: down }) => [...box, down && !selected && styles.rowPressed]}
       accessibilityRole={accessibilityRole}
-      accessibilityState={accessibilityState ?? (selected ? { selected } : undefined)}
+      accessibilityState={
+        off
+          ? { ...accessibilityState, disabled: true }
+          : (accessibilityState ?? (selected ? { selected } : undefined))
+      }
       accessibilityLabel={
         accessibilityLabel ?? [title, tag?.word, line, value].filter(Boolean).join('. ')
       }
@@ -383,6 +449,7 @@ export function Line({
 const styles = StyleSheet.create({
   secondary: { color: tokens.colorInkSecondary },
   accent: { color: tokens.colorAccentText },
+  off: { color: tokens.colorInkTertiary },
   pressed: { opacity: tokens.opacityPressed },
   markYes: {
     alignItems: 'center',
@@ -409,6 +476,7 @@ const styles = StyleSheet.create({
     paddingRight: 9,
     borderRadius: 12,
   },
+  tagTurning: { gap: tokens.spaceXs },
   head: { minHeight: tokens.sizeHit, flexDirection: 'row', alignItems: 'center', gap: 10 },
   headTitle: { flex: 1, minWidth: 0, letterSpacing: -0.18 },
   foot: { paddingTop: tokens.spaceXs },
