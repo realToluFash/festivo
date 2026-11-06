@@ -62,7 +62,7 @@ export function AddScreen({
   const roleRow = useRef<ViewInstance>(null);
   const view = addView(typed, members, onEvent);
   const tickedMembers = members.filter((one) => ticked.includes(one.id));
-  const canAdd = view.kind === 'members' && tickedMembers.length > 0;
+  const canAdd = tickedMembers.length > 0;
 
   function add(): void {
     if (canAdd) onAdd(role, tickedMembers);

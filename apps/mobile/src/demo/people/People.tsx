@@ -219,7 +219,7 @@ function PeopleScreen({ start }: { start: PeopleStart }) {
       </PeoplePage>
       {person != null && opened != null && (
         <RoleSheet
-          key={opened.visit}
+          key={`role-${opened.visit}`}
           person={person}
           open={opened.open}
           roleFails={start.roleFails}
@@ -231,7 +231,7 @@ function PeopleScreen({ start }: { start: PeopleStart }) {
       )}
       {adding.visit > 0 && (
         <AddScreen
-          key={adding.visit}
+          key={`add-${adding.visit}`}
           open={adding.open}
           members={members}
           onEvent={onEvent}
