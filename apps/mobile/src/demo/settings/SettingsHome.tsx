@@ -2,17 +2,18 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Text } from '../../components/Text.tsx';
-import { type SettingsSection, settingsGroups } from '../../kit/appNav.ts';
+import type { SettingsSection } from '../../kit/appNav.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { Confetti, Cover } from '../../components/Cover.tsx';
 import { CARD_PIECES } from '../Cover.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
-import { Glass } from '../../components/TodayCover.tsx';
-import { Bell, Landscape, PHONE_TAB_BAR, useShell } from './Frame.tsx';
+import { SwitchedNotice } from '../OrgSwitcher.tsx';
+import { Glass, PhoneTabBar } from '../../components/TodayCover.tsx';
+import { Bell, Fade, Landscape, OrgPill, PHONE_TAB_BAR, PortraitTop, useShell } from './Frame.tsx';
 import { Caps, Pill, Tile, TYPE } from './parts.tsx';
-import { VIEWER_ORGANISATION, type Viewer, YOU } from './sample.ts';
+import { type DemoSection, demoGroups, type Viewer, YOU } from './sample.ts';
 
-type Listed = Exclude<SettingsSection, 'account'>;
+type Listed = Exclude<DemoSection, 'account'>;
 
 /** The app's rows and lines; the organisation's row carries its name. */
 const ROWS: Record<Listed, { title: string; line: string }> = {
@@ -20,22 +21,21 @@ const ROWS: Record<Listed, { title: string; line: string }> = {
   notifications: { title: 'Notifications', line: 'Push and email, for each kind of notification' },
   organisation: { title: YOU.organisation, line: 'Name, contact address, currency, time zone' },
   members: { title: 'Members', line: 'Who is in it, and their roles' },
-  roles: { title: 'Roles', line: 'What each role may do' },
   signInRules: { title: 'Sign-in rules', line: 'How people sign in, and for how long' },
 };
 
 const HEADINGS = { yourAccount: 'Your account', organisationHeading: 'Organisation' } as const;
 
-/** The sections a viewer sees, as settingsGroups decides them; Your account is the card at the top. */
+/** The sections a viewer sees; Your account is the card at the top. */
 export function groupsFor(viewer: Viewer) {
-  return settingsGroups(VIEWER_ORGANISATION[viewer]).map(({ heading, sections }) => ({
+  return demoGroups(viewer).map(({ heading, sections }) => ({
     heading: HEADINGS[heading],
     sections: sections.filter((section): section is Listed => section !== 'account'),
   }));
 }
 
-export function sectionsFor(viewer: Viewer): readonly SettingsSection[] {
-  return settingsGroups(VIEWER_ORGANISATION[viewer]).flatMap(({ sections }) => sections);
+export function sectionsFor(viewer: Viewer): readonly DemoSection[] {
+  return demoGroups(viewer).flatMap(({ sections }) => sections);
 }
 
 interface Handlers {
@@ -52,26 +52,50 @@ export function PersonCard({
   open?: boolean;
 }) {
   const shell = useShell();
-  const organisation = VIEWER_ORGANISATION[shell.viewer];
+  const you = shell.looking;
   const look = {
-    phone: { height: 148, avatar: 60, name: 22, mail: 15, radius: 26, scale: 1 },
-    portrait: { height: 180, avatar: 76, name: 28, mail: 16, radius: 28, scale: 1.3 },
-    column: { height: 104, avatar: 48, name: 18, mail: 13.5, radius: 22, scale: 0.8 },
+    phone: {
+      height: 148,
+      avatar: 60,
+      name: 22,
+      mail: 15,
+      radius: 26,
+      scale: 1,
+      pad: tokens.spaceXl,
+    },
+    portrait: {
+      height: 180,
+      avatar: 76,
+      name: 28,
+      mail: 16,
+      radius: 28,
+      scale: 1.3,
+      pad: tokens.spaceXl,
+    },
+    column: {
+      height: 104,
+      avatar: 48,
+      name: 18,
+      mail: 13.5,
+      radius: 22,
+      scale: 0.8,
+      pad: tokens.spaceLg,
+    },
   }[size];
-  const role = organisation == null ? null : `${organisation.role} · ${YOU.organisation}`;
+  const role = you.role == null ? null : `${you.role} · ${YOU.organisation}`;
 
   return (
     <Pressable
       onPress={() => shell.openSection('account')}
       style={({ pressed }) => [
         styles.person,
-        { minHeight: look.height, borderRadius: look.radius },
+        { minHeight: look.height, borderRadius: look.radius, paddingVertical: look.pad },
         open && styles.personOpen,
         pressed && styles.pressed,
       ]}
       accessibilityRole="button"
       accessibilityState={{ selected: open }}
-      accessibilityLabel={`Your account. ${YOU.name}, ${YOU.email}${role == null ? '' : `, ${organisation?.role} of ${YOU.organisation}`}`}
+      accessibilityLabel={`Your account. ${you.name}, ${you.email}${you.role == null ? '' : `, ${you.role} of ${YOU.organisation}`}`}
     >
       <View
         style={[
@@ -96,7 +120,7 @@ export function PersonCard({
           accessible={false}
           style={styles.accent}
         >
-          {YOU.initials}
+          {you.initials}
         </Text>
       </View>
       <View style={styles.personWords}>
@@ -106,12 +130,12 @@ export function PersonCard({
           accessible={false}
           style={[styles.white, styles.tight]}
         >
-          {YOU.name}
+          {you.name}
         </Text>
         <Text size={look.mail} weight="medium" accessible={false} style={styles.white}>
-          {YOU.email}
+          {you.email}
         </Text>
-        {role != null && size !== 'column' && (
+        {role != null && (
           <Glass height={28} style={styles.roleChip}>
             <Text size={13} weight="semibold" accessible={false} style={styles.white}>
               {role}
@@ -272,39 +296,50 @@ export function SettingsHome({ onSignOut, onDemo }: Handlers) {
     const foot = Math.max(insets.bottom - tokens.spaceXxs, tokens.spaceLg);
 
     return (
-      <ScrollView
-        contentContainerStyle={{
-          paddingTop: insets.top + tokens.spaceXs,
-          paddingHorizontal: tokens.spaceXxl,
-          paddingBottom: foot + PHONE_TAB_BAR + tokens.space6xl,
-        }}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.titleRow}>
-          <Text
-            size={TYPE.titlePhone}
-            weight="bold"
-            accessibilityRole="header"
-            style={[styles.grow, styles.title]}
-          >
-            Settings
-          </Text>
-          <Bell tell={shell.tell} />
-        </View>
-        <PersonCard size="phone" />
-        {groups.map(({ heading, sections }) =>
-          sections.length === 0 ? null : (
-            <View key={heading}>
-              <Caps text={heading} top={26} />
-              <Group sections={sections} dense={false} open={null} />
-            </View>
-          ),
-        )}
-        <View style={styles.footPhone}>
-          <DemoRow dense={false} onDemo={onDemo} />
-          <SignOut height={tokens.sizeHitPhoneHero} onSignOut={onSignOut} />
-        </View>
-      </ScrollView>
+      <View style={styles.page}>
+        <ScrollView
+          style={styles.grow}
+          contentContainerStyle={{
+            paddingTop: insets.top + tokens.spaceXs,
+            paddingHorizontal: tokens.spaceXxl,
+            paddingBottom: foot + PHONE_TAB_BAR + tokens.space6xl,
+          }}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.orgRow}>
+            <OrgPill />
+            <View style={styles.grow} />
+            <Bell tell={shell.tell} />
+          </View>
+          <View style={styles.titleRow}>
+            <Text
+              size={TYPE.titlePhone}
+              weight="bold"
+              accessibilityRole="header"
+              style={[styles.grow, styles.title]}
+            >
+              Settings
+            </Text>
+          </View>
+          <SwitchedNotice style={styles.switched} />
+          <PersonCard size="phone" />
+          {groups.map(({ heading, sections }) =>
+            sections.length === 0 ? null : (
+              <View key={heading}>
+                <Caps text={heading} top={26} />
+                <Group sections={sections} dense={false} open={null} />
+              </View>
+            ),
+          )}
+          <View style={styles.footPhone}>
+            <DemoRow dense={false} onDemo={onDemo} />
+            <SignOut height={tokens.sizeHitPhoneHero} onSignOut={onSignOut} />
+          </View>
+        </ScrollView>
+        <View style={[styles.statusStrip, { height: insets.top }]} pointerEvents="none" />
+        <Fade />
+        <PhoneTabBar bottom={foot} onTab={shell.onTab} at="Settings" />
+      </View>
     );
   }
 
@@ -325,35 +360,39 @@ export function SettingsHome({ onSignOut, onDemo }: Handlers) {
   );
 
   return (
-    <ScrollView
-      contentContainerStyle={{
-        paddingTop: insets.top + tokens.spaceMd,
-        paddingHorizontal: tokens.space5xl,
-        paddingBottom: insets.bottom + tokens.space6xl,
-      }}
-      showsVerticalScrollIndicator={false}
-    >
-      <Text
-        size={TYPE.titlePortrait}
-        weight="bold"
-        accessibilityRole="header"
-        style={[styles.title, styles.portraitTitle]}
+    <View style={styles.page}>
+      <PortraitTop at="Settings" />
+      <ScrollView
+        style={styles.grow}
+        contentContainerStyle={{
+          paddingHorizontal: tokens.space5xl,
+          paddingBottom: insets.bottom + tokens.space6xl,
+        }}
+        showsVerticalScrollIndicator={false}
       >
-        Settings
-      </Text>
-      <PersonCard size="portrait" />
-      {organisation == null ? (
-        <View style={styles.single}>{left}</View>
-      ) : (
-        <View style={styles.columns}>
-          <View style={styles.grow}>{left}</View>
-          <View style={styles.grow}>
-            <Caps text={organisation.heading} top={tokens.space4xl} />
-            <Group sections={organisation.sections} dense={false} open={null} />
+        <Text
+          size={TYPE.titlePortrait}
+          weight="bold"
+          accessibilityRole="header"
+          style={[styles.title, styles.portraitTitle]}
+        >
+          Settings
+        </Text>
+        <SwitchedNotice style={styles.switched} />
+        <PersonCard size="portrait" />
+        {organisation == null ? (
+          <View style={styles.single}>{left}</View>
+        ) : (
+          <View style={styles.columns}>
+            <View style={styles.grow}>{left}</View>
+            <View style={styles.grow}>
+              <Caps text={organisation.heading} top={tokens.space4xl} />
+              <Group sections={organisation.sections} dense={false} open={null} />
+            </View>
           </View>
-        </View>
-      )}
-    </ScrollView>
+        )}
+      </ScrollView>
+    </View>
   );
 }
 
@@ -408,6 +447,15 @@ function ChooseASection() {
 
 const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
+  page: { flex: 1, backgroundColor: tokens.colorCard },
+  statusStrip: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: tokens.colorCard,
+  },
+  orgRow: { flexDirection: 'row', alignItems: 'center', marginBottom: tokens.spaceSm },
   title: { letterSpacing: -0.5 },
   titleRow: {
     flexDirection: 'row',
@@ -417,6 +465,7 @@ const styles = StyleSheet.create({
     paddingBottom: 18,
   },
   portraitTitle: { paddingTop: 30, paddingBottom: 22, paddingHorizontal: tokens.spaceHair },
+  switched: { marginBottom: tokens.spaceXl },
   secondary: { color: tokens.colorInkSecondary },
   accent: { color: tokens.colorAccent },
   white: { color: tokens.colorInkOnDark },
@@ -428,7 +477,6 @@ const styles = StyleSheet.create({
     gap: tokens.spaceXl,
     paddingLeft: tokens.spaceXxl,
     paddingRight: tokens.spaceXl,
-    paddingVertical: tokens.spaceXl,
   },
   personOpen: { borderWidth: 3, borderColor: tokens.colorAccent },
   personAvatar: {

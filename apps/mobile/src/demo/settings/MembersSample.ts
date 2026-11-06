@@ -1,9 +1,9 @@
 import { memberStanding, type MemberStanding } from '@soirely/domain';
 
 import type { ChipKind } from './parts.tsx';
-import { grantFor, type Load, people as headcount } from './RolesSample.ts';
+import { type Load, people as headcount } from './RolesSample.ts';
 import type { MarkKind } from './SummaryRows.tsx';
-import { MEMBERS, type MemberStatus, ROLES, type SampleMember, YOU } from './sample.ts';
+import { MEMBERS, type MemberStatus, type SampleMember, YOU } from './sample.ts';
 
 export const ORGANISATION = YOU.organisation;
 export const DOMAIN = 'ire.events';
@@ -15,6 +15,9 @@ export interface Person extends SampleMember {
   tone: number;
   gone: 'left' | 'removed' | null;
 }
+
+/** The three roles sc-29859 leaves an organisation, from the least to the most a person holds. */
+export const ORG_ROLES = ['Member', 'Admin', 'Owner'] as const;
 
 export function samplePeople(): Person[] {
   return MEMBERS.map((member, index) => ({
@@ -186,20 +189,15 @@ export function firstName(person: Pick<Person, 'name'>): string {
 
 export const ROLE_MEANS: Record<string, string> = {
   Owner: 'Everything, including billing and deleting the organisation.',
-  Administrator: 'Everything in events, plus members and roles. Not billing.',
-  'Event manager': 'Everything inside events, and manages the budget. Never the margin.',
-  Coordinator: 'Runs events. Reads the budget, never the margin.',
-  'Read-only': 'Sees events. Changes nothing.',
+  Admin: 'Everything except billing. Sees every event and manages members.',
+  Member: 'Works on the events they’re added to, and sees no others.',
 };
 
-/** Never Owner, and Read-only first: the least a person can be let in with. */
-export function approvalRoles(): string[] {
-  const offered = ROLES.map(({ name }) => name).filter((name) => name !== 'Owner');
+export const WHERE_EVENTS = 'A member’s events come from each event’s People.';
 
-  return [
-    ...offered.filter((name) => name === 'Read-only'),
-    ...offered.filter((name) => name !== 'Read-only'),
-  ];
+/** Never Owner, and Member first: the least a person can be let in with. */
+export function approvalRoles(): string[] {
+  return ORG_ROLES.filter((role) => role !== 'Owner');
 }
 
 export interface MembersViewer {
@@ -211,20 +209,17 @@ export interface MembersViewer {
 
 export const VIEWERS = {
   folake: { id: YOU.email, role: 'Owner', manages: true, owns: true },
-  // Door staff holds members.read but not members.manage in this sample.
-  tom: { id: 'tom.becker@gmail.com', role: 'Door staff', manages: false, owns: false },
-  julien: { id: 'julien@ire.events', role: 'Administrator', manages: true, owns: false },
+  tom: { id: 'tom.becker@gmail.com', role: 'Member', manages: false, owns: false },
+  julien: { id: 'julien@ire.events', role: 'Admin', manages: true, owns: false },
 } as const satisfies Record<string, MembersViewer>;
 
-/** The roles the viewer may give: only what they hold, and Owner only from an owner. */
+/** The roles the viewer may give, the most first: Owner only from an owner. */
 export function grantable(viewer: MembersViewer): string[] {
-  const held = grantFor(viewer.role);
+  return [...ORG_ROLES].reverse().filter((role) => viewer.owns || role !== 'Owner');
+}
 
-  return ROLES.map(({ name }) => name).filter(
-    (name) =>
-      (viewer.owns || name !== 'Owner') &&
-      grantFor(name).every((permission) => held.includes(permission)),
-  );
+export function underRoles(viewer: MembersViewer): string {
+  return viewer.owns ? WHERE_EVENTS : `Only an owner makes someone an owner. ${WHERE_EVENTS}`;
 }
 
 export function standingOf(
@@ -245,9 +240,7 @@ export function standingOf(
     role: { id: one.role ?? '', seededAs: one.role === 'Owner' ? 'owner' : one.role },
     suspension: suspended(one.status) ? { onlyOwner: onlyOwner(one, people) } : null,
   });
-  const withheld = ROLES.map(({ name }) => name).filter(
-    (name) => !grantable(viewer).includes(name),
-  );
+  const withheld = ORG_ROLES.filter((role) => !grantable(viewer).includes(role));
 
   return memberStanding(shaped(person), people.map(shaped), {
     owns: viewer.owns,
@@ -275,6 +268,7 @@ export const MEMBERS_STATES = [
   'makingOwner',
   'marta',
   'self',
+  'selfOwner',
   'claim',
   'withdraw',
 ] as const;
@@ -480,8 +474,8 @@ export function membersStart(state: MembersState): MembersStart {
     case 'approved':
       return {
         ...base,
-        people: approved(people, LUCIA, 'Read-only'),
-        request: { approved: LUCIA, role: 'Read-only' },
+        people: approved(people, LUCIA, 'Member'),
+        request: { approved: LUCIA, role: 'Member' },
       };
     case 'priya':
       return { ...base, open: PRIYA };
@@ -492,6 +486,8 @@ export function membersStart(state: MembersState): MembersStart {
     case 'marta':
       return { ...base, open: MARTA };
     case 'self':
+      return { ...base, viewer: VIEWERS.julien, open: VIEWERS.julien.id };
+    case 'selfOwner':
       return { ...base, open: YOU.email };
     case 'claim':
     case 'withdraw':
