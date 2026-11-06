@@ -15,7 +15,8 @@
     "web:notificationSettings.push",
     "mobile:notificationSettings.push",
     "web:calendar.agenda",
-    "mobile:calendar.agenda"
+    "mobile:calendar.agenda",
+    "web:auth.copyright"
   ],
   "fr": [
     "web:nav.menu",
@@ -82,7 +83,8 @@
     "web:eventNav.messages",
     "mobile:eventNav.messages",
     "web:eventNav.budget",
-    "mobile:eventNav.budget"
+    "mobile:eventNav.budget",
+    "web:auth.copyright"
   ],
   "pt": [
     "web:nav.menu",
@@ -97,6 +99,7 @@
     "web:calendar.agenda",
     "mobile:calendar.agenda",
     "web:eventNav.menu",
-    "mobile:eventNav.menu"
+    "mobile:eventNav.menu",
+    "web:auth.copyright"
   ]
 }

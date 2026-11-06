@@ -7,14 +7,14 @@ appId: com.soirely.app
 - runFlow: settings-sign-out-tap.yaml
 - extendedWaitUntil:
     visible:
-      id: 'signIn.email'
+      id: 'welcome.email'
     timeout: 30000
 - stopApp: com.soirely.app
 - launchApp:
     appId: com.soirely.app
 - extendedWaitUntil:
     visible:
-      id: 'home.openSignIn'
+      id: 'welcome.email'
     timeout: 60000
 - assertNotVisible:
     id: 'home.openSettings'

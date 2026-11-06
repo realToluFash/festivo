@@ -4,11 +4,10 @@ import { StyleSheet, View } from 'react-native';
 
 import { Brand } from '../../src/components/Brand.tsx';
 import { PrimaryButton, SecondaryButton } from '../../src/components/Buttons.tsx';
-import { useReadOut } from '../../src/components/ReadOut.tsx';
-import { Text } from '../../src/components/Text.tsx';
-import { LanguageButton } from '../../src/demo/LanguageButton.tsx';
-import { DemoOnly } from '../../src/demo/Lines.tsx';
-import { coverLine, WelcomeFrame } from '../../src/demo/Welcome.tsx';
+import { LanguageChoice } from '../../src/components/LanguageChoice.tsx';
+import { OnBrand } from '../../src/components/Welcome.tsx';
+import { DemoOnly } from '../../src/steps/Lines.tsx';
+import { WelcomeFrame } from '../../src/demo/Welcome.tsx';
 import { useLayout } from '../../src/layout/useLayout.ts';
 import { tokens } from '../../src/theme/tokens.ts';
 
@@ -19,9 +18,8 @@ export default function Unreachable() {
   const [trying, setTrying] = useState(false);
   const [back, setBack] = useState(false);
   const body = `${stillIn ? 'You are still signed in. ' : ''}Soirely is not answering, so nothing can load yet. Check your connection: the app tries again as soon as it’s back.`;
-  useReadOut(`Cannot reach Soirely. ${body}`);
   const tablet = useLayout().kind !== 'phone';
-  const line = tablet ? 40 : 28;
+  const line = tablet ? tokens.typeCoverTitleTablet.size : tokens.typeCoverTitle.size;
 
   useEffect(() => {
     if (!trying) return;
@@ -36,24 +34,11 @@ export default function Unreachable() {
   return (
     <WelcomeFrame
       cover
-      top={stillIn ? undefined : <LanguageButton />}
+      top={stillIn ? undefined : <LanguageChoice />}
       brand={
         <>
           <Brand width={tablet ? 140 : 112} lockup header ink={tokens.colorInkOnDark} />
-          <View style={styles.words}>
-            <Text
-              weight="bold"
-              size={line}
-              maxFontSizeMultiplier={1.25}
-              accessibilityRole="header"
-              style={[styles.onCover, coverLine(line)]}
-            >
-              Cannot reach Soirely
-            </Text>
-            <Text size={tablet ? 19 : 16} style={[styles.centre, styles.onCover]}>
-              {body}
-            </Text>
-          </View>
+          <OnBrand title="Cannot reach Soirely" body={body} size={line} />
         </>
       }
       choices={
@@ -81,8 +66,5 @@ export default function Unreachable() {
 }
 
 const styles = StyleSheet.create({
-  words: { maxWidth: 340, gap: tokens.spaceSm, alignItems: 'center' },
-  centre: { textAlign: 'center' },
-  onCover: { color: tokens.colorInkOnDark },
   choices: { gap: tokens.spaceLg },
 });

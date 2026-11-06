@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
@@ -118,19 +118,31 @@ describe('verifying an email address', () => {
     open();
 
     expect(screen.getByRole('heading', { level: 1, name: 'Check your email' })).toBeDefined();
-    expect(screen.getByText(/folake@ire\.events/)).toBeDefined();
+    expect(screen.getByText(/We sent a code to folake@ire\.events/)).toBeDefined();
     expect(screen.getByLabelText('Code from the email')).toBeDefined();
   });
 
-  it('shows both steps, with this one current and the next one not', () => {
+  it('says Step 1 of 2 before the title, in place of the numbered steps (sc-29065)', () => {
     answering({});
 
     open();
 
-    const steps = screen.getByRole('list', { name: 'Before you start' });
+    const heading = screen.getByRole('heading', { level: 1, name: 'Check your email' });
+    const step = screen.getByText('Step 1 of 2');
 
-    expect(steps.textContent).toMatch(/Verify your email/);
-    expect(steps.textContent).toMatch(/Your details/);
+    expect(step.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.queryByRole('list', { name: 'Before you start' })).toBeNull();
+  });
+
+  it('puts the address and Sign out at the header’s end, with no footnote (sc-29065)', () => {
+    answering({});
+
+    open();
+
+    const header = screen.getByRole('banner');
+    expect(within(header).getByText('folake@ire.events')).toBeDefined();
+    expect(within(header).getByRole('button', { name: 'Sign out' })).toBeDefined();
+    expect(screen.queryByText(/Not your address\?/)).toBeNull();
   });
 
   it('offers the code to a password manager as a one-time code', () => {
@@ -170,11 +182,8 @@ describe('verifying an email address', () => {
     open();
     enter('123456');
 
-    await waitFor(() =>
-      expect(screen.getByRole('list', { name: 'Before you start' }).textContent).toMatch(
-        /Email verified · done/,
-      ),
-    );
+    await screen.findByRole('heading', { level: 1, name: 'Email verified' });
+    expect(screen.getByText('Step 1 of 2')).toBeDefined();
   });
 
   it('marks the field and says what to check when the code is wrong', async () => {
@@ -186,6 +195,11 @@ describe('verifying an email address', () => {
     await waitFor(() => expect(screen.getByRole('alert').textContent).toMatch(/does not match/));
     expect(screen.getByLabelText('Code from the email').className).toMatch(/input-wrong/);
     expect(screen.getByLabelText('Code from the email').getAttribute('aria-invalid')).toBe('true');
+
+    const field = screen.getByLabelText<HTMLInputElement>('Code from the email');
+    expect(field.value).toBe('000000');
+    expect(document.activeElement).toBe(field);
+    expect([field.selectionStart, field.selectionEnd]).toEqual([0, 6]);
   });
 
   it('offers a new code when this one has expired', async () => {
@@ -194,11 +208,13 @@ describe('verifying an email address', () => {
     open();
     enter('123456');
 
-    const notice = (await screen.findByText('That code has expired')).closest('.notice-body');
+    const notice = (await screen.findByText('That code has expired')).closest('.auth-notice');
     expect(document.activeElement).toBe(notice);
     expect(notice?.textContent).toMatch(/Send a new one and use the code in the newest email/);
     expect(notice?.closest('[role="alert"]')).toBeNull();
-    expect(screen.getAllByRole('button', { name: 'Send a new code' })).not.toEqual([]);
+    // One way on: the field and the resend line give way to the one button.
+    expect(screen.getAllByRole('button', { name: 'Send a new code' })).toHaveLength(1);
+    expect(screen.queryByLabelText('Code from the email')).toBeNull();
   });
 
   it('offers a new code after too many wrong tries', async () => {
@@ -207,7 +223,7 @@ describe('verifying an email address', () => {
     open();
     enter('000000');
 
-    const notice = (await screen.findByText('Too many wrong tries')).closest('.notice-body');
+    const notice = (await screen.findByText('Too many wrong tries')).closest('.auth-notice');
     expect(document.activeElement).toBe(notice);
     expect(notice?.closest('[role="alert"]')).toBeNull();
   });
@@ -285,16 +301,6 @@ describe('verifying an email address', () => {
       expect(screen.getByRole('button', { name: 'Send a new code in 0:30' })).toBeDefined(),
     );
     expect(screen.queryByRole('alert')).toBeNull();
-  });
-
-  it('says plainly that a wrong address means signing out and registering again', () => {
-    answering({});
-
-    open();
-
-    expect(screen.getByText(/Not your address\?/)).toBeDefined();
-    expect(screen.getByText('and create your account again with the right one.')).toBeDefined();
-    expect(screen.getByRole('button', { name: 'Sign out' })).toBeDefined();
   });
 
   it('stays signed in and says so when signing out cannot reach Soirely', async () => {
@@ -514,7 +520,7 @@ describe('a held sign-up on a device whose session has ended', () => {
     open();
 
     expect(await screen.findByLabelText('Code from the email')).toBeDefined();
-    expect(screen.getByText(/folake@ire\.events/)).toBeDefined();
+    expect(screen.getByText(/We sent a code to folake@ire\.events/)).toBeDefined();
   });
 
   it('says signed out on sign-in, and drops the sign-up, once its handle has run out', async () => {
@@ -537,7 +543,7 @@ describe('where focus goes once a code is refused or sent again (sc-11369)', () 
 
     open();
 
-    const notice = (await screen.findByText('That code has expired')).closest('.notice');
+    const notice = (await screen.findByText('That code has expired')).closest('.auth-notice');
     expect(notice?.getAttribute('role')).toBe('alert');
     expect(document.activeElement).toBe(document.body);
   });
@@ -579,7 +585,7 @@ describe('where focus goes once a code is refused or sent again (sc-11369)', () 
     await screen.findByText('That code has expired');
     fireEvent.click(screen.getByRole('button', { name: 'Send a new code' }));
 
-    const notice = (await screen.findByText('That did not work')).closest('.notice-body');
+    const notice = (await screen.findByText('That did not work')).closest('.auth-notice');
     await waitFor(() => expect(document.activeElement).toBe(notice));
     expect(notice?.textContent).toMatch(/Something went wrong on the way/);
     expect(screen.queryByRole('alert')).toBeNull();

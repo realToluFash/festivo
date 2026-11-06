@@ -6,7 +6,7 @@ import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
 import { Text } from '../../components/Text.tsx';
 import { glide } from '../../motion.ts';
 import { tokens } from '../../theme/tokens.ts';
-import { Glyph } from '../Glyph.tsx';
+import { Glyph } from '../../components/Glyph.tsx';
 import { useShell } from '../settings/Frame.tsx';
 import { useLoad } from '../settings/MembersLoading.tsx';
 import { FailedBlock, Line, Row, RowList, SectionHead } from '../settings/Summary.tsx';

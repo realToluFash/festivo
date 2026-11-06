@@ -16,10 +16,10 @@ appId: com.soirely.app
 - runFlow:
     when:
       visible:
-        id: 'home.openSignIn'
+        id: 'welcome.email'
     commands:
       - tapOn:
-          id: 'home.openSignIn'
+          id: 'welcome.email'
       - extendedWaitUntil:
           visible:
             id: 'signIn.email'

@@ -93,6 +93,7 @@ export function LifecycleSheet({
   confirm,
   onward = null,
   retold,
+  scrimLabel,
   onClose,
   children,
 }: {
@@ -114,6 +115,8 @@ export function LifecycleSheet({
   } | null;
   onward?: { label: string; onPress: () => void } | null;
   retold?: unknown;
+  /** Given, a tap outside the sheet closes it, named so to a screen reader. */
+  scrimLabel?: string;
   onClose: () => void;
   children?: ReactNode;
 }) {
@@ -170,7 +173,13 @@ export function LifecycleSheet({
   );
 
   return (
-    <Sheet open={open} onClose={onClose} opener={opener} testID={`${testID}Sheet`}>
+    <Sheet
+      open={open}
+      onClose={onClose}
+      {...(scrimLabel == null ? {} : { scrimLabel })}
+      opener={opener}
+      testID={`${testID}Sheet`}
+    >
       {open && (
         <View style={styles.sheet}>
           <AnswerHeading answer={retold} size={tokens.typeTitleSection.size} weight="bold">

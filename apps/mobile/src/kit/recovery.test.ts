@@ -63,7 +63,7 @@ describe('the two codes of a request to get back in', () => {
   it('tells the reasons "Send the codes" is refused apart', () => {
     expect(startRefusal(refusal('too_many_attempts', 429))).toBe('limited');
     expect(startRefusal(refusal('recovery_nobody_to_approve', 409))).toBe('nobody');
-    expect(startRefusal(refusal('two_factor_challenge_invalid', 401))).toBe('signIn');
+    expect(startRefusal(refusal('two_factor_challenge_invalid', 401))).toBe('timedOut');
     expect(startRefusal(new TypeError('offline'))).toBe('failed');
   });
 });
@@ -133,5 +133,17 @@ describe('what the lost-two-factor screen opens on', () => {
     };
 
     expect(await loadRecovery(loading as unknown as RecoveryLoading)).toEqual({ kind: 'replaced' });
+  });
+
+  it('says the sign-in timed out when its challenge has run out, and nothing when there was none (sc-29961)', async () => {
+    const lapsed = {
+      ...on('challenge', null),
+      opening: vi.fn(async () => {
+        throw refusal('two_factor_challenge_invalid', 401);
+      }),
+    };
+
+    expect(await loadRecovery(lapsed as unknown as RecoveryLoading)).toEqual({ kind: 'timedOut' });
+    expect(await loadRecovery(on(null, null))).toEqual({ kind: 'signIn' });
   });
 });

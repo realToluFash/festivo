@@ -6,7 +6,7 @@ import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
 import { Sheet } from '../../components/Sheet.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
-import { Glyph } from '../Glyph.tsx';
+import { Glyph } from '../../components/Glyph.tsx';
 import { useShell } from '../settings/Frame.tsx';
 import { RoleChoices } from '../settings/MembersRequest.tsx';
 import { Avatar } from '../settings/parts.tsx';

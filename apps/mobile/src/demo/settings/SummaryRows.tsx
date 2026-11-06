@@ -14,7 +14,7 @@ import Svg, { Circle, Path } from 'react-native-svg';
 import { Text } from '../../components/Text.tsx';
 import { useReducedMotion } from '../../reducedMotion.ts';
 import { tokens } from '../../theme/tokens.ts';
-import { Glyph, type GlyphName } from '../Glyph.tsx';
+import { Glyph, type GlyphName } from '../../components/Glyph.tsx';
 
 const hidden = {
   accessibilityElementsHidden: true,

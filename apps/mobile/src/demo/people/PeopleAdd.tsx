@@ -6,7 +6,7 @@ import { Field, TextField } from '../../components/Field.tsx';
 import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
-import { Glyph } from '../Glyph.tsx';
+import { Glyph } from '../../components/Glyph.tsx';
 import { useShell } from '../settings/Frame.tsx';
 import { Avatar } from '../settings/parts.tsx';
 import { CheckMark } from '../settings/SecurityTwoFactor.tsx';

@@ -17,7 +17,6 @@ use App\Enum\InvitationDelivery;
 use App\Enum\InvitationStatus;
 use App\Enum\MembershipChannel;
 use App\Enum\MembershipStatus;
-use App\Enum\Permission;
 use App\Enum\SeededRole;
 use App\Repository\EmailAddressRepository;
 use App\Tests\ApiTestCase;
@@ -122,7 +121,7 @@ final class InvitationTest extends ApiTestCase
         $user = $this->accountAt('kemi@example.com');
         self::assertTrue($user->isVerified(), 'the link proved the address');
         self::assertSame(MembershipStatus::Active, $this->membershipOf($user, $invitation)?->getStatus());
-        self::assertSame(SeededRole::EventManager, $this->membershipOf($user, $invitation)?->getRole()->getSeededAs());
+        self::assertSame(SeededRole::Member, $this->membershipOf($user, $invitation)?->getRole()->getSeededAs());
         $accepted = $this->reloaded($invitation);
         self::assertSame(InvitationStatus::Accepted, $accepted->getStatus());
         self::assertNotNull($accepted->getAcceptedAt());
@@ -168,7 +167,7 @@ final class InvitationTest extends ApiTestCase
         [$first] = self::invitationTo('kemi@example.com');
         $organisation = Type\instance_of(Organisation::class)->coerce($first->getOrganisation());
         $first->setStatus(InvitationStatus::Accepted);
-        $old = self::service(MembershipMachine::class)->join($organisation, $kemi, $this->role($organisation, SeededRole::ReadOnly), MembershipStatus::Active, MembershipChannel::Invitation, $kemi);
+        $old = self::service(MembershipMachine::class)->join($organisation, $kemi, $this->role($organisation, SeededRole::Member), MembershipStatus::Active, MembershipChannel::Invitation, $kemi);
         self::service(MembershipMachine::class)->move($old, MembershipStatus::LeftOrRemoved, MembershipChannel::Invitation, $kemi);
         self::em()->flush();
         [$again] = self::invitationTo('kemi@example.com', $organisation);
@@ -326,15 +325,15 @@ final class InvitationTest extends ApiTestCase
     {
         [$organisation, $owner] = $this->organisation();
 
-        $this->as($owner)->invite($organisation, 'kemi@example.com', SeededRole::Coordinator);
+        $this->as($owner)->invite($organisation, 'kemi@example.com', SeededRole::Member);
         $firstToken = $this->linkToken();
-        $this->as($owner)->invite($organisation, 'KEMI@example.com', SeededRole::EventManager);
+        $this->as($owner)->invite($organisation, 'KEMI@example.com', SeededRole::Member);
         $secondToken = $this->linkToken();
 
         self::assertNotSame($firstToken, $secondToken);
         $rows = self::em()->getRepository(Invitation::class)->findBy(['email' => 'kemi@example.com']);
         self::assertCount(1, $rows, 'one row, not two');
-        self::assertSame(SeededRole::EventManager, $rows[0]->getRole()?->getSeededAs(), 'carrying the newer role');
+        self::assertSame(SeededRole::Member, $rows[0]->getRole()?->getSeededAs(), 'carrying the newer role');
         self::assertSame(ErrorCode::InvitationNotFound->type(), $this->call('POST', '/api/invitations/link', ['token' => $firstToken])['type'], 'the old link stops working');
         self::assertNull($this->call('POST', '/api/invitations/link', ['token' => $secondToken])['refusal']);
     }
@@ -343,7 +342,7 @@ final class InvitationTest extends ApiTestCase
     public function onlyTheTokensHashIsStoredAndTheHashOpensNothing(): void
     {
         [$organisation, $owner] = $this->organisation();
-        $this->as($owner)->invite($organisation, 'kemi@example.com', SeededRole::Coordinator);
+        $this->as($owner)->invite($organisation, 'kemi@example.com', SeededRole::Member);
         $token = $this->linkToken();
         $stored = Type\string()->coerce(self::em()->getConnection()->fetchOne("SELECT token_hash FROM invitations WHERE email = 'kemi@example.com'"));
 
@@ -359,10 +358,10 @@ final class InvitationTest extends ApiTestCase
     {
         [$organisation] = $this->organisation();
         $coordinator = self::inviter('coordinator@ire.events', 'Chidi Okoro');
-        self::service(MembershipMachine::class)->join($organisation, $coordinator, $this->role($organisation, SeededRole::Coordinator), MembershipStatus::Active, MembershipChannel::Invitation, $coordinator);
+        self::service(MembershipMachine::class)->join($organisation, $coordinator, $this->role($organisation, SeededRole::Member), MembershipStatus::Active, MembershipChannel::Invitation, $coordinator);
         self::em()->flush();
 
-        $body = $this->as($coordinator)->invite($organisation, 'kemi@example.com', SeededRole::Coordinator);
+        $body = $this->as($coordinator)->invite($organisation, 'kemi@example.com', SeededRole::Member);
 
         self::assertSame(403, $this->statusCode());
         self::assertSame(ErrorCode::PermissionRequired->type(), $body['type']);
@@ -374,7 +373,7 @@ final class InvitationTest extends ApiTestCase
     {
         [$organisation] = $this->organisation();
         $admin = self::inviter('admin@ire.events', 'Bisi Adeyemi');
-        self::service(MembershipMachine::class)->join($organisation, $admin, $this->role($organisation, SeededRole::Administrator), MembershipStatus::Active, MembershipChannel::Invitation, $admin);
+        self::service(MembershipMachine::class)->join($organisation, $admin, $this->role($organisation, SeededRole::Admin), MembershipStatus::Active, MembershipChannel::Invitation, $admin);
         self::em()->flush();
 
         $body = $this->as($admin)->invite($organisation, 'kemi@example.com', SeededRole::Owner);
@@ -386,8 +385,7 @@ final class InvitationTest extends ApiTestCase
     public function anAdministratorHoldingEveryPermissionStillCannotInviteAnOwner(): void
     {
         [$organisation] = $this->organisation();
-        $administrator = $this->role($organisation, SeededRole::Administrator);
-        $administrator->setPermissions(Permission::cases());
+        $administrator = $this->role($organisation, SeededRole::Admin);
         $admin = self::inviter('admin@ire.events', 'Bisi Adeyemi');
         self::service(MembershipMachine::class)->join($organisation, $admin, $administrator, MembershipStatus::Active, MembershipChannel::Invitation, $admin);
         self::em()->flush();
@@ -437,7 +435,7 @@ final class InvitationTest extends ApiTestCase
 
         $body = $this->as($owner)->call('POST', '/api/orgs/' . $organisation->getId()->toRfc4122() . '/members/invite', [
             'email' => 'kemi@example.com',
-            'roleId' => $this->role($elsewhere, SeededRole::Coordinator)->getId()->toRfc4122(),
+            'roleId' => $this->role($elsewhere, SeededRole::Member)->getId()->toRfc4122(),
         ]);
 
         self::assertSame(422, $this->statusCode());
@@ -451,7 +449,7 @@ final class InvitationTest extends ApiTestCase
         self::em()->persist(new EmailAddress($owner, 'new-hire@ire.events'));
         self::em()->flush();
 
-        $this->as($owner)->invite($organisation, 'new-hire@ire.events', SeededRole::Coordinator);
+        $this->as($owner)->invite($organisation, 'new-hire@ire.events', SeededRole::Member);
 
         self::assertSame(201, $this->statusCode());
     }
@@ -471,7 +469,7 @@ final class InvitationTest extends ApiTestCase
     {
         [$organisation, $owner] = $this->organisation();
 
-        $body = $this->as($owner)->invite($organisation, $owner->getPrimaryEmailAddress()?->getAddress() ?? '', SeededRole::Coordinator);
+        $body = $this->as($owner)->invite($organisation, $owner->getPrimaryEmailAddress()?->getAddress() ?? '', SeededRole::Member);
 
         self::assertSame(409, $this->statusCode());
         self::assertSame(ErrorCode::AlreadyAMember->type(), $body['type']);
@@ -490,7 +488,7 @@ final class InvitationTest extends ApiTestCase
     {
         [$organisation, $owner] = $this->organisation();
 
-        $body = $this->as($owner)->invite($organisation, $email, SeededRole::Coordinator);
+        $body = $this->as($owner)->invite($organisation, $email, SeededRole::Member);
 
         self::assertSame(422, $this->statusCode());
         self::assertSame($message, Type\vec(Type\shape(['message' => Type\string()], true))->coerce($body['violations'])[0]['message']);
@@ -503,9 +501,9 @@ final class InvitationTest extends ApiTestCase
         $this->as($owner)->call('PATCH', '/api/orgs/' . $organisation->getId()->toRfc4122(), ['locale' => 'fr']);
         self::assertSame(200, $this->statusCode());
 
-        $this->invite($organisation, 'kemi@example.com', SeededRole::Coordinator);
+        $this->invite($organisation, 'kemi@example.com', SeededRole::Member);
 
-        self::assertStringContainsString('Coordinateur', $this->lastText(), 'the role in French');
+        self::assertStringContainsString('Membre', $this->lastText(), 'the role in French');
     }
 
     /** #3357: an abbreviated month carries its own stop, so the expiry line writes it in full. */
@@ -515,7 +513,7 @@ final class InvitationTest extends ApiTestCase
         [$organisation, $owner] = $this->organisation();
         $this->as($owner)->call('PATCH', '/api/orgs/' . $organisation->getId()->toRfc4122(), ['locale' => 'fr']);
 
-        $this->invite($organisation, 'kemi@example.com', SeededRole::Coordinator);
+        $this->invite($organisation, 'kemi@example.com', SeededRole::Member);
 
         self::assertMatchesRegularExpression('/\\d{1,2} (janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre)\\.$/mu', $this->lastText());
         self::assertStringNotContainsString('..', $this->lastText());
@@ -527,7 +525,7 @@ final class InvitationTest extends ApiTestCase
     {
         [$organisation, $owner] = $this->organisation();
 
-        $this->as($owner)->invite($organisation, 'kemi@example.com', SeededRole::Coordinator);
+        $this->as($owner)->invite($organisation, 'kemi@example.com', SeededRole::Member);
 
         self::assertMatchesRegularExpression('/(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday) \\d{1,2} (January|February|March|April|May|June|July|August|September|October|November|December)\\.$/mu', $this->lastText());
     }
@@ -537,7 +535,7 @@ final class InvitationTest extends ApiTestCase
     public function changingTheLanguageSendsNothingAgain(): void
     {
         [$organisation, $owner] = $this->organisation();
-        $this->as($owner)->invite($organisation, 'kemi@example.com', SeededRole::Coordinator);
+        $this->as($owner)->invite($organisation, 'kemi@example.com', SeededRole::Member);
         self::assertNotEmpty(self::getMailerMessages(), 'the invitation went out with its request');
 
         $this->call('PATCH', '/api/orgs/' . $organisation->getId()->toRfc4122(), ['locale' => 'pt']);
@@ -552,9 +550,9 @@ final class InvitationTest extends ApiTestCase
         [$organisation, $owner] = $this->organisation();
         self::inviter('kemi@example.com', 'Kemi Lawal');
 
-        $this->as($owner)->invite($organisation, 'amara@example.com', SeededRole::Coordinator);
+        $this->as($owner)->invite($organisation, 'amara@example.com', SeededRole::Member);
         self::assertStringNotContainsString('accept it in Soirely', $this->lastText());
-        $this->invite($organisation, 'kemi@example.com', SeededRole::Coordinator);
+        $this->invite($organisation, 'kemi@example.com', SeededRole::Member);
         self::assertStringContainsString('accept it in Soirely, signed in as kemi@example.com', $this->lastText());
     }
 
@@ -566,8 +564,8 @@ final class InvitationTest extends ApiTestCase
         $kemi->setLocale('pt');
         self::em()->flush();
 
-        $this->as($owner)->invite($organisation, 'kemi@example.com', SeededRole::Coordinator);
-        self::assertStringContainsString('Coordenador', $this->lastText(), 'the role in Portuguese');
+        $this->as($owner)->invite($organisation, 'kemi@example.com', SeededRole::Member);
+        self::assertStringContainsString('Membro', $this->lastText(), 'the role in Portuguese');
 
         $waiting = Type\vec(Type\shape(['id' => Type\string(), 'forYou' => Type\bool()], true))->coerce($this->as($kemi)->call('GET', '/api/invitations')['invitations']);
         self::assertCount(1, $waiting);
@@ -581,7 +579,7 @@ final class InvitationTest extends ApiTestCase
     {
         [$organisation, $owner] = $this->organisation();
 
-        $this->as($owner)->invite($organisation, 'kemi@example.com', SeededRole::Coordinator);
+        $this->as($owner)->invite($organisation, 'kemi@example.com', SeededRole::Member);
 
         $invitation = Type\instance_of(Invitation::class)->coerce(self::em()->getRepository(Invitation::class)->findOneBy(['email' => 'kemi@example.com']));
         self::em()->refresh($invitation);
@@ -593,7 +591,7 @@ final class InvitationTest extends ApiTestCase
     public function aRevokedInvitationsLinkIsUseless(): void
     {
         [$organisation, $owner] = $this->organisation();
-        $this->as($owner)->invite($organisation, 'kemi@example.com', SeededRole::Coordinator);
+        $this->as($owner)->invite($organisation, 'kemi@example.com', SeededRole::Member);
         $token = $this->linkToken();
         $invitation = Type\instance_of(Invitation::class)->coerce(self::em()->getRepository(Invitation::class)->findOneBy(['email' => 'kemi@example.com']));
 
@@ -611,10 +609,10 @@ final class InvitationTest extends ApiTestCase
     {
         [$organisation, $owner] = $this->organisation();
         $kemi = self::inviter('kemi@example.com', 'Kemi Lawal');
-        $membership = self::service(MembershipMachine::class)->join($organisation, $kemi, $this->role($organisation, SeededRole::Coordinator), MembershipStatus::Active, MembershipChannel::JoinCode, $kemi);
+        $membership = self::service(MembershipMachine::class)->join($organisation, $kemi, $this->role($organisation, SeededRole::Member), MembershipStatus::Active, MembershipChannel::JoinCode, $kemi);
         self::service(MembershipMachine::class)->move($membership, MembershipStatus::LeftOrRemoved, MembershipChannel::JoinCode, $owner);
         self::em()->flush();
-        $this->as($owner)->invite($organisation, 'amara@example.com', SeededRole::ReadOnly);
+        $this->as($owner)->invite($organisation, 'amara@example.com', SeededRole::Member);
 
         $body = $this->call('GET', '/api/orgs/' . $organisation->getId()->toRfc4122() . '/members');
 

@@ -617,6 +617,53 @@ describe('the ten recovery codes show in the sheet, a dialog on an iPad (sc-2328
   });
 });
 
+describe('every field reports its focus to the lift (sc-29076)', () => {
+  // An InsideField that never reported left every step's dock at `group: 0`, unseen until tablet landscape.
+  const REPORTED_ELSEWHERE = {
+    'src/components/PasswordField.tsx': 'rendered inside a Field, which reports',
+    'src/components/ListPicker.tsx': 'rendered inside a Field, which reports',
+    'src/steps/CodeBoxes.tsx': 'only on steps with no useAboveKeyboard',
+  };
+
+  it('in every component that renders a TextInput', () => {
+    const offenders = sources(['src', 'app'])
+      .filter(({ text }) => selfClosing('TextInput', text).length > 0)
+      .filter(({ text }) => !/<Field\b|fieldFocused\(/u.test(text))
+      .map(({ path }) => path.replace(/^.*\/apps\/mobile\//u, ''))
+      .filter((path) => !(path in REPORTED_ELSEWHERE));
+
+    expect(
+      offenders,
+      'Render the TextInput inside <Field>, or call fieldFocused on focus.',
+    ).toEqual([]);
+  });
+});
+
+describe('a step lifts inside its own StepScreen (sc-29069)', () => {
+  it('in every component that renders a StepScreen', () => {
+    const offenders = sources(['src', 'app']).flatMap(({ path, text }) =>
+      text
+        .split(/^(?=(?:export )?(?:default )?function )/mu)
+        .filter((component) => component.includes('<StepScreen') && liftsHere(component))
+        .map(() => path.replace(/^.*\/apps\/mobile\//u, '')),
+    );
+
+    expect(
+      offenders,
+      'useAboveKeyboard above the StepScreen finds no scroll: use <AboveKeyboardView>.',
+    ).toEqual([]);
+  });
+
+  it('notices a hook called beside the StepScreen it renders', () => {
+    expect(liftsHere('const group = useAboveKeyboard();\nreturn <StepScreen />;')).toBe(true);
+    expect(liftsHere('return <StepScreen><AboveKeyboardView /></StepScreen>;')).toBe(false);
+  });
+});
+
+function liftsHere(component: string): boolean {
+  return /\buseAboveKeyboard\(/u.test(component);
+}
+
 const FOCUS_THROUGH =
   'A refusal focuses through focusChecked or focusRefused: focus() skips a field Android left focused with the keys hidden.';
 
@@ -664,8 +711,8 @@ describe('a refused submit leaves the keyboard as it was, unless dropsKeysAfter 
 
   it.each(HELD_FORMS)('%s holds its fields rather than disabling them', (file) => {
     const text = readFileSync(join(...file.split('/')), 'utf8');
-    const fields = [...KIT_FIELDS, 'PhoneEntry', 'CodeForm'].flatMap((name) =>
-      selfClosing(name, text),
+    const fields = [...KIT_FIELDS, 'PhoneEntry', 'CodeForm', 'InsideField', 'CodeBoxes'].flatMap(
+      (name) => selfClosing(name, text),
     );
 
     expect(fields.length, `fields in ${file}`).toBeGreaterThan(0);
@@ -812,7 +859,7 @@ describe('a signed-out submit sends one request, and none with the keys down ope
       /^\s*onSubmit\(/u,
       ["status.kind === 'signingIn'", "status.kind === 'rateLimited'"],
     ],
-    ['app/register.tsx', /^\s*onSubmit\(/u, ['busy', 'locked']],
+    ['app/register.tsx', /^\s*setStatus\(\{ kind: 'submitting' \}\);/u, ['busy', 'locked']],
     ['app/forgot-password.tsx', /^\s*void send\(/u, ["status.kind === 'sending'"]],
     [
       'app/reset-password.tsx',
@@ -947,7 +994,7 @@ describe('a submit with the keys down keeps them down (sc-20209)', () => {
   it.each([
     // Adding's, and not the row actions above it, which have no field.
     ['src/components/ContactsCard.tsx', /^\s*setSending\(true\);/u, 1, 'function Adding('],
-    ['app/verify-email.tsx', /^\s*setStatus\(\{ kind: 'verifying' \}\);/u, 1],
+    ['app/verify-email.tsx', /^\s*setStatus\(\{ kind: 'verifying' \}\);/u, 2],
     ['app/verify-phone.tsx', /^\s*setStatus\(\{ kind: 'verifying' \}\);/u, 1],
     ['app/phone.tsx', /^\s*setSending\(true\);/u, 1],
     ['app/complete-profile.tsx', /^\s*setSaving\(true\);/u, 2],

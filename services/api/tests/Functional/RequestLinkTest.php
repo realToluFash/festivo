@@ -103,7 +103,7 @@ final class RequestLinkTest extends ApiTestCase
     public function aRoleThatCannotManageMembersCannotSeeOrChangeTheLink(): void
     {
         [, $organisation] = $this->organisation('folake@ire.events', 'Ìrè Events');
-        $coordinator = $this->member($organisation, 'tunde@ire.events', SeededRole::Coordinator);
+        $coordinator = $this->member($organisation, 'tunde@ire.events', SeededRole::Member);
         $this->signIn($coordinator);
 
         foreach ([['GET', ''], ['PUT', ''], ['DELETE', ''], ['POST', '/replace']] as [$method, $path]) {
@@ -163,7 +163,7 @@ final class RequestLinkTest extends ApiTestCase
         self::assertSame('Ìrè Events', $body['request']['organisation']['name'] ?? null);
         $membership = $this->membershipOf($ada, $organisation);
         self::assertSame(MembershipStatus::PendingApproval, $membership->getStatus());
-        self::assertSame(SeededRole::ReadOnly, $membership->getRole()->getSeededAs());
+        self::assertSame(SeededRole::Member, $membership->getRole()->getSeededAs());
         self::assertSame('I run the Abuja office.', $membership->getRequestMessage());
         self::assertSame(MembershipChannel::Request, $this->lastStep($membership)->getChannel());
         self::assertSame(['organisation' => [null, $organisation->getId()->toRfc4122()], 'status' => [null, 'pending_approval']], $this->audited(LinkRequester::ASKED, $membership)->getChanges());

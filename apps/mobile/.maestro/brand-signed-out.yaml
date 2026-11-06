@@ -1,4 +1,4 @@
-# Dusk's wordmark on the signed-out first screen and its lockup on sign-in, in English then French. sc-28811.
+# Dusk's wordmark on welcome, and sign-in after it, in English then French. sc-28811.
 # The language is set by the shared chip flows, never assumed from the device's last choice.
 #
 #   node .qa/bin/qa-env.mjs maestro brand-signed-out [--ipad | --se | --android [--tablet]]
@@ -11,11 +11,11 @@ appId: host.exp.Exponent
 - openLink: ${METRO_URL}/--/
 - extendedWaitUntil:
     visible:
-      id: 'launch.brand'
+      id: 'welcome.brand'
     timeout: 90000
 - takeScreenshot: brand-launch-en
 - tapOn:
-    id: 'home.openSignIn'
+    id: 'welcome.email'
 - extendedWaitUntil:
     visible:
       id: 'signIn.email'
@@ -31,11 +31,11 @@ appId: host.exp.Exponent
 - openLink: ${METRO_URL}/--/
 - extendedWaitUntil:
     visible:
-      id: 'launch.brand'
+      id: 'welcome.brand'
     timeout: 30000
 - takeScreenshot: brand-launch-fr
 - tapOn:
-    id: 'home.openSignIn'
+    id: 'welcome.email'
 - extendedWaitUntil:
     visible:
       id: 'signIn.email'

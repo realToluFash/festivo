@@ -1,12 +1,12 @@
 ---
 name: soirely-designer
-description: Design mode. Sweeps the backlog every run for stories that need design, audits which of an epic's stories already have screens, draws the missing ones in the established design language as a page per epic in one artifact, builds each one working in the app's design demo, and links each story to the artboard and the demo flow that cover it — a proposal for review, never presented as the design. Use when asked to design a screen, to check what an epic's stories are missing, or when invoked as /soirely-designer.
+description: Design mode. Sweeps the backlog every run for stories that need design, audits which of an epic's stories already have screens, draws the missing ones in the established design language as a page per epic in one artifact, builds each one working in its design demo (the app's, or the web's for desktop web), and links each story to the artboard and the demo flow that cover it — a proposal for review, never presented as the design. Use when asked to design a screen, to check what an epic's stories are missing, or when invoked as /soirely-designer.
 user-invocable: true
 ---
 
 # Design mode
 
-You are drawing screens and building them, working, in the app's design demo. You are not
+You are drawing screens and building them, working, in the app's and the web's design demos. You are not
 building the product, and you are not deciding what it does.
 
 **The design is the language; the ticket is the content.** You are not inventing a look, and
@@ -46,13 +46,22 @@ copies of it.
   today's app. A built screen moving to the new design keeps its ticket's functionality
   and AC; only its look and layout change.
 
-**And one from 3 Nov**, in `SHARED.md` under **Step three: build it in the app's demo**:
+**And one from 3 Nov**, in `SHARED.md` under **Step three: build it in the demo**:
 a board is not done until it works in the app's design demo (`apps/mobile/src/demo/`,
 `apps/mobile/app/demo/`). That means every phone and tablet frame, its states and its
 interactions, on sample data, sending nothing to the API, built from the app's own
 components and tokens, and passing the app's guard tests. You open its pull request on
 `ux/sc-N-<slug>` with `sq ux pr-create`, and merge it with `sq ux merge` once the lead has
-passed it. Desktop web boards have no demo.
+passed it.
+
+**And from 4 Nov (sc-29077)**, in the same step: a desktop web board is not done until it
+works in the web's design demo (`apps/web/src/demo/`). That means every 1280 × 800 frame,
+its states (`?state=`) and its interactions, on sample data, sending nothing to the API,
+built from the web's own components and tokens, and passing the web's guards: 24 px
+targets, no inline `style`, typecheck, tests and the i18n lint. It goes in the same kind of
+`ux/` pull request, which may change both demos and nothing else. sc-29061 to sc-29064 were
+filed for developers before this and stay theirs; from now on no demo story is filed for a
+desktop web board.
 
 ## 2. Pick the work
 
@@ -250,7 +259,7 @@ and leaves the rest of the description as it was. The house shape, in this order
 ```markdown
 **Artboard:** `VerifyEmail.dc.html`, the proposal (four layouts), beside `VerifyEmail-fd.dc.html` and `VerifyEmail-App.dc.html` · page `<epic number> · <area>` · <artifact url>
 
-**Demo:** `Verify your email` in the app's Design demo (`/demo/verify-email`) · PR #<number>
+**Demo:** `Verify your email` in the app's Design demo (`/demo/verify-email`), and in the web's demo (`/demo/verify-email`, states `?state=sent`, `?state=expired`) · PR #<number>
 
 **Layouts:** desktop web · tablet landscape · tablet portrait · phone, because …
 
@@ -275,7 +284,8 @@ artboard: `sq ux drawn sc-N`.
 
 ## 8. What this mode must not do
 
-- **No code outside the demo area.** Not a product screen, not a kit component, not a token
+- **No code outside the two demos** (`apps/mobile/src/demo/`, `apps/mobile/app/demo/`,
+  `apps/web/src/demo/`). Not a product screen, not a kit component, not a token
   file, not "while I was in there". The artboards, the demo and the story's Design section
   are the deliverable, and `sq ux merge` refuses a pull request that reaches further.
 - **No AC.** A criterion that is wrong or missing is a `[pm]` comment on the story, per

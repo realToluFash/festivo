@@ -109,7 +109,7 @@ describe('continue with Apple', () => {
       () => expect(screen.getByRole('heading', { level: 1, name: 'A few details' })).toBeDefined(),
       THE_WAY_BACK,
     );
-    expect(screen.getByText('Email confirmed by Apple · done')).toBeDefined();
+    expect(screen.getByText('Step 2 of 2')).toBeDefined();
     expect(
       screen.getByText(
         'Signed in with Apple. Apple has already confirmed x7k2p9@privaterelay.appleid.com, so there is no email code to enter.',

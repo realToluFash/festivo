@@ -6,7 +6,7 @@ import { RadioMark } from '../components/RadioMark.tsx';
 import { Sheet } from '../components/Sheet.tsx';
 import { Text } from '../components/Text.tsx';
 import { tokens } from '../theme/tokens.ts';
-import { SheetBody } from './Lines.tsx';
+import { SheetBody } from '../steps/Lines.tsx';
 
 export interface Country {
   flag: string;

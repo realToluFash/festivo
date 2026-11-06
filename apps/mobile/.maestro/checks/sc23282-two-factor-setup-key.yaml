@@ -1,4 +1,4 @@
-# sc-23282: Turn on two-factor reaches its setup step with the setup key in JetBrains Mono and Check the code on top of Cancel; Cancel leaves it off. Needs ${METRO_URL}, ${PW}, an account with a password and two-factor off.
+# sc-23282: Turn on two-factor reaches its setup step with the setup key and Check the code on top of Cancel; Cancel leaves it off. Needs ${METRO_URL}, ${PW}, an account with a password and two-factor off.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/settings/security
@@ -48,6 +48,7 @@ appId: host.exp.Exponent
 - scrollUntilVisible:
     element:
       id: 'twoFactor.turnOn'
+    direction: UP
     timeout: 15000
 - assertVisible:
     id: 'twoFactor.turnOn'

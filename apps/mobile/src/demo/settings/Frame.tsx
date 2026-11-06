@@ -6,12 +6,14 @@ import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { Text } from '../../components/Text.tsx';
 import type { SettingsSection } from '../../kit/appNav.ts';
 import { tokens } from '../../theme/tokens.ts';
-import { Glyph } from '../Glyph.tsx';
+import { Glyph } from '../../components/Glyph.tsx';
 import { SAMPLE } from '../samples.ts';
-import type { EventKey } from '../today.ts';
-import { PhoneTabBar, TABS, type Tab } from '../TodayCover.tsx';
-import type { Tell } from '../TodayParts.tsx';
-import { TodaySidebar } from '../TodaySidebar.tsx';
+import { sample } from '../today.ts';
+import { PhoneTabBar, TABS, type Tab } from '../../components/TodayCover.tsx';
+import type { Tell } from '../../components/TodayParts.tsx';
+import { TodaySidebar } from '../../components/TodaySidebar.tsx';
+import { TodayShellProvider } from '../../components/todayShell.ts';
+import { demoShell } from '../demoShell.ts';
 import { Back, RoundButton, Tile, TYPE } from './parts.tsx';
 import { type Looking, type SettingsLayout, type Viewer, viewerOfRole } from './sample.ts';
 
@@ -49,7 +51,7 @@ export function SeenBy({ looking, children }: { looking: Looking; children: Reac
 }
 
 export const PHONE_TAB_BAR = 64;
-const SIDEBAR_EVENTS: readonly EventKey[] = ['wed', 'ireti', 'party', 'draft'];
+const SIDEBAR_EVENTS = (['wed', 'ireti', 'party', 'draft'] as const).map(sample);
 
 /** A Settings page in B: on its side, `column` takes the Settings list's place, as givesWay does in the app. */
 export function SettingsPage({
@@ -181,14 +183,14 @@ export function Landscape({
 
   return (
     <View style={[styles.chrome, { paddingTop: insets.top }]}>
-      <TodaySidebar
-        events={SIDEBAR_EVENTS}
-        onTab={shell.onTab}
-        tell={shell.tell}
-        at="Settings"
-        onPerson={() => shell.openSection('account')}
-        person={shell.looking}
-      />
+      <TodayShellProvider value={{ ...demoShell(shell.tell), person: shell.looking }}>
+        <TodaySidebar
+          events={SIDEBAR_EVENTS}
+          onTab={shell.onTab}
+          at="Settings"
+          onPerson={() => shell.openSection('account')}
+        />
+      </TodayShellProvider>
       <View style={[styles.main, { marginBottom: Math.max(insets.bottom, tokens.spaceMd) }]}>
         <View style={styles.column}>{column}</View>
         <View style={styles.grow}>{children}</View>

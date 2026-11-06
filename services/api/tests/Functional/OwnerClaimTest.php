@@ -64,7 +64,7 @@ final class OwnerClaimTest extends ApiTestCase
     {
         [$owner, $organisation, $administrator] = $this->onlyOwnerSuspended();
         $reader = $this->member('kemi@ire.events');
-        $this->join($organisation, $reader, SeededRole::ReadOnly);
+        $this->join($organisation, $reader, SeededRole::Member);
 
         $this->signIn($administrator);
         self::assertSame('no_owner', $this->banner($organisation)['state'] ?? null);
@@ -85,7 +85,7 @@ final class OwnerClaimTest extends ApiTestCase
     {
         [, $organisation] = $this->onlyOwnerSuspended();
         $outsider = $this->member('ade@okafor.family');
-        $this->join($organisation, $outsider, SeededRole::Administrator);
+        $this->join($organisation, $outsider, SeededRole::Admin);
         $this->signIn($outsider);
 
         $body = $this->send('POST', $this->claimPath($organisation));
@@ -168,7 +168,7 @@ final class OwnerClaimTest extends ApiTestCase
     {
         [, $organisation, $administrator] = $this->onlyOwnerSuspended();
         $other = $this->member('kemi@ire.events', 'Kemi');
-        $this->join($organisation, $other, SeededRole::Administrator);
+        $this->join($organisation, $other, SeededRole::Admin);
         $this->started($organisation, $administrator);
         $this->signIn($other);
 
@@ -189,7 +189,7 @@ final class OwnerClaimTest extends ApiTestCase
     {
         [, $organisation, $administrator] = $this->onlyOwnerSuspended();
         $other = $this->member('kemi@ire.events', 'Kemi');
-        $this->join($organisation, $other, SeededRole::Administrator);
+        $this->join($organisation, $other, SeededRole::Admin);
         $claim = $this->started($organisation, $administrator);
         $instants = Type\shape(['lapsesAt' => Type\shape(['at' => Type\string()], true), 'passesAt' => Type\nullable(Type\shape(['at' => Type\string()], true))], true);
         $this->signIn($other);
@@ -292,7 +292,7 @@ final class OwnerClaimTest extends ApiTestCase
         self::service(OwnerClaimHandler::class)->settleDue();
 
         self::assertSame(OwnerClaimOutcome::RecordRemoved, $this->claim($claim)->getOutcome());
-        self::assertSame(SeededRole::Administrator, $this->membershipOf($administrator, $organisation)->getRole()->getSeededAs());
+        self::assertSame(SeededRole::Admin, $this->membershipOf($administrator, $organisation)->getRole()->getSeededAs());
         $this->signIn($administrator);
         $banner = $this->banner($organisation);
         self::assertSame('no_owner', $banner['state']);
@@ -305,7 +305,7 @@ final class OwnerClaimTest extends ApiTestCase
         [, $organisation, $administrator] = $this->onlyOwnerSuspended();
         $claim = $this->found($organisation, $administrator, '-72 hours -1 minute');
         $readOnly = Type\instance_of(Role::class)->coerce(
-            self::service(EntityManagerInterface::class)->getRepository(Role::class)->findOneBy(['organisation' => $organisation, 'seededAs' => SeededRole::ReadOnly]),
+            self::service(EntityManagerInterface::class)->getRepository(Role::class)->findOneBy(['organisation' => $organisation, 'seededAs' => SeededRole::Member]),
         );
         self::service(RoleAssignment::class)->assign($this->membershipOf($administrator, $organisation), $readOnly);
         self::service(EntityManagerInterface::class)->flush();
@@ -325,7 +325,7 @@ final class OwnerClaimTest extends ApiTestCase
     {
         [, $organisation, $administrator] = $this->onlyOwnerSuspended();
         $other = $this->member('kemi@ire.events', 'Kemi');
-        $this->join($organisation, $other, SeededRole::Administrator);
+        $this->join($organisation, $other, SeededRole::Admin);
         $claim = $this->found($organisation, $administrator, '-72 hours -1 minute');
         $started = Vec\map($this->mailsTitled('will become the owner of Ìrè Events'), self::to(...));
         ScriptedTxtRecordLookup::unpublish(self::RECORD);
@@ -428,7 +428,7 @@ final class OwnerClaimTest extends ApiTestCase
     {
         [, $organisation, $administrator] = $this->onlyOwnerSuspended();
         $other = $this->member('kemi@ire.events', 'Kemi');
-        $this->join($organisation, $other, SeededRole::Administrator);
+        $this->join($organisation, $other, SeededRole::Admin);
         $withdrawn = $this->found($organisation, $administrator, '-72 hours +1 minute');
         $this->send('POST', $this->claimPath($organisation) . '/withdraw');
         self::assertResponseStatusCodeSame(200);
@@ -452,7 +452,7 @@ final class OwnerClaimTest extends ApiTestCase
     {
         [, $organisation, $administrator] = $this->onlyOwnerSuspended();
         $other = $this->member('kemi@ire.events', 'Kemi');
-        $this->join($organisation, $other, SeededRole::Administrator);
+        $this->join($organisation, $other, SeededRole::Admin);
         $this->found($organisation, $administrator, '-72 hours -1 minute');
         $this->demote($administrator, $organisation);
         self::service(OwnerClaimHandler::class)->settleDue();
@@ -483,7 +483,7 @@ final class OwnerClaimTest extends ApiTestCase
     {
         [, $organisation, $administrator] = $this->onlyOwnerSuspended();
         $other = $this->member('kemi@ire.events', 'Kemi');
-        $this->join($organisation, $other, SeededRole::Administrator);
+        $this->join($organisation, $other, SeededRole::Admin);
         $claim = $this->found($organisation, $administrator, '-1 hour');
         $this->signIn($other);
 
@@ -526,7 +526,7 @@ final class OwnerClaimTest extends ApiTestCase
     {
         [, $organisation, $administrator] = $this->onlyOwnerSuspended();
         $reader = $this->member('kemi@ire.events');
-        $this->join($organisation, $reader, SeededRole::ReadOnly);
+        $this->join($organisation, $reader, SeededRole::Member);
         $claim = $this->started($organisation, $administrator);
         $this->signIn($reader);
 
@@ -581,7 +581,7 @@ final class OwnerClaimTest extends ApiTestCase
     {
         [, $organisation, $administrator] = $this->onlyOwnerSuspended();
         $other = $this->member('kemi@ire.events', 'Kemi');
-        $this->join($organisation, $other, SeededRole::Administrator);
+        $this->join($organisation, $other, SeededRole::Admin);
         $this->found($organisation, $administrator, '-1 hour');
 
         $body = $this->send('POST', $this->claimPath($organisation) . '/withdraw');
@@ -599,7 +599,7 @@ final class OwnerClaimTest extends ApiTestCase
     {
         [, $organisation, $administrator] = $this->onlyOwnerSuspended();
         $other = $this->member('kemi@ire.events', 'Kemi');
-        $this->join($organisation, $other, SeededRole::Administrator);
+        $this->join($organisation, $other, SeededRole::Admin);
         $first = $this->found($organisation, $administrator, '-1 hour');
         $this->send('POST', $this->claimPath($organisation) . '/withdraw');
         self::assertResponseStatusCodeSame(200);
@@ -621,7 +621,7 @@ final class OwnerClaimTest extends ApiTestCase
     {
         [, $organisation, $administrator] = $this->onlyOwnerSuspended();
         $other = $this->member('kemi@ire.events', 'Kemi');
-        $this->join($organisation, $other, SeededRole::Administrator);
+        $this->join($organisation, $other, SeededRole::Admin);
         $claim = $this->started($organisation, $administrator);
         $this->signIn($other);
         self::assertFalse(Type\shape(['mine' => Type\bool()], true)->coerce($this->banner($organisation)['claim'])['mine']);
@@ -667,7 +667,7 @@ final class OwnerClaimTest extends ApiTestCase
     {
         [, $organisation, $administrator] = $this->onlyOwnerSuspended();
         $other = $this->member('kemi@ire.events', 'Kemi');
-        $this->join($organisation, $other, SeededRole::Administrator);
+        $this->join($organisation, $other, SeededRole::Admin);
         $administrator->setTimezone('Africa/Lagos');
         $other->setTimezone('Europe/London');
         $this->found($organisation, $administrator, '-1 hour');
@@ -767,7 +767,7 @@ final class OwnerClaimTest extends ApiTestCase
         self::service(EntityManagerInterface::class)->flush();
         $this->list($organisation, 'ire.events');
         $administrator = $this->member('bisi@ire.events', 'Bisi');
-        $this->join($organisation, $administrator, SeededRole::Administrator);
+        $this->join($organisation, $administrator, SeededRole::Admin);
         $this->membershipOf($owner, $organisation)->setDomain('ire.events');
         $this->verifiedAlternative($owner, 'folake@okafor.family');
         $this->makePrimary($owner, 'folake@okafor.family');
@@ -831,7 +831,7 @@ final class OwnerClaimTest extends ApiTestCase
     private function demote(User $user, Organisation $organisation): void
     {
         $readOnly = Type\instance_of(Role::class)->coerce(
-            self::service(EntityManagerInterface::class)->getRepository(Role::class)->findOneBy(['organisation' => $organisation, 'seededAs' => SeededRole::ReadOnly]),
+            self::service(EntityManagerInterface::class)->getRepository(Role::class)->findOneBy(['organisation' => $organisation, 'seededAs' => SeededRole::Member]),
         );
         self::service(RoleAssignment::class)->assign($this->membershipOf($user, $organisation), $readOnly);
         self::service(EntityManagerInterface::class)->flush();

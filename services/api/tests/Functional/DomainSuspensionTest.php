@@ -219,7 +219,7 @@ final class DomainSuspensionTest extends ApiTestCase
     {
         [$owner, $organisation] = $this->organisation('folake@ire.events', 'Ìrè Events');
         $administrator = $this->member('bisi@ire.events');
-        $this->join($organisation, $administrator, MembershipChannel::Invitation, SeededRole::Administrator);
+        $this->join($organisation, $administrator, MembershipChannel::Invitation, SeededRole::Admin);
         $membership = $this->membershipOf($owner, $organisation);
         $membership->setDomain('ire.events');
         $this->verifiedAlternative($owner, 'folake@okafor.family');
@@ -463,9 +463,9 @@ final class DomainSuspensionTest extends ApiTestCase
         $lagos->setTimezone('Africa/Lagos');
         $london = $this->member('bisi@ire.events');
         $london->setTimezone('Europe/London');
-        $this->join($organisation, $london, MembershipChannel::Invitation, SeededRole::Administrator);
+        $this->join($organisation, $london, MembershipChannel::Invitation, SeededRole::Admin);
         $coordinator = $this->member('kemi@ire.events');
-        $this->join($organisation, $coordinator, MembershipChannel::Invitation, SeededRole::Coordinator);
+        $this->join($organisation, $coordinator, MembershipChannel::Invitation, SeededRole::Member);
         $tunde = $this->domainMember($organisation, 'tunde@ire.events');
         $membership = $this->membershipOf($tunde, $organisation);
         $this->suspendAt($membership, new DateTimeImmutable('2026-10-17 13:20:00 UTC'));
@@ -484,7 +484,7 @@ final class DomainSuspensionTest extends ApiTestCase
         [$owner, $organisation] = $this->organisation('folake@ire.events', 'Ìrè Events');
         $owner->setTimezone('Africa/Lagos');
         $coordinator = $this->member('kemi@ire.events');
-        $this->join($organisation, $coordinator, MembershipChannel::Invitation, SeededRole::Coordinator);
+        $this->join($organisation, $coordinator, MembershipChannel::Invitation, SeededRole::Member);
         $tunde = $this->domainMember($organisation, 'tunde@ire.events', 'Tunde Bakare');
         $this->verifiedAlternative($tunde, 'tunde@okafor.family');
 
@@ -648,7 +648,7 @@ final class DomainSuspensionTest extends ApiTestCase
         $user = $this->member($address);
         $membership = self::service(JoinRequester::class)->ask($user, $organisation);
         $readOnly = Type\instance_of(Role::class)->coerce(
-            self::service(EntityManagerInterface::class)->getRepository(Role::class)->findOneBy(['organisation' => $organisation, 'seededAs' => SeededRole::ReadOnly]),
+            self::service(EntityManagerInterface::class)->getRepository(Role::class)->findOneBy(['organisation' => $organisation, 'seededAs' => SeededRole::Member]),
         );
         $this->signIn($owner);
 
@@ -672,7 +672,7 @@ final class DomainSuspensionTest extends ApiTestCase
         return $user;
     }
 
-    private function join(Organisation $organisation, User $user, MembershipChannel $channel, SeededRole $as = SeededRole::ReadOnly): void
+    private function join(Organisation $organisation, User $user, MembershipChannel $channel, SeededRole $as = SeededRole::Member): void
     {
         $role = Type\instance_of(Role::class)->coerce(
             self::service(EntityManagerInterface::class)->getRepository(Role::class)->findOneBy(['organisation' => $organisation, 'seededAs' => $as]),
@@ -750,7 +750,7 @@ final class DomainSuspensionTest extends ApiTestCase
     {
         [$owner, $organisation] = $this->organisation('folake@ire.events', 'Ìrè Events');
         $administrator = $this->member('bisi@ire.events');
-        $this->join($organisation, $administrator, MembershipChannel::Invitation, SeededRole::Administrator);
+        $this->join($organisation, $administrator, MembershipChannel::Invitation, SeededRole::Admin);
         $this->membershipOf($owner, $organisation)->setDomain('ire.events');
         $this->verifiedAlternative($owner, 'folake@okafor.family');
         $this->makePrimary($owner, 'folake@okafor.family');

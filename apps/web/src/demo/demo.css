@@ -75,10 +75,22 @@
   background: var(--colorInset);
 }
 
+.demo-home h4 {
+  margin: var(--spaceLg) 0 var(--spaceXxs);
+  padding: 0 var(--spaceLg);
+  font: var(--typeSmall);
+  font-weight: 600;
+  color: var(--colorInkSecondary);
+}
+
+.demo-home-rows + h3 {
+  margin-top: var(--space3xl);
+}
+
 /* The board's page: no band and no card, the form in a column on white (page 27, second pass). */
 
 .demo-page {
-  --demoControl: 40px;
+  --demoControl: var(--sizeControlDesktop);
 
   display: flex;
   flex: 1 0 auto;
@@ -120,7 +132,7 @@
   flex: 1;
   align-items: flex-start;
   justify-content: center;
-  padding: 88px var(--spaceXl) var(--space6xl);
+  padding: 88px var(--spaceXl) 0;
 }
 
 .demo-column {
@@ -155,7 +167,40 @@
 }
 
 .demo-page .demo-way-in {
+  align-items: center;
+  gap: var(--spaceXl);
   margin: 0;
+}
+
+/* Back is 20 high with the column's 24 under it, so the title stays 88 under the header (WebNewAccount, page 27). */
+.demo-page-main.demo-backed {
+  padding-top: 44px;
+}
+
+.demo-back {
+  display: inline-flex;
+  align-self: flex-start;
+  align-items: center;
+  gap: var(--spaceXxs);
+  height: 20px;
+  margin-left: calc(-1 * var(--spaceHair));
+  font: 500 14px/20px var(--fontFamily);
+  color: var(--colorInk);
+  text-decoration: none;
+}
+
+.demo-back:hover {
+  text-decoration: underline;
+}
+
+.demo-chevron {
+  display: block;
+  flex: none;
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .demo-column p {
@@ -342,115 +387,381 @@
   flex: none;
 }
 
-/* The language button and its menu. */
-
-.demo-language {
-  position: relative;
-}
-
-.demo-language-button {
-  display: flex;
-  align-items: center;
-  gap: var(--spaceXs);
-  min-height: var(--space3xl);
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--colorInkSecondary);
-  font: var(--typeSmall);
-  cursor: pointer;
-}
-
-.demo-stroke,
 .demo-tick {
   display: block;
   flex: none;
   fill: none;
+  stroke: var(--colorAccent);
+  stroke-width: 2.6;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 
-.demo-stroke {
-  stroke: var(--colorInkSecondary);
-  stroke-width: 2;
+/* The create-account board's parts (WebNewAccount, page 27), shared by the rest of onboarding. */
+
+.demo-column .demo-step {
+  font: 500 13px/18px var(--fontFamily);
+  color: var(--colorInkSecondary);
 }
 
-.demo-tick {
-  stroke: var(--colorAccent);
-  stroke-width: 2.6;
+.demo-done {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceMd);
 }
 
-.demo-language-menu {
-  position: absolute;
-  right: 0;
-  bottom: calc(100% + var(--spaceSm));
-  z-index: 5;
+.demo-heading .demo-tight {
+  margin-top: calc(-1 * var(--spaceSm));
+}
+
+.demo-rule {
   display: flex;
   flex-direction: column;
   gap: var(--spaceHair);
-  width: 260px;
-  padding: var(--spaceSm);
-  background: var(--colorCard);
-  border: var(--borderCard);
-  border-radius: var(--radiusInset);
-  box-shadow: var(--shadowPopover);
+  margin-top: var(--spaceHair);
 }
 
-.demo-language-heading {
+.demo-column .demo-rule-line {
   display: flex;
-  flex-direction: column;
-  gap: var(--spaceXxs);
-  margin-bottom: var(--spaceXs);
-  padding: var(--spaceSm) var(--spaceLg) var(--spaceMd);
-  border-bottom: var(--borderDivider);
+  align-items: center;
+  gap: var(--spaceXs);
+  font: var(--typeSmall);
+  font-weight: 500;
+  color: var(--colorInkSecondary);
 }
 
-.demo-language-title {
-  font: var(--typeRowTitle);
+.demo-column .demo-rule-met {
+  color: var(--colorAccentText);
 }
 
-.demo-language-line {
+.demo-ring {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid var(--colorFieldBorder);
+  border-radius: 50%;
+}
+
+.demo-rule-note,
+.demo-help,
+.demo-column .demo-resend-note {
   font: var(--typeSmall);
   color: var(--colorInkSecondary);
 }
 
-.demo-language-item {
+/* One field the width of its answer, six digits (GOV.UK). */
+.demo-input.demo-code {
+  width: 200px;
+  font: 500 18px/1 var(--fontFamily);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.32em;
+}
+
+.demo-resend {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceHair);
+}
+
+.demo-resend-line,
+.demo-aside {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--spaceXs);
+  font: var(--typeBody);
+  color: var(--colorInkSecondary);
+}
+
+.demo-resend-wait {
+  font-weight: 500;
+}
+
+.demo-asides {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+}
+
+.demo-select {
+  appearance: auto;
+}
+
+.demo-optional {
+  font: var(--typeSmall);
+  line-height: 20px;
+  color: var(--colorInkSecondary);
+}
+
+.demo-number {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+}
+
+.demo-number-row {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--spaceLg);
+}
+
+.demo-number-row > .demo-field:last-child {
+  flex: 1;
+  min-width: 0;
+}
+
+.demo-number-code {
+  flex: none;
+  width: 200px;
+}
+
+.demo-loading {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceMd);
+  padding-top: var(--spaceXxs);
+  font: var(--typeBody);
+  color: var(--colorInkSecondary);
+}
+
+.demo-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--colorInset);
+  border-top-color: var(--colorAccent);
+  border-radius: 50%;
+  animation: demo-spin 0.9s linear infinite;
+}
+
+@keyframes demo-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .demo-spinner {
+    animation: none;
+  }
+}
+
+.demo-switch {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceSm);
+  min-height: var(--space3xl);
+  font: var(--typeSmall);
+  color: var(--colorInkSecondary);
+}
+
+/* The other-ways-in board's parts (WebWaysIn, page 27). */
+
+.demo-home-group + h3 {
+  margin-top: var(--space3xl);
+}
+
+.demo-text {
+  font: var(--typeBody);
+  color: var(--colorInk);
+}
+
+.demo-organisation {
   display: flex;
   align-items: center;
   gap: var(--spaceLg);
-  width: 100%;
-  min-height: var(--sizeControlDense);
-  padding: 0 var(--spaceLg);
-  border: 0;
-  border-radius: var(--radiusNav);
-  background: transparent;
-  color: var(--colorInk);
-  text-align: left;
-  cursor: pointer;
 }
 
-.demo-language-item:hover,
-.demo-language-item:focus {
+.demo-column .demo-organisation-name {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  font: 600 15px/1.35 var(--fontFamily);
+  color: var(--colorInk);
+}
+
+.demo-organisation-name .demo-help {
+  font-weight: 400;
+}
+
+.demo-choices {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceLg);
+}
+
+.demo-input.demo-message {
+  height: 96px;
+  padding: 9px var(--spaceLg);
+  resize: vertical;
+}
+
+.demo-input.demo-fixed {
   background: var(--colorInset);
 }
 
-/* The row the keyboard is on: 2 px green inside its edge. */
-.demo-language-item:focus-visible {
-  outline: 2px solid var(--colorAccent);
-  outline-offset: -2px;
-}
-
-.demo-language-names {
+.demo-invited {
   display: flex;
-  flex: 1;
-  align-items: baseline;
-  gap: var(--spaceSm);
-  font: var(--typeBody);
-  font-weight: 500;
-  color: var(--colorInk);
+  flex-direction: column;
+  gap: var(--spaceLg);
 }
 
-.demo-language-english {
-  font: var(--typeSmall);
+.demo-invited-lines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceHair);
+}
+
+/* Signed out, the invitation's form is taller: it sits 56 under the header with 20 between its parts. */
+.demo-page-main:has(.demo-invitation-page) {
+  padding-top: 56px;
+}
+
+.demo-invitation-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXxl);
+}
+
+.demo-answers-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceLg);
+}
+
+.demo-answers {
+  display: flex;
+  gap: var(--spaceLg);
+}
+
+.demo-answers .button {
+  flex: 1;
+}
+
+.demo-answers-sized .button {
+  flex: none;
+}
+
+.demo-answers-sized .button-primary {
+  width: 180px;
+}
+
+.demo-answers-sized .button:not(.button-primary) {
+  width: 120px;
+}
+
+.demo-offer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXl);
+}
+
+.demo-offer-intro {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXxs);
+}
+
+.demo-offer-intro h2 {
+  margin: 0;
+  font: 600 16px/1.3 var(--fontFamily);
+}
+
+/* Hairlines in place of boxes. */
+.demo-offer-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceLg);
+  padding: 14px 0;
+  border-top: var(--borderInset);
+  border-bottom: var(--borderInset);
+}
+
+.demo-offer-row .demo-organisation {
+  flex: 1;
+  min-width: 0;
+}
+
+.demo-column .demo-offer-ask {
+  flex: none;
+  width: 120px;
+}
+
+.demo-invitation {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceLg);
+  padding-top: 14px;
+  border-top: var(--borderInset);
+}
+
+.demo-waiting {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+}
+
+/* The two-factor board's parts (WebTwoFactor, page 27). */
+
+.demo-asides > .demo-link {
+  align-self: flex-start;
+}
+
+.demo-steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceMd);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font: var(--typeBody);
+}
+
+.demo-steps li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceMd);
+}
+
+.demo-step-number {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--sizePill);
+  height: var(--sizePill);
+  border: 1px solid var(--colorBorder);
+  border-radius: 50%;
+  background: var(--colorInset);
+  font: 600 12px/1 var(--fontFamily);
   color: var(--colorInkSecondary);
+}
+
+.demo-lines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceHair);
+  font: var(--typeBody);
+}
+
+.demo-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceLg);
+}
+
+.demo-answer-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceSm);
+}
+
+/* Both codes is the board's tallest page: its column sits higher and tighter to fit 1280 × 800. */
+.demo-page-main.demo-backed.demo-tall {
+  padding-top: var(--space3xl);
+}
+
+.demo-tall .demo-column {
+  gap: var(--spaceXxl);
 }

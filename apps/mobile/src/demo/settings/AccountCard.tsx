@@ -5,7 +5,7 @@ import { StyleSheet, View, type ViewInstance } from 'react-native';
 import { useReadOut } from '../../components/ReadOut.tsx';
 import { type TextHandle, Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
-import { Glyph, type GlyphName } from '../Glyph.tsx';
+import { Glyph, type GlyphName } from '../../components/Glyph.tsx';
 import { type CardLine, WORDS, zoneLine } from './AccountModel.ts';
 import { YOU } from './sample.ts';
 import {

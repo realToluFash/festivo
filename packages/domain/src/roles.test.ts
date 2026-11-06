@@ -172,18 +172,21 @@ describe('removing a role', () => {
   const holder = (name: string) => ({ name, suspended: false });
   const planner = {
     id: 'planner',
+    seededAs: null,
     holders: 3,
     holderNames: [holder('bisi Ade'), holder('Zara Bello'), holder('Émeka Obi')],
     permissions: ['events.read', 'events.manage'],
   };
   const viewer = {
     id: 'viewer',
+    seededAs: null,
     holders: 1,
     holderNames: [holder('Ada Okeke')],
     permissions: ['events.read'],
   };
   const treasurer = {
     id: 'treasurer',
+    seededAs: null,
     holders: 2,
     holderNames: [holder('Kemi'), holder('Tope')],
     permissions: ['billing.manage'],
@@ -192,6 +195,13 @@ describe('removing a role', () => {
 
   it('moves its members only to another role the caller holds all of', () => {
     expect(replacementsFor(roles, planner, ['events.read', 'events.manage'])).toEqual([viewer]);
+  });
+
+  it('never moves its members to Owner, even for an owner who holds everything', () => {
+    const owner = { ...viewer, id: 'owner', seededAs: 'owner', permissions: [] };
+    const everything = ['events.read', 'events.manage', 'billing.manage'];
+
+    expect(replacementsFor([owner, ...roles], planner, everything)).toEqual([viewer, treasurer]);
   });
 
   it('counts and names its members on the role they moved to, alphabetically', () => {
