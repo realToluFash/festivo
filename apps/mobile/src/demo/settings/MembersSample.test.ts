@@ -140,6 +140,26 @@ describe('Members in the demo', () => {
     expect(membersStart('withdraw').withdrawing).toBe(true);
   });
 
+  it('opens your own page as Julien, an active admin, or as Folake, the owner', () => {
+    const own = (state: 'self' | 'selfOwner') => {
+      const start = membersStart(state);
+      const you = start.people.find((one) => one.id === start.open);
+      if (you == null) throw new Error(`${state} opens somebody.`);
+
+      return { you, standing: standingOf(you, start.people, start.viewer) };
+    };
+
+    expect(own('self').you).toMatchObject({
+      name: 'Julien Moreau',
+      role: 'Admin',
+      status: 'active',
+    });
+    expect(own('self').standing).toBe('self');
+    expect(membersStart('self').people.every((one) => one.status !== 'suspended')).toBe(true);
+    expect(own('selfOwner').you.name).toBe('Folake Adeyemi');
+    expect(own('selfOwner').standing).toBe('selfOwner');
+  });
+
   it('says the count on the card, with who waits and the step to answer them', () => {
     const card = membersCard({ ...plainCard, people });
     expect(card.says).toBe('7 people · 1 waiting');

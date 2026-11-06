@@ -266,6 +266,16 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/settings/members?state=readOnly',
       },
       {
+        title: 'Members · your own page',
+        what: 'Julien, an admin, cannot change his own role',
+        href: '/demo/settings/members?state=self',
+      },
+      {
+        title: 'Members · your own page as the owner',
+        what: 'Folake hands ownership over in Organisation',
+        href: '/demo/settings/members?state=selfOwner',
+      },
+      {
         title: 'Members · the owner claim',
         what: 'Julien claims Ire Events by its domain',
         href: '/demo/settings/members?state=claim',

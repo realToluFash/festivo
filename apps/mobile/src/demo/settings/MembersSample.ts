@@ -268,6 +268,7 @@ export const MEMBERS_STATES = [
   'makingOwner',
   'marta',
   'self',
+  'selfOwner',
   'claim',
   'withdraw',
 ] as const;
@@ -485,6 +486,8 @@ export function membersStart(state: MembersState): MembersStart {
     case 'marta':
       return { ...base, open: MARTA };
     case 'self':
+      return { ...base, viewer: VIEWERS.julien, open: VIEWERS.julien.id };
+    case 'selfOwner':
       return { ...base, open: YOU.email };
     case 'claim':
     case 'withdraw':
