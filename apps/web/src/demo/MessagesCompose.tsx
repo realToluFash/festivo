@@ -548,6 +548,7 @@ export function Composer({
   editing?: { onChangeWhen: () => void };
 }) {
   const [inserting, setInserting] = useState(false);
+  const optionalId = useId();
   const empty = blank(draft.body);
 
   function insert(token: Token): void {
@@ -575,16 +576,24 @@ export function Composer({
         onSend();
       }}
     >
-      <input
-        className="mg-subject"
-        value={draft.subject}
-        placeholder={MW.subject}
-        aria-label={MW.subject}
-        readOnly={!tools}
-        data-focus="subject"
-        onChange={(event) => onDraft({ subject: event.target.value })}
-        onKeyDown={(event) => commandEnter(event, onSend)}
-      />
+      <div className="mg-subject-row">
+        <input
+          className="mg-subject"
+          value={draft.subject}
+          aria-label={MW.subject}
+          aria-describedby={optionalId}
+          readOnly={!tools}
+          data-focus="subject"
+          onChange={(event) => onDraft({ subject: event.target.value })}
+          onKeyDown={(event) => commandEnter(event, onSend)}
+        />
+        <span className={draft.subject === '' ? 'mg-subject-hint' : 'desk-unseen'} aria-hidden>
+          {draft.subject === '' && MW.subject}
+          <span id={optionalId} className="mg-optional">
+            {MW.optional}
+          </span>
+        </span>
+      </div>
       <MessageField
         body={draft.body}
         seed={draft.seed}

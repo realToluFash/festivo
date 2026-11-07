@@ -824,4 +824,26 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
       within(dialog).getByText('The email adds the new address, with Open in maps.'),
     ).toBeDefined();
   });
+
+  it(
+    'marks the Subject Optional, as the boards draw it, and says so once it is typed',
+    SLOW,
+    async () => {
+      await messages('inUse');
+
+      fireEvent.click(screen.getByRole('button', { name: 'New' }));
+
+      const subject = await screen.findByRole('textbox', { name: 'Subject' });
+      const optional = () =>
+        document.getElementById(subject.getAttribute('aria-describedby') ?? '');
+
+      expect(optional()?.textContent).toBe('Optional');
+      expect(optional()?.className).toBe('mg-optional');
+      expect(optional()?.parentElement?.className).toBe('mg-subject-hint');
+
+      fireEvent.change(subject, { target: { value: 'Parking' } });
+      expect(optional()?.textContent).toBe('Optional');
+      expect(optional()?.parentElement?.className).toBe('desk-unseen');
+    },
+  );
 });
