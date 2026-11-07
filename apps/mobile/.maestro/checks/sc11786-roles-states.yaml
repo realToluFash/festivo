@@ -1,5 +1,10 @@
-# sc-11786: rolesScreen.loading held with the QA api paused, then rolesScreen.failedLoad with it killed. Needs the api switch on 127.0.0.1:18097.
+# sc-11786: rolesScreen.loading held with the QA api paused, then rolesScreen.failedLoad with it stopped. Holds the api through batch/helper.js, so it runs in a batch, and brings it back up when it ends, passed or failed.
 appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
 ---
 - setOrientation: ${ORIENT}
 - openLink: ${METRO_URL}/--/settings
@@ -7,17 +12,22 @@ appId: host.exp.Exponent
     visible: '{{t:settings.title}}'
     timeout: 30000
 - waitForAnimationToEnd
-- evalScript: ${http.get('http://127.0.0.1:18097/pause').body}
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=paused
 - openLink: ${METRO_URL}/--/settings/roles
 - extendedWaitUntil:
     visible: '{{t:rolesScreen.loading}}'
     timeout: 20000
 - waitForAnimationToEnd
 - takeScreenshot: roles-loading
-- evalScript: ${http.get('http://127.0.0.1:18097/kill').body}
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
 - extendedWaitUntil:
     visible: '{{t:rolesScreen.failedLoad}}'
     timeout: 90000
 - waitForAnimationToEnd
 - takeScreenshot: roles-failed
-- evalScript: ${http.get('http://127.0.0.1:18097/start').body}

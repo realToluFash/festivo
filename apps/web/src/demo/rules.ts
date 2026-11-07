@@ -162,6 +162,8 @@ export const NEW_ACCOUNT_PAGES: { name: string; states: { name: string; to: stri
       { name: 'Too short', to: at('register', 'short') },
       { name: 'A breached password', to: at('register', 'breached') },
       { name: 'Too many sign-ups', to: at('register', 'limited') },
+      { name: 'The sign-up timed out', to: at('register', 'timed-out') },
+      { name: 'The sign-up timed out, in a new tab', to: at('register', 'timed-out-new-tab') },
     ],
   },
   {
@@ -171,6 +173,7 @@ export const NEW_ACCOUNT_PAGES: { name: string; states: { name: string; to: stri
       { name: 'A wrong code', to: at('email', 'wrong') },
       { name: 'The code has expired', to: at('email', 'expired') },
       { name: 'Too many wrong tries', to: at('email', 'exhausted') },
+      { name: 'The sign-up has run out', to: at('email', 'run-out') },
       { name: 'Email verified', to: at('email', 'verified') },
     ],
   },
@@ -270,6 +273,7 @@ export const TWO_FACTOR_PAGES: { name: string; states: { name: string; to: strin
     name: 'Once asked',
     states: [
       { name: 'Waiting for your organisation', to: twoFactorAt('waiting') },
+      { name: 'Cancel your request?', to: twoFactorAt('waiting', 'confirm') },
       { name: 'Two-factor is off', to: twoFactorAt('off') },
       { name: 'Turned down', to: twoFactorAt('turned-down') },
       { name: 'Ended', to: twoFactorAt('ended') },
