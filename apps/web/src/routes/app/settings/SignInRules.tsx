@@ -182,7 +182,6 @@ export function SignInRules() {
           ) : (
             <InForce organisation={organisation} page={load.page} />
           )}
-          <p className="muted">{t('signInRules.managersAre')}</p>
         </Arrived>
       )}
     </div>

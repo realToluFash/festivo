@@ -145,6 +145,17 @@ describe('Settings > Sign-in rules, for someone who manages the organisation', (
     expect(screen.queryByText('Sign-in rules changed')).toBeNull();
   });
 
+  it('names owners and admins as who two-factor for managers covers, with no foot (sc-29915)', async () => {
+    signedIn(membership());
+    answering();
+    open();
+
+    expect(
+      await screen.findByRole('button', { name: 'Require two-factor for owners and admins' }),
+    ).toBeDefined();
+    expect(screen.queryByText(/managers|manage members, roles/i)).toBeNull();
+  });
+
   it('lays the inactivity lengths out as pills that wrap', async () => {
     signedIn(membership());
     answering();
@@ -161,7 +172,7 @@ describe('Settings > Sign-in rules, for someone who manages the organisation', (
     open();
 
     const require = await screen.findByRole('button', {
-      name: 'Require two-factor for people who can manage members, roles, billing or security',
+      name: 'Require two-factor for owners and admins',
     });
     fireEvent.click(require);
 
@@ -175,7 +186,7 @@ describe('Settings > Sign-in rules, for someone who manages the organisation', (
     expect(
       within(
         screen.getByRole('region', {
-          name: 'Two-factor for people who can manage members, roles, billing or security',
+          name: 'Two-factor for owners and admins',
         }),
       ).getByText('Not required'),
     ).toBeDefined();
@@ -193,7 +204,7 @@ describe('Settings > Sign-in rules, for someone who manages the organisation', (
 
     fireEvent.click(
       await screen.findByRole('button', {
-        name: 'Require two-factor for people who can manage members, roles, billing or security',
+        name: 'Require two-factor for owners and admins',
       }),
     );
     expect(screen.queryByText('Turn on two-factor for yourself first')).toBeNull();
@@ -225,7 +236,7 @@ describe('Settings > Sign-in rules, for someone who manages the organisation', (
     );
     fireEvent.click(idle.getByRole('button', { name: '7 days' }));
     const require = screen.getByRole('button', {
-      name: 'Require two-factor for people who can manage members, roles, billing or security',
+      name: 'Require two-factor for owners and admins',
     });
     fireEvent.click(require);
     fireEvent.click(screen.getByRole('button', { name: 'Save rules' }));
@@ -635,7 +646,7 @@ describe('Two-factor for everyone (sc-609), for someone who manages the organisa
     expect(
       screen
         .getByRole('button', {
-          name: 'Require two-factor for people who can manage members, roles, billing or security',
+          name: 'Require two-factor for owners and admins',
         })
         .getAttribute('aria-pressed'),
     ).toBe('true');

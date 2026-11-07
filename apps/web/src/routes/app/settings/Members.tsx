@@ -164,7 +164,7 @@ export function Members() {
           line={t('membersScreen.failedLoad')}
           lineRef={failedLine}
           focusable={load.retried}
-          retry={t('rolesScreen.retry')}
+          retry={t('membersScreen.retry')}
           onRetry={() => {
             retrying.current = true;
             setLoad({ kind: 'loading' });

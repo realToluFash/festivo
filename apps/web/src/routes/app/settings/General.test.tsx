@@ -373,7 +373,7 @@ describe('Settings > General', () => {
 
     const linking = within(detailsCard()).getByText(/signs in with Google or Apple only/);
     const twoFactor = within(detailsCard()).getByText(
-      'Ìrè Events asks people who can manage members, roles, billing or security to use two-factor. Until you turn it on, you can see these but not change them.',
+      'Ìrè Events asks its owners and admins to use two-factor. Until you turn it on, you can see these but not change them.',
     );
 
     expect(linking.compareDocumentPosition(twoFactor)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
