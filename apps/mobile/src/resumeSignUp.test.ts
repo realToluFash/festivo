@@ -1,0 +1,169 @@
+import { ApiError } from '@soirely/api-client';
+import { describe, expect, it } from 'vitest';
+
+import { launchRoute, resumeSignUp } from './resumeSignUp.ts';
+
+const PENDING = { registration: 'the-handle', email: 'folake@ire.events' };
+const OPEN = { cooldownSeconds: 0, codeState: 'live' as const };
+const ON_LAUNCH = () => true;
+const LEFT_LAUNCH = () => false;
+
+function expired(): ApiError {
+  const problem = {
+    type: 'https://soirely.com/errors/registration_expired',
+    title: 'No.',
+    status: 410,
+  };
+
+  return new ApiError(problem, new Response(JSON.stringify(problem), { status: 410 }));
+}
+
+describe('opening the app mid-sign-up', () => {
+  it('goes back to the code for a sign-up still open', async () => {
+    const asked: string[] = [];
+
+    await expect(
+      resumeSignUp({
+        held: async () => PENDING,
+        open: async (registration) => {
+          asked.push(registration);
+          return OPEN;
+        },
+        drop: async () => {},
+      }),
+    ).resolves.toBe('/verify-email');
+    expect(asked).toEqual(['the-handle']);
+  });
+
+  it('clears a sign-up that has run out, and opens signed out', async () => {
+    let dropped = false;
+
+    await expect(
+      resumeSignUp({
+        held: async () => PENDING,
+        open: async () => {
+          throw expired();
+        },
+        drop: async () => {
+          dropped = true;
+        },
+      }),
+    ).resolves.toBeNull();
+    expect(dropped).toBe(true);
+  });
+
+  it('does nothing when no sign-up is waiting', async () => {
+    await expect(
+      resumeSignUp({ held: async () => null, open: async () => OPEN, drop: async () => {} }),
+    ).resolves.toBeNull();
+  });
+});
+
+describe('opening the app on an ended session', () => {
+  it('goes to the code when a sign-up is still open, on the first launch', async () => {
+    await expect(
+      launchRoute(
+        true,
+        {
+          held: async () => PENDING,
+          open: async () => OPEN,
+          drop: async () => {},
+        },
+        ON_LAUNCH,
+      ),
+    ).resolves.toBe('/verify-email');
+  });
+
+  it('says signed out, and clears the sign-up, when its handle has run out', async () => {
+    let dropped = false;
+
+    await expect(
+      launchRoute(
+        true,
+        {
+          held: async () => PENDING,
+          open: async () => {
+            throw expired();
+          },
+          drop: async () => {
+            dropped = true;
+          },
+        },
+        ON_LAUNCH,
+      ),
+    ).resolves.toBe('/sign-in?signedOut=1');
+    expect(dropped).toBe(true);
+  });
+
+  it('says signed out when no sign-up is waiting', async () => {
+    await expect(
+      launchRoute(
+        true,
+        { held: async () => null, open: async () => OPEN, drop: async () => {} },
+        ON_LAUNCH,
+      ),
+    ).resolves.toBe('/sign-in?signedOut=1');
+  });
+
+  it('stays put with no session and no sign-up, as before', async () => {
+    await expect(
+      launchRoute(
+        false,
+        { held: async () => null, open: async () => OPEN, drop: async () => {} },
+        ON_LAUNCH,
+      ),
+    ).resolves.toBeNull();
+  });
+});
+
+describe('an ended session answered after launch has been left', () => {
+  it('leaves the chosen screen alone, and keeps a sign-up still open for the next launch', async () => {
+    let dropped = false;
+
+    await expect(
+      launchRoute(
+        true,
+        {
+          held: async () => PENDING,
+          open: async () => OPEN,
+          drop: async () => {
+            dropped = true;
+          },
+        },
+        LEFT_LAUNCH,
+      ),
+    ).resolves.toBeNull();
+    expect(dropped).toBe(false);
+  });
+
+  it('still says signed out when the sign-up has run out', async () => {
+    let dropped = false;
+
+    await expect(
+      launchRoute(
+        true,
+        {
+          held: async () => PENDING,
+          open: async () => {
+            throw expired();
+          },
+          drop: async () => {
+            dropped = true;
+          },
+        },
+        LEFT_LAUNCH,
+      ),
+    ).resolves.toBe('/sign-in?signedOut=1');
+    expect(dropped).toBe(true);
+  });
+
+  it('still says signed out when no sign-up is waiting', async () => {
+    await expect(
+      launchRoute(
+        true,
+        { held: async () => null, open: async () => OPEN, drop: async () => {} },
+        LEFT_LAUNCH,
+      ),
+    ).resolves.toBe('/sign-in?signedOut=1');
+  });
+});

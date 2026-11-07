@@ -1,0 +1,44 @@
+# sc-25667: Create organisation with the name blank, then over 100 characters, sends nothing and leaves Cancel live; the scrim closes the sheet after the blank message, Cancel after the over-100 one.
+appId: host.exp.Exponent
+---
+- runFlow: ../open-create-organisation.yaml
+- hideKeyboard:
+    optional: true
+- tapOn:
+    id: 'createOrganisation.create'
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: local-blank
+- assertVisible:
+    id: 'createOrganisation.cancel'
+    enabled: true
+- hideKeyboard
+- waitForAnimationToEnd
+- takeScreenshot: local-blank-before-scrim
+- tapOn:
+    point: '50%,15%'
+- extendedWaitUntil:
+    notVisible:
+      id: 'createOrganisation'
+    timeout: 10000
+- runFlow: ../open-create-organisation.yaml
+- tapOn:
+    id: 'createOrganisation.name'
+- inputText: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'
+- hideKeyboard:
+    optional: true
+- tapOn:
+    id: 'createOrganisation.create'
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: local-over-100
+- assertVisible:
+    id: 'createOrganisation.cancel'
+    enabled: true
+- tapOn:
+    id: 'createOrganisation.cancel'
+- extendedWaitUntil:
+    notVisible:
+      id: 'createOrganisation'
+    timeout: 10000
+- takeScreenshot: local-closed
