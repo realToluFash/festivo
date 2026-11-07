@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import {
   ANSWER_MS,
   answerable,
-  answerComes,
+  answerTakes,
   answeredWords,
   endsAt,
   HELD_MS,
@@ -80,12 +80,11 @@ describe('Requests to get back in, on the app’s Members', () => {
     expect(RECOVERY_WORDS.failed).toBe('That did not work. Try again in a moment.');
   });
 
-  it('answers at once, holds a linked answer on its way, and refuses every one that fails', () => {
-    expect(answerComes('answers', 1)).toEqual({ afterMs: ANSWER_MS, fails: false });
-    expect(answerComes('holds', 1)).toEqual({ afterMs: HELD_MS, fails: false });
-    expect(answerComes('holds', 2)).toEqual({ afterMs: ANSWER_MS, fails: false });
-    expect(answerComes('fails', 1)).toEqual({ afterMs: ANSWER_MS, fails: true });
-    expect(answerComes('fails', 3).fails).toBe(true);
+  it('answers in a moment, and holds a linked answer on its way before it lands', () => {
+    expect(answerTakes('answers', 1)).toBe(ANSWER_MS);
+    expect(answerTakes('answers', 2)).toBe(ANSWER_MS);
+    expect(answerTakes('holds', 1)).toBe(HELD_MS);
+    expect(answerTakes('holds', 2)).toBe(ANSWER_MS);
   });
 
   it('lists Kofi’s request before Priya’s, the oldest first', () => {

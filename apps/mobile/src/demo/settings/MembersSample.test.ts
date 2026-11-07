@@ -362,7 +362,7 @@ describe('Requests to get back in, in the app’s Members (sc-30893)', () => {
     expect(membersStart('recoveryFailed')).toMatchObject({
       recovery: [KOFI, PRIYA],
       recoveryAsk: { id: KOFI, answer: 'approve', phase: 'failed' },
-      answering: 'fails',
+      answering: 'answers',
     });
     expect(membersStart('recovery').answering).toBe('answers');
     expect(membersStart('recoveryDone')).toMatchObject({

@@ -149,20 +149,14 @@ export type RecoveryAsk = {
   phase: 'asking' | 'sending' | 'failed' | 'closed';
 };
 
-/** How the demo's answers come back, as Personalisation's saves do: at once, the first held a while so a link can show it, or every one refused. */
-export type Answering = 'answers' | 'holds' | 'fails';
+/** How long the demo's answers take, as Personalisation's saves do: a moment, or the first held a while so a link can show it on its way. Every answer lands; recoveryFailed only opens failed. */
+export type Answering = 'answers' | 'holds';
 
 export const ANSWER_MS = 500;
 export const HELD_MS = 8000;
 
-export function answerComes(
-  answering: Answering,
-  send: number,
-): { afterMs: number; fails: boolean } {
-  return {
-    afterMs: answering === 'holds' && send === 1 ? HELD_MS : ANSWER_MS,
-    fails: answering === 'fails',
-  };
+export function answerTakes(answering: Answering, send: number): number {
+  return answering === 'holds' && send === 1 ? HELD_MS : ANSWER_MS;
 }
 
 export function answeredWords(

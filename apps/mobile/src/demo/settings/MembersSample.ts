@@ -573,7 +573,7 @@ export function membersStart(
     case 'recoverySending':
       return { ...kofiAsks('approve', 'sending'), answering: 'holds' };
     case 'recoveryFailed':
-      return { ...kofiAsks('approve', 'failed'), answering: 'fails' };
+      return kofiAsks('approve', 'failed');
     case 'recoveryDone':
       return { ...recovery, recovery: [], recoveryAnswer: { id: PRIYA, kind: 'approved' } };
     case 'recoveryOwn':

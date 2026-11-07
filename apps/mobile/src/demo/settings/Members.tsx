@@ -25,7 +25,7 @@ import {
 } from './MembersRecovery.tsx';
 import {
   answerable,
-  answerComes,
+  answerTakes,
   type RecoveryAnswer,
   type RecoveryAsk,
 } from './MembersRecoverySample.ts';
@@ -219,11 +219,10 @@ function MembersScreen({ start }: { start: MembersStart }) {
   useEffect(() => {
     if (sent === 0 || recoveryAsk == null) return;
     const ask = recoveryAsk;
-    const { afterMs, fails } = answerComes(start.answering, sent);
-    const wait = setTimeout(() => {
-      if (fails) setRecoveryAsk({ ...ask, phase: 'failed' });
-      else answerRecovery(ask.id, ask.answer === 'approve' ? 'approved' : 'turnedDown');
-    }, afterMs);
+    const wait = setTimeout(
+      () => answerRecovery(ask.id, ask.answer === 'approve' ? 'approved' : 'turnedDown'),
+      answerTakes(start.answering, sent),
+    );
 
     return () => clearTimeout(wait);
     // Once per answer sent: it answers the confirm that was open as its verb was pressed.
