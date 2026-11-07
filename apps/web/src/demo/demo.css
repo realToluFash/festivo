@@ -640,16 +640,13 @@
   flex: 1;
 }
 
+.demo-answers-sized {
+  flex-wrap: wrap;
+  gap: var(--spaceSm);
+}
+
 .demo-answers-sized .button {
   flex: none;
-}
-
-.demo-answers-sized .button-primary {
-  width: 180px;
-}
-
-.demo-answers-sized .button:not(.button-primary) {
-  width: 120px;
 }
 
 .demo-offer {
