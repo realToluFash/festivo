@@ -28,8 +28,8 @@ def tools(*names):
                                                  "addedNames": list(names)}}
 
 
-def call(call_id, name, **given):
-    return {"type": "assistant", "message": {"id": f"m-{call_id}", "content": [
+def call(call_id, name, turn=None, **given):
+    return {"type": "assistant", "message": {"id": turn or f"m-{call_id}", "content": [
         {"type": "tool_use", "id": call_id, "name": name, "input": given}]}}
 
 
@@ -260,6 +260,26 @@ class Wanted(unittest.TestCase):
     def test_an_answered_last_call_is_not_the_one_held(self):
         lines = [call("t1", "Bash", command="git status"), answer("t1")]
         self.assertIsNone(background.pending_call(lines))
+
+    def test_of_a_turn_s_unanswered_calls_the_first_is_the_one_held(self):
+        lines = [call("t1", "Bash", turn="m1", command="pnpm install"),
+                 call("t2", "Read", turn="m1", file_path="apps/web/package.json")]
+        self.assertEqual(background.wanted("x", {}, "/nowhere", lines), "pnpm install")
+
+    def test_an_answered_last_call_does_not_hide_an_earlier_unanswered_one(self):
+        lines = [call("t1", "Bash", turn="m1", command="pnpm install"),
+                 call("t2", "Read", turn="m1", file_path="apps/web/package.json"),
+                 answer("t2")]
+        self.assertEqual(background.wanted("x", {}, "/nowhere", lines), "pnpm install")
+
+    def test_an_unanswered_call_from_an_earlier_turn_is_not_the_one_held(self):
+        lines = [call("t1", "Bash", command="git status"), assistant("m2", "Done.")]
+        self.assertIsNone(background.pending_call(lines))
+
+    def test_a_subagent_s_call_is_said_to_be_one(self):
+        lines = [call("t1", "Agent", description="Install the web deps", prompt="…")]
+        self.assertEqual(background.wanted("x", {}, "/nowhere", lines),
+                         "a subagent's call, under Agent: Install the web deps")
 
     def test_a_call_without_a_command_is_named_by_its_tool(self):
         lines = [call("t1", "Write", file_path="/etc/hosts", content="x")]

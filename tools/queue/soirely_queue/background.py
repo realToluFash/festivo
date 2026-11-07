@@ -38,6 +38,7 @@ TRIES = 2
 # after this long is stopped, and its item handed back.
 PROMPT_GRACE_SECONDS = 180
 WANTED_CHARS = 300
+SUBAGENT_TOOLS = ("Agent", "Task")
 SECRET_NAME = r"[\w-]*(?:token|secret|password|passwd|api[_-]?key|auth)[\w-]*"
 SECRET_VALUE = re.compile(rf"(?i)(\b{SECRET_NAME}['\"]?\s*[=:]\s*|--{SECRET_NAME}[\s=]+)"
                           r"(['\"]?)[^\s'\"]+\2")
@@ -164,21 +165,27 @@ def masked(text):
 
 
 def pending_call(lines):
-    """The last tool call the session made that nothing answered: the one its prompt holds."""
-    answered, pending = set(), None
-    for line in lines:
+    """The earliest call of the session's last assistant turn that nothing answered: the one
+    its prompt holds, since a turn's calls run one after another in call order."""
+    answered, turn, calls = set(), None, []
+    for number, line in enumerate(lines):
         if line.get("isSidechain"):
             continue
-        for part in (line.get("message") or {}).get("content") or []:
+        message = line.get("message") or {}
+        if line.get("type") == "assistant" and (message.get("id") or number) != turn:
+            turn, calls = message.get("id") or number, []
+        for part in message.get("content") or []:
             if not isinstance(part, dict):
                 continue
             if part.get("type") == "tool_use" and line.get("type") == "assistant":
-                pending = part
+                calls.append(part)
             elif part.get("type") == "tool_result":
                 answered.add(part.get("tool_use_id"))
-    if not pending or pending.get("id") in answered:
+    pending = next((part for part in calls if part.get("id") not in answered), None)
+    if not pending:
         return None
-    return {"tool": pending.get("name"), "input": pending.get("input") or {}}
+    return {"tool": pending.get("name"), "input": pending.get("input") or {},
+            "subagent": pending.get("name") in SUBAGENT_TOOLS}
 
 
 def asked(short, seen, folder, lines=()):
@@ -199,7 +206,10 @@ def asked(short, seen, folder, lines=()):
         except (ValueError, AttributeError):
             gaps.append("the job's state.json could not be read")
     if not needs:
-        needs = needs_text(pending_call(lines))
+        pending = pending_call(lines)
+        needs = needs_text(pending)
+        if needs and pending["subagent"]:
+            needs = f"a subagent's call, under {needs}"
         if not needs:
             gaps.append("the transcript ended in no unanswered tool call" if lines
                         else "the transcript was empty or gone")
