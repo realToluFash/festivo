@@ -1,6 +1,7 @@
 import { emailProblem, phoneLengthProblem } from '@soirely/domain';
 
-import { countryName, fullNumber } from './rules.ts';
+import { SAMPLE, countryName, fullNumber } from './rules.ts';
+import { CATEGORY_WORDS, VW } from './vendorsWords.ts';
 
 export const CATEGORIES = [
   'catering',
@@ -15,18 +16,6 @@ export const CATEGORIES = [
 ] as const;
 
 export type Category = (typeof CATEGORIES)[number];
-
-export const CATEGORY_WORDS: Record<Category, string> = {
-  catering: 'Catering',
-  venue: 'Venue',
-  flowers: 'Flowers',
-  photography: 'Photography',
-  music: 'Music',
-  transport: 'Transport',
-  staffing: 'Staffing',
-  hire: 'Hire',
-  other: 'Other',
-};
 
 export const PAGE_SIZE = 25;
 
@@ -46,55 +35,61 @@ export interface Vendor {
   archivedOn: string | null;
 }
 
-type Seed = [name: string, category: Category, contact: string, email: string, phone?: string];
+type Seed = [id: string, name: string, category: Category, contact: string, reach: string];
 
-const SEEDS: readonly Seed[] = [
-  ['Àbẹ̀ní Flowers', 'flowers', 'Àbẹ̀ní Okafor', 'hello@abeniflowers.ng'],
-  ['Adire Lounge', 'venue', 'Kemi Bello', 'events@adirelounge.com'],
-  ['Alaro Sound', 'music', 'Seyi Alaro', '', '803 555 0142'],
-  ['Bloom & Co', 'flowers', 'Ngozi Eze', 'ngozi@bloomandco.ng'],
-  ['Blue Gate Transport', 'transport', 'Musa Danjuma', 'bookings@bluegate.ng'],
-  ['Calabar Kitchen', 'catering', 'Eno Bassey', 'eno@calabarkitchen.com'],
-  ['Chairs and Canopies', 'hire', 'Tope Adebayo', '', '809 555 0177'],
-  ['Delta Frames', 'photography', 'Efe Okoro', 'efe@deltaframes.com'],
-  ['Éclat Catering', 'catering', 'Claire Martin', 'claire@eclat-traiteur.fr'],
-  ['Eko Atlantic Hall', 'venue', 'Bisi Coker', 'halls@ekoatlantic.ng'],
-  ['Fola Strings', 'music', 'Fola Ajayi', 'fola@folastrings.com'],
-  ['Golden Spoon', 'catering', 'Ifeoma Nwosu', 'orders@goldenspoon.ng'],
-  ['Harbour Shuttle', 'transport', 'Ahmed Bello', '', '802 555 0119'],
-  ['Ikoyi Linen Hire', 'hire', 'Ronke Shittu', 'ronke@ikoyilinen.ng'],
-  ['Jide Photography', 'photography', 'Jide Ogun', 'jide@jidephoto.ng'],
-  ['Kola Security', 'staffing', 'Kola Hassan', 'kola@kolasecurity.ng'],
-  ['Lagos Light Co', 'hire', 'Dayo Ige', 'hire@lagoslight.co'],
-  ['Mama Put Deluxe', 'catering', 'Iya Basira', '', '806 555 0103'],
-  ['Marquee Masters', 'hire', 'Chuka Obi', 'chuka@marqueemasters.ng'],
-  ['Nkem Cakes', 'catering', 'Nkem Uba', 'nkem@nkemcakes.com'],
-  ['Oriki Drums', 'music', 'Wale Oriki', 'wale@orikidrums.ng'],
-  ['Petals by Tolu', 'flowers', 'Tolu Ade', 'tolu@petals.ng'],
-  ['Quay Valet', 'staffing', 'Sola Martins', 'valet@quay.ng'],
-  ['Rooftop at Victoria', 'venue', 'Ada Igwe', 'ada@rooftopvi.com'],
-  ['Sapele Waiters', 'staffing', 'Ese Oghene', '', '805 555 0188'],
-  ['The Glass House', 'venue', 'Lara Coker', 'lara@theglasshouse.ng'],
-  ['Uche Visuals', 'photography', 'Uche Kalu', 'uche@uchevisuals.com'],
-  ['Velvet Rope Ushers', 'staffing', 'Bimpe Ojo', 'bimpe@velvetrope.ng'],
-  ['Wura Gele', 'other', 'Wura Lawal', 'wura@wuragele.ng'],
-  ['Zest Bar Service', 'catering', 'Femi Kuti', 'bar@zest.ng'],
+/** Budget-A-Vendors' directory: v1 to v9 are the boards' (shared with sc-87's quotes), the rest fill it to 28 in use. A reach that starts with a digit is a number in the United Kingdom. */
+const IN_USE: readonly Seed[] = [
+  ['v1', 'Àbẹ̀ní Flowers', 'flowers', 'Àbẹ̀ní Oyelaran', 'hello@abeni.flowers'],
+  ['v2', 'Beat Collective', 'music', 'Ade Ojo', 'bookings@beatcollective.co.uk'],
+  ['v3', 'Bloom & Co', 'flowers', 'Ngozi Eze', 'ngozi@bloomandco.co.uk'],
+  ['v4', 'Savour Kitchen', 'catering', 'Kofi Mensah', 'kofi@savourkitchen.co.uk'],
+  ['v5', 'The Landmark', 'venue', 'Priya Shah', 'events@thelandmark.co.uk'],
+  ['v6', 'Lens & Light', 'photography', 'Marco Rossi', 'marco@lensandlight.com'],
+  ['v7', 'Delta Frames', 'photography', 'Tolu Ade', '20 7946 0321'],
+  ['v8', 'Golden Spoon', 'catering', 'Ama Owusu', 'events@goldenspoon.co.uk'],
+  ['v9', 'Harbour Boats', 'transport', 'Sam Okafor', '7700 900877'],
+  ['v10', 'Sesame & Saffron', 'catering', 'Leila Haddad', 'leila@sesameandsaffron.co.uk'],
+  ['v11', 'Silver Strings Quartet', 'music', 'Anna Kowalski', 'anna@silverstrings.co.uk'],
+  ['v12', 'Stem & Petal', 'flowers', 'Chloé Dubois', 'chloe@stemandpetal.co.uk'],
+  ['v13', 'Studio Kaito', 'photography', 'Kaito Tanaka', 'kaito@studiokaito.com'],
+  ['v14', 'Swift Coaches', 'transport', 'Raj Patel', 'bookings@swiftcoaches.co.uk'],
+  ['v15', 'Tavola Catering', 'catering', 'Giulia Bianchi', 'giulia@tavolacatering.co.uk'],
+  ['v16', 'Tempo Brass', 'music', 'Daniel Osei', '7700 900412'],
+  ['v17', 'Tent & Table Hire', 'hire', 'Oliver Grant', 'hire@tentandtable.co.uk'],
+  ['v18', 'The Long Table', 'catering', 'Hannah Clarke', 'hello@thelongtable.co.uk'],
+  ['v19', 'The Orangery', 'venue', 'Sofia Almeida', 'events@theorangery.co.uk'],
+  ['v20', 'Town & Country Cars', 'transport', 'Liam Byrne', '7700 900653'],
+  ['v21', 'Tulip Lane', 'flowers', 'Emma Novak', 'emma@tuliplane.co.uk'],
+  ['v22', 'Umami Kitchen', 'catering', 'Kenji Watanabe', 'kenji@umamikitchen.co.uk'],
+  ['v23', 'Vela Films', 'photography', 'Lucas Ferreira', 'lucas@velafilms.com'],
+  ['v24', 'Velvet Rope Ushers', 'staffing', 'Bimpe Ojo', 'bimpe@velvetrope.co.uk'],
+  ['v25', 'Victoria Rooms', 'venue', 'James Whitfield', 'bookings@victoriarooms.co.uk'],
+  ['v26', 'Waterside Hall', 'venue', 'Aisha Rahman', '20 7946 0412'],
+  ['v27', 'Wild Meadow Flowers', 'flowers', 'Rosa Mendes', 'rosa@wildmeadowflowers.co.uk'],
+  ['v28', 'Wura Gele', 'other', 'Wura Lawal', 'wura@wuragele.co.uk'],
 ];
 
 const ARCHIVED: readonly (readonly [Seed, string])[] = [
-  [['Bloom and Co', 'flowers', 'Ngozi Eze', 'ngozi@bloomandco.ng'], '2026-10-12'],
-  [['Ikeja Party Rentals', 'hire', 'Gbenga Ola', '', '807 555 0150'], '2026-09-30'],
-  [['Sunset Band', 'music', '', 'sunsetband@gmail.com'], '2026-08-04'],
+  [
+    ['v29', 'Éclat Catering', 'catering', 'Claire Martin', 'claire@eclat-traiteur.fr'],
+    '2026-10-12',
+  ],
+  [['v30', 'Marquee Masters', 'hire', 'Chuka Obi', '7700 900150'], '2026-10-12'],
 ];
 
-function vendorOf([name, category, contact, email, phone = '']: Seed, index: number): Vendor {
+const BLOOM = 'v3';
+export const SAVOUR = 'v4';
+
+function vendorOf([id, name, category, contact, reach]: Seed): Vendor {
+  const phone = /^\d/.test(reach) ? reach : '';
+
   return {
-    id: `v${index + 1}`,
+    id,
     name,
     category,
     contact,
-    email,
-    country: phone === '' ? '' : 'NG',
+    email: phone === '' ? reach : '',
+    country: phone === '' ? '' : 'GB',
     phone,
     website: '',
     address: '',
@@ -104,19 +99,16 @@ function vendorOf([name, category, contact, email, phone = '']: Seed, index: num
 }
 
 export function sampleVendors(): Vendor[] {
-  const kept = SEEDS.map(vendorOf);
-  const archived = ARCHIVED.map(([seed, on], index) => ({
-    ...vendorOf(seed, SEEDS.length + index),
-    archivedOn: on,
-  }));
-  const bloom = kept.find((one) => one.name === 'Bloom & Co');
+  const kept = IN_USE.map(vendorOf);
+  const gone = ARCHIVED.map(([seed, on]) => ({ ...vendorOf(seed), archivedOn: on }));
+  const bloom = kept.find((one) => one.id === BLOOM);
   if (bloom != null) {
-    bloom.website = 'https://bloomandco.ng';
-    bloom.address = '14 Awolowo Road, Ikoyi, Lagos';
-    bloom.note = 'Ask for Ngozi. Needs the venue’s loading times a week ahead.';
+    bloom.country = 'GB';
+    bloom.phone = '20 7946 0958';
+    bloom.website = 'https://bloomandco.co.uk';
   }
 
-  return [...kept, ...archived];
+  return [...kept, ...gone];
 }
 
 /** A to Z ignoring case, as the API orders them; accents still count. */
@@ -181,6 +173,13 @@ export function paged(rows: readonly Vendor[], page: number): Paged {
   };
 }
 
+/** The page of In use, A to Z, that holds a vendor: where a vendor's name on an event's Budget lands. */
+export function pageOf(vendors: readonly Vendor[], id: string): number {
+  const at = shown(vendors, NOT_LOOKING).findIndex((one) => one.id === id);
+
+  return at < 0 ? 1 : Math.floor(at / PAGE_SIZE) + 1;
+}
+
 export function reachOf(vendor: Pick<Vendor, 'email' | 'phone' | 'country'>): string | null {
   if (vendor.email !== '') return vendor.email;
   if (vendor.phone === '') return null;
@@ -188,15 +187,57 @@ export function reachOf(vendor: Pick<Vendor, 'email' | 'phone' | 'country'>): st
   return fullNumber(vendor.phone, vendor.country);
 }
 
+export function archivedDay(day: string, locale: string): string {
+  return new Intl.DateTimeFormat(locale, {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'UTC',
+  }).format(new Date(`${day}T00:00Z`));
+}
+
+export function rowLine(vendor: Vendor, locale: string): string {
+  const last =
+    vendor.archivedOn != null
+      ? VW.archivedOn(archivedDay(vendor.archivedOn, locale))
+      : reachOf(vendor);
+
+  return [vendor.contact, CATEGORY_WORDS[vendor.category], last]
+    .filter((part) => part != null && part !== '')
+    .join(' · ');
+}
+
 export function noMatchLine(looking: Looking): string {
   const q = looking.q.trim();
-  const where =
-    looking.category === 'all' ? '' : ` in ${CATEGORY_WORDS[looking.category].toLowerCase()}`;
-  const archived = looking.view === 'archived' ? ' archived' : '';
+  const category = looking.category === 'all' ? null : CATEGORY_WORDS[looking.category];
 
-  return q === ''
-    ? `No${archived} vendors${where}.`
-    : `No${archived} vendors${where} have “${q}” in their name.`;
+  return q === '' && category != null
+    ? VW.noneIn(category, looking.view === 'archived')
+    : VW.noMatch(q, category);
+}
+
+export interface VendorsCard {
+  says: string;
+  line: string;
+  tags: string[];
+}
+
+export function vendorsCard(vendors: readonly Vendor[]): VendorsCard {
+  const inUse = vendors.filter((one) => one.archivedOn == null).length;
+  const gone = vendors.length - inUse;
+
+  if (inUse === 0)
+    return {
+      says: VW.noneYet,
+      line: VW.noneYetLine(SAMPLE.organisation),
+      tags: gone > 0 ? [VW.archivedCount(gone)] : [],
+    };
+
+  return {
+    says: VW.vendors(inUse),
+    line: VW.cardLine(SAMPLE.organisation),
+    tags: [VW.inUseCount(inUse), ...(gone > 0 ? [VW.archivedCount(gone)] : [])],
+  };
 }
 
 export interface Draft {
@@ -255,7 +296,6 @@ export function lengthOf(typed: string): number {
   return [...typed.trim()].length;
 }
 
-/** A scheme the user typed, `ftp` from `ftp://…` or `mailto` from `mailto:…`; none for `bloom.co`. */
 export function schemeOf(typed: string): string | null {
   const found = /^([a-z][a-z0-9+.-]*):(\/\/|(?!\d))/i.exec(typed.trim());
 
@@ -271,36 +311,50 @@ export function savedWebsite(typed: string): string {
 export function draftProblems(draft: Draft): Problems {
   const problems: Problems = {};
 
-  if (draft.name.trim() === '') problems.name = 'Enter the vendor’s name.';
-  if (draft.category === '') problems.category = 'Choose the category.';
+  if (draft.name.trim() === '') problems.name = VW.nameBlank;
+  if (draft.category === '') problems.category = VW.categoryBlank;
 
   for (const field of Object.keys(LIMITS) as (keyof typeof LIMITS)[]) {
     if (problems[field] == null && lengthOf(draft[field]) > LIMITS[field])
-      problems[field] =
-        `Shorten ${LIMIT_WORDS[field]} to ${LIMITS[field].toLocaleString('en')} characters or fewer.`;
+      problems[field] = VW.shorten(LIMIT_WORDS[field], LIMITS[field].toLocaleString('en'));
   }
 
   if (problems.email == null && draft.email.trim() !== '' && emailProblem(draft.email) != null)
-    problems.email = 'That does not look like an email address. Check it has an @ and a domain.';
+    problems.email = VW.emailShape;
 
   if (draft.phone.trim() !== '') {
     const problem = phoneLengthProblem(draft.phone, draft.country);
-    if (problem === 'noCountry') problems.country = 'Choose a country.';
+    if (problem === 'noCountry') problems.country = VW.countryBlank;
     else if (problem === 'tooShort' || problem === 'tooLong')
-      problems.phone = `That number looks too ${problem === 'tooShort' ? 'short' : 'long'} for ${countryName(draft.country)}. Check it and try again.`;
+      problems.phone = VW.phoneLength(
+        problem === 'tooShort' ? 'short' : 'long',
+        countryName(draft.country),
+      );
   }
 
   const scheme = schemeOf(draft.website);
   if (problems.website == null && scheme != null && scheme !== 'http' && scheme !== 'https')
-    problems.website =
-      'Enter a web address that starts with https:// or http://, or leave that part off.';
+    problems.website = VW.websiteScheme;
 
   return problems;
 }
 
-/** The API's own answer on a number of the right length that its country does not use. */
+/** How many fields need fixing: the country and its number are one field. */
+export function fieldsToFix(problems: Problems): number {
+  return new Set(Object.keys(problems).map((key) => (key === 'country' ? 'phone' : key))).size;
+}
+
 export function notANumberFor(country: string): string {
-  return `That is not a phone number for ${countryName(country)}. Check it and try again.`;
+  return VW.notANumber(countryName(country));
+}
+
+/** The demo's stand-in for the API refusing a number its country does not use: all zeros, as `?state=add_invalid` types. */
+export function refusedPhone(draft: Draft): Problems {
+  const digits = draft.phone.replace(/\D/g, '');
+
+  return draft.country !== '' && digits !== '' && /^0+$/.test(digits)
+    ? { phone: notANumberFor(draft.country) }
+    : {};
 }
 
 export function savedVendor(draft: Draft, id: string): Vendor {
@@ -323,7 +377,8 @@ export function changed(draft: Draft, from: Draft): boolean {
   return (Object.keys(from) as (keyof Draft)[]).some((key) => draft[key] !== from[key]);
 }
 
-export const TODAY = '2026-11-07';
+/** The sample is read on Tue, Nov 3, 2026, as the wedding's Budget is (spec §1). */
+export const TODAY = '2026-11-03';
 
 export function archived(vendors: readonly Vendor[], id: string, on = TODAY): Vendor[] {
   return vendors.map((one) => (one.id === id ? { ...one, archivedOn: on } : one));
@@ -333,69 +388,56 @@ export function restored(vendors: readonly Vendor[], id: string): Vendor[] {
   return vendors.map((one) => (one.id === id ? { ...one, archivedOn: null } : one));
 }
 
-export function archiveRefused(name: string): string {
-  return `${name} was not archived, because the events below still have payments to it that are not paid or cancelled. Once each one is paid or cancelled, you can archive the vendor.`;
-}
-
-export function owingLink(vendor: string, event: string): string {
-  return `Payments to ${vendor} on ${event}`;
-}
-
 export type Load = 'loaded' | 'loading' | 'failed';
 
 export type VendorsDialog =
   | { kind: 'add'; draft: Draft; problems: Problems }
-  | { kind: 'edit'; id: string; draft: Draft; problems: Problems; refused?: boolean }
-  | { kind: 'read'; id: string };
+  | { kind: 'edit'; id: string; draft: Draft; problems: Problems; refused?: boolean };
 
 export interface VendorsStart {
   load: Load;
   vendors: Vendor[];
   looking: Looking;
   page: number;
-  menu: boolean;
-  readOnly: boolean;
+  menu: 'category' | 'filter' | null;
   dialog: VendorsDialog | null;
+  lit: string | null;
+  told: string | null;
+  searching: boolean;
 }
 
-const BLOOM = 'v4';
-
-function bloomDraft(vendors: readonly Vendor[], change: Partial<Draft>): Draft {
+function bloomDraft(vendors: readonly Vendor[]): Draft {
   const bloom = vendors.find((one) => one.id === BLOOM);
 
-  return { ...(bloom == null ? BLANK : draftOf(bloom)), ...change };
+  return bloom == null ? BLANK : draftOf(bloom);
 }
 
-export function vendorsStart(state: string, vendorId: string | null = null): VendorsStart {
+const REFUSED: Draft = {
+  ...BLANK,
+  name: 'Harbour Boats',
+  category: 'transport',
+  contact: 'Sam Okafor',
+  email: 'sam@harbourboats',
+  country: 'GB',
+  phone: '000 000 0000',
+  website: 'ftp://harbourboats.co.uk',
+};
+
+export function vendorsStart(state: string, vendor: string | null = null): VendorsStart {
   const vendors = state === 'empty' ? [] : sampleVendors();
+  const wanted = vendor ?? (state === 'from_event' ? SAVOUR : null);
+  const lit = vendors.some((one) => one.id === wanted && one.archivedOn == null) ? wanted : null;
   const start: VendorsStart = {
     load: 'loaded',
     vendors,
     looking: NOT_LOOKING,
-    page: 1,
-    menu: false,
-    readOnly: false,
+    page: lit == null ? 1 : pageOf(vendors, lit),
+    menu: null,
     dialog: null,
+    lit,
+    told: null,
+    searching: false,
   };
-  const invalid: Draft = {
-    ...BLANK,
-    name: 'Harbour Boats',
-    category: 'transport',
-    email: 'bookings@harbour',
-    country: 'NG',
-    phone: '000 000 0000',
-    website: 'ftp://harbourboats.ng',
-  };
-
-  const asked = vendors.find((one) => one.id === vendorId);
-  if (asked != null && (state === '' || state === 'read_only')) {
-    return state === 'read_only'
-      ? { ...start, readOnly: true, dialog: { kind: 'read', id: asked.id } }
-      : {
-          ...start,
-          dialog: { kind: 'edit', id: asked.id, draft: draftOf(asked), problems: {} },
-        };
-  }
 
   switch (state) {
     case 'loading':
@@ -403,29 +445,27 @@ export function vendorsStart(state: string, vendorId: string | null = null): Ven
       return { ...start, load: state };
     case 'next':
       return { ...start, page: 2 };
-    case 'search':
-      return { ...start, looking: { ...NOT_LOOKING, q: 'bloom' } };
+    case 'searched':
+      return { ...start, looking: { ...NOT_LOOKING, q: 'bloom' }, searching: true };
     case 'filtered':
       return { ...start, looking: { ...NOT_LOOKING, category: 'flowers' } };
-    case 'menu':
-      return { ...start, menu: true };
-    case 'noMatch':
-      return { ...start, looking: { ...NOT_LOOKING, q: 'eclat' } };
-    case 'noMatchFiltered':
-      return { ...start, looking: { ...NOT_LOOKING, q: 'bloom', category: 'catering' } };
+    case 'category_menu':
+      return { ...start, menu: 'category' };
+    case 'no_match':
+      return { ...start, looking: { ...NOT_LOOKING, q: 'eclat', category: 'catering' } };
     case 'archived':
       return { ...start, looking: { ...NOT_LOOKING, view: 'archived' } };
     case 'add':
       return { ...start, dialog: { kind: 'add', draft: BLANK, problems: {} } };
-    case 'blank':
+    case 'add_blank':
       return { ...start, dialog: { kind: 'add', draft: BLANK, problems: draftProblems(BLANK) } };
-    case 'invalid':
+    case 'add_invalid':
       return {
         ...start,
         dialog: {
           kind: 'add',
-          draft: invalid,
-          problems: { ...draftProblems(invalid), phone: notANumberFor('NG') },
+          draft: REFUSED,
+          problems: { ...draftProblems(REFUSED), phone: notANumberFor('GB') },
         },
       };
     case 'too_long': {
@@ -435,7 +475,7 @@ export function vendorsStart(state: string, vendorId: string | null = null): Ven
     case 'edit':
       return {
         ...start,
-        dialog: { kind: 'edit', id: BLOOM, draft: bloomDraft(vendors, {}), problems: {} },
+        dialog: { kind: 'edit', id: BLOOM, draft: bloomDraft(vendors), problems: {} },
       };
     case 'archive_refused':
       return {
@@ -443,18 +483,22 @@ export function vendorsStart(state: string, vendorId: string | null = null): Ven
         dialog: {
           kind: 'edit',
           id: BLOOM,
-          draft: bloomDraft(vendors, {}),
+          draft: bloomDraft(vendors),
           problems: {},
           refused: true,
         },
       };
-    case 'read_only':
-      return { ...start, readOnly: true };
-    case 'read_only_open':
-      return { ...start, readOnly: true, dialog: { kind: 'read', id: BLOOM } };
+    case 'archived_toast': {
+      const name = vendors.find((one) => one.id === BLOOM)?.name ?? '';
+      return { ...start, vendors: archived(vendors, BLOOM), told: VW.archivedToast(name) };
+    }
     default:
       return start;
   }
+}
+
+export function vendorsViewerKey(as: string | null, state: string): string | null {
+  return state === 'member' ? 'ana' : as;
 }
 
 export interface DemoLink {
@@ -462,67 +506,58 @@ export interface DemoLink {
   name: string;
 }
 
-const at = (state?: string, as?: string): string => {
+const at = (state?: string, extra: { as?: string; vendor?: string } = {}): string => {
   const query = new URLSearchParams();
-  if (as != null) query.set('as', as);
+  if (extra.as != null) query.set('as', extra.as);
   if (state != null) query.set('state', state);
+  if (extra.vendor != null) query.set('vendor', extra.vendor);
   const search = query.toString();
 
-  return `/demo/vendors${search === '' ? '' : `?${search}`}`;
+  return `/demo/settings/vendors${search === '' ? '' : `?${search}`}`;
 };
-
-/** One vendor open in the directory, as a quote's vendor name links to it (sc-87). */
-export function vendorAt(id: string, as: string | null = null): string {
-  const query = new URLSearchParams({ vendor: id });
-  if (as != null) query.set('as', as);
-
-  return `/demo/vendors?${query.toString()}`;
-}
 
 export const VENDORS_PAGES: readonly { name: string; states: readonly DemoLink[] }[] = [
   {
     name: 'The directory',
     states: [
-      { to: at(), name: 'Owner, the first page of 30' },
-      { to: at(undefined, 'julien'), name: 'Admin, the same' },
-      { to: at('next'), name: 'The second page' },
-      { to: at('loading'), name: 'Loading' },
-      { to: at('failed'), name: 'Failed' },
-      { to: at('empty'), name: 'No vendors yet' },
+      { to: at('populated'), name: 'Owner, 1 to 25 of 28 (populated)' },
+      { to: at('populated', { as: 'julien' }), name: 'Admin, the same' },
+      { to: at('next'), name: 'The second page (next)' },
+      { to: at('searched'), name: 'Searched for “bloom” (searched)' },
+      { to: at('no_match'), name: 'No match for “eclat” in Catering (no_match)' },
+      { to: at('category_menu'), name: 'The category menu open (category_menu)' },
+      { to: at('filtered'), name: 'Flowers only (filtered)' },
+      { to: at('empty'), name: 'No vendors yet (empty)' },
+      { to: at('loading'), name: 'Loading (loading)' },
+      { to: at('failed'), name: 'Failed (failed)' },
     ],
   },
   {
-    name: 'Finding one',
+    name: 'Archived, added, edited',
     states: [
-      { to: at('search'), name: 'Searched for “bloom”' },
-      { to: at('menu'), name: 'The category menu open' },
-      { to: at('filtered'), name: 'Flowers only' },
-      { to: at('noMatch'), name: 'No match: “eclat” is not “Éclat”' },
-      { to: at('noMatchFiltered'), name: 'No match in a category' },
-      { to: at('archived'), name: 'Archived, with their dates' },
-    ],
-  },
-  {
-    name: 'Add or edit a vendor',
-    states: [
-      { to: at('add'), name: 'Add a vendor' },
-      { to: at('blank'), name: 'Saved with nothing typed (blank)' },
-      { to: at('invalid'), name: 'Not an address, a number or a web address (invalid)' },
+      { to: at('archived'), name: 'In use · 28 set to Archived · 2 (archived)' },
+      { to: at('add'), name: 'Add a vendor (add)' },
+      { to: at('add_blank'), name: 'Add, nothing typed (add_blank)' },
+      { to: at('add_invalid'), name: 'Add, refused at three fields (add_invalid)' },
       { to: at('too_long'), name: 'A name over 100 characters (too_long)' },
-      { to: at('edit'), name: 'Edit Bloom & Co, with Archive' },
-      { to: vendorAt('v9'), name: 'One vendor open, as a quote links to it (?vendor=v9)' },
+      { to: at('edit'), name: 'Edit Bloom & Co, with Archive this vendor (edit)' },
+      { to: at('archived_toast'), name: 'Bloom & Co archived (archived_toast)' },
       {
         to: at('archive_refused'),
-        name: 'Archive refused: two events still owe Bloom & Co (sc-87)',
+        name: 'Archive refused: two events still owe Bloom & Co (archive_refused, sc-87)',
       },
     ],
   },
   {
-    name: 'Who sees it',
+    name: 'Who reaches it',
     states: [
-      { to: at('read_only'), name: 'After a downgrade: read only (read_only)' },
-      { to: at('read_only_open'), name: 'Read only, a vendor open' },
-      { to: at(undefined, 'ana'), name: 'A member, on its address' },
+      { to: at('member'), name: 'A member, on its address (member)' },
+      { to: at(undefined, { as: 'ana' }), name: 'Ana, a member, on its address' },
+      {
+        to: at('from_event', { vendor: SAVOUR }),
+        name: 'From Savour Kitchen on the wedding’s Budget (from_event)',
+      },
+      { to: at(undefined, { vendor: SAVOUR }), name: 'A vendor’s name, with no state' },
     ],
   },
 ];

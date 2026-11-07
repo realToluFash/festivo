@@ -1,7 +1,8 @@
 import { type Basis, COST_LINES, CURRENCY, LOCALE, rateWords, shortDay, whole } from './budget.ts';
 import { type DemoGroup, budgetAt } from './budgetSample.ts';
 import { TEMPLATES_WORDS as W } from './templatesWords.ts';
-import { CATEGORY_WORDS, type Category } from './vendors.ts';
+import { type Category } from './vendors.ts';
+import { CATEGORY_WORDS } from './vendorsWords.ts';
 
 export const TEMPLATES_STATES: readonly string[] = [
   'start_from',

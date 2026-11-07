@@ -960,7 +960,7 @@ function withTomas(people: readonly Unreached[], tomas: 'fixed' | 'sent' | null)
       ? {
           ...person,
           lines: [
-            { mark: 'delivered', word: `${MW.email} · ${MW.fixedNotSent}`, why: NEW_ADDRESS },
+            { mark: 'delivered', word: `${MW.email} · ${MW.updatedNotSent}`, why: NEW_ADDRESS },
             ...rest,
           ],
           fixes: [],

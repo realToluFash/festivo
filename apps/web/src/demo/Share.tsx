@@ -31,7 +31,7 @@ import {
   titleOf,
 } from './share.ts';
 import { SHARE_WORDS as W } from './shareWords.ts';
-import { CATEGORY_WORDS } from './vendors.ts';
+import { CATEGORY_WORDS } from './vendorsWords.ts';
 import './share.css';
 
 const FIELDS: readonly DraftField[] = ['category', 'endsOn', 'passphrase'];

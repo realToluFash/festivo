@@ -21,7 +21,8 @@ import {
 import { type DemoGroup, budgetAt } from './budgetSample.ts';
 import { BUDGET_WORDS } from './budgetWords.ts';
 import { PLAN_WORDS as W } from './planWords.ts';
-import { CATEGORY_WORDS, type Category } from './vendors.ts';
+import { type Category } from './vendors.ts';
+import { CATEGORY_WORDS } from './vendorsWords.ts';
 
 export const PLAN_STATES: readonly string[] = [
   'plan',

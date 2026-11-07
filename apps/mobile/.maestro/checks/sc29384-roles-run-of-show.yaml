@@ -1,0 +1,13 @@
+# A role's grid: Run of show's line says items are marked done on the day.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/roles
+- extendedWaitUntil:
+    visible: '.*{{t:roles.administrator}}.*'
+    timeout: 30000
+- tapOn: '.*{{t:roles.administrator}}.*'
+- scrollUntilVisible:
+    element: '{{t:rolesScreen.means.run_of_show}}'
+    direction: DOWN
+    timeout: 20000
+- takeScreenshot: sc29384-roles-run-of-show

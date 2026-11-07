@@ -12,7 +12,8 @@ import {
 import { type CeilingKey, CEILINGS, budgetAt, ceilingState } from './budgetSample.ts';
 import { type DemoGroup } from './budgetSample.ts';
 import { type CeilingState } from './BudgetParts.tsx';
-import { CATEGORY_WORDS, type Category } from './vendors.ts';
+import { type Category } from './vendors.ts';
+import { CATEGORY_WORDS } from './vendorsWords.ts';
 
 /** The Budget home's states (spec §9: the Web board, the Ceiling board, and the margin and templates states drawn on the home). */
 export const WEB_STATES = [

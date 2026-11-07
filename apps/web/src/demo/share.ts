@@ -32,7 +32,8 @@ import {
 } from './budgetSample.ts';
 import { ORGANISATION, sampleEvent } from './events.ts';
 import { SHARE_WORDS as W } from './shareWords.ts';
-import { CATEGORY_WORDS, type Category } from './vendors.ts';
+import { type Category } from './vendors.ts';
+import { CATEGORY_WORDS } from './vendorsWords.ts';
 
 /** sc-94's links at a desk and the page they open, signed out (Budget-A-Share), on the wedding of spec §1. */
 export const EVENT_NAME = sampleEvent(BUDGET_EVENT)?.name ?? '';

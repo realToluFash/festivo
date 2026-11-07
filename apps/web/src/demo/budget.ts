@@ -1,4 +1,5 @@
-import { CATEGORY_WORDS, type Category } from './vendors.ts';
+import { type Category } from './vendors.ts';
+import { CATEGORY_WORDS } from './vendorsWords.ts';
 
 /** Budget A's sample (budget-a-spec.md §1): the wedding as Guests A counts it, in pounds, read on Tue, Nov 3 at 09:41 London time. */
 export const BUDGET_EVENT = 'evt-wed-4';

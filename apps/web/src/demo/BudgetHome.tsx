@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
+import { type ReactNode, type RefObject, useEffect, useId, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 
 import { Glyph } from '../components/Glyph.tsx';
@@ -10,6 +10,7 @@ import {
   RowWords,
   Says,
   TextAction,
+  type Tell,
 } from '../components/SettingsParts.tsx';
 import {
   type CostLine,
@@ -72,7 +73,6 @@ import {
   NotLiveStrip,
   OpenMark,
   Opened,
-  OverdueTag,
   PageTitle,
   ReadOnlyLine,
   RingMark,
@@ -94,11 +94,11 @@ import {
 import { BUDGET_WORDS as W } from './budgetWords.ts';
 import { type SampleEvent } from './events.ts';
 import { SaveTemplateDialog } from './Templates.tsx';
-import { CATEGORY_WORDS, type Category } from './vendors.ts';
+import { type Category } from './vendors.ts';
+import { CATEGORY_WORDS } from './vendorsWords.ts';
 import './budgetHome.css';
 
 const BUSY_MS = 900;
-const HOME_TRAIL = [{ label: W.budget }];
 
 const VENDOR: Record<string, { name: string; category: string; contact: string }> = {
   v3: { name: 'Bloom & Co', category: 'Flowers', contact: 'Ngozi Eze' },
@@ -156,19 +156,13 @@ function removedOf(state: string, heads: Heads): Removed | null {
     : { line, index, words: removedWords(line, lineAmounts(line, heads).settled) };
 }
 
-/** The event's Budget at a desk in A: the card across, the costs at the left, what is due, the ceiling and the rest at the right. */
-export function BudgetHome({ event, state }: { event: SampleEvent; state: string }) {
-  const [params] = useSearchParams();
-  const viewer = viewerOf(params.get('as'));
-
-  if (state === 'not_found' || !viewer.seesBudget)
-    return (
-      <BudgetShell event={event} area="overview" trail={[{ label: 'Not available' }]}>
-        {() => <NotAvailable />}
-      </BudgetShell>
-    );
-
-  return <HomeAt event={event} state={state} />;
+/** Not on the event's Budget: Can edit, Can view or Can check guests in see the event's not-found page. */
+export function NotAvailablePage({ event }: { event: SampleEvent }) {
+  return (
+    <BudgetShell event={event} area="overview" trail={[{ label: 'Not available' }]}>
+      {() => <NotAvailable />}
+    </BudgetShell>
+  );
 }
 
 function NotAvailable() {
@@ -185,7 +179,22 @@ function NotAvailable() {
   );
 }
 
-function HomeAt({ event, state: first }: { event: SampleEvent; state: string }) {
+/** The event's Budget at a desk in A: the card across, the costs at the left, what is due, the ceiling and the rest at the right. */
+export function BudgetHomeContent({
+  event,
+  state: first,
+  tell,
+  titleRef,
+  dueNext,
+  vendorsQuoted,
+}: {
+  event: SampleEvent;
+  state: string;
+  tell: Tell;
+  titleRef: RefObject<HTMLHeadingElement | null>;
+  dueNext: ReactNode;
+  vendorsQuoted: ReactNode;
+}) {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const viewer = viewerOf(params.get('as'));
@@ -207,7 +216,6 @@ function HomeAt({ event, state: first }: { event: SampleEvent; state: string }) 
         ? { id: 'dinner', words: 'Not saved. The rate is back to £68.00 a head.', ok: false }
         : null,
   );
-  const title = useRef<HTMLHeadingElement>(null);
   const margin = enterprise && (first === 'margin' || first.startsWith('markup'));
   const readOnly = first === 'read_only';
   const live = first !== 'not_live';
@@ -215,35 +223,27 @@ function HomeAt({ event, state: first }: { event: SampleEvent; state: string }) 
 
   if (state === 'loading')
     return (
-      <BudgetShell event={event} trail={HOME_TRAIL}>
-        {() => (
-          <>
-            <PageTitle title={W.budget} />
-            <BudgetLoading />
-          </>
-        )}
-      </BudgetShell>
+      <>
+        <PageTitle title={W.budget} titleRef={titleRef} />
+        <BudgetLoading />
+      </>
     );
 
   if (state === 'failed')
     return (
-      <BudgetShell event={event} trail={HOME_TRAIL}>
-        {() => (
-          <>
-            <PageTitle title={W.budget} />
-            <p className="desk-line is-ink">
-              The budget did not load. Check your connection and try again.
-            </p>
-            <TextAction
-              label="Try again"
-              onClick={() => {
-                setState('loading');
-                window.setTimeout(() => setState('populated'), BUSY_MS);
-              }}
-            />
-          </>
-        )}
-      </BudgetShell>
+      <>
+        <PageTitle title={W.budget} titleRef={titleRef} />
+        <p className="desk-line is-ink">
+          The budget did not load. Check your connection and try again.
+        </p>
+        <TextAction
+          label="Try again"
+          onClick={() => {
+            setState('loading');
+            window.setTimeout(() => setState('populated'), BUSY_MS);
+          }}
+        />
+      </>
     );
 
   const sum = sumLines(lines, heads);
@@ -251,204 +251,196 @@ function HomeAt({ event, state: first }: { event: SampleEvent; state: string }) 
   const next = due[0] ?? null;
 
   return (
-    <BudgetShell event={event} trail={HOME_TRAIL}>
-      {(tell) => (
-        <>
-          <PageTitle title={W.budget} titleRef={title}>
-            <TextAction label="Add a cost" before="plus" onClick={() => setDialog('addCost')} />
-            {!empty && (
-              <>
-                <Link className="desk-text" to={budgetAt('payers')}>
-                  Who is paying
-                </Link>
-                <Link className="desk-text" to={budgetAt('links')}>
-                  <ShareGlyph />
-                  Share
-                </Link>
-              </>
-            )}
-          </PageTitle>
-          {first === 'live_heads' && (
-            <LiveLine words="2 more guests said yes, so the settled total went up by £180." />
-          )}
-          {!live && (
-            <NotLiveStrip
-              words="Not live. Figures as of 09:32, 9 minutes ago."
-              onTry={() => void navigate(budgetAt('populated'))}
-            />
-          )}
-          {readOnly && (
-            <ReadOnlyLine
-              {...(viewer.key === 'folake'
-                ? { onPlans: () => tell('Plans have their own design.') }
-                : {})}
-            />
-          )}
-          {empty ? (
-            <FirstCard
-              event={event}
-              start={first !== 'nothing_to_start'}
-              onAdd={() => setDialog('addCost')}
-              onStart={() => void navigate(budgetAt('start_from'))}
-            />
-          ) : margin ? (
-            <MarginCard event={event} />
-          ) : (
-            <SummaryCard
-              event={event}
-              sum={sum}
-              heads={heads}
-              washed={first === 'live_heads' || first === 'rate_saved'}
-              ceiling={
-                ceilings.whole == null
-                  ? null
-                  : ceilingOf('whole', ceilings.whole, lines, heads).state
-              }
-              next={live && !readOnly ? next : null}
-              onMark={(payment) =>
-                void navigate(budgetAt('mark_paid', { vendor: payment.vendorId }))
-              }
-            />
-          )}
-          {empty ? (
-            <Columns
-              left={
-                <Block title="Who is paying">
-                  <p className="desk-line">
-                    No payers yet. Payers are who covers each cost: the couple, both sets of
-                    parents, an aunt covering the cars.
-                  </p>
-                  <Link className="desk-text" to={budgetAt('no_payers')}>
-                    <Glyph name="plus" size={17} weight={2.3} />
-                    Add a payer
-                  </Link>
-                </Block>
-              }
-              right={
-                <Block title="Share">
-                  <p className="desk-line">No links yet.</p>
-                  <Link className="desk-text" to={budgetAt('no_links')}>
-                    <Glyph name="plus" size={17} weight={2.3} />
-                    Create a link
-                  </Link>
-                </Block>
-              }
-            />
-          ) : (
-            <Columns
-              left={
-                margin ? (
-                  <MarginCosts lines={lines} heads={heads} first={first} />
-                ) : (
-                  <Costs
-                    lines={lines}
-                    heads={heads}
-                    ceilings={ceilings}
-                    opened={opened}
-                    first={first}
-                    lit={lit}
-                    line={line}
-                    removed={removed}
-                    onOpen={(id) => {
-                      setOpened((now) => (now === id ? null : id));
-                      setLine(null);
-                    }}
-                    onClose={() => setOpened(null)}
-                    onSaved={(next_, id, words, ok) => {
-                      setLines(next_);
-                      setOpened(null);
-                      setLit(ok ? id : null);
-                      setLine({ id, words, ok });
-                      setRemoved(null);
-                    }}
-                    onRemove={(gone) => {
-                      setLines((now) => now.filter((one) => one.id !== gone.line.id));
-                      setOpened(null);
-                      setRemoved(gone);
-                    }}
-                    onUndo={() => {
-                      if (removed == null) return;
-                      setLines((now) => {
-                        const back = [...now];
-                        back.splice(removed.index, 0, removed.line);
-                        return back;
-                      });
-                      setLit(removed.line.id);
-                      setRemoved(null);
-                    }}
-                  />
-                )
-              }
-              right={
-                margin ? (
-                  <MarginBlocks />
-                ) : (
-                  <>
-                    <DueNext due={due} />
-                    <CeilingBlock
-                      ceilings={ceilings}
-                      listed={listed}
-                      lines={lines}
-                      heads={heads}
-                      onChange={() => setDialog('ceiling')}
-                    />
-                    <AgainstPlan lines={lines} />
-                    <WhoIsPaying />
-                    <VendorsQuoted readOnly={readOnly} />
-                    <FromOtherEvents onSave={() => setDialog('save')} />
-                  </>
-                )
-              }
-            />
-          )}
-          {dialog === 'addCost' && (
-            <AddCostDialog
-              first={first}
-              onDismiss={() => setDialog(null)}
-              onAdded={(added) => {
-                setLines((now) => [...now, added]);
-                setDialog(null);
-                setLit(added.id);
-                setLine({ id: added.id, words: 'Saved.', ok: true });
-              }}
-            />
-          )}
-          {dialog === 'ceiling' && (
-            <CeilingSheet
-              first={first}
-              currency={currency}
-              ceilings={ceilings}
-              onDismiss={() => setDialog(null)}
-              onSaved={(next_) => {
-                setCeilings(next_);
-                setListed(true);
-                setDialog(null);
-                tell('Ceiling saved.');
-              }}
-            />
-          )}
-          {dialog === 'markup' && <MarkupDialog first={first} onDismiss={() => setDialog(null)} />}
-          {dialog === 'save' && (
-            <SaveTemplateDialog
-              start={
-                first === 'save_taken'
-                  ? 'taken'
-                  : first === 'save_blank'
-                    ? 'blank'
-                    : first === 'save_long'
-                      ? 'long'
-                      : null
-              }
-              onDismiss={() => setDialog(null)}
-              onSaved={() => setDialog(null)}
-            />
-          )}
-          {dialog === 'dueNow' && (
-            <DueNowDialog event={event} first={first} onClose={() => setDialog(null)} />
-          )}
-        </>
+    <>
+      <PageTitle title={W.budget} titleRef={titleRef}>
+        <TextAction label="Add a cost" before="plus" onClick={() => setDialog('addCost')} />
+        {!empty && (
+          <>
+            <Link className="desk-text" to={budgetAt('payers')}>
+              Who is paying
+            </Link>
+            <Link className="desk-text" to={budgetAt('links')}>
+              <ShareGlyph />
+              Share
+            </Link>
+          </>
+        )}
+      </PageTitle>
+      {first === 'live_heads' && (
+        <LiveLine words="2 more guests said yes, so the settled total went up by £180." />
       )}
-    </BudgetShell>
+      {!live && (
+        <NotLiveStrip
+          words="Not live. Figures as of 09:32, 9 minutes ago."
+          onTry={() => void navigate(budgetAt('populated'))}
+        />
+      )}
+      {readOnly && (
+        <ReadOnlyLine
+          {...(viewer.key === 'folake'
+            ? { onPlans: () => tell('Plans have their own design.') }
+            : {})}
+        />
+      )}
+      {empty ? (
+        <FirstCard
+          event={event}
+          start={first !== 'nothing_to_start'}
+          onAdd={() => setDialog('addCost')}
+          onStart={() => void navigate(budgetAt('start_from'))}
+        />
+      ) : margin ? (
+        <MarginCard event={event} />
+      ) : (
+        <SummaryCard
+          event={event}
+          sum={sum}
+          heads={heads}
+          washed={first === 'live_heads' || first === 'rate_saved'}
+          ceiling={
+            ceilings.whole == null ? null : ceilingOf('whole', ceilings.whole, lines, heads).state
+          }
+          next={live && !readOnly ? next : null}
+          onMark={(payment) => void navigate(budgetAt('mark_paid', { vendor: payment.vendorId }))}
+        />
+      )}
+      {empty ? (
+        <Columns
+          left={
+            <Block title="Who is paying">
+              <p className="desk-line">
+                No payers yet. Payers are who covers each cost: the couple, both sets of parents, an
+                aunt covering the cars.
+              </p>
+              <Link className="desk-text" to={budgetAt('no_payers')}>
+                <Glyph name="plus" size={17} weight={2.3} />
+                Add a payer
+              </Link>
+            </Block>
+          }
+          right={
+            <Block title="Share">
+              <p className="desk-line">No links yet.</p>
+              <Link className="desk-text" to={budgetAt('no_links')}>
+                <Glyph name="plus" size={17} weight={2.3} />
+                Create a link
+              </Link>
+            </Block>
+          }
+        />
+      ) : (
+        <Columns
+          left={
+            margin ? (
+              <MarginCosts lines={lines} heads={heads} first={first} />
+            ) : (
+              <Costs
+                lines={lines}
+                heads={heads}
+                ceilings={ceilings}
+                opened={opened}
+                first={first}
+                lit={lit}
+                line={line}
+                removed={removed}
+                onOpen={(id) => {
+                  setOpened((now) => (now === id ? null : id));
+                  setLine(null);
+                }}
+                onClose={() => setOpened(null)}
+                onSaved={(next_, id, words, ok) => {
+                  setLines(next_);
+                  setOpened(null);
+                  setLit(ok ? id : null);
+                  setLine({ id, words, ok });
+                  setRemoved(null);
+                }}
+                onRemove={(gone) => {
+                  setLines((now) => now.filter((one) => one.id !== gone.line.id));
+                  setOpened(null);
+                  setRemoved(gone);
+                }}
+                onUndo={() => {
+                  if (removed == null) return;
+                  setLines((now) => {
+                    const back = [...now];
+                    back.splice(removed.index, 0, removed.line);
+                    return back;
+                  });
+                  setLit(removed.line.id);
+                  setRemoved(null);
+                }}
+              />
+            )
+          }
+          right={
+            margin ? (
+              <MarginBlocks />
+            ) : (
+              <>
+                {dueNext}
+                <CeilingBlock
+                  ceilings={ceilings}
+                  listed={listed}
+                  lines={lines}
+                  heads={heads}
+                  onChange={() => setDialog('ceiling')}
+                />
+                <AgainstPlan lines={lines} />
+                <WhoIsPaying />
+                {vendorsQuoted}
+                <FromOtherEvents onSave={() => setDialog('save')} />
+              </>
+            )
+          }
+        />
+      )}
+      {dialog === 'addCost' && (
+        <AddCostDialog
+          first={first}
+          onDismiss={() => setDialog(null)}
+          onAdded={(added) => {
+            setLines((now) => [...now, added]);
+            setDialog(null);
+            setLit(added.id);
+            setLine({ id: added.id, words: 'Saved.', ok: true });
+          }}
+        />
+      )}
+      {dialog === 'ceiling' && (
+        <CeilingSheet
+          first={first}
+          currency={currency}
+          ceilings={ceilings}
+          onDismiss={() => setDialog(null)}
+          onSaved={(next_) => {
+            setCeilings(next_);
+            setListed(true);
+            setDialog(null);
+            tell('Ceiling saved.');
+          }}
+        />
+      )}
+      {dialog === 'markup' && <MarkupDialog first={first} onDismiss={() => setDialog(null)} />}
+      {dialog === 'save' && (
+        <SaveTemplateDialog
+          start={
+            first === 'save_taken'
+              ? 'taken'
+              : first === 'save_blank'
+                ? 'blank'
+                : first === 'save_long'
+                  ? 'long'
+                  : null
+          }
+          onDismiss={() => setDialog(null)}
+          onSaved={() => setDialog(null)}
+        />
+      )}
+      {dialog === 'dueNow' && (
+        <DueNowDialog event={event} first={first} onClose={() => setDialog(null)} />
+      )}
+    </>
   );
 }
 
@@ -1072,40 +1064,6 @@ function MarginBlocks() {
   );
 }
 
-function DueNext({ due }: { due: readonly Payment[] }) {
-  return (
-    <Block
-      title={W.dueNext}
-      action={
-        due.length > 0 && (
-          <Link className="desk-text" to={budgetAt(undefined, { view: 'due' })}>
-            {W.everythingDue(due.length)}
-            <Glyph name="chevron" size={16} weight={2.4} />
-          </Link>
-        )
-      }
-    >
-      {due.length === 0 ? (
-        <p className="desk-line">{W.nothingDue}</p>
-      ) : (
-        <Rows>
-          {due.slice(0, 3).map((payment) => (
-            <li key={payment.id}>
-              <BudgetRow
-                title={vendorName(payment.vendorId)}
-                lines={[`${payment.what} · ${W.due(shortDay(payment.dueOn))}`]}
-                tag={overdue(payment) ? <OverdueTag /> : undefined}
-                end={<Amount value={money(payment.amount)} />}
-                to={budgetAt(undefined, { vendor: payment.vendorId })}
-              />
-            </li>
-          ))}
-        </Rows>
-      )}
-    </Block>
-  );
-}
-
 function CeilingBlock({
   ceilings,
   lines,
@@ -1199,61 +1157,6 @@ function WhoIsPaying() {
             to={budgetAt('payers')}
           />
         </li>
-      </Rows>
-    </Block>
-  );
-}
-
-function VendorsQuoted({ readOnly }: { readOnly: boolean }) {
-  return (
-    <Block
-      title={W.vendorsQuoted}
-      action={
-        !readOnly && (
-          <Link className="desk-text" to={budgetAt('add')}>
-            <Glyph name="plus" size={17} weight={2.3} />
-            {W.addAQuote}
-          </Link>
-        )
-      }
-    >
-      <Rows>
-        {QUOTES.map((quote) => {
-          const scheduled = PAYMENTS.filter((one) => one.vendorId === quote.vendorId).reduce(
-            (sum, one) => sum + one.amount,
-            0,
-          );
-          const short = quote.amount - scheduled;
-          const vendor = VENDOR[quote.vendorId];
-
-          return (
-            <li key={quote.vendorId}>
-              <BudgetRow
-                title={vendor?.name ?? quote.vendorId}
-                lines={[`${vendor?.category ?? ''} · ${vendor?.contact ?? ''}`]}
-                end={
-                  <Amount
-                    value={money(quote.amount)}
-                    line={
-                      short > 0 ? (
-                        <>
-                          <RingMark state="overIfAll" />
-                          {`${money(short)} not scheduled`}
-                        </>
-                      ) : (
-                        <>
-                          <Mark kind="yes" />
-                          Matches the quote
-                        </>
-                      )
-                    }
-                  />
-                }
-                to={budgetAt(undefined, { vendor: quote.vendorId })}
-              />
-            </li>
-          );
-        })}
       </Rows>
     </Block>
   );

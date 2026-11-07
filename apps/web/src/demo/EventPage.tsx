@@ -61,7 +61,6 @@ import { CAL_WORDS } from './calendar.ts';
 import { EventSidebar } from './EventSidebar.tsx';
 import { Glyph, type GlyphName } from '../components/Glyph.tsx';
 import { LayersContext } from '../layers.ts';
-import { BudgetArea } from './Quotes.tsx';
 import { BUDGET_EVENT } from './budget.ts';
 import { BudgetEntry } from './BudgetRoutes.tsx';
 import {
@@ -352,8 +351,6 @@ function EventView({
                   </div>
                 </div>
               </>
-            ) : area === 'budget' && event.id === 'evt-gala-4' ? (
-              <BudgetArea event={event} tell={tell} />
             ) : (
               <AreaPage
                 event={event}

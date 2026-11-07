@@ -1,8 +1,7 @@
 import { useSearchParams } from 'react-router';
 
-import { HOME_STATES } from './budgetHome.ts';
-import { BudgetHome } from './BudgetHome.tsx';
-import { BudgetShell } from './BudgetParts.tsx';
+import { NotAvailablePage } from './BudgetHome.tsx';
+import { viewerOf } from './budgetSample.ts';
 import { DECIDE_STATES } from './decide.ts';
 import { DecidePage } from './Decide.tsx';
 import { type SampleEvent } from './events.ts';
@@ -22,21 +21,14 @@ export function BudgetEntry({ event }: { event: SampleEvent }) {
   const state = params.get('state') ?? '';
   const key = params.toString();
 
+  if (DECIDE_STATES.includes(state)) return <DecidePage key={key} event={event} state={state} />;
+  if (state === 'not_found' || !viewerOf(params.get('as')).seesBudget)
+    return <NotAvailablePage key={key} event={event} />;
+
   if (PAYERS_STATES.includes(state)) return <PayersPage key={key} event={event} state={state} />;
   if (SHARE_STATES.includes(state)) return <SharePage key={key} event={event} state={state} />;
   if (PLAN_STATES.includes(state)) return <PlanPage key={key} event={event} state={state} />;
   if (TEMPLATES_STATES.includes(state))
     return <TemplatesPage key={key} event={event} state={state} />;
-  if (DECIDE_STATES.includes(state)) return <DecidePage key={key} event={event} state={state} />;
-  if (
-    HOME_STATES.includes(state) ||
-    (state === '' && params.get('vendor') == null && params.get('view') == null)
-  )
-    return <BudgetHome key={key} event={event} state={state === '' ? 'populated' : state} />;
-
-  return (
-    <BudgetShell key={key} event={event}>
-      {(tell) => <BudgetArea event={event} tell={tell} />}
-    </BudgetShell>
-  );
+  return <BudgetArea event={event} />;
 }
