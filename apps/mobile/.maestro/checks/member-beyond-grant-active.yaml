@@ -1,0 +1,17 @@
+# sc-13023: the member page named by ${ACTIVE_ID} carries membersScreen.beyondGrant.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil:
+    visible: '{{t:membersScreen.title}}'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: members.row.${ACTIVE_ID}
+    timeout: 20000
+- tapOn:
+    id: members.row.${ACTIVE_ID}
+- scrollUntilVisible:
+    element: '{{t:membersScreen.beyondGrant}}'
+    timeout: 20000
+- takeScreenshot: member-beyond-grant-active

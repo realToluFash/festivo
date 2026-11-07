@@ -1,0 +1,46 @@
+# sc-19212: on a tablet on its side, with ${ORG}'s event ${EVENT} open in the pane, a pull to refresh with the API stopped keeps the split: the list's failed card beside the pane.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- runFlow:
+    file: ../switch-organisation.yaml
+    env:
+      ORG: ${ORG}
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'events.tab.drafts'
+    timeout: 30000
+- tapOn:
+    id: 'events.tab.drafts'
+- extendedWaitUntil:
+    visible:
+      id: 'events.row.${EVENT}'
+    timeout: 20000
+- tapOn:
+    id: 'events.row.${EVENT}'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: opened
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
+- swipe:
+    start: 20%, 30%
+    end: 20%, 80%
+    duration: 600
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible:
+    id: 'events.retry'
+- assertVisible:
+    id: 'events.page.retry'
+- takeScreenshot: refresh-failed
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=up

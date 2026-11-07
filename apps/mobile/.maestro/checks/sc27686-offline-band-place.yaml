@@ -1,0 +1,23 @@
+# Needs an organisation with at least one event, and on Android a sign-in at 100% text size before font_scale changes: Gboard's "font size updated" banner blocks the batch's sign-in. sc-27686: the offline band on Events at any text size, waiting on the summary rather than the tabs, which the largest sizes push below the fold.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'events.summary'
+    timeout: 30000
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
+- swipe:
+    start: 50%, 55%
+    end: 50%, 88%
+    duration: 400
+- extendedWaitUntil:
+    visible:
+      id: 'offline.band'
+    timeout: 60000
+- assertVisible:
+    id: 'offline.retry'
+- takeScreenshot: band

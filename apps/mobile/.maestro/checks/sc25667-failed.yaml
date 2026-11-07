@@ -1,0 +1,43 @@
+# sc-25667: Create organisation with the API stopped answers Creating the organisation did not work., and then Cancel is live and closes the sheet with nothing named Held Failed created.
+appId: host.exp.Exponent
+---
+- runFlow: ../open-create-organisation.yaml
+- tapOn:
+    id: 'createOrganisation.name'
+- inputText: 'Held Failed'
+- hideKeyboard:
+    optional: true
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
+- tapOn:
+    id: 'createOrganisation.create'
+- extendedWaitUntil:
+    visible: '{{t:createOrganisation.failed}}'
+    timeout: 60000
+- hideKeyboard:
+    optional: true
+- takeScreenshot: failed-answer
+- assertVisible:
+    id: 'createOrganisation.cancel'
+    enabled: true
+- tapOn:
+    id: 'createOrganisation.cancel'
+- extendedWaitUntil:
+    notVisible:
+      id: 'createOrganisation'
+    timeout: 10000
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=up
+- tapOn:
+    id: 'home.switchOrganisation'
+- extendedWaitUntil:
+    visible:
+      id: 'switcher.heading'
+    timeout: 30000
+- waitForAnimationToEnd
+- assertNotVisible: '.*Held Failed.*'
+- takeScreenshot: failed-switcher

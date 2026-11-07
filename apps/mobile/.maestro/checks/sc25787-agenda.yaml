@@ -1,0 +1,45 @@
+# iPad only. Not yet run on the iPhone SE, where it timed out at its old calendar.agenda wait; it now waits on an agenda row, so drop this line once it passes on the SE. The Calendar's Agenda on November 2026, then an empty month. Needs an account with events in November 2026 and none in December 2026; steps back from today's month to November, so it holds while today is November 2026 or later.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/calendar
+- extendedWaitUntil:
+    visible:
+      id: calendar.view.month
+    timeout: 30000
+- tapOn:
+    id: calendar.view.month
+- tapOn:
+    id: calendar.today
+- extendedWaitUntil:
+    visible:
+      id: calendar.grid
+    timeout: 15000
+- repeat:
+    while:
+      notVisible:
+        id: calendar.day.2026-11-14
+    times: 24
+    commands:
+      - tapOn:
+          id: calendar.previous
+- extendedWaitUntil:
+    visible:
+      id: calendar.day.2026-11-14
+    timeout: 15000
+- tapOn:
+    id: calendar.view.agenda
+- extendedWaitUntil:
+    visible:
+      id: 'calendar\.row\..*'
+    timeout: 15000
+- takeScreenshot: agenda
+- tapOn:
+    id: calendar.show.events
+- takeScreenshot: agenda-events-only
+- tapOn:
+    id: calendar.show.all
+- tapOn:
+    id: calendar.next
+- takeScreenshot: agenda-empty-month
+- tapOn:
+    id: calendar.previous
