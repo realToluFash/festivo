@@ -11,7 +11,7 @@ type PluralBase = {
 
 const NUMBER = new Intl.NumberFormat('en-US');
 const PLURAL = new Intl.PluralRules('en-US');
-const LIST = new Intl.ListFormat('en-US', { style: 'long', type: 'conjunction' });
+const LIST = new Intl.ListFormat('en-GB', { style: 'long', type: 'conjunction' });
 
 export function say(words: string, slots: Readonly<Record<string, string | number>> = {}): string {
   return words.replaceAll(/\{\{(\w+)\}\}/gu, (whole, slot: string) => {
@@ -858,13 +858,24 @@ export function readCount(text: string): number | null {
   return /^\d+$/u.test(typed) ? Number(typed) : null;
 }
 
+export const FEET_RANGE = { min: 7, max: 1640 } as const;
+
 export function readRoom(
   text: string,
   which: 'width' | 'length',
+  units: Units = 'metric',
 ): { cm: number } | { refused: string } {
   const typed = text.trim().replace(',', '.').replace(/\s*m$/u, '');
 
   if (typed === '') return { refused: which === 'width' ? SW.enterWidth : SW.enterLength };
+  if (units === 'us') {
+    const cm = readFeet(typed) ?? readFeet(`${typed} ft`);
+    const ft = cm == null ? null : cm / 30.48;
+
+    return ft == null || ft < FEET_RANGE.min || ft > FEET_RANGE.max + 0.99
+      ? { refused: say(SW.roomRangeFeet, FEET_RANGE) }
+      : { cm: Math.round(cm!) };
+  }
   const value = Number(typed);
 
   if (!Number.isFinite(value) || value < 2 || value > 500) return { refused: SW.roomRange };
@@ -1033,13 +1044,13 @@ export function seatedIn(items: readonly Item[]): number {
 export function planCounts(plan: Plan): string {
   const tables = plan.items.filter(isTable).length;
   const rows = plan.items.filter((item) => item.kind === 'row').length;
-  const seated = seatedIn(plan.items);
+  const singles = plan.items.filter((item) => item.kind === 'single').length;
 
   return listed(
     [
       tables > 0 ? many('tables', tables) : null,
       rows > 0 ? many('rows', rows) : null,
-      seated > 0 ? many('seatedGuests', seated) : null,
+      singles > 0 ? many('singles', singles) : null,
     ].filter((part): part is string => part != null),
   );
 }

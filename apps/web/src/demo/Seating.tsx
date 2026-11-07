@@ -38,6 +38,7 @@ import {
   isTable,
   itemName,
   lengthOf,
+  listed,
   many,
   nearestFree,
   newItem,
@@ -45,6 +46,7 @@ import {
   peopleIn,
   percentOf,
   planCounts,
+  readRoom,
   readingOrder,
   say,
   seatAt as seatChairs,
@@ -304,6 +306,18 @@ function Seating({ first, event, tell }: { first: Ui; event: SampleEvent; tell: 
     },
     [set],
   );
+
+  useEffect(() => {
+    const coming = ui.joining;
+
+    if (coming == null) return;
+    const join = window.setTimeout(() => {
+      set((now) => ({ ...now, joining: null, people: [...now.people, coming] }));
+      say$(say(SW.joined, { name: coming.name }));
+    }, ARRIVES_MS);
+
+    return () => window.clearTimeout(join);
+  }, [ui.joining, set, say$]);
 
   const commit = useCallback<SeatingApi['commit']>(
     (id, change, after = {}) =>
@@ -2061,14 +2075,12 @@ function Asking() {
     0,
   );
   const name = doomed.map((item) => item.name);
-  const title = say(SW.deleteNamed, {
-    name: name.length === 1 ? (name[0] ?? '') : name.join(', '),
-  });
+  const title = say(SW.deleteNamed, { name: listed(name) });
 
   return (
     <Ask
       title={title}
-      line={n > 0 ? say(SW.seatedHere, { n }) : SW.nobodyHere}
+      line={name.length > 1 ? SW.theirGuestsGo : n > 0 ? say(SW.seatedHere, { n }) : SW.nobodyHere}
       keep={SW.keepIt}
       go={name.length === 1 ? say(SW.deleteName, { name: name[0] ?? '' }) : SW.deleteThese}
       onKeep={keep}
@@ -2140,16 +2152,16 @@ function Skeleton({ w, h }: { w: number; h: number }) {
 /** Start the plan: the room appears to scale once it has a width and a length (sc-3998). */
 function StartPreview({ w, h }: { w: number; h: number }) {
   const { ui } = useSeating();
-  const width = Number(ui.start.width.replace(',', '.'));
-  const length = Number(ui.start.length.replace(',', '.'));
+  const width = readRoom(ui.start.width, 'width', ui.units);
+  const length = readRoom(ui.start.length, 'length', ui.units);
 
-  if (!(width >= 2 && width <= 500 && length >= 2 && length <= 500))
+  if ('refused' in width || 'refused' in length)
     return (
       <div className="st-start-hint">
         <p>{SW.startHint}</p>
       </div>
     );
-  const room = { name: ui.start.name, w: width * 100, l: length * 100 };
+  const room = { name: ui.start.name, w: width.cm, l: length.cm };
   const { s, ox, oy } = fitOf(w, h, room);
 
   return (
@@ -2161,8 +2173,8 @@ function StartPreview({ w, h }: { w: number; h: number }) {
       role="img"
       aria-label={say(SW.roomGroup, {
         name: room.name,
-        width: lengthOf(room.w, 'metric'),
-        length: lengthOf(room.l, 'metric'),
+        width: lengthOf(room.w, ui.units),
+        length: lengthOf(room.l, ui.units),
       })}
     >
       <rect className="st-floor" x={ox} y={oy} width={room.w * s} height={room.l * s} />

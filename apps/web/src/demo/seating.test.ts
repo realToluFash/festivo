@@ -103,7 +103,9 @@ describe('the sample (seating-a-spec §8)', () => {
     expect(sectionLine(plan, 'garden')).toBe('Teal · 5 tables · 48 seats');
     expect(sectionLine(plan, 'bar')).toBe('Olive · 2 tables · 8 seats');
     expect(sectionLine(plan, null)).toBe('1 table · 1 row · 2 single seats · 16 seats');
-    expect(planCounts(plan)).toBe('13 tables, 1 row, and 84 seated guests');
+    expect(planCounts(plan)).toBe('13 tables, 1 row and 2 single seats');
+    expect(readRoom('5', 'width', 'us')).toEqual({ refused: 'Use 7 to 1,640 ft.' });
+    expect(readRoom('80 ft', 'width', 'us')).toEqual({ cm: 2438 });
   });
 });
 

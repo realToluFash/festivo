@@ -23,7 +23,6 @@ import {
   partyTitle,
   peopleIn,
   readCount,
-  readFeet,
   shownParties,
   unsureLeft,
   readPlace,
@@ -443,8 +442,8 @@ function StartForm() {
   const { start } = ui;
 
   function begin(): void {
-    const width = readRoom(start.width, 'width');
-    const length = readRoom(start.length, 'length');
+    const width = readRoom(start.width, 'width', ui.units);
+    const length = readRoom(start.length, 'length', ui.units);
     const errors = {
       ...('refused' in width ? { width: width.refused } : {}),
       ...('refused' in length ? { length: length.refused } : {}),
@@ -501,7 +500,11 @@ function StartForm() {
     >
       <TitleBlock
         title={SW.startPlan}
-        line={say(SW.startLine, { venue: 'The Landmark', city: 'London', whose: 'Ire Events’' })}
+        line={say(ui.units === 'us' ? SW.startLineFeet : SW.startLine, {
+          venue: 'The Landmark',
+          city: 'London',
+          whose: 'Ire Events’',
+        })}
       />
       <StartField
         label={SW.roomName}
@@ -513,7 +516,7 @@ function StartForm() {
       <Two>
         <StartField
           label={SW.width}
-          unit="m"
+          unit={ui.units === 'us' ? 'ft' : 'm'}
           value={start.width}
           error={start.errors.width}
           onChange={(text) => typed('width', text)}
@@ -521,7 +524,7 @@ function StartForm() {
         />
         <StartField
           label={SW.length}
-          unit="m"
+          unit={ui.units === 'us' ? 'ft' : 'm'}
           value={start.length}
           error={start.errors.length}
           onChange={(text) => typed('length', text)}
@@ -596,16 +599,7 @@ function RoomSettings() {
   if (room == null) return null;
 
   function resize(key: 'w' | 'l', text: string): string | null {
-    const which = key === 'w' ? 'width' : 'length';
-    const typed = text.trim();
-    const feet =
-      ui.units === 'us' && typed !== '' ? (readFeet(typed) ?? readFeet(`${typed} ft`)) : null;
-    const read =
-      ui.units !== 'us' || typed === ''
-        ? readRoom(text, which)
-        : feet == null
-          ? { refused: SW.roomRange }
-          : readRoom(String(feet / 100), which);
+    const read = readRoom(text, key === 'w' ? 'width' : 'length', ui.units);
 
     if ('refused' in read) return read.refused;
     const next = { ...room!, [key]: read.cm };

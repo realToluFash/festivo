@@ -251,7 +251,7 @@ describe('Room settings and sections (sc-3998)', () => {
     const ask = screen.getByRole('alertdialog', { name: 'Delete the plan?' });
 
     expect(ask.textContent).toContain(
-      '13 tables, 1 row, and 84 seated guests go. Everyone seated goes back to Without a seat; the guest list is not touched.',
+      '13 tables, 1 row and 2 single seats go. Everyone seated goes back to Without a seat; the guest list is not touched.',
     );
     fireEvent.click(within(ask).getByRole('button', { name: 'Delete the plan' }));
     expect(await screen.findByText('No seating plan yet')).toBeDefined();
@@ -267,10 +267,27 @@ describe('Room settings and sections (sc-3998)', () => {
     expect(await within(panel()).findByDisplayValue('52 ft 2 in')).toBeDefined();
   });
 
+  it('starts a US plan in feet, refusing a room out of range in feet', SLOW, async () => {
+    await seating('usCustomary');
+    press(item(/^Table 4,/u));
+    key(item(/^Table 4,/u), 'Escape');
+    fireEvent.click(within(panel()).getByRole('button', { name: 'Room settings' }));
+    typeIn('Width', '5');
+    expect(await within(panel()).findByText('Use 7 to 1,640 ft.')).toBeDefined();
+    fireEvent.click(within(panel()).getByRole('button', { name: 'Delete the plan' }));
+    fireEvent.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Delete the plan' }),
+    );
+    fireEvent.click(await screen.findByRole('button', { name: 'Start the plan' }));
+    expect(
+      within(panel()).getByText('At The Landmark, London. In feet. Change it in Room settings.'),
+    ).toBeDefined();
+  });
+
   it('says a colleague’s change came first', SLOW, async () => {
     await seating('roomChanged');
     expect(
-      within(panel()).getByText('Priya Shah just changed this. Your change was not saved.'),
+      within(panel()).getByText('Priya Shah just changed this. Your change wasn’t saved.'),
     ).toBeDefined();
   });
 
@@ -461,7 +478,7 @@ describe('tables, rows and seats (sc-4000, sc-4003)', () => {
   it('says a colleague changed the table first (412)', SLOW, async () => {
     await seating('tableChanged');
     expect(
-      within(panel()).getByText('Priya Shah just changed this table. Your change was not saved.'),
+      within(panel()).getByText('Priya Shah just changed this table. Your change wasn’t saved.'),
     ).toBeDefined();
     expect(
       item(/^Table 7, round, 8 of 10 seats taken, Garden side, chosen by Priya Shah$/u),
@@ -511,6 +528,11 @@ describe('moving without dragging, and the save line (sc-5028, WCAG 2.2 SC 2.5.7
         'Shift and click adds or takes one away. Esc lets go of all of them.',
       ),
     ).toBeDefined();
+    fireEvent.click(within(panel()).getByRole('button', { name: 'Delete these' }));
+    const ask = screen.getByRole('alertdialog', { name: 'Delete Table 6, Table 7 and Table 8?' });
+
+    expect(ask.textContent).toContain('Their guests go back to Without a seat.');
+    fireEvent.click(within(ask).getByRole('button', { name: 'Keep it' }));
     key(item(/^Table 8,/u), 'Escape');
     expect(within(panel()).getByRole('heading', { name: 'Room' })).toBeDefined();
   });
@@ -591,7 +613,12 @@ describe('who else is here (sc-4719)', () => {
     );
   });
 
-  it('says who left, politely', SLOW, async () => {
+  it('says who joined and who left, politely', SLOW, async () => {
+    await seating('presenceOne');
+    expect(
+      await screen.findByText('Priya Shah joined the plan.', undefined, { timeout: 4000 }),
+    ).toBeDefined();
+    expect(screen.getByText('Priya Shah is on this plan')).toBeDefined();
     await seating('left');
     expect(await screen.findByText('Priya Shah left the plan.')).toBeDefined();
   });

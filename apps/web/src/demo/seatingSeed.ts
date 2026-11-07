@@ -115,6 +115,7 @@ export interface Ui {
   focus: string | null;
   spoken: string;
   colleague: { id: string; at: Point } | null;
+  joining: Person | null;
   contest: { id: string; at: Point; by: string } | null;
   paper: Paper | null;
   start: {
@@ -176,6 +177,7 @@ export function freshUi(): Ui {
     focus: null,
     spoken: '',
     colleague: null,
+    joining: null,
     contest: null,
     paper: null,
     start: { name: 'Main hall', width: '24', length: '', errors: {} },
@@ -255,8 +257,9 @@ export function seedOf(state: SeatingState | null): Ui {
   switch (state) {
     case null:
     case 'plan':
-    case 'presenceOne':
       return ui;
+    case 'presenceOne':
+      return { ...ui, people: [], joining: PRIYA };
     case 'noPlan':
       return { ...ui, plan: { room: null, items: [], sections: [] }, people: [] };
     case 'startBlank':
