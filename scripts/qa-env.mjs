@@ -3060,6 +3060,72 @@ export function startHelper({
   });
 }
 
+// An offline check written before batch/helper.js calls a trigger of its own on 18999 (sc-27900).
+// It runs only these actions, on this tester's stack, and a shot is named, never a path.
+export const TRIGGER_PORT = 18999;
+export const TRIGGER_MOVES = { '/stop': 'stopped', '/hold': 'paused', '/unpause': 'up' };
+
+export function startTrigger({ apiState, shoot, port = TRIGGER_PORT }) {
+  const server = createServer(async (request, response) => {
+    const { pathname } = new URL(request.url ?? '/', 'http://trigger');
+    const reply = (status, body) => {
+      response.writeHead(status, { 'Content-Type': 'application/json' });
+      response.end(JSON.stringify(body));
+    };
+    try {
+      const to = TRIGGER_MOVES[pathname];
+      if (to) {
+        await apiState.move(to);
+        return reply(200, { api: to });
+      }
+      const shot = /^\/shot-([\w-]+)$/.exec(pathname)?.[1];
+      if (shot) return reply(200, { shot: await shoot(shot) });
+      return reply(404, { error: `nothing at ${pathname}: /stop, /hold, /unpause, /shot-<name>` });
+    } catch (error) {
+      return reply(500, { error: error instanceof Error ? error.message : String(error) });
+    }
+  });
+  return new Promise((ready, failed) => {
+    server.once('error', failed);
+    server.listen(port, '127.0.0.1', () => ready(server));
+  });
+}
+
+function screenshotter(device, onAndroid, out) {
+  return (name) => {
+    const file = join(out, `${name}.png`);
+    if (onAndroid) {
+      const tools = androidTools();
+      const onDevice = `/sdcard/trigger-${name}.png`;
+      run(tools.adb, ['-s', device, 'shell', 'screencap', '-p', onDevice], { env: tools.env });
+      run(tools.adb, ['-s', device, 'pull', onDevice, file], { env: tools.env });
+      run(tools.adb, ['-s', device, 'shell', 'rm', onDevice], { env: tools.env, optional: true });
+    } else {
+      run('xcrun', ['simctl', 'io', device, 'screenshot', file]);
+    }
+    return file;
+  };
+}
+
+async function trigger(args) {
+  const root = qaWorktree();
+  const onAndroid = args.includes('--android');
+  const valueOf = (flag) => {
+    const at = args.indexOf(flag);
+    return at === -1 ? undefined : args[at + 1];
+  };
+  const port = Number(valueOf('--port') ?? TRIGGER_PORT);
+  const out = resolve(valueOf('--out') ?? join(root, '.qa', 'trigger'));
+  const device = maestroDevice(args);
+  mkdirSync(out, { recursive: true });
+  const apiState = composeApi(root, onAndroid);
+  await startTrigger({ apiState, shoot: screenshotter(device, onAndroid, out), port });
+  console.log(
+    `\n▸ trigger on http://127.0.0.1:${port} for ${CONFIG.project}: /stop, /hold, /unpause, ` +
+      `/shot-<name> into ${out}. Ctrl-C ends it; the API is left as the last call left it.\n`,
+  );
+}
+
 // A dead driver either ends Maestro at once or hangs it. For the hang a run gets a budget, and a
 // batch whose flows stop calling the harness for STALL_MS is stopped sooner.
 export const runBudgetMs = (runs) => (5 + 2 * runs) * 60_000;
@@ -3475,6 +3541,7 @@ const COMMANDS = {
   hierarchy,
   account,
   chrome,
+  trigger,
 };
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

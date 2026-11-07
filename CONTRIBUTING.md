@@ -82,6 +82,13 @@ mid-batch: start them with the longest timeout the tool allows (7200000 ms). `io
 `batch --se` and the other simulator commands run on the tester's iPhone SE
 (`Soirely QA<n> iPhone SE`) instead of the iPhone, as `--ipad` does for the iPad.
 
+An offline check that calls `127.0.0.1:18999`, such as `sc27096-ipad-side-refreshing`, needs
+`node .qa/bin/qa-env.mjs trigger` running beside it, in the background like `ios`, with the
+same device flag (`--ipad`, `--se`, `--android`). It serves `/stop`, `/hold` (start, then
+pause), `/unpause` against this tester's API and `/shot-<name>`, which screenshots the device
+into `.qa/trigger/<name>.png` at that moment, since a batch writes its own only at the end.
+Nothing else: it runs no command it is sent. `--port` and `--out` move it.
+
 Expo Go fetches the bundle from Metro and draws its own splash, so a bullet about the app
 offline from first launch, or its own splash screen, needs the app itself.
 `node .qa/bin/qa-env.mjs release` builds a release APK of the QA worktree's commit, with the bundle and fonts inside, installs

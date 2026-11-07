@@ -62,6 +62,8 @@ import {
   runAsync,
   runBudgetMs,
   startHelper,
+  startTrigger,
+  TRIGGER_PORT,
   membershipChanges,
   domainPause,
   STEP_MS,
@@ -1772,6 +1774,72 @@ describe('a check that holds the API', () => {
   it('reaches the harness through batch/helper.js, never a literal port', () => {
     const literal = checks.filter(([, flow]) => /127\.0\.0\.1:\d+/.test(flow)).map(([n]) => n);
     expect(literal).toEqual(['sc27096-ipad-side-refreshing.yaml']);
+  });
+});
+
+describe('the offline trigger', () => {
+  const triggerFor = async (container) => {
+    const { control, ran } = dockerDouble(container);
+    const shoot = async (name) => {
+      ran.push(`shot ${name}`);
+      return `/out/${name}.png`;
+    };
+    const server = await startTrigger({ apiState: control, shoot, port: 0 });
+    const ask = async (path) => {
+      const response = await fetch(`http://127.0.0.1:${server.address().port}${path}`);
+      return { status: response.status, body: await response.json() };
+    };
+    return { server, ask, control, ran };
+  };
+
+  it('stops, starts then pauses, and unpauses the API, and shoots by name', async () => {
+    const { server, ask, control, ran } = await triggerFor('running');
+    try {
+      expect((await ask('/stop')).body).toEqual({ api: 'stopped' });
+      expect((await ask('/hold')).body).toEqual({ api: 'paused' });
+      expect((await ask('/shot-held-1')).body).toEqual({ shot: '/out/held-1.png' });
+      expect((await ask('/unpause')).body).toEqual({ api: 'up' });
+      expect(ran).toEqual([
+        'stop api',
+        'unreached',
+        'up -d --wait --no-recreate api',
+        'pause api',
+        'reached',
+        'shot held-1',
+        'unpause api',
+      ]);
+      expect(control.state()).toBe('up');
+    } finally {
+      server.close();
+    }
+  });
+
+  it('runs nothing it is not built for, and takes no path for a shot', async () => {
+    const { server, ask, ran } = await triggerFor('running');
+    try {
+      expect((await ask('/run?cmd=rm')).status).toBe(404);
+      expect((await ask('/shot-..%2F..%2Fx')).status).toBe(404);
+      expect((await ask('/shot-')).status).toBe(404);
+      expect(ran).toEqual([]);
+    } finally {
+      server.close();
+    }
+  });
+
+  it('answers every call sc27096-ipad-side-refreshing makes, on the port it names', () => {
+    const flow = readFileSync(
+      join(
+        dirname(fileURLToPath(import.meta.url)),
+        '../apps/mobile/.maestro/checks/sc27096-ipad-side-refreshing.yaml',
+      ),
+      'utf8',
+    );
+    const calls = [...flow.matchAll(/http:\/\/127\.0\.0\.1:(\d+)(\/[\w-]+)/g)];
+    expect(calls.length).toBeGreaterThan(0);
+    for (const [, port, path] of calls) {
+      expect(Number(port)).toBe(TRIGGER_PORT);
+      expect(path).toMatch(/^\/(stop|hold|unpause|shot-[\w-]+)$/);
+    }
   });
 });
 
