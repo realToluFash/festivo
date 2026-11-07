@@ -215,8 +215,8 @@ function DemoHome({ from }: { from: string }) {
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-81-quotes">
-        <h2 id="demo-page-81-quotes">81 · Budget and costs · quotes and payment schedules</h2>
-        <h3>Quotes on the event’s Budget page, Gala Fundación Lucía · desktop</h3>
+        <h2 id="demo-page-81-quotes">81 · Budget and costs · quotes and what is due</h2>
+        <h3>Quotes in A · Summary first · desktop</h3>
         <BoardPages pages={QUOTES_PAGES} />
       </section>
 

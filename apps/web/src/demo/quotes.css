@@ -1,81 +1,6 @@
-.qt-page {
-  display: flex;
-  flex-direction: column;
-  gap: 22px;
-}
-
-.qt-costs .desk-note {
-  padding: var(--spaceMd) var(--spaceLg);
-  border: 1.5px dashed var(--colorBorder);
-  border-radius: var(--radiusInset);
-}
-
-.qt-empty {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--spaceLg);
-  min-height: var(--sizeHit);
-}
-
-.qt-rows .qt-row,
-.qt-rows .qt-due-row {
-  display: grid;
-  align-items: center;
-  gap: var(--spaceLg);
-  color: var(--colorInk);
-  text-decoration: none;
-}
-
-.qt-rows .qt-row {
-  grid-template-columns: minmax(0, 1fr) minmax(0, auto) 24px;
-}
-
-.qt-rows .qt-due-row {
-  grid-template-columns: 220px minmax(0, 1fr) auto 24px;
-}
-
-.qt-figure {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: var(--spaceXxs);
-  text-align: end;
-}
-
-.qt-amount {
-  color: var(--colorInk);
-  font: 600 16px/1.3 var(--fontFamily);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.qt-when {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--spaceSm);
-}
-
-.desk-tag.qt-overdue {
-  gap: var(--spaceXs);
-}
-
-.qt-difference {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--spaceSm);
-  color: var(--colorInk);
-  font: var(--deskLine);
-}
-
-.qt-difference.is-small {
-  color: var(--colorInkSecondary);
-  font-size: 14px;
-}
-
-.qt-difference .desk-mark.is-waiting {
-  color: var(--colorAttention);
+/* sc-87's quotes and schedules in A (Budget-A-Quotes): what Budget's parts do not already draw. */
+.ev-dashed.qt-coming {
+  gap: 10px;
 }
 
 .qt-back {
@@ -89,88 +14,105 @@
 }
 
 .qt-vendor-link {
-  color: inherit;
+  color: var(--colorAccent);
+  text-decoration: none;
+}
+
+.qt-vendor-link:hover {
   text-decoration: underline;
   text-decoration-thickness: 2px;
   text-underline-offset: 5px;
 }
 
-.qt-head-actions,
-.qt-row-actions {
+.desk-head:has(.qt-head-actions) {
+  flex-wrap: wrap;
+}
+
+.desk-head:has(.qt-head-actions) h2 {
+  flex: none;
+}
+
+.qt-head-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--spaceLg);
+  gap: 0 var(--spaceXl);
+  margin-inline: calc(-1 * var(--spaceSm));
 }
 
-.qt-facts {
+.qt-head-actions .desk-text {
+  margin-inline: 0;
+}
+
+.qt-empty {
   display: flex;
-  flex-direction: column;
-  gap: var(--spaceMd);
-  margin: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceSm) var(--spaceLg);
+  min-height: var(--sizeHit);
 }
 
-.qt-fact {
+.qt-empty .desk-text {
+  margin-inline: 0;
+}
+
+.qt-list {
+  max-width: var(--evLeft);
+}
+
+.qt-tick {
   display: grid;
-  grid-template-columns: 160px minmax(0, 1fr);
-  gap: var(--spaceLg);
+  flex: none;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--deskGreen);
+  color: var(--colorInkOnDark);
 }
 
-.qt-fact dt,
-.qt-sums dt {
+.qt-tick.is-large {
+  width: 20px;
+  height: 20px;
+}
+
+.qt-two {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--spaceXl) 40px;
+  align-items: start;
+}
+
+.qt-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spaceMd);
+}
+
+.qt-optional {
   color: var(--colorInkSecondary);
   font: var(--deskSmall);
 }
 
-.qt-fact dd,
-.qt-sums dd {
-  margin: 0;
-  color: var(--colorInk);
-  font: var(--deskLine);
+.desk-box.qt-area {
+  height: auto;
+  padding-block: var(--spaceMd);
 }
 
-.qt-sums dd {
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
-
-.qt-none {
-  color: var(--colorInkTertiary);
-}
-
-.qt-earlier {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--spaceXs);
-  margin-top: var(--spaceMd);
-}
-
-.qt-earlier-list {
-  margin: 0;
+.desk .qt-area textarea {
+  flex: 1;
+  min-width: 0;
   padding: 0;
-  list-style: none;
+  border: 0;
+  outline: none;
+  background: none;
+  color: var(--colorInk);
+  font: 500 16px/1.45 var(--fontFamily);
+  resize: vertical;
 }
 
-.qt-sums {
-  display: flex;
-  gap: var(--spaceXxl);
-  margin: 0 0 var(--spaceSm);
-}
-
-.qt-rows .qt-pay-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto auto;
-  gap: var(--spaceLg);
-}
-
-.qt-pay-row > .qt-overdue:only-of-type {
-  justify-self: end;
-}
-
-.qt-ask {
-  display: flex;
-  align-items: center;
-  gap: var(--spaceLg);
+.desk .qt-area textarea:focus-visible {
+  box-shadow: none;
 }
 
 .qt-vendor {
@@ -214,6 +156,10 @@
   cursor: default;
 }
 
+.qt-option.is-taken .desk-row-name {
+  color: var(--colorInkSecondary);
+}
+
 .qt-vendor-status {
   display: flex;
   flex-direction: column;
@@ -225,15 +171,6 @@
   display: none;
 }
 
-.qt-money {
-  gap: var(--spaceSm);
-}
-
-.qt-symbol {
-  color: var(--colorInkSecondary);
-  font: 600 16px/1 var(--fontFamily);
-}
-
 .qt-fixed {
   margin: 0;
 }
@@ -241,6 +178,7 @@
 .qt-lines .desk-rows {
   margin: 0;
   padding: 0;
+  list-style: none;
 }
 
 .qt-line {
@@ -289,4 +227,10 @@
 .qt-check:disabled {
   border-style: dashed;
   background: var(--colorInset);
+}
+
+@media (width <= 720px) {
+  .qt-two {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
