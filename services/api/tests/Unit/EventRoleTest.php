@@ -44,8 +44,12 @@ final class EventRoleTest extends TestCase
             self::assertNotContains(Permission::GuestsManage, $held, $role->value);
             self::assertSame([], Vec\filter($held, static fn (Permission $permission): bool => PermissionArea::Budget === $permission->area()), $role->value);
         }
+    }
 
-        self::assertSame([Permission::EventsRead, Permission::GuestsRead, Permission::PeopleRead], EventRole::CanCheckIn->permissions());
+    #[Test]
+    public function canCheckGuestsInReadsEveryAreaCanViewReads(): void
+    {
+        self::assertSame(EventRole::CanView->permissions(), EventRole::CanCheckIn->permissions());
     }
 
     #[Test]

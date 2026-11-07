@@ -64,7 +64,10 @@ text again. Take the work in this order:
    product question on it is open, send it on. `sq pm move sc-N "Ready For Dev"` only when
    it changes nothing a person sees, or when a merged demo already covers its every screen
    and state; `sq pm move sc-N "Needs Design"` otherwise. The developers build only from
-   Ready For Dev, and design nothing (the owner, 7 Nov 2026; sc-30407).
+   Ready For Dev, and design nothing (the owner, 7 Nov 2026; sc-30407). A story that shows
+   nothing and has a Design section opens that section with
+   `**Demo:** none: nothing a person sees.`, so the claim reads it as nothing to show
+   rather than a demo missing.
    A story that must merge before another is built is recorded as a **blocks** link,
    `sq pm relate sc-<dependency> sc-<story> --verb blocks`, and that link is what holds the
    story: sq offers it to no developer until every story blocking it reaches Ready For QA

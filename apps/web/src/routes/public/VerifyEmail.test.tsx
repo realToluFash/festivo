@@ -155,6 +155,17 @@ describe('verifying an email address', () => {
     );
   });
 
+  it('keeps only the first six digits of what is typed into the code (sc-29065)', () => {
+    answering({});
+
+    open();
+
+    const field = screen.getByLabelText<HTMLInputElement>('Code from the email');
+    fireEvent.change(field, { target: { value: '12ab34567' } });
+
+    expect(field.value).toBe('123456');
+  });
+
   it('verifies, and then offers the way on', async () => {
     const seen = answering({
       'POST /api/auth/verify/email': () =>
@@ -346,12 +357,13 @@ describe('verifying an email address', () => {
     expect(document.activeElement).toBe(document.body);
   });
 
-  it('says the account is still signed in when it cannot reach Soirely', () => {
+  it('leaves out still signed in when the account itself could not be read (sc-29065)', () => {
     __setSessionState({ status: 'unreachable', retrying: false });
 
     open();
 
-    expect(screen.getByRole('status').textContent).toMatch(/You are still signed in\./);
+    expect(screen.getByText('Cannot reach Soirely')).toBeDefined();
+    expect(screen.queryByText(/You are still signed in/)).toBeNull();
   });
 
   it('sends somebody with no session to sign in', async () => {

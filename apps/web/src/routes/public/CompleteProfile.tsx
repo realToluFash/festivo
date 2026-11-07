@@ -21,6 +21,7 @@ import { api } from '../../api.ts';
 import { FieldError } from '../../components/FieldError.tsx';
 import { InvitationRows } from '../../components/InvitationRows.tsx';
 import { LinkedNotice } from '../../components/LinkedNotice.tsx';
+import { OrLine } from '../../components/OrLine.tsx';
 import { AuthPage } from '../../components/AuthPage.tsx';
 import { SignedInAs, StepLine } from '../../components/Onboarding.tsx';
 import { PendingPage } from '../../components/Pending.tsx';
@@ -69,7 +70,7 @@ export function CompleteProfile() {
   }, []);
 
   if (state.status === 'signedOut') return <Navigate to="/sign-in" replace />;
-  if (state.status === 'unreachable') return <Unreachable signedIn bare />;
+  if (state.status === 'unreachable') return <Unreachable signedIn={false} bare />;
   if (state.status !== 'signedIn') return <PendingPage />;
 
   // Only the gate it is behind: an unverified account verifies first, a complete one is let in.
@@ -427,204 +428,206 @@ function Details({
         </div>
       )}
 
-      <div className="field">
-        <label htmlFor="name">{t('completeProfile.name')}</label>
-        <input
-          ref={nameInput}
-          className={errors.name == null ? 'input' : 'input input-wrong'}
-          id="name"
-          type="text"
-          autoComplete="name"
-          autoCorrect="off"
-          spellCheck={false}
-          maxLength={ACCOUNT_NAME_MAXIMUM}
-          value={values.name}
-          {...offField(saving)}
-          aria-invalid={errors.name != null}
-          aria-describedby={errors.name == null ? undefined : 'name-error'}
-          onChange={(event) => change('name', event.target.value)}
-        />
-        {errors.name != null && <FieldError id="name-error" message={errors.name} />}
-      </div>
-
-      {waiting.invitations.length > 0 && (
-        <section className="profile-invitations" aria-labelledby="profile-invitations-heading">
-          <div className="profile-invitations-head">
-            <p id="profile-invitations-heading" className="profile-invitations-heading">
-              {t('invitations.heading')}
-            </p>
-            <p className="profile-invitations-intro">
-              {firstJoined != null
-                ? t('completeProfile.invitationsJoined')
-                : stillOpen === 0
-                  ? t('completeProfile.invitationsNone')
-                  : t('completeProfile.invitationsWaiting', { count: stillOpen })}
-            </p>
-          </div>
-          <InvitationRows
-            waiting={waiting}
-            place="profile"
-            after={{
-              note: (id) => {
-                const outcome = waiting.outcomes[id];
-                const first =
-                  outcome?.kind === 'accepted' && outcome.organisationId === firstJoined;
-
-                return t(
-                  first ? 'completeProfile.joinedGoesThere' : 'completeProfile.joinedSwitchLater',
-                );
-              },
-            }}
+      <div className="auth-fields">
+        <div className="field">
+          <label htmlFor="name">{t('completeProfile.name')}</label>
+          <input
+            ref={nameInput}
+            className={errors.name == null ? 'input' : 'input input-wrong'}
+            id="name"
+            type="text"
+            autoComplete="name"
+            autoCorrect="off"
+            spellCheck={false}
+            maxLength={ACCOUNT_NAME_MAXIMUM}
+            value={values.name}
+            {...offField(saving)}
+            aria-invalid={errors.name != null}
+            aria-describedby={errors.name == null ? undefined : 'name-error'}
+            onChange={(event) => change('name', event.target.value)}
           />
-        </section>
-      )}
-
-      {asksForOrganisation && stillOpen > 0 && (
-        <p className="or-rule">{t('completeProfile.orStartOwn')}</p>
-      )}
-
-      {unavailable && (
-        <div className="auth-notice" ref={unavailableNotice} tabIndex={-1}>
-          <p>{t('domainJoining.unavailable')}</p>
+          {errors.name != null && <FieldError id="name-error" message={errors.name} />}
         </div>
-      )}
 
-      {showOffers && (
-        <div className="join-offers" role="group" aria-labelledby="join-offers-heading">
-          <div className="join-offers-intro">
-            <p className="join-offers-heading" id="join-offers-heading">
-              {t('domainJoining.heading')}
-            </p>
-            <p className="field-help">
-              {t('domainJoining.intro', { domain: offered?.domain ?? '' })}
-            </p>
-          </div>
-          {offers.map((offer) => (
-            <div className="join-offer" key={offer.id}>
-              <div className="join-offer-text">
-                <p className="join-offer-title">
-                  {t('domainJoining.usesSoirely', { organisation: offer.name })}
-                </p>
-                <p className="field-help">{t('domainJoining.approvesFirst')}</p>
-              </div>
-              <button
-                className={offers.length === 1 ? 'button button-primary' : 'button'}
-                type="button"
-                aria-label={t('domainJoining.askLabel', { organisation: offer.name })}
-                disabled={saving && askingToJoin !== offer.id}
-                {...offButton(saving && askingToJoin === offer.id)}
-                onClick={() => void send(offer.id)}
-              >
-                {t('domainJoining.ask')}
-              </button>
+        {waiting.invitations.length > 0 && (
+          <section className="profile-invitations" aria-labelledby="profile-invitations-heading">
+            <div className="profile-invitations-head">
+              <p id="profile-invitations-heading" className="profile-invitations-heading">
+                {t('invitations.heading')}
+              </p>
+              <p className="profile-invitations-intro">
+                {firstJoined != null
+                  ? t('completeProfile.invitationsJoined')
+                  : stillOpen === 0
+                    ? t('completeProfile.invitationsNone')
+                    : t('completeProfile.invitationsWaiting', { count: stillOpen })}
+              </p>
             </div>
-          ))}
+            <InvitationRows
+              waiting={waiting}
+              place="profile"
+              after={{
+                note: (id) => {
+                  const outcome = waiting.outcomes[id];
+                  const first =
+                    outcome?.kind === 'accepted' && outcome.organisationId === firstJoined;
+
+                  return t(
+                    first ? 'completeProfile.joinedGoesThere' : 'completeProfile.joinedSwitchLater',
+                  );
+                },
+              }}
+            />
+          </section>
+        )}
+
+        {asksForOrganisation && stillOpen > 0 && <OrLine words={t('completeProfile.orStartOwn')} />}
+
+        {unavailable && (
+          <div className="auth-notice" ref={unavailableNotice} tabIndex={-1}>
+            <p>{t('domainJoining.unavailable')}</p>
+          </div>
+        )}
+
+        {showOffers && (
+          <div className="join-offers" role="group" aria-labelledby="join-offers-heading">
+            <div className="join-offers-intro">
+              <p className="join-offers-heading" id="join-offers-heading">
+                {t('domainJoining.heading')}
+              </p>
+              <p className="field-help">
+                {t('domainJoining.intro', { domain: offered?.domain ?? '' })}
+              </p>
+            </div>
+            {offers.map((offer) => (
+              <div className="join-offer" key={offer.id}>
+                <div className="join-offer-text">
+                  <p className="join-offer-title">
+                    {t('domainJoining.usesSoirely', { organisation: offer.name })}
+                  </p>
+                  <p className="field-help">{t('domainJoining.approvesFirst')}</p>
+                </div>
+                <button
+                  className={offers.length === 1 ? 'button button-primary' : 'button'}
+                  type="button"
+                  aria-label={t('domainJoining.askLabel', { organisation: offer.name })}
+                  disabled={saving && askingToJoin !== offer.id}
+                  {...offButton(saving && askingToJoin === offer.id)}
+                  onClick={() => void send(offer.id)}
+                >
+                  {t('domainJoining.ask')}
+                </button>
+              </div>
+            ))}
+            <button
+              ref={startOwnButton}
+              className="button"
+              type="button"
+              disabled={saving}
+              onClick={() => {
+                setOwn(true);
+                land(() => organisationInput.current);
+              }}
+            >
+              {t('domainJoining.startOwn')}
+            </button>
+          </div>
+        )}
+
+        {asksForOrganisation && offers.length > 0 && own && (
           <button
-            ref={startOwnButton}
-            className="button"
+            className="link-button join-offers-back"
             type="button"
-            disabled={saving}
             onClick={() => {
-              setOwn(true);
-              land(() => organisationInput.current);
+              setOwn(false);
+              land(() => startOwnButton.current);
             }}
           >
-            {t('domainJoining.startOwn')}
+            {t('domainJoining.askInstead', { domain: offered?.domain ?? '' })}
           </button>
-        </div>
-      )}
+        )}
 
-      {asksForOrganisation && offers.length > 0 && own && (
-        <button
-          className="link-button join-offers-back"
-          type="button"
-          onClick={() => {
-            setOwn(false);
-            land(() => startOwnButton.current);
+        {founding && (
+          <>
+            <div className="field">
+              <label htmlFor="organisation">{t('completeProfile.organisation')}</label>
+              <input
+                ref={organisationInput}
+                className={errors.organisationName == null ? 'input' : 'input input-wrong'}
+                id="organisation"
+                type="text"
+                autoComplete="organization"
+                autoCorrect="off"
+                spellCheck={false}
+                maxLength={100}
+                value={values.organisationName}
+                {...offField(saving)}
+                aria-invalid={errors.organisationName != null}
+                aria-describedby={
+                  errors.organisationName == null
+                    ? 'organisation-help'
+                    : 'organisation-error organisation-help'
+                }
+                onChange={(event) => change('organisationName', event.target.value)}
+              />
+              {errors.organisationName != null && (
+                <FieldError id="organisation-error" message={errors.organisationName} />
+              )}
+              <p className="field-help" id="organisation-help">
+                {t('completeProfile.organisationHelp')}
+              </p>
+            </div>
+
+            <div className="field">
+              <label htmlFor="country">{t('completeProfile.country')}</label>
+              <select
+                className={errors.countryCode == null ? 'input' : 'input input-wrong'}
+                id="country"
+                ref={countryInput}
+                value={values.countryCode}
+                disabled={saving}
+                aria-invalid={errors.countryCode != null}
+                aria-describedby={errors.countryCode == null ? undefined : 'country-error'}
+                onChange={(event) => change('countryCode', event.target.value)}
+              >
+                <option value="" disabled hidden />
+                {countries.map(({ code, name: countryName }) => (
+                  <option key={code} value={code}>
+                    {countryName}
+                  </option>
+                ))}
+              </select>
+              {errors.countryCode != null && (
+                <FieldError id="country-error" message={errors.countryCode} />
+              )}
+            </div>
+
+            {errors.timezone != null && (
+              <FieldError id="timezone-error" message={errors.timezone} />
+            )}
+          </>
+        )}
+
+        <PhoneEntry
+          label={
+            <span className="auth-label-row">
+              {t('verifyPhone.numberLabel')}
+              <span className="auth-optional">{t('completeProfile.optional')}</span>
+            </span>
+          }
+          country={values.phoneCountryCode}
+          number={values.phoneNumber}
+          error={errors.phoneNumber ?? errors.phoneCountryCode ?? null}
+          disabled={saving}
+          help={t('completeProfile.mobileHelp')}
+          inputRef={phoneInput}
+          onCountry={(code) => {
+            setPhonePicked(pickPhoneCountry(code).picked);
+            change('phoneCountryCode', code);
           }}
-        >
-          {t('domainJoining.askInstead', { domain: offered?.domain ?? '' })}
-        </button>
-      )}
-
-      {founding && (
-        <>
-          <div className="field">
-            <label htmlFor="organisation">{t('completeProfile.organisation')}</label>
-            <input
-              ref={organisationInput}
-              className={errors.organisationName == null ? 'input' : 'input input-wrong'}
-              id="organisation"
-              type="text"
-              autoComplete="organization"
-              autoCorrect="off"
-              spellCheck={false}
-              maxLength={100}
-              value={values.organisationName}
-              {...offField(saving)}
-              aria-invalid={errors.organisationName != null}
-              aria-describedby={
-                errors.organisationName == null
-                  ? 'organisation-help'
-                  : 'organisation-error organisation-help'
-              }
-              onChange={(event) => change('organisationName', event.target.value)}
-            />
-            {errors.organisationName != null && (
-              <FieldError id="organisation-error" message={errors.organisationName} />
-            )}
-            <p className="field-help" id="organisation-help">
-              {t('completeProfile.organisationHelp')}
-            </p>
-          </div>
-
-          <div className="field">
-            <label htmlFor="country">{t('completeProfile.country')}</label>
-            <select
-              className={errors.countryCode == null ? 'input' : 'input input-wrong'}
-              id="country"
-              ref={countryInput}
-              value={values.countryCode}
-              disabled={saving}
-              aria-invalid={errors.countryCode != null}
-              aria-describedby={errors.countryCode == null ? undefined : 'country-error'}
-              onChange={(event) => change('countryCode', event.target.value)}
-            >
-              <option value="" disabled hidden />
-              {countries.map(({ code, name: countryName }) => (
-                <option key={code} value={code}>
-                  {countryName}
-                </option>
-              ))}
-            </select>
-            {errors.countryCode != null && (
-              <FieldError id="country-error" message={errors.countryCode} />
-            )}
-          </div>
-
-          {errors.timezone != null && <FieldError id="timezone-error" message={errors.timezone} />}
-        </>
-      )}
-
-      <PhoneEntry
-        label={
-          <span className="auth-label-row">
-            {t('verifyPhone.numberLabel')}
-            <span className="auth-optional">{t('completeProfile.optional')}</span>
-          </span>
-        }
-        country={values.phoneCountryCode}
-        number={values.phoneNumber}
-        error={errors.phoneNumber ?? errors.phoneCountryCode ?? null}
-        disabled={saving}
-        help={t('completeProfile.mobileHelp')}
-        inputRef={phoneInput}
-        onCountry={(code) => {
-          setPhonePicked(pickPhoneCountry(code).picked);
-          change('phoneCountryCode', code);
-        }}
-        onNumber={(typed) => change('phoneNumber', typed)}
-      />
+          onNumber={(typed) => change('phoneNumber', typed)}
+        />
+      </div>
 
       {!showOffers && (
         <button

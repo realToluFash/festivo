@@ -26,14 +26,15 @@ it runs alone on a signed-in phone (`qa-env.mjs maestro <name>`) or as a step af
 (`- runFlow: <name>.yaml`) without relaunching Expo Go or signing in. Each ends with one
 screenshot. `shared-flows-chained-*` run them one after another, as a batch would.
 
-| Flow                       | Leaves the app on                | Screenshot                   |
-| -------------------------- | -------------------------------- | ---------------------------- |
-| `sign-out`                 | welcome                          | `mobile-signed-out`          |
-| `open-settings`            | Settings                         | `mobile-settings`            |
-| `open-switcher`            | Your organisations               | `mobile-switcher`            |
-| `open-create-organisation` | the Create an organisation sheet | `mobile-create-organisation` |
-| `return-home`              | Home                             | none                         |
-| `switch-organisation`      | Home, in the organisation `ORG`  | none                         |
+| Flow                       | Leaves the app on                  | Screenshot                   |
+| -------------------------- | ---------------------------------- | ---------------------------- |
+| `sign-out`                 | welcome                            | `mobile-signed-out`          |
+| `open-settings`            | Settings                           | `mobile-settings`            |
+| `open-switcher`            | Your organisations                 | `mobile-switcher`            |
+| `open-create-organisation` | the Create an organisation sheet   | `mobile-create-organisation` |
+| `return-home`              | Home                               | none                         |
+| `switch-organisation`      | Home, in the organisation `ORG`    | none                         |
+| `time-zone-typed`          | Find your time zone, `QUERY` typed | none                         |
 
 `release-sign-in` is the one for a release build (`com.soirely.app`), where there is no
 Expo Go and no `return-home`: it launches the app, signs in as `EMAIL` with `PASSWORD` only if
@@ -42,6 +43,9 @@ phone starts with it.
 
 `switch-organisation`'s `ORG` is the organisation's id, not its name: the switcher's rows are
 `switcher.<id>`.
+
+`time-zone-typed` opens Account by link rather than through `return-home`, and stops with
+`QUERY` typed, so each check that calls it makes its own pick and takes its own screenshot.
 
 `duplicate-create-draft` starts on Duplicate {event}'s form and leaves the app on the copy's
 page: it picks a start (Android's dialogs close with `OK`, iOS's sheets with Done), swipes

@@ -152,7 +152,7 @@
     "wrongNumber": "Número errado?",
     "changeIt": "Alterá-lo",
     "doneTitle": "Número verificado",
-    "doneBody": "A Soirely pode contactar o {{number}} se algo correr mal na noite do evento.",
+    "doneBody": "A Soirely pode contactar o {{number}} se algo correr mal no dia do evento.",
     "doneBodyAlternative": "{{number}} está verificado. Continua a ser um número alternativo até o tornar principal em Conta.",
     "continue": "Continuar para a Soirely",
     "changeTitle": "Altere o seu número de telemóvel",
@@ -1367,8 +1367,8 @@
     "goHome": "Ir para a Soirely",
     "failedTitle": "Não foi possível enviar o pedido",
     "failedBody": "Algo correu mal pelo caminho. Tente de novo dentro de momentos.",
-    "messageOptional": "Message · optional",
-    "signedOutLine": "Sign in or create an account to ask. You come back here after."
+    "messageOptional": "Mensagem · opcional",
+    "signedOutLine": "Inicie sessão ou crie uma conta para fazer o pedido. Depois, regressa a esta página."
   },
   "ownerClaim": {
     "loading": "A carregar",
@@ -1950,15 +1950,15 @@
     "emailIntro": "Enviámos um código para {{address}}.",
     "organisationTitle": "A sua organização",
     "mobileTitle": "O seu número de telemóvel",
-    "mobileIntro": "Para que a sua equipa consiga falar consigo na noite do evento, se algo correr mal.",
+    "mobileIntro": "Para que a sua equipa consiga falar consigo no dia do evento, se algo correr mal.",
     "mobileLine": "Enviamos um código para este número por WhatsApp, ou por SMS se o WhatsApp não chegar até si.",
     "sendCode": "Enviar código",
     "whatsAppTitle": "Veja o WhatsApp",
-    "invitedTitle": "You’re invited",
-    "invitedIntro": "Join your team, or start your own organisation.",
-    "invitationFor": "An invitation for {{email}}",
-    "join": "Join {{organisation}}",
-    "startOwnInstead": "Start my own instead"
+    "invitedTitle": "Tem um convite",
+    "invitedIntro": "Adira à sua equipa ou crie a sua própria organização.",
+    "invitationFor": "Convite para {{email}}",
+    "join": "Aderir a {{organisation}}",
+    "startOwnInstead": "Prefiro criar a minha própria organização"
   },
   "todayScreen": {
     "today": "Today",

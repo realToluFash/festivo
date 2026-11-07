@@ -34,7 +34,7 @@ The base URL comes from configuration, never a literal. It is read by
 **A colour scheme.** `EXPO_PUBLIC_SCHEME` names one of B Confetti's eight
 schemes from `docs/design/tokens.mjs` (`violet`, `cobalt`, `garden`, `citrus`,
 `berry`, `blacktie`, `sorbet`, `terracotta`), and the whole build takes it.
-Unset, the app keeps its tokens as they are. Restart Metro with `--clear` after
+Unset or empty, the build draws `defaultScheme` from the same file, violet. Restart Metro with `--clear` after
 changing it, because Expo writes it in when it bundles.
 
 **On a simulator or emulator** nothing needs setting — the fallbacks are

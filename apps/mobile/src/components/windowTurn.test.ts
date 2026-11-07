@@ -58,9 +58,24 @@ describe('a sheet whose heading takes focus as it opens (sc-11032)', () => {
 
   it('opens on Android with nothing in it for TalkBack to name the window by', () => {
     expect(sheet).toMatch(
-      /useUnnamedWindow\(Platform\.OS === 'android' && headingTakesFocus && shown\)/,
+      /useUnnamedWindow\(\s*Platform\.OS === 'android' && headingTakesFocus && shown,\s*onScreen,?\s*\)/,
     );
     expect(sheet).toContain("importantForAccessibility={unnamed ? 'no-hide-descendants' : 'auto'}");
+  });
+
+  it('counts the hidden time from when Android has put the window up, not from the render', () => {
+    expect(sheet).toContain('onShow={() => setOnScreen(true)}');
+    expect(sheet).toContain('if (!hides || !onScreen) return;');
+  });
+
+  it('stays hidden for a share of the settle time, long enough for TalkBack to name the window', () => {
+    const [, delay] = sheet.match(/setTimeout\(\(\) => setAnnounced\(true\), ([^)]+)\)/) ?? [];
+
+    expect(delay).toMatch(/^SETTLED_MS( \/ [1-9]\d*)?$/);
+  });
+
+  it('takes focus to its heading only once the content is revealed', () => {
+    expect(twoFactor).toContain('answer={revealed ? answer : undefined}');
   });
 
   it('is how Save your recovery codes opens', () => {

@@ -43,6 +43,20 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **7 Nov 2026. O que cada função faz, em Membros** (`web:membersScreen.roleMeans.*`, sc-30138). As frases não têm sujeito, como `owner`. Os eventos de um Membro são "os eventos que lhe são atribuídos": "lhe" não concorda com ninguém, ao passo que "a que é adicionado" imporia um género. A mesma forma serve para a app.
+- **7 Nov 2026. As outras formas de entrar na app** (`mobile:steps.invited*`, `join`,
+  `startOwnInstead`, `mobile:requestToJoin.messageOptional`, `signedOutLine`, sc-30119). "You’re
+  invited" é "Tem um convite", nunca "Foi convidado", que concorda com um género. O botão é
+  "Aderir a {{organisation}}", como `invitations.acceptLabel`; `startOwnInstead` repete
+  `domainJoining.startOwnInstead`, "Prefiro criar a minha própria organização".
+
+- **7 Nov 2026. "No dia do evento", nunca "na noite"** (sc-29384). Um evento pode ser a qualquer
+  hora: `verifyPhone.doneBody`, `steps.mobileIntro` e `completeProfile.mobileHelp` dizem "no dia
+  do evento". `mobileHelp` passa a "É por este número que falamos consigo…", como "falar consigo"
+  em `mobileIntro`, porque "o contactamos" supõe um homem. O slogan da web é o da app, "Planeie o
+  evento. Conduza o dia.", e `public.body` diz "ementas e programa", já não "alinhamento da
+  noite". `eventForm.clocksSkip` mantém "nessa noite, os relógios são adiantados": fala da
+  mudança de hora.
 - **5 Nov 2026. An event's People refusals** (`errors:own_event_role`, `messages:people.*`,
   sc-30009). dev2's draft said "Você", "em um evento" and "Essa pessoa"; it now reads "Não
   pode", "num evento", "Esta pessoa". Who can act is "alguém com a função Proprietário ou
@@ -477,7 +491,7 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   changed gender between the new-device email and Devices. Before a noun it stays a bare label
   with no article: "conta Soirely", "código Soirely", "Aplicação Soirely". A number is
   contacted as "contactar o {{number}}" (`verifyPhone.doneBody`), not "contactá-lo", whose
-  clitic assumes a man; "on the night" is "na noite do evento".
+  clitic assumes a man; "on the day" is "no dia do evento" (sc-29384), never "na noite".
 - **19 Oct 2026. A weekday date is never preceded by "a"** (`signInRules.changedBody`, web and
   app, sc-3030). `{{day}}` is "segunda-feira, 19 de out.": before a weekday PT-PT says "na" or
   "no" (sábado, domingo), which the copy cannot agree with, and the abbreviated month brings

@@ -376,7 +376,7 @@
     "follows": "Your language follows you to every device."
   },
   "public": {
-    "tagline": "Plan the event. Run the night.",
+    "tagline": "Plan the event. Run the day.",
     "body": "Soirely is where an event is planned at a desk and run from a phone. Guests, seating, menus and the running order, in one place and in your language.",
     "signIn": "Sign in",
     "getStarted": "Get started"
@@ -575,6 +575,7 @@
     "exhaustedTitle": "Too many wrong tries",
     "exhaustedBody": "That code no longer works. Send a new one to carry on.",
     "wrongAddress": "Not your address?",
+    "registerAgain": "Register again with the right one",
     "doneTitle": "Email verified",
     "doneBody": "{{address}} is confirmed. Next, a few details so your team knows who is who.",
     "doneBodyAlternative": "{{address}} is verified. It stays an alternative address until you make it primary in Account.",
@@ -607,7 +608,7 @@
     "cantGetTexts": "Can't get texts on this number?",
     "carryOnWithout": "Carry on without it",
     "doneTitle": "Number verified",
-    "doneBody": "Soirely can reach you on {{number}} if something goes wrong on the night.",
+    "doneBody": "Soirely can reach you on {{number}} if something goes wrong on the day.",
     "doneBodyAlternative": "{{number}} is verified. It stays an alternative number until you make it primary in Account.",
     "continue": "Continue to Soirely",
     "changeTitle": "Change your mobile number",
@@ -744,7 +745,7 @@
     "failedBody": "Something went wrong on the way. Try again in a moment.",
     "signOut": "Sign out",
     "optional": "Optional",
-    "mobileHelp": "How you are reached on the night if something goes wrong. If you add one, we text it a code to check it.",
+    "mobileHelp": "How you are reached on the day if something goes wrong. If you add one, we text it a code to check it.",
     "providerConfirmed": "Signed in with {{provider}}. {{provider}} has already confirmed {{email}}, so there is no email code to enter."
   },
   "forms": {
@@ -1267,10 +1268,8 @@
     "emailShape": "That does not look like an email address. Check it has an @ and a domain, like amara.o@gmail.com.",
     "roleMeans": {
       "owner": "Everything, including billing and deleting the organisation.",
-      "administrator": "Everything in events, plus members and roles. Not billing.",
-      "event_manager": "Everything inside events, and manages the budget. Never the margin.",
-      "coordinator": "Runs events. Reads the budget, never the margin.",
-      "read_only": "Sees events. Changes nothing."
+      "administrator": "Everything except billing. Sees every event and manages members.",
+      "member": "Works on the events they’re added to, and sees no others."
     },
     "inviteNote": "They get an email in their language with a link to join {{organisation}} as {{role}}. The email says when the link stops working.",
     "send": "Send invitation",
@@ -1418,7 +1417,7 @@
       "guests": "Names, contact details, replies and imports. Read still shows phone numbers.",
       "seating": "Rooms, tables and who sits where.",
       "menu": "Courses, dishes, variants and picks.",
-      "run_of_show": "The schedule, and marking items done on the night.",
+      "run_of_show": "The schedule, and marking items done on the day.",
       "staff": "Who works an event and what they do there.",
       "messages": "Compose and send. Read includes the delivery record.",
       "reports": "Change means exporting.",
@@ -1568,7 +1567,6 @@
     "joined": "You joined {{organisation}} as {{role}}.",
     "open": "Open {{organisation}}",
     "declinedBody": "You declined. {{inviter}} will see that you said no.",
-    "goToEvents": "Go to your events",
     "goHome": "Go to Soirely",
     "signOutAndUse": "Sign out and use {{email}}",
     "staySignedIn": "Stay signed in as {{email}}",
