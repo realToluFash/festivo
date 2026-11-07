@@ -50,6 +50,16 @@ const TOM = person('tom', 'Tom Becker', 'can_check_in', 'Bar and drinks');
 const PRIYA = person('priya', 'Priya Shah', 'lead');
 const ANA = person('ana', 'Ana Souza', 'can_edit');
 
+/** What the API reads out on the event for each role, as `EventRole::permissions` gives it, cut to what this page asks. */
+const ON_THE_EVENT: Record<string, string[]> = {
+  lead: ['events.read', 'events.manage', 'people.read', 'people.manage'],
+  can_edit: ['events.read', 'events.manage', 'people.read'],
+  can_view: ['events.read', 'people.read'],
+  can_check_in: ['events.read', 'people.read'],
+};
+
+let reader = IRE;
+
 const MEMBERS = [
   { membershipId: 'm_folake', name: 'Folake Adeyemi', userId: 'u_folake' },
   { membershipId: 'm_julien', name: 'Julien Moreau', userId: 'u_julien' },
@@ -60,6 +70,7 @@ const MEMBERS = [
 ];
 
 function signedIn(organisation = IRE, userId = 'u_folake'): void {
+  reader = organisation;
   const session: Session = {
     name: 'Folake Adeyemi',
     email: 'folake@ire.events',
@@ -90,11 +101,14 @@ function json(body: unknown, status = 200): Response {
 type Answer = (body: unknown) => Response;
 
 async function onPeople(
-  people: { membershipId: string }[],
+  people: ReturnType<typeof person>[],
   answers: Record<string, Answer> = {},
   userId = 'u_folake',
 ): Promise<{ line: string; body: unknown }[]> {
   const sent: { line: string; body: unknown }[] = [];
+  const role = people.find((one) => one.user.id === userId)?.role;
+  const holding =
+    reader.role.seededAs === 'member' ? (ON_THE_EVENT[role ?? ''] ?? []) : reader.permissions;
 
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
     const line = `${init?.method ?? 'GET'} ${new URL(String(input)).pathname}`;
@@ -103,7 +117,7 @@ async function onPeople(
 
     const answer = answers[line];
     if (answer != null) return answer(body);
-    if (line === 'GET /api/events/ev_1') return json({ event: EVENT });
+    if (line === 'GET /api/events/ev_1') return json({ event: { ...EVENT, permissions: holding } });
     if (line === 'GET /api/events/ev_1/people')
       return json({ people, ownersAndAdmins: ['Folake Adeyemi', 'Julien Moreau'] });
     if (line === 'GET /api/events/ev_1/people/addable')
@@ -280,6 +294,76 @@ describe('People on an event, at a desk (sc-29915)', () => {
     expect(await screen.findByText('Tom Becker is off this event.')).toBeDefined();
     expect(sent.some((one) => one.line === 'DELETE /api/events/ev_1/people/p_tom')).toBe(true);
     expect(within(people()).queryByText('Tom Becker')).toBeNull();
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        within(people()).getByRole('button', { name: 'Add people' }),
+      ),
+    );
+  });
+
+  it('keeps the radios enabled and focused while saving, and sends an arrowed role once the arrows rest', async () => {
+    signedIn();
+    const sent = await onPeople([PRIYA, TOM], {
+      'PATCH /api/events/ev_1/people/p_tom': (body) =>
+        json({ person: { ...TOM, role: (body as { role: string }).role } }),
+    });
+    const patches = () => sent.filter((one) => one.line === 'PATCH /api/events/ev_1/people/p_tom');
+
+    fireEvent.click(within(people()).getByRole('button', { name: /Tom Becker/ }));
+    const dialog = screen.getByRole('dialog', { name: 'Tom Becker' });
+    const radio = (name: RegExp) => within(dialog).getByRole('radio', { name }) as HTMLInputElement;
+    const arrowTo = (name: RegExp) => {
+      fireEvent.keyDown(document.activeElement ?? document.body, { key: 'ArrowUp' });
+      fireEvent.click(radio(name));
+      radio(name).focus();
+    };
+
+    arrowTo(/Can view/);
+    arrowTo(/Can edit/);
+
+    expect(patches()).toEqual([]);
+    expect(radio(/Can edit/).disabled).toBe(false);
+    expect(document.activeElement).toBe(radio(/Can edit/));
+
+    expect(
+      await within(dialog).findByText('Saved. Tom Becker can edit now.', {}, { timeout: 2000 }),
+    ).toBeDefined();
+    expect(patches().map((one) => one.body)).toEqual([{ role: 'can_edit' }]);
+    expect(document.activeElement).toBe(radio(/Can edit/));
+
+    fireEvent.click(radio(/Can view/));
+    await within(dialog).findByText('Saved. Tom Becker can view now.');
+    expect(patches().map((one) => one.body)).toEqual([{ role: 'can_edit' }, { role: 'can_view' }]);
+    expect(document.activeElement).toBe(radio(/Can view/));
+  });
+
+  it('sends nothing when the arrows come back to the role it has', async () => {
+    signedIn();
+    const sent = await onPeople([TOM]);
+
+    fireEvent.click(within(people()).getByRole('button', { name: /Tom Becker/ }));
+    const dialog = screen.getByRole('dialog', { name: 'Tom Becker' });
+    const radio = (name: RegExp) => within(dialog).getByRole('radio', { name }) as HTMLInputElement;
+    fireEvent.keyDown(radio(/Can check guests in/), { key: 'ArrowUp' });
+    fireEvent.click(radio(/Can view/));
+    fireEvent.keyDown(radio(/Can view/), { key: 'ArrowDown' });
+    fireEvent.click(radio(/Can check guests in/));
+    await new Promise((resolve) => setTimeout(resolve, 800));
+
+    expect(sent.filter((one) => one.line.startsWith('PATCH '))).toEqual([]);
+    expect(within(dialog).queryByText(/Saving/)).toBeNull();
+  });
+
+  it('names a lone owner in the singular', async () => {
+    signedIn();
+    await onPeople([TOM], {
+      'GET /api/events/ev_1/people': () =>
+        json({ people: [TOM], ownersAndAdmins: ['Folake Adeyemi'] }),
+    });
+
+    expect(
+      await within(people()).findByText('Folake Adeyemi sees every event, as owner of Ìrè Events.'),
+    ).toBeDefined();
   });
 
   it('adds members not yet on the event at the role picked, by keyboard alone', async () => {

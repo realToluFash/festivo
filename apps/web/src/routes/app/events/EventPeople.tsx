@@ -7,7 +7,7 @@ import {
   type OrganisationEvent,
 } from '@soirely/api-client';
 import { initials } from '@soirely/domain';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { type KeyboardEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
@@ -19,7 +19,7 @@ import { Toast } from '../../../components/Toast.tsx';
 import { useDialogKeys } from '../../../dialogFocus.ts';
 import { currentLocale } from '../../../i18n/index.ts';
 import { offButton } from '../../../offButton.ts';
-import { can, useSession } from '../../../session.ts';
+import { canOn, useSession } from '../../../session.ts';
 
 /** `addable` is null for whoever may not change People: the API refuses them that list. */
 type Load =
@@ -34,6 +34,10 @@ type Load =
 
 type Open = { kind: 'person'; id: string } | { kind: 'add' } | null;
 
+/** A role reached by arrow sends once the arrows rest, so passing over a role on the way sends nothing. */
+const SETTLE_MS = 600;
+const ARROWS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
+
 /** People on an event (sc-29915): who has which of its four roles, changed by Owners, Admins and its Lead. */
 export function EventPeople({ event }: { event: OrganisationEvent }) {
   const { t } = useTranslation();
@@ -45,16 +49,26 @@ export function EventPeople({ event }: { event: OrganisationEvent }) {
   const [toast, setToast] = useState<string | null>(null);
   const failedLine = useRef<HTMLParagraphElement>(null);
   const opener = useRef<HTMLElement | null>(null);
-  const managesAll = can(session, 'people.manage');
+  const addButton = useRef<HTMLButtonElement>(null);
+  const title = useRef<HTMLHeadingElement>(null);
+  const [refocus, setRefocus] = useState(0);
+  const manages = canOn(event, 'people.manage');
   const userId = session.userId;
+
+  // The row it came from has gone, so focus lands on Add once the dialogs have handed it back.
+  useEffect(() => {
+    if (refocus === 0) return;
+    const timer = window.setTimeout(() => (addButton.current ?? title.current)?.focus(), 0);
+
+    return () => window.clearTimeout(timer);
+  }, [refocus]);
 
   useEffect(() => {
     let current = true;
 
     (async () => {
       const { people, ownersAndAdmins } = await api.eventPeople(event.id);
-      const leads = people.some((one) => one.user.id === userId && one.role === 'lead');
-      const addable = managesAll || leads ? await api.addableEventMembers(event.id) : null;
+      const addable = manages ? await api.addableEventMembers(event.id) : null;
 
       return { people, ownersAndAdmins, addable };
     })().then(
@@ -65,7 +79,7 @@ export function EventPeople({ event }: { event: OrganisationEvent }) {
     return () => {
       current = false;
     };
-  }, [event.id, attempt, managesAll, userId]);
+  }, [event.id, attempt, manages]);
 
   const close = useCallback(() => {
     setOpen(null);
@@ -94,7 +108,6 @@ export function EventPeople({ event }: { event: OrganisationEvent }) {
   const loaded = load;
   const people = inListOrder(loaded.people);
   const own = people.find((person) => person.user.id === userId);
-  const manages = managesAll || own?.role === 'lead';
   const addable = loaded.addable;
   const adds = manages && addable != null;
   const opened = open?.kind === 'person' ? people.find((one) => one.id === open.id) : undefined;
@@ -116,9 +129,12 @@ export function EventPeople({ event }: { event: OrganisationEvent }) {
 
   return (
     <section className="card event-people" aria-labelledby="event-people-title">
-      <h2 id="event-people-title">{t('eventPeople.title')}</h2>
+      <h2 id="event-people-title" ref={title} tabIndex={-1}>
+        {t('eventPeople.title')}
+      </h2>
       {adds && (
         <button
+          ref={addButton}
           type="button"
           className="button event-people-add"
           onClick={(click) => {
@@ -192,6 +208,7 @@ export function EventPeople({ event }: { event: OrganisationEvent }) {
         {loaded.ownersAndAdmins.length > 0 && (
           <p className="muted">
             {t('eventPeople.managers', {
+              count: loaded.ownersAndAdmins.length,
               names: new Intl.ListFormat(currentLocale(), { type: 'conjunction' }).format(
                 loaded.ownersAndAdmins,
               ),
@@ -218,7 +235,7 @@ export function EventPeople({ event }: { event: OrganisationEvent }) {
             });
             setOpen(null);
             setToast(t('eventPeople.removed', { name: opened.user.name }));
-            document.getElementById('event-people-title')?.focus();
+            setRefocus((n) => n + 1);
           }}
           onClose={close}
         />
@@ -269,6 +286,7 @@ function RoleChoice({
   disabled,
   focusFirst,
   onPick,
+  onKeyDown,
   saying,
 }: {
   name: string;
@@ -277,6 +295,7 @@ function RoleChoice({
   disabled: boolean;
   focusFirst?: boolean;
   onPick: (role: EventRole) => void;
+  onKeyDown?: (key: KeyboardEvent<HTMLInputElement>) => void;
   saying?: (role: EventRole) => string | null;
 }) {
   const { t } = useTranslation();
@@ -299,6 +318,7 @@ function RoleChoice({
             value={role}
             checked={picked === role}
             disabled={disabled}
+            onKeyDown={onKeyDown}
             onChange={() => onPick(role)}
           />
           <span className="members-role-text">
@@ -337,28 +357,82 @@ function RoleDialog({
   const [busy, setBusy] = useState(false);
   const [refused, setRefused] = useState<string | null>(null);
   const name = person.user.name;
+  const held = useRef<EventRole>(person.role);
+  const byArrow = useRef(false);
+  const settle = useRef<{ timer: number; role: EventRole } | null>(null);
+  const asked = useRef(0);
+  const answered = useRef(0);
+  const inFlight = useRef(0);
+  const flush = useRef<(role: EventRole) => Promise<void>>(async () => {});
 
   useDialogKeys(dialog, onClose, removing);
 
-  async function pick(role: EventRole): Promise<void> {
-    const held = person.role;
-    setPicked(role);
-    setFailed(null);
-    setSaving('saving');
+  async function send(role: EventRole): Promise<void> {
+    const ask = ++asked.current;
+    inFlight.current += 1;
 
     try {
-      onChanged(await api.changeEventPerson(eventId, person.id, role));
-      setSaving('saved');
+      const changed = await api.changeEventPerson(eventId, person.id, role);
+      if (ask < answered.current) return;
+      answered.current = ask;
+      held.current = changed.role;
+      onChanged(changed);
+      if (ask === asked.current) setSaving('saved');
     } catch (error) {
-      setPicked(held);
+      if (ask !== asked.current) return;
+      const was = held.current;
+      setPicked(was);
       setSaving(null);
       setFailed(
-        refusal(
-          error,
-          t('eventPeople.changeFailed', { name, role: t(`eventPeople.role.${held}`) }),
-        ),
+        refusal(error, t('eventPeople.changeFailed', { name, role: t(`eventPeople.role.${was}`) })),
       );
+    } finally {
+      inFlight.current -= 1;
     }
+  }
+
+  useEffect(() => {
+    flush.current = send;
+  });
+
+  // Done during the rest still sends the role the arrows stopped on.
+  useEffect(
+    () => () => {
+      const waiting = settle.current;
+      if (waiting == null) return;
+      window.clearTimeout(waiting.timer);
+      void flush.current(waiting.role);
+    },
+    [],
+  );
+
+  function pick(role: EventRole): void {
+    const arrowed = byArrow.current;
+    byArrow.current = false;
+    if (settle.current != null) window.clearTimeout(settle.current.timer);
+    settle.current = null;
+    setPicked(role);
+    setFailed(null);
+
+    if (role === held.current && inFlight.current === 0) {
+      setSaving(null);
+
+      return;
+    }
+
+    setSaving('saving');
+    if (!arrowed) {
+      void send(role);
+
+      return;
+    }
+    settle.current = {
+      role,
+      timer: window.setTimeout(() => {
+        settle.current = null;
+        void send(role);
+      }, SETTLE_MS),
+    };
   }
 
   async function remove(): Promise<void> {
@@ -405,9 +479,12 @@ function RoleDialog({
           name="event-person-role"
           legend={t('eventPeople.roleFor', { name })}
           picked={picked}
-          disabled={saving === 'saving' || removing}
+          disabled={removing}
           focusFirst
-          onPick={(role) => void pick(role)}
+          onPick={pick}
+          onKeyDown={(key) => {
+            byArrow.current = ARROWS.has(key.key);
+          }}
           saying={(role) =>
             role !== picked || saving == null
               ? null

@@ -2142,7 +2142,9 @@
     "nobody": "Nobody is on this event yet.",
     "nobodyLine": "Add the people working on it. Owners and admins see it already.",
     "readOnly": "Only owners, admins and the lead change who’s on this event.",
-    "managers": "{{names}} see every event, as owners and admins of {{organisation}}.",
+    "managers_one": "{{names}} sees every event, as owner of {{organisation}}.",
+    "managers_many": "{{names}} see every event, as owners and admins of {{organisation}}.",
+    "managers_other": "{{names}} see every event, as owners and admins of {{organisation}}.",
     "role": {
       "lead": "Lead",
       "can_edit": "Can edit",
