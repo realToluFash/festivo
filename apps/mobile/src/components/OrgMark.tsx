@@ -55,14 +55,7 @@ export function OrgMark({
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
     >
-      {!glass && (
-        <>
-          <EventMesh event={{ mesh: wash.cover, photo: null }} />
-          <View
-            style={[StyleSheet.absoluteFill, { backgroundColor: wash.ink, opacity: wash.strength }]}
-          />
-        </>
-      )}
+      {!glass && <Washed wash={wash} />}
       <Initials
         name={name}
         size={big ? Math.floor(side * 0.42) : 12}
@@ -71,6 +64,17 @@ export function OrgMark({
       />
       {children}
     </View>
+  );
+}
+
+function Washed({ wash }: { wash: Wash }) {
+  return (
+    <>
+      <EventMesh event={{ mesh: wash.cover, photo: null }} />
+      <View
+        style={[StyleSheet.absoluteFill, { backgroundColor: wash.ink, opacity: wash.strength }]}
+      />
+    </>
   );
 }
 
