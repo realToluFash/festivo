@@ -1,0 +1,396 @@
+/* The browser's redeem pages, signed out, in B Confetti. Measurements are the board's (Access-A-Phone-Joining.dc.html, page e28): 390 first, one centred column wider. */
+
+.rd {
+  min-height: 100vh;
+  background: var(--colorCard);
+  color: var(--colorInk);
+}
+
+:where(.rd) button {
+  margin: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+:where(.rd) :is(h1, p) {
+  margin: 0;
+}
+
+.rd-column,
+.rd-form,
+.rd-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXl);
+}
+
+.rd-column {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: calc(390px + 2 * var(--space3xl));
+  margin: 0 auto;
+  padding: var(--spaceXxl) var(--space3xl) 48px;
+}
+
+@media (width > 40rem) {
+  .rd-column {
+    padding-top: 64px;
+  }
+}
+
+.rd-tile {
+  display: block;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+}
+
+.rd-title {
+  font: 700 30px/1.12 var(--fontFamily);
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+
+.rd-title:focus {
+  outline: none;
+}
+
+.rd-intro {
+  margin-top: calc(-1 * var(--spaceSm));
+  color: var(--colorInkSecondary);
+  font: 400 17px/1.45 var(--fontFamily);
+}
+
+.rd-signed-out {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceMd);
+  font: 700 30px/1.12 var(--fontFamily);
+  letter-spacing: -0.02em;
+}
+
+.rd-signed-out svg {
+  flex: none;
+  color: var(--colorInkSecondary);
+}
+
+/* B's onboarding field: 56 high, the label inside, small once it holds something or has focus. */
+.rd-field {
+  position: relative;
+  box-sizing: border-box;
+  min-height: 56px;
+  border: 1px solid var(--colorFieldBorder);
+  border-radius: var(--radiusRow);
+  background: var(--colorCard);
+}
+
+.rd-field.is-wrong {
+  border-color: var(--colorBroken);
+  box-shadow: inset 0 0 0 1px var(--colorBroken);
+}
+
+.rd-field:focus-within {
+  outline: 2px solid var(--colorAccent);
+  outline-offset: 2px;
+}
+
+.rd-label {
+  position: absolute;
+  top: 15px;
+  left: var(--spaceXl);
+  color: var(--colorInkSecondary);
+  font: 400 17px/24px var(--fontFamily);
+  pointer-events: none;
+}
+
+.rd-field:is(:focus-within, .is-filled) .rd-label {
+  top: var(--spaceSm);
+  font: 500 13px/16px var(--fontFamily);
+}
+
+.rd-input {
+  box-sizing: border-box;
+  width: 100%;
+  height: 54px;
+  padding: 24px 15px 5px;
+  border: 0;
+  border-radius: var(--radiusRow);
+  outline: none;
+  background: none;
+  color: var(--colorInk);
+  font: 400 17px/24px var(--fontFamily);
+}
+
+.rd-input.is-code {
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+  text-transform: uppercase;
+}
+
+.rd-says {
+  margin-top: var(--spaceSm);
+  color: var(--colorBrokenText);
+  font: 400 14px/1.45 var(--fontFamily);
+}
+
+.rd-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+  color: var(--colorBroken);
+  font: 500 15px/1.45 var(--fontFamily);
+}
+
+.rd-alert svg {
+  flex: none;
+  margin-top: var(--spaceHair);
+}
+
+.rd-phone {
+  display: flex;
+  gap: var(--spaceSm);
+}
+
+.rd-phone .rd-field {
+  flex: 1;
+  min-width: 0;
+}
+
+.rd-country {
+  position: relative;
+  flex: none;
+}
+
+.rd-country-code {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceXs);
+  box-sizing: border-box;
+  height: 56px;
+  padding: 0 var(--spaceLg) 0 14px;
+  border: 1px solid var(--colorFieldBorder);
+  border-radius: var(--radiusRow);
+  font: 400 17px/1 var(--fontFamily);
+}
+
+.rd-country-code svg {
+  color: var(--colorInkSecondary);
+}
+
+.rd-country-pick {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  font-size: 16px;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.rd-country:focus-within .rd-country-code {
+  outline: 2px solid var(--colorAccent);
+  outline-offset: 2px;
+}
+
+.rd-primary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spaceMd);
+  width: 100%;
+  height: var(--sizeHitPhonePrimary);
+  border-radius: var(--radiusPill);
+  background: var(--colorAccent);
+  color: var(--colorInkOnDark);
+  font: 600 16px/1 var(--fontFamily);
+}
+
+.rd-primary:hover {
+  background: var(--colorPrimaryHover);
+}
+
+.rd-primary[aria-busy='true'] {
+  cursor: default;
+}
+
+.rd-spin {
+  box-sizing: border-box;
+  width: 16px;
+  height: 16px;
+  border: 3px solid color-mix(in srgb, var(--colorInkOnDark) 35%, transparent);
+  border-top-color: var(--colorInkOnDark);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.rd-pair {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+}
+
+.rd-ways {
+  display: flex;
+  flex-direction: column;
+}
+
+.rd-quiet {
+  display: flex;
+  align-self: flex-start;
+  align-items: center;
+  min-height: var(--sizeHit);
+  padding: 0;
+  color: var(--colorAccent);
+  font: 600 16px/1.2 var(--fontFamily);
+}
+
+.rd-quiet.is-centre {
+  align-self: center;
+}
+
+.rd-quiet.is-off {
+  color: var(--colorInkSecondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.rd-problem {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXxs);
+}
+
+.rd-problem-title {
+  color: var(--colorBroken);
+  font: 600 16px/1.3 var(--fontFamily);
+}
+
+.rd-problem-body {
+  color: var(--colorInkSecondary);
+  font: 500 15px/1.45 var(--fontFamily);
+}
+
+/* The app's six boxes over one field: the next one ringed while it has focus, red edges and one shake when wrong. */
+.rd-boxes {
+  position: relative;
+}
+
+.rd-boxes-input {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: none;
+  color: transparent;
+  font-size: 16px;
+  caret-color: transparent;
+  opacity: 0;
+}
+
+.rd-boxes-row {
+  display: flex;
+  gap: var(--spaceSm);
+}
+
+.rd-box {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-width: 0;
+  height: 60px;
+  border: 1px solid var(--colorFieldBorder);
+  border-radius: var(--radiusRow);
+  background: var(--colorCard);
+  font: 600 26px/1 var(--fontFamily);
+  font-variant-numeric: tabular-nums;
+}
+
+.rd-boxes:focus-within .rd-box.is-next {
+  outline: 2px solid var(--colorAccent);
+  outline-offset: 2px;
+}
+
+.rd-boxes:focus-within .rd-box.is-next::after {
+  width: 2px;
+  height: 28px;
+  background: var(--colorAccent);
+  content: '';
+}
+
+.rd-boxes.is-wrong .rd-box {
+  border-color: var(--colorBroken);
+  box-shadow: inset 0 0 0 1px var(--colorBroken);
+}
+
+.rd-boxes.is-done .rd-box {
+  border-color: var(--colorAccent);
+  background: var(--colorAccentTint);
+}
+
+.rd-boxes.is-wrong .rd-boxes-row {
+  animation: rd-shake 0.4s ease;
+}
+
+@keyframes rd-shake {
+  20%,
+  60% {
+    transform: translateX(-6px);
+  }
+
+  40%,
+  80% {
+    transform: translateX(6px);
+  }
+}
+
+.rd-you {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceHair);
+}
+
+.rd-you-name {
+  font: 600 15px/1.4 var(--fontFamily);
+}
+
+.rd-you-line {
+  color: var(--colorInkSecondary);
+  font: 500 15px/1.45 var(--fontFamily);
+}
+
+.rd-out {
+  display: inline-flex;
+  align-self: flex-start;
+  align-items: center;
+  gap: 5px;
+  min-height: var(--sizeHit);
+  padding: 0;
+  color: var(--colorInkSecondary);
+  font: 600 15px/1.2 var(--fontFamily);
+}
+
+.rd-primary:focus-visible,
+.rd-quiet:focus-visible,
+.rd-out:focus-visible {
+  outline: 2px solid var(--colorAccent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rd-boxes.is-wrong .rd-boxes-row {
+    animation: none;
+  }
+
+  .rd-spin {
+    animation: none;
+  }
+}

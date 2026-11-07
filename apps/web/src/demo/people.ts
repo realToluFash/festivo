@@ -26,11 +26,17 @@ export const ON_EVENT = 'On this event';
 export const EMPTY_TITLE = 'Nobody is on this event yet.';
 export const EMPTY_LINE = 'Add the people working on it. Owners and admins see it already.';
 export const READ_ONLY = 'Only owners, admins and the lead change who’s on this event.';
-export const OUTSIDE_TAG = `Outside ${ORGANISATION}`;
+export const outsideTag = (org: string = ORGANISATION) => `Outside ${org}`;
+export const leadOff = (org: string = ORGANISATION) => `For members of ${org} only.`;
+export const inOrganisation = (org: string = ORGANISATION) => `In ${org}`;
+export const everyoneOn = (org: string = ORGANISATION) =>
+  `Everyone in ${org} is on this event already.`;
+export const OUTSIDE_TAG = outsideTag();
 export const OUTSIDE_ENDS = 'Their access ends when the event does.';
-export const LEAD_OFF = `For members of ${ORGANISATION} only.`;
-export const IN_ORGANISATION = `In ${ORGANISATION}`;
-export const EVERYONE_ON = `Everyone in ${ORGANISATION} is on this event already.`;
+export const LEAD_OFF = leadOff();
+export const IN_ORGANISATION = inOrganisation();
+export const EVERYONE_ON = everyoneOn();
+export const BY_DOOR_CODE = 'door code';
 export const LOADING_WORDS = 'Loading the people on this event…';
 export const FAILED_TITLE = 'We could not load the people on this event.';
 export const FAILED_LINE = 'Check your connection and try again.';
@@ -60,7 +66,24 @@ export interface OnEvent {
   role: EventRole;
   outside: boolean;
   label: string | null;
+  /** In by a door code (sc-72): which one, and when. */
+  door?: { code: string; at: string } | null;
 }
+
+/** The organisation and the event a People screen is drawn for, as its sidebar shows them. */
+export interface EventPlace {
+  organisation: string;
+  initials: string;
+  event: string;
+  when: string;
+}
+
+export const IRE_PLACE: EventPlace = {
+  organisation: ORGANISATION,
+  initials: 'IE',
+  event: EVENT,
+  when: 'Live · in 3 days',
+};
 
 export interface PeopleViewer {
   id: string;
@@ -143,14 +166,16 @@ function joined(parts: readonly (string | null)[]): string {
 }
 
 export function rowLine(person: OnEvent, viewer: Pick<PeopleViewer, 'id'>): string {
-  return joined([person.role, person.label, person.id === viewer.id ? 'You' : null]);
+  return joined([
+    person.role,
+    person.label,
+    person.door == null ? null : BY_DOOR_CODE,
+    person.id === viewer.id ? 'You' : null,
+  ]);
 }
 
-export function sheetLine(person: OnEvent): string {
-  return joined([
-    person.outside ? `From outside ${ORGANISATION}` : `Member of ${ORGANISATION}`,
-    person.label,
-  ]);
+export function sheetLine(person: OnEvent, org: string = ORGANISATION): string {
+  return joined([person.outside ? `From outside ${org}` : `Member of ${org}`, person.label]);
 }
 
 function andList(words: readonly string[]): string {
@@ -160,7 +185,7 @@ function andList(words: readonly string[]): string {
 }
 
 /** The foot everyone on the event reads: the owners and admins by name, who see every event (sc-29915). */
-export function seesEveryEvent(members: readonly OrgMember[]): string {
+export function seesEveryEvent(members: readonly OrgMember[], org: string = ORGANISATION): string {
   const above = (['Owner', 'Admin'] as const).map((role) =>
     members.filter((one) => one.active && one.role === role),
   );
@@ -171,7 +196,7 @@ export function seesEveryEvent(members: readonly OrgMember[]): string {
     )
     .filter((role) => role != null);
 
-  return `${andList(names)} ${names.length === 1 ? 'sees' : 'see'} every event, as ${andList(roles)} of ${ORGANISATION}.`;
+  return `${andList(names)} ${names.length === 1 ? 'sees' : 'see'} every event, as ${andList(roles)} of ${org}.`;
 }
 
 export function firstName(person: Pick<OnEvent, 'name'>): string {
@@ -186,10 +211,10 @@ export function removeTitle(person: OnEvent): string {
   return `Remove ${person.name} from this event?`;
 }
 
-export function removeLine(person: Pick<OnEvent, 'outside'>): string {
+export function removeLine(person: Pick<OnEvent, 'outside'>, org: string = ORGANISATION): string {
   return person.outside
     ? 'Their access ends on their next request.'
-    : `They lose this event on their next request. They stay in ${ORGANISATION}.`;
+    : `They lose this event on their next request. They stay in ${org}.`;
 }
 
 export function savedWords(person: OnEvent, role: EventRole): string {
@@ -210,8 +235,8 @@ export function addedToast(names: readonly string[], role: EventRole): string {
     : `${names.length} people ${NOW_CAN[role].several}`;
 }
 
-export function noMatchLine(typed: string): string {
-  return `Nobody in ${ORGANISATION} matches “${typed.trim()}”.`;
+export function noMatchLine(typed: string, org: string = ORGANISATION): string {
+  return `Nobody in ${org} matches “${typed.trim()}”.`;
 }
 
 function plain(text: string): string {
@@ -290,6 +315,8 @@ export interface PeopleStart {
   onEvent: OnEvent[];
   roleFails: boolean;
   load: 'loaded' | 'loading' | 'failed';
+  place: EventPlace;
+  members: OrgMember[];
 }
 
 export function peopleStateOf(name: string | null): PeopleState {
@@ -302,6 +329,8 @@ export function peopleStart(state: PeopleState): PeopleStart {
     onEvent: sampleOnEvent(),
     roleFails: state === 'roleFails',
     load: state === 'loading' || state === 'failed' ? state : 'loaded',
+    place: IRE_PLACE,
+    members: sampleMembers(),
   };
 
   switch (state) {
