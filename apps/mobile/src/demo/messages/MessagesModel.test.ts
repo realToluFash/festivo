@@ -13,6 +13,7 @@ import {
   dayWords,
   draftLine,
   draftTitle,
+  justNow,
   laterRefused,
   messageName,
   messagesStateOf,
@@ -618,5 +619,10 @@ describe('the sample’s days and channels', () => {
     expect(rowDay('2026-11-02', '', 'en-US')).toBe('Mon');
     expect(rowDay('2026-10-31', '', 'en-US')).toBe('Sat');
     expect(rowDay('2026-10-12', '', 'en-US')).toBe('Oct 12');
+  });
+
+  it('say a reply that has just arrived in the locale’s own word', () => {
+    expect(justNow('en-US')).toBe('now');
+    expect(justNow('pt-PT')).toBe('agora');
   });
 });

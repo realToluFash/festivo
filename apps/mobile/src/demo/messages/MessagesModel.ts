@@ -868,6 +868,10 @@ export function rowDay(date: string, time: string, locale = 'en-US'): string {
     : wallDate(date, locale, { month: 'short', day: 'numeric' });
 }
 
+export function justNow(locale = 'en-US'): string {
+  return new Intl.RelativeTimeFormat(locale, { numeric: 'auto' }).format(0, 'second');
+}
+
 export function channelsWords(keys: readonly ChannelKey[], locale = 'en-US'): string {
   return new Intl.ListFormat(locale, { type: 'conjunction' }).format(
     keys.map((key) => CHANNEL_WORD[key]),

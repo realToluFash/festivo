@@ -23,6 +23,7 @@ import {
   draftLine,
   draftTitle,
   isScheduled,
+  justNow,
   ownThreads,
   rowDay,
   sectionsOf,
@@ -153,7 +154,9 @@ function shownRow(m: Messages, id: RowId, locale: string): Shown {
     line: answer == null ? say.where(where, asked) : say.where(W.onTheirPage, say.you(answer.text)),
     time:
       answer?.time ??
-      (id.key === 'lucia' && m.arrived ? 'now' : rowDay(guest.asked.day, guest.asked.time, locale)),
+      (id.key === 'lucia' && m.arrived
+        ? justNow(locale)
+        : rowDay(guest.asked.day, guest.asked.time, locale)),
     lead: <Avatar initials={initials} side={40} tone={done ? 4 : 0} />,
     tag: unmatched ? { kind: 'notyet', word: W.notMatched } : undefined,
   };
