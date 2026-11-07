@@ -425,6 +425,17 @@ class DemoFirst(Base):
             actions.claim(self.as_("dev"), args(story="sc-1"))
         self.assertEqual(self.state(1), "In Progress")
 
+    def test_a_story_whose_demo_line_reads_none_is_claimed_without_asking_github(self):
+        self.drawn("**Demo:** none: nothing a person sees.")
+        with mock.patch("soirely_queue.github.live", side_effect=AssertionError):
+            actions.claim(self.as_("dev"), args(story="sc-1"))
+        self.assertEqual(self.state(1), "In Progress")
+
+    def test_a_demo_line_that_reads_none_yet_names_a_pull_request_is_read_for_it(self):
+        self.drawn("**Demo:** none merged yet · PR #1386")
+        self.refused("#1386 is not merged yet",
+                     mock.patch("soirely_queue.github.live", return_value={"state": "OPEN"}))
+
     def test_rework_is_claimed_whatever_its_demo_line_says(self):
         self.drawn("**Demo:** being built.")
         self.fake.update(1, workflow_state_id=IDS["Failed QA"], labels=[{"name": "dev"}])

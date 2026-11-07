@@ -356,11 +356,13 @@ def stack_up(c, story, held=False):
 
 DEMO_LINE = re.compile(r"^[\s*_>-]*demo[*_]*:", re.I)
 NOT_BUILT = re.compile(r"\b(being built|not built)\b", re.I)
+SHOWS_NOTHING = re.compile(r"^[\s*_>-]*demo[*_]*:[\s*_]*none\b", re.I)
 
 
 def demo_missing(story):
     """Why a story the designer drew is not ready to build: its Demo line names no merged
-    demo. A story with no Design section shows nothing sq can see, so nothing is missing."""
+    demo. A story with no Design section, or whose Demo line reads `none`, shows nothing,
+    so nothing is missing."""
     design = T.find(story.get("description"), "Design")
     if not design:
         return None
@@ -370,6 +372,8 @@ def demo_missing(story):
     if NOT_BUILT.search(line):
         return "its Demo: line says the demo is not built"
     numbers = [int(n) for n in re.findall(r"#(\d+)", line)]
+    if not numbers and SHOWS_NOTHING.match(line):
+        return None
     if not numbers:
         return "its Demo: line names no pull request"
     states = {}
