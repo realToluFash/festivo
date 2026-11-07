@@ -2724,6 +2724,8 @@ export function startHelper({
         return reply(200, { api: to });
       }
       if (url.pathname === '/membership') {
+        if (!changeMembership && url.searchParams.get('change') === 'clear')
+          return reply(200, { membership: 'clear' });
         if (!changeMembership) throw new Error('this batch makes no membership change');
         if (!(await within(8000, apiState.move('up')))) return reply(200, { wait: true });
         return reply(

@@ -1737,6 +1737,15 @@ describe('the batch helper', () => {
       server.close();
     }
   });
+
+  it('clears nothing for a flow run alone, so reset.yaml still runs outside a batch', async () => {
+    const { server, ask } = await helperFor('running');
+    try {
+      expect(await ask('/membership?change=clear')).toEqual({ membership: 'clear' });
+    } finally {
+      server.close();
+    }
+  });
 });
 
 describe('a batch flow', () => {
