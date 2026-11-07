@@ -289,16 +289,19 @@ export function CardSays({
   text,
   size = 24,
   heading = false,
+  accessible,
   ref,
 }: {
   text: string;
   size?: number;
   heading?: boolean;
+  accessible?: boolean | undefined;
   ref?: Ref<TextHandle> | undefined;
 }) {
   return (
     <Text
       ref={ref}
+      accessible={accessible}
       size={size}
       weight="bold"
       accessibilityRole={heading ? 'header' : undefined}
@@ -336,9 +339,22 @@ export function CardCounts({
   );
 }
 
-export function OnCard({ text, strong = false }: { text: string; strong?: boolean }) {
+export function OnCard({
+  text,
+  strong = false,
+  accessible,
+}: {
+  text: string;
+  strong?: boolean;
+  accessible?: boolean | undefined;
+}) {
   return (
-    <Text size={14.5} weight={strong ? 'semibold' : 'medium'} style={[styles.white, styles.onCard]}>
+    <Text
+      size={14.5}
+      weight={strong ? 'semibold' : 'medium'}
+      accessible={accessible}
+      style={[styles.white, styles.onCard]}
+    >
       {text}
     </Text>
   );

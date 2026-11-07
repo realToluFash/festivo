@@ -10,7 +10,6 @@ import {
   moveScreenReaderFocus,
   type ScreenReaderTarget,
 } from '../../components/screenReaderFocus.ts';
-import type { TextHandle } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 
 import { Landscape, SeenBy, useShell } from './Frame.tsx';
@@ -101,7 +100,7 @@ function MembersScreen({ start }: { start: MembersStart }) {
   const [lit, setLit] = useState<string | null>(null);
   const listScroll = useRef<ScrollViewInstance>(null);
   const recoveryList = useRef<ViewInstance>(null);
-  const cardSays = useRef<TextHandle>(null);
+  const cardSays = useRef<ScreenReaderTarget | null>(null);
   const targets = useRef<Targets>({});
   const lighting = useRef<ReturnType<typeof setTimeout>>(undefined);
   // Where a closed confirm gives the focus back: the answer that opened it, the next request, or the card's sentence (null).
@@ -261,7 +260,9 @@ function MembersScreen({ start }: { start: MembersStart }) {
         compact={landscape}
         wide={shell.layout === 'portrait'}
         stepRef={cardStep}
-        saysRef={cardSays}
+        saysRef={(view) => {
+          cardSays.current = view;
+        }}
         onStep={onStep}
       />
       {waitingBack.length > 0 && (

@@ -361,6 +361,8 @@ export interface MembersCard {
   faces: Person[];
   more: number;
   readsOut: boolean;
+  /** An answer to a request to get back in takes the focus, so it is heard as one, sentence and line, and not read out again. */
+  takesFocus: boolean;
 }
 
 export function ownerActive(people: readonly Person[]): boolean {
@@ -392,7 +394,7 @@ export function membersCard({
   say: MembersSay;
   recovery?: CardRecovery;
 }): MembersCard {
-  const quiet = { line: null, faces: [], more: 0, readsOut: true };
+  const quiet = { line: null, faces: [], more: 0, readsOut: true, takesFocus: false };
   const seeFormer = { label: 'See Former', does: 'seeFormer' } as const;
   const nameOf = (id: string) => people.find((one) => one.id === id)?.name ?? '';
   const waiting = viewer.manages ? people.filter((one) => one.status === 'pendingApproval') : [];
@@ -427,6 +429,8 @@ export function membersCard({
       ...quiet,
       ...answeredWords(recovery.answer, nameOf(recovery.answer.id)),
       step: next,
+      readsOut: false,
+      takesFocus: true,
     };
   if (gone != null)
     return {
@@ -476,6 +480,7 @@ export function membersCard({
     faces,
     more: all.length - faces.length,
     readsOut: false,
+    takesFocus: false,
   };
 }
 

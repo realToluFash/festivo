@@ -20,7 +20,7 @@ export type RecoveryPart = 'box' | 'group' | 'approve' | 'turnDown';
 
 type OnTarget = (id: string, part: RecoveryPart, view: ViewInstance | null) => void;
 
-/** Requests to get back in, under the card: the product's paragraph once, then each request as a Members row with its two answers. */
+/** Requests to get back in, under the card: the product's paragraph once, heard in each request's group instead, then each request as a Members row with its two answers. */
 export function RecoveryRequests({
   waiting,
   you,
@@ -61,7 +61,14 @@ export function RecoveryRequests({
   return (
     <View ref={listRef} collapsable={false}>
       <Section title={RECOVERY_WORDS.title} foot={RECOVERY_WORDS.note}>
-        <Text size={15} weight="medium" style={[styles.secondary, styles.intro]}>
+        <Text
+          size={15}
+          weight="medium"
+          style={[styles.secondary, styles.intro]}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+          accessible={false}
+        >
           {RECOVERY_WORDS.intro}
         </Text>
         <View style={dense && styles.bleed}>

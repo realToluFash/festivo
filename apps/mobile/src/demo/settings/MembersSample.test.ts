@@ -376,6 +376,7 @@ describe('Requests to get back in, in the app’s Members (sc-30893)', () => {
       line: '2 to get back in · 1 to join',
       step: { label: 'Answer Kofi Mensah', does: 'answerRecovery' },
       readsOut: false,
+      takesFocus: false,
     });
     expect(cardOf('recovery', VIEWERS.julien).says).toBe('7 people · 3 waiting');
   });
@@ -386,13 +387,26 @@ describe('Requests to get back in, in the app’s Members (sc-30893)', () => {
       line: 'They’re emailed now, and every session they had has ended.',
       step: { label: 'Answer Priya Shah', does: 'answerRecovery' },
       faces: [],
-      readsOut: true,
+      readsOut: false,
+      takesFocus: true,
     });
     expect(cardOf('recoveryTurnedDown')).toMatchObject({
       says: 'Kofi Mensah’s request is turned down.',
       line: 'Two-factor stays on for them, and they’re emailed.',
       step: { label: 'Answer Priya Shah' },
     });
+  });
+
+  it('has the answer heard once, by its focus, while Lucía’s answer is still read out', () => {
+    const lucia = person('Lucía Gómez').id;
+    expect(cardOf('recoveryTurnedDown')).toMatchObject({ readsOut: false, takesFocus: true });
+    expect(cardOf('recoveryDone')).toMatchObject({ readsOut: false, takesFocus: true });
+    expect(
+      membersCard({ ...plainCard, people, request: { approved: lucia, role: 'Member' } }),
+    ).toMatchObject({ readsOut: true, takesFocus: false });
+    expect(
+      membersCard({ ...plainCard, people: removed(people, lucia), gone: person('Lucía Gómez') }),
+    ).toMatchObject({ readsOut: true, takesFocus: false });
   });
 
   it('counts again once a request answered elsewhere is closed', () => {
