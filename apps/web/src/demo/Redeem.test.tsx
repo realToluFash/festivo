@@ -100,17 +100,45 @@ describe('a name, a number and the phone code (sc-4235)', () => {
     expect(screen.getByText('We sent a code to your WhatsApp on +351 912 345 412.')).toBeDefined();
   });
 
-  it('says a wrong code is wrong, texts it instead, and lets a person in with the right one', async () => {
+  it('checks the code only on Verify, never as it is typed (WCAG 3.2.2)', async () => {
+    await redeem('code');
+    const field = screen.getByLabelText('Code from WhatsApp') as HTMLInputElement;
+
+    expect(field.getAttribute('autocomplete')).toBe('one-time-code');
+    expect(field.getAttribute('inputmode')).toBe('numeric');
+    type('Code from WhatsApp', '');
+    press('Verify');
+    expect(screen.getByText('Enter the 6-digit code from WhatsApp.')).toBeDefined();
+    type('Code from WhatsApp', '7139');
+    press('Verify');
+    expect(screen.getByText('The code is 6 digits.')).toBeDefined();
+    type('Code from WhatsApp', '713908');
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.getByRole('heading', { level: 1, name: 'Check WhatsApp' })).toBeDefined();
+  });
+
+  it('keeps a wrong code, selected, says why under the field, then lets the right one in', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
     await redeem('code');
 
-    type('Code, 6 digits', '713908');
+    type('Code from WhatsApp', '713908');
+    press('Verify');
+    expect(screen.getByRole('button', { name: 'Verifying…' })).toBeDefined();
+    await wait(1000);
+    const field = screen.getByLabelText('Code from WhatsApp') as HTMLInputElement;
     expect(screen.getByRole('alert').textContent).toBe(
       'That code does not match. Check the newest WhatsApp message from Soirely and try again.',
     );
+    expect(field.value).toBe('713908');
+    await waitFor(() => expect(document.activeElement).toBe(field));
+    expect([field.selectionStart, field.selectionEnd]).toEqual([0, 6]);
+
     press('Text it to me instead');
     expect(screen.getByRole('heading', { level: 1, name: 'Check your messages' })).toBeDefined();
     expect(screen.getByText('Send a new code in 1:00')).toBeDefined();
-    type('Code, 6 digits', SAMPLE.code);
+    type('Code from the text', SAMPLE.code);
+    press('Verify');
+    await wait(1000);
 
     const title = screen.getByRole('heading', {
       level: 1,
@@ -121,14 +149,25 @@ describe('a name, a number and the phone code (sc-4235)', () => {
     await waitFor(() => expect(document.activeElement).toBe(title));
   });
 
+  it('opens a wrong code kept and selected from its link', async () => {
+    await redeem('code-wrong');
+    const field = screen.getByLabelText('Code from WhatsApp') as HTMLInputElement;
+
+    await waitFor(() => expect(document.activeElement).toBe(field));
+    expect(field.value).toBe('713908');
+    expect([field.selectionStart, field.selectionEnd]).toEqual([0, 6]);
+  });
+
   it('offers a new code once one has expired', async () => {
     await redeem('code-expired');
 
     expect(screen.getByRole('alert').textContent).toBe(
       'That code has expiredCodes only work for a while. Send a new one and use the code in the newest text.',
     );
+    expect(screen.queryByLabelText('Code from the text')).toBeNull();
     press('Send a new code');
     expect(screen.queryByText('That code has expired')).toBeNull();
+    expect(screen.getByLabelText('Code from the text')).toBeDefined();
   });
 
   it('refuses a used-up code after the phone code, on the event step', async () => {
@@ -139,6 +178,18 @@ describe('a name, a number and the phone code (sc-4235)', () => {
     );
     expect((screen.getByLabelText('Your name') as HTMLInputElement).value).toBe('Hugo Faria');
   });
+});
+
+describe('the Soirely wordmark', () => {
+  it.each(['enter', 'browser-event', 'code', 'browser-in', 'signed-out'])(
+    'sits above the column on %s',
+    async (state) => {
+      await redeem(state);
+
+      expect(document.querySelector('.rd-column > .rd-brand:first-child')).not.toBeNull();
+      expect(screen.getByText('Soirely')).toBeDefined();
+    },
+  );
 });
 
 describe('who is not asked again', () => {

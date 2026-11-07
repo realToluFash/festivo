@@ -50,7 +50,13 @@ export const R = {
   sentWhatsApp: (number: string) => `We sent a code to your WhatsApp on ${number}.`,
   checkMessages: 'Check your messages',
   texted: (number: string) => `We texted a code to ${number}.`,
-  codeLabel: 'Code, 6 digits',
+  codeFromWhatsApp: 'Code from WhatsApp',
+  codeFromText: 'Code from the text',
+  codeBlankWhatsApp: 'Enter the 6-digit code from WhatsApp.',
+  codeBlankText: 'Enter the 6-digit code from the text.',
+  codeShortPhone: 'The code is 6 digits.',
+  verify: 'Verify',
+  verifying: 'Verifying…',
   textInstead: 'Text it to me instead',
   sendNew: 'Send a new code',
   wrongWhatsApp:
@@ -107,6 +113,16 @@ export function shownNumber(typed: string, country = COUNTRY): string {
 
 export const rightPhoneCode = (digits: string) => digits === SAMPLE.code;
 
+export function phoneCodeLine(digits: string): 'blank' | 'short' | null {
+  if (digits === '') return 'blank';
+
+  return digits.length < PHONE_CODE_LENGTH ? 'short' : null;
+}
+
+/** A dead code (expired, or too many wrong tries) has no field: only Send a new code. */
+export const deadCode = (problem: CodeProblem | null) =>
+  problem === 'expired' || problem === 'exhausted';
+
 export type Via = 'whatsapp' | 'text';
 export type CodeProblem = 'wrong' | 'expired' | 'exhausted' | 'failed';
 
@@ -122,7 +138,16 @@ export type Step =
   | { kind: 'event'; name: string; number: string; checked: boolean; busy: Busy; usedUp: boolean }
   | { kind: 'joinAs'; busy: Busy }
   | { kind: 'member' }
-  | { kind: 'code'; via: Via; digits: string; problem: CodeProblem | null; resend: number }
+  | {
+      kind: 'code';
+      via: Via;
+      digits: string;
+      problem: CodeProblem | null;
+      line: 'blank' | 'short' | null;
+      resend: number;
+      busy: Busy;
+      wrongs: number;
+    }
   | { kind: 'in'; name: string };
 
 /** `held`: a deep-linked wait, long enough to look at. */
@@ -186,7 +211,10 @@ const code = (extra: Partial<Extract<Step, { kind: 'code' }>> = {}): Step => ({
   via: 'whatsapp',
   digits: '',
   problem: null,
+  line: null,
   resend: DRAWN_RESEND,
+  busy: 'no',
+  wrongs: 0,
   ...extra,
 });
 
@@ -233,7 +261,7 @@ function startOf(state: RedeemState): { step: Step; number: string; name: string
     case 'code-texted':
       return { step: code({ via: 'text', digits: '71' }), ...joao };
     case 'code-wrong':
-      return { step: code({ digits: '713908', problem: 'wrong' }), ...joao };
+      return { step: code({ digits: '713908', problem: 'wrong', wrongs: 1 }), ...joao };
     case 'code-expired':
       return { step: code({ via: 'text', problem: 'expired', resend: 0 }), ...joao };
     case 'code-exhausted':

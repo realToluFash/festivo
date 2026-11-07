@@ -4,13 +4,13 @@ import {
   type RefObject,
   useEffect,
   useEffectEvent,
-  useId,
   useRef,
   useState,
 } from 'react';
 import { useSearchParams } from 'react-router';
 import { callingCode } from '@soirely/domain';
 
+import { Brand } from '../components/Brand.tsx';
 import { Toast } from '../components/Toast.tsx';
 import { BUSY_MS, DOOR_EVENT, HOLD_MS } from './doorCode.ts';
 import { Glyph } from '../components/Glyph.tsx';
@@ -24,6 +24,9 @@ import {
   LIFTS_AT,
   MESH,
   PHONE_CODE_LENGTH,
+  type Via,
+  deadCode,
+  phoneCodeLine,
   R,
   RESEND_FROM,
   type RedeemState,
@@ -38,7 +41,7 @@ import {
   sendNewIn,
   shownNumber,
 } from './redeem.ts';
-import { codeChoice, COUNTRIES } from './rules.ts';
+import { codeChoice, COUNTRIES, TRIES } from './rules.ts';
 import './today.css';
 import './redeem.css';
 
@@ -50,12 +53,14 @@ export function Redeem() {
   return <RedeemPage key={state} state={state} />;
 }
 
-type Want = 'title' | 'field' | 'number' | null;
+type Want = 'title' | 'field' | 'select' | 'number' | null;
 
 /** Where focus starts: the field being typed in, the heading of a step that shows the event, nothing on "Signed out." (a status). */
 function firstFocus(state: RedeemState): Want {
   if (state === 'signed-out') return null;
   if (state === 'event-short') return 'number';
+  if (state === 'code-wrong') return 'select';
+  if (state === 'code-expired' || state === 'code-exhausted') return 'title';
   if (state.startsWith('enter') || state.startsWith('code') || state === 'event-blank')
     return 'field';
 
@@ -73,16 +78,17 @@ function RedeemPage({ state }: { state: RedeemState }) {
   const [want, setWant] = useState<{ to: Want; n: number }>({ to: firstFocus(state), n: 0 });
   const title = useRef<HTMLHeadingElement>(null);
   const field = useRef<HTMLInputElement>(null);
-  const [shakes, setShakes] = useState(0);
 
   useEffect(() => {
     const to = {
       title: title.current,
       field: field.current,
+      select: field.current,
       number: document.getElementById('rd-number'),
       none: null,
     }[want.to ?? 'none'];
     to?.focus();
+    if (want.to === 'select') field.current?.select();
   }, [want]);
 
   const go = (next: Step, to: Want = 'title') => {
@@ -113,12 +119,33 @@ function RedeemPage({ state }: { state: RedeemState }) {
       if (step.usedUp) setStep({ ...step, busy: 'no' });
       else
         go(
-          { kind: 'code', via: 'whatsapp', digits: '', problem: null, resend: RESEND_FROM },
+          {
+            kind: 'code',
+            via: 'whatsapp',
+            digits: '',
+            problem: null,
+            line: null,
+            resend: RESEND_FROM,
+            busy: 'no',
+            wrongs: 0,
+          },
           'field',
         );
       return;
     }
     if (step.kind === 'joinAs') go({ kind: 'in', name });
+    if (step.kind === 'code') {
+      if (rightPhoneCode(step.digits)) {
+        go({ kind: 'in', name });
+        return;
+      }
+      const wrongs = step.wrongs + 1;
+      if (wrongs >= TRIES) {
+        go({ ...step, digits: '', problem: 'exhausted', busy: 'no', wrongs, resend: 0 });
+        return;
+      }
+      go({ ...step, problem: 'wrong', busy: 'no', wrongs }, 'select');
+    }
   });
 
   const busy: Busy = 'busy' in step ? step.busy : 'no';
@@ -221,41 +248,50 @@ function RedeemPage({ state }: { state: RedeemState }) {
             <Primary onClick={() => setTold(R.eventsLater)}>{R.openEvents}</Primary>
           </>
         );
-      case 'code':
+      case 'code': {
+        const fresh = (via: Via) =>
+          go(
+            {
+              kind: 'code',
+              via,
+              digits: '',
+              problem: null,
+              line: null,
+              resend: RESEND_FROM,
+              busy: 'no',
+              wrongs: 0,
+            },
+            'field',
+          );
+
         return (
           <CodeStep
             step={step}
             number={shownNumber(number, country)}
             titleRef={title}
             fieldRef={field}
-            shake={shakes}
-            onDigits={(digits) => {
-              if (digits.length < PHONE_CODE_LENGTH) {
-                setStep({
-                  ...step,
-                  digits,
-                  problem: step.problem === 'wrong' ? null : step.problem,
-                });
+            onDigits={(digits) =>
+              setStep({
+                ...step,
+                digits,
+                line: null,
+                problem: step.problem === 'wrong' ? null : step.problem,
+              })
+            }
+            onVerify={() => {
+              const line = phoneCodeLine(step.digits);
+              if (line != null) {
+                setStep({ ...step, line, problem: null });
+                field.current?.focus();
                 return;
               }
-              if (rightPhoneCode(digits)) {
-                go({ kind: 'in', name });
-                return;
-              }
-              setShakes((was) => was + 1);
-              setStep({ ...step, digits, problem: 'wrong' });
+              setStep({ ...step, line: null, busy: 'busy' });
             }}
-            onText={() =>
-              go(
-                { kind: 'code', via: 'text', digits: '', problem: null, resend: RESEND_FROM },
-                'field',
-              )
-            }
-            onSendNew={() =>
-              go({ ...step, digits: '', problem: null, resend: RESEND_FROM }, 'field')
-            }
+            onText={() => fresh('text')}
+            onSendNew={() => fresh(step.via)}
           />
         );
+      }
       case 'in':
         return (
           <>
@@ -279,6 +315,9 @@ function RedeemPage({ state }: { state: RedeemState }) {
   return (
     <main id="content" className="rd">
       <div className="rd-column" data-step={step.kind}>
+        <div className="rd-brand">
+          <Brand />
+        </div>
         {body()}
       </div>
       {told != null && <Toast key={told} words={told} onClose={() => setTold(null)} />}
@@ -343,6 +382,7 @@ function Field({
   code = false,
   autoComplete,
   inputMode,
+  maxLength,
   onChange,
 }: {
   id: string;
@@ -353,7 +393,8 @@ function Field({
   inputRef?: RefObject<HTMLInputElement | null>;
   code?: boolean;
   autoComplete: string;
-  inputMode?: 'text' | 'tel';
+  inputMode?: 'text' | 'tel' | 'numeric';
+  maxLength?: number;
   onChange: (value: string) => void;
 }) {
   return (
@@ -373,6 +414,7 @@ function Field({
         autoComplete={autoComplete}
         autoCapitalize={code ? 'characters' : undefined}
         inputMode={inputMode}
+        maxLength={maxLength}
         spellCheck={false}
         aria-invalid={wrong}
         aria-describedby={told}
@@ -559,13 +601,19 @@ const PROBLEMS: Partial<Record<CodeProblem, { title: string; body: string }>> = 
   failed: { title: R.failedTitle, body: R.failedBody },
 };
 
+const CODE_LINES = {
+  whatsapp: { blank: R.codeBlankWhatsApp, short: R.codeShortPhone, wrong: R.wrongWhatsApp },
+  text: { blank: R.codeBlankText, short: R.codeShortPhone, wrong: R.wrongText },
+} as const;
+
+/** The phone code in a browser: one field and Verify, as the web's onboarding has it (WCAG 3.2.2); nothing is sent as it is typed. */
 function CodeStep({
   step,
   number,
   titleRef,
   fieldRef,
-  shake,
   onDigits,
+  onVerify,
   onText,
   onSendNew,
 }: {
@@ -573,14 +621,22 @@ function CodeStep({
   number: string;
   titleRef: RefObject<HTMLHeadingElement | null>;
   fieldRef: RefObject<HTMLInputElement | null>;
-  shake: number;
   onDigits: (digits: string) => void;
+  onVerify: () => void;
   onText: () => void;
   onSendNew: () => void;
 }) {
   const texted = step.via === 'text';
   const problem = step.problem == null ? undefined : PROBLEMS[step.problem];
-  const canResend = step.resend <= 0 || step.problem === 'expired' || step.problem === 'exhausted';
+  const dead = deadCode(step.problem);
+  const busy = step.busy !== 'no';
+  const lines = CODE_LINES[step.via];
+  const said = step.line != null ? lines[step.line] : step.problem === 'wrong' ? lines.wrong : null;
+
+  function submit(event: FormEvent<HTMLFormElement>): void {
+    event.preventDefault();
+    if (!busy) onVerify();
+  }
 
   return (
     <div className="rd-form">
@@ -592,83 +648,53 @@ function CodeStep({
           <p className="rd-problem-body">{problem.body}</p>
         </div>
       )}
-      <Boxes
-        digits={step.digits}
-        wrong={step.problem === 'wrong'}
-        shake={shake}
-        inputRef={fieldRef}
-        told={step.problem === 'wrong' ? 'rd-boxes-line' : undefined}
-        onDigits={onDigits}
-      />
-      {step.problem === 'wrong' && (
-        <Says id="rd-boxes-line" alert>
-          {texted ? R.wrongText : R.wrongWhatsApp}
-        </Says>
+      {dead ? (
+        <Primary onClick={onSendNew}>{R.sendNew}</Primary>
+      ) : (
+        <>
+          <form className="rd-form" noValidate onSubmit={submit}>
+            <div className="rd-group">
+              <Field
+                id="rd-phone-code"
+                label={texted ? R.codeFromText : R.codeFromWhatsApp}
+                value={step.digits}
+                wrong={said != null}
+                told={said == null ? undefined : 'rd-phone-code-line'}
+                inputRef={fieldRef}
+                code
+                autoComplete="one-time-code"
+                inputMode="numeric"
+                maxLength={PHONE_CODE_LENGTH}
+                onChange={(typed) =>
+                  onDigits(typed.replace(/\D/gu, '').slice(0, PHONE_CODE_LENGTH))
+                }
+              />
+              {said != null && (
+                <Says id="rd-phone-code-line" alert={step.problem === 'wrong'}>
+                  {said}
+                </Says>
+              )}
+            </div>
+            <Primary submit busy={busy}>
+              {busy ? R.verifying : R.verify}
+            </Primary>
+          </form>
+          <div className="rd-ways">
+            {!texted && (
+              <button type="button" className="rd-quiet" onClick={onText}>
+                {R.textInstead}
+              </button>
+            )}
+            {step.resend <= 0 ? (
+              <button type="button" className="rd-quiet" onClick={onSendNew}>
+                {R.sendNew}
+              </button>
+            ) : (
+              <p className="rd-quiet is-off">{sendNewIn(step.resend)}</p>
+            )}
+          </div>
+        </>
       )}
-      <div className="rd-ways">
-        {!texted && step.problem !== 'exhausted' && (
-          <button type="button" className="rd-quiet" onClick={onText}>
-            {R.textInstead}
-          </button>
-        )}
-        {canResend ? (
-          <button type="button" className="rd-quiet" onClick={onSendNew}>
-            {R.sendNew}
-          </button>
-        ) : (
-          <p className="rd-quiet is-off" aria-live="off">
-            {sendNewIn(step.resend)}
-          </p>
-        )}
-      </div>
-    </div>
-  );
-}
-
-/** The app's six boxes: one field under them takes the code, so it autofills from the message (one-time-code). */
-function Boxes({
-  digits,
-  wrong,
-  shake,
-  inputRef,
-  told,
-  onDigits,
-}: {
-  digits: string;
-  wrong: boolean;
-  shake: number;
-  inputRef: RefObject<HTMLInputElement | null>;
-  told: string | undefined;
-  onDigits: (digits: string) => void;
-}) {
-  const id = useId();
-  const cells = Array.from({ length: PHONE_CODE_LENGTH }, (_, index) => digits[index] ?? '');
-  const done = digits.length === PHONE_CODE_LENGTH && !wrong;
-
-  return (
-    <div className={['rd-boxes', wrong && 'is-wrong', done && 'is-done'].filter(Boolean).join(' ')}>
-      <input
-        ref={inputRef}
-        id={id}
-        className="rd-boxes-input"
-        aria-label={R.codeLabel}
-        inputMode="numeric"
-        autoComplete="one-time-code"
-        maxLength={PHONE_CODE_LENGTH}
-        value={digits}
-        aria-invalid={wrong}
-        aria-describedby={told}
-        onChange={(event) =>
-          onDigits(event.target.value.replace(/\D/gu, '').slice(0, PHONE_CODE_LENGTH))
-        }
-      />
-      <div key={wrong ? shake : 'still'} className="rd-boxes-row" aria-hidden="true">
-        {cells.map((digit, index) => (
-          <span key={index} className={index === digits.length ? 'rd-box is-next' : 'rd-box'}>
-            {digit}
-          </span>
-        ))}
-      </div>
     </div>
   );
 }

@@ -42,6 +42,16 @@
   }
 }
 
+/* The Soirely wordmark above the column, at every width (pm and ux, 7 Nov): no header bar, no footer. */
+.rd-brand {
+  margin-bottom: var(--spaceSm);
+}
+
+.rd .rd-brand img {
+  width: auto;
+  height: var(--space3xl);
+}
+
 .rd-tile {
   display: block;
   width: 48px;
@@ -186,7 +196,7 @@
   inset: 0;
   width: 100%;
   height: 100%;
-  font-size: 16px;
+  font-size: 17px;
   opacity: 0;
   cursor: pointer;
 }
@@ -206,7 +216,7 @@
   border-radius: var(--radiusPill);
   background: var(--colorAccent);
   color: var(--colorInkOnDark);
-  font: 600 16px/1 var(--fontFamily);
+  font: 600 17px/1 var(--fontFamily);
 }
 
 .rd-primary:hover {
@@ -245,7 +255,7 @@
   min-height: var(--sizeHit);
   padding: 0;
   color: var(--colorAccent);
-  font: 600 16px/1.2 var(--fontFamily);
+  font: 600 17px/1.2 var(--fontFamily);
 }
 
 .rd-quiet.is-centre {
@@ -265,91 +275,12 @@
 
 .rd-problem-title {
   color: var(--colorBroken);
-  font: 600 16px/1.3 var(--fontFamily);
+  font: 600 17px/1.3 var(--fontFamily);
 }
 
 .rd-problem-body {
   color: var(--colorInkSecondary);
   font: 500 15px/1.45 var(--fontFamily);
-}
-
-/* The app's six boxes over one field: the next one ringed while it has focus, red edges and one shake when wrong. */
-.rd-boxes {
-  position: relative;
-}
-
-.rd-boxes-input {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  width: 100%;
-  height: 100%;
-  padding: 0;
-  border: 0;
-  outline: none;
-  background: none;
-  color: transparent;
-  font-size: 16px;
-  caret-color: transparent;
-  opacity: 0;
-}
-
-.rd-boxes-row {
-  display: flex;
-  gap: var(--spaceSm);
-}
-
-.rd-box {
-  display: flex;
-  flex: 1;
-  align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
-  min-width: 0;
-  height: 60px;
-  border: 1px solid var(--colorFieldBorder);
-  border-radius: var(--radiusRow);
-  background: var(--colorCard);
-  font: 600 26px/1 var(--fontFamily);
-  font-variant-numeric: tabular-nums;
-}
-
-.rd-boxes:focus-within .rd-box.is-next {
-  outline: 2px solid var(--colorAccent);
-  outline-offset: 2px;
-}
-
-.rd-boxes:focus-within .rd-box.is-next::after {
-  width: 2px;
-  height: 28px;
-  background: var(--colorAccent);
-  content: '';
-}
-
-.rd-boxes.is-wrong .rd-box {
-  border-color: var(--colorBroken);
-  box-shadow: inset 0 0 0 1px var(--colorBroken);
-}
-
-.rd-boxes.is-done .rd-box {
-  border-color: var(--colorAccent);
-  background: var(--colorAccentTint);
-}
-
-.rd-boxes.is-wrong .rd-boxes-row {
-  animation: rd-shake 0.4s ease;
-}
-
-@keyframes rd-shake {
-  20%,
-  60% {
-    transform: translateX(-6px);
-  }
-
-  40%,
-  80% {
-    transform: translateX(6px);
-  }
 }
 
 .rd-you {
@@ -359,12 +290,12 @@
 }
 
 .rd-you-name {
-  font: 600 15px/1.4 var(--fontFamily);
+  font: 600 17px/1.4 var(--fontFamily);
 }
 
 .rd-you-line {
   color: var(--colorInkSecondary);
-  font: 500 15px/1.45 var(--fontFamily);
+  font: 400 17px/1.45 var(--fontFamily);
 }
 
 .rd-out {
@@ -375,7 +306,7 @@
   min-height: var(--sizeHit);
   padding: 0;
   color: var(--colorInkSecondary);
-  font: 600 15px/1.2 var(--fontFamily);
+  font: 600 17px/1.2 var(--fontFamily);
 }
 
 .rd-primary:focus-visible,
@@ -386,10 +317,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .rd-boxes.is-wrong .rd-boxes-row {
-    animation: none;
-  }
-
   .rd-spin {
     animation: none;
   }

@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import {
   codeOpens,
+  deadCode,
+  phoneCodeLine,
   EVENT_LINE,
   eventLines,
   joinCodeLine,
@@ -41,6 +43,11 @@ describe('the browser’s redeem pages (sc-72, sc-4235)', () => {
     expect(R.inTitle).toBe('You’re in for Joana & Rui’s wedding · Bar and drinks');
     expect(R.signedOutAt).toBe('You’ll be signed out at 23:30.');
     expect(sendNewIn(54)).toBe('Send a new code in 0:54');
+    expect(phoneCodeLine('')).toBe('blank');
+    expect(phoneCodeLine('7139')).toBe('short');
+    expect(phoneCodeLine('713908')).toBeNull();
+    expect(deadCode('expired')).toBe(true);
+    expect(deadCode('wrong')).toBe(false);
   });
 
   it('starts every state the spec names, and links each from the demo’s home', () => {
