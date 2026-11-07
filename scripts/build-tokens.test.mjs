@@ -8,7 +8,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { schemes, tokens } from '../docs/design/tokens.mjs';
+import { defaultScheme, schemes, tokens } from '../docs/design/tokens.mjs';
 import { NATIVE_OUT, WEB_OUT, WEB_SCHEME_OUT, onDisk, outputs } from './build-tokens.mjs';
 
 describe('generated tokens', () => {
@@ -351,6 +351,10 @@ describe("B Confetti's schemes are held to the base's contrast", () => {
       'sorbet',
       'terracotta',
     ]);
+  });
+
+  it('defaults to one of them', () => {
+    expect(Object.hasOwn(schemes, defaultScheme)).toBe(true);
   });
 
   for (const [name, scheme] of Object.entries(schemes)) {
