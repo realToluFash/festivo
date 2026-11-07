@@ -3,16 +3,17 @@ import { WEDDING } from './BudgetSample.ts';
 
 /** The demo home's Budget group: each app ?state= of budget-a-spec.md §9, deep-linked into the wedding. */
 const BOARDS: Record<BudgetState, readonly [string, string]> = {
-  populated: ['in use', 'The overdue balance and Mark paid on the card'],
+  populated: ['in use', 'Mark paid on the card, and on each Due next row'],
   scrolled: ['scrolled', 'The ceiling, Against plan, Who is paying, the costs'],
   loading: ['loading', 'The card’s place and the rows as shapes'],
-  live_update: ['live', 'A change from the web washes the figures it moved'],
+  live_update: ['live', 'Dinner goes to £70.00 a head; what it moved washes'],
   not_live: ['not live', 'Figures as of 09:32; Mark paid needs a connection'],
   reconnecting: ['reconnecting', 'Getting the latest figures…'],
   never_loaded: ['never loaded', 'No figures and no zeros'],
   no_lines: ['no costs yet', 'Costs are added on a computer; Who is paying opens'],
   nothing_due: ['nothing due', 'No step on the card; Nothing is due.'],
   mark_paid_open: ['Mark paid', 'sc-88’s form, £840.00 filled in'],
+  mark_paid_earlier: ['Mark paid, an earlier date', 'Date paid Mon, Nov 2, from the calendar'],
   marked_paid: ['marked paid', 'The row stays with Undo; the card moves on'],
   refused_paid: ['refused, already paid', 'Julien Moreau has already marked this paid'],
   refused_cancelled: ['refused, cancelled', 'This payment has been cancelled'],
@@ -29,7 +30,7 @@ const BOARDS: Record<BudgetState, readonly [string, string]> = {
   long_name: ['a long name (pt)', 'The 100-character name wraps in the action'],
   due_now: ['Due now', 'From the reminder: Paid, or Paid a different amount'],
   due_marked: ['Due now, marked', 'Marked paid · £840.00, Undo'],
-  due_changed: ['Due now, changed since', 'Paid by Julien Moreau; Cancelled'],
+  due_changed: ['Due now, changed since', 'Nothing left to pay, and why: paid, cancelled'],
   due_refused: ['Due now, refused', 'This payment has been cancelled'],
   due_done: ['Due now, done', 'Nothing left to pay from this reminder'],
   due_read_only: ['Due now, read only', 'No Paid, no Undo'],

@@ -65,8 +65,8 @@ export interface PayersProps {
 
 /** sc-30200 on the iPhone: the payers' card, a row per payer with its link's state, read only. */
 export function PayersList({ m, event, locale, onPayer }: PayersProps) {
-  const payers = payersOf();
-  const totals = totalsOf();
+  const payers = payersOf(m.lines);
+  const totals = totalsOf(m.lines);
   const range = rangeOf(totals, (pence) => whole(pence, locale));
 
   if (m.payers === 'none')
@@ -108,7 +108,7 @@ export function PayersList({ m, event, locale, onPayer }: PayersProps) {
             <MoneyRow
               title={payer.name}
               line={`${payer.note} · ${linkWords(m.links[payer.key], locale)}`}
-              value={rangeOf(shareOf(payer), (pence) => money(pence, locale))}
+              value={rangeOf(shareOf(payer, m.lines), (pence) => money(pence, locale))}
               quiet
               opens
               onPress={() => onPayer(payer.key)}
@@ -124,7 +124,7 @@ export function PayersList({ m, event, locale, onPayer }: PayersProps) {
 
 function PayerFigures({ m, keyOf, locale }: { m: BudgetModel; keyOf: PayerKey; locale: string }) {
   const payer = payerOf(keyOf);
-  const share = shareOf(payer);
+  const share = shareOf(payer, m.lines);
   const paid = payerPaid(m.ledger, keyOf);
   const still = stillToCome(share, paid);
 
@@ -162,7 +162,7 @@ function PayerFigures({ m, keyOf, locale }: { m: BudgetModel; keyOf: PayerKey; l
                 <MoneyRow
                   title={line?.name ?? cover.line}
                   line={cover.share === 1 ? W.allOfIt : W.half}
-                  value={rangeOf(coverAmount(cover.line, cover.share), (pence) =>
+                  value={rangeOf(coverAmount(cover.line, cover.share, m.lines), (pence) =>
                     money(pence, locale),
                   )}
                   quiet
@@ -179,7 +179,7 @@ function PayerFigures({ m, keyOf, locale }: { m: BudgetModel; keyOf: PayerKey; l
 /** A payer's page: their share as the card, Paid, Still to come, Covers, and the link's state. */
 export function PayerPage({ m, event, locale, keyOf }: PayersProps & { keyOf: PayerKey }) {
   const payer = payerOf(keyOf);
-  const share = shareOf(payer);
+  const share = shareOf(payer, m.lines);
   const fixed = share.settled === share.ifAll;
 
   if (m.longName)
@@ -259,8 +259,8 @@ export function SendAction({
 /** The iPad: what has a payer and what has none, then a card per payer in two columns, Send in each card's foot. */
 export function PayersPad({ m, locale, onSend }: PayersProps) {
   const { layout } = useShell();
-  const payers = payersOf();
-  const totals = totalsOf();
+  const payers = payersOf(m.lines);
+  const totals = totalsOf(m.lines);
   const gap = layout === 'landscape' ? tokens.space5xl : tokens.space3xl;
 
   if (m.payers !== 'shown')
@@ -326,7 +326,7 @@ function PadCard({
   onSend: (key: PayerKey) => void;
 }) {
   const payer = payerOf(keyOf);
-  const share = shareOf(payer);
+  const share = shareOf(payer, m.lines);
   const paid = payerPaid(m.ledger, keyOf);
   const still = stillToCome(share, paid);
   const link = m.links[keyOf];
@@ -374,7 +374,7 @@ function PadCard({
               <MoneyRow
                 title={LINES.find((one) => one.key === cover.line)?.name ?? cover.line}
                 line={cover.share === 1 ? W.allOfIt : W.half}
-                value={rangeOf(coverAmount(cover.line, cover.share), (pence) =>
+                value={rangeOf(coverAmount(cover.line, cover.share, m.lines), (pence) =>
                   money(pence, locale),
                 )}
                 quiet

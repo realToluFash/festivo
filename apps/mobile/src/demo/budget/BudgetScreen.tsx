@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
+import {
+  type RefObject,
+  useCallback,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+} from 'react';
 import {
   AppState,
   type ScrollViewInstance,
@@ -9,15 +17,26 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useReadOut } from '../../components/ReadOut.tsx';
+import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
 import { useShell } from '../../components/settingsShell.ts';
 import { PHONE_TAB_BAR } from '../../components/TodayCover.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { EventFrame } from '../events/EventFrame.tsx';
 import type { Shown } from '../events/EventsModel.ts';
 import type { AreaKey } from '../events/EventsSample.ts';
-import { type BudgetState, days, money, paymentOf, reduce, startOf } from './BudgetModel.ts';
-import { REMOVED_PAYER, TODAY, VENDORS, type PayerKey } from './BudgetSample.ts';
-import { BudgetHome } from './BudgetHome.tsx';
+import {
+  type BudgetState,
+  LIVE_CHANGE,
+  days,
+  money,
+  owed,
+  paymentOf,
+  reduce,
+  startOf,
+  withRate,
+} from './BudgetModel.ts';
+import { LINES, REMOVED_PAYER, TODAY, VENDORS, type PayerKey } from './BudgetSample.ts';
+import { BudgetHome, liveWords } from './BudgetHome.tsx';
 import { DueNow } from './DueNow.tsx';
 import { MarkPaid } from './MarkPaid.tsx';
 import { PayerPage, PayersList, PayersPad, SendAction } from './Payers.tsx';
@@ -27,6 +46,7 @@ const READER = 'Folake Adeyemi';
 const SEND_MS = 700;
 const LINK_MS = 900;
 const RECONNECT_MS = 2500;
+const LIVE_MS = 1200;
 
 /** Budget A in the event's frame, on sample data: nothing reaches the API, and each wait is a timer. */
 export function BudgetScreen({
@@ -51,7 +71,16 @@ export function BudgetScreen({
   const phone = layout === 'phone';
   const [m, go] = useReducer(reduce, null, () => startOf(state, REMOVED_PAYER));
   const [toast, setToast] = useState<string | null>(null);
-  const opener = useRef<ViewInstance>(null);
+  const rows = useRef<Partial<Record<string, ViewInstance | null>>>({});
+  const from = useRef('card');
+  const opener = useMemo<RefObject<ScreenReaderTarget | null>>(
+    () => ({
+      get current() {
+        return rows.current[from.current] ?? null;
+      },
+    }),
+    [],
+  );
   const scroll = useRef<ScrollViewInstance>(null);
   const scrolledOnce = useRef(false);
   useReadOut(m.told?.words ?? null, { answer: m.told?.at });
@@ -60,10 +89,18 @@ export function BudgetScreen({
   useEffect(() => {
     if (sendingForm == null) return undefined;
     const amount = sendingForm.amount ?? paymentOf(sendingForm.id).amount;
-    const words = say.markedPaid(money(amount, locale), days.long(TODAY, locale));
+    const words = say.markedPaid(money(amount, locale), days.long(sendingForm.on, locale));
     const timer = setTimeout(() => go({ type: 'marked', amount, reader: READER, words }), SEND_MS);
     return () => clearTimeout(timer);
   }, [sendingForm, locale]);
+
+  const live = state === 'live_update';
+  useEffect(() => {
+    if (!live) return undefined;
+    const words = liveWords(withRate(LINES, LIVE_CHANGE.line, LIVE_CHANGE.to), locale);
+    const timer = setTimeout(() => go({ type: 'liveChange', words }), LIVE_MS);
+    return () => clearTimeout(timer);
+  }, [live, locale]);
 
   useEffect(() => {
     if (m.link !== 'reconnecting') return undefined;
@@ -88,7 +125,7 @@ export function BudgetScreen({
     return () => away.remove();
   }, []);
 
-  const onMark = (amount: number) => go({ type: 'sendMark', amount });
+  const onMark = (amount: number, on: string) => go({ type: 'sendMark', amount, on });
   const onWashed = useCallback(() => go({ type: 'washed' }), []);
   const ceilingAt = (y: number) => {
     if (!m.scrolled || scrolledOnce.current) return;
@@ -121,11 +158,27 @@ export function BudgetScreen({
         locale={locale}
         onWashed={onWashed}
         actions={{
-          onStep: (id) => go({ type: 'openMark', id, from: 'card' }),
+          onStep: (id) => {
+            from.current = 'card';
+            go({ type: 'openMark', id, from: 'card' });
+          },
+          onRow: (id) => {
+            from.current = id;
+            go({ type: 'openMark', id, from: 'card' });
+          },
+          rowRef: (id) => (node) => {
+            rows.current[id] = node;
+          },
+          onEverything: () => {
+            from.current = 'everything';
+            go({ type: 'openDueNow', ids: owed(m.ledger).map((payment) => payment.id) });
+          },
           onUndo: (id, vendor) => go({ type: 'undo', id, words: say.unmarked(vendor) }),
           onPayers: toPayers,
           onOwnDesign: ownDesign,
-          stepRef: opener,
+          stepRef: (node: ViewInstance | null) => {
+            rows.current.card = node;
+          },
           ceilingAt,
         }}
       />

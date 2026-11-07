@@ -17,7 +17,9 @@ import {
   ceilingState,
   checkAmount,
   coverAmount,
+  dateTooLate,
   days,
+  dueNowSettled,
   ledgerFor,
   money,
   nextPayment,
@@ -34,6 +36,7 @@ import {
   stillToCome,
   totalsOf,
   whole,
+  LIVE_CHANGE,
 } from './BudgetModel.ts';
 import {
   CEILINGS,
@@ -100,6 +103,33 @@ describe('the costs add up exactly to the total', () => {
     expect(money(head.ifAll)).toBe('£173.38');
     expect(whole(head.settled)).toBe('£206');
     expect(whole(head.ifAll)).toBe('£173');
+  });
+});
+
+describe('a live change: Dinner from £68.00 to £70.00 a head (sc-93, 7 Nov)', () => {
+  const changed = reduce(startOf('live_update', REMOVED_PAYER), { type: 'liveChange', words: 'x' });
+
+  it('arrives after the page opens, and washes what it moved', () => {
+    expect(startOf('live_update', REMOVED_PAYER).lines).toBe(LINES);
+    expect(changed.lines.find((line) => line.key === LIVE_CHANGE.line)?.rate).toBe(7000);
+    expect(changed).toMatchObject({ wash: true, liveLine: true, showLive: true });
+    expect(reduce(changed, { type: 'washed' }).wash).toBe(false);
+  });
+
+  it('moves the range, per head and the rows, which still add up exactly', () => {
+    const rows = changed.lines.map(amountOf).flatMap((a) => (a.kind === 'priced' ? [a] : []));
+    const totals = totalsOf(changed.lines);
+    const head = perHeadOf(totals);
+
+    expect(rows.reduce((sum, row) => sum + row.settled, 0)).toBe(totals.settled);
+    expect(rows.reduce((sum, row) => sum + row.ifAll, 0)).toBe(totals.ifAll);
+    expect([whole(totals.settled), whole(totals.ifAll)]).toEqual(['£19,922', '£23,326']);
+    expect([money(head.settled), money(head.ifAll)]).toEqual(['£207.52', '£175.38']);
+    expect(money(totals.settled - totalsOf().settled)).toBe('£192.00');
+    expect(categoryState('Catering', changed.lines)).toBe('close');
+    const payers = payersOf(changed.lines);
+    expect(payers.has.settled + payers.noPayer).toBe(totals.settled);
+    expect(payers.has.ifAll + payers.noPayer).toBe(totals.ifAll);
   });
 });
 
@@ -171,7 +201,7 @@ describe('payments: Due next, Against plan and the card’s one step', () => {
 
 describe('Mark paid (sc-88): the form, sending, marked with Undo, refused', () => {
   const marked = (m: ReturnType<typeof startOf>) =>
-    reduce(reduce(m, { type: 'sendMark', amount: 84000 }), {
+    reduce(reduce(m, { type: 'sendMark', amount: 84000, on: '2026-11-03' }), {
       type: 'marked',
       amount: 84000,
       reader: READER,
@@ -219,6 +249,25 @@ describe('Mark paid (sc-88): the form, sending, marked with Undo, refused', () =
     expect(planOf(cancelled.ledger)).toMatchObject({ paid: 431000, stillToPay: 1225000 });
   });
 
+  it('dates the payment today, or an earlier day from the calendar, never later', () => {
+    const earlier = startOf('mark_paid_earlier', REMOVED_PAYER);
+    const done = reduce(reduce(earlier, { type: 'sendMark', amount: 84000, on: '2026-11-02' }), {
+      type: 'marked',
+      amount: 84000,
+      reader: READER,
+      words: 'x',
+    });
+
+    expect(startOf('mark_paid_open', REMOVED_PAYER).form?.on).toBe('2026-11-03');
+    expect(earlier.form?.on).toBe('2026-11-02');
+    expect(done.ledger.paid['bloom-balance']).toMatchObject({ on: '2026-11-02', amount: 84000 });
+    expect(['2026-11-02', '2026-11-03', '2026-11-04'].map(dateTooLate)).toEqual([
+      false,
+      false,
+      true,
+    ]);
+  });
+
   it('checks the amount and the reference before sending', () => {
     expect(checkAmount('840.00')).toEqual({ ok: true, pence: 84000 });
     expect(checkAmount('1,250.5')).toEqual({ ok: true, pence: 125050 });
@@ -262,7 +311,7 @@ describe('Due now (sc-1331): one tap each, no total', () => {
       id: 'bloom-balance',
       from: 'dueNow',
     });
-    const done = reduce(reduce(form, { type: 'sendMark', amount: 90000 }), {
+    const done = reduce(reduce(form, { type: 'sendMark', amount: 90000, on: '2026-11-03' }), {
       type: 'marked',
       amount: 90000,
       reader: READER,
@@ -272,6 +321,30 @@ describe('Due now (sc-1331): one tap each, no total', () => {
     expect(done.dueNow?.marked).toEqual(['bloom-balance']);
     expect(done.marked).toEqual([]);
     expect(done.ledger.paid['bloom-balance']?.amount).toBe(90000);
+  });
+
+  it('opens from Everything due on what is still owed, with no reminder line', () => {
+    const m = startOf('populated', REMOVED_PAYER);
+    const sheet = reduce(m, { type: 'openDueNow', ids: owed(m.ledger).map((p) => p.id) }).dueNow;
+
+    expect(sheet?.ids).toEqual([
+      'bloom-balance',
+      'savour-deposit',
+      'landmark-balance',
+      'savour-second',
+      'lens-balance',
+    ]);
+    expect(sheet?.fromReminder).toBe(false);
+  });
+
+  it('heads a sheet whose every row changed with Nothing left to pay, the rows kept', () => {
+    const changed = startOf('due_changed', REMOVED_PAYER);
+    const open = startOf('due_now', REMOVED_PAYER);
+
+    expect(changed.dueNow != null && dueNowSettled(changed.dueNow, changed.ledger)).toBe(true);
+    expect(changed.dueNow?.ids).toEqual(['bloom-balance', 'savour-deposit']);
+    expect(open.dueNow != null && dueNowSettled(open.dueNow, open.ledger)).toBe(false);
+    expect(W.nothingLeftHead).toBe('Nothing left to pay.');
   });
 
   it('reads the payments as they are now', () => {

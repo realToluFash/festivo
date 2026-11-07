@@ -49,6 +49,8 @@ export const W = {
   cancel: 'Cancel',
   close: 'Close',
   amountWrong: 'Enter the amount as a number above 0, like 3,500.50.',
+  dateLate: 'The date paid cannot be in the future. Choose today or an earlier date.',
+  done: 'Done',
   referenceLong: 'Shorten the reference to 100 characters or fewer.',
   alreadyPaid: (name: string) => `${name} has already marked this paid, so nothing has changed.`,
   cancelled: 'This payment has been cancelled, so it cannot be marked paid.',
@@ -57,6 +59,7 @@ export const W = {
   paidDifferent: 'Paid a different amount',
   cancelledWord: 'Cancelled',
   nothingLeft: 'Nothing left to pay from this reminder',
+  nothingLeftHead: 'Nothing left to pay.',
   hasAPayer: 'Has a payer',
   noPayerYet: 'No payer yet',
   chosenOnComputer: 'Who pays is chosen on a computer.',
@@ -143,4 +146,6 @@ export const say = {
   ownDesign: (what: string) => `${what} has its own design.`,
   paymentFor: (vendor: string, what: string, event: string) => `${vendor} · ${what} · ${event}`,
   due: (date: string) => `Due ${date}`,
+  rateChanged: (name: string, rate: string, amount: string, up: boolean) =>
+    `${name} was changed to ${rate}, so the settled total went ${up ? 'up' : 'down'} by ${amount}.`,
 };

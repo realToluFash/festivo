@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import type { ReactNode, Ref } from 'react';
+import { Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 
 import { Glyph, type GlyphName } from '../../components/Glyph.tsx';
@@ -108,7 +108,6 @@ function Chip({
   );
 }
 
-/** A ceiling's state as a tag: amber with its ring, never red; Within on grey. */
 export function StateTag({ state }: { state: CeilingState }) {
   const within = state === 'within';
   const ink = within ? tokens.colorInkSecondary : tokens.colorAttentionText;
@@ -175,8 +174,10 @@ export function MoneyRow({
   opens = false,
   lit = false,
   action,
+  hint,
   onPress,
   testID,
+  ref,
 }: {
   title: string;
   line?: string | undefined;
@@ -189,8 +190,11 @@ export function MoneyRow({
   lit?: boolean;
   /** A button at the row's end, as Undo: the words one stop, the button its own. */
   action?: ReactNode;
+  /** What pressing the row does, when its words alone do not say (Due next's Mark paid). */
+  hint?: string | undefined;
   onPress?: (() => void) | undefined;
   testID?: string;
+  ref?: Ref<ViewInstance> | undefined;
 }) {
   const named = value == null ? title : `${title}: ${value}`;
   const label = [named, tag?.word, line].filter(Boolean).join('. ');
@@ -242,10 +246,12 @@ export function MoneyRow({
 
   return (
     <Pressable
+      ref={ref}
       onPress={onPress}
       style={({ pressed }) => [...box, pressed && styles.pressed]}
       accessibilityRole="button"
       accessibilityLabel={label}
+      accessibilityHint={hint}
       testID={testID}
     >
       {words}
@@ -306,7 +312,6 @@ export function InfoLine({ text, glyph = 'info' }: { text: string; glyph?: Glyph
   );
 }
 
-/** A refusal from the server, at the top of a form: red on its tint, said at once. */
 export function AlertBox({ text }: { text: string }) {
   useReadOut(text, { interrupts: true });
 
@@ -317,6 +322,18 @@ export function AlertBox({ text }: { text: string }) {
       </View>
       <Text size={14.5} weight="semibold" style={[styles.grow, styles.broken, styles.alertText]}>
         {text}
+      </Text>
+    </View>
+  );
+}
+
+/** The live line: a dot and what changed, said politely as it arrives (spec §5). */
+export function LiveLine({ words }: { words: string }) {
+  return (
+    <View style={styles.liveLine}>
+      <View style={[styles.liveDot, styles.liveLineDot]} {...hidden} />
+      <Text size={14.5} weight="medium" style={[styles.grow, styles.liveText]}>
+        {words}
       </Text>
     </View>
   );
@@ -442,6 +459,9 @@ const styles = StyleSheet.create({
   },
   alertText: { lineHeight: 14.5 * 1.45 },
   live: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXs },
+  liveLine: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceMd },
+  liveLineDot: { width: 10, height: 10, borderRadius: 5, marginTop: 6 },
+  liveText: { lineHeight: 14.5 * 1.4 },
   liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: tokens.marks.done.fill },
   title: { gap: tokens.spaceXxs, paddingTop: 14 },
   headRow: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceMd },

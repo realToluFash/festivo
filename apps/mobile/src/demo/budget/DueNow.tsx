@@ -14,6 +14,7 @@ import {
   type Ledger,
   type MarkForm,
   days,
+  dueNowSettled,
   isOverdue,
   isOwed,
   money,
@@ -50,7 +51,7 @@ export function DueNow({
   onUndo: (id: string) => void;
   onDifferent: (id: string) => void;
   onCloseForm: () => void;
-  onMark: (pence: number) => void;
+  onMark: (pence: number, on: string) => void;
 }) {
   const { layout } = useShell();
   const [last, setLast] = useState(sheet);
@@ -58,7 +59,11 @@ export function DueNow({
   const shown = sheet ?? last;
   const marking = form?.from === 'dueNow' ? form : null;
   const sending = marking?.phase === 'sending';
-  const hook = useMarkForm(marking?.id ?? REMINDER.payments[0] ?? 'bloom-balance', onMark);
+  const hook = useMarkForm(
+    marking?.id ?? REMINDER.payments[0] ?? 'bloom-balance',
+    onMark,
+    marking?.on,
+  );
   useSendingWords(sending ? W.markingPaid : undefined);
   const list =
     shown == null ? null : (
@@ -167,19 +172,35 @@ function DueList({
       </View>
     );
 
+  const settled = dueNowSettled(sheet, ledger);
+
   return (
     <View style={styles.list}>
-      <Text size={15} weight="medium" style={styles.secondary}>
-        {say.fromReminder(days.month(REMINDER.sent, locale), REMINDER.payments.length)}
-      </Text>
+      {settled && (
+        <Text size={20} weight="bold" accessibilityRole="header" style={styles.doneTitle}>
+          {W.nothingLeftHead}
+        </Text>
+      )}
+      {sheet.fromReminder && (
+        <Text size={15} weight="medium" style={styles.secondary}>
+          {say.fromReminder(days.month(REMINDER.sent, locale), sheet.ids.length)}
+        </Text>
+      )}
       {sheet.readOnly && <PlanLine text={W.readOnly} />}
       <RowList
-        items={REMINDER.payments.map((id) => ({
+        items={sheet.ids.map((id) => ({
           key: id,
           selected: sheet.marked.includes(id),
           row: <DueRow id={id} sheet={sheet} ledger={ledger} locale={locale} on={on} />,
         }))}
       />
+      {settled && (
+        <TextAction
+          label={say.everythingDueOn(EVENT_NAME)}
+          onPress={on.onClose}
+          testID="budget.dueNow.everything"
+        />
+      )}
     </View>
   );
 }

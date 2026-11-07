@@ -26,6 +26,7 @@ import {
   amountOf,
   canMark,
   categoriesIn,
+  LIVE_CHANGE,
   categoryState,
   ceilingState,
   days,
@@ -58,6 +59,7 @@ import {
   CapsHead,
   CeilingMark,
   InfoLine,
+  LiveLine,
   LiveMark,
   MarkWord,
   MoneyRow,
@@ -75,6 +77,9 @@ const WASH_MS = 1600;
 
 export interface HomeActions {
   onStep: (id: string) => void;
+  onRow: (id: string) => void;
+  rowRef: (id: string) => (node: ViewInstance | null) => void;
+  onEverything: () => void;
   onUndo: (id: string, vendor: string) => void;
   onPayers: () => void;
   onOwnDesign: (what: string) => void;
@@ -127,15 +132,16 @@ function Wash({ on, onDone, children }: { on: boolean; onDone: () => void; child
 }
 
 function PerHead({
+  m,
   locale,
-  wash,
   onWashed,
 }: {
+  m: BudgetModel;
   locale: string;
-  wash: boolean;
   onWashed: () => void;
 }) {
-  const head = perHeadOf();
+  const head = perHeadOf(totalsOf(m.lines));
+  const wash = m.wash;
 
   return (
     <Wash on={wash} onDone={onWashed}>
@@ -196,7 +202,8 @@ function DueNext({
           <TextAction
             label={say.everythingDue(everything)}
             after="chevron"
-            onPress={() => actions.onOwnDesign(W.everythingDue)}
+            onPress={actions.onEverything}
+            ref={actions.rowRef('everything')}
             testID="budget.everythingDue"
           />
         ) : undefined
@@ -237,6 +244,7 @@ function DueNext({
                 />
               ) : (
                 <MoneyRow
+                  ref={actions.rowRef(payment.id)}
                   title={vendor}
                   tag={
                     isOverdue(payment)
@@ -245,6 +253,9 @@ function DueNext({
                   }
                   line={say.dueLine(payment.what, days.short(payment.due, locale))}
                   value={money(payment.amount, locale)}
+                  opens={canMark(m)}
+                  hint={canMark(m) ? W.markPaid : undefined}
+                  onPress={canMark(m) ? () => actions.onRow(payment.id) : undefined}
                   testID={`budget.due.${payment.id}`}
                 />
               ),
@@ -257,13 +268,17 @@ function DueNext({
 }
 
 function Ceiling({
+  m,
   locale,
+  onWashed,
   onLayout,
 }: {
+  m: BudgetModel;
   locale: string;
+  onWashed: () => void;
   onLayout?: (event: LayoutChangeEvent) => void;
 }) {
-  const totals = totalsOf();
+  const totals = totalsOf(m.lines);
   const limit = CEILINGS.whole;
   const state = ceilingState(limit, totals.settled, totals.ifAll);
   const sentence =
@@ -280,28 +295,38 @@ function Ceiling({
   return (
     <View onLayout={onLayout}>
       <Section title={W.ceiling}>
-        <MoneyRow
-          title={say.ceilingRow(money(limit, locale))}
-          line={sentence}
-          lead={
-            <CeilingMark
-              state={state}
-              side={22}
-              ink={state === 'within' ? tokens.colorInkSecondary : tokens.colorAttentionText}
-            />
-          }
-          tag={{ node: null, word: say.state(state) }}
-          trail={<StateTag state={state} />}
-          testID="budget.ceiling"
-        />
+        <Wash on={m.wash} onDone={onWashed}>
+          <MoneyRow
+            title={say.ceilingRow(money(limit, locale))}
+            line={sentence}
+            lead={
+              <CeilingMark
+                state={state}
+                side={22}
+                ink={state === 'within' ? tokens.colorInkSecondary : tokens.colorAttentionText}
+              />
+            }
+            tag={{ node: null, word: say.state(state) }}
+            trail={<StateTag state={state} />}
+            testID="budget.ceiling"
+          />
+        </Wash>
       </Section>
     </View>
   );
 }
 
-function AgainstPlan({ m, locale }: { m: BudgetModel; locale: string }) {
-  const plan = planOf(m.ledger);
-  const totals = totalsOf();
+function AgainstPlan({
+  m,
+  locale,
+  onWashed,
+}: {
+  m: BudgetModel;
+  locale: string;
+  onWashed: () => void;
+}) {
+  const totals = totalsOf(m.lines);
+  const plan = planOf(m.ledger, totals);
   const rows: [string, string, string | undefined][] = [
     [
       W.planned,
@@ -319,13 +344,15 @@ function AgainstPlan({ m, locale }: { m: BudgetModel; locale: string }) {
         items={rows.map(([title, value, line]) => ({
           key: title,
           row: (
-            <MoneyRow
-              title={title}
-              line={line}
-              value={value}
-              quiet
-              testID={`budget.plan.${title}`}
-            />
+            <Wash on={m.wash && title === W.planned} onDone={onWashed}>
+              <MoneyRow
+                title={title}
+                line={line}
+                value={value}
+                quiet
+                testID={`budget.plan.${title}`}
+              />
+            </Wash>
           ),
         }))}
       />
@@ -342,7 +369,7 @@ function WhoIsPaying({
   locale: string;
   onPayers: () => void;
 }) {
-  const payers = payersOf();
+  const payers = payersOf(m.lines);
   const line =
     m.payers === 'none'
       ? W.noPayersYet
@@ -375,11 +402,21 @@ function costLine(line: CostLine, locale: string): string {
   return say.quantity(rate, line.settled, line.source);
 }
 
-function Costs({ locale, onOwnDesign }: { locale: string; onOwnDesign: (what: string) => void }) {
+function Costs({
+  m,
+  locale,
+  onWashed,
+  onOwnDesign,
+}: {
+  m: BudgetModel;
+  locale: string;
+  onWashed: () => void;
+  onOwnDesign: (what: string) => void;
+}) {
   return (
     <Section title={W.costs}>
-      {categoriesIn().map((category) => {
-        const state = categoryState(category);
+      {categoriesIn(m.lines).map((category) => {
+        const state = categoryState(category, m.lines);
         return (
           <View key={category}>
             <CapsHead
@@ -387,43 +424,47 @@ function Costs({ locale, onOwnDesign }: { locale: string; onOwnDesign: (what: st
               right={state == null ? undefined : <StateTag state={state} />}
             />
             <RowList
-              items={LINES.filter((line) => line.category === category).map((line) => {
-                const amount = amountOf(line);
-                const trail =
-                  amount.kind === 'notPriced' ? (
-                    <MarkWord
-                      mark={<RingMark dashed ink={tokens.colorInkSecondary} />}
-                      word={W.notPriced}
-                    />
-                  ) : amount.kind === 'nothingYet' ? (
-                    <MarkWord
-                      mark={<RingMark ink={tokens.colorInkSecondary} />}
-                      word={W.notCounted}
-                    />
-                  ) : (
-                    <Amount text={money(amount.settled, locale)} />
-                  );
-                const value =
-                  amount.kind === 'priced'
-                    ? money(amount.settled, locale)
-                    : amount.kind === 'notPriced'
-                      ? W.notPriced
-                      : W.notCounted;
-                return {
-                  key: line.key,
-                  row: (
-                    <MoneyRow
-                      title={line.name}
-                      line={costLine(line, locale)}
-                      value={value}
-                      trail={trail}
-                      opens
-                      onPress={() => onOwnDesign(line.name)}
-                      testID={`budget.cost.${line.key}`}
-                    />
-                  ),
-                };
-              })}
+              items={m.lines
+                .filter((line) => line.category === category)
+                .map((line) => {
+                  const amount = amountOf(line);
+                  const trail =
+                    amount.kind === 'notPriced' ? (
+                      <MarkWord
+                        mark={<RingMark dashed ink={tokens.colorInkSecondary} />}
+                        word={W.notPriced}
+                      />
+                    ) : amount.kind === 'nothingYet' ? (
+                      <MarkWord
+                        mark={<RingMark ink={tokens.colorInkSecondary} />}
+                        word={W.notCounted}
+                      />
+                    ) : (
+                      <Amount text={money(amount.settled, locale)} />
+                    );
+                  const value =
+                    amount.kind === 'priced'
+                      ? money(amount.settled, locale)
+                      : amount.kind === 'notPriced'
+                        ? W.notPriced
+                        : W.notCounted;
+                  return {
+                    key: line.key,
+                    row: (
+                      <Wash on={m.wash && line.key === LIVE_CHANGE.line} onDone={onWashed}>
+                        <MoneyRow
+                          title={line.name}
+                          line={costLine(line, locale)}
+                          value={value}
+                          trail={trail}
+                          opens
+                          onPress={() => onOwnDesign(line.name)}
+                          testID={`budget.cost.${line.key}`}
+                        />
+                      </Wash>
+                    ),
+                  };
+                })}
             />
           </View>
         );
@@ -455,6 +496,7 @@ export function BudgetHome({
       right={m.showLive && m.link === 'live' ? <LiveMark word={W.live} /> : undefined}
     />
   );
+  const live = m.liveLine ? <LiveLine words={liveWords(m.lines, locale)} /> : null;
 
   if (m.figures === 'never')
     return (
@@ -483,7 +525,7 @@ export function BudgetHome({
       </>
     );
 
-  const totals = totalsOf();
+  const totals = totalsOf(m.lines);
   const next = canMark(m) ? cardSays(m.ledger, locale) : null;
   const card = (
     <BudgetCard
@@ -532,15 +574,16 @@ export function BudgetHome({
     return (
       <>
         {title}
+        {live}
         {notices}
         {card}
         {after}
-        <PerHead locale={locale} wash={m.wash} onWashed={onWashed} />
+        <PerHead m={m} locale={locale} onWashed={onWashed} />
         <DueNext m={m} locale={locale} count={3} link={m.vendors === 'on'} actions={actions} />
-        <Ceiling locale={locale} onLayout={ceilingAt} />
-        <AgainstPlan m={m} locale={locale} />
+        <Ceiling m={m} locale={locale} onWashed={onWashed} onLayout={ceilingAt} />
+        <AgainstPlan m={m} locale={locale} onWashed={onWashed} />
         <WhoIsPaying m={m} locale={locale} onPayers={actions.onPayers} />
-        <Costs locale={locale} onOwnDesign={actions.onOwnDesign} />
+        <Costs m={m} locale={locale} onWashed={onWashed} onOwnDesign={actions.onOwnDesign} />
       </>
     );
 
@@ -548,22 +591,37 @@ export function BudgetHome({
   return (
     <>
       {title}
+      {live}
       {notices}
       {card}
       {after}
       <View style={[styles.columns, { gap: side ? tokens.space5xl : tokens.space3xl }]}>
         <View style={[styles.right, { width: side ? 340 : 306 }]}>
-          <PerHead locale={locale} wash={m.wash} onWashed={onWashed} />
-          <Ceiling locale={locale} />
+          <PerHead m={m} locale={locale} onWashed={onWashed} />
+          <Ceiling m={m} locale={locale} onWashed={onWashed} />
           <DueNext m={m} locale={locale} count={2} link={false} actions={actions} />
-          <AgainstPlan m={m} locale={locale} />
+          <AgainstPlan m={m} locale={locale} onWashed={onWashed} />
           <WhoIsPaying m={m} locale={locale} onPayers={actions.onPayers} />
         </View>
         <View style={styles.left}>
-          <Costs locale={locale} onOwnDesign={actions.onOwnDesign} />
+          <Costs m={m} locale={locale} onWashed={onWashed} onOwnDesign={actions.onOwnDesign} />
         </View>
       </View>
     </>
+  );
+}
+
+/** sc-85's live line, what changed and by how much, as the colleague's rate arrives. */
+export function liveWords(lines: readonly CostLine[], locale: string): string {
+  const line = LINES.find((one) => one.key === LIVE_CHANGE.line);
+  const before = totalsOf(LINES).settled;
+  const after = totalsOf(lines).settled;
+  const rate = say.rate(money(LIVE_CHANGE.to, locale), 'perHead');
+  return say.rateChanged(
+    line?.name ?? '',
+    rate,
+    money(Math.abs(after - before), locale),
+    after >= before,
   );
 }
 

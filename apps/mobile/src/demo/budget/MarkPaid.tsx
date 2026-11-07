@@ -1,5 +1,7 @@
+import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { type RefObject, useEffect, useRef, useState } from 'react';
 import {
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -26,6 +28,7 @@ import {
   type MarkForm,
   checkAmount,
   currencySymbol,
+  dateTooLate,
   days,
   money,
   paymentOf,
@@ -34,6 +37,7 @@ import {
 } from './BudgetModel.ts';
 import { COLLEAGUE, EVENT_NAME, TODAY, VENDORS } from './BudgetSample.ts';
 import { AlertBox, MoneyRow } from './BudgetParts.tsx';
+import { MomentBox } from '../events/EventsPick.tsx';
 import { W, say } from './BudgetWords.ts';
 
 type Opener = RefObject<ScreenReaderTarget | null>;
@@ -43,16 +47,24 @@ export interface MarkInput {
   reference: string;
   amountError: string | null;
   referenceError: string | null;
+  on: string;
+  dateError: string | null;
 }
 
 /** sc-88's form, its checks before anything is sent: an amount above 0 at the currency's decimals, a reference of 100 at most. */
-export function useMarkForm(id: string, onMark: (pence: number) => void) {
+export function useMarkForm(
+  id: string,
+  onMark: (pence: number, on: string) => void,
+  startOn: string = TODAY,
+) {
   const scheduled = paymentOf(id).amount;
   const fresh = (): MarkInput => ({
     amount: typedAmount(scheduled),
     reference: '',
     amountError: null,
     referenceError: null,
+    on: startOn,
+    dateError: null,
   });
   const [input, setInput] = useState<MarkInput>(fresh);
   const [forId, setForId] = useState(id);
@@ -66,14 +78,16 @@ export function useMarkForm(id: string, onMark: (pence: number) => void) {
   const submit = () => {
     const amount = checkAmount(input.amount);
     const long = referenceTooLong(input.reference);
+    const late = dateTooLate(input.on);
     setInput((now) => ({
       ...now,
       amountError: amount.ok ? null : W.amountWrong,
       referenceError: long ? W.referenceLong : null,
+      dateError: late ? W.dateLate : null,
     }));
     if (!amount.ok) focusChecked(amountRef);
     else if (long) focusChecked(referenceRef);
-    else onMark(amount.pence);
+    else if (!late) onMark(amount.pence, input.on);
   };
 
   return { input, setInput, amountRef, referenceRef, submit, scheduled };
@@ -140,12 +154,11 @@ export function MarkFields({
               {diff > 0 ? say.more(money(diff, locale)) : say.less(money(-diff, locale))}
             </Text>
           )}
-          <Field label={W.datePaid}>
-            <TextField
-              value={days.field(TODAY, locale)}
-              editable={false}
-              accessibilityLabel={W.datePaid}
-              testID="budget.mark.date"
+          <Field label={W.datePaid} error={input.dateError}>
+            <DatePaid
+              on={input.on}
+              locale={locale}
+              onPick={(on) => setInput((now) => ({ ...now, on, dateError: null }))}
             />
           </Field>
           <Field label={W.reference} error={input.referenceError}>
@@ -171,6 +184,68 @@ export function MarkFields({
   );
 }
 
+function asDate(day: string): Date {
+  return new Date(`${day}T12:00:00Z`);
+}
+
+/** Today by default; the device's own calendar, earlier allowed and never later (sc-93, Decided 7 Nov). */
+function DatePaid({
+  on,
+  locale,
+  onPick,
+}: {
+  on: string;
+  locale: string;
+  onPick: (day: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const latest = asDate(TODAY);
+  const take = (picked: Date) => onPick(picked.toISOString().slice(0, 10));
+  const press = () => {
+    if (Platform.OS !== 'android') {
+      setOpen(!open);
+      return;
+    }
+    DateTimePickerAndroid.open({
+      value: asDate(on),
+      mode: 'date',
+      maximumDate: latest,
+      timeZoneName: 'UTC',
+      onChange: (event, picked) => {
+        if (event.type === 'set' && picked != null) take(picked);
+      },
+    });
+  };
+
+  return (
+    <View style={styles.date}>
+      <MomentBox
+        label={W.datePaid}
+        mode="date"
+        value={on}
+        locale={locale}
+        height={48}
+        onPress={press}
+        testID="budget.mark.date"
+      />
+      {open && (
+        <>
+          <DateTimePicker
+            value={asDate(on)}
+            mode="date"
+            display="inline"
+            maximumDate={latest}
+            timeZoneName="UTC"
+            locale={locale}
+            onChange={(_event, picked) => picked != null && take(picked)}
+          />
+          <TextAction label={W.done} onPress={() => setOpen(false)} testID="budget.mark.dateDone" />
+        </>
+      )}
+    </View>
+  );
+}
+
 /** Mark paid as each layout draws it: a sheet on the iPhone, a centred 540 upright, a panel docked on the right on its side. */
 export function MarkPaid({
   form,
@@ -183,7 +258,7 @@ export function MarkPaid({
   locale: string;
   opener: Opener;
   onClose: () => void;
-  onMark: (pence: number) => void;
+  onMark: (pence: number, on: string) => void;
 }) {
   const { layout } = useShell();
   const shown = form?.from === 'card' ? form : null;
@@ -218,13 +293,13 @@ function OpenForm({
   locale: string;
   opener: Opener;
   onClose: () => void;
-  onMark: (pence: number) => void;
+  onMark: (pence: number, on: string) => void;
 }) {
   const { layout } = useShell();
   const [last, setLast] = useState<MarkForm | null>(form);
   if (form != null && form !== last) setLast(form);
   const showing = form ?? last;
-  const hook = useMarkForm(showing?.id ?? 'bloom-balance', onMark);
+  const hook = useMarkForm(showing?.id ?? 'bloom-balance', onMark, showing?.on);
   const sending = form?.phase === 'sending';
   const refused = showing?.phase === 'refused';
   useSendingWords(sending ? W.markingPaid : undefined);
@@ -338,10 +413,10 @@ function Docked({
   form: MarkForm;
   locale: string;
   onClose: () => void;
-  onMark: (pence: number) => void;
+  onMark: (pence: number, on: string) => void;
 }) {
   const insets = useSafeAreaInsets();
-  const hook = useMarkForm(form.id, onMark);
+  const hook = useMarkForm(form.id, onMark, form.on);
   const head = useRef<TextHandle>(null);
   const sending = form.phase === 'sending';
   const refused = form.phase === 'refused';
@@ -438,6 +513,7 @@ const styles = StyleSheet.create({
   pressed: { opacity: tokens.opacityPressed },
   lineHeight: { lineHeight: 15 * 1.45 },
   fields: { gap: 14 },
+  date: { gap: tokens.spaceSm },
   prefixed: { paddingLeft: 34 },
   prefix: {
     position: 'absolute',

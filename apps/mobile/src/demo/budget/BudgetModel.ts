@@ -37,6 +37,7 @@ export const BUDGET_STATES = [
   'no_lines',
   'nothing_due',
   'mark_paid_open',
+  'mark_paid_earlier',
   'marked_paid',
   'refused_paid',
   'refused_cancelled',
@@ -176,7 +177,6 @@ export function totalsOf(lines: readonly Line[] = LINES): Totals {
   );
 }
 
-/** Per head in pence, rounded to the penny: settled over who said yes, and if all come. */
 export function perHeadOf(totals: Totals = totalsOf()): { settled: number; ifAll: number } {
   return {
     settled: Math.round(totals.settled / GUESTS.coming),
@@ -197,14 +197,17 @@ export function ceilingState(limit: number, settled: number, ifAll: number): Cei
   return 'within';
 }
 
-export function categoryTotals(category: Category): Totals {
-  return totalsOf(LINES.filter((line) => line.category === category));
+export function categoryTotals(category: Category, lines: readonly Line[] = LINES): Totals {
+  return totalsOf(lines.filter((line) => line.category === category));
 }
 
-export function categoryState(category: Category): CeilingState | null {
+export function categoryState(
+  category: Category,
+  lines: readonly Line[] = LINES,
+): CeilingState | null {
   const limit = CEILINGS.categories[category];
   if (limit == null) return null;
-  const totals = categoryTotals(category);
+  const totals = categoryTotals(category, lines);
   return ceilingState(limit, totals.settled, totals.ifAll);
 }
 
@@ -269,7 +272,6 @@ export interface Plan {
   scheduledCount: number;
 }
 
-/** sc-89's four figures, never merged into one actual. */
 export function planOf(ledger: Ledger, totals: Totals = totalsOf()): Plan {
   const paid = Object.values(ledger.paid);
   const due = owed(ledger);
@@ -340,6 +342,12 @@ export function checkAmount(typed: string): AmountCheck {
 
 export const REFERENCE_MAXIMUM = 100;
 
+export function dateTooLate(day: string): boolean {
+  return day > TODAY;
+}
+
+export const EARLIER_DAY = '2026-11-02';
+
 export function referenceTooLong(typed: string): boolean {
   return typed.trim().length > REFERENCE_MAXIMUM;
 }
@@ -353,22 +361,22 @@ export interface Share {
   ifAll: number;
 }
 
-function lineOf(key: string): Line {
-  const found = LINES.find((line) => line.key === key);
+function lineOf(key: string, lines: readonly Line[]): Line {
+  const found = lines.find((line) => line.key === key);
   if (found == null) throw new Error(`No line ${key} in the sample.`);
   return found;
 }
 
-export function coverAmount(lineKey: string, share: number): Share {
-  const amount = amountOf(lineOf(lineKey));
+export function coverAmount(lineKey: string, share: number, lines: readonly Line[] = LINES): Share {
+  const amount = amountOf(lineOf(lineKey, lines));
   if (amount.kind !== 'priced') return { settled: 0, ifAll: 0 };
   return { settled: amount.settled * share, ifAll: amount.ifAll * share };
 }
 
-export function shareOf(payer: Payer): Share {
+export function shareOf(payer: Payer, lines: readonly Line[] = LINES): Share {
   return payer.covers.reduce<Share>(
     (sum, cover) => {
-      const part = coverAmount(cover.line, cover.share);
+      const part = coverAmount(cover.line, cover.share, lines);
       return { settled: sum.settled + part.settled, ifAll: sum.ifAll + part.ifAll };
     },
     { settled: 0, ifAll: 0 },
@@ -393,14 +401,22 @@ export interface Payers {
   noPayerCosts: number;
 }
 
-export function payersOf(): Payers {
+export function payersOf(lines: readonly Line[] = LINES): Payers {
   const covered = new Set(PAYERS.flatMap((payer) => payer.covers.map((cover) => cover.line)));
-  const left = LINES.filter((line) => !covered.has(line.key));
-  const has = PAYERS.map(shareOf).reduce<Share>(
+  const left = lines.filter((line) => !covered.has(line.key));
+  const has = PAYERS.map((payer) => shareOf(payer, lines)).reduce<Share>(
     (sum, share) => ({ settled: sum.settled + share.settled, ifAll: sum.ifAll + share.ifAll }),
     { settled: 0, ifAll: 0 },
   );
   return { has, noPayer: totalsOf(left).settled, noPayerCosts: left.length };
+}
+
+/** sc-93's live change (pm and ux, 7 Nov): a colleague's new rate for Dinner arriving from the web. */
+export const LIVE_CHANGE = { line: 'dinner', from: 6800, to: 7000 };
+export const LIVE_WASHED = ['perHead', 'dinner', 'planned', 'ceiling'] as const;
+
+export function withRate(lines: readonly Line[], key: string, rate: number): Line[] {
+  return lines.map((line) => (line.key === key ? { ...line, rate } : line));
 }
 
 export function payerOf(key: PayerKey): Payer {
@@ -418,9 +434,13 @@ export interface MarkForm {
   phase: 'open' | 'sending' | 'refused';
   refusal: Refusal | null;
   amount: number | null;
+  on: string;
 }
 
 export interface DueNowSheet {
+  /** The reminder's payments, or everything still owed when Everything due opens it. */
+  ids: readonly string[];
+  fromReminder: boolean;
   marked: readonly string[];
   refused: readonly string[];
   readOnly: boolean;
@@ -433,6 +453,8 @@ export interface BudgetModel {
   link: 'live' | 'offline' | 'reconnecting';
   wash: boolean;
   showLive: boolean;
+  lines: readonly Line[];
+  liveLine: boolean;
   costs: boolean;
   vendors: 'on' | 'readOnly';
   ledger: Ledger;
@@ -463,6 +485,8 @@ export function startOf(state: BudgetState | null, removed: string): BudgetModel
     link: 'live',
     wash: false,
     showLive: false,
+    lines: LINES,
+    liveLine: false,
     costs: true,
     vendors: 'on',
     ledger: ledgerFor(state),
@@ -487,7 +511,7 @@ export function startOf(state: BudgetState | null, removed: string): BudgetModel
     case 'loading':
       return { ...base, figures: 'loading' };
     case 'live_update':
-      return { ...base, wash: true, showLive: true };
+      return { ...base, showLive: true };
     case 'not_live':
       return { ...base, link: 'offline' };
     case 'reconnecting':
@@ -499,7 +523,19 @@ export function startOf(state: BudgetState | null, removed: string): BudgetModel
     case 'mark_paid_open':
       return {
         ...base,
-        form: { id: bloom, from: 'card', phase: 'open', refusal: null, amount: null },
+        form: { id: bloom, from: 'card', phase: 'open', refusal: null, amount: null, on: TODAY },
+      };
+    case 'mark_paid_earlier':
+      return {
+        ...base,
+        form: {
+          id: bloom,
+          from: 'card',
+          phase: 'open',
+          refusal: null,
+          amount: null,
+          on: EARLIER_DAY,
+        },
       };
     case 'marked_paid':
       return {
@@ -510,12 +546,26 @@ export function startOf(state: BudgetState | null, removed: string): BudgetModel
     case 'refused_paid':
       return {
         ...base,
-        form: { id: bloom, from: 'card', phase: 'refused', refusal: 'paid', amount: null },
+        form: {
+          id: bloom,
+          from: 'card',
+          phase: 'refused',
+          refusal: 'paid',
+          amount: null,
+          on: TODAY,
+        },
       };
     case 'refused_cancelled':
       return {
         ...base,
-        form: { id: bloom, from: 'card', phase: 'refused', refusal: 'cancelled', amount: null },
+        form: {
+          id: bloom,
+          from: 'card',
+          phase: 'refused',
+          refusal: 'cancelled',
+          amount: null,
+          on: TODAY,
+        },
       };
     case 'read_only':
       return { ...base, vendors: 'readOnly' };
@@ -541,24 +591,52 @@ export function startOf(state: BudgetState | null, removed: string): BudgetModel
     case 'due_done':
       return {
         ...base,
-        dueNow: { marked: [], refused: [], readOnly: false, done: state === 'due_done' },
+        dueNow: {
+          ids: REMINDER.payments,
+          fromReminder: true,
+          marked: [],
+          refused: [],
+          readOnly: false,
+          done: state === 'due_done',
+        },
       };
     case 'due_marked':
       return {
         ...base,
         ledger: paidBy(base.ledger, bloom, 'Folake Adeyemi', TODAY, amountDue(bloom)),
-        dueNow: { marked: [bloom], refused: [], readOnly: false, done: false },
+        dueNow: {
+          ids: REMINDER.payments,
+          fromReminder: true,
+          marked: [bloom],
+          refused: [],
+          readOnly: false,
+          done: false,
+        },
       };
     case 'due_refused':
       return {
         ...base,
-        dueNow: { marked: [], refused: ['savour-deposit'], readOnly: false, done: false },
+        dueNow: {
+          ids: REMINDER.payments,
+          fromReminder: true,
+          marked: [],
+          refused: ['savour-deposit'],
+          readOnly: false,
+          done: false,
+        },
       };
     case 'due_read_only':
       return {
         ...base,
         vendors: 'readOnly',
-        dueNow: { marked: [], refused: [], readOnly: true, done: false },
+        dueNow: {
+          ids: REMINDER.payments,
+          fromReminder: true,
+          marked: [],
+          refused: [],
+          readOnly: true,
+          done: false,
+        },
       };
     default:
       return base;
@@ -567,12 +645,13 @@ export function startOf(state: BudgetState | null, removed: string): BudgetModel
 
 export type BudgetAction =
   | { type: 'openMark'; id: string; from: 'card' | 'dueNow' }
-  | { type: 'sendMark'; amount: number }
+  | { type: 'sendMark'; amount: number; on: string }
   | { type: 'marked'; amount: number; reader: string; words: string }
   | { type: 'closeForm' }
   | { type: 'undo'; id: string; words: string }
   | { type: 'leave' }
-  | { type: 'openDueNow' }
+  | { type: 'openDueNow'; ids: readonly string[] }
+  | { type: 'liveChange'; words: string }
   | { type: 'closeDueNow' }
   | { type: 'duePaid'; id: string; reader: string; words: string }
   | { type: 'dueUndo'; id: string; words: string }
@@ -582,6 +661,11 @@ export type BudgetAction =
   | { type: 'send'; key: PayerKey }
   | { type: 'linkMade'; key: PayerKey }
   | { type: 'told'; words: string | null };
+
+/** Every row on the sheet paid or cancelled elsewhere, none marked here: "Nothing left to pay." heads it (sc-93, 7 Nov). */
+export function dueNowSettled(sheet: DueNowSheet, ledger: Ledger): boolean {
+  return sheet.marked.length === 0 && sheet.ids.every((id) => !isOwed(ledger, id));
+}
 
 /** Mark paid shows only with a connection, the figures current and `vendors` on (sc-93). */
 export function canMark(m: BudgetModel): boolean {
@@ -593,16 +677,23 @@ export function reduce(m: BudgetModel, action: BudgetAction): BudgetModel {
     case 'openMark':
       return {
         ...m,
-        form: { id: action.id, from: action.from, phase: 'open', refusal: null, amount: null },
+        form: {
+          id: action.id,
+          from: action.from,
+          phase: 'open',
+          refusal: null,
+          amount: null,
+          on: TODAY,
+        },
       };
     case 'sendMark':
       return m.form == null
         ? m
-        : { ...m, form: { ...m.form, phase: 'sending', amount: action.amount } };
+        : { ...m, form: { ...m.form, phase: 'sending', amount: action.amount, on: action.on } };
     case 'marked': {
       if (m.form == null) return m;
-      const { id, from } = m.form;
-      const ledger = paidBy(m.ledger, id, action.reader, TODAY, action.amount);
+      const { id, from, on } = m.form;
+      const ledger = paidBy(m.ledger, id, action.reader, on, action.amount);
       const words = action.words;
       if (from === 'dueNow' && m.dueNow != null)
         return {
@@ -628,7 +719,14 @@ export function reduce(m: BudgetModel, action: BudgetAction): BudgetModel {
     case 'openDueNow':
       return {
         ...m,
-        dueNow: { marked: [], refused: [], readOnly: m.vendors === 'readOnly', done: false },
+        dueNow: {
+          ids: action.ids,
+          fromReminder: false,
+          marked: [],
+          refused: [],
+          readOnly: m.vendors === 'readOnly',
+          done: false,
+        },
       };
     case 'closeDueNow':
       return { ...m, dueNow: null, form: m.form?.from === 'dueNow' ? null : m.form };
@@ -655,6 +753,14 @@ export function reduce(m: BudgetModel, action: BudgetAction): BudgetModel {
       return { ...m, link: 'live', showLive: true };
     case 'washed':
       return { ...m, wash: false };
+    case 'liveChange':
+      return {
+        ...m,
+        lines: withRate(m.lines, LIVE_CHANGE.line, LIVE_CHANGE.to),
+        wash: true,
+        liveLine: true,
+        told: told(action.words),
+      };
     case 'view':
       return { ...m, view: action.view, removed: null, failed: null, scrolled: false };
     case 'send':
