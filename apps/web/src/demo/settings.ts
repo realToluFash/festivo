@@ -264,3 +264,8 @@ export const SETTINGS_PAGES: readonly { name: string; states: readonly DemoLink[
 function members(state: string, name: string, viewer: Viewer = VIEWERS.folake): DemoLink {
   return { to: settingsPath('members', viewer, state), name };
 }
+
+/** Rejects where the browser has no clipboard, as over plain http, so nothing says it copied what it did not. */
+export async function copyText(text: string): Promise<void> {
+  await navigator.clipboard.writeText(text);
+}

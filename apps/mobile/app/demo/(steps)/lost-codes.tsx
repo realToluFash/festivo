@@ -4,23 +4,25 @@ import { StyleSheet, View } from 'react-native';
 
 import { PrimaryButton, QuietButton } from '../../../src/components/Buttons.tsx';
 import { Notice } from '../../../src/components/Notice.tsx';
+import { Text } from '../../../src/components/Text.tsx';
 import { CodeBoxes, type CodeBoxesHandle, CodeLabel } from '../../../src/steps/CodeBoxes.tsx';
 import { DemoScreen, NavBar } from '../../../src/demo/DemoScreen.tsx';
 import {
+  CODE_SHORT,
+  type CodeBox,
   type Spent,
   type Tries,
+  boxWords,
   codeWords,
   newCode,
   spentWords,
   wrongAsk,
 } from '../../../src/demo/lostAuth.ts';
-import { Heading, Plain, Says } from '../../../src/steps/Lines.tsx';
+import { Heading, Says } from '../../../src/steps/Lines.tsx';
 import { CODE_LENGTH, minutesSeconds, RESEND_SECONDS } from '../../../src/steps/rules.ts';
 import { SAMPLE } from '../../../src/demo/samples.ts';
 import { useCountdown } from '../../../src/steps/useCountdown.ts';
 import { tokens } from '../../../src/theme/tokens.ts';
-
-type Which = 'email' | 'text';
 
 function opening(state: string | undefined): Spent | null {
   return state === 'expired' || state === 'exhausted' ? state : null;
@@ -32,14 +34,17 @@ export default function LostCodes() {
   const email = params.email ?? SAMPLE.email;
   const emailOnly = params.emailOnly != null;
   const words = codeWords(emailOnly);
-  const [codes, setCodes] = useState<Record<Which, string>>({ email: '', text: '' });
-  const [said, setSaid] = useState<{ which: Which; words: string } | null>(null);
+  const [codes, setCodes] = useState<Record<CodeBox, string>>({ email: '', text: '' });
+  const [said, setSaid] = useState<{ which: CodeBox; words: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [texted, setTexted] = useState(false);
   const [tries, setTries] = useState<Tries>(() => ({ wrongs: 0, spent: opening(params.state) }));
   const spent = tries.spent;
   const boxes = { email: useRef<CodeBoxesHandle>(null), text: useRef<CodeBoxesHandle>(null) };
   const { left, restart } = useCountdown(RESEND_SECONDS);
-  const needed: readonly Which[] = emailOnly ? ['email'] : ['email', 'text'];
+  const needed: readonly CodeBox[] = emailOnly ? ['email'] : ['email', 'text'];
+  const wordsFor = (which: CodeBox) =>
+    boxWords(which, texted, which === 'email' ? email : SAMPLE.phoneShown);
 
   function ask(): void {
     if (busy) return;
@@ -47,7 +52,7 @@ export default function LostCodes() {
     if (missing != null) {
       setSaid({
         which: missing,
-        words: emailOnly ? 'Enter the code.' : `Enter the code from the ${missing}.`,
+        words: codes[missing] === '' ? wordsFor(missing).blank : CODE_SHORT,
       });
       boxes[missing].current?.focus();
       return;
@@ -63,10 +68,7 @@ export default function LostCodes() {
           setSaid(null);
           return;
         }
-        setSaid({
-          which: wrong,
-          words: `That code does not match. Check the newest ${wrong === 'email' ? 'email' : 'text'} from Soirely.`,
-        });
+        setSaid({ which: wrong, words: wordsFor(wrong).wrong });
         boxes[wrong].current?.refuse();
         boxes[wrong].current?.focus();
         return;
@@ -83,26 +85,33 @@ export default function LostCodes() {
     boxes.email.current?.focus();
   }
 
-  const box = (which: Which, label: string, first: boolean) => (
-    <View>
-      {!emailOnly && <CodeLabel words={label} />}
-      <CodeBoxes
-        ref={boxes[which]}
-        label={`${label}, 6 digits`}
-        value={codes[which]}
-        onChange={(next) => {
-          setCodes((now) => ({ ...now, [which]: next }));
-          if (next !== '' && said?.which === which) setSaid(null);
-        }}
-        onFull={() => {
-          if (which === 'email' && !emailOnly) boxes.text.current?.focus();
-        }}
-        autoFocus={first}
-        testID={`demo.code.${which}`}
-      />
-      {said?.which === which && <Says words={said.words} />}
-    </View>
-  );
+  const box = (which: CodeBox, first: boolean) => {
+    const { label, sent } = wordsFor(which);
+
+    return (
+      <View>
+        {!emailOnly && <CodeLabel words={label} />}
+        <CodeBoxes
+          ref={boxes[which]}
+          label={`${label}, 6 digits`}
+          value={codes[which]}
+          onChange={(next) => {
+            setCodes((now) => ({ ...now, [which]: next }));
+            if (next !== '' && said?.which === which) setSaid(null);
+          }}
+          onFull={() => {
+            if (which === 'email' && !emailOnly) boxes.text.current?.focus();
+          }}
+          autoFocus={first}
+          testID={`demo.code.${which}`}
+        />
+        {said?.which === which && <Says words={said.words} />}
+        <Text size={tokens.typeSmall.size} style={styles.small}>
+          {sent}
+        </Text>
+      </View>
+    );
+  };
   const dead = spent == null ? null : spentWords(spent, emailOnly);
 
   return (
@@ -136,8 +145,8 @@ export default function LostCodes() {
       ) : (
         <>
           <View style={styles.codes}>
-            {box('email', 'Code from the email', true)}
-            {!emailOnly && box('text', 'Code from the text', false)}
+            {box('email', true)}
+            {!emailOnly && box('text', false)}
           </View>
           <View style={styles.ways}>
             <QuietButton
@@ -147,9 +156,21 @@ export default function LostCodes() {
               testID="demo.resend"
             />
           </View>
-          <Plain>
+          <Text size={tokens.typeSmall.size} style={styles.small}>
             {emailOnly ? 'A new code replaces the last one.' : 'New codes replace the last ones.'}
-          </Plain>
+          </Text>
+          {!emailOnly && !texted && (
+            <View style={styles.ways}>
+              <QuietButton
+                label="Text it to me instead"
+                onPress={() => {
+                  setTexted(true);
+                  boxes.text.current?.focus();
+                }}
+                testID="demo.textInstead"
+              />
+            </View>
+          )}
         </>
       )}
     </DemoScreen>
@@ -160,4 +181,5 @@ const styles = StyleSheet.create({
   codes: { marginTop: tokens.spaceXl },
   spent: { marginTop: tokens.spaceXl },
   ways: { marginTop: tokens.spaceLg, alignItems: 'flex-start' },
+  small: { marginTop: tokens.spaceSm, color: tokens.colorInkSecondary },
 });

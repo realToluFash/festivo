@@ -27,6 +27,7 @@ import {
   ruleMet,
   setupRefusal,
 } from './security.ts';
+import { copyText } from './settings.ts';
 import { Ask, Dialog, Field, Note } from '../components/SettingsParts.tsx';
 import { useLater } from '../useLater.ts';
 
@@ -550,7 +551,7 @@ export function RecoveryDialog({
           type="button"
           className="desk-text"
           onClick={() =>
-            void Promise.resolve(navigator.clipboard?.writeText(codes.join('\n'))).then(
+            void copyText(codes.join('\n')).then(
               () => setCopied(true),
               () => setCopied(false),
             )

@@ -39,7 +39,7 @@ import { handStart, ledBy, offeredFor } from './handover.ts';
 import { focusWhenFree } from '../layers.ts';
 import { samplePeople } from './members.ts';
 import { heldStepPath } from './security.ts';
-import type { Viewer } from './settings.ts';
+import { type Viewer, copyText } from './settings.ts';
 import {
   Ask,
   Card,
@@ -328,7 +328,7 @@ function RequestLink({ start, tell }: { start: GeneralStart; tell: Tell }) {
               label={L.copy}
               before="copy"
               onClick={() =>
-                void Promise.resolve(navigator.clipboard?.writeText(link)).then(
+                void copyText(link).then(
                   () => tell(L.copied),
                   () => {},
                 )

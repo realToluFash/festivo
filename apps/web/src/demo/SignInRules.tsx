@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router';
 
 import { Glyph } from '../components/Glyph.tsx';
 import type { Load } from './members.ts';
-import { heldStepPath } from './security.ts';
+import { type HeldStep, heldStepPath } from './security.ts';
 import type { Viewer } from './settings.ts';
 import {
   Ask,
@@ -99,7 +99,7 @@ export function SignInRules({
   const card = rulesCard(rows, role, hold);
   const changedFootLine = changedFoot(hold);
   const standFootLine = standFoot(page);
-  const toSecurity = (step: string | null) => {
+  const toSecurity = (step: HeldStep | null) => {
     if (step != null) void navigate(heldStepPath(step, viewer));
   };
   const save = (next: Edit) => {
@@ -116,7 +116,9 @@ export function SignInRules({
       <Card>
         <Says>{card.says}</Says>
         <OnCard>{card.line}</OnCard>
-        {card.step != null && <CardStep label={card.step} onClick={() => toSecurity(card.step)} />}
+        {card.step != null && (
+          <CardStep label={card.step.label} onClick={() => toSecurity(card.step)} />
+        )}
       </Card>
       <section className="desk-block">
         <Head title="Where you stand" />
@@ -234,7 +236,7 @@ function EditDialog({
 }: {
   edit: Edit;
   page: RulesPage;
-  onStep: (step: string) => void;
+  onStep: (step: HeldStep) => void;
   onEdit: (edit: Edit) => void;
   onClose: () => void;
   onSave: (edit: Edit) => void;
@@ -280,7 +282,7 @@ function EditDialog({
             <div className="desk-after">
               <p className="desk-empty-title">{refused.title}</p>
               <p className="desk-line">{refused.line}</p>
-              <TextAction label={refused.step} onClick={() => onStep(refused.step)} />
+              <TextAction label={refused.step.label} onClick={() => onStep(refused.step)} />
             </div>
           </div>
         )}
