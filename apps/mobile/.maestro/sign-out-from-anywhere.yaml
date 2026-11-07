@@ -1,0 +1,10 @@
+# Signs out through Settings from any signed-in screen, Ask to join included, and ends on Sign in. sc-19752.
+# Opens Settings by link, unlike sign-out.yaml, which goes through return-home.yaml and so cannot start from Ask to join.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings
+- runFlow: settings-sign-out-tap.yaml
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.email'
+    timeout: 30000

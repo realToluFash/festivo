@@ -1,0 +1,8 @@
+# sc-27219: one ordinary load of Settings › Account, the Time zone row as soon as it can be seen. Run it ten times on a tablet in portrait.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/account
+- extendedWaitUntil:
+    visible: '{{t:timeZone.intro}}'
+    timeout: 30000
+- takeScreenshot: tz-load

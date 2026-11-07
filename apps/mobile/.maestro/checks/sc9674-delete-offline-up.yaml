@@ -1,0 +1,46 @@
+# Delete organisation: name typed, keys up, API stopped. The error shows, keys stay up. sc-9674.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/organisation
+- extendedWaitUntil:
+    visible:
+      id: organisation.name
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: ownership.delete
+    centerElement: true
+- tapOn:
+    id: ownership.delete
+- extendedWaitUntil:
+    visible:
+      id: ownership.delete.name
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: ownership.delete.name
+    centerElement: true
+- tapOn:
+    id: ownership.delete.name
+- inputText: ${ORG_NAME}
+- assertVisible: '(?i)(shift|delete)'
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
+- scrollUntilVisible:
+    element:
+      id: ownership.delete.send
+    centerElement: true
+- tapOn:
+    id: ownership.delete.send
+- extendedWaitUntil:
+    visible: '.*{{t:ownership.failed}}.*'
+    timeout: 45000
+- waitForAnimationToEnd
+- takeScreenshot: refused
+- assertVisible: '(?i)(shift|delete)'
+- inputText: x
+- assertVisible:
+    id: ownership.delete.name
+    text: '${ORG_NAME}x'

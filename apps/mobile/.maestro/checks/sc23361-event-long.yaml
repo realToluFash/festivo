@@ -1,0 +1,10 @@
+# sc-23361 on a phone: the event ${LONG}, with a 120-character name, has the same header as a short one.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${LONG}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: long-top

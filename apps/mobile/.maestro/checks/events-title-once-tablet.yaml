@@ -1,0 +1,30 @@
+# sc-17559: on a tablet at ${ORIENT}, Events of ${ORG} shows its title once, in the frame header: the list, then ${EVENT} opened, then back.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- runFlow:
+    file: ../switch-organisation.yaml
+    env:
+      ORG: ${ORG}
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'events.tab.drafts'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: list
+- tapOn:
+    id: 'events.tab.drafts'
+- extendedWaitUntil:
+    visible:
+      id: 'events.row.${EVENT}'
+    timeout: 20000
+- takeScreenshot: drafts
+- tapOn:
+    id: 'events.row.${EVENT}'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: opened
