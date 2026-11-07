@@ -383,6 +383,7 @@ export function Dialog(props: DialogProps) {
 interface DialogProps {
   title: string;
   verb: string;
+  dismiss?: string;
   /** False for a dialog that applies each pick at once: Done closes it, and nothing sits at its left. */
   cancel?: boolean;
   on?: boolean;
@@ -397,6 +398,7 @@ interface DialogProps {
 function DialogBox({
   title,
   verb,
+  dismiss = 'Cancel',
   cancel = true,
   on = true,
   red = false,
@@ -429,7 +431,7 @@ function DialogBox({
           dismiss={
             cancel ? (
               <button type="button" className="desk-nav-cancel" onClick={onDismiss}>
-                Cancel
+                {dismiss}
               </button>
             ) : (
               <span className="desk-nav-cancel is-none" aria-hidden="true">

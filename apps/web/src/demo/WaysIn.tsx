@@ -124,7 +124,10 @@ function AskToJoin({ state }: { state: string }) {
       {asked != null ? (
         <>
           <Notice title={asked.title} body={asked.body} />
-          <Link className="button button-primary demo-wide" to="/demo/signed-in">
+          <Link
+            className="button button-primary demo-wide"
+            to={asked.open === true ? '/demo/today' : way('waiting')}
+          >
             {asked.open === true ? `Open ${SAMPLE.organisation}` : 'Continue'}
           </Link>
         </>
@@ -215,7 +218,7 @@ function Invitation({ state }: { state: string }) {
           </p>
         </Heading>
         <Organisation line={INVITED_BY} />
-        <Link className="button button-primary demo-wide" to="/demo/signed-in">
+        <Link className="button button-primary demo-wide" to="/demo/today">
           Open {SAMPLE.organisation}
         </Link>
       </BoardPage>
@@ -229,7 +232,7 @@ function Invitation({ state }: { state: string }) {
           <p className="demo-muted">You declined. {SAMPLE.inviter} will see that you said no.</p>
         </Heading>
         <Organisation line={INVITED_BY} />
-        <Link className="button demo-wide" to="/demo/signed-in">
+        <Link className="button demo-wide" to="/demo/today">
           Go to Soirely
         </Link>
       </BoardPage>
@@ -250,7 +253,7 @@ function Invitation({ state }: { state: string }) {
             Sign out and use {SAMPLE.email}
           </Link>
         ) : (
-          <Link className="button demo-wide" to="/demo/signed-in">
+          <Link className="button demo-wide" to="/demo/today">
             Go to Soirely
           </Link>
         )}

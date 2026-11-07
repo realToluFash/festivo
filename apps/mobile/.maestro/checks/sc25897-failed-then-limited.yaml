@@ -1,5 +1,10 @@
 # sc-25897 Android, an account at its limit: the not-created notice first (API stopped), scrolled under the title, then the API started and sent again. Too many new organisations for now shows wholly in its place.
 appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
 ---
 - runFlow: ../open-create-organisation.yaml
 - tapOn:

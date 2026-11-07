@@ -9,7 +9,8 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { runInNewContext } from 'node:vm';
 import { inflateSync } from 'node:zlib';
 
@@ -17,6 +18,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   allowCleartext,
+  answers,
   emulatorJournalArgs,
   emulatorUnitGone,
   waitForBoot,
@@ -24,6 +26,7 @@ import {
   withoutReverse,
   apiMoves,
   apiStateOf,
+  startServices,
   batchCheck,
   batchFlow,
   batchRuns,
@@ -1446,11 +1449,11 @@ describe('the API a check holds', () => {
     expect(apiMoves('stopped', 'up')).toEqual([['up', '-d', '--wait', '--no-recreate', 'api']]);
   });
 
-  it('goes through up between paused and stopped, since a paused container is not stopped', () => {
-    expect(apiMoves('paused', 'stopped')).toEqual([
-      ['unpause', 'api'],
-      ['stop', 'api'],
-    ]);
+  it('kills a paused API, since stop thaws it and Caddy answers the held request on SIGTERM', () => {
+    expect(apiMoves('paused', 'stopped')).toEqual([['kill', 'api']]);
+  });
+
+  it('goes through up from stopped to paused, since only a running container pauses', () => {
     expect(apiMoves('stopped', 'paused')).toEqual([
       ['up', '-d', '--wait', '--no-recreate', 'api'],
       ['pause', 'api'],
@@ -1469,10 +1472,11 @@ describe('the API a check holds', () => {
   });
 });
 
-function dockerDouble(container, { failing = [] } = {}) {
+function dockerDouble(container, { failing = [], healthy } = {}) {
   const ran = [];
   const control = apiControl({
     read: async () => container,
+    ...(healthy && { healthy }),
     run: async (args) => {
       ran.push(args.join(' '));
       return !failing.includes(args[0]);
@@ -1500,14 +1504,7 @@ describe('the API a batch holds', () => {
   it('tracks the state across queued moves', async () => {
     const { control, ran } = dockerDouble('running');
     await Promise.all([control.move('paused'), control.move('stopped'), control.move('up')]);
-    expect(ran).toEqual([
-      'pause api',
-      'unreached',
-      'unpause api',
-      'stop api',
-      'reached',
-      'up -d --wait --no-recreate api',
-    ]);
+    expect(ran).toEqual(['pause api', 'kill api', 'up -d --wait --no-recreate api']);
     expect(control.state()).toBe('up');
   });
 
@@ -1552,6 +1549,116 @@ describe('the API a batch holds', () => {
     await control.move('paused');
     expect(ran).toEqual(['stop api', 'pause api']);
     expect(control.state()).toBe('paused');
+  });
+});
+
+describe('the API brought back up', () => {
+  it('returns only once the API answers, from paused as from stopped', async () => {
+    for (const container of ['paused', 'exited']) {
+      const asked = [];
+      const { control, ran } = dockerDouble(container, {
+        healthy: async () => {
+          asked.push(ran.length);
+          return true;
+        },
+      });
+      await control.move('up');
+      expect(asked).toEqual([1]);
+      expect(control.state()).toBe('up');
+    }
+  });
+
+  it('fails the move, and reads Docker again, when the API never answers', async () => {
+    const { control } = dockerDouble('paused', { healthy: async () => false });
+    await expect(control.move('up')).rejects.toThrow('never answered /api/health');
+    expect(control.state()).toBeUndefined();
+  });
+
+  it('asks nothing when the API was already up, or is being held', async () => {
+    let asked = 0;
+    const healthy = async () => (asked++, true);
+    const { control } = dockerDouble('running', { healthy });
+    await control.move('up');
+    await control.move('paused');
+    await control.move('stopped');
+    expect(asked).toBe(0);
+  });
+
+  it('polls the health endpoint until it answers, and gives up at the deadline', async () => {
+    const replies = [false, false, true];
+    const get = async () => ({ ok: replies.shift() });
+    expect(await answers('http://api/health', { every: 1, get })).toBe(true);
+    expect(replies).toEqual([]);
+    const refused = async () => {
+      throw new Error('ECONNREFUSED');
+    };
+    expect(await answers('http://api/health', { ms: 5, every: 1, get: refused })).toBe(false);
+  });
+
+  it('gives up on a health request that hangs, so the deadline still holds', async () => {
+    const hangs = (_url, { signal }) =>
+      new Promise((_resolve, reject) =>
+        signal.addEventListener('abort', () => reject(signal.reason)),
+      );
+    const started = Date.now();
+    expect(await answers('http://api/health', { ms: 20, every: 5, get: hangs })).toBe(false);
+    expect(Date.now() - started).toBeLessThan(1_000);
+  });
+});
+
+describe('the app services started', () => {
+  const started = (ps) => {
+    const ran = [];
+    startServices(['api', 'web'], {
+      capture: () => ps,
+      run: (args) => ran.push(args.join(' ')),
+    });
+    return ran;
+  };
+
+  it('unpauses what a killed batch left paused before up, which refuses a paused container', () => {
+    expect(started('api\nmercure\n')).toEqual([
+      'unpause api mercure',
+      'up -d --wait --no-recreate api web',
+    ]);
+  });
+
+  it('goes straight to up when nothing is paused', () => {
+    expect(started('')).toEqual(['up -d --wait --no-recreate api web']);
+    expect(started(null)).toEqual(['up -d --wait --no-recreate api web']);
+  });
+});
+
+describe('a check that holds the API', () => {
+  const dir = join(dirname(fileURLToPath(import.meta.url)), '../apps/mobile/.maestro/checks');
+  const checks = readdirSync(dir)
+    .filter((name) => name.endsWith('.yaml'))
+    .map((name) => [name, readFileSync(join(dir, name), 'utf8')]);
+
+  const holds = (flow) => /ASK: '?\/api\?to=(paused|stopped)/.test(flow);
+  const subflows = (flow) =>
+    [...flow.matchAll(/^\s*(?:-\s*runFlow:|file:)\s*(\S+\/\S+\.yaml)\s*$/gm)]
+      .map(([, path]) => join(dir, path))
+      .filter((path) => path.startsWith(`${dir}/`) && existsSync(path));
+
+  it('brings it back up in onFlowComplete, so a failed wait leaves the next check a live API', () => {
+    const holding = checks.filter(
+      ([, flow]) => holds(flow) || subflows(flow).some((path) => holds(readFileSync(path, 'utf8'))),
+    );
+    expect(holding.map(([name]) => name)).toContain('sc11786-members-states.yaml');
+    const unguarded = holding
+      .filter(([, flow]) => {
+        const header = flow.slice(0, flow.indexOf('\n---\n'));
+        return !/onFlowComplete:[\s\S]*ASK: \/api\?to=up/.test(header);
+      })
+      .map(([name]) => name);
+    expect(unguarded).toEqual([]);
+  });
+
+  // sc-30216 moves sc27096-ipad-side-refreshing.yaml off its own 18999 trigger onto /api?to=.
+  it('reaches the harness through batch/helper.js, never a literal port', () => {
+    const literal = checks.filter(([, flow]) => /127\.0\.0\.1:\d+/.test(flow)).map(([n]) => n);
+    expect(literal).toEqual(['sc27096-ipad-side-refreshing.yaml']);
   });
 });
 
@@ -2292,6 +2399,12 @@ describe('the flows a batch runs', () => {
       expect(readFileSync(join(target, '_checks/sign-in-rules.fr.yaml'), 'utf8')).toContain(
         "'Règles de connexion|Règles de connexion de .*'",
       );
+      expect(readFileSync(join(target, '_checks/sc23267-start-cold.fr.yaml'), 'utf8')).toContain(
+        'file: sc23267-start-cold.fr.sc23267-start-cold-once.flow.yaml',
+      );
+      expect(
+        existsSync(join(target, '_checks/sc23267-start-cold.fr.sc23267-start-cold-once.flow.yaml')),
+      ).toBe(true);
       const session = readFileSync(join(target, 'batch/session.yaml'), 'utf8');
       expect(session).not.toContain('{{t:');
       const signedIn = new RegExp(
@@ -2388,6 +2501,145 @@ describe('the flows a batch runs', () => {
       );
       expect(readFileSync(join(target, 'sign-in.yaml'), 'utf8')).toContain('stopApp: true');
     } finally {
+      rmSync(target, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('a check that runs a sibling check', () => {
+  it('carries the sibling into _checks, so its runFlow resolves without naming it', () => {
+    const source = mkdtempSync(join(tmpdir(), 'qa-source-'));
+    const target = mkdtempSync(join(tmpdir(), 'qa-batch-'));
+    mkdirSync(join(source, 'checks'));
+    writeFileSync(
+      join(source, 'checks', 'outer.yaml'),
+      "appId: x\n---\n- runFlow:\n    file: once.yaml\n    env:\n      RUN: '1'\n- runFlow: once.yaml\n",
+    );
+    writeFileSync(
+      join(source, 'checks', 'once.yaml'),
+      "appId: x\n---\n- tapOn: '{{t:hello}}'\n- takeScreenshot: shot-${RUN}\n- runFlow: inner.yaml\n",
+    );
+    writeFileSync(join(source, 'checks', 'inner.yaml'), "appId: x\n---\n- tapOn: '{{t:hello}}'\n");
+    try {
+      composeBatch(source, target, {
+        checks: ['outer'],
+        languages: ['en', 'es'],
+        cold: false,
+        catalogues: { en: { hello: 'Hello' }, es: { hello: 'Hola' } },
+        email: 'qa@soirely.test',
+        onAndroid: false,
+      });
+      const checks = join(target, '_checks');
+      expect(readdirSync(checks).sort()).toEqual([
+        'outer.en.once.flow.yaml',
+        'outer.en.once.inner.flow.yaml',
+        'outer.en.yaml',
+        'outer.es.once.flow.yaml',
+        'outer.es.once.inner.flow.yaml',
+        'outer.es.yaml',
+      ]);
+      const outer = readFileSync(join(checks, 'outer.es.yaml'), 'utf8');
+      expect(outer).toContain('    file: outer.es.once.flow.yaml\n');
+      expect(outer).toContain('- runFlow: outer.es.once.flow.yaml\n');
+      expect(outer).not.toMatch(/once\.yaml/);
+      const once = readFileSync(join(checks, 'outer.es.once.flow.yaml'), 'utf8');
+      expect(once).toContain("'Hola'");
+      expect(once).toContain('- runFlow: outer.es.once.inner.flow.yaml');
+      expect(once).not.toContain('ASK:');
+      expect(once).toContain('- takeScreenshot: outer.es.once-shot-${RUN}\n');
+      expect(readFileSync(join(checks, 'outer.en.once.flow.yaml'), 'utf8')).toContain(
+        '- takeScreenshot: outer.en.once-shot-${RUN}\n',
+      );
+      expect(readFileSync(join(checks, 'outer.en.once.inner.flow.yaml'), 'utf8')).toContain(
+        "'Hello'",
+      );
+    } finally {
+      rmSync(source, { recursive: true, force: true });
+      rmSync(target, { recursive: true, force: true });
+    }
+  });
+
+  it('keeps a sibling that is also named as a check apart from its run', () => {
+    const source = mkdtempSync(join(tmpdir(), 'qa-source-'));
+    const target = mkdtempSync(join(tmpdir(), 'qa-batch-'));
+    mkdirSync(join(source, 'checks'));
+    writeFileSync(join(source, 'checks', 'outer.yaml'), 'appId: x\n---\n- runFlow: once.yaml\n');
+    writeFileSync(join(source, 'checks', 'once.yaml'), 'appId: x\n---\n- takeScreenshot: shot\n');
+    try {
+      composeBatch(source, target, {
+        checks: ['outer', 'once'],
+        languages: ['es'],
+        cold: false,
+        catalogues: { es: {} },
+        email: 'qa@soirely.test',
+        onAndroid: false,
+      });
+      const checks = join(target, '_checks');
+      expect(readdirSync(checks).sort()).toEqual([
+        'once.es.yaml',
+        'outer.es.once.flow.yaml',
+        'outer.es.yaml',
+      ]);
+      expect(readFileSync(join(checks, 'once.es.yaml'), 'utf8')).toContain('ASK:');
+      expect(readFileSync(join(checks, 'outer.es.once.flow.yaml'), 'utf8')).not.toContain('ASK:');
+    } finally {
+      rmSync(source, { recursive: true, force: true });
+      rmSync(target, { recursive: true, force: true });
+    }
+  });
+  it('gives each run of a repeated check its own copy of the sibling', () => {
+    const source = mkdtempSync(join(tmpdir(), 'qa-source-'));
+    const target = mkdtempSync(join(tmpdir(), 'qa-batch-'));
+    mkdirSync(join(source, 'checks'));
+    writeFileSync(join(source, 'checks', 'outer.yaml'), 'appId: x\n---\n- runFlow: once.yaml\n');
+    writeFileSync(join(source, 'checks', 'once.yaml'), 'appId: x\n---\n- takeScreenshot: shot\n');
+    try {
+      composeBatch(source, target, {
+        checks: ['outer', 'outer'],
+        languages: ['es'],
+        cold: false,
+        catalogues: { es: {} },
+        email: 'qa@soirely.test',
+        onAndroid: false,
+      });
+      const checks = join(target, '_checks');
+      expect(readFileSync(join(checks, 'outer.es.yaml'), 'utf8')).toContain(
+        '- runFlow: outer.es.once.flow.yaml\n',
+      );
+      expect(readFileSync(join(checks, 'outer.es.run2.yaml'), 'utf8')).toContain(
+        '- runFlow: outer.es.run2.once.flow.yaml\n',
+      );
+      expect(readFileSync(join(checks, 'outer.es.once.flow.yaml'), 'utf8')).toContain(
+        '- takeScreenshot: outer.es.once-shot',
+      );
+      expect(readFileSync(join(checks, 'outer.es.run2.once.flow.yaml'), 'utf8')).toContain(
+        '- takeScreenshot: outer.es.run2.once-shot',
+      );
+    } finally {
+      rmSync(source, { recursive: true, force: true });
+      rmSync(target, { recursive: true, force: true });
+    }
+  });
+
+  it('names the cycle when two checks run each other', () => {
+    const source = mkdtempSync(join(tmpdir(), 'qa-source-'));
+    const target = mkdtempSync(join(tmpdir(), 'qa-batch-'));
+    mkdirSync(join(source, 'checks'));
+    writeFileSync(join(source, 'checks', 'a.yaml'), 'appId: x\n---\n- runFlow: b.yaml\n');
+    writeFileSync(join(source, 'checks', 'b.yaml'), 'appId: x\n---\n- runFlow: a.yaml\n');
+    try {
+      expect(() =>
+        composeBatch(source, target, {
+          checks: ['a'],
+          languages: ['es'],
+          cold: false,
+          catalogues: { es: {} },
+          email: 'qa@soirely.test',
+          onAndroid: false,
+        }),
+      ).toThrow('a → b → a: a check runs itself');
+    } finally {
+      rmSync(source, { recursive: true, force: true });
       rmSync(target, { recursive: true, force: true });
     }
   });
