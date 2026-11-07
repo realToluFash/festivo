@@ -17,7 +17,7 @@ import {
   roleMeans,
 } from './members.ts';
 import { ProofFields } from './MembersPerson.tsx';
-import type { SettingsSay, Viewer } from './settings.ts';
+import { type SettingsSay, type Viewer, copyText } from './settings.ts';
 import {
   Ask,
   Avatar,
@@ -273,11 +273,15 @@ export function ClaimDialog({
                 <TextAction
                   label={copied === part.label ? 'Copied' : 'Copy'}
                   before={copied === part.label ? 'tick' : 'copy'}
-                  onClick={() => {
-                    void navigator.clipboard?.writeText(part.value).catch(() => undefined);
-                    setCopied(part.label);
-                    tell(`${part.label} copied.`);
-                  }}
+                  onClick={() =>
+                    void copyText(part.value).then(
+                      () => {
+                        setCopied(part.label);
+                        tell(`${part.label} copied.`);
+                      },
+                      () => undefined,
+                    )
+                  }
                 />
               </li>
             ))}

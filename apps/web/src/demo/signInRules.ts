@@ -1,5 +1,6 @@
 import type { Load } from './members.ts';
 import type { Choice } from './SettingsParts.tsx';
+import { HELD_STEPS, type HeldStep } from './security.ts';
 import { type DemoLink, type Viewer, VIEWERS, settingsPath } from './settings.ts';
 
 export const ORGANISATION = 'Ire Events';
@@ -67,7 +68,7 @@ export interface RuleRow {
   mark: Mark;
   title: string;
   line: string;
-  ask: { consequence: string; step: string } | null;
+  ask: { consequence: string; step: HeldStep } | null;
 }
 
 function days(count: number): string {
@@ -117,7 +118,7 @@ function method(page: RulesPage): RuleRow {
     line: 'Your password still signs you in. Link one to change things again.',
     ask: {
       consequence: `Until you link one, you can read but not change anything in ${ORGANISATION}.`,
-      step: 'Link Google or Apple',
+      step: HELD_STEPS.link,
     },
   };
 }
@@ -146,8 +147,6 @@ function limit(page: RulesPage): RuleRow {
   return { key: 'limit', mark: 'met', title, line, ask: null };
 }
 
-const TURN_ON = 'Turn on two-factor';
-
 function twoFactor(page: RulesPage, role: Role, locale: string, thisYear: number): RuleRow {
   const on = page.ownTwoFactor;
   const row = (mark: Mark, title: string, line: string, consequence?: string): RuleRow => ({
@@ -155,7 +154,7 @@ function twoFactor(page: RulesPage, role: Role, locale: string, thisYear: number
     mark,
     title,
     line,
-    ask: consequence == null ? null : { consequence, step: TURN_ON },
+    ask: consequence == null ? null : { consequence, step: HELD_STEPS.turnOn },
   });
 
   if (page.everyoneNeedsTwoFactor) {
@@ -236,7 +235,7 @@ export function changedFoot(hold: Hold): string | undefined {
 export interface RulesCard {
   says: string;
   line: string;
-  step: string | null;
+  step: HeldStep | null;
 }
 
 export function rulesCard(rules: readonly RuleRow[], role: Role, hold: Hold): RulesCard {
@@ -419,16 +418,16 @@ export function changesBetween(before: Rules, after: Rules, at: string, by: stri
 
 export type Refusal = 'provider' | 'twoFactor';
 
-export const REFUSALS: Record<Refusal, { title: string; line: string; step: string }> = {
+export const REFUSALS: Record<Refusal, { title: string; line: string; step: HeldStep }> = {
   provider: {
     title: 'Link Google or Apple for yourself first',
     line: 'Then you can require it here.',
-    step: 'Link Google or Apple',
+    step: HELD_STEPS.link,
   },
   twoFactor: {
     title: 'Turn on two-factor for yourself first',
     line: 'Then you can require it here.',
-    step: TURN_ON,
+    step: HELD_STEPS.turnOn,
   },
 };
 

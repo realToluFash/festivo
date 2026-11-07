@@ -107,6 +107,9 @@ describe('Sign-in rules at a desk (sc-30064)', () => {
         'Until you turn on two-factor, you can see these rules but not change them.',
       ),
     ).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Turn on two-factor' }));
+    expect(await screen.findByRole('heading', { level: 1, name: 'Security' })).toBeDefined();
+    expect(screen.getByRole('dialog', { name: 'Set up two-factor' })).toBeDefined();
   });
 
   it('changes a rule from its row, adds the change at the top and gives focus back', async () => {
