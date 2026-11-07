@@ -64,6 +64,7 @@ import {
 import { Sheet } from './Sheet.tsx';
 import { InvitationRows } from './InvitationRows.tsx';
 import { Initials } from './Initials.tsx';
+import type { GlyphName } from './Glyph.tsx';
 import { Notice } from './Notice.tsx';
 import {
   PHONE_TAB_BAR,
@@ -72,6 +73,7 @@ import {
   TabBar as PhoneTabs,
   TabBarFade,
   tabBarFoot,
+  WhiteCapsule,
 } from './TodayCover.tsx';
 import { OrgPill as WhitePill } from './OrgPill.tsx';
 import { OrgTile } from './OrgTile.tsx';
@@ -369,6 +371,7 @@ export function AppFrame({
       <View style={styles.column}>
         {framed && (
           <FrameHeader
+            current={current}
             kind={kind}
             entries={entries}
             inEvent={inEvent != null}
@@ -486,6 +489,7 @@ export function AppFrame({
 }
 
 function FrameHeader({
+  current,
   kind,
   entries,
   inEvent,
@@ -505,6 +509,7 @@ function FrameHeader({
   besideTitle,
   besideBack,
 }: {
+  current: Destination;
   kind: LayoutKind;
   /** On a phone, the pill on a row of its own (`phonePillAlone`). */
   pillAlone: boolean;
@@ -532,6 +537,7 @@ function FrameHeader({
   const large = useAccessibilitySizes();
   const { width, height } = useLayout();
   const titleSize = frameTitleSize(kind !== 'phone', Math.min(width, height));
+  const tabs = useFrameTabs(current, organisation);
 
   if (kind === 'tabletLandscape') {
     return (
@@ -556,6 +562,55 @@ function FrameHeader({
     );
   }
 
+  const pillView = organisation != null && (
+    <View style={styles.shrink}>
+      <OrgPill organisation={organisation} waiting={waiting} onSwitch={onSwitch} ref={pill} />
+    </View>
+  );
+  const backView = back != null && !backHidden && (
+    <BackButton
+      label={back.label}
+      onPress={back.onPress}
+      off={back.off}
+      beside={besideBack}
+      testID="frame.back"
+    />
+  );
+  const titleRow = (end: ReactNode) => (
+    <View style={styles.titleRow}>
+      <View style={styles.fill}>
+        <View style={styles.titleRow}>
+          <View style={styles.fill}>
+            <Title size={titleSize} accessibilityRole="header" ref={read}>
+              {title}
+            </Title>
+          </View>
+          {besideTitle}
+        </View>
+        {underTitle}
+      </View>
+      {end}
+    </View>
+  );
+
+  // Out of an event, the pill and the bell head the page with the tabs between them, and the primary sits by the title, as the demos draw it (sc-30410).
+  if (kind === 'tabletPortrait' && !inEvent) {
+    return (
+      <View style={[styles.header, styles.portraitHeader, top]}>
+        <View style={styles.titleRow}>
+          {pillView}
+          <View style={styles.fill} />
+          <BellButton />
+          <View style={styles.capsuleAt} pointerEvents="box-none">
+            <WhiteCapsule {...tabs} />
+          </View>
+        </View>
+        {backView}
+        {titleRow(primary != null && <HeaderPrimary {...primary} round={false} />)}
+      </View>
+    );
+  }
+
   if (kind === 'tabletPortrait') {
     return (
       <View style={[styles.header, styles.portraitHeader, top]}>
@@ -564,112 +619,45 @@ function FrameHeader({
         )}
         {primary != null && (
           <View style={styles.titleRow}>
-            {organisation != null && (
-              <View style={styles.shrink}>
-                <OrgPill
-                  organisation={organisation}
-                  waiting={waiting}
-                  onSwitch={onSwitch}
-                  ref={pill}
-                />
-              </View>
-            )}
+            {pillView}
             <View style={styles.fill} />
             <HeaderPrimary {...primary} round={false} />
           </View>
         )}
         <Pills entries={entries} scrolls={inEvent} />
-        {back != null && !backHidden && (
-          <BackButton
-            label={back.label}
-            onPress={back.onPress}
-            off={back.off}
-            beside={besideBack}
-            testID="frame.back"
-          />
-        )}
-        <View style={styles.titleRow}>
-          <View style={styles.fill}>
-            <View style={styles.titleRow}>
-              <View style={styles.fill}>
-                <Title size={titleSize} accessibilityRole="header" ref={read}>
-                  {title}
-                </Title>
-              </View>
-              {besideTitle}
-            </View>
-            {underTitle}
-          </View>
-          <BellButton />
-        </View>
+        {backView}
+        {titleRow(<BellButton />)}
       </View>
     );
   }
 
-  // A top-level page carries the pill and the bell in a row of their own, as the demos draw it (sc-30410).
-  const topLevel = back == null;
+  if (back == null) {
+    return (
+      <View style={[styles.header, styles.phoneHeader, top]}>
+        <View style={styles.titleRow}>
+          {pillView}
+          <View style={styles.fill} />
+          <BellButton />
+        </View>
+        {titleRow(primary != null && <HeaderPrimary {...primary} round />)}
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.header, styles.phoneHeader, top]}>
-      {topLevel && (
-        <View style={styles.titleRow}>
-          {organisation != null && (
-            <View style={styles.shrink}>
-              <OrgPill
-                organisation={organisation}
-                waiting={waiting}
-                onSwitch={onSwitch}
-                ref={pill}
-              />
-            </View>
-          )}
-          <View style={styles.fill} />
-          {primary != null && <HeaderPrimary {...primary} round />}
-          <BellButton />
-        </View>
-      )}
-      {!topLevel && pillAlone && organisation != null && (
+      {pillAlone && organisation != null && (
         <OrgPill organisation={organisation} waiting={waiting} onSwitch={onSwitch} ref={pill} />
       )}
-      {!topLevel && primary != null && (
+      {primary != null && (
         <View style={styles.titleRow}>
-          {organisation != null && (
-            <View style={styles.shrink}>
-              <OrgPill
-                organisation={organisation}
-                waiting={waiting}
-                onSwitch={onSwitch}
-                ref={pill}
-              />
-            </View>
-          )}
+          {pillView}
           <View style={styles.fill} />
           <HeaderPrimary {...primary} round />
         </View>
       )}
-      {back != null && !backHidden && (
-        <BackButton
-          label={back.label}
-          onPress={back.onPress}
-          off={back.off}
-          beside={besideBack}
-          testID="frame.back"
-        />
-      )}
-      <View style={styles.titleRow}>
-        <View style={styles.fill}>
-          <View style={styles.titleRow}>
-            <View style={styles.fill}>
-              <Title size={titleSize} accessibilityRole="header" ref={read}>
-                {title}
-              </Title>
-            </View>
-            {besideTitle}
-          </View>
-          {underTitle}
-        </View>
-        {!topLevel && <BellButton />}
-      </View>
+      {backView}
+      {titleRow(<BellButton />)}
     </View>
   );
 }
@@ -758,7 +746,25 @@ const TAB_IDS: Record<Tab, string> = {
   Settings: 'frame.settings',
 };
 
-/** The phone's tab bar as the demos draw it, floating over the page's foot, with only the tabs the role can open. */
+/** The frame's tabs, only those the role can open, each going where its destination does. */
+function useFrameTabs(
+  current: Destination,
+  organisation: { permissions: readonly string[] } | null,
+) {
+  const { t } = useTranslation();
+  const open = destinations(organisation);
+  const tabs = TABS.filter(([tab]) => open.includes(TAB_DESTINATION[tab]));
+
+  return {
+    tabs,
+    at: tabs.find(([tab]) => TAB_DESTINATION[tab] === current)?.[0] ?? 'Today',
+    onTab: (tab: Tab) => goTo(TAB_DESTINATION[tab]),
+    say: (_: Tab, glyph: GlyphName) => t(`todayScreen.tab.${glyph}`),
+    ids: TAB_IDS,
+  };
+}
+
+/** The phone's tab bar as the demos draw it, floating over the page's foot. */
 function FrameTabBar({
   current,
   organisation,
@@ -766,23 +772,13 @@ function FrameTabBar({
   current: Destination;
   organisation: { permissions: readonly string[] } | null;
 }) {
-  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const open = destinations(organisation);
-  const tabs = TABS.filter(([tab]) => open.includes(TAB_DESTINATION[tab]));
-  const at = tabs.find(([tab]) => TAB_DESTINATION[tab] === current)?.[0] ?? 'Today';
+  const tabs = useFrameTabs(current, organisation);
 
   return (
     <>
       <TabBarFade />
-      <PhoneTabs
-        tabs={tabs}
-        bottom={tabBarFoot(insets.bottom)}
-        at={at}
-        onTab={(tab) => goTo(TAB_DESTINATION[tab])}
-        say={(_, glyph) => t(`todayScreen.tab.${glyph}`)}
-        ids={TAB_IDS}
-      />
+      <PhoneTabs {...tabs} bottom={tabBarFoot(insets.bottom)} />
     </>
   );
 }
@@ -1516,6 +1512,15 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colorCard,
   },
   whitePill: { flexDirection: 'row', flexShrink: 1, minWidth: 0 },
+  capsuleAt: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   orgRailed: {
     minHeight: tokens.sizeHitPhoneHero,
     paddingLeft: tokens.spaceXs,

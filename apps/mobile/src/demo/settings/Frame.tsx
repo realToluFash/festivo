@@ -1,6 +1,5 @@
 import { type ReactNode, type Ref, useMemo, useRef } from 'react';
 import {
-  Pressable,
   ScrollView,
   type ScrollViewInstance,
   StyleSheet,
@@ -11,7 +10,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
-import { Glyph } from '../../components/Glyph.tsx';
 import { useOrgOpener } from '../OrgSwitcher.tsx';
 import { SW } from '../OrgSwitcherModel.ts';
 import { OrgPill as ProductOrgPill } from '../../components/OrgPill.tsx';
@@ -22,6 +20,7 @@ import {
   type Tab,
   TABS,
   TabBarFade,
+  WhiteCapsule,
 } from '../../components/TodayCover.tsx';
 import type { Tell } from '../../components/TodayParts.tsx';
 import { TodaySidebar } from '../../components/TodaySidebar.tsx';
@@ -354,29 +353,7 @@ export function PortraitTop({ at = 'Settings' }: { at?: Tab }) {
       <View style={styles.grow} />
       <Bell tell={shell.tell} />
       <View style={[styles.capsuleAt, { top: insets.top + 7 }]} pointerEvents="box-none">
-        <View style={styles.capsule} accessibilityRole="tablist">
-          {TABS.map(([label, glyph]) => {
-            const on = label === at;
-            const ink = on ? tokens.colorAccent : tokens.colorInkSecondary;
-
-            return (
-              <Pressable
-                key={label}
-                onPress={() => shell.onTab(label)}
-                hitSlop={tokens.spaceXxs}
-                style={[styles.capsuleTab, on && styles.capsuleOn]}
-                accessibilityRole="tab"
-                accessibilityState={{ selected: on }}
-                accessibilityLabel={label}
-              >
-                <Glyph name={glyph} ink={ink} />
-                <Text size={TYPE.body} weight="semibold" accessible={false} style={{ color: ink }}>
-                  {label}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
+        <WhiteCapsule tabs={TABS} at={at} onTab={shell.onTab} />
       </View>
     </View>
   );
@@ -436,23 +413,4 @@ const styles = StyleSheet.create({
     paddingBottom: tokens.spaceXxs,
   },
   capsuleAt: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
-  capsule: {
-    height: 46,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.spaceHair,
-    paddingHorizontal: tokens.spaceXxs,
-    borderRadius: 23,
-    backgroundColor: tokens.colorInset,
-  },
-  capsuleTab: {
-    height: 38,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.spaceSm,
-    paddingLeft: 13,
-    paddingRight: tokens.spaceXl,
-    borderRadius: 19,
-  },
-  capsuleOn: { backgroundColor: tokens.colorCard, ...tokens.elevationNative.raised.ios },
 });

@@ -753,6 +753,48 @@ export function TabBar<T extends string>({
   );
 }
 
+/** An upright iPad's tab bar on white, centred at the top of the page. */
+export function WhiteCapsule<T extends string>({
+  tabs,
+  onTab,
+  at,
+  say = (tab) => tab,
+  ids,
+}: {
+  tabs: readonly (readonly [T, GlyphName])[];
+  onTab: (tab: T) => void;
+  at: T;
+  say?: (tab: T, glyph: GlyphName) => string;
+  ids?: Partial<Record<T, string>>;
+}) {
+  return (
+    <View style={styles.whiteCapsule} accessibilityRole="tablist">
+      {tabs.map(([label, glyph]) => {
+        const on = label === at;
+        const ink = on ? tokens.colorAccent : tokens.colorInkSecondary;
+
+        return (
+          <Pressable
+            key={label}
+            onPress={() => onTab(label)}
+            hitSlop={tokens.spaceXxs}
+            style={[styles.whiteCapsuleTab, on && styles.whiteCapsuleOn]}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: on }}
+            accessibilityLabel={say(label, glyph)}
+            testID={ids?.[label]}
+          >
+            <Glyph name={glyph} ink={ink} />
+            <Text size={15} weight="semibold" accessible={false} style={{ color: ink }}>
+              {say(label, glyph)}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
 /** Under the phone's tab bar, the page fades to white so nothing reads through it. */
 export function TabBarFade() {
   return (
@@ -804,6 +846,25 @@ export function PhoneTabBar({
 const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
   fade: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 150 },
+  whiteCapsule: {
+    height: 46,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spaceHair,
+    paddingHorizontal: tokens.spaceXxs,
+    borderRadius: 23,
+    backgroundColor: tokens.colorInset,
+  },
+  whiteCapsuleTab: {
+    height: 38,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spaceSm,
+    paddingLeft: 13,
+    paddingRight: tokens.spaceXl,
+    borderRadius: 19,
+  },
+  whiteCapsuleOn: { backgroundColor: tokens.colorCard, ...tokens.elevationNative.raised.ios },
   white: { color: tokens.colorInkOnDark },
   accent: { color: tokens.colorAccent },
   soft: { opacity: 0.84 },
