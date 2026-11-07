@@ -2,7 +2,6 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Text } from '../../components/Text.tsx';
-import type { SettingsSection } from '../../kit/appNav.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { Confetti, Cover } from '../../components/Cover.tsx';
 import { CARD_PIECES } from '../Cover.tsx';
@@ -11,6 +10,8 @@ import { SwitchedNotice } from '../OrgSwitcher.tsx';
 import { Glass, PhoneTabBar } from '../../components/TodayCover.tsx';
 import { Bell, Fade, Landscape, OrgPill, PHONE_TAB_BAR, PortraitTop, useShell } from './Frame.tsx';
 import { Caps, Pill, Tile, TYPE } from './parts.tsx';
+import { WORDS as PERSONALISATION } from './PersonalisationModel.ts';
+import { SchemeTile } from './PersonalisationParts.tsx';
 import { type DemoSection, demoGroups, type Viewer, YOU } from './sample.ts';
 
 type Listed = Exclude<DemoSection, 'account'>;
@@ -19,6 +20,7 @@ type Listed = Exclude<DemoSection, 'account'>;
 const ROWS: Record<Listed, { title: string; line: string }> = {
   security: { title: 'Security', line: 'Password, ways to sign in, two-factor, signed-in devices' },
   notifications: { title: 'Notifications', line: 'Push and email, for each kind of notification' },
+  personalisation: { title: 'Personalisation', line: PERSONALISATION.listLine },
   organisation: { title: YOU.organisation, line: 'Name, contact address, currency, time zone' },
   members: { title: 'Members', line: 'Who is in it, and their roles' },
   signInRules: { title: 'Sign-in rules', line: 'How people sign in, and for how long' },
@@ -180,7 +182,11 @@ function Row({
       testID={`settings.${section}`}
     >
       {!first && !open && <View style={[styles.rule, { left: tokens.spaceXl + tile + 12 }]} />}
-      <Tile of={section} side={tile} initials={section === 'organisation' ? 'IE' : undefined} />
+      {section === 'personalisation' ? (
+        <SchemeTile side={tile} />
+      ) : (
+        <Tile of={section} side={tile} initials={section === 'organisation' ? 'IE' : undefined} />
+      )}
       <View style={styles.rowWords}>
         <Text
           size={dense ? 15.5 : TYPE.row}
@@ -216,7 +222,7 @@ function Group({
 }: {
   sections: readonly Listed[];
   dense: boolean;
-  open: SettingsSection | null;
+  open: DemoSection | null;
 }) {
   return (
     <View style={styles.group}>

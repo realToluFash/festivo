@@ -35,11 +35,13 @@ import { useModalOpen } from '../../updateRequired.ts';
 import { Glyph } from '../../components/Glyph.tsx';
 import { useShell } from './Frame.tsx';
 import { AskLayer, type AskProps } from './AskLayer.tsx';
-import { TextAction } from './SummaryRows.tsx';
+import { TextAction, TurningMark } from './SummaryRows.tsx';
 
 export { AskLayer, type AskProps } from './AskLayer.tsx';
 
 type Opener = RefObject<ScreenReaderTarget | null>;
+
+const stay = () => {};
 
 /** A window taken down with its page is still going for a moment, and iOS loses one put up meanwhile. */
 const going = { until: 0 };
@@ -123,6 +125,8 @@ export interface FocusVerb {
   on: boolean;
   onPress: () => void;
   removes?: boolean;
+  /** While its request is out: the turning mark and its words in Ink 2, off until the answer. */
+  busy?: boolean;
   testID?: string;
 }
 
@@ -138,6 +142,7 @@ export function FocusedScreen({
   verb,
   back,
   cancels = true,
+  waits = false,
   onCancel,
   cancelTestID,
   opener,
@@ -156,6 +161,8 @@ export function FocusedScreen({
   back?: string | undefined;
   /** False for a sheet that applies what is tapped: nothing at the left, and the verb closes it. */
   cancels?: boolean;
+  /** True while a save is out: Cancel, the escape and the scrub wait in Ink 3 until it answers. */
+  waits?: boolean;
   onCancel: () => void;
   cancelTestID?: string;
   opener: Opener;
@@ -175,7 +182,8 @@ export function FocusedScreen({
   const asking = ask != null;
   const covered = asking || over != null;
   const bottom = phone ? insets.bottom : 0;
-  const close = asking ? ask.onKeep : over != null ? over.onClose : onCancel;
+  const cancel = waits ? stay : onCancel;
+  const close = asking ? ask.onKeep : over != null ? over.onClose : cancel;
 
   return (
     <Window open={open} onClose={close} opener={opener} slides={phone} waitsAway>
@@ -190,7 +198,7 @@ export function FocusedScreen({
               phone ? [styles.screen, { paddingTop: insets.top }] : [styles.sheet, styles.sheetUp]
             }
             accessibilityViewIsModal
-            onAccessibilityEscape={onCancel}
+            onAccessibilityEscape={cancel}
             accessibilityElementsHidden={covered}
             importantForAccessibility={covered ? 'no-hide-descendants' : 'auto'}
             testID={testID}
@@ -201,7 +209,8 @@ export function FocusedScreen({
               verb={verb}
               back={back}
               cancels={cancels}
-              onCancel={onCancel}
+              waits={waits}
+              onCancel={cancel}
               cancelTestID={cancelTestID}
             />
             {fills ? (
@@ -242,6 +251,7 @@ function FocusNav({
   verb,
   back,
   cancels,
+  waits,
   onCancel,
   cancelTestID,
 }: {
@@ -249,6 +259,7 @@ function FocusNav({
   verb: FocusVerb | null;
   back: string | undefined;
   cancels: boolean;
+  waits: boolean;
   onCancel: () => void;
   cancelTestID?: string | undefined;
 }) {
@@ -265,6 +276,7 @@ function FocusNav({
       {cancels ? (
         <Pressable
           onPress={onCancel}
+          disabled={waits}
           onLayout={cancelLaid}
           style={({ pressed }) => [
             styles.navButton,
@@ -273,12 +285,18 @@ function FocusNav({
           ]}
           accessibilityRole="button"
           accessibilityLabel={back ?? 'Cancel'}
+          accessibilityState={waits ? { disabled: true } : undefined}
           testID={cancelTestID}
         >
           {back != null && (
             <Glyph name="back" size={20} ink={tokens.colorAccentText} weight={2.4} />
           )}
-          <Text size={17} weight="medium" accessible={false} style={styles.accent}>
+          <Text
+            size={17}
+            weight="medium"
+            accessible={false}
+            style={waits ? styles.waiting : styles.accent}
+          >
             {back == null ? 'Cancel' : short ? 'Back' : back}
           </Text>
         </Pressable>
@@ -317,22 +335,30 @@ function FocusNav({
             const width = event.nativeEvent.layout.width;
             setSides((now) => ({ ...now, verb: width }));
           }}
-          style={({ pressed }) => [styles.navButton, pressed && styles.pressed]}
+          style={({ pressed }) => [
+            styles.navButton,
+            verb.busy === true && styles.navBusy,
+            pressed && styles.pressed,
+          ]}
           accessibilityRole="button"
           accessibilityLabel={verb.label}
-          accessibilityState={{ disabled: !verb.on }}
+          accessibilityState={{ disabled: !verb.on, busy: verb.busy === true }}
           testID={verb.testID}
         >
+          {verb.busy === true && <TurningMark side={14} />}
           <Text
             size={17}
             weight="semibold"
             accessible={false}
             style={{
-              color: !verb.on
-                ? tokens.colorInkTertiary
-                : verb.removes === true
-                  ? tokens.colorBroken
-                  : tokens.colorAccentText,
+              color:
+                verb.busy === true
+                  ? tokens.colorInkSecondary
+                  : !verb.on
+                    ? tokens.colorInkTertiary
+                    : verb.removes === true
+                      ? tokens.colorBroken
+                      : tokens.colorAccentText,
             }}
           >
             {verb.label}
@@ -597,6 +623,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: tokens.spaceLg,
   },
   navBack: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceHair, paddingLeft: 6 },
+  navBusy: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXs },
+  waiting: { color: tokens.colorInkTertiary },
   navTitle: {
     position: 'absolute',
     top: 0,
