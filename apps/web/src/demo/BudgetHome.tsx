@@ -111,7 +111,7 @@ const vendorName = (id: string): string => VENDOR[id]?.name ?? id;
 const FIRST_KNOWS =
   '96 guests have said yes and the event runs 3 days, Thursday, Nov 5 to Saturday, Nov 7. There is no seating plan yet. Each cost you add takes its quantity from these, so nobody types a count in.';
 
-type Dialog = 'addCost' | 'ceiling' | 'markup' | null;
+type Dialog = 'addCost' | 'ceiling' | 'markup' | 'dueNow' | null;
 
 interface Removed {
   line: CostLine;
@@ -122,6 +122,7 @@ interface Removed {
 function dialogOf(state: string): Dialog {
   if (state.startsWith('add_cost')) return 'addCost';
   if (state.startsWith('markup')) return 'markup';
+  if (state.startsWith('due_')) return 'dueNow';
   if (
     ['ceiling_set', 'ceiling_change', 'ceiling_negative', 'ceiling_currency'].includes(state) ||
     ['ceiling_nan', 'ceiling_decimals'].includes(state)
@@ -425,6 +426,9 @@ function HomeAt({ event, state: first }: { event: SampleEvent; state: string }) 
             />
           )}
           {dialog === 'markup' && <MarkupDialog first={first} onDismiss={() => setDialog(null)} />}
+          {dialog === 'dueNow' && (
+            <DueNowDialog event={event} first={first} onClose={() => setDialog(null)} />
+          )}
         </>
       )}
     </BudgetShell>
@@ -1672,6 +1676,124 @@ function MarkupDialog({ first, onDismiss }: { first: string; onDismiss: () => vo
       <p className="desk-note">
         Margin is a share of the client price: 20% markup is a 16.7% margin.
       </p>
+    </BudgetDialog>
+  );
+}
+
+type DueNowState = 'owed' | 'marked' | 'paidElsewhere' | 'cancelled' | 'refused';
+
+const REMINDED = ['p6', 'p7'];
+
+function DueNowDialog({
+  event,
+  first,
+  onClose,
+}: {
+  event: SampleEvent;
+  first: string;
+  onClose: () => void;
+}) {
+  const readOnly = first === 'due_read_only';
+  const [rows, setRows] = useState<Record<string, DueNowState>>(() => {
+    if (first === 'due_marked') return { p6: 'marked', p7: 'owed' };
+    if (first === 'due_changed') return { p6: 'paidElsewhere', p7: 'cancelled' };
+    if (first === 'due_refused') return { p6: 'owed', p7: 'refused' };
+    if (first === 'due_done') return { p6: 'marked', p7: 'marked' };
+
+    return { p6: 'owed', p7: 'owed' };
+  });
+  const done = first === 'due_done' || REMINDED.every((id) => rows[id] === 'marked');
+  const payments = REMINDED.map((id) => PAYMENTS.find((one) => one.id === id)).filter(
+    (one): one is Payment => one != null,
+  );
+
+  return (
+    <BudgetDialog
+      title="Due now"
+      verb="Close"
+      cancel={false}
+      onDismiss={onClose}
+      onConfirm={onClose}
+    >
+      {done ? (
+        <>
+          <p className="bud-due-done" role="status">
+            Nothing left to pay from this reminder
+          </p>
+          <Link className="desk-text" to={budgetAt(undefined, { view: 'due' })}>
+            {`Everything due on ${event.name}`}
+          </Link>
+        </>
+      ) : (
+        <>
+          <p className="desk-line">From the reminder sent Nov 1 · 2 payments</p>
+          {readOnly && <ReadOnlyLine />}
+          <Rows label="Due now">
+            {payments.map((payment) => {
+              const now = rows[payment.id] ?? 'owed';
+              const where = `${payment.what} · ${
+                overdue(payment)
+                  ? `Overdue since ${shortDay(payment.dueOn)}`
+                  : W.due(shortDay(payment.dueOn))
+              } · ${event.name}`;
+              const said =
+                now === 'paidElsewhere'
+                  ? `${where} · Paid by Julien Moreau on Nov 2`
+                  : now === 'cancelled'
+                    ? `${where} · Cancelled`
+                    : now === 'refused'
+                      ? `${where} · This payment has been cancelled, so it cannot be marked paid.`
+                      : where;
+
+              return (
+                <li key={payment.id}>
+                  {now === 'marked' ? (
+                    <div className="desk-row bud-row is-on" role="status">
+                      <span className="bud-lead">
+                        <Mark kind="yes" />
+                      </span>
+                      <RowWords
+                        title={vendorName(payment.vendorId)}
+                        lines={[`Marked paid · ${money(payment.amount)}`]}
+                      />
+                      <button
+                        type="button"
+                        className="desk-text"
+                        onClick={() => setRows((was) => ({ ...was, [payment.id]: 'owed' }))}
+                      >
+                        <Glyph name="undo" size={16} weight={2.4} />
+                        {W.undo}
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <BudgetRow
+                        title={vendorName(payment.vendorId)}
+                        lines={[said]}
+                        end={<Amount value={money(payment.amount)} />}
+                      />
+                      {now === 'owed' && !readOnly && (
+                        <div className="bud-row-actions">
+                          <TextAction
+                            label="Paid"
+                            onClick={() => setRows((was) => ({ ...was, [payment.id]: 'marked' }))}
+                          />
+                          <Link
+                            className="desk-text"
+                            to={budgetAt('paid_more', { vendor: payment.vendorId })}
+                          >
+                            Paid a different amount
+                          </Link>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </li>
+              );
+            })}
+          </Rows>
+        </>
+      )}
     </BudgetDialog>
   );
 }

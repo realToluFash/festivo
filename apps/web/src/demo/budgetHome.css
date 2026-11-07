@@ -173,3 +173,8 @@
     flex-wrap: wrap;
   }
 }
+
+.bud-due-done {
+  color: var(--colorInk);
+  font: 700 20px/1.25 var(--fontFamily);
+}

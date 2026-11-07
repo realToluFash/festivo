@@ -173,4 +173,23 @@ describe('the Budget page at a desk in A (sc-31779)', () => {
       'This event is not available',
     );
   });
+
+  it('opens Due now from the reminder: Paid in one tap, with Undo (sc-1331)', SLOW, async () => {
+    await open(at('due_now'));
+    const dialog = await screen.findByRole('dialog', SLOW);
+
+    expect(within(dialog).getByText('From the reminder sent Nov 1 · 2 payments')).toBeTruthy();
+    fireEvent.click(within(dialog).getAllByRole('button', { name: 'Paid' })[0]!);
+    expect(within(dialog).getByText('Marked paid · £840.00')).toBeTruthy();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Undo' }));
+    expect(within(dialog).getAllByRole('button', { name: 'Paid' })).toHaveLength(2);
+    fireEvent.click(within(dialog).getAllByRole('button', { name: 'Paid' })[0]!);
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Paid' }));
+    expect(within(dialog).getByText('Nothing left to pay from this reminder')).toBeTruthy();
+    cleanup();
+    await open(at('due_read_only'));
+    expect(
+      within(await screen.findByRole('dialog', SLOW)).queryByRole('button', { name: 'Paid' }),
+    ).toBeNull();
+  });
 });

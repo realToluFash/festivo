@@ -73,11 +73,21 @@ export const MARGIN_STATES = [
 
 export const HOME_TEMPLATE_STATES = ['nothing_to_start', 'save_taken', 'save_blank', 'save_long'];
 
+export const DUE_NOW_STATES = [
+  'due_now',
+  'due_marked',
+  'due_changed',
+  'due_refused',
+  'due_done',
+  'due_read_only',
+] as const;
+
 export const HOME_STATES: readonly string[] = [
   ...WEB_STATES,
   ...CEILING_STATES,
   ...MARGIN_STATES,
   ...HOME_TEMPLATE_STATES,
+  ...DUE_NOW_STATES,
 ];
 
 export interface Heads {
@@ -329,6 +339,17 @@ export const BUDGET_PAGES: readonly DemoGroup[] = [
       { to: at('ceiling_saved'), name: 'Saved, each category in the column' },
       { to: at('ceiling_cleared'), name: 'Cleared' },
       { to: at('rate_warning'), name: 'A rate that takes the event over its ceiling' },
+    ],
+  },
+  {
+    name: 'Due now, from the payment reminder (Budget-A-Payments)',
+    states: [
+      { to: at('due_now'), name: 'Due now: two payments, Paid or Paid a different amount' },
+      { to: at('due_marked'), name: 'One marked paid, with Undo' },
+      { to: at('due_changed'), name: 'Changed since the reminder' },
+      { to: at('due_refused'), name: 'A tap refused' },
+      { to: at('due_done'), name: 'Nothing left to pay' },
+      { to: at('due_read_only'), name: 'Read only after a downgrade' },
     ],
   },
   {
