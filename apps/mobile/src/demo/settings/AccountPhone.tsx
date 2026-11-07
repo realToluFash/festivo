@@ -8,6 +8,7 @@ import { tokens } from '../../theme/tokens.ts';
 import { PickerEdge } from '../PickerEdge.tsx';
 
 /** The product's PhoneEntry as sc-30447 draws it: the red edge goes on the control the line names, the Code or the number. */
+// Goes once sc-30447's build gives PhoneEntry the edge: AccountAdd.tsx renders PhoneEntry again.
 export function AccountPhoneEntry({
   label,
   help,
