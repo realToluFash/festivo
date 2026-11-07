@@ -8,20 +8,25 @@ import {
   useState,
 } from 'react';
 import { createPortal } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 
-import { ActionPair } from '../components/ActionPair.tsx';
+import { ActionPair } from './ActionPair.tsx';
 import { offButton } from '../offButton.ts';
 import { Glyph } from './Glyph.tsx';
-import { LayersContext, useDeskDialog } from './layers.ts';
-import type { MarkKind } from './members.ts';
-import type { Tell } from './TodayParts.tsx';
+import { LayersContext, useDeskDialog } from '../layers.ts';
+
+export type Tell = (words: string) => void;
+
+export type MarkKind = 'yes' | 'waiting' | 'paused' | 'ended';
 
 export function Bell({ tell }: { tell: Tell }) {
+  const { t } = useTranslation();
+
   return (
     <button
       type="button"
       className="desk-bell"
-      aria-label="Notifications, 3 unread"
+      aria-label={t('notifications.bellUnread', { count: 3 })}
       onClick={() => tell('Notifications have their own design.')}
     >
       <Glyph name="bell" size={19} />
@@ -406,6 +411,7 @@ function DialogBox({
   onConfirm,
   children,
 }: DialogProps) {
+  const { t } = useTranslation();
   const id = useId();
   const box = useRef<HTMLDivElement>(null);
   const none = useRef<HTMLElement>(null);
@@ -429,7 +435,7 @@ function DialogBox({
           dismiss={
             cancel ? (
               <button type="button" className="desk-nav-cancel" onClick={onDismiss}>
-                Cancel
+                {t('settings.dialogCancel')}
               </button>
             ) : (
               <span className="desk-nav-cancel is-none" aria-hidden="true">

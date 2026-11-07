@@ -8,8 +8,8 @@ import { Text } from '../../components/Text.tsx';
 import { pickedInto, pickerValue } from '../../kit/eventForm.ts';
 import { weight } from '../../theme/fonts.ts';
 import { tokens } from '../../theme/tokens.ts';
-import { Pill } from '../settings/parts.tsx';
 import { W } from './EventsWords.ts';
+import { Pill } from '../../components/SettingsParts.tsx';
 
 export interface Picking {
   title: string;

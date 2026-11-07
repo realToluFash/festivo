@@ -35,8 +35,8 @@ import {
   RedAction,
   RowWords,
   TextAction,
-} from './SettingsParts.tsx';
-import type { Tell } from './TodayParts.tsx';
+} from '../components/SettingsParts.tsx';
+import type { Tell } from '../components/SettingsParts.tsx';
 
 /** A person in the list's place: their card, how they got here, and what the viewer may do, by their standing. */
 export function PersonPage({

@@ -20,9 +20,6 @@ import { tokens } from '../../theme/tokens.ts';
 import { EventMesh } from '../../components/EventMesh.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
 import { LineIcon } from '../settings/AccountCard.tsx';
-import { useShell } from '../settings/Frame.tsx';
-import { Pill } from '../settings/parts.tsx';
-import { type AskProps, FocusedScreen, Row, RowList, TextAction } from '../settings/Summary.tsx';
 import { PhotoFill } from './EventCard.tsx';
 import { EventNotice } from './EventNotice.tsx';
 import { type EditPart, type EventDemoState, folded, instantOf, wallOf } from './EventsModel.ts';
@@ -37,9 +34,18 @@ import {
   type Suggestion,
   TYPE_WORDS,
   ZONES,
-  meshFor,
 } from './EventsSample.ts';
+import { meshFor } from '../../kit/today.ts';
 import { W, say, t } from './EventsWords.ts';
+import { useShell } from '../../components/settingsShell.ts';
+import { Pill } from '../../components/SettingsParts.tsx';
+import {
+  type AskProps,
+  FocusedScreen,
+  Row,
+  RowList,
+  TextAction,
+} from '../../components/Summary.tsx';
 
 type Opener = RefObject<ScreenReaderTarget | null>;
 

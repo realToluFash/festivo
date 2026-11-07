@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { type LayoutChangeEvent, StyleSheet, View } from 'react-native';
 
-import { SETTLED_MS } from '../../components/Screen.tsx';
-import { moveScreenReaderFocus } from '../../components/screenReaderFocus.ts';
-import { type TextHandle, Text } from '../../components/Text.tsx';
-import { useLayout } from '../../layout/useLayout.ts';
-import { tokens } from '../../theme/tokens.ts';
+import { SETTLED_MS } from './Screen.tsx';
+import { moveScreenReaderFocus } from './screenReaderFocus.ts';
+import { type TextHandle, Text } from './Text.tsx';
+import { useLayout } from '../layout/useLayout.ts';
+import { tokens } from '../theme/tokens.ts';
 import { TextAction } from './SummaryRows.tsx';
 
 export interface AskProps {

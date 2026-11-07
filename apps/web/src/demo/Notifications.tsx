@@ -3,7 +3,7 @@ import { formattingLocale, settingFlipped } from '@soirely/domain';
 import { useEffect, useEffectEvent, useId, useMemo, useRef, useState } from 'react';
 
 import { offButton } from '../offButton.ts';
-import { Glyph, type GlyphName } from './Glyph.tsx';
+import { Glyph, type GlyphName } from '../components/Glyph.tsx';
 import {
   ALLOW_WORDS as A,
   CATEGORY_NAMES,
@@ -37,8 +37,8 @@ import {
   Tag,
   TextAction,
   TitleRow,
-} from './SettingsParts.tsx';
-import type { Tell } from './TodayParts.tsx';
+} from '../components/SettingsParts.tsx';
+import type { Tell } from '../components/SettingsParts.tsx';
 import './account.css';
 import './notifications.css';
 

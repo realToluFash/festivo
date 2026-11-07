@@ -48,7 +48,7 @@ import {
   Section,
   SectionHead,
   SummaryCard,
-} from './Summary.tsx';
+} from '../../components/Summary.tsx';
 
 const hidden = {
   accessibilityElementsHidden: true,

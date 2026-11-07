@@ -3,13 +3,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { Toast } from '../components/Toast.tsx';
-import { LayersContext, useDeskLayers } from './layers.ts';
+import { LayersContext, useDeskLayers } from '../layers.ts';
 import { NoOrganisation } from './NoOrganisation.tsx';
 import { AccessPaused, Switched } from './OrgSwitcher.tsx';
 import { inNone, isFresh, useSwitcherStart, useWhere } from './switcher.ts';
 import { MOMENTS, type MomentName, momentOf, sayIn } from './today.ts';
 import { Banner, NowBanner } from './TodayBanner.tsx';
-import { FirstRun, NeedsYou, type Tell, ThisWeek, YourEvents } from './TodayParts.tsx';
+import type { Tell } from '../components/SettingsParts.tsx';
+import { FirstRun, NeedsYou, ThisWeek, YourEvents } from './TodayParts.tsx';
 import { TodaySidebar } from './TodaySidebar.tsx';
 import './today.css';
 

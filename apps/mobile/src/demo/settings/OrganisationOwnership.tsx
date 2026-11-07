@@ -36,9 +36,9 @@ import {
   Line,
   RowList,
   SectionHead,
-  StatusMark,
+  ShapeMark,
   TextAction,
-} from './Summary.tsx';
+} from '../../components/Summary.tsx';
 
 /** The board's mismatch: Delete pressed with a lowercase e. */
 const MISTYPED = 'Ire events';
@@ -369,7 +369,7 @@ function DeleteScreen({
         </Field>
         {matches && (
           <View style={styles.matches} testID="organisation.delete.matches">
-            <StatusMark kind="yes" side={16} ink={tokens.marks.done.ink} />
+            <ShapeMark kind="yes" side={16} ink={tokens.marks.done.ink} />
             <Text size={tokens.typeSmall.size} weight="medium" style={styles.secondary}>
               {W.deleteMatches}
             </Text>

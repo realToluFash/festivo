@@ -4,7 +4,6 @@ import { type ScrollViewInstance, StyleSheet, View, type ViewInstance } from 're
 
 import { FieldError } from '../../components/Field.tsx';
 import { readOut } from '../../components/ReadOut.tsx';
-import { useShell } from './Frame.tsx';
 import { RoleScreen, TAKES_EFFECT } from './MembersRole.tsx';
 import {
   changedRole,
@@ -22,6 +21,8 @@ import {
   statusWord,
   whenWord,
 } from './MembersSample.ts';
+import { useShell } from '../../components/settingsShell.ts';
+import { SummaryPage } from './SummaryPage.tsx';
 import {
   Ask,
   CardFace,
@@ -33,9 +34,8 @@ import {
   RowList,
   Section,
   SummaryCard,
-  SummaryPage,
   TextAction,
-} from './Summary.tsx';
+} from '../../components/Summary.tsx';
 
 export interface PersonOpening {
   step: PersonStep;

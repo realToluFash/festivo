@@ -1,7 +1,8 @@
 import { firstDayOfWeek, weekdayNames } from '@soirely/domain';
 import { describe, expect, it } from 'vitest';
 
-import { CLOCKS, REUNION, meshFor } from '../events/EventsSample.ts';
+import { CLOCKS, REUNION } from '../events/EventsSample.ts';
+import { meshFor } from '../../kit/today.ts';
 import {
   type Item,
   PHONE_WEEK,

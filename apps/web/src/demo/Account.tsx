@@ -26,7 +26,7 @@ import {
   VerifyDialog,
   ZoneDialog,
 } from './AccountDialogs.tsx';
-import { Glyph, type GlyphName } from './Glyph.tsx';
+import { Glyph, type GlyphName } from '../components/Glyph.tsx';
 import type { Viewer } from './settings.ts';
 import {
   Ask,
@@ -37,8 +37,8 @@ import {
   OnCard,
   RowWords,
   TitleRow,
-} from './SettingsParts.tsx';
-import type { Tell } from './TodayParts.tsx';
+} from '../components/SettingsParts.tsx';
+import type { Tell } from '../components/SettingsParts.tsx';
 import './account.css';
 
 const ICONS: Record<Kind, GlyphName> = { email: 'mail', phone: 'phone' };

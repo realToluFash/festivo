@@ -22,7 +22,7 @@ import {
   WORDS,
 } from './NotificationsModel.ts';
 import { SwitchTrack } from './NotificationsSwitch.tsx';
-import { OpenRow, RowList, type RowTag, Section } from './Summary.tsx';
+import { OpenRow, RowList, type RowTag, Section } from '../../components/Summary.tsx';
 
 const LEADS: Record<NotificationCategory, GlyphName> = {
   guest_replies: 'users',

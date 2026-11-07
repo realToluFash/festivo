@@ -32,7 +32,7 @@ import {
   requestLink,
 } from './general.ts';
 import { AddDomainDialog, DeleteDialog, DetailsDialog, TransferDialog } from './GeneralDialogs.tsx';
-import { Glyph } from './Glyph.tsx';
+import { Glyph } from '../components/Glyph.tsx';
 import { heldStepPath } from './security.ts';
 import type { Viewer } from './settings.ts';
 import {
@@ -46,9 +46,9 @@ import {
   Tag,
   TextAction,
   TitleRow,
-} from './SettingsParts.tsx';
-import type { Tell } from './TodayParts.tsx';
-import { useLater } from './useLater.ts';
+} from '../components/SettingsParts.tsx';
+import type { Tell } from '../components/SettingsParts.tsx';
+import { useLater } from '../useLater.ts';
 import './general.css';
 
 const DETAIL_ROWS: readonly Picked[] = ['countryCode', 'currency', 'timezone', 'locale'];

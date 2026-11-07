@@ -3,8 +3,8 @@ import { Link, useSearchParams } from 'react-router';
 
 import { Brand } from '../components/Brand.tsx';
 import { Toast } from '../components/Toast.tsx';
-import { Glyph, type GlyphName } from './Glyph.tsx';
-import { LayersContext, useDeskLayers } from './layers.ts';
+import { Glyph, type GlyphName } from '../components/Glyph.tsx';
+import { LayersContext, useDeskLayers } from '../layers.ts';
 import { SAMPLE } from './rules.ts';
 import {
   ADD_PROMPT,
@@ -36,9 +36,10 @@ import {
   withRole,
 } from './people.ts';
 import { AddDialog, RoleDialog } from './PeopleDialogs.tsx';
-import { Avatar, Bell, Head, RowWords, Tag, TextAction } from './SettingsParts.tsx';
-import type { Tell } from './TodayParts.tsx';
+import { Avatar, Bell, Head, RowWords, Tag, TextAction } from '../components/SettingsParts.tsx';
+import type { Tell } from '../components/SettingsParts.tsx';
 import './today.css';
+import '../components/SettingsParts.css';
 import './settings.css';
 import './people.css';
 

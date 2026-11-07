@@ -1165,7 +1165,8 @@
     "sections": "Definições da organização",
     "sectionGeneral": "Geral",
     "sectionMembers": "Membros",
-    "sectionSignInRules": "Regras de início de sessão"
+    "sectionSignInRules": "Regras de início de sessão",
+    "dialogCancel": "Cancelar"
   },
   "membersScreen": {
     "proveOwner_one": "Para dar a alguém a função de Proprietário de {{organisation}}, confirme que é você. Não voltamos a pedir durante um minuto.",

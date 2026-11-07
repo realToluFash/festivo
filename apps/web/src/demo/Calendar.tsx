@@ -45,11 +45,11 @@ import { AgendaList, BrokenLine, DayPanel, MonthWeeks } from './CalendarWeeks.ts
 import { EventsShell } from './EventParts.tsx';
 import { CLOCKS, REUNION, TODAY_IDS, resetSample, sampleEvent, sampleEvents } from './events.ts';
 import { FirstRun } from './Events.tsx';
-import { Glyph } from './Glyph.tsx';
+import { Glyph } from '../components/Glyph.tsx';
 import { AccessPaused, Switched } from './OrgSwitcher.tsx';
 import { SIDEBAR_EVENTS } from './settings.ts';
 import { usePaused, useSwitcherStart } from './switcher.ts';
-import type { Tell } from './TodayParts.tsx';
+import type { Tell } from '../components/SettingsParts.tsx';
 import { TodaySidebar } from './TodaySidebar.tsx';
 import './calendar.css';
 

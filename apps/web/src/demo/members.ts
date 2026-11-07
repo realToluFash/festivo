@@ -1,3 +1,4 @@
+import type { MarkKind } from '../components/SettingsParts.tsx';
 import { emailProblem, type MemberStanding, memberStanding } from '@soirely/domain';
 
 import { SAMPLE } from './rules.ts';
@@ -214,8 +215,6 @@ export const EMPTY: Record<Exclude<Filter, 'all'>, { title: string; line: string
     line: 'People who leave or are removed are listed here, with what they did kept.',
   },
 };
-
-export type MarkKind = 'yes' | 'waiting' | 'paused' | 'ended';
 
 export function tagOf(person: Pick<Person, 'status' | 'gone'>): { kind: MarkKind; word: string } {
   switch (person.status) {

@@ -12,7 +12,6 @@ import {
 import { Text } from '../../components/Text.tsx';
 import type { Scheme } from '../../theme/tokens.ts';
 import { tokens } from '../../theme/tokens.ts';
-import { useShell } from './Frame.tsx';
 import {
   type Colours,
   nameOf,
@@ -24,7 +23,8 @@ import {
 } from './PersonalisationModel.ts';
 import { PreviewCard, SchemeGround, swatchSpots } from './PersonalisationParts.tsx';
 import { lookOf, SCHEME_ORDER } from './PersonalisationSchemes.ts';
-import { FocusedScreen, Tag, TextAction } from './Summary.tsx';
+import { useShell } from '../../components/settingsShell.ts';
+import { FocusedScreen, Tag, TextAction } from '../../components/Summary.tsx';
 
 /** Colours: the card in the pick, what the pick means, the restart line and the eight swatches; Cancel leaves without asking. */
 export function ColoursScreen({

@@ -8,7 +8,7 @@ import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
 import { addCheck, addRefusal, type ContactKind, KIND_WORDS, WORDS } from './AccountModel.ts';
 import { discardAsk } from './AccountName.tsx';
 import { type Contact, PHONE_COUNTRY, phoneShown } from './AccountSample.ts';
-import { FocusedScreen } from './Summary.tsx';
+import { FocusedScreen } from '../../components/Summary.tsx';
 
 /** Adding an address or a number; it joins unverified, and only the account's own rows are known to be linked. */
 export function AddScreen({

@@ -4,7 +4,7 @@ import { StyleSheet, View } from 'react-native';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { type Channel, expiredLine, WORDS } from './AccountModel.ts';
-import { Line } from './Summary.tsx';
+import { Line } from '../../components/Summary.tsx';
 
 /** Seconds until a new code may be sent; an expired code starts with none to wait. */
 export function useCountdown(

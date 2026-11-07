@@ -11,18 +11,17 @@ import {
 } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 
-import { Text } from '../../components/Text.tsx';
-import { useReducedMotion } from '../../reducedMotion.ts';
-import { tokens } from '../../theme/tokens.ts';
-import { Glyph, type GlyphName } from '../../components/Glyph.tsx';
+import { Text } from './Text.tsx';
+import { useReducedMotion } from '../reducedMotion.ts';
+import { tokens } from '../theme/tokens.ts';
+import { Glyph, type GlyphName } from './Glyph.tsx';
+import { type MarkKind, ShapeMark } from './StatusMark.tsx';
 
 const hidden = {
   accessibilityElementsHidden: true,
   importantForAccessibility: 'no-hide-descendants',
 } as const;
 
-/** A state shape, always beside its word: a tick, a ring, a half ring, two bars, a ring struck through. */
-export type MarkKind = 'yes' | 'notyet' | 'waiting' | 'paused' | 'ended';
 export type TagKind = MarkKind | 'now';
 export interface RowTag {
   kind: TagKind;
@@ -38,51 +37,6 @@ const TAGS: Record<TagKind, { fill: string; ink: string; ring?: string }> = {
   ended: { fill: tokens.colorNeutralFill, ink: tokens.colorInkSecondary },
   now: { fill: tokens.colorAccentTint, ink: tokens.colorAccentText },
 };
-
-export function StatusMark({
-  kind,
-  side = 12,
-  ink,
-}: {
-  kind: MarkKind;
-  side?: number;
-  ink: string;
-}) {
-  const round = { width: side, height: side, borderRadius: side / 2 };
-
-  if (kind === 'yes')
-    return (
-      <View {...hidden} style={[styles.markYes, round]}>
-        <Glyph name="tick" size={Math.round(side * 0.7)} ink={tokens.marks.done.ink} weight={3.4} />
-      </View>
-    );
-  if (kind === 'paused') {
-    const bar = {
-      width: Math.max(3, Math.round(side * 0.24)),
-      height: Math.round(side * 0.82),
-      backgroundColor: ink,
-    };
-
-    return (
-      <View
-        {...hidden}
-        style={[styles.markBars, round, { gap: Math.max(2, Math.round(side * 0.18)) }]}
-      >
-        <View style={[styles.bar, bar]} />
-        <View style={[styles.bar, bar]} />
-      </View>
-    );
-  }
-
-  return (
-    <View {...hidden} style={[styles.markRing, round, { borderColor: ink }]}>
-      {kind === 'waiting' && <View style={[styles.halfFill, { backgroundColor: ink }]} />}
-      {kind === 'ended' && (
-        <View style={[styles.dash, { width: Math.round(side * 0.46), backgroundColor: ink }]} />
-      )}
-    </View>
-  );
-}
 
 const TURN_MS = 900;
 
@@ -146,7 +100,7 @@ export function Tag({
       ]}
     >
       {turning && <TurningMark />}
-      {kind !== 'now' && <StatusMark kind={kind} ink={look.ink} />}
+      {kind !== 'now' && <ShapeMark kind={kind} ink={look.ink} />}
       <Text size={12.5} weight="semibold" numberOfLines={1} style={{ color: look.ink }}>
         {word}
       </Text>
@@ -454,21 +408,6 @@ const styles = StyleSheet.create({
   accent: { color: tokens.colorAccentText },
   off: { color: tokens.colorInkTertiary },
   pressed: { opacity: tokens.opacityPressed },
-  markYes: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: tokens.marks.done.fill,
-  },
-  markBars: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
-  bar: { borderRadius: 1.5 },
-  markRing: {
-    borderWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  halfFill: { position: 'absolute', left: 0, top: 0, bottom: 0, width: '50%' },
-  dash: { height: 2, borderRadius: 1 },
   tag: {
     minHeight: 24,
     flexDirection: 'row',

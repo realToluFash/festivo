@@ -1,6 +1,6 @@
-import { Glyph } from './Glyph.tsx';
+import { Glyph } from '../components/Glyph.tsx';
 import type { Moment, Now } from './today.ts';
-import type { Tell } from './TodayParts.tsx';
+import type { Tell } from '../components/SettingsParts.tsx';
 
 /** Confetti cut from the mark's half disc and bar, placed from the banner's right edge in today.css. */
 const PIECES = ['half', 'bar', 'half', 'bar', 'half', 'bar'] as const;
