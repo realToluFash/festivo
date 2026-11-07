@@ -186,13 +186,13 @@ export const ARRIVALS = {
 } as const;
 
 /** The plan states are drawn on Ireti at 40 as if Ire Events were on Free (spec §9). */
-export const PLAN = { limit: 100, listed: 88, ireti: 'evt-ireti-2' } as const;
+export const PLAN = { limit: 100, listed: 80, ireti: 'evt-ireti-2' } as const;
 
 /** Each plan state's sample: how many are listed, picked, and the places for companions among rows not drawn. */
 export const PLAN_SAMPLES = {
   roomLeft: { listed: 80, picked: 14, places: 0 },
-  overLimit: { listed: 88, picked: 15, places: 3 },
-  limitRefused: { listed: 88, picked: 15, places: 3 },
+  overLimit: { listed: 80, picked: 23, places: 3 },
+  limitRefused: { listed: 80, picked: 23, places: 3 },
 } as const;
 
 export interface Picked {

@@ -317,6 +317,7 @@ describe('From contacts and the plan limit (sc-7579, sc-3930)', () => {
       over: true,
     });
     expect(planRoom(40, 10)).toBeNull();
+    expect(Object.values(PLAN_SAMPLES).map((one) => one.listed)).toEqual([80, 80, 80]);
   });
 });
 
