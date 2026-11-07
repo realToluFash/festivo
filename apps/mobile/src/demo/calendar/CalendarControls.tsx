@@ -12,6 +12,9 @@ import { tokens } from '../../theme/tokens.ts';
 import { type Anchor, AnchoredMenu } from '../settings/Summary.tsx';
 import { CW, say } from './CalendarWords.ts';
 
+/** The toolbar's words grow to twice their size and no further, so Month, Show and the month's name are never cut. */
+const DOUBLED = 2;
+
 const hidden = {
   accessibilityElementsHidden: true,
   importantForAccessibility: 'no-hide-descendants',
@@ -52,6 +55,7 @@ export function ViewSwitch({
               size={14.5}
               weight={on ? 'semibold' : 'medium'}
               numberOfLines={1}
+              maxFontSizeMultiplier={DOUBLED}
               accessible={false}
               style={{ color: on ? tokens.colorAccentText : tokens.colorInkSecondary }}
             >
@@ -95,7 +99,14 @@ export function ShowButton({
       testID="calendar.show"
     >
       <Glyph name="filter" size={17} ink={ink} weight={2.2} />
-      <Text size={15} weight="semibold" numberOfLines={1} accessible={false} style={{ color: ink }}>
+      <Text
+        size={15}
+        weight="semibold"
+        numberOfLines={1}
+        maxFontSizeMultiplier={DOUBLED}
+        accessible={false}
+        style={{ color: ink }}
+      >
         {only ? CW.showEvents : CW.show}
       </Text>
     </Pressable>
@@ -221,6 +232,7 @@ export function Stepper({
         <Text
           size={15}
           weight="semibold"
+          maxFontSizeMultiplier={DOUBLED}
           accessible={false}
           style={{ color: running ? tokens.colorAccentText : tokens.colorInk }}
         >
@@ -269,6 +281,7 @@ export function MonthName({ name, size }: { name: string; size: number }) {
           size={size}
           weight="bold"
           numberOfLines={1}
+          maxFontSizeMultiplier={DOUBLED}
           accessibilityRole="header"
           style={look}
           testID="calendar.month"
@@ -281,7 +294,13 @@ export function MonthName({ name, size }: { name: string; size: number }) {
           {...hidden}
           style={[StyleSheet.absoluteFill, { opacity: Animated.subtract(1, fade) }]}
         >
-          <Text size={size} weight="bold" numberOfLines={1} style={look}>
+          <Text
+            size={size}
+            weight="bold"
+            numberOfLines={1}
+            maxFontSizeMultiplier={DOUBLED}
+            style={look}
+          >
             {was}
           </Text>
         </Animated.View>
