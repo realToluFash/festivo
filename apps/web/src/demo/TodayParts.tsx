@@ -328,7 +328,7 @@ export function FirstRun({ tell }: { tell: Tell }) {
         onClick={() => tell('Create an event has its own design.')}
       >
         <Glyph name="plus" size={18} />
-        Create an event
+        Start your first event
       </button>
     </section>
   );

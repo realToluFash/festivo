@@ -149,6 +149,12 @@ const base = {
     "lineHeight": 1.5,
     "letterSpacing": "0"
   },
+  "typeBodyStrong": {
+    "size": 14,
+    "weight": 500,
+    "lineHeight": 1.5,
+    "letterSpacing": "0"
+  },
   "typeBodyPhone": {
     "size": 15,
     "weight": 400,
@@ -170,6 +176,12 @@ const base = {
   "typeSmall": {
     "size": 13,
     "weight": 400,
+    "lineHeight": 1.45,
+    "letterSpacing": "0"
+  },
+  "typeSmallStrong": {
+    "size": 13,
+    "weight": 500,
     "lineHeight": 1.45,
     "letterSpacing": "0"
   },
@@ -208,6 +220,12 @@ const base = {
     "weight": 600,
     "lineHeight": 1,
     "letterSpacing": "0.04em"
+  },
+  "typeCodeField": {
+    "size": 18,
+    "weight": 500,
+    "lineHeight": 1,
+    "letterSpacing": "0.32em"
   },
   "typeRoomNow": {
     "size": 64,
@@ -1681,7 +1699,9 @@ export function withScheme(name: string | undefined): Tokens {
   return name != null && Object.hasOwn(schemes, name) ? { ...base, ...schemes[name as Scheme] } : base;
 }
 
-/** Expo writes EXPO_PUBLIC_SCHEME in at build time. */
-export const tokens: Tokens = withScheme(process.env.EXPO_PUBLIC_SCHEME);
+export const defaultScheme: Scheme = 'violet';
+
+/** Expo writes EXPO_PUBLIC_SCHEME in at build time; unset or empty, a build draws the default. */
+export const tokens: Tokens = withScheme(process.env.EXPO_PUBLIC_SCHEME || defaultScheme);
 
 export default tokens;

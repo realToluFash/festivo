@@ -15,7 +15,7 @@
   --todayRow: 600 14.5px/1.3 var(--fontFamily);
   --todaySmall: 500 13px/1.35 var(--fontFamily);
   --todayFigure: 700 13.5px/1.3 var(--fontFamily);
-  --todayCaps: 600 11px/1.2 var(--fontFamily);
+  --todayCaps: 600 12px/1.2 var(--fontFamily);
   --todayOnCover: color-mix(in srgb, var(--colorInkOnDark) 92%, transparent);
   --todayGlass: color-mix(in srgb, var(--colorInkOnDark) 22%, transparent);
 
@@ -110,21 +110,9 @@
   color: var(--colorInkSecondary);
 }
 
-.today-org-tile {
-  display: flex;
-  flex: none;
-  align-items: center;
-  justify-content: center;
-  width: var(--space4xl);
-  height: var(--space4xl);
-  border-radius: var(--radiusSmall);
-  background: var(--colorAccent);
-  color: var(--colorInkOnDark);
-  font: 700 11px/1 var(--fontFamily);
-}
-
 .today-search {
   display: flex;
+  flex: none;
   align-items: center;
   gap: var(--spaceMd);
   box-sizing: border-box;
@@ -721,7 +709,7 @@
 
 .today-next-label {
   color: color-mix(in srgb, var(--colorInkOnDark) 82%, transparent);
-  font: 700 11.5px/1.2 var(--fontFamily);
+  font: 700 12px/1.2 var(--fontFamily);
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -849,7 +837,7 @@
   justify-content: center;
   width: 0;
   color: color-mix(in srgb, var(--colorInkOnDark) 82%, transparent);
-  font: 500 11px/1.2 var(--fontFamily);
+  font: 500 12px/1.2 var(--fontFamily);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -935,20 +923,22 @@
   border-bottom-color: transparent;
 }
 
+/* Two rules, not one list: the build merges a list holding :has() into the :hover rule and drops the :has() arm. */
 .today-need:hover {
+  --todayActSoft: var(--colorInsetBorder);
+
+  border-bottom-color: transparent;
+  border-radius: var(--radiusInset);
+  background: var(--colorCard);
   box-shadow: 0 1px 3px color-mix(in srgb, var(--colorInk) 8%, transparent);
 }
 
-.today-need:hover,
 .today-need:has(.today-need-open:focus-visible) {
   --todayActSoft: var(--colorInsetBorder);
 
   border-bottom-color: transparent;
   border-radius: var(--radiusInset);
   background: var(--colorCard);
-}
-
-.today-need:has(.today-need-open:focus-visible) {
   box-shadow:
     0 0 0 2px var(--colorAccent),
     0 0 0 5px color-mix(in srgb, var(--colorAccent) 18%, transparent);
@@ -1407,7 +1397,7 @@
 
 .today-next-words .today-caps {
   padding: 0;
-  font-size: 11.5px;
+  font-size: 12px;
   letter-spacing: 0.06em;
 }
 

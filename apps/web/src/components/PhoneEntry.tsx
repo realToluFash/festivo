@@ -38,7 +38,7 @@ export function PhoneEntry({
   );
 
   return (
-    <>
+    <div className="field">
       <div className="phone-entry">
         <div className="field phone-country">
           <label htmlFor="phone-country">{t('verifyPhone.countryLabel')}</label>
@@ -81,6 +81,6 @@ export function PhoneEntry({
       <p className="field-help" id="phone-help">
         {help}
       </p>
-    </>
+    </div>
   );
 }

@@ -150,7 +150,7 @@ export function Members({ viewer, state, tell }: { viewer: Viewer; state: string
     <TextAction
       label="Invite somebody"
       before="plus"
-      onClick={() => setDialog({ kind: 'invite', email: '', role: 'Coordinator', problem: null })}
+      onClick={() => setDialog({ kind: 'invite', email: '', role: 'Member', problem: null })}
     />
   ) : undefined;
   const card = membersCard({ people, viewer, notice, claim, say });
@@ -194,7 +194,6 @@ export function Members({ viewer, state, tell }: { viewer: Viewer; state: string
         person={person}
         people={people}
         viewer={viewer}
-        withholds={start.withholds}
         event={event}
         say={say}
         level={split ? 2 : 1}
@@ -601,7 +600,7 @@ function MembersDialogs(props: MembersDialogsProps) {
       return (
         <Ask
           title="Withdraw your claim?"
-          line={`You won’t become the owner of ${ORGANISATION}. Any Administrator, you included, can start a new claim.`}
+          line={`You won’t become the owner of ${ORGANISATION}. Any admin, you included, can start a new claim.`}
           keep="Keep my claim"
           go="Withdraw"
           onKeep={onClose}

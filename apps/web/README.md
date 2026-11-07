@@ -41,7 +41,7 @@ somewhere else is a variable rather than a rebuild.
 | `SOIRELY_MERCURE_URL` | no       | Where Mercure is, from the browser                                                  |
 | `SOIRELY_STORAGE_URL` | no       | The object store's public origin, which receives uploads and serves uploaded images |
 | `SOIRELY_ENVIRONMENT` | no       | A name, so a support conversation can establish which deployment                    |
-| `SOIRELY_SCHEME`      | no       | One of B Confetti's colour schemes, such as `violet`; unset keeps today's colours   |
+| `SOIRELY_SCHEME`      | no       | One of B Confetti's colour schemes, such as `cobalt`; unset draws violet            |
 
 A missing `SOIRELY_API_URL` stops the container. That is deliberate: a default
 would be a browser quietly talking to the wrong host, which looks like an

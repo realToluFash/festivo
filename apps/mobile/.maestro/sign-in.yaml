@@ -64,6 +64,6 @@ appId: host.exp.Exponent
 # Complete your profile, and an account without one on No organisation.
 - extendedWaitUntil:
     visible:
-      id: 'home\.openSettings|completeProfile|noOrganisation'
+      id: 'home\.openSettings|completeProfile\..*|noOrganisation'
     timeout: 30000
 - takeScreenshot: mobile-signed-in

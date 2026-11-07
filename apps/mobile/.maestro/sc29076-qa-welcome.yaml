@@ -64,7 +64,7 @@ appId: host.exp.Exponent
     id: 'signIn.submit'
 - extendedWaitUntil:
     visible:
-      id: 'home\.openSettings|completeProfile|noOrganisation'
+      id: 'home\.openSettings|completeProfile\..*|noOrganisation'
     timeout: 30000
 - takeScreenshot: qa-signed-in
 - runFlow: sign-out.yaml

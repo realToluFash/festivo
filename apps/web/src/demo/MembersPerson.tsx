@@ -16,6 +16,7 @@ import {
   SUSPEND_LINE,
   TAKES_EFFECT,
   tagOf,
+  underRoles,
   withRole,
 } from './members.ts';
 import type { SettingsSay, Viewer } from './settings.ts';
@@ -42,7 +43,6 @@ export function PersonPage({
   person,
   people,
   viewer,
-  withholds,
   event,
   say,
   level,
@@ -55,7 +55,6 @@ export function PersonPage({
   person: Person;
   people: readonly Person[];
   viewer: Viewer;
-  withholds: readonly string[];
   event: PersonEvent | null;
   say: SettingsSay;
   level: 1 | 2;
@@ -65,7 +64,7 @@ export function PersonPage({
   onSuspend: () => void;
   onRemove: () => void;
 }) {
-  const view = personView({ person, people, viewer, withholds, event, say });
+  const view = personView({ person, people, viewer, event, say });
   const tag = tagOf(person);
   const Name = level === 1 ? 'h1' : 'h2';
 
@@ -181,7 +180,6 @@ export function RoleDialog({
   viewer,
   proved,
   start,
-  tell,
   onClose,
   onPeople,
 }: {
@@ -190,7 +188,6 @@ export function RoleDialog({
   viewer: Viewer;
   proved: boolean;
   start: Extract<MembersDialog, { kind: 'role' }>;
-  tell: Tell;
   onClose: () => void;
   onPeople: (people: Person[], then: { event: PersonEvent; proved?: boolean }) => void;
 }) {
@@ -249,11 +246,7 @@ export function RoleDialog({
               }))}
               picked={picked}
               onPick={setPicked}
-            />
-            <TextAction
-              label="See exactly what each role can do"
-              after="chevron"
-              onClick={() => tell('Roles has its own design.')}
+              foot={underRoles(viewer)}
             />
           </>
         ) : (
