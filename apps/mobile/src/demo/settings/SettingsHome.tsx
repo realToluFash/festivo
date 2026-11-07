@@ -5,7 +5,6 @@ import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { CARD_PIECES, Confetti, Cover } from '../../components/Cover.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
-import { SwitchedNotice } from '../OrgSwitcher.tsx';
 import { Glass, PHONE_TAB_BAR, PhoneTabBar } from '../../components/TodayCover.tsx';
 import { Bell, Fade, Landscape, OrgPill, PortraitTop } from './Frame.tsx';
 import { WORDS as PERSONALISATION } from './PersonalisationModel.ts';
@@ -13,6 +12,7 @@ import { SchemeTile } from './PersonalisationParts.tsx';
 import { demoGroups, YOU } from './sample.ts';
 import { type ShellSection, useShell, type Viewer } from '../../components/settingsShell.ts';
 import { Caps, Pill, Tile, TYPE } from '../../components/SettingsParts.tsx';
+import { SwitchedNotice } from '../../components/SwitchedNotice.tsx';
 
 type Listed = Exclude<ShellSection, 'account'>;
 

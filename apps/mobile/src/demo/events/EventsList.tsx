@@ -18,7 +18,6 @@ import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { Cover } from '../../components/Cover.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
-import { SwitchedNotice } from '../OrgSwitcher.tsx';
 import { PHONE_TAB_BAR, PhoneTabBar } from '../../components/TodayCover.tsx';
 import { Bell, Fade, Landscape, OrgPill, PortraitTop } from '../settings/Frame.tsx';
 import { CardPieces, EventCard, EventThumb } from './EventCard.tsx';
@@ -63,6 +62,7 @@ import {
   SummaryCard,
   TextAction,
 } from '../../components/Summary.tsx';
+import { SwitchedNotice } from '../../components/SwitchedNotice.tsx';
 
 const SEARCH_PAUSE_MS = 300;
 const MENU_AFTER_MS = 700;

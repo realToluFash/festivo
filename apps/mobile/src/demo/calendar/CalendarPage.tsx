@@ -35,7 +35,6 @@ import { useAccessibilitySizes } from '../../layout/useLayout.ts';
 import { motionEase } from '../../motion.ts';
 import { useReducedMotion } from '../../reducedMotion.ts';
 import { tokens } from '../../theme/tokens.ts';
-import { SwitchedNotice } from '../OrgSwitcher.tsx';
 import { SAMPLE } from '../samples.ts';
 import { CardPieces } from '../events/EventCard.tsx';
 import { openEvent } from '../events/EventsList.tsx';
@@ -97,6 +96,7 @@ import {
   StepButton,
   SummaryCard,
 } from '../../components/Summary.tsx';
+import { SwitchedNotice } from '../../components/SwitchedNotice.tsx';
 
 /** The demo keeps its own place, so it never moves the real Calendar's. */
 const KEPT = 'soirely.demo.calendar';
