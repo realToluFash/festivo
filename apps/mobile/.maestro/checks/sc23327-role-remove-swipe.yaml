@@ -1,0 +1,49 @@
+# iOS. sc-23327 (sc-18108's steps, Back as the swipe from the left edge): the role ${ROLE} with Remove role open; Back once (MODE=header: the header back), then Back again. BACK_ID is the page's own back: frame.back on a phone, members.back, roles.back or events.back held upright.
+appId: host.exp.Exponent
+---
+- runFlow: ../open-settings.yaml
+- tapOn:
+    id: 'settings.roles'
+- extendedWaitUntil:
+    visible:
+      id: 'roles.role.owner'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'roles.role.${ROLE}'
+    direction: DOWN
+- tapOn:
+    id: 'roles.role.${ROLE}'
+- scrollUntilVisible:
+    element:
+      id: 'roles.remove'
+    direction: DOWN
+- tapOn:
+    id: 'roles.remove'
+- extendedWaitUntil:
+    visible:
+      id: 'roles.remove.keep'
+    timeout: 10000
+- takeScreenshot: confirm
+- runFlow:
+    when:
+      true: ${MODE == 'header'}
+    commands:
+      - tapOn:
+          id: '${BACK_ID}'
+- runFlow:
+    when:
+      true: ${MODE != 'header'}
+    commands:
+      - swipe:
+          start: 1%, 50%
+          end: 85%, 50%
+          duration: 400
+- waitForAnimationToEnd
+- takeScreenshot: after-back
+- swipe:
+    start: 1%, 50%
+    end: 85%, 50%
+    duration: 400
+- waitForAnimationToEnd
+- takeScreenshot: after-second-back

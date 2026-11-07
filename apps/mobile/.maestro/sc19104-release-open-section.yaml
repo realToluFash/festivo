@@ -1,0 +1,14 @@
+# sc-19104, Android release build: signed in, Settings opened from Home, SECTION chosen from the Settings list. Pass EMAIL, PASSWORD, SECTION.
+appId: com.soirely.app
+---
+- runFlow: release-sign-in.yaml
+- tapOn:
+    id: 'home.openSettings'
+- scrollUntilVisible:
+    element:
+      id: 'settings.${SECTION}'
+    timeout: 30000
+- tapOn:
+    id: 'settings.${SECTION}'
+- waitForAnimationToEnd
+- takeScreenshot: section-open

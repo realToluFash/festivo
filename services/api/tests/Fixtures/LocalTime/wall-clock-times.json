@@ -1,0 +1,67 @@
+{
+    "an ordinary time keeps its offset": {
+        "zone": "Europe/Madrid",
+        "typed": "2026-11-14T16:00",
+        "saved": "2026-11-14T16:00:00+01:00"
+    },
+    "summer time": {
+        "zone": "Europe/Madrid",
+        "typed": "2026-07-01T19:00",
+        "saved": "2026-07-01T19:00:00+02:00"
+    },
+    "a time the clocks skip moves later by the gap": {
+        "zone": "Europe/Madrid",
+        "typed": "2026-03-29T02:30",
+        "saved": "2026-03-29T03:30:00+02:00"
+    },
+    "the first minute of the gap": {
+        "zone": "Europe/Madrid",
+        "typed": "2026-03-29T02:00",
+        "saved": "2026-03-29T03:00:00+02:00"
+    },
+    "a time the clocks repeat takes the earlier offset": {
+        "zone": "Europe/Madrid",
+        "typed": "2026-10-25T02:30",
+        "saved": "2026-10-25T02:30:00+02:00"
+    },
+    "just after the repeat": {
+        "zone": "Europe/Madrid",
+        "typed": "2026-10-25T03:00",
+        "saved": "2026-10-25T03:00:00+01:00"
+    },
+    "a zone with no clock changes": {
+        "zone": "Africa/Lagos",
+        "typed": "2026-03-29T02:30",
+        "saved": "2026-03-29T02:30:00+01:00"
+    },
+    "a gap of half an hour": {
+        "zone": "Australia/Lord_Howe",
+        "typed": "2026-10-04T02:15",
+        "saved": "2026-10-04T02:45:00+11:00"
+    },
+    "the first minute of a Paris gap": {
+        "zone": "Europe/Paris",
+        "typed": "2027-03-28T02:00",
+        "saved": "2027-03-28T03:00:00+02:00"
+    },
+    "the middle of a Paris gap": {
+        "zone": "Europe/Paris",
+        "typed": "2027-03-28T02:30",
+        "saved": "2027-03-28T03:30:00+02:00"
+    },
+    "a half-hour gap a year on": {
+        "zone": "Australia/Lord_Howe",
+        "typed": "2027-10-03T02:15",
+        "saved": "2027-10-03T02:45:00+11:00"
+    },
+    "a Paris time the clocks repeat": {
+        "zone": "Europe/Paris",
+        "typed": "2027-10-31T02:30",
+        "saved": "2027-10-31T02:30:00+02:00"
+    },
+    "a skipped time saved on the next day": {
+        "zone": "America/Scoresbysund",
+        "typed": "2027-03-27T23:30",
+        "saved": "2027-03-28T00:30:00-01:00"
+    }
+}

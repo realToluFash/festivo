@@ -1,0 +1,16 @@
+# No connection on B Confetti's cover, its route opened with the API stopped (a held session goes home instead, sc-55). sc-29078.
+# `docker compose stop api` first.
+#
+#   node .qa/bin/qa-env.mjs batch sc29078-offline sc29078-confetti-unreachable EMAIL=… PASSWORD=… [--android [--tablet]]
+appId: host.exp.Exponent
+---
+- launchApp:
+    appId: host.exp.Exponent
+    stopApp: true
+- openLink: ${METRO_URL}/--/unreachable
+- extendedWaitUntil:
+    visible:
+      id: 'unreachable.retry'
+    timeout: 60000
+- waitForAnimationToEnd
+- takeScreenshot: unreachable

@@ -1,0 +1,38 @@
+# sc-11786: a member's page scrolled to its foot, back with Members, then a request awaiting approval opens at its top.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil:
+    visible:
+      id: 'members.filter.active'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'members.row.${MEMBER}'
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: 'members.row.${MEMBER}'
+- waitForAnimationToEnd
+- repeat:
+    times: 6
+    commands:
+      - swipe:
+          start: 50%, 75%
+          end: 50%, 25%
+- takeScreenshot: member-foot
+- tapOn:
+    id: 'frame.back'
+- extendedWaitUntil:
+    visible:
+      id: 'members.row.${MEMBER}'
+    timeout: 15000
+- scrollUntilVisible:
+    element:
+      id: 'members.request.${REQUEST}'
+    direction: UP
+    centerElement: true
+- tapOn:
+    id: 'members.request.${REQUEST}'
+- waitForAnimationToEnd
+- takeScreenshot: request-top

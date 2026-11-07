@@ -1,0 +1,27 @@
+# sc-23282: Settings > Security in [fd], each card at rest, top to bottom, for the board comparison. Needs ${METRO_URL}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/security
+- extendedWaitUntil:
+    visible: '{{t:security.title}}'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: top
+- scrollUntilVisible:
+    element:
+      id: 'twoFactor.turnOn|twoFactor.turnOff'
+    timeout: 20000
+    centerElement: true
+- takeScreenshot: two-factor
+- scrollUntilVisible:
+    element:
+      id: 'devices.here'
+    timeout: 20000
+    centerElement: true
+- takeScreenshot: devices
+- scrollUntilVisible:
+    element:
+      id: 'devices.everywhere'
+    timeout: 20000
+    centerElement: true
+- takeScreenshot: everywhere

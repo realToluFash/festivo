@@ -1,0 +1,38 @@
+# sc-25667: before Create organisation is pressed, Cancel closes the sheet with a name typed, and a tap on the scrim closes it, nothing created either way.
+appId: host.exp.Exponent
+---
+- runFlow: ../open-create-organisation.yaml
+- tapOn:
+    id: 'createOrganisation.name'
+- inputText: 'Before Cancel'
+- hideKeyboard
+- assertVisible:
+    id: 'createOrganisation.cancel'
+    enabled: true
+- tapOn:
+    id: 'createOrganisation.cancel'
+- extendedWaitUntil:
+    notVisible:
+      id: 'createOrganisation'
+    timeout: 10000
+- runFlow: ../open-create-organisation.yaml
+- tapOn:
+    id: 'createOrganisation.name'
+- inputText: 'Before Scrim'
+- hideKeyboard
+- waitForAnimationToEnd
+- tapOn:
+    point: '50%,15%'
+- extendedWaitUntil:
+    notVisible:
+      id: 'createOrganisation'
+    timeout: 10000
+- tapOn:
+    id: 'home.switchOrganisation'
+- extendedWaitUntil:
+    visible:
+      id: 'switcher.heading'
+    timeout: 20000
+- waitForAnimationToEnd
+- assertNotVisible: '.*Before (Cancel|Scrim).*'
+- takeScreenshot: before-switcher
