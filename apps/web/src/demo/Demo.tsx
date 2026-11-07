@@ -65,11 +65,6 @@ const SIGN_IN_STATES: { key: string; name: string; notice?: Notice }[] = [
     notice: { title: 'You were signed out', body: 'Sign in again to carry on.' },
   },
   {
-    key: 'code-timed-out',
-    name: 'That sign-in timed out',
-    notice: { title: 'That sign-in timed out', body: 'Sign in again to carry on.' },
-  },
-  {
     key: 'rule',
     name: 'Signed out by Ire Events’ rule',
     notice: {
@@ -283,9 +278,7 @@ function SignInForm({ state }: { state: string }) {
   const email = useRef<HTMLInputElement>(null);
   const password = useRef<HTMLInputElement>(null);
   const pending = useRef<number | undefined>(undefined);
-  const knownEmail = ['rule', 'provider-only', 'code-timed-out'].includes(state)
-    ? SAMPLE.email
-    : arrival.email;
+  const knownEmail = state === 'rule' || state === 'provider-only' ? SAMPLE.email : arrival.email;
   const locked = liftsAt != null;
 
   useEffect(() => () => window.clearTimeout(pending.current), []);
