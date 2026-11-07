@@ -209,6 +209,19 @@ describe('check your messages', () => {
     expect(sent.filter((request) => request.method === 'POST')).toEqual([]);
   });
 
+  it('keeps only the first six digits of what is typed into the code (sc-29065)', async () => {
+    answering({
+      'GET /api/auth/me': () => json(account()),
+      'GET /api/auth/verify/phone/resend': () => json({ cooldownSeconds: 0 }),
+    });
+    at('/verify-phone');
+
+    const field = await screen.findByLabelText<HTMLInputElement>('Code from the text');
+    fireEvent.change(field, { target: { value: '12ab34567' } });
+
+    expect(field.value).toBe('123456');
+  });
+
   it('says a wrong code is wrong, and a right one verifies the number', async () => {
     let tries = 0;
     answering({

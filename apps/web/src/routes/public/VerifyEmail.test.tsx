@@ -155,6 +155,17 @@ describe('verifying an email address', () => {
     );
   });
 
+  it('keeps only the first six digits of what is typed into the code (sc-29065)', () => {
+    answering({});
+
+    open();
+
+    const field = screen.getByLabelText<HTMLInputElement>('Code from the email');
+    fireEvent.change(field, { target: { value: '12ab34567' } });
+
+    expect(field.value).toBe('123456');
+  });
+
   it('verifies, and then offers the way on', async () => {
     const seen = answering({
       'POST /api/auth/verify/email': () =>
