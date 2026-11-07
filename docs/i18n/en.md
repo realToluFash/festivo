@@ -42,7 +42,7 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 | Phone number, mobile number          | Settled 18 Oct 2026: "phone number" for any number on the account (card, list, add button, cap), which may be a landline; "mobile number" only for the field we text a code to (`contacts.phoneLabel`, `verifyPhone.numberLabel`).                           |
 | Alternative (address, number)        | Settled 18 Oct 2026: any address or number on the account that is not primary, verified or not. The card's plural is "Other addresses" / "Other numbers"; one of them is "an alternative address" or "an alternative number". Never "secondary" or "backup". |
 | Schedule                             | Settled 19 Oct 2026 (epic 33, sc-3895 #4106): the list the organiser builds, and its page. Never "agenda", "itinerary" or "running order".                                                                                                                   |
-| Run of show                          | Settled 19 Oct 2026: the night's screen, app and web, the web switch included. Never a bare "Run".                                                                                                                                                           |
+| Run of show                          | Settled 19 Oct 2026: the screen for running the event on the day, app and web, the web switch included. Never a bare "Run".                                                                                                                                  |
 | Now, Next, Later                     | Settled 19 Oct 2026: Run of show's cards and list, and the cue screen's "Later". "Later" replaced the drawn "Then". Own keys, never a stepper's "Next".                                                                                                      |
 | Done, Skip, Start now                | Settled 19 Oct 2026: finishing, skipping and starting an item. States in a list: "Done", "Skipped", "Not started". "Done" is its own key, not the app's `close`. Screen readers: "Done: {{title}}".                                                          |
 | Move, Move after this                | Settled 19 Oct 2026: moving an item (sc-3894). "Move after this" replaced "Place after", because "Place" is the noun on the same page.                                                                                                                       |
@@ -66,6 +66,32 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **7 Nov 2026. Choosing a quote's vendor, and the vendor page's empty states** (sc-87, pm's
+  #30377, settled before the board is drawn). In the Vendor field: an option already quoted
+  reads "Already quoted on this event", a label with no full stop. Typed text that matches
+  nothing reads "No vendor matches “{{typed}}”.", the time zone picker's shape, and with
+  nothing to offer at all "There are no vendors to choose from.", which stays true when every
+  vendor is archived (rejected: "No vendors yet.", which is not). The second line, for an owner
+  or admin, is "Add the vendor on the Vendors page first.", linking to the directory, and reads
+  under either first line; for an event's Lead it is "Ask an owner or admin to add the
+  vendor.", which says what to do rather than only what the Lead cannot (rejected: "Only an
+  Owner or Admin can add a vendor."). Roles in running text are lower case, per the glossary.
+  The second quote from one vendor, on the form and as the API's 409 detail under one key:
+  "That vendor already has a quote on this event, so this quote was not saved. To give a new
+  price, revise that quote." No name slot, as with "That vendor is no longer one of this
+  organisation's vendors". The vendor page's difference: "The schedule matches the quote.";
+  "{{amount}} of the quote is not scheduled yet."; "The schedule is {{amount}} over the
+  quote.", `{{amount}}` from `Intl.NumberFormat` in the event's currency, never a sign or a
+  colour alone. Empty states: "No quotes on this event yet." beside **Add a quote**, and "No
+  payments scheduled yet." "Nothing is due." stays sc-93's.
+- **7 Nov 2026. "On the day", never "on the night"** (sc-29384, from the owner's 3 Nov decision).
+  Events happen at any hour, so the copy says "on the day" and carries no night, dusk or sunset
+  imagery: `verifyPhone.doneBody`, `steps.mobileIntro`, `completeProfile.mobileHelp`,
+  `rolesScreen.means.run_of_show`, and the web tagline, now the app's "Plan the event. Run the
+  day." in every locale. es, fr and pt say "el día del evento", "le jour de l’événement" and "no
+  dia do evento". Kept: `eventForm.clocksSkip` and `clocksSkipNextDay` say "the clocks go forward
+  that night", which describes the clock change, not the event. "Good evening" is a greeting by
+  the hour and stays.
 - **5 Nov 2026. An event's People refusals** (`errors:own_event_role`, `messages:people.*`,
   sc-30009 for sc-29912). Kept as dev2 wrote them. The event role Lead is "the event's lead" in
   running text, lower case, as "an owner, an admin".
@@ -154,7 +180,7 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   the confirmation "Keep it live", never "Cancel". A refusal starts "Not paused." or "Not
   resumed.", as "Not ended." does. The explanation "Guests can't reply …" keeps its contraction,
   as `scheduleLocked` does: it explains, it does not refuse. "Check-in" is guests arriving at
-  the door, "service" the food and drink on the night; es, fr and pt name the door, never a
+  the door, "service" the food and drink on the day; es, fr and pt name the door, never a
   hotel or airport check-in.
 - **27 Oct 2026. An event's hosts** (sc-15427 for sc-6713, `web:eventHosts.*`,
   `eventLive.needsHost*|addHosts` web and app, `messages:validation.event_host*`,
