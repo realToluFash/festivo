@@ -1276,16 +1276,31 @@ async function startBundler(root, env = process.env) {
 }
 
 async function bundlerUp(seconds = 120) {
-  const statusUrl = `http://127.0.0.1:${CONFIG.ports.METRO_PORT}/status`;
   for (let i = 0; i < seconds; i++) {
-    const answer = await fetch(statusUrl).then(
-      (r) => r.text(),
-      () => '',
-    );
-    if (answer.includes('running')) return true;
+    if (await bundlerAnswers()) return true;
     await pause(1000);
   }
   return false;
+}
+
+export async function bundlerAnswers(port = CONFIG.ports.METRO_PORT) {
+  const answer = await fetch(`http://127.0.0.1:${port}/status`, {
+    signal: AbortSignal.timeout(3000),
+  }).then(
+    (r) => r.text(),
+    () => '',
+  );
+  return answer.includes('running');
+}
+
+export const bundlerCommand = (onAndroid) => (onAndroid ? 'android' : 'ios');
+
+export const noBundler = ({ port, command }) =>
+  `no bundler on ${port}: start it with \`node .qa/bin/qa-env.mjs ${command}\``;
+
+// Every check reloads through the bundler, so without one each Maestro start fails the same way.
+export async function assertBundler(bundler, answers = bundlerAnswers) {
+  if (!(await answers(bundler.port))) throw new Error(noBundler(bundler));
 }
 
 const SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
@@ -2720,6 +2735,8 @@ async function batch(args) {
   const source = join(root, 'apps/mobile/.maestro');
   const missing = checks.filter((check) => !existsSync(join(source, 'checks', `${check}.yaml`)));
   if (missing.length) throw new Error(`no ${missing.join(', ')} in apps/mobile/.maestro/checks`);
+  const bundler = { port: CONFIG.ports.METRO_PORT, command: bundlerCommand(onAndroid) };
+  await assertBundler(bundler);
   const device = maestroDevice(args);
   if (!onAndroid && !passwordAutoFillIsOff(device)) {
     throw new Error(
@@ -2760,6 +2777,7 @@ async function batch(args) {
   const crashed = [];
   const unstarted = new Map();
   const watchdog = { stopped: false };
+  let resumed = {};
   const setLocale = async (locale) => {
     await apiState.move('up');
     await signedIn('/api/auth/locale', { method: 'PUT', body: { locale } });
@@ -2819,15 +2837,15 @@ async function batch(args) {
   const started = Date.now();
   try {
     if (cold) {
-      for (const run of batchRuns(checks, languages)) {
+      resumed = await coldBatch(batchRuns(checks, languages), async (run) => {
         if (named) await setLocale(run.language);
         await test(join(flows, `_cold.${runId(run)}.yaml`), [run]);
-      }
+      });
     } else {
       if (named) await setLocale(languages[0]);
       const first = await test(join(flows, '_batch.yaml'), batchRuns(checks, languages));
       // After a driver crash the checks it never reached run in a fresh Maestro.
-      await resumeBatch(first.rest, async (rest, attempt) => {
+      resumed = await resumeBatch(first.rest, async (rest, attempt) => {
         const flow = join(flows, `_rest.${attempt}.yaml`);
         const written = batchFlow({ runs: rest });
         writeFileSync(flow, onAndroid ? forAndroid(written) : written);
@@ -2853,7 +2871,8 @@ async function batch(args) {
     `\nBatch ${name}${cold ? ', each check alone and cold' : ''}: ` +
       `${ids.length - failed.length} passed, ${failed.length} failed, in ${Math.floor(seconds / 60)}m${seconds % 60}s`,
   );
-  for (const line of batchSummary(ids, { passed, begun, crashed, unstarted }))
+  const gone = resumed.bundlerGone ? bundler : null;
+  for (const line of batchSummary(ids, { passed, begun, crashed, unstarted, bundlerGone: gone }))
     console.log(`  ${line}`);
   console.log(`Evidence in ${out}`);
   if (failed.length) {
@@ -2899,9 +2918,20 @@ export async function runHeld(
 
 export const MAX_RESUMES = 3;
 
-export async function resumeBatch(rest, resume) {
-  for (let attempt = 1; rest.length && attempt <= MAX_RESUMES; attempt++)
+export async function coldBatch(runs, test, { bundler = () => bundlerAnswers() } = {}) {
+  for (const run of runs) {
+    if (!(await bundler())) return { bundlerGone: true };
+    await test(run);
+  }
+  return { bundlerGone: false };
+}
+
+export async function resumeBatch(rest, resume, { bundler = () => bundlerAnswers() } = {}) {
+  for (let attempt = 1; rest.length && attempt <= MAX_RESUMES; attempt++) {
+    if (!(await bundler())) return { bundlerGone: true };
     ({ rest } = await resume(rest, attempt));
+  }
+  return { bundlerGone: false };
 }
 
 // Checks are optional, so a run that ends before the last check it held, or that the watchdog
@@ -2921,13 +2951,18 @@ const UNSTARTED = {
   ended: 'not run: Maestro ended before the first check, while signing in (its output says why)',
 };
 
-export function batchSummary(ids, { passed, begun, crashed, unstarted = new Map() }) {
-  return ids.map((id) => {
+export function batchSummary(
+  ids,
+  { passed, begun, crashed, unstarted = new Map(), bundlerGone = null },
+) {
+  const lines = ids.map((id) => {
     if (passed.has(id)) return `✓ ${id}`;
     if (crashed.includes(id)) return `✗ ${id}: Maestro's driver stopped answering (a driver crash)`;
     if (!begun.includes(id)) return `✗ ${id}: ${UNSTARTED[unstarted.get(id)] ?? 'not run'}`;
     return `✗ ${id}`;
   });
+  if (bundlerGone === null) return lines;
+  return [...lines, `Stopped: ${noBundler(bundlerGone)}`];
 }
 
 export function rerunHints(name, failures, { args, email, secret, rest = {} }) {
