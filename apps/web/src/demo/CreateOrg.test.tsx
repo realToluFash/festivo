@@ -131,6 +131,16 @@ describe('creating an organisation in B · A short walk at a desk (sc-30335)', (
     },
   );
 
+  it('answers Creating… as a press of Create would, with no way out meanwhile', SLOW, async () => {
+    open('/demo/events?create=creating');
+    const dialog = await walk();
+
+    expect(within(dialog).queryByRole('button', { name: 'Cancel' })).toBeNull();
+    press('Escape');
+    expect(screen.getByRole('dialog', { name: WALK })).toBeDefined();
+    expect(await screen.findByText('Now working in Lumen Feiras.', {}, SLOW)).toBeDefined();
+  });
+
   it('holds too many for now, and says when to try again', SLOW, async () => {
     open('/demo/events?create=limited');
     await walk();

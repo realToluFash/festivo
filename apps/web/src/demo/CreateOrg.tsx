@@ -75,6 +75,8 @@ function Panel({ start, onClose, onCreated }: WalkProps) {
   const createButton = useRef<HTMLButtonElement>(null);
   const height = useRef(0);
   const timer = useRef<number | undefined>(undefined);
+  const done = useRef(onCreated);
+  const [loadedBusy] = useState(start.creating);
   const picked = countries.find((one) => one.code === walk.country) ?? null;
   const device = countries.find((one) => one.code === walk.device) ?? null;
 
@@ -155,6 +157,18 @@ function Panel({ start, onClose, onCreated }: WalkProps) {
   }
 
   useEffect(() => () => window.clearTimeout(timer.current), []);
+
+  useLayoutEffect(() => {
+    done.current = onCreated;
+  });
+
+  useEffect(() => {
+    if (!loadedBusy) return;
+
+    const wait = window.setTimeout(() => done.current(), CREATING_MS);
+
+    return () => window.clearTimeout(wait);
+  }, [loadedBusy]);
 
   useEffect(() => {
     const node = panel.current;
