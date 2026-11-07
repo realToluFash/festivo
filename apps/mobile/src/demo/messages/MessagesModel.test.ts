@@ -364,6 +364,15 @@ describe('a token in the app’s field is one unit (pm, 7 Nov)', () => {
     expect(keepWhole(was, next).text).toBe('Hi, see you');
   });
 
+  it('takes the token before the caret with Backspace between two, and the one after with Delete', () => {
+    const event = tokenText('Event');
+    const pair = `${greeting}${event}`;
+    const next = pair.slice(0, greeting.length - 1) + pair.slice(greeting.length);
+
+    expect(keepWhole(pair, next, true)).toEqual({ text: event, caret: 0 });
+    expect(keepWhole(pair, next)).toEqual({ text: greeting, caret: greeting.length });
+  });
+
   it('never leaves the caret inside a token', () => {
     expect(outsideToken(was, 5)).toBe(3);
     expect(outsideToken(was, after - 2)).toBe(after);

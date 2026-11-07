@@ -26,6 +26,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { focusChecked } from '../../components/Field.tsx';
 import { useKeysUp } from '../../components/keyboardWatch.ts';
 import { readOut } from '../../components/ReadOut.tsx';
+import { SETTLED_MS } from '../../components/Screen.tsx';
 import {
   type ScreenReaderTarget,
   moveScreenReaderFocus,
@@ -386,9 +387,15 @@ export function MessagesScreen({
     if (draft == null) return;
     const at = outsideToken(draft.body, caret.current ?? draft.body.length);
     const run = tokenText(token);
+    const after = at + run.length;
     dispatch({ type: 'body', text: `${draft.body.slice(0, at)}${run}${draft.body.slice(at)}` });
-    caret.current = at + run.length;
+    caret.current = after;
+    opener.current = bodyRef.current;
     setInsertAt(null);
+    setTimeout(() => {
+      bodyRef.current?.focus();
+      bodyRef.current?.setSelection(after, after);
+    }, SETTLED_MS);
   };
   const list = (
     <MessagesList

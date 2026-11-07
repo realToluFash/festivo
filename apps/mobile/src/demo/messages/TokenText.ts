@@ -1,5 +1,5 @@
 /** An inserted token's two edges: a word joiner, which no key types, so braces the host types stay text (sc-3960, pm 7 Nov). */
-export const EDGE = '⁠';
+export const EDGE = '\u2060';
 
 const NAMES = 'Greeting|Event|Date|Hosts';
 export const TOKEN_RUN = new RegExp(`${EDGE}(${NAMES})${EDGE}`, 'gu');
@@ -25,8 +25,12 @@ export function outsideToken(text: string, at: number): number {
   return at - span.from <= span.to - at ? span.from : span.to;
 }
 
-/** An edit that touches a token takes all of it; a key typed inside one lands after it. */
-export function keepWhole(was: string, next: string): { text: string; caret: number } {
+/** An edit that touches a token takes all of it; between two, Backspace and Delete leave the same text, so `backspace` says which. */
+export function keepWhole(
+  was: string,
+  next: string,
+  backspace = false,
+): { text: string; caret: number } {
   let from = 0;
   const most = Math.min(was.length, next.length);
   while (from < most && was[from] === next[from]) from += 1;
@@ -36,6 +40,11 @@ export function keepWhole(was: string, next: string): { text: string; caret: num
 
   let start = from;
   let end = was.length - back;
+  if (backspace && end - start === 1 && next.length === was.length - 1)
+    while (start > 0 && was[start - 1] === was[start]) {
+      start -= 1;
+      end -= 1;
+    }
   const typed = next.slice(from, next.length - back).replaceAll(EDGE, '');
   for (const span of tokenSpans(was)) {
     if (end > start ? span.from < end && span.to > start : start > span.from && start < span.to) {

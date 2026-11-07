@@ -1,4 +1,4 @@
-import { type Ref, type RefObject, useEffect, useRef, useState } from 'react';
+import { type Ref, type RefObject, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
   Pressable,
   StyleSheet,
@@ -328,8 +328,14 @@ function TokenField({
   const own = useRef<TextInputInstance>(null);
   const field = fieldRef ?? own;
   const caretTo = useRef<number | null>(null);
+  const latest = useRef(text);
+  const backspace = useRef(false);
   const pieces = piecesOf(text);
   const named = [...new Set(pieces.filter((piece) => piece.token).map((piece) => piece.text))];
+
+  useLayoutEffect(() => {
+    latest.current = text;
+  }, [text]);
 
   useEffect(() => {
     const at = caretTo.current;
@@ -343,19 +349,26 @@ function TokenField({
       {...rest}
       ref={field}
       accessibilityLabel={label}
+      onKeyPress={(event) => {
+        backspace.current = event.nativeEvent.key === 'Backspace';
+      }}
       onChangeText={(next) => {
-        const kept = keepWhole(text, next);
+        const kept = keepWhole(latest.current, next, backspace.current);
+        backspace.current = false;
+        latest.current = kept.text;
         if (kept.text !== next) caretTo.current = kept.caret;
         onText(kept.text);
       }}
       onSelectionChange={(event) => {
         const { start, end } = event.nativeEvent.selection;
-        const from = outsideToken(text, start);
-        const to = outsideToken(text, end);
+        const from = outsideToken(latest.current, start);
+        const to = outsideToken(latest.current, end);
         if (from !== start || to !== end) field.current?.setSelection(from, to);
         onCaret?.(to);
       }}
-      accessibilityHint={named.length > 0 ? named.map(say.tokenName).join('. ') : undefined}
+      accessibilityHint={
+        named.length > 0 ? named.map((token) => `${say.tokenName(token)}.`).join(' ') : undefined
+      }
     >
       {pieces.map((piece, at) =>
         piece.token ? (
