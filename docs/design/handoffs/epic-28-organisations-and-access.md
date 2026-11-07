@@ -29,8 +29,9 @@ signed-in web, which has no layout for a phone's or a tablet's browser (epic 220
 "Decided, 2 Nov (pm, on ux's #28764)"). Down to 320 CSS px a page is the desktop page
 reflowed (WCAG 2.2 §1.4.10), with nothing lost or cut off, and a 320 frame on a board is
 that check. **A page someone opens from a link or a code with nothing to install keeps its
-phone layout**: redeeming a join code (sc-72) is one. The apps need only enough to see who
-is who.
+phone layout**: redeeming a join code (sc-72) is one. So do an invitation's Join page and
+its Request to join, which are the signed-out frame (epic 22091, "Decided, 2 Nov (pm, on
+ux's #28794)"). The apps need only enough to see who is who.
 
 ## What these screens must honour
 
