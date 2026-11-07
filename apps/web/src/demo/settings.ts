@@ -181,6 +181,20 @@ export const SETTINGS_PAGES: readonly { name: string; states: readonly DemoLink[
     ],
   },
   {
+    name: 'Requests to get back in',
+    states: [
+      members('recovery', 'Kofi’s and Priya’s requests'),
+      members('recovery', 'Kofi’s and Priya’s requests, an admin looking', VIEWERS.julien),
+      members('recoveryApprove', 'Approving Kofi'),
+      members('recoveryTurnDown', 'Turning Kofi down'),
+      members('recoveryApproved', 'Kofi’s two-factor is off'),
+      members('recoveryTurnedDown', 'Kofi’s request turned down'),
+      members('recoveryClosed', 'Kofi’s request answered elsewhere'),
+      members('recoveryDone', 'None left'),
+      members('recoveryOwn', 'Your own request, an admin', VIEWERS.julien),
+    ],
+  },
+  {
     name: 'A person',
     states: [
       members('priya', 'Priya Shah (from 1536 wide, beside the list)'),

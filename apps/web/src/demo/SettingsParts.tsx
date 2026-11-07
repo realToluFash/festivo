@@ -89,8 +89,19 @@ export function Card({
   );
 }
 
-export function Says({ children }: { children: ReactNode }) {
-  return <p className="desk-says">{children}</p>;
+/** Focusable where an answer lands on the card, so the answer is read out. */
+export function Says({
+  children,
+  focusable = false,
+}: {
+  children: ReactNode;
+  focusable?: boolean;
+}) {
+  return (
+    <p className="desk-says" tabIndex={focusable ? -1 : undefined}>
+      {children}
+    </p>
+  );
 }
 
 export function OnCard({ children }: { children: ReactNode }) {
@@ -463,10 +474,11 @@ interface AskProps {
   title: string;
   line: string;
   keep: string;
-  go: string;
+  /** None once nothing is left to decide: the line is an alert, and keep is the one action. */
+  go?: string;
   red?: boolean;
   onKeep: () => void;
-  onGo: () => void;
+  onGo?: () => void;
 }
 
 /** B's one confirm, 400 wide: the way back first, the verb last and red when it removes. */
@@ -495,7 +507,14 @@ function AskBox({ title, line, keep, go, red = true, onKeep, onGo }: AskProps) {
         aria-describedby={`${id}-line`}
       >
         <h2 id={`${id}-title`}>{title}</h2>
-        <p id={`${id}-line`}>{line}</p>
+        {go == null ? (
+          <p id={`${id}-line`} className="desk-ask-alert" role="alert">
+            <Glyph name="alert" size={18} weight={2.2} />
+            {line}
+          </p>
+        ) : (
+          <p id={`${id}-line`}>{line}</p>
+        )}
         <ActionPair
           className="desk-ask-pair"
           dismiss={
@@ -504,9 +523,15 @@ function AskBox({ title, line, keep, go, red = true, onKeep, onGo }: AskProps) {
             </button>
           }
           confirm={
-            <button type="button" className={red ? 'desk-text is-red' : 'desk-text'} onClick={onGo}>
-              {go}
-            </button>
+            go != null && (
+              <button
+                type="button"
+                className={red ? 'desk-text is-red' : 'desk-text'}
+                onClick={onGo}
+              >
+                {go}
+              </button>
+            )
           }
         />
       </div>

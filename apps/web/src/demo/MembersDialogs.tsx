@@ -5,6 +5,7 @@ import {
   CLAIM_RECORD,
   DEADLINES,
   DOMAIN,
+  filled,
   firstName,
   grantable,
   inviteNote,
@@ -14,6 +15,8 @@ import {
   ORGANISATION,
   type Person,
   PROOF_LINE,
+  RECOVERY_WORDS as RR,
+  type RecoveryAnswer,
   roleMeans,
 } from './members.ts';
 import { ProofFields } from './MembersPerson.tsx';
@@ -309,5 +312,43 @@ export function ClaimDialog({
         />
       )}
     </>
+  );
+}
+
+/** One answer to a request to get back in, asked once; a request that has ended since leaves Close alone. */
+export function RecoveryAsk({
+  name,
+  answer,
+  closed: closedAtFirst,
+  ended,
+  onKeep,
+  onAnswer,
+  onGone,
+}: {
+  name: string;
+  answer: RecoveryAnswer;
+  closed: boolean;
+  ended: boolean;
+  onKeep: () => void;
+  onAnswer: () => void;
+  onGone: () => void;
+}) {
+  const [closed, setClosed] = useState(closedAtFirst);
+  const approve = answer === 'approve';
+  const title = filled(approve ? RR.approveTitle : RR.turnDownTitle, { name });
+
+  return closed ? (
+    <Ask key="closed" title={title} line={RR.closed} keep={RR.close} onKeep={onGone} />
+  ) : (
+    <Ask
+      key="asking"
+      title={title}
+      line={approve ? RR.approveBody : RR.turnDownBody}
+      keep={approve ? RR.cancel : RR.keep}
+      go={approve ? RR.approveConfirm : RR.turnDownConfirm}
+      red={approve}
+      onKeep={onKeep}
+      onGo={() => (ended ? setClosed(true) : onAnswer())}
+    />
   );
 }
