@@ -892,6 +892,21 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         what: 'An invitation is waiting',
         href: '/demo/create?after=invited',
       },
+      {
+        title: 'The sign-up runs out',
+        what: 'The code, or Send a new code, goes back',
+        href: '/demo/email-code?state=runOut',
+      },
+      {
+        title: 'Create an account · timed out',
+        what: 'Name and email kept, not the password',
+        href: '/demo/create?state=timedOut',
+      },
+      {
+        title: 'Create an account · timed out, opened again',
+        what: 'Only the email kept',
+        href: '/demo/create?state=timedOutReopened',
+      },
       { title: 'Apple, the first time', what: 'Apple didn’t share the name', href: '/demo/apple' },
       {
         title: 'Google, the first time',
