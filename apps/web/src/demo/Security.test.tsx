@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
@@ -48,6 +48,9 @@ function open(section: string, name: RegExp): HTMLElement {
 
 describe('Security at a desk (sc-30223)', () => {
   beforeEach(() => __setConfig({ ...tested, environment: 'development' }));
+  afterEach(() => {
+    Reflect.deleteProperty(navigator, 'clipboard');
+  });
 
   it('opens from the Settings list’s Security row, the row no longer a design of its own', async () => {
     const router = createMemoryRouter(routes, { initialEntries: ['/demo/settings'] });
@@ -299,7 +302,6 @@ describe('Security at a desk (sc-30223)', () => {
         .map((one) => one.textContent)
         .join('\n'),
     );
-    Reflect.deleteProperty(navigator, 'clipboard');
     fireEvent.click(within(dialog()).getByLabelText('I have saved these codes somewhere safe'));
     fireEvent.click(within(dialog()).getByRole('button', { name: 'Finish' }));
 

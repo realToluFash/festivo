@@ -263,6 +263,14 @@ describe('General at a desk (sc-30063)', () => {
     expect(screen.getByText('https://soirely.app/join/r/m2w8xd')).toBeDefined();
   });
 
+  it('says the link is copied only once the browser has copied it', async () => {
+    await general('/demo/settings/general');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Copy link' }));
+    await new Promise((settled) => setTimeout(settled, 0));
+    expect(screen.queryByText('Link copied.')).toBeNull();
+  });
+
   it('replaces the link after asking', async () => {
     await general('/demo/settings/general?state=replaceLink');
 
