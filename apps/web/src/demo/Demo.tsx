@@ -119,7 +119,7 @@ export default function Demo() {
       <Route path="get-back-in" element={<GetBackInBoard />} />
       <Route path="two-factor" element={<TwoFactorBoard />} />
       <Route path="ways-in" element={<WaysInBoard />} />
-      {/* The old signed-in stand-in: every way out now lands where the real web sends a signed-in person (sc-29561). */}
+      {/* Kept so a link to /demo/signed-in opens Today rather than the not-found page. */}
       <Route path="signed-in" element={<Navigate to="/demo/today" replace />} />
       <Route path="today" element={<Today />} />
       <Route path="events" element={<Events />} />
