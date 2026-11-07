@@ -7,7 +7,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
-import { CALENDAR_STATES, CAL_WORDS, FEED_WORDS } from './calendar.ts';
+import { CALENDAR_STATES, CAL_WORDS, FEED_WORDS, TODAY } from './calendar.ts';
 import { PhaseTag } from './EventParts.tsx';
 import { resetSample } from './events.ts';
 
@@ -42,6 +42,22 @@ function focused(): string | undefined {
 
 function key(name: string, options: { shiftKey?: boolean } = {}): void {
   fireEvent.keyDown(document.activeElement ?? document.body, { key: name, ...options });
+}
+
+function rows(): HTMLElement[] {
+  return [...document.querySelectorAll<HTMLElement>('.cal-agenda .cal-row')];
+}
+
+function rowDay(row: Element | null | undefined): string {
+  return row?.closest<HTMLElement>('[data-entry]')?.dataset.entry ?? '';
+}
+
+function entered(): HTMLElement {
+  const stops = rows().filter((row) => row.tabIndex === 0);
+
+  expect(stops).toHaveLength(1);
+
+  return stops[0] as HTMLElement;
 }
 
 const SEEN: Record<string, () => unknown> = {
@@ -240,6 +256,75 @@ describe('the Calendar in B, weeks as lanes, at a desk (sc-30329)', () => {
 
     fireEvent.click(screen.getByRole('radio', { name: 'View: Month' }));
     expect(screen.getByRole('grid')).toBeDefined();
+  });
+
+  it('enters Agenda by Tab at today’s first row, not the earliest (sc-31222)', SLOW, async () => {
+    await calendar('agenda');
+
+    const stop = entered();
+
+    expect(rowDay(rows()[0])).toBe('2026-03-14');
+    expect(rows()[0]?.tabIndex).toBe(-1);
+    expect(rowDay(stop) >= TODAY).toBe(true);
+    expect(rowDay(rows()[rows().indexOf(stop) - 1]) < TODAY).toBe(true);
+  });
+
+  it.each([
+    [CAL_WORDS.next, '2026-12-01'],
+    [CAL_WORDS.previous, '2026-10-01'],
+  ])('enters Agenda after %s at the month’s first day', SLOW, async (button, first) => {
+    await calendar('agenda');
+    fireEvent.click(screen.getByRole('button', { name: button }));
+
+    const stop = entered();
+
+    expect(rowDay(stop) >= first).toBe(true);
+    expect(rowDay(rows()[rows().indexOf(stop) - 1]) < first).toBe(true);
+  });
+
+  it('puts Today in Agenda on today’s heading, then Tab on its first row', SLOW, async () => {
+    await calendar('agenda');
+    fireEvent.click(screen.getByRole('button', { name: CAL_WORDS.next }));
+    fireEvent.click(screen.getByRole('button', { name: CAL_WORDS.today }));
+
+    expect(document.activeElement).toBe(
+      screen.getByRole('heading', { level: 2, name: 'Today, Tuesday, Nov 3' }),
+    );
+
+    const stop = entered();
+
+    expect(rowDay(stop) >= TODAY).toBe(true);
+    key('Tab');
+    expect(document.activeElement).toBe(stop);
+  });
+
+  it('steps Agenda’s rows by Tab and Shift+Tab, back to the earliest', SLOW, async () => {
+    await calendar('agenda');
+
+    const all = rows();
+    const stop = entered();
+    const at = all.indexOf(stop);
+
+    stop.focus();
+    key('Tab');
+    expect(document.activeElement).toBe(all[at + 1]);
+    key('Tab', { shiftKey: true });
+    expect(document.activeElement).toBe(stop);
+    for (let back = at - 1; back >= 0; back -= 1) {
+      key('Tab', { shiftKey: true });
+      expect(document.activeElement).toBe(all[back]);
+    }
+    expect(rowDay(document.activeElement)).toBe('2026-03-14');
+  });
+
+  it('leaves Month’s way in as it was after a visit to Agenda', SLOW, async () => {
+    await calendar('agenda');
+    fireEvent.click(screen.getByRole('radio', { name: 'View: Month' }));
+
+    expect(day(TODAY).tabIndex).toBe(0);
+    day(TODAY).focus();
+    key('ArrowRight');
+    expect(focused()).toBe('2026-11-04');
   });
 
   it('opens Subscribe as a dialog and gives focus back on Escape', SLOW, async () => {
