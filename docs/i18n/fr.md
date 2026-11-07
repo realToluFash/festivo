@@ -46,6 +46,13 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 | Try again (button)        | Réessayer                              | Settled 1 Nov, sc-26974          |
 | Owner / Admin / Member    | Propriétaire / Administrateur / Membre | Settled 5 Nov, sc-29914          |
 
+- **7 nov. 2026. Les autres façons d’entrer dans l’app** (`mobile:steps.invited*`, `join`,
+  `startOwnInstead`, `mobile:requestToJoin.messageOptional`, `signedOutLine`, sc-30119). "You’re
+  invited" est « Vous avez une invitation », pour que rien ne s’accorde avec le lecteur ;
+  l’adresse est « Invitation adressée à {{email}} ». `startOwnInstead` reprend
+  `domainJoining.startOwnInstead`, « Créer plutôt ma propre organisation ». « Optional » dans un
+  libellé est « facultatif », comme `web:requestToJoin.optional`.
+
 - **« e-mail » keeps a plain hyphen (U+002D)**, never U+2011, even where it wraps as « e- » /
   « mail » (sc-20577, #20957). A break at a hyphen is ordinary French typography; U+2011 is
   missing from some fonts and email clients, breaks search, and outside GSM-7 sends an SMS as
@@ -61,6 +68,14 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **7 nov. 2026. « Le jour de l’événement », jamais « le soir »** (sc-29384). Un événement a lieu
+  à toute heure : `verifyPhone.doneBody`, `steps.mobileIntro` et `completeProfile.mobileHelp`
+  disent « le jour de l’événement », `rolesScreen.means.run_of_show` « pendant l’événement ». Le
+  slogan du web reprend celui de l’app, « Préparez l’événement. Pilotez le jour J. » : « jour J »
+  convient à un slogan, pas à une liste de réglages. `public.body` dit « menus et programme »,
+  plus « déroulé de la soirée ». `eventForm.clocksSkip` garde « la nuit du passage à l’heure
+  d’été », qui décrit le changement d’heure.
+
 - **5 Nov 2026. An event's People refusals** (`messages:people.*`, sc-30009). Who can act is
   « une personne ayant le rôle Propriétaire ou Administrateur, ou la personne responsable de
   l’événement », so nothing agrees with a gender. The event role Lead in a sentence is « la
@@ -74,8 +89,8 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
 - **4 nov. 2026. Les étapes d’un nouveau compte dans l’app** (`mobile:steps.*`, sc-29126 pour
   sc-29069). La barre dit « Étape {{step}} sur {{steps}} » ; Skip est « Passer », jamais
   « Ignorer » ; Check WhatsApp est « Consultez WhatsApp », comme « Consultez votre boîte mail ».
-  "On the night" est « le soir de l’événement » quand rien avant ne nomme le soir, « le soir
-  même » seulement après.
+  "On the day" est « le jour de l’événement » (sc-29384) ; jamais « le soir », « le soir même »
+  ni « la soirée ».
 - **1 nov. 2026. Les événements et la navigation propre à un événement** (sc-26732 pour
   sc-22103, `web:events.*`, `mobile:eventsScreen.*`, `eventNav.*`, web et app). Les espaces :
   « Aperçu », « Invités », « Menu », « Plan de table », « Messages », « Programme », « Équipe »,

@@ -371,6 +371,95 @@ class LanguageTags(Base):
                                                  untagged=False, files=None, text="x"))
 
 
+class DemoFirst(Base):
+    DRAWN = "# AC\n- shows it\n\n# Design\n**Artboard:** `It.dc.html`\n\n"
+
+    def drawn(self, demo_line):
+        self.fake.add(1, "Ready For Dev")
+        self.fake.raw[1]["description"] = self.DRAWN + demo_line
+
+    def refused(self, pattern, live=None):
+        live = live or mock.patch("soirely_queue.github.live", side_effect=AssertionError)
+        with live, self.assertRaisesRegex(actions.Refused, pattern):
+            actions.claim(self.as_("dev"), args(story="sc-1"))
+        self.assertEqual(self.state(1), "Ready For Dev")
+        self.assertEqual(self.labels(1), set())
+
+    def test_a_drawn_story_with_no_demo_line_is_refused_with_the_way_back(self):
+        self.drawn("**Status:** drawn, not by the designer.")
+        self.refused(r"(?s)no Demo: line\. Nothing claimed.*move sc-1 \"Needs Design\".*"
+                     r"comment sc-1 --to ux")
+
+    def test_a_demo_still_being_built_is_refused(self):
+        self.drawn("**Demo:** being built.")
+        self.refused("says the demo is not built")
+
+    def test_a_demo_whose_pull_request_is_open_is_refused(self):
+        self.drawn("**Demo:** `It` in the app's demo (`/demo/it`) · PR #1386")
+        self.refused("#1386 is not merged yet",
+                     mock.patch("soirely_queue.github.live", return_value={"state": "OPEN"}))
+
+    def test_a_demo_github_cannot_read_is_refused(self):
+        self.drawn("**Demo:** `It` in the app's demo · PR #1386")
+        self.refused("GitHub did not answer for #1386",
+                     mock.patch("soirely_queue.github.live",
+                                side_effect=github.GitHubError("gh api: 502")))
+
+    def test_a_merged_demo_is_claimed(self):
+        self.drawn("**Demo:** `It` in the app's demo · PR #1386, superseding #1300")
+        states = {1386: {"state": "MERGED"}, 1300: {"state": "CLOSED"}}
+        with mock.patch("soirely_queue.github.live", side_effect=states.get):
+            actions.claim(self.as_("dev"), args(story="sc-1"))
+        self.assertEqual(self.state(1), "In Progress")
+
+    def test_one_merged_demo_on_a_line_naming_both_clients_is_enough(self):
+        self.drawn("**Demo:** the app's `It` · PR #1387. The web's `It` · PR #1385")
+        states = {1387: {"state": "MERGED"}, 1385: {"state": "OPEN"}}
+        with mock.patch("soirely_queue.github.live", side_effect=states.get):
+            actions.claim(self.as_("dev"), args(story="sc-1"))
+        self.assertEqual(self.state(1), "In Progress")
+
+    def test_a_story_with_no_design_section_is_claimed_without_asking_github(self):
+        self.fake.add(1, "Ready For Dev")
+        with mock.patch("soirely_queue.github.live", side_effect=AssertionError):
+            actions.claim(self.as_("dev"), args(story="sc-1"))
+        self.assertEqual(self.state(1), "In Progress")
+
+    def test_a_story_whose_demo_line_reads_none_is_claimed_without_asking_github(self):
+        self.drawn("**Demo:** none: nothing a person sees.")
+        with mock.patch("soirely_queue.github.live", side_effect=AssertionError):
+            actions.claim(self.as_("dev"), args(story="sc-1"))
+        self.assertEqual(self.state(1), "In Progress")
+
+    def test_a_demo_line_reading_a_bare_none_is_claimed(self):
+        self.drawn("**Demo:** none.")
+        with mock.patch("soirely_queue.github.live", side_effect=AssertionError):
+            actions.claim(self.as_("dev"), args(story="sc-1"))
+        self.assertEqual(self.state(1), "In Progress")
+
+    def test_a_demo_line_reading_none_yet_with_no_pull_request_is_refused(self):
+        self.drawn("**Demo:** none yet, being drawn")
+        self.refused("names no pull request")
+
+    def test_a_demo_line_that_reads_none_yet_names_a_pull_request_is_read_for_it(self):
+        self.drawn("**Demo:** none merged yet · PR #1386")
+        self.refused("#1386 is not merged yet",
+                     mock.patch("soirely_queue.github.live", return_value={"state": "OPEN"}))
+
+    def test_rework_is_claimed_whatever_its_demo_line_says(self):
+        self.drawn("**Demo:** being built.")
+        self.fake.update(1, workflow_state_id=IDS["Failed QA"], labels=[{"name": "dev"}])
+        actions.claim(self.as_("dev"), args(story="sc-1"))
+        self.assertEqual(self.state(1), "In Progress")
+
+    def test_a_developer_sends_a_story_back_to_needs_design(self):
+        self.fake.add(1, "Ready For Dev")
+        self.fake.add(2, "In Progress", ["dev2"])
+        actions.move(self.as_("dev"), args(story="sc-1", state="Needs Design"))
+        actions.move(self.as_("dev2"), args(story="sc-2", state="Needs Design"))
+        self.assertEqual((self.state(1), self.state(2)), ("Needs Design", "Needs Design"))
+
+
 class HeldByBlockers(Base):
     def setUp(self):
         super().setUp()

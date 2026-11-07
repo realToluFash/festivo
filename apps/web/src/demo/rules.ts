@@ -26,7 +26,7 @@ export const SAMPLE = {
   /** Refused as a known breach, as the API refuses one. */
   breachedPassword: 'passwordpassword',
   inviter: 'Ade Bankole',
-  role: 'Coordinator',
+  role: 'Member',
   invitedUntil: 'Tuesday, Nov 17',
   askedOn: 'Tuesday, Nov 3 at 14:05',
   askAgainFrom: 'Tuesday, Dec 1',
@@ -111,10 +111,7 @@ export function passwordLine(password: string, blank: string): string | null {
     : `Use at least ${PASSWORD_MINIMUM_LENGTH} characters.`;
 }
 
-/** Only the digits of what was typed or pasted, at most a code's length. */
-export function codeDigits(typed: string): string {
-  return typed.replace(/\D/g, '').slice(0, CODE_LENGTH);
-}
+export { codeDigits } from '@soirely/domain';
 
 export function codeLine(code: string, from: string): string | null {
   if (code === '') return `Enter the ${CODE_LENGTH}-digit code from ${from}.`;

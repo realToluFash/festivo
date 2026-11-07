@@ -2,10 +2,20 @@ import { SAMPLE } from './rules.ts';
 import type { EventKey } from './today.ts';
 
 export type Section =
-  'account' | 'security' | 'notifications' | 'general' | 'members' | 'roles' | 'signInRules';
+  'account' | 'security' | 'notifications' | 'general' | 'members' | 'signInRules';
 
-/** The one section the boards draw; the others, Roles among them, each have their own design. */
-export type Drawn = 'members';
+/** The sections the boards draw; the others each have their own design. */
+export type Drawn =
+  'account' | 'security' | 'notifications' | 'general' | 'members' | 'signInRules';
+
+const PATHS: Record<Drawn, string> = {
+  account: 'account',
+  security: 'security',
+  notifications: 'notifications',
+  general: 'general',
+  members: 'members',
+  signInRules: 'sign-in-rules',
+};
 
 export const SECTION_NAMES: Record<Section, string> = {
   account: 'Account',
@@ -13,7 +23,6 @@ export const SECTION_NAMES: Record<Section, string> = {
   notifications: 'Notifications',
   general: 'General',
   members: 'Members',
-  roles: 'Roles',
   signInRules: 'Sign-in rules',
 };
 
@@ -24,23 +33,22 @@ export interface SectionGroup {
 
 const GROUPS: readonly SectionGroup[] = [
   { name: 'Your account', sections: ['account', 'security', 'notifications'] },
-  { name: 'Organisation settings', sections: ['general', 'members', 'roles', 'signInRules'] },
+  { name: 'Organisation settings', sections: ['general', 'members', 'signInRules'] },
 ];
 
-export type ViewerKey = 'folake' | 'julien' | 'tom' | 'ana';
+export type ViewerKey = 'folake' | 'julien' | 'ana';
 
 export interface Viewer {
   key: ViewerKey;
   id: string;
   name: string;
   initials: string;
-  role: string;
+  role: 'Owner' | 'Admin' | 'Member';
   owns: boolean;
   manages: boolean;
-  reads: boolean;
 }
 
-/** Who is looking, from `?as=`: an owner, an administrator, door staff who read Members, and a coordinator who does not. */
+/** Who is looking, from `?as=`: an owner, an admin, and a member, who sees no Members (sc-29915). */
 export const VIEWERS: Record<ViewerKey, Viewer> = {
   folake: {
     key: 'folake',
@@ -50,37 +58,24 @@ export const VIEWERS: Record<ViewerKey, Viewer> = {
     role: 'Owner',
     owns: true,
     manages: true,
-    reads: true,
   },
   julien: {
     key: 'julien',
     id: 'julien@ire.events',
     name: 'Julien Moreau',
     initials: 'JM',
-    role: 'Administrator',
+    role: 'Admin',
     owns: false,
     manages: true,
-    reads: true,
-  },
-  tom: {
-    key: 'tom',
-    id: 'tom.becker@gmail.com',
-    name: 'Tom Becker',
-    initials: 'TB',
-    role: 'Door staff',
-    owns: false,
-    manages: false,
-    reads: true,
   },
   ana: {
     key: 'ana',
     id: 'ana.souza@ire.events',
     name: 'Ana Souza',
     initials: 'AS',
-    role: 'Coordinator',
+    role: 'Member',
     owns: false,
     manages: false,
-    reads: false,
   },
 };
 
@@ -88,18 +83,23 @@ export function viewerOf(name: string | null): Viewer {
   return Object.values(VIEWERS).find((viewer) => viewer.key === name) ?? VIEWERS.folake;
 }
 
-/** Members and Roles only for a role that reads them. */
-export function groupsFor(viewer: Pick<Viewer, 'reads'>): SectionGroup[] {
+/** Members only for an owner or an admin: a member sees General and Sign-in rules, read only. */
+export function groupsFor(viewer: Pick<Viewer, 'manages'>): SectionGroup[] {
   return GROUPS.map((group) => ({
     ...group,
-    sections: group.sections.filter(
-      (section) => viewer.reads || (section !== 'members' && section !== 'roles'),
-    ),
+    sections: group.sections.filter((section) => viewer.manages || section !== 'members'),
   }));
 }
 
 export function isDrawn(section: Section): section is Drawn {
-  return section === 'members';
+  return (
+    section === 'account' ||
+    section === 'security' ||
+    section === 'notifications' ||
+    section === 'general' ||
+    section === 'members' ||
+    section === 'signInRules'
+  );
 }
 
 export function settingsPath(section: Drawn, viewer: Pick<Viewer, 'key'>, state?: string): string {
@@ -108,7 +108,7 @@ export function settingsPath(section: Drawn, viewer: Pick<Viewer, 'key'>, state?
   if (state != null) query.set('state', state);
   const search = query.toString();
 
-  return `/demo/settings/${section}${search === '' ? '' : `?${search}`}`;
+  return `/demo/settings/${PATHS[section]}${search === '' ? '' : `?${search}`}`;
 }
 
 export const SIDEBAR_EVENTS: readonly EventKey[] = ['wed', 'ireti', 'party', 'draft'];
@@ -148,8 +148,8 @@ export const SETTINGS_PAGES: readonly { name: string; states: readonly DemoLink[
     name: 'The list beside the page',
     states: [
       { to: settingsPath('members', VIEWERS.folake), name: 'Owner, Members open' },
-      { to: settingsPath('members', VIEWERS.tom), name: 'Reads Members, manages nothing' },
-      { to: settingsPath('members', VIEWERS.ana), name: 'Does not read Members' },
+      { to: settingsPath('members', VIEWERS.julien), name: 'Admin, Members open' },
+      { to: settingsPath('members', VIEWERS.ana), name: 'Member, no Members' },
     ],
   },
   {
@@ -185,12 +185,12 @@ export const SETTINGS_PAGES: readonly { name: string; states: readonly DemoLink[
     states: [
       members('priya', 'Priya Shah (from 1536 wide, beside the list)'),
       members('role', 'Priya’s role, just opened'),
-      members('roleCoordinator', 'Priya’s role, Coordinator picked'),
+      members('roleAdmin', 'Priya’s role, Admin picked'),
+      members('role', 'Priya’s role, an admin choosing', VIEWERS.julien),
       members('roleDiscard', 'Priya’s role, cancel after a change'),
       members('removing', 'Removing Priya'),
-      members('priya', 'Read only, Tom sees Priya', VIEWERS.tom),
       members('self', 'Your own page, an owner'),
-      members('self', 'Your own page, not an owner', VIEWERS.tom),
+      members('self', 'Your own page, an admin', VIEWERS.julien),
       members('folake', 'Julien sees Folake, the only owner', VIEWERS.julien),
     ],
   },
@@ -201,7 +201,6 @@ export const SETTINGS_PAGES: readonly { name: string; states: readonly DemoLink[
       members('makeOwnerBlank', 'Make owner, nothing typed'),
       members('makeOwnerWrong', 'Make owner, a wrong code'),
       members('marta', 'Marta Silva, suspended by the domain'),
-      members('martaNo', 'Marta, may not restore', VIEWERS.julien),
       members('suspending', 'Suspending Priya'),
       members('justSuspended', 'Priya, just suspended'),
       members('suspended', 'Priya, suspended by hand'),

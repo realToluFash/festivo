@@ -1,5 +1,6 @@
 """Shortcut's REST API, with the token from SHORTCUT_API_TOKEN."""
 
+import http.client
 import json
 import mimetypes
 import os
@@ -40,9 +41,9 @@ class Shortcut:
         return min(wanted, left)
 
     def call(self, method, path, body=None, attempts=3, raw=None, content_type=None):
-        """Retries what Shortcut fails now and then: a 5xx, a dropped connection, and on a
-        PUT the 409 a concurrent edit of the same story returns. Only GET and PUT, which
-        are safe to repeat."""
+        """Retries what Shortcut fails now and then: a 5xx, a dropped connection, a read
+        that times out, and on a PUT the 409 a concurrent edit of the same story returns.
+        Only GET and PUT, which are safe to repeat (RFC 9110 section 9.2.2)."""
         url = path if path.startswith("http") else API + path
         data = raw if raw is not None else (json.dumps(body).encode() if body is not None
                                             else None)
@@ -50,6 +51,7 @@ class Shortcut:
             "Shortcut-Token": self.token,
             "Content-Type": content_type or "application/json"})
         failure = "Shortcut call failed"
+        where = f"{method} {path.split('?')[0]}"
         for attempt in range(attempts):
             timeout = self.time_left(failure)
             try:
@@ -57,16 +59,20 @@ class Shortcut:
                     return json.loads(response.read() or b"null")
             except urllib.error.HTTPError as error:
                 detail = error.read().decode(errors="replace")[:200]
-                failure = f"Shortcut {error.code} on {method} {path.split('?')[0]}: {detail}"
+                failure = f"Shortcut {error.code} on {where}: {detail}"
                 transient = error.code >= 500 or (error.code == 409 and method == "PUT")
                 if not transient or method not in ("GET", "PUT"):
                     break
             except urllib.error.URLError as error:
-                failure = f"Shortcut unreachable: {error.reason}"
+                failure = f"Shortcut unreachable on {where}: {error.reason}"
                 if method not in ("GET", "PUT"):
                     break
             except TimeoutError:
-                failure = f"Shortcut timed out on {method} {path.split('?')[0]}"
+                failure = f"Shortcut timed out on {where}"
+                if method not in ("GET", "PUT"):
+                    break
+            except (ConnectionError, http.client.HTTPException) as error:
+                failure = f"Shortcut dropped the connection on {where}: {error!r}"
                 if method not in ("GET", "PUT"):
                     break
             if attempt + 1 < attempts:
