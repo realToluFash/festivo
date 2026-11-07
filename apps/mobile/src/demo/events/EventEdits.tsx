@@ -224,18 +224,6 @@ export function EventField({
   );
 }
 
-/** sc-4330, under each part guests see: what saving tells them is not built yet. */
-function TellGuests() {
-  return (
-    <View style={styles.tell}>
-      <Text size={13.5} weight="semibold" style={[styles.secondary, styles.hint]}>
-        {W.tellGuests}
-      </Text>
-      <AcPill words={W.tellGuestsPill} />
-    </View>
-  );
-}
-
 export function AcPill({ words }: { words: string }) {
   return (
     <View style={styles.acPill}>
@@ -516,7 +504,6 @@ function DatesEdit(edit: EditProps) {
           testID="event.edit.dates.zone"
         />
       )}
-      <TellGuests />
     </EditShell>
   );
 }
@@ -664,7 +651,6 @@ function VenueEdit(edit: EditProps) {
           }
         />
       )}
-      {words == null && !offer && !down && <TellGuests />}
     </EditShell>
   );
 }
@@ -801,9 +787,6 @@ function HostsEdit(edit: EditProps) {
           testID="event.edit.hosts.add"
         />
       )}
-      {!kept && hosts.length < HOSTS_MAXIMUM && problems.every((problem) => problem == null) && (
-        <TellGuests />
-      )}
     </EditShell>
   );
 }
@@ -921,7 +904,6 @@ function NameEdit(edit: EditProps) {
           testID="event.edit.name.field"
         />
       </EventField>
-      <TellGuests />
     </EditShell>
   );
 }
@@ -1109,7 +1091,6 @@ const styles = StyleSheet.create({
   alertMarkSmall: { paddingTop: 1 },
   fieldHead: { flexDirection: 'row', flexWrap: 'wrap' },
   figures: { fontVariant: ['tabular-nums'] },
-  tell: { gap: tokens.spaceXs, alignItems: 'flex-start' },
   acPill: {
     minHeight: 26,
     justifyContent: 'center',

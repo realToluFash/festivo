@@ -1,7 +1,7 @@
 import { formattingLocale } from '@soirely/domain';
 import { getLocales } from 'expo-localization';
 import { type Href, router } from 'expo-router';
-import { type ReactNode, type RefObject, useMemo, useRef, useState } from 'react';
+import { type ReactNode, type RefObject, useMemo, useReducer, useRef, useState } from 'react';
 import { StyleSheet, View, type ViewInstance } from 'react-native';
 
 import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
@@ -44,8 +44,17 @@ import {
 import { W, say } from './EventsWords.ts';
 import { useShell } from '../../components/settingsShell.ts';
 import { Row, RowList, Section, TextAction } from '../../components/Summary.tsx';
+import { type MessagesState, reduce, startOf } from '../messages/MessagesModel.ts';
+import { TellGuests } from '../messages/MessagesOverlays.tsx';
+import { PLACE, SAMPLE_EVENT_ID, TELL } from '../messages/MessagesSample.ts';
+import { tellChange } from '../messages/TellChange.ts';
+import { MessagesScreen, badgeFor } from '../messages/MessagesScreen.tsx';
+import { W as MW, say as sayMessages } from '../messages/MessagesWords.ts';
 
 type Mute = 'ok' | 'notLoaded' | 'notSaved';
+
+/** Tell guests opens once the edit's own screen has gone, since iOS shows one window at a time. */
+const TELL_AFTER_MS = 800;
 
 const ASKS: Partial<Record<EventDemoState, LifeAsk>> = {
   pause: 'pause',
@@ -54,9 +63,15 @@ const ASKS: Partial<Record<EventDemoState, LifeAsk>> = {
   deleteDraft: 'deleteDraft',
 };
 
-function startEvent(id: string | undefined, state: EventDemoState | null): SampleEvent {
+function startEvent(
+  id: string | undefined,
+  state: EventDemoState | null,
+  messages: MessagesState | null,
+): SampleEvent {
   const event = sampleEvent(id) ?? sampleEvent('evt-wed-4');
   if (event == null) throw new Error('The sample has the wedding.');
+  if (messages === 'tell' || messages === 'untold') return { ...event, startsAt: TELL.startsAt };
+  if (messages === 'tellPlace') return { ...event, venue: PLACE };
 
   return state === 'photo' ? { ...event, photo: true } : event;
 }
@@ -70,16 +85,27 @@ export function EventScreen({
   id,
   state,
   area,
+  messages = null,
 }: {
   id: string | undefined;
   state: EventDemoState | null;
   area: AreaKey | null;
+  messages?: MessagesState | null;
 }) {
   const shell = useShell();
   const locale = formattingLocale('en', getLocales()[0]?.languageTag);
   const now = useMemo(() => clockOf(state), [state]);
-  const [event, setEvent] = useState(() => startEvent(id, state));
-  const [at, setAt] = useState<AreaKey>(area == null || area === 'people' ? 'overview' : area);
+  const [event, setEvent] = useState(() => startEvent(id, state, messages));
+  const [at, setAt] = useState<AreaKey>(
+    area == null || area === 'people' || messages === 'tell' || messages === 'tellPlace'
+      ? 'overview'
+      : area,
+  );
+  const [m, dispatch] = useReducer(reduce, null, () => startOf(messages, shell.layout !== 'phone'));
+  const [messagesSeen, setMessagesSeen] = useState(messages != null || at === 'messages');
+  if (at === 'messages' && !messagesSeen) setMessagesSeen(true);
+  const messagesHere = event.id === SAMPLE_EVENT_ID;
+  const [toldEvent, setToldEvent] = useState(() => sampleEvent(id) ?? event);
   const [more, setMore] = useState(state === 'more');
   const [edit, setEdit] = useState<EditPart | null>(editOf(state));
   const [round, setRound] = useState(0);
@@ -117,6 +143,10 @@ export function EventScreen({
     setEvent(next);
     setEdit(null);
     setTold(W.saved);
+    const change =
+      part === 'dates' || part === 'venue' ? tellChange(toldEvent, next, locale) : null;
+    if (change != null && change.lines.length > 0)
+      setTimeout(() => dispatch({ type: 'offerTell', change }), TELL_AFTER_MS);
   };
   const deleteIt = () => {
     setAsk(null);
@@ -181,6 +211,46 @@ export function EventScreen({
     />
   );
   const manage = <Manage keys={manageOf(shown, now)} refFor={refFor} onManage={onManage} />;
+  const tellHere = (words: string) => {
+    if (at === 'messages') dispatch({ type: 'told', words });
+    else setTold(words);
+  };
+  const tellSent = () => {
+    dispatch({ type: 'tellSent' });
+    setToldEvent(event);
+    tellHere(sayMessages.queued(TELL.count));
+  };
+  const tell = messagesHere && (
+    <TellGuests
+      open={m.telling}
+      lines={m.change.lines}
+      address={m.change.address === true}
+      phone={shell.layout === 'phone'}
+      opener={opener}
+      onSend={tellSent}
+      onNotNow={() => dispatch({ type: 'notNow' })}
+      onSeeWho={() => tellHere(sayMessages.ownDesign(MW.seeWho))}
+    />
+  );
+
+  if (at === 'messages' && messagesHere)
+    return (
+      <MessagesScreen
+        m={m}
+        dispatch={dispatch}
+        event={shown}
+        now={now}
+        more={more}
+        onMore={setMore}
+        onArea={setAt}
+        start={{
+          fix: messages === 'fix',
+          push: messages === 'bell',
+          keys: messages === 'write' || messages === 'cancelled' || messages === 'scheduledEdit',
+        }}
+        extra={tell}
+      />
+    );
 
   let page: ReactNode;
   if (at !== 'overview' && at !== 'people')
@@ -222,9 +292,11 @@ export function EventScreen({
       onArea={setAt}
       more={more}
       onMore={setMore}
+      badge={messagesHere && messagesSeen ? badgeFor(m) : null}
       toast={told == null ? null : { words: told, onClose: () => setTold(null) }}
       overlay={
         <>
+          {tell}
           {round > 0 || edit != null ? (
             <EditScreen
               key={`${part}:${round}`}

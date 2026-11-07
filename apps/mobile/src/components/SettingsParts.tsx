@@ -203,14 +203,17 @@ export function RoundButton({
   label,
   onPress,
   dot = false,
+  ref,
 }: {
   glyph: GlyphName;
   label: string;
   onPress: () => void;
   dot?: boolean;
+  ref?: Ref<ViewInstance> | undefined;
 }) {
   return (
     <Pressable
+      ref={ref}
       onPress={onPress}
       hitSlop={tokens.spaceXxs}
       style={({ pressed }) => [styles.round, pressed && styles.pressed]}

@@ -295,13 +295,22 @@ export function TaskPage({
   );
 }
 
-export function Bell({ tell }: { tell: Tell }) {
+export function Bell({
+  tell,
+  onPress,
+  ref,
+}: {
+  tell: Tell;
+  onPress?: (() => void) | undefined;
+  ref?: Ref<ViewInstance> | undefined;
+}) {
   return (
     <RoundButton
+      ref={ref}
       glyph="bell"
       label="Notifications, 3 unread"
       dot
-      onPress={() => tell('Notifications have their own design.')}
+      onPress={onPress ?? (() => tell('Notifications have their own design.'))}
     />
   );
 }
