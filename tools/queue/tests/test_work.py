@@ -313,6 +313,14 @@ class Developer(unittest.TestCase):
         stepped["tasks"][1]["done"] = True
         self.assertEqual(kinds(work.developer_items([stepped], [merged])), ["to-qa"])
 
+    def test_a_merged_step_no_pass_covers_still_asks_the_lead(self):
+        unpassed = pr(state="merged")
+        stepped = dict(story(), state="In Review",
+                       tasks=[{"id": 1, "text": "web", "done": True},
+                              {"id": 2, "text": "app", "done": False}])
+        self.assertEqual(kinds(work.developer_items([stepped], [unpassed])),
+                         ["merged-unpassed"])
+
     def test_a_merged_step_waits_on_the_next_steps_open_pr_with_every_task_ticked(self):
         merged = pr(state="merged", lead=[verdict("pass", HEAD[:7])])
         last = dict(pr(), number=8)

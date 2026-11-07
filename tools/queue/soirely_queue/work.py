@@ -490,10 +490,11 @@ def developer_items(stories, prs):
             continue
         if pr["state"] == "merged":
             if story["state"] in R.MERGING and not linguists(story) and not design:
-                if story["id"] in building or any(not t["done"] for t in story.get("tasks") or []):
-                    # A step of a story built in steps: the last one's merge hands it over.
-                    continue
                 if covered and verdict["verdict"] == "pass":
+                    if story["id"] in building \
+                            or any(not t["done"] for t in story.get("tasks") or []):
+                        # A step of a story built in steps: the last one's merge hands it over.
+                        continue
                     after = "Ready For QA" if role != "ops" or "needs qa" in story["labels"] \
                         else "Done"
                     add("to-qa", f"PR #{number} merged at the passed {sha}: "
