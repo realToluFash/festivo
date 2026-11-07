@@ -326,6 +326,54 @@ describe('the demo creates an account (sc-29061)', () => {
     expect((screen.getByLabelText('Password') as HTMLInputElement).value).toBe('');
   });
 
+  it('takes a run-out sign-up back to Create your account, name and email kept, and says why (sc-29923)', async () => {
+    const line =
+      'Your sign-up timed out, so we did not keep the password. Enter it again to get a new code.';
+    await page('?page=email&state=run-out', 'Check your email');
+    type('Code from the email', SAMPLE.code);
+    fireEvent.click(screen.getByRole('button', { name: 'Verify email' }));
+    await wait();
+
+    await screen.findByRole('heading', { name: 'Create your account' });
+    expect(screen.getByRole('status').textContent).toBe(line);
+    expect((screen.getByLabelText('Full name') as HTMLInputElement).value).toBe(SAMPLE.name);
+    expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe(SAMPLE.email);
+    expect((screen.getByLabelText('Password') as HTMLInputElement).value).toBe('');
+    expect(document.activeElement).toBe(screen.getByLabelText('Password'));
+
+    type('Password', SAMPLE.password);
+    fireEvent.click(screen.getByRole('button', { name: 'Create account' }));
+    expect(screen.queryByText(line)).toBeNull();
+    await wait();
+    expect(await screen.findByRole('heading', { name: 'Check your email' })).toBeDefined();
+    expect(screen.getByText('Step 1 of 2')).toBeDefined();
+
+    fireEvent.click(screen.getByRole('link', { name: 'Back' }));
+    await screen.findByRole('heading', { name: 'Create your account' });
+    expect(screen.queryByText(line)).toBeNull();
+  });
+
+  it('ends a run-out sign-up the same way from Send a new code (sc-29923)', async () => {
+    await page('?page=email&state=run-out', 'Check your email');
+    for (let second = 0; second < 61; second++) {
+      await act(() => vi.advanceTimersByTimeAsync(1000));
+    }
+    fireEvent.click(screen.getByRole('button', { name: 'Send a new code' }));
+    await wait();
+
+    await screen.findByRole('heading', { name: 'Create your account' });
+    expect(screen.getByText(/Your sign-up timed out/)).toBeDefined();
+  });
+
+  it('keeps only the email when the tab no longer has the name (sc-29923)', async () => {
+    await page('?page=register&state=timed-out-new-tab', 'Create your account');
+
+    expect(screen.getByText(/Your sign-up timed out/)).toBeDefined();
+    expect((screen.getByLabelText('Full name') as HTMLInputElement).value).toBe('');
+    expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe(SAMPLE.email);
+    expect(document.activeElement).toBe(screen.getByLabelText('Password'));
+  });
+
   it('takes six digits only when sent, keeps a wrong code selected, and verifies the right one', async () => {
     await page('?page=email', 'Check your email');
     const code = screen.getByLabelText('Code from the email') as HTMLInputElement;
