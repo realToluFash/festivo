@@ -1,6 +1,7 @@
 import { memberStanding, type MemberStanding } from '@soirely/domain';
 
 import {
+  type Answering,
   answerable,
   answeredWords,
   JULIEN,
@@ -275,6 +276,8 @@ export const RECOVERY_STATES = [
   'recoveryApproved',
   'recoveryTurnedDown',
   'recoveryClosed',
+  'recoverySending',
+  'recoveryFailed',
   'recoveryDone',
   'recoveryOwn',
 ] as const;
@@ -344,6 +347,7 @@ export interface MembersStart {
   recovery: string[];
   recoveryAsk: RecoveryAsk | null;
   recoveryAnswer: RecoveryAnswer | null;
+  answering: Answering;
 }
 
 export type ClaimState = 'unclaimed' | 'open' | 'withdrawn';
@@ -534,15 +538,16 @@ export function membersStart(
     recovery: [],
     recoveryAsk: null,
     recoveryAnswer: null,
+    answering: 'answers',
   };
   const recovery = {
     ...base,
     viewer: viewer ?? VIEWERS.folake,
     recovery: oldestFirst([KOFI, PRIYA]),
   };
-  const kofiAsks = (answer: RecoveryAsk['answer'], closed = false) => ({
+  const kofiAsks = (answer: RecoveryAsk['answer'], phase: RecoveryAsk['phase'] = 'asking') => ({
     ...recovery,
-    recoveryAsk: { id: KOFI, answer, closed },
+    recoveryAsk: { id: KOFI, answer, phase },
   });
   const kofiAnswered = (kind: RecoveryAnswer['kind']) => ({
     ...recovery,
@@ -564,7 +569,11 @@ export function membersStart(
     case 'recoveryTurnedDown':
       return kofiAnswered('turnedDown');
     case 'recoveryClosed':
-      return kofiAsks('approve', true);
+      return kofiAsks('approve', 'closed');
+    case 'recoverySending':
+      return { ...kofiAsks('approve', 'sending'), answering: 'holds' };
+    case 'recoveryFailed':
+      return { ...kofiAsks('approve', 'failed'), answering: 'fails' };
     case 'recoveryDone':
       return { ...recovery, recovery: [], recoveryAnswer: { id: PRIYA, kind: 'approved' } };
     case 'recoveryOwn':

@@ -169,7 +169,7 @@ function RecoveryRow({
   );
 }
 
-/** Members' one Ask for each answer: Cancel or Keep the request first, the verb last; once the request has gone, Close alone. */
+/** Members' one Ask for each answer: Cancel or Keep the request first, the verb last; Sending your answer… while it goes, the failed line if it fails, and Close alone once the request has gone. */
 export function recoveryQuestion(
   ask: RecoveryAsk | null,
   name: string,
@@ -179,7 +179,12 @@ export function recoveryQuestion(
     ? RECOVERY_WORDS.turnDownTitle(name)
     : RECOVERY_WORDS.approveTitle(name);
 
-  if (ask?.closed === true)
+  const phase = {
+    sending: ask?.phase === 'sending' ? RECOVERY_WORDS.sending : null,
+    failed: ask?.phase === 'failed' ? RECOVERY_WORDS.failed : null,
+  };
+
+  if (ask?.phase === 'closed')
     return {
       title,
       line: RECOVERY_WORDS.closed,
@@ -189,6 +194,7 @@ export function recoveryQuestion(
     };
   if (turningDown)
     return {
+      ...phase,
       title,
       line: RECOVERY_WORDS.turnDownBody,
       keep: { label: RECOVERY_WORDS.keep, testID: 'members.recovery.keep' },
@@ -199,6 +205,7 @@ export function recoveryQuestion(
     };
 
   return {
+    ...phase,
     title,
     line: RECOVERY_WORDS.approveBody,
     keep: { label: RECOVERY_WORDS.cancel, testID: 'members.recovery.cancel' },

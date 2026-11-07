@@ -1,7 +1,7 @@
 import type { MembersSay } from './MembersSample.ts';
 import { YOU } from './sample.ts';
 
-/** The product's recoveryRequests words, from the web's en.json, with Close and the card's line new; the app has none of them yet. */
+/** The product's recoveryRequests words, from the web's en.json, with Close, Sending your answer… and the card's line new; the app has none yet. */
 export const RECOVERY_WORDS = {
   title: 'Requests to get back in',
   note: 'Only owners and admins see this. A request leaves it once somebody answers or it ends.',
@@ -34,6 +34,8 @@ export const RECOVERY_WORDS = {
   turnedDownNext: 'Two-factor stays on for them, and they’re emailed.',
   closed: 'This request has already been answered, or it has ended.',
   close: 'Close',
+  failed: 'That did not work. Try again in a moment.',
+  sending: 'Sending your answer…',
   toGetBackIn: (count: number) => `${count} to get back in`,
   toJoin: (count: number) => `${count} to join`,
 } as const;
@@ -127,7 +129,6 @@ export function recoveryHeard(
 
 export const OWN_LINE = RECOVERY_WORDS.own(YOU.organisation);
 
-/** What the viewer can answer: never their own request. */
 export function answerable(ids: readonly string[], viewer: string): string[] {
   return ids.filter((id) => id !== viewer);
 }
@@ -141,8 +142,28 @@ export function waitingKinds(back: number, join: number): string | null {
 
 export type RecoveryAnswer = { id: string; kind: 'approved' | 'turnedDown' };
 
-/** Which confirm is open, and whether its request has gone while it was open. */
-export type RecoveryAsk = { id: string; answer: 'approve' | 'turnDown'; closed: boolean };
+/** Which confirm is open, and where it is: asking, its answer on its way, failed, or its request gone meanwhile. */
+export type RecoveryAsk = {
+  id: string;
+  answer: 'approve' | 'turnDown';
+  phase: 'asking' | 'sending' | 'failed' | 'closed';
+};
+
+/** How the demo's answers come back, as Personalisation's saves do: at once, the first held a while so a link can show it, or every one refused. */
+export type Answering = 'answers' | 'holds' | 'fails';
+
+export const ANSWER_MS = 500;
+export const HELD_MS = 8000;
+
+export function answerComes(
+  answering: Answering,
+  send: number,
+): { afterMs: number; fails: boolean } {
+  return {
+    afterMs: answering === 'holds' && send === 1 ? HELD_MS : ANSWER_MS,
+    fails: answering === 'fails',
+  };
+}
 
 export function answeredWords(
   answer: RecoveryAnswer,

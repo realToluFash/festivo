@@ -496,6 +496,16 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/settings/members?state=recoveryClosed',
       },
       {
+        title: 'Members · an answer on its way',
+        what: 'Sending your answer…, the way back waits',
+        href: '/demo/settings/members?state=recoverySending',
+      },
+      {
+        title: 'Members · an answer that failed',
+        what: 'That did not work, the verb tries again',
+        href: '/demo/settings/members?state=recoveryFailed',
+      },
+      {
         title: 'Members · no request to get back in left',
         what: 'Both answered, Answer Lucía Gómez',
         href: '/demo/settings/members?state=recoveryDone',

@@ -256,7 +256,7 @@ describe('Requests to get back in, in the app’s Members (sc-30893)', () => {
     });
   };
 
-  it('keeps every state Members had, and adds the eight recovery states', () => {
+  it('keeps every state Members had, and adds the ten recovery states', () => {
     expect(MEMBERS_STATES).toEqual([
       'list',
       'readOnly',
@@ -281,6 +281,8 @@ describe('Requests to get back in, in the app’s Members (sc-30893)', () => {
       'recoveryApproved',
       'recoveryTurnedDown',
       'recoveryClosed',
+      'recoverySending',
+      'recoveryFailed',
       'recoveryDone',
       'recoveryOwn',
     ]);
@@ -333,12 +335,12 @@ describe('Requests to get back in, in the app’s Members (sc-30893)', () => {
     expect(membersStart('recoveryApprove').recoveryAsk).toEqual({
       id: KOFI,
       answer: 'approve',
-      closed: false,
+      phase: 'asking',
     });
     expect(membersStart('recoveryTurnDown').recoveryAsk).toEqual({
       id: KOFI,
       answer: 'turnDown',
-      closed: false,
+      phase: 'asking',
     });
     expect(membersStart('recoveryApproved')).toMatchObject({
       recovery: [PRIYA],
@@ -350,8 +352,19 @@ describe('Requests to get back in, in the app’s Members (sc-30893)', () => {
     });
     expect(membersStart('recoveryClosed')).toMatchObject({
       recovery: [KOFI, PRIYA],
-      recoveryAsk: { id: KOFI, answer: 'approve', closed: true },
+      recoveryAsk: { id: KOFI, answer: 'approve', phase: 'closed' },
     });
+    expect(membersStart('recoverySending')).toMatchObject({
+      recovery: [KOFI, PRIYA],
+      recoveryAsk: { id: KOFI, answer: 'approve', phase: 'sending' },
+      answering: 'holds',
+    });
+    expect(membersStart('recoveryFailed')).toMatchObject({
+      recovery: [KOFI, PRIYA],
+      recoveryAsk: { id: KOFI, answer: 'approve', phase: 'failed' },
+      answering: 'fails',
+    });
+    expect(membersStart('recovery').answering).toBe('answers');
     expect(membersStart('recoveryDone')).toMatchObject({
       recovery: [],
       recoveryAnswer: { id: PRIYA, kind: 'approved' },

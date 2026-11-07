@@ -23,7 +23,12 @@ import {
   type RecoveryPart,
   recoveryQuestion,
 } from './MembersRecovery.tsx';
-import { answerable, type RecoveryAnswer, type RecoveryAsk } from './MembersRecoverySample.ts';
+import {
+  answerable,
+  answerComes,
+  type RecoveryAnswer,
+  type RecoveryAsk,
+} from './MembersRecoverySample.ts';
 import { RequestScreen } from './MembersRequest.tsx';
 import {
   approved,
@@ -98,6 +103,7 @@ function MembersScreen({ start }: { start: MembersStart }) {
   const [recoveryAsk, setRecoveryAsk] = useState<RecoveryAsk | null>(start.recoveryAsk);
   const [recoveryAnswer, setRecoveryAnswer] = useState<RecoveryAnswer | null>(start.recoveryAnswer);
   const [lit, setLit] = useState<string | null>(null);
+  const [sent, setSent] = useState(start.recoveryAsk?.phase === 'sending' ? 1 : 0);
   const listScroll = useRef<ScrollViewInstance>(null);
   const recoveryList = useRef<ViewInstance>(null);
   const cardSays = useRef<ScreenReaderTarget | null>(null);
@@ -174,7 +180,7 @@ function MembersScreen({ start }: { start: MembersStart }) {
 
   function askRecovery(id: string, answer: RecoveryAsk['answer']): void {
     back.current = { id, part: answer };
-    setRecoveryAsk({ id, answer, closed: false });
+    setRecoveryAsk({ id, answer, phase: 'asking' });
   }
 
   function answerRecovery(id: string, kind: RecoveryAnswer['kind']): void {
@@ -195,16 +201,34 @@ function MembersScreen({ start }: { start: MembersStart }) {
     setRecoveryAsk(null);
   }
 
-  /** Cancel, Keep the request, Back and the escape change nothing; once the request has gone, they are Close. */
+  /** Cancel, Keep the request, Back and the escape change nothing, and wait while an answer is out; once the request has gone, they are Close. */
   function keepRecoveryAsk(): void {
-    if (recoveryAsk?.closed === true) closeGone(recoveryAsk.id);
+    if (recoveryAsk?.phase === 'sending') return;
+    if (recoveryAsk?.phase === 'closed') closeGone(recoveryAsk.id);
     else setRecoveryAsk(null);
   }
 
+  /** The verb sends the answer, or tries it again after a failure; the failed line goes while it is out. */
   function confirmRecoveryAsk(): void {
-    if (recoveryAsk == null) return;
-    answerRecovery(recoveryAsk.id, recoveryAsk.answer === 'approve' ? 'approved' : 'turnedDown');
+    if (recoveryAsk == null || recoveryAsk.phase === 'sending' || recoveryAsk.phase === 'closed')
+      return;
+    setRecoveryAsk({ ...recoveryAsk, phase: 'sending' });
+    setSent((count) => count + 1);
   }
+
+  useEffect(() => {
+    if (sent === 0 || recoveryAsk == null) return;
+    const ask = recoveryAsk;
+    const { afterMs, fails } = answerComes(start.answering, sent);
+    const wait = setTimeout(() => {
+      if (fails) setRecoveryAsk({ ...ask, phase: 'failed' });
+      else answerRecovery(ask.id, ask.answer === 'approve' ? 'approved' : 'turnedDown');
+    }, afterMs);
+
+    return () => clearTimeout(wait);
+    // Once per answer sent: it answers the confirm that was open as its verb was pressed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sent]);
 
   function openPerson(id: string | null, with_: PersonOpening = PLAIN): void {
     moveOn();

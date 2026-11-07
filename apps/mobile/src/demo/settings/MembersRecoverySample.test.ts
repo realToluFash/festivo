@@ -4,9 +4,12 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import {
+  ANSWER_MS,
   answerable,
+  answerComes,
   answeredWords,
   endsAt,
+  HELD_MS,
   JULIEN,
   KOFI,
   oldestFirst,
@@ -57,6 +60,7 @@ describe('Requests to get back in, on the app’s Members', () => {
       approvedNext: 'approvedNext',
       turnedDownNext: 'turnedDownNext',
       closed: 'closed',
+      failed: 'failed',
     } as const;
     for (const [ours, theirs] of Object.entries(plain))
       expect(RECOVERY_WORDS[ours as keyof typeof plain], theirs).toBe(web[theirs]);
@@ -69,6 +73,19 @@ describe('Requests to get back in, on the app’s Members', () => {
     expect(RECOVERY_WORDS.turnedDown('Kofi Mensah')).toBe(fill('turnedDown', name));
     expect(RECOVERY_WORDS.when('A', 'B')).toBe(fill('when', { asked: 'A', expires: 'B' }));
     expect(OWN_LINE).toBe(fill('own', { organisations: 'Ire Events' }));
+  });
+
+  it('says the same word while either answer is on its way', () => {
+    expect(RECOVERY_WORDS.sending).toBe('Sending your answer…');
+    expect(RECOVERY_WORDS.failed).toBe('That did not work. Try again in a moment.');
+  });
+
+  it('answers at once, holds a linked answer on its way, and refuses every one that fails', () => {
+    expect(answerComes('answers', 1)).toEqual({ afterMs: ANSWER_MS, fails: false });
+    expect(answerComes('holds', 1)).toEqual({ afterMs: HELD_MS, fails: false });
+    expect(answerComes('holds', 2)).toEqual({ afterMs: ANSWER_MS, fails: false });
+    expect(answerComes('fails', 1)).toEqual({ afterMs: ANSWER_MS, fails: true });
+    expect(answerComes('fails', 3).fails).toBe(true);
   });
 
   it('lists Kofi’s request before Priya’s, the oldest first', () => {
