@@ -160,6 +160,11 @@ describe('the Budget page at a desk in A (sc-31779)', () => {
     expect(screen.getByRole('region', { name: 'Budget' }).textContent).toContain('Client total');
     expect(screen.getByText('Below cost: margin −£100.')).toBeTruthy();
     cleanup();
+    await open(at('margin_before_paid'));
+    const card = screen.getByRole('region', { name: 'Budget' }).textContent ?? '';
+    expect(card).toContain('Client total');
+    expect(card).not.toContain('Margin after payments');
+    cleanup();
     await open(at('free', '&plan=free'));
     expect(screen.getByRole('region', { name: 'Budget' }).textContent).not.toContain(
       'Client total',

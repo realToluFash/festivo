@@ -34,7 +34,6 @@ import {
   type Heads,
   CEILING_KEYS,
   categoryCeilingsLine,
-  ceilingExample,
   ceilingName,
   ceilingOf,
   ceilingProblem,
@@ -66,7 +65,6 @@ import {
   DashedMark,
   Figure,
   GlassTags,
-  InfoLine,
   LiveLine,
   MarkWord,
   MoneyField,
@@ -289,8 +287,8 @@ export function BudgetHomeContent({
           onAdd={() => setDialog('addCost')}
           onStart={() => void navigate(budgetAt('start_from'))}
         />
-      ) : margin ? (
-        <MarginCard event={event} />
+      ) : margin || (enterprise && first === 'margin_before_paid') ? (
+        <MarginCard event={event} paid={first !== 'margin_before_paid'} />
       ) : (
         <SummaryCard
           event={event}
@@ -570,7 +568,7 @@ function FirstCard({
   );
 }
 
-function MarginCard({ event }: { event: SampleEvent }) {
+function MarginCard({ event, paid }: { event: SampleEvent; paid: boolean }) {
   return (
     <BudgetCard event={event} label={W.budget}>
       <GlassTags
@@ -592,11 +590,15 @@ function MarginCard({ event }: { event: SampleEvent }) {
             figure: wholeRange(...MARGIN.margin),
             sub: `${MARGIN.marginShare[0]} to ${MARGIN.marginShare[1]} of the client total`,
           },
-          {
-            label: 'Margin after payments',
-            figure: wholeRange(...MARGIN.after),
-            sub: `${MARGIN.afterShare[0]} to ${MARGIN.afterShare[1]}`,
-          },
+          ...(paid
+            ? [
+                {
+                  label: 'Margin after payments',
+                  figure: wholeRange(...MARGIN.after),
+                  sub: `${MARGIN.afterShare[0]} to ${MARGIN.afterShare[1]}`,
+                },
+              ]
+            : []),
         ]}
       />
       <OnCard>Never on a share or a printout.</OnCard>
@@ -1485,9 +1487,6 @@ function CeilingSheet({
         ))}
       </div>
       {said != null && <p className="desk-note">{said}</p>}
-      {currency !== CURRENCY && (
-        <InfoLine>{`The examples are built at ${currency}’s minor unit, like ${ceilingExample(currency)}.`}</InfoLine>
-      )}
     </BudgetDialog>
   );
 }
