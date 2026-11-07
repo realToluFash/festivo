@@ -166,7 +166,7 @@ describe('Quotes and what is due on the wedding’s Budget, in A (sc-87, sc-88)'
     );
 
     expect(rowOf('Deposit').textContent).toBe(
-      'DepositDue Wed, Nov 4£4,500.00Mark paidChangeRemove',
+      'DepositDue Wed, Nov 4£4,500.00Mark paidCancel paymentChangeRemove',
     );
     expect(
       within(section('Schedule')).getByText('£1,500.00 of the quote is not scheduled yet.'),
@@ -434,6 +434,10 @@ describe('Quotes and what is due on the wedding’s Budget, in A (sc-87, sc-88)'
     await open(`${SAVOUR}&state=add_payment`);
     dialog = screen.getByRole('dialog', { name: 'Add a payment' });
     expect(dialog.querySelector('.bud-width.is-700')).not.toBeNull();
+    expect(
+      (within(dialog).getByRole('radio', { name: 'Enter rows yourself' }) as HTMLInputElement)
+        .checked,
+    ).toBe(true);
     fireEvent.change(within(dialog).getByLabelText('What the payment is for'), {
       target: { value: 'Balance' },
     });
@@ -445,7 +449,9 @@ describe('Quotes and what is due on the wedding’s Budget, in A (sc-87, sc-88)'
     await settle();
 
     expect(rowOf('Balance').textContent).toContain('£1,500.00');
-    expect(within(section('Schedule')).getByText('The schedule matches the quote.')).toBeDefined();
+    expect(
+      within(section('Schedule')).getByText('£7,500.00 of the quote is not scheduled yet.'),
+    ).toBeDefined();
   });
 
   it('changes a payment in place, and asks once in the row before removing one', SLOW, async () => {
