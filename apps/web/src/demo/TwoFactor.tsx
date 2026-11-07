@@ -65,6 +65,7 @@ export function TwoFactorBoard() {
 
 function CodeEntry({ recovery, state }: { recovery: boolean; state: string }) {
   const navigate = useNavigate();
+  const carried = useLocation().state as { outlasted?: boolean } | null;
   const opening = recovery
     ? state === 'used'
       ? SAMPLE.usedRecovery
@@ -84,6 +85,8 @@ function CodeEntry({ recovery, state }: { recovery: boolean; state: string }) {
   const [liftsAt, setLiftsAt] = useState<number | null>(() =>
     state === 'paused' ? Date.now() + LOCK_MS : null,
   );
+  /** A pause outlasts the sign-in's five minutes, and the API checks those before the code (sc-29956). */
+  const [outlasted, setOutlasted] = useState(carried?.outlasted === true);
   const [busy, after] = useBusy();
   const field = useRef<HTMLInputElement>(null);
   const locked = liftsAt != null;
@@ -101,6 +104,7 @@ function CodeEntry({ recovery, state }: { recovery: boolean; state: string }) {
     const lift = window.setTimeout(
       () => {
         setLiftsAt(null);
+        setOutlasted(true);
         field.current?.focus();
       },
       Math.max(0, liftsAt - Date.now()),
@@ -127,6 +131,14 @@ function CodeEntry({ recovery, state }: { recovery: boolean; state: string }) {
     }
 
     after(() => {
+      if (outlasted) {
+        void navigate('/demo/sign-in?state=code-timed-out', {
+          replace: true,
+          state: toSignIn.state,
+        });
+        return;
+      }
+
       if (code === (recovery ? SAMPLE.recovery : SAMPLE.authenticator)) {
         void navigate('/demo/today');
         return;
@@ -201,7 +213,11 @@ function CodeEntry({ recovery, state }: { recovery: boolean; state: string }) {
       </form>
 
       <div className="demo-asides">
-        <Link className="link-button demo-link" to={twoFactorAt(recovery ? 'code' : 'recovery')}>
+        <Link
+          className="link-button demo-link"
+          to={twoFactorAt(recovery ? 'code' : 'recovery')}
+          state={outlasted ? { outlasted } : null}
+        >
           {recovery ? 'Use your authenticator app instead' : 'Use a recovery code instead'}
         </Link>
         <Link className="link-button demo-link" to={twoFactorAt('start')}>

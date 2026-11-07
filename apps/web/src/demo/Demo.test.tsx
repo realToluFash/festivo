@@ -747,6 +747,40 @@ describe('the demo signs in with two-factor (sc-29063)', () => {
     expect(screen.getByRole('button', { name: 'Verify and sign in' })).toBeDefined();
   });
 
+  async function timedOut(): Promise<void> {
+    await screen.findByRole('heading', { level: 1, name: 'Sign in' });
+    expect(screen.getByText('That sign-in timed out')).toBeDefined();
+    expect(screen.getByText('Sign in again to carry on.')).toBeDefined();
+    expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe(SAMPLE.email);
+  }
+
+  it('lands the right code after the pause lifts on sign-in, timed out, the email kept (sc-29956)', async () => {
+    await page('?page=code', 'Enter your code');
+    for (let tries = 0; tries < TRIES; tries++) {
+      type('Code', '111111');
+      fireEvent.submit(screen.getByLabelText('Code'));
+      await wait();
+    }
+    await wait(61_000);
+
+    type('Code', SAMPLE.authenticator);
+    fireEvent.click(screen.getByRole('button', { name: 'Verify and sign in' }));
+    await wait();
+    await timedOut();
+  });
+
+  it('lands a right recovery code after the pause lifts on sign-in, timed out (sc-29956)', async () => {
+    await page('?page=code&state=paused', 'Enter your code');
+    await wait(61_000);
+    fireEvent.click(screen.getByRole('link', { name: 'Use a recovery code instead' }));
+    await screen.findByRole('heading', { name: 'Enter a recovery code' });
+
+    type('Recovery code', SAMPLE.recovery);
+    fireEvent.click(screen.getByRole('button', { name: 'Use this code' }));
+    await wait();
+    await timedOut();
+  });
+
   it('takes a recovery code in any case with the dash put in, and says a used one is used', async () => {
     await page('?page=code', 'Enter your code');
     fireEvent.click(screen.getByRole('link', { name: 'Use a recovery code instead' }));
