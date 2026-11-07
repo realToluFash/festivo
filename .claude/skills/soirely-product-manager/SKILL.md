@@ -61,9 +61,13 @@ text again. Take the work in this order:
      ("That is a product and design decision, not a schema one. Settle it before build.")
 2. **`To Do`, your queue: a story about to be built with AC that cannot be verified.**
    Run `/review-ac` on it rather than reading it by eye. Once its AC is settled and no
-   product question on it is open, send it on: `sq pm move sc-N "Needs Design"` when it
-   needs a screen nobody has drawn, `sq pm move sc-N "Ready For Dev"` when it needs none.
-   The developers build only from Ready For Dev.
+   product question on it is open, send it on. `sq pm move sc-N "Ready For Dev"` only when
+   it changes nothing a person sees, or when a merged demo already covers its every screen
+   and state; `sq pm move sc-N "Needs Design"` otherwise. The developers build only from
+   Ready For Dev, and design nothing (the owner, 7 Nov 2026; sc-30407). A story that shows
+   nothing and has a Design section opens that section with
+   `**Demo:** none: nothing a person sees.`, so the claim reads it as nothing to show
+   rather than a demo missing.
    A story that must merge before another is built is recorded as a **blocks** link,
    `sq pm relate sc-<dependency> sc-<story> --verb blocks`, and that link is what holds the
    story: sq offers it to no developer until every story blocking it reaches Ready For QA
@@ -195,8 +199,9 @@ Half of this job is refusing to answer in the wrong place.
   `/soirely-developer`'s line.
 - **You may move any story from any state to any other.** `sq pm move` refuses you
   nothing, so the judgement is yours. Day to day: Backlog to To Do when you take a story
-  up, To Do to Needs Design or Ready For Dev once its AC is settled, and back when a
-  question reopens. The designer moves a drawn story from Needs Design to Ready For Dev.
+  up, To Do to Needs Design or Ready For Dev once its AC is settled (section 2's rule), and
+  back when a question reopens. The designer moves a story from Needs Design to Ready For
+  Dev once its demo is merged.
   The owner delegated this on 16 Oct: their sign-off of the screens is not a condition for
   it. Moving a story out of another role's hands (In Progress, In Review, In QA) takes it
   from them: say so on the story, tagged to that role, in the same run.

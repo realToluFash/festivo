@@ -352,6 +352,18 @@ const SAMPLE_EVENTS: readonly SampleEvent[] = [
   ),
 ];
 
+/** Not one of the 20: the Calendar's `?state=monthEdge` adds it, so one event runs across a month's edge (calendar-lanes-spec). */
+export const REUNION: SampleEvent = sample(
+  'evt-reunion-3',
+  'Okafor family reunion',
+  'other',
+  'live',
+  ['2026-11-28T15:00:00Z', '2026-12-01T11:00:00Z', 'Europe/London'],
+  at('Hampton Manor', 'Solihull'),
+  ['The Okafor family'],
+  'GBP',
+);
+
 /** What the demo changed since it opened: Pause, Delete and Duplicate carry back to the list until a state link or a reload opens the sample as drawn. */
 let changed: Map<string, SampleEvent | null> = new Map();
 let copies: SampleEvent[] = [];
@@ -368,7 +380,7 @@ export function sampleEvents(): SampleEvent[] {
 }
 
 export function sampleEvent(id: string | undefined): SampleEvent | null {
-  return sampleEvents().find((event) => event.id === id) ?? null;
+  return sampleEvents().find((event) => event.id === id) ?? (id === REUNION.id ? REUNION : null);
 }
 
 export function keepChange(event: SampleEvent): void {

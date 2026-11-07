@@ -385,8 +385,8 @@
     "follows": "O seu idioma mantém-se em todos os seus dispositivos."
   },
   "public": {
-    "tagline": "Planeie o evento. Conduza a noite.",
-    "body": "A Soirely é onde um evento se planeia à secretária e se conduz a partir do telemóvel. Convidados, disposição das mesas, ementas e alinhamento da noite, num só lugar e no seu idioma.",
+    "tagline": "Planeie o evento. Conduza o dia.",
+    "body": "A Soirely é onde um evento se planeia à secretária e se conduz a partir do telemóvel. Convidados, disposição das mesas, ementas e programa, num só lugar e no seu idioma.",
     "signIn": "Iniciar sessão",
     "getStarted": "Começar"
   },
@@ -594,6 +594,7 @@
     "exhaustedTitle": "Demasiadas tentativas erradas",
     "exhaustedBody": "Esse código já não funciona. Envie um novo para continuar.",
     "wrongAddress": "Não é o seu endereço?",
+    "registerAgain": "Registe-se novamente com o endereço correto",
     "doneTitle": "E-mail verificado",
     "doneBody": "{{address}} está confirmado. A seguir, alguns dados para que a sua equipa saiba quem é quem.",
     "doneBodyAlternative": "{{address}} está verificado. Continua a ser um endereço alternativo até o tornar principal em Conta.",
@@ -626,7 +627,7 @@
     "cantGetTexts": "Não recebe SMS neste número?",
     "carryOnWithout": "Continuar sem ele",
     "doneTitle": "Número verificado",
-    "doneBody": "A Soirely pode contactar o {{number}} se algo correr mal na noite do evento.",
+    "doneBody": "A Soirely pode contactar o {{number}} se algo correr mal no dia do evento.",
     "doneBodyAlternative": "{{number}} está verificado. Continua a ser um número alternativo até o tornar principal em Conta.",
     "continue": "Continuar para a Soirely",
     "changeTitle": "Altere o seu número de telemóvel",
@@ -766,7 +767,7 @@
     "failedBody": "Algo falhou pelo caminho. Tente novamente dentro de um momento.",
     "signOut": "Encerrar sessão",
     "optional": "Opcional",
-    "mobileHelp": "É assim que o contactamos na noite do evento se algo correr mal. Se indicar um, enviamos-lhe um código por SMS para o confirmar.",
+    "mobileHelp": "É por este número que falamos consigo no dia do evento, se algo correr mal. Se indicar um, enviamos-lhe um código por SMS para o confirmar.",
     "providerConfirmed": "Sessão iniciada com a sua conta {{provider}}. A conta {{provider}} já confirmou {{email}}, por isso não há nenhum código a introduzir."
   },
   "forms": {
@@ -1295,10 +1296,8 @@
     "emailShape": "Isso não parece um endereço de e-mail. Confirme que tem um @ e um domínio, como amara.o@gmail.com.",
     "roleMeans": {
       "owner": "Tudo, incluindo a faturação e a eliminação da organização.",
-      "administrator": "Tudo nos eventos, mais membros e funções. Sem faturação.",
-      "event_manager": "Tudo dentro dos eventos, e gere o orçamento. Nunca a margem.",
-      "coordinator": "Organiza eventos. Consulta o orçamento, nunca a margem.",
-      "read_only": "Vê os eventos. Não altera nada."
+      "administrator": "Everything except billing. Sees every event and manages members.",
+      "member": "Works on the events they’re added to, and sees no others."
     },
     "inviteNote": "Esta pessoa recebe um e-mail no seu idioma, com uma ligação para aderir a {{organisation}} com a função {{role}}. O e-mail indica até quando a ligação funciona.",
     "send": "Enviar convite",
@@ -1604,7 +1603,6 @@
     "joined": "Aderiu a {{organisation}} com a função {{role}}.",
     "open": "Abrir {{organisation}}",
     "declinedBody": "Recusou o convite. {{inviter}} vai ver que recusou.",
-    "goToEvents": "Ir para os seus eventos",
     "goHome": "Ir para a Soirely",
     "signOutAndUse": "Encerrar sessão e usar {{email}}",
     "staySignedIn": "Manter a sessão de {{email}}",

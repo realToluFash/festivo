@@ -241,6 +241,7 @@ FOLLOWING_UP = ("Ready For QA", "In QA", "Failed QA", "Passsed QA")
 MOVES = {
     "dev": {"In Progress": ("Ready For Dev", "Failed QA", "Failed Code Review", "In Review"),
             "In Review": ("In Progress", "Failed Code Review", "Passed Code Review"),
+            "Needs Design": ("Ready For Dev", "In Progress"),
             "Ready For QA": ("In Review", "Passed Code Review"),
             WAITING: ("Ready For Dev", "In Progress", "Failed QA", "Failed Code Review")},
     # In Progress: a story handed over with no pull request or red checks is not ready.

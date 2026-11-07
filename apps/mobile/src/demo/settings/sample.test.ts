@@ -13,14 +13,20 @@ import {
 describe('Settings home in the demo, with three roles', () => {
   it('shows an owner or an admin Organisation, Members and Sign-in rules, and no Roles', () => {
     expect(demoGroups('owner')).toEqual([
-      { heading: 'yourAccount', sections: ['account', 'security', 'notifications'] },
+      {
+        heading: 'yourAccount',
+        sections: ['account', 'security', 'notifications', 'personalisation'],
+      },
       { heading: 'organisationHeading', sections: ['organisation', 'members', 'signInRules'] },
     ]);
   });
 
   it('shows a member her own sections and Sign-in rules alone', () => {
     expect(demoGroups('member')).toEqual([
-      { heading: 'yourAccount', sections: ['account', 'security', 'notifications'] },
+      {
+        heading: 'yourAccount',
+        sections: ['account', 'security', 'notifications', 'personalisation'],
+      },
       { heading: 'organisationHeading', sections: ['signInRules'] },
     ]);
     expect(VIEWER_PERSON.member.name).toBe('Priya Shah');
@@ -28,7 +34,10 @@ describe('Settings home in the demo, with three roles', () => {
 
   it('shows somebody with no organisation only their own', () => {
     expect(demoGroups('noOrg')).toEqual([
-      { heading: 'yourAccount', sections: ['account', 'security', 'notifications'] },
+      {
+        heading: 'yourAccount',
+        sections: ['account', 'security', 'notifications', 'personalisation'],
+      },
     ]);
   });
 

@@ -276,14 +276,16 @@ describe('the organisation switcher in B · Places at a desk (sc-30323)', () => 
     );
   });
 
-  it('says Create an organisation has its own design', SLOW, async () => {
+  it('opens the walk from Create an organisation, on its name', SLOW, async () => {
     open('/demo/events?switcher=populated');
-    const button = await opener();
+    await opener();
     fireEvent.click(screen.getByRole('button', { name: 'Create an organisation' }));
 
     expect(menu()).toBeNull();
-    expect(await screen.findByText('Create an organisation has its own design.')).toBeDefined();
-    expect(document.activeElement).toBe(button);
+    expect(screen.getByRole('dialog', { name: 'Create an organisation' })).toBeDefined();
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByLabelText('Organisation name')),
+    );
   });
 
   it('marks nothing current while access is paused, and switches away from it', SLOW, async () => {

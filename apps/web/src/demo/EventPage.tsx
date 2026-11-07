@@ -3,7 +3,6 @@ import { type ComponentType, type ReactNode, useContext, useEffect, useRef, useS
 import { Link, Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router';
 
 import {
-  type Area,
   type CardDoes,
   type EventStateName,
   type Manage,
@@ -40,6 +39,7 @@ import {
   VenuePart,
 } from './EventEdits.tsx';
 import { Alert, EventCard, EventsShell, NotBuilt, Switch, Thumb } from './EventParts.tsx';
+import { CAL_WORDS } from './calendar.ts';
 import { EventSidebar } from './EventSidebar.tsx';
 import { Glyph, type GlyphName } from './Glyph.tsx';
 import { LayersContext } from './layers.ts';
@@ -84,16 +84,24 @@ function askingOf(state: EventStateName | null): Asking | null {
 }
 
 /** An event at a desk in A · Summary first (Events-A-Desk, page 29): its own sidebar, the card, Details and the rest in two columns, each part edited in place. */
-export function EventPage() {
+export function EventPage({ dates = false }: { dates?: boolean }) {
   const { id } = useParams();
   const [params] = useSearchParams();
   const raw = params.get('state');
   useSwitcherStart();
 
-  return <EventAt key={`${id ?? ''}|${raw ?? ''}`} id={id} raw={raw} />;
+  return <EventAt key={`${id ?? ''}|${raw ?? ''}`} id={id} raw={raw} dates={dates} />;
 }
 
-function EventAt({ id, raw }: { id: string | undefined; raw: string | null }) {
+function EventAt({
+  id,
+  raw,
+  dates,
+}: {
+  id: string | undefined;
+  raw: string | null;
+  dates: boolean;
+}) {
   const location = useLocation();
   const navigate = useNavigate();
   const [arrival] = useState<Arrival>(() => (location.state as Arrival | null) ?? {});
@@ -115,17 +123,19 @@ function EventAt({ id, raw }: { id: string | undefined; raw: string | null }) {
 
   if (first.event == null) return <Navigate to="/demo/events" replace />;
 
-  return <EventView initial={first.event} state={first.state} arrival={arrival} />;
+  return <EventView initial={first.event} state={first.state} arrival={arrival} dates={dates} />;
 }
 
 function EventView({
   initial,
   state,
   arrival,
+  dates,
 }: {
   initial: SampleEvent;
   state: EventStateName | null;
   arrival: Arrival;
+  dates: boolean;
 }) {
   const [params] = useSearchParams();
   const navigate = useNavigate();
@@ -181,7 +191,9 @@ function EventView({
               </nav>
               <Bell tell={tell} />
             </div>
-            {area === 'overview' ? (
+            {dates ? (
+              <AreaPage event={event} name={CAL_WORDS.allDates} line={CAL_WORDS.allDatesComing} />
+            ) : area === 'overview' ? (
               <>
                 <EventCard
                   event={event}
@@ -243,7 +255,11 @@ function EventView({
                 </div>
               </>
             ) : (
-              <AreaPage event={event} area={area} />
+              <AreaPage
+                event={event}
+                name={AREAS.find((one) => one.area === area)?.name ?? ''}
+                line={COMING[area]}
+              />
             )}
           </div>
           {leaving != null && (
@@ -677,15 +693,7 @@ function ManageBlock({
 }
 
 /** An area main has not built: its name, the event, and that it is coming. */
-function AreaPage({
-  event,
-  area,
-}: {
-  event: SampleEvent;
-  area: Exclude<Area, 'overview' | 'people'>;
-}) {
-  const name = AREAS.find((one) => one.area === area)?.name ?? '';
-
+function AreaPage({ event, name, line }: { event: SampleEvent; name: string; line: string }) {
   return (
     <>
       <h1 className="ev-area-title" tabIndex={-1}>
@@ -697,7 +705,7 @@ function AreaPage({
       </div>
       <div className="ev-coming">
         <h2>{name}</h2>
-        <p className="desk-line">{COMING[area]}</p>
+        <p className="desk-line">{line}</p>
       </div>
     </>
   );

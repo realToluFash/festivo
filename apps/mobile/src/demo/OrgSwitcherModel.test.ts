@@ -9,12 +9,14 @@ import {
   currentPlace,
   expand,
   fold,
+  founded,
   frameFor,
   noneMatch,
   notNow,
   openerLabel,
   orgMesh,
   pick,
+  placeOf,
   rowsOf,
   scrollToShow,
   searchable,
@@ -25,6 +27,7 @@ import {
   tilesOf,
   untilIn,
   waitingOf,
+  withoutPlaces,
 } from './OrgSwitcherModel.ts';
 
 const names = (tiles: ReturnType<typeof tilesOf>) =>
@@ -89,6 +92,34 @@ describe('the switch', () => {
       SW.create,
     ]);
     expect(names(tilesOf(sessionFor('one'), ''))).toEqual(['Ire Events', SW.create]);
+  });
+});
+
+describe('a new organisation', () => {
+  const lumen = { id: 'org-lumen-feiras-pt', name: 'Lumen Feiras', role: 'Owner', fresh: true };
+
+  it('comes after Ire Events, current, with Create an organisation still last', () => {
+    const session = founded(sessionFor('one'), lumen);
+
+    expect(placeOf(session)).toEqual(lumen);
+    expect(names(tilesOf(session, ''))).toEqual(['Ire Events', 'Lumen Feiras', SW.create]);
+  });
+
+  it('is the only one for somebody who had none', () => {
+    const none = withoutPlaces(sessionFor('one'));
+
+    expect(placeOf(none)).toBeNull();
+    expect(names(tilesOf(founded(none, lumen), ''))).toEqual(['Lumen Feiras', SW.create]);
+  });
+
+  it('takes amber from the id the walk gives it', () => {
+    expect(orgMesh(lumen.id)).toBe('amber');
+  });
+
+  it('is made again, not twice, by a second walk', () => {
+    const again = founded(founded(sessionFor('one'), lumen), { ...lumen, name: 'Lumen Eventos' });
+
+    expect(names(tilesOf(again, ''))).toEqual(['Ire Events', 'Lumen Eventos', SW.create]);
   });
 });
 

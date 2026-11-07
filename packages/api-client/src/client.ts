@@ -2906,8 +2906,6 @@ function asOrganisationRole(raw: unknown): OrganisationRole | null {
 
   if (
     typeof role.id !== 'string' ||
-    typeof role.fixed !== 'boolean' ||
-    typeof role.removable !== 'boolean' ||
     typeof role.holders !== 'number' ||
     permissions == null ||
     holderNames == null ||
@@ -2919,8 +2917,9 @@ function asOrganisationRole(raw: unknown): OrganisationRole | null {
     id: role.id,
     seededAs: typeof role.seededAs === 'string' ? role.seededAs : null,
     name: typeof role.name === 'string' ? role.name : null,
-    fixed: role.fixed,
-    removable: role.removable,
+    // Every role is fixed since sc-29912, which stopped sending these two.
+    fixed: typeof role.fixed === 'boolean' ? role.fixed : true,
+    removable: role.removable === true,
     permissions,
     holders: role.holders,
     holderNames,

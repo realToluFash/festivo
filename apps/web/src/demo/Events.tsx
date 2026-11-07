@@ -35,7 +35,7 @@ import type { Tell } from './TodayParts.tsx';
 import { TodaySidebar } from './TodaySidebar.tsx';
 import { AccessPaused, Switched } from './OrgSwitcher.tsx';
 import { SIDEBAR_EVENTS } from './settings.ts';
-import { usePaused, useSwitcherStart } from './switcher.ts';
+import { isFresh, usePaused, useSwitcherStart, useWhere } from './switcher.ts';
 
 const TAB_WORDS: Record<Tab, string> = { upcoming: W.upcoming, drafts: W.drafts, past: W.past };
 
@@ -47,6 +47,7 @@ export function Events() {
   const state = listStateOf(params.get('state'));
   useSwitcherStart();
   const paused = usePaused();
+  const fresh = isFresh(useWhere());
   const [told] = useState(() => (location.state as { told?: string } | null)?.told ?? null);
   const [start] = useState(() => {
     if (params.has('state')) resetSample();
@@ -66,7 +67,9 @@ export function Events() {
       renderSide={(tell, covered) => (
         <TodaySidebar
           events={
-            start.first ? [] : SIDEBAR_EVENTS.filter((key) => sampleEvent(TODAY_IDS[key]) != null)
+            start.first || fresh
+              ? []
+              : SIDEBAR_EVENTS.filter((key) => sampleEvent(TODAY_IDS[key]) != null)
           }
           tell={tell}
           listing
@@ -74,7 +77,17 @@ export function Events() {
         />
       )}
     >
-      {(tell) => (paused ? <PausedPage /> : <EventsList start={start} tell={tell} />)}
+      {(tell) =>
+        paused ? (
+          <PausedPage />
+        ) : (
+          <EventsList
+            key={fresh ? 'fresh' : 'sample'}
+            start={fresh ? { ...start, first: true } : start}
+            tell={tell}
+          />
+        )
+      }
     </EventsShell>
   );
 }
@@ -247,7 +260,7 @@ function ListTop({ tell }: { tell: Tell }) {
   );
 }
 
-function FirstRun({ tell }: { tell: Tell }) {
+export function FirstRun({ tell }: { tell: Tell }) {
   return (
     <>
       <section className="desk-card ev-first">

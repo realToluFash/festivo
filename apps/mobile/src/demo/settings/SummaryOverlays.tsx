@@ -24,12 +24,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
 import { SETTLED_MS } from '../../components/Screen.tsx';
-import {
-  type ScreenReaderTarget,
-  moveScreenReaderFocus,
-} from '../../components/screenReaderFocus.ts';
+import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
 import { useFocusBack, useWindowTurn } from '../../components/Sheet.tsx';
-import { type TextHandle, Text } from '../../components/Text.tsx';
+import { Text } from '../../components/Text.tsx';
 import { Toast } from '../../components/Toast.tsx';
 import { TURNS_WITH_THE_APP } from '../../layout/orientations.ts';
 import { useReducedMotion } from '../../reducedMotion.ts';
@@ -37,9 +34,14 @@ import { tokens } from '../../theme/tokens.ts';
 import { useModalOpen } from '../../updateRequired.ts';
 import { Glyph } from '../../components/Glyph.tsx';
 import { useShell } from './Frame.tsx';
-import { TextAction } from './SummaryRows.tsx';
+import { AskLayer, type AskProps } from './AskLayer.tsx';
+import { TextAction, TurningMark } from './SummaryRows.tsx';
+
+export { AskLayer, type AskProps } from './AskLayer.tsx';
 
 type Opener = RefObject<ScreenReaderTarget | null>;
+
+const stay = () => {};
 
 /** A window taken down with its page is still going for a moment, and iOS loses one put up meanwhile. */
 const going = { until: 0 };
@@ -109,90 +111,6 @@ function Window({
   );
 }
 
-export interface AskProps {
-  title: string;
-  line: string;
-  keep: { label: string; testID?: string };
-  confirm: { label: string; testID?: string; removes?: boolean };
-  onKeep: () => void;
-  onConfirm: () => void;
-  testID?: string;
-  width?: number;
-}
-
-/** B's one question: what happens, in words, then the way back first and the verb last, red when it removes. Two actions too wide for one line stack with the verb on top (sc-22092). */
-export function AskLayer({
-  title,
-  line,
-  keep,
-  confirm,
-  onKeep,
-  onConfirm,
-  testID,
-  width,
-}: AskProps) {
-  const { layout } = useShell();
-  const heading = useRef<TextHandle>(null);
-  const [widths, setWidths] = useState({ room: 0, keep: 0, confirm: 0 });
-  const measured = widths.room > 0 && widths.keep > 0 && widths.confirm > 0;
-  const stacked = measured && widths.keep + tokens.space3xl + widths.confirm > widths.room;
-  const laid = (part: keyof typeof widths) => (event: LayoutChangeEvent) => {
-    const width = event.nativeEvent.layout.width;
-    setWidths((now) => (now[part] === width ? now : { ...now, [part]: width }));
-  };
-  const keepAction = (
-    <View key="keep" onLayout={laid('keep')}>
-      <TextAction label={keep.label} onPress={onKeep} testID={keep.testID} />
-    </View>
-  );
-  const confirmAction = (
-    <View key="confirm" onLayout={laid('confirm')}>
-      <TextAction
-        label={confirm.label}
-        onPress={onConfirm}
-        removes={confirm.removes ?? false}
-        testID={confirm.testID}
-      />
-    </View>
-  );
-
-  useEffect(() => {
-    const focus = setTimeout(() => moveScreenReaderFocus(heading.current), SETTLED_MS);
-
-    return () => clearTimeout(focus);
-  }, []);
-
-  return (
-    <View style={[StyleSheet.absoluteFill, styles.askScrim]}>
-      <View
-        style={[styles.dialog, { maxWidth: width ?? (layout === 'phone' ? 340 : 400) }]}
-        accessibilityViewIsModal
-        onAccessibilityEscape={onKeep}
-        testID={testID}
-      >
-        <Text
-          ref={heading}
-          size={18}
-          weight="bold"
-          accessibilityRole="header"
-          style={styles.askTitle}
-        >
-          {title}
-        </Text>
-        <Text size={15} weight="medium" style={[styles.secondary, styles.askLine]}>
-          {line}
-        </Text>
-        <View
-          style={[stacked ? styles.askStack : styles.askActions, !measured && styles.unmeasured]}
-          onLayout={laid('room')}
-        >
-          {stacked ? [confirmAction, keepAction] : [keepAction, confirmAction]}
-        </View>
-      </View>
-    </View>
-  );
-}
-
 /** An Ask from a page: a dialog in a window of its own. */
 export function Ask({ open, opener, ...ask }: AskProps & { open: boolean; opener: Opener }) {
   return (
@@ -207,6 +125,8 @@ export interface FocusVerb {
   on: boolean;
   onPress: () => void;
   removes?: boolean;
+  /** While its request is out: the turning mark and its words in Ink 2, off until the answer. */
+  busy?: boolean;
   testID?: string;
 }
 
@@ -222,6 +142,7 @@ export function FocusedScreen({
   verb,
   back,
   cancels = true,
+  waits = false,
   onCancel,
   cancelTestID,
   opener,
@@ -240,6 +161,8 @@ export function FocusedScreen({
   back?: string | undefined;
   /** False for a sheet that applies what is tapped: nothing at the left, and the verb closes it. */
   cancels?: boolean;
+  /** True while a save is out: Cancel, the escape and the scrub wait in Ink 3 until it answers. */
+  waits?: boolean;
   onCancel: () => void;
   cancelTestID?: string;
   opener: Opener;
@@ -259,7 +182,8 @@ export function FocusedScreen({
   const asking = ask != null;
   const covered = asking || over != null;
   const bottom = phone ? insets.bottom : 0;
-  const close = asking ? ask.onKeep : over != null ? over.onClose : onCancel;
+  const cancel = waits ? stay : onCancel;
+  const close = asking ? ask.onKeep : over != null ? over.onClose : cancel;
 
   return (
     <Window open={open} onClose={close} opener={opener} slides={phone} waitsAway>
@@ -274,7 +198,7 @@ export function FocusedScreen({
               phone ? [styles.screen, { paddingTop: insets.top }] : [styles.sheet, styles.sheetUp]
             }
             accessibilityViewIsModal
-            onAccessibilityEscape={onCancel}
+            onAccessibilityEscape={cancel}
             accessibilityElementsHidden={covered}
             importantForAccessibility={covered ? 'no-hide-descendants' : 'auto'}
             testID={testID}
@@ -285,7 +209,8 @@ export function FocusedScreen({
               verb={verb}
               back={back}
               cancels={cancels}
-              onCancel={onCancel}
+              waits={waits}
+              onCancel={cancel}
               cancelTestID={cancelTestID}
             />
             {fills ? (
@@ -326,6 +251,7 @@ function FocusNav({
   verb,
   back,
   cancels,
+  waits,
   onCancel,
   cancelTestID,
 }: {
@@ -333,6 +259,7 @@ function FocusNav({
   verb: FocusVerb | null;
   back: string | undefined;
   cancels: boolean;
+  waits: boolean;
   onCancel: () => void;
   cancelTestID?: string | undefined;
 }) {
@@ -349,6 +276,7 @@ function FocusNav({
       {cancels ? (
         <Pressable
           onPress={onCancel}
+          disabled={waits}
           onLayout={cancelLaid}
           style={({ pressed }) => [
             styles.navButton,
@@ -357,12 +285,18 @@ function FocusNav({
           ]}
           accessibilityRole="button"
           accessibilityLabel={back ?? 'Cancel'}
+          accessibilityState={waits ? { disabled: true } : undefined}
           testID={cancelTestID}
         >
           {back != null && (
             <Glyph name="back" size={20} ink={tokens.colorAccentText} weight={2.4} />
           )}
-          <Text size={17} weight="medium" accessible={false} style={styles.accent}>
+          <Text
+            size={17}
+            weight="medium"
+            accessible={false}
+            style={waits ? styles.waiting : styles.accent}
+          >
             {back == null ? 'Cancel' : short ? 'Back' : back}
           </Text>
         </Pressable>
@@ -401,22 +335,30 @@ function FocusNav({
             const width = event.nativeEvent.layout.width;
             setSides((now) => ({ ...now, verb: width }));
           }}
-          style={({ pressed }) => [styles.navButton, pressed && styles.pressed]}
+          style={({ pressed }) => [
+            styles.navButton,
+            verb.busy === true && styles.navBusy,
+            pressed && styles.pressed,
+          ]}
           accessibilityRole="button"
           accessibilityLabel={verb.label}
-          accessibilityState={{ disabled: !verb.on }}
+          accessibilityState={{ disabled: !verb.on, busy: verb.busy === true }}
           testID={verb.testID}
         >
+          {verb.busy === true && <TurningMark side={14} />}
           <Text
             size={17}
             weight="semibold"
             accessible={false}
             style={{
-              color: !verb.on
-                ? tokens.colorInkTertiary
-                : verb.removes === true
-                  ? tokens.colorBroken
-                  : tokens.colorAccentText,
+              color:
+                verb.busy === true
+                  ? tokens.colorInkSecondary
+                  : !verb.on
+                    ? tokens.colorInkTertiary
+                    : verb.removes === true
+                      ? tokens.colorBroken
+                      : tokens.colorAccentText,
             }}
           >
             {verb.label}
@@ -641,30 +583,6 @@ const styles = StyleSheet.create({
   secondary: { color: tokens.colorInkSecondary },
   accent: { color: tokens.colorAccentText },
   pressed: { opacity: tokens.opacityPressed },
-  askScrim: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: tokens.spaceXxl,
-    backgroundColor: tokens.scrimDialog,
-  },
-  dialog: {
-    width: '100%',
-    gap: tokens.spaceSm,
-    padding: tokens.space3xl,
-    paddingBottom: tokens.spaceLg,
-    borderRadius: tokens.space3xl,
-    backgroundColor: tokens.colorCard,
-  },
-  askTitle: { letterSpacing: 18 * -0.01, lineHeight: 18 * 1.3 },
-  askLine: { lineHeight: 15 * 1.45 },
-  askActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    columnGap: tokens.space3xl,
-    paddingTop: tokens.spaceXs,
-  },
-  askStack: { alignItems: 'flex-end', paddingTop: tokens.spaceXs },
-  unmeasured: { opacity: 0 },
   screen: { flex: 1, backgroundColor: tokens.colorCard },
   sheetScrim: {
     flex: 1,
@@ -705,6 +623,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: tokens.spaceLg,
   },
   navBack: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceHair, paddingLeft: 6 },
+  navBusy: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXs },
+  waiting: { color: tokens.colorInkTertiary },
   navTitle: {
     position: 'absolute',
     top: 0,
