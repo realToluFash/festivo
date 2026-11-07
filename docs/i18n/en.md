@@ -66,6 +66,31 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **7 Nov 2026. The app's other ways in** (`mobile:steps.invited*`, `invitationFor`, `join`,
+  `startOwnInstead`, `mobile:requestToJoin.messageOptional`, `signedOutLine`, sc-30119 for
+  sc-29070). Kept as sc-29070 wrote them, except `signedOutLine`, now "Sign in or create an
+  account to ask. You will come back here.", the web's `requestToJoin.signedOut` without its
+  organisation, which the title above already names (rejected: "You come back here after.").
+  "You’re invited" keeps its contraction: a warm title, not an error. es, fr and pt say the
+  reader has an invitation rather than "is invited", so nothing agrees with the reader's gender.
+
+- **7 Nov 2026. A payment schedule's shapes, and someone else adding payments first**
+  (sc-1332, pm's #30379, settled before the board is drawn). The 409 when another person adds
+  a scheduled payment while a shape is being chosen, on the form and as the API's detail
+  under one key: "Payments were added to this vendor's schedule while you were filling this
+  in, so none of yours were saved. Check the payments it has now before adding more." Won
+  over the story's "Payments were added to this vendor while you were choosing. Nothing was
+  saved.": payments belong to the vendor's schedule on this event, not to the vendor;
+  "choosing" missed the person who had already edited the rows; and the house refusal says
+  what was not saved and what to do, as sc-87's second quote does. "None of yours", not
+  "nothing", because the other person's payments were saved. No name slot: the API need not
+  say who. Kept as the story has them: the radio options **Deposit and balance**, **Three
+  instalments**, **In full before the event**, **In full after the event**, **Enter rows
+  yourself**; the prefilled descriptions Deposit, Second instalment, Balance, Payment in full
+  (Three instalments reads Deposit, Second instalment, Balance); "Set to the date quoted" and
+  "Needs the event's date", labels with no full stop. A blank description reuses sc-87's
+  "Enter what the payment is for." rather than a near-copy reading "this payment".
+
 - **7 Nov 2026. Choosing a quote's vendor, and the vendor page's empty states** (sc-87, pm's
   #30377, settled before the board is drawn). In the Vendor field: an option already quoted
   reads "Already quoted on this event", a label with no full stop. Typed text that matches
@@ -566,6 +591,14 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   rule that the example shows the rule and the words never name a decimal count; and over
   "Settled would be", which is not a sentence. "Close" is a state word, not the dialog's
   close button: its own key.
+- **7 Nov 2026. The ceiling line in what a decision costs (sc-90 in sc-86's answer).** The
+  not-yet-made form of the rate-edit warning: "This would take the event over its ceiling."
+  or "This would take {{category}} over its ceiling.", then "Settled, it would be {{total}}
+  against {{ceiling}}." or "If everyone comes, it would be {{total}} against {{ceiling}}."
+  Won over the change as a slot ("Adding 4 guests takes …"), because the caller already names
+  the change above the answer and a slot holding each caller's noun phrase leaves es, fr and
+  pt no way to agree with it; and over keeping "You can still save it", because nothing is
+  being saved yet. Which of event or category it names follows the rate-edit rule.
 - **17 Oct 2026. "A device that has not signed in to your Soirely account before has just
   signed in."** (`emails:newDevice.body`). Won over "Your Soirely account was signed in to on
   a device it hasn't seen before": "signed in to on" stacks two prepositions, and an account

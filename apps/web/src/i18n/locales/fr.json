@@ -1604,7 +1604,6 @@
     "joined": "Vous avez rejoint {{organisation}} avec le rôle {{role}}.",
     "open": "Ouvrir {{organisation}}",
     "declinedBody": "Vous avez refusé l’invitation. {{inviter}} verra votre refus.",
-    "goToEvents": "Voir vos événements",
     "goHome": "Aller sur Soirely",
     "signOutAndUse": "Se déconnecter et utiliser {{email}}",
     "staySignedIn": "Rester connecté avec {{email}}",

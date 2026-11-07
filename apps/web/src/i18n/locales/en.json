@@ -1568,7 +1568,6 @@
     "joined": "You joined {{organisation}} as {{role}}.",
     "open": "Open {{organisation}}",
     "declinedBody": "You declined. {{inviter}} will see that you said no.",
-    "goToEvents": "Go to your events",
     "goHome": "Go to Soirely",
     "signOutAndUse": "Sign out and use {{email}}",
     "staySignedIn": "Stay signed in as {{email}}",
