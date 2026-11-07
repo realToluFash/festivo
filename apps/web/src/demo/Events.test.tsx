@@ -272,7 +272,7 @@ describe('the guest counts on Events (sc-23284)', () => {
 
   it('shows the invited and the replies across the upcoming events', SLOW, async () => {
     await list();
-    const tiles = within(main()).getByRole('list', { name: 'Guests across your upcoming events' });
+    const tiles = within(main()).getByRole('list', { name: 'Guests across your events' });
 
     expect(within(tiles).getByText('367')).toBeDefined();
     expect(within(tiles).getByText('211 coming')).toBeDefined();
@@ -282,7 +282,7 @@ describe('the guest counts on Events (sc-23284)', () => {
 
   it('shows 0 when nobody is invited yet', SLOW, async () => {
     await list('/demo/events?state=noGuests');
-    const tiles = within(main()).getByRole('list', { name: 'Guests across your upcoming events' });
+    const tiles = within(main()).getByRole('list', { name: 'Guests across your events' });
 
     expect(within(tiles).getAllByText('0')).toHaveLength(2);
     expect(within(tiles).getByText('0 coming')).toBeDefined();
@@ -292,8 +292,6 @@ describe('the guest counts on Events (sc-23284)', () => {
   it('has no counts on a first run', SLOW, async () => {
     await list('/demo/events?state=first');
 
-    expect(
-      within(main()).queryByRole('list', { name: 'Guests across your upcoming events' }),
-    ).toBeNull();
+    expect(within(main()).queryByRole('list', { name: 'Guests across your events' })).toBeNull();
   });
 });
