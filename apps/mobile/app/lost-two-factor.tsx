@@ -500,16 +500,13 @@ function Request({
             testID="lostTwoFactor.support"
           />
         )}
-        <Text size={tokens.typeBodyPhone.size} weight="semibold">
-          {t('lostTwoFactor.notYou')}
-        </Text>
+        <BackToSignIn />
         <CancelRequest
           recovery={recovery}
           onTap={onTap}
           onState={onState}
           onReplaced={onReplaced}
         />
-        <BackToSignIn />
       </AuthFrame>
     );
   }
@@ -608,7 +605,7 @@ function Request({
   );
 }
 
-/** Cancel the request asks first in the app's own sheet (sc-29961); an answer arriving meanwhile replaces the waiting step, sheet and all. */
+/** Cancel the request is a quiet link at the screen's foot and asks first in the app's own sheet (sc-29961); an answer arriving meanwhile replaces the waiting step, sheet and all. */
 function CancelRequest({
   recovery,
   onTap,
@@ -655,12 +652,17 @@ function CancelRequest({
 
   return (
     <>
-      <SecondaryButton
-        ref={opener}
-        label={t('lostTwoFactor.cancel')}
-        onPress={() => setAsked({})}
-        testID="lostTwoFactor.cancel"
-      />
+      <View style={[styles.foot, phone && styles.atFoot]}>
+        <Text size={tokens.typeBodyPhone.size} weight="semibold">
+          {t('lostTwoFactor.notYou')}
+        </Text>
+        <QuietButton
+          ref={opener}
+          label={t('lostTwoFactor.cancel')}
+          onPress={() => setAsked({})}
+          testID="lostTwoFactor.cancel"
+        />
+      </View>
       <LifecycleSheet
         phone={phone}
         open={asked != null}
@@ -1041,6 +1043,8 @@ const styles = StyleSheet.create({
   },
   grow: { flex: 1 },
   secondary: { color: tokens.colorInkSecondary },
+  foot: { alignItems: 'center', gap: tokens.spaceXs },
+  atFoot: { marginTop: 'auto' },
 });
 
 function listed(names: string[], type: 'conjunction' | 'disjunction'): string {
