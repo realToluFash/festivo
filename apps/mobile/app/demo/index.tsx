@@ -877,6 +877,11 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         what: 'The checks, and the refused shake',
         href: '/demo/sign-in',
       },
+      {
+        title: 'Sign in · that sign-in timed out',
+        what: 'A two-factor sign-in ran out, email kept',
+        href: `/demo/sign-in?timedOut=1&email=${SAMPLE.email}`,
+      },
     ],
   },
   {
@@ -925,6 +930,11 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         title: 'Waiting for Ire Events',
         what: 'Answer it from the demo',
         href: '/demo/waiting',
+      },
+      {
+        title: 'Waiting · cancel your request?',
+        what: 'Cancel the request asks first',
+        href: '/demo/waiting?state=cancel',
       },
       { title: 'Two-factor is off', what: 'Confirmed', href: '/demo/ending?kind=approved' },
       { title: 'Turned down', what: 'An ending', href: '/demo/ending?kind=turnedDown' },
