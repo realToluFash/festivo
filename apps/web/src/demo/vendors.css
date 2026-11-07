@@ -13,7 +13,7 @@
 }
 
 .vd-rows .vd-row.is-archived {
-  grid-template-columns: minmax(0, 1fr) 140px 260px auto;
+  grid-template-columns: minmax(0, 1fr) 140px 260px 250px;
 }
 
 .vd-cell {
@@ -31,6 +31,7 @@
 .vd-archived {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: var(--spaceLg);
 }
 

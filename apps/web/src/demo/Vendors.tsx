@@ -277,12 +277,10 @@ function Failed({ onRetry }: { onRetry: () => void }) {
 /** Kept after a downgrade, per the rule that losing a plan never deletes anything: one offer, then the list to read. */
 function ReadOnlyCard({ tell }: { tell: Tell }) {
   return (
-    <Card size="column">
-      <Says>Your plan no longer includes vendors.</Says>
-      <OnCard>
-        The directory is kept and you can still read it. Adding, editing and archiving come back
-        with a plan that includes vendors.
-      </OnCard>
+    <Card>
+      <Says>Read only now</Says>
+      <OnCard>Your plan no longer includes vendors. Everything here is kept to read.</OnCard>
+      <OnCard>Adding, editing and archiving come back with a plan that includes them.</OnCard>
       <CardStep label="See plans" onClick={() => tell('Plans have their own design.')} />
     </Card>
   );
