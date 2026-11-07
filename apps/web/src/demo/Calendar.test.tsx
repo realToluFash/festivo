@@ -40,6 +40,23 @@ function key(name: string, options: { shiftKey?: boolean } = {}): void {
   fireEvent.keyDown(document.activeElement ?? document.body, { key: name, ...options });
 }
 
+const SEEN: Record<string, () => unknown> = {
+  populated: () => screen.getByRole('grid'),
+  agenda: () => screen.getByRole('radio', { name: 'View: Agenda', checked: true }),
+  showMenu: () => screen.getByRole('menuitemradio', { name: CAL_WORDS.showEvents, checked: true }),
+  eventsOnly: () => screen.getByRole('button', { name: `Show: ${CAL_WORDS.showEvents}` }),
+  busyDay: () => screen.getByRole('heading', { level: 2, name: 'Saturday, Nov 14' }),
+  monthEdge: () => screen.getAllByRole('link', { name: /^Okafor family reunion, / }),
+  otherZone: () => screen.getByRole('heading', { level: 2, name: 'October 2026' }),
+  emptyMonth: () => screen.getByText(CAL_WORDS.emptyMonth('February 2027')),
+  none: () => screen.getByText('Set up your first event'),
+  loading: () => screen.getByRole('status', { name: '' }),
+  failed: () => screen.getByRole('alert'),
+  subscribe: () => screen.getByRole('dialog', { name: FEED_WORDS.open }),
+  subscribeRefused: () => screen.getByText(FEED_WORDS.copyRefused),
+  resetLink: () => screen.getByRole('dialog', { name: FEED_WORDS.confirmTitle }),
+};
+
 describe('the Calendar in B, weeks as lanes, at a desk (sc-30329)', () => {
   beforeEach(() => {
     __setConfig({ ...tested, environment: 'development' });
@@ -64,33 +81,13 @@ describe('the Calendar in B, weeks as lanes, at a desk (sc-30329)', () => {
     ).toBe('page');
   });
 
-  it('draws every ?state= the story lists', SLOW, async () => {
-    const seen: Record<string, () => unknown> = {
-      populated: () => screen.getByRole('grid'),
-      agenda: () => screen.getByRole('radio', { name: 'View: Agenda', checked: true }),
-      showMenu: () =>
-        screen.getByRole('menuitemradio', { name: CAL_WORDS.showEvents, checked: true }),
-      eventsOnly: () => screen.getByRole('button', { name: `Show: ${CAL_WORDS.showEvents}` }),
-      busyDay: () => screen.getByRole('heading', { level: 2, name: 'Saturday, Nov 14' }),
-      monthEdge: () => screen.getAllByRole('link', { name: /^Okafor family reunion, / }),
-      otherZone: () => screen.getByRole('heading', { level: 2, name: 'October 2026' }),
-      emptyMonth: () => screen.getByText(CAL_WORDS.emptyMonth('February 2027')),
-      none: () => screen.getByText('Set up your first event'),
-      loading: () => screen.getByRole('status', { name: '' }),
-      failed: () => screen.getByRole('alert'),
-      subscribe: () => screen.getByRole('dialog', { name: FEED_WORDS.open }),
-      subscribeRefused: () => screen.getByText(FEED_WORDS.copyRefused),
-      resetLink: () => screen.getByRole('dialog', { name: FEED_WORDS.confirmTitle }),
-    };
+  it('names a check for every ?state= the story lists', () => {
+    expect(Object.keys(SEEN).sort()).toEqual([...CALENDAR_STATES].sort());
+  });
 
-    expect(Object.keys(seen).sort()).toEqual([...CALENDAR_STATES].sort());
-
-    for (const state of CALENDAR_STATES) {
-      await calendar(state);
-      expect(seen[state]?.(), state).toBeTruthy();
-      cleanup();
-      resetSample();
-    }
+  it.each(CALENDAR_STATES)('draws ?state=%s', SLOW, async (state) => {
+    await calendar(state);
+    expect(SEEN[state]?.()).toBeTruthy();
   });
 
   it('says it is loading, and a failed load offers Try again', SLOW, async () => {
