@@ -53,7 +53,6 @@ export const AREAS: readonly Area[] = [
   {
     area: 'run_of_show',
     name: 'Run of show',
-    // The owner's words (3 Nov): en.json still says "on the night" until the linguist's change lands.
     means: 'The schedule, and marking items done on the day.',
     permissions: READ_AND_CHANGE('run_of_show'),
   },

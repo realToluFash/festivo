@@ -2773,6 +2773,7 @@ describe('events (sc-1486)', () => {
     phase: 'draft',
     concludedAt: null,
     createdAt: '2026-10-21T09:00:00+00:00',
+    permissions: ['events.read', 'events.manage'],
   };
 
   function client(response: () => Response, sent: { line: string; body: unknown }[] = []) {
@@ -3037,6 +3038,8 @@ describe('events (sc-1486)', () => {
     ['a phase nobody declared', { phase: 'over' }],
     ['no phase', { phase: undefined }],
     ['a concludedAt that is not a string or null', { concludedAt: 1 }],
+    ['no permissions', { permissions: undefined }],
+    ['a permission that is not a string', { permissions: [1] }],
   ])('an event with %s is an error', async (_, change) => {
     await expect(
       client(() => json({ event: { ...EVENT, ...change } })).api.event('e1'),
@@ -3270,6 +3273,7 @@ describe("an event's venue (sc-3589)", () => {
     phase: 'draft',
     concludedAt: null,
     createdAt: '2026-10-26T09:00:00+00:00',
+    permissions: ['events.read', 'events.manage'],
   };
 
   function client(response: Response, sent: string[] = []) {
