@@ -664,11 +664,11 @@
     "calendar": "Calendário",
     "settings": "Definições",
     "organisation": "Organização",
-    "backTo": "Back to {{place}}",
-    "cancel": "Cancel",
-    "back": "Back",
-    "closeMenu": "Close the menu",
-    "tryAgain": "Try again"
+    "backTo": "Voltar a {{place}}",
+    "cancel": "Cancelar",
+    "back": "Voltar",
+    "closeMenu": "Fechar o menu",
+    "tryAgain": "Tentar novamente"
   },
   "eventNav": {
     "overview": "Vista geral",
@@ -2053,7 +2053,7 @@
       "liveTitle": "Publique-o",
       "liveBody": "Fica como rascunho até o publicar."
     },
-    "startFirst": "Start your first event",
+    "startFirst": "Criar o seu primeiro evento",
     "stepNumber": "{{n, number}}"
   }
 }
