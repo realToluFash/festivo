@@ -1,7 +1,8 @@
-import { ApiError } from '@soirely/api-client';
+import { ApiError, type RecoveryState } from '@soirely/api-client';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
+  cancelRecovery,
   loadRecovery,
   type RecoveryLoading,
   recoveryCodeLabel,
@@ -145,5 +146,66 @@ describe('what the lost-two-factor screen opens on', () => {
 
     expect(await loadRecovery(lapsed as unknown as RecoveryLoading)).toEqual({ kind: 'timedOut' });
     expect(await loadRecovery(on(null, null))).toEqual({ kind: 'signIn' });
+  });
+});
+
+describe('cancelling a request to get back in', () => {
+  const cancelled = { status: 'cancelled' } as unknown as RecoveryState;
+  const approved = { status: 'approved' } as unknown as RecoveryState;
+
+  function cancelling(cancel: () => Promise<RecoveryState>, state = vi.fn(async () => approved)) {
+    return { cancel: vi.fn(cancel), state };
+  }
+
+  it('shows the cancelled request', async () => {
+    const on = cancelling(async () => cancelled);
+
+    expect(await cancelRecovery(on)).toEqual({ kind: 'cancelled', state: cancelled });
+    expect(on.state).not.toHaveBeenCalled();
+  });
+
+  it('says it was not cancelled when the network or the server fails', async () => {
+    const offline = cancelling(async () => {
+      throw new TypeError('Network request failed');
+    });
+    const broken = cancelling(async () => {
+      throw refusal('internal_error', 500);
+    });
+
+    expect(await cancelRecovery(offline)).toEqual({ kind: 'notCancelled' });
+    expect(await cancelRecovery(broken)).toEqual({ kind: 'notCancelled' });
+    expect(offline.state).not.toHaveBeenCalled();
+    expect(broken.state).not.toHaveBeenCalled();
+  });
+
+  it('starts again when a newer request took over elsewhere', async () => {
+    const on = cancelling(async () => {
+      throw refusal('recovery_request_replaced', 409);
+    });
+
+    expect(await cancelRecovery(on)).toEqual({ kind: 'replaced' });
+    expect(on.state).not.toHaveBeenCalled();
+  });
+
+  it('shows the answer that arrived first, read again', async () => {
+    const on = cancelling(async () => {
+      throw refusal('recovery_request_closed', 409);
+    });
+
+    expect(await cancelRecovery(on)).toEqual({ kind: 'answered', state: approved });
+    expect(on.state).toHaveBeenCalledOnce();
+  });
+
+  it('says it was not cancelled when the answer that arrived first cannot be read', async () => {
+    const on = cancelling(
+      async () => {
+        throw refusal('recovery_request_closed', 409);
+      },
+      vi.fn(async (): Promise<RecoveryState> => {
+        throw new TypeError('Network request failed');
+      }),
+    );
+
+    expect(await cancelRecovery(on)).toEqual({ kind: 'notCancelled' });
   });
 });
