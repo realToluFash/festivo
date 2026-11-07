@@ -89,19 +89,8 @@ export function Card({
   );
 }
 
-/** Focusable where an answer lands on the card, so the answer is read out. */
-export function Says({
-  children,
-  focusable = false,
-}: {
-  children: ReactNode;
-  focusable?: boolean;
-}) {
-  return (
-    <p className="desk-says" tabIndex={focusable ? -1 : undefined}>
-      {children}
-    </p>
-  );
+export function Says({ children }: { children: ReactNode }) {
+  return <p className="desk-says">{children}</p>;
 }
 
 export function OnCard({ children }: { children: ReactNode }) {

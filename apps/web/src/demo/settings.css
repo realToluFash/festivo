@@ -417,7 +417,18 @@
   font-size: 20px;
 }
 
-.desk-card :is(.desk-says, .desk-said-lines):focus {
+/* An answer lands on the card's sentence and its lines together, so a screen reader says both. */
+.desk-said-lines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceLg);
+}
+
+.desk-card.is-column .desk-said-lines {
+  gap: 9px;
+}
+
+.desk-card .desk-said-lines:focus {
   outline: none;
   box-shadow: none;
 }
@@ -1321,10 +1332,4 @@
 .desk-error svg {
   flex: none;
   margin-top: 1px;
-}
-
-.desk-said-lines {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spaceLg);
 }

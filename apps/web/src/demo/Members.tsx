@@ -118,7 +118,7 @@ export function Members({ viewer, state, tell }: { viewer: Viewer; state: string
     if (!moved.current) return;
     moved.current = false;
     if (toSays.current)
-      focusWhenFree(() => document.querySelector<HTMLElement>('.desk-main .desk-says'));
+      focusWhenFree(() => document.querySelector<HTMLElement>('.desk-main .desk-said-lines'));
     else if (!split || open == null) document.querySelector<HTMLElement>('.desk-main h1')?.focus();
     toSays.current = false;
   }, [open, split]);
@@ -343,10 +343,12 @@ function MembersCardView({
 }) {
   return (
     <Card size={size}>
-      <Says focusable>{card.says}</Says>
-      {card.lines.map((line) => (
-        <OnCard key={line}>{line}</OnCard>
-      ))}
+      <div className="desk-said-lines" tabIndex={-1}>
+        <Says>{card.says}</Says>
+        {card.lines.map((line) => (
+          <OnCard key={line}>{line}</OnCard>
+        ))}
+      </div>
       {card.faces.length > 0 && (
         <div className="desk-faces" aria-hidden="true">
           {card.faces.map((face) => (

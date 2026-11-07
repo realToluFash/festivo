@@ -114,7 +114,11 @@ describe('handing over a departing member’s work at a desk (sc-31311)', () => 
         'Their 3 events are now led by Ana Souza, who is emailed the list. They are listed under Former, with everything they did kept.',
       ),
     ).toBeDefined();
-    await waitFor(() => expect(document.activeElement?.textContent).toBe('Priya Shah was removed'));
+    await waitFor(() =>
+      expect(document.activeElement?.textContent).toBe(
+        'Priya Shah was removedTheir 3 events are now led by Ana Souza, who is emailed the list. They are listed under Former, with everything they did kept.',
+      ),
+    );
   });
 
   it('sends you no email when you take the events yourself', async () => {
