@@ -1596,6 +1596,39 @@ export const ANDROID_START = [
   },
 ];
 
+// Expo Go's floating Tools button sits over a list's Done, where a tap opens its menu instead.
+export const TOOLS_BUTTON = 'EXDevMenuShowFloatingActionButton';
+
+// What a batch resets on its device before signing in: TalkBack, or Expo Go's Tools button.
+// The button lives in Expo Go's container, which `defaults write host.exp.Exponent` misses.
+export function batchReset(onAndroid, device, { prefs, toolsButton } = {}) {
+  if (onAndroid) return { adb: SCREEN_READER_OFF, say: '  TalkBack is off for the batch.' };
+  if (!prefs) return { say: '  Expo Go is not installed: run `ios` first.' };
+  if (toolsButton === '0') return { say: "  Expo Go's Tools button is off." };
+  return {
+    terminate: ['simctl', 'terminate', device, EXPO_GO],
+    write: ['simctl', 'spawn', device, 'defaults', 'write', prefs, TOOLS_BUTTON, '-bool', 'NO'],
+    say: "  Expo Go's Tools button turned off for the batch.",
+    failed: "  Could not turn Expo Go's Tools button off: turn it off in Expo Go's menu.",
+  };
+}
+
+export const expoGoPrefs = (container) =>
+  container && join(container, 'Library/Preferences', EXPO_GO);
+
+function resetForBatch(onAndroid, device) {
+  const prefs = onAndroid
+    ? null
+    : expoGoPrefs(capture('xcrun', ['simctl', 'get_app_container', device, EXPO_GO, 'data']));
+  const toolsButton =
+    prefs && capture('xcrun', ['simctl', 'spawn', device, 'defaults', 'read', prefs, TOOLS_BUTTON]);
+  const reset = batchReset(onAndroid, device, { prefs, toolsButton });
+  for (const command of reset.adb ?? []) adbOut(androidTools(), command);
+  if (reset.terminate) run('xcrun', reset.terminate, { optional: true });
+  const written = !reset.write || run('xcrun', reset.write, { optional: true });
+  console.log(written ? reset.say : reset.failed);
+}
+
 async function android(args) {
   const tools = androidTools();
   if (!existsSync(tools.emulator)) {
@@ -2637,6 +2670,8 @@ async function batch(args) {
       'this simulator still offers to save a password — run `ios` first, which turns it off',
     );
   }
+
+  resetForBatch(onAndroid, device);
 
   const out = join(root, '.qa', name);
   rmSync(out, { recursive: true, force: true });
