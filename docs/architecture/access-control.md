@@ -62,18 +62,19 @@ Owners and Admins reach every event and need no row.
 | ----------- | ------ | -------- | -------- | ------------------- |
 | Events      | manage | manage   | read     | read                |
 | Guests      | manage | manage   | read     | read                |
-| Seating     | manage | manage   | read     | none                |
-| Menu        | manage | manage   | read     | none                |
-| Run of show | manage | manage   | read     | none                |
-| Staff       | manage | manage   | read     | none                |
-| Messages    | manage | manage   | read     | none                |
-| Reports     | manage | manage   | read     | none                |
+| Seating     | manage | manage   | read     | read                |
+| Menu        | manage | manage   | read     | read                |
+| Run of show | manage | manage   | read     | read                |
+| Staff       | manage | manage   | read     | read                |
+| Messages    | manage | manage   | read     | read                |
+| Reports     | manage | manage   | read     | read                |
 | Budget      | manage | none     | none     | none                |
 | People      | manage | read     | read     | read                |
 
 No event role holds `events.create`, Vendors, Members, Billing or Organisation, so only an
 Owner or an Admin starts, duplicates or deletes an event. `EventRole::permissions()` is the
-table above, and `EventRoleTest` holds it to it.
+table above, and `EventRoleTest` holds it to it. Can check guests in reads what Can view
+reads; marking a guest arrived joins it with sc-1454.
 
 People (`/api/events/{eventId}/people`) is read by everyone on the event. An Owner, an Admin
 or the event's Lead adds, changes and removes people (`people.manage`); nobody changes or
