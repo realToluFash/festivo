@@ -801,7 +801,7 @@
       "members": "Miembros y roles",
       "billing": "Facturación",
       "organisation": "Organización",
-      "people": "People on events"
+      "people": "Personas en los eventos"
     },
     "means": {
       "events": "Crear, publicar, pausar y concluir eventos.",
@@ -817,7 +817,7 @@
       "members": "Invitar, aprobar, suspender, cambiar roles.",
       "billing": "Plan, tarjetas y facturas.",
       "organisation": "El nombre, el país, la dirección de contacto y los valores con los que empiezan los eventos nuevos.",
-      "people": "Who is on each event, and the role each person has there."
+      "people": "Quién está en cada evento y el rol que tiene allí cada persona."
     },
     "margin": "Margen",
     "marginMeans": "Lo que {{name}} añade sobre los costes. Oculto significa que el presupuesto se abre solo con los costes.",

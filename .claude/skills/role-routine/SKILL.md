@@ -173,6 +173,19 @@ fails>'`, note it on your story, do what you can without it, and move on. Only t
   - The tech lead, product manager, designer, business manager and creative director read
     code at a pull request's head with `sq <role> diff <pr> [paths…]` and
     `git show origin/<branch>:<path>`, and never check anything out.
+- **In an isolated worktree, no command starts with `cd`, git or not.** The session already
+  starts in its worktree, and it asks before any `cd … &&`, a `grep` as much as a `git`. A
+  worker for sc-29961 ran `grep … | head` without one, then the same command behind `cd`
+  and was stopped on the prompt (sc-32033).
+- **In an isolated worktree, run git one plain command per call.** A session started in a
+  worktree refuses any git command it cannot prove stays inside it: git chained with `;`,
+  `&&` or a pipe, or behind an `export`. In a background worker that refusal can sit as a
+  prompt nobody answers, and the worker is stopped. `git add <paths>`, `git commit`, then
+  `git push origin HEAD:<branch>`, each its own call, with no `cd`, no pipe and no
+  redirect. A long message goes in a file passed as `git commit -F <file>`. `SQ_RUN_DIR`
+  is already set; leave it alone. The export is what makes the worktree guard refuse the
+  git command, and sq stops a run's processes by the `SQ_RUN_DIR` value they carry, so
+  setting it to anything else hides what you start from that clean-up (sc-28504).
 - **Write a note at each milestone.** A branch pushed, a part built, a result found: one
   line with `sq <role> note sc-<n> --text "<what>"`, and push what you have. A run stopped by its
   time or memory limit writes no closing note, so these are what the next run picks up.
