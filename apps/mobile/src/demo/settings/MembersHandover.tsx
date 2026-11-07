@@ -95,7 +95,6 @@ export function HandoverAsk({
   const count = events.length;
   const [taker, setTaker] = useState(start?.taker ?? (kind === 'leave' ? NOBODY : you));
   const [phase, setPhase] = useState(start?.phase ?? 'asking');
-  const [failures, setFailures] = useState(start?.phase === 'failed' ? 1 : 0);
   const [menuAt, setMenuAt] = useState<Anchor | null>(null);
   const [query, setQuery] = useState(start?.query ?? '');
   const [cleared, setCleared] = useState(0);
@@ -129,15 +128,8 @@ export function HandoverAsk({
   function answerAfter(holds: boolean): void {
     clearTimeout(answer.current);
     answer.current = setTimeout(
-      () => {
-        // A failed state refuses every try, as Personalisation's saveFailed does.
-        if (start?.phase === 'failed') {
-          setPhase('failed');
-          setFailures((times) => times + 1);
-          return;
-        }
-        onDone(taker);
-      },
+      // A failed state fails on arrival and trying again goes through, as the recovery demos do.
+      () => onDone(taker),
       holds ? HOLD_MS : SEND_MS,
     );
   }
@@ -314,7 +306,6 @@ export function HandoverAsk({
           {phase === 'failed' && (
             <ReadOut
               words={W.failed[kind]}
-              answer={failures}
               interrupts
               accessibilityRole="alert"
               style={styles.failed}

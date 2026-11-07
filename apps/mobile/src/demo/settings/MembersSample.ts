@@ -377,6 +377,10 @@ export function membersCard({
 }): MembersCard {
   const quiet = { line: null, faces: [], more: 0, readsOut: true };
   const seeFormer = { label: 'See Former', does: 'seeFormer' } as const;
+  const waiting = viewer.manages ? people.filter((one) => one.status === 'pendingApproval') : [];
+  const asking = waiting[0];
+  const answer =
+    asking == null ? null : ({ label: `Answer ${asking.name}`, does: 'answer' } as const);
 
   if (typeof request === 'object') {
     const id = 'approved' in request ? request.approved : request.turnedDown;
@@ -400,7 +404,7 @@ export function membersCard({
       ...quiet,
       says: `${gone.person.name} was removed`,
       line: removalLine(gone),
-      step: seeFormer,
+      step: answer ?? seeFormer,
     };
   if (claim != null && !ownerActive(people)) {
     const become = { label: 'Become the owner', does: 'becomeOwner' } as const;
@@ -433,8 +437,6 @@ export function membersCard({
   }
 
   const all = people.filter((one) => isShown(one.status, 'all'));
-  const waiting = viewer.manages ? people.filter((one) => one.status === 'pendingApproval') : [];
-  const asking = waiting[0];
   const faces = all.slice(0, 5);
 
   return {
@@ -443,7 +445,7 @@ export function membersCard({
       ...(waiting.length > 0 ? [`${waiting.length} waiting`] : []),
     ].join(' · '),
     line: null,
-    step: asking == null ? null : { label: `Answer ${asking.name}`, does: 'answer' },
+    step: answer,
     faces,
     more: all.length - faces.length,
     readsOut: false,

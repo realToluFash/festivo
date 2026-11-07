@@ -290,8 +290,18 @@ describe('handing events over', () => {
     expect(card('Ana Souza', false)).toMatchObject({
       says: 'Priya Shah was removed',
       line: 'Their 3 events are now led by Ana Souza, who is emailed the list. They are listed under Former, with everything they did kept.',
-      step: { label: 'See Former' },
+      step: { label: 'Answer Lucía Gómez', does: 'answer' },
     });
+    expect(
+      membersCard({
+        people,
+        viewer: VIEWERS.tom,
+        request: 'resting',
+        claim: null,
+        say,
+        gone: { person: priya, handed: null },
+      }).step,
+    ).toEqual({ label: 'See Former', does: 'seeFormer' });
     expect(card('Folake Adeyemi', true).line).toBe(
       'Their 3 events are now led by you. They are listed under Former, with everything they did kept.',
     );
