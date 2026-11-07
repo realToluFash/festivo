@@ -620,13 +620,6 @@ const BOARD_FRENCH: Partial<Record<BoardKey, string>> = {
   tell: 'Vous n’êtes pas {{name}} ? Dites-le-nous',
 };
 
-/** l10n's ungendered You are invited, settled 7 Nov in sc-28008, in place of main's gendered es, fr and pt. */
-const UNGENDERED: Partial<Record<Lang, string>> = {
-  es: 'Tiene una invitación',
-  fr: 'Vous avez une invitation',
-  pt: 'Tem um convite',
-};
-
 export const LEGAL: Record<Lang, { terms: string; privacy: string }> = {
   en: { terms: 'Terms', privacy: 'Privacy' },
   es: { terms: 'Terms', privacy: 'Privacy' },
@@ -655,7 +648,7 @@ export function wordsFor(lang: Lang) {
 
   return {
     hosts,
-    invited: UNGENDERED[lang] ?? t('guest.invitationTitle'),
+    invited: t('guest.invitationTitle'),
     gone: t('guest.invalidTitle'),
     goneBody: english ? board('goneBody') : t('guest.invalidBody'),
     noAccount: english ? board('noAccount') : t('guest.noAccountNeeded'),
