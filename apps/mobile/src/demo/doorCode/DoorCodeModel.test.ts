@@ -267,6 +267,16 @@ describe('holding it up, a new code and stopping (spec §2.3, §2.4)', () => {
     expect(cameIn(1)).toBe('1 person came in with it. They keep their access.');
   });
 
+  it('says a stopped or ran-out card nobody used came in with nobody (pm, 7 Nov)', () => {
+    const unused = { ...BAR_CODE, used: 0 };
+
+    expect(cardLine({ ...unused, stopped: true }, LOCALE)).toBe('Nobody came in with it.');
+    expect(cardLine({ ...unused, endedAt: '15:00' }, LOCALE)).toBe('Nobody came in with it.');
+    expect(cardLine({ ...BAR_CODE, endedAt: '15:00' }, LOCALE)).toBe(
+      '14 of 30 used · ended at 15:00',
+    );
+  });
+
   it('gives a new code the same role, job label, cap and end, from nought', () => {
     const start = opened(undefined, undefined, 'new');
     const code = renewed(BAR_CODE, [BAR_CODE.code]);

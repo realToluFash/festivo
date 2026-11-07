@@ -112,6 +112,8 @@ export function usedEnded(used: number, cap: number, at: string): string {
 
 /** sc-72's count of who is in, with pm's singular (7 Nov). */
 export function cameIn(people: number): string {
+  if (people === 0) return 'Nobody came in with it.';
+
   return people === 1
     ? '1 person came in with it. They keep their access.'
     : `${people} people came in with it. They keep their access.`;

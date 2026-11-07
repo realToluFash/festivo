@@ -91,7 +91,9 @@ export function cardLine(code: DoorCode, locale: string): string {
     case 'stopped':
       return cameIn(code.used);
     case 'ranOut':
-      return usedEnded(code.used, code.cap, clockWords(code.endedAt ?? EVENT.ends, locale));
+      return code.used === 0
+        ? cameIn(0)
+        : usedEnded(code.used, code.cap, clockWords(code.endedAt ?? EVENT.ends, locale));
   }
 }
 
