@@ -71,8 +71,8 @@ describe('a number in a sentence (sc-15361)', () => {
     await setLanguage(locale);
 
     expect([
-      i18next.t('rolesScreen.holders', { count: 1000 }),
-      i18next.t('rolesScreen.holders', { count: 10_000 }),
+      i18next.t('signInRules.strandedTitle', { count: 1000 }).split(' ').slice(0, 2).join(' '),
+      i18next.t('signInRules.strandedTitle', { count: 10_000 }).split(' ').slice(0, 2).join(' '),
       i18next.t('ownership.events', { count: 1_000_000 }),
     ]).toEqual([thousand, tenThousand, million]);
   });
@@ -80,7 +80,9 @@ describe('a number in a sentence (sc-15361)', () => {
   it('reads as before under 1000', async () => {
     await setLanguage('fr');
 
-    expect(i18next.t('rolesScreen.holders', { count: 999 })).toBe('999 personnes');
+    expect(i18next.t('signInRules.strandedTitle', { count: 999 })).toBe(
+      '999 personnes se connectent uniquement par mot de passe',
+    );
   });
 });
 
@@ -114,14 +116,14 @@ describe('a value that ends its own sentence', () => {
   const org = 'Ọ̀ṣun Galas Ltd.';
 
   it.each([
-    ['en', 'Made by Ọ̀ṣun Galas Ltd. It can be removed.'],
-    ['es', 'Creado por Ọ̀ṣun Galas Ltd. Se puede eliminar.'],
-    ['fr', 'Créé par Ọ̀ṣun Galas Ltd. Il peut être supprimé.'],
-    ['pt', 'Criada por Ọ̀ṣun Galas Ltd. Pode ser removida.'],
+    ['en', 'Now working in Ọ̀ṣun Galas Ltd.'],
+    ['es', 'Ahora trabaja en Ọ̀ṣun Galas Ltd.'],
+    ['fr', 'Vous travaillez maintenant dans Ọ̀ṣun Galas Ltd.'],
+    ['pt', 'Agora a trabalhar em Ọ̀ṣun Galas Ltd.'],
   ])('takes no second full stop in %s', async (locale, shown) => {
     await setLanguage(locale);
 
-    expect(i18next.t('rolesScreen.describeCustom', { name: org })).toBe(shown);
+    expect(i18next.t('switcher.switched', { name: org })).toBe(shown);
   });
 
   it.each(['Party Time!', "Who's Next?", 'Galas…', 'Galas Ltd..'])(
@@ -129,16 +131,14 @@ describe('a value that ends its own sentence', () => {
     async (name) => {
       await setLanguage('en');
 
-      expect(i18next.t('rolesScreen.describeCustomReadOnly', { name })).toBe(`Made by ${name}`);
+      expect(i18next.t('switcher.switched', { name })).toBe(`Now working in ${name}`);
     },
   );
 
   it('gives a value ending in a letter the string’s full stop', async () => {
     await setLanguage('en');
 
-    expect(i18next.t('rolesScreen.describeCustomReadOnly', { name: 'Galas Ltd' })).toBe(
-      'Made by Galas Ltd.',
-    );
+    expect(i18next.t('switcher.switched', { name: 'Galas Ltd' })).toBe('Now working in Galas Ltd.');
   });
 
   it('drops only a full stop, never a comma, a question mark, a space or a closing quote', async () => {
@@ -158,11 +158,11 @@ describe('a value that ends its own sentence', () => {
   it('counts a plural line as before', async () => {
     await setLanguage('en');
 
-    expect(i18next.t('rolesScreen.unsaved', { role: 'Door team.', count: 2 })).toMatch(
-      /^Unsaved changes to Door team\. 2 people/,
-    );
-    expect(i18next.t('rolesScreen.unsavedNobody', { role: 'Door team.' })).toBe(
-      'Unsaved changes to Door team. Nobody holds this role yet.',
-    );
+    expect(
+      i18next.t('switcher.labelSwitchWaiting', { name: 'Ìrè', role: 'Door team.', count: 2 }),
+    ).toBe('Organisation: Ìrè, your role Door team. Switch organisation. 2 invitations waiting');
+    expect(
+      i18next.t('switcher.labelSwitchWaiting', { name: 'Ìrè', role: 'Door team.', count: 1 }),
+    ).toBe('Organisation: Ìrè, your role Door team. Switch organisation. 1 invitation waiting');
   });
 });
