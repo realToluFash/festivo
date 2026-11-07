@@ -207,7 +207,7 @@
     "emailBlank": "Introduza o seu endereço de e-mail.",
     "emailShape": "Isso não parece um endereço de e-mail. Confirme que tem um @ e um domínio.",
     "countryBlank": "Escolha um país.",
-    "invalid": "Invalid"
+    "invalid": "Dados inválidos"
   },
   "oauth": {
     "linked": "A sua conta {{provider}} está agora associada. Pode iniciar sessão com ela ou como até agora.",
