@@ -1,0 +1,292 @@
+.qt-page {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.qt-costs .desk-note {
+  padding: var(--spaceMd) var(--spaceLg);
+  border: 1.5px dashed var(--colorBorder);
+  border-radius: var(--radiusInset);
+}
+
+.qt-empty {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceLg);
+  min-height: var(--sizeHit);
+}
+
+.qt-rows .qt-row,
+.qt-rows .qt-due-row {
+  display: grid;
+  align-items: center;
+  gap: var(--spaceLg);
+  color: var(--colorInk);
+  text-decoration: none;
+}
+
+.qt-rows .qt-row {
+  grid-template-columns: minmax(0, 1fr) minmax(0, auto) 24px;
+}
+
+.qt-rows .qt-due-row {
+  grid-template-columns: 220px minmax(0, 1fr) auto 24px;
+}
+
+.qt-figure {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--spaceXxs);
+  text-align: end;
+}
+
+.qt-amount {
+  color: var(--colorInk);
+  font: 600 16px/1.3 var(--fontFamily);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.qt-when {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceSm);
+}
+
+.desk-tag.qt-overdue {
+  gap: var(--spaceXs);
+}
+
+.qt-difference {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spaceSm);
+  color: var(--colorInk);
+  font: var(--deskLine);
+}
+
+.qt-difference.is-small {
+  color: var(--colorInkSecondary);
+  font-size: 14px;
+}
+
+.qt-difference .desk-mark.is-waiting {
+  color: var(--colorAttention);
+}
+
+.qt-back {
+  align-self: flex-start;
+}
+
+.qt-vendor-top {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+}
+
+.qt-vendor-link {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 5px;
+}
+
+.qt-head-actions,
+.qt-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceLg);
+}
+
+.qt-facts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceMd);
+  margin: 0;
+}
+
+.qt-fact {
+  display: grid;
+  grid-template-columns: 160px minmax(0, 1fr);
+  gap: var(--spaceLg);
+}
+
+.qt-fact dt,
+.qt-sums dt {
+  color: var(--colorInkSecondary);
+  font: var(--deskSmall);
+}
+
+.qt-fact dd,
+.qt-sums dd {
+  margin: 0;
+  color: var(--colorInk);
+  font: var(--deskLine);
+}
+
+.qt-sums dd {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.qt-none {
+  color: var(--colorInkTertiary);
+}
+
+.qt-earlier {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceXs);
+  margin-top: var(--spaceMd);
+}
+
+.qt-earlier-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.qt-sums {
+  display: flex;
+  gap: var(--spaceXxl);
+  margin: 0 0 var(--spaceSm);
+}
+
+.qt-rows .qt-pay-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  gap: var(--spaceLg);
+}
+
+.qt-pay-row > .qt-overdue:only-of-type {
+  justify-self: end;
+}
+
+.qt-ask {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceLg);
+}
+
+.qt-vendor {
+  position: relative;
+}
+
+.qt-combo {
+  gap: var(--spaceSm);
+  color: var(--colorInkSecondary);
+}
+
+.qt-options {
+  display: flex;
+  flex-direction: column;
+  max-height: 320px;
+  margin: 0;
+  padding: var(--spaceXs);
+  overflow-y: auto;
+  border-radius: var(--radiusInset);
+  background: var(--colorCard);
+  box-shadow: var(--shadowPopover);
+  list-style: none;
+}
+
+.qt-option {
+  display: flex;
+  flex: none;
+  align-items: center;
+  min-height: var(--sizeHit);
+  padding: var(--spaceXs) var(--spaceMd);
+  border-radius: var(--radiusRow);
+  cursor: pointer;
+}
+
+.qt-option.is-active {
+  background: var(--colorRowHover);
+}
+
+.qt-option.is-taken {
+  color: var(--colorInkSecondary);
+  cursor: default;
+}
+
+.qt-vendor-status {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceXxs);
+}
+
+.qt-vendor-status:empty {
+  display: none;
+}
+
+.qt-money {
+  gap: var(--spaceSm);
+}
+
+.qt-symbol {
+  color: var(--colorInkSecondary);
+  font: 600 16px/1 var(--fontFamily);
+}
+
+.qt-fixed {
+  margin: 0;
+}
+
+.qt-lines .desk-rows {
+  margin: 0;
+  padding: 0;
+}
+
+.qt-line {
+  gap: var(--spaceMd);
+  cursor: pointer;
+}
+
+.qt-line.is-taken {
+  cursor: default;
+}
+
+.qt-line.is-taken .desk-row-name {
+  color: var(--colorInkSecondary);
+}
+
+.qt-check {
+  display: grid;
+  flex: none;
+  place-content: center;
+  box-sizing: border-box;
+  width: 24px;
+  height: 24px;
+  margin: 0;
+  border: 2px solid var(--colorFieldBorder);
+  border-radius: var(--radiusCheckbox);
+  background: var(--colorCard);
+  color: var(--colorInkOnDark);
+  appearance: none;
+}
+
+.qt-check:checked {
+  border-color: var(--colorAccent);
+  background: var(--colorAccent);
+}
+
+.qt-check:checked::after {
+  width: 10px;
+  height: 5px;
+  margin-top: -2px;
+  border-bottom: 2.4px solid currentcolor;
+  border-left: 2.4px solid currentcolor;
+  transform: rotate(-45deg);
+  content: '';
+}
+
+.qt-check:disabled {
+  border-style: dashed;
+  background: var(--colorInset);
+}
