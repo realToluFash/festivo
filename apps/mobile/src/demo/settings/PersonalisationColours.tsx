@@ -218,7 +218,7 @@ function Swatch({
         accessibilityState={{ checked: picked, disabled: waits }}
         testID={`personalisation.swatch.${scheme}`}
       >
-        <View style={[styles.swatch, picked ? styles.swatchPicked : styles.swatchEdge]}>
+        <View style={styles.swatch}>
           <View style={{ height: meshHeight, backgroundColor: look.ground.base }}>
             <SchemeGround look={look} washed={false} spots={swatchSpots(meshHeight)} from="right" />
             {current && (
@@ -233,6 +233,15 @@ function Swatch({
               {nameOf(scheme)}
             </Text>
           </View>
+          {/* The edge lies over the swatch, as the board's shadow does, so it adds no height. */}
+          <View
+            style={[
+              StyleSheet.absoluteFill,
+              styles.edge,
+              picked ? styles.swatchPicked : styles.swatchEdge,
+            ]}
+            pointerEvents="none"
+          />
         </View>
       </Pressable>
     </View>
@@ -262,10 +271,10 @@ const styles = StyleSheet.create({
   ringPicked: { borderColor: tokens.colorAccent },
   swatch: {
     borderRadius: 18,
-    borderWidth: 1,
     overflow: 'hidden',
     backgroundColor: tokens.colorCard,
   },
+  edge: { borderRadius: 18, borderWidth: 1 },
   swatchEdge: { borderColor: tokens.colorBorder },
   swatchPicked: { borderColor: tokens.colorCard },
   current: { position: 'absolute', top: 10, left: 10 },
