@@ -1,0 +1,27 @@
+# Account, its time zone changed to Lisbon, and the confirmation that names it.
+appId: host.exp.Exponent
+---
+- runFlow:
+    file: ../time-zone-typed.yaml
+    env:
+      QUERY: 'Lisbon'
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          id: 'timeZone.search'
+          optional: true
+- tapOn:
+    id: 'timeZone.option.Europe/Lisbon'
+    optional: true
+- tapOn:
+    id: 'timeZone.save'
+    optional: true
+- extendedWaitUntil:
+    visible: '.*Lis(bon|bonne).*'
+    timeout: 15000
+- scrollUntilVisible:
+    element:
+      id: 'timeZone.change'
+- takeScreenshot: time-zone-saved

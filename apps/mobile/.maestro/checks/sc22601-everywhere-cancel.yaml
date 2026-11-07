@@ -1,0 +1,34 @@
+# sc-22601: closing Google's prompt on Sign out everywhere else leaves the step as before, with Google's button back at full opacity. Needs ${METRO_URL}.
+appId: host.exp.Exponent
+---
+- runFlow:
+    when:
+      visible: 'Cancel'
+    commands:
+      - tapOn: 'Cancel'
+- openLink: ${METRO_URL}/--/settings/security
+- extendedWaitUntil:
+    visible: '{{t:security.title}}'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'devices.everywhere'
+    direction: DOWN
+    timeout: 30000
+    centerElement: true
+- tapOn:
+    id: 'devices.everywhere'
+- scrollUntilVisible:
+    element:
+      id: 'devices.everywhere.confirm'
+    direction: DOWN
+    timeout: 15000
+    centerElement: true
+- tapOn:
+    id: 'devices.everywhere.confirm'
+- extendedWaitUntil:
+    visible: '.*Wants to Use.*'
+    timeout: 15000
+- tapOn: 'Cancel'
+- waitForAnimationToEnd
+- takeScreenshot: cancelled

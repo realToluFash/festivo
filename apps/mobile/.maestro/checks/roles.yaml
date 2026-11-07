@@ -1,0 +1,8 @@
+# Roles, opened by its link.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/roles
+- extendedWaitUntil:
+    visible: '{{t:rolesScreen.title}}'
+    timeout: 30000
+- takeScreenshot: roles

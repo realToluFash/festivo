@@ -1,0 +1,12 @@
+# Read by supercronic in the prod image (Dockerfile); the local stack runs none of it.
+# Times are UTC. Each prune is safe to run twice at once, and a failed run is
+# logged at error level and leaves the next day's run scheduled.
+0 3 * * * php /app/bin/console app:prune-refresh-tokens --no-interaction
+10 3 * * * php /app/bin/console app:prune-unverified-accounts --no-interaction
+20 3 * * * php /app/bin/console app:prune-pending-registrations --no-interaction
+30 3 * * * php /app/bin/console app:prune-deleted --no-interaction
+40 3 * * * php /app/bin/console app:prune-notification-items --no-interaction
+*/5 * * * * php /app/bin/console app:sign-in-rules:record-two-factor-holds --no-interaction
+* * * * * php /app/bin/console app:join-requests:run --no-interaction
+* * * * * php /app/bin/console app:owner-claims:run --no-interaction
+* * * * * php /app/bin/console app:notifications:check --no-interaction
