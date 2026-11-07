@@ -40,6 +40,8 @@ import {
   physicalSize,
   portraitRotation,
   ANDROID_START,
+  startParts,
+  iosExpoGoStops,
   batchReset,
   expoGoPrefs,
   TOOLS_BUTTON,
@@ -473,6 +475,25 @@ describe('Expo Go on android --clear', () => {
   it('is stopped before the bundler starts', () => {
     expect(at('Expo Go stopped')).toBeGreaterThanOrEqual(0);
     expect(at('Expo Go stopped')).toBeLessThan(at('bundler started'));
+  });
+
+  it('runs on android --clear, and a plain start runs every other part as before', () => {
+    const names = (args) => startParts(args).map((part) => part.name);
+    expect(names(['--clear'])).toContain('Expo Go stopped');
+    expect(names([])).not.toContain('Expo Go stopped');
+    expect(names([])).toEqual(
+      ANDROID_START.filter((part) => part.name !== 'Expo Go stopped').map((part) => part.name),
+    );
+  });
+});
+
+describe('Expo Go on ios --clear', () => {
+  it('is terminated on every opened simulator, and only on --clear', () => {
+    expect(iosExpoGoStops(['--clear'], ['A', 'B'])).toEqual([
+      ['simctl', 'terminate', 'A', 'host.exp.Exponent'],
+      ['simctl', 'terminate', 'B', 'host.exp.Exponent'],
+    ]);
+    expect(iosExpoGoStops([], ['A', 'B'])).toEqual([]);
   });
 });
 

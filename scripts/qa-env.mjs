@@ -1418,10 +1418,7 @@ async function ios(args) {
   withSoftwareKeyboard(qaSimulatorIds());
   run('open', ['-a', 'Simulator'], { optional: true });
 
-  // Expo Go keeps the JS it already has until it is stopped.
-  if (args.includes('--clear'))
-    for (const udid of devices)
-      run('xcrun', ['simctl', 'terminate', udid, EXPO_GO], { optional: true });
+  for (const command of iosExpoGoStops(args, devices)) run('xcrun', command, { optional: true });
   const metro = await startBundler(root, process.env, args);
   for (const udid of devices)
     run('xcrun', ['simctl', 'openurl', udid, CONFIG.urls.metro], { optional: true });
@@ -1826,6 +1823,13 @@ export const SCREEN_READER_OFF = [
   ['shell', 'settings', 'put', 'secure', 'accessibility_enabled', '0'],
 ];
 
+// Expo Go keeps the JS it already has until it is stopped.
+export const iosExpoGoStops = (args, devices) =>
+  args.includes('--clear') ? devices.map((udid) => ['simctl', 'terminate', udid, EXPO_GO]) : [];
+
+export const startParts = (args) =>
+  ANDROID_START.filter((part) => !part.when || args.includes(part.when));
+
 // android's start once the emulator is up, in order: nothing swipes or taps before the screen reader is off.
 // A part with `when` runs only when android is given that flag.
 export const ANDROID_START = [
@@ -1933,8 +1937,7 @@ async function android(args) {
   step(`The ${open}`);
   await bootEmulator(tools, CONFIG.emulators[open].name);
   const started = { tools, root, args };
-  for (const part of ANDROID_START) {
-    if (part.when && !args.includes(part.when)) continue;
+  for (const part of startParts(args)) {
     for (const command of part.adb ?? []) adbOut(tools, command);
     if (part.say) console.log(part.say);
     await part.run?.(started);
