@@ -54,12 +54,12 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
       },
       {
         title: 'The event day · nobody arrived yet',
-        what: 'The replies line, and no figure',
+        what: 'Day 1 at 15:20: the replies line, no figure',
         href: '/demo/today?moment=dayNow&arrived=none',
       },
       {
         title: 'The event day · arrivals coming in',
-        what: 'From nobody to 3 and back, every 4 seconds',
+        what: 'Day 1 from 16:05: to 3 of 98 and back, every 4 seconds',
         href: '/demo/today?moment=dayNow&arrived=live',
       },
       {

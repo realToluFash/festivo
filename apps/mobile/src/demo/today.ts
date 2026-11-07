@@ -14,6 +14,8 @@ import {
   type StripBar,
   type StripDay,
 } from '../kit/today.ts';
+import { EVENT_OF_KEY as IDS } from './events/EventsSample.ts';
+import { SAMPLE_GUESTS } from './events/GuestCounts.ts';
 
 export type EventKey = 'wed' | 'ireti' | 'party' | 'draft';
 
@@ -38,8 +40,8 @@ interface SampleEvent {
 export const EVENTS: Record<EventKey, SampleEvent> = {
   wed: {
     name: 'Adaeze & Tunde’s wedding',
-    first: '2026-11-06',
-    last: '2026-11-08',
+    first: '2026-11-05',
+    last: '2026-11-07',
     place: 'The Landmark, London',
     draft: false,
     mesh: 'rose',
@@ -128,62 +130,95 @@ export function dueWords(today: string, due: string, say: Say): { words: string;
 
 type Item = readonly [time: string, title: string, event: EventKey, note: string];
 
-const AGENDA: Record<Exclude<MomentName, 'first'>, readonly (readonly [string, Item[]])[]> = {
+const AGENDA: Record<
+  Exclude<MomentName, 'first' | 'dayNow'>,
+  readonly (readonly [string, Item[]])[]
+> = {
   plan: [
     [
       '2026-11-03',
-      [['10:00', 'Reminder goes to the 21 who haven’t replied', 'ireti', 'Automatic']],
+      [
+        [
+          '10:00',
+          `Reminder goes to the ${owedOf('ireti')} who haven’t replied`,
+          'ireti',
+          'Automatic',
+        ],
+      ],
     ],
-    ['2026-11-05', [['09:00', 'Meal choices close', 'wed', 'Automatic']]],
+    ['2026-11-04', [['09:00', 'Meal choices close', 'wed', 'Automatic']]],
+    ['2026-11-05', [['18:00', 'Welcome dinner', 'wed', 'Day 1 of 3']]],
     [
       '2026-11-06',
       [
-        ['19:00', 'Welcome dinner', 'wed', 'Day 1 of 3'],
+        ['14:00', 'Ceremony', 'wed', 'Day 2 of 3'],
         ['23:59', 'Replies close', 'ireti', 'Automatic'],
       ],
     ],
-    ['2026-11-07', [['14:00', 'Ceremony', 'wed', 'Day 2 of 3']]],
-    ['2026-11-08', [['11:00', 'Farewell brunch', 'wed', 'Day 3 of 3']]],
-    ['2026-11-09', [['10:00', 'Thank-you messages go out', 'wed', 'Automatic']]],
+    ['2026-11-07', [['11:00', 'Farewell brunch', 'wed', 'Day 3 of 3']]],
+    ['2026-11-08', [['10:00', 'Thank-you messages go out', 'wed', 'Automatic']]],
   ],
   planNow: [
     ['2026-11-03', []],
-    ['2026-11-06', [['19:00', 'The wedding starts', 'wed', 'Day 1 of 3']]],
-    ['2026-11-07', [['', 'The wedding, day 2', 'wed', 'Day 2 of 3']]],
-    ['2026-11-08', [['14:00', 'The wedding ends', 'wed', 'Day 3 of 3']]],
+    ['2026-11-05', [['18:00', 'The wedding starts', 'wed', 'Day 1 of 3']]],
+    ['2026-11-06', [['', 'The wedding, day 2', 'wed', 'Day 2 of 3']]],
+    ['2026-11-07', [['15:00', 'The wedding ends', 'wed', 'Day 3 of 3']]],
   ],
   day: [
-    ['2026-11-07', []],
+    ['2026-11-06', []],
     [
-      '2026-11-08',
+      '2026-11-07',
       [
         ['11:00', 'Farewell brunch', 'wed', 'Day 3 of 3'],
-        ['14:00', 'The wedding ends', 'wed', ''],
+        ['15:00', 'The wedding ends', 'wed', ''],
       ],
     ],
-    ['2026-11-09', [['10:00', 'Thank-you messages go out', 'wed', 'Automatic']]],
-    ['2026-11-13', [['09:00', 'Meal choices close', 'ireti', 'Automatic']]],
-  ],
-  dayNow: [
-    ['2026-11-07', []],
-    ['2026-11-08', [['14:00', 'The wedding ends', 'wed', 'Day 3 of 3']]],
+    ['2026-11-08', [['10:00', 'Thank-you messages go out', 'wed', 'Automatic']]],
+    ['2026-11-12', [['09:00', 'Meal choices close', 'ireti', 'Automatic']]],
   ],
   quiet: [],
 };
 
-/** The wedding counts as Guests A and Messaging B do; on day 2, Guests A's door reads 87 of 99. */
-const READY: Partial<Record<MomentName, Partial<Record<EventKey, readonly [string, number]>>>> = {
-  plan: {
-    wed: ['96 coming · 82% replied', 82],
-    ireti: ['36 coming · 65% replied', 65],
-    party: ['Invitations not sent', 0],
-  },
+/** Built now, the agenda is the wedding's own dates still to come, as on a planning day. */
+function builtNow(today: string): readonly (readonly [string, Item[]])[] {
+  return [[today, []], ...AGENDA.planNow.filter(([date]) => date > today)];
+}
+
+/** To the nearest whole percent, except that 100% means everyone and 0% nobody (sc-29881). */
+export function sharePercent(part: number, whole: number): number {
+  if (part >= whole) return 100;
+  if (part <= 0) return 0;
+
+  return Math.min(99, Math.max(1, Math.round((part / whole) * 100)));
+}
+
+/** sc-29881's line, from the guests Events' tiles count (sc-23284), so Today and Events agree. */
+export function repliesOf(key: EventKey): EventCard['ready'] {
+  const guests = SAMPLE_GUESTS[IDS[key]];
+
+  if (guests == null) return null;
+  if (guests.invited === 0) return { words: 'Invitations not sent', percent: 0 };
+
+  const percent = sharePercent(guests.replied, guests.invited);
+
+  return { words: `${guests.coming} coming · ${percent}% replied`, percent };
+}
+
+function owedOf(key: EventKey): number {
+  const guests = SAMPLE_GUESTS[IDS[key]];
+
+  return guests == null ? 0 : guests.invited - guests.replied;
+}
+
+const READY: Partial<Record<MomentName, Partial<Record<EventKey, EventCard['ready']>>>> = {
+  plan: { wed: repliesOf('wed'), ireti: repliesOf('ireti'), party: repliesOf('party') },
   day: {
-    wed: ['87 of 99 arrived', 87],
-    ireti: ['44 coming · 80% replied', 80],
-    party: ['Invitations not sent', 0],
+    // Day 2 of 3, as Guests A's door reads it then.
+    wed: { words: '87 of 99 arrived', percent: 87 },
+    ireti: repliesOf('ireti'),
+    party: repliesOf('party'),
   },
-  quiet: { party: ['112 coming · 70% replied', 70] },
+  quiet: { party: repliesOf('party') },
 };
 
 const RAIL = [
@@ -227,7 +262,6 @@ function card(key: EventKey, today: string, moment: MomentName, say: Say): Event
       : until === 1
         ? 'Tomorrow'
         : `In ${until} days`;
-  const ready = READY[moment]?.[key];
 
   return {
     event: sample(key),
@@ -237,7 +271,7 @@ function card(key: EventKey, today: string, moment: MomentName, say: Say): Event
     live,
     draft: event.draft,
     stage: !event.draft && !live && until <= 7 ? 'Final week' : null,
-    ready: ready == null ? null : { words: ready[0], percent: ready[1] },
+    ready: READY[moment]?.[key] ?? null,
   };
 }
 
@@ -301,8 +335,8 @@ function week(
 const TODAY: Record<MomentName, { date: string; time: string }> = {
   plan: { date: '2026-11-03', time: '09:41' },
   planNow: { date: '2026-11-03', time: '09:41' },
-  day: { date: '2026-11-07', time: '16:10' },
-  dayNow: { date: '2026-11-07', time: '16:10' },
+  day: { date: '2026-11-06', time: '16:10' },
+  dayNow: { date: '2026-11-06', time: '16:10' },
   quiet: { date: '2026-11-18', time: '09:41' },
   first: { date: '2026-11-03', time: '09:41' },
 };
@@ -316,12 +350,12 @@ function needs(name: MomentName, today: string, say: Say): Need[] | null {
 
   if (name === 'plan')
     return [
-      row('party', 'Send the invitations', '2026-10-31', 'Send'),
+      row('party', `Chase ${owedOf('party')} replies`, '2026-10-31', 'Chase'),
       row('wed', 'Final numbers to the caterer', '2026-11-04', 'Review'),
       row('wed', 'Seat the last 12 guests', '2026-11-05', 'Seat'),
       {
         event: sample('ireti'),
-        title: 'Chase 21 replies',
+        title: `Chase ${owedOf('ireti')} replies`,
         due: `Replies close ${say.day('2026-11-06')}`,
         late: false,
         action: 'Chase',
@@ -369,16 +403,16 @@ function now(today: string, time: string, say: Say): Now {
     at,
     ends:
       event.last === tomorrow
-        ? `Ends tomorrow, ${say.day(event.last)} at ${say.clock('14:00')}`
-        : `Ends ${say.day(event.last)} at ${say.clock('14:00')}`,
+        ? `Ends tomorrow, ${say.day(event.last)} at ${say.clock('15:00')}`
+        : `Ends ${say.day(event.last)} at ${say.clock('15:00')}`,
   };
 }
 
-export function momentOf(name: MomentName, say: Say, t: TFunction): Moment {
-  const { date: today, time } = TODAY[name];
+export function momentOf(name: MomentName, say: Say, t: TFunction, at = TODAY[name]): Moment {
+  const { date: today, time } = at;
   const kind = name === 'planNow' ? 'plan' : name === 'dayNow' ? 'day' : (name as Moment['kind']);
   const full = name !== 'planNow' && name !== 'dayNow';
-  const agenda = name === 'first' ? [] : AGENDA[name];
+  const agenda = name === 'first' ? [] : name === 'dayNow' ? builtNow(today) : AGENDA[name];
   const { days, bars } = week(today, agenda, say);
   const waiting = needs(name, today, say);
   const wedding = EVENTS.wed.first;

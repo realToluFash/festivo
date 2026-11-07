@@ -16,7 +16,9 @@ import { switcherStateOf } from '../../src/demo/OrgSwitcherModel.ts';
 import { MOMENTS, momentOf, sayIn } from '../../src/demo/today.ts';
 import { ArrivedTodayScreen } from '../../src/demo/today/ArrivedToday.tsx';
 import {
+  ARRIVED_AT,
   type ArrivedState,
+  type Counts,
   COUNTS,
   figureOf,
   isArrivedState,
@@ -53,7 +55,7 @@ function numbersIn(asked: string | undefined): Intl.NumberFormat {
 }
 
 /** Check-in records an arrival or an undo every few seconds, and Today changes in place. */
-function useLive(on: boolean): number {
+function useLive(on: boolean): Counts {
   const [step, setStep] = useState(0);
 
   useEffect(() => {
@@ -63,11 +65,11 @@ function useLive(on: boolean): number {
     return () => clearInterval(timer);
   }, [on]);
 
-  return LIVE[step] ?? 0;
+  return LIVE[step] ?? COUNTS.none;
 }
 
-function countsOf(state: ArrivedState, live: number) {
-  return state === 'live' ? { ...COUNTS.none, arrived: live } : COUNTS[state];
+function countsOf(state: ArrivedState, live: Counts) {
+  return state === 'live' ? live : COUNTS[state];
 }
 
 function isMoment(name: string | undefined): name is MomentName {
@@ -91,9 +93,14 @@ export default function DemoTodayScreen() {
   const { i18n } = useTranslation();
   // The demo's words are English, so its dates are too, in the phone's own region.
   const say = useMemo(() => sayIn(formattingLocale('en', getLocales()[0]?.languageTag)), []);
-  const moment = useMemo(() => momentOf(name, say, i18n.getFixedT('en')), [name, say, i18n]);
-  const numbers = useMemo(() => numbersIn(params.numbers), [params.numbers]);
   const arrivedState = isArrivedState(params.arrived) ? params.arrived : null;
+  // Nobody arrived and arrivals coming in are day 1, at Guests A's door; the rest are day 2.
+  const at = name === 'dayNow' && arrivedState != null ? ARRIVED_AT[arrivedState] : undefined;
+  const moment = useMemo(
+    () => momentOf(name, say, i18n.getFixedT('en'), at),
+    [name, say, i18n, at],
+  );
+  const numbers = useMemo(() => numbersIn(params.numbers), [params.numbers]);
   const live = useLive(arrivedState === 'live');
   const run = useMemo(
     () =>

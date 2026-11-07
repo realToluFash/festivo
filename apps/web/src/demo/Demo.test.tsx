@@ -1479,7 +1479,7 @@ describe('Today at a desk (sc-29092)', () => {
     expect(rows).toHaveLength(4);
     expect(within(rows[0] as HTMLElement).getByText('3 days late')).toBeDefined();
     expect(needs.querySelectorAll('.today-act.is-primary')).toHaveLength(1);
-    expect(screen.getByRole('button', { name: 'Send, Send the invitations' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Chase, Chase 19 replies' })).toBeDefined();
     expect(screen.getByRole('button', { name: 'New event' })).toBeDefined();
     expect(screen.getByRole('button', { name: 'Today' }).getAttribute('aria-current')).toBe('page');
   });
@@ -1500,7 +1500,7 @@ describe('Today at a desk (sc-29092)', () => {
     await today('planNow');
 
     expect(screen.queryByRole('region', { name: 'Needs you' })).toBeNull();
-    expect(screen.getByText('The wedding starts on Friday.')).toBeDefined();
+    expect(screen.getByText('The wedding starts on Thursday.')).toBeDefined();
     expect(screen.queryByText(/replied/)).toBeNull();
   });
 
@@ -1520,7 +1520,7 @@ describe('Today at a desk (sc-29092)', () => {
     expect(
       screen.getByRole('heading', { level: 1, name: 'Adaeze & Tunde’s wedding' }),
     ).toBeDefined();
-    expect(screen.getByText('Ends tomorrow, Sun, Nov 8 at 2:00 PM')).toBeDefined();
+    expect(screen.getByText('Ends tomorrow, Sat, Nov 7 at 3:00 PM')).toBeDefined();
     expect(screen.getByRole('button', { name: 'Open the event' })).toBeDefined();
   });
 

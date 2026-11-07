@@ -1,4 +1,5 @@
 import type { EventCard, Moment } from '../../kit/today.ts';
+import { repliesOf } from '../today.ts';
 
 export const ARRIVED_STATES = ['some', 'nobodyComing', 'thousands', 'none', 'live'] as const;
 
@@ -25,9 +26,6 @@ export interface Figure {
 
 export type ArrivedMoment = Moment & { figure: Figure | null };
 
-/** The wedding as Guests A and Messaging B count it: 96 of 142 coming, 117 replied (sc-23284's Replies in). */
-const REPLIES = { words: '96 coming · 82% replied', percent: 82 };
-
 export const COUNTS: Record<Exclude<ArrivedState, 'live'>, Counts> = {
   // Day 2 of 3, as Guests A's door reads it: the 96 Coming and 3 let in who were not.
   some: { arrived: 87, coming: 96, expected: 99 },
@@ -36,8 +34,24 @@ export const COUNTS: Record<Exclude<ArrivedState, 'live'>, Counts> = {
   none: { arrived: 0, coming: 96, expected: 96 },
 };
 
-/** Arrivals and undos as Check-in records them: the first arrival, two more, then undone back to nobody. */
-export const LIVE: readonly number[] = [0, 1, 2, 3, 2, 1, 0];
+/** Nobody arrived and arrivals coming in are day 1, at Guests A's door: before it opens at 16:00, and from 16:05. */
+export const ARRIVED_AT: Partial<Record<ArrivedState, { date: string; time: string }>> = {
+  none: { date: '2026-11-05', time: '15:20' },
+  live: { date: '2026-11-05', time: '16:05' },
+};
+
+const door = (arrived: number, expected: number): Counts => ({ ...COUNTS.none, arrived, expected });
+
+/** Check-in from 16:05: a Coming guest, then two who were not, to Guests A's 3 of 98; then undone. */
+export const LIVE: readonly Counts[] = [
+  door(0, 96),
+  door(1, 96),
+  door(2, 97),
+  door(3, 98),
+  door(2, 97),
+  door(1, 96),
+  door(0, 96),
+];
 
 export function figureOf(counts: Counts, numbers: Intl.NumberFormat): Figure | null {
   if (counts.arrived === 0) return null;
@@ -60,7 +74,7 @@ export function figureOf(counts: Counts, numbers: Intl.NumberFormat): Figure | n
 export function readyOf(counts: Counts, numbers: Intl.NumberFormat): EventCard['ready'] {
   const figure = figureOf(counts, numbers);
 
-  if (figure == null) return REPLIES;
+  if (figure == null) return repliesOf('wed');
 
   // Rounded down, so it is full only when everyone expected has arrived, and never under 1 with a share.
   return {
@@ -70,8 +84,8 @@ export function readyOf(counts: Counts, numbers: Intl.NumberFormat): EventCard['
 }
 
 const OTHERS: Partial<Record<string, EventCard['ready']>> = {
-  ireti: { words: '44 coming · 80% replied', percent: 80 },
-  party: { words: 'Invitations not sent', percent: 0 },
+  ireti: repliesOf('ireti'),
+  party: repliesOf('party'),
 };
 
 /** The built Now without Next, with sc-29881's lines on the cards and the wedding's arrivals on both. */

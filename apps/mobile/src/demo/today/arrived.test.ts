@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import en from '../../i18n/locales/en.json';
 import { momentOf, sayIn } from '../today.ts';
-import { COUNTS, figureOf, readyOf, withArrived } from './arrived.ts';
+import { COUNTS, figureOf, LIVE, readyOf, withArrived } from './arrived.ts';
 
 const i18n = createInstance();
 void i18n.init({
@@ -37,6 +37,18 @@ describe('Now’s arrived figure', () => {
 
   it('is not there while nobody has arrived', () => {
     expect(figureOf(COUNTS.none, english)).toBeNull();
+  });
+
+  it('counts the door from 16:05 to Guests A’s 3 of 98, and back to nobody', () => {
+    expect(LIVE.map((counts) => figureOf(counts, english)?.spoken ?? null)).toEqual([
+      null,
+      '1 of 96 arrived',
+      '2 of 97 arrived',
+      '3 of 98 arrived',
+      '2 of 97 arrived',
+      '1 of 96 arrived',
+      null,
+    ]);
   });
 
   it('writes four digits the locale’s way', () => {
@@ -85,8 +97,8 @@ describe('the built Now with arrivals', () => {
   it('puts the line on the wedding’s card and the replies lines on the others', () => {
     expect(arrived.events.map((card) => card.ready?.words ?? null)).toEqual([
       '87 of 99 arrived',
-      '44 coming · 80% replied',
-      'Invitations not sent',
+      '31 coming · 63% replied',
+      '20 coming · 58% replied',
       null,
     ]);
   });

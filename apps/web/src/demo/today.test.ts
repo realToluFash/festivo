@@ -32,27 +32,27 @@ describe('a planning day', () => {
       ['Replies close Fri, Nov 6', false],
     ]);
     expect(plan.lead).toBe('4 things need you.');
-    expect(plan.sub).toBe('The wedding starts on Friday.');
+    expect(plan.sub).toBe('The wedding starts on Thursday.');
   });
 
   it('draws the wedding as one bar, and the other milestones as dots', () => {
     expect(plan.bars).toEqual([
-      { event: 'wed', start: 3, span: 3, label: '3 days', openLeft: false },
+      { event: 'wed', start: 2, span: 3, label: '3 days', openLeft: false },
     ]);
     expect(plan.days.map(({ dots }) => dots)).toEqual([
       ['ireti'],
-      [],
       ['wed'],
+      [],
       ['ireti'],
       [],
-      [],
       ['wed'],
+      [],
     ]);
   });
 
   it('counts down to each event, and drafts come last', () => {
     expect(plan.events.map(({ count, stage }) => [count, stage])).toEqual([
-      ['In 3 days', 'Final week'],
+      ['In 2 days', 'Final week'],
       ['In 11 days', null],
       ['In 25 days', null],
       ['Draft', null],
@@ -77,7 +77,7 @@ describe('the event day', () => {
       { event: 'wed', start: 0, span: 2, label: 'day 2 of 3', openLeft: true },
     ]);
     expect(day.events[0]).toMatchObject({ count: 'Day 2 of 3', live: true, stage: null });
-    expect(day.events[1]).toMatchObject({ count: 'In 7 days', stage: 'Final week' });
+    expect(day.events[1]).toMatchObject({ count: 'In 8 days', stage: null });
   });
 
   it('places Now between drinks and dinner', () => {
@@ -90,16 +90,28 @@ describe('the event day', () => {
       'later',
     ]);
     expect(day.now?.at).toBeCloseTo((2 + 10 / 120) / 5);
-    expect(day.now?.ends).toBe('Ends tomorrow, Sun, Nov 8 at 2:00 PM');
+    expect(day.now?.ends).toBe('Ends tomorrow, Sat, Nov 7 at 3:00 PM');
     expect(day.now?.live).toBe('Day 2 of 3 · The Landmark, London');
   });
 
-  it('counts the wedding as Guests A and Messaging B do', () => {
+  it('counts the wedding as Guests A and Messaging B do, and the others as Events does', () => {
     const plan = momentOf('plan', us);
 
-    expect(plan.events[0]?.ready).toEqual({ words: '96 coming · 82% replied', percent: 82 });
+    expect(plan.events.map(({ ready }) => ready)).toEqual([
+      { words: '96 coming · 82% replied', percent: 82 },
+      { words: '31 coming · 63% replied', percent: 63 },
+      { words: '20 coming · 58% replied', percent: 58 },
+      null,
+    ]);
+    expect(plan.needs?.map(({ title }) => title)).toEqual([
+      'Chase 19 replies',
+      'Final numbers to the caterer',
+      'Seat the last 12 guests',
+      'Chase 22 replies',
+    ]);
     expect(day.events[0]?.ready).toEqual({ words: '87 of 99 arrived', percent: 87 });
     expect(day.now).toMatchObject({ arrived: 87, expected: 99 });
+    expect(day.eyebrow).toBe('Friday, November 6');
   });
 });
 
