@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { type LayoutChangeEvent, StyleSheet, View } from 'react-native';
 
+import { Glyph } from '../../components/Glyph.tsx';
+import { useReadOut } from '../../components/ReadOut.tsx';
 import { SETTLED_MS } from '../../components/Screen.tsx';
 import { moveScreenReaderFocus } from '../../components/screenReaderFocus.ts';
 import { type TextHandle, Text } from '../../components/Text.tsx';
@@ -12,9 +14,12 @@ export interface AskProps {
   title: string;
   line: string;
   keep: { label: string; testID?: string };
-  confirm: { label: string; testID?: string; removes?: boolean };
+  /** None once nothing is left to decide: the way back is the one action. */
+  confirm: { label: string; testID?: string; removes?: boolean } | null;
   onKeep: () => void;
-  onConfirm: () => void;
+  onConfirm?: () => void;
+  /** The line says the question no longer stands, with the alert mark, and is read out. */
+  alert?: boolean;
   testID?: string;
   width?: number;
 }
@@ -27,14 +32,16 @@ export function AskLayer({
   confirm,
   onKeep,
   onConfirm,
+  alert = false,
   testID,
   width,
 }: AskProps) {
   const phone = useLayout().kind === 'phone';
   const heading = useRef<TextHandle>(null);
   const [widths, setWidths] = useState({ room: 0, keep: 0, confirm: 0 });
-  const measured = widths.room > 0 && widths.keep > 0 && widths.confirm > 0;
-  const stacked = measured && widths.keep + tokens.space3xl + widths.confirm > widths.room;
+  const measured = widths.room > 0 && widths.keep > 0 && (confirm == null || widths.confirm > 0);
+  const stacked =
+    measured && confirm != null && widths.keep + tokens.space3xl + widths.confirm > widths.room;
   const laid = (part: keyof typeof widths) => (event: LayoutChangeEvent) => {
     const width = event.nativeEvent.layout.width;
     setWidths((now) => (now[part] === width ? now : { ...now, [part]: width }));
@@ -44,16 +51,18 @@ export function AskLayer({
       <TextAction label={keep.label} onPress={onKeep} testID={keep.testID} />
     </View>
   );
-  const confirmAction = (
+  const confirmAction = confirm != null && (
     <View key="confirm" onLayout={laid('confirm')}>
       <TextAction
         label={confirm.label}
-        onPress={onConfirm}
+        onPress={() => onConfirm?.()}
         removes={confirm.removes ?? false}
         testID={confirm.testID}
       />
     </View>
   );
+
+  useReadOut(alert ? line : null);
 
   useEffect(() => {
     const focus = setTimeout(() => moveScreenReaderFocus(heading.current), SETTLED_MS);
@@ -78,9 +87,20 @@ export function AskLayer({
         >
           {title}
         </Text>
-        <Text size={15} weight="medium" style={[styles.secondary, styles.askLine]}>
-          {line}
-        </Text>
+        {alert ? (
+          <View style={styles.alert}>
+            <View style={styles.alertMark}>
+              <Glyph name="alert" size={18} ink={tokens.colorInkSecondary} weight={2.2} />
+            </View>
+            <Text size={15} weight="medium" style={[styles.askLine, styles.alertLine]}>
+              {line}
+            </Text>
+          </View>
+        ) : (
+          <Text size={15} weight="medium" style={[styles.secondary, styles.askLine]}>
+            {line}
+          </Text>
+        )}
         <View
           style={[stacked ? styles.askStack : styles.askActions, !measured && styles.unmeasured]}
           onLayout={laid('room')}
@@ -117,5 +137,8 @@ const styles = StyleSheet.create({
     paddingTop: tokens.spaceXs,
   },
   askStack: { alignItems: 'flex-end', paddingTop: tokens.spaceXs },
+  alert: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceSm },
+  alertMark: { marginTop: tokens.spaceHair },
+  alertLine: { flex: 1 },
   unmeasured: { opacity: 0 },
 });

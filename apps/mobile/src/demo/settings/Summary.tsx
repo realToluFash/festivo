@@ -11,7 +11,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useReadOut } from '../../components/ReadOut.tsx';
-import { Text } from '../../components/Text.tsx';
+import { Text, type TextHandle } from '../../components/Text.tsx';
 import { Toast } from '../../components/Toast.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { Confetti, Cover } from '../../components/Cover.tsx';
@@ -182,11 +182,20 @@ function PageTitle({ text, size }: { text: string; size: number }) {
 }
 
 /** On its side, the section's own list in the Settings list's place: back, the title, the card, the lists. */
-export function SummaryColumn({ title, children }: { title: string; children: ReactNode }) {
+export function SummaryColumn({
+  title,
+  scrollRef,
+  children,
+}: {
+  title: string;
+  scrollRef?: Ref<ScrollViewInstance>;
+  children: ReactNode;
+}) {
   const shell = useShell();
 
   return (
     <ScrollView
+      ref={scrollRef}
       contentContainerStyle={styles.column}
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
@@ -280,13 +289,16 @@ export function CardSays({
   text,
   size = 24,
   heading = false,
+  ref,
 }: {
   text: string;
   size?: number;
   heading?: boolean;
+  ref?: Ref<TextHandle> | undefined;
 }) {
   return (
     <Text
+      ref={ref}
       size={size}
       weight="bold"
       accessibilityRole={heading ? 'header' : undefined}
