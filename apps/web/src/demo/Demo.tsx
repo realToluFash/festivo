@@ -41,6 +41,7 @@ import { QUOTES_PAGES } from './quotes.ts';
 import { BUDGET_PAGES } from './budgetPages.ts';
 import { DECIDE_PAGES } from './decide.ts';
 import { PAYERS_PAGES } from './payers.ts';
+import { PAYMENTS_PAGES } from './payments.ts';
 import { PLAN_PAGES } from './plan.ts';
 import { SHARE_PAGES } from './share.ts';
 import { ShareRecipient } from './ShareRecipient.tsx';
@@ -234,6 +235,8 @@ function DemoHome({ from }: { from: string }) {
         <h2 id="demo-page-81-budget">81 · Budget and costs · Budget in A · Summary first</h2>
         <h3>The Budget page, the ceiling, payments and margin · desktop</h3>
         <BoardPages pages={BUDGET_PAGES} />
+        <h3>Payments on a vendor’s page, the reminder setting and the shapes · desktop</h3>
+        <BoardPages pages={PAYMENTS_PAGES} />
         <h3>Who is paying · desktop</h3>
         <BoardPages pages={PAYERS_PAGES} />
         <h3>Against plan · desktop and A4</h3>
