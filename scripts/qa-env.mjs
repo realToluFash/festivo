@@ -9,6 +9,7 @@ import {
   createWriteStream,
   existsSync,
   mkdirSync,
+  mkdtempSync,
   openSync,
   readdirSync,
   readFileSync,
@@ -17,7 +18,7 @@ import {
   statSync,
   writeFileSync,
 } from 'node:fs';
-import { homedir, networkInterfaces } from 'node:os';
+import { homedir, networkInterfaces, tmpdir } from 'node:os';
 import { basename, dirname, extname, join, resolve } from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
@@ -774,6 +775,7 @@ function setup() {
         console.log(id ? `  ${sim.name}: created ${id}` : `  ${sim.name}: could not create one`);
       }
     }
+    withSoftwareKeyboard(qaSimulatorIds());
   }
 
   step('The emulators');
@@ -1043,6 +1045,47 @@ function withoutPasswordAutoFill(udid) {
   }
 }
 
+// Simulator.app connects the Mac's keyboard, so no on-screen keyboard shows. It writes its
+// preferences back when it quits, so they are changed only while it is not running.
+export const SIMULATOR_PREFERENCES = 'com.apple.iphonesimulator';
+
+export function hardwareKeyboardOff(file, udids) {
+  return [
+    ['-replace', 'ConnectHardwareKeyboard', '-bool', 'NO', file],
+    ['-insert', 'DevicePreferences', '-dictionary', file],
+    ...udids.flatMap((udid) => [
+      ['-insert', `DevicePreferences.${udid}`, '-dictionary', file],
+      ['-replace', `DevicePreferences.${udid}.ConnectHardwareKeyboard`, '-bool', 'NO', file],
+    ]),
+  ];
+}
+
+function withSoftwareKeyboard(udids) {
+  if (!udids.length) return;
+  if (capture('pgrep', ['-x', 'Simulator']) !== null) {
+    console.log(
+      '  Simulator.app is open, so its keyboard setting is left alone. For the on-screen keyboard,' +
+        ' turn off I/O > Keyboard > Connect Hardware Keyboard (Cmd+Shift+K) in the device window.',
+    );
+    return;
+  }
+  const dir = mkdtempSync(join(tmpdir(), 'qa-sim-prefs-'));
+  const file = join(dir, 'prefs.plist');
+  try {
+    if (!run('defaults', ['export', SIMULATOR_PREFERENCES, file], { optional: true }))
+      run('plutil', ['-create', 'xml1', file]);
+    for (const step of hardwareKeyboardOff(file, udids)) run('plutil', step, { optional: true });
+    run('defaults', ['import', SIMULATOR_PREFERENCES, file]);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+const qaSimulatorIds = () =>
+  Object.values(CONFIG.simulators)
+    .map((sim) => simulatorId(sim.name))
+    .filter(Boolean);
+
 const appVersion = (app) =>
   capture('plutil', ['-extract', 'CFBundleShortVersionString', 'raw', join(app, 'Info.plist')]);
 
@@ -1161,6 +1204,7 @@ async function ios(args) {
       throw new Error(`Expo Go for SDK ${expoSdkMajor(expo)} did not install on the ${key}`);
     devices.push(udid);
   }
+  withSoftwareKeyboard(qaSimulatorIds());
   run('open', ['-a', 'Simulator'], { optional: true });
 
   const metro = await startBundler(root);
