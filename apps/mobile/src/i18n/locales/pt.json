@@ -485,6 +485,9 @@
     "step1": "Enviamos um código para {{email}}, e outro para o {{phone}} se o seu número estiver verificado.",
     "step1EmailOnly": "Enviamos um código para {{email}}.",
     "step2": "Introduz os códigos aqui.",
+    "step2EmailOnly": "You enter the code here.",
+    "sendEmailOnly": "Send the code",
+    "sendingEmailOnly": "Sending the code…",
     "step3": "Um proprietário ou administrador de {{organisations}} confirma que é você. A sua sessão continua encerrada até lá.",
     "startNote": "Quando confirmarem, a autenticação de dois fatores é desativada, todas as sessões são encerradas e inicia sessão de novo. Cada passo é-lhe enviado por email.",
     "send": "Enviar os códigos",
@@ -539,6 +542,7 @@
     "cancelTitle": "Cancelar o seu pedido?",
     "cancelBody": "Terá de começar de novo para voltar a entrar.",
     "keepWaiting": "Continuar à espera",
+    "notCancelled": "Not cancelled. Your request is still waiting. Try again.",
     "cancelledMark": "Cancelado",
     "replacedMark": "Substituído",
     "replacedTitle": "Um pedido mais recente substituiu este",
@@ -738,10 +742,7 @@
   "roles": {
     "owner": "Proprietário",
     "administrator": "Administrador",
-    "member": "Membro",
-    "event_manager": "Gestor de eventos",
-    "coordinator": "Coordenador",
-    "read_only": "Só leitura"
+    "member": "Membro"
   },
   "rolesScreen": {
     "title": "Funções",
@@ -1068,7 +1069,7 @@
     "transfer": "Transferir a propriedade",
     "transferNote": "Entregue {{organisation}} a outro membro. Antes, é pedida a sua palavra-passe.",
     "transferNoteProvider": "Entregue {{organisation}} a outro membro. Antes, terá de confirmar com a sua conta {{provider}}.",
-    "transferBody": "Quem receber a função Proprietário pode alterar a faturação, os membros, as funções e estas definições, e eliminar {{organisation}}. A sua função passa a ser Administrador.",
+    "transferBody": "Quem receber a função Proprietário pode alterar a faturação, os membros e estas definições, e eliminar {{organisation}}. A sua função passa a ser Administrador.",
     "newOwner": "Transferir para",
     "ownerBlank": "Escolha para quem transferir a propriedade.",
     "password": "A sua palavra-passe",

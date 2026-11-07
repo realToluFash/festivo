@@ -1,5 +1,10 @@
 # Android only. sc-25667: Create organisation pressed with the API paused reads Creating…, a second tap sends nothing, Cancel is off and does nothing, a tap on the scrim does nothing; once the API is back the sheet closes into the new organisation with Now working in it.
 appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
 ---
 - runFlow: ../open-create-organisation.yaml
 - tapOn:

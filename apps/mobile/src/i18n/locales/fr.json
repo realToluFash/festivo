@@ -485,6 +485,9 @@
     "step1": "Nous envoyons un code à {{email}}, et un autre au {{phone}} si votre numéro est vérifié.",
     "step1EmailOnly": "Nous envoyons un code à {{email}}.",
     "step2": "Vous saisissez les codes ici.",
+    "step2EmailOnly": "You enter the code here.",
+    "sendEmailOnly": "Send the code",
+    "sendingEmailOnly": "Sending the code…",
     "step3": "Un propriétaire ou un administrateur de {{organisations}} confirme que c’est bien vous. Vous restez déconnecté jusque-là.",
     "startNote": "Quand c’est confirmé, la double authentification est désactivée, toutes les sessions se terminent et vous vous reconnectez. Chaque étape vous est envoyée par e-mail.",
     "send": "Envoyer les codes",
@@ -539,6 +542,7 @@
     "cancelTitle": "Annuler votre demande ?",
     "cancelBody": "Vous devrez recommencer pour récupérer l’accès à votre compte.",
     "keepWaiting": "Continuer d’attendre",
+    "notCancelled": "Not cancelled. Your request is still waiting. Try again.",
     "cancelledMark": "Annulée",
     "replacedMark": "Remplacée",
     "replacedTitle": "Une demande plus récente a remplacé celle-ci",
@@ -738,10 +742,7 @@
   "roles": {
     "owner": "Propriétaire",
     "administrator": "Administrateur",
-    "member": "Membre",
-    "event_manager": "Responsable d’événements",
-    "coordinator": "Coordinateur",
-    "read_only": "Lecture seule"
+    "member": "Membre"
   },
   "rolesScreen": {
     "title": "Rôles",
@@ -1068,7 +1069,7 @@
     "transfer": "Transférer la propriété",
     "transferNote": "Confiez {{organisation}} à un autre membre. Votre mot de passe vous sera d’abord demandé.",
     "transferNoteProvider": "Confiez {{organisation}} à un autre membre. Vous devrez d’abord confirmer votre identité avec {{provider}}.",
-    "transferBody": "La personne qui recevra le rôle Propriétaire pourra modifier la facturation, les membres, les rôles et ces paramètres, et supprimer {{organisation}}. Vous aurez le rôle Administrateur.",
+    "transferBody": "La personne qui recevra le rôle Propriétaire pourra modifier la facturation, les membres et ces paramètres, et supprimer {{organisation}}. Vous aurez le rôle Administrateur.",
     "newOwner": "Transférer à",
     "ownerBlank": "Choisissez la personne qui deviendra propriétaire.",
     "password": "Votre mot de passe",

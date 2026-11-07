@@ -40,11 +40,16 @@ function event(overrides: Record<string, unknown> = {}) {
     phase: 'draft',
     concludedAt: null,
     createdAt: '2026-10-21T09:00:00+00:00',
+    permissions: holding,
     ...overrides,
   };
 }
 
+/** As the API answers: an organisation-wide role reads its own permissions on every event. */
+let holding: string[] = OWNER_PERMISSIONS;
+
 function signedIn(organisation = IRE, organisations = [organisation]): void {
+  holding = organisation.permissions;
   const session: Session = {
     name: 'Folake Adeyemi',
     email: 'folake@ire.events',
@@ -1443,6 +1448,7 @@ describe("Inside an event, the navigation menu is the event's (sc-22103)", () =>
     'Staff',
     'Budget',
     'Reports',
+    'People',
   ];
 
   function eventNav() {
@@ -1924,6 +1930,7 @@ describe("Editing an event's details (sc-3587)", () => {
 
     cleanup();
     signedIn(READER);
+    serving();
     at('/app/events/ev_1');
     await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
     expect(screen.queryByRole('link', { name: 'Edit details' })).toBeNull();
@@ -2395,14 +2402,50 @@ describe("Editing an event's details (sc-3587)", () => {
     expect(sent.filter(({ line }) => line.startsWith('PATCH'))).toEqual([]);
   });
 
+  it.each([
+    ['its Lead', ['events.read', 'events.manage', 'people.read', 'people.manage'], true],
+    ['who Can view it', ['events.read', 'people.read'], false],
+  ])(
+    'follows a Member’s role on the event, not the organisation’s, for %s (sc-29915)',
+    async (_, onTheEvent, edits) => {
+      signedIn(
+        membership({
+          ...IRE,
+          role: { id: 'role_3', seededAs: 'member', name: null },
+          permissions: [],
+        }),
+      );
+      holding = onTheEvent;
+      serving();
+      at('/app/events/ev_1');
+      await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
+
+      expect(screen.queryByRole('link', { name: 'Edit details' }) != null).toBe(edits);
+      expect(screen.queryByRole('button', { name: 'Make live' }) != null).toBe(edits);
+
+      cleanup();
+      at('/app/events/ev_1/edit');
+      expect(
+        await screen.findByRole('heading', {
+          level: 1,
+          name: edits ? 'Edit details' : 'You do not have access to this',
+        }),
+      ).toBeDefined();
+    },
+  );
+
   it('is refused to a role without events.manage', async () => {
     signedIn(READER);
     const { sent } = serving();
     at('/app/events/ev_1/edit');
 
-    expect(await screen.findByRole('heading', { level: 1 })).toBeDefined();
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'You do not have access to this' }),
+    ).toBeDefined();
     expect(screen.queryByRole('heading', { name: 'Edit details' })).toBeNull();
-    expect(sent.filter(({ line }) => line.includes('/api/events/'))).toEqual([]);
+    expect(
+      sent.filter(({ line }) => line.includes('/api/events/')).map(({ line }) => line),
+    ).toEqual(['GET /api/events/ev_1']);
   });
 });
 
@@ -2701,6 +2744,7 @@ describe("An event's venue (sc-3589)", () => {
 
     cleanup();
     signedIn(READER);
+    serving({});
     at('/app/events/ev_1');
     const readOnly = await screen.findByRole('region', { name: 'Details' });
     expect(within(readOnly).getByText('Venue to be confirmed')).toBeDefined();
@@ -3145,7 +3189,7 @@ describe('The phase, End now and Call off (sc-3585)', () => {
   });
 
   it.each([
-    ['without events.manage', READER, live()],
+    ['without events.manage', READER, live({ permissions: READER.permissions })],
     ['on a Draft', IRE, event(AHEAD)],
     ['once it is Finished', IRE, live({ phase: 'finished' })],
   ])('offers neither End now nor Call off %s', async (_, who, served) => {
@@ -3412,7 +3456,7 @@ describe('Pause and Resume (sc-3586)', () => {
   });
 
   it.each([
-    ['without events.manage', READER, live()],
+    ['without events.manage', READER, live({ permissions: READER.permissions })],
     ['on a Draft', IRE, event(AHEAD)],
     ['once it is Finished', IRE, live({ phase: 'finished' })],
     ['while it is Paused', IRE, paused()],

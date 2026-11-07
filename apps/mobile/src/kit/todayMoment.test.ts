@@ -38,6 +38,7 @@ function event(name: string, rest: Partial<ListedEvent> = {}): ListedEvent {
     pausedAt: null,
     concludedAt: null,
     createdAt: '2026-10-01T00:00:00Z',
+    permissions: [],
     milestones: [],
     ...rest,
   };

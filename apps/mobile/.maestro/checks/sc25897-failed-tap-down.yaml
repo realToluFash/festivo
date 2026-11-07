@@ -1,5 +1,10 @@
 # sc-25897 Android: API stopped, keys hidden with back, body scrolled to its end, Create organisation tapped. The not-created notice comes wholly into view and the keys stay down.
 appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
 ---
 - runFlow: ../open-create-organisation.yaml
 - tapOn:

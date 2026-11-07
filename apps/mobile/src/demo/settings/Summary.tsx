@@ -12,7 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Initials } from '../../components/Initials.tsx';
 import { useReadOut } from '../../components/ReadOut.tsx';
-import { Text } from '../../components/Text.tsx';
+import { type TextHandle, Text } from '../../components/Text.tsx';
 import { Toast } from '../../components/Toast.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { Confetti, Cover } from '../../components/Cover.tsx';
@@ -59,6 +59,7 @@ export {
   FocusedScreen,
   type FocusVerb,
   type Layer,
+  MenuLayer,
 } from './SummaryOverlays.tsx';
 
 const hidden = {
@@ -281,13 +282,16 @@ export function CardSays({
   text,
   size = 24,
   heading = false,
+  ref,
 }: {
   text: string;
   size?: number;
   heading?: boolean;
+  ref?: Ref<TextHandle> | undefined;
 }) {
   return (
     <Text
+      ref={ref}
       size={size}
       weight="bold"
       accessibilityRole={heading ? 'header' : undefined}
@@ -325,9 +329,22 @@ export function CardCounts({
   );
 }
 
-export function OnCard({ text, strong = false }: { text: string; strong?: boolean }) {
+export function OnCard({
+  text,
+  strong = false,
+  ref,
+}: {
+  text: string;
+  strong?: boolean;
+  ref?: Ref<TextHandle> | undefined;
+}) {
   return (
-    <Text size={14.5} weight={strong ? 'semibold' : 'medium'} style={[styles.white, styles.onCard]}>
+    <Text
+      ref={ref}
+      size={14.5}
+      weight={strong ? 'semibold' : 'medium'}
+      style={[styles.white, styles.onCard]}
+    >
       {text}
     </Text>
   );

@@ -10,6 +10,8 @@ use App\Entity\Event;
 use App\Entity\User;
 use App\Enum\ErrorCode;
 use App\Enum\Permission;
+use App\Http\Access\Grants;
+use App\Http\Access\Interfaces\MembershipDirectoryInterface;
 use App\Http\Access\Policy\InEvent;
 use App\Http\Access\Policy\InOrganisation;
 use App\Http\Exception\ApiException;
@@ -32,6 +34,7 @@ final readonly class EventCoverController
         private EventRepository $eventRepository,
         private EventCoverEditor $eventCoverEditor,
         private EventSerialiser $eventSerialiser,
+        private MembershipDirectoryInterface $membershipDirectory,
     ) {
     }
 
@@ -89,7 +92,7 @@ final readonly class EventCoverController
 
         $this->eventCoverEditor->set($event, $this->user(), $body['uploadKey'] ?? null, $body['position'], $body['description'] ?? null);
 
-        return new JsonResponse(['event' => $this->eventSerialiser->event($event)]);
+        return new JsonResponse(['event' => $this->eventSerialiser->event($event, $this->grantsOn($event))]);
     }
 
     #[Route('/api/events/{eventId}/cover', name: 'event_cover_delete', methods: ['DELETE'])]
@@ -99,7 +102,12 @@ final readonly class EventCoverController
         $event = $this->event($eventId);
         $this->eventCoverEditor->remove($event, $this->user());
 
-        return new JsonResponse(['event' => $this->eventSerialiser->event($event)]);
+        return new JsonResponse(['event' => $this->eventSerialiser->event($event, $this->grantsOn($event))]);
+    }
+
+    private function grantsOn(Event $event): Grants
+    {
+        return $this->membershipDirectory->grantsOnEvent($this->user(), $event->getOrganisation()->getId(), $event->getId()) ?? Grants::only([]);
     }
 
     private function event(string $id): Event
