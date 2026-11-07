@@ -1021,6 +1021,25 @@ class Unblocked(Base):
         cli.baseline(self.db)
         self.assertEqual(self.wakes(), [(9, 40, "done")])
 
+    def test_install_baselines_only_after_a_whole_first_sync(self):
+        def cut_sync(db, **kwargs):
+            self.assertIsNone(kwargs["budget"])
+            store.set_meta(db, "sync_report", {"at": 0, "took": {}, "cut": ["shortcut"]})
+            return []
+
+        with mock.patch.object(cli.sync, "sync", side_effect=cut_sync):
+            self.assertIn("shortcut", cli.first_sync(self.db)[0])
+        self.assertEqual(self.wakes(), [])
+        self.assertIsNone(store.get_meta(self.db, "baselined_at"))
+
+        def whole_sync(db, **kwargs):
+            store.set_meta(db, "sync_report", {"at": 0, "took": {}, "cut": []})
+            return []
+
+        with mock.patch.object(cli.sync, "sync", side_effect=whole_sync):
+            self.assertEqual(cli.first_sync(self.db), [])
+        self.assertEqual(self.wakes(), [(9, 40, "done")])
+
 
 def pr(verdict=None, mergeable="mergeable", threads=(), at=HEAD, carried=None):
     lead = [{"verdict": verdict, "sha": at, "at": "t"}] if verdict else []

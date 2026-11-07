@@ -37,11 +37,9 @@ export function useDialogKeys(
 
 /** Tab and Shift+Tab wrap inside an open dialog rather than leaving it. */
 export function keepFocusIn(dialog: HTMLElement, event: KeyboardEvent): void {
-  const controls = [
-    ...dialog.querySelectorAll<HTMLElement>('input, select, textarea, button, a[href]'),
-  ].filter((control) => !control.matches(':disabled'));
-  const first = controls[0];
-  const last = controls[controls.length - 1];
+  const stops = tabStops(dialog);
+  const first = stops[0];
+  const last = stops[stops.length - 1];
 
   if (first == null || last == null) {
     event.preventDefault();
@@ -49,13 +47,50 @@ export function keepFocusIn(dialog: HTMLElement, event: KeyboardEvent): void {
     return;
   }
 
-  const inside = dialog.contains(document.activeElement);
+  const active = document.activeElement;
+  const inside = dialog.contains(active);
 
-  if (event.shiftKey && (!inside || document.activeElement === first)) {
+  if (event.shiftKey && (!inside || isAt(first, active))) {
     event.preventDefault();
     last.focus();
-  } else if (!event.shiftKey && (!inside || document.activeElement === last)) {
+  } else if (!event.shiftKey && (!inside || isAt(last, active))) {
     event.preventDefault();
     first.focus();
   }
+}
+
+/** A choice list is one stop: its picked choice, or its first when none is picked (WAI-ARIA APG, Radio Group). */
+function tabStops(dialog: HTMLElement): HTMLElement[] {
+  const controls = [
+    ...dialog.querySelectorAll<HTMLElement>('input, select, textarea, button, a[href]'),
+  ].filter((control) => !control.matches(':disabled'));
+
+  return controls.filter((control) => {
+    const group = choicesWith(control, controls);
+
+    return group.length === 0 || control === (group.find((choice) => choice.checked) ?? group[0]);
+  });
+}
+
+function choicesWith(
+  control: Element | null,
+  controls: readonly HTMLElement[],
+): HTMLInputElement[] {
+  if (!(control instanceof HTMLInputElement) || control.type !== 'radio' || control.name === '') {
+    return [];
+  }
+
+  return controls.filter(
+    (other): other is HTMLInputElement =>
+      other instanceof HTMLInputElement &&
+      other.type === 'radio' &&
+      other.name === control.name &&
+      other.form === control.form,
+  );
+}
+
+function isAt(stop: HTMLElement, active: Element | null): boolean {
+  return (
+    active === stop || (active instanceof HTMLElement && choicesWith(stop, [active]).length > 0)
+  );
 }

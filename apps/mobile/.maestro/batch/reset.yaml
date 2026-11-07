@@ -3,6 +3,11 @@
 # session is kept, and Expo Go is not relaunched.
 appId: host.exp.Exponent
 ---
+# Access paused offers no sign-out, so what the last check joined goes first. sc-28674.
+- runScript:
+    file: helper.js
+    env:
+      ASK: /membership?change=clear
 # A check that turned the iPad and failed before turning it back leaves it turned.
 - setOrientation: PORTRAIT
 # A check that went offline and failed before coming back leaves the phone offline.

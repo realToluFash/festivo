@@ -309,7 +309,7 @@ function PhoneCode({ state, flow }: { state: string; flow: Flow }) {
         <Verified
           step={2}
           title="Number verified"
-          body={`Soirely can reach you on ${flow.phone} if something goes wrong on the night.`}
+          body={`Soirely can reach you on ${flow.phone} if something goes wrong on the day.`}
           action="Continue to Soirely"
           onContinue={() => void navigate('/demo/signed-in')}
         />
@@ -638,7 +638,7 @@ export function Details({
                 number={number}
                 onNumber={setNumber}
                 line={lines.number ?? null}
-                help="How you are reached on the night if something goes wrong. If you add one, we text it a code to check it."
+                help="How you are reached on the day if something goes wrong. If you add one, we text it a code to check it."
                 optional
                 numberField={numberField}
               />
