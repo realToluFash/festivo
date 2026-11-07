@@ -1268,10 +1268,8 @@
     "emailShape": "That does not look like an email address. Check it has an @ and a domain, like amara.o@gmail.com.",
     "roleMeans": {
       "owner": "Everything, including billing and deleting the organisation.",
-      "administrator": "Everything in events, plus members and roles. Not billing.",
-      "event_manager": "Everything inside events, and manages the budget. Never the margin.",
-      "coordinator": "Runs events. Reads the budget, never the margin.",
-      "read_only": "Sees events. Changes nothing."
+      "administrator": "Everything except billing. Sees every event and manages members.",
+      "member": "Works on the events they’re added to, and sees no others."
     },
     "inviteNote": "They get an email in their language with a link to join {{organisation}} as {{role}}. The email says when the link stops working.",
     "send": "Send invitation",
