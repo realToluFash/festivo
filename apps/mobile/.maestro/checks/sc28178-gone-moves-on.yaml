@@ -1,0 +1,71 @@
+# sc-28178: working in Alpha, the member is suspended, removed, or Alpha is deleted with the app
+# open, and they also belong to QA Organisation; the next move opens QA Organisation with Now
+# working in ‹name›., and the switcher no longer lists Alpha. Each change once: a tap on Home
+# after a removal and a deletion, from Events, the case that failed at f60d6b6, and on
+# Calendar after a suspension.
+appId: host.exp.Exponent
+---
+- runFlow:
+    file: sc28178/joined.yaml
+    env:
+      ORG: Alpha
+# A notice from the change before can still show: gone first, or it passes the wait below.
+- extendedWaitUntil:
+    notVisible: '{{t:switcher.switched}}'
+    timeout: 20000
+- runFlow:
+    file: sc28178/changed.yaml
+    env:
+      ORG: Alpha
+      FROM: frame.events
+      CHANGE: suspend
+      MOVE: frame.calendar
+- extendedWaitUntil:
+    visible: '{{t:switcher.switched}}'
+    timeout: 20000
+- assertNotVisible: '{{t:accessPaused.since}}'
+- takeScreenshot: suspended-moved-on
+- runFlow:
+    file: sc28178/joined.yaml
+    env:
+      ORG: Alpha
+# A notice from the change before can still show: gone first, or it passes the wait below.
+- extendedWaitUntil:
+    notVisible: '{{t:switcher.switched}}'
+    timeout: 20000
+- runFlow:
+    file: sc28178/changed.yaml
+    env:
+      ORG: Alpha
+      FROM: frame.events
+      CHANGE: remove
+      MOVE: frame.home
+- extendedWaitUntil:
+    visible: '{{t:switcher.switched}}'
+    timeout: 20000
+- assertNotVisible: '{{t:accessPaused.since}}'
+- takeScreenshot: removed-moved-on
+- runFlow:
+    file: sc28178/joined.yaml
+    env:
+      ORG: Alpha
+# A notice from the change before can still show: gone first, or it passes the wait below.
+- extendedWaitUntil:
+    notVisible: '{{t:switcher.switched}}'
+    timeout: 20000
+- runFlow:
+    file: sc28178/changed.yaml
+    env:
+      ORG: Alpha
+      FROM: frame.events
+      CHANGE: delete
+      MOVE: frame.home
+- extendedWaitUntil:
+    visible: '{{t:switcher.switched}}'
+    timeout: 20000
+- assertNotVisible: '{{t:accessPaused.since}}'
+- takeScreenshot: deleted-moved-on
+- runFlow: ../open-switcher.yaml
+- assertNotVisible:
+    id: 'switcher.${output.joined}'
+- takeScreenshot: switcher

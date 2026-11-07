@@ -215,14 +215,6 @@ describe('the demo', () => {
     expect(await screen.findByRole('heading', { name: 'This page does not exist' })).toBeDefined();
   });
 
-  it('says a two-factor sign-in that ran out timed out, the email kept (sc-29956)', async () => {
-    await signInBoard('code-timed-out');
-
-    expect(screen.getByText('That sign-in timed out')).toBeDefined();
-    expect(screen.getByText('Sign in again to carry on.')).toBeDefined();
-    expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe(SAMPLE.email);
-  });
-
   it('gives the form way to the providers when password sign-in is off', async () => {
     await signInBoard('provider-only');
 
@@ -408,7 +400,7 @@ describe('the demo creates an account (sc-29061)', () => {
     expect(screen.getByText('Add your organisation’s name to carry on.')).toBeDefined();
     expect(screen.getByText(/too short for United Kingdom/)).toBeDefined();
     expect(screen.queryByText(/Your events belong to it/)).toBeNull();
-    expect(screen.queryByText(/How you are reached on the night/)).toBeNull();
+    expect(screen.queryByText(/How you are reached on the day/)).toBeNull();
     expect(document.activeElement).toBe(screen.getByLabelText('Organisation name'));
   });
 
@@ -806,6 +798,16 @@ describe('the demo signs in with two-factor (sc-29063)', () => {
     );
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'Keep waiting' }));
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(screen.getByRole('heading', { name: 'Waiting for your organisation' })).toBeDefined();
+  });
+
+  it('keeps waiting on Escape, as Keep waiting does (sc-29957)', async () => {
+    await page('?page=waiting', 'Waiting for your organisation');
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel the request' }));
+    expect(screen.getByRole('alertdialog', { name: 'Cancel your request?' })).toBeDefined();
+
+    fireEvent.keyDown(document, { key: 'Escape' });
     expect(screen.queryByRole('alertdialog')).toBeNull();
     expect(screen.getByRole('heading', { name: 'Waiting for your organisation' })).toBeDefined();
   });

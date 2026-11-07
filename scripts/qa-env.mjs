@@ -804,10 +804,22 @@ function androidTools() {
   };
 }
 
+export function missingCmdlineTools({ sdk, avdmanager }) {
+  return [
+    `  no Android SDK command-line tools in ${sdk}`,
+    `  expected avdmanager at ${avdmanager}`,
+    '  install them either way, then run `node scripts/qa-env.mjs setup` again:',
+    '    - Android Studio: Settings > Languages & Frameworks > Android SDK > SDK Tools,',
+    '      tick "Android SDK Command-line Tools (latest)" and apply',
+    '    - or download the command-line tools zip from https://developer.android.com/studio#command-tools',
+    `      and unzip it so its bin/ sits at ${dirname(avdmanager)}`,
+  ].join('\n');
+}
+
 function createEmulators() {
   const tools = androidTools();
   if (!existsSync(tools.avdmanager)) {
-    console.log(`  no Android SDK command-line tools in ${tools.sdk}`);
+    console.log(missingCmdlineTools(tools));
     return;
   }
   const image = playImage(tools.sdk);
@@ -1264,16 +1276,31 @@ async function startBundler(root, env = process.env) {
 }
 
 async function bundlerUp(seconds = 120) {
-  const statusUrl = `http://127.0.0.1:${CONFIG.ports.METRO_PORT}/status`;
   for (let i = 0; i < seconds; i++) {
-    const answer = await fetch(statusUrl).then(
-      (r) => r.text(),
-      () => '',
-    );
-    if (answer.includes('running')) return true;
+    if (await bundlerAnswers()) return true;
     await pause(1000);
   }
   return false;
+}
+
+export async function bundlerAnswers(port = CONFIG.ports.METRO_PORT) {
+  const answer = await fetch(`http://127.0.0.1:${port}/status`, {
+    signal: AbortSignal.timeout(3000),
+  }).then(
+    (r) => r.text(),
+    () => '',
+  );
+  return answer.includes('running');
+}
+
+export const bundlerCommand = (onAndroid) => (onAndroid ? 'android' : 'ios');
+
+export const noBundler = ({ port, command }) =>
+  `no bundler on ${port}: start it with \`node .qa/bin/qa-env.mjs ${command}\``;
+
+// Every check reloads through the bundler, so without one each Maestro start fails the same way.
+export async function assertBundler(bundler, answers = bundlerAnswers) {
+  if (!(await answers(bundler.port))) throw new Error(noBundler(bundler));
 }
 
 const SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
@@ -2361,6 +2388,100 @@ function apiSession(email, password, secret) {
   return (path, options) => session((token) => api(path, { ...options, token }));
 }
 
+export const MEMBERSHIP_CHANGES = ['join', 'pause', 'suspend', 'remove', 'delete', 'clear'];
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+// Owners are registered as few as possible: sign-ups are limited to ten an hour per address.
+export function membershipChanges({ email, member, ownerOf, sql }) {
+  let owning = null;
+  const newOwner = () =>
+    (owning = ownerOf().catch((error) => {
+      owning = null;
+      throw error;
+    }));
+  // Each owner may make five organisations an hour, so a refused one hands over to a new owner.
+  const create = async (name) => {
+    const body = { name, countryCode: 'GB', timezone: 'Europe/London' };
+    const owner = await (owning ?? newOwner());
+    try {
+      return { owner, ...(await owner('/api/orgs', { body })) };
+    } catch (error) {
+      if (error.status !== 429) throw error;
+      const next = await newOwner();
+      return { owner: next, ...(await next('/api/orgs', { body })) };
+    }
+  };
+  const joined = new Map();
+  const find = (name) => {
+    const org = joined.get(name);
+    if (!org)
+      throw new Error(`${name} was not joined in this batch: /membership?change=join first`);
+    return org;
+  };
+  const membershipIn = async ({ id, owner }) => {
+    const { members } = await owner(`/api/orgs/${id}/members`, { method: 'GET' });
+    const mine = members.find((m) => m.user.email === email)?.id;
+    if (!UUID.test(mine ?? '')) throw new Error(`${email} holds no membership in ${id}`);
+    return mine;
+  };
+  const changes = {
+    // Or a name joined again would show twice in the switcher.
+    join: async (name) => {
+      if (joined.has(name)) await changes.delete(name);
+      const {
+        owner,
+        organisation: { id },
+      } = await create(name);
+      const { roles } = await owner(`/api/orgs/${id}/roles`, { method: 'GET' });
+      // A seeded member reads no events, so it would have no Events or Calendar to move to.
+      const roleId = roles.find((r) => r.seededAs === 'administrator').id;
+      const { invitation } = await owner(`/api/orgs/${id}/members/invite`, {
+        body: { email, roleId },
+      });
+      await member(`/api/invitations/${invitation.id}/accept`, {});
+      joined.set(name, { id, owner });
+      return { id };
+    },
+    pause: async (name) => sql(domainPause(await membershipIn(find(name)), email)),
+    suspend: async (name) => {
+      const org = find(name);
+      await org.owner(`/api/orgs/${org.id}/members/${await membershipIn(org)}/suspend`, {});
+    },
+    remove: async (name) => {
+      const org = find(name);
+      await org.owner(`/api/orgs/${org.id}/members/${await membershipIn(org)}`, {
+        method: 'DELETE',
+      });
+    },
+    delete: async (name) => {
+      const { id, owner } = find(name);
+      await owner(`/api/orgs/${id}`, { method: 'DELETE', body: { name } });
+      joined.delete(name);
+    },
+  };
+  // Access paused has no way out, so a batch deletes what it joined before each check and after.
+  const clear = async () => {
+    for (const name of [...joined.keys()]) await changes.delete(name);
+    return { membership: 'clear' };
+  };
+  return async (change, name) => {
+    if (!MEMBERSHIP_CHANGES.includes(change)) {
+      throw new Error(`no membership change ${change}: ${MEMBERSHIP_CHANGES.join(', ')}`);
+    }
+    if (change === 'clear') return clear();
+    if (!name) throw new Error(`${change} in which organisation? /membership?change=…&org=…`);
+    return { membership: change, org: name, ...(await changes[change](name)) };
+  };
+}
+
+// The API has no route to pause through a domain; this is what DomainSuspender writes.
+export function domainPause(membershipId, email) {
+  if (!UUID.test(membershipId)) throw new Error(`not a membership id: ${membershipId}`);
+  const domain = email.split('@')[1];
+  if (!/^[a-z0-9.-]+$/i.test(domain ?? '')) throw new Error(`no domain in ${email}`);
+  return `UPDATE memberships SET status = 'suspended', suspension = 'domain_closed', domain = '${domain.toLowerCase()}', suspended_at = now(), removes_at = now() + interval '30 days' WHERE id = '${membershipId}'`;
+}
+
 async function reloadApp() {
   const Socket = globalThis.WebSocket ?? (await import('ws')).WebSocket;
   return new Promise((done, failed) => {
@@ -2579,6 +2700,7 @@ export function startHelper({
   heard,
   device,
   onAndroid,
+  changeMembership,
   open = openOnEmulator,
   reload = reloadOnEmulator,
   portrait = portraitOnEmulator,
@@ -2627,6 +2749,16 @@ export function startHelper({
           throw new Error(`no API state ${to}: ${API_STATES.join(', ')}`);
         if (!(await within(8000, apiState.move(to)))) return reply(200, { wait: true });
         return reply(200, { api: to });
+      }
+      if (url.pathname === '/membership') {
+        if (!changeMembership && url.searchParams.get('change') === 'clear')
+          return reply(200, { membership: 'clear' });
+        if (!changeMembership) throw new Error('this batch makes no membership change');
+        if (!(await within(8000, apiState.move('up')))) return reply(200, { wait: true });
+        return reply(
+          200,
+          await changeMembership(url.searchParams.get('change'), url.searchParams.get('org')),
+        );
       }
       if (url.pathname === '/started') {
         if (!(await within(8000, apiState.move('up')))) return reply(200, { wait: true });
@@ -2708,6 +2840,8 @@ async function batch(args) {
   const source = join(root, 'apps/mobile/.maestro');
   const missing = checks.filter((check) => !existsSync(join(source, 'checks', `${check}.yaml`)));
   if (missing.length) throw new Error(`no ${missing.join(', ')} in apps/mobile/.maestro/checks`);
+  const bundler = { port: CONFIG.ports.METRO_PORT, command: bundlerCommand(onAndroid) };
+  await assertBundler(bundler);
   const device = maestroDevice(args);
   if (!onAndroid && !passwordAutoFillIsOff(device)) {
     throw new Error(
@@ -2748,10 +2882,23 @@ async function batch(args) {
   const crashed = [];
   const unstarted = new Map();
   const watchdog = { stopped: false };
+  let resumed = {};
   const setLocale = async (locale) => {
     await apiState.move('up');
     await signedIn('/api/auth/locale', { method: 'PUT', body: { locale } });
   };
+  const changeMembership = membershipChanges({
+    email,
+    member: apiSession(email, password, secret),
+    ownerOf: () => organisationOwner(root),
+    sql: async (statement) => {
+      const psql = ['compose', 'exec', '-T', 'postgres', 'psql', '-U', 'soirely', '-d', 'soirely'];
+      const answer = capture('docker', [...psql, '-v', 'ON_ERROR_STOP=1', '-c', statement], {
+        cwd: root,
+      });
+      if (answer !== 'UPDATE 1') throw new Error(`the database changed no membership: ${answer}`);
+    },
+  });
   const helper = await startHelper({
     email,
     secret,
@@ -2762,6 +2909,7 @@ async function batch(args) {
     heard,
     device,
     onAndroid,
+    changeMembership,
   });
   // The secret stays with the helper: no flow is handed it.
   const env = {
@@ -2807,15 +2955,15 @@ async function batch(args) {
   const started = Date.now();
   try {
     if (cold) {
-      for (const run of batchRuns(checks, languages)) {
+      resumed = await coldBatch(batchRuns(checks, languages), async (run) => {
         if (named) await setLocale(run.language);
         await test(join(flows, `_cold.${runId(run)}.yaml`), [run]);
-      }
+      });
     } else {
       if (named) await setLocale(languages[0]);
       const first = await test(join(flows, '_batch.yaml'), batchRuns(checks, languages));
       // After a driver crash the checks it never reached run in a fresh Maestro.
-      await resumeBatch(first.rest, async (rest, attempt) => {
+      resumed = await resumeBatch(first.rest, async (rest, attempt) => {
         const flow = join(flows, `_rest.${attempt}.yaml`);
         const written = batchFlow({ runs: rest });
         writeFileSync(flow, onAndroid ? forAndroid(written) : written);
@@ -2828,6 +2976,9 @@ async function batch(args) {
     await apiState
       .move('up')
       .catch((error) => console.error(`\nThe API is still held: ${error.message}`));
+    await changeMembership('clear').catch((error) =>
+      console.error(`\nAn organisation this batch joined is left: ${error.message}`),
+    );
     // The app follows the account's language when it next opens, and later flows expect English.
     if (named) await setLocale(before ?? 'en');
   }
@@ -2841,7 +2992,8 @@ async function batch(args) {
     `\nBatch ${name}${cold ? ', each check alone and cold' : ''}: ` +
       `${ids.length - failed.length} passed, ${failed.length} failed, in ${Math.floor(seconds / 60)}m${seconds % 60}s`,
   );
-  for (const line of batchSummary(ids, { passed, begun, crashed, unstarted }))
+  const gone = resumed.bundlerGone ? bundler : null;
+  for (const line of batchSummary(ids, { passed, begun, crashed, unstarted, bundlerGone: gone }))
     console.log(`  ${line}`);
   console.log(`Evidence in ${out}`);
   if (failed.length) {
@@ -2887,9 +3039,20 @@ export async function runHeld(
 
 export const MAX_RESUMES = 3;
 
-export async function resumeBatch(rest, resume) {
-  for (let attempt = 1; rest.length && attempt <= MAX_RESUMES; attempt++)
+export async function coldBatch(runs, test, { bundler = () => bundlerAnswers() } = {}) {
+  for (const run of runs) {
+    if (!(await bundler())) return { bundlerGone: true };
+    await test(run);
+  }
+  return { bundlerGone: false };
+}
+
+export async function resumeBatch(rest, resume, { bundler = () => bundlerAnswers() } = {}) {
+  for (let attempt = 1; rest.length && attempt <= MAX_RESUMES; attempt++) {
+    if (!(await bundler())) return { bundlerGone: true };
     ({ rest } = await resume(rest, attempt));
+  }
+  return { bundlerGone: false };
 }
 
 // Checks are optional, so a run that ends before the last check it held, or that the watchdog
@@ -2909,13 +3072,18 @@ const UNSTARTED = {
   ended: 'not run: Maestro ended before the first check, while signing in (its output says why)',
 };
 
-export function batchSummary(ids, { passed, begun, crashed, unstarted = new Map() }) {
-  return ids.map((id) => {
+export function batchSummary(
+  ids,
+  { passed, begun, crashed, unstarted = new Map(), bundlerGone = null },
+) {
+  const lines = ids.map((id) => {
     if (passed.has(id)) return `✓ ${id}`;
     if (crashed.includes(id)) return `✗ ${id}: Maestro's driver stopped answering (a driver crash)`;
     if (!begun.includes(id)) return `✗ ${id}: ${UNSTARTED[unstarted.get(id)] ?? 'not run'}`;
     return `✗ ${id}`;
   });
+  if (bundlerGone === null) return lines;
+  return [...lines, `Stopped: ${noBundler(bundlerGone)}`];
 }
 
 export function rerunHints(name, failures, { args, email, secret, rest = {} }) {
@@ -2956,22 +3124,12 @@ async function account(args) {
     return;
   }
   const passed = args.filter((a) => a !== '--two-factor' && a !== '--ready');
-  const made = capture('node', ['scripts/qa-account.mjs', '--json', ...passed], {
-    cwd: root,
-    env: { ...process.env, ...env },
-  });
-  if (made === null) throw new Error('scripts/qa-account.mjs registered no account');
-  const { email, password, name, accessToken: token, sessionId } = JSON.parse(made);
-  await api('/api/auth/complete-profile', {
-    method: 'PATCH',
-    token,
-    body: {
-      name,
-      organisationName: ACCOUNT_ORGANISATION,
-      countryCode: 'GB',
-      timezone: 'Europe/London',
-    },
-  });
+  const {
+    email,
+    password,
+    accessToken: token,
+    sessionId,
+  } = await founder(root, ACCOUNT_ORGANISATION, passed);
   let secret = null;
   if (twoFactor) {
     ({ secret } = await api('/api/auth/two-factor/enrol', { token }));
@@ -2979,6 +3137,26 @@ async function account(args) {
     await api('/api/auth/two-factor/activate', { token, body: { code } });
   }
   console.log(readyReport({ email, password, secret, accessToken: token, sessionId }));
+}
+
+async function organisationOwner(root) {
+  const { email, password } = await founder(root, 'QA Owner');
+  return apiSession(email, password, null);
+}
+
+async function founder(root, organisationName, args = []) {
+  const made = capture('node', ['scripts/qa-account.mjs', '--json', ...args], {
+    cwd: root,
+    env: { ...process.env, SOIRELY_API_URL: CONFIG.urls.api, MAILPIT_URL: CONFIG.urls.mailpit },
+  });
+  if (made === null) throw new Error('scripts/qa-account.mjs registered no account');
+  const registered = JSON.parse(made);
+  await api('/api/auth/complete-profile', {
+    method: 'PATCH',
+    token: registered.accessToken,
+    body: { name: registered.name, organisationName, countryCode: 'GB', timezone: 'Europe/London' },
+  });
+  return registered;
 }
 
 // The session it signed in with is printed, so a flow can end it from outside the phone.

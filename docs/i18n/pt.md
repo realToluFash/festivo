@@ -43,6 +43,7 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **7 Nov 2026. O que cada função faz, em Membros** (`web:membersScreen.roleMeans.*`, sc-30138). As frases não têm sujeito, como `owner`. Os eventos de um Membro são "os eventos que lhe são atribuídos": "lhe" não concorda com ninguém, ao passo que "a que é adicionado" imporia um género. A mesma forma serve para a app.
 - **7 Nov 2026. As outras formas de entrar na app** (`mobile:steps.invited*`, `join`,
   `startOwnInstead`, `mobile:requestToJoin.messageOptional`, `signedOutLine`, sc-30119). "You’re
   invited" é "Tem um convite", nunca "Foi convidado", que concorda com um género. O botão é

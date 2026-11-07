@@ -28,6 +28,9 @@ import {
   batchFlow,
   batchRuns,
   afterRun,
+  assertBundler,
+  bundlerCommand,
+  coldBatch,
   batchSummary,
   physicalSize,
   portraitRotation,
@@ -54,6 +57,8 @@ import {
   runAsync,
   runBudgetMs,
   startHelper,
+  membershipChanges,
+  domainPause,
   STEP_MS,
   totp,
   androidFlows,
@@ -80,6 +85,7 @@ import {
   resumeBatch,
   runHeld,
   maestroTarget,
+  missingCmdlineTools,
   parseTarget,
   hardwareKeyboardOff,
   passwordAutoFillFiles,
@@ -1706,6 +1712,44 @@ describe('the batch helper', () => {
       server.close();
     }
   });
+  it('hands a membership change to the batch, once the API is up', async () => {
+    const asked = [];
+    const { server, ask } = await helperFor('running', undefined, {
+      changeMembership: async (change, org) => {
+        asked.push([change, org]);
+        return { membership: change, org };
+      },
+    });
+    try {
+      expect(await ask('/membership?change=suspend&org=Alpha%20Hall')).toEqual({
+        membership: 'suspend',
+        org: 'Alpha Hall',
+      });
+      expect(asked).toEqual([['suspend', 'Alpha Hall']]);
+    } finally {
+      server.close();
+    }
+  });
+
+  it('refuses a membership change in a batch that makes none', async () => {
+    const { server, ask } = await helperFor('running');
+    try {
+      expect(await ask('/membership?change=pause&org=Alpha')).toEqual({
+        error: 'this batch makes no membership change',
+      });
+    } finally {
+      server.close();
+    }
+  });
+
+  it('clears nothing for a flow run alone, so reset.yaml still runs outside a batch', async () => {
+    const { server, ask } = await helperFor('running');
+    try {
+      expect(await ask('/membership?change=clear')).toEqual({ membership: 'clear' });
+    } finally {
+      server.close();
+    }
+  });
 });
 
 describe('a batch flow', () => {
@@ -1866,7 +1910,48 @@ describe('Expo Go after a reload', () => {
   });
 });
 
+describe('a batch with no bundler', () => {
+  it('stops before any Maestro run, naming the port and how to start it', async () => {
+    const asked = [];
+    await expect(
+      assertBundler({ port: 18081, command: bundlerCommand(false) }, async (port) => {
+        asked.push(port);
+        return false;
+      }),
+    ).rejects.toThrow('no bundler on 18081: start it with `node .qa/bin/qa-env.mjs ios`');
+    expect(asked).toEqual([18081]);
+  });
+
+  it('names android as the way to start it for an Android batch', async () => {
+    await expect(
+      assertBundler({ port: 18081, command: bundlerCommand(true) }, async () => false),
+    ).rejects.toThrow('no bundler on 18081: start it with `node .qa/bin/qa-env.mjs android`');
+  });
+
+  it('goes on when the bundler answers', async () => {
+    await expect(
+      assertBundler({ port: 18081, command: 'ios' }, async () => true),
+    ).resolves.toBeUndefined();
+  });
+});
+
 describe('the list a batch ends with', () => {
+  it('names the bundler once when it went away and the batch stopped resuming', () => {
+    expect(
+      batchSummary(['home', 'settings', 'roles'], {
+        passed: new Set(['home']),
+        begun: ['home', 'settings'],
+        crashed: ['settings'],
+        bundlerGone: { port: 18081, command: 'ios' },
+      }),
+    ).toEqual([
+      '✓ home',
+      "✗ settings: Maestro's driver stopped answering (a driver crash)",
+      '✗ roles: not run',
+      'Stopped: no bundler on 18081: start it with `node .qa/bin/qa-env.mjs ios`',
+    ]);
+  });
+
   it('names the check the driver died in, and those it never reached', () => {
     expect(
       batchSummary(['home', 'settings', 'roles', 'members'], {
@@ -2063,20 +2148,78 @@ describe('what a Maestro run that lost its driver leaves to resume', () => {
 
   it('stops resuming after the cap when every resume crashes on the same check', async () => {
     let resumes = 0;
-    await resumeBatch(runs, async (rest) => {
-      resumes++;
-      return { rest: resumes > 20 ? [] : rest };
-    });
+    await resumeBatch(
+      runs,
+      async (rest) => {
+        resumes++;
+        return { rest: resumes > 20 ? [] : rest };
+      },
+      { bundler: async () => true },
+    );
     expect(resumes).toBe(MAX_RESUMES);
   });
 
   it('stops resuming once a resume leaves nothing to run', async () => {
     let resumes = 0;
-    await resumeBatch(runs, async () => {
-      resumes++;
-      return { rest: [] };
-    });
+    await resumeBatch(
+      runs,
+      async () => {
+        resumes++;
+        return { rest: [] };
+      },
+      { bundler: async () => true },
+    );
     expect(resumes).toBe(1);
+  });
+
+  it('makes no further resume once the bundler has gone, and says so', async () => {
+    let resumes = 0;
+    const answers = [true, false];
+    const resumed = await resumeBatch(
+      runs,
+      async (rest) => {
+        resumes++;
+        return { rest };
+      },
+      { bundler: async () => answers.shift() },
+    );
+    expect(resumes).toBe(1);
+    expect(resumed).toEqual({ bundlerGone: true });
+  });
+
+  it('starts no resume when the bundler is gone after the first run', async () => {
+    let resumes = 0;
+    const resumed = await resumeBatch(
+      runs,
+      async (rest) => {
+        resumes++;
+        return { rest };
+      },
+      { bundler: async () => false },
+    );
+    expect(resumes).toBe(0);
+    expect(resumed).toEqual({ bundlerGone: true });
+  });
+});
+
+describe('a cold batch whose bundler goes away', () => {
+  it('runs no further check once the bundler has gone, and says so', async () => {
+    const ran = [];
+    const answers = [true, false];
+    const cold = await coldBatch(['home', 'settings', 'roles'], async (run) => ran.push(run), {
+      bundler: async () => answers.shift(),
+    });
+    expect(ran).toEqual(['home']);
+    expect(cold).toEqual({ bundlerGone: true });
+  });
+
+  it('runs every check while the bundler answers', async () => {
+    const ran = [];
+    const cold = await coldBatch(['home', 'settings'], async (run) => ran.push(run), {
+      bundler: async () => true,
+    });
+    expect(ran).toEqual(['home', 'settings']);
+    expect(cold).toEqual({ bundlerGone: false });
   });
 });
 
@@ -2510,6 +2653,164 @@ describe('the API taken from the device', () => {
   });
 });
 
+describe('a membership change a check asks for', () => {
+  const MEMBERSHIP = '01a1ae45-86aa-7b0a-b43c-1524b2b5e0ab';
+  const changesFor = () => {
+    const calls = [];
+    const statements = [];
+    let made = 0;
+    let owners = 0;
+    let refusing = false;
+    const invited = [];
+    const ownerNumbered =
+      (n) =>
+      async (path, options = {}) => {
+        calls.push(`owner${n === 1 ? '' : `-${n}`} ${options.method ?? 'POST'} ${path}`);
+        if (path === '/api/orgs' && options.method !== 'GET') {
+          if (refusing) {
+            refusing = false;
+            throw Object.assign(new Error('Too many new organisations'), { status: 429 });
+          }
+          return { organisation: { id: `org-${++made}` } };
+        }
+        if (path.endsWith('/roles')) {
+          return {
+            roles: [
+              { id: 'r-owner', seededAs: 'owner' },
+              { id: 'r-administrator', seededAs: 'administrator' },
+              { id: 'r-member', seededAs: 'member' },
+            ],
+          };
+        }
+        if (path.endsWith('/members/invite')) {
+          invited.push(options.body.roleId);
+          return { invitation: { id: `inv-${made}` } };
+        }
+        if (path.endsWith('/members') && options.method === 'GET') {
+          return {
+            members: [
+              { id: 'other', user: { email: 'owner@soirely.test' } },
+              { id: MEMBERSHIP, user: { email: 'qa@soirely.test' } },
+            ],
+          };
+        }
+        return null;
+      };
+    const change = membershipChanges({
+      email: 'qa@soirely.test',
+      member: async (path) => calls.push(`member ${path}`),
+      ownerOf: async () => {
+        owners += 1;
+        return ownerNumbered(owners);
+      },
+      sql: async (statement) => statements.push(statement),
+    });
+    const refuseNextCreate = () => {
+      refusing = true;
+    };
+    return { change, calls, statements, invited, owners: () => owners, refuseNextCreate };
+  };
+
+  it('makes the organisation and the batch account an administrator in it', async () => {
+    const { change, calls, invited } = changesFor();
+    expect(await change('join', 'Alpha Hall')).toEqual({
+      membership: 'join',
+      org: 'Alpha Hall',
+      id: 'org-1',
+    });
+    expect(calls).toEqual([
+      'owner POST /api/orgs',
+      'owner GET /api/orgs/org-1/roles',
+      'owner POST /api/orgs/org-1/members/invite',
+      'member /api/invitations/inv-1/accept',
+    ]);
+    expect(invited).toEqual(['r-administrator']);
+  });
+
+  it('registers one owner for every organisation in the batch', async () => {
+    const { change, owners } = changesFor();
+    await change('join', 'Alpha Hall');
+    await change('join', 'Bravo');
+    expect(owners()).toBe(1);
+  });
+
+  it('suspends and removes the batch account through the API as the owner', async () => {
+    const { change, calls } = changesFor();
+    await change('join', 'Alpha Hall');
+    calls.length = 0;
+    await change('suspend', 'Alpha Hall');
+    await change('remove', 'Alpha Hall');
+    expect(calls).toEqual([
+      'owner GET /api/orgs/org-1/members',
+      `owner POST /api/orgs/org-1/members/${MEMBERSHIP}/suspend`,
+      'owner GET /api/orgs/org-1/members',
+      `owner DELETE /api/orgs/org-1/members/${MEMBERSHIP}`,
+    ]);
+  });
+
+  it("pauses through the database, the batch account's membership only", async () => {
+    const { change, statements } = changesFor();
+    await change('join', 'Alpha Hall');
+    await change('pause', 'Alpha Hall');
+    expect(statements).toEqual([domainPause(MEMBERSHIP, 'qa@soirely.test')]);
+    expect(statements[0]).toContain(`WHERE id = '${MEMBERSHIP}'`);
+    expect(statements[0]).toContain("suspension = 'domain_closed'");
+  });
+
+  it('deletes the organisation it made, and a name joined again is a new one', async () => {
+    const { change, calls } = changesFor();
+    await change('join', 'Alpha Hall');
+    await change('pause', 'Alpha Hall');
+    calls.length = 0;
+    await change('join', 'Alpha Hall');
+    expect(calls.slice(0, 2)).toEqual(['owner DELETE /api/orgs/org-1', 'owner POST /api/orgs']);
+    await change('delete', 'Alpha Hall');
+    await expect(change('suspend', 'Alpha Hall')).rejects.toThrow('was not joined in this batch');
+  });
+
+  it('hands over to a new owner once one may make no more organisations', async () => {
+    const { change, calls, owners, refuseNextCreate } = changesFor();
+    await change('join', 'Alpha Hall');
+    refuseNextCreate();
+    await change('join', 'Bravo');
+    expect(owners()).toBe(2);
+    calls.length = 0;
+    await change('suspend', 'Alpha Hall');
+    await change('suspend', 'Bravo');
+    expect(calls.filter((call) => call.includes('GET'))).toEqual([
+      'owner GET /api/orgs/org-1/members',
+      'owner-2 GET /api/orgs/org-2/members',
+    ]);
+  });
+
+  it('clears every organisation the batch joined, and none twice', async () => {
+    const { change, calls, owners } = changesFor();
+    expect(await change('clear')).toEqual({ membership: 'clear' });
+    expect(owners()).toBe(0);
+    await change('join', 'Alpha Hall');
+    await change('join', 'Bravo');
+    await change('suspend', 'Alpha Hall');
+    calls.length = 0;
+    await change('clear');
+    await change('clear');
+    expect(calls).toEqual(['owner DELETE /api/orgs/org-1', 'owner DELETE /api/orgs/org-2']);
+  });
+
+  it('refuses a change it does not know, or one with no organisation', async () => {
+    const { change } = changesFor();
+    await expect(change('wipe', 'Alpha Hall')).rejects.toThrow('no membership change wipe');
+    await expect(change('suspend', null)).rejects.toThrow('in which organisation?');
+    await expect(change('remove', 'Nowhere')).rejects.toThrow('Nowhere was not joined');
+  });
+
+  it('writes no statement from an id or an address that is not one', () => {
+    expect(() => domainPause("x'; DROP TABLE memberships; --", 'qa@soirely.test')).toThrow(
+      'not a membership id',
+    );
+    expect(() => domainPause(MEMBERSHIP, "qa@x'; --")).toThrow('no domain');
+  });
+});
+
 describe('waitForBoot', () => {
   const pause = async () => {};
 
@@ -2563,5 +2864,23 @@ describe('emulatorUnitGone', () => {
       'the emulator unit soirely-qa-emulator stopped (failed) before it booted:\nemulator: core dumped',
     );
     expect(emulatorUnitGone('soirely-qa-emulator', '', journal)).toContain('stopped (gone)');
+  });
+});
+
+describe('missingCmdlineTools', () => {
+  const message = missingCmdlineTools({
+    sdk: '/sdk',
+    avdmanager: '/sdk/cmdline-tools/latest/bin/avdmanager',
+  });
+
+  it('names the avdmanager path setup expected', () => {
+    expect(message).toContain('/sdk/cmdline-tools/latest/bin/avdmanager');
+  });
+
+  it('gives both ways to install the tools and says to run setup again', () => {
+    expect(message).toContain('Android SDK Command-line Tools (latest)');
+    expect(message).toContain('/sdk/cmdline-tools/latest/bin');
+    expect(message).toContain('developer.android.com/studio#command-tools');
+    expect(message).toContain('run `node scripts/qa-env.mjs setup` again');
   });
 });
