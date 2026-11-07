@@ -150,8 +150,8 @@ request. What it leaves as a one-line reference you can open with `sq dev story 
   naming it, then build what the demo covers and leave that part unbuilt until the demo
   has it. If the rest blocks you, start other work: leave the story In Progress with a
   `sq dev note` naming what it waits for, and take the next story in the queue. At most
-  three of your stories are open at once; with three waiting, take no new story and say
-  so in your report.
+  three of your stories wait In Progress on an answer at once; with three waiting, take
+  no new story and say so in your report.
 - **The comments** are where the QA report lives, and on a Failed QA story it is the whole
   brief. The dated amendment sections in the description ("Done, 15 Oct", "Reversed, Oct
   14") are the decision log — read them before re-litigating anything.
