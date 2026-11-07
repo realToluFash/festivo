@@ -8,19 +8,20 @@ import {
   View,
   type ViewInstance,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
-import { useReadOut } from '../../components/ReadOut.tsx';
-import { type TextHandle, Text } from '../../components/Text.tsx';
-import { Toast } from '../../components/Toast.tsx';
-import { tokens } from '../../theme/tokens.ts';
-import { Confetti, Cover } from '../../components/Cover.tsx';
-import { CARD_PIECES } from '../Cover.tsx';
-import { Glyph, type GlyphName } from '../../components/Glyph.tsx';
-import { Glass, PhoneTabBar } from '../../components/TodayCover.tsx';
-import { Bell, Fade, Landscape, OrgPill, PHONE_TAB_BAR, PortraitTop, useShell } from './Frame.tsx';
-import { Avatar, Back } from './parts.tsx';
-import { type MarkKind, StatusMark, TextAction } from './SummaryRows.tsx';
+import { Initials } from './Initials.tsx';
+import { useReadOut } from './ReadOut.tsx';
+import { type TextHandle, Text } from './Text.tsx';
+import { Toast } from './Toast.tsx';
+import { tokens } from '../theme/tokens.ts';
+import { CARD_PIECES, Confetti, Cover } from './Cover.tsx';
+import { Glyph, type GlyphName } from './Glyph.tsx';
+import { Glass } from './TodayCover.tsx';
+import { type MarkKind, ShapeMark } from './StatusMark.tsx';
+import { TextAction } from './SummaryRows.tsx';
+import { useShell } from './settingsShell.ts';
+import { Avatar, Back } from './SettingsParts.tsx';
 
 export {
   bringIntoView,
@@ -35,19 +36,18 @@ export {
   HeadCount,
   type ListItem,
   Line,
-  type MarkKind,
   Row,
   RowList,
   type RowTag,
   Section,
   SectionHead,
   SELECTED_ROW,
-  StatusMark,
   Tag,
   type TagKind,
   TextAction,
   TurningMark,
 } from './SummaryRows.tsx';
+export { type MarkKind, ShapeMark } from './StatusMark.tsx';
 export {
   type Anchor,
   AnchoredMenu,
@@ -67,96 +67,6 @@ const hidden = {
   importantForAccessibility: 'no-hide-descendants',
 } as const;
 
-/** A section page in B, summary first: back and the bell on top, the title, then the card and the lists. */
-export function SummaryPage({
-  title,
-  back,
-  column,
-  scrollRef,
-  toast,
-  children,
-}: {
-  title?: string;
-  back?: { label: string; onPress: () => void } | null;
-  column?: ReactNode;
-  scrollRef?: Ref<ScrollViewInstance>;
-  toast?: PageToastProps | null | undefined;
-  children: ReactNode;
-}) {
-  const shell = useShell();
-  const insets = useSafeAreaInsets();
-  const backTo = back === undefined ? { label: 'Settings', onPress: shell.toSettings } : back;
-
-  if (shell.layout === 'landscape')
-    return (
-      <Landscape column={column ?? shell.listColumn}>
-        <ScrollView
-          ref={scrollRef}
-          style={styles.grow}
-          contentContainerStyle={styles.pane}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          {title != null && <PageTitle text={title} size={28} />}
-          {children}
-        </ScrollView>
-        {toast != null && <PageToast {...toast} bottom={tokens.spaceLg} />}
-      </Landscape>
-    );
-
-  const phone = shell.layout === 'phone';
-  const foot = Math.max(insets.bottom - tokens.spaceXxs, tokens.spaceLg);
-
-  return (
-    <View style={styles.page}>
-      {!phone && <PortraitTop />}
-      <ScrollView
-        ref={scrollRef}
-        style={styles.grow}
-        contentContainerStyle={
-          phone
-            ? {
-                paddingTop: insets.top + tokens.spaceXxs,
-                paddingHorizontal: tokens.spaceXxl,
-                paddingBottom: foot + PHONE_TAB_BAR + tokens.space6xl * 2,
-              }
-            : {
-                paddingTop: tokens.spaceXl,
-                paddingHorizontal: tokens.space5xl,
-                paddingBottom: insets.bottom + tokens.space6xl * 2,
-              }
-        }
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.top}>
-          {backTo != null && <Back label={backTo.label} onPress={backTo.onPress} />}
-          {phone && backTo == null && <OrgPill />}
-          <View style={styles.grow} />
-          {phone && <Bell tell={shell.tell} />}
-        </View>
-        {title == null ? <View style={styles.untitled} /> : <PageTitle text={title} size={30} />}
-        <View style={styles.blocks}>{children}</View>
-      </ScrollView>
-      {phone && (
-        <>
-          <View style={[styles.statusStrip, { height: insets.top }]} pointerEvents="none" />
-          <Fade />
-          <PhoneTabBar bottom={foot} onTab={shell.onTab} at="Settings" />
-        </>
-      )}
-      {toast != null && (
-        <PageToast
-          {...toast}
-          bottom={
-            phone ? foot + PHONE_TAB_BAR + tokens.spaceLg : Math.max(insets.bottom, tokens.spaceLg)
-          }
-        />
-      )}
-    </View>
-  );
-}
-
 export interface PageToastProps {
   words: string;
   onClose: () => void;
@@ -167,19 +77,6 @@ export function PageToast({ words, onClose, bottom }: PageToastProps & { bottom:
     <View style={[styles.toast, { bottom }]}>
       <Toast key={words} words={words} onClose={onClose} />
     </View>
-  );
-}
-
-function PageTitle({ text, size }: { text: string; size: number }) {
-  return (
-    <Text
-      size={size}
-      weight="bold"
-      accessibilityRole="header"
-      style={[styles.title, { letterSpacing: size * -0.02 }]}
-    >
-      {text}
-    </Text>
   );
 }
 
@@ -202,7 +99,7 @@ export function SummaryColumn({
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
     >
-      <Back label="Settings" onPress={() => shell.toSettings()} />
+      <Back onPress={() => shell.toSettings()} />
       <Text size={26} weight="bold" accessibilityRole="header" style={styles.columnTitle}>
         {title}
       </Text>
@@ -398,15 +295,14 @@ export function Faces({
 }
 
 /** A person's initials as a white disc on Confetti, as on the Settings card. */
-export function CardFace({ initials, side }: { initials: string; side: number }) {
+export function CardFace({ name, side }: { name: string; side: number }) {
   return (
     <View
       style={[styles.cardFace, { width: side, height: side, borderRadius: side / 2 }]}
-      {...hidden}
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
     >
-      <Text size={Math.round(side * 0.36)} weight="bold" accessible={false} style={styles.accent}>
-        {initials}
-      </Text>
+      <Initials name={name} size={Math.round(side * 0.36)} weight="bold" style={styles.accent} />
     </View>
   );
 }
@@ -441,7 +337,7 @@ export function GlassTag({
 }) {
   return (
     <Glass height={28} style={styles.glassTag}>
-      {shape ?? (mark != null && <StatusMark kind={mark} side={13} ink={tokens.colorInkOnDark} />)}
+      {shape ?? (mark != null && <ShapeMark kind={mark} side={13} ink={tokens.colorInkOnDark} />)}
       <Text size={13} weight="semibold" numberOfLines={1} style={styles.white}>
         {word}
       </Text>
@@ -531,6 +427,7 @@ export function FailedBlock({
   onRetry: () => void;
   testID: string;
 }) {
+  const { t } = useTranslation();
   useReadOut(`${title} ${line}`);
 
   return (
@@ -541,25 +438,12 @@ export function FailedBlock({
       <Text size={15} weight="medium" style={styles.secondary}>
         {line}
       </Text>
-      <TextAction label="Try again" onPress={onRetry} testID={testID} />
+      <TextAction label={t('frame.tryAgain')} onPress={onRetry} testID={testID} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  grow: { flex: 1, minWidth: 0 },
-  page: { flex: 1, backgroundColor: tokens.colorCard },
-  statusStrip: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: tokens.colorCard,
-  },
-  pane: { paddingTop: 26, paddingHorizontal: 30, paddingBottom: tokens.space6xl * 2, gap: 18 },
-  top: { flexDirection: 'row', alignItems: 'center' },
-  title: { paddingTop: 14, paddingBottom: tokens.spaceXl },
-  untitled: { height: tokens.spaceXl },
   blocks: { gap: 18 },
   column: {
     paddingTop: tokens.spaceXl,

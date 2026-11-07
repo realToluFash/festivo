@@ -7,7 +7,6 @@ import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { Glyph } from '../../components/Glyph.tsx';
-import { type Anchor, AnchoredMenu } from '../settings/Summary.tsx';
 import {
   type Filters,
   NO_FILTERS,
@@ -20,6 +19,7 @@ import {
 import { MomentBox, type Picking, PickerLayer, pick } from './EventsPick.tsx';
 import { TYPE_WORDS } from './EventsSample.ts';
 import { W, say } from './EventsWords.ts';
+import { type Anchor, AnchoredMenu } from '../../components/Summary.tsx';
 
 type Level = 'top' | 'type' | 'when' | 'hosts';
 

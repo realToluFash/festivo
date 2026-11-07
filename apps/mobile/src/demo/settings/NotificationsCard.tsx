@@ -3,7 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { WORDS } from './NotificationsModel.ts';
-import { CardGlyph, OnCard, SummaryCard } from './Summary.tsx';
+import { CardGlyph, OnCard, SummaryCard } from '../../components/Summary.tsx';
 
 /** How you hear on Confetti: the bell, the channels and their counts, and a step only while this device blocks push. */
 export function NotificationsCard({

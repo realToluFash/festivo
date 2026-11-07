@@ -11,9 +11,9 @@ import { useLayout } from '../../layout/useLayout.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { useStartWalk } from '../OrgSwitcher.tsx';
 import { VIEWER } from '../OrgSwitcherModel.ts';
-import { Pill } from '../settings/parts.tsx';
-import { TextAction } from '../settings/SummaryRows.tsx';
 import { DraftTile } from './WalkParts.tsx';
+import { Pill } from '../../components/SettingsParts.tsx';
+import { TextAction } from '../../components/SummaryRows.tsx';
 
 const COLUMN = 560;
 

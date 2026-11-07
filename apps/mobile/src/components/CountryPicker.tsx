@@ -15,6 +15,7 @@ export function CountryPicker({
   disabled = false,
   withCallingCode = false,
   compact = false,
+  wrong = false,
   pickerRef,
   testID,
 }: {
@@ -26,6 +27,8 @@ export function CountryPicker({
   withCallingCode?: boolean;
   /** Only the flag and the calling code, "🇬🇧 +44", beside a number. */
   compact?: boolean;
+  /** A line about it shows under it. */
+  wrong?: boolean;
   /** For moving screen-reader focus here when it is the field refused first. */
   pickerRef?: Ref<ViewInstance> | undefined;
   testID: string;
@@ -51,6 +54,7 @@ export function CountryPicker({
       value={value}
       onChange={onChange}
       disabled={disabled}
+      wrong={wrong}
       shown={compact ? `${flag(value)} ${callingCode(value) ?? ''}`.trim() : undefined}
       pickerRef={pickerRef}
       testID={testID}

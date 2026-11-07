@@ -10,11 +10,12 @@ import {
   listedContacts,
   lockLiftsAt,
   phoneLengthProblem,
+  refusedPhoneField,
   rereadAfterRefusal,
 } from '@soirely/domain';
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { StyleSheet, type TextInputInstance, View } from 'react-native';
+import { StyleSheet, type TextInputInstance, View, type ViewInstance } from 'react-native';
 import { type TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 
@@ -30,6 +31,7 @@ import { DestructiveButton, PrimaryButton, QuietButton, SecondaryButton } from '
 import { SmallCapsLabel } from './SmallCapsLabel.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { ConfirmItsYou } from './ConfirmItsYou.tsx';
+import { focusPicker } from './CountryPicker.tsx';
 import { Field, FieldError, focusChecked, keysStayDown, TextField } from './Field.tsx';
 import { Notice } from './Notice.tsx';
 import { PhoneEntry } from './PhoneEntry.tsx';
@@ -485,17 +487,24 @@ function Adding({
   const email = kind === 'email';
   const typed = useRef('');
   const field = useRef<TextInputInstance>(null);
+  const picker = useRef<ViewInstance>(null);
   const aboveKeyboard = useAboveKeyboard();
   const [country, setCountry] = useState(initialCountry);
   const [refused, setRefused] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+  const [errorOn, setErrorOn] = useState<'country' | 'number'>('number');
   const checks = useFormChecks(
     ['value'] as const,
     (_field, value) =>
       email
         ? emailMessage(value, t)
         : phoneProblemMessage(phoneLengthProblem(value, country), country, t),
-    () => focusChecked(field),
+    () => {
+      const on = email ? null : refusedPhoneField(phoneLengthProblem(typed.current, country));
+      setErrorOn(on ?? 'number');
+      if (on === 'country') focusPicker(picker);
+      else focusChecked(field);
+    },
   );
   const error = checks.errors.value ?? refused;
 
@@ -512,6 +521,7 @@ function Adding({
     } catch (refusal) {
       await onRefused(refusal);
       setSending(false);
+      setErrorOn('number');
       setRefused(addRefusal(refusal, kind, t));
     }
   }
@@ -551,10 +561,13 @@ function Adding({
           help={t('contacts.phoneHelp')}
           country={country}
           error={error}
+          errorOn={errorOn}
           submitting={sending}
+          pickerRef={picker}
           onCountry={(code) => {
             setCountry(code);
             setRefused(null);
+            checks.cleared('value');
           }}
           onNumber={(text) => {
             typed.current = text;

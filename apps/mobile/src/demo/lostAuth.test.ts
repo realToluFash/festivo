@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
+import en from '../i18n/locales/en.json';
 import {
   CLOSED,
+  CODE_SHORT,
   NOT_CANCELLED,
   TRIES,
   askToCancel,
+  boxWords,
   cancelSettled,
   codeWords,
   keepWaiting,
@@ -112,5 +115,42 @@ describe('a cancel that does not go through says so (sc-30737)', () => {
 
   it('says what did not happen, and what to do', () => {
     expect(NOT_CANCELLED).toBe('Not cancelled. Your request is still waiting. Try again.');
+  });
+});
+
+describe('the codes step says what the app says (sc-29961)', () => {
+  const said = en.lostTwoFactor;
+  const to = (line: string, who: string) => line.replace(/\{\{\w+\}\}/, who);
+  const phone = '+44 7400 123456';
+
+  it.each([
+    [
+      'email',
+      false,
+      'folake@ire.events',
+      said.emailLabel,
+      said.sentTo,
+      said.emailBlank,
+      said.emailWrong,
+    ],
+    [
+      'text',
+      false,
+      phone,
+      said.phoneLabelWhatsApp,
+      said.sentWhatsApp,
+      said.phoneBlankWhatsApp,
+      said.phoneWrongWhatsApp,
+    ],
+    ['text', true, phone, said.phoneLabel, said.sentChosen, said.phoneBlank, said.phoneWrong],
+  ] as const)(
+    'words the %s box (texted: %s) as en.json does',
+    (box, texted, who, label, sent, blank, wrong) => {
+      expect(boxWords(box, texted, who)).toEqual({ label, sent: to(sent, who), blank, wrong });
+    },
+  );
+
+  it('says a short code is six digits', () => {
+    expect(CODE_SHORT).toBe(said.codeShort);
   });
 });

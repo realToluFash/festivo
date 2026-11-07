@@ -7,19 +7,20 @@ import { useLayout } from '../../layout/useLayout.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { OrgSwitcherProvider } from '../OrgSwitcher.tsx';
 import { switcherStateOf } from '../OrgSwitcherModel.ts';
-import type { Tab } from '../../components/TodayCover.tsx';
+import { PHONE_TAB_BAR, type Tab } from '../../components/TodayCover.tsx';
 import type { Tell } from '../../components/TodayParts.tsx';
 import { useCoverStatusBar } from '../Welcome.tsx';
-import { PHONE_TAB_BAR, type Shell, ShellContext } from '../settings/Frame.tsx';
 import { layoutOf, settingsHref } from '../settings/Route.tsx';
-import { type DemoSection, lookingAs } from '../settings/sample.ts';
-import { PageToast } from '../settings/Summary.tsx';
+import { lookingAs } from '../settings/sample.ts';
 import { EventScreen } from './EventPage.tsx';
 import { backToEvents } from './EventFrame.tsx';
 import { EventsList } from './EventsList.tsx';
 import { eventStateOf, listStateOf } from './EventsModel.ts';
+import { messagesStateOf } from '../messages/MessagesModel.ts';
 import { areaOf, sampleEvent } from './EventsSample.ts';
 import { say } from './EventsWords.ts';
+import { type Shell, ShellContext, type ShellSection } from '../../components/settingsShell.ts';
+import { PageToast } from '../../components/Summary.tsx';
 
 /** Events on sample data, in Settings' shell: Today and Settings a tab away, and anything unbuilt said so. */
 function EventsShell({
@@ -39,7 +40,7 @@ function EventsShell({
   useCoverStatusBar('dark', false);
 
   const openSection = useCallback(
-    (section: DemoSection) => router.push(settingsHref('owner', section)),
+    (section: ShellSection) => router.push(settingsHref('owner', section)),
     [],
   );
   const toSettings = useCallback(() => router.push(settingsHref('owner', null)), []);
@@ -107,7 +108,7 @@ export function EventsRoute() {
   );
 }
 
-/** /demo/events/[id]: one event, with ?state= for each phase, edit and question, and ?area= for an area. */
+/** /demo/events/[id]: one event, with ?state= for each phase, edit and question, and ?area= for an area; with ?area=messages, ?state= is Messages'. */
 export function EventRoute() {
   const params = useLocalSearchParams<{
     id?: string;
@@ -117,14 +118,16 @@ export function EventRoute() {
   }>();
   const state = eventStateOf(params.state);
   const area = areaOf(params.area);
+  const messages = area === 'messages' ? messagesStateOf(params.state) : null;
 
   return (
     <EventsShell switcher={params.switcher}>
       <EventScreen
-        key={`${params.id ?? ''}:${state ?? ''}:${area ?? ''}`}
+        key={`${params.id ?? ''}:${state ?? ''}:${area ?? ''}:${messages ?? ''}`}
         id={params.id}
         state={state}
         area={area}
+        messages={messages}
       />
     </EventsShell>
   );

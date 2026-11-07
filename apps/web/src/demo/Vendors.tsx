@@ -15,11 +15,20 @@ import { useSearchParams } from 'react-router';
 import { offButton } from '../offButton.ts';
 import { Forbidden } from '../routes/app/Forbidden.tsx';
 import { EventsShell } from './EventParts.tsx';
-import { Glyph } from './Glyph.tsx';
+import { Glyph } from '../components/Glyph.tsx';
+import { DemoBell } from './DemoBell.tsx';
 import { COUNTRIES, codeChoice } from './rules.ts';
 import { SIDEBAR_EVENTS, type SettingsSay, settingsSayIn, viewerOf } from './settings.ts';
-import { Ask, Chevron, Dialog, Menu, RowWords, TextAction, TitleRow } from './SettingsParts.tsx';
-import type { Tell } from './TodayParts.tsx';
+import {
+  Ask,
+  Chevron,
+  Dialog,
+  Menu,
+  RowWords,
+  TextAction,
+  TitleRow,
+} from '../components/SettingsParts.tsx';
+import type { Tell } from '../components/SettingsParts.tsx';
 import { TodaySidebar } from './TodaySidebar.tsx';
 import {
   BLANK,
@@ -122,7 +131,7 @@ function Directory({ state, tell }: { state: string; tell: Tell }) {
   if (load !== 'loaded')
     return (
       <Page>
-        <TitleRow title="Vendors" tell={tell} />
+        <TitleRow title="Vendors" bell={<DemoBell tell={tell} />} />
         {load === 'failed' ? <Failed onRetry={() => setLoad('retrying')} /> : <Loading />}
       </Page>
     );
@@ -135,7 +144,7 @@ function Directory({ state, tell }: { state: string; tell: Tell }) {
   return (
     <Page>
       <div ref={top} className="vd-top">
-        <TitleRow title="Vendors" action={add} tell={tell} />
+        <TitleRow title="Vendors" action={add} bell={<DemoBell tell={tell} />} />
         <p className="desk-line">The people Ire Events buys from, kept once for every event.</p>
       </div>
       {empty && looking.view === 'inUse' && !isLooking(looking) ? (

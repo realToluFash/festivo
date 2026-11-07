@@ -1,7 +1,7 @@
 import type { NotificationCategory, NotificationSetting } from '@soirely/api-client';
 import {
   NOTIFICATION_CATEGORY_ORDER,
-  QUIET_HOURS,
+  quietHoursIn,
   type SettingChannel,
   settingFlipped,
   usageThresholdsIn,
@@ -138,19 +138,11 @@ export function notSaved(channel: Channel): string {
   return channel === 'push' ? W.pushNotSaved : W.emailNotSaved;
 }
 
-/** Quiet hours in the reader's own clock, two-digit hours where it runs to 24: 9:00 PM in the US, 08:00 in the UK. */
+/** Quiet hours as the product writes them, from its one home: 21:00 and 08:00 in every language (sc-30243). */
 export function quietHoursLine(locale: string): string {
-  const { hourCycle, hour12 } = new Intl.DateTimeFormat(locale, {
-    hour: 'numeric',
-  }).resolvedOptions();
-  const day = hourCycle === 'h23' || hourCycle === 'h24' || hour12 === false;
-  const time = new Intl.DateTimeFormat(locale, {
-    hour: day ? '2-digit' : 'numeric',
-    minute: '2-digit',
-  });
-  const at = (hour: number) => time.format(new Date(2000, 0, 1, hour));
+  const { start, end } = quietHoursIn(locale);
 
-  return W.quietHours(at(QUIET_HOURS.start), at(QUIET_HOURS.end));
+  return W.quietHours(start, end);
 }
 
 /** Epic 36's defaults for a member who changed nothing: push on but for Account & security, email on but for Event day. */

@@ -1,4 +1,5 @@
 import type { ReactElement, ReactNode, Ref } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Pressable,
   type StyleProp,
@@ -8,10 +9,11 @@ import {
   type ViewStyle,
 } from 'react-native';
 
-import { Text } from '../../components/Text.tsx';
-import { tokens } from '../../theme/tokens.ts';
-import { Glyph, type GlyphName } from '../../components/Glyph.tsx';
-import type { DemoSection, SettingsLayout } from './sample.ts';
+import { Text } from './Text.tsx';
+import { tokens } from '../theme/tokens.ts';
+import { Glyph, type GlyphName } from './Glyph.tsx';
+import type { ShellSection } from './settingsShell.ts';
+import type { CoverLayout } from './TodayCover.tsx';
 
 export const TYPE = {
   titlePhone: 34,
@@ -157,7 +159,7 @@ export function Pair({
   dismiss,
   confirm,
 }: {
-  layout: SettingsLayout;
+  layout: CoverLayout;
   dismiss: ReactElement;
   confirm: ReactElement;
 }) {
@@ -177,17 +179,20 @@ export function Pair({
   );
 }
 
-export function Back({ label = 'Settings', onPress }: { label?: string; onPress: () => void }) {
+export function Back({ label, onPress }: { label?: string; onPress: () => void }) {
+  const { t } = useTranslation();
+  const place = label ?? t('settings.title');
+
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [styles.back, pressed && styles.pressed]}
       accessibilityRole="button"
-      accessibilityLabel={`Back to ${label}`}
+      accessibilityLabel={t('frame.backTo', { place })}
     >
       <Glyph name="back" size={18} ink={tokens.colorInk} weight={2.4} />
       <Text size={TYPE.body} weight="semibold" accessible={false}>
-        {label}
+        {place}
       </Text>
     </Pressable>
   );
@@ -198,14 +203,17 @@ export function RoundButton({
   label,
   onPress,
   dot = false,
+  ref,
 }: {
   glyph: GlyphName;
   label: string;
   onPress: () => void;
   dot?: boolean;
+  ref?: Ref<ViewInstance> | undefined;
 }) {
   return (
     <Pressable
+      ref={ref}
       onPress={onPress}
       hitSlop={tokens.spaceXxs}
       style={({ pressed }) => [styles.round, pressed && styles.pressed]}
@@ -218,7 +226,7 @@ export function RoundButton({
   );
 }
 
-type TileOf = Exclude<DemoSection, 'account' | 'personalisation'> | 'demo';
+type TileOf = Exclude<ShellSection, 'account' | 'personalisation'> | 'demo';
 
 const TILES: Record<TileOf, { glyph: GlyphName; fill: string }> = {
   security: { glyph: 'shield', fill: tokens.optionTeal },

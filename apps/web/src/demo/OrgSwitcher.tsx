@@ -15,10 +15,10 @@ import { Link, useLocation, useSearchParams } from 'react-router';
 import { leaveMenu } from '../leaving.ts';
 import { CreateWalk } from './CreateOrg.tsx';
 import { type Walk, freshWalk, isCreateState, walkOf } from './createOrg.ts';
-import { meshFor } from './events.ts';
-import { Glyph } from './Glyph.tsx';
-import { focusWhenFree } from './layers.ts';
-import { Notice } from './Notice.tsx';
+import { meshFor } from '../mesh.ts';
+import { Glyph } from '../components/Glyph.tsx';
+import { focusWhenFree } from '../layers.ts';
+import { Notice } from '../components/Notice.tsx';
 import { SAMPLE } from './rules.ts';
 import {
   BLUEBIRD,
@@ -51,7 +51,7 @@ import {
   useWhere,
   waiting,
 } from './switcher.ts';
-import type { Tell } from './TodayParts.tsx';
+import type { Tell } from '../components/SettingsParts.tsx';
 import './today.css';
 import './switcher.css';
 

@@ -9,13 +9,13 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Glyph } from '../../components/Glyph.tsx';
-import { useReadOut, useSendingWords } from '../../components/ReadOut.tsx';
-import { SETTLED_MS } from '../../components/Screen.tsx';
-import { moveScreenReaderFocus } from '../../components/screenReaderFocus.ts';
-import { type TextHandle, Text } from '../../components/Text.tsx';
-import { useLayout } from '../../layout/useLayout.ts';
-import { tokens } from '../../theme/tokens.ts';
+import { Glyph } from './Glyph.tsx';
+import { useReadOut, useSendingWords } from './ReadOut.tsx';
+import { SETTLED_MS } from './Screen.tsx';
+import { moveScreenReaderFocus } from './screenReaderFocus.ts';
+import { type TextHandle, Text } from './Text.tsx';
+import { useLayout } from '../layout/useLayout.ts';
+import { tokens } from '../theme/tokens.ts';
 import { TextAction, TurningMark } from './SummaryRows.tsx';
 
 export interface AskProps {

@@ -10,7 +10,7 @@ import {
 } from 'react';
 
 import { offButton } from '../offButton.ts';
-import { Glyph } from './Glyph.tsx';
+import { Glyph } from '../components/Glyph.tsx';
 import {
   type Audience,
   type Condition,

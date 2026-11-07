@@ -22,20 +22,21 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
+import { useTranslation } from 'react-i18next';
 
-import { SETTLED_MS } from '../../components/Screen.tsx';
-import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
-import { useFocusBack, useWindowTurn } from '../../components/Sheet.tsx';
-import { Text } from '../../components/Text.tsx';
-import { Toast } from '../../components/Toast.tsx';
-import { TURNS_WITH_THE_APP } from '../../layout/orientations.ts';
-import { useReducedMotion } from '../../reducedMotion.ts';
-import { tokens } from '../../theme/tokens.ts';
-import { useModalOpen } from '../../updateRequired.ts';
-import { Glyph } from '../../components/Glyph.tsx';
-import { useShell } from './Frame.tsx';
+import { SETTLED_MS } from './Screen.tsx';
+import type { ScreenReaderTarget } from './screenReaderFocus.ts';
+import { useFocusBack, useWindowTurn } from './Sheet.tsx';
+import { Text } from './Text.tsx';
+import { Toast } from './Toast.tsx';
+import { TURNS_WITH_THE_APP } from '../layout/orientations.ts';
+import { useReducedMotion } from '../reducedMotion.ts';
+import { tokens } from '../theme/tokens.ts';
+import { useModalOpen } from '../updateRequired.ts';
+import { Glyph } from './Glyph.tsx';
 import { AskLayer, type AskProps } from './AskLayer.tsx';
 import { TextAction, TurningMark } from './SummaryRows.tsx';
+import { useShell } from './settingsShell.ts';
 
 export { AskLayer, type AskProps } from './AskLayer.tsx';
 
@@ -148,6 +149,7 @@ export function FocusedScreen({
   verb,
   back,
   cancels = true,
+  cancelLabel,
   waits = false,
   onCancel,
   cancelTestID,
@@ -167,6 +169,7 @@ export function FocusedScreen({
   back?: string | undefined;
   /** False for a sheet that applies what is tapped: nothing at the left, and the verb closes it. */
   cancels?: boolean;
+  cancelLabel?: string | undefined;
   /** True while a save is out: Cancel, the escape and the scrub wait in Ink 3 until it answers. */
   waits?: boolean;
   onCancel: () => void;
@@ -215,6 +218,7 @@ export function FocusedScreen({
               verb={verb}
               back={back}
               cancels={cancels}
+              cancelLabel={cancelLabel}
               waits={waits}
               onCancel={cancel}
               cancelTestID={cancelTestID}
@@ -257,6 +261,7 @@ function FocusNav({
   verb,
   back,
   cancels,
+  cancelLabel,
   waits,
   onCancel,
   cancelTestID,
@@ -265,10 +270,12 @@ function FocusNav({
   verb: FocusVerb | null;
   back: string | undefined;
   cancels: boolean;
+  cancelLabel?: string | undefined;
   waits: boolean;
   onCancel: () => void;
   cancelTestID?: string | undefined;
 }) {
+  const { t } = useTranslation();
   const [sides, setSides] = useState({ cancel: 0, verb: 0 });
   const [short, setShort] = useState(false);
   const fits = back == null || short;
@@ -290,7 +297,7 @@ function FocusNav({
             pressed && styles.pressed,
           ]}
           accessibilityRole="button"
-          accessibilityLabel={back ?? 'Cancel'}
+          accessibilityLabel={back ?? cancelLabel ?? t('frame.cancel')}
           accessibilityState={waits ? { disabled: true } : undefined}
           testID={cancelTestID}
         >
@@ -303,7 +310,7 @@ function FocusNav({
             accessible={false}
             style={waits ? styles.waiting : styles.accent}
           >
-            {back == null ? 'Cancel' : short ? 'Back' : back}
+            {back == null ? (cancelLabel ?? t('frame.cancel')) : short ? t('frame.back') : back}
           </Text>
         </Pressable>
       ) : (
@@ -441,6 +448,7 @@ export function MenuLayer({
   children,
   testID,
 }: MenuProps) {
+  const { t } = useTranslation();
   const frame = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const [seen, setSeen] = useState({ panel: 0, content: 0, offset: 0 });
@@ -454,7 +462,7 @@ export function MenuLayer({
         style={StyleSheet.absoluteFill}
         onPress={onClose}
         accessibilityRole="button"
-        accessibilityLabel="Close the menu"
+        accessibilityLabel={t('frame.closeMenu')}
       />
       {at != null && (
         <View
