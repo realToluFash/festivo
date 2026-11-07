@@ -2067,14 +2067,14 @@ export const runId = ({ check, language, repeat = 1 }) =>
 const helperStep = (ask, file) =>
   ['- runScript:', `    file: ${file}`, '    env:', `      ASK: '${ask}'`, ''].join('\n');
 
+const prefixShots = (flow, id) =>
+  flow.replace(/^(\s*-\s*takeScreenshot:\s*)(['"]?)([^'"\s]+)\2\s*$/gm, `$1${id}-$3`);
+
 export function batchCheck(flow, check, language, { reset, repeat = 1 }) {
   const at = flow.indexOf('\n---\n');
   if (at === -1) throw new Error(`${check}: no --- between its config and its commands`);
   const id = runId({ check, language, repeat });
-  const commands = flow
-    .slice(at + 5)
-    .replace(/^(\s*-\s*takeScreenshot:\s*)(['"]?)([^'"\s]+)\2\s*$/gm, `$1${id}-$3`)
-    .trimEnd();
+  const commands = prefixShots(flow.slice(at + 5), id).trimEnd();
   return [
     flow.slice(0, at + 5),
     helperStep(`/started?check=${encodeURIComponent(id)}`, '../batch/helper.js'),
@@ -2136,7 +2136,12 @@ export function composeBatch(
           const sub = readFileSync(join(source, 'checks', `${name}.yaml`), 'utf8');
           writeFileSync(
             path,
-            finish(subFlows(localise(sub, catalogues, language, { email }), language)),
+            finish(
+              prefixShots(
+                subFlows(localise(sub, catalogues, language, { email }), language),
+                checkId(name, language),
+              ),
+            ),
           );
         }
         return `${key}${id}.yaml`;

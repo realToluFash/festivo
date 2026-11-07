@@ -2196,7 +2196,7 @@ describe('a check that runs a sibling check', () => {
     );
     writeFileSync(
       join(source, 'checks', 'once.yaml'),
-      "appId: x\n---\n- tapOn: '{{t:hello}}'\n- runFlow: inner.yaml\n",
+      "appId: x\n---\n- tapOn: '{{t:hello}}'\n- takeScreenshot: shot-${RUN}\n- runFlow: inner.yaml\n",
     );
     writeFileSync(join(source, 'checks', 'inner.yaml'), "appId: x\n---\n- tapOn: '{{t:hello}}'\n");
     try {
@@ -2225,7 +2225,40 @@ describe('a check that runs a sibling check', () => {
       expect(once).toContain("'Hola'");
       expect(once).toContain('- runFlow: inner.es.flow.yaml');
       expect(once).not.toContain('ASK:');
+      expect(once).toContain('- takeScreenshot: once.es-shot-${RUN}\n');
+      expect(readFileSync(join(checks, 'once.en.flow.yaml'), 'utf8')).toContain(
+        '- takeScreenshot: once.en-shot-${RUN}\n',
+      );
       expect(readFileSync(join(checks, 'inner.en.flow.yaml'), 'utf8')).toContain("'Hello'");
+    } finally {
+      rmSync(source, { recursive: true, force: true });
+      rmSync(target, { recursive: true, force: true });
+    }
+  });
+
+  it('keeps a sibling that is also named as a check apart from its run', () => {
+    const source = mkdtempSync(join(tmpdir(), 'qa-source-'));
+    const target = mkdtempSync(join(tmpdir(), 'qa-batch-'));
+    mkdirSync(join(source, 'checks'));
+    writeFileSync(join(source, 'checks', 'outer.yaml'), 'appId: x\n---\n- runFlow: once.yaml\n');
+    writeFileSync(join(source, 'checks', 'once.yaml'), 'appId: x\n---\n- takeScreenshot: shot\n');
+    try {
+      composeBatch(source, target, {
+        checks: ['outer', 'once'],
+        languages: ['es'],
+        cold: false,
+        catalogues: { es: {} },
+        email: 'qa@soirely.test',
+        onAndroid: false,
+      });
+      const checks = join(target, '_checks');
+      expect(readdirSync(checks).sort()).toEqual([
+        'once.es.flow.yaml',
+        'once.es.yaml',
+        'outer.es.yaml',
+      ]);
+      expect(readFileSync(join(checks, 'once.es.yaml'), 'utf8')).toContain('ASK:');
+      expect(readFileSync(join(checks, 'once.es.flow.yaml'), 'utf8')).not.toContain('ASK:');
     } finally {
       rmSync(source, { recursive: true, force: true });
       rmSync(target, { recursive: true, force: true });
