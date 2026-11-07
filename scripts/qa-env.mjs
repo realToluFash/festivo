@@ -3077,22 +3077,12 @@ async function account(args) {
     return;
   }
   const passed = args.filter((a) => a !== '--two-factor' && a !== '--ready');
-  const made = capture('node', ['scripts/qa-account.mjs', '--json', ...passed], {
-    cwd: root,
-    env: { ...process.env, ...env },
-  });
-  if (made === null) throw new Error('scripts/qa-account.mjs registered no account');
-  const { email, password, name, accessToken: token, sessionId } = JSON.parse(made);
-  await api('/api/auth/complete-profile', {
-    method: 'PATCH',
-    token,
-    body: {
-      name,
-      organisationName: ACCOUNT_ORGANISATION,
-      countryCode: 'GB',
-      timezone: 'Europe/London',
-    },
-  });
+  const {
+    email,
+    password,
+    accessToken: token,
+    sessionId,
+  } = await founder(root, ACCOUNT_ORGANISATION, passed);
   let secret = null;
   if (twoFactor) {
     ({ secret } = await api('/api/auth/two-factor/enrol', { token }));
@@ -3103,18 +3093,23 @@ async function account(args) {
 }
 
 async function organisationOwner(root) {
-  const made = capture('node', ['scripts/qa-account.mjs', '--json'], {
+  const { email, password } = await founder(root, 'QA Owner');
+  return apiSession(email, password, null);
+}
+
+async function founder(root, organisationName, args = []) {
+  const made = capture('node', ['scripts/qa-account.mjs', '--json', ...args], {
     cwd: root,
     env: { ...process.env, SOIRELY_API_URL: CONFIG.urls.api, MAILPIT_URL: CONFIG.urls.mailpit },
   });
-  if (made === null) throw new Error('scripts/qa-account.mjs registered no owner');
-  const { email, password, name, accessToken: token } = JSON.parse(made);
+  if (made === null) throw new Error('scripts/qa-account.mjs registered no account');
+  const registered = JSON.parse(made);
   await api('/api/auth/complete-profile', {
     method: 'PATCH',
-    token,
-    body: { name, organisationName: 'QA Owner', countryCode: 'GB', timezone: 'Europe/London' },
+    token: registered.accessToken,
+    body: { name: registered.name, organisationName, countryCode: 'GB', timezone: 'Europe/London' },
   });
-  return apiSession(email, password, null);
+  return registered;
 }
 
 // The session it signed in with is printed, so a flow can end it from outside the phone.
