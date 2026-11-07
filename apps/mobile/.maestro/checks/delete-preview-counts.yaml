@@ -1,0 +1,22 @@
+# Settings > Organisation, starting to delete it: the counts of what goes with it, read in the account's language.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/organisation
+- extendedWaitUntil:
+    visible: '{{t:orgGeneral.intro}}'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'ownership.delete'
+    timeout: 60000
+- tapOn:
+    id: 'ownership.delete'
+- extendedWaitUntil:
+    visible:
+      id: 'ownership.delete.name'
+    timeout: 15000
+- extendedWaitUntil:
+    notVisible: '{{t:ownership.deleteLoading}}'
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: delete-preview-counts

@@ -1,0 +1,22 @@
+# sc-3585: ${EV_FIN}, Finished by its end: no End now, and Edit details with Starts, Ends and Time zone read-only and the line saying why.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV_FIN}
+- extendedWaitUntil:
+    visible:
+      id: 'events.phase.finished'
+    timeout: 30000
+- assertNotVisible:
+    id: 'events.end'
+- takeScreenshot: finished
+- scrollUntilVisible:
+    element:
+      id: 'events.page.edit'
+- tapOn:
+    id: 'events.page.edit'
+- waitForAnimationToEnd
+- takeScreenshot: edit-top
+- scroll
+- takeScreenshot: edit-scrolled
+- scroll
+- takeScreenshot: edit-scrolled-more

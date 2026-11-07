@@ -1,0 +1,31 @@
+# sc-23252: every rule notice on Home, screen by screen from top to bottom, for a small phone and a long organisation name.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- scrollUntilVisible:
+    element:
+      id: 'signInRules.dueSetUp'
+    direction: UP
+    timeout: 30000
+- takeScreenshot: s1
+- scrollUntilVisible:
+    element:
+      id: 'signInRules.link'
+    direction: DOWN
+    timeout: 20000
+    centerElement: true
+- takeScreenshot: s2
+- scrollUntilVisible:
+    element:
+      id: 'signInRules.later'
+    direction: DOWN
+    timeout: 20000
+    centerElement: true
+- takeScreenshot: s3
+- scrollUntilVisible:
+    element:
+      id: 'signInRules.close'
+    direction: DOWN
+    timeout: 20000
+    centerElement: true
+- takeScreenshot: s4

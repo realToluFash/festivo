@@ -1,0 +1,32 @@
+# sc-22741: an iPad on its side, the rail's name and initials follow a saved name without a reload.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- openLink: ${METRO_URL}/--/settings/account
+- extendedWaitUntil:
+    visible:
+      id: 'nameCard.change'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: rail-before
+- tapOn:
+    id: 'nameCard.change'
+- extendedWaitUntil:
+    visible:
+      id: 'nameCard.field'
+    timeout: 5000
+- eraseText: 200
+- inputText: 'Temitope Kuti'
+- tapOn:
+    id: 'nameCard.save'
+- extendedWaitUntil:
+    visible: '.*Temitope Kuti\.'
+    timeout: 10000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: rail-after
+- setOrientation: PORTRAIT
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: portrait-after
