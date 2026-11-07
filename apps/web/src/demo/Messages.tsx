@@ -15,8 +15,8 @@ import { useSearchParams } from 'react-router';
 import { EventsShell } from './EventParts.tsx';
 import { EventSidebar } from './EventSidebar.tsx';
 import type { SampleEvent } from './events.ts';
-import { Glyph } from './Glyph.tsx';
-import { focusWhenFree, LayersContext } from './layers.ts';
+import { Glyph } from '../components/Glyph.tsx';
+import { focusWhenFree, LayersContext } from '../layers.ts';
 import {
   type Change,
   type ConvoId,
@@ -52,8 +52,8 @@ import { InboxContext, type InboxApi } from './messagesContext.ts';
 import { LeadMark } from './MessagesParts.tsx';
 import { UntoldBanner } from './MessagesTell.tsx';
 import { MESSAGES_WORD } from './messagesWords.ts';
-import { Tag } from './SettingsParts.tsx';
-import type { Tell } from './TodayParts.tsx';
+import { Tag } from '../components/SettingsParts.tsx';
+import type { Tell } from '../components/SettingsParts.tsx';
 import './messages.css';
 
 const ARRIVES_MS = 1200;

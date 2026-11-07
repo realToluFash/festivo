@@ -62,6 +62,61 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         what: 'From nobody to 3 and back, every 4 seconds',
         href: '/demo/today?moment=dayNow&arrived=live',
       },
+      {
+        title: 'Now · from the run of show',
+        what: 'Drinks, until 5:30 PM, 10 min behind',
+        href: '/demo/today?moment=day&now=on',
+      },
+      {
+        title: 'Now · over its length',
+        what: '12 min over, 22 min behind',
+        href: '/demo/today?moment=day&now=over',
+      },
+      {
+        title: 'Now · no length',
+        what: 'Speeches, no until line, On time',
+        href: '/demo/today?moment=day&now=open',
+      },
+      {
+        title: 'Now · the last item',
+        what: 'Last item under way, no Next',
+        href: '/demo/today?moment=day&now=last',
+      },
+      {
+        title: 'Now · nothing is on',
+        what: 'Between two items, with Next',
+        href: '/demo/today?moment=day&now=between',
+      },
+      {
+        title: 'Now · before the first',
+        what: 'Nothing is on, On time',
+        href: '/demo/today?moment=day&now=before',
+      },
+      {
+        title: 'Now · that’s everything',
+        what: 'No Next and no figure',
+        href: '/demo/today?moment=day&now=done',
+      },
+      {
+        title: 'Now · a 120-character title',
+        what: 'It wraps; try the iPhone SE',
+        href: '/demo/today?moment=day&now=long',
+      },
+      {
+        title: 'Now · nobody arrived yet',
+        what: 'Next alone on its row, no figure',
+        href: '/demo/today?moment=day&now=on&arrived=none',
+      },
+      {
+        title: 'Now · nobody Coming',
+        what: '37 arrived beside Next, no ring',
+        href: '/demo/today?moment=day&now=on&arrived=nobodyComing',
+      },
+      {
+        title: 'Now · four-digit figures',
+        what: '1,204/1,250 beside Next; try the iPhone SE',
+        href: '/demo/today?moment=day&now=on&arrived=thousands',
+      },
       { title: 'A quiet week', what: 'Nothing due, nothing on', href: '/demo/today?moment=quiet' },
       { title: 'A first run', what: 'No events yet', href: '/demo/today?moment=first' },
     ],

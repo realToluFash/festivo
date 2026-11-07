@@ -35,8 +35,8 @@ import {
 } from './events.ts';
 import { writtenTime } from './clock.ts';
 import { Alert, Broken, NotBuilt, Quiet } from './EventParts.tsx';
-import { Glyph } from './Glyph.tsx';
-import { Ask, RedAction, RowWords, TextAction } from './SettingsParts.tsx';
+import { Glyph } from '../components/Glyph.tsx';
+import { Ask, RedAction, RowWords, TextAction } from '../components/SettingsParts.tsx';
 
 const LOCALE = 'en-US';
 

@@ -12,7 +12,14 @@ import {
   type MembersSay,
   ORGANISATION,
 } from './MembersSample.ts';
-import { FocusedScreen, Line, Row, RowList, Section, TextAction } from './Summary.tsx';
+import {
+  FocusedScreen,
+  Line,
+  Row,
+  RowList,
+  Section,
+  TextAction,
+} from '../../components/Summary.tsx';
 
 const CHECK_MS = 900;
 
