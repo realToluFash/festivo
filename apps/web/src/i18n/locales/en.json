@@ -1143,7 +1143,8 @@
     "sectionGeneral": "General",
     "sectionMembers": "Members",
     "sectionSignInRules": "Sign-in rules",
-    "dialogCancel": "Cancel"
+    "dialogCancel": "Cancel",
+    "choiceNow": "Now"
   },
   "membersScreen": {
     "proveOwner_one": "To make somebody an owner of {{organisation}}, confirm it's you. You won't be asked again for a minute.",

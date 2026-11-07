@@ -19,18 +19,20 @@ export type Tell = (words: string) => void;
 
 export type MarkKind = 'yes' | 'waiting' | 'paused' | 'ended';
 
-export function Bell({ tell }: { tell: Tell }) {
+export function Bell({ unread, onOpen }: { unread: number; onOpen: () => void }) {
   const { t } = useTranslation();
 
   return (
     <button
       type="button"
       className="desk-bell"
-      aria-label={t('notifications.bellUnread', { count: 3 })}
-      onClick={() => tell('Notifications have their own design.')}
+      aria-label={
+        unread > 0 ? t('notifications.bellUnread', { count: unread }) : t('notifications.bell')
+      }
+      onClick={onOpen}
     >
       <Glyph name="bell" size={19} />
-      <span className="today-unread" aria-hidden="true" />
+      {unread > 0 && <span className="today-unread" aria-hidden="true" />}
     </button>
   );
 }
@@ -39,14 +41,12 @@ export function Bell({ tell }: { tell: Tell }) {
 export function TitleRow({
   title,
   action,
-  tell,
-  bell = true,
+  bell,
   compact = false,
 }: {
   title: string;
   action?: ReactNode;
-  tell: Tell;
-  bell?: boolean;
+  bell?: ReactNode;
   compact?: boolean;
 }) {
   return (
@@ -55,13 +55,21 @@ export function TitleRow({
         {title}
       </h1>
       {action}
-      {bell && <Bell tell={tell} />}
+      {bell}
     </header>
   );
 }
 
 /** ‹ Members or ‹ Roles, where a person or a role opened in the list's place. */
-export function BackRow({ to, onBack, tell }: { to: string; onBack: () => void; tell: Tell }) {
+export function BackRow({
+  to,
+  onBack,
+  bell,
+}: {
+  to: string;
+  onBack: () => void;
+  bell?: ReactNode;
+}) {
   return (
     <div className="desk-top">
       <button type="button" className="desk-back" onClick={onBack}>
@@ -69,7 +77,7 @@ export function BackRow({ to, onBack, tell }: { to: string; onBack: () => void; 
         {to}
       </button>
       <span className="today-grow" />
-      <Bell tell={tell} />
+      {bell}
     </div>
   );
 }
@@ -278,6 +286,7 @@ export function Field({
   action?: ReactNode;
 }) {
   const id = useId();
+  const { t } = useTranslation();
   const [shown, setShown] = useState(false);
   const told = [help == null ? null : `${id}-help`, error == null ? null : `${id}-error`]
     .filter(Boolean)
@@ -318,7 +327,7 @@ export function Field({
             aria-pressed={shown}
             onClick={() => setShown((now) => !now)}
           >
-            {shown ? 'Hide' : 'Show'}
+            {shown ? t('signIn.conceal') : t('signIn.reveal')}
           </button>
         )}
       </div>
@@ -359,6 +368,7 @@ export function Choices({
   onPick: (name: string) => void;
   foot?: string;
 }) {
+  const { t } = useTranslation();
   const name = useId();
 
   return (
@@ -370,7 +380,7 @@ export function Choices({
             <label className={choice.name === picked ? 'desk-row is-picked' : 'desk-row'}>
               <RowWords
                 title={choice.name}
-                tag={choice.now === true && <Tag kind="now" word="Now" />}
+                tag={choice.now === true && <Tag kind="now" word={t('settings.choiceNow')} />}
                 lines={choice.line == null ? [] : [choice.line]}
               />
               <input

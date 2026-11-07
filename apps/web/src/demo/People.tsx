@@ -1,3 +1,4 @@
+import { DemoBell } from './DemoBell.tsx';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 
@@ -36,7 +37,7 @@ import {
   withRole,
 } from './people.ts';
 import { AddDialog, RoleDialog } from './PeopleDialogs.tsx';
-import { Avatar, Bell, Head, RowWords, Tag, TextAction } from '../components/SettingsParts.tsx';
+import { Avatar, Head, RowWords, Tag, TextAction } from '../components/SettingsParts.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
 import './today.css';
 import '../components/SettingsParts.css';
@@ -193,7 +194,7 @@ function PeopleScreen({ start }: { start: PeopleStart }) {
                   </h1>
                   <p className="desk-line">{EVENT}</p>
                 </div>
-                <Bell tell={tell} />
+                <DemoBell tell={tell} />
               </header>
               {page}
             </div>

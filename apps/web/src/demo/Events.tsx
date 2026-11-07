@@ -1,3 +1,4 @@
+import { DemoBell } from './DemoBell.tsx';
 import { type KeyboardEvent, useEffect, useId, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router';
 
@@ -30,7 +31,7 @@ import { DuplicateDialog } from './EventDialogs.tsx';
 import { EventCard, EventRow, EventsShell } from './EventParts.tsx';
 import { FilterMenu } from './EventFilter.tsx';
 import { Glyph } from '../components/Glyph.tsx';
-import { Bell, CardStep, Head, TextAction } from '../components/SettingsParts.tsx';
+import { CardStep, Head, TextAction } from '../components/SettingsParts.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
 import { TodaySidebar } from './TodaySidebar.tsx';
 import { AccessPaused, Switched } from './OrgSwitcher.tsx';
@@ -255,7 +256,7 @@ function ListTop({ tell }: { tell: Tell }) {
         <Glyph name="plus" size={18} weight={2.4} />
         {W.newEvent}
       </button>
-      <Bell tell={tell} />
+      <DemoBell tell={tell} />
     </header>
   );
 }

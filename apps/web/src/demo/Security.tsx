@@ -1,3 +1,4 @@
+import { DemoBell } from './DemoBell.tsx';
 import { formattingLocale } from '@soirely/domain';
 import { type ReactNode, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
@@ -130,7 +131,7 @@ export function Security({ viewer, state, tell }: { viewer: Viewer; state: strin
   return (
     <div className="desk-page">
       <div ref={column} className="desk-column">
-        <TitleRow title={W.title} tell={tell} />
+        <TitleRow title={W.title} bell={<DemoBell tell={tell} />} />
         <Card size="person">
           <div>
             <div className="desk-who">

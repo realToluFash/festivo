@@ -1,3 +1,4 @@
+import { DemoBell } from './DemoBell.tsx';
 import { formattingLocale } from '@soirely/domain';
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
@@ -88,7 +89,7 @@ export function SignInRules({
   if (load !== 'loaded')
     return (
       <Page>
-        <TitleRow title="Sign-in rules" tell={tell} />
+        <TitleRow title="Sign-in rules" bell={<DemoBell tell={tell} />} />
         {load === 'failed' ? <Failed onRetry={() => setLoad('retrying')} /> : <Loading />}
       </Page>
     );
@@ -112,7 +113,7 @@ export function SignInRules({
 
   return (
     <Page>
-      <TitleRow title="Sign-in rules" tell={tell} />
+      <TitleRow title="Sign-in rules" bell={<DemoBell tell={tell} />} />
       <Card>
         <Says>{card.says}</Says>
         <OnCard>{card.line}</OnCard>

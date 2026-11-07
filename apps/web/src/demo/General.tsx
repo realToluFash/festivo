@@ -1,3 +1,4 @@
+import { DemoBell } from './DemoBell.tsx';
 import { formattingLocale, normaliseDomain } from '@soirely/domain';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
@@ -74,7 +75,7 @@ export function General({ viewer, state, tell }: { viewer: Viewer; state: string
   return (
     <div className="desk-page">
       <div className="desk-column">
-        <TitleRow title="General" tell={tell} />
+        <TitleRow title="General" bell={<DemoBell tell={tell} />} />
         <OrganisationCard
           words={words}
           onStep={() => {

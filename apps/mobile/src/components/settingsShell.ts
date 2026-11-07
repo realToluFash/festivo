@@ -4,7 +4,7 @@ import type { SettingsSection } from '../kit/appNav.ts';
 import type { CoverLayout, Tab } from './TodayCover.tsx';
 import type { Tell } from './TodayParts.tsx';
 
-/** Who is looking: an owner sees every section, a member only their own and Sign-in rules, and somebody with no organisation only their own. */
+/** Who is looking: an owner sees every section, a member their own, the organisation read only and Sign-in rules, and somebody with no organisation only their own. */
 export type Viewer = 'owner' | 'member' | 'noOrg';
 
 /** sc-29859 leaves no Roles section: what each role does is fixed. sc-30441 adds Personalisation, ahead of the app. */

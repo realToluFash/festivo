@@ -1,3 +1,4 @@
+import { DemoBell } from './DemoBell.tsx';
 import { contactActions, initials, zoneLabel } from '@soirely/domain';
 import { useId, useState } from 'react';
 
@@ -98,7 +99,7 @@ export function Account({ viewer, state, tell }: { viewer: Viewer; state: string
   return (
     <div className="desk-page">
       <div className="desk-column">
-        <TitleRow title={W.title} tell={tell} />
+        <TitleRow title={W.title} bell={<DemoBell tell={tell} />} />
         <Card size="person">
           <div>
             <div className="desk-who">

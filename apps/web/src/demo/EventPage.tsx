@@ -1,3 +1,4 @@
+import { DemoBell } from './DemoBell.tsx';
 import { eventPhase, formatEventRange, hostsLine } from '@soirely/domain';
 import {
   type ComponentType,
@@ -76,7 +77,7 @@ import {
 } from './messages.ts';
 import { MessagesPage } from './Messages.tsx';
 import { TellDialog } from './MessagesTell.tsx';
-import { Ask, Bell, Chevron, Head, RowWords, TextAction } from '../components/SettingsParts.tsx';
+import { Ask, Chevron, Head, RowWords, TextAction } from '../components/SettingsParts.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
 import { useSwitcherStart } from './switcher.ts';
 
@@ -276,7 +277,7 @@ function EventView({
                   </li>
                 </ol>
               </nav>
-              <Bell tell={tell} />
+              <DemoBell tell={tell} />
             </div>
             {dates ? (
               <AreaPage event={event} name={CAL_WORDS.allDates} line={CAL_WORDS.allDatesComing} />

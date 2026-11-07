@@ -1,3 +1,4 @@
+import { DemoBell } from './DemoBell.tsx';
 import type { NotificationSetting } from '@soirely/api-client';
 import { formattingLocale, settingFlipped } from '@soirely/domain';
 import { useEffect, useEffectEvent, useId, useMemo, useRef, useState } from 'react';
@@ -126,7 +127,7 @@ export function Notifications({ state, tell }: { state: string; tell: Tell }) {
   return (
     <div className="desk-page">
       <div ref={column} className="desk-column">
-        <TitleRow title={W.title} tell={tell} />
+        <TitleRow title={W.title} bell={<DemoBell tell={tell} />} />
         {load === 'loading' && <Loading />}
         {load === 'failed' && (
           <div className="desk-failed" role="alert">
