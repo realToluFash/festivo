@@ -215,6 +215,14 @@ describe('the demo', () => {
     expect(await screen.findByRole('heading', { name: 'This page does not exist' })).toBeDefined();
   });
 
+  it('says a two-factor sign-in that ran out timed out, the email kept (sc-29956)', async () => {
+    await signInBoard('code-timed-out');
+
+    expect(screen.getByText('That sign-in timed out')).toBeDefined();
+    expect(screen.getByText('Sign in again to carry on.')).toBeDefined();
+    expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe(SAMPLE.email);
+  });
+
   it('gives the form way to the providers when password sign-in is off', async () => {
     await signInBoard('provider-only');
 
@@ -788,9 +796,35 @@ describe('the demo signs in with two-factor (sc-29063)', () => {
     expect(screen.getByRole('heading', { name: 'Your request was turned down' })).toBeDefined();
   });
 
-  it('cancels the request from the waiting page and says nothing changed', async () => {
+  it('asks before cancelling, Keep waiting first, and keeps the request waiting (sc-29957)', async () => {
     await page('?page=waiting', 'Waiting for your organisation');
     fireEvent.click(screen.getByRole('button', { name: 'Cancel the request' }));
+    const dialog = screen.getByRole('alertdialog', { name: 'Cancel your request?' });
+    expect(within(dialog).getByText('You’ll need to start again to get back in.')).toBeDefined();
+    expect(document.activeElement).toBe(
+      within(dialog).getByRole('button', { name: 'Keep waiting' }),
+    );
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Keep waiting' }));
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(screen.getByRole('heading', { name: 'Waiting for your organisation' })).toBeDefined();
+  });
+
+  it('closes the dialog and shows an answer found while it is open (sc-29957)', async () => {
+    await page('?page=waiting', 'Waiting for your organisation');
+    fireEvent.click(screen.getByRole('button', { name: 'Demo: Confirm' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel the request' }));
+    expect(screen.getByRole('alertdialog', { name: 'Cancel your request?' })).toBeDefined();
+    await wait(20_000);
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(screen.getByRole('heading', { name: 'Two-factor is off' })).toBeDefined();
+  });
+
+  it('cancels the request once confirmed and says nothing changed', async () => {
+    await page('?page=waiting', 'Waiting for your organisation');
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel the request' }));
+    const dialog = screen.getByRole('alertdialog', { name: 'Cancel your request?' });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel the request' }));
     await wait();
     expect(screen.getByRole('heading', { name: 'Request cancelled' })).toBeDefined();
     expect(screen.getByText(/^Nothing changed/)).toBeDefined();

@@ -2,6 +2,7 @@ import { shapeRecovery } from '@soirely/domain';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router';
 
+import { ConfirmDialog } from '../components/ConfirmDialog.tsx';
 import { offButton } from '../offButton.ts';
 import { BoardPage, SignedInAs } from './BoardPage.tsx';
 import { CodeField, Heading, Notice, Resend, useBusy } from './parts.tsx';
@@ -43,7 +44,7 @@ export function TwoFactorBoard() {
     case 'codes':
       return <BothCodes key={key} state={state} />;
     case 'waiting':
-      return <Waiting key={key} />;
+      return <Waiting key={key} confirming={state === 'confirm'} />;
     case 'off':
       return <TwoFactorOff />;
     case 'turned-down':
@@ -473,9 +474,11 @@ const ANSWERS: { answer: Answer; name: string }[] = [
   { answer: 'replaced', name: 'Replace it' },
 ];
 
-function Waiting() {
+/** Cancel the request asks first (sc-29957); an answer found while the dialog is open leaves the page, and the dialog with it. */
+function Waiting({ confirming: opened }: { confirming: boolean }) {
   const navigate = useNavigate();
   const [answer, setAnswer] = useState<Answer | null>(null);
+  const [confirming, setConfirming] = useState(opened);
   const [busy, after] = useBusy();
   const [asked] = useState(() => Date.now());
   const given = useRef<Answer | null>(null);
@@ -528,18 +531,25 @@ function Waiting() {
       </p>
       <p className="demo-aside">
         <span>This wasn’t you?</span>
-        <button
-          className="link-button demo-link"
-          type="button"
-          aria-busy={busy}
-          onClick={() => {
-            if (!busy) after(() => void navigate(twoFactorAt('cancelled')));
-          }}
-        >
+        <button className="link-button demo-link" type="button" onClick={() => setConfirming(true)}>
           Cancel the request
         </button>
       </p>
       <BackToSignIn />
+      {confirming && (
+        <ConfirmDialog
+          id="cancel-request"
+          title="Cancel your request?"
+          keep="Keep waiting"
+          go="Cancel the request"
+          pending={busy}
+          opensPage
+          onKeep={() => setConfirming(false)}
+          onGo={() => after(() => void navigate(twoFactorAt('cancelled')))}
+        >
+          <p>You’ll need to start again to get back in.</p>
+        </ConfirmDialog>
+      )}
     </BoardPage>
   );
 }
