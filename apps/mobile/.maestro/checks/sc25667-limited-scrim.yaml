@@ -1,5 +1,10 @@
 # sc-25667: on an account at its limit, once Too many new organisations for now. shows after a held send, a tap on the scrim closes the sheet.
 appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
 ---
 - runFlow: ../open-create-organisation.yaml
 - tapOn:

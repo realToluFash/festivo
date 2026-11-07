@@ -1,5 +1,10 @@
 # Mark all read not saved, then the feed not loading, with the API stopped through the harness (sc-23233).
 appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
 ---
 - openLink: ${METRO_URL}/--/events
 - extendedWaitUntil:

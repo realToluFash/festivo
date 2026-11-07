@@ -1,5 +1,10 @@
 # sc-24696: with the API stopped, Settings > Organisation keeps the Company domain joining and Requests to join cards, each with its heading, one line and Try again, and no On/Off word, switch or field. With the API back, each Try again reloads its own card alone. Needs ORIENT.
 appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
 ---
 - setOrientation: ${ORIENT}
 - runFlow: ../return-home.yaml

@@ -1,5 +1,10 @@
 # sc-19212: on a tablet on its side, Events of ${ORG} (with events) opened with the API stopped: the failed card at full width, no Choose an event pane; Try again with the API back gives the list beside the pane.
 appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
 ---
 - setOrientation: LANDSCAPE_LEFT
 - runFlow:

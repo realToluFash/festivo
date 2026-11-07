@@ -1,5 +1,10 @@
 # sc-26974: Events that cannot load at all, with its Try again, in the batch's language.
 appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
 ---
 - runScript:
     file: ../batch/helper.js

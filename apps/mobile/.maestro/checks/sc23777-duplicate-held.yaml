@@ -1,5 +1,10 @@
 # sc-23777 regression on iOS: Duplicate of ${EVENT}, Create draft pressed with the API paused; the swipe from the left edge leaves Duplicate showing while it creates the copy, then the copy opens once the API is back.
 appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
 ---
 - openLink: ${METRO_URL}/--/events/${EVENT}
 - scrollUntilVisible:
