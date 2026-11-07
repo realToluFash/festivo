@@ -30,7 +30,16 @@ export interface RunNow {
   band: string;
 }
 
-export const RUN_STATES = ['on', 'over', 'open', 'between', 'before', 'done', 'long'] as const;
+export const RUN_STATES = [
+  'on',
+  'over',
+  'open',
+  'last',
+  'between',
+  'before',
+  'done',
+  'long',
+] as const;
 
 export type RunState = (typeof RUN_STATES)[number];
 
@@ -39,9 +48,16 @@ export const RAIL_STOPS = 6;
 export const LONG_TITLE =
   'Drinks reception on the garden terrace with the string quartet, canapés from the Lagos kitchen and the first photographs';
 
-const minutes = (hhmm: string) => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3, 5));
-const clockOf = (total: number) =>
-  `${String(Math.floor(total / 60) % 24).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+/** sc-3895's event day runs 05:00 to 05:00, so 00:30 comes after 22:00 on the same track. */
+const DAY_STARTS = 5 * 60;
+const DAY = 24 * 60;
+const minutes = (hhmm: string) =>
+  (Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3, 5)) - DAY_STARTS + DAY) % DAY;
+const clockOf = (total: number) => {
+  const at = (total + DAY_STARTS) % DAY;
+
+  return `${String(Math.floor(at / 60)).padStart(2, '0')}:${String(at % 60).padStart(2, '0')}`;
+};
 
 /** Each not-started item's expected start, by sc-1404: the latest of its planned start, the expected end before it, and now. */
 export function expectedStarts(items: readonly RunItem[], clock: string): Map<RunItem, number> {
@@ -74,6 +90,25 @@ export function railWindow<T>(stops: readonly T[], anchor: number): T[] {
   return stops.slice(from, from + RAIL_STOPS);
 }
 
+/** Each stop's label box on a rail `width` wide: centred on its stop, at most `widest`, pushed in so none overlap. */
+export function railLabels(
+  count: number,
+  width: number,
+  widest: number,
+  apart: number,
+): { left: number; width: number }[] {
+  const box = Math.min(widest, (width - (count - 1) * apart) / count);
+  const step = count > 1 ? width / (count - 1) : 0;
+
+  return Array.from({ length: count }, (_, index) => ({
+    left: Math.min(
+      Math.max(index * step - box / 2, index * (box + apart)),
+      width - (count - index) * box - (count - 1 - index) * apart,
+    ),
+    width: box,
+  }));
+}
+
 const STATE_SAID: Record<RunStop['state'], string> = {
   done: 'done',
   now: 'now',
@@ -99,7 +134,9 @@ export function runNowOf(name: string, items: readonly RunItem[], clock: string,
   const behind = next == null || expected == null ? null : expected - minutes(next.planned);
   const figure =
     behind == null
-      ? null
+      ? now == null
+        ? null
+        : { words: 'Last item under way', said: 'Last item under way' }
       : behind <= 0
         ? { words: 'On time', said: 'On time' }
         : {
@@ -156,6 +193,7 @@ const TRACK: readonly Planned[] = [
 const SKIPPED = 3;
 const DRINKS = 4;
 const SPEECHES = 7;
+const LAST = 9;
 
 /** For each state, the clock, the items done before it, the item that is Now and when it started. */
 const AT: Record<
@@ -168,6 +206,7 @@ const AT: Record<
   between: { clock: '17:38', done: DRINKS + 1, ended: '17:35' },
   before: { clock: '13:10', done: 0 },
   open: { clock: '20:05', done: SPEECHES, now: [SPEECHES, '19:40'] },
+  last: { clock: '21:50', done: LAST, now: [LAST, '21:35'] },
   done: { clock: '22:30', done: TRACK.length },
 };
 

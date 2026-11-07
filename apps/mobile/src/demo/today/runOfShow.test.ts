@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
 import { sayIn } from '../today.ts';
-import { LONG_TITLE, type RunItem, railWindow, runNowOf, trackAt } from './runOfShow.ts';
+import {
+  LONG_TITLE,
+  RAIL_STOPS,
+  type RunItem,
+  railLabels,
+  railWindow,
+  runNowOf,
+  trackAt,
+} from './runOfShow.ts';
 
 const us = sayIn('en-US');
 const NAME = 'Adaeze & Tunde’s wedding';
@@ -32,6 +40,33 @@ describe('the rail’s six, on a track of ten', () => {
 
   it('shows a track of six or fewer whole', () => {
     expect(railWindow([1, 2, 3, 4], 2)).toEqual([1, 2, 3, 4]);
+  });
+});
+
+describe('the rail’s labels', () => {
+  const ends = (box: { left: number; width: number }) => box.left + box.width;
+
+  it.each([327, 345, 682, 1000])('never share space on a rail %d pt wide', (width) => {
+    for (let count = 1; count <= RAIL_STOPS; count += 1) {
+      const boxes = railLabels(count, width, 64, 4);
+
+      expect(boxes[0]?.left).toBeCloseTo(0);
+      expect(ends(boxes.at(-1) ?? { left: 0, width: 0 })).toBeLessThanOrEqual(width + 0.001);
+      boxes.slice(1).forEach((box, index) => {
+        expect(box.left - ends(boxes[index] ?? box)).toBeGreaterThanOrEqual(4 - 0.001);
+      });
+    }
+  });
+
+  it('gives each of six about 51 pt on an iPhone SE, and 64 pt where there is room', () => {
+    expect(railLabels(6, 327, 64, 4)[2]?.width).toBeCloseTo(51.2, 1);
+    expect(railLabels(6, 682, 64, 4).map(({ width }) => width)).toEqual(Array(6).fill(64));
+  });
+
+  it('centres a middle label on its stop where there is room', () => {
+    const box = railLabels(6, 682, 64, 4)[2];
+
+    expect((box?.left ?? 0) + 32).toBeCloseTo((682 / 5) * 2);
   });
 });
 
@@ -91,6 +126,48 @@ describe('an item is Now', () => {
   it('keeps a title of 120 characters whole', () => {
     expect(nowAt('long').headline).toBe(LONG_TITLE);
     expect(LONG_TITLE).toHaveLength(120);
+  });
+});
+
+describe('the last item is Now', () => {
+  const last = nowAt('last');
+
+  it('has no Next, and the figure is the run view’s Last item under way', () => {
+    expect([last.headline, last.until, last.next, last.figure?.words]).toEqual([
+      'First dance',
+      'until 10:05 PM',
+      null,
+      'Last item under way',
+    ]);
+    expect(last.band).toBe('Now · First dance, until 10:05 PM');
+    expect(last.rail.at(-1)).toMatchObject({ title: 'First dance', state: 'now' });
+  });
+});
+
+describe('a track past midnight, on the event day from 05:00', () => {
+  it('puts 00:30 after 22:00, so 22:00 is Next', () => {
+    const items: RunItem[] = [
+      { planned: '00:30', title: 'Carriages', length: 30, phase: 'waiting' },
+      { planned: '22:00', title: 'Last dance', length: 60, phase: 'waiting' },
+    ];
+    const run = runNowOf(NAME, items, '21:30', us);
+
+    expect(run.next?.title).toBe('Last dance');
+    expect(run.rail.map(({ title }) => title)).toEqual(['Last dance', 'Carriages']);
+  });
+
+  it('runs an item started at 23:30 for an hour 10 min over at 00:40', () => {
+    const items: RunItem[] = [
+      { planned: '23:30', title: 'Last dance', length: 60, phase: 'now', started: '23:30' },
+      { planned: '00:30', title: 'Carriages', length: 30, phase: 'waiting' },
+    ];
+    const run = runNowOf(NAME, items, '00:40', us);
+
+    expect([run.until, run.figure?.words, run.next]).toEqual([
+      '10 min over',
+      '10 min behind',
+      { time: '12:40 AM', title: 'Carriages' },
+    ]);
   });
 });
 

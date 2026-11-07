@@ -48,6 +48,11 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/today?moment=day&now=open',
       },
       {
+        title: 'Now · the last item',
+        what: 'Last item under way, no Next',
+        href: '/demo/today?moment=day&now=last',
+      },
+      {
         title: 'Now · nothing is on',
         what: 'Between two items, with Next',
         href: '/demo/today?moment=day&now=between',

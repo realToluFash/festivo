@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Animated, Pressable, StyleSheet, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
@@ -19,7 +20,7 @@ import {
 import { useTodayShell } from '../../components/todayShell.ts';
 import type { Now } from '../../kit/today.ts';
 import { tokens } from '../../theme/tokens.ts';
-import type { RunMoment, RunNow } from './runOfShow.ts';
+import { type RunMoment, type RunNow, railLabels } from './runOfShow.ts';
 
 const LONG = 40;
 
@@ -62,6 +63,8 @@ function Chips({ now }: { now: Now }) {
 }
 
 function Rail({ run }: { run: RunNow }) {
+  const [width, setWidth] = useState(0);
+  const boxes = railLabels(run.rail.length, width, RAIL_LABEL, tokens.spaceXxs);
   const last = Math.max(1, run.rail.length - 1);
   const on = run.rail.findIndex((stop) => stop.state === 'now');
   const reached = run.rail.reduce(
@@ -95,21 +98,18 @@ function Rail({ run }: { run: RunNow }) {
           </>
         )}
       </View>
-      <View style={styles.railLabels}>
+      <View
+        style={styles.railLabels}
+        onLayout={(event) => setWidth(event.nativeEvent.layout.width)}
+      >
         {run.rail.map((stop, index) => {
           const strong = stop.state === 'now' || stop.state === 'next';
           const end = run.rail.length - 1;
-          const place =
-            index === 0
-              ? styles.railFirst
-              : index === end
-                ? styles.railLast
-                : [styles.railMiddle, { left: at(index) }];
           const align =
             index === 0 ? styles.alignLeft : index === end ? styles.alignRight : styles.alignCentre;
 
-          return (
-            <View key={stop.time} style={[styles.railLabel, place]}>
+          return width === 0 ? null : (
+            <View key={stop.time} style={[styles.railLabel, boxes[index]]}>
               <Text
                 size={12}
                 weight={strong ? 'semibold' : 'medium'}
@@ -499,10 +499,7 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colorInkOnDark,
   },
   railLabels: { height: 34 },
-  railLabel: { position: 'absolute', width: RAIL_LABEL },
-  railFirst: { left: 0 },
-  railLast: { right: 0 },
-  railMiddle: { marginLeft: -RAIL_LABEL / 2 },
+  railLabel: { position: 'absolute' },
   alignLeft: { textAlign: 'left' },
   alignRight: { textAlign: 'right' },
   alignCentre: { textAlign: 'center' },
