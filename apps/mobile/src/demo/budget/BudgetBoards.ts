@@ -32,7 +32,7 @@ const BOARDS: Record<BudgetState, readonly [string, string]> = {
   due_marked: ['Due now, marked', 'Marked paid · £840.00, Undo'],
   due_changed: ['Due now, changed since', 'Nothing left to pay, and why: paid, cancelled'],
   due_refused: ['Due now, refused', 'This payment has been cancelled'],
-  due_done: ['Due now, done', 'Nothing left to pay from this reminder'],
+  due_done: ['Due now, done', 'Nothing left to pay, the paid rows under it'],
   due_read_only: ['Due now, read only', 'No Paid, no Undo'],
 };
 

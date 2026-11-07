@@ -444,8 +444,6 @@ export interface DueNowSheet {
   marked: readonly string[];
   refused: readonly string[];
   readOnly: boolean;
-  /** Opened once every row was settled: one line, and a link per event (sc-1331). */
-  done: boolean;
 }
 
 export interface BudgetModel {
@@ -597,7 +595,6 @@ export function startOf(state: BudgetState | null, removed: string): BudgetModel
           marked: [],
           refused: [],
           readOnly: false,
-          done: state === 'due_done',
         },
       };
     case 'due_marked':
@@ -610,7 +607,6 @@ export function startOf(state: BudgetState | null, removed: string): BudgetModel
           marked: [bloom],
           refused: [],
           readOnly: false,
-          done: false,
         },
       };
     case 'due_refused':
@@ -622,7 +618,6 @@ export function startOf(state: BudgetState | null, removed: string): BudgetModel
           marked: [],
           refused: ['savour-deposit'],
           readOnly: false,
-          done: false,
         },
       };
     case 'due_read_only':
@@ -635,7 +630,6 @@ export function startOf(state: BudgetState | null, removed: string): BudgetModel
           marked: [],
           refused: [],
           readOnly: true,
-          done: false,
         },
       };
     default:
@@ -725,7 +719,6 @@ export function reduce(m: BudgetModel, action: BudgetAction): BudgetModel {
           marked: [],
           refused: [],
           readOnly: m.vendors === 'readOnly',
-          done: false,
         },
       };
     case 'closeDueNow':

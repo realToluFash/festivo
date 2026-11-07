@@ -7,6 +7,7 @@ export const TODAY = '2026-11-03';
 export const NOW_TIME = '09:41';
 export const AS_OF_TIME = '09:32';
 export const COLLEAGUE = 'Julien Moreau';
+export const LEAD = 'Priya Shah';
 
 export const GUESTS = {
   invited: 142,

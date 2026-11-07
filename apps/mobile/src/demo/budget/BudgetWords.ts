@@ -58,7 +58,6 @@ export const W = {
   paidOne: 'Paid',
   paidDifferent: 'Paid a different amount',
   cancelledWord: 'Cancelled',
-  nothingLeft: 'Nothing left to pay from this reminder',
   nothingLeftHead: 'Nothing left to pay.',
   hasAPayer: 'Has a payer',
   noPayerYet: 'No payer yet',
@@ -146,6 +145,6 @@ export const say = {
   ownDesign: (what: string) => `${what} has its own design.`,
   paymentFor: (vendor: string, what: string, event: string) => `${vendor} · ${what} · ${event}`,
   due: (date: string) => `Due ${date}`,
-  rateChanged: (name: string, rate: string, amount: string, up: boolean) =>
-    `${name} was changed to ${rate}, so the settled total went ${up ? 'up' : 'down'} by ${amount}.`,
+  rateChanged: (who: string, cost: string, rate: string, amount: string, up: boolean) =>
+    `${who} changed ${cost} to ${rate}, so the settled total went ${up ? 'up' : 'down'} by ${amount}.`,
 };

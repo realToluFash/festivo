@@ -46,6 +46,7 @@ import {
   CEILINGS,
   GUESTS,
   HEADS_IF_ALL_COME,
+  LEAD,
   LINES,
   type Line as CostLine,
   PAYERS,
@@ -185,7 +186,8 @@ function DueNext({
   m: BudgetModel;
   locale: string;
   count: number;
-  link: boolean;
+  /** In the head on the iPhone; at the foot in the iPad's narrow column (ux, 7 Nov). */
+  link: 'head' | 'foot' | 'none';
   actions: HomeActions;
 }) {
   const due = owed(m.ledger);
@@ -193,22 +195,19 @@ function DueNext({
     (payment) => due.includes(payment) || m.marked.includes(payment.id),
   ).slice(0, count);
   const everything = due.length;
+  const all =
+    link !== 'none' && everything > 0 ? (
+      <TextAction
+        label={say.everythingDue(everything)}
+        after="chevron"
+        onPress={actions.onEverything}
+        ref={actions.rowRef('everything')}
+        testID="budget.everythingDue"
+      />
+    ) : null;
 
   return (
-    <Section
-      title={W.dueNext}
-      right={
-        link && everything > 0 ? (
-          <TextAction
-            label={say.everythingDue(everything)}
-            after="chevron"
-            onPress={actions.onEverything}
-            ref={actions.rowRef('everything')}
-            testID="budget.everythingDue"
-          />
-        ) : undefined
-      }
-    >
+    <Section title={W.dueNext} right={link === 'head' ? all : undefined}>
       {shown.length === 0 ? (
         <Line text={W.nothingDue} />
       ) : (
@@ -263,6 +262,7 @@ function DueNext({
           })}
         />
       )}
+      {link === 'foot' && all}
     </Section>
   );
 }
@@ -579,7 +579,13 @@ export function BudgetHome({
         {card}
         {after}
         <PerHead m={m} locale={locale} onWashed={onWashed} />
-        <DueNext m={m} locale={locale} count={3} link={m.vendors === 'on'} actions={actions} />
+        <DueNext
+          m={m}
+          locale={locale}
+          count={3}
+          link={m.vendors === 'on' ? 'head' : 'none'}
+          actions={actions}
+        />
         <Ceiling m={m} locale={locale} onWashed={onWashed} onLayout={ceilingAt} />
         <AgainstPlan m={m} locale={locale} onWashed={onWashed} />
         <WhoIsPaying m={m} locale={locale} onPayers={actions.onPayers} />
@@ -599,7 +605,13 @@ export function BudgetHome({
         <View style={[styles.right, { width: side ? 340 : 306 }]}>
           <PerHead m={m} locale={locale} onWashed={onWashed} />
           <Ceiling m={m} locale={locale} onWashed={onWashed} />
-          <DueNext m={m} locale={locale} count={2} link={false} actions={actions} />
+          <DueNext
+            m={m}
+            locale={locale}
+            count={2}
+            link={m.vendors === 'on' ? 'foot' : 'none'}
+            actions={actions}
+          />
           <AgainstPlan m={m} locale={locale} onWashed={onWashed} />
           <WhoIsPaying m={m} locale={locale} onPayers={actions.onPayers} />
         </View>
@@ -618,6 +630,7 @@ export function liveWords(lines: readonly CostLine[], locale: string): string {
   const after = totalsOf(lines).settled;
   const rate = say.rate(money(LIVE_CHANGE.to, locale), 'perHead');
   return say.rateChanged(
+    LEAD,
     line?.name ?? '',
     rate,
     money(Math.abs(after - before), locale),

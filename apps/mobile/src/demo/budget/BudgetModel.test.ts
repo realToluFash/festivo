@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { SAMPLE_GUESTS } from '../events/GuestCounts.ts';
 import { TO_FIGURES } from '../messages/MessagesSample.ts';
+import { sampleOnEvent } from '../people/PeopleSample.ts';
 import { BUDGET_BOARDS } from './BudgetBoards.ts';
 import {
   AS_OF,
@@ -42,6 +43,7 @@ import {
   CEILINGS,
   GUESTS,
   HEADS_IF_ALL_COME,
+  LEAD,
   LINES,
   PAYERS,
   PAYMENTS,
@@ -126,6 +128,10 @@ describe('a live change: Dinner from £68.00 to £70.00 a head (sc-93, 7 Nov)', 
     expect([whole(totals.settled), whole(totals.ifAll)]).toEqual(['£19,922', '£23,326']);
     expect([money(head.settled), money(head.ifAll)]).toEqual(['£207.52', '£175.38']);
     expect(money(totals.settled - totalsOf().settled)).toBe('£192.00');
+    expect(say.rateChanged(LEAD, 'Dinner', '£70.00 a head', '£192.00', true)).toBe(
+      'Priya Shah changed Dinner to £70.00 a head, so the settled total went up by £192.00.',
+    );
+    expect(sampleOnEvent().find((one) => one.role === 'Lead')?.name).toBe(LEAD);
     expect(categoryState('Catering', changed.lines)).toBe('close');
     const payers = payersOf(changed.lines);
     expect(payers.has.settled + payers.noPayer).toBe(totals.settled);
@@ -344,6 +350,9 @@ describe('Due now (sc-1331): one tap each, no total', () => {
     expect(changed.dueNow != null && dueNowSettled(changed.dueNow, changed.ledger)).toBe(true);
     expect(changed.dueNow?.ids).toEqual(['bloom-balance', 'savour-deposit']);
     expect(open.dueNow != null && dueNowSettled(open.dueNow, open.ledger)).toBe(false);
+    const done = startOf('due_done', REMOVED_PAYER);
+    expect(done.dueNow != null && dueNowSettled(done.dueNow, done.ledger)).toBe(true);
+    expect(done.dueNow?.ids).toEqual(['bloom-balance', 'savour-deposit']);
     expect(W.nothingLeftHead).toBe('Nothing left to pay.');
   });
 

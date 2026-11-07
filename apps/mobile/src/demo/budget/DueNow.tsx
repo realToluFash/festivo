@@ -158,20 +158,6 @@ function DueList({
     onClose: () => void;
   };
 }) {
-  if (sheet.done)
-    return (
-      <View style={styles.done}>
-        <Text size={20} weight="bold" style={styles.doneTitle}>
-          {W.nothingLeft}
-        </Text>
-        <TextAction
-          label={say.everythingDueOn(EVENT_NAME)}
-          onPress={on.onClose}
-          testID="budget.dueNow.everything"
-        />
-      </View>
-    );
-
   const settled = dueNowSettled(sheet, ledger);
 
   return (
@@ -304,6 +290,5 @@ const styles = StyleSheet.create({
     columnGap: tokens.spaceXl,
     paddingBottom: tokens.spaceXs,
   },
-  done: { gap: tokens.spaceSm },
   doneTitle: { lineHeight: 20 * 1.25 },
 });
