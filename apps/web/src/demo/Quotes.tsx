@@ -13,7 +13,7 @@ import { Link, useSearchParams } from 'react-router';
 
 import { Alert, Thumb } from './EventParts.tsx';
 import { type SampleEvent, lineOf } from './events.ts';
-import { Glyph } from './Glyph.tsx';
+import { Glyph } from '../components/Glyph.tsx';
 import {
   ADD_ON_VENDORS,
   ALREADY_QUOTED,
@@ -67,8 +67,8 @@ import {
   RowWords,
   Says,
   TextAction,
-} from './SettingsParts.tsx';
-import type { Tell } from './TodayParts.tsx';
+} from '../components/SettingsParts.tsx';
+import type { Tell } from '../components/SettingsParts.tsx';
 import { type Vendor, vendorAt } from './vendors.ts';
 import './quotes.css';
 

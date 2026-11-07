@@ -1180,12 +1180,12 @@ class BackgroundWorker(unittest.TestCase):
                       "artifact_refused": "No access."})
         self.assertIsNone(store.get_meta(self.db, "artifact:dev"))
 
-    def stuck(self, tell, wanted="rm node_modules apps/web/node_modules"):
+    def stuck(self, tell, wanted="rm node_modules apps/web/node_modules", unnamed=None):
         def run(values, folder, name, text, cwd, finished, allowed=(), denied=(), extra=None,
                 on_start=None, daemon=None):
             on_start("1d923fe2", SESSION)
-            return {"result": "Committing.", "is_error": False, "wanted": wanted}, 1, \
-                "prompt", SESSION
+            return {"result": "Committing.", "is_error": False, "wanted": wanted,
+                    "unnamed": unnamed}, 1, "prompt", SESSION
 
         return runner.worker(self.db, self.home, self.platform, "dev", self.item,
                              load=lambda: config(self.root, roles={"dev": {}}),
@@ -1206,6 +1206,15 @@ class BackgroundWorker(unittest.TestCase):
         self.assertEqual(store.item(self.db, self.item)["status"], "open")
         seen = store.get_meta(self.db, "prompt:dev")
         self.assertEqual((seen["story"], seen["told"]), (42, [42]))
+
+    def test_a_prompt_nothing_named_tells_ops_which_sources_were_empty(self):
+        self.on_story()
+        told = []
+        gap = "the listing had no `needs`; the job's state.json was gone"
+        self.stuck(lambda *a: told.append(a), wanted=None, unnamed=gap)
+        (_, _, text), = told
+        self.assertIn(f"asking to run a command it did not name ({gap})", text)
+        self.assertIn(gap, runlog.last(self.home, "dev")["report"])
 
     def test_ops_is_told_of_a_prompt_once_per_story(self):
         self.on_story()

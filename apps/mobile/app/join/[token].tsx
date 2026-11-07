@@ -454,6 +454,7 @@ function Ask({
           }}
           onBlur={() => checks.left('message', message)}
           state={error != null ? 'blank' : 'plain'}
+          line={error}
           submitting={busy}
           multiline
           autoCapitalize="sentences"

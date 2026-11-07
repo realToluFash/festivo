@@ -67,6 +67,10 @@ a run in another language left signed out: `sign-in`'s first wait is on the Engl
 `text-size-signed-out` starts with it too, so a change to the chip row lands in one flow.
 It picks the language on welcome, then taps Sign in with email (sc-29076).
 
+`welcome-signed-out` relaunches the app on welcome, signing out first whoever an earlier flow
+left on Home, No organisation, Complete your profile or two-factor overdue. A flow that waits on `welcome.brand`
+starts with it, since `/--/welcome` draws welcome over a session and `/--/` does not (sc-30157).
+
 Two flows tap one control by `testID`, passed as `ID`: `scroll-tap` scrolls to it from above
 or below, for a step inside another flow; `ownership-tap` takes a screenshot of what follows
 and turns off the retry, for a button whose request is held.

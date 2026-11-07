@@ -17,7 +17,7 @@ import {
   proofProblem,
   underRoles,
 } from './MembersSample.ts';
-import { type AskProps, FocusedScreen, Line } from './Summary.tsx';
+import { type AskProps, FocusedScreen, Line } from '../../components/Summary.tsx';
 
 export const TAKES_EFFECT = 'Takes effect on their next request. Nobody is signed out.';
 const OWNER_ASKS = 'Asks for your password and a code.';

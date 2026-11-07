@@ -215,6 +215,7 @@ export function EditableDetails({
           value={values.countryCode}
           onChange={(code) => change('countryCode', code)}
           disabled={busy}
+          wrong={errors.countryCode != null}
           pickerRef={countryPicker}
           testID="organisation.country"
         />
@@ -246,6 +247,7 @@ export function EditableDetails({
           value={values.currency}
           onChange={(code) => change('currency', code)}
           disabled={busy}
+          wrong={errors.currency != null}
           pickerRef={currencyPicker}
           testID="organisation.currency"
         />
@@ -258,6 +260,7 @@ export function EditableDetails({
           value={values.timezone}
           onChange={(zone) => change('timezone', zone)}
           disabled={busy}
+          wrong={errors.timezone != null}
           pickerRef={timezonePicker}
           testID="organisation.timezone"
         />
@@ -278,6 +281,7 @@ export function EditableDetails({
           value={values.locale}
           onChange={(code) => change('locale', code)}
           disabled={busy}
+          wrong={errors.locale != null}
           pickerRef={languagePicker}
           testID="organisation.language"
         />

@@ -204,7 +204,8 @@
   "forms": {
     "emailBlank": "Enter your email address.",
     "emailShape": "That does not look like an email address. Check it has an @ and a domain.",
-    "countryBlank": "Choose a country."
+    "countryBlank": "Choose a country.",
+    "invalid": "Invalid"
   },
   "oauth": {
     "linked": "{{provider}} is now linked to your account. You can sign in with either.",
@@ -646,7 +647,12 @@
     "events": "Events",
     "calendar": "Calendar",
     "settings": "Settings",
-    "organisation": "Organisation"
+    "organisation": "Organisation",
+    "backTo": "Back to {{place}}",
+    "cancel": "Cancel",
+    "back": "Back",
+    "closeMenu": "Close the menu",
+    "tryAgain": "Try again"
   },
   "eventNav": {
     "overview": "Overview",
@@ -774,7 +780,8 @@
       "vendors": "Vendors",
       "members": "Members and roles",
       "billing": "Billing",
-      "organisation": "Organisation"
+      "organisation": "Organisation",
+      "people": "People on events"
     },
     "means": {
       "events": "Create, publish, pause and conclude events.",
@@ -789,7 +796,8 @@
       "vendors": "Suppliers on each event and what was agreed with them.",
       "members": "Invite, approve, suspend, change roles.",
       "billing": "Plan, cards and invoices.",
-      "organisation": "The name, country, contact address and the defaults new events start with."
+      "organisation": "The name, country, contact address and the defaults new events start with.",
+      "people": "Who is on each event, and the role each person has there."
     },
     "margin": "Margin",
     "marginMeans": "What {{name}} adds on top of costs. Hidden means the budget opens with costs only.",
@@ -1991,7 +1999,7 @@
       "liveTitle": "Make it live",
       "liveBody": "It stays a draft until you do."
     },
-    "createEvent": "Create an event",
+    "startFirst": "Start your first event",
     "stepNumber": "{{n, number}}"
   }
 }

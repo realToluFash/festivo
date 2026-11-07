@@ -1,6 +1,23 @@
+import { DemoBell } from './DemoBell.tsx';
 import { eventPhase, formatEventRange, hostsLine } from '@soirely/domain';
-import { type ComponentType, type ReactNode, useContext, useEffect, useRef, useState } from 'react';
-import { Link, Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router';
+import {
+  type ComponentType,
+  type ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
+import {
+  Link,
+  Navigate,
+  useBlocker,
+  useLocation,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from 'react-router';
 
 import {
   type Area,
@@ -42,8 +59,8 @@ import {
 import { Alert, EventCard, EventsShell, NotBuilt, Switch, Thumb } from './EventParts.tsx';
 import { CAL_WORDS } from './calendar.ts';
 import { EventSidebar } from './EventSidebar.tsx';
-import { Glyph, type GlyphName } from './Glyph.tsx';
-import { LayersContext } from './layers.ts';
+import { Glyph, type GlyphName } from '../components/Glyph.tsx';
+import { LayersContext } from '../layers.ts';
 import { BudgetArea } from './Quotes.tsx';
 import {
   type Told,
@@ -61,8 +78,8 @@ import {
 } from './messages.ts';
 import { MessagesPage } from './Messages.tsx';
 import { TellDialog } from './MessagesTell.tsx';
-import { Ask, Bell, Chevron, Head, RowWords, TextAction } from './SettingsParts.tsx';
-import type { Tell } from './TodayParts.tsx';
+import { Ask, Chevron, Head, RowWords, TextAction } from '../components/SettingsParts.tsx';
+import type { Tell } from '../components/SettingsParts.tsx';
 import { useSwitcherStart } from './switcher.ts';
 
 const LOCALE = 'en-US';
@@ -211,6 +228,7 @@ function EventView({
   const [muted, setMuted] = useState(state === 'muted');
   const [muteLoaded, setMuteLoaded] = useState(state !== 'muteNotLoaded');
   const [muteFailed, setMuteFailed] = useState(state === 'muteNotSaved');
+  const away = useLeaveAsk(dirty);
 
   if (area === 'people') return <Navigate to="/demo/people" replace />;
   if (area === 'messages' && fixedArea == null)
@@ -260,7 +278,7 @@ function EventView({
                   </li>
                 </ol>
               </nav>
-              <Bell tell={tell} />
+              <DemoBell tell={tell} />
             </div>
             {dates ? (
               <AreaPage event={event} name={CAL_WORDS.allDates} line={CAL_WORDS.allDatesComing} />
@@ -355,6 +373,20 @@ function EventView({
               }}
             />
           )}
+          {away.blocked && (
+            <Ask
+              title={W.discardTitle}
+              line={W.discardLine}
+              keep={W.keepEditing}
+              go={W.discard}
+              onKeep={away.stay}
+              onGo={() => {
+                setPart(null);
+                setDirty(false);
+                away.go();
+              }}
+            />
+          )}
           <Asks
             asking={asking}
             event={event}
@@ -367,10 +399,14 @@ function EventView({
               if (words != null) tell(words);
             }}
             onDeleted={() => {
+              away.release();
               forget(event.id);
               void navigate('/demo/events', { state: { told: W.deleted(event.name) } });
             }}
-            onCreated={tell}
+            onCreated={(words) => {
+              away.release();
+              tell(words);
+            }}
           />
           {telling != null && (
             <TellDialog
@@ -395,6 +431,35 @@ function EventView({
       )}
     </EventsShell>
   );
+}
+
+/** While a part has a change, every way off the page asks first, as main's `useLeaveGuard` does: the router's own ways in the demo's dialog, reload and the address bar in the browser's. */
+function useLeaveAsk(dirty: boolean): {
+  blocked: boolean;
+  stay: () => void;
+  go: () => void;
+  release: () => void;
+} {
+  const released = useRef(false);
+  const blocker = useBlocker(useCallback(() => dirty && !released.current, [dirty]));
+
+  useEffect(() => {
+    if (!dirty) return;
+
+    const ask = (event: BeforeUnloadEvent): void => event.preventDefault();
+    window.addEventListener('beforeunload', ask);
+
+    return () => window.removeEventListener('beforeunload', ask);
+  }, [dirty]);
+
+  return {
+    blocked: blocker.state === 'blocked',
+    stay: () => blocker.reset?.(),
+    go: () => blocker.proceed?.(),
+    release: () => {
+      released.current = true;
+    },
+  };
 }
 
 function Asks({

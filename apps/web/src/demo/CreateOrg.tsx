@@ -35,11 +35,11 @@ import {
   stepRefused,
   zoneWords,
 } from './createOrg.ts';
-import { Glyph } from './Glyph.tsx';
-import { LayersContext, useLayer } from './layers.ts';
-import { Notice } from './Notice.tsx';
+import { Glyph } from '../components/Glyph.tsx';
+import { LayersContext, useLayer } from '../layers.ts';
+import { Notice } from '../components/Notice.tsx';
 import { SAMPLE } from './rules.ts';
-import { Ask } from './SettingsParts.tsx';
+import { Ask } from '../components/SettingsParts.tsx';
 import './createOrg.css';
 
 const CREATING_MS = 1200;

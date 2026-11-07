@@ -15,7 +15,7 @@ import { Link, useSearchParams } from 'react-router';
 import { offButton } from '../offButton.ts';
 import { Forbidden } from '../routes/app/Forbidden.tsx';
 import { EventsShell } from './EventParts.tsx';
-import { Glyph } from './Glyph.tsx';
+import { Glyph } from '../components/Glyph.tsx';
 import { owedBy, usedOn } from './quotes.ts';
 import { COUNTRIES, codeChoice } from './rules.ts';
 import { SIDEBAR_EVENTS, type SettingsSay, settingsSayIn, viewerOf } from './settings.ts';
@@ -31,8 +31,9 @@ import {
   Says,
   TextAction,
   TitleRow,
-} from './SettingsParts.tsx';
-import type { Tell } from './TodayParts.tsx';
+} from '../components/SettingsParts.tsx';
+import type { Tell } from '../components/SettingsParts.tsx';
+import { DemoBell } from './DemoBell.tsx';
 import { TodaySidebar } from './TodaySidebar.tsx';
 import {
   BLANK,
@@ -83,7 +84,7 @@ export function Vendors() {
   return (
     <EventsShell
       renderSide={(tell, covered) => (
-        <TodaySidebar events={SIDEBAR_EVENTS} tell={tell} vendors person={viewer} inert={covered} />
+        <TodaySidebar events={SIDEBAR_EVENTS} tell={tell} person={viewer} inert={covered} />
       )}
     >
       {(tell) =>
@@ -151,7 +152,7 @@ function Directory({
   if (load !== 'loaded')
     return (
       <Page>
-        <TitleRow title="Vendors" tell={tell} />
+        <TitleRow title="Vendors" bell={<DemoBell tell={tell} />} />
         {load === 'failed' ? <Failed onRetry={() => setLoad('retrying')} /> : <Loading />}
       </Page>
     );
@@ -164,7 +165,7 @@ function Directory({
   return (
     <Page>
       <div ref={top} className="vd-top">
-        <TitleRow title="Vendors" action={add} tell={tell} />
+        <TitleRow title="Vendors" action={add} bell={<DemoBell tell={tell} />} />
         <p className="desk-line">The people Ire Events buys from, kept once for every event.</p>
       </div>
       {readOnly && <ReadOnlyCard tell={tell} />}

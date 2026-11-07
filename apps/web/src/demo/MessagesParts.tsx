@@ -1,6 +1,6 @@
 import { Fragment, type ReactNode } from 'react';
 
-import { Glyph, type GlyphName } from './Glyph.tsx';
+import { Glyph, type GlyphName } from '../components/Glyph.tsx';
 import {
   type Delivery,
   type Kind,
