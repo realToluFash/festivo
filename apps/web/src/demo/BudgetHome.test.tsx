@@ -115,7 +115,7 @@ describe('the Budget page at a desk in A (sc-31779)', () => {
 
   it('refuses Add a cost with three blank fields, sending nothing', SLOW, async () => {
     await open(at('add_cost_blank'));
-    const dialog = await screen.findByRole('dialog', SLOW);
+    const dialog = await screen.findByRole('dialog', {}, SLOW);
 
     expect(within(dialog).getByText('3 fields need fixing, so nothing was sent.')).toBeTruthy();
     expect(within(dialog).getByText('Enter what it is.')).toBeTruthy();
@@ -125,7 +125,7 @@ describe('the Budget page at a desk in A (sc-31779)', () => {
 
   it('refuses a ceiling below 0, then saves it once fixed', SLOW, async () => {
     await open(at('ceiling_negative'));
-    const dialog = await screen.findByRole('dialog', SLOW);
+    const dialog = await screen.findByRole('dialog', {}, SLOW);
 
     expect(
       within(dialog).getByText('The ceiling cannot be below 0. Enter 0 or more.'),
@@ -181,7 +181,7 @@ describe('the Budget page at a desk in A (sc-31779)', () => {
 
   it('opens Due now from the reminder: Paid in one tap, with Undo (sc-1331)', SLOW, async () => {
     await open(at('due_now'));
-    const dialog = await screen.findByRole('dialog', SLOW);
+    const dialog = await screen.findByRole('dialog', {}, SLOW);
 
     expect(within(dialog).getByText('From the reminder sent Nov 1 · 2 payments')).toBeTruthy();
     fireEvent.click(within(dialog).getAllByRole('button', { name: 'Paid' })[0]!);
@@ -194,13 +194,13 @@ describe('the Budget page at a desk in A (sc-31779)', () => {
     cleanup();
     await open(at('due_read_only'));
     expect(
-      within(await screen.findByRole('dialog', SLOW)).queryByRole('button', { name: 'Paid' }),
+      within(await screen.findByRole('dialog', {}, SLOW)).queryByRole('button', { name: 'Paid' }),
     ).toBeNull();
   });
 
   it('opens Save as template over the page, from its row and from save_taken', SLOW, async () => {
     await open(at('save_taken'));
-    const dialog = await screen.findByRole('dialog', SLOW);
+    const dialog = await screen.findByRole('dialog', {}, SLOW);
 
     expect(
       within(dialog).getByText('A template with that name already exists. Choose another name.'),
@@ -209,6 +209,6 @@ describe('the Budget page at a desk in A (sc-31779)', () => {
     fireEvent.click(
       within(section('From other events')).getByRole('button', { name: /Save as template/ }),
     );
-    expect(await screen.findByRole('dialog', SLOW)).toBeTruthy();
+    expect(await screen.findByRole('dialog', {}, SLOW)).toBeTruthy();
   });
 });
