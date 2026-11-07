@@ -25,6 +25,8 @@ import { SIGN_IN_RULES_PAGES } from './signInRules.ts';
 import { SWITCHER_PAGES } from './switcher.ts';
 import { Today } from './Today.tsx';
 import { TwoFactorBoard } from './TwoFactor.tsx';
+import { Vendors } from './Vendors.tsx';
+import { VENDORS_PAGES } from './vendors.ts';
 import { WaysInBoard } from './WaysIn.tsx';
 import {
   type FieldLines,
@@ -125,6 +127,7 @@ export default function Demo() {
       <Route path="settings/general" element={<Settings open="general" />} />
       <Route path="settings/sign-in-rules" element={<Settings open="signInRules" />} />
       <Route path="people" element={<People />} />
+      <Route path="vendors" element={<Vendors />} />
       <Route path="later" element={<Later />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
@@ -171,6 +174,12 @@ function DemoHome({ from }: { from: string }) {
         <BoardPages pages={CALENDAR_PAGES} />
         <h3>Create an organisation in B · A short walk · desktop</h3>
         <BoardPages pages={CREATE_PAGES} />
+      </section>
+
+      <section className="demo-home-page" aria-labelledby="demo-page-81">
+        <h2 id="demo-page-81">81 · Budget and costs · the vendor directory</h2>
+        <h3>Vendors in B Confetti · desktop</h3>
+        <BoardPages pages={VENDORS_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-28">
