@@ -1,10 +1,11 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { type ViewInstance } from 'react-native';
+import { StyleSheet, View, type ViewInstance } from 'react-native';
 
 import { QuietButton, SecondaryButton } from '../../../src/components/Buttons.tsx';
 import { LifecycleSheet } from '../../../src/components/LifecycleSheet.tsx';
 import { Notice } from '../../../src/components/Notice.tsx';
+import { Text } from '../../../src/components/Text.tsx';
 import { DemoScreen, NavBar } from '../../../src/demo/DemoScreen.tsx';
 import {
   type Answer,
@@ -93,15 +94,20 @@ export default function Waiting() {
     <DemoScreen
       nav={<NavBar left="close" step={[3, 3]} />}
       foot={
-        <QuietButton
-          ref={opener}
-          label="Cancel the request"
-          onPress={() => {
-            setAsked({});
-            setSheet(askToCancel());
-          }}
-          testID="demo.cancel"
-        />
+        <View style={styles.foot}>
+          <Text size={tokens.typeBodyPhone.size} weight="semibold">
+            This wasn’t you?
+          </Text>
+          <QuietButton
+            ref={opener}
+            label="Cancel the request"
+            onPress={() => {
+              setAsked({});
+              setSheet(askToCancel());
+            }}
+            testID="demo.cancel"
+          />
+        </View>
       }
     >
       <Heading
@@ -129,7 +135,7 @@ export default function Waiting() {
         phone={phone}
         open={sheet.open}
         opener={opener}
-        testID="demo.cancelSheet"
+        testID="demo.cancelAsk"
         title="Cancel your request?"
         lines={['You’ll need to start again to get back in.']}
         confirm={{
@@ -156,7 +162,7 @@ export default function Waiting() {
               key={kind}
               label={label}
               onPress={() => end(kind)}
-              testID={`demo.cancelSheet.answer.${kind}`}
+              testID={`demo.cancelAsk.answer.${kind}`}
             />
           ))}
         </DemoOnly>
@@ -168,7 +174,7 @@ export default function Waiting() {
               key={kind}
               label={label}
               onPress={() => setAnswered(kind)}
-              testID={`demo.cancelSheet.first.${kind}`}
+              testID={`demo.cancelAsk.first.${kind}`}
             />
           ))}
         </DemoOnly>
@@ -176,10 +182,14 @@ export default function Waiting() {
           <SecondaryButton
             label={reachable ? 'Lose it' : 'Bring it back'}
             onPress={() => setReachable(!reachable)}
-            testID="demo.cancelSheet.connection"
+            testID="demo.cancelAsk.connection"
           />
         </DemoOnly>
       </LifecycleSheet>
     </DemoScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  foot: { alignItems: 'center', gap: tokens.spaceXs },
+});
