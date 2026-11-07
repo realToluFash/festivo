@@ -255,7 +255,24 @@ final class EventRolesTest extends ApiTestCase
         $read = $this->as($viewer, 'GET', '/api/events/' . $this->owambe . '/people');
 
         self::assertSame(200, $this->statusCode());
-        self::assertSame(['Person', 'Julien Moreau'], $read['ownersAndAdmins'] ?? null);
+        self::assertSame(['Person'], $read['owners'] ?? null);
+        self::assertSame(['Julien Moreau'], $read['admins'] ?? null);
+    }
+
+    #[Test]
+    public function aSuspendedOwnerLeavesTheAdminNamedAsAdmin(): void
+    {
+        $this->member('julien@ire.events', SeededRole::Admin, 'Julien Moreau');
+        $viewer = $this->member('ana@ire.events', SeededRole::Member, 'Ana Lima');
+        self::onEvent($viewer, $this->owambe, EventRole::CanView);
+        $owner = self::em()->find(Membership::class, $this->membershipOf($this->owner)) ?? self::fail('no owner');
+        $owner->setStatus(MembershipStatus::Suspended, new DateTimeImmutable());
+        self::em()->flush();
+
+        $read = $this->as($viewer, 'GET', '/api/events/' . $this->owambe . '/people');
+
+        self::assertSame([], $read['owners'] ?? null);
+        self::assertSame(['Julien Moreau'], $read['admins'] ?? null);
     }
 
     #[Test]

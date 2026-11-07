@@ -378,7 +378,8 @@ export interface EventPerson {
 
 export interface EventPeople {
   people: EventPerson[];
-  ownersAndAdmins: string[];
+  owners: string[];
+  admins: string[];
 }
 
 export interface AddableMember {
@@ -1784,26 +1785,28 @@ export class ApiClient {
     );
   }
 
-  /** Everyone with a role on the event (sc-29912), read by everyone on it and by Owners and Admins, with those Owners' and Admins' names. */
+  /** Everyone with a role on the event (sc-29912), read by everyone on it and by Owners and Admins, with its Owners' and Admins' names, each under their role. */
   async eventPeople(eventId: string): Promise<EventPeople> {
-    const raw = await this.get<{ people?: unknown; ownersAndAdmins?: unknown }>(
+    const raw = await this.get<{ people?: unknown; owners?: unknown; admins?: unknown }>(
       `/api/events/${encodeURIComponent(eventId)}/people`,
     );
     const people = Array.isArray(raw.people) ? raw.people.map(asEventPerson) : null;
-    const ownersAndAdmins = raw.ownersAndAdmins;
+    const { owners, admins } = raw;
+    const names = (value: unknown): value is string[] =>
+      Array.isArray(value) && value.every((name) => typeof name === 'string');
 
     if (
       people == null ||
       !people.every((person) => person != null) ||
-      !Array.isArray(ownersAndAdmins) ||
-      !ownersAndAdmins.every((name) => typeof name === 'string')
+      !names(owners) ||
+      !names(admins)
     ) {
       throw new Error(
         'The API answered GET /api/events/{id}/people in a shape this client does not know. Check EventPeopleController in services/api.',
       );
     }
 
-    return { people, ownersAndAdmins };
+    return { people, owners, admins };
   }
 
   /** The organisation's active members not yet on the event, by name alone, for whoever may change its People (sc-29915). */

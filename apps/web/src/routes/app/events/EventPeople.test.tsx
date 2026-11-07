@@ -119,7 +119,7 @@ async function onPeople(
     if (answer != null) return answer(body);
     if (line === 'GET /api/events/ev_1') return json({ event: { ...EVENT, permissions: holding } });
     if (line === 'GET /api/events/ev_1/people')
-      return json({ people, ownersAndAdmins: ['Folake Adeyemi', 'Julien Moreau'] });
+      return json({ people, owners: ['Folake Adeyemi'], admins: ['Julien Moreau'] });
     if (line === 'GET /api/events/ev_1/people/addable')
       return json({
         members: MEMBERS.filter(
@@ -165,7 +165,7 @@ describe('People on an event, at a desk (sc-29915)', () => {
     expect(within(people()).getByText('3 people')).toBeDefined();
     expect(
       await within(people()).findByText(
-        'Folake Adeyemi and Julien Moreau see every event, as owners and admins of Ìrè Events.',
+        'Folake Adeyemi and Julien Moreau see every event, as owner and admin of Ìrè Events.',
       ),
     ).toBeDefined();
     expect(
@@ -194,7 +194,7 @@ describe('People on an event, at a desk (sc-29915)', () => {
     ).toBeDefined();
     expect(
       within(people()).getByText(
-        'Folake Adeyemi and Julien Moreau see every event, as owners and admins of Ìrè Events.',
+        'Folake Adeyemi and Julien Moreau see every event, as owner and admin of Ìrè Events.',
       ),
     ).toBeDefined();
     expect(sent.some((one) => one.line === 'GET /api/events/ev_1/people/addable')).toBe(false);
@@ -358,11 +358,37 @@ describe('People on an event, at a desk (sc-29915)', () => {
     signedIn();
     await onPeople([TOM], {
       'GET /api/events/ev_1/people': () =>
-        json({ people: [TOM], ownersAndAdmins: ['Folake Adeyemi'] }),
+        json({ people: [TOM], owners: ['Folake Adeyemi'], admins: [] }),
     });
 
     expect(
       await within(people()).findByText('Folake Adeyemi sees every event, as owner of Ìrè Events.'),
+    ).toBeDefined();
+  });
+
+  it('names a lone admin as admin, when the only owner is suspended', async () => {
+    signedIn();
+    await onPeople([TOM], {
+      'GET /api/events/ev_1/people': () =>
+        json({ people: [TOM], owners: [], admins: ['Julien Moreau'] }),
+    });
+
+    expect(
+      await within(people()).findByText('Julien Moreau sees every event, as admin of Ìrè Events.'),
+    ).toBeDefined();
+  });
+
+  it('names each role it finds, in the plural where more than one holds it', async () => {
+    signedIn();
+    await onPeople([TOM], {
+      'GET /api/events/ev_1/people': () =>
+        json({ people: [TOM], owners: ['Folake Adeyemi', 'Ade Bello'], admins: ['Julien Moreau'] }),
+    });
+
+    expect(
+      await within(people()).findByText(
+        'Folake Adeyemi, Ade Bello, and Julien Moreau see every event, as owners and admin of Ìrè Events.',
+      ),
     ).toBeDefined();
   });
 
@@ -500,7 +526,7 @@ describe('People on an event, at a desk (sc-29915)', () => {
     await onPeople([TOM], {
       'GET /api/events/ev_1/people': () => {
         calls += 1;
-        return calls === 1 ? json({}, 500) : json({ people: [TOM], ownersAndAdmins: [] });
+        return calls === 1 ? json({}, 500) : json({ people: [TOM], owners: [], admins: [] });
       },
     }).catch(() => undefined);
 
