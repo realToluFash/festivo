@@ -356,7 +356,7 @@ def stack_up(c, story, held=False):
 
 DEMO_LINE = re.compile(r"^[\s*_>-]*demo[*_]*:", re.I)
 NOT_BUILT = re.compile(r"\b(being built|not built)\b", re.I)
-SHOWS_NOTHING = re.compile(r"^[\s*_>-]*demo[*_]*:[\s*_]*none\b", re.I)
+SHOWS_NOTHING = re.compile(r"^[\s*_>-]*demo[*_]*:[\s*_]*none(?:\s*[:.]|[\s*_]*$)", re.I)
 
 
 def demo_missing(story):
