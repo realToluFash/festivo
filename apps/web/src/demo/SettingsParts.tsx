@@ -11,8 +11,8 @@ import { createPortal } from 'react-dom';
 
 import { ActionPair } from '../components/ActionPair.tsx';
 import { offButton } from '../offButton.ts';
-import { Glyph } from './Glyph.tsx';
-import { LayersContext, useDeskDialog } from './layers.ts';
+import { Glyph } from '../components/Glyph.tsx';
+import { LayersContext, useDeskDialog } from '../layers.ts';
 import type { MarkKind } from './members.ts';
 import type { Tell } from './TodayParts.tsx';
 

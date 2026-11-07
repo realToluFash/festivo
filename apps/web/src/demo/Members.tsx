@@ -1,7 +1,7 @@
 import { formattingLocale } from '@soirely/domain';
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { useDeskSplit } from './layers.ts';
+import { useDeskSplit } from '../layers.ts';
 import { ClaimDialog, InviteDialog, RequestDialog } from './MembersDialogs.tsx';
 import { PersonPage, RoleDialog } from './MembersPerson.tsx';
 import {

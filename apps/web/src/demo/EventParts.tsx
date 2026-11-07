@@ -16,8 +16,8 @@ import {
   soonOf,
   tagKind,
 } from './events.ts';
-import { Glyph } from './Glyph.tsx';
-import { LayersContext } from './layers.ts';
+import { Glyph } from '../components/Glyph.tsx';
+import { LayersContext } from '../layers.ts';
 import { Chevron, CardStep, RowWords, Tag } from './SettingsParts.tsx';
 import type { Tell } from './TodayParts.tsx';
 import './today.css';

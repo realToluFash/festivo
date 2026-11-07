@@ -29,7 +29,7 @@ import {
 import { DuplicateDialog } from './EventDialogs.tsx';
 import { EventCard, EventRow, EventsShell } from './EventParts.tsx';
 import { FilterMenu } from './EventFilter.tsx';
-import { Glyph } from './Glyph.tsx';
+import { Glyph } from '../components/Glyph.tsx';
 import { Bell, CardStep, Head, TextAction } from './SettingsParts.tsx';
 import type { Tell } from './TodayParts.tsx';
 import { TodaySidebar } from './TodaySidebar.tsx';

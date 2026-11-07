@@ -3,7 +3,7 @@ import { Link } from 'react-router';
 import { Brand } from '../components/Brand.tsx';
 import { AREAS, type Area, type Card, type SampleEvent, cardOf } from './events.ts';
 import { Thumb } from './EventParts.tsx';
-import { Glyph, type GlyphName } from './Glyph.tsx';
+import { Glyph, type GlyphName } from '../components/Glyph.tsx';
 import { OrgSwitcher } from './OrgSwitcher.tsx';
 import { SAMPLE } from './rules.ts';
 import type { Tell } from './TodayParts.tsx';

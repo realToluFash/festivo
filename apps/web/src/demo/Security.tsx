@@ -3,7 +3,7 @@ import { type ReactNode, useEffect, useId, useMemo, useRef, useState } from 'rea
 import { useNavigate } from 'react-router';
 
 import { offButton } from '../offButton.ts';
-import { Glyph, type GlyphName } from './Glyph.tsx';
+import { Glyph, type GlyphName } from '../components/Glyph.tsx';
 import {
   ASK_WORDS as A,
   type AskKind,
@@ -59,7 +59,7 @@ import {
   TitleRow,
 } from './SettingsParts.tsx';
 import type { Tell } from './TodayParts.tsx';
-import { useLater } from './useLater.ts';
+import { useLater } from '../useLater.ts';
 import './account.css';
 import './security.css';
 

@@ -1,6 +1,6 @@
 import { type KeyboardEvent, useEffect, useId, useRef, useState } from 'react';
 
-import { Glyph } from './Glyph.tsx';
+import { Glyph } from '../components/Glyph.tsx';
 import {
   EVENT_ROLES,
   EVERYONE_ON,

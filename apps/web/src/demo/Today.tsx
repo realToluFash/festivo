@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { Toast } from '../components/Toast.tsx';
-import { LayersContext, useDeskLayers } from './layers.ts';
+import { LayersContext, useDeskLayers } from '../layers.ts';
 import { NoOrganisation } from './NoOrganisation.tsx';
 import { AccessPaused, Switched } from './OrgSwitcher.tsx';
 import { inNone, isFresh, useSwitcherStart, useWhere } from './switcher.ts';

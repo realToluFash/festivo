@@ -1,4 +1,4 @@
-import { Glyph } from './Glyph.tsx';
+import { Glyph } from '../components/Glyph.tsx';
 import type { Moment, Now } from './today.ts';
 import type { Tell } from './TodayParts.tsx';
 

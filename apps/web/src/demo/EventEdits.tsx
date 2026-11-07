@@ -34,7 +34,7 @@ import {
   wallOf,
 } from './events.ts';
 import { Alert, Broken, NotBuilt, Quiet } from './EventParts.tsx';
-import { Glyph } from './Glyph.tsx';
+import { Glyph } from '../components/Glyph.tsx';
 import { Ask, RedAction, RowWords, TextAction } from './SettingsParts.tsx';
 
 const LOCALE = 'en-US';

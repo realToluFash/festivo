@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 
 import { Toast } from '../components/Toast.tsx';
-import { Glyph, type GlyphName } from './Glyph.tsx';
+import { Glyph, type GlyphName } from '../components/Glyph.tsx';
 import {
   type Drawn,
   type Section,
@@ -16,7 +16,7 @@ import {
 } from './settings.ts';
 import { Account } from './Account.tsx';
 import { General } from './General.tsx';
-import { LayersContext } from './layers.ts';
+import { LayersContext } from '../layers.ts';
 import { Members } from './Members.tsx';
 import { Notifications } from './Notifications.tsx';
 import { AccessPaused } from './OrgSwitcher.tsx';

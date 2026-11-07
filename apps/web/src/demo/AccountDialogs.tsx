@@ -25,10 +25,10 @@ import {
   zoneMatches,
   zoneRefusal,
 } from './account.ts';
-import { Glyph } from './Glyph.tsx';
+import { Glyph } from '../components/Glyph.tsx';
 import { COUNTRIES, SAMPLE, codeChoice } from './rules.ts';
 import { Ask, Dialog, Field, Note, RowWords } from './SettingsParts.tsx';
-import { useLater } from './useLater.ts';
+import { useLater } from '../useLater.ts';
 
 function Discard({ line, onKeep, onGo }: { line: string; onKeep: () => void; onGo: () => void }) {
   return (

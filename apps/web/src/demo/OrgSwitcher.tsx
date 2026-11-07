@@ -16,9 +16,9 @@ import { leaveMenu } from '../leaving.ts';
 import { CreateWalk } from './CreateOrg.tsx';
 import { type Walk, freshWalk, isCreateState, walkOf } from './createOrg.ts';
 import { meshFor } from './events.ts';
-import { Glyph } from './Glyph.tsx';
-import { focusWhenFree } from './layers.ts';
-import { Notice } from './Notice.tsx';
+import { Glyph } from '../components/Glyph.tsx';
+import { focusWhenFree } from '../layers.ts';
+import { Notice } from '../components/Notice.tsx';
 import { SAMPLE } from './rules.ts';
 import {
   BLUEBIRD,

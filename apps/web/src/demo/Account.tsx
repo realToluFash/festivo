@@ -26,7 +26,7 @@ import {
   VerifyDialog,
   ZoneDialog,
 } from './AccountDialogs.tsx';
-import { Glyph, type GlyphName } from './Glyph.tsx';
+import { Glyph, type GlyphName } from '../components/Glyph.tsx';
 import type { Viewer } from './settings.ts';
 import {
   Ask,

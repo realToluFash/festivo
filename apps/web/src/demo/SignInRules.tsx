@@ -2,7 +2,7 @@ import { formattingLocale } from '@soirely/domain';
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 
-import { Glyph } from './Glyph.tsx';
+import { Glyph } from '../components/Glyph.tsx';
 import type { Load } from './members.ts';
 import { heldStepPath } from './security.ts';
 import type { Viewer } from './settings.ts';

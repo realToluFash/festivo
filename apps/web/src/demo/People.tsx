@@ -3,8 +3,8 @@ import { Link, useSearchParams } from 'react-router';
 
 import { Brand } from '../components/Brand.tsx';
 import { Toast } from '../components/Toast.tsx';
-import { Glyph, type GlyphName } from './Glyph.tsx';
-import { LayersContext, useDeskLayers } from './layers.ts';
+import { Glyph, type GlyphName } from '../components/Glyph.tsx';
+import { LayersContext, useDeskLayers } from '../layers.ts';
 import { SAMPLE } from './rules.ts';
 import {
   ADD_PROMPT,

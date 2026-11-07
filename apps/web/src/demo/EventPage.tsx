@@ -41,8 +41,8 @@ import {
 import { Alert, EventCard, EventsShell, NotBuilt, Switch, Thumb } from './EventParts.tsx';
 import { CAL_WORDS } from './calendar.ts';
 import { EventSidebar } from './EventSidebar.tsx';
-import { Glyph, type GlyphName } from './Glyph.tsx';
-import { LayersContext } from './layers.ts';
+import { Glyph, type GlyphName } from '../components/Glyph.tsx';
+import { LayersContext } from '../layers.ts';
 import { Ask, Bell, Chevron, Head, RowWords, TextAction } from './SettingsParts.tsx';
 import type { Tell } from './TodayParts.tsx';
 import { useSwitcherStart } from './switcher.ts';
