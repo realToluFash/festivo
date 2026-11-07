@@ -2,7 +2,7 @@ import { formattingLocale } from '@soirely/domain';
 import { getLocales } from 'expo-localization';
 import { router, useFocusEffect, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
-import { I18nextProvider, useTranslation } from 'react-i18next';
+import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -11,7 +11,6 @@ import { useSystemBack } from '../../src/components/useSystemBack.ts';
 import { useLayout } from '../../src/layout/useLayout.ts';
 import { createStateOf } from '../../src/demo/createOrg/CreateWalk.ts';
 import { NoOrganisation } from '../../src/demo/createOrg/NoOrganisation.tsx';
-import { startFirstWords } from '../../src/demo/createOrg/startFirst.ts';
 import {
   OrgSwitcherProvider,
   SwitchedNotice,
@@ -114,17 +113,13 @@ export default function DemoTodayScreen() {
           {place == null ? (
             <NoOrganisation tell={tell} />
           ) : (
-            <I18nextProvider i18n={moment.kind === 'first' ? startFirstWords(i18n.language) : i18n}>
-              <TodayScreen
-                moment={moment}
-                onTab={onTab}
-                notices={
-                  <SwitchedNotice
-                    style={kind === 'tabletLandscape' ? undefined : styles.switched}
-                  />
-                }
-              />
-            </I18nextProvider>
+            <TodayScreen
+              moment={moment}
+              onTab={onTab}
+              notices={
+                <SwitchedNotice style={kind === 'tabletLandscape' ? undefined : styles.switched} />
+              }
+            />
           )}
           {told != null && (
             <Told
