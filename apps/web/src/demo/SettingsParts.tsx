@@ -89,8 +89,19 @@ export function Card({
   );
 }
 
-export function Says({ children }: { children: ReactNode }) {
-  return <p className="desk-says">{children}</p>;
+/** Focusable where an answer lands on the card, so the answer is read out. */
+export function Says({
+  children,
+  focusable = false,
+}: {
+  children: ReactNode;
+  focusable?: boolean;
+}) {
+  return (
+    <p className="desk-says" tabIndex={focusable ? -1 : undefined}>
+      {children}
+    </p>
+  );
 }
 
 export function OnCard({ children }: { children: ReactNode }) {
@@ -463,10 +474,15 @@ interface AskProps {
   title: string;
   line: string;
   keep: string;
-  go: string;
+  /** None once nothing is left to decide: the line is an alert, and keep is the one action. */
+  go?: string;
   red?: boolean;
+  /** The verb's words while its answer is on its way: it turns and is off, and the way back and Escape wait. */
+  busy?: string | undefined;
+  /** Why the answer did not go, under the line; the verb tries again. */
+  failed?: string | undefined;
   onKeep: () => void;
-  onGo: () => void;
+  onGo?: () => void;
 }
 
 /** B's one confirm, 400 wide: the way back first, the verb last and red when it removes. */
@@ -476,12 +492,15 @@ export function Ask(props: AskProps) {
   return host == null ? null : createPortal(<AskBox {...props} />, host);
 }
 
-function AskBox({ title, line, keep, go, red = true, onKeep, onGo }: AskProps) {
+function AskBox({ title, line, keep, go, red = true, busy, failed, onKeep, onGo }: AskProps) {
   const id = useId();
   const box = useRef<HTMLDivElement>(null);
   const keepButton = useRef<HTMLButtonElement>(null);
+  const goButton = useRef<HTMLButtonElement>(null);
+  const [onVerb] = useState(busy != null || failed != null);
+  const waits = busy != null;
 
-  useDeskDialog(box, keepButton, onKeep);
+  useDeskDialog(box, onVerb ? goButton : keepButton, onKeep, waits);
 
   return (
     <>
@@ -495,22 +514,52 @@ function AskBox({ title, line, keep, go, red = true, onKeep, onGo }: AskProps) {
         aria-describedby={`${id}-line`}
       >
         <h2 id={`${id}-title`}>{title}</h2>
-        <p id={`${id}-line`}>{line}</p>
+        {go == null ? (
+          <AskAlert id={`${id}-line`}>{line}</AskAlert>
+        ) : (
+          <p id={`${id}-line`}>{line}</p>
+        )}
+        {failed != null && <AskAlert>{failed}</AskAlert>}
         <ActionPair
           className="desk-ask-pair"
           dismiss={
-            <button ref={keepButton} type="button" className="desk-text" onClick={onKeep}>
+            <button
+              ref={keepButton}
+              type="button"
+              className={waits ? 'desk-text is-waits' : 'desk-text'}
+              {...offButton(waits, { dim: false })}
+              onClick={onKeep}
+            >
               {keep}
             </button>
           }
           confirm={
-            <button type="button" className={red ? 'desk-text is-red' : 'desk-text'} onClick={onGo}>
-              {go}
-            </button>
+            go != null && (
+              <button
+                ref={goButton}
+                type="button"
+                className={waits ? 'desk-text is-busy' : red ? 'desk-text is-red' : 'desk-text'}
+                aria-busy={waits || undefined}
+                {...offButton(waits, { dim: false })}
+                onClick={onGo}
+              >
+                {waits && <span className="desk-turning" aria-hidden="true" />}
+                {busy ?? go}
+              </button>
+            )
           }
         />
       </div>
     </>
+  );
+}
+
+function AskAlert({ id, children }: { id?: string; children: ReactNode }) {
+  return (
+    <p id={id} className="desk-ask-alert" role="alert">
+      <Glyph name="alert" size={18} weight={2.2} />
+      {children}
+    </p>
   );
 }
 
