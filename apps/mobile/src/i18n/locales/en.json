@@ -780,7 +780,8 @@
       "vendors": "Vendors",
       "members": "Members and roles",
       "billing": "Billing",
-      "organisation": "Organisation"
+      "organisation": "Organisation",
+      "people": "People on events"
     },
     "means": {
       "events": "Create, publish, pause and conclude events.",
@@ -795,7 +796,8 @@
       "vendors": "Suppliers on each event and what was agreed with them.",
       "members": "Invite, approve, suspend, change roles.",
       "billing": "Plan, cards and invoices.",
-      "organisation": "The name, country, contact address and the defaults new events start with."
+      "organisation": "The name, country, contact address and the defaults new events start with.",
+      "people": "Who is on each event, and the role each person has there."
     },
     "margin": "Margin",
     "marginMeans": "What {{name}} adds on top of costs. Hidden means the budget opens with costs only.",
