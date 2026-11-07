@@ -215,6 +215,14 @@ describe('the demo', () => {
     expect(await screen.findByRole('heading', { name: 'This page does not exist' })).toBeDefined();
   });
 
+  it('says a two-factor sign-in that ran out timed out, the email kept (sc-29956)', async () => {
+    await signInBoard('code-timed-out');
+
+    expect(screen.getByText('That sign-in timed out')).toBeDefined();
+    expect(screen.getByText('Sign in again to carry on.')).toBeDefined();
+    expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe(SAMPLE.email);
+  });
+
   it('gives the form way to the providers when password sign-in is off', async () => {
     await signInBoard('provider-only');
 
