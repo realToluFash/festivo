@@ -313,6 +313,14 @@ class Developer(unittest.TestCase):
         stepped["tasks"][1]["done"] = True
         self.assertEqual(kinds(work.developer_items([stepped], [merged])), ["to-qa"])
 
+    def test_a_merged_step_waits_on_the_next_steps_open_pr_with_every_task_ticked(self):
+        merged = pr(state="merged", lead=[verdict("pass", HEAD[:7])])
+        last = dict(pr(), number=8)
+        stepped = dict(story(), state="In Review",
+                       tasks=[{"id": 1, "text": "web", "done": True},
+                              {"id": 2, "text": "app", "done": True}])
+        self.assertNotIn("to-qa", kinds(work.developer_items([stepped], [merged, last])))
+
     def test_red_checks_and_green_in_progress(self):
         self.assertEqual(kinds(work.developer_items([story()], [pr(checks="red")])),
                          ["checks-red"])

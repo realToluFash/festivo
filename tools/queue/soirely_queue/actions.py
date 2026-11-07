@@ -127,7 +127,8 @@ def post(c, story, to, body, parent=None):
     return c.shortcut.comment(story["id"], f"{head}\n{body.strip()}", parent)
 
 
-def set_state(c, story, name, check=True):
+def set_state(c, story, name, check=True, held=False):
+    """`held`: the move is a merge with tasks left, the one In Progress `to-qa` may leave."""
     state_id, state = c.state_id(name)
     allowed = R.MOVES.get(c.role, {}).get(state, ())
     if check and not allowed:
@@ -141,7 +142,17 @@ def set_state(c, story, name, check=True):
     moved = c.shortcut.update(story["id"], workflow_state_id=state_id)
     if moved and moved.get("moved_at"):
         store.mark_move(c.db, story["id"], state, moved["moved_at"], c.role)
+        if held:
+            store.mark_move(c.db, story["id"], HELD_AT_MERGE, moved["moved_at"], c.role)
     return state
+
+
+HELD_AT_MERGE = "In Progress, tasks left at its merge"
+
+
+def held_at_merge(c, story):
+    return story["state"] == "In Progress" and \
+        (story["id"], HELD_AT_MERGE, story["moved_at"]) in store.moves(c.db)
 
 
 def set_labels(c, story_id, add=(), remove=()):
@@ -876,7 +887,7 @@ def hand_to_qa(c, story, pr, merge_sha, note=""):
         return f"{story['state']}, waiting on #{', #'.join(map(str, others))}"
     if left := open_tasks(story):
         # A story built in steps is done at its last task: until then it holds what it blocks.
-        set_state(c, story, "In Progress", check=False)
+        set_state(c, story, "In Progress", check=False, held=True)
         post(c, story, [], f"PR #{pr['number']} merged as {merge_sha}. "
                            f"Tasks left: {task_list(left)}")
         c.refresh(story["id"])
@@ -889,8 +900,8 @@ def hand_to_qa(c, story, pr, merge_sha, note=""):
                            + (f"\n\n{note.strip()}" if note else ""))
         c.refresh(story["id"])
         return "Done"
-    # From In Progress only by `to-qa`, once the task forgotten at the last merge is ticked.
-    set_state(c, story, "Ready For QA", check=c.role != "ops" and story["state"] != "In Progress")
+    # From In Progress only where a merge left it, once the task forgotten there is ticked.
+    set_state(c, story, "Ready For QA", check=c.role != "ops" and not held_at_merge(c, story))
     post(c, story, ["qa"], f"PR #{pr['number']} merged as {merge_sha}. Test what landed."
                            + (f"\n\n{note.strip()}" if note else ""))
     c.refresh(story["id"])
@@ -1021,7 +1032,7 @@ def merge(c, a):
         went = hand_to_qa(c, story, pr, merged, a.text)
     except ShortcutError as error:
         raise Refused(f"merged PR #{a.pr} as {merged}, but the handover failed "
-                      f"({error}); run `sq {c.role} to-qa sc-{story['id']}` to finish it"
+                      f"({error}); run `sq {c.role} merge {a.pr}` again to finish it"
                       f"{resync(c)}") from error
     told = "; QA is told" if went == "Ready For QA" else ""
     return f"merged PR #{a.pr} as {merged}; sc-{story['id']} is {went}{told}{resync(c)}"
@@ -1089,8 +1100,9 @@ def to_qa(c, a):
     if left := open_tasks(story):
         raise Refused(f"sc-{story['id']} has tasks left: {task_list(left)}: tick them with "
                       f"sq {c.role} task sc-{story['id']} --done <id>")
-    if story["state"] == "In Progress" and not story.get("tasks"):
-        raise Refused(f"sc-{story['id']} is In Progress: move it to In Review for the lead")
+    if story["state"] == "In Progress" and not held_at_merge(c, story):
+        raise Refused(f"sc-{story['id']} is In Progress for new work since its last merge: "
+                      "move it to In Review for the lead")
     return finish_handover(c, story, merged[-1], a.text)
 
 

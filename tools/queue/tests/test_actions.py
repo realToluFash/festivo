@@ -37,7 +37,8 @@ class FakeShortcut:
     def update(self, story_id, **fields):
         if "workflow_state_id" in fields:
             self.raw[story_id]["workflow_state_id"] = fields["workflow_state_id"]
-            self.raw[story_id]["moved_at"] = "t1"
+            self.moves = getattr(self, "moves", 0) + 1
+            self.raw[story_id]["moved_at"] = f"t{self.moves}"
         if "labels" in fields:
             self.raw[story_id]["labels"] = fields["labels"]
         if "description" in fields:
@@ -1354,7 +1355,8 @@ class Merging(Base):
                 mock.patch("soirely_queue.sync.sync_github"), \
                 mock.patch.object(self.fake, "update", side_effect=refused):
             with self.assertRaisesRegex(actions.Refused,
-                                        f"merged PR #9 as {'m' * 40}.*409.*to-qa sc-1"):
+                                        f"merged PR #9 as {'m' * 40}.*409.*"
+                                        "`sq dev2 merge 9` again"):
                 actions.merge(self.as_("dev2"), args(pr=9, text=None))
         merge.assert_called_once_with(9, HEAD)
 
@@ -1417,10 +1419,19 @@ class Merging(Base):
             self.assertEqual(self.state(1), "In Review")
             self.assertIn("waiting on #10", said)
 
-    def test_to_qa_after_the_forgotten_task_is_ticked(self):
-        self.fake.add(1, "In Progress", ["dev2"])
-        self.tasks(1, True, False)
+    def merge_with_tasks_left(self, story_id, *done):
+        self.fake.add(story_id, "Passed Code Review", ["dev2"])
+        self.tasks(story_id, *done)
+        store.put_pr(self.db, pr("pass"))
+        with mock.patch("soirely_queue.github.live", return_value=self.live()), \
+                mock.patch("soirely_queue.github.merge"), \
+                mock.patch("soirely_queue.sync.sync_github"):
+            actions.merge(self.as_("dev2"), args(pr=9, text=None))
         store.put_pr(self.db, {**pr("pass"), "state": "merged", "merge_sha": "m" * 40})
+
+    def test_to_qa_after_the_forgotten_task_is_ticked(self):
+        self.merge_with_tasks_left(1, True, False)
+        self.assertEqual(self.state(1), "In Progress")
         with self.assertRaisesRegex(actions.Refused, "sc-1 has tasks left: 31 step 1: tick "
                                     "them with sq dev2 task sc-1 --done <id>"):
             actions.to_qa(self.as_("dev2"), args(story="sc-1", text=None))
@@ -1438,6 +1449,25 @@ class Merging(Base):
         self.assertTrue(self.fake.raw[1]["tasks"][0]["complete"])
         with self.assertRaisesRegex(actions.Refused, "product manager writes"):
             actions.task(self.as_("dev2"), args(story="sc-1", add="more", done=None, undo=None))
+
+    def test_to_qa_takes_no_story_in_progress_for_rework_with_every_task_done(self):
+        self.fake.add(1, "Failed QA", ["dev2"])
+        self.tasks(1, True, True)
+        store.put_pr(self.db, {**pr("pass"), "state": "merged", "merge_sha": "m" * 40})
+        actions.move(self.as_("dev2"), args(story="sc-1", state="In Progress", text=None))
+        with self.assertRaisesRegex(actions.Refused, "In Progress for new work since its last "
+                                                     "merge: move it to In Review"):
+            actions.to_qa(self.as_("dev2"), args(story="sc-1", text=None))
+        self.assertEqual(self.state(1), "In Progress")
+
+    def test_to_qa_takes_no_story_moved_on_since_a_merge_with_tasks_left(self):
+        self.merge_with_tasks_left(1, True, False)
+        actions.move(self.as_("dev2"), args(story="sc-1", state="In Review", text=None))
+        actions.move(self.as_("dev2"), args(story="sc-1", state="In Progress", text=None))
+        self.tasks(1, True, True)
+        with self.assertRaisesRegex(actions.Refused, "move it to In Review"):
+            actions.to_qa(self.as_("dev2"), args(story="sc-1", text=None))
+        self.assertEqual(self.state(1), "In Progress")
 
     def test_to_qa_takes_no_story_in_progress_without_tasks(self):
         self.fake.add(1, "In Progress", ["dev2"])
