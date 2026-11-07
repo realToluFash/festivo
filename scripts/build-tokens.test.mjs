@@ -9,13 +9,13 @@
 import { describe, expect, it } from 'vitest';
 
 import { schemes, tokens } from '../docs/design/tokens.mjs';
-import { NATIVE_OUT, WEB_OUT, onDisk, outputs } from './build-tokens.mjs';
+import { NATIVE_OUT, WEB_OUT, WEB_SCHEME_OUT, onDisk, outputs } from './build-tokens.mjs';
 
 describe('generated tokens', () => {
   const generated = outputs();
   const disk = onDisk();
 
-  for (const path of [WEB_OUT, NATIVE_OUT]) {
+  for (const path of [WEB_OUT, NATIVE_OUT, WEB_SCHEME_OUT]) {
     it(`${path} is up to date`, () => {
       expect(disk[path], `${path} is missing — run: node scripts/build-tokens.mjs`).not.toBeNull();
       expect(disk[path], `${path} has drifted — run: node scripts/build-tokens.mjs`).toBe(
@@ -24,8 +24,8 @@ describe('generated tokens', () => {
     });
   }
 
-  it('says it is generated, in both outputs', () => {
-    for (const path of [WEB_OUT, NATIVE_OUT]) {
+  it('says it is generated, in every output', () => {
+    for (const path of [WEB_OUT, NATIVE_OUT, WEB_SCHEME_OUT]) {
       expect(generated[path]).toContain('Do not edit');
     }
   });

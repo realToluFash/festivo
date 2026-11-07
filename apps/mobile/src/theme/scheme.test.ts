@@ -1,10 +1,14 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { defaultScheme, schemes, withScheme } from './tokens.ts';
 
 const base = withScheme(undefined);
 
 describe('a build picks its colour scheme', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   it('keeps the base for withScheme with no name, which the native shell is drawn on', () => {
     expect(base.colorAccent).toBe('#1E9A64');
   });
@@ -18,7 +22,6 @@ describe('a build picks its colour scheme', () => {
       const { tokens } = await import('./tokens.ts');
       expect(tokens, String(scheme)).toEqual(withScheme('violet'));
     }
-    vi.unstubAllEnvs();
   });
 
   it('still picks any scheme the switch names', async () => {
@@ -26,7 +29,6 @@ describe('a build picks its colour scheme', () => {
     vi.stubEnv('EXPO_PUBLIC_SCHEME', 'cobalt');
     const { tokens } = await import('./tokens.ts');
     expect(tokens).toEqual(withScheme('cobalt'));
-    vi.unstubAllEnvs();
   });
 
   it("lays B Confetti's Violet over the base, and leaves the rest as it was", () => {

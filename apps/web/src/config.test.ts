@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
+import { defaultScheme } from './scheme.ts';
 import { __setConfig, config, load } from './config.ts';
 
 /**
@@ -96,13 +97,13 @@ describe('runtime configuration', () => {
     expect(half.google).toBeNull();
   });
 
-  it("keeps a scheme's name, and draws violet when there is none", async () => {
+  it("keeps a scheme's name, and draws the design's default when there is none", async () => {
     await load(respond({ apiBaseUrl: 'http://a', scheme: 'cobalt' }));
     expect(config().scheme).toBe('cobalt');
 
     for (const scheme of [undefined, '', 'Violet', "violet'] {", 7]) {
       await load(respond({ apiBaseUrl: 'http://a', scheme }));
-      expect(config().scheme, String(scheme)).toBe('violet');
+      expect(config().scheme, String(scheme)).toBe(defaultScheme);
     }
   });
 });

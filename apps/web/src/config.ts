@@ -13,6 +13,8 @@
  * definition, and configIsNotBaked.test.ts fails if an API URL is read that way
  * again.
  */
+import { defaultScheme } from './scheme.ts';
+
 export interface Config {
   /** Where the API is, from this browser. */
   apiBaseUrl: string;
@@ -94,12 +96,9 @@ function parse(raw: unknown): Config {
   };
 }
 
-/** Violet, as docs/design/tokens.mjs's defaultScheme (sc-30410). */
-const DEFAULT_SCHEME = 'violet';
-
 /** A plain name, or the default: it goes into an attribute selector. */
 function schemeFrom(raw: unknown): string {
-  return typeof raw === 'string' && /^[a-z]+$/.test(raw) ? raw : DEFAULT_SCHEME;
+  return typeof raw === 'string' && /^[a-z]+$/.test(raw) ? raw : defaultScheme;
 }
 
 /** Absent or half-filled is null: the button then says sign-in did not work, rather than guessing a host. */
