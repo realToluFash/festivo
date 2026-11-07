@@ -43,7 +43,6 @@ export function blank(layout: Layout): Seating {
     sectionKey: null,
     chosen: null,
     chair: null,
-    several: [],
     picked: null,
     lit: [],
     bar: null,
@@ -172,7 +171,6 @@ function tablet(state: SeatingState, b: Seating): Seating {
   );
   const seat1 = added(b, { id: 'seat1', kind: 'single', name: 'Seat 1' }, 1);
   const t11 = added(b, { id: 't11', kind: 'round', name: 'Table 11', d: 180 }, 10);
-  const three = (y: number) => ['t6', 't7', 't8'].reduce((m, id) => moved(m, id, { y }), b);
   switch (state) {
     case 'noPlan':
       return { ...b, load: 'noPlan', people: [] };
@@ -414,13 +412,11 @@ function tablet(state: SeatingState, b: Seating): Seating {
         people: [],
       });
     case 'stepRefused':
-      return {
-        ...three(980),
-        several: ['t6', 't7', 't8'],
-        rings: { t7: PRIYA },
+      return chosen(moved(b, 't8', { y: 980 }), 't8', {
+        rings: { t8: PRIYA },
         people: BOTH,
-        bar: { kind: 'amber', words: say.stepRefused(PRIYA.name, 'Table 7') },
-      };
+        bar: { kind: 'amber', words: say.stepRefused(PRIYA.name, 'Table 8') },
+      });
     case 'presenceChose':
       return { ...b, rings: { t7: PRIYA } };
     case 'presenceBoth':

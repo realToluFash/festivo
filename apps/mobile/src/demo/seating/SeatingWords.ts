@@ -87,9 +87,6 @@ export const W = {
   deleteRow: 'Delete row',
   facesFront: 'Faces the front · seat 1 on the left',
   deleteSeat: 'Delete seat',
-  moveTogether: 'They move together, saved as one step.',
-  shiftClick: 'Shift and click adds or takes one away. Esc lets go of all of them.',
-  deleteThese: 'Delete these',
   usHint: 'Type 12′ 4″, 12 ft 4 in, 12.5 ft or 148 in.',
   reconnecting: 'Can’t see who else is here. Reconnecting…',
   onThisPlan: 'On this plan',
@@ -186,7 +183,6 @@ export const say = {
     `${name} is in seat ${seat}. Move them first, or keep ${keep} seats.`,
   seatTaken: (name: string) => `This plan already has a seat called ${name}.`,
   singleLine: (section: string) => `Single seat · ${section}`,
-  chosen: (n: number) => `${n} chosen`,
   overlaps: (name: string) => `Overlaps ${name}`,
   outsideRoom: (name: string) => `${name} would sit outside the room.`,
   stepRefused: (name: string, table: string) =>

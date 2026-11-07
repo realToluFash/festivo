@@ -252,6 +252,13 @@ describe('seating a party', () => {
     expect(run(moved, { type: 'undo' }).items).toEqual(pad.items);
   });
 
+  it('a step refused is one table, snapped to where the colleague put it', () => {
+    const m = startOf('stepRefused', 'landscape');
+    expect(m.bar?.words).toBe('Priya Shah just moved Table 8. Your change wasn’t saved.');
+    expect(m.chosen).toBe('t8');
+    expect(item(m, 't8').y).toBe(980);
+  });
+
   it('everyone seated empties the tray', () => {
     expect(startOf('everyoneSeated', 'landscape').tray).toEqual([]);
     expect(startOf('everyoneSeated', 'phone').tray).toEqual([]);

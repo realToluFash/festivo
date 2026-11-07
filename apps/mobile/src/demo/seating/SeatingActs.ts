@@ -140,7 +140,6 @@ function letGo(m: Seating): Seating {
     ...m,
     chosen: null,
     chair: null,
-    several: [],
     arrange: 'room',
     fields: NO_FIELDS,
     ghost: null,

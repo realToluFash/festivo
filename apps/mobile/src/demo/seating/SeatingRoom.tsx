@@ -683,7 +683,6 @@ export function looksOf(
   if (hover != null) add(hover, { lit: true });
   if (m.chosen != null)
     add(m.chosen, { lit: true, ...(handles != null && editable(m) ? { handles } : {}) });
-  m.several.forEach((id) => add(id, { lit: true }));
   Object.entries(m.rings).forEach(([id, person]) => !person.viewer && add(id, { ring: person }));
   m.outside.forEach((id) => add(id, { overlap: true }));
   const chosen = itemOf(m, m.chosen);

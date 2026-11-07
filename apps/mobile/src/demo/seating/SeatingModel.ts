@@ -200,7 +200,6 @@ export interface Seating {
   sectionKey: string | null;
   chosen: string | null;
   chair: number | null;
-  several: string[];
   picked: string | null;
   lit: string[];
   bar: Bar | null;

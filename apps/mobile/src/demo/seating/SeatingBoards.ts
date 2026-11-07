@@ -62,7 +62,7 @@ const BOARDS: Record<SeatingState, readonly [string, string]> = {
   saving: ['saving', 'Saving…'],
   retrying: ['trying again', 'Couldn’t save. Trying again…'],
   notSaved: ['not saved', 'This change wasn’t saved, Try again'],
-  stepRefused: ['a step refused', 'Priya Shah just moved Table 7'],
+  stepRefused: ['a step refused', 'Priya Shah just moved Table 8'],
   tabOrder: ['Tab order', 'At a desk only: the plan here'],
   arrows: ['arrows', 'At a desk only: the plan here'],
   duplicateKey: ['⌘ D', 'At a desk only: the plan here'],

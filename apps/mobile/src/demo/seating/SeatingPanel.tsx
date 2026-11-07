@@ -787,37 +787,12 @@ function ChairPanel({ m, go, it, chair }: { m: Seating; go: Go; it: Item; chair:
   );
 }
 
-function Several({ m, go }: { m: Seating; go: Go }) {
-  const its = m.several.map((id) => itemOf(m, id)).filter((it): it is Item => it != null);
-  return (
-    <>
-      <Title title={say.chosen(its.length)} line={W.moveTogether} />
-      <RowList
-        items={its.map((it) => ({
-          key: it.id,
-          row: <Row title={it.name} line={shapeWord(it)} pad={4} />,
-        }))}
-      />
-      <Small text={W.shiftClick} />
-      {editable(m) && (
-        <TextAction
-          label={W.deleteThese}
-          removes
-          onPress={() => go({ type: 'letGo' })}
-          testID="seating.several.delete"
-        />
-      )}
-    </>
-  );
-}
-
 /** Arrange: the chosen item's fields, each applying as it is entered; with nothing chosen, the room, Snap to grid, Sections and the legend. */
 export function ArrangePanel({ m, go }: { m: Seating; go: Go }) {
   if (m.load === 'start') return <StartForm m={m} go={go} />;
   if (m.arrange === 'roomSettings') return <RoomSettings m={m} go={go} />;
   if (m.arrange === 'sectionAdd' || m.arrange === 'sectionEdit')
     return <SectionForm m={m} go={go} />;
-  if (m.several.length > 1) return <Several m={m} go={go} />;
   const it = itemOf(m, m.chosen);
   if (it == null) return <NothingChosen m={m} go={go} />;
   if (m.chair != null && isTable(it)) return <ChairPanel m={m} go={go} it={it} chair={m.chair} />;
