@@ -512,6 +512,11 @@ describe('every text field is named through fieldName (sc-17333)', () => {
         '<TextInput\n  {...rest}\n  {...fieldName(Platform.OS, rest.accessibilityLabel, { labelID })}\n/>',
       ),
     ).toEqual([]);
+    expect(
+      inputsNamedAnotherWay(
+        '<TextInput\n  {...rest}\n  {...refusedField(refused, rest, labelID)}\n/>',
+      ),
+    ).toEqual([]);
     expect(inputsNamedAnotherWay("<TextInput\n  accessibilityLabel={t('a')}\n/>")).toEqual([1]);
     expect(
       inputsNamedAnotherWay(
@@ -538,6 +543,11 @@ describe('a field hands its children the id its label shows under (sc-17333)', (
     expect(labelLinkBroken(`${shown}\n<FieldLabel value={otherID}>{children}</FieldLabel>`)).toBe(
       true,
     );
+    expect(
+      labelLinkBroken(
+        `${shown}\n<FieldLabel value={{ labelID, line: error, invalidNameID }}>{children}</FieldLabel>`,
+      ),
+    ).toBe(false);
     expect(labelLinkBroken(`<Text>\n  {label}\n</Text>\n{children}`)).toBe(true);
   });
 });
@@ -1550,7 +1560,7 @@ function fieldsReadByAnotherName(text: string): number[] {
 function inputsNamedAnotherWay(text: string): number[] {
   return [...text.matchAll(/(?<![\w.])<TextInput\b/gu)].flatMap((match) => {
     const tag = text.slice(match.index, tagEnd(text, match.index));
-    const named = tag.search(/\{\.\.\.fieldName\(/u);
+    const named = tag.search(/\{\.\.\.(fieldName|refusedName|refusedField)\(/u);
     const after = named < 0 ? '' : tag.slice(named);
     const quiet =
       named >= 0 &&
@@ -1571,8 +1581,8 @@ function labelLinkBroken(text: string): boolean {
         .trimStart()
         .startsWith('{label}'),
     );
-  const shown = label == null ? null : propValue(label, 'nativeID');
-  const handed = /<FieldLabel\s+value=(\{[^}]+\})/u.exec(text)?.[1] ?? null;
+  const shown = label == null ? null : propValue(label, 'nativeID')?.replace(/[{}]/gu, '');
+  const handed = /<FieldLabel\s+value=\{\{?\s*(?:labelID:\s*)?(\w+)/u.exec(text)?.[1] ?? null;
 
   return shown == null || handed == null || shown !== handed;
 }
