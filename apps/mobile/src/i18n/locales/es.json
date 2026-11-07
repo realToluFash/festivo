@@ -207,7 +207,7 @@
     "emailBlank": "Introduzca su dirección de correo electrónico.",
     "emailShape": "Eso no parece una dirección de correo electrónico. Compruebe que tiene una @ y un dominio.",
     "countryBlank": "Elija un país.",
-    "invalid": "Invalid"
+    "invalid": "Datos no válidos"
   },
   "oauth": {
     "linked": "{{provider}} ya está vinculado a su cuenta. Puede iniciar sesión con cualquiera de los dos.",
@@ -2051,7 +2051,7 @@
       "liveTitle": "Publíquelo",
       "liveBody": "Será un borrador hasta que lo publique."
     },
-    "createEvent": "Crear un evento",
+    "startFirst": "Start your first event",
     "stepNumber": "{{n, number}}"
   }
 }
