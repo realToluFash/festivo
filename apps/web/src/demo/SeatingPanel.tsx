@@ -25,6 +25,7 @@ import {
   readCount,
   readFeet,
   shownParties,
+  unsureLeft,
   readPlace,
   readRoom,
   readSize,
@@ -680,6 +681,7 @@ function SectionForm({ id }: { id: string | null }) {
     const name = text.trim();
 
     if (name === '') return SW.sectionBlank;
+    if (name.length > 40) return SW.sectionLong;
     if (plan.sections.some((one) => one.id !== id && sameName(one.name, name)))
       return say(SW.sectionTaken, { name });
     return null;
@@ -721,7 +723,6 @@ function SectionForm({ id }: { id: string | null }) {
         fieldKey="sectionName"
         label={SW.name}
         value={section?.name ?? ''}
-        maxLength={40}
         onCommit={(text) => {
           nameRef.current = text;
           if (section == null) return null;
@@ -1352,9 +1353,7 @@ function Tray({ chips = true }: { chips?: boolean }) {
   const { ui, set, pick } = useSeating();
   const coming = ui.tray.filter((party) => party.reply === 'coming');
   const count = coming.reduce((sum, party) => sum + peopleIn(party), 0);
-  const unsure = ui.tray
-    .filter((party) => party.reply !== 'coming')
-    .reduce((sum, party) => sum + peopleIn(party), 0);
+  const unsure = unsureLeft(ui.tray);
   const shown = shownParties(ui);
   const groups = [...GROUP_ORDER, SW.noGroup]
     .map((group) => ({

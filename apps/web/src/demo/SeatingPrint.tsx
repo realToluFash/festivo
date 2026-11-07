@@ -500,6 +500,7 @@ function ListsSheet({
 function CardSheet({ name, page }: { name: string; page: string }) {
   return (
     <Sheet size={A4} label={`${SW.tableCards}, ${name}`}>
+      <h1 className="sp-unseen">{SW.tableCards}</h1>
       <div className="sp-half is-top">
         <p className="sp-card-name">{name}</p>
       </div>

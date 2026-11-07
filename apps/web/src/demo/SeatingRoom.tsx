@@ -36,7 +36,6 @@ export interface Look {
   rings: Readonly<Record<string, Person>>;
   handles: string | null;
   chair: { id: string; i: number } | null;
-  /** Each chair takes a pointer from 150% (sc-5030); the chosen table's chairs take Tab too. */
   chairsFor: string | null;
 }
 
@@ -173,7 +172,6 @@ export function ChairMark({
   }
 }
 
-/** A seat state as a 16 to 26 mark beside its word: the legend, the seat strip, a table's guests. */
 export function StateMark({
   chair,
   size = 20,

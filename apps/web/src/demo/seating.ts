@@ -227,26 +227,28 @@ const SEATED_AT: Readonly<Record<string, readonly string[]>> = {
   ],
   t8: ['Amara Diallo', 'Moussa Diallo', 'Leila Haddad', 'Omar Haddad', 'Zoe Martin'],
   t9: ['Sofia Rossi', 'Luca Rossi', 'Yaa Mensah', 'Kojo Mensah', 'Nia Okafor', 'Obi Okafor'],
-  rowA: ['Ada Obi', 'Grace Mensah', 'Emeka Obi', 'Funmi Adeyemi'],
+  rowA: ['Priyanka Nair', 'Yuki Tanaka', 'Emeka Obi', 'Lars Johansson'],
   door: ['Grace Obi'],
 };
 
 function chairsFor(
   id: string,
   seats: number,
+  taken: number,
   unusable: readonly number[] = [],
   held: readonly number[] = [],
 ): Chair[] {
   const names = [...(SEATED_AT[id] ?? [])];
+  let left = taken;
 
-  return Array.from({ length: seats }, (_, index) => {
+  return Array.from({ length: seats }, (_, index): Chair => {
     const number = index + 1;
 
     if (unusable.includes(number)) return { state: 'unusable' };
     if (held.includes(number)) return { state: 'held' };
-    const who = names.shift();
-
-    return who == null ? { state: 'empty' } : { state: 'taken', who };
+    if (left <= 0) return { state: 'empty' };
+    left -= 1;
+    return { state: 'taken', who: names.shift() };
   });
 }
 
@@ -257,6 +259,7 @@ function table(
   x: number,
   y: number,
   seats: number,
+  taken: number,
   sec: string | null,
   shape: Partial<Item> = {},
   unusable: readonly number[] = [],
@@ -270,29 +273,29 @@ function table(
     y,
     rot: 0,
     sec,
-    chairs: chairsFor(id, seats, unusable, held),
+    chairs: chairsFor(id, seats, taken, unusable, held),
     ...shape,
   };
 }
 
 export function sampleItems(): Item[] {
   return [
-    table('top', 'head', 'Top table', 1200, 230, 6, null, { w: 360, l: 76, ends: 0 }),
-    table('t1', 'round', 'Table 1', 420, 620, 10, 'stage', { d: 180 }),
-    table('t2', 'round', 'Table 2', 810, 620, 10, 'stage', { d: 180 }),
-    table('t3', 'round', 'Table 3', 1200, 620, 10, 'stage', { d: 180 }, [7]),
-    table('t4', 'round', 'Table 4', 1590, 620, 10, 'stage', { d: 180 }),
-    table('t5', 'round', 'Table 5', 1980, 620, 10, 'stage', { d: 180 }),
-    table('t6', 'round', 'Table 6', 420, 1020, 10, 'garden', { d: 180 }),
-    table('t7', 'round', 'Table 7', 810, 1020, 10, 'garden', { d: 180 }, [], [8]),
-    table('t8', 'round', 'Table 8', 1200, 1020, 10, 'garden', { d: 180 }),
-    table('t9', 'rect', 'Table 9', 1590, 1020, 8, 'garden', { w: 240, l: 76, ends: 2 }),
-    table('t10', 'round', 'Table 10', 1980, 1020, 10, 'garden', { d: 180 }),
-    table('bar1', 'cocktail', 'Bar 1', 1800, 1700, 4, 'bar', { d: 60 }),
-    table('bar2', 'cocktail', 'Bar 2', 2060, 1700, 4, 'bar', { d: 60 }),
-    table('rowA', 'row', 'Row A', 560, 1480, 8, null, { label: 'A', spacing: 50 }),
-    table('door', 'single', 'By the door', 180, 1690, 1, null),
-    table('interp', 'single', 'Interpreter', 1760, 230, 1, null),
+    table('top', 'head', 'Top table', 1200, 230, 6, 6, null, { w: 360, l: 76, ends: 0 }),
+    table('t1', 'round', 'Table 1', 420, 620, 10, 10, 'stage', { d: 180 }),
+    table('t2', 'round', 'Table 2', 810, 620, 10, 10, 'stage', { d: 180 }),
+    table('t3', 'round', 'Table 3', 1200, 620, 10, 8, 'stage', { d: 180 }, [7]),
+    table('t4', 'round', 'Table 4', 1590, 620, 10, 8, 'stage', { d: 180 }),
+    table('t5', 'round', 'Table 5', 1980, 620, 10, 10, 'stage', { d: 180 }),
+    table('t6', 'round', 'Table 6', 420, 1020, 10, 9, 'garden', { d: 180 }),
+    table('t7', 'round', 'Table 7', 810, 1020, 10, 7, 'garden', { d: 180 }, [], [8]),
+    table('t8', 'round', 'Table 8', 1200, 1020, 10, 5, 'garden', { d: 180 }),
+    table('t9', 'rect', 'Table 9', 1590, 1020, 8, 6, 'garden', { w: 240, l: 76, ends: 2 }),
+    table('t10', 'round', 'Table 10', 1980, 1020, 10, 0, 'garden', { d: 180 }),
+    table('bar1', 'cocktail', 'Bar 1', 1800, 1700, 4, 0, 'bar', { d: 60 }),
+    table('bar2', 'cocktail', 'Bar 2', 2060, 1700, 4, 0, 'bar', { d: 60 }),
+    table('rowA', 'row', 'Row A', 560, 1480, 8, 4, null, { label: 'A', spacing: 50 }),
+    table('door', 'single', 'By the door', 180, 1690, 1, 1, null),
+    table('interp', 'single', 'Interpreter', 1760, 230, 1, 0, null),
   ];
 }
 
@@ -323,18 +326,14 @@ export function sampleTray(): Party[] {
     party('marta', 'Marta Silva', [], 'Work'),
     party('hugo', 'Hugo Lambert', [], 'Work', 'notSure'),
     party('nadia', 'Nadia Rahman', ['Guest of Nadia Rahman'], 'Friends', 'noReply'),
-    party(
-      'folasade',
-      'Chief Mrs Folasade Okonkwo-Williams',
-      ['Guest of Chief Mrs Folasade Okonkwo-Williams'],
-      FAMILY,
-      'notSure',
-    ),
-    party('emeka', 'Dr Emeka Nwosu', ['Adanna Nwosu'], 'Friends', 'noReply'),
-    party('seun', 'Oluwaseun Ajayi', [], 'Work', 'noReply'),
-    party('yusuf', 'Yusuf Ibrahim', ['Guest of Yusuf Ibrahim'], 'Friends', 'notSure'),
-    party('nadiaH', 'Nadia Haddad', ['Guest of Nadia Haddad'], 'Friends', 'noReply'),
   ];
+}
+
+/** The wedding's guests who are not sure yet or have not replied (10 and 21, Guests A); the tray lists two of them, as Desk-4 does. */
+export const UNSURE_GUESTS = 31;
+
+export function unsureLeft(tray: readonly Party[]): number {
+  return UNSURE_GUESTS - 2 + tray.filter((party) => party.reply !== 'coming').length;
 }
 
 export const GROUP_ORDER: readonly string[] = [FAMILY, 'Friends', 'Work'];
@@ -344,10 +343,10 @@ export function peopleIn(party: Party): number {
 }
 
 export function partyTitle(party: Party): string {
-  const plus = party.behind === true ? party.companions.length - 1 : party.companions.length;
-  const lead = party.behind === true ? say(SW.guestOf, { name: party.name }) : party.name;
-
-  return plus > 0 ? say(SW.party, { name: lead, n: plus }) : lead;
+  if (party.behind === true) return say(SW.guestOf, { name: party.name });
+  return party.companions.length > 0
+    ? say(SW.party, { name: party.name, n: party.companions.length })
+    : party.name;
 }
 
 function plain(text: string): string {
@@ -554,7 +553,6 @@ function project(points: readonly Point[], axis: Point): [number, number] {
   return [Math.min(...values), Math.max(...values)];
 }
 
-/** Two items overlap when their chairs reach into each other (sc-5028): allowed, and outlined. */
 export function overlap(a: Item, b: Item): boolean {
   const gap = 1;
 

@@ -2304,6 +2304,15 @@
   font: 500 12px/1.5 var(--fontFamily);
 }
 
+.sp-unseen {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 .sp-half {
   position: absolute;
   right: 0;

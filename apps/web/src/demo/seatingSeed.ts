@@ -520,7 +520,7 @@ export function seedOf(state: SeatingState | null): Ui {
         seed: {
           key: 'seats',
           value: '3',
-          error: say(SW.rowBelowSeated, { name: 'Funmi Adeyemi', n: 4, m: 4 }),
+          error: say(SW.rowBelowSeated, { name: 'Lars Johansson', n: 4, m: 4 }),
         },
         focus: 'seats',
       };

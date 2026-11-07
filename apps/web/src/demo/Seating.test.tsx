@@ -287,6 +287,9 @@ describe('Room settings and sections (sc-3998)', () => {
     fireEvent.change(within(panel()).getByLabelText('Name'), { target: { value: '' } });
     fireEvent.click(within(panel()).getByRole('button', { name: 'Add section' }));
     expect(await within(panel()).findByText('Enter a name for the section.')).toBeDefined();
+    fireEvent.change(within(panel()).getByLabelText('Name'), { target: { value: 'T'.repeat(41) } });
+    fireEvent.click(within(panel()).getByRole('button', { name: 'Add section' }));
+    expect(await within(panel()).findByText('Use 40 characters or fewer.')).toBeDefined();
     fireEvent.change(within(panel()).getByLabelText('Name'), { target: { value: 'Terrace' } });
     fireEvent.click(within(panel()).getByRole('radio', { name: 'Rose' }));
     fireEvent.click(within(panel()).getByRole('button', { name: 'Add section' }));
@@ -447,7 +450,7 @@ describe('tables, rows and seats (sc-4000, sc-4003)', () => {
   it('refuses a row shortened past a guest, and a seat name already used', SLOW, async () => {
     await seating('rowBelowSeated');
     expect(
-      within(panel()).getByText('Funmi Adeyemi is in seat 4. Move them first, or keep 4 seats.'),
+      within(panel()).getByText('Lars Johansson is in seat 4. Move them first, or keep 4 seats.'),
     ).toBeDefined();
     await seating('seatNameTaken');
     expect(
@@ -642,7 +645,7 @@ describe('seating guests (sc-4013, sc-4016, sc-5030)', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Seat just Amaka Eze' }));
       expect(await screen.findByText('Amaka Eze is at Table 4.')).toBeDefined();
       expect(
-        within(panel()).getByRole('button', { name: /^Guest of Amaka Eze \+ 1/u }),
+        within(panel()).getByRole('button', { name: /^Guest of Amaka Eze(?! \+)/u }),
       ).toBeDefined();
     },
   );
@@ -679,8 +682,12 @@ describe('seating guests (sc-4013, sc-4016, sc-5030)', () => {
       );
       expect(await within(panel()).findByText('Table 10')).toBeDefined();
       expect(item(/^Table 10, round, 8 of 10 seats taken/u)).toBeDefined();
+      expect(screen.getByText('8 guests moved to Table 10.')).toBeDefined();
       fireEvent.click(within(panel()).getByRole('button', { name: 'Unseat everyone' }));
       expect(item(/^Table 10, round, 0 of 10 seats taken/u)).toBeDefined();
+      expect(screen.getByText('Table 10 is empty now.')).toBeDefined();
+      fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+      expect(item(/^Table 10, round, 8 of 10 seats taken/u)).toBeDefined();
     },
   );
 
@@ -704,7 +711,7 @@ describe('seating guests (sc-4013, sc-4016, sc-5030)', () => {
     SLOW,
     async () => {
       await seating('notSureYet');
-      expect(within(panel()).getByText('12 more with Not sure yet or no reply')).toBeDefined();
+      expect(within(panel()).getByText('31 more with Not sure yet or no reply')).toBeDefined();
       expect(within(panel()).getByText('Work · Not sure yet')).toBeDefined();
       expect(within(panel()).getAllByText('Friends · No reply').length).toBeGreaterThan(0);
       fireEvent.click(within(panel()).getByRole('checkbox', { name: /^Work/u }));

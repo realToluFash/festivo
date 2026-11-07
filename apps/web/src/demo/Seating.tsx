@@ -558,6 +558,9 @@ function Seating({ first, event, tell }: { first: Ui; event: SampleEvent; tell: 
           },
           tray: [...now.tray, ...back],
           save: 'saving',
+          hover: tableId,
+          undo: { plan: now.plan, tray: now.tray },
+          bar: { kind: 'undo', words: say(SW.tableEmpty, { table: item.name }), does: 'undo' },
         };
       }),
     [set],
@@ -599,6 +602,12 @@ function Seating({ first, event, tell }: { first: Ui; event: SampleEvent; tell: 
           hover: to,
           chosen: [to],
           save: 'saving',
+          undo: { plan: now.plan, tray: now.tray },
+          bar: {
+            kind: 'undo',
+            words: many('movedAll', who.length, { table: target.name }),
+            does: 'undo',
+          },
         };
       }),
     [set],

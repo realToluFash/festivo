@@ -28,6 +28,7 @@ import {
   sampleItems,
   samplePlan,
   sampleTray,
+  unsureLeft,
   peopleIn,
   sectionLine,
   sideBySide,
@@ -70,6 +71,29 @@ describe('the sample (seating-a-spec §8)', () => {
     expect(byId('t7').chairs[7]?.state).toBe('held');
     expect(free).toBe(36);
     expect(`${filled(byId('t3'))} of ${usable(byId('t3'))}`).toBe('8 of 9');
+  });
+
+  it('seats nobody twice', () => {
+    const named = sampleItems().flatMap((item) =>
+      item.chairs.flatMap((chair) => (chair.who == null ? [] : [chair.who])),
+    );
+    const waiting = sampleTray().flatMap((party) => [
+      party.name,
+      ...party.companions.filter((one) => !one.startsWith('Guest of')),
+    ]);
+
+    expect(new Set(named).size).toBe(named.length);
+    expect(waiting.filter((name) => named.includes(name))).toEqual([]);
+    expect(
+      byId('rowA')
+        .chairs.slice(0, 4)
+        .map((chair) => chair.who),
+    ).toEqual(['Priyanka Nair', 'Yuki Tanaka', 'Emeka Obi', 'Lars Johansson']);
+  });
+
+  it('counts 31 not sure yet or with no reply, the tray listing two of them', () => {
+    expect(unsureLeft(sampleTray())).toBe(31);
+    expect(sampleTray().filter((party) => party.reply !== 'coming')).toHaveLength(2);
   });
 
   it('names each section with its colour and its counts', () => {
