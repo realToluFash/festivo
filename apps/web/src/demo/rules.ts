@@ -26,7 +26,7 @@ export const SAMPLE = {
   /** Refused as a known breach, as the API refuses one. */
   breachedPassword: 'passwordpassword',
   inviter: 'Ade Bankole',
-  role: 'Coordinator',
+  role: 'Member',
   invitedUntil: 'Tuesday, Nov 17',
   askedOn: 'Tuesday, Nov 3 at 14:05',
   askAgainFrom: 'Tuesday, Dec 1',

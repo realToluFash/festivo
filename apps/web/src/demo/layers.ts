@@ -1,11 +1,14 @@
 import {
   createContext,
   type RefObject,
+  useCallback,
   useContext,
   useEffect,
   useId,
   useLayoutEffect,
+  useMemo,
   useRef,
+  useState,
 } from 'react';
 
 import { keepFocusIn } from '../dialogFocus.ts';
@@ -24,6 +27,24 @@ export const LayersContext = createContext<Layers>({
   pop() {},
   host: null,
 });
+
+/** A desk page's dialogs: the stack they take turns on, and the host they draw in. */
+export function useDeskLayers(): {
+  layers: Layers;
+  covered: boolean;
+  setHost: (host: HTMLElement | null) => void;
+} {
+  const [stack, setStack] = useState<readonly string[]>([]);
+  const push = useCallback(
+    (id: string) => setStack((now) => [...now.filter((one) => one !== id), id]),
+    [],
+  );
+  const pop = useCallback((id: string) => setStack((now) => now.filter((one) => one !== id)), []);
+  const [host, setHost] = useState<HTMLElement | null>(null);
+  const layers = useMemo(() => ({ stack, push, pop, host }), [stack, push, pop, host]);
+
+  return { layers, covered: stack.length > 0, setHost };
+}
 
 /** A dialog takes the top of the stack while it is open: everything under it is inert. */
 export function useLayer(): boolean {
@@ -73,9 +94,10 @@ export function useDeskDialog(
     const back = (tries: number): void => {
       const to = opener.current;
       if (open.current) return;
-      if (!(to instanceof HTMLElement) || !to.isConnected)
-        document.querySelector<HTMLElement>('.desk-main h1')?.focus();
-      else if (to.closest('[inert]') == null) to.focus();
+      const lost = document.activeElement == null || document.activeElement === document.body;
+      if (!(to instanceof HTMLElement) || !to.isConnected) {
+        if (lost) document.querySelector<HTMLElement>('.desk-main h1')?.focus();
+      } else if (to.closest('[inert]') == null) to.focus();
       else if (tries > 0) window.requestAnimationFrame(() => back(tries - 1));
     };
 

@@ -1,5 +1,12 @@
-import { createContext, type ReactNode, type Ref, useContext } from 'react';
-import { Pressable, ScrollView, type ScrollViewInstance, StyleSheet, View } from 'react-native';
+import { createContext, type ReactNode, type Ref, useContext, useMemo, useRef } from 'react';
+import {
+  Pressable,
+  ScrollView,
+  type ScrollViewInstance,
+  StyleSheet,
+  View,
+  type ViewInstance,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
@@ -7,21 +14,23 @@ import { Text } from '../../components/Text.tsx';
 import type { SettingsSection } from '../../kit/appNav.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { Glyph } from '../../components/Glyph.tsx';
-import { SAMPLE } from '../samples.ts';
-import { sample } from '../today.ts';
+import { OpenerWords, OPENER, OrgMark, useOrgOpener } from '../OrgSwitcher.tsx';
+import { type EventKey, sample } from '../today.ts';
 import { PhoneTabBar, TABS, type Tab } from '../../components/TodayCover.tsx';
 import type { Tell } from '../../components/TodayParts.tsx';
 import { TodaySidebar } from '../../components/TodaySidebar.tsx';
 import { TodayShellProvider } from '../../components/todayShell.ts';
 import { demoShell } from '../demoShell.ts';
-import { Back, RoundButton, Tile, TYPE } from './parts.tsx';
-import type { SettingsLayout, Viewer } from './sample.ts';
+import { Back, RoundButton, TYPE } from './parts.tsx';
+import { type Looking, type SettingsLayout, type Viewer, viewerOfRole } from './sample.ts';
 
 export interface Shell {
   layout: SettingsLayout;
   viewer: Viewer;
+  looking: Looking;
   open: SettingsSection | null;
-  openSection: (section: SettingsSection) => void;
+  /** A state opens the section where a step on another page left off: Security's setup. */
+  openSection: (section: SettingsSection, state?: string) => void;
   toSettings: () => void;
   tell: Tell;
   onTab: (tab: Tab) => void;
@@ -37,13 +46,23 @@ export function useShell(): Shell {
   return shell;
 }
 
+/** A page whose sample someone else sees: the Settings card, its rows and the sidebar's foot follow them. */
+export function SeenBy({ looking, children }: { looking: Looking; children: ReactNode }) {
+  const shell = useShell();
+  const seen = useMemo(
+    () => ({ ...shell, looking, viewer: viewerOfRole(looking.role) }),
+    [shell, looking],
+  );
+
+  return <ShellContext.Provider value={seen}>{children}</ShellContext.Provider>;
+}
+
 export const PHONE_TAB_BAR = 64;
 const SIDEBAR_EVENTS = (['wed', 'ireti', 'party', 'draft'] as const).map(sample);
 
 /** A Settings page in B: on its side, `column` takes the Settings list's place, as givesWay does in the app. */
 export function SettingsPage({
   title,
-  sub,
   back,
   right,
   children,
@@ -53,7 +72,6 @@ export function SettingsPage({
   scrollRef,
 }: {
   title: string;
-  sub?: string;
   back?: { label: string; onPress: () => void } | null;
   right?: ReactNode;
   children: ReactNode;
@@ -88,11 +106,6 @@ export function SettingsPage({
             </Text>
             {right}
           </View>
-          {sub != null && (
-            <Text size={TYPE.body} weight="medium" style={styles.secondary}>
-              {sub}
-            </Text>
-          )}
           <View style={styles.cardsPane}>{children}</View>
         </ScrollView>
         {dock != null && <View style={styles.dockTablet}>{dock}</View>}
@@ -138,11 +151,6 @@ export function SettingsPage({
             {right}
             {phone && <Bell tell={shell.tell} />}
           </View>
-          {sub != null && (
-            <Text size={phone ? TYPE.body : 16} weight="medium" style={styles.secondary}>
-              {sub}
-            </Text>
-          )}
         </View>
         <View style={phone ? styles.cardsPhone : styles.cardsPortrait}>{children}</View>
       </ScrollView>
@@ -168,30 +176,42 @@ export function SettingsPage({
   );
 }
 
+/** On its side: the app's sidebar, or an area's own in its place, beside the main card. */
 export function Landscape({
   column,
   children,
   overlay,
+  at = 'Settings',
+  sidebar,
+  onEvent,
 }: {
   column: ReactNode;
   children: ReactNode;
   overlay?: ReactNode;
+  at?: Tab;
+  sidebar?: ReactNode;
+  onEvent?: (key: EventKey) => void;
 }) {
   const shell = useShell();
   const insets = useSafeAreaInsets();
 
   return (
     <View style={[styles.chrome, { paddingTop: insets.top }]}>
-      <TodayShellProvider value={demoShell(shell.tell)}>
-        <TodaySidebar
-          events={SIDEBAR_EVENTS}
-          onTab={shell.onTab}
-          at="Settings"
-          onPerson={() => shell.openSection('account')}
-        />
-      </TodayShellProvider>
+      {sidebar ?? (
+        <TodayShellProvider
+          value={{ ...demoShell(shell.tell, { event: onEvent }), person: shell.looking }}
+        >
+          <TodaySidebar
+            events={SIDEBAR_EVENTS}
+            onTab={shell.onTab}
+            at={at}
+            onPerson={() => shell.openSection('account')}
+            org={shell.viewer !== 'noOrg'}
+          />
+        </TodayShellProvider>
+      )}
       <View style={[styles.main, { marginBottom: Math.max(insets.bottom, tokens.spaceMd) }]}>
-        <View style={styles.column}>{column}</View>
+        {column != null && <View style={styles.column}>{column}</View>}
         <View style={styles.grow}>{children}</View>
       </View>
       {overlay}
@@ -309,30 +329,48 @@ export function Bell({ tell }: { tell: Tell }) {
   );
 }
 
-export function PortraitTop() {
+/** The organisation switcher on white, at the top of every top-level page. */
+export function OrgPill() {
+  const { viewer } = useShell();
+  const ref = useRef<ViewInstance>(null);
+  const org = useOrgOpener(ref);
+
+  if (viewer === 'noOrg') return null;
+
+  return (
+    <Pressable
+      ref={ref}
+      onPress={org.onPress}
+      style={({ pressed }) => [
+        styles.org,
+        org.waiting > 0 && styles.orgWaiting,
+        pressed && styles.orgPressed,
+      ]}
+      accessibilityRole="button"
+      accessibilityLabel={org.label}
+      accessibilityState={{ expanded: org.expanded }}
+      testID="org.switch"
+    >
+      <OrgMark id={org.place.id} name={org.place.name} side={28} />
+      <OpenerWords opener={org} />
+      <Glyph name="updown" size={14} ink={tokens.colorInkSecondary} />
+    </Pressable>
+  );
+}
+
+export function PortraitTop({ at = 'Settings' }: { at?: Tab }) {
   const shell = useShell();
   const insets = useSafeAreaInsets();
 
   return (
     <View style={[styles.portraitTop, { paddingTop: insets.top + tokens.spaceMd }]}>
-      <Pressable
-        onPress={() => shell.tell('Switching organisation has its own design.')}
-        style={styles.org}
-        accessibilityRole="button"
-        accessibilityLabel={`${SAMPLE.organisation}. Switch organisation`}
-      >
-        <Tile of="organisation" side={28} initials="IE" />
-        <Text size={TYPE.body} weight="semibold" accessible={false}>
-          {SAMPLE.organisation}
-        </Text>
-        <Glyph name="updown" size={14} ink={tokens.colorInkSecondary} />
-      </Pressable>
+      <OrgPill />
       <View style={styles.grow} />
       <Bell tell={shell.tell} />
       <View style={[styles.capsuleAt, { top: insets.top + 7 }]} pointerEvents="box-none">
         <View style={styles.capsule} accessibilityRole="tablist">
           {TABS.map(([label, glyph]) => {
-            const on = label === 'Settings';
+            const on = label === at;
             const ink = on ? tokens.colorAccent : tokens.colorInkSecondary;
 
             return (
@@ -429,15 +467,18 @@ const styles = StyleSheet.create({
     paddingBottom: tokens.spaceXxs,
   },
   org: {
-    height: tokens.sizeHit,
+    height: OPENER.rest,
+    flexShrink: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: tokens.spaceSm,
-    paddingLeft: tokens.spaceXs,
-    paddingRight: tokens.spaceLg,
-    borderRadius: tokens.sizeHit / 2,
+    paddingLeft: tokens.spaceSm,
+    paddingRight: tokens.spacePillEnd,
+    borderRadius: OPENER.rest / 2,
     backgroundColor: tokens.colorInset,
   },
+  orgWaiting: { height: OPENER.waiting, borderRadius: OPENER.waiting / 2 },
+  orgPressed: { backgroundColor: tokens.colorNeutralFill },
   capsuleAt: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
   capsule: {
     height: 46,
