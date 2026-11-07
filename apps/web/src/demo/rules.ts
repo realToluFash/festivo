@@ -8,6 +8,9 @@ import {
   meetsPasswordLength,
   phoneLengthProblem,
 } from '@soirely/domain';
+import i18next from 'i18next';
+
+import { codeChoice as productCodeChoice, phoneProblemMessage } from '../phoneProblem.ts';
 
 /** What the demo is filled with and answers to. Nothing here reaches the API. */
 export const SAMPLE = {
@@ -126,22 +129,17 @@ export function countryName(code: string): string {
   return COUNTRIES.find((each) => each.code === code)?.name ?? code;
 }
 
-/** "+44 United Kingdom", the compact code beside the number. */
 export function codeChoice(code: string): string {
-  return `${callingCode(code) ?? ''} ${countryName(code)}`.trim();
+  return productCodeChoice(code, countryName(code));
 }
+
+const ENGLISH = i18next.getFixedT('en');
 
 /** The number's refusal, or null; a blank number is refused only where it is not optional. */
 export function numberLine(typed: string, country: string, optional: boolean): string | null {
   const problem = phoneLengthProblem(typed, country);
 
-  if (problem == null || (problem === 'blank' && optional)) return null;
-  if (problem === 'blank') return 'Enter your mobile number.';
-  if (problem === 'noCountry') return 'Choose a country.';
-
-  const length = problem === 'tooShort' ? 'short' : 'long';
-
-  return `That number looks too ${length} for ${countryName(country)}. Check it and try again.`;
+  return problem === 'blank' && optional ? null : phoneProblemMessage(problem, country, ENGLISH);
 }
 
 export function fullNumber(typed: string, country: string): string {
