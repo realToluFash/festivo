@@ -135,7 +135,7 @@ export default function Waiting() {
         phone={phone}
         open={sheet.open}
         opener={opener}
-        testID="demo.cancelSheet"
+        testID="demo.cancelAsk"
         title="Cancel your request?"
         lines={['You’ll need to start again to get back in.']}
         confirm={{
@@ -162,7 +162,7 @@ export default function Waiting() {
               key={kind}
               label={label}
               onPress={() => end(kind)}
-              testID={`demo.cancelSheet.answer.${kind}`}
+              testID={`demo.cancelAsk.answer.${kind}`}
             />
           ))}
         </DemoOnly>
@@ -174,7 +174,7 @@ export default function Waiting() {
               key={kind}
               label={label}
               onPress={() => setAnswered(kind)}
-              testID={`demo.cancelSheet.first.${kind}`}
+              testID={`demo.cancelAsk.first.${kind}`}
             />
           ))}
         </DemoOnly>
@@ -182,7 +182,7 @@ export default function Waiting() {
           <SecondaryButton
             label={reachable ? 'Lose it' : 'Bring it back'}
             onPress={() => setReachable(!reachable)}
-            testID="demo.cancelSheet.connection"
+            testID="demo.cancelAsk.connection"
           />
         </DemoOnly>
       </LifecycleSheet>
