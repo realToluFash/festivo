@@ -421,7 +421,7 @@
     "home": "Ir al inicio"
   },
   "guest": {
-    "invitationTitle": "Está invitado",
+    "invitationTitle": "Tiene una invitación",
     "invitationBody": "No necesita ninguna cuenta. Esta página es suya para este evento.",
     "invalidTitle": "Este enlace de invitación no funciona",
     "invalidBody": "Puede haber caducado, haber sido sustituido por uno más reciente o contener un error. Solicite un enlace nuevo a quien le invitó: puede enviarlo en un momento.",
