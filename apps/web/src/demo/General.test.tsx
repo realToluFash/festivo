@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
@@ -28,6 +28,7 @@ function steps(): string[] {
 
 describe('General at a desk (sc-30063)', () => {
   beforeEach(() => __setConfig({ ...tested, environment: 'development' }));
+  afterEach(() => vi.restoreAllMocks());
 
   it('opens from the Settings list beside it, the tile no longer a design of its own', async () => {
     const router = createMemoryRouter(routes, { initialEntries: ['/demo/settings'] });
@@ -170,6 +171,39 @@ describe('General at a desk (sc-30063)', () => {
 
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(screen.getByText('Ire Events', { selector: '.desk-name' })).toBeDefined();
+  });
+
+  it('puts the search field in focus when a list opens from the details', async () => {
+    await general('/demo/settings/general?state=edit');
+    const dialog = screen.getByRole('dialog', { name: 'Organisation details' });
+    const real = HTMLElement.prototype.focus;
+    vi.spyOn(HTMLElement.prototype, 'focus').mockImplementation(function focusUnlessInert(
+      this: HTMLElement,
+      options?: FocusOptions,
+    ) {
+      if (this.closest('[inert]') == null) real.call(this, options);
+    });
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Currency, Nigerian Naira (NGN)' }));
+    const list = screen.getByRole('dialog', { name: 'Currency' });
+
+    await waitFor(() => expect(document.activeElement).toBe(within(list).getByRole('searchbox')));
+  });
+
+  it('counts Transfer’s changes before asking to discard them', async () => {
+    await general('/demo/settings/general');
+    fireEvent.click(screen.getByRole('button', { name: 'Transfer ownership' }));
+    const dialog = screen.getByRole('dialog', { name: 'Transfer ownership' });
+
+    fireEvent.click(within(dialog).getAllByRole('radio')[0] as HTMLElement);
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+    const one = screen.getByRole('alertdialog', { name: 'Discard your change?' });
+    fireEvent.click(within(one).getByRole('button', { name: 'Keep editing' }));
+
+    fireEvent.change(within(dialog).getByLabelText('Your password'), { target: { value: 'x' } });
+    fireEvent.change(within(dialog).getByLabelText('Code'), { target: { value: '714302' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+    expect(screen.getByRole('alertdialog', { name: 'Discard your changes?' })).toBeDefined();
   });
 
   it('adds only a domain the owner’s address is at, after the server says so', async () => {

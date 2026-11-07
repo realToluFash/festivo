@@ -31,7 +31,7 @@ import { Refreshing } from '../../../components/OfflineBand.tsx';
 import { useOffline } from '../../../offline.ts';
 import { currentLocale, dateLocale } from '../../../i18n/index.ts';
 import { focusWhereSent, offField } from '../../../offField.ts';
-import { can, useSession } from '../../../session.ts';
+import { canOn, useSession } from '../../../session.ts';
 import { useFocusOnceShown, useStepFocus } from '../../../stepFocus.ts';
 import { currencyChoices, timeZoneChoices } from '../../../zoneAndCurrencyChoices.ts';
 import { Forbidden } from '../Forbidden.tsx';
@@ -79,7 +79,6 @@ export function EditEvent() {
   const organisationId = session.organisation?.id;
 
   if (organisationId == null) return null;
-  if (!can(session, 'events.manage')) return <Forbidden />;
 
   return (
     <EditOf
@@ -134,6 +133,8 @@ function EditOf({ organisationId, eventId }: { organisationId: string; eventId: 
       current = false;
     };
   }, [organisationId, eventId, attempt, refresh, watch]);
+
+  if ('event' in load && !canOn(load.event, 'events.manage')) return <Forbidden />;
 
   return (
     <div className="event-form-page">

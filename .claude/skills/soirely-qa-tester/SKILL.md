@@ -611,6 +611,25 @@ new story, and never by stopping a pass you are in.
      plan that failed in those minutes is re-run, not reported as a FAIL.
    - **Where to open it**: the web address, the Expo Go link `serve` printed and its QR code
      attached with `--files`, and Mailpit's address for emails.
+   - **The certificate, once per person.** The stack serves https from a CA made on this
+     machine, which `--tester lan status` names (`~/.soirely/qa-lan-ca/ca.crt`). In your
+     first plan to them, or when `checkout` printed "a new CA", attach that `ca.crt` (never
+     `ca.key`) with `--files` and give the steps:
+     - **Mac**: open `ca.crt`, so Keychain Access adds it to the login keychain; double-click
+       "Soirely QA LAN CA (<host>)", open Trust, set "When using this certificate" to Always Trust,
+       close the window and enter the Mac password.
+     - **iPhone or iPad**: AirDrop or email `ca.crt` to it and open it; Settings › Profile
+       Downloaded › Install; then Settings › General › About › Certificate Trust Settings,
+       turn on "Soirely QA LAN CA (<host>)".
+     - Write `<host>` out as this machine's name, from `hostname`, so they match the exact
+       words they see.
+     - Then the web address opens in Safari with no warning. A warning means the
+       certificate is not trusted yet: they stop and say so, and report no FAIL.
+     - **The app half needs an iPhone or iPad.** Android apps do not trust a CA the user
+       installed, so Expo Go on Android fails every API call on this stack even when
+       Chrome opens the web without a warning. Give a tester with only an Android phone
+       the web steps alone, and say the app steps wait for an iPhone or iPad. An Android
+       API failure is a setup limit, never a FAIL.
    - **The accounts**, one line each, ready to copy: what it is for (which steps, on which
      device), the email, the password, and, for a two-factor account, its `TOTP_SECRET` as
      the setup key to add to an authenticator app by "enter a setup key". Say where any
