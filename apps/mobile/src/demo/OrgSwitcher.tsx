@@ -1,6 +1,6 @@
 import { formattingLocale } from '@soirely/domain';
 import { getLocales } from 'expo-localization';
-import { useIsFocused } from 'expo-router';
+import { router, useIsFocused, usePathname } from 'expo-router';
 import {
   createContext,
   Fragment,
@@ -15,6 +15,7 @@ import {
   useState,
   useSyncExternalStore,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Animated,
   Easing,
@@ -53,6 +54,16 @@ import { glide } from '../motion.ts';
 import { useReducedMotion } from '../reducedMotion.ts';
 import { tokens } from '../theme/tokens.ts';
 import { useModalOpen } from '../updateRequired.ts';
+import {
+  type CreateState,
+  SAMPLE_FOUNDED,
+  type Walk,
+  foundedPlace,
+  freshWalk,
+  walkFor,
+} from './createOrg/CreateWalk.ts';
+import { CreateWalkWindow, type WalkOpening, deviceNow } from './createOrg/CreateWalkWindow.tsx';
+import { DraftTile } from './createOrg/WalkParts.tsx';
 import { scrimFor } from './events/EventsModel.ts';
 import {
   CELL_GAP,
@@ -71,12 +82,14 @@ import {
   columnsFor,
   currentPlace,
   expand,
+  founded,
   frameFor,
   noneMatch,
   notNow,
   openerLabel,
   orgMesh,
   pick,
+  placeOf,
   rowsOf,
   scrollToShow,
   searchable,
@@ -86,6 +99,7 @@ import {
   tilesOf,
   untilIn,
   waitingOf,
+  withoutPlaces,
 } from './OrgSwitcherModel.ts';
 import { Pill } from './settings/parts.tsx';
 
@@ -113,12 +127,20 @@ function useSession(): Session {
 
 export type OpenerRef = RefObject<ViewInstance | null>;
 
+interface Switched {
+  words: string;
+  /** Said after Create, which has moved to another screen: the notice takes focus. */
+  focus?: boolean;
+}
+
 interface Switcher {
   register: (opener: OpenerRef, primary: boolean) => () => void;
   show: (opener: OpenerRef) => void;
   openedBy: OpenerRef | null;
   slot: () => () => void;
-  switched: { words: string } | null;
+  switched: Switched | null;
+  startWalk: (opener: OpenerRef) => void;
+  registerStart: (opener: OpenerRef) => () => void;
 }
 
 const SwitcherContext = createContext<Switcher | null>(null);
@@ -131,24 +153,49 @@ function useSwitcher(): Switcher {
 }
 
 const OPEN_AFTER_MS = SETTLED_MS;
+const TODAY = '/demo/today';
+
+/** Created from another page: Today says it once it is there. */
+const landing: { words: string | null } = { words: null };
+const arrival = { id: '', at: 0 };
+const ARRIVE_MS = 300;
+const ARRIVING_MS = SETTLED_MS * 4;
 
 /** One drop-down per route, opened from whichever opener was tapped; with ?switcher= it opens on load in that state. */
 export function OrgSwitcherProvider({
   state,
+  create = null,
+  none = false,
+  statusBar = 'dark',
   tell,
   children,
 }: {
   state: SwitcherState | null;
+  /** ?create=: the walk opens on load in that state; `created` lands in the new organisation. */
+  create?: CreateState | null;
+  /** ?orgs=none: Folake in no organisation. */
+  none?: boolean;
+  statusBar?: 'light' | 'dark';
   tell: Tell;
   children: ReactNode;
 }) {
+  const { t } = useTranslation();
+  const pathname = usePathname();
   const phone = useLayout().kind === 'phone';
   const { width, height } = useWindowDimensions();
   const { bottom } = useSafeAreaInsets();
   const [frame, setFrame] = useState<DropFrame | null>(null);
   const [openedBy, setOpenedBy] = useState<OpenerRef | null>(null);
   const [visit, setVisit] = useState(0);
-  const [switched, setSwitched] = useState<{ words: string } | null>(null);
+  const [switched, setSwitched] = useState<Switched | null>(() => {
+    if (landing.words != null) return { words: landing.words, focus: true };
+    if (create === 'created') return { words: SW.switched(SAMPLE_FOUNDED.name), focus: true };
+
+    return null;
+  });
+  const [walking, setWalking] = useState<WalkOpening | null>(null);
+  const [walkOpen, setWalkOpen] = useState(false);
+  const starter = useRef<OpenerRef | null>(null);
   const openers = useRef(new Map<OpenerRef, boolean>());
   const slots = useRef(0);
   const back = useRef<ViewInstance | null>(null);
@@ -156,8 +203,16 @@ export function OrgSwitcherProvider({
   const autoOpened = useRef(false);
 
   useLayoutEffect(() => {
-    if (state != null) setSession(sessionFor(state));
-  }, [state]);
+    if (state == null && create == null && !none) return;
+    const base = sessionFor(state ?? 'one');
+    const start = none ? withoutPlaces(base) : base;
+    if (create === 'created') arrive(SAMPLE_FOUNDED.id);
+    setSession(create === 'created' ? founded(start, SAMPLE_FOUNDED) : start);
+  }, [state, create, none]);
+
+  useEffect(() => {
+    landing.words = null;
+  }, []);
 
   const show = useCallback(
     (opener: OpenerRef, auto = false) => {
@@ -186,7 +241,7 @@ export function OrgSwitcherProvider({
   );
 
   useEffect(() => {
-    if (state == null || autoOpened.current) return;
+    if (state == null || autoOpened.current || (create != null && create !== 'created')) return;
     const wait = setTimeout(() => {
       autoOpened.current = true;
       const first = [...openers.current].find(([ref, primary]) => primary && ref.current != null);
@@ -194,7 +249,7 @@ export function OrgSwitcherProvider({
     }, OPEN_AFTER_MS);
 
     return () => clearTimeout(wait);
-  }, [state, show]);
+  }, [state, show, create]);
 
   useEffect(() => {
     if (openedBy == null) return;
@@ -235,14 +290,61 @@ export function OrgSwitcherProvider({
     },
     [tell, close],
   );
+  const openWalk = useCallback((opener: OpenerRef | null, walk: Walk, from: CreateState | null) => {
+    setWalking((last) => ({ visit: (last?.visit ?? 0) + 1, walk, state: from, opener }));
+    setWalkOpen(true);
+  }, []);
   const onCreate = useCallback(() => {
+    const opener = opening.current;
     close();
-    tell(SW.createOwn);
-  }, [tell, close]);
+    openWalk(opener, freshWalk(deviceNow()), null);
+  }, [close, openWalk]);
+  const startWalk = useCallback(
+    (opener: OpenerRef) => openWalk(opener, freshWalk(deviceNow()), null),
+    [openWalk],
+  );
+  const registerStart = useCallback((opener: OpenerRef) => {
+    starter.current = opener;
+
+    return () => {
+      if (starter.current === opener) starter.current = null;
+    };
+  }, []);
+  const onCancelWalk = useCallback(() => setWalkOpen(false), []);
+  const onCreated = useCallback(
+    (walk: Walk) => {
+      const place = foundedPlace(walk);
+      const fromNoOrganisation = placeOf(store.session) == null;
+      setSession(founded(store.session, place));
+      arrive(place.id);
+      setWalkOpen(false);
+
+      const words = SW.switched(place.name);
+      if (pathname !== TODAY) {
+        landing.words = words;
+        setTimeout(() => router.replace(TODAY), SETTLED_MS);
+      } else if (slots.current > 0 || fromNoOrganisation) setSwitched({ words, focus: true });
+      else tell(words);
+    },
+    [pathname, tell],
+  );
+
+  useEffect(() => {
+    if (create == null || create === 'created') return;
+    const wait = setTimeout(() => {
+      const first = [...openers.current].find(([ref, primary]) => primary && ref.current != null);
+      const walk = walkFor(create, t, phone);
+      if (walk != null) openWalk(none ? starter.current : (first?.[0] ?? null), walk, create);
+    }, OPEN_AFTER_MS);
+
+    return () => clearTimeout(wait);
+    // Once, as the route opens: a turn of the window keeps the walk as it is.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [create, none]);
 
   const switcher = useMemo<Switcher>(
-    () => ({ register, show, openedBy, slot, switched }),
-    [register, show, openedBy, slot, switched],
+    () => ({ register, show, openedBy, slot, switched, startWalk, registerStart }),
+    [register, show, openedBy, slot, switched, startWalk, registerStart],
   );
 
   return (
@@ -257,6 +359,17 @@ export function OrgSwitcherProvider({
           onClose={close}
           onPick={onPick}
           onCreate={onCreate}
+        />
+      )}
+      {walking != null && (
+        <CreateWalkWindow
+          key={`walk${walking.visit}`}
+          opening={walking}
+          open={walkOpen}
+          email={VIEWER.email}
+          statusBar={statusBar}
+          onCancel={onCancelWalk}
+          onCreated={onCreated}
         />
       )}
     </SwitcherContext.Provider>
@@ -289,6 +402,20 @@ export function useOrgOpener(ref: OpenerRef, primary = true): OrgOpener {
   };
 }
 
+/** The no-organisation screen's Start organisation: it opens the walk, and ?create= opens it from there. */
+export function useStartWalk(opener: OpenerRef): () => void {
+  const { startWalk, registerStart } = useSwitcher();
+
+  useEffect(() => registerStart(opener), [registerStart, opener]);
+
+  return () => startWalk(opener);
+}
+
+/** The organisation being worked in, or null for someone in none. */
+export function useCurrentPlace(): Place | null {
+  return placeOf(useSession());
+}
+
 /** "Now working in ‹name›." in the page, under its head; a page without one says it in its toast. */
 export function SwitchedNotice({ style }: { style?: StyleProp<ViewStyle> }) {
   const { slot, switched } = useSwitcher();
@@ -299,7 +426,14 @@ export function SwitchedNotice({ style }: { style?: StyleProp<ViewStyle> }) {
 
   return (
     <View style={style}>
-      <Notice tone="done" mark={tokens.marks.done.glyph} body={switched.words} answer={switched} />
+      <Notice
+        tone="done"
+        mark={tokens.marks.done.glyph}
+        body={switched.words}
+        answer={switched}
+        takesFocus={switched.focus ?? false}
+        {...(switched.focus === true ? { readMs: SETTLED_MS * 2 } : {})}
+      />
     </View>
   );
 }
@@ -356,7 +490,53 @@ export function OrgMark({
         weight="bold"
         style={{ color: glass ? wash.ink : tokens.colorInkOnDark }}
       />
+      <Arrival key={id} id={id} name={name} side={side} big={big} />
     </View>
+  );
+}
+
+function arrive(id: string) {
+  arrival.id = id;
+  arrival.at = Date.now();
+}
+
+/** Once the walk has closed, the new organisation's tile crossfades from the draft to its colour; not motion, so Reduce Motion keeps it. */
+function Arrival({
+  id,
+  name,
+  side,
+  big,
+}: {
+  id: string;
+  name: string;
+  side: number;
+  big: boolean;
+}) {
+  const [draft] = useState(() =>
+    arrival.id === id && Date.now() - arrival.at < ARRIVING_MS ? new Animated.Value(1) : null,
+  );
+
+  useEffect(() => {
+    if (draft == null) return;
+    const wait = setTimeout(
+      () => glide(draft, 0, ARRIVE_MS).start(),
+      Math.max(0, arrival.at + SETTLED_MS - Date.now()),
+    );
+
+    return () => clearTimeout(wait);
+  }, [draft]);
+
+  if (draft == null) return null;
+
+  return (
+    <Animated.View style={[StyleSheet.absoluteFill, { opacity: draft }]} pointerEvents="none">
+      <DraftTile
+        name={name}
+        side={side}
+        radius={Math.round(side / 3)}
+        initials={big ? Math.floor(side * 0.42) : 12}
+      />
+    </Animated.View>
   );
 }
 

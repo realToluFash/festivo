@@ -24,6 +24,7 @@ import { useShell } from '../settings/Frame.tsx';
 import { Pill } from '../settings/parts.tsx';
 import { type AskProps, FocusedScreen, Row, RowList, TextAction } from '../settings/Summary.tsx';
 import { PhotoFill } from './EventCard.tsx';
+import { EventNotice } from './EventNotice.tsx';
 import { type EditPart, type EventDemoState, folded, instantOf, wallOf } from './EventsModel.ts';
 import { SearchField } from './EventsList.tsx';
 import { BoxField, MomentBox, type Picking, PickerLayer, pick } from './EventsPick.tsx';
@@ -140,44 +141,6 @@ function EditShell({
     >
       {children}
     </FocusedScreen>
-  );
-}
-
-/** B's notice: its tint, the mark in a solid disc, the words in Ink and any way on under them. */
-function EventNotice({
-  tone,
-  words,
-  actions,
-}: {
-  tone: 'quiet' | 'broken';
-  words: string;
-  actions?: ReactNode;
-}) {
-  const broken = tone === 'broken';
-  useReadOut(words);
-
-  return (
-    <View style={[styles.notice, broken ? styles.noticeBroken : styles.noticeQuiet]}>
-      <View
-        style={[styles.disc, broken ? styles.discBroken : styles.discQuiet]}
-        accessibilityElementsHidden
-        importantForAccessibility="no-hide-descendants"
-      >
-        {broken ? (
-          <Glyph name="x" size={15} ink={tokens.colorInkOnDark} weight={3} />
-        ) : (
-          <Text size={14} weight="bold" accessible={false} style={styles.onDisc}>
-            i
-          </Text>
-        )}
-      </View>
-      <View style={styles.noticeWords}>
-        <Text size={15} weight="semibold" style={styles.noticeHead}>
-          {words}
-        </Text>
-        {actions != null && <View style={styles.noticeActions}>{actions}</View>}
-      </View>
-    </View>
   );
 }
 
@@ -1136,30 +1099,6 @@ const styles = StyleSheet.create({
   broken: { color: tokens.colorBroken },
   pressed: { opacity: tokens.opacityPressed },
   alert: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceXs },
-  notice: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: tokens.spaceLg,
-    paddingVertical: tokens.spacePillEnd,
-    paddingHorizontal: tokens.spaceXl,
-    borderRadius: tokens.radiusCardPhone,
-  },
-  noticeQuiet: { backgroundColor: tokens.colorAccentTint },
-  noticeBroken: { backgroundColor: tokens.colorBrokenTint },
-  disc: {
-    width: 26,
-    height: 26,
-    marginTop: -1,
-    borderRadius: 13,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  discQuiet: { backgroundColor: tokens.colorAccent },
-  discBroken: { backgroundColor: tokens.colorBroken },
-  onDisc: { color: tokens.colorInkOnDark },
-  noticeWords: { flex: 1, minWidth: 0, gap: 3 },
-  noticeHead: { lineHeight: 15 * 1.4 },
-  noticeActions: { marginTop: tokens.spaceHair },
   alertMark: { paddingTop: tokens.spaceHair },
   alertMarkSmall: { paddingTop: 1 },
   fieldHead: { flexDirection: 'row', flexWrap: 'wrap' },

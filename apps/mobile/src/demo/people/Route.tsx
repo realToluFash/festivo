@@ -35,9 +35,9 @@ export function PeopleRoute() {
       if (tab === 'Today') router.replace('/demo/today');
       else if (tab === 'Settings') toSettings();
       else if (tab === 'Events') router.replace('/demo/events');
-      else tell(`${tab} has its own design.`);
+      else router.replace('/demo/calendar');
     },
-    [tell, toSettings],
+    [toSettings],
   );
   const shell = useMemo<Shell>(
     () => ({

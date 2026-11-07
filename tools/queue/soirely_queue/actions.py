@@ -354,6 +354,42 @@ def stack_up(c, story, held=False):
                   "bring the stack up, or leave the story for another tester")
 
 
+DEMO_LINE = re.compile(r"^[\s*_>-]*demo[*_]*:", re.I)
+NOT_BUILT = re.compile(r"\b(being built|not built)\b", re.I)
+
+
+def demo_missing(story):
+    """Why a story the designer drew is not ready to build: its Demo line names no merged
+    demo. A story with no Design section shows nothing sq can see, so nothing is missing."""
+    design = T.find(story.get("description"), "Design")
+    if not design:
+        return None
+    line = next((x for x in design[2].splitlines() if DEMO_LINE.match(x)), None)
+    if line is None:
+        return "its Design section has no Demo: line"
+    if NOT_BUILT.search(line):
+        return "its Demo: line says the demo is not built"
+    numbers = [int(n) for n in re.findall(r"#(\d+)", line)]
+    if not numbers:
+        return "its Demo: line names no pull request"
+    states = {}
+    for n in numbers:
+        states[n] = pr_state(n)
+        if states[n] == "MERGED":
+            return None
+    unread = [f"#{n}" for n, state in states.items() if state is None]
+    if unread:
+        return f"GitHub did not answer for {', '.join(unread)}, so its demo is not known merged"
+    return f"its demo {', '.join(f'#{n}' for n in numbers)} is not merged yet"
+
+
+def pr_state(number):
+    try:
+        return github.live(number)["state"]
+    except github.GitHubError:
+        return None
+
+
 def claim(c, a):
     guard(c, "claim")
     story = c.story(a.story)
@@ -371,6 +407,12 @@ def claim(c, a):
         if holders:
             raise Refused(f"sc-{story['id']} is {W.held_by(holders)}: it is offered once "
                           "they merge, at Ready For QA or later. Nothing claimed: pick another")
+        missing = story["state"] == "Ready For Dev" and demo_missing(story)
+        if missing:
+            raise Refused(f"sc-{story['id']} is not built without its demo: {missing}. Nothing "
+                          f"claimed. Send it back for one:\n  sq {c.role} move sc-{story['id']} "
+                          f"\"Needs Design\"\n  sq {c.role} comment sc-{story['id']} --to ux "
+                          "--text \"<each screen and state the demo lacks>\"")
         holder = store.take_story(c.db, story, c.role)
         if holder != c.role:
             raise Refused(f"{holder} claimed sc-{story['id']} first: pick another")
