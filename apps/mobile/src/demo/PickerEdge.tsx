@@ -1,11 +1,11 @@
 import type { ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { FocusEdge, useFocusEdge } from '../components/Field.tsx';
+import { useFocusEdge } from '../components/Field.tsx';
 import { tokens } from '../theme/tokens.ts';
 
 /** A refused text field's red edge over a picker the demo cannot change, 2pt with focus (sc-30447). */
-// `flat` goes round a flat row, reaching past it as a lit row does, so nothing in it moves.
+// Boxed, it covers the picker's own border and focus edge exactly; `flat` reaches past a flat row, as a lit row does.
 export function PickerEdge({
   wrong,
   flat = false,
@@ -20,20 +20,18 @@ export function PickerEdge({
   return (
     <View {...edging}>
       {children}
-      {wrong &&
-        (flat ? (
-          <View pointerEvents="none" style={[styles.flat, focused && styles.focused]} />
-        ) : focused ? (
-          <FocusEdge wrong />
-        ) : (
-          <View pointerEvents="none" style={styles.boxed} />
-        ))}
+      {wrong && (
+        <View
+          pointerEvents="none"
+          style={[styles.edge, flat && styles.flat, focused && styles.focused]}
+        />
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  boxed: {
+  edge: {
     position: 'absolute',
     top: 0,
     right: 0,
@@ -44,14 +42,11 @@ const styles = StyleSheet.create({
     borderColor: tokens.colorBroken,
   },
   flat: {
-    position: 'absolute',
     top: tokens.spaceXxs,
     right: -tokens.spaceMd,
     bottom: tokens.spaceXxs,
     left: -tokens.spaceMd,
-    borderWidth: 1,
     borderRadius: tokens.radiusRow,
-    borderColor: tokens.colorBroken,
   },
   focused: { borderWidth: 2 },
 });
