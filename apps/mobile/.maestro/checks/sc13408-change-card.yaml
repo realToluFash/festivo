@@ -1,5 +1,10 @@
 # Change your password: keys hidden (card), Save new password tapped with the API held, then refused. Keys stay down throughout. sc-13408.
 appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
 ---
 - openLink: ${METRO_URL}/--/settings/security
 - scrollUntilVisible:

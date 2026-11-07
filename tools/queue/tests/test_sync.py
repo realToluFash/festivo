@@ -1,8 +1,9 @@
 """Which Shortcut searches a sync makes: no network here."""
 
 import unittest
+from unittest import mock
 
-from soirely_queue import roles, store, sync
+from soirely_queue import github, roles, store, sync
 
 NOW = 1_000_000.0
 
@@ -138,3 +139,109 @@ class Blockers(unittest.TestCase):
         self.assertTrue(store.story(db, 7)["archived"])
         sync.sync_blockers(db, Shortcut(), {"1": "In Review"}, {}, full=True)
         self.assertEqual(asked, [7, 404, 7])
+
+
+class OutOfTimeInAPart(unittest.TestCase):
+    """A deadline that passes while one story is fetched cuts the sync; nothing is marked
+    rechecked that was not."""
+
+    class Late(FakeShortcut):
+        def story(self, story_id):
+            raise sync.OutOfTime("out of time: Shortcut timed out")
+
+    def test_a_blocker_fetch_out_of_time_cuts_the_full_sync(self):
+        db = store.connect(":memory:")
+        store.set_meta(db, "slim_version", sync.SLIM_VERSION)
+        links = [{"verb": "blocks", "subject": 7, "object": 1}]
+        store.put_story(db, {"id": 1, "state": "Ready For Dev", "done": False, "labels": [],
+                             "links": links, "updated_at": "t0"})
+        with self.assertRaises(sync.OutOfTime):
+            sync.sync_shortcut(db, self.Late(), NOW, full=True)
+        self.assertIsNone(store.get_meta(db, "full_at"))
+        self.assertIsNone(store.get_meta(db, "missing_stories"))
+
+    def test_a_pr_story_fetch_out_of_time_leaves_pr_stories_at_unset(self):
+        db = store.connect(":memory:")
+        store.put_prs(db, [{"number": 1, "story_id": 10, "state": "open", "head_sha": "a"}])
+        with self.assertRaises(sync.OutOfTime):
+            sync.pr_stories(db, self.Late(), NOW)
+        self.assertIsNone(store.get_meta(db, "pr_stories_at"))
+
+    def test_a_new_slim_version_cut_after_the_delete_leaves_the_next_sync_full(self):
+        class LateSearch(FakeShortcut):
+            def search(self, query):
+                raise sync.OutOfTime("out of time: Shortcut timed out")
+
+        db = store.connect(":memory:")
+        store.set_meta(db, "full_at", NOW - 5 * 60)
+        store.put_story(db, {"id": 1, "state": "In Review", "done": False, "labels": [],
+                             "links": [], "updated_at": "t0"})
+        with self.assertRaises(sync.OutOfTime):
+            sync.sync_shortcut(db, LateSearch(), NOW)
+        self.assertIsNone(store.story(db, 1))
+        shortcut = FakeShortcut()
+        sync.sync_shortcut(db, shortcut, NOW + 60)
+        self.assertIn('state:"In Review"', shortcut.searches)
+
+class Budget(unittest.TestCase):
+    """A sync that runs out of its budget stops without failing the tick."""
+
+    def setUp(self):
+        self.db = store.connect(":memory:")
+        self.clock = 0.0
+        self.made = []
+
+    def client(self, slow):
+        test = self
+
+        class Slow(FakeShortcut):
+            def __init__(self, deadline, clock):
+                super().__init__()
+                self.deadline = deadline
+                test.made.append(self)
+
+            def search(self, query):
+                if slow:
+                    test.clock = self.deadline
+                    raise sync.OutOfTime("out of time: Shortcut timed out")
+                return []
+        return Slow
+
+    def run_sync(self, slow=False, github_step=None):
+        with mock.patch.object(sync, "sync_github", side_effect=github_step or (lambda db: None)):
+            return sync.sync(self.db, NOW, clock=lambda: self.clock, client=self.client(slow))
+
+    def test_a_shortcut_part_out_of_time_is_cut_not_an_error(self):
+        store.set_meta(self.db, "synced_ok_at", NOW - 60)
+        self.assertEqual(self.run_sync(slow=True), [])
+        report = store.get_meta(self.db, "sync_report")
+        self.assertEqual((report["at"], report["cut"]), (NOW, ["shortcut"]))
+        self.assertEqual(store.get_meta(self.db, "synced_ok_at"), NOW - 60)
+
+    def test_the_deadline_is_the_budget_from_the_start(self):
+        self.clock = 100.0
+        self.run_sync()
+        self.assertEqual(self.made[0].deadline, 100.0 + sync.BUDGET_SECONDS)
+        self.assertEqual(store.get_meta(self.db, "synced_ok_at"), NOW)
+
+    def test_github_out_of_time_is_cut_and_pr_stories_skipped(self):
+        def slow_github(db):
+            raise github.OutOfTime("out of time in gh api graphql")
+
+        with mock.patch.object(sync, "pr_stories") as stories:
+            self.assertEqual(self.run_sync(github_step=slow_github), [])
+        stories.assert_not_called()
+        self.assertEqual(store.get_meta(self.db, "sync_report")["cut"], ["github"])
+
+    def test_each_part_reports_how_long_it_took(self):
+        def github_takes_four(db):
+            self.clock += 4
+
+        self.run_sync(github_step=github_takes_four)
+        self.assertEqual(store.get_meta(self.db, "sync_report")["took"],
+                         {"shortcut": 0.0, "github": 4.0, "pr stories": 0.0})
+
+    def test_a_manual_sync_has_no_budget(self):
+        with mock.patch.object(sync, "sync_github"), mock.patch.object(sync, "pr_stories"):
+            sync.sync(self.db, NOW, budget=None, client=self.client(False))
+        self.assertIsNone(self.made[0].deadline)

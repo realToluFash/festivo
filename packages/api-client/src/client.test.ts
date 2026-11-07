@@ -1011,6 +1011,38 @@ describe('a browser never holds the refresh token', () => {
     ).rejects.toThrow(/OrganisationController/);
   });
 
+  test('reads the three roles as the API answers them since sc-29912', async () => {
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens: store('good', null),
+      fetch: async () =>
+        json({
+          roles: [
+            {
+              id: 'role_2',
+              seededAs: 'administrator',
+              permissions: ['members.read'],
+              holders: 1,
+              holderNames: [{ name: 'Julien Moreau', suspended: false }],
+            },
+          ],
+          areas: [],
+        }),
+    });
+
+    const catalogue = await client.roles('org_1');
+
+    expect(catalogue.roles).toEqual([
+      expect.objectContaining({
+        id: 'role_2',
+        seededAs: 'administrator',
+        name: null,
+        fixed: true,
+        removable: false,
+      }),
+    ]);
+  });
+
   test('roles are read with the grid, and a removed role names where its people go', async () => {
     const sent: { method: string | undefined; path: string; body: unknown }[] = [];
     const door = {
@@ -2741,6 +2773,7 @@ describe('events (sc-1486)', () => {
     phase: 'draft',
     concludedAt: null,
     createdAt: '2026-10-21T09:00:00+00:00',
+    permissions: ['events.read', 'events.manage'],
   };
 
   function client(response: () => Response, sent: { line: string; body: unknown }[] = []) {
@@ -3005,6 +3038,8 @@ describe('events (sc-1486)', () => {
     ['a phase nobody declared', { phase: 'over' }],
     ['no phase', { phase: undefined }],
     ['a concludedAt that is not a string or null', { concludedAt: 1 }],
+    ['no permissions', { permissions: undefined }],
+    ['a permission that is not a string', { permissions: [1] }],
   ])('an event with %s is an error', async (_, change) => {
     await expect(
       client(() => json({ event: { ...EVENT, ...change } })).api.event('e1'),
@@ -3238,6 +3273,7 @@ describe("an event's venue (sc-3589)", () => {
     phase: 'draft',
     concludedAt: null,
     createdAt: '2026-10-26T09:00:00+00:00',
+    permissions: ['events.read', 'events.manage'],
   };
 
   function client(response: Response, sent: string[] = []) {

@@ -1,27 +1,37 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useRef, useState } from 'react';
-import { StyleSheet, type TextInputInstance, View } from 'react-native';
+import { StyleSheet, type TextInputInstance, View, type ViewInstance } from 'react-native';
 
 import { PrimaryButton } from '../../../src/components/Buttons.tsx';
+import { focusPicker } from '../../../src/components/CountryPicker.tsx';
 import { DemoScreen, NavBar, closeFlow } from '../../../src/demo/DemoScreen.tsx';
 import { InsideField } from '../../../src/steps/InsideField.tsx';
 import { Heading, Plain, Says } from '../../../src/steps/Lines.tsx';
-import { COUNTRIES, SelectRow } from '../../../src/demo/SelectRow.tsx';
+import { SelectRow } from '../../../src/demo/SelectRow.tsx';
+import { COUNTRY_BLANK, startCountry } from '../../../src/demo/signUpChecks.ts';
 import { tokens } from '../../../src/theme/tokens.ts';
 
 /** The organisation on its own step: its name, and its country set from the phone's region. */
 export default function Organisation() {
-  const { via } = useLocalSearchParams<{ via?: string }>();
+  const { via, region } = useLocalSearchParams<{ via?: string; region?: string }>();
   const short = via === 'google';
   const [name, setName] = useState('');
-  const [country, setCountry] = useState(COUNTRIES[0]!);
+  const [country, setCountry] = useState(() => startCountry(region));
   const [blank, setBlank] = useState(false);
+  const [noCountry, setNoCountry] = useState(false);
   const field = useRef<TextInputInstance>(null);
+  const picker = useRef<ViewInstance>(null);
 
   function next(): void {
-    if (name.trim() === '') {
-      setBlank(true);
+    const nameBlank = name.trim() === '';
+    setBlank(nameBlank);
+    setNoCountry(country == null);
+    if (nameBlank) {
       field.current?.focus();
+      return;
+    }
+    if (country == null) {
+      focusPicker(picker);
       return;
     }
     router.push({ pathname: '/demo/mobile', params: { via: via ?? 'email' } });
@@ -58,7 +68,18 @@ export default function Organisation() {
       </View>
       <Plain>Your events belong to it. You can rename it later.</Plain>
       <View style={styles.next}>
-        <SelectRow label="Country" country={country} onChange={setCountry} testID="demo.country" />
+        <SelectRow
+          label="Country"
+          country={country}
+          onChange={(chosen) => {
+            setCountry(chosen);
+            setNoCountry(false);
+          }}
+          wrong={noCountry}
+          pickerRef={picker}
+          testID="demo.country"
+        />
+        {noCountry && <Says words={COUNTRY_BLANK} />}
       </View>
     </DemoScreen>
   );

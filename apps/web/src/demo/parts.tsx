@@ -67,15 +67,21 @@ export function Notice({
   title,
   body,
   alert = false,
+  late = false,
 }: {
   title: string;
   body?: string;
   alert?: boolean;
+  /** The words arrive a tick after the region, so a screen reader says them on a page that opens with them. */
+  late?: boolean;
 }) {
+  const ticked = useShownAfter(0);
+  const said = !late || ticked;
+
   return (
     <div className="demo-notice" role={alert ? 'alert' : 'status'}>
-      <p className="demo-notice-title">{title}</p>
-      {body != null && <p>{body}</p>}
+      {said && <p className="demo-notice-title">{title}</p>}
+      {said && body != null && <p>{body}</p>}
     </div>
   );
 }
@@ -166,6 +172,7 @@ export function CodeForm({
   below,
   resendNote,
   resend = true,
+  onRunOut,
 }: {
   opening: string;
   label: string;
@@ -180,6 +187,8 @@ export function CodeForm({
   resendNote?: ReactNode;
   /** False for an authenticator's code: nothing to send, so no resend and no end to the tries. */
   resend?: boolean;
+  /** The sign-up's hold has run out: Verify and Send a new code both end here. */
+  onRunOut?: (() => void) | undefined;
 }) {
   const [code, setCode] = useState(opening === 'wrong' ? '482193' : '');
   const [line, setLine] = useState<string | null>(opening === 'wrong' ? wrong : null);
@@ -219,6 +228,11 @@ export function CodeForm({
     }
 
     after(() => {
+      if (onRunOut != null) {
+        onRunOut();
+        return;
+      }
+
       if (code === SAMPLE.code) {
         onVerified();
         return;
@@ -241,6 +255,11 @@ export function CodeForm({
 
     setSending(true);
     after(() => {
+      if (onRunOut != null) {
+        onRunOut();
+        return;
+      }
+
       setSending(false);
       setDead(null);
       setCode('');

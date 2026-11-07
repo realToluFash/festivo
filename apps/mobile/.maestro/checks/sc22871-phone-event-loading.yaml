@@ -1,5 +1,10 @@
 # sc-22871 on a phone, with the API paused: the event ${EVENT}'s page, before it loads, titles the header Events under ‹ Events at the same height as once loaded.
 appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
 ---
 - runScript:
     file: ../batch/helper.js

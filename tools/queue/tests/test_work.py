@@ -305,6 +305,30 @@ class Developer(unittest.TestCase):
         merged = pr(state="merged", lead=[verdict("pass", HEAD[:7])])
         self.assertEqual(kinds(work.developer_items([story()], [merged])), ["to-qa"])
 
+    def test_a_merged_step_with_tasks_left_is_not_handed_to_qa(self):
+        merged = pr(state="merged", lead=[verdict("pass", HEAD[:7])])
+        stepped = dict(story(), tasks=[{"id": 1, "text": "web", "done": True},
+                                       {"id": 2, "text": "app", "done": False}])
+        self.assertEqual(kinds(work.developer_items([stepped], [merged])), [])
+        stepped["tasks"][1]["done"] = True
+        self.assertEqual(kinds(work.developer_items([stepped], [merged])), ["to-qa"])
+
+    def test_a_merged_step_no_pass_covers_still_asks_the_lead(self):
+        unpassed = pr(state="merged")
+        stepped = dict(story(), state="In Review",
+                       tasks=[{"id": 1, "text": "web", "done": True},
+                              {"id": 2, "text": "app", "done": False}])
+        self.assertEqual(kinds(work.developer_items([stepped], [unpassed])),
+                         ["merged-unpassed"])
+
+    def test_a_merged_step_waits_on_the_next_steps_open_pr_with_every_task_ticked(self):
+        merged = pr(state="merged", lead=[verdict("pass", HEAD[:7])])
+        last = dict(pr(), number=8)
+        stepped = dict(story(), state="In Review",
+                       tasks=[{"id": 1, "text": "web", "done": True},
+                              {"id": 2, "text": "app", "done": True}])
+        self.assertNotIn("to-qa", kinds(work.developer_items([stepped], [merged, last])))
+
     def test_red_checks_and_green_in_progress(self):
         self.assertEqual(kinds(work.developer_items([story()], [pr(checks="red")])),
                          ["checks-red"])
@@ -1038,6 +1062,115 @@ class DesignPullRequests(unittest.TestCase):
         self.assertTrue(work.side_pr(ticket, pr()))
         self.assertFalse(work.side_pr(ticket, self.design()))
         self.assertEqual(work.builder(ticket, self.design()), "ux")
+
+class DemoOnlyStories(unittest.TestCase):
+    """A story labelled `demo only` with no pull request off ux/ is built once its demo
+    merges: the product manager moves it to Ready For QA, and no developer is handed it."""
+
+    WAITING = ("Ready For Dev", "In Progress", "In Review", "Failed Code Review",
+               "Passed Code Review")
+    LATER = ("Ready For QA", "In QA", "Passsed QA", "Done")
+    FAILED = "2026-10-18T10:00:00Z"
+
+    def on(self, state, labels=("dev2", "demo only"), **kw):
+        return dict(story(state=state, labels=labels, **kw), done=state == "Done")
+
+    def demo(self, number=40, lead=(verdict("pass", HEAD[:7]),), state="merged",
+             merged_at="2026-10-18T12:00:00Z"):
+        found = dict(pr(number, 1, lead=lead, state=state), branch=f"ux/sc-1-demo-{number}")
+        found["merged_at"] = merged_at if state == "merged" else None
+        return found
+
+    def pm_items(self, stories, prs):
+        return [i for i in work.derive(stories, prs) if i["kind"] == "demo-merged"]
+
+    def offered(self, stories, prs):
+        return sorted({r for i in work.derive(stories, prs) if i["kind"] == "story"
+                       for r in i["roles"] if work.builds(r)})
+
+    def builders(self, stories, prs):
+        return [role for role in roles.ROLES if work.builds(role)
+                and work.queued(role, stories, prs=prs)]
+
+    def test_pm_is_told_to_move_it_to_ready_for_qa(self):
+        for state in self.WAITING:
+            items = self.pm_items([self.on(state)], [self.demo()])
+            self.assertEqual([(i["roles"], i["story_id"]) for i in items], [(["pm"], 1)], state)
+            self.assertEqual(items[0]["reason"], f"sc-1: its demo merged in PR #40 at "
+                                                 f"{HEAD[:7]}: move it to Ready For QA")
+            self.assertLess(items[0]["priority"], work.SWEEP)
+
+    def test_a_merge_no_pass_covers_says_so(self):
+        for lead in ((), (verdict("pass", OLD[:7]),), (verdict("back", HEAD[:7]),)):
+            items = self.pm_items([self.on("In Review")], [self.demo(lead=lead)])
+            self.assertTrue(items[0]["reason"].endswith(
+                "move it to Ready For QA (no lead review)"), lead)
+
+    def test_it_waits_while_any_of_its_pull_requests_is_open(self):
+        app, web = self.demo(40), self.demo(41, state="open")
+        self.assertEqual(self.pm_items([self.on("In Review")], [app, web]), [])
+        web = self.demo(41, merged_at="2026-10-18T13:00:00Z")
+        items = self.pm_items([self.on("In Review")], [app, web])
+        self.assertEqual([i["pr"] for i in items], [41])
+
+    def test_in_failed_qa_only_a_demo_merged_after_the_failure_counts(self):
+        failed = self.on("Failed QA", moved_at=self.FAILED)
+        before = self.demo(merged_at="2026-10-18T09:00:00Z")
+        self.assertEqual(self.pm_items([failed], [before]), [])
+        after = self.demo(41, merged_at="2026-10-18T11:00:00Z")
+        self.assertEqual(self.pm_items([failed], [before, dict(after, state="open")]), [])
+        items = self.pm_items([failed], [before, after])
+        self.assertEqual([(i["roles"], i["pr"]) for i in items], [(["pm"], 41)])
+
+    def test_it_is_gone_from_ready_for_qa_on_and_once_archived(self):
+        self.assertEqual(len(self.pm_items([self.on("In Review")], [self.demo()])), 1)
+        for state in self.LATER:
+            self.assertEqual(self.pm_items([self.on(state)], [self.demo()]), [], state)
+        archived = dict(self.on("In Review"), archived=True)
+        self.assertEqual(self.pm_items([archived], [self.demo()]), [])
+
+    def test_no_developer_is_offered_it_in_any_state(self):
+        for state in ("Ready For Dev", "In Progress", "Failed Code Review", "Failed QA"):
+            unlabelled = self.on(state, labels=("dev2",))
+            self.assertIn("dev2", self.builders([unlabelled], [self.demo()]), state)
+            for prs in ([], [self.demo(state="open")], [self.demo()]):
+                only = self.on(state)
+                self.assertEqual(self.builders([only], prs), [], (state, prs))
+                offered = [i for i in work.derive([only], prs, now=10 ** 10)
+                           if i["kind"] in ("story", "pick")]
+                self.assertEqual([r for i in offered for r in i["roles"] if work.builds(r)],
+                                 [], (state, prs))
+
+    def test_the_lead_is_not_told_it_has_no_pull_request(self):
+        items = work.review_items([self.on("In Review")], [self.demo()])
+        self.assertEqual(items, [])
+        bare = work.review_items([self.on("In Review")], [])
+        self.assertIn("with no open pull request", bare[0]["reason"])
+
+    def test_an_unlabelled_story_moves_as_today(self):
+        plain = ("dev2",)
+        for state in self.WAITING:
+            self.assertEqual(self.pm_items([self.on(state, plain)], [self.demo()]), [], state)
+        self.assertIn("dev2", self.offered([self.on("Ready For Dev", plain)], [self.demo()]))
+        lead = work.review_items([self.on("In Review", plain)], [self.demo()])
+        self.assertIn("with no open pull request", lead[0]["reason"])
+
+    def test_a_story_with_a_developers_pull_request_moves_as_today(self):
+        own = pr(41, 1, lead=[verdict("pass", HEAD[:7])], state="merged")
+        for labels in (("dev2",), ("dev2", "demo only")):
+            for state in self.WAITING:
+                stories, prs = [self.on(state, labels)], [self.demo(), own]
+                self.assertEqual(self.pm_items(stories, prs), [], (labels, state))
+            merged = work.developer_items([self.on("In Review", labels)], [self.demo(), own])
+            self.assertEqual([(i["kind"], i["pr"]) for i in merged], [("to-qa", 41)])
+            unpassed = dict(own, lead=[])
+            merged = work.developer_items([self.on("Passed Code Review", labels)],
+                                          [self.demo(), unpassed])
+            self.assertEqual([(i["kind"], i["pr"]) for i in merged], [("merged-unpassed", 41)])
+            building = dict(pr(41, 1), state="open")
+            self.assertIn("dev2", self.offered([self.on("Ready For Dev", labels)],
+                                               [self.demo(), building]))
+
 
 class Stranded(unittest.TestCase):
     NOW = T.epoch("2026-10-25T12:00:00Z")

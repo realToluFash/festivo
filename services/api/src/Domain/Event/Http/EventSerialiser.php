@@ -12,6 +12,9 @@ use App\Domain\Event\EventVenue;
 use App\Entity\Event;
 use App\Entity\EventCover;
 use App\Enum\EventPhase;
+use App\Enum\Permission;
+use App\Http\Access\EventScope;
+use App\Http\Access\Grants;
 use App\Repository\EventCoverRepository;
 use App\Storage\ObjectStore;
 use DateTimeZone;
@@ -27,26 +30,26 @@ final readonly class EventSerialiser
     ) {
     }
 
-    /** @return array{id: string, organisationId: string, name: string, type: string, status: string, startsAt: string, endsAt: string, timeZone: string, dayCount: int, currency: string, cover: ?array{position: int, description: ?string, sizes: list<array{width: int, url: string}>}, venue: ?array{name: ?string, address: ?array{formatted: string, line1: ?string, line2: ?string, city: ?string, region: ?string, postalCode: ?string, countryCode: ?string, latitude: ?float, longitude: ?float}}, hosts: list<string>, madeLiveAt: ?string, pausedAt: ?string, phase: string, concludedAt: ?string, createdAt: string} */
-    public function event(Event $event): array
+    /** @return array{id: string, organisationId: string, name: string, type: string, status: string, startsAt: string, endsAt: string, timeZone: string, dayCount: int, currency: string, cover: ?array{position: int, description: ?string, sizes: list<array{width: int, url: string}>}, venue: ?array{name: ?string, address: ?array{formatted: string, line1: ?string, line2: ?string, city: ?string, region: ?string, postalCode: ?string, countryCode: ?string, latitude: ?float, longitude: ?float}}, hosts: list<string>, madeLiveAt: ?string, pausedAt: ?string, phase: string, concludedAt: ?string, createdAt: string, permissions: list<string>} */
+    public function event(Event $event, Grants $grants): array
     {
-        return $this->serialise($event, $this->eventCoverRepository->findOneForEvent($event));
+        return $this->serialise($event, $this->eventCoverRepository->findOneForEvent($event), $grants);
     }
 
     /**
      * @param list<Event> $events
      *
-     * @return list<array{id: string, organisationId: string, name: string, type: string, status: string, startsAt: string, endsAt: string, timeZone: string, dayCount: int, currency: string, cover: ?array{position: int, description: ?string, sizes: list<array{width: int, url: string}>}, venue: ?array{name: ?string, address: ?array{formatted: string, line1: ?string, line2: ?string, city: ?string, region: ?string, postalCode: ?string, countryCode: ?string, latitude: ?float, longitude: ?float}}, hosts: list<string>, madeLiveAt: ?string, pausedAt: ?string, phase: string, concludedAt: ?string, createdAt: string}>
+     * @return list<array{id: string, organisationId: string, name: string, type: string, status: string, startsAt: string, endsAt: string, timeZone: string, dayCount: int, currency: string, cover: ?array{position: int, description: ?string, sizes: list<array{width: int, url: string}>}, venue: ?array{name: ?string, address: ?array{formatted: string, line1: ?string, line2: ?string, city: ?string, region: ?string, postalCode: ?string, countryCode: ?string, latitude: ?float, longitude: ?float}}, hosts: list<string>, madeLiveAt: ?string, pausedAt: ?string, phase: string, concludedAt: ?string, createdAt: string, permissions: list<string>}>
      */
-    public function events(array $events): array
+    public function events(array $events, EventScope $scope): array
     {
         $covers = $this->eventCoverRepository->findForEvents($events);
 
-        return Vec\map($events, fn (Event $event): array => $this->serialise($event, $covers[$event->getId()->toRfc4122()] ?? null));
+        return Vec\map($events, fn (Event $event): array => $this->serialise($event, $covers[$event->getId()->toRfc4122()] ?? null, $scope->on($event->getId()) ?? Grants::only([])));
     }
 
-    /** @return array{id: string, organisationId: string, name: string, type: string, status: string, startsAt: string, endsAt: string, timeZone: string, dayCount: int, currency: string, cover: ?array{position: int, description: ?string, sizes: list<array{width: int, url: string}>}, venue: ?array{name: ?string, address: ?array{formatted: string, line1: ?string, line2: ?string, city: ?string, region: ?string, postalCode: ?string, countryCode: ?string, latitude: ?float, longitude: ?float}}, hosts: list<string>, madeLiveAt: ?string, pausedAt: ?string, phase: string, concludedAt: ?string, createdAt: string} */
-    private function serialise(Event $event, ?EventCover $cover): array
+    /** @return array{id: string, organisationId: string, name: string, type: string, status: string, startsAt: string, endsAt: string, timeZone: string, dayCount: int, currency: string, cover: ?array{position: int, description: ?string, sizes: list<array{width: int, url: string}>}, venue: ?array{name: ?string, address: ?array{formatted: string, line1: ?string, line2: ?string, city: ?string, region: ?string, postalCode: ?string, countryCode: ?string, latitude: ?float, longitude: ?float}}, hosts: list<string>, madeLiveAt: ?string, pausedAt: ?string, phase: string, concludedAt: ?string, createdAt: string, permissions: list<string>} */
+    private function serialise(Event $event, ?EventCover $cover, Grants $grants): array
     {
         $venue = EventVenue::of($event);
         $phase = EventPhase::of($event->getStatus(), $event->getStartsAt(), $event->getEndsAt(), $this->clock->now());
@@ -71,6 +74,8 @@ final readonly class EventSerialiser
             'phase' => $phase->value,
             'concludedAt' => EventPhase::Finished === $phase ? ($event->getEndedAt()?->setTimezone($zone) ?? $event->getEndsAt())->format(\DATE_ATOM) : null,
             'createdAt' => $event->getCreatedAt()->format(\DATE_ATOM),
+            // What the caller may do on this event: a Member's come from their role on it, not from the organisation (sc-29915).
+            'permissions' => Vec\map(Vec\filter(Permission::cases(), $grants->allows(...)), static fn (Permission $permission): string => $permission->value),
         ];
     }
 
