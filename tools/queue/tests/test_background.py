@@ -237,11 +237,6 @@ class Wanted(unittest.TestCase):
     def test_nothing_said_is_none(self):
         self.assertIsNone(background.wanted("x", {}, "/nowhere"))
 
-    def test_a_held_call_is_named_from_the_listing_and_not_looked_for_in_the_transcript(self):
-        listing = {"state": "blocked", "waitingFor": "permission prompt",
-                   "needs": {"tool": "Bash", "input": {"command": "rm -rf build"}}}
-        self.assertEqual(background.asked("x", listing, "/nowhere"), ("rm -rf build", None))
-
     def test_when_every_source_is_empty_the_gap_names_each(self):
         with tempfile.TemporaryDirectory() as folder:
             job = pathlib.Path(folder) / "jobs" / "1d923fe2"
@@ -252,6 +247,12 @@ class Wanted(unittest.TestCase):
         self.assertIsNone(said)
         self.assertEqual(gap, "the listing had no `needs` (waiting for: permission prompt); "
                               "the job's state.json had no `needs`")
+
+    def test_a_credential_in_waiting_for_is_masked_in_the_gap(self):
+        listing = {"waitingFor": "permission prompt: GH_TOKEN=ghp_abc123 git push"}
+        gap = background.asked("x", listing, "/nowhere")[1]
+        self.assertIn("GH_TOKEN=…", gap)
+        self.assertNotIn("ghp_abc123", gap)
 
     def test_a_job_directory_already_gone_is_said_so(self):
         self.assertEqual(background.asked("x", {}, "/nowhere")[1],
@@ -324,7 +325,6 @@ class Run(unittest.TestCase):
         self.assertEqual((why, code, result["wanted"]), ("prompt", 1, "rm node_modules"))
         self.assertEqual(commands[-1], ["claude", "stop", "1d923fe2"])
 
-
     def test_a_prompt_nothing_named_says_which_sources_were_empty(self):
         clock = Clock()
         listing = {"1d923fe2": {"state": "blocked", "waitingFor": "permission prompt",
@@ -337,6 +337,21 @@ class Run(unittest.TestCase):
         self.assertEqual((why, result["wanted"], result["unnamed"]),
                          ("prompt", None, "the listing had no `needs` (waiting for: "
                                           "permission prompt); the job's state.json was gone"))
+
+    def test_an_unanswered_call_in_the_transcript_is_not_read(self):
+        clock = Clock()
+        listing = {"1d923fe2": {"state": "blocked", "waitingFor": "permission prompt",
+                                "pid": 4, "sessionId": SESSION}}
+        held = {"type": "assistant", "message": {"id": "m1", "usage": {}, "content": [
+            {"type": "tool_use", "id": "t1", "name": "Bash",
+             "input": {"command": "git push --force origin main"}}]}}
+        result, _, why, _ = background.run(
+            VALUES, "/nowhere", "dev item 7", "Build.", "/x", lambda: False,
+            run_command=lambda *_, **__: said("backgrounded · 1d923fe2 · dev item 7\n"),
+            clock=clock, sleep=clock.sleep, ls=lambda _: listing, rss=lambda _: 0,
+            lines_of=lambda _: [GIVEN, held])
+        self.assertEqual((why, result["wanted"]), ("prompt", None))
+        self.assertNotIn("git push", json.dumps(result))
 
 
 class ArtifactTools(unittest.TestCase):
