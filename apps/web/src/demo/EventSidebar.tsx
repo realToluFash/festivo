@@ -86,8 +86,8 @@ export function EventSidebar({
                   ? '/demo/people'
                   : one.area === 'overview'
                     ? `/demo/events/${event.id}`
-                    : one.area === 'messages'
-                      ? `/demo/events/${event.id}/messages`
+                    : one.area === 'messages' || one.area === 'seating'
+                      ? `/demo/events/${event.id}/${one.area}`
                       : `/demo/events/${event.id}?area=${one.area}`
               }
               aria-current={one.area === area ? 'page' : undefined}
