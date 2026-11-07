@@ -1,30 +1,16 @@
-import { useRef, useState } from 'react';
+import { type RefObject, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View, type ViewInstance } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
+import { FocusEdge, useFocusEdge } from '../components/Field.tsx';
 import { RadioMark } from '../components/RadioMark.tsx';
 import { Sheet } from '../components/Sheet.tsx';
 import { Text } from '../components/Text.tsx';
 import { tokens } from '../theme/tokens.ts';
 import { SheetBody } from '../steps/Lines.tsx';
+import { COUNTRIES, type Country } from './signUpChecks.ts';
 
-export interface Country {
-  flag: string;
-  dial: string;
-  name: string;
-}
-
-/** A short list for the demo; the build keeps today's searchable list of every country. */
-export const COUNTRIES: readonly Country[] = [
-  { flag: '🇬🇧', dial: '+44', name: 'United Kingdom' },
-  { flag: '🇳🇬', dial: '+234', name: 'Nigeria' },
-  { flag: '🇺🇸', dial: '+1', name: 'United States' },
-  { flag: '🇪🇸', dial: '+34', name: 'Spain' },
-  { flag: '🇫🇷', dial: '+33', name: 'France' },
-  { flag: '🇧🇷', dial: '+55', name: 'Brazil' },
-  { flag: '🇵🇹', dial: '+351', name: 'Portugal' },
-  { flag: '🇲🇽', dial: '+52', name: 'Mexico' },
-];
+export { COUNTRIES, type Country } from './signUpChecks.ts';
 
 /** The label inside, the value under it and a chevron: a field that opens a list. */
 export function SelectRow({
@@ -32,31 +18,55 @@ export function SelectRow({
   country,
   onChange,
   compact = false,
+  wrong = false,
+  pickerRef,
   testID,
 }: {
   label: string;
-  country: Country;
+  /** Null until one is chosen: the label alone, as an empty field shows it. */
+  country: Country | null;
   onChange: (country: Country) => void;
   /** The calling code alone, "🇬🇧 +44", beside a number. */
   compact?: boolean;
+  /** A line about it shows under it: a refused text field's red edge, 2pt with focus (sc-30447). */
+  wrong?: boolean;
+  /** Where a refusal naming it sends the screen reader. */
+  pickerRef?: RefObject<ViewInstance | null>;
   testID: string;
 }) {
-  const opener = useRef<ViewInstance>(null);
+  const own = useRef<ViewInstance>(null);
+  const opener = pickerRef ?? own;
   const [open, setOpen] = useState(false);
+  const { focused, edging } = useFocusEdge();
 
   return (
     <>
       <Pressable
         ref={opener}
-        style={[styles.row, compact && styles.compact]}
+        style={[styles.row, compact && styles.compact, wrong && styles.wrong]}
         onPress={() => setOpen(true)}
+        {...edging}
         accessibilityRole="button"
         accessibilityLabel={
-          compact ? `${label}, ${country.name}, ${country.dial}` : `${label}, ${country.name}`
+          country == null
+            ? label
+            : compact
+              ? `${label}, ${country.name}, ${country.dial}`
+              : `${label}, ${country.name}`
         }
+        aria-invalid={wrong}
         testID={testID}
       >
-        {compact ? (
+        {country == null ? (
+          <Text
+            size={17}
+            weight="medium"
+            style={[styles.label, !compact && styles.grow]}
+            accessible={false}
+          >
+            {label}
+          </Text>
+        ) : compact ? (
           <Text size={17} weight="semibold" accessible={false}>
             {`${country.flag} ${country.dial}`}
           </Text>
@@ -76,6 +86,7 @@ export function SelectRow({
           </View>
         )}
         <Chevron />
+        {wrong && focused && <FocusEdge wrong />}
       </Pressable>
       <Sheet open={open} onClose={() => setOpen(false)} opener={opener} testID={`${testID}.sheet`}>
         <SheetBody>
@@ -92,11 +103,11 @@ export function SelectRow({
                   setOpen(false);
                 }}
                 accessibilityRole="radio"
-                accessibilityState={{ checked: choice.name === country.name }}
+                accessibilityState={{ checked: choice.name === country?.name }}
                 accessibilityLabel={compact ? `${choice.name}, ${choice.dial}` : choice.name}
                 testID={`${testID}.${choice.dial}`}
               >
-                <RadioMark on={choice.name === country.name} />
+                <RadioMark on={choice.name === country?.name} />
                 <Text
                   size={tokens.typeBodyGuest.size}
                   style={styles.choiceWords}
@@ -145,6 +156,8 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colorCard,
   },
   compact: { paddingHorizontal: tokens.spaceLg },
+  wrong: { borderColor: tokens.colorBroken },
+  grow: { flex: 1 },
   words: { flex: 1, gap: 1, paddingVertical: tokens.spaceSm },
   label: { color: tokens.colorInkSecondary },
   list: { marginTop: tokens.spaceLg, maxHeight: 420 },
