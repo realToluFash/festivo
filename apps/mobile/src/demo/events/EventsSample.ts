@@ -334,8 +334,24 @@ export const EVENTS: readonly SampleEvent[] = ROWS.map((row) => ({
   photo: row.photo ?? false,
 }));
 
+/** Not one of the twenty: the Calendar's month edge adds it, as the web's does (sc-30328). */
+export const REUNION: SampleEvent = {
+  id: 'evt-reunion-3',
+  name: 'Okafor family reunion',
+  type: 'other',
+  venue: venue('Hampton Manor', 'Shadowbrook Lane, Hampton-in-Arden B92 0EN', 'Solihull'),
+  timeZone: LONDON,
+  startsAt: '2026-11-28T15:00:00Z',
+  endsAt: '2026-12-01T11:00:00Z',
+  hosts: ['The Okafor family'],
+  currency: 'GBP',
+  status: 'live',
+  concludedAt: null,
+  photo: false,
+};
+
 export function sampleEvent(id: string | undefined): SampleEvent | null {
-  return EVENTS.find((event) => event.id === id) ?? null;
+  return [...EVENTS, REUNION].find((event) => event.id === id) ?? null;
 }
 
 export const TYPE_WORDS: Record<EventType, string> = {
