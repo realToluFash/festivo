@@ -112,7 +112,6 @@ export function EventsList({
   const [filters, setFilters] = useState<Filters>(start.filters);
   const [pastShown, setPastShown] = useState(start.pastShown);
   const [offline, setOffline] = useState(state === 'offline' || state === 'eventsOffline');
-  const [counting, setCounting] = useState<'invited' | 'replied' | null>(null);
   const [menuAt, setMenuAt] = useState<Anchor | null>(null);
   const filterRef = useRef<ViewInstance>(null);
   const field = useRef<TextInputInstance>(null);
@@ -160,15 +159,6 @@ export function EventsList({
     setTyped('');
     setSearched('');
   };
-  const countedBy = (which: 'invited' | 'replied') =>
-    home.upcoming.filter((event) => {
-      const one = SAMPLE_GUESTS[event.id];
-      return (
-        guestLine(event) != null &&
-        one != null &&
-        (which === 'invited' ? one.invited > 0 : one.invited > one.replied)
-      );
-    });
   const guestLine = (event: Shown) => {
     const one = state === 'noGuests' ? null : SAMPLE_GUESTS[event.id];
     return one == null || !['live', 'happening_now', 'paused'].includes(event.phase)
@@ -202,18 +192,7 @@ export function EventsList({
         onNew={() => shell.tell(say.ownDesign(W.newEvent))}
         onBell={shell.tell}
       />
-      {!first && (
-        <GuestTiles
-          counts={guests}
-          locale={locale}
-          onCount={(which) => {
-            setTyped('');
-            setSearched('');
-            setFilters(NO_FILTERS);
-            setCounting(which);
-          }}
-        />
-      )}
+      {!first && <GuestTiles counts={guests} locale={locale} />}
       <SwitchedNotice />
     </>
   );
@@ -300,11 +279,7 @@ export function EventsList({
           </Text>
         )}
       </View>
-      {counting != null ? (
-        <Results count={countedBy(counting).length} onClearFilters={() => setCounting(null)}>
-          <RowList items={countedBy(counting).map((event) => row(event, true))} />
-        </Results>
-      ) : results == null ? (
+      {results == null ? (
         <>
           <Segment
             tab={tab}
@@ -526,15 +501,7 @@ function ListTop({
   );
 }
 
-function GuestTiles({
-  counts,
-  locale,
-  onCount,
-}: {
-  counts: GuestCounts;
-  locale: string;
-  onCount: (which: 'invited' | 'replied') => void;
-}) {
+function GuestTiles({ counts, locale }: { counts: GuestCounts; locale: string }) {
   return (
     <View style={styles.guests} testID="events.guests">
       <GuestTile
@@ -542,68 +509,45 @@ function GuestTiles({
         name={G.invited}
         figure={figureOf(counts.invited, locale)}
         line={G.coming(counts.coming, locale)}
-        opens={G.showsInvited}
-        onPress={() => onCount('invited')}
       />
       <GuestTile
         id="replied"
         name={G.replied}
         figure={figureOf(counts.replied, locale)}
         line={G.notReplied(counts.notReplied, locale)}
-        opens={G.showsNotReplied}
-        onPress={() => onCount('replied')}
       />
     </View>
   );
 }
 
-/** Each tile is one link, named with its words and what it opens (guests-a-spec §14). */
 function GuestTile({
   id,
   name,
   figure,
   line,
-  opens,
-  onPress,
 }: {
   id: 'invited' | 'replied';
   name: string;
   figure: string;
   line: string;
-  opens: string;
-  onPress: () => void;
 }) {
   return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [styles.guest, pressed && styles.pressed]}
-      accessibilityRole="link"
-      accessibilityLabel={`${name}, ${figure}, ${line}, ${opens}`}
+    <View
+      style={styles.guest}
+      accessible
+      accessibilityLabel={`${name}, ${figure}, ${line}`}
       testID={`events.guests.${id}`}
     >
-      <View style={styles.tileName}>
-        <Text
-          size={14}
-          weight="semibold"
-          accessible={false}
-          style={[styles.grow, styles.secondary]}
-        >
-          {name}
-        </Text>
-        <Glyph name="chevron" size={15} ink={tokens.colorInkTertiary} weight={2.3} />
-      </View>
-      <Text size={28} weight="bold" accessible={false} style={[styles.figures, styles.guestFigure]}>
+      <Text size={14} weight="semibold" style={styles.secondary}>
+        {name}
+      </Text>
+      <Text size={28} weight="bold" style={[styles.figures, styles.guestFigure]}>
         {figure}
       </Text>
-      <Text
-        size={14}
-        weight="medium"
-        accessible={false}
-        style={[styles.secondary, styles.figures, styles.said]}
-      >
+      <Text size={14} weight="medium" style={[styles.secondary, styles.figures, styles.said]}>
         {line}
       </Text>
-    </Pressable>
+    </View>
   );
 }
 
@@ -892,7 +836,6 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colorInset,
   },
   guestFigure: { lineHeight: 28 * 1.15 },
-  tileName: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   said: { lineHeight: 14 * 1.45 },
   newRound: {
     width: tokens.sizeHit,
