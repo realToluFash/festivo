@@ -198,9 +198,16 @@ describe('Members in the demo', () => {
       line: 'They are listed under Former.',
       step: { label: 'See Former' },
     });
-    expect(membersCard({ ...plainCard, people: removed(people, priya.id), gone: priya }).says).toBe(
-      'Priya Shah was removed',
-    );
+    expect(
+      membersCard({
+        ...plainCard,
+        people: removed(people, priya.id),
+        gone: { person: priya, handed: null },
+      }),
+    ).toMatchObject({
+      says: 'Priya Shah was removed',
+      line: 'Their events stay with Ire Events. They are listed under Former, with everything they did kept.',
+    });
   });
 
   it('says the claim on the card while nobody owns the organisation', () => {
