@@ -308,23 +308,12 @@ export function cardNameSize(name: string): number {
   return name.trim().length >= 40 ? 18 : 24;
 }
 
-/** The id the demo gives the new organisation, which its colour comes from: org-lumen-feiras-pt. */
-export function foundedId(name: string, country: string | null): string {
-  const slug = name
-    .normalize('NFD')
-    .replace(/\p{M}/gu, '')
-    .toLocaleLowerCase()
-    .replace(/[^a-z0-9]+/gu, '-')
-    .replace(/^-|-$/gu, '')
-    .slice(0, 40)
-    .replace(/-$/u, '');
-
-  return `org-${slug}${country == null ? '' : `-${country.toLocaleLowerCase()}`}`;
-}
+/** The demo's one new organisation, as the boards and the web draw it: its id is its colour, amber, whatever country is picked. */
+export const NEW_ORG_ID = 'org-lumen-feiras-pt';
 
 export function foundedPlace(walk: Walk): Place {
   return {
-    id: foundedId(walk.name, walk.country),
+    id: NEW_ORG_ID,
     name: walk.name.trim(),
     role: ROLE,
     fresh: true,

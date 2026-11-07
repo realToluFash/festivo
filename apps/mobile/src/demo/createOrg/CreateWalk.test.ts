@@ -2,9 +2,12 @@ import { createInstance } from 'i18next';
 import { describe, expect, it } from 'vitest';
 
 import en from '../../i18n/locales/en.json';
+import { orgMesh } from '../OrgSwitcherModel.ts';
+import { meshFor } from '../events/EventsSample.ts';
 import {
   CREATE_STATES,
   LONG_NAME,
+  NEW_ORG_ID,
   SAMPLE_DEVICE,
   answerTo,
   back,
@@ -17,7 +20,6 @@ import {
   entered,
   factsOf,
   forward,
-  foundedId,
   foundedPlace,
   freshWalk,
   limitedWords,
@@ -229,9 +231,16 @@ describe('Create', () => {
     expect(answerTo(sample('ready'))).toBe('created');
   });
 
-  it('gives the sample its id, which gives it its colour', () => {
-    expect(foundedId('Lumen Feiras', 'PT')).toBe('org-lumen-feiras-pt');
-    expect(foundedId('  Fête à Lyon ', 'FR')).toBe('org-fete-a-lyon-fr');
+  it('gives the new organisation one colour, amber, whatever the device or the pick', () => {
+    const london = freshWalk({ country: 'GB', zone: 'Europe/London' });
+    const walks = [
+      sample('ready'),
+      { ...london, name: 'Lumen Feiras' },
+      { ...london, country: 'ZW' },
+    ];
+
+    expect(meshFor(NEW_ORG_ID)).toBe('amber');
+    for (const walk of walks) expect(orgMesh(foundedPlace(walk).id)).toBe(meshFor(NEW_ORG_ID));
   });
 
   it('founds the organisation as named, with no events yet', () => {

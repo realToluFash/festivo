@@ -336,11 +336,12 @@ export function pick(session: Session, id: string): Session {
   return { ...settled(session), current: id };
 }
 
-/** A new organisation joins the end, as main orders them by when you joined, and becomes the current one. */
+/** A new organisation joins the end, as main orders them by when you joined, and becomes the current one; a second walk makes the demo's one again. */
 export function founded(session: Session, place: Place): Session {
   const now = settled(session);
+  const others = now.places.filter((known) => known.id !== place.id);
 
-  return { ...now, places: [...now.places, place], current: place.id };
+  return { ...now, places: [...others, place], current: place.id };
 }
 
 /** Folake in no organisation; founded() gives her one. */

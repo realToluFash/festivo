@@ -115,6 +115,12 @@ describe('a new organisation', () => {
   it('takes amber from the id the walk gives it', () => {
     expect(orgMesh(lumen.id)).toBe('amber');
   });
+
+  it('is made again, not twice, by a second walk', () => {
+    const again = founded(founded(sessionFor('one'), lumen), { ...lumen, name: 'Lumen Eventos' });
+
+    expect(names(tilesOf(again, ''))).toEqual(['Ire Events', 'Lumen Eventos', SW.create]);
+  });
 });
 
 describe('the search', () => {
