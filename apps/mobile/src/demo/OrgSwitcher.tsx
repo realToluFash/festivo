@@ -32,7 +32,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { EventMesh, eventColour } from '../components/EventMesh.tsx';
+import { OrgMark as ProductOrgMark } from '../components/OrgMark.tsx';
 import { TextField } from '../components/Field.tsx';
 import { Glyph } from '../components/Glyph.tsx';
 import { Initials } from '../components/Initials.tsx';
@@ -45,7 +45,6 @@ import { Text, type TextHandle } from '../components/Text.tsx';
 import { Glass } from '../components/TodayCover.tsx';
 import type { Tell } from '../components/TodayParts.tsx';
 import type { OpenerAt } from '../components/todayShell.ts';
-import type { MeshKey } from '../kit/today.ts';
 import { TURNS_WITH_THE_APP } from '../layout/orientations.ts';
 import { useAccessibilitySizes, useLayout } from '../layout/useLayout.ts';
 import { glide } from '../motion.ts';
@@ -62,7 +61,6 @@ import {
 } from './createOrg/CreateWalk.ts';
 import { CreateWalkWindow, type WalkOpening, deviceNow } from './createOrg/CreateWalkWindow.tsx';
 import { DraftTile } from './createOrg/WalkParts.tsx';
-import { scrimFor } from './events/EventsModel.ts';
 import {
   CELL_GAP,
   type DropFrame,
@@ -85,7 +83,6 @@ import {
   noneMatch,
   notNow,
   openerLabel,
-  orgMesh,
   pick,
   placeOf,
   rowsOf,
@@ -409,61 +406,18 @@ export function useCurrentPlace(): Place | null {
   return placeOf(useSession());
 }
 
-/** "Now working in ‹name›." in the page, under its head; a page without one says it in its toast. */
-interface Wash {
-  cover: MeshKey;
-  ink: string;
-  strength: number;
-}
-
-const washes = new Map<string, Wash>();
-
-function washOf(id: string): Wash {
-  const known = washes.get(id);
-  if (known != null) return known;
-
-  const cover = orgMesh(id);
-  const scrim = scrimFor(eventColour({ mesh: cover }), false, tokens.colorInk);
-  const wash = { cover, ink: scrim.ink, strength: scrim.middle };
-  washes.set(id, wash);
-
-  return wash;
-}
-
-/** An organisation's tile in its own colour: its B cover under a wash that keeps white initials at 4.5:1. */
-export function OrgMark({
-  id,
-  name,
-  side,
-  glass = false,
-}: {
-  id: string;
-  name: string;
-  side: number;
-  glass?: boolean;
-}) {
-  const wash = washOf(id);
-  const big = side >= 40;
-
+/** The product's tile, with the walk's crossfade over it while a new organisation arrives. */
+export function OrgMark(props: { id: string; name: string; side: number; glass?: boolean }) {
   return (
-    <View
-      style={[
-        styles.mark,
-        { width: side, height: side, borderRadius: Math.round(side / 3) },
-        glass && styles.markGlass,
-      ]}
-      accessibilityElementsHidden
-      importantForAccessibility="no-hide-descendants"
-    >
-      {!glass && <Washed wash={wash} />}
-      <Initials
-        name={name}
-        size={big ? Math.floor(side * 0.42) : 12}
-        weight="bold"
-        style={{ color: glass ? wash.ink : tokens.colorInkOnDark }}
+    <ProductOrgMark {...props}>
+      <Arrival
+        key={props.id}
+        id={props.id}
+        name={props.name}
+        side={props.side}
+        big={props.side >= 40}
       />
-      <Arrival key={id} id={id} name={name} side={side} big={big} />
-    </View>
+    </ProductOrgMark>
   );
 }
 
@@ -509,17 +463,6 @@ function Arrival({
         initials={big ? Math.floor(side * 0.42) : 12}
       />
     </Animated.View>
-  );
-}
-
-function Washed({ wash }: { wash: Wash }) {
-  return (
-    <>
-      <EventMesh event={{ mesh: wash.cover, photo: null }} />
-      <View
-        style={[StyleSheet.absoluteFill, { backgroundColor: wash.ink, opacity: wash.strength }]}
-      />
-    </>
   );
 }
 
@@ -1491,8 +1434,6 @@ function OfferPanel({
 
 const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
-  mark: { alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
-  markGlass: { backgroundColor: tokens.colorInkOnDark },
   openerWords: { flexShrink: 1, minWidth: 0, gap: tokens.spaceHair },
   coverOrg: { flexShrink: 1 },
   coverGlass: {

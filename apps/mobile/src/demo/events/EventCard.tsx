@@ -14,8 +14,8 @@ import {
   cardTags,
   dayTiles,
   rowLine,
-  scrimFor,
 } from './EventsModel.ts';
+import { scrimFor } from '../../kit/scrim.ts';
 import { W } from './EventsWords.ts';
 import { useShell } from '../../components/settingsShell.ts';
 import { CardSays, GlassTag, OnCard, StepButton, SummaryCard } from '../../components/Summary.tsx';
