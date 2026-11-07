@@ -254,6 +254,7 @@ function EnterStep({ flow, go }: { flow: Flow; go: Go }) {
           go({
             step: 'event',
             code: found,
+            role: found.role,
             typed: typed.current,
             said: null,
             name: '',
@@ -309,6 +310,7 @@ function EnterStep({ flow, go }: { flow: Flow; go: Go }) {
             if (said != null) setSaid(null);
           }}
           state={said == null ? 'plain' : 'blank'}
+          line={said}
           submitting={sending}
           autoCapitalize="characters"
           autoCorrect={false}
@@ -402,6 +404,7 @@ function EventStep({ flow, go, locale }: { flow: Flow; go: Go; locale: string })
               if (nameSaid != null) setNameSaid(null);
             }}
             state={nameSaid == null ? 'plain' : 'blank'}
+            line={nameSaid}
             submitting={sending}
             autoCapitalize="words"
             autoComplete="name"
@@ -434,6 +437,7 @@ function EventStep({ flow, go, locale }: { flow: Flow; go: Go; locale: string })
                   if (numberSaid != null) setNumberSaid(null);
                 }}
                 state={numberSaid == null ? 'plain' : 'blank'}
+                line={numberSaid}
                 submitting={sending}
                 keyboardType="phone-pad"
                 autoComplete="tel"
@@ -509,6 +513,7 @@ function PhoneCodeStep({ flow, go }: { flow: Flow; go: Go }) {
           }}
           onFull={check}
           done={done}
+          line={status === 'wrong' && digits === '' ? wrongCode(texted) : null}
           testID="redeem.code"
         />
         {status === 'wrong' && digits === '' && <Says words={wrongCode(texted)} />}

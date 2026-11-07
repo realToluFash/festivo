@@ -108,9 +108,6 @@ export function InsideEvent({
 
   return (
     <View style={styles.page}>
-      {!phone && (
-        <Capsule at={at === 'people' ? W.more : W.overview} top={insets.top + 7} onTab={onTab} />
-      )}
       <ScrollView
         contentContainerStyle={[
           styles.blocks,
@@ -130,6 +127,9 @@ export function InsideEvent({
       >
         {page}
       </ScrollView>
+      {!phone && (
+        <Capsule at={at === 'people' ? W.more : W.overview} top={insets.top + 7} onTab={onTab} />
+      )}
       {phone && (
         <TabBar
           tabs={TABS}

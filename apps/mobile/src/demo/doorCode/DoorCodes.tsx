@@ -71,6 +71,7 @@ export function DoorCodes({
   const steps = useRef(new Map<string, ViewInstance>());
   const opener = useRef<ScreenReaderTarget | null>(null);
   const firstStep = useRef<ViewInstance>(null);
+
   useEffect(() => {
     if (asking?.kind !== 'stop' || !asking.sending) return;
     const stopped = setTimeout(() => {
