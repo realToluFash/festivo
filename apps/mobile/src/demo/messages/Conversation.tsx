@@ -5,7 +5,7 @@ import { Text, type TextHandle } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { Avatar } from '../settings/parts.tsx';
 import { TextAction } from '../settings/Summary.tsx';
-import { CheckCard, ResendCheck } from './CheckCard.tsx';
+import { BigButton, CancelAsk, CheckCard, ResendCheck } from './CheckCard.tsx';
 import { AnswerBox, MiniComposer, NewComposer, PreviewBar, ToHead } from './Composers.tsx';
 import { GroupTile } from './MessagesList.tsx';
 import {
@@ -14,7 +14,9 @@ import {
   type Messages,
   type Open,
   checkOf,
+  dayWords,
   draftTitle,
+  messageName,
   resultOf,
   toChip,
 } from './MessagesModel.ts';
@@ -23,16 +25,12 @@ import {
   type GuestKey,
   INVITATION,
   type ManyKey,
-  NOW,
   PARKING,
   PARKING_BODY,
   PARKING_REACH,
   READER,
-  SCHEDULED,
-  SCHEDULED_AT,
-  SCHEDULED_BODY,
+  SCHEDULE_AT,
   TO_ALL,
-  TO_WORD,
   EVENT,
   HOSTS,
 } from './MessagesSample.ts';
@@ -72,6 +70,8 @@ export interface Talk {
   onInsert: () => void;
   onCaret: (at: number) => void;
   onWho: () => void;
+  onWhoSent: () => void;
+  onWhoInvited: () => void;
   onFollowUp: (base: ManyKey | null) => void;
   onRetry: () => void;
   onConfirm: () => void;
@@ -79,6 +79,11 @@ export interface Talk {
   onChangeIt: () => void;
   onSend: () => void;
   onResent: () => void;
+  onMatch: () => void;
+  onChannel: (key: ChannelKey) => void;
+  onLater: () => void;
+  onSaveScheduled: () => void;
+  onCancelScheduled: () => void;
   ownDesign: (what: string) => void;
 }
 
@@ -109,8 +114,85 @@ function told(channel: keyof typeof CHANNEL_IN_LINE): string {
   return say.toldBy(CHANNEL_IN_LINE[channel]);
 }
 
+/** A sender Soirely could not match (sc-3976): their message and Choose the guest, then once matched the answer box. */
+function unknownParts(talk: Talk): Parts {
+  const { m } = talk;
+  const guest = GUESTS.unknown;
+  const matched = m.matched;
+  const answer = m.answers.unknown;
+
+  return {
+    title: matched ?? guest.name,
+    line:
+      matched == null
+        ? say.where(CHANNEL_WORD.email, W.notMatched)
+        : say.where(guest.head, W.matchedByHand),
+    right:
+      matched == null ? (
+        <TextAction
+          label={W.markAsDone}
+          glyph="tick"
+          onPress={() => talk.onDone('unknown')}
+          testID="messages.done"
+        />
+      ) : (
+        <TextAction label={W.changeGuest} onPress={talk.onMatch} testID="messages.changeGuest" />
+      ),
+    lead: <Avatar initials={matched == null ? '?' : initialsOf(matched)} side={44} tone={0} />,
+    stream: (
+      <>
+        <DayRule text="Mon, Nov 2" />
+        <GuestBubble text={guest.asked.text} where="email" when={guest.asked.time} />
+        {matched == null ? (
+          <View style={styles.unmatched}>
+            <Text size={14.5} weight="medium" style={styles.unmatchedLine}>
+              {say.couldntMatch(guest.head)}
+            </Text>
+            <BigButton label={W.chooseGuest} onPress={talk.onMatch} testID="messages.chooseGuest" />
+          </View>
+        ) : (
+          <SystemLine text={say.matchedLine(matched, READER, guest.head)} glyph="tick" />
+        )}
+        {answer != null && (
+          <HostBubble
+            text={answer.text}
+            settles={answer.seen == null}
+            bits={[
+              { word: W.onTheirPage, where: 'page' },
+              { word: say.byAt(READER, answer.time) },
+              { word: told('email'), mark: 'delivered' },
+              { word: W.notSeenYet },
+            ]}
+          />
+        )}
+      </>
+    ),
+    align: 'end',
+    foot:
+      matched == null ? undefined : (
+        <AnswerBox
+          name={matched}
+          channel="email"
+          value={talk.typed}
+          fieldRef={talk.answerRef}
+          onChange={talk.onTyped}
+          onSend={() => talk.onAnswer('unknown')}
+        />
+      ),
+  };
+}
+
+function initialsOf(name: string): string {
+  return name
+    .split(' ')
+    .map((part) => part[0] ?? '')
+    .join('')
+    .slice(0, 2);
+}
+
 function guestParts(talk: Talk, key: GuestKey): Parts {
   const { m } = talk;
+  if (key === 'unknown') return unknownParts(talk);
   const guest = GUESTS[key];
   const answer = m.answers[key];
   const done = m.done.includes(key) || key === 'marta';
@@ -216,13 +298,26 @@ function guestParts(talk: Talk, key: GuestKey): Parts {
 }
 
 /** A message the hosts sent: their words, then where it went and what happened (the receipt once it is sent). */
-function SentMessage({ talk, draft, last }: { talk: Talk; draft: Draft; last: boolean }) {
+function SentMessage({
+  talk,
+  draft,
+  last,
+  follow = false,
+}: {
+  talk: Talk;
+  draft: Draft;
+  last: boolean;
+  follow?: boolean;
+}) {
   const result = resultOf(draft);
-  const time = draft.step === 'sent' ? say.byAt(READER, NOW) : NOW;
+  const time = draft.step === 'sent' || !last || follow ? say.byAt(READER, draft.time) : draft.time;
+  const reach = last
+    ? []
+    : [{ word: `${say.reached(result.reached, result.count)} · ${say.seenBy(result.seen)}` }];
   const bits: Bit[] =
     draft.step === 'sending' || draft.step === 'sent'
-      ? [{ word: W.onTheirPage, where: 'page' }, { word: time }]
-      : [{ word: NOW }];
+      ? [{ word: W.onTheirPage, where: 'page' }, { word: time }, ...reach]
+      : [{ word: draft.time }];
 
   return (
     <>
@@ -243,15 +338,15 @@ function SentMessage({ talk, draft, last }: { talk: Talk; draft: Draft; last: bo
       {draft.step === 'sending' && (
         <>
           <SendingLine soFar={result.soFar} of={result.count} />
-          {last && <StatusLine text={say.queued(result.count)} />}
+          {last && !follow && <StatusLine text={say.queued(result.count)} />}
         </>
       )}
-      {draft.step === 'sent' && (
+      {last && draft.step === 'sent' && (
         <Receipt
           reached={result.reached}
           of={result.count}
           seen={result.seen}
-          onWho={() => talk.ownDesign(W.whoItReached)}
+          onWho={talk.onWhoSent}
         />
       )}
       {last && draft.step === 'failed' && (
@@ -280,9 +375,14 @@ function ownParts(talk: Talk, followUp: string): Own {
     return { stream: null, align: 'end', foot: null, writing: false };
   const locked = thread.base != null || thread.earlier.length > 0;
   const toWord = say.toGroup(toChip(draft.to));
-  const earlier = thread.earlier.map((one, index) => (
-    <SentMessage key={index} talk={talk} draft={one} last={false} />
-  ));
+  const earlier = [
+    ...thread.earlier.map((one, index) => (
+      <SentMessage key={index} talk={talk} draft={one} last={false} />
+    )),
+    ...(thread.earlier.length > 0
+      ? [<SystemLine key="followUp" text={say.followUpLine(resultOf(draft).count)} mark="group" />]
+      : []),
+  ];
   const head = (
     <ToHead
       draft={draft}
@@ -349,8 +449,10 @@ function ownParts(talk: Talk, followUp: string): Own {
             headRef={talk.checkRef}
             goRef={talk.refFor('go')}
             onGo={talk.onConfirm}
-            onLater={() => talk.ownDesign(W.later)}
+            onLater={talk.onLater}
             onChange={talk.onChangeIt}
+            onKeep={() => dispatch({ type: 'keepScheduled' })}
+            onChannel={talk.onChannel}
             onSeeAll={() => talk.ownDesign(say.seeAll(checkOf(draft).cantTell))}
           />
         </>
@@ -367,7 +469,7 @@ function ownParts(talk: Talk, followUp: string): Own {
     stream: (
       <>
         {earlier}
-        <SentMessage talk={talk} draft={draft} last />
+        <SentMessage talk={talk} draft={draft} last follow={thread.earlier.length > 0} />
       </>
     ),
     align: 'end',
@@ -383,9 +485,122 @@ function ownParts(talk: Talk, followUp: string): Own {
   };
 }
 
+/** A scheduled message (sc-3963): dashed until it goes, with Edit, Send now and Cancel…, each drawn on Messaging-B-Phone-3. */
+function scheduledParts(talk: Talk, draft: Draft): Parts {
+  const { dispatch } = talk;
+  const at = draft.at ?? SCHEDULE_AT;
+  const day = dayWords(at.date);
+  const cancelled = draft.step === 'cancelled';
+  const shown = draft.was ?? { subject: draft.subject, body: draft.body };
+  const bubble = (
+    <HostBubble
+      subject={shown.subject}
+      text={shown.body}
+      bits={[]}
+      dashed={!cancelled}
+      greyed={cancelled}
+      faded={draft.was != null}
+    />
+  );
+  let rest: ReactNode = null;
+  let foot: ReactNode;
+
+  if (cancelled)
+    rest = <SystemLine text={say.cancelledBy(READER, draft.cancelledAt ?? '')} glyph="x" />;
+  else if (draft.was != null) {
+    rest = (
+      <Text size={13.5} weight="medium" style={styles.goes}>
+        {say.editing(day, at.time)}
+      </Text>
+    );
+    foot = (
+      <NewComposer
+        draft={draft}
+        bodyRef={talk.bodyRef}
+        insertRef={talk.refFor('insert')}
+        onSubject={(text) => dispatch({ type: 'subject', text })}
+        onBody={(text) => dispatch({ type: 'body', text })}
+        onCaret={talk.onCaret}
+        onInsert={talk.onInsert}
+        editing={{ onChangeWhen: talk.onLater, onSave: talk.onSaveScheduled }}
+      />
+    );
+  } else if (draft.step === 'check')
+    rest = (
+      <CheckCard
+        draft={draft}
+        headRef={talk.checkRef}
+        goRef={talk.refFor('go')}
+        onGo={talk.onConfirm}
+        onLater={talk.onLater}
+        onChange={talk.onChangeIt}
+        onKeep={() => dispatch({ type: 'keepScheduled' })}
+        onChannel={talk.onChannel}
+        onSeeAll={() => talk.ownDesign(say.seeAll(checkOf(draft).cantTell))}
+      />
+    );
+  else if (draft.asking)
+    rest = (
+      <CancelAsk
+        subject={messageName(draft)}
+        keepRef={talk.refFor('keep')}
+        onKeep={() => dispatch({ type: 'askCancel', open: false })}
+        onCancel={talk.onCancelScheduled}
+      />
+    );
+  else
+    rest = (
+      <>
+        <Text size={13.5} weight="medium" style={styles.goes}>
+          {say.goesAt(`${day}, ${at.time} London time`)}
+        </Text>
+        <View style={styles.scheduledActions}>
+          <TextAction
+            ref={talk.refFor('schedEdit')}
+            label={W.edit}
+            onPress={() => {
+              dispatch({ type: 'editScheduled' });
+              setTimeout(() => talk.bodyRef.current?.focus(), 400);
+            }}
+            testID="messages.sched.edit"
+          />
+          <TextAction
+            label={W.sendNow}
+            onPress={() => dispatch({ type: 'sendNow' })}
+            testID="messages.sched.now"
+          />
+          <TextAction
+            ref={talk.refFor('askCancel')}
+            label={W.cancelAsks}
+            removes
+            onPress={() => dispatch({ type: 'askCancel', open: true })}
+            testID="messages.sched.cancel"
+          />
+        </View>
+      </>
+    );
+
+  return {
+    title: messageName(draft),
+    titleLines: 1,
+    line: `${say.toGroup(toChip(draft.to))} · ${cancelled ? W.cancelledTag : W.scheduled}`,
+    lead: <GroupTile side={44} />,
+    stream: (
+      <>
+        <DayRule text={day} />
+        {bubble}
+        {rest}
+      </>
+    ),
+    align: 'end',
+    foot,
+  };
+}
+
 function draftParts(talk: Talk): Parts {
   const { m } = talk;
   if (m.draft == null) return { title: W.newMessage, stream: null, align: 'end' };
+  if (m.draft.at != null || m.draft.step === 'cancelled') return scheduledParts(talk, m.draft);
   const own = ownParts(talk, W.writeAFollowUp);
   const sent = m.draft.step !== 'write' || (m.thread?.earlier.length ?? 0) > 0;
 
@@ -410,7 +625,7 @@ function draftParts(talk: Talk): Parts {
   };
 }
 
-function manyParts(talk: Talk, key: 'parking' | 'invite' | 'sched'): Parts {
+function manyParts(talk: Talk, key: ManyKey): Parts {
   const { m } = talk;
   const own = m.thread?.base === key && m.draft != null ? ownParts(talk, W.writeAFollowUp) : null;
   const followUp = (placeholder: string) =>
@@ -418,7 +633,7 @@ function manyParts(talk: Talk, key: 'parking' | 'invite' | 'sched'): Parts {
       <MiniComposer
         to={toChip('all')}
         placeholder={placeholder}
-        onOpen={() => talk.onFollowUp(key === 'sched' ? null : key)}
+        onOpen={() => talk.onFollowUp(key)}
       />
     );
   const today =
@@ -495,7 +710,7 @@ function manyParts(talk: Talk, key: 'parking' | 'invite' | 'sched'): Parts {
               reached={INVITATION.reached}
               of={INVITATION.of}
               seen={INVITATION.seen}
-              onWho={() => talk.ownDesign(W.whoItReached)}
+              onWho={talk.onWhoInvited}
             />
             <SystemLine text={say.nowInvited(INVITATION.reached)} glyph="tick" />
             {today}
@@ -505,39 +720,7 @@ function manyParts(talk: Talk, key: 'parking' | 'invite' | 'sched'): Parts {
       align: own?.align ?? 'end',
       foot: followUp(W.writeToThem),
     };
-  return {
-    title: SCHEDULED,
-    line: `${say.toGroup(TO_WORD.coming)} · 96 · ${W.scheduled}`,
-    lead: <GroupTile side={44} />,
-    stream: (
-      <>
-        <DayRule text="Thu, Nov 5" />
-        <HostBubble subject={SCHEDULED} text={SCHEDULED_BODY} bits={[]} dashed />
-        <Text size={13.5} weight="medium" style={styles.goes}>
-          {say.goesAt(`${SCHEDULED_AT} London time`)}
-        </Text>
-        <View style={styles.scheduledActions}>
-          <TextAction
-            label={W.edit}
-            onPress={() => talk.ownDesign(W.edit)}
-            testID="messages.sched.edit"
-          />
-          <TextAction
-            label={W.sendNow}
-            onPress={() => talk.ownDesign(W.sendNow)}
-            testID="messages.sched.now"
-          />
-          <TextAction
-            label={W.cancelAsks}
-            removes
-            onPress={() => talk.ownDesign(W.cancelAsks)}
-            testID="messages.sched.cancel"
-          />
-        </View>
-      </>
-    ),
-    align: 'end',
-  };
+  return { title: W.invitation, stream: null, align: 'end' };
 }
 
 export function partsOf(talk: Talk, open: Exclude<Open, null | { kind: 'reached' }>): Parts {
@@ -555,6 +738,15 @@ const styles = StyleSheet.create({
     color: tokens.colorInkSecondary,
     lineHeight: 13.5 * 1.45,
   },
+  unmatched: {
+    gap: tokens.spaceMd,
+    paddingVertical: 14,
+    paddingHorizontal: tokens.spaceXl,
+    borderRadius: 18,
+    backgroundColor: tokens.colorInset,
+    alignItems: 'flex-start',
+  },
+  unmatchedLine: { lineHeight: 14.5 * 1.45 },
   scheduledActions: {
     flexDirection: 'row',
     flexWrap: 'wrap',

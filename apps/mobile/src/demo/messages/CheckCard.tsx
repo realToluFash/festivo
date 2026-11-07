@@ -5,10 +5,11 @@ import { Glyph } from '../../components/Glyph.tsx';
 import { Text, type TextHandle } from '../../components/Text.tsx';
 import { useReducedMotion } from '../../reducedMotion.ts';
 import { tokens } from '../../theme/tokens.ts';
+import { Pill } from '../settings/parts.tsx';
 import { TextAction } from '../settings/Summary.tsx';
 import { ChannelTick } from './Composers.tsx';
 import { MessageGlyph } from './MessageMarks.tsx';
-import { type Draft, checkOf } from './MessagesModel.ts';
+import { type Draft, checkOf, dayWords } from './MessagesModel.ts';
 import { RESEND, formatCount, BALANCE } from './MessagesSample.ts';
 import { CHANNEL_WORD, type ChannelKey, W, say } from './MessagesWords.ts';
 
@@ -95,6 +96,8 @@ export function CheckCard({
   onGo,
   onLater,
   onChange,
+  onKeep,
+  onChannel,
   onSeeAll,
 }: {
   draft: Draft;
@@ -103,9 +106,12 @@ export function CheckCard({
   onGo: () => void;
   onLater: () => void;
   onChange: () => void;
+  onKeep: () => void;
+  onChannel: (key: ChannelKey) => void;
   onSeeAll: () => void;
 }) {
   const check = checkOf(draft);
+  const at = draft.at;
 
   return (
     <Rising>
@@ -119,14 +125,32 @@ export function CheckCard({
         {say.cannotUndo(check.count)}
       </Text>
       <Text size={14} weight="medium" style={[styles.secondary, styles.line]}>
-        {W.toldHow}
+        {at == null ? W.toldHow : say.instead(dayWords(at.date), at.time)}
       </Text>
+      {at == null && (
+        <View style={styles.pills}>
+          {(['email', 'sms', 'wa'] as const).map((key) => (
+            <ChannelTick
+              key={key}
+              channel={key}
+              on={draft.channels[key]}
+              onPress={() => onChannel(key)}
+              testID={`messages.check.${key}`}
+            />
+          ))}
+        </View>
+      )}
       {check.told.length > 0 && (
         <View style={styles.pills}>
           {check.told.map((told) => (
             <ChannelPill key={told.key} channel={told.key} count={told.count} />
           ))}
         </View>
+      )}
+      {check.smsOff > 0 && (
+        <Text size={14} weight="semibold" style={styles.line}>
+          {say.smsOff(check.smsOff)}
+        </Text>
       )}
       {check.cantTell > 0 && (
         <View style={styles.cant}>
@@ -147,11 +171,9 @@ export function CheckCard({
           )}
         </View>
       )}
-      {check.credits > 0 && (
-        <Text size={13.5} weight="medium" style={[styles.small, styles.figures]}>
-          {say.credits(check.credits, check.after, check.whatsApp)}
-        </Text>
-      )}
+      <Text size={13.5} weight="medium" style={[styles.small, styles.figures]}>
+        {check.credits > 0 ? say.credits(check.credits, check.after, check.whatsApp) : W.emailFree}
+      </Text>
       <View style={styles.actions}>
         <BigButton
           ref={goRef}
@@ -159,10 +181,57 @@ export function CheckCard({
           onPress={onGo}
           testID="messages.check.go"
         />
-        <TextAction label={W.later} onPress={onLater} testID="messages.check.later" />
-        <TextAction label={W.changeIt} onPress={onChange} testID="messages.check.change" />
+        {at == null ? (
+          <>
+            <TextAction label={W.later} onPress={onLater} testID="messages.check.later" />
+            <TextAction label={W.changeIt} onPress={onChange} testID="messages.check.change" />
+          </>
+        ) : (
+          <TextAction label={W.keepScheduled} onPress={onKeep} testID="messages.check.keep" />
+        )}
       </View>
     </Rising>
+  );
+}
+
+/** sc-3963's inline ask under a scheduled message: Keep it first and focused; Escape keeps it. */
+export function CancelAsk({
+  subject,
+  keepRef,
+  onKeep,
+  onCancel,
+}: {
+  subject: string;
+  keepRef?: Ref<ViewInstance> | undefined;
+  onKeep: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <View style={styles.ask} collapsable={false} onAccessibilityEscape={onKeep}>
+      <Text
+        size={17}
+        weight="bold"
+        accessibilityRole="header"
+        numberOfLines={1}
+        style={styles.sentence}
+      >
+        {say.cancelAsk(subject)}
+      </Text>
+      <Text size={14} weight="medium" style={[styles.secondary, styles.line]}>
+        {W.cancelLine}
+      </Text>
+      <View style={styles.askActions}>
+        <TextAction ref={keepRef} label={W.keepIt} onPress={onKeep} testID="messages.ask.keep" />
+        <Pill
+          label={W.cancelMessage}
+          kind="dangerQuiet"
+          height={tokens.sizeHit}
+          full={false}
+          onPress={onCancel}
+          testID="messages.ask.cancel"
+        />
+      </View>
+    </View>
   );
 }
 
@@ -275,6 +344,25 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colorInset,
   },
   cant: { gap: 3 },
+  ask: {
+    width: '100%',
+    maxWidth: 520,
+    alignSelf: 'flex-end',
+    gap: tokens.spaceSm,
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: tokens.colorBorder,
+    backgroundColor: tokens.colorCard,
+  },
+  askActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    columnGap: 18,
+  },
   actions: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 18 },
   big: {
     minHeight: tokens.sizeHitPhonePrimary,

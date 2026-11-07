@@ -5,11 +5,13 @@ import {
   COUNTDOWN_SECONDS,
   MESSAGES_STATES,
   type Messages,
+  type RowId,
   badgeOf,
   blankDraft,
   checkOf,
   draftLine,
   draftTitle,
+  laterRefused,
   messageName,
   messagesStateOf,
   reduce,
@@ -24,6 +26,7 @@ import { MESSAGES_BOARDS } from './MessagesBoards.ts';
 import { sampleEvent } from '../events/EventsSample.ts';
 import {
   NOT_REACHED,
+  PARKING_GROUPS,
   TO_FIGURES,
   TO_ORDER,
   TO_WORD,
@@ -33,34 +36,31 @@ import {
 import { tellChange } from './TellChange.ts';
 
 const run = (m: Messages, ...actions: Action[]) => actions.reduce(reduce, m);
+const nameOf = (id: RowId) => (id.kind === 'draft' ? id.id : id.key);
 
 describe('the states', () => {
-  it('are the spec’s 24, by the names both demos use', () => {
-    expect(MESSAGES_STATES).toEqual([
-      'first',
-      'loading',
-      'inUse',
-      'conversation',
-      'replyArrived',
-      'answered',
-      'channelReply',
-      'to',
-      'write',
-      'preview',
-      'check',
-      'countdown',
-      'cancelled',
-      'sending',
-      'sent',
-      'failed',
-      'reached',
-      'fix',
-      'resend',
-      'tell',
-      'untold',
-      'invited',
-      'scheduled',
-      'bell',
+  it('are the spec’s 42, by the names both demos use, §7 then §7b', () => {
+    expect(MESSAGES_STATES).toHaveLength(42);
+    expect(MESSAGES_STATES.slice(0, 3)).toEqual(['first', 'loading', 'inUse']);
+    expect(MESSAGES_STATES.slice(24)).toEqual([
+      'invitedReached',
+      'sentReached',
+      'notMatched',
+      'matchPicker',
+      'matched',
+      'later',
+      'scheduledEdit',
+      'sendNow',
+      'cancelAsk',
+      'scheduledCancelled',
+      'fixed',
+      'sentAgain',
+      'checkAll',
+      'checkNotReplied',
+      'checkChannels',
+      'noSubject',
+      'followUp',
+      'tellPlace',
     ]);
   });
 
@@ -89,7 +89,10 @@ describe('the states', () => {
     expect(startOf('tell', false).telling).toBe(true);
     expect(startOf('untold', false).untold).toBe(true);
     expect(startOf('invited', false).open).toEqual({ kind: 'many', key: 'invite' });
-    expect(startOf('scheduled', false).open).toEqual({ kind: 'many', key: 'sched' });
+    expect(startOf('scheduled', false)).toMatchObject({
+      open: { kind: 'draft' },
+      thread: { id: 'sched' },
+    });
     expect(startOf('bell', false).bell).toBe(true);
   });
 
@@ -113,15 +116,10 @@ describe('the list', () => {
     const m = startOf('inUse', false);
     const sections = sectionsOf(m);
 
-    expect(sections.needs.map((row) => row.key)).toEqual([
-      'ines',
-      'lucia',
-      'kwame',
-      'unknown',
-      'parking',
-    ]);
+    expect(sections.needs.map(nameOf)).toEqual(['ines', 'lucia', 'kwame', 'unknown', 'parking']);
     expect(sections.scheduled).toHaveLength(1);
-    expect(sections.done.map((row) => row.key)).toEqual(['marta', 'invite']);
+    expect(sections.done.map(nameOf)).toEqual(['marta', 'invite']);
+    expect(sections.scheduled.map(nameOf)).toEqual(['sched']);
     expect(badgeOf(m)).toEqual({ waiting: 3, notMatched: 1, total: 4 });
   });
 
@@ -194,6 +192,7 @@ describe('the check', () => {
         { key: 'sms', count: 31 },
       ],
       cantTell: 2,
+      smsOff: 0,
       names: [
         'Tomás Ferreira · Address is bouncing · No phone number',
         'Joaquín Ruiz · No email address · No phone number',
@@ -299,7 +298,11 @@ describe('the ten seconds', () => {
 describe('the rest of the flow', () => {
   it('goes from Who it reached back to its message, and the fix saves', () => {
     const fixing = startOf('fix', false);
-    expect(reduce(fixing, { type: 'fixed' })).toMatchObject({ fixing: false, told: 'Saved' });
+    expect(reduce(fixing, { type: 'fixed', key: 'tomas', address: 'a@b.co' })).toMatchObject({
+      fixing: false,
+      told: 'Saved',
+      fixed: { tomas: 'a@b.co' },
+    });
     expect(reduce(fixing, { type: 'back' }).open).toEqual({ kind: 'many', key: 'parking' });
   });
 
@@ -368,14 +371,14 @@ describe('Write a follow-up', () => {
     const sent = startOf('sent', false);
     const fresh = reduce(sent, { type: 'newMessage' });
 
-    expect(fresh.kept.map((kept) => kept.id)).toEqual(['new-1']);
+    expect(fresh.kept.map((kept) => kept.id)).toEqual(['new-1', 'sched']);
     expect(fresh.thread?.id).toBe('new-2');
     expect(fresh.draft?.step).toBe('write');
 
     const back = reduce(fresh, { type: 'openThread', id: 'new-1' });
     expect(back.thread?.id).toBe('new-1');
     expect(back.draft?.step).toBe('sent');
-    expect(back.kept.map((kept) => kept.id)).toEqual(['new-2']);
+    expect(back.kept.map((kept) => kept.id)).toEqual(['new-2', 'sched']);
   });
 
   it('opens the message still on its way rather than a new one', () => {
@@ -395,14 +398,166 @@ describe('Write a follow-up', () => {
 });
 
 describe('Who it reached', () => {
-  it('names all eleven not reached, the boards’ three first', () => {
+  it('names all eleven not reached, grouped as sc-3966 counts them', () => {
     expect(NOT_REACHED).toHaveLength(11);
-    expect(NOT_REACHED.slice(0, 3).map((person) => person.name)).toEqual([
-      'Tomás Ferreira',
-      'Amaka Eze',
-      'Joaquín Ruiz',
+    expect(PARKING_GROUPS.map((group) => [group.word, group.people.map((p) => p.name)])).toEqual([
+      ['Bounced', ['Tomás Ferreira', 'Yuki Tanaka', 'Oluwaseun Adebayo']],
+      ['Not confirmed', ['Amaka Eze', 'Priyanka Nair']],
+      [
+        'Opted out',
+        ['Sophie Laurent', 'Lars Johansson', 'Fatima Zahra El Idrissi', 'Diego Herrera'],
+      ],
+      ['No email or phone', ['Joaquín Ruiz', 'Mei Lin Chen']],
     ]);
-    expect(NOT_REACHED.filter((person) => person.bounced != null)).toHaveLength(3);
+  });
+
+  it('after a fix waits for Send again, then counts the person in progress', () => {
+    const fixed = startOf('fixed', false);
+    expect(fixed.fixed.tomas).toBe('tomas.ferreira@gmail.com');
+
+    const again = reduce(fixed, { type: 'sendAgain', key: 'tomas' });
+    expect(again).toMatchObject({ again: { tomas: '09:44' }, said: 'tomas' });
+    expect(startOf('sentAgain', false)).toMatchObject({ again: { tomas: '09:44' }, said: 'tomas' });
+  });
+
+  it('opens for an invitation and for a message just sent, and goes back to each', () => {
+    const invite = startOf('invitedReached', false);
+    expect(invite.open).toEqual({ kind: 'reached', of: 'invite' });
+    expect(reduce(invite, { type: 'back' }).open).toEqual({ kind: 'many', key: 'invite' });
+
+    const sending = startOf('sentReached', false);
+    expect(sending.draft?.step).toBe('sending');
+    expect(reduce(sending, { type: 'back' }).open).toEqual({ kind: 'draft' });
+  });
+});
+
+describe('a sender Soirely could not match', () => {
+  it('is not matched, with the picker, until a guest is chosen', () => {
+    expect(startOf('notMatched', false).open).toEqual({ kind: 'guest', key: 'unknown' });
+    expect(startOf('matchPicker', false).matching).toBe(true);
+
+    const matched = reduce(startOf('matchPicker', false), {
+      type: 'match',
+      name: 'Camille Dubois',
+    });
+    expect(matched).toMatchObject({ matched: 'Camille Dubois', matching: false });
+    expect(badgeOf(matched)).toEqual({ waiting: 4, notMatched: 0, total: 4 });
+    expect(startOf('matched', false).matched).toBe('Camille Dubois');
+  });
+});
+
+describe('a scheduled message', () => {
+  it('is in Scheduled, and its Edit saves and keeps its time', () => {
+    const shown = startOf('scheduled', false);
+    expect(shown.draft).toMatchObject({
+      step: 'scheduled',
+      at: { date: '2026-11-05', time: '09:00' },
+    });
+
+    const editing = reduce(shown, { type: 'editScheduled' });
+    expect(editing.draft).toMatchObject({
+      step: 'write',
+      was: { subject: 'On the day: where to find us' },
+    });
+    expect(startOf('scheduledEdit', false).draft?.was).not.toBeNull();
+
+    const saved = run(editing, { type: 'body', text: 'New words' }, { type: 'saveScheduled' });
+    expect(saved.draft).toMatchObject({ step: 'scheduled', was: null, body: 'New words' });
+    expect(sectionsOf(saved).scheduled.map(nameOf)).toEqual(['sched']);
+  });
+
+  it('sends now through the check and the ten seconds, or keeps its time', () => {
+    const now = reduce(startOf('scheduled', false), { type: 'sendNow' });
+    expect(now.draft?.step).toBe('check');
+    expect(startOf('sendNow', false).draft?.step).toBe('check');
+    expect(reduce(now, { type: 'keepScheduled' }).draft?.step).toBe('scheduled');
+
+    const going = reduce(now, { type: 'confirm' });
+    expect(going.draft).toMatchObject({ step: 'countdown', at: null });
+    expect(sectionsOf(going).top.map(nameOf)).toEqual(['sched']);
+  });
+
+  it('asks before Cancel…, and once cancelled sits in Done', () => {
+    const asking = startOf('cancelAsk', false);
+    expect(asking.draft?.asking).toBe(true);
+    expect(reduce(asking, { type: 'askCancel', open: false }).draft?.asking).toBe(false);
+
+    const cancelled = reduce(asking, { type: 'cancelScheduled' });
+    expect(cancelled.draft).toMatchObject({ step: 'cancelled', cancelledAt: '09:46' });
+    expect(sectionsOf(cancelled).done.map(nameOf)[0]).toBe('sched');
+    expect(draftLine(cancelled.draft ?? blankDraft())).toBe('Cancelled by Folake Adeyemi at 09:46');
+    expect(startOf('scheduledCancelled', false).draft?.step).toBe('cancelled');
+  });
+
+  it('is made by Later… with a time 5 minutes ahead and before the end', () => {
+    const later = startOf('later', false);
+    expect(later.when).toBe(true);
+    expect(laterRefused({ date: '2026-11-03', time: '09:43' })).toBe(true);
+    expect(laterRefused({ date: '2026-11-07', time: '15:00' })).toBe(true);
+    expect(laterRefused({ date: '2026-11-05', time: '09:00' })).toBe(false);
+
+    const scheduled = reduce(later, {
+      type: 'schedule',
+      at: { date: '2026-11-05', time: '09:00' },
+    });
+    expect(scheduled).toMatchObject({ when: false, draft: { step: 'scheduled' } });
+    expect(sectionsOf(scheduled).scheduled.map(nameOf)).toContain('new-1');
+  });
+});
+
+describe('the check, three more ways', () => {
+  it('counts All guests and Hasn’t replied as the boards do', () => {
+    const all = checkOf(startOf('checkAll', false).draft ?? blankDraft());
+    expect(all).toMatchObject({
+      count: 142,
+      cantTell: 9,
+      credits: 39,
+      after: '1,461',
+      seeAll: true,
+    });
+    expect(all.told).toEqual([
+      { key: 'email', count: 124 },
+      { key: 'sms', count: 39 },
+    ]);
+
+    const notReplied = checkOf(startOf('checkNotReplied', false).draft ?? blankDraft());
+    expect(notReplied).toMatchObject({ count: 25, cantTell: 1, credits: 9, after: '1,491' });
+    expect(notReplied.names).toEqual(['Mei Lin Chen · No email address · No phone number']);
+  });
+
+  it('follows SMS unticked in the card at once', () => {
+    const off = checkOf(startOf('checkChannels', false).draft ?? blankDraft());
+    expect(off).toMatchObject({ cantTell: 4, smsOff: 2, credits: 0, seeAll: true });
+    expect(off.told).toEqual([{ key: 'email', count: 92 }]);
+  });
+});
+
+describe('pm’s three calls, as states', () => {
+  it('names a message with no Subject by its first line', () => {
+    const m = startOf('noSubject', false);
+    expect(draftTitle(m.draft ?? blankDraft(), m.thread)).toBe(
+      'Greeting, a few things before Thursday. Parking is on Marylebone Road, and the dress code is formal. If anything changes for you, answer here.',
+    );
+  });
+
+  it('keeps the first message above its follow-up', () => {
+    const m = startOf('followUp', false);
+    expect(m.thread?.earlier).toHaveLength(1);
+    expect(m.draft).toMatchObject({ step: 'sending', soFar: 20, time: '10:05' });
+    expect(draftLine(m.draft ?? blankDraft(), m.thread)).toBe(
+      'Follow-up · Reached 20 of 96 so far',
+    );
+  });
+
+  it('offers Tell guests for a new place, with the address line', () => {
+    expect(startOf('tellPlace', false)).toMatchObject({
+      telling: true,
+      change: {
+        lines: ['The venue is now Rosewood London (was The Landmark).'],
+        what: ['New venue'],
+        address: true,
+      },
+    });
   });
 });
 
@@ -414,6 +569,7 @@ describe('Tell guests after a change', () => {
     expect(tellChange(wedding, { ...wedding, startsAt: '2026-11-05T17:30:00Z' }, 'en-US')).toEqual({
       lines: ['The start time is now 17:30 (was 18:00).'],
       what: ['New start time'],
+      address: false,
     });
   });
 

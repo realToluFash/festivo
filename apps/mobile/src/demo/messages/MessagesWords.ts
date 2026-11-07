@@ -101,6 +101,45 @@ export const W = {
   notificationSettings: 'Notification settings',
   bellReplies: '3 coming, 1 not coming, 1 changed their reply',
   today: 'Today',
+  chooseGuest: 'Choose the guest',
+  whoIsThis: 'Who is this?',
+  searchGuests: 'Search guests',
+  changeGuest: 'Change guest',
+  matchedByHand: 'matched by hand',
+  whenItGoes: 'When it goes',
+  now: 'Now',
+  laterChoice: 'Later',
+  dateAndTime: 'Date and time',
+  zone: 'London time (GMT), the event’s time zone',
+  date: 'Date',
+  time: 'Time',
+  schedule: 'Schedule',
+  laterEstimate: 'Who gets it and the credits are worked out again when it goes.',
+  changeWhen: 'Change when',
+  keepScheduled: 'Keep it scheduled',
+  cancelLine: 'It will not be sent, and this cannot be undone.',
+  cancelMessage: 'Cancel message',
+  keepIt: 'Keep it',
+  cancelledTag: 'Cancelled',
+  cancelledSaid: 'Cancelled.',
+  savedSaid: 'Saved.',
+  fixedNotSent: 'Fixed · not sent yet',
+  copyLink: 'Copy their link',
+  notYetInvited: 'Not yet invited',
+  theirInvitation: 'Their invitation',
+  inProgress: 'In progress',
+  everyone: 'Everyone',
+  cantBeTold: 'Can’t be told',
+  inboxFull: 'The inbox is full (4.2.2)',
+  serviceRefused: 'Their mail service refused it (5.7.1)',
+  emailFree: 'Email uses no credits.',
+  smsOff: 'SMS is off',
+  followUp: 'Follow-up',
+  addressAdded: 'The email adds the new address, with Open in maps.',
+  bounced3: 'Bounced',
+  notConfirmed2: 'Not confirmed',
+  optedOut: 'Opted out',
+  noEmailOrPhone: 'No email or phone',
 } as const;
 
 export type ChannelKey = 'email' | 'sms' | 'wa';
@@ -127,8 +166,11 @@ export const say = {
     `Done by ${name} at ${time}. It comes back to Needs you if they write again.`,
   doneByShort: (name: string) => `Done by ${name}`,
   badgeName: (waiting: number, notMatched: number) =>
-    `Messages, ${waiting} waiting, ${notMatched} not matched`,
-  counts: (waiting: number, notMatched: number) => `${waiting} waiting · ${notMatched} not matched`,
+    notMatched === 0
+      ? `Messages, ${waiting} waiting`
+      : `Messages, ${waiting} waiting, ${notMatched} not matched`,
+  counts: (waiting: number, notMatched: number) =>
+    notMatched === 0 ? `${waiting} waiting` : `${waiting} waiting · ${notMatched} not matched`,
   arrived: (name: string) => `${name} answered on their page.`,
   answerLine: (name: string, channel: string) =>
     `Your answer goes on ${name}’s page. Soirely tells them by ${channel}.`,
@@ -194,5 +236,33 @@ export const say = {
   bellMissed: (subject: string, count: number) => `${subject}: ${count} people didn’t get it`,
   whereWhen: (event: string, when: string) => `${event} · ${when}`,
   atTime: (time: string) => `at ${time}`,
+  thisIs: (guest: string) => `This is ${guest}`,
+  couldntMatch: (address: string) =>
+    `Soirely could not match ${address} to a guest. Choose the guest to answer them.`,
+  matchHint: (address: string, guest: string) =>
+    `Later emails from ${address} land on ${guest} in this event. Their own contact details don’t change.`,
+  matchedLine: (guest: string, name: string, address: string) =>
+    `Matched to ${guest} by ${name}. Later emails from ${address} land here.`,
+  matchedSaid: (guest: string) => `Matched to ${guest}.`,
+  laterRule: (day: string, time: string) =>
+    `At least 5 minutes from now, and before the event ends on ${day} at ${time}.`,
+  scheduleFor: (day: string, time: string) => `Schedule for ${day}, ${time}`,
+  scheduledSaid: (day: string, time: string) => `Scheduled for ${day} at ${time}.`,
+  editing: (day: string, time: string) =>
+    `Editing. It still goes ${day} at ${time} unless you change when.`,
+  instead: (day: string, time: string) =>
+    `It was scheduled for ${day} at ${time}. It goes now instead.`,
+  cancelAsk: (subject: string) => `Cancel “${subject}”?`,
+  cancelledBy: (name: string, time: string) => `Cancelled by ${name} at ${time}. It was not sent.`,
+  cancelledRow: (name: string, time: string) => `Cancelled by ${name} at ${time}`,
+  sendAgain: (name: string) => `Send to ${name} again`,
+  sentTo: (name: string) => `Sent to ${name}.`,
+  nowInvitedShort: (count: number) => `${count} now Invited`,
+  inProgressCount: (count: number) => `${count} in progress`,
+  andMore: (count: number) => `and ${count} more, filling in as their deliveries come back`,
+  smsOff: (count: number) => `SMS is off, so ${count} more can’t be told.`,
+  followUpLine: (count: number) =>
+    `A follow-up goes to the same ${count} guests, under the first message on their page.`,
+  followUpRow: (line: string) => `Follow-up · ${line}`,
   ownDesign: (what: string) => `${what.replace(/…$/u, '')} has its own design.`,
 };

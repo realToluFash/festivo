@@ -95,6 +95,7 @@ export function HostBubble({
   bits,
   dashed = false,
   faded = false,
+  greyed = false,
   settles = false,
 }: {
   subject?: string | undefined;
@@ -102,11 +103,12 @@ export function HostBubble({
   bits: readonly Bit[];
   dashed?: boolean;
   faded?: boolean;
+  greyed?: boolean;
   settles?: boolean;
 }) {
   const reduced = useReducedMotion();
   const [scale] = useState(() => new Animated.Value(settles && !reduced ? 0.96 : 1));
-  const ink = dashed ? tokens.colorInk : tokens.colorInkOnDark;
+  const ink = greyed ? INK2 : dashed ? tokens.colorInk : tokens.colorInkOnDark;
 
   useEffect(() => {
     if (!settles || reduced) return;
@@ -121,7 +123,14 @@ export function HostBubble({
   return (
     <View style={styles.right}>
       <Animated.View style={[styles.hostAt, { transform: [{ scale }] }]}>
-        <View style={[styles.host, dashed && styles.dashed, faded && styles.faded]}>
+        <View
+          style={[
+            styles.host,
+            dashed && styles.dashed,
+            greyed && styles.greyed,
+            faded && styles.faded,
+          ]}
+        >
           {subject != null && subject !== '' && (
             <Text size={15.5} weight="bold" style={[styles.subject, { color: ink }]}>
               {subject}
@@ -504,6 +513,7 @@ const styles = StyleSheet.create({
     borderColor: tokens.colorAccent,
   },
   faded: { opacity: 0.6 },
+  greyed: { backgroundColor: tokens.colorInset },
   subject: { lineHeight: 15.5 * 1.35 },
   stub: {
     maxWidth: '86%',

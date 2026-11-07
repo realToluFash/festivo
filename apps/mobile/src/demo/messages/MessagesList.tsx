@@ -18,12 +18,12 @@ import {
 } from '../settings/Summary.tsx';
 import { MessageGlyph } from './MessageMarks.tsx';
 import {
-  type Draft,
   type Messages,
-  type RowKey,
-  type Thread,
+  type RowId,
   draftLine,
   draftTitle,
+  isScheduled,
+  ownThreads,
   sectionsOf,
 } from './MessagesModel.ts';
 import {
@@ -33,17 +33,19 @@ import {
   PARKING_REACH,
   READER,
   SAMPLE_EVENT_ID,
-  SCHEDULED,
-  SCHEDULED_AT,
+  TO_ALL,
 } from './MessagesSample.ts';
 import { CHANNEL_WORD, W, say } from './MessagesWords.ts';
 
-export type RowId = RowKey | { kind: 'draft'; id: string };
+export type { RowId };
 
 export function sameOpen(m: Messages, id: RowId): boolean {
   const open = m.open;
   if (open == null) return false;
-  if (open.kind === 'reached') return id.kind === 'many' && id.key === 'parking';
+  if (open.kind === 'reached')
+    return open.of === 'draft'
+      ? id.kind === 'draft' && m.thread?.id === id.id
+      : id.kind === 'many' && id.key === open.of;
   if (open.kind === 'draft' || id.kind === 'draft')
     return open.kind === id.kind && id.kind === 'draft' && m.thread?.id === id.id;
 
@@ -52,19 +54,6 @@ export function sameOpen(m: Messages, id: RowId): boolean {
 
 export function rowName(id: RowId): string {
   return id.kind === 'draft' ? id.id : id.key;
-}
-
-/** The hosts' own conversations, newest first: the one open for writing, then those kept. */
-export function ownThreads(m: Messages): { id: string; thread: Thread; draft: Draft }[] {
-  const active =
-    m.thread != null && m.thread.base == null && m.draft != null
-      ? [{ id: m.thread.id, thread: m.thread, draft: m.draft }]
-      : [];
-  const kept = m.kept
-    .filter((one) => one.base == null)
-    .map(({ draft, ...thread }) => ({ id: thread.id, thread, draft }));
-
-  return [...active, ...kept];
 }
 
 /** A message to many leads with a tile in the event's own Confetti and the group mark. */
@@ -101,19 +90,27 @@ interface Shown {
   tag?: RowTag | undefined;
 }
 
-const TO_ALL = 'To all guests';
-
 function shownRow(m: Messages, id: RowId): Shown {
   if (id.kind === 'draft') {
     const own = ownThreads(m).find((one) => one.id === id.id);
     const draft = own?.draft;
+    const tag: RowTag | undefined =
+      draft == null
+        ? undefined
+        : draft.step === 'failed'
+          ? { kind: 'notyet', word: W.notSent }
+          : draft.step === 'cancelled'
+            ? { kind: 'ended', word: W.cancelledTag }
+            : isScheduled(draft)
+              ? { kind: 'notyet', word: W.scheduled }
+              : undefined;
     return {
       title: own == null ? W.newMessage : draftTitle(own.draft, own.thread),
       titleLines: 1,
-      line: draft == null ? '' : draftLine(draft),
-      time: NOW,
+      line: own == null ? '' : draftLine(own.draft, own.thread),
+      time: draft == null || isScheduled(draft) ? '' : draft.time || NOW,
       lead: <GroupTile />,
-      tag: draft?.step === 'failed' ? { kind: 'notyet', word: W.notSent } : undefined,
+      tag,
     };
   }
   if (id.kind === 'many') {
@@ -124,14 +121,6 @@ function shownRow(m: Messages, id: RowId): Shown {
         time: 'Mon',
         lead: <GroupTile />,
         tag: { kind: 'waiting', word: say.notReached(PARKING_REACH.notReached) },
-      };
-    if (id.key === 'sched')
-      return {
-        title: SCHEDULED,
-        line: `${say.toGroup(W.coming)} · ${SCHEDULED_AT}`,
-        time: '',
-        lead: <GroupTile />,
-        tag: { kind: 'notyet', word: W.scheduled },
       };
     return {
       title: W.invitation,
@@ -147,12 +136,22 @@ function shownRow(m: Messages, id: RowId): Shown {
   const asked =
     id.key === 'marta' ? `${guest.asked.text} · ${say.doneByShort(READER)}` : guest.asked.text;
 
+  const unmatched = id.key === 'unknown' && m.matched == null;
+  const name = id.key === 'unknown' && m.matched != null ? m.matched : guest.name;
+  const initials =
+    id.key === 'unknown' && m.matched != null
+      ? m.matched
+          .split(' ')
+          .map((part) => part[0] ?? '')
+          .join('')
+      : guest.initials;
+
   return {
-    title: guest.name,
+    title: name,
     line: answer == null ? say.where(where, asked) : say.where(W.onTheirPage, say.you(answer.text)),
     time: answer?.time ?? (id.key === 'lucia' && m.arrived ? 'now' : guest.asked.row),
-    lead: <Avatar initials={guest.initials} side={40} tone={done ? 4 : 0} />,
-    tag: id.key === 'unknown' ? { kind: 'notyet', word: W.notMatched } : undefined,
+    lead: <Avatar initials={initials} side={40} tone={done ? 4 : 0} />,
+    tag: unmatched ? { kind: 'notyet', word: W.notMatched } : undefined,
   };
 }
 
@@ -359,12 +358,9 @@ export function MessagesList({
       {m.untold && (
         <Untold what={m.change.what.join(' · ')} onTell={onTell} onDismiss={onDismiss} />
       )}
-      {ownThreads(m).length > 0 && (
+      {sections.top.length > 0 && (
         <View style={styles.bleed}>
-          <RowList
-            items={ownThreads(m).map((own) => item({ kind: 'draft', id: own.id }))}
-            gutter={10}
-          />
+          <RowList items={sections.top.map(item)} gutter={10} />
         </View>
       )}
       {m.phase === 'list' && (

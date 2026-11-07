@@ -45,6 +45,11 @@ export function tellChange(told: SampleEvent, now: SampleEvent, locale: string):
     lines.push(venue);
     what.push(W.newVenue);
   }
+  const address =
+    venue != null &&
+    now.venue != null &&
+    now.venue.address !== '' &&
+    !venue.includes(now.venue.address);
 
-  return { lines, what };
+  return { lines, what, address };
 }

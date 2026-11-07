@@ -1,3 +1,5 @@
+import { formattingLocale } from '@soirely/domain';
+import { getLocales } from 'expo-localization';
 import {
   type ReactNode,
   type RefObject,
@@ -39,22 +41,56 @@ import { Back } from '../settings/parts.tsx';
 import { type Anchor, anchorUnder } from '../settings/Summary.tsx';
 import { MiniComposer } from './Composers.tsx';
 import { type Talk, partsOf } from './Conversation.tsx';
-import { type RowId, MessagesList, rowName } from './MessagesList.tsx';
+import { MessagesList, rowName } from './MessagesList.tsx';
 import {
   type Action,
   type Messages,
   type Open,
+  type ReachedOf,
+  type RowId,
   anyOnItsWay,
   badgeOf,
+  checkOf,
+  dayWords,
+  draftTitle,
   resultOf,
   sectionsOf,
   spokenAt,
   toChip,
 } from './MessagesModel.ts';
-import { BellPlace, InsertMenu, ToPicker, TopToast } from './MessagesOverlays.tsx';
-import { FIXED_ADDRESS, type GuestKey, PARKING, NOT_REACHED } from './MessagesSample.ts';
-import { W, say } from './MessagesWords.ts';
-import { FixEmail, WhoReached } from './WhoReached.tsx';
+import {
+  BellPlace,
+  InsertMenu,
+  MatchPicker,
+  ToPicker,
+  TopToast,
+  WhenItGoes,
+} from './MessagesOverlays.tsx';
+import {
+  FIXED_ADDRESS,
+  GUESTS,
+  type GuestKey,
+  NOT_REACHED,
+  type NotReached,
+  PARKING,
+  SCHEDULE_AT,
+  TO_ALL,
+} from './MessagesSample.ts';
+import { CHANNEL_WORD, W, say } from './MessagesWords.ts';
+import { FixEmail, WhoReached, reachViewOf } from './WhoReached.tsx';
+
+const REACHED_LINE: Record<ReachedOf, string> = {
+  parking: `${W.allGuests} · ${W.onTheirPage.toLowerCase()} · told by Email and SMS · Mon, Nov 2, 18:20`,
+  invite: `${TO_ALL} · Email and SMS · Mon, Oct 12, 10:00`,
+  draft: `To Coming · 96 · ${W.onTheirPage.toLowerCase()} · told by Email and SMS · 09:41`,
+};
+
+function reachedTitle(m: Messages, of: ReachedOf): string {
+  if (of === 'parking') return PARKING;
+  if (of === 'invite') return W.invitation;
+
+  return m.draft == null ? W.newMessage : draftTitle(m.draft, m.thread);
+}
 
 export function badgeFor(m: Messages): AreaBadge | null {
   const badge = badgeOf(m);
@@ -91,6 +127,7 @@ export function MessagesScreen({
   extra?: ReactNode;
 }) {
   const shell = useShell();
+  const locale = formattingLocale('en', getLocales()[0]?.languageTag);
   const phone = shell.layout === 'phone';
   const wide = !phone;
   const insets = useSafeAreaInsets();
@@ -118,6 +155,7 @@ export function MessagesScreen({
   const [fix, setFix] = useState(() => {
     const person = NOT_REACHED[0];
     return {
+      key: person?.key ?? ('tomas' as const),
       name: person?.name ?? '',
       bounced: person?.bounced ?? '',
       start: start.fix ? FIXED_ADDRESS : (person?.bounced ?? ''),
@@ -162,6 +200,14 @@ export function MessagesScreen({
 
     return () => clearTimeout(later);
   }, [step]);
+
+  const asking = m.draft?.asking === true;
+  useEffect(() => {
+    if (!asking) return undefined;
+    const later = setTimeout(() => moveScreenReaderFocus(refs.current.keep ?? null), 350);
+
+    return () => clearTimeout(later);
+  }, [asking]);
 
   useEffect(() => {
     if (m.resending) {
@@ -257,9 +303,33 @@ export function MessagesScreen({
     onCaret: (at) => {
       caret.current = at;
     },
-    onWho: () => {
-      from('row.parking');
-      dispatch({ type: 'open', open: { kind: 'reached' } });
+    onWho: () => dispatch({ type: 'open', open: { kind: 'reached', of: 'parking' } }),
+    onWhoSent: () => dispatch({ type: 'open', open: { kind: 'reached', of: 'draft' } }),
+    onWhoInvited: () => dispatch({ type: 'open', open: { kind: 'reached', of: 'invite' } }),
+    onMatch: () => dispatch({ type: 'matching', open: true }),
+    onChannel: (key) => {
+      dispatch({ type: 'channel', key });
+      if (draft?.step !== 'check') return;
+      const check = checkOf({
+        ...draft,
+        channels: { ...draft.channels, [key]: !draft.channels[key] },
+      });
+      const told = check.told.map((one) => `${CHANNEL_WORD[one.key]} · ${one.count}`);
+      readOut([...told, say.cantTell(check.cantTell)].join('. '));
+    },
+    onLater: () => {
+      from('go');
+      dispatch({ type: 'when', open: true });
+    },
+    onSaveScheduled: () => {
+      if (draft == null || draft.body.trim() === '') return;
+      dispatch({ type: 'saveScheduled' });
+      readOut(W.savedSaid);
+    },
+    onCancelScheduled: () => {
+      dispatch({ type: 'cancelScheduled' });
+      readOut(W.cancelledSaid);
+      setTimeout(() => moveScreenReaderFocus(headRef.current), 350);
     },
     onFollowUp: (base) => {
       dispatch({ type: 'followUp', base });
@@ -314,8 +384,35 @@ export function MessagesScreen({
       onDismiss={() => dispatch({ type: 'dismissUntold' })}
     />
   );
-  const reached = (back: ReactNode, title: ReactNode, bottom: number) => (
+  const sendAgain = (person: NotReached) => {
+    dispatch({ type: 'sendAgain', key: person.key });
+    setTimeout(() => moveScreenReaderFocus(refs.current[`person.${person.key}`] ?? null), 350);
+  };
+  const fixPerson = (person: NotReached, fixing: string) => {
+    from(`${person.key}.${fixing}`);
+    if (fixing === W.fixEmail && person.bounced != null) {
+      setFix({
+        key: person.key,
+        name: person.name,
+        bounced: person.bounced,
+        start: person.bounced,
+      });
+      dispatch({ type: 'fixing', open: true });
+    } else ownDesign(fixing);
+  };
+  const resendFrom = (of: ReachedOf) => {
+    if (of !== 'parking') {
+      ownDesign(say.resend(reachViewOf(m, of).resend));
+      return;
+    }
+    dispatch({ type: 'open', open: { kind: 'many', key: 'parking' } });
+    dispatch({ type: 'resending', open: true });
+  };
+  const reached = (of: ReachedOf, back: ReactNode, title: ReactNode, bottom: number) => (
     <WhoReached
+      view={reachViewOf(m, of)}
+      m={m}
+      onSendAgain={sendAgain}
       head={
         <>
           {back}
@@ -324,18 +421,9 @@ export function MessagesScreen({
       }
       refFor={refFor}
       bottom={bottom}
-      onFix={(person, fix) => {
-        from(`${person.key}.${fix}`);
-        if (fix === W.fixEmail && person.bounced != null) {
-          setFix({ name: person.name, bounced: person.bounced, start: person.bounced });
-          dispatch({ type: 'fixing', open: true });
-        } else ownDesign(fix);
-      }}
+      onFix={fixPerson}
       onFilter={() => ownDesign(W.filter)}
-      onResend={() => {
-        dispatch({ type: 'open', open: { kind: 'many', key: 'parking' } });
-        dispatch({ type: 'resending', open: true });
-      }}
+      onResend={() => resendFrom(of)}
     />
   );
   const overlays = (
@@ -363,7 +451,10 @@ export function MessagesScreen({
         start={fix.start}
         opener={openerRef}
         onCancel={() => dispatch({ type: 'fixing', open: false })}
-        onSaved={() => dispatch({ type: 'fixed' })}
+        onSaved={(address) => {
+          dispatch({ type: 'fixed', key: fix.key, address });
+          setTimeout(() => moveScreenReaderFocus(refs.current[`${fix.key}.again`] ?? null), 500);
+        }}
       />
       <BellPlace
         open={m.bell}
@@ -375,9 +466,38 @@ export function MessagesScreen({
         onSettings={() => shell.openSection('notifications')}
         onItem={(key) => {
           dispatch({ type: 'bell', open: false });
-          if (key === 'missed') dispatch({ type: 'open', open: { kind: 'reached' } });
+          if (key === 'missed')
+            dispatch({ type: 'open', open: { kind: 'reached', of: 'parking' } });
           else if (key === 'change') onArea('overview');
           else if (phone) dispatch({ type: 'open', open: null });
+        }}
+      />
+      <MatchPicker
+        key={`match:${String(m.matching)}`}
+        open={m.matching}
+        phone={phone}
+        address={GUESTS.unknown.head}
+        opener={openerRef}
+        onClose={() => dispatch({ type: 'matching', open: false })}
+        onMatch={(name) => {
+          dispatch({ type: 'match', name });
+          readOut(say.matchedSaid(name));
+          setTimeout(() => moveScreenReaderFocus(headRef.current), 500);
+        }}
+      />
+      <WhenItGoes
+        key={`when:${String(m.when)}`}
+        open={m.when}
+        phone={phone}
+        start={draft?.at ?? SCHEDULE_AT}
+        locale={locale}
+        opener={openerRef}
+        onClose={() => dispatch({ type: 'when', open: false })}
+        onNow={() => dispatch({ type: 'when', open: false })}
+        onSchedule={(at) => {
+          dispatch({ type: 'schedule', at });
+          readOut(say.scheduledSaid(dayWords(at.date), at.time));
+          setTimeout(() => moveScreenReaderFocus(headRef.current), 500);
         }}
       />
       {extra}
@@ -403,6 +523,7 @@ export function MessagesScreen({
                 {m.open.kind === 'reached' ? (
                   <View style={[styles.fill, { paddingTop: insets.top }]}>
                     {reached(
+                      m.open.of,
                       <View style={styles.reachedTop}>
                         <Back label={W.back} onPress={() => dispatch({ type: 'back' })} />
                       </View>,
@@ -414,10 +535,10 @@ export function MessagesScreen({
                           accessibilityRole="header"
                           style={styles.title}
                         >
-                          {PARKING}
+                          {reachedTitle(m, m.open.of)}
                         </Text>
                         <Text size={15} weight="medium" style={styles.secondary}>
-                          {`${W.allGuests} · ${W.onTheirPage.toLowerCase()} · told by Email and SMS · Mon, Nov 2, 18:20`}
+                          {REACHED_LINE[m.open.of]}
                         </Text>
                       </View>,
                       Math.max(insets.bottom, tokens.spaceLg),
@@ -459,7 +580,12 @@ export function MessagesScreen({
       </View>
     );
   else if (m.open.kind === 'reached')
-    pane = reached(<Back label={PARKING} onPress={() => dispatch({ type: 'back' })} />, null, 0);
+    pane = reached(
+      m.open.of,
+      <Back label={reachedTitle(m, m.open.of)} onPress={() => dispatch({ type: 'back' })} />,
+      null,
+      0,
+    );
   else pane = <PaneConversation talk={talk} open={m.open} headRef={headRef} />;
 
   return (

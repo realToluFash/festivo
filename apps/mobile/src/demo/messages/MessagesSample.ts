@@ -13,17 +13,20 @@ export type Where = 'page' | ChannelKey;
 export type GuestKey = 'ines' | 'lucia' | 'kwame' | 'unknown' | 'marta';
 export type PersonKey =
   | 'tomas'
+  | 'yuki'
+  | 'seun'
   | 'amaka'
-  | 'joaquin'
+  | 'priyanka'
   | 'sophie'
-  | 'mateus'
-  | 'hana'
-  | 'chidi'
-  | 'elodie'
+  | 'lars'
+  | 'fatima'
   | 'diego'
-  | 'priya'
-  | 'aisha';
-export type ManyKey = 'parking' | 'invite' | 'sched';
+  | 'joaquin'
+  | 'mei'
+  | 'kwame'
+  | 'marta'
+  | 'ines';
+export type ManyKey = 'parking' | 'invite';
 export type ToGroup = 'all' | 'coming' | 'notReplied';
 export type Token = 'Greeting' | 'Event' | 'Date' | 'Hosts';
 
@@ -72,14 +75,14 @@ export const GUESTS: Record<GuestKey, SampleGuest> = {
   },
   unknown: {
     initials: '?',
-    name: 'm.laurent@orange.fr',
+    name: 'm.dubois@orange.fr',
     channel: 'email',
-    head: 'm.laurent@orange.fr',
+    head: 'm.dubois@orange.fr',
     asked: {
-      text: 'Sophie and I will both be there. Marc',
+      text: 'Camille and I will both be there. Marc',
       where: 'email',
       row: 'Mon',
-      time: 'Mon',
+      time: '21:05',
     },
   },
   marta: {
@@ -120,15 +123,29 @@ export const TO_FIGURES: Record<
   ToGroup,
   { count: number; email: number; sms: number; wa: number; cantTell: number }
 > = {
-  all: { count: 142, email: 134, sms: 33, wa: 4, cantTell: 6 },
+  all: { count: 142, email: 124, sms: 39, wa: 4, cantTell: 9 },
   coming: { count: 96, email: 92, sms: 31, wa: 3, cantTell: 2 },
-  notReplied: { count: 25, email: 25, sms: 8, wa: 1, cantTell: 0 },
+  notReplied: { count: 25, email: 23, sms: 9, wa: 1, cantTell: 1 },
 };
 
-export const CANT_TELL: readonly string[] = [
-  `Tomás Ferreira · ${W.addressBouncing} · ${W.noPhone}`,
-  `Joaquín Ruiz · ${W.noEmail} · ${W.noPhone}`,
-];
+export const CANT_TELL: Record<ToGroup, readonly string[]> = {
+  all: [
+    `Tomás Ferreira · ${W.addressBouncing} · ${W.noPhone}`,
+    `Sophie Laurent · ${W.unsubscribed} · ${W.textedStop}`,
+  ],
+  coming: [
+    `Tomás Ferreira · ${W.addressBouncing} · ${W.noPhone}`,
+    `Joaquín Ruiz · ${W.noEmail} · ${W.noPhone}`,
+  ],
+  notReplied: [`Mei Lin Chen · ${W.noEmail} · ${W.noPhone}`],
+};
+
+/** Guests told only by SMS: with SMS off they can't be told (the boards count Coming's two). */
+export const SMS_ONLY: Record<ToGroup, readonly string[]> = {
+  all: [`Amaka Eze · ${W.noEmail} · ${W.smsOff}`, `Priyanka Nair · ${W.noEmail} · ${W.smsOff}`],
+  coming: [`Amaka Eze · ${W.noEmail} · ${W.smsOff}`, `Priyanka Nair · ${W.noEmail} · ${W.smsOff}`],
+  notReplied: [],
+};
 
 export type MarkKey =
   'delivered' | 'sent' | 'sending' | 'bounced' | 'notsent' | 'unconfirmed' | 'optout' | 'none';
@@ -173,13 +190,14 @@ export interface NotReached {
 
 const PAGE_LINE: ReachLine = { mark: 'none', word: W.theirPage, reason: W.notSeenYet };
 
-const BOUNCED: readonly ReachLine[] = [
-  { mark: 'bounced', word: 'Email · Bounced', reason: W.doesntExist },
+const bounced = (reason: string): readonly ReachLine[] => [
+  { mark: 'bounced', word: 'Email · Bounced', reason },
   { mark: 'none', word: 'SMS', reason: W.noPhone },
   PAGE_LINE,
 ];
 const UNCONFIRMED: readonly ReachLine[] = [
   { mark: 'unconfirmed', word: 'SMS · Sent', reason: W.notConfirmed },
+  { mark: 'none', word: 'Email', reason: W.noEmail },
   PAGE_LINE,
 ];
 const NEITHER: readonly ReachLine[] = [
@@ -187,102 +205,241 @@ const NEITHER: readonly ReachLine[] = [
   { mark: 'none', word: W.noPhone },
   PAGE_LINE,
 ];
+const EMAIL_OUT: ReachLine = { mark: 'optout', word: 'Email · Not sent', reason: W.unsubscribed };
+const SMS_OUT: ReachLine = { mark: 'optout', word: 'SMS · Not sent', reason: W.textedStop };
 
-/** All eleven not reached: 3 bounced, 2 not confirmed, 4 opted out and 2 with no email or phone, the boards' three first. */
-export const NOT_REACHED: readonly NotReached[] = [
+export interface ReachGroup {
+  word: string;
+  people: readonly NotReached[];
+}
+
+/** All eleven not reached, grouped as sc-3966 counts them (Messaging-B-Phone-3). */
+export const PARKING_GROUPS: readonly ReachGroup[] = [
   {
-    key: 'tomas',
-    initials: 'TF',
-    name: 'Tomás Ferreira',
-    bounced: 'tomas.ferreira@gmial.com',
-    lines: BOUNCED,
-    fixes: [W.fixEmail, W.addPhone],
-  },
-  { key: 'amaka', initials: 'AE', name: 'Amaka Eze', lines: UNCONFIRMED, fixes: [W.toldInPerson] },
-  {
-    key: 'joaquin',
-    initials: 'JR',
-    name: 'Joaquín Ruiz',
-    lines: NEITHER,
-    fixes: [W.addEmail, W.addPhone, W.toldInPerson],
-  },
-  {
-    key: 'mateus',
-    initials: 'MC',
-    name: 'Mateus Cardoso',
-    bounced: 'mateus.cardoso@hotmial.com',
-    lines: BOUNCED,
-    fixes: [W.fixEmail, W.addPhone],
-  },
-  {
-    key: 'hana',
-    initials: 'HK',
-    name: 'Hana Kim',
-    bounced: 'hana.kim@naver.con',
-    lines: BOUNCED,
-    fixes: [W.fixEmail, W.addPhone],
-  },
-  {
-    key: 'chidi',
-    initials: 'CO',
-    name: 'Chidi Okafor',
-    lines: UNCONFIRMED,
-    fixes: [W.toldInPerson],
-  },
-  {
-    key: 'sophie',
-    initials: 'SL',
-    name: 'Sophie Laurent',
-    lines: [
-      { mark: 'optout', word: 'Email · Not sent', reason: W.unsubscribed },
-      { mark: 'optout', word: 'SMS · Not sent', reason: W.textedStop },
-      PAGE_LINE,
+    word: W.bounced3,
+    people: [
+      {
+        key: 'tomas',
+        initials: 'TF',
+        name: 'Tomás Ferreira',
+        bounced: 'tomas.ferreira@gmial.com',
+        lines: bounced(W.doesntExist),
+        fixes: [W.fixEmail, W.addPhone],
+      },
+      {
+        key: 'yuki',
+        initials: 'YT',
+        name: 'Yuki Tanaka',
+        bounced: 'yuki.tanaka@docomo.ne.jp',
+        lines: bounced(W.inboxFull),
+        fixes: [W.fixEmail, W.addPhone],
+      },
+      {
+        key: 'seun',
+        initials: 'OA',
+        name: 'Oluwaseun Adebayo',
+        bounced: 'seun.adebayo@yahoo.com',
+        lines: bounced(W.serviceRefused),
+        fixes: [W.fixEmail, W.addPhone],
+      },
     ],
-    fixes: [W.toldInPerson],
   },
   {
-    key: 'elodie',
-    initials: 'ÉM',
-    name: 'Élodie Martin',
-    lines: [
-      { mark: 'optout', word: 'Email · Not sent', reason: W.unsubscribed },
-      { mark: 'optout', word: 'SMS · Not sent', reason: W.textedStop },
-      PAGE_LINE,
+    word: W.notConfirmed2,
+    people: [
+      {
+        key: 'amaka',
+        initials: 'AE',
+        name: 'Amaka Eze',
+        lines: UNCONFIRMED,
+        fixes: [W.toldInPerson],
+      },
+      {
+        key: 'priyanka',
+        initials: 'PN',
+        name: 'Priyanka Nair',
+        lines: UNCONFIRMED,
+        fixes: [W.toldInPerson],
+      },
     ],
-    fixes: [W.toldInPerson],
   },
   {
-    key: 'diego',
-    initials: 'DF',
-    name: 'Diego Fernández',
-    lines: [
-      { mark: 'optout', word: 'Email · Not sent', reason: W.unsubscribed },
-      { mark: 'none', word: 'SMS', reason: W.noPhone },
-      PAGE_LINE,
+    word: W.optedOut,
+    people: [
+      {
+        key: 'sophie',
+        initials: 'SL',
+        name: 'Sophie Laurent',
+        lines: [EMAIL_OUT, SMS_OUT, PAGE_LINE],
+        fixes: [W.toldInPerson],
+      },
+      {
+        key: 'lars',
+        initials: 'LJ',
+        name: 'Lars Johansson',
+        lines: [EMAIL_OUT, { mark: 'none', word: 'SMS', reason: W.noPhone }, PAGE_LINE],
+        fixes: [W.addPhone, W.toldInPerson],
+      },
+      {
+        key: 'fatima',
+        initials: 'FE',
+        name: 'Fatima Zahra El Idrissi',
+        lines: [SMS_OUT, { mark: 'none', word: 'Email', reason: W.noEmail }, PAGE_LINE],
+        fixes: [W.addEmail, W.toldInPerson],
+      },
+      {
+        key: 'diego',
+        initials: 'DH',
+        name: 'Diego Herrera',
+        lines: [EMAIL_OUT, SMS_OUT, PAGE_LINE],
+        fixes: [W.toldInPerson],
+      },
     ],
-    fixes: [W.toldInPerson],
   },
   {
-    key: 'priya',
-    initials: 'PR',
-    name: 'Priya Raman',
-    lines: [
-      { mark: 'none', word: 'Email', reason: W.noEmail },
-      { mark: 'optout', word: 'SMS · Not sent', reason: W.textedStop },
-      PAGE_LINE,
+    word: W.noEmailOrPhone,
+    people: [
+      {
+        key: 'joaquin',
+        initials: 'JR',
+        name: 'Joaquín Ruiz',
+        lines: NEITHER,
+        fixes: [W.addEmail, W.addPhone, W.toldInPerson],
+      },
+      {
+        key: 'mei',
+        initials: 'MC',
+        name: 'Mei Lin Chen',
+        lines: NEITHER,
+        fixes: [W.addEmail, W.addPhone, W.toldInPerson],
+      },
     ],
-    fixes: [W.toldInPerson],
-  },
-  {
-    key: 'aisha',
-    initials: 'AB',
-    name: 'Aisha Bello',
-    lines: NEITHER,
-    fixes: [W.addEmail, W.addPhone, W.toldInPerson],
   },
 ];
 
+export const NOT_REACHED: readonly NotReached[] = PARKING_GROUPS.flatMap((group) => group.people);
+
+const NOT_INVITED: readonly ReachLine[] = [
+  { mark: 'none', word: W.noEmail },
+  { mark: 'none', word: W.noPhone },
+  { mark: 'none', word: W.theirInvitation, reason: W.notYetInvited },
+];
+
+export const INVITE_GROUPS: readonly ReachGroup[] = [
+  {
+    word: W.noEmailOrPhone,
+    people: [
+      {
+        key: 'joaquin',
+        initials: 'JR',
+        name: 'Joaquín Ruiz',
+        lines: NOT_INVITED,
+        fixes: [W.addEmail, W.addPhone, W.copyLink],
+      },
+      {
+        key: 'mei',
+        initials: 'MC',
+        name: 'Mei Lin Chen',
+        lines: NOT_INVITED,
+        fixes: [W.addEmail, W.addPhone, W.copyLink],
+      },
+    ],
+  },
+];
+
+export const SENDING_GROUPS: readonly ReachGroup[] = [
+  {
+    word: W.inProgress,
+    people: [
+      {
+        key: 'kwame',
+        initials: 'KM',
+        name: 'Kwame Mensah',
+        lines: [
+          { mark: 'sending', word: 'Email', reason: W.sending },
+          { mark: 'sent', word: 'SMS · Sent', reason: '09:41' },
+          PAGE_LINE,
+        ],
+        fixes: [],
+      },
+      {
+        key: 'marta',
+        initials: 'MS',
+        name: 'Marta Silva',
+        lines: [{ mark: 'sent', word: 'Email · Sent', reason: '09:41' }, PAGE_LINE],
+        fixes: [],
+      },
+    ],
+  },
+  {
+    word: 'Reached',
+    people: [
+      {
+        key: 'ines',
+        initials: 'ID',
+        name: 'Inês Duarte',
+        lines: [
+          { mark: 'delivered', word: 'Email · Delivered', reason: '09:41' },
+          { mark: 'delivered', word: W.theirPage, reason: 'Seen 09:42' },
+        ],
+        fixes: [],
+      },
+    ],
+  },
+  {
+    word: W.cantBeTold,
+    people: [
+      {
+        key: 'tomas',
+        initials: 'TF',
+        name: 'Tomás Ferreira',
+        bounced: 'tomas.ferreira@gmial.com',
+        lines: [
+          { mark: 'notsent', word: 'Email · Not sent', reason: W.addressBouncing },
+          { mark: 'none', word: 'SMS', reason: W.noPhone },
+          PAGE_LINE,
+        ],
+        fixes: [W.fixEmail, W.addPhone],
+      },
+      {
+        key: 'joaquin',
+        initials: 'JR',
+        name: 'Joaquín Ruiz',
+        lines: NEITHER,
+        fixes: [W.addEmail, W.addPhone, W.toldInPerson],
+      },
+    ],
+  },
+];
+
+export const SENDING_REACH = {
+  reached: 38,
+  of: 96,
+  inProgress: 56,
+  cantTell: 2,
+  seen: 3,
+  more: 54,
+};
+export const SENT_AGAIN_AT = '09:44';
+
+export const MATCHES: readonly { name: string; line: string }[] = [
+  { name: 'Camille Dubois', line: 'camille.dubois@orange.fr' },
+  { name: 'Claude Dubois', line: W.noEmail },
+  { name: 'Duboise Akande', line: '+234 802 555 0199' },
+];
+
+export const SCHEDULE_AT = { date: '2026-11-05', time: '09:00' };
+export const EVENT_ENDS = { at: '2026-11-07T15:00:00Z', day: 'Sat, Nov 7', time: '15:00' };
+export const READER_NOW = '2026-11-03T09:41:00Z';
+export const CANCELLED_AT = '09:46';
+export const FOLLOW_UP = 'Also: the car park closes at 23:30, so plan your way home.';
+
 export const FIXED_ADDRESS = 'tomas.ferreira@gmail.com';
+export const PLACE = {
+  name: 'Rosewood London',
+  address: '252 High Holborn, London WC1V 7EN',
+  place: 'Rosewood London, London',
+};
 
 export const RESEND = {
   count: 3,

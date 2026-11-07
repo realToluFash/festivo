@@ -14,7 +14,8 @@ import { Sheet } from '../../components/Sheet.tsx';
 import { Text } from '../../components/Text.tsx';
 import { Toast } from '../../components/Toast.tsx';
 import { tokens } from '../../theme/tokens.ts';
-import { EventField } from '../events/EventEdits.tsx';
+import { AlertLine, EventField } from '../events/EventEdits.tsx';
+import { MomentBox, type Picking, PickerLayer, pick } from '../events/EventsPick.tsx';
 import { Back, Pill } from '../settings/parts.tsx';
 import {
   type Anchor,
@@ -25,6 +26,7 @@ import {
   TextAction,
 } from '../settings/Summary.tsx';
 import { ChannelPill } from './CheckCard.tsx';
+import { type Moment, dayWords, laterRefused } from './MessagesModel.ts';
 import {
   BELL,
   EVENT,
@@ -39,6 +41,8 @@ import {
   type Token,
   formatCount,
   BALANCE,
+  EVENT_ENDS,
+  MATCHES,
 } from './MessagesSample.ts';
 import { W, say } from './MessagesWords.ts';
 
@@ -417,6 +421,7 @@ function PushTimer({ onGone }: { onGone: () => void }) {
 export function TellGuests({
   open,
   lines,
+  address = false,
   phone,
   opener,
   onSend,
@@ -425,6 +430,7 @@ export function TellGuests({
 }: {
   open: boolean;
   lines: readonly string[];
+  address?: boolean;
   phone: boolean;
   opener: Opener;
   onSend: () => void;
@@ -469,6 +475,11 @@ export function TellGuests({
             </Text>
           ))}
         </View>
+        {address && (
+          <Text size={13.5} weight="medium" style={[styles.secondary, styles.line135]}>
+            {W.addressAdded}
+          </Text>
+        )}
         <Text size={13.5} weight="medium" style={[styles.secondary, styles.line135]}>
           {W.ownLanguage}
         </Text>
@@ -679,6 +690,22 @@ const styles = StyleSheet.create({
   line135: { lineHeight: 13.5 * 1.45 },
   line15: { lineHeight: 15 * 1.45 },
   line16: { lineHeight: 16 * 1.5 },
+  segments: {
+    flexDirection: 'row',
+    padding: tokens.spaceXxs,
+    gap: tokens.spaceXxs,
+    borderRadius: 26,
+    backgroundColor: tokens.colorInset,
+  },
+  segment: {
+    flex: 1,
+    minHeight: tokens.sizeHit,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 22,
+  },
+  segmentOn: { backgroundColor: tokens.colorCard, ...tokens.elevationNative.raised.ios },
+  pair: { flexDirection: 'row', gap: tokens.spaceSm },
   topToast: {
     position: 'absolute',
     left: tokens.spaceXl,
@@ -686,3 +713,242 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 });
+
+/** Who is this? (sc-3976's match): Search guests, the guests as radios, and This is {guest}; a sheet on the phone, a 540 dialog on the iPad. */
+export function MatchPicker({
+  open,
+  phone,
+  address,
+  opener,
+  onMatch,
+  onClose,
+}: {
+  open: boolean;
+  phone: boolean;
+  address: string;
+  opener: Opener;
+  onMatch: (name: string) => void;
+  onClose: () => void;
+}) {
+  const [search, setSearch] = useState('Dubois');
+  const [picked, setPicked] = useState(MATCHES[0]?.name ?? '');
+  const shown = MATCHES.filter((one) =>
+    one.name.toLowerCase().includes(search.trim().toLowerCase()),
+  );
+  const body = (
+    <>
+      <TextField
+        value={search}
+        onChangeText={setSearch}
+        autoFocus
+        autoCapitalize="words"
+        placeholder={W.searchGuests}
+        accessibilityLabel={W.searchGuests}
+        testID="messages.match.search"
+      />
+      <View accessibilityRole="radiogroup">
+        {shown.map((one) => (
+          <Row
+            key={one.name}
+            title={one.name}
+            line={one.line}
+            lead={<RadioMark on={one.name === picked} />}
+            accent={one.name === picked}
+            pad={tokens.spaceSm}
+            onPress={() => setPicked(one.name)}
+            accessibilityRole="radio"
+            accessibilityState={{ checked: one.name === picked }}
+            accessibilityLabel={`${one.name}, ${one.line}`}
+            testID={`messages.match.${one.name}`}
+          />
+        ))}
+      </View>
+      <Text size={13.5} weight="medium" style={[styles.secondary, styles.line135]}>
+        {say.matchHint(address, picked)}
+      </Text>
+    </>
+  );
+
+  if (!phone)
+    return (
+      <FocusedScreen
+        open={open}
+        title={W.whoIsThis}
+        verb={{
+          label: say.thisIs(picked),
+          on: picked !== '',
+          onPress: () => onMatch(picked),
+          testID: 'messages.match.go',
+        }}
+        onCancel={onClose}
+        opener={opener}
+        gap={14}
+        testID="messages.match"
+      >
+        {body}
+      </FocusedScreen>
+    );
+
+  return (
+    <Sheet open={open} onClose={onClose} scrimLabel="Close" opener={opener} testID="messages.match">
+      <ScrollView contentContainerStyle={styles.sheetBody} keyboardShouldPersistTaps="handled">
+        <SheetHead title={W.whoIsThis} close="Close" onClose={onClose} />
+        {body}
+        <Pill
+          label={say.thisIs(picked)}
+          onPress={() => onMatch(picked)}
+          testID="messages.match.go"
+        />
+      </ScrollView>
+    </Sheet>
+  );
+}
+
+/** When it goes (sc-3963's Later): Now or Later, the date and time in the event's zone, and Schedule; a refused time says the rule in red. */
+export function WhenItGoes({
+  open,
+  phone,
+  start,
+  locale,
+  opener,
+  onSchedule,
+  onNow,
+  onClose,
+}: {
+  open: boolean;
+  phone: boolean;
+  start: Moment;
+  locale: string;
+  opener: Opener;
+  onSchedule: (at: Moment) => void;
+  onNow: () => void;
+  onClose: () => void;
+}) {
+  const [at, setAt] = useState(start);
+  const [wrong, setWrong] = useState(false);
+  const [picking, setPicking] = useState<Picking | null>(null);
+  const later = useRef<ViewInstance>(null);
+  const schedule = () => {
+    if (laterRefused(at)) {
+      setWrong(true);
+      return;
+    }
+    onSchedule(at);
+  };
+  const choose = (mode: 'date' | 'time') =>
+    pick(
+      {
+        title: W.zone,
+        mode,
+        field: at,
+        take: (next) => {
+          setAt(next);
+          setWrong(laterRefused(next) && wrong);
+        },
+      },
+      setPicking,
+    );
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const soon = setTimeout(() => moveScreenReaderFocus(later.current), 600);
+
+    return () => clearTimeout(soon);
+  }, [open]);
+
+  return (
+    <FocusedScreen
+      open={open}
+      title={W.whenItGoes}
+      verb={
+        phone
+          ? null
+          : { label: W.schedule, on: true, onPress: schedule, testID: 'messages.when.go' }
+      }
+      onCancel={onClose}
+      opener={opener}
+      gap={14}
+      over={
+        picking == null
+          ? null
+          : {
+              layer: (
+                <PickerLayer picking={picking} locale={locale} onClose={() => setPicking(null)} />
+              ),
+              onClose: () => setPicking(null),
+            }
+      }
+      testID="messages.when"
+    >
+      <View style={styles.segments} accessibilityRole="radiogroup">
+        {[W.now, W.laterChoice].map((word) => {
+          const on = word === W.laterChoice;
+          return (
+            <Pressable
+              key={word}
+              ref={on ? later : undefined}
+              onPress={on ? undefined : onNow}
+              style={[styles.segment, on && styles.segmentOn]}
+              accessibilityRole="radio"
+              accessibilityState={{ checked: on }}
+              accessibilityLabel={word}
+              testID={`messages.when.${word}`}
+            >
+              <Text
+                size={15}
+                weight="semibold"
+                accessible={false}
+                style={on ? undefined : styles.secondary}
+              >
+                {word}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+      <View style={styles.block}>
+        <Text size={14} weight="semibold">
+          {`${W.dateAndTime} · ${W.zone}`}
+        </Text>
+        <View style={styles.pair}>
+          <MomentBox
+            label={W.date}
+            mode="date"
+            value={at.date}
+            locale={locale}
+            wrong={wrong}
+            onPress={() => choose('date')}
+            testID="messages.when.date"
+          />
+          <MomentBox
+            label={W.time}
+            mode="time"
+            value={at.time}
+            locale={locale}
+            width={104}
+            wrong={wrong}
+            onPress={() => choose('time')}
+            testID="messages.when.time"
+          />
+        </View>
+      </View>
+      {wrong ? (
+        <AlertLine text={say.laterRule(EVENT_ENDS.day, EVENT_ENDS.time)} small />
+      ) : (
+        <Text size={13.5} weight="medium" style={[styles.secondary, styles.line135]}>
+          {say.laterRule(EVENT_ENDS.day, EVENT_ENDS.time)}
+        </Text>
+      )}
+      <Text size={13.5} weight="medium" style={[styles.secondary, styles.line135]}>
+        {W.laterEstimate}
+      </Text>
+      {phone && (
+        <Pill
+          label={say.scheduleFor(dayWords(at.date), at.time)}
+          onPress={schedule}
+          testID="messages.when.go"
+        />
+      )}
+    </FocusedScreen>
+  );
+}

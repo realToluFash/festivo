@@ -11,6 +11,7 @@ import { TextField } from '../../components/Field.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
+import { Pill } from '../settings/parts.tsx';
 import { TextAction } from '../settings/Summary.tsx';
 import { MessageGlyph } from './MessageMarks.tsx';
 import { type Draft, toChip } from './MessagesModel.ts';
@@ -199,6 +200,7 @@ export function NewComposer({
   onInsert,
   onPreview,
   onSend,
+  editing,
 }: {
   draft: Draft;
   tools?: boolean;
@@ -212,6 +214,7 @@ export function NewComposer({
   onInsert?: () => void;
   onPreview?: () => void;
   onSend?: () => void;
+  editing?: { onChangeWhen: () => void; onSave: () => void } | undefined;
 }) {
   const [focused, setFocused] = useState(0);
   const on = draft.body.trim() !== '';
@@ -264,19 +267,41 @@ export function NewComposer({
             onPress={onInsert ?? (() => undefined)}
             testID="messages.insert"
           />
-          <TextAction
-            label={W.preview}
-            glyph="eye"
-            onPress={onPreview ?? (() => undefined)}
-            off={!on}
-            testID="messages.preview"
-          />
-          <View style={styles.grow}>
-            <Text size={13} weight="medium" style={[styles.secondary, styles.goes]}>
-              {W.goesOnTheirPage}
-            </Text>
-          </View>
-          <SendButton ref={sendRef} on={on} onPress={onSend} testID="messages.send" />
+          {editing == null ? (
+            <>
+              <TextAction
+                label={W.preview}
+                glyph="eye"
+                onPress={onPreview ?? (() => undefined)}
+                off={!on}
+                testID="messages.preview"
+              />
+              <View style={styles.grow}>
+                <Text size={13} weight="medium" style={[styles.secondary, styles.goes]}>
+                  {W.goesOnTheirPage}
+                </Text>
+              </View>
+              <SendButton ref={sendRef} on={on} onPress={onSend} testID="messages.send" />
+            </>
+          ) : (
+            <>
+              <TextAction
+                label={W.changeWhen}
+                glyph="clock"
+                onPress={editing.onChangeWhen}
+                testID="messages.changeWhen"
+              />
+              <View style={styles.grow} />
+              <Pill
+                label={W.save}
+                height={tokens.sizeHit}
+                full={false}
+                kind={on ? 'primary' : 'off'}
+                onPress={editing.onSave}
+                testID="messages.saveScheduled"
+              />
+            </>
+          )}
         </View>
       )}
     </View>

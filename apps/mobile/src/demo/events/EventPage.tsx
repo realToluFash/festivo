@@ -46,7 +46,7 @@ import {
 import { W, say } from './EventsWords.ts';
 import { type MessagesState, reduce, startOf } from '../messages/MessagesModel.ts';
 import { TellGuests } from '../messages/MessagesOverlays.tsx';
-import { SAMPLE_EVENT_ID, TELL } from '../messages/MessagesSample.ts';
+import { PLACE, SAMPLE_EVENT_ID, TELL } from '../messages/MessagesSample.ts';
 import { tellChange } from '../messages/TellChange.ts';
 import { MessagesScreen, badgeFor } from '../messages/MessagesScreen.tsx';
 import { W as MW, say as sayMessages } from '../messages/MessagesWords.ts';
@@ -71,6 +71,7 @@ function startEvent(
   const event = sampleEvent(id) ?? sampleEvent('evt-wed-4');
   if (event == null) throw new Error('The sample has the wedding.');
   if (messages === 'tell' || messages === 'untold') return { ...event, startsAt: TELL.startsAt };
+  if (messages === 'tellPlace') return { ...event, venue: PLACE };
 
   return state === 'photo' ? { ...event, photo: true } : event;
 }
@@ -96,7 +97,9 @@ export function EventScreen({
   const now = useMemo(() => clockOf(state), [state]);
   const [event, setEvent] = useState(() => startEvent(id, state, messages));
   const [at, setAt] = useState<AreaKey>(
-    area == null || area === 'people' || messages === 'tell' ? 'overview' : area,
+    area == null || area === 'people' || messages === 'tell' || messages === 'tellPlace'
+      ? 'overview'
+      : area,
   );
   const [m, dispatch] = useReducer(reduce, null, () => startOf(messages, shell.layout !== 'phone'));
   const [messagesSeen, setMessagesSeen] = useState(messages != null || at === 'messages');
@@ -221,6 +224,7 @@ export function EventScreen({
     <TellGuests
       open={m.telling}
       lines={m.change.lines}
+      address={m.change.address === true}
       phone={shell.layout === 'phone'}
       opener={opener}
       onSend={tellSent}
@@ -242,7 +246,7 @@ export function EventScreen({
         start={{
           fix: messages === 'fix',
           push: messages === 'bell',
-          keys: messages === 'write' || messages === 'cancelled',
+          keys: messages === 'write' || messages === 'cancelled' || messages === 'scheduledEdit',
         }}
         extra={tell}
       />
