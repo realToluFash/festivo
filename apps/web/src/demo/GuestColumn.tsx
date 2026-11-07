@@ -117,7 +117,9 @@ export function GuestView({
           )}
         </section>
       )}
-      <Details guest={guest} manages={manages} heading={heading} onEdit={actions.onEdit} />
+      {(manages || guest.companions.length > 0) && (
+        <Details guest={guest} manages={manages} heading={heading} onEdit={actions.onEdit} />
+      )}
       {manages && !draft && guest.reply !== 'walkIn' && (
         <Invitation
           guest={guest}
@@ -127,7 +129,9 @@ export function GuestView({
           actions={actions}
         />
       )}
-      {invited && event.id === WEDDING && <Conversation guest={guest} heading={heading} />}
+      {manages && invited && event.id === WEDDING && (
+        <Conversation guest={guest} heading={heading} />
+      )}
     </div>
   );
 }
@@ -181,13 +185,15 @@ function Details({
             />
           </li>
         ))}
-        <li className="desk-row">
-          <IconLead name="user" />
-          <RowWords
-            title={GW.addedBy(dayOf(guest.added.on), guest.added.by ?? '')}
-            lines={[GW.added]}
-          />
-        </li>
+        {manages && (
+          <li className="desk-row">
+            <IconLead name="user" />
+            <RowWords
+              title={GW.addedBy(dayOf(guest.added.on), guest.added.by ?? '')}
+              lines={[GW.added]}
+            />
+          </li>
+        )}
       </ul>
     </section>
   );

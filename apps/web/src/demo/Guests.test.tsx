@@ -134,6 +134,11 @@ describe('Guests, the list (sc-31781)', () => {
     expect(screen.queryByText('kwame.mensah@outlook.com')).toBeNull();
     expect(screen.queryByText('+44 7700 900412')).toBeNull();
     expect(screen.queryByRole('heading', { name: 'Invitation' })).toBeNull();
+    expect(within(column()).getByText('Coming · replied Oct 2')).toBeDefined();
+    expect(within(column()).queryByRole('heading', { name: 'Details' })).toBeNull();
+    expect(within(column()).queryByText('Added')).toBeNull();
+    expect(within(column()).queryByRole('heading', { name: 'Their conversation' })).toBeNull();
+    expect(within(column()).queryByRole('button')).toBeNull();
 
     fireEvent.change(screen.getByRole('searchbox', { name: 'Find a guest' }), {
       target: { value: 'nhs.net' },
@@ -156,6 +161,10 @@ describe('Guests, the list (sc-31781)', () => {
       expect(within(column()).getByText('Guest of Alhaji Musa Bello')).toBeDefined();
       expect(within(column()).queryByText('musa.bello@gmail.com')).toBeNull();
       expect(within(column()).queryByText('Mobile number')).toBeNull();
+      expect(within(column()).getByRole('heading', { name: 'Details' })).toBeDefined();
+      expect(within(column()).queryByText('Added')).toBeNull();
+      expect(within(column()).queryByRole('heading', { name: 'Their conversation' })).toBeNull();
+      expect(within(column()).queryByRole('button')).toBeNull();
     },
   );
 
