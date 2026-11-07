@@ -13,6 +13,7 @@ import { Caps, Pill, Tile, TYPE } from './parts.tsx';
 import { WORDS as PERSONALISATION } from './PersonalisationModel.ts';
 import { SchemeTile } from './PersonalisationParts.tsx';
 import { type DemoSection, demoGroups, type Viewer, YOU } from './sample.ts';
+import { SELECTED_ROW } from './SummaryRows.tsx';
 
 type Listed = Exclude<DemoSection, 'account'>;
 
@@ -45,7 +46,10 @@ interface Handlers {
   onDemo: () => void;
 }
 
-/** You, as the Confetti card at the top of Settings: it opens Your account. */
+/** How far the Tint reaches past the open card on its side, as a lit row's does. */
+const LIT_PAST = tokens.spaceMd;
+
+/** You, as the Confetti card at the top of Settings: it opens Your account, and is lit in Tint while open, with no ring. */
 export function PersonCard({
   size,
   open = false,
@@ -87,68 +91,69 @@ export function PersonCard({
   const role = you.role == null ? null : `${you.role} · ${YOU.organisation}`;
 
   return (
-    <Pressable
-      onPress={() => shell.openSection('account')}
-      style={({ pressed }) => [
-        styles.person,
-        { minHeight: look.height, borderRadius: look.radius, paddingVertical: look.pad },
-        open && styles.personOpen,
-        pressed && styles.pressed,
+    <View
+      style={[
+        styles.personPlate,
+        open && { backgroundColor: tokens.colorAccentTint, borderRadius: look.radius + LIT_PAST },
       ]}
-      accessibilityRole="button"
-      accessibilityState={{ selected: open }}
-      accessibilityLabel={`Your account. ${you.name}, ${you.email}${you.role == null ? '' : `, ${you.role} of ${YOU.organisation}`}`}
     >
-      <View
-        style={[
-          StyleSheet.absoluteFill,
-          { borderRadius: look.radius - (open ? 3 : 0), overflow: 'hidden' },
+      <Pressable
+        onPress={() => shell.openSection('account')}
+        style={({ pressed }) => [
+          styles.person,
+          { minHeight: look.height, borderRadius: look.radius, paddingVertical: look.pad },
+          pressed && styles.pressed,
         ]}
+        accessibilityRole="button"
+        accessibilityState={{ selected: open }}
+        accessibilityLabel={`Your account. ${you.name}, ${you.email}${you.role == null ? '' : `, ${you.role} of ${YOU.organisation}`}`}
       >
-        <Cover shade="side" pieces={[]} />
-        <Confetti pieces={CARD_PIECES} scale={look.scale} />
-      </View>
-      <View
-        style={[
-          styles.personAvatar,
-          { width: look.avatar, height: look.avatar, borderRadius: look.avatar / 2 },
-        ]}
-        accessibilityElementsHidden
-        importantForAccessibility="no-hide-descendants"
-      >
-        <Text
-          size={Math.round(look.avatar * 0.36)}
-          weight="bold"
-          accessible={false}
-          style={styles.accent}
+        <View style={[StyleSheet.absoluteFill, { borderRadius: look.radius, overflow: 'hidden' }]}>
+          <Cover shade="side" pieces={[]} />
+          <Confetti pieces={CARD_PIECES} scale={look.scale} />
+        </View>
+        <View
+          style={[
+            styles.personAvatar,
+            { width: look.avatar, height: look.avatar, borderRadius: look.avatar / 2 },
+          ]}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
         >
-          {you.initials}
-        </Text>
-      </View>
-      <View style={styles.personWords}>
-        <Text
-          size={look.name}
-          weight="bold"
-          accessible={false}
-          style={[styles.white, styles.tight]}
-        >
-          {you.name}
-        </Text>
-        <Text size={look.mail} weight="medium" accessible={false} style={styles.white}>
-          {you.email}
-        </Text>
-        {role != null && (
-          <Glass height={28} style={styles.roleChip}>
-            <Text size={13} weight="semibold" accessible={false} style={styles.white}>
-              {role}
-            </Text>
-          </Glass>
-        )}
-      </View>
-      <Glass height={36} style={styles.personChevron}>
-        <Glyph name="chevron" size={18} ink={tokens.colorInkOnDark} weight={2.4} />
-      </Glass>
-    </Pressable>
+          <Text
+            size={Math.round(look.avatar * 0.36)}
+            weight="bold"
+            accessible={false}
+            style={styles.accent}
+          >
+            {you.initials}
+          </Text>
+        </View>
+        <View style={styles.personWords}>
+          <Text
+            size={look.name}
+            weight="bold"
+            accessible={false}
+            style={[styles.white, styles.tight]}
+          >
+            {you.name}
+          </Text>
+          <Text size={look.mail} weight="medium" accessible={false} style={styles.white}>
+            {you.email}
+          </Text>
+          {role != null && (
+            <Glass height={28} style={styles.roleChip}>
+              <Text size={13} weight="semibold" accessible={false} style={styles.white}>
+                {role}
+              </Text>
+            </Glass>
+          )}
+        </View>
+        <Glass height={36} style={styles.personChevron}>
+          <Glyph name="chevron" size={18} ink={tokens.colorInkOnDark} weight={2.4} />
+        </Glass>
+      </Pressable>
+    </View>
   );
 }
 
@@ -484,7 +489,7 @@ const styles = StyleSheet.create({
     paddingLeft: tokens.spaceXxl,
     paddingRight: tokens.spaceXl,
   },
-  personOpen: { borderWidth: 3, borderColor: tokens.colorAccent },
+  personPlate: { margin: -LIT_PAST, padding: LIT_PAST },
   personAvatar: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -509,11 +514,8 @@ const styles = StyleSheet.create({
     borderRadius: tokens.spaceXl,
   },
   rowDense: { minHeight: tokens.sizeListRow, gap: 12, paddingVertical: 9 },
-  rowOpen: {
-    backgroundColor: tokens.colorAccentTint,
-    borderWidth: 2,
-    borderColor: tokens.colorAccent,
-  },
+  // Lit as Members' person row is, with no ring: the owner found a ring around the picked thing weird (6 Nov 2026).
+  rowOpen: SELECTED_ROW,
   rowPressed: { backgroundColor: tokens.colorNeutralFill },
   rule: { position: 'absolute', right: 0, top: 0, height: 1, backgroundColor: tokens.colorBorder },
   rowWords: { flex: 1, minWidth: 0, gap: 2 },
