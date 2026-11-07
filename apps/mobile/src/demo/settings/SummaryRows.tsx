@@ -39,6 +39,12 @@ const TAGS: Record<TagKind, { fill: string; ink: string; ring?: string }> = {
   now: { fill: tokens.colorAccentTint, ink: tokens.colorAccentText },
 };
 
+/** A selected row's look: Tint at the row's radius, with no ring. */
+export const SELECTED_ROW = {
+  borderRadius: tokens.radiusRow,
+  backgroundColor: tokens.colorAccentTint,
+} as const;
+
 export function StatusMark({
   kind,
   side = 12,
@@ -129,10 +135,13 @@ export function Tag({
   kind,
   word,
   turning = false,
+  wraps = false,
 }: {
   kind: TagKind;
   word: string;
   turning?: boolean | undefined;
+  /** At the largest text a long word wraps inside the tag rather than run past the row. */
+  wraps?: boolean;
 }) {
   const look = TAGS[kind];
 
@@ -143,11 +152,17 @@ export function Tag({
         { backgroundColor: look.fill, paddingLeft: kind === 'now' && !turning ? 9 : 7 },
         turning && styles.tagTurning,
         look.ring != null && { borderWidth: 1, borderColor: look.ring },
+        wraps && styles.tagWraps,
       ]}
     >
       {turning && <TurningMark />}
       {kind !== 'now' && <StatusMark kind={kind} ink={look.ink} />}
-      <Text size={12.5} weight="semibold" numberOfLines={1} style={{ color: look.ink }}>
+      <Text
+        size={12.5}
+        weight="semibold"
+        numberOfLines={wraps ? undefined : 1}
+        style={{ color: look.ink }}
+      >
         {word}
       </Text>
     </View>
@@ -484,12 +499,13 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   tagTurning: { gap: tokens.spaceXs },
+  tagWraps: { flexShrink: 1 },
   head: { minHeight: tokens.sizeHit, flexDirection: 'row', alignItems: 'center', gap: 10 },
   headTitle: { flex: 1, minWidth: 0, letterSpacing: -0.18, lineHeight: 18 * 1.25 },
   foot: { paddingTop: tokens.spaceXs },
   row: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceLg },
   // Lit like People's row, with no ring: the owner found the ring weird (6 Nov 2026).
-  rowSelected: { borderRadius: tokens.radiusRow, backgroundColor: tokens.colorAccentTint },
+  rowSelected: SELECTED_ROW,
   rowPressed: { opacity: tokens.opacityPressed },
   words: { flex: 1, minWidth: 0, gap: 3 },
   titleRow: {
