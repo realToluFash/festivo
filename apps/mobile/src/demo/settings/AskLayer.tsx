@@ -9,7 +9,8 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { useSendingWords } from '../../components/ReadOut.tsx';
+import { Glyph } from '../../components/Glyph.tsx';
+import { useReadOut, useSendingWords } from '../../components/ReadOut.tsx';
 import { SETTLED_MS } from '../../components/Screen.tsx';
 import { moveScreenReaderFocus } from '../../components/screenReaderFocus.ts';
 import { type TextHandle, Text } from '../../components/Text.tsx';
@@ -22,10 +23,14 @@ export interface AskProps {
   line: string;
   /** `off` while the answer is out: the way back waits in Ink 3. */
   keep: { label: string; testID?: string; off?: boolean };
-  /** `busy` while the answer is out: the turning mark and these words in Ink 2, off. */
-  confirm: { label: string; testID?: string; removes?: boolean; busy?: string | undefined };
+  /** `busy` while the answer is out: the turning mark and these words in Ink 2, off. None once nothing is left to decide. */
+  confirm: { label: string; testID?: string; removes?: boolean; busy?: string | undefined } | null;
   onKeep: () => void;
-  onConfirm: () => void;
+  onConfirm?: () => void;
+  /** The line says the question no longer stands, with the alert mark, and is read out. */
+  alert?: boolean;
+  /** Why the answer did not go, under the line with the alert mark and read out; the verb tries again. */
+  failed?: string | null;
   testID?: string;
   width?: number;
   /** After the line, 10 apart: a handover's button and list. Too tall for the screen, the Ask scrolls as a whole (sc-614). */
@@ -45,6 +50,8 @@ export function AskLayer({
   confirm,
   onKeep,
   onConfirm,
+  alert = false,
+  failed = null,
   testID,
   width,
   body,
@@ -58,8 +65,9 @@ export function AskLayer({
   const heading = useRef<TextHandle>(null);
   const [widths, setWidths] = useState({ room: 0, keep: 0, confirm: 0 });
   const [inside, setInside] = useState(0);
-  const measured = widths.room > 0 && widths.keep > 0 && widths.confirm > 0;
-  const stacked = measured && widths.keep + tokens.space3xl + widths.confirm > widths.room;
+  const measured = widths.room > 0 && widths.keep > 0 && (confirm == null || widths.confirm > 0);
+  const stacked =
+    measured && confirm != null && widths.keep + tokens.space3xl + widths.confirm > widths.room;
   const fits = frame.height - insets.top - tokens.spaceLg - insets.bottom;
   const tall = body != null && inside > fits;
   const laid = (part: keyof typeof widths) => (event: LayoutChangeEvent) => {
@@ -76,12 +84,12 @@ export function AskLayer({
       />
     </View>
   );
-  const confirmAction = (
+  const confirmAction = confirm != null && (
     <View key="confirm" onLayout={laid('confirm')}>
       {confirm.busy == null ? (
         <TextAction
           label={confirm.label}
-          onPress={onConfirm}
+          onPress={() => onConfirm?.()}
           removes={confirm.removes ?? false}
           testID={confirm.testID}
         />
@@ -103,7 +111,8 @@ export function AskLayer({
     </View>
   );
 
-  useSendingWords(confirm.busy);
+  useSendingWords(confirm?.busy);
+  useReadOut(alert ? line : failed);
 
   useEffect(() => {
     const focus = setTimeout(() => moveScreenReaderFocus(heading.current), SETTLED_MS);
@@ -111,10 +120,15 @@ export function AskLayer({
     return () => clearTimeout(focus);
   }, []);
 
-  const lineText = (
-    <Text size={15} weight="medium" style={[styles.secondary, styles.askLine]}>
-      {line}
-    </Text>
+  const lineText = alert ? (
+    <AlertLine words={line} />
+  ) : (
+    <>
+      <Text size={15} weight="medium" style={[styles.secondary, styles.askLine]}>
+        {line}
+      </Text>
+      {failed != null && <AlertLine words={failed} />}
+    </>
   );
   const content = (
     <>
@@ -191,6 +205,19 @@ export function AskLayer({
   );
 }
 
+function AlertLine({ words }: { words: string }) {
+  return (
+    <View style={styles.alert}>
+      <View style={styles.alertMark}>
+        <Glyph name="alert" size={18} ink={tokens.colorInkSecondary} weight={2.2} />
+      </View>
+      <Text size={15} weight="medium" style={[styles.askLine, styles.alertLine]}>
+        {words}
+      </Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   secondary: { color: tokens.colorInkSecondary },
   grow: { flexGrow: 0, flexShrink: 1 },
@@ -232,5 +259,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: tokens.spaceXs,
   },
+  alert: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceSm },
+  alertMark: { marginTop: tokens.spaceHair },
+  alertLine: { flex: 1 },
   unmeasured: { opacity: 0 },
 });

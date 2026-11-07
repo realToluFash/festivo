@@ -23,6 +23,8 @@ import { ACCOUNT_PAGES } from './account.ts';
 import { GENERAL_PAGES } from './general.ts';
 import { MESSAGES_PAGES } from './messages.ts';
 import { GetBackInBoard } from './GetBackIn.tsx';
+import { GuestPage } from './Guest.tsx';
+import { GUEST_PAGES } from './guest.ts';
 import { NewAccountBoard } from './NewAccount.tsx';
 import { NOTIFICATIONS_PAGES } from './notifications.ts';
 import { SECURITY_PAGES } from './security.ts';
@@ -139,6 +141,7 @@ export default function Demo() {
       <Route path="settings/sign-in-rules" element={<Settings open="signInRules" />} />
       <Route path="people" element={<People />} />
       <Route path="vendors" element={<Vendors />} />
+      <Route path="guest" element={<GuestPage />} />
       <Route path="later" element={<Later />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
@@ -185,6 +188,8 @@ function DemoHome({ from }: { from: string }) {
         <BoardPages pages={CALENDAR_PAGES} />
         <h3>Create an organisation in B · A short walk · desktop</h3>
         <BoardPages pages={CREATE_PAGES} />
+        <h3>Guest’s page in A · The cover card · phone, tablet and desk</h3>
+        <BoardPages pages={GUEST_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-81">
@@ -535,11 +540,14 @@ const LATER: Record<string, string> = {
   terms: 'Terms',
   privacy: 'Privacy',
   security: 'Your account › Security',
+  kitchen: 'Update what the kitchen should know',
+  calendar: 'Add to calendar',
 };
 
 function Later() {
   const [params] = useSearchParams();
   const screen = LATER[params.get('screen') ?? ''] ?? 'Terms';
+  const guest = params.get('screen') === 'kitchen' || params.get('screen') === 'calendar';
 
   // Opened from any footer, signed in or not, so its header offers neither way (sc-29561).
   return (
@@ -548,8 +556,8 @@ function Later() {
         <h1>{screen}</h1>
         <p className="demo-muted">A stand-in: this page comes to the demo at its own step.</p>
       </div>
-      <Link className="button demo-wide" to="/demo/sign-in">
-        Back to sign in
+      <Link className="button demo-wide" to={guest ? '/demo/guest?state=coming' : '/demo/sign-in'}>
+        {guest ? 'Back to the guest’s page' : 'Back to sign in'}
       </Link>
     </BoardPage>
   );

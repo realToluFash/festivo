@@ -471,6 +471,61 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/settings/members?state=failed',
       },
       {
+        title: 'Members · requests to get back in',
+        what: 'Kofi and Priya lost their two-factor',
+        href: '/demo/settings/members?state=recovery',
+      },
+      {
+        title: 'Members · requests to get back in as Julien',
+        what: 'The same, as Julien, an admin',
+        href: '/demo/settings/members?state=recovery&as=julien',
+      },
+      {
+        title: 'Members · approve a request to get back in',
+        what: 'Turn off Kofi Mensah’s two-factor?',
+        href: '/demo/settings/members?state=recoveryApprove',
+      },
+      {
+        title: 'Members · turn down a request to get back in',
+        what: 'Turn down Kofi Mensah’s request?',
+        href: '/demo/settings/members?state=recoveryTurnDown',
+      },
+      {
+        title: 'Members · a request to get back in approved',
+        what: 'Kofi’s two-factor is off, Answer Priya Shah',
+        href: '/demo/settings/members?state=recoveryApproved',
+      },
+      {
+        title: 'Members · a request to get back in turned down',
+        what: 'Kofi’s request is turned down, Answer Priya Shah',
+        href: '/demo/settings/members?state=recoveryTurnedDown',
+      },
+      {
+        title: 'Members · a request answered elsewhere',
+        what: 'Kofi’s confirm offers Close alone',
+        href: '/demo/settings/members?state=recoveryClosed',
+      },
+      {
+        title: 'Members · an answer on its way',
+        what: 'Sending your answer…, the way back waits',
+        href: '/demo/settings/members?state=recoverySending',
+      },
+      {
+        title: 'Members · an answer that failed',
+        what: 'That did not work, the verb tries again',
+        href: '/demo/settings/members?state=recoveryFailed',
+      },
+      {
+        title: 'Members · no request to get back in left',
+        what: 'Both answered, Answer Lucía Gómez',
+        href: '/demo/settings/members?state=recoveryDone',
+      },
+      {
+        title: 'Members · your own request to get back in',
+        what: 'Julien’s, which somebody else answers',
+        href: '/demo/settings/members?state=recoveryOwn&as=julien',
+      },
+      {
         title: 'Sign-in rules',
         what: 'Julien meets every rule',
         href: '/demo/settings/sign-in-rules',
@@ -1002,6 +1057,11 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         what: 'The checks, and the refused shake',
         href: '/demo/sign-in',
       },
+      {
+        title: 'Sign in · that sign-in timed out',
+        what: 'A two-factor sign-in ran out, email kept',
+        href: `/demo/sign-in?timedOut=1&email=${SAMPLE.email}`,
+      },
     ],
   },
   {
@@ -1072,9 +1132,44 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/lost?emailOnly=1',
       },
       {
+        title: 'Lost the authenticator · sending the code',
+        what: 'Email only, held sending',
+        href: '/demo/lost?emailOnly=1&state=sending',
+      },
+      {
+        title: 'Enter the code · expired',
+        what: 'Email only, one code',
+        href: '/demo/lost-codes?emailOnly=1&state=expired',
+      },
+      {
+        title: 'Enter the code · too many wrong tries',
+        what: 'Email only, one code',
+        href: '/demo/lost-codes?emailOnly=1&state=exhausted',
+      },
+      {
+        title: 'Enter both codes · expired',
+        what: 'With a verified mobile, as today',
+        href: '/demo/lost-codes?state=expired',
+      },
+      {
+        title: 'Enter both codes · too many wrong tries',
+        what: 'With a verified mobile, as today',
+        href: '/demo/lost-codes?state=exhausted',
+      },
+      {
         title: 'Waiting for Ire Events',
         what: 'Answer it from the demo',
         href: '/demo/waiting',
+      },
+      {
+        title: 'Waiting · cancel your request?',
+        what: 'Cancel the request asks first',
+        href: '/demo/waiting?state=cancel',
+      },
+      {
+        title: 'Waiting · not cancelled',
+        what: 'Soirely could not be reached',
+        href: '/demo/waiting?state=notCancelled',
       },
       { title: 'Two-factor is off', what: 'Confirmed', href: '/demo/ending?kind=approved' },
       { title: 'Turned down', what: 'An ending', href: '/demo/ending?kind=turnedDown' },
