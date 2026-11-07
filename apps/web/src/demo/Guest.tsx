@@ -10,6 +10,7 @@ import {
   HOLD_MS,
   LAYOUT_MEDIA,
   LEGAL,
+  MESSAGE_MOST,
   MESSAGES,
   MINE_AT,
   OPEN,
@@ -19,6 +20,7 @@ import {
   type View,
   type Visit,
   type Words,
+  characters,
   dayOf,
   forTheDay,
   layoutOf,
@@ -107,16 +109,22 @@ function Visitor({ state }: { state: string | null }) {
     [go],
   );
 
-  const sendMessage = useCallback(() => {
+  function sendMessage(): void {
+    if (characters(visit.draft) > MESSAGE_MOST) {
+      go(() => ({ draftTried: true }), 'box');
+      return;
+    }
+
     go((was) => ({
       mine: [...was.mine, { words: was.draft.trim(), at: MINE_AT, sent: false }],
       draft: '',
       draftFailed: false,
+      draftTried: false,
     }));
     laterMessage(SEND_MS, () =>
       go((was) => ({ mine: was.mine.map((one) => ({ ...one, sent: true })) })),
     );
-  }, [go, laterMessage]);
+  }
 
   useEffect(() => {
     const hold: Record<string, () => void> = {

@@ -10,10 +10,13 @@ import {
   LANGUAGES,
   type Lang,
   MESSAGES,
+  MESSAGE_COUNT_FROM,
+  MESSAGE_MOST,
   type Mine,
   THANK_YOU,
   type Visit,
   type Words,
+  characters,
   eventDay,
   eventTime,
   mapsLink,
@@ -438,6 +441,9 @@ export function Messages({
   const box = useRef<HTMLTextAreaElement>(null);
   const shown = MESSAGES.slice(-visit.messages);
   const live = visit.draft.trim() !== '';
+  const length = characters(visit.draft);
+  const tooLong = visit.draftTried && length > MESSAGE_MOST;
+  const counting = !tooLong && length >= MESSAGE_COUNT_FROM;
 
   useEffect(() => {
     const field = box.current;
@@ -484,7 +490,7 @@ export function Messages({
       <div className="gp-compose">
         <label htmlFor="gp-box">{words.writeTo}</label>
         {visit.draftFailed && <Notice kind="broken">{words.messageFailed}</Notice>}
-        <div className="gp-compose-row">
+        <div className={tooLong ? 'gp-compose-row is-wrong' : 'gp-compose-row'}>
           <textarea
             ref={box}
             id="gp-box"
@@ -492,6 +498,8 @@ export function Messages({
             rows={1}
             value={visit.draft}
             data-focus="box"
+            aria-invalid={tooLong}
+            aria-describedby={tooLong ? 'gp-box-error' : counting ? 'gp-box-count' : undefined}
             onChange={(event) => onDraft(event.target.value)}
           />
           <button
@@ -505,6 +513,17 @@ export function Messages({
             <Line name="send" size={20} weight={2.6} />
           </button>
         </div>
+        {counting && (
+          <p id="gp-box-count" className="gp-count">
+            {words.messageCount(length)}
+          </p>
+        )}
+        {tooLong && (
+          <p id="gp-box-error" className="gp-error">
+            <Glyph name="alert" size={15} weight={2.2} />
+            {words.messageTooLong}
+          </p>
+        )}
       </div>
     </section>
   );

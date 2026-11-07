@@ -518,6 +518,35 @@ describe('the hosts’ messages and the guest’s own (§4a)', () => {
     expect(screen.getByRole('status').textContent).toMatch(/^Sent · /u);
   });
 
+  it('counts from 900 characters, and over 1,000 sends nothing and says so on the box', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    await guest('messages');
+    const box = screen.getByLabelText('Write to Adaeze Obi and Tunde Bakare');
+
+    fireEvent.change(box, { target: { value: 'a'.repeat(899) } });
+    expect(screen.queryByText(/characters$/u)).toBeNull();
+    fireEvent.change(box, { target: { value: 'a'.repeat(950) } });
+    expect(screen.getByText('950 of 1,000 characters').id).toBe(
+      box.getAttribute('aria-describedby'),
+    );
+
+    fireEvent.change(box, { target: { value: 'a'.repeat(1001) } });
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+    expect(screen.queryByText('Sending…')).toBeNull();
+    expect(box).toHaveProperty('value', 'a'.repeat(1001));
+    expect(box.getAttribute('aria-invalid')).toBe('true');
+    expect(document.getElementById(box.getAttribute('aria-describedby') ?? '')?.textContent).toBe(
+      'Shorten your message to 1,000 characters or fewer.',
+    );
+    expect(document.activeElement).toBe(box);
+
+    fireEvent.change(box, { target: { value: 'a'.repeat(1000) } });
+    expect(box.getAttribute('aria-invalid')).toBe('false');
+    expect(screen.getByText('1,000 of 1,000 characters')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+    expect(screen.getByText('Sending…')).toBeDefined();
+  });
+
   it('sits under the answer and above the door code', async () => {
     await guest('message');
     const order = [...document.querySelectorAll('.gp-under > *')].map(

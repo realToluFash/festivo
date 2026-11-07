@@ -18,6 +18,9 @@ export const READER_ZONE = 'Europe/London';
 export const AWAY_ZONE = 'America/Sao_Paulo';
 
 export const SEND_MS = 900;
+/** A guest's message holds at most 1,000 characters, counted from 900 (pm, 7 Nov 2026). */
+export const MESSAGE_MOST = 1000;
+export const MESSAGE_COUNT_FROM = 900;
 export const HOLD_MS = 8000;
 
 export const THANK_YOU =
@@ -87,6 +90,7 @@ export interface Visit {
   mine: readonly Mine[];
   draft: string;
   draftFailed: boolean;
+  draftTried: boolean;
   arrival: boolean;
   want: string | null;
   wantId: number;
@@ -112,6 +116,7 @@ const BASE: Visit = {
   mine: [],
   draft: '',
   draftFailed: false,
+  draftTried: false,
   arrival: false,
   want: null,
   wantId: 0,
@@ -129,7 +134,6 @@ function tellUs(result: 'failed' | 'limited' | 'thanks' | null = null): View {
   return { kind: 'tellUs', busy: false, result, back: OPEN };
 }
 
-/** Every state the boards draw, with its `?state=` name, the board's title and what it starts as. */
 const STATES = {
   open: { name: 'Not answered yet, with a date to answer by', starts: {} },
   openNoDate: { name: 'Not answered yet, no date to answer by', starts: { replyBy: null } },
@@ -606,6 +610,8 @@ export function wordsFor(lang: Lang) {
     messages: t('guestPage.messages'),
     writeTo: t('guestPage.writeTo', { hosts }),
     sendMessage: t('guestPage.sendMessage'),
+    messageCount: (count: number) => t('guestPage.messageCount', { count, most: MESSAGE_MOST }),
+    messageTooLong: t('guestPage.messageTooLong', { most: MESSAGE_MOST }),
     sent: t('guestPage.sent'),
     messageFailed: t('guestPage.messageFailed'),
   };
@@ -648,4 +654,8 @@ export function codePath(size = 25, seed = 1301): string {
   return grid
     .flatMap((row, r) => row.map((on, c) => (on ? `M${c + 2} ${r + 2}h1v1h-1z` : '')))
     .join('');
+}
+
+export function characters(words: string): number {
+  return Array.from(words).length;
 }

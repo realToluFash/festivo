@@ -1038,6 +1038,33 @@
   box-shadow: inset 0 0 0 2px var(--colorAccent);
 }
 
+.gp-count,
+.gp-error {
+  margin-top: 6px;
+  font: 500 13.5px/1.4 var(--fontFamily);
+}
+
+.gp-count {
+  color: var(--colorInkSecondary);
+}
+
+.gp-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  color: var(--colorBroken);
+}
+
+.gp-error svg {
+  flex: none;
+  margin-top: 1px;
+}
+
+.gp .gp-compose-row.is-wrong .gp-box,
+.gp .gp-compose-row.is-wrong .gp-box:focus {
+  box-shadow: inset 0 0 0 2px var(--colorBroken);
+}
+
 .gp-send {
   display: flex;
   flex: none;

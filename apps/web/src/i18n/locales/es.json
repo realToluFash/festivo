@@ -490,7 +490,9 @@
     "writeTo": "Write to {{hosts}}",
     "sendMessage": "Send",
     "sent": "Sent",
-    "messageFailed": "Your message wasn’t sent. Your words are still here. Try again."
+    "messageFailed": "Your message wasn’t sent. Your words are still here. Try again.",
+    "messageCount": "{{count, number}} of {{most, number}} characters",
+    "messageTooLong": "Shorten your message to {{most, number}} characters or fewer."
   },
   "signIn": {
     "title": "Iniciar sesión",
