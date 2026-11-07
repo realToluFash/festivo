@@ -66,6 +66,23 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **7 Nov 2026. A payment schedule's shapes, and someone else adding payments first**
+  (sc-1332, pm's #30379, settled before the board is drawn). The 409 when another person adds
+  a scheduled payment while a shape is being chosen, on the form and as the API's detail
+  under one key: "Payments were added to this vendor's schedule while you were filling this
+  in, so none of yours were saved. Check the payments it has now before adding more." Won
+  over the story's "Payments were added to this vendor while you were choosing. Nothing was
+  saved.": payments belong to the vendor's schedule on this event, not to the vendor;
+  "choosing" missed the person who had already edited the rows; and the house refusal says
+  what was not saved and what to do, as sc-87's second quote does. "None of yours", not
+  "nothing", because the other person's payments were saved. No name slot: the API need not
+  say who. Kept as the story has them: the radio options **Deposit and balance**, **Three
+  instalments**, **In full before the event**, **In full after the event**, **Enter rows
+  yourself**; the prefilled descriptions Deposit, Second instalment, Balance, Payment in full
+  (Three instalments reads Deposit, Second instalment, Balance); "Set to the date quoted" and
+  "Needs the event's date", labels with no full stop. A blank description reuses sc-87's
+  "Enter what the payment is for." rather than a near-copy reading "this payment".
+
 - **7 Nov 2026. Choosing a quote's vendor, and the vendor page's empty states** (sc-87, pm's
   #30377, settled before the board is drawn). In the Vendor field: an option already quoted
   reads "Already quoted on this event", a label with no full stop. Typed text that matches
