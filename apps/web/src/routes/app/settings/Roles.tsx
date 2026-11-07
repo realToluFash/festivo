@@ -534,7 +534,7 @@ function Editing({
         )}
       </div>
 
-      {role?.fixed === true && (
+      {role?.seededAs === 'owner' && (
         <div className="notice notice-quiet">
           <span className="mark mark-info" aria-hidden="true">
             i
@@ -933,7 +933,7 @@ function Removing({
 /** Only Owner's line is a fact about what it holds; any other line promises changes only to someone who can make them. */
 function describe(role: OrganisationRole | null, manages: boolean): string {
   if (role == null) return 'rolesScreen.describeNew';
-  if (role.fixed) return 'rolesScreen.describeOwner';
+  if (role.seededAs === 'owner') return 'rolesScreen.describeOwner';
   if (role.seededAs != null)
     return manages ? 'rolesScreen.describeSeeded' : 'rolesScreen.describeSeededReadOnly';
 
