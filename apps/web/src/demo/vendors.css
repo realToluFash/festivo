@@ -1,66 +1,192 @@
-.vd-top {
+/* Settings › Vendors at a desk in A · Summary first (Budget-A-Vendors, page e81). */
+
+.desk-tile.is-vendors {
+  background: var(--optionGreen);
+}
+
+/* The count's live region is unseen until a search: positioned here, so it stays inside the page. */
+.vd-column {
+  position: relative;
+}
+
+.vd-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceSm) var(--spaceXl);
+}
+
+.vd-search {
+  display: flex;
+  flex: 1 1 12rem;
+  align-items: center;
+  gap: var(--spaceMd);
+  box-sizing: border-box;
+  min-width: 0;
+  height: 48px;
+  padding: 0 var(--spaceXxs) 0 14px;
+  border-radius: var(--radiusInset);
+  background: var(--colorCard);
+  box-shadow: inset 0 0 0 1.5px var(--colorFieldBorder);
+  color: var(--colorInkSecondary);
+}
+
+.vd-search:focus-within {
+  box-shadow: inset 0 0 0 2px var(--colorAccent);
+}
+
+.desk .vd-search input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: none;
+  color: var(--colorInk);
+  font: 500 16px/1 var(--fontFamily);
+  appearance: none;
+}
+
+.desk .vd-search input:focus-visible {
+  box-shadow: none;
+}
+
+.vd-search input::placeholder {
+  color: var(--colorInkSecondary);
+  opacity: 1;
+}
+
+.vd-search input::-webkit-search-cancel-button {
+  appearance: none;
+}
+
+.vd-clear {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: var(--sizeHit);
+  height: var(--sizeHit);
+  border-radius: var(--radiusPill);
+  color: var(--colorInkSecondary);
+}
+
+/* The lit row holds the focus while it is lit, so its Tint is the mark, never a ring. */
+.vd-column .desk-row.is-on:focus-visible {
+  box-shadow: none;
+}
+
+.vd-count {
+  color: var(--colorInkSecondary);
+  font: 600 15px/1.4 var(--fontFamily);
+  font-variant-numeric: tabular-nums;
+}
+
+.vd-none {
   display: flex;
   flex-direction: column;
   gap: var(--spaceXs);
 }
 
-.vd-rows .vd-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 140px 260px 24px;
-  align-items: center;
-  gap: var(--spaceLg);
-  text-align: start;
+.vd-none-line {
+  font: 700 18px/1.3 var(--fontFamily);
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
 }
 
-.vd-rows .vd-row.is-archived {
-  grid-template-columns: minmax(0, 1fr) 140px 260px 250px;
-}
-
-.vd-cell {
-  overflow: hidden;
-  color: var(--colorInkSecondary);
-  font: var(--deskSmall);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.vd-cell.is-none {
-  color: var(--colorInkTertiary);
-}
-
-.vd-archived {
+.vd-none-actions {
   display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: var(--spaceLg);
+  flex-wrap: wrap;
+  gap: 0 var(--space3xl);
 }
 
 .vd-pager {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--spaceLg);
+  gap: 0 var(--spaceXl);
   min-height: var(--sizeHit);
 }
 
-.vd-pager-turns {
-  display: flex;
-  align-items: center;
-  gap: var(--spaceLg);
+.vd-pager-words {
+  flex: 1;
+  color: var(--colorInkSecondary);
+  font: 500 14.5px/1.4 var(--fontFamily);
+  font-variant-numeric: tabular-nums;
 }
 
-.vd-pager-turns .desk-text[aria-disabled='true'] {
+.vd-pager .desk-text[aria-disabled='true'] {
   color: var(--colorInkTertiary);
   cursor: default;
 }
 
-.vd-label-row {
-  margin-block: 0;
+.vd-refused {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+}
+
+.vd-refused .desk-text {
+  gap: var(--spaceXxs);
+}
+
+.vd-refused .desk-text:not(:hover) {
+  text-decoration: none;
+}
+
+/* The vendor's form is the 700 dialog (spec §4), the product's 540 widened from the demo. */
+.desk-dialog:has(.vd-wide) {
+  width: 700px;
+  max-width: calc(100% - 2 * var(--spaceXl));
+}
+
+.vd-wide {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXl);
+}
+
+.vd-columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(16rem, 100%), 1fr));
+  gap: 0 var(--space6xl);
+  align-items: start;
+}
+
+.vd-to-fix {
+  font: 500 14px/1.45 var(--fontFamily);
 }
 
 .vd-optional {
   color: var(--colorInkSecondary);
-  font: var(--deskSmall);
+  font-weight: 500;
+}
+
+.vd-select {
+  position: relative;
+  padding: 0;
+}
+
+.desk .vd-select select {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0 44px 0 var(--spaceXl);
+  border: 0;
+  border-radius: inherit;
+  outline: none;
+  background: none;
+  color: var(--colorInk);
+  font: 500 16px/1 var(--fontFamily);
+  appearance: none;
+}
+
+.vd-select svg {
+  position: absolute;
+  right: var(--spaceLg);
+  pointer-events: none;
+  color: var(--colorInkSecondary);
 }
 
 .desk-box.vd-area {
@@ -86,13 +212,6 @@
 
 .vd-archive {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--spaceXs);
   padding-top: var(--spaceMd);
   border-top: 1px solid var(--colorBorder);
-}
-
-.vd-first {
-  align-items: flex-start;
 }
