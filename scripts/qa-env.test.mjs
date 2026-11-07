@@ -1108,6 +1108,7 @@ describe("a flow's URLs", () => {
     expect(flowUrls(urls)).toEqual({
       METRO_URL: `exp://127.0.0.1:${ports.METRO_PORT}`,
       MAILPIT_URL: `http://127.0.0.1:${ports.MAILPIT_UI_PORT}`,
+      SMOCKER_URL: `http://127.0.0.1:${ports.SMOCKER_UI_PORT}`,
       API_URL: `http://127.0.0.1:${ports.API_PORT}`,
       WEB_URL: `http://127.0.0.1:${ports.WEB_PORT}`,
     });
@@ -2554,6 +2555,22 @@ describe('the flows a batch runs', () => {
       for (const code of ['en', 'es', 'fr', 'pt']) {
         expect(catalogues[code].steps.organisationTitle).toMatch(onDetails);
         expect(catalogues[code].steps.organisationTitle).not.toMatch(someoneSignedIn);
+        expect(catalogues[code].steps.invitedTitle).toMatch(homeSettled);
+        expect(catalogues[code].steps.invitedTitle).toMatch(onDetails);
+        expect(catalogues[code].steps.invitedTitle).not.toMatch(someoneSignedIn);
+      }
+      const signInForm = readFileSync(join(target, 'batch/sign-in-form.yaml'), 'utf8');
+      const landed = new RegExp(
+        `^(?:${signInForm.match(/extendedWaitUntil:\s+visible: '(.*)'\s+timeout: 30000\s+optional: true/)[1].replaceAll("''", "'")})$`,
+      );
+      const namesAccount = new RegExp(
+        `^(?:${signInForm.match(/scrollUntilVisible:\s+element:\s+text: '(.*)'/)[1].replaceAll("''", "'")})$`,
+      );
+      for (const code of ['en', 'es', 'fr', 'pt']) {
+        const invitation = catalogues[code].steps.invitationFor;
+        expect(catalogues[code].steps.invitedTitle).toMatch(landed);
+        expect(invitation.replace('{{email}}', 'qa@\u200Bsoirely.test')).toMatch(namesAccount);
+        expect(invitation.replace('{{email}}', 'other@soirely.test')).not.toMatch(namesAccount);
       }
       const detailsAt = signOut.indexOf('file: ../sign-out-from-complete-profile.yaml');
       expect(detailsAt).toBeGreaterThan(-1);

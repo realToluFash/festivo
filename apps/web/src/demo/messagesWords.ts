@@ -256,7 +256,7 @@ export const MW = {
   cancelledBy: 'Cancelled by {{name}} at {{time}}. It was not sent.',
   cancelledTag: 'Cancelled',
   cancelledSaid: 'Cancelled.',
-  fixedNotSent: 'Fixed · not sent yet',
+  updatedNotSent: 'Updated · not sent yet',
   sentToSaid: 'Sent to {{name}}.',
   copyLink: 'Copy their link',
   theirInvitation: 'Their invitation',

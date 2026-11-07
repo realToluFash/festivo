@@ -66,6 +66,7 @@ type SignInNotice = { title: string; body: string };
 /** The states the board draws, each opened from the demo's home. */
 const TODAY_MOMENTS: { key: string; name: string }[] = [
   { key: 'plan', name: 'A planning day' },
+  { key: 'plan&invites=none', name: 'A planning day, invitations not sent' },
   { key: 'planNow', name: 'A planning day, built now' },
   { key: 'day', name: 'The event day' },
   { key: 'dayNow', name: 'The event day, built now' },

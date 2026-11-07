@@ -127,7 +127,7 @@ export const W = {
   cancelledTag: 'Cancelled',
   cancelledSaid: 'Cancelled.',
   savedSaid: 'Saved.',
-  fixedNotSent: 'Fixed · not sent yet',
+  updatedNotSent: 'Updated · not sent yet',
   copyLink: 'Copy their link',
   notYetInvited: 'Not yet invited',
   theirInvitation: 'Their invitation',
