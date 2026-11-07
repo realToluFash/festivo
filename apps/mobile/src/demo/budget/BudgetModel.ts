@@ -1,0 +1,683 @@
+import {
+  AS_OF_TIME,
+  CATEGORIES,
+  CEILINGS,
+  CHANGED_SINCE,
+  COLLEAGUE,
+  CURRENCY,
+  type Category,
+  EVENT_NAME,
+  GUESTS,
+  HEADS_IF_ALL_COME,
+  LINES,
+  type Line,
+  type LinkState,
+  NOW_TIME,
+  PAID_BEFORE,
+  PAYERS,
+  PAYMENTS,
+  type Payer,
+  type PayerKey,
+  type Payment,
+  REMINDER,
+  TODAY,
+  VENDORS,
+  VENDOR_PAYERS,
+  ZONE,
+} from './BudgetSample.ts';
+
+export const BUDGET_STATES = [
+  'populated',
+  'scrolled',
+  'loading',
+  'live_update',
+  'not_live',
+  'reconnecting',
+  'never_loaded',
+  'no_lines',
+  'nothing_due',
+  'mark_paid_open',
+  'marked_paid',
+  'refused_paid',
+  'refused_cancelled',
+  'read_only',
+  'no_budget',
+] as const;
+
+export const PAYERS_STATES = [
+  'payers',
+  'payer_never_sent',
+  'payer_opened',
+  'no_payers',
+  'no_costs',
+  'payer_removed',
+  'offline',
+  'send_failed',
+  'long_name',
+] as const;
+
+export const DUE_NOW_STATES = [
+  'due_now',
+  'due_marked',
+  'due_changed',
+  'due_refused',
+  'due_done',
+  'due_read_only',
+] as const;
+
+export const BUDGET_DEMO_STATES = [...BUDGET_STATES, ...PAYERS_STATES, ...DUE_NOW_STATES] as const;
+export type BudgetState = (typeof BUDGET_DEMO_STATES)[number];
+
+export function budgetStateOf(value: string | undefined): BudgetState | null {
+  return BUDGET_DEMO_STATES.find((state) => state === value) ?? null;
+}
+
+export function isIn<T extends string>(states: readonly T[], state: string | null): state is T {
+  return state != null && (states as readonly string[]).includes(state);
+}
+
+export function money(pence: number, locale = 'en-US'): string {
+  return new Intl.NumberFormat(locale, { style: 'currency', currency: CURRENCY }).format(
+    pence / 100,
+  );
+}
+
+export function currencySymbol(locale = 'en-US'): string {
+  const parts = new Intl.NumberFormat(locale, {
+    style: 'currency',
+    currency: CURRENCY,
+  }).formatToParts(0);
+  return parts.find((part) => part.type === 'currency')?.value ?? CURRENCY;
+}
+
+/** Only the summary card rounds to whole units (pm, 7 Nov 2026). */
+export function whole(pence: number, locale = 'en-US'): string {
+  return new Intl.NumberFormat(locale, {
+    style: 'currency',
+    currency: CURRENCY,
+    maximumFractionDigits: 0,
+    minimumFractionDigits: 0,
+  }).format(pence / 100);
+}
+
+function at(day: string): Date {
+  return new Date(`${day}T12:00:00Z`);
+}
+
+function dated(day: string, locale: string, options: Intl.DateTimeFormatOptions): string {
+  return new Intl.DateTimeFormat(locale, { timeZone: ZONE, ...options }).format(at(day));
+}
+
+export const days = {
+  short: (day: string, locale = 'en-US') =>
+    dated(day, locale, { weekday: 'short', month: 'short', day: 'numeric' }),
+  long: (day: string, locale = 'en-US') =>
+    dated(day, locale, { weekday: 'long', month: 'long', day: 'numeric' }),
+  field: (day: string, locale = 'en-US') =>
+    dated(day, locale, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }),
+  month: (day: string, locale = 'en-US') => dated(day, locale, { month: 'short', day: 'numeric' }),
+};
+
+export function openedAt(iso: string, locale = 'en-US'): { day: string; time: string } {
+  const when = new Date(iso);
+  return {
+    day: new Intl.DateTimeFormat(locale, {
+      timeZone: ZONE,
+      weekday: 'long',
+      month: 'short',
+      day: 'numeric',
+    }).format(when),
+    time: new Intl.DateTimeFormat(locale, {
+      timeZone: ZONE,
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    }).format(when),
+  };
+}
+
+function minutesOf(time: string): number {
+  const [hours, minutes] = time.split(':').map(Number);
+  return (hours ?? 0) * 60 + (minutes ?? 0);
+}
+
+export const AS_OF = { time: AS_OF_TIME, minutes: minutesOf(NOW_TIME) - minutesOf(AS_OF_TIME) };
+
+export type LineAmount =
+  | { kind: 'priced'; settled: number; ifAll: number }
+  | { kind: 'notPriced' }
+  | { kind: 'nothingYet' };
+
+export function amountOf(line: Line): LineAmount {
+  if (line.rate == null) return { kind: 'notPriced' };
+  if (line.settled === 0 && line.ifAll === 0) return { kind: 'nothingYet' };
+  return { kind: 'priced', settled: line.rate * line.settled, ifAll: line.rate * line.ifAll };
+}
+
+export interface Totals {
+  settled: number;
+  ifAll: number;
+  notPriced: number;
+}
+
+export function totalsOf(lines: readonly Line[] = LINES): Totals {
+  return lines.reduce<Totals>(
+    (sum, line) => {
+      const amount = amountOf(line);
+      if (amount.kind === 'notPriced') return { ...sum, notPriced: sum.notPriced + 1 };
+      if (amount.kind === 'nothingYet') return sum;
+      return {
+        ...sum,
+        settled: sum.settled + amount.settled,
+        ifAll: sum.ifAll + amount.ifAll,
+      };
+    },
+    { settled: 0, ifAll: 0, notPriced: 0 },
+  );
+}
+
+/** Per head in pence, rounded to the penny: settled over who said yes, and if all come. */
+export function perHeadOf(totals: Totals = totalsOf()): { settled: number; ifAll: number } {
+  return {
+    settled: Math.round(totals.settled / GUESTS.coming),
+    ifAll: Math.round(totals.ifAll / HEADS_IF_ALL_COME),
+  };
+}
+
+export function categoriesIn(lines: readonly Line[] = LINES): Category[] {
+  return CATEGORIES.filter((category) => lines.some((line) => line.category === category));
+}
+
+export type CeilingState = 'within' | 'close' | 'overIf' | 'over';
+
+export function ceilingState(limit: number, settled: number, ifAll: number): CeilingState {
+  if (settled > limit) return 'over';
+  if (ifAll > limit) return 'overIf';
+  if (ifAll * 10 >= limit * 9) return 'close';
+  return 'within';
+}
+
+export function categoryTotals(category: Category): Totals {
+  return totalsOf(LINES.filter((line) => line.category === category));
+}
+
+export function categoryState(category: Category): CeilingState | null {
+  const limit = CEILINGS.categories[category];
+  if (limit == null) return null;
+  const totals = categoryTotals(category);
+  return ceilingState(limit, totals.settled, totals.ifAll);
+}
+
+export interface Paid {
+  amount: number;
+  on: string;
+  by: string;
+}
+
+export interface Ledger {
+  paid: Readonly<Record<string, Paid>>;
+  cancelled: readonly string[];
+}
+
+export const START_LEDGER: Ledger = {
+  paid: Object.fromEntries(
+    Object.entries(PAID_BEFORE).map(([id, { on, by }]) => [id, { amount: amountDue(id), on, by }]),
+  ),
+  cancelled: [],
+};
+
+function amountDue(id: string): number {
+  return paymentOf(id).amount;
+}
+
+export function paymentOf(id: string): Payment {
+  const found = PAYMENTS.find((payment) => payment.id === id);
+  if (found == null) throw new Error(`No payment ${id} in the sample.`);
+  return found;
+}
+
+export function isOwed(ledger: Ledger, id: string): boolean {
+  return ledger.paid[id] == null && !ledger.cancelled.includes(id);
+}
+
+export function owed(ledger: Ledger): Payment[] {
+  return PAYMENTS.filter((payment) => isOwed(ledger, payment.id));
+}
+
+export function isOverdue(payment: Payment): boolean {
+  return payment.due < TODAY;
+}
+
+/** The card's one step: the first payment overdue, else the soonest due (budget-a-spec.md §5). */
+export function nextPayment(ledger: Ledger): Payment | null {
+  const due = owed(ledger);
+  return due.find(isOverdue) ?? due[0] ?? null;
+}
+
+export function nextDay(day: string): string {
+  const next = new Date(`${day}T12:00:00Z`);
+  next.setUTCDate(next.getUTCDate() + 1);
+  return next.toISOString().slice(0, 10);
+}
+
+export interface Plan {
+  planned: number;
+  committed: number;
+  paid: number;
+  paidCount: number;
+  stillToPay: number;
+  scheduledCount: number;
+}
+
+/** sc-89's four figures, never merged into one actual. */
+export function planOf(ledger: Ledger, totals: Totals = totalsOf()): Plan {
+  const paid = Object.values(ledger.paid);
+  const due = owed(ledger);
+  return {
+    planned: totals.settled,
+    committed: Object.values(VENDORS).reduce((sum, vendor) => sum + vendor.quote, 0),
+    paid: paid.reduce((sum, one) => sum + one.amount, 0),
+    paidCount: paid.length,
+    stillToPay: due.reduce((sum, one) => sum + one.amount, 0),
+    scheduledCount: due.length,
+  };
+}
+
+export function ledgerFor(state: BudgetState | null): Ledger {
+  if (state === 'nothing_due')
+    return {
+      ...START_LEDGER,
+      paid: Object.fromEntries(
+        PAYMENTS.map((payment) => [
+          payment.id,
+          START_LEDGER.paid[payment.id] ?? { amount: payment.amount, on: TODAY, by: COLLEAGUE },
+        ]),
+      ),
+    };
+  if (state === 'refused_paid')
+    return paidBy(START_LEDGER, 'bloom-balance', COLLEAGUE, TODAY, amountDue('bloom-balance'));
+  if (state === 'refused_cancelled') return { ...START_LEDGER, cancelled: ['bloom-balance'] };
+  if (state === 'due_changed')
+    return {
+      ...paidBy(
+        START_LEDGER,
+        'bloom-balance',
+        COLLEAGUE,
+        CHANGED_SINCE.paidOn,
+        amountDue('bloom-balance'),
+      ),
+      cancelled: ['savour-deposit'],
+    };
+  if (state === 'due_refused') return { ...START_LEDGER, cancelled: ['savour-deposit'] };
+  if (state === 'due_done')
+    return REMINDER.payments.reduce(
+      (ledger, id) => paidBy(ledger, id, COLLEAGUE, TODAY, amountDue(id)),
+      START_LEDGER,
+    );
+  return START_LEDGER;
+}
+
+export function paidBy(ledger: Ledger, id: string, by: string, on: string, amount: number): Ledger {
+  return { ...ledger, paid: { ...ledger.paid, [id]: { amount, on, by } } };
+}
+
+export function unpaid(ledger: Ledger, id: string): Ledger {
+  const rest = { ...ledger.paid };
+  delete rest[id];
+  return { ...ledger, paid: rest };
+}
+
+export type AmountCheck = { ok: true; pence: number } | { ok: false };
+
+/** Above 0, at GBP's two decimal places, typed in en's number format; no upper limit. */
+export function checkAmount(typed: string): AmountCheck {
+  const plain = typed.trim().replace(/,/gu, '');
+  if (!/^\d+(\.\d{1,2})?$/u.test(plain)) return { ok: false };
+  const [units = '0', pence = ''] = plain.split('.');
+  const value = Number(units) * 100 + Number(pence.padEnd(2, '0'));
+  return value > 0 ? { ok: true, pence: value } : { ok: false };
+}
+
+export const REFERENCE_MAXIMUM = 100;
+
+export function referenceTooLong(typed: string): boolean {
+  return typed.trim().length > REFERENCE_MAXIMUM;
+}
+
+export function typedAmount(pence: number): string {
+  return (pence / 100).toFixed(2);
+}
+
+export interface Share {
+  settled: number;
+  ifAll: number;
+}
+
+function lineOf(key: string): Line {
+  const found = LINES.find((line) => line.key === key);
+  if (found == null) throw new Error(`No line ${key} in the sample.`);
+  return found;
+}
+
+export function coverAmount(lineKey: string, share: number): Share {
+  const amount = amountOf(lineOf(lineKey));
+  if (amount.kind !== 'priced') return { settled: 0, ifAll: 0 };
+  return { settled: amount.settled * share, ifAll: amount.ifAll * share };
+}
+
+export function shareOf(payer: Payer): Share {
+  return payer.covers.reduce<Share>(
+    (sum, cover) => {
+      const part = coverAmount(cover.line, cover.share);
+      return { settled: sum.settled + part.settled, ifAll: sum.ifAll + part.ifAll };
+    },
+    { settled: 0, ifAll: 0 },
+  );
+}
+
+export function payerPaid(ledger: Ledger, key: PayerKey): number {
+  return PAYMENTS.reduce((sum, payment) => {
+    const done = ledger.paid[payment.id];
+    const part = VENDOR_PAYERS[payment.vendor][key] ?? 0;
+    return done == null ? sum : sum + Math.round(done.amount * part);
+  }, 0);
+}
+
+export function stillToCome(share: Share, paid: number): Share {
+  return { settled: Math.max(0, share.settled - paid), ifAll: Math.max(0, share.ifAll - paid) };
+}
+
+export interface Payers {
+  has: Share;
+  noPayer: number;
+  noPayerCosts: number;
+}
+
+export function payersOf(): Payers {
+  const covered = new Set(PAYERS.flatMap((payer) => payer.covers.map((cover) => cover.line)));
+  const left = LINES.filter((line) => !covered.has(line.key));
+  const has = PAYERS.map(shareOf).reduce<Share>(
+    (sum, share) => ({ settled: sum.settled + share.settled, ifAll: sum.ifAll + share.ifAll }),
+    { settled: 0, ifAll: 0 },
+  );
+  return { has, noPayer: totalsOf(left).settled, noPayerCosts: left.length };
+}
+
+export function payerOf(key: PayerKey): Payer {
+  const found = PAYERS.find((payer) => payer.key === key);
+  if (found == null) throw new Error(`No payer ${key} in the sample.`);
+  return found;
+}
+
+export type View = { page: 'home' } | { page: 'payers' } | { page: 'payer'; key: PayerKey };
+export type Refusal = 'paid' | 'cancelled';
+
+export interface MarkForm {
+  id: string;
+  from: 'card' | 'dueNow';
+  phase: 'open' | 'sending' | 'refused';
+  refusal: Refusal | null;
+  amount: number | null;
+}
+
+export interface DueNowSheet {
+  marked: readonly string[];
+  refused: readonly string[];
+  readOnly: boolean;
+  /** Opened once every row was settled: one line, and a link per event (sc-1331). */
+  done: boolean;
+}
+
+export interface BudgetModel {
+  figures: 'loading' | 'shown' | 'never';
+  link: 'live' | 'offline' | 'reconnecting';
+  wash: boolean;
+  showLive: boolean;
+  costs: boolean;
+  vendors: 'on' | 'readOnly';
+  ledger: Ledger;
+  marked: readonly string[];
+  form: MarkForm | null;
+  dueNow: DueNowSheet | null;
+  view: View;
+  payers: 'shown' | 'none' | 'noCosts';
+  removed: string | null;
+  links: Record<PayerKey, LinkState>;
+  sending: PayerKey | null;
+  failed: PayerKey | null;
+  longName: boolean;
+  scrolled: boolean;
+  told: { words: string; at: number } | null;
+}
+
+const LINKS: Record<PayerKey, LinkState> = {
+  couple: 'notSent',
+  obi: 'opened',
+  bakare: 'sent',
+  funmi: 'notSent',
+};
+
+export function startOf(state: BudgetState | null, removed: string): BudgetModel {
+  const base: BudgetModel = {
+    figures: 'shown',
+    link: 'live',
+    wash: false,
+    showLive: false,
+    costs: true,
+    vendors: 'on',
+    ledger: ledgerFor(state),
+    marked: [],
+    form: null,
+    dueNow: null,
+    view: { page: 'home' },
+    payers: 'shown',
+    removed: null,
+    links: LINKS,
+    sending: null,
+    failed: null,
+    longName: false,
+    scrolled: false,
+    told: null,
+  };
+  const bloom = 'bloom-balance';
+
+  switch (state) {
+    case 'scrolled':
+      return { ...base, scrolled: true };
+    case 'loading':
+      return { ...base, figures: 'loading' };
+    case 'live_update':
+      return { ...base, wash: true, showLive: true };
+    case 'not_live':
+      return { ...base, link: 'offline' };
+    case 'reconnecting':
+      return { ...base, link: 'reconnecting' };
+    case 'never_loaded':
+      return { ...base, figures: 'never', link: 'offline' };
+    case 'no_lines':
+      return { ...base, costs: false, payers: 'none' };
+    case 'mark_paid_open':
+      return {
+        ...base,
+        form: { id: bloom, from: 'card', phase: 'open', refusal: null, amount: null },
+      };
+    case 'marked_paid':
+      return {
+        ...base,
+        ledger: paidBy(base.ledger, bloom, 'Folake Adeyemi', TODAY, amountDue(bloom)),
+        marked: [bloom],
+      };
+    case 'refused_paid':
+      return {
+        ...base,
+        form: { id: bloom, from: 'card', phase: 'refused', refusal: 'paid', amount: null },
+      };
+    case 'refused_cancelled':
+      return {
+        ...base,
+        form: { id: bloom, from: 'card', phase: 'refused', refusal: 'cancelled', amount: null },
+      };
+    case 'read_only':
+      return { ...base, vendors: 'readOnly' };
+    case 'payers':
+      return { ...base, view: { page: 'payers' } };
+    case 'payer_never_sent':
+    case 'long_name':
+      return { ...base, view: { page: 'payer', key: 'couple' }, longName: state === 'long_name' };
+    case 'payer_opened':
+      return { ...base, view: { page: 'payer', key: 'obi' } };
+    case 'no_payers':
+      return { ...base, view: { page: 'payers' }, payers: 'none' };
+    case 'no_costs':
+      return { ...base, view: { page: 'payers' }, payers: 'noCosts', costs: false };
+    case 'payer_removed':
+      return { ...base, view: { page: 'payers' }, removed };
+    case 'offline':
+      return { ...base, view: { page: 'payer', key: 'couple' }, link: 'offline' };
+    case 'send_failed':
+      return { ...base, view: { page: 'payer', key: 'couple' }, failed: 'couple' };
+    case 'due_now':
+    case 'due_changed':
+    case 'due_done':
+      return {
+        ...base,
+        dueNow: { marked: [], refused: [], readOnly: false, done: state === 'due_done' },
+      };
+    case 'due_marked':
+      return {
+        ...base,
+        ledger: paidBy(base.ledger, bloom, 'Folake Adeyemi', TODAY, amountDue(bloom)),
+        dueNow: { marked: [bloom], refused: [], readOnly: false, done: false },
+      };
+    case 'due_refused':
+      return {
+        ...base,
+        dueNow: { marked: [], refused: ['savour-deposit'], readOnly: false, done: false },
+      };
+    case 'due_read_only':
+      return {
+        ...base,
+        vendors: 'readOnly',
+        dueNow: { marked: [], refused: [], readOnly: true, done: false },
+      };
+    default:
+      return base;
+  }
+}
+
+export type BudgetAction =
+  | { type: 'openMark'; id: string; from: 'card' | 'dueNow' }
+  | { type: 'sendMark'; amount: number }
+  | { type: 'marked'; amount: number; reader: string; words: string }
+  | { type: 'closeForm' }
+  | { type: 'undo'; id: string; words: string }
+  | { type: 'leave' }
+  | { type: 'openDueNow' }
+  | { type: 'closeDueNow' }
+  | { type: 'duePaid'; id: string; reader: string; words: string }
+  | { type: 'dueUndo'; id: string; words: string }
+  | { type: 'reconnected' }
+  | { type: 'washed' }
+  | { type: 'view'; view: View }
+  | { type: 'send'; key: PayerKey }
+  | { type: 'linkMade'; key: PayerKey }
+  | { type: 'told'; words: string | null };
+
+/** Mark paid shows only with a connection, the figures current and `vendors` on (sc-93). */
+export function canMark(m: BudgetModel): boolean {
+  return m.link === 'live' && m.vendors === 'on' && m.figures === 'shown';
+}
+
+export function reduce(m: BudgetModel, action: BudgetAction): BudgetModel {
+  switch (action.type) {
+    case 'openMark':
+      return {
+        ...m,
+        form: { id: action.id, from: action.from, phase: 'open', refusal: null, amount: null },
+      };
+    case 'sendMark':
+      return m.form == null
+        ? m
+        : { ...m, form: { ...m.form, phase: 'sending', amount: action.amount } };
+    case 'marked': {
+      if (m.form == null) return m;
+      const { id, from } = m.form;
+      const ledger = paidBy(m.ledger, id, action.reader, TODAY, action.amount);
+      const words = action.words;
+      if (from === 'dueNow' && m.dueNow != null)
+        return {
+          ...m,
+          ledger,
+          form: null,
+          dueNow: { ...m.dueNow, marked: [...m.dueNow.marked, id] },
+          told: told(words),
+        };
+      return { ...m, ledger, form: null, marked: [...m.marked, id], told: told(words) };
+    }
+    case 'closeForm':
+      return { ...m, form: null };
+    case 'undo':
+      return {
+        ...m,
+        ledger: unpaid(m.ledger, action.id),
+        marked: m.marked.filter((id) => id !== action.id),
+        told: told(action.words),
+      };
+    case 'leave':
+      return { ...m, marked: [] };
+    case 'openDueNow':
+      return {
+        ...m,
+        dueNow: { marked: [], refused: [], readOnly: m.vendors === 'readOnly', done: false },
+      };
+    case 'closeDueNow':
+      return { ...m, dueNow: null, form: m.form?.from === 'dueNow' ? null : m.form };
+    case 'duePaid': {
+      if (m.dueNow == null) return m;
+      const payment = paymentOf(action.id);
+      return {
+        ...m,
+        ledger: paidBy(m.ledger, action.id, action.reader, TODAY, payment.amount),
+        dueNow: { ...m.dueNow, marked: [...m.dueNow.marked, action.id] },
+        told: told(action.words),
+      };
+    }
+    case 'dueUndo':
+      return m.dueNow == null
+        ? m
+        : {
+            ...m,
+            ledger: unpaid(m.ledger, action.id),
+            dueNow: { ...m.dueNow, marked: m.dueNow.marked.filter((id) => id !== action.id) },
+            told: told(action.words),
+          };
+    case 'reconnected':
+      return { ...m, link: 'live', showLive: true };
+    case 'washed':
+      return { ...m, wash: false };
+    case 'view':
+      return { ...m, view: action.view, removed: null, failed: null, scrolled: false };
+    case 'send':
+      return { ...m, sending: action.key, failed: null };
+    case 'linkMade':
+      return {
+        ...m,
+        sending: null,
+        links: {
+          ...m.links,
+          [action.key]: m.links[action.key] === 'notSent' ? 'sent' : m.links[action.key],
+        },
+      };
+    case 'told':
+      return { ...m, told: action.words == null ? null : told(action.words) };
+  }
+}
+
+let toldCount = 0;
+
+function told(words: string): { words: string; at: number } {
+  toldCount += 1;
+  return { words, at: toldCount };
+}
+
+export const EVENT = EVENT_NAME;
