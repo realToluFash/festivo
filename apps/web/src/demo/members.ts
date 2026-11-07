@@ -390,10 +390,6 @@ export function filled(words: string, slots: Readonly<Record<string, string | nu
   );
 }
 
-function counted(one: string, other: string, count: number): string {
-  return filled(new Intl.PluralRules('en').select(count) === 'one' ? one : other, { count });
-}
-
 export type RecoveryAnswer = 'approve' | 'turnDown';
 
 export type RecoveryPhase = 'asking' | 'sending' | 'held' | 'failed' | 'closed';
@@ -480,6 +476,10 @@ export interface MembersCard {
 }
 
 export const INVITATIONS_NOTE = 'Nobody has an account here until they accept.';
+export const toGetBackIn = (count: number) => `${count} to get back in`;
+export const toJoin = (count: number) => `${count} to join`;
+export const RECOVERY_CLOSE = 'Close';
+export const RECOVERY_SENDING = 'Sending your answer…';
 export const KEEPS_WORKING =
   'Events, guests and your permissions keep working. Only Owner actions, such as billing, wait for an owner.';
 
@@ -610,10 +610,7 @@ export function membersCard({
   const asking = viewer.manages ? people.filter((one) => one.status === 'pendingApproval') : [];
   const back = answerable(recoveries, viewer).length;
   const waiting = back + asking.length;
-  const kinds = [
-    counted(RR.toGetBackIn_one, RR.toGetBackIn_other, back),
-    counted(RR.toJoin_one, RR.toJoin_other, asking.length),
-  ];
+  const kinds = [toGetBackIn(back), toJoin(asking.length)];
   const faces = all.slice(0, 5);
 
   return {

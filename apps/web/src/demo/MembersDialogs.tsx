@@ -15,6 +15,8 @@ import {
   ORGANISATION,
   type Person,
   PROOF_LINE,
+  RECOVERY_CLOSE,
+  RECOVERY_SENDING,
   RECOVERY_WORDS as RR,
   type RecoveryAnswer,
   type RecoveryPhase,
@@ -350,7 +352,7 @@ export function RecoveryAsk({
   }, [phase]);
 
   return phase === 'closed' ? (
-    <Ask key="closed" title={title} line={RR.closed} keep={RR.close} onKeep={onGone} />
+    <Ask key="closed" title={title} line={RR.closed} keep={RECOVERY_CLOSE} onKeep={onGone} />
   ) : (
     <Ask
       key="asking"
@@ -359,7 +361,7 @@ export function RecoveryAsk({
       keep={approve ? RR.cancel : RR.keep}
       go={approve ? RR.approveConfirm : RR.turnDownConfirm}
       red={approve}
-      busy={sending ? RR.sending : undefined}
+      busy={sending ? RECOVERY_SENDING : undefined}
       failed={phase === 'failed' ? RR.failed : undefined}
       onKeep={onKeep}
       onGo={() => {

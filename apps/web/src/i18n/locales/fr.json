@@ -1137,12 +1137,6 @@
   "recoveryRequests": {
     "cardTitle": "Demandes pour revenir",
     "cardNote": "Seuls les propriétaires et les administrateurs voient ceci. Une demande disparaît dès que quelqu’un répond ou qu’elle prend fin.",
-    "toGetBackIn_one": "{{count, number}} to get back in",
-    "toGetBackIn_other": "{{count, number}} to get back in",
-    "toGetBackIn_many": "{{count, number}} to get back in",
-    "toJoin_one": "{{count, number}} to join",
-    "toJoin_other": "{{count, number}} to join",
-    "toJoin_many": "{{count, number}} to join",
     "mark": "En attente d’une réponse",
     "title": "Demande de désactiver la double authentification",
     "intro": "Cette personne a perdu son application d’authentification et ses codes de récupération, et reste déconnectée jusqu’à ce que quelqu’un réponde. Une réponse d’un propriétaire ou d’un administrateur suffit. N’approuvez que si vous êtes sûr que c’est bien elle, par exemple en l’appelant sur un numéro que vous avez déjà.",
@@ -1168,8 +1162,6 @@
     "turnedDown": "La demande de {{name}} est refusée.",
     "turnedDownNext": "La double authentification reste activée, et cette personne a été prévenue par e-mail.",
     "closed": "Cette demande a déjà reçu une réponse, ou elle a pris fin.",
-    "close": "Close",
-    "sending": "Sending your answer…",
     "failed": "Cela n’a pas fonctionné. Réessayez dans un instant."
   },
   "settings": {
