@@ -4,6 +4,7 @@ import { Link, useLocation, useNavigate, useSearchParams } from 'react-router';
 
 import { offButton } from '../offButton.ts';
 import { offField } from '../offField.ts';
+import { useShownAfter } from '../shownAfter.ts';
 import { BoardPage, HaveAccount, OrLine, Providers, SignedInAs } from './BoardPage.tsx';
 import {
   type Answer,
@@ -85,9 +86,7 @@ const TIMED_OUT =
 
 /** Said into a region already on the page, so a screen reader reads it while focus stays on Password. */
 function TimedOut() {
-  const [said, setSaid] = useState(false);
-
-  useEffect(() => setSaid(true), []);
+  const said = useShownAfter(0);
 
   return (
     <div className="demo-notice" role="status">

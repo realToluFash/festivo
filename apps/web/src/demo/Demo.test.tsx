@@ -335,7 +335,7 @@ describe('the demo creates an account (sc-29061)', () => {
     await wait();
 
     await screen.findByRole('heading', { name: 'Create your account' });
-    expect(screen.getByRole('status').textContent).toBe(line);
+    await waitFor(() => expect(screen.getByRole('status').textContent).toBe(line));
     expect((screen.getByLabelText('Full name') as HTMLInputElement).value).toBe(SAMPLE.name);
     expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe(SAMPLE.email);
     expect((screen.getByLabelText('Password') as HTMLInputElement).value).toBe('');
@@ -362,13 +362,13 @@ describe('the demo creates an account (sc-29061)', () => {
     await wait();
 
     await screen.findByRole('heading', { name: 'Create your account' });
-    expect(screen.getByText(/Your sign-up timed out/)).toBeDefined();
+    expect(await screen.findByText(/Your sign-up timed out/)).toBeDefined();
   });
 
   it('keeps only the email when the tab no longer has the name (sc-29923)', async () => {
     await page('?page=register&state=timed-out-new-tab', 'Create your account');
 
-    expect(screen.getByText(/Your sign-up timed out/)).toBeDefined();
+    expect(await screen.findByText(/Your sign-up timed out/)).toBeDefined();
     expect((screen.getByLabelText('Full name') as HTMLInputElement).value).toBe('');
     expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe(SAMPLE.email);
     expect(document.activeElement).toBe(screen.getByLabelText('Password'));
