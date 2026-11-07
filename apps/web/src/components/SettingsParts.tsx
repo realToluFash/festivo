@@ -487,8 +487,12 @@ interface AskProps {
   red?: boolean;
   /** The verb's words while its answer is on its way: it turns and is off, and the way back and Escape wait. */
   busy?: string | undefined;
-  /** Why the answer did not go, under the line; the verb tries again. */
+  /** Why the answer did not go, under the line and any body; the verb tries again. */
   failed?: string | undefined;
+  /** Where the focus starts, when not on the way back. */
+  first?: RefObject<HTMLElement | null> | undefined;
+  /** More of the body under the line, which stays its description. */
+  children?: ReactNode;
   onKeep: () => void;
   onGo?: () => void;
 }
@@ -500,15 +504,19 @@ export function Ask(props: AskProps) {
   return host == null ? null : createPortal(<AskBox {...props} />, host);
 }
 
-function AskBox({ title, line, keep, go, red = true, busy, failed, onKeep, onGo }: AskProps) {
+function AskBox(props: AskProps) {
+  const { title, line, keep, go, red = true, busy, failed, first, children, onKeep, onGo } = props;
   const id = useId();
   const box = useRef<HTMLDivElement>(null);
   const keepButton = useRef<HTMLButtonElement>(null);
   const goButton = useRef<HTMLButtonElement>(null);
   const [onVerb] = useState(busy != null || failed != null);
   const waits = busy != null;
+  const said =
+    go == null ? <AskAlert id={`${id}-line`}>{line}</AskAlert> : <p id={`${id}-line`}>{line}</p>;
+  const alert = failed != null && <AskAlert>{failed}</AskAlert>;
 
-  useDeskDialog(box, onVerb ? goButton : keepButton, onKeep, waits);
+  useDeskDialog(box, first ?? (onVerb ? goButton : keepButton), onKeep, waits);
 
   return (
     <>
@@ -522,12 +530,18 @@ function AskBox({ title, line, keep, go, red = true, busy, failed, onKeep, onGo 
         aria-describedby={`${id}-line`}
       >
         <h2 id={`${id}-title`}>{title}</h2>
-        {go == null ? (
-          <AskAlert id={`${id}-line`}>{line}</AskAlert>
+        {children == null ? (
+          <>
+            {said}
+            {alert}
+          </>
         ) : (
-          <p id={`${id}-line`}>{line}</p>
+          <div className="desk-ask-body">
+            {said}
+            {children}
+            {alert}
+          </div>
         )}
-        {failed != null && <AskAlert>{failed}</AskAlert>}
         <ActionPair
           className="desk-ask-pair"
           dismiss={

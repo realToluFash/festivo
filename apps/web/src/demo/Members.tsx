@@ -1,6 +1,16 @@
 import { formattingLocale } from '@soirely/domain';
 import { type ReactNode, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 
+import { HandoverAsk } from './Handover.tsx';
+import {
+  type Handed,
+  handedOver,
+  HANDOVER_WORDS,
+  handStart,
+  type Leads,
+  ledBy,
+  offeredFor,
+} from './handover.ts';
 import { focusWhenFree, useDeskSplit } from '../layers.ts';
 import { ClaimDialog, InviteDialog, RecoveryAsk, RequestDialog } from './MembersDialogs.tsx';
 import { PersonPage, RoleDialog } from './MembersPerson.tsx';
@@ -14,6 +24,7 @@ import {
   filtersFor,
   filterWord,
   firstName,
+  handoverAsk,
   INVITATIONS_NOTE,
   type Invitation,
   invitationRow,
@@ -35,6 +46,7 @@ import {
   recoveryRow,
   removed,
   removesLine,
+  removeWords,
   restoredBy,
   revoked,
   rowLine,
@@ -65,6 +77,10 @@ import type { Tell } from '../components/SettingsParts.tsx';
 
 const RETRY_MS = 1200;
 
+const buttonNamed = (label: string) =>
+  [...document.querySelectorAll<HTMLElement>('.desk-main button')].find(
+    (one) => one.textContent === label,
+  ) ?? null;
 const requestOf = (id: string) => document.getElementById(`request-${id}`);
 const answerOf = (id: string, answer: RecoveryAnswer) =>
   requestOf(id)?.querySelectorAll<HTMLElement>('.desk-text')[answer === 'approve' ? 0 : 1] ?? null;
@@ -87,8 +103,12 @@ export function Members({ viewer, state, tell }: { viewer: Viewer; state: string
   const [claim, setClaim] = useState(start.claim);
   const [dialog, setDialog] = useState<MembersDialog | null>(start.dialog);
   const [proved, setProved] = useState(false);
+  const [leads, setLeads] = useState(start.leads);
+  const [handed, setHanded] = useState(start.handed);
   const split = useDeskSplit();
-  const moved = useRef(false);
+  const landsOnCard = start.notice?.kind === 'removed' && start.notice.handed != null;
+  const toSays = useRef(landsOnCard);
+  const moved = useRef(landsOnCard);
 
   useEffect(() => {
     if (load !== 'retrying') return;
@@ -107,7 +127,10 @@ export function Members({ viewer, state, tell }: { viewer: Viewer; state: string
   useEffect(() => {
     if (!moved.current) return;
     moved.current = false;
-    if (!split || open == null) document.querySelector<HTMLElement>('.desk-main h1')?.focus();
+    if (toSays.current)
+      focusWhenFree(() => document.querySelector<HTMLElement>('.desk-main .desk-said-lines'));
+    else if (!split || open == null) document.querySelector<HTMLElement>('.desk-main h1')?.focus();
+    toSays.current = false;
   }, [open, split]);
 
   const close = useCallback(() => setDialog(null), []);
@@ -178,6 +201,7 @@ export function Members({ viewer, state, tell }: { viewer: Viewer; state: string
       dialog={dialog}
       viewer={viewer}
       people={people}
+      leads={leads}
       recoveries={recoveries}
       proved={proved}
       say={say}
@@ -185,6 +209,9 @@ export function Members({ viewer, state, tell }: { viewer: Viewer; state: string
       onClose={close}
       onPeople={(next, then) => {
         setPeople(next);
+        if (then.leads != null) setLeads(then.leads);
+        if (then.handed != null) setHanded(then.handed);
+        if (then.says === true) toSays.current = true;
         if (then.event != null) setEvent(then.event);
         if (then.notice != null) setNotice(then.notice);
         if (then.leave === true) back();
@@ -234,6 +261,8 @@ export function Members({ viewer, state, tell }: { viewer: Viewer; state: string
         people={people}
         viewer={viewer}
         event={event}
+        handed={handed}
+        events={ledBy(leads, person.id)}
         say={say}
         level={split ? 2 : 1}
         tell={tell}
@@ -252,6 +281,7 @@ export function Members({ viewer, state, tell }: { viewer: Viewer; state: string
         }}
         onSuspend={() => setDialog({ kind: 'suspend', id: person.id })}
         onRemove={() => setDialog({ kind: 'remove', id: person.id })}
+        onHandOver={() => setDialog({ kind: 'handOver', id: person.id })}
       />
     );
 
@@ -351,10 +381,12 @@ function MembersCardView({
 }) {
   return (
     <Card size={size}>
-      <Says focusable>{card.says}</Says>
-      {card.lines.map((line) => (
-        <OnCard key={line}>{line}</OnCard>
-      ))}
+      <div className="desk-said-lines" tabIndex={-1}>
+        <Says focusable>{card.says}</Says>
+        {card.lines.map((line) => (
+          <OnCard key={line}>{line}</OnCard>
+        ))}
+      </div>
       {card.faces.length > 0 && (
         <div className="desk-faces" aria-hidden="true">
           {card.faces.map((face) => (
@@ -640,6 +672,7 @@ interface MembersDialogsProps {
   dialog: MembersDialog | null;
   viewer: Viewer;
   people: readonly Person[];
+  leads: Leads;
   recoveries: readonly Recovery[];
   proved: boolean;
   say: SettingsSay;
@@ -658,12 +691,51 @@ interface Then {
   notice?: Notice;
   leave?: boolean;
   proved?: boolean;
+  leads?: Leads;
+  handed?: Handed;
+  says?: boolean;
 }
 
 function MembersDialogs(props: MembersDialogsProps) {
-  const { dialog, viewer, people, onClose, onPeople } = props;
+  const { dialog, viewer, people, leads, onClose, onPeople } = props;
   const person =
     dialog != null && 'id' in dialog ? people.find((one) => one.id === dialog.id) : null;
+  const events = person == null ? [] : ledBy(leads, person.id);
+  const handing = (kind: 'remove' | 'hand', hand = handStart(viewer.id)) =>
+    person != null && (
+      <HandoverAsk
+        words={handoverAsk(kind, person.name, events.length)}
+        events={events}
+        offered={offeredFor(people, person.id)}
+        viewer={viewer.id}
+        start={hand}
+        onKeep={() => {
+          onClose();
+          const opener =
+            kind === 'hand' ? HANDOVER_WORDS.handOverNow : `Remove from ${ORGANISATION}…`;
+          focusWhenFree(() => buttonNamed(opener));
+        }}
+        onDone={(chosen) => {
+          const to = chosen ?? viewer.id;
+          const moved = { to, count: events.length };
+
+          onClose();
+          if (kind === 'hand')
+            onPeople([...people], {
+              event: 'handedOver',
+              handed: moved,
+              leads: handedOver(leads, person.id, to),
+            });
+          else
+            onPeople(removed(people, person.id), {
+              notice: { kind: 'removed', id: person.id, handed: moved },
+              leave: true,
+              leads: handedOver(leads, person.id, to),
+              says: true,
+            });
+        }}
+      />
+    );
 
   switch (dialog?.kind) {
     case undefined:
@@ -692,14 +764,16 @@ function MembersDialogs(props: MembersDialogsProps) {
       );
     case 'role':
       return person != null && <RoleDialog {...props} person={person} start={dialog} />;
+    case 'handOver':
+      return handing('hand', dialog.hand);
     case 'remove':
+      if (events.length > 0) return handing('remove', dialog.hand);
+
       return (
         person != null && (
           <Ask
-            title={`Remove ${person.name} from ${ORGANISATION}?`}
+            {...removeWords(person.name)}
             line={LOSES}
-            keep={`Keep ${firstName(person.name)}`}
-            go="Remove"
             onKeep={onClose}
             onGo={() => {
               onClose();

@@ -28,11 +28,16 @@ import {
   domainLine,
   domainsFoot,
   generalStart,
+  leaveAsk,
   ownershipSteps,
   requestLink,
 } from './general.ts';
 import { AddDomainDialog, DeleteDialog, DetailsDialog, TransferDialog } from './GeneralDialogs.tsx';
 import { Glyph } from '../components/Glyph.tsx';
+import { HandoverAsk } from './Handover.tsx';
+import { handStart, ledBy, offeredFor } from './handover.ts';
+import { focusWhenFree } from '../layers.ts';
+import { samplePeople } from './members.ts';
 import { heldStepPath } from './security.ts';
 import type { Viewer } from './settings.ts';
 import {
@@ -97,6 +102,7 @@ export function General({ viewer, state, tell }: { viewer: Viewer; state: string
         {changes && <RequestLink start={start} tell={tell} />}
         <Ownership
           start={start}
+          viewer={viewer}
           role={role}
           locale={locale}
           onTransferred={(to) => {
@@ -396,11 +402,13 @@ const STEPS: Record<OwnershipStep, { label: string; note: string; red: boolean }
 
 function Ownership({
   start,
+  viewer,
   role,
   locale,
   onTransferred,
 }: {
   start: GeneralStart;
+  viewer: Viewer;
   role: GeneralStart['role'];
   locale: string;
   onTransferred: (name: string) => void;
@@ -414,10 +422,13 @@ function Ownership({
   const [ask, setAsk] = useState<'leave' | 'onlyOwner' | null>(
     start.ask === 'leave' || start.ask === 'onlyOwner' ? start.ask : null,
   );
+  const [hand, setHand] = useState(start.hand);
   const toToday = () => later(SEND_MS, () => void navigate('/demo/today'));
+  const events = ledBy({ [viewer.id]: start.leads }, viewer.id);
 
   function open(step: OwnershipStep): void {
     if (step === 'leave') {
+      setHand(handStart(null));
       setAsk(role === 'Owner' ? 'onlyOwner' : 'leave');
       return;
     }
@@ -454,7 +465,27 @@ function Ownership({
           }}
         />
       )}
-      {ask === 'leave' && (
+      {ask === 'leave' && events.length > 0 && (
+        <HandoverAsk
+          words={leaveAsk(events.length)}
+          nobody
+          events={events}
+          offered={offeredFor(samplePeople(), viewer.id)}
+          viewer={viewer.id}
+          start={hand}
+          onKeep={() => {
+            setAsk(null);
+            focusWhenFree(
+              () =>
+                [...document.querySelectorAll<HTMLElement>('.desk-main button')].find(
+                  (one) => one.textContent === O.leaveOpener,
+                ) ?? null,
+            );
+          }}
+          onDone={() => void navigate('/demo/today')}
+        />
+      )}
+      {ask === 'leave' && events.length === 0 && (
         <Ask
           title={O.leaveTitle}
           line={O.leaveBody}
