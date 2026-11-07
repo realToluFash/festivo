@@ -40,6 +40,8 @@ export function organisationChoices(): Record<Picked, readonly Choice[]> {
 }
 
 export function choiceName(field: Picked, code: string): string {
+  if (field === 'currency' && code === '') return W.currencyPlaceholder;
+
   return organisationChoices()[field].find((choice) => choice.code === code)?.name ?? code;
 }
 
