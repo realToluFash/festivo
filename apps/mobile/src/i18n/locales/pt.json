@@ -800,7 +800,8 @@
       "vendors": "Fornecedores",
       "members": "Membros e funções",
       "billing": "Faturação",
-      "organisation": "Organização"
+      "organisation": "Organização",
+      "people": "Pessoas nos eventos"
     },
     "means": {
       "events": "Criar, publicar, pausar e concluir eventos.",
@@ -815,7 +816,8 @@
       "vendors": "Os fornecedores de cada evento e o que foi acordado com eles.",
       "members": "Convidar, aprovar, suspender, mudar funções.",
       "billing": "Plano, cartões e faturas.",
-      "organisation": "O nome, o país, o endereço de contacto e os valores com que começam os novos eventos."
+      "organisation": "O nome, o país, o endereço de contacto e os valores com que começam os novos eventos.",
+      "people": "Quem está em cada evento e a função que cada pessoa lá tem."
     },
     "margin": "Margem",
     "marginMeans": "O que {{name}} acrescenta aos custos. Oculta significa que o orçamento abre só com os custos.",

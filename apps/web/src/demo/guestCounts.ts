@@ -63,5 +63,5 @@ export const GUEST_WORDS = {
   replied: 'Replies in',
   notReplied: (count: number) =>
     count === 1 ? '1 hasn’t replied' : `${figureOf(count)} haven’t replied`,
-  label: 'Guests across your upcoming events',
+  label: 'Guests across your events',
 } as const;
