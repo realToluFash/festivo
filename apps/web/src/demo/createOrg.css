@@ -157,7 +157,7 @@
   border-radius: var(--radiusRow);
 }
 
-/* Four rows before it scrolls, three under All countries alone, and 5 all round for the focus ring's halo. */
+/* Four rows under All countries before it scrolls, and 5 all round for the focus ring's halo. */
 .cw-list {
   position: relative;
   display: flex;
@@ -170,7 +170,7 @@
 }
 
 .cw-list.has-all {
-  max-height: calc(3 * var(--cwRow) + 29px);
+  max-height: calc(4 * var(--cwRow) + 29px);
 }
 
 .cw-list.has-ours {
