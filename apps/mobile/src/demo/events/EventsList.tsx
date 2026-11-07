@@ -16,6 +16,13 @@ import { TextField } from '../../components/Field.tsx';
 import { useReadOut } from '../../components/ReadOut.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
+import {
+  type GuestCounts,
+  GUEST_WORDS as G,
+  SAMPLE_GUESTS,
+  figureOf,
+  guestCountsOf,
+} from './GuestCounts.ts';
 import { Cover } from '../../components/Cover.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
 import { PHONE_TAB_BAR, PhoneTabBar } from '../../components/TodayCover.tsx';
@@ -116,6 +123,10 @@ export function EventsList({
   );
   const home = useMemo(() => homeOf(events, now, locale), [events, now, locale]);
   const looking = searching(searched) || filtered(filters);
+  const guests = useMemo(
+    () => guestCountsOf(events, state === 'noGuests' ? {} : SAMPLE_GUESTS, now),
+    [events, state, now],
+  );
   const results = useMemo(
     () => (looking ? resultsOf(events, searched, filters, now, locale) : null),
     [looking, events, searched, filters, now, locale],
@@ -170,6 +181,7 @@ export function EventsList({
         onNew={() => shell.tell(say.ownDesign(W.newEvent))}
         onBell={shell.tell}
       />
+      {!first && <GuestTiles counts={guests} locale={locale} />}
       <SwitchedNotice />
     </>
   );
@@ -477,6 +489,56 @@ function ListTop({
   );
 }
 
+function GuestTiles({ counts, locale }: { counts: GuestCounts; locale: string }) {
+  return (
+    <View style={styles.guests} testID="events.guests">
+      <GuestTile
+        id="invited"
+        name={G.invited}
+        figure={figureOf(counts.invited, locale)}
+        line={G.coming(counts.coming, locale)}
+      />
+      <GuestTile
+        id="replied"
+        name={G.replied}
+        figure={figureOf(counts.replied, locale)}
+        line={G.notReplied(counts.notReplied, locale)}
+      />
+    </View>
+  );
+}
+
+function GuestTile({
+  id,
+  name,
+  figure,
+  line,
+}: {
+  id: 'invited' | 'replied';
+  name: string;
+  figure: string;
+  line: string;
+}) {
+  return (
+    <View
+      style={styles.guest}
+      accessible
+      accessibilityLabel={`${name}, ${figure}, ${line}`}
+      testID={`events.guests.${id}`}
+    >
+      <Text size={14} weight="semibold" style={styles.secondary}>
+        {name}
+      </Text>
+      <Text size={28} weight="bold" style={[styles.figures, styles.guestFigure]}>
+        {figure}
+      </Text>
+      <Text size={14} weight="medium" style={[styles.secondary, styles.figures, styles.said]}>
+        {line}
+      </Text>
+    </View>
+  );
+}
+
 function titled(size: number) {
   return { lineHeight: size * 1.12, letterSpacing: size * -0.02 };
 }
@@ -743,6 +805,19 @@ const styles = StyleSheet.create({
   orgRow: { flexDirection: 'row', alignItems: 'center', marginBottom: tokens.spaceSm },
   titleRow: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: tokens.spaceMd },
   summary: { marginTop: tokens.spaceHair, lineHeight: 15 * 1.45 },
+  guests: { flexDirection: 'row', gap: tokens.spaceMd },
+  guest: {
+    flex: 1,
+    minWidth: 0,
+    gap: tokens.spaceHair,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: tokens.colorInsetBorder,
+    borderRadius: tokens.radiusInset,
+    backgroundColor: tokens.colorInset,
+  },
+  guestFigure: { lineHeight: 28 * 1.15 },
   said: { lineHeight: 14 * 1.45 },
   newRound: {
     width: tokens.sizeHit,
