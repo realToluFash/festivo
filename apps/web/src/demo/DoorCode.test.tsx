@@ -21,6 +21,15 @@ async function people(query: string) {
 }
 
 const wait = (ms: number) => act(() => vi.advanceTimersByTimeAsync(ms));
+
+/** What a screen reader reads after a control's name: the text its `aria-describedby` points at. */
+function description(control: Element): string {
+  return (control.getAttribute('aria-describedby') ?? '')
+    .split(' ')
+    .map((id) => document.getElementById(id)?.textContent ?? '')
+    .join(' ')
+    .trim();
+}
 const dialog = (name: string) => within(screen.getByRole('dialog', { name }));
 const asked = (name: string) => within(screen.getByRole('alertdialog', { name }));
 
@@ -137,8 +146,20 @@ describe('making a door code in a 540 dialog', () => {
     fireEvent.change(make.getByLabelText('How many people'), { target: { value: '5' } });
     fireEvent.click(make.getByRole('button', { name: 'Make' }));
 
-    expect(make.getByText('Choose a time that hasn’t passed yet.')).toBeDefined();
-    expect(document.activeElement).toBe(make.getByLabelText('Time'));
+    const time = make.getByLabelText('Time');
+    expect(document.activeElement).toBe(time);
+    expect(time.getAttribute('aria-invalid')).toBe('true');
+    expect(description(time)).toBe('Choose a time that hasn’t passed yet.');
+    expect(make.getByLabelText('Day').getAttribute('aria-invalid')).toBe('false');
+  });
+
+  it('opens an end that has passed with the focus on Time, which the error describes', async () => {
+    await people('code=past');
+    const time = dialog('Door code').getByLabelText('Time');
+
+    await waitFor(() => expect(document.activeElement).toBe(time));
+    expect(time.getAttribute('aria-invalid')).toBe('true');
+    expect(description(time)).toBe('Choose a time that hasn’t passed yet.');
   });
 
   it('keeps the form as it was when making fails, with the line at its top', async () => {

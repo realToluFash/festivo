@@ -587,6 +587,7 @@ function makeStart(state: MakeState): MakeStart {
         ...start,
         form: { ...TYPED, ends: { kind: 'earlier', day: isoDayOf(DESK_NOW), time: '09:00' } },
         checked: true,
+        focus: 'time',
       };
     case 'making':
       return { ...start, form: TYPED, phase: 'held' };

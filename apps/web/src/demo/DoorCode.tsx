@@ -688,8 +688,15 @@ function EndsChoice({
     }
   }
 
+  const said = useRef<HTMLParagraphElement>(null);
+
+  useEffect(() => {
+    if (error != null) said.current?.scrollIntoView({ block: 'nearest' });
+  }, [error]);
+
   const days = endDays();
   const earlier = ends.kind === 'earlier' ? ends : null;
+  const told = error == null ? undefined : `${id}-error`;
 
   return (
     <div className="dc-ends">
@@ -763,14 +770,14 @@ function EndsChoice({
             label={W.time}
             value={earlier.time}
             selectRef={timeRef}
-            wrong={error != null}
+            told={told}
             options={endTimes(earlier.day).map((time) => ({ value: time, word: time }))}
             onChange={(time) => onPick({ ...earlier, time })}
           />
         </div>
       )}
       {error != null && (
-        <p id={`${id}-error`} className="desk-error">
+        <p ref={said} id={`${id}-error`} className="desk-error">
           <Glyph name="alert" size={15} weight={2.2} />
           {error}
         </p>
@@ -784,17 +791,18 @@ function Choose({
   value,
   options,
   selectRef,
-  wrong = false,
+  told,
   onChange,
 }: {
   label: string;
   value: string;
   options: readonly { value: string; word: string }[];
   selectRef?: RefObject<HTMLSelectElement | null>;
-  wrong?: boolean;
+  told?: string | undefined;
   onChange: (value: string) => void;
 }) {
   const id = useId();
+  const wrong = told != null;
 
   return (
     <div className="desk-field dc-choose">
@@ -808,6 +816,7 @@ function Choose({
           className="dc-select"
           value={value}
           aria-invalid={wrong}
+          aria-describedby={told}
           onChange={(event) => onChange(event.target.value)}
         >
           {options.map((option) => (
