@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { JULIEN, KOFI, PRIYA } from './MembersRecoverySample.ts';
+import { endedByRemoval, JULIEN, KOFI, PRIYA } from './MembersRecoverySample.ts';
 import {
   approvalRoles,
   approved,
@@ -464,6 +464,47 @@ describe('Requests to get back in, in the app’s Members (sc-30893)', () => {
       label: 'Answer Lucía Gómez',
       does: 'answer',
     });
+  });
+
+  it('ends Priya’s own request when she is removed, and keeps answering Kofi first', () => {
+    const start = membersStart('recovery');
+    const priya = person('Priya Shah');
+    const waiting = endedByRemoval(start.recovery, priya.id);
+    const card = membersCard({
+      ...plainCard,
+      people: removed(start.people, priya.id),
+      gone: { person: priya, handed: { count: 3, to: 'Folake Adeyemi', you: true } },
+      recovery: { waiting, answer: null },
+    });
+
+    expect(start.recovery).toEqual([KOFI, PRIYA]);
+    expect(waiting).toEqual([KOFI]);
+    expect(card).toMatchObject({
+      says: 'Priya Shah was removed',
+      step: { label: 'Answer Kofi Mensah', does: 'answerRecovery' },
+    });
+  });
+
+  it('moves the step on to the next request, then to Lucía, as removals end requests', () => {
+    const start = membersStart('recovery');
+    const kofi = person('Kofi Mensah');
+    const priya = person('Priya Shah');
+    const card = (gone: typeof kofi, waiting: readonly string[]) =>
+      membersCard({
+        ...plainCard,
+        people: removed(start.people, gone.id),
+        gone: { person: gone, handed: null },
+        recovery: { waiting, answer: null },
+      }).step;
+
+    const afterKofi = endedByRemoval(start.recovery, kofi.id);
+    expect(afterKofi).toEqual([PRIYA]);
+    expect(card(kofi, afterKofi)).toEqual({ label: 'Answer Priya Shah', does: 'answerRecovery' });
+    expect(card(priya, endedByRemoval(afterKofi, priya.id))).toEqual({
+      label: 'Answer Lucía Gómez',
+      does: 'answer',
+    });
+    expect(endedByRemoval(start.recovery, person('Tom Becker').id)).toEqual([KOFI, PRIYA]);
   });
 
   it('counts again once a request answered elsewhere is closed', () => {

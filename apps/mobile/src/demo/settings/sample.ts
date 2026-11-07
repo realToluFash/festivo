@@ -4,7 +4,7 @@ import { SAMPLE } from '../samples.ts';
 /** Settings' three arrangements, from the app's layout kinds. */
 export type SettingsLayout = 'phone' | 'portrait' | 'landscape';
 
-/** Who is looking: an owner sees every section, a member only their own and Sign-in rules, and somebody with no organisation only their own. */
+/** Who is looking: an owner sees every section, a member their own, the organisation read only and Sign-in rules, and somebody with no organisation only their own. */
 export type Viewer = 'owner' | 'member' | 'noOrg';
 
 export const VIEWERS: readonly Viewer[] = ['owner', 'member', 'noOrg'];
@@ -47,24 +47,23 @@ export const VIEWER_ORGANISATION: Record<Viewer, { role: string; permissions: st
   noOrg: null,
 };
 
-/** settingsGroups, ahead of the app as sc-29859 and sc-30441 have it: no Roles, Personalisation after Notifications for everyone, and the organisation's own row only for whoever manages it. */
+/** settingsGroups, ahead of the app as sc-29859 and sc-30441 have it: no Roles, Personalisation after Notifications for everyone. A member keeps Organisation, read only, to leave (sc-29915). */
 export function demoGroups(
   viewer: Viewer,
 ): { heading: SettingsGroup['heading']; sections: DemoSection[] }[] {
-  const organisation = VIEWER_ORGANISATION[viewer];
-  const manages = organisation?.permissions.includes('organisation.manage') === true;
-
-  return settingsGroups(organisation).map(({ heading, sections }) => ({
+  return settingsGroups(VIEWER_ORGANISATION[viewer]).map(({ heading, sections }) => ({
     heading,
     sections: sections
-      .filter(
-        (section): section is Exclude<DemoSection, 'personalisation'> =>
-          section !== 'roles' && (manages || section !== 'organisation'),
-      )
+      .filter((section): section is Exclude<DemoSection, 'personalisation'> => section !== 'roles')
       .flatMap((section): DemoSection[] =>
         section === 'notifications' ? [section, 'personalisation'] : [section],
       ),
   }));
+}
+
+/** Who may change the organisation's details, joining and ownership, by the role's permission as the app decides it. */
+export function managesOrganisation(viewer: Viewer): boolean {
+  return VIEWER_ORGANISATION[viewer]?.permissions.includes('organisation.manage') === true;
 }
 
 /** Who the card at the top of Settings is: the member is Priya, as the board draws her. */
