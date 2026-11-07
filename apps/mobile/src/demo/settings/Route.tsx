@@ -94,9 +94,9 @@ export function SettingsRoute({ section }: { section: DemoSection | null }) {
       else if (tab === 'Settings') {
         if (shown != null) toSettings();
       } else if (tab === 'Events') router.replace('/demo/events');
-      else tell(`${tab} has its own design.`);
+      else router.replace('/demo/calendar');
     },
-    [shown, tell, toSettings],
+    [shown, toSettings],
   );
   const handlers = useMemo(
     () => ({

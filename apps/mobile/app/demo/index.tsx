@@ -729,6 +729,81 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
     ],
   },
   {
+    page: 'Calendar · A Weeks as lanes',
+    boards: [
+      {
+        title: 'Calendar',
+        what: 'Month, this week, events and milestones',
+        href: '/demo/calendar?state=populated',
+      },
+      {
+        title: 'Calendar · Agenda',
+        what: 'A list of days, landing on today',
+        href: '/demo/calendar?state=agenda',
+      },
+      {
+        title: 'Calendar · the Show menu',
+        what: 'Events only, chosen',
+        href: '/demo/calendar?state=showMenu',
+      },
+      {
+        title: 'Calendar · events only',
+        what: 'No milestones',
+        href: '/demo/calendar?state=eventsOnly',
+      },
+      {
+        title: 'Calendar · a busy day',
+        what: 'Sat, Nov 14 open, +2 more',
+        href: '/demo/calendar?state=busyDay',
+      },
+      {
+        title: 'Calendar · the month’s edge',
+        what: 'A reunion runs into December',
+        href: '/demo/calendar?state=monthEdge',
+      },
+      {
+        title: 'Calendar · another time zone',
+        what: 'Sat, Oct 10 open',
+        href: '/demo/calendar?state=otherZone',
+      },
+      {
+        title: 'Calendar · an empty month',
+        what: 'February 2027',
+        href: '/demo/calendar?state=emptyMonth',
+      },
+      {
+        title: 'Calendar · no events',
+        what: 'The first run, Subscribe kept',
+        href: '/demo/calendar?state=none',
+      },
+      {
+        title: 'Calendar · loading',
+        what: 'The weeks in Sunk',
+        href: '/demo/calendar?state=loading',
+      },
+      {
+        title: 'Calendar · failed',
+        what: 'Could not load, Try again',
+        href: '/demo/calendar?state=failed',
+      },
+      {
+        title: 'Calendar · Subscribe',
+        what: 'Your private link',
+        href: '/demo/calendar?state=subscribe',
+      },
+      {
+        title: 'Calendar · copy refused',
+        what: 'Press and hold the link',
+        href: '/demo/calendar?state=subscribeRefused',
+      },
+      {
+        title: 'Calendar · reset your link?',
+        what: 'Reset link, or keep it',
+        href: '/demo/calendar?state=resetLink',
+      },
+    ],
+  },
+  {
     page: 'Sign-in',
     boards: [
       { title: 'Welcome', what: 'The app opens here signed out', href: '/demo/welcome' },

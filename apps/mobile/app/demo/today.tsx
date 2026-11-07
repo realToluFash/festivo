@@ -34,6 +34,10 @@ function toEvents() {
   router.replace('/demo/events');
 }
 
+function toCalendar() {
+  router.replace('/demo/calendar');
+}
+
 function isMoment(name: string | undefined): name is MomentName {
   return MOMENTS.some((moment) => moment === name);
 }
@@ -64,7 +68,12 @@ export default function DemoTodayScreen() {
   const [told, setTold] = useState(params.toast);
   const tell = useCallback<Tell>((words) => setTold(words), []);
   const shell = useMemo(
-    () => demoShell(tell, { events: toEvents, event: (key) => openEvent(EVENT_OF_KEY[key]) }),
+    () =>
+      demoShell(tell, {
+        events: toEvents,
+        calendar: toCalendar,
+        event: (key) => openEvent(EVENT_OF_KEY[key]),
+      }),
     [tell],
   );
   const toList = useCallback(() => router.dismissTo('/demo'), []);
@@ -84,14 +93,11 @@ export default function DemoTodayScreen() {
   const bar = kind === 'tabletLandscape' || place == null ? 'dark' : 'light';
   useCoverStatusBar(bar, false);
 
-  const onTab = useCallback(
-    (tab: Tab) => {
-      if (tab === 'Settings') router.replace('/demo/settings');
-      else if (tab === 'Events') toEvents();
-      else if (tab !== 'Today') tell(`${tab} has its own design.`);
-    },
-    [tell],
-  );
+  const onTab = useCallback((tab: Tab) => {
+    if (tab === 'Settings') router.replace('/demo/settings');
+    else if (tab === 'Events') toEvents();
+    else if (tab === 'Calendar') toCalendar();
+  }, []);
 
   return (
     <OrgSwitcherProvider

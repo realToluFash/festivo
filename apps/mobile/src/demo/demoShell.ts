@@ -16,6 +16,7 @@ const DEMO_WORDS: Record<Exclude<Opens['to'], 'event'>, string> = {
 /** What the demo has drawn, opened in place of the toast. */
 export interface DemoOpens {
   events?: (() => void) | undefined;
+  calendar?: (() => void) | undefined;
   event?: ((key: EventKey) => void) | undefined;
 }
 
@@ -35,6 +36,7 @@ export function demoShell(tell: (words: string) => void, drawn: DemoOpens = {}):
       const key = opens.to === 'event' ? eventKeyOf(opens.id) : undefined;
 
       if (opens.to === 'events' && drawn.events != null) drawn.events();
+      else if (opens.to === 'calendar' && drawn.calendar != null) drawn.calendar();
       else if (key != null && drawn.event != null) drawn.event(key);
       else tell(opens.to === 'event' ? `${opens.name} has its own design.` : DEMO_WORDS[opens.to]);
     },
