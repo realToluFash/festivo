@@ -15,6 +15,7 @@ import {
   type Person,
   PROOF_MINUTES,
   proofProblem,
+  underRoles,
 } from './MembersSample.ts';
 import { type AskProps, FocusedScreen, Line } from './Summary.tsx';
 
@@ -184,6 +185,7 @@ export function RoleScreen({
               testID="members.role"
             />
           </View>
+          <Line text={underRoles(viewer)} size={14} />
         </>
       )}
     </FocusedScreen>

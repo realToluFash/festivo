@@ -4,16 +4,26 @@ import { describe, expect, it } from 'vitest';
 import {
   andList,
   AREAS,
+  changedAreas,
+  changesLine,
   describeRole,
+  discardTitle,
+  extrasLine,
   FOLAKE,
   grantFor,
+  heldLine,
   holdersLine,
   idOf,
   JULIEN,
+  levelCounts,
+  levelLine,
   levelsFor,
   lockedIntro,
   nameProblem,
+  removedCard,
   replacements,
+  roleLine,
+  rolesCount,
   rolesStart,
   rolesStateOf,
   sampleRoles,
@@ -22,6 +32,12 @@ import {
 } from './RolesSample.ts';
 
 const roles = sampleRoles();
+const area = (name: string) => {
+  const found = AREAS.find((one) => one.area === name);
+  if (found == null) throw new Error(`The sample has ${name}.`);
+
+  return found;
+};
 const role = (name: string) => {
   const found = roles.find((one) => one.name === name);
   if (found == null) throw new Error(`The sample has ${name}.`);
@@ -137,5 +153,64 @@ describe('Roles in the demo', () => {
     expect(andList(['Billing'])).toBe('Billing');
     expect(andList(['Billing', 'Margin'])).toBe('Billing and Margin');
     expect(andList(['A', 'B', 'C'])).toBe('A, B, and C');
+  });
+
+  it('counts the roles on the card, and each role’s kind on its row', () => {
+    expect(rolesCount(roles)).toEqual({
+      says: '6 roles',
+      line: '5 built in · 1 made by Ire Events',
+    });
+    expect(roleLine(role('Owner'))).toBe('1 person · everything');
+    expect(roleLine(role('Coordinator'))).toBe('2 people · built in');
+    expect(roleLine(role('Door staff'))).toBe('1 person · made by Ire Events');
+    expect(heldLine(role('Event manager'))).toBe('Built in · held by 1 person');
+    expect(heldLine(role('Owner'))).toBe(describeRole(role('Owner')));
+    expect(heldLine({ ...role('Door staff'), holders: [] })).toBe(
+      'Made by Ire Events · held by nobody',
+    );
+  });
+
+  it('counts the areas at each level, and names the extras a level keeps', () => {
+    const manager = grantFor('Event manager');
+    expect(levelCounts(manager)).toEqual({ change: 9, read: 0, nothing: 4 });
+    expect(levelCounts(grantFor('Owner'))).toEqual({ change: 13, read: 0, nothing: 0 });
+    expect(extrasLine(manager, area('budget'))).toBe('Margin · Hidden');
+    expect(extrasLine(manager, area('events'))).toBe('Create events · Allowed');
+    expect(extrasLine(manager, area('vendors'))).toBeUndefined();
+    expect(levelLine('change', area('budget'))).toBe('Everything in Budget.');
+    expect(levelLine('read', area('budget'))).toBe('Open, with no buttons.');
+  });
+
+  it('counts a change per area, and says who gets it', () => {
+    const manager = grantFor('Event manager');
+    expect(changedAreas(manager, rolesStart('unsaved').grant ?? [])).toBe(1);
+    expect(changedAreas(manager, manager)).toBe(0);
+    expect(changesLine(1, ['Priya Shah'])).toEqual({
+      count: '1 change.',
+      rest: 'Priya Shah gets it on their next request. Nobody is signed out.',
+    });
+    expect(changesLine(2, ['Ana Souza', 'Marta Silva']).rest).toBe(
+      '2 people get them on their next request. Nobody is signed out.',
+    );
+    expect(changesLine(1, []).rest).toBe('Nobody holds this role yet.');
+    expect(discardTitle(1)).toBe('Discard your change?');
+    expect(discardTitle(3)).toBe('Discard your changes?');
+  });
+
+  it('says what was removed, and where its people went', () => {
+    expect(removedCard({ name: 'Door staff', holders: 1, movedTo: 'Coordinator' })).toEqual({
+      says: 'Door staff was removed',
+      line: 'Its 1 person is now Coordinator.',
+    });
+    expect(removedCard({ name: 'Door staff', holders: 2, movedTo: 'Read-only' }).line).toBe(
+      'Its 2 people are now Read-only.',
+    );
+    expect(removedCard({ name: 'Planner', holders: 0, movedTo: null }).line).toBeNull();
+  });
+
+  it('opens the edit screen for the states that start on it', () => {
+    expect(rolesStart('unsaved')).toMatchObject({ editing: true, area: 'budget' });
+    expect(rolesStart('locked')).toMatchObject({ editing: true, area: null });
+    expect(rolesStart('eventManager')).toMatchObject({ editing: false });
   });
 });

@@ -1,4 +1,4 @@
-import { createContext, useContext } from 'react';
+import { type ComponentType, createContext, useContext } from 'react';
 
 /** Where a tap on Today goes: the demo names it in a toast, the signed-in app opens it. */
 export type Opens =
@@ -11,12 +11,16 @@ export type Opens =
 /** Who Today is for and where its taps go, so one set of parts draws the demo and the app. */
 export interface TodayShell {
   organisation: string;
-  person: { name: string; role: string };
+  person: { name: string; role: string | null };
   unread: number;
   /** The sidebar's Search, which the app does not have yet. */
   search: boolean;
   open: (opens: Opens) => void;
+  /** Drawn in place of the switch-organisation button: the demo's own switcher. */
+  OrgOpener?: ComponentType<{ at: OpenerAt }> | undefined;
 }
+
+export type OpenerAt = 'cover' | 'band' | 'sidebar';
 
 const Shell = createContext<TodayShell | null>(null);
 

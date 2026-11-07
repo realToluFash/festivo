@@ -1,5 +1,6 @@
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { Brand } from './Brand.tsx';
 import { Text } from './Text.tsx';
@@ -9,13 +10,52 @@ import { Glyph, type GlyphName } from './Glyph.tsx';
 import type { ShownEvent } from '../kit/today.ts';
 import { SETTINGS_ID, type Tab } from './TodayCover.tsx';
 import { Initials } from './Initials.tsx';
-import { useTodayShell } from './todayShell.ts';
+import { type TodayShell, useTodayShell } from './todayShell.ts';
+
+export const SIDEBAR_WIDTH = 252;
 
 const PLACES: readonly (readonly [Tab, GlyphName])[] = [
   ['Today', 'today'],
   ['Events', 'events'],
   ['Calendar', 'calendar'],
 ];
+
+export function SidebarPlace({
+  label,
+  glyph,
+  on,
+  onPress,
+  testID,
+}: {
+  label: string;
+  glyph: GlyphName;
+  on: boolean;
+  onPress: () => void;
+  testID?: string | undefined;
+}) {
+  const ink = on ? tokens.colorInk : tokens.colorInkSecondary;
+
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [styles.place, on && styles.placeOn, pressed && styles.pressed]}
+      accessibilityRole="tab"
+      accessibilityState={{ selected: on }}
+      accessibilityLabel={label}
+      testID={testID}
+    >
+      <Glyph name={glyph} ink={ink} />
+      <Text
+        size={14.5}
+        weight={on ? 'semibold' : 'medium'}
+        accessible={false}
+        style={{ color: ink }}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
 
 function Place({
   tab,
@@ -26,75 +66,54 @@ function Place({
   tab: Tab;
   glyph: GlyphName;
   onTab: (tab: Tab) => void;
-  at: Tab;
+  at: Tab | null;
 }) {
   const { t } = useTranslation();
-  const on = tab === at;
-  const ink = on ? tokens.colorInk : tokens.colorInkSecondary;
-  const words = t(`todayScreen.tab.${glyph}`);
 
   return (
-    <Pressable
+    <SidebarPlace
+      label={t(`todayScreen.tab.${glyph}`)}
+      glyph={glyph}
+      on={tab === at}
       onPress={() => onTab(tab)}
-      style={({ pressed }) => [styles.place, on && styles.placeOn, pressed && styles.pressed]}
-      accessibilityRole="tab"
-      accessibilityState={{ selected: on }}
-      accessibilityLabel={words}
       testID={SETTINGS_ID[tab]}
-    >
-      <Glyph name={glyph} ink={ink} />
-      <Text
-        size={14.5}
-        weight={on ? 'semibold' : 'medium'}
-        accessible={false}
-        style={{ color: ink }}
-      >
-        {words}
-      </Text>
-    </Pressable>
+    />
   );
 }
 
-/** iPad landscape's sidebar: the places, your events by colour, and the person at its foot. */
-export function TodaySidebar({
-  events,
-  onTab,
-  at = 'Today',
-  onPerson,
-}: {
-  events: readonly ShownEvent[];
-  onTab: (tab: Tab) => void;
-  at?: Tab;
-  onPerson?: () => void;
-}) {
+export function SidebarHead({ search, org = true }: { search?: boolean; org?: boolean }) {
   const { t } = useTranslation();
-  const { organisation, person, search, open } = useTodayShell();
+  const shell = useTodayShell();
+  const { organisation, open, OrgOpener } = shell;
 
   return (
-    <View style={styles.side}>
+    <>
       <View style={styles.logo}>
         <Brand lockup height={24} />
       </View>
-      <Pressable
-        onPress={() => open({ to: 'organisation' })}
-        style={styles.org}
-        accessibilityRole="button"
-        accessibilityLabel={t('todayScreen.switchOrganisation', { name: organisation })}
-        testID="home.switchOrganisation"
-      >
-        <View
-          style={styles.orgTile}
-          accessibilityElementsHidden
-          importantForAccessibility="no-hide-descendants"
+      {org && OrgOpener != null && <OrgOpener at="sidebar" />}
+      {org && OrgOpener == null && (
+        <Pressable
+          onPress={() => open({ to: 'organisation' })}
+          style={styles.org}
+          accessibilityRole="button"
+          accessibilityLabel={t('todayScreen.switchOrganisation', { name: organisation })}
+          testID="home.switchOrganisation"
         >
-          <Initials name={organisation} size={12} weight="bold" style={styles.onAccent} />
-        </View>
-        <Text size={15} weight="semibold" accessible={false} style={styles.grow}>
-          {organisation}
-        </Text>
-        <Glyph name="updown" size={15} ink={tokens.colorInkSecondary} />
-      </Pressable>
-      {search && (
+          <View
+            style={styles.orgTile}
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+          >
+            <Initials name={organisation} size={12} weight="bold" style={styles.onAccent} />
+          </View>
+          <Text size={15} weight="semibold" accessible={false} style={styles.grow}>
+            {organisation}
+          </Text>
+          <Glyph name="updown" size={15} ink={tokens.colorInkSecondary} />
+        </Pressable>
+      )}
+      {(search ?? shell.search) && (
         <Pressable
           onPress={() => open({ to: 'search' })}
           style={styles.search}
@@ -117,11 +136,103 @@ export function TodaySidebar({
           </View>
         </Pressable>
       )}
-      <View style={styles.places} accessibilityRole="tablist">
+    </>
+  );
+}
+
+export function SidebarFoot({
+  onTab,
+  at,
+  onPerson,
+  person: shown,
+}: {
+  onTab: (tab: Tab) => void;
+  at: Tab | null;
+  onPerson?: (() => void) | undefined;
+  person?: TodayShell['person'] | undefined;
+}) {
+  const { t } = useTranslation();
+  const shell = useTodayShell();
+  const person = shown ?? shell.person;
+
+  return (
+    <>
+      <Place tab="Settings" glyph="settings" onTab={onTab} at={at} />
+      <Pressable
+        onPress={onPerson ?? (() => shell.open({ to: 'account' }))}
+        style={styles.person}
+        accessibilityRole="button"
+        accessibilityLabel={person.role == null ? person.name : t('todayScreen.personRole', person)}
+      >
+        <View
+          style={styles.avatar}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        >
+          <EventMesh event={{ mesh: 'amber', photo: null }} />
+          <Initials name={person.name} size={12} weight="bold" />
+        </View>
+        <View style={styles.grow}>
+          <Text size={14} weight="semibold" accessible={false}>
+            {person.name}
+          </Text>
+          {person.role != null && (
+            <Text size={12} weight="medium" accessible={false} style={styles.secondary}>
+              {person.role}
+            </Text>
+          )}
+        </View>
+        <Glyph name="updown" size={15} ink={tokens.colorInkSecondary} />
+      </Pressable>
+    </>
+  );
+}
+
+export function SidebarColumn({ children }: { children: ReactNode }) {
+  return (
+    <ScrollView
+      style={styles.column}
+      contentContainerStyle={[styles.side, styles.fills]}
+      showsVerticalScrollIndicator={false}
+    >
+      {children}
+    </ScrollView>
+  );
+}
+
+export function SidebarPlaces({ children }: { children: ReactNode }) {
+  return (
+    <View style={styles.places} accessibilityRole="tablist">
+      {children}
+    </View>
+  );
+}
+
+/** iPad landscape's sidebar: the places, your events by colour, and the person at its foot. */
+export function TodaySidebar({
+  events,
+  onTab,
+  at = 'Today',
+  onPerson,
+  org = true,
+}: {
+  events: readonly ShownEvent[];
+  onTab: (tab: Tab) => void;
+  at?: Tab;
+  onPerson?: (() => void) | undefined;
+  org?: boolean;
+}) {
+  const { t } = useTranslation();
+  const { open } = useTodayShell();
+
+  return (
+    <View style={styles.side}>
+      <SidebarHead org={org} />
+      <SidebarPlaces>
         {PLACES.map(([label, glyph]) => (
           <Place key={label} tab={label} glyph={glyph} onTab={onTab} at={at} />
         ))}
-      </View>
+      </SidebarPlaces>
       <View>
         <Text
           size={12}
@@ -153,31 +264,7 @@ export function TodaySidebar({
         ))}
       </View>
       <View style={styles.grow} />
-      <Place tab="Settings" glyph="settings" onTab={onTab} at={at} />
-      <Pressable
-        onPress={onPerson ?? (() => open({ to: 'account' }))}
-        style={styles.person}
-        accessibilityRole="button"
-        accessibilityLabel={t('todayScreen.personRole', person)}
-      >
-        <View
-          style={styles.avatar}
-          accessibilityElementsHidden
-          importantForAccessibility="no-hide-descendants"
-        >
-          <EventMesh event={{ mesh: 'amber', photo: null }} />
-          <Initials name={person.name} size={12} weight="bold" />
-        </View>
-        <View style={styles.grow}>
-          <Text size={14} weight="semibold" accessible={false}>
-            {person.name}
-          </Text>
-          <Text size={12} weight="medium" accessible={false} style={styles.secondary}>
-            {person.role}
-          </Text>
-        </View>
-        <Glyph name="updown" size={15} ink={tokens.colorInkSecondary} />
-      </Pressable>
+      <SidebarFoot onTab={onTab} at={at} onPerson={onPerson} />
     </View>
   );
 }
@@ -193,7 +280,7 @@ const styles = StyleSheet.create({
   },
   pressed: { opacity: 0.7 },
   side: {
-    width: 252,
+    width: SIDEBAR_WIDTH,
     paddingTop: 22,
     paddingHorizontal: tokens.spacePillEnd,
     paddingBottom: tokens.spacePillEnd,
@@ -232,6 +319,8 @@ const styles = StyleSheet.create({
     borderColor: tokens.colorBorder,
   },
   places: { gap: tokens.spaceHair },
+  column: { width: SIDEBAR_WIDTH, flexGrow: 0 },
+  fills: { flexGrow: 1 },
   place: {
     height: tokens.sizeHit,
     flexDirection: 'row',

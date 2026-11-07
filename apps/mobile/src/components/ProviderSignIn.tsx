@@ -28,9 +28,12 @@ function failedElsewhere(provider: string): void {
 export function ProviderButtons({
   onFailed = failedElsewhere,
   only,
+  before,
 }: {
   onFailed?: ((provider: string) => void) | undefined;
   only?: readonly string[] | undefined;
+  /** Done before the provider opens, as a join link holds itself to come back to. */
+  before?: (() => Promise<void>) | undefined;
 }) {
   const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
@@ -39,6 +42,7 @@ export function ProviderButtons({
     setBusy(true);
 
     try {
+      await before?.();
       router.replace(await nextAfterSignIn(await signInWithProvider(provider)));
     } catch (error) {
       // Closing the provider is not a failure, so it says nothing; anything else says it did not work.
