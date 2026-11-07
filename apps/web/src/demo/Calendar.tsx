@@ -360,13 +360,14 @@ function CalendarPage({ start, tell }: { start: CalendarStart; tell: Tell }) {
 
   function toToday(): void {
     setFocusDay(TODAY);
-    toTodayHeading.current = view === 'agenda';
+    toTodayHeading.current = view === 'agenda' && load !== 'failed';
     goTo({ day: TODAY, glide: true, turn: false, pin: pinFor(TODAY) });
   }
 
   function pickView(next: CalendarView): void {
     if (next === view) return;
 
+    toTodayHeading.current = false;
     setView(next);
     setOpen(null);
     goTo({ day: placeOf(pinned), glide: false, turn: false, pin: pinned });

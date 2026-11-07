@@ -300,6 +300,18 @@ describe('the Calendar in B, weeks as lanes, at a desk (sc-30329)', () => {
     expect(document.activeElement).toBe(stop);
   });
 
+  it('keeps a Today press with no list from taking the focus later', SLOW, async () => {
+    await calendar('failed');
+    fireEvent.click(screen.getByRole('radio', { name: 'View: Agenda' }));
+    fireEvent.click(screen.getByRole('button', { name: CAL_WORDS.today }));
+    fireEvent.click(screen.getByRole('radio', { name: 'View: Month' }));
+    fireEvent.click(screen.getByRole('button', { name: CAL_WORDS.retry }));
+    fireEvent.click(screen.getByRole('radio', { name: 'View: Agenda' }));
+
+    expect(screen.getByRole('heading', { level: 2, name: 'Today, Tuesday, Nov 3' })).toBeDefined();
+    expect(document.activeElement?.closest('.cal-agenda')).toBeNull();
+  });
+
   it('steps Agenda’s rows by Tab and Shift+Tab, back to the earliest', SLOW, async () => {
     await calendar('agenda');
 
