@@ -23,7 +23,12 @@ import { api } from '../src/api.ts';
 import { heldChallenge } from '../src/challenge.ts';
 import { timedOutSignIn } from '../src/kit/signInRules.ts';
 import { type AuthBack, AuthFrame, AuthHeading } from '../src/components/AuthFrame.tsx';
-import { PrimaryButton, QuietButton, SecondaryButton } from '../src/components/Buttons.tsx';
+import {
+  PrimaryButton,
+  QuietButton,
+  SecondaryButton,
+  useAtFoot,
+} from '../src/components/Buttons.tsx';
 import {
   CodeField,
   Field,
@@ -605,7 +610,7 @@ function Request({
   );
 }
 
-/** Cancel the request is a quiet link at the screen's foot and asks first in the app's own sheet (sc-29961); an answer arriving meanwhile replaces the waiting step, sheet and all. */
+/** An answer arriving while the sheet asks replaces the waiting step, sheet and all (sc-29961). */
 function CancelRequest({
   recovery,
   onTap,
@@ -619,6 +624,7 @@ function CancelRequest({
 }) {
   const { t } = useTranslation();
   const phone = useLayout().kind === 'phone';
+  const atFoot = useAtFoot();
   const opener = useRef<ViewInstance>(null);
   // New with each opening, so the sheet's title takes screen reader focus as it opens.
   const [asked, setAsked] = useState<object | null>(null);
@@ -652,7 +658,7 @@ function CancelRequest({
 
   return (
     <>
-      <View style={[styles.foot, phone && styles.atFoot]}>
+      <View style={[styles.foot, atFoot && styles.atFoot]}>
         <Text size={tokens.typeBodyPhone.size} weight="semibold">
           {t('lostTwoFactor.notYou')}
         </Text>
