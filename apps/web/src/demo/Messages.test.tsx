@@ -556,7 +556,15 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
 
     const again = await screen.findByRole('button', { name: 'Send to Tomás Ferreira again' });
 
-    expect(screen.getByText('Email · Updated · not sent yet')).toBeDefined();
+    const tomas = within(screen.getByText('Tomás Ferreira').closest('li') as HTMLElement);
+
+    expect(tomas.getByText('Email · Bounced')).toBeDefined();
+    expect(tomas.getByText('Updated · not sent yet')).toBeDefined();
+    expect(
+      tomas.getByText('Their email address has changed since. Nothing has been sent to it yet.'),
+    ).toBeDefined();
+    expect(screen.queryByText('Email · Updated · not sent yet')).toBeNull();
+    expect(screen.getByRole('region', { name: 'Bounced · 3' })).toBeDefined();
     await vi.waitFor(() => expect(document.activeElement).toBe(again));
     fireEvent.click(again);
 
