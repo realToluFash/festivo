@@ -28,6 +28,7 @@ import {
   searching,
 } from './events.ts';
 import { DuplicateDialog } from './EventDialogs.tsx';
+import { GUEST_WORDS as G, SAMPLE_GUESTS, figureOf, guestCountsOf } from './guestCounts.ts';
 import { EventCard, EventRow, EventsShell } from './EventParts.tsx';
 import { FilterMenu } from './EventFilter.tsx';
 import { Glyph } from '../components/Glyph.tsx';
@@ -112,6 +113,7 @@ function EventsList({ start, tell }: { start: ReturnType<typeof listStart>; tell
     past: lists.past,
   };
   const looking = searching(filters) || filtering(filters);
+  const guests = guestCountsOf(events, start.noGuests ? {} : SAMPLE_GUESTS, now);
   const firstNew = useRef<HTMLUListElement>(null);
 
   function apply(next: Filters, replace = false): void {
@@ -156,6 +158,7 @@ function EventsList({ start, tell }: { start: ReturnType<typeof listStart>; tell
           <ListTop tell={tell} />
           <p className="desk-line">{W.summary(upcoming.length, lists.drafts.length)}</p>
         </div>
+        <GuestTiles counts={guests} />
         <Switched />
         <SearchRow
           filters={filters}
@@ -230,6 +233,23 @@ function EventsList({ start, tell }: { start: ReturnType<typeof listStart>; tell
         />
       )}
     </div>
+  );
+}
+
+function GuestTiles({ counts }: { counts: ReturnType<typeof guestCountsOf> }) {
+  return (
+    <ul className="ev-guests" aria-label={G.label}>
+      <li className="ev-guest">
+        <span className="ev-guest-name">{G.invited}</span>
+        <span className="ev-guest-figure">{figureOf(counts.invited)}</span>
+        <span className="ev-guest-line">{G.coming(counts.coming)}</span>
+      </li>
+      <li className="ev-guest">
+        <span className="ev-guest-name">{G.replied}</span>
+        <span className="ev-guest-figure">{figureOf(counts.replied)}</span>
+        <span className="ev-guest-line">{G.notReplied(counts.notReplied)}</span>
+      </li>
+    </ul>
   );
 }
 
