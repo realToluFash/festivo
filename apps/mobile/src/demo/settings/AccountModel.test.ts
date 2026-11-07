@@ -15,6 +15,7 @@ import {
   firstUnverified,
   matchLine,
   noZoneLine,
+  phoneLineOn,
   primaryFirst,
   promoteLine,
   RESULTS,
@@ -35,7 +36,7 @@ const verifiedAll = (rows: readonly { verified: boolean }[]) => rows.every((row)
 
 describe('a state link', () => {
   it('opens the state it names, and the page at rest for anything else', () => {
-    expect(ACCOUNT_STATES).toHaveLength(15);
+    expect(ACCOUNT_STATES).toHaveLength(16);
     expect(accountStateOf('verifyPhoneExpired')).toBe('verifyPhoneExpired');
     expect(accountStateOf('done')).toBe('rest');
     expect(accountStateOf(undefined)).toBe('rest');
@@ -55,7 +56,11 @@ describe('a state link', () => {
 
   it('opens each focused screen its frame draws', () => {
     expect(accountStart('name').screen).toBe('name');
-    expect(accountStart('addPhone').screen).toBe('addPhone');
+    expect(accountStart('addPhone')).toMatchObject({ screen: 'addPhone', phoneCountry: 'GB' });
+    expect(accountStart('addPhoneNoCountry')).toMatchObject({
+      screen: 'addPhone',
+      phoneCountry: '',
+    });
     expect(accountStart('zone')).toMatchObject({ screen: 'zone', typedZone: ZONE_TYPED });
     expect(accountStart('addEmail').screen).toBe('addEmail');
     expect(accountStart('addEmail').emails.map((row) => row.shown)).toEqual([SAMPLE.email]);
@@ -188,6 +193,14 @@ describe('adding', () => {
       'That number looks too short for United Kingdom. Check it and try again.',
     );
     expect(addCheck('phone', '7400 123457', 'GB')).toBeNull();
+    expect(addCheck('phone', '7400 123457', '')).toBe('Choose a country.');
+  });
+
+  it('puts the red edge on the control the line names (sc-30447)', () => {
+    expect(phoneLineOn('7400 123457', '')).toBe('country');
+    expect(phoneLineOn('', '')).toBe('number');
+    expect(phoneLineOn('7400 12', 'GB')).toBe('number');
+    expect(phoneLineOn('7400 123457 123', 'GB')).toBe('number');
   });
 
   it('refuses one already linked, whatever its case', () => {

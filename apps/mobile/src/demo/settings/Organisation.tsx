@@ -45,7 +45,9 @@ function OrganisationPage({ start, manages }: { start: OrganisationStart; manage
   const shell = useShell();
   const pane = shell.layout === 'landscape';
   const locale = formattingLocale('en', getLocales()[0]?.languageTag);
-  const [details, setDetails] = useState<OrganisationDetails>(SAMPLE_DETAILS);
+  const [details, setDetails] = useState<OrganisationDetails>(
+    start.currencyBlank ? { ...SAMPLE_DETAILS, currency: '' } : SAMPLE_DETAILS,
+  );
   const [said, setSaid] = useState<CardSaid | null>(start.said);
   const [role, setRole] = useState(start.role);
   const [editing, setEditing] = useState(start.screen === 'details');
@@ -54,7 +56,13 @@ function OrganisationPage({ start, manages }: { start: OrganisationStart; manage
   const scroll = useRef<ScrollViewInstance>(null);
   const cardStep = useRef<ViewInstance>(null);
   const opening: DetailsOpening =
-    editVisit === 0 ? { picking: start.picking, contactWrong: start.contactWrong } : FRESH_DETAILS;
+    editVisit === 0
+      ? {
+          picking: start.picking,
+          contactWrong: start.contactWrong,
+          currencyBlank: start.currencyBlank,
+        }
+      : FRESH_DETAILS;
 
   useEffect(() => {
     if (said != null) scroll.current?.scrollTo({ y: 0, animated: true });
