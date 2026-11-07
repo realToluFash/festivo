@@ -887,7 +887,7 @@ function VendorField({
           spellCheck={false}
           placeholder="Type a vendor’s name"
           value={draft.typed}
-          onFocus={() => onOpen(true)}
+          onFocus={() => onOpen(draft.vendorId === '')}
           onBlur={() => window.setTimeout(() => onOpen(false), 120)}
           onChange={(event) => {
             setActive(0);
@@ -962,11 +962,13 @@ function LinesField({
   onTick: (lines: string[]) => void;
 }) {
   return (
-    <fieldset className="desk-field qt-lines">
-      <legend className="desk-label-row vd-label-row">
-        <span className="desk-label">Budget lines it agrees</span>
+    <div className="desk-field qt-lines" role="group" aria-labelledby="qt-lines-label">
+      <div className="desk-label-row vd-label-row">
+        <span id="qt-lines-label" className="desk-label">
+          Budget lines it agrees
+        </span>
         <span className="vd-optional">Optional</span>
-      </legend>
+      </div>
       <ul className="desk-rows">
         {LINES.map((line) => {
           const elsewhere = agreedElsewhere(budget, line.id, vendorId);
@@ -1000,7 +1002,7 @@ function LinesField({
           );
         })}
       </ul>
-    </fieldset>
+    </div>
   );
 }
 

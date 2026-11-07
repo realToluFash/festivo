@@ -197,6 +197,7 @@
 
 .qt-option {
   display: flex;
+  flex: none;
   align-items: center;
   min-height: var(--sizeHit);
   padding: var(--spaceXs) var(--spaceMd);
@@ -237,10 +238,9 @@
   margin: 0;
 }
 
-.qt-lines {
+.qt-lines .desk-rows {
   margin: 0;
   padding: 0;
-  border: 0;
 }
 
 .qt-line {

@@ -968,8 +968,16 @@ function ReadVendor({
 
 /** sc-87's refusal, moved from sc-82: each event still owing the vendor, linked to its payments. */
 function ArchiveRefused({ vendor }: { vendor: Vendor }) {
+  const box = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => box.current?.scrollIntoView({ block: 'center' }), 50);
+
+    return () => window.clearTimeout(timer);
+  }, []);
+
   return (
-    <div className="vd-refused" role="alert">
+    <div ref={box} className="vd-refused" role="alert">
       <p className="desk-error">
         <Glyph name="alert" size={15} weight={2.2} />
         {archiveRefused(vendor.name)}
