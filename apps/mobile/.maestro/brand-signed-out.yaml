@@ -1,9 +1,11 @@
 # Dusk's wordmark on welcome, and sign-in after it, in English then French. sc-28811.
 # The language is set by the shared chip flows, never assumed from the device's last choice.
+# It signs out before picking one, so the language stays on the device and no account saves it.
 #
 #   node .qa/bin/qa-env.mjs maestro brand-signed-out [--ipad | --se | --android [--tablet]]
 appId: host.exp.Exponent
 ---
+- runFlow: welcome-signed-out.yaml
 - runFlow: sign-in-screen-english.yaml
 - runFlow: welcome-signed-out.yaml
 - takeScreenshot: brand-launch-en

@@ -5,6 +5,7 @@
 # An account left on onboarding's A few details cannot reach Settings, and signs out there
 # first: that screen's Signed in as line matches the Settings branch too. sc-21193.
 # The two-factor overdue screen has no Settings either, and signs out there. sc-28435.
+# welcome-signed-out.yaml is its counterpart outside a batch: a screen added to one is added to the other.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/
