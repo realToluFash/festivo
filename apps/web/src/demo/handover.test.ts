@@ -160,18 +160,17 @@ describe('handing over a departing member’s work (sc-31311)', () => {
   });
 
   it('says on the card where the events went, and offers the next request', () => {
-    const start = membersStart('handoverDone', folake);
+    const card = (state: string) =>
+      membersCard({ ...membersStart(state, folake), viewer: folake, say });
 
-    expect(membersCard({ ...start, viewer: folake, say })).toMatchObject({
+    expect(card('removed')).toEqual(card('handoverDone'));
+    expect(card('handoverDone')).toMatchObject({
       says: 'Priya Shah was removed',
       lines: [
         'Their 3 events are now led by Ana Souza, who is emailed the list. They are listed under Former, with everything they did kept.',
       ],
       step: { label: 'Answer Lucía Gómez' },
     });
-    expect(membersCard({ ...membersStart('removed', folake), viewer: folake, say }).lines).toEqual([
-      'Their events stay with Ire Events. They are listed under Former, with everything they did kept.',
-    ]);
   });
 
   it('offers Hand over now on a suspended member’s page, and only reads it to an admin on an owner', () => {

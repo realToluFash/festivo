@@ -1128,6 +1128,7 @@ function peopleOf(state: MembersState, viewer: Pick<Viewer, 'id'>): Person[] {
 
 function handedOf(state: MembersState, viewer: Pick<Viewer, 'id'>): Handed | null {
   switch (state) {
+    case 'removed':
     case 'handoverDone':
       return { to: ANA, count: 3 };
     case 'handoverNowDone':
@@ -1143,6 +1144,7 @@ function leadsOf(state: MembersState, viewer: Pick<Viewer, 'id'>): Leads {
   switch (state) {
     case 'handoverLong':
       return { ...leads, [JULIEN]: Object.values(EVENT) };
+    case 'removed':
     case 'handoverDone':
       return handedOver(leads, PRIYA, ANA);
     case 'handoverNowDone':
@@ -1161,7 +1163,6 @@ function noticeOf(state: MembersState): Notice | null {
     case 'turnedDown':
       return { kind: 'turnedDown', id: LUCIA };
     case 'removed':
-      return { kind: 'removed', id: PRIYA };
     case 'handoverDone':
       return { kind: 'removed', id: PRIYA, handed: { to: ANA, count: 3 } };
     default:

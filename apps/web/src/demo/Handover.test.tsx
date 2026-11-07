@@ -166,7 +166,7 @@ describe('handing over a departing member’s work at a desk (sc-31311)', () => 
     expect(document.activeElement).toBe(field);
   });
 
-  it('keeps today’s confirm, word for word, for someone who leads nothing', async () => {
+  it('keeps today’s confirm and card, word for word, for someone who leads nothing', async () => {
     await settings('/demo/settings/members?state=removingNoWork');
     const dialog = ask('Remove Tom Becker from Ire Events?');
 
@@ -176,6 +176,14 @@ describe('handing over a departing member’s work at a desk (sc-31311)', () => 
       ),
     ).toBeDefined();
     expect(screen.queryByRole('button', { name: /^Hand them to/u })).toBeNull();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Remove' }));
+
+    expect(screen.getByText('Tom Becker was removed')).toBeDefined();
+    expect(
+      screen.getByText(
+        'Their events stay with Ire Events. They are listed under Former, with everything they did kept.',
+      ),
+    ).toBeDefined();
   });
 
   it('says a failed removal changed nothing, and tries again from the verb', async () => {
