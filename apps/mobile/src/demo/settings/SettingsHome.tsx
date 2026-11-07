@@ -3,8 +3,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
-import { Confetti, Cover } from '../../components/Cover.tsx';
-import { CARD_PIECES } from '../Cover.tsx';
+import { CARD_PIECES, Confetti, Cover } from '../../components/Cover.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
 import { SwitchedNotice } from '../OrgSwitcher.tsx';
 import { Glass, PhoneTabBar } from '../../components/TodayCover.tsx';
