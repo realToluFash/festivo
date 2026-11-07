@@ -634,7 +634,7 @@
   align-self: flex-start;
   gap: 6px;
   min-height: 44px;
-  padding: 0;
+  padding: 6px 0;
   border: 0;
   background: none;
   color: var(--colorAccent);
