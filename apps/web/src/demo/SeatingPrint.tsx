@@ -158,7 +158,15 @@ export function PrintPanel({ onClose }: { onClose: () => void }) {
               {done != null && (
                 <p className="st-downloaded" role="status">
                   {say(SW.downloaded, { file: '' })}
-                  <Link className="st-file" to={PAPER_OF[done.key]} target="_blank">
+                  <Link
+                    className="st-file"
+                    to={
+                      done.key === 'floor' && paper === 'Letter'
+                        ? `${SEATING_AT}?state=paperFloorLetter`
+                        : PAPER_OF[done.key]
+                    }
+                    target="_blank"
+                  >
                     {name}
                   </Link>
                 </p>

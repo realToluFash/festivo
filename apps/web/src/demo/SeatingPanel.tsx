@@ -43,25 +43,23 @@ import {
 } from './seating.ts';
 import { useSeating } from './seatingContext.ts';
 import { StateMark } from './SeatingRoom.tsx';
-import { TextAction } from '../components/SettingsParts.tsx';
+import { Mark, TextAction } from '../components/SettingsParts.tsx';
 
 export function Line({
   children,
   tone = 'quiet',
 }: {
   children: ReactNode;
-  tone?: 'quiet' | 'ink';
+  tone?: 'quiet' | 'ink' | 'big';
 }) {
-  return <p className={tone === 'ink' ? 'st-line is-ink' : 'st-line'}>{children}</p>;
+  return <p className={tone === 'quiet' ? 'st-line' : `st-line is-${tone}`}>{children}</p>;
 }
 
 function Said({ tone, children }: { tone: 'red' | 'amber' | 'green'; children: ReactNode }) {
   if (tone === 'green')
     return (
       <p className="st-added" role="status">
-        <span className="st-yes" aria-hidden="true">
-          <Icon name="tick" size={11} weight={3.2} />
-        </span>
+        <Mark kind="yes" />
         {children}
       </p>
     );
@@ -328,7 +326,7 @@ function RoomHead({ readOnly }: { readOnly: boolean }) {
         {!readOnly && <TextAction label={SW.roomSettings} onClick={() => open({ kind: 'room' })} />}
       </div>
       {room != null && (
-        <Line>
+        <Line tone="big">
           {say(SW.roomLine, {
             name: room.name,
             width: lengthOf(room.w, ui.units),
@@ -1434,7 +1432,7 @@ function Tray({ chips = true }: { chips?: boolean }) {
           ) : (
             <ul className="st-rows" aria-labelledby="st-without">
               {shown.map((party) => (
-                <li key={party.id}>
+                <li key={party.id} className="st-party-line">
                   <button
                     type="button"
                     className={ui.picked === party.id ? 'st-party is-on' : 'st-party'}

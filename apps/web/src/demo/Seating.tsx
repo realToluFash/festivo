@@ -70,7 +70,7 @@ import { PaperPage, PrintPanel } from './SeatingPrint.tsx';
 import { type Handle, type Look, MiniMap, RoomDrawing } from './SeatingRoom.tsx';
 import { ListView, TablesView } from './SeatingViews.tsx';
 import { DemoBell } from './DemoBell.tsx';
-import { Ask, CardStep, OnCard, Says } from '../components/SettingsParts.tsx';
+import { Ask, CardStep, Mark, OnCard, Says } from '../components/SettingsParts.tsx';
 import { useSwitcherStart } from './switcher.ts';
 import type { Tell } from '../components/SettingsParts.tsx';
 import './seating.css';
@@ -752,6 +752,26 @@ function Seating({ first, event, tell }: { first: Ui; event: SampleEvent; tell: 
     if (!ui.placing?.another) setPlacingAt(null);
   }
 
+  function placeAtCentre(): void {
+    set((now) => {
+      if (now.placing == null || now.plan.room == null) return now;
+      const centre: Point = [now.plan.room.w / 2, now.plan.room.l / 2];
+      const draft = newItem(now.placing.kind, now.plan.items, centre);
+      const [x, y] = nearestFree(draft, now.plan.items, now.plan.room, centre);
+      const item = { ...draft, x, y };
+
+      return {
+        ...now,
+        plan: { ...now.plan, items: [...now.plan.items, item] },
+        chosen: [item.id],
+        notice: { tone: 'green', words: say(SW.added, { name: item.name }) },
+        save: 'saving',
+        placing: now.placing.another ? now.placing : null,
+        bar: now.placing.another ? now.bar : null,
+      };
+    });
+  }
+
   function addNow(kind: 'row' | 'single'): void {
     set((now) => {
       if (now.plan.room == null) return now;
@@ -1258,7 +1278,9 @@ function Seating({ first, event, tell }: { first: Ui; event: SampleEvent; tell: 
     focus: keyboard ? focusId : null,
     rings: ui.rings,
     handles:
-      ui.chosen.length === 1 && !ui.readOnly && ui.chair == null ? (ui.chosen[0] ?? null) : null,
+      ui.chosen.length === 1 && !ui.readOnly && ui.chair == null && ui.tab === 'arrange'
+        ? (ui.chosen[0] ?? null)
+        : null,
     chair: ui.chair,
     chairsFor: detail === 'near' ? (ui.chosen[0] ?? ui.chair?.id ?? ui.pop?.table ?? '') : null,
   };
@@ -1362,6 +1384,34 @@ function Seating({ first, event, tell }: { first: Ui; event: SampleEvent; tell: 
     main = (
       <div className="st-main">
         <div className={`st-canvas is-${ui.view}`} ref={placeCanvas}>
+          <ViewSwitch />
+          {showSave && (
+            <div className="st-float st-top-right">
+              <SaveLine />
+              {room != null && (
+                <button
+                  type="button"
+                  className={ui.print.open ? 'st-print-button is-on' : 'st-print-button'}
+                  aria-expanded={ui.print.open}
+                  aria-haspopup="dialog"
+                  onClick={() =>
+                    set((now) => ({ ...now, print: { ...now.print, open: !now.print.open } }))
+                  }
+                >
+                  <Icon name="print" size={17} weight={2.1} />
+                  {SW.print}
+                </button>
+              )}
+            </div>
+          )}
+          {ui.print.open && room != null && (
+            <PrintPanel
+              onClose={() => set((now) => ({ ...now, print: { ...now.print, open: false } }))}
+            />
+          )}
+          {ui.view === 'plan' && room != null && ui.bar != null && (
+            <MessageBar onPlace={placeAtCentre} onStop={stopPlacing} />
+          )}
           {ui.view === 'plan' ? (
             room == null ? (
               <StartPreview w={size.w} h={size.h} />
@@ -1413,58 +1463,8 @@ function Seating({ first, event, tell }: { first: Ui; event: SampleEvent; tell: 
               {ui.view === 'tables' ? <TablesView /> : <ListView />}
             </div>
           )}
-          <ViewSwitch />
-          {showSave && (
-            <div className="st-float st-top-right">
-              <SaveLine />
-              {room != null && (
-                <button
-                  type="button"
-                  className={ui.print.open ? 'st-print-button is-on' : 'st-print-button'}
-                  aria-expanded={ui.print.open}
-                  aria-haspopup="dialog"
-                  onClick={() =>
-                    set((now) => ({ ...now, print: { ...now.print, open: !now.print.open } }))
-                  }
-                >
-                  <Icon name="print" size={17} weight={2.1} />
-                  {SW.print}
-                </button>
-              )}
-            </div>
-          )}
           {ui.view === 'plan' && room != null && (
             <>
-              {ui.bar != null && (
-                <MessageBar
-                  onPlace={() =>
-                    room != null &&
-                    set((now) => {
-                      if (now.placing == null || now.plan.room == null) return now;
-                      const draft = newItem(now.placing.kind, now.plan.items, [
-                        now.plan.room.w / 2,
-                        now.plan.room.l / 2,
-                      ]);
-                      const [x, y] = nearestFree(draft, now.plan.items, now.plan.room, [
-                        now.plan.room.w / 2,
-                        now.plan.room.l / 2,
-                      ]);
-                      const item = { ...draft, x, y };
-
-                      return {
-                        ...now,
-                        plan: { ...now.plan, items: [...now.plan.items, item] },
-                        chosen: [item.id],
-                        notice: { tone: 'green', words: say(SW.added, { name: item.name }) },
-                        save: 'saving',
-                        placing: now.placing.another ? now.placing : null,
-                        bar: now.placing.another ? now.bar : null,
-                      };
-                    })
-                  }
-                  onStop={stopPlacing}
-                />
-              )}
               {keysShown && <KeysStrip />}
               {ui.placing != null && (
                 <div className="st-float st-another">
@@ -1539,11 +1539,6 @@ function Seating({ first, event, tell }: { first: Ui; event: SampleEvent; tell: 
               {ui.pop != null && <PopOver pop={ui.pop} s={s} ox={ox} oy={oy} />}
             </>
           )}
-          {ui.print.open && room != null && (
-            <PrintPanel
-              onClose={() => set((now) => ({ ...now, print: { ...now.print, open: false } }))}
-            />
-          )}
         </div>
         <SeatingPanel />
       </div>
@@ -1599,11 +1594,7 @@ function SaveLine() {
       role="status"
       aria-live="polite"
     >
-      {ui.save === 'saved' && (
-        <span className="st-yes" aria-hidden="true">
-          <Icon name="tick" size={10} weight={3.2} />
-        </span>
-      )}
+      {ui.save === 'saved' && <Mark kind="yes" />}
       {ui.save === 'saving' && <span className="st-turning" aria-hidden="true" />}
       {ui.save === 'retrying' && <Icon name="alert" size={16} weight={2.2} />}
       {ui.save === 'notSaved' && (
@@ -1646,7 +1637,7 @@ function Presence() {
     people.length === 1
       ? say(SW.onPlan, { name: first.name })
       : many('andOthers', people.length - 1, { name: first.name });
-  const shown = ui.presence === 'overflow' && people.length > 5 ? people.slice(0, 4) : people;
+  const shown = people.length >= 6 ? people.slice(0, 4) : people;
 
   return (
     <div className="st-presence">

@@ -60,8 +60,17 @@ const SEC_CLASS: Record<string, string> = {
   Teal: 'is-teal',
 };
 
+let measure: CanvasRenderingContext2D | null | undefined;
+
+/** The name goes inside the table when it fits, else under it (seating_dir_kit's rule); measured in a browser, estimated in tests. */
 function fits(name: string, width: number): boolean {
-  return name.length * 6.7 <= width - 3;
+  if (measure === undefined)
+    measure = navigator.userAgent.includes('jsdom')
+      ? null
+      : document.createElement('canvas').getContext('2d');
+  if (measure == null) return name.length * 6.2 <= width - 3;
+  measure.font = '600 12px "Instrument Sans", sans-serif';
+  return measure.measureText(name).width <= width - 3;
 }
 
 function f(value: number): number {
