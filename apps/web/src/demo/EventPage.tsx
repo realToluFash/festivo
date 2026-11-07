@@ -43,6 +43,7 @@ import { CAL_WORDS } from './calendar.ts';
 import { EventSidebar } from './EventSidebar.tsx';
 import { Glyph, type GlyphName } from './Glyph.tsx';
 import { LayersContext } from './layers.ts';
+import { BudgetArea } from './Quotes.tsx';
 import { Ask, Bell, Chevron, Head, RowWords, TextAction } from './SettingsParts.tsx';
 import type { Tell } from './TodayParts.tsx';
 import { useSwitcherStart } from './switcher.ts';
@@ -254,6 +255,8 @@ function EventView({
                   </div>
                 </div>
               </>
+            ) : area === 'budget' && event.id === 'evt-gala-4' ? (
+              <BudgetArea event={event} tell={tell} />
             ) : (
               <AreaPage
                 event={event}

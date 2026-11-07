@@ -23,6 +23,7 @@ import { Settings } from './Settings.tsx';
 import { SETTINGS_PAGES } from './settings.ts';
 import { SIGN_IN_RULES_PAGES } from './signInRules.ts';
 import { SWITCHER_PAGES } from './switcher.ts';
+import { QUOTES_PAGES } from './quotes.ts';
 import { Today } from './Today.tsx';
 import { TwoFactorBoard } from './TwoFactor.tsx';
 import { Vendors } from './Vendors.tsx';
@@ -180,6 +181,12 @@ function DemoHome({ from }: { from: string }) {
         <h2 id="demo-page-81">81 · Budget and costs · the vendor directory</h2>
         <h3>Vendors in B Confetti · desktop</h3>
         <BoardPages pages={VENDORS_PAGES} />
+      </section>
+
+      <section className="demo-home-page" aria-labelledby="demo-page-81-quotes">
+        <h2 id="demo-page-81-quotes">81 · Budget and costs · quotes and payment schedules</h2>
+        <h3>Quotes on the event’s Budget page, Gala Fundación Lucía · desktop</h3>
+        <BoardPages pages={QUOTES_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-28">
