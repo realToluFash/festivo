@@ -26,6 +26,7 @@ import {
 import {
   answerable,
   answerTakes,
+  endedByRemoval,
   type RecoveryAnswer,
   type RecoveryAsk,
 } from './MembersRecoverySample.ts';
@@ -418,6 +419,7 @@ function MembersScreen({ start }: { start: MembersStart }) {
             const count = leads[one.id]?.length ?? 0;
             const to = people.find(({ id }) => id === taker);
             setPeople((before) => removed(before, one.id));
+            setRecovery((before) => endedByRemoval(before, one.id));
             if (taker != null) setLeads((before) => handedOver(before, one.id, [taker]));
             openPerson(null);
             setGone({
