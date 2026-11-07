@@ -42,6 +42,7 @@ import {
   REVIEW_STATES,
   areaStart,
   cardWords,
+  countsFrom,
   countsOf,
   groupRows,
   isIn,
@@ -93,6 +94,8 @@ function startGuests(state: GuestsState | null): SampleGuest[] {
   const swap = (key: string, change: (g: SampleGuest) => SampleGuest) =>
     GUESTS.map((g) => (g.key === key ? change(g) : g));
   switch (state) {
+    case 'first':
+      return [];
     case 'draft':
       return [...DRAFT_GUESTS];
     case 'paused':
@@ -161,6 +164,7 @@ export function GuestsScreen({
   const [guestPhase, setGuestPhase] = useState(start.guestPhase);
   const [overlay, setOverlay] = useState(start.overlay);
   const [round, setRound] = useState(0);
+  const [empty, setEmpty] = useState(start.empty);
   const [toast, setToast] = useState<{ words: string; mark?: boolean } | null>(
     start.toast === 'saved'
       ? { words: W.saved }
@@ -193,7 +197,9 @@ export function GuestsScreen({
       ? DRAFT
       : event.id === 'evt-party-2'
         ? PAUSED
-        : countsOf(guests, added);
+        : state === 'first'
+          ? countsFrom(guests)
+          : countsOf(guests, added);
   const total = counts.list + (start.walkIn ? 1 : 0);
   const owner = role === 'owner';
   const guest = guests.find((g) => g.key === open) ?? null;
@@ -234,7 +240,7 @@ export function GuestsScreen({
   };
   const close = () => setOverlay(null);
   const onStep = () => {
-    const words = cardWords(state, role, counts, start.empty);
+    const words = cardWords(state, role, counts, empty);
     if (words.step === 'addGuest') show('add', 'card');
     else if (words.step === 'write') onWrite();
     else if (words.step === 'makeLive') onMakeLive();
@@ -248,7 +254,7 @@ export function GuestsScreen({
   const replace = (g: SampleGuest) =>
     setGuests((all) => all.map((one) => (one.key === g.key ? g : one)));
 
-  const words = cardWords(state, role, counts, start.empty);
+  const words = cardWords(state, role, counts, empty);
   const stepLabel: Record<NonNullable<typeof words.step>, string> = {
     addGuest: W.addGuest,
     write: W.writeToThem,
@@ -266,7 +272,7 @@ export function GuestsScreen({
     <>
       <GuestsTitle
         layout={layout}
-        plus={owner && phase !== 'loading' && !start.empty}
+        plus={owner && phase !== 'loading' && !empty}
         onPlus={() => show('add', 'plus')}
       />
       {phase === 'loading' ? (
@@ -284,7 +290,7 @@ export function GuestsScreen({
               stepLabel={words.step == null ? null : stepLabel[words.step]}
             />
           )}
-          {!start.empty && (
+          {!empty && (
             <GuestsRows
               layout={layout}
               counts={counts}
@@ -299,7 +305,6 @@ export function GuestsScreen({
               searched={searched}
               onSearch={() => setSearched(typed)}
               menu={start.menu}
-              offline={offline}
               rows={rows}
               groups={groups}
               walkIn={start.walkIn}
@@ -447,9 +452,10 @@ export function GuestsScreen({
             guests={guests}
             opener={opener}
             onClose={close}
-            onAdded={(g) =>
-              setGuests((all) => [...all, g].sort((a, b) => a.name.localeCompare(b.name)))
-            }
+            onAdded={(g) => {
+              setEmpty(false);
+              setGuests((all) => [...all, g].sort((a, b) => a.name.localeCompare(b.name)));
+            }}
             onFromContacts={() => setOverlay(Platform.OS === 'android' ? 'android' : 'picker')}
             picking={overlay === 'picker'}
             onPicked={() => setOverlay('review')}

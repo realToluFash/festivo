@@ -9,6 +9,7 @@ import {
   areaStart,
   cardWords,
   clockOf,
+  countsFrom,
   countsOf,
   doorMatches,
   doorPeople,
@@ -134,6 +135,19 @@ describe('the counts (sc-99), as Messaging B and Events count the wedding', () =
     );
     expect(countsOf(after)).toMatchObject({ list: 156, invited: 143, noreply: 22, notyet: 13 });
     expect(countsOf(GUESTS, 23)).toMatchObject({ list: 179, notyet: 37 });
+  });
+});
+
+describe('a list that starts empty', () => {
+  it('counts only who was added to it', () => {
+    expect(countsFrom([])).toMatchObject({ list: 0, invited: 0, havent: 0 });
+    expect(countsFrom([byKey('bisi')])).toMatchObject({ list: 1, notyet: 1, invited: 0 });
+    expect(countsFrom([byKey('emeka')])).toMatchObject({
+      invited: 2,
+      noreply: 1,
+      held: 1,
+      havent: 2,
+    });
   });
 });
 

@@ -9,7 +9,6 @@ import {
 
 import { Glyph } from '../../components/Glyph.tsx';
 import { useReadOut } from '../../components/ReadOut.tsx';
-import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { SearchField } from '../events/EventsList.tsx';
@@ -169,7 +168,6 @@ export interface ListProps {
   searched: string;
   onSearch: () => void;
   menu: boolean;
-  offline: boolean;
   rows: Person[];
   groups: Partial<Record<GroupKey, Person[]>>;
   walkIn: boolean;
@@ -191,7 +189,6 @@ export function GuestsRows({
   searched,
   onSearch,
   menu,
-  offline,
   rows,
   groups,
   walkIn,
@@ -229,7 +226,6 @@ export function GuestsRows({
           onChoose={onFilter}
         />
       </View>
-      {offline && null}
       {looking ? (
         <View>
           <ShownLine
@@ -269,9 +265,7 @@ export function GuestsRows({
                     gutter={wide ? 10 : 0}
                   />
                 </View>
-                {count >
-                  shown.filter((p) => !p.companion).length +
-                    shown.filter((p) => p.companion).length && (
+                {count > shown.length && (
                   <TextAction
                     label={showAllWords(group, count)}
                     figures
@@ -359,8 +353,6 @@ export function GuestsFailed({ onRetry }: { onRetry: () => void }) {
     </View>
   );
 }
-
-export type { ScreenReaderTarget };
 
 const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
