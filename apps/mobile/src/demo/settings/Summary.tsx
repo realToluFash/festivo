@@ -10,7 +10,6 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Initials } from '../../components/Initials.tsx';
 import { useReadOut } from '../../components/ReadOut.tsx';
 import { Text } from '../../components/Text.tsx';
 import { Toast } from '../../components/Toast.tsx';
@@ -366,14 +365,15 @@ export function Faces({
 }
 
 /** A person's initials as a white disc on Confetti, as on the Settings card. */
-export function CardFace({ name, side }: { name: string; side: number }) {
+export function CardFace({ initials, side }: { initials: string; side: number }) {
   return (
     <View
       style={[styles.cardFace, { width: side, height: side, borderRadius: side / 2 }]}
-      accessibilityElementsHidden
-      importantForAccessibility="no-hide-descendants"
+      {...hidden}
     >
-      <Initials name={name} size={Math.round(side * 0.36)} weight="bold" style={styles.accent} />
+      <Text size={Math.round(side * 0.36)} weight="bold" accessible={false} style={styles.accent}>
+        {initials}
+      </Text>
     </View>
   );
 }

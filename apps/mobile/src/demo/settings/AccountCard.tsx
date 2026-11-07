@@ -7,6 +7,7 @@ import { type TextHandle, Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { Glyph, type GlyphName } from '../../components/Glyph.tsx';
 import { type CardLine, WORDS, zoneLine } from './AccountModel.ts';
+import { YOU } from './sample.ts';
 import {
   CardFace,
   OnCard,
@@ -45,7 +46,7 @@ export function YouCard({
   return (
     <SummaryCard size={wide ? 'wide' : 'page'} height={200} step={step} testID="account.card">
       <View style={styles.you}>
-        <CardFace name={name} side={face} />
+        <CardFace initials={YOU.initials} side={face} />
         <View style={styles.words}>
           <Text
             ref={nameRef}

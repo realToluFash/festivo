@@ -153,7 +153,7 @@ function PersonBody({
         testID={`members.person.${person.initials}`}
       >
         <View style={styles.who}>
-          <CardFace name={person.name} side={pane ? 64 : 56} />
+          <CardFace initials={person.initials} side={pane ? 64 : 56} />
           <View style={styles.whoWords}>
             <CardSays text={person.name} size={pane ? 26 : 22} heading />
             <OnCard text={person.email} />
