@@ -1,3 +1,4 @@
+import { defaultScheme } from '../scheme.ts';
 import { type DemoLink, VIEWERS, settingsPath } from './settings.ts';
 
 export type SchemeKey =
@@ -15,7 +16,7 @@ export const SCHEME_ORDER: readonly SchemeKey[] = [
   'terracotta',
 ];
 
-export const OWN_SCHEME: SchemeKey = 'violet';
+export const OWN_SCHEME: SchemeKey = defaultScheme;
 
 export const SAVE_MS = 500;
 export const HOLD_MS = 8000;

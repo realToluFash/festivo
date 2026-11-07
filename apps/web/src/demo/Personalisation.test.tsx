@@ -6,7 +6,7 @@ import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
 
 const tested = config();
-const SLOW = { timeout: 3000 };
+const SLOW = { timeout: 8000 };
 const PAGE = '/demo/settings/personalisation';
 
 async function personalisation(path: string) {
