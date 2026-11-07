@@ -1,5 +1,5 @@
 import type { Ref } from 'react';
-import { StyleSheet, type TextInputInstance, View } from 'react-native';
+import { StyleSheet, type TextInputInstance, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { CountryPicker } from '../../components/CountryPicker.tsx';
@@ -15,6 +15,7 @@ export function AccountPhoneEntry({
   error,
   errorOn,
   ref,
+  pickerRef,
   onCountry,
   onNumber,
   onSubmit,
@@ -26,6 +27,8 @@ export function AccountPhoneEntry({
   error: string | null;
   errorOn: 'country' | 'number';
   ref?: Ref<TextInputInstance> | undefined;
+  /** Where "Choose a country." sends the focus: the Code, which its edge marks. */
+  pickerRef?: Ref<ViewInstance> | undefined;
   onCountry: (code: string) => void;
   onNumber: (typed: string) => void;
   onSubmit: () => void;
@@ -43,6 +46,7 @@ export function AccountPhoneEntry({
               value={country}
               onChange={onCountry}
               withCallingCode
+              pickerRef={pickerRef}
               testID={`${testID}.country`}
             />
           </PickerEdge>

@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
 import { SAMPLE } from '../samples.ts';
@@ -196,11 +199,20 @@ describe('adding', () => {
     expect(addCheck('phone', '7400 123457', '')).toBe('Choose a country.');
   });
 
-  it('puts the red edge on the control the line names (sc-30447)', () => {
+  it('puts the red edge and the focus on the control the line names (sc-30447)', () => {
     expect(phoneLineOn('7400 123457', '')).toBe('country');
     expect(phoneLineOn('', '')).toBe('number');
     expect(phoneLineOn('7400 12', 'GB')).toBe('number');
     expect(phoneLineOn('7400 123457 123', 'GB')).toBe('number');
+  });
+
+  it('sends the focus to the Code for "Choose a country.", and to the number for its own lines', () => {
+    const add = readFileSync(join('src', 'demo', 'settings', 'AccountAdd.tsx'), 'utf8');
+
+    expect(add).toMatch(
+      /if \(on === 'country'\) focusPicker\(picker\);\s+else focusChecked\(field\);/u,
+    );
+    expect(add).toMatch(/pickerRef=\{picker\}/u);
   });
 
   it('refuses one already linked, whatever its case', () => {

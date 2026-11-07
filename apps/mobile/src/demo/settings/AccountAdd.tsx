@@ -1,6 +1,7 @@
 import { type RefObject, useEffect, useRef, useState } from 'react';
-import type { TextInputInstance } from 'react-native';
+import type { TextInputInstance, ViewInstance } from 'react-native';
 
+import { focusPicker } from '../../components/CountryPicker.tsx';
 import { Field, focusChecked, focusRefused, TextField } from '../../components/Field.tsx';
 import { SETTLED_MS } from '../../components/Screen.tsx';
 import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
@@ -39,6 +40,7 @@ export function AddScreen({
   const email = kind === 'email';
   const typed = useRef('');
   const field = useRef<TextInputInstance>(null);
+  const picker = useRef<ViewInstance>(null);
   const [country, setCountry] = useState(startCountry);
   const [changed, setChanged] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -61,9 +63,11 @@ export function AddScreen({
   function add(): void {
     const checked = addCheck(kind, typed.current, country);
     if (checked != null) {
+      const on = email ? 'number' : phoneLineOn(typed.current, country);
       setError(checked);
-      setErrorOn(email ? 'number' : phoneLineOn(typed.current, country));
-      focusChecked(field);
+      setErrorOn(on);
+      if (on === 'country') focusPicker(picker);
+      else focusChecked(field);
       return;
     }
     const shown = email ? typed.current.trim() : phoneShown(country, typed.current);
@@ -121,6 +125,7 @@ export function AddScreen({
           country={country}
           error={error}
           errorOn={errorOn}
+          pickerRef={picker}
           onCountry={(code) => {
             setCountry(code);
             setError(null);
