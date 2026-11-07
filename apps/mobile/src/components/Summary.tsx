@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
+import { Initials } from './Initials.tsx';
 import { useReadOut } from './ReadOut.tsx';
 import { type TextHandle, Text } from './Text.tsx';
 import { Toast } from './Toast.tsx';
@@ -294,15 +295,14 @@ export function Faces({
 }
 
 /** A person's initials as a white disc on Confetti, as on the Settings card. */
-export function CardFace({ initials, side }: { initials: string; side: number }) {
+export function CardFace({ name, side }: { name: string; side: number }) {
   return (
     <View
       style={[styles.cardFace, { width: side, height: side, borderRadius: side / 2 }]}
-      {...hidden}
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
     >
-      <Text size={Math.round(side * 0.36)} weight="bold" accessible={false} style={styles.accent}>
-        {initials}
-      </Text>
+      <Initials name={name} size={Math.round(side * 0.36)} weight="bold" style={styles.accent} />
     </View>
   );
 }

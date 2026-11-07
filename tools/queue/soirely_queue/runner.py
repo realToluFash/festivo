@@ -551,8 +551,13 @@ def prompt_outcome(db, role, entry, told=None):
                          "wanted": entry.get("wanted"), "told": told})
 
 
+def unnamed(entry):
+    gap = entry.get("unnamed")
+    return "a command it did not name" + (f" ({gap})" if gap else "")
+
+
 def prompt_text(name, entry):
-    wanted = f"`{entry['wanted']}`" if entry.get("wanted") else "a command it did not name"
+    wanted = f"`{entry['wanted']}`" if entry.get("wanted") else unnamed(entry)
     story = f"sc-{entry['story']}" if entry.get("story") else "no story"
     return (f"{name}'s worker for item {entry['item']} ({story}) was stopped: its "
             f"`claude --bg` session {entry.get('bg') or ''} under "
@@ -569,7 +574,7 @@ def stopped_on_prompt(db, name, entry, ids, tell):
     role = entry["role"]
     told = set((store.get_meta(db, f"prompt:{role}") or {}).get("told") or ())
     entry["report"] = (f"stopped on a permission prompt, wanting "
-                       f"{entry.get('wanted') or 'a command it did not name'}"
+                       f"{entry.get('wanted') or unnamed(entry)}"
                        + (f"; it had said: {entry['report']}" if entry.get("report") else ""))
     if entry.get("story") and entry["story"] not in told:
         try:
@@ -631,7 +636,10 @@ def in_background(db, platform, name, entry, values, folder, text, cwd, ids, all
         entry["stopped"] = why
     if why == "prompt":
         entry["wanted"] = result.get("wanted")
+        if result.get("unnamed"):
+            entry["unnamed"] = result["unnamed"]
     result.pop("wanted", None)
+    result.pop("unnamed", None)
     refused = result.pop("artifact_refused", None)
     read = result.pop("artifact_read", False)
     if read:
