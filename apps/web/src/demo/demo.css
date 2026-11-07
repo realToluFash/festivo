@@ -270,8 +270,7 @@
 }
 
 .demo-field label {
-  font: var(--typeBody);
-  font-weight: 500;
+  font: var(--typeBodyStrong);
   color: var(--colorInk);
 }
 
@@ -426,8 +425,7 @@
   display: flex;
   align-items: center;
   gap: var(--spaceXs);
-  font: var(--typeSmall);
-  font-weight: 500;
+  font: var(--typeSmallStrong);
   color: var(--colorInkSecondary);
 }
 
