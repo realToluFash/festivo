@@ -42,7 +42,7 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 | Phone number, mobile number          | Settled 18 Oct 2026: "phone number" for any number on the account (card, list, add button, cap), which may be a landline; "mobile number" only for the field we text a code to (`contacts.phoneLabel`, `verifyPhone.numberLabel`).                           |
 | Alternative (address, number)        | Settled 18 Oct 2026: any address or number on the account that is not primary, verified or not. The card's plural is "Other addresses" / "Other numbers"; one of them is "an alternative address" or "an alternative number". Never "secondary" or "backup". |
 | Schedule                             | Settled 19 Oct 2026 (epic 33, sc-3895 #4106): the list the organiser builds, and its page. Never "agenda", "itinerary" or "running order".                                                                                                                   |
-| Run of show                          | Settled 19 Oct 2026: the night's screen, app and web, the web switch included. Never a bare "Run".                                                                                                                                                           |
+| Run of show                          | Settled 19 Oct 2026: the screen for running the event on the day, app and web, the web switch included. Never a bare "Run".                                                                                                                                  |
 | Now, Next, Later                     | Settled 19 Oct 2026: Run of show's cards and list, and the cue screen's "Later". "Later" replaced the drawn "Then". Own keys, never a stepper's "Next".                                                                                                      |
 | Done, Skip, Start now                | Settled 19 Oct 2026: finishing, skipping and starting an item. States in a list: "Done", "Skipped", "Not started". "Done" is its own key, not the app's `close`. Screen readers: "Done: {{title}}".                                                          |
 | Move, Move after this                | Settled 19 Oct 2026: moving an item (sc-3894). "Move after this" replaced "Place after", because "Place" is the noun on the same page.                                                                                                                       |
@@ -66,6 +66,14 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **7 Nov 2026. "On the day", never "on the night"** (sc-29384, from the owner's 3 Nov decision).
+  Events happen at any hour, so the copy says "on the day" and carries no night, dusk or sunset
+  imagery: `verifyPhone.doneBody`, `steps.mobileIntro`, `completeProfile.mobileHelp`,
+  `rolesScreen.means.run_of_show`, and the web tagline, now the app's "Plan the event. Run the
+  day." in every locale. es, fr and pt say "el día del evento", "le jour de l’événement" and "no
+  dia do evento". Kept: `eventForm.clocksSkip` and `clocksSkipNextDay` say "the clocks go forward
+  that night", which describes the clock change, not the event. "Good evening" is a greeting by
+  the hour and stays.
 - **5 Nov 2026. An event's People refusals** (`errors:own_event_role`, `messages:people.*`,
   sc-30009 for sc-29912). Kept as dev2 wrote them. The event role Lead is "the event's lead" in
   running text, lower case, as "an owner, an admin".
@@ -154,7 +162,7 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   the confirmation "Keep it live", never "Cancel". A refusal starts "Not paused." or "Not
   resumed.", as "Not ended." does. The explanation "Guests can't reply …" keeps its contraction,
   as `scheduleLocked` does: it explains, it does not refuse. "Check-in" is guests arriving at
-  the door, "service" the food and drink on the night; es, fr and pt name the door, never a
+  the door, "service" the food and drink on the day; es, fr and pt name the door, never a
   hotel or airport check-in.
 - **27 Oct 2026. An event's hosts** (sc-15427 for sc-6713, `web:eventHosts.*`,
   `eventLive.needsHost*|addHosts` web and app, `messages:validation.event_host*`,
