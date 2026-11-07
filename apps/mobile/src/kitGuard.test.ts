@@ -526,6 +526,39 @@ describe('every text field is named through fieldName (sc-17333)', () => {
   });
 });
 
+describe('a refused control says why, wherever it takes the red edge (sc-31323)', () => {
+  // A control is read as invalid by its line, so one given the red edge without the line is refused in silence. The design demos say it beside the field instead.
+  it('in every InsideField and picker in the app', () => {
+    const offenders = sources(['src', 'app'])
+      .filter(({ path }) => !path.includes('/demo/'))
+      .flatMap(({ path, text }) => refusedInSilence(text).map((line) => `${path}:${line}`));
+
+    expect(
+      offenders,
+      'Pass line= beside state= or wrong=, or set the picker inside a <Field error={…}>.',
+    ).toEqual([]);
+  });
+
+  it('notices a red edge given without its line', () => {
+    expect(refusedInSilence("<InsideField\n  label={t('a')}\n  state={s}\n/>")).toEqual([1]);
+    expect(refusedInSilence('<InsideField state={s} line={error} />')).toEqual([]);
+    expect(refusedInSilence('<InsideField label={a} />')).toEqual([]);
+    expect(refusedInSilence('<CountryPicker\n  wrong={bad}\n/>')).toEqual([1]);
+    expect(refusedInSilence('<ListPicker wrong={bad} line={error} />')).toEqual([]);
+    expect(
+      refusedInSilence('<Field label={a} error={e}>\n  <ListPicker wrong={bad} />\n</Field>'),
+    ).toEqual([]);
+    expect(refusedInSilence('<Field label={a}>\n  <ListPicker wrong={bad} />\n</Field>')).toEqual([
+      2,
+    ]);
+    expect(
+      refusedInSilence(
+        '<Field label={a} error={e}>\n  <View />\n</Field>\n<CountryPicker wrong={bad} />',
+      ),
+    ).toEqual([4]);
+  });
+});
+
 describe('a field hands its children the id its label shows under (sc-17333)', () => {
   // On Android a TextField is named only by this id; without it, fieldName falls back to a content description.
   it('in Field', () => {
@@ -1568,6 +1601,28 @@ function inputsNamedAnotherWay(text: string): number[] {
 
     return quiet ? [] : [text.slice(0, match.index).split('\n').length];
   });
+}
+
+/** The lines of each InsideField given state= or picker given wrong= with no line to say why. */
+function refusedInSilence(text: string): number[] {
+  return [...text.matchAll(/(?<![\w.])<(InsideField|CountryPicker|ListPicker)\b/gu)].flatMap(
+    (match) => {
+      const tag = text.slice(match.index, tagEnd(text, match.index));
+      const edged = match[1] === 'InsideField' ? /\bstate=/u : /\bwrong=/u;
+      const said =
+        /\bline=/u.test(tag) || (match[1] !== 'InsideField' && insideFieldError(text, match.index));
+
+      return edged.test(tag) && !said ? [text.slice(0, match.index).split('\n').length] : [];
+    },
+  );
+}
+
+/** Whether the markup at `at` sits inside a Field that carries the error line. */
+function insideFieldError(text: string, at: number): boolean {
+  const open = [...text.slice(0, at).matchAll(/(?<![\w.])<Field\b/gu)].at(-1);
+  if (open == null || text.slice(open.index, at).includes('</Field>')) return false;
+
+  return /\berror=/u.test(text.slice(open.index, tagEnd(text, open.index)));
 }
 
 /** A prop's value as written, its braces balanced, or null when the markup does not set it. */
