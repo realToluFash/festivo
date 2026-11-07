@@ -17,7 +17,7 @@ import { useReducedMotion } from '../../reducedMotion.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { useModalOpen } from '../../updateRequired.ts';
 import { HELD_MS } from '../people/PeopleSample.ts';
-import { AskLayer, type AskProps, TextAction } from '../settings/Summary.tsx';
+import { AskLayer, type AskProps, TextAction } from '../../components/Summary.tsx';
 import { cardLine, type DoorCode, type HoldStart } from './DoorCodeModel.ts';
 import { DoorQr } from './DoorQr.tsx';
 import { joinCodeSaid, newLine, stopLine, W } from './DoorCodeWords.ts';
@@ -139,6 +139,7 @@ export function HoldItUp({
             },
           }
         : null;
+  const covered = asking != null;
 
   return (
     <Modal
@@ -154,8 +155,8 @@ export function HoldItUp({
         style={[styles.screen, { paddingTop: insets.top }]}
         accessibilityViewIsModal
         onAccessibilityEscape={onClose}
-        accessibilityElementsHidden={asking != null}
-        importantForAccessibility={asking != null ? 'no-hide-descendants' : 'auto'}
+        accessibilityElementsHidden={covered}
+        importantForAccessibility={covered ? 'no-hide-descendants' : 'auto'}
         testID="door.hold"
       >
         <View style={styles.bar}>
@@ -168,7 +169,13 @@ export function HoldItUp({
           >
             <Glyph name="x" size={22} ink={tokens.colorInk} weight={2.2} />
           </Pressable>
-          <Text ref={title} size={size.title} weight="bold" accessibilityRole="header">
+          <Text
+            ref={title}
+            size={size.title}
+            weight="bold"
+            accessible={covered ? false : undefined}
+            accessibilityRole="header"
+          >
             {W.doorCode}
           </Text>
           <View style={styles.close} />
@@ -185,6 +192,7 @@ export function HoldItUp({
             <Text
               size={size.code}
               weight="bold"
+              accessible={covered ? false : undefined}
               accessibilityLabel={joinCodeSaid(code.code)}
               style={[
                 styles.code,
@@ -193,12 +201,18 @@ export function HoldItUp({
             >
               {code.code}
             </Text>
-            <Text size={17} weight="semibold" style={styles.centre}>
+            <Text
+              size={17}
+              weight="semibold"
+              accessible={covered ? false : undefined}
+              style={styles.centre}
+            >
               {job}
             </Text>
             <Text
               size={16}
               weight="medium"
+              accessible={covered ? false : undefined}
               style={[styles.centre, styles.secondary, styles.figures]}
               testID="door.hold.count"
             >

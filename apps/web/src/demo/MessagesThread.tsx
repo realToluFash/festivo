@@ -3,7 +3,7 @@ import { type FormEvent, type ReactNode, useEffect, useId, useRef, useState } fr
 
 import { offButton } from '../offButton.ts';
 import { ADD_WORDS } from './account.ts';
-import { Glyph } from './Glyph.tsx';
+import { Glyph } from '../components/Glyph.tsx';
 import {
   type Answer,
   type Audience,
@@ -71,7 +71,7 @@ import {
 } from './MessagesParts.tsx';
 import { StreamItems } from './MessagesStream.tsx';
 import { MessagesBell } from './MessagesTell.tsx';
-import { Field } from './SettingsParts.tsx';
+import { Field } from '../components/SettingsParts.tsx';
 
 export function ConversationPane({
   state,

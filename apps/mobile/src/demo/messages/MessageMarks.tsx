@@ -4,7 +4,7 @@ import Svg, { Circle, Path } from 'react-native-svg';
 import { Glyph } from '../../components/Glyph.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
-import { StatusMark } from '../settings/Summary.tsx';
+import { ShapeMark } from '../../components/StatusMark.tsx';
 import { type MarkKey, type Where, piecesOf } from './MessagesSample.ts';
 import { say } from './MessagesWords.ts';
 
@@ -102,11 +102,11 @@ export function DeliveryMark({ mark, side = 14 }: { mark: MarkKey; side?: number
 
   switch (mark) {
     case 'delivered':
-      return <StatusMark kind="yes" side={side} ink={tokens.colorInk} />;
+      return <ShapeMark kind="yes" side={side} ink={tokens.colorInk} />;
     case 'sending':
-      return <StatusMark kind="waiting" side={side} ink={tokens.colorAttention} />;
+      return <ShapeMark kind="waiting" side={side} ink={tokens.colorAttention} />;
     case 'none':
-      return <StatusMark kind="ended" side={side} ink={ink2} />;
+      return <ShapeMark kind="ended" side={side} ink={ink2} />;
     case 'sent':
       return <MessageGlyph name="ring" size={side} ink={tokens.marks.done.fill} weight={2.6} />;
     case 'bounced':

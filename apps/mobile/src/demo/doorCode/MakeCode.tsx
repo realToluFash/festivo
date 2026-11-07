@@ -16,7 +16,7 @@ import { HELD_MS, ROLE_LINES } from '../people/PeopleSample.ts';
 import { RoleLayer } from '../people/PeopleAdd.tsx';
 import { DoneAction } from '../people/PeopleRole.tsx';
 import { RoleChoices } from '../settings/MembersRequest.tsx';
-import { FocusedScreen, type Layer, Row, RowList, SectionHead } from '../settings/Summary.tsx';
+import { FocusedScreen, type Layer, Row, RowList, SectionHead } from '../../components/Summary.tsx';
 import { RadioMark } from '../../components/RadioMark.tsx';
 import {
   clockWords,

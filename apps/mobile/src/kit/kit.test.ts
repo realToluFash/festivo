@@ -13,6 +13,8 @@ import {
   nextPin,
   nextStrayed,
   passwordProps,
+  refusedHint,
+  refusedName,
   type Typing,
   valueHanded,
 } from './fields.ts';
@@ -697,6 +699,58 @@ describe('a field held on Android is handed no text TalkBack would read as repla
 
   it('is handed its text throughout a hold on iOS', () => {
     expect(handsHeld('ios', false)).toBe(true);
+  });
+});
+
+describe('a refused control says "Invalid" with its name and its line as its hint (sc-31323)', () => {
+  const refused = { word: 'Invalid', line: 'Enter your password.', nameID: 'r9' };
+
+  it('says the word with its name on iOS, where hints can be turned off', () => {
+    expect(refusedName('ios', { accessibilityLabel: 'Password' }, refused)).toEqual({
+      accessibilityLabel: 'Password, Invalid',
+      accessibilityLabelledBy: undefined,
+    });
+  });
+
+  it('is named on Android by the unseen copy of its label with the word, so TalkBack still reads what it holds', () => {
+    expect(
+      refusedName(
+        'android',
+        { accessibilityLabel: undefined, accessibilityLabelledBy: 'r1' },
+        refused,
+      ),
+    ).toEqual({ accessibilityLabel: undefined, accessibilityLabelledBy: 'r9' });
+  });
+
+  it('adds the word to a content description where the control has one', () => {
+    expect(refusedName('android', { accessibilityLabel: 'Code from the email' }, refused)).toEqual({
+      accessibilityLabel: 'Code from the email, Invalid',
+      accessibilityLabelledBy: undefined,
+    });
+  });
+
+  it('takes the name it shows where it is given none', () => {
+    expect(
+      refusedName('ios', { accessibilityLabel: undefined }, refused, 'Name').accessibilityLabel,
+    ).toBe('Name, Invalid');
+  });
+
+  it('says what it says today when no line is about it', () => {
+    expect(refusedName('ios', { accessibilityLabel: 'Password' }, null)).toEqual({
+      accessibilityLabel: 'Password',
+    });
+    expect(refusedHint(null, 'Shown to guests.')).toBe('Shown to guests.');
+  });
+
+  it('says the line first in its hint, then any hint of its own', () => {
+    expect(refusedHint(refused, undefined)).toBe('Enter your password.');
+    expect(refusedHint(refused, 'Shown to guests.')).toBe('Enter your password. Shown to guests.');
+  });
+
+  it('says only the word when it has no line to give', () => {
+    expect(refusedHint({ word: 'Invalid', line: null }, 'Shown to guests.')).toBe(
+      'Shown to guests.',
+    );
   });
 });
 

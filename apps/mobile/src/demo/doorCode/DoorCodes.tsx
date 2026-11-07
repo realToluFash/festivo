@@ -3,7 +3,7 @@ import type { ViewInstance } from 'react-native';
 
 import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
 import type { OnEvent } from '../people/PeopleSample.ts';
-import { Ask, type AskProps } from '../settings/Summary.tsx';
+import { Ask, type AskProps } from '../../components/Summary.tsx';
 import { AnotherCode, DoorCodeCard, NoCodeCard } from './DoorCodeCard.tsx';
 import {
   type CodeForm,

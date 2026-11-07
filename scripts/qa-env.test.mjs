@@ -1419,15 +1419,16 @@ describe('handing a provider redirect to Expo Go', () => {
 });
 
 describe('the API cache a checkout leaves behind', () => {
-  it('is gone, and the rest of var stays', () => {
+  it('is emptied, its directory and the rest of var stay', () => {
     const root = mkdtempSync(join(tmpdir(), 'qa-cache-'));
     mkdirSync(join(root, 'services/api/var/cache/dev'), { recursive: true });
     writeFileSync(join(root, 'services/api/var/cache/dev/App_KernelDevDebugContainer.php'), '');
+    writeFileSync(join(root, 'services/api/var/cache/.gitkeep'), '');
     mkdirSync(join(root, 'services/api/var/log'), { recursive: true });
 
     clearApiCache(root);
 
-    expect(existsSync(join(root, 'services/api/var/cache'))).toBe(false);
+    expect(readdirSync(join(root, 'services/api/var/cache'))).toEqual([]);
     expect(existsSync(join(root, 'services/api/var/log'))).toBe(true);
   });
 
@@ -1490,9 +1491,17 @@ describe('a flow in a language', () => {
   it('puts the address in, escaped, only where asked', () => {
     const values = { email: 'qa-1@soirely.test' };
     expect(localise('{{t:settings.signedInAs|email}}', catalogues, 'en', values)).toBe(
-      'Signed in as qa-1@soirely\\.test',
+      'Signed in as qa-1@\\u200B?soirely\\.test',
     );
     expect(localise('{{t:settings.signedInAs}}', catalogues, 'en', values)).toBe('Signed in as .*');
+  });
+
+  it('matches the address as the app draws it, broken after its @ or not', () => {
+    const pattern = localise('{{t:settings.signedInAs|email}}', catalogues, 'en', {
+      email: 'qa-1@soirely.test',
+    });
+    expect(new RegExp(`^${pattern}$`).test('Signed in as qa-1@\u200Bsoirely.test')).toBe(true);
+    expect(new RegExp(`^${pattern}$`).test('Signed in as qa-1@soirely.test')).toBe(true);
   });
 
   it('names a key no catalogue holds', () => {

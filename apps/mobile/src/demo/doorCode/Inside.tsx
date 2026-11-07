@@ -2,7 +2,7 @@ import { type RefObject, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View, type ViewInstance } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Confetti } from '../../components/Cover.tsx';
+import { CARD_PIECES, Confetti } from '../../components/Cover.tsx';
 import { EventMesh } from '../../components/EventMesh.tsx';
 import { Glyph, type GlyphName } from '../../components/Glyph.tsx';
 import { Sheet } from '../../components/Sheet.tsx';
@@ -11,7 +11,6 @@ import { TabBar } from '../../components/TodayCover.tsx';
 import { meshFor } from '../../kit/today.ts';
 import { useLayout } from '../../layout/useLayout.ts';
 import { tokens } from '../../theme/tokens.ts';
-import { CARD_PIECES } from '../Cover.tsx';
 import { Face } from '../people/PeopleRole.tsx';
 import {
   listed,
@@ -23,7 +22,7 @@ import {
   seesEveryEvent,
 } from '../people/PeopleSample.ts';
 import { LineIcon } from '../settings/AccountCard.tsx';
-import { Back } from '../settings/parts.tsx';
+import { Back } from '../../components/SettingsParts.tsx';
 import {
   CardSays,
   Line,
@@ -34,7 +33,7 @@ import {
   SectionHead,
   SummaryCard,
   TextAction,
-} from '../settings/Summary.tsx';
+} from '../../components/Summary.tsx';
 import {
   type CodeRole,
   clockWords,

@@ -14,7 +14,7 @@ import {
   whenRange,
   whenWord,
 } from './events.ts';
-import { Glyph } from './Glyph.tsx';
+import { Glyph } from '../components/Glyph.tsx';
 
 type View = 'top' | 'type' | 'when' | 'host';
 

@@ -10,7 +10,7 @@ import {
   OnCard,
   SummaryCard,
   TextAction,
-} from '../settings/Summary.tsx';
+} from '../../components/Summary.tsx';
 import {
   cardLine,
   cardStep,

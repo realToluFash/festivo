@@ -5,12 +5,12 @@ import { StyleSheet, View } from 'react-native';
 import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
-import { Ask, type AskProps, FocusedScreen, SectionHead } from '../settings/Summary.tsx';
 import { ASK_WIDTH, EventField, useEditGap } from './EventEdits.tsx';
 import { wallOf } from './EventsModel.ts';
 import { BoxField, MomentBox, type Picking, PickerLayer, pick } from './EventsPick.tsx';
 import { RESTORE_UNTIL, type SampleEvent } from './EventsSample.ts';
 import { W, say, t } from './EventsWords.ts';
+import { Ask, type AskProps, FocusedScreen, SectionHead } from '../../components/Summary.tsx';
 
 type Opener = RefObject<ScreenReaderTarget | null>;
 

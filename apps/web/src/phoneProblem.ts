@@ -1,4 +1,4 @@
-import { type PhoneLengthProblem, countryChoices } from '@soirely/domain';
+import { type PhoneLengthProblem, callingCode, countryChoices } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 
 import { currentLocale } from './i18n/index.ts';
@@ -19,4 +19,9 @@ export function phoneProblemMessage(
   return t(problem === 'tooShort' ? 'verifyPhone.tooShort' : 'verifyPhone.tooLong', {
     country: name,
   });
+}
+
+/** "+44 United Kingdom", the calling code ahead of the country's name. */
+export function codeChoice(code: string, name: string): string {
+  return `${callingCode(code) ?? ''} ${name}`.trim();
 }

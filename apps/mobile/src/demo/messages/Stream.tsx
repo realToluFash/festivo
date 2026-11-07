@@ -7,7 +7,7 @@ import { ReadOut } from '../../components/ReadOut.tsx';
 import { Text } from '../../components/Text.tsx';
 import { useReducedMotion } from '../../reducedMotion.ts';
 import { tokens } from '../../theme/tokens.ts';
-import { TextAction, TurningMark } from '../settings/Summary.tsx';
+import { TextAction, TurningMark } from '../../components/Summary.tsx';
 import {
   DeliveryMark,
   MessageGlyph,

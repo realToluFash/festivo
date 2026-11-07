@@ -3,7 +3,7 @@ import { type RefObject, useEffect, useRef, useState } from 'react';
 import type { SampleEvent } from './events.ts';
 import type { Handed } from './handover.ts';
 import { LeadsBlock } from './Handover.tsx';
-import { focusWhenFree } from './layers.ts';
+import { focusWhenFree } from '../layers.ts';
 import {
   firstName,
   grantable,
@@ -40,8 +40,8 @@ import {
   RedAction,
   RowWords,
   TextAction,
-} from './SettingsParts.tsx';
-import type { Tell } from './TodayParts.tsx';
+} from '../components/SettingsParts.tsx';
+import type { Tell } from '../components/SettingsParts.tsx';
 
 /** A person in the list's place: their card, how they got here, and what the viewer may do, by their standing. */
 export function PersonPage({

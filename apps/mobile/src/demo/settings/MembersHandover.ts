@@ -1,4 +1,5 @@
-import { EVENTS, meshFor, type MeshKey } from '../events/EventsSample.ts';
+import { EVENTS } from '../events/EventsSample.ts';
+import { meshFor, type MeshKey } from '../../kit/today.ts';
 import { SEARCH_ABOVE } from '../OrgSwitcherModel.ts';
 
 /** An event somebody leads, as the work list would carry it: its id and title, and the start and state that order it. */
