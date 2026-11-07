@@ -2,7 +2,7 @@ import { formattingLocale } from '@soirely/domain';
 import { getLocales } from 'expo-localization';
 import { router, useFocusEffect, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { I18nextProvider, useTranslation } from 'react-i18next';
+import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -11,7 +11,6 @@ import { useSystemBack } from '../../src/components/useSystemBack.ts';
 import { useLayout } from '../../src/layout/useLayout.ts';
 import { createStateOf } from '../../src/demo/createOrg/CreateWalk.ts';
 import { NoOrganisation } from '../../src/demo/createOrg/NoOrganisation.tsx';
-import { startFirstWords } from '../../src/demo/createOrg/startFirst.ts';
 import { OrgSwitcherProvider, useCurrentPlace } from '../../src/demo/OrgSwitcher.tsx';
 import { switcherStateOf } from '../../src/demo/OrgSwitcherModel.ts';
 import { MOMENTS, momentOf, sayIn } from '../../src/demo/today.ts';
@@ -168,16 +167,12 @@ export default function DemoTodayScreen() {
         <View style={styles.fill}>
           {place == null ? (
             <NoOrganisation tell={tell} />
+          ) : run != null ? (
+            <RunTodayScreen moment={run} onTab={onTab} notices={notices} />
+          ) : arrived != null ? (
+            <ArrivedTodayScreen moment={arrived} onTab={onTab} notices={notices} />
           ) : (
-            <I18nextProvider i18n={moment.kind === 'first' ? startFirstWords(i18n.language) : i18n}>
-              {run != null ? (
-                <RunTodayScreen moment={run} onTab={onTab} notices={notices} />
-              ) : arrived != null ? (
-                <ArrivedTodayScreen moment={arrived} onTab={onTab} notices={notices} />
-              ) : (
-                <TodayScreen moment={moment} onTab={onTab} notices={notices} />
-              )}
-            </I18nextProvider>
+            <TodayScreen moment={moment} onTab={onTab} notices={notices} />
           )}
           {told != null && (
             <Told

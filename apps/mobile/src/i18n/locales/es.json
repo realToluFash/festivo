@@ -206,7 +206,8 @@
   "forms": {
     "emailBlank": "Introduzca su dirección de correo electrónico.",
     "emailShape": "Eso no parece una dirección de correo electrónico. Compruebe que tiene una @ y un dominio.",
-    "countryBlank": "Elija un país."
+    "countryBlank": "Elija un país.",
+    "invalid": "Datos no válidos"
   },
   "oauth": {
     "linked": "{{provider}} ya está vinculado a su cuenta. Puede iniciar sesión con cualquiera de los dos.",
@@ -799,7 +800,8 @@
       "vendors": "Proveedores",
       "members": "Miembros y roles",
       "billing": "Facturación",
-      "organisation": "Organización"
+      "organisation": "Organización",
+      "people": "Personas en los eventos"
     },
     "means": {
       "events": "Crear, publicar, pausar y concluir eventos.",
@@ -814,7 +816,8 @@
       "vendors": "Los proveedores de cada evento y lo acordado con ellos.",
       "members": "Invitar, aprobar, suspender, cambiar roles.",
       "billing": "Plan, tarjetas y facturas.",
-      "organisation": "El nombre, el país, la dirección de contacto y los valores con los que empiezan los eventos nuevos."
+      "organisation": "El nombre, el país, la dirección de contacto y los valores con los que empiezan los eventos nuevos.",
+      "people": "Quién está en cada evento y el rol que tiene allí cada persona."
     },
     "margin": "Margen",
     "marginMeans": "Lo que {{name}} añade sobre los costes. Oculto significa que el presupuesto se abre solo con los costes.",
@@ -2050,7 +2053,7 @@
       "liveTitle": "Publíquelo",
       "liveBody": "Será un borrador hasta que lo publique."
     },
-    "createEvent": "Crear un evento",
+    "startFirst": "Start your first event",
     "stepNumber": "{{n, number}}"
   }
 }
