@@ -6,7 +6,14 @@ import { PrimaryButton, QuietButton } from '../../../src/components/Buttons.tsx'
 import { Notice } from '../../../src/components/Notice.tsx';
 import { CodeBoxes, type CodeBoxesHandle, CodeLabel } from '../../../src/steps/CodeBoxes.tsx';
 import { DemoScreen, NavBar } from '../../../src/demo/DemoScreen.tsx';
-import { type Spent, codeWords, spentAfter, spentWords } from '../../../src/demo/lostAuth.ts';
+import {
+  type Spent,
+  type Tries,
+  codeWords,
+  newCode,
+  spentWords,
+  wrongAsk,
+} from '../../../src/demo/lostAuth.ts';
 import { Heading, Plain, Says } from '../../../src/steps/Lines.tsx';
 import { CODE_LENGTH, minutesSeconds, RESEND_SECONDS } from '../../../src/steps/rules.ts';
 import { SAMPLE } from '../../../src/demo/samples.ts';
@@ -28,8 +35,8 @@ export default function LostCodes() {
   const [codes, setCodes] = useState<Record<Which, string>>({ email: '', text: '' });
   const [said, setSaid] = useState<{ which: Which; words: string } | null>(null);
   const [busy, setBusy] = useState(false);
-  const [wrongs, setWrongs] = useState(0);
-  const [spent, setSpent] = useState<Spent | null>(() => opening(params.state));
+  const [tries, setTries] = useState<Tries>(() => ({ wrongs: 0, spent: opening(params.state) }));
+  const spent = tries.spent;
   const boxes = { email: useRef<CodeBoxesHandle>(null), text: useRef<CodeBoxesHandle>(null) };
   const { left, restart } = useCountdown(RESEND_SECONDS);
   const needed: readonly Which[] = emailOnly ? ['email'] : ['email', 'text'];
@@ -50,10 +57,9 @@ export default function LostCodes() {
       setBusy(false);
       const wrong = needed.find((which) => codes[which] !== SAMPLE.code);
       if (wrong != null) {
-        const ended = spentAfter(wrongs + 1);
-        setWrongs(wrongs + 1);
-        if (ended != null) {
-          setSpent(ended);
+        const next = wrongAsk(tries);
+        setTries(next);
+        if (next.spent != null) {
           setSaid(null);
           return;
         }
@@ -70,10 +76,11 @@ export default function LostCodes() {
   }
 
   function sendNew(): void {
-    setSpent(null);
-    setWrongs(0);
+    setTries(newCode());
     setCodes({ email: '', text: '' });
+    setSaid(null);
     restart();
+    boxes.email.current?.focus();
   }
 
   const box = (which: Which, label: string, first: boolean) => (
@@ -136,7 +143,7 @@ export default function LostCodes() {
             <QuietButton
               label={left > 0 ? `${words.resend} in ${minutesSeconds(left)}` : words.resend}
               off={left > 0}
-              onPress={() => restart()}
+              onPress={sendNew}
               testID="demo.resend"
             />
           </View>

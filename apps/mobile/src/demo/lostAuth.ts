@@ -47,6 +47,24 @@ export function spentAfter(wrongs: number): Spent | null {
   return wrongs >= TRIES ? 'exhausted' : null;
 }
 
+export interface Tries {
+  wrongs: number;
+  spent: Spent | null;
+}
+
+export function wrongAsk(tries: Tries): Tries {
+  const wrongs = tries.wrongs + 1;
+
+  return { wrongs, spent: spentAfter(wrongs) };
+}
+
+/** A new code, from the resend link or from a spent notice, starts the count again. */
+export function newCode(): Tries {
+  return { wrongs: 0, spent: null };
+}
+
+export type Answer = 'approved' | 'turnedDown' | 'ended' | 'replaced';
+
 export const NOT_CANCELLED = 'Not cancelled. Your request is still waiting. Try again.';
 
 export interface CancelSheet {
@@ -66,9 +84,15 @@ export function pressCancel(sheet: CancelSheet): CancelSheet {
   return sheet.sending ? sheet : { ...sheet, sending: true, notCancelled: false };
 }
 
-/** Soirely cancels it, or could not be reached: the sheet stays open and says so. */
-export function cancelSettled(sheet: CancelSheet, reached: boolean): CancelSheet | 'cancelled' {
-  return reached ? 'cancelled' : { ...sheet, sending: false, notCancelled: true };
+/** Not reached: the sheet stays open and says so. Reached: cancelled, unless an answer came first, which the screen then shows. */
+export function cancelSettled(
+  sheet: CancelSheet,
+  reached: boolean,
+  answered: Answer | null = null,
+): CancelSheet | Answer | 'cancelled' {
+  if (!reached) return { ...sheet, sending: false, notCancelled: true };
+
+  return answered ?? 'cancelled';
 }
 
 /** Keep waiting, a tap outside or the escape close it, except while the cancel is on its way. */

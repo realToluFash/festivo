@@ -7,6 +7,7 @@ import { LifecycleSheet } from '../../../src/components/LifecycleSheet.tsx';
 import { Notice } from '../../../src/components/Notice.tsx';
 import { DemoScreen, NavBar } from '../../../src/demo/DemoScreen.tsx';
 import {
+  type Answer,
   CLOSED,
   NOT_CANCELLED,
   askToCancel,
@@ -31,6 +32,15 @@ const ANSWERS = [
 const WHILE_ASKED: readonly string[] = ['approved', 'turnedDown', 'replaced'];
 
 const CANCEL_MS = 700;
+const LOOK_MS = 20_000;
+
+/** Answers given while this screen has not looked yet: the next look finds them, and a cancel that reaches Soirely first shows them (sc-30737). */
+const ANSWERED_FIRST: readonly (readonly [string, Answer])[] = [
+  ['Confirm', 'approved'],
+  ['Turn it down', 'turnedDown'],
+  ['Let it end', 'ended'],
+  ['Ask from another device', 'replaced'],
+];
 
 /** Waiting in plain lines; the screen changes by itself, which the demo's buttons stand in for. Cancel the request asks first (sc-29961), and says so when it does not go through (sc-30737). */
 export default function Waiting() {
@@ -49,6 +59,7 @@ export default function Waiting() {
         : CLOSED,
   );
   const [reachable, setReachable] = useState(true);
+  const [answered, setAnswered] = useState<Answer | null>(null);
   const end = useCallback(
     (kind: string) => {
       setAsked(null);
@@ -61,13 +72,22 @@ export default function Waiting() {
   useEffect(() => {
     if (!sheet.sending) return;
     const timer = setTimeout(() => {
-      const settled = cancelSettled(sheet, reachable);
-      if (settled === 'cancelled') end('cancelled');
+      const settled = cancelSettled(sheet, reachable, answered);
+      if (typeof settled === 'string') end(settled);
       else setSheet(settled);
     }, CANCEL_MS);
 
     return () => clearTimeout(timer);
-  }, [end, reachable, sheet]);
+  }, [answered, end, reachable, sheet]);
+
+  const firstLabel = ANSWERED_FIRST.find(([, kind]) => kind === answered)?.[0];
+
+  useEffect(() => {
+    if (answered == null) return;
+    const look = setTimeout(() => end(answered), LOOK_MS);
+
+    return () => clearTimeout(look);
+  }, [answered, end]);
 
   return (
     <DemoScreen
@@ -137,6 +157,18 @@ export default function Waiting() {
               label={label}
               onPress={() => end(kind)}
               testID={`demo.cancelSheet.answer.${kind}`}
+            />
+          ))}
+        </DemoOnly>
+        <DemoOnly
+          title={`Demo: ${SAMPLE.organisation} answers before the cancel arrives${firstLabel == null ? '' : ` · ${firstLabel}`}`}
+        >
+          {ANSWERED_FIRST.map(([label, kind]) => (
+            <SecondaryButton
+              key={kind}
+              label={label}
+              onPress={() => setAnswered(kind)}
+              testID={`demo.cancelSheet.first.${kind}`}
             />
           ))}
         </DemoOnly>

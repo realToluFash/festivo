@@ -8,9 +8,11 @@ import {
   cancelSettled,
   codeWords,
   keepWaiting,
+  newCode,
   pressCancel,
   spentAfter,
   spentWords,
+  wrongAsk,
 } from './lostAuth.ts';
 
 describe('lost authenticator counts the codes it sends (sc-30737)', () => {
@@ -60,6 +62,15 @@ describe('lost authenticator counts the codes it sends (sc-30737)', () => {
     expect(spentAfter(TRIES - 1)).toBeNull();
     expect(spentAfter(TRIES)).toBe('exhausted');
   });
+
+  it('counts the tries again from a new code, as the web demo does', () => {
+    let tries = newCode();
+    for (let wrong = 1; wrong < TRIES; wrong++) tries = wrongAsk(tries);
+    expect(tries).toEqual({ wrongs: TRIES - 1, spent: null });
+
+    expect(wrongAsk(newCode())).toEqual({ wrongs: 1, spent: null });
+    expect(wrongAsk(tries).spent).toBe('exhausted');
+  });
 });
 
 describe('a cancel that does not go through says so (sc-30737)', () => {
@@ -76,7 +87,7 @@ describe('a cancel that does not go through says so (sc-30737)', () => {
 
   it('hides the line on the next press, and cancels once Soirely answers', () => {
     const failed = cancelSettled(pressCancel(askToCancel()), false);
-    if (failed === 'cancelled') throw new Error('the first try reached Soirely');
+    if (typeof failed === 'string') throw new Error('the first try reached Soirely');
     const again = pressCancel(failed);
 
     expect(again.notCancelled).toBe(false);
@@ -85,10 +96,18 @@ describe('a cancel that does not go through says so (sc-30737)', () => {
 
   it('closes on Keep waiting with the request still waiting, but not while it sends', () => {
     const failed = cancelSettled(pressCancel(askToCancel()), false);
-    if (failed === 'cancelled') throw new Error('the first try reached Soirely');
+    if (typeof failed === 'string') throw new Error('the first try reached Soirely');
 
     expect(keepWaiting(failed)).toEqual(CLOSED);
     expect(keepWaiting(pressCancel(failed)).open).toBe(true);
+  });
+
+  it('shows an answer given before the cancel arrives, never cancelled and never the line', () => {
+    const sending = pressCancel(askToCancel());
+
+    expect(cancelSettled(sending, true, 'turnedDown')).toBe('turnedDown');
+    expect(cancelSettled(sending, true, 'replaced')).toBe('replaced');
+    expect(cancelSettled(sending, true, null)).toBe('cancelled');
   });
 
   it('says what did not happen, and what to do', () => {
