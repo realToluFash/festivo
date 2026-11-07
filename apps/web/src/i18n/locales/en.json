@@ -2190,12 +2190,10 @@
     "count_one": "{{count, number}} person",
     "count_other": "{{count, number}} people",
     "you": "You",
-    "youLower": "you",
     "nobody": "Nobody is on this event yet.",
     "nobodyLine": "Add the people working on it. Owners and admins see it already.",
     "readOnly": "Only owners, admins and the lead change who’s on this event.",
     "managers": "{{names}} see every event, as owners and admins of {{organisation}}.",
-    "managersUnnamed": "The owners and admins of {{organisation}} see every event.",
     "role": {
       "lead": "Lead",
       "can_edit": "Can edit",
@@ -2207,11 +2205,6 @@
       "can_edit": "Everything except the budget and who’s on it.",
       "can_view": "Sees the event and changes nothing. No contact details.",
       "can_check_in": "Checks guests in on the day. Names only, no contact details."
-    },
-    "orgRole": {
-      "owner": "Owner · sees every event",
-      "administrator": "Admin · sees every event",
-      "member": "Member"
     },
     "memberOf": "Member of {{organisation}}",
     "roleFor": "{{name}}’s role on this event",

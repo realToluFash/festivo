@@ -178,6 +178,51 @@ final class EventRolesTest extends ApiTestCase
     }
 
     #[Test]
+    public function aLeadFindsWhomToAddByNameAloneAndNeverThemselves(): void
+    {
+        $lead = $this->member('lead@ire.events', SeededRole::Member, 'Priya Shah');
+        $tunde = $this->member('tunde@ire.events', SeededRole::Member, 'Tunde Bello');
+        $sade = $this->member('sade@ire.events', SeededRole::Member, 'Sade Okoye');
+        $gone = $this->member('gone@ire.events', SeededRole::Member, 'Gone Away');
+        self::em()->find(Membership::class, $this->membershipOf($gone))?->setStatus(MembershipStatus::Suspended, new DateTimeImmutable());
+        self::em()->flush();
+        self::onEvent($lead, $this->owambe, EventRole::Lead);
+        self::onEvent($sade, $this->owambe, EventRole::CanView);
+
+        $listed = $this->as($lead, 'GET', '/api/events/' . $this->owambe . '/people/addable');
+
+        self::assertSame(200, $this->statusCode(), Json\encode($listed));
+        self::assertEqualsCanonicalizing([
+            ['membershipId' => $this->membershipOf($this->owner), 'name' => 'Person'],
+            ['membershipId' => $this->membershipOf($tunde), 'name' => 'Tunde Bello'],
+        ], $listed['members'] ?? null);
+    }
+
+    #[Test]
+    public function onlyWhoeverChangesPeopleListsWhomToAdd(): void
+    {
+        $editor = $this->member('editor@ire.events', SeededRole::Member);
+        self::onEvent($editor, $this->owambe, EventRole::CanEdit);
+
+        $this->as($editor, 'GET', '/api/events/' . $this->owambe . '/people/addable');
+
+        self::assertSame(403, $this->statusCode());
+    }
+
+    #[Test]
+    public function everyoneOnTheEventReadsWhoItsOwnersAndAdminsAre(): void
+    {
+        $this->member('julien@ire.events', SeededRole::Admin, 'Julien Moreau');
+        $viewer = $this->member('ana@ire.events', SeededRole::Member, 'Ana Lima');
+        self::onEvent($viewer, $this->owambe, EventRole::CanView);
+
+        $read = $this->as($viewer, 'GET', '/api/events/' . $this->owambe . '/people');
+
+        self::assertSame(200, $this->statusCode());
+        self::assertSame(['Person', 'Julien Moreau'], $read['ownersAndAdmins'] ?? null);
+    }
+
+    #[Test]
     public function nobodyChangesOrRemovesTheirOwnEventRole(): void
     {
         $lead = $this->member('lead@ire.events', SeededRole::Member);

@@ -7,6 +7,7 @@ namespace App\Domain\Event\Controller;
 use App\Domain\Event\People\EventPeople;
 use App\Entity\Event;
 use App\Entity\EventPerson;
+use App\Entity\Membership;
 use App\Entity\User;
 use App\Enum\ErrorCode;
 use App\Enum\EventRole;
@@ -17,6 +18,7 @@ use App\Http\Exception\ApiException;
 use App\Http\Input;
 use App\Repository\EventPersonRepository;
 use App\Repository\EventRepository;
+use App\Repository\MembershipRepository;
 use Psl\Iter;
 use Psl\Type;
 use Psl\Vec;
@@ -34,6 +36,7 @@ final readonly class EventPeopleController
         private EventRepository $eventRepository,
         private EventPersonRepository $eventPersonRepository,
         private EventPeople $eventPeople,
+        private MembershipRepository $membershipRepository,
     ) {
     }
 
@@ -43,7 +46,33 @@ final readonly class EventPeopleController
     {
         $event = $this->event($eventId);
 
-        return new JsonResponse(['people' => Vec\map($this->eventPersonRepository->findOnEvent($event->getId()), self::person(...))]);
+        return new JsonResponse([
+            'people' => Vec\map($this->eventPersonRepository->findOnEvent($event->getId()), self::person(...)),
+            // Named to everyone who reads People, so a Member knows who sees every event and whom to ask (sc-29915).
+            'ownersAndAdmins' => Vec\map(
+                $this->membershipRepository->findAdministratorsIn($event->getOrganisation()),
+                static fn (Membership $membership): string => $membership->getUser()->getName(),
+            ),
+        ]);
+    }
+
+    /** Names only, so a Lead who may not read Members can still add people (sc-29915). */
+    #[Route('/api/events/{eventId}/people/addable', name: 'events_people_addable', methods: ['GET'])]
+    #[InEvent(Permission::PeopleManage)]
+    public function addable(string $eventId): JsonResponse
+    {
+        $event = $this->event($eventId);
+        $on = Vec\map($this->eventPersonRepository->findOnEvent($event->getId()), static fn (EventPerson $person): string => $person->getMembership()->getId()->toRfc4122());
+        $self = $this->user()->getId();
+        $addable = Vec\filter(
+            $this->membershipRepository->findActiveIn($event->getOrganisation()),
+            static fn (Membership $membership): bool => !$membership->getUser()->getId()->equals($self) && !Iter\contains($on, $membership->getId()->toRfc4122()),
+        );
+
+        return new JsonResponse(['members' => Vec\map($addable, static fn (Membership $membership): array => [
+            'membershipId' => $membership->getId()->toRfc4122(),
+            'name' => $membership->getUser()->getName(),
+        ])]);
     }
 
     /** Any active member at any of the four roles. Someone from outside the organisation is sc-71's grant. */

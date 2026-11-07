@@ -1,10 +1,10 @@
 import {
+  type AddableMember,
   ApiError,
   EVENT_ROLES,
   type EventPerson,
   type EventRole,
   type OrganisationEvent,
-  type OrganisationMember,
 } from '@soirely/api-client';
 import { initials } from '@soirely/domain';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -21,13 +21,16 @@ import { currentLocale } from '../../../i18n/index.ts';
 import { offButton } from '../../../offButton.ts';
 import { can, useSession } from '../../../session.ts';
 
-type Load = { kind: 'loading' } | { kind: 'failed' } | { kind: 'loaded'; people: EventPerson[] };
-
-/** Read only for whoever may list the organisation's members: the API offers nobody else either. */
-interface Organisation {
-  members: OrganisationMember[];
-  managers: string[];
-}
+/** `addable` is null for whoever may not change People: the API refuses them that list. */
+type Load =
+  | { kind: 'loading' }
+  | { kind: 'failed' }
+  | {
+      kind: 'loaded';
+      people: EventPerson[];
+      ownersAndAdmins: string[];
+      addable: AddableMember[] | null;
+    };
 
 type Open = { kind: 'person'; id: string } | { kind: 'add' } | null;
 
@@ -38,47 +41,31 @@ export function EventPeople({ event }: { event: OrganisationEvent }) {
   const organisationName = session.organisation?.name ?? '';
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
-  const [organisation, setOrganisation] = useState<Organisation | null>(null);
   const [open, setOpen] = useState<Open>(null);
   const [toast, setToast] = useState<string | null>(null);
   const failedLine = useRef<HTMLParagraphElement>(null);
   const opener = useRef<HTMLElement | null>(null);
-  const reads = can(session, 'members.read');
+  const managesAll = can(session, 'people.manage');
+  const userId = session.userId;
 
   useEffect(() => {
     let current = true;
 
-    api.eventPeople(event.id).then(
-      (people) => current && setLoad({ kind: 'loaded', people }),
+    (async () => {
+      const { people, ownersAndAdmins } = await api.eventPeople(event.id);
+      const leads = people.some((one) => one.user.id === userId && one.role === 'lead');
+      const addable = managesAll || leads ? await api.addableEventMembers(event.id) : null;
+
+      return { people, ownersAndAdmins, addable };
+    })().then(
+      (loaded) => current && setLoad({ kind: 'loaded', ...loaded }),
       () => current && setLoad({ kind: 'failed' }),
     );
 
     return () => {
       current = false;
     };
-  }, [event.id, attempt]);
-
-  useEffect(() => {
-    if (!reads) return;
-    let current = true;
-
-    Promise.all([api.members(event.organisationId), api.roles(event.organisationId)]).then(
-      ([list, catalogue]) =>
-        current &&
-        setOrganisation({
-          members: list.members.filter((member) => member.status === 'active'),
-          managers: catalogue.roles
-            .filter((role) => role.seededAs === 'owner' || role.seededAs === 'administrator')
-            .flatMap((role) => role.holderNames.filter((one) => !one.suspended))
-            .map((one) => one.name),
-        }),
-      () => {},
-    );
-
-    return () => {
-      current = false;
-    };
-  }, [event.organisationId, reads]);
+  }, [event.id, attempt, managesAll, userId]);
 
   const close = useCallback(() => {
     setOpen(null);
@@ -104,16 +91,26 @@ export function EventPeople({ event }: { event: OrganisationEvent }) {
       />
     );
 
-  const people = inListOrder(load.people);
-  const own = people.find((person) => person.user.id === session.userId);
-  const manages = can(session, 'people.manage') || own?.role === 'lead';
-  const adds = manages && organisation != null;
+  const loaded = load;
+  const people = inListOrder(loaded.people);
+  const own = people.find((person) => person.user.id === userId);
+  const manages = managesAll || own?.role === 'lead';
+  const addable = loaded.addable;
+  const adds = manages && addable != null;
   const opened = open?.kind === 'person' ? people.find((one) => one.id === open.id) : undefined;
 
   function replaced(person: EventPerson): void {
+    setLoad({ ...loaded, people: people.map((one) => (one.id === person.id ? person : one)) });
+  }
+
+  function joined(added: readonly EventPerson[]): void {
     setLoad({
-      kind: 'loaded',
-      people: people.map((one) => (one.id === person.id ? person : one)),
+      ...loaded,
+      people: [...people, ...added],
+      addable:
+        addable?.filter(
+          (one) => !added.some((person) => person.membershipId === one.membershipId),
+        ) ?? null,
     });
   }
 
@@ -192,16 +189,16 @@ export function EventPeople({ event }: { event: OrganisationEvent }) {
 
       <div className="event-people-foot">
         {!manages && <p className="muted">{t('eventPeople.readOnly')}</p>}
-        <p className="muted">
-          {organisation == null || organisation.managers.length === 0
-            ? t('eventPeople.managersUnnamed', { organisation: organisationName })
-            : t('eventPeople.managers', {
-                names: new Intl.ListFormat(currentLocale(), { type: 'conjunction' }).format(
-                  organisation.managers,
-                ),
-                organisation: organisationName,
-              })}
-        </p>
+        {loaded.ownersAndAdmins.length > 0 && (
+          <p className="muted">
+            {t('eventPeople.managers', {
+              names: new Intl.ListFormat(currentLocale(), { type: 'conjunction' }).format(
+                loaded.ownersAndAdmins,
+              ),
+              organisation: organisationName,
+            })}
+          </p>
+        )}
       </div>
 
       {opened != null && (
@@ -211,7 +208,14 @@ export function EventPeople({ event }: { event: OrganisationEvent }) {
           organisationName={organisationName}
           onChanged={replaced}
           onRemoved={() => {
-            setLoad({ kind: 'loaded', people: people.filter((one) => one.id !== opened.id) });
+            setLoad({
+              ...loaded,
+              people: people.filter((one) => one.id !== opened.id),
+              addable:
+                addable == null
+                  ? null
+                  : [...addable, { membershipId: opened.membershipId, name: opened.user.name }],
+            });
             setOpen(null);
             setToast(t('eventPeople.removed', { name: opened.user.name }));
             document.getElementById('event-people-title')?.focus();
@@ -219,15 +223,14 @@ export function EventPeople({ event }: { event: OrganisationEvent }) {
           onClose={close}
         />
       )}
-      {open?.kind === 'add' && organisation != null && (
+      {open?.kind === 'add' && addable != null && (
         <AddDialog
           eventId={event.id}
           organisationName={organisationName}
-          members={organisation.members.filter(
-            (member) => !people.some((one) => one.membershipId === member.id),
-          )}
+          members={addable}
+          onPartlyAdded={joined}
           onAdded={(added, role) => {
-            setLoad({ kind: 'loaded', people: [...people, ...added] });
+            joined(added);
             close();
             setToast(
               added.length === 1
@@ -241,6 +244,14 @@ export function EventPeople({ event }: { event: OrganisationEvent }) {
       {toast != null && <Toast words={toast} onClose={() => setToast(null)} />}
     </section>
   );
+}
+
+/** The API's reason when it refused the request, or the fallback when it never answered. */
+function refusal(error: unknown, fallback: string): string {
+  if (!(error instanceof ApiError) || error.status === 0 || error.status >= 500) return fallback;
+  const { violations, detail, title } = error.problem;
+
+  return violations?.[0]?.message ?? detail ?? title;
 }
 
 function inListOrder(people: readonly EventPerson[]): EventPerson[] {
@@ -342,9 +353,10 @@ function RoleDialog({
       setPicked(held);
       setSaving(null);
       setFailed(
-        error instanceof ApiError && error.status !== 0 && error.status < 500
-          ? error.problem.title
-          : t('eventPeople.changeFailed', { name, role: t(`eventPeople.role.${held}`) }),
+        refusal(
+          error,
+          t('eventPeople.changeFailed', { name, role: t(`eventPeople.role.${held}`) }),
+        ),
       );
     }
   }
@@ -358,7 +370,7 @@ function RoleDialog({
       onRemoved();
     } catch (error) {
       setBusy(false);
-      setRefused(error instanceof ApiError ? error.problem.title : t('eventPeople.removeFailed'));
+      setRefused(refusal(error, t('eventPeople.removeFailed')));
     }
   }
 
@@ -454,12 +466,14 @@ function AddDialog({
   eventId,
   organisationName,
   members,
+  onPartlyAdded,
   onAdded,
   onClose,
 }: {
   eventId: string;
   organisationName: string;
-  members: OrganisationMember[];
+  members: readonly AddableMember[];
+  onPartlyAdded: (added: EventPerson[]) => void;
   onAdded: (added: EventPerson[], role: EventRole) => void;
   onClose: () => void;
 }) {
@@ -472,11 +486,13 @@ function AddDialog({
   const [failed, setFailed] = useState<string | null>(null);
   const [discarding, setDiscarding] = useState(false);
   const wording = typed.trim().toLocaleLowerCase(currentLocale());
-  const shown = members.filter(
-    (member) =>
-      ticked.includes(member.id) ||
-      member.user.name.toLocaleLowerCase(currentLocale()).includes(wording),
-  );
+  const shown = [...members]
+    .sort((a, b) => a.name.localeCompare(b.name, currentLocale()))
+    .filter(
+      (member) =>
+        ticked.includes(member.membershipId) ||
+        member.name.toLocaleLowerCase(currentLocale()).includes(wording),
+    );
   const touched = ticked.length > 0 || typed.trim() !== '';
   const cancel = useCallback(() => (touched ? setDiscarding(true) : onClose()), [touched, onClose]);
 
@@ -495,7 +511,8 @@ function AddDialog({
     } catch (error) {
       setBusy(false);
       setTicked(ticked.filter((id) => !added.some((one) => one.membershipId === id)));
-      setFailed(error instanceof ApiError ? error.problem.title : t('eventPeople.addFailed'));
+      if (added.length > 0) onPartlyAdded(added);
+      setFailed(refusal(error, t('eventPeople.addFailed')));
     }
   }
 
@@ -553,30 +570,23 @@ function AddDialog({
           <fieldset className="members-roles">
             <legend>{t('eventPeople.inOrganisation', { organisation: organisationName })}</legend>
             {shown.map((member) => (
-              // The name sits two spans down, deeper than the rule looks for a label's text.
-              // eslint-disable-next-line jsx-a11y/label-has-associated-control
-              <label key={member.id} className="members-role">
+              <label key={member.membershipId} className="members-role">
                 <input
                   type="checkbox"
-                  checked={ticked.includes(member.id)}
+                  checked={ticked.includes(member.membershipId)}
                   disabled={busy}
                   onChange={(change) =>
                     setTicked(
                       change.target.checked
-                        ? [...ticked, member.id]
-                        : ticked.filter((id) => id !== member.id),
+                        ? [...ticked, member.membershipId]
+                        : ticked.filter((id) => id !== member.membershipId),
                     )
                   }
                 />
-                <span className="members-role-text">
-                  <span className="members-row-name">{member.user.name}</span>
-                  <span className="muted">
-                    {[
-                      t(`eventPeople.orgRole.${member.role.seededAs ?? 'member'}`),
-                      ...(member.self ? [t('eventPeople.youLower')] : []),
-                    ].join(' · ')}
-                  </span>
+                <span className="person-tile" aria-hidden="true">
+                  {initials(member.name)}
                 </span>
+                <span className="members-row-name">{member.name}</span>
               </label>
             ))}
           </fieldset>

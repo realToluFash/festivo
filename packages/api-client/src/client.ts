@@ -376,6 +376,16 @@ export interface EventPerson {
   outside: boolean;
 }
 
+export interface EventPeople {
+  people: EventPerson[];
+  ownersAndAdmins: string[];
+}
+
+export interface AddableMember {
+  membershipId: string;
+  name: string;
+}
+
 /** Stored, as /event-states.json declares them; what the clock makes of it is its phase (sc-3584). */
 export type EventStatus = EventState;
 
@@ -1772,20 +1782,42 @@ export class ApiClient {
     );
   }
 
-  /** Everyone with a role on the event (sc-29912), read by everyone on it and by Owners and Admins. */
-  async eventPeople(eventId: string): Promise<EventPerson[]> {
-    const raw = await this.get<{ people?: unknown }>(
+  /** Everyone with a role on the event (sc-29912), read by everyone on it and by Owners and Admins, with those Owners' and Admins' names. */
+  async eventPeople(eventId: string): Promise<EventPeople> {
+    const raw = await this.get<{ people?: unknown; ownersAndAdmins?: unknown }>(
       `/api/events/${encodeURIComponent(eventId)}/people`,
     );
     const people = Array.isArray(raw.people) ? raw.people.map(asEventPerson) : null;
+    const ownersAndAdmins = raw.ownersAndAdmins;
 
-    if (people == null || !people.every((person) => person != null)) {
+    if (
+      people == null ||
+      !people.every((person) => person != null) ||
+      !Array.isArray(ownersAndAdmins) ||
+      !ownersAndAdmins.every((name) => typeof name === 'string')
+    ) {
       throw new Error(
         'The API answered GET /api/events/{id}/people in a shape this client does not know. Check EventPeopleController in services/api.',
       );
     }
 
-    return people;
+    return { people, ownersAndAdmins };
+  }
+
+  /** The organisation's active members not yet on the event, by name alone, for whoever may change its People (sc-29915). */
+  async addableEventMembers(eventId: string): Promise<AddableMember[]> {
+    const raw = await this.get<{ members?: unknown }>(
+      `/api/events/${encodeURIComponent(eventId)}/people/addable`,
+    );
+    const members = Array.isArray(raw.members) ? raw.members.map(asAddableMember) : null;
+
+    if (members == null || !members.every((member) => member != null)) {
+      throw new Error(
+        'The API answered GET /api/events/{id}/people/addable in a shape this client does not know. Check EventPeopleController in services/api.',
+      );
+    }
+
+    return members;
   }
 
   async addEventPerson(
@@ -2856,6 +2888,16 @@ function eventPersonOf(body: { person?: unknown }): EventPerson {
   }
 
   return person;
+}
+
+function asAddableMember(raw: unknown): AddableMember | null {
+  if (typeof raw !== 'object' || raw == null) return null;
+
+  const { membershipId, name } = raw as Record<string, unknown>;
+
+  return typeof membershipId === 'string' && typeof name === 'string'
+    ? { membershipId, name }
+    : null;
 }
 
 function asEventPerson(raw: unknown): EventPerson | null {
