@@ -266,7 +266,6 @@ export function countsOf(guests: readonly SampleGuest[], added = 0): Counts {
   };
 }
 
-/** A list that started empty counts only who was added to it. */
 export function countsFrom(guests: readonly SampleGuest[]): Counts {
   const t = tally(guests);
   const invited = t.coming + t.maybe + t.noreply + t.held + t.notcoming;

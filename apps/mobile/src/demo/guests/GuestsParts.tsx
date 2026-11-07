@@ -1,4 +1,4 @@
-import { type ReactNode, type Ref, useEffect } from 'react';
+import { type ReactNode, type Ref, useEffect, useRef } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { eventColour } from '../../components/EventMesh.tsx';
@@ -240,12 +240,17 @@ export function GuestToast({
   onClose: () => void;
   bottom: number;
 }) {
+  const close = useRef(onClose);
   useReadOut(words);
 
   useEffect(() => {
-    const wait = setTimeout(onClose, 6000);
+    close.current = onClose;
+  }, [onClose]);
+
+  useEffect(() => {
+    const wait = setTimeout(() => close.current(), 6000);
     return () => clearTimeout(wait);
-  }, [words, onClose]);
+  }, [words]);
 
   return (
     <View style={[styles.toast, { bottom }]} testID="guests.toast">

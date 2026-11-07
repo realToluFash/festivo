@@ -37,6 +37,7 @@ function cardOf(
   replies: 'closed' | 'reopened' | null,
   locale: string,
   actions: GuestActions,
+  invites: boolean,
 ): { line: string; step: { label: string; onPress: () => void } | null } {
   const owner = role === 'owner';
   if (replies === 'closed')
@@ -57,7 +58,7 @@ function cardOf(
   if (g.kind === 'notyet')
     return {
       line: W.copyFirst,
-      step: owner ? { label: W.markAsInvited, onPress: actions.onMark } : null,
+      step: owner && invites ? { label: W.markAsInvited, onPress: actions.onMark } : null,
     };
   return { line: replyLine(g, locale), step: null };
 }
@@ -99,7 +100,7 @@ export function GuestPage({
     return phase === 'notFound' ? <NotFound onBack={actions.onBack} /> : <GuestLoading />;
 
   const owner = role === 'owner';
-  const card = cardOf(g, role, replies, locale, actions);
+  const card = cardOf(g, role, replies, locale, actions, invites);
   const kind = g.kind === 'walkin' ? 'walkin' : g.kind;
   const replied = g.kind === 'coming' || g.kind === 'maybe' || g.kind === 'notcoming';
   const line = replyLine(g, locale);
