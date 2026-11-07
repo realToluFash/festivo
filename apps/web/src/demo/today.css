@@ -302,7 +302,7 @@
       color-mix(in srgb, var(--optionPurple) 80%, transparent) 0,
       transparent 100%
     ),
-    var(--colorAccent);
+    var(--coverAccent, var(--colorAccent));
 }
 
 .today-cover.is-draft {
@@ -330,7 +330,7 @@
 }
 
 .today .is-party {
-  --todayEvent: var(--colorAccent);
+  --todayEvent: var(--coverAccent, var(--colorAccent));
 }
 
 .today .is-draft {

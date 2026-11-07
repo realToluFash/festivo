@@ -703,11 +703,11 @@ export function FirstRun({ wide }: { wide: boolean }) {
           pressed && styles.pressed,
         ]}
         accessibilityRole="button"
-        accessibilityLabel={t('todayScreen.createEvent')}
+        accessibilityLabel={t('todayScreen.startFirst')}
       >
         <Glyph name="plus" ink={tokens.colorInkOnDark} />
         <Text size={TYPE.row} weight="semibold" accessible={false} style={styles.onAccent}>
-          {t('todayScreen.createEvent')}
+          {t('todayScreen.startFirst')}
         </Text>
       </Pressable>
     </View>

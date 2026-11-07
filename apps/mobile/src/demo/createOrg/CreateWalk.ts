@@ -14,7 +14,6 @@ export const WALK = {
   discardTitle: 'Discard this organisation?',
   discardBody: 'Nothing is created, and what you entered is not kept.',
   discard: 'Discard',
-  startFirst: 'Start your first event',
   noneYet: 'None yet',
 } as const;
 
