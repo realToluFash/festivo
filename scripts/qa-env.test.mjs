@@ -28,6 +28,9 @@ import {
   batchFlow,
   batchRuns,
   afterRun,
+  assertBundler,
+  bundlerCommand,
+  coldBatch,
   batchSummary,
   physicalSize,
   portraitRotation,
@@ -80,6 +83,7 @@ import {
   resumeBatch,
   runHeld,
   maestroTarget,
+  missingCmdlineTools,
   parseTarget,
   hardwareKeyboardOff,
   passwordAutoFillFiles,
@@ -1866,7 +1870,48 @@ describe('Expo Go after a reload', () => {
   });
 });
 
+describe('a batch with no bundler', () => {
+  it('stops before any Maestro run, naming the port and how to start it', async () => {
+    const asked = [];
+    await expect(
+      assertBundler({ port: 18081, command: bundlerCommand(false) }, async (port) => {
+        asked.push(port);
+        return false;
+      }),
+    ).rejects.toThrow('no bundler on 18081: start it with `node .qa/bin/qa-env.mjs ios`');
+    expect(asked).toEqual([18081]);
+  });
+
+  it('names android as the way to start it for an Android batch', async () => {
+    await expect(
+      assertBundler({ port: 18081, command: bundlerCommand(true) }, async () => false),
+    ).rejects.toThrow('no bundler on 18081: start it with `node .qa/bin/qa-env.mjs android`');
+  });
+
+  it('goes on when the bundler answers', async () => {
+    await expect(
+      assertBundler({ port: 18081, command: 'ios' }, async () => true),
+    ).resolves.toBeUndefined();
+  });
+});
+
 describe('the list a batch ends with', () => {
+  it('names the bundler once when it went away and the batch stopped resuming', () => {
+    expect(
+      batchSummary(['home', 'settings', 'roles'], {
+        passed: new Set(['home']),
+        begun: ['home', 'settings'],
+        crashed: ['settings'],
+        bundlerGone: { port: 18081, command: 'ios' },
+      }),
+    ).toEqual([
+      '✓ home',
+      "✗ settings: Maestro's driver stopped answering (a driver crash)",
+      '✗ roles: not run',
+      'Stopped: no bundler on 18081: start it with `node .qa/bin/qa-env.mjs ios`',
+    ]);
+  });
+
   it('names the check the driver died in, and those it never reached', () => {
     expect(
       batchSummary(['home', 'settings', 'roles', 'members'], {
@@ -2063,20 +2108,78 @@ describe('what a Maestro run that lost its driver leaves to resume', () => {
 
   it('stops resuming after the cap when every resume crashes on the same check', async () => {
     let resumes = 0;
-    await resumeBatch(runs, async (rest) => {
-      resumes++;
-      return { rest: resumes > 20 ? [] : rest };
-    });
+    await resumeBatch(
+      runs,
+      async (rest) => {
+        resumes++;
+        return { rest: resumes > 20 ? [] : rest };
+      },
+      { bundler: async () => true },
+    );
     expect(resumes).toBe(MAX_RESUMES);
   });
 
   it('stops resuming once a resume leaves nothing to run', async () => {
     let resumes = 0;
-    await resumeBatch(runs, async () => {
-      resumes++;
-      return { rest: [] };
-    });
+    await resumeBatch(
+      runs,
+      async () => {
+        resumes++;
+        return { rest: [] };
+      },
+      { bundler: async () => true },
+    );
     expect(resumes).toBe(1);
+  });
+
+  it('makes no further resume once the bundler has gone, and says so', async () => {
+    let resumes = 0;
+    const answers = [true, false];
+    const resumed = await resumeBatch(
+      runs,
+      async (rest) => {
+        resumes++;
+        return { rest };
+      },
+      { bundler: async () => answers.shift() },
+    );
+    expect(resumes).toBe(1);
+    expect(resumed).toEqual({ bundlerGone: true });
+  });
+
+  it('starts no resume when the bundler is gone after the first run', async () => {
+    let resumes = 0;
+    const resumed = await resumeBatch(
+      runs,
+      async (rest) => {
+        resumes++;
+        return { rest };
+      },
+      { bundler: async () => false },
+    );
+    expect(resumes).toBe(0);
+    expect(resumed).toEqual({ bundlerGone: true });
+  });
+});
+
+describe('a cold batch whose bundler goes away', () => {
+  it('runs no further check once the bundler has gone, and says so', async () => {
+    const ran = [];
+    const answers = [true, false];
+    const cold = await coldBatch(['home', 'settings', 'roles'], async (run) => ran.push(run), {
+      bundler: async () => answers.shift(),
+    });
+    expect(ran).toEqual(['home']);
+    expect(cold).toEqual({ bundlerGone: true });
+  });
+
+  it('runs every check while the bundler answers', async () => {
+    const ran = [];
+    const cold = await coldBatch(['home', 'settings'], async (run) => ran.push(run), {
+      bundler: async () => true,
+    });
+    expect(ran).toEqual(['home', 'settings']);
+    expect(cold).toEqual({ bundlerGone: false });
   });
 });
 
@@ -2563,5 +2666,23 @@ describe('emulatorUnitGone', () => {
       'the emulator unit soirely-qa-emulator stopped (failed) before it booted:\nemulator: core dumped',
     );
     expect(emulatorUnitGone('soirely-qa-emulator', '', journal)).toContain('stopped (gone)');
+  });
+});
+
+describe('missingCmdlineTools', () => {
+  const message = missingCmdlineTools({
+    sdk: '/sdk',
+    avdmanager: '/sdk/cmdline-tools/latest/bin/avdmanager',
+  });
+
+  it('names the avdmanager path setup expected', () => {
+    expect(message).toContain('/sdk/cmdline-tools/latest/bin/avdmanager');
+  });
+
+  it('gives both ways to install the tools and says to run setup again', () => {
+    expect(message).toContain('Android SDK Command-line Tools (latest)');
+    expect(message).toContain('/sdk/cmdline-tools/latest/bin');
+    expect(message).toContain('developer.android.com/studio#command-tools');
+    expect(message).toContain('run `node scripts/qa-env.mjs setup` again');
   });
 });

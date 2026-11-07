@@ -1,4 +1,4 @@
-# Roles, opened by its link, once the list has loaded, with the event manager's row in view.
+# Roles, opened by its link, once the list has loaded, with the admin's row in view.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/settings/roles
@@ -6,6 +6,6 @@ appId: host.exp.Exponent
     visible: '{{t:rolesScreen.title}}'
     timeout: 30000
 - extendedWaitUntil:
-    visible: '.*{{t:roles.event_manager}}.*'
+    visible: '.*{{t:roles.administrator}}.*'
     timeout: 30000
 - takeScreenshot: roles-loaded
