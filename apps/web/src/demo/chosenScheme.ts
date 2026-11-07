@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from 'react';
 
 import { config } from '../config.ts';
-import type { SchemeKey } from './personalisation.ts';
+import { OWN_SCHEME, type SchemeKey } from './personalisation.ts';
 
 let chosen: SchemeKey | null = null;
 const listeners = new Set<() => void>();
@@ -21,28 +21,34 @@ export function chosenScheme(): SchemeKey | null {
   return chosen;
 }
 
-/** Every page takes the scheme at once; event covers keep the build's accent, their own colour. */
+/** Every page takes the scheme at once, Violet while the person has never chosen; event covers keep the build's accent, their own colour. */
 export function choose(key: SchemeKey | null): void {
-  const root = document.documentElement;
-
-  if (key == null) {
-    root.style.removeProperty('--coverAccent');
-    const own = config().scheme;
-    if (own == null) delete root.dataset.scheme;
-    else root.dataset.scheme = own;
-  } else {
-    const accent = getComputedStyle(root).getPropertyValue('--colorAccent').trim();
-    if (root.style.getPropertyValue('--coverAccent') === '' && accent !== '')
-      root.style.setProperty('--coverAccent', accent);
-    root.dataset.scheme = key;
-  }
-
-  if (key === chosen) return;
-  chosen = key;
-  listeners.forEach((listener) => listener());
+  paint(key ?? OWN_SCHEME);
+  tell(key);
 }
 
 /** Leaving the demo forgets the pick and puts the build's own scheme back. */
 export function leave(): void {
-  choose(null);
+  const root = document.documentElement;
+  const own = config().scheme;
+
+  root.style.removeProperty('--coverAccent');
+  if (own == null) delete root.dataset.scheme;
+  else root.dataset.scheme = own;
+  tell(null);
+}
+
+function paint(key: SchemeKey): void {
+  const root = document.documentElement;
+  const accent = getComputedStyle(root).getPropertyValue('--colorAccent').trim();
+
+  if (root.style.getPropertyValue('--coverAccent') === '' && accent !== '')
+    root.style.setProperty('--coverAccent', accent);
+  root.dataset.scheme = key;
+}
+
+function tell(key: SchemeKey | null): void {
+  if (key === chosen) return;
+  chosen = key;
+  listeners.forEach((listener) => listener());
 }

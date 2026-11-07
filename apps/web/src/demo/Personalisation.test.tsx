@@ -202,6 +202,36 @@ describe('Personalisation at a desk (sc-30441)', () => {
     expect(document.documentElement.style.getPropertyValue('--coverAccent')).toBe('');
   });
 
+  it('is in Violet while never chosen, whatever the build’s scheme, and leaves the build its own', async () => {
+    __setConfig({ ...tested, environment: 'development', scheme: null });
+    const router = await personalisation(`${PAGE}?state=never`);
+
+    expect(document.documentElement.dataset.scheme).toBe('violet');
+    expect(within(card('Violet')).getByText('You see Soirely in Violet')).toBeDefined();
+    fireEvent.click(step());
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'Cancel' }));
+    expect(document.documentElement.dataset.scheme).toBe('violet');
+
+    await router.navigate('/sign-in');
+    await waitFor(() => expect(document.documentElement.dataset.scheme).toBeUndefined());
+  });
+
+  it('keeps event covers in the build’s accent under a pick', async () => {
+    const root = document.documentElement;
+    root.style.setProperty('--colorAccent', '#1E9A64');
+
+    try {
+      const router = await personalisation(`${PAGE}?state=chosen`);
+
+      expect(root.dataset.scheme).toBe('garden');
+      expect(root.style.getPropertyValue('--coverAccent')).toBe('#1E9A64');
+      await router.navigate('/sign-in');
+      await waitFor(() => expect(root.style.getPropertyValue('--coverAccent')).toBe(''));
+    } finally {
+      root.style.removeProperty('--colorAccent');
+    }
+  });
+
   it('keeps Colours open with the reason and Try again when a save fails, and Try again saves', async () => {
     await personalisation(`${PAGE}?state=saveFailed`);
 
