@@ -1903,7 +1903,6 @@
     "bellUnread_one": "Notifications, {{count, number}} non lue",
     "bellUnread_other": "Notifications, {{count, number}} non lues",
     "bellUnread_many": "Notifications, {{count, number}} non lues",
-    "overNinetyNine": "99+",
     "heading": "Notifications",
     "markAllRead": "Tout marquer comme lu",
     "allRead": "Tout est marqué comme lu.",

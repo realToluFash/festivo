@@ -1854,7 +1854,6 @@
     "bell": "Notifications",
     "bellUnread_one": "Notifications, {{count, number}} unread",
     "bellUnread_other": "Notifications, {{count, number}} unread",
-    "overNinetyNine": "99+",
     "heading": "Notifications",
     "markAllRead": "Mark all read",
     "allRead": "All read.",
