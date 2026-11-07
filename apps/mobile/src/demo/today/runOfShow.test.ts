@@ -1,6 +1,12 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
+import { createInstance } from 'i18next';
 import { describe, expect, it } from 'vitest';
 
-import { sayIn } from '../today.ts';
+import en from '../../i18n/locales/en.json';
+import { momentOf, sayIn } from '../today.ts';
+import { COUNTS, figureOf } from './arrived.ts';
 import {
   LONG_TITLE,
   RAIL_STOPS,
@@ -9,6 +15,7 @@ import {
   railWindow,
   runNowOf,
   trackAt,
+  withRun,
 } from './runOfShow.ts';
 
 const us = sayIn('en-US');
@@ -229,5 +236,35 @@ describe('Next', () => {
     ];
 
     expect(runNowOf(NAME, items, '19:10', us).next?.title).toBe('Speeches');
+  });
+});
+
+describe('the figure beside Next, as sc-29978 draws it', () => {
+  const i18n = createInstance();
+  void i18n.init({
+    resources: { en: { translation: en } },
+    lng: 'en',
+    interpolation: { escapeValue: false },
+    initAsync: false,
+  });
+  const day = momentOf('day', us, i18n.getFixedT('en'));
+  const numbers = new Intl.NumberFormat('en-US');
+
+  it('is sc-29978’s figure, from its counts', () => {
+    const figure = figureOf(COUNTS.some, numbers);
+
+    expect(withRun(day, 'on', figure, us)?.figure).toEqual(figure);
+    expect(figure?.spoken).toBe('141 of 152 arrived');
+  });
+
+  it('is not there before anyone has arrived', () => {
+    expect(withRun(day, 'on', figureOf(COUNTS.none, numbers), us)?.figure).toBeNull();
+  });
+
+  it('is drawn by sc-29978’s part, with no second ring', () => {
+    const cover = readFileSync(join(import.meta.dirname, 'RunCover.tsx'), 'utf8');
+
+    expect(cover).toContain("import { ArrivedFigure } from './ArrivedCover.tsx';");
+    expect(cover).not.toMatch(/function Ring\b|react-native-svg/u);
   });
 });

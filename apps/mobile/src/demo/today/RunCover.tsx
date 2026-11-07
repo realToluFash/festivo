@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Animated, Pressable, StyleSheet, View } from 'react-native';
-import Svg, { Circle } from 'react-native-svg';
 
 import { EventMesh } from '../../components/EventMesh.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
@@ -20,6 +19,7 @@ import {
 import { useTodayShell } from '../../components/todayShell.ts';
 import type { Now } from '../../kit/today.ts';
 import { tokens } from '../../theme/tokens.ts';
+import { ArrivedFigure } from './ArrivedCover.tsx';
 import { type RunMoment, type RunNow, railLabels } from './runOfShow.ts';
 
 const LONG = 40;
@@ -136,44 +136,9 @@ function Rail({ run }: { run: RunNow }) {
   );
 }
 
-function Ring({ share, side = 44, line = 4 }: { share: number; side?: number; line?: number }) {
-  const r = (side - line) / 2;
-  const round = 2 * Math.PI * r;
-
-  return (
-    <Svg
-      width={side}
-      height={side}
-      style={styles.ring}
-      accessibilityElementsHidden
-      importantForAccessibility="no-hide-descendants"
-    >
-      <Circle
-        cx={side / 2}
-        cy={side / 2}
-        r={r}
-        fill="none"
-        stroke={tokens.colorInkOnDark}
-        strokeOpacity={0.18}
-        strokeWidth={line}
-      />
-      <Circle
-        cx={side / 2}
-        cy={side / 2}
-        r={r}
-        fill="none"
-        stroke={tokens.colorInkOnDark}
-        strokeWidth={line}
-        strokeLinecap="round"
-        strokeDasharray={`${round * share} ${round}`}
-      />
-    </Svg>
-  );
-}
-
 function NextAndArrived({ moment }: { moment: RunMoment }) {
   const { t } = useTranslation();
-  const { now, run } = moment;
+  const { run } = moment;
 
   if (run.next == null) return null;
 
@@ -192,43 +157,7 @@ function NextAndArrived({ moment }: { moment: RunMoment }) {
           </Text>
         </View>
       </View>
-      {moment.arrived && (
-        <View
-          style={styles.arrived}
-          accessible
-          accessibilityLabel={`${now.arrived} of ${now.expected} arrived`}
-        >
-          <Ring share={now.arrived / now.expected} />
-          <View>
-            <View style={styles.nextLine}>
-              <Text
-                size={18}
-                weight="bold"
-                accessible={false}
-                style={[styles.white, styles.figures]}
-              >
-                {String(now.arrived)}
-              </Text>
-              <Text
-                size={18}
-                weight="semibold"
-                accessible={false}
-                style={[styles.white, styles.figures, styles.soft, styles.tight]}
-              >
-                {`/${now.expected}`}
-              </Text>
-            </View>
-            <Text
-              size={12.5}
-              weight="medium"
-              accessible={false}
-              style={[styles.white, styles.soft]}
-            >
-              {t('todayScreen.arrivedCount')}
-            </Text>
-          </View>
-        </View>
-      )}
+      {moment.figure != null && <ArrivedFigure figure={moment.figure} />}
     </View>
   );
 }
@@ -413,7 +342,6 @@ const styles = StyleSheet.create({
   white: { color: tokens.colorInkOnDark },
   soft: { opacity: 0.84 },
   figures: { fontVariant: ['tabular-nums'] },
-  tight: { marginLeft: 1 },
   pressed: { opacity: 0.8 },
   gapSm: { gap: tokens.spaceSm },
   gapLg: { gap: tokens.spaceXl },
@@ -503,12 +431,10 @@ const styles = StyleSheet.create({
   alignLeft: { textAlign: 'left' },
   alignRight: { textAlign: 'right' },
   alignCentre: { textAlign: 'center' },
-  ring: { transform: [{ rotate: '-90deg' }] },
   nextRow: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXl },
   next: { flex: 1, gap: 3 },
   nextLabel: { letterSpacing: 12 * 0.08 },
   nextLine: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'baseline', columnGap: 5 },
-  arrived: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceMd },
   wideRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 36 },
   right: { width: 340, gap: 18 },
   cover: { overflow: 'visible', backgroundColor: tokens.colorAccent },

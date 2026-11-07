@@ -1,5 +1,6 @@
 import type { Moment, Now } from '../../kit/today.ts';
 import type { Say } from '../today.ts';
+import type { Figure } from './arrived.ts';
 
 /** One item of a track, as sc-3895's presses leave it. Times are `18:00` in the event's zone. */
 export interface RunItem {
@@ -240,14 +241,14 @@ export function isRunState(name: string | undefined): name is RunState {
 export interface RunMoment extends Moment {
   now: Now;
   run: RunNow;
-  /** Off until sc-29978 gives Now an arrived figure. */
-  arrived: boolean;
+  /** sc-29978's figure beside Next, as `ArrivedFigure` draws it; none before anyone has arrived. */
+  figure: Figure | null;
 }
 
 export function withRun(
   moment: Moment,
   state: RunState,
-  arrived: boolean,
+  figure: Figure | null,
   say: Say,
 ): RunMoment | null {
   if (moment.now == null || !moment.full) return null;
@@ -259,6 +260,6 @@ export function withRun(
     time: clock,
     now: moment.now,
     run: runNowOf(moment.now.name, items, clock, say),
-    arrived,
+    figure,
   };
 }

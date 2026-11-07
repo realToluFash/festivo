@@ -23,6 +23,7 @@ import { ArrivedTodayScreen } from '../../src/demo/today/ArrivedToday.tsx';
 import {
   type ArrivedState,
   COUNTS,
+  figureOf,
   isArrivedState,
   LIVE,
   withArrived,
@@ -95,14 +96,21 @@ export default function DemoTodayScreen() {
   // The demo's words are English, so its dates are too, in the phone's own region.
   const say = useMemo(() => sayIn(formattingLocale('en', getLocales()[0]?.languageTag)), []);
   const moment = useMemo(() => momentOf(name, say, i18n.getFixedT('en')), [name, say, i18n]);
+  const numbers = useMemo(() => numbersIn(params.numbers), [params.numbers]);
   const run = useMemo(
     () =>
-      isRunState(params.now) ? withRun(moment, params.now, params.arrived !== 'none', say) : null,
-    [moment, params.now, params.arrived, say],
+      isRunState(params.now)
+        ? withRun(
+            moment,
+            params.now,
+            figureOf(COUNTS[params.arrived === 'none' ? 'none' : 'some'], numbers),
+            say,
+          )
+        : null,
+    [moment, params.now, params.arrived, numbers, say],
   );
   const arrivedState = name === 'dayNow' && isArrivedState(params.arrived) ? params.arrived : null;
   const live = useLive(arrivedState === 'live');
-  const numbers = useMemo(() => numbersIn(params.numbers), [params.numbers]);
   const arrived = useMemo(
     () =>
       arrivedState == null ? null : withArrived(moment, countsOf(arrivedState, live), numbers),

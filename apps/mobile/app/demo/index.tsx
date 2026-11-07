@@ -103,8 +103,8 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/today?moment=day&now=long',
       },
       {
-        title: 'Now · no arrived ring',
-        what: 'Next alone on its row, until sc-29978',
+        title: 'Now · nobody arrived yet',
+        what: 'Next alone on its row, no figure',
         href: '/demo/today?moment=day&now=on&arrived=none',
       },
       { title: 'A quiet week', what: 'Nothing due, nothing on', href: '/demo/today?moment=quiet' },
