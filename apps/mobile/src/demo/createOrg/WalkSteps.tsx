@@ -40,7 +40,7 @@ import {
   rowLabel,
   search,
 } from './CreateWalk.ts';
-import { DraftTile, FactLine, Question, Refusal, Tag, TWICE } from './WalkParts.tsx';
+import { DraftTile, FactLine, Question, Refusal, Tag, TWICE, ZoneLine } from './WalkParts.tsx';
 
 const hidden = {
   accessibilityElementsHidden: true,
@@ -605,15 +605,7 @@ export function Brings({ walk }: { walk: Walk }) {
           </Text>
           <Tag />
         </View>
-        <Text
-          maxFontSizeMultiplier={TWICE}
-          size={15}
-          weight="semibold"
-          accessible={false}
-          style={styles.factValue}
-        >
-          {timezoneLabel(walk.device.zone)}
-        </Text>
+        <ZoneLine label={timezoneLabel(walk.device.zone)} />
       </View>
     </View>
   );

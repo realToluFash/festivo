@@ -8,6 +8,7 @@ import {
   View,
   type ViewInstance,
   type ViewStyle,
+  useWindowDimensions,
 } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 
@@ -292,7 +293,6 @@ export function Refusal({ words, size, answer }: { words: string; size: number; 
   );
 }
 
-/** A step's one question, its heading. */
 export function Question({
   words,
   size,
@@ -343,16 +343,46 @@ export function FactLine({ fact, tagged = false }: { fact: Fact; tagged?: boolea
         </Text>
         {tagged && fact.key === 'timezone' && <Tag />}
       </View>
-      <Text
-        maxFontSizeMultiplier={TWICE}
-        size={15}
-        weight="semibold"
-        muted={fact.none}
-        accessible={false}
-        style={styles.factValue}
-      >
-        {fact.value}
-      </Text>
+      {fact.key === 'timezone' ? (
+        <ZoneLine label={fact.value} />
+      ) : (
+        <Text
+          maxFontSizeMultiplier={TWICE}
+          size={15}
+          weight="semibold"
+          muted={fact.none}
+          accessible={false}
+          style={styles.factValue}
+        >
+          {fact.value}
+        </Text>
+      )}
+    </View>
+  );
+}
+
+/** "Lisbon · Europe/Lisbon" wraps only after its " · ": each side is its own Text, which never breaks inside "Europe/Lisbon". */
+export function ZoneLine({ label }: { label: string }) {
+  const { fontScale } = useWindowDimensions();
+  const [city, zone] = label.split(' · ');
+  const value = (words: string) => (
+    <Text
+      maxFontSizeMultiplier={TWICE}
+      size={15}
+      weight="semibold"
+      accessible={false}
+      style={styles.factValue}
+    >
+      {words}
+    </Text>
+  );
+
+  if (city == null || zone == null) return value(label);
+
+  return (
+    <View style={[styles.zone, { columnGap: tokens.spaceXxs * Math.min(fontScale, TWICE) }]}>
+      {value(`${city} ·`)}
+      {value(zone)}
     </View>
   );
 }
@@ -433,4 +463,5 @@ const styles = StyleSheet.create({
   factHead: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
   factLabel: { lineHeight: 13 * 1.3 },
   factValue: { lineHeight: 15 * 1.3 },
+  zone: { flexDirection: 'row', flexWrap: 'wrap' },
 });
