@@ -5,7 +5,7 @@ import { StyleSheet, View } from 'react-native';
 import { PrimaryButton, QuietButton } from '../../../src/components/Buttons.tsx';
 import { CodeBoxes, type CodeBoxesHandle, CodeLabel } from '../../../src/steps/CodeBoxes.tsx';
 import { DemoScreen, NavBar } from '../../../src/demo/DemoScreen.tsx';
-import { Heading, Says } from '../../../src/steps/Lines.tsx';
+import { Heading, Plain, Says } from '../../../src/steps/Lines.tsx';
 import { CODE_LENGTH, minutesSeconds, RESEND_SECONDS } from '../../../src/steps/rules.ts';
 import { SAMPLE } from '../../../src/demo/samples.ts';
 import { useCountdown } from '../../../src/steps/useCountdown.ts';
@@ -101,14 +101,19 @@ export default function LostCodes() {
         <QuietButton
           label={
             left > 0
-              ? `Send new ${emailOnly ? 'code' : 'codes'} in ${minutesSeconds(left)}`
-              : `Send new ${emailOnly ? 'code' : 'codes'}`
+              ? `${emailOnly ? 'Send a new code' : 'Send new codes'} in ${minutesSeconds(left)}`
+              : emailOnly
+                ? 'Send a new code'
+                : 'Send new codes'
           }
           off={left > 0}
           onPress={() => restart()}
           testID="demo.resend"
         />
       </View>
+      <Plain>
+        {emailOnly ? 'A new code replaces the last one.' : 'New codes replace the last ones.'}
+      </Plain>
     </DemoScreen>
   );
 }
