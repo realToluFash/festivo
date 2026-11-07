@@ -15,7 +15,7 @@ const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
 const OKAFOR = membership({
   id: 'org_2',
   name: 'Okafor Family',
-  role: { id: 'role_2', seededAs: 'coordinator', name: null },
+  role: { id: 'role_2', seededAs: 'member', name: null },
 });
 
 function inTwo(): void {
@@ -123,7 +123,7 @@ describe('switching organisation', () => {
 
     expect(ire?.getAttribute('aria-selected')).toBe('true');
     expect(ire?.textContent).toMatch(/Your role · Owner.*Current/);
-    expect(okafor?.textContent).toMatch(/Okafor Family.*Your role · Coordinator/);
+    expect(okafor?.textContent).toMatch(/Okafor Family.*Your role · Member/);
     expect(screen.getByText('Soirely remembers your choice on this device.')).toBeDefined();
   });
 
@@ -136,7 +136,7 @@ describe('switching organisation', () => {
 
     expect(screen.getByRole('status').textContent).toMatch(/Now working in Okafor Family\./);
     expect(
-      screen.getByRole('button', { name: /Organisation: Okafor Family, your role Coordinator/ }),
+      screen.getByRole('button', { name: /Organisation: Okafor Family, your role Member/ }),
     ).toBeDefined();
     expect(window.localStorage.getItem('soirely.organisation')).toBe('org_2');
   });
@@ -962,7 +962,7 @@ describe('where focus goes on an offer in the switcher (sc-11369)', () => {
         id: 'inv_1',
         organisation: { id: 'org_7', name: 'Adunni Weddings' },
         email: 'folake@ire.events',
-        role: { id: 'role_3', seededAs: 'event_manager', name: null },
+        role: { id: 'role_3', seededAs: 'administrator', name: null },
         invitedBy: { name: 'Bisi Adeyemi' },
         expiresAt: '2026-10-23T09:00:00+00:00',
         refusal: null,

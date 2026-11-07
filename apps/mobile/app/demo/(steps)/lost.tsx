@@ -1,29 +1,45 @@
 import { router, useLocalSearchParams } from 'expo-router';
+import { useEffect, useState } from 'react';
 
 import { PrimaryButton } from '../../../src/components/Buttons.tsx';
 import { DemoScreen, NavBar } from '../../../src/demo/DemoScreen.tsx';
+import { codeWords } from '../../../src/demo/lostAuth.ts';
 import { Heading, Plain, Steps } from '../../../src/steps/Lines.tsx';
 import { SAMPLE } from '../../../src/demo/samples.ts';
 import { tokens } from '../../../src/theme/tokens.ts';
 
-/** Three steps, said before they start, because an admin is involved; with no verified mobile, the email's alone. */
+const SENDING_MS = 700;
+
+/** Three steps, said before they start, because an admin is involved; with no verified mobile, the email's alone. `state=sending` holds the button sending. */
 export default function LostAuthenticator() {
-  const params = useLocalSearchParams<{ email?: string; emailOnly?: string }>();
+  const params = useLocalSearchParams<{ email?: string; emailOnly?: string; state?: string }>();
   const email = params.email ?? SAMPLE.email;
   const emailOnly = params.emailOnly != null;
+  const held = params.state === 'sending';
+  const words = codeWords(emailOnly);
+  const [sending, setSending] = useState(false);
+
+  useEffect(() => {
+    if (!sending) return;
+    const timer = setTimeout(() => {
+      setSending(false);
+      router.push({
+        pathname: '/demo/lost-codes',
+        params: { email, ...(emailOnly && { emailOnly: '1' }) },
+      });
+    }, SENDING_MS);
+
+    return () => clearTimeout(timer);
+  }, [email, emailOnly, sending]);
 
   return (
     <DemoScreen
       nav={<NavBar step={[1, 3]} />}
       foot={
         <PrimaryButton
-          label={emailOnly ? 'Send the code' : 'Send the codes'}
-          onPress={() =>
-            router.push({
-              pathname: '/demo/lost-codes',
-              params: { email, ...(emailOnly && { emailOnly: '1' }) },
-            })
-          }
+          label={sending || held ? words.sending : words.send}
+          busy={sending || held}
+          onPress={() => setSending(true)}
           testID="demo.send"
         />
       }
@@ -37,7 +53,7 @@ export default function LostAuthenticator() {
           emailOnly
             ? `We send a code to ${email}.`
             : `We send a code to ${email}, and one to ${SAMPLE.phoneShown}.`,
-          emailOnly ? 'You enter the code here.' : 'You enter the codes here.',
+          words.step,
           `An owner or admin of ${SAMPLE.organisation} confirms it’s you. You stay signed out until they do.`,
         ]}
       />

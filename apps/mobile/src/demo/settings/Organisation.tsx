@@ -4,7 +4,8 @@ import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import type { ScrollViewInstance, ViewInstance } from 'react-native';
 
-import { useShell } from './Frame.tsx';
+import { SeenBy, useShell } from './Frame.tsx';
+import { LEAVER } from './MembersSample.ts';
 import {
   DetailRows,
   type DetailsOpening,
@@ -15,6 +16,7 @@ import {
 import { DomainsSection, RequestsSection } from './OrganisationJoining.tsx';
 import {
   type CardSaid,
+  LEAVE_STATES,
   type OrganisationStart,
   organisationStart,
   organisationStateOf,
@@ -22,22 +24,27 @@ import {
 } from './OrganisationModel.ts';
 import { OwnershipSection } from './OrganisationOwnership.tsx';
 import { DETAILS_WORDS } from './OrganisationWords.ts';
-import { VIEWER_ORGANISATION } from './sample.ts';
+import { managesOrganisation, memberLooking, VIEWER_ORGANISATION } from './sample.ts';
 import { SummaryPage } from './Summary.tsx';
 
-/** Settings › Organisation in B, summary first, on sample data. A member reads the details and may only leave. */
+/** Settings › Organisation in B, summary first, on sample data. A member reads the details and may only leave; Leave's states are Ana Souza's. */
 export function OrganisationSection() {
   const { state } = useLocalSearchParams<{ state?: string }>();
   const { viewer } = useShell();
   const name = organisationStateOf(state);
   const role = VIEWER_ORGANISATION[viewer]?.role ?? 'Member';
-
-  return (
+  const page = (
     <OrganisationPage
       key={`${viewer}:${name ?? 'atRest'}`}
       start={organisationStart(name, role)}
-      manages={viewer === 'owner'}
+      manages={managesOrganisation(viewer)}
     />
+  );
+
+  return name != null && LEAVE_STATES.includes(name) && role !== 'Owner' ? (
+    <SeenBy looking={memberLooking(LEAVER)}>{page}</SeenBy>
+  ) : (
+    page
   );
 }
 
@@ -45,7 +52,9 @@ function OrganisationPage({ start, manages }: { start: OrganisationStart; manage
   const shell = useShell();
   const pane = shell.layout === 'landscape';
   const locale = formattingLocale('en', getLocales()[0]?.languageTag);
-  const [details, setDetails] = useState<OrganisationDetails>(SAMPLE_DETAILS);
+  const [details, setDetails] = useState<OrganisationDetails>(
+    start.currencyBlank ? { ...SAMPLE_DETAILS, currency: '' } : SAMPLE_DETAILS,
+  );
   const [said, setSaid] = useState<CardSaid | null>(start.said);
   const [role, setRole] = useState(start.role);
   const [editing, setEditing] = useState(start.screen === 'details');
@@ -54,7 +63,13 @@ function OrganisationPage({ start, manages }: { start: OrganisationStart; manage
   const scroll = useRef<ScrollViewInstance>(null);
   const cardStep = useRef<ViewInstance>(null);
   const opening: DetailsOpening =
-    editVisit === 0 ? { picking: start.picking, contactWrong: start.contactWrong } : FRESH_DETAILS;
+    editVisit === 0
+      ? {
+          picking: start.picking,
+          contactWrong: start.contactWrong,
+          currencyBlank: start.currencyBlank,
+        }
+      : FRESH_DETAILS;
 
   useEffect(() => {
     if (said != null) scroll.current?.scrollTo({ y: 0, animated: true });

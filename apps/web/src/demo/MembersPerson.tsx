@@ -1,5 +1,9 @@
 import { type RefObject, useEffect, useRef, useState } from 'react';
 
+import type { SampleEvent } from './events.ts';
+import type { Handed } from './handover.ts';
+import { LeadsBlock } from './Handover.tsx';
+import { focusWhenFree } from './layers.ts';
 import {
   firstName,
   grantable,
@@ -14,6 +18,7 @@ import {
   ROLE_KEPT,
   roleMeans,
   SUSPEND_LINE,
+  suspended,
   TAKES_EFFECT,
   tagOf,
   underRoles,
@@ -44,6 +49,8 @@ export function PersonPage({
   people,
   viewer,
   event,
+  handed,
+  events,
   say,
   level,
   tell,
@@ -51,11 +58,14 @@ export function PersonPage({
   onRestore,
   onSuspend,
   onRemove,
+  onHandOver,
 }: {
   person: Person;
   people: readonly Person[];
   viewer: Viewer;
   event: PersonEvent | null;
+  handed: Handed | null;
+  events: readonly SampleEvent[];
   say: SettingsSay;
   level: 1 | 2;
   tell: Tell;
@@ -63,10 +73,18 @@ export function PersonPage({
   onRestore: () => void;
   onSuspend: () => void;
   onRemove: () => void;
+  onHandOver: () => void;
 }) {
-  const view = personView({ person, people, viewer, event, say });
+  const view = personView({ person, people, viewer, event, handed, say });
   const tag = tagOf(person);
   const Name = level === 1 ? 'h1' : 'h2';
+  const said = useRef<HTMLDivElement>(null);
+  const lines = view.lines.map((line) => <OnCard key={line}>{line}</OnCard>);
+  const leads = suspended(person.status) && viewer.manages && events.length > 0;
+
+  useEffect(() => {
+    if (event === 'handedOver') focusWhenFree(() => said.current);
+  }, [event]);
 
   return (
     <>
@@ -89,9 +107,13 @@ export function PersonPage({
             {tag.word}
           </li>
         </ul>
-        {view.lines.map((line) => (
-          <OnCard key={line}>{line}</OnCard>
-        ))}
+        {event === 'handedOver' ? (
+          <div ref={said} className="desk-said-lines" tabIndex={-1}>
+            {lines}
+          </div>
+        ) : (
+          lines
+        )}
         {view.step != null && (
           <CardStep
             label={view.step.label}
@@ -99,6 +121,7 @@ export function PersonPage({
           />
         )}
       </Card>
+      {leads && <LeadsBlock events={events} onHandOver={view.handOver ? onHandOver : null} />}
       {view.kept && <Note>{ROLE_KEPT}</Note>}
       <section className="desk-block">
         <Head title="How they got here" />

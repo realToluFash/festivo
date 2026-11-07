@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
+import { DETAILS_WORDS, OWNERSHIP_WORDS } from './OrganisationWords.ts';
 import {
   demoGroups,
   lookingAs,
+  managesOrganisation,
   memberLooking,
   SECTIONS,
   VIEWER_PERSON,
@@ -21,7 +23,7 @@ describe('Settings home in the demo, with three roles', () => {
     ]);
   });
 
-  it('shows a member her own sections, the organisation to leave it, and Sign-in rules', () => {
+  it('shows a member her own sections, Organisation to read and leave, and Sign-in rules, but no Members', () => {
     expect(demoGroups('member')).toEqual([
       {
         heading: 'yourAccount',
@@ -60,6 +62,33 @@ describe('Settings home in the demo, with three roles', () => {
       role: 'Admin',
     });
     expect(() => memberLooking('nobody@ire.events')).toThrow();
+  });
+
+  it('opens Organisation for a member, and for the old planner link, as the same page', () => {
+    const listed = (name: string) => demoGroups(viewerOf(name)).flatMap(({ sections }) => sections);
+
+    expect(listed('member')).toContain('organisation');
+    expect(listed('planner')).toEqual(listed('member'));
+    expect(listed('noOrg')).not.toContain('organisation');
+    expect(listed('member')).not.toContain('members');
+  });
+
+  it('lets only whoever manages the organisation edit it, ask people in and hand it over', () => {
+    expect(managesOrganisation('owner')).toBe(true);
+    expect(managesOrganisation('member')).toBe(false);
+    expect(managesOrganisation('noOrg')).toBe(false);
+  });
+
+  it('tells a member why the page is read only, and offers her Leave alone in the Ask’s words', () => {
+    expect(DETAILS_WORDS.readOnly('Member')).toBe(
+      'Your role, Member, can see these but not change them. Owners and admins can.',
+    );
+    expect(OWNERSHIP_WORDS.leaveOpener).toBe('Leave Ire Events…');
+    expect([OWNERSHIP_WORDS.leaveTitle, OWNERSHIP_WORDS.stay, OWNERSHIP_WORDS.leave]).toEqual([
+      'Leave Ire Events?',
+      'Stay',
+      'Leave Ire Events',
+    ]);
   });
 
   it('gives an admin the sections an owner sees, and a member hers', () => {

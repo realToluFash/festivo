@@ -20,6 +20,7 @@ class Units(unittest.TestCase):
         self.assertIn("Type=oneshot", service)
         self.assertIn("EnvironmentFile=-/c/env", service)
         self.assertIn("ExecStart=/usr/bin/python3 /q/sq/sq run", service)
+        self.assertIn("Environment=PYTHONUNBUFFERED=1", service)
         self.assertIn("MemoryMax=16G", made["soirely.slice"])
 
     def test_workers_find_nvms_node_ahead_of_every_other(self):

@@ -1,0 +1,264 @@
+/* Handing over a departing member's work (sc-614, A), in Members' own confirm: measures are the boards' (Web-Members-Handover-A*.dc.html). */
+
+.handover-to {
+  position: relative;
+}
+
+.handover-who {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceMd);
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 52px;
+  padding: var(--spaceSm) var(--spaceLg);
+  border-radius: var(--radiusInset);
+  background: var(--colorCard);
+  box-shadow: inset 0 0 0 1.5px var(--colorFieldBorder);
+  color: var(--colorInk);
+  text-align: left;
+}
+
+.handover-who.is-open {
+  box-shadow: inset 0 0 0 2px var(--colorAccent);
+}
+
+.desk .desk-ask .handover-who:focus-visible {
+  box-shadow:
+    inset 0 0 0 1.5px var(--colorFieldBorder),
+    var(--deskRing);
+}
+
+.handover-who.is-off {
+  box-shadow: inset 0 0 0 1.5px var(--colorBorder);
+  cursor: default;
+}
+
+.handover-who-name {
+  flex: 1;
+  min-width: 0;
+  font: 600 16px/1.3 var(--fontFamily);
+  overflow-wrap: anywhere;
+}
+
+.handover-who > svg {
+  flex: none;
+  color: var(--colorInkSecondary);
+}
+
+.handover-who.is-off .handover-who-name {
+  color: var(--colorInkSecondary);
+}
+
+.handover-who.is-off > svg {
+  color: var(--colorInkTertiary);
+}
+
+.handover-face.desk-avatar {
+  width: 34px;
+  height: 34px;
+  font-size: 12px;
+}
+
+.handover-face.is-nobody {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--colorInset);
+  color: var(--colorInkSecondary);
+}
+
+.handover-menu {
+  position: absolute;
+  top: calc(100% + var(--spaceXs));
+  right: 0;
+  left: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  padding: var(--spaceXs) 0;
+  overflow: hidden;
+  border: 1px solid var(--colorBorder);
+  border-radius: var(--spaceXl);
+  background: var(--colorCard);
+  box-shadow: var(--shadowPopover);
+}
+
+.handover-search {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--spaceSm);
+  box-sizing: border-box;
+  height: var(--sizeHit);
+  margin: var(--spaceXxs) var(--spaceSm) var(--spaceXs);
+  padding-left: var(--spaceLg);
+  border-radius: var(--radiusRow);
+  background: var(--colorInset);
+  color: var(--colorInkSecondary);
+}
+
+.handover-search:focus-within {
+  box-shadow: inset 0 0 0 2px var(--colorAccent);
+}
+
+.desk .handover-search input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: none;
+  color: var(--colorInk);
+  font: 500 15px/1 var(--fontFamily);
+  appearance: none;
+}
+
+.desk .handover-search input:focus-visible {
+  box-shadow: none;
+}
+
+.handover-search input::placeholder {
+  color: var(--colorInkSecondary);
+  opacity: 1;
+}
+
+.handover-search input::-webkit-search-cancel-button {
+  appearance: none;
+}
+
+.handover-clear {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: var(--sizeHit);
+  height: var(--sizeHit);
+  border-radius: var(--radiusRow);
+}
+
+.handover-clear-disc {
+  display: grid;
+  place-items: center;
+  width: var(--spaceXxl);
+  height: var(--spaceXxl);
+  border-radius: 50%;
+  background: var(--colorInkSecondary);
+  color: var(--colorInkOnDark);
+}
+
+.handover-list {
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.handover-option {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceSm);
+  box-sizing: border-box;
+  min-height: 48px;
+  padding: var(--spaceXs) var(--spaceLg);
+  color: var(--colorInk);
+  font: 500 16px/1.3 var(--fontFamily);
+  cursor: pointer;
+}
+
+.handover-option:hover {
+  background: var(--deskHover);
+}
+
+.handover-option:focus {
+  outline: none;
+}
+
+.handover-option:focus-visible {
+  box-shadow:
+    inset 0 0 0 2px var(--colorAccent),
+    inset 0 0 0 5px color-mix(in srgb, var(--colorAccent) 18%, transparent);
+}
+
+.handover-option[aria-selected='true'] {
+  color: var(--colorAccent);
+  font-weight: 600;
+}
+
+.handover-tick {
+  display: flex;
+  flex: none;
+  justify-content: center;
+  width: 18px;
+}
+
+.handover-option-name {
+  flex: 1;
+  min-width: 0;
+  margin-left: var(--spaceHair);
+  overflow-wrap: anywhere;
+}
+
+.handover-none {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spaceHair);
+  padding: var(--spaceLg) var(--spaceXl) var(--spaceXxs);
+  text-align: center;
+}
+
+.desk-ask .handover-none p {
+  color: var(--colorInk);
+  font: 500 15px/1.4 var(--fontFamily);
+  overflow-wrap: anywhere;
+}
+
+.handover-none .desk-text {
+  align-self: center;
+}
+
+.handover-moves {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.handover-moves li {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceMd);
+  padding: 5px 0;
+  color: var(--colorInk);
+  font: 600 15px/1.3 var(--fontFamily);
+  overflow-wrap: anywhere;
+}
+
+.handover-tile {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--spaceSm);
+}
+
+.handover-tile.is-row {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radiusRow);
+}
+
+.desk-ask p.handover-more {
+  padding: var(--spaceHair) 0 0 38px;
+  color: var(--colorInkSecondary);
+  font: var(--deskSmall);
+}
+
+.desk-row.handover-event {
+  min-height: 64px;
+}
