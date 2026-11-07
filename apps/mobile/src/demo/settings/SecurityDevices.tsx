@@ -8,7 +8,7 @@ import { tokens } from '../../theme/tokens.ts';
 import { LEAD_INSET, LineIcon } from './AccountCard.tsx';
 import { deviceExpires, deviceLine, deviceSignedIn, WORDS } from './SecurityModel.ts';
 import type { Device } from './SecuritySample.ts';
-import { OpenRow, RowList, Section, TextAction } from './Summary.tsx';
+import { OpenRow, RowList, Section, TextAction } from '../../components/Summary.tsx';
 
 /** One row per sign-in, this device first, each opening in place with when and where it signed in and Sign out. */
 export function DevicesSection({

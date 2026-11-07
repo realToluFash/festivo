@@ -10,7 +10,7 @@ import {
 
 import { offButton } from '../offButton.ts';
 import type { SampleEvent } from './events.ts';
-import { Glyph } from './Glyph.tsx';
+import { Glyph } from '../components/Glyph.tsx';
 import {
   type AskWords,
   HANDOVER_WORDS as H,
@@ -25,8 +25,8 @@ import {
 import type { Person } from './members.ts';
 import { noMatchLine } from './people.ts';
 import { fold } from './switcher.ts';
-import { Ask, Head, RowWords, TextAction } from './SettingsParts.tsx';
-import { useLater } from './useLater.ts';
+import { Ask, Head, RowWords, TextAction } from '../components/SettingsParts.tsx';
+import { useLater } from '../useLater.ts';
 import './handover.css';
 
 type Who = Pick<Person, 'id' | 'name' | 'initials' | 'tone'>;

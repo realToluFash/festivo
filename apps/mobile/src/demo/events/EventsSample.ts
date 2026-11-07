@@ -5,17 +5,6 @@ import type { EventKey } from '../today.ts';
 
 export { ORGANISATION };
 
-export type MeshKey = 'rose' | 'teal' | 'accent' | 'amber';
-
-const MESHES: readonly MeshKey[] = ['rose', 'teal', 'accent', 'amber'];
-
-/** Main's `meshFor` (apps/mobile/src/kit/today.ts), which this branch does not have yet: the colour is the event's id. */
-export function meshFor(id: string): MeshKey {
-  const sum = [...id].reduce((total, char) => (total * 31 + char.charCodeAt(0)) >>> 0, 7);
-
-  return MESHES[sum % MESHES.length] ?? 'accent';
-}
-
 export interface SampleVenue {
   name: string;
   address: string;

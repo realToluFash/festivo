@@ -84,7 +84,8 @@
     "mobile:eventNav.messages",
     "web:eventNav.budget",
     "mobile:eventNav.budget",
-    "web:auth.copyright"
+    "web:auth.copyright",
+    "mobile:todayScreen.notifications"
   ],
   "pt": [
     "web:nav.menu",

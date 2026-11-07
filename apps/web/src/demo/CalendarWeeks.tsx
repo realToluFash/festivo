@@ -1,5 +1,5 @@
 import { monthOfDay } from '@soirely/domain';
-import { type KeyboardEvent, type Ref, useId } from 'react';
+import { type KeyboardEvent, type Ref, useEffect, useId, useRef } from 'react';
 import { Link } from 'react-router';
 
 import {
@@ -12,6 +12,7 @@ import {
   CAL_WORDS as W,
   TODAY,
   agendaLabel,
+  agendaStop,
   barLabel,
   barOffRule,
   barWords,
@@ -30,8 +31,8 @@ import {
 } from './calendar.ts';
 import { PhaseTag, Thumb } from './EventParts.tsx';
 import type { Shown } from './events.ts';
-import { Glyph } from './Glyph.tsx';
-import { Chevron, RowWords } from './SettingsParts.tsx';
+import { Glyph } from '../components/Glyph.tsx';
+import { Chevron, RowWords } from '../components/SettingsParts.tsx';
 
 export type Move = (key: string, from: string) => boolean;
 
@@ -284,11 +285,24 @@ function MarkLink({
   );
 }
 
-function ItemRow({ item, locale }: { item: Item; locale: string }) {
+function ItemRow({
+  item,
+  locale,
+  tabIndex,
+}: {
+  item: Item;
+  locale: string;
+  tabIndex?: number | undefined;
+}) {
   return (
     <li>
       {item.kind === 'event' ? (
-        <Link className="desk-row cal-row" to={itemLink(item)} aria-label={barLabel(item, locale)}>
+        <Link
+          className="desk-row cal-row"
+          to={itemLink(item)}
+          aria-label={barLabel(item, locale)}
+          tabIndex={tabIndex}
+        >
           <Thumb event={item.event} size={40} />
           <RowWords
             title={item.event.name}
@@ -298,7 +312,12 @@ function ItemRow({ item, locale }: { item: Item; locale: string }) {
           <Chevron />
         </Link>
       ) : (
-        <Link className="desk-row cal-row" to={itemLink(item)} aria-label={markLabel(item, locale)}>
+        <Link
+          className="desk-row cal-row"
+          to={itemLink(item)}
+          aria-label={markLabel(item, locale)}
+          tabIndex={tabIndex}
+        >
           <span className={`cal-tile is-${item.event.mesh}`} aria-hidden="true">
             <span className="cal-square" />
           </span>
@@ -319,14 +338,44 @@ function ItemRow({ item, locale }: { item: Item; locale: string }) {
   );
 }
 
-function Rows({ items, locale }: { items: readonly Item[]; locale: string }) {
+function Rows({ items, locale, stop }: { items: readonly Item[]; locale: string; stop?: boolean }) {
   return (
     <ul className="desk-rows has-lead cal-rows">
-      {items.map((item) => (
-        <ItemRow key={itemKey(item)} item={item} locale={locale} />
+      {items.map((item, at) => (
+        <ItemRow
+          key={itemKey(item)}
+          item={item}
+          locale={locale}
+          tabIndex={stop == null ? undefined : stop && at === 0 ? 0 : -1}
+        />
       ))}
     </ul>
   );
+}
+
+/** Tab and Shift+Tab in Agenda move one row at a time in date order; past either end, focus leaves the list. */
+function rowStep(event: globalThis.KeyboardEvent): void {
+  const list = event.currentTarget;
+
+  if (event.key !== 'Tab' || event.altKey || event.ctrlKey || event.metaKey) return;
+  if (!(list instanceof HTMLElement && event.target instanceof HTMLElement)) return;
+
+  const from = event.target;
+  const rows = [...list.querySelectorAll<HTMLElement>('.cal-row')];
+  const at = rows.indexOf(from);
+  const after = (row: HTMLElement) =>
+    (from.compareDocumentPosition(row) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+  const next = event.shiftKey
+    ? at >= 0
+      ? rows[at - 1]
+      : rows.filter((row) => !after(row)).at(-1)
+    : at >= 0
+      ? rows[at + 1]
+      : rows.find(after);
+
+  if (next == null) return;
+  event.preventDefault();
+  next.focus();
 }
 
 export function DayPanel({
@@ -365,13 +414,26 @@ export function DayPanel({
 
 export function AgendaList({
   entries,
+  from,
   locale,
 }: {
   entries: readonly AgendaEntry[];
+  from: string;
   locale: string;
 }) {
+  const stop = agendaStop(entries, from);
+  const list = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const box = list.current;
+
+    box?.addEventListener('keydown', rowStep);
+
+    return () => box?.removeEventListener('keydown', rowStep);
+  }, []);
+
   return (
-    <div className="cal-agenda">
+    <div ref={list} className="cal-agenda">
       {entries.map((entry) => {
         const month = monthOfDay(entry.day);
         const key = monthKey(month);
@@ -395,14 +457,18 @@ export function AgendaList({
                 </>
               ) : (
                 <>
-                  <h2 className="cal-date" aria-label={agendaLabel(entry.day, locale)}>
+                  <h2
+                    className="cal-date"
+                    aria-label={agendaLabel(entry.day, locale)}
+                    tabIndex={entry.day === TODAY ? -1 : undefined}
+                  >
                     <span className="cal-weekday">{weekdayShort(entry.day, locale)}</span>
                     <span className="cal-date-number">{dayNumber(entry.day, locale)}</span>
                   </h2>
                   {entry.items.length === 0 ? (
                     <p className="cal-nothing">{W.emptyDay}</p>
                   ) : (
-                    <Rows items={entry.items} locale={locale} />
+                    <Rows items={entry.items} locale={locale} stop={entry === stop} />
                   )}
                 </>
               )}

@@ -1,3 +1,4 @@
+import { DemoBell } from './DemoBell.tsx';
 import { formattingLocale } from '@soirely/domain';
 import { type ReactNode, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 
@@ -11,7 +12,7 @@ import {
   ledBy,
   offeredFor,
 } from './handover.ts';
-import { focusWhenFree, useDeskSplit } from './layers.ts';
+import { focusWhenFree, useDeskSplit } from '../layers.ts';
 import { ClaimDialog, InviteDialog, RecoveryAsk, RequestDialog } from './MembersDialogs.tsx';
 import { PersonPage, RoleDialog } from './MembersPerson.tsx';
 import {
@@ -59,7 +60,6 @@ import { type SettingsSay, settingsSayIn, type Viewer } from './settings.ts';
 import {
   Ask,
   Avatar,
-  Bell,
   BackRow,
   Card,
   CardStep as Step,
@@ -72,8 +72,8 @@ import {
   Tag,
   TextAction,
   TitleRow,
-} from './SettingsParts.tsx';
-import type { Tell } from './TodayParts.tsx';
+} from '../components/SettingsParts.tsx';
+import type { Tell } from '../components/SettingsParts.tsx';
 
 const RETRY_MS = 1200;
 
@@ -214,6 +214,10 @@ export function Members({ viewer, state, tell }: { viewer: Viewer; state: string
         if (then.says === true) toSays.current = true;
         if (then.event != null) setEvent(then.event);
         if (then.notice != null) setNotice(then.notice);
+        if (then.notice?.kind === 'removed') {
+          const gone = then.notice.id;
+          setRecoveries((now) => now.filter((one) => one.id !== gone));
+        }
         if (then.leave === true) back();
         if (then.proved === true) setProved(true);
       }}
@@ -249,7 +253,7 @@ export function Members({ viewer, state, tell }: { viewer: Viewer; state: string
   if (load !== 'loaded')
     return (
       <Page>
-        <TitleRow title="Members" tell={tell} />
+        <TitleRow title="Members" bell={<DemoBell tell={tell} />} />
         {load === 'failed' ? <Failed onRetry={() => setLoad('retrying')} /> : <Loading />}
       </Page>
     );
@@ -287,15 +291,13 @@ export function Members({ viewer, state, tell }: { viewer: Viewer; state: string
 
     return split ? (
       <>
-        <Column
-          title={<TitleRow title="Members" action={invite} tell={tell} bell={false} compact />}
-        >
+        <Column title={<TitleRow title="Members" action={invite} compact />}>
           <MembersCardView card={card} size="column" onStep={step} />
           <MembersBlocks {...list} column />
         </Column>
         <Page>
           <div className="desk-top is-end">
-            <Bell tell={tell} />
+            <DemoBell tell={tell} />
           </div>
           {page}
         </Page>
@@ -303,7 +305,7 @@ export function Members({ viewer, state, tell }: { viewer: Viewer; state: string
       </>
     ) : (
       <Page>
-        <BackRow to="Members" onBack={back} tell={tell} />
+        <BackRow to="Members" onBack={back} bell={<DemoBell tell={tell} />} />
         {page}
         {dialogs}
       </Page>
@@ -312,7 +314,7 @@ export function Members({ viewer, state, tell }: { viewer: Viewer; state: string
 
   return (
     <Page>
-      <TitleRow title="Members" action={invite} tell={tell} />
+      <TitleRow title="Members" action={invite} bell={<DemoBell tell={tell} />} />
       <MembersCardView card={card} onStep={step} />
       {claim === 'found' && (
         <TextAction label="Withdraw my claim" onClick={() => setDialog({ kind: 'withdraw' })} />

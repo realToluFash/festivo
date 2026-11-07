@@ -5,7 +5,13 @@ import { useReadOut } from '../../components/ReadOut.tsx';
 import { type TextHandle, Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import type { SecurityLine } from './SecurityModel.ts';
-import { CardGlyph, OnCard, StatusMark, type StepProps, SummaryCard } from './Summary.tsx';
+import {
+  CardGlyph,
+  OnCard,
+  ShapeMark,
+  type StepProps,
+  SummaryCard,
+} from '../../components/Summary.tsx';
 
 /** How you are protected on Confetti: the shield, two-factor on or off and what signs you in, then what just happened or why it matters. */
 export function SecurityCard({
@@ -53,7 +59,7 @@ export function SecurityCard({
       {line?.kind === 'done' && (
         <View style={styles.done} testID="security.said">
           <View style={styles.mark}>
-            <StatusMark kind="yes" side={16} ink={tokens.colorInkOnDark} />
+            <ShapeMark kind="yes" side={16} ink={tokens.colorInkOnDark} />
           </View>
           <View style={styles.grow}>
             <OnCard text={line.text} strong />

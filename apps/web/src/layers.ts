@@ -11,8 +11,8 @@ import {
   useState,
 } from 'react';
 
-import { keepFocusIn } from '../dialogFocus.ts';
-import { useMatches } from '../phoneWidth.ts';
+import { keepFocusIn } from './dialogFocus.ts';
+import { useMatches } from './phoneWidth.ts';
 
 interface Layers {
   stack: readonly string[];

@@ -5,7 +5,7 @@ import { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { tokens } from '../../theme/tokens.ts';
-import { SeenBy, useShell } from './Frame.tsx';
+import { SeenBy } from './Frame.tsx';
 import { useLoad } from './MembersLoading.tsx';
 import { memberLooking } from './sample.ts';
 import {
@@ -23,6 +23,8 @@ import {
   TITLE,
   whereYouStand,
 } from './SignInRulesSample.ts';
+import { useShell } from '../../components/settingsShell.ts';
+import { SummaryPage } from './SummaryPage.tsx';
 import {
   CardSays,
   FailedBlock,
@@ -31,10 +33,9 @@ import {
   Row,
   RowList,
   Section,
-  StatusMark,
+  ShapeMark,
   SummaryCard,
-  SummaryPage,
-} from './Summary.tsx';
+} from '../../components/Summary.tsx';
 
 const MARK = 22;
 
@@ -134,9 +135,9 @@ function RuleLine({ rule }: { rule: RuleRow }) {
 
 /** Met is the green tick, needs you the amber half disc, and doesn't apply a Sunk disc with a bar. */
 function RuleMark({ mark }: { mark: Mark }) {
-  if (mark === 'met') return <StatusMark kind="yes" side={MARK} ink={tokens.marks.done.ink} />;
+  if (mark === 'met') return <ShapeMark kind="yes" side={MARK} ink={tokens.marks.done.ink} />;
   if (mark === 'needs')
-    return <StatusMark kind="waiting" side={MARK} ink={tokens.colorAttentionText} />;
+    return <ShapeMark kind="waiting" side={MARK} ink={tokens.colorAttentionText} />;
 
   return (
     <View style={styles.notApplicable} {...hidden}>

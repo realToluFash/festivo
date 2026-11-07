@@ -12,7 +12,6 @@ import {
 import { Text } from '../../components/Text.tsx';
 import type { Scheme } from '../../theme/tokens.ts';
 import { tokens } from '../../theme/tokens.ts';
-import { useShell } from './Frame.tsx';
 import {
   type Colours,
   nameOf,
@@ -24,9 +23,10 @@ import {
 } from './PersonalisationModel.ts';
 import { PreviewCard, SchemeGround, swatchSpots } from './PersonalisationParts.tsx';
 import { lookOf, SCHEME_ORDER } from './PersonalisationSchemes.ts';
-import { FocusedScreen, Tag, TextAction } from './Summary.tsx';
+import { useShell } from '../../components/settingsShell.ts';
+import { FocusedScreen, Tag, TextAction } from '../../components/Summary.tsx';
 
-/** Colours: the card in the pick, what the pick means, the restart line and the eight swatches; Cancel leaves without asking. */
+/** Colours: the card in the pick, what the pick means, the restart line, then the lead line as the heading of the eight swatches; Cancel leaves without asking. */
 export function ColoursScreen({
   open,
   colours,
@@ -78,9 +78,6 @@ export function ColoursScreen({
       gap={tokens.spaceLg}
       testID="personalisation.colours"
     >
-      <Text size={15} weight="medium">
-        {WORDS.lead}
-      </Text>
       <View style={styles.pick}>
         <PreviewCard scheme={colours.picked} />
         {refusal == null ? (
@@ -112,6 +109,10 @@ export function ColoursScreen({
           {WORDS.restart}
         </Text>
       </View>
+      {/* The swatches' group name: a View that is not accessible has no label a reader speaks, so the heading just before the first swatch names it. */}
+      <Text size={15} weight="medium" accessibilityRole="header">
+        {WORDS.lead}
+      </Text>
       <Swatches
         picked={colours.picked}
         current={current}

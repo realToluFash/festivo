@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const home = readFileSync(join('src', 'demo', 'settings', 'SettingsHome.tsx'), 'utf8');
-const rows = readFileSync(join('src', 'demo', 'settings', 'SummaryRows.tsx'), 'utf8');
+const rows = readFileSync(join('src', 'components', 'SummaryRows.tsx'), 'utf8');
 
 function style(name: string): string {
   const at = home.indexOf(`  ${name}: `);

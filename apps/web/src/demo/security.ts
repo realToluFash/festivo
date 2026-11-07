@@ -3,6 +3,7 @@ import {
   cleanCode,
   codeProblem,
   emailProblem,
+  formatTimeOfDay,
   meetsPasswordLength,
 } from '@soirely/domain';
 
@@ -392,9 +393,7 @@ export function dayOf(when: Date, locale: string): string {
 }
 
 export function dayAtTime(when: Date, locale: string): string {
-  const time = new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: '2-digit' }).format(when);
-
-  return `${dayOf(when, locale)} at ${time}`;
+  return `${dayOf(when, locale)} at ${formatTimeOfDay(when, locale)}`;
 }
 
 export function deviceLine(device: Device, locale: string): string {
@@ -806,11 +805,19 @@ export function securityStart(state: string, viewer: Viewer = VIEWERS.folake): S
   }
 }
 
-/** A held step elsewhere in Settings opens Security on the moment that ends the hold. */
-export function heldStepPath(step: string, viewer: Pick<Viewer, 'key'>): string {
-  const to = step === W.turnOn ? 'setup' : step === 'Link Google or Apple' ? 'linkPick' : undefined;
+export interface HeldStep {
+  label: string;
+  opens: 'setup' | 'linkPick';
+}
 
-  return settingsPath('security', viewer, to);
+export const HELD_STEPS = {
+  turnOn: { label: W.turnOn, opens: 'setup' },
+  link: { label: 'Link Google or Apple', opens: 'linkPick' },
+} as const satisfies Record<string, HeldStep>;
+
+/** A held step elsewhere in Settings opens Security on the moment that ends the hold. */
+export function heldStepPath(step: HeldStep, viewer: Pick<Viewer, 'key'>): string {
+  return settingsPath('security', viewer, step.opens);
 }
 
 function security(state: string | undefined, name: string): DemoLink {

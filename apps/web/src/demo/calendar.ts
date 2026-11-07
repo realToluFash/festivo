@@ -375,6 +375,13 @@ export function agendaOf(
   return entries;
 }
 
+/** Where Tab enters Agenda (sc-31222): the first day with a row on or after the day the list was sent to, else the last one. */
+export function agendaStop(entries: readonly AgendaEntry[], from: string): AgendaEntry | undefined {
+  const listed = entries.filter((entry) => entry.items.length > 0);
+
+  return listed.find((entry) => entry.day >= from) ?? listed.at(-1);
+}
+
 export function monthHasItems(month: CalendarMonth, days: ReadonlyMap<string, Item[]>): boolean {
   return agendaDays(month, days).length > 0;
 }

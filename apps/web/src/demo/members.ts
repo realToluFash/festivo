@@ -1,3 +1,4 @@
+import type { MarkKind } from '../components/SettingsParts.tsx';
 import { emailProblem, type MemberStanding, memberStanding } from '@soirely/domain';
 
 import {
@@ -271,8 +272,6 @@ export const EMPTY: Record<Exclude<Filter, 'all'>, { title: string; line: string
     line: 'People who leave or are removed are listed here, with what they did kept.',
   },
 };
-
-export type MarkKind = 'yes' | 'waiting' | 'paused' | 'ended';
 
 export function tagOf(person: Pick<Person, 'status' | 'gone'>): { kind: MarkKind; word: string } {
   switch (person.status) {
@@ -595,20 +594,17 @@ export function membersCard({
       };
     case 'removed': {
       const handed = notice.handed;
+      const stays = `Their events stay with ${ORGANISATION}.`;
 
-      return handed == null
-        ? {
-            ...quiet,
-            says: `${nameOf(people, notice.id)} was removed`,
-            lines: [`Their events stay with ${ORGANISATION}. ${FORMER_KEPT}`],
-            step: seeFormer,
-          }
-        : {
-            ...quiet,
-            says: `${nameOf(people, notice.id)} was removed`,
-            lines: [`${ledByLine(handed, nameOf(people, handed.to), viewer.id)} ${FORMER_KEPT}`],
-            step: firstStep(people, recoveries, viewer),
-          };
+      return {
+        ...quiet,
+        says: `${nameOf(people, notice.id)} was removed`,
+        lines: [
+          `${handed == null ? stays : ledByLine(handed, nameOf(people, handed.to), viewer.id)} ${FORMER_KEPT}`,
+        ],
+        // Anyone still waiting comes before See Former, after any removal (pm, 7 Nov).
+        step: firstStep(people, recoveries, viewer) ?? seeFormer,
+      };
     }
     case 'recovered': {
       const approve = notice.answer === 'approve';

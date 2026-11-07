@@ -1,6 +1,8 @@
+import { quietHoursIn } from '@soirely/domain';
 import { describe, expect, it } from 'vitest';
 
 import { readSettings, saveSetting, settingSaving } from '../../kit/notificationSettings.ts';
+import * as model from './NotificationsModel.ts';
 import {
   cardCounts,
   cardSays,
@@ -23,7 +25,6 @@ import {
 } from './NotificationsModel.ts';
 
 const now = () => Promise.resolve();
-const spaced = (words: string) => words.replace(/\s/gu, ' ');
 
 describe('the sample settings', () => {
   it('are epic 36’s defaults, in the grid’s order', () => {
@@ -105,13 +106,28 @@ describe('a row’s value', () => {
 });
 
 describe('quiet hours', () => {
-  it('follow the reader’s clock', () => {
-    expect(spaced(quietHoursLine('en-US'))).toBe(
-      'Between 9:00 PM and 8:00 AM your time, only Event day pushes come through.',
-    );
-    expect(spaced(quietHoursLine('en-GB'))).toBe(
-      'Between 21:00 and 08:00 your time, only Event day pushes come through.',
-    );
+  const line = 'Between 21:00 and 08:00 your time, only Event day pushes come through.';
+
+  it('read 21:00 and 08:00 with the device in en-US and in en-GB', () => {
+    expect(quietHoursLine('en-US')).toBe(line);
+    expect(quietHoursLine('en-GB')).toBe(line);
+  });
+
+  it('have no AM or PM in any locale', () => {
+    for (const locale of ['en', 'fr-FR', 'es-MX', 'pt-BR'])
+      expect(quietHoursLine(locale)).not.toMatch(/AM|PM|a\.m\.|p\.m\./iu);
+    expect(quietHoursLine('fr-FR')).toBe(line);
+  });
+
+  it('take both times from the product’s quietHoursIn, with no clock of the demo’s own', () => {
+    for (const locale of ['en-US', 'en-GB', 'fr-FR']) {
+      const { start, end } = quietHoursIn(locale);
+
+      expect(quietHoursLine(locale)).toBe(
+        `Between ${start} and ${end} your time, only Event day pushes come through.`,
+      );
+    }
+    expect(Object.keys(model)).not.toContain('clockTime');
   });
 });
 
