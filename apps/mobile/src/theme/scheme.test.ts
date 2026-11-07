@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { schemes, tokens, withScheme } from './tokens.ts';
+import { schemes, withScheme } from './tokens.ts';
+
+const base = withScheme(undefined);
 
 describe('a build picks its colour scheme', () => {
   it('keeps the base when no scheme is set, which is every build until one is', () => {
-    expect(tokens).toEqual(withScheme(undefined));
-    expect(tokens.colorAccent).toBe('#1E9A64');
+    expect(base.colorAccent).toBe('#1E9A64');
   });
 
   it("lays B Confetti's Violet over the base, and leaves the rest as it was", () => {
@@ -13,10 +14,10 @@ describe('a build picks its colour scheme', () => {
 
     expect(violet.colorAccentHover).toBe('#5A3DF0');
     expect(violet.colorInk).toBe('#0D0D12');
-    expect(violet.colorAttention).toBe(tokens.colorAttention);
-    expect(violet.spaceLg).toBe(tokens.spaceLg);
-    expect(violet.typeBody).toEqual(tokens.typeBody);
-    expect(violet.elevationNative).toEqual(tokens.elevationNative);
+    expect(violet.colorAttention).toBe(base.colorAttention);
+    expect(violet.spaceLg).toBe(base.spaceLg);
+    expect(violet.typeBody).toEqual(base.typeBody);
+    expect(violet.elevationNative).toEqual(base.elevationNative);
   });
 
   it('takes the accent into a selected border, the done mark, a taken seat and a yes', () => {
@@ -24,7 +25,7 @@ describe('a build picks its colour scheme', () => {
 
     expect(violet.borderSelected).toBe('2px solid #5A3DF0');
     expect(violet.marks.done.fill).toBe('#5A3DF0');
-    expect(violet.marks.done.glyph).toBe(tokens.marks.done.glyph);
+    expect(violet.marks.done.glyph).toBe(base.marks.done.glyph);
     expect(violet.seatStates.taken.ring).toBe('1px solid #5A3DF0');
     expect(violet.replyStates.coming.dot).toBe('#5A3DF0');
   });
@@ -33,7 +34,7 @@ describe('a build picks its colour scheme', () => {
     const violet = withScheme('violet');
 
     expect(violet.marks.broken.ring).toBe(violet.colorBroken);
-    expect(violet.marks.broken.glyph).toBe(tokens.marks.broken.glyph);
+    expect(violet.marks.broken.glyph).toBe(base.marks.broken.glyph);
     expect(violet.borderAllergy).toBe(`1.5px solid ${violet.colorBroken}`);
   });
 

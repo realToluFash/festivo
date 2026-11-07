@@ -109,7 +109,7 @@ export function ClaimScreen({
         owner.asking
           ? {
               title: 'Withdraw your claim?',
-              line: `You won't become the owner of ${ORGANISATION}. Any Administrator, you included, can start a new claim.`,
+              line: `You won't become the owner of ${ORGANISATION}. Any admin, you included, can start a new claim.`,
               keep: { label: 'Keep my claim', testID: 'ownerClaim.withdrawNo' },
               confirm: { label: 'Withdraw', testID: 'ownerClaim.withdrawYes', removes: true },
               onKeep: () => owner.ask(false),

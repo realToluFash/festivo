@@ -298,7 +298,7 @@ export function ClaimDialog({
       {ask && (
         <Ask
           title="Withdraw your claim?"
-          line={`You won’t become the owner of ${ORGANISATION}. Any Administrator, you included, can start a new claim.`}
+          line={`You won’t become the owner of ${ORGANISATION}. Any admin, you included, can start a new claim.`}
           keep="Keep my claim"
           go="Withdraw"
           onKeep={() => setAsk(false)}
