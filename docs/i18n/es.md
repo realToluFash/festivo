@@ -50,6 +50,7 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **7 Nov 2026. Lo que puede hacer cada rol, en Miembros** (`web:membersScreen.roleMeans.*`, sc-30138). Las frases no tienen sujeto, como `owner`. Los eventos de un Miembro son «los eventos que se le asignan», con «le», que no marca género; nunca «a los que se le añade» ni «invitado». El mismo giro sirve para la app.
 - **7 Nov 2026. Las otras formas de entrar en la app** (`mobile:steps.invited*`, `join`,
   `startOwnInstead`, `mobile:requestToJoin.messageOptional`, `signedOutLine`, sc-30119). "You’re
   invited" es «Tiene una invitación», para que nada concuerde con el género de quien lee.

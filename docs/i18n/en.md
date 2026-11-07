@@ -87,9 +87,10 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   say who. Kept as the story has them: the radio options **Deposit and balance**, **Three
   instalments**, **In full before the event**, **In full after the event**, **Enter rows
   yourself**; the prefilled descriptions Deposit, Second instalment, Balance, Payment in full
-  (Three instalments reads Deposit, Second instalment, Balance); "Set to the date quoted" and
-  "Needs the event's date", labels with no full stop. A blank description reuses sc-87's
-  "Enter what the payment is for." rather than a near-copy reading "this payment".
+  (Three instalments reads Deposit, Second instalment, Balance); "Set to the date quoted", a
+  label with no full stop. "Needs the event's date" was dropped on 7 Nov (pm): every event has
+  a start date, so its state cannot happen. A blank description reuses sc-87's "Enter what the
+  payment is for." rather than a near-copy reading "this payment".
 
 - **7 Nov 2026. Choosing a quote's vendor, and the vendor page's empty states** (sc-87, pm's
   #30377, settled before the board is drawn). In the Vendor field: an option already quoted
