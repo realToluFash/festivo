@@ -415,6 +415,8 @@ describe('an invitation, signed in', () => {
         screen.getByRole('heading', { level: 1, name: 'Invitation declined' }),
       ),
     );
+    expect(screen.getByRole('link', { name: 'Go to Soirely' })).toBeDefined();
+    expect(screen.queryByText('Go to your events')).toBeNull();
     expect(screen.queryByRole('status')).toBeNull();
     expect(sent.map((one) => one.line)).not.toContain('POST /api/invitations/inv_1/accept');
   });

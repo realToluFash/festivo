@@ -621,7 +621,7 @@ function Declined() {
 
   return (
     <Link className="button" to={landing}>
-      {t('join.goToEvents')}
+      {t('join.goHome')}
     </Link>
   );
 }
