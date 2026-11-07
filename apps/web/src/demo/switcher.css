@@ -590,7 +590,7 @@
   box-shadow: var(--swRing);
 }
 
-/* A new organisation's button: its colour crossfades in over the Create tile it came from, in 300ms. */
+/* A new organisation's button: its colour crossfades in over the Create tile it came from. */
 .sw-was {
   position: absolute;
   inset: 0;
@@ -601,7 +601,7 @@
   border-radius: inherit;
   background: var(--colorAccentTint);
   color: var(--colorAccent);
-  animation: sw-colour-arrives 300ms linear forwards;
+  animation: sw-colour-arrives var(--motionSlow) linear forwards;
 }
 
 @keyframes sw-colour-arrives {
