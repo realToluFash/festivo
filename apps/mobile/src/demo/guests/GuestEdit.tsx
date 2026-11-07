@@ -18,9 +18,9 @@ import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { ASK_WIDTH, AlertLine, EventField } from '../events/EventEdits.tsx';
 import { BoxField } from '../events/EventsPick.tsx';
-import { useShell } from '../settings/Frame.tsx';
-import { Pill } from '../settings/parts.tsx';
-import { type AskProps, FocusedScreen, TextAction } from '../settings/Summary.tsx';
+import { useShell } from '../../components/settingsShell.ts';
+import { Pill } from '../../components/SettingsParts.tsx';
+import { type AskProps, FocusedScreen, TextAction } from '../../components/Summary.tsx';
 import {
   type Answer,
   type EditState,

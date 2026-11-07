@@ -23,8 +23,9 @@ import { type AreaBadge, EventFrame } from '../events/EventFrame.tsx';
 import { OfflineBand } from '../events/EventsList.tsx';
 import type { Shown } from '../events/EventsModel.ts';
 import type { AreaKey } from '../events/EventsSample.ts';
-import { PHONE_TAB_BAR, useShell } from '../settings/Frame.tsx';
-import { Ask } from '../settings/Summary.tsx';
+import { useShell } from '../../components/settingsShell.ts';
+import { PHONE_TAB_BAR } from '../../components/TodayCover.tsx';
+import { Ask } from '../../components/Summary.tsx';
 import { AddGuest, ChoosePeople, ReviewList } from './GuestAdd.tsx';
 import { EditGuest, MarkInvited, RecordReply } from './GuestEdit.tsx';
 import { GuestPage } from './GuestPage.tsx';
@@ -218,6 +219,7 @@ export function GuestsScreen({
     setReplaced(false);
     setGuestPhase('ok');
     setOpen(key);
+    if (layout !== 'landscape') scroll.current?.scrollTo({ y: 0, animated: false });
     setTimeout(() => moveScreenReaderFocus(nameRef.current), FOCUS_AFTER_MS);
   };
   const closeGuest = () => {

@@ -13,9 +13,9 @@ import { EventFrame } from '../events/EventFrame.tsx';
 import { SearchField } from '../events/EventsList.tsx';
 import { shownEvent } from '../events/EventsModel.ts';
 import { sampleEvent } from '../events/EventsSample.ts';
-import { useShell } from '../settings/Frame.tsx';
-import { Back, Pill } from '../settings/parts.tsx';
-import { Row, RowList, TextAction } from '../settings/Summary.tsx';
+import { useShell } from '../../components/settingsShell.ts';
+import { Back, Pill } from '../../components/SettingsParts.tsx';
+import { Row, RowList, TextAction } from '../../components/Summary.tsx';
 import { GuestField, SheetBody, SheetLayer } from './GuestEdit.tsx';
 import {
   type DoorPerson,

@@ -8,8 +8,8 @@ import { type TextHandle, Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { CardBackdrop, PhaseShape } from '../events/EventCard.tsx';
 import type { Shown } from '../events/EventsModel.ts';
-import { useShell } from '../settings/Frame.tsx';
-import { Pill } from '../settings/parts.tsx';
+import { useShell } from '../../components/settingsShell.ts';
+import { Pill } from '../../components/SettingsParts.tsx';
 import {
   CardSays,
   GlassTag,
@@ -17,7 +17,7 @@ import {
   StepButton,
   SummaryCard,
   TextAction,
-} from '../settings/Summary.tsx';
+} from '../../components/Summary.tsx';
 import type { GuestsCardWords } from './GuestsModel.ts';
 import { W, say } from './GuestsWords.ts';
 import { ARRIVED_GREEN, type MarkKind, ReplyMark } from './ReplyMark.tsx';

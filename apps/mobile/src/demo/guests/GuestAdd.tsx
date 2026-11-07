@@ -21,14 +21,14 @@ import { DemoOnly } from '../../steps/Lines.tsx';
 import { ASK_WIDTH, AlertLine } from '../events/EventEdits.tsx';
 import { SearchField } from '../events/EventsList.tsx';
 import { LineIcon } from '../settings/AccountCard.tsx';
-import { Pill } from '../settings/parts.tsx';
+import { Pill } from '../../components/SettingsParts.tsx';
 import {
   type AskProps,
   FocusedScreen,
   Row,
   TextAction,
   TurningMark,
-} from '../settings/Summary.tsx';
+} from '../../components/Summary.tsx';
 import {
   type AddState,
   type ReviewRow,

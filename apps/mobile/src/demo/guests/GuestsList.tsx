@@ -21,7 +21,7 @@ import {
   RowList,
   TextAction,
   anchorUnder,
-} from '../settings/Summary.tsx';
+} from '../../components/Summary.tsx';
 import {
   type Counts,
   FILTERS,
