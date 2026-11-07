@@ -487,6 +487,7 @@ export function EventForm({
             value={draft.type}
             onChange={(type) => changeDraft('type', { type: isEventType(type) ? type : '' })}
             disabled={busy}
+            wrong={errors.type != null}
             pickerRef={typePicker}
             testID="eventForm.type"
           />
@@ -571,6 +572,7 @@ export function EventForm({
             onChange={(zone) => change('timeZone', { timeZone: zone })}
             disabled={busy}
             readOnly={over}
+            wrong={errors.timeZone != null}
             pickerRef={zonePicker}
             testID="eventForm.timeZone"
           />
@@ -590,6 +592,7 @@ export function EventForm({
             value={currency}
             onChange={(code) => change('currency', { currency: code })}
             disabled={busy}
+            wrong={errors.currency != null}
             pickerRef={currencyPicker}
             testID="eventForm.currency"
           />

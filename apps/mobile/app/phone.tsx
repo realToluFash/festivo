@@ -113,7 +113,7 @@ function MobileStep({ initialCountry, short }: { initialCountry: string; short: 
   const [sending, setSending] = useState(false);
   const numberInput = useRef<TextInputInstance>(null);
   const countryPicker = useRef<ViewInstance>(null);
-  const send = useSend(
+  const { send, errorOn } = useSend(
     country,
     number,
     sending,
@@ -160,6 +160,7 @@ function MobileStep({ initialCountry, short }: { initialCountry: string; short: 
             disabled={sending}
             withCallingCode
             compact
+            wrong={error != null && errorOn === 'country'}
             pickerRef={countryPicker}
             testID="phone.country"
           />
@@ -172,7 +173,7 @@ function MobileStep({ initialCountry, short }: { initialCountry: string; short: 
                 setNumber(typed);
                 setError(null);
               }}
-              state={error != null ? 'blank' : 'plain'}
+              state={error != null && errorOn === 'number' ? 'blank' : 'plain'}
               submitting={sending}
               keyboardType="phone-pad"
               textContentType="telephoneNumber"
@@ -204,16 +205,19 @@ function useSend(
   onTexted: () => void,
 ) {
   const { t } = useTranslation();
+  const [errorOn, setErrorOn] = useState<'country' | 'number'>('number');
 
   async function send(): Promise<void> {
     if (sending) return;
 
     const found = phoneLengthProblem(number, country);
     const problem = phoneProblemMessage(found, country, t);
+    const on = refusedPhoneField(found) ?? 'number';
+    setErrorOn(on);
 
     if (problem != null) {
       setError(problem);
-      if (refusedPhoneField(found) === 'country') focusPicker(countryPicker);
+      if (on === 'country') focusPicker(countryPicker);
       else focusChecked(numberInput);
 
       return;
@@ -238,7 +242,7 @@ function useSend(
     }
   }
 
-  return send;
+  return { send, errorOn };
 }
 
 function NumberForm({
@@ -256,7 +260,7 @@ function NumberForm({
   const numberInput = useRef<TextInputInstance>(null);
   const countryPicker = useRef<ViewInstance>(null);
 
-  const send = useSend(
+  const { send, errorOn } = useSend(
     country,
     number,
     sending,
@@ -274,6 +278,7 @@ function NumberForm({
         help={t('verifyPhone.numberHelp')}
         country={country}
         error={error}
+        errorOn={errorOn}
         submitting={sending}
         onCountry={(code) => {
           setCountry(code);
