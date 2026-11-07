@@ -10,12 +10,12 @@ appId: host.exp.Exponent
 - openLink: ${METRO_URL}/--/
 - extendedWaitUntil:
     visible:
-      id: 'welcome\.brand|home\.openSettings|noOrganisation|completeProfile|twoFactorOverdue\.signOut'
+      id: 'welcome\.brand|home\.openSettings|noOrganisation|completeProfile\..*|twoFactorOverdue\.signOut'
     timeout: 90000
 - runFlow:
     when:
       visible:
-        id: 'completeProfile'
+        id: 'completeProfile\.left'
     file: sign-out-from-complete-profile.yaml
 - runFlow:
     when:
