@@ -592,6 +592,37 @@ class Run(unittest.TestCase):
         self.assertIn("paused everywhere by tolu-mac: sq resume --everywhere starts every "
                       "machine again", self.said)
 
+    def slow_sync(self, seconds, cut=()):
+        self.clock = 0.0
+
+        def synced(db, now):
+            self.clock += seconds
+            store.set_meta(db, "sync_report", {"at": now, "cut": list(cut),
+                                               "took": {"shortcut": seconds - 1, "github": 1}})
+            return []
+        return mock.patch("soirely_queue.sync.sync", side_effect=synced)
+
+    def test_a_tick_past_thirty_seconds_names_each_phase(self):
+        with self.slow_sync(31):
+            self.run_once(clock=lambda: self.clock)
+        slow = [line for line in self.said if line.startswith("tick took")]
+        self.assertEqual(slow, ["tick took 31.0s: sync 31.0s (shortcut 30.0s, github 1.0s); "
+                                "local checks 0.0s; update and lease 0.0s; roles 0.0s"])
+
+    def test_a_quick_tick_says_nothing_about_time(self):
+        with self.slow_sync(5):
+            self.run_once(clock=lambda: self.clock)
+        self.assertFalse([line for line in self.said if line.startswith("tick took")])
+
+    def test_a_sync_cut_at_its_budget_still_wakes_the_roles_and_says_so(self):
+        store.record(self.db, [work("ops")], ON_ZERO)
+        with self.slow_sync(25, cut=["shortcut", "github"]):
+            self.run_once(clock=lambda: self.clock)
+        self.assertIn("ops: woke for [ops] on sc-1 (item 1)", self.said)
+        self.assertTrue(any("Sync stopped at its 25s budget in shortcut, github" in line
+                            for line in self.said))
+
+
 class Command(unittest.TestCase):
     VALUES = {"model": "claude-opus-5-5", "effort": "medium"}
 

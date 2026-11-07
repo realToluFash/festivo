@@ -127,6 +127,13 @@ reads. Every check starts with the API up, whatever the one before it left. A mo
 seconds, so on Android the harness takes the API's `adb reverse` away for that move and puts it
 back once the API is held: the app is refused throughout, with no network change announced.
 
+A check that changes the account's membership from outside the phone asks
+`ASK: /membership?change=join&org=<name>` first. The harness makes an organisation of that name
+for the batch, with the account an administrator in it, and answers its id (`switcher.<id>`).
+Then `change=pause` (through the domain, written in the database), `suspend`, `remove` or `delete`
+with the same `org`. Before each check `batch/reset.yaml` deletes what the last one joined, so
+Access paused never outlives its check. sc-28178's checks are the example.
+
 Two-factor sign-in is `sign-in-two-factor.yaml`. It asks the harness for each code
 (`batch/helper.js`), so it runs inside a batch, which holds the account's `TOTP_SECRET`.
 
