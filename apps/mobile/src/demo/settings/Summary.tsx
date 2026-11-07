@@ -41,6 +41,7 @@ export {
   type RowTag,
   Section,
   SectionHead,
+  SELECTED_ROW,
   StatusMark,
   Tag,
   type TagKind,

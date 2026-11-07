@@ -14,7 +14,15 @@ import {
 } from './MembersRecoverySample.ts';
 import type { MembersSay, Person } from './MembersSample.ts';
 import { Avatar } from './parts.tsx';
-import { type AskProps, type ListItem, RowList, Section, Tag, TextAction } from './Summary.tsx';
+import {
+  type AskProps,
+  type ListItem,
+  RowList,
+  Section,
+  SELECTED_ROW,
+  Tag,
+  TextAction,
+} from './Summary.tsx';
 
 export type RecoveryPart = 'box' | 'group' | 'approve' | 'turnDown';
 
@@ -247,7 +255,7 @@ const styles = StyleSheet.create({
   bleed: { marginHorizontal: -tokens.spaceMd },
   row: { paddingVertical: 11 },
   rowDense: { paddingVertical: 9, paddingHorizontal: tokens.spaceMd },
-  lit: { borderRadius: tokens.radiusRow, backgroundColor: tokens.colorAccentTint },
+  lit: SELECTED_ROW,
   litPast: { marginHorizontal: -tokens.spaceMd, paddingHorizontal: tokens.spaceMd },
   group: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceLg },
   words: { flex: 1, minWidth: 0, gap: 3 },

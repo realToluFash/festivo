@@ -39,6 +39,12 @@ const TAGS: Record<TagKind, { fill: string; ink: string; ring?: string }> = {
   now: { fill: tokens.colorAccentTint, ink: tokens.colorAccentText },
 };
 
+/** A selected row's look: Tint at the row's radius, with no ring. */
+export const SELECTED_ROW = {
+  borderRadius: tokens.radiusRow,
+  backgroundColor: tokens.colorAccentTint,
+} as const;
+
 export function StatusMark({
   kind,
   side = 12,
@@ -503,7 +509,7 @@ const styles = StyleSheet.create({
   foot: { paddingTop: tokens.spaceXs },
   row: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceLg },
   // Lit like People's row, with no ring: the owner found the ring weird (6 Nov 2026).
-  rowSelected: { borderRadius: tokens.radiusRow, backgroundColor: tokens.colorAccentTint },
+  rowSelected: SELECTED_ROW,
   rowPressed: { opacity: tokens.opacityPressed },
   words: { flex: 1, minWidth: 0, gap: 3 },
   titleRow: {
