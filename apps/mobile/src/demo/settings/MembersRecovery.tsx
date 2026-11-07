@@ -187,10 +187,9 @@ export function recoveryQuestion(
     ? RECOVERY_WORDS.turnDownTitle(name)
     : RECOVERY_WORDS.approveTitle(name);
 
-  const phase = {
-    sending: ask?.phase === 'sending' ? RECOVERY_WORDS.sending : null,
-    failed: ask?.phase === 'failed' ? RECOVERY_WORDS.failed : null,
-  };
+  const off = ask?.phase === 'sending';
+  const busy = off ? RECOVERY_WORDS.sending : undefined;
+  const failed = ask?.phase === 'failed' ? RECOVERY_WORDS.failed : null;
 
   if (ask?.phase === 'closed')
     return {
@@ -202,25 +201,27 @@ export function recoveryQuestion(
     };
   if (turningDown)
     return {
-      ...phase,
       title,
       line: RECOVERY_WORDS.turnDownBody,
-      keep: { label: RECOVERY_WORDS.keep, testID: 'members.recovery.keep' },
+      failed,
+      keep: { label: RECOVERY_WORDS.keep, testID: 'members.recovery.keep', off },
       confirm: {
         label: RECOVERY_WORDS.turnDownConfirm,
         testID: 'members.recovery.turnDownConfirm',
+        busy,
       },
     };
 
   return {
-    ...phase,
     title,
     line: RECOVERY_WORDS.approveBody,
-    keep: { label: RECOVERY_WORDS.cancel, testID: 'members.recovery.cancel' },
+    failed,
+    keep: { label: RECOVERY_WORDS.cancel, testID: 'members.recovery.cancel', off },
     confirm: {
       label: RECOVERY_WORDS.approveConfirm,
       testID: 'members.recovery.turnOff',
       removes: true,
+      busy,
     },
   };
 }

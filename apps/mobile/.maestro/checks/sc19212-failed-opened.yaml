@@ -1,5 +1,10 @@
 # sc-19212: on a tablet on its side, with ${ORG}'s event ${EVENT} open in the pane, a pull to refresh with the API stopped keeps the split: the list's failed card beside the pane.
 appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
 ---
 - setOrientation: LANDSCAPE_LEFT
 - runFlow:

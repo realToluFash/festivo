@@ -244,8 +244,8 @@ export function generalStart(
   const name = generalStateOf(state);
   const owner = role === 'Owner';
 
-  if (name === 'leave' || name === 'onlyOwner')
-    return { ...page, ask: owner ? 'onlyOwner' : 'leave' };
+  if (name === 'onlyOwner') return owner ? { ...page, ask: 'onlyOwner' } : page;
+  if (name === 'leave') return { ...page, ask: owner ? 'onlyOwner' : 'leave' };
   if (name === 'heldTwoFactor' || name === 'heldLinked')
     return role === 'Admin'
       ? { ...page, hold: name === 'heldTwoFactor' ? 'twoFactor' : 'linking' }

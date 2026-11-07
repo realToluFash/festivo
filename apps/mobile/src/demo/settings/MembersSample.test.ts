@@ -204,9 +204,16 @@ describe('Members in the demo', () => {
       line: 'They are listed under Former.',
       step: { label: 'See Former' },
     });
-    expect(membersCard({ ...plainCard, people: removed(people, priya.id), gone: priya }).says).toBe(
-      'Priya Shah was removed',
-    );
+    expect(
+      membersCard({
+        ...plainCard,
+        people: removed(people, priya.id),
+        gone: { person: priya, handed: null },
+      }),
+    ).toMatchObject({
+      says: 'Priya Shah was removed',
+      line: 'Their events stay with Ire Events. They are listed under Former, with everything they did kept.',
+    });
   });
 
   it('says the claim on the card while nobody owns the organisation', () => {
@@ -256,7 +263,7 @@ describe('Requests to get back in, in the app’s Members (sc-30893)', () => {
     });
   };
 
-  it('keeps every state Members had, and adds the ten recovery states', () => {
+  it('keeps every state Members had, the handover’s with them, and adds the ten recovery states', () => {
     expect(MEMBERS_STATES).toEqual([
       'list',
       'readOnly',
@@ -275,6 +282,21 @@ describe('Requests to get back in, in the app’s Members (sc-30893)', () => {
       'selfOwner',
       'claim',
       'withdraw',
+      'handover',
+      'handoverMenu',
+      'handoverPicked',
+      'handoverLong',
+      'handoverSearch',
+      'handoverSearchNobody',
+      'removingNoWork',
+      'handoverSending',
+      'handoverFailed',
+      'handoverDone',
+      'handoverNow',
+      'handoverNowSending',
+      'handoverNowFailed',
+      'handoverNowDone',
+      'handoverReadOnly',
       'recovery',
       'recoveryApprove',
       'recoveryTurnDown',
@@ -418,8 +440,30 @@ describe('Requests to get back in, in the app’s Members (sc-30893)', () => {
       membersCard({ ...plainCard, people, request: { approved: lucia, role: 'Member' } }),
     ).toMatchObject({ readsOut: true, takesFocus: false });
     expect(
-      membersCard({ ...plainCard, people: removed(people, lucia), gone: person('Lucía Gómez') }),
+      membersCard({
+        ...plainCard,
+        people: removed(people, lucia),
+        gone: { person: person('Lucía Gómez'), handed: null },
+      }),
     ).toMatchObject({ readsOut: true, takesFocus: false });
+  });
+
+  it('answers the oldest request to get back in first after a removal, as the count does', () => {
+    const ana = person('Ana Souza');
+    const gone = { person: ana, handed: null };
+    const after = removed(people, ana.id);
+    expect(
+      membersCard({
+        ...plainCard,
+        people: after,
+        gone,
+        recovery: { waiting: [KOFI], answer: null },
+      }).step,
+    ).toEqual({ label: 'Answer Kofi Mensah', does: 'answerRecovery' });
+    expect(membersCard({ ...plainCard, people: after, gone }).step).toEqual({
+      label: 'Answer Lucía Gómez',
+      does: 'answer',
+    });
   });
 
   it('counts again once a request answered elsewhere is closed', () => {

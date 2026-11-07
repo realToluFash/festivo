@@ -35,7 +35,9 @@ import {
   type CardStep,
   counts,
   type Filter,
+  handedOver,
   isShown,
+  type Leads,
   membersCard,
   membersSayIn,
   type MembersStart,
@@ -46,6 +48,7 @@ import {
   PROOF_MINUTES,
   reachableState,
   removed,
+  type Removal,
   type Request,
   turnedDown,
 } from './MembersSample.ts';
@@ -59,7 +62,7 @@ import {
   useRowClear,
 } from './Summary.tsx';
 
-const PLAIN: PersonOpening = { step: 'resting', picked: null };
+const PLAIN: PersonOpening = { step: 'resting', picked: null, handover: null, said: null };
 
 /** Members in B, summary first: the card, who waits, the people, a member's page and the owner claim, on sample data. */
 export function MembersSection() {
@@ -85,13 +88,15 @@ function MembersScreen({ start }: { start: MembersStart }) {
   const say = membersSayIn(formattingLocale('en', getLocales()[0]?.languageTag));
   const { load, retry } = useLoad(start.load);
   const [people, setPeople] = useState<Person[]>(start.people);
+  const [leads, setLeads] = useState<Leads>(start.leads);
   const [filter, setFilter] = useState<Filter>(start.filter);
   const [request, setRequest] = useState<Request>(start.request);
   const [requestVisit, setRequestVisit] = useState(0);
   const [open, setOpen] = useState<string | null>(start.open);
   const [opening, setOpening] = useState<PersonOpening>(start);
   const [visit, setVisit] = useState(0);
-  const [gone, setGone] = useState<Person | null>(null);
+  const [gone, setGone] = useState<Removal | null>(start.gone);
+  const [removals, setRemovals] = useState(0);
   const [provedAt, setProvedAt] = useState<number | null>(null);
   const owner = useOwnerClaim(start.claim, start.withdrawing);
   const waitingRow = useRef<ViewInstance>(null);
@@ -143,6 +148,14 @@ function MembersScreen({ start }: { start: MembersStart }) {
   const waitingBack = viewer.manages
     ? recovery.flatMap((id) => people.filter((one) => one.id === id))
     : [];
+
+  /** After a removal the focus goes to the card's sentence, which is read out as a status (WCAG 2.2 4.1.3). */
+  useEffect(() => {
+    if (removals === 0) return;
+    const focus = setTimeout(() => moveScreenReaderFocus(cardSays.current), SETTLED_MS);
+
+    return () => clearTimeout(focus);
+  }, [removals]);
 
   useEffect(() => {
     if (provedAt == null) return;
@@ -282,6 +295,7 @@ function MembersScreen({ start }: { start: MembersStart }) {
         card={card}
         compact={landscape}
         wide={shell.layout === 'portrait'}
+        toldAtMount={removals > 0}
         stepRef={cardStep}
         saysRef={(view) => {
           cardSays.current = view;
@@ -391,6 +405,7 @@ function MembersScreen({ start }: { start: MembersStart }) {
           person={person}
           visit={visit}
           people={people}
+          leads={leads}
           viewer={viewer}
           opening={opening}
           say={say}
@@ -399,11 +414,20 @@ function MembersScreen({ start }: { start: MembersStart }) {
           proved={provedAt != null}
           onProved={() => setProvedAt(Date.now())}
           onPeople={setPeople}
-          onRemoved={(one) => {
+          onRemoved={(one, taker) => {
+            const count = leads[one.id]?.length ?? 0;
+            const to = people.find(({ id }) => id === taker);
             setPeople((before) => removed(before, one.id));
+            if (taker != null) setLeads((before) => handedOver(before, one.id, [taker]));
             openPerson(null);
-            setGone(one);
+            setGone({
+              person: one,
+              handed:
+                to == null || count === 0 ? null : { count, to: to.name, you: to.id === viewer.id },
+            });
+            setRemovals((times) => times + 1);
           }}
+          onHandedOver={(from, to) => setLeads((before) => handedOver(before, from, [to]))}
         />
         {overlays}
       </>

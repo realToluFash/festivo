@@ -200,14 +200,14 @@ export function memberRowLine(
   ].join(' · ');
 }
 
-/** The roles somebody awaiting approval can be approved into: never Owner (sc-68), and Read-only first, least privilege. */
+/** The roles somebody awaiting approval can be approved into: never Owner (sc-68), and Member first, least privilege (sc-29915). */
 export function approvalRoles<Role extends { seededAs: string | null }>(
   roles: readonly Role[],
 ): Role[] {
   const offered = roles.filter((role) => role.seededAs !== 'owner');
 
   return [
-    ...offered.filter((role) => role.seededAs === 'read_only'),
-    ...offered.filter((role) => role.seededAs !== 'read_only'),
+    ...offered.filter((role) => role.seededAs === 'member'),
+    ...offered.filter((role) => role.seededAs !== 'member'),
   ];
 }

@@ -144,6 +144,65 @@ describe('Your account at a desk (sc-30209)', () => {
     ).toBeDefined();
   });
 
+  it('opens the Name row on the saved name, and Escape closes it at once', async () => {
+    await account('/demo/settings/account');
+
+    fireEvent.click(within(block('About you')).getByRole('button', { name: /Folake Adeyemi/ }));
+    expect(within(dialog()).getByLabelText('Full name')).toHaveProperty('value', 'Folake Adeyemi');
+    expect(
+      within(dialog()).getByRole('button', { name: 'Save' }).getAttribute('aria-disabled'),
+    ).toBe('true');
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('closes Confirm it’s you on Escape with something typed, and nothing changes', async () => {
+    await account('/demo/settings/account?state=confirm');
+
+    fireEvent.change(within(dialog()).getByLabelText('Your password'), {
+      target: { value: 'correct horse battery' },
+    });
+    fireEvent.change(within(dialog()).getByLabelText('Code'), { target: { value: '714302' } });
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.queryByText(/is now your primary address/)).toBeNull();
+    expect(
+      within(block('Email addresses')).getByRole('button', { name: /folake.adeyemi@gmail.com/ }),
+    ).toBeDefined();
+  });
+
+  it('closes Verify on Cancel with a code typed, and the address stays unverified', async () => {
+    await account('/demo/settings/account?state=verifyEmail');
+
+    fireEvent.change(within(dialog()).getByLabelText('Code from the email'), {
+      target: { value: '482913' },
+    });
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'Cancel' }));
+
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(within(block('Email addresses')).getByText('Unverified')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Send a code' })).toBeDefined();
+  });
+
+  it('puts the saved name’s initials on the card', async () => {
+    await account('/demo/settings/account?state=name');
+
+    fireEvent.change(within(dialog()).getByLabelText('Full name'), {
+      target: { value: 'Oluwafolakemi Bello' },
+    });
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'Save' }));
+
+    expect(
+      await screen.findByText('Name changed to Oluwafolakemi Bello.', undefined, SLOW),
+    ).toBeDefined();
+    expect(screen.getByText('OB')).toBeDefined();
+  });
+
   it('refuses a blank name on the field', async () => {
     await account('/demo/settings/account?state=nameBlank');
 

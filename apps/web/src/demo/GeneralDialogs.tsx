@@ -404,7 +404,11 @@ export function TransferDialog({
   const group = useRef<HTMLDivElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
   const codeRef = useRef<HTMLInputElement>(null);
-  const changed = owner !== opening.owner || password !== opening.password || code !== opening.code;
+  const changes = [
+    owner !== opening.owner,
+    password !== opening.password,
+    code !== opening.code,
+  ].filter(Boolean).length;
 
   function land(found: TransferProblems): void {
     setProblems(found);
@@ -434,7 +438,7 @@ export function TransferDialog({
         title={O.transfer}
         verb={O.transferVerb}
         on={!busy}
-        onDismiss={() => (changed ? setAsking(true) : onClose())}
+        onDismiss={() => (changes > 0 ? setAsking(true) : onClose())}
         onConfirm={transfer}
       >
         <Note>{O.transferBody}</Note>
@@ -488,7 +492,7 @@ export function TransferDialog({
       </Dialog>
       {asking && (
         <Ask
-          title="Discard your change?"
+          title={discardTitle(changes)}
           line="You stay the owner."
           keep="Keep editing"
           go="Discard"

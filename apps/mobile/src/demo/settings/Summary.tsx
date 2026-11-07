@@ -11,7 +11,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useReadOut } from '../../components/ReadOut.tsx';
-import { Text, type TextHandle } from '../../components/Text.tsx';
+import { type TextHandle, Text } from '../../components/Text.tsx';
 import { Toast } from '../../components/Toast.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { Confetti, Cover } from '../../components/Cover.tsx';
@@ -59,6 +59,7 @@ export {
   FocusedScreen,
   type FocusVerb,
   type Layer,
+  MenuLayer,
 } from './SummaryOverlays.tsx';
 
 const hidden = {
@@ -344,13 +345,16 @@ export function OnCard({
   text,
   strong = false,
   accessible,
+  ref,
 }: {
   text: string;
   strong?: boolean;
   accessible?: boolean | undefined;
+  ref?: Ref<TextHandle> | undefined;
 }) {
   return (
     <Text
+      ref={ref}
       size={14.5}
       weight={strong ? 'semibold' : 'medium'}
       accessible={accessible}

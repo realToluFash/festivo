@@ -204,6 +204,11 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/settings/account?state=addPhone',
       },
       {
+        title: 'Your account · add a phone number · no country',
+        what: 'The Code starts blank: Choose a country.',
+        href: '/demo/settings/account?state=addPhoneNoCountry',
+      },
+      {
         title: 'Your account · time zone',
         what: 'San typed, the matches under it',
         href: '/demo/settings/account?state=zone',
@@ -425,6 +430,11 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/settings/organisation?state=cardsLoading',
       },
       {
+        title: 'Organisation · no currency',
+        what: 'Never chosen: Choose a currency.',
+        href: '/demo/settings/organisation?state=currencyBlank',
+      },
+      {
         title: 'Organisation · the only owner',
         what: 'Leave asks you to transfer first',
         href: '/demo/settings/organisation?state=onlyOwner',
@@ -559,6 +569,121 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         title: 'Sign-in rules · failed',
         what: 'Could not load, Try again',
         href: '/demo/settings/sign-in-rules?state=failed',
+      },
+    ],
+  },
+  {
+    page: 'Members · handing over · A One person',
+    boards: [
+      {
+        title: 'Removing · the Ask',
+        what: 'Priya leads 3 events, starting on you',
+        href: '/demo/settings/members?state=handover',
+      },
+      {
+        title: 'Removing · the menu',
+        what: 'Active members, never Priya or Marta',
+        href: '/demo/settings/members?state=handoverMenu',
+      },
+      {
+        title: 'Removing · someone picked',
+        what: 'Ana Souza takes them',
+        href: '/demo/settings/members?state=handoverPicked',
+      },
+      {
+        title: 'Removing · a long list',
+        what: 'Julien leads 8: five, then and 3 more',
+        href: '/demo/settings/members?state=handoverLong',
+      },
+      {
+        title: 'Removing · the menu’s search',
+        what: '18 members, “jo” finds 3',
+        href: '/demo/settings/members?state=handoverSearch',
+      },
+      {
+        title: 'Removing · nobody matches',
+        what: '“kemi”, Clear search',
+        href: '/demo/settings/members?state=handoverSearchNobody',
+      },
+      {
+        title: 'Removing · no events',
+        what: 'Tom leads nothing: today’s Ask',
+        href: '/demo/settings/members?state=removingNoWork',
+      },
+      {
+        title: 'Removing · sending',
+        what: 'Removing…, off',
+        href: '/demo/settings/members?state=handoverSending',
+      },
+      {
+        title: 'Removing · failed',
+        what: 'Removing did not work',
+        href: '/demo/settings/members?state=handoverFailed',
+      },
+      {
+        title: 'Removing · done',
+        what: 'The card says who leads them now',
+        href: '/demo/settings/members?state=handoverDone',
+      },
+      {
+        title: 'Leaving · the Ask',
+        what: 'Ana leads 2 events, Nobody first',
+        href: '/demo/settings/organisation?state=leave&as=member',
+      },
+      {
+        title: 'Leaving · the menu',
+        what: 'Nobody, then every active member',
+        href: '/demo/settings/organisation?state=leaveMenu&as=member',
+      },
+      {
+        title: 'Leaving · someone picked',
+        what: 'Julien Moreau takes them',
+        href: '/demo/settings/organisation?state=leavePicked&as=member',
+      },
+      {
+        title: 'Leaving · sending',
+        what: 'Leaving…, then Today',
+        href: '/demo/settings/organisation?state=leaveSending&as=member',
+      },
+      {
+        title: 'Leaving · failed',
+        what: 'Leaving did not work',
+        href: '/demo/settings/organisation?state=leaveFailed&as=member',
+      },
+      {
+        title: 'Leaving · no events',
+        what: 'Today’s Ask',
+        href: '/demo/settings/organisation?state=leaveNoWork&as=member',
+      },
+      {
+        title: 'A suspended member',
+        what: 'Marta leads 2 events, Hand over now',
+        href: '/demo/settings/members?state=marta',
+      },
+      {
+        title: 'Hand over now · the Ask',
+        what: 'Cancel, Hand over in Violet',
+        href: '/demo/settings/members?state=handoverNow',
+      },
+      {
+        title: 'Hand over now · sending',
+        what: 'Handing over…, off',
+        href: '/demo/settings/members?state=handoverNowSending',
+      },
+      {
+        title: 'Hand over now · failed',
+        what: 'Handing over did not work',
+        href: '/demo/settings/members?state=handoverNowFailed',
+      },
+      {
+        title: 'Hand over now · done',
+        what: 'Marta’s card, the list gone',
+        href: '/demo/settings/members?state=handoverNowDone',
+      },
+      {
+        title: 'Hand over now · read only',
+        what: 'Julien reads Marta, an owner',
+        href: '/demo/settings/members?state=handoverReadOnly',
       },
     ],
   },
@@ -947,11 +1072,36 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         what: 'An invitation is waiting',
         href: '/demo/create?after=invited',
       },
+      {
+        title: 'The sign-up runs out',
+        what: 'The code, or Send a new code, goes back',
+        href: '/demo/email-code?state=runOut',
+      },
+      {
+        title: 'Create an account · timed out',
+        what: 'Name and email kept, not the password',
+        href: '/demo/create?state=timedOut',
+      },
+      {
+        title: 'Create an account · timed out, opened again',
+        what: 'Only the email kept',
+        href: '/demo/create?state=timedOutReopened',
+      },
       { title: 'Apple, the first time', what: 'Apple didn’t share the name', href: '/demo/apple' },
       {
         title: 'Google, the first time',
         what: 'Two steps',
         href: '/demo/organisation?via=google',
+      },
+      {
+        title: 'Your organisation · no country',
+        what: 'The device names none: Choose a country.',
+        href: '/demo/organisation?region=none',
+      },
+      {
+        title: 'Your mobile number · no code',
+        what: 'The device names none: Choose a country.',
+        href: '/demo/mobile?region=none',
       },
       { title: 'Join link · signed out', what: 'The same choices as welcome', href: '/demo/join' },
       {

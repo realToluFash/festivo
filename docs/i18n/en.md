@@ -74,6 +74,35 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   "You’re invited" keeps its contraction: a warm title, not an error. es, fr and pt say the
   reader has an invitation rather than "is invited", so nothing agrees with the reader's gender.
 
+- **7 Nov 2026. What sc-87's demo adds: payments saved and removed, Revise, read-only and the
+  archive refusal** (pm's #31444 from ux's #31427, settled before the board is drawn). Saved
+  lines take the quote's shape, one string with slots: "Payment added: {{description}},
+  {{amount}}, due on {{date}}."; "Payment changed: {{description}}, {{amount}}, due on
+  {{date}}."; "Payment removed: {{description}}, {{amount}}." No vendor slot: payments are
+  only ever saved on that vendor's page, whose title names it. "Changed", the button's verb,
+  not "amended". "Due on", as "quoted on", because es, fr and pt need the preposition. Live
+  announcements: "Payment added.", "Payment changed.", "Payment removed." Removing asks in the
+  row: "Remove this payment?" with **Keep** and **Remove**, as the AC has them. Revise form
+  intro, the Correct intro's mirror: "Revising saves this quote with a new amount or date
+  quoted. The current quote is kept as an earlier quote, under Show the earlier quote. To
+  change only what it covers, its quote number or its budget lines, correct the quote
+  instead." Won over ux's "Revising keeps the current quote as an earlier quote, under Show
+  the earlier quote.", which did not say what Revise is for, on which the 17 Oct refusal of an
+  unchanged Revise rests. Read-only, on the Budget page and the vendor's page: "Quotes and
+  payment schedules are read-only because this organisation's plan no longer includes them.
+  Nothing has been removed." It ends a sentence, so it reads whole with **See plans** after it
+  or without it (only `billing.manage` sees the link). "This organisation's plan", as the 17 Oct
+  refusal, not "Your plan": a Lead or an Admin does not hold the plan. Rejected: "kept to
+  read", which no other string says. A title, if the card keeps one, is "Read-only", hyphenated
+  as an adjective. The archive refusal, in Edit vendor: "{{vendor}} was not archived, because
+  the events below still have payments to it that are not paid or cancelled. Once each one is
+  paid or cancelled, you can archive the vendor." Each link under it reads "Payments to
+  {{vendor}} on {{event}}", which says where it goes when read alone in a screen reader's list
+  of links (rejected: "<event>, its payments to <vendor>"). "The events below", not a count, so
+  one event and many read the same without plural keys. The API's 409 detail cannot say
+  "below", so it has its own key: "{{vendor}} was not archived, because one or more events
+  still have payments to it that are not paid or cancelled."
+
 - **7 Nov 2026. A payment schedule's shapes, and someone else adding payments first**
   (sc-1332, pm's #30379, settled before the board is drawn). The 409 when another person adds
   a scheduled payment while a shape is being chosen, on the form and as the API's detail
@@ -87,9 +116,10 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   say who. Kept as the story has them: the radio options **Deposit and balance**, **Three
   instalments**, **In full before the event**, **In full after the event**, **Enter rows
   yourself**; the prefilled descriptions Deposit, Second instalment, Balance, Payment in full
-  (Three instalments reads Deposit, Second instalment, Balance); "Set to the date quoted" and
-  "Needs the event's date", labels with no full stop. A blank description reuses sc-87's
-  "Enter what the payment is for." rather than a near-copy reading "this payment".
+  (Three instalments reads Deposit, Second instalment, Balance); "Set to the date quoted", a
+  label with no full stop. "Needs the event's date" was dropped on 7 Nov (pm): every event has
+  a start date, so its state cannot happen. A blank description reuses sc-87's "Enter what the
+  payment is for." rather than a near-copy reading "this payment".
 
 - **7 Nov 2026. Choosing a quote's vendor, and the vendor page's empty states** (sc-87, pm's
   #30377, settled before the board is drawn). In the Vendor field: an option already quoted

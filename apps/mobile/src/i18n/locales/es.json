@@ -738,10 +738,7 @@
   "roles": {
     "owner": "Propietario",
     "administrator": "Administrador",
-    "member": "Miembro",
-    "event_manager": "Gestor de eventos",
-    "coordinator": "Coordinador",
-    "read_only": "Solo lectura"
+    "member": "Miembro"
   },
   "rolesScreen": {
     "title": "Roles",
@@ -1068,7 +1065,7 @@
     "transfer": "Transferir la propiedad",
     "transferNote": "Ceda {{organisation}} a otro miembro. Antes se le pedirá la contraseña.",
     "transferNoteProvider": "Ceda {{organisation}} a otro miembro. Antes se le pedirá que confirme con {{provider}}.",
-    "transferBody": "Quien reciba el rol Propietario podrá cambiar la facturación, los miembros, los roles y esta configuración, y eliminar {{organisation}}. Usted pasará a tener el rol Administrador.",
+    "transferBody": "Quien reciba el rol Propietario podrá cambiar la facturación, los miembros y esta configuración, y eliminar {{organisation}}. Usted pasará a tener el rol Administrador.",
     "newOwner": "Transferir a",
     "ownerBlank": "Elija a quién transferir la propiedad.",
     "password": "Su contraseña",

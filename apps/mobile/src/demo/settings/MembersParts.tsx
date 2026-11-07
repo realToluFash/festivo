@@ -48,13 +48,16 @@ export function MembersCardView({
   card,
   compact,
   wide,
-  stepRef,
   saysRef,
+  toldAtMount = false,
+  stepRef,
   onStep,
 }: {
   card: MembersCard;
   compact: boolean;
   wide: boolean;
+  /** Said as it mounts too: on a phone the card comes back with a removal's words already on it. */
+  toldAtMount?: boolean;
   stepRef: Ref<ViewInstance>;
   /** The card's words where the focus lands: the sentence, or the sentence and its line as one. */
   saysRef?: (view: ScreenReaderTarget | null) => void;
@@ -63,7 +66,7 @@ export function MembersCardView({
   const step = card.step;
 
   useReadOut(card.readsOut ? [card.says, card.line].filter(Boolean).join('. ') : null, {
-    quietAtMount: true,
+    quietAtMount: !toldAtMount,
   });
 
   return (
