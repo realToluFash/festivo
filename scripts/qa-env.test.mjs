@@ -2301,6 +2301,29 @@ describe('a check that runs a sibling check', () => {
       rmSync(target, { recursive: true, force: true });
     }
   });
+
+  it('names the cycle when two checks run each other', () => {
+    const source = mkdtempSync(join(tmpdir(), 'qa-source-'));
+    const target = mkdtempSync(join(tmpdir(), 'qa-batch-'));
+    mkdirSync(join(source, 'checks'));
+    writeFileSync(join(source, 'checks', 'a.yaml'), 'appId: x\n---\n- runFlow: b.yaml\n');
+    writeFileSync(join(source, 'checks', 'b.yaml'), 'appId: x\n---\n- runFlow: a.yaml\n');
+    try {
+      expect(() =>
+        composeBatch(source, target, {
+          checks: ['a'],
+          languages: ['es'],
+          cold: false,
+          catalogues: { es: {} },
+          email: 'qa@soirely.test',
+          onAndroid: false,
+        }),
+      ).toThrow('a → b → a: a check runs itself');
+    } finally {
+      rmSync(source, { recursive: true, force: true });
+      rmSync(target, { recursive: true, force: true });
+    }
+  });
 });
 
 describe('the harness in .qa/bin', () => {

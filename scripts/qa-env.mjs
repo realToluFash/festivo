@@ -2124,21 +2124,25 @@ export function composeBatch(
     writeFileSync(path, localise(readFileSync(path, 'utf8'), catalogues, 'any', { email }));
   }
   mkdirSync(join(target, '_checks'));
-  const subFlows = (flow, language, caller) =>
+  const subFlows = (flow, language, caller, chain) =>
     flow.replace(
       /^(\s*(?:-\s*runFlow|file):\s*)(['"]?)([\w.-]+)\.ya?ml\2(?=\s*$)/gm,
       (line, key, quote, name) => {
         if (!existsSync(join(source, 'checks', `${name}.yaml`))) return line;
+        if (chain.includes(name))
+          throw new Error(`${[...chain, name].join(' → ')}: a check runs itself`);
         const id = `${caller}.${name}`;
         const path = join(target, '_checks', `${id}.flow.yaml`);
         if (!existsSync(path)) {
-          writeFileSync(path, '');
           const sub = readFileSync(join(source, 'checks', `${name}.yaml`), 'utf8');
           writeFileSync(
             path,
             finish(
               prefixShots(
-                subFlows(localise(sub, catalogues, language, { email }), language, id),
+                subFlows(localise(sub, catalogues, language, { email }), language, id, [
+                  ...chain,
+                  name,
+                ]),
                 id,
               ),
             ),
@@ -2161,6 +2165,7 @@ export function composeBatch(
       ),
       language,
       id,
+      [check],
     );
     writeFileSync(
       join(target, '_checks', `${id}.yaml`),
