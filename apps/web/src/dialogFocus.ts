@@ -90,14 +90,7 @@ function choicesWith(
 }
 
 function isAt(stop: HTMLElement, active: Element | null): boolean {
-  if (active === stop) return true;
-  if (!(active instanceof HTMLInputElement) || !(stop instanceof HTMLInputElement)) return false;
-
   return (
-    active.type === 'radio' &&
-    stop.type === 'radio' &&
-    active.name !== '' &&
-    active.name === stop.name &&
-    active.form === stop.form
+    active === stop || (active instanceof HTMLElement && choicesWith(stop, [active]).length > 0)
   );
 }
