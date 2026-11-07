@@ -1,0 +1,30 @@
+# sc-22741: a save that cannot reach the server keeps the field open with what was typed and says so.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/account
+- extendedWaitUntil:
+    visible:
+      id: 'nameCard.change'
+    timeout: 30000
+- tapOn:
+    id: 'nameCard.change'
+- extendedWaitUntil:
+    visible:
+      id: 'nameCard.field'
+    timeout: 5000
+- eraseText: 200
+- inputText: 'Offline Name'
+- hideKeyboard
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
+- tapOn:
+    id: 'nameCard.save'
+- extendedWaitUntil:
+    visible: '{{t:nameCard.failed}}'
+    timeout: 60000
+- assertVisible:
+    id: 'nameCard.field'
+- assertVisible: 'Offline Name'
+- takeScreenshot: offline-failed

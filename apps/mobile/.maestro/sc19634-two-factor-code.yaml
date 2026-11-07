@@ -1,0 +1,13 @@
+# Types CODE on Enter your code and waits to be signed in. sc-19634.
+appId: host.exp.Exponent
+---
+- tapOn:
+    id: 'twoFactor.code'
+- inputText: ${CODE}
+- tapOn:
+    id: 'twoFactor.verify'
+- extendedWaitUntil:
+    visible:
+      id: 'home\.openSettings|completeProfile\..*|noOrganisation'
+    timeout: 30000
+- takeScreenshot: ${SHOT}

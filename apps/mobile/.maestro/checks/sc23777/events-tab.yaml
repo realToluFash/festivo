@@ -1,0 +1,21 @@
+# sc-23777: Home, then Events > ${TAB}; the swipe leaves ${TAB} chosen on the Events list.
+appId: host.exp.Exponent
+---
+- runFlow: ../../return-home.yaml
+- tapOn:
+    id: 'frame.events'
+- extendedWaitUntil:
+    visible:
+      id: 'events.tab.${TAB}'
+    timeout: 30000
+- tapOn:
+    id: 'events.tab.${TAB}'
+- waitForAnimationToEnd
+- takeScreenshot: events-${TAB}-before
+- runFlow: swipe.yaml
+- assertVisible:
+    id: 'events.tab.${TAB}'
+    selected: true
+- assertNotVisible:
+    id: 'home.openSettings'
+- takeScreenshot: events-${TAB}-after
