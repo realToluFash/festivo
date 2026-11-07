@@ -508,6 +508,121 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
     ],
   },
   {
+    page: 'Members · handing over · A One person',
+    boards: [
+      {
+        title: 'Removing · the Ask',
+        what: 'Priya leads 3 events, starting on you',
+        href: '/demo/settings/members?state=handover',
+      },
+      {
+        title: 'Removing · the menu',
+        what: 'Active members, never Priya or Marta',
+        href: '/demo/settings/members?state=handoverMenu',
+      },
+      {
+        title: 'Removing · someone picked',
+        what: 'Ana Souza takes them',
+        href: '/demo/settings/members?state=handoverPicked',
+      },
+      {
+        title: 'Removing · a long list',
+        what: 'Julien leads 8: five, then and 3 more',
+        href: '/demo/settings/members?state=handoverLong',
+      },
+      {
+        title: 'Removing · the menu’s search',
+        what: '18 members, “jo” finds 3',
+        href: '/demo/settings/members?state=handoverSearch',
+      },
+      {
+        title: 'Removing · nobody matches',
+        what: '“kemi”, Clear search',
+        href: '/demo/settings/members?state=handoverSearchNobody',
+      },
+      {
+        title: 'Removing · no events',
+        what: 'Tom leads nothing: today’s Ask',
+        href: '/demo/settings/members?state=removingNoWork',
+      },
+      {
+        title: 'Removing · sending',
+        what: 'Removing…, off',
+        href: '/demo/settings/members?state=handoverSending',
+      },
+      {
+        title: 'Removing · failed',
+        what: 'Removing did not work',
+        href: '/demo/settings/members?state=handoverFailed',
+      },
+      {
+        title: 'Removing · done',
+        what: 'The card says who leads them now',
+        href: '/demo/settings/members?state=handoverDone',
+      },
+      {
+        title: 'Leaving · the Ask',
+        what: 'Ana leads 2 events, Nobody first',
+        href: '/demo/settings/organisation?state=leave&as=member',
+      },
+      {
+        title: 'Leaving · the menu',
+        what: 'Nobody, then every active member',
+        href: '/demo/settings/organisation?state=leaveMenu&as=member',
+      },
+      {
+        title: 'Leaving · someone picked',
+        what: 'Julien Moreau takes them',
+        href: '/demo/settings/organisation?state=leavePicked&as=member',
+      },
+      {
+        title: 'Leaving · sending',
+        what: 'Leaving…, then Today',
+        href: '/demo/settings/organisation?state=leaveSending&as=member',
+      },
+      {
+        title: 'Leaving · failed',
+        what: 'Leaving did not work',
+        href: '/demo/settings/organisation?state=leaveFailed&as=member',
+      },
+      {
+        title: 'Leaving · no events',
+        what: 'Today’s Ask',
+        href: '/demo/settings/organisation?state=leaveNoWork&as=member',
+      },
+      {
+        title: 'A suspended member',
+        what: 'Marta leads 2 events, Hand over now',
+        href: '/demo/settings/members?state=marta',
+      },
+      {
+        title: 'Hand over now · the Ask',
+        what: 'Cancel, Hand over in Violet',
+        href: '/demo/settings/members?state=handoverNow',
+      },
+      {
+        title: 'Hand over now · sending',
+        what: 'Handing over…, off',
+        href: '/demo/settings/members?state=handoverNowSending',
+      },
+      {
+        title: 'Hand over now · failed',
+        what: 'Handing over did not work',
+        href: '/demo/settings/members?state=handoverNowFailed',
+      },
+      {
+        title: 'Hand over now · done',
+        what: 'Marta’s card, the list gone',
+        href: '/demo/settings/members?state=handoverNowDone',
+      },
+      {
+        title: 'Hand over now · read only',
+        what: 'Julien reads Marta, an owner',
+        href: '/demo/settings/members?state=handoverReadOnly',
+      },
+    ],
+  },
+  {
     page: 'Events · A Summary first',
     boards: [
       { title: 'Events', what: 'Upcoming, the soonest as the card', href: '/demo/events' },
