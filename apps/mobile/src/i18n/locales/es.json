@@ -662,7 +662,12 @@
     "events": "Eventos",
     "calendar": "Calendario",
     "settings": "Configuración",
-    "organisation": "Organización"
+    "organisation": "Organización",
+    "backTo": "Back to {{place}}",
+    "cancel": "Cancel",
+    "back": "Back",
+    "closeMenu": "Close the menu",
+    "tryAgain": "Try again"
   },
   "eventNav": {
     "overview": "Resumen",

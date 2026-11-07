@@ -6,8 +6,8 @@ import { Text } from '../../components/Text.tsx';
 import { useReducedMotion } from '../../reducedMotion.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { EventThumb } from '../events/EventCard.tsx';
-import { meshFor } from '../events/EventsSample.ts';
-import { Avatar, Pill } from '../settings/parts.tsx';
+import { meshFor } from '../../kit/today.ts';
+import { Avatar, Pill } from '../../components/SettingsParts.tsx';
 import {
   type ListItem,
   Row,
@@ -15,7 +15,7 @@ import {
   type RowTag,
   RowShapes,
   TextAction,
-} from '../settings/Summary.tsx';
+} from '../../components/Summary.tsx';
 import { MessageGlyph } from './MessageMarks.tsx';
 import {
   type Messages,

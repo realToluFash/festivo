@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 
-import { Glyph, type GlyphName } from './Glyph.tsx';
+import { Glyph, type GlyphName } from '../components/Glyph.tsx';
 import {
   type Told,
   EVENT_NAME,
@@ -16,8 +16,8 @@ import {
 import { useInbox } from './messagesContext.ts';
 import { WhereGlyph } from './MessagesParts.tsx';
 import { BELL_WORDS } from './messagesWords.ts';
-import { Dialog } from './SettingsParts.tsx';
-import type { Tell } from './TodayParts.tsx';
+import { Dialog } from '../components/SettingsParts.tsx';
+import type { Tell } from '../components/SettingsParts.tsx';
 
 const NOTIFICATIONS = BELL_WORDS;
 

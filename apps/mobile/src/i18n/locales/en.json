@@ -646,7 +646,12 @@
     "events": "Events",
     "calendar": "Calendar",
     "settings": "Settings",
-    "organisation": "Organisation"
+    "organisation": "Organisation",
+    "backTo": "Back to {{place}}",
+    "cancel": "Cancel",
+    "back": "Back",
+    "closeMenu": "Close the menu",
+    "tryAgain": "Try again"
   },
   "eventNav": {
     "overview": "Overview",

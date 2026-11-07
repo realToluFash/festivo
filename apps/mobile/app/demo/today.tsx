@@ -11,11 +11,7 @@ import { useSystemBack } from '../../src/components/useSystemBack.ts';
 import { useLayout } from '../../src/layout/useLayout.ts';
 import { createStateOf } from '../../src/demo/createOrg/CreateWalk.ts';
 import { NoOrganisation } from '../../src/demo/createOrg/NoOrganisation.tsx';
-import {
-  OrgSwitcherProvider,
-  SwitchedNotice,
-  useCurrentPlace,
-} from '../../src/demo/OrgSwitcher.tsx';
+import { OrgSwitcherProvider, useCurrentPlace } from '../../src/demo/OrgSwitcher.tsx';
 import { switcherStateOf } from '../../src/demo/OrgSwitcherModel.ts';
 import { MOMENTS, momentOf, sayIn } from '../../src/demo/today.ts';
 import { ArrivedTodayScreen } from '../../src/demo/today/ArrivedToday.tsx';
@@ -39,6 +35,7 @@ import { openEvent } from '../../src/demo/events/EventsList.tsx';
 import { EVENT_OF_KEY } from '../../src/demo/events/EventsSample.ts';
 import { useCoverStatusBar } from '../../src/demo/Welcome.tsx';
 import { tokens } from '../../src/theme/tokens.ts';
+import { SwitchedNotice } from '../../src/components/SwitchedNotice.tsx';
 
 function toEvents() {
   router.replace('/demo/events');

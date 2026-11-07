@@ -11,10 +11,10 @@ import {
   type RecoveryAsk,
   waitingKinds,
 } from './MembersRecoverySample.ts';
-import type { ChipKind } from './parts.tsx';
 import { type Load, people as headcount } from './RolesSample.ts';
-import type { MarkKind } from './SummaryRows.tsx';
 import { MEMBERS, type MemberStatus, type SampleMember, YOU } from './sample.ts';
+import type { ChipKind } from '../../components/SettingsParts.tsx';
+import type { MarkKind } from '../../components/StatusMark.tsx';
 
 export const ORGANISATION = YOU.organisation;
 export const DOMAIN = 'ire.events';

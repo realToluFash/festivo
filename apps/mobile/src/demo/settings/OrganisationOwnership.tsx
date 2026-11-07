@@ -16,7 +16,7 @@ import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { SAMPLE } from '../samples.ts';
-import { useShell } from './Frame.tsx';
+import { useShell } from '../../components/settingsShell.ts';
 import { ledEvents } from './MembersHandover.ts';
 import { HandoverAsk } from './MembersHandover.tsx';
 import { offeredFor, SAMPLE_LEADS, samplePeople } from './MembersSample.ts';
@@ -40,9 +40,9 @@ import {
   Line,
   RowList,
   SectionHead,
-  StatusMark,
+  ShapeMark,
   TextAction,
-} from './Summary.tsx';
+} from '../../components/Summary.tsx';
 
 /** The board's mismatch: Delete pressed with a lowercase e. */
 const MISTYPED = 'Ire events';
@@ -401,7 +401,7 @@ function DeleteScreen({
         </Field>
         {matches && (
           <View style={styles.matches} testID="organisation.delete.matches">
-            <StatusMark kind="yes" side={16} ink={tokens.marks.done.ink} />
+            <ShapeMark kind="yes" side={16} ink={tokens.marks.done.ink} />
             <Text size={tokens.typeSmall.size} weight="medium" style={styles.secondary}>
               {W.deleteMatches}
             </Text>
