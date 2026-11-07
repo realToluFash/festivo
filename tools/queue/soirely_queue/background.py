@@ -38,7 +38,6 @@ TRIES = 2
 # after this long is stopped, and its item handed back.
 PROMPT_GRACE_SECONDS = 180
 WANTED_CHARS = 300
-SUBAGENT_TOOLS = ("Agent", "Task")
 SECRET_NAME = r"[\w-]*(?:token|secret|password|passwd|api[_-]?key|auth)[\w-]*"
 SECRET_VALUE = re.compile(rf"(?i)(\b{SECRET_NAME}['\"]?\s*[=:]\s*|--{SECRET_NAME}[\s=]+)"
                           r"(['\"]?)[^\s'\"]+\2")
@@ -164,38 +163,15 @@ def masked(text):
     return text if len(text) <= WANTED_CHARS else text[:WANTED_CHARS - 1] + "…"
 
 
-def pending_call(lines):
-    """The earliest call of the session's last assistant turn that nothing answered: the one
-    its prompt holds, since a turn's calls run one after another in call order."""
-    answered, turn, calls = set(), None, []
-    for number, line in enumerate(lines):
-        if line.get("isSidechain"):
-            continue
-        message = line.get("message") or {}
-        if line.get("type") == "assistant" and (message.get("id") or number) != turn:
-            turn, calls = message.get("id") or number, []
-        for part in message.get("content") or []:
-            if not isinstance(part, dict):
-                continue
-            if part.get("type") == "tool_use" and line.get("type") == "assistant":
-                calls.append(part)
-            elif part.get("type") == "tool_result":
-                answered.add(part.get("tool_use_id"))
-    pending = next((part for part in calls if part.get("id") not in answered), None)
-    if not pending:
-        return None
-    return {"tool": pending.get("name"), "input": pending.get("input") or {},
-            "subagent": pending.get("name") in SUBAGENT_TOOLS}
-
-
-def asked(short, seen, folder, lines=()):
+def asked(short, seen, folder):
     """`(wanted, gap)`: what the session held on its prompt wanted to run, masked, from its
-    listing, its job's `state.json` or the unanswered call in its transcript, in that order;
-    when none says, `wanted` is None and `gap` names each source and how it was empty."""
-    gaps = []
+    listing or else its job's `state.json`; when neither says, `wanted` is None and `gap`
+    names each source and how it was empty. The transcript is no source: a held call is
+    not written to it until it is answered."""
+    waiting = masked(str(seen.get("waitingFor") or ""))
+    gaps = ["the listing had no `needs`" + (f" (waiting for: {waiting})" if waiting else "")]
     needs = needs_text(seen.get("needs"))
     if not needs:
-        gaps.append("the listing had no `needs`")
         path = pathlib.Path(folder).expanduser() / "jobs" / short / "state.json"
         try:
             needs = needs_text(json.loads(path.read_text()).get("needs"))
@@ -205,21 +181,13 @@ def asked(short, seen, folder, lines=()):
             gaps.append("the job's state.json was gone")
         except (ValueError, AttributeError):
             gaps.append("the job's state.json could not be read")
-    if not needs:
-        pending = pending_call(lines)
-        needs = needs_text(pending)
-        if needs and pending["subagent"]:
-            needs = f"a subagent's call, under {needs}"
-        if not needs:
-            gaps.append("the transcript ended in no unanswered tool call" if lines
-                        else "the transcript was empty or gone")
     said = masked(needs) if needs else ""
     return (said, None) if said else (None, "; ".join(gaps))
 
 
-def wanted(short, seen, folder, lines=()):
+def wanted(short, seen, folder):
     """What the session held on its prompt wanted to run, masked; None when nothing says."""
-    return asked(short, seen, folder, lines)[0]
+    return asked(short, seen, folder)[0]
 
 
 def stop(short, env, run=subprocess.run):
@@ -412,6 +380,6 @@ def run(values, folder, name, prompt, cwd, finished, allowed=(), denied=(), extr
     result = summary(lines, values["model"])
     result["artifact_read"], result["artifact_refused"] = board_read(lines)
     if why == "prompt":
-        result["wanted"], result["unnamed"] = asked(short, seen, folder, lines)
+        result["wanted"], result["unnamed"] = asked(short, seen, folder)
     code = 0 if why in ("ended", "settled") and not result["is_error"] else 1
     return result, code, why, session
