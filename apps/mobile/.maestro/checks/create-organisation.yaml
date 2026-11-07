@@ -1,0 +1,8 @@
+# Create an organisation, from the switcher's row.
+appId: host.exp.Exponent
+---
+- runFlow: ../open-create-organisation.yaml
+- extendedWaitUntil:
+    visible: '{{t:createOrganisation.title}}'
+    timeout: 30000
+- takeScreenshot: create-organisation

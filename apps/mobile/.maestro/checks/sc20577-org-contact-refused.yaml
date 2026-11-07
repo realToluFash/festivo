@@ -1,0 +1,35 @@
+# Organisation > General: a contact address the app's check passes and the API refuses (a..b@ire.events), and the refusal under the field, worded as the app's own. Saves nothing. sc-20577.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/organisation
+- extendedWaitUntil:
+    visible:
+      id: organisation.name
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'organisation.contact'
+    timeout: 15000
+- repeat:
+    times: 3
+    commands:
+      - tapOn:
+          id: organisation.contact
+      - eraseText: 80
+- inputText: 'a..b@ire.events'
+- pressKey: Enter
+- scrollUntilVisible:
+    element:
+      id: 'organisation.save'
+    timeout: 15000
+- tapOn:
+    id: 'organisation.save'
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: 'organisation.contact'
+    direction: UP
+    timeout: 15000
+    centerElement: true
+- takeScreenshot: refused
+- assertVisible: '{{t:orgGeneral.contactInvalid}}'

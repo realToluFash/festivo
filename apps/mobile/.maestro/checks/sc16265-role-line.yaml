@@ -1,0 +1,19 @@
+# Settings > Organisation, for a role that cannot change the details: the role line, and neither rule's link.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/organisation
+- extendedWaitUntil:
+    visible: '{{t:orgGeneral.intro}}'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'organisation.language.readOnly'
+    timeout: 20000
+- scrollUntilVisible:
+    element: '{{t:orgGeneral.readOnly}}'
+    timeout: 20000
+- takeScreenshot: sc16265-role-line
+- assertNotVisible:
+    id: 'organisation.link'
+- assertNotVisible:
+    id: 'organisation.turnOn'

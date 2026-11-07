@@ -1,0 +1,22 @@
+# sc-13956: ${EV_ELSE}, a draft made live through the API (${API}, ${TOKEN}) while its sheet is open.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV_ELSE}
+- extendedWaitUntil:
+    visible:
+      id: 'events.makeLive'
+    timeout: 30000
+- tapOn:
+    id: 'events.makeLive'
+- extendedWaitUntil:
+    visible:
+      id: 'events.makeLiveYes'
+    timeout: 10000
+- evalScript: "${http.post(API + '/api/events/' + EV_ELSE + '/make-live', {headers: {Authorization: 'Bearer ' + TOKEN, 'Content-Type': 'application/json'}, body: ''}).status}"
+- tapOn:
+    id: 'events.makeLiveYes'
+- extendedWaitUntil:
+    visible:
+      id: 'events.makeLiveClose'
+    timeout: 15000
+- takeScreenshot: changed-elsewhere

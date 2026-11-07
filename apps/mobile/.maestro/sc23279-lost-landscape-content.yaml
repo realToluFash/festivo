@@ -1,0 +1,24 @@
+# On a tablet in landscape, signs in to the code step, opens Lost your authenticator and your
+# recovery codes?, and checks the outcome's content shows inside the card (lostTwoFactor.support
+# for an account nobody can confirm). Pass EMAIL and PASSWORD of a two-factor account. sc-23279.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- runFlow:
+    file: sign-in-code-step-open.yaml
+    env:
+      LANGUAGE: English
+- takeScreenshot: mobile-landscape-code-step
+- tapOn:
+    id: 'twoFactor.lostBoth'
+- extendedWaitUntil:
+    visible:
+      id: 'lostTwoFactor.backToCode'
+    timeout: 30000
+- takeScreenshot: mobile-landscape-lost-at-once
+- extendedWaitUntil:
+    visible:
+      id: 'lostTwoFactor.support'
+    timeout: 20000
+- takeScreenshot: mobile-landscape-lost-settled
+- setOrientation: PORTRAIT

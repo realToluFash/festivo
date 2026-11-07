@@ -1,0 +1,11 @@
+# Sign-in rules in landscape on an iPad, where the split list beside the page has its own
+# "Sign-in rules" row. Only the page's heading, the organisation's read title, ends the wait.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- openLink: ${METRO_URL}/--/settings/sign-in-rules
+- extendedWaitUntil:
+    visible: '{{t:signInRules.readTitle}}'
+    timeout: 30000
+- takeScreenshot: sign-in-rules-landscape
+- setOrientation: PORTRAIT
