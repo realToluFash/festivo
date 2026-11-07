@@ -6,6 +6,7 @@ import { Text } from '../../src/components/Text.tsx';
 import { DemoScreen, NavBar } from '../../src/demo/DemoScreen.tsx';
 import { Heading } from '../../src/steps/Lines.tsx';
 import { SAMPLE } from '../../src/demo/samples.ts';
+import { MESSAGES_BOARDS } from '../../src/demo/messages/MessagesBoards.ts';
 import { tokens } from '../../src/theme/tokens.ts';
 
 interface Board {
@@ -962,6 +963,10 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/people?state=failed',
       },
     ],
+  },
+  {
+    page: 'Messages · B Conversations',
+    boards: MESSAGES_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
   },
   {
     page: 'Calendar · A Weeks as lanes',
