@@ -1,0 +1,33 @@
+# A number checked from the mobile step: the verified screen says Soirely can reach you on the day. Needs SMOCKER_URL and PHONE.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/phone
+- extendedWaitUntil:
+    visible:
+      id: 'phone.number'
+    timeout: 30000
+- tapOn:
+    id: 'phone.number'
+- eraseText: 30
+- inputText: ${PHONE}
+- hideKeyboard
+- tapOn:
+    id: 'phone.send'
+- extendedWaitUntil:
+    visible:
+      id: 'verifyPhone.code'
+    timeout: 20000
+- runScript: ../scripts/latest-sms-code.js
+- tapOn:
+    id: 'verifyPhone.code'
+- inputText: ${output.code}
+- hideKeyboard
+- tapOn:
+    id: 'verifyPhone.submit'
+- extendedWaitUntil:
+    visible:
+      id: 'verifyPhone.continue'
+    timeout: 20000
+- waitForAnimationToEnd
+- assertVisible: '.*{{t:verifyPhone.doneTitle}}.*'
+- takeScreenshot: sc29384-phone-verified
