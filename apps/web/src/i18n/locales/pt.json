@@ -1137,6 +1137,12 @@
   "recoveryRequests": {
     "cardTitle": "Pedidos para voltar a entrar",
     "cardNote": "Só os proprietários e administradores veem isto. Um pedido sai daqui assim que alguém responde ou quando termina.",
+    "toGetBackIn_one": "{{count, number}} to get back in",
+    "toGetBackIn_other": "{{count, number}} to get back in",
+    "toGetBackIn_many": "{{count, number}} to get back in",
+    "toJoin_one": "{{count, number}} to join",
+    "toJoin_other": "{{count, number}} to join",
+    "toJoin_many": "{{count, number}} to join",
     "mark": "À espera de resposta",
     "title": "Pediu para desativar a autenticação de dois fatores",
     "intro": "Perdeu a aplicação de autenticação e os códigos de recuperação, e a sessão continua encerrada até alguém responder. Basta uma resposta de um proprietário ou administrador. Aprove apenas se tiver a certeza de que é essa pessoa, por exemplo ligando-lhe para um número que já tenha.",
@@ -1162,6 +1168,7 @@
     "turnedDown": "O pedido de {{name}} foi recusado.",
     "turnedDownNext": "A autenticação de dois fatores continua ativa, e já recebeu um email.",
     "closed": "Este pedido já foi respondido, ou terminou.",
+    "close": "Close",
     "failed": "Não funcionou. Tente de novo dentro de momentos."
   },
   "settings": {

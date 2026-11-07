@@ -1110,6 +1110,10 @@
   "recoveryRequests": {
     "cardTitle": "Requests to get back in",
     "cardNote": "Only owners and admins see this. A request leaves it once somebody answers or it ends.",
+    "toGetBackIn_one": "{{count, number}} to get back in",
+    "toGetBackIn_other": "{{count, number}} to get back in",
+    "toJoin_one": "{{count, number}} to join",
+    "toJoin_other": "{{count, number}} to join",
     "mark": "Waiting for an answer",
     "title": "Asked to turn off two-factor",
     "intro": "They lost their authenticator and their recovery codes, and stay signed out until somebody answers. One answer from an owner or admin is enough. Approve only if you’re sure it’s them, for example by calling them on a number you already have.",
@@ -1135,6 +1139,7 @@
     "turnedDown": "{{name}}’s request is turned down.",
     "turnedDownNext": "Two-factor stays on for them, and they’re emailed.",
     "closed": "This request has already been answered, or it has ended.",
+    "close": "Close",
     "failed": "That did not work. Try again in a moment."
   },
   "settings": {

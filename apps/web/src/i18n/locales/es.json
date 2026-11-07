@@ -1137,6 +1137,12 @@
   "recoveryRequests": {
     "cardTitle": "Solicitudes para volver a entrar",
     "cardNote": "Solo lo ven los propietarios y administradores. Una solicitud desaparece en cuanto alguien responde o termina.",
+    "toGetBackIn_one": "{{count, number}} to get back in",
+    "toGetBackIn_other": "{{count, number}} to get back in",
+    "toGetBackIn_many": "{{count, number}} to get back in",
+    "toJoin_one": "{{count, number}} to join",
+    "toJoin_other": "{{count, number}} to join",
+    "toJoin_many": "{{count, number}} to join",
     "mark": "Esperando una respuesta",
     "title": "Pide desactivar la verificación en dos pasos",
     "intro": "Ha perdido su aplicación de autenticación y sus códigos de recuperación, y su sesión sigue cerrada hasta que alguien responda. Basta con una respuesta de un propietario o administrador. Apruebe solo si está seguro de que es esa persona, por ejemplo llamándola a un número que ya tenga.",
@@ -1162,6 +1168,7 @@
     "turnedDown": "La solicitud de {{name}} se ha rechazado.",
     "turnedDownNext": "La verificación en dos pasos sigue activada, y se le ha enviado un correo.",
     "closed": "Esta solicitud ya se ha respondido o ha terminado.",
+    "close": "Close",
     "failed": "No ha funcionado. Vuelva a intentarlo en un momento."
   },
   "settings": {
