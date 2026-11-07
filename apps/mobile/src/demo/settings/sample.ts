@@ -4,7 +4,7 @@ import { SAMPLE } from '../samples.ts';
 /** Settings' three arrangements, from the app's layout kinds. */
 export type SettingsLayout = 'phone' | 'portrait' | 'landscape';
 
-/** Who is looking: an owner sees every section, a member only their own and Sign-in rules, and somebody with no organisation only their own. */
+/** Who is looking: an owner sees every section, a member their own, the organisation read only and Sign-in rules, and somebody with no organisation only their own. */
 export type Viewer = 'owner' | 'member' | 'noOrg';
 
 export const VIEWERS: readonly Viewer[] = ['owner', 'member', 'noOrg'];
