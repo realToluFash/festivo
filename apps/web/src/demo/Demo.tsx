@@ -37,8 +37,11 @@ import { Settings } from './Settings.tsx';
 import { SETTINGS_PAGES } from './settings.ts';
 import { SIGN_IN_RULES_PAGES } from './signInRules.ts';
 import { SWITCHER_PAGES } from './switcher.ts';
+import { QUOTES_PAGES } from './quotes.ts';
 import { Today } from './Today.tsx';
 import { TwoFactorBoard } from './TwoFactor.tsx';
+import { Vendors } from './Vendors.tsx';
+import { VENDORS_PAGES } from './vendors.ts';
 import { WaysInBoard } from './WaysIn.tsx';
 import {
   type FieldLines,
@@ -153,6 +156,7 @@ export default function Demo() {
       <Route path="settings/general" element={<Settings open="general" />} />
       <Route path="settings/sign-in-rules" element={<Settings open="signInRules" />} />
       <Route path="people" element={<People />} />
+      <Route path="vendors" element={<Vendors />} />
       <Route path="guest" element={<GuestPage />} />
       <Route path="later" element={<Later />} />
       <Route path="*" element={<NotFound />} />
@@ -202,6 +206,18 @@ function DemoHome({ from }: { from: string }) {
         <BoardPages pages={CREATE_PAGES} />
         <h3>Guest’s page in A · The cover card · phone, tablet and desk</h3>
         <BoardPages pages={GUEST_PAGES} />
+      </section>
+
+      <section className="demo-home-page" aria-labelledby="demo-page-81">
+        <h2 id="demo-page-81">81 · Budget and costs · the vendor directory</h2>
+        <h3>Vendors in B Confetti · desktop</h3>
+        <BoardPages pages={VENDORS_PAGES} />
+      </section>
+
+      <section className="demo-home-page" aria-labelledby="demo-page-81-quotes">
+        <h2 id="demo-page-81-quotes">81 · Budget and costs · quotes and payment schedules</h2>
+        <h3>Quotes on the event’s Budget page, Gala Fundación Lucía · desktop</h3>
+        <BoardPages pages={QUOTES_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-36">
