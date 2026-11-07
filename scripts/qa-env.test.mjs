@@ -19,6 +19,9 @@ import { describe, expect, it } from 'vitest';
 
 import {
   allowCleartext,
+  emulatorJournalArgs,
+  emulatorUnitGone,
+  waitForBoot,
   apiControl,
   withoutReverse,
   apiMoves,
@@ -31,6 +34,9 @@ import {
   physicalSize,
   portraitRotation,
   ANDROID_START,
+  batchReset,
+  expoGoPrefs,
+  TOOLS_BUTTON,
   SCREEN_READER_OFF,
   driverBuilds,
   driverPids,
@@ -76,7 +82,9 @@ import {
   resumeBatch,
   runHeld,
   maestroTarget,
+  missingCmdlineTools,
   parseTarget,
+  hardwareKeyboardOff,
   passwordAutoFillFiles,
   passwordAutoFillOff,
   playImage,
@@ -554,6 +562,57 @@ describe('the screen reader on an emulator android opens', () => {
   });
 });
 
+describe('what a batch resets before it signs in', () => {
+  const prefs =
+    '/sims/UDID/data/Containers/Data/Application/X/Library/Preferences/host.exp.Exponent';
+
+  it('turns TalkBack off on an emulator, with the same commands android uses', () => {
+    expect(batchReset(true, 'emulator-5554').adb).toBe(SCREEN_READER_OFF);
+  });
+
+  it("turns Expo Go's Tools button off in its own container, with Expo Go closed first", () => {
+    const { terminate, write, say } = batchReset(false, 'UDID', { prefs, toolsButton: null });
+    expect(terminate).toEqual(['simctl', 'terminate', 'UDID', 'host.exp.Exponent']);
+    expect(write).toEqual([
+      'simctl',
+      'spawn',
+      'UDID',
+      'defaults',
+      'write',
+      prefs,
+      TOOLS_BUTTON,
+      '-bool',
+      'NO',
+    ]);
+    expect(say).toMatch(/turned off/);
+  });
+
+  it("has a line for a write that fails, pointing the tester to Expo Go's menu", () => {
+    expect(batchReset(false, 'UDID', { prefs, toolsButton: null }).failed).toBe(
+      "  Could not turn Expo Go's Tools button off: turn it off in Expo Go's menu.",
+    );
+  });
+
+  it('turns the Tools button off when it was left on', () => {
+    expect(batchReset(false, 'UDID', { prefs, toolsButton: '1' }).write).toContain(TOOLS_BUTTON);
+  });
+
+  it('leaves Expo Go alone when its Tools button is already off, and says so', () => {
+    expect(batchReset(false, 'UDID', { prefs, toolsButton: '0' })).toEqual({
+      say: "  Expo Go's Tools button is off.",
+    });
+  });
+
+  it('touches nothing on a simulator without Expo Go', () => {
+    expect(batchReset(false, 'UDID', { prefs: null }).write).toBeUndefined();
+  });
+
+  it("reads Expo Go's preferences from its data container", () => {
+    expect(expoGoPrefs('/c')).toBe('/c/Library/Preferences/host.exp.Exponent');
+    expect(expoGoPrefs(null)).toBeNull();
+  });
+});
+
 describe('the GPU mode an emulator starts with', () => {
   it.each([
     ['linux', {}, 'swangle_indirect'],
@@ -786,6 +845,17 @@ describe('a release build', () => {
       ['-insert', 'restrictedBool', '-dictionary', files[0]],
       ['-insert', 'restrictedBool.allowPasswordAutoFill', '-dictionary', files[0]],
       ['-replace', 'restrictedBool.allowPasswordAutoFill.value', '-bool', 'NO', files[0]],
+    ]);
+  });
+
+  it('turns the hardware keyboard off globally and for each QA simulator', () => {
+    expect(hardwareKeyboardOff('/p.plist', ['A-1', 'B-2'])).toEqual([
+      ['-replace', 'ConnectHardwareKeyboard', '-bool', 'NO', '/p.plist'],
+      ['-insert', 'DevicePreferences', '-dictionary', '/p.plist'],
+      ['-insert', 'DevicePreferences.A-1', '-dictionary', '/p.plist'],
+      ['-replace', 'DevicePreferences.A-1.ConnectHardwareKeyboard', '-bool', 'NO', '/p.plist'],
+      ['-insert', 'DevicePreferences.B-2', '-dictionary', '/p.plist'],
+      ['-replace', 'DevicePreferences.B-2.ConnectHardwareKeyboard', '-bool', 'NO', '/p.plist'],
     ]);
   });
 
@@ -2320,6 +2390,11 @@ describe('the dependencies, from a checkout', () => {
 describe('the database, from a checkout', () => {
   const console_ = ['console'];
   const verbs = (commands) => commands.map((args) => args.slice(0, 2).join(' '));
+  const testDatabase = [
+    'console doctrine:database:drop',
+    'console doctrine:database:create',
+    'console doctrine:migrations:migrate',
+  ];
 
   it('stops the worker before the drop and recreates it after migrating', () => {
     expect(verbs(databaseCommands(console_, ['notification-worker'], false))).toEqual([
@@ -2328,6 +2403,7 @@ describe('the database, from a checkout', () => {
       'console doctrine:database:create',
       'console doctrine:migrations:migrate',
       'compose up',
+      ...testDatabase,
     ]);
   });
 
@@ -2335,13 +2411,23 @@ describe('the database, from a checkout', () => {
     expect(verbs(databaseCommands(console_, ['notification-worker'], true))).toEqual([
       'console doctrine:migrations:migrate',
       'compose up',
+      ...testDatabase,
     ]);
   });
 
   it('touches no service on a commit with nothing waiting for migrations', () => {
     const commands = databaseCommands(console_, [], false);
     expect(commands.filter(([first]) => first === 'compose')).toEqual([]);
-    expect(commands).toHaveLength(3);
+    expect(commands).toHaveLength(6);
+  });
+
+  it('rebuilds the test database from nothing, even keeping the data', () => {
+    for (const keepData of [false, true]) {
+      const test = databaseCommands(console_, [], keepData).filter((args) =>
+        args.includes('--env=test'),
+      );
+      expect(verbs(test)).toEqual(testDatabase);
+    }
   });
 });
 
@@ -2525,5 +2611,79 @@ describe('the API taken from the device', () => {
       }),
     ).rejects.toThrow('pause failed');
     expect(ran).toEqual(['reverse --remove tcp:18080', 'reverse tcp:18080 tcp:18080']);
+  });
+});
+
+describe('waitForBoot', () => {
+  const pause = async () => {};
+
+  it('fails on the first pass after the emulator stops, with the reason', async () => {
+    let passes = 0;
+    const gone = () => (++passes > 2 ? 'the unit stopped' : null);
+    await expect(
+      waitForBoot({ name: 'qa_pixel', booted: () => false, gone, pause }),
+    ).rejects.toThrow('qa_pixel: the unit stopped');
+    expect(passes).toBe(3);
+  });
+
+  it('returns once the device reports booted while the emulator runs', async () => {
+    let passes = 0;
+    const booted = () => ++passes === 5;
+    await waitForBoot({ name: 'qa_pixel', booted, gone: () => null, pause });
+    expect(passes).toBe(5);
+  });
+
+  it('still gives up after its tries when the emulator neither boots nor stops', async () => {
+    await expect(
+      waitForBoot({ name: 'qa_pixel', booted: () => false, gone: () => null, pause, tries: 3 }),
+    ).rejects.toThrow('qa_pixel did not boot within three minutes');
+  });
+});
+
+describe('emulatorJournalArgs', () => {
+  it('reads only the journal lines since this boot started', () => {
+    expect(emulatorJournalArgs('soirely-qa-emulator', 1762500000)).toEqual([
+      '--user',
+      '-u',
+      'soirely-qa-emulator',
+      '--since=@1762500000',
+      '-n',
+      '20',
+      '--no-pager',
+    ]);
+  });
+});
+
+describe('emulatorUnitGone', () => {
+  const journal = () => 'emulator: core dumped';
+
+  it('keeps waiting while the unit is active or activating', () => {
+    expect(emulatorUnitGone('soirely-qa-emulator', 'active', journal)).toBeNull();
+    expect(emulatorUnitGone('soirely-qa-emulator', 'activating', journal)).toBeNull();
+  });
+
+  it('names the unit and prints its journal once it has failed or been collected', () => {
+    expect(emulatorUnitGone('soirely-qa-emulator', 'failed', journal)).toBe(
+      'the emulator unit soirely-qa-emulator stopped (failed) before it booted:\nemulator: core dumped',
+    );
+    expect(emulatorUnitGone('soirely-qa-emulator', '', journal)).toContain('stopped (gone)');
+  });
+});
+
+describe('missingCmdlineTools', () => {
+  const message = missingCmdlineTools({
+    sdk: '/sdk',
+    avdmanager: '/sdk/cmdline-tools/latest/bin/avdmanager',
+  });
+
+  it('names the avdmanager path setup expected', () => {
+    expect(message).toContain('/sdk/cmdline-tools/latest/bin/avdmanager');
+  });
+
+  it('gives both ways to install the tools and says to run setup again', () => {
+    expect(message).toContain('Android SDK Command-line Tools (latest)');
+    expect(message).toContain('/sdk/cmdline-tools/latest/bin');
+    expect(message).toContain('developer.android.com/studio#command-tools');
+    expect(message).toContain('run `node scripts/qa-env.mjs setup` again');
   });
 });

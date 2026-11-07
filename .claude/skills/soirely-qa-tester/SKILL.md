@@ -124,7 +124,8 @@ use `--again` only if you truly need its full text again.
   author already doubts, and every one of them is a test.
 - **The artboards**, when the story names them — `.claude/skills/screen-from-design`
   explains where the design lives. A screen that does not match the design fails, even
-  when it satisfies the AC.
+  when it satisfies the AC, and so does one that differs from its story's demo (the
+  Design section's **Demo:** line), as one that differs from its board does.
   An [fd] story's "as the board draws them" bullets are tested against the board it names
   in Soirely — Redesign (`https://claude.ai/artifact/5cRzwbgmEK6wqbxp4j1zqx`), read with the
   `Artifact` tool (`canvas.json`, then the board), never the Claude Docs tools or

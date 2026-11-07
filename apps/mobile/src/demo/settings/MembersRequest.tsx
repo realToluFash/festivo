@@ -21,15 +21,18 @@ import {
   Line,
   Row,
   RowList,
+  type RowTag,
   Section,
   TextAction,
 } from './Summary.tsx';
 
+const NOW_TAG: RowTag = { kind: 'now', word: 'Now' };
+
 const NOTE =
   'Only people who manage members see these requests. Nobody is added until one of you approves them.';
-const FIRST_ROLE = 'Read-only';
+const FIRST_ROLE = 'Member';
 
-/** A request to join, on its own screen: Approve with a role, Read-only first; turning it down asks first. */
+/** A request to join, on its own screen: Approve with a role, Member first; turning it down asks first. */
 export function RequestScreen({
   person,
   open,
@@ -125,29 +128,38 @@ export function RequestScreen({
   );
 }
 
-/** Radio rows, each role with what it means; the picked one in Violet, and Now on the role held today. */
-export function RoleChoices({
+/** Radio rows, each role with what it means; the picked one in Violet, Now on the role held today, and any role not offered dimmed with why. */
+export function RoleChoices<R extends string>({
   roles,
   picked,
   now,
   owned,
+  lines = ROLE_MEANS,
+  off,
+  pickedTag,
   onPick,
   testID,
 }: {
-  roles: readonly string[];
-  picked: string;
-  now?: string | null;
+  roles: readonly R[];
+  picked: R;
+  now?: R | null;
   owned?: string;
-  onPick: (role: string) => void;
+  lines?: Readonly<Record<string, string>>;
+  off?: { roles: readonly R[]; line: string };
+  pickedTag?: RowTag | null;
+  onPick: (role: R) => void;
   testID: string;
 }) {
   return (
     <RowList
       items={roles.map((role) => {
         const on = role === picked;
-        const means = [ROLE_MEANS[role], role === 'Owner' ? owned : undefined]
-          .filter((part) => part != null)
-          .join(' ');
+        const dim = off?.roles.includes(role) === true;
+        const means = dim
+          ? (off?.line ?? '')
+          : [lines[role], role === 'Owner' ? owned : undefined]
+              .filter((part) => part != null)
+              .join(' ');
 
         return {
           key: role,
@@ -155,8 +167,9 @@ export function RoleChoices({
             <Row
               title={role}
               line={means === '' ? undefined : means}
-              tag={role === now ? { kind: 'now', word: 'Now' } : null}
+              tag={on && pickedTag != null ? pickedTag : role === now ? NOW_TAG : null}
               accent={on}
+              off={dim}
               trail={<RadioMark on={on} />}
               onPress={() => onPick(role)}
               accessibilityRole="radio"

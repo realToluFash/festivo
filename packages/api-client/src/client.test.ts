@@ -1011,6 +1011,38 @@ describe('a browser never holds the refresh token', () => {
     ).rejects.toThrow(/OrganisationController/);
   });
 
+  test('reads the three roles as the API answers them since sc-29912', async () => {
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens: store('good', null),
+      fetch: async () =>
+        json({
+          roles: [
+            {
+              id: 'role_2',
+              seededAs: 'administrator',
+              permissions: ['members.read'],
+              holders: 1,
+              holderNames: [{ name: 'Julien Moreau', suspended: false }],
+            },
+          ],
+          areas: [],
+        }),
+    });
+
+    const catalogue = await client.roles('org_1');
+
+    expect(catalogue.roles).toEqual([
+      expect.objectContaining({
+        id: 'role_2',
+        seededAs: 'administrator',
+        name: null,
+        fixed: true,
+        removable: false,
+      }),
+    ]);
+  });
+
   test('roles are read with the grid, and a removed role names where its people go', async () => {
     const sent: { method: string | undefined; path: string; body: unknown }[] = [];
     const door = {

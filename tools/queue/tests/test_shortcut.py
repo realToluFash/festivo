@@ -1,5 +1,6 @@
 """The Shortcut client's retries, against a stubbed urlopen."""
 
+import http.client
 import io
 import unittest
 import urllib.error
@@ -45,3 +46,21 @@ class Retries(unittest.TestCase):
         said, calls = self.call("PUT", [refusal(422), Ok()])
         self.assertIn("422", str(said))
         self.assertEqual(calls, 1)
+
+    def test_a_get_retries_a_read_that_times_out(self):
+        said, calls = self.call("GET", [TimeoutError("The read operation timed out"), Ok()])
+        self.assertEqual((said, calls), ({"id": 1}, 2))
+
+    def test_a_put_retries_a_connection_lost_mid_response(self):
+        said, calls = self.call("PUT", [http.client.IncompleteRead(b"{"), Ok()])
+        self.assertEqual((said, calls), ({"id": 1}, 2))
+
+    def test_a_post_that_times_out_is_not_repeated_and_names_shortcut(self):
+        said, calls = self.call("POST", [TimeoutError("The read operation timed out"), Ok()])
+        self.assertEqual(str(said), "Shortcut timed out on POST /api/v3/stories/1")
+        self.assertEqual(calls, 1)
+
+    def test_a_get_that_always_times_out_names_shortcut(self):
+        said, calls = self.call("GET", [TimeoutError("The read operation timed out")] * 3)
+        self.assertEqual(str(said), "Shortcut timed out on GET /api/v3/stories/1")
+        self.assertEqual(calls, 3)

@@ -37,7 +37,8 @@ class FakeShortcut:
     def update(self, story_id, **fields):
         if "workflow_state_id" in fields:
             self.raw[story_id]["workflow_state_id"] = fields["workflow_state_id"]
-            self.raw[story_id]["moved_at"] = "t1"
+            self.moves = getattr(self, "moves", 0) + 1
+            self.raw[story_id]["moved_at"] = f"t{self.moves}"
         if "labels" in fields:
             self.raw[story_id]["labels"] = fields["labels"]
         if "description" in fields:
@@ -71,6 +72,11 @@ class FakeShortcut:
         self.raw[story_id]["comments"].append(made)
         return made
 
+    def complete_task(self, story_id, task_id, complete=True):
+        for task in self.raw[story_id].get("tasks", []):
+            if task["id"] == int(task_id):
+                task["complete"] = complete
+
     def upload(self, story_id, paths):
         self.uploads.append((story_id, list(paths)))
 
@@ -84,7 +90,9 @@ def slim(raw):
             "comments": [{"id": c["id"], "parent": c["parent_id"], "at": c["created_at"],
                           "author": c.get("author_id"), "text": c["text"]}
                          for c in raw["comments"]],
-            "description": raw["description"], "tasks": [],
+            "description": raw["description"],
+            "tasks": [{"id": t["id"], "text": t["description"], "done": t["complete"]}
+                      for t in raw.get("tasks", [])],
             "links": [{"verb": x["verb"], "subject": x["subject_id"], "object": x["object_id"]}
                       for x in raw.get("story_links", [])],
             "done": STATES[str(raw["workflow_state_id"])] == "Done" or bool(raw.get("archived")),
@@ -369,6 +377,95 @@ class LanguageTags(Base):
         with self.assertRaisesRegex(actions.Refused, "no role de"):
             actions.comment(self.as_("pm"), args(story="sc-1", to="de", reply_to=None,
                                                  untagged=False, files=None, text="x"))
+
+
+class DemoFirst(Base):
+    DRAWN = "# AC\n- shows it\n\n# Design\n**Artboard:** `It.dc.html`\n\n"
+
+    def drawn(self, demo_line):
+        self.fake.add(1, "Ready For Dev")
+        self.fake.raw[1]["description"] = self.DRAWN + demo_line
+
+    def refused(self, pattern, live=None):
+        live = live or mock.patch("soirely_queue.github.live", side_effect=AssertionError)
+        with live, self.assertRaisesRegex(actions.Refused, pattern):
+            actions.claim(self.as_("dev"), args(story="sc-1"))
+        self.assertEqual(self.state(1), "Ready For Dev")
+        self.assertEqual(self.labels(1), set())
+
+    def test_a_drawn_story_with_no_demo_line_is_refused_with_the_way_back(self):
+        self.drawn("**Status:** drawn, not by the designer.")
+        self.refused(r"(?s)no Demo: line\. Nothing claimed.*move sc-1 \"Needs Design\".*"
+                     r"comment sc-1 --to ux")
+
+    def test_a_demo_still_being_built_is_refused(self):
+        self.drawn("**Demo:** being built.")
+        self.refused("says the demo is not built")
+
+    def test_a_demo_whose_pull_request_is_open_is_refused(self):
+        self.drawn("**Demo:** `It` in the app's demo (`/demo/it`) · PR #1386")
+        self.refused("#1386 is not merged yet",
+                     mock.patch("soirely_queue.github.live", return_value={"state": "OPEN"}))
+
+    def test_a_demo_github_cannot_read_is_refused(self):
+        self.drawn("**Demo:** `It` in the app's demo · PR #1386")
+        self.refused("GitHub did not answer for #1386",
+                     mock.patch("soirely_queue.github.live",
+                                side_effect=github.GitHubError("gh api: 502")))
+
+    def test_a_merged_demo_is_claimed(self):
+        self.drawn("**Demo:** `It` in the app's demo · PR #1386, superseding #1300")
+        states = {1386: {"state": "MERGED"}, 1300: {"state": "CLOSED"}}
+        with mock.patch("soirely_queue.github.live", side_effect=states.get):
+            actions.claim(self.as_("dev"), args(story="sc-1"))
+        self.assertEqual(self.state(1), "In Progress")
+
+    def test_one_merged_demo_on_a_line_naming_both_clients_is_enough(self):
+        self.drawn("**Demo:** the app's `It` · PR #1387. The web's `It` · PR #1385")
+        states = {1387: {"state": "MERGED"}, 1385: {"state": "OPEN"}}
+        with mock.patch("soirely_queue.github.live", side_effect=states.get):
+            actions.claim(self.as_("dev"), args(story="sc-1"))
+        self.assertEqual(self.state(1), "In Progress")
+
+    def test_a_story_with_no_design_section_is_claimed_without_asking_github(self):
+        self.fake.add(1, "Ready For Dev")
+        with mock.patch("soirely_queue.github.live", side_effect=AssertionError):
+            actions.claim(self.as_("dev"), args(story="sc-1"))
+        self.assertEqual(self.state(1), "In Progress")
+
+    def test_a_story_whose_demo_line_reads_none_is_claimed_without_asking_github(self):
+        self.drawn("**Demo:** none: nothing a person sees.")
+        with mock.patch("soirely_queue.github.live", side_effect=AssertionError):
+            actions.claim(self.as_("dev"), args(story="sc-1"))
+        self.assertEqual(self.state(1), "In Progress")
+
+    def test_a_demo_line_reading_a_bare_none_is_claimed(self):
+        self.drawn("**Demo:** none.")
+        with mock.patch("soirely_queue.github.live", side_effect=AssertionError):
+            actions.claim(self.as_("dev"), args(story="sc-1"))
+        self.assertEqual(self.state(1), "In Progress")
+
+    def test_a_demo_line_reading_none_yet_with_no_pull_request_is_refused(self):
+        self.drawn("**Demo:** none yet, being drawn")
+        self.refused("names no pull request")
+
+    def test_a_demo_line_that_reads_none_yet_names_a_pull_request_is_read_for_it(self):
+        self.drawn("**Demo:** none merged yet · PR #1386")
+        self.refused("#1386 is not merged yet",
+                     mock.patch("soirely_queue.github.live", return_value={"state": "OPEN"}))
+
+    def test_rework_is_claimed_whatever_its_demo_line_says(self):
+        self.drawn("**Demo:** being built.")
+        self.fake.update(1, workflow_state_id=IDS["Failed QA"], labels=[{"name": "dev"}])
+        actions.claim(self.as_("dev"), args(story="sc-1"))
+        self.assertEqual(self.state(1), "In Progress")
+
+    def test_a_developer_sends_a_story_back_to_needs_design(self):
+        self.fake.add(1, "Ready For Dev")
+        self.fake.add(2, "In Progress", ["dev2"])
+        actions.move(self.as_("dev"), args(story="sc-1", state="Needs Design"))
+        actions.move(self.as_("dev2"), args(story="sc-2", state="Needs Design"))
+        self.assertEqual((self.state(1), self.state(2)), ("Needs Design", "Needs Design"))
 
 
 class HeldByBlockers(Base):
@@ -1258,9 +1355,140 @@ class Merging(Base):
                 mock.patch("soirely_queue.sync.sync_github"), \
                 mock.patch.object(self.fake, "update", side_effect=refused):
             with self.assertRaisesRegex(actions.Refused,
-                                        f"merged PR #9 as {'m' * 40}.*409.*to-qa sc-1"):
+                                        f"merged PR #9 as {'m' * 40}.*409.*"
+                                        "`sq dev2 merge 9` again"):
                 actions.merge(self.as_("dev2"), args(pr=9, text=None))
         merge.assert_called_once_with(9, HEAD)
+
+    def tasks(self, story_id, *done):
+        self.fake.raw[story_id]["tasks"] = [
+            {"id": 30 + i, "description": f"step {i}", "complete": flag}
+            for i, flag in enumerate(done)]
+
+    def test_a_merge_with_tasks_left_keeps_the_story_in_progress_and_tells_no_tester(self):
+        for state in ("In Review", "Passed Code Review"):
+            self.fake.add(1, state, ["dev2"])
+            self.tasks(1, True, False, False)
+            store.put_pr(self.db, pr("pass"))
+            told = len(self.fake.comments)
+            with mock.patch("soirely_queue.github.live", return_value=self.live()), \
+                    mock.patch("soirely_queue.github.merge"), \
+                    mock.patch("soirely_queue.sync.sync_github"):
+                said = actions.merge(self.as_("dev2"), args(pr=9, text=None))
+            self.assertEqual(self.state(1), "In Progress")
+            self.assertEqual(self.labels(1), {"dev2"})
+            self.assertIn(f"merged PR #9 as {'m' * 40}; sc-1 is In Progress, 2 tasks left: "
+                          "31 step 1, 32 step 2", said)
+            self.assertNotIn("QA is told", said)
+            self.assertEqual(len(self.fake.comments), told + 1)
+            self.assertEqual(self.fake.comments[-1][1], "(from dev2)\nPR #9 merged as "
+                             f"{'m' * 40}. Tasks left: 31 step 1, 32 step 2")
+
+    def test_the_next_task_goes_to_review_after_a_merge_with_tasks_left(self):
+        self.fake.add(1, "In Review", ["dev2"])
+        self.tasks(1, True, False)
+        store.put_pr(self.db, pr("pass"))
+        with mock.patch("soirely_queue.github.live", return_value=self.live()), \
+                mock.patch("soirely_queue.github.merge"), \
+                mock.patch("soirely_queue.sync.sync_github"):
+            actions.merge(self.as_("dev2"), args(pr=9, text=None))
+        actions.move(self.as_("dev2"), args(story="sc-1", state="In Review", text=None))
+        self.assertEqual(self.state(1), "In Review")
+
+    def test_a_merge_with_every_task_done_goes_to_qa(self):
+        self.fake.add(1, "In Review", ["dev2"])
+        self.tasks(1, True, True)
+        store.put_pr(self.db, pr("pass"))
+        with mock.patch("soirely_queue.github.live", return_value=self.live()), \
+                mock.patch("soirely_queue.github.merge"), \
+                mock.patch("soirely_queue.sync.sync_github"):
+            actions.merge(self.as_("dev2"), args(pr=9, text=None))
+        self.assertEqual(self.state(1), "Ready For QA")
+        self.assertIn("[qa] (from dev2)", self.fake.comments[-1][1])
+
+    def test_another_open_pr_keeps_the_state_whether_or_not_tasks_are_left(self):
+        for done in ((True, False), (True, True)):
+            self.fake.add(1, "In Review", ["dev2"])
+            self.tasks(1, *done)
+            store.put_pr(self.db, pr("pass"))
+            store.put_pr(self.db, {**pr(), "number": 10})
+            with mock.patch("soirely_queue.github.live", return_value=self.live()), \
+                    mock.patch("soirely_queue.github.merge"), \
+                    mock.patch("soirely_queue.sync.sync_github"):
+                said = actions.merge(self.as_("dev2"), args(pr=9, text=None))
+            self.assertEqual(self.state(1), "In Review")
+            self.assertIn("waiting on #10", said)
+
+    def merge_with_tasks_left(self, story_id, *done):
+        self.fake.add(story_id, "Passed Code Review", ["dev2"])
+        self.tasks(story_id, *done)
+        store.put_pr(self.db, pr("pass"))
+        with mock.patch("soirely_queue.github.live", return_value=self.live()), \
+                mock.patch("soirely_queue.github.merge"), \
+                mock.patch("soirely_queue.sync.sync_github"):
+            actions.merge(self.as_("dev2"), args(pr=9, text=None))
+        store.put_pr(self.db, {**pr("pass"), "state": "merged", "merge_sha": "m" * 40})
+
+    def test_to_qa_after_the_forgotten_task_is_ticked(self):
+        self.merge_with_tasks_left(1, True, False)
+        self.assertEqual(self.state(1), "In Progress")
+        with self.assertRaisesRegex(actions.Refused, "sc-1 has tasks left: 31 step 1: tick "
+                                    "them with sq dev2 task sc-1 --done <id>"):
+            actions.to_qa(self.as_("dev2"), args(story="sc-1", text=None))
+        self.assertEqual(self.state(1), "In Progress")
+        self.tasks(1, True, True)
+        actions.to_qa(self.as_("dev2"), args(story="sc-1", text=None))
+        self.assertEqual(self.state(1), "Ready For QA")
+        self.assertIn("[qa] (from dev2)", self.fake.comments[-1][1])
+        self.assertIn("m" * 40, self.fake.comments[-1][1])
+
+    def test_a_developer_ticks_a_task_and_writes_none(self):
+        self.fake.add(1, "In Progress", ["dev2"])
+        self.tasks(1, False)
+        actions.task(self.as_("dev2"), args(story="sc-1", add=None, done="30", undo=None))
+        self.assertTrue(self.fake.raw[1]["tasks"][0]["complete"])
+        with self.assertRaisesRegex(actions.Refused, "product manager writes"):
+            actions.task(self.as_("dev2"), args(story="sc-1", add="more", done=None, undo=None))
+
+    def test_to_qa_takes_no_story_in_progress_for_rework_with_every_task_done(self):
+        self.fake.add(1, "Failed QA", ["dev2"])
+        self.tasks(1, True, True)
+        store.put_pr(self.db, {**pr("pass"), "state": "merged", "merge_sha": "m" * 40})
+        actions.move(self.as_("dev2"), args(story="sc-1", state="In Progress", text=None))
+        with self.assertRaisesRegex(actions.Refused, "In Progress for new work since its last "
+                                                     "merge: move it to In Review"):
+            actions.to_qa(self.as_("dev2"), args(story="sc-1", text=None))
+        self.assertEqual(self.state(1), "In Progress")
+
+    def test_to_qa_takes_no_story_moved_on_since_a_merge_with_tasks_left(self):
+        self.merge_with_tasks_left(1, True, False)
+        actions.move(self.as_("dev2"), args(story="sc-1", state="In Review", text=None))
+        actions.move(self.as_("dev2"), args(story="sc-1", state="In Progress", text=None))
+        self.tasks(1, True, True)
+        with self.assertRaisesRegex(actions.Refused, "move it to In Review"):
+            actions.to_qa(self.as_("dev2"), args(story="sc-1", text=None))
+        self.assertEqual(self.state(1), "In Progress")
+
+    def test_to_qa_takes_no_story_in_progress_without_tasks(self):
+        self.fake.add(1, "In Progress", ["dev2"])
+        store.put_pr(self.db, {**pr("pass"), "state": "merged", "merge_sha": "m" * 40})
+        with self.assertRaisesRegex(actions.Refused, "move it to In Review"):
+            actions.to_qa(self.as_("dev2"), args(story="sc-1", text=None))
+        self.assertEqual(self.state(1), "In Progress")
+
+    def test_a_pass_with_two_tasks_open_tells_no_tester(self):
+        for done, told in (((True, False, False), False), ((True, True, False), True)):
+            self.fake.add(1, "In Review", ["dev2"])
+            self.tasks(1, *done)
+            store.put_pr(self.db, pr())
+            with mock.patch("soirely_queue.github.live", return_value=self.live()), \
+                    mock.patch("soirely_queue.github.post_review", return_value={}), \
+                    mock.patch("soirely_queue.sync.sync_github"):
+                actions.review(self.as_("lead"), args(pr=9, verdict="pass", findings=None,
+                                                      qa=None, text="summary"))
+            self.assertEqual(self.state(1), "Passed Code Review")
+            self.assertEqual(any("[qa]" in text for _, text in self.fake.comments), told)
+            self.fake.comments.clear()
 
     def test_merging_a_merged_pr_whose_story_is_in_review_finishes_the_handover(self):
         self.fake.add(1, "In Review", ["dev2"])

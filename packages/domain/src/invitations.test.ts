@@ -5,6 +5,7 @@ import {
   type InvitationOutcome,
   invitationRefusal,
   invitationWording,
+  organisationStep,
   refusalBody,
   waitingInvitations,
 } from './invitations.ts';
@@ -90,6 +91,61 @@ describe('invitations waiting in the product', () => {
     );
     expect(refusalBody('invitation_revoked', false)).toBe(
       'invitations.refused.invitation_revoked.body',
+    );
+  });
+});
+
+describe('Your organisation, with invitations and domain offers', () => {
+  const base = {
+    needsOrganisation: true,
+    invitations: 0,
+    stillOpen: 0,
+    offers: 0,
+    own: false,
+    joined: false,
+  };
+
+  it.each([
+    // invitations, still open, offers, own, joined → heading, rows, single, offers, fields
+    [1, 1, 0, false, false, 'invited', false, true, false, false],
+    [1, 1, 1, false, false, 'invited', false, true, false, false],
+    [1, 0, 0, false, false, 'organisation', false, true, false, true],
+    [1, 0, 1, false, false, 'offers', false, true, true, false],
+    [1, 0, 0, false, true, 'invited', false, true, false, false],
+    [1, 1, 1, true, false, 'organisation', false, false, false, true],
+    [2, 2, 0, false, false, 'invited', true, false, false, false],
+    [2, 1, 1, false, false, 'invited', true, false, false, false],
+    [2, 0, 0, false, false, 'organisation', true, false, false, true],
+    [2, 0, 2, false, false, 'offers', true, false, true, false],
+    [2, 0, 0, false, true, 'invited', true, false, false, false],
+    [2, 2, 1, true, false, 'organisation', false, false, false, true],
+    [0, 0, 1, false, false, 'offers', false, false, true, false],
+    [0, 0, 1, true, false, 'organisation', false, false, false, true],
+    [0, 0, 0, false, false, 'organisation', false, false, false, true],
+  ] as const)(
+    '%i invitation(s), %i open, %i offer(s), own %s, joined %s: %s',
+    (invitations, stillOpen, offers, own, joined, heading, rows, single, showsOffers, fields) => {
+      const step = organisationStep({ ...base, invitations, stillOpen, offers, own, joined });
+
+      expect(step.heading).toBe(heading);
+      expect(step.listsInvitations).toBe(rows);
+      expect(step.showsSingleInvitation).toBe(single);
+      expect(step.showsOffers).toBe(showsOffers);
+      expect(step.asksForOrganisation).toBe(fields);
+    },
+  );
+
+  it('keeps the rows and their notices once the last invitation is answered any way but joining', () => {
+    const step = organisationStep({ ...base, invitations: 2, stillOpen: 0 });
+
+    expect(step.invited).toBe(false);
+    expect(step.listsInvitations).toBe(true);
+  });
+
+  it('offers one domain organisation as a panel only while no invitation is open', () => {
+    expect(organisationStep({ ...base, offers: 1 }).singleOffer).toBe(true);
+    expect(organisationStep({ ...base, invitations: 1, stillOpen: 1, offers: 1 }).singleOffer).toBe(
+      false,
     );
   });
 });

@@ -8,6 +8,7 @@ const TRACK_W = 51;
 const TRACK_H = 31;
 const KNOB = 27;
 const KNOB_GAP = 2;
+const ON_OFF = { on: 'On', off: 'Off' };
 
 /** B's switch with its On or Off word, so a state is never colour alone: under it on the phone, beside it on a tablet. */
 export function ConfettiSwitch({
@@ -18,6 +19,7 @@ export function ConfettiSwitch({
   busy = false,
   stacked = false,
   width,
+  words = ON_OFF,
   onChange,
   testID,
 }: {
@@ -30,6 +32,7 @@ export function ConfettiSwitch({
   stacked?: boolean;
   /** The cell's own width, wide enough for the longer word, so a flip never moves its row. */
   width?: number | undefined;
+  words?: { on: string; off: string };
   onChange: (next: boolean) => void;
   testID: string;
 }) {
@@ -46,9 +49,7 @@ export function ConfettiSwitch({
       style={[stacked ? styles.stacked : styles.beside, width != null && { width }]}
       testID={testID}
     >
-      <View style={[styles.track, on && styles.trackOn]}>
-        <View style={[styles.knob, on && styles.knobOn]} />
-      </View>
+      <SwitchTrack on={on} />
       <View style={styles.word}>
         <Text
           size={13.5}
@@ -56,11 +57,20 @@ export function ConfettiSwitch({
           accessible={false}
           style={on ? styles.inkOn : styles.inkOff}
         >
-          {on ? 'On' : 'Off'}
+          {on ? words.on : words.off}
         </Text>
         {locked && <Glyph name="lock" size={13} ink={tokens.colorInkSecondary} weight={2.4} />}
       </View>
     </Pressable>
+  );
+}
+
+/** The track and its knob alone, for a row that carries the switch's name and word itself. */
+export function SwitchTrack({ on }: { on: boolean }) {
+  return (
+    <View style={[styles.track, on && styles.trackOn]}>
+      <View style={[styles.knob, on && styles.knobOn]} />
+    </View>
   );
 }
 

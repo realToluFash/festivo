@@ -385,8 +385,8 @@
     "follows": "Votre langue vous suit sur tous vos appareils."
   },
   "public": {
-    "tagline": "Préparez l’événement. Menez la soirée.",
-    "body": "Soirely est l’endroit où un événement se prépare au bureau et se mène depuis un téléphone. Invités, plan de table, menus et déroulé de la soirée, en un seul endroit et dans votre langue.",
+    "tagline": "Préparez l’événement. Pilotez le jour J.",
+    "body": "Soirely est l’endroit où un événement se prépare au bureau et se mène depuis un téléphone. Invités, plan de table, menus et programme, en un seul endroit et dans votre langue.",
     "signIn": "Se connecter",
     "getStarted": "Commencer"
   },
@@ -593,6 +593,7 @@
     "expiredBody": "Les codes ne sont valables qu’un temps. Envoyez-en un nouveau et utilisez celui du dernier e-mail.",
     "exhaustedTitle": "Trop de tentatives incorrectes",
     "exhaustedBody": "Ce code ne fonctionne plus. Envoyez-en un nouveau pour continuer.",
+    "registerAgain": "Inscrivez-vous à nouveau avec la bonne adresse",
     "wrongAddress": "Ce n’est pas votre adresse ?",
     "doneTitle": "Adresse vérifiée",
     "doneBody": "{{address}} est confirmée. Ensuite, quelques informations pour que votre équipe sache qui est qui.",
@@ -626,7 +627,7 @@
     "cantGetTexts": "Vous ne recevez pas de SMS sur ce numéro ?",
     "carryOnWithout": "Continuer sans",
     "doneTitle": "Numéro vérifié",
-    "doneBody": "Soirely peut vous joindre au {{number}} si un problème survient le soir même.",
+    "doneBody": "Soirely peut vous joindre au {{number}} si un problème survient le jour de l’événement.",
     "doneBodyAlternative": "{{number}} est vérifié. Il ne deviendra votre numéro principal que si vous le définissez comme tel dans Compte.",
     "continue": "Continuer vers Soirely",
     "changeTitle": "Changez votre numéro de portable",
@@ -766,7 +767,7 @@
     "failedBody": "Quelque chose s’est mal passé en route. Réessayez dans un instant.",
     "signOut": "Se déconnecter",
     "optional": "Facultatif",
-    "mobileHelp": "C’est ainsi qu’on vous joint le soir même si quelque chose tourne mal. Si vous en ajoutez un, nous vous envoyons un code par SMS pour le vérifier.",
+    "mobileHelp": "C’est ainsi qu’on vous joint le jour de l’événement si quelque chose tourne mal. Si vous en ajoutez un, nous vous envoyons un code par SMS pour le vérifier.",
     "providerConfirmed": "Connecté avec {{provider}}. {{provider}} a déjà confirmé {{email}}, il n’y a donc aucun code à saisir."
   },
   "forms": {
@@ -1295,10 +1296,8 @@
     "emailShape": "Cela ne ressemble pas à une adresse e-mail. Vérifiez qu’elle contient un @ et un domaine, comme amara.o@gmail.com.",
     "roleMeans": {
       "owner": "Tout, y compris la facturation et la suppression de l’organisation.",
-      "administrator": "Tout dans les événements, plus les membres et les rôles. Pas la facturation.",
-      "event_manager": "Tout dans les événements, et gère le budget. Jamais la marge.",
-      "coordinator": "Organise les événements. Consulte le budget, jamais la marge.",
-      "read_only": "Voit les événements. Ne modifie rien."
+      "administrator": "Tout sauf la facturation. Voit tous les événements et gère les membres.",
+      "member": "Travaille sur les événements qui lui sont confiés, et ne voit pas les autres."
     },
     "inviteNote": "Cette personne recevra un e-mail dans sa langue, avec un lien pour rejoindre {{organisation}} avec le rôle {{role}}. L’e-mail indique jusqu’à quand le lien fonctionne.",
     "send": "Envoyer l’invitation",
@@ -1450,7 +1449,7 @@
       "guests": "Noms, coordonnées, réponses et imports. Lire affiche aussi les numéros de téléphone.",
       "seating": "Salles, tables et qui est assis où.",
       "menu": "Plats, choix, variantes et sélections.",
-      "run_of_show": "Le programme, et cocher les étapes faites le soir même.",
+      "run_of_show": "Le programme, et cocher les étapes faites pendant l’événement.",
       "staff": "Qui travaille sur un événement et ce qu’il y fait.",
       "messages": "Rédiger et envoyer. Lire inclut l’historique de distribution.",
       "reports": "Modifier signifie exporter.",
@@ -1604,7 +1603,6 @@
     "joined": "Vous avez rejoint {{organisation}} avec le rôle {{role}}.",
     "open": "Ouvrir {{organisation}}",
     "declinedBody": "Vous avez refusé l’invitation. {{inviter}} verra votre refus.",
-    "goToEvents": "Voir vos événements",
     "goHome": "Aller sur Soirely",
     "signOutAndUse": "Se déconnecter et utiliser {{email}}",
     "staySignedIn": "Rester connecté avec {{email}}",
