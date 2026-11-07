@@ -1367,8 +1367,8 @@
     "goHome": "Ir para a Soirely",
     "failedTitle": "Não foi possível enviar o pedido",
     "failedBody": "Algo correu mal pelo caminho. Tente de novo dentro de momentos.",
-    "messageOptional": "Message · optional",
-    "signedOutLine": "Sign in or create an account to ask. You come back here after."
+    "messageOptional": "Mensagem · opcional",
+    "signedOutLine": "Inicie sessão ou crie uma conta para fazer o pedido. Depois, regressa a esta página."
   },
   "ownerClaim": {
     "loading": "A carregar",
@@ -1954,11 +1954,11 @@
     "mobileLine": "Enviamos um código para este número por WhatsApp, ou por SMS se o WhatsApp não chegar até si.",
     "sendCode": "Enviar código",
     "whatsAppTitle": "Veja o WhatsApp",
-    "invitedTitle": "You’re invited",
-    "invitedIntro": "Join your team, or start your own organisation.",
-    "invitationFor": "An invitation for {{email}}",
-    "join": "Join {{organisation}}",
-    "startOwnInstead": "Start my own instead"
+    "invitedTitle": "Tem um convite",
+    "invitedIntro": "Adira à sua equipa ou crie a sua própria organização.",
+    "invitationFor": "Convite para {{email}}",
+    "join": "Aderir a {{organisation}}",
+    "startOwnInstead": "Prefiro criar a minha própria organização"
   },
   "todayScreen": {
     "today": "Today",

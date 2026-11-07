@@ -66,6 +66,14 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **7 Nov 2026. The app's other ways in** (`mobile:steps.invited*`, `invitationFor`, `join`,
+  `startOwnInstead`, `mobile:requestToJoin.messageOptional`, `signedOutLine`, sc-30119 for
+  sc-29070). Kept as sc-29070 wrote them, except `signedOutLine`, now "Sign in or create an
+  account to ask. You will come back here.", the web's `requestToJoin.signedOut` without its
+  organisation, which the title above already names (rejected: "You come back here after.").
+  "You’re invited" keeps its contraction: a warm title, not an error. es, fr and pt say the
+  reader has an invitation rather than "is invited", so nothing agrees with the reader's gender.
+
 - **7 Nov 2026. A payment schedule's shapes, and someone else adding payments first**
   (sc-1332, pm's #30379, settled before the board is drawn). The 409 when another person adds
   a scheduled payment while a shape is being chosen, on the form and as the API's detail
