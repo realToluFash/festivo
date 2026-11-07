@@ -1032,7 +1032,8 @@ def merge(c, a):
         went = hand_to_qa(c, story, pr, merged, a.text)
     except ShortcutError as error:
         raise Refused(f"merged PR #{a.pr} as {merged}, but the handover failed "
-                      f"({error}); run `sq {c.role} merge {a.pr}` again to finish it"
+                      f"({error}); run `sq {c.role} merge {a.pr}` again to finish it, or "
+                      f"`sq {c.role} to-qa sc-{story['id']}` if the story already moved"
                       f"{resync(c)}") from error
     told = "; QA is told" if went == "Ready For QA" else ""
     return f"merged PR #{a.pr} as {merged}; sc-{story['id']} is {went}{told}{resync(c)}"
