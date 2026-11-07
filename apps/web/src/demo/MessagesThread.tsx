@@ -1,8 +1,8 @@
 import { emailProblem } from '@soirely/domain';
 import { type FormEvent, type ReactNode, useEffect, useId, useRef, useState } from 'react';
 
-import en from '../i18n/locales/en.json';
 import { offButton } from '../offButton.ts';
+import { ADD_WORDS } from './account.ts';
 import { Glyph } from './Glyph.tsx';
 import {
   type Answer,
@@ -1007,7 +1007,7 @@ function Person({
   function save(event: FormEvent): void {
     event.preventDefault();
     if (emailProblem(address) != null) {
-      setWrong(en.forms.emailShape);
+      setWrong(ADD_WORDS.shape);
       return;
     }
     onSaved();

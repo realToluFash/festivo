@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest';
 
-import es from '../i18n/locales/es.json';
-import fr from '../i18n/locales/fr.json';
-import pt from '../i18n/locales/pt.json';
 import { sampleEvent } from './events.ts';
 import {
   type Audience,
@@ -54,10 +51,11 @@ describe('Messaging B · Conversations, the rules (sc-31371)', () => {
     for (const key of keys) expect(seedOf(key), key).toBeDefined();
   });
 
-  it('keeps every word in the four catalogues, English in es, fr and pt until they are translated', () => {
-    for (const catalogue of [es.messaging, fr.messaging, pt.messaging]) {
-      for (const [key, words] of Object.entries(MW))
-        expect(catalogue[key as keyof typeof catalogue], key).toBe(words);
+  it('keeps the board’s English in the demo, every plural with its one and its other', () => {
+    for (const [key, words] of Object.entries(MW)) {
+      expect(words.trim(), key).not.toBe('');
+      if (key.endsWith('_one')) expect(MW, key).toHaveProperty(key.replace(/_one$/u, '_other'));
+      if (key.endsWith('_other')) expect(MW, key).toHaveProperty(key.replace(/_other$/u, '_one'));
     }
   });
 

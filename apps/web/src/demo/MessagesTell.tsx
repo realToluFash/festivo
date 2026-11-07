@@ -1,7 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 
-import en from '../i18n/locales/en.json';
 import { Glyph, type GlyphName } from './Glyph.tsx';
 import {
   type Told,
@@ -16,10 +15,11 @@ import {
 } from './messages.ts';
 import { useInbox } from './messagesContext.ts';
 import { WhereGlyph } from './MessagesParts.tsx';
+import { BELL_WORDS } from './messagesWords.ts';
 import { Dialog } from './SettingsParts.tsx';
 import type { Tell } from './TodayParts.tsx';
 
-const NOTIFICATIONS = en.notifications;
+const NOTIFICATIONS = BELL_WORDS;
 
 /** Tell guests (sc-4330): Soirely's prepared line goes by every channel; the hosts' note goes on their page only. */
 export function TellDialog({

@@ -12,7 +12,6 @@ import {
 } from 'react';
 import { useSearchParams } from 'react-router';
 
-import en from '../i18n/locales/en.json';
 import { EventsShell } from './EventParts.tsx';
 import { EventSidebar } from './EventSidebar.tsx';
 import type { SampleEvent } from './events.ts';
@@ -52,6 +51,7 @@ import { ConversationPane } from './MessagesThread.tsx';
 import { InboxContext, type InboxApi } from './messagesContext.ts';
 import { LeadMark } from './MessagesParts.tsx';
 import { UntoldBanner } from './MessagesTell.tsx';
+import { MESSAGES_WORD } from './messagesWords.ts';
 import { Tag } from './SettingsParts.tsx';
 import type { Tell } from './TodayParts.tsx';
 import './messages.css';
@@ -371,7 +371,7 @@ function Messages({
         <section className="mg-list" aria-labelledby={titleId}>
           <div className="mg-list-top">
             <h1 id={titleId} className="mg-title" tabIndex={-1} data-focus="title">
-              {en.eventNav.messages}
+              {MESSAGES_WORD}
             </h1>
             <button
               type="button"

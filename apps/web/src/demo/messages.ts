@@ -1,9 +1,9 @@
-import en from '../i18n/locales/en.json';
 import type { SampleEvent } from './events.ts';
+import { MESSAGES_WORD, MW } from './messagesWords.ts';
 import type { DemoLink } from './settings.ts';
 
-/** Messaging B · Conversations (page e36, board/messaging-b-spec.md): the words, read from the web's catalogue, the sample, and the inbox's rules. */
-export const MW = en.messaging;
+/** Messaging B · Conversations (page e36, board/messaging-b-spec.md): the sample and the inbox's rules; the words are in messagesWords.ts. */
+export { MW };
 
 type Words = typeof MW;
 type PluralBase = {
@@ -1365,7 +1365,7 @@ export function waitingLine(inbox: Inbox): { line: string; name: string } | null
 
   return parts.length === 0
     ? null
-    : { line: parts.join(' · '), name: [en.eventNav.messages, ...parts].join(', ') };
+    : { line: parts.join(' · '), name: [MESSAGES_WORD, ...parts].join(', ') };
 }
 
 export type Change =
