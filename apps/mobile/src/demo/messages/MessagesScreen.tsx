@@ -46,6 +46,7 @@ import { type Talk, partsOf } from './Conversation.tsx';
 import { MessagesList, rowName } from './MessagesList.tsx';
 import {
   type Action,
+  type Closed,
   type Messages,
   type Open,
   type ReachedOf,
@@ -57,6 +58,8 @@ import {
   checkOf,
   dayWords,
   draftTitle,
+  matchesNobody,
+  overOf,
   resultOf,
   sectionsOf,
   spokenAt,
@@ -117,6 +120,12 @@ function reachedTitle(m: Messages, of: ReachedOf): string {
   return m.draft == null ? W.newMessage : draftTitle(m.draft, m.thread);
 }
 
+const CLOSED_WORDS: Record<Closed, string> = {
+  draft: W.closedDraft,
+  deleted: W.closedDeleted,
+  ended: W.closedEnded,
+};
+
 export function badgeFor(m: Messages): AreaBadge | null {
   const badge = badgeOf(m);
 
@@ -159,6 +168,7 @@ export function MessagesScreen({
   const refs = useRef<Partial<Record<string, ViewInstance | null>>>({});
   const headRef = useRef<TextHandle>(null);
   const checkRef = useRef<TextHandle>(null);
+  const subjectRef = useRef<TextInputInstance>(null);
   const bodyRef = useRef<TextInputInstance>(null);
   const answerRef = useRef<TextInputInstance>(null);
   const bellRef = useRef<ViewInstance>(null);
@@ -173,6 +183,8 @@ export function MessagesScreen({
   );
   const caret = useRef<number | null>(null);
   const focusBody = useRef(start.keys);
+  const focusOver = useRef(m.draft?.over[0] ?? null);
+  const closed = m.closed == null ? null : CLOSED_WORDS[m.closed];
   const [typed, setTyped] = useState<Partial<Record<GuestKey, string>>>(m.typed);
   const [toAt, setToAt] = useState<Anchor | null>(null);
   const [insertAt, setInsertAt] = useState<Anchor | null>(null);
@@ -246,7 +258,10 @@ export function MessagesScreen({
   useEffect(() => {
     if (openKey == null) return undefined;
     const later = setTimeout(() => {
-      if (focusBody.current) {
+      const over = focusOver.current;
+      focusOver.current = null;
+      if (over != null) focusChecked(over === 'subject' ? subjectRef : bodyRef);
+      else if (focusBody.current) {
         focusBody.current = false;
         bodyRef.current?.focus();
       } else moveScreenReaderFocus(headRef.current);
@@ -282,6 +297,7 @@ export function MessagesScreen({
     else dispatch({ type: 'open', open: id });
   };
   const onNew = (picking: boolean) => {
+    if (m.closed != null) return;
     dispatch({ type: 'newMessage' });
     focusBody.current = !picking;
     if (picking) dispatch({ type: 'picking', open: true });
@@ -303,6 +319,7 @@ export function MessagesScreen({
     refFor,
     headRef,
     checkRef,
+    subjectRef,
     bodyRef,
     answerRef,
     typed: m.open?.kind === 'guest' ? (typed[m.open.key] ?? '') : '',
@@ -373,7 +390,20 @@ export function MessagesScreen({
       dispatch({ type: 'changeIt' });
       setTimeout(() => moveScreenReaderFocus(refs.current.send ?? null), 350);
     },
-    onSend: () => dispatch({ type: 'send' }),
+    onSend: () => {
+      if (draft == null) return;
+      if (matchesNobody(draft)) {
+        readOut(W.nobodyMatches);
+        moveScreenReaderFocus(refs.current.to ?? null);
+        return;
+      }
+      const over = overOf(draft);
+      dispatch({ type: 'send' });
+      if (over[0] != null) {
+        const field = over[0] === 'subject' ? subjectRef : bodyRef;
+        setTimeout(() => focusChecked(field), 50);
+      }
+    },
     onResent: () => {
       dispatch({ type: 'resent' });
       dispatch({ type: 'told', words: say.queued(RESEND.count) });
@@ -409,6 +439,7 @@ export function MessagesScreen({
       }}
       onTell={() => dispatch({ type: 'telling', open: true })}
       onDismiss={() => dispatch({ type: 'dismissUntold' })}
+      closed={closed}
     />
   );
   const sendAgain = (person: NotReached) => {
@@ -458,6 +489,7 @@ export function MessagesScreen({
       <ToPicker
         open={m.picking && (phone || toAt != null)}
         to={draft?.to ?? 'all'}
+        zero={draft?.zero ?? []}
         phone={phone}
         at={m.picking ? toAt : null}
         opener={openerRef}
@@ -588,13 +620,14 @@ export function MessagesScreen({
           </>
         }
       >
-        <PhoneList list={list} onNew={onNew} />
+        {m.forbidden ? <Refusal /> : <PhoneList list={list} onNew={onNew} closed={closed} />}
       </EventFrame>
     );
 
   const landscape = shell.layout === 'landscape';
   let pane: ReactNode;
-  if (m.phase === 'loading') pane = <LoadingPane />;
+  if (m.forbidden) pane = null;
+  else if (m.phase === 'loading') pane = <LoadingPane />;
   else if (m.open == null)
     pane = (
       <View style={styles.fill}>
@@ -603,7 +636,12 @@ export function MessagesScreen({
             {m.phase === 'first' ? W.noneLine : W.pickOne}
           </Text>
         </View>
-        <MiniComposer to={toChip('all')} placeholder={W.writeToGuests} onOpen={onNew} />
+        <MiniComposer
+          to={toChip('all')}
+          placeholder={W.writeToGuests}
+          reason={closed}
+          onOpen={onNew}
+        />
       </View>
     );
   else if (m.open.kind === 'reached')
@@ -634,28 +672,59 @@ export function MessagesScreen({
       }
       overlay={overlays}
     >
-      <View style={[styles.panes, !landscape && styles.panesUp]}>
-        <ScrollView
-          style={[styles.listPane, { width: landscape ? 330 : 320 }]}
-          contentContainerStyle={styles.listBody}
-          showsVerticalScrollIndicator={false}
-        >
-          {list}
-        </ScrollView>
-        <View
-          style={[
-            styles.pane,
-            { paddingHorizontal: landscape ? 28 : 24, paddingBottom: Math.max(insets.bottom, 22) },
-          ]}
-        >
-          {pane}
+      {m.forbidden ? (
+        <View style={[styles.fill, !landscape && styles.panesUp]}>
+          <Refusal />
         </View>
-      </View>
+      ) : (
+        <View style={[styles.panes, !landscape && styles.panesUp]}>
+          <ScrollView
+            style={[styles.listPane, { width: landscape ? 330 : 320 }]}
+            contentContainerStyle={styles.listBody}
+            showsVerticalScrollIndicator={false}
+          >
+            {list}
+          </ScrollView>
+          <View
+            style={[
+              styles.pane,
+              {
+                paddingHorizontal: landscape ? 28 : 24,
+                paddingBottom: Math.max(insets.bottom, 22),
+              },
+            ]}
+          >
+            {pane}
+          </View>
+        </View>
+      )}
     </EventFrame>
   );
 }
 
-function PhoneList({ list, onNew }: { list: ReactNode; onNew: (picking: boolean) => void }) {
+/** Without messages.read (sc-3976, Decided 1 Nov, point 3): the app's refusal, with no button, no count and no list. */
+function Refusal() {
+  return (
+    <View style={styles.refusal} testID="messages.forbidden">
+      <Text size={22} weight="bold" accessibilityRole="header" style={styles.refusalTitle}>
+        {W.forbiddenTitle}
+      </Text>
+      <Text size={15} weight="medium" style={[styles.secondary, styles.refusalBody]}>
+        {W.forbiddenBody}
+      </Text>
+    </View>
+  );
+}
+
+function PhoneList({
+  list,
+  onNew,
+  closed,
+}: {
+  list: ReactNode;
+  onNew: (picking: boolean) => void;
+  closed: string | null;
+}) {
   const insets = useSafeAreaInsets();
   const foot = Math.max(insets.bottom - tokens.spaceXxs, tokens.spaceLg);
   const pinned = foot + PHONE_TAB_BAR + tokens.spaceXl;
@@ -666,14 +735,19 @@ function PhoneList({ list, onNew }: { list: ReactNode; onNew: (picking: boolean)
         style={styles.fill}
         contentContainerStyle={[
           styles.phoneList,
-          { paddingBottom: pinned + 116 + tokens.space3xl },
+          { paddingBottom: pinned + 116 + tokens.space3xl + (closed == null ? 0 : 48) },
         ]}
         showsVerticalScrollIndicator={false}
       >
         {list}
       </ScrollView>
       <View style={[styles.pinned, { bottom: pinned }]}>
-        <MiniComposer to={toChip('all')} placeholder={W.writeToGuests} onOpen={onNew} />
+        <MiniComposer
+          to={toChip('all')}
+          placeholder={W.writeToGuests}
+          reason={closed}
+          onOpen={onNew}
+        />
       </View>
     </View>
   );
@@ -886,6 +960,15 @@ const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
   secondary: { color: tokens.colorInkSecondary },
   middle: { textAlign: 'center', lineHeight: 14.5 * 1.45 },
+  refusal: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: tokens.spaceMd,
+    paddingHorizontal: tokens.space3xl,
+  },
+  refusalTitle: { textAlign: 'center', lineHeight: 22 * 1.25 },
+  refusalBody: { textAlign: 'center', lineHeight: 15 * 1.45, maxWidth: 420 },
   title: { letterSpacing: -0.5, lineHeight: 26 * 1.15 },
   phoneList: { paddingHorizontal: tokens.spaceXxl, paddingTop: 14 },
   pinned: { position: 'absolute', left: 14, right: 14 },

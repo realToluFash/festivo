@@ -45,6 +45,13 @@ const BOARDS: Record<MessagesState, readonly [string, string]> = {
   noSubject: ['no subject', 'Named by its first line, shortened'],
   followUp: ['a follow-up', 'Under the first message, to the same 96'],
   tellPlace: ['tell guests, a new place', 'The venue is now Rosewood London'],
+  nobody: ['nobody matches', 'Coming · 0: Nobody matches, and Send opens no check'],
+  longSubject: ['a subject too long', 'Shorten the subject to 150 characters or fewer'],
+  longMessage: ['a message too long', 'Shorten the message to 10,000 characters or fewer'],
+  closedDraft: ['new unavailable, a draft', 'This event is a draft; New is off'],
+  closedDeleted: ['new unavailable, deleted', 'This event was deleted; New is off'],
+  closedEnded: ['new unavailable, long finished', 'Finished more than 30 days ago; New is off'],
+  forbidden: ['no access', 'Without messages.read: the refusal, no list, no count'],
 };
 
 export const MESSAGES_BOARDS = MESSAGES_STATES.map((state) => ({

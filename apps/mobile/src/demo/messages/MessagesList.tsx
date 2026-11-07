@@ -16,6 +16,7 @@ import {
   RowShapes,
   TextAction,
 } from '../../components/Summary.tsx';
+import { WhyNot } from './Composers.tsx';
 import { MessageGlyph } from './MessageMarks.tsx';
 import {
   type Messages,
@@ -264,10 +265,13 @@ export function MessagesList({
   onNew,
   onTell,
   onDismiss,
+  closed = null,
 }: {
   m: Messages;
   wide: boolean;
   locale: string;
+  /** Why this event can't send: New is unavailable, with this beside it. */
+  closed?: string | null;
   head?: ReactNode;
   refFor: (key: string) => (node: ViewInstance | null) => void;
   onOpen: (id: RowId) => void;
@@ -309,26 +313,30 @@ export function MessagesList({
     };
   };
   const title = (
-    <View style={styles.titleRow}>
-      <Text
-        size={wide ? 26 : 30}
-        weight="bold"
-        accessibilityRole="header"
-        style={[styles.grow, styles.title]}
-      >
-        {W.messages}
-      </Text>
-      {wide && m.phase !== 'loading' && (
-        <Pill
-          label={W.newButton}
-          glyph="plus"
-          height={tokens.sizeHit}
-          full={false}
-          onPress={onNew}
-          testID="messages.new"
-        />
-      )}
-      {head}
+    <View style={styles.head}>
+      <View style={styles.titleRow}>
+        <Text
+          size={wide ? 26 : 30}
+          weight="bold"
+          accessibilityRole="header"
+          style={[styles.grow, styles.title]}
+        >
+          {W.messages}
+        </Text>
+        {wide && m.phase !== 'loading' && (
+          <Pill
+            label={W.newButton}
+            glyph="plus"
+            height={tokens.sizeHit}
+            full={false}
+            kind={closed == null ? 'primary' : 'off'}
+            onPress={onNew}
+            testID="messages.new"
+          />
+        )}
+        {head}
+      </View>
+      {wide && closed != null && m.phase !== 'loading' && <WhyNot words={closed} />}
     </View>
   );
 
@@ -404,6 +412,7 @@ const styles = StyleSheet.create({
   figures: { fontVariant: ['tabular-nums'] },
   centred: { textAlign: 'center' },
   list: { gap: tokens.spaceLg },
+  head: { gap: tokens.spaceSm },
   titleRow: {
     minHeight: tokens.sizeHit,
     flexDirection: 'row',
