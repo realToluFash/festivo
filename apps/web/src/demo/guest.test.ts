@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import en from '../i18n/locales/en.json';
+
 import {
   EVENT,
   GUEST_PAGES,
@@ -30,8 +32,8 @@ describe('the guest’s page states (sc-31306)', () => {
       'Over, gone, and the rest',
       'The hosts’ messages and the guest’s own',
     ]);
-    expect(STATES).toHaveLength(44);
-    expect(new Set(STATES).size).toBe(44);
+    expect(STATES).toHaveLength(47);
+    expect(new Set(STATES).size).toBe(47);
     expect(STATES.every(isGuestState)).toBe(true);
     expect(LINKED.find((one) => one.to.includes('messageArrival'))?.to).toBe(
       '/demo/guest?state=messageArrival#m-3',
@@ -119,6 +121,15 @@ describe('the words and dates', () => {
       'You answered Not sure yet on Tuesday, October 27.',
     );
     expect(en.timeInZone('6:00 PM', 'Europe/London')).toBe('6:00 PM Europe/London');
+    expect(en.greeting('notSure')).toBe(
+      'Thanks for letting us know, Maria Fernanda Albuquerque Santos.',
+    );
+    expect(en.calendarLine).toBe(
+      'Your calendar updates by itself if the date, time or place changes.',
+    );
+    expect(en.doorLine(2)).toBe('It lets you and your companions in. A screenshot works too.');
+    expect(en.doorLine(0)).toBe('A screenshot works too.');
+    expect(en.messageCount(1042)).toBe('1,042 of 1,000 characters');
   });
 
   it('writes French as the board does: main’s, #5535’s, and the bracketed proposals', () => {
@@ -153,6 +164,12 @@ describe('the words and dates', () => {
       'Français',
       'Português',
     ]);
+  });
+});
+
+describe('the words stay in the demo (SHARED.md, Step three)', () => {
+  it('adds nothing to the product’s catalogues', () => {
+    expect(Object.keys(en)).not.toContain('guestPage');
   });
 });
 

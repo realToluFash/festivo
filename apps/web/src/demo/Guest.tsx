@@ -1,12 +1,4 @@
-import {
-  type ReactNode,
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { type ReactNode, useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router';
 
 import lockupUrl from '../brand/lockup.svg';
@@ -300,27 +292,31 @@ function Body({
   onRetry: () => void;
   onTell: () => void;
 }) {
-  const columns = useRef<HTMLDivElement>(null);
+  const [box, setBox] = useState<HTMLDivElement | null>(null);
 
   useLayoutEffect(() => {
-    const box = columns.current;
     if (box == null || !two) return;
+    const height = (part: string) =>
+      box.querySelector<HTMLElement>(`:scope > ${part}`)?.offsetHeight ?? 0;
     const place = () => {
-      const cover = box.querySelector<HTMLElement>(':scope > .gp-left')?.offsetHeight ?? 0;
-      const details = box.querySelector<HTMLElement>(':scope > .gp-left-after');
-      box.style.setProperty('--gpCoverH', `${cover}px`);
-      box.style.setProperty(
-        '--gpLeftH',
-        `${cover + (details == null ? 0 : 28 + details.offsetHeight)}px`,
-      );
+      box.style.setProperty('--gpCoverH', `${height('.gp-left')}px`);
+      box.style.setProperty('--gpDetailsH', `${height('.gp-left-after')}px`);
     };
-    place();
-    if (typeof ResizeObserver === 'undefined') return;
-    const watch = new ResizeObserver(place);
-    for (const child of box.children) watch.observe(child);
+    const sizes = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(place);
+    const watch = () => {
+      sizes?.disconnect();
+      for (const child of box.children) sizes?.observe(child);
+      place();
+    };
+    const children = new MutationObserver(watch);
+    children.observe(box, { childList: true });
+    watch();
 
-    return () => watch.disconnect();
-  });
+    return () => {
+      sizes?.disconnect();
+      children.disconnect();
+    };
+  }, [box, two]);
 
   if (visit.page === 'gone' || visit.page === 'unreachable') {
     return (
@@ -336,7 +332,7 @@ function Body({
 
   if (visit.page === 'loading') {
     return (
-      <div ref={columns} className="gp-columns" aria-busy="true">
+      <div ref={setBox} className="gp-columns" aria-busy="true">
         <p className="visually-hidden" role="status">
           {words.loading}
         </p>
@@ -351,7 +347,7 @@ function Body({
   const { details, foot, hosts } = shows(visit);
 
   return (
-    <div ref={columns} className="gp-columns">
+    <div ref={setBox} className="gp-columns">
       <PhaseNotice phase={visit.phase} words={words} />
       <Cover visit={visit} words={words} ended={ended} />
       {under}
@@ -409,7 +405,7 @@ function Under({
       )}
       {forTheDay(visit) && (
         <>
-          <DoorCode words={words} />
+          <DoorCode words={words} companions={visit.companionsComing} />
           <AddToCalendar words={words} />
         </>
       )}

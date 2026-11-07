@@ -374,13 +374,13 @@ export function Foot({ words, onTell }: { words: Words; onTell: () => void }) {
 
 const CODE = codePath();
 
-export function DoorCode({ words }: { words: Words }) {
+export function DoorCode({ words, companions }: { words: Words; companions: number }) {
   return (
     <section className="gp-block" aria-labelledby="gp-door">
       <h2 id="gp-door" className="gp-h2 is-19">
         {words.doorTitle}
       </h2>
-      <p className="gp-sub">{words.doorLine}</p>
+      <p className="gp-sub">{words.doorLine(companions)}</p>
       <div className="gp-code">
         <svg role="img" aria-label={words.doorCode} width="196" height="196" viewBox="0 0 29 29">
           <path d={CODE} />

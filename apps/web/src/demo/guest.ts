@@ -96,6 +96,7 @@ export interface Visit {
   replyBy: string | null;
   replyByPassed: boolean;
   recorded: { answer: Answer; on: string } | null;
+  companionsComing: number;
   view: View;
   photo: boolean;
   lang: Lang;
@@ -122,6 +123,7 @@ const BASE: Visit = {
   replyBy: REPLY_BY,
   replyByPassed: false,
   recorded: null,
+  companionsComing: COMPANIONS,
   view: OPEN,
   photo: false,
   lang: 'en',
@@ -175,6 +177,10 @@ const STATES = {
   coming: {
     name: 'Answered Coming',
     starts: { recorded: COMING, view: RECORDED, want: 'greeting' },
+  },
+  comingAlone: {
+    name: 'Answered Coming, no companion coming',
+    starts: { recorded: COMING, view: RECORDED, companionsComing: 0, want: 'greeting' },
   },
   notComing: {
     name: 'Answered Not coming, in one tap',
@@ -300,6 +306,14 @@ const STATES = {
     name: 'A message over 1,000 characters',
     starts: { ...MESSAGED, draft: LONG_MESSAGE, draftTried: true, want: 'box' },
   },
+  calledOffMessages: {
+    name: 'Called off, with the hosts’ messages',
+    starts: { phase: 'calledOff', recorded: COMING, view: CLOSED, messages: 3 },
+  },
+  finishedMessages: {
+    name: 'Over, with the thank-you and the hosts’ messages',
+    starts: { phase: 'finished', started: true, recorded: COMING, view: CLOSED, messages: 3 },
+  },
   replyFailed: {
     name: 'A message that failed',
     starts: { ...MESSAGED, draft: MINE, draftFailed: true, want: 'sendMessage' },
@@ -341,6 +355,7 @@ export const GUEST_PAGES: readonly { name: string; states: readonly DemoLink[] }
         'sendingTap',
         'notSentTap',
         'coming',
+        'comingAlone',
         'notComing',
         'notSure',
         'changing',
@@ -398,6 +413,8 @@ export const GUEST_PAGES: readonly { name: string; states: readonly DemoLink[] }
         'replySending',
         'replySent',
         'replyFailed',
+        'calledOffMessages',
+        'finishedMessages',
       ] as const
     ).map(link),
   },
@@ -514,17 +531,93 @@ export function mapsLink(): string {
   return `https://www.openstreetmap.org/search?query=${encodeURIComponent(query)}`;
 }
 
-/** French as the board writes it where fr.json holds English: #5535's settled words and [bracketed] proposals. */
-const BOARD_FRENCH: Readonly<Record<string, string>> = {
-  'guestPage.yourAnswer': '[Votre réponse]',
-  'guestPage.replyBy':
-    '[Merci de répondre avant le {{date}}. Vous pourrez modifier votre réponse d’ici là.]',
-  'guestPage.yes': '[Oui, je serai là]',
-  'guestPage.no': '[Je ne pourrai pas venir]',
-  'guestPage.maybe': '[Je ne sais pas encore]',
-  'guestPage.closing':
+/** The board's English, held in the demo until the product's screen puts it in the four catalogues (SHARED.md, Step three). */
+const BOARD_ENGLISH = {
+  yourAnswer: 'Your answer',
+  replyBy: 'Please answer by {{date}}. You can change your answer any time before then.',
+  yes: 'Yes, I’ll be there',
+  no: 'Sorry, I can’t',
+  maybe: 'I’m not sure yet',
+  coming: 'Coming',
+  notComing: 'Not coming',
+  notSure: 'Not sure yet',
+  answered: 'You answered {{answer}} on {{date}}.',
+  greetComing: 'See you there, {{name}}.',
+  greetNotComing: 'We’ll miss you, {{name}}.',
+  greetNotSure: 'Thanks for letting us know, {{name}}.',
+  companionsOnHold: 'Your companions are on hold until you decide.',
+  change: 'Change my answer',
+  newAnswer: 'Your new answer',
+  answerNow: 'Your answer now',
+  keep: 'Keep my answer',
+  back: 'Back',
+  check: 'Check and send',
+  answerLine: 'Your answer: {{answer}}',
+  changeShort: 'Change',
+  send: 'Send my answer',
+  nothingSent: 'Nothing is sent until you press Send my answer.',
+  notSent: 'Your answer wasn’t sent. Everything you chose is still here. Try again.',
+  notSentTap: 'Your answer wasn’t sent. Check your connection and tap it again.',
+  same: 'You’re already down as {{answer}}. Nothing has changed.',
+  unsent: 'You haven’t sent your answer yet.',
+  closedBy: 'Answers closed on {{date}}. Contact your host if something has changed.',
+  closedByNotSure: 'Answers closed on {{date}}. Contact your host if you can still come.',
+  kitchen: 'Update what the kitchen should know',
+  refused: 'Answers closed before this was sent. Everything you chose is still here.',
+  closed: 'Answers have closed. Contact your host if something has changed.',
+  didNotAnswer: 'You didn’t answer.',
+  pausedNotice:
+    'This event is paused. Answers are closed. Nothing you sent has been lost, and this page will update if the event resumes.',
+  pausedReason: 'Answers are closed while the event is paused. Anything you sent is kept.',
+  calledOff: 'Called off',
+  calledOffNotice:
+    'This event has been called off. It will not go ahead. There is nothing you need to do.',
+  finishedNotice: 'This event has taken place. This page stays here as a keepsake.',
+  noAccount: 'You do not need an account to answer.',
+  goneBody:
+    'It may have expired, been replaced by a newer one, or been mistyped. If you think it should work, ask whoever invited you.',
+  closing: 'This invitation is for you and your family. Other guests cannot see your answer.',
+  tell: 'Not {{name}}? Tell us',
+  tellQuestion: 'Tell {{hosts}} this link reached the wrong person?',
+  tellLine:
+    'They will see a note on {{name}}’s invitation and can send a new link. This does not answer the invitation or change anything on it.',
+  tellThem: 'Tell them',
+  goBack: 'Go back',
+  tellFailed: 'Not sent. Check your connection and try again.',
+  tellLimited: 'Too many tries from this link. Try again later.',
+  tellThanksOne:
+    'Thank you. {{hosts}} has been told and will look into it. You can close this page.',
+  tellThanksOther:
+    'Thank you. {{hosts}} have been told and will look into it. You can close this page.',
+  doorTitle: 'Show this at the door',
+  doorLine: 'It lets you and your companions in. A screenshot works too.',
+  doorLineAlone: 'A screenshot works too.',
+  doorCode: 'Your code for the door. It holds no name.',
+  calendarTitle: 'Add to calendar',
+  calendarLine: 'Your calendar updates by itself if the date, time or place changes.',
+  calendarApple: 'Apple / Outlook',
+  calendarGoogle: 'Google Calendar',
+  messages: 'Messages',
+  writeTo: 'Write to {{hosts}}',
+  sendMessage: 'Send',
+  sent: 'Sent',
+  messageFailed: 'Your message wasn’t sent. Your words are still here. Try again.',
+  messageCount: '{{count}} of {{most}} characters',
+  messageTooLong: 'Shorten your message to {{most}} characters or fewer.',
+} as const;
+
+type BoardKey = keyof typeof BOARD_ENGLISH;
+
+/** French as the board writes it: #5535's settled words, and [bracketed] proposals l10n has not settled. */
+const BOARD_FRENCH: Partial<Record<BoardKey, string>> = {
+  yourAnswer: '[Votre réponse]',
+  replyBy: '[Merci de répondre avant le {{date}}. Vous pourrez modifier votre réponse d’ici là.]',
+  yes: '[Oui, je serai là]',
+  no: '[Je ne pourrai pas venir]',
+  maybe: '[Je ne sais pas encore]',
+  closing:
     'Cette invitation est pour vous et votre famille. Les autres invités ne voient pas votre réponse.',
-  'guestPage.tell': 'Vous n’êtes pas {{name}} ? Dites-le-nous',
+  tell: 'Vous n’êtes pas {{name}} ? Dites-le-nous',
 };
 
 /** l10n's ungendered You are invited, settled 7 Nov in sc-28008, in place of main's gendered es, fr and pt. */
@@ -544,33 +637,28 @@ export const LEGAL: Record<Lang, { terms: string; privacy: string }> = {
 type Slots = Record<string, string | number>;
 
 export function wordsFor(lang: Lang) {
-  const fixed = i18next.getFixedT(lang);
-  const t = (key: string, slots: Slots = {}): string => {
-    const french = lang === 'fr' ? BOARD_FRENCH[key] : undefined;
+  const t = i18next.getFixedT(lang);
+  const numbers = new Intl.NumberFormat(TAGS[lang]);
+  const board = (key: BoardKey, slots: Slots = {}): string =>
+    ((lang === 'fr' ? BOARD_FRENCH[key] : undefined) ?? BOARD_ENGLISH[key]).replaceAll(
+      /\{\{(\w+)\}\}/gu,
+      (whole, slot: string) => {
+        const value = slots[slot];
 
-    return french == null
-      ? fixed(key, slots)
-      : french.replaceAll(/\{\{(\w+)\}\}/gu, (whole, slot: string) => String(slots[slot] ?? whole));
-  };
+        return value == null ? whole : typeof value === 'number' ? numbers.format(value) : value;
+      },
+    );
   const hosts = hostsOf(lang);
-  const count = EVENT.hosts.length;
-  const answerWord = (answer: Answer): string =>
-    ({
-      coming: t('guestPage.coming'),
-      notComing: t('guestPage.notComing'),
-      notSure: t('guestPage.notSure'),
-    })[answer];
+  const one = new Intl.PluralRules('en').select(EVENT.hosts.length) === 'one';
+  const answerWord = (answer: Answer): string => board(answer);
+  const english = lang === 'en';
 
   return {
     hosts,
     invited: UNGENDERED[lang] ?? t('guest.invitationTitle'),
     gone: t('guest.invalidTitle'),
-    // The stories reword two of main's keys (sc-28008, sc-1439); l10n changes the catalogues, so English is written here.
-    goneBody:
-      lang === 'en'
-        ? 'It may have expired, been replaced by a newer one, or been mistyped. If you think it should work, ask whoever invited you.'
-        : t('guest.invalidBody'),
-    noAccount: lang === 'en' ? 'You do not need an account to answer.' : t('guest.noAccountNeeded'),
+    goneBody: english ? board('goneBody') : t('guest.invalidBody'),
+    noAccount: english ? board('noAccount') : t('guest.noAccountNeeded'),
     hostedBy: t('eventHosts.heading'),
     openInMaps: t('eventPage.openInMaps'),
     unreachable: t('session.unreachableTitle'),
@@ -585,72 +673,74 @@ export function wordsFor(lang: Lang) {
     sending: t('recovery.sending'),
     paused: t('events.paused'),
     finished: t('events.finished'),
-    calledOff: t('guestPage.calledOff'),
-    pausedNotice: t('guestPage.pausedNotice'),
-    pausedReason: t('guestPage.pausedReason'),
-    calledOffNotice: t('guestPage.calledOffNotice'),
-    finishedNotice: t('guestPage.finishedNotice'),
-    yourAnswer: t('guestPage.yourAnswer'),
-    replyBy: (date: string) => t('guestPage.replyBy', { date }),
+    calledOff: board('calledOff'),
+    pausedNotice: board('pausedNotice'),
+    pausedReason: board('pausedReason'),
+    calledOffNotice: board('calledOffNotice'),
+    finishedNotice: board('finishedNotice'),
+    yourAnswer: board('yourAnswer'),
+    replyBy: (date: string) => board('replyBy', { date }),
     choice: (answer: Answer): string =>
-      ({
-        coming: t('guestPage.yes'),
-        notComing: t('guestPage.no'),
-        notSure: t('guestPage.maybe'),
-      })[answer],
+      board(({ coming: 'yes', notComing: 'no', notSure: 'maybe' } as const)[answer]),
     answerWord,
     answered: (answer: Answer, date: string) =>
-      t('guestPage.answered', { answer: answerWord(answer), date }),
+      board('answered', { answer: answerWord(answer), date }),
     greeting: (answer: Answer): string =>
-      ({
-        coming: t('guestPage.greetComing', { name: GUEST }),
-        notComing: t('guestPage.greetNotComing', { name: GUEST }),
-        notSure: t('guestPage.greetNotSure', { name: GUEST }),
-      })[answer],
-    companions: t('guestPage.companionsOnHold'),
-    change: t('guestPage.change'),
-    newAnswer: t('guestPage.newAnswer'),
-    answerNow: t('guestPage.answerNow'),
-    keep: t('guestPage.keep'),
-    back: t('guestPage.back'),
-    check: t('guestPage.check'),
-    answerLine: (answer: Answer) => t('guestPage.answerLine', { answer: answerWord(answer) }),
-    changeShort: t('guestPage.changeShort'),
-    send: t('guestPage.send'),
-    nothingSent: t('guestPage.nothingSent'),
-    notSent: t('guestPage.notSent'),
-    notSentTap: t('guestPage.notSentTap'),
-    same: (answer: Answer) => t('guestPage.same', { answer: answerWord(answer) }),
-    unsent: t('guestPage.unsent'),
-    closedBy: (date: string) => t('guestPage.closedBy', { date }),
-    closedByNotSure: (date: string) => t('guestPage.closedByNotSure', { date }),
-    kitchen: t('guestPage.kitchen'),
-    refused: t('guestPage.refused'),
-    closed: t('guestPage.closed'),
-    didNotAnswer: t('guestPage.didNotAnswer'),
-    closing: t('guestPage.closing'),
-    tell: t('guestPage.tell', { name: GUEST }),
-    tellQuestion: t('guestPage.tellQuestion', { hosts }),
-    tellLine: t('guestPage.tellLine', { name: GUEST, count }),
-    tellThem: t('guestPage.tellThem'),
-    goBack: t('guestPage.goBack'),
-    tellFailed: t('guestPage.tellFailed'),
-    tellLimited: t('guestPage.tellLimited'),
-    tellThanks: t('guestPage.tellThanks', { hosts, count }),
-    doorTitle: t('guestPage.doorTitle'),
-    doorLine: t('guestPage.doorLine'),
-    doorCode: t('guestPage.doorCode'),
-    calendarTitle: t('guestPage.calendarTitle'),
-    calendarLine: t('guestPage.calendarLine'),
-    calendarApple: t('guestPage.calendarApple'),
-    calendarGoogle: t('guestPage.calendarGoogle'),
-    messages: t('guestPage.messages'),
-    writeTo: t('guestPage.writeTo', { hosts }),
-    sendMessage: t('guestPage.sendMessage'),
-    messageCount: (count: number) => t('guestPage.messageCount', { count, most: MESSAGE_MOST }),
-    messageTooLong: t('guestPage.messageTooLong', { most: MESSAGE_MOST }),
-    sent: t('guestPage.sent'),
-    messageFailed: t('guestPage.messageFailed'),
+      board(
+        (
+          {
+            coming: 'greetComing',
+            notComing: 'greetNotComing',
+            notSure: 'greetNotSure',
+          } as const
+        )[answer],
+        { name: GUEST },
+      ),
+    companions: board('companionsOnHold'),
+    change: board('change'),
+    newAnswer: board('newAnswer'),
+    answerNow: board('answerNow'),
+    keep: board('keep'),
+    back: board('back'),
+    check: board('check'),
+    answerLine: (answer: Answer) => board('answerLine', { answer: answerWord(answer) }),
+    changeShort: board('changeShort'),
+    send: board('send'),
+    nothingSent: board('nothingSent'),
+    notSent: board('notSent'),
+    notSentTap: board('notSentTap'),
+    same: (answer: Answer) => board('same', { answer: answerWord(answer) }),
+    unsent: board('unsent'),
+    closedBy: (date: string) => board('closedBy', { date }),
+    closedByNotSure: (date: string) => board('closedByNotSure', { date }),
+    kitchen: board('kitchen'),
+    refused: board('refused'),
+    closed: board('closed'),
+    didNotAnswer: board('didNotAnswer'),
+    closing: board('closing'),
+    tell: board('tell', { name: GUEST }),
+    tellQuestion: board('tellQuestion', { hosts }),
+    tellLine: board('tellLine', { name: GUEST }),
+    tellThem: board('tellThem'),
+    goBack: board('goBack'),
+    tellFailed: board('tellFailed'),
+    tellLimited: board('tellLimited'),
+    tellThanks: board(one ? 'tellThanksOne' : 'tellThanksOther', { hosts }),
+    doorTitle: board('doorTitle'),
+    doorLine: (companionsComing: number) =>
+      board(companionsComing > 0 ? 'doorLine' : 'doorLineAlone'),
+    doorCode: board('doorCode'),
+    calendarTitle: board('calendarTitle'),
+    calendarLine: board('calendarLine'),
+    calendarApple: board('calendarApple'),
+    calendarGoogle: board('calendarGoogle'),
+    messages: board('messages'),
+    writeTo: board('writeTo', { hosts }),
+    sendMessage: board('sendMessage'),
+    messageCount: (count: number) => board('messageCount', { count, most: MESSAGE_MOST }),
+    messageTooLong: board('messageTooLong', { most: MESSAGE_MOST }),
+    sent: board('sent'),
+    messageFailed: board('messageFailed'),
   };
 }
 

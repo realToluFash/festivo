@@ -28,6 +28,7 @@
   --gpLeft: 520px;
   --gpRight: 440px;
   --gpGap: 48px;
+  --gpLeftGap: 28px;
   --gpEase: cubic-bezier(0.2, 0, 0, 1);
 
   display: flex;
@@ -1317,8 +1318,12 @@
 .gp-main.is-two .gp-columns {
   position: relative;
   width: calc(var(--gpLeft) + var(--gpGap) + var(--gpRight));
-  min-height: var(--gpLeftH, var(--gpMin));
+  min-height: calc(var(--gpCoverH, var(--gpMin)) + var(--gpLeftGap) + var(--gpDetailsH, 0px));
   margin: 0 auto;
+}
+
+.gp-main.is-two .gp-columns:not(:has(> .gp-left-after)) {
+  min-height: var(--gpCoverH, var(--gpMin));
 }
 
 .gp:is(.is-phone, .is-small) .gp-main.is-one :is(.gp-columns, .gp-alone-wrap) {
@@ -1369,7 +1374,7 @@
 }
 
 .is-two .gp-columns > .gp-left-after {
-  top: calc(var(--gpCoverH, var(--gpMin)) + 28px);
+  top: calc(var(--gpCoverH, var(--gpMin)) + var(--gpLeftGap));
 }
 
 .gp-main.is-one .gp-alone-wrap {

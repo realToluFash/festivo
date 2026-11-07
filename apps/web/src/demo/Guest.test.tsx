@@ -68,7 +68,7 @@ describe('the guest’s own page, A · The cover card (sc-31306)', () => {
     const guestLinks = hrefs.filter((href) => href?.startsWith('/demo/guest'));
 
     expect(guestLinks).toEqual(GUEST_PAGES.flatMap((one) => one.states).map((one) => one.to));
-    expect(guestLinks).toHaveLength(44);
+    expect(guestLinks).toHaveLength(47);
   });
 
   it('opens on the cover card: the invitation, the guest, the event, when and where', async () => {
@@ -119,6 +119,7 @@ const SAYS: [string, () => void][] = [
   ],
   ['notSentTap', () => screen.getByText(/Check your connection and tap it again\.$/u)],
   ['coming', () => screen.getByRole('heading', { name: `See you there, ${NAME}.` })],
+  ['comingAlone', () => screen.getByText('A screenshot works too.')],
   ['notComing', () => screen.getByRole('heading', { name: `We’ll miss you, ${NAME}.` })],
   ['notSure', () => screen.getByText('Your companions are on hold until you decide.')],
   ['changing', () => screen.getByRole('heading', { name: 'Your new answer' })],
@@ -174,6 +175,8 @@ const SAYS: [string, () => void][] = [
   ['replySending', () => screen.getByText('Sending…')],
   ['replySent', () => screen.getByText(/^Sent · Tue, Nov 3 · 9:41\sAM$/u)],
   ['replyFailed', () => screen.getByText(/^Your message wasn’t sent\./u)],
+  ['calledOffMessages', () => expect(screen.getAllByRole('article')).toHaveLength(3)],
+  ['finishedMessages', () => screen.getByText(THANK_YOU)],
 ];
 
 describe('every state, deep-linked by ?state=', () => {
@@ -379,6 +382,49 @@ describe('over, never answered', () => {
     expect(screen.queryByText(/^You answered/u)).toBeNull();
     expect(document.querySelector('.gp-tag')).toBeNull();
     expect(screen.getByText('Hosted by')).toBeDefined();
+  });
+});
+
+describe('the door code’s two lines (sc-1301, pm #31418)', () => {
+  it('names the companions only when one counts as coming', async () => {
+    await guest('coming');
+    expect(
+      screen.getByText('It lets you and your companions in. A screenshot works too.'),
+    ).toBeDefined();
+    cleanup();
+
+    await guest('comingAlone');
+    expect(screen.getByText('A screenshot works too.')).toBeDefined();
+    expect(screen.queryByText(/your companions in/u)).toBeNull();
+    expect(screen.getByRole('heading', { name: 'Show this at the door' })).toBeDefined();
+    expect(
+      screen.getByText('Your calendar updates by itself if the date, time or place changes.'),
+    ).toBeDefined();
+  });
+});
+
+describe('the hosts’ messages in an ended phase (Settled, 7 Nov (pm))', () => {
+  it('called off: the messages and the box sit under the greyed cover, with no answer and no hosts row', async () => {
+    await guest('calledOffMessages');
+    const under = [...document.querySelectorAll('.gp-under > *')].map(
+      (one) => one.className.split(' ')[0],
+    );
+
+    expect(under).toEqual(['gp-messages']);
+    expect(document.querySelector('.gp-cover.is-grey')).not.toBeNull();
+    expect(screen.queryByText('Hosted by')).toBeNull();
+    expect(screen.getByLabelText('Write to Adaeze Obi and Tunde Bakare')).toBeDefined();
+    expect(screen.getByRole('status').textContent).toContain('This event has been called off.');
+  });
+
+  it('finished: the thank-you and the answer, then the messages and the box', async () => {
+    await guest('finishedMessages');
+    const under = [...document.querySelectorAll('.gp-under > *')].map(
+      (one) => one.className.split(' ')[0],
+    );
+
+    expect(under).toEqual(['gp-ended', 'gp-messages']);
+    expect(screen.queryByRole('heading', { name: 'Show this at the door' })).toBeNull();
   });
 });
 
