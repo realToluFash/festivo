@@ -1,0 +1,53 @@
+# sc-3586: a Live event before its start: Pause, its confirmation closed with Keep it live, then Pause, the Paused pill and line, and Resume back to Live. Pass EV_PAUSE.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV_PAUSE}
+- extendedWaitUntil:
+    visible:
+      id: 'events.phase.live'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'events.pause'
+- takeScreenshot: live-pause-offered
+- tapOn:
+    id: 'events.pause'
+- extendedWaitUntil:
+    visible:
+      id: 'events.pauseYes'
+    timeout: 10000
+- takeScreenshot: pause-confirm
+- tapOn:
+    id: 'events.pauseNo'
+- extendedWaitUntil:
+    notVisible:
+      id: 'events.pauseYes'
+    timeout: 10000
+- assertVisible:
+    id: 'events.phase.live'
+- tapOn:
+    id: 'events.pause'
+- extendedWaitUntil:
+    visible:
+      id: 'events.pauseYes'
+    timeout: 10000
+- tapOn:
+    id: 'events.pauseYes'
+- extendedWaitUntil:
+    visible:
+      id: 'events.pausedRow'
+    timeout: 10000
+- assertVisible:
+    id: 'events.phase.paused'
+- assertNotVisible:
+    id: 'events.pause'
+- takeScreenshot: paused
+- tapOn:
+    id: 'events.resume'
+- extendedWaitUntil:
+    visible:
+      id: 'events.phase.live'
+    timeout: 10000
+- assertNotVisible:
+    id: 'events.pausedRow'
+- takeScreenshot: resumed

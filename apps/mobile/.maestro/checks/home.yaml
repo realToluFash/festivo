@@ -1,0 +1,8 @@
+# Home, saying whose session it is.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible: '{{t:settings.signedInAs|email}}'
+    timeout: 30000
+- takeScreenshot: home

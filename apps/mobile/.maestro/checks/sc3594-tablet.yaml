@@ -1,0 +1,20 @@
+# sc-3594: Events in ${ORG} on the tablet, held upright and then on its side.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- runFlow:
+    file: ../switch-organisation.yaml
+    env:
+      ORG: ${ORG}
+- openLink: ${METRO_URL}/--/
+- tapOn:
+    id: 'frame.events'
+- extendedWaitUntil:
+    visible:
+      id: 'events.(tab.upcoming|firstRun)'
+    timeout: 30000
+- takeScreenshot: portrait
+- setOrientation: LANDSCAPE_LEFT
+- waitForAnimationToEnd
+- takeScreenshot: landscape
+- setOrientation: PORTRAIT

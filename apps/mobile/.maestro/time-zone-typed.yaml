@@ -1,0 +1,18 @@
+# Account opened, Find your time zone open, QUERY typed in its search. sc-19656.
+#
+# Waits on the card by id, not on the title: a flow run alone is not localised, and the card
+# draws only once the account has loaded.
+#
+#   node .qa/bin/qa-env.mjs maestro time-zone-typed QUERY=…
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/account
+- scrollUntilVisible:
+    element:
+      id: 'timeZone.change'
+    timeout: 30000
+- tapOn:
+    id: 'timeZone.change'
+- tapOn:
+    id: 'timeZone.search'
+- inputText: ${QUERY}

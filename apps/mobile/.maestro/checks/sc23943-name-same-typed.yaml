@@ -1,0 +1,18 @@
+# Name open on Account, Full name retyped as it was, keys still up on the field. sc-23943. Expects the account's name to be QA Tester, scripts/qa-account.mjs's default.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/account
+- extendedWaitUntil:
+    visible: '{{t:account.title}}'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'nameCard.change'
+    timeout: 30000
+- tapOn:
+    id: 'nameCard.change'
+- tapOn:
+    id: 'nameCard.field'
+- eraseText: 80
+- inputText: 'QA Tester'
+- takeScreenshot: name-same-typed

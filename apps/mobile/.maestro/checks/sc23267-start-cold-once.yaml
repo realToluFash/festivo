@@ -1,0 +1,28 @@
+# sc-23267, one cold run: the app stopped, opened on You are not in an organisation, and Start organisation bringing up the card with its name field, shot as RUN.
+appId: host.exp.Exponent
+---
+- stopApp
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible:
+      id: 'noOrganisation'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'noOrganisation.start'
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: 'noOrganisation.start'
+- extendedWaitUntil:
+    visible:
+      id: 'createOrganisation.cancel'
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: start-cold-${RUN}
+- tapOn:
+    id: 'createOrganisation.cancel'
+- extendedWaitUntil:
+    notVisible:
+      id: 'createOrganisation'
+    timeout: 10000

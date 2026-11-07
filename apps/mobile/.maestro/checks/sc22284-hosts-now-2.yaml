@@ -1,0 +1,41 @@
+# sc-22284: somebody else adds 2 hosts to a Draft while its Make live sheet is open; Make live with a name in Host 1 then shows notSavedChanged and hostsNow over them.
+appId: host.exp.Exponent
+---
+- runScript:
+    file: ../scripts/sc22284-draft.js
+    env:
+      NAME: Gala 2
+- openLink: ${METRO_URL}/--/events/${output.event}
+- extendedWaitUntil:
+    visible:
+      id: 'events.makeLive'
+    timeout: 30000
+- tapOn:
+    id: 'events.makeLive'
+- extendedWaitUntil:
+    visible:
+      id: 'events.makeLiveHost'
+    timeout: 10000
+- runScript:
+    file: ../scripts/change-event-elsewhere.js
+    env:
+      EVENT_ID: ${output.event}
+      HOSTS: '2'
+- assertTrue:
+    condition: ${output.changed == 200}
+    label: 'Hosts saved elsewhere, answered ${output.changed}'
+- inputText: Tolu Fash
+- tapOn:
+    id: 'events.makeLiveYes'
+- extendedWaitUntil:
+    visible:
+      id: 'events.makeLiveHostsNow'
+    timeout: 15000
+- assertVisible: '{{t:eventLive.notSavedChanged}}'
+- assertVisible: '{{t:eventLive.hostsNow}}'
+- scrollUntilVisible:
+    element: 'Maria Fernanda de los Santos Gutierrez'
+    direction: DOWN
+- takeScreenshot: hosts-now-2
+- tapOn:
+    id: 'events.makeLiveNo'
