@@ -131,7 +131,7 @@ describe('Events in A at a desk (sc-30304)', () => {
     const areas = screen.getByRole('navigation', { name: WEDDING });
 
     fireEvent.change(within(part).getByRole('textbox'), { target: { value: 'Our big day' } });
-    fireEvent.click(within(areas).getByRole('link', { name: 'Messages' }));
+    fireEvent.click(within(areas).getByRole('link', { name: 'Schedule' }));
 
     const ask = await screen.findByRole('alertdialog', { name: 'Discard your change?' });
     fireEvent.click(within(ask).getByRole('button', { name: 'Keep editing' }));
@@ -139,7 +139,7 @@ describe('Events in A at a desk (sc-30304)', () => {
     expect(router.state.location.search).toBe('?state=name');
     expect((within(part).getByRole('textbox') as HTMLInputElement).value).toBe('Our big day');
 
-    fireEvent.click(within(areas).getByRole('link', { name: 'Messages' }));
+    fireEvent.click(within(areas).getByRole('link', { name: 'Schedule' }));
     fireEvent.click(
       within(await screen.findByRole('alertdialog', { name: 'Discard your change?' })).getByRole(
         'button',
@@ -147,8 +147,8 @@ describe('Events in A at a desk (sc-30304)', () => {
       ),
     );
 
-    expect(await screen.findByRole('heading', { level: 1, name: 'Messages' })).toBeDefined();
-    expect(router.state.location.search).toBe('?area=messages');
+    expect(await screen.findByRole('heading', { level: 1, name: 'Schedule' })).toBeDefined();
+    expect(router.state.location.search).toBe('?area=schedule');
   });
 
   it('asks before Back drops a change, and the browser asks on reload', SLOW, async () => {
@@ -177,6 +177,18 @@ describe('Events in A at a desk (sc-30304)', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Events' })).toBeDefined();
     expect(router.state.location.pathname).toBe('/demo/events');
     expect(reload()).toBe(false);
+
+    await act(() => router.navigate(1));
+    await screen.findByRole('heading', { level: 1, name: WEDDING });
+    const again = screen.getByRole('group', { name: 'Event name' });
+
+    fireEvent.change(within(again).getByRole('textbox'), { target: { value: 'Our big day' } });
+    fireEvent.click(within(again).getByRole('button', { name: 'Save' }));
+    expect(reload()).toBe(false);
+    await act(() => router.navigate(-1));
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Events' })).toBeDefined();
+    expect(screen.queryByRole('alertdialog', { name: 'Discard your change?' })).toBeNull();
   });
 
   it('leaves without a second ask once Duplicate is confirmed', SLOW, async () => {
@@ -196,6 +208,24 @@ describe('Events in A at a desk (sc-30304)', () => {
     expect(router.state.location.pathname).not.toBe('/demo/events/evt-wed-4');
     expect(screen.queryByRole('alertdialog', { name: 'Discard your change?' })).toBeNull();
     expect(screen.getByRole('heading', { level: 1, name: WEDDING })).toBeDefined();
+  });
+
+  it('leaves without a second ask once Delete is confirmed by name', SLOW, async () => {
+    const router = await page('/demo/events/evt-wed-4?state=name');
+    const part = screen.getByRole('group', { name: 'Event name' });
+    const manage = screen.getByRole('region', { name: 'Manage' });
+
+    fireEvent.change(within(part).getByRole('textbox'), { target: { value: 'Our big day' } });
+    fireEvent.click(within(manage).getByRole('button', { name: 'Delete event…' }));
+
+    const ask = await screen.findByRole('alertdialog', { name: `Delete ${WEDDING}?` });
+
+    fireEvent.change(within(ask).getByRole('textbox'), { target: { value: WEDDING } });
+    fireEvent.click(within(ask).getByRole('button', { name: 'Delete' }));
+
+    expect(await screen.findByText(`${WEDDING} was deleted.`)).toBeDefined();
+    expect(router.state.location.pathname).toBe('/demo/events');
+    expect(screen.queryByRole('alertdialog', { name: 'Discard your change?' })).toBeNull();
   });
 
   it(
