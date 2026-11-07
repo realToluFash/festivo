@@ -117,6 +117,47 @@ describe('Vendors at a desk in B Confetti (sc-82)', () => {
     vi.useRealTimers();
   });
 
+  it('refuses a number its country does not use each time it is sent', SLOW, async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    await open('/demo/vendors?state=invalid');
+    const dialog = screen.getByRole('dialog', { name: 'Add a vendor' });
+    const refused = 'That is not a phone number for Nigeria. Check it and try again.';
+
+    fireEvent.change(within(dialog).getByLabelText('Email address'), {
+      target: { value: 'bookings@harbourboats.ng' },
+    });
+    fireEvent.change(within(dialog).getByLabelText('Website', { exact: false }), {
+      target: { value: 'harbourboats.ng' },
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Add' }));
+    await act(() => vi.advanceTimersByTimeAsync(1000));
+
+    expect(screen.getByRole('dialog', { name: 'Add a vendor' })).toBeDefined();
+    expect(within(dialog).getByText(refused)).toBeDefined();
+
+    fireEvent.change(within(dialog).getByLabelText('Phone number', { exact: false }), {
+      target: { value: '803 555 0199' },
+    });
+
+    expect(within(dialog).queryByText(refused)).toBeNull();
+    vi.useRealTimers();
+  });
+
+  it('takes Choose a country away once the number is cleared', SLOW, async () => {
+    await open('/demo/vendors?state=add');
+    const dialog = screen.getByRole('dialog', { name: 'Add a vendor' });
+    const phone = within(dialog).getByLabelText('Phone number', { exact: false });
+
+    fireEvent.change(phone, { target: { value: '803 555 0142' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Add' }));
+
+    expect(within(dialog).getByText('Choose a country.')).toBeDefined();
+
+    fireEvent.change(phone, { target: { value: '' } });
+
+    expect(within(dialog).queryByText('Choose a country.')).toBeNull();
+  });
+
   it('gives a member no Vendors item, and the refusal on its address', SLOW, async () => {
     await open('/demo/vendors?as=ana');
 

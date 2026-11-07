@@ -303,6 +303,15 @@ export function notANumberFor(country: string): string {
   return `That is not a phone number for ${countryName(country)}. Check it and try again.`;
 }
 
+/** The demo's stand-in for the API refusing a number its country does not use: all zeros, as `?state=invalid` types. */
+export function refusedPhone(draft: Draft): Problems {
+  const digits = draft.phone.replace(/\D/g, '');
+
+  return draft.country !== '' && digits !== '' && /^0+$/.test(digits)
+    ? { phone: notANumberFor(draft.country) }
+    : {};
+}
+
 export function savedVendor(draft: Draft, id: string): Vendor {
   return {
     id,

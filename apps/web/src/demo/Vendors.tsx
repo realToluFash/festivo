@@ -39,6 +39,7 @@ import {
   changed,
   draftOf,
   draftProblems,
+  refusedPhone,
   inView,
   isLooking,
   noMatchLine,
@@ -575,7 +576,7 @@ function VendorForm({
     const next = { ...draft, [field]: value } as Draft;
     const now = draftProblems(next);
     const kept: Problems = { ...problems };
-    const linked = field === 'country' ? ['country', 'phone'] : [field];
+    const linked = field === 'country' || field === 'phone' ? ['country', 'phone'] : [field];
     for (const one of linked as (keyof Problems)[]) {
       const line = now[one];
       if (kept[one] == null) continue;
@@ -584,19 +585,29 @@ function VendorForm({
     }
     onDraft(next, kept);
   };
+  const toFirstProblem = () =>
+    window.setTimeout(() => {
+      const first = document.querySelector<HTMLElement>('.desk-dialog [aria-invalid="true"]');
+      (first ?? name.current)?.focus();
+    }, 0);
   const save = () => {
     if (busy) return;
     const found = draftProblems(draft);
     onDraft(draft, found);
     if (Object.keys(found).length > 0) {
-      const first = document.querySelector<HTMLElement>('.desk-dialog [aria-invalid="true"]');
-      window.setTimeout(() => (first ?? name.current)?.focus(), 0);
+      toFirstProblem();
       return;
     }
     setBusy(true);
     pending.current = window.setTimeout(() => {
       setBusy(false);
-      onSaved(draft);
+      const refused = refusedPhone(draft);
+      if (Object.keys(refused).length === 0) {
+        onSaved(draft);
+        return;
+      }
+      onDraft(draft, refused);
+      toFirstProblem();
     }, BUSY_MS);
   };
   const dismiss = () => (changed(draft, from) ? setAsking(true) : onClose());
