@@ -179,8 +179,9 @@ fails>'`, note it on your story, do what you can without it, and move on. Only t
   prompt nobody answers, and the worker is stopped. `git add <paths>`, `git commit`, then
   `git push origin HEAD:<branch>`, each its own call, with no `cd`, no pipe and no
   redirect. A long message goes in a file passed as `git commit -F <file>`. `SQ_RUN_DIR` is
-  already set; do not export it, because sq stops a run's processes by the `SQ_RUN_DIR`
-  they carry, and re-exporting it hides what you start from that clean-up (sc-28504).
+  already set; leave it alone. The export is what makes the worktree guard refuse the git
+  command, and sq stops a run's processes by the `SQ_RUN_DIR` value they carry, so setting
+  it to anything else hides what you start from that clean-up (sc-28504).
 - **Write a note at each milestone.** A branch pushed, a part built, a result found: one
   line with `sq <role> note sc-<n> --text "<what>"`, and push what you have. A run stopped by its
   time or memory limit writes no closing note, so these are what the next run picks up.
