@@ -27,6 +27,8 @@ import { GuestPage } from './Guest.tsx';
 import { GUEST_PAGES } from './guest.ts';
 import { NewAccountBoard } from './NewAccount.tsx';
 import { NOTIFICATIONS_PAGES } from './notifications.ts';
+import { leave } from './chosenScheme.ts';
+import { PERSONALISATION_PAGES } from './personalisation.ts';
 import { SECURITY_PAGES } from './security.ts';
 import { Notice } from './parts.tsx';
 import { People } from './People.tsx';
@@ -124,6 +126,8 @@ export default function Demo() {
   const { state } = useLocation() as { state: { from?: string } | null };
   const [from] = useState(() => state?.from ?? '/sign-in');
 
+  useEffect(() => leave, []);
+
   return (
     <Routes>
       <Route index element={<DemoHome from={from} />} />
@@ -145,6 +149,7 @@ export default function Demo() {
       <Route path="settings/account" element={<Settings open="account" />} />
       <Route path="settings/security" element={<Settings open="security" />} />
       <Route path="settings/notifications" element={<Settings open="notifications" />} />
+      <Route path="settings/personalisation" element={<Settings open="personalisation" />} />
       <Route path="settings/general" element={<Settings open="general" />} />
       <Route path="settings/sign-in-rules" element={<Settings open="signInRules" />} />
       <Route path="people" element={<People />} />
@@ -215,6 +220,8 @@ function DemoHome({ from }: { from: string }) {
         <BoardPages pages={SECURITY_PAGES} />
         <h3>Notification settings in B · Summary first · desktop</h3>
         <BoardPages pages={NOTIFICATIONS_PAGES} />
+        <h3>Personalisation in A · Swatches · desktop</h3>
+        <BoardPages pages={PERSONALISATION_PAGES} />
         <h3>General in B · Summary first · desktop</h3>
         <BoardPages pages={GENERAL_PAGES} />
         <h3>Sign-in rules in B · Where you stand · desktop</h3>
