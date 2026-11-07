@@ -16,13 +16,14 @@ export function viewerOf(name: string | undefined): Viewer {
   return VIEWERS.find((viewer) => viewer === name) ?? 'owner';
 }
 
-/** sc-29859 leaves no Roles section: what each role does is fixed. */
-export type DemoSection = Exclude<SettingsSection, 'roles'>;
+/** sc-29859 leaves no Roles section: what each role does is fixed. sc-30441 adds Personalisation, ahead of the app. */
+export type DemoSection = Exclude<SettingsSection, 'roles'> | 'personalisation';
 
 export const SECTIONS: readonly DemoSection[] = [
   'account',
   'security',
   'notifications',
+  'personalisation',
   'organisation',
   'members',
   'signInRules',
@@ -46,7 +47,7 @@ export const VIEWER_ORGANISATION: Record<Viewer, { role: string; permissions: st
   noOrg: null,
 };
 
-/** settingsGroups, ahead of the app as sc-29859 has it: no Roles, and the organisation's own row only for whoever manages it. */
+/** settingsGroups, ahead of the app as sc-29859 and sc-30441 have it: no Roles, Personalisation after Notifications for everyone, and the organisation's own row only for whoever manages it. */
 export function demoGroups(
   viewer: Viewer,
 ): { heading: SettingsGroup['heading']; sections: DemoSection[] }[] {
@@ -55,10 +56,14 @@ export function demoGroups(
 
   return settingsGroups(organisation).map(({ heading, sections }) => ({
     heading,
-    sections: sections.filter(
-      (section): section is DemoSection =>
-        section !== 'roles' && (manages || section !== 'organisation'),
-    ),
+    sections: sections
+      .filter(
+        (section): section is Exclude<DemoSection, 'personalisation'> =>
+          section !== 'roles' && (manages || section !== 'organisation'),
+      )
+      .flatMap((section): DemoSection[] =>
+        section === 'notifications' ? [section, 'personalisation'] : [section],
+      ),
   }));
 }
 

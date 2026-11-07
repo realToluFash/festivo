@@ -1,10 +1,10 @@
 import { type Href, router, useLocalSearchParams } from 'expo-router';
-import { type ComponentType, useCallback, useMemo, useState } from 'react';
+import { type ComponentType, useCallback, useEffect, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Toast } from '../../components/Toast.tsx';
-import { SECTION_HREF, type SettingsSection } from '../../kit/appNav.ts';
+import { SECTION_HREF } from '../../kit/appNav.ts';
 import { useLayout } from '../../layout/useLayout.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { OrgSwitcherProvider } from '../OrgSwitcher.tsx';
@@ -17,6 +17,8 @@ import { PHONE_TAB_BAR, type Shell, ShellContext } from './Frame.tsx';
 import { MembersSection } from './Members.tsx';
 import { NotificationsSection } from './Notifications.tsx';
 import { OrganisationSection } from './Organisation.tsx';
+import { PersonalisationSection } from './Personalisation.tsx';
+import { holdChoice, schemeOf } from './PersonalisationModel.ts';
 import {
   type DemoSection,
   lookingAs,
@@ -33,13 +35,16 @@ const PAGES: Record<DemoSection, ComponentType> = {
   account: AccountSection,
   security: SecuritySection,
   notifications: NotificationsSection,
+  personalisation: PersonalisationSection,
   organisation: OrganisationSection,
   members: MembersSection,
   signInRules: SignInRulesSection,
 };
 
-/** The demo's paths are the app's own under /demo: /demo/settings/sign-in-rules. */
-export function slugOf(section: SettingsSection): string {
+/** The demo's paths are the app's own under /demo: /demo/settings/sign-in-rules; Personalisation's is ahead of the app's. */
+export function slugOf(section: DemoSection): string {
+  if (section === 'personalisation') return 'personalisation';
+
   return SECTION_HREF[section].slice('/settings/'.length);
 }
 
@@ -47,11 +52,7 @@ export function sectionOfSlug(slug: string | undefined): DemoSection | null {
   return SECTIONS.find((section) => slugOf(section) === slug) ?? null;
 }
 
-export function settingsHref(
-  viewer: Viewer,
-  section: SettingsSection | null,
-  state?: string,
-): Href {
+export function settingsHref(viewer: Viewer, section: DemoSection | null, state?: string): Href {
   const query = [state == null ? '' : `state=${state}`, viewer === 'owner' ? '' : `as=${viewer}`]
     .filter((part) => part !== '')
     .join('&');
@@ -66,17 +67,22 @@ export function layoutOf(kind: ReturnType<typeof useLayout>['kind']): SettingsLa
 
 /** Settings in B, on sample data: the list, and each section's page under it. */
 export function SettingsRoute({ section }: { section: DemoSection | null }) {
-  const params = useLocalSearchParams<{ as?: string; switcher?: string }>();
+  const params = useLocalSearchParams<{ as?: string; switcher?: string; scheme?: string }>();
   const layout = layoutOf(useLayout().kind);
   const [told, setTold] = useState<string>();
   const tell = useCallback<Tell>((words) => setTold(words), []);
   const viewer = viewerOf(params.as);
   const shown = section != null && sectionsFor(viewer).includes(section) ? section : null;
+  const seed = schemeOf(params.scheme);
 
   useCoverStatusBar('dark', false);
 
+  useEffect(() => {
+    if (seed != null) holdChoice(seed);
+  }, [seed]);
+
   const openSection = useCallback(
-    (next: SettingsSection, state?: string) => {
+    (next: DemoSection, state?: string) => {
       if (next === shown && state == null) return;
       // On its side the list stays put, so a row changes the page beside it rather than stacking one.
       if (layout === 'landscape') router.replace(settingsHref(viewer, next, state));

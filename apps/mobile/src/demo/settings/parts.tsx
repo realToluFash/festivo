@@ -218,7 +218,7 @@ export function RoundButton({
   );
 }
 
-type TileOf = Exclude<DemoSection, 'account'> | 'demo';
+type TileOf = Exclude<DemoSection, 'account' | 'personalisation'> | 'demo';
 
 const TILES: Record<TileOf, { glyph: GlyphName; fill: string }> = {
   security: { glyph: 'shield', fill: tokens.optionTeal },

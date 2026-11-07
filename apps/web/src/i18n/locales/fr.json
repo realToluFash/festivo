@@ -593,6 +593,7 @@
     "expiredBody": "Les codes ne sont valables qu’un temps. Envoyez-en un nouveau et utilisez celui du dernier e-mail.",
     "exhaustedTitle": "Trop de tentatives incorrectes",
     "exhaustedBody": "Ce code ne fonctionne plus. Envoyez-en un nouveau pour continuer.",
+    "registerAgain": "Inscrivez-vous à nouveau avec la bonne adresse",
     "wrongAddress": "Ce n’est pas votre adresse ?",
     "doneTitle": "Adresse vérifiée",
     "doneBody": "{{address}} est confirmée. Ensuite, quelques informations pour que votre équipe sache qui est qui.",

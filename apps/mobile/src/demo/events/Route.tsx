@@ -3,7 +3,6 @@ import { type ReactNode, useCallback, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import type { SettingsSection } from '../../kit/appNav.ts';
 import { useLayout } from '../../layout/useLayout.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { OrgSwitcherProvider } from '../OrgSwitcher.tsx';
@@ -13,7 +12,7 @@ import type { Tell } from '../../components/TodayParts.tsx';
 import { useCoverStatusBar } from '../Welcome.tsx';
 import { PHONE_TAB_BAR, type Shell, ShellContext } from '../settings/Frame.tsx';
 import { layoutOf, settingsHref } from '../settings/Route.tsx';
-import { lookingAs } from '../settings/sample.ts';
+import { type DemoSection, lookingAs } from '../settings/sample.ts';
 import { PageToast } from '../settings/Summary.tsx';
 import { EventScreen } from './EventPage.tsx';
 import { backToEvents } from './EventFrame.tsx';
@@ -40,7 +39,7 @@ function EventsShell({
   useCoverStatusBar('dark', false);
 
   const openSection = useCallback(
-    (section: SettingsSection) => router.push(settingsHref('owner', section)),
+    (section: DemoSection) => router.push(settingsHref('owner', section)),
     [],
   );
   const toSettings = useCallback(() => router.push(settingsHref('owner', null)), []);

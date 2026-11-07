@@ -575,6 +575,7 @@
     "exhaustedTitle": "Too many wrong tries",
     "exhaustedBody": "That code no longer works. Send a new one to carry on.",
     "wrongAddress": "Not your address?",
+    "registerAgain": "Register again with the right one",
     "doneTitle": "Email verified",
     "doneBody": "{{address}} is confirmed. Next, a few details so your team knows who is who.",
     "doneBodyAlternative": "{{address}} is verified. It stays an alternative address until you make it primary in Account.",
