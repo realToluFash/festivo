@@ -25,6 +25,8 @@ import { MESSAGES_PAGES } from './messages.ts';
 import { GetBackInBoard } from './GetBackIn.tsx';
 import { GuestPage } from './Guest.tsx';
 import { GUEST_PAGES } from './guest.ts';
+import { Guests } from './Guests.tsx';
+import { GUESTS_PAGES } from './guests.ts';
 import { NewAccountBoard } from './NewAccount.tsx';
 import { NOTIFICATIONS_PAGES } from './notifications.ts';
 import { SECURITY_PAGES } from './security.ts';
@@ -149,6 +151,7 @@ export default function Demo() {
       <Route path="settings/sign-in-rules" element={<Settings open="signInRules" />} />
       <Route path="people" element={<People />} />
       <Route path="guest" element={<GuestPage />} />
+      <Route path="guests" element={<Guests />} />
       <Route path="later" element={<Later />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
@@ -197,6 +200,12 @@ function DemoHome({ from }: { from: string }) {
         <BoardPages pages={CREATE_PAGES} />
         <h3>Guest’s page in A · The cover card · phone, tablet and desk</h3>
         <BoardPages pages={GUEST_PAGES} />
+      </section>
+
+      <section className="demo-home-page" aria-labelledby="demo-page-30">
+        <h2 id="demo-page-30">30 · Guests · the planner’s side</h2>
+        <h3>Guests in A · Summary first · desktop</h3>
+        <BoardPages pages={GUESTS_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-36">

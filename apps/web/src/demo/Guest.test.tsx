@@ -65,7 +65,7 @@ describe('the guest’s own page, A · The cover card (sc-31306)', () => {
 
     expect(head.textContent).toBe('Guest’s page in A · The cover card · phone, tablet and desk');
     const hrefs = screen.getAllByRole('link').map((one) => one.getAttribute('href'));
-    const guestLinks = hrefs.filter((href) => href?.startsWith('/demo/guest'));
+    const guestLinks = hrefs.filter((href) => href?.startsWith('/demo/guest?'));
 
     expect(guestLinks).toEqual(GUEST_PAGES.flatMap((one) => one.states).map((one) => one.to));
     expect(guestLinks).toHaveLength(47);
