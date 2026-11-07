@@ -101,7 +101,7 @@ describe('the states a link opens', () => {
     expect(inUse(null)).toBe('violet');
   });
 
-  it('draws each board: Inês never chose, then picks Garden', () => {
+  it('draws each board: the person never chose, then picks Garden', () => {
     const at = (state: (typeof PERSONALISATION_STATES)[number]) =>
       personalisationStart(state, 'berry');
 

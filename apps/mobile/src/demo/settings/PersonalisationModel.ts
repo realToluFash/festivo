@@ -108,7 +108,7 @@ export interface PersonalisationStart {
   saved: boolean;
 }
 
-/** Each state as the boards draw it: Inês has never chosen, and picks Garden; with no state, what this visit holds. */
+/** Each state as the boards draw it: the person has never chosen, and picks Garden; with no state, what this visit holds. */
 export function personalisationStart(
   state: PersonalisationState | null,
   held: Choice,
