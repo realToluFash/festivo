@@ -84,6 +84,7 @@ import {
   RESEND,
 } from './MessagesSample.ts';
 import { CHANNEL_WORD, type ChannelKey, W, say } from './MessagesWords.ts';
+import { outsideToken, tokenText } from './TokenText.ts';
 import { FixEmail, WhoReached, reachViewOf } from './WhoReached.tsx';
 
 const SAMPLE_CHANNELS: readonly ChannelKey[] = ['email', 'sms'];
@@ -383,8 +384,10 @@ export function MessagesScreen({
 
   const insert = (token: string) => {
     if (draft == null) return;
-    const at = caret.current ?? draft.body.length;
-    dispatch({ type: 'body', text: `${draft.body.slice(0, at)}{${token}}${draft.body.slice(at)}` });
+    const at = outsideToken(draft.body, caret.current ?? draft.body.length);
+    const run = tokenText(token);
+    dispatch({ type: 'body', text: `${draft.body.slice(0, at)}${run}${draft.body.slice(at)}` });
+    caret.current = at + run.length;
     setInsertAt(null);
   };
   const list = (

@@ -1,4 +1,4 @@
-import { type Ref, type RefObject, useState } from 'react';
+import { type Ref, type RefObject, useEffect, useRef, useState } from 'react';
 import {
   Pressable,
   StyleSheet,
@@ -7,7 +7,7 @@ import {
   type ViewInstance,
 } from 'react-native';
 
-import { TextField } from '../../components/Field.tsx';
+import { TextField, type TextFieldProps } from '../../components/Field.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
@@ -15,6 +15,8 @@ import { Pill } from '../../components/SettingsParts.tsx';
 import { TextAction } from '../../components/Summary.tsx';
 import { MessageGlyph } from './MessageMarks.tsx';
 import { type Draft, toChip } from './MessagesModel.ts';
+import { piecesOf } from './MessagesSample.ts';
+import { keepWhole, outsideToken, tokenText } from './TokenText.ts';
 import { CHANNEL_WORD, type ChannelKey, W, say } from './MessagesWords.ts';
 
 const INK2 = tokens.colorInkSecondary;
@@ -241,12 +243,12 @@ export function NewComposer({
           testID="messages.subject"
         />
       </View>
-      <TextField
+      <TokenField
         {...focus}
-        ref={bodyRef}
-        value={draft.body}
-        onChangeText={onBody}
-        onSelectionChange={(event) => onCaret?.(event.nativeEvent.selection.end)}
+        text={draft.body}
+        fieldRef={bodyRef}
+        onText={onBody}
+        onCaret={onCaret}
         placeholder={W.writeToGuests}
         multiline
         autoFocus={autoFocus}
@@ -255,7 +257,7 @@ export function NewComposer({
         autoCapitalize="sentences"
         maxLength={10000}
         style={[styles.bare, styles.body]}
-        accessibilityLabel={W.message}
+        label={W.message}
         testID="messages.body"
       />
       {tools && (
@@ -305,6 +307,66 @@ export function NewComposer({
         </View>
       )}
     </View>
+  );
+}
+
+/** The words, each inserted token one run: taken whole, the caret kept at its edges. */
+function TokenField({
+  label,
+  text,
+  fieldRef,
+  onText,
+  onCaret,
+  ...rest
+}: Omit<TextFieldProps, 'value' | 'onChangeText' | 'children' | 'accessibilityLabel'> & {
+  label: string;
+  text: string;
+  fieldRef?: RefObject<TextInputInstance | null> | undefined;
+  onText: (text: string) => void;
+  onCaret?: ((at: number) => void) | undefined;
+}) {
+  const own = useRef<TextInputInstance>(null);
+  const field = fieldRef ?? own;
+  const caretTo = useRef<number | null>(null);
+  const pieces = piecesOf(text);
+  const named = [...new Set(pieces.filter((piece) => piece.token).map((piece) => piece.text))];
+
+  useEffect(() => {
+    const at = caretTo.current;
+    if (at == null) return;
+    caretTo.current = null;
+    field.current?.setSelection(at, at);
+  }, [text, field]);
+
+  return (
+    <TextField
+      {...rest}
+      ref={field}
+      accessibilityLabel={label}
+      onChangeText={(next) => {
+        const kept = keepWhole(text, next);
+        if (kept.text !== next) caretTo.current = kept.caret;
+        onText(kept.text);
+      }}
+      onSelectionChange={(event) => {
+        const { start, end } = event.nativeEvent.selection;
+        const from = outsideToken(text, start);
+        const to = outsideToken(text, end);
+        if (from !== start || to !== end) field.current?.setSelection(from, to);
+        onCaret?.(to);
+      }}
+      accessibilityHint={named.length > 0 ? named.map(say.tokenName).join('. ') : undefined}
+    >
+      {pieces.map((piece, at) =>
+        piece.token ? (
+          <Text key={at} size={16} weight="semibold" style={styles.tokenRun}>
+            {tokenText(piece.text)}
+          </Text>
+        ) : (
+          piece.text
+        ),
+      )}
+    </TextField>
   );
 }
 
@@ -499,6 +561,7 @@ const styles = StyleSheet.create({
   },
   subject: { fontSize: 16, fontWeight: '700' },
   body: { fontSize: 16, lineHeight: 24, maxHeight: 220, textAlignVertical: 'top' },
+  tokenRun: { color: tokens.colorAccentText, backgroundColor: tokens.colorAccentTint },
   tools: { flexDirection: 'row', alignItems: 'center', gap: 18 },
   goes: { textAlign: 'right' },
   answer: { gap: tokens.spaceXs },
