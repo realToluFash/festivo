@@ -1296,8 +1296,8 @@
     "emailShape": "Eso no parece una dirección de correo electrónico. Compruebe que tiene una @ y un dominio, como amara.o@gmail.com.",
     "roleMeans": {
       "owner": "Todo, incluidas la facturación y la eliminación de la organización.",
-      "administrator": "Everything except billing. Sees every event and manages members.",
-      "member": "Works on the events they’re added to, and sees no others."
+      "administrator": "Todo menos la facturación. Ve todos los eventos y gestiona los miembros.",
+      "member": "Trabaja en los eventos que se le asignan y no ve ningún otro."
     },
     "inviteNote": "Recibirá un correo en su idioma con un enlace para unirse a {{organisation}} con el rol {{role}}. El correo indica hasta cuándo funciona el enlace.",
     "send": "Enviar invitación",
