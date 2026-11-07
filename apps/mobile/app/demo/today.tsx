@@ -2,14 +2,21 @@ import { formattingLocale } from '@soirely/domain';
 import { getLocales } from 'expo-localization';
 import { router, useFocusEffect, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { I18nextProvider, useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Toast } from '../../src/components/Toast.tsx';
 import { useSystemBack } from '../../src/components/useSystemBack.ts';
 import { useLayout } from '../../src/layout/useLayout.ts';
-import { OrgSwitcherProvider, SwitchedNotice } from '../../src/demo/OrgSwitcher.tsx';
+import { createStateOf } from '../../src/demo/createOrg/CreateWalk.ts';
+import { NoOrganisation } from '../../src/demo/createOrg/NoOrganisation.tsx';
+import { startFirstWords } from '../../src/demo/createOrg/startFirst.ts';
+import {
+  OrgSwitcherProvider,
+  SwitchedNotice,
+  useCurrentPlace,
+} from '../../src/demo/OrgSwitcher.tsx';
 import { switcherStateOf } from '../../src/demo/OrgSwitcherModel.ts';
 import { MOMENTS, momentOf, sayIn } from '../../src/demo/today.ts';
 import type { MomentName } from '../../src/kit/today.ts';
@@ -32,8 +39,16 @@ function isMoment(name: string | undefined): name is MomentName {
 }
 
 export default function DemoTodayScreen() {
-  const params = useLocalSearchParams<{ moment?: string; toast?: string; switcher?: string }>();
-  const name = isMoment(params.moment) ? params.moment : 'plan';
+  const params = useLocalSearchParams<{
+    moment?: string;
+    toast?: string;
+    switcher?: string;
+    create?: string;
+    orgs?: string;
+  }>();
+  const place = useCurrentPlace();
+  // An organisation made in the walk has no events yet.
+  const name = place?.fresh === true ? 'first' : isMoment(params.moment) ? params.moment : 'plan';
   const { i18n } = useTranslation();
   // The demo's words are English, so its dates are too, in the phone's own region.
   const moment = useMemo(
@@ -66,7 +81,8 @@ export default function DemoTodayScreen() {
       return () => demo?.setOptions({ gestureEnabled: true });
     }, [navigation]),
   );
-  useCoverStatusBar(kind === 'tabletLandscape' ? 'dark' : 'light', false);
+  const bar = kind === 'tabletLandscape' || place == null ? 'dark' : 'light';
+  useCoverStatusBar(bar, false);
 
   const onTab = useCallback(
     (tab: Tab) => {
@@ -78,18 +94,38 @@ export default function DemoTodayScreen() {
   );
 
   return (
-    <OrgSwitcherProvider state={switcherStateOf(params.switcher)} tell={tell}>
+    <OrgSwitcherProvider
+      // A deep link to another state starts it afresh, as opening it from the index does.
+      key={[params.switcher, params.create, params.orgs].join('|')}
+      state={switcherStateOf(params.switcher)}
+      create={createStateOf(params.create)}
+      none={params.orgs === 'none'}
+      statusBar={bar}
+      tell={tell}
+    >
       <TodayShellProvider value={shell}>
         <View style={styles.fill}>
-          <TodayScreen
-            moment={moment}
-            onTab={onTab}
-            notices={
-              <SwitchedNotice style={kind === 'tabletLandscape' ? undefined : styles.switched} />
-            }
-          />
+          {place == null ? (
+            <NoOrganisation tell={tell} />
+          ) : (
+            <I18nextProvider i18n={moment.kind === 'first' ? startFirstWords(i18n.language) : i18n}>
+              <TodayScreen
+                moment={moment}
+                onTab={onTab}
+                notices={
+                  <SwitchedNotice
+                    style={kind === 'tabletLandscape' ? undefined : styles.switched}
+                  />
+                }
+              />
+            </I18nextProvider>
+          )}
           {told != null && (
-            <Told words={told} phone={kind === 'phone'} onClose={() => setTold(undefined)} />
+            <Told
+              words={told}
+              phone={kind === 'phone' && place != null}
+              onClose={() => setTold(undefined)}
+            />
           )}
         </View>
       </TodayShellProvider>

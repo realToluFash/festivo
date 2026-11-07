@@ -36,6 +36,121 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
     ],
   },
   {
+    page: 'Create an organisation · B · A short walk',
+    boards: [
+      {
+        title: 'The way in · the switcher',
+        what: 'Ire Events, then Create an organisation',
+        href: '/demo/today?switcher=one',
+      },
+      {
+        title: 'The way in · no organisation',
+        what: 'Start organisation opens the walk',
+        href: '/demo/today?orgs=none',
+      },
+      {
+        title: 'Step 1 · nothing typed',
+        what: 'The dashed plus, the keys up',
+        href: '/demo/today?create=name',
+      },
+      {
+        title: 'Step 1 · typing',
+        what: 'LF in Tint, no colour yet',
+        href: '/demo/today?create=typing',
+      },
+      {
+        title: 'Step 1 · continue with nothing',
+        what: 'Main’s reason under the field',
+        href: '/demo/today?create=name-blank',
+      },
+      {
+        title: 'Step 1 · over 100',
+        what: '118 characters, with the count',
+        href: '/demo/today?create=name-long',
+      },
+      {
+        title: 'Step 1 · refused on Create',
+        what: 'The server’s reason under the name',
+        href: '/demo/today?create=name-refused',
+      },
+      {
+        title: 'Step 2 · the device’s country',
+        what: 'Portugal picked, what it brings',
+        href: '/demo/today?create=country',
+      },
+      {
+        title: 'Step 2 · the list, scrolled',
+        what: 'All countries pinned, Portugal ticked',
+        href: '/demo/today?create=country-list',
+      },
+      {
+        title: 'Step 2 · searching',
+        what: '“bra”: three countries',
+        href: '/demo/today?create=country-search',
+      },
+      {
+        title: 'Step 2 · another country',
+        what: 'Brazil picked, the zone still Lisbon',
+        href: '/demo/today?create=country-picked',
+      },
+      {
+        title: 'Step 2 · no country',
+        what: 'A device that names none',
+        href: '/demo/today?create=country-none',
+      },
+      {
+        title: 'Step 3 · ready',
+        what: 'The card, the intro and the defaults',
+        href: '/demo/today?create=ready',
+      },
+      {
+        title: 'Step 3 · creating',
+        what: 'Creating… held, then lands',
+        href: '/demo/today?create=creating',
+      },
+      {
+        title: 'Step 3 · too many for now',
+        what: 'Try again at 10:41',
+        href: '/demo/today?create=limited',
+      },
+      {
+        title: 'Step 3 · did not work',
+        what: 'Create organisation tries again',
+        href: '/demo/today?create=failed',
+      },
+      {
+        title: 'Landed in its Today',
+        what: 'Now working in Lumen Feiras',
+        href: '/demo/today?create=created',
+      },
+      {
+        title: 'The switcher, afterwards',
+        what: 'Lumen Feiras in its colour, current',
+        href: '/demo/today?create=created&switcher=one',
+      },
+      {
+        title: 'Back on step 2',
+        what: 'Step 1 as it was left, keys down',
+        href: '/demo/today?create=back-name',
+      },
+      {
+        title: 'Back on step 3',
+        what: 'Brazil kept, the list at Brazil',
+        href: '/demo/today?create=back-country',
+      },
+      {
+        title: 'Cancel, with something entered',
+        what: 'Discard this organisation?',
+        href: '/demo/today?create=discard',
+      },
+      {
+        title: 'From no organisation · typing',
+        what: 'The same walk, the other way in',
+        href: '/demo/today?orgs=none&create=typing',
+      },
+    ],
+  },
+  {
     page: 'Settings · B Confetti',
     boards: [
       {
