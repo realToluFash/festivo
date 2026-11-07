@@ -1850,23 +1850,21 @@ function stopAppServices(root) {
   run('docker', ['compose', 'stop', ...APP_SERVICES], { cwd: root });
 }
 
-export const pausedServices = (ps) =>
-  ps
+// Makes what a `down` removed, where `start` fails on a stack with no containers. `up` refuses a
+// paused container, and a batch killed while a check held the API leaves it paused.
+export function startServices(services, { run, capture }) {
+  const paused = (capture(['ps', '--status', 'paused', '--format', '{{.Service}}']) ?? '')
     .split('\n')
     .map((line) => line.trim())
     .filter(Boolean);
+  if (paused.length) run(['unpause', ...paused]);
+  run(['up', '-d', '--wait', '--no-recreate', ...services]);
+}
 
-// Makes what a `down` removed, where `start` fails on a stack with no containers. `up` refuses a
-// paused container, and a batch killed while a check held the API leaves it paused.
 function startAppServices(root) {
-  const paused = pausedServices(
-    capture('docker', ['compose', 'ps', '--status', 'paused', '--format', '{{.Service}}'], {
-      cwd: root,
-    }) ?? '',
-  );
-  if (paused.length) run('docker', ['compose', 'unpause', ...paused], { cwd: root });
-  run('docker', ['compose', 'up', '-d', '--wait', '--no-recreate', ...APP_SERVICES], {
-    cwd: root,
+  startServices(APP_SERVICES, {
+    run: (args) => run('docker', ['compose', ...args], { cwd: root }),
+    capture: (args) => capture('docker', ['compose', ...args], { cwd: root }),
   });
 }
 
@@ -2404,7 +2402,7 @@ export function apiMoves(from, to) {
     stopped: [['up', '-d', '--wait', '--no-recreate', 'api']],
   };
   if (to === 'up') return up[from];
-  if (from === 'paused') return [['stop', 'api']];
+  if (from === 'paused') return [['kill', 'api']];
   if (from !== 'up') return [...up[from], ...apiMoves('up', to)];
   return [[to === 'paused' ? 'pause' : 'stop', 'api']];
 }
@@ -2415,8 +2413,9 @@ export const apiStateOf = (containerState) =>
 // A check holds Event View's reads by pausing the API once the list has loaded. Each move waits
 // for the one before it. The state is read from Docker on the first move and after a failed one,
 // since a killed batch or a half-done move leaves the container in a state nobody recorded.
-// Stopped to paused passes through up, and anything the app asks then is answered, so that move
-// runs inside `unreached`, which keeps the device from the API. A move that ends up returns once
+// Paused to stopped is a kill: `docker stop` thaws the container to deliver SIGTERM, and Caddy
+// answers the held request while it drains. Stopped to paused passes through up, and anything the
+// app asks then is answered, so that move runs inside `unreached`, which keeps the device away. A move that ends up returns once
 // `healthy` says the API answers: the api service has no healthcheck for `--wait` to wait on.
 export function apiControl({
   run,
@@ -2437,7 +2436,8 @@ export function apiControl({
             state = undefined;
             throw new Error(`docker compose ${args.join(' ')} failed`);
           }
-          state = args[0] === 'pause' ? 'paused' : args[0] === 'stop' ? 'stopped' : 'up';
+          state =
+            args[0] === 'pause' ? 'paused' : ['stop', 'kill'].includes(args[0]) ? 'stopped' : 'up';
         }
       });
       if (moves.length && state === 'up' && !(await healthy())) {

@@ -132,8 +132,9 @@ onFlowComplete:
 ---
 ```
 
-`up` answers once `/api/health` does, from paused as from stopped. `paused` to `stopped` stops
-the paused container, so a held request is never answered. `stopped` to `paused` passes through
+`up` answers once `/api/health` does, from paused as from stopped. `paused` to `stopped` kills
+the paused container: `docker stop` would thaw it to deliver SIGTERM, and the API answers the
+held request while it drains. `stopped` to `paused` passes through
 up, and Soirely answers anything asked in those seconds, so on Android the harness takes the
 API's `adb reverse` away for that move and puts it back once the API is held: the app is refused
 throughout, with no network change announced. `qa-env.mjs ios`, `android` and `release` unpause

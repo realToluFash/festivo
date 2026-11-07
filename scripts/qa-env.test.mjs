@@ -23,7 +23,7 @@ import {
   withoutReverse,
   apiMoves,
   apiStateOf,
-  pausedServices,
+  startServices,
   batchCheck,
   batchFlow,
   batchRuns,
@@ -1374,8 +1374,8 @@ describe('the API a check holds', () => {
     expect(apiMoves('stopped', 'up')).toEqual([['up', '-d', '--wait', '--no-recreate', 'api']]);
   });
 
-  it('stops a paused API without unpausing it, so a held request is never answered', () => {
-    expect(apiMoves('paused', 'stopped')).toEqual([['stop', 'api']]);
+  it('kills a paused API, since stop thaws it and Caddy answers the held request on SIGTERM', () => {
+    expect(apiMoves('paused', 'stopped')).toEqual([['kill', 'api']]);
   });
 
   it('goes through up from stopped to paused, since only a running container pauses', () => {
@@ -1429,7 +1429,7 @@ describe('the API a batch holds', () => {
   it('tracks the state across queued moves', async () => {
     const { control, ran } = dockerDouble('running');
     await Promise.all([control.move('paused'), control.move('stopped'), control.move('up')]);
-    expect(ran).toEqual(['pause api', 'stop api', 'up -d --wait --no-recreate api']);
+    expect(ran).toEqual(['pause api', 'kill api', 'up -d --wait --no-recreate api']);
     expect(control.state()).toBe('up');
   });
 
@@ -1522,9 +1522,25 @@ describe('the API brought back up', () => {
 });
 
 describe('the app services started', () => {
-  it('names each paused service, so it is unpaused before up refuses it', () => {
-    expect(pausedServices('api\nmercure\n')).toEqual(['api', 'mercure']);
-    expect(pausedServices('')).toEqual([]);
+  const started = (ps) => {
+    const ran = [];
+    startServices(['api', 'web'], {
+      capture: () => ps,
+      run: (args) => ran.push(args.join(' ')),
+    });
+    return ran;
+  };
+
+  it('unpauses what a killed batch left paused before up, which refuses a paused container', () => {
+    expect(started('api\nmercure\n')).toEqual([
+      'unpause api mercure',
+      'up -d --wait --no-recreate api web',
+    ]);
+  });
+
+  it('goes straight to up when nothing is paused', () => {
+    expect(started('')).toEqual(['up -d --wait --no-recreate api web']);
+    expect(started(null)).toEqual(['up -d --wait --no-recreate api web']);
   });
 });
 
@@ -1554,6 +1570,7 @@ describe('a check that holds the API', () => {
     expect(unguarded).toEqual([]);
   });
 
+  // sc-30216 moves sc27096-ipad-side-refreshing.yaml off its own 18999 trigger onto /api?to=.
   it('reaches the harness through batch/helper.js, never a literal port', () => {
     const literal = checks.filter(([, flow]) => /127\.0\.0\.1:\d+/.test(flow)).map(([n]) => n);
     expect(literal).toEqual(['sc27096-ipad-side-refreshing.yaml']);
