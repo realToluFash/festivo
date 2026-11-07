@@ -106,7 +106,9 @@ did not ask for.
 1. **The AC, bullet by bullet.** For each bullet, the code that delivers it and the test that
    proves it. A bullet with no code is a blocking finding. A bullet with code and no test is
    blocking too, unless it is a screen detail QA verifies. Also anything built that the AC
-   did not ask for.
+   did not ask for. **A screen is its demo:** a product pull request fails, tagged `[ux]`
+   on the story, when it builds a screen, state or control no merged demo has, or when its
+   screen departs from its demo with no `[ux]` answer on the story saying so (sc-30407).
 2. **Access and data.** Read `docs/architecture/access-control.md`, and check every new or
    changed route against it: the checks in the order "The order of the checks" sets, and a
    sub-resource loaded through its event, never looked up by bare id. Personal data in logs, responses or

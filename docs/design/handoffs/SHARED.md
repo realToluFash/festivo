@@ -22,6 +22,11 @@ the artifact must also have an equivalent implemented in the app, which is more 
 demo area, that way the devs can just pick from there." sc-29077 gave desktop web boards the
 same rule, in the web's demo. See **Step three: build it in the demo**.
 
+**And the demo is what developers build from.** The owner, 7 Nov 2026: "dev must no longer
+invent designs". A screen, state or control no merged demo has is not built, so a story
+reaches developers only with its demo merged, and a developer who finds one missing sends
+the story back to `Needs Design` with a `[ux]` comment naming what it lacks (sc-30407).
+
 Two things to hold onto throughout:
 
 - **The design is the language; the ticket is the content.** The language is **[fd]**, the
@@ -303,8 +308,12 @@ head, its threads are resolved and its checks are green, merge it with `sq ux me
 merge refuses a pull request that changes anything outside the two demos
 (`apps/mobile/src/demo/`, `apps/mobile/app/demo/`, `apps/web/src/demo/`).
 
-**The story keeps its state.** A design pull request does not move the story and does not
-tell QA: the story moves when the product is built.
+**The story waits for its demo.** A story moves from `Needs Design` to `Ready For Dev` only
+once its demo's pull request is merged and its **Demo:** line names it; a drawn board whose
+demo is still open stays in `Needs Design`. That is the designer's one move: a design pull
+request does not tell QA, and the story moves on from `Ready For Dev` when the product is
+built. A developer's `[ux]` request for a missing demo is answered first, after the inbox's
+replies: it is a developer waiting.
 
 ## Step four: link it to the stories
 
