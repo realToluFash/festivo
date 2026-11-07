@@ -314,6 +314,7 @@ export function OrgSwitcherProvider({
   const onCreated = useCallback(
     (walk: Walk) => {
       const place = foundedPlace(walk);
+      const fromNoOrganisation = placeOf(store.session) == null;
       setSession(founded(store.session, place));
       arrive(place.id);
       setWalkOpen(false);
@@ -322,7 +323,7 @@ export function OrgSwitcherProvider({
       if (pathname !== TODAY) {
         landing.words = words;
         setTimeout(() => router.replace(TODAY), SETTLED_MS);
-      } else if (slots.current > 0) setSwitched({ words, focus: true });
+      } else if (slots.current > 0 || fromNoOrganisation) setSwitched({ words, focus: true });
       else tell(words);
     },
     [pathname, tell],
@@ -362,7 +363,7 @@ export function OrgSwitcherProvider({
       )}
       {walking != null && (
         <CreateWalkWindow
-          key={walking.visit}
+          key={`walk${walking.visit}`}
           opening={walking}
           open={walkOpen}
           email={VIEWER.email}

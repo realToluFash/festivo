@@ -95,6 +95,8 @@ export default function DemoTodayScreen() {
 
   return (
     <OrgSwitcherProvider
+      // A deep link to another state starts it afresh, as opening it from the index does.
+      key={[params.switcher, params.create, params.orgs].join('|')}
       state={switcherStateOf(params.switcher)}
       create={createStateOf(params.create)}
       none={params.orgs === 'none'}

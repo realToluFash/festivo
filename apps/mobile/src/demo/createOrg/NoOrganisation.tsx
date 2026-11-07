@@ -39,8 +39,13 @@ export function NoOrganisation({ tell }: { tell: Tell }) {
       ]}
       testID="noOrganisation"
     >
-      <View style={[styles.column, !phone && { width: COLUMN }]}>
-        <Brand lockup height={24} />
+      {!phone && (
+        <View style={styles.corner}>
+          <Brand lockup height={24} />
+        </View>
+      )}
+      <View style={[styles.column, !phone && styles.columnWide]}>
+        {phone && <Brand lockup height={24} />}
         <Text size={28} weight="bold" accessibilityRole="header" style={styles.title}>
           {t('noOrganisation.title')}
         </Text>
@@ -93,6 +98,8 @@ const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: tokens.colorPage },
   content: { flexGrow: 1, alignItems: 'center', paddingHorizontal: tokens.spaceXxl },
   column: { alignSelf: 'stretch', maxWidth: '100%', gap: tokens.spaceXl },
+  columnWide: { alignSelf: 'center', width: COLUMN },
+  corner: { alignSelf: 'flex-start', marginBottom: tokens.space3xl },
   title: { lineHeight: 28 * 1.15, letterSpacing: 28 * -0.02, marginTop: tokens.spaceSm },
   body: { lineHeight: 16 * 1.45 },
   own: {
