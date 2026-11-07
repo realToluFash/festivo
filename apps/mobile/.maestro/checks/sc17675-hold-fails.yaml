@@ -1,0 +1,26 @@
+# sc-17675: fails on purpose while it holds the QA api paused, so a batch shows that a held check reports its own step and leaves the next check a live api. Run it first of two: qa-env.mjs batch sc17675 sc17675-hold-fails sc17675-api-live EMAIL=… PASSWORD=…. Expect one failure, on the 5 s wait for sc17675-never-there, and sc17675-api-live passing.
+appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/settings
+- extendedWaitUntil:
+    visible: '{{t:settings.title}}'
+    timeout: 30000
+- waitForAnimationToEnd
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=paused
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil:
+    visible: '{{t:membersScreen.loading}}'
+    timeout: 20000
+- extendedWaitUntil:
+    visible:
+      id: sc17675-never-there
+    timeout: 5000
