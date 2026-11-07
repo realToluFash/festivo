@@ -1,0 +1,48 @@
+# sc-23267, the tablet in landscape: You are not in an organisation, its Start your own card, Start organisation opening the Create an organisation sheet, and creating one opening Home.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- waitForAnimationToEnd
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible:
+      id: 'noOrganisation'
+    timeout: 30000
+- takeScreenshot: noorg-top
+- scrollUntilVisible:
+    element:
+      id: 'noOrganisation.start'
+    direction: DOWN
+    centerElement: true
+- takeScreenshot: noorg-start
+- tapOn:
+    id: 'noOrganisation.start'
+- extendedWaitUntil:
+    visible:
+      id: 'createOrganisation'
+    timeout: 20000
+- takeScreenshot: noorg-sheet
+- tapOn:
+    id: 'createOrganisation.name'
+- inputText: 'Started Here'
+- tapOn:
+    id: 'createOrganisation.country'
+- tapOn:
+    id: 'createOrganisation.country.search'
+- inputText: 'Nigeria'
+- tapOn:
+    id: 'createOrganisation.country.NG'
+- extendedWaitUntil:
+    notVisible:
+      id: 'createOrganisation.country.search'
+    timeout: 10000
+- tapOn:
+    id: 'createOrganisation.create'
+- extendedWaitUntil:
+    notVisible:
+      id: 'createOrganisation'
+    timeout: 20000
+- extendedWaitUntil:
+    visible: '.*Started Here.*'
+    timeout: 20000
+- takeScreenshot: noorg-created-home
