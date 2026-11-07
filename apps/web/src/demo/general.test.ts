@@ -43,7 +43,9 @@ describe('General’s sample (sc-30063)', () => {
 
   it('asks the only owner to hand over first, and anybody else whether to leave', () => {
     expect(generalStart('leave', owner).ask).toBe('onlyOwner');
-    expect(generalStart('onlyOwner', member).ask).toBe('leave');
+    expect(generalStart('onlyOwner', owner).ask).toBe('onlyOwner');
+    expect(generalStart('onlyOwner', member)).toMatchObject({ ask: null, dialog: null });
+    expect(generalStart('onlyOwner', admin)).toMatchObject({ ask: null, dialog: null });
     expect(generalStart('leave', admin).ask).toBe('leave');
   });
 
