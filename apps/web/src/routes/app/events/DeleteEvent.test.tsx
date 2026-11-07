@@ -35,6 +35,7 @@ function event(overrides: Record<string, unknown> = {}) {
     phase: 'draft',
     concludedAt: null,
     createdAt: '2026-10-21T09:00:00+00:00',
+    permissions: OWNER_PERMISSIONS,
     ...overrides,
   };
 }
@@ -173,7 +174,7 @@ describe('Delete an event (sc-3592)', () => {
 
   it('is not offered without events.create, even to somebody who manages events', async () => {
     signedIn(MANAGER);
-    await onTheEvent(event());
+    await onTheEvent(event({ permissions: MANAGER.permissions }));
 
     expect(screen.getByRole('button', { name: 'Make live' })).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Delete event…' })).toBeNull();

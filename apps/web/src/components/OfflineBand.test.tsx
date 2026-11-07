@@ -4,7 +4,7 @@ import { RouterProvider, createMemoryRouter } from 'react-router';
 import { forgetEventsTab } from '@soirely/domain';
 
 import { __setSessionState } from '../session.ts';
-import { membership } from '../test-memberships.ts';
+import { OWNER_PERMISSIONS, membership } from '../test-memberships.ts';
 import { routes } from '../routes/index.tsx';
 
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
@@ -51,6 +51,7 @@ function draft(name: string) {
     phase: 'draft',
     concludedAt: null,
     createdAt: '2026-10-21T09:00:00+00:00',
+    permissions: OWNER_PERMISSIONS,
     milestones: [],
   };
 }
