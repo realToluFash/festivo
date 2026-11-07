@@ -29,7 +29,6 @@ export const HANDOVER_WORDS = {
     byCount(count, 'What will move, 1 event', `What will move, ${count} events`),
   more: (count: number) => byCount(count, 'and 1 more', `and ${count} more`),
   leadsHead: (count: number) => byCount(count, 'Leads 1 event', `Leads ${count} events`),
-  kind: 'Lead',
   handOverNow: 'Hand over now',
   removeTail: 'They lose access on their next request.',
   handTitle: (name: string, count: number) =>

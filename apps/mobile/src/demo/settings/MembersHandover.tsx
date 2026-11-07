@@ -517,7 +517,6 @@ export function LeadsBlock({
           row: (
             <Row
               title={event.name}
-              line={W.kind}
               lead={<EventThumb event={{ ...event, photo: false }} side={LEAD_TILE} radius={12} />}
               testID={`members.leads.${event.id}`}
             />
