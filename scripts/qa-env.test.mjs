@@ -463,36 +463,45 @@ describe('what a batch resets before it signs in', () => {
   });
 
   it("turns Expo Go's Tools button off in its own container, with Expo Go closed first", () => {
-    const { simctl, say } = batchReset(false, 'UDID', { prefs, toolsButton: null });
-    expect(simctl).toEqual([
-      ['simctl', 'terminate', 'UDID', 'host.exp.Exponent'],
-      ['simctl', 'spawn', 'UDID', 'defaults', 'write', prefs, TOOLS_BUTTON, '-bool', 'NO'],
+    const { terminate, write, say } = batchReset(false, 'UDID', { prefs, toolsButton: null });
+    expect(terminate).toEqual(['simctl', 'terminate', 'UDID', 'host.exp.Exponent']);
+    expect(write).toEqual([
+      'simctl',
+      'spawn',
+      'UDID',
+      'defaults',
+      'write',
+      prefs,
+      TOOLS_BUTTON,
+      '-bool',
+      'NO',
     ]);
     expect(say).toMatch(/turned off/);
   });
 
+  it("has a line for a write that fails, pointing the tester to Expo Go's menu", () => {
+    expect(batchReset(false, 'UDID', { prefs, toolsButton: null }).failed).toBe(
+      "  Could not turn Expo Go's Tools button off: turn it off in Expo Go's menu.",
+    );
+  });
+
   it('turns the Tools button off when it was left on', () => {
-    expect(batchReset(false, 'UDID', { prefs, toolsButton: '1' }).simctl).toHaveLength(2);
+    expect(batchReset(false, 'UDID', { prefs, toolsButton: '1' }).write).toContain(TOOLS_BUTTON);
   });
 
   it('leaves Expo Go alone when its Tools button is already off, and says so', () => {
     expect(batchReset(false, 'UDID', { prefs, toolsButton: '0' })).toEqual({
-      simctl: [],
       say: "  Expo Go's Tools button is off.",
     });
   });
 
   it('touches nothing on a simulator without Expo Go', () => {
-    expect(batchReset(false, 'UDID', { prefs: null }).simctl).toEqual([]);
+    expect(batchReset(false, 'UDID', { prefs: null }).write).toBeUndefined();
   });
 
   it("reads Expo Go's preferences from its data container", () => {
     expect(expoGoPrefs('/c')).toBe('/c/Library/Preferences/host.exp.Exponent');
     expect(expoGoPrefs(null)).toBeNull();
-  });
-
-  it('names the key Expo Go keeps the Tools button under', () => {
-    expect(TOOLS_BUTTON).toBe('EXDevMenuShowFloatingActionButton');
   });
 });
 

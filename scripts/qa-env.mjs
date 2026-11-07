@@ -1567,14 +1567,13 @@ export const TOOLS_BUTTON = 'EXDevMenuShowFloatingActionButton';
 // The button lives in Expo Go's container, which `defaults write host.exp.Exponent` misses.
 export function batchReset(onAndroid, device, { prefs, toolsButton } = {}) {
   if (onAndroid) return { adb: SCREEN_READER_OFF, say: '  TalkBack is off for the batch.' };
-  if (!prefs) return { simctl: [], say: '  Expo Go is not installed: run `ios` first.' };
-  if (toolsButton === '0') return { simctl: [], say: "  Expo Go's Tools button is off." };
+  if (!prefs) return { say: '  Expo Go is not installed: run `ios` first.' };
+  if (toolsButton === '0') return { say: "  Expo Go's Tools button is off." };
   return {
-    simctl: [
-      ['simctl', 'terminate', device, EXPO_GO],
-      ['simctl', 'spawn', device, 'defaults', 'write', prefs, TOOLS_BUTTON, '-bool', 'NO'],
-    ],
+    terminate: ['simctl', 'terminate', device, EXPO_GO],
+    write: ['simctl', 'spawn', device, 'defaults', 'write', prefs, TOOLS_BUTTON, '-bool', 'NO'],
     say: "  Expo Go's Tools button turned off for the batch.",
+    failed: "  Could not turn Expo Go's Tools button off: turn it off in Expo Go's menu.",
   };
 }
 
@@ -1589,8 +1588,9 @@ function resetForBatch(onAndroid, device) {
     prefs && capture('xcrun', ['simctl', 'spawn', device, 'defaults', 'read', prefs, TOOLS_BUTTON]);
   const reset = batchReset(onAndroid, device, { prefs, toolsButton });
   for (const command of reset.adb ?? []) adbOut(androidTools(), command);
-  for (const command of reset.simctl ?? []) run('xcrun', command, { optional: true });
-  console.log(reset.say);
+  if (reset.terminate) run('xcrun', reset.terminate, { optional: true });
+  const written = !reset.write || run('xcrun', reset.write, { optional: true });
+  console.log(written ? reset.say : reset.failed);
 }
 
 async function android(args) {
