@@ -1,6 +1,6 @@
 import { Fragment } from 'react';
 
-import { Glyph } from './Glyph.tsx';
+import { Glyph } from '../components/Glyph.tsx';
 import {
   type ConvoId,
   type Out,

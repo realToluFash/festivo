@@ -1,4 +1,4 @@
-import { createContext, type ReactNode, type Ref, useContext, useMemo, useRef } from 'react';
+import { type ReactNode, type Ref, useMemo, useRef } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -15,41 +15,14 @@ import { tokens } from '../../theme/tokens.ts';
 import { Glyph } from '../../components/Glyph.tsx';
 import { OpenerWords, OPENER, OrgMark, useOrgOpener } from '../OrgSwitcher.tsx';
 import { type EventKey, sample } from '../today.ts';
-import { PhoneTabBar, TABS, type Tab } from '../../components/TodayCover.tsx';
+import { PHONE_TAB_BAR, PhoneTabBar, type Tab, TABS } from '../../components/TodayCover.tsx';
 import type { Tell } from '../../components/TodayParts.tsx';
 import { TodaySidebar } from '../../components/TodaySidebar.tsx';
 import { TodayShellProvider } from '../../components/todayShell.ts';
 import { demoShell } from '../demoShell.ts';
-import { Back, RoundButton, TYPE } from './parts.tsx';
-import {
-  type DemoSection,
-  type Looking,
-  type SettingsLayout,
-  type Viewer,
-  viewerOfRole,
-} from './sample.ts';
-
-export interface Shell {
-  layout: SettingsLayout;
-  viewer: Viewer;
-  looking: Looking;
-  open: DemoSection | null;
-  /** A state opens the section where a step on another page left off: Security's setup. */
-  openSection: (section: DemoSection, state?: string) => void;
-  toSettings: () => void;
-  tell: Tell;
-  onTab: (tab: Tab) => void;
-  listColumn: ReactNode;
-}
-
-export const ShellContext = createContext<Shell | null>(null);
-
-export function useShell(): Shell {
-  const shell = useContext(ShellContext);
-  if (shell == null) throw new Error('A Settings page is drawn inside the demo’s Settings route.');
-
-  return shell;
-}
+import { viewerOfRole } from './sample.ts';
+import { type Looking, ShellContext, useShell } from '../../components/settingsShell.ts';
+import { Back, RoundButton, TYPE } from '../../components/SettingsParts.tsx';
 
 /** A page whose sample someone else sees: the Settings card, its rows and the sidebar's foot follow them. */
 export function SeenBy({ looking, children }: { looking: Looking; children: ReactNode }) {
@@ -62,7 +35,6 @@ export function SeenBy({ looking, children }: { looking: Looking; children: Reac
   return <ShellContext.Provider value={seen}>{children}</ShellContext.Provider>;
 }
 
-export const PHONE_TAB_BAR = 64;
 const SIDEBAR_EVENTS = (['wed', 'ireti', 'party', 'draft'] as const).map(sample);
 
 /** A Settings page in B: on its side, `column` takes the Settings list's place, as givesWay does in the app. */

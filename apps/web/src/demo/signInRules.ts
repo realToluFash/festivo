@@ -1,5 +1,5 @@
 import type { Load } from './members.ts';
-import type { Choice } from './SettingsParts.tsx';
+import type { Choice } from '../components/SettingsParts.tsx';
 import { HELD_STEPS, type HeldStep } from './security.ts';
 import { type DemoLink, type Viewer, VIEWERS, settingsPath } from './settings.ts';
 

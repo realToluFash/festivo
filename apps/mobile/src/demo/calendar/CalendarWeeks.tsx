@@ -13,7 +13,6 @@ import {
 import { eventColour } from '../../components/EventMesh.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
-import { type MarkKind, StatusMark } from '../settings/SummaryRows.tsx';
 import {
   type Piece,
   type Week,
@@ -32,6 +31,7 @@ import {
   weekHeight,
 } from './CalendarModel.ts';
 import { say } from './CalendarWords.ts';
+import { type MarkKind, ShapeMark } from '../../components/StatusMark.tsx';
 
 const hidden = {
   accessibilityElementsHidden: true,
@@ -220,7 +220,7 @@ function Bar({
           ]}
         />
       )}
-      {mark != null && <StatusMark kind={mark} side={10} ink={tokens.colorInkSecondary} />}
+      {mark != null && <ShapeMark kind={mark} side={10} ink={tokens.colorInkSecondary} />}
       {words !== '' && (
         <Text
           size={look.wide ? 12.5 : 12}

@@ -64,6 +64,7 @@ export function CodeStep({
               if (status.kind !== 'verifying') onCode(full);
             }}
             done={done}
+            line={status.kind === 'wrong' && code === '' ? wrong : null}
             testID={`${testID}.code`}
           />
           {status.kind === 'wrong' && code === '' && <Says words={wrong} />}

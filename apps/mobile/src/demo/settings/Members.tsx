@@ -12,7 +12,7 @@ import {
 } from '../../components/screenReaderFocus.ts';
 import { tokens } from '../../theme/tokens.ts';
 
-import { Landscape, SeenBy, useShell } from './Frame.tsx';
+import { Landscape, SeenBy } from './Frame.tsx';
 import { ClaimScreen, useOwnerClaim } from './MembersClaim.tsx';
 import { useLoad } from './MembersLoading.tsx';
 import { MembersCardView, NobodyPicked, People, Waiting } from './MembersParts.tsx';
@@ -54,14 +54,15 @@ import {
   turnedDown,
 } from './MembersSample.ts';
 import { memberLooking } from './sample.ts';
+import { useShell } from '../../components/settingsShell.ts';
+import { SummaryPage } from './SummaryPage.tsx';
 import {
   Ask,
   FailedBlock,
   LoadingBlock,
   SummaryColumn,
-  SummaryPage,
   useRowClear,
-} from './Summary.tsx';
+} from '../../components/Summary.tsx';
 
 const PLAIN: PersonOpening = { step: 'resting', picked: null, handover: null, said: null };
 

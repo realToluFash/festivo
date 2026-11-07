@@ -9,11 +9,11 @@ import type { Tab } from '../../components/TodayCover.tsx';
 import type { Tell } from '../../components/TodayParts.tsx';
 import { OrgSwitcherProvider } from '../OrgSwitcher.tsx';
 import { useCoverStatusBar } from '../Welcome.tsx';
-import { type Shell, ShellContext } from '../settings/Frame.tsx';
 import { layoutOf, settingsHref } from '../settings/Route.tsx';
-import { type DemoSection, lookingAs } from '../settings/sample.ts';
-import { PageToast } from '../settings/Summary.tsx';
+import { lookingAs } from '../settings/sample.ts';
 import { PeopleSection } from './People.tsx';
+import { type Shell, ShellContext, type ShellSection } from '../../components/settingsShell.ts';
+import { PageToast } from '../../components/Summary.tsx';
 
 /** People on an event, drawn with no event around it: Settings' kit, with Today and Settings a tab away. */
 export function PeopleRoute() {
@@ -25,7 +25,7 @@ export function PeopleRoute() {
   useCoverStatusBar('dark', false);
 
   const openSection = useCallback(
-    (section: DemoSection) => router.push(settingsHref('owner', section)),
+    (section: ShellSection) => router.push(settingsHref('owner', section)),
     [],
   );
   const toSettings = useCallback(() => router.push(settingsHref('owner', null)), []);

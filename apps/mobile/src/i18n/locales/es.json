@@ -206,7 +206,8 @@
   "forms": {
     "emailBlank": "Introduzca su dirección de correo electrónico.",
     "emailShape": "Eso no parece una dirección de correo electrónico. Compruebe que tiene una @ y un dominio.",
-    "countryBlank": "Elija un país."
+    "countryBlank": "Elija un país.",
+    "invalid": "Invalid"
   },
   "oauth": {
     "linked": "{{provider}} ya está vinculado a su cuenta. Puede iniciar sesión con cualquiera de los dos.",
@@ -662,7 +663,12 @@
     "events": "Eventos",
     "calendar": "Calendario",
     "settings": "Configuración",
-    "organisation": "Organización"
+    "organisation": "Organización",
+    "backTo": "Back to {{place}}",
+    "cancel": "Cancel",
+    "back": "Back",
+    "closeMenu": "Close the menu",
+    "tryAgain": "Try again"
   },
   "eventNav": {
     "overview": "Resumen",

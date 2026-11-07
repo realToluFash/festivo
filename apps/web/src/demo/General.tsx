@@ -1,3 +1,4 @@
+import { DemoBell } from './DemoBell.tsx';
 import { formattingLocale, normaliseDomain } from '@soirely/domain';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
@@ -33,10 +34,10 @@ import {
   requestLink,
 } from './general.ts';
 import { AddDomainDialog, DeleteDialog, DetailsDialog, TransferDialog } from './GeneralDialogs.tsx';
-import { Glyph } from './Glyph.tsx';
+import { Glyph } from '../components/Glyph.tsx';
 import { HandoverAsk } from './Handover.tsx';
 import { handStart, ledBy, offeredFor } from './handover.ts';
-import { focusWhenFree } from './layers.ts';
+import { focusWhenFree } from '../layers.ts';
 import { samplePeople } from './members.ts';
 import { heldStepPath } from './security.ts';
 import { type Viewer, copyText } from './settings.ts';
@@ -51,9 +52,9 @@ import {
   Tag,
   TextAction,
   TitleRow,
-} from './SettingsParts.tsx';
-import type { Tell } from './TodayParts.tsx';
-import { useLater } from './useLater.ts';
+} from '../components/SettingsParts.tsx';
+import type { Tell } from '../components/SettingsParts.tsx';
+import { useLater } from '../useLater.ts';
 import './general.css';
 
 const DETAIL_ROWS: readonly Picked[] = ['countryCode', 'currency', 'timezone', 'locale'];
@@ -74,7 +75,7 @@ export function General({ viewer, state, tell }: { viewer: Viewer; state: string
   return (
     <div className="desk-page">
       <div className="desk-column">
-        <TitleRow title="General" tell={tell} />
+        <TitleRow title="General" bell={<DemoBell tell={tell} />} />
         <OrganisationCard
           words={words}
           onStep={() => {

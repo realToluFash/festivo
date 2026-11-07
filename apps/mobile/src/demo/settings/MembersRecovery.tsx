@@ -13,7 +13,7 @@ import {
   recoveryOf,
 } from './MembersRecoverySample.ts';
 import type { MembersSay, Person } from './MembersSample.ts';
-import { Avatar } from './parts.tsx';
+import { Avatar } from '../../components/SettingsParts.tsx';
 import {
   type AskProps,
   type ListItem,
@@ -22,7 +22,7 @@ import {
   SELECTED_ROW,
   Tag,
   TextAction,
-} from './Summary.tsx';
+} from '../../components/Summary.tsx';
 
 export type RecoveryPart = 'box' | 'group' | 'approve' | 'turnDown';
 

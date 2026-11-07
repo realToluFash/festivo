@@ -7,7 +7,6 @@ import { readOut } from '../../components/ReadOut.tsx';
 import { SETTLED_MS } from '../../components/Screen.tsx';
 import { moveScreenReaderFocus } from '../../components/screenReaderFocus.ts';
 import type { TextHandle } from '../../components/Text.tsx';
-import { useShell } from './Frame.tsx';
 import { ledEvents } from './MembersHandover.ts';
 import { HandoverAsk, LeadsBlock } from './MembersHandover.tsx';
 import { handedLines, HANDOVER_WORDS } from './MembersHandoverWords.ts';
@@ -31,6 +30,8 @@ import {
   statusWord,
   whenWord,
 } from './MembersSample.ts';
+import { useShell } from '../../components/settingsShell.ts';
+import { SummaryPage } from './SummaryPage.tsx';
 import {
   Ask,
   CardFace,
@@ -42,9 +43,8 @@ import {
   RowList,
   Section,
   SummaryCard,
-  SummaryPage,
   TextAction,
-} from './Summary.tsx';
+} from '../../components/Summary.tsx';
 
 export interface PersonOpening {
   step: PersonStep;

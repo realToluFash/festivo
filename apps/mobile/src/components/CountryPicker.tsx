@@ -16,6 +16,7 @@ export function CountryPicker({
   withCallingCode = false,
   compact = false,
   wrong = false,
+  line,
   pickerRef,
   testID,
 }: {
@@ -29,6 +30,8 @@ export function CountryPicker({
   compact?: boolean;
   /** A line about it shows under it. */
   wrong?: boolean;
+  /** The line about it, where it sits in no Field whose line that is. */
+  line?: string | null | undefined;
   /** For moving screen-reader focus here when it is the field refused first. */
   pickerRef?: Ref<ViewInstance> | undefined;
   testID: string;
@@ -55,6 +58,7 @@ export function CountryPicker({
       onChange={onChange}
       disabled={disabled}
       wrong={wrong}
+      line={line}
       shown={compact ? `${flag(value)} ${callingCode(value) ?? ''}`.trim() : undefined}
       pickerRef={pickerRef}
       testID={testID}
