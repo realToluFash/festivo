@@ -1,0 +1,123 @@
+.vd-top {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+}
+
+.vd-rows .vd-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 140px 260px 24px;
+  align-items: center;
+  gap: var(--spaceLg);
+  text-align: start;
+}
+
+.vd-rows .vd-row.is-archived {
+  grid-template-columns: minmax(0, 1fr) 140px 260px 250px;
+}
+
+.vd-cell {
+  overflow: hidden;
+  color: var(--colorInkSecondary);
+  font: var(--deskSmall);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vd-cell.is-none {
+  color: var(--colorInkTertiary);
+}
+
+.vd-archived {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--spaceLg);
+}
+
+.vd-pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spaceLg);
+  min-height: var(--sizeHit);
+}
+
+.vd-pager-turns {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceLg);
+}
+
+.vd-pager-turns .desk-text[aria-disabled='true'] {
+  color: var(--colorInkTertiary);
+  cursor: default;
+}
+
+.vd-label-row {
+  margin-block: 0;
+}
+
+.vd-optional {
+  color: var(--colorInkSecondary);
+  font: var(--deskSmall);
+}
+
+.desk-box.vd-area {
+  height: auto;
+  padding-block: var(--spaceMd);
+}
+
+.desk .vd-area textarea {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: none;
+  color: var(--colorInk);
+  font: 500 16px/1.45 var(--fontFamily);
+  resize: vertical;
+}
+
+.desk .vd-area textarea:focus-visible {
+  box-shadow: none;
+}
+
+.vd-archive {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceXs);
+  padding-top: var(--spaceMd);
+  border-top: 1px solid var(--colorBorder);
+}
+
+.vd-read {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceLg);
+  margin: 0 0 var(--spaceXl);
+}
+
+.vd-read-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXxs);
+}
+
+.vd-read-row dt {
+  color: var(--colorInkSecondary);
+  font: var(--deskSmall);
+}
+
+.vd-read-row dd {
+  margin: 0;
+  color: var(--colorInk);
+  font: var(--deskLine);
+  overflow-wrap: anywhere;
+}
+
+.vd-first {
+  align-items: flex-start;
+}
