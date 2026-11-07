@@ -686,6 +686,7 @@ export const expoGoIosClient = (versions, expoRange) =>
 export const flowUrls = (urls) => ({
   METRO_URL: urls.metro,
   MAILPIT_URL: urls.mailpit,
+  SMOCKER_URL: urls.smocker,
   API_URL: urls.api,
   WEB_URL: urls.web,
 });
