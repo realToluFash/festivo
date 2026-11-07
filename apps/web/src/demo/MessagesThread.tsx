@@ -7,6 +7,7 @@ import { Glyph } from '../components/Glyph.tsx';
 import {
   type Answer,
   type Audience,
+  type Channel,
   type ConvoId,
   type Draft,
   type GuestId,
@@ -15,7 +16,6 @@ import {
   type Sched,
   type Unreached,
   ANSWERS,
-  GUESTS,
   INVITE_REACH,
   INVITE_UNREACHED,
   KIND_ORDER,
@@ -32,6 +32,7 @@ import {
   TICKS,
   UNKNOWN,
   ZONE_SHORT,
+  askedOf,
   checkOf,
   channelWord,
   chipWords,
@@ -46,6 +47,7 @@ import {
   legendWord,
   listed,
   many,
+  noticeOf,
   outTitle,
   outsIn,
   reachFrom,
@@ -229,16 +231,20 @@ function Thread({
   return <ManyThread id={id} />;
 }
 
-function answerBits(answer: Answer, toldBy: string): Bit[] {
+function answerBits(answer: Answer, toldBy: Channel): Bit[] {
   const base: Bit[] = [{ words: MW.onTheirPage }, { words: `${READER} · ${answer.at}` }];
+  const by = answer.by ?? toldBy;
+  const seen: Bit = {
+    words: answer.seen == null ? MW.notSeenYet : filled(MW.seen, { time: answer.seen }),
+  };
 
   if (answer.stage === 'sending') return [...base, { words: MW.sending, mark: 'sending' }];
+  if (answer.notice === 'held')
+    return [...base, { words: `${channelWord(by)} · ${MW.heldForCredits}`, mark: 'held' }, seen];
+  if (answer.notice === 'tooLate')
+    return [...base, { words: `${channelWord(by)} · ${MW.notSentTooLate}`, mark: 'notsent' }, seen];
 
-  return [
-    ...base,
-    { words: toldBy, mark: 'delivered' },
-    { words: answer.seen == null ? MW.notSeenYet : filled(MW.seen, { time: answer.seen }) },
-  ];
+  return [...base, { words: TOLD_BY[by], mark: 'delivered' }, seen];
 }
 
 const TOLD_BY = { email: MW.toldByEmail, sms: MW.toldBySms, whatsApp: MW.toldByWhatsApp } as const;
@@ -261,7 +267,7 @@ function GuestThread({
   const [picking, setPicking] = useState(state === 'matchPicker' && id === 'unknown');
   const done = inbox.done.includes(id);
   const match = id === 'unknown' ? MATCHES.find((one) => one.name === inbox.matched) : null;
-  const guest = id === 'unknown' ? null : GUESTS[id];
+  const guest = id === 'unknown' ? null : askedOf(inbox, id);
   const name = guest?.name ?? match?.name ?? UNKNOWN.address;
   const answers = inbox.answers[id] ?? [];
   const doneAt = inbox.doneAt[id];
@@ -385,7 +391,7 @@ function GuestThread({
           <HostBubble
             key={index}
             body={answer.text}
-            bits={answerBits(answer, TOLD_BY[toldBy])}
+            bits={answerBits(answer, toldBy)}
             look={answer.stage === 'sending' ? 'arriving' : 'sent'}
           />
         ))}
@@ -398,8 +404,9 @@ function GuestThread({
           key={`${id}${match?.name ?? ''}`}
           id={id}
           name={name}
-          channel={ANSWER_BY[toldBy]}
-          typed={state === 'channelReply' && id === 'kwame' ? (ANSWERS.kwame ?? '') : ''}
+          toldBy={toldBy}
+          canAlso={guest?.canAlso ?? []}
+          typed={typedOf(state, id)}
         />
       )}
       {picking && (
@@ -420,34 +427,83 @@ function GuestThread({
   );
 }
 
+function typedOf(state: MessagesState | null, id: GuestId | 'unknown'): string {
+  if (state === 'channelReply' && id === 'kwame') return ANSWERS.kwame ?? '';
+  if ((state === 'noticeCost' || state === 'noticeWaits') && id === 'lucia')
+    return ANSWERS.lucia ?? '';
+
+  return '';
+}
+
 function AnswerBox({
   id,
   name,
-  channel,
+  toldBy,
+  canAlso,
   typed,
 }: {
   id: GuestId | 'unknown';
   name: string;
-  channel: string;
+  toldBy: Channel;
+  canAlso: readonly Channel[];
   typed: string;
 }) {
-  const { act, keys } = useInbox();
+  const { inbox, act, keys, tell, say, focus } = useInbox();
   const [text, setText] = useState(typed);
+  const [by, setBy] = useState<Channel>(toldBy);
   const blank = text.trim() === '';
+  const notice = noticeOf(id, by, inbox.balance, canAlso);
 
   function send(event?: FormEvent): void {
     event?.preventDefault();
     if (blank) return;
-    act({ kind: 'answer', id, text: text.trim() });
+    act({ kind: 'answer', id, text: text.trim(), ...(by === toldBy ? {} : { by }) });
     setText('');
+  }
+
+  function tellBy(channel: Channel): void {
+    setBy(channel);
+    say(filled(MW.answerLine, { name, channel: ANSWER_BY[channel] }));
+    focus('answer');
   }
 
   return (
     <form className="mg-answer" onSubmit={send}>
       <p className="mg-answer-line">
         <Glyph name="page" size={15} />
-        {filled(MW.answerLine, { name, channel })}
+        {filled(MW.answerLine, { name, channel: ANSWER_BY[by] })}
       </p>
+      {notice.cost != null && <p className="mg-answer-cost">{notice.cost}</p>}
+      {notice.waits != null && (
+        <div className="mg-answer-wait">
+          <p className="mg-answer-waits">
+            <Glyph name="clock" size={15} weight={2.2} />
+            {notice.waits}
+          </p>
+          <button
+            type="button"
+            className="desk-text"
+            onClick={() => tell(`${MW.addCredits} has its own design.`)}
+          >
+            {MW.addCredits}
+          </button>
+          {notice.others.length > 0 && (
+            <div className="mg-answer-others">
+              <p>{MW.tellNowBy}</p>
+              {notice.others.map((channel) => (
+                <button
+                  key={channel}
+                  type="button"
+                  className="button mg-answer-other"
+                  onClick={() => tellBy(channel)}
+                >
+                  {channelWord(channel)}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
       <div className="mg-answer-row">
         <textarea
           className="mg-answer-field"

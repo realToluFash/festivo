@@ -21,6 +21,7 @@ import {
   freshId,
   many,
   messagesStateOf,
+  noticeOf,
   outTitle,
   reachFrom,
   reachLine,
@@ -35,14 +36,20 @@ import {
 const ids = (rows: readonly { id: string }[]) => rows.map((row) => row.id);
 
 describe('Messaging B · Conversations, the rules (sc-31371)', () => {
-  it('has the spec’s 42 states, in its order, each linked once from the demo home', () => {
+  it('has the spec’s 42 states and the notice’s 3, in order, each linked once from the demo home', () => {
     const keys = MESSAGE_STATES.map((one) => one.key);
 
-    expect(keys).toHaveLength(42);
+    expect(keys).toHaveLength(45);
     expect(keys.slice(0, 3)).toEqual(['first', 'loading', 'inUse']);
-    expect(keys.slice(23, 26)).toEqual(['bell', 'invitedReached', 'sentReached']);
+    expect(keys.slice(6, 10)).toEqual([
+      'channelReply',
+      'noticeCost',
+      'noticeWaits',
+      'noticeNotSent',
+    ]);
+    expect(keys.slice(26, 29)).toEqual(['bell', 'invitedReached', 'sentReached']);
     expect(keys.at(-1)).toBe('tellPlace');
-    expect(new Set(keys).size).toBe(42);
+    expect(new Set(keys).size).toBe(45);
     expect(MESSAGES_PAGES.flatMap((page) => page.states.map((one) => one.to))).toEqual(
       keys.map((key) => `/demo/events/evt-wed-4/messages?state=${key}`),
     );
@@ -275,5 +282,70 @@ describe('Messaging B · Conversations, the rules (sc-31371)', () => {
     expect(told.unreached).toHaveLength(10);
     expect(reachFrom(142, 87, told.unreached).reached).toBe(132);
     expect(sectionsOf(told).needs.at(-1)?.tag?.word).toBe('Not reached · 10');
+  });
+});
+
+describe('The notice’s cost before Send (sc-3976, pm on bm’s #31518)', () => {
+  it('shows no cost for an email notice', () => {
+    expect(noticeOf('ines', 'email', 1500, [])).toEqual({
+      credits: 0,
+      cost: null,
+      waits: null,
+      others: [],
+    });
+  });
+
+  it('says what a WhatsApp or SMS notice costs and the credits after it', () => {
+    expect(noticeOf('lucia', 'whatsApp', 1500, ['email']).cost).toBe(
+      'This WhatsApp message uses 4 credits. Credits after sending: 1,496.',
+    );
+    expect(noticeOf('kwame', 'sms', 1500, ['email']).cost).toBe(
+      'This text uses 1 credit. Credits after sending: 1,499.',
+    );
+    expect(noticeOf('lucia', 'whatsApp', 4, ['email'])).toMatchObject({ waits: null });
+  });
+
+  it('says it will wait when the credits won’t cover it, and offers the channels that can tell them now', () => {
+    expect(noticeOf('lucia', 'whatsApp', 2, ['email'])).toEqual({
+      credits: 4,
+      cost: null,
+      waits: '1 WhatsApp message will wait for credits.',
+      others: ['email'],
+    });
+    expect(noticeOf('kwame', 'sms', 0, ['email']).waits).toBe(
+      '1 SMS message will wait for credits.',
+    );
+    expect(noticeOf('lucia', 'whatsApp', 2, []).others).toEqual([]);
+  });
+
+  it('takes the credits on Send, and holds the notice when they won’t cover it', () => {
+    const paid = changed(seedOf('noticeCost'), { kind: 'answer', id: 'lucia', text: 'Yes.' });
+
+    expect(paid.balance).toBe(1496);
+    expect(paid.answers.lucia?.at(-1)).toMatchObject({ text: 'Yes.', stage: 'sending' });
+    expect(paid.answers.lucia?.at(-1)?.notice).toBeUndefined();
+
+    const held = changed(seedOf('noticeWaits'), { kind: 'answer', id: 'lucia', text: 'Yes.' });
+
+    expect(held.balance).toBe(2);
+    expect(held.answers.lucia?.at(-1)).toMatchObject({ notice: 'held' });
+
+    const byEmail = changed(seedOf('noticeWaits'), {
+      kind: 'answer',
+      id: 'lucia',
+      text: 'Yes.',
+      by: 'email',
+    });
+
+    expect(byEmail.balance).toBe(2);
+    expect(byEmail.answers.lucia?.at(-1)).toMatchObject({ by: 'email' });
+    expect(byEmail.answers.lucia?.at(-1)?.notice).toBeUndefined();
+  });
+
+  it('puts a notice that waited and could not go in Done, Not sent: too late', () => {
+    const inbox = seedOf('noticeNotSent');
+
+    expect(inbox.done).toContain('lucia');
+    expect(inbox.answers.lucia?.[0]).toMatchObject({ notice: 'tooLate', stage: 'told' });
   });
 });

@@ -65,10 +65,11 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
       .parentElement as HTMLElement;
     const links = within(group).getAllByRole('link');
 
-    expect(links).toHaveLength(42);
+    expect(links).toHaveLength(45);
     expect(links[0]?.getAttribute('href')).toBe(`${AT}?state=first`);
-    expect(links[23]?.getAttribute('href')).toBe(`${AT}?state=bell`);
-    expect(links[41]?.getAttribute('href')).toBe(`${AT}?state=tellPlace`);
+    expect(links[7]?.getAttribute('href')).toBe(`${AT}?state=noticeCost`);
+    expect(links[26]?.getAttribute('href')).toBe(`${AT}?state=bell`);
+    expect(links[44]?.getAttribute('href')).toBe(`${AT}?state=tellPlace`);
   });
 
   it('is the event’s own Messages entry, with the count under it', SLOW, async () => {
@@ -211,6 +212,97 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
     expect(
       (screen.getByRole('textbox', { name: 'Your answer' }) as HTMLTextAreaElement).value,
     ).toBe('Formal: suits and long dresses are welcome.');
+  });
+
+  it('says what a WhatsApp notice costs before Send, and takes it', SLOW, async () => {
+    await messages('noticeCost');
+    const field = screen.getByRole('textbox', { name: 'Your answer' }) as HTMLTextAreaElement;
+
+    expect(field.value).toBe('Yes: free parking under the hotel, entrance on Calle Mayor.');
+    expect(
+      screen.getByText('Your answer goes on Lucía Ortega’s page. Soirely tells them by WhatsApp.'),
+    ).toBeDefined();
+    expect(
+      screen.getByText('This WhatsApp message uses 4 credits. Credits after sending: 1,496.'),
+    ).toBeDefined();
+
+    fireEvent.keyDown(field, { key: 'Enter', metaKey: true });
+    const log = screen.getByRole('log', { name: 'Lucía Ortega' });
+
+    expect(await within(log).findByText('Told by WhatsApp', {}, SLOW)).toBeDefined();
+    expect(
+      screen.getByText('This WhatsApp message uses 4 credits. Credits after sending: 1,492.'),
+    ).toBeDefined();
+  });
+
+  it('shows no cost on an email notice', SLOW, async () => {
+    await messages('conversation');
+
+    expect(screen.queryByText(/credits?\. Credits after sending/)).toBeNull();
+  });
+
+  it('says the text’s cost on an SMS notice', SLOW, async () => {
+    await messages('channelReply');
+
+    expect(
+      screen.getByText('This text uses 1 credit. Credits after sending: 1,499.'),
+    ).toBeDefined();
+  });
+
+  it(
+    'says a notice the credits won’t cover will wait, and holds it when sent anyway',
+    SLOW,
+    async () => {
+      await messages('noticeWaits');
+
+      expect(screen.getByText('1 WhatsApp message will wait for credits.')).toBeDefined();
+      expect(screen.queryByText(/Credits after sending/)).toBeNull();
+      expect(screen.getByRole('button', { name: 'Add credits' })).toBeDefined();
+      expect(screen.getByText('Or tell them now by:')).toBeDefined();
+      expect(screen.getByRole('button', { name: 'Email' })).toBeDefined();
+
+      fireEvent.keyDown(screen.getByRole('textbox', { name: 'Your answer' }), {
+        key: 'Enter',
+        metaKey: true,
+      });
+      const log = screen.getByRole('log', { name: 'Lucía Ortega' });
+
+      expect(
+        within(log).getByText('Yes: free parking under the hotel, entrance on Calle Mayor.'),
+      ).toBeDefined();
+      expect(
+        await within(log).findByText('WhatsApp · Held: waiting for credits', {}, SLOW),
+      ).toBeDefined();
+    },
+  );
+
+  it('tells them by email instead when Email is chosen, at no cost', SLOW, async () => {
+    await messages('noticeWaits');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Email' }));
+
+    expect(
+      screen.getByText('Your answer goes on Lucía Ortega’s page. Soirely tells them by email.'),
+    ).toBeDefined();
+    expect(screen.queryByText('1 WhatsApp message will wait for credits.')).toBeNull();
+    expect(screen.queryByText(/Credits after sending/)).toBeNull();
+    const field = screen.getByRole('textbox', { name: 'Your answer' });
+
+    expect(document.activeElement).toBe(field);
+    fireEvent.keyDown(field, { key: 'Enter', metaKey: true });
+    const log = screen.getByRole('log', { name: 'Lucía Ortega' });
+
+    expect(await within(log).findByText('Told by email', {}, SLOW)).toBeDefined();
+  });
+
+  it('records a notice that waited and could not go as Not sent: too late', SLOW, async () => {
+    await messages('noticeNotSent');
+    const log = screen.getByRole('log', { name: 'Lucía Ortega' });
+
+    expect(within(log).getByText('WhatsApp · Not sent: too late')).toBeDefined();
+    expect(within(log).getByText('Not seen yet')).toBeDefined();
+    expect(within(log).getByText('Sat, Oct 31')).toBeDefined();
+    expect(within(list()).getByRole('link', { name: /^Lucía Ortega/ })).toBeDefined();
   });
 
   it('puts a reply that arrives first, washed, and says it', SLOW, async () => {
