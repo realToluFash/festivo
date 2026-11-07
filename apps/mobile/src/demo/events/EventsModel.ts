@@ -21,14 +21,8 @@ import {
 } from '@soirely/domain';
 
 import type { RowTag } from '../settings/SummaryRows.tsx';
-import {
-  CLOCKS,
-  type MeshKey,
-  READER_ZONE,
-  type SampleEvent,
-  TYPE_WORDS,
-  meshFor,
-} from './EventsSample.ts';
+import { CLOCKS, READER_ZONE, type SampleEvent, TYPE_WORDS } from './EventsSample.ts';
+import { meshFor, type MeshKey } from '../../kit/today.ts';
 import { W, say } from './EventsWords.ts';
 
 export type ListTab = 'upcoming' | 'drafts' | 'past';

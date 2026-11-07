@@ -1,6 +1,6 @@
 import { type InvitationOutcome, isWaiting, waitingInvitations } from '@soirely/domain';
 
-import { meshFor, type MeshKey } from './events/EventsSample.ts';
+import { meshFor, type MeshKey } from '../kit/today.ts';
 
 export interface Place {
   id: string;

@@ -37,8 +37,8 @@ import {
   type Suggestion,
   TYPE_WORDS,
   ZONES,
-  meshFor,
 } from './EventsSample.ts';
+import { meshFor } from '../../kit/today.ts';
 import { W, say, t } from './EventsWords.ts';
 
 type Opener = RefObject<ScreenReaderTarget | null>;
