@@ -50,6 +50,8 @@ import { PLACE, SAMPLE_EVENT_ID, TELL } from '../messages/MessagesSample.ts';
 import { tellChange } from '../messages/TellChange.ts';
 import { MessagesScreen, badgeFor } from '../messages/MessagesScreen.tsx';
 import { W as MW, say as sayMessages } from '../messages/MessagesWords.ts';
+import type { SeatingState } from '../seating/SeatingModel.ts';
+import { SeatingScreen } from '../seating/SeatingScreen.tsx';
 
 type Mute = 'ok' | 'notLoaded' | 'notSaved';
 
@@ -86,11 +88,13 @@ export function EventScreen({
   state,
   area,
   messages = null,
+  seating = null,
 }: {
   id: string | undefined;
   state: EventDemoState | null;
   area: AreaKey | null;
   messages?: MessagesState | null;
+  seating?: SeatingState | null;
 }) {
   const shell = useShell();
   const locale = formattingLocale('en', getLocales()[0]?.languageTag);
@@ -232,6 +236,18 @@ export function EventScreen({
       onSeeWho={() => tellHere(sayMessages.ownDesign(MW.seeWho))}
     />
   );
+
+  if (at === 'seating' && messagesHere)
+    return (
+      <SeatingScreen
+        state={seating}
+        event={shown}
+        now={now}
+        more={more}
+        onMore={setMore}
+        onArea={setAt}
+      />
+    );
 
   if (at === 'messages' && messagesHere)
     return (

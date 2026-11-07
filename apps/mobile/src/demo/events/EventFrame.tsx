@@ -84,6 +84,7 @@ export function EventFrame({
   badge = null,
   onBell,
   bellRef,
+  phoneBack,
   children,
 }: {
   event: Shown;
@@ -99,6 +100,8 @@ export function EventFrame({
   badge?: AreaBadge | null;
   onBell?: (() => void) | undefined;
   bellRef?: Ref<ViewInstance> | undefined;
+  /** On the phone, a way back other than Overview, as Seating's ‹ More. */
+  phoneBack?: { label: string; onPress: () => void } | undefined;
   children: ReactNode;
 }) {
   const shell = useShell();
@@ -146,9 +149,11 @@ export function EventFrame({
     );
 
   const back =
-    phone && area !== 'overview'
-      ? { label: W.overview, onPress: () => onArea('overview') }
-      : { label: W.backToEvents, onPress: backToEvents };
+    phone && phoneBack != null
+      ? phoneBack
+      : phone && area !== 'overview'
+        ? { label: W.overview, onPress: () => onArea('overview') }
+        : { label: W.backToEvents, onPress: backToEvents };
   const at = PHONE_TABS.includes(area) ? AREA_WORDS[area] : W.more;
 
   return (

@@ -17,6 +17,7 @@ import { backToEvents } from './EventFrame.tsx';
 import { EventsList } from './EventsList.tsx';
 import { eventStateOf, listStateOf } from './EventsModel.ts';
 import { messagesStateOf } from '../messages/MessagesModel.ts';
+import { seatingStateOf } from '../seating/SeatingModel.ts';
 import { areaOf, sampleEvent } from './EventsSample.ts';
 import { say } from './EventsWords.ts';
 import { type Shell, ShellContext, type ShellSection } from '../../components/settingsShell.ts';
@@ -119,15 +120,17 @@ export function EventRoute() {
   const state = eventStateOf(params.state);
   const area = areaOf(params.area);
   const messages = area === 'messages' ? messagesStateOf(params.state) : null;
+  const seating = area === 'seating' ? seatingStateOf(params.state) : null;
 
   return (
     <EventsShell switcher={params.switcher}>
       <EventScreen
-        key={`${params.id ?? ''}:${state ?? ''}:${area ?? ''}:${messages ?? ''}`}
+        key={`${params.id ?? ''}:${state ?? ''}:${area ?? ''}:${messages ?? ''}:${seating ?? ''}`}
         id={params.id}
         state={state}
         area={area}
         messages={messages}
+        seating={seating}
       />
     </EventsShell>
   );
