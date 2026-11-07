@@ -9,6 +9,7 @@ import {
   READER,
   SUBJECT,
   TO_FIGURES,
+  TELL,
   TO_WORD,
   type ToGroup,
   formatCount,
@@ -67,8 +68,27 @@ export interface Draft {
   body: string;
   step: Step;
   seconds: number;
+  wait: number | null;
   cancelled: boolean;
 }
+
+/** A conversation of the hosts' own messages: `base` is the sample message it follows up, `earlier` what it already sent. */
+export interface Thread {
+  id: string;
+  base: ManyKey | null;
+  earlier: readonly Draft[];
+}
+
+export interface Kept extends Thread {
+  draft: Draft;
+}
+
+export interface TellChange {
+  lines: readonly string[];
+  what: readonly string[];
+}
+
+export const SENDING_SECONDS = 3;
 
 export interface Answer {
   text: string;
@@ -79,7 +99,10 @@ export interface Answer {
 export interface Messages {
   phase: 'loading' | 'first' | 'list';
   open: Open;
+  thread: Thread | null;
   draft: Draft | null;
+  kept: readonly Kept[];
+  made: number;
   picking: boolean;
   arrived: boolean;
   done: readonly GuestKey[];
@@ -88,16 +111,22 @@ export interface Messages {
   typed: Partial<Record<GuestKey, string>>;
   untold: boolean;
   telling: boolean;
+  change: TellChange;
   fixing: boolean;
   resending: boolean;
   bell: boolean;
   told: string | null;
 }
 
+const NEW_THREAD: Thread = { id: 'new-1', base: null, earlier: [] };
+
 const BASE: Messages = {
   phase: 'list',
   open: null,
+  thread: null,
   draft: null,
+  kept: [],
+  made: 1,
   picking: false,
   arrived: false,
   done: [],
@@ -106,6 +135,7 @@ const BASE: Messages = {
   typed: {},
   untold: false,
   telling: false,
+  change: { lines: [say.startMoved(TELL.now, TELL.was)], what: [W.newStartTime] },
   fixing: false,
   resending: false,
   bell: false,
@@ -120,11 +150,11 @@ export function blankDraft(): Draft {
     body: '',
     step: 'write',
     seconds: COUNTDOWN_SECONDS,
+    wait: null,
     cancelled: false,
   };
 }
 
-/** The boards' message: Parking and the dress code, to Coming, told by email and SMS. */
 export function sampleDraft(step: Step = 'write'): Draft {
   return { ...blankDraft(), to: 'coming', subject: SUBJECT, body: BODY, step };
 }
@@ -149,6 +179,7 @@ export function startOf(state: MessagesState | null, wide: boolean): Messages {
       ...BASE,
       open: { kind: 'draft' },
       picking: state === 'to',
+      thread: NEW_THREAD,
       draft: { ...sampleDraft(step), cancelled: state === 'cancelled' },
       told: state === 'cancelled' && !wide ? W.cancelled : null,
     };
@@ -207,6 +238,8 @@ export type Action =
   | { type: 'open'; open: Open }
   | { type: 'back' }
   | { type: 'newMessage' }
+  | { type: 'followUp'; base: ManyKey | null }
+  | { type: 'openThread'; id: string }
   | { type: 'picking'; open: boolean }
   | { type: 'chooseTo'; to: ToGroup }
   | { type: 'channel'; key: ChannelKey }
@@ -219,12 +252,12 @@ export type Action =
   | { type: 'confirm' }
   | { type: 'tick' }
   | { type: 'cancelCountdown' }
-  | { type: 'sendingDone' }
   | { type: 'retry' }
   | { type: 'answer'; key: GuestKey; text: string }
   | { type: 'markDone'; key: GuestKey }
   | { type: 'markWaiting'; key: GuestKey }
   | { type: 'telling'; open: boolean }
+  | { type: 'offerTell'; change: TellChange }
   | { type: 'notNow' }
   | { type: 'tellSent' }
   | { type: 'dismissUntold' }
@@ -247,20 +280,104 @@ export function canSend(draft: Draft): boolean {
   return draft.body.trim() !== '';
 }
 
+export function writing(draft: Draft): boolean {
+  return ['write', 'preview', 'check'].includes(draft.step);
+}
+
+export function onItsWay(draft: Draft): boolean {
+  return draft.step === 'countdown' || (draft.step === 'sending' && draft.wait != null);
+}
+
+export function tickDraft(draft: Draft): Draft {
+  if (draft.step === 'countdown') {
+    const seconds = Math.max(draft.seconds - 1, 0);
+
+    return seconds === 0
+      ? { ...draft, seconds, step: 'sending', wait: SENDING_SECONDS }
+      : { ...draft, seconds };
+  }
+  if (draft.step === 'sending' && draft.wait != null)
+    return draft.wait <= 1
+      ? { ...draft, step: 'sent', wait: null }
+      : { ...draft, wait: draft.wait - 1 };
+
+  return draft;
+}
+
+function park(m: Messages): Messages {
+  if (m.thread == null || m.draft == null) return { ...m, thread: null, draft: null };
+
+  return { ...m, thread: null, draft: null, kept: [{ ...m.thread, draft: m.draft }, ...m.kept] };
+}
+
+function activate(m: Messages, find: (kept: Kept) => boolean): Messages {
+  const target = m.kept.find(find);
+  if (target == null) return m;
+  const parked = park({ ...m, kept: m.kept.filter((kept) => kept !== target) });
+  const { draft, ...thread } = target;
+
+  return { ...parked, thread, draft };
+}
+
+function opened(m: Messages, open: Open): Messages {
+  const base = open?.kind === 'many' ? open.key : open?.kind === 'reached' ? 'parking' : null;
+  const next = { ...m, open, picking: false };
+
+  return base != null && m.thread?.base !== base
+    ? activate(next, (kept) => kept.base === base)
+    : next;
+}
+
+function fresh(
+  m: Messages,
+  base: ManyKey | null,
+  to: ToGroup,
+  channels?: Draft['channels'],
+): Messages {
+  const parked = park(m);
+  const made = m.made + 1;
+
+  return {
+    ...parked,
+    made,
+    thread: { id: base ?? `new-${made}`, base, earlier: [] },
+    draft: { ...blankDraft(), to, ...(channels == null ? {} : { channels }) },
+  };
+}
+
+/** Write a follow-up: the sent message stays, and the next one is written after it, to the same people. */
+function followedUp(m: Messages, base: ManyKey | null): Messages {
+  const here = m.thread?.base === base ? m : activate(m, (kept) => kept.base === base);
+  if (here.thread?.base !== base || here.draft == null)
+    return base == null ? m : fresh(here, base, 'all');
+  if (here.draft.step !== 'sent') return here;
+
+  return {
+    ...here,
+    thread: { ...here.thread, earlier: [...here.thread.earlier, here.draft] },
+    draft: { ...blankDraft(), to: here.draft.to, channels: here.draft.channels },
+  };
+}
+
 export function reduce(m: Messages, action: Action): Messages {
   switch (action.type) {
     case 'open':
-      return { ...m, open: action.open, picking: false };
+      return opened(m, action.open);
     case 'back':
-      return { ...m, open: m.open?.kind === 'reached' ? { kind: 'many', key: 'parking' } : null };
+      return opened(m, m.open?.kind === 'reached' ? { kind: 'many', key: 'parking' } : null);
     case 'newMessage': {
-      const keep = m.draft != null && ['write', 'preview', 'check'].includes(m.draft.step);
-      return {
-        ...m,
-        phase: m.phase === 'first' ? 'first' : 'list',
-        open: { kind: 'draft' },
-        draft: keep ? m.draft : blankDraft(),
-      };
+      const keep =
+        m.thread?.base == null && m.draft != null && (writing(m.draft) || onItsWay(m.draft));
+      const next = keep ? m : fresh(m, null, 'all');
+
+      return { ...next, open: { kind: 'draft' }, picking: false };
+    }
+    case 'followUp':
+      return followedUp(m, action.base);
+    case 'openThread': {
+      const next = m.thread?.id === action.id ? m : activate(m, (kept) => kept.id === action.id);
+
+      return { ...next, open: { kind: 'draft' }, picking: false };
     }
     case 'picking':
       return { ...m, picking: action.open };
@@ -290,20 +407,18 @@ export function reduce(m: Messages, action: Action): Messages {
           : draft,
       );
     case 'tick':
-      return withDraft(m, (draft) => {
-        if (draft.step !== 'countdown') return draft;
-        const seconds = Math.max(draft.seconds - 1, 0);
-
-        return seconds === 0 ? { ...draft, seconds, step: 'sending' } : { ...draft, seconds };
-      });
+      return {
+        ...withDraft(m, tickDraft),
+        kept: m.kept.map((kept) => ({ ...kept, draft: tickDraft(kept.draft) })),
+      };
     case 'cancelCountdown':
       return withDraft(m, (draft) =>
         draft.step === 'countdown' ? { ...draft, step: 'write', cancelled: true } : draft,
       );
-    case 'sendingDone':
-      return stepped(m, ['sending'], 'sent');
     case 'retry':
-      return stepped(m, ['failed'], 'sending');
+      return withDraft(m, (draft) =>
+        draft.step === 'failed' ? { ...draft, step: 'sending', wait: SENDING_SECONDS } : draft,
+      );
     case 'answer':
       return {
         ...m,
@@ -320,6 +435,8 @@ export function reduce(m: Messages, action: Action): Messages {
       return { ...m, done: m.done.filter((key) => key !== action.key) };
     case 'telling':
       return { ...m, telling: action.open };
+    case 'offerTell':
+      return { ...m, telling: true, change: action.change };
     case 'notNow':
       return { ...m, telling: false, untold: true };
     case 'tellSent':
@@ -390,7 +507,6 @@ export interface Check {
   whatsApp: boolean;
 }
 
-/** What the check says for a draft: who is told on each ticked channel, who can't be, and the credits. */
 export function checkOf(draft: Draft): Check {
   const figures = TO_FIGURES[draft.to];
   const ticked = (['email', 'sms', 'wa'] as const).filter((key) => draft.channels[key]);
@@ -431,11 +547,22 @@ export function spokenAt(seconds: number, count: number): string | null {
   return null;
 }
 
-export function draftTitle(draft: Draft): string {
-  if (['write', 'preview', 'check'].includes(draft.step) || draft.subject.trim() === '')
-    return W.newMessage;
+/** A message's name in Messages: its Subject, or with none its first line, which the screen shortens to fit (pm, sc-3942). */
+export function messageName(draft: Draft): string {
+  return draft.subject.trim() || (draft.body.trim().split(/\r?\n/u)[0] ?? '').trim();
+}
 
-  return draft.subject.trim();
+export function draftTitle(draft: Draft, thread: Thread | null = null): string {
+  const first = thread?.earlier[0];
+  if (first != null) return messageName(first);
+
+  return writing(draft) ? W.newMessage : messageName(draft);
+}
+
+export function anyOnItsWay(m: Messages): boolean {
+  return [m.draft, ...m.kept.map((kept) => kept.draft)].some(
+    (draft) => draft != null && onItsWay(draft),
+  );
 }
 
 export function draftLine(draft: Draft): string {

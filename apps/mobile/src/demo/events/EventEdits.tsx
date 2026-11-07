@@ -510,7 +510,6 @@ function DatesEdit(edit: EditProps) {
           testID="event.edit.dates.zone"
         />
       )}
-      <TellGuests />
     </EditShell>
   );
 }
@@ -658,7 +657,6 @@ function VenueEdit(edit: EditProps) {
           }
         />
       )}
-      {words == null && !offer && !down && <TellGuests />}
     </EditShell>
   );
 }

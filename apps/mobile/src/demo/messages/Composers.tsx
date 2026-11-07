@@ -56,20 +56,23 @@ export function ToChip({
   onPress,
   ref,
   open = false,
+  off = false,
 }: {
   text: string;
   onPress: () => void;
   ref?: Ref<ViewInstance> | undefined;
   open?: boolean;
+  off?: boolean;
 }) {
   return (
     <Pressable
       ref={ref}
-      onPress={onPress}
+      onPress={off ? undefined : onPress}
+      disabled={off}
       style={({ pressed }) => [styles.toChip, pressed && styles.pressed]}
       accessibilityRole="button"
       accessibilityLabel={`${W.to}, ${text}`}
-      accessibilityState={{ expanded: open }}
+      accessibilityState={{ expanded: open, disabled: off }}
       testID="messages.to"
     >
       <Text size={14} weight="semibold" accessible={false} style={[styles.accent, styles.figures]}>
@@ -121,12 +124,14 @@ export function ChannelTick({
 export function ToHead({
   draft,
   picking,
+  locked = false,
   toRef,
   onTo,
   onChannel,
 }: {
   draft: Draft;
   picking: boolean;
+  locked?: boolean;
   toRef?: Ref<ViewInstance> | undefined;
   onTo: () => void;
   onChannel: (key: ChannelKey) => void;
@@ -139,7 +144,24 @@ export function ToHead({
             {W.to}
           </Text>
         </View>
-        <ToChip ref={toRef} text={toChip(draft.to)} onPress={onTo} open={picking} />
+        {locked ? (
+          <View
+            style={styles.toChip}
+            accessible
+            accessibilityLabel={`${W.to}, ${toChip(draft.to)}`}
+          >
+            <Text
+              size={14}
+              weight="semibold"
+              accessible={false}
+              style={[styles.accent, styles.figures]}
+            >
+              {toChip(draft.to)}
+            </Text>
+          </View>
+        ) : (
+          <ToChip ref={toRef} text={toChip(draft.to)} onPress={onTo} open={picking} />
+        )}
       </View>
       <View style={styles.headRow}>
         <View style={styles.byWord}>
@@ -319,10 +341,12 @@ export function AnswerBox({
 export function MiniComposer({
   to,
   placeholder,
+  off = false,
   onOpen,
 }: {
   to: string;
   placeholder: string;
+  off?: boolean;
   onOpen: (picking: boolean) => void;
 }) {
   return (
@@ -331,14 +355,16 @@ export function MiniComposer({
         <Text size={13.5} weight="semibold" style={styles.secondary}>
           {W.to}
         </Text>
-        <ToChip text={to} onPress={() => onOpen(true)} />
+        <ToChip text={to} off={off} onPress={() => onOpen(true)} />
       </View>
       <View style={styles.miniRow}>
         <Pressable
-          onPress={() => onOpen(false)}
+          onPress={off ? undefined : () => onOpen(false)}
+          disabled={off}
           style={({ pressed }) => [styles.miniField, pressed && styles.pressed]}
           accessibilityRole="button"
           accessibilityLabel={placeholder}
+          accessibilityState={{ disabled: off }}
           testID="messages.mini"
         >
           <Text size={16} weight="medium" accessible={false} style={styles.placeholder}>

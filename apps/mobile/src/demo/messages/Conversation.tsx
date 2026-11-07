@@ -10,6 +10,7 @@ import { AnswerBox, MiniComposer, NewComposer, PreviewBar, ToHead } from './Comp
 import { GroupTile } from './MessagesList.tsx';
 import {
   type Action,
+  type Draft,
   type Messages,
   type Open,
   checkOf,
@@ -21,6 +22,7 @@ import {
   GUESTS,
   type GuestKey,
   INVITATION,
+  type ManyKey,
   NOW,
   PARKING,
   PARKING_BODY,
@@ -31,7 +33,6 @@ import {
   SCHEDULED_BODY,
   TO_ALL,
   TO_WORD,
-  type ToGroup,
   EVENT,
   HOSTS,
 } from './MessagesSample.ts';
@@ -71,7 +72,7 @@ export interface Talk {
   onInsert: () => void;
   onCaret: (at: number) => void;
   onWho: () => void;
-  onNew: (to: ToGroup, picking: boolean) => void;
+  onFollowUp: (base: ManyKey | null) => void;
   onRetry: () => void;
   onConfirm: () => void;
   onCancelCountdown: () => void;
@@ -83,13 +84,14 @@ export interface Talk {
 
 export interface Parts {
   title: string;
+  titleLines?: number;
   line?: string | undefined;
   right?: ReactNode;
   lead?: ReactNode;
   head?: ReactNode;
   stream: ReactNode;
   align: 'end' | 'start';
-  bare?: boolean;
+  bare?: boolean | undefined;
   foot?: ReactNode;
 }
 
@@ -213,15 +215,79 @@ function guestParts(talk: Talk, key: GuestKey): Parts {
   };
 }
 
-function draftParts(talk: Talk): Parts {
+/** A message the hosts sent: their words, then where it went and what happened (the receipt once it is sent). */
+function SentMessage({ talk, draft, last }: { talk: Talk; draft: Draft; last: boolean }) {
+  const result = resultOf(draft);
+  const time = draft.step === 'sent' ? say.byAt(READER, NOW) : NOW;
+  const bits: Bit[] =
+    draft.step === 'sending' || draft.step === 'sent'
+      ? [{ word: W.onTheirPage, where: 'page' }, { word: time }]
+      : [{ word: NOW }];
+
+  return (
+    <>
+      <HostBubble
+        subject={draft.subject}
+        text={draft.body}
+        bits={bits}
+        faded={draft.step === 'failed'}
+        settles={last && draft.step === 'sending'}
+      />
+      {last && draft.step === 'countdown' && (
+        <CountdownLine
+          seconds={draft.seconds}
+          cancelRef={talk.refFor('cancel')}
+          onCancel={talk.onCancelCountdown}
+        />
+      )}
+      {draft.step === 'sending' && (
+        <>
+          <SendingLine soFar={result.soFar} of={result.count} />
+          {last && <StatusLine text={say.queued(result.count)} />}
+        </>
+      )}
+      {draft.step === 'sent' && (
+        <Receipt
+          reached={result.reached}
+          of={result.count}
+          seen={result.seen}
+          onWho={() => talk.ownDesign(W.whoItReached)}
+        />
+      )}
+      {last && draft.step === 'failed' && (
+        <FailedLine retryRef={talk.refFor('retry')} onRetry={talk.onRetry} />
+      )}
+    </>
+  );
+}
+
+interface Own {
+  head?: ReactNode;
+  line?: string | undefined;
+  stream: ReactNode;
+  bare?: boolean | undefined;
+  align: 'end' | 'start';
+  foot: ReactNode;
+  writing: boolean;
+}
+
+/** The active thread's own messages, after whatever it follows up: those sent, then the one being written, checked or sent. */
+function ownParts(talk: Talk, followUp: string): Own {
   const { m, dispatch } = talk;
   const draft = m.draft;
-  if (draft == null) return { title: W.newMessage, stream: null, align: 'end' };
-  const toWord = `${say.toGroup(toChip(draft.to))}`;
+  const thread = m.thread;
+  if (draft == null || thread == null)
+    return { stream: null, align: 'end', foot: null, writing: false };
+  const locked = thread.base != null || thread.earlier.length > 0;
+  const toWord = say.toGroup(toChip(draft.to));
+  const earlier = thread.earlier.map((one, index) => (
+    <SentMessage key={index} talk={talk} draft={one} last={false} />
+  ));
   const head = (
     <ToHead
       draft={draft}
       picking={m.picking}
+      locked={locked}
       toRef={talk.refFor('to')}
       onTo={talk.onTo}
       onChannel={(key) => dispatch({ type: 'channel', key })}
@@ -246,15 +312,19 @@ function draftParts(talk: Talk): Parts {
 
   if (draft.step === 'write')
     return {
-      title: W.newMessage,
       head,
-      stream: draft.cancelled && talk.wide ? <StatusLine text={W.cancelled} /> : null,
+      stream: (
+        <>
+          {earlier}
+          {draft.cancelled && talk.wide && <StatusLine text={W.cancelled} />}
+        </>
+      ),
       align: 'end',
       foot: composer(true),
+      writing: true,
     };
   if (draft.step === 'preview')
     return {
-      title: W.newMessage,
       bare: true,
       stream: <Preview draft={draft} columns={talk.columns} />,
       align: 'start',
@@ -265,163 +335,176 @@ function draftParts(talk: Talk): Parts {
           onSend={talk.onSend}
         />
       ),
+      writing: true,
     };
   if (draft.step === 'check')
     return {
-      title: W.newMessage,
-      line: talk.wide ? undefined : `${toWord} · ${toldBy(draft.channels)}`,
       head: talk.wide ? head : undefined,
+      line: talk.wide ? undefined : `${toWord} · ${toldBy(draft.channels)}`,
       stream: (
-        <CheckCard
-          draft={draft}
-          headRef={talk.checkRef}
-          goRef={talk.refFor('go')}
-          onGo={talk.onConfirm}
-          onLater={() => talk.ownDesign(W.later)}
-          onChange={talk.onChangeIt}
-          onSeeAll={() => talk.ownDesign(say.seeAll(checkOf(draft).cantTell))}
-        />
+        <>
+          {earlier}
+          <CheckCard
+            draft={draft}
+            headRef={talk.checkRef}
+            goRef={talk.refFor('go')}
+            onGo={talk.onConfirm}
+            onLater={() => talk.ownDesign(W.later)}
+            onChange={talk.onChangeIt}
+            onSeeAll={() => talk.ownDesign(say.seeAll(checkOf(draft).cantTell))}
+          />
+        </>
       ),
       align: 'end',
       foot: composer(false),
+      writing: true,
     };
 
-  const result = resultOf(draft);
-  const time = draft.step === 'sent' ? say.byAt(READER, NOW) : NOW;
-  const bits: Bit[] =
-    draft.step === 'sending' || draft.step === 'sent'
-      ? [{ word: W.onTheirPage, where: 'page' }, { word: time }]
-      : [{ word: NOW }];
-
   return {
-    title: draftTitle(draft),
     line: Object.values(draft.channels).some(Boolean)
       ? `${toWord} · ${W.onTheirPage.toLowerCase()} · told by ${toldBy(draft.channels)}`
       : `${toWord} · ${W.onTheirPage.toLowerCase()}`,
-    lead: <GroupTile side={44} />,
     stream: (
       <>
-        <DayRule text={W.today} />
-        <HostBubble
-          subject={draft.subject}
-          text={draft.body}
-          bits={bits}
-          faded={draft.step === 'failed'}
-          settles={draft.step === 'sending'}
-        />
-        {draft.step === 'countdown' && (
-          <CountdownLine
-            seconds={draft.seconds}
-            cancelRef={talk.refFor('cancel')}
-            onCancel={talk.onCancelCountdown}
-          />
-        )}
-        {draft.step === 'sending' && (
-          <>
-            <SendingLine soFar={result.soFar} of={result.count} />
-            <StatusLine text={say.queued(result.count)} />
-          </>
-        )}
-        {draft.step === 'sent' && (
-          <Receipt
-            reached={result.reached}
-            of={result.count}
-            seen={result.seen}
-            onWho={() => talk.ownDesign(W.whoItReached)}
-          />
-        )}
-        {draft.step === 'failed' && (
-          <FailedLine retryRef={talk.refFor('retry')} onRetry={talk.onRetry} />
-        )}
+        {earlier}
+        <SentMessage talk={talk} draft={draft} last />
       </>
     ),
     align: 'end',
     foot: (
       <MiniComposer
         to={toChip(draft.to)}
-        placeholder={W.writeAFollowUp}
-        onOpen={(picking) => talk.onNew(draft.to, picking)}
+        placeholder={followUp}
+        off={draft.step !== 'sent'}
+        onOpen={() => talk.onFollowUp(thread.base)}
       />
     ),
+    writing: false,
+  };
+}
+
+function draftParts(talk: Talk): Parts {
+  const { m } = talk;
+  if (m.draft == null) return { title: W.newMessage, stream: null, align: 'end' };
+  const own = ownParts(talk, W.writeAFollowUp);
+  const sent = m.draft.step !== 'write' || (m.thread?.earlier.length ?? 0) > 0;
+
+  return {
+    title: draftTitle(m.draft, m.thread),
+    titleLines: 1,
+    line: own.line,
+    lead: <GroupTile side={44} />,
+    head: own.head,
+    bare: own.bare,
+    stream:
+      own.writing && !sent ? (
+        own.stream
+      ) : (
+        <>
+          <DayRule text={W.today} />
+          {own.stream}
+        </>
+      ),
+    align: own.align,
+    foot: own.foot,
   };
 }
 
 function manyParts(talk: Talk, key: 'parking' | 'invite' | 'sched'): Parts {
   const { m } = talk;
+  const own = m.thread?.base === key && m.draft != null ? ownParts(talk, W.writeAFollowUp) : null;
+  const followUp = (placeholder: string) =>
+    own?.foot ?? (
+      <MiniComposer
+        to={toChip('all')}
+        placeholder={placeholder}
+        onOpen={() => talk.onFollowUp(key === 'sched' ? null : key)}
+      />
+    );
+  const today =
+    own == null || (own.writing && (m.thread?.earlier.length ?? 0) === 0) ? null : (
+      <DayRule text={W.today} />
+    );
 
   if (key === 'parking')
     return {
       title: PARKING,
+      titleLines: 1,
       line:
-        m.resending && !talk.wide ? `${TO_ALL} · 142 · Mon, Nov 2` : `${TO_ALL} · 142 · ${many}`,
+        own?.writing === true
+          ? undefined
+          : m.resending && !talk.wide
+            ? `${TO_ALL} · 142 · Mon, Nov 2`
+            : `${TO_ALL} · 142 · ${many}`,
       lead: <GroupTile side={44} />,
-      stream: (
-        <>
-          <DayRule text="Mon, Nov 2" />
-          <HostBubble
-            subject={PARKING}
-            text={PARKING_BODY}
-            bits={[{ word: W.onTheirPage, where: 'page' }, { word: say.byAt(READER, '18:20') }]}
-          />
-          {m.resending ? (
-            <ResendCheck
-              headRef={talk.checkRef}
-              onGo={talk.onResent}
-              onChange={() => talk.dispatch({ type: 'resending', open: false })}
-              onSeeAll={() => talk.ownDesign(say.seeAll(8))}
+      head: own?.writing === true ? own.head : undefined,
+      bare: own?.bare,
+      stream:
+        own?.bare === true ? (
+          own.stream
+        ) : (
+          <>
+            <DayRule text="Mon, Nov 2" />
+            <HostBubble
+              subject={PARKING}
+              text={PARKING_BODY}
+              bits={[{ word: W.onTheirPage, where: 'page' }, { word: say.byAt(READER, '18:20') }]}
             />
-          ) : (
-            <Receipt
-              reached={PARKING_REACH.reached}
-              of={PARKING_REACH.of}
-              seen={PARKING_REACH.seen}
-              onWho={talk.onWho}
-            />
-          )}
-        </>
-      ),
-      align: 'end',
-      foot: m.resending ? undefined : (
-        <MiniComposer
-          to={toChip('all')}
-          placeholder={W.writeAFollowUp}
-          onOpen={(picking) => talk.onNew('all', picking)}
-        />
-      ),
+            {m.resending ? (
+              <ResendCheck
+                headRef={talk.checkRef}
+                onGo={talk.onResent}
+                onChange={() => talk.dispatch({ type: 'resending', open: false })}
+                onSeeAll={() => talk.ownDesign(say.seeAll(8))}
+              />
+            ) : (
+              <Receipt
+                reached={PARKING_REACH.reached}
+                of={PARKING_REACH.of}
+                seen={PARKING_REACH.seen}
+                onWho={talk.onWho}
+              />
+            )}
+            {today}
+            {own?.stream}
+          </>
+        ),
+      align: own?.align ?? 'end',
+      foot: m.resending ? undefined : followUp(W.writeAFollowUp),
     };
   if (key === 'invite')
     return {
       title: W.invitation,
-      line: `${TO_ALL} · 142 · Email and SMS`,
+      line: own?.writing === true ? undefined : `${TO_ALL} · 142 · Email and SMS`,
       lead: <GroupTile side={44} />,
-      stream: (
-        <>
-          <DayRule text="Mon, Oct 12" />
-          <SystemLine text={say.sentWhenLive(READER)} glyph="events" />
-          <SoirelyCard
-            title={say.inviteTitle(EVENT, HOSTS)}
-            lines={INVITATION.lines}
-            bits={[{ word: W.soirelysOwn }]}
-          />
-          <Receipt
-            reached={INVITATION.reached}
-            of={INVITATION.of}
-            seen={INVITATION.seen}
-            onWho={() => talk.ownDesign(W.whoItReached)}
-          />
-          <SystemLine text={say.nowInvited(INVITATION.reached)} glyph="tick" />
-        </>
-      ),
-      align: 'end',
-      foot: (
-        <MiniComposer
-          to={toChip('all')}
-          placeholder={W.writeToThem}
-          onOpen={(picking) => talk.onNew('all', picking)}
-        />
-      ),
+      head: own?.writing === true ? own.head : undefined,
+      bare: own?.bare,
+      stream:
+        own?.bare === true ? (
+          own.stream
+        ) : (
+          <>
+            <DayRule text="Mon, Oct 12" />
+            <SystemLine text={say.sentWhenLive(READER)} glyph="events" />
+            <SoirelyCard
+              title={say.inviteTitle(EVENT, HOSTS)}
+              lines={INVITATION.lines}
+              bits={[{ word: W.soirelysOwn }]}
+            />
+            <Receipt
+              reached={INVITATION.reached}
+              of={INVITATION.of}
+              seen={INVITATION.seen}
+              onWho={() => talk.ownDesign(W.whoItReached)}
+            />
+            <SystemLine text={say.nowInvited(INVITATION.reached)} glyph="tick" />
+            {today}
+            {own?.stream}
+          </>
+        ),
+      align: own?.align ?? 'end',
+      foot: followUp(W.writeToThem),
     };
-
   return {
     title: SCHEDULED,
     line: `${say.toGroup(TO_WORD.coming)} · 96 · ${W.scheduled}`,

@@ -18,9 +18,10 @@ import {
 } from '../settings/Summary.tsx';
 import { MessageGlyph } from './MessageMarks.tsx';
 import {
+  type Draft,
   type Messages,
-  type Open,
   type RowKey,
+  type Thread,
   draftLine,
   draftTitle,
   sectionsOf,
@@ -37,18 +38,33 @@ import {
 } from './MessagesSample.ts';
 import { CHANNEL_WORD, W, say } from './MessagesWords.ts';
 
-export type RowId = RowKey | { kind: 'draft' };
+export type RowId = RowKey | { kind: 'draft'; id: string };
 
-export function sameOpen(open: Open, id: RowId): boolean {
+export function sameOpen(m: Messages, id: RowId): boolean {
+  const open = m.open;
   if (open == null) return false;
   if (open.kind === 'reached') return id.kind === 'many' && id.key === 'parking';
-  if (open.kind === 'draft' || id.kind === 'draft') return open.kind === id.kind;
+  if (open.kind === 'draft' || id.kind === 'draft')
+    return open.kind === id.kind && id.kind === 'draft' && m.thread?.id === id.id;
 
   return open.kind === id.kind && open.key === id.key;
 }
 
 export function rowName(id: RowId): string {
-  return id.kind === 'draft' ? 'draft' : id.key;
+  return id.kind === 'draft' ? id.id : id.key;
+}
+
+/** The hosts' own conversations, newest first: the one open for writing, then those kept. */
+export function ownThreads(m: Messages): { id: string; thread: Thread; draft: Draft }[] {
+  const active =
+    m.thread != null && m.thread.base == null && m.draft != null
+      ? [{ id: m.thread.id, thread: m.thread, draft: m.draft }]
+      : [];
+  const kept = m.kept
+    .filter((one) => one.base == null)
+    .map(({ draft, ...thread }) => ({ id: thread.id, thread, draft }));
+
+  return [...active, ...kept];
 }
 
 /** A message to many leads with a tile in the event's own Confetti and the group mark. */
@@ -78,6 +94,7 @@ export function GroupTile({ side = 40 }: { side?: number }) {
 
 interface Shown {
   title: string;
+  titleLines?: number;
   line: string;
   time: string;
   lead: ReactNode;
@@ -88,9 +105,11 @@ const TO_ALL = 'To all guests';
 
 function shownRow(m: Messages, id: RowId): Shown {
   if (id.kind === 'draft') {
-    const draft = m.draft;
+    const own = ownThreads(m).find((one) => one.id === id.id);
+    const draft = own?.draft;
     return {
-      title: draft == null ? W.newMessage : draftTitle(draft),
+      title: own == null ? W.newMessage : draftTitle(own.draft, own.thread),
+      titleLines: 1,
       line: draft == null ? '' : draftLine(draft),
       time: NOW,
       lead: <GroupTile />,
@@ -200,7 +219,15 @@ function SectionTitle({ word, count }: { word: string; count?: number }) {
   );
 }
 
-function Untold({ onTell, onDismiss }: { onTell: () => void; onDismiss: () => void }) {
+function Untold({
+  what,
+  onTell,
+  onDismiss,
+}: {
+  what: string;
+  onTell: () => void;
+  onDismiss: () => void;
+}) {
   return (
     <View style={styles.untold}>
       <View style={styles.untoldHead}>
@@ -210,7 +237,7 @@ function Untold({ onTell, onDismiss }: { onTell: () => void; onDismiss: () => vo
         </Text>
       </View>
       <Text size={14} weight="medium" style={[styles.secondary, styles.untoldLine]}>
-        {W.newStartTime}
+        {what}
       </Text>
       <View style={styles.untoldActions}>
         <TextAction label={W.tellThem} onPress={onTell} testID="messages.untold.tell" />
@@ -241,7 +268,7 @@ export function MessagesList({
   onDismiss: () => void;
 }) {
   const sections = sectionsOf(m);
-  const lit = (id: RowId) => wide && sameOpen(m.open, id);
+  const lit = (id: RowId) => wide && sameOpen(m, id);
   const item = (id: RowId): ListItem => {
     const shown = shownRow(m, id);
     const selected = lit(id);
@@ -250,6 +277,7 @@ export function MessagesList({
       <Row
         ref={refFor(`row.${rowName(id)}`)}
         title={shown.title}
+        titleLines={shown.titleLines}
         line={shown.line}
         lead={shown.lead}
         value={shown.time === '' ? undefined : shown.time}
@@ -306,7 +334,7 @@ export function MessagesList({
         <RowShapes words={W.loading} />
       </View>
     );
-  if (m.phase === 'first' && m.draft == null)
+  if (m.phase === 'first' && ownThreads(m).length === 0)
     return (
       <View style={styles.list}>
         {title}
@@ -328,10 +356,15 @@ export function MessagesList({
   return (
     <View style={styles.list}>
       {title}
-      {m.untold && <Untold onTell={onTell} onDismiss={onDismiss} />}
-      {m.draft != null && (
+      {m.untold && (
+        <Untold what={m.change.what.join(' · ')} onTell={onTell} onDismiss={onDismiss} />
+      )}
+      {ownThreads(m).length > 0 && (
         <View style={styles.bleed}>
-          <RowList items={[item({ kind: 'draft' })]} gutter={10} />
+          <RowList
+            items={ownThreads(m).map((own) => item({ kind: 'draft', id: own.id }))}
+            gutter={10}
+          />
         </View>
       )}
       {m.phase === 'list' && (

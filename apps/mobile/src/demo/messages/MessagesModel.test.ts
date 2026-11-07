@@ -10,6 +10,7 @@ import {
   checkOf,
   draftLine,
   draftTitle,
+  messageName,
   messagesStateOf,
   reduce,
   resultOf,
@@ -20,7 +21,16 @@ import {
   toChip,
 } from './MessagesModel.ts';
 import { MESSAGES_BOARDS } from './MessagesBoards.ts';
-import { TO_FIGURES, TO_ORDER, TO_WORD, filledFor, piecesOf } from './MessagesSample.ts';
+import { sampleEvent } from '../events/EventsSample.ts';
+import {
+  NOT_REACHED,
+  TO_FIGURES,
+  TO_ORDER,
+  TO_WORD,
+  filledFor,
+  piecesOf,
+} from './MessagesSample.ts';
+import { tellChange } from './TellChange.ts';
 
 const run = (m: Messages, ...actions: Action[]) => actions.reduce(reduce, m);
 
@@ -238,9 +248,14 @@ describe('the ten seconds', () => {
     expect(draftLine(gone.draft ?? blankDraft())).toBe('Reached 38 of 96 so far');
     expect(ticks(gone, 2).draft?.step).toBe('sending');
 
-    const sent = reduce(gone, { type: 'sendingDone' });
+    const sent = ticks(gone, 3);
+    expect(sent.draft?.step).toBe('sent');
     expect(draftLine(sent.draft ?? blankDraft())).toBe('Reached 94 of 96');
     expect(draftTitle(sent.draft ?? blankDraft())).toBe('Parking and the dress code');
+  });
+
+  it('hold a `?state=sending` link, which never left a countdown', () => {
+    expect(ticks(startOf('sending', false), 5).draft?.step).toBe('sending');
   });
 
   it('are said at 10, 5 and 0 only', () => {
@@ -268,7 +283,9 @@ describe('the ten seconds', () => {
   it('try again after a failed send', () => {
     const failed = startOf('failed', false);
     expect(draftLine(failed.draft ?? blankDraft())).toBe('Nothing was sent');
-    expect(reduce(failed, { type: 'retry' }).draft?.step).toBe('sending');
+    const again = reduce(failed, { type: 'retry' });
+    expect(again.draft?.step).toBe('sending');
+    expect(ticks(again, 3).draft?.step).toBe('sent');
   });
 
   it('reach every guest who can be told', () => {
@@ -307,5 +324,124 @@ describe('the demo home', () => {
     expect(MESSAGES_BOARDS.map((board) => board.state)).toEqual([...MESSAGES_STATES]);
     expect(MESSAGES_BOARDS[0]?.href).toBe('/demo/events/evt-wed-4?area=messages&state=first');
     expect(new Set(MESSAGES_BOARDS.map((board) => board.title)).size).toBe(MESSAGES_STATES.length);
+  });
+});
+
+describe('a message’s name', () => {
+  it('is its Subject, or with none its first line', () => {
+    const plain = { ...sampleDraft('sent'), subject: '', body: 'Bring a coat.\nIt will be cold.' };
+
+    expect(messageName(sampleDraft('sent'))).toBe('Parking and the dress code');
+    expect(messageName(plain)).toBe('Bring a coat.');
+    expect(draftTitle(plain)).toBe('Bring a coat.');
+    expect(draftTitle({ ...plain, step: 'write' })).toBe('New message');
+  });
+});
+
+describe('Write a follow-up', () => {
+  const ticks = (m: Messages, count: number) =>
+    run(m, ...Array.from({ length: count }, (): Action => ({ type: 'tick' })));
+
+  it('keeps the sent message and writes the next one after it, to the same people', () => {
+    const next = reduce(startOf('sent', false), { type: 'followUp', base: null });
+
+    expect(next.thread?.earlier).toHaveLength(1);
+    expect(next.thread?.earlier[0]?.subject).toBe('Parking and the dress code');
+    expect(next.draft).toMatchObject({ step: 'write', to: 'coming', body: '' });
+    expect(draftTitle(next.draft ?? blankDraft(), next.thread)).toBe('Parking and the dress code');
+  });
+
+  it('waits while the message counts down or is sent', () => {
+    const counting = startOf('countdown', false);
+    expect(reduce(counting, { type: 'followUp', base: null })).toBe(counting);
+  });
+
+  it('follows up a sample message in its own conversation', () => {
+    const parking = reduce(startOf('reached', false), { type: 'back' });
+    const next = reduce(parking, { type: 'followUp', base: 'parking' });
+
+    expect(next.thread).toMatchObject({ base: 'parking', earlier: [] });
+    expect(next.draft).toMatchObject({ step: 'write', to: 'all' });
+  });
+
+  it('keeps a sent conversation when a new message starts, and opens it again', () => {
+    const sent = startOf('sent', false);
+    const fresh = reduce(sent, { type: 'newMessage' });
+
+    expect(fresh.kept.map((kept) => kept.id)).toEqual(['new-1']);
+    expect(fresh.thread?.id).toBe('new-2');
+    expect(fresh.draft?.step).toBe('write');
+
+    const back = reduce(fresh, { type: 'openThread', id: 'new-1' });
+    expect(back.thread?.id).toBe('new-1');
+    expect(back.draft?.step).toBe('sent');
+    expect(back.kept.map((kept) => kept.id)).toEqual(['new-2']);
+  });
+
+  it('opens the message still on its way rather than a new one', () => {
+    const counting = startOf('countdown', false);
+    expect(reduce(counting, { type: 'newMessage' }).thread?.id).toBe('new-1');
+  });
+
+  it('lets a kept message finish sending', () => {
+    const confirmed = reduce(startOf('check', false), { type: 'confirm' });
+    const counted = ticks(confirmed, 10);
+    const parked = reduce(counted, { type: 'open', open: { kind: 'many', key: 'parking' } });
+    const followed = reduce(parked, { type: 'followUp', base: 'parking' });
+
+    expect(followed.kept[0]?.draft.step).toBe('sending');
+    expect(ticks(followed, 3).kept[0]?.draft.step).toBe('sent');
+  });
+});
+
+describe('Who it reached', () => {
+  it('names all eleven not reached, the boards’ three first', () => {
+    expect(NOT_REACHED).toHaveLength(11);
+    expect(NOT_REACHED.slice(0, 3).map((person) => person.name)).toEqual([
+      'Tomás Ferreira',
+      'Amaka Eze',
+      'Joaquín Ruiz',
+    ]);
+    expect(NOT_REACHED.filter((person) => person.bounced != null)).toHaveLength(3);
+  });
+});
+
+describe('Tell guests after a change', () => {
+  const wedding = sampleEvent('evt-wed-4');
+  if (wedding == null) throw new Error('The sample has the wedding.');
+
+  it('offers the start time when it moves', () => {
+    expect(tellChange(wedding, { ...wedding, startsAt: '2026-11-05T17:30:00Z' }, 'en-US')).toEqual({
+      lines: ['The start time is now 17:30 (was 18:00).'],
+      what: ['New start time'],
+    });
+  });
+
+  it('offers the dates when they move, and the venue when it changes', () => {
+    const moved = {
+      ...wedding,
+      startsAt: '2026-11-06T18:00:00Z',
+      endsAt: '2026-11-08T15:00:00Z',
+      venue: { name: 'Oslo Hall', address: '1 Oslo Street', place: 'Oslo Hall, London' },
+    };
+    const change = tellChange(wedding, moved, 'en-US');
+
+    expect(change.what).toEqual(['New dates', 'New venue']);
+    expect(change.lines[0]).toMatch(/^The dates are now .+ \(was .+\)\.$/u);
+    expect(change.lines[1]).toBe('The venue is now Oslo Hall (was The Landmark).');
+  });
+
+  it('offers nothing for an end moved within its last day, a draft, or no change', () => {
+    expect(
+      tellChange(wedding, { ...wedding, endsAt: '2026-11-07T16:00:00Z' }, 'en-US').lines,
+    ).toEqual([]);
+    expect(
+      tellChange(
+        wedding,
+        { ...wedding, status: 'draft', startsAt: '2026-11-05T17:30:00Z' },
+        'en-US',
+      ).lines,
+    ).toEqual([]);
+    expect(tellChange(wedding, wedding, 'en-US').lines).toEqual([]);
   });
 });

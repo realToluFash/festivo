@@ -44,6 +44,7 @@ import {
   type Action,
   type Messages,
   type Open,
+  anyOnItsWay,
   badgeOf,
   resultOf,
   sectionsOf,
@@ -51,17 +52,9 @@ import {
   toChip,
 } from './MessagesModel.ts';
 import { BellPlace, InsertMenu, ToPicker, TopToast } from './MessagesOverlays.tsx';
-import {
-  BOUNCED_ADDRESS,
-  FIXED_ADDRESS,
-  type GuestKey,
-  PARKING,
-  type ToGroup,
-} from './MessagesSample.ts';
+import { FIXED_ADDRESS, type GuestKey, PARKING, NOT_REACHED } from './MessagesSample.ts';
 import { W, say } from './MessagesWords.ts';
 import { FixEmail, WhoReached } from './WhoReached.tsx';
-
-const SENDING_MS = 2500;
 
 export function badgeFor(m: Messages): AreaBadge | null {
   const badge = badgeOf(m);
@@ -94,7 +87,7 @@ export function MessagesScreen({
   more: boolean;
   onMore: (open: boolean) => void;
   onArea: (area: AreaKey) => void;
-  start: { flowing: boolean; fix: boolean; push: boolean; keys: boolean };
+  start: { fix: boolean; push: boolean; keys: boolean };
   extra?: ReactNode;
 }) {
   const shell = useShell();
@@ -116,14 +109,20 @@ export function MessagesScreen({
     }),
     [],
   );
-  const flowing = useRef(start.flowing);
   const caret = useRef<number | null>(null);
   const focusBody = useRef(start.keys);
   const [typed, setTyped] = useState<Partial<Record<GuestKey, string>>>(m.typed);
   const [toAt, setToAt] = useState<Anchor | null>(null);
   const [insertAt, setInsertAt] = useState<Anchor | null>(null);
   const [bellAt, setBellAt] = useState<Anchor | null>(null);
-  const [fixStart, setFixStart] = useState(start.fix ? FIXED_ADDRESS : BOUNCED_ADDRESS);
+  const [fix, setFix] = useState(() => {
+    const person = NOT_REACHED[0];
+    return {
+      name: person?.name ?? '',
+      bounced: person?.bounced ?? '',
+      start: start.fix ? FIXED_ADDRESS : (person?.bounced ?? ''),
+    };
+  });
   const refFor = useCallback(
     (key: string) => (node: ViewInstance | null) => {
       refs.current[key] = node;
@@ -139,23 +138,20 @@ export function MessagesScreen({
   const seconds = draft?.seconds;
   const count = draft == null ? 0 : resultOf(draft).count;
 
-  // The countdown ticks each second and is said at 10, 5 and 0; a send that left it finishes after a moment.
+  // A second at a time while any message counts down or is on its way; the countdown is said at 10, 5 and 0 only.
+  const ticking = anyOnItsWay(m);
+  useEffect(() => {
+    if (!ticking) return undefined;
+    const tick = setInterval(() => dispatch({ type: 'tick' }), 1000);
+
+    return () => clearInterval(tick);
+  }, [ticking, dispatch]);
   useEffect(() => {
     if (step === 'countdown' && seconds != null) {
       const words = spokenAt(seconds, count);
       if (words != null) readOut(words);
-      const tick = setTimeout(() => dispatch({ type: 'tick' }), 1000);
-
-      return () => clearTimeout(tick);
-    }
-    if (step === 'sending' && flowing.current) {
-      if (seconds === 0) readOut(say.queued(count));
-      const sent = setTimeout(() => dispatch({ type: 'sendingDone' }), SENDING_MS);
-
-      return () => clearTimeout(sent);
-    }
-    return undefined;
-  }, [step, seconds, count, dispatch]);
+    } else if (step === 'sending' && seconds === 0) readOut(say.queued(count));
+  }, [step, seconds, count]);
 
   useEffect(() => {
     const later = setTimeout(() => {
@@ -211,13 +207,11 @@ export function MessagesScreen({
       ownDesign(W.notMatched);
       return;
     }
-    dispatch({ type: 'open', open: id.kind === 'draft' ? { kind: 'draft' } : id });
+    if (id.kind === 'draft') dispatch({ type: 'openThread', id: id.id });
+    else dispatch({ type: 'open', open: id });
   };
-  const onNew = (to: ToGroup, picking: boolean) => {
-    if (m.draft == null || !['write', 'preview', 'check'].includes(m.draft.step)) {
-      dispatch({ type: 'newMessage' });
-      if (to !== 'all') dispatch({ type: 'chooseTo', to });
-    } else dispatch({ type: 'open', open: { kind: 'draft' } });
+  const onNew = (picking: boolean) => {
+    dispatch({ type: 'newMessage' });
     focusBody.current = !picking;
     if (picking) dispatch({ type: 'picking', open: true });
   };
@@ -267,15 +261,12 @@ export function MessagesScreen({
       from('row.parking');
       dispatch({ type: 'open', open: { kind: 'reached' } });
     },
-    onNew,
-    onRetry: () => {
-      flowing.current = true;
-      dispatch({ type: 'retry' });
+    onFollowUp: (base) => {
+      dispatch({ type: 'followUp', base });
+      setTimeout(() => bodyRef.current?.focus(), 400);
     },
-    onConfirm: () => {
-      flowing.current = true;
-      dispatch({ type: 'confirm' });
-    },
+    onRetry: () => dispatch({ type: 'retry' }),
+    onConfirm: () => dispatch({ type: 'confirm' }),
     onCancelCountdown: () => {
       dispatch({ type: 'cancelCountdown' });
       if (phone) dispatch({ type: 'told', words: W.cancelled });
@@ -316,8 +307,8 @@ export function MessagesScreen({
       refFor={refFor}
       onOpen={open}
       onNew={() => {
-        from('row.draft');
-        onNew('all', false);
+        from('new');
+        onNew(false);
       }}
       onTell={() => dispatch({ type: 'telling', open: true })}
       onDismiss={() => dispatch({ type: 'dismissUntold' })}
@@ -335,8 +326,8 @@ export function MessagesScreen({
       bottom={bottom}
       onFix={(person, fix) => {
         from(`${person.key}.${fix}`);
-        if (fix === W.fixEmail) {
-          setFixStart(BOUNCED_ADDRESS);
+        if (fix === W.fixEmail && person.bounced != null) {
+          setFix({ name: person.name, bounced: person.bounced, start: person.bounced });
           dispatch({ type: 'fixing', open: true });
         } else ownDesign(fix);
       }}
@@ -365,9 +356,11 @@ export function MessagesScreen({
         onClose={() => setInsertAt(null)}
       />
       <FixEmail
-        key={`${fixStart}:${String(m.fixing)}`}
+        key={`${fix.name}:${fix.start}:${String(m.fixing)}`}
         open={m.fixing}
-        start={fixStart}
+        name={fix.name}
+        bounced={fix.bounced}
+        start={fix.start}
         opener={openerRef}
         onCancel={() => dispatch({ type: 'fixing', open: false })}
         onSaved={() => dispatch({ type: 'fixed' })}
@@ -462,11 +455,7 @@ export function MessagesScreen({
             {m.phase === 'first' ? W.noneLine : W.pickOne}
           </Text>
         </View>
-        <MiniComposer
-          to={toChip('all')}
-          placeholder={W.writeToGuests}
-          onOpen={(picking) => onNew('all', picking)}
-        />
+        <MiniComposer to={toChip('all')} placeholder={W.writeToGuests} onOpen={onNew} />
       </View>
     );
   else if (m.open.kind === 'reached')
@@ -513,13 +502,7 @@ export function MessagesScreen({
   );
 }
 
-function PhoneList({
-  list,
-  onNew,
-}: {
-  list: ReactNode;
-  onNew: (to: ToGroup, picking: boolean) => void;
-}) {
+function PhoneList({ list, onNew }: { list: ReactNode; onNew: (picking: boolean) => void }) {
   const insets = useSafeAreaInsets();
   const foot = Math.max(insets.bottom - tokens.spaceXxs, tokens.spaceLg);
   const pinned = foot + PHONE_TAB_BAR + tokens.spaceXl;
@@ -537,11 +520,7 @@ function PhoneList({
         {list}
       </ScrollView>
       <View style={[styles.pinned, { bottom: pinned }]}>
-        <MiniComposer
-          to={toChip('all')}
-          placeholder={W.writeToGuests}
-          onOpen={(picking) => onNew('all', picking)}
-        />
+        <MiniComposer to={toChip('all')} placeholder={W.writeToGuests} onOpen={onNew} />
       </View>
     </View>
   );
@@ -690,6 +669,7 @@ function PaneConversation({
                   size={18}
                   weight="bold"
                   accessibilityRole="header"
+                  numberOfLines={parts.titleLines}
                   style={styles.paneTitle}
                 >
                   {parts.title}

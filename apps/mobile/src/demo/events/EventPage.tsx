@@ -47,10 +47,14 @@ import { W, say } from './EventsWords.ts';
 import { type MessagesState, reduce, startOf } from '../messages/MessagesModel.ts';
 import { TellGuests } from '../messages/MessagesOverlays.tsx';
 import { SAMPLE_EVENT_ID, TELL } from '../messages/MessagesSample.ts';
+import { tellChange } from '../messages/TellChange.ts';
 import { MessagesScreen, badgeFor } from '../messages/MessagesScreen.tsx';
 import { W as MW, say as sayMessages } from '../messages/MessagesWords.ts';
 
 type Mute = 'ok' | 'notLoaded' | 'notSaved';
+
+/** Tell guests opens once the edit's own screen has gone, since iOS shows one window at a time. */
+const TELL_AFTER_MS = 800;
 
 const ASKS: Partial<Record<EventDemoState, LifeAsk>> = {
   pause: 'pause',
@@ -98,6 +102,7 @@ export function EventScreen({
   const [messagesSeen, setMessagesSeen] = useState(messages != null || at === 'messages');
   if (at === 'messages' && !messagesSeen) setMessagesSeen(true);
   const messagesHere = event.id === SAMPLE_EVENT_ID;
+  const [toldEvent, setToldEvent] = useState(() => sampleEvent(id) ?? event);
   const [more, setMore] = useState(state === 'more');
   const [edit, setEdit] = useState<EditPart | null>(editOf(state));
   const [round, setRound] = useState(0);
@@ -135,6 +140,10 @@ export function EventScreen({
     setEvent(next);
     setEdit(null);
     setTold(W.saved);
+    const change =
+      part === 'dates' || part === 'venue' ? tellChange(toldEvent, next, locale) : null;
+    if (change != null && change.lines.length > 0)
+      setTimeout(() => dispatch({ type: 'offerTell', change }), TELL_AFTER_MS);
   };
   const deleteIt = () => {
     setAsk(null);
@@ -205,11 +214,13 @@ export function EventScreen({
   };
   const tellSent = () => {
     dispatch({ type: 'tellSent' });
+    setToldEvent(event);
     tellHere(sayMessages.queued(TELL.count));
   };
   const tell = messagesHere && (
     <TellGuests
       open={m.telling}
+      lines={m.change.lines}
       phone={shell.layout === 'phone'}
       opener={opener}
       onSend={tellSent}
@@ -229,7 +240,6 @@ export function EventScreen({
         onMore={setMore}
         onArea={setAt}
         start={{
-          flowing: messages === 'countdown',
           fix: messages === 'fix',
           push: messages === 'bell',
           keys: messages === 'write' || messages === 'cancelled',

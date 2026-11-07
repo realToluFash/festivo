@@ -11,7 +11,18 @@ export const SAMPLE_EVENT_ID = 'evt-wed-4';
 
 export type Where = 'page' | ChannelKey;
 export type GuestKey = 'ines' | 'lucia' | 'kwame' | 'unknown' | 'marta';
-export type PersonKey = 'tomas' | 'amaka' | 'joaquin' | 'sophie';
+export type PersonKey =
+  | 'tomas'
+  | 'amaka'
+  | 'joaquin'
+  | 'sophie'
+  | 'mateus'
+  | 'hana'
+  | 'chidi'
+  | 'elodie'
+  | 'diego'
+  | 'priya'
+  | 'aisha';
 export type ManyKey = 'parking' | 'invite' | 'sched';
 export type ToGroup = 'all' | 'coming' | 'notReplied';
 export type Token = 'Greeting' | 'Event' | 'Date' | 'Hosts';
@@ -152,6 +163,8 @@ export interface ReachLine {
 
 export interface NotReached {
   key: PersonKey;
+  /** The address that bounced, which Fix email address opens on. */
+  bounced?: string;
   initials: string;
   name: string;
   lines: readonly ReachLine[];
@@ -160,31 +173,61 @@ export interface NotReached {
 
 const PAGE_LINE: ReachLine = { mark: 'none', word: W.theirPage, reason: W.notSeenYet };
 
+const BOUNCED: readonly ReachLine[] = [
+  { mark: 'bounced', word: 'Email · Bounced', reason: W.doesntExist },
+  { mark: 'none', word: 'SMS', reason: W.noPhone },
+  PAGE_LINE,
+];
+const UNCONFIRMED: readonly ReachLine[] = [
+  { mark: 'unconfirmed', word: 'SMS · Sent', reason: W.notConfirmed },
+  PAGE_LINE,
+];
+const NEITHER: readonly ReachLine[] = [
+  { mark: 'none', word: W.noEmail },
+  { mark: 'none', word: W.noPhone },
+  PAGE_LINE,
+];
+
+/** All eleven not reached: 3 bounced, 2 not confirmed, 4 opted out and 2 with no email or phone, the boards' three first. */
 export const NOT_REACHED: readonly NotReached[] = [
   {
     key: 'tomas',
     initials: 'TF',
     name: 'Tomás Ferreira',
-    lines: [
-      { mark: 'bounced', word: 'Email · Bounced', reason: W.doesntExist },
-      { mark: 'none', word: 'SMS', reason: W.noPhone },
-      PAGE_LINE,
-    ],
+    bounced: 'tomas.ferreira@gmial.com',
+    lines: BOUNCED,
     fixes: [W.fixEmail, W.addPhone],
   },
-  {
-    key: 'amaka',
-    initials: 'AE',
-    name: 'Amaka Eze',
-    lines: [{ mark: 'unconfirmed', word: 'SMS · Sent', reason: W.notConfirmed }, PAGE_LINE],
-    fixes: [W.toldInPerson],
-  },
+  { key: 'amaka', initials: 'AE', name: 'Amaka Eze', lines: UNCONFIRMED, fixes: [W.toldInPerson] },
   {
     key: 'joaquin',
     initials: 'JR',
     name: 'Joaquín Ruiz',
-    lines: [{ mark: 'none', word: W.noEmail }, { mark: 'none', word: W.noPhone }, PAGE_LINE],
+    lines: NEITHER,
     fixes: [W.addEmail, W.addPhone, W.toldInPerson],
+  },
+  {
+    key: 'mateus',
+    initials: 'MC',
+    name: 'Mateus Cardoso',
+    bounced: 'mateus.cardoso@hotmial.com',
+    lines: BOUNCED,
+    fixes: [W.fixEmail, W.addPhone],
+  },
+  {
+    key: 'hana',
+    initials: 'HK',
+    name: 'Hana Kim',
+    bounced: 'hana.kim@naver.con',
+    lines: BOUNCED,
+    fixes: [W.fixEmail, W.addPhone],
+  },
+  {
+    key: 'chidi',
+    initials: 'CO',
+    name: 'Chidi Okafor',
+    lines: UNCONFIRMED,
+    fixes: [W.toldInPerson],
   },
   {
     key: 'sophie',
@@ -197,9 +240,48 @@ export const NOT_REACHED: readonly NotReached[] = [
     ],
     fixes: [W.toldInPerson],
   },
+  {
+    key: 'elodie',
+    initials: 'ÉM',
+    name: 'Élodie Martin',
+    lines: [
+      { mark: 'optout', word: 'Email · Not sent', reason: W.unsubscribed },
+      { mark: 'optout', word: 'SMS · Not sent', reason: W.textedStop },
+      PAGE_LINE,
+    ],
+    fixes: [W.toldInPerson],
+  },
+  {
+    key: 'diego',
+    initials: 'DF',
+    name: 'Diego Fernández',
+    lines: [
+      { mark: 'optout', word: 'Email · Not sent', reason: W.unsubscribed },
+      { mark: 'none', word: 'SMS', reason: W.noPhone },
+      PAGE_LINE,
+    ],
+    fixes: [W.toldInPerson],
+  },
+  {
+    key: 'priya',
+    initials: 'PR',
+    name: 'Priya Raman',
+    lines: [
+      { mark: 'none', word: 'Email', reason: W.noEmail },
+      { mark: 'optout', word: 'SMS · Not sent', reason: W.textedStop },
+      PAGE_LINE,
+    ],
+    fixes: [W.toldInPerson],
+  },
+  {
+    key: 'aisha',
+    initials: 'AB',
+    name: 'Aisha Bello',
+    lines: NEITHER,
+    fixes: [W.addEmail, W.addPhone, W.toldInPerson],
+  },
 ];
 
-export const BOUNCED_ADDRESS = 'tomas.ferreira@gmial.com';
 export const FIXED_ADDRESS = 'tomas.ferreira@gmail.com';
 
 export const RESEND = {

@@ -200,6 +200,7 @@ export function Section({
 
 export interface RowProps {
   title: string;
+  titleLines?: number | undefined;
   line?: string | undefined;
   lead?: ReactNode;
   tag?: RowTag | null | undefined;
@@ -224,6 +225,7 @@ export interface RowProps {
 /** B's one row: a face or an icon, the title with its tag, a line under it, and a chevron when it opens something. */
 export function Row({
   title,
+  titleLines,
   line,
   lead,
   tag,
@@ -259,6 +261,7 @@ export function Row({
           <Text
             size={16}
             weight={weight}
+            numberOfLines={titleLines}
             selectable={selectable}
             accessible={grouped ? false : undefined}
             style={[styles.title, (accent || selected) && styles.accent, off && styles.off]}

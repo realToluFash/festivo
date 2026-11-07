@@ -416,6 +416,7 @@ function PushTimer({ onGone }: { onGone: () => void }) {
 /** Tell guests (sc-4330): Soirely's prepared line goes by every channel; a note goes on their page only. */
 export function TellGuests({
   open,
+  lines,
   phone,
   opener,
   onSend,
@@ -423,6 +424,7 @@ export function TellGuests({
   onSeeWho,
 }: {
   open: boolean;
+  lines: readonly string[];
   phone: boolean;
   opener: Opener;
   onSend: () => void;
@@ -461,9 +463,11 @@ export function TellGuests({
           {W.message}
         </Text>
         <View style={styles.prepared}>
-          <Text size={16} weight="medium" style={styles.line16}>
-            {say.startMoved(TELL.now, TELL.was)}
-          </Text>
+          {lines.map((line) => (
+            <Text key={line} size={16} weight="medium" style={styles.line16}>
+              {line}
+            </Text>
+          ))}
         </View>
         <Text size={13.5} weight="medium" style={[styles.secondary, styles.line135]}>
           {W.ownLanguage}

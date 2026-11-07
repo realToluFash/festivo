@@ -17,13 +17,7 @@ import { Avatar } from '../settings/parts.tsx';
 import { FocusedScreen, TextAction } from '../settings/Summary.tsx';
 import { BigButton } from './CheckCard.tsx';
 import { DeliveryMark } from './MessageMarks.tsx';
-import {
-  BOUNCED_ADDRESS,
-  NOT_REACHED,
-  type NotReached,
-  PARKING_REACH,
-  REACH,
-} from './MessagesSample.ts';
+import { NOT_REACHED, type NotReached, PARKING_REACH, REACH } from './MessagesSample.ts';
 import { W, say } from './MessagesWords.ts';
 import { Legend, ReachBar } from './Stream.tsx';
 
@@ -173,12 +167,16 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/u;
 /** Fix email address: a focused Cancel and Save screen on the iPhone, a 540 sheet on the iPad; Save waits for an address. */
 export function FixEmail({
   open,
+  name,
+  bounced,
   start,
   opener,
   onCancel,
   onSaved,
 }: {
   open: boolean;
+  name: string;
+  bounced: string;
   start: string;
   opener: RefObject<ScreenReaderTarget | null>;
   onCancel: () => void;
@@ -207,12 +205,12 @@ export function FixEmail({
       testID="messages.fix"
     >
       <Text size={17} weight="bold" style={styles.who}>
-        Tomás Ferreira
+        {name}
       </Text>
       <EventField
         label={W.emailAddress}
         error={wrong ? W.emailShape : null}
-        help={say.wasBounced(BOUNCED_ADDRESS)}
+        help={say.wasBounced(bounced)}
       >
         <TextField
           ref={field}
