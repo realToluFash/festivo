@@ -543,7 +543,7 @@ function AskBox({ title, line, keep, go, red = true, busy, failed, onKeep, onGo 
                 {...offButton(waits, { dim: false })}
                 onClick={onGo}
               >
-                {waits && <span className="desk-turning" aria-hidden="true" />}
+                {waits && <span className="pending-spinner desk-turning" aria-hidden="true" />}
                 {busy ?? go}
               </button>
             )

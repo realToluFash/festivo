@@ -1203,27 +1203,13 @@
   text-decoration: none;
 }
 
-.desk-turning {
+/* The product's spinner, its turn and its still under reduced motion, at the board's 14 with its quarter in the verb's Ink 2. */
+.pending-spinner.desk-turning {
   flex: none;
   box-sizing: border-box;
   width: 14px;
   height: 14px;
-  border: 2px solid var(--colorBorder);
   border-top-color: currentcolor;
-  border-radius: 50%;
-  animation: desk-turn 0.9s linear infinite;
-}
-
-@keyframes desk-turn {
-  to {
-    transform: rotate(1turn);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .desk-turning {
-    animation: none;
-  }
 }
 
 .desk-asker {
