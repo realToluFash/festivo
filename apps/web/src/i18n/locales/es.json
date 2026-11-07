@@ -1604,7 +1604,6 @@
     "joined": "Se ha unido a {{organisation}} con el rol {{role}}.",
     "open": "Abrir {{organisation}}",
     "declinedBody": "Ha rechazado la invitación. {{inviter}} verá que ha dicho que no.",
-    "goToEvents": "Ir a sus eventos",
     "goHome": "Ir a Soirely",
     "signOutAndUse": "Cerrar sesión y usar {{email}}",
     "staySignedIn": "Seguir con la sesión de {{email}}",
