@@ -1,9 +1,10 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useRef, useState } from 'react';
-import { type ViewInstance } from 'react-native';
+import { StyleSheet, View, type ViewInstance } from 'react-native';
 
 import { QuietButton, SecondaryButton } from '../../../src/components/Buttons.tsx';
 import { LifecycleSheet } from '../../../src/components/LifecycleSheet.tsx';
+import { Text } from '../../../src/components/Text.tsx';
 import { DemoScreen, NavBar } from '../../../src/demo/DemoScreen.tsx';
 import { DemoOnly, Heading, Plain } from '../../../src/steps/Lines.tsx';
 import { SAMPLE } from '../../../src/demo/samples.ts';
@@ -37,12 +38,17 @@ export default function Waiting() {
     <DemoScreen
       nav={<NavBar left="close" step={[3, 3]} />}
       foot={
-        <QuietButton
-          ref={opener}
-          label="Cancel the request"
-          onPress={() => setAsked({})}
-          testID="demo.cancel"
-        />
+        <View style={styles.foot}>
+          <Text size={tokens.typeBodyPhone.size} weight="semibold">
+            This wasn’t you?
+          </Text>
+          <QuietButton
+            ref={opener}
+            label="Cancel the request"
+            onPress={() => setAsked({})}
+            testID="demo.cancel"
+          />
+        </View>
       }
     >
       <Heading
@@ -98,3 +104,7 @@ export default function Waiting() {
     </DemoScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  foot: { alignItems: 'center', gap: tokens.spaceXs },
+});

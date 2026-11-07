@@ -20,6 +20,7 @@ export default function LostCodes() {
   const [codes, setCodes] = useState<Record<Which, string>>({ email: '', text: '' });
   const [said, setSaid] = useState<{ which: Which; words: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [texted, setTexted] = useState(false);
   const boxes = { email: useRef<CodeBoxesHandle>(null), text: useRef<CodeBoxesHandle>(null) };
   const { left, restart } = useCountdown(RESEND_SECONDS);
   const needed: readonly Which[] = emailOnly ? ['email'] : ['email', 'text'];
@@ -30,7 +31,9 @@ export default function LostCodes() {
     if (missing != null) {
       setSaid({
         which: missing,
-        words: emailOnly ? 'Enter the code.' : `Enter the code from the ${missing}.`,
+        words: emailOnly
+          ? 'Enter the code.'
+          : `Enter the code from ${missing === 'email' ? 'the email' : texted ? 'the text' : 'WhatsApp'}.`,
       });
       boxes[missing].current?.focus();
       return;
@@ -42,7 +45,7 @@ export default function LostCodes() {
       if (wrong != null) {
         setSaid({
           which: wrong,
-          words: `That code does not match. Check the newest ${wrong === 'email' ? 'email' : 'text'} from Soirely.`,
+          words: `That code does not match. Check the newest ${wrong === 'email' ? 'email' : texted ? 'text' : 'WhatsApp message'} from Soirely.`,
         });
         boxes[wrong].current?.refuse();
         boxes[wrong].current?.focus();
@@ -69,6 +72,13 @@ export default function LostCodes() {
         autoFocus={first}
         testID={`demo.code.${which}`}
       />
+      {which === 'text' && (
+        <Plain>
+          {texted
+            ? `Texted to ${SAMPLE.phoneShown}: the same code as on WhatsApp`
+            : `Sent to your WhatsApp on ${SAMPLE.phoneShown}`}
+        </Plain>
+      )}
       {said?.which === which && <Says words={said.words} />}
     </View>
   );
@@ -95,7 +105,7 @@ export default function LostCodes() {
       />
       <View style={styles.codes}>
         {box('email', 'Code from the email', true)}
-        {!emailOnly && box('text', 'Code from the text', false)}
+        {!emailOnly && box('text', texted ? 'Code from the text' : 'Code from WhatsApp', false)}
       </View>
       <View style={styles.ways}>
         <QuietButton
@@ -114,6 +124,18 @@ export default function LostCodes() {
       <Plain>
         {emailOnly ? 'A new code replaces the last one.' : 'New codes replace the last ones.'}
       </Plain>
+      {!emailOnly && !texted && (
+        <View style={styles.ways}>
+          <QuietButton
+            label="Text it to me instead"
+            onPress={() => {
+              setTexted(true);
+              boxes.text.current?.focus();
+            }}
+            testID="demo.textInstead"
+          />
+        </View>
+      )}
     </DemoScreen>
   );
 }
