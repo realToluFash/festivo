@@ -2,7 +2,7 @@ import { formattingLocale } from '@soirely/domain';
 import { getLocales } from 'expo-localization';
 import { router, useFocusEffect, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { I18nextProvider, useTranslation } from 'react-i18next';
+import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -11,13 +11,14 @@ import { useSystemBack } from '../../src/components/useSystemBack.ts';
 import { useLayout } from '../../src/layout/useLayout.ts';
 import { createStateOf } from '../../src/demo/createOrg/CreateWalk.ts';
 import { NoOrganisation } from '../../src/demo/createOrg/NoOrganisation.tsx';
-import { startFirstWords } from '../../src/demo/createOrg/startFirst.ts';
 import { OrgSwitcherProvider, useCurrentPlace } from '../../src/demo/OrgSwitcher.tsx';
 import { switcherStateOf } from '../../src/demo/OrgSwitcherModel.ts';
-import { MOMENTS, momentOf, sayIn } from '../../src/demo/today.ts';
+import { INVITES_NOT_SENT, MOMENTS, momentOf, sayIn } from '../../src/demo/today.ts';
 import { ArrivedTodayScreen } from '../../src/demo/today/ArrivedToday.tsx';
 import {
+  ARRIVED_AT,
   type ArrivedState,
+  type Counts,
   COUNTS,
   figureOf,
   isArrivedState,
@@ -54,7 +55,7 @@ function numbersIn(asked: string | undefined): Intl.NumberFormat {
 }
 
 /** Check-in records an arrival or an undo every few seconds, and Today changes in place. */
-function useLive(on: boolean): number {
+function useLive(on: boolean): Counts {
   const [step, setStep] = useState(0);
 
   useEffect(() => {
@@ -64,11 +65,11 @@ function useLive(on: boolean): number {
     return () => clearInterval(timer);
   }, [on]);
 
-  return LIVE[step] ?? 0;
+  return LIVE[step] ?? COUNTS.none;
 }
 
-function countsOf(state: ArrivedState, live: number) {
-  return state === 'live' ? { arrived: live, coming: 152, expected: 152 } : COUNTS[state];
+function countsOf(state: ArrivedState, live: Counts) {
+  return state === 'live' ? live : COUNTS[state];
 }
 
 function isMoment(name: string | undefined): name is MomentName {
@@ -85,6 +86,7 @@ export default function DemoTodayScreen() {
     now?: string;
     arrived?: string;
     numbers?: string;
+    invites?: string;
   }>();
   const place = useCurrentPlace();
   // An organisation made in the walk has no events yet.
@@ -92,9 +94,15 @@ export default function DemoTodayScreen() {
   const { i18n } = useTranslation();
   // The demo's words are English, so its dates are too, in the phone's own region.
   const say = useMemo(() => sayIn(formattingLocale('en', getLocales()[0]?.languageTag)), []);
-  const moment = useMemo(() => momentOf(name, say, i18n.getFixedT('en')), [name, say, i18n]);
-  const numbers = useMemo(() => numbersIn(params.numbers), [params.numbers]);
   const arrivedState = isArrivedState(params.arrived) ? params.arrived : null;
+  // Nobody arrived and arrivals coming in are day 1, at Guests A's door; the rest are day 2.
+  const at = name === 'dayNow' && arrivedState != null ? ARRIVED_AT[arrivedState] : undefined;
+  const guests = name === 'plan' && params.invites === 'none' ? INVITES_NOT_SENT : undefined;
+  const moment = useMemo(
+    () => momentOf(name, say, i18n.getFixedT('en'), { at, guests }),
+    [name, say, i18n, at, guests],
+  );
+  const numbers = useMemo(() => numbersIn(params.numbers), [params.numbers]);
   const live = useLive(arrivedState === 'live');
   const run = useMemo(
     () =>
@@ -168,16 +176,12 @@ export default function DemoTodayScreen() {
         <View style={styles.fill}>
           {place == null ? (
             <NoOrganisation tell={tell} />
+          ) : run != null ? (
+            <RunTodayScreen moment={run} onTab={onTab} notices={notices} />
+          ) : arrived != null ? (
+            <ArrivedTodayScreen moment={arrived} onTab={onTab} notices={notices} />
           ) : (
-            <I18nextProvider i18n={moment.kind === 'first' ? startFirstWords(i18n.language) : i18n}>
-              {run != null ? (
-                <RunTodayScreen moment={run} onTab={onTab} notices={notices} />
-              ) : arrived != null ? (
-                <ArrivedTodayScreen moment={arrived} onTab={onTab} notices={notices} />
-              ) : (
-                <TodayScreen moment={moment} onTab={onTab} notices={notices} />
-              )}
-            </I18nextProvider>
+            <TodayScreen moment={moment} onTab={onTab} notices={notices} />
           )}
           {told != null && (
             <Told

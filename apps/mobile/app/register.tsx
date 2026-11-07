@@ -149,6 +149,7 @@ export default function Register() {
           value={name}
           onChangeText={typed('name', setName)}
           state={said.name != null ? 'blank' : 'plain'}
+          line={said.name}
           submitting={busy}
           maxLength={ACCOUNT_NAME_MAXIMUM}
           autoCapitalize="words"
@@ -169,6 +170,7 @@ export default function Register() {
           value={email}
           onChangeText={typed('email', setEmail)}
           state={said.email != null ? 'blank' : 'plain'}
+          line={said.email}
           submitting={busy}
           keyboardType="email-address"
           autoCapitalize="none"
@@ -190,6 +192,11 @@ export default function Register() {
           onChangeText={typed('password', setPassword)}
           password
           state={said.password != null ? 'blank' : 'plain'}
+          line={
+            said.password === ''
+              ? t('register.ruleLength', { count: PASSWORD_MINIMUM_LENGTH })
+              : said.password
+          }
           submitting={busy}
           autoComplete="new-password"
           textContentType="newPassword"

@@ -67,6 +67,10 @@ a run in another language left signed out: `sign-in`'s first wait is on the Engl
 `text-size-signed-out` starts with it too, so a change to the chip row lands in one flow.
 It picks the language on welcome, then taps Sign in with email (sc-29076).
 
+`welcome-signed-out` relaunches the app on welcome, signing out first whoever an earlier flow
+left on Home, No organisation, Complete your profile or two-factor overdue. A flow that waits on `welcome.brand`
+starts with it, since `/--/welcome` draws welcome over a session and `/--/` does not (sc-30157).
+
 Two flows tap one control by `testID`, passed as `ID`: `scroll-tap` scrolls to it from above
 or below, for a step inside another flow; `ownership-tap` takes a screenshot of what follows
 and turns off the retry, for a button whose request is held.
@@ -88,7 +92,8 @@ must be fresh: one an account already holds is sent no code, and `verify-email` 
 `sign-in-locked` and `signed-out-elsewhere` match English text, so the phone must be in English
 first (`sign-in-screen-english`).
 
-`verify-email` reads the code from Mailpit with `scripts/latest-code.js`.
+`verify-email` reads the code from Mailpit with `scripts/latest-code.js`, and a phone check
+reads the newest SMS or WhatsApp code from Smocker with `scripts/latest-sms-code.js`.
 
 A flow a tester writes is posted to `[ops]` on the story they were testing, and ops commits
 it here.
@@ -219,7 +224,7 @@ link, which in Expo Go lands on Home (sc-22740): each starts from Home or from a
   failure for two features.
 - **Reach the bundler through `${METRO_URL}`**, never a literal port: the QA stack's
   bundler is on 18081, and both `just qa-mobile` and `qa-env.mjs maestro` pass it in.
-  Mailpit, the same, through `${MAILPIT_URL}`.
+  Mailpit, the same, through `${MAILPIT_URL}`, and Smocker through `${SMOCKER_URL}`.
 - **Pass data in**, with `-e`: an account comes from `node scripts/qa-account.mjs`, so no
   flow holds credentials. A new check's first line names each `${…}` it needs; older ones
   may not, so `grep -o '\${[A-Z_]*}'` the file before passing `-e`. The names differ

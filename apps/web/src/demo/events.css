@@ -81,6 +81,43 @@
   font-variant-numeric: tabular-nums;
 }
 
+.ev-guests {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--spaceMd);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ev-guest {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 14px 18px;
+  border: 1px solid var(--colorInsetBorder);
+  border-radius: var(--radiusInset);
+  background: var(--colorInset);
+}
+
+.ev-guest-name {
+  color: var(--colorInkSecondary);
+  font: 600 14px/1.3 var(--fontFamily);
+}
+
+.ev-guest-figure {
+  color: var(--colorInk);
+  font: 700 28px/1.15 var(--fontFamily);
+  font-variant-numeric: tabular-nums;
+}
+
+.ev-guest-line {
+  color: var(--colorInkSecondary);
+  font: var(--deskLine);
+  font-variant-numeric: tabular-nums;
+}
+
 .ev-offline {
   display: flex;
   align-items: center;
@@ -497,7 +534,7 @@
 
 .ev-card.is-party,
 .ev-preview.is-party {
-  --evScrim: color-mix(in srgb, var(--colorAccent) 50%, var(--colorInk));
+  --evScrim: color-mix(in srgb, var(--coverAccent, var(--colorAccent)) 50%, var(--colorInk));
 }
 
 .ev-card.is-draft,

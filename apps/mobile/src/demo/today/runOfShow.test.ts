@@ -254,7 +254,7 @@ describe('the figure beside Next, as sc-29978 draws it', () => {
     const figure = figureOf(COUNTS.some, numbers);
 
     expect(withRun(day, 'on', figure, us)?.figure).toEqual(figure);
-    expect(figure?.spoken).toBe('141 of 152 arrived');
+    expect(figure?.spoken).toBe('87 of 99 arrived');
   });
 
   it('follows the phone’s numbers, and has no ring with nobody Coming', () => {

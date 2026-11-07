@@ -64,6 +64,7 @@ import {
   typedOf,
 } from '../kit/eventForm.ts';
 import { coverRefusalOf } from '../kit/coverUpload.ts';
+import { refusedHint } from '../kit/fields.ts';
 import { markCoverRefused } from '../kit/eventSaved.ts';
 import { useLoadedAt, useServerNow } from '../kit/serverNow.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
@@ -81,6 +82,7 @@ import {
   TextField,
   focusChecked,
   useFocusEdge,
+  useRefused,
 } from './Field.tsx';
 import { HostsSection } from './HostsSection.tsx';
 import { ListPicker } from './ListPicker.tsx';
@@ -732,6 +734,7 @@ export function Moment({
   const timePicker = timePickerRef ?? ownTimePicker;
   const dateEdge = useFocusEdge();
   const timeEdge = useFocusEdge();
+  const refused = useRefused(error != null, error);
   const skipped = skippedLine(date, time, timeZone, locale, t);
   const helpLines = [skipped, help].filter((line) => line != null);
 
@@ -796,9 +799,9 @@ export function Moment({
               accessibilityRole={readOnly ? undefined : 'button'}
               accessibilityState={{ disabled: disabled || readOnly }}
               accessibilityLabel={t('eventForm.date')}
-              accessibilityHint={hint}
+              accessibilityHint={refusedHint(refused, hint)}
               accessibilityValue={{
-                text: [label, date === '' ? null : dayWords, timeZone]
+                text: [label, date === '' ? null : dayWords, timeZone, refused?.word]
                   .filter((part) => part != null)
                   .join(', '),
               }}
@@ -825,9 +828,9 @@ export function Moment({
             accessibilityRole={readOnly ? undefined : 'button'}
             accessibilityState={{ disabled: disabled || readOnly }}
             accessibilityLabel={t('eventForm.time')}
-            accessibilityHint={hint}
+            accessibilityHint={refusedHint(refused, hint)}
             accessibilityValue={{
-              text: [label, time === '' ? null : timeWords, timeZone]
+              text: [label, time === '' ? null : timeWords, timeZone, refused?.word]
                 .filter((part) => part != null)
                 .join(', '),
             }}

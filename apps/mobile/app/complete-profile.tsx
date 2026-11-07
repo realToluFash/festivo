@@ -613,6 +613,7 @@ function Details({
                 setErrors((previous) => ({ ...previous, name: undefined }));
               }}
               state={errors.name != null ? 'blank' : 'plain'}
+              line={errors.name}
               submitting={saving}
               autoComplete="name"
               textContentType="name"
@@ -722,6 +723,7 @@ function Details({
                   setErrors((previous) => ({ ...previous, organisationName: undefined }));
                 }}
                 state={errors.organisationName != null ? 'blank' : 'plain'}
+                line={errors.organisationName}
                 submitting={saving}
                 maxLength={ORGANISATION_NAME_MAXIMUM}
                 autoComplete="organization"

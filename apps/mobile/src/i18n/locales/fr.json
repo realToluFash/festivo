@@ -206,7 +206,8 @@
   "forms": {
     "emailBlank": "Saisissez votre adresse e-mail.",
     "emailShape": "Cela ne ressemble pas à une adresse e-mail. Vérifiez qu’elle contient un @ et un domaine.",
-    "countryBlank": "Choisissez un pays."
+    "countryBlank": "Choisissez un pays.",
+    "invalid": "Données non valides"
   },
   "oauth": {
     "linked": "{{provider}} est désormais associé à votre compte. Vous pouvez vous connecter avec l’un ou l’autre.",
@@ -663,11 +664,11 @@
     "calendar": "Calendrier",
     "settings": "Paramètres",
     "organisation": "Organisation",
-    "backTo": "Back to {{place}}",
-    "cancel": "Cancel",
-    "back": "Back",
-    "closeMenu": "Close the menu",
-    "tryAgain": "Try again"
+    "backTo": "Retour à {{place}}",
+    "cancel": "Annuler",
+    "back": "Retour",
+    "closeMenu": "Fermer le menu",
+    "tryAgain": "Réessayer"
   },
   "eventNav": {
     "overview": "Aperçu",
@@ -799,7 +800,8 @@
       "vendors": "Prestataires",
       "members": "Membres et rôles",
       "billing": "Facturation",
-      "organisation": "Organisation"
+      "organisation": "Organisation",
+      "people": "Personnes des événements"
     },
     "means": {
       "events": "Créer, publier, suspendre et clore des événements.",
@@ -814,7 +816,8 @@
       "vendors": "Les prestataires de chaque événement et ce qui a été convenu avec eux.",
       "members": "Inviter, approuver, suspendre, changer les rôles.",
       "billing": "Formule, cartes et factures.",
-      "organisation": "Le nom, le pays, l’adresse de contact et les valeurs avec lesquelles démarrent les nouveaux événements."
+      "organisation": "Le nom, le pays, l’adresse de contact et les valeurs avec lesquelles démarrent les nouveaux événements.",
+      "people": "Qui fait partie de chaque événement, et le rôle que chaque personne y occupe."
     },
     "margin": "Marge",
     "marginMeans": "Ce que {{name}} ajoute aux coûts. Masquée signifie que le budget s’ouvre avec les coûts seuls.",
@@ -2050,7 +2053,7 @@
       "liveTitle": "Publiez-le",
       "liveBody": "Il reste en brouillon jusqu’à sa publication."
     },
-    "createEvent": "Créer un événement",
+    "startFirst": "Créer votre premier événement",
     "stepNumber": "{{n, number}}"
   }
 }

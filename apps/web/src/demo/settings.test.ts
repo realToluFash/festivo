@@ -3,9 +3,12 @@ import { describe, expect, it } from 'vitest';
 import { VIEWERS, groupsFor, settingsPath, settingsSayIn, viewerOf } from './settings.ts';
 
 describe('the Settings list at a desk (sc-29708)', () => {
-  it('lists your account’s three sections, then the organisation’s three, with no Roles', () => {
+  it('lists your account’s four sections, then the organisation’s three, with no Roles', () => {
     expect(groupsFor(VIEWERS.folake)).toEqual([
-      { name: 'Your account', sections: ['account', 'security', 'notifications'] },
+      {
+        name: 'Your account',
+        sections: ['account', 'security', 'notifications', 'personalisation'],
+      },
       {
         name: 'Organisation settings',
         sections: ['general', 'members', 'signInRules'],

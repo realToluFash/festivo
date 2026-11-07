@@ -206,7 +206,8 @@
   "forms": {
     "emailBlank": "Introduza o seu endereço de e-mail.",
     "emailShape": "Isso não parece um endereço de e-mail. Confirme que tem um @ e um domínio.",
-    "countryBlank": "Escolha um país."
+    "countryBlank": "Escolha um país.",
+    "invalid": "Dados inválidos"
   },
   "oauth": {
     "linked": "A sua conta {{provider}} está agora associada. Pode iniciar sessão com ela ou como até agora.",
@@ -663,11 +664,11 @@
     "calendar": "Calendário",
     "settings": "Definições",
     "organisation": "Organização",
-    "backTo": "Back to {{place}}",
-    "cancel": "Cancel",
-    "back": "Back",
-    "closeMenu": "Close the menu",
-    "tryAgain": "Try again"
+    "backTo": "Voltar a {{place}}",
+    "cancel": "Cancelar",
+    "back": "Voltar",
+    "closeMenu": "Fechar o menu",
+    "tryAgain": "Tentar novamente"
   },
   "eventNav": {
     "overview": "Vista geral",
@@ -799,7 +800,8 @@
       "vendors": "Fornecedores",
       "members": "Membros e funções",
       "billing": "Faturação",
-      "organisation": "Organização"
+      "organisation": "Organização",
+      "people": "Pessoas nos eventos"
     },
     "means": {
       "events": "Criar, publicar, pausar e concluir eventos.",
@@ -814,7 +816,8 @@
       "vendors": "Os fornecedores de cada evento e o que foi acordado com eles.",
       "members": "Convidar, aprovar, suspender, mudar funções.",
       "billing": "Plano, cartões e faturas.",
-      "organisation": "O nome, o país, o endereço de contacto e os valores com que começam os novos eventos."
+      "organisation": "O nome, o país, o endereço de contacto e os valores com que começam os novos eventos.",
+      "people": "Quem está em cada evento e a função que cada pessoa lá tem."
     },
     "margin": "Margem",
     "marginMeans": "O que {{name}} acrescenta aos custos. Oculta significa que o orçamento abre só com os custos.",
@@ -2050,7 +2053,7 @@
       "liveTitle": "Publique-o",
       "liveBody": "Fica como rascunho até o publicar."
     },
-    "createEvent": "Criar um evento",
+    "startFirst": "Criar o seu primeiro evento",
     "stepNumber": "{{n, number}}"
   }
 }

@@ -296,15 +296,16 @@ export function FootnoteInAuthFrame({
   return <InAuthFrame.Provider value={{ atFoot }}>{children}</InAuthFrame.Provider>;
 }
 
+/** Whether the signed-out frame puts what closes the form at the screen's foot. */
+export function useAtFoot(): boolean {
+  return useContext(InAuthFrame)?.atFoot === true;
+}
+
 /** Footnotes one after another, which go to the foot together rather than share the room above them. */
 export function Footnotes({ children }: { children: ReactNode }) {
-  const inAuthFrame = useContext(InAuthFrame);
+  const atFoot = useAtFoot();
 
-  return (
-    <View style={[styles.footnotes, inAuthFrame?.atFoot === true && styles.footnoteAtFoot]}>
-      {children}
-    </View>
-  );
+  return <View style={[styles.footnotes, atFoot && styles.footnoteAtFoot]}>{children}</View>;
 }
 
 /** "New here? Create an account": the question, the action, and anything said after it. */
