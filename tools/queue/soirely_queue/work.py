@@ -465,6 +465,7 @@ def voided_passes(stories, prs):
 
 def developer_items(stories, prs):
     by_id = {story["id"]: story for story in stories}
+    building = {pr["story_id"] for pr in prs if pr["state"] == "open" and not design_pr(pr)}
     items = []
     for pr in prs:
         story = by_id.get(pr["story_id"])
@@ -490,6 +491,10 @@ def developer_items(stories, prs):
         if pr["state"] == "merged":
             if story["state"] in R.MERGING and not linguists(story) and not design:
                 if covered and verdict["verdict"] == "pass":
+                    if story["id"] in building \
+                            or any(not t["done"] for t in story.get("tasks") or []):
+                        # A step of a story built in steps: the last one's merge hands it over.
+                        continue
                     after = "Ready For QA" if role != "ops" or "needs qa" in story["labels"] \
                         else "Done"
                     add("to-qa", f"PR #{number} merged at the passed {sha}: "

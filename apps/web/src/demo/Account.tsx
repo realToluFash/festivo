@@ -1,4 +1,4 @@
-import { contactActions, zoneLabel } from '@soirely/domain';
+import { contactActions, initials, zoneLabel } from '@soirely/domain';
 import { useId, useState } from 'react';
 
 import {
@@ -103,7 +103,7 @@ export function Account({ viewer, state, tell }: { viewer: Viewer; state: string
           <div>
             <div className="desk-who">
               <span className="desk-disc" aria-hidden="true">
-                {viewer.initials}
+                {initials(name)}
               </span>
               <div className="desk-who-words">
                 <p className="desk-name">{name}</p>
@@ -134,7 +134,7 @@ export function Account({ viewer, state, tell }: { viewer: Viewer; state: string
               <button
                 type="button"
                 className="desk-row account-row"
-                onClick={() => setDialog(opening('name'))}
+                onClick={() => setDialog(opening('name', { typed: name }))}
               >
                 <Lead name="user" />
                 <RowWords title={name} lines={[W.yourName]} />
@@ -300,7 +300,7 @@ function Contacts({
       </Head>
       <ul className="desk-rows account-rows">
         {primaryFirst(rows).map((row) => {
-          const words = (
+          const rowWords = (
             <>
               <Lead name={ICONS[kind]} />
               <RowWords
@@ -321,7 +321,7 @@ function Contacts({
           if (row.primary)
             return (
               <li key={row.id} className="desk-row">
-                {words}
+                {rowWords}
               </li>
             );
 
@@ -338,7 +338,7 @@ function Contacts({
                 aria-controls={on ? panel : undefined}
                 onClick={() => onToggle(row)}
               >
-                {words}
+                {rowWords}
                 <Glyph
                   name={on ? 'chevup' : 'chevdown'}
                   size={18}
