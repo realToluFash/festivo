@@ -118,7 +118,7 @@ export function Cover({ visit, words, ended }: { visit: Visit; words: Words; end
 
   return (
     <section
-      className={`gp-cover ev-card ${look}${visit.phase === 'calledOff' ? ' is-grey' : ''}`}
+      className={`gp-cover gp-left ev-card ${look}${visit.phase === 'calledOff' ? ' is-grey' : ''}`}
       aria-labelledby="gp-h1"
     >
       <span className="ev-scrim" aria-hidden="true" />
@@ -335,7 +335,7 @@ export function Details({ visit, words, hosts }: { visit: Visit; words: Words; h
   const zoned = visit.readerZone !== EVENT.timeZone;
 
   return (
-    <div className="gp-details">
+    <div className="gp-details gp-left-after">
       <Row
         lead={<Glyph name="calendar" size={22} />}
         title={eventDay(visit.lang)}
@@ -443,7 +443,7 @@ export function Messages({
   const live = visit.draft.trim() !== '';
   const length = characters(visit.draft);
   const tooLong = visit.draftTried && length > MESSAGE_MOST;
-  const counting = !tooLong && length >= MESSAGE_COUNT_FROM;
+  const counting = length >= MESSAGE_COUNT_FROM;
 
   useEffect(() => {
     const field = box.current;
@@ -451,6 +451,15 @@ export function Messages({
     field.style.height = 'auto';
     field.style.height = `${Math.max(48, field.scrollHeight)}px`;
   }, [visit.draft]);
+
+  useEffect(() => {
+    const field = box.current;
+    const toCaret = () => {
+      if (field != null) field.scrollTop = field.scrollHeight;
+    };
+    toCaret();
+    void document.fonts.ready.then(toCaret);
+  }, []);
 
   return (
     <section id="messages" className="gp-messages" aria-labelledby="gp-messages-h">
@@ -499,7 +508,9 @@ export function Messages({
             value={visit.draft}
             data-focus="box"
             aria-invalid={tooLong}
-            aria-describedby={tooLong ? 'gp-box-error' : counting ? 'gp-box-count' : undefined}
+            aria-describedby={
+              tooLong ? 'gp-box-error gp-box-count' : counting ? 'gp-box-count' : undefined
+            }
             onChange={(event) => onDraft(event.target.value)}
           />
           <button
@@ -514,7 +525,8 @@ export function Messages({
           </button>
         </div>
         {counting && (
-          <p id="gp-box-count" className="gp-count">
+          <p id="gp-box-count" className={tooLong ? 'gp-count is-over' : 'gp-count'}>
+            {tooLong && <Glyph name="alert" size={14} weight={2.4} />}
             {words.messageCount(length)}
           </p>
         )}
@@ -567,8 +579,8 @@ export function Unreachable({
 }
 
 export function Waiting({ part }: { part: 'cover' | 'under' | 'details' }) {
-  if (part === 'cover') return <span className="gp-skel gp-skel-cover" />;
-  if (part === 'details') return <span className="gp-skel gp-skel-details" />;
+  if (part === 'cover') return <span className="gp-skel gp-skel-cover gp-left" />;
+  if (part === 'details') return <span className="gp-skel gp-skel-details gp-left-after" />;
 
   return (
     <div className="gp-skel-under">

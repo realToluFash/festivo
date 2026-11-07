@@ -30,8 +30,8 @@ describe('the guest’s page states (sc-31306)', () => {
       'Over, gone, and the rest',
       'The hosts’ messages and the guest’s own',
     ]);
-    expect(STATES).toHaveLength(41);
-    expect(new Set(STATES).size).toBe(41);
+    expect(STATES).toHaveLength(44);
+    expect(new Set(STATES).size).toBe(44);
     expect(STATES.every(isGuestState)).toBe(true);
     expect(LINKED.find((one) => one.to.includes('messageArrival'))?.to).toBe(
       '/demo/guest?state=messageArrival#m-3',
@@ -124,7 +124,9 @@ describe('the words and dates', () => {
   it('writes French as the board does: main’s, #5535’s, and the bracketed proposals', () => {
     const fr = wordsFor('fr');
 
-    expect(fr.invited).toBe('Vous êtes invité');
+    expect(fr.invited).toBe('Vous avez une invitation');
+    expect(wordsFor('es').invited).toBe('Tiene una invitación');
+    expect(wordsFor('pt').invited).toBe('Tem um convite');
     expect(fr.yourAnswer).toBe('[Votre réponse]');
     expect(fr.replyBy(dayOf('2026-10-30', 'fr'))).toBe(
       '[Merci de répondre avant le vendredi 30 octobre. Vous pourrez modifier votre réponse d’ici là.]',

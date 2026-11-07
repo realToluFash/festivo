@@ -54,6 +54,21 @@ export const MESSAGES: readonly Message[] = [
 export const MINE = 'Thank you! Is there a cloakroom at The Landmark?';
 export const MINE_AT = '2026-11-03T09:41:00Z';
 
+export const LONG_MESSAGE =
+  'Thank you so much for the invitation, and congratulations to you both! We are travelling ' +
+  'from Lisbon on Wednesday and land at Heathrow at about two in the afternoon, so we ' +
+  'should reach The Landmark in good time. My mother is coming with us and uses a ' +
+  'wheelchair, so I wanted to ask a few things before Thursday. Is there step-free access ' +
+  'to the ceremony room, and is there a lift between the floors? Could my mother sit near ' +
+  'the front, at the end of a row, to see you both and to leave easily if needed? Is there ' +
+  'a quiet room for a short rest between the ceremony and the dinner? My mother also eats ' +
+  'no gluten; I have added it to what the kitchen should know, but I wanted you to hear it ' +
+  'from us too. My brother would love to bring a guitar for the party afterwards, if that ' +
+  'would be welcome, and would only play if you would like it. We are so happy to be part ' +
+  'of your day, and we cannot wait to celebrate with you both in London. Thank you again ' +
+  'for all of that. With love from all three of us, and see you very soon at The Landmark, ' +
+  'Maria.';
+
 export type Answer = 'coming' | 'notComing' | 'notSure';
 export const ANSWERS: readonly Answer[] = ['coming', 'notComing', 'notSure'];
 export type Phase = 'live' | 'paused' | 'calledOff' | 'over' | 'finished';
@@ -226,6 +241,10 @@ const STATES = {
     name: 'Called off',
     starts: { phase: 'calledOff', recorded: COMING, view: CLOSED },
   },
+  overNever: {
+    name: 'Over, never answered',
+    starts: { phase: 'over', started: true, view: CLOSED },
+  },
   over: {
     name: 'Over, with no thank-you',
     starts: { phase: 'over', started: true, recorded: COMING, view: CLOSED },
@@ -273,6 +292,14 @@ const STATES = {
     starts: { ...MESSAGED, mine: [{ words: MINE, at: MINE_AT, sent: false }] },
   },
   replySent: { name: 'A message sent', starts: { ...MESSAGED, mine: [SENT_MINE] } },
+  messageLong: {
+    name: 'A long message, the count showing',
+    starts: { ...MESSAGED, draft: LONG_MESSAGE.slice(0, 950), want: 'box' },
+  },
+  messageTooLong: {
+    name: 'A message over 1,000 characters',
+    starts: { ...MESSAGED, draft: LONG_MESSAGE, draftTried: true, want: 'box' },
+  },
   replyFailed: {
     name: 'A message that failed',
     starts: { ...MESSAGED, draft: MINE, draftFailed: true, want: 'sendMessage' },
@@ -344,6 +371,7 @@ export const GUEST_PAGES: readonly { name: string; states: readonly DemoLink[] }
       [
         'calledOff',
         'over',
+        'overNever',
         'finished',
         'gone',
         'unreachable',
@@ -365,6 +393,8 @@ export const GUEST_PAGES: readonly { name: string; states: readonly DemoLink[] }
         'messages',
         'messageArrival',
         'replyWriting',
+        'messageLong',
+        'messageTooLong',
         'replySending',
         'replySent',
         'replyFailed',
@@ -497,6 +527,13 @@ const BOARD_FRENCH: Readonly<Record<string, string>> = {
   'guestPage.tell': 'Vous n’êtes pas {{name}} ? Dites-le-nous',
 };
 
+/** l10n's ungendered You are invited, settled 7 Nov in sc-28008, in place of main's gendered es, fr and pt. */
+const UNGENDERED: Partial<Record<Lang, string>> = {
+  es: 'Tiene una invitación',
+  fr: 'Vous avez une invitation',
+  pt: 'Tem um convite',
+};
+
 export const LEGAL: Record<Lang, { terms: string; privacy: string }> = {
   en: { terms: 'Terms', privacy: 'Privacy' },
   es: { terms: 'Terms', privacy: 'Privacy' },
@@ -526,7 +563,7 @@ export function wordsFor(lang: Lang) {
 
   return {
     hosts,
-    invited: t('guest.invitationTitle'),
+    invited: UNGENDERED[lang] ?? t('guest.invitationTitle'),
     gone: t('guest.invalidTitle'),
     // The stories reword two of main's keys (sc-28008, sc-1439); l10n changes the catalogues, so English is written here.
     goneBody:
@@ -631,7 +668,6 @@ function mulberry(seed: number): () => number {
   };
 }
 
-/** A placeholder pattern in the shape of a code, never a real one (the boards' sample). */
 export function codePath(size = 25, seed = 1301): string {
   const next = mulberry(seed);
   const grid = Array.from({ length: size }, () => Array.from({ length: size }, () => next() < 0.5));

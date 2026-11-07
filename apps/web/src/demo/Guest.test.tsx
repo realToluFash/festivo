@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -68,7 +68,7 @@ describe('the guest’s own page, A · The cover card (sc-31306)', () => {
     const guestLinks = hrefs.filter((href) => href?.startsWith('/demo/guest'));
 
     expect(guestLinks).toEqual(GUEST_PAGES.flatMap((one) => one.states).map((one) => one.to));
-    expect(guestLinks).toHaveLength(41);
+    expect(guestLinks).toHaveLength(44);
   });
 
   it('opens on the cover card: the invitation, the guest, the event, when and where', async () => {
@@ -141,6 +141,7 @@ const SAYS: [string, () => void][] = [
   ['zone', () => expect(screen.getAllByText(/6:00\sPM Europe\/London/u)).toHaveLength(2)],
   ['calledOff', () => screen.getByRole('heading', { level: 1, name: 'Adaeze & Tunde’s wedding' })],
   ['over', () => expect(screen.queryByText(THANK_YOU)).toBeNull()],
+  ['overNever', () => screen.getByText('You didn’t answer.')],
   ['finished', () => screen.getByText(THANK_YOU)],
   [
     'gone',
@@ -168,6 +169,8 @@ const SAYS: [string, () => void][] = [
         'Thank you! Is there a cloakroom at The Landmark?',
       ),
   ],
+  ['messageLong', () => screen.getByText('950 of 1,000 characters')],
+  ['messageTooLong', () => screen.getByText('1,042 of 1,000 characters')],
   ['replySending', () => screen.getByText('Sending…')],
   ['replySent', () => screen.getByText(/^Sent · Tue, Nov 3 · 9:41\sAM$/u)],
   ['replyFailed', () => screen.getByText(/^Your message wasn’t sent\./u)],
@@ -202,32 +205,52 @@ describe('the breakpoints', () => {
     expect(document.querySelector('main')?.classList.contains(columns)).toBe(true);
   });
 
-  it('reads the notice, the cover, the answer, the details and the foot in that order on one column', async () => {
-    widthIs(402);
-    await guest('paused');
-    const order = [...document.querySelectorAll('.gp-columns > *')].map((one) => one.className);
+  it.each([402, 834, 1194, 1280])(
+    'reads the notice, the cover, the answer, the details and the foot in that order at %i',
+    async (width) => {
+      widthIs(width);
+      await guest('paused');
+      const order = [...document.querySelectorAll('.gp-columns > *')].map(
+        (one) => one.className.split(' ')[0],
+      );
 
-    expect(order.map((one) => one.split(' ')[0])).toEqual([
-      'gp-phase',
-      'gp-cover',
-      'gp-under',
-      'gp-details',
-      'gp-foot',
+      expect(order).toEqual(['gp-phase', 'gp-cover', 'gp-under', 'gp-details', 'gp-foot']);
+    },
+  );
+
+  it('meets the keyboard in the same order at a phone and at a desk', async () => {
+    const stops = () =>
+      [...document.querySelectorAll<HTMLElement>('.gp :is(a, button, textarea)')]
+        .filter((one) => one.tabIndex >= 0)
+        .map((one) => one.getAttribute('aria-label') ?? one.textContent);
+
+    widthIs(402);
+    await guest('coming');
+    const phone = stops();
+    cleanup();
+    widthIs(1280);
+    await guest('coming');
+
+    expect(stops()).toEqual(phone);
+    expect(phone.slice(0, 4)).toEqual([
+      'Language: English',
+      'Change my answer',
+      'Apple / Outlook',
+      'Google Calendar',
     ]);
+    expect(phone.indexOf('Open in maps')).toBeLessThan(phone.indexOf(`Not ${NAME}? Tell us`));
   });
 
-  it('puts the notice, the answer and the foot in the right column on two', async () => {
+  it('places the cover and the details in the left column on two, by CSS', async () => {
     widthIs(1280);
     await guest('paused');
-    const right = document.querySelector('.gp-right') as HTMLElement;
 
-    expect([...right.children].map((one) => one.className.split(' ')[0])).toEqual([
-      'gp-phase',
-      'gp-under',
-      'gp-foot',
-    ]);
-    expect(document.querySelector('.gp-cover-slot .gp-cover')).not.toBeNull();
-    expect(document.querySelector('.gp-details-slot .gp-details')).not.toBeNull();
+    expect(document.querySelector('.gp-columns > .gp-cover')?.classList.contains('gp-left')).toBe(
+      true,
+    );
+    expect(
+      document.querySelector('.gp-columns > .gp-details')?.classList.contains('gp-left-after'),
+    ).toBe(true);
   });
 });
 
@@ -344,6 +367,21 @@ describe('answering, by keyboard and pointer, on sample data', () => {
   });
 });
 
+describe('over, never answered', () => {
+  it('keeps the keepsake with “You didn’t answer.” in place of the answer', async () => {
+    await guest('overNever');
+
+    expect(screen.getByRole('status').textContent).toContain('This event has taken place.');
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Adaeze & Tunde’s wedding' }),
+    ).toBeDefined();
+    expect(screen.getByText('You didn’t answer.')).toBeDefined();
+    expect(screen.queryByText(/^You answered/u)).toBeNull();
+    expect(document.querySelector('.gp-tag')).toBeNull();
+    expect(screen.getByText('Hosted by')).toBeDefined();
+  });
+});
+
 describe('announcements', () => {
   it('says the phase notice as a polite status, and keeps the thank-you outside it', async () => {
     await guest('finished');
@@ -438,7 +476,9 @@ describe('the language menu in the header (sc-3790)', () => {
     expect(items[2]?.getAttribute('aria-checked')).toBe('true');
     expect(document.activeElement).toBe(items[2]);
     expect(page().getAttribute('lang')).toBe('fr');
-    expect(screen.getByRole('heading', { level: 1, name: 'Vous êtes invité' })).toBeDefined();
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Vous avez une invitation' }),
+    ).toBeDefined();
     expect(screen.getByRole('button', { name: '[Oui, je serai là]' })).toBeDefined();
   });
 
@@ -531,13 +571,16 @@ describe('the hosts’ messages and the guest’s own (§4a)', () => {
     );
 
     fireEvent.change(box, { target: { value: 'a'.repeat(1001) } });
+    expect(box.getAttribute('aria-invalid')).toBe('false');
     fireEvent.click(screen.getByRole('button', { name: 'Send' }));
     expect(screen.queryByText('Sending…')).toBeNull();
     expect(box).toHaveProperty('value', 'a'.repeat(1001));
     expect(box.getAttribute('aria-invalid')).toBe('true');
-    expect(document.getElementById(box.getAttribute('aria-describedby') ?? '')?.textContent).toBe(
-      'Shorten your message to 1,000 characters or fewer.',
-    );
+    expect(
+      (box.getAttribute('aria-describedby') ?? '')
+        .split(' ')
+        .map((id) => document.getElementById(id)?.textContent),
+    ).toEqual(['Shorten your message to 1,000 characters or fewer.', '1,001 of 1,000 characters']);
     expect(document.activeElement).toBe(box);
 
     fireEvent.change(box, { target: { value: 'a'.repeat(1000) } });
@@ -545,6 +588,32 @@ describe('the hosts’ messages and the guest’s own (§4a)', () => {
     expect(screen.getByText('1,000 of 1,000 characters')).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: 'Send' }));
     expect(screen.getByText('Sending…')).toBeDefined();
+  });
+
+  it('messageLong: the count is the box’s description, never live, focus in the box', async () => {
+    await guest('messageLong');
+    const box = screen.getByLabelText('Write to Adaeze Obi and Tunde Bakare');
+    const count = screen.getByText('950 of 1,000 characters');
+
+    expect(document.activeElement).toBe(box);
+    expect(box.getAttribute('aria-describedby')).toBe(count.id);
+    expect(count.closest('[aria-live], [role="status"], [role="alert"]')).toBeNull();
+    expect(box.getAttribute('aria-invalid')).toBe('false');
+  });
+
+  it('messageTooLong: nothing sent, the words kept, the refused field, the count red with its mark', async () => {
+    await guest('messageTooLong');
+    const box = screen.getByLabelText('Write to Adaeze Obi and Tunde Bakare');
+    const count = screen.getByText('1,042 of 1,000 characters');
+
+    expect(document.activeElement).toBe(box);
+    expect((box as HTMLTextAreaElement).value).toHaveLength(1042);
+    expect(box.getAttribute('aria-invalid')).toBe('true');
+    expect(box.closest('.gp-compose-row')?.classList.contains('is-wrong')).toBe(true);
+    expect(count.classList.contains('is-over')).toBe(true);
+    expect(count.querySelector('svg')).not.toBeNull();
+    expect(box.getAttribute('aria-describedby')).toBe('gp-box-error gp-box-count');
+    expect(screen.getAllByRole('article')).toHaveLength(3);
   });
 
   it('sits under the answer and above the door code', async () => {

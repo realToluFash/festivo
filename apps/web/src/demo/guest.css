@@ -1022,8 +1022,9 @@
   min-width: 0;
   height: 48px;
   min-height: 48px;
+  max-height: calc(8 * 23.2px + 24px);
   padding: 12px 16px;
-  overflow: hidden;
+  overflow-y: auto;
   border: 0;
   border-radius: 24px;
   background: var(--colorCard);
@@ -1038,26 +1039,33 @@
   box-shadow: inset 0 0 0 2px var(--colorAccent);
 }
 
-.gp-count,
-.gp-error {
+.gp-count {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   margin-top: 6px;
-  font: 500 13.5px/1.4 var(--fontFamily);
+  color: var(--colorInkSecondary);
+  font: 500 13px/1.4 var(--fontFamily);
+  font-variant-numeric: tabular-nums;
 }
 
-.gp-count {
-  color: var(--colorInkSecondary);
+.gp-count.is-over {
+  color: var(--colorBrokenText);
+  font-weight: 700;
 }
 
 .gp-error {
   display: flex;
   align-items: flex-start;
   gap: 6px;
-  color: var(--colorBroken);
+  margin-top: 4px;
+  color: var(--colorBrokenText);
+  font: 600 14px/1.4 var(--fontFamily);
 }
 
 .gp-error svg {
   flex: none;
-  margin-top: 1px;
+  margin-top: 2px;
 }
 
 .gp .gp-compose-row.is-wrong .gp-box,
@@ -1297,9 +1305,9 @@
   margin-top: 0;
 }
 
-/* ── One column up to 64rem (402 and 320 in the gutters, 600 centred from 641), two from it ── */
+/* ── One column up to 64rem (402 and 320 in the gutters, 600 centred from 641); from it the cover and details sit left, measured ── */
 
-.gp-main.is-one .gp-columns {
+.gp-main.is-one :is(.gp-columns, .gp-alone-wrap) {
   display: flex;
   flex-direction: column;
   width: min(600px, calc(100% - 40px));
@@ -1307,15 +1315,13 @@
 }
 
 .gp-main.is-two .gp-columns {
-  display: grid;
-  grid-template-rows: auto 1fr;
-  grid-template-columns: var(--gpLeft) var(--gpRight);
-  align-items: start;
-  justify-content: center;
-  column-gap: var(--gpGap);
+  position: relative;
+  width: calc(var(--gpLeft) + var(--gpGap) + var(--gpRight));
+  min-height: var(--gpLeftH, var(--gpMin));
+  margin: 0 auto;
 }
 
-.gp:is(.is-phone, .is-small) .gp-main.is-one .gp-columns {
+.gp:is(.is-phone, .is-small) .gp-main.is-one :is(.gp-columns, .gp-alone-wrap) {
   width: auto;
   margin: 0 var(--gpGut);
 }
@@ -1325,7 +1331,7 @@
 }
 
 .is-one .gp-under,
-.is-one .gp-right {
+.is-one .gp-skel-under {
   margin-top: 24px;
 }
 
@@ -1338,19 +1344,8 @@
   margin-top: 28px;
 }
 
-.is-two .gp-cover-slot {
-  grid-area: 1 / 1;
-}
-
-.is-two .gp-right {
-  display: flex;
-  grid-area: 1 / 2 / 3 / 3;
-  flex-direction: column;
-}
-
-.is-two .gp-details-slot {
-  grid-area: 2 / 1;
-  margin-top: 28px;
+.is-two .gp-columns > * {
+  margin-left: calc(var(--gpLeft) + var(--gpGap));
 }
 
 .is-two .gp-phase {
@@ -1361,12 +1356,27 @@
   margin-top: 32px;
 }
 
+.is-two .gp-columns > .gp-left,
+.is-two .gp-columns > .gp-left-after {
+  position: absolute;
+  left: 0;
+  width: var(--gpLeft);
+  margin-left: 0;
+}
+
+.is-two .gp-columns > .gp-left {
+  top: 0;
+}
+
+.is-two .gp-columns > .gp-left-after {
+  top: calc(var(--gpCoverH, var(--gpMin)) + 28px);
+}
+
 .gp-main.is-one .gp-alone-wrap {
   padding-top: 48px;
 }
 
 .gp-main.is-two .gp-alone-wrap {
-  display: block;
   width: 560px;
   margin: 0 auto;
   padding: 36px 0 16px;

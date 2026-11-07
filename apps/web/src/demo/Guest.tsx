@@ -1,4 +1,12 @@
-import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router';
 
 import lockupUrl from '../brand/lockup.svg';
@@ -292,9 +300,31 @@ function Body({
   onRetry: () => void;
   onTell: () => void;
 }) {
+  const columns = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    const box = columns.current;
+    if (box == null || !two) return;
+    const place = () => {
+      const cover = box.querySelector<HTMLElement>(':scope > .gp-left')?.offsetHeight ?? 0;
+      const details = box.querySelector<HTMLElement>(':scope > .gp-left-after');
+      box.style.setProperty('--gpCoverH', `${cover}px`);
+      box.style.setProperty(
+        '--gpLeftH',
+        `${cover + (details == null ? 0 : 28 + details.offsetHeight)}px`,
+      );
+    };
+    place();
+    if (typeof ResizeObserver === 'undefined') return;
+    const watch = new ResizeObserver(place);
+    for (const child of box.children) watch.observe(child);
+
+    return () => watch.disconnect();
+  });
+
   if (visit.page === 'gone' || visit.page === 'unreachable') {
     return (
-      <div className="gp-columns gp-alone-wrap">
+      <div className="gp-alone-wrap">
         {visit.page === 'gone' ? (
           <Gone words={words} />
         ) : (
@@ -306,49 +336,27 @@ function Body({
 
   if (visit.page === 'loading') {
     return (
-      <div className="gp-columns" aria-busy="true">
+      <div ref={columns} className="gp-columns" aria-busy="true">
         <p className="visually-hidden" role="status">
           {words.loading}
         </p>
-        <div className="gp-cover-slot">
-          <Waiting part="cover" />
-        </div>
-        <div className="gp-right">
-          <Waiting part="under" />
-        </div>
-        {two && (
-          <div className="gp-details-slot">
-            <Waiting part="details" />
-          </div>
-        )}
+        <Waiting part="cover" />
+        <Waiting part="under" />
+        {two && <Waiting part="details" />}
       </div>
     );
   }
 
   const ended = visit.phase === 'calledOff' || visit.phase === 'over' || visit.phase === 'finished';
   const { details, foot, hosts } = shows(visit);
-  const notice = <PhaseNotice phase={visit.phase} words={words} />;
-  const theDetails = details && <Details visit={visit} words={words} hosts={hosts} />;
-  const theFoot = foot && <Foot words={words} onTell={onTell} />;
-  const cover = <Cover visit={visit} words={words} ended={ended} />;
 
-  return two ? (
-    <div className="gp-columns">
-      <div className="gp-cover-slot">{cover}</div>
-      <div className="gp-right">
-        {notice}
-        {under}
-        {theFoot}
-      </div>
-      {theDetails && <div className="gp-details-slot">{theDetails}</div>}
-    </div>
-  ) : (
-    <div className="gp-columns">
-      {notice}
-      {cover}
+  return (
+    <div ref={columns} className="gp-columns">
+      <PhaseNotice phase={visit.phase} words={words} />
+      <Cover visit={visit} words={words} ended={ended} />
       {under}
-      {theDetails}
-      {theFoot}
+      {details && <Details visit={visit} words={words} hosts={hosts} />}
+      {foot && <Foot words={words} onTell={onTell} />}
     </div>
   );
 }
