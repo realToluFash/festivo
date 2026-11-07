@@ -663,6 +663,8 @@ def task(c, a):
     if not (a.add or a.done or a.undo):
         raise Refused("say what: --add <text>, --done <task id> or --undo <task id>")
     story_id = story_number(a.story)
+    if a.add and c.role not in R.LINGUISTS + ("pm",):
+        raise Refused("the product manager writes a story's tasks; you tick them with --done")
     if a.add:
         made = c.shortcut.add_task(story_id, a.add)
         out = f"task {made['id']} on sc-{story_id}"
@@ -782,7 +784,8 @@ def review(c, a):
     follow_up = story and W.follow_up(story)
     if story and a.verdict == "pass":
         # A developer's change on a linguist's ticket is not the ticket ready for QA.
-        if not keeps and not follow_up:
+        # Two tasks open: the next pull request is not the last, so QA has nothing coming.
+        if not keeps and not follow_up and len(open_tasks(story)) < 2:
             post(c, story, ["qa"], f"PR #{a.pr} passed review at {head[:7]}: {pr['url']}\n\n"
                                    f"{a.qa or 'Nothing beyond the AC to look at hard.'}")
     elif story:
@@ -855,6 +858,14 @@ def needs_qa(story):
     return R.OPS_LABEL not in story["labels"] or "needs qa" in story["labels"]
 
 
+def open_tasks(story):
+    return [t for t in story.get("tasks") or [] if not t["done"]]
+
+
+def task_list(tasks):
+    return ", ".join(f"{t['id']} {t['text']}" for t in tasks)
+
+
 def hand_to_qa(c, story, pr, merge_sha, note=""):
     """Returns where the story went."""
     others = [p["number"] for p in store.prs_for_story(c.db, story["id"])
@@ -863,6 +874,14 @@ def hand_to_qa(c, story, pr, merge_sha, note=""):
         # The story is done when its last pull request is.
         c.refresh(story["id"])
         return f"{story['state']}, waiting on #{', #'.join(map(str, others))}"
+    if left := open_tasks(story):
+        # A story built in steps is done at its last task: until then it holds what it blocks.
+        set_state(c, story, "In Progress", check=False)
+        post(c, story, [], f"PR #{pr['number']} merged as {merge_sha}. "
+                           f"Tasks left: {task_list(left)}")
+        c.refresh(story["id"])
+        return f"In Progress, {len(left)} task{'s' if len(left) != 1 else ''} left: " \
+               f"{task_list(left)}"
     if not needs_qa(story):
         set_state(c, story, "Done", check=False)
         post(c, story, [], f"PR #{pr['number']} merged as {merge_sha}. Infra with no QA "
@@ -870,7 +889,8 @@ def hand_to_qa(c, story, pr, merge_sha, note=""):
                            + (f"\n\n{note.strip()}" if note else ""))
         c.refresh(story["id"])
         return "Done"
-    set_state(c, story, "Ready For QA", check=c.role != "ops")
+    # From In Progress only by `to-qa`, once the task forgotten at the last merge is ticked.
+    set_state(c, story, "Ready For QA", check=c.role != "ops" and story["state"] != "In Progress")
     post(c, story, ["qa"], f"PR #{pr['number']} merged as {merge_sha}. Test what landed."
                            + (f"\n\n{note.strip()}" if note else ""))
     c.refresh(story["id"])
@@ -1066,6 +1086,11 @@ def to_qa(c, a):
               if pr["state"] == "merged" and not W.design_pr(pr)]
     if not merged:
         raise Refused(f"sc-{story['id']} has no merged pull request")
+    if left := open_tasks(story):
+        raise Refused(f"sc-{story['id']} has tasks left: {task_list(left)}: tick them with "
+                      f"sq {c.role} task sc-{story['id']} --done <id>")
+    if story["state"] == "In Progress" and not story.get("tasks"):
+        raise Refused(f"sc-{story['id']} is In Progress: move it to In Review for the lead")
     return finish_handover(c, story, merged[-1], a.text)
 
 

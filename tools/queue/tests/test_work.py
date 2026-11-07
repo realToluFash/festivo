@@ -305,6 +305,14 @@ class Developer(unittest.TestCase):
         merged = pr(state="merged", lead=[verdict("pass", HEAD[:7])])
         self.assertEqual(kinds(work.developer_items([story()], [merged])), ["to-qa"])
 
+    def test_a_merged_step_with_tasks_left_is_not_handed_to_qa(self):
+        merged = pr(state="merged", lead=[verdict("pass", HEAD[:7])])
+        stepped = dict(story(), tasks=[{"id": 1, "text": "web", "done": True},
+                                       {"id": 2, "text": "app", "done": False}])
+        self.assertEqual(kinds(work.developer_items([stepped], [merged])), [])
+        stepped["tasks"][1]["done"] = True
+        self.assertEqual(kinds(work.developer_items([stepped], [merged])), ["to-qa"])
+
     def test_red_checks_and_green_in_progress(self):
         self.assertEqual(kinds(work.developer_items([story()], [pr(checks="red")])),
                          ["checks-red"])
