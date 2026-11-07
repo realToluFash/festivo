@@ -660,3 +660,4 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   antes de «Crear una cuenta»; «¿Es nuevo…?» concuerda con un género. «© {{year}} Soirely» queda
   igual que en inglés. El botón de idioma se lee «Idioma: {{language}}».
 - **Cancelar una solicitud para volver a entrar** (sc-29979): «¿Cancelar su solicitud?»; la salida es «Seguir esperando», nunca «Cancelar», y la confirmación reutiliza «Cancelar la solicitud».
+- **El estado de un control rechazado, solo para el lector de pantalla** (`mobile:forms.invalid`, sc-31909): «Datos no válidos», tras el nombre del control («País, Datos no válidos»). Es lo que VoiceOver dice en la web; no concuerda con el género del nombre, que puede ser masculino o femenino.
