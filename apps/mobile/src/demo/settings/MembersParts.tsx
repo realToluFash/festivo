@@ -2,7 +2,7 @@ import type { Ref } from 'react';
 import { StyleSheet, View, type ViewInstance } from 'react-native';
 
 import { useReadOut } from '../../components/ReadOut.tsx';
-import { Text } from '../../components/Text.tsx';
+import { Text, type TextHandle } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import {
   type CardStep,
@@ -46,19 +46,24 @@ export function MembersCardView({
   card,
   compact,
   wide,
+  saysRef,
+  toldAtMount = false,
   stepRef,
   onStep,
 }: {
   card: MembersCard;
   compact: boolean;
   wide: boolean;
+  saysRef?: Ref<TextHandle>;
+  /** Said as it mounts too: on a phone the card comes back with a removal's words already on it. */
+  toldAtMount?: boolean;
   stepRef: Ref<ViewInstance>;
   onStep: (step: CardStep) => void;
 }) {
   const step = card.step;
 
   useReadOut(card.readsOut ? [card.says, card.line].filter(Boolean).join('. ') : null, {
-    quietAtMount: true,
+    quietAtMount: !toldAtMount,
   });
 
   return (
@@ -77,7 +82,7 @@ export function MembersCardView({
       }
       testID="members.card"
     >
-      <CardSays text={card.says} size={compact ? 20 : 24} heading />
+      <CardSays ref={saysRef} text={card.says} size={compact ? 20 : 24} heading />
       {card.line != null && <OnCard text={card.line} />}
       {card.faces.length > 0 && (
         <Faces
