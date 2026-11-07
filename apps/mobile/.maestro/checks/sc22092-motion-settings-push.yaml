@@ -1,0 +1,32 @@
+# sc-22092: opens Account from Settings and goes back, twice, for timing the push from a screen recording (motion on, then Reduce Motion on).
+appId: host.exp.Exponent
+---
+- runFlow: ../open-settings.yaml
+- waitForAnimationToEnd
+- tapOn:
+    id: 'settings.account'
+- extendedWaitUntil:
+    visible: '{{t:account.title}}'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: account-pushed
+- tapOn:
+    point: '7%,10%'
+- extendedWaitUntil:
+    visible:
+      id: 'settings.account'
+    timeout: 10000
+- waitForAnimationToEnd
+- tapOn:
+    id: 'settings.account'
+- extendedWaitUntil:
+    visible: '{{t:account.title}}'
+    timeout: 30000
+- waitForAnimationToEnd
+- tapOn:
+    point: '7%,10%'
+- extendedWaitUntil:
+    visible:
+      id: 'settings.account'
+    timeout: 10000
+- takeScreenshot: back-on-settings

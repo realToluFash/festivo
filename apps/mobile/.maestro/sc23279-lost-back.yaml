@@ -1,0 +1,31 @@
+# From a code step (sign-in-code-step-open), opens Lost your authenticator and your recovery
+# codes?, and checks ‹ BACK on it returns to the step as it was left. BACK is the step's
+# title in the run's language. Pass RECOVERY=true to leave from Enter a recovery code. SHOT
+# names the two screenshots. sc-23279.
+appId: host.exp.Exponent
+---
+- runFlow:
+    when:
+      true: ${RECOVERY == 'true'}
+    commands:
+      - tapOn:
+          id: 'twoFactor.switch'
+- tapOn:
+    id: 'twoFactor.lostBoth'
+- extendedWaitUntil:
+    visible:
+      id: 'lostTwoFactor.backToCode'
+    timeout: 30000
+- assertVisible:
+    id: 'lostTwoFactor.backToCode'
+    text: ${BACK}
+- takeScreenshot: ${SHOT}-lost
+- tapOn:
+    id: 'lostTwoFactor.backToCode'
+- extendedWaitUntil:
+    visible:
+      id: 'twoFactor.code'
+    timeout: 10000
+- assertNotVisible:
+    id: 'lostTwoFactor.backToCode'
+- takeScreenshot: ${SHOT}-back

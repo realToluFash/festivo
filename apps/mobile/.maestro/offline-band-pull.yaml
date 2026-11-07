@@ -1,0 +1,12 @@
+# With the API stopped and Events loaded: pulls to refresh and leaves the offline band showing.
+appId: host.exp.Exponent
+---
+- swipe:
+    start: 50%, 35%
+    end: 50%, 85%
+    duration: 400
+- extendedWaitUntil:
+    visible:
+      id: 'offline.band'
+    timeout: 60000
+- takeScreenshot: band

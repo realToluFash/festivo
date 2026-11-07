@@ -1,0 +1,40 @@
+# Transfer ownership, two-factor on: member chosen, password typed, Make the owner tapped, so the code step shows. The first half of the lapsed code proof. sc-24496.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/organisation
+- extendedWaitUntil:
+    visible:
+      id: organisation.name
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: ownership.transfer
+- tapOn:
+    id: ownership.transfer
+- scrollUntilVisible:
+    element:
+      id: ownership.owner.${MEMBER}
+    centerElement: true
+- tapOn:
+    id: ownership.owner.${MEMBER}
+- scrollUntilVisible:
+    element:
+      id: ownership.password
+    centerElement: true
+- tapOn:
+    id: ownership.password
+- inputText: ${PASSWORD}
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: ownership.transfer.send
+    centerElement: true
+- waitForAnimationToEnd
+- tapOn:
+    id: ownership.transfer.send
+- extendedWaitUntil:
+    visible:
+      id: ownership.code
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: code-asked

@@ -1,0 +1,33 @@
+# Android only. sc-18108: Settings > ${SECTION}, open ${ROW}; leave it with Back (MODE=back) or the page's own back ${BACK_ID} (MODE=header), then Back again.
+appId: host.exp.Exponent
+---
+- runFlow: ../open-settings.yaml
+- tapOn:
+    id: 'settings.${SECTION}'
+- extendedWaitUntil:
+    visible:
+      id: '${ROW}'
+    timeout: 30000
+- tapOn:
+    id: '${ROW}'
+- extendedWaitUntil:
+    visible:
+      id: '${BACK_ID}'
+    timeout: 20000
+- takeScreenshot: page
+- runFlow:
+    when:
+      true: ${MODE == 'header'}
+    commands:
+      - tapOn:
+          id: '${BACK_ID}'
+- runFlow:
+    when:
+      true: ${MODE != 'header'}
+    commands:
+      - back
+- waitForAnimationToEnd
+- takeScreenshot: after-first
+- back
+- waitForAnimationToEnd
+- takeScreenshot: after-second

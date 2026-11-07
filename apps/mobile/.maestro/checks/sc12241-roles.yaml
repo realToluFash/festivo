@@ -1,0 +1,43 @@
+# sc-12241: Roles as it opens in the current window, then Spare Role (${ROLE_ID}) opened and scrolled to its foot.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/roles
+- waitForAnimationToEnd
+- runFlow:
+    when:
+      notVisible:
+        id: 'roles.role.owner'
+    commands:
+      - tapOn:
+          id: 'frame.back'
+      - extendedWaitUntil:
+          visible:
+            id: 'roles.role.owner'
+          timeout: 15000
+- extendedWaitUntil:
+    visible:
+      id: 'roles.role.owner'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: roles
+- scrollUntilVisible:
+    element:
+      id: 'roles.role.${ROLE_ID}'
+    direction: DOWN
+- tapOn:
+    id: 'roles.role.${ROLE_ID}'
+- extendedWaitUntil:
+    visible:
+      id: 'roles.name'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: spare-top
+- repeat:
+    while:
+      notVisible: '{{t:rolesScreen.seeHeading}}'
+    times: 8
+    commands:
+      - swipe:
+          start: 75%, 70%
+          end: 75%, 30%
+- takeScreenshot: spare-foot

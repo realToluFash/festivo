@@ -1,0 +1,30 @@
+# sc-23267, one cold run in landscape on iOS: the app stopped and opened, the tablet turned after the launch (a relaunch drops an earlier setOrientation), and Start organisation bringing up the card, shot as RUN.
+appId: host.exp.Exponent
+---
+- stopApp
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible:
+      id: 'noOrganisation'
+    timeout: 30000
+- setOrientation: LANDSCAPE_LEFT
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: 'noOrganisation.start'
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: 'noOrganisation.start'
+- extendedWaitUntil:
+    visible:
+      id: 'createOrganisation.cancel'
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: start-cold-landscape-${RUN}
+- tapOn:
+    id: 'createOrganisation.cancel'
+- extendedWaitUntil:
+    notVisible:
+      id: 'createOrganisation'
+    timeout: 10000
