@@ -594,20 +594,17 @@ export function membersCard({
       };
     case 'removed': {
       const handed = notice.handed;
+      const stays = `Their events stay with ${ORGANISATION}.`;
 
-      return handed == null
-        ? {
-            ...quiet,
-            says: `${nameOf(people, notice.id)} was removed`,
-            lines: [`Their events stay with ${ORGANISATION}. ${FORMER_KEPT}`],
-            step: seeFormer,
-          }
-        : {
-            ...quiet,
-            says: `${nameOf(people, notice.id)} was removed`,
-            lines: [`${ledByLine(handed, nameOf(people, handed.to), viewer.id)} ${FORMER_KEPT}`],
-            step: firstStep(people, recoveries, viewer),
-          };
+      return {
+        ...quiet,
+        says: `${nameOf(people, notice.id)} was removed`,
+        lines: [
+          `${handed == null ? stays : ledByLine(handed, nameOf(people, handed.to), viewer.id)} ${FORMER_KEPT}`,
+        ],
+        // Anyone still waiting comes before See Former, after any removal (pm, 7 Nov).
+        step: firstStep(people, recoveries, viewer) ?? seeFormer,
+      };
     }
     case 'recovered': {
       const approve = notice.answer === 'approve';

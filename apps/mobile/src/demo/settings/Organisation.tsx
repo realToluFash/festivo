@@ -24,7 +24,7 @@ import {
 } from './OrganisationModel.ts';
 import { OwnershipSection } from './OrganisationOwnership.tsx';
 import { DETAILS_WORDS } from './OrganisationWords.ts';
-import { memberLooking, VIEWER_ORGANISATION } from './sample.ts';
+import { managesOrganisation, memberLooking, VIEWER_ORGANISATION } from './sample.ts';
 import { useShell } from '../../components/settingsShell.ts';
 import { SummaryPage } from './SummaryPage.tsx';
 
@@ -38,7 +38,7 @@ export function OrganisationSection() {
     <OrganisationPage
       key={`${viewer}:${name ?? 'atRest'}`}
       start={organisationStart(name, role)}
-      manages={viewer === 'owner'}
+      manages={managesOrganisation(viewer)}
     />
   );
 
