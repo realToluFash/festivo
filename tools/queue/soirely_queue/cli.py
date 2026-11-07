@@ -907,11 +907,21 @@ def admin(argv):
                               capture_output=True, text=True).stdout.strip() or "local"
         update.copy(HERE.parent, home(), tree)
         if not store.get_meta(db, "baselined_at"):
-            errors = sync.sync(db, force=True, full=True)
+            errors = first_sync(db)
             if errors:
                 return print(f"error: {'; '.join(errors)}")
-            baseline(db)
         print(f"installed: {target / 'sq'}")
+
+
+def first_sync(db):
+    """Baselines only after a whole sync, since baseline runs once: a story fetched later
+    would wake every role on its long-answered threads."""
+    errors = sync.sync(db, force=True, full=True, budget=None)
+    cut = (store.get_meta(db, "sync_report") or {}).get("cut")
+    if errors or cut:
+        return errors or [f"the first sync stopped in {', '.join(cut)}; run sq install again"]
+    baseline(db)
+    return []
 
 
 def main(argv=None):

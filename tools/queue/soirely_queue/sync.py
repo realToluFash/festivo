@@ -91,6 +91,8 @@ def sync_blockers(db, shortcut, states, epics, full=False):
     for blocker_id in sorted(wanted):
         try:
             store.put_story(db, slim(shortcut.story(blocker_id), states, epics))
+        except OutOfTime:
+            raise
         except ShortcutError as error:
             if " 404 " in str(error):
                 missing.add(blocker_id)
@@ -122,6 +124,8 @@ def pr_stories(db, shortcut, now):
     for story_id in sorted(wanted):
         try:
             refresh_story(db, shortcut, story_id, now)
+        except OutOfTime:
+            raise
         except ShortcutError as error:
             if " 404 " in str(error):
                 missing.add(story_id)

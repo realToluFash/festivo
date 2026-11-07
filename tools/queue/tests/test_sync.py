@@ -141,6 +141,32 @@ class Blockers(unittest.TestCase):
         self.assertEqual(asked, [7, 404, 7])
 
 
+class OutOfTimeInAPart(unittest.TestCase):
+    """A deadline that passes while one story is fetched cuts the sync; nothing is marked
+    rechecked that was not."""
+
+    class Late(FakeShortcut):
+        def story(self, story_id):
+            raise sync.OutOfTime("out of time: Shortcut timed out")
+
+    def test_a_blocker_fetch_out_of_time_cuts_the_full_sync(self):
+        db = store.connect(":memory:")
+        store.set_meta(db, "slim_version", sync.SLIM_VERSION)
+        links = [{"verb": "blocks", "subject": 7, "object": 1}]
+        store.put_story(db, {"id": 1, "state": "Ready For Dev", "done": False, "labels": [],
+                             "links": links, "updated_at": "t0"})
+        with self.assertRaises(sync.OutOfTime):
+            sync.sync_shortcut(db, self.Late(), NOW, full=True)
+        self.assertIsNone(store.get_meta(db, "full_at"))
+        self.assertIsNone(store.get_meta(db, "missing_stories"))
+
+    def test_a_pr_story_fetch_out_of_time_leaves_pr_stories_at_unset(self):
+        db = store.connect(":memory:")
+        store.put_prs(db, [{"number": 1, "story_id": 10, "state": "open", "head_sha": "a"}])
+        with self.assertRaises(sync.OutOfTime):
+            sync.pr_stories(db, self.Late(), NOW)
+        self.assertIsNone(store.get_meta(db, "pr_stories_at"))
+
 class Budget(unittest.TestCase):
     """A sync that runs out of its budget stops without failing the tick."""
 
