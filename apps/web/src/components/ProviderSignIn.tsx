@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 
 import { startProviderSignIn } from '../providerSignIn.ts';
+import { OrLine } from './OrLine.tsx';
 
 type Provider = 'google' | 'apple';
 
@@ -52,13 +53,7 @@ export function ProviderSignIn({
 
   return (
     <>
-      {only == null && (
-        <div className="auth-or">
-          <span className="auth-or-rule" />
-          <span>{t('signIn.or')}</span>
-          <span className="auth-or-rule" />
-        </div>
-      )}
+      {only == null && <OrLine words={t('signIn.or')} />}
 
       {pair ? <div className="auth-providers">{buttons}</div> : buttons}
     </>

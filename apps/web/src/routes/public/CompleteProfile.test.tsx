@@ -555,7 +555,9 @@ describe('a few details, with invitations waiting (sc-3353)', () => {
         'You have an invitation waiting. Accept it to join that organisation, or start your own below.',
       ),
     ).toBeDefined();
-    expect(screen.getByText('Or start your own organisation')).toBeDefined();
+    expect(screen.getByText('Or start your own organisation').parentElement?.className).toBe(
+      'auth-or',
+    );
 
     const name = screen.getByLabelText('Full name');
     const organisation = screen.getByLabelText('Organisation name');

@@ -1296,10 +1296,8 @@
     "emailShape": "Cela ne ressemble pas à une adresse e-mail. Vérifiez qu’elle contient un @ et un domaine, comme amara.o@gmail.com.",
     "roleMeans": {
       "owner": "Tout, y compris la facturation et la suppression de l’organisation.",
-      "administrator": "Tout dans les événements, plus les membres et les rôles. Pas la facturation.",
-      "event_manager": "Tout dans les événements, et gère le budget. Jamais la marge.",
-      "coordinator": "Organise les événements. Consulte le budget, jamais la marge.",
-      "read_only": "Voit les événements. Ne modifie rien."
+      "administrator": "Everything except billing. Sees every event and manages members.",
+      "member": "Works on the events they’re added to, and sees no others."
     },
     "inviteNote": "Cette personne recevra un e-mail dans sa langue, avec un lien pour rejoindre {{organisation}} avec le rôle {{role}}. L’e-mail indique jusqu’à quand le lien fonctionne.",
     "send": "Envoyer l’invitation",

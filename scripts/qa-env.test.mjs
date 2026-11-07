@@ -32,6 +32,9 @@ import {
   physicalSize,
   portraitRotation,
   ANDROID_START,
+  batchReset,
+  expoGoPrefs,
+  TOOLS_BUTTON,
   SCREEN_READER_OFF,
   driverBuilds,
   driverPids,
@@ -78,6 +81,7 @@ import {
   runHeld,
   maestroTarget,
   parseTarget,
+  hardwareKeyboardOff,
   passwordAutoFillFiles,
   passwordAutoFillOff,
   playImage,
@@ -454,6 +458,57 @@ describe('the screen reader on an emulator android opens', () => {
   });
 });
 
+describe('what a batch resets before it signs in', () => {
+  const prefs =
+    '/sims/UDID/data/Containers/Data/Application/X/Library/Preferences/host.exp.Exponent';
+
+  it('turns TalkBack off on an emulator, with the same commands android uses', () => {
+    expect(batchReset(true, 'emulator-5554').adb).toBe(SCREEN_READER_OFF);
+  });
+
+  it("turns Expo Go's Tools button off in its own container, with Expo Go closed first", () => {
+    const { terminate, write, say } = batchReset(false, 'UDID', { prefs, toolsButton: null });
+    expect(terminate).toEqual(['simctl', 'terminate', 'UDID', 'host.exp.Exponent']);
+    expect(write).toEqual([
+      'simctl',
+      'spawn',
+      'UDID',
+      'defaults',
+      'write',
+      prefs,
+      TOOLS_BUTTON,
+      '-bool',
+      'NO',
+    ]);
+    expect(say).toMatch(/turned off/);
+  });
+
+  it("has a line for a write that fails, pointing the tester to Expo Go's menu", () => {
+    expect(batchReset(false, 'UDID', { prefs, toolsButton: null }).failed).toBe(
+      "  Could not turn Expo Go's Tools button off: turn it off in Expo Go's menu.",
+    );
+  });
+
+  it('turns the Tools button off when it was left on', () => {
+    expect(batchReset(false, 'UDID', { prefs, toolsButton: '1' }).write).toContain(TOOLS_BUTTON);
+  });
+
+  it('leaves Expo Go alone when its Tools button is already off, and says so', () => {
+    expect(batchReset(false, 'UDID', { prefs, toolsButton: '0' })).toEqual({
+      say: "  Expo Go's Tools button is off.",
+    });
+  });
+
+  it('touches nothing on a simulator without Expo Go', () => {
+    expect(batchReset(false, 'UDID', { prefs: null }).write).toBeUndefined();
+  });
+
+  it("reads Expo Go's preferences from its data container", () => {
+    expect(expoGoPrefs('/c')).toBe('/c/Library/Preferences/host.exp.Exponent');
+    expect(expoGoPrefs(null)).toBeNull();
+  });
+});
+
 describe('the GPU mode an emulator starts with', () => {
   it.each([
     ['linux', {}, 'swangle_indirect'],
@@ -686,6 +741,17 @@ describe('a release build', () => {
       ['-insert', 'restrictedBool', '-dictionary', files[0]],
       ['-insert', 'restrictedBool.allowPasswordAutoFill', '-dictionary', files[0]],
       ['-replace', 'restrictedBool.allowPasswordAutoFill.value', '-bool', 'NO', files[0]],
+    ]);
+  });
+
+  it('turns the hardware keyboard off globally and for each QA simulator', () => {
+    expect(hardwareKeyboardOff('/p.plist', ['A-1', 'B-2'])).toEqual([
+      ['-replace', 'ConnectHardwareKeyboard', '-bool', 'NO', '/p.plist'],
+      ['-insert', 'DevicePreferences', '-dictionary', '/p.plist'],
+      ['-insert', 'DevicePreferences.A-1', '-dictionary', '/p.plist'],
+      ['-replace', 'DevicePreferences.A-1.ConnectHardwareKeyboard', '-bool', 'NO', '/p.plist'],
+      ['-insert', 'DevicePreferences.B-2', '-dictionary', '/p.plist'],
+      ['-replace', 'DevicePreferences.B-2.ConnectHardwareKeyboard', '-bool', 'NO', '/p.plist'],
     ]);
   });
 

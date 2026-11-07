@@ -21,6 +21,7 @@ import { api } from '../../api.ts';
 import { FieldError } from '../../components/FieldError.tsx';
 import { InvitationRows } from '../../components/InvitationRows.tsx';
 import { LinkedNotice } from '../../components/LinkedNotice.tsx';
+import { OrLine } from '../../components/OrLine.tsx';
 import { AuthPage } from '../../components/AuthPage.tsx';
 import { SignedInAs, StepLine } from '../../components/Onboarding.tsx';
 import { PendingPage } from '../../components/Pending.tsx';
@@ -480,9 +481,7 @@ function Details({
           </section>
         )}
 
-        {asksForOrganisation && stillOpen > 0 && (
-          <p className="or-rule">{t('completeProfile.orStartOwn')}</p>
-        )}
+        {asksForOrganisation && stillOpen > 0 && <OrLine words={t('completeProfile.orStartOwn')} />}
 
         {unavailable && (
           <div className="auth-notice" ref={unavailableNotice} tabIndex={-1}>

@@ -2281,24 +2281,6 @@ span {
   color: var(--colorInkSecondary);
 }
 
-.or-rule {
-  display: flex;
-  align-items: center;
-  gap: var(--spaceLg);
-  min-width: 0;
-  margin: 0;
-  font: var(--typeButton);
-  color: var(--markInfoInk);
-}
-
-.or-rule::before,
-.or-rule::after {
-  flex: 1;
-  height: 1px;
-  background: var(--colorInsetBorder);
-  content: '';
-}
-
 .no-organisation-invitations {
   display: flex;
   flex-direction: column;

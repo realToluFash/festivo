@@ -9,6 +9,7 @@ import {
   createWriteStream,
   existsSync,
   mkdirSync,
+  mkdtempSync,
   openSync,
   readdirSync,
   readFileSync,
@@ -17,7 +18,7 @@ import {
   statSync,
   writeFileSync,
 } from 'node:fs';
-import { homedir, networkInterfaces } from 'node:os';
+import { homedir, networkInterfaces, tmpdir } from 'node:os';
 import { basename, dirname, extname, join, resolve } from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
@@ -774,6 +775,7 @@ function setup() {
         console.log(id ? `  ${sim.name}: created ${id}` : `  ${sim.name}: could not create one`);
       }
     }
+    withSoftwareKeyboard(qaSimulatorIds());
   }
 
   step('The emulators');
@@ -1043,6 +1045,47 @@ function withoutPasswordAutoFill(udid) {
   }
 }
 
+// Simulator.app connects the Mac's keyboard, so no on-screen keyboard shows. It writes its
+// preferences back when it quits, so they are changed only while it is not running.
+export const SIMULATOR_PREFERENCES = 'com.apple.iphonesimulator';
+
+export function hardwareKeyboardOff(file, udids) {
+  return [
+    ['-replace', 'ConnectHardwareKeyboard', '-bool', 'NO', file],
+    ['-insert', 'DevicePreferences', '-dictionary', file],
+    ...udids.flatMap((udid) => [
+      ['-insert', `DevicePreferences.${udid}`, '-dictionary', file],
+      ['-replace', `DevicePreferences.${udid}.ConnectHardwareKeyboard`, '-bool', 'NO', file],
+    ]),
+  ];
+}
+
+function withSoftwareKeyboard(udids) {
+  if (!udids.length) return;
+  if (capture('pgrep', ['-x', 'Simulator']) !== null) {
+    console.log(
+      '  Simulator.app is open, so its keyboard setting is left alone. For the on-screen keyboard,' +
+        ' turn off I/O > Keyboard > Connect Hardware Keyboard (Cmd+Shift+K) in the device window.',
+    );
+    return;
+  }
+  const dir = mkdtempSync(join(tmpdir(), 'qa-sim-prefs-'));
+  const file = join(dir, 'prefs.plist');
+  try {
+    if (!run('defaults', ['export', SIMULATOR_PREFERENCES, file], { optional: true }))
+      run('plutil', ['-create', 'xml1', file]);
+    for (const step of hardwareKeyboardOff(file, udids)) run('plutil', step, { optional: true });
+    run('defaults', ['import', SIMULATOR_PREFERENCES, file]);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+const qaSimulatorIds = () =>
+  Object.values(CONFIG.simulators)
+    .map((sim) => simulatorId(sim.name))
+    .filter(Boolean);
+
 const appVersion = (app) =>
   capture('plutil', ['-extract', 'CFBundleShortVersionString', 'raw', join(app, 'Info.plist')]);
 
@@ -1161,6 +1204,7 @@ async function ios(args) {
       throw new Error(`Expo Go for SDK ${expoSdkMajor(expo)} did not install on the ${key}`);
     devices.push(udid);
   }
+  withSoftwareKeyboard(qaSimulatorIds());
   run('open', ['-a', 'Simulator'], { optional: true });
 
   const metro = await startBundler(root);
@@ -1595,6 +1639,39 @@ export const ANDROID_START = [
     run: (s) => s.fresh && dismissExpoGoIntro(s.tools, s.root),
   },
 ];
+
+// Expo Go's floating Tools button sits over a list's Done, where a tap opens its menu instead.
+export const TOOLS_BUTTON = 'EXDevMenuShowFloatingActionButton';
+
+// What a batch resets on its device before signing in: TalkBack, or Expo Go's Tools button.
+// The button lives in Expo Go's container, which `defaults write host.exp.Exponent` misses.
+export function batchReset(onAndroid, device, { prefs, toolsButton } = {}) {
+  if (onAndroid) return { adb: SCREEN_READER_OFF, say: '  TalkBack is off for the batch.' };
+  if (!prefs) return { say: '  Expo Go is not installed: run `ios` first.' };
+  if (toolsButton === '0') return { say: "  Expo Go's Tools button is off." };
+  return {
+    terminate: ['simctl', 'terminate', device, EXPO_GO],
+    write: ['simctl', 'spawn', device, 'defaults', 'write', prefs, TOOLS_BUTTON, '-bool', 'NO'],
+    say: "  Expo Go's Tools button turned off for the batch.",
+    failed: "  Could not turn Expo Go's Tools button off: turn it off in Expo Go's menu.",
+  };
+}
+
+export const expoGoPrefs = (container) =>
+  container && join(container, 'Library/Preferences', EXPO_GO);
+
+function resetForBatch(onAndroid, device) {
+  const prefs = onAndroid
+    ? null
+    : expoGoPrefs(capture('xcrun', ['simctl', 'get_app_container', device, EXPO_GO, 'data']));
+  const toolsButton =
+    prefs && capture('xcrun', ['simctl', 'spawn', device, 'defaults', 'read', prefs, TOOLS_BUTTON]);
+  const reset = batchReset(onAndroid, device, { prefs, toolsButton });
+  for (const command of reset.adb ?? []) adbOut(androidTools(), command);
+  if (reset.terminate) run('xcrun', reset.terminate, { optional: true });
+  const written = !reset.write || run('xcrun', reset.write, { optional: true });
+  console.log(written ? reset.say : reset.failed);
+}
 
 async function android(args) {
   const tools = androidTools();
@@ -2637,6 +2714,8 @@ async function batch(args) {
       'this simulator still offers to save a password — run `ios` first, which turns it off',
     );
   }
+
+  resetForBatch(onAndroid, device);
 
   const out = join(root, '.qa', name);
   rmSync(out, { recursive: true, force: true });
