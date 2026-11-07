@@ -20,7 +20,7 @@ import {
 } from '../../components/Summary.tsx';
 import type { GuestsCardWords } from './GuestsModel.ts';
 import { W, say } from './GuestsWords.ts';
-import { ARRIVED_GREEN, type MarkKind, ReplyMark } from './ReplyMark.tsx';
+import { type MarkKind, ReplyMark } from './ReplyMark.tsx';
 
 export type Layout = 'phone' | 'portrait' | 'landscape';
 
@@ -215,13 +215,9 @@ export function DoneLine({ text, size = 15 }: { text: string; size?: number }) {
   return (
     <View style={styles.done}>
       <View style={styles.doneMark}>
-        <Glyph name="tick" size={17} ink={ARRIVED_GREEN} weight={2.6} />
+        <Glyph name="tick" size={17} ink={tokens.marks.done.fill} weight={2.6} />
       </View>
-      <Text
-        size={size}
-        weight="semibold"
-        style={[styles.grow, styles.green, { lineHeight: size * 1.4 }]}
-      >
+      <Text size={size} weight="semibold" style={[styles.grow, { lineHeight: size * 1.4 }]}>
         {text}
       </Text>
     </View>
@@ -265,7 +261,7 @@ export function GuestToast({
           accessibilityLabel={action.label}
           testID="guests.toast.action"
         >
-          <Text size={15} weight="semibold" accessible={false} style={styles.toastGreen}>
+          <Text size={15} weight="semibold" accessible={false} style={styles.toastAct}>
             {action.label}
           </Text>
         </Pressable>
@@ -415,7 +411,6 @@ export function useLayoutKind(): Layout {
 const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
   white: { color: tokens.colorInkOnDark },
-  green: { color: ARRIVED_GREEN },
   secondary: { color: tokens.colorInkSecondary },
   figures: { fontVariant: ['tabular-nums'] },
   pressed: { opacity: tokens.opacityPressed },
@@ -456,7 +451,7 @@ const styles = StyleSheet.create({
     elevation: tokens.elevationNative.popover.android.elevation,
   },
   toastAction: { minHeight: tokens.sizeHit, justifyContent: 'center', paddingHorizontal: 12 },
-  toastGreen: { color: '#7FE0B5' },
+  toastAct: { color: tokens.colorInkOnDark, textDecorationLine: 'underline' },
   toastClose: {
     width: tokens.sizeHit,
     height: tokens.sizeHit,

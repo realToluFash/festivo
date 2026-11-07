@@ -6,9 +6,9 @@ import type { ReplyKind } from './GuestsWords.ts';
 
 export type MarkKind = ReplyKind | 'arrived' | 'walkin';
 
-/** The boards' Coming and Arrived (spec §2); the violet scheme's replyStates has no green of its own yet. */
-export const COMING_GREEN = '#1E9A64';
-export const ARRIVED_GREEN = '#0B7A5E';
+/** Coming takes its reply state's colour; Arrived and Walk-in the scheme's done mark, each beside its word. */
+const COMING = tokens.replyStates.coming.dot;
+const ARRIVED = tokens.marks.done;
 const GREY = tokens.replyStates.notComing.dot;
 
 const hidden = {
@@ -85,10 +85,7 @@ export function ReplyMark({
   switch (kind) {
     case 'coming':
       return (
-        <View
-          {...hidden}
-          style={[styles.centred, round, { backgroundColor: on ? white : COMING_GREEN }]}
-        >
+        <View {...hidden} style={[styles.centred, round, { backgroundColor: on ? white : COMING }]}>
           <Tick side={Math.round(side * 0.66)} ink={on ? cover : white} />
         </View>
       );
@@ -148,10 +145,10 @@ export function ReplyMark({
           style={[
             styles.centred,
             { width: side, height: side, borderRadius: Math.round(side * 0.28) },
-            { backgroundColor: ARRIVED_GREEN },
+            { backgroundColor: ARRIVED.fill },
           ]}
         >
-          <DoorGlyph side={Math.round(side * 0.7)} ink={white} />
+          <DoorGlyph side={Math.round(side * 0.7)} ink={ARRIVED.ink} />
         </View>
       );
   }
