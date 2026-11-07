@@ -33,10 +33,12 @@ class Developers(unittest.TestCase):
         picks = [self.pick(role, stories) for role in ("dev", "dev2", "dev3", "dev4")]
         self.assertEqual(picks, ["sc-1", "sc-2", "sc-3", "sc-4"])
 
-    def test_a_story_whose_demo_merged_is_not_picked(self):
+    def test_a_demo_only_story_is_not_picked(self):
         demo = {"number": 40, "story_id": 1, "state": "merged", "branch": "ux/sc-1-x",
                 "merged_at": "t1", "head_sha": "a" * 40, "lead": []}
-        self.assertEqual(self.pick("dev", [ready(1), ready(2)], [demo]), "sc-2")
+        only = dict(ready(1), labels=ready(1)["labels"] + ["demo only"])
+        self.assertEqual(self.pick("dev", [only, ready(2)], [demo]), "sc-2")
+        self.assertEqual(self.pick("dev", [ready(1), ready(2)], [demo]), "sc-1")
 
     def test_with_fewer_stories_than_its_number_a_developer_takes_the_first(self):
         self.assertEqual(self.pick("dev4", [ready(1), ready(2)]), "sc-1")

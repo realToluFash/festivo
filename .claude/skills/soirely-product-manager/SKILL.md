@@ -165,6 +165,10 @@ they are where AC fails:
   person has to judge by eye on a real device. It is kept for the people on the QA team
   (`manualTesters`), and a tester writes them a plan. Anything a simulator or the browser
   driver can verify gets no label, so the agent testers keep it.
+- **Label `demo only` a story whose every AC bullet is in a design demo**, so that its
+  merged demo is its whole build: no developer is offered it, and `sq pm next` tells you to
+  move it to Ready For QA once its demo merges. A story a developer also builds gets no
+  label, even when its demo merged first.
 - **Close with a regression bullet** naming what must keep working untouched.
 - **Never invent a field name or a label.** Search the codebase for the real one. If it does
   not exist, that is a question, not a guess.

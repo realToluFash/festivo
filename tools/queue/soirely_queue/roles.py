@@ -327,6 +327,8 @@ def claimant(claim):
 
 
 MANUAL_QA = "manual qa"
+# Set by the product manager on a story whose every AC bullet is in a design demo.
+DEMO_ONLY = "demo only"
 
 
 def is_person(name):

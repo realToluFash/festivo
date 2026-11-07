@@ -224,7 +224,7 @@ def builds(role):
 
 def queued(role, stories, epics=None, ios=None, testers=None, prs=None):
     config = R.ROLES[role]
-    built = demo_built(stories, prs or [])
+    only = demo_only(stories, prs or [])
     has_ios = machine.has_xcode if ios is None else lambda: ios
     if testers is None and role in R.TESTERS:
         testers = machine.manual_testers()
@@ -236,7 +236,7 @@ def queued(role, stories, epics=None, ios=None, testers=None, prs=None):
             and not (role in R.TESTERS and R.kept_for_person(story, testers))
             and not held_epic(story, epics)
             and not (builds(role) and holding(story, by_id))
-            and not (builds(role) and story["id"] in built)]
+            and not (builds(role) and story["id"] in only)]
 
 
 def retester(story, now=None):
@@ -359,6 +359,8 @@ REVIEWED = ("In Review", "Passed Code Review")
 
 
 def review_items(stories, prs):
+    only = demo_only(stories, prs)
+    demo_merged = {sid for sid, own in only.items() if any(pr["state"] == "merged" for pr in own)}
     by_story = {}
     for pr in prs:
         if pr["state"] == "open" and not pr["draft"] and pr["story_id"]:
@@ -373,9 +375,10 @@ def review_items(stories, prs):
                         or follow_up(story) and not linguists(story)]
             if not open_prs:
                 continue
-        merged = any(pr["story_id"] == story["id"] and pr["state"] == "merged" for pr in prs)
+        merged = any(pr["story_id"] == story["id"] and pr["state"] == "merged"
+                     and not design_pr(pr) for pr in prs)
         if not [pr for pr in open_prs if not design_pr(pr)] and not merged \
-                and story["state"] == "In Review":
+                and story["state"] == "In Review" and story["id"] not in demo_merged:
             items.append(_item(f"lead:review:sc-{story['id']}:none:{story['moved_at']}", "lead",
                                ["lead"], "review",
                                f"sc-{story['id']} is In Review with no open pull request",
@@ -444,32 +447,37 @@ DEMO_WAITING = ("Ready For Dev", "In Progress", "In Review", "Failed Code Review
                 "Passed Code Review")
 
 
-def demo_built(stories, prs):
-    """Each story whose every pull request is the designer's, with the last of them merged:
-    the merged demo is its whole build."""
+def demo_only(stories, prs):
+    """Each story labelled `demo only` with no pull request off a ux/ branch, with its pull
+    requests: its merged demo is its whole build, so no developer is offered it."""
     by_story = {}
     for pr in prs:
         if pr.get("story_id"):
             by_story.setdefault(pr["story_id"], []).append(pr)
-    built = {}
-    for story in stories:
-        own = by_story.get(story["id"], [])
-        merged_ = sorted((pr for pr in own if pr["state"] == "merged"),
-                         key=lambda pr: pr.get("merged_at") or "")
-        if merged_ and all(design_pr(pr) for pr in own):
-            built[story["id"]] = merged_[-1]
-    return built
+    return {story["id"]: by_story.get(story["id"], []) for story in stories
+            if R.DEMO_ONLY in story["labels"]
+            and all(design_pr(pr) for pr in by_story.get(story["id"], []))}
 
 
 def demo_items(stories, prs):
-    """The product manager moves a demo-only story on once its demo merges: the designer may
-    not move a story, and no developer has anything to build."""
-    built = demo_built(stories, prs)
+    """The product manager moves a demo-only story on once its demo merges and none of its
+    pull requests is open: the designer may not move a story, and no developer has anything
+    to build. In Failed QA only a demo merged after the failure counts."""
     items = []
-    for story in stories:
-        pr = built.get(story["id"])
-        if not pr or story.get("archived") or story["done"] \
-                or story["state"] not in DEMO_WAITING:
+    by_id = {story["id"]: story for story in stories}
+    for story_id, own in demo_only(stories, prs).items():
+        story = by_id[story_id]
+        merged_ = sorted((pr for pr in own if pr["state"] == "merged"),
+                         key=lambda pr: pr.get("merged_at") or "")
+        if not merged_ or any(pr["state"] == "open" for pr in own) \
+                or story.get("archived") or story["done"]:
+            continue
+        pr = merged_[-1]
+        if story["state"] == "Failed QA":
+            failed, merged_at = T.epoch(story.get("moved_at")), T.epoch(pr.get("merged_at"))
+            if failed is None or merged_at is None or merged_at <= failed:
+                continue
+        elif story["state"] not in DEMO_WAITING:
             continue
         sha = pr["head_sha"][:7]
         verdict = latest_verdict(pr)
@@ -649,7 +657,7 @@ def main_items(main_run):
 
 
 def heartbeat_items(stories, last_runs, busy_roles, now, epics=None, last_sweeps=None,
-                    testers=None):
+                    testers=None, prs=None):
     """After a quiet spell, a sweeping role sweeps and any other role with a queue picks. A
     role with `sweepEvery` picks too, and sweeps once that long has passed since its last."""
     items = []
@@ -664,9 +672,8 @@ def heartbeat_items(stories, last_runs, busy_roles, now, epics=None, last_sweeps
         swept = (last_sweeps or {}).get(role)
         if config.get("sweeps") and not (every and swept and now - swept < every * 60):
             kind, reason = "sweep", f"your sweep, {every or config['heartbeat']} minutes on"
-        elif queued(role, stories, epics, testers=testers):
-            count = len(queued(role, stories, epics, testers=testers))
-            kind, reason = "pick", f"{count} stories in your queue"
+        elif (waiting := queued(role, stories, epics, testers=testers, prs=prs)):
+            kind, reason = "pick", f"{len(waiting)} stories in your queue"
         else:
             continue
         items.append(_item(f"{role}:{kind}:{int(now // period)}", role, [role], kind, reason,
@@ -775,5 +782,5 @@ def derive(stories, prs, main_run=None, last_runs=None, busy_roles=(), now=0,
                       testers=testers, prs=prs)
         + main_items(main_run)
         + heartbeat_items(stories, last_runs or {}, set(busy_roles), now, epics, last_sweeps,
-                          testers)
+                          testers, prs)
         + machine_items(checks) + stranded_items(stories, prs, now), stories)
