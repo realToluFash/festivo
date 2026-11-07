@@ -16,6 +16,7 @@ import { TextField } from '../../components/Field.tsx';
 import { useReadOut } from '../../components/ReadOut.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
+import { type GuestCounts, GUEST_WORDS as G, SAMPLE_GUESTS, guestCountsOf } from './GuestCounts.ts';
 import { Cover } from '../../components/Cover.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
 import { SwitchedNotice } from '../OrgSwitcher.tsx';
@@ -123,6 +124,10 @@ export function EventsList({
   );
   const home = useMemo(() => homeOf(events, now, locale), [events, now, locale]);
   const looking = searching(searched) || filtered(filters);
+  const guests = useMemo(
+    () => guestCountsOf(events, state === 'noGuests' ? {} : SAMPLE_GUESTS, now),
+    [events, state, now],
+  );
   const results = useMemo(
     () => (looking ? resultsOf(events, searched, filters, now, locale) : null),
     [looking, events, searched, filters, now, locale],
@@ -177,6 +182,7 @@ export function EventsList({
         onNew={() => shell.tell(say.ownDesign(W.newEvent))}
         onBell={shell.tell}
       />
+      {!first && <GuestTiles counts={guests} />}
       <SwitchedNotice />
     </>
   );
@@ -484,6 +490,36 @@ function ListTop({
   );
 }
 
+function GuestTiles({ counts }: { counts: GuestCounts }) {
+  return (
+    <View style={styles.guests} testID="events.guests">
+      <GuestTile name={G.invited} figure={counts.invited} line={G.coming(counts.coming)} />
+      <GuestTile name={G.replied} figure={counts.replied} line={G.notReplied(counts.notReplied)} />
+    </View>
+  );
+}
+
+function GuestTile({ name, figure, line }: { name: string; figure: number; line: string }) {
+  return (
+    <View
+      style={styles.guest}
+      accessible
+      accessibilityLabel={`${name}, ${figure}, ${line}`}
+      testID={`events.guests.${name}`}
+    >
+      <Text size={14} weight="semibold" style={styles.secondary}>
+        {name}
+      </Text>
+      <Text size={28} weight="bold" style={[styles.figures, styles.guestFigure]}>
+        {String(figure)}
+      </Text>
+      <Text size={14} weight="medium" style={[styles.secondary, styles.figures, styles.said]}>
+        {line}
+      </Text>
+    </View>
+  );
+}
+
 function titled(size: number) {
   return { lineHeight: size * 1.12, letterSpacing: size * -0.02 };
 }
@@ -750,6 +786,19 @@ const styles = StyleSheet.create({
   orgRow: { flexDirection: 'row', alignItems: 'center', marginBottom: tokens.spaceSm },
   titleRow: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: tokens.spaceMd },
   summary: { marginTop: tokens.spaceHair, lineHeight: 15 * 1.45 },
+  guests: { flexDirection: 'row', gap: tokens.spaceMd },
+  guest: {
+    flex: 1,
+    minWidth: 0,
+    gap: tokens.spaceHair,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: tokens.colorInsetBorder,
+    borderRadius: tokens.radiusInset,
+    backgroundColor: tokens.colorInset,
+  },
+  guestFigure: { lineHeight: 28 * 1.15 },
   said: { lineHeight: 14 * 1.45 },
   newRound: {
     width: tokens.sizeHit,

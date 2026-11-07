@@ -511,6 +511,7 @@ export const LIST_STATES = [
   'filtered',
   'filterOpen',
   'noMatch',
+  'noGuests',
 ] as const;
 export type ListState = (typeof LIST_STATES)[number];
 
