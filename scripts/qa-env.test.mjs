@@ -56,7 +56,6 @@ import {
   androidFlows,
   androidPackage,
   androidSdk,
-  missingCmdlineTools,
   branchForStory,
   clearApiCache,
   defaultNetwork,
@@ -78,6 +77,7 @@ import {
   resumeBatch,
   runHeld,
   maestroTarget,
+  missingCmdlineTools,
   parseTarget,
   passwordAutoFillFiles,
   passwordAutoFillOff,
@@ -2502,7 +2502,10 @@ describe('emulatorUnitGone', () => {
 });
 
 describe('missingCmdlineTools', () => {
-  const message = missingCmdlineTools('/sdk');
+  const message = missingCmdlineTools({
+    sdk: '/sdk',
+    avdmanager: '/sdk/cmdline-tools/latest/bin/avdmanager',
+  });
 
   it('names the avdmanager path setup expected', () => {
     expect(message).toContain('/sdk/cmdline-tools/latest/bin/avdmanager');

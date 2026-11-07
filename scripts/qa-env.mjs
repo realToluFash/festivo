@@ -802,22 +802,22 @@ function androidTools() {
   };
 }
 
-export function missingCmdlineTools(sdk) {
+export function missingCmdlineTools({ sdk, avdmanager }) {
   return [
     `  no Android SDK command-line tools in ${sdk}`,
-    `  expected avdmanager at ${join(sdk, 'cmdline-tools/latest/bin/avdmanager')}`,
+    `  expected avdmanager at ${avdmanager}`,
     '  install them either way, then run `node scripts/qa-env.mjs setup` again:',
     '    - Android Studio: Settings > Languages & Frameworks > Android SDK > SDK Tools,',
     '      tick "Android SDK Command-line Tools (latest)" and apply',
     '    - or download the command-line tools zip from https://developer.android.com/studio#command-tools',
-    `      and unzip it so its bin/ sits at ${join(sdk, 'cmdline-tools/latest/bin')}`,
+    `      and unzip it so its bin/ sits at ${dirname(avdmanager)}`,
   ].join('\n');
 }
 
 function createEmulators() {
   const tools = androidTools();
   if (!existsSync(tools.avdmanager)) {
-    console.log(missingCmdlineTools(tools.sdk));
+    console.log(missingCmdlineTools(tools));
     return;
   }
   const image = playImage(tools.sdk);
