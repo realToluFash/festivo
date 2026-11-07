@@ -644,9 +644,6 @@
   },
   "frame": {
     "home": "Home",
-    "events": "Events",
-    "calendar": "Calendar",
-    "settings": "Settings",
     "organisation": "Organisation",
     "backTo": "Back to {{place}}",
     "cancel": "Cancel",

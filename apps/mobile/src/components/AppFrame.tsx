@@ -136,22 +136,6 @@ export function useHeaderWithoutBack(hidden: boolean): void {
 
 type IconPaths = readonly [string, string];
 
-const ICONS: Record<Destination, IconPaths> = {
-  home: ['M3 10.5 12 3l9 7.5', 'M5 9.5V21h14V9.5M10 21v-6h4v6'],
-  events: [
-    'M2 9a3 3 0 0 0 0 6v3a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-3a3 3 0 0 0 0-6V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2z',
-    'M13 5v2M13 17v2M13 11v2',
-  ],
-  calendar: [
-    'M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z',
-    'M3 10h18M8 2v4M16 2v4',
-  ],
-  settings: [
-    'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',
-    'M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z',
-  ],
-};
-
 const AREA_ICONS: Record<EventArea | 'more', IconPaths> = {
   overview: ['M3 3h7v7H3zM14 3h7v7h-7z', 'M14 14h7v7h-7zM3 14h7v7H3z'],
   guests: [
@@ -197,21 +181,6 @@ function areaEntry(t: (key: string) => string, inside: InsideEvent, area: EventA
     on: area === inside.area,
     onPress: () => inside.onArea(area),
     testID: `event.nav.${area}`,
-  };
-}
-
-function destinationEntry(
-  t: (key: string) => string,
-  current: Destination,
-  destination: Destination,
-): NavEntry {
-  return {
-    key: destination,
-    label: t(`frame.${destination}`),
-    icon: ICONS[destination],
-    on: destination === current,
-    onPress: () => goTo(destination),
-    testID: `frame.${destination}`,
   };
 }
 
@@ -300,10 +269,7 @@ export function AppFrame({
   useEffect(() => navigation.setOptions({ gestureEnabled: stackSwipe }), [navigation, stackSwipe]);
   const signedIn = useSignedIn();
   usePushTaps(signedIn.account?.id);
-  const entries =
-    inEvent == null
-      ? destinations(signedIn.organisation).map((d) => destinationEntry(t, current, d))
-      : EVENT_AREAS.map((area) => areaEntry(t, inEvent, area));
+  const entries = inEvent == null ? [] : EVENT_AREAS.map((area) => areaEntry(t, inEvent, area));
   const waiting = useWaitingInvitations();
   const offer = useDomainOffer();
   const count = waitingInvitations(waiting.invitations, waiting.outcomes);

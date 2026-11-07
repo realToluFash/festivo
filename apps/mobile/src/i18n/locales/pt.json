@@ -660,9 +660,6 @@
   },
   "frame": {
     "home": "Início",
-    "events": "Eventos",
-    "calendar": "Calendário",
-    "settings": "Definições",
     "organisation": "Organização",
     "backTo": "Voltar a {{place}}",
     "cancel": "Cancelar",
