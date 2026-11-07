@@ -2220,6 +2220,11 @@ describe('the dependencies, from a checkout', () => {
 describe('the database, from a checkout', () => {
   const console_ = ['console'];
   const verbs = (commands) => commands.map((args) => args.slice(0, 2).join(' '));
+  const testDatabase = [
+    'console doctrine:database:drop',
+    'console doctrine:database:create',
+    'console doctrine:migrations:migrate',
+  ];
 
   it('stops the worker before the drop and recreates it after migrating', () => {
     expect(verbs(databaseCommands(console_, ['notification-worker'], false))).toEqual([
@@ -2228,6 +2233,7 @@ describe('the database, from a checkout', () => {
       'console doctrine:database:create',
       'console doctrine:migrations:migrate',
       'compose up',
+      ...testDatabase,
     ]);
   });
 
@@ -2235,13 +2241,23 @@ describe('the database, from a checkout', () => {
     expect(verbs(databaseCommands(console_, ['notification-worker'], true))).toEqual([
       'console doctrine:migrations:migrate',
       'compose up',
+      ...testDatabase,
     ]);
   });
 
   it('touches no service on a commit with nothing waiting for migrations', () => {
     const commands = databaseCommands(console_, [], false);
     expect(commands.filter(([first]) => first === 'compose')).toEqual([]);
-    expect(commands).toHaveLength(3);
+    expect(commands).toHaveLength(6);
+  });
+
+  it('rebuilds the test database from nothing, even keeping the data', () => {
+    for (const keepData of [false, true]) {
+      const test = databaseCommands(console_, [], keepData).filter((args) =>
+        args.includes('--env=test'),
+      );
+      expect(verbs(test)).toEqual(testDatabase);
+    }
   });
 });
 

@@ -11,7 +11,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
 import { Text } from '../../components/Text.tsx';
-import type { SettingsSection } from '../../kit/appNav.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { Glyph } from '../../components/Glyph.tsx';
 import { OpenerWords, OPENER, OrgMark, useOrgOpener } from '../OrgSwitcher.tsx';
@@ -22,15 +21,21 @@ import { TodaySidebar } from '../../components/TodaySidebar.tsx';
 import { TodayShellProvider } from '../../components/todayShell.ts';
 import { demoShell } from '../demoShell.ts';
 import { Back, RoundButton, TYPE } from './parts.tsx';
-import { type Looking, type SettingsLayout, type Viewer, viewerOfRole } from './sample.ts';
+import {
+  type DemoSection,
+  type Looking,
+  type SettingsLayout,
+  type Viewer,
+  viewerOfRole,
+} from './sample.ts';
 
 export interface Shell {
   layout: SettingsLayout;
   viewer: Viewer;
   looking: Looking;
-  open: SettingsSection | null;
+  open: DemoSection | null;
   /** A state opens the section where a step on another page left off: Security's setup. */
-  openSection: (section: SettingsSection, state?: string) => void;
+  openSection: (section: DemoSection, state?: string) => void;
   toSettings: () => void;
   tell: Tell;
   onTab: (tab: Tab) => void;

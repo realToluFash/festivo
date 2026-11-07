@@ -360,6 +360,61 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/settings/notifications?state=failed',
       },
       {
+        title: 'Personalisation',
+        what: 'Never chosen: Violet, Choose colours',
+        href: '/demo/settings/personalisation',
+      },
+      {
+        title: 'Personalisation · after a choice',
+        what: 'Garden, Violet is Soirely’s own',
+        href: '/demo/settings/personalisation?state=chosen',
+      },
+      {
+        title: 'Settings · in Garden',
+        what: 'Personalisation’s tile in your colours',
+        href: '/demo/settings?scheme=garden',
+      },
+      {
+        title: 'Personalisation · Colours',
+        what: 'Violet current, Save waits',
+        href: '/demo/settings/personalisation?state=colours',
+      },
+      {
+        title: 'Personalisation · Garden picked',
+        what: 'The card in Garden, Not saved yet',
+        href: '/demo/settings/personalisation?state=picked',
+      },
+      {
+        title: 'Personalisation · saving',
+        what: 'Saving…, the swatches wait',
+        href: '/demo/settings/personalisation?state=saving',
+      },
+      {
+        title: 'Personalisation · saved',
+        what: 'Back on the page in Garden, Saved',
+        href: '/demo/settings/personalisation?state=saved',
+      },
+      {
+        title: 'Personalisation · a save fails',
+        what: 'The reason in red, Try again',
+        href: '/demo/settings/personalisation?state=saveFailed',
+      },
+      {
+        title: 'Personalisation · offline',
+        what: 'Not saved because you are offline',
+        href: '/demo/settings/personalisation?state=offline',
+      },
+      {
+        title: 'Personalisation · loading',
+        what: 'The card’s shape, then the page',
+        href: '/demo/settings/personalisation?state=loading',
+      },
+      {
+        title: 'Personalisation · failed',
+        what: 'Your colours did not load, Try again',
+        href: '/demo/settings/personalisation?state=failed',
+      },
+      {
         title: 'Organisation',
         what: 'Details, joining, ownership',
         href: '/demo/settings/organisation',
