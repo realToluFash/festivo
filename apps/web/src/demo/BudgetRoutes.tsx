@@ -1,5 +1,7 @@
 import { useSearchParams } from 'react-router';
 
+import { HOME_STATES } from './budgetHome.ts';
+import { BudgetHome } from './BudgetHome.tsx';
 import { BudgetShell } from './BudgetParts.tsx';
 import { DECIDE_STATES } from './decide.ts';
 import { DecidePage } from './Decide.tsx';
@@ -26,6 +28,11 @@ export function BudgetEntry({ event }: { event: SampleEvent }) {
   if (TEMPLATES_STATES.includes(state))
     return <TemplatesPage key={key} event={event} state={state} />;
   if (DECIDE_STATES.includes(state)) return <DecidePage key={key} event={event} state={state} />;
+  if (
+    HOME_STATES.includes(state) ||
+    (state === '' && params.get('vendor') == null && params.get('view') == null)
+  )
+    return <BudgetHome key={key} event={event} state={state === '' ? 'populated' : state} />;
 
   return (
     <BudgetShell key={key} event={event}>

@@ -1,0 +1,175 @@
+/* The Budget home at a desk: the costs, a cost opened in place, Add a cost and the ceiling's sheet. */
+.bud-gone {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceMd);
+  padding-top: var(--spaceXl);
+}
+
+.bud-cat + .bud-cat {
+  margin-top: 4px;
+}
+
+.bud-said {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 2px 0 8px;
+  font: 600 14px/1.4 var(--fontFamily);
+}
+
+.bud-said.is-ok {
+  color: var(--deskGreen);
+}
+
+.bud-said.is-wrong {
+  color: var(--colorBroken);
+}
+
+.bud-opened-cost {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.bud-opened-name {
+  color: var(--colorInk);
+  font: 600 16px/1.3 var(--fontFamily);
+}
+
+.bud-warn {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: var(--colorInk);
+  font: 500 14px/1.45 var(--fontFamily);
+}
+
+.bud-warn .bud-ring {
+  margin-top: 3px;
+}
+
+.bud-warn strong {
+  color: var(--colorAttentionText);
+  font-weight: 600;
+}
+
+.bud-below {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--colorAttentionText);
+  font: 600 14px/1.4 var(--fontFamily);
+}
+
+.bud-two {
+  display: grid;
+  grid-template-columns: minmax(0, 300px) minmax(0, 380px);
+  gap: 40px;
+  align-items: start;
+}
+
+.bud-two-left,
+.bud-two-right {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceLg);
+  min-width: 0;
+}
+
+.bud-bases {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.bud-bases .desk-rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bud-bases label.desk-row {
+  align-items: flex-start;
+}
+
+.bud-bases .desk-radio {
+  margin-top: 3px;
+}
+
+.bud-bases label.desk-row:has(:disabled) {
+  cursor: default;
+}
+
+.bud-bases label.desk-row:has(:disabled) .desk-row-name {
+  color: var(--colorInkSecondary);
+}
+
+.bud-select {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  border: 0;
+  background: transparent;
+  color: var(--colorInk);
+  font: 500 16px/1.3 var(--fontFamily);
+}
+
+.bud-ceiling-whole {
+  max-width: 320px;
+}
+
+.bud-caps {
+  padding-top: var(--spaceSm);
+  color: var(--colorInkSecondary);
+  font: 600 12.5px/1.3 var(--fontFamily);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.bud-ceiling-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px 16px;
+  align-items: start;
+}
+
+@media (width <= 720px) {
+  .bud-two,
+  .bud-ceiling-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* At 400% zoom (320 CSS px) the desk reflows into one column: the event's sidebar, then the page (WCAG 2.2 1.4.10). */
+@media (width <= 720px) {
+  .today.desk:has(.bud) {
+    flex-direction: column;
+    height: auto;
+    min-height: 100vh;
+  }
+
+  .today.desk:has(.bud) .today-side {
+    width: auto;
+    height: auto;
+    overflow: visible;
+  }
+
+  .today.desk:has(.bud) .desk-main {
+    margin: 0 var(--spaceMd) var(--spaceMd);
+    overflow: visible;
+  }
+
+  .bud.desk-page {
+    padding: var(--spaceXl) var(--spaceLg) var(--space3xl);
+    overflow: visible;
+  }
+
+  .bud .ev-crumb ol {
+    flex-wrap: wrap;
+  }
+
+  .bud .desk-row {
+    flex-wrap: wrap;
+  }
+}

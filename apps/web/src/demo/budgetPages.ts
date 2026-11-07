@@ -1,3 +1,1 @@
-import { type DemoGroup } from './budgetSample.ts';
-
-export const BUDGET_PAGES: readonly DemoGroup[] = [];
+export { BUDGET_PAGES } from './budgetHome.ts';
