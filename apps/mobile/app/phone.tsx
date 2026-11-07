@@ -161,6 +161,7 @@ function MobileStep({ initialCountry, short }: { initialCountry: string; short: 
             withCallingCode
             compact
             wrong={error != null && errorOn === 'country'}
+            line={error}
             pickerRef={countryPicker}
             testID="phone.country"
           />
@@ -174,6 +175,7 @@ function MobileStep({ initialCountry, short }: { initialCountry: string; short: 
                 setError(null);
               }}
               state={error != null && errorOn === 'number' ? 'blank' : 'plain'}
+              line={errorOn === 'number' ? error : null}
               submitting={sending}
               keyboardType="phone-pad"
               textContentType="telephoneNumber"

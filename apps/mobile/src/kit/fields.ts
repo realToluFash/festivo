@@ -34,6 +34,43 @@ export function fieldName(
     : { accessibilityLabel: undefined };
 }
 
+/** A control a line under it refuses: the word a screen reader says with its name, the line, and on Android the unseen name that carries the word. */
+export interface Refused {
+  word: string;
+  line: string | null | undefined;
+  nameID?: string | undefined;
+}
+
+/** "Invalid" goes with the name, never in the hint, so it is said with hints off (sc-31323). On Android a field named by a label it shows is named by an unseen copy of that label with the word, as a label takes one view. */
+export function refusedName(
+  os: string,
+  named: FieldName,
+  refused: Refused | null,
+  shownName?: string | undefined,
+): FieldName {
+  if (refused == null) return named;
+  if (os === 'android' && named.accessibilityLabelledBy != null && refused.nameID != null)
+    return { accessibilityLabel: undefined, accessibilityLabelledBy: refused.nameID };
+
+  return {
+    accessibilityLabel: withInvalid(named.accessibilityLabel ?? shownName, refused.word),
+    accessibilityLabelledBy: undefined,
+  };
+}
+
+/** A name and the word, as the screen reader says them. */
+export function withInvalid(name: string | undefined, word: string): string {
+  return name == null || name === '' ? word : `${name}, ${word}`;
+}
+
+/** The line first, then any hint the control says of its own. */
+export function refusedHint(refused: Refused | null, own: string | undefined): string | undefined {
+  const line = refused?.line;
+  if (line == null || line === '') return own;
+
+  return own == null || own === '' ? line : `${line} ${own}`;
+}
+
 /** Revealed or not, a password is never corrected, capitalised or kept from a paste. */
 export function passwordProps(revealed: boolean) {
   return {
