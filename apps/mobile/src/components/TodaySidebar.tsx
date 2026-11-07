@@ -4,6 +4,7 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { Brand } from './Brand.tsx';
 import { SIDEBAR_WIDTH } from '../layout/textSize.ts';
+import { useNameLines } from '../layout/useLayout.ts';
 import { Text } from './Text.tsx';
 import { tokens } from '../theme/tokens.ts';
 import { EventMesh, eventColour } from './EventMesh.tsx';
@@ -156,6 +157,7 @@ export function SidebarFoot({
 }) {
   const { t } = useTranslation();
   const shell = useTodayShell();
+  const lines = useNameLines();
   const person = shown ?? shell.person;
 
   return (
@@ -176,7 +178,7 @@ export function SidebarFoot({
           <Initials name={person.name} size={12} weight="bold" />
         </View>
         <View style={styles.grow}>
-          <Text size={14} weight="semibold" accessible={false}>
+          <Text size={14} weight="semibold" numberOfLines={lines} accessible={false}>
             {person.name}
           </Text>
           {person.role != null && (

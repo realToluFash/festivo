@@ -1045,6 +1045,7 @@ function OrgPill({
 }) {
   const { t } = useTranslation();
   const large = useAccessibilitySizes();
+  const lines = useNameLines();
   const role = roleName(t, organisation.role);
   const label =
     onSwitch == null
@@ -1062,6 +1063,7 @@ function OrgPill({
       onPress={onSwitch}
       bare={large}
       wrap={large}
+      lines={lines}
       sidebar={sidebar}
       testID="frame.organisation"
     />

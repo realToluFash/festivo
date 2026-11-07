@@ -15,6 +15,7 @@ export function OpenerWords({
   onDark = false,
   grow = false,
   wrap = false,
+  lines,
 }: {
   name: string;
   /** How many invitations wait, in words, or null when none do. */
@@ -22,6 +23,8 @@ export function OpenerWords({
   onDark?: boolean;
   grow?: boolean;
   wrap?: boolean;
+  /** The most lines the name takes before its ellipsis; without it, one line, or no limit when it wraps. */
+  lines?: number | undefined;
 }) {
   const ink = { color: onDark ? tokens.colorInkOnDark : tokens.colorInk };
 
@@ -30,7 +33,7 @@ export function OpenerWords({
       <Text
         size={15}
         weight="semibold"
-        numberOfLines={wrap ? undefined : 1}
+        numberOfLines={lines ?? (wrap ? undefined : 1)}
         accessible={false}
         style={[styles.name, ink]}
       >
@@ -64,6 +67,7 @@ export function OrgPill({
   bare = false,
   wrap = false,
   sidebar = false,
+  lines,
   mark,
   testID,
   ref,
@@ -78,6 +82,7 @@ export function OrgPill({
   bare?: boolean;
   wrap?: boolean;
   sidebar?: boolean;
+  lines?: number | undefined;
   /** The demo's own tile, which plays its arrival. */
   mark?: ReactNode;
   testID?: string;
@@ -107,7 +112,7 @@ export function OrgPill({
       testID={testID}
     >
       {!bare && (mark ?? <OrgMark id={id} name={name} side={28} />)}
-      <OpenerWords name={name} waiting={waiting} wrap={wrap} grow={sidebar} />
+      <OpenerWords name={name} waiting={waiting} wrap={wrap} lines={lines} grow={sidebar} />
       {onPress != null && <Glyph name="updown" size={14} ink={tokens.colorInkSecondary} />}
     </Pressable>
   );
