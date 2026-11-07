@@ -377,6 +377,7 @@ export function TextAction({
   removes = false,
   plain = false,
   off = false,
+  busy = false,
   figures = false,
   glyph,
   after,
@@ -390,6 +391,8 @@ export function TextAction({
   removes?: boolean;
   plain?: boolean;
   off?: boolean;
+  /** While its request is out: the turning mark and its words in Ink 2, off and busy, as the focused screen's verb. */
+  busy?: boolean;
   figures?: boolean;
   glyph?: GlyphName;
   after?: GlyphName;
@@ -398,24 +401,29 @@ export function TextAction({
   testID?: string | undefined;
   ref?: Ref<ViewInstance>;
 }) {
-  const ink = off
-    ? tokens.colorInkTertiary
-    : removes
-      ? tokens.colorBroken
-      : plain
-        ? tokens.colorInk
-        : tokens.colorAccentText;
+  const ink = busy
+    ? tokens.colorInkSecondary
+    : off
+      ? tokens.colorInkTertiary
+      : removes
+        ? tokens.colorBroken
+        : plain
+          ? tokens.colorInk
+          : tokens.colorAccentText;
   const action = (
     <Pressable
       ref={ref}
-      onPress={off ? undefined : onPress}
-      disabled={off}
-      style={({ pressed }) => [styles.action, pressed && styles.pressed]}
+      onPress={off || busy ? undefined : onPress}
+      disabled={off || busy}
+      style={({ pressed }) => [styles.action, busy && styles.actionBusy, pressed && styles.pressed]}
       accessibilityRole="button"
-      accessibilityState={off ? { disabled: true } : undefined}
+      accessibilityState={
+        busy ? { disabled: true, busy: true } : off ? { disabled: true } : undefined
+      }
       accessibilityLabel={accessibilityLabel ?? label}
       testID={testID}
     >
+      {busy && <TurningMark side={14} />}
       {glyph != null && <Glyph name={glyph} size={17} ink={ink} weight={2.3} />}
       <Text
         size={15}
@@ -519,4 +527,5 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     gap: 5,
   },
+  actionBusy: { gap: tokens.spaceXs },
 });

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { type LayoutChangeEvent, StyleSheet, View } from 'react-native';
 
 import { Glyph } from '../../components/Glyph.tsx';
-import { useReadOut } from '../../components/ReadOut.tsx';
+import { useReadOut, useSendingWords } from '../../components/ReadOut.tsx';
 import { SETTLED_MS } from '../../components/Screen.tsx';
 import { moveScreenReaderFocus } from '../../components/screenReaderFocus.ts';
 import { type TextHandle, Text } from '../../components/Text.tsx';
@@ -20,6 +20,10 @@ export interface AskProps {
   onConfirm?: () => void;
   /** The line says the question no longer stands, with the alert mark, and is read out. */
   alert?: boolean;
+  /** While the answer is on its way: the verb's words, beside the turning mark and off; the way back waits. */
+  sending?: string | null;
+  /** Why the answer did not go, under the line with the alert mark and read out; the verb tries again. */
+  failed?: string | null;
   testID?: string;
   width?: number;
 }
@@ -33,6 +37,8 @@ export function AskLayer({
   onKeep,
   onConfirm,
   alert = false,
+  sending = null,
+  failed = null,
   testID,
   width,
 }: AskProps) {
@@ -48,21 +54,23 @@ export function AskLayer({
   };
   const keepAction = (
     <View key="keep" onLayout={laid('keep')}>
-      <TextAction label={keep.label} onPress={onKeep} testID={keep.testID} />
+      <TextAction label={keep.label} onPress={onKeep} off={sending != null} testID={keep.testID} />
     </View>
   );
   const confirmAction = confirm != null && (
     <View key="confirm" onLayout={laid('confirm')}>
       <TextAction
-        label={confirm.label}
+        label={sending ?? confirm.label}
         onPress={() => onConfirm?.()}
         removes={confirm.removes ?? false}
+        busy={sending != null}
         testID={confirm.testID}
       />
     </View>
   );
 
-  useReadOut(alert ? line : null);
+  useReadOut(alert ? line : failed);
+  useSendingWords(sending ?? undefined);
 
   useEffect(() => {
     const focus = setTimeout(() => moveScreenReaderFocus(heading.current), SETTLED_MS);
@@ -75,7 +83,7 @@ export function AskLayer({
       <View
         style={[styles.dialog, { maxWidth: width ?? (phone ? 340 : 400) }]}
         accessibilityViewIsModal
-        onAccessibilityEscape={onKeep}
+        onAccessibilityEscape={sending == null ? onKeep : stay}
         testID={testID}
       >
         <Text
@@ -88,19 +96,13 @@ export function AskLayer({
           {title}
         </Text>
         {alert ? (
-          <View style={styles.alert}>
-            <View style={styles.alertMark}>
-              <Glyph name="alert" size={18} ink={tokens.colorInkSecondary} weight={2.2} />
-            </View>
-            <Text size={15} weight="medium" style={[styles.askLine, styles.alertLine]}>
-              {line}
-            </Text>
-          </View>
+          <AlertLine words={line} />
         ) : (
           <Text size={15} weight="medium" style={[styles.secondary, styles.askLine]}>
             {line}
           </Text>
         )}
+        {failed != null && <AlertLine words={failed} />}
         <View
           style={[stacked ? styles.askStack : styles.askActions, !measured && styles.unmeasured]}
           onLayout={laid('room')}
@@ -108,6 +110,21 @@ export function AskLayer({
           {stacked ? [confirmAction, keepAction] : [keepAction, confirmAction]}
         </View>
       </View>
+    </View>
+  );
+}
+
+const stay = () => {};
+
+function AlertLine({ words }: { words: string }) {
+  return (
+    <View style={styles.alert}>
+      <View style={styles.alertMark}>
+        <Glyph name="alert" size={18} ink={tokens.colorInkSecondary} weight={2.2} />
+      </View>
+      <Text size={15} weight="medium" style={[styles.askLine, styles.alertLine]}>
+        {words}
+      </Text>
     </View>
   );
 }
