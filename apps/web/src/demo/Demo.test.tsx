@@ -1235,6 +1235,17 @@ describe('the demo’s other ways in (sc-29062)', () => {
     expect(await screen.findByRole('heading', { name: 'You are in' })).toBeDefined();
   });
 
+  it('draws the waiting invitation as the built row: a dashed tile, and Works until on its own line', async () => {
+    await page('?page=details&state=invitation', 'A few details');
+
+    const until = screen.getByText(`Works until ${SAMPLE.invitedUntil}`);
+    const row = until.closest('.demo-organisation') as HTMLElement;
+    expect(
+      within(row).getByText(`Invitation from ${SAMPLE.inviter} · ${SAMPLE.role}`),
+    ).toBeDefined();
+    expect(row.querySelector('.org-tile')?.classList.contains('org-tile-invited')).toBe(true);
+  });
+
   it('holds the invitation’s answers while Save and continue is saving', async () => {
     await page('?page=details&state=invitation', 'A few details');
     type('Organisation name', SAMPLE.organisation);
