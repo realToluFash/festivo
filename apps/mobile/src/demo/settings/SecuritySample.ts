@@ -23,15 +23,8 @@ export function linkedProviders(ways: Ways): Provider[] {
   return PROVIDERS.filter((provider) => ways[provider]);
 }
 
-/** The one way in, which nothing may take away: no password and a single provider. */
-export function onlyWayIn(ways: Ways, provider: Provider): boolean {
-  return ways[provider] && !ways.password && linkedProviders(ways).length === 1;
-}
-
-/** A rule that everyone signs in with Google or Apple keeps the last provider linked. */
-export function keptByRule(ways: Ways, provider: Provider, rule: boolean): boolean {
-  return rule && ways[provider] && linkedProviders(ways).length === 1;
-}
+/** Long enough, and the server finds it in a known breach. */
+export const BREACHED_PASSWORD = '1q2w3e4r5t6y7u8i9o0p';
 
 /** The authenticator key, in base32 as an app takes it. */
 export const AUTHENTICATOR_KEY = 'KZ4TQ7MB2XRAH5VN6JDWP3YCLFREGSUZ';
@@ -48,6 +41,9 @@ export const RECOVERY_CODES: readonly string[] = [
   'a8ks-hv3j',
   'z5ry-dm9t',
 ];
+
+/** How many of the ten are still unused at rest. */
+export const RECOVERY_LEFT = 8;
 
 export type DeviceKind = 'device' | 'laptop' | 'tablet';
 

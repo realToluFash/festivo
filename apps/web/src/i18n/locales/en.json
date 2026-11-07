@@ -376,7 +376,7 @@
     "follows": "Your language follows you to every device."
   },
   "public": {
-    "tagline": "Plan the event. Run the night.",
+    "tagline": "Plan the event. Run the day.",
     "body": "Soirely is where an event is planned at a desk and run from a phone. Guests, seating, menus and the running order, in one place and in your language.",
     "signIn": "Sign in",
     "getStarted": "Get started"
@@ -575,6 +575,7 @@
     "exhaustedTitle": "Too many wrong tries",
     "exhaustedBody": "That code no longer works. Send a new one to carry on.",
     "wrongAddress": "Not your address?",
+    "registerAgain": "Register again with the right one",
     "doneTitle": "Email verified",
     "doneBody": "{{address}} is confirmed. Next, a few details so your team knows who is who.",
     "doneBodyAlternative": "{{address}} is verified. It stays an alternative address until you make it primary in Account.",
@@ -607,7 +608,7 @@
     "cantGetTexts": "Can't get texts on this number?",
     "carryOnWithout": "Carry on without it",
     "doneTitle": "Number verified",
-    "doneBody": "Soirely can reach you on {{number}} if something goes wrong on the night.",
+    "doneBody": "Soirely can reach you on {{number}} if something goes wrong on the day.",
     "doneBodyAlternative": "{{number}} is verified. It stays an alternative number until you make it primary in Account.",
     "continue": "Continue to Soirely",
     "changeTitle": "Change your mobile number",
@@ -711,7 +712,7 @@
     "currencyBlank": "Choose a currency.",
     "contactBlank": "Enter a contact email address.",
     "contactInvalid": "That does not look like an email address. Check it has an @ and a domain.",
-    "readOnly": "Your role, {{role}}, can see these but not change them. Owners can.",
+    "readOnly": "Your role, {{role}}, can see these but not change them. Owners and admins can.",
     "readOnlyUntilLinked": "{{organisation}} signs in with Google or Apple only. Until you link one, you can see these but not change them.",
     "readOnlyUntilTwoFactor": "{{organisation}} asks people who can manage members, roles, billing or security to use two-factor. Until you turn it on, you can see these but not change them.",
     "failed": "Saving did not work. Nothing was changed. Try again in a moment.",
@@ -744,7 +745,7 @@
     "failedBody": "Something went wrong on the way. Try again in a moment.",
     "signOut": "Sign out",
     "optional": "Optional",
-    "mobileHelp": "How you are reached on the night if something goes wrong. If you add one, we text it a code to check it.",
+    "mobileHelp": "How you are reached on the day if something goes wrong. If you add one, we text it a code to check it.",
     "providerConfirmed": "Signed in with {{provider}}. {{provider}} has already confirmed {{email}}, so there is no email code to enter."
   },
   "forms": {
@@ -1418,7 +1419,7 @@
       "guests": "Names, contact details, replies and imports. Read still shows phone numbers.",
       "seating": "Rooms, tables and who sits where.",
       "menu": "Courses, dishes, variants and picks.",
-      "run_of_show": "The schedule, and marking items done on the night.",
+      "run_of_show": "The schedule, and marking items done on the day.",
       "staff": "Who works an event and what they do there.",
       "messages": "Compose and send. Read includes the delivery record.",
       "reports": "Change means exporting.",
@@ -1568,7 +1569,6 @@
     "joined": "You joined {{organisation}} as {{role}}.",
     "open": "Open {{organisation}}",
     "declinedBody": "You declined. {{inviter}} will see that you said no.",
-    "goToEvents": "Go to your events",
     "goHome": "Go to Soirely",
     "signOutAndUse": "Sign out and use {{email}}",
     "staySignedIn": "Stay signed in as {{email}}",

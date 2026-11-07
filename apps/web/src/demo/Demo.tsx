@@ -5,10 +5,24 @@ import { NotFound } from '../routes/public/NotFound.tsx';
 import { offButton } from '../offButton.ts';
 import { offField } from '../offField.ts';
 import { BoardPage, OrLine, Providers } from './BoardPage.tsx';
+import { Calendar } from './Calendar.tsx';
+import { CALENDAR_PAGES } from './calendar.ts';
+import { CREATE_PAGES } from './createOrg.ts';
+import { EventPage } from './EventPage.tsx';
+import { Events } from './Events.tsx';
+import { EVENTS_PAGES } from './events.ts';
+import { ACCOUNT_PAGES } from './account.ts';
+import { GENERAL_PAGES } from './general.ts';
 import { GetBackInBoard } from './GetBackIn.tsx';
 import { NewAccountBoard } from './NewAccount.tsx';
+import { NOTIFICATIONS_PAGES } from './notifications.ts';
+import { SECURITY_PAGES } from './security.ts';
+import { People } from './People.tsx';
+import { PEOPLE_PAGES } from './people.ts';
 import { Settings } from './Settings.tsx';
 import { SETTINGS_PAGES } from './settings.ts';
+import { SIGN_IN_RULES_PAGES } from './signInRules.ts';
+import { SWITCHER_PAGES } from './switcher.ts';
 import { Today } from './Today.tsx';
 import { TwoFactorBoard } from './TwoFactor.tsx';
 import { WaysInBoard } from './WaysIn.tsx';
@@ -99,8 +113,18 @@ export default function Demo() {
       <Route path="ways-in" element={<WaysInBoard />} />
       <Route path="signed-in" element={<SignedIn />} />
       <Route path="today" element={<Today />} />
+      <Route path="events" element={<Events />} />
+      <Route path="events/:id" element={<EventPage />} />
+      <Route path="events/:id/dates" element={<EventPage dates />} />
+      <Route path="calendar" element={<Calendar />} />
       <Route path="settings" element={<Settings />} />
       <Route path="settings/members" element={<Settings />} />
+      <Route path="settings/account" element={<Settings open="account" />} />
+      <Route path="settings/security" element={<Settings open="security" />} />
+      <Route path="settings/notifications" element={<Settings open="notifications" />} />
+      <Route path="settings/general" element={<Settings open="general" />} />
+      <Route path="settings/sign-in-rules" element={<Settings open="signInRules" />} />
+      <Route path="people" element={<People />} />
       <Route path="later" element={<Later />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
@@ -139,12 +163,32 @@ function DemoHome({ from }: { from: string }) {
             </li>
           ))}
         </ul>
+        <h3>Events in A · Summary first · desktop</h3>
+        <BoardPages pages={EVENTS_PAGES} />
+        <h3>The organisation switcher in B · Places · desktop</h3>
+        <BoardPages pages={SWITCHER_PAGES} />
+        <h3>The Calendar in B · A · Weeks as lanes · desktop</h3>
+        <BoardPages pages={CALENDAR_PAGES} />
+        <h3>Create an organisation in B · A short walk · desktop</h3>
+        <BoardPages pages={CREATE_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-28">
         <h2 id="demo-page-28">28 · Organisations and access · Settings at a desk</h2>
         <h3>Settings in B · Summary first · desktop</h3>
         <BoardPages pages={SETTINGS_PAGES} />
+        <h3>Your account in B · Summary first · desktop</h3>
+        <BoardPages pages={ACCOUNT_PAGES} />
+        <h3>Security in B · Summary first · desktop</h3>
+        <BoardPages pages={SECURITY_PAGES} />
+        <h3>Notification settings in B · Summary first · desktop</h3>
+        <BoardPages pages={NOTIFICATIONS_PAGES} />
+        <h3>General in B · Summary first · desktop</h3>
+        <BoardPages pages={GENERAL_PAGES} />
+        <h3>Sign-in rules in B · Where you stand · desktop</h3>
+        <BoardPages pages={SIGN_IN_RULES_PAGES} />
+        <h3>People on an event · desktop</h3>
+        <BoardPages pages={PEOPLE_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-27">

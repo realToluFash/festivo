@@ -957,6 +957,10 @@ export function databaseCommands(console_, afterMigrations, keepData) {
     [...console_, 'doctrine:migrations:migrate', '-n', '--allow-no-migration'],
     // Recreated, so a health check failed while waiting for the schema does not end --wait at once.
     ...(waiting ? [['compose', 'up', '-d', '--wait', '--force-recreate', ...afterMigrations]] : []),
+    // The test database holds nothing worth keeping, so --keep-data never spares it.
+    [...console_, 'doctrine:database:drop', '--env=test', '--if-exists', '--force'],
+    [...console_, 'doctrine:database:create', '--env=test'],
+    [...console_, 'doctrine:migrations:migrate', '--env=test', '-n', '--allow-no-migration'],
   ];
 }
 
@@ -1413,11 +1417,14 @@ async function bootEmulator(tools, name) {
     emulatorGpu(),
     '-no-snapshot-save',
   ];
+  const unit = `${CONFIG.project}-emulator`;
+  let gone;
   if (usesSystemd()) {
     const env = Object.entries(tools.vars).map(([key, value]) => `--setenv=${key}=${value}`);
+    const since = Math.floor(Date.now() / 1000);
     run('systemd-run', [
       '--user',
-      `--unit=${CONFIG.project}-emulator`,
+      `--unit=${unit}`,
       '--collect',
       '--quiet',
       '-p',
@@ -1426,21 +1433,50 @@ async function bootEmulator(tools, name) {
       tools.emulator,
       ...args,
     ]);
+    gone = () =>
+      emulatorUnitGone(
+        unit,
+        unitState(unit),
+        () => capture('journalctl', emulatorJournalArgs(unit, since)) ?? '(no journal lines)',
+      );
   } else {
-    const log = openSync(join(qaWorktree(), '.qa/emulator.log'), 'a');
-    spawn(tools.emulator, args, {
+    const logPath = join(qaWorktree(), '.qa/emulator.log');
+    const log = openSync(logPath, 'a');
+    let exit = null;
+    const child = spawn(tools.emulator, args, {
       detached: true,
       stdio: ['ignore', log, log],
       env: tools.env,
-    }).unref();
+    });
+    child.on('exit', (code, signal) => (exit = signal ?? `code ${code}`));
+    child.unref();
+    gone = () => exit && `the emulator exited (${exit}) before it booted; see ${logPath}`;
   }
 
-  for (let i = 0; i < 180; i++) {
-    if (adbOut(tools, ['shell', 'getprop', 'sys.boot_completed']) === '1') {
-      console.log(`  ${name}: booted on ${emulatorSerial()}`);
-      return;
-    }
-    await pause(1000);
+  await waitForBoot({
+    name,
+    booted: () => adbOut(tools, ['shell', 'getprop', 'sys.boot_completed']) === '1',
+    gone,
+    pause,
+  });
+  console.log(`  ${name}: booted on ${emulatorSerial()}`);
+}
+
+export function emulatorJournalArgs(unit, since) {
+  return ['--user', '-u', unit, `--since=@${since}`, '-n', '20', '--no-pager'];
+}
+
+export function emulatorUnitGone(unit, state, journal) {
+  if (['active', 'activating'].includes(state)) return null;
+  return `the emulator unit ${unit} stopped (${state || 'gone'}) before it booted:\n${journal()}`;
+}
+
+export async function waitForBoot({ name, booted, gone, pause, tries = 180, everyMs = 1000 }) {
+  for (let i = 0; i < tries; i++) {
+    const reason = gone();
+    if (reason) throw new Error(`${name}: ${reason}`);
+    if (booted()) return;
+    await pause(everyMs);
   }
   throw new Error(`${name} did not boot within three minutes`);
 }

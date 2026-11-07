@@ -24,6 +24,7 @@ import { PendingPage } from '../../components/Pending.tsx';
 import { Unreachable } from '../../components/Unreachable.tsx';
 import { PhoneEntry } from '../../components/PhoneEntry.tsx';
 import { StillSignedIn } from '../../components/StillSignedIn.tsx';
+import { useSessionState } from '../../session.ts';
 import { useSignOut } from '../../signOut.ts';
 
 /** "Change your mobile number", which is also where a first number is entered. */
@@ -35,6 +36,7 @@ export function ChangePhone() {
   const [account, setAccount] = useState<Account | 'none' | 'unreachable' | null>(null);
   const [attempt, setAttempt] = useState(0);
   const { signOut, unreached } = useSignOut(() => navigate('/sign-in'));
+  const session = useSessionState();
 
   useEffect(() => {
     let live = true;
@@ -57,7 +59,7 @@ export function ChangePhone() {
   if (account === 'unreachable')
     return (
       <Unreachable
-        signedIn
+        signedIn={session.status === 'signedIn'}
         bare
         retry={{
           retrying: false,

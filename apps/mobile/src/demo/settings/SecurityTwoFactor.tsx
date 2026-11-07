@@ -1,241 +1,255 @@
 import { keyInGroups } from '@soirely/domain';
 import { setStringAsync } from 'expo-clipboard';
-import { type RefObject, useMemo, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { type ReactNode, type Ref, type RefObject, useMemo, useRef, useState } from 'react';
+import {
+  Pressable,
+  StyleSheet,
+  type TextInputInstance,
+  View,
+  type ViewInstance,
+} from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
-import { CodeField, Field } from '../../components/Field.tsx';
-import { Notice } from '../../components/Notice.tsx';
-import { Sheet } from '../../components/Sheet.tsx';
+import { CodeField, Field, focusChecked, focusRefused } from '../../components/Field.tsx';
+import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { Glyph } from '../../components/Glyph.tsx';
-import { SAMPLE } from '../samples.ts';
-import {
-  CODE_FIGURES,
-  Lead,
-  Note,
-  RowPill,
-  StateMark,
-  Step,
-  StepPill,
-  SubHead,
-  WhiteBox,
-} from './AccountParts.tsx';
-import { authenticatorProblem, secondFactorProblem } from './AccountSample.ts';
-import { Card, CardHead, Pair, Pill } from './parts.tsx';
-import { type SettingsLayout, YOU } from './sample.ts';
+import { LEAD_INSET, LineIcon } from './AccountCard.tsx';
+import { CODE_FIGURES } from './AccountParts.tsx';
+import { authenticatorProblem } from './AccountSample.ts';
+import { codesLine, type Rules, setupSays, WORDS } from './SecurityModel.ts';
 import { AUTHENTICATOR_KEY, qrPath, RECOVERY_CODES } from './SecuritySample.ts';
+import { FocusedScreen, Line, OpenRow, Row, RowList, Section, TextAction } from './Summary.tsx';
 
-export type TwoFactorStage = 'rest' | 'setup' | 'newCodes' | 'turningOff';
-
-const SETUP_LABEL = 'Enter the 6-digit code the app shows';
-const OFF_LABEL = 'Code';
 const QR_MODULES = 21;
-const TYPE_BODY = 15;
-const noOpener: RefObject<null> = { current: null };
 
-export function TwoFactorCard({
-  layout,
-  on,
-  onTurned,
-  rule,
-  startStage,
-  startSaving,
-}: {
-  layout: SettingsLayout;
-  on: boolean;
-  onTurned: (on: boolean) => void;
-  rule: boolean;
-  startStage: TwoFactorStage;
-  startSaving: boolean;
-}) {
-  const [stage, setStage] = useState<TwoFactorStage>(startStage);
-  const [saving, setSaving] = useState(startSaving);
-  const [unused, setUnused] = useState(startSaving ? RECOVERY_CODES.length : 8);
-  const [refused, setRefused] = useState(rule);
-  const wide = layout === 'portrait';
-  const sheet = (
-    <Sheet
-      open={saving}
-      onClose={() => setSaving(false)}
-      opener={noOpener}
-      headingTakesFocus
-      testID="demo.security.codesSheet"
-    >
-      {saving && <SavingCodes phone={layout === 'phone'} onFinish={() => setSaving(false)} />}
-    </Sheet>
-  );
-
-  function codesMade(): void {
-    setUnused(RECOVERY_CODES.length);
-    setStage('rest');
-    setSaving(true);
-  }
-
-  if (stage === 'setup')
-    return (
-      <SettingUp
-        layout={layout}
-        onCancel={() => setStage('rest')}
-        onMatched={() => {
-          onTurned(true);
-          codesMade();
-        }}
-      />
-    );
-
-  if (stage === 'turningOff')
-    return (
-      <TurningOff
-        layout={layout}
-        onKeep={() => setStage('rest')}
-        onOff={() => {
-          onTurned(false);
-          setStage('rest');
-        }}
-      />
-    );
-
-  if (!on)
-    return (
-      <Card>
-        <CardHead title="Two-factor authentication" right={<StateMark on={false} word="Off" />} />
-        <Lead text="Asks for a code from an authenticator app every time you sign in, whether with your password, Google or Apple. Your account holds your clients’ guest lists; this keeps a stolen password from being enough." />
-        <StepPill layout={layout} label="Turn on two-factor" onPress={() => setStage('setup')} />
-        {sheet}
-      </Card>
-    );
-
-  const codes = (
-    <View style={wide ? styles.codesWide : styles.codesStacked}>
-      <View style={styles.grow}>
-        <Text size={15.5} weight="semibold">
-          Recovery codes
-        </Text>
-        <Note text={`${unused} of ${RECOVERY_CODES.length} unused · each works once`} />
-      </View>
-      <View style={styles.start}>
-        <RowPill label="Make new codes" onPress={() => setStage('newCodes')} />
-      </View>
-    </View>
-  );
-
+/** The app's checkbox, as TwoFactorCard draws it; its state is read by the control it sits in. */
+export function CheckMark({ on }: { on: boolean }) {
   return (
-    <Card>
-      <CardHead title="Two-factor authentication" right={<StateMark on word="On" />} />
-      <Lead text="Every sign-in asks for a code from your authenticator app, with your password, Google or Apple." />
-      {stage === 'newCodes' ? (
-        <Step>
-          <SubHead text="Make new recovery codes?" />
-          <Notice
-            tone="attention"
-            mark="!"
-            title="Your current codes stop working"
-            body="New codes replace every code you have now, used or not, as soon as they are made."
-          />
-          <Pair
-            layout={layout}
-            dismiss={
-              <StepPill
-                layout={layout}
-                label="Keep current codes"
-                kind="quiet"
-                onPress={() => setStage('rest')}
-              />
-            }
-            confirm={<StepPill layout={layout} label="Make new codes" onPress={codesMade} />}
-          />
-        </Step>
-      ) : (
-        <WhiteBox>{codes}</WhiteBox>
-      )}
-      <View style={styles.start}>
-        <RowPill
-          label={rule ? 'Turn off two-factor' : 'Turn off two-factor…'}
-          kind="dangerQuiet"
-          onPress={() => (rule ? setRefused(true) : setStage('turningOff'))}
-        />
-      </View>
-      {refused && (
-        <Notice
-          tone="attention"
-          mark="!"
-          body={`${YOU.organisation} requires two-factor, so you cannot turn it off.`}
-        />
-      )}
-      {sheet}
-    </Card>
+    <View
+      style={[styles.box, on && styles.boxOn]}
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+    >
+      {on && <Glyph name="tick" size={15} ink={tokens.colorInkOnDark} weight={3} />}
+    </View>
   );
 }
 
-function SettingUp({
-  layout,
-  onCancel,
-  onMatched,
+/** On: the authenticator and the recovery codes, each opening in place. Off: one row that sets it up. */
+export function TwoFactorSection({
+  on,
+  codesLeft,
+  rules,
+  opened,
+  setupRef,
+  turnOffRef,
+  newCodesRef,
+  onSetup,
+  onBlock,
+  onToggle,
+  onTurnOff,
+  onNewCodes,
 }: {
-  layout: SettingsLayout;
-  onCancel: () => void;
-  onMatched: () => void;
+  on: boolean;
+  codesLeft: number;
+  rules: Rules;
+  opened: string | null;
+  setupRef: Ref<ViewInstance>;
+  turnOffRef: Ref<ViewInstance>;
+  newCodesRef: Ref<ViewInstance>;
+  onSetup: () => void;
+  onBlock: (id: string, block: ViewInstance | null) => void;
+  onToggle: (id: string) => void;
+  onTurnOff: () => void;
+  onNewCodes: () => void;
 }) {
-  const phone = layout === 'phone';
+  const shield = <LineIcon name="shield" />;
+
+  if (!on)
+    return (
+      <Section title={WORDS.twoFactor} foot={WORDS.twoFactorFoot}>
+        <Row
+          ref={setupRef}
+          title={WORDS.authenticator}
+          line={WORDS.off}
+          lead={shield}
+          opens
+          onPress={onSetup}
+          accessibilityLabel={`${WORDS.authenticator}. ${WORDS.off}`}
+          testID="security.authenticator"
+        />
+      </Section>
+    );
+
+  const codes = codesLine(codesLeft);
+  const opening = (id: string, title: string, line: string, icon: ReactNode, offer: ReactNode) => ({
+    key: id,
+    inset: LEAD_INSET,
+    selected: opened === id,
+    row: (
+      <View ref={(block) => onBlock(id, block)} collapsable={false}>
+        <OpenRow
+          title={title}
+          line={line}
+          lead={icon}
+          weight="semibold"
+          lit
+          open={opened === id}
+          onToggle={() => onToggle(id)}
+          accessibilityLabel={`${title}. ${line}`}
+          testID={`security.${id}`}
+        >
+          {offer}
+        </OpenRow>
+      </View>
+    ),
+  });
+
+  return (
+    <Section title={WORDS.twoFactor}>
+      <RowList
+        items={[
+          opening(
+            'authenticator',
+            WORDS.authenticator,
+            WORDS.authenticatorOn,
+            shield,
+            rules.twoFactor ? (
+              <TextAction
+                label={WORDS.turnOffKept}
+                off
+                onPress={() => undefined}
+                consequence={WORDS.turnOffKeptNote}
+                testID="security.turnOff"
+              />
+            ) : (
+              <TextAction
+                ref={turnOffRef}
+                label={WORDS.turnOff}
+                removes
+                onPress={onTurnOff}
+                consequence={WORDS.turnOffNote}
+                accessibilityLabel={WORDS.turnOffKept}
+                testID="security.turnOff"
+              />
+            ),
+          ),
+          opening(
+            'codes',
+            WORDS.recoveryCodes,
+            codes,
+            <LineIcon name="lock" />,
+            <TextAction
+              ref={newCodesRef}
+              label={WORDS.newCodes}
+              onPress={onNewCodes}
+              consequence={WORDS.newCodesNote}
+              testID="security.newCodes"
+            />,
+          ),
+        ]}
+      />
+    </Section>
+  );
+}
+
+export type TwoFactorStage = 'setup' | 'codes';
+
+/** Set up two-factor, then Save your recovery codes in the same screen; new codes start at the codes. */
+export function TwoFactorScreen({
+  open,
+  start,
+  phone,
+  opener,
+  onClose,
+  onTurnedOn,
+  onFinished,
+}: {
+  open: boolean;
+  start: TwoFactorStage;
+  phone: boolean;
+  opener: RefObject<ScreenReaderTarget | null>;
+  onClose: () => void;
+  onTurnedOn: () => void;
+  onFinished: () => void;
+}) {
+  const [stage, setStage] = useState(start);
+  const [saved, setSaved] = useState(false);
   const code = useRef('');
+  const field = useRef<TextInputInstance>(null);
   const [error, setError] = useState<string | null>(null);
   const qr = useMemo(() => qrPath(QR_MODULES), []);
 
-  function check(): void {
-    const problem = authenticatorProblem(code.current);
-    if (problem == null) {
-      onMatched();
-      return;
-    }
-    setError(
-      problem === 'blank'
-        ? 'Enter the 6-digit code from your app.'
-        : problem === 'short'
-          ? 'The code is 6 digits.'
-          : 'That code does not match. Check the app was set up with the key above, then enter the code it shows now.',
-    );
+  function turnOn(): void {
+    const said = setupSays(code.current);
+    setError(said);
+    if (said == null) {
+      onTurnedOn();
+      setStage('codes');
+    } else if (authenticatorProblem(code.current) === 'wrong') focusRefused(field);
+    else focusChecked(field);
   }
 
+  if (stage === 'codes')
+    return (
+      <FocusedScreen
+        open={open}
+        title={WORDS.codesTitle}
+        verb={{
+          label: WORDS.finish,
+          on: saved,
+          onPress: onFinished,
+          testID: 'security.codes.finish',
+        }}
+        cancels={false}
+        onCancel={() => (saved ? onFinished() : undefined)}
+        opener={opener}
+        testID="security.codes.screen"
+      >
+        <CodesBody phone={phone} saved={saved} onSaved={setSaved} />
+      </FocusedScreen>
+    );
+
   return (
-    <Card>
-      <CardHead
-        title={
-          phone ? 'Add Soirely to your authenticator app' : 'Turn on two-factor authentication'
-        }
-      />
-      <Text size={TYPE_BODY} weight="semibold">
-        Scan this code with your authenticator app
+    <FocusedScreen
+      open={open}
+      title={WORDS.setupTitle}
+      verb={{ label: WORDS.setupVerb, on: true, onPress: turnOn, testID: 'security.setup.turnOn' }}
+      onCancel={onClose}
+      cancelTestID="security.setup.cancel"
+      opener={opener}
+      testID="security.setup.screen"
+    >
+      <Text size={15} weight="semibold">
+        {WORDS.scan}
       </Text>
       <View
         style={styles.qr}
         accessible
         accessibilityRole="image"
-        accessibilityLabel="QR code for your authenticator app"
+        accessibilityLabel={WORDS.qrLabel}
       >
         <Svg width={168} height={168} viewBox={`0 0 ${QR_MODULES} ${QR_MODULES}`}>
           <Path d={qr} fill={tokens.colorInk} fillRule="evenodd" />
         </Svg>
       </View>
-      <Lead
-        text={
-          phone
-            ? 'Scan the code from another screen, or enter this key in the app.'
-            : 'Can’t scan it? Enter this key in the app instead.'
-        }
-      />
-      <WhiteBox>
-        <Text size={18} weight="semibold" selectable style={styles.key}>
+      <Line text={phone ? WORDS.scanPhone : WORDS.scanTablet} />
+      <View style={styles.key}>
+        <Text
+          size={18}
+          weight="semibold"
+          selectable
+          style={styles.keyText}
+          testID="security.setup.key"
+        >
           {keyInGroups(AUTHENTICATOR_KEY)}
         </Text>
-      </WhiteBox>
-      <Field
-        label={SETUP_LABEL}
-        error={error}
-        help="Two-factor stays off until the code matches, so a setup mistake cannot lock you out."
-      >
+      </View>
+      <Field label={WORDS.setupLabel} error={error} help={WORDS.setupHelp}>
         <CodeField
+          ref={field}
           wrong={error != null}
           autoComplete="one-time-code"
           textContentType="oneTimeCode"
@@ -244,152 +258,64 @@ function SettingUp({
             code.current = text;
             if (error != null) setError(null);
           }}
-          onSubmitEditing={check}
+          onSubmitEditing={turnOn}
           submitBehavior="submit"
-          accessibilityLabel={SETUP_LABEL}
-          testID="demo.security.setupCode"
+          accessibilityLabel={WORDS.setupLabel}
+          testID="security.setup.code"
         />
       </Field>
-      <Pair
-        layout={layout}
-        dismiss={<StepPill layout={layout} label="Cancel" kind="secondary" onPress={onCancel} />}
-        confirm={<StepPill layout={layout} label="Check the code" onPress={check} />}
-      />
-    </Card>
+    </FocusedScreen>
   );
 }
 
-function TurningOff({
-  layout,
-  onKeep,
-  onOff,
+function CodesBody({
+  phone,
+  saved,
+  onSaved,
 }: {
-  layout: SettingsLayout;
-  onKeep: () => void;
-  onOff: () => void;
+  phone: boolean;
+  saved: boolean;
+  onSaved: (saved: boolean) => void;
 }) {
-  const code = useRef('');
-  const [error, setError] = useState<string | null>(null);
-
-  function turnOff(): void {
-    const problem = secondFactorProblem(code.current);
-    if (problem == null) {
-      onOff();
-      return;
-    }
-    setError(
-      problem === 'blank'
-        ? 'Enter a code from your app, or a recovery code.'
-        : 'That code did not work. Enter the code your app shows now, or an unused recovery code.',
-    );
-  }
-
-  return (
-    <Card>
-      <CardHead title="Turn off two-factor authentication" />
-      <Lead text="Enter a code from your authenticator app, or one of your recovery codes." />
-      <Field
-        label={OFF_LABEL}
-        error={error}
-        help={`We will email ${SAMPLE.email} to say it was turned off.`}
-      >
-        <CodeField
-          takesRecoveryCode
-          wrong={error != null}
-          autoFocus
-          autoComplete="one-time-code"
-          textContentType="oneTimeCode"
-          returnKeyType="done"
-          onChangeText={(text) => {
-            code.current = text;
-            if (error != null) setError(null);
-          }}
-          onSubmitEditing={turnOff}
-          submitBehavior="submit"
-          accessibilityLabel={OFF_LABEL}
-          testID="demo.security.offCode"
-        />
-      </Field>
-      <Pair
-        layout={layout}
-        dismiss={<StepPill layout={layout} label="Keep it on" kind="quiet" onPress={onKeep} />}
-        confirm={<StepPill layout={layout} label="Turn it off" kind="danger" onPress={turnOff} />}
-      />
-    </Card>
-  );
-}
-
-/** The recovery codes, once: the app's Sheet, a bottom sheet on a phone and a centred card on a tablet. */
-function SavingCodes({ phone, onFinish }: { phone: boolean; onFinish: () => void }) {
-  const [saved, setSaved] = useState(false);
   const [copied, setCopied] = useState(false);
 
   return (
     <>
-      <ScrollView style={styles.sheetBody} contentContainerStyle={styles.sheetContent}>
-        <Text size={tokens.typeTitleDialog.size} weight="bold" accessibilityRole="header">
-          Save your recovery codes
-        </Text>
-        <Text size={TYPE_BODY} weight="medium" style={styles.secondary}>
-          {phone
-            ? 'If you lose your authenticator, each of these signs you in once. This is the only time they are shown. Keep them somewhere other than this phone.'
-            : 'If you lose your authenticator, each of these signs you in once. This is the only time they are shown.'}
-        </Text>
-        <View style={styles.grid}>
-          {RECOVERY_CODES.map((code) => (
-            <View key={code} style={styles.cell}>
-              <Text size={17} weight="semibold" selectable style={styles.code}>
-                {code}
-              </Text>
-            </View>
-          ))}
-        </View>
-        <View style={styles.start}>
-          <RowPill
-            label={copied ? 'Copied' : 'Copy all'}
-            glyph={copied ? 'tick' : 'copy'}
-            onPress={() => {
-              void setStringAsync(RECOVERY_CODES.join('\n')).then(() => setCopied(true));
-            }}
-            testID="demo.security.copyAll"
-          />
-        </View>
-        {copied && <Note text={`All ${RECOVERY_CODES.length} codes are on your clipboard.`} />}
-        <Pressable
-          style={styles.checkbox}
-          onPress={() => setSaved((now) => !now)}
-          accessibilityRole="checkbox"
-          accessibilityState={{ checked: saved }}
-          testID="demo.security.savedCodes"
-        >
-          <View
-            style={[styles.box, saved && styles.boxOn]}
-            accessibilityElementsHidden
-            importantForAccessibility="no-hide-descendants"
-          >
-            {saved && <Glyph name="tick" size={15} ink={tokens.colorInkOnDark} weight={3} />}
+      <Line text={phone ? `${WORDS.codesLead} ${WORDS.codesPhone}` : WORDS.codesLead} />
+      <View style={styles.grid}>
+        {RECOVERY_CODES.map((each) => (
+          <View key={each} style={styles.cell}>
+            <Text size={17} weight="semibold" selectable style={styles.code}>
+              {each}
+            </Text>
           </View>
-          <Text size={15.5} weight="medium" style={styles.grow}>
-            I have saved these codes somewhere safe
-          </Text>
-        </Pressable>
-        <Note
-          text={
-            saved
-              ? 'Two-factor is on. Finish to go back to Security.'
-              : 'Two-factor is on. Confirm you have saved the codes to leave this step.'
-          }
-        />
-      </ScrollView>
-      <View style={[styles.sheetFooter, !phone && styles.footerEnd]}>
-        <Pill
-          label="Finish"
-          kind={saved ? 'primary' : 'off'}
-          full={phone}
-          onPress={onFinish}
-          testID="demo.security.finish"
+        ))}
+      </View>
+      <View style={styles.start}>
+        <TextAction
+          label={copied ? WORDS.copied : WORDS.copyAll}
+          glyph={copied ? 'tick' : 'copy'}
+          onPress={() => {
+            void setStringAsync(RECOVERY_CODES.join('\n')).then(() => setCopied(true));
+          }}
+          {...(copied ? { consequence: WORDS.copiedLine } : {})}
+          testID="security.codes.copy"
         />
       </View>
+      <Pressable
+        style={styles.checkbox}
+        onPress={() => onSaved(!saved)}
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked: saved }}
+        accessibilityLabel={WORDS.savedBox}
+        testID="security.codes.saved"
+      >
+        <CheckMark on={saved} />
+        <Text size={15.5} weight="medium" accessible={false} style={styles.grow}>
+          {WORDS.savedBox}
+        </Text>
+      </Pressable>
+      <Line size={14} text={saved ? WORDS.savedYes : WORDS.savedNot} />
     </>
   );
 }
@@ -397,9 +323,6 @@ function SavingCodes({ phone, onFinish }: { phone: boolean; onFinish: () => void
 const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
   start: { alignItems: 'flex-start' },
-  secondary: { color: tokens.colorInkSecondary },
-  codesWide: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXl },
-  codesStacked: { gap: tokens.spaceLg },
   qr: {
     alignSelf: 'center',
     padding: 14,
@@ -408,13 +331,20 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: tokens.colorBorder,
   },
-  key: { ...CODE_FIGURES, letterSpacing: 1.8, lineHeight: 29 },
+  key: {
+    alignItems: 'center',
+    paddingVertical: tokens.spaceLg,
+    paddingHorizontal: tokens.spaceXl,
+    borderRadius: 14,
+    backgroundColor: tokens.colorInset,
+  },
+  keyText: { ...CODE_FIGURES, letterSpacing: 1.8, lineHeight: 29, textAlign: 'center' },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spaceSm },
   cell: {
     flexGrow: 1,
     flexBasis: '45%',
     height: tokens.sizeHit,
-    borderRadius: tokens.spaceLg,
+    borderRadius: 12,
     backgroundColor: tokens.colorInset,
     alignItems: 'center',
     justifyContent: 'center',
@@ -437,17 +367,4 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   boxOn: { borderColor: tokens.colorAccent, backgroundColor: tokens.colorAccent },
-  sheetBody: { flexShrink: 1 },
-  sheetContent: {
-    gap: tokens.spaceLg,
-    paddingHorizontal: tokens.space3xl,
-    paddingTop: tokens.space3xl,
-    paddingBottom: tokens.spaceLg,
-  },
-  sheetFooter: {
-    paddingHorizontal: tokens.space3xl,
-    paddingTop: tokens.spaceSm,
-    paddingBottom: tokens.space3xl,
-  },
-  footerEnd: { alignItems: 'flex-end' },
 });

@@ -13,16 +13,19 @@ import {
   personLine,
   proofProblem,
   removed,
+  ROLE_MEANS,
   rowLine,
   samplePeople,
   standingOf,
   subtitle,
   tagOf,
   turnedDown,
+  underRoles,
   VIEWERS,
   waitingLine,
   whenWord,
 } from './MembersSample.ts';
+import { memberLooking } from './sample.ts';
 
 const us = membersSayIn('en-US');
 const gb = membersSayIn('en-GB');
@@ -42,7 +45,7 @@ describe('Members in the demo', () => {
 
   it('counts Lucía once she is approved, and under Former once turned down', () => {
     const lucia = person('Lucía Gómez').id;
-    expect(counts(approved(people, lucia, 'Read-only'))).toEqual({
+    expect(counts(approved(people, lucia, 'Member'))).toEqual({
       all: 8,
       active: 7,
       suspended: 1,
@@ -65,7 +68,7 @@ describe('Members in the demo', () => {
       'No role yet · Asked to join · asked 2 Nov 2026',
     );
     expect(rowLine(person('Daniel Kim'), VIEWERS.folake.id, us)).toBe(
-      'Coordinator · Invitation · left Sep 30, 2026',
+      'Member · Invitation · left Sep 30, 2026',
     );
   });
 
@@ -74,20 +77,36 @@ describe('Members in the demo', () => {
     expect(gb.deadline(DEADLINES.marta)).toBe('Wednesday 11 Nov at 10:00 WAT');
   });
 
-  it('offers Read-only first and never Owner on approval', () => {
-    expect(approvalRoles()).toEqual([
-      'Read-only',
-      'Administrator',
-      'Event manager',
-      'Coordinator',
-      'Door staff',
+  it('holds three roles: Folake owns, Julien is an admin, and everyone else a member', () => {
+    expect(people.map(({ name, role }) => [name, role])).toEqual([
+      ['Folake Adeyemi', 'Owner'],
+      ['Julien Moreau', 'Admin'],
+      ['Priya Shah', 'Member'],
+      ['Ana Souza', 'Member'],
+      ['Tom Becker', 'Member'],
+      ['Kofi Mensah', 'Member'],
+      ['Marta Silva', 'Member'],
+      ['Lucía Gómez', null],
+      ['Daniel Kim', 'Member'],
     ]);
+    expect(ROLE_MEANS).toEqual({
+      Owner: 'Everything, including billing and deleting the organisation.',
+      Admin: 'Everything except billing. Sees every event and manages members.',
+      Member: 'Works on the events they’re added to, and sees no others.',
+    });
   });
 
-  it('lets only an owner give Owner', () => {
-    expect(grantable(VIEWERS.folake)).toContain('Owner');
-    expect(grantable(VIEWERS.julien)).not.toContain('Owner');
-    expect(grantable(VIEWERS.julien)).toContain('Door staff');
+  it('offers Member first and never Owner on approval', () => {
+    expect(approvalRoles()).toEqual(['Member', 'Admin']);
+  });
+
+  it('lets only an owner give Owner, and says where a member’s events come from', () => {
+    expect(grantable(VIEWERS.folake)).toEqual(['Owner', 'Admin', 'Member']);
+    expect(grantable(VIEWERS.julien)).toEqual(['Admin', 'Member']);
+    expect(underRoles(VIEWERS.folake)).toBe('A member’s events come from each event’s People.');
+    expect(underRoles(VIEWERS.julien)).toBe(
+      'Only an owner makes someone an owner. A member’s events come from each event’s People.',
+    );
   });
 
   it('decides what each page offers', () => {
@@ -95,6 +114,8 @@ describe('Members in the demo', () => {
     expect(standingOf(person('Folake Adeyemi'), people, VIEWERS.folake)).toBe('selfOwner');
     expect(standingOf(person('Priya Shah'), people, VIEWERS.tom)).toBe('readOnly');
     expect(standingOf(person('Julien Moreau'), people, VIEWERS.julien)).toBe('self');
+    expect(standingOf(person('Folake Adeyemi'), people, VIEWERS.julien)).toBe('onlyOwner');
+    expect(standingOf(person('Priya Shah'), people, VIEWERS.julien)).toBe('manageable');
 
     const claim = membersStart('claim').people;
     const folake = claim.find((one) => one.name === 'Folake Adeyemi');
@@ -120,6 +141,40 @@ describe('Members in the demo', () => {
     expect(membersStart('withdraw').withdrawing).toBe(true);
   });
 
+  it('opens your own page as Julien, an active admin, or as Folake, the owner', () => {
+    const own = (state: 'self' | 'selfOwner') => {
+      const start = membersStart(state);
+      const you = start.people.find((one) => one.id === start.open);
+      if (you == null) throw new Error(`${state} opens somebody.`);
+
+      return { you, standing: standingOf(you, start.people, start.viewer) };
+    };
+
+    expect(own('self').you).toMatchObject({
+      name: 'Julien Moreau',
+      role: 'Admin',
+      status: 'active',
+    });
+    expect(own('self').standing).toBe('self');
+    expect(membersStart('self').people.every((one) => one.status !== 'suspended')).toBe(true);
+    expect(own('selfOwner').you.name).toBe('Folake Adeyemi');
+    expect(own('selfOwner').standing).toBe('selfOwner');
+  });
+
+  it('puts whoever looks at the sidebar’s foot: Julien in self and claim, Tom read only', () => {
+    const foot = (state: Parameters<typeof membersStart>[0]) => {
+      const { name, role } = memberLooking(membersStart(state).viewer.id);
+
+      return `${name} · ${role}`;
+    };
+
+    expect(foot('self')).toBe('Julien Moreau · Admin');
+    expect(foot('claim')).toBe('Julien Moreau · Admin');
+    expect(foot('withdraw')).toBe('Julien Moreau · Admin');
+    expect(foot('readOnly')).toBe('Tom Becker · Member');
+    expect(foot('list')).toBe('Folake Adeyemi · Owner');
+  });
+
   it('says the count on the card, with who waits and the step to answer them', () => {
     const card = membersCard({ ...plainCard, people });
     expect(card.says).toBe('7 people · 1 waiting');
@@ -136,8 +191,8 @@ describe('Members in the demo', () => {
     const lucia = person('Lucía Gómez').id;
     const priya = person('Priya Shah');
     expect(
-      membersCard({ ...plainCard, people, request: { approved: lucia, role: 'Read-only' } }),
-    ).toMatchObject({ says: 'Lucía Gómez joined as Read-only', step: { does: 'seePerson' } });
+      membersCard({ ...plainCard, people, request: { approved: lucia, role: 'Member' } }),
+    ).toMatchObject({ says: 'Lucía Gómez joined as Member', step: { does: 'seePerson' } });
     expect(membersCard({ ...plainCard, people, request: { turnedDown: lucia } })).toMatchObject({
       says: 'You turned down Lucía Gómez',
       line: 'They are listed under Former.',

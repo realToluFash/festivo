@@ -154,7 +154,10 @@ function SheetFrame({
   const drags = phone && scrimLabel != null;
   const drag = useSheetDrag({ shift, fade, reduced, held, keysCover, onClose });
   const { shown, gone } = useWindowTurn(useModalOpen(present));
-  const unnamed = useUnnamedWindow(Platform.OS === 'android' && headingTakesFocus && shown);
+  const unnamed = useUnnamedWindow(
+    Platform.OS === 'android' && headingTakesFocus && shown,
+    onScreen,
+  );
   if (!shown && (onScreen || laidOut)) {
     setOnScreen(false);
     setLaidOut(false);
@@ -226,7 +229,7 @@ function SheetFrame({
             {...(drags ? drag.handlers : {})}
             testID={testID}
           >
-            {children}
+            <Revealed.Provider value={!unnamed}>{children}</Revealed.Provider>
             {drags && <View style={styles.grabber} pointerEvents="none" />}
             {/* The avoiding view's padding can stop short of the keys as they rise, so card shows there, never the screen. */}
             {phone && !underKeys && (
@@ -455,19 +458,26 @@ export function useWindowTurn(wanted: boolean): { shown: boolean; gone: () => vo
   return { shown, gone };
 }
 
-/** Hidden until TalkBack has announced the window, a heading that takes focus is not also read as the window's name. */
-function useUnnamedWindow(opening: boolean): boolean {
+/** Hidden until TalkBack has announced the window, counted from when Android has put it up, a heading that takes focus is not also read as the window's name. */
+function useUnnamedWindow(hides: boolean, onScreen: boolean): boolean {
   const [announced, setAnnounced] = useState(false);
-  if (!opening && announced) setAnnounced(false);
+  if (!onScreen && announced) setAnnounced(false);
 
   useEffect(() => {
-    if (!opening) return;
+    if (!hides || !onScreen) return;
     const shown = setTimeout(() => setAnnounced(true), SETTLED_MS / 2);
 
     return () => clearTimeout(shown);
-  }, [opening]);
+  }, [hides, onScreen]);
 
-  return opening && !announced;
+  return hides && !announced;
+}
+
+const Revealed = createContext(true);
+
+/** False while a sheet that names no window hides its content, so a heading waits to take focus until it can (sc-11032). */
+export function useSheetRevealed(): boolean {
+  return useContext(Revealed);
 }
 
 /** The keyboard's top edge in the sheet's window, or null while the keys are down. */

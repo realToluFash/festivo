@@ -246,6 +246,8 @@ export function Field({
   inputRef,
   autoComplete,
   inputMode,
+  placeholder,
+  action,
 }: {
   label: string;
   value: string;
@@ -256,6 +258,8 @@ export function Field({
   inputRef?: RefObject<HTMLInputElement | null>;
   autoComplete?: string;
   inputMode?: 'email' | 'numeric' | 'text';
+  placeholder?: string;
+  action?: ReactNode;
 }) {
   const id = useId();
   const [shown, setShown] = useState(false);
@@ -265,9 +269,18 @@ export function Field({
 
   return (
     <div className="desk-field">
-      <label htmlFor={id} className="desk-label">
-        {label}
-      </label>
+      {action == null ? (
+        <label htmlFor={id} className="desk-label">
+          {label}
+        </label>
+      ) : (
+        <div className="desk-label-row">
+          <label htmlFor={id} className="desk-label">
+            {label}
+          </label>
+          {action}
+        </div>
+      )}
       <div className={error == null ? 'desk-box' : 'desk-box is-wrong'}>
         <input
           ref={inputRef}
@@ -276,6 +289,7 @@ export function Field({
           value={value}
           autoComplete={autoComplete}
           inputMode={inputMode}
+          placeholder={placeholder}
           spellCheck={false}
           aria-invalid={error != null}
           aria-describedby={told === '' ? undefined : told}
@@ -369,6 +383,8 @@ export function Dialog(props: DialogProps) {
 interface DialogProps {
   title: string;
   verb: string;
+  /** False for a dialog that applies each pick at once: Done closes it, and nothing sits at its left. */
+  cancel?: boolean;
   on?: boolean;
   red?: boolean;
   locked?: boolean;
@@ -381,6 +397,7 @@ interface DialogProps {
 function DialogBox({
   title,
   verb,
+  cancel = true,
   on = true,
   red = false,
   locked = false,
@@ -410,9 +427,15 @@ function DialogBox({
         <ActionPair
           className="desk-nav"
           dismiss={
-            <button type="button" className="desk-nav-cancel" onClick={onDismiss}>
-              Cancel
-            </button>
+            cancel ? (
+              <button type="button" className="desk-nav-cancel" onClick={onDismiss}>
+                Cancel
+              </button>
+            ) : (
+              <span className="desk-nav-cancel is-none" aria-hidden="true">
+                {verb}
+              </span>
+            )
           }
           between={
             <h2 id={`${id}-title`} className="desk-nav-title">

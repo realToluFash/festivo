@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { cleanCode, codeProblem, emailProblem, keyInGroups } from './forms.ts';
+import { cleanCode, codeDigits, codeProblem, emailProblem, keyInGroups } from './forms.ts';
 
 describe('an email checked before it is sent', () => {
   it('is there', () => {
@@ -31,6 +31,11 @@ describe('a code checked before it is sent', () => {
     expect(cleanCode(' 184 231 ')).toBe('184231');
     expect(codeProblem('184 231')).toBeNull();
     expect(codeProblem('   ')).toBe('blank');
+  });
+
+  it('keeps only six digits of what is typed', () => {
+    expect(codeDigits('12ab34cd5')).toBe('12345');
+    expect(codeDigits(' 184 231 9')).toBe('184231');
   });
 });
 
