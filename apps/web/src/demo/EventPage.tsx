@@ -62,6 +62,8 @@ import { EventSidebar } from './EventSidebar.tsx';
 import { Glyph, type GlyphName } from '../components/Glyph.tsx';
 import { LayersContext } from '../layers.ts';
 import { BudgetArea } from './Quotes.tsx';
+import { BUDGET_EVENT } from './budget.ts';
+import { BudgetEntry } from './BudgetRoutes.tsx';
 import {
   type Told,
   NEW_PLACE,
@@ -231,6 +233,7 @@ function EventView({
   const away = useLeaveAsk(dirty);
 
   if (area === 'people') return <Navigate to="/demo/people" replace />;
+  if (area === 'budget' && initial.id === BUDGET_EVENT) return <BudgetEntry event={initial} />;
   if (area === 'messages' && fixedArea == null)
     return <Navigate to={`/demo/events/${initial.id}/messages`} replace />;
 
