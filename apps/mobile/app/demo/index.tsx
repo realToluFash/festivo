@@ -877,6 +877,11 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         what: 'The checks, and the refused shake',
         href: '/demo/sign-in',
       },
+      {
+        title: 'Sign in · that sign-in timed out',
+        what: 'A two-factor sign-in ran out, email kept',
+        href: `/demo/sign-in?timedOut=1&email=${SAMPLE.email}`,
+      },
     ],
   },
   {
@@ -922,9 +927,44 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/lost?emailOnly=1',
       },
       {
+        title: 'Lost the authenticator · sending the code',
+        what: 'Email only, held sending',
+        href: '/demo/lost?emailOnly=1&state=sending',
+      },
+      {
+        title: 'Enter the code · expired',
+        what: 'Email only, one code',
+        href: '/demo/lost-codes?emailOnly=1&state=expired',
+      },
+      {
+        title: 'Enter the code · too many wrong tries',
+        what: 'Email only, one code',
+        href: '/demo/lost-codes?emailOnly=1&state=exhausted',
+      },
+      {
+        title: 'Enter both codes · expired',
+        what: 'With a verified mobile, as today',
+        href: '/demo/lost-codes?state=expired',
+      },
+      {
+        title: 'Enter both codes · too many wrong tries',
+        what: 'With a verified mobile, as today',
+        href: '/demo/lost-codes?state=exhausted',
+      },
+      {
         title: 'Waiting for Ire Events',
         what: 'Answer it from the demo',
         href: '/demo/waiting',
+      },
+      {
+        title: 'Waiting · cancel your request?',
+        what: 'Cancel the request asks first',
+        href: '/demo/waiting?state=cancel',
+      },
+      {
+        title: 'Waiting · not cancelled',
+        what: 'Soirely could not be reached',
+        href: '/demo/waiting?state=notCancelled',
       },
       { title: 'Two-factor is off', what: 'Confirmed', href: '/demo/ending?kind=approved' },
       { title: 'Turned down', what: 'An ending', href: '/demo/ending?kind=turnedDown' },
