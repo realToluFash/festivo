@@ -192,4 +192,18 @@ describe('the Budget page at a desk in A (sc-31779)', () => {
       within(await screen.findByRole('dialog', SLOW)).queryByRole('button', { name: 'Paid' }),
     ).toBeNull();
   });
+
+  it('opens Save as template over the page, from its row and from save_taken', SLOW, async () => {
+    await open(at('save_taken'));
+    const dialog = await screen.findByRole('dialog', SLOW);
+
+    expect(
+      within(dialog).getByText('A template with that name already exists. Choose another name.'),
+    ).toBeTruthy();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+    fireEvent.click(
+      within(section('From other events')).getByRole('button', { name: /Save as template/ }),
+    );
+    expect(await screen.findByRole('dialog', SLOW)).toBeTruthy();
+  });
 });

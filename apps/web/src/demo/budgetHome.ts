@@ -366,11 +366,6 @@ export const BUDGET_PAGES: readonly DemoGroup[] = [
   },
   {
     name: 'Templates on the Budget page (Budget-A-Templates)',
-    states: [
-      { to: at('nothing_to_start'), name: 'First time with nothing to start from' },
-      { to: at('save_taken'), name: 'Save as template: a name already taken' },
-      { to: at('save_blank'), name: 'Save as template: blank' },
-      { to: at('save_long'), name: 'Save as template: too long' },
-    ],
+    states: [{ to: at('nothing_to_start'), name: 'First time with nothing to start from' }],
   },
 ];

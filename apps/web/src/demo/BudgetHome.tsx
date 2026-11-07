@@ -93,6 +93,7 @@ import {
 } from './budgetSample.ts';
 import { BUDGET_WORDS as W } from './budgetWords.ts';
 import { type SampleEvent } from './events.ts';
+import { SaveTemplateDialog } from './Templates.tsx';
 import { CATEGORY_WORDS, type Category } from './vendors.ts';
 import './budgetHome.css';
 
@@ -111,7 +112,7 @@ const vendorName = (id: string): string => VENDOR[id]?.name ?? id;
 const FIRST_KNOWS =
   '96 guests have said yes and the event runs 3 days, Thursday, Nov 5 to Saturday, Nov 7. There is no seating plan yet. Each cost you add takes its quantity from these, so nobody types a count in.';
 
-type Dialog = 'addCost' | 'ceiling' | 'markup' | 'dueNow' | null;
+type Dialog = 'addCost' | 'ceiling' | 'markup' | 'dueNow' | 'save' | null;
 
 interface Removed {
   line: CostLine;
@@ -123,6 +124,7 @@ function dialogOf(state: string): Dialog {
   if (state.startsWith('add_cost')) return 'addCost';
   if (state.startsWith('markup')) return 'markup';
   if (state.startsWith('due_')) return 'dueNow';
+  if (state.startsWith('save_')) return 'save';
   if (
     ['ceiling_set', 'ceiling_change', 'ceiling_negative', 'ceiling_currency'].includes(state) ||
     ['ceiling_nan', 'ceiling_decimals'].includes(state)
@@ -393,7 +395,7 @@ function HomeAt({ event, state: first }: { event: SampleEvent; state: string }) 
                     <AgainstPlan lines={lines} />
                     <WhoIsPaying />
                     <VendorsQuoted readOnly={readOnly} />
-                    <FromOtherEvents />
+                    <FromOtherEvents onSave={() => setDialog('save')} />
                   </>
                 )
               }
@@ -426,6 +428,21 @@ function HomeAt({ event, state: first }: { event: SampleEvent; state: string }) 
             />
           )}
           {dialog === 'markup' && <MarkupDialog first={first} onDismiss={() => setDialog(null)} />}
+          {dialog === 'save' && (
+            <SaveTemplateDialog
+              start={
+                first === 'save_taken'
+                  ? 'taken'
+                  : first === 'save_blank'
+                    ? 'blank'
+                    : first === 'save_long'
+                      ? 'long'
+                      : null
+              }
+              onDismiss={() => setDialog(null)}
+              onSaved={() => setDialog(null)}
+            />
+          )}
           {dialog === 'dueNow' && (
             <DueNowDialog event={event} first={first} onClose={() => setDialog(null)} />
           )}
@@ -1242,7 +1259,7 @@ function VendorsQuoted({ readOnly }: { readOnly: boolean }) {
   );
 }
 
-function FromOtherEvents() {
+function FromOtherEvents({ onSave }: { onSave: () => void }) {
   return (
     <Block title="From other events">
       <Rows>
@@ -1250,7 +1267,7 @@ function FromOtherEvents() {
           <BudgetRow
             title="Save as template"
             lines={['Its rates, for the next one like it']}
-            to={budgetAt('save_blank')}
+            onOpen={onSave}
           />
         </li>
         <li>

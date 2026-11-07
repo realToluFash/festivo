@@ -20,6 +20,7 @@ import {
   sumLines,
 } from './budgetHome.ts';
 import { ceilingSentence } from './budgetSample.ts';
+import { TEMPLATES_PAGES } from './templates.ts';
 
 const line = (id: string) => COST_LINES.find((one) => one.id === id) ?? COST_LINES[0]!;
 
@@ -28,7 +29,9 @@ describe('the Budget home’s states (spec §9)', () => {
     expect(WEB_STATES).toHaveLength(26);
     expect(CEILING_STATES).toHaveLength(14);
     expect(MARGIN_STATES).toContain('free');
-    const linked = BUDGET_PAGES.flatMap((group) => group.states.map((one) => one.to));
+    const linked = [...BUDGET_PAGES, ...TEMPLATES_PAGES].flatMap((group) =>
+      group.states.map((one) => one.to),
+    );
     for (const state of HOME_STATES)
       expect(
         linked.some((to) => to.includes(`state=${state}`)),
