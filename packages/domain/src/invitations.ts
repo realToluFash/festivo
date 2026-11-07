@@ -83,3 +83,44 @@ export function refusalBody(refusal: InvitationRefusalCode, named: boolean): str
     ? `invitations.refused.${refusal}.bodyNobody`
     : `invitations.refused.${refusal}.body`;
 }
+
+export interface OrganisationStepInput {
+  needsOrganisation: boolean;
+  invitations: number;
+  stillOpen: number;
+  offers: number;
+  own: boolean;
+  joined: boolean;
+}
+
+export interface OrganisationStep {
+  /** An invitation is still open, so it takes the step's place: Join, or Start my own instead. */
+  invited: boolean;
+  showsSingleInvitation: boolean;
+  listsInvitations: boolean;
+  showsOffers: boolean;
+  singleOffer: boolean;
+  asksForOrganisation: boolean;
+  heading: 'invited' | 'offers' | 'organisation';
+}
+
+/** What Your organisation shows: an invitation first, a domain offer when none is open, else the fields (sc-29070). */
+export function organisationStep(input: OrganisationStepInput): OrganisationStep {
+  const { invitations, stillOpen, offers, own, joined } = input;
+  const needsOne = input.needsOrganisation && !joined;
+  const invited = needsOne && stillOpen > 0 && !own;
+  // The rows, and the outcome each answer left, stay until the person starts their own.
+  const showsSingleInvitation = invitations === 1 && !own;
+  const listsInvitations = invitations > 1 && !own;
+  const showsOffers = needsOne && !invited && offers > 0 && !own;
+
+  return {
+    invited,
+    showsSingleInvitation,
+    listsInvitations,
+    showsOffers,
+    singleOffer: showsOffers && offers === 1,
+    asksForOrganisation: needsOne && !invited && !showsOffers,
+    heading: invited || joined ? 'invited' : showsOffers ? 'offers' : 'organisation',
+  };
+}

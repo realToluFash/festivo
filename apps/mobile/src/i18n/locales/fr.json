@@ -194,13 +194,6 @@
     "organisation": "Nom de l’organisation",
     "organisationHelp": "Vos événements lui appartiennent. Vous pourrez la renommer plus tard.",
     "organisationBlank": "Ajoutez le nom de votre organisation pour continuer.",
-    "organisationOrInvitation": "Ajoutez le nom de votre organisation ou acceptez une invitation ci-dessus.",
-    "invitationsWaiting_one": "Une invitation vous attend. Acceptez-la pour rejoindre cette organisation, ou créez la vôtre ci-dessous.",
-    "invitationsWaiting_other": "{{count, number}} invitations vous attendent. Acceptez-en une pour rejoindre l’organisation qui vous invite, ou créez la vôtre ci-dessous.",
-    "invitationsWaiting_many": "{{count, number}} d’invitations vous attendent. Acceptez-en une pour rejoindre l’organisation qui vous invite, ou créez la vôtre ci-dessous.",
-    "invitationsJoined": "Vous n’avez pas besoin de créer une organisation pour le moment.",
-    "invitationsNone": "Plus aucune invitation en attente. Ajoutez le nom de votre organisation ci-dessous.",
-    "orStartOwn": "Ou créez votre propre organisation",
     "joinedGoesThere": "Choisissez « Enregistrer et continuer » pour y accéder.",
     "joinedSwitchLater": "Elle figure parmi vos organisations. Vous pourrez y passer plus tard.",
     "country": "Pays",
@@ -1125,13 +1118,11 @@
     "failed": "La demande n’a pas abouti, donc rien n’a été modifié. Réessayez."
   },
   "domainJoining": {
-    "heading": "Votre organisation",
     "intro": "Votre adresse utilise le domaine {{domain}}. Demandez à rejoindre l’organisation de votre entreprise, ou créez la vôtre.",
     "usesSoirely": "{{organisation}} utilise Soirely",
     "approvesFirst": "Une personne de l’organisation valide votre demande avant que vous n’ayez accès à quoi que ce soit.",
     "ask": "Demander l’accès",
     "askLabel": "Demander l’accès à {{organisation}}",
-    "startOwn": "Créer ma propre organisation",
     "askInstead": "Demander plutôt à rejoindre une organisation du domaine {{domain}}",
     "unavailable": "Vous ne pouvez pas demander à rejoindre cette organisation. Créez la vôtre, ou demandez à une personne de cette organisation de vous inviter.",
     "waitingTitle": "En attente de validation par {{organisation}}",
@@ -1356,12 +1347,6 @@
   },
   "requestToJoin": {
     "title": "Demander à rejoindre {{organisation}}",
-    "requestLink": "Lien d’adhésion",
-    "signedOut": "Connectez-vous ou créez un compte pour demander à rejoindre {{organisation}}. Vous reviendrez ensuite sur cette page.",
-    "signIn": "Se connecter",
-    "register": "Créer un compte",
-    "message": "Message",
-    "optional": "Facultatif",
     "messageHelp": "{{length, number}} sur {{count, number}} caractères.",
     "messageLong": "Raccourcissez votre message à {{count, number}} caractères maximum.",
     "ask": "Demander l’accès",
@@ -1381,7 +1366,9 @@
     "deadBody": "Ce lien ne fonctionne plus. Demandez-en un nouveau à l’organisation.",
     "goHome": "Aller sur Soirely",
     "failedTitle": "La demande n’a pas abouti",
-    "failedBody": "Un problème est survenu en cours de route. Réessayez dans un instant."
+    "failedBody": "Un problème est survenu en cours de route. Réessayez dans un instant.",
+    "messageOptional": "Message · optional",
+    "signedOutLine": "Sign in or create an account to ask. You come back here after."
   },
   "ownerClaim": {
     "loading": "Chargement",
@@ -1966,7 +1953,12 @@
     "mobileIntro": "Pour que votre équipe puisse vous joindre le soir de l’événement en cas de problème.",
     "mobileLine": "Nous envoyons un code à ce numéro sur WhatsApp, ou par SMS si WhatsApp ne peut pas vous joindre.",
     "sendCode": "Envoyer le code",
-    "whatsAppTitle": "Consultez WhatsApp"
+    "whatsAppTitle": "Consultez WhatsApp",
+    "invitedTitle": "You’re invited",
+    "invitedIntro": "Join your team, or start your own organisation.",
+    "invitationFor": "An invitation for {{email}}",
+    "join": "Join {{organisation}}",
+    "startOwnInstead": "Start my own instead"
   },
   "todayScreen": {
     "today": "Today",
