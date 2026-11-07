@@ -23,6 +23,7 @@ import {
   samplePeople,
   sampleRecoveries,
   tagOf,
+  TOM,
 } from './members.ts';
 import { SAMPLE } from './rules.ts';
 import { SETTINGS_PAGES, settingsSayIn, VIEWERS } from './settings.ts';
@@ -282,6 +283,23 @@ describe('Requests to get back in on Members at a desk (sc-30183)', () => {
       [KOFI, false],
       [PRIYA, false],
     ]);
+  });
+
+  it('offers someone waiting after a removal before See Former, and See Former with nobody waiting', () => {
+    const removedCard = (state: string) => {
+      const start = membersStart(state, VIEWERS.folake);
+
+      return membersCard({
+        ...start,
+        notice: { kind: 'removed', id: TOM },
+        viewer: VIEWERS.folake,
+        say,
+      }).step;
+    };
+
+    expect(removedCard('recovery')).toMatchObject({ label: 'Answer Kofi Mensah' });
+    expect(removedCard('')).toMatchObject({ label: 'Answer Lucía Gómez' });
+    expect(removedCard('turnedDown')).toEqual({ label: 'See Former', does: 'former' });
   });
 
   it('leaves nothing waiting once both are answered, and answers Lucía again', () => {

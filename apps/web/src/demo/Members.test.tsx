@@ -301,9 +301,10 @@ describe('Requests to get back in on Members at a desk (sc-30183)', () => {
     expect(screen.getByText('Priya Shah was removed')).toBeDefined();
     expect(screen.getAllByRole('article')).toEqual([request('Kofi Mensah')]);
     expect(screen.getByRole('button', { name: 'Answer Kofi Mensah' })).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'See Former' })).toBeNull();
   });
 
-  it('ends Kofi’s request when he is removed, leaving Priya’s, on today’s card', async () => {
+  it('ends Kofi’s request when he is removed, and the step moves on to Priya’s', async () => {
     await members('/demo/settings/members?state=recovery');
 
     fireEvent.click(screen.getByRole('button', { name: /^Kofi Mensah/u }));
@@ -313,8 +314,31 @@ describe('Requests to get back in on Members at a desk (sc-30183)', () => {
     expect(screen.getByText('Kofi Mensah was removed')).toBeDefined();
     expect(screen.queryByRole('article', { name: 'Kofi Mensah' })).toBeNull();
     expect(screen.getAllByRole('article')).toEqual([request('Priya Shah')]);
-    expect(screen.queryByRole('button', { name: 'Answer Kofi Mensah' })).toBeNull();
-    expect(screen.getByRole('button', { name: 'See Former' })).toBeDefined();
+    expect(
+      screen.getByText(
+        'Their events stay with Ire Events. They are listed under Former, with everything they did kept.',
+      ),
+    ).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Answer Priya Shah' })).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'See Former' })).toBeNull();
+  });
+
+  it('ends both requests when Kofi and Priya are removed, and the step moves on to Lucía', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    await members('/demo/settings/members?state=recovery');
+
+    fireEvent.click(screen.getByRole('button', { name: /^Kofi Mensah/u }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove from Ire Events…' }));
+    fireEvent.click(verb('Remove'));
+    fireEvent.click(screen.getByRole('button', { name: /^Priya Shah/u }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove from Ire Events…' }));
+    fireEvent.click(verb('Remove'));
+    await act(() => vi.advanceTimersByTimeAsync(600));
+
+    expect(screen.getByText('Priya Shah was removed')).toBeDefined();
+    expect(screen.queryAllByRole('article')).toEqual([]);
+    expect(screen.queryByRole('heading', { name: 'Requests to get back in' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Answer Lucía Gómez' })).toBeDefined();
   });
 
   it('keeps Lucía’s request to join answering from Waiting', async () => {
