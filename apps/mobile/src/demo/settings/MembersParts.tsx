@@ -2,7 +2,7 @@ import type { Ref } from 'react';
 import { StyleSheet, View, type ViewInstance } from 'react-native';
 
 import { useReadOut } from '../../components/ReadOut.tsx';
-import { Text } from '../../components/Text.tsx';
+import { Text, type TextHandle } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import {
   type CardStep,
@@ -35,6 +35,7 @@ export const FROM_THE_WEB = 'To invite somebody, use Soirely on the web.';
 
 const STEP_IDS: Record<CardStep, string> = {
   answer: 'members.answer',
+  answerRecovery: 'members.recovery.answer',
   seePerson: 'members.awaiting.see',
   seeFormer: 'members.awaiting.former',
   becomeOwner: 'ownerClaim.become',
@@ -47,12 +48,14 @@ export function MembersCardView({
   compact,
   wide,
   stepRef,
+  saysRef,
   onStep,
 }: {
   card: MembersCard;
   compact: boolean;
   wide: boolean;
   stepRef: Ref<ViewInstance>;
+  saysRef?: Ref<TextHandle>;
   onStep: (step: CardStep) => void;
 }) {
   const step = card.step;
@@ -77,7 +80,7 @@ export function MembersCardView({
       }
       testID="members.card"
     >
-      <CardSays text={card.says} size={compact ? 20 : 24} heading />
+      <CardSays ref={saysRef} text={card.says} size={compact ? 20 : 24} heading />
       {card.line != null && <OnCard text={card.line} />}
       {card.faces.length > 0 && (
         <Faces

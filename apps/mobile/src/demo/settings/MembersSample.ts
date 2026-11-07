@@ -1,5 +1,15 @@
 import { memberStanding, type MemberStanding } from '@soirely/domain';
 
+import {
+  answerable,
+  answeredWords,
+  JULIEN,
+  KOFI,
+  oldestFirst,
+  type RecoveryAnswer,
+  type RecoveryAsk,
+  waitingKinds,
+} from './MembersRecoverySample.ts';
 import type { ChipKind } from './parts.tsx';
 import { type Load, people as headcount } from './RolesSample.ts';
 import type { MarkKind } from './SummaryRows.tsx';
@@ -213,6 +223,11 @@ export const VIEWERS = {
   julien: { id: 'julien@ire.events', role: 'Admin', manages: true, owns: false },
 } as const satisfies Record<string, MembersViewer>;
 
+/** `as=` names who looks at Members, as the web's demo does: folake, julien or tom. */
+export function membersViewerOf(name: string | undefined): MembersViewer | null {
+  return Object.entries(VIEWERS).find(([key]) => key === name)?.[1] ?? null;
+}
+
 /** The roles the viewer may give, the most first: Owner only from an owner. */
 export function grantable(viewer: MembersViewer): string[] {
   return [...ORG_ROLES].reverse().filter((role) => viewer.owns || role !== 'Owner');
@@ -253,6 +268,19 @@ function onlyOwner(person: Person, people: readonly Person[]): boolean {
   return person.role === 'Owner' && people.filter((one) => one.role === 'Owner').length === 1;
 }
 
+export const RECOVERY_STATES = [
+  'recovery',
+  'recoveryApprove',
+  'recoveryTurnDown',
+  'recoveryApproved',
+  'recoveryTurnedDown',
+  'recoveryClosed',
+  'recoveryDone',
+  'recoveryOwn',
+] as const;
+
+type RecoveryState = (typeof RECOVERY_STATES)[number];
+
 export const MEMBERS_STATES = [
   'list',
   'readOnly',
@@ -271,12 +299,26 @@ export const MEMBERS_STATES = [
   'selfOwner',
   'claim',
   'withdraw',
+  ...RECOVERY_STATES,
 ] as const;
 
 export type MembersState = (typeof MEMBERS_STATES)[number];
 
 export function membersStateOf(name: string | undefined): MembersState {
   return MEMBERS_STATES.find((state) => state === name) ?? 'list';
+}
+
+function isRecovery(state: MembersState): state is RecoveryState {
+  return RECOVERY_STATES.some((one) => one === state);
+}
+
+/** A recovery state only for those who answer, and Julien's own request only for him; anybody else gets Members with no state. */
+export function reachableState(state: MembersState, viewer: MembersViewer | null): MembersState {
+  const who = viewer ?? VIEWERS.folake;
+  if (!isRecovery(state)) return state;
+  if (!who.manages) return 'list';
+
+  return state === 'recoveryOwn' && who.id !== JULIEN ? 'list' : state;
 }
 
 export type Request =
@@ -299,6 +341,9 @@ export interface MembersStart {
   picked: string | null;
   claim: ClaimState | null;
   withdrawing: boolean;
+  recovery: string[];
+  recoveryAsk: RecoveryAsk | null;
+  recoveryAnswer: RecoveryAnswer | null;
 }
 
 export type ClaimState = 'unclaimed' | 'open' | 'withdrawn';
@@ -306,7 +351,8 @@ export type ClaimState = 'unclaimed' | 'open' | 'withdrawn';
 export const KEEPS_WORKING =
   'Events, guests and your permissions keep working. Only Owner actions, such as billing, wait for an owner.';
 
-export type CardStep = 'answer' | 'seePerson' | 'seeFormer' | 'becomeOwner' | 'checkRecord';
+export type CardStep =
+  'answer' | 'answerRecovery' | 'seePerson' | 'seeFormer' | 'becomeOwner' | 'checkRecord';
 
 export interface MembersCard {
   says: string;
@@ -321,6 +367,14 @@ export function ownerActive(people: readonly Person[]): boolean {
   return people.some((one) => one.role === 'Owner' && one.status === 'active');
 }
 
+export interface CardRecovery {
+  /** Every request to get back in that waits, oldest first, the viewer's own among them. */
+  waiting: readonly string[];
+  answer: RecoveryAnswer | null;
+}
+
+const NO_RECOVERY: CardRecovery = { waiting: [], answer: null };
+
 export function membersCard({
   people,
   viewer,
@@ -328,6 +382,7 @@ export function membersCard({
   gone,
   claim,
   say,
+  recovery = NO_RECOVERY,
 }: {
   people: readonly Person[];
   viewer: MembersViewer;
@@ -335,9 +390,20 @@ export function membersCard({
   gone: Person | null;
   claim: ClaimState | null;
   say: MembersSay;
+  recovery?: CardRecovery;
 }): MembersCard {
   const quiet = { line: null, faces: [], more: 0, readsOut: true };
   const seeFormer = { label: 'See Former', does: 'seeFormer' } as const;
+  const nameOf = (id: string) => people.find((one) => one.id === id)?.name ?? '';
+  const waiting = viewer.manages ? people.filter((one) => one.status === 'pendingApproval') : [];
+  const back = viewer.manages ? answerable(recovery.waiting, viewer.id) : [];
+  const asking = waiting[0];
+  const next: MembersCard['step'] =
+    back[0] != null
+      ? { label: `Answer ${nameOf(back[0])}`, does: 'answerRecovery' }
+      : asking == null
+        ? null
+        : { label: `Answer ${asking.name}`, does: 'answer' };
 
   if (typeof request === 'object') {
     const id = 'approved' in request ? request.approved : request.turnedDown;
@@ -356,6 +422,12 @@ export function membersCard({
           step: seeFormer,
         };
   }
+  if (recovery.answer != null)
+    return {
+      ...quiet,
+      ...answeredWords(recovery.answer, nameOf(recovery.answer.id)),
+      step: next,
+    };
   if (gone != null)
     return {
       ...quiet,
@@ -394,17 +466,13 @@ export function membersCard({
   }
 
   const all = people.filter((one) => isShown(one.status, 'all'));
-  const waiting = viewer.manages ? people.filter((one) => one.status === 'pendingApproval') : [];
-  const asking = waiting[0];
   const faces = all.slice(0, 5);
+  const count = back.length + waiting.length;
 
   return {
-    says: [
-      headcount(all.length),
-      ...(waiting.length > 0 ? [`${waiting.length} waiting`] : []),
-    ].join(' · '),
-    line: null,
-    step: asking == null ? null : { label: `Answer ${asking.name}`, does: 'answer' },
+    says: [headcount(all.length), ...(count > 0 ? [`${count} waiting`] : [])].join(' · '),
+    line: waitingKinds(back.length, waiting.length),
+    step: next,
     faces,
     more: all.length - faces.length,
     readsOut: false,
@@ -441,7 +509,11 @@ const ANA = 'ana.souza@ire.events';
 const MARTA = 'marta.silva@ire.events';
 const DANIEL = 'daniel.kim@ire.events';
 
-export function membersStart(state: MembersState): MembersStart {
+/** `viewer`, from the link's as=, looks at Members with no state and at the recovery states; every other state keeps its own. */
+export function membersStart(
+  state: MembersState,
+  viewer: MembersViewer | null = null,
+): MembersStart {
   const people = samplePeople();
   const base: MembersStart = {
     viewer: VIEWERS.folake,
@@ -454,11 +526,44 @@ export function membersStart(state: MembersState): MembersStart {
     picked: null,
     claim: null,
     withdrawing: false,
+    recovery: [],
+    recoveryAsk: null,
+    recoveryAnswer: null,
   };
+  const recovery = {
+    ...base,
+    viewer: viewer ?? VIEWERS.folake,
+    recovery: oldestFirst([KOFI, PRIYA]),
+  };
+  const kofiAsks = (answer: RecoveryAsk['answer'], closed = false) => ({
+    ...recovery,
+    recoveryAsk: { id: KOFI, answer, closed },
+  });
+  const kofiAnswered = (kind: RecoveryAnswer['kind']) => ({
+    ...recovery,
+    recovery: [PRIYA],
+    recoveryAnswer: { id: KOFI, kind },
+  });
 
   switch (state) {
     case 'list':
-      return base;
+      return { ...base, viewer: viewer ?? VIEWERS.folake };
+    case 'recovery':
+      return recovery;
+    case 'recoveryApprove':
+      return kofiAsks('approve');
+    case 'recoveryTurnDown':
+      return kofiAsks('turnDown');
+    case 'recoveryApproved':
+      return kofiAnswered('approved');
+    case 'recoveryTurnedDown':
+      return kofiAnswered('turnedDown');
+    case 'recoveryClosed':
+      return kofiAsks('approve', true);
+    case 'recoveryDone':
+      return { ...recovery, recovery: [], recoveryAnswer: { id: PRIYA, kind: 'approved' } };
+    case 'recoveryOwn':
+      return { ...recovery, viewer: VIEWERS.julien, recovery: [JULIEN] };
     case 'readOnly':
       return { ...base, viewer: VIEWERS.tom };
     case 'nobodySuspended':
