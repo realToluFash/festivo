@@ -801,7 +801,7 @@
       "members": "Membres et rôles",
       "billing": "Facturation",
       "organisation": "Organisation",
-      "people": "People on events"
+      "people": "Personnes des événements"
     },
     "means": {
       "events": "Créer, publier, suspendre et clore des événements.",
@@ -817,7 +817,7 @@
       "members": "Inviter, approuver, suspendre, changer les rôles.",
       "billing": "Formule, cartes et factures.",
       "organisation": "Le nom, le pays, l’adresse de contact et les valeurs avec lesquelles démarrent les nouveaux événements.",
-      "people": "Who is on each event, and the role each person has there."
+      "people": "Qui fait partie de chaque événement, et le rôle que chaque personne y occupe."
     },
     "margin": "Marge",
     "marginMeans": "Ce que {{name}} ajoute aux coûts. Masquée signifie que le budget s’ouvre avec les coûts seuls.",
