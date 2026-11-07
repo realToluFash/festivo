@@ -19,9 +19,7 @@ appId: host.exp.Exponent
     notVisible: 'Bundling.*'
     timeout: 180000
 - waitForAnimationToEnd:
-    timeout: 8000
-- waitForAnimationToEnd:
-    timeout: 8000
+    timeout: 15000
 - takeScreenshot: demo-cover
 - openLink: ${METRO_URL}/--/demo/sign-in
 - extendedWaitUntil:

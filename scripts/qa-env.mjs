@@ -1827,6 +1827,7 @@ export const SCREEN_READER_OFF = [
 ];
 
 // android's start once the emulator is up, in order: nothing swipes or taps before the screen reader is off.
+// A part with `when` runs only when android is given that flag.
 export const ANDROID_START = [
   { name: 'release build removed', run: ({ tools, root }) => removeRelease(tools, root) },
   { name: 'airplane mode off', run: ({ tools }) => airplaneMode(tools, false) },
@@ -1850,11 +1851,14 @@ export const ANDROID_START = [
     },
   },
   {
+    name: 'Expo Go stopped',
+    when: '--clear',
+    adb: [['shell', 'am', 'force-stop', EXPO_GO_ANDROID]],
+  },
+  {
     name: 'bundler started',
     run: async (s) => {
       step('The bundler');
-      if (s.args.includes('--clear'))
-        adbOut(s.tools, ['shell', 'am', 'force-stop', EXPO_GO_ANDROID]);
       s.metro = await startBundler(s.root, s.tools.env, s.args);
     },
   },
@@ -1930,6 +1934,7 @@ async function android(args) {
   await bootEmulator(tools, CONFIG.emulators[open].name);
   const started = { tools, root, args };
   for (const part of ANDROID_START) {
+    if (part.when && !args.includes(part.when)) continue;
     for (const command of part.adb ?? []) adbOut(tools, command);
     if (part.say) console.log(part.say);
     await part.run?.(started);
