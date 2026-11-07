@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
 import { __setSessionState, type Session } from '../../../session.ts';
-import { membership } from '../../../test-memberships.ts';
+import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
 import { routes } from '../../index.tsx';
 
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
@@ -32,6 +32,7 @@ const EVENT = {
   phase: 'live',
   concludedAt: null,
   createdAt: '2026-10-21T09:00:00+00:00',
+  permissions: OWNER_PERMISSIONS,
 };
 
 function person(id: string, name: string, role: string, jobLabel: string | null = null) {

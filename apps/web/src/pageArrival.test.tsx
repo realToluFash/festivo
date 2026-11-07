@@ -8,7 +8,7 @@ import { setLanguage } from './i18n/index.ts';
 import { ArrivalNotice, PageArrival } from './components/PageArrival.tsx';
 import { UNASKED } from './pageArrival.ts';
 import { __setSessionState, forgetSession, type Session } from './session.ts';
-import { membership } from './test-memberships.ts';
+import { OWNER_PERMISSIONS, membership } from './test-memberships.ts';
 import { pageTitle, usePageTitle } from './pageTitle.ts';
 import { routes } from './routes/index.tsx';
 
@@ -269,6 +269,7 @@ describe('the pages Soirely has, signed in', () => {
     phase: 'draft',
     concludedAt: null,
     createdAt: '2026-10-21T09:00:00+00:00',
+    permissions: OWNER_PERMISSIONS,
   };
 
   function at(path: string) {

@@ -20,7 +20,7 @@ import { ArrivalNotice } from '../../../components/PageArrival.tsx';
 import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
 import { useWideWidth } from '../../../phoneWidth.ts';
 import { useLoadedAt, useServerNow } from '../../../serverNow.ts';
-import { can, useSession } from '../../../session.ts';
+import { canOn, useSession } from '../../../session.ts';
 import { useFocusOnceShown } from '../../../stepFocus.ts';
 import { type EditOutcome } from './EditEvent.tsx';
 import { DeleteEvent } from './DeleteEvent.tsx';
@@ -231,13 +231,12 @@ function EventTop({
   onChange: (event: OrganisationEvent, tag: string) => void;
 }) {
   const { t } = useTranslation();
-  const session = useSession();
   const [madeLive, setMadeLive] = useState(false);
   const [resumed, setResumed] = useState(false);
   const now = useServerNow();
   const loadedAt = useLoadedAt(event);
   const phase = shownPhase(event, loadedAt, now);
-  const manages = can(session, 'events.manage');
+  const manages = canOn(event, 'events.manage');
 
   useEffect(() => rememberTabHolding(event.organisationId, phase), [event.organisationId, phase]);
 
@@ -251,7 +250,7 @@ function EventTop({
           <StatusPill phase={phase} />
           <PhaseChange key={loadedAt.getTime()} phase={phase} />
         </div>
-        {phase === 'finished' && can(session, 'events.create') && (
+        {phase === 'finished' && canOn(event, 'events.create') && (
           <div className="event-top-primary">
             <DuplicateEvent event={event} primary />
           </div>
@@ -351,7 +350,6 @@ function Overview({
   onChange: (event: OrganisationEvent, tag: string) => void;
 }) {
   const { t } = useTranslation();
-  const session = useSession();
   const location = useLocation();
   const navigate = useNavigate();
   const [outcome] = useState(() => editOutcome(location.state));
@@ -362,8 +360,8 @@ function Overview({
   const now = useServerNow();
   const loadedAt = useLoadedAt(event);
   const phase = shownPhase(event, loadedAt, now);
-  const manages = can(session, 'events.manage');
-  const creates = can(session, 'events.create');
+  const manages = canOn(event, 'events.manage');
+  const creates = canOn(event, 'events.create');
   const wide = useWideWidth();
 
   useEffect(() => {

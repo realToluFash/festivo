@@ -39,6 +39,7 @@ const gala: OrganisationEvent = {
   phase: 'draft',
   concludedAt: null,
   createdAt: '2026-10-01T09:00:00Z',
+  permissions: [],
 };
 
 function refusal(

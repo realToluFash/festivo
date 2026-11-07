@@ -147,6 +147,42 @@ final class EventRolesTest extends ApiTestCase
     }
 
     #[Test]
+    public function theEventReadNamesWhatTheCallerHoldsOnIt(): void
+    {
+        $lead = $this->member('lead@ire.events', SeededRole::Member);
+        $viewer = $this->member('viewer@ire.events', SeededRole::Member);
+        $admin = $this->member('admin@ire.events', SeededRole::Admin);
+        self::onEvent($lead, $this->owambe, EventRole::Lead);
+        self::onEvent($viewer, $this->owambe, EventRole::CanView);
+        self::onEvent($viewer, $this->naming, EventRole::CanEdit);
+
+        $holds = function (User $who, string $eventId): array {
+            $this->as($who, 'GET', '/api/events/' . $eventId);
+            self::assertSame(200, $this->statusCode());
+
+            return Type\vec(Type\string())->coerce($this->last()['event']['permissions'] ?? null);
+        };
+
+        self::assertContains(Permission::EventsManage->value, $holds($lead, $this->owambe));
+        self::assertContains(Permission::PeopleManage->value, $holds($lead, $this->owambe));
+        self::assertNotContains(Permission::EventsCreate->value, $holds($lead, $this->owambe), 'a Lead starts no event');
+        self::assertNotContains(Permission::EventsManage->value, $holds($viewer, $this->owambe));
+        self::assertContains(Permission::EventsRead->value, $holds($viewer, $this->owambe));
+        self::assertContains(Permission::EventsManage->value, $holds($viewer, $this->naming), 'each event by its own role');
+        self::assertContains(Permission::EventsManage->value, $holds($admin, $this->owambe));
+        self::assertContains(Permission::EventsCreate->value, $holds($admin, $this->owambe));
+
+        $this->as($viewer, 'GET', $this->path('events'));
+        $listed = Type\vec(Type\shape(['name' => Type\string(), 'permissions' => Type\vec(Type\string())], true))->coerce($this->last()['events']);
+        $byName = [];
+        foreach ($listed as $event) {
+            $byName[$event['name']] = $event['permissions'];
+        }
+        self::assertNotContains(Permission::EventsManage->value, $byName['Owambe'], 'the list says the same');
+        self::assertContains(Permission::EventsManage->value, $byName['Naming']);
+    }
+
+    #[Test]
     public function aLeadAddsChangesAndRemovesAMember(): void
     {
         $lead = $this->member('lead@ire.events', SeededRole::Member);

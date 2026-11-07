@@ -416,6 +416,8 @@ export interface OrganisationEvent {
   /** The end, or when it was ended or called off; null until it is Finished. */
   concludedAt: string | null;
   createdAt: string;
+  /** What the caller may do on this event: a Member's follow their role on it, not the organisation's (sc-29915). */
+  permissions: string[];
 }
 
 /** As a list shows it: with its timeline's milestones, so the list's Next up is the timeline's (sc-3624). */
@@ -3185,9 +3187,11 @@ function asOrganisationEvent(raw: unknown): OrganisationEvent | null {
   const pausedAt = candidate.pausedAt;
   const phase = oneOf(candidate.phase, EVENT_PHASES);
   const concludedAt = candidate.concludedAt;
+  const permissions = stringList(candidate.permissions);
 
   if (
     status == null ||
+    permissions == null ||
     phase == null ||
     !isStringOrNull(concludedAt) ||
     !isStringOrNull(madeLiveAt) ||
@@ -3223,6 +3227,7 @@ function asOrganisationEvent(raw: unknown): OrganisationEvent | null {
     phase,
     concludedAt,
     createdAt: candidate.createdAt as string,
+    permissions,
   };
 }
 
