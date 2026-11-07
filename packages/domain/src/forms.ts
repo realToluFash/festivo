@@ -12,6 +12,11 @@ export function cleanCode(typed: string): string {
   return typed.replace(/\s/gu, '');
 }
 
+/** Only the digits of what was typed or pasted, at most a code's six. */
+export function codeDigits(typed: string): string {
+  return typed.replace(/\D/gu, '').slice(0, 6);
+}
+
 /** A verification code is six digits, checked after the spaces are taken out. */
 export function codeProblem(typed: string): 'blank' | 'short' | null {
   const code = cleanCode(typed);

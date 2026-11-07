@@ -241,6 +241,29 @@ describe('creating an account, for real', () => {
     expect(screen.queryByText('Register again with the right one')).toBeNull();
   });
 
+  it('keeps Register again with the right one under the resend line, going where Back goes (sc-29065)', async () => {
+    answering({
+      'POST /api/auth/register': () =>
+        json({ registration: 'the-handle', email: 'folake@ire.events' }, 202),
+      'GET /api/auth/register/resend': () => json({ cooldownSeconds: 0 }),
+    });
+
+    at('/register');
+    fillIn();
+    const again = await screen.findByRole('button', { name: 'Register again with the right one' });
+    expect(again.closest('p')?.textContent).toMatch(/^Not your address\?/);
+    expect(
+      screen.getByText('A new code replaces the last one.').compareDocumentPosition(again) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    fireEvent.click(again);
+
+    await screen.findByRole('heading', { level: 1, name: 'Create your account' });
+    expect(sessionStorage.getItem('soirely.registration')).toBeNull();
+    expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe('folake@ire.events');
+    expect((screen.getByLabelText('Password') as HTMLInputElement).value).toBe('');
+  });
+
   it('says a short password is short on submit, and sends nothing (sc-29065)', () => {
     const sent = answering({});
     at('/register');

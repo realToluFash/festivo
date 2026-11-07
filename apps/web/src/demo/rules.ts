@@ -111,10 +111,7 @@ export function passwordLine(password: string, blank: string): string | null {
     : `Use at least ${PASSWORD_MINIMUM_LENGTH} characters.`;
 }
 
-/** Only the digits of what was typed or pasted, at most a code's length. */
-export function codeDigits(typed: string): string {
-  return typed.replace(/\D/g, '').slice(0, CODE_LENGTH);
-}
+export { codeDigits } from '@soirely/domain';
 
 export function codeLine(code: string, from: string): string | null {
   if (code === '') return `Enter the ${CODE_LENGTH}-digit code from ${from}.`;
