@@ -91,7 +91,7 @@ export function TellDialog({
         </div>
         <div className="mg-tell-part">
           <label htmlFor={noteId} className="mg-tell-label">
-            {MW.addNote}
+            {MW.noteForGuests}
             <span className="mg-optional">{MW.optional}</span>
           </label>
           <textarea
