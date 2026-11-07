@@ -163,7 +163,7 @@ const NAMES: Record<string, readonly string[]> = {
     'Efua Mensah',
     'Yaw Mensah',
   ],
-  rowA: ['Ada Obi', 'Grace Mensah', 'Emeka Obi', 'Funmi Adeyemi'],
+  rowA: ['Priyanka Nair', 'Yuki Tanaka', 'Emeka Obi', 'Lars Johansson'],
   door: ['Grace Obi'],
 };
 

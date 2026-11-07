@@ -309,6 +309,30 @@ function moveAll(m: Seating, id: string, to: string): Seating {
     })),
     pop: null,
     lit: [to],
+    bar: { kind: 'white', words: say.movedAll(who.length, dest.name), undo: true },
+  };
+}
+
+function unseatOne(m: Seating, id: string, chair: number): Seating {
+  const who = itemOf(m, id)?.chairs[chair]?.who;
+  if (who == null) return m;
+  const out = unseatChairs({ ...m, undo: snapshot(m) }, id, (_, i) => i === chair);
+  return {
+    ...out,
+    chair: null,
+    sheet: m.layout === 'phone' ? null : m.sheet,
+    lit: [id],
+    bar: { kind: 'white', words: say.noSeatNow(who), undo: true },
+  };
+}
+
+function unseatAll(m: Seating, id: string): Seating {
+  const it = itemOf(m, id);
+  if (it == null || filled(it) === 0) return m;
+  return {
+    ...unseatChairs({ ...m, undo: snapshot(m) }, id, () => true),
+    lit: [id],
+    bar: { kind: 'white', words: say.emptyNow(it.name), undo: true },
   };
 }
 
@@ -574,6 +598,7 @@ function sectionSubmit(m: Seating): Seating {
   const f = m.sectionForm;
   const name = f.name.trim();
   if (name === '') return { ...m, sectionForm: { ...f, error: W.enterSectionName } };
+  if ([...name].length > 40) return { ...m, sectionForm: { ...f, error: W.sectionTooLong } };
   if (m.sections.some((s) => sameName(s.name, name)))
     return { ...m, sectionForm: { ...f, error: say.sectionTaken(name) } };
   const key = `sec-${m.sections.length}-${name}`;
@@ -591,6 +616,7 @@ function sectionApply(m: Seating): Seating {
   const key = m.sectionKey;
   if (key == null) return m;
   if (name === '') return { ...m, sectionForm: { ...f, error: W.enterSectionName } };
+  if ([...name].length > 40) return { ...m, sectionForm: { ...f, error: W.sectionTooLong } };
   if (m.sections.some((s) => s.key !== key && sameName(s.name, name)))
     return { ...m, sectionForm: { ...f, error: say.sectionTaken(name) } };
   return saving({
@@ -870,11 +896,11 @@ function act(m: Seating, a: Action): Seating {
         ? m
         : { ...m, items: m.undo.items, tray: m.undo.tray, undo: null, bar: null, lit: [] };
     case 'unseat':
-      return { ...unseatChairs(m, a.id, (_, i) => i === a.chair), chair: null };
+      return unseatOne(m, a.id, a.chair);
     case 'moveTo':
       return moveTo(m, a.id, a.chair, a.to);
     case 'unseatAll':
-      return unseatChairs(m, a.id, () => true);
+      return unseatAll(m, a.id);
     case 'moveAll':
       return moveAll(m, a.id, a.to);
     case 'sheet':

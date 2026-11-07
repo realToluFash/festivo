@@ -398,7 +398,6 @@ function SectionForm({ m, go }: { m: Seating; go: Go }) {
         value={f.name}
         error={f.error}
         focus={adding}
-        maxLength={40}
         onText={(name) => go({ type: 'sectionName', name })}
         onDone={() => (adding ? undefined : go({ type: 'sectionApply' }))}
         testID="seating.section.name"

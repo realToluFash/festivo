@@ -385,13 +385,6 @@ function tablet(state: SeatingState, b: Seating): Seating {
         zoom: at(0.5, 1590, 1020),
         save: 'saving',
       });
-    case 'several':
-      return {
-        ...three(1080),
-        several: ['t6', 't7', 't8'],
-        tip: { words: '60 cm down', at: { x: 810, y: 1080 } },
-        save: 'saving',
-      };
     case 'overlap':
       return chosen(moved(b, 't9', { x: 1440, rot: 15 }), 't9', {
         ghost: itemOf(b, 't9'),

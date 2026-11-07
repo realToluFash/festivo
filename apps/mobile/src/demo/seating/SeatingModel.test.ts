@@ -70,7 +70,7 @@ describe('the states', () => {
   });
 
   it('a state the app does not have opens the plan in use', () => {
-    for (const state of ['tabOrder', 'arrows', 'duplicateKey', 'screenReader'] as const)
+    for (const state of ['tabOrder', 'arrows', 'duplicateKey', 'screenReader', 'several'] as const)
       expect(startOf(state, 'landscape').items).toEqual(pad.items);
     expect(startOf('rect', 'phone').chosen).toBeNull();
     expect(startOf('refresh', 'landscape').refreshing).toBe(false);
@@ -105,6 +105,17 @@ describe('the sample agrees with Messaging B (142 invited, 96 coming)', () => {
       'Row A',
       'Interpreter',
     ]);
+  });
+
+  it('seats nobody twice, and nobody seated is also without a seat', () => {
+    for (const day of [false, true]) {
+      const m = day ? phone : pad;
+      const seated = m.items.flatMap((it) =>
+        it.chairs.flatMap((c) => (c.state === 'taken' && c.who != null ? [c.who] : [])),
+      );
+      expect(new Set(seated).size, day ? 'on the day' : 'planning').toBe(seated.length);
+      expect(seated.filter((who) => m.tray.some((p) => p.lead === who))).toEqual([]);
+    }
   });
 
   it('names each section by its colour and counts, and what has none', () => {
@@ -228,6 +239,19 @@ describe('seating a party', () => {
     expect(item(startOf('unusable', 'phone'), 't8').chairs[9]?.state).toBe('unusable');
   });
 
+  it('unseating and moving say so, each with Undo', () => {
+    const one = run(phone, { type: 'unseat', id: 't8', chair: 1 });
+    expect(one.bar).toMatchObject({ words: 'Moussa Diallo has no seat now.', undo: true });
+    expect(one.tray.some((p) => p.lead === 'Moussa Diallo')).toBe(true);
+    expect(run(one, { type: 'undo' }).items).toEqual(phone.items);
+    const empty = run(pad, { type: 'unseatAll', id: 't4' });
+    expect(empty.bar).toMatchObject({ words: 'Table 4 is empty now.', undo: true });
+    expect(trayCount(empty.tray)).toBe(20);
+    const moved = run(pad, { type: 'moveAll', id: 't4', to: 't10' });
+    expect(moved.bar).toMatchObject({ words: '8 guests moved to Table 10.', undo: true });
+    expect(run(moved, { type: 'undo' }).items).toEqual(pad.items);
+  });
+
   it('everyone seated empties the tray', () => {
     expect(startOf('everyoneSeated', 'landscape').tray).toEqual([]);
     expect(startOf('everyoneSeated', 'phone').tray).toEqual([]);
@@ -281,7 +305,7 @@ describe('a table’s fields apply as each is entered', () => {
       'This plan already has a row labelled A.',
     );
     expect(startOf('rowBelowSeated', 'landscape').fields.errors.Seats).toBe(
-      'Funmi Adeyemi is in seat 4. Move them first, or keep 4 seats.',
+      'Lars Johansson is in seat 4. Move them first, or keep 4 seats.',
     );
     expect(startOf('seatNameTaken', 'landscape').fields.errors.Name).toBe(
       'This plan already has a seat called By the door.',
@@ -326,6 +350,17 @@ describe('sections', () => {
       'Enter a name for the section.',
     );
     expect(startOf('sectionLimit', 'landscape').arrange).toBe('sectionLimit');
+  });
+
+  it('refuse a name over 40 characters rather than cutting it off', () => {
+    const long = 'The long table by the windows on the garden side';
+    const m = run(
+      startOf('sectionAdd', 'landscape'),
+      { type: 'sectionName', name: long },
+      { type: 'sectionAdd' },
+    );
+    expect(m.sectionForm.error).toBe('Use 40 characters or fewer.');
+    expect(m.sections).toHaveLength(3);
   });
 
   it('delete one, its tables staying with no section', () => {
