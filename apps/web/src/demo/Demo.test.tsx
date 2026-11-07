@@ -1484,6 +1484,22 @@ describe('Today at a desk (sc-29092)', () => {
     expect(screen.getByRole('button', { name: 'Today' }).getAttribute('aria-current')).toBe('page');
   });
 
+  it('opens the planning day with the party’s invitations not sent, from the demo home', async () => {
+    at('/demo');
+    await screen.findByRole('heading', { name: 'Design demo' });
+    expect(
+      screen
+        .getByRole('link', { name: /A planning day, invitations not sent/ })
+        .getAttribute('href'),
+    ).toBe('/demo/today?moment=plan&invites=none');
+
+    await today('plan&invites=none');
+
+    expect(screen.getByText('Invitations not sent')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Send, Send the invitations' })).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Chase, Chase 19 replies' })).toBeNull();
+  });
+
   it('says what a press opens, and ⌘K opens search', async () => {
     await today('plan');
 

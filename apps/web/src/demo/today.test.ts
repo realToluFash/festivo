@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { dueWords, momentOf, railAt, sayIn } from './today.ts';
+import { dueWords, INVITES_NOT_SENT, momentOf, railAt, repliesOf, sayIn } from './today.ts';
 
 const us = sayIn('en-US');
 const gb = sayIn('en-GB');
@@ -112,6 +112,36 @@ describe('the event day', () => {
     expect(day.events[0]?.ready).toEqual({ words: '87 of 99 arrived', percent: 87 });
     expect(day.now).toMatchObject({ arrived: 87, expected: 99 });
     expect(day.eyebrow).toBe('Friday, November 6');
+  });
+});
+
+describe('the planning day before the party’s invitations go out (?invites=none)', () => {
+  const notSent = momentOf('plan', us, { guests: INVITES_NOT_SENT });
+
+  it('reads Invitations not sent on the party, with no bar, and the others as before', () => {
+    expect(notSent.events.map(({ ready }) => ready)).toEqual([
+      { words: '96 coming · 82% replied', percent: 82 },
+      { words: '31 coming · 63% replied', percent: 63 },
+      { words: 'Invitations not sent', percent: 0 },
+      null,
+    ]);
+    expect(repliesOf('party', INVITES_NOT_SENT)).toEqual({
+      words: 'Invitations not sent',
+      percent: 0,
+    });
+  });
+
+  it('asks for the invitations, late, where the party sent them asks to chase replies', () => {
+    expect(notSent.needs?.[0]).toMatchObject({
+      title: 'Send the invitations',
+      due: '3 days late',
+      late: true,
+      action: 'Send',
+    });
+    expect(momentOf('plan', us).needs?.[0]).toMatchObject({
+      title: 'Chase 19 replies',
+      action: 'Chase',
+    });
   });
 });
 

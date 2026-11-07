@@ -1,5 +1,5 @@
 import { TODAY_IDS as IDS } from './events.ts';
-import { SAMPLE_GUESTS } from './guestCounts.ts';
+import { type Guests, SAMPLE_GUESTS } from './guestCounts.ts';
 
 export type EventKey = 'wed' | 'ireti' | 'party' | 'draft';
 export type MomentName = 'plan' | 'planNow' | 'day' | 'dayNow' | 'quiet' | 'first';
@@ -265,9 +265,17 @@ export function sharePercent(part: number, whole: number): number {
   return Math.min(99, Math.max(1, Math.round((part / whole) * 100)));
 }
 
+type GuestsOf = Readonly<Record<string, Guests>>;
+
+/** `?invites=none`: the planning day before the end-of-year party's invitations have gone out. */
+export const INVITES_NOT_SENT: GuestsOf = {
+  ...SAMPLE_GUESTS,
+  [IDS.party]: { invited: 0, coming: 0, replied: 0 },
+};
+
 /** sc-29881's line, from the guests Events' tiles count (sc-23284), so Today and Events agree. */
-export function repliesOf(key: EventKey): EventCard['ready'] {
-  const guests = SAMPLE_GUESTS[IDS[key]];
+export function repliesOf(key: EventKey, sample: GuestsOf = SAMPLE_GUESTS): EventCard['ready'] {
+  const guests = sample[IDS[key]];
 
   if (guests == null) return null;
   if (guests.invited === 0) return { words: 'Invitations not sent', percent: 0 };
@@ -277,22 +285,21 @@ export function repliesOf(key: EventKey): EventCard['ready'] {
   return { words: `${guests.coming} coming · ${percent}% replied`, percent };
 }
 
-function owedOf(key: EventKey): number {
-  const guests = SAMPLE_GUESTS[IDS[key]];
+function owedOf(key: EventKey, sample: GuestsOf = SAMPLE_GUESTS): number {
+  const guests = sample[IDS[key]];
 
   return guests == null ? 0 : guests.invited - guests.replied;
 }
 
-const READY: Partial<Record<MomentName, Partial<Record<EventKey, EventCard['ready']>>>> = {
-  plan: { wed: repliesOf('wed'), ireti: repliesOf('ireti'), party: repliesOf('party') },
-  day: {
-    // Day 2 of 3, as Guests A's door reads it then.
-    wed: { words: '87 of 99 arrived', percent: 87 },
-    ireti: repliesOf('ireti'),
-    party: repliesOf('party'),
-  },
-  quiet: { party: repliesOf('party') },
+/** The events whose line each moment draws. */
+const READY: Partial<Record<MomentName, readonly EventKey[]>> = {
+  plan: ['wed', 'ireti', 'party'],
+  day: ['wed', 'ireti', 'party'],
+  quiet: ['party'],
 };
+
+/** The wedding on day 2 of 3, as Guests A's door reads it then. */
+const DAY_TWO = { words: '87 of 99 arrived', percent: 87 };
 
 const RAIL = [
   ['14:00', 'Ceremony'],
@@ -330,7 +337,13 @@ function eventDates(event: SampleEvent, say: Say): string {
     : `${say.day(event.first)} – ${say.day(event.last)}`;
 }
 
-function card(key: EventKey, today: string, moment: MomentName, say: Say): EventCard {
+function card(
+  key: EventKey,
+  today: string,
+  moment: MomentName,
+  say: Say,
+  guests: GuestsOf,
+): EventCard {
   const event = EVENTS[key];
   const until = daysFrom(today, event.first);
   const live = until <= 0 && daysFrom(today, event.last) >= 0;
@@ -350,12 +363,17 @@ function card(key: EventKey, today: string, moment: MomentName, say: Say): Event
     live,
     draft: event.draft,
     stage: !event.draft && !live && until <= 7 ? 'Final week' : null,
-    ready: READY[moment]?.[key] ?? null,
+    ready:
+      READY[moment]?.includes(key) !== true
+        ? null
+        : moment === 'day' && key === 'wed'
+          ? DAY_TWO
+          : repliesOf(key, guests),
   };
 }
 
 /** Live events and the ones still to come, soonest first, then drafts. */
-function cards(today: string, moment: MomentName, say: Say): EventCard[] {
+function cards(today: string, moment: MomentName, say: Say, guests: GuestsOf): EventCard[] {
   return (Object.keys(EVENTS) as EventKey[])
     .filter((key) => daysFrom(today, EVENTS[key].last) >= 0)
     .sort(
@@ -363,7 +381,7 @@ function cards(today: string, moment: MomentName, say: Say): EventCard[] {
         Number(EVENTS[a].draft) - Number(EVENTS[b].draft) ||
         EVENTS[a].first.localeCompare(EVENTS[b].first),
     )
-    .map((key) => card(key, today, moment, say));
+    .map((key) => card(key, today, moment, say, guests));
 }
 
 /** One bar for each event on in the week, with its other days' milestones as dots. */
@@ -420,7 +438,7 @@ const TODAY: Record<MomentName, { date: string; time: string }> = {
   first: { date: '2026-11-03', time: '09:41' },
 };
 
-function needs(name: MomentName, today: string, say: Say): Need[] | null {
+function needs(name: MomentName, today: string, say: Say, guests: GuestsOf): Need[] | null {
   const row = (event: EventKey, title: string, due: string, action: string): Need => {
     const { words, late } = dueWords(today, due, say);
 
@@ -429,12 +447,14 @@ function needs(name: MomentName, today: string, say: Say): Need[] | null {
 
   if (name === 'plan')
     return [
-      row('party', `Chase ${owedOf('party')} replies`, '2026-10-31', 'Chase'),
+      guests[IDS.party]?.invited === 0
+        ? row('party', 'Send the invitations', '2026-10-31', 'Send')
+        : row('party', `Chase ${owedOf('party', guests)} replies`, '2026-10-31', 'Chase'),
       row('wed', 'Final numbers to the caterer', '2026-11-04', 'Review'),
       row('wed', 'Seat the last 12 guests', '2026-11-05', 'Seat'),
       {
         event: 'ireti',
-        title: `Chase ${owedOf('ireti')} replies`,
+        title: `Chase ${owedOf('ireti', guests)} replies`,
         due: `Replies close ${say.day('2026-11-06')}`,
         late: false,
         action: 'Chase',
@@ -487,13 +507,18 @@ function now(today: string, time: string, say: Say): Now {
   };
 }
 
-export function momentOf(name: MomentName, say: Say): Moment {
+/** `guests` gives the events other guests, as `?invites=none` does. */
+export function momentOf(
+  name: MomentName,
+  say: Say,
+  { guests = SAMPLE_GUESTS }: { guests?: GuestsOf | undefined } = {},
+): Moment {
   const { date: today, time } = TODAY[name];
   const kind = name === 'planNow' ? 'plan' : name === 'dayNow' ? 'day' : (name as Moment['kind']);
   const full = name !== 'planNow' && name !== 'dayNow';
   const agenda = name === 'first' ? [] : AGENDA[name];
   const { days, bars } = week(today, agenda, say);
-  const waiting = needs(name, today, say);
+  const waiting = needs(name, today, say, guests);
   const wedding = EVENTS.wed.first;
   const party = EVENTS.party;
 
@@ -538,7 +563,7 @@ export function momentOf(name: MomentName, say: Say): Moment {
             when: `${say.day(party.first)} · ${howFar(today, party.first)}`,
           }
         : null,
-    events: name === 'first' ? [] : cards(today, name, say),
+    events: name === 'first' ? [] : cards(today, name, say, guests),
     now: kind === 'day' ? now(today, time, say) : null,
   };
 }

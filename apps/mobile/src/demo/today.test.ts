@@ -3,7 +3,15 @@ import { describe, expect, it } from 'vitest';
 
 import en from '../i18n/locales/en.json';
 import { ARRIVED_AT } from './today/arrived.ts';
-import { dueWords, momentOf, railAt, repliesOf, sayIn, sharePercent } from './today.ts';
+import {
+  dueWords,
+  INVITES_NOT_SENT,
+  momentOf,
+  railAt,
+  repliesOf,
+  sayIn,
+  sharePercent,
+} from './today.ts';
 
 const i18n = createInstance();
 void i18n.init({
@@ -108,7 +116,7 @@ describe('the event day', () => {
   });
 
   it('draws the built Now on day 1 for the door’s states, with the wedding’s days still to come', () => {
-    const door = momentOf('dayNow', us, t, ARRIVED_AT.live);
+    const door = momentOf('dayNow', us, t, { at: ARRIVED_AT.live });
 
     expect(door.time).toBe('16:05');
     expect(door.now?.live).toBe('Day 1 of 3 · The Landmark, London');
@@ -143,6 +151,37 @@ describe('each event’s replies line, from the guests Events counts (sc-23284)'
       1, 99, 100,
     ]);
     expect([sharePercent(0, 152), sharePercent(117, 142)]).toEqual([0, 82]);
+  });
+});
+
+describe('the planning day before the party’s invitations go out (?invites=none)', () => {
+  const notSent = momentOf('plan', us, t, { guests: INVITES_NOT_SENT });
+
+  it('reads Invitations not sent on the party, with no bar, and the others as before', () => {
+    expect(notSent.events.map(({ ready }) => ready)).toEqual([
+      { words: '96 coming · 82% replied', percent: 82 },
+      { words: '31 coming · 63% replied', percent: 63 },
+      { words: 'Invitations not sent', percent: 0 },
+      null,
+    ]);
+    expect(repliesOf('party', INVITES_NOT_SENT)).toEqual({
+      words: 'Invitations not sent',
+      percent: 0,
+    });
+  });
+
+  it('asks for the invitations, late, where the party sent them asks to chase replies', () => {
+    expect(notSent.needs?.[0]).toMatchObject({
+      title: 'Send the invitations',
+      due: '3 days late',
+      late: true,
+      action: 'Send',
+    });
+    expect(notSent.lead).toBe('4 things need you.');
+    expect(momentOf('plan', us, t).needs?.[0]).toMatchObject({
+      title: 'Chase 19 replies',
+      action: 'Chase',
+    });
   });
 });
 

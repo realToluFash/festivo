@@ -13,7 +13,7 @@ import { createStateOf } from '../../src/demo/createOrg/CreateWalk.ts';
 import { NoOrganisation } from '../../src/demo/createOrg/NoOrganisation.tsx';
 import { OrgSwitcherProvider, useCurrentPlace } from '../../src/demo/OrgSwitcher.tsx';
 import { switcherStateOf } from '../../src/demo/OrgSwitcherModel.ts';
-import { MOMENTS, momentOf, sayIn } from '../../src/demo/today.ts';
+import { INVITES_NOT_SENT, MOMENTS, momentOf, sayIn } from '../../src/demo/today.ts';
 import { ArrivedTodayScreen } from '../../src/demo/today/ArrivedToday.tsx';
 import {
   ARRIVED_AT,
@@ -86,6 +86,7 @@ export default function DemoTodayScreen() {
     now?: string;
     arrived?: string;
     numbers?: string;
+    invites?: string;
   }>();
   const place = useCurrentPlace();
   // An organisation made in the walk has no events yet.
@@ -96,9 +97,10 @@ export default function DemoTodayScreen() {
   const arrivedState = isArrivedState(params.arrived) ? params.arrived : null;
   // Nobody arrived and arrivals coming in are day 1, at Guests A's door; the rest are day 2.
   const at = name === 'dayNow' && arrivedState != null ? ARRIVED_AT[arrivedState] : undefined;
+  const guests = name === 'plan' && params.invites === 'none' ? INVITES_NOT_SENT : undefined;
   const moment = useMemo(
-    () => momentOf(name, say, i18n.getFixedT('en'), at),
-    [name, say, i18n, at],
+    () => momentOf(name, say, i18n.getFixedT('en'), { at, guests }),
+    [name, say, i18n, at, guests],
   );
   const numbers = useMemo(() => numbersIn(params.numbers), [params.numbers]);
   const live = useLive(arrivedState === 'live');

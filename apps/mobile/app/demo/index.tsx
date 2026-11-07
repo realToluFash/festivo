@@ -22,6 +22,11 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
     boards: [
       { title: 'A planning day', what: 'Four things need you', href: '/demo/today' },
       {
+        title: 'A planning day · invitations not sent',
+        what: 'The party with nobody invited, Send late',
+        href: '/demo/today?moment=plan&invites=none',
+      },
+      {
         title: 'A planning day · built now',
         what: 'Only what the events’ dates can say',
         href: '/demo/today?moment=planNow',
