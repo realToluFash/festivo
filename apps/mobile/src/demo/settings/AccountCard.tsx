@@ -1,4 +1,4 @@
-import { initials, type ZoneRow, zoneLabel } from '@soirely/domain';
+import { type ZoneRow, zoneLabel } from '@soirely/domain';
 import type { Ref } from 'react';
 import { StyleSheet, View, type ViewInstance } from 'react-native';
 
@@ -45,7 +45,7 @@ export function YouCard({
   return (
     <SummaryCard size={wide ? 'wide' : 'page'} height={200} step={step} testID="account.card">
       <View style={styles.you}>
-        <CardFace initials={initials(name)} side={face} />
+        <CardFace name={name} side={face} />
         <View style={styles.words}>
           <Text
             ref={nameRef}
