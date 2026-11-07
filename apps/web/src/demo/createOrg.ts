@@ -20,6 +20,7 @@ export const CREATE_STATES = [
   'country',
   'country-list',
   'country-search',
+  'country-nomatch',
   'country-picked',
   'country-none',
   'back-country',
@@ -125,6 +126,7 @@ export const CREATE_WORDS = {
   discard: 'Discard',
   keepEditing: 'Keep editing',
   stepOf: (step: Step) => `Step ${step} of 3`,
+  noMatch: (text: string) => `No country matches “${text}”.`,
   defaults: (email: string) =>
     `The currency follows the country, the time zone comes from this device, and the contact address is your primary email, ${email}. You can change them in Settings > General.`,
   limitedBody: (time: string) => `Try again at ${time}.`,
@@ -272,6 +274,8 @@ export function walkOf(state: CreateState): Walk | null {
       return { ...named, step: 2, landing: 'option', inList: true };
     case 'country-search':
       return { ...named, step: 2, query: 'bra', landing: 'search' };
+    case 'country-nomatch':
+      return { ...named, step: 2, query: 'zzz', landing: 'search' };
     case 'country-picked':
       return { ...named, step: 2, query: 'bra', country: 'BR', landing: 'option', inList: true };
     case 'country-none':
@@ -339,6 +343,7 @@ export const CREATE_PAGES: readonly { name: string; states: readonly DemoLink[] 
       createLink('country', 'The device’s Portugal'),
       createLink('country-list', 'The list at Portugal'),
       createLink('country-search', 'Searching, “bra”'),
+      createLink('country-nomatch', 'Searching, “zzz”, nothing matches'),
       createLink('country-picked', 'Brazil picked from the search'),
       createLink('country-none', 'No device country, Continue pressed'),
       createLink('back-country', 'Back from step 3, Brazil kept'),

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   CREATE_PAGES,
+  CREATE_WORDS,
   CREATE_STATES,
   LONG_NAME,
   NEW_ORG,
@@ -105,6 +106,8 @@ describe('the search', () => {
   it('keeps the whole list for nothing typed, and finds nothing for a miss', () => {
     expect(narrowed(countries, '   ')).toHaveLength(countries.length);
     expect(narrowed(countries, 'Belém')).toEqual([]);
+    expect(narrowed(countries, 'zzz')).toEqual([]);
+    expect(CREATE_WORDS.noMatch('zzz')).toBe('No country matches “zzz”.');
   });
 });
 
@@ -178,6 +181,7 @@ describe('each state’s walk', () => {
       nameRefused: "Enter the organisation's name.",
     });
     expect(walkOf('country-search')).toMatchObject({ step: 2, query: 'bra', country: 'PT' });
+    expect(walkOf('country-nomatch')).toMatchObject({ step: 2, query: 'zzz', landing: 'search' });
     expect(walkOf('country-picked')).toMatchObject({ country: 'BR', query: 'bra' });
     expect(walkOf('back-country')).toMatchObject({ country: 'BR', query: '', inList: true });
     expect(walkOf('creating')).toMatchObject({ step: 3, creating: true, landing: 'dialog' });

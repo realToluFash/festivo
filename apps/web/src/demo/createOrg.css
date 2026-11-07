@@ -177,6 +177,13 @@
   max-height: calc(4 * var(--cwRow) + 132px);
 }
 
+.cw-nomatch {
+  margin: 0;
+  padding: 0 var(--spaceHair);
+  color: var(--colorInkSecondary);
+  font: 500 15px/1.45 var(--fontFamily);
+}
+
 .cw-group {
   display: flex;
   flex-direction: column;

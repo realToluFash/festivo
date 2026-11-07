@@ -78,6 +78,30 @@ describe('creating an organisation in B · A short walk at a desk (sc-30335)', (
     expect(brazil.getAttribute('aria-selected')).toBe('true');
   });
 
+  it(
+    'says when no country matches, and still refuses Continue with none picked',
+    SLOW,
+    async () => {
+      open('/demo/events?create=country-nomatch');
+      await walk();
+
+      expect(screen.getByRole('status').textContent).toBe('No country matches “zzz”.');
+      expect(screen.queryByRole('listbox')).toBeNull();
+      cleanup();
+
+      open('/demo/events?create=country-none');
+      const dialog = await walk();
+      const search = screen.getByRole('searchbox', { name: 'Search countries' });
+      fireEvent.change(search, { target: { value: 'zzz' } });
+      expect(screen.getByRole('status').textContent).toBe('No country matches “zzz”.');
+
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Continue' }));
+      expect(screen.getByRole('alert').textContent).toBe('Choose a country.');
+      expect(document.activeElement).toBe(search);
+      expect(screen.getByRole('heading', { level: 1, name: 'Where is it based?' })).toBeDefined();
+    },
+  );
+
   it('names Antarctica’s currency as none yet', SLOW, async () => {
     open('/demo/events?create=country');
     await walk();

@@ -509,6 +509,7 @@ function CountryPicker({
           rows.findIndex((row) => row.key === pickedAt?.key),
         );
   const inList = walk.inList;
+  const nothing = searching && rows.length === 0;
 
   useLayoutEffect(() => {
     const box = list.current;
@@ -591,7 +592,7 @@ function CountryPicker({
           placeholder={W.search}
           aria-label={W.search}
           aria-describedby={refusalId}
-          aria-controls={`${id}-list`}
+          aria-controls={nothing ? undefined : `${id}-list`}
           autoComplete="off"
           spellCheck={false}
           enterKeyHint="search"
@@ -652,6 +653,9 @@ function CountryPicker({
           )}
         </div>
       )}
+      <p className={nothing ? 'cw-nomatch' : 'visually-hidden'} role="status">
+        {nothing ? W.noMatch(walk.query.trim()) : ''}
+      </p>
     </>
   );
 }
