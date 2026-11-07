@@ -14,10 +14,10 @@ import {
   Row,
   RowList,
   Section,
-  StatusMark,
+  ShapeMark,
   type StepProps,
   SummaryCard,
-} from './Summary.tsx';
+} from '../../components/Summary.tsx';
 
 /** Where a row's hairline starts: past its 28 pt icon and the gap beside it. */
 export const LEAD_INSET = 40;
@@ -67,7 +67,7 @@ export function YouCard({
       {line?.kind === 'done' && (
         <View style={styles.done} testID="account.said">
           <View style={styles.mark}>
-            <StatusMark kind="yes" side={16} ink={tokens.colorInkOnDark} />
+            <ShapeMark kind="yes" side={16} ink={tokens.colorInkOnDark} />
           </View>
           <View style={styles.grow}>
             <OnCard text={line.text} strong />

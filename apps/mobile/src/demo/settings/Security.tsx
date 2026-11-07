@@ -41,8 +41,9 @@ import {
 } from './SecuritySample.ts';
 import { TwoFactorScreen, TwoFactorSection } from './SecurityTwoFactor.tsx';
 import { WaysSection } from './SecurityWays.tsx';
-import { Ask, bringIntoView, SummaryPage, useRowClear } from './Summary.tsx';
 import { useShell } from '../../components/settingsShell.ts';
+import { SummaryPage } from './SummaryPage.tsx';
+import { Ask, bringIntoView, useRowClear } from '../../components/Summary.tsx';
 
 export { SECURITY_STATES } from './SecurityModel.ts';
 

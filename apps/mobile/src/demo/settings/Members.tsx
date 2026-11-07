@@ -30,8 +30,9 @@ import {
   turnedDown,
 } from './MembersSample.ts';
 import { memberLooking } from './sample.ts';
-import { FailedBlock, LoadingBlock, SummaryColumn, SummaryPage } from './Summary.tsx';
 import { useShell } from '../../components/settingsShell.ts';
+import { SummaryPage } from './SummaryPage.tsx';
+import { FailedBlock, LoadingBlock, SummaryColumn } from '../../components/Summary.tsx';
 
 const PLAIN: PersonOpening = { step: 'resting', picked: null };
 

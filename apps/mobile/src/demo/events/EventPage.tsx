@@ -9,7 +9,6 @@ import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { LineIcon } from '../settings/AccountCard.tsx';
 import { SwitchTrack } from '../settings/NotificationsSwitch.tsx';
-import { Row, RowList, Section, TextAction } from '../settings/Summary.tsx';
 import { EventCard, EventThumb } from './EventCard.tsx';
 import { AcPill, AlertLine, EditScreen } from './EventEdits.tsx';
 import { AreaPage, EventFrame } from './EventFrame.tsx';
@@ -44,6 +43,7 @@ import {
 } from './EventsSample.ts';
 import { W, say } from './EventsWords.ts';
 import { useShell } from '../../components/settingsShell.ts';
+import { Row, RowList, Section, TextAction } from '../../components/Summary.tsx';
 
 type Mute = 'ok' | 'notLoaded' | 'notSaved';
 

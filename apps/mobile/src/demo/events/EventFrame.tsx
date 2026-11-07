@@ -26,13 +26,13 @@ import { TodayShellProvider } from '../../components/todayShell.ts';
 import { demoShell } from '../demoShell.ts';
 import { LineIcon } from '../settings/AccountCard.tsx';
 import { Bell, Fade, Landscape } from '../settings/Frame.tsx';
-import { PageToast, Row, RowList } from '../settings/Summary.tsx';
 import { EventThumb } from './EventCard.tsx';
 import { type Shown, cardTags, rowLine } from './EventsModel.ts';
 import { AREAS, type AreaKey, MORE_AREAS, PHONE_TABS } from './EventsSample.ts';
 import { AREA_WORDS, COMING, W } from './EventsWords.ts';
 import { useShell } from '../../components/settingsShell.ts';
 import { Back } from '../../components/SettingsParts.tsx';
+import { PageToast, Row, RowList } from '../../components/Summary.tsx';
 
 export const AREA_GLYPH: Record<AreaKey, GlyphName> = {
   overview: 'overview',

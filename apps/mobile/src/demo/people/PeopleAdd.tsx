@@ -9,14 +9,6 @@ import { tokens } from '../../theme/tokens.ts';
 import { Glyph } from '../../components/Glyph.tsx';
 import { CheckMark } from '../settings/SecurityTwoFactor.tsx';
 import {
-  type AskProps,
-  FocusedScreen,
-  type Layer,
-  Row,
-  RowList,
-  SectionHead,
-} from '../settings/Summary.tsx';
-import {
   addView,
   type EventRole,
   FIRST_ROLE,
@@ -32,6 +24,14 @@ import {
 import { DoneAction, EventRoles } from './PeopleRole.tsx';
 import { useShell } from '../../components/settingsShell.ts';
 import { Avatar } from '../../components/SettingsParts.tsx';
+import {
+  type AskProps,
+  FocusedScreen,
+  type Layer,
+  Row,
+  RowList,
+  SectionHead,
+} from '../../components/Summary.tsx';
 
 const THEIR_ROLE = 'Their role';
 const TICKED_INSET = 24 + tokens.spaceLg + 40 + tokens.spaceLg;

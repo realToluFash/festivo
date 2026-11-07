@@ -21,6 +21,8 @@ import {
   statusWord,
   whenWord,
 } from './MembersSample.ts';
+import { useShell } from '../../components/settingsShell.ts';
+import { SummaryPage } from './SummaryPage.tsx';
 import {
   Ask,
   CardFace,
@@ -32,10 +34,8 @@ import {
   RowList,
   Section,
   SummaryCard,
-  SummaryPage,
   TextAction,
-} from './Summary.tsx';
-import { useShell } from '../../components/settingsShell.ts';
+} from '../../components/Summary.tsx';
 
 export interface PersonOpening {
   step: PersonStep;

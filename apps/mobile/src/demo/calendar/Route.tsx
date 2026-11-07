@@ -12,10 +12,10 @@ import { switcherStateOf } from '../OrgSwitcherModel.ts';
 import { useCoverStatusBar } from '../Welcome.tsx';
 import { layoutOf, settingsHref } from '../settings/Route.tsx';
 import { lookingAs } from '../settings/sample.ts';
-import { PageToast } from '../settings/Summary.tsx';
 import { calendarStateOf } from './CalendarModel.ts';
 import { CalendarPage } from './CalendarPage.tsx';
 import { type Shell, ShellContext, type ShellSection } from '../../components/settingsShell.ts';
+import { PageToast } from '../../components/Summary.tsx';
 
 /** The Calendar on sample data, in the tabs' shell: Today, Events and Settings a tab away. */
 function CalendarShell({

@@ -22,8 +22,8 @@ import {
 import { OwnershipSection } from './OrganisationOwnership.tsx';
 import { DETAILS_WORDS } from './OrganisationWords.ts';
 import { VIEWER_ORGANISATION } from './sample.ts';
-import { SummaryPage } from './Summary.tsx';
 import { useShell } from '../../components/settingsShell.ts';
+import { SummaryPage } from './SummaryPage.tsx';
 
 /** Settings › Organisation in B, summary first, on sample data. A member reads the details and may only leave. */
 export function OrganisationSection() {

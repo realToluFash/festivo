@@ -42,15 +42,6 @@ import { openEvent } from '../events/EventsList.tsx';
 import { CLOCKS, EVENT_OF_KEY, READER_ZONE } from '../events/EventsSample.ts';
 import { W } from '../events/EventsWords.ts';
 import { Bell, Fade, Landscape, OrgPill, PortraitTop } from '../settings/Frame.tsx';
-import {
-  type Anchor,
-  anchorUnder,
-  CardSays,
-  Row,
-  RowList,
-  StepButton,
-  SummaryCard,
-} from '../settings/Summary.tsx';
 import { Agenda } from './CalendarAgenda.tsx';
 import {
   MonthName,
@@ -97,6 +88,15 @@ import {
 import { CW, say } from './CalendarWords.ts';
 import { useShell } from '../../components/settingsShell.ts';
 import { Pill } from '../../components/SettingsParts.tsx';
+import {
+  type Anchor,
+  anchorUnder,
+  CardSays,
+  Row,
+  RowList,
+  StepButton,
+  SummaryCard,
+} from '../../components/Summary.tsx';
 
 /** The demo keeps its own place, so it never moves the real Calendar's. */
 const KEPT = 'soirely.demo.calendar';

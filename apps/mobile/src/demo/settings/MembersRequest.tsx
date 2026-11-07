@@ -14,6 +14,7 @@ import {
   type Person,
   ROLE_MEANS,
 } from './MembersSample.ts';
+import { Avatar } from '../../components/SettingsParts.tsx';
 import {
   type AskProps,
   FocusedScreen,
@@ -23,8 +24,7 @@ import {
   type RowTag,
   Section,
   TextAction,
-} from './Summary.tsx';
-import { Avatar } from '../../components/SettingsParts.tsx';
+} from '../../components/Summary.tsx';
 
 const NOW_TAG: RowTag = { kind: 'now', word: 'Now' };
 

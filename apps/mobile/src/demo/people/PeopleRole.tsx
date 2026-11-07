@@ -9,14 +9,6 @@ import { tokens } from '../../theme/tokens.ts';
 import { Glyph } from '../../components/Glyph.tsx';
 import { RoleChoices } from '../settings/MembersRequest.tsx';
 import {
-  Ask,
-  type AskProps,
-  FocusedScreen,
-  Line,
-  type RowTag,
-  TextAction,
-} from '../settings/Summary.tsx';
-import {
   EVENT_ROLES,
   type EventRole,
   firstName,
@@ -35,6 +27,14 @@ import {
 } from './PeopleSample.ts';
 import { useShell } from '../../components/settingsShell.ts';
 import { Avatar } from '../../components/SettingsParts.tsx';
+import {
+  Ask,
+  type AskProps,
+  FocusedScreen,
+  Line,
+  type RowTag,
+  TextAction,
+} from '../../components/Summary.tsx';
 
 type Opener = RefObject<ScreenReaderTarget | null>;
 type Sending = 'idle' | 'saving' | 'saved';

@@ -8,7 +8,6 @@ import { glide } from '../../motion.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { Glyph } from '../../components/Glyph.tsx';
 import { useLoad } from '../settings/MembersLoading.tsx';
-import { FailedBlock, Line, Row, RowList, SectionHead } from '../settings/Summary.tsx';
 import { AddScreen } from './PeopleAdd.tsx';
 import { PeopleLoading, PeoplePage } from './PeopleFrame.tsx';
 import { Face, RoleSheet } from './PeopleRole.tsx';
@@ -38,6 +37,7 @@ import {
   withRole,
 } from './PeopleSample.ts';
 import { useShell } from '../../components/settingsShell.ts';
+import { FailedBlock, Line, Row, RowList, SectionHead } from '../../components/Summary.tsx';
 
 const LIT_MS = 2000;
 const ROW_INSET = 40 + tokens.spaceLg;

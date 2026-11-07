@@ -6,7 +6,6 @@ import { tokens } from '../../theme/tokens.ts';
 import { Confetti, type Piece } from '../../components/Cover.tsx';
 import { EventMesh, eventColour } from '../../components/EventMesh.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
-import { CardSays, GlassTag, OnCard, StepButton, SummaryCard } from '../settings/Summary.tsx';
 import {
   type CardStep,
   type PhaseMark,
@@ -19,6 +18,7 @@ import {
 } from './EventsModel.ts';
 import { W } from './EventsWords.ts';
 import { useShell } from '../../components/settingsShell.ts';
+import { CardSays, GlassTag, OnCard, StepButton, SummaryCard } from '../../components/Summary.tsx';
 
 type Layout = ReturnType<typeof useShell>['layout'];
 

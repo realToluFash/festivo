@@ -659,7 +659,11 @@
     "calendar": "Calendrier",
     "settings": "Paramètres",
     "organisation": "Organisation",
-    "backTo": "Back to {{place}}"
+    "backTo": "Back to {{place}}",
+    "cancel": "Cancel",
+    "back": "Back",
+    "closeMenu": "Close the menu",
+    "tryAgain": "Try again"
   },
   "eventNav": {
     "overview": "Aperçu",

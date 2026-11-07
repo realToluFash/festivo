@@ -24,8 +24,9 @@ import {
   WORDS,
 } from './NotificationsModel.ts';
 import { KindsSection } from './NotificationsRows.tsx';
-import { FailedBlock, LoadingBlock, SummaryPage } from './Summary.tsx';
 import { useShell } from '../../components/settingsShell.ts';
+import { SummaryPage } from './SummaryPage.tsx';
+import { FailedBlock, LoadingBlock } from '../../components/Summary.tsx';
 
 /** Settings › Notification settings in B, summary first, on sample settings that never leave the device. */
 export function NotificationsSection() {

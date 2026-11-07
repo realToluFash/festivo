@@ -21,8 +21,9 @@ import {
   WORDS,
 } from './PersonalisationModel.ts';
 import { SchemeCard } from './PersonalisationParts.tsx';
-import { FailedBlock, SummaryPage } from './Summary.tsx';
 import { useShell } from '../../components/settingsShell.ts';
+import { SummaryPage } from './SummaryPage.tsx';
+import { FailedBlock } from '../../components/Summary.tsx';
 
 /** Settings › Personalisation in A · Swatches, on a sample account the demo never writes to. */
 export function PersonalisationSection() {

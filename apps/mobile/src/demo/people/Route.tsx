@@ -11,9 +11,9 @@ import { OrgSwitcherProvider } from '../OrgSwitcher.tsx';
 import { useCoverStatusBar } from '../Welcome.tsx';
 import { layoutOf, settingsHref } from '../settings/Route.tsx';
 import { lookingAs } from '../settings/sample.ts';
-import { PageToast } from '../settings/Summary.tsx';
 import { PeopleSection } from './People.tsx';
 import { type Shell, ShellContext, type ShellSection } from '../../components/settingsShell.ts';
+import { PageToast } from '../../components/Summary.tsx';
 
 /** People on an event, drawn with no event around it: Settings' kit, with Today and Settings a tab away. */
 export function PeopleRoute() {
