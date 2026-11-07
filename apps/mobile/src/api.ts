@@ -17,6 +17,7 @@ import { getCalendars } from 'expo-localization';
 import { router } from 'expo-router';
 
 import { appAgent } from './appAgent.ts';
+import { heardFrom, readsMe } from './colourScheme.ts';
 import { config } from './config.ts';
 import { currentLocale } from './i18n/index.ts';
 import { installId } from './installId.ts';
@@ -52,7 +53,7 @@ export const api = new ApiClient({
     const answer = fetch(input, init);
     connection.observe(answer, init);
 
-    return answer;
+    return readsMe(input, init) ? answer.then(heardFrom) : answer;
   },
 });
 

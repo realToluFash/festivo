@@ -495,7 +495,8 @@
     "title": "Su cuenta",
     "sectionAccount": "Cuenta",
     "sectionSecurity": "Seguridad",
-    "sectionNotifications": "Notificaciones"
+    "sectionNotifications": "Notificaciones",
+    "sectionPersonalisation": "Personalisation"
   },
   "devices": {
     "title": "Dispositivos con sesión abierta",
@@ -2043,6 +2044,43 @@
       "event_changes": "Cuando otra persona cambia si se celebra, cuándo o dónde un evento en el que usted participa.",
       "money": "Pagos pendientes, uso al {{low}} y al {{high}}, pagos fallidos y facturas.",
       "account_security": "Inicios de sesión, su contraseña, la verificación en dos pasos, la propiedad y los accesos. El correo electrónico no se puede desactivar."
+    }
+  },
+  "personalisation": {
+    "title": "Personalisation",
+    "says": "You see Soirely in {{name}}",
+    "never": "Soirely’s own colours, until you choose others.",
+    "chosen": "Your choice. {{own}} is Soirely’s own.",
+    "saved": "Saved. Every page is in your colours now.",
+    "choose": "Choose colours",
+    "follow": "Your colours follow you on every device you sign in on. Only you see them.",
+    "keeps": "Event covers, emails, messages and guests’ pages keep their own colours.",
+    "dialog": "Colours",
+    "lead": "Pick the colours Soirely shows you.",
+    "inUse": "In use now. Pick another to see it here.",
+    "notYet": "Not saved yet. Save puts {{name}} on every page.",
+    "failed": "{{picked}} was not saved. Your colours stay {{kept}}.",
+    "offline": "{{picked}} was not saved because you are offline. Your colours stay {{kept}}.",
+    "save": "Save",
+    "cancel": "Cancel",
+    "saving": "Saving…",
+    "tryAgain": "Try again",
+    "current": "Current",
+    "card": "Your colours: {{name}}",
+    "preview": "Preview: {{name}}",
+    "swatchCurrent": "{{name}}, current",
+    "couldNotLoad": "Your colours did not load.",
+    "check": "Check your connection and try again.",
+    "loading": "Loading…",
+    "scheme": {
+      "violet": "Violet",
+      "cobalt": "Cobalt",
+      "garden": "Garden",
+      "citrus": "Citrus",
+      "berry": "Berry",
+      "blacktie": "Black tie",
+      "sorbet": "Sorbet",
+      "terracotta": "Terracotta"
     }
   },
   "timeline": {

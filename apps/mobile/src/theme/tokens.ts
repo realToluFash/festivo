@@ -2010,7 +2010,13 @@ export function withScheme(name: string | undefined): Tokens {
 
 export const defaultScheme: Scheme = 'violet';
 
-/** Expo writes EXPO_PUBLIC_SCHEME in at build time; unset or empty, a build draws the default. */
-export const tokens: Tokens = withScheme(process.env.EXPO_PUBLIC_SCHEME || defaultScheme);
+declare global {
+  var soirelyDeviceScheme: string | null | undefined;
+}
+
+/** The device's scheme, set by src/theme/launchScheme.ts before anything reads the tokens; then EXPO_PUBLIC_SCHEME, written in at build time; then the default. */
+export const schemeAtLaunch: string = globalThis.soirelyDeviceScheme || process.env.EXPO_PUBLIC_SCHEME || defaultScheme;
+
+export const tokens: Tokens = withScheme(schemeAtLaunch);
 
 export default tokens;
