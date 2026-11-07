@@ -5,6 +5,8 @@ import { NotFound } from '../routes/public/NotFound.tsx';
 import { offButton } from '../offButton.ts';
 import { offField } from '../offField.ts';
 import { BoardPage, OrLine, Providers } from './BoardPage.tsx';
+import { Calendar } from './Calendar.tsx';
+import { CALENDAR_PAGES } from './calendar.ts';
 import { EventPage } from './EventPage.tsx';
 import { Events } from './Events.tsx';
 import { EVENTS_PAGES } from './events.ts';
@@ -112,6 +114,8 @@ export default function Demo() {
       <Route path="today" element={<Today />} />
       <Route path="events" element={<Events />} />
       <Route path="events/:id" element={<EventPage />} />
+      <Route path="events/:id/dates" element={<EventPage dates />} />
+      <Route path="calendar" element={<Calendar />} />
       <Route path="settings" element={<Settings />} />
       <Route path="settings/members" element={<Settings />} />
       <Route path="settings/account" element={<Settings open="account" />} />
@@ -162,6 +166,8 @@ function DemoHome({ from }: { from: string }) {
         <BoardPages pages={EVENTS_PAGES} />
         <h3>The organisation switcher in B · Places · desktop</h3>
         <BoardPages pages={SWITCHER_PAGES} />
+        <h3>The Calendar in B · A · Weeks as lanes · desktop</h3>
+        <BoardPages pages={CALENDAR_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-28">

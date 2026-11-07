@@ -22,13 +22,14 @@ export interface SidebarPerson {
   role: string;
 }
 
-/** The iPad's sidebar at a desk: the places, your events by colour, and the person at its foot. Events or Settings selects its place; Settings names who is looking. */
+/** The iPad's sidebar at a desk: the places, your events by colour, and the person at its foot. Events, Calendar or Settings selects its place; Settings names who is looking. */
 export function TodaySidebar({
   events,
   tell,
   onToday,
   settings = false,
   listing = false,
+  calendar = false,
   person = FOLAKE,
   inert = false,
 }: {
@@ -37,6 +38,7 @@ export function TodaySidebar({
   onToday?: () => void;
   settings?: boolean;
   listing?: boolean;
+  calendar?: boolean;
   person?: SidebarPerson;
   inert?: boolean;
 }) {
@@ -68,7 +70,16 @@ export function TodaySidebar({
                 <Glyph name={glyph} />
                 {label}
               </Link>
-            ) : (settings || listing) && label === 'Today' ? (
+            ) : label === 'Calendar' ? (
+              <Link
+                className={calendar ? 'today-place is-on' : 'today-place'}
+                to="/demo/calendar"
+                aria-current={calendar ? 'page' : undefined}
+              >
+                <Glyph name={glyph} />
+                {label}
+              </Link>
+            ) : (settings || listing || calendar) && label === 'Today' ? (
               <Link className="today-place" to="/demo/today">
                 <Glyph name={glyph} />
                 {label}
