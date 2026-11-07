@@ -27,8 +27,7 @@ enum EventRole: string
         return match ($this) {
             self::Lead => [...$onTheEvent, Permission::PeopleRead, Permission::PeopleManage],
             self::CanEdit => [...Vec\filter($onTheEvent, static fn (Permission $permission): bool => PermissionArea::Budget !== $permission->area()), Permission::PeopleRead],
-            self::CanView => [...$reads, Permission::PeopleRead],
-            self::CanCheckIn => [Permission::EventsRead, Permission::GuestsRead, Permission::PeopleRead],
+            self::CanView, self::CanCheckIn => [...$reads, Permission::PeopleRead],
         };
     }
 

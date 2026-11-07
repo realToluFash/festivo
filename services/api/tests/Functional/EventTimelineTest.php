@@ -103,11 +103,11 @@ final class EventTimelineTest extends ApiTestCase
         $id = $this->create('Owambe', '2030-11-14T16:00', '2030-11-14T23:00', 'Africa/Lagos');
         $this->add($id, '2030-11-10T12:00:00+01:00', 'Seating locked', PermissionArea::Seating, MilestoneOwner::Automatic);
         $this->add($id, '2030-11-12T12:00:00+01:00', 'Balance due', PermissionArea::Budget, MilestoneOwner::You);
-        $eventsOnly = $this->member('events@ire.events', $id, EventRole::CanCheckIn);
-        $seating = $this->member('seating@ire.events', $id, EventRole::CanView);
+        $viewer = $this->member('viewer@ire.events', $id, EventRole::CanView);
+        $door = $this->member('door@ire.events', $id, EventRole::CanCheckIn);
 
-        self::assertSame(['Owambe starts'], $this->titles($eventsOnly, $id));
-        self::assertSame(['Seating locked', 'Owambe starts'], $this->titles($seating, $id));
+        self::assertSame(['Seating locked', 'Owambe starts'], $this->titles($viewer, $id));
+        self::assertSame(['Seating locked', 'Owambe starts'], $this->titles($door, $id));
         self::assertSame(['Seating locked', 'Balance due', 'Owambe starts'], $this->titles($this->owner, $id));
     }
 
