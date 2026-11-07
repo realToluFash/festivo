@@ -423,11 +423,17 @@ export function groupCounts(m: Seating): { group: string; n: number }[] {
   }));
 }
 
-export function namesLine(it: Item): string | null {
+export function namesLine(it: Item, shown = 3): string | null {
   const names = it.chairs.flatMap((c) => (c.state === 'taken' && c.who != null ? [c.who] : []));
   if (names.length === 0) return null;
-  const extra = filled(it) - 3;
-  return extra > 0 ? say.more(names.slice(0, 3).join(', '), extra) : names.slice(0, 3).join(', ');
+  const extra = filled(it) - shown;
+  const first = names.slice(0, shown).join(', ');
+  return extra > 0 ? say.more(first, extra) : first;
+}
+
+/** The List's Seated column: the first two names, "Nobody yet" when nobody is, and nothing when the sample names nobody. */
+export function seatedWords(it: Item): string {
+  return namesLine(it, 2) ?? (filled(it) === 0 ? W.nobodyYet : '');
 }
 
 export function chairWord(it: Item, index: number): string {

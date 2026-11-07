@@ -18,7 +18,7 @@ import {
   chairWord,
   hexOf,
   listed,
-  namesLine,
+  seatedWords,
   ofWords,
   partyOf,
   partySize,
@@ -211,7 +211,7 @@ export function ListView({ m, go, top }: { m: Seating; go: Go; top: number }) {
                 style={styles.listMain}
                 accessibilityRole="button"
                 accessibilityState={{ expanded: open }}
-                accessibilityLabel={`${accName(m, it)}. ${namesLine(it) ?? W.nobodyYet}`}
+                accessibilityLabel={[accName(m, it), seatedWords(it)].filter(Boolean).join('. ')}
                 testID={`seating.list.${it.id}`}
               >
                 <View style={[styles.nameCell, { flex: COLUMN[0] }]}>
@@ -250,7 +250,7 @@ export function ListView({ m, go, top }: { m: Seating; go: Go; top: number }) {
                   accessible={false}
                   style={[styles.secondary, { flex: COLUMN[3] }]}
                 >
-                  {namesLine(it) ?? W.nobodyYet}
+                  {seatedWords(it)}
                 </Text>
               </Pressable>
               {party != null && free(it) >= partySize(party) && (

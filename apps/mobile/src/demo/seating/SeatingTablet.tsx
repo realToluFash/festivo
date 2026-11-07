@@ -749,11 +749,7 @@ export function SeatingTablet({
       fill
       overlay={<Overlays m={m} go={go} />}
     >
-      <ScrollView
-        contentContainerStyle={styles.upright}
-        keyboardShouldPersistTaps="handled"
-        automaticallyAdjustKeyboardInsets
-      >
+      <View style={styles.upright}>
         <View style={styles.titleRow}>
           <Text
             size={30}
@@ -786,8 +782,17 @@ export function SeatingTablet({
             style={[styles.uprightRoom, m.fields.focus != null && styles.uprightShort]}
           />
         )}
-        {panel && <PanelBody m={m} go={go} />}
-      </ScrollView>
+        {panel && (
+          <ScrollView
+            style={styles.grow}
+            contentContainerStyle={styles.uprightPanel}
+            keyboardShouldPersistTaps="handled"
+            automaticallyAdjustKeyboardInsets
+          >
+            <PanelBody m={m} go={go} />
+          </ScrollView>
+        )}
+      </View>
     </EventFrame>
   );
 }
@@ -817,7 +822,8 @@ const styles = StyleSheet.create({
   panelInside: { padding: tokens.spaceXl, paddingBottom: tokens.space6xl * 2 },
   panelGap: { gap: 14 },
   shape: { borderRadius: tokens.spaceMd, backgroundColor: SUNK },
-  upright: { paddingHorizontal: tokens.space3xl, paddingBottom: tokens.space6xl * 3, gap: 14 },
+  upright: { flex: 1, paddingHorizontal: tokens.space3xl, gap: 14 },
+  uprightPanel: { paddingBottom: tokens.space6xl * 3 },
   titleRow: { minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: tokens.spaceLg },
   uprightRoom: { height: 560, borderRadius: tokens.spaceXxl },
   uprightShort: { height: 380 },

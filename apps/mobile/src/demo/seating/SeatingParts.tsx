@@ -14,7 +14,7 @@ import { ShapeMark } from '../../components/StatusMark.tsx';
 import { TextAction, TurningMark } from '../../components/SummaryRows.tsx';
 import type { Bar, SaveLine } from './SeatingModel.ts';
 import type { ChairState, Kind, Person } from './SeatingSample.ts';
-import { W } from './SeatingWords.ts';
+import { W, say } from './SeatingWords.ts';
 
 export const TAKEN_FILL = '#34343F';
 export const EMPTY_EDGE = '#8B8B9A';
@@ -411,7 +411,7 @@ export function Presence({
             onPress={onMore}
             style={styles.moreChip}
             accessibilityRole="button"
-            accessibilityLabel={`${people.length - 4} more on this plan`}
+            accessibilityLabel={say.moreOnPlan(people.length - 4)}
             testID="seating.people.more"
           >
             <Text size={13} weight="bold" accessible={false}>
