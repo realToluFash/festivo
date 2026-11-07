@@ -1147,7 +1147,8 @@ export type ListState =
   | 'search'
   | 'filtered'
   | 'filterOpen'
-  | 'noMatch';
+  | 'noMatch'
+  | 'noGuests';
 
 const LIST_STATES: readonly ListState[] = [
   'first',
@@ -1159,6 +1160,7 @@ const LIST_STATES: readonly ListState[] = [
   'filtered',
   'filterOpen',
   'noMatch',
+  'noGuests',
 ];
 
 export function listStateOf(value: string | null): ListState | null {
@@ -1172,6 +1174,7 @@ export interface ListStart {
   pastPages: number;
   menu: 'top' | 'type' | null;
   filters: Filters | null;
+  noGuests: boolean;
 }
 
 export function listStart(state: ListState | null): ListStart {
@@ -1182,6 +1185,7 @@ export function listStart(state: ListState | null): ListStart {
     pastPages: 1,
     menu: null,
     filters: null,
+    noGuests: false,
   };
 
   switch (state) {
@@ -1205,6 +1209,8 @@ export function listStart(state: ListState | null): ListStart {
       return { ...rest, tab: 'upcoming', menu: 'type' };
     case 'noMatch':
       return { ...rest, filters: { ...NO_FILTERS, q: 'garden party', types: ['wedding'] } };
+    case 'noGuests':
+      return { ...rest, noGuests: true };
   }
 }
 
@@ -1429,6 +1435,7 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
       list('pastMore', 'Past, after Show more'),
       list('first', 'A first run'),
       list('offline', 'Offline'),
+      list('noGuests', 'Nobody invited yet, the guest counts at 0'),
     ],
   },
   {
