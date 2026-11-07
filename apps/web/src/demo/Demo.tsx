@@ -13,6 +13,7 @@ import { Events } from './Events.tsx';
 import { EVENTS_PAGES } from './events.ts';
 import { ACCOUNT_PAGES } from './account.ts';
 import { GENERAL_PAGES } from './general.ts';
+import { MESSAGES_PAGES } from './messages.ts';
 import { GetBackInBoard } from './GetBackIn.tsx';
 import { NewAccountBoard } from './NewAccount.tsx';
 import { NOTIFICATIONS_PAGES } from './notifications.ts';
@@ -116,6 +117,7 @@ export default function Demo() {
       <Route path="events" element={<Events />} />
       <Route path="events/:id" element={<EventPage />} />
       <Route path="events/:id/dates" element={<EventPage dates />} />
+      <Route path="events/:id/messages" element={<EventPage messages />} />
       <Route path="calendar" element={<Calendar />} />
       <Route path="settings" element={<Settings />} />
       <Route path="settings/members" element={<Settings />} />
@@ -171,6 +173,12 @@ function DemoHome({ from }: { from: string }) {
         <BoardPages pages={CALENDAR_PAGES} />
         <h3>Create an organisation in B · A short walk · desktop</h3>
         <BoardPages pages={CREATE_PAGES} />
+      </section>
+
+      <section className="demo-home-page" aria-labelledby="demo-page-36">
+        <h2 id="demo-page-36">36 · Messaging · Messages on an event</h2>
+        <h3>Messaging in B · Conversations · desktop</h3>
+        <BoardPages pages={MESSAGES_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-28">
