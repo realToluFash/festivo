@@ -189,3 +189,26 @@ export function refusalOf(status: PhoneStatus): { title: string; body: string } 
       return null;
   }
 }
+
+export type InsideArea = 'checkIn' | 'overview' | 'guests' | 'schedule' | 'seating' | 'people';
+const SEEN: readonly InsideArea[] = ['overview', 'guests', 'schedule', 'seating', 'people'];
+/** The phone's tabs; every other area the role sees is in More. */
+export const PHONE_AREAS: readonly InsideArea[] = ['overview', 'guests'];
+
+/** What a door-code joiner reaches inside the event, by role (pm, 7 Nov, sc-72): never Budget, Menu, Messages, Staff or Reports. */
+export function areasFor(role: CodeRole): InsideArea[] {
+  return role === 'Can check guests in' ? ['checkIn', ...SEEN] : [...SEEN];
+}
+
+export function moreAreas(role: CodeRole, phone: boolean): InsideArea[] {
+  return phone ? areasFor(role).filter((area) => !PHONE_AREAS.includes(area)) : [];
+}
+
+export const AREA_WORDS: Record<InsideArea, string> = {
+  checkIn: W.checkIn,
+  overview: W.overview,
+  guests: W.guests,
+  schedule: W.schedule,
+  seating: W.seating,
+  people: W.people,
+};

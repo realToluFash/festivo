@@ -7,8 +7,8 @@ type Shared = 'loading' | 'failed' | 'readOnly';
 const PEOPLE: Record<PeopleDoorState | Shared, readonly [string, string]> = {
   'code-none': ['People · no code yet', 'The card offers Make a door code'],
   code: ['People · the code working', 'Q7KM 4XP2, 14 of 30, Hold it up'],
-  'code-two': ['People · two codes', 'A card each, Make another door code'],
-  'code-full': ['People · full', '30 of 30, its step a new code'],
+  'code-two': ['People · two codes', 'A card each, 21 on the event'],
+  'code-full': ['People · full', 'The Cloakroom code at 5 of 5, its five listed'],
   'code-stopped': ['People · stopped', '14 people came in and keep their access'],
   'code-ran-out': ['People · ran out', 'Ended at 15:00, its step a new code'],
   'code-made': ['People · made', 'The new card, Door code made.'],

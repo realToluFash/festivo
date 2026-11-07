@@ -77,6 +77,8 @@ export const W = {
   messages: 'Messages',
   more: 'More',
   yourAccount: 'Your account',
+  schedule: 'Schedule',
+  seating: 'Seating',
   address: 'soirely.com/join',
 } as const;
 
@@ -108,25 +110,30 @@ export function usedEnded(used: number, cap: number, at: string): string {
   return `${used} of ${cap} used · ended at ${at}`;
 }
 
-/** sc-72's count of who is in; the singular is this build's, for the linguist. */
+/** sc-72's count of who is in, with pm's singular (7 Nov). */
 export function cameIn(people: number): string {
   return people === 1
     ? '1 person came in with it. They keep their access.'
     : `${people} people came in with it. They keep their access.`;
 }
 
-function alreadyIn(people: number): string {
-  return people === 1
-    ? 'The 1 person already in keeps their access.'
-    : `The ${people} people already in keep their access.`;
+/** pm, 7 Nov (sc-72): at 0 the sentence is left out. */
+function alreadyIn(people: number): string[] {
+  if (people === 0) return [];
+
+  return [
+    people === 1
+      ? 'The 1 person already in keeps their access.'
+      : `The ${people} people already in keep their access.`,
+  ];
 }
 
 export function newLine(code: string, people: number): string {
-  return `${code} stops working. ${alreadyIn(people)}`;
+  return [`${code} stops working.`, ...alreadyIn(people)].join(' ');
 }
 
 export function stopLine(people: number): string {
-  return `Nobody new can use it. ${alreadyIn(people)}`;
+  return ['Nobody new can use it.', ...alreadyIn(people)].join(' ');
 }
 
 export function jobCount(job: string): string {

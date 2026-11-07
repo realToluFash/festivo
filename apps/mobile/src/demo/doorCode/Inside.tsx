@@ -46,17 +46,25 @@ import {
   type Redeemable,
 } from './DoorCodeModel.ts';
 import { onEventCount, signedInAs, W } from './DoorCodeWords.ts';
+import { AREA_WORDS, areasFor, type InsideArea, moreAreas } from './RedeemModel.ts';
 
+const AREA_GLYPH: Record<InsideArea, GlyphName> = {
+  checkIn: 'tick',
+  overview: 'overview',
+  guests: 'users',
+  schedule: 'clock',
+  seating: 'seating',
+  people: 'people',
+};
 const TABS = [
   [W.overview, 'overview'],
   [W.guests, 'users'],
-  [W.menu, 'menu'],
-  [W.messages, 'chat'],
   [W.more, 'dots'],
 ] as const satisfies readonly (readonly [string, GlyphName])[];
 type Tab = (typeof TABS)[number][0];
 
 const JOAO: PeopleViewer = { id: JOAO_ID, role: 'Member' };
+const CHECK_IN_LATER = 'Check-in has its own design.';
 const TAB_BAR = 64;
 
 /** An account with no organisation, inside the event it joined and nothing else: its tabs, no Today, Events or switcher (pm, 7 Nov). */
@@ -86,10 +94,13 @@ export function InsideEvent({
   const moreOpener = useRef<ViewInstance>(null);
   const foot = Math.max(insets.bottom - tokens.spaceXxs, tokens.spaceLg);
   const tell = (words: string) => setTold(words);
+  const go = (area: InsideArea) => {
+    if (area === 'overview' || area === 'people') onAt(area);
+    else tell(area === 'checkIn' ? CHECK_IN_LATER : `${AREA_WORDS[area]} has its own design.`);
+  };
   const onTab = (tab: Tab) => {
-    if (tab === W.overview) onAt('overview');
-    else if (tab === W.more) setMore(true);
-    else tell(`${tab} has its own design.`);
+    if (tab === W.more) setMore(true);
+    else go(tab === W.overview ? 'overview' : 'guests');
   };
   const page =
     at === 'overview' ? (
@@ -128,7 +139,13 @@ export function InsideEvent({
         {page}
       </ScrollView>
       {!phone && (
-        <Capsule at={at === 'people' ? W.more : W.overview} top={insets.top + 7} onTab={onTab} />
+        <Capsule
+          areas={areasFor(role)}
+          at={at}
+          top={insets.top + tokens.spaceSm}
+          onArea={go}
+          onMore={() => setMore(true)}
+        />
       )}
       {phone && (
         <TabBar
@@ -142,10 +159,11 @@ export function InsideEvent({
         open={more}
         opener={moreOpener}
         who={who}
+        areas={moreAreas(role, phone)}
         onClose={() => setMore(false)}
-        onPeople={() => {
+        onArea={(area) => {
           setMore(false);
-          onAt('people');
+          go(area);
         }}
         onAccount={() => {
           setMore(false);
@@ -202,7 +220,7 @@ function Overview({
           checks
             ? {
                 label: W.checkIn,
-                onPress: () => tell('Check-in has its own design.'),
+                onPress: () => tell(CHECK_IN_LATER),
                 testID: 'inside.checkIn',
               }
             : null
@@ -336,16 +354,18 @@ function MoreSheet({
   open,
   opener,
   who,
+  areas,
   onClose,
-  onPeople,
+  onArea,
   onAccount,
   onSignOut,
 }: {
   open: boolean;
   opener: RefObject<ViewInstance | null>;
   who: string;
+  areas: readonly InsideArea[];
   onClose: () => void;
-  onPeople: () => void;
+  onArea: (area: InsideArea) => void;
   onAccount: () => void;
   onSignOut: () => void;
 }) {
@@ -375,19 +395,19 @@ function MoreSheet({
         </View>
         <RowList
           items={[
-            {
-              key: 'people',
+            ...areas.map((area) => ({
+              key: area,
               inset: 40,
               row: (
                 <Row
-                  title={W.people}
-                  lead={<LineIcon name="people" />}
+                  title={AREA_WORDS[area]}
+                  lead={<LineIcon name={AREA_GLYPH[area]} />}
                   opens
-                  onPress={onPeople}
-                  testID="inside.more.people"
+                  onPress={() => onArea(area)}
+                  testID={`inside.more.${area}`}
                 />
               ),
-            },
+            })),
             {
               key: 'account',
               inset: 40,
@@ -417,22 +437,43 @@ function MoreSheet({
 }
 
 /** Upright and on its side, the event's tabs as a capsule at the top, as the board draws it upright. */
-function Capsule({ at, top, onTab }: { at: Tab; top: number; onTab: (tab: Tab) => void }) {
+function Capsule({
+  areas,
+  at,
+  top,
+  onArea,
+  onMore,
+}: {
+  areas: readonly InsideArea[];
+  at: 'overview' | 'people';
+  top: number;
+  onArea: (area: InsideArea) => void;
+  onMore: () => void;
+}) {
+  const tabs: readonly (InsideArea | 'more')[] = [...areas, 'more'];
+
   return (
     <View style={[styles.capsuleAt, { top }]} pointerEvents="box-none">
-      <View style={styles.capsule} accessibilityRole="tablist">
-        {TABS.map(([label]) => {
-          const on = label === at;
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.capsuleBar}
+        contentContainerStyle={styles.capsule}
+        accessibilityRole="tablist"
+      >
+        {tabs.map((tab) => {
+          const on = tab === at;
+          const label = tab === 'more' ? W.more : AREA_WORDS[tab];
 
           return (
             <Pressable
-              key={label}
-              onPress={() => onTab(label)}
+              key={tab}
+              onPress={() => (tab === 'more' ? onMore() : onArea(tab))}
               style={[styles.capsuleTab, on && styles.capsuleOn]}
               accessibilityRole="tab"
               accessibilityState={{ selected: on }}
               accessibilityLabel={label}
-              testID={`inside.tab.${label.toLowerCase()}`}
+              testID={`inside.tab.${tab}`}
             >
               <Text
                 size={15}
@@ -445,7 +486,7 @@ function Capsule({ at, top, onTab }: { at: Tab; top: number; onTab: (tab: Tab) =
             </Pressable>
           );
         })}
-      </View>
+      </ScrollView>
     </View>
   );
 }
@@ -476,14 +517,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: tokens.colorInset,
   },
-  capsuleAt: { position: 'absolute', left: 0, right: 0, alignItems: 'center', zIndex: 2 },
-  capsule: {
-    flexDirection: 'row',
-    gap: tokens.spaceHair,
-    padding: 3,
-    borderRadius: 25,
-    backgroundColor: tokens.colorInset,
+  capsuleAt: {
+    position: 'absolute',
+    left: tokens.space5xl,
+    right: tokens.space5xl,
+    alignItems: 'center',
+    zIndex: 2,
   },
+  capsuleBar: { flexGrow: 0, borderRadius: 25, backgroundColor: tokens.colorInset },
+  capsule: { flexDirection: 'row', gap: tokens.spaceHair, padding: 3 },
   capsuleTab: {
     minHeight: tokens.sizeHit,
     justifyContent: 'center',

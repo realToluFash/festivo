@@ -29,7 +29,7 @@ import {
   renewed,
   underCard,
 } from './DoorCodeModel.ts';
-import { codeSaid, joinCodeSaid, newLine, qrSaid, stopLine, W } from './DoorCodeWords.ts';
+import { cameIn, codeSaid, joinCodeSaid, newLine, qrSaid, stopLine, W } from './DoorCodeWords.ts';
 import { REDEEM_STATES } from './RedeemModel.ts';
 
 const LOCALE = 'en-US';
@@ -74,9 +74,25 @@ describe('People with a door code, by state (spec §5)', () => {
     ]);
   });
 
+  it('lists as many people in by each code as its card counts (pm, 7 Nov)', () => {
+    for (const state of PEOPLE_DOOR_STATES) {
+      const start = opened(state);
+      const removed = state === 'code-removed' ? 1 : 0;
+
+      for (const code of start.codes) {
+        const listedHere = start.people.onEvent.filter((one) => one.byCode?.code === code.code);
+
+        expect(listedHere.length + removed, `${state}, ${code.code}`).toBe(code.used);
+      }
+    }
+    expect(opened('code-two').people.onEvent).toHaveLength(21);
+    expect(opened('code-full').people.onEvent).toHaveLength(9);
+  });
+
   it('says full, stopped and ran out with the card’s own line', () => {
     expect(opened('code-full').codes.map(codeStatus)).toEqual(['full']);
-    expect(lines(opened('code-full'))).toEqual(['30 of 30 used · until 23:30 on Sat, Nov 14']);
+    expect(opened('code-full').codes.map((code) => code.code)).toEqual(['M4TB 7KQ8']);
+    expect(lines(opened('code-full'))).toEqual(['5 of 5 used · until 23:30 on Sat, Nov 14']);
     expect(lines(opened('code-stopped'))).toEqual([
       '14 people came in with it. They keep their access.',
     ]);
@@ -242,6 +258,13 @@ describe('holding it up, a new code and stopping (spec §2.3, §2.4)', () => {
       'Q7KM 4XP2 stops working. The 14 people already in keep their access.',
     );
     expect(stopLine(14)).toBe('Nobody new can use it. The 14 people already in keep their access.');
+  });
+
+  it('says one person in the singular, and leaves the sentence out at nought (pm, 7 Nov)', () => {
+    expect(stopLine(1)).toBe('Nobody new can use it. The 1 person already in keeps their access.');
+    expect(newLine('H3WD 9RN6', 0)).toBe('H3WD 9RN6 stops working.');
+    expect(stopLine(0)).toBe('Nobody new can use it.');
+    expect(cameIn(1)).toBe('1 person came in with it. They keep their access.');
   });
 
   it('gives a new code the same role, job label, cap and end, from nought', () => {

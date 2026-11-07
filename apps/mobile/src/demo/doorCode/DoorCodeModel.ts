@@ -212,10 +212,8 @@ export const BAR: Redeemable = {
   role: 'Can check guests in',
   job: 'Bar and drinks',
 };
-const REDEEMABLE: readonly Redeemable[] = [
-  BAR,
-  { code: 'M4TB 7KQ8', role: 'Can view', job: 'Cloakroom' },
-];
+export const CLOAKROOM: Redeemable = { code: 'M4TB 7KQ8', role: 'Can view', job: 'Cloakroom' };
+const REDEEMABLE: readonly Redeemable[] = [BAR, CLOAKROOM];
 
 /** Wrong, expired and stopped get one answer, as a code that never existed (sc-72). */
 export function redeemed(typed: string): Redeemable | null {
@@ -284,7 +282,7 @@ function outside(
   return { id, name, initials, tone, role, outside: true, label };
 }
 
-/** Who came in by Q7KM 4XP2: the board's five, then the rest of its fourteen; Hugo Faria joins while it is held up. */
+/** Who came in by each code, as many as its card counts (pm, 7 Nov); Hugo Faria joins while Q7KM 4XP2 is held up. */
 const CREW: readonly (readonly [string, string, string])[] = [
   ['Beatriz Santos', 'BS', '13:31'],
   ['João Pereira', 'JP', '13:34'],
@@ -302,16 +300,21 @@ const CREW: readonly (readonly [string, string, string])[] = [
   ['Yusuf Demir', 'YD', '13:41'],
 ];
 
+const CLOAK_CREW: readonly (readonly [string, string, string])[] = [
+  ['Leila Haddad', 'LH', '14:02'],
+  ['Pedro Gomes', 'PG', '14:03'],
+  ['Rosa Lima', 'RL', '14:05'],
+  ['Hana Sato', 'HS', '14:06'],
+  ['Kwabena Asante', 'KA', '14:08'],
+];
+
 export const JOAO_ID = 'p-joao-pereira';
 
-function crewMember(
-  [name, initials, at]: readonly [string, string, string],
-  index: number,
-): OnEvent {
-  return {
-    ...outside(`p-${slug(name)}`, name, initials, index % 5, BAR.role, BAR.job ?? ''),
-    byCode: { code: BAR.code, at },
-  };
+function joinerBy(by: Redeemable) {
+  return ([name, initials, at]: readonly [string, string, string], index: number): OnEvent => ({
+    ...outside(`p-${slug(name)}`, name, initials, index % 5, by.role, by.job ?? ''),
+    byCode: { code: by.code, at },
+  });
 }
 
 function slug(name: string): string {
@@ -340,7 +343,11 @@ export function named(): OnEvent[] {
 }
 
 export function crew(): OnEvent[] {
-  return CREW.map(crewMember);
+  return CREW.map(joinerBy(BAR));
+}
+
+export function cloakroomCrew(count: number): OnEvent[] {
+  return CLOAK_CREW.slice(0, count).map(joinerBy(CLOAKROOM));
 }
 
 export function everyone(): OnEvent[] {
@@ -395,9 +402,9 @@ export const BAR_CODE: DoorCode = {
 };
 const CLOAK_CODE: DoorCode = {
   id: 'code-m4tb7kq8',
-  code: 'M4TB 7KQ8',
-  role: 'Can view',
-  job: 'Cloakroom',
+  code: CLOAKROOM.code,
+  role: CLOAKROOM.role,
+  job: CLOAKROOM.job,
   cap: 5,
   used: 3,
   ends: { kind: 'event' },
@@ -457,9 +464,12 @@ function stateStart(state: PeopleDoorState): DoorStart {
     case 'code':
       return start([BAR_CODE]);
     case 'code-two':
-      return start([BAR_CODE, CLOAK_CODE]);
+      return start([BAR_CODE, CLOAK_CODE], {}, [...everyone(), ...cloakroomCrew(CLOAK_CODE.used)]);
     case 'code-full':
-      return start([{ ...BAR_CODE, used: BAR_CODE.cap }]);
+      return start([{ ...CLOAK_CODE, used: CLOAK_CODE.cap }], {}, [
+        ...named(),
+        ...cloakroomCrew(CLOAK_CODE.cap),
+      ]);
     case 'code-stopped':
       return start([{ ...BAR_CODE, stopped: true }]);
     case 'code-ran-out':

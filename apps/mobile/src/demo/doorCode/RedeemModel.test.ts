@@ -19,6 +19,8 @@ import {
   type RedeemStep,
   redeemStateOf,
   refusalOf,
+  areasFor,
+  moreAreas,
 } from './RedeemModel.ts';
 
 const LOCALE = 'en-US';
@@ -166,5 +168,33 @@ describe('the words around it', () => {
     expect(joinAs('Kemi Okafor')).toBe('Join as Kemi Okafor');
     expect(tryAgainAt('13:32')).toBe('Try again at 13:32');
     expect(W.endsLine).toBe('Access ends when the event concludes.');
+  });
+});
+
+describe('inside the event, by role (pm, 7 Nov, sc-72)', () => {
+  it('reaches Overview, Guests, Schedule, Seating and People at Can view', () => {
+    expect(areasFor('Can view')).toEqual(['overview', 'guests', 'schedule', 'seating', 'people']);
+  });
+
+  it('puts Check guests in first at Can check guests in', () => {
+    expect(areasFor('Can check guests in')).toEqual([
+      'checkIn',
+      'overview',
+      'guests',
+      'schedule',
+      'seating',
+      'people',
+    ]);
+  });
+
+  it('keeps on the phone’s More what its tabs do not hold, and on the iPad only the account', () => {
+    expect(moreAreas('Can check guests in', true)).toEqual([
+      'checkIn',
+      'schedule',
+      'seating',
+      'people',
+    ]);
+    expect(moreAreas('Can view', true)).toEqual(['schedule', 'seating', 'people']);
+    expect(moreAreas('Can view', false)).toEqual([]);
   });
 });
