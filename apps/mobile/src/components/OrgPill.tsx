@@ -59,7 +59,7 @@ export function OrgPill({
   name,
   waiting,
   label,
-  expanded = false,
+  expanded,
   onPress,
   bare = false,
   wrap = false,
@@ -90,7 +90,7 @@ export function OrgPill({
       ]}
       accessibilityRole={onPress == null ? 'text' : 'button'}
       accessibilityLabel={label}
-      accessibilityState={onPress == null ? undefined : { expanded }}
+      accessibilityState={onPress == null || expanded == null ? undefined : { expanded }}
       testID={testID}
     >
       {!bare && <OrgMark id={id} name={name} side={28} />}

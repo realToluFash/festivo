@@ -23,6 +23,7 @@ import {
   type Tab,
   TodayCover,
   TabBarFade,
+  tabBarFoot,
 } from './TodayCover.tsx';
 import { FirstRun, NeedsYou, ThisWeek, YourEvents } from './TodayParts.tsx';
 import { TodaySidebar } from './TodaySidebar.tsx';
@@ -134,7 +135,7 @@ function Scrolled({
     },
     [onTab],
   );
-  const foot = Math.max(insets.bottom - tokens.spaceXxs, tokens.spaceLg);
+  const foot = tabBarFoot(insets.bottom);
 
   return (
     <View style={styles.page}>

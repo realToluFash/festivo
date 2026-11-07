@@ -773,6 +773,11 @@ export function TabBarFade() {
 /** The phone's tab bar is this tall, so a page clears it. */
 export const PHONE_TAB_BAR = 64;
 
+/** How far the phone's tab bar floats above the screen's foot. */
+export function tabBarFoot(bottomInset: number): number {
+  return Math.max(bottomInset - tokens.spaceXxs, tokens.spaceLg);
+}
+
 export function PhoneTabBar({
   bottom,
   onTab,

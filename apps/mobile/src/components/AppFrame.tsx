@@ -65,6 +65,15 @@ import { Sheet } from './Sheet.tsx';
 import { InvitationRows } from './InvitationRows.tsx';
 import { Initials } from './Initials.tsx';
 import { Notice } from './Notice.tsx';
+import {
+  PHONE_TAB_BAR,
+  type Tab,
+  TABS,
+  TabBar as PhoneTabs,
+  TabBarFade,
+  tabBarFoot,
+} from './TodayCover.tsx';
+import { OrgPill as WhitePill } from './OrgPill.tsx';
 import { OrgTile } from './OrgTile.tsx';
 import { ReadOut, useReadOut } from './ReadOut.tsx';
 import { type StepClosed, stepClosed, useFocusBackToOpener, useFocusOnAnswer } from './Screen.tsx';
@@ -238,6 +247,7 @@ export function AppFrame({
 }) {
   const { t } = useTranslation();
   const { kind } = useLayout();
+  const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   useSystemBack(back?.systemBack === true, () => back?.onPress());
   // As the screen goes, by either Back, its header back is where TalkBack puts its focus, and says it with no name (sc-20554).
@@ -339,6 +349,7 @@ export function AppFrame({
     overdueIn.current = overdueOn;
   });
   const framed = !ownChrome || standIn != null;
+  const floatingTabs = framed && kind === 'phone' && inEvent == null;
 
   return (
     <View
@@ -379,7 +390,14 @@ export function AppFrame({
           />
         )}
         <OfflineBand stale={standIn == null ? offline : null} inFront={inFront} />
-        <View style={styles.body}>
+        <View
+          style={[
+            styles.body,
+            floatingTabs && {
+              paddingBottom: tabBarFoot(insets.bottom) + PHONE_TAB_BAR + tokens.spaceMd,
+            },
+          ]}
+        >
           {switched != null &&
             (created?.takesFocus === true ? (
               <View style={styles.created}>
@@ -420,7 +438,10 @@ export function AppFrame({
             </StartOrganisation.Provider>
           </OpenSwitcher.Provider>
         </View>
-        {framed && kind === 'phone' && <TabBar entries={entries} inEvent={inEvent} />}
+        {floatingTabs && <FrameTabBar current={current} organisation={signedIn.organisation} />}
+        {framed && kind === 'phone' && inEvent != null && (
+          <TabBar entries={entries} inEvent={inEvent} />
+        )}
       </View>
       {edgeSwipe != null && (
         <View
@@ -585,12 +606,32 @@ function FrameHeader({
     );
   }
 
+  // A top-level page carries the pill and the bell in a row of their own, as the demos draw it (sc-30410).
+  const topLevel = back == null;
+
   return (
     <View style={[styles.header, styles.phoneHeader, top]}>
-      {pillAlone && organisation != null && (
+      {topLevel && (
+        <View style={styles.titleRow}>
+          {organisation != null && (
+            <View style={styles.shrink}>
+              <OrgPill
+                organisation={organisation}
+                waiting={waiting}
+                onSwitch={onSwitch}
+                ref={pill}
+              />
+            </View>
+          )}
+          <View style={styles.fill} />
+          {primary != null && <HeaderPrimary {...primary} round />}
+          <BellButton />
+        </View>
+      )}
+      {!topLevel && pillAlone && organisation != null && (
         <OrgPill organisation={organisation} waiting={waiting} onSwitch={onSwitch} ref={pill} />
       )}
-      {primary != null && (
+      {!topLevel && primary != null && (
         <View style={styles.titleRow}>
           {organisation != null && (
             <View style={styles.shrink}>
@@ -627,7 +668,7 @@ function FrameHeader({
           </View>
           {underTitle}
         </View>
-        <BellButton />
+        {!topLevel && <BellButton />}
       </View>
     </View>
   );
@@ -703,34 +744,67 @@ function goTo(destination: Destination): void {
   leaveThen((discarding) => (discarding ? router.dismissTo(href) : router.navigate(href)));
 }
 
-function TabBar({
-  entries,
-  inEvent,
+const TAB_DESTINATION = {
+  Today: 'home',
+  Events: 'events',
+  Calendar: 'calendar',
+  Settings: 'settings',
+} as const satisfies Record<Tab, Destination>;
+
+const TAB_IDS: Record<Tab, string> = {
+  Today: 'frame.home',
+  Events: 'frame.events',
+  Calendar: 'frame.calendar',
+  Settings: 'frame.settings',
+};
+
+/** The phone's tab bar as the demos draw it, floating over the page's foot, with only the tabs the role can open. */
+function FrameTabBar({
+  current,
+  organisation,
 }: {
-  entries: readonly NavEntry[];
-  inEvent: InsideEvent | undefined;
+  current: Destination;
+  organisation: { permissions: readonly string[] } | null;
 }) {
+  const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
+  const open = destinations(organisation);
+  const tabs = TABS.filter(([tab]) => open.includes(TAB_DESTINATION[tab]));
+  const at = tabs.find(([tab]) => TAB_DESTINATION[tab] === current)?.[0] ?? 'Today';
+
+  return (
+    <>
+      <TabBarFade />
+      <PhoneTabs
+        tabs={tabs}
+        bottom={tabBarFoot(insets.bottom)}
+        at={at}
+        onTab={(tab) => goTo(TAB_DESTINATION[tab])}
+        say={(_, glyph) => t(`todayScreen.tab.${glyph}`)}
+        ids={TAB_IDS}
+      />
+    </>
+  );
+}
+
+function TabBar({ entries, inEvent }: { entries: readonly NavEntry[]; inEvent: InsideEvent }) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const { fontScale } = useWindowDimensions();
   const [more, setMore] = useState(false);
   const moreTab = useRef<ViewInstance>(null);
-  const underMore =
-    inEvent != null && !(PHONE_EVENT_TABS as readonly EventArea[]).includes(inEvent.area);
-  const shown: readonly NavEntry[] =
-    inEvent == null
-      ? entries
-      : [
-          ...entries.filter((entry) => (PHONE_EVENT_TABS as readonly string[]).includes(entry.key)),
-          {
-            key: 'more',
-            label: t('eventNav.more'),
-            icon: AREA_ICONS.more,
-            on: underMore,
-            onPress: () => setMore(true),
-            testID: 'event.nav.more',
-          },
-        ];
+  const underMore = !(PHONE_EVENT_TABS as readonly EventArea[]).includes(inEvent.area);
+  const shown: readonly NavEntry[] = [
+    ...entries.filter((entry) => (PHONE_EVENT_TABS as readonly string[]).includes(entry.key)),
+    {
+      key: 'more',
+      label: t('eventNav.more'),
+      icon: AREA_ICONS.more,
+      on: underMore,
+      onPress: () => setMore(true),
+      testID: 'event.nav.more',
+    },
+  ];
   const words = useWholeWords(
     tokens.typeMeta.size,
     tokens.typeMeta.size * fontScale,
@@ -767,49 +841,47 @@ function TabBar({
           </Text>
         </Pressable>
       ))}
-      {inEvent != null && (
-        <Sheet
-          open={more}
-          onClose={() => setMore(false)}
-          scrimLabel={t('eventNav.closeMore')}
-          opener={moreTab}
-          testID="event.nav.moreSheet"
-        >
-          <View style={styles.moreSheet}>
-            <Title size={tokens.typeTitleDialog.size} accessibilityRole="header">
-              {t('eventNav.more')}
-            </Title>
-            <View accessibilityRole="tablist" style={styles.moreList}>
-              {MORE_EVENT_AREAS.map((area) => {
-                const on = area === inEvent.area;
+      <Sheet
+        open={more}
+        onClose={() => setMore(false)}
+        scrimLabel={t('eventNav.closeMore')}
+        opener={moreTab}
+        testID="event.nav.moreSheet"
+      >
+        <View style={styles.moreSheet}>
+          <Title size={tokens.typeTitleDialog.size} accessibilityRole="header">
+            {t('eventNav.more')}
+          </Title>
+          <View accessibilityRole="tablist" style={styles.moreList}>
+            {MORE_EVENT_AREAS.map((area) => {
+              const on = area === inEvent.area;
 
-                return (
-                  <Pressable
-                    key={area}
-                    style={[styles.railItem, on && styles.railItemOn]}
-                    onPress={() => {
-                      setMore(false);
-                      inEvent.onArea(area);
-                    }}
-                    accessibilityRole="tab"
-                    accessibilityState={{ selected: on }}
-                    testID={`event.nav.more.${area}`}
+              return (
+                <Pressable
+                  key={area}
+                  style={[styles.railItem, on && styles.railItemOn]}
+                  onPress={() => {
+                    setMore(false);
+                    inEvent.onArea(area);
+                  }}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected: on }}
+                  testID={`event.nav.more.${area}`}
+                >
+                  <Icon paths={AREA_ICONS[area]} on={on} size={tokens.sizeMark} />
+                  <Text
+                    size={tokens.typeBodyPhone.size}
+                    weight={on ? 'semibold' : 'medium'}
+                    style={on ? styles.ink : styles.secondaryInk}
                   >
-                    <Icon paths={AREA_ICONS[area]} on={on} size={tokens.sizeMark} />
-                    <Text
-                      size={tokens.typeBodyPhone.size}
-                      weight={on ? 'semibold' : 'medium'}
-                      style={on ? styles.ink : styles.secondaryInk}
-                    >
-                      {t(`eventNav.${area}`)}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
+                    {t(`eventNav.${area}`)}
+                  </Text>
+                </Pressable>
+              );
+            })}
           </View>
-        </Sheet>
-      )}
+        </View>
+      </Sheet>
     </View>
   );
 }
@@ -983,14 +1055,27 @@ function OrgPill({
         ? t('switcher.labelSwitchWaiting', { name: organisation.name, role, count: waiting })
         : t('switcher.labelSwitch', { name: organisation.name, role });
 
+  if (!railed)
+    return (
+      <View style={styles.whitePill}>
+        <WhitePill
+          ref={ref}
+          id={organisation.id}
+          name={organisation.name}
+          waiting={waiting > 0 ? t('invitations.count', { count: waiting }) : null}
+          label={label}
+          onPress={onSwitch}
+          bare={large}
+          wrap={large}
+          testID="frame.organisation"
+        />
+      </View>
+    );
+
   return (
     <Pressable
       ref={ref}
-      style={[
-        styles.org,
-        railed ? styles.orgRailed : styles.orgPill,
-        (waiting > 0 || large) && styles.orgWaiting,
-      ]}
+      style={[styles.org, styles.orgRailed, (waiting > 0 || large) && styles.orgWaiting]}
       onPress={onSwitch}
       disabled={onSwitch == null}
       accessibilityRole={onSwitch == null ? 'text' : 'button'}
@@ -999,18 +1084,12 @@ function OrgPill({
     >
       {!large && <OrgTile name={organisation.name} />}
       <View style={styles.shrink}>
-        <Text
-          size={railed ? tokens.typeBody.size : tokens.typeBodyPhone.size}
-          weight="semibold"
-          numberOfLines={lines}
-        >
+        <Text size={tokens.typeBody.size} weight="semibold" numberOfLines={lines}>
           {organisation.name}
         </Text>
-        {railed && (
-          <Text size={tokens.typeMeta.size} muted numberOfLines={lines}>
-            {t('frame.organisation')}
-          </Text>
-        )}
+        <Text size={tokens.typeMeta.size} muted numberOfLines={lines}>
+          {t('frame.organisation')}
+        </Text>
         {waiting > 0 && (
           <View style={styles.waiting}>
             <View style={styles.ring} />
@@ -1436,14 +1515,7 @@ const styles = StyleSheet.create({
     borderColor: tokens.colorControlBorder,
     backgroundColor: tokens.colorCard,
   },
-  orgPill: {
-    alignSelf: 'flex-start',
-    maxWidth: '100%',
-    height: tokens.sizeHit,
-    paddingLeft: tokens.spaceXs,
-    paddingRight: tokens.spacePillEnd,
-    borderRadius: tokens.sizeHit / 2,
-  },
+  whitePill: { flexDirection: 'row', flexShrink: 1, minWidth: 0 },
   orgRailed: {
     minHeight: tokens.sizeHitPhoneHero,
     paddingLeft: tokens.spaceXs,
