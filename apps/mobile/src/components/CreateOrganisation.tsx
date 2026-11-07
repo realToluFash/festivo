@@ -369,6 +369,7 @@ function Form({
           value={values.countryCode}
           onChange={(code) => change('countryCode', code)}
           disabled={saving}
+          wrong={errors.countryCode != null}
           pickerRef={countryPicker}
           testID="createOrganisation.country"
         />

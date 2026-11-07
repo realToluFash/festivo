@@ -44,6 +44,7 @@ export function ListPicker({
   disabled = false,
   readOnly = false,
   shown: drawn,
+  wrong = false,
   pickerRef,
   testID,
 }: {
@@ -58,6 +59,8 @@ export function ListPicker({
   readOnly?: boolean;
   /** Drawn in place of the chosen name, as a phone's "🇬🇧 +44" is; the screen reader still hears the name. */
   shown?: string | undefined;
+  /** A line about it shows under it: a refused text field's red edge, 2pt with focus (sc-30447). */
+  wrong?: boolean;
   /** For moving screen-reader focus here when it is the field refused first. */
   pickerRef?: Ref<ViewInstance> | undefined;
   testID: string;
@@ -117,6 +120,7 @@ export function ListPicker({
           styles.field,
           readOnly && styles.fieldReadOnly,
           drawn != null && styles.fieldCompact,
+          wrong && styles.fieldWrong,
         ]}
         onPress={() => setOpen(true)}
         {...fieldEdge.edging}
@@ -124,6 +128,7 @@ export function ListPicker({
         accessibilityRole={readOnly ? undefined : 'button'}
         accessibilityState={{ disabled: disabled || readOnly }}
         accessibilityLabel={blank ? label : `${label}: ${chosen}`}
+        aria-invalid={wrong}
         testID={testID}
       >
         <Text
@@ -133,7 +138,7 @@ export function ListPicker({
           {blank ? placeholder : (drawn ?? chosen)}
         </Text>
         {!readOnly && <Chevron />}
-        {fieldEdge.focused && <FocusEdge />}
+        {fieldEdge.focused && <FocusEdge wrong={wrong} />}
       </Pressable>
 
       <Modal
@@ -249,6 +254,7 @@ const styles = StyleSheet.create({
   },
   fieldReadOnly: { backgroundColor: tokens.colorNeutralFill },
   fieldCompact: { minHeight: 56, borderColor: tokens.colorFieldBorder },
+  fieldWrong: { borderColor: tokens.colorBroken },
   value: { flex: 1, color: tokens.colorInk },
   // A growing value in a field with no width of its own takes the whole row on Android.
   valueCompact: { flex: 0 },

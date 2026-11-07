@@ -328,9 +328,14 @@ function FoundOrganisation() {
             value={countryCode}
             onChange={(code) => {
               setCountryCode(code);
-              setErrors((previous) => ({ ...previous, countryCode: undefined }));
+              setErrors((previous) => ({
+                ...previous,
+                countryCode: undefined,
+                timezone: undefined,
+              }));
             }}
             disabled={saving}
+            wrong={(errors.countryCode ?? errors.timezone) != null}
             pickerRef={countryPicker}
             testID="completeProfile.country"
           />
@@ -739,9 +744,14 @@ function Details({
                 value={countryCode}
                 onChange={(code) => {
                   setCountryCode(code);
-                  setErrors((previous) => ({ ...previous, countryCode: undefined }));
+                  setErrors((previous) => ({
+                    ...previous,
+                    countryCode: undefined,
+                    timezone: undefined,
+                  }));
                 }}
                 disabled={saving}
+                wrong={(errors.countryCode ?? errors.timezone) != null}
                 pickerRef={countryPicker}
                 testID="completeProfile.country"
               />
