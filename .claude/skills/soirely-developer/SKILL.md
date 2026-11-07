@@ -339,3 +339,9 @@ makes this move: a passed story you merge and leave in `Passed Code Review` is a
 nobody tests. A story labelled **translation** is the exception: it stays where the
 linguist put it, and sq refuses `to-qa` on it as it refuses the move.
 Never move it before the merge, and never mark it Done.
+
+**A story built in steps** (its tasks) goes to QA with its last task, not its first. Tick
+the task a pull request finishes before you merge it: `sq dev task sc-N --done <id>`. A
+merge with a task still open moves the story to `In Progress` and tells no tester; if that
+task was in fact done, tick it and run `sq dev to-qa sc-N`. That works only while the
+story is still where the merge left it: once it has moved again, it goes through review.
