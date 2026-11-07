@@ -178,3 +178,14 @@
   color: var(--colorInk);
   font: 700 20px/1.25 var(--fontFamily);
 }
+
+@media (width <= 40rem) {
+  .today.desk:has(.bud) .desk-nav.actions-pair {
+    height: auto;
+    padding-block: 4px;
+  }
+
+  .today.desk:has(.bud) :is(.desk-nav-cancel, .desk-nav-verb) {
+    flex: none;
+  }
+}
