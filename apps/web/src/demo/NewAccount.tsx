@@ -256,7 +256,7 @@ function CreateAccount({ state, flow }: { state: string; flow: Flow }) {
       <Providers
         busy={busy}
         onChoose={(provider) =>
-          after(() => void navigate('/demo/signed-in', { state: { provider } }))
+          after(() => void navigate(way('details', provider === 'Apple' ? 'apple' : 'google')))
         }
       />
     </BoardPage>
@@ -327,7 +327,7 @@ function PhoneCode({ state, flow }: { state: string; flow: Flow }) {
           title="Number verified"
           body={`Soirely can reach you on ${flow.phone} if something goes wrong on the day.`}
           action="Continue to Soirely"
-          onContinue={() => void navigate('/demo/signed-in')}
+          onContinue={() => void navigate('/demo/today')}
         />
       </BoardPage>
     );
@@ -374,7 +374,7 @@ function PhoneCode({ state, flow }: { state: string; flow: Flow }) {
         </p>
         <p className="demo-aside">
           <span>Can’t get texts on this number?</span>
-          <Link className="link-button demo-link" to="/demo/signed-in">
+          <Link className="link-button demo-link" to="/demo/today">
             Carry on without it
           </Link>
         </p>
@@ -543,7 +543,7 @@ export function Details({
 
     after(() => {
       if (number.trim() === '') {
-        void navigate('/demo/signed-in');
+        void navigate('/demo/today');
         return;
       }
 

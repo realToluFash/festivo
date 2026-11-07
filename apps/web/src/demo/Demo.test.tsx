@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
@@ -472,7 +475,9 @@ describe('the demo creates an account (sc-29061)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Verify number' }));
     await wait();
     fireEvent.click(screen.getByRole('button', { name: 'Continue to Soirely' }));
-    expect(await screen.findByRole('heading', { name: 'Signed in' })).toBeDefined();
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Good morning, Folake' }),
+    ).toBeDefined();
   });
 
   it('changes the number from the code, and Back returns to a code that still works', async () => {
@@ -1091,6 +1096,133 @@ describe('the demo’s other ways in (sc-29062)', () => {
     const name = screen.getByLabelText('Full name') as HTMLInputElement;
     expect(name.value).toBe('');
     expect(document.activeElement).toBe(name);
+  });
+});
+
+describe('the signed-out frame’s foot and ways out (sc-29561)', () => {
+  beforeEach(() => {
+    inEnvironment('development');
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+  });
+
+  const TODAY = { level: 1, name: 'Good morning, Folake' } as const;
+
+  async function open(path: string, title: string): Promise<void> {
+    at(path);
+    await screen.findByRole('heading', { level: 1, name: title });
+  }
+
+  async function wait(): Promise<void> {
+    await act(() => vi.advanceTimersByTimeAsync(1000));
+  }
+
+  it('keeps the column’s own 24 px under its last part, on every page of the frame', () => {
+    const css = readFileSync(join(import.meta.dirname, 'demo.css'), 'utf8');
+    const rules = [...css.matchAll(/\n(\.demo-page-main[^{]*)\{([^}]*)\}/gu)];
+
+    expect(rules.find(([, selector]) => selector?.trim() === '.demo-page-main')?.[2]).toMatch(
+      /padding: 88px var\(--spaceXl\) var\(--space3xl\);/u,
+    );
+    for (const [, selector, body] of rules.filter(([, s]) => s?.trim() !== '.demo-page-main')) {
+      expect(body, selector).not.toMatch(/padding(-bottom|-block)?:/u);
+    }
+    expect(readFileSync(join(import.meta.dirname, '../tokens.css'), 'utf8')).toMatch(
+      /--space3xl: 24px;/u,
+    );
+  });
+
+  it.each([
+    [
+      '/demo/create-account?page=phone&state=verified',
+      'Number verified',
+      'button',
+      'Continue to Soirely',
+    ],
+    ['/demo/create-account?page=phone', 'Check your messages', 'link', 'Carry on without it'],
+    ['/demo/ways-in?page=invitation&state=joined', 'You are in', 'link', 'Open Ire Events'],
+    ['/demo/ways-in?page=ask&state=member', 'Ask to join Ire Events', 'link', 'Open Ire Events'],
+    [
+      '/demo/ways-in?page=invitation&state=answered',
+      'Invitation declined',
+      'link',
+      'Go to Soirely',
+    ],
+    [
+      '/demo/ways-in?page=invitation&state=expired',
+      'This invitation has expired',
+      'link',
+      'Go to Soirely',
+    ],
+    [
+      '/demo/ways-in?page=invitation&state=withdrawn',
+      'This invitation was withdrawn',
+      'link',
+      'Go to Soirely',
+    ],
+    ['/demo/ways-in?page=invitation&state=declined', 'Already declined', 'link', 'Go to Soirely'],
+    [
+      '/demo/ways-in?page=invitation&state=deleted',
+      'This organisation is gone',
+      'link',
+      'Go to Soirely',
+    ],
+  ] as const)('lands %s on Today, signed in', async (path, title, role, name) => {
+    await open(path, title);
+
+    fireEvent.click(screen.getByRole(role, { name }));
+    expect(await screen.findByRole('heading', TODAY)).toBeDefined();
+    expect(screen.queryByText('New to Soirely?')).toBeNull();
+  });
+
+  it('lands A few details saved with no number on Today', async () => {
+    await open('/demo/create-account?page=details', 'A few details');
+    type('Organisation name', SAMPLE.organisation);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save and continue' }));
+    await wait();
+    expect(await screen.findByRole('heading', TODAY)).toBeDefined();
+  });
+
+  it.each(['sent', 'asked', 'cooling'])(
+    'lands Continue on %s on Waiting, as the asker is not a member yet',
+    async (state) => {
+      await open(`/demo/ways-in?page=ask&state=${state}`, 'Ask to join Ire Events');
+
+      fireEvent.click(screen.getByRole('link', { name: 'Continue' }));
+      expect(
+        await screen.findByRole('heading', { name: 'Waiting for Ire Events to approve you' }),
+      ).toBeDefined();
+      expect(screen.getByRole('link', { name: 'Sign out' })).toBeDefined();
+    },
+  );
+
+  it('lands Google and Apple on Create your account on their first sign-in pages', async () => {
+    await open('/demo/create-account', 'Create your account');
+    fireEvent.click(screen.getByRole('button', { name: 'Continue with Google' }));
+    await wait();
+    expect(await screen.findByText('Signed in with Google')).toBeDefined();
+    expect((screen.getByLabelText('Full name') as HTMLInputElement).value).toBe(SAMPLE.name);
+  });
+
+  it('lands Apple with no name on its first sign-in page, Full name empty', async () => {
+    await open('/demo/create-account', 'Create your account');
+    fireEvent.click(screen.getByRole('button', { name: 'Continue with Apple' }));
+    await wait();
+    expect(await screen.findByText('Signed in with Apple')).toBeDefined();
+    expect((screen.getByLabelText('Full name') as HTMLInputElement).value).toBe('');
+  });
+
+  it('opens Today for the old stand-in’s address, typed by hand', async () => {
+    at('/demo/signed-in');
+
+    expect(await screen.findByRole('heading', TODAY)).toBeDefined();
+    expect(screen.queryByRole('heading', { name: 'Signed in' })).toBeNull();
+  });
+
+  it('offers neither way in the Terms and Privacy stand-ins’ header, as any page opens them', async () => {
+    await open('/demo/later?screen=terms', 'Terms');
+    expect(screen.queryByText('New to Soirely?')).toBeNull();
+    expect(screen.getByRole('link', { name: 'Back to sign in' })).toBeDefined();
   });
 });
 
