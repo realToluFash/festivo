@@ -24,8 +24,8 @@ export interface Config {
   google: { authorizeUrl: string; clientId: string } | null;
   /** Apple's, the same way: the code is redeemed by the API. */
   apple: { authorizeUrl: string; clientId: string } | null;
-  /** One of B Confetti's colour schemes, laid over the base by tokens.css; null keeps the base. */
-  scheme: string | null;
+  /** One of B Confetti's colour schemes, laid over the base by tokens.css; a name with no block keeps the base. */
+  scheme: string;
 }
 
 const CONFIG_URL = '/config.json';
@@ -94,9 +94,12 @@ function parse(raw: unknown): Config {
   };
 }
 
-/** A plain name, or nothing: it goes into an attribute selector, and a name with no block keeps the base. */
-function schemeFrom(raw: unknown): string | null {
-  return typeof raw === 'string' && /^[a-z]+$/.test(raw) ? raw : null;
+/** Violet, as docs/design/tokens.mjs's defaultScheme (sc-30410). */
+const DEFAULT_SCHEME = 'violet';
+
+/** A plain name, or the default: it goes into an attribute selector. */
+function schemeFrom(raw: unknown): string {
+  return typeof raw === 'string' && /^[a-z]+$/.test(raw) ? raw : DEFAULT_SCHEME;
 }
 
 /** Absent or half-filled is null: the button then says sign-in did not work, rather than guessing a host. */

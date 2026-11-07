@@ -368,7 +368,9 @@ export const tokens = {
 };
 
 // ── B Confetti's colour schemes (owner, 3 Nov 2026; page 29, Colours.dc.html). ──
-// EXPO_PUBLIC_SCHEME lays one over the tokens above; unset, they stay as they are.
+// EXPO_PUBLIC_SCHEME lays one over the tokens above; unset, it is defaultScheme (sc-30410).
+export const defaultScheme = 'violet';
+
 export const schemes = {
   violet: {
     colorInk: '#0D0D12',

@@ -96,13 +96,13 @@ describe('runtime configuration', () => {
     expect(half.google).toBeNull();
   });
 
-  it("keeps a scheme's name, and leaves the base when there is none", async () => {
-    await load(respond({ apiBaseUrl: 'http://a', scheme: 'violet' }));
-    expect(config().scheme).toBe('violet');
+  it("keeps a scheme's name, and draws violet when there is none", async () => {
+    await load(respond({ apiBaseUrl: 'http://a', scheme: 'cobalt' }));
+    expect(config().scheme).toBe('cobalt');
 
     for (const scheme of [undefined, '', 'Violet', "violet'] {", 7]) {
       await load(respond({ apiBaseUrl: 'http://a', scheme }));
-      expect(config().scheme, String(scheme)).toBeNull();
+      expect(config().scheme, String(scheme)).toBe('violet');
     }
   });
 });

@@ -21,7 +21,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { schemes, tokens } from '../docs/design/tokens.mjs';
+import { defaultScheme, schemes, tokens } from '../docs/design/tokens.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -160,8 +160,10 @@ function buildNative() {
     '  return name != null && Object.hasOwn(schemes, name) ? { ...base, ...schemes[name as Scheme] } : base;',
     '}',
     '',
-    '/** Expo writes EXPO_PUBLIC_SCHEME in at build time. */',
-    'export const tokens: Tokens = withScheme(process.env.EXPO_PUBLIC_SCHEME);',
+    `export const defaultScheme: Scheme = '${defaultScheme}';`,
+    '',
+    '/** Expo writes EXPO_PUBLIC_SCHEME in at build time; unset or empty, a build draws the default. */',
+    'export const tokens: Tokens = withScheme(process.env.EXPO_PUBLIC_SCHEME || defaultScheme);',
     '',
     'export default tokens;',
     '',
