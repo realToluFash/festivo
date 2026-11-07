@@ -6,6 +6,7 @@ import {
   DRAFT,
   GUESTS_STATES,
   PARTY,
+  WALK_IN,
   WEDDING,
   countsOf,
   guestLineOf,
@@ -129,6 +130,20 @@ describe('the list (sc-3772)', () => {
       'Oluwaseun Ajayi',
       'Tomás Ferreira',
     ]);
+  });
+
+  it('finds by name only for someone who cannot see contact details (sc-3773, 7 Nov)', () => {
+    expect(viewOf(list, 'all', 'nhs.net', NONE, replyBy, false).shown).toBe(0);
+    expect(viewOf(list, 'all', '900412', NONE, replyBy, false).shown).toBe(0);
+    expect(viewOf(list, 'all', 'nwosu', NONE, replyBy, false).shown).toBe(2);
+  });
+
+  it('counts a walk-in as a choice of its own, so the choices add up to All', () => {
+    const day = countsOf([...list, WALK_IN]);
+
+    expect(day.walkIn).toBe(1);
+    expect(day.invited + day.notYet + day.walkIn).toBe(day.all);
+    expect(viewOf([...list, WALK_IN], 'walkIn', '', NONE, replyBy).shown).toBe(1);
   });
 
   it('finds by name, email address or number, inside the filter', () => {

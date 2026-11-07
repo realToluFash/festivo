@@ -150,7 +150,7 @@ function GuestsPage({
   const today = todayOf(start.clock);
   const counts = countsOf(list);
   const card = guestsCardOf(event, list, start.card, start.clock, manages);
-  const { view, shown } = viewOf(list, choice, q, expanded, replyByOf(event.id));
+  const { view, shown } = viewOf(list, choice, q, expanded, replyByOf(event.id), manages);
   const looking = choice !== 'all' || q.trim() !== '';
   const open = pane.kind === 'guest' ? pane.id : null;
   const paneGuest = 'id' in pane ? (list.find((one) => one.id === pane.id) ?? null) : null;
@@ -559,7 +559,11 @@ function SearchRow({
   onMenu: (open: boolean) => void;
 }) {
   const field = useRef<HTMLInputElement>(null);
-  const items = CHOICES.map((key) => ({ key, word: choiceWord(key), count: counts[key] }));
+  const items = CHOICES.filter((key) => key !== 'walkIn' || counts.walkIn > 0).map((key) => ({
+    key,
+    word: choiceWord(key),
+    count: counts[key],
+  }));
 
   return (
     <div className="ev-search-row gs-search-row">

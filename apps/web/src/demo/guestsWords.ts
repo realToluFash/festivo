@@ -120,6 +120,8 @@ export const GW = {
   remove: 'Remove',
   removeNamed: (name: string) => `Remove ${name}`,
   removed: (name: string) => `${name} removed. Save to keep the change.`,
+  moreCompanions: (count: number) =>
+    count === 1 ? '1 more companion' : `${figure(count)} more companions`,
   mostCompanions: (most: number) => `${figure(most)} companions is the most one guest can bring.`,
   blankName: 'Enter their full name.',
   nameTooLong: (most: number) => `Shorten the name to ${figure(most)} characters or fewer.`,

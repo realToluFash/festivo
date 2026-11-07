@@ -17,7 +17,7 @@ import type { DemoLink } from './settings.ts';
 export { GW };
 
 export type Reply = 'coming' | 'notSure' | 'noReply' | 'notComing' | 'held' | 'notYet' | 'walkIn';
-export type Choice = 'all' | 'invited' | Exclude<Reply, 'walkIn'>;
+export type Choice = 'all' | 'invited' | Reply;
 export type Answer = 'coming' | 'notComing' | 'notSure';
 
 export const ANSWERS: readonly Answer[] = ['coming', 'notComing', 'notSure'];
@@ -28,6 +28,7 @@ export const CHOICES: readonly Choice[] = [
   'all',
   'invited',
   'coming',
+  'walkIn',
   'notSure',
   'noReply',
   'held',
@@ -566,6 +567,7 @@ export function countsOf(list: readonly Guest[]): Counts {
     held: count('held'),
     notComing: count('notComing'),
     notYet: count('notYet'),
+    walkIn: count('walkIn'),
     havent: haventGuests + haventCompanions,
     haventGuests,
     haventCompanions,
@@ -650,13 +652,13 @@ export interface ListGroup {
 
 export type ListView = { kind: 'groups'; groups: ListGroup[] } | { kind: 'rows'; rows: ListRow[] };
 
-function matches(person: Person, q: string): boolean {
+function matches(person: Person, q: string, contacts: boolean): boolean {
   const typed = folded(q.trim());
   const digits = q.replaceAll(/\D/gu, '');
 
   if (typed === '') return true;
   if (folded(person.name).includes(typed)) return true;
-  if (person.companion != null) return false;
+  if (person.companion != null || !contacts) return false;
   if (person.guest.email != null && folded(person.guest.email).includes(typed)) return true;
 
   return (
@@ -681,12 +683,13 @@ export function viewOf(
   q: string,
   expanded: ReadonlySet<Reply>,
   replyBy: string | null,
+  contacts = true,
 ): { view: ListView; shown: number } {
   const people = peopleOf(list);
   const searched = q.trim() !== '';
 
   if (searched || (choice !== 'all' && choice !== 'invited')) {
-    const found = people.filter((one) => inChoice(one.reply, choice) && matches(one, q));
+    const found = people.filter((one) => inChoice(one.reply, choice) && matches(one, q, contacts));
 
     return { view: { kind: 'rows', rows: flatRows(found, choice, replyBy) }, shown: found.length };
   }
@@ -1252,7 +1255,10 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
         values: {
           companions: [
             { id: 'musa-c1', name: 'Hauwa Bello' },
-            ...Array.from({ length: MOST_COMPANIONS - 1 }, () => ({ id: null, name: '' })),
+            ...Array.from({ length: MOST_COMPANIONS - 1 }, (_, at) => ({
+              id: `musa-c${at + 2}`,
+              name: '',
+            })),
           ],
         },
       });

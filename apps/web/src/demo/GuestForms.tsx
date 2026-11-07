@@ -33,6 +33,7 @@ import { GW, HOW_TOLD, type HowTold, REPLY_WORDS } from './guestsWords.ts';
 import { useLater } from '../useLater.ts';
 
 const SAVE_MS = 900;
+const SHOWN_COMPANIONS = 3;
 
 /** Where a refusal sends the focus: the first field that failed, in the form's order. */
 function firstFailing(lines: Lines): string | null {
@@ -99,6 +100,8 @@ function CompanionFields({
   const count = values.companions.length;
   const placeholder = (at: number) =>
     host === '' ? '' : at === 0 ? GW.guestOf(host) : GW.guestOfNth(host, at + 1);
+  const seen = (at: number) => at < SHOWN_COMPANIONS || values.companions[at]?.id == null;
+  const unseen = values.companions.filter((_, at) => !seen(at)).length;
 
   return (
     <fieldset className="gs-fieldset gs-companions">
@@ -107,6 +110,7 @@ function CompanionFields({
         {count === 0 ? GW.noneYet(MOST_COMPANIONS) : GW.ofMost(count, MOST_COMPANIONS)}
       </p>
       {values.companions.map((companion, at) => {
+        if (!seen(at)) return null;
         const shown =
           companion.name.trim() !== ''
             ? companion.name.trim()
@@ -148,6 +152,7 @@ function CompanionFields({
           </div>
         );
       })}
+      {unseen > 0 && <p className="gs-count">{GW.moreCompanions(unseen)}</p>}
       {said != null && <OkLine>{said}</OkLine>}
       {count < MOST_COMPANIONS ? (
         <button

@@ -263,7 +263,7 @@
 
 .gs-mark.is-coming,
 .gs-mark.is-walk-in {
-  background: var(--deskGreen);
+  background: var(--replyComingDot);
 }
 
 .gs-mark.is-walk-in {
@@ -271,17 +271,9 @@
 }
 
 .gs-mark.is-not-sure {
-  background: var(--colorAttentionTint);
-  box-shadow: inset 0 0 0 2.5px var(--colorAttention);
+  border: var(--replyMaybeRing);
+  background: var(--replyMaybeDot);
   color: var(--colorAttentionText);
-}
-
-.gs-mark.is-16.is-not-sure {
-  box-shadow: inset 0 0 0 2px var(--colorAttention);
-}
-
-.gs-mark.is-28.is-not-sure {
-  box-shadow: inset 0 0 0 3.5px var(--colorAttention);
 }
 
 .gs-mark.is-not-coming {
@@ -296,12 +288,12 @@
 }
 
 .gs-mark.is-held {
+  border: var(--replyHeldRing);
   background: linear-gradient(90deg, var(--gsGrey) 50%, var(--colorCard) 50%);
-  box-shadow: inset 0 0 0 1px var(--gsGrey);
 }
 
 .gs-mark.is-no-reply {
-  box-shadow: inset 0 0 0 1.5px var(--gsGrey);
+  border: var(--replyNoReplyRing);
 }
 
 .gs-mark.is-not-yet {
@@ -316,17 +308,20 @@
 }
 
 .gs-mark.on-cover.is-not-sure {
+  border: 0;
   background: none;
   box-shadow: inset 0 0 0 2px var(--colorInkOnDark);
   color: var(--colorInkOnDark);
 }
 
 .gs-mark.on-cover.is-held {
+  border: 0;
   background: linear-gradient(90deg, var(--colorInkOnDark) 50%, transparent 50%);
   box-shadow: inset 0 0 0 1.5px var(--colorInkOnDark);
 }
 
 .gs-mark.on-cover.is-no-reply {
+  border: 0;
   box-shadow: inset 0 0 0 1.5px var(--colorInkOnDark);
 }
 

@@ -132,8 +132,32 @@ describe('Guests, the list (sc-31781)', () => {
     expect(screen.queryByRole('button', { name: 'Write to them' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Edit' })).toBeNull();
     expect(screen.queryByText('kwame.mensah@outlook.com')).toBeNull();
+    expect(screen.queryByText('+44 7700 900412')).toBeNull();
     expect(screen.queryByRole('heading', { name: 'Invitation' })).toBeNull();
+
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Find a guest' }), {
+      target: { value: 'nhs.net' },
+    });
+
+    expect(screen.getByRole('heading', { name: 'No guests match' })).toBeDefined();
   });
+
+  it(
+    'shows door staff names, replies and companions, never a number or an email',
+    SLOW,
+    async () => {
+      await guests('staffBefore');
+
+      fireEvent.click(screen.getByRole('link', { name: /^Alhaji Musa Bello, Coming/u }));
+
+      expect(
+        await screen.findByRole('heading', { level: 2, name: 'Alhaji Musa Bello' }),
+      ).toBeDefined();
+      expect(within(column()).getByText('Guest of Alhaji Musa Bello')).toBeDefined();
+      expect(within(column()).queryByText('musa.bello@gmail.com')).toBeNull();
+      expect(within(column()).queryByText('Mobile number')).toBeNull();
+    },
+  );
 
   it('opens a Draft’s and a Paused event’s guests with their card', SLOW, async () => {
     await guests('draft');
@@ -143,8 +167,17 @@ describe('Guests, the list (sc-31781)', () => {
     expect(screen.getByRole('button', { name: 'Make live' })).toBeDefined();
   });
 
-  it('counts arrivals on the day, with a walk-in', SLOW, async () => {
+  it('counts arrivals on the day, with a walk-in in the menu after Coming', SLOW, async () => {
     await guests('onTheDay');
+
+    fireEvent.click(screen.getByRole('button', { name: 'All · 157' }));
+    expect(
+      within(screen.getByRole('menu'))
+        .getAllByRole('menuitemradio')
+        .slice(2, 4)
+        .map((item) => item.textContent),
+    ).toEqual(['Coming96', 'Walk-in1']);
+    fireEvent.keyDown(document, { key: 'Escape' });
 
     expect(screen.getByText('41 of 98')).toBeDefined();
     expect(screen.getByRole('heading', { level: 2, name: 'Walk-in · 1' })).toBeDefined();
@@ -237,6 +270,17 @@ describe('Guests, Edit in place (sc-3773)', () => {
 
     expect(await screen.findByText('kwame@mensah.co.uk', {}, SLOW)).toBeDefined();
     expect(screen.getByText('Saved')).toBeDefined();
+  });
+
+  it('shows three companions, then how many more', SLOW, async () => {
+    await guests('editMax');
+
+    expect(
+      within(column()).getAllByRole('textbox', { name: /^Companion’s full name/u }),
+    ).toHaveLength(3);
+    expect(screen.getByText('7 more companions')).toBeDefined();
+    expect(screen.getByText('10 companions is the most one guest can bring.')).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Add a companion' })).toBeNull();
   });
 
   it('asks before throwing a change away', SLOW, async () => {
