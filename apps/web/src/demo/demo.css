@@ -172,7 +172,7 @@
   margin: 0;
 }
 
-/* Back is 20 high with the column's 24 under it, so the title stays 88 under the header (WebNewAccount, page 27). */
+/* Back takes 20 in the flow with the column's 24 under it, so the title stays 88 under the header (WebNewAccount, page 27). */
 .demo-page-main.demo-backed {
   padding-top: 44px;
 }
@@ -182,9 +182,10 @@
   align-self: flex-start;
   align-items: center;
   gap: var(--spaceXxs);
-  height: 20px;
+  min-height: var(--sizeHit);
+  margin-block: -12px;
   margin-left: calc(-1 * var(--spaceHair));
-  font: 500 14px/20px var(--fontFamily);
+  font: var(--typeBodyStrong);
   color: var(--colorInk);
   text-decoration: none;
 }
@@ -400,7 +401,7 @@
 /* The create-account board's parts (WebNewAccount, page 27), shared by the rest of onboarding. */
 
 .demo-column .demo-step {
-  font: 500 13px/18px var(--fontFamily);
+  font: var(--typeSmallStrong);
   color: var(--colorInkSecondary);
 }
 
@@ -452,9 +453,9 @@
 /* One field the width of its answer, six digits (GOV.UK). */
 .demo-input.demo-code {
   width: 200px;
-  font: 500 18px/1 var(--fontFamily);
+  font: var(--typeCodeField);
   font-variant-numeric: tabular-nums;
-  letter-spacing: 0.32em;
+  letter-spacing: var(--typeCodeFieldTracking);
 }
 
 .demo-resend {

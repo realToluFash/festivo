@@ -70,6 +70,8 @@
   --typeNumberTileTracking: -0.02em;
   --typeBody: 400 14px/1.5 var(--fontFamily);
   --typeBodyTracking: 0;
+  --typeBodyStrong: 500 14px/1.5 var(--fontFamily);
+  --typeBodyStrongTracking: 0;
   --typeBodyPhone: 400 15px/1.5 var(--fontFamily);
   --typeBodyPhoneTracking: 0;
   --typeBodyGuest: 400 17px/1.5 var(--fontFamily);
@@ -78,6 +80,8 @@
   --typeRowTitleTracking: 0;
   --typeSmall: 400 13px/1.45 var(--fontFamily);
   --typeSmallTracking: 0;
+  --typeSmallStrong: 500 13px/1.45 var(--fontFamily);
+  --typeSmallStrongTracking: 0;
   --typeMeta: 400 12px/1.4 var(--fontFamily);
   --typeMetaTracking: 0;
   --typeLabel: 600 12px/1 var(--fontFamily);
@@ -90,6 +94,8 @@
   --typeButtonTracking: 0;
   --typeCode: 600 14px/1 var(--fontFamily);
   --typeCodeTracking: 0.04em;
+  --typeCodeField: 500 18px/1 var(--fontFamily);
+  --typeCodeFieldTracking: 0.32em;
   --typeRoomNow: 700 64px/1.05 var(--fontFamily);
   --typeRoomNowTracking: -0.02em;
   --typeLandingH1: 700 60px/1.02 var(--fontFamily);

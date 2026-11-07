@@ -115,10 +115,12 @@ export const tokens = {
   typeTitleDialog: { size: 20, weight: 700, lineHeight: 1.2, letterSpacing: '0' }, // dialog and sheet titles; 22 on tablet sheets
   typeNumberTile: { size: 30, weight: 700, lineHeight: 1, letterSpacing: '-0.02em' }, // tile numbers; 32 and 34 also appear
   typeBody: { size: 14, weight: 400, lineHeight: 1.5, letterSpacing: '0' }, // desktop default (730 uses)
+  typeBodyStrong: { size: 14, weight: 500, lineHeight: 1.5, letterSpacing: '0' }, // body at 500: Back, a field's label, a row's lead (sc-29065)
   typeBodyPhone: { size: 15, weight: 400, lineHeight: 1.5, letterSpacing: '0' }, // phone body and row titles
   typeBodyGuest: { size: 17, weight: 400, lineHeight: 1.5, letterSpacing: '0' }, // guest pages only
   typeRowTitle: { size: 15, weight: 600, lineHeight: 1.3, letterSpacing: '0' },
   typeSmall: { size: 13, weight: 400, lineHeight: 1.45, letterSpacing: '0' }, // secondary lines under titles
+  typeSmallStrong: { size: 13, weight: 500, lineHeight: 1.45, letterSpacing: '0' }, // a step line, a rule's line, a tab's count (sc-29065)
   typeMeta: { size: 12, weight: 400, lineHeight: 1.4, letterSpacing: '0' }, // timestamps, footnotes
   typeLabel: { size: 12, weight: 600, lineHeight: 1, letterSpacing: '0.1em' }, // UPPERCASE section labels
   // SETTLED (sc-80). The screens mostly use 11; this file declared 12. 12 wins:
@@ -130,6 +132,7 @@ export const tokens = {
   typePillWrapped: { size: 12, weight: 600, lineHeight: 1.25, letterSpacing: '0' }, // a status chip whose words wrap onto a second line at 320
   typeButton: { size: 14, weight: 600, lineHeight: 1, letterSpacing: '0' }, // 44px buttons; 15 on phone primaries; 13 inside dense rows
   typeCode: { size: 14, weight: 600, lineHeight: 1, letterSpacing: '0.04em' }, // codes read or copied by character, in Instrument Sans with tabular figures
+  typeCodeField: { size: 18, weight: 500, lineHeight: 1, letterSpacing: '0.32em' }, // the one field a code is typed into, six digits wide (sc-29065)
   typeRoomNow: { size: 64, weight: 700, lineHeight: 1.05, letterSpacing: '-0.02em' }, // room screen only; 30 for "coming up", 20 for labels
   typeLandingH1: { size: 60, weight: 700, lineHeight: 1.02, letterSpacing: '-0.03em' }, // public pages only
 

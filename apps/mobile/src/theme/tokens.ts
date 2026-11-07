@@ -107,6 +107,12 @@ const base = {
     "lineHeight": 1.5,
     "letterSpacing": "0"
   },
+  "typeBodyStrong": {
+    "size": 14,
+    "weight": 500,
+    "lineHeight": 1.5,
+    "letterSpacing": "0"
+  },
   "typeBodyPhone": {
     "size": 15,
     "weight": 400,
@@ -128,6 +134,12 @@ const base = {
   "typeSmall": {
     "size": 13,
     "weight": 400,
+    "lineHeight": 1.45,
+    "letterSpacing": "0"
+  },
+  "typeSmallStrong": {
+    "size": 13,
+    "weight": 500,
     "lineHeight": 1.45,
     "letterSpacing": "0"
   },
@@ -166,6 +178,12 @@ const base = {
     "weight": 600,
     "lineHeight": 1,
     "letterSpacing": "0.04em"
+  },
+  "typeCodeField": {
+    "size": 18,
+    "weight": 500,
+    "lineHeight": 1,
+    "letterSpacing": "0.32em"
   },
   "typeRoomNow": {
     "size": 64,
