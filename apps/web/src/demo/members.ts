@@ -10,6 +10,7 @@ import {
   type Leads,
   ledByLine,
 } from './handover.ts';
+import en from '../i18n/locales/en.json';
 import { SAMPLE } from './rules.ts';
 import { type SettingsSay, type Viewer, VIEWERS } from './settings.ts';
 import { fold } from './switcher.ts';
@@ -45,6 +46,7 @@ export const MARTA = 'marta.silva@ire.events';
 export const LUCIA = 'lucia.gomez@outlook.com';
 const DANIEL = 'daniel.kim@ire.events';
 export const TOM = 'tom.becker@gmail.com';
+export const KOFI = 'kofi@ire.events';
 
 function person(
   id: string,
@@ -82,7 +84,7 @@ export function samplePeople(): Person[] {
       { what: 'Asked to join', when: '2026-02-06' },
       { what: 'Approved by', by: FOLAKE, when: '2026-02-09' },
     ]),
-    person('kofi@ire.events', 'Kofi Mensah', 'Member', [
+    person(KOFI, 'Kofi Mensah', 'Member', [
       { what: 'Joined from the company directory', when: '2026-09-15' },
     ]),
     person(
@@ -429,12 +431,95 @@ export type Notice =
   | { kind: 'sent'; email: string }
   | { kind: 'approved'; id: string; role: string }
   | { kind: 'turnedDown'; id: string }
-  | { kind: 'removed'; id: string; handed?: Handed };
+  | { kind: 'removed'; id: string; handed?: Handed }
+  | { kind: 'recovered'; id: string; answer: RecoveryAnswer };
+
+/** The product's words for a request to get back in (sc-509), read from the web's catalogue so the two cannot drift. */
+export const RECOVERY_WORDS = en.recoveryRequests;
+const RR = RECOVERY_WORDS;
+
+/** i18next's slots, filled in English: `{{name}}` and `{{count, number}}`. */
+export function filled(words: string, slots: Readonly<Record<string, string | number>>): string {
+  return words.replaceAll(/\{\{(\w+)(?:, number)?\}\}/gu, (whole, slot: string) =>
+    String(slots[slot] ?? whole),
+  );
+}
+
+export type RecoveryAnswer = 'approve' | 'turnDown';
+
+export type RecoveryPhase = 'asking' | 'sending' | 'held' | 'failed' | 'closed';
+
+export interface Recovery {
+  id: string;
+  asked: string;
+  provedPhone: boolean;
+  /** Answered by somebody else, or ended, since the page loaded. */
+  ended: boolean;
+}
+
+/** A request lapses 7 × 24 hours after it was proved (sc-509). */
+export const RECOVERY_HOURS = 7 * 24;
+
+export function recoveryEnds(asked: string): string {
+  return new Date(Date.parse(`${asked}Z`) + RECOVERY_HOURS * 3_600_000).toISOString().slice(0, 16);
+}
+
+/** Kofi's and Priya's, oldest first, as wall clock in Lagos like the sample's other deadlines. */
+export function sampleRecoveries(): Recovery[] {
+  return [
+    { id: KOFI, asked: '2026-11-03T18:05', provedPhone: true, ended: false },
+    { id: PRIYA, asked: '2026-11-04T08:40', provedPhone: false, ended: false },
+  ];
+}
+
+const OWN_RECOVERY: Recovery = {
+  id: JULIEN,
+  asked: '2026-11-04T07:52',
+  provedPhone: true,
+  ended: false,
+};
+
+export function answerable(
+  recoveries: readonly Recovery[],
+  viewer: Pick<Viewer, 'id' | 'manages'>,
+): Recovery[] {
+  return viewer.manages ? recoveries.filter((one) => one.id !== viewer.id) : [];
+}
+
+export function recoveryRow(
+  recovery: Recovery,
+  people: readonly Person[],
+  viewer: Pick<Viewer, 'id'>,
+  say: SettingsSay,
+): { name: string; lines: string[]; own: string | null } {
+  const own = recovery.id === viewer.id;
+  const name = nameOf(people, recovery.id);
+  const proved = recovery.provedPhone
+    ? own
+      ? RR.provedBothOwn
+      : RR.provedBoth
+    : own
+      ? RR.provedEmailOwn
+      : RR.provedEmail;
+
+  return {
+    name: own ? filled(RR.you, { name }) : name,
+    lines: [
+      recovery.id,
+      `${RR.title} · ${proved}`,
+      filled(RR.when, {
+        asked: say.deadline(recovery.asked),
+        expires: say.deadline(recoveryEnds(recovery.asked)),
+      }),
+    ],
+    own: own ? filled(RR.own, { organisations: ORGANISATION }) : null,
+  };
+}
 
 export type Claim = 'unclaimed' | 'open' | 'found' | 'withdrawn' | 'lapsed' | 'stopped';
 
 export type CardStep =
-  | { label: string; does: 'answer' | 'see'; id: string }
+  | { label: string; does: 'answer' | 'see' | 'recover'; id: string }
   | { label: string; does: 'former' | 'become' | 'check' };
 
 export interface MembersCard {
@@ -447,17 +532,38 @@ export interface MembersCard {
 
 export const INVITATIONS_NOTE = 'Nobody has an account here until they accept.';
 const FORMER_KEPT = 'They are listed under Former, with everything they did kept.';
+export const toGetBackIn = (count: number) => `${count} to get back in`;
+export const toJoin = (count: number) => `${count} to join`;
+export const RECOVERY_CLOSE = 'Close';
+export const RECOVERY_SENDING = 'Sending your answer…';
 export const KEEPS_WORKING =
   'Events, guests and your permissions keep working. Only Owner actions, such as billing, wait for an owner.';
 
+/** The oldest request to get back in first, ahead of a request to join: the asker is locked out until somebody answers. */
+function firstStep(
+  people: readonly Person[],
+  recoveries: readonly Recovery[],
+  viewer: Pick<Viewer, 'id' | 'manages'>,
+): CardStep | null {
+  const recovery = answerable(recoveries, viewer)[0];
+  const asking = viewer.manages ? people.find((one) => one.status === 'pendingApproval') : null;
+
+  if (recovery != null)
+    return { label: `Answer ${nameOf(people, recovery.id)}`, does: 'recover', id: recovery.id };
+
+  return asking == null ? null : { label: `Answer ${asking.name}`, does: 'answer', id: asking.id };
+}
+
 export function membersCard({
   people,
+  recoveries,
   viewer,
   notice,
   claim,
   say,
 }: {
   people: readonly Person[];
+  recoveries: readonly Recovery[];
   viewer: Pick<Viewer, 'id' | 'manages'>;
   notice: Notice | null;
   claim: Claim | null;
@@ -467,10 +573,6 @@ export function membersCard({
   const seeFormer = { label: 'See Former', does: 'former' } as const;
   const become = { label: 'Become the owner', does: 'become' } as const;
   const unowned = `${ORGANISATION} has no active owner`;
-  const asking = viewer.manages ? people.filter((one) => one.status === 'pendingApproval') : [];
-  const first = asking[0];
-  const answer: CardStep | null =
-    first == null ? null : { label: `Answer ${first.name}`, does: 'answer', id: first.id };
 
   switch (notice?.kind) {
     case 'sent':
@@ -505,8 +607,18 @@ export function membersCard({
             ...quiet,
             says: `${nameOf(people, notice.id)} was removed`,
             lines: [`${ledByLine(handed, nameOf(people, handed.to), viewer.id)} ${FORMER_KEPT}`],
-            step: answer,
+            step: firstStep(people, recoveries, viewer),
           };
+    }
+    case 'recovered': {
+      const approve = notice.answer === 'approve';
+
+      return {
+        ...quiet,
+        says: filled(approve ? RR.approved : RR.turnedDown, { name: nameOf(people, notice.id) }),
+        lines: [approve ? RR.approvedNext : RR.turnedDownNext],
+        step: firstStep(people, recoveries, viewer),
+      };
     }
     case undefined:
       break;
@@ -559,14 +671,16 @@ export function membersCard({
   }
 
   const all = people.filter((one) => isShown(one.status, 'all'));
+  const asking = viewer.manages ? people.filter((one) => one.status === 'pendingApproval') : [];
+  const back = answerable(recoveries, viewer).length;
+  const waiting = back + asking.length;
+  const kinds = [toGetBackIn(back), toJoin(asking.length)];
   const faces = all.slice(0, 5);
 
   return {
-    says: [headcount(all.length), ...(asking.length > 0 ? [`${asking.length} waiting`] : [])].join(
-      ' · ',
-    ),
-    lines: [],
-    step: answer,
+    says: [headcount(all.length), ...(waiting > 0 ? [`${waiting} waiting`] : [])].join(' · '),
+    lines: back > 0 && asking.length > 0 ? [kinds.join(' · ')] : [],
+    step: firstStep(people, recoveries, viewer),
     faces,
     more: all.length - faces.length,
   };
@@ -883,11 +997,13 @@ export type MembersDialog =
   | { kind: 'remove' | 'handOver'; id: string; hand?: HandStart }
   | { kind: 'suspend'; id: string }
   | { kind: 'claim'; check: Check; copied: string | null; ask: boolean }
-  | { kind: 'withdraw' };
+  | { kind: 'withdraw' }
+  | { kind: 'recovery'; id: string; answer: RecoveryAnswer; phase: RecoveryPhase };
 
 export interface MembersStart {
   load: Load;
   people: Person[];
+  recoveries: Recovery[];
   invitations: Invitation[];
   filter: Filter;
   menu: boolean;
@@ -960,9 +1076,69 @@ export const MEMBERS_STATES = [
   'handoverNowFailed',
   'handoverNowDone',
   'handoverReadOnly',
+  'recovery',
+  'recoveryApprove',
+  'recoveryTurnDown',
+  'recoveryApproved',
+  'recoveryTurnedDown',
+  'recoveryClosed',
+  'recoverySending',
+  'recoveryFailed',
+  'recoveryDone',
+  'recoveryOwn',
 ] as const;
 
 export type MembersState = (typeof MEMBERS_STATES)[number];
+
+type RecoveryState = Extract<MembersState, `recovery${string}`>;
+
+function isRecovery(state: MembersState): state is RecoveryState {
+  return state.startsWith('recovery');
+}
+
+/** Each recovery state as its board draws it; null where the viewer cannot reach it. */
+function recoveryStart(
+  state: RecoveryState,
+  viewer: Pick<Viewer, 'id' | 'manages'>,
+): Pick<MembersStart, 'recoveries' | 'notice' | 'dialog'> | null {
+  const both = sampleRecoveries();
+  const priya = both.filter((one) => one.id !== KOFI);
+  const asks = (answer: RecoveryAnswer, phase: RecoveryPhase = 'asking') =>
+    ({ kind: 'recovery', id: KOFI, answer, phase }) as const;
+  const answered = (id: string, answer: RecoveryAnswer) =>
+    ({ kind: 'recovered', id, answer }) as const;
+
+  if (!viewer.manages) return null;
+
+  switch (state) {
+    case 'recovery':
+      return { recoveries: both, notice: null, dialog: null };
+    case 'recoveryApprove':
+      return { recoveries: both, notice: null, dialog: asks('approve') };
+    case 'recoveryTurnDown':
+      return { recoveries: both, notice: null, dialog: asks('turnDown') };
+    case 'recoveryApproved':
+      return { recoveries: priya, notice: answered(KOFI, 'approve'), dialog: null };
+    case 'recoveryTurnedDown':
+      return { recoveries: priya, notice: answered(KOFI, 'turnDown'), dialog: null };
+    case 'recoveryClosed':
+      return {
+        recoveries: both.map((one) => (one.id === KOFI ? { ...one, ended: true } : one)),
+        notice: null,
+        dialog: asks('approve', 'closed'),
+      };
+    case 'recoverySending':
+      return { recoveries: both, notice: null, dialog: asks('approve', 'held') };
+    case 'recoveryFailed':
+      return { recoveries: both, notice: null, dialog: asks('approve', 'failed') };
+    case 'recoveryDone':
+      return { recoveries: [], notice: answered(PRIYA, 'approve'), dialog: null };
+    case 'recoveryOwn':
+      return viewer.id === JULIEN
+        ? { recoveries: [OWN_RECOVERY], notice: null, dialog: null }
+        : null;
+  }
+}
 
 const CLAIMS: Partial<Record<MembersState, Claim>> = {
   noOwner: 'unclaimed',
@@ -1219,13 +1395,14 @@ const EVENTS: Partial<Record<MembersState, PersonEvent>> = {
   handoverNowDone: 'handedOver',
 };
 
-/** Where each state the boards draw starts; any other name is the whole page. */
-export function membersStart(name: string, viewer: Pick<Viewer, 'id'>): MembersStart {
+/** Where each state the boards draw starts; any other name, or one the viewer cannot reach, is the whole page. */
+export function membersStart(name: string, viewer: Pick<Viewer, 'id' | 'manages'>): MembersStart {
   const state = MEMBERS_STATES.find((one) => one === name);
   const invitations = sampleInvitations();
   const start: MembersStart = {
     load: 'loaded',
     people: samplePeople(),
+    recoveries: [],
     invitations,
     filter: 'all',
     menu: false,
@@ -1239,6 +1416,7 @@ export function membersStart(name: string, viewer: Pick<Viewer, 'id'>): MembersS
   };
 
   if (state == null) return start;
+  if (isRecovery(state)) return { ...start, ...recoveryStart(state, viewer) };
 
   const dialog = dialogOf(state, viewer);
 

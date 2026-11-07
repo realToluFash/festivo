@@ -1990,10 +1990,21 @@ function stopAppServices(root) {
   run('docker', ['compose', 'stop', ...APP_SERVICES], { cwd: root });
 }
 
-// Makes what a `down` removed, where `start` fails on a stack with no containers.
+// Makes what a `down` removed, where `start` fails on a stack with no containers. `up` refuses a
+// paused container, and a batch killed while a check held the API leaves it paused.
+export function startServices(services, { run, capture }) {
+  const paused = (capture(['ps', '--status', 'paused', '--format', '{{.Service}}']) ?? '')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+  if (paused.length) run(['unpause', ...paused]);
+  run(['up', '-d', '--wait', '--no-recreate', ...services]);
+}
+
 function startAppServices(root) {
-  run('docker', ['compose', 'up', '-d', '--wait', '--no-recreate', ...APP_SERVICES], {
-    cwd: root,
+  startServices(APP_SERVICES, {
+    run: (args) => run('docker', ['compose', ...args], { cwd: root }),
+    capture: (args) => capture('docker', ['compose', ...args], { cwd: root }),
   });
 }
 
@@ -2207,14 +2218,14 @@ export const runId = ({ check, language, repeat = 1 }) =>
 const helperStep = (ask, file) =>
   ['- runScript:', `    file: ${file}`, '    env:', `      ASK: '${ask}'`, ''].join('\n');
 
+const prefixShots = (flow, id) =>
+  flow.replace(/^(\s*-\s*takeScreenshot:\s*)(['"]?)([^'"\s]+)\2\s*$/gm, `$1${id}-$3`);
+
 export function batchCheck(flow, check, language, { reset, repeat = 1 }) {
   const at = flow.indexOf('\n---\n');
   if (at === -1) throw new Error(`${check}: no --- between its config and its commands`);
   const id = runId({ check, language, repeat });
-  const commands = flow
-    .slice(at + 5)
-    .replace(/^(\s*-\s*takeScreenshot:\s*)(['"]?)([^'"\s]+)\2\s*$/gm, `$1${id}-$3`)
-    .trimEnd();
+  const commands = prefixShots(flow.slice(at + 5), id).trimEnd();
   return [
     flow.slice(0, at + 5),
     helperStep(`/started?check=${encodeURIComponent(id)}`, '../batch/helper.js'),
@@ -2264,15 +2275,49 @@ export function composeBatch(
     writeFileSync(path, localise(readFileSync(path, 'utf8'), catalogues, 'any', { email }));
   }
   mkdirSync(join(target, '_checks'));
+  const subFlows = (flow, language, caller, chain) =>
+    flow.replace(
+      /^(\s*(?:-\s*runFlow|file):\s*)(['"]?)([\w.-]+)\.ya?ml\2(?=\s*$)/gm,
+      (line, key, quote, name) => {
+        if (!existsSync(join(source, 'checks', `${name}.yaml`))) return line;
+        if (chain.includes(name))
+          throw new Error(`${[...chain, name].join(' → ')}: a check runs itself`);
+        const id = `${caller}.${name}`;
+        const path = join(target, '_checks', `${id}.flow.yaml`);
+        if (!existsSync(path)) {
+          const sub = readFileSync(join(source, 'checks', `${name}.yaml`), 'utf8');
+          writeFileSync(
+            path,
+            finish(
+              prefixShots(
+                subFlows(localise(sub, catalogues, language, { email }), language, id, [
+                  ...chain,
+                  name,
+                ]),
+                id,
+              ),
+            ),
+          );
+        }
+        return `${key}${id}.flow.yaml`;
+      },
+    );
   for (const run of batchRuns(checks, languages)) {
     const { check, language, repeat } = run;
-    const flow = localise(
-      readFileSync(join(source, 'checks', `${check}.yaml`), 'utf8'),
-      catalogues,
-      language,
-      { email },
-    );
     const id = runId(run);
+    const flow = subFlows(
+      localise(
+        readFileSync(join(source, 'checks', `${check}.yaml`), 'utf8'),
+        catalogues,
+        language,
+        {
+          email,
+        },
+      ),
+      language,
+      id,
+      [check],
+    );
     writeFileSync(
       join(target, '_checks', `${id}.yaml`),
       finish(batchCheck(flow, check, language, { reset: !cold, repeat })),
@@ -2386,6 +2431,100 @@ function apiSession(email, password, secret) {
     refresh: (refreshToken) => api('/api/auth/refresh', { body: { refreshToken } }),
   });
   return (path, options) => session((token) => api(path, { ...options, token }));
+}
+
+export const MEMBERSHIP_CHANGES = ['join', 'pause', 'suspend', 'remove', 'delete', 'clear'];
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+// Owners are registered as few as possible: sign-ups are limited to ten an hour per address.
+export function membershipChanges({ email, member, ownerOf, sql }) {
+  let owning = null;
+  const newOwner = () =>
+    (owning = ownerOf().catch((error) => {
+      owning = null;
+      throw error;
+    }));
+  // Each owner may make five organisations an hour, so a refused one hands over to a new owner.
+  const create = async (name) => {
+    const body = { name, countryCode: 'GB', timezone: 'Europe/London' };
+    const owner = await (owning ?? newOwner());
+    try {
+      return { owner, ...(await owner('/api/orgs', { body })) };
+    } catch (error) {
+      if (error.status !== 429) throw error;
+      const next = await newOwner();
+      return { owner: next, ...(await next('/api/orgs', { body })) };
+    }
+  };
+  const joined = new Map();
+  const find = (name) => {
+    const org = joined.get(name);
+    if (!org)
+      throw new Error(`${name} was not joined in this batch: /membership?change=join first`);
+    return org;
+  };
+  const membershipIn = async ({ id, owner }) => {
+    const { members } = await owner(`/api/orgs/${id}/members`, { method: 'GET' });
+    const mine = members.find((m) => m.user.email === email)?.id;
+    if (!UUID.test(mine ?? '')) throw new Error(`${email} holds no membership in ${id}`);
+    return mine;
+  };
+  const changes = {
+    // Or a name joined again would show twice in the switcher.
+    join: async (name) => {
+      if (joined.has(name)) await changes.delete(name);
+      const {
+        owner,
+        organisation: { id },
+      } = await create(name);
+      const { roles } = await owner(`/api/orgs/${id}/roles`, { method: 'GET' });
+      // A seeded member reads no events, so it would have no Events or Calendar to move to.
+      const roleId = roles.find((r) => r.seededAs === 'administrator').id;
+      const { invitation } = await owner(`/api/orgs/${id}/members/invite`, {
+        body: { email, roleId },
+      });
+      await member(`/api/invitations/${invitation.id}/accept`, {});
+      joined.set(name, { id, owner });
+      return { id };
+    },
+    pause: async (name) => sql(domainPause(await membershipIn(find(name)), email)),
+    suspend: async (name) => {
+      const org = find(name);
+      await org.owner(`/api/orgs/${org.id}/members/${await membershipIn(org)}/suspend`, {});
+    },
+    remove: async (name) => {
+      const org = find(name);
+      await org.owner(`/api/orgs/${org.id}/members/${await membershipIn(org)}`, {
+        method: 'DELETE',
+      });
+    },
+    delete: async (name) => {
+      const { id, owner } = find(name);
+      await owner(`/api/orgs/${id}`, { method: 'DELETE', body: { name } });
+      joined.delete(name);
+    },
+  };
+  // Access paused has no way out, so a batch deletes what it joined before each check and after.
+  const clear = async () => {
+    for (const name of [...joined.keys()]) await changes.delete(name);
+    return { membership: 'clear' };
+  };
+  return async (change, name) => {
+    if (!MEMBERSHIP_CHANGES.includes(change)) {
+      throw new Error(`no membership change ${change}: ${MEMBERSHIP_CHANGES.join(', ')}`);
+    }
+    if (change === 'clear') return clear();
+    if (!name) throw new Error(`${change} in which organisation? /membership?change=…&org=…`);
+    return { membership: change, org: name, ...(await changes[change](name)) };
+  };
+}
+
+// The API has no route to pause through a domain; this is what DomainSuspender writes.
+export function domainPause(membershipId, email) {
+  if (!UUID.test(membershipId)) throw new Error(`not a membership id: ${membershipId}`);
+  const domain = email.split('@')[1];
+  if (!/^[a-z0-9.-]+$/i.test(domain ?? '')) throw new Error(`no domain in ${email}`);
+  return `UPDATE memberships SET status = 'suspended', suspension = 'domain_closed', domain = '${domain.toLowerCase()}', suspended_at = now(), removes_at = now() + interval '30 days' WHERE id = '${membershipId}'`;
 }
 
 async function reloadApp() {
@@ -2531,6 +2670,8 @@ export function apiMoves(from, to) {
     stopped: [['up', '-d', '--wait', '--no-recreate', 'api']],
   };
   if (to === 'up') return up[from];
+  // `stop` thaws a paused container for its SIGTERM, and Caddy answers the held request.
+  if (from === 'paused') return [['kill', 'api']];
   if (from !== 'up') return [...up[from], ...apiMoves('up', to)];
   return [[to === 'paused' ? 'pause' : 'stop', 'api']];
 }
@@ -2541,9 +2682,15 @@ export const apiStateOf = (containerState) =>
 // A check holds Event View's reads by pausing the API once the list has loaded. Each move waits
 // for the one before it. The state is read from Docker on the first move and after a failed one,
 // since a killed batch or a half-done move leaves the container in a state nobody recorded.
-// A move between paused and stopped passes through up, and anything the app asks then is
-// answered, so those moves run inside `unreached`, which keeps the device from the API.
-export function apiControl({ run, read, unreached = (moves) => moves() }) {
+// Stopped to paused passes through up, and anything the app asks then is answered, so that move
+// runs inside `unreached`, which keeps the device from the API. A move that ends up returns once
+// `healthy` says the API answers: the api service has no healthcheck for `--wait` to wait on.
+export function apiControl({
+  run,
+  read,
+  healthy = async () => true,
+  unreached = (moves) => moves(),
+}) {
   let state;
   let moving = Promise.resolve();
   const move = (to) => {
@@ -2557,9 +2704,14 @@ export function apiControl({ run, read, unreached = (moves) => moves() }) {
             state = undefined;
             throw new Error(`docker compose ${args.join(' ')} failed`);
           }
-          state = args[0] === 'pause' ? 'paused' : args[0] === 'stop' ? 'stopped' : 'up';
+          state =
+            args[0] === 'pause' ? 'paused' : ['stop', 'kill'].includes(args[0]) ? 'stopped' : 'up';
         }
       });
+      if (moves.length && state === 'up' && !(await healthy())) {
+        state = undefined;
+        throw new Error('the api came back but never answered /api/health');
+      }
     });
     moving = next.catch(() => {});
     return next;
@@ -2578,9 +2730,21 @@ export async function withoutReverse(port, adb, moves) {
   }
 }
 
+export async function answers(url, { ms = 60_000, every = 500, get = fetch } = {}) {
+  for (const deadline = Date.now() + ms; ; await pause(every)) {
+    const ok = await get(url, { signal: AbortSignal.timeout(every * 4) }).then(
+      (r) => r.ok,
+      () => false,
+    );
+    if (ok) return true;
+    if (Date.now() >= deadline) return false;
+  }
+}
+
 const composeApi = (root, onAndroid) =>
   apiControl({
     run: (args) => runAsync('docker', ['compose', ...args], { cwd: root }),
+    healthy: () => answers(`${CONFIG.urls.api}/api/health`),
     read: () =>
       capture('docker', ['compose', 'ps', '-a', 'api', '--format', '{{.State}}'], { cwd: root }) ??
       '',
@@ -2606,6 +2770,7 @@ export function startHelper({
   heard,
   device,
   onAndroid,
+  changeMembership,
   open = openOnEmulator,
   reload = reloadOnEmulator,
   portrait = portraitOnEmulator,
@@ -2654,6 +2819,16 @@ export function startHelper({
           throw new Error(`no API state ${to}: ${API_STATES.join(', ')}`);
         if (!(await within(8000, apiState.move(to)))) return reply(200, { wait: true });
         return reply(200, { api: to });
+      }
+      if (url.pathname === '/membership') {
+        if (!changeMembership && url.searchParams.get('change') === 'clear')
+          return reply(200, { membership: 'clear' });
+        if (!changeMembership) throw new Error('this batch makes no membership change');
+        if (!(await within(8000, apiState.move('up')))) return reply(200, { wait: true });
+        return reply(
+          200,
+          await changeMembership(url.searchParams.get('change'), url.searchParams.get('org')),
+        );
       }
       if (url.pathname === '/started') {
         if (!(await within(8000, apiState.move('up')))) return reply(200, { wait: true });
@@ -2782,6 +2957,18 @@ async function batch(args) {
     await apiState.move('up');
     await signedIn('/api/auth/locale', { method: 'PUT', body: { locale } });
   };
+  const changeMembership = membershipChanges({
+    email,
+    member: apiSession(email, password, secret),
+    ownerOf: () => organisationOwner(root),
+    sql: async (statement) => {
+      const psql = ['compose', 'exec', '-T', 'postgres', 'psql', '-U', 'soirely', '-d', 'soirely'];
+      const answer = capture('docker', [...psql, '-v', 'ON_ERROR_STOP=1', '-c', statement], {
+        cwd: root,
+      });
+      if (answer !== 'UPDATE 1') throw new Error(`the database changed no membership: ${answer}`);
+    },
+  });
   const helper = await startHelper({
     email,
     secret,
@@ -2792,6 +2979,7 @@ async function batch(args) {
     heard,
     device,
     onAndroid,
+    changeMembership,
   });
   // The secret stays with the helper: no flow is handed it.
   const env = {
@@ -2858,6 +3046,9 @@ async function batch(args) {
     await apiState
       .move('up')
       .catch((error) => console.error(`\nThe API is still held: ${error.message}`));
+    await changeMembership('clear').catch((error) =>
+      console.error(`\nAn organisation this batch joined is left: ${error.message}`),
+    );
     // The app follows the account's language when it next opens, and later flows expect English.
     if (named) await setLocale(before ?? 'en');
   }
@@ -3003,22 +3194,12 @@ async function account(args) {
     return;
   }
   const passed = args.filter((a) => a !== '--two-factor' && a !== '--ready');
-  const made = capture('node', ['scripts/qa-account.mjs', '--json', ...passed], {
-    cwd: root,
-    env: { ...process.env, ...env },
-  });
-  if (made === null) throw new Error('scripts/qa-account.mjs registered no account');
-  const { email, password, name, accessToken: token, sessionId } = JSON.parse(made);
-  await api('/api/auth/complete-profile', {
-    method: 'PATCH',
-    token,
-    body: {
-      name,
-      organisationName: ACCOUNT_ORGANISATION,
-      countryCode: 'GB',
-      timezone: 'Europe/London',
-    },
-  });
+  const {
+    email,
+    password,
+    accessToken: token,
+    sessionId,
+  } = await founder(root, ACCOUNT_ORGANISATION, passed);
   let secret = null;
   if (twoFactor) {
     ({ secret } = await api('/api/auth/two-factor/enrol', { token }));
@@ -3026,6 +3207,26 @@ async function account(args) {
     await api('/api/auth/two-factor/activate', { token, body: { code } });
   }
   console.log(readyReport({ email, password, secret, accessToken: token, sessionId }));
+}
+
+async function organisationOwner(root) {
+  const { email, password } = await founder(root, 'QA Owner');
+  return apiSession(email, password, null);
+}
+
+async function founder(root, organisationName, args = []) {
+  const made = capture('node', ['scripts/qa-account.mjs', '--json', ...args], {
+    cwd: root,
+    env: { ...process.env, SOIRELY_API_URL: CONFIG.urls.api, MAILPIT_URL: CONFIG.urls.mailpit },
+  });
+  if (made === null) throw new Error('scripts/qa-account.mjs registered no account');
+  const registered = JSON.parse(made);
+  await api('/api/auth/complete-profile', {
+    method: 'PATCH',
+    token: registered.accessToken,
+    body: { name: registered.name, organisationName, countryCode: 'GB', timezone: 'Europe/London' },
+  });
+  return registered;
 }
 
 // The session it signed in with is printed, so a flow can end it from outside the phone.

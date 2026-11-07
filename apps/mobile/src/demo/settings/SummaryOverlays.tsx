@@ -111,11 +111,17 @@ function Window({
   );
 }
 
-/** An Ask from a page: a dialog in a window of its own. */
-export function Ask({ open, opener, ...ask }: AskProps & { open: boolean; opener: Opener }) {
+/** An Ask from a page: a dialog in a window of its own, and `over` it a menu it opens, in the same window. */
+export function Ask({
+  open,
+  opener,
+  over,
+  ...ask
+}: AskProps & { open: boolean; opener: Opener; over?: Layer | null }) {
   return (
-    <Window open={open} onClose={ask.onKeep} opener={opener}>
-      {open && <AskLayer {...ask} />}
+    <Window open={open} onClose={over?.onClose ?? ask.onKeep} opener={opener}>
+      {open && <AskLayer covered={over != null} {...ask} />}
+      {open && over?.layer}
     </Window>
   );
 }
@@ -388,38 +394,62 @@ export function anchorUnder(trigger: RefObject<ViewInstance | null>, then: (at: 
   trigger.current?.measureInWindow((x, y, width, height) => then({ x, y: y + height, width }));
 }
 
-/** A menu under what opened it, its right edge in line; capped at the room under it, it scrolls inside with a fade at its foot. */
-export function AnchoredMenu({
-  at,
-  onClose,
-  opener,
-  width = MENU_WIDTH,
-  align = 'end',
-  over,
-  scrollRef,
-  children,
-  testID,
-}: {
+interface MenuProps {
   at: Anchor | null;
   onClose: () => void;
-  opener: Opener;
   width?: number;
   align?: 'start' | 'end';
-  /** Drawn over the menu in its window, as FocusedScreen's `over` is. */
-  over?: ReactNode;
+  /** How far under what opened it. */
+  below?: number;
+  /** Where it must end above, the keys' top less a gap; the window's foot otherwise. */
+  floor?: number | null;
+  /** Above the scrolling items: a search field. */
+  head?: ReactNode;
   scrollRef?: Ref<ScrollViewInstance>;
   children: ReactNode;
   testID?: string;
+}
+
+/** A menu under what opened it, its right edge in line; capped at the room under it, it scrolls inside with a fade at its foot. */
+export function AnchoredMenu({
+  opener,
+  over,
+  ...menu
+}: MenuProps & {
+  opener: Opener;
+  /** Drawn over the menu in its window, as FocusedScreen's `over` is. */
+  over?: ReactNode;
 }) {
+  return (
+    <Window open={menu.at != null} onClose={menu.onClose} opener={opener}>
+      <MenuLayer {...menu} />
+      {over}
+    </Window>
+  );
+}
+
+/** AnchoredMenu's menu without a window of its own, for a window that is already up: an Ask's. */
+export function MenuLayer({
+  at,
+  onClose,
+  width = MENU_WIDTH,
+  align = 'end',
+  below = tokens.spaceXxs,
+  floor = null,
+  head,
+  scrollRef,
+  children,
+  testID,
+}: MenuProps) {
   const frame = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const [seen, setSeen] = useState({ panel: 0, content: 0, offset: 0 });
-  const top = (at?.y ?? 0) + tokens.spaceXxs;
-  const room = frame.height - top - Math.max(insets.bottom, tokens.spaceLg);
+  const top = (at?.y ?? 0) + below;
+  const room = (floor ?? frame.height - Math.max(insets.bottom, tokens.spaceLg)) - top;
   const more = seen.content - seen.offset - seen.panel > 1;
 
   return (
-    <Window open={at != null} onClose={onClose} opener={opener}>
+    <>
       <Pressable
         style={StyleSheet.absoluteFill}
         onPress={onClose}
@@ -442,6 +472,7 @@ export function AnchoredMenu({
           testID={testID}
         >
           <View style={styles.menuClip}>
+            {head}
             <ScrollView
               ref={scrollRef}
               bounces={false}
@@ -466,8 +497,7 @@ export function AnchoredMenu({
           </View>
         </View>
       )}
-      {over}
-    </Window>
+    </>
   );
 }
 

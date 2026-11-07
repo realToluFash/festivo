@@ -1,5 +1,10 @@
 # Ask to join: held, Ask to join tapped twice. The sent request shows; the phone cannot count requests, so one request is read on the API. It leaves a request pending on TOKEN, which a phone cannot withdraw: give it a fresh TOKEN each run, and run it after the other join checks. sc-9674.
 appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
 ---
 - openLink: ${METRO_URL}/--/join/${TOKEN}
 - extendedWaitUntil:

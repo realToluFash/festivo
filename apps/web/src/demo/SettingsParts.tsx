@@ -89,8 +89,19 @@ export function Card({
   );
 }
 
-export function Says({ children }: { children: ReactNode }) {
-  return <p className="desk-says">{children}</p>;
+/** Focusable where an answer lands on the card, so the answer is read out. */
+export function Says({
+  children,
+  focusable = false,
+}: {
+  children: ReactNode;
+  focusable?: boolean;
+}) {
+  return (
+    <p className="desk-says" tabIndex={focusable ? -1 : undefined}>
+      {children}
+    </p>
+  );
 }
 
 export function OnCard({ children }: { children: ReactNode }) {
@@ -383,6 +394,7 @@ export function Dialog(props: DialogProps) {
 interface DialogProps {
   title: string;
   verb: string;
+  dismiss?: string;
   /** False for a dialog that applies each pick at once: Done closes it, and nothing sits at its left. */
   cancel?: boolean;
   on?: boolean;
@@ -397,6 +409,7 @@ interface DialogProps {
 function DialogBox({
   title,
   verb,
+  dismiss = 'Cancel',
   cancel = true,
   on = true,
   red = false,
@@ -429,7 +442,7 @@ function DialogBox({
           dismiss={
             cancel ? (
               <button type="button" className="desk-nav-cancel" onClick={onDismiss}>
-                Cancel
+                {dismiss}
               </button>
             ) : (
               <span className="desk-nav-cancel is-none" aria-hidden="true">
@@ -463,18 +476,19 @@ interface AskProps {
   title: string;
   line: string;
   keep: string;
-  go: string;
+  /** None once nothing is left to decide: the line is an alert, and keep is the one action. */
+  go?: string;
   red?: boolean;
   /** The verb's words while its answer is on its way: it turns and is off, and the way back and Escape wait. */
   busy?: string | undefined;
-  /** Why the answer did not go, under the body; the verb tries again. */
+  /** Why the answer did not go, under the line and any body; the verb tries again. */
   failed?: string | undefined;
   /** Where the focus starts, when not on the way back. */
   first?: RefObject<HTMLElement | null> | undefined;
   /** More of the body under the line, which stays its description. */
   children?: ReactNode;
   onKeep: () => void;
-  onGo: () => void;
+  onGo?: () => void;
 }
 
 /** B's one confirm, 400 wide: the way back first, the verb last and red when it removes. */
@@ -492,7 +506,8 @@ function AskBox(props: AskProps) {
   const goButton = useRef<HTMLButtonElement>(null);
   const [onVerb] = useState(busy != null || failed != null);
   const waits = busy != null;
-  const said = <p id={`${id}-line`}>{line}</p>;
+  const said =
+    go == null ? <AskAlert id={`${id}-line`}>{line}</AskAlert> : <p id={`${id}-line`}>{line}</p>;
   const alert = failed != null && <AskAlert>{failed}</AskAlert>;
 
   useDeskDialog(box, first ?? (onVerb ? goButton : keepButton), onKeep, waits);
@@ -535,17 +550,19 @@ function AskBox(props: AskProps) {
             </button>
           }
           confirm={
-            <button
-              ref={goButton}
-              type="button"
-              className={waits ? 'desk-text is-busy' : red ? 'desk-text is-red' : 'desk-text'}
-              aria-busy={waits || undefined}
-              {...offButton(waits, { dim: false })}
-              onClick={onGo}
-            >
-              {waits && <span className="desk-turning" aria-hidden="true" />}
-              {busy ?? go}
-            </button>
+            go != null && (
+              <button
+                ref={goButton}
+                type="button"
+                className={waits ? 'desk-text is-busy' : red ? 'desk-text is-red' : 'desk-text'}
+                aria-busy={waits || undefined}
+                {...offButton(waits, { dim: false })}
+                onClick={onGo}
+              >
+                {waits && <span className="pending-spinner desk-turning" aria-hidden="true" />}
+                {busy ?? go}
+              </button>
+            )
           }
         />
       </div>
@@ -553,9 +570,9 @@ function AskBox(props: AskProps) {
   );
 }
 
-function AskAlert({ children }: { children: ReactNode }) {
+function AskAlert({ id, children }: { id?: string; children: ReactNode }) {
   return (
-    <p className="desk-ask-alert" role="alert">
+    <p id={id} className="desk-ask-alert" role="alert">
       <Glyph name="alert" size={18} weight={2.2} />
       {children}
     </p>

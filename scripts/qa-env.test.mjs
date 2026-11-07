@@ -9,7 +9,8 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { runInNewContext } from 'node:vm';
 import { inflateSync } from 'node:zlib';
 
@@ -17,6 +18,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   allowCleartext,
+  answers,
   emulatorJournalArgs,
   emulatorUnitGone,
   waitForBoot,
@@ -24,6 +26,7 @@ import {
   withoutReverse,
   apiMoves,
   apiStateOf,
+  startServices,
   batchCheck,
   batchFlow,
   batchRuns,
@@ -57,6 +60,8 @@ import {
   runAsync,
   runBudgetMs,
   startHelper,
+  membershipChanges,
+  domainPause,
   STEP_MS,
   totp,
   androidFlows,
@@ -1444,11 +1449,11 @@ describe('the API a check holds', () => {
     expect(apiMoves('stopped', 'up')).toEqual([['up', '-d', '--wait', '--no-recreate', 'api']]);
   });
 
-  it('goes through up between paused and stopped, since a paused container is not stopped', () => {
-    expect(apiMoves('paused', 'stopped')).toEqual([
-      ['unpause', 'api'],
-      ['stop', 'api'],
-    ]);
+  it('kills a paused API, since stop thaws it and Caddy answers the held request on SIGTERM', () => {
+    expect(apiMoves('paused', 'stopped')).toEqual([['kill', 'api']]);
+  });
+
+  it('goes through up from stopped to paused, since only a running container pauses', () => {
     expect(apiMoves('stopped', 'paused')).toEqual([
       ['up', '-d', '--wait', '--no-recreate', 'api'],
       ['pause', 'api'],
@@ -1467,10 +1472,11 @@ describe('the API a check holds', () => {
   });
 });
 
-function dockerDouble(container, { failing = [] } = {}) {
+function dockerDouble(container, { failing = [], healthy } = {}) {
   const ran = [];
   const control = apiControl({
     read: async () => container,
+    ...(healthy && { healthy }),
     run: async (args) => {
       ran.push(args.join(' '));
       return !failing.includes(args[0]);
@@ -1498,14 +1504,7 @@ describe('the API a batch holds', () => {
   it('tracks the state across queued moves', async () => {
     const { control, ran } = dockerDouble('running');
     await Promise.all([control.move('paused'), control.move('stopped'), control.move('up')]);
-    expect(ran).toEqual([
-      'pause api',
-      'unreached',
-      'unpause api',
-      'stop api',
-      'reached',
-      'up -d --wait --no-recreate api',
-    ]);
+    expect(ran).toEqual(['pause api', 'kill api', 'up -d --wait --no-recreate api']);
     expect(control.state()).toBe('up');
   });
 
@@ -1550,6 +1549,116 @@ describe('the API a batch holds', () => {
     await control.move('paused');
     expect(ran).toEqual(['stop api', 'pause api']);
     expect(control.state()).toBe('paused');
+  });
+});
+
+describe('the API brought back up', () => {
+  it('returns only once the API answers, from paused as from stopped', async () => {
+    for (const container of ['paused', 'exited']) {
+      const asked = [];
+      const { control, ran } = dockerDouble(container, {
+        healthy: async () => {
+          asked.push(ran.length);
+          return true;
+        },
+      });
+      await control.move('up');
+      expect(asked).toEqual([1]);
+      expect(control.state()).toBe('up');
+    }
+  });
+
+  it('fails the move, and reads Docker again, when the API never answers', async () => {
+    const { control } = dockerDouble('paused', { healthy: async () => false });
+    await expect(control.move('up')).rejects.toThrow('never answered /api/health');
+    expect(control.state()).toBeUndefined();
+  });
+
+  it('asks nothing when the API was already up, or is being held', async () => {
+    let asked = 0;
+    const healthy = async () => (asked++, true);
+    const { control } = dockerDouble('running', { healthy });
+    await control.move('up');
+    await control.move('paused');
+    await control.move('stopped');
+    expect(asked).toBe(0);
+  });
+
+  it('polls the health endpoint until it answers, and gives up at the deadline', async () => {
+    const replies = [false, false, true];
+    const get = async () => ({ ok: replies.shift() });
+    expect(await answers('http://api/health', { every: 1, get })).toBe(true);
+    expect(replies).toEqual([]);
+    const refused = async () => {
+      throw new Error('ECONNREFUSED');
+    };
+    expect(await answers('http://api/health', { ms: 5, every: 1, get: refused })).toBe(false);
+  });
+
+  it('gives up on a health request that hangs, so the deadline still holds', async () => {
+    const hangs = (_url, { signal }) =>
+      new Promise((_resolve, reject) =>
+        signal.addEventListener('abort', () => reject(signal.reason)),
+      );
+    const started = Date.now();
+    expect(await answers('http://api/health', { ms: 20, every: 5, get: hangs })).toBe(false);
+    expect(Date.now() - started).toBeLessThan(1_000);
+  });
+});
+
+describe('the app services started', () => {
+  const started = (ps) => {
+    const ran = [];
+    startServices(['api', 'web'], {
+      capture: () => ps,
+      run: (args) => ran.push(args.join(' ')),
+    });
+    return ran;
+  };
+
+  it('unpauses what a killed batch left paused before up, which refuses a paused container', () => {
+    expect(started('api\nmercure\n')).toEqual([
+      'unpause api mercure',
+      'up -d --wait --no-recreate api web',
+    ]);
+  });
+
+  it('goes straight to up when nothing is paused', () => {
+    expect(started('')).toEqual(['up -d --wait --no-recreate api web']);
+    expect(started(null)).toEqual(['up -d --wait --no-recreate api web']);
+  });
+});
+
+describe('a check that holds the API', () => {
+  const dir = join(dirname(fileURLToPath(import.meta.url)), '../apps/mobile/.maestro/checks');
+  const checks = readdirSync(dir)
+    .filter((name) => name.endsWith('.yaml'))
+    .map((name) => [name, readFileSync(join(dir, name), 'utf8')]);
+
+  const holds = (flow) => /ASK: '?\/api\?to=(paused|stopped)/.test(flow);
+  const subflows = (flow) =>
+    [...flow.matchAll(/^\s*(?:-\s*runFlow:|file:)\s*(\S+\/\S+\.yaml)\s*$/gm)]
+      .map(([, path]) => join(dir, path))
+      .filter((path) => path.startsWith(`${dir}/`) && existsSync(path));
+
+  it('brings it back up in onFlowComplete, so a failed wait leaves the next check a live API', () => {
+    const holding = checks.filter(
+      ([, flow]) => holds(flow) || subflows(flow).some((path) => holds(readFileSync(path, 'utf8'))),
+    );
+    expect(holding.map(([name]) => name)).toContain('sc11786-members-states.yaml');
+    const unguarded = holding
+      .filter(([, flow]) => {
+        const header = flow.slice(0, flow.indexOf('\n---\n'));
+        return !/onFlowComplete:[\s\S]*ASK: \/api\?to=up/.test(header);
+      })
+      .map(([name]) => name);
+    expect(unguarded).toEqual([]);
+  });
+
+  // sc-30216 moves sc27096-ipad-side-refreshing.yaml off its own 18999 trigger onto /api?to=.
+  it('reaches the harness through batch/helper.js, never a literal port', () => {
+    const literal = checks.filter(([, flow]) => /127\.0\.0\.1:\d+/.test(flow)).map(([n]) => n);
+    expect(literal).toEqual(['sc27096-ipad-side-refreshing.yaml']);
   });
 });
 
@@ -1706,6 +1815,44 @@ describe('the batch helper', () => {
     try {
       expect(await ask('/language?to=es')).toEqual({ language: 'es' });
       expect(languages).toEqual(['es']);
+    } finally {
+      server.close();
+    }
+  });
+  it('hands a membership change to the batch, once the API is up', async () => {
+    const asked = [];
+    const { server, ask } = await helperFor('running', undefined, {
+      changeMembership: async (change, org) => {
+        asked.push([change, org]);
+        return { membership: change, org };
+      },
+    });
+    try {
+      expect(await ask('/membership?change=suspend&org=Alpha%20Hall')).toEqual({
+        membership: 'suspend',
+        org: 'Alpha Hall',
+      });
+      expect(asked).toEqual([['suspend', 'Alpha Hall']]);
+    } finally {
+      server.close();
+    }
+  });
+
+  it('refuses a membership change in a batch that makes none', async () => {
+    const { server, ask } = await helperFor('running');
+    try {
+      expect(await ask('/membership?change=pause&org=Alpha')).toEqual({
+        error: 'this batch makes no membership change',
+      });
+    } finally {
+      server.close();
+    }
+  });
+
+  it('clears nothing for a flow run alone, so reset.yaml still runs outside a batch', async () => {
+    const { server, ask } = await helperFor('running');
+    try {
+      expect(await ask('/membership?change=clear')).toEqual({ membership: 'clear' });
     } finally {
       server.close();
     }
@@ -2252,6 +2399,12 @@ describe('the flows a batch runs', () => {
       expect(readFileSync(join(target, '_checks/sign-in-rules.fr.yaml'), 'utf8')).toContain(
         "'Règles de connexion|Règles de connexion de .*'",
       );
+      expect(readFileSync(join(target, '_checks/sc23267-start-cold.fr.yaml'), 'utf8')).toContain(
+        'file: sc23267-start-cold.fr.sc23267-start-cold-once.flow.yaml',
+      );
+      expect(
+        existsSync(join(target, '_checks/sc23267-start-cold.fr.sc23267-start-cold-once.flow.yaml')),
+      ).toBe(true);
       const session = readFileSync(join(target, 'batch/session.yaml'), 'utf8');
       expect(session).not.toContain('{{t:');
       const signedIn = new RegExp(
@@ -2334,6 +2487,32 @@ describe('the flows a batch runs', () => {
           expect(catalogues[code].signIn.title).toMatch(settled(flow));
         }
       }
+      for (const flow of ['session', 'sign-out', 'reopen', 'reset']) {
+        for (const code of ['en', 'es', 'fr', 'pt']) {
+          expect(catalogues[code].todayScreen.tab.today).toMatch(settled(flow));
+        }
+      }
+      for (const code of ['en', 'es', 'fr', 'pt']) {
+        expect(catalogues[code].todayScreen.tab.today).toMatch(someoneSignedIn);
+      }
+      for (const flow of ['session', 'sign-in-form']) {
+        const toSettings = new RegExp(
+          `^(?:${readFileSync(join(target, `batch/${flow}.yaml`), 'utf8')
+            .match(/when:\s+visible: '(.*)'\s+file: to-settings\.yaml/)[1]
+            .replaceAll("''", "'")})$`,
+        );
+        for (const code of ['en', 'es', 'fr', 'pt']) {
+          expect(catalogues[code].todayScreen.tab.today).toMatch(toSettings);
+        }
+      }
+      const upright = readFileSync(join(target, 'batch/session.yaml'), 'utf8');
+      expect(upright.indexOf('setOrientation: PORTRAIT')).toBeGreaterThan(-1);
+      expect(upright.indexOf('ASK: /portrait')).toBeGreaterThan(
+        upright.indexOf('setOrientation: PORTRAIT'),
+      );
+      expect(upright.indexOf('ASK: /portrait')).toBeLessThan(
+        upright.indexOf('file: to-settings.yaml'),
+      );
       const reset = readFileSync(join(target, 'batch/reset.yaml'), 'utf8');
       expect(reset.match(/file: developer-menu\.yaml\s+env:\s+SETTLED: '(.*)'/)[1]).toBe(
         reset.match(/notVisible: '(.*)'/)[1],
@@ -2348,6 +2527,145 @@ describe('the flows a batch runs', () => {
       );
       expect(readFileSync(join(target, 'sign-in.yaml'), 'utf8')).toContain('stopApp: true');
     } finally {
+      rmSync(target, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('a check that runs a sibling check', () => {
+  it('carries the sibling into _checks, so its runFlow resolves without naming it', () => {
+    const source = mkdtempSync(join(tmpdir(), 'qa-source-'));
+    const target = mkdtempSync(join(tmpdir(), 'qa-batch-'));
+    mkdirSync(join(source, 'checks'));
+    writeFileSync(
+      join(source, 'checks', 'outer.yaml'),
+      "appId: x\n---\n- runFlow:\n    file: once.yaml\n    env:\n      RUN: '1'\n- runFlow: once.yaml\n",
+    );
+    writeFileSync(
+      join(source, 'checks', 'once.yaml'),
+      "appId: x\n---\n- tapOn: '{{t:hello}}'\n- takeScreenshot: shot-${RUN}\n- runFlow: inner.yaml\n",
+    );
+    writeFileSync(join(source, 'checks', 'inner.yaml'), "appId: x\n---\n- tapOn: '{{t:hello}}'\n");
+    try {
+      composeBatch(source, target, {
+        checks: ['outer'],
+        languages: ['en', 'es'],
+        cold: false,
+        catalogues: { en: { hello: 'Hello' }, es: { hello: 'Hola' } },
+        email: 'qa@soirely.test',
+        onAndroid: false,
+      });
+      const checks = join(target, '_checks');
+      expect(readdirSync(checks).sort()).toEqual([
+        'outer.en.once.flow.yaml',
+        'outer.en.once.inner.flow.yaml',
+        'outer.en.yaml',
+        'outer.es.once.flow.yaml',
+        'outer.es.once.inner.flow.yaml',
+        'outer.es.yaml',
+      ]);
+      const outer = readFileSync(join(checks, 'outer.es.yaml'), 'utf8');
+      expect(outer).toContain('    file: outer.es.once.flow.yaml\n');
+      expect(outer).toContain('- runFlow: outer.es.once.flow.yaml\n');
+      expect(outer).not.toMatch(/once\.yaml/);
+      const once = readFileSync(join(checks, 'outer.es.once.flow.yaml'), 'utf8');
+      expect(once).toContain("'Hola'");
+      expect(once).toContain('- runFlow: outer.es.once.inner.flow.yaml');
+      expect(once).not.toContain('ASK:');
+      expect(once).toContain('- takeScreenshot: outer.es.once-shot-${RUN}\n');
+      expect(readFileSync(join(checks, 'outer.en.once.flow.yaml'), 'utf8')).toContain(
+        '- takeScreenshot: outer.en.once-shot-${RUN}\n',
+      );
+      expect(readFileSync(join(checks, 'outer.en.once.inner.flow.yaml'), 'utf8')).toContain(
+        "'Hello'",
+      );
+    } finally {
+      rmSync(source, { recursive: true, force: true });
+      rmSync(target, { recursive: true, force: true });
+    }
+  });
+
+  it('keeps a sibling that is also named as a check apart from its run', () => {
+    const source = mkdtempSync(join(tmpdir(), 'qa-source-'));
+    const target = mkdtempSync(join(tmpdir(), 'qa-batch-'));
+    mkdirSync(join(source, 'checks'));
+    writeFileSync(join(source, 'checks', 'outer.yaml'), 'appId: x\n---\n- runFlow: once.yaml\n');
+    writeFileSync(join(source, 'checks', 'once.yaml'), 'appId: x\n---\n- takeScreenshot: shot\n');
+    try {
+      composeBatch(source, target, {
+        checks: ['outer', 'once'],
+        languages: ['es'],
+        cold: false,
+        catalogues: { es: {} },
+        email: 'qa@soirely.test',
+        onAndroid: false,
+      });
+      const checks = join(target, '_checks');
+      expect(readdirSync(checks).sort()).toEqual([
+        'once.es.yaml',
+        'outer.es.once.flow.yaml',
+        'outer.es.yaml',
+      ]);
+      expect(readFileSync(join(checks, 'once.es.yaml'), 'utf8')).toContain('ASK:');
+      expect(readFileSync(join(checks, 'outer.es.once.flow.yaml'), 'utf8')).not.toContain('ASK:');
+    } finally {
+      rmSync(source, { recursive: true, force: true });
+      rmSync(target, { recursive: true, force: true });
+    }
+  });
+  it('gives each run of a repeated check its own copy of the sibling', () => {
+    const source = mkdtempSync(join(tmpdir(), 'qa-source-'));
+    const target = mkdtempSync(join(tmpdir(), 'qa-batch-'));
+    mkdirSync(join(source, 'checks'));
+    writeFileSync(join(source, 'checks', 'outer.yaml'), 'appId: x\n---\n- runFlow: once.yaml\n');
+    writeFileSync(join(source, 'checks', 'once.yaml'), 'appId: x\n---\n- takeScreenshot: shot\n');
+    try {
+      composeBatch(source, target, {
+        checks: ['outer', 'outer'],
+        languages: ['es'],
+        cold: false,
+        catalogues: { es: {} },
+        email: 'qa@soirely.test',
+        onAndroid: false,
+      });
+      const checks = join(target, '_checks');
+      expect(readFileSync(join(checks, 'outer.es.yaml'), 'utf8')).toContain(
+        '- runFlow: outer.es.once.flow.yaml\n',
+      );
+      expect(readFileSync(join(checks, 'outer.es.run2.yaml'), 'utf8')).toContain(
+        '- runFlow: outer.es.run2.once.flow.yaml\n',
+      );
+      expect(readFileSync(join(checks, 'outer.es.once.flow.yaml'), 'utf8')).toContain(
+        '- takeScreenshot: outer.es.once-shot',
+      );
+      expect(readFileSync(join(checks, 'outer.es.run2.once.flow.yaml'), 'utf8')).toContain(
+        '- takeScreenshot: outer.es.run2.once-shot',
+      );
+    } finally {
+      rmSync(source, { recursive: true, force: true });
+      rmSync(target, { recursive: true, force: true });
+    }
+  });
+
+  it('names the cycle when two checks run each other', () => {
+    const source = mkdtempSync(join(tmpdir(), 'qa-source-'));
+    const target = mkdtempSync(join(tmpdir(), 'qa-batch-'));
+    mkdirSync(join(source, 'checks'));
+    writeFileSync(join(source, 'checks', 'a.yaml'), 'appId: x\n---\n- runFlow: b.yaml\n');
+    writeFileSync(join(source, 'checks', 'b.yaml'), 'appId: x\n---\n- runFlow: a.yaml\n');
+    try {
+      expect(() =>
+        composeBatch(source, target, {
+          checks: ['a'],
+          languages: ['es'],
+          cold: false,
+          catalogues: { es: {} },
+          email: 'qa@soirely.test',
+          onAndroid: false,
+        }),
+      ).toThrow('a → b → a: a check runs itself');
+    } finally {
+      rmSync(source, { recursive: true, force: true });
       rmSync(target, { recursive: true, force: true });
     }
   });
@@ -2610,6 +2928,164 @@ describe('the API taken from the device', () => {
       }),
     ).rejects.toThrow('pause failed');
     expect(ran).toEqual(['reverse --remove tcp:18080', 'reverse tcp:18080 tcp:18080']);
+  });
+});
+
+describe('a membership change a check asks for', () => {
+  const MEMBERSHIP = '01a1ae45-86aa-7b0a-b43c-1524b2b5e0ab';
+  const changesFor = () => {
+    const calls = [];
+    const statements = [];
+    let made = 0;
+    let owners = 0;
+    let refusing = false;
+    const invited = [];
+    const ownerNumbered =
+      (n) =>
+      async (path, options = {}) => {
+        calls.push(`owner${n === 1 ? '' : `-${n}`} ${options.method ?? 'POST'} ${path}`);
+        if (path === '/api/orgs' && options.method !== 'GET') {
+          if (refusing) {
+            refusing = false;
+            throw Object.assign(new Error('Too many new organisations'), { status: 429 });
+          }
+          return { organisation: { id: `org-${++made}` } };
+        }
+        if (path.endsWith('/roles')) {
+          return {
+            roles: [
+              { id: 'r-owner', seededAs: 'owner' },
+              { id: 'r-administrator', seededAs: 'administrator' },
+              { id: 'r-member', seededAs: 'member' },
+            ],
+          };
+        }
+        if (path.endsWith('/members/invite')) {
+          invited.push(options.body.roleId);
+          return { invitation: { id: `inv-${made}` } };
+        }
+        if (path.endsWith('/members') && options.method === 'GET') {
+          return {
+            members: [
+              { id: 'other', user: { email: 'owner@soirely.test' } },
+              { id: MEMBERSHIP, user: { email: 'qa@soirely.test' } },
+            ],
+          };
+        }
+        return null;
+      };
+    const change = membershipChanges({
+      email: 'qa@soirely.test',
+      member: async (path) => calls.push(`member ${path}`),
+      ownerOf: async () => {
+        owners += 1;
+        return ownerNumbered(owners);
+      },
+      sql: async (statement) => statements.push(statement),
+    });
+    const refuseNextCreate = () => {
+      refusing = true;
+    };
+    return { change, calls, statements, invited, owners: () => owners, refuseNextCreate };
+  };
+
+  it('makes the organisation and the batch account an administrator in it', async () => {
+    const { change, calls, invited } = changesFor();
+    expect(await change('join', 'Alpha Hall')).toEqual({
+      membership: 'join',
+      org: 'Alpha Hall',
+      id: 'org-1',
+    });
+    expect(calls).toEqual([
+      'owner POST /api/orgs',
+      'owner GET /api/orgs/org-1/roles',
+      'owner POST /api/orgs/org-1/members/invite',
+      'member /api/invitations/inv-1/accept',
+    ]);
+    expect(invited).toEqual(['r-administrator']);
+  });
+
+  it('registers one owner for every organisation in the batch', async () => {
+    const { change, owners } = changesFor();
+    await change('join', 'Alpha Hall');
+    await change('join', 'Bravo');
+    expect(owners()).toBe(1);
+  });
+
+  it('suspends and removes the batch account through the API as the owner', async () => {
+    const { change, calls } = changesFor();
+    await change('join', 'Alpha Hall');
+    calls.length = 0;
+    await change('suspend', 'Alpha Hall');
+    await change('remove', 'Alpha Hall');
+    expect(calls).toEqual([
+      'owner GET /api/orgs/org-1/members',
+      `owner POST /api/orgs/org-1/members/${MEMBERSHIP}/suspend`,
+      'owner GET /api/orgs/org-1/members',
+      `owner DELETE /api/orgs/org-1/members/${MEMBERSHIP}`,
+    ]);
+  });
+
+  it("pauses through the database, the batch account's membership only", async () => {
+    const { change, statements } = changesFor();
+    await change('join', 'Alpha Hall');
+    await change('pause', 'Alpha Hall');
+    expect(statements).toEqual([domainPause(MEMBERSHIP, 'qa@soirely.test')]);
+    expect(statements[0]).toContain(`WHERE id = '${MEMBERSHIP}'`);
+    expect(statements[0]).toContain("suspension = 'domain_closed'");
+  });
+
+  it('deletes the organisation it made, and a name joined again is a new one', async () => {
+    const { change, calls } = changesFor();
+    await change('join', 'Alpha Hall');
+    await change('pause', 'Alpha Hall');
+    calls.length = 0;
+    await change('join', 'Alpha Hall');
+    expect(calls.slice(0, 2)).toEqual(['owner DELETE /api/orgs/org-1', 'owner POST /api/orgs']);
+    await change('delete', 'Alpha Hall');
+    await expect(change('suspend', 'Alpha Hall')).rejects.toThrow('was not joined in this batch');
+  });
+
+  it('hands over to a new owner once one may make no more organisations', async () => {
+    const { change, calls, owners, refuseNextCreate } = changesFor();
+    await change('join', 'Alpha Hall');
+    refuseNextCreate();
+    await change('join', 'Bravo');
+    expect(owners()).toBe(2);
+    calls.length = 0;
+    await change('suspend', 'Alpha Hall');
+    await change('suspend', 'Bravo');
+    expect(calls.filter((call) => call.includes('GET'))).toEqual([
+      'owner GET /api/orgs/org-1/members',
+      'owner-2 GET /api/orgs/org-2/members',
+    ]);
+  });
+
+  it('clears every organisation the batch joined, and none twice', async () => {
+    const { change, calls, owners } = changesFor();
+    expect(await change('clear')).toEqual({ membership: 'clear' });
+    expect(owners()).toBe(0);
+    await change('join', 'Alpha Hall');
+    await change('join', 'Bravo');
+    await change('suspend', 'Alpha Hall');
+    calls.length = 0;
+    await change('clear');
+    await change('clear');
+    expect(calls).toEqual(['owner DELETE /api/orgs/org-1', 'owner DELETE /api/orgs/org-2']);
+  });
+
+  it('refuses a change it does not know, or one with no organisation', async () => {
+    const { change } = changesFor();
+    await expect(change('wipe', 'Alpha Hall')).rejects.toThrow('no membership change wipe');
+    await expect(change('suspend', null)).rejects.toThrow('in which organisation?');
+    await expect(change('remove', 'Nowhere')).rejects.toThrow('Nowhere was not joined');
+  });
+
+  it('writes no statement from an id or an address that is not one', () => {
+    expect(() => domainPause("x'; DROP TABLE memberships; --", 'qa@soirely.test')).toThrow(
+      'not a membership id',
+    );
+    expect(() => domainPause(MEMBERSHIP, "qa@x'; --")).toThrow('no domain');
   });
 });
 
