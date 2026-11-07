@@ -34,6 +34,7 @@ import {
   formatCount,
 } from './MessagesSample.ts';
 import { CHANNEL_WORD, type ChannelKey, W, say } from './MessagesWords.ts';
+import { EDGE } from './TokenText.ts';
 
 /** Every state of Messaging B, each a `?state=` in both demos (spec §7 and §7b), in the spec's order. */
 export const MESSAGES_STATES = [
@@ -887,7 +888,7 @@ export function spokenAt(seconds: number, count: number): string | null {
 export function messageName(draft: Draft): string {
   const first = (draft.body.trim().split(/\r?\n/u)[0] ?? '').trim();
 
-  return draft.subject.trim() || first.replace(/\{([A-Za-z]+)\}/gu, '$1');
+  return draft.subject.trim() || first.replaceAll(EDGE, '');
 }
 
 export function draftTitle(draft: Draft, thread: Thread | null = null): string {
