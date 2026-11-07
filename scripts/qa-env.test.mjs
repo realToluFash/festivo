@@ -80,6 +80,7 @@ import {
   resumeBatch,
   runHeld,
   maestroTarget,
+  missingCmdlineTools,
   parseTarget,
   hardwareKeyboardOff,
   passwordAutoFillFiles,
@@ -2563,5 +2564,23 @@ describe('emulatorUnitGone', () => {
       'the emulator unit soirely-qa-emulator stopped (failed) before it booted:\nemulator: core dumped',
     );
     expect(emulatorUnitGone('soirely-qa-emulator', '', journal)).toContain('stopped (gone)');
+  });
+});
+
+describe('missingCmdlineTools', () => {
+  const message = missingCmdlineTools({
+    sdk: '/sdk',
+    avdmanager: '/sdk/cmdline-tools/latest/bin/avdmanager',
+  });
+
+  it('names the avdmanager path setup expected', () => {
+    expect(message).toContain('/sdk/cmdline-tools/latest/bin/avdmanager');
+  });
+
+  it('gives both ways to install the tools and says to run setup again', () => {
+    expect(message).toContain('Android SDK Command-line Tools (latest)');
+    expect(message).toContain('/sdk/cmdline-tools/latest/bin');
+    expect(message).toContain('developer.android.com/studio#command-tools');
+    expect(message).toContain('run `node scripts/qa-env.mjs setup` again');
   });
 });
