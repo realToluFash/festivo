@@ -220,9 +220,10 @@ export interface Counts {
   notcoming: number;
   /** Everyone without an answer of their own: the guests with no reply and the companions held behind them. */
   havent: number;
+  walkin: number;
 }
 
-type Tally = Record<ReplyKind, number> & { behind: number };
+type Tally = Record<ReplyKind | 'walkin', number> & { behind: number };
 
 function tally(guests: readonly SampleGuest[]): Tally {
   const out: Tally = {
@@ -232,10 +233,11 @@ function tally(guests: readonly SampleGuest[]): Tally {
     held: 0,
     noreply: 0,
     notyet: 0,
+    walkin: 0,
     behind: 0,
   };
   for (const g of guests) {
-    if (g.kind !== 'walkin') out[g.kind] += 1;
+    out[g.kind] += 1;
     for (const c of g.companions) {
       out[c.kind] += 1;
       if (c.kind === 'held' && g.kind === 'noreply') out.behind += 1;
@@ -254,9 +256,10 @@ export function countsOf(guests: readonly SampleGuest[], added = 0): Counts {
     moved('coming') + moved('maybe') + moved('noreply') + moved('held') + moved('notcoming');
 
   return {
-    list: invited + notyet,
+    list: invited + notyet + now.walkin,
     notyet,
     invited,
+    walkin: now.walkin,
     coming: moved('coming'),
     maybe: moved('maybe'),
     noreply: moved('noreply'),
@@ -269,10 +272,10 @@ export function countsOf(guests: readonly SampleGuest[], added = 0): Counts {
 export function countsFrom(guests: readonly SampleGuest[]): Counts {
   const t = tally(guests);
   const invited = t.coming + t.maybe + t.noreply + t.held + t.notcoming;
-  return { ...t, list: invited + t.notyet, invited, havent: t.noreply + t.behind };
+  return { ...t, list: invited + t.notyet + t.walkin, invited, havent: t.noreply + t.behind };
 }
 
-export type FilterKey = 'all' | 'invited' | Exclude<ReplyKind, never>;
+export type FilterKey = 'all' | 'invited' | ReplyKind | 'walkin';
 
 export const FILTERS: readonly FilterKey[] = [
   'all',
@@ -284,6 +287,12 @@ export const FILTERS: readonly FilterKey[] = [
   'notcoming',
   'notyet',
 ];
+
+export function filtersFor(counts: Counts): FilterKey[] {
+  return counts.walkin > 0
+    ? FILTERS.flatMap((key) => (key === 'coming' ? [key, 'walkin'] : [key]))
+    : [...FILTERS];
+}
 
 export function filterWord(key: FilterKey): string {
   if (key === 'all') return 'All';
@@ -333,7 +342,7 @@ export function invitedWords(g: SampleGuest, locale: string): string {
 
 /** sc-3780: a Not sure yet guest is asked to decide by the Reply by date, when the event has one. */
 export function replyLine(g: SampleGuest, locale: string, short = false): string {
-  if (g.kind === 'walkin') return REPLY_WORD.walkin;
+  if (g.kind === 'walkin') return say.walkInArrived(g.arrived ?? '');
   if (g.recorded != null && g.kind !== 'noreply' && g.kind !== 'notyet')
     return recordedLine(g.kind, g.recorded.how, g.recorded.day, locale);
   if (g.kind === 'noreply')
@@ -387,11 +396,16 @@ function inFilter(kind: SampleGuest['kind'], filter: FilterKey): boolean {
 }
 
 /** sc-3772: the name, email address or mobile number, typed anywhere in it; a number by its digits. */
-export function matchesGuest(name: string, g: SampleGuest | null, typed: string): boolean {
+export function matchesGuest(
+  name: string,
+  g: SampleGuest | null,
+  typed: string,
+  contacts = true,
+): boolean {
   const words = folded(typed.trim());
   if (words === '') return true;
   if (folded(name).includes(words)) return true;
-  if (g == null) return false;
+  if (g == null || !contacts) return false;
   if (g.email != null && folded(g.email).includes(words)) return true;
   const digits = typed.replace(/\D/gu, '');
   return digits.length >= 3 && g.phone != null && g.phone.replace(/\D/gu, '').includes(digits);
@@ -402,11 +416,12 @@ export function rowsOf(
   filter: FilterKey,
   typed: string,
   locale: string,
+  contacts = true,
 ): Person[] {
   const out: Person[] = [];
   for (const g of guests) {
     const hostIn = inFilter(g.kind, filter);
-    const hostMatch = hostIn && matchesGuest(g.name, g, typed);
+    const hostMatch = hostIn && matchesGuest(g.name, g, typed, contacts);
     const comps = g.companions
       .map((c, index) => ({ c, index }))
       .filter(({ c }) => inFilter(c.kind, filter))
@@ -783,6 +798,7 @@ export function areaStart(state: GuestsState | null): AreaStart {
     case 'offline':
       return { ...base, offline: true };
     case 'onTheDay':
+    case 'secondDay':
       return { ...base, walkIn: true };
     case 'contactsAdded':
       return { ...base, toast: 'manyAdded', added: 23 };

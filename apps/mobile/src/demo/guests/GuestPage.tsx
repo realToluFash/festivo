@@ -139,61 +139,67 @@ export function GuestPage({
           )}
         </View>
       )}
-      <View>
-        <BlockHead
-          title={W.details}
-          right={
-            owner ? (
-              <TextAction
-                ref={refFor('edit')}
-                label={W.edit}
-                onPress={actions.onEdit}
-                testID="guest.edit"
-              />
-            ) : null
-          }
-        />
-        <RowList
-          items={[
-            ...(owner
-              ? [
-                  {
-                    key: 'email',
-                    inset: 40,
-                    row: <ValueRow value={g.email} label={W.emailAddress} icon="mail" />,
-                  },
-                  {
-                    key: 'phone',
-                    inset: 40,
-                    row: <ValueRow value={g.phone} label={W.mobileNumber} icon="phone" />,
-                  },
-                ]
-              : []),
-            ...g.companions.map((c, index) => ({
-              key: `c${index}`,
-              inset: 40,
-              row: (
-                <Row
-                  title={c.name}
-                  line={say.companionOf(c.kind === 'held' ? W.heldLine : REPLY_WORD[c.kind])}
-                  lead={<MarkSlot kind={c.kind} />}
+      {(owner || g.companions.length > 0) && (
+        <View>
+          <BlockHead
+            title={W.details}
+            right={
+              owner ? (
+                <TextAction
+                  ref={refFor('edit')}
+                  label={W.edit}
+                  onPress={actions.onEdit}
+                  testID="guest.edit"
                 />
-              ),
-            })),
-            {
-              key: 'added',
-              inset: 40,
-              row: (
-                <Row
-                  title={`${dayWords(ADDED_ON, locale)} by ${COLLEAGUE}`}
-                  line={W.added}
-                  lead={<LineIcon name="user" />}
-                />
-              ),
-            },
-          ]}
-        />
-      </View>
+              ) : null
+            }
+          />
+          <RowList
+            items={[
+              ...(owner
+                ? [
+                    {
+                      key: 'email',
+                      inset: 40,
+                      row: <ValueRow value={g.email} label={W.emailAddress} icon="mail" />,
+                    },
+                    {
+                      key: 'phone',
+                      inset: 40,
+                      row: <ValueRow value={g.phone} label={W.mobileNumber} icon="phone" />,
+                    },
+                  ]
+                : []),
+              ...g.companions.map((c, index) => ({
+                key: `c${index}`,
+                inset: 40,
+                row: (
+                  <Row
+                    title={c.name}
+                    line={say.companionOf(c.kind === 'held' ? W.heldLine : REPLY_WORD[c.kind])}
+                    lead={<MarkSlot kind={c.kind} />}
+                  />
+                ),
+              })),
+              ...(owner
+                ? [
+                    {
+                      key: 'added',
+                      inset: 40,
+                      row: (
+                        <Row
+                          title={`${dayWords(ADDED_ON, locale)} by ${COLLEAGUE}`}
+                          line={W.added}
+                          lead={<LineIcon name="user" />}
+                        />
+                      ),
+                    },
+                  ]
+                : []),
+            ]}
+          />
+        </View>
+      )}
       {owner && invites && (
         <View>
           <BlockHead title={W.invitation} />
@@ -270,17 +276,19 @@ export function GuestPage({
           />
         </View>
       )}
-      <View>
-        <BlockHead title={W.theirConversation} />
-        <Row
-          title={W.conversationTitle}
-          line={W.conversationLine}
-          lead={<LineIcon name="chat" />}
-          opens
-          onPress={actions.onConversation}
-          testID="guest.conversation"
-        />
-      </View>
+      {owner && (
+        <View>
+          <BlockHead title={W.theirConversation} />
+          <Row
+            title={W.conversationTitle}
+            line={W.conversationLine}
+            lead={<LineIcon name="chat" />}
+            opens
+            onPress={actions.onConversation}
+            testID="guest.conversation"
+          />
+        </View>
+      )}
     </View>
   );
 }

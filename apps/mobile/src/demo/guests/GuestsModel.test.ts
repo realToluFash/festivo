@@ -17,6 +17,7 @@ import {
   emailCheck,
   eventOf,
   filterCount,
+  filtersFor,
   groupRows,
   guestOf,
   markedInvited,
@@ -31,7 +32,7 @@ import {
   rowsOf,
   sameNameAs,
 } from './GuestsModel.ts';
-import { GUESTS, PLAN_SAMPLES } from './GuestsSample.ts';
+import { GUESTS, PLAN_SAMPLES, WALK_IN } from './GuestsSample.ts';
 
 const EN = 'en-US';
 const byKey = (key: string) => {
@@ -199,6 +200,26 @@ describe('the list: groups, the filter and search (sc-3772)', () => {
       'Adanna Nwosu',
     ]);
     expect(rowsOf(GUESTS, 'all', '900412', EN).map((row) => row.name)).toEqual(['Kwame Mensah']);
+  });
+});
+
+describe('on the day and for view-only roles', () => {
+  it('adds Walk-in after Coming, so Invited, Walk-in and Not yet invited add up to All', () => {
+    const counts = countsOf([...GUESTS, WALK_IN]);
+    expect(filtersFor(counts).slice(2, 4)).toEqual(['coming', 'walkin']);
+    expect(counts.list).toBe(157);
+    expect(counts.invited + counts.walkin + counts.notyet).toBe(counts.list);
+    expect(rowsOf([WALK_IN], 'walkin', '', EN)[0]?.line).toBe('Walk-in · Arrived 18:20');
+    expect(filtersFor(countsOf(GUESTS))).not.toContain('walkin');
+  });
+
+  it('finds a guest by name only where contact details are hidden', () => {
+    expect(rowsOf(GUESTS, 'all', 'nhs.net', EN, false)).toEqual([]);
+    expect(rowsOf(GUESTS, 'all', '900412', EN, false)).toEqual([]);
+    expect(rowsOf(GUESTS, 'all', 'emeka', EN, false).map((row) => row.name)).toEqual([
+      'Dr Emeka Nwosu',
+      'Adanna Nwosu',
+    ]);
   });
 });
 

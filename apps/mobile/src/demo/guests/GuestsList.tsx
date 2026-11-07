@@ -23,17 +23,16 @@ import {
 } from '../../components/Summary.tsx';
 import {
   type Counts,
-  FILTERS,
   type FilterKey,
   GROUPS,
   type GroupKey,
   type Person,
   filterCount,
   filterWord,
+  filtersFor,
   showAllWords,
 } from './GuestsModel.ts';
 import { GroupHead, type Layout, ShownLine } from './GuestsParts.tsx';
-import { KOFI_WALKIN } from './GuestsSample.ts';
 import { REPLY_WORD, W, say } from './GuestsWords.ts';
 import { MarkSlot } from './ReplyMark.tsx';
 
@@ -83,7 +82,7 @@ function FilterChoice({
         width={230}
         testID="guests.filter.menu"
       >
-        {FILTERS.map((key) => {
+        {filtersFor(counts).map((key) => {
           const on = key === filter;
           const n = filterCount(key, counts);
           return (
@@ -170,7 +169,9 @@ export interface ListProps {
   menu: boolean;
   rows: Person[];
   groups: Partial<Record<GroupKey, Person[]>>;
-  walkIn: boolean;
+  walkIns: Person[];
+  expanded: readonly GroupKey[];
+  onShowAll: (group: GroupKey) => void;
   lit: string | null;
   onOpen: (guest: string, from: string) => void;
   refFor: (key: string) => Ref<ViewInstance>;
@@ -191,7 +192,9 @@ export function GuestsRows({
   menu,
   rows,
   groups,
-  walkIn,
+  walkIns,
+  expanded,
+  onShowAll,
   lit,
   onOpen,
   refFor,
@@ -265,25 +268,26 @@ export function GuestsRows({
                     gutter={wide ? 10 : 0}
                   />
                 </View>
-                {count > shown.length && (
+                {count > shown.length && !expanded.includes(group) && (
                   <TextAction
                     label={showAllWords(group, count)}
                     figures
-                    onPress={() => onFilter(group)}
+                    onPress={() => onShowAll(group)}
                     testID={`guests.showAll.${group}`}
                   />
                 )}
               </View>
             );
           })}
-          {walkIn && (
+          {walkIns.length > 0 && (
             <View testID="guests.group.walkin">
-              <GroupHead word={W.walkIn} count={1} />
-              <Row
-                title={KOFI_WALKIN}
-                line={say.walkInArrived('18:20')}
-                lead={<MarkSlot kind="walkin" />}
-              />
+              <GroupHead word={W.walkIn} count={counts.walkin} />
+              <View style={wide && styles.reach}>
+                <RowList
+                  items={walkIns.map((p) => personRow(p, onOpen, refFor, lit, wide))}
+                  gutter={wide ? 10 : 0}
+                />
+              </View>
             </View>
           )}
         </>

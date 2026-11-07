@@ -62,6 +62,7 @@ import {
   PAUSED_GUESTS,
   type SampleGuest,
   TODAY,
+  WALK_IN,
   WEDDING,
 } from './GuestsSample.ts';
 import { W, say } from './GuestsWords.ts';
@@ -78,6 +79,7 @@ const PAUSED: Counts = {
   noreply: 15,
   held: 4,
   havent: 19,
+  walkin: 0,
 };
 const DRAFT: Counts = {
   ...DRAFT_COUNTS,
@@ -88,6 +90,7 @@ const DRAFT: Counts = {
   noreply: 0,
   held: 0,
   havent: 0,
+  walkin: 0,
 };
 
 function startGuests(state: GuestsState | null): SampleGuest[] {
@@ -108,6 +111,9 @@ function startGuests(state: GuestsState | null): SampleGuest[] {
       return swap('bisi', (g) => markedInvited(g, 'WhatsApp', TODAY));
     case 'saved':
       return swap('kwame', (g) => ({ ...g, email: 'kwame@mensah.co.uk' }));
+    case 'onTheDay':
+    case 'secondDay':
+      return [...GUESTS, WALK_IN].sort((a, b) => a.name.localeCompare(b.name));
     default:
       return [...GUESTS];
   }
@@ -165,6 +171,7 @@ export function GuestsScreen({
   const [overlay, setOverlay] = useState(start.overlay);
   const [round, setRound] = useState(0);
   const [empty, setEmpty] = useState(start.empty);
+  const [expanded, setExpanded] = useState<GroupKey[]>([]);
   const [toast, setToast] = useState<{ words: string; mark?: boolean } | null>(
     start.toast === 'saved'
       ? { words: W.saved }
@@ -200,7 +207,8 @@ export function GuestsScreen({
         : state === 'first'
           ? countsFrom(guests)
           : countsOf(guests, added);
-  const total = counts.list + (start.walkIn ? 1 : 0);
+  const total = counts.list;
+  const contacts = role === 'owner';
   const owner = role === 'owner';
   const guest = guests.find((g) => g.key === open) ?? null;
   const looking = filter !== 'all' || searched.trim() !== '';
@@ -261,12 +269,21 @@ export function GuestsScreen({
     makeLive: W.makeLive,
     openCheckIn: W.openCheckIn,
   };
-  const rows: Person[] = looking ? rowsOf(guests, filter, searched, locale) : [];
+  const rows: Person[] = looking ? rowsOf(guests, filter, searched, locale, contacts) : [];
   const groups: Partial<Record<GroupKey, Person[]>> = {};
   if (!looking)
     for (const group of GROUPS)
       groups[group] =
-        event.id === WEDDING ? groupRows(guests, group, locale) : rowsOf(guests, group, '', locale);
+        event.id === WEDDING && !expanded.includes(group)
+          ? groupRows(guests, group, locale)
+          : rowsOf(guests, group, '', locale);
+  const showAll = (group: GroupKey) => {
+    const before = new Set((groups[group] ?? []).map((p) => p.key));
+    const next = rowsOf(guests, group, '', locale).find((p) => !before.has(p.key));
+    setExpanded((was) => [...was, group]);
+    if (next != null)
+      setTimeout(() => moveScreenReaderFocus(refs.current[next.key] ?? null), FOCUS_AFTER_MS);
+  };
 
   const list = (
     <>
@@ -307,7 +324,9 @@ export function GuestsScreen({
               menu={start.menu}
               rows={rows}
               groups={groups}
-              walkIn={start.walkIn}
+              walkIns={looking ? [] : rowsOf(guests, 'walkin', '', locale)}
+              expanded={expanded}
+              onShowAll={showAll}
               lit={layout === 'landscape' ? open : null}
               onOpen={openGuest}
               refFor={refFor}

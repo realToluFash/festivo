@@ -43,6 +43,7 @@ export interface SampleGuest {
   invited: Invited | null;
   /** A reply a host recorded for them (sc-3787): how they told, and the day. */
   recorded?: { how: string; day: string } | null;
+  arrived?: string;
 }
 
 const SOIRELY: Invited = { by: 'Soirely’s message', how: null, day: '2026-10-12' };
@@ -159,6 +160,11 @@ export const FROM_CONTACTS_ADDED: readonly SampleGuest[] = [
 ];
 
 export const KOFI_WALKIN = 'Kofi Asante';
+
+export const WALK_IN: SampleGuest = guest('kofi', KOFI_WALKIN, 'walkin', {
+  invited: null,
+  arrived: '18:20',
+});
 
 /** The days and times of each state, as instants (London is on GMT in November). */
 export const CLOCKS = {
