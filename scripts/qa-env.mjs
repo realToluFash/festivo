@@ -1963,10 +1963,21 @@ function stopAppServices(root) {
   run('docker', ['compose', 'stop', ...APP_SERVICES], { cwd: root });
 }
 
-// Makes what a `down` removed, where `start` fails on a stack with no containers.
+// Makes what a `down` removed, where `start` fails on a stack with no containers. `up` refuses a
+// paused container, and a batch killed while a check held the API leaves it paused.
+export function startServices(services, { run, capture }) {
+  const paused = (capture(['ps', '--status', 'paused', '--format', '{{.Service}}']) ?? '')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+  if (paused.length) run(['unpause', ...paused]);
+  run(['up', '-d', '--wait', '--no-recreate', ...services]);
+}
+
 function startAppServices(root) {
-  run('docker', ['compose', 'up', '-d', '--wait', '--no-recreate', ...APP_SERVICES], {
-    cwd: root,
+  startServices(APP_SERVICES, {
+    run: (args) => run('docker', ['compose', ...args], { cwd: root }),
+    capture: (args) => capture('docker', ['compose', ...args], { cwd: root }),
   });
 }
 
@@ -2504,6 +2515,8 @@ export function apiMoves(from, to) {
     stopped: [['up', '-d', '--wait', '--no-recreate', 'api']],
   };
   if (to === 'up') return up[from];
+  // `stop` thaws a paused container for its SIGTERM, and Caddy answers the held request.
+  if (from === 'paused') return [['kill', 'api']];
   if (from !== 'up') return [...up[from], ...apiMoves('up', to)];
   return [[to === 'paused' ? 'pause' : 'stop', 'api']];
 }
@@ -2514,9 +2527,15 @@ export const apiStateOf = (containerState) =>
 // A check holds Event View's reads by pausing the API once the list has loaded. Each move waits
 // for the one before it. The state is read from Docker on the first move and after a failed one,
 // since a killed batch or a half-done move leaves the container in a state nobody recorded.
-// A move between paused and stopped passes through up, and anything the app asks then is
-// answered, so those moves run inside `unreached`, which keeps the device from the API.
-export function apiControl({ run, read, unreached = (moves) => moves() }) {
+// Stopped to paused passes through up, and anything the app asks then is answered, so that move
+// runs inside `unreached`, which keeps the device from the API. A move that ends up returns once
+// `healthy` says the API answers: the api service has no healthcheck for `--wait` to wait on.
+export function apiControl({
+  run,
+  read,
+  healthy = async () => true,
+  unreached = (moves) => moves(),
+}) {
   let state;
   let moving = Promise.resolve();
   const move = (to) => {
@@ -2530,9 +2549,14 @@ export function apiControl({ run, read, unreached = (moves) => moves() }) {
             state = undefined;
             throw new Error(`docker compose ${args.join(' ')} failed`);
           }
-          state = args[0] === 'pause' ? 'paused' : args[0] === 'stop' ? 'stopped' : 'up';
+          state =
+            args[0] === 'pause' ? 'paused' : ['stop', 'kill'].includes(args[0]) ? 'stopped' : 'up';
         }
       });
+      if (moves.length && state === 'up' && !(await healthy())) {
+        state = undefined;
+        throw new Error('the api came back but never answered /api/health');
+      }
     });
     moving = next.catch(() => {});
     return next;
@@ -2551,9 +2575,21 @@ export async function withoutReverse(port, adb, moves) {
   }
 }
 
+export async function answers(url, { ms = 60_000, every = 500, get = fetch } = {}) {
+  for (const deadline = Date.now() + ms; ; await pause(every)) {
+    const ok = await get(url, { signal: AbortSignal.timeout(every * 4) }).then(
+      (r) => r.ok,
+      () => false,
+    );
+    if (ok) return true;
+    if (Date.now() >= deadline) return false;
+  }
+}
+
 const composeApi = (root, onAndroid) =>
   apiControl({
     run: (args) => runAsync('docker', ['compose', ...args], { cwd: root }),
+    healthy: () => answers(`${CONFIG.urls.api}/api/health`),
     read: () =>
       capture('docker', ['compose', 'ps', '-a', 'api', '--format', '{{.State}}'], { cwd: root }) ??
       '',
