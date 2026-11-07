@@ -385,8 +385,8 @@
     "follows": "Su idioma se mantiene en todos sus dispositivos."
   },
   "public": {
-    "tagline": "Planifique el evento. Dirija la noche.",
-    "body": "Soirely es donde un evento se planifica en un escritorio y se dirige desde el teléfono. Invitados, distribución de mesas, menús y el orden de la velada, en un solo lugar y en su idioma.",
+    "tagline": "Organice el evento. Dirija el día.",
+    "body": "Soirely es donde un evento se planifica en un escritorio y se dirige desde el teléfono. Invitados, distribución de mesas, menús y el programa, en un solo lugar y en su idioma.",
     "signIn": "Iniciar sesión",
     "getStarted": "Comenzar"
   },
@@ -626,7 +626,7 @@
     "cantGetTexts": "¿No recibe SMS en este número?",
     "carryOnWithout": "Continuar sin él",
     "doneTitle": "Número verificado",
-    "doneBody": "Soirely puede contactarle en {{number}} si algo sale mal esa noche.",
+    "doneBody": "Soirely puede contactarle en {{number}} si algo sale mal el día del evento.",
     "doneBodyAlternative": "{{number}} está verificado. Seguirá siendo un número alternativo hasta que lo haga principal en Cuenta.",
     "continue": "Continuar a Soirely",
     "changeTitle": "Cambie su número de móvil",
@@ -766,7 +766,7 @@
     "failedBody": "Algo ha fallado en el camino. Inténtelo de nuevo en un momento.",
     "signOut": "Cerrar sesión",
     "optional": "Opcional",
-    "mobileHelp": "Así le localizamos la noche del evento si algo sale mal. Si añade uno, le enviamos un código por SMS para comprobarlo.",
+    "mobileHelp": "Así le localizamos el día del evento si algo sale mal. Si añade uno, le enviamos un código por SMS para comprobarlo.",
     "providerConfirmed": "Ha iniciado sesión con {{provider}}. {{provider}} ya ha confirmado {{email}}, así que no hay ningún código que introducir."
   },
   "forms": {

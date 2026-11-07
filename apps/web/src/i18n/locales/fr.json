@@ -385,8 +385,8 @@
     "follows": "Votre langue vous suit sur tous vos appareils."
   },
   "public": {
-    "tagline": "Préparez l’événement. Menez la soirée.",
-    "body": "Soirely est l’endroit où un événement se prépare au bureau et se mène depuis un téléphone. Invités, plan de table, menus et déroulé de la soirée, en un seul endroit et dans votre langue.",
+    "tagline": "Préparez l’événement. Pilotez le jour J.",
+    "body": "Soirely est l’endroit où un événement se prépare au bureau et se mène depuis un téléphone. Invités, plan de table, menus et programme, en un seul endroit et dans votre langue.",
     "signIn": "Se connecter",
     "getStarted": "Commencer"
   },
@@ -626,7 +626,7 @@
     "cantGetTexts": "Vous ne recevez pas de SMS sur ce numéro ?",
     "carryOnWithout": "Continuer sans",
     "doneTitle": "Numéro vérifié",
-    "doneBody": "Soirely peut vous joindre au {{number}} si un problème survient le soir même.",
+    "doneBody": "Soirely peut vous joindre au {{number}} si un problème survient le jour de l’événement.",
     "doneBodyAlternative": "{{number}} est vérifié. Il ne deviendra votre numéro principal que si vous le définissez comme tel dans Compte.",
     "continue": "Continuer vers Soirely",
     "changeTitle": "Changez votre numéro de portable",
@@ -766,7 +766,7 @@
     "failedBody": "Quelque chose s’est mal passé en route. Réessayez dans un instant.",
     "signOut": "Se déconnecter",
     "optional": "Facultatif",
-    "mobileHelp": "C’est ainsi qu’on vous joint le soir même si quelque chose tourne mal. Si vous en ajoutez un, nous vous envoyons un code par SMS pour le vérifier.",
+    "mobileHelp": "C’est ainsi qu’on vous joint le jour de l’événement si quelque chose tourne mal. Si vous en ajoutez un, nous vous envoyons un code par SMS pour le vérifier.",
     "providerConfirmed": "Connecté avec {{provider}}. {{provider}} a déjà confirmé {{email}}, il n’y a donc aucun code à saisir."
   },
   "forms": {
@@ -1450,7 +1450,7 @@
       "guests": "Noms, coordonnées, réponses et imports. Lire affiche aussi les numéros de téléphone.",
       "seating": "Salles, tables et qui est assis où.",
       "menu": "Plats, choix, variantes et sélections.",
-      "run_of_show": "Le programme, et cocher les étapes faites le soir même.",
+      "run_of_show": "Le programme, et cocher les étapes faites pendant l’événement.",
       "staff": "Qui travaille sur un événement et ce qu’il y fait.",
       "messages": "Rédiger et envoyer. Lire inclut l’historique de distribution.",
       "reports": "Modifier signifie exporter.",

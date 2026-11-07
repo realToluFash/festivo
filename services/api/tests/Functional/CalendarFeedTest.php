@@ -187,14 +187,14 @@ final class CalendarFeedTest extends ApiTestCase
     {
         $id = $this->create('Owambe', '2030-11-14T16:00', '2030-11-14T23:00', 'Africa/Lagos');
         $this->balanceDue($id, '2030-11-10T12:00:00+01:00');
-        $eventsOnly = $this->member('events@ire.events', $id, EventRole::CanCheckIn);
+        $door = $this->member('door@ire.events', $id, EventRole::CanCheckIn);
         $stranger = $this->account('stranger@elsewhere.events');
         $elsewhere = self::service(OrganisationFounder::class)->found($stranger, 'Elsewhere', 'NG', 'Africa/Lagos');
         self::em()->flush();
         $this->create('Their party', '2030-11-14T16:00', '2030-11-14T23:00', 'Africa/Lagos', $stranger, $elsewhere);
 
         self::assertSame(['Owambe', 'Balance due'], $this->summaries($this->link($this->owner)));
-        self::assertSame(['Owambe'], $this->summaries($this->link($eventsOnly)));
+        self::assertSame(['Owambe'], $this->summaries($this->link($door)));
     }
 
     #[Test]
