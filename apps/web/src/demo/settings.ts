@@ -2,16 +2,29 @@ import { SAMPLE } from './rules.ts';
 import type { EventKey } from './today.ts';
 
 export type Section =
-  'account' | 'security' | 'notifications' | 'general' | 'members' | 'signInRules';
+  | 'account'
+  | 'security'
+  | 'notifications'
+  | 'personalisation'
+  | 'general'
+  | 'members'
+  | 'signInRules';
 
 /** The sections the boards draw; the others each have their own design. */
 export type Drawn =
-  'account' | 'security' | 'notifications' | 'general' | 'members' | 'signInRules';
+  | 'account'
+  | 'security'
+  | 'notifications'
+  | 'personalisation'
+  | 'general'
+  | 'members'
+  | 'signInRules';
 
 const PATHS: Record<Drawn, string> = {
   account: 'account',
   security: 'security',
   notifications: 'notifications',
+  personalisation: 'personalisation',
   general: 'general',
   members: 'members',
   signInRules: 'sign-in-rules',
@@ -21,6 +34,7 @@ export const SECTION_NAMES: Record<Section, string> = {
   account: 'Account',
   security: 'Security',
   notifications: 'Notifications',
+  personalisation: 'Personalisation',
   general: 'General',
   members: 'Members',
   signInRules: 'Sign-in rules',
@@ -32,7 +46,7 @@ export interface SectionGroup {
 }
 
 const GROUPS: readonly SectionGroup[] = [
-  { name: 'Your account', sections: ['account', 'security', 'notifications'] },
+  { name: 'Your account', sections: ['account', 'security', 'notifications', 'personalisation'] },
   { name: 'Organisation settings', sections: ['general', 'members', 'signInRules'] },
 ];
 
@@ -96,6 +110,7 @@ export function isDrawn(section: Section): section is Drawn {
     section === 'account' ||
     section === 'security' ||
     section === 'notifications' ||
+    section === 'personalisation' ||
     section === 'general' ||
     section === 'members' ||
     section === 'signInRules'
