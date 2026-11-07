@@ -17,6 +17,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   allowCleartext,
+  emulatorJournalArgs,
   emulatorUnitGone,
   waitForBoot,
   apiControl,
@@ -2450,6 +2451,20 @@ describe('waitForBoot', () => {
     await expect(
       waitForBoot({ name: 'qa_pixel', booted: () => false, gone: () => null, pause, tries: 3 }),
     ).rejects.toThrow('qa_pixel did not boot within three minutes');
+  });
+});
+
+describe('emulatorJournalArgs', () => {
+  it('reads only the journal lines since this boot started', () => {
+    expect(emulatorJournalArgs('soirely-qa-emulator', 1762500000)).toEqual([
+      '--user',
+      '-u',
+      'soirely-qa-emulator',
+      '--since=@1762500000',
+      '-n',
+      '20',
+      '--no-pager',
+    ]);
   });
 });
 

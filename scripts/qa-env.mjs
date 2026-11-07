@@ -1417,6 +1417,7 @@ async function bootEmulator(tools, name) {
   let gone;
   if (usesSystemd()) {
     const env = Object.entries(tools.vars).map(([key, value]) => `--setenv=${key}=${value}`);
+    const since = Math.floor(Date.now() / 1000);
     run('systemd-run', [
       '--user',
       `--unit=${unit}`,
@@ -1432,9 +1433,7 @@ async function bootEmulator(tools, name) {
       emulatorUnitGone(
         unit,
         unitState(unit),
-        () =>
-          capture('journalctl', ['--user', '-u', unit, '-n', '20', '--no-pager']) ??
-          '(no journal lines)',
+        () => capture('journalctl', emulatorJournalArgs(unit, since)) ?? '(no journal lines)',
       );
   } else {
     const logPath = join(qaWorktree(), '.qa/emulator.log');
@@ -1457,6 +1456,10 @@ async function bootEmulator(tools, name) {
     pause,
   });
   console.log(`  ${name}: booted on ${emulatorSerial()}`);
+}
+
+export function emulatorJournalArgs(unit, since) {
+  return ['--user', '-u', unit, `--since=@${since}`, '-n', '20', '--no-pager'];
 }
 
 export function emulatorUnitGone(unit, state, journal) {
