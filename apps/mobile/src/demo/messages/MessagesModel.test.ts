@@ -17,6 +17,8 @@ import {
   laterRefused,
   messageName,
   messagesStateOf,
+  noticeCost,
+  noticeCostOf,
   reduce,
   resultOf,
   rowDay,
@@ -24,6 +26,8 @@ import {
   sectionsOf,
   spokenAt,
   startOf,
+  tellNowBy,
+  tellingBy,
   toChip,
 } from './MessagesModel.ts';
 import { MESSAGES_BOARDS } from './MessagesBoards.ts';
@@ -43,10 +47,16 @@ const run = (m: Messages, ...actions: Action[]) => actions.reduce(reduce, m);
 const nameOf = (id: RowId) => (id.kind === 'draft' ? id.id : id.key);
 
 describe('the states', () => {
-  it('are the spec’s 42, by the names both demos use, §7 then §7b', () => {
-    expect(MESSAGES_STATES).toHaveLength(42);
+  it('are the spec’s 42 and the notice’s three, by the names both demos use, §7 then §7b', () => {
+    expect(MESSAGES_STATES).toHaveLength(45);
+    expect(MESSAGES_STATES.slice(6, 10)).toEqual([
+      'channelReply',
+      'noticeCost',
+      'noticeWaits',
+      'noticeNotSent',
+    ]);
     expect(MESSAGES_STATES.slice(0, 3)).toEqual(['first', 'loading', 'inUse']);
-    expect(MESSAGES_STATES.slice(24)).toEqual([
+    expect(MESSAGES_STATES.slice(27)).toEqual([
       'invitedReached',
       'sentReached',
       'notMatched',
@@ -148,7 +158,13 @@ describe('the list', () => {
       { type: 'markDone', key: 'ines' },
     );
     expect(done.doneAt.ines).toBe('09:41');
-    expect(done.answers.ines).toEqual({ text: 'Yes', time: '09:41', seen: null });
+    expect(done.answers.ines).toEqual({
+      text: 'Yes',
+      time: '09:41',
+      seen: null,
+      by: 'email',
+      notice: 'told',
+    });
   });
 
   it('hides the badge while loading and the first time', () => {
@@ -624,5 +640,81 @@ describe('the sample’s days and channels', () => {
   it('say a reply that has just arrived in the locale’s own word', () => {
     expect(justNow('en-US')).toBe('now');
     expect(justNow('pt-PT')).toBe('agora');
+  });
+});
+
+describe('the notice’s cost, before Send (pm on bm’s #31518)', () => {
+  it('says what an SMS or WhatsApp notice costs and the credits after it, and nothing for email', () => {
+    expect(noticeCost('wa', 4, 1500)).toEqual({
+      channel: 'wa',
+      credits: 4,
+      after: 1496,
+      waits: false,
+    });
+    expect(noticeCost('sms', 9, 1500)).toMatchObject({ after: 1491, waits: false });
+    expect(noticeCost('email', 0, 1500)).toBeNull();
+    expect(noticeCost('wa', 4, 2)).toMatchObject({ waits: true });
+    expect(noticeCost('wa', 4, 4)).toMatchObject({ waits: false, after: 0 });
+  });
+
+  it('shows Lucía’s WhatsApp notice at Spain’s 4 utility credits, and Kwame’s text at the UK’s 9', () => {
+    expect(noticeCostOf(startOf('noticeCost', false), 'lucia')).toMatchObject({
+      channel: 'wa',
+      credits: 4,
+      after: 1496,
+    });
+    expect(noticeCostOf(startOf('channelReply', false), 'kwame')).toMatchObject({
+      channel: 'sms',
+      credits: 9,
+    });
+    expect(noticeCostOf(startOf('conversation', false), 'ines')).toBeNull();
+  });
+
+  it('waits with too few credits, offering email but not a text the credits can’t cover either', () => {
+    const m = startOf('noticeWaits', false);
+    expect(m.open).toEqual({ kind: 'guest', key: 'lucia' });
+    expect(noticeCostOf(m, 'lucia')?.waits).toBe(true);
+    expect(tellNowBy(m, 'lucia')).toEqual(['email']);
+    expect(tellNowBy(startOf('noticeCost', false), 'lucia')).toEqual(['email', 'sms']);
+  });
+
+  it('switches the notice to email when asked, with no cost, and the answer goes on the page at once', () => {
+    let m = reduce(startOf('noticeWaits', false), {
+      type: 'tellBy',
+      key: 'lucia',
+      channel: 'email',
+    });
+    expect(tellingBy(m, 'lucia')).toBe('email');
+    expect(noticeCostOf(m, 'lucia')).toBeNull();
+    m = reduce(m, { type: 'answer', key: 'lucia', text: 'Yes.' });
+    expect(m.answers.lucia).toMatchObject({ by: 'email', notice: 'told' });
+    expect(m.balance).toBe(2);
+  });
+
+  it('holds a WhatsApp notice the credits can’t cover, and takes them when they can', () => {
+    const held = reduce(startOf('noticeWaits', false), {
+      type: 'answer',
+      key: 'lucia',
+      text: 'Yes.',
+    });
+    expect(held.answers.lucia).toMatchObject({ by: 'wa', notice: 'held', seen: null });
+    expect(held.balance).toBe(2);
+    const told = reduce(startOf('noticeCost', false), {
+      type: 'answer',
+      key: 'lucia',
+      text: 'Yes.',
+    });
+    expect(told.answers.lucia).toMatchObject({ by: 'wa', notice: 'told' });
+    expect(told.balance).toBe(1496);
+  });
+
+  it('opens the notice held 48 hours on Lucía, with her new question waiting', () => {
+    const m = startOf('noticeNotSent', false);
+    expect(m).toMatchObject({
+      heldTooLong: true,
+      balance: 2,
+      open: { kind: 'guest', key: 'lucia' },
+    });
+    expect(m.done).not.toContain('lucia');
   });
 });

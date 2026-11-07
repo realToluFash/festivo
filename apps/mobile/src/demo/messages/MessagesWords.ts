@@ -19,6 +19,10 @@ export const W = {
   markAsWaiting: 'Mark as waiting',
   doneSaid: 'Done.',
   writeYourAnswer: 'Write your answer',
+  creditsNotInApp: 'Credits cannot be added in the app.',
+  tellNowBy: 'Or tell them now by:',
+  heldForCredits: 'Held: waiting for credits',
+  tooLate: 'Not sent: too late',
   cameBySms:
     'This came by SMS, in answer to the text. Your answer goes on their page, and Soirely texts them that it is there.',
   notSeenYet: 'Not seen yet',
@@ -179,6 +183,11 @@ export const say = {
   answerLine: (name: string, channel: string) =>
     `Your answer goes on ${name}’s page. Soirely tells them by ${channel}.`,
   toldBy: (channel: string) => `Told by ${channel}`,
+  noticeCost: (paid: 'sms' | 'wa', credits: number, after: string) =>
+    `This ${paid === 'wa' ? 'WhatsApp message' : 'text'} uses ${credits} ${credits === 1 ? 'credit' : 'credits'}. Credits after sending: ${after}.`,
+  noticeWaits: (paid: 'sms' | 'wa') =>
+    `1 ${paid === 'wa' ? 'WhatsApp' : 'SMS'} message will wait for credits.`,
+  tellNowAs: (channel: string) => `Tell them now by ${channel}`,
   seenAt: (time: string) => `Seen ${time}`,
   you: (text: string) => `You: ${text}`,
   byAt: (name: string, time: string) => `${name} · ${time}`,

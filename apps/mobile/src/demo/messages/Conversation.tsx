@@ -10,6 +10,7 @@ import { AnswerBox, MiniComposer, NewComposer, PreviewBar, ToHead } from './Comp
 import { GroupTile } from './MessagesList.tsx';
 import {
   type Action,
+  type Answer,
   type Draft,
   type Messages,
   type Open,
@@ -19,7 +20,10 @@ import {
   rowDay,
   draftTitle,
   messageName,
+  noticeCostOf,
   resultOf,
+  tellNowBy,
+  tellingBy,
   toChip,
 } from './MessagesModel.ts';
 import {
@@ -37,6 +41,7 @@ import {
   TO_FIGURES,
   EVENT,
   HOSTS,
+  HELD_TOO_LONG,
 } from './MessagesSample.ts';
 import { CHANNEL_IN_LINE, CHANNEL_WORD, type ChannelKey, W, say } from './MessagesWords.ts';
 import { Preview } from './Preview.tsx';
@@ -122,6 +127,18 @@ const ALL = TO_FIGURES.all.count;
 
 function told(channel: keyof typeof CHANNEL_IN_LINE): string {
   return say.toldBy(CHANNEL_IN_LINE[channel]);
+}
+
+/** How the notice of an answer went, as a mark and a word: told, held for credits, or held too long and not sent. */
+function noticeBit(answer: Pick<Answer, 'by' | 'notice'>): Bit {
+  switch (answer.notice) {
+    case 'held':
+      return { word: say.where(CHANNEL_WORD[answer.by], W.heldForCredits), mark: 'sending' };
+    case 'tooLate':
+      return { word: say.where(CHANNEL_WORD[answer.by], W.tooLate), mark: 'notsent' };
+    default:
+      return { word: told(answer.by), mark: 'delivered' };
+  }
 }
 
 /** A sender Soirely could not match (sc-3976): their message and Choose the guest, then once matched the answer box. */
@@ -261,6 +278,27 @@ function guestParts(talk: Talk, key: GuestKey): Parts {
       />,
     );
   }
+  if (key === 'lucia' && m.heldTooLong)
+    history.push(
+      <DayRule key="d0" text={dayWords(HELD_TOO_LONG.day, talk.locale)} />,
+      <GuestBubble
+        key="ask0"
+        text={HELD_TOO_LONG.asked}
+        where="page"
+        when={HELD_TOO_LONG.askedAt}
+      />,
+      <HostBubble
+        key="ans0"
+        text={HELD_TOO_LONG.answer}
+        settles={false}
+        bits={[
+          { word: W.onTheirPage, where: 'page' },
+          { word: say.byAt(READER, HELD_TOO_LONG.answeredAt) },
+          noticeBit({ by: 'wa', notice: 'tooLate' }),
+          { word: W.notSeenYet },
+        ]}
+      />,
+    );
   if (key === 'lucia') history.push(<DayRule key="d1" text={W.today} />);
   if (key === 'marta') history.push(<DayRule key="d1" text={dayWords(DAYS.marta, talk.locale)} />);
 
@@ -280,7 +318,7 @@ function guestParts(talk: Talk, key: GuestKey): Parts {
           bits={[
             { word: W.onTheirPage, where: 'page' },
             { word: say.byAt(READER, answer.time) },
-            { word: told(guest.channel), mark: 'delivered' },
+            noticeBit(answer),
             { word: answer.seen == null ? W.notSeenYet : say.seenAt(answer.seen) },
           ]}
         />
@@ -315,11 +353,14 @@ function guestParts(talk: Talk, key: GuestKey): Parts {
     foot: (
       <AnswerBox
         name={guest.name}
-        channel={guest.channel}
+        channel={tellingBy(m, key)}
+        cost={noticeCostOf(m, key)}
+        others={tellNowBy(m, key)}
         value={talk.typed}
         fieldRef={talk.answerRef}
         autoFocus={key === 'kwame' && talk.typed !== ''}
         onChange={talk.onTyped}
+        onTellBy={(channel) => talk.dispatch({ type: 'tellBy', key, channel })}
         onSend={() => talk.onAnswer(key)}
       />
     ),

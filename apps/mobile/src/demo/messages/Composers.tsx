@@ -13,9 +13,10 @@ import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { Pill } from '../../components/SettingsParts.tsx';
 import { TextAction } from '../../components/Summary.tsx';
-import { MessageGlyph } from './MessageMarks.tsx';
-import { type Draft, toChip } from './MessagesModel.ts';
-import { CHANNEL_WORD, type ChannelKey, W, say } from './MessagesWords.ts';
+import { DeliveryMark, MessageGlyph } from './MessageMarks.tsx';
+import { type Draft, type NoticeCost, toChip } from './MessagesModel.ts';
+import { formatCount } from './MessagesSample.ts';
+import { CHANNEL_IN_LINE, CHANNEL_WORD, type ChannelKey, W, say } from './MessagesWords.ts';
 
 const INK2 = tokens.colorInkSecondary;
 
@@ -308,22 +309,28 @@ export function NewComposer({
   );
 }
 
-/** Under a guest's conversation: where the answer goes and how they are told, then the field and Send. */
+/** Under a guest's conversation: where the answer goes, how they are told and what that costs, then the field and Send. */
 export function AnswerBox({
   name,
   channel,
+  cost = null,
+  others = [],
   value,
   autoFocus = false,
   fieldRef,
   onChange,
+  onTellBy,
   onSend,
 }: {
   name: string;
   channel: ChannelKey;
+  cost?: NoticeCost | null;
+  others?: readonly ChannelKey[];
   value: string;
   autoFocus?: boolean;
   fieldRef?: RefObject<TextInputInstance | null>;
   onChange: (text: string) => void;
+  onTellBy?: (channel: ChannelKey) => void;
   onSend: () => void;
 }) {
   const on = value.trim() !== '';
@@ -335,10 +342,60 @@ export function AnswerBox({
         <View style={styles.markTop}>
           <MessageGlyph name="page" size={15} ink={INK2} />
         </View>
-        <Text size={13.5} weight="medium" style={[styles.grow, styles.secondary, styles.line]}>
-          {say.answerLine(name, { email: 'email', sms: 'SMS', wa: 'WhatsApp' }[channel])}
-        </Text>
+        <View style={[styles.grow, styles.lines]}>
+          <Text size={13.5} weight="medium" style={[styles.secondary, styles.line]}>
+            {say.answerLine(name, CHANNEL_IN_LINE[channel])}
+          </Text>
+          {cost != null && !cost.waits && (
+            <Text
+              size={13.5}
+              weight="medium"
+              style={[styles.secondary, styles.line]}
+              testID="messages.answer.cost"
+            >
+              {say.noticeCost(cost.channel, cost.credits, formatCount(cost.after))}
+            </Text>
+          )}
+        </View>
       </View>
+      {cost?.waits === true && (
+        <View style={styles.waits} testID="messages.answer.waits">
+          <View style={styles.answerLine}>
+            <View style={styles.markTop}>
+              <DeliveryMark mark="sending" side={15} />
+            </View>
+            <View style={[styles.grow, styles.lines]}>
+              <Text size={14} weight="semibold" style={styles.line}>
+                {say.noticeWaits(cost.channel)}
+              </Text>
+              <Text size={13.5} weight="medium" style={[styles.secondary, styles.line]}>
+                {W.creditsNotInApp}
+              </Text>
+            </View>
+          </View>
+          {others.length > 0 && onTellBy != null && (
+            <View style={styles.others}>
+              <Text size={13.5} weight="medium" style={[styles.secondary, styles.line]}>
+                {W.tellNowBy}
+              </Text>
+              <View style={styles.otherRow}>
+                {others.map((other) => (
+                  <Pill
+                    key={other}
+                    label={CHANNEL_WORD[other]}
+                    kind="secondary"
+                    height={tokens.sizeHit}
+                    full={false}
+                    accessibilityLabel={say.tellNowAs(CHANNEL_IN_LINE[other])}
+                    onPress={() => onTellBy(other)}
+                    testID={`messages.answer.tellBy.${other}`}
+                  />
+                ))}
+              </View>
+            </View>
+          )}
+        </View>
+      )}
       <View style={styles.answerRow}>
         <TextField
           ref={fieldRef}
@@ -503,6 +560,17 @@ const styles = StyleSheet.create({
   goes: { textAlign: 'right' },
   answer: { gap: tokens.spaceXs },
   answerLine: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceXs },
+  lines: { gap: tokens.spaceHair },
+  waits: {
+    gap: tokens.spaceSm,
+    padding: tokens.spaceMd,
+    borderRadius: tokens.radiusInset,
+    borderWidth: 1,
+    borderColor: tokens.colorBorder,
+    backgroundColor: tokens.colorCard,
+  },
+  others: { gap: tokens.spaceXs },
+  otherRow: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spaceSm },
   answerRow: { flexDirection: 'row', alignItems: 'flex-end', gap: tokens.spaceMd },
   answerField: {
     flex: 1,
