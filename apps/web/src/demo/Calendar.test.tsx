@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -5,6 +8,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
 import { CALENDAR_STATES, CAL_WORDS, FEED_WORDS } from './calendar.ts';
+import { PhaseTag } from './EventParts.tsx';
 import { resetSample } from './events.ts';
 
 const tested = config();
@@ -172,6 +176,25 @@ describe('the Calendar in B, weeks as lanes, at a desk (sc-30329)', () => {
     expect((document.activeElement as HTMLElement).dataset.piece).toBe('event|evt-wed-4');
     key('Tab', { shiftKey: true });
     expect(focused()).toBe('2026-11-05');
+  });
+
+  it('marks Live with the Events demo’s tag, and draws it no other way', SLOW, async () => {
+    const events = render(<PhaseTag shown="live" />).container.firstElementChild?.className;
+
+    cleanup();
+    await calendar('busyDay');
+
+    const panel = screen.getByRole('complementary', { name: 'Saturday, Nov 14' });
+    const live = [...panel.querySelectorAll('.desk-tag')].filter(
+      (tag) => tag.textContent === 'Live',
+    );
+
+    expect(events).toBe('desk-tag is-yes');
+    expect(live).toHaveLength(2);
+    expect(live.map((tag) => tag.className)).toEqual([events, events]);
+    expect(readFileSync(join(import.meta.dirname, 'calendar.css'), 'utf8')).not.toMatch(
+      /\.is-yes\b/u,
+    );
   });
 
   it('opens each bar on its event page', SLOW, async () => {

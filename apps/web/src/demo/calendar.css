@@ -695,12 +695,6 @@
   background-size: var(--spaceXxs) 1.4px;
 }
 
-.cal-rows .desk-tag.is-yes {
-  border: 0;
-  background: color-mix(in srgb, var(--optionTeal) 16%, var(--colorCard));
-  color: var(--deskGreen);
-}
-
 .cal-nothing {
   padding-top: var(--spaceXxl);
   color: var(--colorInkSecondary);
