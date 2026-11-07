@@ -159,7 +159,11 @@ function fixedPerson(person: NotReached, address: string, at: string | undefined
   const rest = person.lines.filter((line) => !line.word.startsWith(CHANNEL_WORD.email));
   const email: ReachLine =
     at == null
-      ? { mark: 'delivered', word: say.where(CHANNEL_WORD.email, W.fixedNotSent), reason: address }
+      ? {
+          mark: 'delivered',
+          word: say.where(CHANNEL_WORD.email, W.updatedNotSent),
+          reason: address,
+        }
       : {
           mark: 'sent',
           word: [CHANNEL_WORD.email, W.sent, at].join(' · '),

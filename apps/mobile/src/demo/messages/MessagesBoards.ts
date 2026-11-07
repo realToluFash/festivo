@@ -37,7 +37,7 @@ const BOARDS: Record<MessagesState, readonly [string, string]> = {
   sendNow: ['send now', 'The check set to now, or Keep it scheduled'],
   cancelAsk: ['cancel…, asked', 'Keep it first; Cancel message'],
   scheduledCancelled: ['cancelled, scheduled', 'Greyed; its row in Done reads Cancelled'],
-  fixed: ['after a fix', 'Fixed · not sent yet, and Send to Tomás Ferreira again'],
+  fixed: ['after a fix', 'Updated · not sent yet, and Send to Tomás Ferreira again'],
   sentAgain: ['sent again', 'Sent to Tomás Ferreira; Resend to the 10 not reached'],
   checkAll: ['the check, all guests', 'Sending to 142 people; 9 can’t be told'],
   checkNotReplied: ['the check, hasn’t replied', 'Sending to 25 people; 1 can’t be told'],
