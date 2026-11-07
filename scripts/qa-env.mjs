@@ -818,9 +818,14 @@ export function branchForStory(id, remoteBranches) {
 }
 
 // The api container mounts services/api, so its compiled container outlives a checkout
-// and can name a service the new commit removed.
+// and can name a service the new commit removed. The directory itself stays: Docker Desktop
+// leaves a running container holding a cache directory deleted on the host, and every
+// request that needs it answers 500.
 export function clearApiCache(root) {
-  rmSync(join(root, 'services/api/var/cache'), { recursive: true, force: true });
+  const cache = join(root, 'services/api/var/cache');
+  if (!existsSync(cache)) return;
+  for (const name of readdirSync(cache))
+    rmSync(join(cache, name), { recursive: true, force: true });
 }
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -2378,6 +2383,10 @@ export function codeStep(now, last) {
 
 const escapeRegex = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
+// The app draws an address with a zero-width space after its @ so it can wrap (breakableEmail).
+const filledPattern = (name, value) =>
+  name === 'email' ? escapeRegex(value).replace('@', '@\\u200B?') : escapeRegex(value);
+
 // `{{t:key}}` is the batch language's string and `{{t:any:key}}` any language's, as a Maestro
 // regex inside single quotes. `|email` fills the account's address in; any other value is `.*`.
 export function localise(flow, catalogues, language, values = {}) {
@@ -2392,7 +2401,7 @@ export function localise(flow, catalogues, language, values = {}) {
         .map((part) => {
           const name = /^\{\{(\w+)\}\}$/.exec(part)?.[1];
           if (name === undefined) return escapeRegex(part);
-          return filled.includes(name) ? escapeRegex(values[name] ?? '') : '.*';
+          return filled.includes(name) ? filledPattern(name, values[name] ?? '') : '.*';
         })
         .join('');
     });

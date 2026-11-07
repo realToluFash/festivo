@@ -1,3 +1,4 @@
+import { DemoBell } from './DemoBell.tsx';
 import { contactActions, initials, zoneLabel } from '@soirely/domain';
 import { useId, useState } from 'react';
 
@@ -26,7 +27,7 @@ import {
   VerifyDialog,
   ZoneDialog,
 } from './AccountDialogs.tsx';
-import { Glyph, type GlyphName } from './Glyph.tsx';
+import { Glyph, type GlyphName } from '../components/Glyph.tsx';
 import type { Viewer } from './settings.ts';
 import {
   Ask,
@@ -37,8 +38,8 @@ import {
   OnCard,
   RowWords,
   TitleRow,
-} from './SettingsParts.tsx';
-import type { Tell } from './TodayParts.tsx';
+} from '../components/SettingsParts.tsx';
+import type { Tell } from '../components/SettingsParts.tsx';
 import './account.css';
 
 const ICONS: Record<Kind, GlyphName> = { email: 'mail', phone: 'phone' };
@@ -98,7 +99,7 @@ export function Account({ viewer, state, tell }: { viewer: Viewer; state: string
   return (
     <div className="desk-page">
       <div className="desk-column">
-        <TitleRow title={W.title} tell={tell} />
+        <TitleRow title={W.title} bell={<DemoBell tell={tell} />} />
         <Card size="person">
           <div>
             <div className="desk-who">

@@ -5,7 +5,7 @@ import type { TextInputInstance } from 'react-native';
 import { Field, focusChecked, TextField } from '../../components/Field.tsx';
 import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
 import { nameStays, WORDS } from './AccountModel.ts';
-import { type AskProps, FocusedScreen } from './Summary.tsx';
+import { type AskProps, FocusedScreen } from '../../components/Summary.tsx';
 
 /** Cancel after a change: what stays, Keep editing first and Discard in red. */
 export function discardAsk(

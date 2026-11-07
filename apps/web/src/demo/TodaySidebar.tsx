@@ -2,18 +2,50 @@ import { Link } from 'react-router';
 
 import { Brand } from '../components/Brand.tsx';
 import { TODAY_IDS } from './events.ts';
-import { Glyph, type GlyphName } from './Glyph.tsx';
+import { Glyph, type GlyphName } from '../components/Glyph.tsx';
 import { OrgSwitcher } from './OrgSwitcher.tsx';
 import { SAMPLE } from './rules.ts';
 import { EVENTS, type EventKey } from './today.ts';
-import type { Tell } from './TodayParts.tsx';
+import type { Tell } from '../components/SettingsParts.tsx';
 
-const PLACES: readonly (readonly [string, GlyphName])[] = [
+type PlaceGlyph = GlyphName | 'vendors';
+
+const PLACES: readonly (readonly [string, PlaceGlyph])[] = [
   ['Today', 'today'],
   ['Events', 'events'],
   ['Calendar', 'calendar'],
   ['Vendors', 'vendors'],
 ];
+
+const VENDORS = [
+  'M3 9l1.5-5h15L21 9',
+  'M3 9a3 3 0 0 0 6 0a3 3 0 0 0 6 0a3 3 0 0 0 6 0',
+  'M5 12v8h14v-8',
+  'M10 20v-5h4v5',
+];
+
+/** Vendors has no place in the kit's Glyph yet, so the demo draws it the same way. */
+function Place({ glyph }: { glyph: PlaceGlyph }) {
+  if (glyph !== 'vendors') return <Glyph name={glyph} />;
+  return (
+    <svg
+      width={18}
+      height={18}
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      focusable="false"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      {VENDORS.map((d) => (
+        <path key={d} d={d} />
+      ))}
+    </svg>
+  );
+}
 
 const FOLAKE: SidebarPerson = { name: SAMPLE.name, initials: 'FA', role: 'Owner' };
 
@@ -71,7 +103,7 @@ export function TodaySidebar({
                   to="/demo/vendors"
                   aria-current={vendors ? 'page' : undefined}
                 >
-                  <Glyph name={glyph} />
+                  <Place glyph={glyph} />
                   {label}
                 </Link>
               ) : label === 'Events' ? (
@@ -80,7 +112,7 @@ export function TodaySidebar({
                   to="/demo/events"
                   aria-current={listing ? 'page' : undefined}
                 >
-                  <Glyph name={glyph} />
+                  <Place glyph={glyph} />
                   {label}
                 </Link>
               ) : label === 'Calendar' ? (
@@ -89,12 +121,12 @@ export function TodaySidebar({
                   to="/demo/calendar"
                   aria-current={calendar ? 'page' : undefined}
                 >
-                  <Glyph name={glyph} />
+                  <Place glyph={glyph} />
                   {label}
                 </Link>
               ) : (settings || listing || calendar || vendors) && label === 'Today' ? (
                 <Link className="today-place" to="/demo/today">
-                  <Glyph name={glyph} />
+                  <Place glyph={glyph} />
                   {label}
                 </Link>
               ) : (
@@ -106,7 +138,7 @@ export function TodaySidebar({
                     label === 'Today' ? onToday?.() : tell(`${label} has its own design.`)
                   }
                 >
-                  <Glyph name={glyph} />
+                  <Place glyph={glyph} />
                   {label}
                 </button>
               )}

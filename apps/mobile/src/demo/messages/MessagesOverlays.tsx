@@ -16,7 +16,7 @@ import { Toast } from '../../components/Toast.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { AlertLine, EventField } from '../events/EventEdits.tsx';
 import { MomentBox, type Picking, PickerLayer, pick } from '../events/EventsPick.tsx';
-import { Back, Pill } from '../settings/parts.tsx';
+import { Back, Pill } from '../../components/SettingsParts.tsx';
 import {
   type Anchor,
   AnchoredMenu,
@@ -24,7 +24,7 @@ import {
   Row,
   RowList,
   TextAction,
-} from '../settings/Summary.tsx';
+} from '../../components/Summary.tsx';
 import { ChannelPill } from './CheckCard.tsx';
 import { type Moment, dayWords, laterRefused } from './MessagesModel.ts';
 import {

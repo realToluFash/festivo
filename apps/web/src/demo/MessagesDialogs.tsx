@@ -1,8 +1,8 @@
 import { useId, useRef, useState } from 'react';
 
-import { Glyph } from './Glyph.tsx';
+import { Glyph } from '../components/Glyph.tsx';
 import { CLOCK, ENDS, MATCHES, MW, UNKNOWN, ZONE, filled } from './messages.ts';
-import { Dialog } from './SettingsParts.tsx';
+import { Dialog } from '../components/SettingsParts.tsx';
 
 const FOLD = (text: string) =>
   text

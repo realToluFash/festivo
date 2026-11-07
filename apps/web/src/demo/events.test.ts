@@ -14,7 +14,6 @@ import {
   listed,
   manageOf,
   matches,
-  meshFor,
   noMatchLine,
   paramsOf,
   resetSample,
@@ -26,6 +25,7 @@ import {
   whenOf,
   whenRange,
 } from './events.ts';
+import { meshFor } from '../mesh.ts';
 
 const COLOURS = { wed: 'rose', ireti: 'teal', party: 'accent', draft: 'amber' } as const;
 

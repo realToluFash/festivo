@@ -1,7 +1,8 @@
 import { EVENT_TYPES } from '@soirely/domain';
 import { describe, expect, it } from 'vitest';
 
-import { AREAS, EVENTS, MORE_AREAS, TYPE_WORDS, meshFor, sampleEvent } from './EventsSample.ts';
+import { AREAS, EVENTS, MORE_AREAS, TYPE_WORDS, sampleEvent } from './EventsSample.ts';
+import { meshFor } from '../../kit/today.ts';
 
 const DRAWN: Record<string, string> = {
   'evt-wed-4': 'rose',

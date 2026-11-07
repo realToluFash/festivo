@@ -45,7 +45,7 @@ import {
   RowShapes,
   Section,
   TextAction,
-} from './Summary.tsx';
+} from '../../components/Summary.tsx';
 
 const hidden = {
   accessibilityElementsHidden: true,
