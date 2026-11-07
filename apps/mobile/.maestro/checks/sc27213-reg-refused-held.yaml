@@ -1,6 +1,11 @@
 # sc-27213 regression: a wrong current password sent by the return key is refused with the keys up and New password still focused (sc-13408); then a key typed there and sent again with the API paused leaves Cancel off, and a tap on it closes nothing (sc-12545). Needs ${METRO_URL}.
 # The return key is Enter on iOS and a tap on the keyboard's action key on Android, where Enter can type into the field instead (sc-18648).
 appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
 ---
 - openLink: ${METRO_URL}/--/settings/security
 - scrollUntilVisible:

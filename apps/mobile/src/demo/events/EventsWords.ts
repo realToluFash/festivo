@@ -109,8 +109,6 @@ export const W = {
   showLatest: 'Show the latest',
   showLatestTitle: 'Show the latest version?',
   showLatestBody: 'What you typed will be replaced by the version somebody else saved.',
-  tellGuests: 'Once it is saved',
-  tellGuestsPill: 'Telling guests what changed: AC, not yet built · sc-4330',
   starts: 'Starts',
   ends: 'Ends',
   date: 'Date',

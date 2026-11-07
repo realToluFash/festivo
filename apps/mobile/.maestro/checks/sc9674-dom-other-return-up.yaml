@@ -1,5 +1,10 @@
 # Add a domain: example.org sent by the return key with the keys up, held, return pressed again, then refused. Keys stay up, the value is edited at once and sent again by return. sc-9674.
 appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
 ---
 - openLink: ${METRO_URL}/--/settings/organisation
 - extendedWaitUntil:

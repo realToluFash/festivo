@@ -1,5 +1,10 @@
 # Android only. sc-25667: on an account at its limit, Cancel is off while it sends; once Too many new organisations for now. shows, Cancel is live and closes the sheet, and nothing named Held Limited is in the switcher.
 appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
 ---
 - runFlow: ../open-create-organisation.yaml
 - tapOn:
