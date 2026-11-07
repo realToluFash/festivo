@@ -114,6 +114,17 @@ export function useDeskDialog(
   return covered;
 }
 
+/** Focus once the closing layer's inert has lifted from the page, waiting a few frames at most. */
+export function focusWhenFree(target: () => HTMLElement | null): void {
+  const attempt = (tries: number): void => {
+    const to = target();
+    if (to?.isConnected === true && to.closest('[inert]') == null) to.focus();
+    else if (tries > 0) window.requestAnimationFrame(() => attempt(tries - 1));
+  };
+
+  window.setTimeout(() => attempt(5), 0);
+}
+
 /** From 1536, Members' list and the picked person sit side by side. */
 export function useDeskSplit(): boolean {
   return useMatches('(width >= 96rem)');

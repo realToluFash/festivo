@@ -311,6 +311,7 @@
 }
 
 .sw-opener .sw-tile {
+  position: relative;
   flex: none;
   width: var(--space4xl);
   height: var(--space4xl);
@@ -538,6 +539,15 @@
   background: var(--colorBroken);
 }
 
+.sw-notice.is-attention {
+  background: var(--colorAttentionTint);
+}
+
+.sw-notice.is-attention .sw-notice-mark {
+  background: var(--colorAttentionText);
+  font: 800 15px/1 var(--fontFamily);
+}
+
 .sw-asked {
   display: flex;
   align-items: flex-start;
@@ -573,6 +583,31 @@
 
 .sw-switched {
   margin: 0;
+}
+
+.today .sw-switched .sw-lands:focus-visible {
+  outline: none;
+  box-shadow: var(--swRing);
+}
+
+/* A new organisation's button: its colour crossfades in over the Create tile it came from. */
+.sw-was {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  border: 2px dashed var(--colorAccent);
+  border-radius: inherit;
+  background: var(--colorAccentTint);
+  color: var(--colorAccent);
+  animation: sw-colour-arrives var(--motionSlow) linear forwards;
+}
+
+@keyframes sw-colour-arrives {
+  to {
+    opacity: 0;
+  }
 }
 
 .sw-paused {

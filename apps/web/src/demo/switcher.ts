@@ -2,6 +2,7 @@ import { formattingLocale } from '@soirely/domain';
 import { useState, useSyncExternalStore } from 'react';
 import { useLocation, useSearchParams } from 'react-router';
 
+import { type CreateState, NEW_ORG, isCreateState } from './createOrg.ts';
 import type { DemoLink } from './settings.ts';
 
 export type Role = 'Owner' | 'Admin' | 'Member';
@@ -26,8 +27,10 @@ export interface Where {
   invitations: readonly Invitation[];
   answers: Readonly<Record<string, Answer>>;
   offer: OfferStanding | null;
-  switched: { name: string; at: string } | null;
+  switched: { name: string; at: string; takesFocus?: boolean } | null;
   opens: number;
+  fresh: readonly string[];
+  arrived: string | null;
 }
 
 export const SWITCHER_STATES = [
@@ -59,6 +62,7 @@ export const PAUSED = {
 };
 
 const IRE: Place = { id: 'org-ire-events', name: 'Ire Events', role: 'Owner' };
+export const NEW_PLACE: Place = { ...NEW_ORG, role: 'Owner' };
 
 const POPULATED: readonly Place[] = [
   IRE,
@@ -149,6 +153,29 @@ export function whereOf(state: SwitcherState | null): Where {
             : null,
     switched: null,
     opens: 0,
+    fresh: [],
+    arrived: null,
+  };
+}
+
+/** Folake owns Ire Events alone, or nothing with `?orgs=none`; `created` has made Lumen Feiras. */
+export function creatingOf(state: CreateState | null, none: boolean, at: string): Where {
+  const start = { ...whereOf('one'), places: none ? [] : [IRE] };
+
+  return state === 'created' ? madeIn(start, NEW_PLACE, at, none) : start;
+}
+
+function madeIn(now: Where, place: Place, at: string, takesFocus: boolean): Where {
+  const known = now.places.some((one) => one.id === place.id);
+
+  return {
+    ...now,
+    places: known ? now.places : [...now.places, place],
+    current: place.id,
+    paused: false,
+    switched: { name: place.name, at, takesFocus },
+    fresh: known ? now.fresh : [...now.fresh, place.id],
+    arrived: place.id,
   };
 }
 
@@ -259,6 +286,14 @@ export function usePaused(): boolean {
   return useWhere().paused;
 }
 
+export function isFresh(where: Where): boolean {
+  return where.fresh.includes(where.current);
+}
+
+export function inNone(where: Where): boolean {
+  return where.places.length === 0;
+}
+
 export function change(next: (now: Where) => Where): void {
   where = next(where);
   for (const listener of listeners) listener();
@@ -282,6 +317,15 @@ export function decline(invitation: Invitation): void {
   change((now) => ({ ...now, answers: { ...now.answers, [invitation.id]: 'declined' } }));
 }
 
+/** The walk's Create: from no organisation the notice takes focus, as main's does. */
+export function create(place: Place, at: string, takesFocus: boolean): void {
+  change((now) => madeIn(now, place, at, takesFocus));
+}
+
+export function colourArrived(): void {
+  change((now) => ({ ...now, arrived: null }));
+}
+
 export function switchTo(place: Place, at: string): void {
   change((now) => ({
     ...now,
@@ -291,14 +335,18 @@ export function switchTo(place: Place, at: string): void {
   }));
 }
 
-/** First in a page, before anything reads the store: `?switcher=` starts it afresh, and a switch is said only on the page it happened on. */
+/** First in a page, before anything reads the store: `?switcher=`, `?create=` and `?orgs=` start it afresh, and a switch is said only on the page it happened on. */
 export function useSwitcherStart(): void {
   const [params] = useSearchParams();
   const { pathname } = useLocation();
 
   useState(() => {
     const state = params.get('switcher');
+    const walk = params.get('create');
+    const none = params.get('orgs') === 'none';
     if (isSwitcherState(state)) where = whereOf(state);
+    else if (isCreateState(walk) || none)
+      where = creatingOf(isCreateState(walk) ? walk : null, none, pathname);
     else if (where.switched != null && where.switched.at !== pathname)
       where = { ...where, switched: null };
   });

@@ -5,6 +5,7 @@ import { NotFound } from '../routes/public/NotFound.tsx';
 import { offButton } from '../offButton.ts';
 import { offField } from '../offField.ts';
 import { BoardPage, OrLine, Providers } from './BoardPage.tsx';
+import { CREATE_PAGES } from './createOrg.ts';
 import { EventPage } from './EventPage.tsx';
 import { Events } from './Events.tsx';
 import { EVENTS_PAGES } from './events.ts';
@@ -162,6 +163,8 @@ function DemoHome({ from }: { from: string }) {
         <BoardPages pages={EVENTS_PAGES} />
         <h3>The organisation switcher in B · Places · desktop</h3>
         <BoardPages pages={SWITCHER_PAGES} />
+        <h3>Create an organisation in B · A short walk · desktop</h3>
+        <BoardPages pages={CREATE_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-28">
