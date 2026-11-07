@@ -1,0 +1,8 @@
+# Taps the on-screen keyboard's return key on the iPhone, by its place: the key has no id. sc-13408.
+appId: host.exp.Exponent
+---
+- tapOn:
+    point: '87%,88%'
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: mobile-13408-return-tap

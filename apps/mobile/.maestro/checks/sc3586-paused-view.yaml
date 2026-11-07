@@ -1,0 +1,13 @@
+# sc-3586: a Paused event: the Paused pill, the paused line and Resume, for each layout and language. Pass EV_PAUSED.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV_PAUSED}
+- extendedWaitUntil:
+    visible:
+      id: 'events.pausedRow'
+    timeout: 30000
+- assertVisible:
+    id: 'events.phase.paused'
+- assertVisible:
+    id: 'events.resume'
+- takeScreenshot: paused-view

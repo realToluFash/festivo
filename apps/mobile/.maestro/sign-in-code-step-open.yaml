@@ -1,0 +1,18 @@
+# Signs in with EMAIL and PASSWORD (two-factor on) in LANGUAGE and stops on the code step.
+# sc-22740.
+appId: host.exp.Exponent
+---
+- runFlow: sign-in-screen-language.yaml
+- tapOn:
+    id: 'signIn.email'
+- eraseText: 60
+- inputText: ${EMAIL}
+- tapOn:
+    id: 'signIn.password'
+- inputText: ${PASSWORD}
+- tapOn:
+    id: 'signIn.submit'
+- extendedWaitUntil:
+    visible:
+      id: 'twoFactor.code'
+    timeout: 30000

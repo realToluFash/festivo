@@ -1,0 +1,62 @@
+# sc-20824: ${EVENT_ID}'s Edit details, ' Ball' typed onto the name; Save changes shows its sending state, the form leaves within 3 seconds for the event's page with Saved, and Edit details opened again shows the new name.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 30000
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - scrollUntilVisible:
+          element:
+            id: 'events.page.edit'
+          direction: DOWN
+          centerElement: true
+- tapOn:
+    id: 'events.page.edit'
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.name'
+    timeout: 20000
+- tapOn:
+    id: 'eventForm.name'
+- inputText: ' Ball'
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.send'
+    direction: DOWN
+- tapOn:
+    id: 'eventForm.send'
+- takeScreenshot: saving
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 3000
+- assertNotVisible:
+    id: 'eventForm.name'
+- assertVisible: '(Saved|Cambios guardados)'
+- assertVisible: '.*Ball.*'
+- takeScreenshot: saved
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - scrollUntilVisible:
+          element:
+            id: 'events.page.edit'
+          direction: DOWN
+          centerElement: true
+- tapOn:
+    id: 'events.page.edit'
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.name'
+    timeout: 20000
+- assertVisible:
+    id: 'eventForm.name'
+    text: '.*Ball'
+- takeScreenshot: reopened

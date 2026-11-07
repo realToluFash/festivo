@@ -1,0 +1,42 @@
+# Transfer ownership: right password, keys up, Make {name} the owner. The step closes with the new owner named. sc-9674.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/organisation
+- extendedWaitUntil:
+    visible:
+      id: organisation.name
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: ownership.transfer
+    centerElement: true
+- tapOn:
+    id: ownership.transfer
+- scrollUntilVisible:
+    element:
+      id: ownership.owner.${MEMBER}
+    centerElement: true
+- tapOn:
+    id: ownership.owner.${MEMBER}
+- scrollUntilVisible:
+    element:
+      id: ownership.password
+    centerElement: true
+- tapOn:
+    id: ownership.password
+- inputText: ${PASSWORD}
+- waitForAnimationToEnd
+- assertVisible: '(?i)(shift|delete)'
+- scrollUntilVisible:
+    element:
+      id: ownership.transfer.send
+    centerElement: true
+- tapOn:
+    id: ownership.transfer.send
+- extendedWaitUntil:
+    visible: '.*is now the owner of.*'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: transferred
+- assertNotVisible:
+    id: ownership.password

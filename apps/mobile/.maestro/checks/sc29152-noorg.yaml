@@ -1,0 +1,18 @@
+# sc-29152: the design demo's Settings in B Confetti, the list with no organisation. Needs ${METRO_URL}; run under EXPO_PUBLIC_SCHEME=violet.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/settings?as=noOrg
+- extendedWaitUntil:
+    visible:
+      text: 'Your account\. [^,]+, [^,]+'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertNotVisible:
+    id: 'settings.organisation'
+- takeScreenshot: noorg
+- swipe:
+    start: 85%, 80%
+    end: 85%, 30%
+- waitForAnimationToEnd
+- takeScreenshot: noorg-scrolled
