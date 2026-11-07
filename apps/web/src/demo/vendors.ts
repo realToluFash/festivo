@@ -337,8 +337,7 @@ export type Load = 'loaded' | 'loading' | 'failed';
 
 export type VendorsDialog =
   | { kind: 'add'; draft: Draft; problems: Problems }
-  | { kind: 'edit'; id: string; draft: Draft; problems: Problems }
-  | { kind: 'read'; id: string };
+  | { kind: 'edit'; id: string; draft: Draft; problems: Problems };
 
 export interface VendorsStart {
   load: Load;
@@ -346,7 +345,6 @@ export interface VendorsStart {
   looking: Looking;
   page: number;
   menu: boolean;
-  readOnly: boolean;
   dialog: VendorsDialog | null;
 }
 
@@ -366,7 +364,6 @@ export function vendorsStart(state: string): VendorsStart {
     looking: NOT_LOOKING,
     page: 1,
     menu: false,
-    readOnly: false,
     dialog: null,
   };
   const invalid: Draft = {
@@ -419,10 +416,6 @@ export function vendorsStart(state: string): VendorsStart {
         ...start,
         dialog: { kind: 'edit', id: BLOOM, draft: bloomDraft(vendors, {}), problems: {} },
       };
-    case 'read_only':
-      return { ...start, readOnly: true };
-    case 'read_only_open':
-      return { ...start, readOnly: true, dialog: { kind: 'read', id: BLOOM } };
     default:
       return start;
   }
@@ -477,10 +470,6 @@ export const VENDORS_PAGES: readonly { name: string; states: readonly DemoLink[]
   },
   {
     name: 'Who sees it',
-    states: [
-      { to: at('read_only'), name: 'After a downgrade: read only (read_only)' },
-      { to: at('read_only_open'), name: 'Read only, a vendor open' },
-      { to: at(undefined, 'ana'), name: 'A member, on its address' },
-    ],
+    states: [{ to: at(undefined, 'ana'), name: 'A member, on its address' }],
   },
 ];

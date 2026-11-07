@@ -93,31 +93,6 @@
   border-top: 1px solid var(--colorBorder);
 }
 
-.vd-read {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spaceLg);
-  margin: 0 0 var(--spaceXl);
-}
-
-.vd-read-row {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spaceXxs);
-}
-
-.vd-read-row dt {
-  color: var(--colorInkSecondary);
-  font: var(--deskSmall);
-}
-
-.vd-read-row dd {
-  margin: 0;
-  color: var(--colorInk);
-  font: var(--deskLine);
-  overflow-wrap: anywhere;
-}
-
 .vd-first {
   align-items: flex-start;
 }

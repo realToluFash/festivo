@@ -117,19 +117,6 @@ describe('Vendors at a desk in B Confetti (sc-82)', () => {
     vi.useRealTimers();
   });
 
-  it('keeps the directory read only after a downgrade', SLOW, async () => {
-    await open('/demo/vendors?state=read_only');
-
-    expect(within(main()).getByText('Read only now')).toBeDefined();
-    expect(within(main()).queryByRole('button', { name: 'Add a vendor' })).toBeNull();
-
-    fireEvent.click(within(main()).getByRole('button', { name: /^Bloom & Co,/ }));
-    const dialog = screen.getByRole('dialog', { name: 'Bloom & Co' });
-
-    expect(within(dialog).queryByRole('button', { name: 'Archive this vendor' })).toBeNull();
-    expect(within(dialog).getByText('ngozi@bloomandco.ng')).toBeDefined();
-  });
-
   it('gives a member no Vendors item, and the refusal on its address', SLOW, async () => {
     await open('/demo/vendors?as=ana');
 

@@ -125,7 +125,6 @@ describe('the vendor directory’s rules (sc-82)', () => {
 
     expect(vendorsStart('empty').vendors).toEqual([]);
     expect(vendorsStart('blank').dialog).toMatchObject({ kind: 'add' });
-    expect(vendorsStart('read_only').readOnly).toBe(true);
     expect(vendorsStart('invalid').dialog).toMatchObject({
       problems: {
         phone: 'That is not a phone number for Nigeria. Check it and try again.',

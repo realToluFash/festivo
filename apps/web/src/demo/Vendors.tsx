@@ -18,19 +18,7 @@ import { EventsShell } from './EventParts.tsx';
 import { Glyph } from './Glyph.tsx';
 import { COUNTRIES, codeChoice } from './rules.ts';
 import { SIDEBAR_EVENTS, type SettingsSay, settingsSayIn, viewerOf } from './settings.ts';
-import {
-  Ask,
-  Card,
-  CardStep,
-  Chevron,
-  Dialog,
-  Menu,
-  OnCard,
-  RowWords,
-  Says,
-  TextAction,
-  TitleRow,
-} from './SettingsParts.tsx';
+import { Ask, Chevron, Dialog, Menu, RowWords, TextAction, TitleRow } from './SettingsParts.tsx';
 import type { Tell } from './TodayParts.tsx';
 import { TodaySidebar } from './TodaySidebar.tsx';
 import {
@@ -104,7 +92,6 @@ function Directory({ state, tell }: { state: string; tell: Tell }) {
   const [page, setPage] = useState(start.page);
   const [menu, setMenu] = useState(start.menu);
   const [dialog, setDialog] = useState<VendorsDialog | null>(start.dialog);
-  const readOnly = start.readOnly;
   const top = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -123,7 +110,7 @@ function Directory({ state, tell }: { state: string; tell: Tell }) {
     top.current?.querySelector<HTMLElement>('.desk-title')?.focus();
   };
   const close = useCallback(() => setDialog(null), []);
-  const add = readOnly ? undefined : (
+  const add = (
     <TextAction
       label="Add a vendor"
       before="plus"
@@ -150,10 +137,8 @@ function Directory({ state, tell }: { state: string; tell: Tell }) {
         <TitleRow title="Vendors" action={add} tell={tell} />
         <p className="desk-line">The people Ire Events buys from, kept once for every event.</p>
       </div>
-      {readOnly && <ReadOnlyCard tell={tell} />}
       {empty && looking.view === 'inUse' && !isLooking(looking) ? (
         <FirstRun
-          readOnly={readOnly}
           archived={vendors.length}
           onAdd={() => setDialog({ kind: 'add', draft: BLANK, problems: {} })}
           onArchived={() => look({ ...NOT_LOOKING, view: 'archived' })}
@@ -184,14 +169,9 @@ function Directory({ state, tell }: { state: string; tell: Tell }) {
                   <li key={one.id}>
                     <VendorRow
                       vendor={one}
-                      readOnly={readOnly}
                       say={say}
                       onOpen={() =>
-                        setDialog(
-                          readOnly
-                            ? { kind: 'read', id: one.id }
-                            : { kind: 'edit', id: one.id, draft: draftOf(one), problems: {} },
-                        )
+                        setDialog({ kind: 'edit', id: one.id, draft: draftOf(one), problems: {} })
                       }
                       onRestore={() => {
                         setVendors((now) => restored(now, one.id));
@@ -217,7 +197,6 @@ function Directory({ state, tell }: { state: string; tell: Tell }) {
         <VendorDialogs
           dialog={dialog}
           vendors={vendors}
-          say={say}
           onDialog={setDialog}
           onClose={close}
           onSaved={(vendor, adding) => {
@@ -274,25 +253,11 @@ function Failed({ onRetry }: { onRetry: () => void }) {
   );
 }
 
-/** Kept after a downgrade, per the rule that losing a plan never deletes anything: one offer, then the list to read. */
-function ReadOnlyCard({ tell }: { tell: Tell }) {
-  return (
-    <Card>
-      <Says>Read only now</Says>
-      <OnCard>Your plan no longer includes vendors. Everything here is kept to read.</OnCard>
-      <OnCard>Adding, editing and archiving come back with a plan that includes them.</OnCard>
-      <CardStep label="See plans" onClick={() => tell('Plans have their own design.')} />
-    </Card>
-  );
-}
-
 function FirstRun({
-  readOnly,
   archived: archivedCount,
   onAdd,
   onArchived,
 }: {
-  readOnly: boolean;
   archived: number;
   onAdd: () => void;
   onArchived: () => void;
@@ -303,7 +268,7 @@ function FirstRun({
       <p className="desk-line">
         Add the caterers, venues and suppliers Ire Events buys from, so nobody types them twice.
       </p>
-      {!readOnly && <TextAction label="Add a vendor" before="plus" onClick={onAdd} />}
+      <TextAction label="Add a vendor" before="plus" onClick={onAdd} />
       {archivedCount > 0 && <TextAction label="Show archived" onClick={onArchived} />}
     </div>
   );
@@ -452,13 +417,11 @@ function NoMatch({ looking, onLooking }: { looking: Looking; onLooking: (next: L
 
 function VendorRow({
   vendor,
-  readOnly,
   say,
   onOpen,
   onRestore,
 }: {
   vendor: Vendor;
-  readOnly: boolean;
   say: SettingsSay;
   onOpen: () => void;
   onRestore: () => void;
@@ -483,7 +446,7 @@ function VendorRow({
         {words}
         <span className="vd-archived">
           <span className="vd-cell">Archived {say.date(vendor.archivedOn)}</span>
-          {!readOnly && <TextAction label="Restore" onClick={onRestore} />}
+          <TextAction label="Restore" onClick={onRestore} />
         </span>
       </div>
     );
@@ -553,7 +516,6 @@ function Pager({
 function VendorDialogs({
   dialog,
   vendors,
-  say,
   onDialog,
   onClose,
   onSaved,
@@ -561,18 +523,11 @@ function VendorDialogs({
 }: {
   dialog: VendorsDialog;
   vendors: readonly Vendor[];
-  say: SettingsSay;
   onDialog: (dialog: VendorsDialog) => void;
   onClose: () => void;
   onSaved: (vendor: Vendor, adding: boolean) => void;
   onArchive: (vendor: Vendor) => void;
 }) {
-  if (dialog.kind === 'read') {
-    const vendor = vendors.find((one) => one.id === dialog.id);
-
-    return vendor == null ? null : <ReadVendor vendor={vendor} say={say} onClose={onClose} />;
-  }
-
   const editing = dialog.kind === 'edit' ? vendors.find((one) => one.id === dialog.id) : undefined;
 
   return (
@@ -599,7 +554,7 @@ function VendorForm({
   onSaved,
   onArchive,
 }: {
-  dialog: Exclude<VendorsDialog, { kind: 'read' }>;
+  dialog: VendorsDialog;
   vendor: Vendor | undefined;
   onDraft: (draft: Draft, problems: Problems) => void;
   onClose: () => void;
@@ -906,48 +861,5 @@ function PhoneField({
       </p>
       <Problem id={`${id}-phone-error`} line={error} />
     </div>
-  );
-}
-
-/** A vendor opened while the directory is read only: what it holds, and nothing to change. */
-function ReadVendor({
-  vendor,
-  say,
-  onClose,
-}: {
-  vendor: Vendor;
-  say: SettingsSay;
-  onClose: () => void;
-}) {
-  const rows: [string, string][] = [
-    ['Category', CATEGORY_WORDS[vendor.category]],
-    ['Contact name', vendor.contact],
-    ['Email address', vendor.email],
-    ['Phone number', vendor.phone === '' ? '' : (reachOf({ ...vendor, email: '' }) ?? '')],
-    ['Website', vendor.website],
-    ['Address', vendor.address],
-    ['Note', vendor.note],
-  ];
-
-  return (
-    <Dialog title={vendor.name} verb="Done" cancel={false} onDismiss={onClose} onConfirm={onClose}>
-      <dl className="vd-read">
-        {rows
-          .filter(([, value]) => value !== '')
-          .map(([label, value]) => (
-            <div key={label} className="vd-read-row">
-              <dt>{label}</dt>
-              <dd>{value}</dd>
-            </div>
-          ))}
-        {vendor.archivedOn != null && (
-          <div className="vd-read-row">
-            <dt>Archived</dt>
-            <dd>{say.date(vendor.archivedOn)}</dd>
-          </div>
-        )}
-      </dl>
-      <p className="desk-note">Read only on your plan. Nothing here can be changed.</p>
-    </Dialog>
   );
 }
