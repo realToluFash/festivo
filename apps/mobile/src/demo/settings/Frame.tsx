@@ -13,7 +13,9 @@ import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { Glyph } from '../../components/Glyph.tsx';
-import { OpenerWords, OPENER, OrgMark, useOrgOpener } from '../OrgSwitcher.tsx';
+import { useOrgOpener } from '../OrgSwitcher.tsx';
+import { SW } from '../OrgSwitcherModel.ts';
+import { OrgPill as ProductOrgPill } from '../../components/OrgPill.tsx';
 import { type EventKey, sample } from '../today.ts';
 import { PHONE_TAB_BAR, PhoneTabBar, type Tab, TABS } from '../../components/TodayCover.tsx';
 import type { Tell } from '../../components/TodayParts.tsx';
@@ -315,7 +317,7 @@ export function Bell({
   );
 }
 
-/** The organisation switcher on white, at the top of every top-level page. */
+/** The product's pill, opening the demo's switcher. */
 export function OrgPill() {
   const { viewer } = useShell();
   const ref = useRef<ViewInstance>(null);
@@ -324,23 +326,16 @@ export function OrgPill() {
   if (viewer === 'noOrg') return null;
 
   return (
-    <Pressable
+    <ProductOrgPill
       ref={ref}
+      id={org.place.id}
+      name={org.place.name}
+      waiting={org.waiting > 0 ? SW.count(org.waiting) : null}
+      label={org.label}
+      expanded={org.expanded}
       onPress={org.onPress}
-      style={({ pressed }) => [
-        styles.org,
-        org.waiting > 0 && styles.orgWaiting,
-        pressed && styles.orgPressed,
-      ]}
-      accessibilityRole="button"
-      accessibilityLabel={org.label}
-      accessibilityState={{ expanded: org.expanded }}
       testID="org.switch"
-    >
-      <OrgMark id={org.place.id} name={org.place.name} side={28} />
-      <OpenerWords opener={org} />
-      <Glyph name="updown" size={14} ink={tokens.colorInkSecondary} />
-    </Pressable>
+    />
   );
 }
 
@@ -452,19 +447,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: tokens.space3xl,
     paddingBottom: tokens.spaceXxs,
   },
-  org: {
-    height: OPENER.rest,
-    flexShrink: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.spaceSm,
-    paddingLeft: tokens.spaceSm,
-    paddingRight: tokens.spacePillEnd,
-    borderRadius: OPENER.rest / 2,
-    backgroundColor: tokens.colorInset,
-  },
-  orgWaiting: { height: OPENER.waiting, borderRadius: OPENER.waiting / 2 },
-  orgPressed: { backgroundColor: tokens.colorNeutralFill },
   capsuleAt: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
   capsule: {
     height: 46,

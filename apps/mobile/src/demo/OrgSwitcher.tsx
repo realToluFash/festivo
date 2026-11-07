@@ -33,6 +33,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { OrgMark as ProductOrgMark } from '../components/OrgMark.tsx';
+import { OPENER, OpenerWords as ProductOpenerWords } from '../components/OrgPill.tsx';
 import { TextField } from '../components/Field.tsx';
 import { Glyph } from '../components/Glyph.tsx';
 import { Initials } from '../components/Initials.tsx';
@@ -466,49 +467,24 @@ function Arrival({
   );
 }
 
-/** The opener's words: the name, and under it a ring and how many invitations wait. */
+/** The product's opener words, for the demo's session. */
 export function OpenerWords({
   opener,
-  onDark = false,
-  grow = false,
-  wrap = false,
+  ...rest
 }: {
   opener: OrgOpener;
   onDark?: boolean;
   grow?: boolean;
   wrap?: boolean;
 }) {
-  const ink = { color: onDark ? tokens.colorInkOnDark : tokens.colorInk };
-
   return (
-    <View style={[styles.openerWords, grow && styles.grow]}>
-      <Text
-        size={15}
-        weight="semibold"
-        numberOfLines={wrap ? undefined : 1}
-        accessible={false}
-        style={[styles.openerName, ink]}
-      >
-        {opener.place.name}
-      </Text>
-      {opener.waiting > 0 && (
-        <View style={styles.waitingLine}>
-          <View
-            style={[
-              styles.waitingRing,
-              { borderColor: onDark ? tokens.colorInkOnDark : tokens.colorInk },
-            ]}
-          />
-          <Text size={12.5} weight="semibold" accessible={false} style={[styles.waitingWords, ink]}>
-            {SW.count(opener.waiting)}
-          </Text>
-        </View>
-      )}
-    </View>
+    <ProductOpenerWords
+      name={opener.place.name}
+      waiting={opener.waiting > 0 ? SW.count(opener.waiting) : null}
+      {...rest}
+    />
   );
 }
-
-export const OPENER = { rest: tokens.sizeHit, waiting: 56 } as const;
 
 /** Today's openers: glass on the cover and the band, and the sidebar's head. */
 export function DemoOrgOpener({ at }: { at: OpenerAt }) {
@@ -1434,7 +1410,6 @@ function OfferPanel({
 
 const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
-  openerWords: { flexShrink: 1, minWidth: 0, gap: tokens.spaceHair },
   coverOrg: { flexShrink: 1 },
   coverGlass: {
     flexShrink: 1,
@@ -1459,10 +1434,6 @@ const styles = StyleSheet.create({
     ...tokens.elevationNative.card.ios,
     elevation: tokens.elevationNative.card.android.elevation,
   },
-  openerName: { lineHeight: 15 * 1.25 },
-  waitingLine: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXs },
-  waitingRing: { width: 11, height: 11, borderRadius: 5.5, borderWidth: 2 },
-  waitingWords: { lineHeight: 12.5 * 1.3 },
   drop: {
     position: 'absolute',
     borderWidth: 1,
