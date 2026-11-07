@@ -27,7 +27,7 @@ import { CodeField, Field, focusChecked, keysStayDown, TextField } from './Field
 import { Notice } from './Notice.tsx';
 import { useReadOut } from './ReadOut.tsx';
 import { type StepClosed, stepClosed, useAboveKeyboard, useFocusBackToOpener } from './Screen.tsx';
-import { Sheet, SheetActions } from './Sheet.tsx';
+import { Sheet, SheetActions, useSheetRevealed } from './Sheet.tsx';
 import { Text, type TextHandle } from './Text.tsx';
 import { useMarkSide } from './markSide.ts';
 import { Arrived, Skeleton } from './Skeleton.tsx';
@@ -487,6 +487,7 @@ function SavingCodes({
   const { t } = useTranslation();
   const [saved, setSaved] = useState(false);
   const [copied, setCopied] = useState(false);
+  const revealed = useSheetRevealed();
   const copiedAll = t('twoFactorCard.copiedAll', { count: codes.length });
   useReadOut(copied ? copiedAll : null);
 
@@ -495,7 +496,7 @@ function SavingCodes({
   return (
     <>
       <ScrollView style={styles.sheetBody} contentContainerStyle={styles.sheetContent}>
-        <Title text={t('twoFactorCard.saveTitle')} answer={answer} />
+        <Title text={t('twoFactorCard.saveTitle')} answer={revealed ? answer : undefined} />
         <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
           {phone
             ? `${t('twoFactorCard.saveIntro')} ${t('twoFactorCard.phoneKeepElsewhere')}`
