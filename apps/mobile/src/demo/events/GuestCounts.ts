@@ -61,6 +61,8 @@ export const GUEST_WORDS = {
   invited: 'Guests invited',
   coming: (count: number, locale?: string) => `${figureOf(count, locale)} coming`,
   replied: 'Replies in',
+  showsInvited: 'shows the events with invited guests',
+  showsNotReplied: 'shows the events with guests who haven’t replied',
   notReplied: (count: number, locale?: string) =>
     count === 1 ? '1 hasn’t replied' : `${figureOf(count, locale)} haven’t replied`,
 } as const;

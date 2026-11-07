@@ -83,6 +83,7 @@ export function EventFrame({
   badge = null,
   onBell,
   bellRef,
+  back: pushed,
   children,
 }: {
   event: Shown;
@@ -98,6 +99,8 @@ export function EventFrame({
   badge?: AreaBadge | null;
   onBell?: (() => void) | undefined;
   bellRef?: Ref<ViewInstance> | undefined;
+  /** A page an area pushes in its own column: ‹ and the area it goes back to. */
+  back?: { label: string; onPress: () => void } | null;
   children: ReactNode;
 }) {
   const shell = useShell();
@@ -145,9 +148,10 @@ export function EventFrame({
     );
 
   const back =
-    phone && area !== 'overview'
+    pushed ??
+    (phone && area !== 'overview'
       ? { label: W.overview, onPress: () => onArea('overview') }
-      : { label: W.backToEvents, onPress: backToEvents };
+      : { label: W.backToEvents, onPress: backToEvents });
   const at = PHONE_TABS.includes(area) ? AREA_WORDS[area] : W.more;
 
   return (

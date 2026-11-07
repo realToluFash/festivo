@@ -19,11 +19,12 @@ import { backToEvents } from './EventFrame.tsx';
 import { EventsList } from './EventsList.tsx';
 import { eventStateOf, listStateOf } from './EventsModel.ts';
 import { messagesStateOf } from '../messages/MessagesModel.ts';
+import { guestsStateOf } from '../guests/GuestsModel.ts';
 import { areaOf, sampleEvent } from './EventsSample.ts';
 import { say } from './EventsWords.ts';
 
 /** Events on sample data, in Settings' shell: Today and Settings a tab away, and anything unbuilt said so. */
-function EventsShell({
+export function EventsShell({
   told: start,
   switcher,
   children,
@@ -119,15 +120,17 @@ export function EventRoute() {
   const state = eventStateOf(params.state);
   const area = areaOf(params.area);
   const messages = area === 'messages' ? messagesStateOf(params.state) : null;
+  const guests = area === 'guests' ? guestsStateOf(params.state) : null;
 
   return (
     <EventsShell switcher={params.switcher}>
       <EventScreen
-        key={`${params.id ?? ''}:${state ?? ''}:${area ?? ''}:${messages ?? ''}`}
+        key={`${params.id ?? ''}:${state ?? ''}:${area ?? ''}:${messages ?? ''}:${guests ?? ''}`}
         id={params.id}
         state={state}
         area={area}
         messages={messages}
+        guests={guests}
       />
     </EventsShell>
   );

@@ -50,6 +50,16 @@ import { PLACE, SAMPLE_EVENT_ID, TELL } from '../messages/MessagesSample.ts';
 import { tellChange } from '../messages/TellChange.ts';
 import { MessagesScreen, badgeFor } from '../messages/MessagesScreen.tsx';
 import { W as MW, say as sayMessages } from '../messages/MessagesWords.ts';
+import { GuestNumbers } from '../guests/GuestNumbers.tsx';
+import {
+  type FilterKey,
+  type GuestsState,
+  OVERVIEW_STATES,
+  clockOf as guestsClock,
+  isIn,
+} from '../guests/GuestsModel.ts';
+import { GuestsScreen } from '../guests/GuestsScreen.tsx';
+import { GUESTS as TALKS, type GuestKey } from '../messages/MessagesSample.ts';
 
 type Mute = 'ok' | 'notLoaded' | 'notSaved';
 
@@ -86,21 +96,32 @@ export function EventScreen({
   state,
   area,
   messages = null,
+  guests = null,
 }: {
   id: string | undefined;
   state: EventDemoState | null;
   area: AreaKey | null;
   messages?: MessagesState | null;
+  /** With Guests' own states, Guests opens on one, or Overview on its counts. */
+  guests?: GuestsState | null;
 }) {
   const shell = useShell();
   const locale = formattingLocale('en', getLocales()[0]?.languageTag);
-  const now = useMemo(() => clockOf(state), [state]);
+  const now = useMemo(
+    () => (guests == null ? clockOf(state) : guestsClock(guests)),
+    [state, guests],
+  );
   const [event, setEvent] = useState(() => startEvent(id, state, messages));
   const [at, setAt] = useState<AreaKey>(
-    area == null || area === 'people' || messages === 'tell' || messages === 'tellPlace'
-      ? 'overview'
-      : area,
+    guests != null
+      ? isIn(OVERVIEW_STATES, guests)
+        ? 'overview'
+        : 'guests'
+      : area == null || area === 'people' || messages === 'tell' || messages === 'tellPlace'
+        ? 'overview'
+        : area,
   );
+  const [guestsFrom, setGuestsFrom] = useState<FilterKey | null>(null);
   const [m, dispatch] = useReducer(reduce, null, () => startOf(messages, shell.layout !== 'phone'));
   const [messagesSeen, setMessagesSeen] = useState(messages != null || at === 'messages');
   if (at === 'messages' && !messagesSeen) setMessagesSeen(true);
@@ -200,7 +221,17 @@ export function EventScreen({
     />
   );
   const nameCover = <NameAndCover shown={shown} refFor={refFor} onEdit={openEdit} />;
-  const guests = <GuestsPage />;
+  const openGuests = (filter: FilterKey) => {
+    setGuestsFrom(filter);
+    setAt('guests');
+  };
+  const numbers = (
+    <GuestNumbers
+      state={guests != null && isIn(OVERVIEW_STATES, guests) ? guests : 'overview'}
+      onOpen={openGuests}
+    />
+  );
+  const guestsPage = <GuestsPage />;
   const forYou = (
     <JustForYou
       muted={muted}
@@ -232,6 +263,38 @@ export function EventScreen({
       onSeeWho={() => tellHere(sayMessages.ownDesign(MW.seeWho))}
     />
   );
+
+  const writeToThem = () => {
+    dispatch({ type: 'newMessage' });
+    dispatch({ type: 'chooseTo', to: 'notReplied' });
+    setAt('messages');
+  };
+  const theirConversation = (guest: string) => {
+    const talk = Object.keys(TALKS).find((key) => key === guest) as GuestKey | undefined;
+    dispatch({
+      type: 'open',
+      open: talk == null ? { kind: 'many', key: 'parking' } : { kind: 'guest', key: talk },
+    });
+    setAt('messages');
+  };
+
+  if (at === 'guests')
+    return (
+      <GuestsScreen
+        key={guestsFrom ?? ''}
+        state={guests != null && !isIn(OVERVIEW_STATES, guests) ? guests : null}
+        event={shown}
+        now={now}
+        more={more}
+        onMore={setMore}
+        onArea={setAt}
+        badge={messagesHere && messagesSeen ? badgeFor(m) : null}
+        filterFrom={guestsFrom}
+        onWrite={writeToThem}
+        onConversation={theirConversation}
+        onMakeLive={() => shell.tell(say.ownDesign(W.makeLive))}
+      />
+    );
 
   if (at === 'messages' && messagesHere)
     return (
@@ -265,7 +328,8 @@ export function EventScreen({
             {nameCover}
           </View>
           <View style={styles.right}>
-            {guests}
+            {numbers}
+            {guestsPage}
             {forYou}
             {manage}
           </View>
@@ -276,9 +340,10 @@ export function EventScreen({
     page = (
       <>
         {card}
+        {numbers}
         {details}
         {nameCover}
-        {guests}
+        {guestsPage}
         {forYou}
         {manage}
       </>

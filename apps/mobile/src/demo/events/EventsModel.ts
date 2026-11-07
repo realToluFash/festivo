@@ -512,6 +512,10 @@ export const LIST_STATES = [
   'filterOpen',
   'noMatch',
   'noGuests',
+  'events',
+  'eventsFirst',
+  'eventsZero',
+  'eventsOffline',
 ] as const;
 export type ListState = (typeof LIST_STATES)[number];
 
@@ -534,6 +538,7 @@ export function listStart(state: ListState | null): {
 
   switch (state) {
     case 'drafts':
+    case 'eventsZero':
       return { ...start, tab: 'drafts' };
     case 'past':
       return { ...start, tab: 'past' };

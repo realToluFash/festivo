@@ -118,15 +118,21 @@ export function EventsList({
   const [searched, setSearched] = useState(start.typed);
   const [filters, setFilters] = useState<Filters>(start.filters);
   const [pastShown, setPastShown] = useState(start.pastShown);
-  const [offline, setOffline] = useState(state === 'offline');
+  const [offline, setOffline] = useState(state === 'offline' || state === 'eventsOffline');
+  const [counting, setCounting] = useState<'invited' | 'replied' | null>(null);
   const [menuAt, setMenuAt] = useState<Anchor | null>(null);
   const filterRef = useRef<ViewInstance>(null);
   const field = useRef<TextInputInstance>(null);
-  const first = state === 'first';
+  const first = state === 'first' || state === 'eventsFirst';
   const wide = shell.layout !== 'phone';
   const events = useMemo(
-    () => (first ? [] : EVENTS.filter((event) => event.id !== deleted)),
-    [first, deleted],
+    () =>
+      first
+        ? []
+        : EVENTS.filter(
+            (event) => event.id !== deleted && (state !== 'eventsZero' || event.status === 'draft'),
+          ),
+    [first, deleted, state],
   );
   const home = useMemo(() => homeOf(events, now, locale), [events, now, locale]);
   const looking = searching(searched) || filtered(filters);
@@ -161,13 +167,28 @@ export function EventsList({
     setTyped('');
     setSearched('');
   };
+  const countedBy = (which: 'invited' | 'replied') =>
+    home.upcoming.filter((event) => {
+      const one = SAMPLE_GUESTS[event.id];
+      return (
+        guestLine(event) != null &&
+        one != null &&
+        (which === 'invited' ? one.invited > 0 : one.invited > one.replied)
+      );
+    });
+  const guestLine = (event: Shown) => {
+    const one = state === 'noGuests' ? null : SAMPLE_GUESTS[event.id];
+    return one == null || !['live', 'happening_now', 'paused'].includes(event.phase)
+      ? null
+      : `${G.coming(one.coming, locale)} · ${G.notReplied(one.invited - one.replied, locale)}`;
+  };
   const row = (event: Shown, everyPhase: boolean) => ({
     key: event.id,
     inset: 60,
     row: (
       <Row
         title={event.name}
-        line={rowLine(event, locale)}
+        line={[rowLine(event, locale), guestLine(event)].filter(Boolean).join('\n')}
         lead={<EventThumb event={event} />}
         tag={rowTag(event, everyPhase)}
         value={wide ? (howSoon(event, now) ?? undefined) : undefined}
@@ -188,7 +209,18 @@ export function EventsList({
         onNew={() => shell.tell(say.ownDesign(W.newEvent))}
         onBell={shell.tell}
       />
-      {!first && <GuestTiles counts={guests} locale={locale} />}
+      {!first && (
+        <GuestTiles
+          counts={guests}
+          locale={locale}
+          onCount={(which) => {
+            setTyped('');
+            setSearched('');
+            setFilters(NO_FILTERS);
+            setCounting(which);
+          }}
+        />
+      )}
       <SwitchedNotice />
     </>
   );
@@ -275,7 +307,11 @@ export function EventsList({
           </Text>
         )}
       </View>
-      {results == null ? (
+      {counting != null ? (
+        <Results count={countedBy(counting).length} onClearFilters={() => setCounting(null)}>
+          <RowList items={countedBy(counting).map((event) => row(event, true))} />
+        </Results>
+      ) : results == null ? (
         <>
           <Segment
             tab={tab}
@@ -288,6 +324,7 @@ export function EventsList({
           />
           {card != null && (
             <EventCard
+              guests={guestLine(card)}
               event={card}
               now={now}
               locale={locale}
@@ -496,7 +533,15 @@ function ListTop({
   );
 }
 
-function GuestTiles({ counts, locale }: { counts: GuestCounts; locale: string }) {
+function GuestTiles({
+  counts,
+  locale,
+  onCount,
+}: {
+  counts: GuestCounts;
+  locale: string;
+  onCount: (which: 'invited' | 'replied') => void;
+}) {
   return (
     <View style={styles.guests} testID="events.guests">
       <GuestTile
@@ -504,45 +549,68 @@ function GuestTiles({ counts, locale }: { counts: GuestCounts; locale: string })
         name={G.invited}
         figure={figureOf(counts.invited, locale)}
         line={G.coming(counts.coming, locale)}
+        opens={G.showsInvited}
+        onPress={() => onCount('invited')}
       />
       <GuestTile
         id="replied"
         name={G.replied}
         figure={figureOf(counts.replied, locale)}
         line={G.notReplied(counts.notReplied, locale)}
+        opens={G.showsNotReplied}
+        onPress={() => onCount('replied')}
       />
     </View>
   );
 }
 
+/** Each tile is one link, named with its words and what it opens (guests-a-spec §14). */
 function GuestTile({
   id,
   name,
   figure,
   line,
+  opens,
+  onPress,
 }: {
   id: 'invited' | 'replied';
   name: string;
   figure: string;
   line: string;
+  opens: string;
+  onPress: () => void;
 }) {
   return (
-    <View
-      style={styles.guest}
-      accessible
-      accessibilityLabel={`${name}, ${figure}, ${line}`}
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [styles.guest, pressed && styles.pressed]}
+      accessibilityRole="link"
+      accessibilityLabel={`${name}, ${figure}, ${line}, ${opens}`}
       testID={`events.guests.${id}`}
     >
-      <Text size={14} weight="semibold" style={styles.secondary}>
-        {name}
-      </Text>
-      <Text size={28} weight="bold" style={[styles.figures, styles.guestFigure]}>
+      <View style={styles.tileName}>
+        <Text
+          size={14}
+          weight="semibold"
+          accessible={false}
+          style={[styles.grow, styles.secondary]}
+        >
+          {name}
+        </Text>
+        <Glyph name="chevron" size={15} ink={tokens.colorInkTertiary} weight={2.3} />
+      </View>
+      <Text size={28} weight="bold" accessible={false} style={[styles.figures, styles.guestFigure]}>
         {figure}
       </Text>
-      <Text size={14} weight="medium" style={[styles.secondary, styles.figures, styles.said]}>
+      <Text
+        size={14}
+        weight="medium"
+        accessible={false}
+        style={[styles.secondary, styles.figures, styles.said]}
+      >
         {line}
       </Text>
-    </View>
+    </Pressable>
   );
 }
 
@@ -772,16 +840,22 @@ function Said({ words }: { words: string }) {
   );
 }
 
-function OfflineBand({ onRetry }: { onRetry: () => void }) {
+export function OfflineBand({
+  onRetry,
+  testID = 'events.offline',
+}: {
+  onRetry: () => void;
+  testID?: string;
+}) {
   useReadOut(say.offline(OFFLINE_AS_OF));
 
   return (
-    <View style={styles.band} testID="events.offline">
+    <View style={styles.band} testID={testID}>
       <View style={styles.diamond} />
       <Text size={14.5} weight="semibold" style={[styles.grow, styles.figures]}>
         {say.offline(OFFLINE_AS_OF)}
       </Text>
-      <TextAction label={W.tryAgain} onPress={onRetry} testID="events.offline.retry" />
+      <TextAction label={W.tryAgain} onPress={onRetry} testID={`${testID}.retry`} />
     </View>
   );
 }
@@ -825,6 +899,7 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colorInset,
   },
   guestFigure: { lineHeight: 28 * 1.15 },
+  tileName: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   said: { lineHeight: 14 * 1.45 },
   newRound: {
     width: tokens.sizeHit,
