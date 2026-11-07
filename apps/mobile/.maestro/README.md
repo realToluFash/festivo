@@ -122,10 +122,35 @@ A check that needs the API held asks the harness through `batch/helper.js` with
 `ASK: /api?to=paused`, `/api?to=stopped` or `/api?to=up`. It answers once the QA stack's `api`
 service is there, and `up` once it is healthy again. Hold it after the screen before has
 loaded: Events keeps its rows, so a row tapped with the API paused holds only Event View's
-reads. Every check starts with the API up, whatever the one before it left. A move between
-`stopped` and `paused` passes through up, and Soirely answers anything asked in those
-seconds, so on Android the harness takes the API's `adb reverse` away for that move and puts it
-back once the API is held: the app is refused throughout, with no network change announced.
+reads. Every check starts with the API up, whatever the one before it left, and every check that holds
+it also brings it back in its header, so a wait that times out leaves the rest of the batch a live
+API and reports its own step:
+
+```yaml
+appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
+---
+```
+
+`up` answers once `/api/health` does, from paused as from stopped. `paused` to `stopped` kills
+the paused container: `docker stop` would thaw it to deliver SIGTERM, and the API answers the
+held request while it drains. `stopped` to `paused` passes through
+up, and Soirely answers anything asked in those seconds, so on Android the harness takes the
+API's `adb reverse` away for that move and puts it back once the API is held: the app is refused
+throughout, with no network change announced. `qa-env.mjs ios`, `android` and `release` unpause
+a paused API before starting the stack, so a batch killed mid-hold does not block the next run.
+The harness is reached only through `batch/helper.js`, never a literal port.
+
+A check that changes the account's membership from outside the phone asks
+`ASK: /membership?change=join&org=<name>` first. The harness makes an organisation of that name
+for the batch, with the account an administrator in it, and answers its id (`switcher.<id>`).
+Then `change=pause` (through the domain, written in the database), `suspend`, `remove` or `delete`
+with the same `org`. Before each check `batch/reset.yaml` deletes what the last one joined, so
+Access paused never outlives its check. sc-28178's checks are the example.
 
 Two-factor sign-in is `sign-in-two-factor.yaml`. It asks the harness for each code
 (`batch/helper.js`), so it runs inside a batch, which holds the account's `TOTP_SECRET`.

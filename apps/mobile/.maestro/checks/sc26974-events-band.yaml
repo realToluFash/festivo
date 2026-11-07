@@ -1,6 +1,11 @@
 # Needs an organisation with at least one event (the band shows over a list, not the empty state).
 # sc-26974: the offline band's Try again beside its "as of" time on Events, in the batch's language.
 appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
 ---
 - openLink: ${METRO_URL}/--/events
 - extendedWaitUntil:

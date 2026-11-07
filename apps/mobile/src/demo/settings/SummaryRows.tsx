@@ -213,6 +213,8 @@ export interface RowProps {
   gutter?: number;
   pad?: number;
   selectable?: boolean;
+  /** A line under it refuses it: said as a refused field is (sc-30447). */
+  invalid?: boolean;
   onPress?: (() => void) | undefined;
   accessibilityLabel?: string;
   accessibilityRole?: AccessibilityRole;
@@ -237,6 +239,7 @@ export function Row({
   gutter = 0,
   pad = 11,
   selectable = false,
+  invalid = false,
   onPress,
   accessibilityLabel,
   accessibilityRole = 'button',
@@ -328,6 +331,7 @@ export function Row({
       accessibilityLabel={
         accessibilityLabel ?? [title, tag?.word, line, value].filter(Boolean).join('. ')
       }
+      aria-invalid={invalid}
       testID={testID}
     >
       {words}

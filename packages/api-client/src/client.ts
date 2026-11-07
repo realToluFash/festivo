@@ -361,6 +361,32 @@ export interface RolesCatalogue {
   areas: { area: string; permissions: string[] }[];
 }
 
+/** A role on one event (sc-29912), in the order People lists them. */
+export const EVENT_ROLES = ['lead', 'can_edit', 'can_view', 'can_check_in'] as const;
+
+export type EventRole = (typeof EVENT_ROLES)[number];
+
+/** Somebody with a role on an event; `outside` waits on sc-71, so it is false for now. */
+export interface EventPerson {
+  id: string;
+  membershipId: string;
+  user: { id: string; name: string };
+  role: EventRole;
+  jobLabel: string | null;
+  outside: boolean;
+}
+
+export interface EventPeople {
+  people: EventPerson[];
+  owners: string[];
+  admins: string[];
+}
+
+export interface AddableMember {
+  membershipId: string;
+  name: string;
+}
+
 /** Stored, as /event-states.json declares them; what the clock makes of it is its phase (sc-3584). */
 export type EventStatus = EventState;
 
@@ -391,6 +417,8 @@ export interface OrganisationEvent {
   /** The end, or when it was ended or called off; null until it is Finished. */
   concludedAt: string | null;
   createdAt: string;
+  /** What the caller may do on this event: a Member's follow their role on it, not the organisation's (sc-29915). */
+  permissions: string[];
 }
 
 /** As a list shows it: with its timeline's milestones, so the list's Next up is the timeline's (sc-3624). */
@@ -1757,6 +1785,80 @@ export class ApiClient {
     );
   }
 
+  /** Everyone with a role on the event (sc-29912), read by everyone on it and by Owners and Admins, with its Owners' and Admins' names, each under their role. */
+  async eventPeople(eventId: string): Promise<EventPeople> {
+    const raw = await this.get<{ people?: unknown; owners?: unknown; admins?: unknown }>(
+      `/api/events/${encodeURIComponent(eventId)}/people`,
+    );
+    const people = Array.isArray(raw.people) ? raw.people.map(asEventPerson) : null;
+    const { owners, admins } = raw;
+    const names = (value: unknown): value is string[] =>
+      Array.isArray(value) && value.every((name) => typeof name === 'string');
+
+    if (
+      people == null ||
+      !people.every((person) => person != null) ||
+      !names(owners) ||
+      !names(admins)
+    ) {
+      throw new Error(
+        'The API answered GET /api/events/{id}/people in a shape this client does not know. Check EventPeopleController in services/api.',
+      );
+    }
+
+    return { people, owners, admins };
+  }
+
+  /** The organisation's active members not yet on the event, by name alone, for whoever may change its People (sc-29915). */
+  async addableEventMembers(eventId: string): Promise<AddableMember[]> {
+    const raw = await this.get<{ members?: unknown }>(
+      `/api/events/${encodeURIComponent(eventId)}/people/addable`,
+    );
+    const members = Array.isArray(raw.members) ? raw.members.map(asAddableMember) : null;
+
+    if (members == null || !members.every((member) => member != null)) {
+      throw new Error(
+        'The API answered GET /api/events/{id}/people/addable in a shape this client does not know. Check EventPeopleController in services/api.',
+      );
+    }
+
+    return members;
+  }
+
+  async addEventPerson(
+    eventId: string,
+    membershipId: string,
+    role: EventRole,
+  ): Promise<EventPerson> {
+    return eventPersonOf(
+      await this.post<{ person?: unknown }>(`/api/events/${encodeURIComponent(eventId)}/people`, {
+        membershipId,
+        role,
+      }),
+    );
+  }
+
+  /** Applies on the person's next request; nobody is signed out. */
+  async changeEventPerson(
+    eventId: string,
+    personId: string,
+    role: EventRole,
+  ): Promise<EventPerson> {
+    return eventPersonOf(
+      await this.patch<{ person?: unknown }>(
+        `/api/events/${encodeURIComponent(eventId)}/people/${encodeURIComponent(personId)}`,
+        { role },
+      ),
+    );
+  }
+
+  async removeEventPerson(eventId: string, personId: string): Promise<void> {
+    await this.request<unknown>(
+      `/api/events/${encodeURIComponent(eventId)}/people/${encodeURIComponent(personId)}`,
+      { method: 'DELETE' },
+    );
+  }
+
   /** Earliest first, only the areas the reader's role reads (sc-3624); refused `not_found` as event is. */
   async eventTimeline(eventId: string): Promise<EventTimeline> {
     const timeline = asEventTimeline(
@@ -2781,6 +2883,54 @@ const MOST_EVENTS_PER_PAGE = 200;
 
 const REQUEST_STANDINGS = ['member', 'waiting', 'cooling_off'] as const;
 
+function eventPersonOf(body: { person?: unknown }): EventPerson {
+  const person = asEventPerson(body.person);
+
+  if (person == null) {
+    throw new Error(
+      'The API answered a change to People in a shape this client does not know. Check EventPeopleController in services/api.',
+    );
+  }
+
+  return person;
+}
+
+function asAddableMember(raw: unknown): AddableMember | null {
+  if (typeof raw !== 'object' || raw == null) return null;
+
+  const { membershipId, name } = raw as Record<string, unknown>;
+
+  return typeof membershipId === 'string' && typeof name === 'string'
+    ? { membershipId, name }
+    : null;
+}
+
+function asEventPerson(raw: unknown): EventPerson | null {
+  if (typeof raw !== 'object' || raw == null) return null;
+
+  const { id, membershipId, user, role, jobLabel, outside } = raw as Record<string, unknown>;
+  const named = typeof user === 'object' && user != null ? (user as Record<string, unknown>) : null;
+
+  if (
+    typeof id !== 'string' ||
+    typeof membershipId !== 'string' ||
+    named == null ||
+    typeof named.id !== 'string' ||
+    typeof named.name !== 'string' ||
+    !(EVENT_ROLES as readonly unknown[]).includes(role)
+  )
+    return null;
+
+  return {
+    id,
+    membershipId,
+    user: { id: named.id, name: named.name },
+    role: role as EventRole,
+    jobLabel: typeof jobLabel === 'string' ? jobLabel : null,
+    outside: outside === true,
+  };
+}
+
 function asRequestLink(raw: unknown): RequestLink {
   const body = raw as Record<string, unknown> | null;
 
@@ -3040,9 +3190,11 @@ function asOrganisationEvent(raw: unknown): OrganisationEvent | null {
   const pausedAt = candidate.pausedAt;
   const phase = oneOf(candidate.phase, EVENT_PHASES);
   const concludedAt = candidate.concludedAt;
+  const permissions = stringList(candidate.permissions);
 
   if (
     status == null ||
+    permissions == null ||
     phase == null ||
     !isStringOrNull(concludedAt) ||
     !isStringOrNull(madeLiveAt) ||
@@ -3078,6 +3230,7 @@ function asOrganisationEvent(raw: unknown): OrganisationEvent | null {
     phase,
     concludedAt,
     createdAt: candidate.createdAt as string,
+    permissions,
   };
 }
 

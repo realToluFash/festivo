@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
 import { __setSessionState, type Session } from '../../../session.ts';
-import { membership } from '../../../test-memberships.ts';
+import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
 import { routes } from '../../index.tsx';
 
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
@@ -33,9 +33,14 @@ const EVENT = {
   phase: 'live',
   concludedAt: null,
   createdAt: '2026-10-21T09:00:00+00:00',
+  permissions: OWNER_PERMISSIONS,
 };
 
+/** As the API answers: an organisation-wide role reads its own permissions on every event. */
+let holding: string[] = OWNER_PERMISSIONS;
+
 function signedIn(organisation = IRE): void {
+  holding = organisation.permissions;
   const session: Session = {
     name: 'Folake Adeyemi',
     email: 'folake@ire.events',
@@ -73,7 +78,7 @@ async function onTheEvent(
     const body = typeof init?.body === 'string' ? (JSON.parse(init.body) as unknown) : null;
     sent.push({ line, body });
 
-    if (line === 'GET /api/events/ev_1') return json({ event: EVENT });
+    if (line === 'GET /api/events/ev_1') return json({ event: { ...EVENT, permissions: holding } });
     if (line === 'GET /api/events/ev_1/mute') return get();
     if (line === 'PUT /api/events/ev_1/mute') return put(body);
 

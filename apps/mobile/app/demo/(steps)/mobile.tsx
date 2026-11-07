@@ -1,29 +1,32 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useRef, useState } from 'react';
-import { StyleSheet, type TextInputInstance, View } from 'react-native';
+import { StyleSheet, type TextInputInstance, View, type ViewInstance } from 'react-native';
 
 import { PrimaryButton } from '../../../src/components/Buttons.tsx';
+import { focusPicker } from '../../../src/components/CountryPicker.tsx';
 import { DemoScreen, NavBar, finish } from '../../../src/demo/DemoScreen.tsx';
 import { InsideField } from '../../../src/steps/InsideField.tsx';
 import { Heading, Plain, Says } from '../../../src/steps/Lines.tsx';
-import { COUNTRIES, SelectRow } from '../../../src/demo/SelectRow.tsx';
+import { SelectRow } from '../../../src/demo/SelectRow.tsx';
+import { mobileRefusal, startCountry } from '../../../src/demo/signUpChecks.ts';
 import { tokens } from '../../../src/theme/tokens.ts';
 
 /** The last step, which Skip at the top right passes. */
 export default function Mobile() {
-  const { via } = useLocalSearchParams<{ via?: string }>();
+  const { via, region } = useLocalSearchParams<{ via?: string; region?: string }>();
   const short = via === 'google' || via === 'apple';
-  const [country, setCountry] = useState(COUNTRIES[0]!);
+  const [country, setCountry] = useState(() => startCountry(region));
   const [number, setNumber] = useState('');
-  const [blank, setBlank] = useState(false);
+  const [refused, setRefused] = useState<ReturnType<typeof mobileRefusal>>(null);
   const field = useRef<TextInputInstance>(null);
+  const picker = useRef<ViewInstance>(null);
 
   function send(): void {
-    if (number.replace(/\D/gu, '').length < 6) {
-      setBlank(true);
-      field.current?.focus();
-      return;
-    }
+    const found = mobileRefusal(number, country);
+    setRefused(found);
+    if (found?.on === 'number') field.current?.focus();
+    if (found?.on === 'country') focusPicker(picker);
+    if (found != null || country == null) return;
     router.push({
       pathname: '/demo/phone-code',
       params: { via: via ?? 'email', phone: `${country.dial} ${number.trim()}` },
@@ -39,14 +42,19 @@ export default function Mobile() {
     >
       <Heading
         title="Your mobile number"
-        intro="So your team can reach you on the night if something goes wrong."
+        intro="So your team can reach you on the day if something goes wrong."
       />
       <View style={styles.row}>
         <SelectRow
           label="Country code"
           country={country}
-          onChange={setCountry}
+          onChange={(chosen) => {
+            setCountry(chosen);
+            if (refused?.on === 'country') setRefused(null);
+          }}
           compact
+          wrong={refused?.on === 'country'}
+          pickerRef={picker}
           testID="demo.dial"
         />
         <View style={styles.number}>
@@ -56,9 +64,9 @@ export default function Mobile() {
             value={number}
             onChangeText={(text) => {
               setNumber(text);
-              setBlank(false);
+              if (refused?.on === 'number') setRefused(null);
             }}
-            state={blank ? 'blank' : 'plain'}
+            state={refused?.on === 'number' ? 'blank' : 'plain'}
             keyboardType="phone-pad"
             autoComplete="tel"
             textContentType="telephoneNumber"
@@ -67,7 +75,7 @@ export default function Mobile() {
           />
         </View>
       </View>
-      {blank && <Says words="Enter your mobile number." />}
+      {refused != null && <Says words={refused.words} />}
       <Plain>We send it a code on WhatsApp, or by text if WhatsApp can’t reach you.</Plain>
     </DemoScreen>
   );
