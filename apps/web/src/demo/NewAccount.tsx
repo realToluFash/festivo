@@ -729,7 +729,9 @@ function WaitingInvitation({
       </div>
       <div className="demo-invitation">
         <Organisation
-          line={`Invitation from ${SAMPLE.inviter} · ${SAMPLE.role} · works until ${SAMPLE.invitedUntil}`}
+          invited
+          line={`Invitation from ${SAMPLE.inviter} · ${SAMPLE.role}`}
+          until={`Works until ${SAMPLE.invitedUntil}`}
         />
         <Answers pressed={pressed} held={held} onAnswer={onAnswer} sized />
       </div>

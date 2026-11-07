@@ -502,20 +502,26 @@ export function Organisation({
   line,
   name = SAMPLE.organisation,
   title = name,
+  invited = false,
+  until,
 }: {
   line: string;
   name?: string;
   /** The bold line, where it says more than the name. */
   title?: string;
+  /** An organisation you are invited to and not yet in: the dashed tile. */
+  invited?: boolean;
+  until?: string;
 }) {
   return (
     <div className="demo-organisation">
-      <span className="org-tile" aria-hidden="true">
+      <span className={invited ? 'org-tile org-tile-invited' : 'org-tile'} aria-hidden="true">
         {initials(name)}
       </span>
       <p className="demo-organisation-name">
         <span>{title}</span>
         <span className="demo-help">{line}</span>
+        {until != null && <span className="demo-help">{until}</span>}
       </p>
     </div>
   );
