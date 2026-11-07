@@ -7,8 +7,6 @@ import { describe, expect, it } from 'vitest';
 import { writtenTime } from './clock.ts';
 
 const TWELVE_HOUR = /\b(AM|PM)\b|a\.m\.|p\.m\./u;
-// sc-31519 (#1449) moves quiet hours and the app's restore deadline to the 24-hour clock; until it merges these keep the reader's.
-const QUIET_HOURS = ['NotificationsModel.ts', 'OrganisationModel.ts'];
 
 function sources(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
@@ -43,9 +41,7 @@ describe('every time in the app’s demo, on the 24-hour clock (sc-31722)', () =
   it('is the one home: no screen asks Intl for a 12-hour clock or writes AM or PM itself', () => {
     const files = [join('src', 'demo'), join('app', 'demo')]
       .flatMap(sources)
-      .filter(
-        (path) => !path.endsWith('clock.ts') && !QUIET_HOURS.some((quiet) => path.endsWith(quiet)),
-      );
+      .filter((path) => !path.endsWith('clock.ts'));
     const offenders = files.filter((path) => {
       const text = readFileSync(path, 'utf8');
 
