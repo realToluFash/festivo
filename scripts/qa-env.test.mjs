@@ -26,6 +26,8 @@ import {
   batchRuns,
   afterRun,
   assertBundler,
+  bundlerCommand,
+  coldBatch,
   batchSummary,
   physicalSize,
   portraitRotation,
@@ -1802,16 +1804,24 @@ describe('a batch with no bundler', () => {
   it('stops before any Maestro run, naming the port and how to start it', async () => {
     const asked = [];
     await expect(
-      assertBundler(18081, async (port) => {
+      assertBundler({ port: 18081, command: bundlerCommand(false) }, async (port) => {
         asked.push(port);
         return false;
       }),
-    ).rejects.toThrow('no bundler on 18081: start it with `node .qa/bin/qa-env.mjs serve`');
+    ).rejects.toThrow('no bundler on 18081: start it with `node .qa/bin/qa-env.mjs ios`');
     expect(asked).toEqual([18081]);
   });
 
+  it('names android as the way to start it for an Android batch', async () => {
+    await expect(
+      assertBundler({ port: 18081, command: bundlerCommand(true) }, async () => false),
+    ).rejects.toThrow('no bundler on 18081: start it with `node .qa/bin/qa-env.mjs android`');
+  });
+
   it('goes on when the bundler answers', async () => {
-    await expect(assertBundler(18081, async () => true)).resolves.toBeUndefined();
+    await expect(
+      assertBundler({ port: 18081, command: 'ios' }, async () => true),
+    ).resolves.toBeUndefined();
   });
 });
 
@@ -1822,13 +1832,13 @@ describe('the list a batch ends with', () => {
         passed: new Set(['home']),
         begun: ['home', 'settings'],
         crashed: ['settings'],
-        noBundlerPort: 18081,
+        bundlerGone: { port: 18081, command: 'ios' },
       }),
     ).toEqual([
       '✓ home',
       "✗ settings: Maestro's driver stopped answering (a driver crash)",
       '✗ roles: not run',
-      'Not resumed: no bundler on 18081: start it with `node .qa/bin/qa-env.mjs serve`',
+      'Stopped: no bundler on 18081: start it with `node .qa/bin/qa-env.mjs ios`',
     ]);
   });
 
@@ -2079,6 +2089,27 @@ describe('what a Maestro run that lost its driver leaves to resume', () => {
     );
     expect(resumes).toBe(0);
     expect(resumed).toEqual({ bundlerGone: true });
+  });
+});
+
+describe('a cold batch whose bundler goes away', () => {
+  it('runs no further check once the bundler has gone, and says so', async () => {
+    const ran = [];
+    const answers = [true, false];
+    const cold = await coldBatch(['home', 'settings', 'roles'], async (run) => ran.push(run), {
+      bundler: async () => answers.shift(),
+    });
+    expect(ran).toEqual(['home']);
+    expect(cold).toEqual({ bundlerGone: true });
+  });
+
+  it('runs every check while the bundler answers', async () => {
+    const ran = [];
+    const cold = await coldBatch(['home', 'settings'], async (run) => ran.push(run), {
+      bundler: async () => true,
+    });
+    expect(ran).toEqual(['home', 'settings']);
+    expect(cold).toEqual({ bundlerGone: false });
   });
 });
 
