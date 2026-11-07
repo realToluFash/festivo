@@ -556,7 +556,7 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
 
     const again = await screen.findByRole('button', { name: 'Send to Tomás Ferreira again' });
 
-    expect(screen.getByText('Email · Fixed · not sent yet')).toBeDefined();
+    expect(screen.getByText('Email · Updated · not sent yet')).toBeDefined();
     await vi.waitFor(() => expect(document.activeElement).toBe(again));
     fireEvent.click(again);
 
@@ -598,9 +598,10 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
       const dialog = await screen.findByRole('dialog', { name: 'Tell 130 guests?' }, SLOW);
 
       expect(within(dialog).getByText('The start time is now 17:30 (was 18:00).')).toBeDefined();
+      expect(within(dialog).getByText('Note for your guests')).toBeDefined();
       expect(
         within(dialog).getByText(
-          'Goes on their page only, under the change. Emails and texts never include it.',
+          'Shown on each guest’s page, under the change. Never sent by email, text or WhatsApp.',
         ),
       ).toBeDefined();
       fireEvent.click(within(dialog).getByRole('button', { name: 'Not now' }));

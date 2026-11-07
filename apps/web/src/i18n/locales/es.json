@@ -1171,7 +1171,7 @@
     "sectionMembers": "Miembros",
     "sectionSignInRules": "Normas de inicio de sesión",
     "dialogCancel": "Cancelar",
-    "choiceNow": "Now"
+    "choiceNow": "Actual"
   },
   "membersScreen": {
     "proveOwner_one": "Para dar a alguien el rol de Propietario de {{organisation}}, confirme que es usted. No se lo volveremos a pedir en un minuto.",

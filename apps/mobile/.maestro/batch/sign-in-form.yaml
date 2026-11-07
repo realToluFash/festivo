@@ -56,7 +56,7 @@ appId: host.exp.Exponent
     file: ../sign-in-two-factor.yaml
 # Signing in lands on Today, which names no account: Settings does. sc-30091.
 - extendedWaitUntil:
-    visible: '{{t:any:todayScreen.tab.today}}|{{t:any:home.signedInTo}}|{{t:any:noOrganisation.title}}|{{t:any:steps.organisationTitle}}|{{t:any:signInRules.overdueTitle}}'
+    visible: '{{t:any:todayScreen.tab.today}}|{{t:any:home.signedInTo}}|{{t:any:noOrganisation.title}}|{{t:any:steps.organisationTitle}}|{{t:any:steps.invitedTitle}}|{{t:any:signInRules.overdueTitle}}'
     timeout: 30000
     optional: true
 - runFlow:
@@ -64,8 +64,9 @@ appId: host.exp.Exponent
       visible: '{{t:any:todayScreen.tab.today}}'
     file: to-settings.yaml
 # The two-factor overdue screen names no account, and counts as signed in. sc-28435.
+# An account in no organisation with an invitation lands on You're invited, named on its invitation. sc-32120.
 - scrollUntilVisible:
     element:
-      text: '{{t:any:settings.signedInAs|email}}|{{t:any:noOrganisation.signedInAs|email}}|{{t:any:signInRules.overdueTitle}}'
+      text: '{{t:any:settings.signedInAs|email}}|{{t:any:noOrganisation.signedInAs|email}}|{{t:any:steps.invitationFor|email}}|{{t:any:signInRules.overdueTitle}}'
     direction: DOWN
     timeout: 30000
