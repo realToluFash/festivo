@@ -178,7 +178,10 @@ fails>'`, note it on your story, do what you can without it, and move on. Only t
   `&&` or a pipe, or behind an `export`. In a background worker that refusal can sit as a
   prompt nobody answers, and the worker is stopped. `git add <paths>`, `git commit`, then
   `git push origin HEAD:<branch>`, each its own call, with no `cd`, no pipe and no
-  redirect. A long message goes in a file passed as `git commit -F <file>`. `SQ_RUN_DIR` is
+  redirect. No command of any kind starts with `cd`: the session already starts in its
+  worktree, and it asks before any `cd … &&`, a `grep` as much as a `git`. A worker for
+  sc-29961 ran `grep … | head` without one, then the same command behind `cd` and was
+  stopped on the prompt (sc-32033). A long message goes in a file passed as `git commit -F <file>`. `SQ_RUN_DIR` is
   already set; leave it alone. The export is what makes the worktree guard refuse the git
   command, and sq stops a run's processes by the `SQ_RUN_DIR` value they carry, so setting
   it to anything else hides what you start from that clean-up (sc-28504).
