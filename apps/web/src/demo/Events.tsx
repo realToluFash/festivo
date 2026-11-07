@@ -260,7 +260,7 @@ function ListTop({ tell }: { tell: Tell }) {
   );
 }
 
-function FirstRun({ tell }: { tell: Tell }) {
+export function FirstRun({ tell }: { tell: Tell }) {
   return (
     <>
       <section className="desk-card ev-first">
