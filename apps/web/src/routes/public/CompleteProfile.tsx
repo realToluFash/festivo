@@ -481,7 +481,11 @@ function Details({
         )}
 
         {asksForOrganisation && stillOpen > 0 && (
-          <p className="or-rule">{t('completeProfile.orStartOwn')}</p>
+          <div className="auth-or">
+            <span className="auth-or-rule" />
+            <span>{t('completeProfile.orStartOwn')}</span>
+            <span className="auth-or-rule" />
+          </div>
         )}
 
         {unavailable && (
