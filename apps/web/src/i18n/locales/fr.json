@@ -421,7 +421,7 @@
     "home": "Aller à l’accueil"
   },
   "guest": {
-    "invitationTitle": "Vous êtes invité",
+    "invitationTitle": "Vous avez une invitation",
     "invitationBody": "Aucun compte n’est nécessaire. Cette page vous est réservée pour cet événement.",
     "invalidTitle": "Ce lien d’invitation ne fonctionne pas",
     "invalidBody": "Il a peut-être expiré, été remplacé par un lien plus récent, ou comporte une erreur. Demandez un nouveau lien à la personne qui vous a invité : elle peut vous l’envoyer en un instant.",
