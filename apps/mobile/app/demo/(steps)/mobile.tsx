@@ -39,7 +39,7 @@ export default function Mobile() {
     >
       <Heading
         title="Your mobile number"
-        intro="So your team can reach you on the night if something goes wrong."
+        intro="So your team can reach you on the day if something goes wrong."
       />
       <View style={styles.row}>
         <SelectRow
