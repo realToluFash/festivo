@@ -1,0 +1,98 @@
+# sc-20824: ${EVENT_ID}'s Edit details with ' Nope' typed; Cancel (the phone's header back, a tablet's first control) asks Leave without saving?, Keep editing keeps what was typed, then Cancel and Leave without saving return to the event's page, and Edit details opened again shows the name unchanged (no Nope).
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 30000
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - scrollUntilVisible:
+          element:
+            id: 'events.page.edit'
+          direction: DOWN
+          centerElement: true
+- tapOn:
+    id: 'events.page.edit'
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.name'
+    timeout: 20000
+- tapOn:
+    id: 'eventForm.name'
+- inputText: ' Nope'
+- hideKeyboard
+- runFlow:
+    when:
+      visible:
+        id: 'frame.back'
+    commands:
+      - tapOn:
+          id: 'frame.back'
+- runFlow:
+    when:
+      visible:
+        id: 'eventForm.cancel'
+    commands:
+      - tapOn:
+          id: 'eventForm.cancel'
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.leave.keep'
+    timeout: 10000
+- takeScreenshot: asks
+- tapOn:
+    id: 'eventForm.leave.keep'
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'eventForm.name'
+    text: '.*Nope.*'
+- takeScreenshot: kept
+- runFlow:
+    when:
+      visible:
+        id: 'frame.back'
+    commands:
+      - tapOn:
+          id: 'frame.back'
+- runFlow:
+    when:
+      visible:
+        id: 'eventForm.cancel'
+    commands:
+      - tapOn:
+          id: 'eventForm.cancel'
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.leave.go'
+    timeout: 10000
+- tapOn:
+    id: 'eventForm.leave.go'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 5000
+- assertNotVisible: '.*Nope.*'
+- takeScreenshot: left
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - scrollUntilVisible:
+          element:
+            id: 'events.page.edit'
+          direction: DOWN
+          centerElement: true
+- tapOn:
+    id: 'events.page.edit'
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.name'
+    timeout: 20000
+- assertNotVisible:
+    id: 'eventForm.name'
+    text: '.*Nope.*'
+- takeScreenshot: reopened

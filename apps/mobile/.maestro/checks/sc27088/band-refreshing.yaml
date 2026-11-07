@@ -1,0 +1,78 @@
+# Android only. ${SCREEN} goes offline once its loaded content shows (LOADED_ID or LOADED_TEXT,
+# '.*' for the one a caller does not use). Coming back online with Soirely stopped
+# refuses every automatic reread at once, so with the API then paused the only load out is
+# Try again's own, and the band goes once Soirely answers it.
+appId: host.exp.Exponent
+---
+# Account, security and organisation draw their loaded content before their read answers, so
+# only the band proves the screen had loaded. A read still out when airplane mode went on
+# leaves no band, and neither coming back online nor openLink reads again, so each try
+# reloads the bundle to remount the screen.
+- retry:
+    maxRetries: 2
+    commands:
+      - runFlow: ../../batch/reset.yaml
+      - openLink: ${METRO_URL}/--/settings/${SCREEN}
+      - extendedWaitUntil:
+          visible:
+            id: ${LOADED_ID}
+            text: ${LOADED_TEXT}
+          timeout: 30000
+      - extendedWaitUntil:
+          notVisible:
+            id: ${REFRESHING}
+          timeout: 20000
+      - assertNotVisible:
+          id: 'offline.band'
+      - takeScreenshot: ${SCREEN}-online
+      - setAirplaneMode: enabled
+      - extendedWaitUntil:
+          visible:
+            id: 'offline.band'
+          timeout: 8000
+- takeScreenshot: ${SCREEN}-offline
+- runScript:
+    file: ../../batch/helper.js
+    env:
+      ASK: /api?to=stopped
+- setAirplaneMode: disabled
+# Lets the network settle; a late "back online" shows its reread here, refused at once.
+- extendedWaitUntil:
+    visible:
+      id: ${REFRESHING}
+    timeout: 6000
+    optional: true
+- extendedWaitUntil:
+    notVisible:
+      id: ${REFRESHING}
+    timeout: 10000
+- assertVisible:
+    id: 'offline.band'
+- runScript:
+    file: ../../batch/helper.js
+    env:
+      ASK: /api?to=paused
+- assertNotVisible:
+    id: ${REFRESHING}
+- assertVisible:
+    id: 'offline.band'
+- tapOn:
+    id: 'offline.retry'
+    waitToSettleTimeoutMs: 500
+    retryTapIfNoChange: false
+# Nothing else is out, so Refreshing straight after the tap is Try again's own load.
+- extendedWaitUntil:
+    visible:
+      id: ${REFRESHING}
+    timeout: 3000
+- assertVisible:
+    id: 'offline.band'
+- takeScreenshot: ${SCREEN}-refreshing
+- runScript:
+    file: ../../batch/helper.js
+    env:
+      ASK: /api?to=up
+- extendedWaitUntil:
+    notVisible:
+      id: 'offline.band'
+    timeout: 30000

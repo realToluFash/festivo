@@ -1,0 +1,110 @@
+# sc-16389: held upright, in ${ORG}, ${DRAFT} low in Drafts opens in front of the list with Events back; back returns to Drafts with its row in view; ${LIVE} (a hosted draft) is made live in front; links to ${EVENT}, to ${MISSING} and to ${FOREIGN} (another organisation's).
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- runFlow:
+    file: ../switch-organisation.yaml
+    env:
+      ORG: ${ORG}
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'events.tab.drafts'
+    timeout: 30000
+- tapOn:
+    id: 'events.tab.drafts'
+- scrollUntilVisible:
+    element:
+      id: 'events.row.${DRAFT}'
+    direction: DOWN
+    timeout: 30000
+    centerElement: true
+- takeScreenshot: drafts-before
+- tapOn:
+    id: 'events.row.${DRAFT}'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 20000
+- assertVisible:
+    id: 'events.back'
+- assertNotVisible:
+    id: 'events.tab.drafts'
+- assertNotVisible:
+    id: 'events.row.${DRAFT}'
+- takeScreenshot: page-front
+- tapOn:
+    id: 'events.back'
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'events.row.${DRAFT}'
+- assertNotVisible:
+    id: 'events.back'
+- takeScreenshot: back-list
+- scrollUntilVisible:
+    element:
+      id: 'events.row.${LIVE}'
+    direction: DOWN
+    timeout: 20000
+    centerElement: true
+- takeScreenshot: drafts-before-live
+- tapOn:
+    id: 'events.row.${LIVE}'
+- extendedWaitUntil:
+    visible:
+      id: 'events.draftRow'
+    timeout: 20000
+- assertVisible:
+    id: 'events.makeLive'
+- takeScreenshot: draft-page
+- tapOn:
+    id: 'events.makeLive'
+- extendedWaitUntil:
+    visible:
+      id: 'events.makeLiveYes'
+    timeout: 10000
+- takeScreenshot: make-live-sheet
+- tapOn:
+    id: 'events.makeLiveYes'
+- extendedWaitUntil:
+    visible:
+      id: 'events.phase.live'
+    timeout: 20000
+- assertNotVisible:
+    id: 'events.makeLive'
+- assertNotVisible:
+    id: 'events.draftRow'
+- takeScreenshot: made-live
+- tapOn:
+    id: 'events.back'
+- waitForAnimationToEnd
+- takeScreenshot: back-after-live
+- openLink: ${METRO_URL}/--/events/${EVENT}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 30000
+- assertVisible:
+    id: 'events.back'
+- assertNotVisible:
+    id: 'events.tab.upcoming'
+- takeScreenshot: link-page
+- openLink: ${METRO_URL}/--/events/${MISSING}
+- extendedWaitUntil:
+    visible:
+      id: 'events.notFound'
+    timeout: 30000
+- takeScreenshot: link-missing
+- openLink: ${METRO_URL}/--/events/${FOREIGN}
+- extendedWaitUntil:
+    visible:
+      id: 'events.notFound'
+    timeout: 30000
+- takeScreenshot: link-foreign
+- tapOn:
+    id: 'events.backToEvents'
+- extendedWaitUntil:
+    notVisible:
+      id: 'events.notFound'
+    timeout: 20000
+- takeScreenshot: link-foreign-back

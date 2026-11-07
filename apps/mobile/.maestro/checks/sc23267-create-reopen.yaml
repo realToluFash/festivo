@@ -1,0 +1,22 @@
+# sc-23267, every sheet waiting for the Modal's onShow: Create an organisation from the switcher opens, Cancel closes it, and it opens again and closes again.
+appId: host.exp.Exponent
+---
+- runFlow: ../open-create-organisation.yaml
+- takeScreenshot: reopen-first-open
+- tapOn:
+    id: 'createOrganisation.cancel'
+- extendedWaitUntil:
+    notVisible:
+      id: 'createOrganisation'
+    timeout: 10000
+- takeScreenshot: reopen-closed
+- runFlow: ../open-create-organisation.yaml
+- assertVisible:
+    id: 'createOrganisation.name'
+- takeScreenshot: reopen-second-open
+- tapOn:
+    id: 'createOrganisation.cancel'
+- extendedWaitUntil:
+    notVisible:
+      id: 'createOrganisation'
+    timeout: 10000

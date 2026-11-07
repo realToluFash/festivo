@@ -1,0 +1,30 @@
+# sc-12241: Members as it opens in the current window, then the member ${MEMBER} opened.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/members
+- waitForAnimationToEnd
+- runFlow:
+    when:
+      notVisible:
+        id: 'members.filter.active'
+    commands:
+      - tapOn:
+          id: 'frame.back'
+      - extendedWaitUntil:
+          visible:
+            id: 'members.filter.active'
+          timeout: 15000
+- extendedWaitUntil:
+    visible:
+      id: 'members.filter.active'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: members
+- scrollUntilVisible:
+    element:
+      id: 'members.row.${MEMBER}'
+    direction: DOWN
+- tapOn:
+    id: 'members.row.${MEMBER}'
+- waitForAnimationToEnd
+- takeScreenshot: member-page
