@@ -11,10 +11,11 @@ import {
 import { createPortal } from 'react-dom';
 
 import { ActionPair } from '../components/ActionPair.tsx';
+import { DemoBell } from './DemoBell.tsx';
 import { offButton } from '../offButton.ts';
 import { choose, useChosenScheme } from './chosenScheme.ts';
-import { Glyph } from './Glyph.tsx';
-import { LayersContext, focusWhenFree, useDeskDialog } from './layers.ts';
+import { Glyph } from '../components/Glyph.tsx';
+import { LayersContext, focusWhenFree, useDeskDialog } from '../layers.ts';
 import {
   HOLD_MS,
   LOADING_MS,
@@ -36,9 +37,9 @@ import {
   statusLine,
 } from './personalisation.ts';
 import { Dots, Ground, Pieces } from './SchemeArt.tsx';
-import { TextAction, TitleRow } from './SettingsParts.tsx';
-import type { Tell } from './TodayParts.tsx';
-import { useLater } from './useLater.ts';
+import { TextAction, TitleRow } from '../components/SettingsParts.tsx';
+import type { Tell } from '../components/SettingsParts.tsx';
+import { useLater } from '../useLater.ts';
 import './personalisation.css';
 
 /** Settings › Personalisation at a desk, A · Swatches (Web-Personalisation-*.dc.html): the person's colours, the same for every role. */
@@ -133,7 +134,7 @@ export function Personalisation({ state, tell }: { state: string; tell: Tell }) 
   return (
     <div className={keyed ? 'desk-page pers is-keyed' : 'desk-page pers'}>
       <div className="desk-column">
-        <TitleRow title={W.title} tell={tell} />
+        <TitleRow title={W.title} bell={<DemoBell tell={tell} />} />
         {load === 'loading' && <Loading />}
         {load === 'failed' && (
           <div className="desk-failed" role="alert">
