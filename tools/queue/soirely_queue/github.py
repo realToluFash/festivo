@@ -5,10 +5,12 @@ everything, and falls back to REST when GraphQL is spent. Single reads and write
 does as well go through REST, so they never wait on the GraphQL budget. Only resolving a
 thread has no REST equivalent."""
 
+import contextlib
 import json
 import os
 import re
 import subprocess
+import time
 
 PR_FIELDS = """
 number title url state isDraft headRefName headRefOid baseRefName mergedAt body updatedAt
@@ -60,12 +62,40 @@ class RateLimited(GitHubError):
     pass
 
 
+class OutOfTime(GitHubError):
+    """The deadline passed before gh answered."""
+
+
+_deadline = None
+
+
+@contextlib.contextmanager
+def deadline(at, clock=time.monotonic):
+    """Every gh call inside stops at `at` on `clock`, raising OutOfTime."""
+    global _deadline
+    before, _deadline = _deadline, (at, clock)
+    try:
+        yield
+    finally:
+        _deadline = before
+
+
 def gh(*args, stdin=None):
-    result = subprocess.run(["gh", *args], input=stdin, capture_output=True, text=True)
+    what = f"gh {args[0]} {args[1] if len(args) > 1 else ''}"
+    left = None
+    if _deadline:
+        at, clock = _deadline
+        left = at - clock()
+        if left <= 0:
+            raise OutOfTime(f"out of time before {what}")
+    try:
+        result = subprocess.run(["gh", *args], input=stdin, capture_output=True, text=True,
+                                timeout=left)
+    except subprocess.TimeoutExpired:
+        raise OutOfTime(f"out of time in {what}") from None
     if result.returncode != 0:
         error = RateLimited if LIMITED.search(result.stderr) else GitHubError
-        raise error(f"gh {args[0]} {args[1] if len(args) > 1 else ''}: "
-                    f"{result.stderr.strip()[:200]}")
+        raise error(f"{what}: {result.stderr.strip()[:200]}")
     return result.stdout
 
 

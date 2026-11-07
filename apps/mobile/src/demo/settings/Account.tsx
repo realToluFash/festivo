@@ -31,7 +31,7 @@ import {
   WORDS,
 } from './AccountModel.ts';
 import { NameScreen } from './AccountName.tsx';
-import { type Contact, HOME_ZONE } from './AccountSample.ts';
+import { type Contact, HOME_ZONE, PHONE_COUNTRY } from './AccountSample.ts';
 import { VerifyScreen } from './AccountVerify.tsx';
 import { ZoneScreen } from './AccountZone.tsx';
 import { useShell } from './Frame.tsx';
@@ -278,6 +278,7 @@ function AccountPage({ start }: { start: AccountStart }) {
           kind={kind}
           open={screen === (kind === 'email' ? 'addEmail' : 'addPhone')}
           rows={rowsOf(kind)[0]}
+          startCountry={first ? start.phoneCountry : PHONE_COUNTRY}
           opener={opener}
           onClose={() => setScreen(null)}
           onAdded={(row) => {

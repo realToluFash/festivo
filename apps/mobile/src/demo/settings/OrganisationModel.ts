@@ -8,6 +8,7 @@ import {
 } from '@soirely/domain';
 
 import { SAMPLE } from '../samples.ts';
+import { ASKING, type HandoverStart } from './MembersSample.ts';
 import { clockTime } from './NotificationsModel.ts';
 import { DETAILS_WORDS, DOMAIN_WORDS, OWNERSHIP_WORDS } from './OrganisationWords.ts';
 import { MEMBERS } from './sample.ts';
@@ -16,6 +17,7 @@ import { MEMBERS } from './sample.ts';
 export const ORGANISATION_STATES = [
   'edit',
   'contactError',
+  'currencyBlank',
   'currency',
   'language',
   'saved',
@@ -28,6 +30,11 @@ export const ORGANISATION_STATES = [
   'transferred',
   'onlyOwner',
   'leave',
+  'leaveMenu',
+  'leavePicked',
+  'leaveSending',
+  'leaveFailed',
+  'leaveNoWork',
   'delete',
 ] as const;
 
@@ -47,11 +54,43 @@ export interface OrganisationStart {
   screen: 'details' | 'addDomain' | 'transfer' | 'delete' | null;
   picking: Picked | null;
   contactWrong: boolean;
+  /** Its currency never chosen (sc-909), Save refused with "Choose a currency.". */
+  currencyBlank: boolean;
   ask: 'removeDomain' | 'replaceLink' | 'leave' | 'onlyOwner' | null;
   domainsLoading: boolean;
   link: 'on' | 'turnedOff' | 'failed';
   transferPicked: boolean;
   deleteMistyped: boolean;
+  /** Leave's handover (sc-614): where its Ask opens, and whether the one leaving leads anything in this state's sample. */
+  leaving: HandoverStart | null;
+  leadsAny: boolean;
+}
+
+/** Leave's states, as Ana Souza: the Ask with her two events, or today's when she leads none. */
+export const LEAVE_STATES: readonly OrganisationState[] = [
+  'leave',
+  'leaveMenu',
+  'leavePicked',
+  'leaveSending',
+  'leaveFailed',
+  'leaveNoWork',
+];
+
+const JULIEN = 'julien@ire.events';
+
+function leavingStart(state: OrganisationState): HandoverStart {
+  switch (state) {
+    case 'leaveMenu':
+      return { ...ASKING, menu: true };
+    case 'leavePicked':
+      return { ...ASKING, taker: JULIEN };
+    case 'leaveSending':
+      return { ...ASKING, phase: 'sending' };
+    case 'leaveFailed':
+      return { ...ASKING, phase: 'failed' };
+    default:
+      return ASKING;
+  }
 }
 
 export const TRANSFERRED_TO = 'Priya Shah';
@@ -61,11 +100,14 @@ const AT_REST: Omit<OrganisationStart, 'role'> = {
   screen: null,
   picking: null,
   contactWrong: false,
+  currencyBlank: false,
   ask: null,
   domainsLoading: false,
   link: 'on',
   transferPicked: false,
   deleteMistyped: false,
+  leaving: null,
+  leadsAny: true,
 };
 
 /** What a state link opens on; an owner's states open on the page at rest for a member, who has no way to them. */
@@ -74,19 +116,28 @@ export function organisationStart(
   role: string,
 ): OrganisationStart {
   const page = { ...AT_REST, role };
-  if (state === 'leave' || state === 'onlyOwner')
-    return { ...page, ask: role === 'Owner' ? 'onlyOwner' : 'leave' };
+  if (state === 'onlyOwner' || (state != null && LEAVE_STATES.includes(state)))
+    return role === 'Owner'
+      ? { ...page, ask: 'onlyOwner' }
+      : {
+          ...page,
+          ask: 'leave',
+          leaving: leavingStart(state),
+          leadsAny: state !== 'leaveNoWork',
+        };
   if (role !== 'Owner' || state == null) return page;
 
   switch (state) {
     case 'edit':
     case 'contactError':
+    case 'currencyBlank':
     case 'currency':
     case 'language':
       return {
         ...page,
         screen: 'details',
         contactWrong: state === 'contactError',
+        currencyBlank: state === 'currencyBlank',
         picking: state === 'currency' ? 'currency' : state === 'language' ? 'locale' : null,
       };
     case 'saved':
@@ -100,6 +151,13 @@ export function organisationStart(
       return { ...page, domainsLoading: true, link: 'failed' };
     case 'linkOff':
       return { ...page, link: 'turnedOff' };
+    case 'leave':
+    case 'leaveMenu':
+    case 'leavePicked':
+    case 'leaveSending':
+    case 'leaveFailed':
+    case 'leaveNoWork':
+      return page;
     case 'transfer':
       return { ...page, screen: 'transfer', transferPicked: true };
     case 'transferred':

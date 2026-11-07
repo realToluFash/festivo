@@ -1,5 +1,10 @@
 # Android only. sc-25667: while Create organisation is held, Android back does nothing; once the API is back the sheet closes into the new organisation with Now working in it.
 appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
 ---
 - runFlow: ../open-create-organisation.yaml
 - tapOn:

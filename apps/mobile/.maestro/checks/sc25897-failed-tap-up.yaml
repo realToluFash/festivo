@@ -1,5 +1,10 @@
 # sc-25897 Android: API stopped, keys up on Organisation name, Create organisation tapped. The not-created notice comes wholly into view.
 appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
 ---
 - runFlow: ../open-create-organisation.yaml
 - tapOn:

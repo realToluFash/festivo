@@ -1,6 +1,11 @@
 # Settings > Organisation, opened with the API stopped, then deleted once it is back: the typed name still deletes. sc-16866.
 # It deletes the account's organisation: run it alone, in one language, then register a fresh account with `node scripts/qa-account.mjs`.
 appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
 ---
 - openLink: ${METRO_URL}/--/settings/organisation
 - extendedWaitUntil:
