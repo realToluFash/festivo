@@ -484,7 +484,7 @@ export function TellGuests({
           {W.ownLanguage}
         </Text>
       </View>
-      <EventField label={W.addANote} optional help={W.noteOnPage}>
+      <EventField label={W.noteForGuests} optional help={W.noteOnPage}>
         <TextField
           value={note}
           onChangeText={setNote}
@@ -493,7 +493,7 @@ export function TellGuests({
           spellCheck
           autoCapitalize="sentences"
           style={styles.note}
-          accessibilityLabel={W.addANote}
+          accessibilityLabel={W.noteForGuests}
           testID="messages.tell.note"
         />
       </EventField>
