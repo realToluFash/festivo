@@ -54,6 +54,8 @@ def units(sq, env_file, python="/usr/bin/python3", slice_memory=machine.SLICE_ME
             "Type=oneshot",
             f"EnvironmentFile=-{env_file}",
             f"Environment=PATH={search_path()}",
+            # Each line reaches the journal when it is said, so its time shows a slow phase.
+            "Environment=PYTHONUNBUFFERED=1",
             *[f"Environment={key}={os.environ[key]}" for key in DESKTOP if key in os.environ],
             f"ExecStart={python} {sq} run",
             "",
