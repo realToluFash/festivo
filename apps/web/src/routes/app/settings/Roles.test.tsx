@@ -260,6 +260,25 @@ describe('Settings > Roles', () => {
     expect(screen.queryByRole('button', { name: 'Remove role…' })).toBeNull();
   });
 
+  it('keeps Owner’s note off Member when the API sends no fixed', async () => {
+    const listed = [
+      role('role_1', 'owner', null, OWNER_PERMISSIONS, 1),
+      role('role_2', 'administrator', null, OWNER_PERMISSIONS, 1),
+      role('role_3', 'member', null, ['events.read'], 2),
+    ].map(({ fixed: _fixed, removable: _removable, ...rest }) => rest);
+    answering(() => new Response(JSON.stringify({ roles: listed, areas: AREAS }), { status: 200 }));
+    await roles();
+
+    pick(/^Member/);
+
+    expect(screen.queryByText(/Owner is built in and can't be edited or removed/)).toBeNull();
+    expect(screen.queryByText('Everything, including whatever Soirely adds later.')).toBeNull();
+
+    pick(/^Owner/);
+
+    expect(screen.getByText(/Owner is built in and can't be edited or removed/)).toBeDefined();
+  });
+
   it('saves a seeded role’s new grant, and says who gets it', async () => {
     const sent = answering((method, body) =>
       method === 'PATCH'

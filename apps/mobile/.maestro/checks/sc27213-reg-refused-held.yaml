@@ -1,4 +1,5 @@
-# sc-27213 regression: a wrong current password sent by the return key is refused with the field focused and the keys up (sc-13408); then, with the API paused, Save leaves Cancel off and a tap on it closes nothing (sc-12545). Needs ${METRO_URL}.
+# sc-27213 regression: a wrong current password sent by the return key is refused with the keys up and New password still focused (sc-13408); then a key typed there and sent again with the API paused leaves Cancel off, and a tap on it closes nothing (sc-12545). Needs ${METRO_URL}.
+# The return key is Enter on iOS and a tap on the keyboard's action key on Android, where Enter can type into the field instead (sc-18648).
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/settings/security
@@ -24,7 +25,17 @@ appId: host.exp.Exponent
     id: 'password.new'
 - inputText: 'brand-new-password-123'
 - takeScreenshot: new-typed-in-view
-- pressKey: Enter
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - pressKey: Enter
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - tapOn:
+          point: '92%,88%'
 - extendedWaitUntil:
     visible: '{{t:passwordCard.wrongCurrent}}'
     timeout: 15000
@@ -32,14 +43,30 @@ appId: host.exp.Exponent
     timeout: 2000
 - takeScreenshot: refused-keys
 - assertVisible: '(?i)(shift|delete)'
-- assertVisible:
-    id: 'password.new'
-    focused: true
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - assertVisible:
+          id: 'password.new'
+          focused: true
 - runScript:
     file: ../batch/helper.js
     env:
       ASK: /api?to=paused
-- pressKey: Enter
+# Focus, proved as sc13408-change-return-up.yaml does: the key and the send reach the form only if New password still holds it.
+- inputText: 'x'
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - pressKey: Enter
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - tapOn:
+          point: '92%,88%'
 - extendedWaitUntil:
     visible:
       id: 'password.cancel'
