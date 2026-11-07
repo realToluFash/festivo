@@ -50,6 +50,23 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **7 Nov 2026. Las otras formas de entrar en la app** (`mobile:steps.invited*`, `join`,
+  `startOwnInstead`, `mobile:requestToJoin.messageOptional`, `signedOutLine`, sc-30119). "You’re
+  invited" es «Tiene una invitación», para que nada concuerde con el género de quien lee.
+  `startOwnInstead` repite `domainJoining.startOwnInstead`, «Prefiero crear mi propia
+  organización», porque también aparece bajo una oferta de dominio. El botón es «Unirse a
+  {{organisation}}», como `invitations.acceptLabel`.
+
+- **7 Nov 2026. «El día del evento», nunca «la noche»** (sc-29384). Un evento puede ser a
+  cualquier hora: `verifyPhone.doneBody`, `steps.mobileIntro` y `completeProfile.mobileHelp`
+  dicen «el día del evento». El eslogan de la web es el de la app, «Organice el evento. Dirija el
+  día.», y `public.body` cierra con «menús y el programa», no «el orden de la velada».
+  `eventForm.clocksSkip` conserva «esa noche se adelantan los relojes»: habla del cambio de hora.
+- **5 Nov 2026. An event's People refusals** (`messages:people.*`, sc-30009). Who can act is
+  «alguien con el rol Propietario o Administrador, o la persona responsable del evento», never
+  «un administrador», which assumes a man. The event role Lead in a sentence is «la persona
+  responsable del evento». `already_on_event` opens on «Esta persona», since «Ya tiene» reads as
+  the reader. The job label is «el nombre del puesto».
 - **4 Nov 2026. Las líneas bajo cada rechazo de una invitación en la web de escritorio**
   (`web:join.refused.*.line`, `web:requestToJoin.deadLine`, sc-29487 para sc-29066). Cada línea
   no repite su título: la de una organización eliminada es «Ya no se puede aceptar la invitación
@@ -57,8 +74,8 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   `requestToJoin.member`; quien la envió es «quien le invitó», como en sc-2922.
 - **4 Nov 2026. Los pasos de una cuenta nueva en la app** (`mobile:steps.*`, sc-29126 para
   sc-29069). La barra dice «Paso {{step}} de {{steps}}»; Skip es «Omitir», nunca «Saltar»; Check
-  WhatsApp es «Revise WhatsApp», como «Revise su correo». "On the night" es «la noche del
-  evento» cuando nada antes nombra la noche, y «esa noche» solo detrás de ella.
+  WhatsApp es «Revise WhatsApp», como «Revise su correo». "On the day" es «el día del
+  evento» (sc-29384); nunca «la noche», ni «esa noche», ni «la velada».
 - **1 Nov 2026. Eventos y la navegación propia de un evento** (sc-26732 para sc-22103,
   `web:events.*`, `mobile:eventsScreen.*`, `eventNav.*` web y app). Las áreas: «Resumen»,
   «Invitados», «Menú», «Mesas», «Mensajes», «Programa», «Personal», «Presupuesto» e «Informes».

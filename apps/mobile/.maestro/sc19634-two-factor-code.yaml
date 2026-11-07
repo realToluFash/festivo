@@ -6,9 +6,8 @@ appId: host.exp.Exponent
 - inputText: ${CODE}
 - tapOn:
     id: 'twoFactor.verify'
-- scrollUntilVisible:
-    element:
-      text: 'Signed in as.*'
-    direction: DOWN
+- extendedWaitUntil:
+    visible:
+      id: 'home\.openSettings|completeProfile\..*|noOrganisation'
     timeout: 30000
 - takeScreenshot: ${SHOT}

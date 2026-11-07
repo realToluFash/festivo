@@ -357,7 +357,7 @@ export function RolePage({
         {!stacked && remove}
       </View>
 
-      {role?.fixed === true && (
+      {role?.seededAs === 'owner' && (
         <Notice
           tone="quiet"
           mark={tokens.marks.info.glyph}
@@ -843,7 +843,7 @@ export function RemoveRole({
 /** Only Owner's line is a fact about what it holds; only someone who can change roles reaches this page. */
 function describe(role: OrganisationRole | null): string {
   if (role == null) return 'rolesScreen.describeNew';
-  if (role.fixed) return 'rolesScreen.describeOwner';
+  if (role.seededAs === 'owner') return 'rolesScreen.describeOwner';
 
   return role.seededAs != null ? 'rolesScreen.describeSeeded' : 'rolesScreen.describeCustom';
 }

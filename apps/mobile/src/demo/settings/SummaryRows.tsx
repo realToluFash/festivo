@@ -1,14 +1,18 @@
-import type { ReactNode, Ref } from 'react';
+import { type ReactNode, type Ref, useEffect, useState } from 'react';
 import {
   type AccessibilityRole,
   type AccessibilityState,
+  Animated,
+  Easing,
   Pressable,
   StyleSheet,
   View,
   type ViewInstance,
 } from 'react-native';
+import Svg, { Circle, Path } from 'react-native-svg';
 
 import { Text } from '../../components/Text.tsx';
+import { useReducedMotion } from '../../reducedMotion.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { Glyph, type GlyphName } from '../../components/Glyph.tsx';
 
@@ -20,6 +24,11 @@ const hidden = {
 /** A state shape, always beside its word: a tick, a ring, a half ring, two bars, a ring struck through. */
 export type MarkKind = 'yes' | 'notyet' | 'waiting' | 'paused' | 'ended';
 export type TagKind = MarkKind | 'now';
+export interface RowTag {
+  kind: TagKind;
+  word: string;
+  turning?: boolean;
+}
 
 const TAGS: Record<TagKind, { fill: string; ink: string; ring?: string }> = {
   yes: { fill: tokens.colorCard, ink: tokens.colorInk, ring: tokens.colorBorder },
@@ -75,23 +84,81 @@ export function StatusMark({
   );
 }
 
+const TURN_MS = 900;
+
+/** Something being sent: a 12 pt ring with a quarter turning, still where motion is reduced. */
+export function TurningMark({ side = 12 }: { side?: number }) {
+  const reduced = useReducedMotion();
+  const [turn] = useState(() => new Animated.Value(0));
+
+  useEffect(() => {
+    if (reduced) return;
+    const loop = Animated.loop(
+      Animated.timing(turn, {
+        toValue: 1,
+        duration: TURN_MS,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      }),
+    );
+    loop.start();
+
+    return () => loop.stop();
+  }, [reduced, turn]);
+
+  const rotate = turn.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
+
+  return (
+    <Animated.View {...hidden} style={{ width: side, height: side, transform: [{ rotate }] }}>
+      <Svg width={side} height={side} viewBox="0 0 24 24">
+        <Circle cx={12} cy={12} r={9} fill="none" stroke={tokens.colorBorder} strokeWidth={3.4} />
+        <Path
+          d="M12 3a9 9 0 0 1 9 9"
+          fill="none"
+          stroke={tokens.colorInkSecondary}
+          strokeWidth={3.4}
+          strokeLinecap="round"
+        />
+      </Svg>
+    </Animated.View>
+  );
+}
+
 /** Beside a title, only when the state is not the rule: a 12 pt shape and its word on a tint. */
-export function Tag({ kind, word }: { kind: TagKind; word: string }) {
+export function Tag({
+  kind,
+  word,
+  turning = false,
+}: {
+  kind: TagKind;
+  word: string;
+  turning?: boolean | undefined;
+}) {
   const look = TAGS[kind];
 
   return (
     <View
       style={[
         styles.tag,
-        { backgroundColor: look.fill, paddingLeft: kind === 'now' ? 9 : 7 },
+        { backgroundColor: look.fill, paddingLeft: kind === 'now' && !turning ? 9 : 7 },
+        turning && styles.tagTurning,
         look.ring != null && { borderWidth: 1, borderColor: look.ring },
       ]}
     >
+      {turning && <TurningMark />}
       {kind !== 'now' && <StatusMark kind={kind} ink={look.ink} />}
       <Text size={12.5} weight="semibold" numberOfLines={1} style={{ color: look.ink }}>
         {word}
       </Text>
     </View>
+  );
+}
+
+export function HeadCount({ text }: { text: string }) {
+  return (
+    <Text size={14.5} weight="medium" style={[styles.secondary, styles.count]}>
+      {text}
+    </Text>
   );
 }
 
@@ -135,21 +202,23 @@ export interface RowProps {
   title: string;
   line?: string | undefined;
   lead?: ReactNode;
-  tag?: { kind: TagKind; word: string } | null | undefined;
+  tag?: RowTag | null | undefined;
   opens?: boolean;
-  value?: string;
+  value?: string | undefined;
   trail?: ReactNode;
   accent?: boolean;
+  off?: boolean;
   weight?: 'semibold' | 'medium';
   selected?: boolean;
   gutter?: number;
+  pad?: number;
   selectable?: boolean;
   onPress?: (() => void) | undefined;
   accessibilityLabel?: string;
   accessibilityRole?: AccessibilityRole;
   accessibilityState?: AccessibilityState;
   testID?: string | undefined;
-  ref?: Ref<ViewInstance>;
+  ref?: Ref<ViewInstance> | undefined;
 }
 
 /** B's one row: a face or an icon, the title with its tag, a line under it, and a chevron when it opens something. */
@@ -162,9 +231,11 @@ export function Row({
   value,
   trail,
   accent = false,
+  off = false,
   weight = 'semibold',
   selected = false,
   gutter = 0,
+  pad = 11,
   selectable = false,
   onPress,
   accessibilityLabel,
@@ -174,14 +245,10 @@ export function Row({
   ref,
 }: RowProps) {
   const pressed = onPress != null;
-  const ring = selected ? 2 : 0;
+  const grouped = pressed || accessibilityLabel != null;
   const box = [
     styles.row,
-    {
-      minHeight: line == null ? 52 : 64,
-      paddingVertical: 11 - ring,
-      paddingHorizontal: gutter - ring,
-    },
+    { minHeight: line == null ? 52 : 64, paddingVertical: pad, paddingHorizontal: gutter },
     selected && styles.rowSelected,
   ];
   const words = (
@@ -193,19 +260,19 @@ export function Row({
             size={16}
             weight={weight}
             selectable={selectable}
-            accessible={pressed ? false : undefined}
-            style={[styles.title, (accent || selected) && styles.accent]}
+            accessible={grouped ? false : undefined}
+            style={[styles.title, (accent || selected) && styles.accent, off && styles.off]}
           >
             {title}
           </Text>
-          {tag != null && <Tag kind={tag.kind} word={tag.word} />}
+          {tag != null && <Tag kind={tag.kind} word={tag.word} turning={tag.turning} />}
         </View>
         {line != null && (
           <Text
             size={14}
             weight="medium"
-            accessible={pressed ? false : undefined}
-            style={styles.secondary}
+            accessible={grouped ? false : undefined}
+            style={[styles.secondary, styles.line]}
           >
             {line}
           </Text>
@@ -215,7 +282,7 @@ export function Row({
         <Text
           size={15}
           weight="medium"
-          accessible={pressed ? false : undefined}
+          accessible={grouped ? false : undefined}
           style={styles.secondary}
         >
           {value}
@@ -235,7 +302,13 @@ export function Row({
 
   if (!pressed)
     return (
-      <View ref={ref} style={box} testID={testID}>
+      <View
+        ref={ref}
+        style={box}
+        accessible={grouped}
+        accessibilityLabel={accessibilityLabel}
+        testID={testID}
+      >
         {words}
       </View>
     );
@@ -244,9 +317,14 @@ export function Row({
     <Pressable
       ref={ref}
       onPress={onPress}
+      disabled={off}
       style={({ pressed: down }) => [...box, down && !selected && styles.rowPressed]}
       accessibilityRole={accessibilityRole}
-      accessibilityState={accessibilityState ?? (selected ? { selected } : undefined)}
+      accessibilityState={
+        off
+          ? { ...accessibilityState, disabled: true }
+          : (accessibilityState ?? (selected ? { selected } : undefined))
+      }
       accessibilityLabel={
         accessibilityLabel ?? [title, tag?.word, line, value].filter(Boolean).join('. ')
       }
@@ -283,12 +361,14 @@ export function RowList({ items, gutter = 0 }: { items: readonly ListItem[]; gut
   );
 }
 
-/** B's action: Violet text, or red for anything that removes, with what it does on the line under it. */
+/** B's action: Violet text, or red for anything that removes, with what it does on the line under it; `plain` is Ink, as Manage's Duplicate and Pause. */
 export function TextAction({
   label,
   onPress,
   removes = false,
+  plain = false,
   off = false,
+  figures = false,
   glyph,
   after,
   consequence,
@@ -299,7 +379,9 @@ export function TextAction({
   label: string;
   onPress: () => void;
   removes?: boolean;
+  plain?: boolean;
   off?: boolean;
+  figures?: boolean;
   glyph?: GlyphName;
   after?: GlyphName;
   consequence?: string;
@@ -307,7 +389,13 @@ export function TextAction({
   testID?: string | undefined;
   ref?: Ref<ViewInstance>;
 }) {
-  const ink = off ? tokens.colorInkTertiary : removes ? tokens.colorBroken : tokens.colorAccentText;
+  const ink = off
+    ? tokens.colorInkTertiary
+    : removes
+      ? tokens.colorBroken
+      : plain
+        ? tokens.colorInk
+        : tokens.colorAccentText;
   const action = (
     <Pressable
       ref={ref}
@@ -320,7 +408,12 @@ export function TextAction({
       testID={testID}
     >
       {glyph != null && <Glyph name={glyph} size={17} ink={ink} weight={2.3} />}
-      <Text size={15} weight="semibold" accessible={false} style={{ color: ink }}>
+      <Text
+        size={15}
+        weight="semibold"
+        accessible={false}
+        style={[{ color: ink }, figures && styles.figures]}
+      >
         {label}
       </Text>
       {after != null && <Glyph name={after} size={16} ink={ink} weight={2.4} />}
@@ -332,7 +425,7 @@ export function TextAction({
   return (
     <View>
       {action}
-      <Text size={14} weight="medium" style={styles.secondary}>
+      <Text size={14} weight="medium" style={[styles.secondary, styles.consequence]}>
         {consequence}
       </Text>
     </View>
@@ -359,6 +452,7 @@ export function Line({
 const styles = StyleSheet.create({
   secondary: { color: tokens.colorInkSecondary },
   accent: { color: tokens.colorAccentText },
+  off: { color: tokens.colorInkTertiary },
   pressed: { opacity: tokens.opacityPressed },
   markYes: {
     alignItems: 'center',
@@ -385,16 +479,13 @@ const styles = StyleSheet.create({
     paddingRight: 9,
     borderRadius: 12,
   },
+  tagTurning: { gap: tokens.spaceXs },
   head: { minHeight: tokens.sizeHit, flexDirection: 'row', alignItems: 'center', gap: 10 },
-  headTitle: { flex: 1, minWidth: 0, letterSpacing: -0.18 },
+  headTitle: { flex: 1, minWidth: 0, letterSpacing: -0.18, lineHeight: 18 * 1.25 },
   foot: { paddingTop: tokens.spaceXs },
   row: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceLg },
-  rowSelected: {
-    borderRadius: tokens.spaceXl,
-    borderWidth: 2,
-    borderColor: tokens.colorAccent,
-    backgroundColor: tokens.colorAccentTint,
-  },
+  // Lit like People's row, with no ring: the owner found the ring weird (6 Nov 2026).
+  rowSelected: { borderRadius: tokens.radiusRow, backgroundColor: tokens.colorAccentTint },
   rowPressed: { opacity: tokens.opacityPressed },
   words: { flex: 1, minWidth: 0, gap: 3 },
   titleRow: {
@@ -404,8 +495,12 @@ const styles = StyleSheet.create({
     columnGap: 8,
     rowGap: 4,
   },
-  title: { flexShrink: 1 },
+  title: { flexShrink: 1, lineHeight: 16 * 1.3 },
+  line: { lineHeight: 14 * 1.4 },
+  consequence: { lineHeight: 14 * 1.45 },
+  count: { fontVariant: ['tabular-nums'] },
   hairline: { height: 1, backgroundColor: tokens.colorBorder },
+  figures: { fontVariant: ['tabular-nums'] },
   action: {
     minHeight: tokens.sizeHit,
     minWidth: tokens.sizeHit,

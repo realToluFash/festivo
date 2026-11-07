@@ -47,7 +47,7 @@ export function wrongRecoveryCodes(
     .filter((path): path is RecoveryField => (fields as readonly string[]).includes(path));
 }
 
-export type StartRefusal = 'limited' | 'nobody' | 'signIn' | 'failed';
+export type StartRefusal = 'limited' | 'nobody' | 'timedOut' | 'failed';
 
 /** Why "Send the codes" was refused: the daily limit, nobody to answer, or a sign-in that has lapsed. */
 export function startRefusal(refusal: unknown): StartRefusal {
@@ -55,7 +55,7 @@ export function startRefusal(refusal: unknown): StartRefusal {
   if (refusal.is('too_many_attempts')) return 'limited';
   if (refusal.is('recovery_nobody_to_approve')) return 'nobody';
 
-  return refusal.is('two_factor_challenge_invalid') ? 'signIn' : 'failed';
+  return refusal.is('two_factor_challenge_invalid') ? 'timedOut' : 'failed';
 }
 
 /** A newer request took over on another device: every step says so, and this one starts again (pm #1267). */
@@ -70,6 +70,7 @@ export type RecoveryShown =
   | { kind: 'request'; recovery: string; state: RecoveryState }
   | { kind: 'replaced' }
   | { kind: 'signIn' }
+  | { kind: 'timedOut' }
   | { kind: 'failed' };
 
 export interface RecoveryLoading {
@@ -112,6 +113,6 @@ export async function loadRecovery(on: RecoveryLoading): Promise<RecoveryShown> 
       ? { kind: 'nobody', supportAddress: opening.supportAddress }
       : { kind: 'start', opening, limitedUntil: null, sending: false };
   } catch (refusal) {
-    return startRefusal(refusal) === 'signIn' ? { kind: 'signIn' } : { kind: 'failed' };
+    return startRefusal(refusal) === 'timedOut' ? { kind: 'timedOut' } : { kind: 'failed' };
   }
 }

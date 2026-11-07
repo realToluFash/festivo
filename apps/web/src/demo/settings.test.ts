@@ -3,25 +3,26 @@ import { describe, expect, it } from 'vitest';
 import { VIEWERS, groupsFor, settingsPath, settingsSayIn, viewerOf } from './settings.ts';
 
 describe('the Settings list at a desk (sc-29708)', () => {
-  it('lists your account’s three sections, then the organisation’s four', () => {
+  it('lists your account’s three sections, then the organisation’s three, with no Roles', () => {
     expect(groupsFor(VIEWERS.folake)).toEqual([
       { name: 'Your account', sections: ['account', 'security', 'notifications'] },
       {
         name: 'Organisation settings',
-        sections: ['general', 'members', 'roles', 'signInRules'],
+        sections: ['general', 'members', 'signInRules'],
       },
     ]);
   });
 
-  it('lists Members and Roles only for a role that reads them', () => {
-    expect(groupsFor(VIEWERS.tom)[1]?.sections).toContain('members');
+  it('lists Members for an owner or an admin, and not for a member', () => {
+    expect(groupsFor(VIEWERS.julien)[1]?.sections).toContain('members');
     expect(groupsFor(VIEWERS.ana)[1]?.sections).toEqual(['general', 'signInRules']);
   });
 
   it('is Folake, the owner, unless the link names somebody it knows', () => {
     expect(viewerOf(null).name).toBe('Folake Adeyemi');
     expect(viewerOf('nobody').key).toBe('folake');
-    expect(viewerOf('tom')).toMatchObject({ role: 'Door staff', manages: false, reads: true });
+    expect(viewerOf('ana')).toMatchObject({ role: 'Member', manages: false });
+    expect(viewerOf('tom').key).toBe('folake');
   });
 
   it('names who is looking and the state in the link, and leaves the owner out', () => {

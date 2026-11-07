@@ -13,6 +13,7 @@ appId: host.exp.Exponent
     id: 'createOrganisation.create'
 - waitForAnimationToEnd:
     timeout: 5000
+- assertVisible: '(?:That name is 114 characters|Ese nombre tiene 114 caracteres|Ce nom compte 114 caractères|Este nome tem 114 caracteres).*'
 - takeScreenshot: create-over-100
 - eraseText: 150
 - inputText: 'Limit Org'

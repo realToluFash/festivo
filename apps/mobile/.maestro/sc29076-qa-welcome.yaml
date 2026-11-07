@@ -62,10 +62,9 @@ appId: host.exp.Exponent
 - inputText: ${PASSWORD}
 - tapOn:
     id: 'signIn.submit'
-- scrollUntilVisible:
-    element:
-      text: 'Signed in as.*'
-    direction: DOWN
+- extendedWaitUntil:
+    visible:
+      id: 'home\.openSettings|completeProfile\..*|noOrganisation'
     timeout: 30000
 - takeScreenshot: qa-signed-in
 - runFlow: sign-out.yaml

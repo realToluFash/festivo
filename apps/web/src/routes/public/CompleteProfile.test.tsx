@@ -331,7 +331,7 @@ describe('a few details', () => {
     );
   });
 
-  it('says the account is still signed in when it cannot reach Soirely', () => {
+  it('leaves out still signed in when the account itself could not be read (sc-29065)', () => {
     __setSessionState({ status: 'unreachable', retrying: false });
 
     render(
@@ -340,7 +340,8 @@ describe('a few details', () => {
       />,
     );
 
-    expect(screen.getByRole('status').textContent).toMatch(/You are still signed in\./);
+    expect(screen.getByText('Cannot reach Soirely')).toBeDefined();
+    expect(screen.queryByText(/You are still signed in/)).toBeNull();
   });
 
   it('keeps an incomplete account out of the product', async () => {
@@ -554,7 +555,9 @@ describe('a few details, with invitations waiting (sc-3353)', () => {
         'You have an invitation waiting. Accept it to join that organisation, or start your own below.',
       ),
     ).toBeDefined();
-    expect(screen.getByText('Or start your own organisation')).toBeDefined();
+    expect(screen.getByText('Or start your own organisation').parentElement?.className).toBe(
+      'auth-or',
+    );
 
     const name = screen.getByLabelText('Full name');
     const organisation = screen.getByLabelText('Organisation name');

@@ -385,8 +385,8 @@
     "follows": "Su idioma se mantiene en todos sus dispositivos."
   },
   "public": {
-    "tagline": "Planifique el evento. Dirija la noche.",
-    "body": "Soirely es donde un evento se planifica en un escritorio y se dirige desde el teléfono. Invitados, distribución de mesas, menús y el orden de la velada, en un solo lugar y en su idioma.",
+    "tagline": "Organice el evento. Dirija el día.",
+    "body": "Soirely es donde un evento se planifica en un escritorio y se dirige desde el teléfono. Invitados, distribución de mesas, menús y el programa, en un solo lugar y en su idioma.",
     "signIn": "Iniciar sesión",
     "getStarted": "Comenzar"
   },
@@ -594,6 +594,7 @@
     "exhaustedTitle": "Demasiados intentos fallidos",
     "exhaustedBody": "Ese código ya no funciona. Envíe uno nuevo para continuar.",
     "wrongAddress": "¿No es su dirección?",
+    "registerAgain": "Regístrese de nuevo con la dirección correcta",
     "doneTitle": "Correo verificado",
     "doneBody": "{{address}} está confirmado. A continuación, unos datos para que su equipo sepa quién es quién.",
     "doneBodyAlternative": "{{address}} está verificada. Seguirá siendo una dirección alternativa hasta que la haga principal en Cuenta.",
@@ -626,7 +627,7 @@
     "cantGetTexts": "¿No recibe SMS en este número?",
     "carryOnWithout": "Continuar sin él",
     "doneTitle": "Número verificado",
-    "doneBody": "Soirely puede contactarle en {{number}} si algo sale mal esa noche.",
+    "doneBody": "Soirely puede contactarle en {{number}} si algo sale mal el día del evento.",
     "doneBodyAlternative": "{{number}} está verificado. Seguirá siendo un número alternativo hasta que lo haga principal en Cuenta.",
     "continue": "Continuar a Soirely",
     "changeTitle": "Cambie su número de móvil",
@@ -729,7 +730,7 @@
     "currencyBlank": "Elija una moneda.",
     "contactBlank": "Indique un correo electrónico de contacto.",
     "contactInvalid": "Eso no parece una dirección de correo electrónico. Compruebe que tiene una @ y un dominio.",
-    "readOnly": "Su función, {{role}}, puede ver estos datos pero no cambiarlos. Los propietarios sí pueden.",
+    "readOnly": "Su función, {{role}}, puede ver estos datos pero no cambiarlos. Pueden hacerlo quienes tienen la función Propietario o Administrador.",
     "readOnlyUntilLinked": "{{organisation}} solo admite el inicio de sesión con Google o Apple. Hasta que vincule una de las dos, puede ver estos datos pero no cambiarlos.",
     "readOnlyUntilTwoFactor": "{{organisation}} pide la verificación en dos pasos a quienes pueden gestionar miembros, roles, facturación o seguridad. Hasta que la active, puede ver estos datos pero no cambiarlos.",
     "failed": "No se ha podido guardar. No se ha cambiado nada. Inténtelo de nuevo en un momento.",
@@ -763,7 +764,7 @@
     "failedBody": "Algo ha fallado en el camino. Inténtelo de nuevo en un momento.",
     "signOut": "Cerrar sesión",
     "optional": "Opcional",
-    "mobileHelp": "Así le localizamos la noche del evento si algo sale mal. Si añade uno, le enviamos un código por SMS para comprobarlo.",
+    "mobileHelp": "Así le localizamos el día del evento si algo sale mal. Si añade uno, le enviamos un código por SMS para comprobarlo.",
     "providerConfirmed": "Ha iniciado sesión con {{provider}}. {{provider}} ya ha confirmado {{email}}, así que no hay ningún código que introducir."
   },
   "forms": {
@@ -1600,7 +1601,6 @@
     "joined": "Se ha unido a {{organisation}} con el rol {{role}}.",
     "open": "Abrir {{organisation}}",
     "declinedBody": "Ha rechazado la invitación. {{inviter}} verá que ha dicho que no.",
-    "goToEvents": "Ir a sus eventos",
     "goHome": "Ir a Soirely",
     "signOutAndUse": "Cerrar sesión y usar {{email}}",
     "staySignedIn": "Seguir con la sesión de {{email}}",
