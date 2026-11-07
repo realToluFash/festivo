@@ -1,5 +1,10 @@
 # Delete organisation: name typed, keys up, API stopped. The error shows, keys stay up. sc-9674.
 appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
 ---
 - openLink: ${METRO_URL}/--/settings/organisation
 - extendedWaitUntil:

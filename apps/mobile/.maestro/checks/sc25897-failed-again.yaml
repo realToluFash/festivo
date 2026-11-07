@@ -1,5 +1,10 @@
 # sc-25897 Android: the not-created notice showing, the body scrolled until it is under the title, Create organisation pressed again with the API still stopped. The notice comes wholly into view again.
 appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
 ---
 - runFlow: ../open-create-organisation.yaml
 - tapOn:

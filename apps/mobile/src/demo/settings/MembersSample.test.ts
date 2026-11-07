@@ -1,17 +1,23 @@
 import { describe, expect, it } from 'vitest';
 
+import { JULIEN, KOFI, PRIYA } from './MembersRecoverySample.ts';
 import {
   approvalRoles,
   approved,
   counts,
   DEADLINES,
   grantable,
+  MEMBERS_STATES,
   membersCard,
   membersSayIn,
   membersStart,
   membersStateOf,
+  type MembersViewer,
+  membersViewerOf,
   personLine,
   proofProblem,
+  reachableState,
+  RECOVERY_STATES,
   removed,
   ROLE_MEANS,
   rowLine,
@@ -198,9 +204,16 @@ describe('Members in the demo', () => {
       line: 'They are listed under Former.',
       step: { label: 'See Former' },
     });
-    expect(membersCard({ ...plainCard, people: removed(people, priya.id), gone: priya }).says).toBe(
-      'Priya Shah was removed',
-    );
+    expect(
+      membersCard({
+        ...plainCard,
+        people: removed(people, priya.id),
+        gone: { person: priya, handed: null },
+      }),
+    ).toMatchObject({
+      says: 'Priya Shah was removed',
+      line: 'Their events stay with Ire Events. They are listed under Former, with everything they did kept.',
+    });
   });
 
   it('says the claim on the card while nobody owns the organisation', () => {
@@ -232,6 +245,279 @@ describe('Members in the demo', () => {
     expect(waitingLine(person('Lucía Gómez'), us)).toBe('lucia.gomez@outlook.com · asked Nov 2');
     expect(whenWord(person('Priya Shah'))).toBe('Member since');
     expect(us.date(person('Priya Shah').when)).toBe('Jun 3, 2025');
+  });
+});
+
+describe('Requests to get back in, in the app’s Members (sc-30893)', () => {
+  const cardOf = (
+    state: (typeof RECOVERY_STATES)[number],
+    viewer: MembersViewer = VIEWERS.folake,
+  ) => {
+    const start = membersStart(state, viewer);
+
+    return membersCard({
+      ...plainCard,
+      people: start.people,
+      viewer: start.viewer,
+      recovery: { waiting: start.recovery, answer: start.recoveryAnswer },
+    });
+  };
+
+  it('keeps every state Members had, the handover’s with them, and adds the ten recovery states', () => {
+    expect(MEMBERS_STATES).toEqual([
+      'list',
+      'readOnly',
+      'nobodySuspended',
+      'nobodyLeft',
+      'loading',
+      'failed',
+      'approving',
+      'turningDown',
+      'approved',
+      'priya',
+      'removing',
+      'makingOwner',
+      'marta',
+      'self',
+      'selfOwner',
+      'claim',
+      'withdraw',
+      'handover',
+      'handoverMenu',
+      'handoverPicked',
+      'handoverLong',
+      'handoverSearch',
+      'handoverSearchNobody',
+      'removingNoWork',
+      'handoverSending',
+      'handoverFailed',
+      'handoverDone',
+      'handoverNow',
+      'handoverNowSending',
+      'handoverNowFailed',
+      'handoverNowDone',
+      'handoverReadOnly',
+      'recovery',
+      'recoveryApprove',
+      'recoveryTurnDown',
+      'recoveryApproved',
+      'recoveryTurnedDown',
+      'recoveryClosed',
+      'recoverySending',
+      'recoveryFailed',
+      'recoveryDone',
+      'recoveryOwn',
+    ]);
+  });
+
+  it('holds no request to get back in, and Lucía’s request to join, in every state before it', () => {
+    for (const state of MEMBERS_STATES.filter((one) => !one.startsWith('recovery'))) {
+      const start = membersStart(state);
+      expect(start.recovery, state).toEqual([]);
+      expect(start.recoveryAsk, state).toBeNull();
+      expect(start.recoveryAnswer, state).toBeNull();
+    }
+    expect(membersCard({ ...plainCard, people }).step).toEqual({
+      label: 'Answer Lucía Gómez',
+      does: 'answer',
+    });
+  });
+
+  it('takes who looks from as=, and gives the states before it the viewers they had', () => {
+    expect(membersViewerOf('julien')).toBe(VIEWERS.julien);
+    expect(membersViewerOf('tom')).toBe(VIEWERS.tom);
+    expect(membersViewerOf('folake')).toBe(VIEWERS.folake);
+    expect(membersViewerOf('ana')).toBeNull();
+    expect(membersViewerOf(undefined)).toBeNull();
+    expect(membersStart('recovery', VIEWERS.julien).viewer).toBe(VIEWERS.julien);
+    expect(membersStart('list', VIEWERS.tom).viewer).toBe(VIEWERS.tom);
+    expect(membersStart('readOnly', VIEWERS.julien).viewer).toBe(VIEWERS.tom);
+    expect(membersStart('self', VIEWERS.folake).viewer).toBe(VIEWERS.julien);
+  });
+
+  it('opens Members with no state as Tom, and Julien’s own request only for Julien', () => {
+    for (const state of RECOVERY_STATES) {
+      expect(reachableState(state, VIEWERS.tom), state).toBe('list');
+      expect(reachableState(state, VIEWERS.julien), state).toBe(state);
+    }
+    expect(reachableState('recoveryOwn', VIEWERS.folake)).toBe('list');
+    expect(reachableState('recoveryOwn', null)).toBe('list');
+    expect(reachableState('recovery', null)).toBe('recovery');
+    expect(reachableState('readOnly', VIEWERS.tom)).toBe('readOnly');
+    expect(membersStart('list', VIEWERS.tom).recovery).toEqual([]);
+  });
+
+  it('starts each recovery state at the moment its board draws', () => {
+    expect(membersStart('recovery')).toMatchObject({
+      viewer: VIEWERS.folake,
+      recovery: [KOFI, PRIYA],
+      recoveryAsk: null,
+      recoveryAnswer: null,
+    });
+    expect(membersStart('recoveryApprove').recoveryAsk).toEqual({
+      id: KOFI,
+      answer: 'approve',
+      phase: 'asking',
+    });
+    expect(membersStart('recoveryTurnDown').recoveryAsk).toEqual({
+      id: KOFI,
+      answer: 'turnDown',
+      phase: 'asking',
+    });
+    expect(membersStart('recoveryApproved')).toMatchObject({
+      recovery: [PRIYA],
+      recoveryAnswer: { id: KOFI, kind: 'approved' },
+    });
+    expect(membersStart('recoveryTurnedDown')).toMatchObject({
+      recovery: [PRIYA],
+      recoveryAnswer: { id: KOFI, kind: 'turnedDown' },
+    });
+    expect(membersStart('recoveryClosed')).toMatchObject({
+      recovery: [KOFI, PRIYA],
+      recoveryAsk: { id: KOFI, answer: 'approve', phase: 'closed' },
+    });
+    expect(membersStart('recoverySending')).toMatchObject({
+      recovery: [KOFI, PRIYA],
+      recoveryAsk: { id: KOFI, answer: 'approve', phase: 'sending' },
+      answering: 'holds',
+    });
+    expect(membersStart('recoveryFailed')).toMatchObject({
+      recovery: [KOFI, PRIYA],
+      recoveryAsk: { id: KOFI, answer: 'approve', phase: 'failed' },
+      answering: 'answers',
+    });
+    expect(membersStart('recovery').answering).toBe('answers');
+    expect(membersStart('recoveryDone')).toMatchObject({
+      recovery: [],
+      recoveryAnswer: { id: PRIYA, kind: 'approved' },
+    });
+    expect(membersStart('recoveryOwn')).toMatchObject({
+      viewer: VIEWERS.julien,
+      recovery: [JULIEN],
+    });
+  });
+
+  it('leaves Kofi in People as he was, a Member and active, once answered', () => {
+    for (const state of ['recoveryApproved', 'recoveryTurnedDown'] as const)
+      expect(membersStart(state).people.find((one) => one.id === KOFI)).toMatchObject({
+        role: 'Member',
+        status: 'active',
+      });
+  });
+
+  it('counts both kinds on the card, and answers Kofi first, ahead of Lucía', () => {
+    expect(cardOf('recovery')).toMatchObject({
+      says: '7 people · 3 waiting',
+      line: '2 to get back in · 1 to join',
+      step: { label: 'Answer Kofi Mensah', does: 'answerRecovery' },
+      readsOut: false,
+      takesFocus: false,
+    });
+    expect(cardOf('recovery', VIEWERS.julien).says).toBe('7 people · 3 waiting');
+  });
+
+  it('says the answer on the card, then offers Priya’s request', () => {
+    expect(cardOf('recoveryApproved')).toMatchObject({
+      says: 'Kofi Mensah’s two-factor is off.',
+      line: 'They’re emailed now, and every session they had has ended.',
+      step: { label: 'Answer Priya Shah', does: 'answerRecovery' },
+      faces: [],
+      readsOut: false,
+      takesFocus: true,
+    });
+    expect(cardOf('recoveryTurnedDown')).toMatchObject({
+      says: 'Kofi Mensah’s request is turned down.',
+      line: 'Two-factor stays on for them, and they’re emailed.',
+      step: { label: 'Answer Priya Shah' },
+    });
+  });
+
+  it('has the answer heard once, by its focus, while Lucía’s answer is still read out', () => {
+    const lucia = person('Lucía Gómez').id;
+    expect(cardOf('recoveryTurnedDown')).toMatchObject({ readsOut: false, takesFocus: true });
+    expect(cardOf('recoveryDone')).toMatchObject({ readsOut: false, takesFocus: true });
+    expect(
+      membersCard({ ...plainCard, people, request: { approved: lucia, role: 'Member' } }),
+    ).toMatchObject({ readsOut: true, takesFocus: false });
+    expect(
+      membersCard({
+        ...plainCard,
+        people: removed(people, lucia),
+        gone: { person: person('Lucía Gómez'), handed: null },
+      }),
+    ).toMatchObject({ readsOut: true, takesFocus: false });
+  });
+
+  it('answers the oldest request to get back in first after a removal, as the count does', () => {
+    const ana = person('Ana Souza');
+    const gone = { person: ana, handed: null };
+    const after = removed(people, ana.id);
+    expect(
+      membersCard({
+        ...plainCard,
+        people: after,
+        gone,
+        recovery: { waiting: [KOFI], answer: null },
+      }).step,
+    ).toEqual({ label: 'Answer Kofi Mensah', does: 'answerRecovery' });
+    expect(membersCard({ ...plainCard, people: after, gone }).step).toEqual({
+      label: 'Answer Lucía Gómez',
+      does: 'answer',
+    });
+  });
+
+  it('counts again once a request answered elsewhere is closed', () => {
+    const closed = membersCard({
+      ...plainCard,
+      people,
+      recovery: { waiting: [PRIYA], answer: null },
+    });
+    expect(closed).toMatchObject({
+      says: '7 people · 2 waiting',
+      line: '1 to get back in · 1 to join',
+      step: { label: 'Answer Priya Shah', does: 'answerRecovery' },
+    });
+  });
+
+  it('leaves the last answer once none is left, and goes back to Lucía', () => {
+    expect(cardOf('recoveryDone')).toMatchObject({
+      says: 'Priya Shah’s two-factor is off.',
+      step: { label: 'Answer Lucía Gómez', does: 'answer' },
+    });
+  });
+
+  it('never offers Julien his own request: the step is Lucía’s', () => {
+    expect(cardOf('recoveryOwn', VIEWERS.julien)).toMatchObject({
+      says: '7 people · 1 waiting',
+      line: null,
+      step: { label: 'Answer Lucía Gómez', does: 'answer' },
+    });
+  });
+
+  it('shows a Member no request, and nothing that says one exists', () => {
+    expect(
+      membersCard({
+        ...plainCard,
+        people,
+        viewer: VIEWERS.tom,
+        recovery: { waiting: [KOFI, PRIYA], answer: null },
+      }),
+    ).toMatchObject({ says: '7 people', line: null, step: null });
+  });
+
+  it('drops the card’s line once only requests to get back in wait', () => {
+    const lucia = person('Lucía Gómez').id;
+    expect(
+      membersCard({
+        ...plainCard,
+        people: approved(people, lucia, 'Member'),
+        recovery: { waiting: [KOFI, PRIYA], answer: null },
+      }),
+    ).toMatchObject({
+      says: '8 people · 2 waiting',
+      line: null,
+      step: { label: 'Answer Kofi Mensah' },
+    });
   });
 });
 

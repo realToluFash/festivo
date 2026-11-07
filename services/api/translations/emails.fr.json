@@ -132,7 +132,7 @@
     "organisationDeleted.footer": "Vous recevez ce message parce que vous étiez membre de l’organisation {organisation}.",
     "ownershipTransferred.subject": "Changement de propriétaire pour {organisation}",
     "ownershipTransferred.youGaveIt": "Vous avez transféré la propriété de {organisation} à {to}. Vous avez désormais le rôle Administrateur : vous pouvez toujours gérer l’organisation au quotidien, mais plus la céder ni la supprimer.",
-    "ownershipTransferred.youHaveIt": "{from} vous a transféré la propriété de {organisation}. Vous pouvez désormais modifier la facturation, les membres, les rôles et les paramètres de l’organisation, et la supprimer. {from} a désormais le rôle Administrateur.",
+    "ownershipTransferred.youHaveIt": "{from} vous a transféré la propriété de {organisation}. Vous pouvez désormais modifier la facturation, les membres et les paramètres de l’organisation, et la supprimer. {from} a désormais le rôle Administrateur.",
     "ownershipTransferred.footer": "Vous recevez ce message parce que vous êtes membre de {organisation}.",
     "domainSuspended.subject": "Accès en pause : {name} dans {organisation}",
     "domainSuspended.addressGone": "L’accès à {organisation} est en pause pour {name}, car son adresse {domain} ne figure plus sur son compte.",

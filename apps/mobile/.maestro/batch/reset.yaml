@@ -28,16 +28,17 @@ appId: host.exp.Exponent
     file: reopen.yaml
 # Home, whatever link Expo Go reopens the experience at. Four sign-in rule notices push the
 # card below the fold and the two-factor overdue screen replaces it, so either settles. sc-23252.
+# For an organisation that has events Home is Today, which loads them first. sc-30091.
 - openLink: ${METRO_URL}/--/
 # Gone first, or the screen from before the reload passes the wait below.
 - extendedWaitUntil:
-    notVisible: '{{t:any:home.signedInTo}}|{{t:any:noOrganisation.title}}|{{t:any:signInRules.dueSetUp}}|{{t:any:signInRules.unlinkedLink}}|{{t:any:signInRules.gateTitle}}|{{t:any:signInRules.changedSee}}|{{t:any:signInRules.overdueTitle}}'
+    notVisible: '{{t:any:home.signedInTo}}|{{t:any:todayScreen.tab.today}}|{{t:any:noOrganisation.title}}|{{t:any:signInRules.dueSetUp}}|{{t:any:signInRules.unlinkedLink}}|{{t:any:signInRules.gateTitle}}|{{t:any:signInRules.changedSee}}|{{t:any:signInRules.overdueTitle}}'
     timeout: 10000
     optional: true
 - runFlow:
     file: developer-menu.yaml
     env:
-      SETTLED: '{{t:any:home.signedInTo}}|{{t:any:noOrganisation.title}}|{{t:any:signInRules.dueSetUp}}|{{t:any:signInRules.unlinkedLink}}|{{t:any:signInRules.gateTitle}}|{{t:any:signInRules.changedSee}}|{{t:any:signInRules.overdueTitle}}'
+      SETTLED: '{{t:any:home.signedInTo}}|{{t:any:todayScreen.tab.today}}|{{t:any:noOrganisation.title}}|{{t:any:signInRules.dueSetUp}}|{{t:any:signInRules.unlinkedLink}}|{{t:any:signInRules.gateTitle}}|{{t:any:signInRules.changedSee}}|{{t:any:signInRules.overdueTitle}}'
 # The first reload after signing in can close Expo Go rather than reload it. Asked of the
 # harness, since a notVisible condition waits out seven seconds from the last command.
 - runScript:
@@ -49,5 +50,5 @@ appId: host.exp.Exponent
       true: ${!output.helper.running}
     file: reopen.yaml
 - extendedWaitUntil:
-    visible: '{{t:any:home.signedInTo}}|{{t:any:noOrganisation.title}}|{{t:any:signInRules.dueSetUp}}|{{t:any:signInRules.unlinkedLink}}|{{t:any:signInRules.gateTitle}}|{{t:any:signInRules.changedSee}}|{{t:any:signInRules.overdueTitle}}'
-    timeout: 10000
+    visible: '{{t:any:home.signedInTo}}|{{t:any:todayScreen.tab.today}}|{{t:any:noOrganisation.title}}|{{t:any:signInRules.dueSetUp}}|{{t:any:signInRules.unlinkedLink}}|{{t:any:signInRules.gateTitle}}|{{t:any:signInRules.changedSee}}|{{t:any:signInRules.overdueTitle}}'
+    timeout: 30000
