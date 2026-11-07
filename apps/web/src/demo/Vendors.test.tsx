@@ -201,8 +201,8 @@ describe('Settings › Vendors in A · Summary first (sc-82)', () => {
       expect(within(dialog).getByRole('alert').textContent).toBe(
         '2 fields need fixing, so nothing was sent.',
       );
-      expect(within(dialog).getByText('Enter a name.')).toBeDefined();
-      expect(within(dialog).getByText('Choose a category.')).toBeDefined();
+      expect(within(dialog).getByText("Enter the vendor's name.")).toBeDefined();
+      expect(within(dialog).getByText('Choose the category.')).toBeDefined();
       await waitFor(() =>
         expect(document.activeElement).toBe(within(dialog).getByLabelText('Name')),
       );
@@ -248,10 +248,14 @@ describe('Settings › Vendors in A · Summary first (sc-82)', () => {
         '3 fields need fixing, so nothing was sent.',
       );
       expect(
-        within(dialog).getByText('Enter an email address like name@example.com.'),
+        within(dialog).getByText(
+          'That does not look like an email address. Check it has an @ and a domain.',
+        ),
       ).toBeDefined();
       expect(
-        within(dialog).getByText('Enter a website that starts with http:// or https://.'),
+        within(dialog).getByText(
+          'Enter a web address that starts with https:// or http://, or leave that part off.',
+        ),
       ).toBeDefined();
       expect(within(dialog).getByText(REFUSED)).toBeDefined();
       await waitFor(() => expect(document.activeElement).toBe(email));

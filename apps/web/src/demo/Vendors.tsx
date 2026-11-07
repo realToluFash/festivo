@@ -438,9 +438,7 @@ function Pager({
 }) {
   return (
     <nav className="vd-pager" aria-label={VW.pages}>
-      <p className="vd-pager-words" aria-live="polite">
-        {VW.page(from, to, total)}
-      </p>
+      <p className="vd-pager-words">{VW.page(from, to, total)}</p>
       <button
         type="button"
         className="desk-text"
