@@ -781,6 +781,19 @@ describe('the demo signs in with two-factor (sc-29063)', () => {
     await timedOut();
   });
 
+  it('lands lost authenticator, opened after the pause lifts, on sign-in, timed out (sc-29956)', async () => {
+    await page('?page=code&state=paused', 'Enter your code');
+    await wait(61_000);
+    fireEvent.click(
+      screen.getByRole('link', { name: 'Lost your authenticator and your recovery codes?' }),
+    );
+
+    await timedOut();
+    expect(
+      screen.queryByRole('heading', { name: 'Get back in without your authenticator' }),
+    ).toBeNull();
+  });
+
   it('takes a recovery code in any case with the dash put in, and says a used one is used', async () => {
     await page('?page=code', 'Enter your code');
     fireEvent.click(screen.getByRole('link', { name: 'Use a recovery code instead' }));

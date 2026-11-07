@@ -1,6 +1,6 @@
 import { shapeRecovery } from '@soirely/domain';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
-import { Link, useLocation, useNavigate, useSearchParams } from 'react-router';
+import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router';
 
 import { ConfirmDialog } from '../components/ConfirmDialog.tsx';
 import { offButton } from '../offButton.ts';
@@ -220,7 +220,11 @@ function CodeEntry({ recovery, state }: { recovery: boolean; state: string }) {
         >
           {recovery ? 'Use your authenticator app instead' : 'Use a recovery code instead'}
         </Link>
-        <Link className="link-button demo-link" to={twoFactorAt('start')}>
+        <Link
+          className="link-button demo-link"
+          to={twoFactorAt('start')}
+          state={outlasted ? { outlasted } : null}
+        >
           Lost your authenticator and your recovery codes?
         </Link>
         {locked && (
@@ -264,6 +268,7 @@ function Start({ state, asks, onAsk }: { state: string; asks: number; onAsk: () 
   const [busy, after] = useBusy();
   const sending = busy || state.endsWith('sending');
   const words = codeWords(emailOnly);
+  const carried = useLocation().state as { outlasted?: boolean } | null;
 
   function send(): void {
     if (sending) return;
@@ -277,6 +282,10 @@ function Start({ state, asks, onAsk }: { state: string; asks: number; onAsk: () 
       onAsk();
       void navigate(twoFactorAt('codes', emailOnly ? 'email-only' : undefined));
     });
+  }
+
+  if (carried?.outlasted === true) {
+    return <Navigate to="/demo/sign-in?state=code-timed-out" replace state={toSignIn.state} />;
   }
 
   return (
