@@ -255,8 +255,9 @@ result on the pushed head prove it.
 `~/Projects/soirely-devN`: if it is not there, `just dev-env setup --developer N` from the
 main checkout makes it, with its own containers and databases on its own ports (the table above).
 Its `.env` names its compose project, so every check above runs there as it does in the
-main checkout. If your session started elsewhere, every shell command starts with
-`cd ~/Projects/soirely-devN &&`. After `.env.example` changes on `main`, `just dev-env env`
+main checkout. If your session started outside its checkout, every shell command starts
+with `cd ~/Projects/soirely-devN &&`. A session started in a worktree never does
+(`role-routine`, section 3). After `.env.example` changes on `main`, `just dev-env env`
 rewrites the `.env`, and `docker compose up -d` picks it up.
 
 The testers work in `~/Projects/soirely-qa`, `-qa2` and `-qa3` (compose projects of the same
