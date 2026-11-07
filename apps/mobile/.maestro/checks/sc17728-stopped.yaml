@@ -1,5 +1,10 @@
 # sc-17728: ${EV}'s All dates opened from Coming up with the API stopped: ‹ Event is there beside timeline.allDates.retry and still returns to the event. Needs the batch helper's /api (sc-17894). Pass ORIENT.
 appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
 ---
 - setOrientation: ${ORIENT}
 - waitForAnimationToEnd:

@@ -15,7 +15,7 @@ import { tokens } from '../../../src/theme/tokens.ts';
 type Wrong = { field: 'email' | 'password'; state: FieldState | 'refused'; words: string } | null;
 
 export default function SignIn() {
-  const params = useLocalSearchParams<{ email?: string; after?: string }>();
+  const params = useLocalSearchParams<{ email?: string; after?: string; timedOut?: string }>();
   const inSheet = useInSheet();
   const [email, setEmail] = useState(params.email ?? '');
   const [password, setPassword] = useState('');
@@ -77,6 +77,9 @@ export default function SignIn() {
       }
     >
       <Heading title="Sign in" />
+      {params.timedOut != null && (
+        <Says words="That sign-in timed out. Sign in again to carry on." quiet />
+      )}
       <Animated.View style={[styles.first, shaken]}>
         <InsideField
           ref={emailField}

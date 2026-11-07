@@ -1,8 +1,18 @@
 import { formattingLocale } from '@soirely/domain';
-import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 
-import { useDeskSplit } from './layers.ts';
-import { ClaimDialog, InviteDialog, RequestDialog } from './MembersDialogs.tsx';
+import { HandoverAsk } from './Handover.tsx';
+import {
+  type Handed,
+  handedOver,
+  HANDOVER_WORDS,
+  handStart,
+  type Leads,
+  ledBy,
+  offeredFor,
+} from './handover.ts';
+import { focusWhenFree, useDeskSplit } from './layers.ts';
+import { ClaimDialog, InviteDialog, RecoveryAsk, RequestDialog } from './MembersDialogs.tsx';
 import { PersonPage, RoleDialog } from './MembersPerson.tsx';
 import {
   approvalRoles,
@@ -14,6 +24,7 @@ import {
   filtersFor,
   filterWord,
   firstName,
+  handoverAsk,
   INVITATIONS_NOTE,
   type Invitation,
   invitationRow,
@@ -29,8 +40,13 @@ import {
   type Person,
   type PersonEvent,
   PROOF_MINUTES,
+  RECOVERY_WORDS as RR,
+  type Recovery,
+  type RecoveryAnswer,
+  recoveryRow,
   removed,
   removesLine,
+  removeWords,
   restoredBy,
   revoked,
   rowLine,
@@ -61,12 +77,23 @@ import type { Tell } from './TodayParts.tsx';
 
 const RETRY_MS = 1200;
 
+const buttonNamed = (label: string) =>
+  [...document.querySelectorAll<HTMLElement>('.desk-main button')].find(
+    (one) => one.textContent === label,
+  ) ?? null;
+const requestOf = (id: string) => document.getElementById(`request-${id}`);
+const answerOf = (id: string, answer: RecoveryAnswer) =>
+  requestOf(id)?.querySelectorAll<HTMLElement>('.desk-text')[answer === 'approve' ? 0 : 1] ?? null;
+const saysOf = () => document.querySelector<HTMLElement>('.desk-main .desk-says');
+
 /** Members at a desk in B (Web-Members-*.dc.html): the list, a person in its place, and every dialog, on sample data. */
 export function Members({ viewer, state, tell }: { viewer: Viewer; state: string; tell: Tell }) {
   const say = useMemo(() => settingsSayIn(formattingLocale('en', navigator.language)), []);
   const [start] = useState(() => membersStart(state, viewer));
   const [load, setLoad] = useState<Load | 'retrying'>(start.load);
   const [people, setPeople] = useState(start.people);
+  const [recoveries, setRecoveries] = useState(start.recoveries);
+  const [lit, setLit] = useState<string | null>(null);
   const [invitations, setInvitations] = useState(start.invitations);
   const [filter, setFilter] = useState(start.filter);
   const [menu, setMenu] = useState(start.menu);
@@ -76,8 +103,12 @@ export function Members({ viewer, state, tell }: { viewer: Viewer; state: string
   const [claim, setClaim] = useState(start.claim);
   const [dialog, setDialog] = useState<MembersDialog | null>(start.dialog);
   const [proved, setProved] = useState(false);
+  const [leads, setLeads] = useState(start.leads);
+  const [handed, setHanded] = useState(start.handed);
   const split = useDeskSplit();
-  const moved = useRef(false);
+  const landsOnCard = start.notice?.kind === 'removed' && start.notice.handed != null;
+  const toSays = useRef(landsOnCard);
+  const moved = useRef(landsOnCard);
 
   useEffect(() => {
     if (load !== 'retrying') return;
@@ -96,7 +127,10 @@ export function Members({ viewer, state, tell }: { viewer: Viewer; state: string
   useEffect(() => {
     if (!moved.current) return;
     moved.current = false;
-    if (!split || open == null) document.querySelector<HTMLElement>('.desk-main h1')?.focus();
+    if (toSays.current)
+      focusWhenFree(() => document.querySelector<HTMLElement>('.desk-main .desk-said-lines'));
+    else if (!split || open == null) document.querySelector<HTMLElement>('.desk-main h1')?.focus();
+    toSays.current = false;
   }, [open, split]);
 
   const close = useCallback(() => setDialog(null), []);
@@ -118,6 +152,9 @@ export function Members({ viewer, state, tell }: { viewer: Viewer; state: string
     switch (does.does) {
       case 'answer':
         return answer(does.id);
+      case 'recover':
+        setLit(does.id);
+        return focusWhenFree(() => requestOf(does.id));
       case 'see':
         return openPerson(does.id);
       case 'former':
@@ -133,6 +170,8 @@ export function Members({ viewer, state, tell }: { viewer: Viewer; state: string
   const list = {
     viewer,
     people,
+    recoveries,
+    lit,
     invitations,
     filter,
     menu,
@@ -142,6 +181,9 @@ export function Members({ viewer, state, tell }: { viewer: Viewer; state: string
     onFilter: setFilter,
     onPerson: openPerson,
     onAnswer: answer,
+    onRecovery: (id: string, answer: RecoveryAnswer) =>
+      setDialog({ kind: 'recovery', id, answer, phase: 'asking' }),
+    onMoveOn: () => setLit(null),
     onRevoke: (email: string) => setInvitations((now) => revoked(now, email)),
     onAgain: (invitation: Invitation) =>
       setDialog({ kind: 'invite', email: invitation.email, role: invitation.role, problem: null }),
@@ -153,18 +195,23 @@ export function Members({ viewer, state, tell }: { viewer: Viewer; state: string
       onClick={() => setDialog({ kind: 'invite', email: '', role: 'Member', problem: null })}
     />
   ) : undefined;
-  const card = membersCard({ people, viewer, notice, claim, say });
+  const card = membersCard({ people, recoveries, viewer, notice, claim, say });
   const dialogs = (
     <MembersDialogs
       dialog={dialog}
       viewer={viewer}
       people={people}
+      leads={leads}
+      recoveries={recoveries}
       proved={proved}
       say={say}
       tell={tell}
       onClose={close}
       onPeople={(next, then) => {
         setPeople(next);
+        if (then.leads != null) setLeads(then.leads);
+        if (then.handed != null) setHanded(then.handed);
+        if (then.says === true) toSays.current = true;
         if (then.event != null) setEvent(then.event);
         if (then.notice != null) setNotice(then.notice);
         if (then.leave === true) back();
@@ -177,6 +224,25 @@ export function Members({ viewer, state, tell }: { viewer: Viewer; state: string
         if (proof) setProved(true);
       }}
       onClaim={setClaim}
+      onRecoveryKept={(id, answer) => {
+        close();
+        focusWhenFree(() => answerOf(id, answer));
+      }}
+      onRecovered={(id, answer) => {
+        setRecoveries((now) => now.filter((one) => one.id !== id));
+        setNotice({ kind: 'recovered', id, answer });
+        setLit(null);
+        close();
+        focusWhenFree(saysOf);
+      }}
+      onRecoveryGone={(id) => {
+        const next = recoveries.find((one) => one.id !== id);
+        setRecoveries((now) => now.filter((one) => one.id !== id));
+        setNotice(null);
+        setLit(null);
+        close();
+        focusWhenFree(() => (next == null ? saysOf() : requestOf(next.id)));
+      }}
     />
   );
 
@@ -195,6 +261,8 @@ export function Members({ viewer, state, tell }: { viewer: Viewer; state: string
         people={people}
         viewer={viewer}
         event={event}
+        handed={handed}
+        events={ledBy(leads, person.id)}
         say={say}
         level={split ? 2 : 1}
         tell={tell}
@@ -213,6 +281,7 @@ export function Members({ viewer, state, tell }: { viewer: Viewer; state: string
         }}
         onSuspend={() => setDialog({ kind: 'suspend', id: person.id })}
         onRemove={() => setDialog({ kind: 'remove', id: person.id })}
+        onHandOver={() => setDialog({ kind: 'handOver', id: person.id })}
       />
     );
 
@@ -312,10 +381,12 @@ function MembersCardView({
 }) {
   return (
     <Card size={size}>
-      <Says>{card.says}</Says>
-      {card.lines.map((line) => (
-        <OnCard key={line}>{line}</OnCard>
-      ))}
+      <div className="desk-said-lines" tabIndex={-1}>
+        <Says focusable>{card.says}</Says>
+        {card.lines.map((line) => (
+          <OnCard key={line}>{line}</OnCard>
+        ))}
+      </div>
       {card.faces.length > 0 && (
         <div className="desk-faces" aria-hidden="true">
           {card.faces.map((face) => (
@@ -334,6 +405,8 @@ function MembersCardView({
 interface BlocksProps {
   viewer: Viewer;
   people: readonly Person[];
+  recoveries: readonly Recovery[];
+  lit: string | null;
   invitations: readonly Invitation[];
   filter: Filter;
   menu: boolean;
@@ -344,11 +417,13 @@ interface BlocksProps {
   onFilter: (filter: Filter) => void;
   onPerson: (id: string) => void;
   onAnswer: (id: string) => void;
+  onRecovery: (id: string, answer: RecoveryAnswer) => void;
+  onMoveOn: () => void;
   onRevoke: (email: string) => void;
   onAgain: (invitation: Invitation) => void;
 }
 
-/** Waiting, then People with its filter, then the invitations: the list's blocks under the card. */
+/** Requests to get back in, then Waiting, People with its filter, and the invitations: the list's blocks under the card. */
 function MembersBlocks(props: BlocksProps) {
   const { viewer, people, invitations, filter, menu, say, column, onMenu, onFilter } = props;
   const waiting = viewer.manages ? people.filter((one) => one.status === 'pendingApproval') : [];
@@ -364,6 +439,7 @@ function MembersBlocks(props: BlocksProps) {
 
   return (
     <>
+      {props.recoveries.length > 0 && <RecoveryBlock {...props} />}
       {waiting.length > 0 && (
         <section className="desk-block">
           <Head title="Waiting" />
@@ -413,6 +489,90 @@ function MembersBlocks(props: BlocksProps) {
         </section>
       )}
     </>
+  );
+}
+
+/** The product's paragraph once, at the top, and read with each request; each request a row that holds its own answers. */
+function RecoveryBlock({
+  viewer,
+  people,
+  recoveries,
+  lit,
+  say,
+  column,
+  onRecovery,
+  onMoveOn,
+}: BlocksProps) {
+  const intro = useId();
+
+  return (
+    <section className="desk-block">
+      <Head title={RR.cardTitle} />
+      <p id={intro} className="desk-line desk-request-intro">
+        {RR.intro}
+      </p>
+      <ul className="desk-rows has-lead">
+        {recoveries.map((one) => {
+          const row = recoveryRow(one, people, viewer, say);
+          const face = people.find((person) => person.id === one.id);
+
+          return (
+            <li key={one.id}>
+              <article
+                id={`request-${one.id}`}
+                className={one.id === lit ? 'desk-row desk-request is-on' : 'desk-row desk-request'}
+                tabIndex={-1}
+                aria-labelledby={`request-${one.id}-name`}
+                aria-describedby={intro}
+                onBlur={(event) => {
+                  const to = event.relatedTarget;
+                  const away =
+                    to instanceof Element &&
+                    !event.currentTarget.contains(to) &&
+                    to.closest('.desk-layers') == null;
+
+                  if (one.id === lit && away) onMoveOn();
+                }}
+              >
+                <Avatar
+                  initials={face?.initials ?? ''}
+                  tone={face?.tone ?? 0}
+                  size={column ? 'small' : 'row'}
+                />
+                <div className="desk-row-words">
+                  <span className="desk-row-title">
+                    <span id={`request-${one.id}-name`} className="desk-row-name">
+                      {row.name}
+                    </span>
+                    <Tag kind="waiting" word={RR.mark} />
+                  </span>
+                  {row.lines.map((line) => (
+                    <span key={line} className="desk-row-line">
+                      {line}
+                    </span>
+                  ))}
+                  {row.own == null ? (
+                    <div className="desk-request-answers">
+                      <TextAction
+                        label={RR.approve}
+                        onClick={() => onRecovery(one.id, 'approve')}
+                      />
+                      <TextAction
+                        label={RR.turnDown}
+                        onClick={() => onRecovery(one.id, 'turnDown')}
+                      />
+                    </div>
+                  ) : (
+                    <p className="desk-request-own">{row.own}</p>
+                  )}
+                </div>
+              </article>
+            </li>
+          );
+        })}
+      </ul>
+      <p className="desk-foot">{RR.cardNote}</p>
+    </section>
   );
 }
 
@@ -512,6 +672,8 @@ interface MembersDialogsProps {
   dialog: MembersDialog | null;
   viewer: Viewer;
   people: readonly Person[];
+  leads: Leads;
+  recoveries: readonly Recovery[];
   proved: boolean;
   say: SettingsSay;
   tell: Tell;
@@ -519,6 +681,9 @@ interface MembersDialogsProps {
   onPeople: (people: Person[], then: Then) => void;
   onInvited: (email: string, role: string, proved: boolean) => void;
   onClaim: (claim: 'found' | 'withdrawn') => void;
+  onRecoveryKept: (id: string, answer: RecoveryAnswer) => void;
+  onRecovered: (id: string, answer: RecoveryAnswer) => void;
+  onRecoveryGone: (id: string) => void;
 }
 
 interface Then {
@@ -526,12 +691,51 @@ interface Then {
   notice?: Notice;
   leave?: boolean;
   proved?: boolean;
+  leads?: Leads;
+  handed?: Handed;
+  says?: boolean;
 }
 
 function MembersDialogs(props: MembersDialogsProps) {
-  const { dialog, viewer, people, onClose, onPeople } = props;
+  const { dialog, viewer, people, leads, onClose, onPeople } = props;
   const person =
     dialog != null && 'id' in dialog ? people.find((one) => one.id === dialog.id) : null;
+  const events = person == null ? [] : ledBy(leads, person.id);
+  const handing = (kind: 'remove' | 'hand', hand = handStart(viewer.id)) =>
+    person != null && (
+      <HandoverAsk
+        words={handoverAsk(kind, person.name, events.length)}
+        events={events}
+        offered={offeredFor(people, person.id)}
+        viewer={viewer.id}
+        start={hand}
+        onKeep={() => {
+          onClose();
+          const opener =
+            kind === 'hand' ? HANDOVER_WORDS.handOverNow : `Remove from ${ORGANISATION}…`;
+          focusWhenFree(() => buttonNamed(opener));
+        }}
+        onDone={(chosen) => {
+          const to = chosen ?? viewer.id;
+          const moved = { to, count: events.length };
+
+          onClose();
+          if (kind === 'hand')
+            onPeople([...people], {
+              event: 'handedOver',
+              handed: moved,
+              leads: handedOver(leads, person.id, to),
+            });
+          else
+            onPeople(removed(people, person.id), {
+              notice: { kind: 'removed', id: person.id, handed: moved },
+              leave: true,
+              leads: handedOver(leads, person.id, to),
+              says: true,
+            });
+        }}
+      />
+    );
 
   switch (dialog?.kind) {
     case undefined:
@@ -560,14 +764,16 @@ function MembersDialogs(props: MembersDialogsProps) {
       );
     case 'role':
       return person != null && <RoleDialog {...props} person={person} start={dialog} />;
+    case 'handOver':
+      return handing('hand', dialog.hand);
     case 'remove':
+      if (events.length > 0) return handing('remove', dialog.hand);
+
       return (
         person != null && (
           <Ask
-            title={`Remove ${person.name} from ${ORGANISATION}?`}
+            {...removeWords(person.name)}
             line={LOSES}
-            keep={`Keep ${firstName(person.name)}`}
-            go="Remove"
             onKeep={onClose}
             onGo={() => {
               onClose();
@@ -596,6 +802,23 @@ function MembersDialogs(props: MembersDialogsProps) {
       );
     case 'claim':
       return <ClaimDialog {...props} start={dialog} />;
+    case 'recovery': {
+      const { answer } = dialog;
+
+      return (
+        person != null && (
+          <RecoveryAsk
+            name={person.name}
+            answer={answer}
+            phase={dialog.phase}
+            ended={props.recoveries.find((one) => one.id === person.id)?.ended ?? true}
+            onKeep={() => props.onRecoveryKept(person.id, answer)}
+            onAnswer={() => props.onRecovered(person.id, answer)}
+            onGone={() => props.onRecoveryGone(person.id)}
+          />
+        )
+      );
+    }
     case 'withdraw':
       return (
         <Ask

@@ -1,5 +1,10 @@
 # sc-22143: on ${EVENT_D}, a draft with no host, Make live with a name while the API is stopped says it was not made live and keeps the name; with the API back, Make live makes it live.
 appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
 ---
 - setOrientation: ${ORIENT}
 - openLink: ${METRO_URL}/--/events/${EVENT_D}

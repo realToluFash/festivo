@@ -1,11 +1,12 @@
 """Pulls Shortcut and GitHub into the store. One sync serves every role's tick."""
 
+import contextlib
 import datetime
 import time
 from concurrent.futures import ThreadPoolExecutor
 
 from . import github, roles, store, work
-from .shortcut import Shortcut, ShortcutError, slim
+from .shortcut import OutOfTime, Shortcut, ShortcutError, slim
 
 FRESH_SECONDS = 60
 FULL_EVERY_SECONDS = 15 * 60
@@ -16,6 +17,9 @@ LOOKUP_EVERY_SECONDS = 60 * 60
 # An epic's state decides whether its Ready For Dev stories are offered, so epics are read
 # on every sync, not with the hourly lookups.
 EPICS_EVERY_SECONDS = 60
+# The timer fires every minute and skips a fire while a tick still runs, so a sync stops
+# here and the roles are ticked from the last whole one.
+BUDGET_SECONDS = 25
 # Bumped when `shortcut.slim` keeps new fields, so stories stored before are fetched again.
 SLIM_VERSION = 3
 
@@ -46,6 +50,7 @@ def sync_shortcut(db, shortcut, now, full=False):
     if store.get_meta(db, "slim_version") != SLIM_VERSION:
         db.execute("delete from stories")
         store.set_meta(db, "lookups_at", 0)
+        store.set_meta(db, "full_at", 0)
         store.set_meta(db, "slim_version", SLIM_VERSION)
         full = True
     states, epics = _lookups(db, shortcut, now)
@@ -87,6 +92,8 @@ def sync_blockers(db, shortcut, states, epics, full=False):
     for blocker_id in sorted(wanted):
         try:
             store.put_story(db, slim(shortcut.story(blocker_id), states, epics))
+        except OutOfTime:
+            raise
         except ShortcutError as error:
             if " 404 " in str(error):
                 missing.add(blocker_id)
@@ -118,6 +125,8 @@ def pr_stories(db, shortcut, now):
     for story_id in sorted(wanted):
         try:
             refresh_story(db, shortcut, story_id, now)
+        except OutOfTime:
+            raise
         except ShortcutError as error:
             if " 404 " in str(error):
                 missing.add(story_id)
@@ -141,6 +150,8 @@ def sync_github(db):
         try:
             pr["carried"] = work.carried(pr, cache, github.same_change,
                                          known.get(pr["number"]))
+        except github.OutOfTime:
+            raise
         except github.GitHubError:
             pr["carried"] = None
         kept.update({key: cache[key] for key in cache if key.endswith(f"..{pr['head_sha']}")})
@@ -151,8 +162,11 @@ def sync_github(db):
     store.set_meta(db, "main_run", runs[0] if runs else None)
 
 
-def sync(db, now=None, force=False, full=False):
-    """Syncs unless another tick did within the last minute. Returns the errors, if any."""
+def sync(db, now=None, force=False, full=False, budget=BUDGET_SECONDS, clock=time.monotonic,
+         client=Shortcut):
+    """Syncs unless another tick did within the last minute. Returns the errors, if any.
+    A part that runs out of budget stops without an error; `sync_report` names it, with how
+    long each part took."""
     now = now or time.time()
     db.execute("begin immediate")
     last = store.get_meta(db, "synced_at", 0)
@@ -162,22 +176,27 @@ def sync(db, now=None, force=False, full=False):
     store.set_meta(db, "synced_at", now)
     db.execute("commit")
 
-    errors = []
-    shortcut = Shortcut()
-    try:
-        sync_shortcut(db, shortcut, now, full)
-    except Exception as error:
-        errors.append(str(error))
-    try:
-        sync_github(db)
-    except Exception as error:
-        errors.append(str(error))
-    if not errors:
+    errors, cut, took = [], [], {}
+    deadline = None if budget is None else clock() + budget
+
+    def part(name, step):
+        begun = clock()
         try:
-            pr_stories(db, shortcut, now)
+            step()
+        except (OutOfTime, github.OutOfTime):
+            cut.append(name)
         except Exception as error:
             errors.append(str(error))
+        took[name] = round(clock() - begun, 1)
+
+    shortcut = client(deadline=deadline, clock=clock)
+    part("shortcut", lambda: sync_shortcut(db, shortcut, now, full))
+    with github.deadline(deadline, clock) if deadline else contextlib.nullcontext():
+        part("github", lambda: sync_github(db))
+    if not errors and not cut:
+        part("pr stories", lambda: pr_stories(db, shortcut, now))
     store.set_meta(db, "sync_errors", errors)
-    if not errors:
+    store.set_meta(db, "sync_report", {"at": now, "took": took, "cut": cut})
+    if not errors and not cut:
         store.set_meta(db, "synced_ok_at", now)
     return errors

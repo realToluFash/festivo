@@ -362,7 +362,7 @@ describe('the claimant withdraws their own claim (sc-8204)', () => {
     const dialog = screen.getByRole('dialog', { name: 'Withdraw your claim?' });
     expect(
       screen.getByText(
-        "You won't become the owner of Ìrè Events. Any Administrator, you included, can start a new claim.",
+        "You won't become the owner of Ìrè Events. Any admin, you included, can start a new claim.",
       ),
     ).toBeTruthy();
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Keep my claim' }));

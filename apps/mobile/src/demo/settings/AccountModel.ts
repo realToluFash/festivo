@@ -6,6 +6,7 @@ import {
   formerName,
   matchingZones,
   phoneLengthProblem,
+  refusedPhoneField,
   type ZoneRow,
   zoneLabel,
 } from '@soirely/domain';
@@ -15,6 +16,7 @@ import {
   countryName,
   EMAILS,
   passwordProblem,
+  PHONE_COUNTRY,
   PHONES,
   plural,
   SECOND_PHONE,
@@ -31,6 +33,7 @@ export const ACCOUNT_STATES = [
   'remove',
   'addEmail',
   'addPhone',
+  'addPhoneNoCountry',
   'zone',
   'verifyEmail',
   'verifyEmailWrong',
@@ -62,6 +65,8 @@ export interface AccountStart {
   screen: AccountScreen | null;
   verifying: Verifying | null;
   typedZone: string;
+  /** Add a phone number's Code as it opens: blank when the device names no country. */
+  phoneCountry: string;
 }
 
 export const SECOND_EMAIL_ID = 'email-2';
@@ -90,6 +95,7 @@ const AT_REST: AccountStart = {
   screen: null,
   verifying: null,
   typedZone: '',
+  phoneCountry: PHONE_COUNTRY,
 };
 
 /** What a state link opens on: the rows as its board frame drew them, and the screen or Ask over them. */
@@ -113,6 +119,8 @@ export function accountStart(state: AccountState): AccountStart {
     case 'name':
     case 'addPhone':
       return { ...AT_REST, screen: state };
+    case 'addPhoneNoCountry':
+      return { ...AT_REST, screen: 'addPhone', phoneCountry: '' };
     case 'zone':
       return { ...AT_REST, screen: 'zone', typedZone: ZONE_TYPED };
     case 'promote':
@@ -325,6 +333,11 @@ export function addCheck(kind: ContactKind, typed: string, country: string): str
     case 'tooLong':
       return `That number looks too long for ${name}. Check it and try again.`;
   }
+}
+
+/** The control a number's refusal names, for its red edge: the Code for "Choose a country.", else the number (sc-30447). */
+export function phoneLineOn(typed: string, country: string): 'country' | 'number' {
+  return refusedPhoneField(phoneLengthProblem(typed, country)) ?? 'number';
 }
 
 /** The server's refusal of one already linked, which the demo knows only for the account's own rows. */

@@ -21,11 +21,24 @@ class ShortcutError(RuntimeError):
     pass
 
 
+class OutOfTime(ShortcutError):
+    """The deadline passed before Shortcut answered."""
+
+
 class Shortcut:
-    def __init__(self, token=None):
+    def __init__(self, token=None, deadline=None, clock=time.monotonic):
         self.token = token or os.environ.get("SHORTCUT_API_TOKEN")
         if not self.token:
             raise ShortcutError("SHORTCUT_API_TOKEN is not set")
+        self.deadline, self.clock = deadline, clock
+
+    def time_left(self, failure, wanted=60):
+        if self.deadline is None:
+            return wanted
+        left = self.deadline - self.clock()
+        if left <= 0:
+            raise OutOfTime(f"out of time: {failure}")
+        return min(wanted, left)
 
     def call(self, method, path, body=None, attempts=3, raw=None, content_type=None):
         """Retries what Shortcut fails now and then: a 5xx, a dropped connection, a read
@@ -40,8 +53,9 @@ class Shortcut:
         failure = "Shortcut call failed"
         where = f"{method} {path.split('?')[0]}"
         for attempt in range(attempts):
+            timeout = self.time_left(failure)
             try:
-                with urllib.request.urlopen(request, timeout=60) as response:
+                with urllib.request.urlopen(request, timeout=timeout) as response:
                     return json.loads(response.read() or b"null")
             except urllib.error.HTTPError as error:
                 detail = error.read().decode(errors="replace")[:200]
@@ -61,7 +75,9 @@ class Shortcut:
                 failure = f"Shortcut dropped the connection on {where}: {error!r}"
                 if method not in ("GET", "PUT"):
                     break
-            time.sleep(2 ** attempt)
+            if attempt + 1 < attempts:
+                time.sleep(self.time_left(failure, 2 ** attempt))
+        self.time_left(failure)
         raise ShortcutError(failure)
 
     def search(self, query, pages=20):
