@@ -8,9 +8,7 @@ import { Sheet } from '../components/Sheet.tsx';
 import { Text } from '../components/Text.tsx';
 import { tokens } from '../theme/tokens.ts';
 import { SheetBody } from '../steps/Lines.tsx';
-import { COUNTRIES, type Country } from './signUpChecks.ts';
-
-export { COUNTRIES, type Country } from './signUpChecks.ts';
+import { COUNTRIES, type Country } from './countries.ts';
 
 /** The label inside, the value under it and a chevron: a field that opens a list. */
 export function SelectRow({
