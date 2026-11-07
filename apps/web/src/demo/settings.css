@@ -417,7 +417,18 @@
   font-size: 20px;
 }
 
-.desk-card .desk-says:focus {
+/* An answer lands on the card's sentence and its lines together, so a screen reader says both. */
+.desk-said-lines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceLg);
+}
+
+.desk-card.is-column .desk-said-lines {
+  gap: 9px;
+}
+
+.desk-card :is(.desk-says, .desk-said-lines):focus {
   outline: none;
   box-shadow: none;
 }
@@ -1173,6 +1184,12 @@
   justify-content: flex-end;
   gap: 0 var(--space3xl);
   padding-top: var(--spaceXs);
+}
+
+.desk-ask-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceMd);
 }
 
 .desk-ask p.desk-ask-alert {
