@@ -53,7 +53,8 @@ import {
   quotedVendorOf,
 } from './quotes.ts';
 import { QW } from './quotesWords.ts';
-import { CATEGORY_WORDS, type Vendor } from './vendors.ts';
+import { type Vendor } from './vendors.ts';
+import { CATEGORY_WORDS } from './vendorsWords.ts';
 
 export const BUSY_MS = 900;
 

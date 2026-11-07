@@ -811,6 +811,11 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
       },
       { title: 'Events · a first run', what: 'No events yet', href: '/demo/events?state=first' },
       {
+        title: 'Events · nobody invited yet',
+        what: 'The guest counts at 0',
+        href: '/demo/events?state=noGuests',
+      },
+      {
         title: 'An event · draft',
         what: 'Make live is the step',
         href: '/demo/events/evt-draft-4?state=draft',

@@ -15,7 +15,8 @@ import {
 } from './budget.ts';
 import { sampleEvent } from './events.ts';
 import { QW } from './quotesWords.ts';
-import { CATEGORY_WORDS, type Vendor, inNameOrder, nameMatches, sampleVendors } from './vendors.ts';
+import { type Vendor, inNameOrder, nameMatches, sampleVendors } from './vendors.ts';
+import { CATEGORY_WORDS } from './vendorsWords.ts';
 
 export type BudgetViewerKey = 'folake' | 'julien' | 'ana';
 
