@@ -43,8 +43,8 @@ import { CAL_WORDS } from './calendar.ts';
 import { EventSidebar } from './EventSidebar.tsx';
 import { Glyph, type GlyphName } from '../components/Glyph.tsx';
 import { LayersContext } from '../layers.ts';
-import { Ask, Bell, Chevron, Head, RowWords, TextAction } from './SettingsParts.tsx';
-import type { Tell } from './TodayParts.tsx';
+import { Ask, Bell, Chevron, Head, RowWords, TextAction } from '../components/SettingsParts.tsx';
+import type { Tell } from '../components/SettingsParts.tsx';
 import { useSwitcherStart } from './switcher.ts';
 
 const LOCALE = 'en-US';

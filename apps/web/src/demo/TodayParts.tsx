@@ -1,4 +1,5 @@
 import { Glyph } from '../components/Glyph.tsx';
+import type { Tell } from '../components/SettingsParts.tsx';
 import {
   type AgendaDay,
   EVENTS,
@@ -8,8 +9,6 @@ import {
   type Need,
   type StripBar,
 } from './today.ts';
-
-export type Tell = (words: string) => void;
 
 /** An event's cover, in its own colours from the option tokens. */
 export function EventCover({ event, className }: { event: EventKey; className: string }) {

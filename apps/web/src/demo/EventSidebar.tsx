@@ -6,7 +6,7 @@ import { Thumb } from './EventParts.tsx';
 import { Glyph, type GlyphName } from '../components/Glyph.tsx';
 import { OrgSwitcher } from './OrgSwitcher.tsx';
 import { SAMPLE } from './rules.ts';
-import type { Tell } from './TodayParts.tsx';
+import type { Tell } from '../components/SettingsParts.tsx';
 
 const GLYPHS: Record<Area, GlyphName> = {
   overview: 'overview',

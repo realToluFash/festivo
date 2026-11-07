@@ -50,7 +50,7 @@ import {
   Note,
   RowWords,
   TextAction,
-} from './SettingsParts.tsx';
+} from '../components/SettingsParts.tsx';
 import { useLater } from '../useLater.ts';
 
 function focusSoon(find: () => HTMLElement | null | undefined, tries = 5): void {

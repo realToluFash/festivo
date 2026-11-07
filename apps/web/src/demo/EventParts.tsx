@@ -18,9 +18,10 @@ import {
 } from './events.ts';
 import { Glyph } from '../components/Glyph.tsx';
 import { LayersContext } from '../layers.ts';
-import { Chevron, CardStep, RowWords, Tag } from './SettingsParts.tsx';
-import type { Tell } from './TodayParts.tsx';
+import { Chevron, CardStep, RowWords, Tag } from '../components/SettingsParts.tsx';
+import type { Tell } from '../components/SettingsParts.tsx';
 import './today.css';
+import '../components/SettingsParts.css';
 import './settings.css';
 import './events.css';
 

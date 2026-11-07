@@ -36,9 +36,10 @@ import {
   withRole,
 } from './people.ts';
 import { AddDialog, RoleDialog } from './PeopleDialogs.tsx';
-import { Avatar, Bell, Head, RowWords, Tag, TextAction } from './SettingsParts.tsx';
-import type { Tell } from './TodayParts.tsx';
+import { Avatar, Bell, Head, RowWords, Tag, TextAction } from '../components/SettingsParts.tsx';
+import type { Tell } from '../components/SettingsParts.tsx';
 import './today.css';
+import '../components/SettingsParts.css';
 import './settings.css';
 import './people.css';
 

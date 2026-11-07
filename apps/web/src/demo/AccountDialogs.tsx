@@ -27,7 +27,7 @@ import {
 } from './account.ts';
 import { Glyph } from '../components/Glyph.tsx';
 import { COUNTRIES, SAMPLE, codeChoice } from './rules.ts';
-import { Ask, Dialog, Field, Note, RowWords } from './SettingsParts.tsx';
+import { Ask, Dialog, Field, Note, RowWords } from '../components/SettingsParts.tsx';
 import { useLater } from '../useLater.ts';
 
 function Discard({ line, onKeep, onGo }: { line: string; onKeep: () => void; onGo: () => void }) {

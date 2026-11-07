@@ -9,6 +9,7 @@ import { Glyph } from '../components/Glyph.tsx';
 import { LayersContext, focusWhenFree, useDeskLayers } from '../layers.ts';
 import { SAMPLE } from './rules.ts';
 import { NEW_PLACE, create } from './switcher.ts';
+import '../components/SettingsParts.css';
 import './settings.css';
 import './createOrg.css';
 

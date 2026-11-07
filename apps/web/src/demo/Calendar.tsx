@@ -49,7 +49,7 @@ import { Glyph } from '../components/Glyph.tsx';
 import { AccessPaused, Switched } from './OrgSwitcher.tsx';
 import { SIDEBAR_EVENTS } from './settings.ts';
 import { usePaused, useSwitcherStart } from './switcher.ts';
-import type { Tell } from './TodayParts.tsx';
+import type { Tell } from '../components/SettingsParts.tsx';
 import { TodaySidebar } from './TodaySidebar.tsx';
 import './calendar.css';
 

@@ -22,10 +22,11 @@ import { Notifications } from './Notifications.tsx';
 import { AccessPaused } from './OrgSwitcher.tsx';
 import { Security } from './Security.tsx';
 import { SignInRules } from './SignInRules.tsx';
-import type { Tell } from './TodayParts.tsx';
+import type { Tell } from '../components/SettingsParts.tsx';
 import { TodaySidebar } from './TodaySidebar.tsx';
 import { usePaused, useSwitcherStart } from './switcher.ts';
 import './today.css';
+import '../components/SettingsParts.css';
 import './settings.css';
 
 const TILES: Record<Exclude<Section, 'account' | 'general'>, GlyphName> = {

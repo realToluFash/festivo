@@ -17,7 +17,7 @@ import {
   savedWallClock,
 } from '@soirely/domain';
 
-import type { MarkKind } from './members.ts';
+import type { MarkKind } from '../components/SettingsParts.tsx';
 import type { DemoLink } from './settings.ts';
 import type { EventKey } from './today.ts';
 

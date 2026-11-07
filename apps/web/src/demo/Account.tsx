@@ -37,8 +37,8 @@ import {
   OnCard,
   RowWords,
   TitleRow,
-} from './SettingsParts.tsx';
-import type { Tell } from './TodayParts.tsx';
+} from '../components/SettingsParts.tsx';
+import type { Tell } from '../components/SettingsParts.tsx';
 import './account.css';
 
 const ICONS: Record<Kind, GlyphName> = { email: 'mail', phone: 'phone' };

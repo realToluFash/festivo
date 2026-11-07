@@ -9,12 +9,14 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 
-import { ActionPair } from '../components/ActionPair.tsx';
+import { ActionPair } from './ActionPair.tsx';
 import { offButton } from '../offButton.ts';
-import { Glyph } from '../components/Glyph.tsx';
+import { Glyph } from './Glyph.tsx';
 import { LayersContext, useDeskDialog } from '../layers.ts';
-import type { MarkKind } from './members.ts';
-import type { Tell } from './TodayParts.tsx';
+
+export type Tell = (words: string) => void;
+
+export type MarkKind = 'yes' | 'waiting' | 'paused' | 'ended';
 
 export function Bell({ tell }: { tell: Tell }) {
   return (

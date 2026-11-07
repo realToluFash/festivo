@@ -6,7 +6,7 @@ import { Glyph, type GlyphName } from '../components/Glyph.tsx';
 import { OrgSwitcher } from './OrgSwitcher.tsx';
 import { SAMPLE } from './rules.ts';
 import { EVENTS, type EventKey } from './today.ts';
-import type { Tell } from './TodayParts.tsx';
+import type { Tell } from '../components/SettingsParts.tsx';
 
 const PLACES: readonly (readonly [string, GlyphName])[] = [
   ['Today', 'today'],

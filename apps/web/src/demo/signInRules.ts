@@ -1,5 +1,5 @@
 import type { Load } from './members.ts';
-import type { Choice } from './SettingsParts.tsx';
+import type { Choice } from '../components/SettingsParts.tsx';
 import { type DemoLink, type Viewer, VIEWERS, settingsPath } from './settings.ts';
 
 export const ORGANISATION = 'Ire Events';

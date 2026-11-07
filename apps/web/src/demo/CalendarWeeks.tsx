@@ -31,7 +31,7 @@ import {
 import { PhaseTag, Thumb } from './EventParts.tsx';
 import type { Shown } from './events.ts';
 import { Glyph } from '../components/Glyph.tsx';
-import { Chevron, RowWords } from './SettingsParts.tsx';
+import { Chevron, RowWords } from '../components/SettingsParts.tsx';
 
 export type Move = (key: string, from: string) => boolean;
 

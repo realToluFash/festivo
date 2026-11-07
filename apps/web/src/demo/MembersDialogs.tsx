@@ -29,8 +29,8 @@ import {
   RedAction,
   RowWords,
   TextAction,
-} from './SettingsParts.tsx';
-import type { Tell } from './TodayParts.tsx';
+} from '../components/SettingsParts.tsx';
+import type { Tell } from '../components/SettingsParts.tsx';
 import { useProof } from './useProof.ts';
 
 const CHECK_MS = 1200;

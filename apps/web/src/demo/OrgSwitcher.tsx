@@ -51,7 +51,7 @@ import {
   useWhere,
   waiting,
 } from './switcher.ts';
-import type { Tell } from './TodayParts.tsx';
+import type { Tell } from '../components/SettingsParts.tsx';
 import './today.css';
 import './switcher.css';
 

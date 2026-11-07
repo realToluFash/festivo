@@ -35,7 +35,7 @@ import {
   Head,
   RowWords,
   TextAction,
-} from './SettingsParts.tsx';
+} from '../components/SettingsParts.tsx';
 
 const ARROWS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
 

@@ -27,7 +27,7 @@ import {
   ruleMet,
   setupRefusal,
 } from './security.ts';
-import { Ask, Dialog, Field, Note } from './SettingsParts.tsx';
+import { Ask, Dialog, Field, Note } from '../components/SettingsParts.tsx';
 import { useLater } from '../useLater.ts';
 
 const QR = qrPath();
