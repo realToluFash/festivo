@@ -810,6 +810,16 @@ describe('the demo signs in with two-factor (sc-29063)', () => {
     expect(screen.getByRole('heading', { name: 'Waiting for your organisation' })).toBeDefined();
   });
 
+  it('keeps waiting on Escape, as Keep waiting does (sc-29957)', async () => {
+    await page('?page=waiting', 'Waiting for your organisation');
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel the request' }));
+    expect(screen.getByRole('alertdialog', { name: 'Cancel your request?' })).toBeDefined();
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(screen.getByRole('heading', { name: 'Waiting for your organisation' })).toBeDefined();
+  });
+
   it('closes the dialog and shows an answer found while it is open (sc-29957)', async () => {
     await page('?page=waiting', 'Waiting for your organisation');
     fireEvent.click(screen.getByRole('button', { name: 'Demo: Confirm' }));

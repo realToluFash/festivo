@@ -474,7 +474,7 @@ const ANSWERS: { answer: Answer; name: string }[] = [
   { answer: 'replaced', name: 'Replace it' },
 ];
 
-/** Cancel the request asks first (sc-29957); an answer found while the dialog is open leaves the page, and the dialog with it. */
+/** An answer found while the dialog is open leaves the page, and the dialog with it. */
 function Waiting({ confirming: opened }: { confirming: boolean }) {
   const navigate = useNavigate();
   const [answer, setAnswer] = useState<Answer | null>(null);
