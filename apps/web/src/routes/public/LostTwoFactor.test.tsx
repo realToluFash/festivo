@@ -357,43 +357,43 @@ describe('getting back in without the authenticator', () => {
       'Codes only work for a while. Send a new one and use the code in the newest email.',
     ],
     ['exhausted', 'Too many wrong tries', 'That code no longer works. Send a new one to carry on.'],
-  ])(
-    'counts one spent code with no verified phone: %s (sc-30737)',
-    async (spent, title, body) => {
-      await atTheStart({
-        'POST /api/auth/two-factor/recovery/opening': () =>
-          json({
-            ...OPENING,
-            phone: null,
-            recovery: 'handle',
-            state: { ...PROVING, phone: null, codes: { ...PROVING.codes, state: spent } },
-          }),
-      });
-
-      expect(screen.getByRole('heading', { level: 1, name: 'Enter the code' })).toBeDefined();
-      expect(screen.getByText(title)).toBeDefined();
-      expect(screen.getByText(body)).toBeDefined();
-      expect(screen.getByRole('button', { name: 'Send a new code' })).toBeDefined();
-      expect(screen.queryByText(/Those codes|new codes/)).toBeNull();
-    },
-  );
-
-  it.each([
-    ['expired', 'Those codes have expired'],
-    ['exhausted', 'Those codes no longer work. Send new ones to carry on.'],
-  ])('keeps counting both spent codes with a verified phone: %s (sc-30737)', async (spent, line) => {
+  ])('counts one spent code with no verified phone: %s (sc-30737)', async (spent, title, body) => {
     await atTheStart({
       'POST /api/auth/two-factor/recovery/opening': () =>
         json({
           ...OPENING,
+          phone: null,
           recovery: 'handle',
-          state: { ...PROVING, codes: { ...PROVING.codes, state: spent } },
+          state: { ...PROVING, phone: null, codes: { ...PROVING.codes, state: spent } },
         }),
     });
 
-    expect(screen.getByText(line)).toBeDefined();
-    expect(screen.getByRole('button', { name: 'Send new codes' })).toBeDefined();
+    expect(screen.getByRole('heading', { level: 1, name: 'Enter the code' })).toBeDefined();
+    expect(screen.getByText(title)).toBeDefined();
+    expect(screen.getByText(body)).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Send a new code' })).toBeDefined();
+    expect(screen.queryByText(/Those codes|new codes/)).toBeNull();
   });
+
+  it.each([
+    ['expired', 'Those codes have expired'],
+    ['exhausted', 'Those codes no longer work. Send new ones to carry on.'],
+  ])(
+    'keeps counting both spent codes with a verified phone: %s (sc-30737)',
+    async (spent, line) => {
+      await atTheStart({
+        'POST /api/auth/two-factor/recovery/opening': () =>
+          json({
+            ...OPENING,
+            recovery: 'handle',
+            state: { ...PROVING, codes: { ...PROVING.codes, state: spent } },
+          }),
+      });
+
+      expect(screen.getByText(line)).toBeDefined();
+      expect(screen.getByRole('button', { name: 'Send new codes' })).toBeDefined();
+    },
+  );
 
   it.each([
     ['cannot reach Soirely', null],
@@ -420,7 +420,9 @@ describe('getting back in without the authenticator', () => {
       fireEvent.click(go);
 
       const line = await screen.findByRole('alert');
-      expect(line.textContent).toContain('Not cancelled. Your request is still waiting. Try again.');
+      expect(line.textContent).toContain(
+        'Not cancelled. Your request is still waiting. Try again.',
+      );
       expect(screen.getByRole('alertdialog').contains(line)).toBe(true);
       expect(document.activeElement).toBe(go);
       expect(screen.getByRole('heading', { level: 1, name: 'Waiting for your organisation' }));
