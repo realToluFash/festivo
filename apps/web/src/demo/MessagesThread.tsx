@@ -535,7 +535,7 @@ function modeOf(state: MessagesState | null): SchedMode {
 
 /** A message scheduled for later (sc-3963): dashed until it goes, edited in the box, sent now through the check, or cancelled after asking. */
 function ScheduledThread({ sched, state }: { sched: Sched; state: MessagesState | null }) {
-  const { act, focus, say } = useInbox();
+  const { act, focus, say, tell } = useInbox();
   const [mode, setMode] = useState<SchedMode>(modeOf(state));
   const [words, setWords] = useState<Pick<Draft, 'subject' | 'body' | 'seed'>>({
     subject: sched.subject,
@@ -669,7 +669,7 @@ function ScheduledThread({ sched, state }: { sched: Sched; state: MessagesState 
           tools
           refused={null}
           onDraft={(next) => setWords((now) => ({ ...now, ...next }))}
-          onPreview={() => undefined}
+          onPreview={() => tell(`${MW.preview} has its own design.`)}
           onSend={() => {
             act({
               kind: 'resched',
