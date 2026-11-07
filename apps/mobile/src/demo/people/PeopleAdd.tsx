@@ -22,11 +22,12 @@ import {
   addView,
   type EventRole,
   FIRST_ROLE,
-  IN_ORGANISATION,
+  inOrganisation,
   NAME_LABEL,
   noMatchLine,
   offerLine,
   type OnEvent,
+  ORGANISATION,
   type OrgMember,
   type PeopleViewer,
   ROLE_LINES,
@@ -42,6 +43,7 @@ export function AddScreen({
   members,
   onEvent,
   viewer,
+  organisation = ORGANISATION,
   opener,
   onClose,
   onAdd,
@@ -50,6 +52,7 @@ export function AddScreen({
   members: readonly OrgMember[];
   onEvent: readonly OnEvent[];
   viewer: PeopleViewer;
+  organisation?: string;
   opener: RefObject<ScreenReaderTarget | null>;
   onClose: () => void;
   onAdd: (role: EventRole, adding: readonly OrgMember[]) => void;
@@ -147,7 +150,7 @@ export function AddScreen({
       </Field>
       {view.kind === 'members' && view.offered.length > 0 && (
         <View>
-          <SectionHead title={IN_ORGANISATION} />
+          <SectionHead title={inOrganisation(organisation)} />
           <RowList
             items={view.offered.map((member) => ({
               key: member.id,
@@ -168,7 +171,7 @@ export function AddScreen({
       )}
       {view.kind === 'nobody' && (
         <Text size={16} weight="semibold">
-          {noMatchLine(view.typed)}
+          {noMatchLine(view.typed, organisation)}
         </Text>
       )}
     </FocusedScreen>
@@ -210,7 +213,7 @@ function Ticked({
 }
 
 /** A sheet over the screen inside its window: the bottom sheet on a phone, a 540 card on an iPad; Done or a tap on the dimmed screen closes it. */
-function RoleLayer({ onClose, children }: { onClose: () => void; children: ReactNode }) {
+export function RoleLayer({ onClose, children }: { onClose: () => void; children: ReactNode }) {
   const { layout } = useShell();
   const insets = useSafeAreaInsets();
   const phone = layout === 'phone';

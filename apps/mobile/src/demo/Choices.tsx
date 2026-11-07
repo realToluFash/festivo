@@ -10,11 +10,14 @@ export function Choices({
   onApple,
   onGoogle,
   onCreate,
+  onJoinCode,
 }: {
   onEmail: () => void;
   onApple: () => void;
   onGoogle: () => void;
   onCreate: () => void;
+  /** The door code's way in, under Create an account (sc-31774). */
+  onJoinCode?: () => void;
 }) {
   const apple = (
     <ProviderButton
@@ -42,6 +45,9 @@ export function Choices({
         {Platform.OS === 'android' ? [google, apple] : [apple, google]}
       </View>
       <QuietButton label="Create an account" onPress={onCreate} testID="demo.create" />
+      {onJoinCode != null && (
+        <QuietButton label="Enter a join code" onPress={onJoinCode} testID="demo.joinCode" />
+      )}
     </View>
   );
 }
