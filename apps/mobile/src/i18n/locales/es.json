@@ -2051,7 +2051,7 @@
       "liveTitle": "Publíquelo",
       "liveBody": "Será un borrador hasta que lo publique."
     },
-    "createEvent": "Crear un evento",
+    "startFirst": "Start your first event",
     "stepNumber": "{{n, number}}"
   }
 }
