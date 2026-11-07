@@ -218,6 +218,14 @@ describe('the demo', () => {
     expect(await screen.findByRole('heading', { name: 'This page does not exist' })).toBeDefined();
   });
 
+  it('says a two-factor sign-in that ran out timed out, the email kept (sc-29956)', async () => {
+    await signInBoard('code-timed-out');
+
+    expect(screen.getByText('That sign-in timed out')).toBeDefined();
+    expect(screen.getByText('Sign in again to carry on.')).toBeDefined();
+    expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe(SAMPLE.email);
+  });
+
   it('gives the form way to the providers when password sign-in is off', async () => {
     await signInBoard('provider-only');
 
@@ -737,6 +745,53 @@ describe('the demo signs in with two-factor (sc-29063)', () => {
     await wait(61_000);
     expect(screen.queryByText('Too many wrong codes')).toBeNull();
     expect(screen.getByRole('button', { name: 'Verify and sign in' })).toBeDefined();
+  });
+
+  async function timedOut(): Promise<void> {
+    await screen.findByRole('heading', { level: 1, name: 'Sign in' });
+    expect(screen.getByText('That sign-in timed out')).toBeDefined();
+    expect(screen.getByText('Sign in again to carry on.')).toBeDefined();
+    expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe(SAMPLE.email);
+  }
+
+  it('lands the right code after the pause lifts on sign-in, timed out, the email kept (sc-29956)', async () => {
+    await page('?page=code', 'Enter your code');
+    for (let tries = 0; tries < TRIES; tries++) {
+      type('Code', '111111');
+      fireEvent.submit(screen.getByLabelText('Code'));
+      await wait();
+    }
+    await wait(61_000);
+
+    type('Code', SAMPLE.authenticator);
+    fireEvent.click(screen.getByRole('button', { name: 'Verify and sign in' }));
+    await wait();
+    await timedOut();
+  });
+
+  it('lands a right recovery code after the pause lifts on sign-in, timed out (sc-29956)', async () => {
+    await page('?page=code&state=paused', 'Enter your code');
+    await wait(61_000);
+    fireEvent.click(screen.getByRole('link', { name: 'Use a recovery code instead' }));
+    await screen.findByRole('heading', { name: 'Enter a recovery code' });
+
+    type('Recovery code', SAMPLE.recovery);
+    fireEvent.click(screen.getByRole('button', { name: 'Use this code' }));
+    await wait();
+    await timedOut();
+  });
+
+  it('lands lost authenticator, opened after the pause lifts, on sign-in, timed out (sc-29956)', async () => {
+    await page('?page=code&state=paused', 'Enter your code');
+    await wait(61_000);
+    fireEvent.click(
+      screen.getByRole('link', { name: 'Lost your authenticator and your recovery codes?' }),
+    );
+
+    await timedOut();
+    expect(
+      screen.queryByRole('heading', { name: 'Get back in without your authenticator' }),
+    ).toBeNull();
   });
 
   it('takes a recovery code in any case with the dash put in, and says a used one is used', async () => {
@@ -1655,6 +1710,15 @@ describe('Settings at a desk (sc-29708)', () => {
     await settings('/demo/settings/members?as=julien&state=claim');
 
     const claim = within(screen.getByRole('dialog', { name: 'Become the owner' }));
+    fireEvent.click(
+      within(claim.getByText('TXT').closest('li') as HTMLElement).getByRole('button', {
+        name: 'Copy',
+      }),
+    );
+    await act(() => vi.advanceTimersByTimeAsync(0));
+    expect(claim.getAllByRole('button', { name: 'Copy' })).toHaveLength(3);
+    expect(screen.queryByText('Type copied.')).toBeNull();
+
     const check = () => fireEvent.click(claim.getByRole('button', { name: 'Check record' }));
     check();
     expect(screen.getByText('Checking the record')).toBeDefined();

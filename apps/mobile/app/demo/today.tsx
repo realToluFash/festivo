@@ -22,10 +22,13 @@ import { ArrivedTodayScreen } from '../../src/demo/today/ArrivedToday.tsx';
 import {
   type ArrivedState,
   COUNTS,
+  figureOf,
   isArrivedState,
   LIVE,
   withArrived,
 } from '../../src/demo/today/arrived.ts';
+import { RunTodayScreen } from '../../src/demo/today/RunToday.tsx';
+import { isRunState, withRun } from '../../src/demo/today/runOfShow.ts';
 import type { MomentName } from '../../src/kit/today.ts';
 import type { Tab } from '../../src/components/TodayCover.tsx';
 import type { Tell } from '../../src/components/TodayParts.tsx';
@@ -81,6 +84,7 @@ export default function DemoTodayScreen() {
     switcher?: string;
     create?: string;
     orgs?: string;
+    now?: string;
     arrived?: string;
     numbers?: string;
   }>();
@@ -89,22 +93,29 @@ export default function DemoTodayScreen() {
   const name = place?.fresh === true ? 'first' : isMoment(params.moment) ? params.moment : 'plan';
   const { i18n } = useTranslation();
   // The demo's words are English, so its dates are too, in the phone's own region.
-  const moment = useMemo(
-    () =>
-      momentOf(
-        name,
-        sayIn(formattingLocale('en', getLocales()[0]?.languageTag)),
-        i18n.getFixedT('en'),
-      ),
-    [name, i18n],
-  );
-  const arrivedState = name === 'dayNow' && isArrivedState(params.arrived) ? params.arrived : null;
-  const live = useLive(arrivedState === 'live');
+  const say = useMemo(() => sayIn(formattingLocale('en', getLocales()[0]?.languageTag)), []);
+  const moment = useMemo(() => momentOf(name, say, i18n.getFixedT('en')), [name, say, i18n]);
   const numbers = useMemo(() => numbersIn(params.numbers), [params.numbers]);
+  const arrivedState = isArrivedState(params.arrived) ? params.arrived : null;
+  const live = useLive(arrivedState === 'live');
+  const run = useMemo(
+    () =>
+      isRunState(params.now)
+        ? withRun(
+            moment,
+            params.now,
+            figureOf(countsOf(arrivedState ?? 'some', live), numbers),
+            say,
+          )
+        : null,
+    [moment, params.now, arrivedState, live, numbers, say],
+  );
   const arrived = useMemo(
     () =>
-      arrivedState == null ? null : withArrived(moment, countsOf(arrivedState, live), numbers),
-    [arrivedState, moment, live, numbers],
+      name !== 'dayNow' || arrivedState == null
+        ? null
+        : withArrived(moment, countsOf(arrivedState, live), numbers),
+    [name, arrivedState, moment, live, numbers],
   );
   const { kind } = useLayout();
   const [told, setTold] = useState(params.toast);
@@ -159,10 +170,12 @@ export default function DemoTodayScreen() {
         <View style={styles.fill}>
           {place == null ? (
             <NoOrganisation tell={tell} />
-          ) : arrived == null ? (
-            <TodayScreen moment={moment} onTab={onTab} notices={notices} />
-          ) : (
+          ) : run != null ? (
+            <RunTodayScreen moment={run} onTab={onTab} notices={notices} />
+          ) : arrived != null ? (
             <ArrivedTodayScreen moment={arrived} onTab={onTab} notices={notices} />
+          ) : (
+            <TodayScreen moment={moment} onTab={onTab} notices={notices} />
           )}
           {told != null && (
             <Told

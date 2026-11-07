@@ -70,6 +70,16 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **7 nov. 2026. L’écran Aujourd’hui de l’app** (`mobile:todayScreen.*`, sc-31788 pour
+  sc-29090). "Live now" et "Live · …" sont « En cours », comme `eventsScreen.happeningNow`,
+  jamais « Publié », qui est l’état. L’agenda met une étiquette et deux-points,
+  « Début : {{name}} », « Fin : {{name}} », « Suite : {{name}} », pour que le nom de
+  l’événement se passe d’article. Le matin et l’après-midi disent « Bonjour », le soir
+  « Bonsoir » dès 18 h (`greetingAt`) ; « Bon après-midi » se dit en partant, pas en
+  arrivant. "Welcome" est « Bienvenue », invariable. "Next up" est « Prochain événement »,
+  car il nomme un événement ; le "Next" du bloc Maintenant est « Ensuite ». "Needs you" reprend
+  `eventPage.needsYou`, « À traiter ». Run of show reste « déroulé ».
+
 - **7 nov. 2026. « Le jour de l’événement », jamais « le soir »** (sc-29384). Un événement a lieu
   à toute heure : `verifyPhone.doneBody`, `steps.mobileIntro` et `completeProfile.mobileHelp`
   disent « le jour de l’événement », `rolesScreen.means.run_of_show` « pendant l’événement ». Le
