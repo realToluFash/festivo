@@ -43,6 +43,12 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **7 Nov 2026. As outras formas de entrar na app** (`mobile:steps.invited*`, `join`,
+  `startOwnInstead`, `mobile:requestToJoin.messageOptional`, `signedOutLine`, sc-30119). "You’re
+  invited" é "Tem um convite", nunca "Foi convidado", que concorda com um género. O botão é
+  "Aderir a {{organisation}}", como `invitations.acceptLabel`; `startOwnInstead` repete
+  `domainJoining.startOwnInstead`, "Prefiro criar a minha própria organização".
+
 - **7 Nov 2026. "No dia do evento", nunca "na noite"** (sc-29384). Um evento pode ser a qualquer
   hora: `verifyPhone.doneBody`, `steps.mobileIntro` e `completeProfile.mobileHelp` dizem "no dia
   do evento". `mobileHelp` passa a "É por este número que falamos consigo…", como "falar consigo"
