@@ -67,15 +67,21 @@ export function Notice({
   title,
   body,
   alert = false,
+  late = false,
 }: {
   title: string;
   body?: string;
   alert?: boolean;
+  /** The words arrive a tick after the region, so a screen reader says them on a page that opens with them. */
+  late?: boolean;
 }) {
+  const ticked = useShownAfter(0);
+  const said = !late || ticked;
+
   return (
     <div className="demo-notice" role={alert ? 'alert' : 'status'}>
-      <p className="demo-notice-title">{title}</p>
-      {body != null && <p>{body}</p>}
+      {said && <p className="demo-notice-title">{title}</p>}
+      {said && body != null && <p>{body}</p>}
     </div>
   );
 }

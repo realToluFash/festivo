@@ -4,7 +4,6 @@ import { Link, useLocation, useNavigate, useSearchParams } from 'react-router';
 
 import { offButton } from '../offButton.ts';
 import { offField } from '../offField.ts';
-import { useShownAfter } from '../shownAfter.ts';
 import { BoardPage, HaveAccount, OrLine, Providers, SignedInAs } from './BoardPage.tsx';
 import {
   type Answer,
@@ -83,17 +82,6 @@ const OPENING: Record<string, { password: string; filled: boolean }> = {
 
 const TIMED_OUT =
   'Your sign-up timed out, so we did not keep the password. Enter it again to get a new code.';
-
-/** Said into a region already on the page, so a screen reader reads it while focus stays on Password. */
-function TimedOut() {
-  const said = useShownAfter(0);
-
-  return (
-    <div className="demo-notice" role="status">
-      {said && <p className="demo-notice-title">{TIMED_OUT}</p>}
-    </div>
-  );
-}
 
 function CreateAccount({ state, flow }: { state: string; flow: Flow }) {
   const navigate = useNavigate();
@@ -178,7 +166,7 @@ function CreateAccount({ state, flow }: { state: string; flow: Flow }) {
         {breached ? (
           <Notice title="Creating your account did not work" alert />
         ) : timedOut ? (
-          <TimedOut />
+          <Notice title={TIMED_OUT} late />
         ) : (
           <p className="demo-muted">Next, we email you a code to check the address is yours.</p>
         )}

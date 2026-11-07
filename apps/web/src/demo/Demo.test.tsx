@@ -336,6 +336,7 @@ describe('the demo creates an account (sc-29061)', () => {
 
     await screen.findByRole('heading', { name: 'Create your account' });
     await waitFor(() => expect(screen.getByRole('status').textContent).toBe(line));
+    expect(screen.getByText(line).className).toBe('demo-notice-title');
     expect((screen.getByLabelText('Full name') as HTMLInputElement).value).toBe(SAMPLE.name);
     expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe(SAMPLE.email);
     expect((screen.getByLabelText('Password') as HTMLInputElement).value).toBe('');
