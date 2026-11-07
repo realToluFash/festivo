@@ -16,9 +16,9 @@ export interface GuestCounts {
   notReplied: number;
 }
 
-/** The sample's guests on its live and paused events; a draft has nobody invited (`draftBody`). */
+/** The sample's guests on its live and paused events, the wedding's as Messaging's (142 invited, 96 coming, 25 not replied); a draft has nobody invited. */
 export const SAMPLE_GUESTS: Readonly<Record<string, Guests>> = {
-  'evt-wed-4': { invited: 180, coming: 142, replied: 160 },
+  'evt-wed-4': { invited: 142, coming: 96, replied: 117 },
   'evt-ireti-2': { invited: 60, coming: 31, replied: 38 },
   'evt-gala-4': { invited: 120, coming: 64, replied: 85 },
   'evt-party-2': { invited: 45, coming: 20, replied: 26 },

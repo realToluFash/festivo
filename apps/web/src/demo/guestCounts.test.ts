@@ -2,16 +2,25 @@ import { describe, expect, it } from 'vitest';
 
 import { CLOCKS, resetSample, sampleEvents } from './events.ts';
 import { GUEST_WORDS, SAMPLE_GUESTS, figureOf, guestCountsOf } from './guestCounts.ts';
+import { COMING, GUESTS_N, NOT_REPLIED, countOf } from './messages.ts';
 
 describe('the guest counts on Events (sc-23284)', () => {
   it('adds up the live, happening now and paused events', () => {
     resetSample();
 
     expect(guestCountsOf(sampleEvents(), SAMPLE_GUESTS, CLOCKS.rest)).toEqual({
-      invited: 405,
-      coming: 257,
-      replied: 309,
-      notReplied: 96,
+      invited: 367,
+      coming: 211,
+      replied: 266,
+      notReplied: 101,
+    });
+  });
+
+  it('counts the wedding as Messaging does', () => {
+    expect(SAMPLE_GUESTS['evt-wed-4']).toEqual({
+      invited: GUESTS_N,
+      coming: countOf(COMING),
+      replied: GUESTS_N - (countOf(NOT_REPLIED) ?? 0),
     });
   });
 

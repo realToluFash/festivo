@@ -18,7 +18,7 @@ export interface GuestCounts {
 
 /** The web demo's numbers, so both demos show the same organisation; a draft has nobody invited (`draftBody`). */
 export const SAMPLE_GUESTS: Readonly<Record<string, Guests>> = {
-  'evt-wed-4': { invited: 180, coming: 142, replied: 160 },
+  'evt-wed-4': { invited: 142, coming: 96, replied: 117 },
   'evt-ireti-2': { invited: 60, coming: 31, replied: 38 },
   'evt-gala-4': { invited: 120, coming: 64, replied: 85 },
   'evt-party-2': { invited: 45, coming: 20, replied: 26 },

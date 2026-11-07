@@ -171,10 +171,10 @@ describe('the guest counts on Events (sc-23284)', () => {
     await list();
     const tiles = within(main()).getByRole('list', { name: 'Guests across your upcoming events' });
 
-    expect(within(tiles).getByText('405')).toBeDefined();
-    expect(within(tiles).getByText('257 coming')).toBeDefined();
-    expect(within(tiles).getByText('309')).toBeDefined();
-    expect(within(tiles).getByText('96 haven’t replied')).toBeDefined();
+    expect(within(tiles).getByText('367')).toBeDefined();
+    expect(within(tiles).getByText('211 coming')).toBeDefined();
+    expect(within(tiles).getByText('266')).toBeDefined();
+    expect(within(tiles).getByText('101 haven’t replied')).toBeDefined();
   });
 
   it('shows 0 when nobody is invited yet', SLOW, async () => {
