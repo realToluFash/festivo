@@ -185,11 +185,6 @@ def asked(short, seen, folder):
     return (said, None) if said else (None, "; ".join(gaps))
 
 
-def wanted(short, seen, folder):
-    """What the session held on its prompt wanted to run, masked; None when nothing says."""
-    return asked(short, seen, folder)[0]
-
-
 def stop(short, env, run=subprocess.run):
     """Ends the session but keeps it, so `claude attach` can still show what it did."""
     run(["claude", "stop", short], capture_output=True, env=env)

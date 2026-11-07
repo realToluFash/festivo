@@ -227,15 +227,15 @@ class Wanted(unittest.TestCase):
             (job / "state.json").write_text(json.dumps(
                 {"state": "blocked", "needs": {"tool": "Bash", "input": {
                     "command": "rm node_modules apps/web/node_modules; git add -A"}}}))
-            self.assertEqual(background.wanted("1d923fe2", {}, folder),
+            self.assertEqual(background.asked("1d923fe2", {}, folder)[0],
                              "rm node_modules apps/web/node_modules; git add -A")
 
     def test_the_listing_s_own_needs_come_first(self):
-        self.assertEqual(background.wanted("x", {"needs": "rm -rf build"}, "/nowhere"),
+        self.assertEqual(background.asked("x", {"needs": "rm -rf build"}, "/nowhere")[0],
                          "rm -rf build")
 
     def test_nothing_said_is_none(self):
-        self.assertIsNone(background.wanted("x", {}, "/nowhere"))
+        self.assertIsNone(background.asked("x", {}, "/nowhere")[0])
 
     def test_when_every_source_is_empty_the_gap_names_each(self):
         with tempfile.TemporaryDirectory() as folder:
