@@ -488,6 +488,10 @@
   outline: none;
 }
 
+.st-chair-hit.is-keys {
+  pointer-events: none;
+}
+
 .st-chair-hit:focus-visible {
   stroke: var(--colorAccent);
   stroke-width: 2;

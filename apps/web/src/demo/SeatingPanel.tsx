@@ -23,6 +23,7 @@ import {
   partyTitle,
   peopleIn,
   readCount,
+  readFeet,
   shownParties,
   readPlace,
   readRoom,
@@ -594,7 +595,16 @@ function RoomSettings() {
   if (room == null) return null;
 
   function resize(key: 'w' | 'l', text: string): string | null {
-    const read = readRoom(text, key === 'w' ? 'width' : 'length');
+    const which = key === 'w' ? 'width' : 'length';
+    const typed = text.trim();
+    const feet =
+      ui.units === 'us' && typed !== '' ? (readFeet(typed) ?? readFeet(`${typed} ft`)) : null;
+    const read =
+      ui.units !== 'us' || typed === ''
+        ? readRoom(text, which)
+        : feet == null
+          ? { refused: SW.roomRange }
+          : readRoom(String(feet / 100), which);
 
     if ('refused' in read) return read.refused;
     const next = { ...room!, [key]: read.cm };
@@ -638,15 +648,15 @@ function RoomSettings() {
         <Field
           fieldKey="roomWidth"
           label={SW.width}
-          unit="m"
-          value={String(room.w / 100)}
+          unit={ui.units === 'us' ? undefined : 'm'}
+          value={ui.units === 'us' ? lengthOf(room.w, 'us') : String(room.w / 100)}
           onCommit={(text) => resize('w', text)}
         />
         <Field
           fieldKey="roomLength"
           label={SW.length}
-          unit="m"
-          value={String(room.l / 100)}
+          unit={ui.units === 'us' ? undefined : 'm'}
+          value={ui.units === 'us' ? lengthOf(room.l, 'us') : String(room.l / 100)}
           onCommit={(text) => resize('l', text)}
         />
       </Two>

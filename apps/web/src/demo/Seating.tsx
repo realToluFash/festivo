@@ -1282,7 +1282,10 @@ function Seating({ first, event, tell }: { first: Ui; event: SampleEvent; tell: 
         ? (ui.chosen[0] ?? null)
         : null,
     chair: ui.chair,
-    chairsFor: detail === 'near' ? (ui.chosen[0] ?? ui.chair?.id ?? ui.pop?.table ?? '') : null,
+    chairsFor:
+      detail === 'out'
+        ? null
+        : (ui.chosen[0] ?? ui.chair?.id ?? ui.pop?.table ?? (detail === 'near' ? '' : null)),
   };
   const drawn = ui.ghost != null && ui.placing == null ? [...items, ui.ghost] : items;
   const placingGhost =

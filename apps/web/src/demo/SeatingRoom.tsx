@@ -340,7 +340,8 @@ function ItemDrawing({
           : String(index + 1)
         : undefined;
       const picked = look.chair?.id === item.id && look.chair.i === index;
-      const target = near && look.chairsFor != null;
+      // From 50% the keyboard reaches the chosen table's chairs; a pointer only once each is a 44 target (sc-5030).
+      const target = (near && look.chairsFor != null) || look.chairsFor === item.id;
 
       if (item.kind === 'single') {
         body.push(
@@ -372,7 +373,7 @@ function ItemDrawing({
           />
           {target && (
             <circle
-              className="st-chair-hit"
+              className={near ? 'st-chair-hit' : 'st-chair-hit is-keys'}
               role="button"
               tabIndex={look.chairsFor === item.id ? 0 : -1}
               aria-label={say(SW.chairName, {

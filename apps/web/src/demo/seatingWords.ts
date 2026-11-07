@@ -215,7 +215,6 @@ export const SW = {
   nobodyYet: 'Nobody yet',
   andMore: '{{names}} and {{n}} more',
   seatHere: 'Seat here',
-  openChairs: 'Open {{name}}’s seats',
   paperSize: 'Paper size',
   a4: 'A4',
   letter: 'Letter',

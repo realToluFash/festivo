@@ -34,8 +34,14 @@ function room(): HTMLElement {
   return screen.getByRole('group', { name: /^Floor plan, Main hall/u });
 }
 
+/** A table, row or seat on the room, not one of its chairs. */
 function item(name: RegExp): HTMLElement {
-  return within(room()).getByRole('button', { name });
+  const found = within(room())
+    .getAllByRole('button', { name })
+    .filter((one) => (one.getAttribute('aria-label') ?? '').includes('seats taken'));
+
+  expect(found).toHaveLength(1);
+  return found[0]!;
 }
 
 /** A press and a release in the same place: what a click on the room is. */
@@ -249,6 +255,16 @@ describe('Room settings and sections (sc-3998)', () => {
     );
     fireEvent.click(within(ask).getByRole('button', { name: 'Delete the plan' }));
     expect(await screen.findByText('No seating plan yet')).toBeDefined();
+  });
+
+  it('sizes everything in feet and inches for an organisation in the US', SLOW, async () => {
+    await seating('usCustomary');
+    expect(within(panel()).getByText('Table 4 would sit outside the room.')).toBeDefined();
+    expect(within(panel()).getByText('Type 12′ 4″, 12 ft 4 in, 12.5 ft or 148 in.')).toBeDefined();
+    expect(within(panel()).getByLabelText('Diameter')).toHaveProperty('value', '5 ft 11 in');
+    expect(screen.getByText('Main hall · 78 ft 9 in × 59 ft 1 in')).toBeDefined();
+    typeIn('Across', '52 ft 2 in');
+    expect(await within(panel()).findByDisplayValue('52 ft 2 in')).toBeDefined();
   });
 
   it('says a colleague’s change came first', SLOW, async () => {
