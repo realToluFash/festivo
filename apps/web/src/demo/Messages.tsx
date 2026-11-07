@@ -65,6 +65,8 @@ const TOLD_MS = 900;
 function firstFocus(state: MessagesState | null): string | null {
   switch (state) {
     case 'channelReply':
+    case 'noticeCost':
+    case 'noticeWaits':
     case 'matched':
       return 'answer';
     case 'notMatched':

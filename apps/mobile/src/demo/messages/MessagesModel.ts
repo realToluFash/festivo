@@ -10,9 +10,13 @@ import {
   EVENT_ENDS,
   FIXED_ADDRESS,
   FOLLOW_UP,
+  GUESTS,
   type GuestKey,
+  LOW_BALANCE,
   type ManyKey,
+  NOTICE_CREDITS,
   NOW,
+  OTHER_CHANNELS,
   PLACE,
   type PersonKey,
   READER,
@@ -40,6 +44,9 @@ export const MESSAGES_STATES = [
   'replyArrived',
   'answered',
   'channelReply',
+  'noticeCost',
+  'noticeWaits',
+  'noticeNotSent',
   'to',
   'write',
   'preview',
@@ -146,10 +153,15 @@ export interface TellChange {
   address?: boolean;
 }
 
+/** How Soirely's notice of an answer went: told, held for credits (sc-3932), or held 48 hours and not sent (sc-3950). */
+export type Notice = 'told' | 'held' | 'tooLate';
+
 export interface Answer {
   text: string;
   time: string;
   seen: string | null;
+  by: ChannelKey;
+  notice: Notice;
 }
 
 export interface Messages {
@@ -165,6 +177,9 @@ export interface Messages {
   doneAt: Partial<Record<GuestKey, string>>;
   answers: Partial<Record<GuestKey, Answer>>;
   typed: Partial<Record<GuestKey, string>>;
+  balance: number;
+  tellBy: Partial<Record<GuestKey, ChannelKey>>;
+  heldTooLong: boolean;
   matched: string | null;
   matching: boolean;
   when: boolean;
@@ -234,6 +249,9 @@ const BASE: Messages = {
   doneAt: {},
   answers: {},
   typed: {},
+  balance: BALANCE,
+  tellBy: {},
+  heldTooLong: false,
   matched: null,
   matching: false,
   when: false,
@@ -297,6 +315,7 @@ export function startOf(state: MessagesState | null, wide: boolean): Messages {
   if (scheduled != null) return scheduledStart(scheduled);
   const ines: Open = { kind: 'guest', key: 'ines' };
   const unknown: Open = { kind: 'guest', key: 'unknown' };
+  const lucia: Open = { kind: 'guest', key: 'lucia' };
   const parking: Open = { kind: 'reached', of: 'parking' };
 
   switch (state) {
@@ -319,7 +338,15 @@ export function startOf(state: MessagesState | null, wide: boolean): Messages {
         open: ines,
         done: ['ines'],
         doneAt: { ines: '09:20' },
-        answers: { ines: { text: ANSWERS.ines ?? '', time: '09:20', seen: '09:31' } },
+        answers: {
+          ines: {
+            text: ANSWERS.ines ?? '',
+            time: '09:20',
+            seen: '09:31',
+            by: 'email',
+            notice: 'told',
+          },
+        },
       };
     case 'channelReply':
       return {
@@ -327,6 +354,12 @@ export function startOf(state: MessagesState | null, wide: boolean): Messages {
         open: { kind: 'guest', key: 'kwame' },
         typed: { kwame: ANSWERS.kwame ?? '' },
       };
+    case 'noticeCost':
+      return { ...BASE, open: lucia, typed: { lucia: ANSWERS.lucia ?? '' } };
+    case 'noticeWaits':
+      return { ...BASE, open: lucia, typed: { lucia: ANSWERS.lucia ?? '' }, balance: LOW_BALANCE };
+    case 'noticeNotSent':
+      return { ...BASE, open: lucia, balance: LOW_BALANCE, heldTooLong: true };
     case 'reached':
       return { ...BASE, open: parking };
     case 'fix':
@@ -424,6 +457,7 @@ export type Action =
   | { type: 'matching'; open: boolean }
   | { type: 'match'; name: string }
   | { type: 'answer'; key: GuestKey; text: string }
+  | { type: 'tellBy'; key: GuestKey; channel: ChannelKey }
   | { type: 'markDone'; key: GuestKey }
   | { type: 'markWaiting'; key: GuestKey }
   | { type: 'telling'; open: boolean }
@@ -660,12 +694,28 @@ export function reduce(m: Messages, action: Action): Messages {
       return { ...m, matching: action.open };
     case 'match':
       return { ...m, matched: action.name, matching: false };
-    case 'answer':
+    case 'answer': {
+      const by = tellingBy(m, action.key);
+      const cost = noticeCostOf(m, action.key);
+
       return {
         ...m,
-        answers: { ...m.answers, [action.key]: { text: action.text, time: NOW, seen: null } },
+        answers: {
+          ...m.answers,
+          [action.key]: {
+            text: action.text,
+            time: NOW,
+            seen: null,
+            by,
+            notice: cost?.waits === true ? 'held' : 'told',
+          },
+        },
         typed: { ...m.typed, [action.key]: '' },
+        balance: cost == null || cost.waits ? m.balance : cost.after,
       };
+    }
+    case 'tellBy':
+      return { ...m, tellBy: { ...m.tellBy, [action.key]: action.channel } };
     case 'markDone':
       return {
         ...m,
@@ -914,4 +964,44 @@ export function laterRefused(at: Moment): boolean {
   const when = Date.parse(instantOf(at.date, at.time, READER_ZONE));
 
   return when < Date.parse(READER_NOW) + FIVE_MINUTES || when >= Date.parse(EVENT_ENDS.at);
+}
+
+export interface NoticeCost {
+  channel: 'sms' | 'wa';
+  credits: number;
+  after: number;
+  waits: boolean;
+}
+
+/** Before Send (sc-3976, sc-3931): what the notice costs and the credits after it; email costs nothing and shows nothing. */
+export function noticeCost(
+  channel: ChannelKey,
+  credits: number,
+  balance: number,
+): NoticeCost | null {
+  if (channel === 'email' || credits <= 0) return null;
+
+  return { channel, credits, after: balance - credits, waits: credits > balance };
+}
+
+/** The channel Soirely tells this guest by: their latest message's, unless the host picked another. */
+export function tellingBy(m: Messages, key: GuestKey): ChannelKey {
+  return m.tellBy[key] ?? GUESTS[key].channel;
+}
+
+export function noticeCostOf(m: Messages, key: GuestKey): NoticeCost | null {
+  const channel = tellingBy(m, key);
+
+  return noticeCost(channel, NOTICE_CREDITS[key]?.[channel] ?? 0, m.balance);
+}
+
+/** When the notice would wait: the guest's other channels that can tell them now, email first, a paid one only if covered. */
+export function tellNowBy(m: Messages, key: GuestKey): readonly ChannelKey[] {
+  const by = tellingBy(m, key);
+
+  return (OTHER_CHANNELS[key] ?? []).filter(
+    (channel) =>
+      channel !== by &&
+      noticeCost(channel, NOTICE_CREDITS[key]?.[channel] ?? 0, m.balance)?.waits !== true,
+  );
 }
