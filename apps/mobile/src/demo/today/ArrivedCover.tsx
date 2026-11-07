@@ -19,7 +19,7 @@ import type { Now } from '../../kit/today.ts';
 import { tokens } from '../../theme/tokens.ts';
 import type { ArrivedMoment, Figure } from './arrived.ts';
 
-function WhiteButton({ label, onPress }: { label: string; onPress: () => void }) {
+export function WhiteButton({ label, onPress }: { label: string; onPress: () => void }) {
   return (
     <Pressable
       onPress={onPress}
@@ -35,7 +35,7 @@ function WhiteButton({ label, onPress }: { label: string; onPress: () => void })
   );
 }
 
-function Chips({ now }: { now: Now }) {
+export function Chips({ now }: { now: Now }) {
   const { t } = useTranslation();
 
   return (
