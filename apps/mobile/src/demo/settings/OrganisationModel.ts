@@ -16,6 +16,7 @@ import { MEMBERS } from './sample.ts';
 export const ORGANISATION_STATES = [
   'edit',
   'contactError',
+  'currencyBlank',
   'currency',
   'language',
   'saved',
@@ -47,6 +48,8 @@ export interface OrganisationStart {
   screen: 'details' | 'addDomain' | 'transfer' | 'delete' | null;
   picking: Picked | null;
   contactWrong: boolean;
+  /** Its currency never chosen (sc-909), Save refused with "Choose a currency.". */
+  currencyBlank: boolean;
   ask: 'removeDomain' | 'replaceLink' | 'leave' | 'onlyOwner' | null;
   domainsLoading: boolean;
   link: 'on' | 'turnedOff' | 'failed';
@@ -61,6 +64,7 @@ const AT_REST: Omit<OrganisationStart, 'role'> = {
   screen: null,
   picking: null,
   contactWrong: false,
+  currencyBlank: false,
   ask: null,
   domainsLoading: false,
   link: 'on',
@@ -81,12 +85,14 @@ export function organisationStart(
   switch (state) {
     case 'edit':
     case 'contactError':
+    case 'currencyBlank':
     case 'currency':
     case 'language':
       return {
         ...page,
         screen: 'details',
         contactWrong: state === 'contactError',
+        currencyBlank: state === 'currencyBlank',
         picking: state === 'currency' ? 'currency' : state === 'language' ? 'locale' : null,
       };
     case 'saved':

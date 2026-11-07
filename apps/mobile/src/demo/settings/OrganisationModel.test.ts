@@ -43,6 +43,13 @@ describe('a state link', () => {
       contactWrong: true,
     });
     expect(organisationStart('currency', 'Owner').picking).toBe('currency');
+    expect(organisationStart('currencyBlank', 'Owner')).toMatchObject({
+      screen: 'details',
+      currencyBlank: true,
+      contactWrong: false,
+    });
+    expect(organisationStart('currencyBlank', 'Member').screen).toBeNull();
+    expect(detailProblem('currency', '')).toBe('Choose a currency.');
     expect(organisationStart('language', 'Owner').picking).toBe('locale');
     expect(organisationStart('addDomain', 'Owner').screen).toBe('addDomain');
     expect(organisationStart('removeDomain', 'Owner').ask).toBe('removeDomain');

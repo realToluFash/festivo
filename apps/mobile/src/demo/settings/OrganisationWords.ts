@@ -37,6 +37,7 @@ export const DETAILS_WORDS = {
   discard: 'Discard',
   nameBlank: "Enter the organisation's name.",
   currencyBlank: 'Choose a currency.',
+  currencyPlaceholder: 'Choose a currency',
   contactBlank: 'Enter a contact email address.',
   contactInvalid: 'That does not look like an email address. Check it has an @ and a domain.',
   currencyRetired: (code: string) => `${code} (no longer in use)`,

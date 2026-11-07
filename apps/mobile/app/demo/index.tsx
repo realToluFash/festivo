@@ -204,6 +204,11 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/settings/account?state=addPhone',
       },
       {
+        title: 'Your account · add a phone number · no country',
+        what: 'The Code starts blank: Choose a country.',
+        href: '/demo/settings/account?state=addPhoneNoCountry',
+      },
+      {
         title: 'Your account · time zone',
         what: 'San typed, the matches under it',
         href: '/demo/settings/account?state=zone',
@@ -423,6 +428,11 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         title: 'Organisation · cards loading',
         what: 'Domains loading, the link failed',
         href: '/demo/settings/organisation?state=cardsLoading',
+      },
+      {
+        title: 'Organisation · no currency',
+        what: 'Never chosen: Choose a currency.',
+        href: '/demo/settings/organisation?state=currencyBlank',
       },
       {
         title: 'Organisation · the only owner',
@@ -912,6 +922,16 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         title: 'Google, the first time',
         what: 'Two steps',
         href: '/demo/organisation?via=google',
+      },
+      {
+        title: 'Your organisation · no country',
+        what: 'The device names none: Choose a country.',
+        href: '/demo/organisation?region=none',
+      },
+      {
+        title: 'Your mobile number · no code',
+        what: 'The device names none: Choose a country.',
+        href: '/demo/mobile?region=none',
       },
       { title: 'Join link · signed out', what: 'The same choices as welcome', href: '/demo/join' },
       {
