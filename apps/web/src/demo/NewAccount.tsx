@@ -76,14 +76,19 @@ const OPENING: Record<string, { password: string; filled: boolean }> = {
   short: { password: 'nine char', filled: true },
   breached: { password: SAMPLE.breachedPassword, filled: true },
   limited: { password: SAMPLE.password, filled: true },
+  'timed-out': { password: '', filled: true },
+  'timed-out-new-tab': { password: '', filled: true },
 };
+
+const TIMED_OUT =
+  'Your sign-up timed out, so we did not keep the password. Enter it again to get a new code.';
 
 function CreateAccount({ state, flow }: { state: string; flow: Flow }) {
   const navigate = useNavigate();
   const opening = OPENING[state];
   const came = useLocation().state != null;
   const filled = opening == null ? came : opening.filled;
-  const [name, setName] = useState(filled ? flow.name : '');
+  const [name, setName] = useState(filled && state !== 'timed-out-new-tab' ? flow.name : '');
   const [email, setEmail] = useState(filled ? flow.email : '');
   const [password, setPassword] = useState(opening?.password ?? '');
   const [lines, setLines] = useState<AccountLines>(() =>
@@ -93,6 +98,7 @@ function CreateAccount({ state, flow }: { state: string; flow: Flow }) {
   const [liftsAt, setLiftsAt] = useState<number | null>(() =>
     state === 'limited' ? Date.now() + LOCK_MS : null,
   );
+  const [timedOut, setTimedOut] = useState(state.startsWith('timed-out'));
   const [revealed, setRevealed] = useState(false);
   const [busy, after] = useBusy();
   const nameField = useRef<HTMLInputElement>(null);
@@ -102,7 +108,9 @@ function CreateAccount({ state, flow }: { state: string; flow: Flow }) {
 
   useEffect(() => {
     if (state === 'blank') nameField.current?.focus();
-    if (state === 'short' || state === 'breached') passwordField.current?.focus();
+    if (state === 'short' || state === 'breached' || state.startsWith('timed-out')) {
+      passwordField.current?.focus();
+    }
   }, [state]);
 
   useEffect(() => {
@@ -117,6 +125,7 @@ function CreateAccount({ state, flow }: { state: string; flow: Flow }) {
     event.preventDefault();
     if (busy || locked) return;
 
+    setTimedOut(false);
     const found = accountLines(name, email, password);
     setLines(found);
     setBreached(false);
@@ -156,6 +165,8 @@ function CreateAccount({ state, flow }: { state: string; flow: Flow }) {
       <Heading title="Create your account">
         {breached ? (
           <Notice title="Creating your account did not work" alert />
+        ) : timedOut ? (
+          <Notice title={TIMED_OUT} late />
         ) : (
           <p className="demo-muted">Next, we email you a code to check the address is yours.</p>
         )}
@@ -245,7 +256,7 @@ function CreateAccount({ state, flow }: { state: string; flow: Flow }) {
       <Providers
         busy={busy}
         onChoose={(provider) =>
-          after(() => void navigate('/demo/signed-in', { state: { provider } }))
+          after(() => void navigate(way('details', provider === 'Apple' ? 'apple' : 'google')))
         }
       />
     </BoardPage>
@@ -256,6 +267,10 @@ function EmailCode({ state, flow }: { state: string; flow: Flow }) {
   const navigate = useNavigate();
   const [verified, setVerified] = useState(state === 'verified');
   const again = { to: at('register'), state: { name: flow.name, email: flow.email } };
+  const runOut =
+    state === 'run-out'
+      ? () => void navigate(at('register', 'timed-out'), { state: again.state })
+      : undefined;
 
   if (verified) {
     return (
@@ -286,6 +301,7 @@ function EmailCode({ state, flow }: { state: string; flow: Flow }) {
         wrong="That code does not match. Check the newest email from Soirely and try again."
         expired="Codes only work for a while. Send a new one and use the code in the newest email."
         onVerified={() => setVerified(true)}
+        onRunOut={runOut}
       />
       <p className="demo-aside">
         <span>Not your address?</span>
@@ -311,7 +327,7 @@ function PhoneCode({ state, flow }: { state: string; flow: Flow }) {
           title="Number verified"
           body={`Soirely can reach you on ${flow.phone} if something goes wrong on the day.`}
           action="Continue to Soirely"
-          onContinue={() => void navigate('/demo/signed-in')}
+          onContinue={() => void navigate('/demo/today')}
         />
       </BoardPage>
     );
@@ -358,7 +374,7 @@ function PhoneCode({ state, flow }: { state: string; flow: Flow }) {
         </p>
         <p className="demo-aside">
           <span>Can’t get texts on this number?</span>
-          <Link className="link-button demo-link" to="/demo/signed-in">
+          <Link className="link-button demo-link" to="/demo/today">
             Carry on without it
           </Link>
         </p>
@@ -527,7 +543,7 @@ export function Details({
 
     after(() => {
       if (number.trim() === '') {
-        void navigate('/demo/signed-in');
+        void navigate('/demo/today');
         return;
       }
 
@@ -729,7 +745,9 @@ function WaitingInvitation({
       </div>
       <div className="demo-invitation">
         <Organisation
-          line={`Invitation from ${SAMPLE.inviter} · ${SAMPLE.role} · works until ${SAMPLE.invitedUntil}`}
+          invited
+          line={`Invitation from ${SAMPLE.inviter} · ${SAMPLE.role}`}
+          until={`Works until ${SAMPLE.invitedUntil}`}
         />
         <Answers pressed={pressed} held={held} onAnswer={onAnswer} sized />
       </div>

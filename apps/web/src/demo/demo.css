@@ -132,7 +132,9 @@
   flex: 1;
   align-items: flex-start;
   justify-content: center;
-  padding: 88px var(--spaceXl) 0;
+
+  /* The column's own 24 under its last part, so a page that scrolls never ends flush on the footer (sc-29561). */
+  padding: 88px var(--spaceXl) var(--space3xl);
 }
 
 .demo-column {

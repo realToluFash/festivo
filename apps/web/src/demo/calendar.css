@@ -957,7 +957,8 @@
 }
 
 .cal-panel-head h2:focus,
-.cal-feed-head h2:focus {
+.cal-feed-head h2:focus,
+.cal-agenda-day .cal-date:focus {
   outline: none;
 }
 

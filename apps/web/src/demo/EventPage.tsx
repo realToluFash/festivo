@@ -1,8 +1,26 @@
+import { DemoBell } from './DemoBell.tsx';
 import { eventPhase, formatEventRange, hostsLine } from '@soirely/domain';
-import { type ComponentType, type ReactNode, useContext, useEffect, useRef, useState } from 'react';
-import { Link, Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router';
+import {
+  type ComponentType,
+  type ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
+import {
+  Link,
+  Navigate,
+  useBlocker,
+  useLocation,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from 'react-router';
 
 import {
+  type Area,
   type CardDoes,
   type EventStateName,
   type Manage,
@@ -41,10 +59,26 @@ import {
 import { Alert, EventCard, EventsShell, NotBuilt, Switch, Thumb } from './EventParts.tsx';
 import { CAL_WORDS } from './calendar.ts';
 import { EventSidebar } from './EventSidebar.tsx';
-import { Glyph, type GlyphName } from './Glyph.tsx';
-import { LayersContext } from './layers.ts';
-import { Ask, Bell, Chevron, Head, RowWords, TextAction } from './SettingsParts.tsx';
-import type { Tell } from './TodayParts.tsx';
+import { Glyph, type GlyphName } from '../components/Glyph.tsx';
+import { LayersContext } from '../layers.ts';
+import {
+  type Told,
+  NEW_PLACE,
+  ROSEWOOD,
+  SAMPLE_EVENT,
+  STARTS_LATER,
+  TELL,
+  keepInbox,
+  keptInbox,
+  messagesStateOf,
+  resetInbox,
+  toldOf,
+  waitingLine,
+} from './messages.ts';
+import { MessagesPage } from './Messages.tsx';
+import { TellDialog } from './MessagesTell.tsx';
+import { Ask, Chevron, Head, RowWords, TextAction } from '../components/SettingsParts.tsx';
+import type { Tell } from '../components/SettingsParts.tsx';
 import { useSwitcherStart } from './switcher.ts';
 
 const LOCALE = 'en-US';
@@ -84,32 +118,49 @@ function askingOf(state: EventStateName | null): Asking | null {
 }
 
 /** An event at a desk in A · Summary first (Events-A-Desk, page 29): its own sidebar, the card, Details and the rest in two columns, each part edited in place. */
-export function EventPage({ dates = false }: { dates?: boolean }) {
+export function EventPage({
+  dates = false,
+  messages = false,
+}: {
+  dates?: boolean;
+  messages?: boolean;
+}) {
   const { id } = useParams();
   const [params] = useSearchParams();
   const raw = params.get('state');
   useSwitcherStart();
 
-  return <EventAt key={`${id ?? ''}|${raw ?? ''}`} id={id} raw={raw} dates={dates} />;
+  return (
+    <EventAt
+      key={`${id ?? ''}|${raw ?? ''}|${messages}`}
+      id={id}
+      raw={raw}
+      dates={dates}
+      messages={messages}
+    />
+  );
 }
 
 function EventAt({
   id,
   raw,
   dates,
+  messages,
 }: {
   id: string | undefined;
   raw: string | null;
   dates: boolean;
+  messages: boolean;
 }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [arrival] = useState<Arrival>(() => (location.state as Arrival | null) ?? {});
   const [first] = useState(() => {
     if (raw != null) resetSample();
+    if (raw != null && messages) resetInbox();
 
     const event = sampleEvent(id);
-    const named = eventStateOf(raw);
+    const named = messages ? null : eventStateOf(raw);
     const state = event != null && named != null && stateFits(named, event) ? named : null;
 
     return { event: event != null && state === 'photo' ? { ...event, photo: true } : event, state };
@@ -123,7 +174,29 @@ function EventAt({
 
   if (first.event == null) return <Navigate to="/demo/events" replace />;
 
-  return <EventView initial={first.event} state={first.state} arrival={arrival} dates={dates} />;
+  const said = messages ? messagesStateOf(raw) : null;
+
+  const telling = said === 'tell' || said === 'tellPlace';
+
+  if (messages && first.event.id === SAMPLE_EVENT && !telling)
+    return <MessagesPage event={first.event} state={said} now={clockOf(null)} />;
+
+  return (
+    <EventView
+      initial={
+        said === 'tell'
+          ? { ...first.event, startsAt: TELL.movedTo }
+          : said === 'tellPlace'
+            ? { ...first.event, venue: ROSEWOOD }
+            : first.event
+      }
+      state={first.state}
+      arrival={arrival}
+      dates={dates}
+      fixedArea={messages && !telling ? 'messages' : null}
+      telling={said === 'tell' ? [STARTS_LATER] : said === 'tellPlace' ? [NEW_PLACE] : null}
+    />
+  );
 }
 
 function EventView({
@@ -131,16 +204,21 @@ function EventView({
   state,
   arrival,
   dates,
+  fixedArea = null,
+  telling: tellingFirst = null,
 }: {
   initial: SampleEvent;
   state: EventStateName | null;
   arrival: Arrival;
   dates: boolean;
+  fixedArea?: Area | null;
+  telling?: readonly Told[] | null;
 }) {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const now = clockOf(state);
-  const area = areaOf(params.get('area'));
+  const area = fixedArea ?? areaOf(params.get('area'));
+  const [telling, setTelling] = useState<readonly Told[] | null>(tellingFirst);
   const [event, setEvent] = useState(initial);
   const [part, setPart] = useState<Part | null>(partOf(state) ?? arrival.open ?? null);
   const [dirty, setDirty] = useState(false);
@@ -149,8 +227,11 @@ function EventView({
   const [muted, setMuted] = useState(state === 'muted');
   const [muteLoaded, setMuteLoaded] = useState(state !== 'muteNotLoaded');
   const [muteFailed, setMuteFailed] = useState(state === 'muteNotSaved');
+  const away = useLeaveAsk(dirty);
 
   if (area === 'people') return <Navigate to="/demo/people" replace />;
+  if (area === 'messages' && fixedArea == null)
+    return <Navigate to={`/demo/events/${initial.id}/messages`} replace />;
 
   function kept(next: SampleEvent): void {
     keepChange(next);
@@ -171,7 +252,14 @@ function EventView({
     <EventsShell
       told={arrival.told ?? null}
       renderSide={(tell, covered) => (
-        <EventSidebar event={event} area={area} now={now} tell={tell} inert={covered} />
+        <EventSidebar
+          event={event}
+          area={area}
+          now={now}
+          tell={tell}
+          inert={covered}
+          waiting={event.id === SAMPLE_EVENT ? waitingLine(keptInbox()) : null}
+        />
       )}
     >
       {(tell) => (
@@ -189,7 +277,7 @@ function EventView({
                   </li>
                 </ol>
               </nav>
-              <Bell tell={tell} />
+              <DemoBell tell={tell} />
             </div>
             {dates ? (
               <AreaPage event={event} name={CAL_WORDS.allDates} line={CAL_WORDS.allDatesComing} />
@@ -223,10 +311,16 @@ function EventView({
                         setDirty(false);
                       }}
                       onSave={(next) => {
+                        const changes =
+                          event.id === SAMPLE_EVENT && event.status === 'live'
+                            ? toldOf(event, next)
+                            : [];
+
                         kept(next);
                         setPart(null);
                         setDirty(false);
-                        tell(W.saved);
+                        if (changes.length > 0) setTelling(changes);
+                        else tell(W.saved);
                       }}
                       onLatest={kept}
                     />
@@ -276,6 +370,20 @@ function EventView({
               }}
             />
           )}
+          {away.blocked && (
+            <Ask
+              title={W.discardTitle}
+              line={W.discardLine}
+              keep={W.keepEditing}
+              go={W.discard}
+              onKeep={away.stay}
+              onGo={() => {
+                setPart(null);
+                setDirty(false);
+                away.go();
+              }}
+            />
+          )}
           <Asks
             asking={asking}
             event={event}
@@ -288,15 +396,67 @@ function EventView({
               if (words != null) tell(words);
             }}
             onDeleted={() => {
+              away.release();
               forget(event.id);
               void navigate('/demo/events', { state: { told: W.deleted(event.name) } });
             }}
-            onCreated={tell}
+            onCreated={(words) => {
+              away.release();
+              tell(words);
+            }}
           />
+          {telling != null && (
+            <TellDialog
+              tell={tell}
+              changes={telling}
+              onNotNow={() => {
+                const was = keptInbox();
+
+                setTelling(null);
+                keepInbox({
+                  ...was,
+                  untold: [
+                    ...was.untold.filter((one) => !telling.some((now) => now.item === one.item)),
+                    ...telling,
+                  ],
+                });
+              }}
+              onSent={() => setTelling(null)}
+            />
+          )}
         </div>
       )}
     </EventsShell>
   );
+}
+
+/** While a part has a change, every way off the page asks first, as main's `useLeaveGuard` does: the router's own ways in the demo's dialog, reload and the address bar in the browser's. */
+function useLeaveAsk(dirty: boolean): {
+  blocked: boolean;
+  stay: () => void;
+  go: () => void;
+  release: () => void;
+} {
+  const released = useRef(false);
+  const blocker = useBlocker(useCallback(() => dirty && !released.current, [dirty]));
+
+  useEffect(() => {
+    if (!dirty) return;
+
+    const ask = (event: BeforeUnloadEvent): void => event.preventDefault();
+    window.addEventListener('beforeunload', ask);
+
+    return () => window.removeEventListener('beforeunload', ask);
+  }, [dirty]);
+
+  return {
+    blocked: blocker.state === 'blocked',
+    stay: () => blocker.reset?.(),
+    go: () => blocker.proceed?.(),
+    release: () => {
+      released.current = true;
+    },
+  };
 }
 
 function Asks({

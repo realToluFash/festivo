@@ -74,7 +74,7 @@ final readonly class EventsController
         $events = $this->eventRepository->findPageInOrganisation($organisation, $finished, $now, $page, $perPage, $scope->onlyFor);
 
         return new JsonResponse([
-            'events' => Vec\map(Vec\zip($events, $this->eventSerialiser->events($events)), fn (array $pair): array => [...$pair[1], 'milestones' => $this->milestoneSerialiser->milestones($pair[0], $scope->on($pair[0]->getId()) ?? Grants::only([]))]),
+            'events' => Vec\map(Vec\zip($events, $this->eventSerialiser->events($events, $scope)), fn (array $pair): array => [...$pair[1], 'milestones' => $this->milestoneSerialiser->milestones($pair[0], $scope->on($pair[0]->getId()) ?? Grants::only([]))]),
             'total' => $this->eventRepository->countPhaseInOrganisation($organisation, $finished, $now, $scope->onlyFor),
             'page' => $page,
             'itemsPerPage' => $perPage,
@@ -108,7 +108,7 @@ final readonly class EventsController
             'hosts' => $body['hosts'] ?? [],
         ]);
 
-        return new JsonResponse(['event' => $this->eventSerialiser->event($event)], Response::HTTP_CREATED);
+        return new JsonResponse(['event' => $this->eventSerialiser->event($event, $this->grantsOn($event))], Response::HTTP_CREATED);
     }
 
     #[Route('/api/events/{eventId}', name: 'events_show', methods: ['GET'])]
@@ -149,7 +149,7 @@ final readonly class EventsController
 
         $copy = $this->eventDuplicator->duplicate($this->event($eventId), $this->user(), $body['startsAt'] ?? null);
 
-        return new JsonResponse(['event' => $this->eventSerialiser->event($copy)], Response::HTTP_CREATED);
+        return new JsonResponse(['event' => $this->eventSerialiser->event($copy, $this->grantsOn($copy))], Response::HTTP_CREATED);
     }
 
     /** Refused 409 `event_state_invalid` unless it is a Draft, 409 `event_concluded` once its end has passed, 409 `event_host_required` with no host (sc-6713), and 403 `plan_limit` (sc-3584). */
@@ -200,7 +200,12 @@ final readonly class EventsController
 
     private function tagged(Event $event): JsonResponse
     {
-        return new JsonResponse(['event' => $this->eventSerialiser->event($event)], Response::HTTP_OK, ['ETag' => EntityTag::of($event->getVersion())]);
+        return new JsonResponse(['event' => $this->eventSerialiser->event($event, $this->grantsOn($event))], Response::HTTP_OK, ['ETag' => EntityTag::of($event->getVersion())]);
+    }
+
+    private function grantsOn(Event $event): Grants
+    {
+        return $this->membershipDirectory->grantsOnEvent($this->user(), $event->getOrganisation()->getId(), $event->getId()) ?? Grants::only([]);
     }
 
     private function event(string $id): Event

@@ -466,7 +466,7 @@ describe('where focus goes on No organisation (sc-11369)', () => {
     id: 'inv_1',
     organisation: { id: 'org_7', name: 'Adunni Weddings' },
     email: 'chidi@ire.events',
-    role: { id: 'role_3', seededAs: 'event_manager', name: null },
+    role: { id: 'role_3', seededAs: 'administrator', name: null },
     invitedBy: { name: 'Bisi Adeyemi' },
     expiresAt: '2026-10-23T09:00:00+00:00',
     refusal: null,
@@ -476,7 +476,7 @@ describe('where focus goes on No organisation (sc-11369)', () => {
   const ADUNNI = membership({
     id: 'org_7',
     name: 'Adunni Weddings',
-    role: { id: 'role_3', seededAs: 'event_manager', name: null },
+    role: { id: 'role_3', seededAs: 'administrator', name: null },
   });
 
   function nowWorkingIn(name: string): HTMLElement | null {
@@ -531,7 +531,7 @@ describe('where focus goes on No organisation (sc-11369)', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'Accept and join Adunni Weddings' }));
 
-    const line = await screen.findByText('You joined Adunni Weddings as Event manager.');
+    const line = await screen.findByText('You joined Adunni Weddings as Admin.');
     const said = line.closest('.invitation-row-said');
     await waitFor(() => expect(document.activeElement).toBe(said));
     expect(said?.nextElementSibling?.textContent).toBe('Open Adunni Weddings');

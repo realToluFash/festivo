@@ -37,10 +37,12 @@ export const DETAILS_WORDS = {
   discard: 'Discard',
   nameBlank: "Enter the organisation's name.",
   currencyBlank: 'Choose a currency.',
+  currencyPlaceholder: 'Choose a currency',
   contactBlank: 'Enter a contact email address.',
   contactInvalid: 'That does not look like an email address. Check it has an @ and a domain.',
   currencyRetired: (code: string) => `${code} (no longer in use)`,
-  readOnly: (role: string) => `Your role, ${role}, can see these but not change them. Owners can.`,
+  readOnly: (role: string) =>
+    `Your role, ${role}, can see these but not change them. Owners and admins can.`,
 } as const;
 
 export const LANGUAGE_NAMES: Record<string, string> = {

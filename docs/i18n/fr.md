@@ -46,6 +46,7 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 | Try again (button)        | Réessayer                              | Settled 1 Nov, sc-26974          |
 | Owner / Admin / Member    | Propriétaire / Administrateur / Membre | Settled 5 Nov, sc-29914          |
 
+- **7 nov. 2026. Les Personnes d’un événement, et « Admin » partout** (`web:eventPeople.*`, `eventNav.people`, `membersScreen.eventsFromPeople`, `ownerMakesOwner`, sc-30138 pour sc-29915). La page est « Personnes ». Les rôles sur l’événement sont « Responsable », « Peut modifier », « Peut consulter » et « Peut accueillir les invités » (« l’accueil des invités », comme `eventPause`). Les annonces disent « désormais » : « {{name}} est désormais responsable de cet événement. », sans accord, « responsable » étant épicène. La ligne de celles et ceux qui voient déjà tout donne le rôle en étiquette après deux-points, « voit tous les événements grâce à son rôle dans {{organisation}} : Propriétaire et Administrateur » ; `managerRole.*` est donc le nom du rôle à toutes les formes, et rien ne s’accorde avec un genre. Un rôle cité dans une phrase d’erreur est entre guillemets, « reste « Peut consulter » ». "Owners and admins" est « les personnes ayant le rôle Propriétaire ou Administrateur », et dans un titre « les rôles Propriétaire et Administrateur » ; "an admin of" reste « une personne qui administre ». La personne retirée est « Cette personne … Elle », qui s’accorde avec le nom.
 - **7 nov. 2026. Ce que fait chaque rôle, dans Membres** (`web:membersScreen.roleMeans.*`, sc-30138). Les phrases n’ont pas de sujet, comme `owner`. Les événements d’un Membre sont « les événements qui lui sont confiés » : « lui » n’accorde avec personne, alors que « auxquels il est ajouté » imposerait un genre. Même tournure dans l’app.
 - **7 nov. 2026. Les autres façons d’entrer dans l’app** (`mobile:steps.invited*`, `join`,
   `startOwnInstead`, `mobile:requestToJoin.messageOptional`, `signedOutLine`, sc-30119). "You’re
@@ -68,6 +69,16 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 ## Decided phrasings
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
+
+- **7 nov. 2026. L’écran Aujourd’hui de l’app** (`mobile:todayScreen.*`, sc-31788 pour
+  sc-29090). "Live now" et "Live · …" sont « En cours », comme `eventsScreen.happeningNow`,
+  jamais « Publié », qui est l’état. L’agenda met une étiquette et deux-points,
+  « Début : {{name}} », « Fin : {{name}} », « Suite : {{name}} », pour que le nom de
+  l’événement se passe d’article. Le matin et l’après-midi disent « Bonjour », le soir
+  « Bonsoir » dès 18 h (`greetingAt`) ; « Bon après-midi » se dit en partant, pas en
+  arrivant. "Welcome" est « Bienvenue », invariable. "Next up" est « Prochain événement »,
+  car il nomme un événement ; le "Next" du bloc Maintenant est « Ensuite ». "Needs you" reprend
+  `eventPage.needsYou`, « À traiter ». Run of show reste « déroulé ».
 
 - **7 nov. 2026. « Le jour de l’événement », jamais « le soir »** (sc-29384). Un événement a lieu
   à toute heure : `verifyPhone.doneBody`, `steps.mobileIntro` et `completeProfile.mobileHelp`

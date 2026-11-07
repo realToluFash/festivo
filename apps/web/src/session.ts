@@ -95,6 +95,11 @@ export function can(session: Session, permission: string): boolean {
   return session.organisation != null && roleHolds(session.organisation, permission);
 }
 
+/** On one event, a Member holds what their role on it gives, not the organisation's: the event read says which (sc-29915). */
+export function canOn(event: { permissions: readonly string[] }, permission: string): boolean {
+  return event.permissions.includes(permission);
+}
+
 export async function restoreSession(): Promise<void> {
   if (state.status !== 'unknown') return;
 

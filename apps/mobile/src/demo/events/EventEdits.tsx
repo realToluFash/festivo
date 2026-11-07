@@ -20,9 +20,6 @@ import { tokens } from '../../theme/tokens.ts';
 import { EventMesh } from '../../components/EventMesh.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
 import { LineIcon } from '../settings/AccountCard.tsx';
-import { useShell } from '../settings/Frame.tsx';
-import { Pill } from '../settings/parts.tsx';
-import { type AskProps, FocusedScreen, Row, RowList, TextAction } from '../settings/Summary.tsx';
 import { PhotoFill } from './EventCard.tsx';
 import { EventNotice } from './EventNotice.tsx';
 import { type EditPart, type EventDemoState, folded, instantOf, wallOf } from './EventsModel.ts';
@@ -37,9 +34,18 @@ import {
   type Suggestion,
   TYPE_WORDS,
   ZONES,
-  meshFor,
 } from './EventsSample.ts';
+import { meshFor } from '../../kit/today.ts';
 import { W, say, t } from './EventsWords.ts';
+import { useShell } from '../../components/settingsShell.ts';
+import { Pill } from '../../components/SettingsParts.tsx';
+import {
+  type AskProps,
+  FocusedScreen,
+  Row,
+  RowList,
+  TextAction,
+} from '../../components/Summary.tsx';
 
 type Opener = RefObject<ScreenReaderTarget | null>;
 
@@ -214,18 +220,6 @@ export function EventField({
           </Text>
         )
       )}
-    </View>
-  );
-}
-
-/** sc-4330, under each part guests see: what saving tells them is not built yet. */
-function TellGuests() {
-  return (
-    <View style={styles.tell}>
-      <Text size={13.5} weight="semibold" style={[styles.secondary, styles.hint]}>
-        {W.tellGuests}
-      </Text>
-      <AcPill words={W.tellGuestsPill} />
     </View>
   );
 }
@@ -510,7 +504,6 @@ function DatesEdit(edit: EditProps) {
           testID="event.edit.dates.zone"
         />
       )}
-      <TellGuests />
     </EditShell>
   );
 }
@@ -658,7 +651,6 @@ function VenueEdit(edit: EditProps) {
           }
         />
       )}
-      {words == null && !offer && !down && <TellGuests />}
     </EditShell>
   );
 }
@@ -795,9 +787,6 @@ function HostsEdit(edit: EditProps) {
           testID="event.edit.hosts.add"
         />
       )}
-      {!kept && hosts.length < HOSTS_MAXIMUM && problems.every((problem) => problem == null) && (
-        <TellGuests />
-      )}
     </EditShell>
   );
 }
@@ -915,7 +904,6 @@ function NameEdit(edit: EditProps) {
           testID="event.edit.name.field"
         />
       </EventField>
-      <TellGuests />
     </EditShell>
   );
 }
@@ -1103,7 +1091,6 @@ const styles = StyleSheet.create({
   alertMarkSmall: { paddingTop: 1 },
   fieldHead: { flexDirection: 'row', flexWrap: 'wrap' },
   figures: { fontVariant: ['tabular-nums'] },
-  tell: { gap: tokens.spaceXs, alignItems: 'flex-start' },
   acPill: {
     minHeight: 26,
     justifyContent: 'center',

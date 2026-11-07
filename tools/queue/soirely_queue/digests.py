@@ -57,7 +57,8 @@ def untaken(db, role, stories):
 def developer(p, db, stories):
     epics = store.get_meta(db, "epics")
     # Done stories too, so a blocker that is Done is seen to have merged.
-    mine = untaken(db, p.role, W.queued(p.role, store.stories(db), epics))
+    mine = untaken(db, p.role, W.queued(p.role, store.stories(db), epics,
+                                           prs=store.prs(db)))
     order = {state: i for i, state in enumerate(R.BUILD_QUEUE)}
     # Rework longest-waiting first; the rest epic by epic, as `work.epic_order` ranks them.
     rework = ("Failed Code Review", "Failed QA")

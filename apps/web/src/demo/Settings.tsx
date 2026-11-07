@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 
 import { Toast } from '../components/Toast.tsx';
-import { Glyph, type GlyphName } from './Glyph.tsx';
+import { Glyph, type GlyphName } from '../components/Glyph.tsx';
 import {
   type Drawn,
   type Section,
@@ -16,7 +16,7 @@ import {
 } from './settings.ts';
 import { Account } from './Account.tsx';
 import { General } from './General.tsx';
-import { LayersContext } from './layers.ts';
+import { LayersContext } from '../layers.ts';
 import { Members } from './Members.tsx';
 import { Notifications } from './Notifications.tsx';
 import { AccessPaused } from './OrgSwitcher.tsx';
@@ -24,10 +24,11 @@ import { Personalisation } from './Personalisation.tsx';
 import { PersonalTile } from './SchemeArt.tsx';
 import { Security } from './Security.tsx';
 import { SignInRules } from './SignInRules.tsx';
-import type { Tell } from './TodayParts.tsx';
+import type { Tell } from '../components/SettingsParts.tsx';
 import { TodaySidebar } from './TodaySidebar.tsx';
 import { usePaused, useSwitcherStart } from './switcher.ts';
 import './today.css';
+import '../components/SettingsParts.css';
 import './settings.css';
 
 const TILES: Record<Exclude<Section, 'account' | 'general' | 'personalisation'>, GlyphName> = {

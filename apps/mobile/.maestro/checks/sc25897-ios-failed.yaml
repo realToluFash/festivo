@@ -1,5 +1,10 @@
 # sc-25897 iPhone, as today: API stopped, keys up on Organisation name, Create organisation tapped, then the same sent with the return key. After each answer the keys are down and the not-created notice is wholly on screen below the title.
 appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
 ---
 - runFlow: ../open-create-organisation.yaml
 - tapOn:

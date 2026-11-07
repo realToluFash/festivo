@@ -24,13 +24,11 @@ import {
   Pressable,
   ScrollView,
   type ScrollViewInstance,
-  type StyleProp,
   StyleSheet,
   type TextInputInstance,
   useWindowDimensions,
   View,
   type ViewInstance,
-  type ViewStyle,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -101,7 +99,8 @@ import {
   waitingOf,
   withoutPlaces,
 } from './OrgSwitcherModel.ts';
-import { Pill } from './settings/parts.tsx';
+import { Pill } from '../components/SettingsParts.tsx';
+import { type Switched, SwitchedProvider } from '../components/SwitchedNotice.tsx';
 
 const store = {
   session: sessionFor('populated'),
@@ -127,18 +126,10 @@ function useSession(): Session {
 
 export type OpenerRef = RefObject<ViewInstance | null>;
 
-interface Switched {
-  words: string;
-  /** Said after Create, which has moved to another screen: the notice takes focus. */
-  focus?: boolean;
-}
-
 interface Switcher {
   register: (opener: OpenerRef, primary: boolean) => () => void;
   show: (opener: OpenerRef) => void;
   openedBy: OpenerRef | null;
-  slot: () => () => void;
-  switched: Switched | null;
   startWalk: (opener: OpenerRef) => void;
   registerStart: (opener: OpenerRef) => () => void;
 }
@@ -343,13 +334,15 @@ export function OrgSwitcherProvider({
   }, [create, none]);
 
   const switcher = useMemo<Switcher>(
-    () => ({ register, show, openedBy, slot, switched, startWalk, registerStart }),
-    [register, show, openedBy, slot, switched, startWalk, registerStart],
+    () => ({ register, show, openedBy, startWalk, registerStart }),
+    [register, show, openedBy, startWalk, registerStart],
   );
 
   return (
     <SwitcherContext.Provider value={switcher}>
-      {children}
+      <SwitchedProvider slot={slot} switched={switched}>
+        {children}
+      </SwitchedProvider>
       {frame != null && (
         <DropDown
           key={visit}
@@ -417,27 +410,6 @@ export function useCurrentPlace(): Place | null {
 }
 
 /** "Now working in ‹name›." in the page, under its head; a page without one says it in its toast. */
-export function SwitchedNotice({ style }: { style?: StyleProp<ViewStyle> }) {
-  const { slot, switched } = useSwitcher();
-
-  useLayoutEffect(() => slot(), [slot]);
-
-  if (switched == null) return null;
-
-  return (
-    <View style={style}>
-      <Notice
-        tone="done"
-        mark={tokens.marks.done.glyph}
-        body={switched.words}
-        answer={switched}
-        takesFocus={switched.focus ?? false}
-        {...(switched.focus === true ? { readMs: SETTLED_MS * 2 } : {})}
-      />
-    </View>
-  );
-}
-
 interface Wash {
   cover: MeshKey;
   ink: string;
@@ -1000,18 +972,23 @@ function DropDown({
   );
 }
 
-function Search({
+/** The switcher's search field; Members' person menu takes it too, in its own words (sc-31310). */
+export function Search({
   start,
   typed,
   field,
   onTyped,
   onClear,
+  words = { search: SW.search, clear: SW.clearSearch },
+  testID = 'switcher.search',
 }: {
   start: string;
   typed: string;
   field: RefObject<TextInputInstance | null>;
   onTyped: (typed: string) => void;
   onClear: () => void;
+  words?: { search: string; clear: string };
+  testID?: string;
 }) {
   const [focused, setFocused] = useState(false);
 
@@ -1021,7 +998,7 @@ function Search({
       <TextField
         ref={field}
         defaultValue={start}
-        placeholder={SW.search}
+        placeholder={words.search}
         placeholderTextColor={tokens.colorInkSecondary}
         onChangeText={onTyped}
         onFocus={() => setFocused(true)}
@@ -1030,17 +1007,17 @@ function Search({
         autoCorrect={false}
         spellCheck={false}
         autoCapitalize="none"
-        accessibilityLabel={SW.search}
+        accessibilityLabel={words.search}
         style={styles.searchInput}
-        testID="switcher.search"
+        testID={testID}
       />
       {typed !== '' && (
         <Pressable
           onPress={onClear}
           style={styles.clear}
           accessibilityRole="button"
-          accessibilityLabel={SW.clearSearch}
-          testID="switcher.search.clear"
+          accessibilityLabel={words.clear}
+          testID={`${testID}.clear`}
         >
           <View style={styles.clearDot}>
             <Glyph name="x" size={11} ink={tokens.colorInkOnDark} weight={3} />

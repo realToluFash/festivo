@@ -20,7 +20,15 @@ import { CODE_FIGURES } from './AccountParts.tsx';
 import { authenticatorProblem } from './AccountSample.ts';
 import { codesLine, type Rules, setupSays, WORDS } from './SecurityModel.ts';
 import { AUTHENTICATOR_KEY, qrPath, RECOVERY_CODES } from './SecuritySample.ts';
-import { FocusedScreen, Line, OpenRow, Row, RowList, Section, TextAction } from './Summary.tsx';
+import {
+  FocusedScreen,
+  Line,
+  OpenRow,
+  Row,
+  RowList,
+  Section,
+  TextAction,
+} from '../../components/Summary.tsx';
 
 const QR_MODULES = 21;
 

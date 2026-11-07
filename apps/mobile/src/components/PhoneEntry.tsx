@@ -13,6 +13,7 @@ export function PhoneEntry({
   help,
   country,
   error,
+  errorOn = 'number',
   submitting,
   ref,
   pickerRef,
@@ -26,6 +27,8 @@ export function PhoneEntry({
   help: string;
   country: string;
   error: string | null | undefined;
+  /** The control the line names takes the red edge: "Choose a country." is about the code (sc-30447). */
+  errorOn?: 'country' | 'number';
   /** A submit runs: the picker is off and the number held. */
   submitting: boolean;
   ref?: Ref<TextInputInstance> | undefined;
@@ -47,6 +50,7 @@ export function PhoneEntry({
             onChange={onCountry}
             disabled={submitting}
             withCallingCode
+            wrong={error != null && errorOn === 'country'}
             pickerRef={pickerRef}
             testID={`${testID}.country`}
           />
@@ -54,7 +58,7 @@ export function PhoneEntry({
         <TextField
           ref={ref}
           style={styles.number}
-          wrong={error != null}
+          wrong={error != null && errorOn === 'number'}
           submitting={submitting}
           keyboardType="phone-pad"
           textContentType="telephoneNumber"

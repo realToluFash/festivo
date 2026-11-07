@@ -1,9 +1,10 @@
+import { DemoBell } from './DemoBell.tsx';
 import type { NotificationSetting } from '@soirely/api-client';
 import { formattingLocale, settingFlipped } from '@soirely/domain';
 import { useEffect, useEffectEvent, useId, useMemo, useRef, useState } from 'react';
 
 import { offButton } from '../offButton.ts';
-import { Glyph, type GlyphName } from './Glyph.tsx';
+import { Glyph, type GlyphName } from '../components/Glyph.tsx';
 import {
   ALLOW_WORDS as A,
   CATEGORY_NAMES,
@@ -37,8 +38,8 @@ import {
   Tag,
   TextAction,
   TitleRow,
-} from './SettingsParts.tsx';
-import type { Tell } from './TodayParts.tsx';
+} from '../components/SettingsParts.tsx';
+import type { Tell } from '../components/SettingsParts.tsx';
 import './account.css';
 import './notifications.css';
 
@@ -126,7 +127,7 @@ export function Notifications({ state, tell }: { state: string; tell: Tell }) {
   return (
     <div className="desk-page">
       <div ref={column} className="desk-column">
-        <TitleRow title={W.title} tell={tell} />
+        <TitleRow title={W.title} bell={<DemoBell tell={tell} />} />
         {load === 'loading' && <Loading />}
         {load === 'failed' && (
           <div className="desk-failed" role="alert">

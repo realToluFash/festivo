@@ -6,7 +6,8 @@ import { PrimaryButton } from '../../../src/components/Buttons.tsx';
 import { DemoScreen, NavBar, closeFlow } from '../../../src/demo/DemoScreen.tsx';
 import { InsideField } from '../../../src/steps/InsideField.tsx';
 import { Heading, Plain, Says } from '../../../src/steps/Lines.tsx';
-import { COUNTRIES, SelectRow } from '../../../src/demo/SelectRow.tsx';
+import { COUNTRIES } from '../../../src/demo/countries.ts';
+import { SelectRow } from '../../../src/demo/SelectRow.tsx';
 import { tokens } from '../../../src/theme/tokens.ts';
 
 /** A first Apple sign-in that didn't share the name: asked once, here, with the organisation. */

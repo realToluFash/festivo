@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useEffectEvent, useRef, useState } from 'react';
 
 import {
   approvalRoles,
   CLAIM_RECORD,
   DEADLINES,
   DOMAIN,
+  filled,
   firstName,
   grantable,
   inviteNote,
@@ -14,10 +15,17 @@ import {
   ORGANISATION,
   type Person,
   PROOF_LINE,
+  RECOVERY_CLOSE,
+  RECOVERY_SENDING,
+  RECOVERY_WORDS as RR,
+  type RecoveryAnswer,
+  type RecoveryPhase,
   roleMeans,
 } from './members.ts';
+import { SEND_MS } from './general.ts';
 import { ProofFields } from './MembersPerson.tsx';
-import type { SettingsSay, Viewer } from './settings.ts';
+import { HOLD_MS } from './notifications.ts';
+import { type SettingsSay, type Viewer, copyText } from './settings.ts';
 import {
   Ask,
   Avatar,
@@ -29,8 +37,8 @@ import {
   RedAction,
   RowWords,
   TextAction,
-} from './SettingsParts.tsx';
-import type { Tell } from './TodayParts.tsx';
+} from '../components/SettingsParts.tsx';
+import type { Tell } from '../components/SettingsParts.tsx';
 import { useProof } from './useProof.ts';
 
 const CHECK_MS = 1200;
@@ -273,11 +281,15 @@ export function ClaimDialog({
                 <TextAction
                   label={copied === part.label ? 'Copied' : 'Copy'}
                   before={copied === part.label ? 'tick' : 'copy'}
-                  onClick={() => {
-                    void navigator.clipboard?.writeText(part.value).catch(() => undefined);
-                    setCopied(part.label);
-                    tell(`${part.label} copied.`);
-                  }}
+                  onClick={() =>
+                    void copyText(part.value).then(
+                      () => {
+                        setCopied(part.label);
+                        tell(`${part.label} copied.`);
+                      },
+                      () => undefined,
+                    )
+                  }
                 />
               </li>
             ))}
@@ -309,5 +321,56 @@ export function ClaimDialog({
         />
       )}
     </>
+  );
+}
+
+/** One answer to a request to get back in, asked once; a link opened while it is sent holds it for the link to show. */
+export function RecoveryAsk({
+  name,
+  answer,
+  phase: opening,
+  ended,
+  onKeep,
+  onAnswer,
+  onGone,
+}: {
+  name: string;
+  answer: RecoveryAnswer;
+  phase: RecoveryPhase;
+  ended: boolean;
+  onKeep: () => void;
+  onAnswer: () => void;
+  onGone: () => void;
+}) {
+  const [phase, setPhase] = useState(opening);
+  const approve = answer === 'approve';
+  const title = filled(approve ? RR.approveTitle : RR.turnDownTitle, { name });
+  const arrive = useEffectEvent(() => (ended ? setPhase('closed') : onAnswer()));
+  const sending = phase === 'sending' || phase === 'held';
+
+  useEffect(() => {
+    if (phase !== 'sending' && phase !== 'held') return;
+    const timer = setTimeout(arrive, phase === 'held' ? HOLD_MS : SEND_MS);
+
+    return () => clearTimeout(timer);
+  }, [phase]);
+
+  return phase === 'closed' ? (
+    <Ask key="closed" title={title} line={RR.closed} keep={RECOVERY_CLOSE} onKeep={onGone} />
+  ) : (
+    <Ask
+      key="asking"
+      title={title}
+      line={approve ? RR.approveBody : RR.turnDownBody}
+      keep={approve ? RR.cancel : RR.keep}
+      go={approve ? RR.approveConfirm : RR.turnDownConfirm}
+      red={approve}
+      busy={sending ? RECOVERY_SENDING : undefined}
+      failed={phase === 'failed' ? RR.failed : undefined}
+      onKeep={onKeep}
+      onGo={() => {
+        if (!sending) setPhase('sending');
+      }}
+    />
   );
 }

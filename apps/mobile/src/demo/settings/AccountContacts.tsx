@@ -13,7 +13,7 @@ import {
   WORDS,
 } from './AccountModel.ts';
 import type { Contact } from './AccountSample.ts';
-import { Line, OpenRow, Row, RowList, Section, TextAction } from './Summary.tsx';
+import { Line, OpenRow, Row, RowList, Section, TextAction } from '../../components/Summary.tsx';
 
 const UNVERIFIED = { kind: 'notyet', word: 'Unverified' } as const;
 

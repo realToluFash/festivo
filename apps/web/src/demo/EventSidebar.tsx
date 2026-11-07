@@ -3,10 +3,10 @@ import { Link } from 'react-router';
 import { Brand } from '../components/Brand.tsx';
 import { AREAS, type Area, type Card, type SampleEvent, cardOf } from './events.ts';
 import { Thumb } from './EventParts.tsx';
-import { Glyph, type GlyphName } from './Glyph.tsx';
+import { Glyph, type GlyphName } from '../components/Glyph.tsx';
 import { OrgSwitcher } from './OrgSwitcher.tsx';
 import { SAMPLE } from './rules.ts';
-import type { Tell } from './TodayParts.tsx';
+import type { Tell } from '../components/SettingsParts.tsx';
 
 const GLYPHS: Record<Area, GlyphName> = {
   overview: 'overview',
@@ -32,12 +32,14 @@ export function EventSidebar({
   now,
   tell,
   inert,
+  waiting = null,
 }: {
   event: SampleEvent;
   area: Area;
   now: Date;
   tell: Tell;
   inert: boolean;
+  waiting?: { line: string; name: string } | null;
 }) {
   return (
     <nav className="today-side ev-side" aria-label={event.name} inert={inert}>
@@ -72,18 +74,34 @@ export function EventSidebar({
         {AREAS.map((one) => (
           <li key={one.area}>
             <Link
-              className={one.area === area ? 'today-place is-on' : 'today-place'}
+              className={[
+                'today-place',
+                one.area === area && 'is-on',
+                one.area === 'messages' && waiting != null && 'has-line',
+              ]
+                .filter(Boolean)
+                .join(' ')}
               to={
                 one.area === 'people'
                   ? '/demo/people'
                   : one.area === 'overview'
                     ? `/demo/events/${event.id}`
-                    : `/demo/events/${event.id}?area=${one.area}`
+                    : one.area === 'messages'
+                      ? `/demo/events/${event.id}/messages`
+                      : `/demo/events/${event.id}?area=${one.area}`
               }
               aria-current={one.area === area ? 'page' : undefined}
+              aria-label={one.area === 'messages' && waiting != null ? waiting.name : undefined}
             >
               <Glyph name={GLYPHS[one.area]} />
-              {one.name}
+              {one.area === 'messages' && waiting != null ? (
+                <span className="ev-side-two">
+                  <span>{one.name}</span>
+                  <span className="ev-side-sub">{waiting.line}</span>
+                </span>
+              ) : (
+                one.name
+              )}
             </Link>
           </li>
         ))}
