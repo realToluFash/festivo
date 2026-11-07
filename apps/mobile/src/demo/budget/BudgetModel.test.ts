@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { SAMPLE_GUESTS } from '../events/GuestCounts.ts';
 import { TO_FIGURES } from '../messages/MessagesSample.ts';
 import { BUDGET_BOARDS } from './BudgetBoards.ts';
 import {
@@ -50,12 +51,13 @@ import { W, say } from './BudgetWords.ts';
 const READER = 'Folake Adeyemi';
 
 describe('the sample is the wedding Guests A and Messaging B count', () => {
-  it('has 142 invited and 96 coming, as Messages’ To says', () => {
+  it('has 142 invited and 96 coming, as Messages’ To and Events’ counts say', () => {
     const invited = GUESTS.coming + GUESTS.notComing + STILL_TO_ANSWER;
 
     expect(invited).toBe(GUESTS.invited);
     expect(GUESTS.invited).toBe(TO_FIGURES.all.count);
     expect(GUESTS.coming).toBe(TO_FIGURES.coming.count);
+    expect(SAMPLE_GUESTS['evt-wed-4']).toMatchObject({ invited: 142, coming: 96 });
   });
 
   it('has 37 still to answer, so 133 heads if all come', () => {
