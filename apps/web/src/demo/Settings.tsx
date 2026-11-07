@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 
 import { Toast } from '../components/Toast.tsx';
-import { Glyph, type GlyphName } from './Glyph.tsx';
+import { Glyph, type GlyphName } from '../components/Glyph.tsx';
 import {
   type Drawn,
   type Section,
@@ -16,19 +16,22 @@ import {
 } from './settings.ts';
 import { Account } from './Account.tsx';
 import { General } from './General.tsx';
-import { LayersContext } from './layers.ts';
+import { LayersContext } from '../layers.ts';
 import { Members } from './Members.tsx';
 import { Notifications } from './Notifications.tsx';
 import { AccessPaused } from './OrgSwitcher.tsx';
+import { Personalisation } from './Personalisation.tsx';
+import { PersonalTile } from './SchemeArt.tsx';
 import { Security } from './Security.tsx';
 import { SignInRules } from './SignInRules.tsx';
-import type { Tell } from './TodayParts.tsx';
+import type { Tell } from '../components/SettingsParts.tsx';
 import { TodaySidebar } from './TodaySidebar.tsx';
 import { usePaused, useSwitcherStart } from './switcher.ts';
 import './today.css';
+import '../components/SettingsParts.css';
 import './settings.css';
 
-const TILES: Record<Exclude<Section, 'account' | 'general'>, GlyphName> = {
+const TILES: Record<Exclude<Section, 'account' | 'general' | 'personalisation'>, GlyphName> = {
   security: 'shield',
   notifications: 'bell',
   members: 'users',
@@ -100,6 +103,8 @@ export function Settings({ open = 'members' }: { open?: Drawn }) {
                 />
               ) : open === 'notifications' ? (
                 <Notifications key={`${viewer.key}:${state}`} state={state} tell={tell} />
+              ) : open === 'personalisation' ? (
+                <Personalisation key={`${viewer.key}:${state}`} state={state} tell={tell} />
               ) : open === 'general' ? (
                 <General key={`${viewer.key}:${state}`} viewer={viewer} state={state} tell={tell} />
               ) : open === 'signInRules' ? (
@@ -174,6 +179,7 @@ function Tile({ section, viewer }: { section: Section; viewer: Viewer }) {
         {viewer.initials}
       </span>
     );
+  if (section === 'personalisation') return <PersonalTile />;
   if (section === 'general')
     return (
       <span className="desk-tile is-general" aria-hidden="true">

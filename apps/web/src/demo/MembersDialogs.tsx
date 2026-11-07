@@ -25,7 +25,7 @@ import {
 import { SEND_MS } from './general.ts';
 import { ProofFields } from './MembersPerson.tsx';
 import { HOLD_MS } from './notifications.ts';
-import type { SettingsSay, Viewer } from './settings.ts';
+import { type SettingsSay, type Viewer, copyText } from './settings.ts';
 import {
   Ask,
   Avatar,
@@ -37,8 +37,8 @@ import {
   RedAction,
   RowWords,
   TextAction,
-} from './SettingsParts.tsx';
-import type { Tell } from './TodayParts.tsx';
+} from '../components/SettingsParts.tsx';
+import type { Tell } from '../components/SettingsParts.tsx';
 import { useProof } from './useProof.ts';
 
 const CHECK_MS = 1200;
@@ -281,11 +281,15 @@ export function ClaimDialog({
                 <TextAction
                   label={copied === part.label ? 'Copied' : 'Copy'}
                   before={copied === part.label ? 'tick' : 'copy'}
-                  onClick={() => {
-                    void navigator.clipboard?.writeText(part.value).catch(() => undefined);
-                    setCopied(part.label);
-                    tell(`${part.label} copied.`);
-                  }}
+                  onClick={() =>
+                    void copyText(part.value).then(
+                      () => {
+                        setCopied(part.label);
+                        tell(`${part.label} copied.`);
+                      },
+                      () => undefined,
+                    )
+                  }
                 />
               </li>
             ))}

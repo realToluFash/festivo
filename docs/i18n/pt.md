@@ -43,6 +43,18 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **7 Nov 2026. O ecrã Hoje da app** (`mobile:todayScreen.*`, sc-31788 para sc-29090). "Live
+  now" e "Live · …" são "A decorrer", como `eventsScreen.happeningNow`, nunca "Publicado", que é
+  o estado. A agenda usa uma etiqueta e dois pontos, "Início: {{name}}", "Fim: {{name}}",
+  "Continua: {{name}}", para que o nome do evento dispense artigo. Uma hora vai depois de "·",
+  sem "às", que falha à 01:00: "Termina hoje · {{time}}". Um dia da semana ou uma data
+  ("terça, 3/11") vão sem preposição, "começa {{weekday}}", porque "na"/"no" dependem do dia.
+  "Welcome" é "Olá", que não concorda com o género de quem lê; "Bem-vindo" obrigaria a escolher
+  um. "Good evening" é "Boa noite" a partir das 18:00 (`greetingAt`). "Next up" é "Próximo
+  evento", porque nomeia um evento; o "Next" do bloco Agora é "A seguir". "Needs you" segue
+  `eventPage.needsYou`, "Precisa de si", e o seu vazio é "Nada pendente". Run of show continua
+  "programa", como `rolesScreen.area.run_of_show`, embora coincida com Schedule.
+
 - **7 Nov 2026. As Pessoas de um evento, e "Admin" em todo o lado** (`web:eventPeople.*`, `eventNav.people`, `membersScreen.eventsFromPeople`, `ownerMakesOwner`, sc-30138 para sc-29915). A página é "Pessoas". As funções no evento são "Responsável", "Pode editar", "Pode ver" e "Pode registar entradas" ("o registo de entradas", como `eventPause`). Os anúncios dizem "agora": "{{name}} é agora responsável por este evento.", e "responsável" não concorda com género. A linha de quem já vê tudo dá a função como etiqueta depois de dois pontos, "vê todos os eventos pela função que tem em {{organisation}}: Proprietário e Administrador", por isso `managerRole.*` é o nome da função em todas as formas e nada concorda com um género. Uma função citada numa frase de erro vai entre aspas: continua a ser "Pode ver". "Owners and admins" é "quem tem a função Proprietário ou Administrador", e num título "as funções Proprietário e Administrador"; "an admin of" continua a ser "alguém que administre". O marcador da própria linha, `eventPeople.you`, é "A sua conta", como `membersScreen.you`. Quem sai do evento é "Esta pessoa".
 - **7 Nov 2026. O que cada função faz, em Membros** (`web:membersScreen.roleMeans.*`, sc-30138). As frases não têm sujeito, como `owner`. Os eventos de um Membro são "os eventos que lhe são atribuídos": "lhe" não concorda com ninguém, ao passo que "a que é adicionado" imporia um género. A mesma forma serve para a app.
 - **7 Nov 2026. As outras formas de entrar na app** (`mobile:steps.invited*`, `join`,
@@ -676,3 +688,4 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   antes de "Criar uma conta"; "É novo…?" concorda com um género. "© {{year}} Soirely" fica igual
   ao inglês. O botão de idioma lê-se "Idioma: {{language}}".
 - **Cancelar um pedido para voltar a entrar** (sc-29979): "Cancelar o seu pedido?"; a saída é "Continuar à espera", nunca "Cancelar", e a confirmação reutiliza "Cancelar o pedido".
+- **O estado de um campo recusado, só para o leitor de ecrã** (`mobile:forms.invalid`, sc-31909): "Dados inválidos", depois do nome do campo ("Palavra-passe, Dados inválidos"). É o que o VoiceOver diz na web; não concorda com o género do nome, masculino ou feminino.

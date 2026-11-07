@@ -307,9 +307,7 @@ export function DraftRow({
                 submitting={confirming.pending}
                 style={styles.name}
                 accessibilityLabel={t('eventHosts.label', { position: 1 })}
-                accessibilityHint={[confirming.error, t('eventLive.hostExplainer')]
-                  .filter((line) => line != null)
-                  .join(' ')}
+                accessibilityHint={t('eventLive.hostExplainer')}
                 testID="events.makeLiveHost"
               />
             </Field>

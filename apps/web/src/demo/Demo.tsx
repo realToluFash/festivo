@@ -27,7 +27,10 @@ import { GuestPage } from './Guest.tsx';
 import { GUEST_PAGES } from './guest.ts';
 import { NewAccountBoard } from './NewAccount.tsx';
 import { NOTIFICATIONS_PAGES } from './notifications.ts';
+import { leave } from './chosenScheme.ts';
+import { PERSONALISATION_PAGES } from './personalisation.ts';
 import { SECURITY_PAGES } from './security.ts';
+import { Notice } from './parts.tsx';
 import { People } from './People.tsx';
 import { PEOPLE_PAGES } from './people.ts';
 import { Settings } from './Settings.tsx';
@@ -56,7 +59,7 @@ import './demo.css';
 
 const BUSY_MS = 900;
 
-type Notice = { title: string; body: string };
+type SignInNotice = { title: string; body: string };
 
 /** The states the board draws, each opened from the demo's home. */
 const TODAY_MOMENTS: { key: string; name: string }[] = [
@@ -68,12 +71,19 @@ const TODAY_MOMENTS: { key: string; name: string }[] = [
   { key: 'first', name: 'A first run' },
 ];
 
-const SIGN_IN_STATES: { key: string; name: string; notice?: Notice }[] = [
+/** `fillsEmail`: the sign-in knew whose it was, so Email arrives filled. */
+const SIGN_IN_STATES: { key: string; name: string; notice?: SignInNotice; fillsEmail?: true }[] = [
   { key: 'first-visit', name: 'Signed out, first visit' },
   {
     key: 'signed-out',
     name: 'You were signed out',
     notice: { title: 'You were signed out', body: 'Sign in again to carry on.' },
+  },
+  {
+    key: 'code-timed-out',
+    name: 'That sign-in timed out',
+    notice: { title: 'That sign-in timed out', body: 'Sign in again to carry on.' },
+    fillsEmail: true,
   },
   {
     key: 'rule',
@@ -82,6 +92,7 @@ const SIGN_IN_STATES: { key: string; name: string; notice?: Notice }[] = [
       title: 'Signed out by Ire Events’ rule',
       body: 'Ire Events signs people out after 30 days without use. Sign in again to carry on.',
     },
+    fillsEmail: true,
   },
   {
     key: 'google-failed',
@@ -107,12 +118,15 @@ const SIGN_IN_STATES: { key: string; name: string; notice?: Notice }[] = [
       title: 'Ire Events signs in with Google or Apple only',
       body: 'Password sign-in is off in Ire Events. Use Google or Apple instead.',
     },
+    fillsEmail: true,
   },
 ];
 
 export default function Demo() {
   const { state } = useLocation() as { state: { from?: string } | null };
   const [from] = useState(() => state?.from ?? '/sign-in');
+
+  useEffect(() => leave, []);
 
   return (
     <Routes>
@@ -135,6 +149,7 @@ export default function Demo() {
       <Route path="settings/account" element={<Settings open="account" />} />
       <Route path="settings/security" element={<Settings open="security" />} />
       <Route path="settings/notifications" element={<Settings open="notifications" />} />
+      <Route path="settings/personalisation" element={<Settings open="personalisation" />} />
       <Route path="settings/general" element={<Settings open="general" />} />
       <Route path="settings/sign-in-rules" element={<Settings open="signInRules" />} />
       <Route path="people" element={<People />} />
@@ -205,6 +220,8 @@ function DemoHome({ from }: { from: string }) {
         <BoardPages pages={SECURITY_PAGES} />
         <h3>Notification settings in B · Summary first · desktop</h3>
         <BoardPages pages={NOTIFICATIONS_PAGES} />
+        <h3>Personalisation in A · Swatches · desktop</h3>
+        <BoardPages pages={PERSONALISATION_PAGES} />
         <h3>General in B · Summary first · desktop</h3>
         <BoardPages pages={GENERAL_PAGES} />
         <h3>Sign-in rules in B · Where you stand · desktop</h3>
@@ -287,7 +304,7 @@ function SignInForm({ state }: { state: string }) {
   const arrival = (useLocation().state as Arrival | null) ?? {};
   const [twoFactor, setTwoFactor] = useState(false);
   const drawn = SIGN_IN_STATES.find((each) => each.key === state);
-  const [notice, setNotice] = useState<Notice | null>(drawn?.notice ?? null);
+  const [notice, setNotice] = useState<SignInNotice | null>(drawn?.notice ?? null);
   const [providerOnly, setProviderOnly] = useState(state === 'provider-only');
   const [liftsAt, setLiftsAt] = useState<number | null>(() =>
     state === 'locked' ? Date.now() + LOCK_MS : null,
@@ -300,7 +317,7 @@ function SignInForm({ state }: { state: string }) {
   const email = useRef<HTMLInputElement>(null);
   const password = useRef<HTMLInputElement>(null);
   const pending = useRef<number | undefined>(undefined);
-  const knownEmail = state === 'rule' || state === 'provider-only' ? SAMPLE.email : arrival.email;
+  const knownEmail = drawn?.fillsEmail ? SAMPLE.email : arrival.email;
   const locked = liftsAt != null;
 
   useEffect(() => () => window.clearTimeout(pending.current), []);
@@ -377,7 +394,7 @@ function SignInForm({ state }: { state: string }) {
   }
 
   const until = liftsAt == null ? null : timeOfDay(liftsAt);
-  const shown: Notice | null =
+  const shown: SignInNotice | null =
     until == null ? notice : { title: 'Too many tries', body: `Try again at ${until}.` };
 
   return (
@@ -397,13 +414,11 @@ function SignInForm({ state }: { state: string }) {
       <div className="demo-heading">
         <h1>Sign in</h1>
         {shown != null && (
-          <div
-            className="demo-notice"
-            role={locked || state.endsWith('failed') ? 'alert' : 'status'}
-          >
-            <p className="demo-notice-title">{shown.title}</p>
-            <p>{shown.body}</p>
-          </div>
+          <Notice
+            title={shown.title}
+            body={shown.body}
+            alert={locked || state.endsWith('failed')}
+          />
         )}
       </div>
 

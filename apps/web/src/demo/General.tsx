@@ -1,3 +1,4 @@
+import { DemoBell } from './DemoBell.tsx';
 import { formattingLocale, normaliseDomain } from '@soirely/domain';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
@@ -28,13 +29,18 @@ import {
   domainLine,
   domainsFoot,
   generalStart,
+  leaveAsk,
   ownershipSteps,
   requestLink,
 } from './general.ts';
 import { AddDomainDialog, DeleteDialog, DetailsDialog, TransferDialog } from './GeneralDialogs.tsx';
-import { Glyph } from './Glyph.tsx';
+import { Glyph } from '../components/Glyph.tsx';
+import { HandoverAsk } from './Handover.tsx';
+import { handStart, ledBy, offeredFor } from './handover.ts';
+import { focusWhenFree } from '../layers.ts';
+import { samplePeople } from './members.ts';
 import { heldStepPath } from './security.ts';
-import type { Viewer } from './settings.ts';
+import { type Viewer, copyText } from './settings.ts';
 import {
   Ask,
   Card,
@@ -46,9 +52,9 @@ import {
   Tag,
   TextAction,
   TitleRow,
-} from './SettingsParts.tsx';
-import type { Tell } from './TodayParts.tsx';
-import { useLater } from './useLater.ts';
+} from '../components/SettingsParts.tsx';
+import type { Tell } from '../components/SettingsParts.tsx';
+import { useLater } from '../useLater.ts';
 import './general.css';
 
 const DETAIL_ROWS: readonly Picked[] = ['countryCode', 'currency', 'timezone', 'locale'];
@@ -69,7 +75,7 @@ export function General({ viewer, state, tell }: { viewer: Viewer; state: string
   return (
     <div className="desk-page">
       <div className="desk-column">
-        <TitleRow title="General" tell={tell} />
+        <TitleRow title="General" bell={<DemoBell tell={tell} />} />
         <OrganisationCard
           words={words}
           onStep={() => {
@@ -97,6 +103,7 @@ export function General({ viewer, state, tell }: { viewer: Viewer; state: string
         {changes && <RequestLink start={start} tell={tell} />}
         <Ownership
           start={start}
+          viewer={viewer}
           role={role}
           locale={locale}
           onTransferred={(to) => {
@@ -322,7 +329,7 @@ function RequestLink({ start, tell }: { start: GeneralStart; tell: Tell }) {
               label={L.copy}
               before="copy"
               onClick={() =>
-                void Promise.resolve(navigator.clipboard?.writeText(link)).then(
+                void copyText(link).then(
                   () => tell(L.copied),
                   () => {},
                 )
@@ -396,11 +403,13 @@ const STEPS: Record<OwnershipStep, { label: string; note: string; red: boolean }
 
 function Ownership({
   start,
+  viewer,
   role,
   locale,
   onTransferred,
 }: {
   start: GeneralStart;
+  viewer: Viewer;
   role: GeneralStart['role'];
   locale: string;
   onTransferred: (name: string) => void;
@@ -414,10 +423,13 @@ function Ownership({
   const [ask, setAsk] = useState<'leave' | 'onlyOwner' | null>(
     start.ask === 'leave' || start.ask === 'onlyOwner' ? start.ask : null,
   );
+  const [hand, setHand] = useState(start.hand);
   const toToday = () => later(SEND_MS, () => void navigate('/demo/today'));
+  const events = ledBy({ [viewer.id]: start.leads }, viewer.id);
 
   function open(step: OwnershipStep): void {
     if (step === 'leave') {
+      setHand(handStart(null));
       setAsk(role === 'Owner' ? 'onlyOwner' : 'leave');
       return;
     }
@@ -454,7 +466,27 @@ function Ownership({
           }}
         />
       )}
-      {ask === 'leave' && (
+      {ask === 'leave' && events.length > 0 && (
+        <HandoverAsk
+          words={leaveAsk(events.length)}
+          nobody
+          events={events}
+          offered={offeredFor(samplePeople(), viewer.id)}
+          viewer={viewer.id}
+          start={hand}
+          onKeep={() => {
+            setAsk(null);
+            focusWhenFree(
+              () =>
+                [...document.querySelectorAll<HTMLElement>('.desk-main button')].find(
+                  (one) => one.textContent === O.leaveOpener,
+                ) ?? null,
+            );
+          }}
+          onDone={() => void navigate('/demo/today')}
+        />
+      )}
+      {ask === 'leave' && events.length === 0 && (
         <Ask
           title={O.leaveTitle}
           line={O.leaveBody}

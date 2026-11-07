@@ -22,6 +22,41 @@ export function codeWords(emailOnly: boolean) {
       };
 }
 
+export type CodeBox = 'email' | 'text';
+
+export const CODE_SHORT = 'The code is 6 digits.';
+
+/** Each box's words on Enter both codes, as the app has them (`lostTwoFactor.*`); the phone's follow WhatsApp until Text it to me instead. */
+export function boxWords(
+  box: CodeBox,
+  texted: boolean,
+  to: string,
+): { label: string; sent: string; blank: string; wrong: string } {
+  if (box === 'email') {
+    return {
+      label: 'Code from the email',
+      sent: `Sent to ${to}`,
+      blank: 'Enter the 6-digit code from the email.',
+      wrong: 'That code does not match. Check the newest email from Soirely and try again.',
+    };
+  }
+
+  return texted
+    ? {
+        label: 'Code from the text',
+        sent: `Texted to ${to}: the same code as on WhatsApp`,
+        blank: 'Enter the 6-digit code from the text.',
+        wrong: 'That code does not match. Check the newest text from Soirely and try again.',
+      }
+    : {
+        label: 'Code from WhatsApp',
+        sent: `Sent to your WhatsApp on ${to}`,
+        blank: 'Enter the 6-digit code from WhatsApp.',
+        wrong:
+          'That code does not match. Check the newest WhatsApp message from Soirely and try again.',
+      };
+}
+
 export function spentWords(spent: Spent, emailOnly: boolean): { title: string; body: string } {
   if (spent === 'exhausted') {
     return {

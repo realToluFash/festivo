@@ -2,16 +2,29 @@ import { SAMPLE } from './rules.ts';
 import type { EventKey } from './today.ts';
 
 export type Section =
-  'account' | 'security' | 'notifications' | 'general' | 'members' | 'signInRules';
+  | 'account'
+  | 'security'
+  | 'notifications'
+  | 'personalisation'
+  | 'general'
+  | 'members'
+  | 'signInRules';
 
 /** The sections the boards draw; the others each have their own design. */
 export type Drawn =
-  'account' | 'security' | 'notifications' | 'general' | 'members' | 'signInRules';
+  | 'account'
+  | 'security'
+  | 'notifications'
+  | 'personalisation'
+  | 'general'
+  | 'members'
+  | 'signInRules';
 
 const PATHS: Record<Drawn, string> = {
   account: 'account',
   security: 'security',
   notifications: 'notifications',
+  personalisation: 'personalisation',
   general: 'general',
   members: 'members',
   signInRules: 'sign-in-rules',
@@ -21,6 +34,7 @@ export const SECTION_NAMES: Record<Section, string> = {
   account: 'Account',
   security: 'Security',
   notifications: 'Notifications',
+  personalisation: 'Personalisation',
   general: 'General',
   members: 'Members',
   signInRules: 'Sign-in rules',
@@ -32,7 +46,7 @@ export interface SectionGroup {
 }
 
 const GROUPS: readonly SectionGroup[] = [
-  { name: 'Your account', sections: ['account', 'security', 'notifications'] },
+  { name: 'Your account', sections: ['account', 'security', 'notifications', 'personalisation'] },
   { name: 'Organisation settings', sections: ['general', 'members', 'signInRules'] },
 ];
 
@@ -96,6 +110,7 @@ export function isDrawn(section: Section): section is Drawn {
     section === 'account' ||
     section === 'security' ||
     section === 'notifications' ||
+    section === 'personalisation' ||
     section === 'general' ||
     section === 'members' ||
     section === 'signInRules'
@@ -216,11 +231,31 @@ export const SETTINGS_PAGES: readonly { name: string; states: readonly DemoLink[
       members('makeOwner', 'Make Ana an owner'),
       members('makeOwnerBlank', 'Make owner, nothing typed'),
       members('makeOwnerWrong', 'Make owner, a wrong code'),
-      members('marta', 'Marta Silva, suspended by the domain'),
+      members('marta', 'Marta Silva, suspended by the domain: Leads 2 events'),
       members('suspending', 'Suspending Priya'),
       members('justSuspended', 'Priya, just suspended'),
-      members('suspended', 'Priya, suspended by hand'),
+      members('suspended', 'Priya, suspended by hand: Leads 3 events'),
       members('restored', 'Priya, restored'),
+    ],
+  },
+  {
+    name: 'Handing over a departing member’s work',
+    states: [
+      members('handover', 'Remove Priya: her 3 events, starting on you'),
+      members('handoverMenu', 'The menu of people open'),
+      members('handoverPicked', 'Ana Souza picked'),
+      members('handoverLong', 'Julien leads 8: the first 5, then “and 3 more”'),
+      members('handoverSearch', '18 members: “jo” in the search'),
+      members('handoverSearchNobody', 'Nobody matches “kemi”'),
+      members('removingNoWork', 'Tom leads nothing: today’s confirm'),
+      members('handoverSending', 'Removing…'),
+      members('handoverFailed', 'Removing did not work'),
+      members('handoverDone', 'Removed, the card after'),
+      members('handoverNow', 'Hand over now, on Marta’s page'),
+      members('handoverNowSending', 'Handing over…'),
+      members('handoverNowFailed', 'Handing over did not work'),
+      members('handoverNowDone', 'Handed over, the list gone'),
+      members('handoverReadOnly', 'Julien reads Marta, an owner: no Hand over now', VIEWERS.julien),
     ],
   },
   {
@@ -243,4 +278,9 @@ export const SETTINGS_PAGES: readonly { name: string; states: readonly DemoLink[
 
 function members(state: string, name: string, viewer: Viewer = VIEWERS.folake): DemoLink {
   return { to: settingsPath('members', viewer, state), name };
+}
+
+/** Rejects where the browser has no clipboard, as over plain http, so nothing says it copied what it did not. */
+export async function copyText(text: string): Promise<void> {
+  await navigator.clipboard.writeText(text);
 }

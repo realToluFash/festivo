@@ -8,24 +8,31 @@ import {
   useState,
 } from 'react';
 import { createPortal } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 
-import { ActionPair } from '../components/ActionPair.tsx';
+import { ActionPair } from './ActionPair.tsx';
 import { offButton } from '../offButton.ts';
 import { Glyph } from './Glyph.tsx';
-import { LayersContext, useDeskDialog } from './layers.ts';
-import type { MarkKind } from './members.ts';
-import type { Tell } from './TodayParts.tsx';
+import { LayersContext, useDeskDialog } from '../layers.ts';
 
-export function Bell({ tell }: { tell: Tell }) {
+export type Tell = (words: string) => void;
+
+export type MarkKind = 'yes' | 'waiting' | 'paused' | 'ended';
+
+export function Bell({ unread, onOpen }: { unread: number; onOpen: () => void }) {
+  const { t } = useTranslation();
+
   return (
     <button
       type="button"
       className="desk-bell"
-      aria-label="Notifications, 3 unread"
-      onClick={() => tell('Notifications have their own design.')}
+      aria-label={
+        unread > 0 ? t('notifications.bellUnread', { count: unread }) : t('notifications.bell')
+      }
+      onClick={onOpen}
     >
       <Glyph name="bell" size={19} />
-      <span className="today-unread" aria-hidden="true" />
+      {unread > 0 && <span className="today-unread" aria-hidden="true" />}
     </button>
   );
 }
@@ -34,14 +41,12 @@ export function Bell({ tell }: { tell: Tell }) {
 export function TitleRow({
   title,
   action,
-  tell,
-  bell = true,
+  bell,
   compact = false,
 }: {
   title: string;
   action?: ReactNode;
-  tell: Tell;
-  bell?: boolean;
+  bell?: ReactNode;
   compact?: boolean;
 }) {
   return (
@@ -50,13 +55,21 @@ export function TitleRow({
         {title}
       </h1>
       {action}
-      {bell && <Bell tell={tell} />}
+      {bell}
     </header>
   );
 }
 
 /** ‹ Members or ‹ Roles, where a person or a role opened in the list's place. */
-export function BackRow({ to, onBack, tell }: { to: string; onBack: () => void; tell: Tell }) {
+export function BackRow({
+  to,
+  onBack,
+  bell,
+}: {
+  to: string;
+  onBack: () => void;
+  bell?: ReactNode;
+}) {
   return (
     <div className="desk-top">
       <button type="button" className="desk-back" onClick={onBack}>
@@ -64,7 +77,7 @@ export function BackRow({ to, onBack, tell }: { to: string; onBack: () => void; 
         {to}
       </button>
       <span className="today-grow" />
-      <Bell tell={tell} />
+      {bell}
     </div>
   );
 }
@@ -273,6 +286,7 @@ export function Field({
   action?: ReactNode;
 }) {
   const id = useId();
+  const { t } = useTranslation();
   const [shown, setShown] = useState(false);
   const told = [help == null ? null : `${id}-help`, error == null ? null : `${id}-error`]
     .filter(Boolean)
@@ -313,7 +327,7 @@ export function Field({
             aria-pressed={shown}
             onClick={() => setShown((now) => !now)}
           >
-            {shown ? 'Hide' : 'Show'}
+            {shown ? t('signIn.conceal') : t('signIn.reveal')}
           </button>
         )}
       </div>
@@ -354,6 +368,7 @@ export function Choices({
   onPick: (name: string) => void;
   foot?: string;
 }) {
+  const { t } = useTranslation();
   const name = useId();
 
   return (
@@ -365,7 +380,7 @@ export function Choices({
             <label className={choice.name === picked ? 'desk-row is-picked' : 'desk-row'}>
               <RowWords
                 title={choice.name}
-                tag={choice.now === true && <Tag kind="now" word="Now" />}
+                tag={choice.now === true && <Tag kind="now" word={t('settings.choiceNow')} />}
                 lines={choice.line == null ? [] : [choice.line]}
               />
               <input
@@ -409,7 +424,7 @@ interface DialogProps {
 function DialogBox({
   title,
   verb,
-  dismiss = 'Cancel',
+  dismiss,
   cancel = true,
   on = true,
   red = false,
@@ -419,6 +434,7 @@ function DialogBox({
   onConfirm,
   children,
 }: DialogProps) {
+  const { t } = useTranslation();
   const id = useId();
   const box = useRef<HTMLDivElement>(null);
   const none = useRef<HTMLElement>(null);
@@ -442,7 +458,7 @@ function DialogBox({
           dismiss={
             cancel ? (
               <button type="button" className="desk-nav-cancel" onClick={onDismiss}>
-                {dismiss}
+                {dismiss ?? t('settings.dialogCancel')}
               </button>
             ) : (
               <span className="desk-nav-cancel is-none" aria-hidden="true">
@@ -481,8 +497,12 @@ interface AskProps {
   red?: boolean;
   /** The verb's words while its answer is on its way: it turns and is off, and the way back and Escape wait. */
   busy?: string | undefined;
-  /** Why the answer did not go, under the line; the verb tries again. */
+  /** Why the answer did not go, under the line and any body; the verb tries again. */
   failed?: string | undefined;
+  /** Where the focus starts, when not on the way back. */
+  first?: RefObject<HTMLElement | null> | undefined;
+  /** More of the body under the line, which stays its description. */
+  children?: ReactNode;
   onKeep: () => void;
   onGo?: () => void;
 }
@@ -494,15 +514,19 @@ export function Ask(props: AskProps) {
   return host == null ? null : createPortal(<AskBox {...props} />, host);
 }
 
-function AskBox({ title, line, keep, go, red = true, busy, failed, onKeep, onGo }: AskProps) {
+function AskBox(props: AskProps) {
+  const { title, line, keep, go, red = true, busy, failed, first, children, onKeep, onGo } = props;
   const id = useId();
   const box = useRef<HTMLDivElement>(null);
   const keepButton = useRef<HTMLButtonElement>(null);
   const goButton = useRef<HTMLButtonElement>(null);
   const [onVerb] = useState(busy != null || failed != null);
   const waits = busy != null;
+  const said =
+    go == null ? <AskAlert id={`${id}-line`}>{line}</AskAlert> : <p id={`${id}-line`}>{line}</p>;
+  const alert = failed != null && <AskAlert>{failed}</AskAlert>;
 
-  useDeskDialog(box, onVerb ? goButton : keepButton, onKeep, waits);
+  useDeskDialog(box, first ?? (onVerb ? goButton : keepButton), onKeep, waits);
 
   return (
     <>
@@ -516,12 +540,18 @@ function AskBox({ title, line, keep, go, red = true, busy, failed, onKeep, onGo 
         aria-describedby={`${id}-line`}
       >
         <h2 id={`${id}-title`}>{title}</h2>
-        {go == null ? (
-          <AskAlert id={`${id}-line`}>{line}</AskAlert>
+        {children == null ? (
+          <>
+            {said}
+            {alert}
+          </>
         ) : (
-          <p id={`${id}-line`}>{line}</p>
+          <div className="desk-ask-body">
+            {said}
+            {children}
+            {alert}
+          </div>
         )}
-        {failed != null && <AskAlert>{failed}</AskAlert>}
         <ActionPair
           className="desk-ask-pair"
           dismiss={

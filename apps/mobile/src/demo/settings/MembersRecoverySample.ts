@@ -133,6 +133,11 @@ export function answerable(ids: readonly string[], viewer: string): string[] {
   return ids.filter((id) => id !== viewer);
 }
 
+/** Removing somebody ends their own request to get back in: it leaves the list at once (pm, Decided 7 Nov). */
+export function endedByRemoval(waiting: readonly string[], removed: string): string[] {
+  return waiting.filter((id) => id !== removed);
+}
+
 /** The card's line says how many of each kind wait, and goes when only one kind does. */
 export function waitingKinds(back: number, join: number): string | null {
   return back > 0 && join > 0

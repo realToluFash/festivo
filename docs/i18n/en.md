@@ -66,6 +66,16 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **7 Nov 2026. The app's Today screen** (`mobile:todayScreen.*`, sc-31788 for sc-29090). Kept
+  as sc-29090 wrote it. A lower-case key (`tomorrow`, `dayOf`, `inDays`) sits after a date or
+  inside a line; its capitalised twin (`tomorrowCapital`, `dayOfCapital`, `inDaysCapital`) opens
+  a card's chip, so the two are never merged. "Live now" and "Live · …" mean happening now, the
+  Events list's "Happening now", not the Live state, so es, fr and pt write them as
+  "Happening now" and never as published. The agenda's "{{name}} starts / ends / continues" may
+  become a label and a colon in other languages, which need no article before an event's name.
+  "Good evening" runs from 18:00 (`greetingAt`). "Next up" names the next event; the Now
+  block's "Next" is the next item on the run of show.
+
 - **7 Nov 2026. The app's other ways in** (`mobile:steps.invited*`, `invitationFor`, `join`,
   `startOwnInstead`, `mobile:requestToJoin.messageOptional`, `signedOutLine`, sc-30119 for
   sc-29070). Kept as sc-29070 wrote them, except `signedOutLine`, now "Sign in or create an
@@ -810,3 +820,6 @@ startedToday|calledOffOn|showMore|moreShown|moreFailed`, `eventsScreen.*` the sa
   `confirmBody` keeps "you'll": it explains, it does not refuse. The feed's status words are the
   Events list's (Draft, Live, Paused, Finished) plus "Called off" and "Deleted", each a word
   about the event.
+- **A refused control's screen-reader word** (`mobile:forms.invalid`, sc-31909): "Invalid", heard
+  after the control's name ("Email, Invalid") and before its refusal line as the hint. One word,
+  capitalised as a state the platform announces; never seen, so it has no layout to fit.

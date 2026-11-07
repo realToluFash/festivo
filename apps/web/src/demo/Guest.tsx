@@ -3,7 +3,7 @@ import { Link, useLocation, useSearchParams } from 'react-router';
 
 import lockupUrl from '../brand/lockup.svg';
 import { useMatches } from '../phoneWidth.ts';
-import { Glyph } from './Glyph.tsx';
+import { Glyph } from '../components/Glyph.tsx';
 import {
   type Answer,
   COMPANIONS,
@@ -50,7 +50,7 @@ import {
   Unreachable,
   Waiting,
 } from './GuestParts.tsx';
-import { useLater } from './useLater.ts';
+import { useLater } from '../useLater.ts';
 import './today.css';
 import './settings.css';
 import './events.css';

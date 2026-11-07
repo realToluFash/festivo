@@ -125,6 +125,109 @@ describe('Events in A at a desk (sc-30304)', () => {
     expect(screen.queryByRole('group', { name: 'Event name' })).toBeNull();
   });
 
+  it('asks before a sidebar area drops a change, and goes there on Discard', SLOW, async () => {
+    const router = await page('/demo/events/evt-wed-4?state=name');
+    const part = screen.getByRole('group', { name: 'Event name' });
+    const areas = screen.getByRole('navigation', { name: WEDDING });
+
+    fireEvent.change(within(part).getByRole('textbox'), { target: { value: 'Our big day' } });
+    fireEvent.click(within(areas).getByRole('link', { name: 'Schedule' }));
+
+    const ask = await screen.findByRole('alertdialog', { name: 'Discard your change?' });
+    fireEvent.click(within(ask).getByRole('button', { name: 'Keep editing' }));
+
+    expect(router.state.location.search).toBe('?state=name');
+    expect((within(part).getByRole('textbox') as HTMLInputElement).value).toBe('Our big day');
+
+    fireEvent.click(within(areas).getByRole('link', { name: 'Schedule' }));
+    fireEvent.click(
+      within(await screen.findByRole('alertdialog', { name: 'Discard your change?' })).getByRole(
+        'button',
+        { name: 'Discard' },
+      ),
+    );
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Schedule' })).toBeDefined();
+    expect(router.state.location.search).toBe('?area=schedule');
+  });
+
+  it('asks before Back drops a change, and the browser asks on reload', SLOW, async () => {
+    const router = createMemoryRouter(routes, {
+      initialEntries: ['/demo/events', '/demo/events/evt-wed-4?state=name'],
+      initialIndex: 1,
+    });
+    render(<RouterProvider router={router} />);
+    await screen.findByRole('heading', { level: 1, name: WEDDING });
+    const part = screen.getByRole('group', { name: 'Event name' });
+    const reload = (): boolean =>
+      !window.dispatchEvent(new Event('beforeunload', { cancelable: true }));
+
+    expect(reload()).toBe(false);
+    fireEvent.change(within(part).getByRole('textbox'), { target: { value: 'Our big day' } });
+    expect(reload()).toBe(true);
+
+    await act(() => router.navigate(-1));
+    fireEvent.click(
+      within(await screen.findByRole('alertdialog', { name: 'Discard your change?' })).getByRole(
+        'button',
+        { name: 'Discard' },
+      ),
+    );
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Events' })).toBeDefined();
+    expect(router.state.location.pathname).toBe('/demo/events');
+    expect(reload()).toBe(false);
+
+    await act(() => router.navigate(1));
+    await screen.findByRole('heading', { level: 1, name: WEDDING });
+    const again = screen.getByRole('group', { name: 'Event name' });
+
+    fireEvent.change(within(again).getByRole('textbox'), { target: { value: 'Our big day' } });
+    fireEvent.click(within(again).getByRole('button', { name: 'Save' }));
+    expect(reload()).toBe(false);
+    await act(() => router.navigate(-1));
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Events' })).toBeDefined();
+    expect(screen.queryByRole('alertdialog', { name: 'Discard your change?' })).toBeNull();
+  });
+
+  it('leaves without a second ask once Duplicate is confirmed', SLOW, async () => {
+    const router = await page('/demo/events/evt-wed-4?state=name');
+    const part = screen.getByRole('group', { name: 'Event name' });
+    const manage = screen.getByRole('region', { name: 'Manage' });
+
+    fireEvent.change(within(part).getByRole('textbox'), { target: { value: 'Our big day' } });
+    fireEvent.click(within(manage).getByRole('button', { name: 'Duplicate' }));
+    fireEvent.click(
+      within(await screen.findByRole('dialog', { name: 'Duplicate' })).getByRole('button', {
+        name: 'Create draft',
+      }),
+    );
+
+    expect(await screen.findByText('Draft created. Opening it.')).toBeDefined();
+    expect(router.state.location.pathname).not.toBe('/demo/events/evt-wed-4');
+    expect(screen.queryByRole('alertdialog', { name: 'Discard your change?' })).toBeNull();
+    expect(screen.getByRole('heading', { level: 1, name: WEDDING })).toBeDefined();
+  });
+
+  it('leaves without a second ask once Delete is confirmed by name', SLOW, async () => {
+    const router = await page('/demo/events/evt-wed-4?state=name');
+    const part = screen.getByRole('group', { name: 'Event name' });
+    const manage = screen.getByRole('region', { name: 'Manage' });
+
+    fireEvent.change(within(part).getByRole('textbox'), { target: { value: 'Our big day' } });
+    fireEvent.click(within(manage).getByRole('button', { name: 'Delete event…' }));
+
+    const ask = await screen.findByRole('alertdialog', { name: `Delete ${WEDDING}?` });
+
+    fireEvent.change(within(ask).getByRole('textbox'), { target: { value: WEDDING } });
+    fireEvent.click(within(ask).getByRole('button', { name: 'Delete' }));
+
+    expect(await screen.findByText(`${WEDDING} was deleted.`)).toBeDefined();
+    expect(router.state.location.pathname).toBe('/demo/events');
+    expect(screen.queryByRole('alertdialog', { name: 'Discard your change?' })).toBeNull();
+  });
+
   it(
     'deletes a live event only once its name is typed, then says so on the list',
     SLOW,
