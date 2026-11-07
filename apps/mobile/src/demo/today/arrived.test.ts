@@ -44,8 +44,16 @@ describe('Now’s arrived figure', () => {
     expect(figureOf(COUNTS.thousands, french)?.count).toBe('1 204');
   });
 
-  it('counts a walk-in into both numbers, so arrived never passes expected', () => {
-    expect(figureOf({ arrived: 153, coming: 152 }, english)?.spoken).toBe('153 of 153 arrived');
+  it('reads the served expected, so a walk-in at 141 of 152 reads 142 of 153', () => {
+    const walkIn = { arrived: 142, coming: 152, expected: 153 };
+
+    expect(figureOf(walkIn, english)).toMatchObject({
+      spoken: '142 of 153 arrived',
+      share: 142 / 153,
+    });
+    expect(figureOf({ arrived: 153, coming: 152, expected: 153 }, english)?.spoken).toBe(
+      '153 of 153 arrived',
+    );
   });
 });
 
@@ -62,8 +70,10 @@ describe('the card’s line', () => {
   });
 
   it('fills the bar only once everyone Coming has arrived', () => {
-    expect(readyOf({ arrived: 1249, coming: 1250 }, english)?.percent).toBe(99);
-    expect(readyOf({ arrived: 152, coming: 152 }, english)?.percent).toBe(100);
+    expect(readyOf({ arrived: 1, coming: 152, expected: 152 }, english)?.percent).toBe(1);
+    expect(readyOf({ arrived: 12, coming: 1250, expected: 1250 }, english)?.percent).toBe(1);
+    expect(readyOf({ arrived: 1249, coming: 1250, expected: 1250 }, english)?.percent).toBe(99);
+    expect(readyOf({ arrived: 152, coming: 152, expected: 152 }, english)?.percent).toBe(100);
   });
 });
 

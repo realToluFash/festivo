@@ -8,10 +8,11 @@ export function isArrivedState(state: string | undefined): state is ArrivedState
   return ARRIVED_STATES.some((name) => name === state);
 }
 
-/** sc-99's counts for one event: attended, accepted, and expected as sc-1454 defines it. */
+/** sc-99's counts for one event, as the server serves them: attended, accepted, and expected (sc-1454). */
 export interface Counts {
   arrived: number;
   coming: number;
+  expected: number;
 }
 
 /** Now's figure: "141/152" over "arrived" beside a ring, or "37" over "arrived" with none. */
@@ -27,19 +28,14 @@ export type ArrivedMoment = Moment & { figure: Figure | null };
 const REPLIES = { words: '152 coming · 91% replied', percent: 91 };
 
 export const COUNTS: Record<Exclude<ArrivedState, 'live'>, Counts> = {
-  some: { arrived: 141, coming: 152 },
-  nobodyComing: { arrived: 37, coming: 0 },
-  thousands: { arrived: 1204, coming: 1250 },
-  none: { arrived: 0, coming: 152 },
+  some: { arrived: 141, coming: 152, expected: 152 },
+  nobodyComing: { arrived: 37, coming: 0, expected: 37 },
+  thousands: { arrived: 1204, coming: 1250, expected: 1250 },
+  none: { arrived: 0, coming: 152, expected: 152 },
 };
 
 /** Arrivals and undos as Check-in records them: the first arrival, two more, then undone back to nobody. */
 export const LIVE: readonly number[] = [0, 1, 2, 3, 2, 1, 0];
-
-/** Everyone attended who is not in accepted adds one to both, so arrived never passes expected. */
-export function expectedOf({ arrived, coming }: Counts): number {
-  return Math.max(coming, arrived);
-}
 
 export function figureOf(counts: Counts, numbers: Intl.NumberFormat): Figure | null {
   if (counts.arrived === 0) return null;
@@ -48,12 +44,12 @@ export function figureOf(counts: Counts, numbers: Intl.NumberFormat): Figure | n
 
   if (counts.coming === 0) return { count, of: null, share: null, spoken: `${count} arrived` };
 
-  const of = numbers.format(expectedOf(counts));
+  const of = numbers.format(counts.expected);
 
   return {
     count,
     of,
-    share: counts.arrived / expectedOf(counts),
+    share: counts.arrived / counts.expected,
     spoken: `${count} of ${of} arrived`,
   };
 }
@@ -64,10 +60,10 @@ export function readyOf(counts: Counts, numbers: Intl.NumberFormat): EventCard['
 
   if (figure == null) return REPLIES;
 
-  // Rounded down, so the bar is full only when everyone Coming has arrived.
+  // Rounded down, so it is full only when everyone expected has arrived, and never under 1 with a share.
   return {
     words: figure.spoken,
-    percent: figure.share == null ? 0 : Math.floor(figure.share * 100),
+    percent: figure.share == null ? 0 : Math.max(1, Math.floor(figure.share * 100)),
   };
 }
 
