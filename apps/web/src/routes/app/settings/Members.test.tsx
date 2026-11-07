@@ -700,6 +700,37 @@ describe('inviting somebody', () => {
     });
   });
 
+  it('says what each of the three seeded roles means in the invite picker', async () => {
+    signedIn();
+    answering({
+      ...READS,
+      'GET /api/orgs/org_1/roles': () =>
+        json({
+          roles: [
+            role('role_1', 'owner', OWNER_PERMISSIONS),
+            role('role_2', 'administrator', OWNER_PERMISSIONS),
+            role('role_3', 'member', ['events.read']),
+          ],
+          areas: [],
+        }),
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Invite somebody' }));
+    const dialog = screen.getByRole('dialog', { name: 'Invite somebody' });
+
+    expect(
+      within(dialog).getByText('Everything, including billing and deleting the organisation.'),
+    ).toBeDefined();
+    expect(
+      within(dialog).getByText('Everything except billing. Sees every event and manages members.'),
+    ).toBeDefined();
+    expect(
+      within(dialog).getByText('Works on the events they’re added to, and sees no others.'),
+    ).toBeDefined();
+    expect(within(dialog).queryByText(/membersScreen\.roleMeans/)).toBeNull();
+  });
+
   it('keeps Owner and anything beyond the inviter off the list for a non-owner', async () => {
     signedIn(
       membership({
