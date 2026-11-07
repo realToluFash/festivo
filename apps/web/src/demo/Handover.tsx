@@ -12,22 +12,19 @@ import { offButton } from '../offButton.ts';
 import type { SampleEvent } from './events.ts';
 import { Glyph } from './Glyph.tsx';
 import {
-  askWords,
-  counted,
-  fold,
+  type AskWords,
   HANDOVER_WORDS as H,
-  type HandKind,
   type HandStart,
   HELD_MS,
   LISTED,
-  matchesLine,
   matching,
-  noMatchLine,
   SEARCH_ABOVE,
   SEND_MS,
   whoWords,
 } from './handover.ts';
 import type { Person } from './members.ts';
+import { noMatchLine } from './people.ts';
+import { fold } from './switcher.ts';
 import { Ask, Head, RowWords, TextAction } from './SettingsParts.tsx';
 import { useLater } from './useLater.ts';
 import './handover.css';
@@ -41,8 +38,8 @@ const optionsIn = (box: HTMLElement | null) => [
 
 /** Members' one confirm with the handover in it (sc-614, A): who leads what, who takes it, and what will move. */
 export function HandoverAsk({
-  kind,
-  departing,
+  words,
+  nobody = false,
   events,
   offered,
   viewer,
@@ -50,8 +47,8 @@ export function HandoverAsk({
   onKeep,
   onDone,
 }: {
-  kind: HandKind;
-  departing: string;
+  words: AskWords;
+  nobody?: boolean;
   events: readonly SampleEvent[];
   offered: readonly Who[];
   viewer: string;
@@ -74,7 +71,6 @@ export function HandoverAsk({
     [landing],
   );
   const count = events.length;
-  const words = askWords(kind, departing, count);
   const sending = phase === 'sending';
 
   useLayoutEffect(() => {
@@ -105,7 +101,7 @@ export function HandoverAsk({
       }}
     >
       <HandTo
-        nobody={kind === 'leave'}
+        nobody={nobody}
         people={offered}
         picked={to}
         viewer={viewer}
@@ -127,7 +123,7 @@ function Moves({ events }: { events: readonly SampleEvent[] }) {
 
   return (
     <div>
-      <ul className="handover-moves" aria-label={counted('willMove', events.length)}>
+      <ul className="handover-moves" aria-label={H.willMove(events.length)}>
         {events.slice(0, LISTED).map((event) => (
           <li key={event.id}>
             <span className={`handover-tile today-cover is-${event.mesh}`} aria-hidden="true" />
@@ -135,7 +131,7 @@ function Moves({ events }: { events: readonly SampleEvent[] }) {
           </li>
         ))}
       </ul>
-      {more > 0 && <p className="handover-more">{counted('more', more)}</p>}
+      {more > 0 && <p className="handover-more">{H.more(more)}</p>}
     </div>
   );
 }
@@ -229,7 +225,7 @@ function HandTo({
 
   useEffect(() => {
     if (!open || !searchable || wanted.trim() === '') return;
-    const words = shown.length === 0 ? noMatchLine(wanted) : matchesLine(shown.length);
+    const words = shown.length === 0 ? noMatchLine(wanted) : H.matches(shown.length);
     const timer = setTimeout(() => setHeard({ query: wanted, words }), 500);
 
     return () => clearTimeout(timer);
@@ -323,7 +319,7 @@ function HandTo({
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={open ? `${id}-list` : undefined}
-        aria-label={counted('handTo', count, { name: words })}
+        aria-label={H.handTo(count, words)}
         {...offButton(off, { dim: false })}
         onClick={() => {
           if (open) return close();
@@ -432,7 +428,7 @@ export function LeadsBlock({
 }) {
   return (
     <section className="desk-block">
-      <Head title={counted('leadsHead', events.length)}>
+      <Head title={H.leadsHead(events.length)}>
         {onHandOver != null && <TextAction label={H.handOverNow} onClick={onHandOver} />}
       </Head>
       <ul className="desk-rows has-lead">

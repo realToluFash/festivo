@@ -15,7 +15,7 @@ import {
   withCurrent,
 } from '@soirely/domain';
 
-import { type HandStart, handStart } from './handover.ts';
+import { type AskWords, HANDOVER_WORDS as H, type HandStart, handStart } from './handover.ts';
 import { DOMAIN, ORGANISATION as ORG, sampleLeads, samplePeople } from './members.ts';
 import { SAMPLE } from './rules.ts';
 import { type DemoLink, VIEWERS, type Viewer, settingsPath } from './settings.ts';
@@ -146,6 +146,20 @@ export const OWNERSHIP_WORDS = {
   deleteMatches: 'That matches.',
   deleteExactly: 'Exactly as it is written, accents included.',
 } as const;
+
+/** Leave's confirm with the events the leaver leads in it (sc-614): today's words around the handover's. */
+export function leaveAsk(count: number): AskWords {
+  return {
+    title: OWNERSHIP_WORDS.leaveTitle,
+    lead: H.youLead(count),
+    last: OWNERSHIP_WORDS.leaveBody,
+    keep: OWNERSHIP_WORDS.stay,
+    go: OWNERSHIP_WORDS.leave,
+    red: true,
+    busy: H.busy.leave,
+    failed: H.failed.leave,
+  };
+}
 
 export const TRY_AGAIN = 'Try again';
 export const LOADING = 'Loading…';

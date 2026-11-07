@@ -1,10 +1,10 @@
 import { emailProblem, type MemberStanding, memberStanding } from '@soirely/domain';
 
 import {
-  counted,
-  fold,
+  type AskWords,
   type Handed,
   handedOver,
+  HANDOVER_WORDS as H,
   type HandStart,
   handStart,
   type Leads,
@@ -12,6 +12,7 @@ import {
 } from './handover.ts';
 import { SAMPLE } from './rules.ts';
 import { type SettingsSay, type Viewer, VIEWERS } from './settings.ts';
+import { fold } from './switcher.ts';
 
 export const ORGANISATION = SAMPLE.organisation;
 export const DOMAIN = 'ire.events';
@@ -586,6 +587,40 @@ export interface PersonView {
 
 export const LOSES = `They lose access on their next request. Their events stay with ${ORGANISATION}.`;
 const OWNER_ONLY = 'Only an owner can change an owner’s role or remove them.';
+
+/** Remove's title, way back and verb: one source for today's confirm and the handover's. */
+export function removeWords(name: string): Pick<AskWords, 'title' | 'keep' | 'go'> {
+  return {
+    title: `Remove ${name} from ${ORGANISATION}?`,
+    keep: `Keep ${firstName(name)}`,
+    go: 'Remove',
+  };
+}
+
+/** Remove's and Hand over now's confirm, with the events the person leads in it. */
+export function handoverAsk(kind: 'remove' | 'hand', name: string, count: number): AskWords {
+  const lead = H.leads(name, count);
+
+  return kind === 'remove'
+    ? {
+        ...removeWords(name),
+        lead,
+        last: H.removeTail,
+        red: true,
+        busy: H.busy.remove,
+        failed: H.failed.remove,
+      }
+    : {
+        title: H.handTitle(name, count),
+        lead,
+        last: H.handTail(name, count),
+        keep: H.cancel,
+        go: H.handOver,
+        red: false,
+        busy: H.busy.hand,
+        failed: H.failed.hand,
+      };
+}
 export const TAKES_EFFECT = 'Takes effect on their next request. Nobody is signed out.';
 export const ROLE_KEPT =
   'Their role is kept while they’re suspended. You can change it once their access is restored.';
@@ -638,7 +673,7 @@ export function personView({
       event === 'handedOver' && handed != null
         ? [
             ledByLine(handed, nameOf(people, handed.to), viewer.id),
-            counted('handTail', handed.count, { name: person.name }),
+            H.handTail(person.name, handed.count),
           ]
         : eventLines(person, event, say),
     step: null,

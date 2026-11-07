@@ -24,6 +24,7 @@ import {
   filtersFor,
   filterWord,
   firstName,
+  handoverAsk,
   INVITATIONS_NOTE,
   type Invitation,
   invitationRow,
@@ -41,6 +42,7 @@ import {
   PROOF_MINUTES,
   removed,
   removesLine,
+  removeWords,
   restoredBy,
   revoked,
   rowLine,
@@ -569,8 +571,7 @@ function MembersDialogs(props: MembersDialogsProps) {
   const handing = (kind: 'remove' | 'hand', hand = handStart(viewer.id)) =>
     person != null && (
       <HandoverAsk
-        kind={kind}
-        departing={person.name}
+        words={handoverAsk(kind, person.name, events.length)}
         events={events}
         offered={offeredFor(people, person.id)}
         viewer={viewer.id}
@@ -638,10 +639,8 @@ function MembersDialogs(props: MembersDialogsProps) {
       return (
         person != null && (
           <Ask
-            title={`Remove ${person.name} from ${ORGANISATION}?`}
+            {...removeWords(person.name)}
             line={LOSES}
-            keep={`Keep ${firstName(person.name)}`}
-            go="Remove"
             onKeep={onClose}
             onGo={() => {
               onClose();

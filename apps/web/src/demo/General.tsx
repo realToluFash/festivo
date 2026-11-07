@@ -28,6 +28,7 @@ import {
   domainLine,
   domainsFoot,
   generalStart,
+  leaveAsk,
   ownershipSteps,
   requestLink,
 } from './general.ts';
@@ -466,8 +467,8 @@ function Ownership({
       )}
       {ask === 'leave' && events.length > 0 && (
         <HandoverAsk
-          kind="leave"
-          departing={viewer.name}
+          words={leaveAsk(events.length)}
+          nobody
           events={events}
           offered={offeredFor(samplePeople(), viewer.id)}
           viewer={viewer.id}

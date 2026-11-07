@@ -1,50 +1,80 @@
 import { eventPhase } from '@soirely/domain';
 
-import en from '../i18n/locales/en.json';
 import { type SampleEvent, sampleEvent } from './events.ts';
 import type { Person } from './members.ts';
-import { SAMPLE } from './rules.ts';
-
-/** The handover's words (sc-614, A), read from the web's catalogue so the demo and the product cannot drift. */
-export const HANDOVER_WORDS = en.handover;
-const H = HANDOVER_WORDS;
-const ORG = SAMPLE.organisation;
+import { fold } from './switcher.ts';
 
 export const SEND_MS = 500;
 export const HELD_MS = 8000;
 export const SEARCH_ABOVE = 15;
 export const LISTED = 5;
 
-export function filled(words: string, slots: Readonly<Record<string, string | number>>): string {
-  return words.replaceAll(/\{\{(\w+)(?:, number)?\}\}/gu, (whole, slot: string) =>
-    String(slots[slot] ?? whole),
-  );
+const PLURAL = new Intl.PluralRules('en');
+
+function byCount(count: number, one: string, other: string): string {
+  return PLURAL.select(count) === 'one' ? one : other;
 }
 
-type Family =
-  | 'leads'
-  | 'youLead'
-  | 'handTo'
-  | 'nobody'
-  | 'willMove'
-  | 'more'
-  | 'leadsHead'
-  | 'handTitle'
-  | 'handTail'
-  | 'matches'
-  | 'ledBy'
-  | 'ledByYou';
+export type HandKind = 'remove' | 'leave' | 'hand';
 
-/** A plural family in English, by CLDR's rule, with its slots filled. */
-export function counted(
-  family: Family,
-  count: number,
-  slots: Readonly<Record<string, string>> = {},
-): string {
-  const form = new Intl.PluralRules('en').select(count) === 'one' ? 'one' : 'other';
+/** Handing over a departing member's work (sc-614, A): the spec's words, as the app's MembersHandoverWords.ts has them. */
+export const HANDOVER_WORDS = {
+  leads: (name: string, count: number) =>
+    byCount(
+      count,
+      `${name} leads 1 event. Hand it to:`,
+      `${name} leads ${count} events. Hand them to:`,
+    ),
+  youLead: (count: number) =>
+    byCount(count, 'You lead 1 event. Hand it to:', `You lead ${count} events. Hand them to:`),
+  handTo: (count: number, who: string) => `${byCount(count, 'Hand it to', 'Hand them to')}: ${who}`,
+  nobody: (count: number) =>
+    byCount(count, 'Nobody: the owners take it', 'Nobody: the owners take them'),
+  yours: (name: string) => `${name} · you`,
+  willMove: (count: number) =>
+    byCount(count, 'What will move, 1 event', `What will move, ${count} events`),
+  more: (count: number) => byCount(count, 'and 1 more', `and ${count} more`),
+  leadsHead: (count: number) => byCount(count, 'Leads 1 event', `Leads ${count} events`),
+  handOverNow: 'Hand over now',
+  removeTail: 'They lose access on their next request.',
+  handTitle: (name: string, count: number) =>
+    byCount(count, `Hand over ${name}’s event?`, `Hand over ${name}’s events?`),
+  handTail: (name: string, count: number) =>
+    byCount(
+      count,
+      `Restoring ${name} won’t give it back.`,
+      `Restoring ${name} won’t give them back.`,
+    ),
+  handOver: 'Hand over',
+  cancel: 'Cancel',
+  busy: { remove: 'Removing…', leave: 'Leaving…', hand: 'Handing over…' } satisfies Record<
+    HandKind,
+    string
+  >,
+  failed: {
+    remove: 'Removing did not work. Nothing was changed. Try again in a moment.',
+    leave: 'Leaving did not work. Nothing was changed. Try again in a moment.',
+    hand: 'Handing over did not work. Nothing was changed. Try again in a moment.',
+  } satisfies Record<HandKind, string>,
+  search: 'Search members',
+  clearSearch: 'Clear search',
+  matches: (count: number) => byCount(count, '1 member matches', `${count} members match`),
+  /** Who leads them now; handing them to yourself sends you no email (pm, 7 Nov). */
+  ledBy: (count: number, who: string | null) =>
+    who == null
+      ? byCount(
+          count,
+          'Their 1 event is now led by you.',
+          `Their ${count} events are now led by you.`,
+        )
+      : byCount(
+          count,
+          `Their 1 event is now led by ${who}, who is emailed the list.`,
+          `Their ${count} events are now led by ${who}, who is emailed the list.`,
+        ),
+};
 
-  return filled(H[`${family}_${form}`], { ...slots, count });
-}
+const H = HANDOVER_WORDS;
 
 export type Leads = Readonly<Record<string, readonly string[]>>;
 
@@ -78,26 +108,12 @@ export function offeredFor(people: readonly Person[], departing: string): Person
   return people.filter((one) => one.status === 'active' && one.id !== departing);
 }
 
-export function fold(words: string): string {
-  return words.normalize('NFD').replaceAll(/\p{M}/gu, '').toLocaleLowerCase('en');
-}
-
 /** At the start of any word in the name, case and accents ignored. */
 export function matching(name: string, typed: string): boolean {
   const wanted = fold(typed.trim());
 
   return wanted === '' || ` ${fold(name)}`.includes(` ${wanted}`);
 }
-
-export function matchesLine(count: number): string {
-  return count === 0 ? '' : counted('matches', count);
-}
-
-export function noMatchLine(typed: string): string {
-  return filled(H.noMatch, { organisation: ORG, text: typed.trim() });
-}
-
-export type HandKind = 'remove' | 'leave' | 'hand';
 
 export interface AskWords {
   title: string;
@@ -110,55 +126,15 @@ export interface AskWords {
   failed: string;
 }
 
-export function askWords(kind: HandKind, name: string, count: number): AskWords {
-  const O = en.ownership;
-
-  switch (kind) {
-    case 'remove':
-      return {
-        title: `Remove ${name} from ${ORG}?`,
-        lead: counted('leads', count, { name }),
-        last: H.removeTail,
-        keep: `Keep ${name.split(' ')[0] ?? name}`,
-        go: 'Remove',
-        red: true,
-        busy: H.busy.remove,
-        failed: H.failed.remove,
-      };
-    case 'leave':
-      return {
-        title: filled(O.leaveTitle, { organisation: ORG }),
-        lead: counted('youLead', count),
-        last: filled(O.leaveBody, { organisation: ORG }),
-        keep: O.stay,
-        go: filled(O.leave, { organisation: ORG }),
-        red: true,
-        busy: H.busy.leave,
-        failed: H.failed.leave,
-      };
-    case 'hand':
-      return {
-        title: counted('handTitle', count, { name }),
-        lead: counted('leads', count, { name }),
-        last: counted('handTail', count, { name }),
-        keep: 'Cancel',
-        go: H.handOver,
-        red: false,
-        busy: H.busy.hand,
-        failed: H.failed.hand,
-      };
-  }
-}
-
 /** Who takes them, as the button and the menu say it: "Nobody: the owners take them" for nobody. */
 export function whoWords(
   person: Pick<Person, 'id' | 'name'> | null,
   viewer: string,
   count: number,
 ): string {
-  if (person == null) return counted('nobody', count);
+  if (person == null) return H.nobody(count);
 
-  return person.id === viewer ? filled(H.yours, { name: person.name }) : person.name;
+  return person.id === viewer ? H.yours(person.name) : person.name;
 }
 
 export interface Handed {
@@ -166,11 +142,8 @@ export interface Handed {
   count: number;
 }
 
-/** Where the events went. Handing them to yourself sends you no email (pm, 7 Nov). */
 export function ledByLine(handed: Handed, name: string, viewer: string): string {
-  return handed.to === viewer
-    ? counted('ledByYou', handed.count)
-    : counted('ledBy', handed.count, { name });
+  return H.ledBy(handed.count, handed.to === viewer ? null : name);
 }
 
 export type HandPhase = 'asking' | 'held' | 'failed';

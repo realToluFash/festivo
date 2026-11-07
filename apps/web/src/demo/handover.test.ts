@@ -1,19 +1,18 @@
 import { describe, expect, it } from 'vitest';
 
-import { GENERAL_PAGES, generalStart } from './general.ts';
+import { GENERAL_PAGES, generalStart, leaveAsk } from './general.ts';
 import {
-  askWords,
-  counted,
+  HANDOVER_WORDS as H,
   handedOver,
   ledBy,
   ledByLine,
   matching,
-  noMatchLine,
   offeredFor,
   whoWords,
 } from './handover.ts';
 import {
   ANA,
+  handoverAsk,
   MARTA,
   MEMBERS_STATES,
   membersCard,
@@ -21,6 +20,7 @@ import {
   morePeople,
   PRIYA,
   personView,
+  removeWords,
   sampleLeads,
   samplePeople,
   TOM,
@@ -62,15 +62,12 @@ describe('handing over a departing member’s work (sc-31311)', () => {
   });
 
   it('says every count in its plural family, singular included', () => {
-    expect(counted('leads', 1, { name: 'Priya Shah' })).toBe(
-      'Priya Shah leads 1 event. Hand it to:',
-    );
-    expect(counted('leads', 3, { name: 'Priya Shah' })).toBe(
-      'Priya Shah leads 3 events. Hand them to:',
-    );
-    expect(counted('youLead', 2)).toBe('You lead 2 events. Hand them to:');
-    expect(counted('leadsHead', 1)).toBe('Leads 1 event');
-    expect(counted('more', 3)).toBe('and 3 more');
+    expect(H.leads('Priya Shah', 1)).toBe('Priya Shah leads 1 event. Hand it to:');
+    expect(H.leads('Priya Shah', 3)).toBe('Priya Shah leads 3 events. Hand them to:');
+    expect(H.youLead(2)).toBe('You lead 2 events. Hand them to:');
+    expect(H.leadsHead(1)).toBe('Leads 1 event');
+    expect(H.more(3)).toBe('and 3 more');
+    expect(H.handTo(1, 'Ana Souza')).toBe('Hand it to: Ana Souza');
     expect(whoWords(null, folake.id, 1)).toBe('Nobody: the owners take it');
     expect(whoWords(null, folake.id, 2)).toBe('Nobody: the owners take them');
   });
@@ -96,11 +93,10 @@ describe('handing over a departing member’s work (sc-31311)', () => {
     ]);
     expect(people.filter((name) => matching(name, 'JOAO P'))).toEqual(['João Pereira']);
     expect(people.filter((name) => matching(name, 'kemi'))).toEqual([]);
-    expect(noMatchLine('kemi ')).toBe('Nobody in Ire Events matches “kemi”.');
   });
 
   it('asks each way in its own words, with Hand over in Violet as nothing is removed', () => {
-    expect(askWords('remove', 'Priya Shah', 3)).toMatchObject({
+    expect(handoverAsk('remove', 'Priya Shah', 3)).toMatchObject({
       title: 'Remove Priya Shah from Ire Events?',
       last: 'They lose access on their next request.',
       keep: 'Keep Priya',
@@ -108,7 +104,7 @@ describe('handing over a departing member’s work (sc-31311)', () => {
       red: true,
       busy: 'Removing…',
     });
-    expect(askWords('leave', 'Ana Souza', 2)).toMatchObject({
+    expect(leaveAsk(2)).toMatchObject({
       title: 'Leave Ire Events?',
       lead: 'You lead 2 events. Hand them to:',
       last: 'You lose access to Ire Events as soon as you leave.',
@@ -116,7 +112,7 @@ describe('handing over a departing member’s work (sc-31311)', () => {
       go: 'Leave Ire Events',
       busy: 'Leaving…',
     });
-    expect(askWords('hand', 'Marta Silva', 2)).toMatchObject({
+    expect(handoverAsk('hand', 'Marta Silva', 2)).toMatchObject({
       title: 'Hand over Marta Silva’s events?',
       last: 'Restoring Marta Silva won’t give them back.',
       keep: 'Cancel',
@@ -124,6 +120,7 @@ describe('handing over a departing member’s work (sc-31311)', () => {
       red: false,
       failed: 'Handing over did not work. Nothing was changed. Try again in a moment.',
     });
+    expect(handoverAsk('remove', 'Tom Becker', 1)).toMatchObject(removeWords('Tom Becker'));
   });
 
   it('emails whoever takes them, but not you when you take them yourself', () => {
