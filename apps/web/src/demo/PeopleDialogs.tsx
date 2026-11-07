@@ -1,4 +1,4 @@
-import { type KeyboardEvent, useEffect, useId, useRef, useState } from 'react';
+import { type KeyboardEvent, useEffect, useEffectEvent, useId, useRef, useState } from 'react';
 
 import { Glyph } from '../components/Glyph.tsx';
 import { inWithLine } from './doorCode.ts';
@@ -94,12 +94,14 @@ export function RoleDialog({
     };
   }, []);
 
+  const removed = useEffectEvent(onRemove);
+
   useEffect(() => {
     if (gone == null) return;
-    const timer = window.setTimeout(onRemove, gone);
+    const timer = window.setTimeout(removed, gone);
 
     return () => window.clearTimeout(timer);
-  }, [gone, onRemove]);
+  }, [gone]);
 
   function send(role: EventRole): void {
     sending.current = window.setTimeout(() => {
