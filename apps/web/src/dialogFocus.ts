@@ -39,7 +39,7 @@ export function useDialogKeys(
 export function keepFocusIn(dialog: HTMLElement, event: KeyboardEvent): void {
   const controls = [
     ...dialog.querySelectorAll<HTMLElement>('input, select, textarea, button, a[href]'),
-  ].filter((control) => !control.matches(':disabled'));
+  ].filter((control) => !control.matches(':disabled') && !passedOver(dialog, control));
   const first = controls[0];
   const last = controls[controls.length - 1];
 
@@ -58,4 +58,15 @@ export function keepFocusIn(dialog: HTMLElement, event: KeyboardEvent): void {
     event.preventDefault();
     first.focus();
   }
+}
+
+/** A radio group is one stop for Tab, on its checked radio. */
+function passedOver(dialog: HTMLElement, control: HTMLElement): boolean {
+  if (!(control instanceof HTMLInputElement) || control.type !== 'radio' || control.checked) {
+    return false;
+  }
+
+  return [...dialog.querySelectorAll<HTMLInputElement>('input[type="radio"]')].some(
+    (radio) => radio.name === control.name && radio.checked,
+  );
 }

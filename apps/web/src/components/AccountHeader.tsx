@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 
 import { SectionNav } from './SectionNav.tsx';
 
-/** Your account's band, its title and its three sections, as `Account`, `Security` and `Notifications` draw it. */
+/** Your account's band, its title and its sections, as `Account`, `Security` and `Notifications` draw it. */
 export function AccountHeader({
   title,
   email,
@@ -31,6 +31,7 @@ export function AccountHeader({
           { to: '/app/account', label: t('account.sectionAccount'), end: true },
           { to: '/app/account/security', label: t('account.sectionSecurity') },
           { to: '/app/account/notifications', label: t('account.sectionNotifications') },
+          { to: '/app/account/personalisation', label: t('account.sectionPersonalisation') },
         ]}
       />
     </header>

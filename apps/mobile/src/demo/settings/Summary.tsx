@@ -20,8 +20,9 @@ import { Glyph, type GlyphName } from '../../components/Glyph.tsx';
 import { Glass, PhoneTabBar } from '../../components/TodayCover.tsx';
 import { Bell, Fade, Landscape, OrgPill, PHONE_TAB_BAR, PortraitTop, useShell } from './Frame.tsx';
 import { Avatar, Back } from './parts.tsx';
-import { type MarkKind, StatusMark, TextAction } from './SummaryRows.tsx';
+import { type MarkKind, StatusMark } from './SummaryRows.tsx';
 
+export { FailedBlock } from '../../components/FailedBlock.tsx';
 export {
   bringIntoView,
   ChoiceRow,
@@ -486,33 +487,6 @@ export function RowShapes({
   );
 }
 
-/** In place of the card and the lists: what went wrong, what to do, and Try again. */
-export function FailedBlock({
-  title,
-  line,
-  onRetry,
-  testID,
-}: {
-  title: string;
-  line: string;
-  onRetry: () => void;
-  testID: string;
-}) {
-  useReadOut(`${title} ${line}`);
-
-  return (
-    <View style={styles.failed}>
-      <Text size={18} weight="bold" accessibilityRole="header">
-        {title}
-      </Text>
-      <Text size={15} weight="medium" style={styles.secondary}>
-        {line}
-      </Text>
-      <TextAction label="Try again" onPress={onRetry} testID={testID} />
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
   page: { flex: 1, backgroundColor: tokens.colorCard },
@@ -573,6 +547,5 @@ const styles = StyleSheet.create({
   bars: { flex: 1, gap: tokens.spaceSm },
   barThick: { height: 14, borderRadius: 7, backgroundColor: tokens.colorNeutralFill },
   barThin: { height: 12, borderRadius: 6, backgroundColor: tokens.colorNeutralFill },
-  failed: { gap: tokens.spaceSm, paddingTop: tokens.spaceXs },
   toast: { position: 'absolute', left: tokens.spaceXl, right: tokens.spaceXl },
 });
