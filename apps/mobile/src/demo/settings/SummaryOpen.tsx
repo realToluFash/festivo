@@ -6,8 +6,9 @@ import { RadioMark } from '../../components/RadioMark.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { Glyph } from '../../components/Glyph.tsx';
-import { PHONE_TAB_BAR, useShell } from './Frame.tsx';
 import { Row, type RowProps, type TagKind } from './SummaryRows.tsx';
+import { useShell } from '../../components/settingsShell.ts';
+import { PHONE_TAB_BAR } from '../../components/TodayCover.tsx';
 
 const hidden = {
   accessibilityElementsHidden: true,

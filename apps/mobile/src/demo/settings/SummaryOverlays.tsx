@@ -33,9 +33,9 @@ import { useReducedMotion } from '../../reducedMotion.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { useModalOpen } from '../../updateRequired.ts';
 import { Glyph } from '../../components/Glyph.tsx';
-import { useShell } from './Frame.tsx';
 import { AskLayer, type AskProps } from './AskLayer.tsx';
 import { TextAction, TurningMark } from './SummaryRows.tsx';
+import { useShell } from '../../components/settingsShell.ts';
 
 export { AskLayer, type AskProps } from './AskLayer.tsx';
 

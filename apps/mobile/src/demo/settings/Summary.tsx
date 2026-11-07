@@ -16,10 +16,11 @@ import { Toast } from '../../components/Toast.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { CARD_PIECES, Confetti, Cover } from '../../components/Cover.tsx';
 import { Glyph, type GlyphName } from '../../components/Glyph.tsx';
-import { Glass, PhoneTabBar } from '../../components/TodayCover.tsx';
-import { Bell, Fade, Landscape, OrgPill, PHONE_TAB_BAR, PortraitTop, useShell } from './Frame.tsx';
-import { Avatar, Back } from './parts.tsx';
+import { Glass, PHONE_TAB_BAR, PhoneTabBar } from '../../components/TodayCover.tsx';
+import { Bell, Fade, Landscape, OrgPill, PortraitTop } from './Frame.tsx';
 import { type MarkKind, StatusMark, TextAction } from './SummaryRows.tsx';
+import { useShell } from '../../components/settingsShell.ts';
+import { Avatar, Back } from '../../components/SettingsParts.tsx';
 
 export {
   bringIntoView,

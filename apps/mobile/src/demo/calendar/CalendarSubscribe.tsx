@@ -7,10 +7,10 @@ import { Notice } from '../../components/Notice.tsx';
 import { useReadOut } from '../../components/ReadOut.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
-import { Pill } from '../settings/parts.tsx';
 import { TextAction } from '../settings/SummaryRows.tsx';
 import type { Feed } from './CalendarModel.ts';
 import { CW } from './CalendarWords.ts';
+import { Pill } from '../../components/SettingsParts.tsx';
 
 /** The sample's private feed links: the reader's, and the one a reset makes. Nothing is asked of the API. */
 const LINKS = [

@@ -6,14 +6,15 @@ import { tokens } from '../../theme/tokens.ts';
 import { CARD_PIECES, Confetti, Cover } from '../../components/Cover.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
 import { SwitchedNotice } from '../OrgSwitcher.tsx';
-import { Glass, PhoneTabBar } from '../../components/TodayCover.tsx';
-import { Bell, Fade, Landscape, OrgPill, PHONE_TAB_BAR, PortraitTop, useShell } from './Frame.tsx';
-import { Caps, Pill, Tile, TYPE } from './parts.tsx';
+import { Glass, PHONE_TAB_BAR, PhoneTabBar } from '../../components/TodayCover.tsx';
+import { Bell, Fade, Landscape, OrgPill, PortraitTop } from './Frame.tsx';
 import { WORDS as PERSONALISATION } from './PersonalisationModel.ts';
 import { SchemeTile } from './PersonalisationParts.tsx';
-import { type DemoSection, demoGroups, type Viewer, YOU } from './sample.ts';
+import { demoGroups, YOU } from './sample.ts';
+import { type ShellSection, useShell, type Viewer } from '../../components/settingsShell.ts';
+import { Caps, Pill, Tile, TYPE } from '../../components/SettingsParts.tsx';
 
-type Listed = Exclude<DemoSection, 'account'>;
+type Listed = Exclude<ShellSection, 'account'>;
 
 /** The app's rows and lines; the organisation's row carries its name. */
 const ROWS: Record<Listed, { title: string; line: string }> = {
@@ -35,7 +36,7 @@ export function groupsFor(viewer: Viewer) {
   }));
 }
 
-export function sectionsFor(viewer: Viewer): readonly DemoSection[] {
+export function sectionsFor(viewer: Viewer): readonly ShellSection[] {
   return demoGroups(viewer).flatMap(({ sections }) => sections);
 }
 
@@ -221,7 +222,7 @@ function Group({
 }: {
   sections: readonly Listed[];
   dense: boolean;
-  open: DemoSection | null;
+  open: ShellSection | null;
 }) {
   return (
     <View style={styles.group}>

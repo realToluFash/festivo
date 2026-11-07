@@ -4,7 +4,6 @@ import { type ScrollViewInstance, StyleSheet, View, type ViewInstance } from 're
 
 import { FieldError } from '../../components/Field.tsx';
 import { readOut } from '../../components/ReadOut.tsx';
-import { useShell } from './Frame.tsx';
 import { RoleScreen, TAKES_EFFECT } from './MembersRole.tsx';
 import {
   changedRole,
@@ -36,6 +35,7 @@ import {
   SummaryPage,
   TextAction,
 } from './Summary.tsx';
+import { useShell } from '../../components/settingsShell.ts';
 
 export interface PersonOpening {
   step: PersonStep;

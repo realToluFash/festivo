@@ -4,7 +4,6 @@ import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import type { ScrollViewInstance, ViewInstance } from 'react-native';
 
-import { useShell } from './Frame.tsx';
 import {
   DetailRows,
   type DetailsOpening,
@@ -24,6 +23,7 @@ import { OwnershipSection } from './OrganisationOwnership.tsx';
 import { DETAILS_WORDS } from './OrganisationWords.ts';
 import { VIEWER_ORGANISATION } from './sample.ts';
 import { SummaryPage } from './Summary.tsx';
+import { useShell } from '../../components/settingsShell.ts';
 
 /** Settings › Organisation in B, summary first, on sample data. A member reads the details and may only leave. */
 export function OrganisationSection() {

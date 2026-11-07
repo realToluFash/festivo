@@ -9,7 +9,6 @@ import {
 } from '../../components/screenReaderFocus.ts';
 import type { TextHandle } from '../../components/Text.tsx';
 import { ConfirmScreen } from './AccountConfirm.tsx';
-import { useShell } from './Frame.tsx';
 import { SecurityCard } from './SecurityCard.tsx';
 import { DevicesSection, Everywhere } from './SecurityDevices.tsx';
 import {
@@ -43,6 +42,7 @@ import {
 import { TwoFactorScreen, TwoFactorSection } from './SecurityTwoFactor.tsx';
 import { WaysSection } from './SecurityWays.tsx';
 import { Ask, bringIntoView, SummaryPage, useRowClear } from './Summary.tsx';
+import { useShell } from '../../components/settingsShell.ts';
 
 export { SECURITY_STATES } from './SecurityModel.ts';
 

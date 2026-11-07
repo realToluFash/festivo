@@ -19,17 +19,8 @@ import { tokens } from '../../theme/tokens.ts';
 import { Cover } from '../../components/Cover.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
 import { SwitchedNotice } from '../OrgSwitcher.tsx';
-import { PhoneTabBar } from '../../components/TodayCover.tsx';
-import {
-  Bell,
-  Fade,
-  Landscape,
-  OrgPill,
-  PHONE_TAB_BAR,
-  PortraitTop,
-  useShell,
-} from '../settings/Frame.tsx';
-import { Pill } from '../settings/parts.tsx';
+import { PHONE_TAB_BAR, PhoneTabBar } from '../../components/TodayCover.tsx';
+import { Bell, Fade, Landscape, OrgPill, PortraitTop } from '../settings/Frame.tsx';
 import {
   type Anchor,
   CardSays,
@@ -70,6 +61,8 @@ import {
 } from './EventsModel.ts';
 import { CLOCKS, EVENTS, EVENT_OF_KEY, OFFLINE_AS_OF } from './EventsSample.ts';
 import { W, say } from './EventsWords.ts';
+import { useShell } from '../../components/settingsShell.ts';
+import { Pill } from '../../components/SettingsParts.tsx';
 
 const SEARCH_PAUSE_MS = 300;
 const MENU_AFTER_MS = 700;

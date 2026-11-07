@@ -7,12 +7,11 @@ import { useLayout } from '../../layout/useLayout.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { OrgSwitcherProvider } from '../OrgSwitcher.tsx';
 import { switcherStateOf } from '../OrgSwitcherModel.ts';
-import type { Tab } from '../../components/TodayCover.tsx';
+import { PHONE_TAB_BAR, type Tab } from '../../components/TodayCover.tsx';
 import type { Tell } from '../../components/TodayParts.tsx';
 import { useCoverStatusBar } from '../Welcome.tsx';
-import { PHONE_TAB_BAR, type Shell, ShellContext } from '../settings/Frame.tsx';
 import { layoutOf, settingsHref } from '../settings/Route.tsx';
-import { type DemoSection, lookingAs } from '../settings/sample.ts';
+import { lookingAs } from '../settings/sample.ts';
 import { PageToast } from '../settings/Summary.tsx';
 import { EventScreen } from './EventPage.tsx';
 import { backToEvents } from './EventFrame.tsx';
@@ -20,6 +19,7 @@ import { EventsList } from './EventsList.tsx';
 import { eventStateOf, listStateOf } from './EventsModel.ts';
 import { areaOf, sampleEvent } from './EventsSample.ts';
 import { say } from './EventsWords.ts';
+import { type Shell, ShellContext, type ShellSection } from '../../components/settingsShell.ts';
 
 /** Events on sample data, in Settings' shell: Today and Settings a tab away, and anything unbuilt said so. */
 function EventsShell({
@@ -39,7 +39,7 @@ function EventsShell({
   useCoverStatusBar('dark', false);
 
   const openSection = useCallback(
-    (section: DemoSection) => router.push(settingsHref('owner', section)),
+    (section: ShellSection) => router.push(settingsHref('owner', section)),
     [],
   );
   const toSettings = useCallback(() => router.push(settingsHref('owner', null)), []);

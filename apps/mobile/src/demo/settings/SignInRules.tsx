@@ -5,7 +5,7 @@ import { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { tokens } from '../../theme/tokens.ts';
-import { SeenBy, useShell } from './Frame.tsx';
+import { SeenBy } from './Frame.tsx';
 import { useLoad } from './MembersLoading.tsx';
 import { memberLooking } from './sample.ts';
 import {
@@ -35,6 +35,7 @@ import {
   SummaryCard,
   SummaryPage,
 } from './Summary.tsx';
+import { useShell } from '../../components/settingsShell.ts';
 
 const MARK = 22;
 

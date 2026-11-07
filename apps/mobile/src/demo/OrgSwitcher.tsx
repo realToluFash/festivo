@@ -101,7 +101,7 @@ import {
   waitingOf,
   withoutPlaces,
 } from './OrgSwitcherModel.ts';
-import { Pill } from './settings/parts.tsx';
+import { Pill } from '../components/SettingsParts.tsx';
 
 const store = {
   session: sessionFor('populated'),

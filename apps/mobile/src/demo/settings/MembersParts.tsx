@@ -17,7 +17,6 @@ import {
   tagOf,
   waitingLine,
 } from './MembersSample.ts';
-import { Avatar } from './parts.tsx';
 import {
   CardSays,
   Faces,
@@ -30,6 +29,7 @@ import {
   SummaryCard,
   TextAction,
 } from './Summary.tsx';
+import { Avatar } from '../../components/SettingsParts.tsx';
 
 export const FROM_THE_WEB = 'To invite somebody, use Soirely on the web.';
 

@@ -30,7 +30,7 @@ import { ReadOut } from '../../components/ReadOut.tsx';
 import { SETTLED_MS } from '../../components/Screen.tsx';
 import { Sheet } from '../../components/Sheet.tsx';
 import { Text } from '../../components/Text.tsx';
-import { PhoneTabBar } from '../../components/TodayCover.tsx';
+import { PHONE_TAB_BAR, PhoneTabBar } from '../../components/TodayCover.tsx';
 import { useAccessibilitySizes } from '../../layout/useLayout.ts';
 import { motionEase } from '../../motion.ts';
 import { useReducedMotion } from '../../reducedMotion.ts';
@@ -41,16 +41,7 @@ import { CardPieces } from '../events/EventCard.tsx';
 import { openEvent } from '../events/EventsList.tsx';
 import { CLOCKS, EVENT_OF_KEY, READER_ZONE } from '../events/EventsSample.ts';
 import { W } from '../events/EventsWords.ts';
-import {
-  Bell,
-  Fade,
-  Landscape,
-  OrgPill,
-  PHONE_TAB_BAR,
-  PortraitTop,
-  useShell,
-} from '../settings/Frame.tsx';
-import { Pill } from '../settings/parts.tsx';
+import { Bell, Fade, Landscape, OrgPill, PortraitTop } from '../settings/Frame.tsx';
 import {
   type Anchor,
   anchorUnder,
@@ -104,6 +95,8 @@ import {
   offsetsOf,
 } from './CalendarWeeks.tsx';
 import { CW, say } from './CalendarWords.ts';
+import { useShell } from '../../components/settingsShell.ts';
+import { Pill } from '../../components/SettingsParts.tsx';
 
 /** The demo keeps its own place, so it never moves the real Calendar's. */
 const KEPT = 'soirely.demo.calendar';

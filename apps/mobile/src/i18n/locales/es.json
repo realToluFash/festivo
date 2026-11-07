@@ -658,7 +658,8 @@
     "events": "Eventos",
     "calendar": "Calendario",
     "settings": "Configuración",
-    "organisation": "Organización"
+    "organisation": "Organización",
+    "backTo": "Back to {{place}}"
   },
   "eventNav": {
     "overview": "Resumen",

@@ -7,7 +7,6 @@ import { AppState, Linking } from 'react-native';
 
 import { useReadOut } from '../../components/ReadOut.tsx';
 import { type Channel, readSettings, saveSetting } from '../../kit/notificationSettings.ts';
-import { useShell } from './Frame.tsx';
 import { NotificationsCard } from './NotificationsCard.tsx';
 import {
   cardCounts,
@@ -26,6 +25,7 @@ import {
 } from './NotificationsModel.ts';
 import { KindsSection } from './NotificationsRows.tsx';
 import { FailedBlock, LoadingBlock, SummaryPage } from './Summary.tsx';
+import { useShell } from '../../components/settingsShell.ts';
 
 /** Settings › Notification settings in B, summary first, on sample settings that never leave the device. */
 export function NotificationsSection() {

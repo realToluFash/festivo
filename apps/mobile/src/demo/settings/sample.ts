@@ -1,11 +1,6 @@
-import { type SettingsGroup, type SettingsSection, settingsGroups } from '../../kit/appNav.ts';
+import { type SettingsGroup, settingsGroups } from '../../kit/appNav.ts';
+import type { Looking, ShellSection, Viewer } from '../../components/settingsShell.ts';
 import { SAMPLE } from '../samples.ts';
-
-/** Settings' three arrangements, from the app's layout kinds. */
-export type SettingsLayout = 'phone' | 'portrait' | 'landscape';
-
-/** Who is looking: an owner sees every section, a member only their own and Sign-in rules, and somebody with no organisation only their own. */
-export type Viewer = 'owner' | 'member' | 'noOrg';
 
 export const VIEWERS: readonly Viewer[] = ['owner', 'member', 'noOrg'];
 
@@ -16,10 +11,7 @@ export function viewerOf(name: string | undefined): Viewer {
   return VIEWERS.find((viewer) => viewer === name) ?? 'owner';
 }
 
-/** sc-29859 leaves no Roles section: what each role does is fixed. sc-30441 adds Personalisation, ahead of the app. */
-export type DemoSection = Exclude<SettingsSection, 'roles'> | 'personalisation';
-
-export const SECTIONS: readonly DemoSection[] = [
+export const SECTIONS: readonly ShellSection[] = [
   'account',
   'security',
   'notifications',
@@ -29,7 +21,7 @@ export const SECTIONS: readonly DemoSection[] = [
   'signInRules',
 ];
 
-export function isSection(name: string | undefined): name is DemoSection {
+export function isSection(name: string | undefined): name is ShellSection {
   return SECTIONS.some((section) => section === name);
 }
 
@@ -50,7 +42,7 @@ export const VIEWER_ORGANISATION: Record<Viewer, { role: string; permissions: st
 /** settingsGroups, ahead of the app as sc-29859 and sc-30441 have it: no Roles, Personalisation after Notifications for everyone, and the organisation's own row only for whoever manages it. */
 export function demoGroups(
   viewer: Viewer,
-): { heading: SettingsGroup['heading']; sections: DemoSection[] }[] {
+): { heading: SettingsGroup['heading']; sections: ShellSection[] }[] {
   const organisation = VIEWER_ORGANISATION[viewer];
   const manages = organisation?.permissions.includes('organisation.manage') === true;
 
@@ -58,10 +50,10 @@ export function demoGroups(
     heading,
     sections: sections
       .filter(
-        (section): section is Exclude<DemoSection, 'personalisation'> =>
+        (section): section is Exclude<ShellSection, 'personalisation'> =>
           section !== 'roles' && (manages || section !== 'organisation'),
       )
-      .flatMap((section): DemoSection[] =>
+      .flatMap((section): ShellSection[] =>
         section === 'notifications' ? [section, 'personalisation'] : [section],
       ),
   }));
@@ -73,14 +65,6 @@ export const VIEWER_PERSON: Record<Viewer, { name: string; initials: string; ema
   member: { name: 'Priya Shah', initials: 'PS', email: 'priya@ire.events' },
   noOrg: YOU,
 };
-
-/** Who is looking, as the Settings card and the sidebar's foot show them: no role outside an organisation. */
-export interface Looking {
-  name: string;
-  initials: string;
-  email: string;
-  role: string | null;
-}
 
 export function lookingAs(viewer: Viewer): Looking {
   return { ...VIEWER_PERSON[viewer], role: VIEWER_ORGANISATION[viewer]?.role ?? null };

@@ -7,8 +7,6 @@ import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { Glyph } from '../../components/Glyph.tsx';
-import { useShell } from '../settings/Frame.tsx';
-import { Avatar } from '../settings/parts.tsx';
 import { CheckMark } from '../settings/SecurityTwoFactor.tsx';
 import {
   type AskProps,
@@ -32,6 +30,8 @@ import {
   ROLE_LINES,
 } from './PeopleSample.ts';
 import { DoneAction, EventRoles } from './PeopleRole.tsx';
+import { useShell } from '../../components/settingsShell.ts';
+import { Avatar } from '../../components/SettingsParts.tsx';
 
 const THEIR_ROLE = 'Their role';
 const TICKED_INSET = 24 + tokens.spaceLg + 40 + tokens.spaceLg;

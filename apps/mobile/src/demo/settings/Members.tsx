@@ -6,7 +6,7 @@ import type { ViewInstance } from 'react-native';
 
 import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
 
-import { Landscape, SeenBy, useShell } from './Frame.tsx';
+import { Landscape, SeenBy } from './Frame.tsx';
 import { ClaimScreen, useOwnerClaim } from './MembersClaim.tsx';
 import { useLoad } from './MembersLoading.tsx';
 import { MembersCardView, NobodyPicked, People, Waiting } from './MembersParts.tsx';
@@ -31,6 +31,7 @@ import {
 } from './MembersSample.ts';
 import { memberLooking } from './sample.ts';
 import { FailedBlock, LoadingBlock, SummaryColumn, SummaryPage } from './Summary.tsx';
+import { useShell } from '../../components/settingsShell.ts';
 
 const PLAIN: PersonOpening = { step: 'resting', picked: null };
 

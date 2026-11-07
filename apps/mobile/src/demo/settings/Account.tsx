@@ -34,8 +34,8 @@ import { NameScreen } from './AccountName.tsx';
 import { type Contact, HOME_ZONE } from './AccountSample.ts';
 import { VerifyScreen } from './AccountVerify.tsx';
 import { ZoneScreen } from './AccountZone.tsx';
-import { useShell } from './Frame.tsx';
 import { Ask, bringIntoView, SummaryPage, useRowClear } from './Summary.tsx';
+import { useShell } from '../../components/settingsShell.ts';
 
 export { ACCOUNT_STATES } from './AccountModel.ts';
 
