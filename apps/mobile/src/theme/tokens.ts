@@ -1699,7 +1699,9 @@ export function withScheme(name: string | undefined): Tokens {
   return name != null && Object.hasOwn(schemes, name) ? { ...base, ...schemes[name as Scheme] } : base;
 }
 
-/** Expo writes EXPO_PUBLIC_SCHEME in at build time. */
-export const tokens: Tokens = withScheme(process.env.EXPO_PUBLIC_SCHEME);
+export const defaultScheme: Scheme = 'violet';
+
+/** Expo writes EXPO_PUBLIC_SCHEME in at build time; unset or empty, a build draws the default. */
+export const tokens: Tokens = withScheme(process.env.EXPO_PUBLIC_SCHEME || defaultScheme);
 
 export default tokens;
