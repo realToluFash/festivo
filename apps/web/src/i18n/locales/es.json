@@ -594,6 +594,7 @@
     "exhaustedTitle": "Demasiados intentos fallidos",
     "exhaustedBody": "Ese código ya no funciona. Envíe uno nuevo para continuar.",
     "wrongAddress": "¿No es su dirección?",
+    "registerAgain": "Regístrese de nuevo con la dirección correcta",
     "doneTitle": "Correo verificado",
     "doneBody": "{{address}} está confirmado. A continuación, unos datos para que su equipo sepa quién es quién.",
     "doneBodyAlternative": "{{address}} está verificada. Seguirá siendo una dirección alternativa hasta que la haga principal en Cuenta.",
@@ -1295,10 +1296,8 @@
     "emailShape": "Eso no parece una dirección de correo electrónico. Compruebe que tiene una @ y un dominio, como amara.o@gmail.com.",
     "roleMeans": {
       "owner": "Todo, incluidas la facturación y la eliminación de la organización.",
-      "administrator": "Todo en los eventos, además de miembros y roles. Sin facturación.",
-      "event_manager": "Todo dentro de los eventos, y gestiona el presupuesto. Nunca el margen.",
-      "coordinator": "Organiza eventos. Consulta el presupuesto, nunca el margen.",
-      "read_only": "Ve los eventos. No cambia nada."
+      "administrator": "Todo menos la facturación. Ve todos los eventos y gestiona los miembros.",
+      "member": "Trabaja en los eventos que se le asignan y no ve ningún otro."
     },
     "inviteNote": "Recibirá un correo en su idioma con un enlace para unirse a {{organisation}} con el rol {{role}}. El correo indica hasta cuándo funciona el enlace.",
     "send": "Enviar invitación",
@@ -1604,7 +1603,6 @@
     "joined": "Se ha unido a {{organisation}} con el rol {{role}}.",
     "open": "Abrir {{organisation}}",
     "declinedBody": "Ha rechazado la invitación. {{inviter}} verá que ha dicho que no.",
-    "goToEvents": "Ir a sus eventos",
     "goHome": "Ir a Soirely",
     "signOutAndUse": "Cerrar sesión y usar {{email}}",
     "staySignedIn": "Seguir con la sesión de {{email}}",

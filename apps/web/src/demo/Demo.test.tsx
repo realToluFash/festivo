@@ -400,7 +400,7 @@ describe('the demo creates an account (sc-29061)', () => {
     expect(screen.getByText('Add your organisation’s name to carry on.')).toBeDefined();
     expect(screen.getByText(/too short for United Kingdom/)).toBeDefined();
     expect(screen.queryByText(/Your events belong to it/)).toBeNull();
-    expect(screen.queryByText(/How you are reached on the night/)).toBeNull();
+    expect(screen.queryByText(/How you are reached on the day/)).toBeNull();
     expect(document.activeElement).toBe(screen.getByLabelText('Organisation name'));
   });
 

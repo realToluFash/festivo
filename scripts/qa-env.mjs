@@ -9,6 +9,7 @@ import {
   createWriteStream,
   existsSync,
   mkdirSync,
+  mkdtempSync,
   openSync,
   readdirSync,
   readFileSync,
@@ -17,7 +18,7 @@ import {
   statSync,
   writeFileSync,
 } from 'node:fs';
-import { homedir, networkInterfaces } from 'node:os';
+import { homedir, networkInterfaces, tmpdir } from 'node:os';
 import { basename, dirname, extname, join, resolve } from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
@@ -774,6 +775,7 @@ function setup() {
         console.log(id ? `  ${sim.name}: created ${id}` : `  ${sim.name}: could not create one`);
       }
     }
+    withSoftwareKeyboard(qaSimulatorIds());
   }
 
   step('The emulators');
@@ -802,10 +804,22 @@ function androidTools() {
   };
 }
 
+export function missingCmdlineTools({ sdk, avdmanager }) {
+  return [
+    `  no Android SDK command-line tools in ${sdk}`,
+    `  expected avdmanager at ${avdmanager}`,
+    '  install them either way, then run `node scripts/qa-env.mjs setup` again:',
+    '    - Android Studio: Settings > Languages & Frameworks > Android SDK > SDK Tools,',
+    '      tick "Android SDK Command-line Tools (latest)" and apply',
+    '    - or download the command-line tools zip from https://developer.android.com/studio#command-tools',
+    `      and unzip it so its bin/ sits at ${dirname(avdmanager)}`,
+  ].join('\n');
+}
+
 function createEmulators() {
   const tools = androidTools();
   if (!existsSync(tools.avdmanager)) {
-    console.log(`  no Android SDK command-line tools in ${tools.sdk}`);
+    console.log(missingCmdlineTools(tools));
     return;
   }
   const image = playImage(tools.sdk);
@@ -957,6 +971,10 @@ export function databaseCommands(console_, afterMigrations, keepData) {
     [...console_, 'doctrine:migrations:migrate', '-n', '--allow-no-migration'],
     // Recreated, so a health check failed while waiting for the schema does not end --wait at once.
     ...(waiting ? [['compose', 'up', '-d', '--wait', '--force-recreate', ...afterMigrations]] : []),
+    // The test database holds nothing worth keeping, so --keep-data never spares it.
+    [...console_, 'doctrine:database:drop', '--env=test', '--if-exists', '--force'],
+    [...console_, 'doctrine:database:create', '--env=test'],
+    [...console_, 'doctrine:migrations:migrate', '--env=test', '-n', '--allow-no-migration'],
   ];
 }
 
@@ -1038,6 +1056,47 @@ function withoutPasswordAutoFill(udid) {
     for (const step of passwordAutoFillOff(file)) run('plutil', step, { optional: true });
   }
 }
+
+// Simulator.app connects the Mac's keyboard, so no on-screen keyboard shows. It writes its
+// preferences back when it quits, so they are changed only while it is not running.
+export const SIMULATOR_PREFERENCES = 'com.apple.iphonesimulator';
+
+export function hardwareKeyboardOff(file, udids) {
+  return [
+    ['-replace', 'ConnectHardwareKeyboard', '-bool', 'NO', file],
+    ['-insert', 'DevicePreferences', '-dictionary', file],
+    ...udids.flatMap((udid) => [
+      ['-insert', `DevicePreferences.${udid}`, '-dictionary', file],
+      ['-replace', `DevicePreferences.${udid}.ConnectHardwareKeyboard`, '-bool', 'NO', file],
+    ]),
+  ];
+}
+
+function withSoftwareKeyboard(udids) {
+  if (!udids.length) return;
+  if (capture('pgrep', ['-x', 'Simulator']) !== null) {
+    console.log(
+      '  Simulator.app is open, so its keyboard setting is left alone. For the on-screen keyboard,' +
+        ' turn off I/O > Keyboard > Connect Hardware Keyboard (Cmd+Shift+K) in the device window.',
+    );
+    return;
+  }
+  const dir = mkdtempSync(join(tmpdir(), 'qa-sim-prefs-'));
+  const file = join(dir, 'prefs.plist');
+  try {
+    if (!run('defaults', ['export', SIMULATOR_PREFERENCES, file], { optional: true }))
+      run('plutil', ['-create', 'xml1', file]);
+    for (const step of hardwareKeyboardOff(file, udids)) run('plutil', step, { optional: true });
+    run('defaults', ['import', SIMULATOR_PREFERENCES, file]);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+const qaSimulatorIds = () =>
+  Object.values(CONFIG.simulators)
+    .map((sim) => simulatorId(sim.name))
+    .filter(Boolean);
 
 const appVersion = (app) =>
   capture('plutil', ['-extract', 'CFBundleShortVersionString', 'raw', join(app, 'Info.plist')]);
@@ -1157,6 +1216,7 @@ async function ios(args) {
       throw new Error(`Expo Go for SDK ${expoSdkMajor(expo)} did not install on the ${key}`);
     devices.push(udid);
   }
+  withSoftwareKeyboard(qaSimulatorIds());
   run('open', ['-a', 'Simulator'], { optional: true });
 
   const metro = await startBundler(root);
@@ -1216,16 +1276,31 @@ async function startBundler(root, env = process.env) {
 }
 
 async function bundlerUp(seconds = 120) {
-  const statusUrl = `http://127.0.0.1:${CONFIG.ports.METRO_PORT}/status`;
   for (let i = 0; i < seconds; i++) {
-    const answer = await fetch(statusUrl).then(
-      (r) => r.text(),
-      () => '',
-    );
-    if (answer.includes('running')) return true;
+    if (await bundlerAnswers()) return true;
     await pause(1000);
   }
   return false;
+}
+
+export async function bundlerAnswers(port = CONFIG.ports.METRO_PORT) {
+  const answer = await fetch(`http://127.0.0.1:${port}/status`, {
+    signal: AbortSignal.timeout(3000),
+  }).then(
+    (r) => r.text(),
+    () => '',
+  );
+  return answer.includes('running');
+}
+
+export const bundlerCommand = (onAndroid) => (onAndroid ? 'android' : 'ios');
+
+export const noBundler = ({ port, command }) =>
+  `no bundler on ${port}: start it with \`node .qa/bin/qa-env.mjs ${command}\``;
+
+// Every check reloads through the bundler, so without one each Maestro start fails the same way.
+export async function assertBundler(bundler, answers = bundlerAnswers) {
+  if (!(await answers(bundler.port))) throw new Error(noBundler(bundler));
 }
 
 const SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
@@ -1413,11 +1488,14 @@ async function bootEmulator(tools, name) {
     emulatorGpu(),
     '-no-snapshot-save',
   ];
+  const unit = `${CONFIG.project}-emulator`;
+  let gone;
   if (usesSystemd()) {
     const env = Object.entries(tools.vars).map(([key, value]) => `--setenv=${key}=${value}`);
+    const since = Math.floor(Date.now() / 1000);
     run('systemd-run', [
       '--user',
-      `--unit=${CONFIG.project}-emulator`,
+      `--unit=${unit}`,
       '--collect',
       '--quiet',
       '-p',
@@ -1426,21 +1504,50 @@ async function bootEmulator(tools, name) {
       tools.emulator,
       ...args,
     ]);
+    gone = () =>
+      emulatorUnitGone(
+        unit,
+        unitState(unit),
+        () => capture('journalctl', emulatorJournalArgs(unit, since)) ?? '(no journal lines)',
+      );
   } else {
-    const log = openSync(join(qaWorktree(), '.qa/emulator.log'), 'a');
-    spawn(tools.emulator, args, {
+    const logPath = join(qaWorktree(), '.qa/emulator.log');
+    const log = openSync(logPath, 'a');
+    let exit = null;
+    const child = spawn(tools.emulator, args, {
       detached: true,
       stdio: ['ignore', log, log],
       env: tools.env,
-    }).unref();
+    });
+    child.on('exit', (code, signal) => (exit = signal ?? `code ${code}`));
+    child.unref();
+    gone = () => exit && `the emulator exited (${exit}) before it booted; see ${logPath}`;
   }
 
-  for (let i = 0; i < 180; i++) {
-    if (adbOut(tools, ['shell', 'getprop', 'sys.boot_completed']) === '1') {
-      console.log(`  ${name}: booted on ${emulatorSerial()}`);
-      return;
-    }
-    await pause(1000);
+  await waitForBoot({
+    name,
+    booted: () => adbOut(tools, ['shell', 'getprop', 'sys.boot_completed']) === '1',
+    gone,
+    pause,
+  });
+  console.log(`  ${name}: booted on ${emulatorSerial()}`);
+}
+
+export function emulatorJournalArgs(unit, since) {
+  return ['--user', '-u', unit, `--since=@${since}`, '-n', '20', '--no-pager'];
+}
+
+export function emulatorUnitGone(unit, state, journal) {
+  if (['active', 'activating'].includes(state)) return null;
+  return `the emulator unit ${unit} stopped (${state || 'gone'}) before it booted:\n${journal()}`;
+}
+
+export async function waitForBoot({ name, booted, gone, pause, tries = 180, everyMs = 1000 }) {
+  for (let i = 0; i < tries; i++) {
+    const reason = gone();
+    if (reason) throw new Error(`${name}: ${reason}`);
+    if (booted()) return;
+    await pause(everyMs);
   }
   throw new Error(`${name} did not boot within three minutes`);
 }
@@ -1559,6 +1666,39 @@ export const ANDROID_START = [
     run: (s) => s.fresh && dismissExpoGoIntro(s.tools, s.root),
   },
 ];
+
+// Expo Go's floating Tools button sits over a list's Done, where a tap opens its menu instead.
+export const TOOLS_BUTTON = 'EXDevMenuShowFloatingActionButton';
+
+// What a batch resets on its device before signing in: TalkBack, or Expo Go's Tools button.
+// The button lives in Expo Go's container, which `defaults write host.exp.Exponent` misses.
+export function batchReset(onAndroid, device, { prefs, toolsButton } = {}) {
+  if (onAndroid) return { adb: SCREEN_READER_OFF, say: '  TalkBack is off for the batch.' };
+  if (!prefs) return { say: '  Expo Go is not installed: run `ios` first.' };
+  if (toolsButton === '0') return { say: "  Expo Go's Tools button is off." };
+  return {
+    terminate: ['simctl', 'terminate', device, EXPO_GO],
+    write: ['simctl', 'spawn', device, 'defaults', 'write', prefs, TOOLS_BUTTON, '-bool', 'NO'],
+    say: "  Expo Go's Tools button turned off for the batch.",
+    failed: "  Could not turn Expo Go's Tools button off: turn it off in Expo Go's menu.",
+  };
+}
+
+export const expoGoPrefs = (container) =>
+  container && join(container, 'Library/Preferences', EXPO_GO);
+
+function resetForBatch(onAndroid, device) {
+  const prefs = onAndroid
+    ? null
+    : expoGoPrefs(capture('xcrun', ['simctl', 'get_app_container', device, EXPO_GO, 'data']));
+  const toolsButton =
+    prefs && capture('xcrun', ['simctl', 'spawn', device, 'defaults', 'read', prefs, TOOLS_BUTTON]);
+  const reset = batchReset(onAndroid, device, { prefs, toolsButton });
+  for (const command of reset.adb ?? []) adbOut(androidTools(), command);
+  if (reset.terminate) run('xcrun', reset.terminate, { optional: true });
+  const written = !reset.write || run('xcrun', reset.write, { optional: true });
+  console.log(written ? reset.say : reset.failed);
+}
 
 async function android(args) {
   const tools = androidTools();
@@ -2595,12 +2735,16 @@ async function batch(args) {
   const source = join(root, 'apps/mobile/.maestro');
   const missing = checks.filter((check) => !existsSync(join(source, 'checks', `${check}.yaml`)));
   if (missing.length) throw new Error(`no ${missing.join(', ')} in apps/mobile/.maestro/checks`);
+  const bundler = { port: CONFIG.ports.METRO_PORT, command: bundlerCommand(onAndroid) };
+  await assertBundler(bundler);
   const device = maestroDevice(args);
   if (!onAndroid && !passwordAutoFillIsOff(device)) {
     throw new Error(
       'this simulator still offers to save a password — run `ios` first, which turns it off',
     );
   }
+
+  resetForBatch(onAndroid, device);
 
   const out = join(root, '.qa', name);
   rmSync(out, { recursive: true, force: true });
@@ -2633,6 +2777,7 @@ async function batch(args) {
   const crashed = [];
   const unstarted = new Map();
   const watchdog = { stopped: false };
+  let resumed = {};
   const setLocale = async (locale) => {
     await apiState.move('up');
     await signedIn('/api/auth/locale', { method: 'PUT', body: { locale } });
@@ -2692,15 +2837,15 @@ async function batch(args) {
   const started = Date.now();
   try {
     if (cold) {
-      for (const run of batchRuns(checks, languages)) {
+      resumed = await coldBatch(batchRuns(checks, languages), async (run) => {
         if (named) await setLocale(run.language);
         await test(join(flows, `_cold.${runId(run)}.yaml`), [run]);
-      }
+      });
     } else {
       if (named) await setLocale(languages[0]);
       const first = await test(join(flows, '_batch.yaml'), batchRuns(checks, languages));
       // After a driver crash the checks it never reached run in a fresh Maestro.
-      await resumeBatch(first.rest, async (rest, attempt) => {
+      resumed = await resumeBatch(first.rest, async (rest, attempt) => {
         const flow = join(flows, `_rest.${attempt}.yaml`);
         const written = batchFlow({ runs: rest });
         writeFileSync(flow, onAndroid ? forAndroid(written) : written);
@@ -2726,7 +2871,8 @@ async function batch(args) {
     `\nBatch ${name}${cold ? ', each check alone and cold' : ''}: ` +
       `${ids.length - failed.length} passed, ${failed.length} failed, in ${Math.floor(seconds / 60)}m${seconds % 60}s`,
   );
-  for (const line of batchSummary(ids, { passed, begun, crashed, unstarted }))
+  const gone = resumed.bundlerGone ? bundler : null;
+  for (const line of batchSummary(ids, { passed, begun, crashed, unstarted, bundlerGone: gone }))
     console.log(`  ${line}`);
   console.log(`Evidence in ${out}`);
   if (failed.length) {
@@ -2772,9 +2918,20 @@ export async function runHeld(
 
 export const MAX_RESUMES = 3;
 
-export async function resumeBatch(rest, resume) {
-  for (let attempt = 1; rest.length && attempt <= MAX_RESUMES; attempt++)
+export async function coldBatch(runs, test, { bundler = () => bundlerAnswers() } = {}) {
+  for (const run of runs) {
+    if (!(await bundler())) return { bundlerGone: true };
+    await test(run);
+  }
+  return { bundlerGone: false };
+}
+
+export async function resumeBatch(rest, resume, { bundler = () => bundlerAnswers() } = {}) {
+  for (let attempt = 1; rest.length && attempt <= MAX_RESUMES; attempt++) {
+    if (!(await bundler())) return { bundlerGone: true };
     ({ rest } = await resume(rest, attempt));
+  }
+  return { bundlerGone: false };
 }
 
 // Checks are optional, so a run that ends before the last check it held, or that the watchdog
@@ -2794,13 +2951,18 @@ const UNSTARTED = {
   ended: 'not run: Maestro ended before the first check, while signing in (its output says why)',
 };
 
-export function batchSummary(ids, { passed, begun, crashed, unstarted = new Map() }) {
-  return ids.map((id) => {
+export function batchSummary(
+  ids,
+  { passed, begun, crashed, unstarted = new Map(), bundlerGone = null },
+) {
+  const lines = ids.map((id) => {
     if (passed.has(id)) return `✓ ${id}`;
     if (crashed.includes(id)) return `✗ ${id}: Maestro's driver stopped answering (a driver crash)`;
     if (!begun.includes(id)) return `✗ ${id}: ${UNSTARTED[unstarted.get(id)] ?? 'not run'}`;
     return `✗ ${id}`;
   });
+  if (bundlerGone === null) return lines;
+  return [...lines, `Stopped: ${noBundler(bundlerGone)}`];
 }
 
 export function rerunHints(name, failures, { args, email, secret, rest = {} }) {

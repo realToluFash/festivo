@@ -85,7 +85,9 @@ top:
    built, reviewed, merged or nearly, and wrong — and somebody has already spent a pass
    proving it. The one that has been there longest comes first, in both rework states.
 3. **`In Progress`** **with your label** — work already started, finished first. Developer
-   1 also takes unlabelled ones here and in Failed QA, and the claim adds `dev1`.
+   1 also takes unlabelled ones here and in Failed QA, and the claim adds `dev1`. One
+   waiting on a `[ux]` answer, with every part its demo covers built, is not taken: pass
+   it by until the answer comes (section 3).
 4. **`Ready For Dev`** **with no developer label**, top of the list: the AC is settled and
    any screens are linked. The list runs **epic by epic**, in the order of Shortcut's epic
    list, and by the story list within each epic: a story in a later epic waits until the
@@ -146,7 +148,10 @@ request. What it leaves as a one-line reference you can open with `sq dev story 
   its code before writing a screen (**screen-from-design**). A screen or state the demo
   lacks, found while building, is a blocker (`role-routine`): `sq dev comment sc-N --to ux`
   naming it, then build what the demo covers and leave that part unbuilt until the demo
-  has it.
+  has it. If the rest blocks you, start other work: leave the story In Progress with a
+  `sq dev note` naming what it waits for, and take the next story in the queue. At most
+  three of your stories wait In Progress on an answer at once; with three waiting, take
+  no new story and say so in your report.
 - **The comments** are where the QA report lives, and on a Failed QA story it is the whole
   brief. The dated amendment sections in the description ("Done, 15 Oct", "Reversed, Oct
   14") are the decision log — read them before re-litigating anything.
@@ -334,3 +339,9 @@ makes this move: a passed story you merge and leave in `Passed Code Review` is a
 nobody tests. A story labelled **translation** is the exception: it stays where the
 linguist put it, and sq refuses `to-qa` on it as it refuses the move.
 Never move it before the merge, and never mark it Done.
+
+**A story built in steps** (its tasks) goes to QA with its last task, not its first. Tick
+the task a pull request finishes before you merge it: `sq dev task sc-N --done <id>`. A
+merge with a task still open moves the story to `In Progress` and tells no tester; if that
+task was in fact done, tick it and run `sq dev to-qa sc-N`. That works only while the
+story is still where the merge left it: once it has moved again, it goes through review.

@@ -107,9 +107,13 @@ export function useDeskDialog(
     };
   }, []);
 
+  const entered = useRef(false);
+
   useEffect(() => {
+    if (covered || entered.current) return;
+    entered.current = true;
     (first.current ?? dialog.current)?.focus();
-  }, [dialog, first]);
+  }, [covered, dialog, first]);
 
   return covered;
 }

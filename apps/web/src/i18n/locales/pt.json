@@ -594,6 +594,7 @@
     "exhaustedTitle": "Demasiadas tentativas erradas",
     "exhaustedBody": "Esse código já não funciona. Envie um novo para continuar.",
     "wrongAddress": "Não é o seu endereço?",
+    "registerAgain": "Registe-se novamente com o endereço correto",
     "doneTitle": "E-mail verificado",
     "doneBody": "{{address}} está confirmado. A seguir, alguns dados para que a sua equipa saiba quem é quem.",
     "doneBodyAlternative": "{{address}} está verificado. Continua a ser um endereço alternativo até o tornar principal em Conta.",
@@ -1295,10 +1296,8 @@
     "emailShape": "Isso não parece um endereço de e-mail. Confirme que tem um @ e um domínio, como amara.o@gmail.com.",
     "roleMeans": {
       "owner": "Tudo, incluindo a faturação e a eliminação da organização.",
-      "administrator": "Tudo nos eventos, mais membros e funções. Sem faturação.",
-      "event_manager": "Tudo dentro dos eventos, e gere o orçamento. Nunca a margem.",
-      "coordinator": "Organiza eventos. Consulta o orçamento, nunca a margem.",
-      "read_only": "Vê os eventos. Não altera nada."
+      "administrator": "Tudo exceto a faturação. Vê todos os eventos e gere os membros.",
+      "member": "Trabalha nos eventos que lhe são atribuídos e não vê mais nenhum."
     },
     "inviteNote": "Esta pessoa recebe um e-mail no seu idioma, com uma ligação para aderir a {{organisation}} com a função {{role}}. O e-mail indica até quando a ligação funciona.",
     "send": "Enviar convite",
@@ -1604,7 +1603,6 @@
     "joined": "Aderiu a {{organisation}} com a função {{role}}.",
     "open": "Abrir {{organisation}}",
     "declinedBody": "Recusou o convite. {{inviter}} vai ver que recusou.",
-    "goToEvents": "Ir para os seus eventos",
     "goHome": "Ir para a Soirely",
     "signOutAndUse": "Encerrar sessão e usar {{email}}",
     "staySignedIn": "Manter a sessão de {{email}}",

@@ -46,6 +46,14 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 | Try again (button)        | Réessayer                              | Settled 1 Nov, sc-26974          |
 | Owner / Admin / Member    | Propriétaire / Administrateur / Membre | Settled 5 Nov, sc-29914          |
 
+- **7 nov. 2026. Ce que fait chaque rôle, dans Membres** (`web:membersScreen.roleMeans.*`, sc-30138). Les phrases n’ont pas de sujet, comme `owner`. Les événements d’un Membre sont « les événements qui lui sont confiés » : « lui » n’accorde avec personne, alors que « auxquels il est ajouté » imposerait un genre. Même tournure dans l’app.
+- **7 nov. 2026. Les autres façons d’entrer dans l’app** (`mobile:steps.invited*`, `join`,
+  `startOwnInstead`, `mobile:requestToJoin.messageOptional`, `signedOutLine`, sc-30119). "You’re
+  invited" est « Vous avez une invitation », pour que rien ne s’accorde avec le lecteur ;
+  l’adresse est « Invitation adressée à {{email}} ». `startOwnInstead` reprend
+  `domainJoining.startOwnInstead`, « Créer plutôt ma propre organisation ». « Optional » dans un
+  libellé est « facultatif », comme `web:requestToJoin.optional`.
+
 - **« e-mail » keeps a plain hyphen (U+002D)**, never U+2011, even where it wraps as « e- » /
   « mail » (sc-20577, #20957). A break at a hyphen is ordinary French typography; U+2011 is
   missing from some fonts and email clients, breaks search, and outside GSM-7 sends an SMS as

@@ -593,6 +593,7 @@
     "expiredBody": "Les codes ne sont valables qu’un temps. Envoyez-en un nouveau et utilisez celui du dernier e-mail.",
     "exhaustedTitle": "Trop de tentatives incorrectes",
     "exhaustedBody": "Ce code ne fonctionne plus. Envoyez-en un nouveau pour continuer.",
+    "registerAgain": "Inscrivez-vous à nouveau avec la bonne adresse",
     "wrongAddress": "Ce n’est pas votre adresse ?",
     "doneTitle": "Adresse vérifiée",
     "doneBody": "{{address}} est confirmée. Ensuite, quelques informations pour que votre équipe sache qui est qui.",
@@ -1295,10 +1296,8 @@
     "emailShape": "Cela ne ressemble pas à une adresse e-mail. Vérifiez qu’elle contient un @ et un domaine, comme amara.o@gmail.com.",
     "roleMeans": {
       "owner": "Tout, y compris la facturation et la suppression de l’organisation.",
-      "administrator": "Tout dans les événements, plus les membres et les rôles. Pas la facturation.",
-      "event_manager": "Tout dans les événements, et gère le budget. Jamais la marge.",
-      "coordinator": "Organise les événements. Consulte le budget, jamais la marge.",
-      "read_only": "Voit les événements. Ne modifie rien."
+      "administrator": "Tout sauf la facturation. Voit tous les événements et gère les membres.",
+      "member": "Travaille sur les événements qui lui sont confiés, et ne voit pas les autres."
     },
     "inviteNote": "Cette personne recevra un e-mail dans sa langue, avec un lien pour rejoindre {{organisation}} avec le rôle {{role}}. L’e-mail indique jusqu’à quand le lien fonctionne.",
     "send": "Envoyer l’invitation",
@@ -1604,7 +1603,6 @@
     "joined": "Vous avez rejoint {{organisation}} avec le rôle {{role}}.",
     "open": "Ouvrir {{organisation}}",
     "declinedBody": "Vous avez refusé l’invitation. {{inviter}} verra votre refus.",
-    "goToEvents": "Voir vos événements",
     "goHome": "Aller sur Soirely",
     "signOutAndUse": "Se déconnecter et utiliser {{email}}",
     "staySignedIn": "Rester connecté avec {{email}}",

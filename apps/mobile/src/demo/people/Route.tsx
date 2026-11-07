@@ -3,7 +3,6 @@ import { useCallback, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import type { SettingsSection } from '../../kit/appNav.ts';
 import { useLayout } from '../../layout/useLayout.ts';
 import { tokens } from '../../theme/tokens.ts';
 import type { Tab } from '../../components/TodayCover.tsx';
@@ -12,7 +11,7 @@ import { OrgSwitcherProvider } from '../OrgSwitcher.tsx';
 import { useCoverStatusBar } from '../Welcome.tsx';
 import { type Shell, ShellContext } from '../settings/Frame.tsx';
 import { layoutOf, settingsHref } from '../settings/Route.tsx';
-import { lookingAs } from '../settings/sample.ts';
+import { type DemoSection, lookingAs } from '../settings/sample.ts';
 import { PageToast } from '../settings/Summary.tsx';
 import { PeopleSection } from './People.tsx';
 
@@ -26,7 +25,7 @@ export function PeopleRoute() {
   useCoverStatusBar('dark', false);
 
   const openSection = useCallback(
-    (section: SettingsSection) => router.push(settingsHref('owner', section)),
+    (section: DemoSection) => router.push(settingsHref('owner', section)),
     [],
   );
   const toSettings = useCallback(() => router.push(settingsHref('owner', null)), []);

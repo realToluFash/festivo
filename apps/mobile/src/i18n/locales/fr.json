@@ -1367,8 +1367,8 @@
     "goHome": "Aller sur Soirely",
     "failedTitle": "La demande n’a pas abouti",
     "failedBody": "Un problème est survenu en cours de route. Réessayez dans un instant.",
-    "messageOptional": "Message · optional",
-    "signedOutLine": "Sign in or create an account to ask. You come back here after."
+    "messageOptional": "Message · facultatif",
+    "signedOutLine": "Connectez-vous ou créez un compte pour envoyer votre demande. Vous reviendrez ensuite sur cette page."
   },
   "ownerClaim": {
     "loading": "Chargement",
@@ -1954,11 +1954,11 @@
     "mobileLine": "Nous envoyons un code à ce numéro sur WhatsApp, ou par SMS si WhatsApp ne peut pas vous joindre.",
     "sendCode": "Envoyer le code",
     "whatsAppTitle": "Consultez WhatsApp",
-    "invitedTitle": "You’re invited",
-    "invitedIntro": "Join your team, or start your own organisation.",
-    "invitationFor": "An invitation for {{email}}",
-    "join": "Join {{organisation}}",
-    "startOwnInstead": "Start my own instead"
+    "invitedTitle": "Vous avez une invitation",
+    "invitedIntro": "Rejoignez votre équipe, ou créez votre propre organisation.",
+    "invitationFor": "Invitation adressée à {{email}}",
+    "join": "Rejoindre {{organisation}}",
+    "startOwnInstead": "Créer plutôt ma propre organisation"
   },
   "todayScreen": {
     "today": "Today",
