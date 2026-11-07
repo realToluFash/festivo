@@ -21,13 +21,13 @@ describe('Settings home in the demo, with three roles', () => {
     ]);
   });
 
-  it('shows a member her own sections and Sign-in rules alone', () => {
+  it('shows a member her own sections, the organisation to leave it, and Sign-in rules', () => {
     expect(demoGroups('member')).toEqual([
       {
         heading: 'yourAccount',
         sections: ['account', 'security', 'notifications', 'personalisation'],
       },
-      { heading: 'organisationHeading', sections: ['signInRules'] },
+      { heading: 'organisationHeading', sections: ['organisation', 'signInRules'] },
     ]);
     expect(VIEWER_PERSON.member.name).toBe('Priya Shah');
   });
