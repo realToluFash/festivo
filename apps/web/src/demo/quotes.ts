@@ -281,9 +281,7 @@ const owing = (id: string): Owing => ({ id, name: sampleEvent(id)?.name ?? id })
 export function usedOn(vendorId: string, wedding: Budget = sampleBudget()): string | null {
   const here = wedding.quotes.some((one) => one.vendor.id === vendorId) ? 1 : 0;
   const count = here + (ENGAGED_ELSEWHERE[vendorId] ?? 0);
-  if (count === 0) return null;
-
-  return count === 1 ? 'Used on 1 event' : `Used on ${count} events`;
+  return count === 0 ? null : QW.usedOn(count);
 }
 
 /** The events that still have a payment to a vendor that is not paid or cancelled: archiving it is refused while any does (409). */

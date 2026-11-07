@@ -234,3 +234,10 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+.vd-owing {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceXs);
+}

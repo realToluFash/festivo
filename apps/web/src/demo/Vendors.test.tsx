@@ -77,9 +77,22 @@ describe('Settings › Vendors in A · Summary first (sc-82)', () => {
     ).toBeDefined();
     expect(rows()).toHaveLength(25);
     expect(rows()[0]?.textContent).toBe(
-      'Àbẹ̀ní FlowersÀbẹ̀ní Oyelaran · Flowers · hello@abeni.flowers',
+      'Àbẹ̀ní FlowersÀbẹ̀ní Oyelaran · Flowers · hello@abeni.flowers · Used on 1 event',
     );
-    expect(rows()[3]?.textContent).toBe('Delta FramesTolu Ade · Photography · +44 20 7946 0321');
+    expect(rows()[3]?.textContent).toBe(
+      'Delta FramesTolu Ade · Photography · +44 20 7946 0321 · Used on 1 event',
+    );
+    const used = (name: string) =>
+      rows()
+        .find((one) => one.textContent?.startsWith(name))
+        ?.textContent?.split(' · ')
+        .at(-1);
+    expect(['Bloom & Co', 'Lens & Light', 'Savour Kitchen', 'Golden Spoon'].map(used)).toEqual([
+      'Used on 2 events',
+      'Used on 3 events',
+      'Used on 4 events',
+      'events@goldenspoon.co.uk',
+    ]);
     expect(within(main()).getByText('1 to 25 of 28, A to Z')).toBeDefined();
     expect(filter(/^In use · 28/).getAttribute('aria-haspopup')).toBe('menu');
     expect(filter(/^All categories · 28/)).toBeDefined();
@@ -294,18 +307,53 @@ describe('Settings › Vendors in A · Summary first (sc-82)', () => {
   });
 
   it('archives from Edit vendor in one press, said in a toast', SLOW, async () => {
-    await open('/demo/settings/vendors?state=edit');
+    await open('/demo/settings/vendors?state=populated');
+    fireEvent.click(within(main()).getByRole('button', { name: /^Golden Spoon/ }));
     const dialog = screen.getByRole('dialog', { name: 'Edit vendor' });
 
-    expect(within(dialog).getByLabelText('Name')).toHaveProperty('value', 'Bloom & Co');
+    expect(within(dialog).getByLabelText('Name')).toHaveProperty('value', 'Golden Spoon');
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'Archive this vendor' }));
 
     expect(screen.queryByRole('dialog')).toBeNull();
-    expect(await screen.findByText('Bloom & Co is archived. It is under Archived.')).toBeDefined();
-    expect(within(main()).queryByRole('button', { name: /^Bloom & Co/ })).toBeNull();
+    expect(
+      await screen.findByText('Golden Spoon is archived. It is under Archived.'),
+    ).toBeDefined();
+    expect(within(main()).queryByRole('button', { name: /^Golden Spoon/ })).toBeNull();
     expect(filter(/^In use · 27/)).toBeDefined();
   });
+
+  it(
+    'refuses to archive a vendor an event still owes, one link per event (sc-87)',
+    SLOW,
+    async () => {
+      const words =
+        'Bloom & Co was not archived, because the events below still have payments to it that are not paid or cancelled. Once each one is paid or cancelled, you can archive the vendor.';
+      await open('/demo/settings/vendors?state=edit');
+      let dialog = screen.getByRole('dialog', { name: 'Edit vendor' });
+      expect(within(dialog).queryByRole('alert')).toBeNull();
+
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Archive this vendor' }));
+
+      expect(screen.getByRole('dialog', { name: 'Edit vendor' })).toBe(dialog);
+      expect(within(dialog).getByRole('alert').textContent).toBe(words);
+      expect(within(main()).getByRole('button', { name: /^Bloom & Co/ })).toBeDefined();
+      cleanup();
+
+      await open('/demo/settings/vendors?state=archive_refused');
+      dialog = screen.getByRole('dialog', { name: 'Edit vendor' });
+      expect(within(dialog).getByRole('alert').textContent).toBe(words);
+      const links = within(dialog).getAllByRole('link');
+      expect(links.map((one) => [one.textContent, one.getAttribute('href')])).toEqual([
+        [
+          'Payments to Bloom & Co on Adaeze & Tunde’s wedding',
+          '/demo/events/evt-wed-4?area=budget&vendor=v3',
+        ],
+        ['Payments to Bloom & Co on Ireti at 40', '/demo/events/evt-ireti-2?area=budget&vendor=v3'],
+      ]);
+      expect(within(dialog).getByRole('button', { name: 'Archive this vendor' })).toBeDefined();
+    },
+  );
 
   it('opens archived_toast with Bloom & Co gone to Archived', SLOW, async () => {
     await open('/demo/settings/vendors?state=archived_toast');

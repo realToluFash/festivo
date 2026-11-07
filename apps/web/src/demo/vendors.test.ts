@@ -236,7 +236,12 @@ describe('the vendor directory’s rules (sc-82)', () => {
     expect(links.every((to) => to.startsWith('/demo/settings/vendors'))).toBe(true);
     expect(STATES.filter((state) => !named.includes(state))).toEqual([]);
     expect(named).not.toContain('read_only');
-    expect(named).not.toContain('archive_refused');
+    expect(named).toContain('archive_refused');
+    expect(vendorsStart('archive_refused').dialog).toMatchObject({
+      kind: 'edit',
+      id: 'v3',
+      refused: true,
+    });
 
     expect(vendorsStart('empty').vendors).toEqual([]);
     expect(vendorsStart('searched')).toMatchObject({
