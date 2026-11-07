@@ -34,7 +34,7 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
       },
       {
         title: 'The event day · guests arriving',
-        what: '141/152 arrived, beside Open the event',
+        what: '87/99 arrived, beside Open the event',
         href: '/demo/today?moment=dayNow&arrived=some',
       },
       {

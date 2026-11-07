@@ -19,10 +19,10 @@ const french = new Intl.NumberFormat('fr-FR');
 describe('Now’s arrived figure', () => {
   it('reads arrived of expected, beside a ring of the same share', () => {
     expect(figureOf(COUNTS.some, english)).toEqual({
-      count: '141',
-      of: '152',
-      share: 141 / 152,
-      spoken: '141 of 152 arrived',
+      count: '87',
+      of: '99',
+      share: 87 / 99,
+      spoken: '87 of 99 arrived',
     });
   });
 
@@ -44,15 +44,15 @@ describe('Now’s arrived figure', () => {
     expect(figureOf(COUNTS.thousands, french)?.count).toBe('1 204');
   });
 
-  it('reads the served expected, so a walk-in at 141 of 152 reads 142 of 153', () => {
-    const walkIn = { arrived: 142, coming: 152, expected: 153 };
+  it('reads the served expected, so a guest let in at 41 of 98 reads 42 of 99', () => {
+    const letIn = { arrived: 42, coming: 96, expected: 99 };
 
-    expect(figureOf(walkIn, english)).toMatchObject({
-      spoken: '142 of 153 arrived',
-      share: 142 / 153,
+    expect(figureOf(letIn, english)).toMatchObject({
+      spoken: '42 of 99 arrived',
+      share: 42 / 99,
     });
-    expect(figureOf({ arrived: 153, coming: 152, expected: 153 }, english)?.spoken).toBe(
-      '153 of 153 arrived',
+    expect(figureOf({ arrived: 97, coming: 96, expected: 97 }, english)?.spoken).toBe(
+      '97 of 97 arrived',
     );
   });
 });
@@ -60,8 +60,8 @@ describe('Now’s arrived figure', () => {
 describe('the card’s line', () => {
   it('keeps the replies line and bar while nobody has arrived', () => {
     expect(readyOf(COUNTS.none, english)).toEqual({
-      words: '152 coming · 91% replied',
-      percent: 91,
+      words: '96 coming · 82% replied',
+      percent: 82,
     });
   });
 
@@ -70,10 +70,11 @@ describe('the card’s line', () => {
   });
 
   it('fills the bar only once everyone Coming has arrived', () => {
-    expect(readyOf({ arrived: 1, coming: 152, expected: 152 }, english)?.percent).toBe(1);
+    expect(readyOf({ arrived: 1, coming: 96, expected: 96 }, english)?.percent).toBe(1);
+    expect(readyOf(COUNTS.some, english)?.percent).toBe(87);
     expect(readyOf({ arrived: 12, coming: 1250, expected: 1250 }, english)?.percent).toBe(1);
     expect(readyOf({ arrived: 1249, coming: 1250, expected: 1250 }, english)?.percent).toBe(99);
-    expect(readyOf({ arrived: 152, coming: 152, expected: 152 }, english)?.percent).toBe(100);
+    expect(readyOf({ arrived: 99, coming: 96, expected: 99 }, english)?.percent).toBe(100);
   });
 });
 
@@ -83,7 +84,7 @@ describe('the built Now with arrivals', () => {
 
   it('puts the line on the wedding’s card and the replies lines on the others', () => {
     expect(arrived.events.map((card) => card.ready?.words ?? null)).toEqual([
-      '141 of 152 arrived',
+      '87 of 99 arrived',
       '44 coming · 80% replied',
       'Invitations not sent',
       null,
@@ -92,6 +93,23 @@ describe('the built Now with arrivals', () => {
 
   it('keeps the built Now: no Next, its ends line and Open the event', () => {
     expect(arrived.now?.ends).toBe(day.now?.ends);
-    expect(arrived.figure?.spoken).toBe('141 of 152 arrived');
+    expect(arrived.figure?.spoken).toBe('87 of 99 arrived');
+  });
+});
+
+describe('the wedding, counted as Guests A and Messaging B count it', () => {
+  const wedding = (name: 'plan' | 'day') =>
+    momentOf(name, sayIn('en-GB'), i18n.t).events.find((card) => card.event.id === 'wed');
+
+  it('reads the same replies line before anyone has arrived as on the planning day', () => {
+    expect(readyOf(COUNTS.none, english)).toEqual(wedding('plan')?.ready);
+  });
+
+  it('reads the same figure on the event day’s card, its Now and the arrived part', () => {
+    const day = momentOf('day', sayIn('en-GB'), i18n.t);
+
+    expect(readyOf(COUNTS.some, english)).toEqual(wedding('day')?.ready);
+    expect(day.now).toMatchObject({ arrived: 87, expected: 99 });
+    expect(COUNTS.some).toMatchObject({ arrived: day.now?.arrived, expected: day.now?.expected });
   });
 });

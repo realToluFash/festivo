@@ -15,7 +15,7 @@ export interface Counts {
   expected: number;
 }
 
-/** Now's figure: "141/152" over "arrived" beside a ring, or "37" over "arrived" with none. */
+/** Now's figure: "87/99" over "arrived" beside a ring, or "37" over "arrived" with none. */
 export interface Figure {
   count: string;
   of: string | null;
@@ -25,13 +25,15 @@ export interface Figure {
 
 export type ArrivedMoment = Moment & { figure: Figure | null };
 
-const REPLIES = { words: '152 coming · 91% replied', percent: 91 };
+/** The wedding as Guests A and Messaging B count it: 96 of 142 coming, 117 replied (sc-23284's Replies in). */
+const REPLIES = { words: '96 coming · 82% replied', percent: 82 };
 
 export const COUNTS: Record<Exclude<ArrivedState, 'live'>, Counts> = {
-  some: { arrived: 141, coming: 152, expected: 152 },
+  // Day 2 of 3, as Guests A's door reads it: the 96 Coming and 3 let in who were not.
+  some: { arrived: 87, coming: 96, expected: 99 },
   nobodyComing: { arrived: 37, coming: 0, expected: 37 },
   thousands: { arrived: 1204, coming: 1250, expected: 1250 },
-  none: { arrived: 0, coming: 152, expected: 152 },
+  none: { arrived: 0, coming: 96, expected: 96 },
 };
 
 /** Arrivals and undos as Check-in records them: the first arrival, two more, then undone back to nobody. */

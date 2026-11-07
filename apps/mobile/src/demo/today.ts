@@ -171,14 +171,15 @@ const AGENDA: Record<Exclude<MomentName, 'first'>, readonly (readonly [string, I
   quiet: [],
 };
 
+/** The wedding counts as Guests A and Messaging B do; on day 2, Guests A's door reads 87 of 99. */
 const READY: Partial<Record<MomentName, Partial<Record<EventKey, readonly [string, number]>>>> = {
   plan: {
-    wed: ['152 coming · 91% replied', 91],
+    wed: ['96 coming · 82% replied', 82],
     ireti: ['36 coming · 65% replied', 65],
     party: ['Invitations not sent', 0],
   },
   day: {
-    wed: ['141 of 152 arrived', 93],
+    wed: ['87 of 99 arrived', 87],
     ireti: ['44 coming · 80% replied', 80],
     party: ['Invitations not sent', 0],
   },
@@ -358,8 +359,8 @@ function now(today: string, time: string, say: Say): Now {
     until: `until ${say.clock('17:30')}`,
     behind: '10 min behind',
     next: { time: say.clock('18:00'), title: 'Dinner is served' },
-    arrived: 141,
-    expected: 152,
+    arrived: 87,
+    expected: 99,
     rail: RAIL.map(([stop, name], index) => ({
       time: say.hour(stop),
       name,

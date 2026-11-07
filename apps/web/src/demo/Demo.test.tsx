@@ -1509,7 +1509,7 @@ describe('Today at a desk (sc-29092)', () => {
 
     expect(screen.getByRole('heading', { level: 1, name: 'Drinks reception' })).toBeDefined();
     expect(screen.getByText('Live now')).toBeDefined();
-    expect(screen.getByRole('img', { name: '141 of 152 arrived' })).toBeDefined();
+    expect(screen.getByRole('img', { name: '87 of 99 arrived' })).toBeDefined();
     expect(screen.getByRole('img', { name: /^2 PM Ceremony, 3 PM Photos/ })).toBeDefined();
     expect(screen.getByRole('button', { name: 'Open run of show' })).toBeDefined();
   });

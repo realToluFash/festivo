@@ -93,6 +93,14 @@ describe('the event day', () => {
     expect(day.now?.ends).toBe('Ends tomorrow, Sun, Nov 8 at 2:00 PM');
     expect(day.now?.live).toBe('Day 2 of 3 · The Landmark, London');
   });
+
+  it('counts the wedding as Guests A and Messaging B do', () => {
+    const plan = momentOf('plan', us);
+
+    expect(plan.events[0]?.ready).toEqual({ words: '96 coming · 82% replied', percent: 82 });
+    expect(day.events[0]?.ready).toEqual({ words: '87 of 99 arrived', percent: 87 });
+    expect(day.now).toMatchObject({ arrived: 87, expected: 99 });
+  });
 });
 
 describe('the quiet states', () => {

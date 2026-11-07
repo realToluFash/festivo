@@ -67,7 +67,7 @@ function useLive(on: boolean): number {
 }
 
 function countsOf(state: ArrivedState, live: number) {
-  return state === 'live' ? { arrived: live, coming: 152, expected: 152 } : COUNTS[state];
+  return state === 'live' ? { ...COUNTS.none, arrived: live } : COUNTS[state];
 }
 
 function isMoment(name: string | undefined): name is MomentName {
