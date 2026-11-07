@@ -1,0 +1,50 @@
+# Android only: back has no meaning on the iOS simulator.
+# Android back closes the Country list alone, then Create an organisation; and closes a Settings > Organisation list with the field unchanged.
+appId: host.exp.Exponent
+---
+- runFlow: ../open-create-organisation.yaml
+- tapOn:
+    id: 'createOrganisation.name'
+- inputText: 'Back Typed'
+- hideKeyboard
+- tapOn:
+    id: 'createOrganisation.country'
+- extendedWaitUntil:
+    visible:
+      id: 'createOrganisation.country.search'
+    timeout: 10000
+- takeScreenshot: android-country-list
+- back
+- extendedWaitUntil:
+    notVisible:
+      id: 'createOrganisation.country.search'
+    timeout: 10000
+- assertVisible:
+    id: 'createOrganisation'
+- assertVisible: 'Back Typed'
+- takeScreenshot: android-after-list-back
+- back
+- extendedWaitUntil:
+    notVisible:
+      id: 'createOrganisation'
+    timeout: 10000
+- takeScreenshot: android-after-sheet-back
+- openLink: ${METRO_URL}/--/settings/organisation
+- extendedWaitUntil:
+    visible:
+      id: 'organisation.timezone'
+    timeout: 30000
+- tapOn:
+    id: 'organisation.timezone'
+- extendedWaitUntil:
+    visible:
+      id: 'organisation.timezone.search'
+    timeout: 10000
+- back
+- extendedWaitUntil:
+    notVisible:
+      id: 'organisation.timezone.search'
+    timeout: 10000
+- assertVisible:
+    id: 'organisation.timezone'
+- takeScreenshot: android-org-after-back

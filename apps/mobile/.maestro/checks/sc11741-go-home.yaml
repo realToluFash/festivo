@@ -1,0 +1,38 @@
+# sc-11741: Go to Soirely on the dead-link screen the tap brings, then on the old link opened afresh. Pass API, TOKEN and ORG.
+appId: host.exp.Exponent
+---
+- evalScript: "${output.link = json(http.request(API + '/api/orgs/' + ORG + '/request-link', {method: 'PUT', headers: {Authorization: 'Bearer ' + TOKEN, 'Content-Type': 'application/json'}, body: '{}'}).body).url.split('/join/')[1]}"
+- openLink: ${METRO_URL}/--/join/${output.link}
+- extendedWaitUntil:
+    visible:
+      id: 'requestToJoin.ask'
+    timeout: 30000
+- evalScript: '${output.old = output.link}'
+- evalScript: "${output.replaced = http.post(API + '/api/orgs/' + ORG + '/request-link/replace', {headers: {Authorization: 'Bearer ' + TOKEN, 'Content-Type': 'application/json'}, body: '{}'}).status}"
+- assertTrue: ${output.replaced == 200}
+- tapOn:
+    id: 'requestToJoin.ask'
+- extendedWaitUntil:
+    visible:
+      id: 'requestToJoin.home'
+    timeout: 15000
+- assertNotVisible:
+    id: 'requestToJoin.ask'
+- assertNotVisible:
+    id: 'requestToJoin.message'
+- tapOn:
+    id: 'requestToJoin.home'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: home-from-tap
+- openLink: ${METRO_URL}/--/join/${output.old}
+- extendedWaitUntil:
+    visible:
+      id: 'requestToJoin.home'
+    timeout: 30000
+- takeScreenshot: dead-afresh
+- tapOn:
+    id: 'requestToJoin.home'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: home-from-afresh

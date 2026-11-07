@@ -1,0 +1,37 @@
+# sc-20824: ${EVENT_ID}'s Edit details with nothing changed; Save changes leaves for the event's page, which shows no Saved.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 30000
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - scrollUntilVisible:
+          element:
+            id: 'events.page.edit'
+          direction: DOWN
+          centerElement: true
+- tapOn:
+    id: 'events.page.edit'
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.name'
+    timeout: 20000
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.send'
+    direction: DOWN
+- tapOn:
+    id: 'eventForm.send'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 3000
+- assertNotVisible:
+    id: 'eventForm.name'
+- assertNotVisible: '(Saved|Cambios guardados)'
+- takeScreenshot: left

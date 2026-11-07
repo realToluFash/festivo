@@ -1,0 +1,15 @@
+# sc-22741: Complete your profile's Full name stops at 180 characters.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/complete-profile
+- extendedWaitUntil:
+    visible:
+      id: 'completeProfile.name'
+    timeout: 30000
+- tapOn:
+    id: 'completeProfile.name'
+- eraseText: 200
+- inputText: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaZZZZZZZZZZ'
+- hideKeyboard
+- assertNotVisible: '.*ZZZ.*'
+- takeScreenshot: cp-long
