@@ -2124,13 +2124,13 @@ export function composeBatch(
     writeFileSync(path, localise(readFileSync(path, 'utf8'), catalogues, 'any', { email }));
   }
   mkdirSync(join(target, '_checks'));
-  const subFlows = (flow, language) =>
+  const subFlows = (flow, language, caller) =>
     flow.replace(
       /^(\s*(?:-\s*runFlow|file):\s*)(['"]?)([\w.-]+)\.ya?ml\2(?=\s*$)/gm,
       (line, key, quote, name) => {
         if (!existsSync(join(source, 'checks', `${name}.yaml`))) return line;
-        const id = `${checkId(name, language)}.flow`;
-        const path = join(target, '_checks', `${id}.yaml`);
+        const id = `${caller}.${name}`;
+        const path = join(target, '_checks', `${id}.flow.yaml`);
         if (!existsSync(path)) {
           writeFileSync(path, '');
           const sub = readFileSync(join(source, 'checks', `${name}.yaml`), 'utf8');
@@ -2138,17 +2138,18 @@ export function composeBatch(
             path,
             finish(
               prefixShots(
-                subFlows(localise(sub, catalogues, language, { email }), language),
-                checkId(name, language),
+                subFlows(localise(sub, catalogues, language, { email }), language, id),
+                id,
               ),
             ),
           );
         }
-        return `${key}${id}.yaml`;
+        return `${key}${id}.flow.yaml`;
       },
     );
   for (const run of batchRuns(checks, languages)) {
     const { check, language, repeat } = run;
+    const id = runId(run);
     const flow = subFlows(
       localise(
         readFileSync(join(source, 'checks', `${check}.yaml`), 'utf8'),
@@ -2159,8 +2160,8 @@ export function composeBatch(
         },
       ),
       language,
+      id,
     );
-    const id = runId(run);
     writeFileSync(
       join(target, '_checks', `${id}.yaml`),
       finish(batchCheck(flow, check, language, { reset: !cold, repeat })),
