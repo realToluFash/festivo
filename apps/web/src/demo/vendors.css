@@ -121,3 +121,17 @@
 .vd-first {
   align-items: flex-start;
 }
+
+.vd-refused {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+}
+
+.vd-refused-events {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}

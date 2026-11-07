@@ -10,7 +10,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import { useSearchParams } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 
 import { offButton } from '../offButton.ts';
 import { Forbidden } from '../routes/app/Forbidden.tsx';
@@ -47,6 +47,7 @@ import {
   type Vendor,
   type VendorsDialog,
   type View,
+  archiveRefused,
   archived,
   changed,
   draftOf,
@@ -54,11 +55,13 @@ import {
   inView,
   isLooking,
   noMatchLine,
+  owedBy,
   paged,
   reachOf,
   restored,
   savedVendor,
   shown,
+  usedOn,
   vendorsStart,
 } from './vendors.ts';
 import './account.css';
@@ -228,6 +231,10 @@ function Directory({ state, tell }: { state: string; tell: Tell }) {
             tell(adding ? `${vendor.name} is added.` : `${vendor.name} is saved.`);
           }}
           onArchive={(vendor) => {
+            if (owedBy(vendor.id).length > 0 && dialog.kind === 'edit') {
+              setDialog({ ...dialog, refused: true });
+              return;
+            }
             setVendors((now) => archived(now, vendor.id));
             close();
             tell(`${vendor.name} is archived. Find it under Archived.`);
@@ -468,7 +475,11 @@ function VendorRow({
     <>
       <RowWords
         title={vendor.name}
-        lines={[vendor.contact === '' ? 'No contact name' : vendor.contact]}
+        lines={[
+          [vendor.contact === '' ? 'No contact name' : vendor.contact, usedOn(vendor.id)]
+            .filter(Boolean)
+            .join(' · '),
+        ]}
       />
       <span className="vd-cell">{CATEGORY_WORDS[vendor.category]}</span>
       <span className={reach == null ? 'vd-cell is-none' : 'vd-cell'}>
@@ -725,6 +736,9 @@ function VendorForm({
           {field('note', 'Note', { optional: true, lines: 4 })}
           {vendor != null && (
             <div className="vd-archive">
+              {dialog.kind === 'edit' && dialog.refused === true && (
+                <ArchiveRefused vendor={vendor} />
+              )}
               <TextAction label="Archive this vendor" onClick={onArchive} />
               <p className="desk-note">
                 It leaves the directory at once. You can restore it from Archived at any time.
@@ -949,5 +963,29 @@ function ReadVendor({
       </dl>
       <p className="desk-note">Read only on your plan. Nothing here can be changed.</p>
     </Dialog>
+  );
+}
+
+/** sc-87's refusal, moved from sc-82: each event still owing the vendor, linked to its payments. */
+function ArchiveRefused({ vendor }: { vendor: Vendor }) {
+  return (
+    <div className="vd-refused" role="alert">
+      <p className="desk-error">
+        <Glyph name="alert" size={15} weight={2.2} />
+        {archiveRefused(vendor.name)}
+      </p>
+      <ul className="vd-refused-events">
+        {owedBy(vendor.id).map((event) => (
+          <li key={event.id}>
+            <Link
+              className="desk-text"
+              to={`/demo/events/${event.id}?area=budget&vendor=${vendor.id}`}
+            >
+              {event.name}, its payments to {vendor.name}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }

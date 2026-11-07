@@ -333,11 +333,44 @@ export function restored(vendors: readonly Vendor[], id: string): Vendor[] {
   return vendors.map((one) => (one.id === id ? { ...one, archivedOn: null } : one));
 }
 
+/** Events with a quote from each vendor, current or superseded (sc-87, moved from sc-82 on 6 Nov). */
+const ENGAGED: Readonly<Record<string, number>> = { v4: 2, v6: 1, v8: 1, v9: 3, v11: 1 };
+
+export function usedOn(vendorId: string): string | null {
+  const count = ENGAGED[vendorId] ?? 0;
+  if (count === 0) return null;
+
+  return count === 1 ? 'Used on 1 event' : `Used on ${count} events`;
+}
+
+export interface Owing {
+  id: string;
+  name: string;
+}
+
+/** The events that still have an unpaid scheduled payment to a vendor: archiving it is refused while any does (409). */
+const OWED: Readonly<Record<string, readonly Owing[]>> = {
+  v4: [
+    { id: 'evt-gala-4', name: 'Gala Fundación Lucía' },
+    { id: 'evt-ireti-2', name: 'Ireti at 40' },
+  ],
+  v9: [{ id: 'evt-gala-4', name: 'Gala Fundación Lucía' }],
+  v11: [{ id: 'evt-gala-4', name: 'Gala Fundación Lucía' }],
+};
+
+export function owedBy(vendorId: string): readonly Owing[] {
+  return OWED[vendorId] ?? [];
+}
+
+export function archiveRefused(name: string): string {
+  return `${name} was not archived, because these events still have a payment to it that is not paid or cancelled. Once each one is paid or cancelled, you can archive it.`;
+}
+
 export type Load = 'loaded' | 'loading' | 'failed';
 
 export type VendorsDialog =
   | { kind: 'add'; draft: Draft; problems: Problems }
-  | { kind: 'edit'; id: string; draft: Draft; problems: Problems }
+  | { kind: 'edit'; id: string; draft: Draft; problems: Problems; refused?: boolean }
   | { kind: 'read'; id: string };
 
 export interface VendorsStart {
@@ -419,6 +452,17 @@ export function vendorsStart(state: string): VendorsStart {
         ...start,
         dialog: { kind: 'edit', id: BLOOM, draft: bloomDraft(vendors, {}), problems: {} },
       };
+    case 'archive_refused':
+      return {
+        ...start,
+        dialog: {
+          kind: 'edit',
+          id: BLOOM,
+          draft: bloomDraft(vendors, {}),
+          problems: {},
+          refused: true,
+        },
+      };
     case 'read_only':
       return { ...start, readOnly: true };
     case 'read_only_open':
@@ -473,6 +517,10 @@ export const VENDORS_PAGES: readonly { name: string; states: readonly DemoLink[]
       { to: at('invalid'), name: 'Not an address, a number or a web address (invalid)' },
       { to: at('too_long'), name: 'A name over 100 characters (too_long)' },
       { to: at('edit'), name: 'Edit Bloom & Co, with Archive' },
+      {
+        to: at('archive_refused'),
+        name: 'Archive refused: two events still owe Bloom & Co (sc-87)',
+      },
     ],
   },
   {
