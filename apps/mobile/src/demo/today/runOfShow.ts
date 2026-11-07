@@ -176,7 +176,6 @@ export function runNowOf(name: string, items: readonly RunItem[], clock: string,
 
 type Planned = readonly [planned: string, title: string, length: number | null];
 
-/** The wedding's second day in the Ballroom: ten items, the confetti walk skipped. */
 const TRACK: readonly Planned[] = [
   ['13:30', 'Guests arrive', 30],
   ['14:00', 'Ceremony', 60],
@@ -195,7 +194,6 @@ const DRINKS = 4;
 const SPEECHES = 7;
 const LAST = 9;
 
-/** For each state, the clock, the items done before it, the item that is Now and when it started. */
 const AT: Record<
   RunState,
   { clock: string; done: number; now?: readonly [number, string]; ended?: string }
