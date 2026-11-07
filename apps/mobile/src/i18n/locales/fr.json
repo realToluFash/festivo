@@ -207,7 +207,7 @@
     "emailBlank": "Saisissez votre adresse e-mail.",
     "emailShape": "Cela ne ressemble pas à une adresse e-mail. Vérifiez qu’elle contient un @ et un domaine.",
     "countryBlank": "Choisissez un pays.",
-    "invalid": "Invalid"
+    "invalid": "Données non valides"
   },
   "oauth": {
     "linked": "{{provider}} est désormais associé à votre compte. Vous pouvez vous connecter avec l’un ou l’autre.",
@@ -2051,7 +2051,7 @@
       "liveTitle": "Publiez-le",
       "liveBody": "Il reste en brouillon jusqu’à sa publication."
     },
-    "createEvent": "Créer un événement",
+    "startFirst": "Start your first event",
     "stepNumber": "{{n, number}}"
   }
 }

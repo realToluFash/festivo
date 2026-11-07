@@ -23,7 +23,12 @@ import { api } from '../src/api.ts';
 import { heldChallenge } from '../src/challenge.ts';
 import { timedOutSignIn } from '../src/kit/signInRules.ts';
 import { type AuthBack, AuthFrame, AuthHeading } from '../src/components/AuthFrame.tsx';
-import { PrimaryButton, QuietButton, SecondaryButton } from '../src/components/Buttons.tsx';
+import {
+  PrimaryButton,
+  QuietButton,
+  SecondaryButton,
+  useAtFoot,
+} from '../src/components/Buttons.tsx';
 import {
   CodeField,
   Field,
@@ -500,16 +505,13 @@ function Request({
             testID="lostTwoFactor.support"
           />
         )}
-        <Text size={tokens.typeBodyPhone.size} weight="semibold">
-          {t('lostTwoFactor.notYou')}
-        </Text>
+        <BackToSignIn />
         <CancelRequest
           recovery={recovery}
           onTap={onTap}
           onState={onState}
           onReplaced={onReplaced}
         />
-        <BackToSignIn />
       </AuthFrame>
     );
   }
@@ -608,7 +610,7 @@ function Request({
   );
 }
 
-/** Cancel the request asks first in the app's own sheet (sc-29961); an answer arriving meanwhile replaces the waiting step, sheet and all. */
+/** An answer arriving while the sheet asks replaces the waiting step, sheet and all (sc-29961). */
 function CancelRequest({
   recovery,
   onTap,
@@ -622,6 +624,7 @@ function CancelRequest({
 }) {
   const { t } = useTranslation();
   const phone = useLayout().kind === 'phone';
+  const atFoot = useAtFoot();
   const opener = useRef<ViewInstance>(null);
   // New with each opening, so the sheet's title takes screen reader focus as it opens.
   const [asked, setAsked] = useState<object | null>(null);
@@ -655,12 +658,17 @@ function CancelRequest({
 
   return (
     <>
-      <SecondaryButton
-        ref={opener}
-        label={t('lostTwoFactor.cancel')}
-        onPress={() => setAsked({})}
-        testID="lostTwoFactor.cancel"
-      />
+      <View style={[styles.foot, atFoot && styles.atFoot]}>
+        <Text size={tokens.typeBodyPhone.size} weight="semibold">
+          {t('lostTwoFactor.notYou')}
+        </Text>
+        <QuietButton
+          ref={opener}
+          label={t('lostTwoFactor.cancel')}
+          onPress={() => setAsked({})}
+          testID="lostTwoFactor.cancel"
+        />
+      </View>
       <LifecycleSheet
         phone={phone}
         open={asked != null}
@@ -1041,6 +1049,8 @@ const styles = StyleSheet.create({
   },
   grow: { flex: 1 },
   secondary: { color: tokens.colorInkSecondary },
+  foot: { alignItems: 'center', gap: tokens.spaceXs },
+  atFoot: { marginTop: 'auto' },
 });
 
 function listed(names: string[], type: 'conjunction' | 'disjunction'): string {

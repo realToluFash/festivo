@@ -278,7 +278,7 @@
 .sw-tile.is-party {
   --swWash: color-mix(
     in srgb,
-    color-mix(in srgb, var(--colorAccent) 40%, var(--colorInk)) 30%,
+    color-mix(in srgb, var(--coverAccent, var(--colorAccent)) 40%, var(--colorInk)) 30%,
     transparent
   );
 }
