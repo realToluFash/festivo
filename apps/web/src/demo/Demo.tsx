@@ -17,6 +17,7 @@ import { GetBackInBoard } from './GetBackIn.tsx';
 import { NewAccountBoard } from './NewAccount.tsx';
 import { NOTIFICATIONS_PAGES } from './notifications.ts';
 import { SECURITY_PAGES } from './security.ts';
+import { Notice } from './parts.tsx';
 import { People } from './People.tsx';
 import { PEOPLE_PAGES } from './people.ts';
 import { Settings } from './Settings.tsx';
@@ -45,7 +46,7 @@ import './demo.css';
 
 const BUSY_MS = 900;
 
-type Notice = { title: string; body: string };
+type SignInNotice = { title: string; body: string };
 
 /** The states the board draws, each opened from the demo's home. */
 const TODAY_MOMENTS: { key: string; name: string }[] = [
@@ -57,7 +58,7 @@ const TODAY_MOMENTS: { key: string; name: string }[] = [
   { key: 'first', name: 'A first run' },
 ];
 
-const SIGN_IN_STATES: { key: string; name: string; notice?: Notice }[] = [
+const SIGN_IN_STATES: { key: string; name: string; notice?: SignInNotice }[] = [
   { key: 'first-visit', name: 'Signed out, first visit' },
   {
     key: 'signed-out',
@@ -265,7 +266,7 @@ function SignInForm({ state }: { state: string }) {
   const arrival = (useLocation().state as Arrival | null) ?? {};
   const [twoFactor, setTwoFactor] = useState(false);
   const drawn = SIGN_IN_STATES.find((each) => each.key === state);
-  const [notice, setNotice] = useState<Notice | null>(drawn?.notice ?? null);
+  const [notice, setNotice] = useState<SignInNotice | null>(drawn?.notice ?? null);
   const [providerOnly, setProviderOnly] = useState(state === 'provider-only');
   const [liftsAt, setLiftsAt] = useState<number | null>(() =>
     state === 'locked' ? Date.now() + LOCK_MS : null,
@@ -355,7 +356,7 @@ function SignInForm({ state }: { state: string }) {
   }
 
   const until = liftsAt == null ? null : timeOfDay(liftsAt);
-  const shown: Notice | null =
+  const shown: SignInNotice | null =
     until == null ? notice : { title: 'Too many tries', body: `Try again at ${until}.` };
 
   return (
@@ -375,13 +376,11 @@ function SignInForm({ state }: { state: string }) {
       <div className="demo-heading">
         <h1>Sign in</h1>
         {shown != null && (
-          <div
-            className="demo-notice"
-            role={locked || state.endsWith('failed') ? 'alert' : 'status'}
-          >
-            <p className="demo-notice-title">{shown.title}</p>
-            <p>{shown.body}</p>
-          </div>
+          <Notice
+            title={shown.title}
+            body={shown.body}
+            alert={locked || state.endsWith('failed')}
+          />
         )}
       </div>
 
