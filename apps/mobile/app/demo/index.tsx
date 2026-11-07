@@ -32,6 +32,36 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         what: 'The dates, and Open the event',
         href: '/demo/today?moment=dayNow',
       },
+      {
+        title: 'The event day · guests arriving',
+        what: '141/152 arrived, beside Open the event',
+        href: '/demo/today?moment=dayNow&arrived=some',
+      },
+      {
+        title: 'The event day · nobody Coming',
+        what: '37 arrived, no ring and no bar',
+        href: '/demo/today?moment=dayNow&arrived=nobodyComing',
+      },
+      {
+        title: 'The event day · four-digit figures',
+        what: '1,204 of 1,250, in the phone’s own numbers',
+        href: '/demo/today?moment=dayNow&arrived=thousands',
+      },
+      {
+        title: 'The event day · four digits in French',
+        what: '1 204 of 1 250; try the iPhone SE',
+        href: '/demo/today?moment=dayNow&arrived=thousands&numbers=fr-FR',
+      },
+      {
+        title: 'The event day · nobody arrived yet',
+        what: 'The replies line, and no figure',
+        href: '/demo/today?moment=dayNow&arrived=none',
+      },
+      {
+        title: 'The event day · arrivals coming in',
+        what: 'From nobody to 3 and back, every 4 seconds',
+        href: '/demo/today?moment=dayNow&arrived=live',
+      },
       { title: 'A quiet week', what: 'Nothing due, nothing on', href: '/demo/today?moment=quiet' },
       { title: 'A first run', what: 'No events yet', href: '/demo/today?moment=first' },
     ],
