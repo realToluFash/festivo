@@ -2374,6 +2374,32 @@ describe('the flows a batch runs', () => {
           expect(catalogues[code].signIn.title).toMatch(settled(flow));
         }
       }
+      for (const flow of ['session', 'sign-out', 'reopen', 'reset']) {
+        for (const code of ['en', 'es', 'fr', 'pt']) {
+          expect(catalogues[code].todayScreen.tab.today).toMatch(settled(flow));
+        }
+      }
+      for (const code of ['en', 'es', 'fr', 'pt']) {
+        expect(catalogues[code].todayScreen.tab.today).toMatch(someoneSignedIn);
+      }
+      for (const flow of ['session', 'sign-in-form']) {
+        const toSettings = new RegExp(
+          `^(?:${readFileSync(join(target, `batch/${flow}.yaml`), 'utf8')
+            .match(/when:\s+visible: '(.*)'\s+file: to-settings\.yaml/)[1]
+            .replaceAll("''", "'")})$`,
+        );
+        for (const code of ['en', 'es', 'fr', 'pt']) {
+          expect(catalogues[code].todayScreen.tab.today).toMatch(toSettings);
+        }
+      }
+      const upright = readFileSync(join(target, 'batch/session.yaml'), 'utf8');
+      expect(upright.indexOf('setOrientation: PORTRAIT')).toBeGreaterThan(-1);
+      expect(upright.indexOf('ASK: /portrait')).toBeGreaterThan(
+        upright.indexOf('setOrientation: PORTRAIT'),
+      );
+      expect(upright.indexOf('ASK: /portrait')).toBeLessThan(
+        upright.indexOf('file: to-settings.yaml'),
+      );
       const reset = readFileSync(join(target, 'batch/reset.yaml'), 'utf8');
       expect(reset.match(/file: developer-menu\.yaml\s+env:\s+SETTLED: '(.*)'/)[1]).toBe(
         reset.match(/notVisible: '(.*)'/)[1],

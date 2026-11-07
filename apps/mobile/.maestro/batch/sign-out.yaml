@@ -11,9 +11,9 @@ appId: host.exp.Exponent
 - runFlow:
     file: developer-menu.yaml
     env:
-      SETTLED: '{{t:any:home.signedInTo}}|{{t:any:noOrganisation.title}}|{{t:any:settings.signedInAs}}|{{t:any:noOrganisation.signedInAs}}|{{t:any:steps.organisationTitle}}|{{t:any:status.title}}|{{t:any:signIn.title}}|{{t:any:welcome.withEmail}}|{{t:any:signInRules.overdueTitle}}'
+      SETTLED: '{{t:any:home.signedInTo}}|{{t:any:todayScreen.tab.today}}|{{t:any:noOrganisation.title}}|{{t:any:settings.signedInAs}}|{{t:any:noOrganisation.signedInAs}}|{{t:any:steps.organisationTitle}}|{{t:any:status.title}}|{{t:any:signIn.title}}|{{t:any:welcome.withEmail}}|{{t:any:signInRules.overdueTitle}}'
 - extendedWaitUntil:
-    visible: '{{t:any:home.signedInTo}}|{{t:any:noOrganisation.title}}|{{t:any:settings.signedInAs}}|{{t:any:noOrganisation.signedInAs}}|{{t:any:steps.organisationTitle}}|{{t:any:status.title}}|{{t:any:signIn.title}}|{{t:any:welcome.withEmail}}|{{t:any:signInRules.overdueTitle}}'
+    visible: '{{t:any:home.signedInTo}}|{{t:any:todayScreen.tab.today}}|{{t:any:noOrganisation.title}}|{{t:any:settings.signedInAs}}|{{t:any:noOrganisation.signedInAs}}|{{t:any:steps.organisationTitle}}|{{t:any:status.title}}|{{t:any:signIn.title}}|{{t:any:welcome.withEmail}}|{{t:any:signInRules.overdueTitle}}'
     timeout: 60000
 - runFlow:
     when:
@@ -25,7 +25,7 @@ appId: host.exp.Exponent
     file: ../overdue-sign-out.yaml
 - runFlow:
     when:
-      visible: '{{t:any:home.signedInTo}}|{{t:any:noOrganisation.title}}|{{t:any:settings.signedInAs}}|{{t:any:noOrganisation.signedInAs}}'
+      visible: '{{t:any:home.signedInTo}}|{{t:any:todayScreen.tab.today}}|{{t:any:noOrganisation.title}}|{{t:any:settings.signedInAs}}|{{t:any:noOrganisation.signedInAs}}'
     commands:
       - openLink: ${METRO_URL}/--/settings
       - runFlow: ../settings-sign-out-tap.yaml
