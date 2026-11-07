@@ -52,10 +52,16 @@ export function guestCountsOf(
   return { ...total, notReplied: total.invited - total.replied };
 }
 
+/** A figure in the language's digits and grouping (CLDR), as "1,250" in English; the demo is en-US. */
+export function figureOf(count: number, locale = 'en-US'): string {
+  return new Intl.NumberFormat(locale).format(count);
+}
+
 export const GUEST_WORDS = {
   invited: 'Guests invited',
-  coming: (count: number) => `${count} coming`,
+  coming: (count: number) => `${figureOf(count)} coming`,
   replied: 'Replies in',
-  notReplied: (count: number) => (count === 1 ? '1 hasn’t replied' : `${count} haven’t replied`),
+  notReplied: (count: number) =>
+    count === 1 ? '1 hasn’t replied' : `${figureOf(count)} haven’t replied`,
   label: 'Guests across your upcoming events',
 } as const;

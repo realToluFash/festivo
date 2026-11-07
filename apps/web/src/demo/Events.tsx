@@ -27,7 +27,7 @@ import {
   searching,
 } from './events.ts';
 import { DuplicateDialog } from './EventDialogs.tsx';
-import { GUEST_WORDS as G, SAMPLE_GUESTS, guestCountsOf } from './guestCounts.ts';
+import { GUEST_WORDS as G, SAMPLE_GUESTS, figureOf, guestCountsOf } from './guestCounts.ts';
 import { EventCard, EventRow, EventsShell } from './EventParts.tsx';
 import { FilterMenu } from './EventFilter.tsx';
 import { Glyph } from './Glyph.tsx';
@@ -240,12 +240,12 @@ function GuestTiles({ counts }: { counts: ReturnType<typeof guestCountsOf> }) {
     <ul className="ev-guests" aria-label={G.label}>
       <li className="ev-guest">
         <span className="ev-guest-name">{G.invited}</span>
-        <span className="ev-guest-figure">{counts.invited}</span>
+        <span className="ev-guest-figure">{figureOf(counts.invited)}</span>
         <span className="ev-guest-line">{G.coming(counts.coming)}</span>
       </li>
       <li className="ev-guest">
         <span className="ev-guest-name">{G.replied}</span>
-        <span className="ev-guest-figure">{counts.replied}</span>
+        <span className="ev-guest-figure">{figureOf(counts.replied)}</span>
         <span className="ev-guest-line">{G.notReplied(counts.notReplied)}</span>
       </li>
     </ul>

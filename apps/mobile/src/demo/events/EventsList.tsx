@@ -16,7 +16,13 @@ import { TextField } from '../../components/Field.tsx';
 import { useReadOut } from '../../components/ReadOut.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
-import { type GuestCounts, GUEST_WORDS as G, SAMPLE_GUESTS, guestCountsOf } from './GuestCounts.ts';
+import {
+  type GuestCounts,
+  GUEST_WORDS as G,
+  SAMPLE_GUESTS,
+  figureOf,
+  guestCountsOf,
+} from './GuestCounts.ts';
 import { Cover } from '../../components/Cover.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
 import { SwitchedNotice } from '../OrgSwitcher.tsx';
@@ -182,7 +188,7 @@ export function EventsList({
         onNew={() => shell.tell(say.ownDesign(W.newEvent))}
         onBell={shell.tell}
       />
-      {!first && <GuestTiles counts={guests} />}
+      {!first && <GuestTiles counts={guests} locale={locale} />}
       <SwitchedNotice />
     </>
   );
@@ -490,28 +496,48 @@ function ListTop({
   );
 }
 
-function GuestTiles({ counts }: { counts: GuestCounts }) {
+function GuestTiles({ counts, locale }: { counts: GuestCounts; locale: string }) {
   return (
     <View style={styles.guests} testID="events.guests">
-      <GuestTile name={G.invited} figure={counts.invited} line={G.coming(counts.coming)} />
-      <GuestTile name={G.replied} figure={counts.replied} line={G.notReplied(counts.notReplied)} />
+      <GuestTile
+        id="invited"
+        name={G.invited}
+        figure={figureOf(counts.invited, locale)}
+        line={G.coming(counts.coming, locale)}
+      />
+      <GuestTile
+        id="replied"
+        name={G.replied}
+        figure={figureOf(counts.replied, locale)}
+        line={G.notReplied(counts.notReplied, locale)}
+      />
     </View>
   );
 }
 
-function GuestTile({ name, figure, line }: { name: string; figure: number; line: string }) {
+function GuestTile({
+  id,
+  name,
+  figure,
+  line,
+}: {
+  id: 'invited' | 'replied';
+  name: string;
+  figure: string;
+  line: string;
+}) {
   return (
     <View
       style={styles.guest}
       accessible
       accessibilityLabel={`${name}, ${figure}, ${line}`}
-      testID={`events.guests.${name}`}
+      testID={`events.guests.${id}`}
     >
       <Text size={14} weight="semibold" style={styles.secondary}>
         {name}
       </Text>
       <Text size={28} weight="bold" style={[styles.figures, styles.guestFigure]}>
-        {String(figure)}
+        {figure}
       </Text>
       <Text size={14} weight="medium" style={[styles.secondary, styles.figures, styles.said]}>
         {line}
