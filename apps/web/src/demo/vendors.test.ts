@@ -173,7 +173,10 @@ describe('the vendor directory’s rules (sc-82)', () => {
   it('requires a name and a category, a name of spaces being blank', () => {
     const problems = draftProblems({ ...BLANK, name: '   ' });
 
-    expect(problems).toEqual({ name: 'Enter a name.', category: 'Choose a category.' });
+    expect(problems).toEqual({
+      name: "Enter the vendor's name.",
+      category: 'Choose the category.',
+    });
     expect(VW.toFix(fieldsToFix(problems))).toBe('2 fields need fixing, so nothing was sent.');
     expect(VW.toFix(1)).toBe('One field needs fixing, so nothing was sent.');
     expect(draftProblems({ ...BLANK, name: 'Bloom', category: 'flowers' })).toEqual({});
@@ -200,7 +203,7 @@ describe('the vendor directory’s rules (sc-82)', () => {
     const base = { ...BLANK, name: 'Harbour', category: 'transport' as const };
 
     expect(draftProblems({ ...base, email: 'sam@harbourboats' }).email).toBe(
-      'Enter an email address like name@example.com.',
+      'That does not look like an email address. Check it has an @ and a domain.',
     );
     expect(draftProblems({ ...base, phone: '7700 900877' }).country).toBe('Choose a country.');
     expect(draftProblems({ ...base, country: 'GB', phone: '77' }).phone).toBe(
@@ -208,7 +211,7 @@ describe('the vendor directory’s rules (sc-82)', () => {
     );
     expect(draftProblems({ ...base, country: 'GB', phone: '7700 900877' })).toEqual({});
     expect(draftProblems({ ...base, website: 'ftp://harbourboats.co.uk' }).website).toBe(
-      'Enter a website that starts with http:// or https://.',
+      'Enter a web address that starts with https:// or http://, or leave that part off.',
     );
     expect(draftProblems({ ...base, website: 'http://harbourboats.co.uk' })).toEqual({});
     expect(fieldsToFix({ country: 'x', phone: 'y', email: 'z' })).toBe(2);
@@ -257,12 +260,12 @@ describe('the vendor directory’s rules (sc-82)', () => {
     expect(vendorsStart('archived').looking.view).toBe('archived');
     expect(vendorsStart('add_blank').dialog).toMatchObject({
       kind: 'add',
-      problems: { name: 'Enter a name.', category: 'Choose a category.' },
+      problems: { name: "Enter the vendor's name.", category: 'Choose the category.' },
     });
     expect(vendorsStart('add_invalid').dialog?.problems).toEqual({
-      email: 'Enter an email address like name@example.com.',
+      email: 'That does not look like an email address. Check it has an @ and a domain.',
       phone: 'That is not a phone number for United Kingdom. Check it and try again.',
-      website: 'Enter a website that starts with http:// or https://.',
+      website: 'Enter a web address that starts with https:// or http://, or leave that part off.',
     });
     expect(vendorsStart('edit').dialog).toMatchObject({
       kind: 'edit',
