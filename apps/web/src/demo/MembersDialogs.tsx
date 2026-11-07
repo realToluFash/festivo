@@ -22,7 +22,9 @@ import {
   type RecoveryPhase,
   roleMeans,
 } from './members.ts';
+import { SEND_MS } from './general.ts';
 import { ProofFields } from './MembersPerson.tsx';
+import { HOLD_MS } from './notifications.ts';
 import type { SettingsSay, Viewer } from './settings.ts';
 import {
   Ask,
@@ -40,8 +42,6 @@ import type { Tell } from './TodayParts.tsx';
 import { useProof } from './useProof.ts';
 
 const CHECK_MS = 1200;
-const SEND_MS = 500;
-const HOLD_MS = 8000;
 
 /** Who to invite and as what; Send invitation checks the address before it sends, and Owner asks for the proof. */
 export function InviteDialog({
