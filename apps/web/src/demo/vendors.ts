@@ -333,37 +333,12 @@ export function restored(vendors: readonly Vendor[], id: string): Vendor[] {
   return vendors.map((one) => (one.id === id ? { ...one, archivedOn: null } : one));
 }
 
-/** Events with a quote from each vendor, current or superseded (sc-87, moved from sc-82 on 6 Nov). */
-const ENGAGED: Readonly<Record<string, number>> = { v4: 2, v6: 1, v8: 1, v9: 3, v11: 1 };
-
-export function usedOn(vendorId: string): string | null {
-  const count = ENGAGED[vendorId] ?? 0;
-  if (count === 0) return null;
-
-  return count === 1 ? 'Used on 1 event' : `Used on ${count} events`;
-}
-
-export interface Owing {
-  id: string;
-  name: string;
-}
-
-/** The events that still have an unpaid scheduled payment to a vendor: archiving it is refused while any does (409). */
-const OWED: Readonly<Record<string, readonly Owing[]>> = {
-  v4: [
-    { id: 'evt-gala-4', name: 'Gala Fundación Lucía' },
-    { id: 'evt-ireti-2', name: 'Ireti at 40' },
-  ],
-  v9: [{ id: 'evt-gala-4', name: 'Gala Fundación Lucía' }],
-  v11: [{ id: 'evt-gala-4', name: 'Gala Fundación Lucía' }],
-};
-
-export function owedBy(vendorId: string): readonly Owing[] {
-  return OWED[vendorId] ?? [];
-}
-
 export function archiveRefused(name: string): string {
-  return `${name} was not archived, because these events still have a payment to it that is not paid or cancelled. Once each one is paid or cancelled, you can archive it.`;
+  return `${name} was not archived, because the events below still have payments to it that are not paid or cancelled. Once each one is paid or cancelled, you can archive the vendor.`;
+}
+
+export function owingLink(vendor: string, event: string): string {
+  return `Payments to ${vendor} on ${event}`;
 }
 
 export type Load = 'loaded' | 'loading' | 'failed';
@@ -391,7 +366,7 @@ function bloomDraft(vendors: readonly Vendor[], change: Partial<Draft>): Draft {
   return { ...(bloom == null ? BLANK : draftOf(bloom)), ...change };
 }
 
-export function vendorsStart(state: string): VendorsStart {
+export function vendorsStart(state: string, vendorId: string | null = null): VendorsStart {
   const vendors = state === 'empty' ? [] : sampleVendors();
   const start: VendorsStart = {
     load: 'loaded',
@@ -411,6 +386,16 @@ export function vendorsStart(state: string): VendorsStart {
     phone: '000 000 0000',
     website: 'ftp://harbourboats.ng',
   };
+
+  const asked = vendors.find((one) => one.id === vendorId);
+  if (asked != null && (state === '' || state === 'read_only')) {
+    return state === 'read_only'
+      ? { ...start, readOnly: true, dialog: { kind: 'read', id: asked.id } }
+      : {
+          ...start,
+          dialog: { kind: 'edit', id: asked.id, draft: draftOf(asked), problems: {} },
+        };
+  }
 
   switch (state) {
     case 'loading':
@@ -486,6 +471,14 @@ const at = (state?: string, as?: string): string => {
   return `/demo/vendors${search === '' ? '' : `?${search}`}`;
 };
 
+/** One vendor open in the directory, as a quote's vendor name links to it (sc-87). */
+export function vendorAt(id: string, as: string | null = null): string {
+  const query = new URLSearchParams({ vendor: id });
+  if (as != null) query.set('as', as);
+
+  return `/demo/vendors?${query.toString()}`;
+}
+
 export const VENDORS_PAGES: readonly { name: string; states: readonly DemoLink[] }[] = [
   {
     name: 'The directory',
@@ -517,6 +510,7 @@ export const VENDORS_PAGES: readonly { name: string; states: readonly DemoLink[]
       { to: at('invalid'), name: 'Not an address, a number or a web address (invalid)' },
       { to: at('too_long'), name: 'A name over 100 characters (too_long)' },
       { to: at('edit'), name: 'Edit Bloom & Co, with Archive' },
+      { to: vendorAt('v9'), name: 'One vendor open, as a quote links to it (?vendor=v9)' },
       {
         to: at('archive_refused'),
         name: 'Archive refused: two events still owe Bloom & Co (sc-87)',

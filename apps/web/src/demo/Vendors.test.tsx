@@ -72,6 +72,14 @@ describe('Vendors at a desk in B Confetti (sc-82)', () => {
     expect(rows()).toHaveLength(25);
   });
 
+  it('opens one vendor from its address, as a quote links to it (sc-87)', SLOW, async () => {
+    await open('/demo/vendors?vendor=v9');
+    const dialog = screen.getByRole('dialog', { name: 'Edit vendor' });
+    expect((within(dialog).getByLabelText('Name') as HTMLInputElement).value).toBe(
+      'Éclat Catering',
+    );
+  });
+
   it('archives in one press and restores from Archived', SLOW, async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     await open('/demo/vendors');
@@ -116,6 +124,9 @@ describe('Vendors at a desk in B Confetti (sc-82)', () => {
         '/demo/events/evt-gala-4?area=budget&vendor=v4',
         '/demo/events/evt-ireti-2?area=budget&vendor=v4',
       ]);
+      expect(within(dialog).getAllByRole('link')[0]?.textContent).toBe(
+        'Payments to Bloom & Co on Gala Fundación Lucía',
+      );
       fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
       expect(within(main()).getByRole('button', { name: /^Bloom & Co,/ }).textContent).toMatch(
         /Used on 2 events/,

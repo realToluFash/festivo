@@ -16,6 +16,7 @@ import { offButton } from '../offButton.ts';
 import { Forbidden } from '../routes/app/Forbidden.tsx';
 import { EventsShell } from './EventParts.tsx';
 import { Glyph } from './Glyph.tsx';
+import { owedBy, usedOn } from './quotes.ts';
 import { COUNTRIES, codeChoice } from './rules.ts';
 import { SIDEBAR_EVENTS, type SettingsSay, settingsSayIn, viewerOf } from './settings.ts';
 import {
@@ -55,13 +56,12 @@ import {
   inView,
   isLooking,
   noMatchLine,
-  owedBy,
+  owingLink,
   paged,
   reachOf,
   restored,
   savedVendor,
   shown,
-  usedOn,
   vendorsStart,
 } from './vendors.ts';
 import './account.css';
@@ -78,6 +78,7 @@ export function Vendors() {
   const [params] = useSearchParams();
   const viewer = viewerOf(params.get('as'));
   const state = params.get('state') ?? '';
+  const vendorId = params.get('vendor');
 
   return (
     <EventsShell
@@ -87,7 +88,12 @@ export function Vendors() {
     >
       {(tell) =>
         viewer.manages ? (
-          <Directory key={`${viewer.key}:${state}`} state={state} tell={tell} />
+          <Directory
+            key={`${viewer.key}:${state}:${vendorId ?? ''}`}
+            state={state}
+            vendorId={vendorId}
+            tell={tell}
+          />
         ) : (
           <div className="desk-page">
             <Forbidden />
@@ -98,9 +104,17 @@ export function Vendors() {
   );
 }
 
-function Directory({ state, tell }: { state: string; tell: Tell }) {
+function Directory({
+  state,
+  vendorId,
+  tell,
+}: {
+  state: string;
+  vendorId: string | null;
+  tell: Tell;
+}) {
   const say = useMemo(() => settingsSayIn(formattingLocale('en', navigator.language)), []);
-  const [start] = useState(() => vendorsStart(state));
+  const [start] = useState(() => vendorsStart(state, vendorId));
   const [load, setLoad] = useState<Load | 'retrying'>(start.load);
   const [vendors, setVendors] = useState(start.vendors);
   const [looking, setLooking] = useState<Looking>(start.looking);
@@ -989,7 +1003,7 @@ function ArchiveRefused({ vendor }: { vendor: Vendor }) {
               className="desk-text"
               to={`/demo/events/${event.id}?area=budget&vendor=${vendor.id}`}
             >
-              {event.name}, its payments to {vendor.name}
+              {owingLink(vendor.name, event.name)}
             </Link>
           </li>
         ))}

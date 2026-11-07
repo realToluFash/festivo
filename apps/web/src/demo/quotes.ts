@@ -7,12 +7,25 @@ export interface BudgetViewer {
   name: string;
   role: 'Owner' | 'Admin' | 'Lead';
   readsVendors: boolean;
+  managesBilling: boolean;
 }
 
 export const BUDGET_VIEWERS: Record<BudgetViewerKey, BudgetViewer> = {
-  folake: { key: 'folake', name: 'Folake Adeyemi', role: 'Owner', readsVendors: true },
-  julien: { key: 'julien', name: 'Julien Moreau', role: 'Admin', readsVendors: true },
-  ana: { key: 'ana', name: 'Ana Souza', role: 'Lead', readsVendors: false },
+  folake: {
+    key: 'folake',
+    name: 'Folake Adeyemi',
+    role: 'Owner',
+    readsVendors: true,
+    managesBilling: true,
+  },
+  julien: {
+    key: 'julien',
+    name: 'Julien Moreau',
+    role: 'Admin',
+    readsVendors: true,
+    managesBilling: false,
+  },
+  ana: { key: 'ana', name: 'Ana Souza', role: 'Lead', readsVendors: false, managesBilling: false },
 };
 
 export function budgetViewerOf(name: string | null): BudgetViewer {
@@ -78,6 +91,11 @@ export interface Payment {
 export interface Budget {
   quotes: Quote[];
   payments: Payment[];
+}
+
+export interface Owing {
+  id: string;
+  name: string;
 }
 
 export const CURRENCY = 'EUR';
@@ -339,6 +357,35 @@ export function scheduledFor(budget: Budget, vendorId: string): Payment[] {
   return budget.payments
     .filter((one) => one.vendorId === vendorId)
     .sort((a, b) => a.dueOn.localeCompare(b.dueOn));
+}
+
+export function nextPaymentId(payments: readonly Payment[]): string {
+  const highest = payments.reduce((top, one) => Math.max(top, Number(one.id.slice(1)) || 0), 0);
+
+  return `p${highest + 1}`;
+}
+
+const GALA: Owing = { id: 'evt-gala-4', name: 'Gala Fundación Lucía' };
+
+/** The other events' quotes and unpaid payments, which have no budget in the demo: the gala's come from sampleBudget(). */
+const ENGAGED_ELSEWHERE: Readonly<Record<string, number>> = { v4: 1, v6: 1, v9: 2 };
+const OWED_ELSEWHERE: Readonly<Record<string, readonly Owing[]>> = {
+  v4: [{ id: 'evt-ireti-2', name: 'Ireti at 40' }],
+};
+
+export function usedOn(vendorId: string, gala: Budget = sampleBudget()): string | null {
+  const here = gala.quotes.some((one) => one.vendor.id === vendorId) ? 1 : 0;
+  const count = here + (ENGAGED_ELSEWHERE[vendorId] ?? 0);
+  if (count === 0) return null;
+
+  return count === 1 ? 'Used on 1 event' : `Used on ${count} events`;
+}
+
+/** The events that still have an unpaid scheduled payment to a vendor: archiving it is refused while any does (409). */
+export function owedBy(vendorId: string, gala: Budget = sampleBudget()): readonly Owing[] {
+  const here = gala.payments.some((one) => one.vendorId === vendorId) ? [GALA] : [];
+
+  return [...here, ...(OWED_ELSEWHERE[vendorId] ?? [])];
 }
 
 export function sum(payments: readonly Payment[]): number {

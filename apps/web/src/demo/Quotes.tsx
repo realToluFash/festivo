@@ -48,6 +48,7 @@ import {
   everythingDue,
   lineTaken,
   money,
+  nextPaymentId,
   noVendorMatches,
   offered,
   parsedAmount,
@@ -68,7 +69,7 @@ import {
   TextAction,
 } from './SettingsParts.tsx';
 import type { Tell } from './TodayParts.tsx';
-import type { Vendor } from './vendors.ts';
+import { type Vendor, vendorAt } from './vendors.ts';
 import './quotes.css';
 
 const BUSY_MS = 900;
@@ -148,6 +149,7 @@ function BudgetBody({
         <BudgetPage
           event={event}
           budget={budget}
+          viewer={viewer}
           readOnly={readOnly}
           say={say}
           pageOf={pageOf}
@@ -172,9 +174,12 @@ function BudgetBody({
           onPayment={setPayment}
           onRemoving={setRemoving}
           onRemove={(id) => {
+            const gone = budget.payments.find((one) => one.id === id);
             setBudget((now) => ({ ...now, payments: now.payments.filter((one) => one.id !== id) }));
             setRemoving(null);
-            tell('Payment removed.');
+            if (gone != null) {
+              tell(`Payment removed: ${gone.description}, ${say.money(gone.amount)}.`);
+            }
           }}
         />
       )}
@@ -187,6 +192,7 @@ function BudgetBody({
           viewer={viewer}
           say={say}
           onOpened={setQuote}
+          onList={(list) => setQuote((now) => now && { ...now, list })}
           onClose={() => setQuote(null)}
           onSaved={(next, words) => {
             setBudget(next);
@@ -212,7 +218,7 @@ function BudgetBody({
                   ? [
                       ...now.payments,
                       {
-                        id: `p${now.payments.length + 10}`,
+                        id: nextPaymentId(now.payments),
                         vendorId: open.vendor.id,
                         description: draft.description.trim(),
                         amount,
@@ -231,7 +237,9 @@ function BudgetBody({
                     ),
             }));
             setPayment(null);
-            tell(payment.kind === 'add' ? 'Payment added.' : 'Payment changed.');
+            tell(
+              `${payment.kind === 'add' ? 'Payment added' : 'Payment changed'}: ${draft.description.trim()}, ${say.money(amount)}, due on ${say.date(draft.dueOn)}.`,
+            );
           }}
         />
       )}
@@ -253,15 +261,18 @@ function AreaTop({ event }: { event: SampleEvent }) {
   );
 }
 
-/** One line after a downgrade: everything stays to read, nothing changes (sc-87, The entitlement). */
-function ReadOnlyCard({ tell }: { tell: Tell }) {
+/** One line after a downgrade: everything stays to read, nothing changes (sc-87, The entitlement). See plans only for billing.manage. */
+function ReadOnlyCard({ viewer, tell }: { viewer: BudgetViewer; tell: Tell }) {
   return (
     <Card>
-      <Says>Read only now</Says>
+      <Says>Read-only</Says>
       <OnCard>
-        Your plan no longer includes vendors. Quotes and payment schedules are kept to read.
+        Quotes and payment schedules are read-only because this organisation’s plan no longer
+        includes them. Nothing has been removed.
       </OnCard>
-      <CardStep label="See plans" onClick={() => tell('Plans have their own design.')} />
+      {viewer.managesBilling && (
+        <CardStep label="See plans" onClick={() => tell('Plans have their own design.')} />
+      )}
     </Card>
   );
 }
@@ -269,6 +280,7 @@ function ReadOnlyCard({ tell }: { tell: Tell }) {
 function BudgetPage({
   event,
   budget,
+  viewer,
   readOnly,
   say,
   pageOf,
@@ -277,6 +289,7 @@ function BudgetPage({
 }: {
   event: SampleEvent;
   budget: Budget;
+  viewer: BudgetViewer;
   readOnly: boolean;
   say: Say;
   pageOf: (id: string | null) => string;
@@ -289,7 +302,7 @@ function BudgetPage({
   return (
     <div className="qt-page">
       <AreaTop event={event} />
-      {readOnly && <ReadOnlyCard tell={tell} />}
+      {readOnly && <ReadOnlyCard viewer={viewer} tell={tell} />}
       <section className="desk-block qt-costs" aria-labelledby="qt-costs">
         <Head title={<span id="qt-costs">Costs</span>} />
         <p className="desk-note">
@@ -446,7 +459,10 @@ function VendorPage({
       <div className="qt-vendor-top">
         <h1 className="ev-area-title" tabIndex={-1}>
           {viewer.readsVendors ? (
-            <Link className="qt-vendor-link" to="/demo/vendors">
+            <Link
+              className="qt-vendor-link"
+              to={vendorAt(quote.vendor.id, viewer.key === 'folake' ? null : viewer.key)}
+            >
               {quote.vendor.name}
             </Link>
           ) : (
@@ -455,7 +471,7 @@ function VendorPage({
         </h1>
         <p className="desk-line">{vendorLine(quote)}</p>
       </div>
-      {readOnly && <ReadOnlyCard tell={tell} />}
+      {readOnly && <ReadOnlyCard viewer={viewer} tell={tell} />}
       <section className="desk-block" aria-labelledby="qt-quote">
         <Head title={<span id="qt-quote">The quote</span>}>
           {!readOnly && (
@@ -588,6 +604,7 @@ function QuoteDialog({
   viewer,
   say,
   onOpened,
+  onList,
   onClose,
   onSaved,
 }: {
@@ -598,6 +615,7 @@ function QuoteDialog({
   viewer: BudgetViewer;
   say: Say;
   onOpened: (next: Opened) => void;
+  onList: (list: boolean) => void;
   onClose: () => void;
   onSaved: (budget: Budget, words: string) => void;
 }) {
@@ -660,7 +678,9 @@ function QuoteDialog({
         {refusal != null && <Alert>{refusalWords(refusal, budget)}</Alert>}
         {form === 'revise' && (
           <p className="desk-note">
-            Revising keeps the current quote as an earlier quote, under Show the earlier quote.
+            Revising saves this quote with a new amount or date quoted. The current quote is kept as
+            an earlier quote, under Show the earlier quote. To change only what it covers, its quote
+            number or its budget lines, correct the quote instead.
           </p>
         )}
         {form === 'correct' && (
@@ -683,7 +703,7 @@ function QuoteDialog({
             open={opened.list}
             error={problems.vendor ?? null}
             viewer={viewer}
-            onOpen={(list) => onOpened({ ...opened, list })}
+            onOpen={onList}
             onType={(typed) =>
               onOpened({ ...opened, draft: { ...draft, typed, vendorId: '' }, list: true })
             }
@@ -841,6 +861,7 @@ function VendorField({
   onChoose: (vendor: Vendor) => void;
 }) {
   const [active, setActive] = useState(0);
+  const blurred = useRef<number | undefined>(undefined);
   const typed = draft.vendorId === '' ? draft.typed : '';
   const rows = offered(vendors, typed);
   const none = !anyToOffer(vendors);
@@ -850,6 +871,8 @@ function VendorField({
     if (vendor == null || quoted.includes(vendor.id)) return;
     onChoose(vendor);
   };
+  useEffect(() => () => window.clearTimeout(blurred.current), []);
+
   const keys = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       event.preventDefault();
@@ -887,8 +910,13 @@ function VendorField({
           spellCheck={false}
           placeholder="Type a vendor’s name"
           value={draft.typed}
-          onFocus={() => onOpen(draft.vendorId === '')}
-          onBlur={() => window.setTimeout(() => onOpen(false), 120)}
+          onFocus={() => {
+            window.clearTimeout(blurred.current);
+            onOpen(draft.vendorId === '');
+          }}
+          onBlur={() => {
+            blurred.current = window.setTimeout(() => onOpen(false), 120);
+          }}
           onChange={(event) => {
             setActive(0);
             onType(event.target.value);
@@ -1115,8 +1143,8 @@ function Problem({ id, line }: { id: string; line: string | null | undefined }) 
   );
 }
 
-function described(id: string, help: string | undefined, error: string | null): string | undefined {
-  const told = [help == null ? null : `${id}-help`, error == null ? null : `${id}-error`]
+function described(id: string, helped: boolean, error: string | null): string | undefined {
+  const told = [helped ? `${id}-help` : null, error == null ? null : `${id}-error`]
     .filter(Boolean)
     .join(' ');
 
@@ -1164,7 +1192,7 @@ function TextField({
     value,
     spellCheck: false,
     'aria-invalid': error != null,
-    'aria-describedby': described(id, help, error),
+    'aria-describedby': described(id, help != null, error),
   };
 
   return (
@@ -1230,7 +1258,7 @@ function AmountField({
           inputMode="decimal"
           value={value}
           aria-invalid={error != null}
-          aria-describedby={described(id, 'help', error)}
+          aria-describedby={described(id, true, error)}
           onChange={(event) => onChange(event.target.value)}
         />
       </div>
@@ -1270,7 +1298,7 @@ function DateField({
           min={min}
           max={max}
           aria-invalid={error != null}
-          aria-describedby={described(id, undefined, error)}
+          aria-describedby={described(id, false, error)}
           onChange={(event) => onChange(event.target.value)}
         />
       </div>

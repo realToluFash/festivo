@@ -10,17 +10,43 @@ import {
   differenceLine,
   draftOfQuote,
   everythingDue,
+  nextPaymentId,
   offered,
+  owedBy,
   parsedAmount,
   paymentProblems,
   quoteProblems,
   sampleBudget,
+  usedOn,
 } from './quotes.ts';
 import { sampleVendors } from './vendors.ts';
 
 const day = (iso: string) => iso;
 
 describe('quotes and payment schedules’ rules (sc-87)', () => {
+  it('takes a new payment’s id past the highest in use, not from the count', () => {
+    const payments = sampleBudget().payments.filter((one) => one.id !== 'p2');
+    expect(nextPaymentId(payments)).toBe('p7');
+    expect(nextPaymentId([])).toBe('p1');
+  });
+
+  it('reads the directory’s gala rows from the sample budget', () => {
+    const budget = sampleBudget();
+    expect(owedBy('v4', budget).map((one) => one.name)).toEqual([
+      'Gala Fundación Lucía',
+      'Ireti at 40',
+    ]);
+    expect(usedOn('v8', budget)).toBe('Used on 1 event');
+
+    const unpaid = { ...budget, payments: budget.payments.filter((one) => one.vendorId !== 'v4') };
+    expect(owedBy('v4', unpaid).map((one) => one.name)).toEqual(['Ireti at 40']);
+    expect(owedBy('v11', unpaid).map((one) => one.name)).toEqual(['Gala Fundación Lucía']);
+
+    const unquoted = { ...budget, quotes: budget.quotes.filter((one) => one.vendor.id !== 'v8') };
+    expect(usedOn('v8', unquoted)).toBeNull();
+    expect(usedOn('v9', unquoted)).toBe('Used on 3 events');
+  });
+
   it('words the difference as en settled it, in the event’s currency', () => {
     expect(differenceLine(100_000, 40_000, 'en')).toBe(
       '€600.00 of the quote is not scheduled yet.',

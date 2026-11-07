@@ -164,9 +164,93 @@ describe('Quotes and payment schedules on the Budget page (sc-87)', () => {
     expect(screen.getByRole('dialog', { name: 'Correct the quote' })).toBeDefined();
   });
 
-  it('reads only after a downgrade', SLOW, async () => {
+  it('reads only after a downgrade, with See plans only for billing.manage', SLOW, async () => {
     await open(`${BUDGET}&state=read_only`);
-    expect(within(main()).getByText('Read only now')).toBeDefined();
+    expect(within(main()).getByText('Read-only')).toBeDefined();
+    expect(
+      within(main()).getByText(
+        'Quotes and payment schedules are read-only because this organisation’s plan no longer includes them. Nothing has been removed.',
+      ),
+    ).toBeDefined();
+    expect(within(main()).getByRole('button', { name: 'See plans' })).toBeDefined();
     expect(within(main()).queryByRole('button', { name: 'Add a quote' })).toBeNull();
+
+    for (const as of ['julien', 'ana']) {
+      cleanup();
+      await open(`${BUDGET}&state=read_only&as=${as}`);
+      expect(within(main()).getByText('Read-only')).toBeDefined();
+      expect(within(main()).queryByRole('button', { name: 'See plans' })).toBeNull();
+    }
+  });
+
+  it('links the vendor’s name to that vendor in the directory', SLOW, async () => {
+    await open(`${BUDGET}&vendor=v11&as=julien`);
+    const name = within(main()).getByRole('link', { name: 'Fola Strings' });
+    expect(name.getAttribute('href')).toBe('/demo/vendors?vendor=v11&as=julien');
+  });
+
+  it(
+    'stays closed after Cancel, and keeps its marks after Add, once the vendor field blurs',
+    SLOW,
+    async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      await open(`${BUDGET}&state=add`);
+      let dialog = screen.getByRole('dialog', { name: 'Add a quote' });
+      let field = within(dialog).getByRole('combobox', { name: 'Vendor' });
+
+      fireEvent.focus(field);
+      fireEvent.blur(field);
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(300);
+      });
+      expect(screen.queryByRole('dialog')).toBeNull();
+
+      fireEvent.click(within(main()).getByRole('button', { name: 'Add a quote' }));
+      dialog = screen.getByRole('dialog', { name: 'Add a quote' });
+      field = within(dialog).getByRole('combobox', { name: 'Vendor' });
+      fireEvent.focus(field);
+      fireEvent.blur(field);
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Add' }));
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(300);
+      });
+      expect(within(dialog).getByText('Choose the vendor.')).toBeDefined();
+      expect(field.getAttribute('aria-invalid')).toBe('true');
+    },
+  );
+
+  it('gives each payment added its own row, after one is removed', SLOW, async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    await open(`${BUDGET}&vendor=v8`);
+    const add = async (description: string, amount: string) => {
+      fireEvent.click(within(main()).getByRole('button', { name: 'Add a payment' }));
+      const dialog = screen.getByRole('dialog', { name: 'Add a payment' });
+      fireEvent.change(within(dialog).getByLabelText('What the payment is for'), {
+        target: { value: description },
+      });
+      fireEvent.change(within(dialog).getByLabelText('Amount'), { target: { value: amount } });
+      fireEvent.change(within(dialog).getByLabelText('Date due'), {
+        target: { value: '2026-11-10' },
+      });
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Add' }));
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1000);
+      });
+    };
+    const rows = () => within(section('Schedule')).queryAllByRole('listitem');
+    const removeFirst = () => {
+      fireEvent.click(within(rows()[0]!).getByRole('button', { name: 'Remove' }));
+      fireEvent.click(within(rows()[0]!).getByRole('button', { name: 'Remove' }));
+    };
+
+    await add('First', '100');
+    await add('Second', '200');
+    removeFirst();
+    await add('Third', '300');
+    expect(rows().map((one) => one.textContent?.split('Due')[0])).toEqual(['Second', 'Third']);
+
+    removeFirst();
+    expect(rows().map((one) => one.textContent?.split('Due')[0])).toEqual(['Third']);
   });
 });
