@@ -1108,6 +1108,7 @@ describe("a flow's URLs", () => {
     expect(flowUrls(urls)).toEqual({
       METRO_URL: `exp://127.0.0.1:${ports.METRO_PORT}`,
       MAILPIT_URL: `http://127.0.0.1:${ports.MAILPIT_UI_PORT}`,
+      SMOCKER_URL: `http://127.0.0.1:${ports.SMOCKER_UI_PORT}`,
       API_URL: `http://127.0.0.1:${ports.API_PORT}`,
       WEB_URL: `http://127.0.0.1:${ports.WEB_PORT}`,
     });

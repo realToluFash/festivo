@@ -1,4 +1,4 @@
-# A number checked from the mobile step: the verified screen says Soirely can reach you on the day. Needs SMOCKER_URL and PHONE.
+# A number checked from the mobile step: the verified screen says Soirely can reach you on the day. Needs PHONE; the harness passes SMOCKER_URL.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/phone

@@ -1,7 +1,7 @@
 # A new account's mobile step and its verified screen in LANGUAGE, for sc-29384: the step's intro (INTRO)
 # and the verified line (DONE, a regex) say "on the day". Based on sc29126-steps-language.yaml. EMAIL must be fresh.
 #
-#   node .qa/bin/qa-env.mjs maestro sc29384-onboarding-phone --android LANGUAGE=Français L=fr NAME=… EMAIL=… PASSWORD=… SHOW=… HIDE=… STEP1=… STEP4=… COUNTRY='Royaume-Uni' PHONE=7400123459 SMOCKER_URL=http://127.0.0.1:28088 INTRO='…' DONE='…'
+#   node .qa/bin/qa-env.mjs maestro sc29384-onboarding-phone --android LANGUAGE=Français L=fr NAME=… EMAIL=… PASSWORD=… SHOW=… HIDE=… STEP1=… STEP4=… COUNTRY='Royaume-Uni' PHONE=7400123459 INTRO='…' DONE='…'
 appId: host.exp.Exponent
 ---
 - launchApp:
