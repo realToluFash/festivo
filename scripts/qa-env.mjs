@@ -2402,6 +2402,7 @@ export function apiMoves(from, to) {
     stopped: [['up', '-d', '--wait', '--no-recreate', 'api']],
   };
   if (to === 'up') return up[from];
+  // `stop` thaws a paused container for its SIGTERM, and Caddy answers the held request.
   if (from === 'paused') return [['kill', 'api']];
   if (from !== 'up') return [...up[from], ...apiMoves('up', to)];
   return [[to === 'paused' ? 'pause' : 'stop', 'api']];
@@ -2413,9 +2414,8 @@ export const apiStateOf = (containerState) =>
 // A check holds Event View's reads by pausing the API once the list has loaded. Each move waits
 // for the one before it. The state is read from Docker on the first move and after a failed one,
 // since a killed batch or a half-done move leaves the container in a state nobody recorded.
-// Paused to stopped is a kill: `docker stop` thaws the container to deliver SIGTERM, and Caddy
-// answers the held request while it drains. Stopped to paused passes through up, and anything the
-// app asks then is answered, so that move runs inside `unreached`, which keeps the device away. A move that ends up returns once
+// Stopped to paused passes through up, and anything the app asks then is answered, so that move
+// runs inside `unreached`, which keeps the device from the API. A move that ends up returns once
 // `healthy` says the API answers: the api service has no healthcheck for `--wait` to wait on.
 export function apiControl({
   run,
