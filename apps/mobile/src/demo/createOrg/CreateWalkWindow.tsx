@@ -426,7 +426,7 @@ export function CreateWalkWindow({
                 busy={creating}
                 reduced={reduced}
                 height={look.large ? 64 : tokens.sizeHitPhoneHero}
-                size={look.large ? 30 : 16}
+                size={look.large ? 15 : 16}
                 onPress={onPrimary}
                 testID="createWalk.primary"
               />

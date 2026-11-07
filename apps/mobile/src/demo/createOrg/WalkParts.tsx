@@ -19,6 +19,8 @@ import { glide } from '../../motion.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { type Fact, STEPS, type Step, WALK } from './CreateWalk.ts';
 
+export const TWICE = 2;
+
 const hidden = {
   accessibilityElementsHidden: true,
   importantForAccessibility: 'no-hide-descendants',
@@ -255,6 +257,7 @@ export function WalkButton({
     >
       {busy && <Ring reduced={reduced} />}
       <Text
+        maxFontSizeMultiplier={TWICE}
         size={size}
         weight="semibold"
         accessible={false}
@@ -277,6 +280,7 @@ export function Refusal({ words, size, answer }: { words: string; size: number; 
         <Glyph name="alert" size={15} ink={tokens.colorBroken} weight={2.2} />
       </View>
       <Text
+        maxFontSizeMultiplier={TWICE}
         size={size}
         weight="medium"
         accessible={false}
@@ -300,6 +304,7 @@ export function Question({
 }) {
   return (
     <Text
+      maxFontSizeMultiplier={TWICE}
       ref={ref}
       size={size}
       weight="bold"
@@ -315,7 +320,7 @@ export function Question({
 export function Tag() {
   return (
     <View style={styles.tag}>
-      <Text size={12.5} weight="semibold" muted accessible={false}>
+      <Text maxFontSizeMultiplier={TWICE} size={12.5} weight="semibold" muted accessible={false}>
         {WALK.fromDevice}
       </Text>
     </View>
@@ -326,12 +331,20 @@ export function FactLine({ fact, tagged = false }: { fact: Fact; tagged?: boolea
   return (
     <View style={styles.fact}>
       <View style={styles.factHead}>
-        <Text size={13} weight="medium" muted accessible={false} style={styles.factLabel}>
+        <Text
+          maxFontSizeMultiplier={TWICE}
+          size={13}
+          weight="medium"
+          muted
+          accessible={false}
+          style={styles.factLabel}
+        >
           {fact.label}
         </Text>
         {tagged && fact.key === 'timezone' && <Tag />}
       </View>
       <Text
+        maxFontSizeMultiplier={TWICE}
         size={15}
         weight="semibold"
         muted={fact.none}

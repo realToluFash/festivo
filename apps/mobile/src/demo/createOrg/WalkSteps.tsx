@@ -18,12 +18,12 @@ import {
 
 import { TextField } from '../../components/Field.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
-import { Notice } from '../../components/Notice.tsx';
-import { ReadOut, useReadOut } from '../../components/ReadOut.tsx';
+import { useReadOut } from '../../components/ReadOut.tsx';
 import { Text, type TextHandle } from '../../components/Text.tsx';
 import { glide } from '../../motion.ts';
 import { weight } from '../../theme/fonts.ts';
 import { tokens } from '../../theme/tokens.ts';
+import { EventNotice } from '../events/EventNotice.tsx';
 import { SW } from '../OrgSwitcherModel.ts';
 import {
   type Country,
@@ -40,7 +40,7 @@ import {
   rowLabel,
   search,
 } from './CreateWalk.ts';
-import { DraftTile, FactLine, Question, Refusal, Tag } from './WalkParts.tsx';
+import { DraftTile, FactLine, Question, Refusal, Tag, TWICE } from './WalkParts.tsx';
 
 const hidden = {
   accessibilityElementsHidden: true,
@@ -55,16 +55,15 @@ export interface Look {
 
 function sizesOf({ phone, large }: Look) {
   return {
-    question: phone ? (large ? 56 : 28) : 26,
-    label: large ? 28 : 14,
+    question: phone ? 28 : 26,
+    label: 14,
     field: large ? 72 : 52,
-    fieldText: large ? 32 : 16,
-    help: large ? 27 : 13.5,
+    fieldText: 16,
+    help: 13.5,
     gap: large ? 8 : 7,
   };
 }
 
-/** What each step is handed by the window around it. */
 interface StepProps {
   walk: Walk;
   look: Look;
@@ -109,7 +108,7 @@ function StepWords({ look, words }: { look: Look; words: string }) {
   if (!look.large) return null;
 
   return (
-    <Text size={26} weight="semibold" muted style={styles.stepWords}>
+    <Text maxFontSizeMultiplier={TWICE} size={13} weight="semibold" muted style={styles.stepWords}>
       {words}
     </Text>
   );
@@ -120,15 +119,38 @@ function Preview({ name }: { name: string }) {
     <View style={styles.preview} {...hidden}>
       <DraftTile name={name} side={88} radius={28} initials={36} />
       {name.trim() !== '' && (
-        <Text size={22} weight="bold" accessible={false} style={styles.previewName}>
+        <Text
+          maxFontSizeMultiplier={TWICE}
+          size={22}
+          weight="bold"
+          accessible={false}
+          style={styles.previewName}
+        >
           {name.trim()}
         </Text>
       )}
-      <Text size={14} weight="medium" muted accessible={false} style={styles.previewRole}>
+      <Text
+        maxFontSizeMultiplier={TWICE}
+        size={14}
+        weight="medium"
+        muted
+        accessible={false}
+        style={styles.previewRole}
+      >
         {SW.yourRole(ROLE)}
       </Text>
     </View>
   );
+}
+
+// Over 100 and at twice the text, the field's reason or help runs under the keys unless the body
+// scrolls to it; a scroll while the keys still rise stops short, so it goes again once they are up.
+function keepInSight(
+  { viewport, bottom }: { viewport: number; bottom: number },
+  scroller: RefObject<ScrollViewInstance | null>,
+) {
+  const over = bottom + tokens.spaceLg - viewport;
+  if (viewport > 0 && over > 0) scroller.current?.scrollTo({ y: over, animated: true });
 }
 
 export function NameStep({
@@ -150,19 +172,24 @@ export function NameStep({
   const sizes = sizesOf(look);
   const [focused, setFocused] = useState(false);
   const scroller = useRef<ScrollViewInstance>(null);
-  const seen = useRef({ viewport: 0, revealed: undefined as object | undefined });
+  const seen = useRef({ viewport: 0, bottom: 0 });
   const refusal = walk.refusal;
   const edge = focused || refusal != null ? 2 : 1.5;
   const help = t('createOrganisation.nameHelp');
 
-  // Over 100, the reason runs under the keys unless the body scrolls to it.
   const reveal = (event: LayoutChangeEvent) => {
-    if (refusal == null || seen.current.revealed === answer) return;
-    seen.current.revealed = answer;
     const { y, height } = event.nativeEvent.layout;
-    const over = y + height + tokens.spaceLg - seen.current.viewport;
-    if (over > 0) scroller.current?.scrollTo({ y: over, animated: true });
+    seen.current.bottom = y + height;
+    keepInSight(seen.current, scroller);
   };
+
+  useEffect(() => {
+    const shown = Keyboard.addListener('keyboardDidShow', () =>
+      keepInSight(seen.current, scroller),
+    );
+
+    return () => shown.remove();
+  }, []);
 
   return (
     <StepScroll
@@ -172,6 +199,7 @@ export function NameStep({
       onScrolled={onScrolled}
       onLayout={(event) => {
         seen.current.viewport = event.nativeEvent.layout.height;
+        keepInSight(seen.current, scroller);
       }}
     >
       <StepWords look={look} words={stepWords} />
@@ -179,6 +207,7 @@ export function NameStep({
       {look.phone && !look.large && <Preview name={walk.name} />}
       <View style={{ gap: sizes.gap }} onLayout={reveal}>
         <Text
+          maxFontSizeMultiplier={TWICE}
           size={sizes.label}
           weight="semibold"
           {...hidden}
@@ -188,6 +217,7 @@ export function NameStep({
           {t('createOrganisation.name')}
         </Text>
         <TextField
+          maxFontSizeMultiplier={TWICE}
           ref={field}
           value={walk.name}
           onChangeText={onTyped}
@@ -227,6 +257,7 @@ export function NameStep({
           <Refusal words={refusal} size={sizes.help} answer={answer} />
         ) : (
           <Text
+            maxFontSizeMultiplier={TWICE}
             size={sizes.help}
             weight="medium"
             muted
@@ -246,10 +277,19 @@ type Item = { kind: 'heading' } | { kind: 'country'; country: Country };
 
 const HEADING: Item = { kind: 'heading' };
 
-function GroupHeading({ words, ruled = false }: { words: string; ruled?: boolean }) {
+function GroupHeading({
+  words,
+  ruled = false,
+  first = false,
+}: {
+  words: string;
+  ruled?: boolean;
+  first?: boolean;
+}) {
   return (
-    <View style={[styles.group, ruled && styles.groupRuled]}>
+    <View style={[styles.group, ruled && styles.groupRuled, first && styles.groupFirst]}>
       <Text
+        maxFontSizeMultiplier={TWICE}
         size={12.5}
         weight="semibold"
         muted
@@ -287,10 +327,23 @@ function CountryRow({
       testID={`createWalk.country.${country.code}`}
     >
       <View style={styles.rowWords}>
-        <Text size={16} weight="semibold" accessible={false} style={styles.rowName}>
+        <Text
+          maxFontSizeMultiplier={TWICE}
+          size={16}
+          weight="semibold"
+          accessible={false}
+          style={styles.rowName}
+        >
           {country.name}
         </Text>
-        <Text size={13.5} weight="medium" muted accessible={false} style={styles.rowCurrency}>
+        <Text
+          maxFontSizeMultiplier={TWICE}
+          size={13.5}
+          weight="medium"
+          muted
+          accessible={false}
+          style={styles.rowCurrency}
+        >
           {currencyWords(country.code).words}
         </Text>
       </View>
@@ -322,6 +375,7 @@ function CountrySearch({
     <View style={[styles.search, focused && styles.searchFocused]}>
       <Glyph name="search" size={18} ink={tokens.colorInkSecondary} weight={2.2} />
       <TextField
+        maxFontSizeMultiplier={TWICE}
         ref={field}
         value={value}
         onChangeText={onQuery}
@@ -336,7 +390,7 @@ function CountrySearch({
         onSubmitEditing={() => Keyboard.dismiss()}
         placeholder={words}
         placeholderTextColor={tokens.colorInkSecondary}
-        clearButtonMode="while-editing"
+        clearButtonMode="always"
         returnKeyType="search"
         autoCorrect={false}
         spellCheck={false}
@@ -382,7 +436,7 @@ export function CountryStep({
   onSearchFocused,
 }: StepProps & {
   field: RefObject<TextInputInstance | null>;
-  /** Reached by Back, or opened at the list: it scrolls to the pick. */
+  /** Reached by Back, or opened at the list: it scrolls to the pick, unless the device's own is ticked at the top. */
   toPick: boolean;
   onQuery: (query: string) => void;
   onPick: (code: string) => void;
@@ -405,7 +459,8 @@ export function CountryStep({
   };
 
   useEffect(() => {
-    if (!toPick || searching || walk.country == null || scrolledToPick.current) return;
+    const atTop = walk.country === device?.code;
+    if (!toPick || searching || walk.country == null || atTop || scrolledToPick.current) return;
     const index = all.findIndex((country) => country.code === walk.country);
     if (index < 0) return;
     scrolledToPick.current = true;
@@ -415,7 +470,7 @@ export function CountryStep({
     );
 
     return () => clearTimeout(wait);
-  }, [toPick, searching, walk.country, all]);
+  }, [toPick, searching, walk.country, device?.code, all]);
 
   const top = (
     <>
@@ -432,7 +487,7 @@ export function CountryStep({
   );
   const deviceGroup = !searching && device != null && (
     <View style={styles.deviceGroup}>
-      <GroupHeading words={WALK.fromDevice} />
+      <GroupHeading words={WALK.fromDevice} first />
       <CountryRow
         country={device}
         picked={walk.country === device.code}
@@ -479,8 +534,9 @@ export function CountryStep({
         initialNumToRender={24}
         onScroll={(event) => {
           const offset = event.nativeEvent.contentOffset.y;
-          onScrolled(offset > 0);
-          setPinned(!searching && offset > headerHeight);
+          const pins = !searching && offset > headerHeight;
+          onScrolled(offset > 0 && !pins);
+          setPinned(pins);
         }}
         onScrollToIndexFailed={(failed) => {
           list.current?.scrollToOffset({
@@ -514,10 +570,18 @@ export function Brings({ walk }: { walk: Walk }) {
   return (
     <View style={styles.brings} accessible accessibilityLabel={words} testID="createWalk.brings">
       <View style={styles.bringsPart}>
-        <Text size={13} weight="medium" muted accessible={false} style={styles.factLabel}>
+        <Text
+          maxFontSizeMultiplier={TWICE}
+          size={13}
+          weight="medium"
+          muted
+          accessible={false}
+          style={styles.factLabel}
+        >
           {t('orgGeneral.currency')}
         </Text>
         <Text
+          maxFontSizeMultiplier={TWICE}
           size={15}
           weight="semibold"
           muted={currency.none}
@@ -529,12 +593,25 @@ export function Brings({ walk }: { walk: Walk }) {
       </View>
       <View style={styles.bringsPart}>
         <View style={styles.tagged}>
-          <Text size={13} weight="medium" muted accessible={false} style={styles.factLabel}>
+          <Text
+            maxFontSizeMultiplier={TWICE}
+            size={13}
+            weight="medium"
+            muted
+            accessible={false}
+            style={styles.factLabel}
+          >
             {t('orgGeneral.timezone')}
           </Text>
           <Tag />
         </View>
-        <Text size={15} weight="semibold" accessible={false} style={styles.factValue}>
+        <Text
+          maxFontSizeMultiplier={TWICE}
+          size={15}
+          weight="semibold"
+          accessible={false}
+          style={styles.factValue}
+        >
           {timezoneLabel(walk.device.zone)}
         </Text>
       </View>
@@ -571,31 +648,34 @@ export function ReadyStep({
       <StepWords look={look} words={stepWords} />
       <Question ref={question} words={WALK.readyTitle} size={sizes.question} />
       {limited != null && (
-        <ReadOut
-          words={[limited.title, limited.body].filter((line) => line != null).join(' ')}
+        <EventNotice
+          tone="attention"
+          words={limited.title}
+          body={limited.body ?? undefined}
           interrupts
-          accessibilityRole="alert"
-        >
-          <Notice
-            tone="attention"
-            mark="!"
-            title={limited.title}
-            {...(limited.body == null ? {} : { body: limited.body })}
-          />
-        </ReadOut>
+        />
       )}
-      {walk.sent === 'failed' && (
-        <ReadOut words={failed} interrupts accessibilityRole="alert">
-          <Notice tone="broken" mark={tokens.marks.broken.glyph} body={failed} />
-        </ReadOut>
-      )}
+      {walk.sent === 'failed' && <EventNotice tone="broken" words={failed} interrupts />}
       {look.phone ? (
         <View style={styles.card} accessible accessibilityLabel={words} testID="createWalk.card">
           <DraftTile name={walk.name} side={56} radius={19} initials={22} />
-          <Text size={24} weight="bold" accessible={false} style={styles.cardName}>
+          <Text
+            maxFontSizeMultiplier={TWICE}
+            size={24}
+            weight="bold"
+            accessible={false}
+            style={styles.cardName}
+          >
             {walk.name.trim()}
           </Text>
-          <Text size={14.5} weight="semibold" muted accessible={false} style={styles.cardRole}>
+          <Text
+            maxFontSizeMultiplier={TWICE}
+            size={14.5}
+            weight="semibold"
+            muted
+            accessible={false}
+            style={styles.cardRole}
+          >
             {SW.yourRole(ROLE)}
           </Text>
           <View style={styles.facts}>
@@ -617,10 +697,10 @@ export function ReadyStep({
           />
         )
       )}
-      <Text size={15} weight="medium" style={styles.intro}>
+      <Text maxFontSizeMultiplier={TWICE} size={15} weight="medium" style={styles.intro}>
         {t('createOrganisation.intro')}
       </Text>
-      <Text size={14} weight="medium" muted style={styles.defaults}>
+      <Text maxFontSizeMultiplier={TWICE} size={14} weight="medium" muted style={styles.defaults}>
         {t('createOrganisation.defaults', { email })}
       </Text>
     </StepScroll>
@@ -649,11 +729,24 @@ export function WideCard({ walk, email }: { walk: Walk; email: string }) {
       <DraftTile name={name} side={72} radius={24} initials={28} />
       <View style={styles.wideNamed}>
         {name !== '' && (
-          <Text size={size} weight="bold" accessible={false} style={{ lineHeight: size * 1.15 }}>
+          <Text
+            maxFontSizeMultiplier={TWICE}
+            size={size}
+            weight="bold"
+            accessible={false}
+            style={{ lineHeight: size * 1.15 }}
+          >
             {name}
           </Text>
         )}
-        <Text size={15} weight="semibold" muted accessible={false} style={styles.wideRole}>
+        <Text
+          maxFontSizeMultiplier={TWICE}
+          size={15}
+          weight="semibold"
+          muted
+          accessible={false}
+          style={styles.wideRole}
+        >
           {SW.yourRole(ROLE)}
         </Text>
       </View>
@@ -675,7 +768,7 @@ const styles = StyleSheet.create({
   shrink: { flexGrow: 0, flexShrink: 1 },
   phoneBody: { paddingHorizontal: tokens.spaceXxl, paddingVertical: tokens.spaceLg },
   phoneList: { paddingHorizontal: tokens.spaceXxl, paddingBottom: tokens.spaceLg },
-  stepWords: { lineHeight: 26 * 1.3 },
+  stepWords: { lineHeight: 13 * 1.3 },
   preview: { alignItems: 'center', gap: tokens.spaceSm },
   previewName: {
     textAlign: 'center',
@@ -691,6 +784,7 @@ const styles = StyleSheet.create({
   wideList: { flexGrow: 0, flexShrink: 1 },
   deviceGroup: { gap: tokens.spaceSm },
   group: { paddingTop: 13, paddingBottom: tokens.spaceXxs, backgroundColor: tokens.colorCard },
+  groupFirst: { paddingTop: 0, paddingBottom: 0 },
   groupRuled: {
     minHeight: PINNED,
     borderBottomWidth: 1,
