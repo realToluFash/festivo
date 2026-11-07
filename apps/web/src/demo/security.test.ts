@@ -21,6 +21,7 @@ import {
   deviceLine,
   emailedCodeRefusal,
   forgotRefusal,
+  HELD_STEPS,
   heldStepPath,
   keptByRule,
   onlyWayIn,
@@ -33,6 +34,7 @@ import {
   yourSecurity,
 } from './security.ts';
 import { VIEWERS } from './settings.ts';
+import { REFUSALS } from './signInRules.ts';
 
 const rest = securityStart('');
 const email = SAMPLE.email;
@@ -115,7 +117,7 @@ describe('Security’s sample (sc-30223)', () => {
     );
   });
 
-  it('says this device is in use and the others when they were last used', () => {
+  it('says this device is in use and the others when they were last used, on a 24-hour clock', () => {
     const [here, phone] = DEVICES;
 
     expect(deviceLine(here, 'en-US')).toBe('This device · in use now');
@@ -176,6 +178,8 @@ describe('Security’s sample (sc-30223)', () => {
   });
 
   it('sends a held step to Security, at the step it names', () => {
+    expect(REFUSALS.twoFactor.step).toBe(HELD_STEPS.turnOn);
+    expect(REFUSALS.provider.step).toBe(HELD_STEPS.link);
     expect(heldStepPath(HOLDS.twoFactor.step, VIEWERS.julien)).toBe(
       '/demo/settings/security?as=julien&state=setup',
     );
@@ -192,6 +196,5 @@ describe('Security’s sample (sc-30223)', () => {
     expect(keptByRule({ ...pick.page, ways: { ...pick.page.ways, Google: true } }, 'Google')).toBe(
       true,
     );
-    expect(heldStepPath('Something else', VIEWERS.folake)).toBe('/demo/settings/security');
   });
 });

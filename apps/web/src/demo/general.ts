@@ -19,6 +19,7 @@ import { writtenTime } from './clock.ts';
 import { type AskWords, HANDOVER_WORDS as H, type HandStart, handStart } from './handover.ts';
 import { DOMAIN, ORGANISATION as ORG, sampleLeads, samplePeople } from './members.ts';
 import { SAMPLE } from './rules.ts';
+import { HELD_STEPS, type HeldStep } from './security.ts';
 import { type DemoLink, VIEWERS, type Viewer, settingsPath } from './settings.ts';
 import { type Role, roleOf } from './signInRules.ts';
 
@@ -168,14 +169,14 @@ export const LOADING = 'Loading…';
 export type Hold = 'twoFactor' | 'linking';
 
 /** What keeps an admin's changes back, as the product's readOnlyUntil lines say it, and the one step that ends it. */
-export const HOLDS: Record<Hold, { line: string; step: string }> = {
+export const HOLDS: Record<Hold, { line: string; step: HeldStep }> = {
   twoFactor: {
     line: `${ORG} asks owners and admins to use two-factor. Until you turn it on, you can see these but not change them.`,
-    step: 'Turn on two-factor',
+    step: HELD_STEPS.turnOn,
   },
   linking: {
     line: `${ORG} signs in with Google or Apple only. Until you link one, you can see these but not change them.`,
-    step: 'Link Google or Apple',
+    step: HELD_STEPS.link,
   },
 };
 
@@ -369,7 +370,8 @@ export function cardWords(
 ): CardWords {
   const lock =
     hold != null ? HOLDS[hold].line : role === 'Member' ? DETAILS_WORDS.readOnly(role) : null;
-  const step = hold != null ? HOLDS[hold].step : role === 'Member' ? null : DETAILS_WORDS.edit;
+  const step =
+    hold != null ? HOLDS[hold].step.label : role === 'Member' ? null : DETAILS_WORDS.edit;
   const words =
     said == null
       ? { says: details.name, line: details.contactAddress }

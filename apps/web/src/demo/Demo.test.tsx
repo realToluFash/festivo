@@ -1655,6 +1655,15 @@ describe('Settings at a desk (sc-29708)', () => {
     await settings('/demo/settings/members?as=julien&state=claim');
 
     const claim = within(screen.getByRole('dialog', { name: 'Become the owner' }));
+    fireEvent.click(
+      within(claim.getByText('TXT').closest('li') as HTMLElement).getByRole('button', {
+        name: 'Copy',
+      }),
+    );
+    await act(() => vi.advanceTimersByTimeAsync(0));
+    expect(claim.getAllByRole('button', { name: 'Copy' })).toHaveLength(3);
+    expect(screen.queryByText('Type copied.')).toBeNull();
+
     const check = () => fireEvent.click(claim.getByRole('button', { name: 'Check record' }));
     check();
     expect(screen.getByText('Checking the record')).toBeDefined();
