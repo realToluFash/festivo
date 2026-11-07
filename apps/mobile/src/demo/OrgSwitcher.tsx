@@ -972,18 +972,23 @@ function DropDown({
   );
 }
 
-function Search({
+/** The switcher's search field; Members' person menu takes it too, in its own words (sc-31310). */
+export function Search({
   start,
   typed,
   field,
   onTyped,
   onClear,
+  words = { search: SW.search, clear: SW.clearSearch },
+  testID = 'switcher.search',
 }: {
   start: string;
   typed: string;
   field: RefObject<TextInputInstance | null>;
   onTyped: (typed: string) => void;
   onClear: () => void;
+  words?: { search: string; clear: string };
+  testID?: string;
 }) {
   const [focused, setFocused] = useState(false);
 
@@ -993,7 +998,7 @@ function Search({
       <TextField
         ref={field}
         defaultValue={start}
-        placeholder={SW.search}
+        placeholder={words.search}
         placeholderTextColor={tokens.colorInkSecondary}
         onChangeText={onTyped}
         onFocus={() => setFocused(true)}
@@ -1002,17 +1007,17 @@ function Search({
         autoCorrect={false}
         spellCheck={false}
         autoCapitalize="none"
-        accessibilityLabel={SW.search}
+        accessibilityLabel={words.search}
         style={styles.searchInput}
-        testID="switcher.search"
+        testID={testID}
       />
       {typed !== '' && (
         <Pressable
           onPress={onClear}
           style={styles.clear}
           accessibilityRole="button"
-          accessibilityLabel={SW.clearSearch}
-          testID="switcher.search.clear"
+          accessibilityLabel={words.clear}
+          testID={`${testID}.clear`}
         >
           <View style={styles.clearDot}>
             <Glyph name="x" size={11} ink={tokens.colorInkOnDark} weight={3} />

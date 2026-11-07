@@ -3,6 +3,7 @@ import {
   type DimensionValue,
   Pressable,
   ScrollView,
+  type ScrollViewInstance,
   StyleSheet,
   View,
   type ViewInstance,
@@ -10,7 +11,7 @@ import {
 import { useTranslation } from 'react-i18next';
 
 import { useReadOut } from './ReadOut.tsx';
-import { Text } from './Text.tsx';
+import { type TextHandle, Text } from './Text.tsx';
 import { Toast } from './Toast.tsx';
 import { tokens } from '../theme/tokens.ts';
 import { CARD_PIECES, Confetti, Cover } from './Cover.tsx';
@@ -39,6 +40,7 @@ export {
   type RowTag,
   Section,
   SectionHead,
+  SELECTED_ROW,
   Tag,
   type TagKind,
   TextAction,
@@ -56,6 +58,7 @@ export {
   FocusedScreen,
   type FocusVerb,
   type Layer,
+  MenuLayer,
 } from './SummaryOverlays.tsx';
 
 const hidden = {
@@ -77,11 +80,20 @@ export function PageToast({ words, onClose, bottom }: PageToastProps & { bottom:
 }
 
 /** On its side, the section's own list in the Settings list's place: back, the title, the card, the lists. */
-export function SummaryColumn({ title, children }: { title: string; children: ReactNode }) {
+export function SummaryColumn({
+  title,
+  scrollRef,
+  children,
+}: {
+  title: string;
+  scrollRef?: Ref<ScrollViewInstance>;
+  children: ReactNode;
+}) {
   const shell = useShell();
 
   return (
     <ScrollView
+      ref={scrollRef}
       contentContainerStyle={styles.column}
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
@@ -175,13 +187,19 @@ export function CardSays({
   text,
   size = 24,
   heading = false,
+  accessible,
+  ref,
 }: {
   text: string;
   size?: number;
   heading?: boolean;
+  accessible?: boolean | undefined;
+  ref?: Ref<TextHandle> | undefined;
 }) {
   return (
     <Text
+      ref={ref}
+      accessible={accessible}
       size={size}
       weight="bold"
       accessibilityRole={heading ? 'header' : undefined}
@@ -219,9 +237,25 @@ export function CardCounts({
   );
 }
 
-export function OnCard({ text, strong = false }: { text: string; strong?: boolean }) {
+export function OnCard({
+  text,
+  strong = false,
+  accessible,
+  ref,
+}: {
+  text: string;
+  strong?: boolean;
+  accessible?: boolean | undefined;
+  ref?: Ref<TextHandle> | undefined;
+}) {
   return (
-    <Text size={14.5} weight={strong ? 'semibold' : 'medium'} style={[styles.white, styles.onCard]}>
+    <Text
+      ref={ref}
+      size={14.5}
+      weight={strong ? 'semibold' : 'medium'}
+      accessible={accessible}
+      style={[styles.white, styles.onCard]}
+    >
       {text}
     </Text>
   );

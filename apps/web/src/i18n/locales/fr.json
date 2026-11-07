@@ -421,7 +421,7 @@
     "home": "Aller à l’accueil"
   },
   "guest": {
-    "invitationTitle": "Vous êtes invité",
+    "invitationTitle": "Vous avez une invitation",
     "invitationBody": "Aucun compte n’est nécessaire. Cette page vous est réservée pour cet événement.",
     "invalidTitle": "Ce lien d’invitation ne fonctionne pas",
     "invalidBody": "Il a peut-être expiré, été remplacé par un lien plus récent, ou comporte une erreur. Demandez un nouveau lien à la personne qui vous a invité : elle peut vous l’envoyer en un instant.",
@@ -1040,6 +1040,9 @@
     "step1": "Nous envoyons un code à {{email}}, et un autre au {{phone}} si votre numéro est vérifié.",
     "step1EmailOnly": "Nous envoyons un code à {{email}}.",
     "step2": "Vous saisissez les codes ici.",
+    "step2EmailOnly": "You enter the code here.",
+    "sendEmailOnly": "Send the code",
+    "sendingEmailOnly": "Sending the code…",
     "step3": "Un propriétaire ou un administrateur de {{organisations}} confirme que c’est bien vous. Vous restez déconnecté jusque-là.",
     "startNote": "Quand c’est confirmé, la double authentification est désactivée, toutes les sessions se terminent et vous vous reconnectez. Chaque étape vous est envoyée par e-mail.",
     "send": "Envoyer les codes",
@@ -1095,6 +1098,7 @@
     "cancelTitle": "Annuler votre demande ?",
     "cancelBody": "Vous devrez recommencer pour récupérer l’accès à votre compte.",
     "keepWaiting": "Continuer d’attendre",
+    "notCancelled": "Not cancelled. Your request is still waiting. Try again.",
     "cancelledMark": "Annulée",
     "replacedMark": "Remplacée",
     "replacedTitle": "Une demande plus récente a remplacé celle-ci",

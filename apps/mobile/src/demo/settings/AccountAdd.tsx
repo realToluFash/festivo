@@ -1,13 +1,21 @@
 import { type RefObject, useEffect, useRef, useState } from 'react';
-import type { TextInputInstance } from 'react-native';
+import type { TextInputInstance, ViewInstance } from 'react-native';
 
+import { focusPicker } from '../../components/CountryPicker.tsx';
 import { Field, focusChecked, focusRefused, TextField } from '../../components/Field.tsx';
-import { PhoneEntry } from '../../components/PhoneEntry.tsx';
 import { SETTLED_MS } from '../../components/Screen.tsx';
 import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
-import { addCheck, addRefusal, type ContactKind, KIND_WORDS, WORDS } from './AccountModel.ts';
+import {
+  addCheck,
+  addRefusal,
+  type ContactKind,
+  KIND_WORDS,
+  phoneLineOn,
+  WORDS,
+} from './AccountModel.ts';
 import { discardAsk } from './AccountName.tsx';
-import { type Contact, PHONE_COUNTRY, phoneShown } from './AccountSample.ts';
+import { AccountPhoneEntry } from './AccountPhone.tsx';
+import { type Contact, phoneShown } from './AccountSample.ts';
 import { FocusedScreen } from '../../components/Summary.tsx';
 
 /** Adding an address or a number; it joins unverified, and only the account's own rows are known to be linked. */
@@ -15,6 +23,7 @@ export function AddScreen({
   kind,
   open,
   rows,
+  startCountry,
   opener,
   onClose,
   onAdded,
@@ -22,6 +31,7 @@ export function AddScreen({
   kind: ContactKind;
   open: boolean;
   rows: readonly Contact[];
+  startCountry: string;
   opener: RefObject<ScreenReaderTarget | null>;
   onClose: () => void;
   onAdded: (row: Contact) => void;
@@ -30,9 +40,11 @@ export function AddScreen({
   const email = kind === 'email';
   const typed = useRef('');
   const field = useRef<TextInputInstance>(null);
-  const [country, setCountry] = useState(PHONE_COUNTRY);
+  const picker = useRef<ViewInstance>(null);
+  const [country, setCountry] = useState(startCountry);
   const [changed, setChanged] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errorOn, setErrorOn] = useState<'country' | 'number'>('number');
   const [discarding, setDiscarding] = useState(false);
 
   useEffect(() => {
@@ -51,14 +63,18 @@ export function AddScreen({
   function add(): void {
     const checked = addCheck(kind, typed.current, country);
     if (checked != null) {
+      const on = email ? 'number' : phoneLineOn(typed.current, country);
       setError(checked);
-      focusChecked(field);
+      setErrorOn(on);
+      if (on === 'country') focusPicker(picker);
+      else focusChecked(field);
       return;
     }
     const shown = email ? typed.current.trim() : phoneShown(country, typed.current);
     const refused = addRefusal(kind, shown, rows);
     if (refused != null) {
       setError(refused);
+      setErrorOn('number');
       focusRefused(field);
       return;
     }
@@ -102,13 +118,14 @@ export function AddScreen({
           />
         </Field>
       ) : (
-        <PhoneEntry
+        <AccountPhoneEntry
           ref={field}
           label={words.label}
           help={words.help}
           country={country}
           error={error}
-          submitting={false}
+          errorOn={errorOn}
+          pickerRef={picker}
           onCountry={(code) => {
             setCountry(code);
             setError(null);

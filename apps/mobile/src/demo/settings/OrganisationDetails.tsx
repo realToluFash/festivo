@@ -8,6 +8,7 @@ import {
 import { type Ref, type RefObject, useEffect, useRef, useState } from 'react';
 import { StyleSheet, type TextInputInstance, View, type ViewInstance } from 'react-native';
 
+import { focusPicker } from '../../components/CountryPicker.tsx';
 import {
   Field,
   FieldError,
@@ -25,6 +26,7 @@ import { Text } from '../../components/Text.tsx';
 import { checkAll, type FieldErrors } from '../../kit/formChecks.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { Glyph } from '../../components/Glyph.tsx';
+import { PickerEdge } from '../PickerEdge.tsx';
 import {
   type CardSaid,
   cardWords,
@@ -161,9 +163,14 @@ type Typed = 'name' | 'contactAddress';
 export interface DetailsOpening {
   picking: Picked | null;
   contactWrong: boolean;
+  currencyBlank: boolean;
 }
 
-export const FRESH_DETAILS: DetailsOpening = { picking: null, contactWrong: false };
+export const FRESH_DETAILS: DetailsOpening = {
+  picking: null,
+  contactWrong: false,
+  currencyBlank: false,
+};
 
 /** Editing the details on a screen of their own; a picker's list opens in the same surface and comes back on a pick. */
 export function DetailsScreen({
@@ -193,10 +200,11 @@ export function DetailsScreen({
     locale: saved.locale,
   });
   const [picking, setPicking] = useState<Picked | null>(opening.picking);
-  const [errors, setErrors] = useState<FieldErrors<OrganisationField>>(() =>
-    opening.contactWrong ? { contactAddress: W.contactInvalid } : {},
-  );
-  const [pressed, setPressed] = useState(opening.contactWrong);
+  const [errors, setErrors] = useState<FieldErrors<OrganisationField>>(() => ({
+    ...(opening.contactWrong && { contactAddress: W.contactInvalid }),
+    ...(opening.currencyBlank && { currency: W.currencyBlank }),
+  }));
+  const [pressed, setPressed] = useState(opening.contactWrong || opening.currencyBlank);
   const [saving, setSaving] = useState(false);
   const [discarding, setDiscarding] = useState(false);
   const [changes, setChanges] = useState(() => changeCount(saved, picked, given));
@@ -214,6 +222,16 @@ export function DetailsScreen({
 
     return () => clearTimeout(focus);
   }, [open, opening.contactWrong]);
+
+  useEffect(() => {
+    if (!open || !opening.currencyBlank) return;
+    const focus = setTimeout(
+      () => moveScreenReaderFocus(rowRefs.current.currency ?? null),
+      SETTLED_MS,
+    );
+
+    return () => clearTimeout(focus);
+  }, [open, opening.currencyBlank]);
 
   useEffect(() => {
     const field = cameBack.current;
@@ -265,6 +283,7 @@ export function DetailsScreen({
     setErrors(found.errors);
     if (found.first === 'name') focusChecked(nameRef);
     if (found.first === 'contactAddress') focusChecked(contactRef);
+    if (found.first === 'currency') focusPicker({ current: rowRefs.current.currency ?? null });
     if (found.first != null) return;
 
     keysStayDown();
@@ -312,24 +331,28 @@ export function DetailsScreen({
   const pickerRow = (field: Picked) => {
     const { label, testID } = PICKERS[field];
     const chosen = choiceName(field, picked[field]);
+    const error = errors[field];
 
     return (
       <View>
-        <Row
-          ref={(row) => {
-            rowRefs.current[field] = row;
-          }}
-          title={chosen}
-          line={label}
-          opens
-          onPress={() => {
-            setGiven({ ...typed.current });
-            setPicking(field);
-          }}
-          accessibilityLabel={`${label}, ${chosen}`}
-          testID={testID}
-        />
-        {errors[field] != null && <FieldError message={errors[field]} />}
+        <PickerEdge wrong={error != null} flat>
+          <Row
+            ref={(row) => {
+              rowRefs.current[field] = row;
+            }}
+            title={chosen}
+            line={label}
+            opens
+            invalid={error != null}
+            onPress={() => {
+              setGiven({ ...typed.current });
+              setPicking(field);
+            }}
+            accessibilityLabel={`${label}, ${chosen}`}
+            testID={testID}
+          />
+        </PickerEdge>
+        {error != null && <FieldError message={error} />}
       </View>
     );
   };

@@ -1,5 +1,10 @@
 # sc-19212: on a tablet on its side, Events of ${ORG} listing events, nothing open: a pull to refresh with the API stopped gives the failed card at full width, no Choose an event pane; Try again with it back gives the split.
 appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
 ---
 - setOrientation: LANDSCAPE_LEFT
 - runFlow:

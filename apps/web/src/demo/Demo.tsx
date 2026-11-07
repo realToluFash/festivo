@@ -1,5 +1,13 @@
 import { type FormEvent, useEffect, useRef, useState } from 'react';
-import { Link, Route, Routes, useLocation, useNavigate, useSearchParams } from 'react-router';
+import {
+  Link,
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+  useSearchParams,
+} from 'react-router';
 
 import { NotFound } from '../routes/public/NotFound.tsx';
 import { offButton } from '../offButton.ts';
@@ -13,7 +21,10 @@ import { Events } from './Events.tsx';
 import { EVENTS_PAGES } from './events.ts';
 import { ACCOUNT_PAGES } from './account.ts';
 import { GENERAL_PAGES } from './general.ts';
+import { MESSAGES_PAGES } from './messages.ts';
 import { GetBackInBoard } from './GetBackIn.tsx';
+import { GuestPage } from './Guest.tsx';
+import { GUEST_PAGES } from './guest.ts';
 import { NewAccountBoard } from './NewAccount.tsx';
 import { NOTIFICATIONS_PAGES } from './notifications.ts';
 import { SECURITY_PAGES } from './security.ts';
@@ -112,11 +123,13 @@ export default function Demo() {
       <Route path="get-back-in" element={<GetBackInBoard />} />
       <Route path="two-factor" element={<TwoFactorBoard />} />
       <Route path="ways-in" element={<WaysInBoard />} />
-      <Route path="signed-in" element={<SignedIn />} />
+      {/* Kept so a link to /demo/signed-in opens Today rather than the not-found page. */}
+      <Route path="signed-in" element={<Navigate to="/demo/today" replace />} />
       <Route path="today" element={<Today />} />
       <Route path="events" element={<Events />} />
       <Route path="events/:id" element={<EventPage />} />
       <Route path="events/:id/dates" element={<EventPage dates />} />
+      <Route path="events/:id/messages" element={<EventPage messages />} />
       <Route path="calendar" element={<Calendar />} />
       <Route path="settings" element={<Settings />} />
       <Route path="settings/members" element={<Settings />} />
@@ -126,6 +139,7 @@ export default function Demo() {
       <Route path="settings/general" element={<Settings open="general" />} />
       <Route path="settings/sign-in-rules" element={<Settings open="signInRules" />} />
       <Route path="people" element={<People />} />
+      <Route path="guest" element={<GuestPage />} />
       <Route path="later" element={<Later />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
@@ -172,6 +186,14 @@ function DemoHome({ from }: { from: string }) {
         <BoardPages pages={CALENDAR_PAGES} />
         <h3>Create an organisation in B · A short walk · desktop</h3>
         <BoardPages pages={CREATE_PAGES} />
+        <h3>Guest’s page in A · The cover card · phone, tablet and desk</h3>
+        <BoardPages pages={GUEST_PAGES} />
+      </section>
+
+      <section className="demo-home-page" aria-labelledby="demo-page-36">
+        <h2 id="demo-page-36">36 · Messaging · Messages on an event</h2>
+        <h3>Messaging in B · Conversations · desktop</h3>
+        <BoardPages pages={MESSAGES_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-28">
@@ -504,44 +526,28 @@ function SignInForm({ state }: { state: string }) {
   );
 }
 
-function SignedIn() {
-  const { state } = useLocation() as { state: { provider?: string } | null };
-
-  return (
-    <BoardPage>
-      <div className="demo-heading">
-        <h1>Signed in</h1>
-        <p className="demo-muted">
-          {state?.provider != null
-            ? `A stand-in: ${state.provider} is not wired in the demo, so this is where it would land.`
-            : `A stand-in for your events, signed in as ${SAMPLE.email}.`}
-        </p>
-      </div>
-      <Link className="button demo-wide" to="/demo/sign-in?state=signed-out">
-        Sign out
-      </Link>
-    </BoardPage>
-  );
-}
-
 const LATER: Record<string, string> = {
   terms: 'Terms',
   privacy: 'Privacy',
   security: 'Your account › Security',
+  kitchen: 'Update what the kitchen should know',
+  calendar: 'Add to calendar',
 };
 
 function Later() {
   const [params] = useSearchParams();
   const screen = LATER[params.get('screen') ?? ''] ?? 'Terms';
+  const guest = params.get('screen') === 'kitchen' || params.get('screen') === 'calendar';
 
+  // Opened from any footer, signed in or not, so its header offers neither way (sc-29561).
   return (
-    <BoardPage>
+    <BoardPage end={null}>
       <div className="demo-heading">
         <h1>{screen}</h1>
         <p className="demo-muted">A stand-in: this page comes to the demo at its own step.</p>
       </div>
-      <Link className="button demo-wide" to="/demo/sign-in">
-        Back to sign in
+      <Link className="button demo-wide" to={guest ? '/demo/guest?state=coming' : '/demo/sign-in'}>
+        {guest ? 'Back to the guest’s page' : 'Back to sign in'}
       </Link>
     </BoardPage>
   );
