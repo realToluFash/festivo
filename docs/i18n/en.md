@@ -66,6 +66,24 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **7 Nov 2026. Choosing a quote's vendor, and the vendor page's empty states** (sc-87, pm's
+  #30377, settled before the board is drawn). In the Vendor field: an option already quoted
+  reads "Already quoted on this event", a label with no full stop. Typed text that matches
+  nothing reads "No vendor matches “{{typed}}”.", the time zone picker's shape, and with
+  nothing to offer at all "There are no vendors to choose from.", which stays true when every
+  vendor is archived (rejected: "No vendors yet.", which is not). The second line, for an owner
+  or admin, is "Add the vendor on the Vendors page first.", linking to the directory, and reads
+  under either first line; for an event's Lead it is "Ask an owner or admin to add the
+  vendor.", which says what to do rather than only what the Lead cannot (rejected: "Only an
+  Owner or Admin can add a vendor."). Roles in running text are lower case, per the glossary.
+  The second quote from one vendor, on the form and as the API's 409 detail under one key:
+  "That vendor already has a quote on this event, so this quote was not saved. To give a new
+  price, revise that quote." No name slot, as with "That vendor is no longer one of this
+  organisation's vendors". The vendor page's difference: "The schedule matches the quote.";
+  "{{amount}} of the quote is not scheduled yet."; "The schedule is {{amount}} over the
+  quote.", `{{amount}}` from `Intl.NumberFormat` in the event's currency, never a sign or a
+  colour alone. Empty states: "No quotes on this event yet." beside **Add a quote**, and "No
+  payments scheduled yet." "Nothing is due." stays sc-93's.
 - **7 Nov 2026. "On the day", never "on the night"** (sc-29384, from the owner's 3 Nov decision).
   Events happen at any hour, so the copy says "on the day" and carries no night, dusk or sunset
   imagery: `verifyPhone.doneBody`, `steps.mobileIntro`, `completeProfile.mobileHelp`,
