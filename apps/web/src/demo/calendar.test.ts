@@ -26,7 +26,8 @@ import {
   weekStart,
   weeksOf,
 } from './calendar.ts';
-import { CLOCKS, REUNION, meshFor, sampleEvent, sampleEvents } from './events.ts';
+import { CLOCKS, REUNION, sampleEvent, sampleEvents } from './events.ts';
+import { meshFor } from '../mesh.ts';
 
 const EN = 'en-US';
 const NOVEMBER = { year: 2026, month: 11 };

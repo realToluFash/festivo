@@ -15,7 +15,7 @@ import { Link, useLocation, useSearchParams } from 'react-router';
 import { leaveMenu } from '../leaving.ts';
 import { CreateWalk } from './CreateOrg.tsx';
 import { type Walk, freshWalk, isCreateState, walkOf } from './createOrg.ts';
-import { meshFor } from './events.ts';
+import { meshFor } from '../mesh.ts';
 import { Glyph } from '../components/Glyph.tsx';
 import { focusWhenFree } from '../layers.ts';
 import { Notice } from '../components/Notice.tsx';
