@@ -8,7 +8,7 @@ import {
   View,
   type ViewStyle,
 } from 'react-native';
-import Svg, { Circle } from 'react-native-svg';
+import Svg, { Circle, Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
 import { Text } from './Text.tsx';
 import { tokens } from '../theme/tokens.ts';
@@ -753,6 +753,23 @@ export function TabBar<T extends string>({
   );
 }
 
+/** Under the phone's tab bar, the page fades to white so nothing reads through it. */
+export function TabBarFade() {
+  return (
+    <View style={styles.fade} pointerEvents="none">
+      <Svg width="100%" height="100%">
+        <Defs>
+          <LinearGradient id="tabBarFade" x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0" stopColor={tokens.colorCard} stopOpacity={0} />
+            <Stop offset="0.62" stopColor={tokens.colorCard} stopOpacity={1} />
+          </LinearGradient>
+        </Defs>
+        <Rect width="100%" height="100%" fill="url(#tabBarFade)" />
+      </Svg>
+    </View>
+  );
+}
+
 /** The phone's tab bar is this tall, so a page clears it. */
 export const PHONE_TAB_BAR = 64;
 
@@ -781,6 +798,7 @@ export function PhoneTabBar({
 
 const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
+  fade: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 150 },
   white: { color: tokens.colorInkOnDark },
   accent: { color: tokens.colorAccent },
   soft: { opacity: 0.84 },

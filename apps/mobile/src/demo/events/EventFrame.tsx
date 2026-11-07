@@ -14,7 +14,7 @@ import { Sheet } from '../../components/Sheet.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { Glyph, type GlyphName } from '../../components/Glyph.tsx';
-import { PHONE_TAB_BAR, TabBar } from '../../components/TodayCover.tsx';
+import { PHONE_TAB_BAR, TabBar, TabBarFade } from '../../components/TodayCover.tsx';
 import {
   SidebarColumn,
   SidebarFoot,
@@ -25,7 +25,7 @@ import {
 import { TodayShellProvider } from '../../components/todayShell.ts';
 import { demoShell } from '../demoShell.ts';
 import { LineIcon } from '../settings/AccountCard.tsx';
-import { Bell, Fade, Landscape } from '../settings/Frame.tsx';
+import { Bell, Landscape } from '../settings/Frame.tsx';
 import { EventThumb } from './EventCard.tsx';
 import { type Shown, cardTags, rowLine } from './EventsModel.ts';
 import { AREAS, type AreaKey, MORE_AREAS, PHONE_TABS } from './EventsSample.ts';
@@ -193,7 +193,7 @@ export function EventFrame({
       )}
       {phone && (
         <>
-          <Fade />
+          <TabBarFade />
           {badge == null ? (
             <TabBar
               tabs={PHONE_BAR}

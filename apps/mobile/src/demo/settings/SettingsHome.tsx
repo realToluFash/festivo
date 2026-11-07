@@ -5,8 +5,8 @@ import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { CARD_PIECES, Confetti, Cover } from '../../components/Cover.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
-import { Glass, PHONE_TAB_BAR, PhoneTabBar } from '../../components/TodayCover.tsx';
-import { Bell, Fade, Landscape, OrgPill, PortraitTop } from './Frame.tsx';
+import { Glass, PHONE_TAB_BAR, PhoneTabBar, TabBarFade } from '../../components/TodayCover.tsx';
+import { Bell, Landscape, OrgPill, PortraitTop } from './Frame.tsx';
 import { WORDS as PERSONALISATION } from './PersonalisationModel.ts';
 import { SchemeTile } from './PersonalisationParts.tsx';
 import { demoGroups, YOU } from './sample.ts';
@@ -343,7 +343,7 @@ export function SettingsHome({ onSignOut, onDemo }: Handlers) {
           </View>
         </ScrollView>
         <View style={[styles.statusStrip, { height: insets.top }]} pointerEvents="none" />
-        <Fade />
+        <TabBarFade />
         <PhoneTabBar bottom={foot} onTab={shell.onTab} at="Settings" />
       </View>
     );

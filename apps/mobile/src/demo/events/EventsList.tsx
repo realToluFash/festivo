@@ -25,8 +25,8 @@ import {
 } from './GuestCounts.ts';
 import { Cover } from '../../components/Cover.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
-import { PHONE_TAB_BAR, PhoneTabBar } from '../../components/TodayCover.tsx';
-import { Bell, Fade, Landscape, OrgPill, PortraitTop } from '../settings/Frame.tsx';
+import { PHONE_TAB_BAR, PhoneTabBar, TabBarFade } from '../../components/TodayCover.tsx';
+import { Bell, Landscape, OrgPill, PortraitTop } from '../settings/Frame.tsx';
 import { CardPieces, EventCard, EventThumb } from './EventCard.tsx';
 import { EventsFilterMenu, FilterButton } from './EventsFilter.tsx';
 import {
@@ -416,7 +416,7 @@ function ListFrame({
       </ScrollView>
       {phone && (
         <>
-          <Fade />
+          <TabBarFade />
           <PhoneTabBar bottom={foot} onTab={shell.onTab} at="Events" />
         </>
       )}

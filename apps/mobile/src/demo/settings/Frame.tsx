@@ -8,7 +8,6 @@ import {
   type ViewInstance,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
@@ -17,7 +16,13 @@ import { useOrgOpener } from '../OrgSwitcher.tsx';
 import { SW } from '../OrgSwitcherModel.ts';
 import { OrgPill as ProductOrgPill } from '../../components/OrgPill.tsx';
 import { type EventKey, sample } from '../today.ts';
-import { PHONE_TAB_BAR, PhoneTabBar, type Tab, TABS } from '../../components/TodayCover.tsx';
+import {
+  PHONE_TAB_BAR,
+  PhoneTabBar,
+  type Tab,
+  TABS,
+  TabBarFade,
+} from '../../components/TodayCover.tsx';
 import type { Tell } from '../../components/TodayParts.tsx';
 import { TodaySidebar } from '../../components/TodaySidebar.tsx';
 import { TodayShellProvider } from '../../components/todayShell.ts';
@@ -135,7 +140,7 @@ export function SettingsPage({
       </ScrollView>
       {phone ? (
         <>
-          <Fade />
+          <TabBarFade />
           {dock != null && (
             <View style={[styles.dockPhone, { bottom: foot + PHONE_TAB_BAR + tokens.spaceMd }]}>
               {dock}
@@ -377,22 +382,6 @@ export function PortraitTop({ at = 'Settings' }: { at?: Tab }) {
   );
 }
 
-export function Fade() {
-  return (
-    <View style={styles.fade} pointerEvents="none">
-      <Svg width="100%" height="100%">
-        <Defs>
-          <LinearGradient id="settingsFade" x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0" stopColor={tokens.colorCard} stopOpacity={0} />
-            <Stop offset="0.62" stopColor={tokens.colorCard} stopOpacity={1} />
-          </LinearGradient>
-        </Defs>
-        <Rect width="100%" height="100%" fill="url(#settingsFade)" />
-      </Svg>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
   page: { flex: 1, backgroundColor: tokens.colorCard },
@@ -410,7 +399,6 @@ const styles = StyleSheet.create({
     paddingBottom: tokens.space6xl * 2,
     gap: tokens.spaceXs,
   },
-  fade: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 150 },
   dockPhone: { position: 'absolute', left: tokens.spaceLg, right: tokens.spaceLg },
   dockTablet: {
     position: 'absolute',
