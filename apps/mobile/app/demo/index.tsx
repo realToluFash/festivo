@@ -6,6 +6,7 @@ import { Text } from '../../src/components/Text.tsx';
 import { DemoScreen, NavBar } from '../../src/demo/DemoScreen.tsx';
 import { Heading } from '../../src/steps/Lines.tsx';
 import { SAMPLE } from '../../src/demo/samples.ts';
+import { MESSAGES_BOARDS } from '../../src/demo/messages/MessagesBoards.ts';
 import { tokens } from '../../src/theme/tokens.ts';
 
 interface Board {
@@ -471,6 +472,61 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/settings/members?state=failed',
       },
       {
+        title: 'Members · requests to get back in',
+        what: 'Kofi and Priya lost their two-factor',
+        href: '/demo/settings/members?state=recovery',
+      },
+      {
+        title: 'Members · requests to get back in as Julien',
+        what: 'The same, as Julien, an admin',
+        href: '/demo/settings/members?state=recovery&as=julien',
+      },
+      {
+        title: 'Members · approve a request to get back in',
+        what: 'Turn off Kofi Mensah’s two-factor?',
+        href: '/demo/settings/members?state=recoveryApprove',
+      },
+      {
+        title: 'Members · turn down a request to get back in',
+        what: 'Turn down Kofi Mensah’s request?',
+        href: '/demo/settings/members?state=recoveryTurnDown',
+      },
+      {
+        title: 'Members · a request to get back in approved',
+        what: 'Kofi’s two-factor is off, Answer Priya Shah',
+        href: '/demo/settings/members?state=recoveryApproved',
+      },
+      {
+        title: 'Members · a request to get back in turned down',
+        what: 'Kofi’s request is turned down, Answer Priya Shah',
+        href: '/demo/settings/members?state=recoveryTurnedDown',
+      },
+      {
+        title: 'Members · a request answered elsewhere',
+        what: 'Kofi’s confirm offers Close alone',
+        href: '/demo/settings/members?state=recoveryClosed',
+      },
+      {
+        title: 'Members · an answer on its way',
+        what: 'Sending your answer…, the way back waits',
+        href: '/demo/settings/members?state=recoverySending',
+      },
+      {
+        title: 'Members · an answer that failed',
+        what: 'That did not work, the verb tries again',
+        href: '/demo/settings/members?state=recoveryFailed',
+      },
+      {
+        title: 'Members · no request to get back in left',
+        what: 'Both answered, Answer Lucía Gómez',
+        href: '/demo/settings/members?state=recoveryDone',
+      },
+      {
+        title: 'Members · your own request to get back in',
+        what: 'Julien’s, which somebody else answers',
+        href: '/demo/settings/members?state=recoveryOwn&as=julien',
+      },
+      {
         title: 'Sign-in rules',
         what: 'Julien meets every rule',
         href: '/demo/settings/sign-in-rules',
@@ -907,6 +963,10 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/people?state=failed',
       },
     ],
+  },
+  {
+    page: 'Messages · B Conversations',
+    boards: MESSAGES_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
   },
   {
     page: 'Calendar · A Weeks as lanes',

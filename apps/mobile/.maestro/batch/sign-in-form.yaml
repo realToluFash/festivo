@@ -54,6 +54,15 @@ appId: host.exp.Exponent
       visible:
         id: 'twoFactor.code'
     file: ../sign-in-two-factor.yaml
+# Signing in lands on Today, which names no account: Settings does. sc-30091.
+- extendedWaitUntil:
+    visible: '{{t:any:todayScreen.tab.today}}|{{t:any:home.signedInTo}}|{{t:any:noOrganisation.title}}|{{t:any:steps.organisationTitle}}|{{t:any:signInRules.overdueTitle}}'
+    timeout: 30000
+    optional: true
+- runFlow:
+    when:
+      visible: '{{t:any:todayScreen.tab.today}}'
+    file: to-settings.yaml
 # The two-factor overdue screen names no account, and counts as signed in. sc-28435.
 - scrollUntilVisible:
     element:
