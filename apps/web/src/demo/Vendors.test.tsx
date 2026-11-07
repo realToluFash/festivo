@@ -74,28 +74,54 @@ describe('Vendors at a desk in B Confetti (sc-82)', () => {
 
   it('archives in one press and restores from Archived', SLOW, async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
-    await open('/demo/vendors?state=edit');
+    await open('/demo/vendors');
+    fireEvent.click(within(main()).getByRole('button', { name: /^Golden Spoon,/ }));
     const dialog = screen.getByRole('dialog', { name: 'Edit vendor' });
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'Archive this vendor' }));
 
     expect(screen.queryByRole('dialog')).toBeNull();
-    expect(within(main()).queryByRole('button', { name: /^Bloom & Co,/ })).toBeNull();
+    expect(within(main()).queryByRole('button', { name: /^Golden Spoon,/ })).toBeNull();
 
     fireEvent.click(within(main()).getByRole('tab', { name: /Archived/ }));
-    const bloom = within(main())
+    const spoon = within(main())
       .getAllByRole('listitem')
-      .find((item) => item.textContent?.startsWith('Bloom & Co'));
-    if (bloom == null) throw new Error('Bloom & Co is not archived');
+      .find((item) => item.textContent?.startsWith('Golden Spoon'));
+    if (spoon == null) throw new Error('Golden Spoon is not archived');
 
-    expect(bloom.textContent).toMatch(/Archived /);
+    expect(spoon.textContent).toMatch(/Archived /);
 
-    fireEvent.click(within(bloom).getByRole('button', { name: 'Restore' }));
+    fireEvent.click(within(spoon).getByRole('button', { name: 'Restore' }));
     fireEvent.click(within(main()).getByRole('tab', { name: /In use/ }));
 
-    expect(within(main()).getByRole('button', { name: /^Bloom & Co,/ })).toBeDefined();
+    expect(within(main()).getByRole('button', { name: /^Golden Spoon,/ })).toBeDefined();
     vi.useRealTimers();
   });
+
+  it(
+    'refuses to archive a vendor an event still owes, naming each event (sc-87)',
+    SLOW,
+    async () => {
+      await open('/demo/vendors?state=edit');
+      const dialog = screen.getByRole('dialog', { name: 'Edit vendor' });
+
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Archive this vendor' }));
+
+      expect(within(dialog).getByRole('alert').textContent).toMatch(/^Bloom & Co was not archived/);
+      expect(
+        within(dialog)
+          .getAllByRole('link')
+          .map((link) => link.getAttribute('href')),
+      ).toEqual([
+        '/demo/events/evt-gala-4?area=budget&vendor=v4',
+        '/demo/events/evt-ireti-2?area=budget&vendor=v4',
+      ]);
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+      expect(within(main()).getByRole('button', { name: /^Bloom & Co,/ }).textContent).toMatch(
+        /Used on 2 events/,
+      );
+    },
+  );
 
   it('marks the blank required fields before sending, and adds a vendor', SLOW, async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
