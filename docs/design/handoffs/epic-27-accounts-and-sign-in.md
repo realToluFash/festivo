@@ -26,15 +26,23 @@ number. Optionally a second factor, after which that becomes the thing they migh
 
 ## Layouts, and why
 
-**All four**: the desktop web and the app's three. Settings and your account are the
-signed-in web, which has no layout for a phone's or a tablet's browser (epic 22091,
-"Decided, 2 Nov (pm, on ux's #28764)"). Down to 320 CSS px a page is the desktop page
-reflowed (WCAG 2.2 §1.4.10), and a 320 frame on a board is that check. sc-13348's
-Settings > General, built for a phone's browser, stays until the owner says otherwise.
-Signing in, creating an account and getting back in sit outside the signed-in frame.
-Whether they keep a phone browser layout is asked of pm on sc-3933; until it is answered,
-nothing new is drawn for a phone's browser. These are the same design at four sizes
-rather than four different designs.
+**All four**: the desktop web and the app's three.
+
+**Signing in, creating an account and getting back in keep the phone browser layout they
+have**, as does the rest of the signed-out frame, Join and Request to join included (epic
+22091, "Decided, 2 Nov (pm, on ux's #28794)"). The reset-password email links to the web,
+and the app opens none of our links itself, so someone who taps **Forgot your password?**
+in the app finishes in their phone's browser. The owner chose this look on 1 Nov, phone
+layout included, and sc-26511 and sc-26512 built it. Nothing new is drawn for that layout:
+it comes from the frame as built. A tablet's browser shows the desktop card.
+
+**Settings and your account are the signed-in web**, which has no layout for a phone's or a
+tablet's browser (epic 22091, "Decided, 2 Nov (pm, on ux's #28764)"). Down to 320 CSS px a
+page is the desktop page reflowed (WCAG 2.2 §1.4.10), and a 320 frame on a board is that
+check. sc-13348's Settings > General, built for a phone's browser, stays until the owner
+says otherwise.
+
+These are the same design at four sizes rather than four different designs.
 
 ## What these screens must honour
 

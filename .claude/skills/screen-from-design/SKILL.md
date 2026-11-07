@@ -71,16 +71,25 @@ product and false of either codebase on its own.
 | **Tablet portrait**  | `apps/mobile` | All of event management              |
 | **Phone**            | `apps/mobile` | All of event management              |
 
-`apps/web` also has phone layouts, but **only** for the pages someone opens from a link or
-a code with nothing to install (the guest's page, the staff link pages, redeeming a join
-code, check-in in a browser) and the marketing site. **The signed-in web has no layout for
-a phone's or a tablet's browser.** Billing, account settings and organisation settings are
-the desktop page reflowed down to 320 CSS px (WCAG 2.2 §1.4.10), with nothing lost or cut
-off and nothing drawn or built for a phone of their own (epic 22091, "Decided, 2 Nov (pm,
-on ux's #28764)"). sc-13348's Settings > General stays as built until the owner says
-otherwise. **Event management at phone width in a browser is not a layout — it is the app
-handoff.** If you find yourself making a guest table work at 390px in `apps/web`, stop:
-that screen does not exist there.
+`apps/web` also has phone layouts, but **only** for three kinds of page:
+
+- **The pages someone opens from a link or a code with nothing to install**: the guest's
+  page, the staff link pages, redeeming a join code, check-in in a browser.
+- **The signed-out frame**: signing in, creating an account, getting back in, verifying an
+  email or a phone, Join and Request to join. The app opens none of our links itself, so a
+  reset-password link tapped on a phone finishes in its browser (epic 22091, "Decided,
+  2 Nov (pm, on ux's #28794)"). The frame keeps the phone layout it has as built
+  (sc-26511, sc-26512), nothing new is drawn for it, and a tablet's browser shows its
+  desktop card.
+- **The marketing site.**
+
+**The signed-in web has no layout for a phone's or a tablet's browser.** Billing, account
+settings and organisation settings are the desktop page reflowed down to 320 CSS px
+(WCAG 2.2 §1.4.10), with nothing lost or cut off and nothing drawn or built for a phone of
+their own (epic 22091, "Decided, 2 Nov (pm, on ux's #28764)"). sc-13348's Settings >
+General stays as built until the owner says otherwise. **Event management at phone width
+in a browser is not a layout — it is the app handoff.** If you find yourself making a guest
+table work at 390px in `apps/web`, stop: that screen does not exist there.
 
 Within `apps/mobile` the three are **structurally different arrangements, never one
 rescaled**: phone drills in and back out; tablet portrait stacks a detail under or beside
