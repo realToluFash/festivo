@@ -1,0 +1,43 @@
+# sc-11786: the page of ${ROLE_ID} with Guests changed to Read and not saved, turned from ${FROM} to ${TO}.
+appId: host.exp.Exponent
+---
+- setOrientation: ${FROM}
+- openLink: ${METRO_URL}/--/settings/roles
+- extendedWaitUntil:
+    visible:
+      id: 'roles.role.owner'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'roles.role.${ROLE_ID}'
+    direction: DOWN
+- tapOn:
+    id: 'roles.role.${ROLE_ID}'
+- repeat:
+    while:
+      notVisible:
+        id: 'roles.area.guests.read'
+    times: 10
+    commands:
+      - swipe:
+          start: 75%, 70%
+          end: 75%, 35%
+- tapOn:
+    id: 'roles.area.guests.read'
+- waitForAnimationToEnd
+- takeScreenshot: role-level-before
+- setOrientation: ${TO}
+- waitForAnimationToEnd
+- takeScreenshot: role-level-after
+- repeat:
+    while:
+      notVisible:
+        id: 'roles.discard'
+    times: 10
+    commands:
+      - swipe:
+          start: 75%, 70%
+          end: 75%, 35%
+- assertVisible:
+    id: 'roles.discard'
+- takeScreenshot: role-level-after-unsaved

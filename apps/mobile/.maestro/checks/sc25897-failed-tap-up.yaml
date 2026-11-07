@@ -1,0 +1,23 @@
+# sc-25897 Android: API stopped, keys up on Organisation name, Create organisation tapped. The not-created notice comes wholly into view.
+appId: host.exp.Exponent
+---
+- runFlow: ../open-create-organisation.yaml
+- tapOn:
+    id: 'createOrganisation.name'
+- inputText: 'Notice In View'
+- waitForAnimationToEnd
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
+- tapOn:
+    id: 'createOrganisation.create'
+- extendedWaitUntil:
+    visible: '.*{{t:createOrganisation.failed}}.*'
+    timeout: 45000
+- extendedWaitUntil:
+    visible:
+      id: 'sc25897.never'
+    timeout: 3000
+    optional: true
+- takeScreenshot: answered

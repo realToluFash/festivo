@@ -1,0 +1,7 @@
+vendor/
+var/
+tests/
+.env.local
+.php-cs-fixer.cache
+compose.yaml
+compose.override.yaml
