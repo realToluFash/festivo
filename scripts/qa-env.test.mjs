@@ -5,9 +5,11 @@ import {
   readdirSync,
   readFileSync,
   rmSync,
+  statSync,
   symlinkSync,
   writeFileSync,
 } from 'node:fs';
+import { X509Certificate } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -97,6 +99,12 @@ import {
   QA_OVERRIDES,
   QA_PORTS,
   LAN,
+  LAN_PROXY_COMPOSE,
+  PROXIED,
+  certCovers,
+  ensureLanCertificate,
+  lanCaDir,
+  lanProxy,
   lanAddress,
   qaConfig,
   qrPng,
@@ -291,15 +299,110 @@ describe('the stack a person tests on', () => {
     const { project, urls, app, ports } = qaConfig(LAN, '192.168.1.40');
 
     expect(project).toBe('soirely-qa-lan');
-    expect(urls.web).toBe(`http://192.168.1.40:${ports.WEB_PORT}`);
+    expect(urls.web).toBe(`https://192.168.1.40:${ports.WEB_PORT}`);
     expect(urls.metro).toBe(`exp://192.168.1.40:${ports.METRO_PORT}`);
-    expect(app.EXPO_PUBLIC_API_URL).toBe(`http://192.168.1.40:${ports.API_PORT}`);
+    expect(app.EXPO_PUBLIC_API_URL).toBe(`https://192.168.1.40:${ports.API_PORT}`);
     expect(app.REACT_NATIVE_PACKAGER_HOSTNAME).toBe('192.168.1.40');
     const taken = new Set(TESTERS.flatMap((tester) => Object.values(qaConfig(tester).ports)));
     for (const port of Object.values(ports)) {
       expect(taken.has(port)).toBe(false);
       expect(port).toBeLessThan(65536);
     }
+  });
+
+  it('builds every proxied address over https, and leaves the bundler on http', () => {
+    const { urls, app, overrides, ports } = qaConfig(LAN, '192.168.1.40');
+    const host = 'https://192.168.1.40';
+
+    expect(urls.api).toBe(`${host}:${ports.API_PORT}`);
+    expect(urls.mercure).toBe(`${host}:${ports.MERCURE_PORT}/.well-known/mercure`);
+    expect(urls.mailpit).toBe(`${host}:${ports.MAILPIT_UI_PORT}`);
+    expect(overrides.STORAGE_PUBLIC_ENDPOINT).toBe(`${host}:${ports.STORAGE_PORT}`);
+    expect(overrides.SOIRELY_GOOGLE_AUTHORIZE_URL).toBe(
+      `${host}:${ports.OIDC_PORT}/google/authorize`,
+    );
+    expect(overrides.CORS_EXPO_WEB_ORIGIN).toBe(`http://192.168.1.40:${ports.METRO_PORT}`);
+    for (const [key, value] of Object.entries(app)) {
+      if (key.endsWith('_URL')) expect(value, key).toMatch(/^https:\/\//);
+    }
+    expect(overrides.COMPOSE_FILE).toBe(`compose.yaml:${LAN_PROXY_COMPOSE}`);
+  });
+
+  it('leaves the agent stacks on plain http at 127.0.0.1, with no proxy', () => {
+    for (const tester of TESTERS) {
+      const { urls, overrides, app } = qaConfig(tester);
+      expect(urls.api).toMatch(/^http:\/\/127\.0\.0\.1:/);
+      expect(app.EXPO_PUBLIC_API_URL).toMatch(/^http:\/\/127\.0\.0\.1:/);
+      expect(overrides.COMPOSE_FILE).toBeUndefined();
+    }
+  });
+
+  it('puts the proxy on every proxied port and takes those ports off the services', () => {
+    const { ports } = qaConfig(LAN, '192.168.1.40');
+    const { caddyfile, compose } = lanProxy(ports, '192.168.1.40', '/ca', 'AB:CD');
+
+    for (const [key, upstream] of Object.entries(PROXIED)) {
+      expect(caddyfile).toContain(`https://:${ports[key]} {`);
+      expect(caddyfile).toContain(`reverse_proxy ${upstream}`);
+      expect(compose).toContain(`- '${ports[key]}:${ports[key]}'`);
+    }
+    for (const name of ['api', 'web', 'mercure', 'oidc', 'storage']) {
+      expect(compose).toContain(`  ${name}:\n    ports: !reset []`);
+    }
+    expect(compose).toContain(
+      `mailpit:\n    ports: !override\n      - '${ports.MAILPIT_SMTP_PORT}:1025'`,
+    );
+    expect(compose).toContain('- ./.qa/lan/Caddyfile:/etc/caddy/Caddyfile:ro');
+    expect(compose).toContain('- /ca/server.key:/certs/server.key:ro');
+    expect(compose).not.toContain('ca.key');
+    expect(compose).toContain("soirely.certificate: 'AB:CD'");
+  });
+
+  it('issues a certificate for the LAN address from a CA of its own, and re-issues it when the address moves', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'qa-lan-ca-'));
+    try {
+      const first = ensureLanCertificate(dir, '192.168.1.40');
+      expect(first).toMatchObject({ made: true, issued: true });
+      const ca = readFileSync(join(dir, 'ca.crt'), 'utf8');
+      const server = new X509Certificate(readFileSync(join(dir, 'server.crt')));
+      expect(server.subjectAltName).toBe('IP Address:192.168.1.40');
+      expect(server.checkIssued(new X509Certificate(ca))).toBe(true);
+      expect(new X509Certificate(ca).ca).toBe(true);
+      expect(statSync(join(dir, 'ca.key')).mode & 0o077).toBe(0);
+      expect(statSync(join(dir, 'server.key')).mode & 0o077).toBe(0);
+
+      expect(ensureLanCertificate(dir, '192.168.1.40')).toMatchObject({
+        made: false,
+        issued: false,
+      });
+
+      expect(ensureLanCertificate(dir, '10.0.0.9')).toMatchObject({ made: false, issued: true });
+      const moved = new X509Certificate(readFileSync(join(dir, 'server.crt')));
+      expect(moved.subjectAltName).toBe('IP Address:10.0.0.9');
+      expect(readFileSync(join(dir, 'ca.crt'), 'utf8')).toBe(ca);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('counts a certificate near its expiry as not covering the address', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'qa-lan-ca-'));
+    try {
+      ensureLanCertificate(dir, '192.168.1.40');
+      const server = readFileSync(join(dir, 'server.crt'), 'utf8');
+      const ca = readFileSync(join(dir, 'ca.crt'), 'utf8');
+      const expiry = Date.parse(new X509Certificate(server).validTo);
+      expect(certCovers(server, ca, '192.168.1.40', expiry - 60 * 24 * 3600 * 1000)).toBe(true);
+      expect(certCovers(server, ca, '192.168.1.40', expiry - 24 * 3600 * 1000)).toBe(false);
+      expect(certCovers(null, ca, '192.168.1.40')).toBe(false);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('keeps the CA in the home directory unless SOIRELY_QA_LAN_CA names another', () => {
+    expect(lanCaDir({}, '/home/me')).toBe('/home/me/.soirely/qa-lan-ca');
+    expect(lanCaDir({ SOIRELY_QA_LAN_CA: '/elsewhere' }, '/home/me')).toBe('/elsewhere');
   });
 
   it('makes no simulators or emulators: the person brings the phone', () => {
