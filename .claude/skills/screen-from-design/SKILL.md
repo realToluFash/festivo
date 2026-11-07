@@ -97,6 +97,12 @@ line and its rule are `PasswordField`, and the breach line is `BREACHED` in `rul
 page that writes them out again is the third copy the next copy change misses, so grep
 `parts.tsx` before writing any field a demo page already has.
 
+**A demo never shows a success the browser did not report.** Await the browser API (as
+`copyText` in `apps/web/src/demo/settings.ts` and `TwoFactorCard.tsx` do) and take the
+failure path when it rejects or is missing. A "Copied" with nothing on the clipboard turned
+up twice in the demos (Security's Copy all and General's Copy link), and a fake success in
+a demo is built into the product as a real one.
+
 ## 2. Four layouts, and the codebase that owns each
 
 This is the part most often got wrong, because "build all four layouts" is true of the
