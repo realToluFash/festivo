@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
+import { addDays } from '@soirely/domain';
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -270,11 +271,12 @@ describe('the Calendar in B, weeks as lanes, at a desk (sc-30329)', () => {
   });
 
   it.each([
-    [CAL_WORDS.next, '2026-12-01'],
-    [CAL_WORDS.previous, '2026-10-01'],
-  ])('enters Agenda after %s at the month’s first day', SLOW, async (button, first) => {
+    [[CAL_WORDS.next], '2026-12-01'],
+    [[CAL_WORDS.previous], '2026-10-01'],
+    [[CAL_WORDS.previous, CAL_WORDS.next], TODAY],
+  ])('enters Agenda after %j where Month enters, on %s', SLOW, async (names, first) => {
     await calendar('agenda');
-    fireEvent.click(screen.getByRole('button', { name: button }));
+    for (const name of names) fireEvent.click(screen.getByRole('button', { name }));
 
     const stop = entered();
 
@@ -315,6 +317,26 @@ describe('the Calendar in B, weeks as lanes, at a desk (sc-30329)', () => {
       expect(document.activeElement).toBe(all[back]);
     }
     expect(rowDay(document.activeElement)).toBe('2026-03-14');
+  });
+
+  it.each([
+    [[CAL_WORDS.next], '2026-12-01'],
+    [[CAL_WORDS.previous], '2026-10-01'],
+    [[CAL_WORDS.next, CAL_WORDS.today], TODAY],
+  ])('enters Month after %j on %s, and its keys work from there', SLOW, async (names, at) => {
+    await calendar();
+    for (const name of names) fireEvent.click(screen.getByRole('button', { name }));
+
+    expect(day(at).tabIndex).toBe(0);
+    expect(document.querySelectorAll('.cal-day[tabindex="0"]')).toHaveLength(1);
+
+    day(at).focus();
+    key('ArrowRight');
+    expect(focused()).toBe(addDays(at, 1));
+    fireEvent.click(day(addDays(at, 1)));
+    expect(document.activeElement?.closest('.cal-panel')).not.toBeNull();
+    key('Escape');
+    expect(focused()).toBe(addDays(at, 1));
   });
 
   it('leaves Month’s way in as it was after a visit to Agenda', SLOW, async () => {

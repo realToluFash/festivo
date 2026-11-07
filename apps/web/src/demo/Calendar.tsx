@@ -226,9 +226,9 @@ function CalendarPage({ start, tell }: { start: CalendarStart; tell: Tell }) {
     setRedraw((times) => times + 1);
   }
 
-  function goTo(next: Aim): void {
+  function goTo(next: Aim, anchor = next.day): void {
     aim.current = next;
-    setAgendaDay(next.day);
+    setAgendaDay(anchor);
     reach(next.day);
   }
 
@@ -352,8 +352,10 @@ function CalendarPage({ start, tell }: { start: CalendarStart; tell: Tell }) {
 
   function step(by: number): void {
     const month = shiftMonth(pinned, by);
+    const day = placeOf(month);
 
-    goTo({ day: firstOf(month), glide: true, turn: true, pin: month });
+    setFocusDay(day);
+    goTo({ day: firstOf(month), glide: true, turn: true, pin: month }, day);
   }
 
   function toToday(): void {
