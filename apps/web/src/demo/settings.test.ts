@@ -37,7 +37,7 @@ describe('the Settings list at a desk (sc-29708)', () => {
 
     expect(say.date('2026-11-02')).toBe('Nov 2, 2026');
     expect(say.day('2026-11-02')).toBe('Nov 2');
-    expect(say.deadline('2026-11-16T09:12')).toBe('Monday, Nov 16 at 9:12 AM WAT');
+    expect(say.deadline('2026-11-16T09:12')).toBe('Monday, Nov 16 at 09:12 WAT');
     expect(settingsSayIn('en-GB').date('2026-11-02')).toBe('2 Nov 2026');
   });
 });

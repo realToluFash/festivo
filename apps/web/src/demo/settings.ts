@@ -1,3 +1,4 @@
+import { writtenTime } from './clock.ts';
 import { SAMPLE } from './rules.ts';
 import type { EventKey } from './today.ts';
 
@@ -126,14 +127,12 @@ export function settingsSayIn(locale: string): SettingsSay {
   const date = format({ month: 'short', day: 'numeric', year: 'numeric' });
   const dayOnly = format({ month: 'short', day: 'numeric' });
   const weekday = format({ weekday: 'long', month: 'short', day: 'numeric' });
-  const clock = format({ hour: 'numeric', minute: '2-digit' });
 
   return {
     date: (day) => date.format(new Date(`${day}T00:00Z`)),
     day: (day) => dayOnly.format(new Date(`${day}T00:00Z`)),
     // The sample's deadlines are wall clock in Lagos, so they are read in UTC and named WAT.
-    deadline: (at) =>
-      `${weekday.format(new Date(`${at}Z`))} at ${clock.format(new Date(`${at}Z`))} WAT`,
+    deadline: (at) => `${weekday.format(new Date(`${at}Z`))} at ${writtenTime(at, locale)} WAT`,
   };
 }
 

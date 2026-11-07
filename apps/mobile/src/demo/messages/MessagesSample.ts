@@ -1,3 +1,4 @@
+import { writtenTime } from '../clock.ts';
 import { CHANNEL_WORD, type ChannelKey, W, say } from './MessagesWords.ts';
 
 /** Events A's shared sample, with the guests and counts the Messaging B boards made up (spec §8); nothing here is spec. */
@@ -505,7 +506,7 @@ export const INVITATION = {
 export const PREVIEW = {
   name: 'Kwame Mensah',
   language: 'English',
-  cover: 'Thu, Nov 5 · 6:00 PM · The Landmark',
+  cover: `Thu, Nov 5 · ${writtenTime('18:00', 'en')} · The Landmark`,
   link: '[their own link]',
 };
 

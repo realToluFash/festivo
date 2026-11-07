@@ -78,8 +78,8 @@ describe('Members in the demo', () => {
     );
   });
 
-  it('writes deadlines in the organisation’s zone, the clock the locale keeps', () => {
-    expect(us.deadline(DEADLINES.lucia)).toBe('Monday, Nov 16 at 9:12 AM WAT');
+  it('writes deadlines in the organisation’s zone, on the 24-hour clock in every locale', () => {
+    expect(us.deadline(DEADLINES.lucia)).toBe('Monday, Nov 16 at 09:12 WAT');
     expect(gb.deadline(DEADLINES.marta)).toBe('Wednesday 11 Nov at 10:00 WAT');
   });
 
@@ -226,7 +226,7 @@ describe('Members in the demo', () => {
     });
     expect(card('open')).toMatchObject({
       says: 'Your claim is open',
-      line: 'We check every hour until Wednesday, Nov 11 at 9:41 AM WAT.',
+      line: 'We check every hour until Wednesday, Nov 11 at 09:41 WAT.',
       step: { label: 'Check record' },
     });
     expect(card('withdrawn').says).toBe('You withdrew your claim');

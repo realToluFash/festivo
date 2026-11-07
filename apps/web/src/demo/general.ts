@@ -15,6 +15,7 @@ import {
   withCurrent,
 } from '@soirely/domain';
 
+import { writtenTime } from './clock.ts';
 import { type AskWords, HANDOVER_WORDS as H, type HandStart, handStart } from './handover.ts';
 import { DOMAIN, ORGANISATION as ORG, sampleLeads, samplePeople } from './members.ts';
 import { SAMPLE } from './rules.ts';
@@ -615,7 +616,7 @@ export function countsLine(locale: string): string {
   return `${each('events')}, ${each('guests')} and ${each('members')} are deleted with it.`;
 }
 
-/** Thirty days on, on the clock in Lagos, named WAT as the server names a zone: Friday, Dec 4 at 10:15 AM WAT. */
+/** Thirty days on in Lagos, named WAT as the server names a zone, the time as the API writes it: Friday, Dec 4 at 10:15 WAT. */
 export function restoreDeadline(now: Date, locale: string): string {
   const timeZone = SAMPLE_DETAILS.timezone;
   const at = new Date(now.getTime() + RESTORE_DAYS * 24 * 60 * 60 * 1000);
@@ -625,9 +626,7 @@ export function restoreDeadline(now: Date, locale: string): string {
     day: 'numeric',
     timeZone,
   });
-  const time = new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: '2-digit', timeZone });
-
-  return `${day.format(at)} at ${time.format(at)} WAT`;
+  return `${day.format(at)} at ${writtenTime(at, locale, timeZone)} WAT`;
 }
 
 export function deleteBody(now: Date, locale: string): string {

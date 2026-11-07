@@ -119,7 +119,7 @@ describe('Security’s sample (sc-30223)', () => {
     const [here, phone] = DEVICES;
 
     expect(deviceLine(here, 'en-US')).toBe('This device · in use now');
-    expect(deviceLine(phone, 'en-US')).toBe('Last used Nov 3 at 6:40 PM');
+    expect(deviceLine(phone, 'en-US')).toBe('Last used Nov 3 at 18:40');
   });
 
   it('refuses a change of password in the product’s order', () => {

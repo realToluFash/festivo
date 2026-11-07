@@ -8,8 +8,8 @@ describe('dates on Signed in on', () => {
   it('follow the region: month first in the US, day first in Britain', () => {
     const iphone = DEVICES[0]!;
 
-    expect(spaced(dayAtTime(iphone.signedIn, 'en-US'))).toBe('Oct 12 at 9:14 AM');
-    expect(spaced(dayAtTime(iphone.signedIn, 'en-GB'))).toBe('12 Oct at 9:14');
+    expect(spaced(dayAtTime(iphone.signedIn, 'en-US'))).toBe('Oct 12 at 09:14');
+    expect(spaced(dayAtTime(iphone.signedIn, 'en-GB'))).toBe('12 Oct at 09:14');
     expect(dayOf(iphone.expires, 'en-US')).toBe('Dec 4');
   });
 });

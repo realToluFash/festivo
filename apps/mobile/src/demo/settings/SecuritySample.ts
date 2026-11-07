@@ -1,3 +1,4 @@
+import { writtenTime } from '../clock.ts';
 import { SAMPLE } from '../samples.ts';
 import { IPS } from './sample.ts';
 
@@ -98,9 +99,7 @@ export function dayOf(when: Date, locale: string): string {
 }
 
 export function dayAtTime(when: Date, locale: string): string {
-  const time = new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: '2-digit' }).format(when);
-
-  return `${dayOf(when, locale)} at ${time}`;
+  return `${dayOf(when, locale)} at ${writtenTime(when, locale)}`;
 }
 
 /** A drawn QR: 21 modules with its three finder squares and a fixed scatter between them. */

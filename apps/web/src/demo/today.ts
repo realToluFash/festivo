@@ -1,3 +1,5 @@
+import { writtenTime } from './clock.ts';
+
 export type EventKey = 'wed' | 'ireti' | 'party' | 'draft';
 export type MomentName = 'plan' | 'planNow' | 'day' | 'dayNow' | 'quiet' | 'first';
 
@@ -69,10 +71,7 @@ export function sayIn(locale: string, thisYear = 2026): Say {
   const weekday = format({ weekday: 'short' });
   const weekdayLong = format({ weekday: 'long' });
   const number = format({ day: 'numeric' });
-  const clock = format({ hour: 'numeric', minute: '2-digit' });
-  const hour = format({ hour: 'numeric' });
   const at = (date: string) => new Date(`${date}T00:00Z`);
-  const time = (hhmm: string) => new Date(`1970-01-01T${hhmm}Z`);
 
   return {
     long: (date) => long.format(at(date)),
@@ -80,8 +79,8 @@ export function sayIn(locale: string, thisYear = 2026): Say {
     weekday: (date) => weekday.format(at(date)),
     weekdayLong: (date) => weekdayLong.format(at(date)),
     number: (date) => number.format(at(date)),
-    clock: (hhmm) => clock.format(time(hhmm)),
-    hour: (hhmm) => (hhmm.endsWith(':00') ? hour : clock).format(time(hhmm)),
+    clock: (hhmm) => writtenTime(hhmm, locale),
+    hour: (hhmm) => writtenTime(hhmm, locale),
   };
 }
 

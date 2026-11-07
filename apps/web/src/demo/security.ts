@@ -14,6 +14,7 @@ import {
   WRONG_CODE,
   WRONG_FACTOR,
 } from './account.ts';
+import { writtenTime } from './clock.ts';
 import { SAMPLE } from './rules.ts';
 import { type DemoLink, VIEWERS, type Viewer, settingsPath } from './settings.ts';
 
@@ -392,9 +393,7 @@ export function dayOf(when: Date, locale: string): string {
 }
 
 export function dayAtTime(when: Date, locale: string): string {
-  const time = new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: '2-digit' }).format(when);
-
-  return `${dayOf(when, locale)} at ${time}`;
+  return `${dayOf(when, locale)} at ${writtenTime(when, locale)}`;
 }
 
 export function deviceLine(device: Device, locale: string): string {

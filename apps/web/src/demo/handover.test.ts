@@ -182,7 +182,7 @@ describe('handing over a departing member’s work (sc-31311)', () => {
       remove: null,
       lines: [
         'Marta Silva’s ire.events address is no longer on their account.',
-        'If nobody answers by Wednesday, Nov 11 at 10:00 AM WAT, they are removed.',
+        'If nobody answers by Wednesday, Nov 11 at 10:00 WAT, they are removed.',
         'Only an owner can change an owner’s role or remove them.',
       ],
     });
