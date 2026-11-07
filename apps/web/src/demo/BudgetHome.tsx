@@ -449,6 +449,20 @@ function ShareGlyph() {
   );
 }
 
+function DownArrow() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M12 5v14M6 13l6 6 6-6"
+        stroke="currentColor"
+        strokeWidth="2.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 function possessive(payment: Payment): string {
   return `${vendorName(payment.vendorId)}’s ${payment.what.toLowerCase()}, ${whole(payment.amount)}`;
 }
@@ -959,7 +973,7 @@ function MarginCosts({ lines, heads, first }: { lines: CostLine[]; heads: Heads;
                         />
                         {minorOf(charged) < cost && rateProblem(charged) == null && (
                           <p className="bud-below" role="status">
-                            <Glyph name="chevdown" size={15} weight={2.6} />
+                            <DownArrow />
                             Below cost: margin {whole(minorOf(charged) - cost)}.
                           </p>
                         )}
@@ -1023,7 +1037,7 @@ function MarginBlocks() {
           <li>
             <BudgetRow
               title="Bloom & Co"
-              lead={<Glyph name="chevdown" size={16} weight={2.6} />}
+              lead={<DownArrow />}
               lines={['Took £350.00 out of the margin: £1,200.00 against £850.00 planned']}
             />
           </li>
