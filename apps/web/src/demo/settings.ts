@@ -190,6 +190,8 @@ export const SETTINGS_PAGES: readonly { name: string; states: readonly DemoLink[
       members('recoveryApproved', 'Kofi’s two-factor is off'),
       members('recoveryTurnedDown', 'Kofi’s request turned down'),
       members('recoveryClosed', 'Kofi’s request answered elsewhere'),
+      members('recoverySending', 'Kofi’s answer on its way'),
+      members('recoveryFailed', 'Kofi’s answer failed'),
       members('recoveryDone', 'None left'),
       members('recoveryOwn', 'Your own request, an admin', VIEWERS.julien),
     ],

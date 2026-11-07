@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useEffectEvent, useRef, useState } from 'react';
 
 import {
   approvalRoles,
@@ -17,6 +17,7 @@ import {
   PROOF_LINE,
   RECOVERY_WORDS as RR,
   type RecoveryAnswer,
+  type RecoveryPhase,
   roleMeans,
 } from './members.ts';
 import { ProofFields } from './MembersPerson.tsx';
@@ -37,6 +38,8 @@ import type { Tell } from './TodayParts.tsx';
 import { useProof } from './useProof.ts';
 
 const CHECK_MS = 1200;
+const SEND_MS = 500;
+const HOLD_MS = 8000;
 
 /** Who to invite and as what; Send invitation checks the address before it sends, and Owner asks for the proof. */
 export function InviteDialog({
@@ -315,11 +318,11 @@ export function ClaimDialog({
   );
 }
 
-/** One answer to a request to get back in, asked once; a request that has ended since leaves Close alone. */
+/** One answer to a request to get back in, asked once; a link opened while it is sent holds it for the link to show. */
 export function RecoveryAsk({
   name,
   answer,
-  closed: closedAtFirst,
+  phase: opening,
   ended,
   onKeep,
   onAnswer,
@@ -327,17 +330,26 @@ export function RecoveryAsk({
 }: {
   name: string;
   answer: RecoveryAnswer;
-  closed: boolean;
+  phase: RecoveryPhase;
   ended: boolean;
   onKeep: () => void;
   onAnswer: () => void;
   onGone: () => void;
 }) {
-  const [closed, setClosed] = useState(closedAtFirst);
+  const [phase, setPhase] = useState(opening);
   const approve = answer === 'approve';
   const title = filled(approve ? RR.approveTitle : RR.turnDownTitle, { name });
+  const arrive = useEffectEvent(() => (ended ? setPhase('closed') : onAnswer()));
+  const sending = phase === 'sending' || phase === 'held';
 
-  return closed ? (
+  useEffect(() => {
+    if (phase !== 'sending' && phase !== 'held') return;
+    const timer = setTimeout(arrive, phase === 'held' ? HOLD_MS : SEND_MS);
+
+    return () => clearTimeout(timer);
+  }, [phase]);
+
+  return phase === 'closed' ? (
     <Ask key="closed" title={title} line={RR.closed} keep={RR.close} onKeep={onGone} />
   ) : (
     <Ask
@@ -347,8 +359,12 @@ export function RecoveryAsk({
       keep={approve ? RR.cancel : RR.keep}
       go={approve ? RR.approveConfirm : RR.turnDownConfirm}
       red={approve}
+      busy={sending ? RR.sending : undefined}
+      failed={phase === 'failed' ? RR.failed : undefined}
       onKeep={onKeep}
-      onGo={() => (ended ? setClosed(true) : onAnswer())}
+      onGo={() => {
+        if (!sending) setPhase('sending');
+      }}
     />
   );
 }

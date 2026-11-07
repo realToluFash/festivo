@@ -159,7 +159,7 @@ export function Members({ viewer, state, tell }: { viewer: Viewer; state: string
     onPerson: openPerson,
     onAnswer: answer,
     onRecovery: (id: string, answer: RecoveryAnswer) =>
-      setDialog({ kind: 'recovery', id, answer, closed: false }),
+      setDialog({ kind: 'recovery', id, answer, phase: 'asking' }),
     onMoveOn: () => setLit(null),
     onRevoke: (email: string) => setInvitations((now) => revoked(now, email)),
     onAgain: (invitation: Invitation) =>
@@ -736,7 +736,7 @@ function MembersDialogs(props: MembersDialogsProps) {
           <RecoveryAsk
             name={person.name}
             answer={answer}
-            closed={dialog.closed}
+            phase={dialog.phase}
             ended={props.recoveries.find((one) => one.id === person.id)?.ended ?? true}
             onKeep={() => props.onRecoveryKept(person.id, answer)}
             onAnswer={() => props.onRecovered(person.id, answer)}

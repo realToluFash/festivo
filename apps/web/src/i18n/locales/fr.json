@@ -1169,6 +1169,7 @@
     "turnedDownNext": "La double authentification reste activée, et cette personne a été prévenue par e-mail.",
     "closed": "Cette demande a déjà reçu une réponse, ou elle a pris fin.",
     "close": "Close",
+    "sending": "Sending your answer…",
     "failed": "Cela n’a pas fonctionné. Réessayez dans un instant."
   },
   "settings": {

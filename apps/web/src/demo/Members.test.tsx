@@ -1,6 +1,6 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
@@ -22,12 +22,17 @@ async function landed(text: string): Promise<void> {
   await waitFor(() => expect(document.activeElement?.textContent).toBe(text));
 }
 
+function verb(name: string): HTMLElement {
+  return within(screen.getByRole('alertdialog')).getByRole('button', { name });
+}
+
 function headings(): string[] {
   return screen.getAllByRole('heading', { level: 2 }).map((one) => one.textContent ?? '');
 }
 
 describe('Requests to get back in on Members at a desk (sc-30183)', () => {
   beforeEach(() => __setConfig({ ...tested, environment: 'development' }));
+  afterEach(() => vi.useRealTimers());
 
   it('lists them under the card, above Waiting, each read with the paragraph said once', async () => {
     await members('/demo/settings/members?state=recovery');
@@ -102,18 +107,86 @@ describe('Requests to get back in on Members at a desk (sc-30183)', () => {
     );
   });
 
+  it('sends the answer once, keeping the focus, while Cancel and Escape wait', async () => {
+    await members('/demo/settings/members?state=recoveryApprove');
+
+    const send = verb('Turn off two-factor');
+    send.focus();
+    fireEvent.click(send);
+
+    expect(send.textContent).toBe('Sending your answer…');
+    expect(send.getAttribute('aria-busy')).toBe('true');
+    expect(send.getAttribute('aria-disabled')).toBe('true');
+    expect(send.hasAttribute('disabled')).toBe(false);
+    expect(document.activeElement).toBe(send);
+    expect(verb('Cancel').getAttribute('aria-disabled')).toBe('true');
+    fireEvent.click(send);
+    fireEvent.click(verb('Cancel'));
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.getByRole('alertdialog')).toBeDefined();
+
+    await landed('Kofi Mensah’s two-factor is off.');
+  });
+
   it('turns off two-factor, says so on the card with the focus, and offers Priya’s', async () => {
     await members('/demo/settings/members?state=recoveryApprove');
 
     fireEvent.click(screen.getByRole('button', { name: 'Turn off two-factor' }));
+    await landed('Kofi Mensah’s two-factor is off.');
 
     expect(screen.queryByRole('article', { name: 'Kofi Mensah' })).toBeNull();
     expect(
       screen.getByText('They’re emailed now, and every session they had has ended.'),
     ).toBeDefined();
     expect(screen.getByRole('button', { name: 'Answer Priya Shah' })).toBeDefined();
-    await landed('Kofi Mensah’s two-factor is off.');
     expect(screen.getByRole('button', { name: /^Kofi Mensah/u }).textContent).toContain('Member');
+  });
+
+  it('holds the answer on its way for the link, then lands it', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    await members('/demo/settings/members?state=recoverySending');
+
+    const send = verb('Sending your answer…');
+    await waitFor(() => expect(document.activeElement).toBe(send));
+    expect(send.getAttribute('aria-busy')).toBe('true');
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.getByRole('alertdialog')).toBeDefined();
+    await act(() => vi.advanceTimersByTimeAsync(8000));
+
+    expect(screen.getByText('Kofi Mensah’s two-factor is off.')).toBeDefined();
+  });
+
+  it('says a failed answer as an alert, with the focus on the verb to try again', async () => {
+    await members('/demo/settings/members?state=recoveryFailed');
+
+    const ask = screen.getByRole('alertdialog', {
+      name: 'Approve, and turn off Kofi Mensah’s two-factor?',
+    });
+    expect(within(ask).getByRole('alert').textContent).toBe(
+      'That did not work. Try again in a moment.',
+    );
+    const again = verb('Turn off two-factor');
+    await waitFor(() => expect(document.activeElement).toBe(again));
+    fireEvent.click(again);
+
+    expect(within(ask).queryByRole('alert')).toBeNull();
+    expect(again.textContent).toBe('Sending your answer…');
+    await landed('Kofi Mensah’s two-factor is off.');
+  });
+
+  it('closes a failed answer with nothing changed, the focus back on Approve', async () => {
+    await members('/demo/settings/members?state=recoveryFailed');
+
+    fireEvent.click(verb('Cancel'));
+
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(screen.getAllByRole('article')).toHaveLength(2);
+    expect(screen.getByText('7 people · 3 waiting')).toBeDefined();
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        within(request('Kofi Mensah')).getByRole('button', { name: 'Approve' }),
+      ),
+    );
   });
 
   it('keeps the request from Turn down’s confirm and gives the focus back to Turn down', async () => {
@@ -138,10 +211,12 @@ describe('Requests to get back in on Members at a desk (sc-30183)', () => {
     await members('/demo/settings/members?state=recoveryTurnDown');
 
     fireEvent.click(screen.getByRole('button', { name: 'Turn down the request' }));
+    expect(verb('Sending your answer…').getAttribute('aria-busy')).toBe('true');
+    expect(verb('Keep the request').getAttribute('aria-disabled')).toBe('true');
+    await landed('Kofi Mensah’s request is turned down.');
 
     expect(screen.getByText('Two-factor stays on for them, and they’re emailed.')).toBeDefined();
     expect(screen.getByRole('button', { name: 'Answer Priya Shah' })).toBeDefined();
-    await landed('Kofi Mensah’s request is turned down.');
   });
 
   it('closes a request answered elsewhere with Close alone, and Priya’s takes the focus', async () => {

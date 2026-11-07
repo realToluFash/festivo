@@ -396,6 +396,8 @@ function counted(one: string, other: string, count: number): string {
 
 export type RecoveryAnswer = 'approve' | 'turnDown';
 
+export type RecoveryPhase = 'asking' | 'sending' | 'held' | 'failed' | 'closed';
+
 export interface Recovery {
   id: string;
   asked: string;
@@ -886,7 +888,7 @@ export type MembersDialog =
   | { kind: 'remove' | 'suspend'; id: string }
   | { kind: 'claim'; check: Check; copied: string | null; ask: boolean }
   | { kind: 'withdraw' }
-  | { kind: 'recovery'; id: string; answer: RecoveryAnswer; closed: boolean };
+  | { kind: 'recovery'; id: string; answer: RecoveryAnswer; phase: RecoveryPhase };
 
 export interface MembersStart {
   load: Load;
@@ -953,6 +955,8 @@ export const MEMBERS_STATES = [
   'recoveryApproved',
   'recoveryTurnedDown',
   'recoveryClosed',
+  'recoverySending',
+  'recoveryFailed',
   'recoveryDone',
   'recoveryOwn',
 ] as const;
@@ -972,8 +976,8 @@ function recoveryStart(
 ): Pick<MembersStart, 'recoveries' | 'notice' | 'dialog'> | null {
   const both = sampleRecoveries();
   const priya = both.filter((one) => one.id !== KOFI);
-  const asks = (answer: RecoveryAnswer, closed = false) =>
-    ({ kind: 'recovery', id: KOFI, answer, closed }) as const;
+  const asks = (answer: RecoveryAnswer, phase: RecoveryPhase = 'asking') =>
+    ({ kind: 'recovery', id: KOFI, answer, phase }) as const;
   const answered = (id: string, answer: RecoveryAnswer) =>
     ({ kind: 'recovered', id, answer }) as const;
 
@@ -994,8 +998,12 @@ function recoveryStart(
       return {
         recoveries: both.map((one) => (one.id === KOFI ? { ...one, ended: true } : one)),
         notice: null,
-        dialog: asks('approve', true),
+        dialog: asks('approve', 'closed'),
       };
+    case 'recoverySending':
+      return { recoveries: both, notice: null, dialog: asks('approve', 'held') };
+    case 'recoveryFailed':
+      return { recoveries: both, notice: null, dialog: asks('approve', 'failed') };
     case 'recoveryDone':
       return { recoveries: [], notice: answered(PRIYA, 'approve'), dialog: null };
     case 'recoveryOwn':

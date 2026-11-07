@@ -190,6 +190,8 @@ describe('Requests to get back in on Members at a desk (sc-30183)', () => {
     'recoveryApproved',
     'recoveryTurnedDown',
     'recoveryClosed',
+    'recoverySending',
+    'recoveryFailed',
     'recoveryDone',
     'recoveryOwn',
   ];
@@ -258,14 +260,28 @@ describe('Requests to get back in on Members at a desk (sc-30183)', () => {
       kind: 'recovery',
       id: KOFI,
       answer: 'approve',
-      closed: false,
+      phase: 'asking',
     });
     expect(membersStart('recoveryTurnDown', VIEWERS.folake).dialog).toMatchObject({
       answer: 'turnDown',
     });
     const closed = membersStart('recoveryClosed', VIEWERS.folake);
-    expect(closed.dialog).toMatchObject({ answer: 'approve', closed: true });
+    expect(closed.dialog).toMatchObject({ answer: 'approve', phase: 'closed' });
     expect(closed.recoveries.map((one) => one.ended)).toEqual([true, false]);
+  });
+
+  it('holds Kofi’s Approve on its way for the link, and opens it failed with the list as it was', () => {
+    expect(membersStart('recoverySending', VIEWERS.folake).dialog).toMatchObject({
+      id: KOFI,
+      answer: 'approve',
+      phase: 'held',
+    });
+    const failed = membersStart('recoveryFailed', VIEWERS.folake);
+    expect(failed.dialog).toMatchObject({ answer: 'approve', phase: 'failed' });
+    expect(failed.recoveries.map((one) => [one.id, one.ended])).toEqual([
+      [KOFI, false],
+      [PRIYA, false],
+    ]);
   });
 
   it('leaves nothing waiting once both are answered, and answers Lucía again', () => {
@@ -317,6 +333,8 @@ describe('Requests to get back in on Members at a desk (sc-30183)', () => {
       '/demo/settings/members?state=recoveryApproved',
       '/demo/settings/members?state=recoveryTurnedDown',
       '/demo/settings/members?state=recoveryClosed',
+      '/demo/settings/members?state=recoverySending',
+      '/demo/settings/members?state=recoveryFailed',
       '/demo/settings/members?state=recoveryDone',
       '/demo/settings/members?as=julien&state=recoveryOwn',
     ]);

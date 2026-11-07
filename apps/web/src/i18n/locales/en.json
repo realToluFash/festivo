@@ -1140,6 +1140,7 @@
     "turnedDownNext": "Two-factor stays on for them, and they’re emailed.",
     "closed": "This request has already been answered, or it has ended.",
     "close": "Close",
+    "sending": "Sending your answer…",
     "failed": "That did not work. Try again in a moment."
   },
   "settings": {

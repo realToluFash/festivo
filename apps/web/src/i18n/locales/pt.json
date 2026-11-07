@@ -1169,6 +1169,7 @@
     "turnedDownNext": "A autenticação de dois fatores continua ativa, e já recebeu um email.",
     "closed": "Este pedido já foi respondido, ou terminou.",
     "close": "Close",
+    "sending": "Sending your answer…",
     "failed": "Não funcionou. Tente de novo dentro de momentos."
   },
   "settings": {

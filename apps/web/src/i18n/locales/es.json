@@ -1169,6 +1169,7 @@
     "turnedDownNext": "La verificación en dos pasos sigue activada, y se le ha enviado un correo.",
     "closed": "Esta solicitud ya se ha respondido o ha terminado.",
     "close": "Close",
+    "sending": "Sending your answer…",
     "failed": "No ha funcionado. Vuelva a intentarlo en un momento."
   },
   "settings": {

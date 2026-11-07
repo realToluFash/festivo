@@ -1188,6 +1188,44 @@
   color: var(--colorInkSecondary);
 }
 
+.desk-text.is-busy {
+  gap: var(--spaceXs);
+  color: var(--colorInkSecondary);
+  cursor: default;
+}
+
+.desk-text.is-waits {
+  color: var(--colorInkTertiary);
+  cursor: default;
+}
+
+.desk-text:is(.is-busy, .is-waits):hover {
+  text-decoration: none;
+}
+
+.desk-turning {
+  flex: none;
+  box-sizing: border-box;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--colorBorder);
+  border-top-color: currentcolor;
+  border-radius: 50%;
+  animation: desk-turn 0.9s linear infinite;
+}
+
+@keyframes desk-turn {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .desk-turning {
+    animation: none;
+  }
+}
+
 .desk-asker {
   display: flex;
   align-items: center;
