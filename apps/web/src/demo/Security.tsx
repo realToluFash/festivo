@@ -1,9 +1,10 @@
+import { DemoBell } from './DemoBell.tsx';
 import { formattingLocale } from '@soirely/domain';
 import { type ReactNode, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 
 import { offButton } from '../offButton.ts';
-import { Glyph, type GlyphName } from './Glyph.tsx';
+import { Glyph, type GlyphName } from '../components/Glyph.tsx';
 import {
   ASK_WORDS as A,
   type AskKind,
@@ -57,9 +58,9 @@ import {
   RowWords,
   Says,
   TitleRow,
-} from './SettingsParts.tsx';
-import type { Tell } from './TodayParts.tsx';
-import { useLater } from './useLater.ts';
+} from '../components/SettingsParts.tsx';
+import type { Tell } from '../components/SettingsParts.tsx';
+import { useLater } from '../useLater.ts';
 import './account.css';
 import './security.css';
 
@@ -130,7 +131,7 @@ export function Security({ viewer, state, tell }: { viewer: Viewer; state: strin
   return (
     <div className="desk-page">
       <div ref={column} className="desk-column">
-        <TitleRow title={W.title} tell={tell} />
+        <TitleRow title={W.title} bell={<DemoBell tell={tell} />} />
         <Card size="person">
           <div>
             <div className="desk-who">

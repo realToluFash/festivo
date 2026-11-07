@@ -4,7 +4,7 @@ import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import type { ScrollViewInstance, ViewInstance } from 'react-native';
 
-import { SeenBy, useShell } from './Frame.tsx';
+import { SeenBy } from './Frame.tsx';
 import { LEAVER } from './MembersSample.ts';
 import {
   DetailRows,
@@ -25,7 +25,8 @@ import {
 import { OwnershipSection } from './OrganisationOwnership.tsx';
 import { DETAILS_WORDS } from './OrganisationWords.ts';
 import { managesOrganisation, memberLooking, VIEWER_ORGANISATION } from './sample.ts';
-import { SummaryPage } from './Summary.tsx';
+import { useShell } from '../../components/settingsShell.ts';
+import { SummaryPage } from './SummaryPage.tsx';
 
 /** Settings › Organisation in B, summary first, on sample data. A member reads the details and may only leave; Leave's states are Ana Souza's. */
 export function OrganisationSection() {

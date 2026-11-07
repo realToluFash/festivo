@@ -25,11 +25,11 @@ import { tokens } from '../../theme/tokens.ts';
 import { EventThumb } from '../events/EventCard.tsx';
 import { Search } from '../OrgSwitcher.tsx';
 import { startsAWord } from '../OrgSwitcherModel.ts';
-import { useShell } from './Frame.tsx';
+import { useShell } from '../../components/settingsShell.ts';
 import { firstFew, type LedEvent, searches } from './MembersHandover.ts';
 import { HANDOVER_WORDS as W, type HandoverKind } from './MembersHandoverWords.ts';
 import type { HandoverStart, Person } from './MembersSample.ts';
-import { Avatar } from './parts.tsx';
+import { Avatar } from '../../components/SettingsParts.tsx';
 import {
   type Anchor,
   anchorUnder,
@@ -39,7 +39,7 @@ import {
   RowList,
   Section,
   TextAction,
-} from './Summary.tsx';
+} from '../../components/Summary.tsx';
 
 export const NOBODY = 'nobody';
 

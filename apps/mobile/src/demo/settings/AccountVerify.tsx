@@ -18,7 +18,7 @@ import {
 } from './AccountModel.ts';
 import { CodeExpired, useCountdown } from './AccountParts.tsx';
 import { sentCodeProblem } from './AccountSample.ts';
-import { FocusedScreen, Line, TextAction } from './Summary.tsx';
+import { FocusedScreen, Line, TextAction } from '../../components/Summary.tsx';
 
 /** Check your email or your messages: the code, a new one after the wait, and a number on WhatsApp may take a text. */
 export function VerifyScreen({

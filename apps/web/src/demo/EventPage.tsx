@@ -1,3 +1,4 @@
+import { DemoBell } from './DemoBell.tsx';
 import { eventPhase, formatEventRange, hostsLine } from '@soirely/domain';
 import {
   type ComponentType,
@@ -58,8 +59,8 @@ import {
 import { Alert, EventCard, EventsShell, NotBuilt, Switch, Thumb } from './EventParts.tsx';
 import { CAL_WORDS } from './calendar.ts';
 import { EventSidebar } from './EventSidebar.tsx';
-import { Glyph, type GlyphName } from './Glyph.tsx';
-import { LayersContext } from './layers.ts';
+import { Glyph, type GlyphName } from '../components/Glyph.tsx';
+import { LayersContext } from '../layers.ts';
 import {
   type Told,
   NEW_PLACE,
@@ -76,8 +77,8 @@ import {
 } from './messages.ts';
 import { MessagesPage } from './Messages.tsx';
 import { TellDialog } from './MessagesTell.tsx';
-import { Ask, Bell, Chevron, Head, RowWords, TextAction } from './SettingsParts.tsx';
-import type { Tell } from './TodayParts.tsx';
+import { Ask, Chevron, Head, RowWords, TextAction } from '../components/SettingsParts.tsx';
+import type { Tell } from '../components/SettingsParts.tsx';
 import { useSwitcherStart } from './switcher.ts';
 
 const LOCALE = 'en-US';
@@ -276,7 +277,7 @@ function EventView({
                   </li>
                 </ol>
               </nav>
-              <Bell tell={tell} />
+              <DemoBell tell={tell} />
             </div>
             {dates ? (
               <AreaPage event={event} name={CAL_WORDS.allDates} line={CAL_WORDS.allDatesComing} />

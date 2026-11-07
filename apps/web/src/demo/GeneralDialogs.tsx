@@ -36,8 +36,8 @@ import {
   transferProblems,
   transferRefusal,
 } from './general.ts';
-import { Glyph } from './Glyph.tsx';
-import { LayersContext, useDeskDialog } from './layers.ts';
+import { Glyph } from '../components/Glyph.tsx';
+import { LayersContext, useDeskDialog } from '../layers.ts';
 import { SAMPLE } from './rules.ts';
 import {
   Ask,
@@ -50,8 +50,8 @@ import {
   Note,
   RowWords,
   TextAction,
-} from './SettingsParts.tsx';
-import { useLater } from './useLater.ts';
+} from '../components/SettingsParts.tsx';
+import { useLater } from '../useLater.ts';
 
 function focusSoon(find: () => HTMLElement | null | undefined, tries = 5): void {
   window.requestAnimationFrame(() => {

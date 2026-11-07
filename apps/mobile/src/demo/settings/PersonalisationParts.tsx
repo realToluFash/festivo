@@ -26,7 +26,7 @@ import {
   stepOf,
   washStops,
 } from './PersonalisationSchemes.ts';
-import { StatusMark } from './SummaryRows.tsx';
+import { ShapeMark } from '../../components/StatusMark.tsx';
 
 /** A piece of Confetti: where its middle sits, its shape, size and turn, and which of the scheme's four colours it takes. */
 export type Spot = readonly [
@@ -218,7 +218,7 @@ export function SchemeCard({
       {line.done ? (
         <View style={styles.done}>
           <View style={styles.doneMark}>
-            <StatusMark kind="yes" side={16} ink={look.on} />
+            <ShapeMark kind="yes" side={16} ink={look.on} />
           </View>
           <Text size={14.5} weight="semibold" style={[styles.line, { color: lineOf(look) }]}>
             {line.text}

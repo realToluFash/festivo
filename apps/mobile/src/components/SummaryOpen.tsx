@@ -2,12 +2,13 @@ import type { ReactNode, Ref } from 'react';
 import { type ScrollViewInstance, StyleSheet, View, type ViewInstance } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { RadioMark } from '../../components/RadioMark.tsx';
-import { Text } from '../../components/Text.tsx';
-import { tokens } from '../../theme/tokens.ts';
-import { Glyph } from '../../components/Glyph.tsx';
-import { PHONE_TAB_BAR, useShell } from './Frame.tsx';
+import { RadioMark } from './RadioMark.tsx';
+import { Text } from './Text.tsx';
+import { tokens } from '../theme/tokens.ts';
+import { Glyph } from './Glyph.tsx';
 import { Row, type RowProps, type TagKind } from './SummaryRows.tsx';
+import { useShell } from './settingsShell.ts';
+import { PHONE_TAB_BAR } from './TodayCover.tsx';
 
 const hidden = {
   accessibilityElementsHidden: true,

@@ -4,8 +4,8 @@ import { createPortal } from 'react-dom';
 import { ActionPair } from '../components/ActionPair.tsx';
 import { type Feed, FEED_LINK, FEED_WORDS as F, NEW_FEED_LINK } from './calendar.ts';
 import { BrokenLine } from './CalendarWeeks.tsx';
-import { Glyph } from './Glyph.tsx';
-import { LayersContext, useDeskDialog } from './layers.ts';
+import { Glyph } from '../components/Glyph.tsx';
+import { LayersContext, useDeskDialog } from '../layers.ts';
 import { useWhere } from './switcher.ts';
 
 /** main's Subscribe panel (sc-3626) in a desk dialog, on the sample's link: nothing is sent, and the demo's refused copy is always refused. */

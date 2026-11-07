@@ -4,7 +4,7 @@ import { EventMesh } from '../../components/EventMesh.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
-import { meshFor } from '../events/EventsSample.ts';
+import { meshFor } from '../../kit/today.ts';
 import { MessageGlyph } from './MessageMarks.tsx';
 import type { Draft } from './MessagesModel.ts';
 import { EVENT, HOSTS, ORG, PREVIEW, SAMPLE_EVENT_ID, filledFor } from './MessagesSample.ts';

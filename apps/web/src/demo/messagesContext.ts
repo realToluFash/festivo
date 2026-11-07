@@ -1,8 +1,8 @@
 import { createContext, useContext } from 'react';
 
-import type { Mesh } from './events.ts';
+import type { Mesh } from '../mesh.ts';
 import { type Change, type Delivery, type Inbox, type Where, whereWord } from './messages.ts';
-import type { Tell } from './TodayParts.tsx';
+import type { Tell } from '../components/SettingsParts.tsx';
 
 export interface InboxApi {
   inbox: Inbox;

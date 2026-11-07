@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import en from '../../i18n/locales/en.json';
 import { orgMesh } from '../OrgSwitcherModel.ts';
-import { meshFor } from '../events/EventsSample.ts';
+import { meshFor } from '../../kit/today.ts';
 import {
   CREATE_STATES,
   LONG_NAME,

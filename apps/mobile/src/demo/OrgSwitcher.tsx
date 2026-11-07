@@ -24,13 +24,11 @@ import {
   Pressable,
   ScrollView,
   type ScrollViewInstance,
-  type StyleProp,
   StyleSheet,
   type TextInputInstance,
   useWindowDimensions,
   View,
   type ViewInstance,
-  type ViewStyle,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -101,7 +99,8 @@ import {
   waitingOf,
   withoutPlaces,
 } from './OrgSwitcherModel.ts';
-import { Pill } from './settings/parts.tsx';
+import { Pill } from '../components/SettingsParts.tsx';
+import { type Switched, SwitchedProvider } from '../components/SwitchedNotice.tsx';
 
 const store = {
   session: sessionFor('populated'),
@@ -127,18 +126,10 @@ function useSession(): Session {
 
 export type OpenerRef = RefObject<ViewInstance | null>;
 
-interface Switched {
-  words: string;
-  /** Said after Create, which has moved to another screen: the notice takes focus. */
-  focus?: boolean;
-}
-
 interface Switcher {
   register: (opener: OpenerRef, primary: boolean) => () => void;
   show: (opener: OpenerRef) => void;
   openedBy: OpenerRef | null;
-  slot: () => () => void;
-  switched: Switched | null;
   startWalk: (opener: OpenerRef) => void;
   registerStart: (opener: OpenerRef) => () => void;
 }
@@ -343,13 +334,15 @@ export function OrgSwitcherProvider({
   }, [create, none]);
 
   const switcher = useMemo<Switcher>(
-    () => ({ register, show, openedBy, slot, switched, startWalk, registerStart }),
-    [register, show, openedBy, slot, switched, startWalk, registerStart],
+    () => ({ register, show, openedBy, startWalk, registerStart }),
+    [register, show, openedBy, startWalk, registerStart],
   );
 
   return (
     <SwitcherContext.Provider value={switcher}>
-      {children}
+      <SwitchedProvider slot={slot} switched={switched}>
+        {children}
+      </SwitchedProvider>
       {frame != null && (
         <DropDown
           key={visit}
@@ -417,27 +410,6 @@ export function useCurrentPlace(): Place | null {
 }
 
 /** "Now working in ‹name›." in the page, under its head; a page without one says it in its toast. */
-export function SwitchedNotice({ style }: { style?: StyleProp<ViewStyle> }) {
-  const { slot, switched } = useSwitcher();
-
-  useLayoutEffect(() => slot(), [slot]);
-
-  if (switched == null) return null;
-
-  return (
-    <View style={style}>
-      <Notice
-        tone="done"
-        mark={tokens.marks.done.glyph}
-        body={switched.words}
-        answer={switched}
-        takesFocus={switched.focus ?? false}
-        {...(switched.focus === true ? { readMs: SETTLED_MS * 2 } : {})}
-      />
-    </View>
-  );
-}
-
 interface Wash {
   cover: MeshKey;
   ink: string;
