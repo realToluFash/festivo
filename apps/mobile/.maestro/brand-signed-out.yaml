@@ -5,14 +5,7 @@
 appId: host.exp.Exponent
 ---
 - runFlow: sign-in-screen-english.yaml
-- launchApp:
-    appId: host.exp.Exponent
-    stopApp: true
-- openLink: ${METRO_URL}/--/
-- extendedWaitUntil:
-    visible:
-      id: 'welcome.brand'
-    timeout: 90000
+- runFlow: welcome-signed-out.yaml
 - takeScreenshot: brand-launch-en
 - tapOn:
     id: 'welcome.email'
@@ -25,14 +18,7 @@ appId: host.exp.Exponent
     file: sign-in-screen-language.yaml
     env:
       LANGUAGE: Français
-- launchApp:
-    appId: host.exp.Exponent
-    stopApp: true
-- openLink: ${METRO_URL}/--/
-- extendedWaitUntil:
-    visible:
-      id: 'welcome.brand'
-    timeout: 30000
+- runFlow: welcome-signed-out.yaml
 - takeScreenshot: brand-launch-fr
 - tapOn:
     id: 'welcome.email'

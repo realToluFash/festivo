@@ -1,0 +1,48 @@
+# The app launched on welcome, after signing out whoever an earlier flow left signed in:
+# Home, No organisation or Complete your profile. sc-30157.
+# sign-in-screen-language.yaml cannot do this: its /--/welcome link draws welcome over a session.
+appId: host.exp.Exponent
+---
+- launchApp:
+    appId: host.exp.Exponent
+    stopApp: true
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible:
+      id: 'welcome\.brand|home\.openSettings|noOrganisation|completeProfile'
+    timeout: 90000
+- runFlow:
+    when:
+      visible:
+        id: 'completeProfile'
+    file: sign-out-from-complete-profile.yaml
+- runFlow:
+    when:
+      visible:
+        id: 'noOrganisation'
+    commands:
+      - tapOn:
+          id: 'noOrganisation.signOut'
+      - extendedWaitUntil:
+          visible:
+            id: 'welcome.email'
+          timeout: 30000
+- runFlow:
+    when:
+      visible:
+        id: 'home.openSettings'
+    commands:
+      - openLink: ${METRO_URL}/--/settings
+      - runFlow: settings-sign-out-tap.yaml
+      - extendedWaitUntil:
+          visible:
+            id: 'welcome.email'
+          timeout: 30000
+- launchApp:
+    appId: host.exp.Exponent
+    stopApp: true
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible:
+      id: 'welcome.brand'
+    timeout: 90000

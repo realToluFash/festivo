@@ -4,14 +4,7 @@
 appId: host.exp.Exponent
 ---
 - runFlow: sign-in-screen-english.yaml
-- launchApp:
-    appId: host.exp.Exponent
-    stopApp: true
-- openLink: ${METRO_URL}/--/
-- extendedWaitUntil:
-    visible:
-      id: 'welcome.brand'
-    timeout: 90000
+- runFlow: welcome-signed-out.yaml
 - assertVisible: 'Plan the event. Run the day.'
 - assertVisible:
     id: 'welcome.email'
