@@ -370,6 +370,7 @@ export function TextAction({
   off = false,
   figures = false,
   glyph,
+  renderMark,
   after,
   consequence,
   accessibilityLabel,
@@ -383,11 +384,12 @@ export function TextAction({
   off?: boolean;
   figures?: boolean;
   glyph?: GlyphName;
+  renderMark?: (ink: string) => ReactNode;
   after?: GlyphName;
   consequence?: string;
   accessibilityLabel?: string;
   testID?: string | undefined;
-  ref?: Ref<ViewInstance>;
+  ref?: Ref<ViewInstance> | undefined;
 }) {
   const ink = off
     ? tokens.colorInkTertiary
@@ -408,6 +410,7 @@ export function TextAction({
       testID={testID}
     >
       {glyph != null && <Glyph name={glyph} size={17} ink={ink} weight={2.3} />}
+      {renderMark?.(ink)}
       <Text
         size={15}
         weight="semibold"

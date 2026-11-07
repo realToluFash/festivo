@@ -142,6 +142,7 @@ export function FocusedScreen({
   verb,
   back,
   cancels = true,
+  cancelLabel,
   waits = false,
   onCancel,
   cancelTestID,
@@ -161,6 +162,7 @@ export function FocusedScreen({
   back?: string | undefined;
   /** False for a sheet that applies what is tapped: nothing at the left, and the verb closes it. */
   cancels?: boolean;
+  cancelLabel?: string | undefined;
   /** True while a save is out: Cancel, the escape and the scrub wait in Ink 3 until it answers. */
   waits?: boolean;
   onCancel: () => void;
@@ -209,6 +211,7 @@ export function FocusedScreen({
               verb={verb}
               back={back}
               cancels={cancels}
+              cancelLabel={cancelLabel}
               waits={waits}
               onCancel={cancel}
               cancelTestID={cancelTestID}
@@ -251,6 +254,7 @@ function FocusNav({
   verb,
   back,
   cancels,
+  cancelLabel = 'Cancel',
   waits,
   onCancel,
   cancelTestID,
@@ -259,6 +263,7 @@ function FocusNav({
   verb: FocusVerb | null;
   back: string | undefined;
   cancels: boolean;
+  cancelLabel?: string | undefined;
   waits: boolean;
   onCancel: () => void;
   cancelTestID?: string | undefined;
@@ -284,7 +289,7 @@ function FocusNav({
             pressed && styles.pressed,
           ]}
           accessibilityRole="button"
-          accessibilityLabel={back ?? 'Cancel'}
+          accessibilityLabel={back ?? cancelLabel}
           accessibilityState={waits ? { disabled: true } : undefined}
           testID={cancelTestID}
         >
@@ -297,7 +302,7 @@ function FocusNav({
             accessible={false}
             style={waits ? styles.waiting : styles.accent}
           >
-            {back == null ? 'Cancel' : short ? 'Back' : back}
+            {back == null ? cancelLabel : short ? 'Back' : back}
           </Text>
         </Pressable>
       ) : (
