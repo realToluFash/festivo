@@ -728,3 +728,4 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   compte ? », avant « Créer un compte » ; « Nouveau sur Soirely ? » s’accorde avec un genre.
   « © {{year}} Soirely » reste identique à l’anglais. Le bouton de langue se lit « Langue : {{language}} ».
 - **Annuler une demande pour revenir** (sc-29979) : « Annuler votre demande ? » ; la sortie est « Continuer d’attendre », jamais « Annuler », et la confirmation reprend « Annuler la demande ».
+- **L’état d’un champ refusé, seulement pour le lecteur d’écran** (`mobile:forms.invalid`, sc-31909) : « Données non valides », après le nom du champ (« Adresse e-mail, Données non valides »). C’est ce que dit VoiceOver sur le web ; rien ne s’accorde avec le nom, masculin ou féminin.
