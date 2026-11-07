@@ -1,16 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  firstFew,
-  type LedEvent,
-  ledEvents,
-  nameMatches,
-  SEARCH_ABOVE,
-  searches,
-  soonestFirst,
-} from './MembersHandover.ts';
+import { matches, SEARCH_ABOVE, startsAWord } from '../OrgSwitcherModel.ts';
+import { firstFew, type LedEvent, ledEvents, searches, soonestFirst } from './MembersHandover.ts';
 import { handedLines, HANDOVER_WORDS as W } from './MembersHandoverWords.ts';
 import {
+  approved,
   handedOver,
   LEAVER,
   MEMBERS_STATES,
@@ -243,8 +237,10 @@ describe('the person menu', () => {
     ]);
   });
 
-  it('searches above 15 people offered, as the switcher does', () => {
+  it('searches above 15 people offered, the switcher’s one threshold', () => {
     expect(SEARCH_ABOVE).toBe(15);
+    expect(searches(SEARCH_ABOVE)).toBe(false);
+    expect(searches(SEARCH_ABOVE + 1)).toBe(true);
     expect(searches(offeredFor(people, PRIYA).length)).toBe(false);
     expect(searches(15)).toBe(false);
     expect(searches(16)).toBe(true);
@@ -255,14 +251,24 @@ describe('the person menu', () => {
 
   it('matches the start of any word in a name, case and accents aside', () => {
     const offered = offeredFor(withMorePeople(people), PRIYA);
-    const found = (query: string) => named(offered.filter((one) => nameMatches(one.name, query)));
+    const found = (query: string) => named(offered.filter((one) => startsAWord(one.name, query)));
     expect(found('jo')).toEqual(['Joana Ferreira', 'Jonas Weber', 'João Pereira']);
     expect(found('JOAO')).toEqual(['João Pereira']);
     expect(found('sof')).toEqual(['Sofía Herrera']);
     expect(found('mensah')).toEqual(['Kofi Mensah']);
     expect(found('ona')).toEqual([]);
+    expect(found('eira')).toEqual([]);
     expect(found('kemi')).toEqual([]);
     expect(found('  ')).toHaveLength(16);
+  });
+
+  it('differs from the organisations’ rule, which finds what a name contains', () => {
+    const offered = offeredFor(withMorePeople(people), PRIYA);
+    expect(named(offered.filter((one) => matches(one.name, 'eira')))).toEqual([
+      'Joana Ferreira',
+      'João Pereira',
+    ]);
+    expect(named(offered.filter((one) => matches(one.name, 'ona')))).toEqual(['Jonas Weber']);
   });
 });
 
@@ -305,6 +311,30 @@ describe('handing events over', () => {
     expect(card('Folake Adeyemi', true).line).toBe(
       'Their 3 events are now led by you. They are listed under Former, with everything they did kept.',
     );
+  });
+
+  it('offers who waits after removing someone who leads nothing, and See Former once nobody does', () => {
+    const say = membersSayIn('en-US');
+    const start = membersStart('removingNoWork');
+    const tom = start.people.find((one) => one.id === start.open);
+    if (tom == null) throw new Error('removingNoWork opens Tom.');
+    const removal = (list: readonly Person[]) =>
+      membersCard({
+        people: list,
+        viewer: start.viewer,
+        request: 'resting',
+        claim: null,
+        say,
+        gone: { person: tom, handed: null },
+      });
+    expect(start.viewer).toBe(VIEWERS.folake);
+    expect(removal(start.people)).toMatchObject({
+      says: 'Tom Becker was removed',
+      line: 'Their events stay with Ire Events. They are listed under Former, with everything they did kept.',
+      step: { label: 'Answer Lucía Gómez', does: 'answer' },
+    });
+    const answered = approved(start.people, 'lucia.gomez@outlook.com', 'Member');
+    expect(removal(answered).step).toEqual({ label: 'See Former', does: 'seeFormer' });
   });
 
   it('says Hand over now’s outcome on the card, to you or to someone else', () => {

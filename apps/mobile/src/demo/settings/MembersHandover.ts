@@ -1,5 +1,5 @@
 import { EVENTS, meshFor, type MeshKey } from '../events/EventsSample.ts';
-import { fold } from '../OrgSwitcherModel.ts';
+import { SEARCH_ABOVE } from '../OrgSwitcherModel.ts';
 
 /** An event somebody leads, as the work list would carry it: its id and title, and the start and state that order it. */
 export interface LedEvent {
@@ -12,9 +12,6 @@ export interface LedEvent {
 
 /** The Ask shows this many, then "and {n} more"; it never scrolls inside itself (sc-614). */
 export const SHOWN_AT_MOST = 5;
-
-/** The person menu searches above this many people, as the switcher does above 15 organisations. */
-export const SEARCH_ABOVE = 15;
 
 /** Soonest first: events not yet over by when they start, then the ones over (finished or called off), the latest first. */
 export function soonestFirst(a: LedEvent, b: LedEvent): number {
@@ -46,14 +43,4 @@ export function firstFew(events: readonly LedEvent[]): { shown: LedEvent[]; more
 
 export function searches(offered: number): boolean {
   return offered > SEARCH_ABOVE;
-}
-
-/** A name matches at the start of any of its words, case and accents aside: "jo" finds Joana, Jonas and João. */
-export function nameMatches(name: string, query: string): boolean {
-  const typed = fold(query.trim());
-  if (typed === '') return true;
-
-  return fold(name)
-    .split(/\s+/u)
-    .some((word) => word.startsWith(typed));
 }

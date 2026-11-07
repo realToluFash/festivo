@@ -24,8 +24,9 @@ import { useReducedMotion } from '../../reducedMotion.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { EventThumb } from '../events/EventCard.tsx';
 import { Search } from '../OrgSwitcher.tsx';
+import { startsAWord } from '../OrgSwitcherModel.ts';
 import { useShell } from './Frame.tsx';
-import { firstFew, type LedEvent, nameMatches, searches } from './MembersHandover.ts';
+import { firstFew, type LedEvent, searches } from './MembersHandover.ts';
 import { HANDOVER_WORDS as W, type HandoverKind } from './MembersHandoverWords.ts';
 import type { HandoverStart, Person } from './MembersSample.ts';
 import { Avatar } from './parts.tsx';
@@ -109,7 +110,7 @@ export function HandoverAsk({
   const sending = phase === 'sending';
   const searching = searches(offered.length);
   const typed = searching ? query.trim() : '';
-  const found = offered.filter((one) => nameMatches(one.name, typed));
+  const found = offered.filter((one) => startsAWord(one.name, typed));
   const choices =
     kind === 'leave' && typed === ''
       ? [NOBODY, ...found.map(({ id }) => id)]
