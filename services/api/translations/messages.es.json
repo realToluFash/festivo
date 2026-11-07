@@ -57,6 +57,7 @@
     "validation.phone_too_short": "Ese número parece demasiado corto para {country}. Revíselo e inténtelo de nuevo.",
     "validation.recovery_code_required": "Introduzca uno de sus códigos de recuperación.",
     "validation.timezone_invalid": "Elija una zona horaria.",
+    "validation.colour_scheme_unknown": "That isn't one of Soirely's colour schemes, so nothing was saved. Choose one of the eight.",
     "validation.timezone_unknown": "No conocemos esa zona horaria, así que no se ha guardado nada. Elija una de la lista.",
     "members.already_a_member": "Esa persona ya es miembro de esta organización.",
     "members.already_a_member_named": "{email} ya es miembro de {organisation}. Si quiere cambiar su rol, hágalo desde su fila en Miembros.",

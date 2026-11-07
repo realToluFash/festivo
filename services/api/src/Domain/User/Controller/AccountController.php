@@ -13,6 +13,7 @@ use App\Domain\User\TimeZone\TimeZoneList;
 use App\Domain\User\TokenIssuer;
 use App\Entity\RefreshToken;
 use App\Entity\User;
+use App\Enum\ColourScheme;
 use App\Enum\ErrorCode;
 use App\Http\Access\Policy\Authenticated;
 use App\Http\Exception\ApiException;
@@ -111,6 +112,28 @@ final class AccountController
     }
 
     /** Every IANA zone, named in the request's language, with its offset now: the list Settings > Account searches. */
+    /** Settings > Personalisation: the scheme this person sees Soirely in on every device; null goes back to the default. */
+    #[Route('/api/auth/colour-scheme', name: 'auth_colour_scheme', methods: ['PUT'])]
+    public function setColourScheme(Request $request): JsonResponse
+    {
+        $body = Input::body($request, Type\shape(['colourScheme' => Type\nullable(Type\string())]));
+
+        $scheme = null === $body['colourScheme'] ? null : ColourScheme::tryFrom($body['colourScheme']);
+
+        if (null !== $body['colourScheme'] && null === $scheme) {
+            throw ApiException::validation([[
+                'propertyPath' => 'colourScheme',
+                'message' => $this->translator->trans('validation.colour_scheme_unknown'),
+                'code' => ErrorCode::ValidationFailed->value,
+            ]]);
+        }
+
+        $this->user()->setColourScheme($scheme);
+        $this->entityManager->flush();
+
+        return new JsonResponse(['colourScheme' => $scheme?->value]);
+    }
+
     #[Route('/api/auth/timezones', name: 'auth_timezones', methods: ['GET'])]
     public function timezones(Request $request): JsonResponse
     {
