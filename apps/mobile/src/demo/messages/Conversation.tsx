@@ -120,6 +120,20 @@ function unknownParts(talk: Talk): Parts {
   const guest = GUESTS.unknown;
   const matched = m.matched;
   const answer = m.answers.unknown;
+  const doneOrWaiting = m.done.includes('unknown') ? (
+    <TextAction
+      label={W.markAsWaiting}
+      onPress={() => talk.dispatch({ type: 'markWaiting', key: 'unknown' })}
+      testID="messages.waiting"
+    />
+  ) : (
+    <TextAction
+      label={W.markAsDone}
+      glyph="tick"
+      onPress={() => talk.onDone('unknown')}
+      testID="messages.done"
+    />
+  );
 
   return {
     title: matched ?? guest.name,
@@ -129,14 +143,12 @@ function unknownParts(talk: Talk): Parts {
         : say.where(guest.head, W.matchedByHand),
     right:
       matched == null ? (
-        <TextAction
-          label={W.markAsDone}
-          glyph="tick"
-          onPress={() => talk.onDone('unknown')}
-          testID="messages.done"
-        />
+        doneOrWaiting
       ) : (
-        <TextAction label={W.changeGuest} onPress={talk.onMatch} testID="messages.changeGuest" />
+        <View style={styles.rights}>
+          <TextAction label={W.changeGuest} onPress={talk.onMatch} testID="messages.changeGuest" />
+          {doneOrWaiting}
+        </View>
       ),
     lead: <Avatar initials={matched == null ? '?' : initialsOf(matched)} side={44} tone={0} />,
     stream: (
@@ -737,6 +749,12 @@ const styles = StyleSheet.create({
     textAlign: 'right',
     color: tokens.colorInkSecondary,
     lineHeight: 13.5 * 1.45,
+  },
+  rights: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    columnGap: tokens.spaceLg,
   },
   unmatched: {
     gap: tokens.spaceMd,
