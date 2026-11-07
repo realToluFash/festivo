@@ -22,7 +22,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { defaultScheme, schemes, tokens } from '../docs/design/tokens.mjs';
+import { confetti, defaultScheme, schemes, tokens } from '../docs/design/tokens.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -151,6 +151,8 @@ function buildNative() {
     '',
     'export type Scheme = keyof typeof schemes;',
     '',
+    `export const confetti = ${JSON.stringify(confetti, null, 2)} as const;`,
+    '',
     'type Widen<T> = T extends string ? string : { [K in keyof T]: Widen<T[K]> };',
     '',
     'type Laid = `color${string}` | keyof (typeof schemes)[Scheme];',
@@ -173,7 +175,18 @@ function buildNative() {
 }
 
 function buildWebScheme() {
-  return [`// ${BANNER}`, '', `export const defaultScheme = '${defaultScheme}';`, ''].join('\n');
+  return [
+    `// ${BANNER}`,
+    '',
+    `export const defaultScheme = '${defaultScheme}';`,
+    '',
+    `export const schemeNames = ${JSON.stringify(Object.keys(schemes))} as const;`,
+    '',
+    'export type Scheme = (typeof schemeNames)[number];',
+    '',
+    `export const confetti = ${JSON.stringify(confetti, null, 2)} as const;`,
+    '',
+  ].join('\n');
 }
 
 export function outputs() {
