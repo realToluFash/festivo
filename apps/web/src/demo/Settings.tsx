@@ -19,6 +19,7 @@ import { General } from './General.tsx';
 import { LayersContext } from '../layers.ts';
 import { Members } from './Members.tsx';
 import { Notifications } from './Notifications.tsx';
+import { PaymentReminders } from './Payments.tsx';
 import { AccessPaused } from './OrgSwitcher.tsx';
 import { Personalisation } from './Personalisation.tsx';
 import { PersonalTile } from './SchemeArt.tsx';
@@ -44,7 +45,13 @@ const TILES: Record<
 };
 
 /** Settings at a desk in B · Summary first (Web-Settings.dc.html, page 29), on sample data. */
-export function Settings({ open = 'members' }: { open?: Drawn }) {
+export function Settings({
+  open = 'members',
+  reminders = false,
+}: {
+  open?: Drawn;
+  reminders?: boolean;
+}) {
   const [params] = useSearchParams();
   const state = params.get('state') ?? '';
   const as = params.get('as');
@@ -120,6 +127,8 @@ export function Settings({ open = 'members' }: { open?: Drawn }) {
                   state={state}
                   tell={tell}
                 />
+              ) : open === 'vendors' && reminders ? (
+                <PaymentReminders key={`${viewer.key}:${state}`} viewer={viewer} state={state} />
               ) : open === 'vendors' ? (
                 <Vendors
                   key={`${viewer.key}:${state}:${params.get('vendor') ?? ''}`}

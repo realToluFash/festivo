@@ -14,6 +14,7 @@ import {
   owed,
 } from './budget.ts';
 import { sampleEvent } from './events.ts';
+import { PW } from './paymentsWords.ts';
 import { QW } from './quotesWords.ts';
 import { type Vendor, inNameOrder, nameMatches, sampleVendors } from './vendors.ts';
 import { CATEGORY_WORDS } from './vendorsWords.ts';
@@ -164,7 +165,7 @@ export function lengthOf(typed: string): number {
   return [...typed.trim()].length;
 }
 
-export const QUOTE_LIMITS = { covers: 500, number: 64, what: 100 } as const;
+export const QUOTE_LIMITS = { covers: 500, number: 64, what: 100, reference: 100 } as const;
 
 export type QuoteForm = 'add' | 'revise' | 'correct';
 
@@ -398,16 +399,21 @@ export interface MarkDraft {
   reference: string;
 }
 
-export type MarkProblems = Partial<Record<'amount', string>>;
+export type MarkProblems = Partial<Record<'amount' | 'reference', string>>;
 
 export function draftToMark(payment: Payment, today = TODAY): MarkDraft {
   return { amount: typedAmount(payment.amount), paidOn: today, reference: '' };
 }
 
 export function markProblems(draft: MarkDraft, payment: Payment): MarkProblems {
-  return parsedAmount(draft.amount) == null
-    ? { amount: QW.amountPaidProblem(typedAmount(payment.amount)) }
-    : {};
+  const problems: MarkProblems = {};
+
+  if (parsedAmount(draft.amount) == null)
+    problems.amount = QW.amountPaidProblem(typedAmount(payment.amount));
+  if (lengthOf(draft.reference) > QUOTE_LIMITS.reference)
+    problems.reference = PW.referenceTooLong(QUOTE_LIMITS.reference);
+
+  return problems;
 }
 
 export function markedPaid(payment: Payment, draft: MarkDraft, by: string): Payment {
@@ -441,10 +447,13 @@ export interface Amending extends PaymentOpen {
   id: string;
 }
 
+export type MarkRefusal = 'paid' | 'cancelled';
+
 export interface Marking {
   id: string;
   draft: MarkDraft;
   problems: MarkProblems;
+  refused: MarkRefusal | null;
 }
 
 export interface QuotesStart {

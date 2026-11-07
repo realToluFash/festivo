@@ -163,6 +163,7 @@ export default function Demo() {
       <Route path="settings/general" element={<Settings open="general" />} />
       <Route path="settings/sign-in-rules" element={<Settings open="signInRules" />} />
       <Route path="settings/vendors" element={<Settings open="vendors" />} />
+      <Route path="settings/payment-reminders" element={<Settings open="vendors" reminders />} />
       <Route path="people" element={<People />} />
       <Route path="vendors" element={<VendorsMoved />} />
       <Route path="share/:scope" element={<ShareRecipient />} />
