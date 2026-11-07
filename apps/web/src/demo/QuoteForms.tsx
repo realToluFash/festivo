@@ -832,9 +832,9 @@ export function MarkPaidDialog({
           value={draft.paidOn}
           max={TODAY}
           help={QW.datePaidHelp}
-          error={null}
+          error={problems.paidOn ?? null}
           onChange={(paidOn) => {
-            if (paidOn !== '' && paidOn <= TODAY) set({ paidOn });
+            if (paidOn <= TODAY) set({ paidOn });
           }}
         />
         <TextField

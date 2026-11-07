@@ -398,16 +398,19 @@ export interface MarkDraft {
   reference: string;
 }
 
-export type MarkProblems = Partial<Record<'amount', string>>;
+export type MarkProblems = Partial<Record<'amount' | 'paidOn', string>>;
 
 export function draftToMark(payment: Payment, today = TODAY): MarkDraft {
   return { amount: typedAmount(payment.amount), paidOn: today, reference: '' };
 }
 
 export function markProblems(draft: MarkDraft, payment: Payment): MarkProblems {
-  return parsedAmount(draft.amount) == null
-    ? { amount: QW.amountPaidProblem(typedAmount(payment.amount)) }
-    : {};
+  return {
+    ...(parsedAmount(draft.amount) == null
+      ? { amount: QW.amountPaidProblem(typedAmount(payment.amount)) }
+      : {}),
+    ...(draft.paidOn === '' ? { paidOn: QW.datePaidBlank } : {}),
+  };
 }
 
 export function markedPaid(payment: Payment, draft: MarkDraft, by: string): Payment {
