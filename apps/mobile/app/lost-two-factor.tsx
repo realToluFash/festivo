@@ -44,6 +44,7 @@ import { currentLocale } from '../src/i18n/index.ts';
 import { retryAfter } from '../src/kit/code.ts';
 import {
   type RecoveryField,
+  cancelRecovery,
   loadRecovery,
   type RecoveryShown,
   recoveryCodeLabel,
@@ -636,32 +637,20 @@ function CancelRequest({
     setNotCancelled(false);
     setCancelling(true);
 
-    try {
-      const cancelled = await api.cancelRecovery(recovery);
-      onTap();
-      onState(cancelled);
+    const outcome = await cancelRecovery({
+      cancel: () => api.cancelRecovery(recovery),
+      state: () => api.recoveryState(recovery),
+    });
+
+    if (outcome.kind === 'notCancelled') {
+      setCancelling(false);
+      setNotCancelled(true);
       return;
-    } catch (refusal) {
-      if (replacedElsewhere(refusal)) {
-        onTap();
-        onReplaced();
-        return;
-      }
-
-      // Answered before the cancel arrived: the screen shows that answer, not a failure.
-      if (refusal instanceof ApiError && refusal.is('recovery_request_closed')) {
-        const answered = await api.recoveryState(recovery).catch(() => null);
-
-        if (answered != null) {
-          onTap();
-          onState(answered);
-          return;
-        }
-      }
     }
 
-    setCancelling(false);
-    setNotCancelled(true);
+    onTap();
+    if (outcome.kind === 'replaced') onReplaced();
+    else onState(outcome.state);
   };
 
   return (
