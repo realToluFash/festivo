@@ -19,6 +19,8 @@ import {
 } from '../../src/demo/OrgSwitcher.tsx';
 import { switcherStateOf } from '../../src/demo/OrgSwitcherModel.ts';
 import { MOMENTS, momentOf, sayIn } from '../../src/demo/today.ts';
+import { RunTodayScreen } from '../../src/demo/today/RunToday.tsx';
+import { isRunState, withRun } from '../../src/demo/today/runOfShow.ts';
 import type { MomentName } from '../../src/kit/today.ts';
 import type { Tab } from '../../src/components/TodayCover.tsx';
 import type { Tell } from '../../src/components/TodayParts.tsx';
@@ -49,20 +51,20 @@ export default function DemoTodayScreen() {
     switcher?: string;
     create?: string;
     orgs?: string;
+    now?: string;
+    arrived?: string;
   }>();
   const place = useCurrentPlace();
   // An organisation made in the walk has no events yet.
   const name = place?.fresh === true ? 'first' : isMoment(params.moment) ? params.moment : 'plan';
   const { i18n } = useTranslation();
   // The demo's words are English, so its dates are too, in the phone's own region.
-  const moment = useMemo(
+  const say = useMemo(() => sayIn(formattingLocale('en', getLocales()[0]?.languageTag)), []);
+  const moment = useMemo(() => momentOf(name, say, i18n.getFixedT('en')), [name, say, i18n]);
+  const run = useMemo(
     () =>
-      momentOf(
-        name,
-        sayIn(formattingLocale('en', getLocales()[0]?.languageTag)),
-        i18n.getFixedT('en'),
-      ),
-    [name, i18n],
+      isRunState(params.now) ? withRun(moment, params.now, params.arrived !== 'none', say) : null,
+    [moment, params.now, params.arrived, say],
   );
   const { kind } = useLayout();
   const [told, setTold] = useState(params.toast);
@@ -93,6 +95,10 @@ export default function DemoTodayScreen() {
   const bar = kind === 'tabletLandscape' || place == null ? 'dark' : 'light';
   useCoverStatusBar(bar, false);
 
+  const notices = (
+    <SwitchedNotice style={kind === 'tabletLandscape' ? undefined : styles.switched} />
+  );
+
   const onTab = useCallback((tab: Tab) => {
     if (tab === 'Settings') router.replace('/demo/settings');
     else if (tab === 'Events') toEvents();
@@ -115,15 +121,11 @@ export default function DemoTodayScreen() {
             <NoOrganisation tell={tell} />
           ) : (
             <I18nextProvider i18n={moment.kind === 'first' ? startFirstWords(i18n.language) : i18n}>
-              <TodayScreen
-                moment={moment}
-                onTab={onTab}
-                notices={
-                  <SwitchedNotice
-                    style={kind === 'tabletLandscape' ? undefined : styles.switched}
-                  />
-                }
-              />
+              {run == null ? (
+                <TodayScreen moment={moment} onTab={onTab} notices={notices} />
+              ) : (
+                <RunTodayScreen moment={run} onTab={onTab} notices={notices} />
+              )}
             </I18nextProvider>
           )}
           {told != null && (

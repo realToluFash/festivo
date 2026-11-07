@@ -1,3 +1,4 @@
+import type { Moment, Now } from '../../kit/today.ts';
 import type { Say } from '../today.ts';
 
 /** One item of a track, as sc-3895's presses leave it. Times are `18:00` in the event's zone. */
@@ -197,4 +198,30 @@ export function trackAt(state: RunState): { clock: string; items: RunItem[] } {
 
 export function isRunState(name: string | undefined): name is RunState {
   return RUN_STATES.some((state) => state === name);
+}
+
+export interface RunMoment extends Moment {
+  now: Now;
+  run: RunNow;
+  /** Off until sc-29978 gives Now an arrived figure. */
+  arrived: boolean;
+}
+
+export function withRun(
+  moment: Moment,
+  state: RunState,
+  arrived: boolean,
+  say: Say,
+): RunMoment | null {
+  if (moment.now == null || !moment.full) return null;
+
+  const { clock, items } = trackAt(state);
+
+  return {
+    ...moment,
+    time: clock,
+    now: moment.now,
+    run: runNowOf(moment.now.name, items, clock, say),
+    arrived,
+  };
 }

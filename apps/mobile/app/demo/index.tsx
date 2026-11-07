@@ -31,6 +31,46 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         what: 'The dates, and Open the event',
         href: '/demo/today?moment=dayNow',
       },
+      {
+        title: 'Now · from the run of show',
+        what: 'Drinks, until 5:30 PM, 10 min behind',
+        href: '/demo/today?moment=day&now=on',
+      },
+      {
+        title: 'Now · over its length',
+        what: '12 min over, 22 min behind',
+        href: '/demo/today?moment=day&now=over',
+      },
+      {
+        title: 'Now · no length',
+        what: 'Speeches, no until line, On time',
+        href: '/demo/today?moment=day&now=open',
+      },
+      {
+        title: 'Now · nothing is on',
+        what: 'Between two items, with Next',
+        href: '/demo/today?moment=day&now=between',
+      },
+      {
+        title: 'Now · before the first',
+        what: 'Nothing is on, On time',
+        href: '/demo/today?moment=day&now=before',
+      },
+      {
+        title: 'Now · that’s everything',
+        what: 'No Next and no figure',
+        href: '/demo/today?moment=day&now=done',
+      },
+      {
+        title: 'Now · a 120-character title',
+        what: 'It wraps; try the iPhone SE',
+        href: '/demo/today?moment=day&now=long',
+      },
+      {
+        title: 'Now · no arrived ring',
+        what: 'Next alone on its row, until sc-29978',
+        href: '/demo/today?moment=day&now=on&arrived=none',
+      },
       { title: 'A quiet week', what: 'Nothing due, nothing on', href: '/demo/today?moment=quiet' },
       { title: 'A first run', what: 'No events yet', href: '/demo/today?moment=first' },
     ],
