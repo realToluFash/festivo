@@ -46,6 +46,7 @@ import {
   SCREEN_READER_OFF,
   driverBuilds,
   driverPids,
+  bundlerArgs,
   bundlerEnv,
   commitTarget,
   checkId,
@@ -444,6 +445,19 @@ describe('the stack a person tests on', () => {
   it('is the tester of its own worktree', () => {
     expect(testerOf('/home/me/soirely-qa-lan')).toBe(LAN);
     expect(testerOf('/home/me/soirely-qa2')).toBe(2);
+  });
+});
+
+describe('the bundler command', () => {
+  it("clears Metro's cache only when --clear asks", () => {
+    expect(bundlerArgs(18081, ['--tablet'])).toEqual(['expo', 'start', '--port', '18081']);
+    expect(bundlerArgs(18081, ['--clear'])).toEqual([
+      'expo',
+      'start',
+      '--port',
+      '18081',
+      '--clear',
+    ]);
   });
 });
 

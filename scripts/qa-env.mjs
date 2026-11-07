@@ -1418,7 +1418,11 @@ async function ios(args) {
   withSoftwareKeyboard(qaSimulatorIds());
   run('open', ['-a', 'Simulator'], { optional: true });
 
-  const metro = await startBundler(root);
+  // Expo Go keeps the JS it already has until it is stopped.
+  if (args.includes('--clear'))
+    for (const udid of devices)
+      run('xcrun', ['simctl', 'terminate', udid, EXPO_GO], { optional: true });
+  const metro = await startBundler(root, process.env, args);
   for (const udid of devices)
     run('xcrun', ['simctl', 'openurl', udid, CONFIG.urls.metro], { optional: true });
   console.log(`\nBundler on ${CONFIG.urls.metro}, open on the ${open}. Leave it running.`);
@@ -1446,14 +1450,20 @@ export function bundlerEnv(env, app) {
   return { ...env, ...app, EXPO_PUBLIC_ENVIRONMENT: 'qa', CI: '1' };
 }
 
-async function startBundler(root, env = process.env) {
-  const [command, args] = capped('4G', 'npx', [
+// --clear: Metro's cache keeps the EXPO_PUBLIC_ values of the build before.
+export function bundlerArgs(port, args = []) {
+  return [
     'expo',
     'start',
     '--port',
-    String(CONFIG.ports.METRO_PORT),
-  ]);
-  const metro = spawn(command, args, {
+    String(port),
+    ...(args.includes('--clear') ? ['--clear'] : []),
+  ];
+}
+
+async function startBundler(root, env = process.env, args = []) {
+  const [command, bundler] = capped('4G', 'npx', bundlerArgs(CONFIG.ports.METRO_PORT, args));
+  const metro = spawn(command, bundler, {
     cwd: join(root, 'apps/mobile'),
     detached: true,
     stdio: ['ignore', 'inherit', 'inherit'],
@@ -1843,7 +1853,9 @@ export const ANDROID_START = [
     name: 'bundler started',
     run: async (s) => {
       step('The bundler');
-      s.metro = await startBundler(s.root, s.tools.env);
+      if (s.args.includes('--clear'))
+        adbOut(s.tools, ['shell', 'am', 'force-stop', EXPO_GO_ANDROID]);
+      s.metro = await startBundler(s.root, s.tools.env, s.args);
     },
   },
   {
@@ -1916,7 +1928,7 @@ async function android(args) {
 
   step(`The ${open}`);
   await bootEmulator(tools, CONFIG.emulators[open].name);
-  const started = { tools, root };
+  const started = { tools, root, args };
   for (const part of ANDROID_START) {
     for (const command of part.adb ?? []) adbOut(tools, command);
     if (part.say) console.log(part.say);
