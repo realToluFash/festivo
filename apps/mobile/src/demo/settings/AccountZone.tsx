@@ -15,7 +15,7 @@ import {
   zoneToSave,
 } from './AccountModel.ts';
 import { discardAsk } from './AccountName.tsx';
-import { FocusedScreen, Line, Row, RowList } from './Summary.tsx';
+import { FocusedScreen, Line, Row, RowList } from '../../components/Summary.tsx';
 
 /** Finding a zone by city, country or offset; a tap on a match fills the field and closes the list. */
 export function ZoneScreen({

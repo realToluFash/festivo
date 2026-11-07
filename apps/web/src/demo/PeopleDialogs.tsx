@@ -1,6 +1,6 @@
 import { type KeyboardEvent, useEffect, useId, useRef, useState } from 'react';
 
-import { Glyph } from './Glyph.tsx';
+import { Glyph } from '../components/Glyph.tsx';
 import {
   EVENT_ROLES,
   EVERYONE_ON,
@@ -35,7 +35,7 @@ import {
   Head,
   RowWords,
   TextAction,
-} from './SettingsParts.tsx';
+} from '../components/SettingsParts.tsx';
 
 const ARROWS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
 

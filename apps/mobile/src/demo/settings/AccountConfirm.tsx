@@ -11,7 +11,7 @@ import {
   type ProofAsks,
   WORDS,
 } from './AccountModel.ts';
-import { FocusedScreen, Line } from './Summary.tsx';
+import { FocusedScreen, Line } from '../../components/Summary.tsx';
 
 const PASSWORD_LABEL = 'Your password';
 const CODE_LABEL = 'Code';

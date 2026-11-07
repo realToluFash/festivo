@@ -3,7 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { WORDS } from './SecurityModel.ts';
-import { Line, TextAction } from './Summary.tsx';
+import { Line, TextAction } from '../../components/Summary.tsx';
 
 /** Check your email after a reset: what was sent, what to do if nothing came, and Send it again for the field. */
 export function SentBody({ onAgain }: { onAgain: () => void }) {

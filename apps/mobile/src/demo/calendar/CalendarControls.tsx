@@ -9,8 +9,8 @@ import { Text } from '../../components/Text.tsx';
 import { motionEase } from '../../motion.ts';
 import { useReducedMotion } from '../../reducedMotion.ts';
 import { tokens } from '../../theme/tokens.ts';
-import { type Anchor, AnchoredMenu } from '../settings/Summary.tsx';
 import { CW, say } from './CalendarWords.ts';
+import { type Anchor, AnchoredMenu } from '../../components/Summary.tsx';
 
 /** The toolbar's words grow to twice their size and no further, so Month, Show and the month's name are never cut. */
 const DOUBLED = 2;

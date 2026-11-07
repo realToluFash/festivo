@@ -3,8 +3,8 @@ import { StyleSheet, type TextInputInstance, View, type ViewInstance } from 'rea
 
 import { Text, type TextHandle } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
-import { Avatar } from '../settings/parts.tsx';
-import { TextAction } from '../settings/Summary.tsx';
+import { Avatar } from '../../components/SettingsParts.tsx';
+import { TextAction } from '../../components/Summary.tsx';
 import { BigButton, CancelAsk, CheckCard, ResendCheck } from './CheckCard.tsx';
 import { AnswerBox, MiniComposer, NewComposer, PreviewBar, ToHead } from './Composers.tsx';
 import { GroupTile } from './MessagesList.tsx';

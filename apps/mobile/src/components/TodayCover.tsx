@@ -753,6 +753,9 @@ export function TabBar<T extends string>({
   );
 }
 
+/** The phone's tab bar is this tall, so a page clears it. */
+export const PHONE_TAB_BAR = 64;
+
 export function PhoneTabBar({
   bottom,
   onTab,
@@ -962,7 +965,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 18,
     right: 18,
-    height: 64,
+    height: PHONE_TAB_BAR,
     padding: 5,
     borderRadius: tokens.space5xl,
     backgroundColor: tokens.colorCard,

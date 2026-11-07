@@ -5,7 +5,6 @@ import { StyleSheet, View, type ViewInstance } from 'react-native';
 import { useReadOut } from '../../components/ReadOut.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
-import { useShell } from './Frame.tsx';
 import { ColoursScreen } from './PersonalisationColours.tsx';
 import {
   cardLine,
@@ -22,7 +21,9 @@ import {
   WORDS,
 } from './PersonalisationModel.ts';
 import { SchemeCard } from './PersonalisationParts.tsx';
-import { FailedBlock, SummaryPage } from './Summary.tsx';
+import { useShell } from '../../components/settingsShell.ts';
+import { SummaryPage } from './SummaryPage.tsx';
+import { FailedBlock } from '../../components/Summary.tsx';
 
 /** Settings › Personalisation in A · Swatches, on a sample account the demo never writes to. */
 export function PersonalisationSection() {

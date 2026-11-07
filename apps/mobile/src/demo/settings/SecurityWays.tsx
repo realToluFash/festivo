@@ -15,7 +15,7 @@ import {
   WORDS,
 } from './SecurityModel.ts';
 import { type Provider, PROVIDERS, type Ways } from './SecuritySample.ts';
-import { OpenRow, Row, RowList, Section, TextAction } from './Summary.tsx';
+import { OpenRow, Row, RowList, Section, TextAction } from '../../components/Summary.tsx';
 
 /** Password, Google and Apple: the password opens its screen, a provider opens in place, and the last way in does not open. */
 export function WaysSection({

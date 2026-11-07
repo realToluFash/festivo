@@ -5,10 +5,11 @@ import { Brand } from '../components/Brand.tsx';
 import { Toast } from '../components/Toast.tsx';
 import { CreateWalk } from './CreateOrg.tsx';
 import { NO_ORG_WORDS as W, type Walk, freshWalk, isCreateState, walkOf } from './createOrg.ts';
-import { Glyph } from './Glyph.tsx';
-import { LayersContext, focusWhenFree, useDeskLayers } from './layers.ts';
+import { Glyph } from '../components/Glyph.tsx';
+import { LayersContext, focusWhenFree, useDeskLayers } from '../layers.ts';
 import { SAMPLE } from './rules.ts';
 import { NEW_PLACE, create } from './switcher.ts';
+import '../components/SettingsParts.css';
 import './settings.css';
 import './createOrg.css';
 

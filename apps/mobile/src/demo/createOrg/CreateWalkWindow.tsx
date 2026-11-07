@@ -35,7 +35,6 @@ import { glide } from '../../motion.ts';
 import { useReducedMotion } from '../../reducedMotion.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { useModalOpen } from '../../updateRequired.ts';
-import { AskLayer } from '../settings/AskLayer.tsx';
 import {
   type CreateState,
   type Device,
@@ -60,6 +59,7 @@ import {
   ReadyStep,
   WideCard,
 } from './WalkSteps.tsx';
+import { AskLayer } from '../../components/AskLayer.tsx';
 
 const SEND_MS = 1200;
 /** A deep-linked Creating… holds long enough to be looked at, then lands. */

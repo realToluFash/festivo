@@ -1,8 +1,9 @@
+import { DemoBell } from './DemoBell.tsx';
 import { formattingLocale } from '@soirely/domain';
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 
-import { Glyph } from './Glyph.tsx';
+import { Glyph } from '../components/Glyph.tsx';
 import type { Load } from './members.ts';
 import { type HeldStep, heldStepPath } from './security.ts';
 import type { Viewer } from './settings.ts';
@@ -20,7 +21,7 @@ import {
   Tag,
   TextAction,
   TitleRow,
-} from './SettingsParts.tsx';
+} from '../components/SettingsParts.tsx';
 import {
   type ChangeRow,
   EDIT_TITLES,
@@ -48,7 +49,7 @@ import {
   staysLine,
   whereYouStand,
 } from './signInRules.ts';
-import type { Tell } from './TodayParts.tsx';
+import type { Tell } from '../components/SettingsParts.tsx';
 import './signInRules.css';
 
 const RETRY_MS = 1200;
@@ -88,7 +89,7 @@ export function SignInRules({
   if (load !== 'loaded')
     return (
       <Page>
-        <TitleRow title="Sign-in rules" tell={tell} />
+        <TitleRow title="Sign-in rules" bell={<DemoBell tell={tell} />} />
         {load === 'failed' ? <Failed onRetry={() => setLoad('retrying')} /> : <Loading />}
       </Page>
     );
@@ -112,7 +113,7 @@ export function SignInRules({
 
   return (
     <Page>
-      <TitleRow title="Sign-in rules" tell={tell} />
+      <TitleRow title="Sign-in rules" bell={<DemoBell tell={tell} />} />
       <Card>
         <Says>{card.says}</Says>
         <OnCard>{card.line}</OnCard>

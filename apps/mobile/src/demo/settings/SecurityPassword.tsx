@@ -27,7 +27,7 @@ import {
   resetSays,
   WORDS,
 } from './SecurityModel.ts';
-import { FocusedScreen, Line, StatusMark, TextAction } from './Summary.tsx';
+import { FocusedScreen, Line, ShapeMark, TextAction } from '../../components/Summary.tsx';
 
 type Opener = RefObject<ScreenReaderTarget | null>;
 type Input = RefObject<TextInputInstance | null>;
@@ -41,7 +41,7 @@ function PasswordRule({ met }: { met: boolean }) {
         accessible
         accessibilityLabel={`${WORDS.rule}: ${met ? WORDS.met : WORDS.notYet}`}
       >
-        <StatusMark kind={met ? 'yes' : 'notyet'} side={18} ink={tokens.colorFieldBorder} />
+        <ShapeMark kind={met ? 'yes' : 'notyet'} side={18} ink={tokens.colorFieldBorder} />
         <Text size={15} weight="medium" accessible={false} style={styles.grow}>
           {WORDS.rule}
         </Text>
