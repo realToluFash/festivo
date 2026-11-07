@@ -35,9 +35,15 @@ const BOARDS: Record<BudgetState, readonly [string, string]> = {
   due_read_only: ['Due now, read only', 'No Paid, no Undo'],
 };
 
+/** The spec's viewer and language for the two states that name one; the state alone opens it. */
+const VIEWER: Partial<Record<BudgetState, string>> = {
+  no_budget: '&as=kemi',
+  long_name: '&lang=pt',
+};
+
 export const BUDGET_BOARDS = BUDGET_DEMO_STATES.map((state) => ({
   state,
   title: `Budget · ${BOARDS[state][0]}`,
   what: BOARDS[state][1],
-  href: `/demo/events/${WEDDING}?area=budget&state=${state}${state === 'no_budget' ? '&as=kemi' : ''}`,
+  href: `/demo/events/${WEDDING}?area=budget&state=${state}${VIEWER[state] ?? ''}`,
 }));
