@@ -583,6 +583,14 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   rule that the example shows the rule and the words never name a decimal count; and over
   "Settled would be", which is not a sentence. "Close" is a state word, not the dialog's
   close button: its own key.
+- **7 Nov 2026. The ceiling line in what a decision costs (sc-90 in sc-86's answer).** The
+  not-yet-made form of the rate-edit warning: "This would take the event over its ceiling."
+  or "This would take {{category}} over its ceiling.", then "Settled, it would be {{total}}
+  against {{ceiling}}." or "If everyone comes, it would be {{total}} against {{ceiling}}."
+  Won over the change as a slot ("Adding 4 guests takes …"), because the caller already names
+  the change above the answer and a slot holding each caller's noun phrase leaves es, fr and
+  pt no way to agree with it; and over keeping "You can still save it", because nothing is
+  being saved yet. Which of event or category it names follows the rate-edit rule.
 - **17 Oct 2026. "A device that has not signed in to your Soirely account before has just
   signed in."** (`emails:newDevice.body`). Won over "Your Soirely account was signed in to on
   a device it hasn't seen before": "signed in to on" stacks two prepositions, and an account
