@@ -36,6 +36,7 @@ function event(overrides: Record<string, unknown> = {}) {
     phase: 'live',
     concludedAt: null,
     createdAt: '2026-10-21T09:00:00+00:00',
+    permissions: OWNER_PERMISSIONS,
     milestones: [],
     ...overrides,
   };
