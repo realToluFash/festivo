@@ -1332,7 +1332,7 @@
     "failedTitle": "Asking did not work",
     "failedBody": "Something went wrong on the way. Try again in a moment.",
     "messageOptional": "Message · optional",
-    "signedOutLine": "Sign in or create an account to ask. You come back here after."
+    "signedOutLine": "Sign in or create an account to ask. You will come back here."
   },
   "ownerClaim": {
     "loading": "Loading",
