@@ -50,6 +50,7 @@ def sync_shortcut(db, shortcut, now, full=False):
     if store.get_meta(db, "slim_version") != SLIM_VERSION:
         db.execute("delete from stories")
         store.set_meta(db, "lookups_at", 0)
+        store.set_meta(db, "full_at", 0)
         store.set_meta(db, "slim_version", SLIM_VERSION)
         full = True
     states, epics = _lookups(db, shortcut, now)

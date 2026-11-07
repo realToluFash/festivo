@@ -167,6 +167,22 @@ class OutOfTimeInAPart(unittest.TestCase):
             sync.pr_stories(db, self.Late(), NOW)
         self.assertIsNone(store.get_meta(db, "pr_stories_at"))
 
+    def test_a_new_slim_version_cut_after_the_delete_leaves_the_next_sync_full(self):
+        class LateSearch(FakeShortcut):
+            def search(self, query):
+                raise sync.OutOfTime("out of time: Shortcut timed out")
+
+        db = store.connect(":memory:")
+        store.set_meta(db, "full_at", NOW - 5 * 60)
+        store.put_story(db, {"id": 1, "state": "In Review", "done": False, "labels": [],
+                             "links": [], "updated_at": "t0"})
+        with self.assertRaises(sync.OutOfTime):
+            sync.sync_shortcut(db, LateSearch(), NOW)
+        self.assertIsNone(store.story(db, 1))
+        shortcut = FakeShortcut()
+        sync.sync_shortcut(db, shortcut, NOW + 60)
+        self.assertIn('state:"In Review"', shortcut.searches)
+
 class Budget(unittest.TestCase):
     """A sync that runs out of its budget stops without failing the tick."""
 
