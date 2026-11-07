@@ -6,6 +6,8 @@ export interface Place {
   id: string;
   name: string;
   role: string;
+  /** Made in the walk just now, so it has no events yet. */
+  fresh?: boolean;
 }
 
 export interface Invite {
@@ -59,7 +61,6 @@ export const SW = {
   unavailable:
     'You cannot ask to join that organisation. Start your own, or ask somebody there to invite you.',
   create: 'Create an organisation',
-  createOwn: 'Create an organisation has its own design.',
   switched: (name: string) => `Now working in ${name}.`,
   yourRole: (role: string) => `Your role · ${role}`,
   count: (count: number) => (count === 1 ? '1 invitation' : `${count} invitations`),
@@ -333,6 +334,23 @@ export function settled(session: Session): Session {
 
 export function pick(session: Session, id: string): Session {
   return { ...settled(session), current: id };
+}
+
+/** A new organisation joins the end, as main orders them by when you joined, and becomes the current one; a second walk makes the demo's one again. */
+export function founded(session: Session, place: Place): Session {
+  const now = settled(session);
+  const others = now.places.filter((known) => known.id !== place.id);
+
+  return { ...now, places: [...others, place], current: place.id };
+}
+
+/** Folake in no organisation; founded() gives her one. */
+export function withoutPlaces(session: Session): Session {
+  return { ...session, places: [], current: '', invitations: [], outcomes: {}, offer: null };
+}
+
+export function placeOf(session: Session): Place | null {
+  return session.places.find((place) => place.id === session.current) ?? null;
 }
 
 export function orgMesh(id: string): MeshKey {

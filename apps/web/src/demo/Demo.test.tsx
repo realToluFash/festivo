@@ -1087,7 +1087,7 @@ describe('Today at a desk (sc-29092)', () => {
 
     expect(screen.getByRole('heading', { level: 1, name: 'Welcome, Folake' })).toBeDefined();
     expect(screen.getByRole('heading', { name: 'Set up your first event' })).toBeDefined();
-    expect(screen.getByRole('button', { name: 'Create an event' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Start your first event' })).toBeDefined();
     expect(screen.queryByRole('button', { name: 'New event' })).toBeNull();
     expect(screen.queryByRole('heading', { name: 'Your events' })).toBeNull();
   });

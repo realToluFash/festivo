@@ -13,8 +13,12 @@ import {
 import { Link, useLocation, useSearchParams } from 'react-router';
 
 import { leaveMenu } from '../leaving.ts';
+import { CreateWalk } from './CreateOrg.tsx';
+import { type Walk, freshWalk, isCreateState, walkOf } from './createOrg.ts';
 import { meshFor } from './events.ts';
 import { Glyph } from './Glyph.tsx';
+import { focusWhenFree } from './layers.ts';
+import { Notice } from './Notice.tsx';
 import { SAMPLE } from './rules.ts';
 import {
   BLUEBIRD,
@@ -25,9 +29,12 @@ import {
   type Place,
   SEARCH_FROM,
   type Where,
+  NEW_PLACE,
   ask,
   askToOpen,
+  colourArrived,
   columnsOf,
+  create,
   currentPlace,
   dayOf,
   decline,
@@ -58,6 +65,11 @@ interface Opening {
   kept: readonly string[];
 }
 
+/** From no organisation the walk is the page's own, and its landing focuses the notice. */
+function alone(params: URLSearchParams): boolean {
+  return params.get('orgs') === 'none';
+}
+
 function switchedLine(name: string): string {
   return `Now working in ${name}.`;
 }
@@ -78,6 +90,12 @@ export function OrgSwitcher({ tell, toast = false }: { tell: Tell; toast?: boole
   });
   const where = useWhere();
   const [open, setOpen] = useState(first != null);
+  const [walk, setWalk] = useState<Walk | null>(() => {
+    const raw = params.get('create');
+
+    return isCreateState(raw) && !alone(params) ? walkOf(raw) : null;
+  });
+  const [landed] = useState(() => params.get('create') === 'created' && !alone(params));
   const [seen, setSeen] = useState(where.opens);
   const [into, setInto] = useState(false);
   const container = useRef<HTMLDivElement>(null);
@@ -116,6 +134,10 @@ export function OrgSwitcher({ tell, toast = false }: { tell: Tell; toast?: boole
   });
 
   useEffect(() => {
+    if (landed) focusWhenFree(() => button.current);
+  }, [landed]);
+
+  useEffect(() => {
     if (!open) return;
 
     const outside = (event: MouseEvent): void => {
@@ -150,6 +172,13 @@ export function OrgSwitcher({ tell, toast = false }: { tell: Tell; toast?: boole
     if (toast) tell(switchedLine(place.name));
   }
 
+  function created(): void {
+    setWalk(null);
+    create(NEW_PLACE, pathname, false);
+    if (toast) tell(switchedLine(NEW_PLACE.name));
+    focusWhenFree(() => button.current);
+  }
+
   return (
     <div
       ref={container}
@@ -177,6 +206,11 @@ export function OrgSwitcher({ tell, toast = false }: { tell: Tell; toast?: boole
       >
         <span className={`sw-tile today-cover is-${meshFor(current.id)}`} aria-hidden="true">
           {initials(current.name)}
+          {where.arrived === current.id && (
+            <span className="sw-was" onAnimationEnd={colourArrived}>
+              {initials(current.name)}
+            </span>
+          )}
         </span>
         <span className="today-grow sw-opener-words">
           <span className="sw-opener-name">{current.name}</span>
@@ -198,9 +232,19 @@ export function OrgSwitcher({ tell, toast = false }: { tell: Tell; toast?: boole
           into={into}
           onPick={pick}
           onCreate={() => {
-            close(true);
-            tell('Create an organisation has its own design.');
+            close(false);
+            setWalk(freshWalk());
           }}
+        />
+      )}
+      {walk != null && (
+        <CreateWalk
+          start={walk}
+          onClose={() => {
+            setWalk(null);
+            focusWhenFree(() => button.current);
+          }}
+          onCreated={created}
         />
       )}
     </div>
@@ -715,34 +759,6 @@ function Offer({
   );
 }
 
-function Notice({
-  kind,
-  lands = false,
-  children,
-}: {
-  kind: 'done' | 'quiet' | 'broken';
-  lands?: boolean;
-  children: ReactNode;
-}) {
-  return (
-    <div
-      className={`sw-notice is-${kind}${lands ? ' sw-lands' : ''}`}
-      role={kind === 'broken' ? 'alert' : 'status'}
-      tabIndex={lands ? -1 : undefined}
-      data-lands={lands ? '' : undefined}
-    >
-      <span className="sw-notice-mark" aria-hidden="true">
-        {kind === 'quiet' ? (
-          <span className="sw-dash" />
-        ) : (
-          <Glyph name={kind === 'done' ? 'tick' : 'clear'} size={15} weight={3} />
-        )}
-      </span>
-      <p className="sw-notice-words">{children}</p>
-    </div>
-  );
-}
-
 /** "Now working in ‹name›." on the page the switch happened on, gone once the person moves on. */
 export function Switched() {
   const where = useWhere();
@@ -752,7 +768,9 @@ export function Switched() {
 
   return (
     <div key={where.switched.name} className="sw-switched">
-      <Notice kind="done">{switchedLine(where.switched.name)}</Notice>
+      <Notice kind="done" takesFocus={where.switched.takesFocus === true}>
+        {switchedLine(where.switched.name)}
+      </Notice>
     </div>
   );
 }

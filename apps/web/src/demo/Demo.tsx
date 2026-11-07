@@ -7,6 +7,7 @@ import { offField } from '../offField.ts';
 import { BoardPage, OrLine, Providers } from './BoardPage.tsx';
 import { Calendar } from './Calendar.tsx';
 import { CALENDAR_PAGES } from './calendar.ts';
+import { CREATE_PAGES } from './createOrg.ts';
 import { EventPage } from './EventPage.tsx';
 import { Events } from './Events.tsx';
 import { EVENTS_PAGES } from './events.ts';
@@ -168,6 +169,8 @@ function DemoHome({ from }: { from: string }) {
         <BoardPages pages={SWITCHER_PAGES} />
         <h3>The Calendar in B · A · Weeks as lanes · desktop</h3>
         <BoardPages pages={CALENDAR_PAGES} />
+        <h3>Create an organisation in B · A short walk · desktop</h3>
+        <BoardPages pages={CREATE_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-28">

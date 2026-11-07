@@ -49,9 +49,9 @@ function EventsShell({
       if (tab === 'Today') router.replace('/demo/today');
       else if (tab === 'Settings') toSettings();
       else if (tab === 'Events') backToEvents();
-      else tell(say.ownDesign(tab));
+      else router.replace('/demo/calendar');
     },
-    [tell, toSettings],
+    [toSettings],
   );
   const shell = useMemo<Shell>(
     () => ({
