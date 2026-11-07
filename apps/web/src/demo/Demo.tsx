@@ -68,7 +68,8 @@ const TODAY_MOMENTS: { key: string; name: string }[] = [
   { key: 'first', name: 'A first run' },
 ];
 
-const SIGN_IN_STATES: { key: string; name: string; notice?: Notice }[] = [
+/** `fillsEmail`: the sign-in knew whose it was, so Email arrives filled. */
+const SIGN_IN_STATES: { key: string; name: string; notice?: Notice; fillsEmail?: true }[] = [
   { key: 'first-visit', name: 'Signed out, first visit' },
   {
     key: 'signed-out',
@@ -79,6 +80,7 @@ const SIGN_IN_STATES: { key: string; name: string; notice?: Notice }[] = [
     key: 'code-timed-out',
     name: 'That sign-in timed out',
     notice: { title: 'That sign-in timed out', body: 'Sign in again to carry on.' },
+    fillsEmail: true,
   },
   {
     key: 'rule',
@@ -87,6 +89,7 @@ const SIGN_IN_STATES: { key: string; name: string; notice?: Notice }[] = [
       title: 'Signed out by Ire Events’ rule',
       body: 'Ire Events signs people out after 30 days without use. Sign in again to carry on.',
     },
+    fillsEmail: true,
   },
   {
     key: 'google-failed',
@@ -112,6 +115,7 @@ const SIGN_IN_STATES: { key: string; name: string; notice?: Notice }[] = [
       title: 'Ire Events signs in with Google or Apple only',
       body: 'Password sign-in is off in Ire Events. Use Google or Apple instead.',
     },
+    fillsEmail: true,
   },
 ];
 
@@ -305,9 +309,7 @@ function SignInForm({ state }: { state: string }) {
   const email = useRef<HTMLInputElement>(null);
   const password = useRef<HTMLInputElement>(null);
   const pending = useRef<number | undefined>(undefined);
-  const knownEmail = ['rule', 'provider-only', 'code-timed-out'].includes(state)
-    ? SAMPLE.email
-    : arrival.email;
+  const knownEmail = drawn?.fillsEmail ? SAMPLE.email : arrival.email;
   const locked = liftsAt != null;
 
   useEffect(() => () => window.clearTimeout(pending.current), []);
