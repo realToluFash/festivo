@@ -250,9 +250,9 @@ const BAR: Record<MarkKey, string> = {
   sending: tokens.colorAttention,
   bounced: tokens.colorBroken,
   notsent: tokens.colorBroken,
-  unconfirmed: '#8E8EA0',
-  optout: '#B6B6C4',
-  none: tokens.colorMarkEmpty,
+  unconfirmed: tokens.colorInkTertiary,
+  optout: tokens.colorMarkEmpty,
+  none: tokens.colorControlBorder,
 };
 
 /** Mailchimp's report: one bar in parts, read as its words, with the legend under it in words and marks. */

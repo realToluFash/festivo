@@ -91,6 +91,7 @@ function Rising({ children }: { children: ReactNode }) {
 /** Check it before it goes: a card in the conversation, never a dialog over it. */
 export function CheckCard({
   draft,
+  locale,
   headRef,
   goRef,
   onGo,
@@ -101,6 +102,7 @@ export function CheckCard({
   onSeeAll,
 }: {
   draft: Draft;
+  locale: string;
   headRef?: Ref<TextHandle>;
   goRef?: Ref<ViewInstance> | undefined;
   onGo: () => void;
@@ -125,7 +127,7 @@ export function CheckCard({
         {say.cannotUndo(check.count)}
       </Text>
       <Text size={14} weight="medium" style={[styles.secondary, styles.line]}>
-        {at == null ? W.toldHow : say.instead(dayWords(at.date), at.time)}
+        {at == null ? W.toldHow : say.instead(dayWords(at.date, locale), at.time)}
       </Text>
       {at == null && (
         <View style={styles.pills}>

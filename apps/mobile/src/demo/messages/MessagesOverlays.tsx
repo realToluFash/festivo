@@ -933,10 +933,10 @@ export function WhenItGoes({
         </View>
       </View>
       {wrong ? (
-        <AlertLine text={say.laterRule(EVENT_ENDS.day, EVENT_ENDS.time)} small />
+        <AlertLine text={say.laterRule(dayWords(EVENT_ENDS.date, locale), EVENT_ENDS.time)} small />
       ) : (
         <Text size={13.5} weight="medium" style={[styles.secondary, styles.line135]}>
-          {say.laterRule(EVENT_ENDS.day, EVENT_ENDS.time)}
+          {say.laterRule(dayWords(EVENT_ENDS.date, locale), EVENT_ENDS.time)}
         </Text>
       )}
       <Text size={13.5} weight="medium" style={[styles.secondary, styles.line135]}>
@@ -944,7 +944,7 @@ export function WhenItGoes({
       </Text>
       {phone && (
         <Pill
-          label={say.scheduleFor(dayWords(at.date), at.time)}
+          label={say.scheduleFor(dayWords(at.date, locale), at.time)}
           onPress={schedule}
           testID="messages.when.go"
         />

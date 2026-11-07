@@ -34,7 +34,7 @@ import {
   SENDING_GROUPS,
   SENDING_REACH,
 } from './MessagesSample.ts';
-import { W, say } from './MessagesWords.ts';
+import { CHANNEL_WORD, W, say } from './MessagesWords.ts';
 import { Legend, ReachBar } from './Stream.tsx';
 
 function Person({
@@ -156,11 +156,15 @@ export interface ReachView {
 
 /** A person after a fix: their new address waiting for Send again, then Sent once it goes (Messaging-B-Phone-3's fixed and sentAgain). */
 function fixedPerson(person: NotReached, address: string, at: string | undefined): NotReached {
-  const rest = person.lines.filter((line) => !line.word.startsWith('Email'));
+  const rest = person.lines.filter((line) => !line.word.startsWith(CHANNEL_WORD.email));
   const email: ReachLine =
     at == null
-      ? { mark: 'delivered', word: `Email · ${W.fixedNotSent}`, reason: address }
-      : { mark: 'sent', word: `Email · Sent · ${at}`, reason: address };
+      ? { mark: 'delivered', word: say.where(CHANNEL_WORD.email, W.fixedNotSent), reason: address }
+      : {
+          mark: 'sent',
+          word: [CHANNEL_WORD.email, W.sent, at].join(' · '),
+          reason: address,
+        };
 
   return { ...person, lines: [email, ...rest], fixes: [] };
 }
@@ -169,23 +173,31 @@ export function reachViewOf(m: Messages, of: ReachedOf): ReachView {
   if (of === 'invite')
     return {
       title: say.reached(INVITATION.reached, INVITATION.of),
-      line: `${say.nowInvitedShort(INVITATION.reached)} · ${say.seenBy(INVITATION.seen)} · 2 no email or phone`,
+      line: [
+        say.nowInvitedShort(INVITATION.reached),
+        say.seenBy(INVITATION.seen),
+        say.noEmailOrPhoneCount(INVITE_GROUPS[0]?.people.length ?? 0),
+      ].join(' · '),
       parts: [
-        { mark: 'delivered', word: 'Reached', count: INVITATION.reached },
-        { mark: 'none', word: W.noEmailOrPhone, count: 2 },
+        { mark: 'delivered', word: W.reachedWord, count: INVITATION.reached },
+        { mark: 'none', word: W.noEmailOrPhone, count: INVITATION.of - INVITATION.reached },
       ],
       status: null,
-      head: say.notReached(2),
+      head: say.notReached(INVITATION.of - INVITATION.reached),
       filter: false,
       groups: INVITE_GROUPS.map((group) => ({ ...group, count: group.people.length })),
-      resend: 2,
+      resend: INVITATION.of - INVITATION.reached,
     };
   if (of === 'draft')
     return {
       title: say.soFar(SENDING_REACH.reached, SENDING_REACH.of),
-      line: `${say.inProgressCount(SENDING_REACH.inProgress)} · ${SENDING_REACH.cantTell} can’t be told · ${say.seenBy(SENDING_REACH.seen)}`,
+      line: [
+        say.inProgressCount(SENDING_REACH.inProgress),
+        say.cantBeToldCount(SENDING_REACH.cantTell),
+        say.seenBy(SENDING_REACH.seen),
+      ].join(' · '),
       parts: [
-        { mark: 'delivered', word: 'Reached', count: SENDING_REACH.reached },
+        { mark: 'delivered', word: W.reachedWord, count: SENDING_REACH.reached },
         { mark: 'sending', word: W.inProgress, count: SENDING_REACH.inProgress },
         { mark: 'none', word: W.cantBeTold, count: SENDING_REACH.cantTell },
       ],
@@ -211,12 +223,14 @@ export function reachViewOf(m: Messages, of: ReachedOf): ReachView {
     const people = group.people.filter((person) => !sent.includes(person.key)).map(shown);
     return { word: group.word, count: people.length, people };
   });
-  const bouncedLeft = groups[0]?.count ?? 3;
   const said = m.said == null ? null : NOT_REACHED.find((person) => person.key === m.said);
+  const count = (word: string) => groups.find((group) => group.word === word)?.count ?? 0;
   const counts = [
-    ...(going.length > 0 ? [`${going.length} in progress`] : []),
-    `${bouncedLeft} bounced`,
-    '2 not confirmed · 4 opted out · 2 no email or phone',
+    ...(going.length > 0 ? [say.inProgressCount(going.length)] : []),
+    say.bouncedCount(count(W.bounced3)),
+    say.notConfirmedCount(count(W.notConfirmed2)),
+    say.optedOutCount(count(W.optedOut)),
+    say.noEmailOrPhoneCount(count(W.noEmailOrPhone)),
   ];
 
   return {

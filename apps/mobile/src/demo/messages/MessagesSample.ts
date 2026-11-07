@@ -1,4 +1,4 @@
-import { type ChannelKey, W, say } from './MessagesWords.ts';
+import { CHANNEL_WORD, type ChannelKey, W, say } from './MessagesWords.ts';
 
 /** Events A's shared sample, with the guests and counts the Messaging B boards made up (spec §8); nothing here is spec. */
 export const EVENT = 'Adaeze & Tunde’s wedding';
@@ -8,6 +8,17 @@ export const READER = 'Folake Adeyemi';
 export const NOW = '09:41';
 export const BALANCE = 1500;
 export const SAMPLE_EVENT_ID = 'evt-wed-4';
+
+/** The sample's days, as the event's wall dates in London; the screens format them in the reader's locale. */
+export const DAYS = {
+  invite: '2026-10-12',
+  inviteSeen: '2026-10-13',
+  marta: '2026-10-31',
+  parking: '2026-11-02',
+  today: '2026-11-03',
+  sched: '2026-11-05',
+  ends: '2026-11-07',
+};
 
 export type Where = 'page' | ChannelKey;
 export type GuestKey = 'ines' | 'lucia' | 'kwame' | 'unknown' | 'marta';
@@ -38,7 +49,7 @@ export interface SampleGuest {
   channel: ChannelKey;
   /** Their address and language, shown under the name with guests.manage. */
   head: string;
-  asked: { text: string; where: Where; row: string; time: string };
+  asked: { text: string; where: Where; day: string; time: string };
 }
 
 export const GUESTS: Record<GuestKey, SampleGuest> = {
@@ -50,7 +61,7 @@ export const GUESTS: Record<GuestKey, SampleGuest> = {
     asked: {
       text: 'Can we bring our son? Our sitter cancelled for Thursday.',
       where: 'page',
-      row: '08:12',
+      day: DAYS.today,
       time: '08:12',
     },
   },
@@ -62,7 +73,7 @@ export const GUESTS: Record<GuestKey, SampleGuest> = {
     asked: {
       text: 'Is there parking at The Landmark?',
       where: 'page',
-      row: '07:58',
+      day: DAYS.today,
       time: '07:58',
     },
   },
@@ -71,7 +82,7 @@ export const GUESTS: Record<GuestKey, SampleGuest> = {
     name: 'Kwame Mensah',
     channel: 'sms',
     head: '+44 7700 900412 · English',
-    asked: { text: 'What is the dress code?', where: 'sms', row: 'Mon', time: '21:14' },
+    asked: { text: 'What is the dress code?', where: 'sms', day: DAYS.parking, time: '21:14' },
   },
   unknown: {
     initials: '?',
@@ -81,7 +92,7 @@ export const GUESTS: Record<GuestKey, SampleGuest> = {
     asked: {
       text: 'Camille and I will both be there. Marc',
       where: 'email',
-      row: 'Mon',
+      day: DAYS.parking,
       time: '21:05',
     },
   },
@@ -90,7 +101,7 @@ export const GUESTS: Record<GuestKey, SampleGuest> = {
     name: 'Marta Silva',
     channel: 'email',
     head: 'marta.silva@gmail.com',
-    asked: { text: 'Thank you, see you Thursday!', where: 'page', row: 'Sat', time: 'Sat' },
+    asked: { text: 'Thank you, see you Thursday!', where: 'page', day: DAYS.marta, time: '' },
   },
 };
 
@@ -100,6 +111,8 @@ export const ANSWERS: Partial<Record<GuestKey, string>> = {
 };
 
 export const PARKING = 'Parking at The Landmark';
+export const PARKING_TIME = '18:20';
+export const INVITE_TIME = '10:00';
 export const PARKING_BODY =
   '{Greeting}, parking is on Marylebone Road. The car park entrance is on Melcombe Place.';
 export const SCHEDULED = 'On the day: where to find us';
@@ -157,18 +170,17 @@ export interface ReachPart {
 }
 
 export const REACH: readonly ReachPart[] = [
-  { mark: 'delivered', word: 'Reached', count: 131 },
-  { mark: 'bounced', word: 'Bounced', count: 3 },
-  { mark: 'unconfirmed', word: 'Not confirmed', count: 2 },
-  { mark: 'optout', word: 'Opted out', count: 4 },
-  { mark: 'none', word: 'No email or phone', count: 2 },
+  { mark: 'delivered', word: W.reachedWord, count: 131 },
+  { mark: 'bounced', word: W.bounced3, count: 3 },
+  { mark: 'unconfirmed', word: W.notConfirmed2, count: 2 },
+  { mark: 'optout', word: W.optedOut, count: 4 },
+  { mark: 'none', word: W.noEmailOrPhone, count: 2 },
 ];
 
 export const PARKING_REACH = {
   reached: 131,
   of: 142,
   seen: 87,
-  line: '3 bounced · 2 not confirmed · 4 opted out · 2 no email or phone',
   notReached: 11,
 };
 
@@ -180,7 +192,6 @@ export interface ReachLine {
 
 export interface NotReached {
   key: PersonKey;
-  /** The address that bounced, which Fix email address opens on. */
   bounced?: string;
   initials: string;
   name: string;
@@ -191,13 +202,13 @@ export interface NotReached {
 const PAGE_LINE: ReachLine = { mark: 'none', word: W.theirPage, reason: W.notSeenYet };
 
 const bounced = (reason: string): readonly ReachLine[] => [
-  { mark: 'bounced', word: 'Email · Bounced', reason },
-  { mark: 'none', word: 'SMS', reason: W.noPhone },
+  { mark: 'bounced', word: say.where(CHANNEL_WORD.email, W.bounced), reason },
+  { mark: 'none', word: CHANNEL_WORD.sms, reason: W.noPhone },
   PAGE_LINE,
 ];
 const UNCONFIRMED: readonly ReachLine[] = [
-  { mark: 'unconfirmed', word: 'SMS · Sent', reason: W.notConfirmed },
-  { mark: 'none', word: 'Email', reason: W.noEmail },
+  { mark: 'unconfirmed', word: say.where(CHANNEL_WORD.sms, W.sent), reason: W.notConfirmed },
+  { mark: 'none', word: CHANNEL_WORD.email, reason: W.noEmail },
   PAGE_LINE,
 ];
 const NEITHER: readonly ReachLine[] = [
@@ -205,8 +216,16 @@ const NEITHER: readonly ReachLine[] = [
   { mark: 'none', word: W.noPhone },
   PAGE_LINE,
 ];
-const EMAIL_OUT: ReachLine = { mark: 'optout', word: 'Email · Not sent', reason: W.unsubscribed };
-const SMS_OUT: ReachLine = { mark: 'optout', word: 'SMS · Not sent', reason: W.textedStop };
+const EMAIL_OUT: ReachLine = {
+  mark: 'optout',
+  word: say.where(CHANNEL_WORD.email, W.notSent),
+  reason: W.unsubscribed,
+};
+const SMS_OUT: ReachLine = {
+  mark: 'optout',
+  word: say.where(CHANNEL_WORD.sms, W.notSent),
+  reason: W.textedStop,
+};
 
 export interface ReachGroup {
   word: string;
@@ -277,14 +296,14 @@ export const PARKING_GROUPS: readonly ReachGroup[] = [
         key: 'lars',
         initials: 'LJ',
         name: 'Lars Johansson',
-        lines: [EMAIL_OUT, { mark: 'none', word: 'SMS', reason: W.noPhone }, PAGE_LINE],
+        lines: [EMAIL_OUT, { mark: 'none', word: CHANNEL_WORD.sms, reason: W.noPhone }, PAGE_LINE],
         fixes: [W.addPhone, W.toldInPerson],
       },
       {
         key: 'fatima',
         initials: 'FE',
         name: 'Fatima Zahra El Idrissi',
-        lines: [SMS_OUT, { mark: 'none', word: 'Email', reason: W.noEmail }, PAGE_LINE],
+        lines: [SMS_OUT, { mark: 'none', word: CHANNEL_WORD.email, reason: W.noEmail }, PAGE_LINE],
         fixes: [W.addEmail, W.toldInPerson],
       },
       {
@@ -356,8 +375,8 @@ export const SENDING_GROUPS: readonly ReachGroup[] = [
         initials: 'KM',
         name: 'Kwame Mensah',
         lines: [
-          { mark: 'sending', word: 'Email', reason: W.sending },
-          { mark: 'sent', word: 'SMS · Sent', reason: '09:41' },
+          { mark: 'sending', word: CHANNEL_WORD.email, reason: W.sending },
+          { mark: 'sent', word: say.where(CHANNEL_WORD.sms, W.sent), reason: '09:41' },
           PAGE_LINE,
         ],
         fixes: [],
@@ -366,21 +385,24 @@ export const SENDING_GROUPS: readonly ReachGroup[] = [
         key: 'marta',
         initials: 'MS',
         name: 'Marta Silva',
-        lines: [{ mark: 'sent', word: 'Email · Sent', reason: '09:41' }, PAGE_LINE],
+        lines: [
+          { mark: 'sent', word: say.where(CHANNEL_WORD.email, W.sent), reason: '09:41' },
+          PAGE_LINE,
+        ],
         fixes: [],
       },
     ],
   },
   {
-    word: 'Reached',
+    word: W.reachedWord,
     people: [
       {
         key: 'ines',
         initials: 'ID',
         name: 'Inês Duarte',
         lines: [
-          { mark: 'delivered', word: 'Email · Delivered', reason: '09:41' },
-          { mark: 'delivered', word: W.theirPage, reason: 'Seen 09:42' },
+          { mark: 'delivered', word: say.where(CHANNEL_WORD.email, W.delivered), reason: '09:41' },
+          { mark: 'delivered', word: W.theirPage, reason: say.seenAt('09:42') },
         ],
         fixes: [],
       },
@@ -395,8 +417,12 @@ export const SENDING_GROUPS: readonly ReachGroup[] = [
         name: 'Tomás Ferreira',
         bounced: 'tomas.ferreira@gmial.com',
         lines: [
-          { mark: 'notsent', word: 'Email · Not sent', reason: W.addressBouncing },
-          { mark: 'none', word: 'SMS', reason: W.noPhone },
+          {
+            mark: 'notsent',
+            word: say.where(CHANNEL_WORD.email, W.notSent),
+            reason: W.addressBouncing,
+          },
+          { mark: 'none', word: CHANNEL_WORD.sms, reason: W.noPhone },
           PAGE_LINE,
         ],
         fixes: [W.fixEmail, W.addPhone],
@@ -428,8 +454,8 @@ export const MATCHES: readonly { name: string; line: string }[] = [
   { name: 'Duboise Akande', line: '+234 802 555 0199' },
 ];
 
-export const SCHEDULE_AT = { date: '2026-11-05', time: '09:00' };
-export const EVENT_ENDS = { at: '2026-11-07T15:00:00Z', day: 'Sat, Nov 7', time: '15:00' };
+export const SCHEDULE_AT = { date: DAYS.sched, time: '09:00' };
+export const EVENT_ENDS = { at: '2026-11-07T15:00:00Z', date: DAYS.ends, time: '15:00' };
 export const READER_NOW = '2026-11-03T09:41:00Z';
 export const CANCELLED_AT = '09:46';
 export const FOLLOW_UP = 'Also: the car park closes at 23:30, so plan your way home.';
@@ -517,5 +543,3 @@ export function filledFor(text: string, name: string): string {
     FILLED[token](name),
   );
 }
-
-export const TO_ALL = 'To all guests';

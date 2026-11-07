@@ -50,6 +50,8 @@ import {
   type RowId,
   anyOnItsWay,
   badgeOf,
+  blankDraft,
+  channelsWords,
   checkOf,
   dayWords,
   draftTitle,
@@ -74,16 +76,37 @@ import {
   type NotReached,
   PARKING,
   SCHEDULE_AT,
-  TO_ALL,
+  DAYS,
+  INVITE_TIME,
+  PARKING_TIME,
+  RESEND,
 } from './MessagesSample.ts';
-import { CHANNEL_WORD, W, say } from './MessagesWords.ts';
+import { CHANNEL_WORD, type ChannelKey, W, say } from './MessagesWords.ts';
 import { FixEmail, WhoReached, reachViewOf } from './WhoReached.tsx';
 
-const REACHED_LINE: Record<ReachedOf, string> = {
-  parking: `${W.allGuests} · ${W.onTheirPage.toLowerCase()} · told by Email and SMS · Mon, Nov 2, 18:20`,
-  invite: `${TO_ALL} · Email and SMS · Mon, Oct 12, 10:00`,
-  draft: `To Coming · 96 · ${W.onTheirPage.toLowerCase()} · told by Email and SMS · 09:41`,
-};
+const SAMPLE_CHANNELS: readonly ChannelKey[] = ['email', 'sms'];
+
+function reachedLine(m: Messages, of: ReachedOf, locale: string): string {
+  const told = channelsWords(SAMPLE_CHANNELS, locale);
+  if (of === 'parking')
+    return [
+      W.allGuests,
+      say.onPageTold(told),
+      say.dayTime(dayWords(DAYS.parking, locale), PARKING_TIME),
+    ].join(' · ');
+  if (of === 'invite')
+    return [W.toAllGuests, told, say.dayTime(dayWords(DAYS.invite, locale), INVITE_TIME)].join(
+      ' · ',
+    );
+  const draft = m.draft ?? blankDraft();
+  const ticked = (['email', 'sms', 'wa'] as const).filter((key) => draft.channels[key]);
+
+  return [
+    say.toGroup(toChip(draft.to)),
+    say.onPageTold(channelsWords(ticked, locale)),
+    draft.time,
+  ].join(' · ');
+}
 
 function reachedTitle(m: Messages, of: ReachedOf): string {
   if (of === 'parking') return PARKING;
@@ -271,6 +294,7 @@ export function MessagesScreen({
   };
   const talk: Talk = {
     m,
+    locale,
     dispatch,
     wide,
     columns: shell.layout === 'landscape',
@@ -350,7 +374,7 @@ export function MessagesScreen({
     onSend: () => dispatch({ type: 'send' }),
     onResent: () => {
       dispatch({ type: 'resent' });
-      dispatch({ type: 'told', words: say.queued(3) });
+      dispatch({ type: 'told', words: say.queued(RESEND.count) });
     },
     ownDesign,
   };
@@ -365,6 +389,7 @@ export function MessagesScreen({
     <MessagesList
       m={m}
       wide={wide}
+      locale={locale}
       head={
         shell.layout === 'landscape' ? (
           <Bell
@@ -496,7 +521,7 @@ export function MessagesScreen({
         onNow={() => dispatch({ type: 'when', open: false })}
         onSchedule={(at) => {
           dispatch({ type: 'schedule', at });
-          readOut(say.scheduledSaid(dayWords(at.date), at.time));
+          readOut(say.scheduledSaid(dayWords(at.date, locale), at.time));
           setTimeout(() => moveScreenReaderFocus(headRef.current), 500);
         }}
       />
@@ -538,7 +563,7 @@ export function MessagesScreen({
                           {reachedTitle(m, m.open.of)}
                         </Text>
                         <Text size={15} weight="medium" style={styles.secondary}>
-                          {REACHED_LINE[m.open.of]}
+                          {reachedLine(m, m.open.of, locale)}
                         </Text>
                       </View>,
                       Math.max(insets.bottom, tokens.spaceLg),

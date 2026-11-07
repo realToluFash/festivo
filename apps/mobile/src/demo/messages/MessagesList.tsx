@@ -24,6 +24,7 @@ import {
   draftTitle,
   isScheduled,
   ownThreads,
+  rowDay,
   sectionsOf,
 } from './MessagesModel.ts';
 import {
@@ -33,7 +34,8 @@ import {
   PARKING_REACH,
   READER,
   SAMPLE_EVENT_ID,
-  TO_ALL,
+  DAYS,
+  INVITATION,
 } from './MessagesSample.ts';
 import { CHANNEL_WORD, W, say } from './MessagesWords.ts';
 
@@ -90,7 +92,7 @@ interface Shown {
   tag?: RowTag | undefined;
 }
 
-function shownRow(m: Messages, id: RowId): Shown {
+function shownRow(m: Messages, id: RowId, locale: string): Shown {
   if (id.kind === 'draft') {
     const own = ownThreads(m).find((one) => one.id === id.id);
     const draft = own?.draft;
@@ -107,7 +109,7 @@ function shownRow(m: Messages, id: RowId): Shown {
     return {
       title: own == null ? W.newMessage : draftTitle(own.draft, own.thread),
       titleLines: 1,
-      line: own == null ? '' : draftLine(own.draft, own.thread),
+      line: own == null ? '' : draftLine(own.draft, own.thread, locale),
       time: draft == null || isScheduled(draft) ? '' : draft.time || NOW,
       lead: <GroupTile />,
       tag,
@@ -117,15 +119,15 @@ function shownRow(m: Messages, id: RowId): Shown {
     if (id.key === 'parking')
       return {
         title: PARKING,
-        line: `${TO_ALL} · ${say.didntGetIt(PARKING_REACH.notReached)}`,
-        time: 'Mon',
+        line: `${W.toAllGuests} · ${say.didntGetIt(PARKING_REACH.notReached)}`,
+        time: rowDay(DAYS.parking, '', locale),
         lead: <GroupTile />,
         tag: { kind: 'waiting', word: say.notReached(PARKING_REACH.notReached) },
       };
     return {
       title: W.invitation,
-      line: `${TO_ALL} · ${say.reached(140, 142)}`,
-      time: 'Oct 12',
+      line: `${W.toAllGuests} · ${say.reached(INVITATION.reached, INVITATION.of)}`,
+      time: rowDay(DAYS.invite, '', locale),
       lead: <GroupTile />,
     };
   }
@@ -149,7 +151,9 @@ function shownRow(m: Messages, id: RowId): Shown {
   return {
     title: name,
     line: answer == null ? say.where(where, asked) : say.where(W.onTheirPage, say.you(answer.text)),
-    time: answer?.time ?? (id.key === 'lucia' && m.arrived ? 'now' : guest.asked.row),
+    time:
+      answer?.time ??
+      (id.key === 'lucia' && m.arrived ? 'now' : rowDay(guest.asked.day, guest.asked.time, locale)),
     lead: <Avatar initials={initials} side={40} tone={done ? 4 : 0} />,
     tag: unmatched ? { kind: 'notyet', word: W.notMatched } : undefined,
   };
@@ -250,6 +254,7 @@ function Untold({
 export function MessagesList({
   m,
   wide,
+  locale,
   head,
   refFor,
   onOpen,
@@ -259,6 +264,7 @@ export function MessagesList({
 }: {
   m: Messages;
   wide: boolean;
+  locale: string;
   head?: ReactNode;
   refFor: (key: string) => (node: ViewInstance | null) => void;
   onOpen: (id: RowId) => void;
@@ -269,7 +275,7 @@ export function MessagesList({
   const sections = sectionsOf(m);
   const lit = (id: RowId) => wide && sameOpen(m, id);
   const item = (id: RowId): ListItem => {
-    const shown = shownRow(m, id);
+    const shown = shownRow(m, id, locale);
     const selected = lit(id);
     const label = [shown.title, shown.line, shown.time, shown.tag?.word].filter(Boolean).join(', ');
     const row = (

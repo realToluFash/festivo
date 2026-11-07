@@ -13,8 +13,10 @@ import {
   type Draft,
   type Messages,
   type Open,
+  channelsWords,
   checkOf,
   dayWords,
+  rowDay,
   draftTitle,
   messageName,
   resultOf,
@@ -30,7 +32,9 @@ import {
   PARKING_REACH,
   READER,
   SCHEDULE_AT,
-  TO_ALL,
+  DAYS,
+  PARKING_TIME,
+  TO_FIGURES,
   EVENT,
   HOSTS,
 } from './MessagesSample.ts';
@@ -71,6 +75,7 @@ export interface Talk {
   onCaret: (at: number) => void;
   onWho: () => void;
   onWhoSent: () => void;
+  locale: string;
   onWhoInvited: () => void;
   onFollowUp: (base: ManyKey | null) => void;
   onRetry: () => void;
@@ -100,15 +105,20 @@ export interface Parts {
   foot?: ReactNode;
 }
 
-const many = `${W.onTheirPage.toLowerCase()} · told by Email and SMS`;
+const SAMPLE_CHANNELS: readonly ChannelKey[] = ['email', 'sms'];
 
-function toldBy(channels: Record<ChannelKey, boolean>): string {
-  const words = (['email', 'sms', 'wa'] as const)
-    .filter((key) => channels[key])
-    .map((key) => CHANNEL_WORD[key]);
-
-  return new Intl.ListFormat('en', { type: 'conjunction' }).format(words);
+function many(locale: string): string {
+  return say.onPageTold(channelsWords(SAMPLE_CHANNELS, locale));
 }
+
+function toldBy(channels: Record<ChannelKey, boolean>, locale: string): string {
+  return channelsWords(
+    (['email', 'sms', 'wa'] as const).filter((key) => channels[key]),
+    locale,
+  );
+}
+
+const ALL = TO_FIGURES.all.count;
 
 function told(channel: keyof typeof CHANNEL_IN_LINE): string {
   return say.toldBy(CHANNEL_IN_LINE[channel]);
@@ -153,7 +163,7 @@ function unknownParts(talk: Talk): Parts {
     lead: <Avatar initials={matched == null ? '?' : initialsOf(matched)} side={44} tone={0} />,
     stream: (
       <>
-        <DayRule text="Mon, Nov 2" />
+        <DayRule text={dayWords(DAYS.parking, talk.locale)} />
         <GuestBubble text={guest.asked.text} where="email" when={guest.asked.time} />
         {matched == null ? (
           <View style={styles.unmatched}>
@@ -213,14 +223,17 @@ function guestParts(talk: Talk, key: GuestKey): Parts {
 
   if (key === 'ines')
     history.push(
-      <DayRule key="d1" text="Oct 12" />,
+      <DayRule key="d1" text={dayWords(DAYS.invite, talk.locale)} />,
       <Stub
         key="inv"
         title={W.invitation}
         mark="mail"
-        bits={[{ word: 'Email · Delivered', mark: 'delivered' }, { word: 'Seen Oct 13' }]}
+        bits={[
+          { word: say.where(CHANNEL_WORD.email, W.delivered), mark: 'delivered' },
+          { word: say.seenAt(rowDay(DAYS.inviteSeen, '', talk.locale)) },
+        ]}
       />,
-      <DayRule key="d2" text="Mon, Nov 2" />,
+      <DayRule key="d2" text={dayWords(DAYS.parking, talk.locale)} />,
       <Stub
         key="park"
         title={PARKING}
@@ -234,7 +247,7 @@ function guestParts(talk: Talk, key: GuestKey): Parts {
       <DayRule key="d3" text={W.today} />,
     );
   if (key === 'kwame') {
-    if (talk.wide) history.push(<DayRule key="d1" text="Mon, Nov 2" />);
+    if (talk.wide) history.push(<DayRule key="d1" text={dayWords(DAYS.parking, talk.locale)} />);
     history.push(
       <Stub
         key="park"
@@ -249,12 +262,16 @@ function guestParts(talk: Talk, key: GuestKey): Parts {
     );
   }
   if (key === 'lucia') history.push(<DayRule key="d1" text={W.today} />);
-  if (key === 'marta') history.push(<DayRule key="d1" text="Sat" />);
+  if (key === 'marta') history.push(<DayRule key="d1" text={dayWords(DAYS.marta, talk.locale)} />);
 
   const stream = (
     <>
       {history}
-      <GuestBubble text={guest.asked.text} where={guest.asked.where} when={guest.asked.time} />
+      <GuestBubble
+        text={guest.asked.text}
+        where={guest.asked.where}
+        when={guest.asked.time || rowDay(guest.asked.day, '', talk.locale)}
+      />
       {key === 'kwame' && <SystemLine text={W.cameBySms} mark="sms" />}
       {answer != null && (
         <HostBubble
@@ -452,12 +469,13 @@ function ownParts(talk: Talk, followUp: string): Own {
   if (draft.step === 'check')
     return {
       head: talk.wide ? head : undefined,
-      line: talk.wide ? undefined : `${toWord} · ${toldBy(draft.channels)}`,
+      line: talk.wide ? undefined : `${toWord} · ${toldBy(draft.channels, talk.locale)}`,
       stream: (
         <>
           {earlier}
           <CheckCard
             draft={draft}
+            locale={talk.locale}
             headRef={talk.checkRef}
             goRef={talk.refFor('go')}
             onGo={talk.onConfirm}
@@ -476,8 +494,8 @@ function ownParts(talk: Talk, followUp: string): Own {
 
   return {
     line: Object.values(draft.channels).some(Boolean)
-      ? `${toWord} · ${W.onTheirPage.toLowerCase()} · told by ${toldBy(draft.channels)}`
-      : `${toWord} · ${W.onTheirPage.toLowerCase()}`,
+      ? `${toWord} · ${say.onPageTold(toldBy(draft.channels, talk.locale))}`
+      : `${toWord} · ${say.onPage}`,
     stream: (
       <>
         {earlier}
@@ -501,7 +519,7 @@ function ownParts(talk: Talk, followUp: string): Own {
 function scheduledParts(talk: Talk, draft: Draft): Parts {
   const { dispatch } = talk;
   const at = draft.at ?? SCHEDULE_AT;
-  const day = dayWords(at.date);
+  const day = dayWords(at.date, talk.locale);
   const cancelled = draft.step === 'cancelled';
   const shown = draft.was ?? { subject: draft.subject, body: draft.body };
   const bubble = (
@@ -541,6 +559,7 @@ function scheduledParts(talk: Talk, draft: Draft): Parts {
     rest = (
       <CheckCard
         draft={draft}
+        locale={talk.locale}
         headRef={talk.checkRef}
         goRef={talk.refFor('go')}
         onGo={talk.onConfirm}
@@ -564,7 +583,7 @@ function scheduledParts(talk: Talk, draft: Draft): Parts {
     rest = (
       <>
         <Text size={13.5} weight="medium" style={styles.goes}>
-          {say.goesAt(`${day}, ${at.time} London time`)}
+          {say.goesAt(say.inZone(day, at.time, W.londonTime))}
         </Text>
         <View style={styles.scheduledActions}>
           <TextAction
@@ -661,8 +680,8 @@ function manyParts(talk: Talk, key: ManyKey): Parts {
         own?.writing === true
           ? undefined
           : m.resending && !talk.wide
-            ? `${TO_ALL} · 142 · Mon, Nov 2`
-            : `${TO_ALL} · 142 · ${many}`,
+            ? `${W.toAllGuests} · ${ALL} · ${dayWords(DAYS.parking, talk.locale)}`
+            : `${W.toAllGuests} · ${ALL} · ${many(talk.locale)}`,
       lead: <GroupTile side={44} />,
       head: own?.writing === true ? own.head : undefined,
       bare: own?.bare,
@@ -671,11 +690,14 @@ function manyParts(talk: Talk, key: ManyKey): Parts {
           own.stream
         ) : (
           <>
-            <DayRule text="Mon, Nov 2" />
+            <DayRule text={dayWords(DAYS.parking, talk.locale)} />
             <HostBubble
               subject={PARKING}
               text={PARKING_BODY}
-              bits={[{ word: W.onTheirPage, where: 'page' }, { word: say.byAt(READER, '18:20') }]}
+              bits={[
+                { word: W.onTheirPage, where: 'page' },
+                { word: say.byAt(READER, PARKING_TIME) },
+              ]}
             />
             {m.resending ? (
               <ResendCheck
@@ -702,7 +724,10 @@ function manyParts(talk: Talk, key: ManyKey): Parts {
   if (key === 'invite')
     return {
       title: W.invitation,
-      line: own?.writing === true ? undefined : `${TO_ALL} · 142 · Email and SMS`,
+      line:
+        own?.writing === true
+          ? undefined
+          : `${W.toAllGuests} · ${ALL} · ${channelsWords(SAMPLE_CHANNELS, talk.locale)}`,
       lead: <GroupTile side={44} />,
       head: own?.writing === true ? own.head : undefined,
       bare: own?.bare,
@@ -711,7 +736,7 @@ function manyParts(talk: Talk, key: ManyKey): Parts {
           own.stream
         ) : (
           <>
-            <DayRule text="Mon, Oct 12" />
+            <DayRule text={dayWords(DAYS.invite, talk.locale)} />
             <SystemLine text={say.sentWhenLive(READER)} glyph="events" />
             <SoirelyCard
               title={say.inviteTitle(EVENT, HOSTS)}

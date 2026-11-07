@@ -6,6 +6,7 @@ import {
   BODY,
   CANCELLED_AT,
   CANT_TELL,
+  DAYS,
   EVENT_ENDS,
   FIXED_ADDRESS,
   FOLLOW_UP,
@@ -28,7 +29,7 @@ import {
   type ToGroup,
   formatCount,
 } from './MessagesSample.ts';
-import { type ChannelKey, W, say } from './MessagesWords.ts';
+import { CHANNEL_WORD, type ChannelKey, W, say } from './MessagesWords.ts';
 
 /** Every state of Messaging B, each a `?state=` in both demos (spec §7 and §7b), in the spec's order. */
 export const MESSAGES_STATES = [
@@ -759,7 +760,6 @@ export function sectionsOf(m: Messages): Sections {
   };
 }
 
-/** The badge on Messages: the guests waiting and the senders not matched, added together (sc-3976). */
 export function badgeOf(
   m: Messages,
 ): { waiting: number; notMatched: number; total: number } | null {
@@ -847,21 +847,39 @@ export function draftTitle(draft: Draft, thread: Thread | null = null): string {
   return writing(draft) && draft.at == null ? W.newMessage : messageName(draft);
 }
 
-export function dayWords(date: string): string {
-  return new Intl.DateTimeFormat('en-US', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-    timeZone: 'UTC',
-  }).format(new Date(`${date}T12:00:00Z`));
+function wallDate(date: string, locale: string, options: Intl.DateTimeFormatOptions): string {
+  return new Intl.DateTimeFormat(locale, { ...options, timeZone: 'UTC' }).format(
+    new Date(`${date}T12:00:00Z`),
+  );
 }
 
-export function draftLine(draft: Draft, thread: Thread | null = null): string {
+export function dayWords(date: string, locale = 'en-US'): string {
+  return wallDate(date, locale, { weekday: 'short', month: 'short', day: 'numeric' });
+}
+
+/** A row's when: the time today, the weekday within the week, else the month and day, in the reader's locale. */
+export function rowDay(date: string, time: string, locale = 'en-US'): string {
+  if (date === DAYS.today && time !== '') return time;
+  const days =
+    (Date.parse(`${DAYS.today}T12:00:00Z`) - Date.parse(`${date}T12:00:00Z`)) / 86_400_000;
+
+  return days < 7
+    ? wallDate(date, locale, { weekday: 'short' })
+    : wallDate(date, locale, { month: 'short', day: 'numeric' });
+}
+
+export function channelsWords(keys: readonly ChannelKey[], locale = 'en-US'): string {
+  return new Intl.ListFormat(locale, { type: 'conjunction' }).format(
+    keys.map((key) => CHANNEL_WORD[key]),
+  );
+}
+
+export function draftLine(draft: Draft, thread: Thread | null = null, locale = 'en-US'): string {
   const result = resultOf(draft);
   if (draft.step === 'cancelled')
     return say.cancelledRow(READER, draft.cancelledAt ?? CANCELLED_AT);
   if (draft.at != null)
-    return `${say.toGroup(TO_WORD[draft.to])} · ${dayWords(draft.at.date)}, ${draft.at.time}`;
+    return `${say.toGroup(TO_WORD[draft.to])} · ${say.dayTime(dayWords(draft.at.date, locale), draft.at.time)}`;
   const line = (() => {
     switch (draft.step) {
       case 'countdown':

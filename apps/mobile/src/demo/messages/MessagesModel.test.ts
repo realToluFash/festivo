@@ -8,7 +8,9 @@ import {
   type RowId,
   badgeOf,
   blankDraft,
+  channelsWords,
   checkOf,
+  dayWords,
   draftLine,
   draftTitle,
   laterRefused,
@@ -16,6 +18,7 @@ import {
   messagesStateOf,
   reduce,
   resultOf,
+  rowDay,
   sampleDraft,
   sectionsOf,
   spokenAt,
@@ -599,5 +602,21 @@ describe('Tell guests after a change', () => {
       ).lines,
     ).toEqual([]);
     expect(tellChange(wedding, wedding, 'en-US').lines).toEqual([]);
+  });
+});
+
+describe('the sample’s days and channels', () => {
+  it('follow the reader’s locale', () => {
+    expect(dayWords('2026-11-02', 'en-US')).toBe('Mon, Nov 2');
+    expect(dayWords('2026-11-02', 'en-GB')).toBe('Mon 2 Nov');
+    expect(channelsWords(['email', 'sms'], 'en-US')).toBe('Email and SMS');
+    expect(channelsWords(['email', 'sms', 'wa'], 'en-US')).toBe('Email, SMS, and WhatsApp');
+  });
+
+  it('give a row the time today, the weekday this week, else the month and day', () => {
+    expect(rowDay('2026-11-03', '08:12', 'en-US')).toBe('08:12');
+    expect(rowDay('2026-11-02', '', 'en-US')).toBe('Mon');
+    expect(rowDay('2026-10-31', '', 'en-US')).toBe('Sat');
+    expect(rowDay('2026-10-12', '', 'en-US')).toBe('Oct 12');
   });
 });

@@ -94,17 +94,42 @@ function SmsNotice() {
   );
 }
 
+function WhatsAppNotice() {
+  return (
+    <View style={styles.sms}>
+      <View style={styles.from}>
+        <MessageGlyph name="wa" size={14} ink={tokens.colorInkSecondary} />
+        <Text size={13} weight="semibold" style={styles.secondary}>
+          {say.whatsAppTemplate}
+        </Text>
+      </View>
+      <View style={styles.waCard}>
+        <Text size={14.5} weight="medium" style={[styles.body145, styles.waBody]}>
+          {say.noticeBody(HOSTS, EVENT)}
+        </Text>
+        <View style={styles.waButton}>
+          <Text size={14.5} weight="semibold" style={styles.accent}>
+            {W.readOnYourPage}
+          </Text>
+        </View>
+      </View>
+    </View>
+  );
+}
+
 /** The preview: the page the guest opens, and what Soirely sends by each ticked channel, never the hosts' words. */
 export function Preview({ draft, columns }: { draft: Draft; columns: boolean }) {
-  const notices = (
+  const any = draft.channels.email || draft.channels.sms || draft.channels.wa;
+  const notices = any ? (
     <View style={styles.notices}>
       <Text size={14} weight="semibold" accessibilityRole="header">
         {W.whatSoirelySends}
       </Text>
       {draft.channels.email && <EmailNotice />}
       {draft.channels.sms && <SmsNotice />}
+      {draft.channels.wa && <WhatsAppNotice />}
     </View>
-  );
+  ) : null;
 
   return (
     <View style={styles.preview}>
@@ -206,5 +231,20 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colorInsetBorder,
   },
   lines: { gap: tokens.spaceXxs },
+  accent: { color: tokens.colorAccentText },
+  waCard: {
+    maxWidth: 320,
+    overflow: 'hidden',
+    borderRadius: tokens.spaceXl,
+    backgroundColor: tokens.colorInsetBorder,
+  },
+  waBody: { paddingVertical: tokens.spaceMd, paddingHorizontal: 14 },
+  waButton: {
+    minHeight: tokens.sizeHit,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderTopWidth: 1,
+    borderTopColor: tokens.colorBorder,
+  },
   small: { lineHeight: 13.5 * 1.45 },
 });
