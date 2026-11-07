@@ -1,5 +1,15 @@
 import { emailProblem, type MemberStanding, memberStanding } from '@soirely/domain';
 
+import {
+  counted,
+  fold,
+  type Handed,
+  handedOver,
+  type HandStart,
+  handStart,
+  type Leads,
+  ledByLine,
+} from './handover.ts';
 import { SAMPLE } from './rules.ts';
 import { type SettingsSay, type Viewer, VIEWERS } from './settings.ts';
 
@@ -33,7 +43,7 @@ export const ANA = VIEWERS.ana.id;
 export const MARTA = 'marta.silva@ire.events';
 export const LUCIA = 'lucia.gomez@outlook.com';
 const DANIEL = 'daniel.kim@ire.events';
-const TOM = 'tom.becker@gmail.com';
+export const TOM = 'tom.becker@gmail.com';
 
 function person(
   id: string,
@@ -99,6 +109,50 @@ export function samplePeople(): Person[] {
       'former',
     ),
   ].map((one, tone) => ({ ...one, tone }));
+}
+
+const MORE = [
+  'Joana Ferreira',
+  'Jonas Weber',
+  'João Pereira',
+  'Amara Okafor',
+  'Chen Wei',
+  'Sofía Herrera',
+  'Lars Nilsson',
+  'Aisha Bello',
+  'Mateo Rossi',
+  'Hana Sato',
+  'Pierre Lambert',
+] as const;
+
+/** Eleven more members, for the person menu's search above 15 (sc-614). */
+export function morePeople(): Person[] {
+  return MORE.map((name, index) => ({
+    ...person(`${fold(name.split(' ')[0] ?? name)}@ire.events`, name, 'Member', [
+      { what: 'Joined with a join code', when: '2026-10-05' },
+    ]),
+    tone: index + 9,
+  }));
+}
+
+const EVENT = {
+  wed: 'evt-wed-4',
+  ireti: 'evt-ireti-2',
+  gala: 'evt-gala-4',
+  party: 'evt-party-2',
+  cena: 'evt-cena-4',
+  draft: 'evt-draft-4',
+  off: 'evt-off',
+  mtl: 'evt-mtl-3',
+} as const;
+
+/** Lead on an event, the one kind of work a member has (sc-614): Priya leads 3, Ana 2, Marta 2. */
+export function sampleLeads(): Leads {
+  return {
+    [PRIYA]: [EVENT.wed, EVENT.ireti, EVENT.off],
+    [ANA]: [EVENT.gala, EVENT.mtl],
+    [MARTA]: [EVENT.party, EVENT.cena],
+  };
 }
 
 export interface Invitation {
@@ -374,7 +428,7 @@ export type Notice =
   | { kind: 'sent'; email: string }
   | { kind: 'approved'; id: string; role: string }
   | { kind: 'turnedDown'; id: string }
-  | { kind: 'removed'; id: string };
+  | { kind: 'removed'; id: string; handed?: Handed };
 
 export type Claim = 'unclaimed' | 'open' | 'found' | 'withdrawn' | 'lapsed' | 'stopped';
 
@@ -391,6 +445,7 @@ export interface MembersCard {
 }
 
 export const INVITATIONS_NOTE = 'Nobody has an account here until they accept.';
+const FORMER_KEPT = 'They are listed under Former, with everything they did kept.';
 export const KEEPS_WORKING =
   'Events, guests and your permissions keep working. Only Owner actions, such as billing, wait for an owner.';
 
@@ -402,7 +457,7 @@ export function membersCard({
   say,
 }: {
   people: readonly Person[];
-  viewer: Pick<Viewer, 'manages'>;
+  viewer: Pick<Viewer, 'id' | 'manages'>;
   notice: Notice | null;
   claim: Claim | null;
   say: SettingsSay;
@@ -411,6 +466,10 @@ export function membersCard({
   const seeFormer = { label: 'See Former', does: 'former' } as const;
   const become = { label: 'Become the owner', does: 'become' } as const;
   const unowned = `${ORGANISATION} has no active owner`;
+  const asking = viewer.manages ? people.filter((one) => one.status === 'pendingApproval') : [];
+  const first = asking[0];
+  const answer: CardStep | null =
+    first == null ? null : { label: `Answer ${first.name}`, does: 'answer', id: first.id };
 
   switch (notice?.kind) {
     case 'sent':
@@ -431,15 +490,23 @@ export function membersCard({
         lines: ['They are listed under Former.'],
         step: seeFormer,
       };
-    case 'removed':
-      return {
-        ...quiet,
-        says: `${nameOf(people, notice.id)} was removed`,
-        lines: [
-          `Their events stay with ${ORGANISATION}. They are listed under Former, with everything they did kept.`,
-        ],
-        step: seeFormer,
-      };
+    case 'removed': {
+      const handed = notice.handed;
+
+      return handed == null
+        ? {
+            ...quiet,
+            says: `${nameOf(people, notice.id)} was removed`,
+            lines: [`Their events stay with ${ORGANISATION}. ${FORMER_KEPT}`],
+            step: seeFormer,
+          }
+        : {
+            ...quiet,
+            says: `${nameOf(people, notice.id)} was removed`,
+            lines: [`${ledByLine(handed, nameOf(people, handed.to), viewer.id)} ${FORMER_KEPT}`],
+            step: answer,
+          };
+    }
     case undefined:
       break;
   }
@@ -491,8 +558,6 @@ export function membersCard({
   }
 
   const all = people.filter((one) => isShown(one.status, 'all'));
-  const asking = viewer.manages ? people.filter((one) => one.status === 'pendingApproval') : [];
-  const first = asking[0];
   const faces = all.slice(0, 5);
 
   return {
@@ -500,13 +565,13 @@ export function membersCard({
       ' · ',
     ),
     lines: [],
-    step: first == null ? null : { label: `Answer ${first.name}`, does: 'answer', id: first.id },
+    step: answer,
     faces,
     more: all.length - faces.length,
   };
 }
 
-export type PersonEvent = 'justSuspended' | 'restored' | 'roleChanged';
+export type PersonEvent = 'justSuspended' | 'restored' | 'roleChanged' | 'handedOver';
 
 export interface PersonView {
   lines: string[];
@@ -516,9 +581,11 @@ export interface PersonView {
   goGeneral: boolean;
   suspend: boolean;
   remove: string | null;
+  handOver: boolean;
 }
 
 export const LOSES = `They lose access on their next request. Their events stay with ${ORGANISATION}.`;
+const OWNER_ONLY = 'Only an owner can change an owner’s role or remove them.';
 export const TAKES_EFFECT = 'Takes effect on their next request. Nobody is signed out.';
 export const ROLE_KEPT =
   'Their role is kept while they’re suspended. You can change it once their access is restored.';
@@ -556,22 +623,31 @@ export function personView({
   people,
   viewer,
   event,
+  handed = null,
   say,
 }: {
   person: Person;
   people: readonly Person[];
   viewer: Viewer;
   event: PersonEvent | null;
+  handed?: Handed | null;
   say: SettingsSay;
 }): PersonView {
   const view: PersonView = {
-    lines: eventLines(person, event, say),
+    lines:
+      event === 'handedOver' && handed != null
+        ? [
+            ledByLine(handed, nameOf(people, handed.to), viewer.id),
+            counted('handTail', handed.count, { name: person.name }),
+          ]
+        : eventLines(person, event, say),
     step: null,
     kept: false,
     after: [],
     goGeneral: false,
     suspend: false,
     remove: null,
+    handOver: false,
   };
 
   switch (standingOf(person, people, viewer)) {
@@ -602,7 +678,9 @@ export function personView({
         ],
       };
     case 'ownerOnly':
-      return { ...view, after: ['Only an owner can change an owner’s role or remove them.'] };
+      return suspended(person.status)
+        ? { ...view, lines: [...view.lines, OWNER_ONLY] }
+        : { ...view, after: [OWNER_ONLY] };
     case 'beyondGrant':
     case 'readOnly':
       return view;
@@ -614,6 +692,7 @@ export function personView({
   if (suspended(person.status))
     return {
       ...view,
+      handOver: true,
       step: {
         label: person.status === 'domainSuspended' ? 'Restore' : 'Restore access',
         does: 'restore',
@@ -766,7 +845,8 @@ export type MembersDialog =
   | { kind: 'invite'; email: string; role: string; problem: string | null }
   | { kind: 'request'; id: string; picked: string; ask: 'turnDown' | 'discard' | null }
   | { kind: 'role'; id: string; picked: string; ask: boolean; proving: Proving | null }
-  | { kind: 'remove' | 'suspend'; id: string }
+  | { kind: 'remove' | 'handOver'; id: string; hand?: HandStart }
+  | { kind: 'suspend'; id: string }
   | { kind: 'claim'; check: Check; copied: string | null; ask: boolean }
   | { kind: 'withdraw' };
 
@@ -781,6 +861,8 @@ export interface MembersStart {
   notice: Notice | null;
   claim: Claim | null;
   dialog: MembersDialog | null;
+  leads: Leads;
+  handed: Handed | null;
 }
 
 export const MEMBERS_STATES = [
@@ -828,6 +910,21 @@ export const MEMBERS_STATES = [
   'found',
   'lapsed',
   'stopped',
+  'handover',
+  'handoverMenu',
+  'handoverPicked',
+  'handoverLong',
+  'handoverSearch',
+  'handoverSearchNobody',
+  'removingNoWork',
+  'handoverSending',
+  'handoverFailed',
+  'handoverDone',
+  'handoverNow',
+  'handoverNowSending',
+  'handoverNowFailed',
+  'handoverNowDone',
+  'handoverReadOnly',
 ] as const;
 
 export type MembersState = (typeof MEMBERS_STATES)[number];
@@ -846,7 +943,7 @@ const CLAIMS: Partial<Record<MembersState, Claim>> = {
   stopped: 'stopped',
 };
 
-function dialogOf(state: MembersState): MembersDialog | null {
+function dialogOf(state: MembersState, viewer: Pick<Viewer, 'id'>): MembersDialog | null {
   const request = { kind: 'request', id: LUCIA, picked: 'Member', ask: null } as const;
   const role = {
     kind: 'role',
@@ -857,6 +954,10 @@ function dialogOf(state: MembersState): MembersDialog | null {
   } as const;
   const proving = { password: '', code: '', problem: null };
   const claim = { kind: 'claim', check: 'resting', copied: null, ask: false } as const;
+  const remove = (hand?: Partial<HandStart>) =>
+    ({ kind: 'remove', id: PRIYA, hand: handStart(viewer.id, hand) }) as const;
+  const handOver = (hand?: Partial<HandStart>) =>
+    ({ kind: 'handOver', id: MARTA, hand: handStart(viewer.id, hand) }) as const;
 
   switch (state) {
     case 'invite':
@@ -883,7 +984,30 @@ function dialogOf(state: MembersState): MembersDialog | null {
     case 'roleDiscard':
       return { ...role, picked: 'Admin', ask: true };
     case 'removing':
-      return { kind: 'remove', id: PRIYA };
+    case 'handover':
+      return remove();
+    case 'handoverMenu':
+      return remove({ menu: true });
+    case 'handoverPicked':
+      return { ...remove(), hand: handStart(ANA) };
+    case 'handoverLong':
+      return { ...remove(), id: JULIEN };
+    case 'handoverSearch':
+      return remove({ menu: true, query: 'jo' });
+    case 'handoverSearchNobody':
+      return remove({ menu: true, query: 'kemi' });
+    case 'removingNoWork':
+      return { ...remove(), id: TOM };
+    case 'handoverSending':
+      return remove({ phase: 'held' });
+    case 'handoverFailed':
+      return remove({ phase: 'failed' });
+    case 'handoverNow':
+      return handOver();
+    case 'handoverNowSending':
+      return handOver({ phase: 'held' });
+    case 'handoverNowFailed':
+      return handOver({ phase: 'failed' });
     case 'suspending':
       return { kind: 'suspend', id: PRIYA };
     case 'makeOwner':
@@ -932,12 +1056,28 @@ function openOf(state: MembersState, viewer: Pick<Viewer, 'id'>): string | null 
     case 'justSuspended':
     case 'suspended':
     case 'restored':
+    case 'handover':
+    case 'handoverMenu':
+    case 'handoverPicked':
+    case 'handoverSearch':
+    case 'handoverSearchNobody':
+    case 'handoverSending':
+    case 'handoverFailed':
       return PRIYA;
+    case 'handoverLong':
+      return JULIEN;
+    case 'removingNoWork':
+      return TOM;
     case 'makeOwner':
     case 'makeOwnerBlank':
     case 'makeOwnerWrong':
       return ANA;
     case 'marta':
+    case 'handoverNow':
+    case 'handoverNowSending':
+    case 'handoverNowFailed':
+    case 'handoverNowDone':
+    case 'handoverReadOnly':
       return MARTA;
     case 'self':
       return viewer.id;
@@ -967,7 +1107,13 @@ function peopleOf(state: MembersState, viewer: Pick<Viewer, 'id'>): Person[] {
       return removed(people, LUCIA);
     case 'removed':
     case 'former':
+    case 'handoverDone':
       return removed(people, PRIYA);
+    case 'handoverSearch':
+    case 'handoverSearchNobody':
+      return [...people, ...morePeople()];
+    case 'handoverReadOnly':
+      return withRole(people, MARTA, 'Owner');
     case 'justSuspended':
     case 'suspended':
       return byHand(people);
@@ -980,6 +1126,34 @@ function peopleOf(state: MembersState, viewer: Pick<Viewer, 'id'>): Person[] {
   }
 }
 
+function handedOf(state: MembersState, viewer: Pick<Viewer, 'id'>): Handed | null {
+  switch (state) {
+    case 'removed':
+    case 'handoverDone':
+      return { to: ANA, count: 3 };
+    case 'handoverNowDone':
+      return { to: viewer.id, count: 2 };
+    default:
+      return null;
+  }
+}
+
+function leadsOf(state: MembersState, viewer: Pick<Viewer, 'id'>): Leads {
+  const leads = sampleLeads();
+
+  switch (state) {
+    case 'handoverLong':
+      return { ...leads, [JULIEN]: Object.values(EVENT) };
+    case 'removed':
+    case 'handoverDone':
+      return handedOver(leads, PRIYA, ANA);
+    case 'handoverNowDone':
+      return handedOver(leads, MARTA, viewer.id);
+    default:
+      return leads;
+  }
+}
+
 function noticeOf(state: MembersState): Notice | null {
   switch (state) {
     case 'sent':
@@ -989,7 +1163,8 @@ function noticeOf(state: MembersState): Notice | null {
     case 'turnedDown':
       return { kind: 'turnedDown', id: LUCIA };
     case 'removed':
-      return { kind: 'removed', id: PRIYA };
+    case 'handoverDone':
+      return { kind: 'removed', id: PRIYA, handed: { to: ANA, count: 3 } };
     default:
       return null;
   }
@@ -1006,6 +1181,7 @@ const FILTERS: Partial<Record<MembersState, Filter>> = {
 const EVENTS: Partial<Record<MembersState, PersonEvent>> = {
   justSuspended: 'justSuspended',
   restored: 'restored',
+  handoverNowDone: 'handedOver',
 };
 
 /** Where each state the boards draw starts; any other name is the whole page. */
@@ -1023,9 +1199,13 @@ export function membersStart(name: string, viewer: Pick<Viewer, 'id'>): MembersS
     notice: null,
     claim: null,
     dialog: null,
+    leads: sampleLeads(),
+    handed: null,
   };
 
   if (state == null) return start;
+
+  const dialog = dialogOf(state, viewer);
 
   return {
     ...start,
@@ -1043,6 +1223,8 @@ export function membersStart(name: string, viewer: Pick<Viewer, 'id'>): MembersS
     event: EVENTS[state] ?? null,
     notice: noticeOf(state),
     claim: CLAIMS[state] ?? null,
-    dialog: dialogOf(state),
+    dialog: dialog != null && 'id' in dialog && dialog.id === viewer.id ? null : dialog,
+    leads: leadsOf(state, viewer),
+    handed: handedOf(state, viewer),
   };
 }

@@ -417,6 +417,11 @@
   font-size: 20px;
 }
 
+.desk-card :is(.desk-says, .desk-said-lines):focus {
+  outline: none;
+  box-shadow: none;
+}
+
 .desk-on-card {
   color: var(--deskOnCard);
   font: 500 14.5px/1.4 var(--fontFamily);
@@ -1123,6 +1128,63 @@
   padding-top: var(--spaceXs);
 }
 
+.desk-ask-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceMd);
+}
+
+.desk-ask p.desk-ask-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+  color: var(--colorInk);
+}
+
+.desk-ask-alert svg {
+  flex: none;
+  margin-top: var(--spaceHair);
+  color: var(--colorInkSecondary);
+}
+
+.desk-text.is-busy {
+  gap: var(--spaceXs);
+  color: var(--colorInkSecondary);
+  cursor: default;
+}
+
+.desk-text.is-waits {
+  color: var(--colorInkTertiary);
+  cursor: default;
+}
+
+.desk-text:is(.is-busy, .is-waits):hover {
+  text-decoration: none;
+}
+
+.desk-turning {
+  flex: none;
+  box-sizing: border-box;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--colorBorder);
+  border-top-color: currentcolor;
+  border-radius: 50%;
+  animation: desk-turn 0.9s linear infinite;
+}
+
+@keyframes desk-turn {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .desk-turning {
+    animation: none;
+  }
+}
+
 .desk-asker {
   display: flex;
   align-items: center;
@@ -1259,4 +1321,10 @@
 .desk-error svg {
   flex: none;
   margin-top: 1px;
+}
+
+.desk-said-lines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceLg);
 }
