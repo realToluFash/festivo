@@ -97,24 +97,26 @@ export default function DemoTodayScreen() {
   const say = useMemo(() => sayIn(formattingLocale('en', getLocales()[0]?.languageTag)), []);
   const moment = useMemo(() => momentOf(name, say, i18n.getFixedT('en')), [name, say, i18n]);
   const numbers = useMemo(() => numbersIn(params.numbers), [params.numbers]);
+  const arrivedState = isArrivedState(params.arrived) ? params.arrived : null;
+  const live = useLive(arrivedState === 'live');
   const run = useMemo(
     () =>
       isRunState(params.now)
         ? withRun(
             moment,
             params.now,
-            figureOf(COUNTS[params.arrived === 'none' ? 'none' : 'some'], numbers),
+            figureOf(countsOf(arrivedState ?? 'some', live), numbers),
             say,
           )
         : null,
-    [moment, params.now, params.arrived, numbers, say],
+    [moment, params.now, arrivedState, live, numbers, say],
   );
-  const arrivedState = name === 'dayNow' && isArrivedState(params.arrived) ? params.arrived : null;
-  const live = useLive(arrivedState === 'live');
   const arrived = useMemo(
     () =>
-      arrivedState == null ? null : withArrived(moment, countsOf(arrivedState, live), numbers),
-    [arrivedState, moment, live, numbers],
+      name !== 'dayNow' || arrivedState == null
+        ? null
+        : withArrived(moment, countsOf(arrivedState, live), numbers),
+    [name, arrivedState, moment, live, numbers],
   );
   const { kind } = useLayout();
   const [told, setTold] = useState(params.toast);

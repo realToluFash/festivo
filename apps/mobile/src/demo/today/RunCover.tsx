@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Animated, Pressable, StyleSheet, View } from 'react-native';
+import { Animated, StyleSheet, View } from 'react-native';
 
 import { EventMesh } from '../../components/EventMesh.tsx';
-import { Glyph } from '../../components/Glyph.tsx';
 import { Text } from '../../components/Text.tsx';
 import {
   BellButton,
@@ -17,50 +16,11 @@ import {
   TabCapsule,
 } from '../../components/TodayCover.tsx';
 import { useTodayShell } from '../../components/todayShell.ts';
-import type { Now } from '../../kit/today.ts';
 import { tokens } from '../../theme/tokens.ts';
-import { ArrivedFigure } from './ArrivedCover.tsx';
+import { ArrivedFigure, Chips, WhiteButton } from './ArrivedCover.tsx';
 import { type RunMoment, type RunNow, railLabels } from './runOfShow.ts';
 
 const LONG = 40;
-
-function WhiteButton({ label, onPress }: { label: string; onPress: () => void }) {
-  return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [styles.whiteButton, pressed && styles.pressed]}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-    >
-      <Text size={16} weight="semibold" accessible={false}>
-        {label}
-      </Text>
-      <Glyph name="arrow" ink={tokens.colorInk} />
-    </Pressable>
-  );
-}
-
-function Chips({ now }: { now: Now }) {
-  const { t } = useTranslation();
-
-  return (
-    <View style={styles.chips}>
-      <View style={[styles.chip, styles.chipLight]}>
-        <View style={styles.liveRing}>
-          <View style={styles.liveDot} />
-        </View>
-        <Text size={13} weight="semibold">
-          {t('todayScreen.liveNow')}
-        </Text>
-      </View>
-      <View style={[styles.chip, styles.chipDark]}>
-        <Text size={13} weight="semibold" style={styles.white} numberOfLines={1}>
-          {now.live}
-        </Text>
-      </View>
-    </View>
-  );
-}
 
 function Rail({ run }: { run: RunNow }) {
   const [width, setWidth] = useState(0);
@@ -81,7 +41,7 @@ function Rail({ run }: { run: RunNow }) {
         {run.rail.map((stop, index) =>
           stop.state === 'now' ? null : (
             <View
-              key={stop.time}
+              key={index}
               style={[
                 styles.node,
                 { left: at(index) },
@@ -109,7 +69,7 @@ function Rail({ run }: { run: RunNow }) {
             index === 0 ? styles.alignLeft : index === end ? styles.alignRight : styles.alignCentre;
 
           return width === 0 ? null : (
-            <View key={stop.time} style={[styles.railLabel, boxes[index]]}>
+            <View key={index} style={[styles.railLabel, boxes[index]]}>
               <Text
                 size={12}
                 weight={strong ? 'semibold' : 'medium'}
@@ -342,41 +302,10 @@ const styles = StyleSheet.create({
   white: { color: tokens.colorInkOnDark },
   soft: { opacity: 0.84 },
   figures: { fontVariant: ['tabular-nums'] },
-  pressed: { opacity: 0.8 },
   gapSm: { gap: tokens.spaceSm },
   gapLg: { gap: tokens.spaceXl },
   gapXl: { gap: 22 },
   capsuleAt: { position: 'absolute', left: 0, right: 0, top: 7, alignItems: 'center' },
-  whiteButton: {
-    height: tokens.sizeHitPhoneHero,
-    borderRadius: tokens.sizeHitPhoneHero / 2,
-    backgroundColor: tokens.colorCard,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: tokens.spaceSm,
-    paddingHorizontal: 22,
-  },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spaceSm },
-  chip: {
-    height: tokens.space4xl,
-    paddingHorizontal: 12,
-    borderRadius: tokens.spacePillEnd,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.spaceXs,
-    flexShrink: 1,
-  },
-  chipLight: { backgroundColor: tokens.colorCard, flexShrink: 0 },
-  chipDark: { backgroundColor: tokens.scrimDialog },
-  liveRing: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: tokens.colorBrokenTint,
-  },
   liveDot: {
     width: tokens.spaceSm,
     height: tokens.spaceSm,

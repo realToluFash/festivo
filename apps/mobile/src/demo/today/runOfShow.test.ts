@@ -257,14 +257,26 @@ describe('the figure beside Next, as sc-29978 draws it', () => {
     expect(figure?.spoken).toBe('141 of 152 arrived');
   });
 
+  it('follows the phone’s numbers, and has no ring with nobody Coming', () => {
+    expect(withRun(day, 'on', figureOf(COUNTS.thousands, numbers), us)?.figure?.spoken).toBe(
+      '1,204 of 1,250 arrived',
+    );
+    expect(withRun(day, 'on', figureOf(COUNTS.nobodyComing, numbers), us)?.figure).toMatchObject({
+      of: null,
+      share: null,
+    });
+  });
+
   it('is not there before anyone has arrived', () => {
     expect(withRun(day, 'on', figureOf(COUNTS.none, numbers), us)?.figure).toBeNull();
   });
 
-  it('is drawn by sc-29978’s part, with no second ring', () => {
+  it('is drawn by sc-29978’s part, with no second copy of it or its helpers', () => {
     const cover = readFileSync(join(import.meta.dirname, 'RunCover.tsx'), 'utf8');
 
-    expect(cover).toContain("import { ArrivedFigure } from './ArrivedCover.tsx';");
-    expect(cover).not.toMatch(/function Ring\b|react-native-svg/u);
+    expect(cover).toContain(
+      "import { ArrivedFigure, Chips, WhiteButton } from './ArrivedCover.tsx';",
+    );
+    expect(cover).not.toMatch(/function (Ring|Chips|WhiteButton)\b|react-native-svg/u);
   });
 });

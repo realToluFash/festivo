@@ -149,14 +149,7 @@ function Scrolled({
         }}
       >
         <View onLayout={(event) => setBody(event.nativeEvent.layout.height - insets.top)}>
-          <RunCover
-            moment={moment}
-            layout={layout}
-            top={insets.top}
-
-            onTab={tabs}
-            words={words}
-          />
+          <RunCover moment={moment} layout={layout} top={insets.top} onTab={tabs} words={words} />
         </View>
         <View style={[styles.sheet, phone ? styles.sheetPhone : styles.sheetTablet]}>
           {notices}

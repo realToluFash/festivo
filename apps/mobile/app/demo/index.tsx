@@ -107,6 +107,16 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         what: 'Next alone on its row, no figure',
         href: '/demo/today?moment=day&now=on&arrived=none',
       },
+      {
+        title: 'Now · nobody Coming',
+        what: '37 arrived beside Next, no ring',
+        href: '/demo/today?moment=day&now=on&arrived=nobodyComing',
+      },
+      {
+        title: 'Now · four-digit figures',
+        what: '1,204/1,250 beside Next; try the iPhone SE',
+        href: '/demo/today?moment=day&now=on&arrived=thousands',
+      },
       { title: 'A quiet week', what: 'Nothing due, nothing on', href: '/demo/today?moment=quiet' },
       { title: 'A first run', what: 'No events yet', href: '/demo/today?moment=first' },
     ],
