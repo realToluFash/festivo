@@ -11,6 +11,7 @@
   box-sizing: border-box;
   width: 760px;
   height: fit-content;
+  min-height: 400px;
   max-height: calc(100vh - 2 * var(--space6xl));
   margin: auto;
   overflow: hidden;
@@ -154,10 +155,9 @@
   height: var(--sizeHit);
   margin-right: calc(-1 * var(--spaceLg));
   border-radius: var(--radiusRow);
-  color: var(--colorInkSecondary);
 }
 
-/* Four rows under All countries before it scrolls, and 5 all round for the focus ring's halo. */
+/* Four rows before it scrolls, three under All countries alone, and 5 all round for the focus ring's halo. */
 .cw-list {
   position: relative;
   display: flex;
@@ -170,7 +170,7 @@
 }
 
 .cw-list.has-all {
-  max-height: calc(4 * var(--cwRow) + 29px);
+  max-height: calc(3 * var(--cwRow) + 29px);
 }
 
 .cw-list.has-ours {
@@ -566,6 +566,14 @@
 .cw-signed-ways {
   display: flex;
   gap: var(--space3xl);
+}
+
+.cw-signed-ways a.desk-text {
+  text-decoration: none;
+}
+
+.cw-signed-ways a.desk-text:hover {
+  text-decoration: underline;
 }
 
 @keyframes cw-on {

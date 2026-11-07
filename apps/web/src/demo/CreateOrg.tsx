@@ -339,7 +339,7 @@ function Panel({ start, onClose, onCreated }: WalkProps) {
                 )}
                 {walk.answer === 'failed' && (
                   <Notice key={tries} kind="broken">
-                    <span className="cw-notice-line">{W.failed}</span>
+                    {W.failed}
                   </Notice>
                 )}
                 <p className="visually-hidden">{cardLine(walk, countries)}</p>
@@ -619,7 +619,9 @@ function CountryPicker({
               search.current?.focus();
             }}
           >
-            <Glyph name="clear" size={18} />
+            <span className="sw-clear-disc" aria-hidden="true">
+              <Glyph name="clear" size={11} weight={3} />
+            </span>
           </button>
         )}
       </div>
