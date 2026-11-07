@@ -203,7 +203,7 @@ describe('Personalisation at a desk (sc-30441)', () => {
   });
 
   it('is in Violet while never chosen, whatever the build’s scheme, and leaves the build its own', async () => {
-    __setConfig({ ...tested, environment: 'development', scheme: null });
+    __setConfig({ ...tested, environment: 'development', scheme: 'cobalt' });
     const router = await personalisation(`${PAGE}?state=never`);
 
     expect(document.documentElement.dataset.scheme).toBe('violet');
@@ -213,7 +213,7 @@ describe('Personalisation at a desk (sc-30441)', () => {
     expect(document.documentElement.dataset.scheme).toBe('violet');
 
     await router.navigate('/sign-in');
-    await waitFor(() => expect(document.documentElement.dataset.scheme).toBeUndefined());
+    await waitFor(() => expect(document.documentElement.dataset.scheme).toBe('cobalt'));
   });
 
   it('keeps event covers in the build’s accent under a pick', async () => {

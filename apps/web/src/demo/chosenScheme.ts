@@ -30,11 +30,9 @@ export function choose(key: SchemeKey | null): void {
 /** Leaving the demo forgets the pick and puts the build's own scheme back. */
 export function leave(): void {
   const root = document.documentElement;
-  const own = config().scheme;
 
   root.style.removeProperty('--coverAccent');
-  if (own == null) delete root.dataset.scheme;
-  else root.dataset.scheme = own;
+  root.dataset.scheme = config().scheme;
   tell(null);
 }
 
