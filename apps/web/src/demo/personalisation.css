@@ -1,0 +1,306 @@
+/* Settings › Personalisation at a desk, A · Swatches (Web-Personalisation-*.dc.html). Each scheme's Confetti is drawn in SVG from personalisation.ts. */
+
+.pers-ground,
+.pers-pieces {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: block;
+  pointer-events: none;
+}
+
+.pers-ground {
+  width: 100%;
+  height: 100%;
+}
+
+.desk-card.pers-card {
+  background: none;
+}
+
+.pers-card .pers-says {
+  font-size: 26px;
+}
+
+.pers-card .desk-on-card {
+  max-width: 80%;
+}
+
+.pers-done {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+  max-width: 80%;
+  color: var(--deskOnCard);
+  font: 600 14.5px/1.4 var(--fontFamily);
+}
+
+.pers-done .desk-mark {
+  width: 16px;
+  height: 16px;
+  margin-top: var(--spaceHair);
+}
+
+.pers-dots {
+  display: block;
+  flex: none;
+}
+
+.pers-card .pers-step {
+  padding: 0 var(--spaceXl) 0 18px;
+  background: var(--colorCard);
+  color: var(--colorAccentText);
+}
+
+.pers-card.is-dark .pers-step {
+  background: var(--colorAccent);
+  color: var(--colorInkOnDark);
+}
+
+.desk-card.pers-card .pers-step:focus-visible,
+.pers.is-keyed .pers-card .pers-step:focus {
+  outline: 3px solid var(--colorInkOnDark);
+  outline-offset: 3px;
+  box-shadow: none;
+}
+
+.pers-card.is-dark :is(.desk-says, .desk-on-card, .pers-done) {
+  color: var(--colorInk);
+}
+
+.desk-card.pers-card.is-dark .pers-step:focus-visible,
+.pers.is-keyed .pers-card.is-dark .pers-step:focus {
+  outline-color: var(--colorInk);
+}
+
+.pers-after {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+}
+
+.pers-bones {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceMd);
+}
+
+.pers-bone {
+  height: 13px;
+  border-radius: 7px;
+}
+
+.pers-bone.b1 {
+  width: 86%;
+}
+
+.pers-bone.b2 {
+  width: 64%;
+}
+
+.pers-bone.b3 {
+  width: 78%;
+}
+
+.desk-tile.pers-tile {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--spaceMd);
+  color: var(--colorInkOnDark);
+}
+
+.desk-tile.pers-tile.is-dark {
+  color: var(--colorInk);
+}
+
+.pers-tile > svg:last-child {
+  position: relative;
+}
+
+.desk-nav-cancel.pers-waits {
+  color: var(--colorInkTertiary);
+  cursor: default;
+}
+
+.desk-nav-verb.pers-saving {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spaceXs);
+  color: var(--colorInkSecondary);
+  cursor: default;
+}
+
+.pers-spin {
+  flex: none;
+  box-sizing: border-box;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--colorInsetBorder);
+  border-top-color: currentcolor;
+  border-radius: 50%;
+  animation: pers-spin 0.9s linear infinite;
+}
+
+@keyframes pers-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pers-spin {
+    animation: none;
+  }
+}
+
+.pers-pick {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceMd);
+}
+
+.pers-preview {
+  position: relative;
+  flex: none;
+  height: 96px;
+  overflow: hidden;
+  border-radius: var(--deskCard);
+}
+
+.pers-preview-inner {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceMd);
+  box-sizing: border-box;
+  height: 100%;
+  padding: 18px;
+}
+
+.pers-preview-name {
+  display: block;
+  width: 80%;
+  height: 25px;
+  overflow: visible;
+  font: 700 22px/1.15 var(--fontFamily);
+  letter-spacing: -0.015em;
+}
+
+.pers-failed {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceHair);
+}
+
+.pers-swatches {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--spaceLg);
+}
+
+.pers-swatch {
+  position: relative;
+  overflow: hidden;
+  border-radius: 18px;
+  background: var(--colorCard);
+  box-shadow: 0 0 0 1px var(--colorBorder);
+  cursor: pointer;
+}
+
+.pers-swatch.is-picked {
+  outline: 2.5px solid var(--colorAccent);
+  outline-offset: 2px;
+  box-shadow: none;
+}
+
+.pers-swatches.is-still .pers-swatch {
+  cursor: default;
+}
+
+.desk-dialog.pers-dialog .pers-swatch:focus-visible,
+.desk-dialog.pers-dialog.is-keyed .pers-swatch:focus {
+  outline: none;
+  box-shadow:
+    0 0 0 6px var(--colorCard),
+    0 0 0 8px var(--colorAccent),
+    0 0 0 12px color-mix(in srgb, var(--colorAccent) 18%, transparent);
+}
+
+.desk-dialog.pers-dialog .pers-swatch.is-picked:is(:focus, :focus-visible) {
+  outline: 2.5px solid var(--colorAccent);
+  outline-offset: 2px;
+}
+
+.pers-mesh {
+  position: relative;
+  display: block;
+  height: 48px;
+  overflow: hidden;
+}
+
+.pers-current {
+  position: absolute;
+  top: var(--spaceMd);
+  left: var(--spaceMd);
+  z-index: 3;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 5px;
+  box-sizing: border-box;
+  height: 26px;
+  padding: 0 var(--spaceMd) 0 7px;
+  border-radius: 13px;
+  background: var(--colorCard);
+  box-shadow: inset 0 0 0 1px var(--colorBorder);
+  color: var(--colorInk);
+  font: 600 12.5px/1 var(--fontFamily);
+  white-space: nowrap;
+}
+
+.pers-current .desk-mark {
+  width: 13px;
+  height: 13px;
+}
+
+.pers-swatch-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceMd);
+  height: var(--sizeHit);
+  padding: 0 var(--spaceLg);
+}
+
+.pers-radio {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: var(--sizePill);
+  height: var(--sizePill);
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 2px var(--colorFieldBorder);
+}
+
+.pers-radio.is-on {
+  background: var(--colorAccent);
+  box-shadow: none;
+}
+
+.pers-radio.is-on::after {
+  width: var(--spaceSm);
+  height: var(--spaceSm);
+  border-radius: 50%;
+  background: var(--colorInkOnDark);
+  content: '';
+}
+
+.pers-swatch-name {
+  overflow: hidden;
+  color: var(--colorInk);
+  font: 600 15.5px/1.2 var(--fontFamily);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
