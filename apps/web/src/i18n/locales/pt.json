@@ -421,7 +421,7 @@
     "home": "Ir para o início"
   },
   "guest": {
-    "invitationTitle": "Está convidado",
+    "invitationTitle": "Tem um convite",
     "invitationBody": "Não é necessária qualquer conta. Esta página é sua para este evento.",
     "invalidTitle": "Esta ligação de convite não funciona",
     "invalidBody": "Pode ter caducado, ter sido substituída por uma mais recente ou conter um erro. Peça uma nova ligação a quem o convidou — pode enviá-la num instante.",
