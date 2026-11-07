@@ -41,6 +41,7 @@ import {
   piecesOf,
 } from './MessagesSample.ts';
 import { tellChange } from './TellChange.ts';
+import { keepWhole, outsideToken, tokenText } from './TokenText.ts';
 
 const run = (m: Messages, ...actions: Action[]) => actions.reduce(reduce, m);
 const nameOf = (id: RowId) => (id.kind === 'draft' ? id.id : id.key);
@@ -328,11 +329,65 @@ describe('the rest of the flow', () => {
   });
 
   it('draws a token as a chip, and fills it in on the guest’s page', () => {
-    expect(piecesOf('{Greeting}, hello')).toEqual([
+    expect(piecesOf(`${tokenText('Greeting')}, hello`)).toEqual([
       { token: true, text: 'Greeting' },
       { token: false, text: ', hello' },
     ]);
-    expect(filledFor('{Greeting}, hello', 'Kwame Mensah')).toBe('Kwame Mensah, hello');
+    expect(filledFor(`${tokenText('Greeting')}, hello`, 'Kwame Mensah')).toBe(
+      'Kwame Mensah, hello',
+    );
+  });
+
+  it('keeps braces the host types as text, in the field and on the page', () => {
+    expect(piecesOf('{Greeting}, hello')).toEqual([{ token: false, text: '{Greeting}, hello' }]);
+    expect(filledFor('{Greeting}, hello', 'Kwame Mensah')).toBe('{Greeting}, hello');
+  });
+});
+
+describe('a token in the app’s field is one unit (pm, 7 Nov)', () => {
+  const greeting = tokenText('Greeting');
+  const was = `Hi ${greeting}, see you`;
+  const after = 3 + greeting.length;
+
+  it('takes the whole token with one Backspace after it', () => {
+    const next = was.slice(0, after - 1) + was.slice(after);
+    expect(keepWhole(was, next)).toEqual({ text: 'Hi , see you', caret: 3 });
+  });
+
+  it('takes the whole token with one Delete before it', () => {
+    const next = was.slice(0, 3) + was.slice(4);
+    expect(keepWhole(was, next)).toEqual({ text: 'Hi , see you', caret: 3 });
+  });
+
+  it('puts a key typed inside the token after it', () => {
+    const next = `${was.slice(0, 6)}x${was.slice(6)}`;
+    expect(keepWhole(was, next)).toEqual({ text: `Hi ${greeting}x, see you`, caret: after + 1 });
+  });
+
+  it('leaves an edit outside the token as typed', () => {
+    expect(keepWhole(was, `${was}!`)).toEqual({ text: `${was}!`, caret: was.length + 1 });
+    expect(keepWhole(was, was.replace('Hi', 'Hello')).text).toBe(was.replace('Hi', 'Hello'));
+  });
+
+  it('takes a selection that reaches into a token, and the token with it', () => {
+    const next = `Hi${was.slice(5)}`;
+    expect(keepWhole(was, next).text).toBe('Hi, see you');
+  });
+
+  it('takes the token before the caret with Backspace between two, and the one after with Delete', () => {
+    const event = tokenText('Event');
+    const pair = `${greeting}${event}`;
+    const next = pair.slice(0, greeting.length - 1) + pair.slice(greeting.length);
+
+    expect(keepWhole(pair, next, true)).toEqual({ text: event, caret: 0 });
+    expect(keepWhole(pair, next)).toEqual({ text: greeting, caret: greeting.length });
+  });
+
+  it('never leaves the caret inside a token', () => {
+    expect(outsideToken(was, 5)).toBe(3);
+    expect(outsideToken(was, after - 2)).toBe(after);
+    expect(outsideToken(was, after)).toBe(after);
+    expect(outsideToken(was, 1)).toBe(1);
   });
 });
 

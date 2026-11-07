@@ -1,4 +1,4 @@
-import { type Ref, type RefObject, useState } from 'react';
+import { type Ref, type RefObject, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
   Pressable,
   StyleSheet,
@@ -7,7 +7,7 @@ import {
   type ViewInstance,
 } from 'react-native';
 
-import { FieldError, TextField } from '../../components/Field.tsx';
+import { FieldError, TextField, type TextFieldProps } from '../../components/Field.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
@@ -15,6 +15,8 @@ import { Pill } from '../../components/SettingsParts.tsx';
 import { TextAction } from '../../components/Summary.tsx';
 import { MessageGlyph } from './MessageMarks.tsx';
 import { type Draft, MESSAGE_MOST, SUBJECT_MOST, matchesNobody, toChip } from './MessagesModel.ts';
+import { piecesOf } from './MessagesSample.ts';
+import { keepWhole, outsideToken, tokenText } from './TokenText.ts';
 import { CHANNEL_WORD, type ChannelKey, W, say } from './MessagesWords.ts';
 
 const INK2 = tokens.colorInkSecondary;
@@ -262,13 +264,13 @@ export function NewComposer({
           </View>
         )}
       </View>
-      <TextField
+      <TokenField
         {...focus}
-        ref={bodyRef}
         wrong={bodyOver}
-        value={draft.body}
-        onChangeText={onBody}
-        onSelectionChange={(event) => onCaret?.(event.nativeEvent.selection.end)}
+        text={draft.body}
+        fieldRef={bodyRef}
+        onText={onBody}
+        onCaret={onCaret}
         placeholder={W.writeToGuests}
         multiline
         autoFocus={autoFocus}
@@ -276,7 +278,7 @@ export function NewComposer({
         spellCheck
         autoCapitalize="sentences"
         style={[styles.bare, styles.body]}
-        accessibilityLabel={W.message}
+        label={W.message}
         testID="messages.body"
       />
       {bodyOver && (
@@ -331,6 +333,79 @@ export function NewComposer({
         </View>
       )}
     </View>
+  );
+}
+
+/** The words, each inserted token one run: taken whole, the caret kept at its edges. */
+function TokenField({
+  label,
+  text,
+  fieldRef,
+  onText,
+  onCaret,
+  ...rest
+}: Omit<TextFieldProps, 'value' | 'onChangeText' | 'children' | 'accessibilityLabel'> & {
+  label: string;
+  text: string;
+  fieldRef?: RefObject<TextInputInstance | null> | undefined;
+  onText: (text: string) => void;
+  onCaret?: ((at: number) => void) | undefined;
+}) {
+  const own = useRef<TextInputInstance>(null);
+  const field = fieldRef ?? own;
+  const caretTo = useRef<number | null>(null);
+  const latest = useRef(text);
+  const backspace = useRef(false);
+  const pieces = piecesOf(text);
+  const named = [...new Set(pieces.filter((piece) => piece.token).map((piece) => piece.text))];
+
+  useLayoutEffect(() => {
+    latest.current = text;
+  }, [text]);
+
+  useEffect(() => {
+    const at = caretTo.current;
+    if (at == null) return;
+    caretTo.current = null;
+    field.current?.setSelection(at, at);
+  }, [text, field]);
+
+  return (
+    <TextField
+      {...rest}
+      ref={field}
+      accessibilityLabel={label}
+      onKeyPress={(event) => {
+        backspace.current = event.nativeEvent.key === 'Backspace';
+      }}
+      onChangeText={(next) => {
+        const kept = keepWhole(latest.current, next, backspace.current);
+        backspace.current = false;
+        latest.current = kept.text;
+        if (kept.text !== next) caretTo.current = kept.caret;
+        onText(kept.text);
+      }}
+      onSelectionChange={(event) => {
+        const { start, end } = event.nativeEvent.selection;
+        const from = outsideToken(latest.current, start);
+        const to = outsideToken(latest.current, end);
+        if (from !== start || to !== end) field.current?.setSelection(from, to);
+        onCaret?.(to);
+      }}
+      accessibilityHint={
+        named.length > 0 ? named.map((token) => `${say.tokenName(token)}.`).join(' ') : undefined
+      }
+    >
+      {pieces.map((piece, at) =>
+        piece.token ? (
+          <Text key={at} size={16} weight="semibold" style={styles.tokenRun}>
+            {tokenText(piece.text)}
+          </Text>
+        ) : (
+          piece.text
+        ),
+      )}
+    </TextField>
   );
 }
 
@@ -556,6 +631,7 @@ const styles = StyleSheet.create({
   },
   subject: { fontSize: 16, fontWeight: '700' },
   body: { fontSize: 16, lineHeight: 24, maxHeight: 220, textAlignVertical: 'top' },
+  tokenRun: { color: tokens.colorAccentText, backgroundColor: tokens.colorAccentTint },
   tools: { flexDirection: 'row', alignItems: 'center', gap: 18 },
   goes: { textAlign: 'right' },
   answer: { gap: tokens.spaceXs },
