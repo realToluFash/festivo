@@ -1169,7 +1169,8 @@
     "sectionGeneral": "General",
     "sectionMembers": "Miembros",
     "sectionRoles": "Roles",
-    "sectionSignInRules": "Normas de inicio de sesión"
+    "sectionSignInRules": "Normas de inicio de sesión",
+    "dialogCancel": "Cancelar"
   },
   "membersScreen": {
     "proveOwner_one": "Para dar a alguien el rol de Propietario de {{organisation}}, confirme que es usted. No se lo volveremos a pedir en un minuto.",
