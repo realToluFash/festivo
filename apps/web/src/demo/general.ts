@@ -15,7 +15,8 @@ import {
   withCurrent,
 } from '@soirely/domain';
 
-import { DOMAIN, ORGANISATION as ORG, samplePeople } from './members.ts';
+import { type AskWords, HANDOVER_WORDS as H, type HandStart, handStart } from './handover.ts';
+import { DOMAIN, ORGANISATION as ORG, sampleLeads, samplePeople } from './members.ts';
 import { SAMPLE } from './rules.ts';
 import { type DemoLink, VIEWERS, type Viewer, settingsPath } from './settings.ts';
 import { type Role, roleOf } from './signInRules.ts';
@@ -146,6 +147,20 @@ export const OWNERSHIP_WORDS = {
   deleteExactly: 'Exactly as it is written, accents included.',
 } as const;
 
+/** Leave's confirm with the events the leaver leads in it (sc-614): today's words around the handover's. */
+export function leaveAsk(count: number): AskWords {
+  return {
+    title: OWNERSHIP_WORDS.leaveTitle,
+    lead: H.youLead(count),
+    last: OWNERSHIP_WORDS.leaveBody,
+    keep: OWNERSHIP_WORDS.stay,
+    go: OWNERSHIP_WORDS.leave,
+    red: true,
+    busy: H.busy.leave,
+    failed: H.failed.leave,
+  };
+}
+
 export const TRY_AGAIN = 'Try again';
 export const LOADING = 'Loading…';
 
@@ -178,6 +193,11 @@ export const GENERAL_STATES = [
   'transferred',
   'onlyOwner',
   'leave',
+  'leaveMenu',
+  'leavePicked',
+  'leaveSending',
+  'leaveFailed',
+  'leaveNoWork',
   'delete',
   'heldTwoFactor',
   'heldLinked',
@@ -186,6 +206,37 @@ export const GENERAL_STATES = [
 ] as const;
 
 export type GeneralState = (typeof GENERAL_STATES)[number];
+
+const LEAVES = [
+  'leave',
+  'leaveMenu',
+  'leavePicked',
+  'leaveSending',
+  'leaveFailed',
+  'leaveNoWork',
+] as const;
+
+type Leave = (typeof LEAVES)[number];
+
+function isLeave(name: GeneralState | null): name is Leave {
+  return LEAVES.some((leave) => leave === name);
+}
+
+/** Leave's handover (sc-614): it starts on Nobody, and Julien is the one picked. */
+function leaveStart(name: Leave): HandStart {
+  switch (name) {
+    case 'leaveMenu':
+      return handStart(null, { menu: true });
+    case 'leavePicked':
+      return handStart(VIEWERS.julien.id);
+    case 'leaveSending':
+      return handStart(null, { phase: 'held' });
+    case 'leaveFailed':
+      return handStart(null, { phase: 'failed' });
+    default:
+      return handStart(null);
+  }
+}
 
 export function generalStateOf(name: string): GeneralState | null {
   return GENERAL_STATES.find((state) => state === name) ?? null;
@@ -214,12 +265,14 @@ export interface GeneralStart {
   transferPicked: boolean;
   deleteMistyped: boolean;
   counted: boolean;
+  hand: HandStart;
+  leads: readonly string[];
 }
 
 export const TRANSFERRED_TO = 'Priya Shah';
 export const YOUR_DOMAIN = domainOf(SAMPLE.email) ?? DOMAIN;
 
-const AT_REST: Omit<GeneralStart, 'role'> = {
+const AT_REST: Omit<GeneralStart, 'role' | 'hand' | 'leads'> = {
   hold: null,
   said: null,
   dialog: null,
@@ -237,15 +290,19 @@ const AT_REST: Omit<GeneralStart, 'role'> = {
 /** What a state link opens on: one the viewer has no way to opens the page at rest, as the app's Organisation does. */
 export function generalStart(
   state: string,
-  viewer: Pick<Viewer, 'owns' | 'manages'>,
+  viewer: Pick<Viewer, 'id' | 'owns' | 'manages'>,
 ): GeneralStart {
   const role = roleOf(viewer);
-  const page: GeneralStart = { ...AT_REST, role };
   const name = generalStateOf(state);
+  const leads = name === 'leaveNoWork' ? [] : (sampleLeads()[viewer.id] ?? []);
+  const page: GeneralStart = { ...AT_REST, role, hand: handStart(null), leads };
   const owner = role === 'Owner';
 
   if (name === 'onlyOwner') return owner ? { ...page, ask: 'onlyOwner' } : page;
-  if (name === 'leave') return { ...page, ask: owner ? 'onlyOwner' : 'leave' };
+  if (isLeave(name))
+    return owner
+      ? { ...page, ask: 'onlyOwner' }
+      : { ...page, ask: 'leave', hand: leaveStart(name) };
   if (name === 'heldTwoFactor' || name === 'heldLinked')
     return role === 'Admin'
       ? { ...page, hold: name === 'heldTwoFactor' ? 'twoFactor' : 'linking' }
@@ -627,8 +684,13 @@ export const GENERAL_PAGES: readonly { name: string; states: readonly DemoLink[]
       general('transfer', 'Transfer ownership'),
       general('transferred', 'Transferred'),
       general('onlyOwner', 'Leave, the only owner'),
-      general('leave', 'Leave, a member', VIEWERS.ana),
-      general('leave', 'Leave, an admin', VIEWERS.julien),
+      general('leave', 'Leave, a member who leads 2 events: Nobody first', VIEWERS.ana),
+      general('leaveMenu', 'Leave, the menu open', VIEWERS.ana),
+      general('leavePicked', 'Leave, Julien Moreau picked', VIEWERS.ana),
+      general('leaveSending', 'Leave, Leaving…', VIEWERS.ana),
+      general('leaveFailed', 'Leave, Leaving did not work', VIEWERS.ana),
+      general('leaveNoWork', 'Leave, a member who leads nothing', VIEWERS.ana),
+      general('leave', 'Leave, an admin who leads nothing', VIEWERS.julien),
       general('delete', 'Delete, the name mistyped'),
       general('deleteUncounted', 'Delete, not counted'),
     ],
