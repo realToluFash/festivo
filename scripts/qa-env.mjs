@@ -2577,7 +2577,7 @@ export async function withoutReverse(port, adb, moves) {
 
 export async function answers(url, { ms = 60_000, every = 500, get = fetch } = {}) {
   for (const deadline = Date.now() + ms; ; await pause(every)) {
-    const ok = await get(url).then(
+    const ok = await get(url, { signal: AbortSignal.timeout(every * 4) }).then(
       (r) => r.ok,
       () => false,
     );

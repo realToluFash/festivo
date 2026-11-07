@@ -1588,6 +1588,16 @@ describe('the API brought back up', () => {
     };
     expect(await answers('http://api/health', { ms: 5, every: 1, get: refused })).toBe(false);
   });
+
+  it('gives up on a health request that hangs, so the deadline still holds', async () => {
+    const hangs = (_url, { signal }) =>
+      new Promise((_resolve, reject) =>
+        signal.addEventListener('abort', () => reject(signal.reason)),
+      );
+    const started = Date.now();
+    expect(await answers('http://api/health', { ms: 20, every: 5, get: hangs })).toBe(false);
+    expect(Date.now() - started).toBeLessThan(1_000);
+  });
 });
 
 describe('the app services started', () => {
