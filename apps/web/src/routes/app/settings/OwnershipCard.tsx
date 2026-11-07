@@ -1,0 +1,840 @@
+import {
+  ApiError,
+  type Membership,
+  type OrganisationDeletion,
+  type OrganisationMember,
+  type Provider,
+  type ProviderSignInAttempt,
+} from '@soirely/api-client';
+import { PROOF_MINUTES, confirmWith, roleName, typedNameMatches } from '@soirely/domain';
+import { type FormEvent, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
+import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router';
+
+import { api } from '../../../api.ts';
+import { ActionPair } from '../../../components/ActionPair.tsx';
+import { FieldError } from '../../../components/FieldError.tsx';
+import { PasswordField } from '../../../components/PasswordField.tsx';
+import { AppleMark, GoogleMark } from '../../../components/ProviderSignIn.tsx';
+import { useFormChecks } from '../../../formChecks.ts';
+import { offButton } from '../../../offButton.ts';
+import { focusWhereSent, offField } from '../../../offField.ts';
+import {
+  PROVIDER_NAMES,
+  type ProviderReturn,
+  dropProviderReturn,
+  heldProviderReturn,
+  startProviderSignIn,
+} from '../../../providerSignIn.ts';
+import { refreshAccount, useSession } from '../../../session.ts';
+import { focusStep, useFocusOnceShown, useStepFocus } from '../../../stepFocus.ts';
+
+type Opener = 'transfer' | 'leave' | 'delete';
+
+type Preview =
+  { kind: 'counting' } | { kind: 'counted'; counted: OrganisationDeletion } | { kind: 'failed' };
+
+type Step =
+  | { kind: 'resting'; flash: string | null }
+  | { kind: 'transfer'; from: Opener; returned: ProviderReturn | null }
+  | { kind: 'leave' }
+  | { kind: 'delete' };
+
+/** General's "Ownership and leaving" (sc-68): hand the organisation on, leave it, or delete it. */
+export function OwnershipCard({ organisation }: { organisation: Membership }) {
+  const { t } = useTranslation();
+  const owner = organisation.role.seededAs === 'owner';
+  const { hasPassword, providers } = useSession();
+  const via = confirmWith(hasPassword, providers);
+  // Back from Google or Apple, started by Transfer ownership in this organisation: once, on arrival.
+  const [returned] = useState(() => {
+    const held = heldProviderReturn(['transfer']);
+
+    return held?.purpose.kind === 'transfer' && held.purpose.organisation === organisation.id
+      ? held
+      : null;
+  });
+  const [step, setStep] = useState<Step>(
+    returned == null
+      ? { kind: 'resting', flash: null }
+      : { kind: 'transfer', from: 'transfer', returned },
+  );
+  const [members, setMembers] = useState<OrganisationMember[] | null>(null);
+  const title = useRef<HTMLHeadingElement>(null);
+  const flash = useRef<HTMLDivElement>(null);
+  const transferButton = useRef<HTMLButtonElement>(null);
+  const leaveButton = useRef<HTMLButtonElement>(null);
+  const deleteButton = useRef<HTMLButtonElement>(null);
+  const land = useFocusOnceShown();
+
+  // Removed only once committed: React may abandon a render and run the initializer again.
+  useEffect(() => {
+    if (returned != null) dropProviderReturn();
+  }, [returned]);
+
+  useEffect(() => {
+    if (!owner) return;
+    let current = true;
+
+    api.members(organisation.id).then(
+      (list) => current && setMembers(list.members),
+      () => current && setMembers(null),
+    );
+
+    return () => {
+      current = false;
+    };
+  }, [organisation.id, owner]);
+
+  function rest(back: Opener): void {
+    setStep({ kind: 'resting', flash: null });
+    const opener = { transfer: transferButton, leave: leaveButton, delete: deleteButton }[back];
+    land(() => opener.current ?? title.current);
+  }
+
+  const others = (members ?? []).filter((one) => one.status === 'active' && !one.self);
+  const onlyOwner =
+    owner &&
+    members != null &&
+    !members.some((one) => !one.self && one.status === 'active' && one.role.seededAs === 'owner');
+
+  return (
+    <section className="card settings-card" aria-labelledby="ownership-title">
+      <h2 id="ownership-title" ref={title} tabIndex={-1}>
+        {t('ownership.title')}
+      </h2>
+
+      {step.kind === 'resting' && (
+        <>
+          {step.flash != null && (
+            <div className="notice notice-done" ref={flash} tabIndex={-1}>
+              <span className="mark mark-done" aria-hidden="true">
+                ✓
+              </span>
+              <p>{step.flash}</p>
+            </div>
+          )}
+          {owner && (
+            <div className="ownership-row">
+              <div>
+                <p className="notice-title">{t('ownership.transfer')}</p>
+                <p className="muted">
+                  {via === 'password' || via == null
+                    ? t('ownership.transferNote', { organisation: organisation.name })
+                    : t('ownership.transferNoteProvider', {
+                        organisation: organisation.name,
+                        provider: PROVIDER_NAMES[via],
+                      })}
+                </p>
+              </div>
+              <button
+                type="button"
+                className="button"
+                ref={transferButton}
+                onClick={() => setStep({ kind: 'transfer', from: 'transfer', returned: null })}
+              >
+                {t('ownership.transfer')}
+              </button>
+            </div>
+          )}
+          <div className="ownership-row">
+            <div>
+              <p className="notice-title">
+                {t('ownership.leave', { organisation: organisation.name })}
+              </p>
+              <p className="muted">
+                {t('ownership.leaveNote', { organisation: organisation.name })}
+              </p>
+            </div>
+            <button
+              type="button"
+              className="button button-danger"
+              ref={leaveButton}
+              onClick={() => setStep({ kind: 'leave' })}
+            >
+              <span className="button-label">
+                {t('ownership.leaveOpener', { organisation: organisation.name })}
+              </span>
+            </button>
+          </div>
+          {owner && (
+            <div className="ownership-row">
+              <div>
+                <p className="notice-title">{t('ownership.delete')}</p>
+                <p className="muted">{t('ownership.deleteNote')}</p>
+              </div>
+              <button
+                type="button"
+                className="button button-danger"
+                ref={deleteButton}
+                onClick={() => setStep({ kind: 'delete' })}
+              >
+                {t('ownership.deleteOpener')}
+              </button>
+            </div>
+          )}
+        </>
+      )}
+
+      {step.kind === 'transfer' && (
+        <Transfer
+          organisation={organisation}
+          via={via}
+          returned={step.returned}
+          candidates={others}
+          onCancel={() => rest(step.from)}
+          onDone={(name) => {
+            setStep({
+              kind: 'resting',
+              flash: t('ownership.transferred', { name, organisation: organisation.name }),
+            });
+            land(() => flash.current);
+          }}
+        />
+      )}
+
+      {step.kind === 'leave' && (
+        <Leave
+          organisation={organisation}
+          onlyOwner={onlyOwner}
+          onTransfer={() => setStep({ kind: 'transfer', from: 'leave', returned: null })}
+          onStay={() => rest('leave')}
+        />
+      )}
+
+      {step.kind === 'delete' && (
+        <Delete organisation={organisation} onKeep={() => rest('delete')} />
+      )}
+    </section>
+  );
+}
+
+type TransferField = 'owner' | 'password' | 'code';
+
+/** Google or Apple brought the owner back: the proof, or the code still to come when two-factor is on. */
+interface Vouched {
+  email: string | null;
+  proof: string | null;
+}
+
+function Transfer({
+  organisation,
+  via,
+  returned,
+  candidates,
+  onCancel,
+  onDone,
+}: {
+  organisation: Membership;
+  via: 'password' | Provider | null;
+  returned: ProviderReturn | null;
+  candidates: OrganisationMember[];
+  onCancel: () => void;
+  onDone: (name: string) => void;
+}) {
+  const { t } = useTranslation();
+  const provider = via === 'password' ? null : via;
+  const [picked, setPicked] = useState<string | null>(
+    returned?.purpose.kind === 'transfer' ? returned.purpose.owner : null,
+  );
+  const [password, setPassword] = useState('');
+  const [code, setCode] = useState('');
+  const [codeAsked, setCodeAsked] = useState(false);
+  const [busy, setBusy] = useState(returned != null && 'signIn' in returned);
+  const [refused, setRefused] = useState<{ field: TransferField | null; message: string } | null>(
+    () =>
+      returned != null && 'failed' in returned
+        ? {
+            field: null,
+            message: t('waysCard.providerFailed', { provider: PROVIDER_NAMES[returned.provider] }),
+          }
+        : null,
+  );
+  const [vouched, setVouched] = useState<Vouched | null>(null);
+  // The five minutes from Google's or Apple's sign-in ran out before the press: back to Continue, the owner kept.
+  const [expired, setExpired] = useState(false);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const passwordInput = useRef<HTMLInputElement>(null);
+  const [pending, setPending] = useState<string | null>(null);
+  const chosen = candidates.find((one) => one.id === picked) ?? null;
+  const exchanged = useRef(false);
+
+  const checks = useFormChecks<TransferField>(
+    ['owner', 'password', 'code'],
+    (field, value) => {
+      if (field === 'owner') return value === '' ? t('ownership.ownerBlank') : null;
+      if (field === 'password')
+        return provider == null && pending == null && value === ''
+          ? t('ownership.passwordBlank')
+          : null;
+
+      return codeAsked && value.trim() === '' ? t('ownership.codeBlank') : null;
+    },
+    (field) =>
+      field === 'password'
+        ? passwordInput.current?.focus()
+        : document.getElementById(field === 'owner' ? 'transfer-owner' : 'transfer-code')?.focus(),
+  );
+
+  async function vouch(by: Provider, signIn: ProviderSignInAttempt): Promise<void> {
+    try {
+      const { proof } = await api.prove({ provider: by, signIn });
+      setVouched({ email: null, proof });
+    } catch (error) {
+      if (error instanceof ApiError && error.is('two_factor_required')) {
+        setPending(error.problem.pendingProof ?? null);
+        setVouched({ email: error.problem.providerEmail ?? null, proof: null });
+        setCodeAsked(true);
+      } else {
+        setRefused({
+          field: null,
+          message:
+            error instanceof ApiError && error.is('invalid_credentials')
+              ? t('waysCard.providerRefused', { provider: PROVIDER_NAMES[by] })
+              : t('waysCard.providerFailed', { provider: PROVIDER_NAMES[by] }),
+        });
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  useEffect(() => {
+    heading.current?.focus();
+    if (returned == null || !('signIn' in returned) || exchanged.current) return;
+    exchanged.current = true;
+    void vouch(returned.provider, returned.signIn);
+    // Once, on arrival: Google's or Apple's sign-in is single-use, and its five minutes count from now.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function continueWith(by: Provider): void {
+    if (busy || !checks.passes({ owner: picked ?? '', password, code }) || picked == null) return;
+
+    setRefused(null);
+    setExpired(false);
+    void startProviderSignIn(by, {
+      kind: 'transfer',
+      organisation: organisation.id,
+      owner: picked,
+    }).catch(() =>
+      setRefused({
+        field: null,
+        message: t('waysCard.providerFailed', { provider: PROVIDER_NAMES[by] }),
+      }),
+    );
+  }
+
+  async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
+    event.preventDefault();
+    if (busy || !checks.passes({ owner: picked ?? '', password, code })) return;
+    if (chosen == null || (provider != null && vouched == null)) return;
+
+    setBusy(true);
+    setRefused(null);
+    const land = focusWhereSent();
+
+    try {
+      const proof =
+        vouched?.proof ??
+        (
+          await api.prove(
+            pending != null ? { pendingProof: pending } : { password },
+            codeAsked ? code.trim() : undefined,
+          )
+        ).proof;
+      await api.transferOwnership(organisation.id, chosen.id, proof);
+      await refreshAccount();
+      onDone(chosen.user.name);
+    } catch (error) {
+      setBusy(false);
+      if (!(error instanceof ApiError)) {
+        setRefused({ field: null, message: t('membersScreen.actionFailed') });
+
+        return;
+      }
+
+      if (vouched != null && error.is('proof_required')) {
+        setVouched(null);
+        setPending(null);
+        setCodeAsked(false);
+        setCode('');
+        setExpired(true);
+        heading.current?.focus();
+
+        return;
+      }
+
+      setPending(error.problem.pendingProof ?? pending);
+
+      if (error.is('two_factor_required')) {
+        // The field the answer asks for, once it is there to take focus.
+        flushSync(() => setCodeAsked(true));
+        land('transfer-code');
+      } else if (error.is('invalid_credentials')) {
+        setRefused({ field: 'password', message: t('ownership.passwordWrong') });
+        land('transfer-password');
+      } else if (error.is('two_factor_code_invalid') || error.is('recovery_code_used')) {
+        setRefused({ field: 'code', message: error.problem.title });
+        land('transfer-code');
+      } else {
+        setRefused({ field: null, message: error.problem.title });
+      }
+    }
+  }
+
+  const ownerError = checks.errors.owner ?? null;
+  const passwordError =
+    checks.errors.password ?? (refused?.field === 'password' ? refused.message : null);
+  const codeError = checks.errors.code ?? (refused?.field === 'code' ? refused.message : null);
+
+  return (
+    <form className="settings-form" noValidate onSubmit={(event) => void submit(event)}>
+      <h3 tabIndex={-1} ref={heading}>
+        {t('ownership.transfer')}
+      </h3>
+      <p className="muted">{t('ownership.transferBody', { organisation: organisation.name })}</p>
+
+      {refused?.field === null && (
+        <div className="notice notice-broken" role="alert">
+          <span className="mark mark-broken" aria-hidden="true">
+            ✕
+          </span>
+          <p>{refused.message}</p>
+        </div>
+      )}
+
+      {expired && provider != null && (
+        <div className="notice notice-attention" role="status">
+          <span className="mark mark-attention" aria-hidden="true">
+            !
+          </span>
+          <p>
+            {t('waysCard.proofExpired', {
+              provider: PROVIDER_NAMES[provider],
+              count: PROOF_MINUTES,
+            })}
+          </p>
+        </div>
+      )}
+
+      <fieldset
+        className="members-roles"
+        id="transfer-owner"
+        tabIndex={-1}
+        aria-invalid={ownerError != null}
+        aria-describedby={ownerError != null ? 'transfer-owner-error' : undefined}
+      >
+        <legend>{t('ownership.newOwner')}</legend>
+        {candidates.map((one) => (
+          <label key={one.id} className="option-card">
+            <input
+              type="radio"
+              aria-label={one.user.name}
+              name="new-owner"
+              value={one.id}
+              checked={picked === one.id}
+              disabled={busy}
+              onChange={() => {
+                setPicked(one.id);
+                checks.edited('owner', one.id);
+              }}
+            />
+            <span className="members-row-name option-card-name">{one.user.name}</span>
+            <span className="muted option-card-means">{roleName(t, one.role)}</span>
+          </label>
+        ))}
+        {ownerError != null && <FieldError id="transfer-owner-error" message={ownerError} />}
+      </fieldset>
+
+      {provider == null && pending == null && (
+        <div className="field">
+          <label htmlFor="transfer-password">{t('ownership.password')}</label>
+          <PasswordField
+            id="transfer-password"
+            autoComplete="current-password"
+            wrong={passwordError != null}
+            disabled={busy}
+            submitting={busy}
+            describedBy={
+              passwordError != null ? 'transfer-password-error' : 'transfer-password-why'
+            }
+            value={password}
+            inputRef={passwordInput}
+            onChange={(typed) => {
+              setPassword(typed);
+              if (refused?.field === 'password') setRefused(null);
+              checks.edited('password', typed);
+            }}
+            onBlur={(typed) => checks.left('password', typed)}
+          />
+          {passwordError != null && (
+            <FieldError id="transfer-password-error" message={passwordError} />
+          )}
+          <p className="muted" id="transfer-password-why">
+            {t('ownership.passwordWhy', { organisation: organisation.name })}
+          </p>
+        </div>
+      )}
+
+      {provider != null && vouched == null && (
+        <div className="field">
+          <p className="muted">
+            {t('waysCard.proveWithProvider', { provider: PROVIDER_NAMES[provider] })}
+          </p>
+          <p className="muted">{t('ownership.passwordWhy', { organisation: organisation.name })}</p>
+        </div>
+      )}
+
+      {provider != null && vouched != null && (
+        <div className="notice notice-quiet signed-in" role="status">
+          <span className="mark mark-done" aria-hidden="true">
+            ✓
+          </span>
+          <div className="notice-body">
+            <p className="notice-title">
+              {t('waysCard.signedInWith', { provider: PROVIDER_NAMES[provider] })}
+            </p>
+            {vouched.email != null && <p className="signed-in-address">{vouched.email}</p>}
+          </div>
+        </div>
+      )}
+
+      {codeAsked && (
+        <div className="field">
+          <label htmlFor="transfer-code">{t('ownership.code')}</label>
+          <input
+            className={codeError != null ? 'input input-wrong' : 'input'}
+            id="transfer-code"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            value={code}
+            {...offField(busy)}
+            aria-invalid={codeError != null}
+            aria-describedby={codeError != null ? 'transfer-code-error' : undefined}
+            onChange={(event) => {
+              setCode(event.target.value);
+              if (refused?.field === 'code') setRefused(null);
+              checks.edited('code', event.target.value);
+            }}
+            onBlur={(event) => checks.left('code', event.target.value)}
+          />
+          {codeError != null && <FieldError id="transfer-code-error" message={codeError} />}
+        </div>
+      )}
+
+      <p className="muted">
+        {t('ownership.bothEmailed', {
+          name: chosen?.user.name ?? t('ownership.theNewOwner'),
+        })}
+      </p>
+
+      <ActionPair
+        dismiss={
+          <button className="button" type="button" {...offButton(busy)} onClick={onCancel}>
+            {t('ownership.keep')}
+          </button>
+        }
+        confirm={
+          provider != null && vouched == null ? (
+            <button
+              className={provider === 'google' ? 'button button-google' : 'button button-apple'}
+              type="button"
+              aria-busy={busy}
+              {...offButton(busy, { dim: false })}
+              onClick={() => continueWith(provider)}
+            >
+              {provider === 'google' ? <GoogleMark /> : <AppleMark />}
+              <span>{t('waysCard.continueWith', { provider: PROVIDER_NAMES[provider] })}</span>
+            </button>
+          ) : (
+            <button className="button button-primary" type="submit" aria-busy={busy}>
+              <span className="button-label">
+                {chosen == null
+                  ? t('ownership.transfer')
+                  : t('ownership.makeOwner', { name: chosen.user.name })}
+              </span>
+            </button>
+          )
+        }
+      />
+    </form>
+  );
+}
+
+function Leave({
+  organisation,
+  onlyOwner,
+  onTransfer,
+  onStay,
+}: {
+  organisation: Membership;
+  onlyOwner: boolean;
+  onTransfer: () => void;
+  onStay: () => void;
+}) {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const [busy, setBusy] = useState(false);
+  const [refused, setRefused] = useState<string | null>(null);
+  const [refusedLast, setRefusedLast] = useState(false);
+  const [openedOnlyOwner] = useState(onlyOwner);
+  const lastOwner = onlyOwner || refusedLast;
+  const heading = useRef<HTMLHeadingElement>(null);
+  const [onlyOwnerNotice, arriveAtOnlyOwner] = useStepFocus<HTMLDivElement>();
+
+  useLayoutEffect(() => focusStep(heading.current), []);
+
+  async function leave(): Promise<void> {
+    setBusy(true);
+    setRefused(null);
+
+    try {
+      await api.leaveOrganisation(organisation.id);
+      await refreshAccount();
+      void navigate('/app');
+    } catch (error) {
+      setBusy(false);
+      if (error instanceof ApiError && error.is('last_owner')) {
+        setRefusedLast(true);
+        arriveAtOnlyOwner();
+      } else
+        setRefused(
+          error instanceof ApiError ? error.problem.title : t('membersScreen.actionFailed'),
+        );
+    }
+  }
+
+  return (
+    <div className="settings-form">
+      <h3 tabIndex={-1} ref={heading}>
+        {t('ownership.leaveTitle', { organisation: organisation.name })}
+      </h3>
+      {lastOwner ? (
+        <>
+          <div
+            className="notice notice-attention"
+            role={openedOnlyOwner || refusedLast ? undefined : 'alert'}
+          >
+            <span className="mark mark-attention" aria-hidden="true">
+              !
+            </span>
+            <div className="notice-body" ref={onlyOwnerNotice} tabIndex={-1}>
+              <p className="notice-title">{t('ownership.onlyOwnerTitle')}</p>
+              <p>{t('ownership.onlyOwnerBody')}</p>
+            </div>
+          </div>
+          <ActionPair
+            dismiss={
+              <button type="button" className="link-button" onClick={onStay}>
+                {t('ownership.stay')}
+              </button>
+            }
+            confirm={
+              <button type="button" className="button button-primary" onClick={onTransfer}>
+                {t('ownership.transfer')}
+              </button>
+            }
+          />
+        </>
+      ) : (
+        <>
+          <p>{t('ownership.leaveBody', { organisation: organisation.name })}</p>
+          {refused != null && <FieldError id="leave-failed" message={refused} />}
+          <ActionPair
+            dismiss={
+              <button type="button" className="link-button" {...offButton(busy)} onClick={onStay}>
+                {t('ownership.stay')}
+              </button>
+            }
+            confirm={
+              <button
+                type="button"
+                className="button button-danger"
+                aria-busy={busy}
+                {...offButton(busy)}
+                onClick={() => void leave()}
+              >
+                <span className="button-label">
+                  {t('ownership.leave', { organisation: organisation.name })}
+                </span>
+              </button>
+            }
+          />
+        </>
+      )}
+    </div>
+  );
+}
+
+function Delete({ organisation, onKeep }: { organisation: Membership; onKeep: () => void }) {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const [preview, setPreview] = useState<Preview>({ kind: 'counting' });
+  const [attempt, setAttempt] = useState(0);
+  const [typed, setTyped] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [mismatch, setMismatch] = useState<string | null>(null);
+  const [failed, setFailed] = useState<string | null>(null);
+  const matches = typedNameMatches(typed, organisation.name);
+  const heading = useRef<HTMLHeadingElement>(null);
+
+  useLayoutEffect(() => focusStep(heading.current), []);
+
+  useEffect(() => {
+    let current = true;
+
+    api.organisationDeletion(organisation.id).then(
+      (counted) => current && setPreview({ kind: 'counted', counted }),
+      () => current && setPreview({ kind: 'failed' }),
+    );
+
+    return () => {
+      current = false;
+    };
+  }, [organisation.id, attempt]);
+
+  async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
+    event.preventDefault();
+    if (busy) return;
+
+    if (!matches) {
+      setMismatch(t('ownership.deleteMismatch', { organisation: organisation.name }));
+      document.getElementById('delete-confirm')?.focus();
+
+      return;
+    }
+
+    setBusy(true);
+    setFailed(null);
+    const land = focusWhereSent();
+
+    try {
+      await api.deleteOrganisation(organisation.id, typed);
+      await refreshAccount();
+      void navigate('/app');
+    } catch (error) {
+      setBusy(false);
+      const violation =
+        error instanceof ApiError
+          ? error.problem.violations?.find((one) => one.propertyPath === 'name')
+          : undefined;
+
+      if (violation != null) {
+        setMismatch(violation.message);
+        land('delete-confirm');
+      } else {
+        setFailed(
+          error instanceof ApiError ? error.problem.title : t('membersScreen.actionFailed'),
+        );
+      }
+    }
+  }
+
+  return (
+    <form className="settings-form" noValidate onSubmit={(event) => void submit(event)}>
+      <h3 tabIndex={-1} ref={heading}>
+        {t('ownership.deleteTitle', { organisation: organisation.name })}
+      </h3>
+      <div
+        className={preview.kind === 'failed' ? 'notice notice-broken' : 'notice notice-attention'}
+      >
+        {preview.kind === 'failed' ? (
+          <span className="mark mark-broken" aria-hidden="true">
+            ✕
+          </span>
+        ) : (
+          <span className="mark mark-attention" aria-hidden="true">
+            !
+          </span>
+        )}
+        <div className="notice-body">
+          <p className="notice-title">{t('ownership.deleteWarningTitle')}</p>
+          <div>
+            {preview.kind === 'counting' && <p>{t('ownership.deleteLoading')}</p>}
+            {/* Mounted empty with the heading, so only the counts or the failure are announced, when they come. */}
+            <div role="alert">
+              {preview.kind === 'counted' && (
+                <p>
+                  {t('ownership.deleteCounts', {
+                    events: t('ownership.events', { count: preview.counted.events }),
+                    guests: t('ownership.guests', { count: preview.counted.guests }),
+                    members: t('ownership.members', { count: preview.counted.members }),
+                  })}{' '}
+                  {t('ownership.deleteWindow', { deadline: preview.counted.restoreCloses })}
+                </p>
+              )}
+              {preview.kind === 'failed' && <p>{t('ownership.deleteUncounted')}</p>}
+            </div>
+          </div>
+          {preview.kind === 'failed' && (
+            <button
+              type="button"
+              className="button"
+              onClick={() => {
+                focusStep(heading.current);
+                setPreview({ kind: 'counting' });
+                setAttempt((n) => n + 1);
+              }}
+            >
+              {t('ownership.deleteRetry')}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {failed != null && (
+        <div className="notice notice-broken" role="alert">
+          <span className="mark mark-broken" aria-hidden="true">
+            ✕
+          </span>
+          <p>{failed}</p>
+        </div>
+      )}
+
+      <div className="field">
+        <label htmlFor="delete-confirm">
+          {t('ownership.deleteType', { organisation: organisation.name })}
+        </label>
+        <input
+          className={mismatch != null ? 'input input-wrong' : 'input'}
+          id="delete-confirm"
+          autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="none"
+          spellCheck={false}
+          value={typed}
+          {...offField(busy)}
+          aria-invalid={mismatch != null}
+          aria-describedby={mismatch != null ? 'delete-confirm-error' : 'delete-confirm-note'}
+          onChange={(event) => {
+            setTyped(event.target.value);
+            if (typedNameMatches(event.target.value, organisation.name)) setMismatch(null);
+          }}
+        />
+        {mismatch != null && <FieldError id="delete-confirm-error" message={mismatch} />}
+        <p className="muted" id="delete-confirm-note">
+          {matches ? t('ownership.deleteMatches') : t('ownership.deleteExactly')}
+        </p>
+      </div>
+
+      <ActionPair
+        dismiss={
+          <button className="link-button" type="button" {...offButton(busy)} onClick={onKeep}>
+            <span className="button-label">
+              {t('ownership.deleteKeep', { organisation: organisation.name })}
+            </span>
+          </button>
+        }
+        confirm={
+          <button className="button button-danger" type="submit" aria-busy={busy}>
+            <span className="button-label">
+              {t('ownership.deleteButton', { organisation: organisation.name })}
+            </span>
+          </button>
+        }
+      />
+    </form>
+  );
+}

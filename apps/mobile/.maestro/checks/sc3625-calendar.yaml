@@ -1,0 +1,108 @@
+# sc-3625: Calendar opens; Month shows a busy day's list with milestones, the Lagos event on 7 November, Events only drops the milestones, Next moves to December, Today comes back from October to the current month, and Agenda lists the Lagos and multi-day events. Needs ORIENT, LAGOS (Lagos rooftop night, 7 Nov 2026 23:00 Africa/Lagos) and MULTI (Harbour gala weekend, 28 Nov to 1 Dec 2026), both of the signed-in organisation, which has four events and their milestones on 14 Nov 2026.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- runFlow: ../return-home.yaml
+- tapOn:
+    id: 'frame.calendar'
+- extendedWaitUntil:
+    visible:
+      id: 'calendar.month'
+    timeout: 30000
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'calendar.view.month'
+- takeScreenshot: opened
+- tapOn:
+    id: 'calendar.view.month'
+- extendedWaitUntil:
+    visible:
+      id: 'calendar.grid'
+    timeout: 20000
+- runFlow: ../checks/sc3625/to-november.yaml
+- takeScreenshot: month
+- tapOn:
+    id: 'calendar.day.2026-11-14'
+- extendedWaitUntil:
+    visible:
+      id: 'calendar.dayList'
+    timeout: 10000
+- assertVisible:
+    id: 'calendar.row.milestone-.*'
+- takeScreenshot: busy-day
+- tapOn:
+    id: 'calendar.dayList.close'
+- waitForAnimationToEnd
+- tapOn:
+    id: 'calendar.day.2026-11-07'
+- extendedWaitUntil:
+    visible:
+      id: 'calendar.row.event-${LAGOS}'
+    timeout: 10000
+- takeScreenshot: lagos-day
+- tapOn:
+    id: 'calendar.dayList.close'
+- waitForAnimationToEnd
+- tapOn:
+    id: 'calendar.show.events'
+- waitForAnimationToEnd
+- tapOn:
+    id: 'calendar.day.2026-11-14'
+- extendedWaitUntil:
+    visible:
+      id: 'calendar.dayList'
+    timeout: 10000
+- assertVisible:
+    id: 'calendar.row.event-.*'
+- assertNotVisible:
+    id: 'calendar.row.milestone-.*'
+- takeScreenshot: events-only
+- tapOn:
+    id: 'calendar.dayList.close'
+- waitForAnimationToEnd
+- tapOn:
+    id: 'calendar.show.all'
+- tapOn:
+    id: 'calendar.next'
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'calendar.day.2026-12-09'
+- assertNotVisible:
+    id: 'calendar.day.2026-11-14'
+- takeScreenshot: december
+- tapOn:
+    id: 'calendar.previous'
+- waitForAnimationToEnd
+- tapOn:
+    id: 'calendar.previous'
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'calendar.day.2026-10-14'
+- evalScript: ${output.mid = new Date().toISOString().slice(0, 8) + '15'}
+- assertNotVisible:
+    id: 'calendar.day.${output.mid}'
+- tapOn:
+    id: 'calendar.today'
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'calendar.day.${output.mid}'
+- takeScreenshot: today
+- runFlow: ../checks/sc3625/to-november.yaml
+- tapOn:
+    id: 'calendar.view.agenda'
+- extendedWaitUntil:
+    visible:
+      id: 'calendar.agenda'
+    timeout: 20000
+- scrollUntilVisible:
+    element:
+      id: 'calendar.row.event-${LAGOS}'
+    direction: DOWN
+    timeout: 20000
+- takeScreenshot: agenda-lagos
+- scrollUntilVisible:
+    element:
+      id: 'calendar.row.event-${MULTI}'
+    direction: DOWN
+    timeout: 20000
+- takeScreenshot: agenda-multi-day

@@ -1,0 +1,6 @@
+# Screenshots whatever is on screen once it settles. sc-13256. Pass SHOT.
+appId: host.exp.Exponent
+---
+- waitForAnimationToEnd:
+    timeout: 10000
+- takeScreenshot: ${SHOT}

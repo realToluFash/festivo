@@ -1,0 +1,37 @@
+# iOS. sc-23327 (sc-18108's steps, Back as the swipe from the left edge): Settings > Members > the member ${MEMBER}; Back shows the Members list, a second Back shows Settings.
+appId: host.exp.Exponent
+---
+- runFlow: ../open-settings.yaml
+- tapOn:
+    id: 'settings.members'
+- extendedWaitUntil:
+    visible:
+      id: 'members.row.${MEMBER}'
+    timeout: 30000
+- tapOn:
+    id: 'members.row.${MEMBER}'
+- extendedWaitUntil:
+    visible:
+      id: 'frame.back'
+    timeout: 20000
+- takeScreenshot: page
+- swipe:
+    start: 1%, 50%
+    end: 85%, 50%
+    duration: 400
+- extendedWaitUntil:
+    visible:
+      id: 'members.row.${MEMBER}'
+    timeout: 10000
+- takeScreenshot: after-back
+- swipe:
+    start: 1%, 50%
+    end: 85%, 50%
+    duration: 400
+- extendedWaitUntil:
+    visible:
+      id: 'settings.roles'
+    timeout: 10000
+- assertNotVisible:
+    id: 'members.row.${MEMBER}'
+- takeScreenshot: after-second-back

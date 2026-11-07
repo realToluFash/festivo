@@ -1,0 +1,56 @@
+# sc-11786: a member's page with Event manager picked and not saved, turned from ${FROM} to ${TO}.
+appId: host.exp.Exponent
+---
+- setOrientation: ${FROM}
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil:
+    visible:
+      id: 'members.filter.active'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'members.row.${MEMBER}'
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: 'members.row.${MEMBER}'
+- waitForAnimationToEnd
+- repeat:
+    while:
+      notVisible:
+        id: 'members.role.event_manager'
+    times: 10
+    commands:
+      - swipe:
+          start: 75%, 70%
+          end: 75%, 35%
+- tapOn:
+    id: 'members.role.event_manager'
+- repeat:
+    while:
+      notVisible:
+        id: 'members.role.save'
+    times: 10
+    commands:
+      - swipe:
+          start: 75%, 70%
+          end: 75%, 35%
+- assertVisible:
+    id: 'members.role.save'
+- waitForAnimationToEnd
+- takeScreenshot: member-role-before
+- setOrientation: ${TO}
+- waitForAnimationToEnd
+- takeScreenshot: member-role-after
+- repeat:
+    while:
+      notVisible:
+        id: 'members.role.save'
+    times: 10
+    commands:
+      - swipe:
+          start: 75%, 70%
+          end: 75%, 35%
+- assertVisible:
+    id: 'members.role.save'
+- takeScreenshot: member-role-after-save

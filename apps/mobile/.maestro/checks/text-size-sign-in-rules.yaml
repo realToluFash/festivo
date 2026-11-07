@@ -1,0 +1,16 @@
+# sign-in-rules, top to bottom, at whatever text size the simulator is set to. sc-13281.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/sign-in-rules
+- extendedWaitUntil:
+    visible: '{{t:settings.signInRules}}|{{t:signInRules.readTitle}}'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: sign-in-rules-1
+- scroll
+- takeScreenshot: sign-in-rules-2
+- scroll
+- takeScreenshot: sign-in-rules-3
+- scroll
+- takeScreenshot: sign-in-rules-4

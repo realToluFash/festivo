@@ -1,0 +1,27 @@
+# Android only. sc-18108: on a tablet on its side, Events > ${TAB} > ${EVENT}, shown beside the list; Back once.
+appId: host.exp.Exponent
+---
+- runFlow: ../return-home.yaml
+- tapOn:
+    id: 'frame.events'
+- extendedWaitUntil:
+    visible:
+      id: 'events.tab.${TAB}'
+    timeout: 30000
+- tapOn:
+    id: 'events.tab.${TAB}'
+- scrollUntilVisible:
+    element:
+      id: 'events.row.${EVENT}'
+    direction: DOWN
+    timeout: 20000
+- tapOn:
+    id: 'events.row.${EVENT}'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 20000
+- takeScreenshot: page
+- back
+- waitForAnimationToEnd
+- takeScreenshot: after-back

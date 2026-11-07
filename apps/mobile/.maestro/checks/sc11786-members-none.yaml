@@ -1,0 +1,10 @@
+# sc-11786: Members on a tablet on its side with nobody chosen, membersScreen.pickSomebody beside the list.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil:
+    visible: '{{t:membersScreen.pickSomebody}}'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: members-none

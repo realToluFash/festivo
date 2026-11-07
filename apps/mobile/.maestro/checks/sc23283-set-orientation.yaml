@@ -1,0 +1,5 @@
+# sc-23283: turns the device to ${SIDE}, for the checks after it in the batch. On the QA iPad, PORTRAIT draws landscape (rotation 0).
+appId: host.exp.Exponent
+---
+- setOrientation: ${SIDE}
+- waitForAnimationToEnd

@@ -1,0 +1,39 @@
+# sc-12226: the role page named by ${ROLE_ID}, opened from Roles, top to bottom: the head, every area, and the foot.
+# A bare scroll swipes at the screen's centre, which a wide tablet window puts on the Settings list, so these
+# swipe at 75% across, on the role page in the split layout and on the content on a phone.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/roles
+- extendedWaitUntil:
+    visible:
+      id: 'roles.role.owner'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'roles.role.${ROLE_ID}'
+    direction: DOWN
+- tapOn:
+    id: 'roles.role.${ROLE_ID}'
+- extendedWaitUntil:
+    visible:
+      id: 'roles.name'
+    timeout: 30000
+- takeScreenshot: role-spare-top
+- swipe:
+    start: 75%, 70%
+    end: 75%, 30%
+- takeScreenshot: role-spare-mid
+- swipe:
+    start: 75%, 70%
+    end: 75%, 30%
+- takeScreenshot: role-spare-mid2
+- repeat:
+    while:
+      notVisible: '{{t:rolesScreen.seeHeading}}'
+    times: 8
+    commands:
+      - swipe:
+          start: 75%, 70%
+          end: 75%, 30%
+- assertVisible: '{{t:rolesScreen.seeHeading}}'
+- takeScreenshot: role-spare-foot
