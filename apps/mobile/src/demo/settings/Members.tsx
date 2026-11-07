@@ -2,15 +2,33 @@ import { formattingLocale } from '@soirely/domain';
 import { getLocales } from 'expo-localization';
 import { useLocalSearchParams } from 'expo-router';
 import { type RefObject, useEffect, useMemo, useRef, useState } from 'react';
-import type { ViewInstance } from 'react-native';
+import type { ScrollViewInstance, ViewInstance } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
+import { SETTLED_MS } from '../../components/Screen.tsx';
+import {
+  moveScreenReaderFocus,
+  type ScreenReaderTarget,
+} from '../../components/screenReaderFocus.ts';
+import { tokens } from '../../theme/tokens.ts';
 
 import { Landscape, SeenBy, useShell } from './Frame.tsx';
 import { ClaimScreen, useOwnerClaim } from './MembersClaim.tsx';
 import { useLoad } from './MembersLoading.tsx';
 import { MembersCardView, NobodyPicked, People, Waiting } from './MembersParts.tsx';
 import { type PersonOpening, PersonPage } from './MembersPerson.tsx';
+import {
+  bringListUp,
+  RecoveryRequests,
+  type RecoveryPart,
+  recoveryQuestion,
+} from './MembersRecovery.tsx';
+import {
+  answerable,
+  answerTakes,
+  type RecoveryAnswer,
+  type RecoveryAsk,
+} from './MembersRecoverySample.ts';
 import { RequestScreen } from './MembersRequest.tsx';
 import {
   approved,
@@ -23,30 +41,42 @@ import {
   type MembersStart,
   membersStart,
   membersStateOf,
+  membersViewerOf,
   type Person,
   PROOF_MINUTES,
+  reachableState,
   removed,
   type Request,
   turnedDown,
 } from './MembersSample.ts';
 import { memberLooking } from './sample.ts';
-import { FailedBlock, LoadingBlock, SummaryColumn, SummaryPage } from './Summary.tsx';
+import {
+  Ask,
+  FailedBlock,
+  LoadingBlock,
+  SummaryColumn,
+  SummaryPage,
+  useRowClear,
+} from './Summary.tsx';
 
 const PLAIN: PersonOpening = { step: 'resting', picked: null };
 
 /** Members in B, summary first: the card, who waits, the people, a member's page and the owner claim, on sample data. */
 export function MembersSection() {
-  const { state } = useLocalSearchParams<{ state?: string }>();
-  const name = membersStateOf(state);
-  const start = useMemo(() => membersStart(name), [name]);
+  const { state, as } = useLocalSearchParams<{ state?: string; as?: string }>();
+  const chosen = membersViewerOf(as);
+  const name = reachableState(membersStateOf(state), chosen);
+  const start = useMemo(() => membersStart(name, chosen), [name, chosen]);
   const looking = useMemo(() => memberLooking(start.viewer.id), [start]);
 
   return (
     <SeenBy looking={looking}>
-      <MembersScreen key={name} start={start} />
+      <MembersScreen key={`${name}:${start.viewer.id}`} start={start} />
     </SeenBy>
   );
 }
+
+type Targets = Partial<Record<string, Partial<Record<RecoveryPart, ViewInstance | null>>>>;
 
 function MembersScreen({ start }: { start: MembersStart }) {
   const shell = useShell();
@@ -67,13 +97,52 @@ function MembersScreen({ start }: { start: MembersStart }) {
   const waitingRow = useRef<ViewInstance>(null);
   const cardStep = useRef<ViewInstance>(null);
   const focusBack = useRef<ScreenReaderTarget | null>(null);
+  const insets = useSafeAreaInsets();
+  const clear = useRowClear();
+  const [recovery, setRecovery] = useState<string[]>(start.recovery);
+  const [recoveryAsk, setRecoveryAsk] = useState<RecoveryAsk | null>(start.recoveryAsk);
+  const [recoveryAnswer, setRecoveryAnswer] = useState<RecoveryAnswer | null>(start.recoveryAnswer);
+  const [lit, setLit] = useState<string | null>(null);
+  const [sent, setSent] = useState(start.recoveryAsk?.phase === 'sending' ? 1 : 0);
+  const listScroll = useRef<ScrollViewInstance>(null);
+  const recoveryList = useRef<ViewInstance>(null);
+  const cardSays = useRef<ScreenReaderTarget | null>(null);
+  const targets = useRef<Targets>({});
+  const lighting = useRef<ReturnType<typeof setTimeout>>(undefined);
+  // Where a closed confirm gives the focus back: the answer that opened it, the next request, or the card's sentence (null).
+  const back = useRef<{ id: string; part: RecoveryPart } | null>(
+    start.recoveryAsk == null ? null : { id: start.recoveryAsk.id, part: start.recoveryAsk.answer },
+  );
+  const recoveryOpener = useMemo<RefObject<ScreenReaderTarget | null>>(
+    () => ({
+      get current() {
+        const at = back.current;
+
+        return (at == null ? null : targets.current[at.id]?.[at.part]) ?? cardSays.current;
+      },
+    }),
+    [],
+  );
   const [askedId] = useState(
     () => start.people.find((one) => one.status === 'pendingApproval')?.id ?? null,
   );
   const person = open == null ? null : (people.find((one) => one.id === open) ?? null);
   const asked = viewer.manages ? (people.find((one) => one.id === askedId) ?? null) : null;
   const asking = asked?.status === 'pendingApproval' ? asked : null;
-  const card = membersCard({ people, viewer, request, gone, claim: owner.claim, say });
+  const card = membersCard({
+    people,
+    viewer,
+    request,
+    gone,
+    claim: owner.claim,
+    say,
+    recovery: { waiting: recovery, answer: recoveryAnswer },
+  });
+  const recoveryAsked =
+    recoveryAsk == null ? null : (people.find((one) => one.id === recoveryAsk.id) ?? null);
+  const waitingBack = viewer.manages
+    ? recovery.flatMap((id) => people.filter((one) => one.id === id))
+    : [];
 
   useEffect(() => {
     if (provedAt == null) return;
@@ -82,12 +151,83 @@ function MembersScreen({ start }: { start: MembersStart }) {
     return () => clearTimeout(timer);
   }, [provedAt]);
 
+  useEffect(() => () => clearTimeout(lighting.current), []);
+
   /** An answer, a removal or a withdrawn claim stays on the card until the person moves on. */
   function moveOn(): void {
     if (typeof request === 'object') setRequest('resting');
     setGone(null);
+    setRecoveryAnswer(null);
+    setLit(null);
     owner.moveOn();
   }
+
+  /** The card's step: the oldest request the viewer can answer comes into view, lit, and takes the focus. */
+  function lightRecovery(): void {
+    const id = answerable(recovery, viewer.id)[0];
+    if (id == null) return;
+    setLit(id);
+    const top = (shell.layout === 'phone' ? insets.top : 0) + tokens.spaceSm;
+    requestAnimationFrame(() =>
+      bringListUp(recoveryList.current, targets.current[id]?.box, listScroll.current, top, clear),
+    );
+    clearTimeout(lighting.current);
+    lighting.current = setTimeout(
+      () => moveScreenReaderFocus(targets.current[id]?.group ?? null),
+      SETTLED_MS,
+    );
+  }
+
+  function askRecovery(id: string, answer: RecoveryAsk['answer']): void {
+    back.current = { id, part: answer };
+    setRecoveryAsk({ id, answer, phase: 'asking' });
+  }
+
+  function answerRecovery(id: string, kind: RecoveryAnswer['kind']): void {
+    back.current = null;
+    moveOn();
+    setRecovery((before) => before.filter((one) => one !== id));
+    setRecoveryAnswer({ id, kind });
+    setRecoveryAsk(null);
+  }
+
+  /** Answered elsewhere: Close takes the request off the page, and the next one, or the card, takes the focus. */
+  function closeGone(id: string): void {
+    const rest = recovery.filter((one) => one !== id);
+    const next = rest[0];
+    back.current = next == null ? null : { id: next, part: 'group' };
+    moveOn();
+    setRecovery(rest);
+    setRecoveryAsk(null);
+  }
+
+  /** Cancel, Keep the request, Back and the escape change nothing, and wait while an answer is out; once the request has gone, they are Close. */
+  function keepRecoveryAsk(): void {
+    if (recoveryAsk?.phase === 'sending') return;
+    if (recoveryAsk?.phase === 'closed') closeGone(recoveryAsk.id);
+    else setRecoveryAsk(null);
+  }
+
+  /** The verb sends the answer, or tries it again after a failure; the failed line goes while it is out. */
+  function confirmRecoveryAsk(): void {
+    if (recoveryAsk == null || recoveryAsk.phase === 'sending' || recoveryAsk.phase === 'closed')
+      return;
+    setRecoveryAsk({ ...recoveryAsk, phase: 'sending' });
+    setSent((count) => count + 1);
+  }
+
+  useEffect(() => {
+    if (sent === 0 || recoveryAsk == null) return;
+    const ask = recoveryAsk;
+    const wait = setTimeout(
+      () => answerRecovery(ask.id, ask.answer === 'approve' ? 'approved' : 'turnedDown'),
+      answerTakes(start.answering, sent),
+    );
+
+    return () => clearTimeout(wait);
+    // Once per answer sent: it answers the confirm that was open as its verb was pressed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sent]);
 
   function openPerson(id: string | null, with_: PersonOpening = PLAIN): void {
     moveOn();
@@ -116,6 +256,9 @@ function MembersScreen({ start }: { start: MembersStart }) {
       case 'answer':
         openRequest(cardStep);
         return;
+      case 'answerRecovery':
+        lightRecovery();
+        return;
       case 'seePerson':
         if (typeof request === 'object' && 'approved' in request) openPerson(request.approved);
         return;
@@ -140,8 +283,25 @@ function MembersScreen({ start }: { start: MembersStart }) {
         compact={landscape}
         wide={shell.layout === 'portrait'}
         stepRef={cardStep}
+        saysRef={(view) => {
+          cardSays.current = view;
+        }}
         onStep={onStep}
       />
+      {waitingBack.length > 0 && (
+        <RecoveryRequests
+          waiting={waitingBack}
+          you={viewer.id}
+          lit={lit}
+          dense={landscape}
+          say={say}
+          listRef={recoveryList}
+          onTarget={(id, part, view) => {
+            targets.current[id] = { ...targets.current[id], [part]: view };
+          }}
+          onAnswer={askRecovery}
+        />
+      )}
       {asking != null && (
         <Waiting
           person={asking}
@@ -187,6 +347,14 @@ function MembersScreen({ start }: { start: MembersStart }) {
         />
       )}
       {owner.claim != null && <ClaimScreen owner={owner} say={say} opener={focusBack} />}
+      <Ask
+        open={recoveryAsked != null}
+        opener={recoveryOpener}
+        {...recoveryQuestion(recoveryAsk, recoveryAsked?.name ?? '')}
+        onKeep={keepRecoveryAsk}
+        onConfirm={confirmRecoveryAsk}
+        testID="members.recovery.ask"
+      />
     </>
   );
 
@@ -210,7 +378,11 @@ function MembersScreen({ start }: { start: MembersStart }) {
     );
   }
 
-  const column = landscape ? <SummaryColumn title="Members">{list}</SummaryColumn> : undefined;
+  const column = landscape ? (
+    <SummaryColumn title="Members" scrollRef={listScroll}>
+      {list}
+    </SummaryColumn>
+  ) : undefined;
 
   if (person != null)
     return (
@@ -244,7 +416,9 @@ function MembersScreen({ start }: { start: MembersStart }) {
           <NobodyPicked />
         </Landscape>
       ) : (
-        <SummaryPage title="Members">{list}</SummaryPage>
+        <SummaryPage title="Members" scrollRef={listScroll}>
+          {list}
+        </SummaryPage>
       )}
       {overlays}
     </>

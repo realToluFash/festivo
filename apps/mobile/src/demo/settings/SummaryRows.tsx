@@ -39,6 +39,12 @@ const TAGS: Record<TagKind, { fill: string; ink: string; ring?: string }> = {
   now: { fill: tokens.colorAccentTint, ink: tokens.colorAccentText },
 };
 
+/** A selected row's look: Tint at the row's radius, with no ring. */
+export const SELECTED_ROW = {
+  borderRadius: tokens.radiusRow,
+  backgroundColor: tokens.colorAccentTint,
+} as const;
+
 export function StatusMark({
   kind,
   side = 12,
@@ -129,10 +135,13 @@ export function Tag({
   kind,
   word,
   turning = false,
+  wraps = false,
 }: {
   kind: TagKind;
   word: string;
   turning?: boolean | undefined;
+  /** At the largest text a long word wraps inside the tag rather than run past the row. */
+  wraps?: boolean;
 }) {
   const look = TAGS[kind];
 
@@ -143,11 +152,17 @@ export function Tag({
         { backgroundColor: look.fill, paddingLeft: kind === 'now' && !turning ? 9 : 7 },
         turning && styles.tagTurning,
         look.ring != null && { borderWidth: 1, borderColor: look.ring },
+        wraps && styles.tagWraps,
       ]}
     >
       {turning && <TurningMark />}
       {kind !== 'now' && <StatusMark kind={kind} ink={look.ink} />}
-      <Text size={12.5} weight="semibold" numberOfLines={1} style={{ color: look.ink }}>
+      <Text
+        size={12.5}
+        weight="semibold"
+        numberOfLines={wraps ? undefined : 1}
+        style={{ color: look.ink }}
+      >
         {word}
       </Text>
     </View>
@@ -368,6 +383,7 @@ export function TextAction({
   removes = false,
   plain = false,
   off = false,
+  busy = false,
   figures = false,
   glyph,
   after,
@@ -381,6 +397,8 @@ export function TextAction({
   removes?: boolean;
   plain?: boolean;
   off?: boolean;
+  /** While its request is out: the turning mark and its words in Ink 2, off and busy, as the focused screen's verb. */
+  busy?: boolean;
   figures?: boolean;
   glyph?: GlyphName;
   after?: GlyphName;
@@ -389,24 +407,29 @@ export function TextAction({
   testID?: string | undefined;
   ref?: Ref<ViewInstance>;
 }) {
-  const ink = off
-    ? tokens.colorInkTertiary
-    : removes
-      ? tokens.colorBroken
-      : plain
-        ? tokens.colorInk
-        : tokens.colorAccentText;
+  const ink = busy
+    ? tokens.colorInkSecondary
+    : off
+      ? tokens.colorInkTertiary
+      : removes
+        ? tokens.colorBroken
+        : plain
+          ? tokens.colorInk
+          : tokens.colorAccentText;
   const action = (
     <Pressable
       ref={ref}
-      onPress={off ? undefined : onPress}
-      disabled={off}
-      style={({ pressed }) => [styles.action, pressed && styles.pressed]}
+      onPress={off || busy ? undefined : onPress}
+      disabled={off || busy}
+      style={({ pressed }) => [styles.action, busy && styles.actionBusy, pressed && styles.pressed]}
       accessibilityRole="button"
-      accessibilityState={off ? { disabled: true } : undefined}
+      accessibilityState={
+        busy ? { disabled: true, busy: true } : off ? { disabled: true } : undefined
+      }
       accessibilityLabel={accessibilityLabel ?? label}
       testID={testID}
     >
+      {busy && <TurningMark side={14} />}
       {glyph != null && <Glyph name={glyph} size={17} ink={ink} weight={2.3} />}
       <Text
         size={15}
@@ -480,12 +503,13 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   tagTurning: { gap: tokens.spaceXs },
+  tagWraps: { flexShrink: 1 },
   head: { minHeight: tokens.sizeHit, flexDirection: 'row', alignItems: 'center', gap: 10 },
   headTitle: { flex: 1, minWidth: 0, letterSpacing: -0.18, lineHeight: 18 * 1.25 },
   foot: { paddingTop: tokens.spaceXs },
   row: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceLg },
   // Lit like People's row, with no ring: the owner found the ring weird (6 Nov 2026).
-  rowSelected: { borderRadius: tokens.radiusRow, backgroundColor: tokens.colorAccentTint },
+  rowSelected: SELECTED_ROW,
   rowPressed: { opacity: tokens.opacityPressed },
   words: { flex: 1, minWidth: 0, gap: 3 },
   titleRow: {
@@ -509,4 +533,5 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     gap: 5,
   },
+  actionBusy: { gap: tokens.spaceXs },
 });

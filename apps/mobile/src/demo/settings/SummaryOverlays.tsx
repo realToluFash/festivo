@@ -114,7 +114,7 @@ function Window({
 /** An Ask from a page: a dialog in a window of its own. */
 export function Ask({ open, opener, ...ask }: AskProps & { open: boolean; opener: Opener }) {
   return (
-    <Window open={open} onClose={ask.onKeep} opener={opener}>
+    <Window open={open} onClose={ask.sending == null ? ask.onKeep : stay} opener={opener}>
       {open && <AskLayer {...ask} />}
     </Window>
   );
