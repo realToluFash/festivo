@@ -33,7 +33,11 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { OrgMark as ProductOrgMark } from '../components/OrgMark.tsx';
-import { OPENER, OpenerWords as ProductOpenerWords } from '../components/OrgPill.tsx';
+import {
+  OPENER,
+  OpenerWords as ProductOpenerWords,
+  OrgPill as ProductOrgPill,
+} from '../components/OrgPill.tsx';
 import { TextField } from '../components/Field.tsx';
 import { Glyph } from '../components/Glyph.tsx';
 import { Initials } from '../components/Initials.tsx';
@@ -501,19 +505,18 @@ export function DemoOrgOpener({ at }: { at: OpenerAt }) {
 
   if (at === 'sidebar')
     return (
-      <Pressable
-        {...shared}
-        style={({ pressed }) => [
-          styles.sideOrg,
-          org.waiting > 0 && styles.sideOrgWaiting,
-          (org.expanded || pressed) && styles.sideOrgOpen,
-        ]}
+      <ProductOrgPill
+        ref={ref}
+        sidebar
+        id={org.place.id}
+        name={org.place.name}
+        mark={<OrgMark id={org.place.id} name={org.place.name} side={28} />}
+        waiting={org.waiting > 0 ? SW.count(org.waiting) : null}
+        label={org.label}
+        expanded={org.expanded}
+        onPress={org.onPress}
         testID="org.switch"
-      >
-        <OrgMark id={org.place.id} name={org.place.name} side={28} />
-        <OpenerWords opener={org} grow />
-        <Glyph name="updown" size={14} ink={tokens.colorInkSecondary} />
-      </Pressable>
+      />
     );
 
   if (at === 'band')
@@ -1419,21 +1422,6 @@ const styles = StyleSheet.create({
     paddingRight: tokens.spacePillEnd,
   },
   bandOrg: { paddingHorizontal: 5 },
-  sideOrg: {
-    minHeight: OPENER.rest,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.spaceMd,
-    paddingLeft: tokens.spaceSm,
-    paddingRight: tokens.spaceMd,
-    borderRadius: tokens.radiusRow,
-  },
-  sideOrgWaiting: { minHeight: OPENER.waiting },
-  sideOrgOpen: {
-    backgroundColor: tokens.colorCard,
-    ...tokens.elevationNative.card.ios,
-    elevation: tokens.elevationNative.card.android.elevation,
-  },
   drop: {
     position: 'absolute',
     borderWidth: 1,

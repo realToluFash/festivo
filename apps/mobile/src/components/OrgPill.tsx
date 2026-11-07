@@ -1,4 +1,4 @@
-import type { Ref } from 'react';
+import type { ReactNode, Ref } from 'react';
 import { Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
 
 import { tokens } from '../theme/tokens.ts';
@@ -53,7 +53,7 @@ export function OpenerWords({
   );
 }
 
-/** The organisation switcher on white, at the top of every top-level page; without `onPress` it only names the organisation. */
+/** The organisation switcher on white, at the top of every top-level page, or at the head of iPad landscape's sidebar; without `onPress` it only names the organisation. */
 export function OrgPill({
   id,
   name,
@@ -63,6 +63,8 @@ export function OrgPill({
   onPress,
   bare = false,
   wrap = false,
+  sidebar = false,
+  mark,
   testID,
   ref,
 }: {
@@ -75,6 +77,9 @@ export function OrgPill({
   /** At the largest text sizes the tile gives its room to the name. */
   bare?: boolean;
   wrap?: boolean;
+  sidebar?: boolean;
+  /** The demo's own tile, which plays its arrival. */
+  mark?: ReactNode;
   testID?: string;
   ref?: Ref<ViewInstance> | undefined;
 }) {
@@ -83,18 +88,26 @@ export function OrgPill({
       ref={ref}
       onPress={onPress}
       disabled={onPress == null}
-      style={({ pressed }) => [
-        styles.org,
-        (waiting != null || wrap) && styles.orgWaiting,
-        pressed && styles.orgPressed,
-      ]}
+      style={({ pressed }) =>
+        sidebar
+          ? [
+              styles.side,
+              (waiting != null || wrap) && styles.sideWaiting,
+              (expanded === true || pressed) && styles.sideOpen,
+            ]
+          : [
+              styles.org,
+              (waiting != null || wrap) && styles.orgWaiting,
+              pressed && styles.orgPressed,
+            ]
+      }
       accessibilityRole={onPress == null ? 'text' : 'button'}
       accessibilityLabel={label}
       accessibilityState={onPress == null || expanded == null ? undefined : { expanded }}
       testID={testID}
     >
-      {!bare && <OrgMark id={id} name={name} side={28} />}
-      <OpenerWords name={name} waiting={waiting} wrap={wrap} />
+      {!bare && (mark ?? <OrgMark id={id} name={name} side={28} />)}
+      <OpenerWords name={name} waiting={waiting} wrap={wrap} grow={sidebar} />
       {onPress != null && <Glyph name="updown" size={14} ink={tokens.colorInkSecondary} />}
     </Pressable>
   );
@@ -120,4 +133,19 @@ const styles = StyleSheet.create({
   },
   orgWaiting: { minHeight: OPENER.waiting, borderRadius: OPENER.waiting / 2 },
   orgPressed: { backgroundColor: tokens.colorNeutralFill },
+  side: {
+    minHeight: OPENER.rest,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spaceMd,
+    paddingLeft: tokens.spaceSm,
+    paddingRight: tokens.spaceMd,
+    borderRadius: tokens.radiusRow,
+  },
+  sideWaiting: { minHeight: OPENER.waiting },
+  sideOpen: {
+    backgroundColor: tokens.colorCard,
+    ...tokens.elevationNative.card.ios,
+    elevation: tokens.elevationNative.card.android.elevation,
+  },
 });

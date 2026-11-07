@@ -35,12 +35,18 @@ import { useTranslation } from 'react-i18next';
 import { usePushTaps } from '../appPush.ts';
 import { type WaitingInvitations, useWaitingInvitations } from '../invitations.ts';
 import { type DomainOffer, useDomainOffer } from '../joinOffers.ts';
-import { DESTINATION_HREF, type Destination, HOME_TAPPED, destinations } from '../kit/appNav.ts';
+import {
+  DESTINATION_HREF,
+  type Destination,
+  HOME_TAPPED,
+  SECTION_HREF,
+  destinations,
+} from '../kit/appNav.ts';
 import { backRowHiding } from '../kit/backRow.ts';
 import { phonePillAlone } from '../kit/frameBand.ts';
 import { EDGE_SWIPE_WIDTH, headerDrawsBack, stackSwipes } from '../kit/systemBack.ts';
 import { leaveThen } from '../leaveHeld.ts';
-import { backLabelSize, frameTitleSize, railWidth } from '../layout/textSize.ts';
+import { backLabelSize, frameTitleSize } from '../layout/textSize.ts';
 import {
   type LayoutKind,
   useAccessibilitySizes,
@@ -53,7 +59,6 @@ import { switcherFocusBack } from '../kit/focusBack.ts';
 import { tokens } from '../theme/tokens.ts';
 import { useTwoFactorStanding } from '../twoFactorStanding.ts';
 import { BellButton } from './BellButton.tsx';
-import { Brand } from './Brand.tsx';
 import { CreateOrganisation } from './CreateOrganisation.tsx';
 import {
   HeaderPrimary,
@@ -63,7 +68,6 @@ import {
 } from './Buttons.tsx';
 import { Sheet } from './Sheet.tsx';
 import { InvitationRows } from './InvitationRows.tsx';
-import { Initials } from './Initials.tsx';
 import type { GlyphName } from './Glyph.tsx';
 import { Notice } from './Notice.tsx';
 import {
@@ -77,6 +81,16 @@ import {
 } from './TodayCover.tsx';
 import { OrgPill as WhitePill } from './OrgPill.tsx';
 import { OrgTile } from './OrgTile.tsx';
+import {
+  SidebarBack,
+  SidebarColumn,
+  SidebarFoot,
+  SidebarHead,
+  SidebarPlace,
+  SidebarPlaces,
+} from './TodaySidebar.tsx';
+import { type TodayShell, TodayShellProvider } from './todayShell.ts';
+import { AREA_GLYPH } from './areaGlyph.ts';
 import { ReadOut, useReadOut } from './ReadOut.tsx';
 import { type StepClosed, stepClosed, useFocusBackToOpener, useFocusOnAnswer } from './Screen.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
@@ -352,14 +366,16 @@ export function AppFrame({
   });
   const framed = !ownChrome || standIn != null;
   const floatingTabs = framed && kind === 'phone' && inEvent == null;
+  const sidebar = framed && kind === 'tabletLandscape';
 
   return (
     <View
-      style={[styles.root, kind === 'tabletLandscape' && styles.row]}
+      style={[styles.root, sidebar && [styles.chrome, { paddingTop: insets.top }]]}
       importantForAccessibility={inFront ? 'auto' : 'no-hide-descendants'}
     >
-      {framed && kind === 'tabletLandscape' && (
-        <Rail
+      {sidebar && (
+        <FrameSidebar
+          current={current}
           entries={entries}
           inEvent={inEvent != null}
           organisation={signedIn.organisation}
@@ -368,7 +384,12 @@ export function AppFrame({
           pill={pill}
         />
       )}
-      <View style={styles.column}>
+      <View
+        style={[
+          styles.column,
+          sidebar && [styles.card, { marginBottom: Math.max(insets.bottom, tokens.spaceMd) }],
+        ]}
+      >
         {framed && (
           <FrameHeader
             current={current}
@@ -380,7 +401,6 @@ export function AppFrame({
             switchAnswer={bodyTakesSwitch || standIn != null ? undefined : switchAnswer}
             back={headerDrawsBack(kind, back, backInBody)}
             backHidden={backHidden}
-            email={email}
             organisation={signedIn.organisation}
             waiting={count}
             onSwitch={switchFromPill}
@@ -498,7 +518,6 @@ function FrameHeader({
   switchAnswer,
   back,
   backHidden,
-  email,
   organisation,
   waiting,
   onSwitch,
@@ -525,14 +544,13 @@ function FrameHeader({
   switchAnswer: unknown;
   back: { label: string; onPress: () => void; off?: boolean } | undefined;
   backHidden: boolean;
-  email: string;
   organisation: Membership | null;
   waiting: number;
   onSwitch: (() => void) | undefined;
   pill: Ref<ViewInstance>;
 }) {
   const insets = useSafeAreaInsets();
-  const top = { paddingTop: insets.top + (kind === 'tabletLandscape' ? 0 : tokens.spaceXxs) };
+  const top = kind === 'tabletLandscape' ? undefined : { paddingTop: insets.top + tokens.spaceXxs };
   const { read } = useFocusOnAnswer<TextHandle>(switchAnswer, titleRef);
   const large = useAccessibilitySizes();
   const { width, height } = useLayout();
@@ -541,7 +559,7 @@ function FrameHeader({
 
   if (kind === 'tabletLandscape') {
     return (
-      <View style={[styles.header, styles.landscapeHeader, large && styles.stacked, top]}>
+      <View style={[styles.landscapeHeader, large && styles.stacked]}>
         <View style={[styles.titled, !large && styles.fill]}>
           <View style={styles.titleRow}>
             <View style={large ? styles.shrink : styles.fill}>
@@ -554,9 +572,6 @@ function FrameHeader({
           {underTitle}
         </View>
         {primary != null && <HeaderPrimary {...primary} round={false} />}
-        <Text size={tokens.typeBody.size} muted>
-          {email}
-        </Text>
         <BellButton />
       </View>
     );
@@ -920,7 +935,9 @@ function Pills({ entries, scrolls }: { entries: readonly NavEntry[]; scrolls: bo
   );
 }
 
-function Rail({
+/** iPad landscape's sidebar as the demos draw it: the organisation, the places or the event's areas, and Settings and the person at its foot. */
+function FrameSidebar({
+  current,
   entries,
   inEvent,
   organisation,
@@ -928,6 +945,7 @@ function Rail({
   onSwitch,
   pill,
 }: {
+  current: Destination;
   entries: readonly NavEntry[];
   inEvent: boolean;
   organisation: Membership | null;
@@ -935,95 +953,80 @@ function Rail({
   onSwitch: (() => void) | undefined;
   pill: Ref<ViewInstance>;
 }) {
-  const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const { account } = useSignedIn();
-  const { fontScale } = useWindowDimensions();
-  const large = useAccessibilitySizes();
-  const lines = useNameLines();
-  const item = (entry: NavEntry) => (
-    <Pressable
-      key={entry.key}
-      style={[styles.railItem, entry.on && styles.railItemOn]}
-      onPress={entry.onPress}
-      accessibilityRole="tab"
-      accessibilityState={{ selected: entry.on }}
-      testID={entry.testID}
-    >
-      <Icon paths={entry.icon} on={entry.on} size={tokens.sizeMark} />
-      <Text
-        size={tokens.typeBodyPhone.size}
-        weight={entry.on ? 'semibold' : 'medium'}
-        style={entry.on ? styles.ink : styles.secondaryInk}
-      >
-        {entry.label}
-      </Text>
-    </Pressable>
+  const tabs = useFrameTabs(current, organisation);
+  const name = account?.name ?? '';
+  const role = organisation == null ? null : roleName(t, organisation.role);
+  const person = useMemo(() => ({ name, role }), [name, role]);
+  const shell = useMemo<TodayShell>(
+    () => ({
+      organisation: organisation?.name ?? '',
+      person,
+      unread: 0,
+      search: false,
+      open: (opens) => {
+        if (opens.to === 'account') router.navigate(SECTION_HREF.account);
+        if (opens.to === 'organisation') onSwitch?.();
+      },
+    }),
+    [organisation?.name, person, onSwitch],
   );
-  const settings = entries.find((entry) => entry.key === 'settings');
-  const group = entries.filter((entry) => entry.key !== 'settings').map(item);
+  const places = inEvent
+    ? entries.map((entry) => (
+        <SidebarPlace
+          key={entry.key}
+          label={entry.label}
+          glyph={AREA_GLYPH[entry.key as EventArea]}
+          on={entry.on}
+          onPress={entry.onPress}
+          testID={entry.testID}
+        />
+      ))
+    : tabs.tabs
+        .filter(([tab]) => tab !== 'Settings')
+        .map(([tab, glyph]) => (
+          <SidebarPlace
+            key={tab}
+            label={tabs.say(tab, glyph)}
+            glyph={glyph}
+            on={tab === tabs.at}
+            onPress={() => tabs.onTab(tab)}
+            testID={TAB_IDS[tab]}
+          />
+        ));
 
   return (
-    <View
-      style={[
-        styles.rail,
-        {
-          width: railWidth(fontScale),
-          paddingTop: insets.top + tokens.spaceSm,
-          paddingBottom: insets.bottom + tokens.space3xl,
-          paddingLeft: insets.left + tokens.spaceMd,
-        },
-      ]}
-    >
-      <View style={styles.brand}>
-        <Brand width={RAIL_BRAND_WIDTH} />
-      </View>
-      {organisation != null && (
-        <OrgPill
-          organisation={organisation}
-          waiting={waiting}
-          onSwitch={onSwitch}
-          railed
-          ref={pill}
-        />
-      )}
-      {inEvent ? (
-        <ScrollView style={styles.fill} contentContainerStyle={styles.railGroup}>
-          {group}
-        </ScrollView>
-      ) : (
-        <>
-          <View style={styles.railGroup}>{group}</View>
-          <View style={styles.fill} />
-        </>
-      )}
-      <View style={[styles.railGroup, styles.railFoot]}>
-        {settings != null && item(settings)}
-        {account != null && (
-          <View style={styles.person}>
-            {!large && (
-              <View
-                style={styles.avatar}
-                accessibilityElementsHidden
-                importantForAccessibility="no-hide-descendants"
-              >
-                <Initials name={account.name} size={tokens.typeMeta.size} weight="semibold" />
-              </View>
-            )}
-            <View style={styles.shrink}>
-              <Text size={tokens.typeBody.size} weight="semibold" numberOfLines={lines}>
-                {account.name}
-              </Text>
-              {organisation != null && (
-                <Text size={tokens.typeMeta.size} muted numberOfLines={large ? 0 : 1}>
-                  {roleName(t, organisation.role)}
-                </Text>
-              )}
-            </View>
-          </View>
+    <TodayShellProvider value={shell}>
+      <SidebarColumn>
+        <SidebarHead search={false} org={false} />
+        {organisation != null && (
+          <OrgPill
+            organisation={organisation}
+            waiting={waiting}
+            onSwitch={onSwitch}
+            sidebar
+            ref={pill}
+          />
         )}
-      </View>
-    </View>
+        {inEvent && (
+          <SidebarBack
+            label={t('todayScreen.tab.events')}
+            heard={t('eventsScreen.backToEvents')}
+            onPress={() => goTo('events')}
+            testID="frame.side.back"
+          />
+        )}
+        <SidebarPlaces>{places}</SidebarPlaces>
+        <View style={styles.fill} />
+        <SidebarFoot
+          onTab={tabs.onTab}
+          at={inEvent ? null : tabs.at}
+          person={person}
+          settingsID={TAB_IDS.Settings}
+        />
+      </SidebarColumn>
+    </TodayShellProvider>
   );
 }
 
@@ -1031,18 +1034,17 @@ function OrgPill({
   organisation,
   waiting,
   onSwitch,
-  railed = false,
+  sidebar = false,
   ref,
 }: {
   organisation: Membership;
   waiting: number;
   onSwitch: (() => void) | undefined;
-  railed?: boolean;
+  sidebar?: boolean;
   ref: Ref<ViewInstance>;
 }) {
   const { t } = useTranslation();
   const large = useAccessibilitySizes();
-  const lines = useNameLines();
   const role = roleName(t, organisation.role);
   const label =
     onSwitch == null
@@ -1050,58 +1052,22 @@ function OrgPill({
       : waiting > 0
         ? t('switcher.labelSwitchWaiting', { name: organisation.name, role, count: waiting })
         : t('switcher.labelSwitch', { name: organisation.name, role });
-
-  if (!railed)
-    return (
-      <View style={styles.whitePill}>
-        <WhitePill
-          ref={ref}
-          id={organisation.id}
-          name={organisation.name}
-          waiting={waiting > 0 ? t('invitations.count', { count: waiting }) : null}
-          label={label}
-          onPress={onSwitch}
-          bare={large}
-          wrap={large}
-          testID="frame.organisation"
-        />
-      </View>
-    );
-
-  return (
-    <Pressable
+  const pill = (
+    <WhitePill
       ref={ref}
-      style={[styles.org, styles.orgRailed, (waiting > 0 || large) && styles.orgWaiting]}
+      id={organisation.id}
+      name={organisation.name}
+      waiting={waiting > 0 ? t('invitations.count', { count: waiting }) : null}
+      label={label}
       onPress={onSwitch}
-      disabled={onSwitch == null}
-      accessibilityRole={onSwitch == null ? 'text' : 'button'}
-      accessibilityLabel={label}
+      bare={large}
+      wrap={large}
+      sidebar={sidebar}
       testID="frame.organisation"
-    >
-      {!large && <OrgTile name={organisation.name} />}
-      <View style={styles.shrink}>
-        <Text size={tokens.typeBody.size} weight="semibold" numberOfLines={lines}>
-          {organisation.name}
-        </Text>
-        <Text size={tokens.typeMeta.size} muted numberOfLines={lines}>
-          {t('frame.organisation')}
-        </Text>
-        {waiting > 0 && (
-          <View style={styles.waiting}>
-            <View style={styles.ring} />
-            <Text size={tokens.typeMeta.size} weight="semibold">
-              {t('invitations.count', { count: waiting })}
-            </Text>
-          </View>
-        )}
-      </View>
-      {onSwitch != null && (
-        <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
-          <Path d="m6 9 6 6 6-6" {...STROKE} stroke={tokens.colorInkSecondary} />
-        </Svg>
-      )}
-    </Pressable>
+    />
   );
+
+  return sidebar ? pill : <View style={styles.whitePill}>{pill}</View>;
 }
 
 function Switcher({
@@ -1337,8 +1303,6 @@ function OfferCard({
   );
 }
 
-const RAIL_BRAND_WIDTH = 119;
-
 const STROKE = { strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' } as const;
 
 function Icon({ paths, on, size }: { paths: IconPaths; on: boolean; size: number }) {
@@ -1354,7 +1318,6 @@ function Icon({ paths, on, size }: { paths: IconPaths; on: boolean; size: number
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: tokens.colorPage },
-  row: { flexDirection: 'row' },
   edgeSwipe: { position: 'absolute', top: 0, bottom: 0, left: 0, width: EDGE_SWIPE_WIDTH },
   column: { flex: 1, minWidth: 0 },
   body: { flex: 1, minHeight: 0 },
@@ -1410,8 +1373,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: tokens.spaceLg,
-    paddingHorizontal: tokens.space5xl,
+    paddingTop: 26,
+    paddingHorizontal: 30,
     paddingBottom: tokens.spaceLg,
+  },
+  chrome: { flexDirection: 'row', backgroundColor: tokens.colorNeutralFill },
+  card: {
+    marginRight: tokens.spaceMd,
+    borderRadius: tokens.space3xl,
+    backgroundColor: tokens.colorCard,
+    borderWidth: 1,
+    borderColor: tokens.colorBorder,
+    overflow: 'hidden',
   },
   stacked: { flexDirection: 'column', alignItems: 'flex-start', gap: tokens.spaceXs },
   back: {
@@ -1461,24 +1434,10 @@ const styles = StyleSheet.create({
     marginBottom: tokens.spaceHair,
   },
   tabMarkOn: { backgroundColor: tokens.colorInk },
-  rail: {
-    gap: tokens.spaceXxl,
-    paddingRight: tokens.spaceMd,
-    backgroundColor: tokens.colorCard,
-    borderRightWidth: 1,
-    borderRightColor: tokens.colorBorder,
-  },
-  brand: { minHeight: tokens.sizeHit, justifyContent: 'center', paddingHorizontal: tokens.spaceMd },
-  railGroup: { gap: tokens.spaceHair },
   moreSheet: { gap: tokens.spaceLg, padding: tokens.space3xl },
   // The rows keep their own 12 pt padding, so their icons start on the title's line.
   moreList: { gap: tokens.spaceHair, marginHorizontal: -tokens.spaceLg },
   pillsInEvent: { flexDirection: 'row', gap: tokens.spaceHair },
-  railFoot: {
-    paddingTop: tokens.spaceLg,
-    borderTopWidth: 1,
-    borderTopColor: tokens.colorInsetBorder,
-  },
   railItem: {
     minHeight: tokens.sizeHit,
     flexDirection: 'row',
@@ -1488,29 +1447,6 @@ const styles = StyleSheet.create({
     borderRadius: tokens.radiusRow,
   },
   railItemOn: { backgroundColor: tokens.colorNeutralFill },
-  person: {
-    minHeight: tokens.sizeHitPhoneHero,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.spaceMd,
-    paddingHorizontal: tokens.spaceSm,
-  },
-  avatar: {
-    width: tokens.space5xl,
-    height: tokens.space5xl,
-    borderRadius: tokens.spaceXl,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: tokens.colorNeutralFill,
-  },
-  org: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.spaceMd,
-    borderWidth: 1,
-    borderColor: tokens.colorControlBorder,
-    backgroundColor: tokens.colorCard,
-  },
   whitePill: { flexDirection: 'row', flexShrink: 1, minWidth: 0 },
   capsuleAt: {
     position: 'absolute',
@@ -1520,12 +1456,6 @@ const styles = StyleSheet.create({
     right: 0,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  orgRailed: {
-    minHeight: tokens.sizeHitPhoneHero,
-    paddingLeft: tokens.spaceXs,
-    paddingRight: tokens.spaceMd,
-    borderRadius: tokens.radiusRow,
   },
   tile: {
     width: tokens.space5xl,
@@ -1540,15 +1470,6 @@ const styles = StyleSheet.create({
     padding: tokens.spaceXxl,
   },
   invitations: { gap: tokens.spaceSm },
-  orgWaiting: { height: undefined, minHeight: tokens.sizeHit, paddingVertical: tokens.spaceXxs },
-  waiting: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXs },
-  ring: {
-    width: tokens.spaceMd,
-    height: tokens.spaceMd,
-    borderRadius: tokens.spaceMd / 2,
-    borderWidth: 2,
-    borderColor: tokens.colorInkSecondary,
-  },
   option: {
     minHeight: tokens.sizeListRow,
     flexDirection: 'row',

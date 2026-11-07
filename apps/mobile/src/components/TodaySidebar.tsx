@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { Brand } from './Brand.tsx';
+import { SIDEBAR_WIDTH } from '../layout/textSize.ts';
 import { Text } from './Text.tsx';
 import { tokens } from '../theme/tokens.ts';
 import { EventMesh, eventColour } from './EventMesh.tsx';
@@ -11,8 +12,6 @@ import type { ShownEvent } from '../kit/today.ts';
 import { SETTINGS_ID, type Tab } from './TodayCover.tsx';
 import { Initials } from './Initials.tsx';
 import { type TodayShell, useTodayShell } from './todayShell.ts';
-
-export const SIDEBAR_WIDTH = 252;
 
 const PLACES: readonly (readonly [Tab, GlyphName])[] = [
   ['Today', 'today'],
@@ -62,11 +61,13 @@ function Place({
   glyph,
   onTab,
   at,
+  testID = SETTINGS_ID[tab],
 }: {
   tab: Tab;
   glyph: GlyphName;
   onTab: (tab: Tab) => void;
   at: Tab | null;
+  testID?: string | undefined;
 }) {
   const { t } = useTranslation();
 
@@ -76,7 +77,7 @@ function Place({
       glyph={glyph}
       on={tab === at}
       onPress={() => onTab(tab)}
-      testID={SETTINGS_ID[tab]}
+      testID={testID}
     />
   );
 }
@@ -145,11 +146,13 @@ export function SidebarFoot({
   at,
   onPerson,
   person: shown,
+  settingsID,
 }: {
   onTab: (tab: Tab) => void;
   at: Tab | null;
   onPerson?: (() => void) | undefined;
   person?: TodayShell['person'] | undefined;
+  settingsID?: string | undefined;
 }) {
   const { t } = useTranslation();
   const shell = useTodayShell();
@@ -157,7 +160,7 @@ export function SidebarFoot({
 
   return (
     <>
-      <Place tab="Settings" glyph="settings" onTab={onTab} at={at} />
+      <Place tab="Settings" glyph="settings" onTab={onTab} at={at} testID={settingsID} />
       <Pressable
         onPress={onPerson ?? (() => shell.open({ to: 'account' }))}
         style={styles.person}
@@ -185,6 +188,34 @@ export function SidebarFoot({
         <Glyph name="updown" size={15} ink={tokens.colorInkSecondary} />
       </Pressable>
     </>
+  );
+}
+
+/** The sidebar's way back out of an event, under its head. */
+export function SidebarBack({
+  label,
+  heard,
+  onPress,
+  testID,
+}: {
+  label: string;
+  heard: string;
+  onPress: () => void;
+  testID?: string | undefined;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [styles.back, pressed && styles.backPressed]}
+      accessibilityRole="button"
+      accessibilityLabel={heard}
+      testID={testID}
+    >
+      <Glyph name="back" size={17} ink={tokens.colorInkSecondary} weight={2.4} />
+      <Text size={14} weight="semibold" accessible={false} style={styles.secondary}>
+        {label}
+      </Text>
+    </Pressable>
   );
 }
 
@@ -319,6 +350,14 @@ const styles = StyleSheet.create({
     borderColor: tokens.colorBorder,
   },
   places: { gap: tokens.spaceHair },
+  back: {
+    minHeight: tokens.sizeHit,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spaceXs,
+    paddingHorizontal: tokens.spaceMd,
+  },
+  backPressed: { opacity: tokens.opacityPressed },
   column: { width: SIDEBAR_WIDTH, flexGrow: 0 },
   fills: { flexGrow: 1 },
   place: {
