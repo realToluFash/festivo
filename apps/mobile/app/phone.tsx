@@ -113,7 +113,7 @@ function MobileStep({ initialCountry, short }: { initialCountry: string; short: 
   const [sending, setSending] = useState(false);
   const numberInput = useRef<TextInputInstance>(null);
   const countryPicker = useRef<ViewInstance>(null);
-  const { send, errorOn } = useSend(
+  const { send, errorOn, refuse } = useSend(
     country,
     number,
     sending,
@@ -133,7 +133,7 @@ function MobileStep({ initialCountry, short }: { initialCountry: string; short: 
           step={short ? [2, 2] : [4, 4]}
           right={{
             label: t('steps.skip'),
-            onPress: () => void skipPhone().catch(() => setError(t('verifyPhone.failedBody'))),
+            onPress: () => void skipPhone().catch(() => refuse(t('verifyPhone.failedBody'))),
           }}
           testID="phone"
         />
@@ -242,7 +242,12 @@ function useSend(
     }
   }
 
-  return { send, errorOn };
+  function refuse(words: string): void {
+    setErrorOn('number');
+    setError(words);
+  }
+
+  return { send, errorOn, refuse };
 }
 
 function NumberForm({

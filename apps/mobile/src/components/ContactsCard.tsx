@@ -492,6 +492,7 @@ function Adding({
   const [country, setCountry] = useState(initialCountry);
   const [refused, setRefused] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+  const [errorOn, setErrorOn] = useState<'country' | 'number'>('number');
   const checks = useFormChecks(
     ['value'] as const,
     (_field, value) =>
@@ -500,12 +501,12 @@ function Adding({
         : phoneProblemMessage(phoneLengthProblem(value, country), country, t),
     () => {
       const on = email ? null : refusedPhoneField(phoneLengthProblem(typed.current, country));
+      setErrorOn(on ?? 'number');
       if (on === 'country') focusPicker(picker);
       else focusChecked(field);
     },
   );
   const error = checks.errors.value ?? refused;
-  const errorOn = checks.errors.value === t('forms.countryBlank') ? 'country' : 'number';
 
   async function send(): Promise<void> {
     if (sending || !checks.passes({ value: typed.current })) return;
@@ -520,6 +521,7 @@ function Adding({
     } catch (refusal) {
       await onRefused(refusal);
       setSending(false);
+      setErrorOn('number');
       setRefused(addRefusal(refusal, kind, t));
     }
   }
