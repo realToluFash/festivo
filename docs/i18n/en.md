@@ -820,3 +820,6 @@ startedToday|calledOffOn|showMore|moreShown|moreFailed`, `eventsScreen.*` the sa
   `confirmBody` keeps "you'll": it explains, it does not refuse. The feed's status words are the
   Events list's (Draft, Live, Paused, Finished) plus "Called off" and "Deleted", each a word
   about the event.
+- **A refused control's screen-reader word** (`mobile:forms.invalid`, sc-31909): "Invalid", heard
+  after the control's name ("Email, Invalid") and before its refusal line as the hint. One word,
+  capitalised as a state the platform announces; never seen, so it has no layout to fit.
