@@ -29,10 +29,20 @@ const kofi = { name: 'Kofi Mensah', email: KOFI };
 const priya = { name: 'Priya Shah', email: PRIYA };
 const julien = { name: 'Julien Moreau', email: JULIEN };
 
+const WEB_EN = join(
+  import.meta.dirname,
+  '..',
+  '..',
+  '..',
+  '..',
+  'web',
+  'src',
+  'i18n',
+  'locales',
+  'en.json',
+);
 const web = (
-  JSON.parse(readFileSync(join('..', 'web', 'src', 'i18n', 'locales', 'en.json'), 'utf8')) as {
-    recoveryRequests: Record<string, string>;
-  }
+  JSON.parse(readFileSync(WEB_EN, 'utf8')) as { recoveryRequests: Record<string, string> }
 ).recoveryRequests;
 const fill = (key: string, values: Record<string, string>) =>
   (web[key] ?? '').replace(/\{\{(\w+)\}\}/gu, (_all, name: string) => values[name] ?? '');
