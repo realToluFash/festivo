@@ -270,6 +270,7 @@ export const TWO_FACTOR_PAGES: { name: string; states: { name: string; to: strin
     name: 'Once asked',
     states: [
       { name: 'Waiting for your organisation', to: twoFactorAt('waiting') },
+      { name: 'Cancel your request?', to: twoFactorAt('waiting', 'confirm') },
       { name: 'Two-factor is off', to: twoFactorAt('off') },
       { name: 'Turned down', to: twoFactorAt('turned-down') },
       { name: 'Ended', to: twoFactorAt('ended') },
