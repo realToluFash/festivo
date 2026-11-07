@@ -9,7 +9,6 @@ import {
 
 import { SAMPLE } from '../samples.ts';
 import { ASKING, type HandoverStart } from './MembersSample.ts';
-import { clockTime } from './NotificationsModel.ts';
 import { DETAILS_WORDS, DOMAIN_WORDS, OWNERSHIP_WORDS } from './OrganisationWords.ts';
 import { MEMBERS } from './sample.ts';
 
@@ -314,7 +313,7 @@ export function countsLine(
   return `${each('events')}, ${each('guests')} and ${each('members')} are deleted with it.`;
 }
 
-/** Thirty days on, in Lagos and the reader's clock, named WAT as the server names a zone: Friday, Dec 4 at 10:15 AM WAT. */
+/** Thirty days on in Lagos, the day in the locale's order and the time as the API writes it, `H:i`: Friday, Dec 4 at 10:15 WAT. */
 export function restoreDeadline(now: Date, locale: string): string {
   const zone = SAMPLE_DETAILS.timezone;
   const at = new Date(now.getTime() + RESTORE_DAYS * 24 * 60 * 60 * 1000);
@@ -324,7 +323,12 @@ export function restoreDeadline(now: Date, locale: string): string {
     day: 'numeric',
     timeZone: zone,
   });
-  const time = clockTime(locale, { timeZone: zone });
+  const time = new Intl.DateTimeFormat('en-GB', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+    timeZone: zone,
+  });
 
   return `${day.format(at)} at ${time.format(at)} WAT`;
 }

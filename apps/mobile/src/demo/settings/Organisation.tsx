@@ -24,7 +24,7 @@ import {
 } from './OrganisationModel.ts';
 import { OwnershipSection } from './OrganisationOwnership.tsx';
 import { DETAILS_WORDS } from './OrganisationWords.ts';
-import { memberLooking, VIEWER_ORGANISATION } from './sample.ts';
+import { managesOrganisation, memberLooking, VIEWER_ORGANISATION } from './sample.ts';
 import { SummaryPage } from './Summary.tsx';
 
 /** Settings › Organisation in B, summary first, on sample data. A member reads the details and may only leave; Leave's states are Ana Souza's. */
@@ -37,7 +37,7 @@ export function OrganisationSection() {
     <OrganisationPage
       key={`${viewer}:${name ?? 'atRest'}`}
       start={organisationStart(name, role)}
-      manages={viewer === 'owner'}
+      manages={managesOrganisation(viewer)}
     />
   );
 

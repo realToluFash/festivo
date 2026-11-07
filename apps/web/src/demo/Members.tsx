@@ -214,6 +214,10 @@ export function Members({ viewer, state, tell }: { viewer: Viewer; state: string
         if (then.says === true) toSays.current = true;
         if (then.event != null) setEvent(then.event);
         if (then.notice != null) setNotice(then.notice);
+        if (then.notice?.kind === 'removed') {
+          const gone = then.notice.id;
+          setRecoveries((now) => now.filter((one) => one.id !== gone));
+        }
         if (then.leave === true) back();
         if (then.proved === true) setProved(true);
       }}

@@ -1,7 +1,7 @@
 import { formattingLocale } from '@soirely/domain';
 import { getLocales } from 'expo-localization';
 import { router, useFocusEffect, useLocalSearchParams, useNavigation } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { I18nextProvider, useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -19,6 +19,14 @@ import {
 } from '../../src/demo/OrgSwitcher.tsx';
 import { switcherStateOf } from '../../src/demo/OrgSwitcherModel.ts';
 import { MOMENTS, momentOf, sayIn } from '../../src/demo/today.ts';
+import { ArrivedTodayScreen } from '../../src/demo/today/ArrivedToday.tsx';
+import {
+  type ArrivedState,
+  COUNTS,
+  isArrivedState,
+  LIVE,
+  withArrived,
+} from '../../src/demo/today/arrived.ts';
 import { RunTodayScreen } from '../../src/demo/today/RunToday.tsx';
 import { isRunState, withRun } from '../../src/demo/today/runOfShow.ts';
 import type { MomentName } from '../../src/kit/today.ts';
@@ -40,6 +48,31 @@ function toCalendar() {
   router.replace('/demo/calendar');
 }
 
+/** The demo's numbers, in the phone's own region as its dates are, or in a locale asked for by name. */
+function numbersIn(asked: string | undefined): Intl.NumberFormat {
+  const tag = asked == null ? [] : Intl.NumberFormat.supportedLocalesOf([asked]);
+
+  return new Intl.NumberFormat(tag[0] ?? formattingLocale('en', getLocales()[0]?.languageTag));
+}
+
+/** Check-in records an arrival or an undo every few seconds, and Today changes in place. */
+function useLive(on: boolean): number {
+  const [step, setStep] = useState(0);
+
+  useEffect(() => {
+    if (!on) return undefined;
+    const timer = setInterval(() => setStep((at) => (at + 1) % LIVE.length), 4000);
+
+    return () => clearInterval(timer);
+  }, [on]);
+
+  return LIVE[step] ?? 0;
+}
+
+function countsOf(state: ArrivedState, live: number) {
+  return state === 'live' ? { arrived: live, coming: 152, expected: 152 } : COUNTS[state];
+}
+
 function isMoment(name: string | undefined): name is MomentName {
   return MOMENTS.some((moment) => moment === name);
 }
@@ -53,6 +86,7 @@ export default function DemoTodayScreen() {
     orgs?: string;
     now?: string;
     arrived?: string;
+    numbers?: string;
   }>();
   const place = useCurrentPlace();
   // An organisation made in the walk has no events yet.
@@ -65,6 +99,14 @@ export default function DemoTodayScreen() {
     () =>
       isRunState(params.now) ? withRun(moment, params.now, params.arrived !== 'none', say) : null,
     [moment, params.now, params.arrived, say],
+  );
+  const arrivedState = name === 'dayNow' && isArrivedState(params.arrived) ? params.arrived : null;
+  const live = useLive(arrivedState === 'live');
+  const numbers = useMemo(() => numbersIn(params.numbers), [params.numbers]);
+  const arrived = useMemo(
+    () =>
+      arrivedState == null ? null : withArrived(moment, countsOf(arrivedState, live), numbers),
+    [arrivedState, moment, live, numbers],
   );
   const { kind } = useLayout();
   const [told, setTold] = useState(params.toast);
@@ -121,10 +163,12 @@ export default function DemoTodayScreen() {
             <NoOrganisation tell={tell} />
           ) : (
             <I18nextProvider i18n={moment.kind === 'first' ? startFirstWords(i18n.language) : i18n}>
-              {run == null ? (
-                <TodayScreen moment={moment} onTab={onTab} notices={notices} />
-              ) : (
+              {run != null ? (
                 <RunTodayScreen moment={run} onTab={onTab} notices={notices} />
+              ) : arrived != null ? (
+                <ArrivedTodayScreen moment={arrived} onTab={onTab} notices={notices} />
+              ) : (
+                <TodayScreen moment={moment} onTab={onTab} notices={notices} />
               )}
             </I18nextProvider>
           )}

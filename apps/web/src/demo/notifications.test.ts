@@ -1,4 +1,4 @@
-import { NOTIFICATION_CATEGORY_ORDER, settingFlipped } from '@soirely/domain';
+import { NOTIFICATION_CATEGORY_ORDER, quietHoursIn, settingFlipped } from '@soirely/domain';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -72,14 +72,30 @@ describe('Notification settings at a desk, the model (sc-30243)', () => {
     );
   });
 
-  it('keeps the build’s switch names and says quiet hours in the reader’s clock', () => {
+  it('keeps the build’s switch names and says quiet hours as 21:00 and 08:00 in en-US and en-GB', () => {
+    const line = 'Between 21:00 and 08:00 your time, only Event day pushes come through.';
+
     expect(switchName('guest_replies', 'push')).toBe('Guest replies Push');
-    expect(quietHoursLine(L)).toBe(
-      'Between 9:00 PM and 8:00 AM your time, only Event day pushes come through.',
-    );
-    expect(quietHoursLine('en-GB')).toBe(
+    expect(quietHoursLine(L)).toBe(line);
+    expect(quietHoursLine('en-GB')).toBe(line);
+  });
+
+  it('writes quiet hours with no AM or PM in any language, fr-FR included', () => {
+    for (const locale of ['en', 'fr-FR', 'es-MX', 'pt-BR'])
+      expect(quietHoursLine(locale)).not.toMatch(/AM|PM|a\.m\.|p\.m\./iu);
+    expect(quietHoursLine('fr-FR')).toBe(
       'Between 21:00 and 08:00 your time, only Event day pushes come through.',
     );
+  });
+
+  it('takes both quiet hours from the product’s quietHoursIn, with no clock of its own', () => {
+    for (const locale of [L, 'en-GB', 'fr-FR']) {
+      const { start, end } = quietHoursIn(locale);
+
+      expect(quietHoursLine(locale)).toBe(
+        `Between ${start} and ${end} your time, only Event day pushes come through.`,
+      );
+    }
   });
 
   it('opens every app state and every web moment on something other than the page at rest', () => {
