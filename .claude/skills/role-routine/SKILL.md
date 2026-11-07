@@ -173,6 +173,12 @@ fails>'`, note it on your story, do what you can without it, and move on. Only t
   - The tech lead, product manager, designer, business manager and creative director read
     code at a pull request's head with `sq <role> diff <pr> [paths…]` and
     `git show origin/<branch>:<path>`, and never check anything out.
+- **In an isolated worktree, run git one plain command per call.** A session started in a
+  worktree refuses any git command it cannot prove stays inside it: git chained with `;`,
+  `&&` or a pipe, or behind an `export`. In a background worker that refusal can sit as a
+  prompt nobody answers, and the worker is stopped. `git add <paths>`, `git commit`, then
+  `git push origin HEAD:<branch>`, each its own call, with no `cd` and no redirect into a
+  pipe. `SQ_RUN_DIR` is already set; do not export it.
 - **Write a note at each milestone.** A branch pushed, a part built, a result found: one
   line with `sq <role> note sc-<n> --text "<what>"`, and push what you have. A run stopped by its
   time or memory limit writes no closing note, so these are what the next run picks up.
