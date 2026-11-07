@@ -213,7 +213,8 @@ MAY = {
     "new-story": DEVS + LINGUISTS + ("pm", "cd", "ops"),
     # Whoever files a story makes the epic it needs; a new epic waits for the owner.
     "new-epic": DEVS + LINGUISTS + ("pm", "cd", "ops"),
-    "task": LINGUISTS + ("pm",),
+    # A developer, or ops, ticks the tasks a story is built in: a merge with one left keeps it.
+    "task": DEVS + LINGUISTS + ("pm", "ops"),
     "relate": LINGUISTS + ("pm", "cd"),
     "archive": ("pm",),
     "to-draw": ("ux",),
@@ -328,6 +329,8 @@ def claimant(claim):
 
 
 MANUAL_QA = "manual qa"
+# Set by the product manager on a story whose every AC bullet is in a design demo.
+DEMO_ONLY = "demo only"
 
 
 def is_person(name):

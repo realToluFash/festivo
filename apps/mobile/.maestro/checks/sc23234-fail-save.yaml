@@ -1,5 +1,10 @@
 # Notification settings with the API stopped once the grid shows: a press fails, twice (sc-23234).
 appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
 ---
 - runFlow: ../open-settings.yaml
 - tapOn:

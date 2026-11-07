@@ -105,7 +105,7 @@ async function atTheStart(answers: Record<string, () => Response | Promise<Respo
     'heading',
     {
       level: 1,
-      name: /Get back in|Contact Soirely support|Enter both codes|Waiting|Two-factor is off|turned down|request ended/,
+      name: /Get back in|Contact Soirely support|Enter both codes|Enter the code|Waiting|Two-factor is off|turned down|request ended/,
     },
     THE_WAY_IN,
   );
@@ -321,7 +321,10 @@ describe('getting back in without the authenticator', () => {
       'POST /api/auth/two-factor/recovery': () =>
         json({ recovery: 'handle', state: { ...PROVING, phone: null } }, 201),
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Send the codes' }));
+    expect(screen.getByText('We send a code to folake@ire.events.')).toBeDefined();
+    expect(screen.getByText('You enter the code here.')).toBeDefined();
+    expect(screen.queryByText('You enter the codes here.')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Send the code' }));
     await screen.findByRole('heading', { level: 1, name: 'Enter the code' });
 
     expect(screen.getByText('No code?')).toBeDefined();
@@ -329,6 +332,151 @@ describe('getting back in without the authenticator', () => {
     expect(screen.getByText('A new code replaces the last one.')).toBeDefined();
     expect(screen.queryByText(/new codes/i)).toBeNull();
   });
+
+  it('says the one code is sending, with no verified phone (sc-30737)', async () => {
+    let send: (response: Response) => void = () => {};
+    await atTheStart({
+      'POST /api/auth/two-factor/recovery/opening': () => json({ ...OPENING, phone: null }),
+      'POST /api/auth/two-factor/recovery': () =>
+        new Promise<Response>((resolve) => {
+          send = resolve;
+        }),
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Send the code' }));
+
+    const sending = await screen.findByRole('button', { name: 'Sending the code…' });
+    expect(sending.getAttribute('aria-busy')).toBe('true');
+    send(json({ recovery: 'handle', state: { ...PROVING, phone: null } }, 201));
+    await screen.findByRole('heading', { level: 1, name: 'Enter the code' });
+  });
+
+  it.each([
+    [
+      'expired',
+      'That code has expired',
+      'Codes only work for a while. Send a new one and use the code in the newest email.',
+    ],
+    ['exhausted', 'Too many wrong tries', 'That code no longer works. Send a new one to carry on.'],
+  ])('counts one spent code with no verified phone: %s (sc-30737)', async (spent, title, body) => {
+    await atTheStart({
+      'POST /api/auth/two-factor/recovery/opening': () =>
+        json({
+          ...OPENING,
+          phone: null,
+          recovery: 'handle',
+          state: { ...PROVING, phone: null, codes: { ...PROVING.codes, state: spent } },
+        }),
+    });
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Enter the code' })).toBeDefined();
+    expect(screen.getByText(title)).toBeDefined();
+    expect(screen.getByText(body)).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Send a new code' })).toBeDefined();
+    expect(screen.queryByText(/Those codes|new codes/)).toBeNull();
+  });
+
+  it.each([
+    ['expired', 'Those codes have expired'],
+    ['exhausted', 'Those codes no longer work. Send new ones to carry on.'],
+  ])(
+    'keeps counting both spent codes with a verified phone: %s (sc-30737)',
+    async (spent, line) => {
+      await atTheStart({
+        'POST /api/auth/two-factor/recovery/opening': () =>
+          json({
+            ...OPENING,
+            recovery: 'handle',
+            state: { ...PROVING, codes: { ...PROVING.codes, state: spent } },
+          }),
+      });
+
+      expect(screen.getByText(line)).toBeDefined();
+      expect(screen.getByRole('button', { name: 'Send new codes' })).toBeDefined();
+    },
+  );
+
+  it.each([
+    ['cannot reach Soirely', null],
+    ['a server error', () => problem('internal_error', 500)],
+  ])(
+    'keeps the dialog open and says the request is still waiting when the cancel meets %s (sc-30737)',
+    async (_, failure) => {
+      let cancelled = false;
+      const sent = await atTheStart({
+        'POST /api/auth/two-factor/recovery/opening': () =>
+          json({ ...OPENING, recovery: 'handle', state: WAITING }),
+        'POST /api/auth/two-factor/recovery/cancel': () => {
+          if (cancelled) return json({ state: { ...WAITING, status: 'cancelled' } });
+          cancelled = true;
+          if (failure == null) throw new TypeError('Failed to fetch');
+          return failure();
+        },
+      });
+      const cancels = () => sent.filter((request) => request.path.endsWith('/cancel'));
+
+      fireEvent.click(screen.getByRole('button', { name: 'Cancel the request' }));
+      const go = screen.getAllByRole('button', { name: 'Cancel the request' }).at(-1)!;
+      go.focus();
+      fireEvent.click(go);
+
+      const line = await screen.findByRole('alert');
+      expect(line.textContent).toContain(
+        'Not cancelled. Your request is still waiting. Try again.',
+      );
+      expect(screen.getByRole('alertdialog').contains(line)).toBe(true);
+      expect(document.activeElement).toBe(go);
+      expect(screen.getByRole('heading', { level: 1, name: 'Waiting for your organisation' }));
+
+      fireEvent.click(go);
+      expect(screen.queryByText(/Not cancelled/)).toBeNull();
+      expect(
+        await screen.findByRole('heading', { level: 1, name: 'Request cancelled' }),
+      ).toBeDefined();
+      expect(cancels()).toHaveLength(2);
+    },
+  );
+
+  it('Keep waiting after a cancel that did not go through leaves the request waiting (sc-30737)', async () => {
+    await atTheStart({
+      'POST /api/auth/two-factor/recovery/opening': () =>
+        json({ ...OPENING, recovery: 'handle', state: WAITING }),
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel the request' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Cancel the request' }).at(-1)!);
+    await screen.findByText('Not cancelled. Your request is still waiting. Try again.');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Keep waiting' }));
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(screen.getByRole('heading', { level: 1, name: 'Waiting for your organisation' }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel the request' }));
+    expect(screen.queryByText(/Not cancelled/)).toBeNull();
+  });
+
+  it.each([
+    ['approved', /Two-factor is off/],
+    ['turned_down', /turned down/],
+    ['expired', /request ended/],
+  ])(
+    'shows the answer at once when the request was %s before the cancel arrived (sc-30737)',
+    async (status, heading) => {
+      await atTheStart({
+        'POST /api/auth/two-factor/recovery/opening': () =>
+          json({ ...OPENING, recovery: 'handle', state: WAITING }),
+        'POST /api/auth/two-factor/recovery/cancel': () =>
+          problem('recovery_request_closed', 409, { requestStatus: status }),
+        'POST /api/auth/two-factor/recovery/state': () => json({ state: { ...WAITING, status } }),
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: 'Cancel the request' }));
+      fireEvent.click(screen.getAllByRole('button', { name: 'Cancel the request' }).at(-1)!);
+
+      expect(await screen.findByRole('heading', { level: 1, name: heading })).toBeDefined();
+      expect(screen.queryByRole('alertdialog')).toBeNull();
+      expect(screen.queryByText(/Not cancelled/)).toBeNull();
+    },
+  );
 
   it('goes back to Enter your code from Start’s ‹ Back, beside Back to sign in (sc-29068)', async () => {
     await atTheStart({});

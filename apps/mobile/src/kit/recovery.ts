@@ -63,6 +63,34 @@ export function replacedElsewhere(refusal: unknown): boolean {
   return refusal instanceof ApiError && refusal.is('recovery_request_replaced');
 }
 
+export type CancelOutcome =
+  | { kind: 'cancelled'; state: RecoveryState }
+  | { kind: 'answered'; state: RecoveryState }
+  | { kind: 'replaced' }
+  | { kind: 'notCancelled' };
+
+export interface RecoveryCancelling {
+  cancel: () => Promise<RecoveryState>;
+  state: () => Promise<RecoveryState>;
+}
+
+/** A request answered before the cancel arrived shows that answer; a cancel that closes nothing says so (sc-30737). */
+export async function cancelRecovery(on: RecoveryCancelling): Promise<CancelOutcome> {
+  try {
+    return { kind: 'cancelled', state: await on.cancel() };
+  } catch (refusal) {
+    if (replacedElsewhere(refusal)) return { kind: 'replaced' };
+    if (!(refusal instanceof ApiError && refusal.is('recovery_request_closed')))
+      return { kind: 'notCancelled' };
+  }
+
+  try {
+    return { kind: 'answered', state: await on.state() };
+  } catch {
+    return { kind: 'notCancelled' };
+  }
+}
+
 export type RecoveryShown =
   | { kind: 'loading' }
   | { kind: 'start'; opening: RecoveryOpening; limitedUntil: string | null; sending: boolean }

@@ -147,6 +147,42 @@ final class EventRolesTest extends ApiTestCase
     }
 
     #[Test]
+    public function theEventReadNamesWhatTheCallerHoldsOnIt(): void
+    {
+        $lead = $this->member('lead@ire.events', SeededRole::Member);
+        $viewer = $this->member('viewer@ire.events', SeededRole::Member);
+        $admin = $this->member('admin@ire.events', SeededRole::Admin);
+        self::onEvent($lead, $this->owambe, EventRole::Lead);
+        self::onEvent($viewer, $this->owambe, EventRole::CanView);
+        self::onEvent($viewer, $this->naming, EventRole::CanEdit);
+
+        $holds = function (User $who, string $eventId): array {
+            $this->as($who, 'GET', '/api/events/' . $eventId);
+            self::assertSame(200, $this->statusCode());
+
+            return Type\vec(Type\string())->coerce($this->last()['event']['permissions'] ?? null);
+        };
+
+        self::assertContains(Permission::EventsManage->value, $holds($lead, $this->owambe));
+        self::assertContains(Permission::PeopleManage->value, $holds($lead, $this->owambe));
+        self::assertNotContains(Permission::EventsCreate->value, $holds($lead, $this->owambe), 'a Lead starts no event');
+        self::assertNotContains(Permission::EventsManage->value, $holds($viewer, $this->owambe));
+        self::assertContains(Permission::EventsRead->value, $holds($viewer, $this->owambe));
+        self::assertContains(Permission::EventsManage->value, $holds($viewer, $this->naming), 'each event by its own role');
+        self::assertContains(Permission::EventsManage->value, $holds($admin, $this->owambe));
+        self::assertContains(Permission::EventsCreate->value, $holds($admin, $this->owambe));
+
+        $this->as($viewer, 'GET', $this->path('events'));
+        $listed = Type\vec(Type\shape(['name' => Type\string(), 'permissions' => Type\vec(Type\string())], true))->coerce($this->last()['events']);
+        $byName = [];
+        foreach ($listed as $event) {
+            $byName[$event['name']] = $event['permissions'];
+        }
+        self::assertNotContains(Permission::EventsManage->value, $byName['Owambe'], 'the list says the same');
+        self::assertContains(Permission::EventsManage->value, $byName['Naming']);
+    }
+
+    #[Test]
     public function aLeadAddsChangesAndRemovesAMember(): void
     {
         $lead = $this->member('lead@ire.events', SeededRole::Member);
@@ -175,6 +211,68 @@ final class EventRolesTest extends ApiTestCase
             self::em()->getRepository(AuditEntry::class)->findBy(['subjectId' => Uuid::fromString($person['id'])]),
             static fn (AuditEntry $entry): string => $entry->getAction(),
         ));
+    }
+
+    #[Test]
+    public function aLeadFindsWhomToAddByNameAloneAndNeverThemselves(): void
+    {
+        $lead = $this->member('lead@ire.events', SeededRole::Member, 'Priya Shah');
+        $tunde = $this->member('tunde@ire.events', SeededRole::Member, 'Tunde Bello');
+        $sade = $this->member('sade@ire.events', SeededRole::Member, 'Sade Okoye');
+        $gone = $this->member('gone@ire.events', SeededRole::Member, 'Gone Away');
+        self::em()->find(Membership::class, $this->membershipOf($gone))?->setStatus(MembershipStatus::Suspended, new DateTimeImmutable());
+        self::em()->flush();
+        self::onEvent($lead, $this->owambe, EventRole::Lead);
+        self::onEvent($sade, $this->owambe, EventRole::CanView);
+
+        $listed = $this->as($lead, 'GET', '/api/events/' . $this->owambe . '/people/addable');
+
+        self::assertSame(200, $this->statusCode(), Json\encode($listed));
+        self::assertEqualsCanonicalizing([
+            ['membershipId' => $this->membershipOf($this->owner), 'name' => 'Person'],
+            ['membershipId' => $this->membershipOf($tunde), 'name' => 'Tunde Bello'],
+        ], $listed['members'] ?? null);
+    }
+
+    #[Test]
+    public function onlyWhoeverChangesPeopleListsWhomToAdd(): void
+    {
+        $editor = $this->member('editor@ire.events', SeededRole::Member);
+        self::onEvent($editor, $this->owambe, EventRole::CanEdit);
+
+        $this->as($editor, 'GET', '/api/events/' . $this->owambe . '/people/addable');
+
+        self::assertSame(403, $this->statusCode());
+    }
+
+    #[Test]
+    public function everyoneOnTheEventReadsWhoItsOwnersAndAdminsAre(): void
+    {
+        $this->member('julien@ire.events', SeededRole::Admin, 'Julien Moreau');
+        $viewer = $this->member('ana@ire.events', SeededRole::Member, 'Ana Lima');
+        self::onEvent($viewer, $this->owambe, EventRole::CanView);
+
+        $read = $this->as($viewer, 'GET', '/api/events/' . $this->owambe . '/people');
+
+        self::assertSame(200, $this->statusCode());
+        self::assertSame(['Person'], $read['owners'] ?? null);
+        self::assertSame(['Julien Moreau'], $read['admins'] ?? null);
+    }
+
+    #[Test]
+    public function aSuspendedOwnerLeavesTheAdminNamedAsAdmin(): void
+    {
+        $this->member('julien@ire.events', SeededRole::Admin, 'Julien Moreau');
+        $viewer = $this->member('ana@ire.events', SeededRole::Member, 'Ana Lima');
+        self::onEvent($viewer, $this->owambe, EventRole::CanView);
+        $owner = self::em()->find(Membership::class, $this->membershipOf($this->owner)) ?? self::fail('no owner');
+        $owner->setStatus(MembershipStatus::Suspended, new DateTimeImmutable());
+        self::em()->flush();
+
+        $read = $this->as($viewer, 'GET', '/api/events/' . $this->owambe . '/people');
+
+        self::assertSame([], $read['owners'] ?? null);
+        self::assertSame(['Julien Moreau'], $read['admins'] ?? null);
     }
 
     #[Test]

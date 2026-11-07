@@ -8,7 +8,7 @@ appId: host.exp.Exponent
 - runFlow:
     file: developer-menu.yaml
     env:
-      SETTLED: '{{t:any:home.signedInTo}}|{{t:any:noOrganisation.title}}|{{t:any:signInRules.dueSetUp}}|{{t:any:signInRules.unlinkedLink}}|{{t:any:signInRules.gateTitle}}|{{t:any:signInRules.changedSee}}|{{t:any:signInRules.overdueTitle}}|{{t:any:status.title}}|{{t:any:signIn.title}}|{{t:any:welcome.withEmail}}'
+      SETTLED: '{{t:any:home.signedInTo}}|{{t:any:todayScreen.tab.today}}|{{t:any:noOrganisation.title}}|{{t:any:signInRules.dueSetUp}}|{{t:any:signInRules.unlinkedLink}}|{{t:any:signInRules.gateTitle}}|{{t:any:signInRules.changedSee}}|{{t:any:signInRules.overdueTitle}}|{{t:any:status.title}}|{{t:any:signIn.title}}|{{t:any:welcome.withEmail}}'
 - extendedWaitUntil:
-    visible: '{{t:any:home.signedInTo}}|{{t:any:noOrganisation.title}}|{{t:any:signInRules.dueSetUp}}|{{t:any:signInRules.unlinkedLink}}|{{t:any:signInRules.gateTitle}}|{{t:any:signInRules.changedSee}}|{{t:any:signInRules.overdueTitle}}|{{t:any:status.title}}|{{t:any:signIn.title}}|{{t:any:welcome.withEmail}}'
+    visible: '{{t:any:home.signedInTo}}|{{t:any:todayScreen.tab.today}}|{{t:any:noOrganisation.title}}|{{t:any:signInRules.dueSetUp}}|{{t:any:signInRules.unlinkedLink}}|{{t:any:signInRules.gateTitle}}|{{t:any:signInRules.changedSee}}|{{t:any:signInRules.overdueTitle}}|{{t:any:status.title}}|{{t:any:signIn.title}}|{{t:any:welcome.withEmail}}'
     timeout: 60000

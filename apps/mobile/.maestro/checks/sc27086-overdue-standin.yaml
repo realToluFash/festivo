@@ -1,5 +1,10 @@
 # sc-27086 (lead's #27590): Calendar shows the offline band, then ${HOME_ORG}'s two-factor deadline passes with the screen open, so the overdue stand-in replaces Calendar; it shows no band and no Refreshing…. Then, with the API ${API_BACK}, a switch from the pill to ${OTHER_ORG} loads Calendar again; the band may return only when the API is stopped. iPad, ORIENT. The deadline must fall within 6 minutes of the band. Needs the batch helper's /api.
 appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
 ---
 - setOrientation: ${ORIENT}
 - runFlow:

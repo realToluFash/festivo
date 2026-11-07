@@ -7,6 +7,7 @@ import {
   CAL_WORDS,
   TODAY,
   agendaOf,
+  agendaStop,
   barLabel,
   barWords,
   calendarStart,
@@ -247,6 +248,16 @@ describe('the Calendar in B · A · Weeks as lanes (sc-30329)', () => {
     expect(february).toEqual([
       { day: '2027-02-01', items: [], turn: { year: 2027, month: 2 }, empty: true },
     ]);
+  });
+
+  it('enters Agenda on the first day with a row from the day Month enters at', () => {
+    const entries = agendaOf(NOVEMBER, { year: 2027, month: 2 }, all, TODAY);
+    const listed = entries.filter((entry) => entry.items.length > 0);
+
+    expect(agendaStop(entries, TODAY)?.day).toBe(listed.find((one) => one.day >= TODAY)?.day);
+    expect(agendaStop(entries, '2026-11-06')?.day).toBe('2026-11-06');
+    expect(agendaStop(entries, '2027-02-01')).toBe(listed.at(-1));
+    expect(agendaStop([], TODAY)).toBeUndefined();
   });
 
   it('opens each state by name, and where main kept the Calendar without one', () => {

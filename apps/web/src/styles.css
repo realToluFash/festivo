@@ -3781,6 +3781,36 @@ span {
   font-weight: 500;
 }
 
+.event-people {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceMd);
+}
+
+.event-people-add {
+  align-self: flex-start;
+}
+
+.event-people-head {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--spaceSm);
+  font-size: inherit;
+  font-variant-numeric: tabular-nums;
+}
+
+.event-people-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.event-people-foot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+}
+
 .members-row {
   display: flex;
   align-items: center;

@@ -1,0 +1,9 @@
+# Settings, from wherever signing in landed: Today shows no Signed in as line. sc-30091.
+# Waited for by a section's id, since English Settings is also the label of Today's own tab.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings
+- extendedWaitUntil:
+    visible:
+      id: 'settings\..*'
+    timeout: 30000
