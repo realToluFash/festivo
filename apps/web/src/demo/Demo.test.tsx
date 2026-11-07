@@ -862,6 +862,175 @@ describe('the demo signs in with two-factor (sc-29063)', () => {
   });
 });
 
+describe('the demo’s lost authenticator counts one code, and says when a cancel fails (sc-30737)', () => {
+  beforeEach(() => {
+    inEnvironment('development');
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+  });
+
+  async function wait(ms = 1000): Promise<void> {
+    await act(() => vi.advanceTimersByTimeAsync(ms));
+  }
+
+  async function page(query: string, title: string) {
+    at(`/demo/two-factor${query}`);
+    await screen.findByRole('heading', { level: 1, name: title });
+  }
+
+  const NOT_CANCELLED = 'Not cancelled. Your request is still waiting. Try again.';
+
+  it('lists every new state on the demo home', async () => {
+    at('/demo');
+    await screen.findByRole('heading', { name: 'Design demo' });
+
+    for (const name of [
+      'Start, no verified phone',
+      'Sending the code',
+      'The email’s code expired',
+      'The email’s code, five wrong tries',
+      'Both codes expired',
+      'Both codes, five wrong tries',
+      'Not cancelled',
+    ]) {
+      expect(screen.getByRole('link', { name })).toBeDefined();
+    }
+  });
+
+  it('says one code on the start page with no verified phone, and sends the code', async () => {
+    await page('?page=start&state=email-only', 'Get back in without your authenticator');
+    expect(screen.getByText(`We send a code to ${SAMPLE.email}.`)).toBeDefined();
+    expect(screen.getByText('You enter the code here.')).toBeDefined();
+    expect(screen.queryByText('You enter the codes here.')).toBeNull();
+
+    const send = screen.getByRole('button', { name: 'Send the code' });
+    fireEvent.click(send);
+    expect(send.textContent).toBe('Sending the code…');
+    expect(send.getAttribute('aria-busy')).toBe('true');
+    await wait();
+    expect(await screen.findByRole('heading', { name: 'Enter the code' })).toBeDefined();
+  });
+
+  it('keeps two codes on the start page with a verified phone', async () => {
+    await page('?page=start&state=email-only', 'Get back in without your authenticator');
+    fireEvent.click(screen.getByRole('switch', { name: /no verified phone/ }));
+
+    expect(screen.getByText(/if your number is verified\.$/)).toBeDefined();
+    expect(screen.getByText('You enter the codes here.')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Send the codes' }));
+    expect(screen.getByRole('button', { name: 'Sending the codes…' })).toBeDefined();
+  });
+
+  it('holds the button sending at its own link', async () => {
+    await page('?page=start&state=email-only-sending', 'Get back in without your authenticator');
+    const send = screen.getByRole('button', { name: 'Sending the code…' });
+    expect(send.getAttribute('aria-busy')).toBe('true');
+
+    fireEvent.click(send);
+    await wait();
+    expect(
+      screen.getByRole('heading', { name: 'Get back in without your authenticator' }),
+    ).toBeDefined();
+  });
+
+  it('says the one code has expired, and Send a new code brings the field back', async () => {
+    await page('?page=codes&state=email-only-expired', 'Enter the code');
+    expect(screen.getByText('That code has expired')).toBeDefined();
+    expect(
+      screen.getByText(
+        'Codes only work for a while. Send a new one and use the code in the newest email.',
+      ),
+    ).toBeDefined();
+    expect(screen.queryByLabelText('Code from the email')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Send a new code' }));
+    await wait();
+    expect(screen.queryByText('That code has expired')).toBeNull();
+    expect(document.activeElement).toBe(screen.getByLabelText('Code from the email'));
+  });
+
+  it('says the one code no longer works at the fifth wrong try', async () => {
+    await page('?page=codes&state=email-only', 'Enter the code');
+    for (let tries = 0; tries < TRIES; tries++) {
+      expect(screen.queryByText('Too many wrong tries')).toBeNull();
+      type('Code from the email', '000000');
+      fireEvent.click(screen.getByRole('button', { name: 'Ask to get back in' }));
+      await wait();
+    }
+
+    expect(screen.getByText('Too many wrong tries')).toBeDefined();
+    expect(
+      screen.getByText('That code no longer works. Send a new one to carry on.'),
+    ).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Send a new code' })).toBeDefined();
+  });
+
+  it.each([
+    [
+      'expired',
+      'Those codes have expired',
+      'Codes only work for a while. Send new ones and use the codes in the newest email and WhatsApp message.',
+    ],
+    ['exhausted', 'Too many wrong tries', 'Those codes no longer work. Send new ones to carry on.'],
+  ])('keeps both codes’ words when %s with a verified phone', async (state, title, body) => {
+    await page(`?page=codes&state=${state}`, 'Enter both codes');
+    expect(screen.getByText(title)).toBeDefined();
+    expect(screen.getByText(body)).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Send new codes' })).toBeDefined();
+  });
+
+  it('keeps the dialog open with the line when Soirely cannot be reached', async () => {
+    await page('?page=waiting', 'Waiting for your organisation');
+    fireEvent.click(screen.getByRole('switch', { name: /can’t be reached/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel the request' }));
+    const dialog = screen.getByRole('alertdialog', { name: 'Cancel your request?' });
+    const focused = document.activeElement;
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel the request' }));
+    await wait();
+    expect(within(dialog).getByRole('alert').textContent).toContain(NOT_CANCELLED);
+    expect(document.activeElement).toBe(focused);
+    expect(screen.getByRole('heading', { name: 'Waiting for your organisation' })).toBeDefined();
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel the request' }));
+    expect(within(dialog).queryByRole('alert')).toBeNull();
+    await wait();
+    expect(within(dialog).getByRole('alert').textContent).toContain(NOT_CANCELLED);
+  });
+
+  it('hides the line on the next press, and cancels once Soirely answers', async () => {
+    await page('?page=waiting&state=not-cancelled', 'Waiting for your organisation');
+    const dialog = screen.getByRole('alertdialog', { name: 'Cancel your request?' });
+    expect(within(dialog).getByRole('alert').textContent).toContain(NOT_CANCELLED);
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel the request' }));
+    expect(within(dialog).queryByRole('alert')).toBeNull();
+    await wait();
+    expect(screen.getByRole('heading', { name: 'Request cancelled' })).toBeDefined();
+  });
+
+  it('closes on Escape after a cancel that failed, with the request still waiting', async () => {
+    await page('?page=waiting&state=not-cancelled', 'Waiting for your organisation');
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(screen.queryByText(NOT_CANCELLED)).toBeNull();
+    expect(screen.getByRole('heading', { name: 'Waiting for your organisation' })).toBeDefined();
+  });
+
+  it('shows the answer at once when the request was answered before the cancel arrived', async () => {
+    await page('?page=waiting', 'Waiting for your organisation');
+    fireEvent.click(screen.getByRole('button', { name: 'Demo: Turn down' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel the request' }));
+    const dialog = screen.getByRole('alertdialog', { name: 'Cancel your request?' });
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel the request' }));
+    await wait();
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(screen.queryByText(NOT_CANCELLED)).toBeNull();
+    expect(screen.getByRole('heading', { name: 'Your request was turned down' })).toBeDefined();
+  });
+});
+
 describe('the demo’s other ways in (sc-29062)', () => {
   beforeEach(() => {
     inEnvironment('development');

@@ -261,9 +261,18 @@ export const TWO_FACTOR_PAGES: { name: string; states: { name: string; to: strin
     name: 'Lost authenticator',
     states: [
       { name: 'Start', to: twoFactorAt('start') },
+      { name: 'Start, no verified phone', to: twoFactorAt('start', 'email-only') },
+      { name: 'Sending the code', to: twoFactorAt('start', 'email-only-sending') },
       { name: 'Too many requests', to: twoFactorAt('start', 'limited') },
       { name: 'Both codes', to: twoFactorAt('codes') },
       { name: 'Only the email’s code', to: twoFactorAt('codes', 'email-only') },
+      { name: 'The email’s code expired', to: twoFactorAt('codes', 'email-only-expired') },
+      {
+        name: 'The email’s code, five wrong tries',
+        to: twoFactorAt('codes', 'email-only-exhausted'),
+      },
+      { name: 'Both codes expired', to: twoFactorAt('codes', 'expired') },
+      { name: 'Both codes, five wrong tries', to: twoFactorAt('codes', 'exhausted') },
     ],
   },
   {
@@ -271,6 +280,7 @@ export const TWO_FACTOR_PAGES: { name: string; states: { name: string; to: strin
     states: [
       { name: 'Waiting for your organisation', to: twoFactorAt('waiting') },
       { name: 'Cancel your request?', to: twoFactorAt('waiting', 'confirm') },
+      { name: 'Not cancelled', to: twoFactorAt('waiting', 'not-cancelled') },
       { name: 'Two-factor is off', to: twoFactorAt('off') },
       { name: 'Turned down', to: twoFactorAt('turned-down') },
       { name: 'Ended', to: twoFactorAt('ended') },
