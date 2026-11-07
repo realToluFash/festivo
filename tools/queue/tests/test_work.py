@@ -1039,6 +1039,76 @@ class DesignPullRequests(unittest.TestCase):
         self.assertFalse(work.side_pr(ticket, self.design()))
         self.assertEqual(work.builder(ticket, self.design()), "ux")
 
+class DemoOnlyStories(unittest.TestCase):
+    """A story whose every pull request is the designer's is built once its demo merges: the
+    product manager moves it to Ready For QA, and no developer or lead is handed it."""
+
+    WAITING = ("Ready For Dev", "In Progress", "In Review", "Failed Code Review",
+               "Passed Code Review")
+    LATER = ("Ready For QA", "In QA", "Passsed QA", "Failed QA", "Done")
+
+    def on(self, state, **kw):
+        return dict(story(state=state, labels=("dev2",), **kw), done=state == "Done")
+
+    def demo(self, lead=(verdict("pass", HEAD[:7]),), state="merged"):
+        found = dict(pr(40, 1, lead=lead, state=state), branch="ux/sc-1-sign-in")
+        found["merged_at"] = "2026-10-18T12:00:00Z" if state == "merged" else None
+        return found
+
+    def pm_items(self, stories, prs):
+        return [i for i in work.derive(stories, prs) if i["kind"] == "demo-merged"]
+
+    def test_pm_is_told_to_move_it_to_ready_for_qa(self):
+        for state in self.WAITING:
+            items = self.pm_items([self.on(state)], [self.demo()])
+            self.assertEqual([(i["roles"], i["story_id"]) for i in items], [(["pm"], 1)], state)
+            self.assertEqual(items[0]["reason"], f"sc-1: its demo merged in PR #40 at "
+                                                 f"{HEAD[:7]}: move it to Ready For QA")
+            self.assertLess(items[0]["priority"], work.SWEEP)
+
+    def test_a_merge_no_pass_covers_says_so(self):
+        for lead in ((), (verdict("pass", OLD[:7]),), (verdict("back", HEAD[:7]),)):
+            items = self.pm_items([self.on("In Review")], [self.demo(lead=lead)])
+            self.assertTrue(items[0]["reason"].endswith(
+                "move it to Ready For QA (no lead review)"), lead)
+
+    def test_it_is_gone_from_ready_for_qa_on_and_once_archived(self):
+        for state in self.LATER:
+            self.assertEqual(self.pm_items([self.on(state)], [self.demo()]), [], state)
+        archived = dict(self.on("In Review"), archived=True)
+        self.assertEqual(self.pm_items([archived], [self.demo()]), [])
+
+    def test_an_open_demo_is_not_yet_a_build(self):
+        self.assertEqual(self.pm_items([self.on("In Review")], [self.demo(state="open")]), [])
+
+    def test_no_developer_is_offered_it_from_ready_for_dev(self):
+        ready = self.on("Ready For Dev")
+        offered = [i for i in work.derive([ready], [self.demo()]) if i["kind"] == "story"]
+        self.assertEqual([r for i in offered for r in i["roles"] if work.builds(r)], [])
+        self.assertEqual(work.queued("dev2", [ready], prs=[self.demo()]), [])
+        self.assertEqual(work.queued("dev2", [ready], prs=[self.demo(state="open")]), [ready])
+
+    def test_the_lead_is_not_told_it_has_no_pull_request(self):
+        items = work.review_items([self.on("In Review")], [self.demo()])
+        self.assertEqual(items, [])
+        bare = work.review_items([self.on("In Review")], [])
+        self.assertIn("with no open pull request", bare[0]["reason"])
+
+    def test_a_story_with_a_developers_pull_request_moves_as_today(self):
+        own = pr(41, 1, lead=[verdict("pass", HEAD[:7])], state="merged")
+        for state in self.WAITING:
+            stories, prs = [self.on(state)], [self.demo(), own]
+            self.assertEqual(self.pm_items(stories, prs), [], state)
+        merged = work.developer_items([self.on("In Review")], [self.demo(), own])
+        self.assertEqual([(i["kind"], i["pr"]) for i in merged], [("to-qa", 41)])
+        unpassed = dict(own, lead=[])
+        merged = work.developer_items([self.on("Passed Code Review")], [self.demo(), unpassed])
+        self.assertEqual([(i["kind"], i["pr"]) for i in merged], [("merged-unpassed", 41)])
+        ready = self.on("Ready For Dev")
+        building = dict(pr(41, 1), state="open")
+        self.assertEqual(work.queued("dev2", [ready], prs=[self.demo(), building]), [ready])
+
+
 class Stranded(unittest.TestCase):
     NOW = T.epoch("2026-10-25T12:00:00Z")
 

@@ -222,8 +222,9 @@ def builds(role):
     return role in R.DEVS or role == "ops"
 
 
-def queued(role, stories, epics=None, ios=None, testers=None):
+def queued(role, stories, epics=None, ios=None, testers=None, prs=None):
     config = R.ROLES[role]
+    built = demo_built(stories, prs or [])
     has_ios = machine.has_xcode if ios is None else lambda: ios
     if testers is None and role in R.TESTERS:
         testers = machine.manual_testers()
@@ -234,7 +235,8 @@ def queued(role, stories, epics=None, ios=None, testers=None):
             and R.can_test(role, story, has_ios)
             and not (role in R.TESTERS and R.kept_for_person(story, testers))
             and not held_epic(story, epics)
-            and not (builds(role) and holding(story, by_id))]
+            and not (builds(role) and holding(story, by_id))
+            and not (builds(role) and story["id"] in built)]
 
 
 def retester(story, now=None):
@@ -259,7 +261,7 @@ def epic_order(epics):
 
 
 def queue_items(stories, moves=None, now=None, epics=None, ios=None, released=None,
-                unlinked=None, testers=None):
+                unlinked=None, testers=None, prs=None):
     """A story entering a role's queue is work once, unless the role moved it there itself.
     One sitting there waits for a pick. A failed story back in Ready For QA is offered only
     to the tester who failed it, until its retest window closes."""
@@ -269,7 +271,7 @@ def queue_items(stories, moves=None, now=None, epics=None, ios=None, released=No
     merged = {}
     build_order = {s["id"]: i for i, s in enumerate(sorted(stories, key=epic_order(epics)))}
     for role, config in R.ROLES.items():
-        for story in queued(role, stories, epics, ios, testers):
+        for story in queued(role, stories, epics, ios, testers, prs):
             if moves.get((story["id"], story["state"], story["moved_at"])) == role:
                 continue
             pool = R.pool(role, story["state"], story["labels"])
@@ -371,8 +373,7 @@ def review_items(stories, prs):
                         or follow_up(story) and not linguists(story)]
             if not open_prs:
                 continue
-        merged = any(pr["story_id"] == story["id"] and pr["state"] == "merged"
-                     and not design_pr(pr) for pr in prs)
+        merged = any(pr["story_id"] == story["id"] and pr["state"] == "merged" for pr in prs)
         if not [pr for pr in open_prs if not design_pr(pr)] and not merged \
                 and story["state"] == "In Review":
             items.append(_item(f"lead:review:sc-{story['id']}:none:{story['moved_at']}", "lead",
@@ -436,6 +437,50 @@ def design_pr(pr):
     """The designer's pull request, from a ux/ branch: the lead reviews it and the designer
     merges it whatever state its story is in, and the story stays there."""
     return R.is_design_branch(pr.get("branch"))
+
+
+# Where a story waits on its build; a demo-only story's build is its merged demo.
+DEMO_WAITING = ("Ready For Dev", "In Progress", "In Review", "Failed Code Review",
+                "Passed Code Review")
+
+
+def demo_built(stories, prs):
+    """Each story whose every pull request is the designer's, with the last of them merged:
+    the merged demo is its whole build."""
+    by_story = {}
+    for pr in prs:
+        if pr.get("story_id"):
+            by_story.setdefault(pr["story_id"], []).append(pr)
+    built = {}
+    for story in stories:
+        own = by_story.get(story["id"], [])
+        merged_ = sorted((pr for pr in own if pr["state"] == "merged"),
+                         key=lambda pr: pr.get("merged_at") or "")
+        if merged_ and all(design_pr(pr) for pr in own):
+            built[story["id"]] = merged_[-1]
+    return built
+
+
+def demo_items(stories, prs):
+    """The product manager moves a demo-only story on once its demo merges: the designer may
+    not move a story, and no developer has anything to build."""
+    built = demo_built(stories, prs)
+    items = []
+    for story in stories:
+        pr = built.get(story["id"])
+        if not pr or story.get("archived") or story["done"] \
+                or story["state"] not in DEMO_WAITING:
+            continue
+        sha = pr["head_sha"][:7]
+        verdict = latest_verdict(pr)
+        reviewed = covers(verdict, pr["head_sha"], pr.get("carried")) \
+            and verdict["verdict"] == "pass"
+        items.append(_item(f"pm:demo-merged:sc-{story['id']}:#{pr['number']}@{sha}", "pm",
+                           ["pm"], "demo-merged",
+                           f"sc-{story['id']}: its demo merged in PR #{pr['number']} at {sha}: "
+                           f"move it to Ready For QA{'' if reviewed else ' (no lead review)'}",
+                           PULL_REQUEST, story, pr))
+    return items
 
 
 def linguists(story):
@@ -723,10 +768,11 @@ def derive(stories, prs, main_run=None, last_runs=None, busy_roles=(), now=0,
            raised=(), last_sweeps=None, released=None, unlinked=None, testers=None, here=None):
     return finishing_first(
         inbox_items(stories, handled, testers) + developer_items(stories, prs)
+        + demo_items(stories, prs)
         + unblocked_items(stories, prs, translated, raised)
         + review_items(stories, prs) + held_items(stories) + plan_items(stories, testers, here)
         + queue_items(stories, moves, now, epics, released=released, unlinked=unlinked,
-                      testers=testers)
+                      testers=testers, prs=prs)
         + main_items(main_run)
         + heartbeat_items(stories, last_runs or {}, set(busy_roles), now, epics, last_sweeps,
                           testers)
