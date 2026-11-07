@@ -44,7 +44,7 @@ export function TwoFactorBoard() {
     case 'codes':
       return <BothCodes key={key} state={state} />;
     case 'waiting':
-      return <Waiting key={key} confirming={state === 'confirm'} />;
+      return <Waiting key={key} state={state} />;
     case 'off':
       return <TwoFactorOff />;
     case 'turned-down':
@@ -230,6 +230,13 @@ function BackToSignIn() {
   );
 }
 
+/** One code goes to an account with no verified phone, so its lines count one (sc-30737). */
+function codeWords(emailOnly: boolean) {
+  return emailOnly
+    ? { step: 'You enter the code here.', send: 'Send the code', sending: 'Sending the code…' }
+    : { step: 'You enter the codes here.', send: 'Send the codes', sending: 'Sending the codes…' };
+}
+
 function Start({ state, asks, onAsk }: { state: string; asks: number; onAsk: () => void }) {
   const navigate = useNavigate();
   /** When asking opens again: a day after the third ask. */
@@ -237,10 +244,13 @@ function Start({ state, asks, onAsk }: { state: string; asks: number; onAsk: () 
     state === 'limited' ? Date.now() : null,
   );
   const limited = opensAt != null;
+  const [emailOnly, setEmailOnly] = useState(state.startsWith('email-only'));
   const [busy, after] = useBusy();
+  const sending = busy || state.endsWith('sending');
+  const words = codeWords(emailOnly);
 
   function send(): void {
-    if (busy) return;
+    if (sending) return;
 
     after(() => {
       if (asks >= ASKS_A_DAY) {
@@ -249,12 +259,26 @@ function Start({ state, asks, onAsk }: { state: string; asks: number; onAsk: () 
       }
 
       onAsk();
-      void navigate(twoFactorAt('codes'));
+      void navigate(twoFactorAt('codes', emailOnly ? 'email-only' : undefined));
     });
   }
 
   return (
-    <BoardPage end={null} back={{ to: twoFactorAt('code') }}>
+    <BoardPage
+      end={null}
+      back={{ to: twoFactorAt('code') }}
+      controls={
+        <label className="demo-switch">
+          <input
+            type="checkbox"
+            role="switch"
+            checked={emailOnly}
+            onChange={(event) => setEmailOnly(event.target.checked)}
+          />
+          Demo: no verified phone
+        </label>
+      }
+    >
       <Heading title="Get back in without your authenticator">
         <p className="demo-muted">
           For when you have lost your authenticator app and your recovery codes.
@@ -273,14 +297,16 @@ function Start({ state, asks, onAsk }: { state: string; asks: number; onAsk: () 
             1
           </span>
           <span>
-            We send a code to {SAMPLE.email}, and one to {PHONE} if your number is verified.
+            {emailOnly
+              ? `We send a code to ${SAMPLE.email}.`
+              : `We send a code to ${SAMPLE.email}, and one to ${PHONE} if your number is verified.`}
           </span>
         </li>
         <li>
           <span className="demo-step-number" aria-hidden="true">
             2
           </span>
-          <span>You enter the codes here.</span>
+          <span>{words.step}</span>
         </li>
         <li>
           <span className="demo-step-number" aria-hidden="true">
@@ -299,11 +325,11 @@ function Start({ state, asks, onAsk }: { state: string; asks: number; onAsk: () 
       <button
         className="button button-primary demo-wide"
         type="button"
-        aria-busy={busy}
+        aria-busy={sending}
         {...offButton(limited)}
         onClick={send}
       >
-        {busy ? 'Sending the codes…' : 'Send the codes'}
+        {sending ? words.sending : words.send}
       </button>
       <BackToSignIn />
     </BoardPage>
@@ -312,9 +338,37 @@ function Start({ state, asks, onAsk }: { state: string; asks: number; onAsk: () 
 
 type Lines = { email?: string; phone?: string };
 
+type Spent = 'expired' | 'exhausted';
+
+function spentWords(spent: Spent, emailOnly: boolean, last: string) {
+  if (spent === 'exhausted') {
+    return {
+      title: 'Too many wrong tries',
+      body: emailOnly
+        ? 'That code no longer works. Send a new one to carry on.'
+        : 'Those codes no longer work. Send new ones to carry on.',
+    };
+  }
+
+  return emailOnly
+    ? {
+        title: 'That code has expired',
+        body: 'Codes only work for a while. Send a new one and use the code in the newest email.',
+      }
+    : {
+        title: 'Those codes have expired',
+        body: `Codes only work for a while. Send new ones and use the codes in the newest email and ${last}.`,
+      };
+}
+
 function BothCodes({ state }: { state: string }) {
   const navigate = useNavigate();
-  const [emailOnly, setEmailOnly] = useState(state === 'email-only');
+  const [emailOnly, setEmailOnly] = useState(state.startsWith('email-only'));
+  const [spent, setSpent] = useState<Spent | null>(() =>
+    state.endsWith('expired') ? 'expired' : state.endsWith('exhausted') ? 'exhausted' : null,
+  );
+  const [wrongs, setWrongs] = useState(0);
+  const focusEmail = useRef(false);
   const [emailCode, setEmailCode] = useState('');
   const [phoneCode, setPhoneCode] = useState('');
   const [lines, setLines] = useState<Lines>({});
@@ -324,6 +378,13 @@ function BothCodes({ state }: { state: string }) {
   const emailField = useRef<HTMLInputElement>(null);
   const phoneField = useRef<HTMLInputElement>(null);
   const from = texted ? 'the text' : 'WhatsApp';
+
+  useEffect(() => {
+    if (!focusEmail.current || emailField.current == null) return;
+
+    focusEmail.current = false;
+    emailField.current.focus();
+  });
 
   function check(): Lines {
     const found: Lines = {};
@@ -359,11 +420,20 @@ function BothCodes({ state }: { state: string }) {
           ? 'That code does not match. Check the newest text from Soirely and try again.'
           : 'That code does not match. Check the newest WhatsApp message from Soirely and try again.';
 
-      setLines(wrong);
       if (wrong.email == null && wrong.phone == null) {
         void navigate(twoFactorAt('waiting'));
         return;
       }
+
+      if (wrongs + 1 >= TRIES) {
+        setWrongs(0);
+        setLines({});
+        setSpent('exhausted');
+        return;
+      }
+
+      setWrongs(wrongs + 1);
+      setLines(wrong);
 
       const first = (wrong.email != null ? emailField : phoneField).current;
       first?.focus();
@@ -379,10 +449,15 @@ function BothCodes({ state }: { state: string }) {
       setPhoneCode('');
       setLines({});
       setTexted(false);
+      setSpent(null);
+      setWrongs(0);
       setSentAt(Date.now());
-      emailField.current?.focus();
+      focusEmail.current = true;
     });
   }
+
+  const dead =
+    spent == null ? null : spentWords(spent, emailOnly, texted ? 'text' : 'WhatsApp message');
 
   return (
     <BoardPage
@@ -410,55 +485,69 @@ function BothCodes({ state }: { state: string }) {
             ? `We sent a code to ${SAMPLE.email}.`
             : `We sent a code to ${SAMPLE.email} and another to ${PHONE}. You need both.`}
         </p>
+        {dead != null && <Notice title={dead.title} body={dead.body} />}
       </Heading>
 
-      <form className="demo-form" noValidate onSubmit={ask}>
-        <div className="demo-fields">
-          <CodeField
-            id="email-code"
-            label="Code from the email"
-            sent={`Sent to ${SAMPLE.email}`}
-            line={lines.email}
-            field={emailField}
-            value={emailCode}
-            busy={busy}
-            onChange={setEmailCode}
-          />
-          {!emailOnly && (
-            <CodeField
-              id="phone-code"
-              label={texted ? 'Code from the text' : 'Code from WhatsApp'}
-              sent={
-                texted
-                  ? `Texted to ${PHONE}: the same code as on WhatsApp`
-                  : `Sent to your WhatsApp on ${PHONE}`
-              }
-              line={lines.phone}
-              field={phoneField}
-              value={phoneCode}
-              busy={busy}
-              onChange={setPhoneCode}
-            />
-          )}
-        </div>
-        <button className="button button-primary demo-wide" type="submit" aria-busy={busy}>
-          {busy ? 'Asking…' : 'Ask to get back in'}
+      {dead != null ? (
+        <button
+          className="button button-primary demo-wide"
+          type="button"
+          aria-busy={busy}
+          onClick={resend}
+        >
+          {emailOnly ? 'Send a new code' : 'Send new codes'}
         </button>
-      </form>
+      ) : (
+        <>
+          <form className="demo-form" noValidate onSubmit={ask}>
+            <div className="demo-fields">
+              <CodeField
+                id="email-code"
+                label="Code from the email"
+                sent={`Sent to ${SAMPLE.email}`}
+                line={lines.email}
+                field={emailField}
+                value={emailCode}
+                busy={busy}
+                onChange={setEmailCode}
+              />
+              {!emailOnly && (
+                <CodeField
+                  id="phone-code"
+                  label={texted ? 'Code from the text' : 'Code from WhatsApp'}
+                  sent={
+                    texted
+                      ? `Texted to ${PHONE}: the same code as on WhatsApp`
+                      : `Sent to your WhatsApp on ${PHONE}`
+                  }
+                  line={lines.phone}
+                  field={phoneField}
+                  value={phoneCode}
+                  busy={busy}
+                  onChange={setPhoneCode}
+                />
+              )}
+            </div>
+            <button className="button button-primary demo-wide" type="submit" aria-busy={busy}>
+              {busy ? 'Asking…' : 'Ask to get back in'}
+            </button>
+          </form>
 
-      <Resend key={sentAt} plural={!emailOnly} onResend={resend}>
-        {!emailOnly && !texted && (
-          <button
-            className="link-button demo-link"
-            type="button"
-            onClick={() => {
-              if (!busy) after(() => setTexted(true));
-            }}
-          >
-            Text it to me instead
-          </button>
-        )}
-      </Resend>
+          <Resend key={sentAt} plural={!emailOnly} onResend={resend}>
+            {!emailOnly && !texted && (
+              <button
+                className="link-button demo-link"
+                type="button"
+                onClick={() => {
+                  if (!busy) after(() => setTexted(true));
+                }}
+              >
+                Text it to me instead
+              </button>
+            )}
+          </Resend>
+        </>
+      )}
     </BoardPage>
   );
 }
@@ -474,11 +563,13 @@ const ANSWERS: { answer: Answer; name: string }[] = [
   { answer: 'replaced', name: 'Replace it' },
 ];
 
-/** An answer found while the dialog is open leaves the page, and the dialog with it. */
-function Waiting({ confirming: opened }: { confirming: boolean }) {
+/** Cancel the request asks first (sc-29957); an answer found while the dialog is open leaves the page, and the dialog with it. */
+function Waiting({ state }: { state: string }) {
   const navigate = useNavigate();
   const [answer, setAnswer] = useState<Answer | null>(null);
-  const [confirming, setConfirming] = useState(opened);
+  const [confirming, setConfirming] = useState(state === 'confirm' || state === 'not-cancelled');
+  const [notCancelled, setNotCancelled] = useState(state === 'not-cancelled');
+  const [reachable, setReachable] = useState(true);
   const [busy, after] = useBusy();
   const [asked] = useState(() => Date.now());
   const given = useRef<Answer | null>(null);
@@ -499,19 +590,30 @@ function Waiting({ confirming: opened }: { confirming: boolean }) {
     <BoardPage
       end={null}
       controls={
-        <div className="demo-answer-controls" role="group" aria-label="Demo: answer the request">
-          {ANSWERS.map((each) => (
-            <button
-              key={each.answer}
-              className="button demo-dense"
-              type="button"
-              aria-pressed={answer === each.answer}
-              onClick={() => setAnswer(each.answer)}
-            >
-              Demo: {each.name}
-            </button>
-          ))}
-        </div>
+        <>
+          <div className="demo-answer-controls" role="group" aria-label="Demo: answer the request">
+            {ANSWERS.map((each) => (
+              <button
+                key={each.answer}
+                className="button demo-dense"
+                type="button"
+                aria-pressed={answer === each.answer}
+                onClick={() => setAnswer(each.answer)}
+              >
+                Demo: {each.name}
+              </button>
+            ))}
+          </div>
+          <label className="demo-switch">
+            <input
+              type="checkbox"
+              role="switch"
+              checked={!reachable}
+              onChange={(event) => setReachable(!event.target.checked)}
+            />
+            Demo: Soirely can’t be reached
+          </label>
+        </>
       }
     >
       <Heading title="Waiting for your organisation">
@@ -543,9 +645,30 @@ function Waiting({ confirming: opened }: { confirming: boolean }) {
           keep="Keep waiting"
           go="Cancel the request"
           pending={busy}
-          opensPage
-          onKeep={() => setConfirming(false)}
-          onGo={() => after(() => void navigate(twoFactorAt('cancelled')))}
+          opensPage={reachable}
+          refusal={
+            notCancelled ? (
+              <div className="notice notice-broken" role="alert">
+                <span className="mark mark-broken" aria-hidden="true">
+                  ✕
+                </span>
+                <div className="notice-body">
+                  <p>Not cancelled. Your request is still waiting. Try again.</p>
+                </div>
+              </div>
+            ) : undefined
+          }
+          onKeep={() => {
+            setConfirming(false);
+            setNotCancelled(false);
+          }}
+          onGo={() => {
+            setNotCancelled(false);
+            // A request already answered refuses the cancel, so the page shows that answer.
+            after(() =>
+              reachable ? void navigate(twoFactorAt(answer ?? 'cancelled')) : setNotCancelled(true),
+            );
+          }}
         >
           <p>You’ll need to start again to get back in.</p>
         </ConfirmDialog>
