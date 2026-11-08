@@ -8,7 +8,7 @@ export function Switched({ name, takesFocus = false }: { name: string; takesFocu
 
   return (
     <div key={name} className="sw-switched">
-      <Notice kind="done" takesFocus={takesFocus}>
+      <Notice kind="done" takesFocus={takesFocus} lead>
         {t('switcher.switched', { name })}
       </Notice>
     </div>

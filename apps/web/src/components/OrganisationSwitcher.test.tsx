@@ -141,6 +141,39 @@ describe('switching organisation', () => {
     expect(window.localStorage.getItem('soirely.organisation')).toBe('org_2');
   });
 
+  it('takes Close this notice on a sign-in rules notice above it to "Now working in"', () => {
+    const changed = {
+      ...OKAFOR,
+      signInRules: { ...OKAFOR.signInRules, changedAt: '2026-10-20T09:00:00+00:00' },
+    };
+    __setSessionState({
+      status: 'signedIn',
+      session: {
+        name: 'Folake Adeyemi',
+        email: 'folake@ire.events',
+        verified: true,
+        complete: true,
+        awaiting: null,
+        providers: [],
+        userId: 'u1',
+        needsOrganisation: false,
+        hasPassword: true,
+        organisation: IRE,
+        organisations: [IRE, changed],
+        organisationCountry: null,
+        timezone: null,
+        waitingFor: null,
+      },
+    });
+    at('/app');
+
+    fireEvent.click(screen.getByRole('button', { name: /Switch organisation/ }));
+    fireEvent.click(screen.getByRole('option', { name: /Okafor Family/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Close this notice' }));
+
+    expect(document.activeElement).toBe(screen.getByText('Now working in Okafor Family.'));
+  });
+
   it('opens on the organisation this device chose last time', async () => {
     window.localStorage.setItem('soirely.organisation', 'org_2');
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(

@@ -11,6 +11,7 @@ export function Notice({
   lands = false,
   takesFocus = false,
   standing = false,
+  lead = false,
   children,
 }: {
   kind: NoticeKind;
@@ -18,6 +19,8 @@ export function Notice({
   takesFocus?: boolean;
   /** Part of the page from the start, not news: a note, read in its place. */
   standing?: boolean;
+  /** Where focus goes on to when a notice above it closes. */
+  lead?: boolean;
   children: ReactNode;
 }) {
   const box = useRef<HTMLDivElement>(null);
@@ -51,7 +54,9 @@ export function Notice({
           <Glyph name={kind === 'done' ? 'tick' : 'clear'} size={15} weight={3} />
         )}
       </span>
-      <p className="sw-notice-words">{children}</p>
+      <p className="sw-notice-words" data-notice-lead={lead ? '' : undefined}>
+        {children}
+      </p>
     </div>
   );
 }
