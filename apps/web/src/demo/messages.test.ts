@@ -23,10 +23,15 @@ import {
   messagesStateOf,
   noticeOf,
   outTitle,
+  phoneProblem,
   reachFrom,
   reachLine,
   refusalOf,
+  resendOf,
   rowsInOrder,
+  showItems,
+  shownOf,
+  whoOf,
   sectionsOf,
   seedOf,
   toldOf,
@@ -36,10 +41,10 @@ import {
 const ids = (rows: readonly { id: string }[]) => rows.map((row) => row.id);
 
 describe('Messaging B · Conversations, the rules (sc-31371)', () => {
-  it('has the spec’s 42 states and the notice’s 3, in order, each linked once from the demo home', () => {
+  it('has the spec’s 42 states, the notice’s 3 and Who it reached’s 8, in order, each linked once from the demo home', () => {
     const keys = MESSAGE_STATES.map((one) => one.key);
 
-    expect(keys).toHaveLength(45);
+    expect(keys).toHaveLength(53);
     expect(keys.slice(0, 3)).toEqual(['first', 'loading', 'inUse']);
     expect(keys.slice(6, 10)).toEqual([
       'channelReply',
@@ -49,7 +54,7 @@ describe('Messaging B · Conversations, the rules (sc-31371)', () => {
     ]);
     expect(keys.slice(26, 29)).toEqual(['bell', 'invitedReached', 'sentReached']);
     expect(keys.at(-1)).toBe('tellPlace');
-    expect(new Set(keys).size).toBe(45);
+    expect(new Set(keys).size).toBe(53);
     expect(MESSAGES_PAGES.flatMap((page) => page.states.map((one) => one.to))).toEqual(
       keys.map((key) => `/demo/events/evt-wed-4/messages?state=${key}`),
     );
@@ -350,5 +355,156 @@ describe('The notice’s cost before Send (sc-3976, pm on bm’s #31518)', () =>
     expect(inbox.done).not.toContain('lucia');
     expect(inbox.answers.lucia).toBeUndefined();
     expect(inbox.balance).toBe(2);
+  });
+});
+
+describe('Who it reached, its fixes, the filter and a resend (sc-3966)', () => {
+  const reached = seedOf('reached');
+  const joaquin = (inbox: typeof reached) =>
+    whoOf(inbox, 'parking', 'parking').groups.flatMap((group) =>
+      group.people.filter((one) => one.id === 'joaquin'),
+    )[0];
+
+  it('takes a phone number only with + and at least seven digits', () => {
+    expect(phoneProblem('+46 70 123 45 67')).toBeNull();
+    expect(phoneProblem('070 123 45 67')).toBe(
+      'That does not look like a phone number. Start with + and the country code.',
+    );
+    expect(phoneProblem('+46 70')).toBe(MW.phoneShape);
+  });
+
+  it('keeps a saved address’s lines, says it has not been sent, and offers to send it', () => {
+    const added = changed(reached, {
+      kind: 'fixed',
+      id: 'joaquin',
+      thread: 'parking',
+      fix: 'addEmail',
+      address: 'joaquin.ruiz@gmail.com',
+    });
+
+    expect(joaquin(added)).toMatchObject({
+      kind: 'none',
+      fixes: [],
+      offer: true,
+      updated: ['An email address has been added since. Nothing has been sent to it yet.'],
+    });
+    expect(joaquin(added)?.lines[0]?.word).toBe('No email address');
+    expect(
+      whoOf(seedOf('addedPhone'), 'parking', 'parking')
+        .groups.flatMap((group) => group.people)
+        .find((one) => one.id === 'lars')?.updated,
+    ).toEqual(['A phone number has been added since. Nothing has been sent to it yet.']);
+  });
+
+  it('after Not now keeps the line, gives back the other fixes, and counts them in a resend', () => {
+    const later = changed(seedOf('added'), { kind: 'notNow', id: 'joaquin', thread: 'parking' });
+
+    expect(joaquin(later)).toMatchObject({ offer: false, fixes: ['addPhone', 'toldInPerson'] });
+    expect(joaquin(later)?.updated).toHaveLength(1);
+    expect(resendOf(reached, 'parking', TICKS)).toEqual({
+      waiting: 11,
+      count: 3,
+      unconfirmed: 2,
+      still: 8,
+      cant: [
+        'Joaquín Ruiz · No email address · No phone number',
+        'Sophie Laurent · Unsubscribed · Texted STOP',
+      ],
+      credits: 2,
+    });
+    expect(resendOf(later, 'parking', TICKS)).toMatchObject({ count: 4, still: 7 });
+  });
+
+  it('sends a saved address again: its channel’s line Sent, and the person In progress', () => {
+    const sent = changed(seedOf('added'), { kind: 'sendAgain', id: 'joaquin', thread: 'parking' });
+
+    expect(joaquin(sent)).toMatchObject({ kind: 'inProgress', fixes: [] });
+    expect(joaquin(sent)?.lines[0]).toEqual({
+      mark: 'sent',
+      word: 'Email · Sent · 09:44',
+      why: 'joaquin.ruiz@gmail.com',
+    });
+    expect(joaquin(sent)?.updated).toBeUndefined();
+    expect(resendOf(sent, 'parking', TICKS).waiting).toBe(10);
+  });
+
+  it('marks a guest as told in person, reached and in Marked as told, and Undo puts them back', () => {
+    const told = seedOf('told');
+    const who = whoOf(told, 'parking', 'parking');
+
+    expect(who.reach.reached).toBe(132);
+    expect(shownOf(who, 'told').groups[0]?.people.map((one) => one.lines.at(-1))).toEqual([
+      {
+        mark: 'delivered',
+        word: 'Told in person',
+        why: 'Marked by Folake Adeyemi at 09:44',
+      },
+    ]);
+    expect(resendOf(told, 'parking', TICKS)).toMatchObject({ count: 2, unconfirmed: 1 });
+
+    const undone = changed(told, { kind: 'undoTold', id: 'amaka', thread: 'parking' });
+
+    expect(undone.unreached.map((one) => one.id)).toEqual(reached.unreached.map((one) => one.id));
+    expect(whoOf(undone, 'parking', 'parking').reach.reached).toBe(131);
+  });
+
+  it('filters by group, each choice counted', () => {
+    const who = whoOf(reached, 'parking', 'parking');
+
+    expect(showItems(who).map((item) => `${item.word} · ${item.count}`)).toEqual([
+      'Everyone · 142',
+      'Not reached · 11',
+      'Bounced · 3',
+      'Not confirmed · 2',
+      'Opted out · 4',
+      'No email or phone · 2',
+      'Reached · 131',
+      'Marked as told · 0',
+    ]);
+    expect(shownOf(who, 'bounced')).toMatchObject({ heading: 'Bounced · 3' });
+    expect(shownOf(who, 'bounced').groups.map((group) => group.key)).toEqual(['bounced']);
+    expect(shownOf(who, 'reached').groups[0]).toMatchObject({ count: 131, more: 129 });
+    expect(shownOf(who, 'notReached').heading).toBe('Not reached · 11');
+    expect(
+      showItems(whoOf(seedOf('sentReached'), 'new', 'new')).map(
+        (item) => `${item.word} · ${item.count}`,
+      ),
+    ).toEqual([
+      'Everyone · 96',
+      'Not reached · 58',
+      'In progress · 56',
+      'Can’t be told · 2',
+      'Reached · 38',
+      'Marked as told · 0',
+    ]);
+  });
+
+  it('checks a resend of an invitation or a message just sent with nobody to tell yet', () => {
+    expect(resendOf(seedOf('resendInvited'), 'invite', TICKS)).toEqual({
+      waiting: 2,
+      count: 0,
+      unconfirmed: 0,
+      still: 2,
+      cant: [
+        'Joaquín Ruiz · No email address · No phone number',
+        'Mei Lin Chen · No email address · No phone number',
+      ],
+      credits: 0,
+    });
+    expect(resendOf(seedOf('resendSent'), 'new', TICKS)).toMatchObject({
+      waiting: 2,
+      count: 0,
+      cant: [
+        'Tomás Ferreira · Address is bouncing · No phone number',
+        'Joaquín Ruiz · No email address · No phone number',
+      ],
+    });
+    expect(
+      resendOf(
+        changed(seedOf('resendSent'), { kind: 'toldInPerson', id: 'joaquin', thread: 'new' }),
+        'new',
+        TICKS,
+      ).waiting,
+    ).toBe(1);
   });
 });
