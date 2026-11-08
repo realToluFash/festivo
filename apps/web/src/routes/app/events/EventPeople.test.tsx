@@ -162,7 +162,10 @@ describe('People on an event, at a desk (sc-29915)', () => {
     expect(rule(':where(.desk) button')).toMatch(
       /border: 0;[\s\S]*background: none;[\s\S]*text-align: start;/u,
     );
-    expect(rule(':where(.desk) :is(ul, ol)')).toMatch(/padding: 0;[\s\S]*list-style: none;/u);
+    expect(rule(':where(.desk) :is(h1, h2, h3, p, ul, ol)')).toMatch(
+      /margin: 0;[\s\S]*padding: 0;/u,
+    );
+    expect(rule(':where(.desk) :is(ul, ol)')).toMatch(/list-style: none;/u);
   });
 
   it('lists everyone by role, then by name, each with their role and job label', async () => {
@@ -178,6 +181,9 @@ describe('People on an event, at a desk (sc-29915)', () => {
       expect.stringContaining('Ana SouzaCan edit'),
       expect.stringContaining('Tom BeckerCan check guests in · Bar and drinks'),
     ]);
+    expect(
+      screen.getByRole('heading', { level: 2, name: 'People' }).closest('.desk'),
+    ).not.toBeNull();
     expect(within(people()).getByText('3')).toBeDefined();
     expect(
       await within(people()).findByText(
