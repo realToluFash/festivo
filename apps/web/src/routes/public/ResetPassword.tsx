@@ -162,7 +162,7 @@ export function ResetPassword() {
         <Nobody
           supportAddress={config().supportAddress}
           intro={t('recovery.lostBothIntro')}
-          onBack={() => void navigate(`?token=${encodeURIComponent(token)}`, { replace: true })}
+          onBack={() => void navigate(-1)}
         />
       </AuthPage>
     );
