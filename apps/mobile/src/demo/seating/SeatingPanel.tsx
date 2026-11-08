@@ -271,7 +271,7 @@ function StartForm({ m, go }: { m: Seating; go: Go }) {
         <Half>
           <FieldBox
             label={W.width}
-            unit={m.units === 'us' ? 'ft' : 'm'}
+            unit={m.units === 'us' ? undefined : 'm'}
             numbers
             value={s.width}
             error={s.errors.width || null}
@@ -283,7 +283,7 @@ function StartForm({ m, go }: { m: Seating; go: Go }) {
         <Half>
           <FieldBox
             label={W.length}
-            unit={m.units === 'us' ? 'ft' : 'm'}
+            unit={m.units === 'us' ? undefined : 'm'}
             numbers
             value={s.length}
             error={s.errors.length || null}
@@ -294,6 +294,7 @@ function StartForm({ m, go }: { m: Seating; go: Go }) {
           />
         </Half>
       </Two>
+      {m.units === 'us' && <Small text={W.usHint} />}
       <Pill
         label={W.startPlan}
         height={tokens.sizeHit}
@@ -347,6 +348,7 @@ function RoomSettings({ m, go }: { m: Seating; go: Go }) {
           />
         </Half>
       </Two>
+      {m.units === 'us' && <Small text={W.usHint} />}
       {d.error != null && <Notice words={d.error} tone="red" />}
       <TextAction
         label={W.deletePlan}
