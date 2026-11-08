@@ -353,7 +353,7 @@ describe('answering, by keyboard and pointer, on sample data', () => {
     await guest('changing');
 
     fireEvent.click(screen.getByRole('button', { name: /^Yes, I’ll be there/u }));
-    fireEvent.click(screen.getByRole('button', { name: 'Nothing to add' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Leave it as it is' }));
     fireEvent.click(screen.getByRole('button', { name: 'Send my answer' }));
     await wait();
 

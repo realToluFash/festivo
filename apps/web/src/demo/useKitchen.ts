@@ -1,7 +1,7 @@
 import { useCallback, useEffect } from 'react';
 
 import { useLater } from '../useLater.ts';
-import { HOLD_MS, OPEN, SEND_MS, TODAY, type View, type Visit } from './guest.ts';
+import { EARLIER, HOLD_MS, OPEN, SEND_MS, TODAY, type View, type Visit } from './guest.ts';
 import {
   type Field,
   type From,
@@ -11,6 +11,7 @@ import {
   changes,
   firstError,
   fromRecord,
+  recorded,
   ruledOut,
   saved,
   toggled,
@@ -42,15 +43,17 @@ function checkView(from: From): View {
   };
 }
 
-function fresh(from: From, companions: number): Kitchen {
+/** A guest recorded as Coming has a record to come back to: the sample `kitchen_returning` opens on. */
+function fresh(from: From, was: Visit): Kitchen {
+  const record = was.recorded?.answer === 'coming' ? recorded(was.companionsComing, EARLIER) : null;
+
   return {
-    people: blankParty(companions),
-    record: null,
+    people: record == null ? blankParty(was.companionsComing) : fromRecord(record),
+    record,
     tried: false,
     alert: null,
     meals: false,
     refuses: false,
-    fails: false,
     from,
     saved: false,
   };
@@ -64,10 +67,6 @@ function landed(was: Visit): Partial<Visit> {
   const focus = (want: string) => ({ want, wantId: was.wantId + 1 });
 
   if (kitchen.refuses) return { view: idle, kitchen: { ...kitchen, alert: 'refused' } };
-  if (kitchen.fails) {
-    return { view: idle, kitchen: { ...kitchen, alert: 'net', fails: false }, ...focus('send') };
-  }
-
   const record = saved(kitchen, TODAY);
   const kept = { ...kitchen, record, people: fromRecord(record), tried: false, alert: null };
   if (kitchen.from === 'closed') {
@@ -119,7 +118,7 @@ export function useKitchen(visit: Visit, state: string | null, go: Go): KitchenA
           view: { kind: 'kitchen' },
           kitchen:
             was.kitchen == null
-              ? fresh(opened, was.companionsComing)
+              ? fresh(opened, was)
               : { ...was.kitchen, from: opened, alert: null, saved: false },
         }),
         'kitchenHead',

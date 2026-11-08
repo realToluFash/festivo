@@ -30,7 +30,6 @@ export interface Kitchen {
   alert: 'refused' | 'ruled' | 'net' | null;
   meals: boolean;
   refuses: boolean;
-  fails: boolean;
   from: From;
   saved: boolean;
 }
@@ -76,7 +75,7 @@ export function fromRecord(record: readonly Person[]): Person[] {
   return record.map((one) => ({ ...one, removed: [] }));
 }
 
-function recorded(companions: number, earlier: string): Person[] {
+export function recorded(companions: number, earlier: string): Person[] {
   const [me, ...others] = blankParty(companions);
   const picks: Partial<Person>[] = [
     { diet: ['vegetarian'], access: 'A seat I can reach without stairs', by: 'you', on: earlier },
@@ -419,7 +418,6 @@ export function kitchenStarts(
             : null,
     meals: state === 'meal_ruled_out',
     refuses: state === 'refused',
-    fails: false,
     from,
     saved: false,
   };

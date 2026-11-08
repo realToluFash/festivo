@@ -304,6 +304,44 @@ describe('a returning guest', () => {
   });
 });
 
+describe('a returning guest who opens the step without a kitchen link (lead, 4506149260)', () => {
+  const recordShown = () => {
+    expect(
+      within(card('You')).getByText(
+        'Last changed by Adaeze Obi and Tunde Bakare on Saturday, October 3. Change anything that is not right.',
+      ),
+    ).toBeDefined();
+    expect(
+      within(card(FIRST)).getByText('Last changed by you on Tuesday, October 20.'),
+    ).toBeDefined();
+    expect(button('Remove Step-free access')).toBeDefined();
+    expect(button('Leave it as it is')).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Nothing to add' })).toBeNull();
+  };
+
+  it('from Update what the kitchen should know, after the date to answer by', async () => {
+    await guest('replyByClosed');
+
+    fireEvent.click(button('Update what the kitchen should know'));
+    recordShown();
+  });
+
+  it('from Change my answer, then Yes', async () => {
+    await guest('changing');
+
+    fireEvent.click(button(/^Yes, I’ll be there/u));
+    recordShown();
+  });
+
+  it('a first reply still opens blank, with Nothing to add', async () => {
+    await guest();
+
+    fireEvent.click(button('Yes, I’ll be there'));
+    expect(button('Nothing to add')).toBeDefined();
+    expect(screen.queryByText(/^Last changed/u)).toBeNull();
+  });
+});
+
 describe('Check and send, For the kitchen', () => {
   it('reads every person, Change goes back to the step with focus on the heading and nothing lost', async () => {
     await guest('check_and_send');
@@ -435,7 +473,7 @@ describe('after the date to answer by (sc-3780)', () => {
 
     expect(screen.queryByText('Saved. The kitchen will see this.')).toBeNull();
     fireEvent.click(update());
-    fireEvent.click(button('Nothing to add'));
+    fireEvent.click(button('Leave it as it is'));
     fireEvent.click(button('Send my answer'));
     await wait();
 

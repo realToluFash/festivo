@@ -74,6 +74,16 @@ describe('the kitchen step’s states (sc-3778)', () => {
     expect(startOf('meal_ruled_out')).toMatchObject({ want: 'k-meals-c1' });
   });
 
+  it('holds no Sending switch: Not sent comes from its alert alone (lead, 4506149264)', () => {
+    expect(Object.keys(kitchenOf('kitchen_not_sent'))).not.toContain('fails');
+    expect(kitchenOf('kitchen_not_sent').alert).toBe('net');
+  });
+
+  it('keeps every French line in [brackets] until [l10n] writes it (lead, 4506149270)', () => {
+    expect(FR.say('changeKitchen')).toBe('[Modifier ce que la cuisine doit savoir]');
+    expect(FR.say('changeAnswer')).toBe('[Modifier votre réponse]');
+  });
+
   it('keeps the hosts’ record whole, but never a private note', () => {
     const [me] = kitchenOf('kitchen_returning').record ?? [];
 
