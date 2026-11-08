@@ -21,15 +21,8 @@ import {
   CHANNELS,
   CONDITIONS,
   SCHEDULED,
-  EVENT_NAME,
   GUESTS_N,
-  HOSTS,
   MW,
-  ORGANISATION,
-  PAGE_WHEN,
-  PREVIEWED,
-  THEIR_LINK,
-  TOKENS,
   blank,
   channelWord,
   checkOf,
@@ -37,7 +30,6 @@ import {
   dayWords,
   conditionWord,
   countOf,
-  fill,
   filled,
   isNew,
   outsIn,
@@ -47,7 +39,10 @@ import {
 } from './messages.ts';
 import { useInbox } from './messagesContext.ts';
 import { LaterDialog } from './MessagesDialogs.tsx';
+import { InsertMenu } from './MessagesInsert.tsx';
 import { WhereGlyph } from './MessagesParts.tsx';
+import { Preview } from './MessagesPreview.tsx';
+import { PW } from './messagesPreviewWords.ts';
 import { StreamItems } from './MessagesStream.tsx';
 
 function commandEnter(event: KeyboardEvent, then: () => void): void {
@@ -199,6 +194,7 @@ export function ComposePane({ opening, later: laterFirst }: { opening: boolean; 
           draft={draft}
           tools={draft.step === 'write'}
           refused={refused}
+          previewOff={(countOf(draft.to) ?? 0) === 0 ? PW.nobodyToPreview : null}
           onDraft={(next) => act({ kind: 'draft', draft: next })}
           onSend={send}
           onPreview={() => {
@@ -538,17 +534,19 @@ export function Composer({
   onPreview,
   onDraft,
   editing,
+  previewOff = null,
 }: {
-  draft: Pick<Draft, 'subject' | 'body' | 'seed'>;
+  draft: Pick<Draft, 'subject' | 'body' | 'seed' | 'opens'>;
   tools: boolean;
   refused: string | null;
   onSend: () => void;
   onPreview: () => void;
   onDraft: (draft: Partial<Draft>) => void;
   editing?: { onChangeWhen: () => void };
+  previewOff?: string | null;
 }) {
-  const [inserting, setInserting] = useState(false);
   const optionalId = useId();
+  const offId = useId();
   const empty = blank(draft.body);
 
   function insert(token: Token): void {
@@ -563,9 +561,14 @@ export function Composer({
       range.insertNode(chip);
       range.setStartAfter(chip);
     } else field.append(chip);
-    setInserting(false);
     onDraft({ body: read(field) });
     field.focus();
+
+    const after = document.createRange();
+
+    after.setStartAfter(chip);
+    window.getSelection()?.removeAllRanges();
+    window.getSelection()?.addRange(after);
   }
 
   return (
@@ -603,33 +606,19 @@ export function Composer({
       />
       {tools && (
         <div className="mg-tools">
-          <div className="mg-insert-at">
-            <button
-              type="button"
-              className="desk-text"
-              aria-expanded={inserting}
-              onClick={() => setInserting((open) => !open)}
-            >
-              <Glyph name="braces" size={17} weight={2.2} />
-              {MW.insert}
-            </button>
-            {inserting && (
-              <ul className="mg-pop mg-insert-list">
-                {TOKENS.map((token) => (
-                  <li key={token}>
-                    <button
-                      type="button"
-                      onMouseDown={(event) => event.preventDefault()}
-                      onClick={() => insert(token)}
-                    >
-                      {tokenWord(token)}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-          <button type="button" className="desk-text" onClick={onPreview}>
+          <InsertMenu
+            first={draft.opens === 'insert'}
+            onFirst={() => onDraft({ opens: undefined })}
+            onPick={insert}
+          />
+          <button
+            type="button"
+            className="desk-text mg-preview-tool"
+            data-focus="preview"
+            aria-describedby={previewOff == null ? undefined : offId}
+            {...offButton(previewOff != null)}
+            onClick={onPreview}
+          >
             <Glyph name="eye" size={17} weight={2.2} />
             {MW.preview}
           </button>
@@ -664,6 +653,12 @@ export function Composer({
           )}
         </div>
       )}
+      {tools && previewOff != null && (
+        <p id={offId} className="mg-why">
+          <Glyph name="info" size={16} weight={2.2} />
+          <span>{previewOff}</span>
+        </p>
+      )}
       {refused != null && (
         <p className="desk-error" role="alert" tabIndex={-1} data-focus="refused">
           <Glyph name="alert" size={15} weight={2.2} />
@@ -671,91 +666,6 @@ export function Composer({
         </p>
       )}
     </form>
-  );
-}
-
-function Preview({ draft }: { draft: Draft }) {
-  const { mesh } = useInbox();
-  const shown = CHANNELS.filter(
-    (channel) => draft.ticks[channel] && PREVIEWED.has.includes(channel),
-  );
-  const sendsId = useId();
-
-  return (
-    <div className="mg-preview">
-      <p className="mg-preview-as">
-        {filled(MW.previewAs, { name: PREVIEWED.name })} · {PREVIEWED.language}
-      </p>
-      <div className="mg-preview-cols">
-        <div className="mg-page">
-          <div className={`mg-page-cover today-cover is-${mesh}`}>
-            <span className="desk-piece p1" aria-hidden="true" />
-            <span className="desk-piece p2" aria-hidden="true" />
-            <span className="desk-piece p4" aria-hidden="true" />
-            <p className="mg-page-name">{EVENT_NAME}</p>
-            <p className="mg-page-when">{PAGE_WHEN}</p>
-          </div>
-          <figure className="mg-page-figure">
-            {draft.subject.trim() !== '' && <p className="mg-page-subject">{draft.subject}</p>}
-            <blockquote>{fill(draft.body, PREVIEWED.name)}</blockquote>
-            <figcaption>{HOSTS}</figcaption>
-          </figure>
-        </div>
-        {shown.length > 0 && (
-          <section className="mg-sends" aria-labelledby={sendsId}>
-            <h3 id={sendsId}>{MW.whatSoirelySends}</h3>
-            {shown.includes('email') && (
-              <div className="mg-email">
-                <p className="mg-notice-head">
-                  <WhereGlyph where="email" />
-                  {filled(MW.emailFrom, { organisation: ORGANISATION })}
-                </p>
-                <p className="mg-email-subject">
-                  {filled(MW.noticeSubject, { event: EVENT_NAME, hosts: HOSTS })}
-                </p>
-                <p>
-                  {filled(MW.dear, { greeting: PREVIEWED.name })}
-                  <br />
-                  {filled(MW.noticeBody, { hosts: HOSTS, event: EVENT_NAME })}
-                </p>
-                <span className="mg-email-button">{MW.readOnPage}</span>
-                <span className="mg-email-stop">
-                  {filled(MW.stopEmails, { organisation: ORGANISATION })}
-                </span>
-              </div>
-            )}
-            {shown.includes('sms') && (
-              <div className="mg-notice">
-                <p className="mg-notice-head">
-                  <WhereGlyph where="sms" />
-                  {many('smsParts', 1)}
-                </p>
-                <p className="mg-notice-bubble">
-                  {filled(MW.noticeSms, { hosts: HOSTS, event: EVENT_NAME, link: THEIR_LINK })}
-                </p>
-              </div>
-            )}
-            {shown.includes('whatsApp') && (
-              <div className="mg-notice">
-                <p className="mg-notice-head">
-                  <WhereGlyph where="whatsApp" />
-                  {MW.whatsAppTemplate}
-                </p>
-                <div className="mg-notice-bubble is-wa">
-                  <p>{filled(MW.noticeBody, { hosts: HOSTS, event: EVENT_NAME })}</p>
-                  <span>{MW.readOnPage}</span>
-                </div>
-              </div>
-            )}
-          </section>
-        )}
-      </div>
-      <ul className="mg-preview-lines">
-        <li>{filled(MW.greetedAs, { name: PREVIEWED.name })}</li>
-        <li>{filled(MW.inLanguage, { language: PREVIEWED.language })}</li>
-        <li>{MW.onlyOurs}</li>
-      </ul>
-    </div>
   );
 }
 

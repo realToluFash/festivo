@@ -2,6 +2,7 @@ import { writtenTime } from './clock.ts';
 import type { SampleEvent } from './events.ts';
 import { demoWords } from './demoWords.ts';
 import { MESSAGES_WORD, MW } from './messagesWords.ts';
+import { type PersonId, previewDraftOf } from './messagesPreviewSample.ts';
 import type { DemoLink } from './settings.ts';
 
 /** Messaging B · Conversations (page e36, board/messaging-b-spec.md): the sample and the inbox's rules; the words are in messagesWords.ts. */
@@ -59,6 +60,16 @@ export const MESSAGE_STATES = [
   { key: 'tellPlace', name: 'Tell guests, a new place' },
   { key: 'closedDraft', name: 'New unavailable, a draft' },
   { key: 'closedEnded', name: 'New unavailable, finished over 30 days ago' },
+  { key: 'insert', name: 'Insert' },
+  { key: 'previewAs', name: 'Preview as' },
+  { key: 'previewGreetAs', name: 'Previewed as Bisi Adewale' },
+  { key: 'previewChose', name: 'Previewed as Camille Dubois' },
+  { key: 'previewLoading', name: 'Filling it in' },
+  { key: 'previewMarkup', name: 'A Greet as with markup' },
+  { key: 'typedBraces', name: 'A typed {Greeting}' },
+  { key: 'previewBraces', name: 'Typed braces, previewed' },
+  { key: 'noTokens', name: 'Nothing to fill in' },
+  { key: 'previewNobody', name: 'Nobody to preview' },
 ] as const;
 
 export type MessagesState = (typeof MESSAGE_STATES)[number]['key'];
@@ -300,12 +311,6 @@ export const NEW_MESSAGE = {
 } as const;
 
 export const FOLLOW_UP = 'Also: the car park closes at 23:30, so plan your way home.';
-
-export const PREVIEWED = {
-  name: 'Kwame Mensah',
-  language: 'English',
-  has: ['email', 'sms'] as Channel[],
-};
 
 export function fill(body: readonly Segment[], greeting: string): string {
   return body
@@ -791,6 +796,8 @@ export interface Draft {
   step: 'write' | 'preview' | 'check';
   seed: number;
   openTo?: boolean;
+  opens?: 'insert' | 'previewAs' | 'filling' | undefined;
+  previewAs?: PersonId;
 }
 
 export interface Sched {
@@ -1120,6 +1127,22 @@ export function seedOf(state: MessagesState | null): Inbox {
         pane: open('sched'),
         scheds: [{ ...SCHEDULED, cancelledAt: '09:46' }],
       };
+    case 'insert':
+    case 'previewAs':
+    case 'previewGreetAs':
+    case 'previewChose':
+    case 'previewLoading':
+    case 'previewMarkup':
+    case 'typedBraces':
+    case 'previewBraces':
+    case 'noTokens':
+      return {
+        ...base,
+        pane: { kind: 'compose' },
+        draft: { ...draftOf(COMING), ...previewDraftOf(state) },
+      };
+    case 'previewNobody':
+      return compose(base, { kind: 'who', conditions: [] }, 'write');
     default:
       return base;
   }

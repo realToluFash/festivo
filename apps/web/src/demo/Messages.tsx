@@ -91,7 +91,10 @@ function firstFocus(state: MessagesState | null): string | null {
       return 'heading';
     case 'write':
     case 'cancelled':
+    case 'typedBraces':
       return 'body';
+    case 'previewNobody':
+      return 'preview';
     case 'check':
       return 'check';
     case 'countdown':
