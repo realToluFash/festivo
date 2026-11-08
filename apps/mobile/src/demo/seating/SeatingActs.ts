@@ -473,11 +473,12 @@ function length(m: Seating, text: string): number | null {
   return m.units === 'metric' ? parseMetres(text) : parseFeet(text);
 }
 
+/** Exact centimetres, unrounded, so a floor named in feet takes its own value; round only when storing. */
 function parseFeet(text: string): number | null {
   const ft = /^\s*(\d+(?:\.\d+)?)\s*(?:′|'|ft)\s*(?:(\d+)\s*(?:″|"|in))?\s*$/u.exec(text);
-  if (ft?.[1] != null) return Math.round((Number(ft[1]) * 12 + Number(ft[2] ?? 0)) * 2.54);
+  if (ft?.[1] != null) return (Number(ft[1]) * 12 + Number(ft[2] ?? 0)) * 2.54;
   const inches = /^\s*(\d+)\s*in\s*$/u.exec(text);
-  return inches?.[1] == null ? null : Math.round(Number(inches[1]) * 2.54);
+  return inches?.[1] == null ? null : Number(inches[1]) * 2.54;
 }
 
 /** A table's field applies as it is entered (Enter, or leaving it): refused beside the field, and nothing saved (pm, 7 Nov 2026). */
@@ -546,13 +547,15 @@ function applyField(m: Seating, key: string): Seating {
       const field = { Diameter: 'd', Width: 'w', Length: 'l', Spacing: 'spacing', Ends: 'ends' }[
         key
       ];
-      return done({ [field]: key === 'Ends' ? Math.min(size, it.chairs.length) : size });
+      return done({
+        [field]: key === 'Ends' ? Math.min(size, it.chairs.length) : Math.round(size),
+      });
     }
     case 'Across':
     case 'Down': {
       const cm = length(m, text);
       if (cm == null) return cleared(m, key);
-      const moved = { ...it, [key === 'Across' ? 'x' : 'y']: cm };
+      const moved = { ...it, [key === 'Across' ? 'x' : 'y']: Math.round(cm) };
       if (!inside(moved, m.room)) return refuse(m, key, say.outsideRoom(it.name));
       return done({ x: moved.x, y: moved.y });
     }
@@ -660,11 +663,22 @@ export function readRoom(
   return cm == null || cm < 200 || cm > 50000 ? { refused: W.roomRange } : { cm };
 }
 
+/** The room's size as Room settings shows it, so an untouched field keeps the stored centimetres. */
+function roomText(m: Seating, cm: number): string {
+  return m.units === 'us' ? feetInches(cm) : `${cm / 100}`;
+}
+
 function applyRoom(m: Seating): Seating {
   const d = m.roomDraft;
   const name = d.name.trim() === '' ? m.room.name : d.name.trim();
-  const w = readRoom(d.width, 'width', m.units);
-  const l = readRoom(d.length, 'length', m.units);
+  const w =
+    d.width.trim() === roomText(m, m.room.w)
+      ? { cm: m.room.w }
+      : readRoom(d.width, 'width', m.units);
+  const l =
+    d.length.trim() === roomText(m, m.room.l)
+      ? { cm: m.room.l }
+      : readRoom(d.length, 'length', m.units);
   if ('refused' in w) return { ...m, roomDraft: { ...d, error: w.refused } };
   if ('refused' in l) return { ...m, roomDraft: { ...d, error: l.refused } };
   const room = { name, w: w.cm, l: l.cm };
@@ -926,8 +940,8 @@ function act(m: Seating, a: Action): Seating {
           ...base,
           roomDraft: {
             name: m.room.name,
-            width: m.units === 'us' ? feetInches(m.room.w) : `${m.room.w / 100}`,
-            length: m.units === 'us' ? feetInches(m.room.l) : `${m.room.l / 100}`,
+            width: roomText(m, m.room.w),
+            length: roomText(m, m.room.l),
             error: null,
           },
         };

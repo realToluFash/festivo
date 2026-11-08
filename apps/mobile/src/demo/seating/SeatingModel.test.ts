@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { type Action, reduce, tight } from './SeatingActs.ts';
+import { type Action, reduce, tight, readRoom } from './SeatingActs.ts';
 import {
   chairSides,
   inside,
@@ -563,6 +563,30 @@ describe('the room and the plan', () => {
       { type: 'startPlan' },
     );
     expect(started.room).toMatchObject({ w: 2438, l: 1829 });
+  });
+
+  it('takes its own minimums in feet, and keeps an untouched room as it is', () => {
+    const row = run(startOf('usCustomary', 'landscape'), { type: 'tapItem', id: 'rowA' });
+    for (const text of ['1 ft', '12 in']) {
+      const m = run(
+        row,
+        { type: 'draft', key: 'Spacing', text },
+        { type: 'apply', key: 'Spacing' },
+      );
+      expect(m.fields.errors.Spacing).toBeUndefined();
+      expect(item(m, 'rowA').spacing).toBe(30);
+    }
+    const settings = run(startOf('usCustomary', 'landscape'), {
+      type: 'arrange',
+      shows: 'roomSettings',
+    });
+    const seven = run(settings, { type: 'roomDraft', key: 'width', text: '7 ft' });
+    expect(readRoom('7 ft', 'width', 'us')).toEqual({ cm: 213 });
+    expect(readRoom('7', 'width', 'us')).toEqual({ cm: 213 });
+    expect(seven.roomDraft.error).toBeNull();
+    const untouched = run(settings, { type: 'roomApply' });
+    expect(untouched.room.l).toBe(settings.room.l);
+    expect(untouched.room.w).toBe(settings.room.w);
   });
 
   it('refuses a blank or out-of-range room, then starts the plan', () => {
