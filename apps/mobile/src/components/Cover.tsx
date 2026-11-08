@@ -6,6 +6,7 @@ import {
   type Box,
   clearOfWords,
   pieceBounds,
+  piecePlacement,
   pieceSize,
   type Shape,
   type Size,
@@ -235,7 +236,8 @@ export function Confetti({
       }
     >
       {shown.map(([x, y, shape, size, turn, tone]) => {
-        const { width: n, height } = pieceSize(shape, size, scale);
+        const drawn = pieceSize(shape, size, scale);
+        const { width: n, height } = drawn;
         const piece =
           shape === 'half'
             ? { width: n, height, borderTopLeftRadius: n / 2, borderTopRightRadius: n / 2 }
@@ -248,9 +250,7 @@ export function Confetti({
               styles.piece,
               piece,
               {
-                left: `${x * 100}%`,
-                top: `${y * 100}%`,
-                marginLeft: -n / 2,
+                ...piecePlacement({ x, y }, drawn),
                 backgroundColor: TONES[tone],
                 opacity: tone === 'white' ? 0.92 : 1,
                 transform: [{ rotate: `${turn}deg` }],

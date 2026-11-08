@@ -23,15 +23,30 @@ export function pieceSize(shape: Shape, size: number, scale: number): Size {
     : { width: n, height: Math.max(8, Math.round(n * 0.24)) };
 }
 
-/** Where a piece lands on a cover, turned as drawn: its left edge's middle at its share of the width, its top at its share of the height. */
+export interface Placement {
+  left: `${number}%`;
+  top: `${number}%`;
+  marginLeft: number;
+}
+
+/** Where Confetti puts a piece of a size, unturned: its left edge at its share of the width less half its width, its top at its share of the height. */
+export function piecePlacement(piece: { x: number; y: number }, size: Size): Placement {
+  return { left: `${piece.x * 100}%`, top: `${piece.y * 100}%`, marginLeft: -size.width / 2 };
+}
+
+/** The box a piece covers on a cover, from the same placement Confetti draws it at, turned about its centre. */
 export function pieceBounds(
   piece: { x: number; y: number; shape: Shape; size: number; turn: number },
   cover: Size,
   scale: number,
 ): Box {
-  const { width, height } = pieceSize(piece.shape, piece.size, scale);
-  const centreX = piece.x * cover.width;
-  const centreY = piece.y * cover.height + height / 2;
+  const size = pieceSize(piece.shape, piece.size, scale);
+  const { width, height } = size;
+  const placement = piecePlacement(piece, size);
+  const left = (parseFloat(placement.left) / 100) * cover.width + placement.marginLeft;
+  const top = (parseFloat(placement.top) / 100) * cover.height;
+  const centreX = left + width / 2;
+  const centreY = top + height / 2;
   const turn = (piece.turn * Math.PI) / 180;
   const cos = Math.abs(Math.cos(turn));
   const sin = Math.abs(Math.sin(turn));

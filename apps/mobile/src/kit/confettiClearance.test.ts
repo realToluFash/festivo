@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { clearOfWords, pieceBounds, pieceSize } from './confettiClearance.ts';
+import { clearOfWords, pieceBounds, piecePlacement, pieceSize } from './confettiClearance.ts';
 
 const COVER = { width: 377, height: 500 };
 const WORDS = { x: 16, y: 200, width: 345, height: 120 };
@@ -18,6 +18,14 @@ describe('confetti keeps clear of the words (sc-29078, 8 Nov)', () => {
       y: 50,
       width: 40,
       height: 20,
+    });
+  });
+
+  it('places a piece where its bounds say: left edge half its width before its share, top at its share', () => {
+    expect(piecePlacement({ x: 0.5, y: 0.1 }, { width: 40, height: 20 })).toEqual({
+      left: '50%',
+      top: '10%',
+      marginLeft: -20,
     });
   });
 
