@@ -7,6 +7,7 @@ import { tokens } from '../theme/tokens.ts';
 import { Cover } from './Cover.tsx';
 import { CardPieces } from './EventCard.tsx';
 import { Glyph } from './Glyph.tsx';
+import { Notice } from './Notice.tsx';
 import { useReadOut } from './ReadOut.tsx';
 import { CardSays, StepButton, SummaryCard } from './Summary.tsx';
 import { Row, RowList } from './SummaryRows.tsx';
@@ -151,7 +152,7 @@ export function EventsFirstRun({
             <CardPieces />
           </>
         }
-        testID="events.first"
+        testID="events.firstRun"
       >
         <CardSays text={t('eventsScreen.firstRunTitle')} size={wide ? 28 : 24} heading />
         {onCreate != null && (
@@ -159,7 +160,7 @@ export function EventsFirstRun({
             <StepButton
               label={t('eventsScreen.firstRunCreate')}
               onPress={onCreate}
-              testID="events.first.create"
+              testID="events.none.new"
             />
           </View>
         )}
@@ -171,7 +172,13 @@ export function EventsFirstRun({
           row: <Row title={t(step)} lead={<StepTile n={index + 1} />} />,
         }))}
       />
-      {onCreate == null && <SaidLine words={t('eventsScreen.firstRunAskOwner')} />}
+      {onCreate == null && (
+        <Notice
+          tone="quiet"
+          mark={tokens.marks.info.glyph}
+          body={t('eventsScreen.firstRunAskOwner')}
+        />
+      )}
     </>
   );
 }

@@ -21,6 +21,7 @@ import { EventCard, EventThumb } from './EventCard.tsx';
 import { EventsSummaryLine, EventsTabs, Said, SaidLine } from './EventsList.tsx';
 import { Notice } from './Notice.tsx';
 import { Row, RowList, TextAction } from './SummaryRows.tsx';
+import { Text } from './Text.tsx';
 
 export interface HomeLoad {
   unfinished: ListedEvent[];
@@ -29,6 +30,12 @@ export interface HomeLoad {
   pastPages: number;
   at: Date;
 }
+
+const EMPTY: Record<EventsTab, { title: string; line: string }> = {
+  upcoming: { title: 'eventsScreen.emptyUpcomingTitle', line: 'eventsScreen.emptyUpcoming' },
+  drafts: { title: 'eventsScreen.emptyDraftsTitle', line: 'eventsScreen.emptyDrafts' },
+  past: { title: 'eventsScreen.emptyPastTitle', line: 'eventsScreen.emptyPast' },
+};
 
 /** Each tab's events as Events draws them: Upcoming holds what is happening now first (sc-22103). */
 function useEventsHome(load: HomeLoad) {
@@ -46,6 +53,10 @@ function useEventsHome(load: HomeLoad) {
       past: shown(grouped.past),
     } satisfies Record<EventsTab, Shown[]>,
   };
+}
+
+function eventTestID(event: Shown) {
+  return event.phase === 'happening_now' ? `events.now.${event.id}` : `events.row.${event.id}`;
 }
 
 /** The line under Events' title: only the counts that are not 0, and none on a first visit (sc-22103). */
@@ -104,6 +115,16 @@ export function EventsHome({
   return (
     <View style={styles.blocks}>
       <EventsTabs tab={tab} counts={counts} onTab={onTab} />
+      {events.length === 0 && (
+        <View style={styles.empty}>
+          <Text size={tokens.typeRowTitle.size} weight="semibold" accessibilityRole="header">
+            {t(EMPTY[tab].title)}
+          </Text>
+          <Text size={tokens.typeBody.size} muted style={styles.centred}>
+            {t(EMPTY[tab].line)}
+          </Text>
+        </View>
+      )}
       {card != null && (
         <EventCard
           event={card}
@@ -113,6 +134,7 @@ export function EventsHome({
           onOpen={() => open(card)}
           onStep={(step) => onStep(card, step)}
           testID="events.card"
+          openTestID={eventTestID(card)}
         />
       )}
       {rows.length > 0 && (
@@ -129,7 +151,7 @@ export function EventsHome({
                 value={wide ? (howSoon(event, now, t) ?? undefined) : undefined}
                 opens
                 onPress={() => open(event)}
-                testID={`events.row.${event.id}`}
+                testID={eventTestID(event)}
               />
             ),
           }))}
@@ -158,4 +180,15 @@ export function EventsHome({
 
 const styles = StyleSheet.create({
   blocks: { gap: 18 },
+  empty: {
+    alignItems: 'center',
+    gap: tokens.spaceXs,
+    paddingVertical: tokens.space5xl,
+    paddingHorizontal: 18,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: tokens.colorBorder,
+    borderRadius: tokens.radiusCardLarge,
+  },
+  centred: { textAlign: 'center' },
 });

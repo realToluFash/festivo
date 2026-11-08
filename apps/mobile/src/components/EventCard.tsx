@@ -328,6 +328,7 @@ export function EventCard({
   onStep,
   guests = null,
   testID,
+  openTestID = `${testID}.open`,
 }: {
   event: Shown;
   now: Date;
@@ -340,6 +341,7 @@ export function EventCard({
   onOpen?: () => void;
   onStep: (step: Extract<CardStep, { kind: 'button' }>) => void;
   testID: string;
+  openTestID?: string;
 }) {
   const { t } = useTranslation();
   const name = <CardSays text={event.name} heading={onOpen == null} />;
@@ -375,7 +377,7 @@ export function EventCard({
           onPress={onOpen}
           accessibilityRole="link"
           accessibilityLabel={event.name}
-          testID={`${testID}.open`}
+          testID={openTestID}
         >
           {name}
         </Pressable>
