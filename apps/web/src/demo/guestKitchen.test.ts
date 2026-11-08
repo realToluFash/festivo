@@ -17,7 +17,16 @@ import {
   saved,
   whoOf,
 } from './guestKitchen.ts';
-import { guestKitchenWordsFor } from './guestKitchenWords.ts';
+import {
+  ACCESS,
+  ALLERGENS,
+  DIETS,
+  GUEST_KITCHEN_ENGLISH,
+  GUEST_KITCHEN_NAMES,
+  GUEST_KITCHEN_SAMPLES,
+  guestKitchenWordsFor,
+} from './guestKitchenWords.ts';
+import { landed } from './useGuestKitchen.ts';
 
 const EN = guestKitchenWordsFor('en');
 const FR = guestKitchenWordsFor('fr');
@@ -99,27 +108,27 @@ describe('the kitchen step’s states (sc-3778)', () => {
   });
 });
 
-describe('who each card is for (pm and ux, 8 Nov)', () => {
-  it('names a companion the host never named by an ordinal, never an invented name', () => {
+describe('who each card is for (pm and ux, 8 Nov; lead, 4506198443)', () => {
+  it('names a companion the host never named Your guest, or Your guest 1, 2 … , never an invented name', () => {
     const two = blankParty(2);
-    const four = blankParty(4);
 
-    expect(two.map((one) => whoOf(one, two, EN))).toEqual([
-      'You',
-      'Your first guest',
-      'Your second guest',
-    ]);
-    expect(four.map((one) => whoOf(one, four, EN)).slice(3)).toEqual([
-      'Your third guest',
-      'Your 4th guest',
-    ]);
+    expect(two.map((one) => whoOf(one, two, EN))).toEqual(['You', 'Your guest 1', 'Your guest 2']);
     expect(
       blankParty(10)
         .map((one, _, all) => whoOf(one, all, EN))
         .at(-1),
-    ).toBe('Your 10th guest');
+    ).toBe('Your guest 10');
     expect(whoOf(blankParty(1)[1]!, blankParty(1), EN)).toBe('Your guest');
     expect(startOf('kitchen').kitchen?.people.every((one) => one.name == null)).toBe(true);
+  });
+
+  it('carries the number into every language', () => {
+    const two = blankParty(2);
+    const second = (lang: 'fr' | 'es' | 'pt') => whoOf(two[2]!, two, guestKitchenWordsFor(lang));
+
+    expect(second('fr')).toBe('[Votre invité 2]');
+    expect(second('es')).toBe('[Su invitado 2]');
+    expect(second('pt')).toBe('[O seu convidado 2]');
   });
 
   it('keeps a name the host gave', () => {
@@ -129,9 +138,43 @@ describe('who each card is for (pm and ux, 8 Nov)', () => {
 
     expect(party.map((one) => whoOf(one, party, EN))).toEqual([
       'You',
-      'Your first guest',
+      'Your guest 1',
       'Rafael Santos',
     ]);
+  });
+});
+
+describe('the samples in every language (lead, 4506198441 and 4506242145)', () => {
+  const languages = ['fr', 'es', 'pt'] as const;
+  const english = Object.keys(GUEST_KITCHEN_ENGLISH).filter((key) => key !== 'notBuilt');
+
+  it.each(languages)(
+    '%s has every English line, each in [brackets] but the quote marks',
+    (lang) => {
+      const sample: Record<string, string> = GUEST_KITCHEN_SAMPLES[lang];
+
+      expect(Object.keys(sample).sort()).toEqual([...english].sort());
+      for (const key of english.filter((one) => one !== 'quote')) {
+        expect([key, sample[key]?.startsWith('[') && sample[key]?.endsWith(']')]).toEqual([
+          key,
+          true,
+        ]);
+      }
+    },
+  );
+
+  it.each(languages)('%s names every allergen, diet and access need', (lang) => {
+    const names = GUEST_KITCHEN_NAMES[lang];
+
+    expect(Object.keys(names.allergens)).toEqual([...ALLERGENS]);
+    expect(Object.keys(names.diets)).toEqual([...DIETS]);
+    expect(Object.keys(names.access)).toEqual([...ACCESS]);
+    const samples = [
+      ...(lang === 'fr' ? [names.allergens.other] : Object.values(names.allergens)),
+      ...Object.values(names.diets),
+      ...Object.values(names.access),
+    ];
+    expect(samples.filter((one) => !one.startsWith('['))).toEqual([]);
   });
 });
 
@@ -189,7 +232,7 @@ describe('For the kitchen on Check and send', () => {
 
   it('says Nothing to add for a person with nothing, and once when nobody has anything', () => {
     expect(guestKitchenLines(kitchenOf('check_and_send'), EN)[2]).toEqual({
-      who: 'Your second guest',
+      who: 'Your guest 2',
       lines: [{ text: 'Nothing to add', allergy: false, quiet: true }],
     });
     expect(guestKitchenLines(kitchenOf('kitchen_nothing'), EN)).toEqual([
@@ -214,15 +257,25 @@ describe('what Send records', () => {
   });
 });
 
+describe('the saved line after the date to answer by (lead, 4506198447)', () => {
+  it('goes only when a later Send is refused, and stays when one lands', () => {
+    const late = startOf('refused');
+    const kitchen = { ...late.kitchen!, from: 'closed' as const, saved: true };
+
+    expect(landed({ ...late, kitchen }).kitchen?.saved).toBe(false);
+    expect(landed({ ...late, kitchen: { ...kitchen, refuses: false } }).kitchen?.saved).toBe(true);
+  });
+});
+
 describe('meal_ruled_out (sc-3907’s rule)', () => {
   it('marks the dish the new allergy rules out, and lets Send go once it is unpicked', () => {
     const kitchen = kitchenOf('meal_ruled_out');
     const first = mealRows(kitchen, EN).find((row) => row.key === 'c1');
 
-    expect(first?.row).toBe('Your first guest’s meals');
+    expect(first?.row).toBe('Your guest 1’s meals');
     expect(first?.dishes[0]).toEqual({
       name: 'Canapé selection',
-      reason: 'Your first guest is allergic to: milk.',
+      reason: 'Your guest 1 is allergic to: milk.',
     });
     expect(ruledOut(kitchen)).toBe('k-meals-c1');
     expect(

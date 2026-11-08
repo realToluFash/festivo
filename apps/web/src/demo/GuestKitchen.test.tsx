@@ -8,8 +8,8 @@ import { GUEST_KITCHEN_PAGES } from './guestKitchen.ts';
 
 const tested = config();
 const NAME = 'Maria Fernanda Albuquerque Santos';
-const FIRST = 'Your first guest';
-const SECOND = 'Your second guest';
+const FIRST = 'Your guest 1';
+const SECOND = 'Your guest 2';
 const REFUSED =
   'Not saved. This page is out of date. Reload it, then choose again. What you chose stays on screen until you do.';
 const plain = window.matchMedia;
@@ -103,7 +103,7 @@ const SAYS: [string, () => void][] = [
     () =>
       screen.getByText('Your answer wasn’t sent. Everything you chose is still here. Try again.'),
   ],
-  ['meal_ruled_out', () => screen.getByText('Your first guest is allergic to: milk.')],
+  ['meal_ruled_out', () => screen.getByText('Your guest 1 is allergic to: milk.')],
   ['refused', () => expect(screen.getByRole('alert').textContent).toBe(REFUSED)],
 ];
 
@@ -429,7 +429,7 @@ describe('meal_ruled_out (sc-3907’s rule)', () => {
     expect(document.activeElement).toBe(change);
     expect(
       document.getElementById(change.getAttribute('aria-describedby') ?? '')?.textContent,
-    ).toBe('Your first guest is allergic to: milk.');
+    ).toBe('Your guest 1 is allergic to: milk.');
     fireEvent.click(button('Send my answer'));
     expect(button('Send my answer').getAttribute('aria-busy')).toBe('false');
     expect(screen.getByRole('alert').textContent).toBe(
@@ -492,9 +492,40 @@ describe('after the date to answer by (sc-3780)', () => {
 
     fireEvent.click(update());
     fireEvent.click(button('Back'));
-    expect(screen.queryByText('Saved. The kitchen will see this.')).toBeNull();
-    expect(update().hasAttribute('aria-describedby')).toBe(false);
+    expect(screen.getByRole('status').textContent).toBe('Saved. The kitchen will see this.');
+    expect(
+      document.getElementById(update().getAttribute('aria-describedby') ?? '')?.textContent,
+    ).toBe('Saved. The kitchen will see this.');
   });
+});
+
+describe('the step in Spanish and Portuguese (lead, 4506242145)', () => {
+  it.each([
+    [
+      'es',
+      '[Sí, asistiré]',
+      '[¿Hay algo que la cocina deba saber?]',
+      '[Su invitado 1]',
+      '[Cacahuetes]',
+    ],
+    [
+      'pt',
+      '[Sim, vou estar presente]',
+      '[Há alguma coisa que a cozinha deva saber?]',
+      '[O seu convidado 1]',
+      '[Amendoins]',
+    ],
+  ])(
+    '?state=%s reads the step in its bracketed samples',
+    async (state, yes, title, first, peanuts) => {
+      await guest(state);
+
+      fireEvent.click(button(yes));
+      expect(document.activeElement).toBe(screen.getByRole('heading', { name: title }));
+      expect(card(first)).toBeDefined();
+      expect(within(card(first)).getByRole('button', { name: peanuts })).toBeDefined();
+    },
+  );
 });
 
 describe('the layouts', () => {

@@ -59,14 +59,16 @@ function fresh(from: From, was: Visit): GuestKitchen {
   };
 }
 
-/** What Send does once it lands: refused by a page out of date, not sent, or saved with the answer. */
-function landed(was: Visit): Partial<Visit> {
+/** What Send does once it lands: refused by a page out of date (the saved line goes), or saved with the answer. */
+export function landed(was: Visit): Partial<Visit> {
   const kitchen = was.kitchen;
   if (kitchen == null || was.view.kind !== 'check') return {};
   const idle: View = { ...was.view, busy: false };
   const focus = (want: string) => ({ want, wantId: was.wantId + 1 });
 
-  if (kitchen.refuses) return { view: idle, kitchen: { ...kitchen, alert: 'refused' } };
+  if (kitchen.refuses) {
+    return { view: idle, kitchen: { ...kitchen, alert: 'refused', saved: false } };
+  }
   const record = saved(kitchen, TODAY);
   const kept = { ...kitchen, record, people: fromRecord(record), tried: false, alert: null };
   if (kitchen.from === 'closed') {
@@ -119,7 +121,7 @@ export function useGuestKitchen(visit: Visit, state: string | null, go: Go): Gue
           kitchen:
             was.kitchen == null
               ? fresh(opened, was)
-              : { ...was.kitchen, from: opened, alert: null, saved: false },
+              : { ...was.kitchen, from: opened, alert: null },
         }),
         'kitchenHead',
       ),

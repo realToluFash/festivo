@@ -366,7 +366,7 @@
   align-items: flex-start;
   gap: 6px;
   margin-top: 6px;
-  font: 500 15px/1.45 var(--fontFamily);
+  font: 500 17px/1.45 var(--fontFamily);
   animation: gp-drop 120ms var(--gpEase);
 }
 

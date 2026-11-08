@@ -51,10 +51,7 @@ const ENGLISH = {
   consent: 'Only {{hosts}} and the people who cook and serve your meal will see this.',
   you: 'You',
   yourGuest: 'Your guest',
-  guestNth_ordinal_one: 'Your first guest',
-  guestNth_ordinal_two: 'Your second guest',
-  guestNth_ordinal_few: 'Your third guest',
-  guestNth_ordinal_other: 'Your {{count}}th guest',
+  yourGuestN: 'Your guest {{n}}',
   saved: 'Saved. The kitchen will see this.',
   allergies: 'Allergies',
   diet: 'Diet',
@@ -99,15 +96,19 @@ const ENGLISH = {
 } as const;
 
 type Key = keyof typeof ENGLISH;
+type Sample = Record<Exclude<Key, 'notBuilt'>, string>;
 
 /** The board's French: [brackets] until [l10n] writes it; the allergen names are sc-4042's. */
-const FRENCH: Partial<Record<Key, string>> = {
+const FRENCH: Sample = {
   title: '[Y a-t-il quelque chose que la cuisine doit savoir ?]',
   intro: '[Choisissez tout ce qui s’applique à vous et à chaque personne qui vous accompagne.]',
   introAlone: '[Choisissez tout ce qui s’applique à vous.]',
   consent:
     '[Seuls {{hosts}} et les personnes qui préparent et servent votre repas verront ces informations.]',
   you: '[Vous]',
+  yourGuest: '[Votre invité]',
+  yourGuestN: '[Votre invité {{n}}]',
+  saved: '[Enregistré. La cuisine verra ces informations.]',
   allergies: '[Allergies]',
   diet: '[Régime alimentaire]',
   allergyWord: '[Allergie]',
@@ -149,8 +150,116 @@ const FRENCH: Partial<Record<Key, string>> = {
   allergyOne: '[Un choix contient un allergène. Modifiez-le avant d’envoyer.]',
 };
 
-const NAMES: Record<
-  'en' | 'fr',
+/** Spanish (Spain) and Portuguese (Portugal) as samples in [brackets], as the guest page's (sc-3790), until l10n writes them. */
+const SPANISH: Sample = {
+  title: '[¿Hay algo que la cocina deba saber?]',
+  intro: '[Elija todo lo que se aplique a usted y a cada persona que le acompaña.]',
+  introAlone: '[Elija todo lo que se aplique a usted.]',
+  consent: '[Solo {{hosts}} y las personas que cocinan y sirven su comida verán esto.]',
+  you: '[Usted]',
+  yourGuest: '[Su invitado]',
+  yourGuestN: '[Su invitado {{n}}]',
+  saved: '[Guardado. La cocina lo verá.]',
+  allergies: '[Alergias]',
+  diet: '[Dieta]',
+  allergyWord: '[Alergia]',
+  which: '[¿Qué alergia?]',
+  sayWhich: '[Indique cuál]',
+  tooLong: '[Acórtelo a 100 caracteres o menos.]',
+  words: '[Algo más, con sus propias palabras]',
+  access: '[¿Hay algo que le facilite llegar o moverse por el lugar?]',
+  optional: '[Opcional]',
+  line: '[{{allergies}}. La cocina y quien le sirva lo verán.]',
+  byHosts: '[Último cambio de {{hosts}} el {{date}}. Cambie lo que no sea correcto.]',
+  byYou: '[Último cambio suyo el {{date}}.]',
+  alsoNoted_one: '[{{hosts}} también anotó:]',
+  alsoNoted_other: '[{{hosts}} también anotaron:]',
+  remove: '[Quitar]',
+  removeAria: '[Quitar {{label}}]',
+  keepIt: '[Mantener]',
+  keepAria: '[Mantener {{label}}]',
+  willRemove: '[{{label}} se quitará al enviar.]',
+  next: '[Siguiente]',
+  nothing: '[Nada que añadir]',
+  leave: '[Dejarlo como está]',
+  row: '[Para la cocina]',
+  changeKitchen: '[Cambiar lo que la cocina debe saber]',
+  changeAnswer: '[Cambiar su respuesta]',
+  allergyLine_one: '[Alergia: {{list}}]',
+  allergyLine_other: '[Alergias: {{list}}]',
+  removed: '[Quitado: {{label}}]',
+  gettingIn: '[Para llegar y moverse: {{text}}]',
+  quote: '«{{text}}»',
+  nothingRow: '[Nada que añadir]',
+  notSaved:
+    '[No se ha guardado. Esta página no está actualizada. Vuelva a cargarla y elija de nuevo. Lo que eligió sigue en pantalla hasta entonces.]',
+  yourMeals: '[Sus comidas]',
+  theirMeals: '[Comidas de {{name}}]',
+  changeMeals: '[Cambiar: {{row}}]',
+  reason: '[{{name}} tiene alergia a: {{list}}.]',
+  reasonYou: '[Usted tiene alergia a: {{list}}.]',
+  allergyOne: '[Una elección contiene un alérgeno. Cámbiela antes de enviar.]',
+};
+
+const PORTUGUESE: Sample = {
+  title: '[Há alguma coisa que a cozinha deva saber?]',
+  intro: '[Escolha tudo o que se aplica a si e a cada pessoa que o acompanha.]',
+  introAlone: '[Escolha tudo o que se aplica a si.]',
+  consent: '[Só {{hosts}} e as pessoas que cozinham e servem a sua refeição vão ver isto.]',
+  you: '[Você]',
+  yourGuest: '[O seu convidado]',
+  yourGuestN: '[O seu convidado {{n}}]',
+  saved: '[Guardado. A cozinha vai ver isto.]',
+  allergies: '[Alergias]',
+  diet: '[Dieta]',
+  allergyWord: '[Alergia]',
+  which: '[Que alergia?]',
+  sayWhich: '[Indique qual]',
+  tooLong: '[Encurte para 100 caracteres ou menos.]',
+  words: '[Mais alguma coisa, por palavras suas]',
+  access: '[Há alguma coisa que lhe facilite chegar ou deslocar-se no local?]',
+  optional: '[Opcional]',
+  line: '[{{allergies}}. A cozinha e quem o servir vão ver isto.]',
+  byHosts: '[Última alteração por {{hosts}} a {{date}}. Altere o que não estiver certo.]',
+  byYou: '[Última alteração sua a {{date}}.]',
+  alsoNoted_one: '[{{hosts}} também anotou:]',
+  alsoNoted_other: '[{{hosts}} também anotaram:]',
+  remove: '[Remover]',
+  removeAria: '[Remover {{label}}]',
+  keepIt: '[Manter]',
+  keepAria: '[Manter {{label}}]',
+  willRemove: '[{{label}} será removido ao enviar.]',
+  next: '[Seguinte]',
+  nothing: '[Nada a acrescentar]',
+  leave: '[Deixar como está]',
+  row: '[Para a cozinha]',
+  changeKitchen: '[Alterar o que a cozinha deve saber]',
+  changeAnswer: '[Alterar a sua resposta]',
+  allergyLine_one: '[Alergia: {{list}}]',
+  allergyLine_other: '[Alergias: {{list}}]',
+  removed: '[Removido: {{label}}]',
+  gettingIn: '[Para chegar e circular: {{text}}]',
+  quote: '«{{text}}»',
+  nothingRow: '[Nada a acrescentar]',
+  notSaved:
+    '[Não foi guardado. Esta página está desatualizada. Recarregue-a e escolha de novo. O que escolheu fica no ecrã até lá.]',
+  yourMeals: '[As suas refeições]',
+  theirMeals: '[Refeições de {{name}}]',
+  changeMeals: '[Alterar: {{row}}]',
+  reason: '[{{name}} tem alergia a: {{list}}.]',
+  reasonYou: '[Tem alergia a: {{list}}.]',
+  allergyOne: '[Uma escolha contém um alergénio. Altere-a antes de enviar.]',
+};
+
+export const GUEST_KITCHEN_ENGLISH = ENGLISH;
+export const GUEST_KITCHEN_SAMPLES: Record<Exclude<GuestKitchenLang, 'en'>, Sample> = {
+  fr: FRENCH,
+  es: SPANISH,
+  pt: PORTUGUESE,
+};
+
+export const GUEST_KITCHEN_NAMES: Record<
+  GuestKitchenLang,
   {
     allergens: Record<Allergen, string>;
     diets: Record<Diet, string>;
@@ -229,6 +338,78 @@ const NAMES: Record<
       wheelchair_space: '[De la place pour un fauteuil roulant à table]',
     },
   },
+  es: {
+    allergens: {
+      gluten: '[Cereales que contienen gluten]',
+      crustaceans: '[Crustáceos]',
+      eggs: '[Huevos]',
+      fish: '[Pescado]',
+      peanuts: '[Cacahuetes]',
+      soybeans: '[Soja]',
+      milk: '[Leche]',
+      tree_nuts: '[Frutos de cáscara]',
+      celery: '[Apio]',
+      mustard: '[Mostaza]',
+      sesame: '[Sésamo]',
+      sulphites: '[Dióxido de azufre y sulfitos]',
+      lupin: '[Altramuces]',
+      molluscs: '[Moluscos]',
+      other: '[Otra alergia]',
+    },
+    diets: {
+      vegetarian: '[Vegetariana]',
+      vegan: '[Vegana]',
+      pescatarian: '[Pescetariana]',
+      halal: '[Halal]',
+      kosher: '[Kosher]',
+      no_pork: '[Sin cerdo]',
+      no_beef: '[Sin ternera]',
+      no_alcohol: '[Sin alcohol]',
+    },
+    access: {
+      step_free: '[Acceso sin escalones]',
+      near_exit: '[Un asiento cerca de una salida]',
+      hearing_loop: '[Un bucle magnético]',
+      sign_language: '[Lengua de signos]',
+      wheelchair_space: '[Espacio para una silla de ruedas en la mesa]',
+    },
+  },
+  pt: {
+    allergens: {
+      gluten: '[Cereais que contêm glúten]',
+      crustaceans: '[Crustáceos]',
+      eggs: '[Ovos]',
+      fish: '[Peixe]',
+      peanuts: '[Amendoins]',
+      soybeans: '[Soja]',
+      milk: '[Leite]',
+      tree_nuts: '[Frutos de casca rija]',
+      celery: '[Aipo]',
+      mustard: '[Mostarda]',
+      sesame: '[Sésamo]',
+      sulphites: '[Dióxido de enxofre e sulfitos]',
+      lupin: '[Tremoço]',
+      molluscs: '[Moluscos]',
+      other: '[Outra alergia]',
+    },
+    diets: {
+      vegetarian: '[Vegetariana]',
+      vegan: '[Vegana]',
+      pescatarian: '[Pescetariana]',
+      halal: '[Halal]',
+      kosher: '[Kosher]',
+      no_pork: '[Sem porco]',
+      no_beef: '[Sem vaca]',
+      no_alcohol: '[Sem álcool]',
+    },
+    access: {
+      step_free: '[Acesso sem degraus]',
+      near_exit: '[Um lugar perto de uma saída]',
+      hearing_loop: '[Um anel de indução magnética]',
+      sign_language: '[Língua gestual]',
+      wheelchair_space: '[Espaço para uma cadeira de rodas à mesa]',
+    },
+  },
 };
 
 const TAGS: Record<GuestKitchenLang, string> = {
@@ -245,14 +426,15 @@ export function lowered(name: string, locale: string): string {
   return name.charAt(0).toLocaleLowerCase(locale) + name.slice(1);
 }
 
-/** The kitchen step's words in the reader's language: the board's English, its French, and English for es and pt, which the board does not draw. */
+/** The kitchen step's words in the reader's language: the board's English, its French, and bracketed Spanish and Portuguese samples. */
 export function guestKitchenWordsFor(lang: GuestKitchenLang) {
   const locale = TAGS[lang];
-  const table: Record<Key, string> = { ...ENGLISH, ...(lang === 'fr' ? FRENCH : {}) };
+  const table: Record<Key, string> = {
+    ...ENGLISH,
+    ...(lang === 'en' ? {} : GUEST_KITCHEN_SAMPLES[lang]),
+  };
   const { filled, many, listed } = demoWords(table, { locale });
-  const names = NAMES[lang === 'fr' ? 'fr' : 'en'];
-  // English only so far, so its ordinal rules pick the form; with at most ten companions, one, two and few are 1, 2 and 3.
-  const ordinal = new Intl.PluralRules('en-US', { type: 'ordinal' });
+  const names = GUEST_KITCHEN_NAMES[lang];
 
   return {
     locale,
@@ -261,8 +443,7 @@ export function guestKitchenWordsFor(lang: GuestKitchenLang) {
       many(base, count, slots),
     list: listed,
     lower: (name: string) => lowered(name, locale),
-    nth: (position: number) =>
-      filled(table[`guestNth_ordinal_${ordinal.select(position)}` as Key], { count: position }),
+    nth: (n: number) => filled(table.yourGuestN, { n }),
     allergen: (code: Allergen) => names.allergens[code],
     diet: (code: Diet) => names.diets[code],
     access: (code: Access) => names.access[code],
