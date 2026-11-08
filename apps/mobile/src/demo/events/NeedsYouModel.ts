@@ -56,41 +56,10 @@ export function needRows(
     });
 }
 
-/** No area but the kitchen's returns a You milestone yet: these stand in for its other rows. */
-function other(at: string, title: string, area: string): Milestone {
-  return { at, title, note: null, owner: 'you', area, action: null };
-}
-
-const OPEN_THREE = [
-  other('2026-11-03T23:59:00Z', 'Pay the band’s balance', 'budget'),
-  other('2026-11-04T23:59:00Z', 'Seat the last 12 guests', 'seating'),
-  other('2026-11-05T12:00:00Z', 'Confirm the cake', 'vendors'),
-];
-
 const MANAGES = ['menu.manage', 'budget.manage', 'seating.manage', 'vendors.manage'];
 const ONLY_READS = ['menu.read', 'budget.read', 'seating.read', 'vendors.read'];
 
-/** Each state's reader and its rows beside the wedding's timeline, whose kitchen milestone FinalNumbers seeds. */
-export function sampleNeeds(state: NeedsState | null): {
-  milestones: readonly Milestone[];
-  permissions: readonly string[];
-} {
-  switch (state) {
-    case 'needsYou':
-    case 'needsYouGiven':
-      return { milestones: OPEN_THREE, permissions: MANAGES };
-    case 'needsYouOverdue':
-      return {
-        milestones: [
-          other('2026-11-03T09:00:00Z', 'Confirm the cake', 'vendors'),
-          other('2026-11-03T09:00:00Z', 'Agree the toasts', 'seating'),
-          other('2026-11-02T23:59:00Z', 'Pay the band’s balance', 'budget'),
-        ],
-        permissions: MANAGES,
-      };
-    case 'needsYouReadOnly':
-      return { milestones: [], permissions: ONLY_READS };
-    default:
-      return { milestones: [], permissions: MANAGES };
-  }
+/** The reader's permissions on the wedding: one who only reads, or one who changes every area. Its rows are the event's dates (datesOf). */
+export function readerOf(state: NeedsState | null): readonly string[] {
+  return state === 'needsYouReadOnly' ? ONLY_READS : MANAGES;
 }

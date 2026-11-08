@@ -13,7 +13,7 @@ import { EventCard, EventThumb } from './EventCard.tsx';
 import { AcPill, AlertLine, CHANGED, EditScreen } from './EventEdits.tsx';
 import { AreaPage, EventFrame } from './EventFrame.tsx';
 import { EventNeedsYou } from './EventNeedsYou.tsx';
-import { needsStateOf } from './NeedsYouModel.ts';
+import { needsStateOf, readerOf } from './NeedsYouModel.ts';
 import {
   type DeleteStart,
   DeleteScreen,
@@ -29,12 +29,11 @@ import {
   type Shown,
   clockOf,
   datesRow,
+  datesOf,
   editOf,
-  finalNumbersOf,
   hostsRow,
   instantOf,
   manageOf,
-  milestonesOf,
   needsName,
   scheduleLocked,
   shownEvent,
@@ -277,9 +276,9 @@ export function EventScreen({
   );
   const needsYou = (
     <EventNeedsYou
-      timeline={[...milestonesOf(shown), ...finalNumbersOf(shown, now)]}
+      timeline={datesOf(shown, now)}
+      permissions={readerOf(needsStateOf(state))}
       state={needsStateOf(state)}
-      open={event.status !== 'ended' && now.getTime() < Date.parse(event.startsAt)}
       now={now}
       timeZone={event.timeZone}
       locale={locale}
