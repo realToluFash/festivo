@@ -1,16 +1,19 @@
-# Home, where signing in lands, and whose session it is: Today names no account, so
-# the account is read in Settings. sc-30091.
+# Home, where signing in lands: Today for an account in an organisation, which names no
+# account and is evidence enough of the session, or the no-organisation screen, which names
+# it. Signed out shows neither, so the wait fails. sc-32726.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/
 - extendedWaitUntil:
-    visible: '{{t:todayScreen.tab.today}}'
+    visible: '{{t:todayScreen.tab.today}}|{{t:noOrganisation.title}}'
     timeout: 30000
-- takeScreenshot: home
 - runFlow:
-    file: ../batch/to-settings.yaml
-- scrollUntilVisible:
-    element:
-      text: '{{t:settings.signedInAs|email}}'
-    direction: DOWN
-    timeout: 30000
+    when:
+      visible: '{{t:noOrganisation.title}}'
+    commands:
+      - scrollUntilVisible:
+          element:
+            text: '{{t:noOrganisation.signedInAs|email}}'
+          direction: DOWN
+          timeout: 30000
+- takeScreenshot: home
