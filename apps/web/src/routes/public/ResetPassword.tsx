@@ -164,7 +164,7 @@ export function ResetPassword() {
           pausedNote={t('recovery.nothingChanged')}
           failedTitle={t('recovery.failedTitle')}
           failedBody={t('recovery.failedBody')}
-          lostBoth={{ to: '/two-factor/recovery' }}
+          lostBoth={{ to: '/two-factor/recovery', state: { resetToken: token } }}
           onVerify={async (factor) => {
             try {
               await api.passResetCode(token, factor);

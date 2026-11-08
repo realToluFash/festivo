@@ -4,15 +4,18 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Controller;
 
+use App\Domain\User\Recovery\PasswordRecovery;
 use App\Domain\User\TwoFactor\Recovery\NotMeLink;
 use App\Domain\User\TwoFactor\Recovery\RecoveryView;
 use App\Domain\User\TwoFactor\Recovery\TwoFactorRecoveries;
 use App\Entity\TwoFactorRecovery;
+use App\Entity\User;
 use App\Enum\ErrorCode;
 use App\Http\Access\Policy\PublicAccess;
 use App\Http\CodeField;
 use App\Http\Exception\ApiException;
 use App\Http\Input;
+use App\Repository\TwoFactorFactorRepository;
 use App\Repository\TwoFactorRecoveryRepository;
 use Psl\Type;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -21,13 +24,15 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Uid\Uuid;
 
-/** Lost both the authenticator and the recovery codes (sc-509): opened from the sign-in code step, then by the request's own handle. */
+/** Lost both the authenticator and the recovery codes (sc-509): opened from the sign-in code step or a reset link's (sc-29067), then by the request's own handle. */
 #[PublicAccess]
 final readonly class TwoFactorRecoveryController
 {
     public function __construct(
         private TwoFactorRecoveries $twoFactorRecoveries,
         private TwoFactorRecoveryRepository $twoFactorRecoveryRepository,
+        private TwoFactorFactorRepository $twoFactorFactorRepository,
+        private PasswordRecovery $passwordRecovery,
         private RecoveryView $recoveryView,
         private NotMeLink $notMeLink,
         private CodeField $codeField,
@@ -39,7 +44,7 @@ final readonly class TwoFactorRecoveryController
     #[Route('/api/auth/two-factor/recovery/opening', name: 'auth_two_factor_recovery_opening', methods: ['POST'])]
     public function opening(Request $request): JsonResponse
     {
-        $user = $this->twoFactorRecoveries->personAt($this->field($request, 'challenge'));
+        $user = $this->person($request);
         $resumed = $this->twoFactorRecoveries->resume($user);
 
         return new JsonResponse([
@@ -53,7 +58,7 @@ final readonly class TwoFactorRecoveryController
     #[Route('/api/auth/two-factor/recovery', name: 'auth_two_factor_recovery_start', methods: ['POST'])]
     public function start(Request $request): JsonResponse
     {
-        $user = $this->twoFactorRecoveries->personAt($this->field($request, 'challenge'));
+        $user = $this->person($request);
         [$recovery, $handle] = $this->twoFactorRecoveries->start($user);
 
         return new JsonResponse(['recovery' => $handle, 'state' => $this->recoveryView->state($recovery)], Response::HTTP_CREATED);
@@ -129,6 +134,27 @@ final readonly class TwoFactorRecoveryController
         $this->twoFactorRecoveries->notMe($recovery->getUser());
 
         return new JsonResponse(null, Response::HTTP_NO_CONTENT);
+    }
+
+    /** A reset link proves the address, as a passed password does, so either opens the same recovery. */
+    private function person(Request $request): User
+    {
+        $body = Input::body($request, Type\shape([
+            'challenge' => Type\optional(Type\string()),
+            'resetToken' => Type\optional(Type\string()),
+        ], true));
+
+        if (!isset($body['resetToken'])) {
+            return $this->twoFactorRecoveries->personAt($body['challenge'] ?? '');
+        }
+
+        $user = $this->passwordRecovery->check($body['resetToken']);
+
+        if (null === $this->twoFactorFactorRepository->findActiveFor($user)) {
+            throw new ApiException(ErrorCode::TwoFactorOff, 'two_factor.off');
+        }
+
+        return $user;
     }
 
     private function recovery(Request $request): TwoFactorRecovery

@@ -2445,6 +2445,28 @@ describe('getting back in without the second factor', () => {
     expect(opening.supportAddress).toBe('support@soirely.com');
   });
 
+  test('opens and starts a recovery from a reset link as from a sign-in challenge', async () => {
+    const sent: unknown[] = [];
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      fetch: async (_input, init) => {
+        sent.push(JSON.parse(String(init?.body)));
+
+        return json({ recovery: 'handle', state: WAITING, nobody: false }, 201);
+      },
+    });
+
+    await client.recoveryOpening({ resetToken: 'link' });
+    await client.startRecovery({ resetToken: 'link' });
+    await client.startRecovery('challenge');
+
+    expect(sent).toEqual([
+      { resetToken: 'link' },
+      { resetToken: 'link' },
+      { challenge: 'challenge' },
+    ]);
+  });
+
   test('refuses a step it cannot read, naming where to look', async () => {
     const client = new ApiClient({
       baseUrl: () => 'http://api.test',

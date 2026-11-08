@@ -94,6 +94,13 @@ export interface RecoveryState {
 }
 
 /** What the start screen names before anything is sent, and an open request to carry on with. */
+/** What proves the first factor to a recovery: the sign-in's challenge, or a live reset link. */
+export type RecoveryEntry = string | { resetToken: string };
+
+function recoveryEntry(entry: RecoveryEntry): Record<string, string> {
+  return typeof entry === 'string' ? { challenge: entry } : entry;
+}
+
 export interface RecoveryOpening {
   email: string | null;
   phone: string | null;
@@ -1116,11 +1123,11 @@ export class ApiClient {
   }
 
   /** The code proves the address: only now is the account made, and signed in. */
-  /** From the sign-in code step only: the challenge proves the first factor passed. Sends nothing. */
-  async recoveryOpening(challenge: string): Promise<RecoveryOpening> {
+  /** From the sign-in code step's challenge, or a reset link's code step. Sends nothing. */
+  async recoveryOpening(entry: RecoveryEntry): Promise<RecoveryOpening> {
     const answer = await this.post<Record<string, unknown>>(
       '/api/auth/two-factor/recovery/opening',
-      { challenge },
+      recoveryEntry(entry),
       { anonymous: true },
     );
     const state = asRecoveryState(answer.state);
@@ -1138,10 +1145,10 @@ export class ApiClient {
     };
   }
 
-  async startRecovery(challenge: string): Promise<{ recovery: string; state: RecoveryState }> {
+  async startRecovery(entry: RecoveryEntry): Promise<{ recovery: string; state: RecoveryState }> {
     const answer = await this.post<Record<string, unknown>>(
       '/api/auth/two-factor/recovery',
-      { challenge },
+      recoveryEntry(entry),
       { anonymous: true },
     );
 

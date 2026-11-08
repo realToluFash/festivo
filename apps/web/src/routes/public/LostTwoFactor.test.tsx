@@ -119,6 +119,74 @@ afterEach(() => {
 });
 
 describe('getting back in without the authenticator', () => {
+  it('opens from a reset link’s code step, proved by the link, and goes back to it (sc-29067)', async () => {
+    const sent = answering({
+      'POST /api/auth/password/reset/check': () =>
+        json({ email: 'folake@ire.events', twoFactor: true }),
+      'POST /api/auth/two-factor/recovery/opening': () => json(OPENING),
+      'POST /api/auth/two-factor/recovery': () => json({ recovery: 'handle', state: PROVING }, 201),
+    });
+    render(
+      <RouterProvider
+        router={createMemoryRouter(routes, { initialEntries: ['/reset-password?token=t1'] })}
+      />,
+    );
+
+    fireEvent.click(
+      await screen.findByRole(
+        'link',
+        { name: 'Lost your authenticator and your recovery codes?' },
+        THE_WAY_IN,
+      ),
+    );
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: /Get back in/ }, THE_WAY_IN),
+    ).toBeDefined();
+    expect(sent.at(-1)).toEqual({
+      path: '/api/auth/two-factor/recovery/opening',
+      body: { resetToken: 't1' },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Send the codes' }));
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Enter both codes' }),
+    ).toBeDefined();
+    expect(sent.at(-1)).toEqual({
+      path: '/api/auth/two-factor/recovery',
+      body: { resetToken: 't1' },
+    });
+  });
+
+  it('goes back to the reset link, which says why, once the link has died (sc-29067)', async () => {
+    let checks = 0;
+    answering({
+      'POST /api/auth/password/reset/check': () =>
+        ++checks === 1
+          ? json({ email: 'folake@ire.events', twoFactor: true })
+          : problem('reset_link_expired', 410),
+      'POST /api/auth/two-factor/recovery/opening': () => problem('reset_link_expired', 410),
+    });
+    render(
+      <RouterProvider
+        router={createMemoryRouter(routes, { initialEntries: ['/reset-password?token=t1'] })}
+      />,
+    );
+
+    fireEvent.click(
+      await screen.findByRole(
+        'link',
+        { name: 'Lost your authenticator and your recovery codes?' },
+        THE_WAY_IN,
+      ),
+    );
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'This link has expired' }, THE_WAY_IN),
+    ).toBeDefined();
+  });
+
   it('says what happens before sending anything, then sends the codes', async () => {
     const sent = await atTheStart({
       'POST /api/auth/two-factor/recovery': () => json({ recovery: 'handle', state: PROVING }, 201),

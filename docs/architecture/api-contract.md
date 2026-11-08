@@ -211,7 +211,10 @@ step is `POST` with a JSON body, so neither the sign-in challenge nor the reques
 is ever in a URL.
 
 - `…/two-factor/recovery/opening` and `…/two-factor/recovery` take the sign-in's
-  `challenge`, so only a first factor that passed can ask. The first sends nothing and
+  `challenge`, so only a first factor that passed can ask, or a live reset link's
+  `resetToken` (sc-29067), which proves the address as the password would. A dead link
+  answers as the reset check does (`reset_link_*`), and an account without two-factor
+  `two_factor_off`. The first sends nothing and
   says whether anybody can answer (`nobody`, with `supportAddress`). It also hands back an
   open request under a handle of this device's own: the request is the account's and the
   handle the device's (`two_factor_recovery_handles`), so another device's handle keeps
