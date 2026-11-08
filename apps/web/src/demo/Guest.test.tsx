@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
 import { GUEST_PAGES, THANK_YOU } from './guest.ts';
+import { GUEST_KITCHEN_PAGES } from './guestKitchen.ts';
 
 const tested = config();
 const NAME = 'Maria Fernanda Albuquerque Santos';
@@ -65,7 +66,10 @@ describe('the guest’s own page, A · The cover card (sc-31306)', () => {
 
     expect(head.textContent).toBe('Guest’s page in A · The cover card · phone, tablet and desk');
     const hrefs = screen.getAllByRole('link').map((one) => one.getAttribute('href'));
-    const guestLinks = hrefs.filter((href) => href?.startsWith('/demo/guest?'));
+    const kitchen = new Set(GUEST_KITCHEN_PAGES.flatMap((one) => one.states).map((one) => one.to));
+    const guestLinks = hrefs.filter(
+      (href) => href?.startsWith('/demo/guest?') && !kitchen.has(href),
+    );
 
     expect(guestLinks).toEqual(GUEST_PAGES.flatMap((one) => one.states).map((one) => one.to));
     expect(guestLinks).toHaveLength(54);
@@ -127,7 +131,7 @@ const SAYS: [string, () => void][] = [
   ['unsentReturn', () => screen.getByRole('status', { name: '' })],
   [
     'replyByClosed',
-    () => screen.getByRole('link', { name: 'Update what the kitchen should know' }),
+    () => screen.getByRole('button', { name: 'Update what the kitchen should know' }),
   ],
   ['replyByClosedNotSure', () => screen.getByText(/if you can still come\.$/u)],
   ['closedRefused', () => screen.getByText(/^Answers closed before this was sent\./u)],
@@ -265,12 +269,13 @@ describe('the breakpoints', () => {
 });
 
 describe('answering, by keyboard and pointer, on sample data', () => {
-  it('Yes goes to Check and send with its heading focused; Back returns to Yes', async () => {
+  it('Yes goes to the kitchen step (sc-3778) with its heading focused; Back returns to Yes', async () => {
     await guest();
 
     fireEvent.click(screen.getByRole('button', { name: 'Yes, I’ll be there' }));
-    expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Check and send' }));
-    expect(screen.getByText('Your answer: Coming')).toBeDefined();
+    expect(document.activeElement).toBe(
+      screen.getByRole('heading', { name: 'Anything the kitchen must know?' }),
+    );
     expect(screen.queryByText('Hosted by')).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: 'Back' }));
@@ -355,6 +360,7 @@ describe('answering, by keyboard and pointer, on sample data', () => {
     await guest('changing');
 
     fireEvent.click(screen.getByRole('button', { name: /^Yes, I’ll be there/u }));
+    fireEvent.click(screen.getByRole('button', { name: 'Leave it as it is' }));
     fireEvent.click(screen.getByRole('button', { name: 'Send my answer' }));
     await wait();
 
