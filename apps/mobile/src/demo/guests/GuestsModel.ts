@@ -77,6 +77,7 @@ export const EDIT_STATES = [
   'editDuplicate',
   'editCompanions',
   'editMax',
+  'editSeated',
   'editDiscard',
   'edit412',
   'editNotSaved',
@@ -101,6 +102,7 @@ export const ADD_STATES = [
   'addOffline',
   'picker',
   'androidPick',
+  'androidNone',
   'androidRefused',
   'languageAdd',
 ] as const;
@@ -111,6 +113,8 @@ export const REVIEW_STATES = [
   'chooseNumber',
   'roomLeft',
   'overLimit',
+  'overLimitAsk',
+  'ownerAsked',
   'limitRefused',
   'adding',
   'contactsFailed',
@@ -194,7 +198,14 @@ function ownStateOf(event: string): OwnState | null {
 
 export function eventOf(state: GuestsState | null): string {
   if (state === 'draft' || state === 'paused') return OWN_SAMPLE[state];
-  if (state === 'roomLeft' || state === 'overLimit' || state === 'limitRefused') return PLAN.ireti;
+  if (
+    state === 'roomLeft' ||
+    state === 'overLimit' ||
+    state === 'overLimitAsk' ||
+    state === 'ownerAsked' ||
+    state === 'limitRefused'
+  )
+    return PLAN.ireti;
   return WEDDING;
 }
 
@@ -930,6 +941,7 @@ export function guestOf(state: GuestsState | null): string | null {
       return 'musa';
     case 'languageEdit':
     case 'languageGuestChose':
+    case 'editSeated':
       return 'ines';
     case 'languageSet':
       return 'sophie';
@@ -947,7 +959,7 @@ export function areaStart(state: GuestsState | null): AreaStart {
   if (state != null && isIn(EDIT_STATES, state)) return { ...base, overlay: 'edit' };
   if (state != null && isIn(RECORD_STATES, state)) return { ...base, overlay: 'record' };
   if (state === 'picker') return { ...base, overlay: 'picker' };
-  if (state === 'androidPick') return { ...base, overlay: 'android' };
+  if (state === 'androidPick' || state === 'androidNone') return { ...base, overlay: 'android' };
   if (state != null && isIn(ADD_STATES, state)) return { ...base, overlay: 'add' };
   if (state != null && isIn(REVIEW_STATES, state)) return { ...base, overlay: 'review' };
 

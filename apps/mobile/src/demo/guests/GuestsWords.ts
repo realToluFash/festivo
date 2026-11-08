@@ -114,6 +114,7 @@ export const W = {
   choosePeople: 'Choose people',
   searchContacts: 'Search contacts',
   onlyTicked: 'Only the people you tick are sent to Soirely.',
+  tickOne: 'Tick at least one person.',
   refusedContacts:
     'Without access to your contacts, you pick one person at a time. Soirely does not ask again; you can allow it in your phone’s settings.',
   chooseAnother: 'Choose another number',
@@ -138,6 +139,9 @@ export const W = {
   removeRows: 'Remove rows or places for companions here.',
   removeOnWeb: 'Remove a guest from the list, on the web.',
   plansOnWeb: 'Plans are managed on the web.',
+  /** sc-3930: for someone who can't change the plan; one owner in the sample, so the one-owner line. */
+  askOwner: 'Ask an owner',
+  ownerAsked: 'The owner has been sent the link to Compare plans.',
   listKept: 'The list is kept as you left it.',
   backToList: 'Back to the list',
   notAddedTitle: 'Not added',
@@ -215,6 +219,14 @@ export const say = {
   noneYet: (count: number) => `None yet · ${count} of 10`,
   moreCompanions: (count: number) => `${count} more companions`,
   removed: (name: string) => `${name} removed. Save to keep the change.`,
+  removeTitle: (name: string) => `Remove ${name}?`,
+  /** The AC's line (sc-3773, 21 Oct): full name, what goes, no pronoun; a seat or a meal alone is a proposal for [en]. */
+  seatedLine: (name: string, table: string | null, meal: boolean) =>
+    table != null && meal
+      ? `${name} has a seat at ${table} and a meal chosen. Removing this companion frees the seat and drops the meal.`
+      : table != null
+        ? `${name} has a seat at ${table}. Removing this companion frees the seat.`
+        : `${name} has a meal chosen. Removing this companion drops the meal.`,
   sameName: (name: string) => `${name} is already on the list`,
   discardLine: (name: string) => `Your changes to ${name} have not been saved.`,
   forName: (name: string) => `For ${name}. It counts as their reply, marked as recorded by you.`,

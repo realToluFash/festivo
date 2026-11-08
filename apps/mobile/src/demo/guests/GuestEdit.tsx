@@ -34,7 +34,13 @@ import {
 } from './GuestsModel.ts';
 import { LanguageChoices, LanguageField } from './GuestLanguage.tsx';
 import { Amber, AmberLine, Choices, DoneLine } from './GuestsParts.tsx';
-import { type GuestLanguage, type SampleGuest, THEIRS, TODAY } from './GuestsSample.ts';
+import {
+  type Companion,
+  type GuestLanguage,
+  type SampleGuest,
+  THEIRS,
+  TODAY,
+} from './GuestsSample.ts';
 import { HOW_INVITED, HOW_TOLD, REPLY_WORD, W, say } from './GuestsWords.ts';
 import { ReplyMark } from './ReplyMark.tsx';
 
@@ -202,6 +208,13 @@ function startCompanions(state: EditState | null, g: SampleGuest): string[] {
   return g.companions.map((c) => c.name);
 }
 
+/** Each field's companion as the guest has them, so a seat or a meal is known; a field added or prefilled here has none. */
+function startSeats(state: EditState | null, g: SampleGuest): (Companion | null)[] {
+  return state === 'editCompanions' || state === 'editMax'
+    ? startCompanions(state, g).map(() => null)
+    : [...g.companions];
+}
+
 /** Edit guest (sc-3773): sc-1468's fields filled in; every refusal under its field before anything is sent. */
 export function EditGuest({
   open,
@@ -234,6 +247,8 @@ export function EditGuest({
   const [country, setCountry] = useState(phone.country);
   const [number, setNumber] = useState(start === 'edit' ? '7700 9004' : phone.number);
   const [companions, setCompanions] = useState(() => startCompanions(start, g));
+  const [seats, setSeats] = useState(() => startSeats(start, g));
+  const [removing, setRemoving] = useState<number | null>(start === 'editSeated' ? 0 : null);
   const [shownAll, setShownAll] = useState(false);
   const [removed, setRemoved] = useState<string | null>(
     start === 'editCompanions' ? `${g.companions[0]?.name ?? ''} · 2` : null,
@@ -269,8 +284,9 @@ export function EditGuest({
     phone: joinPhone(country, number),
     language,
     companions: companions.map((c, i) => ({
+      ...seats[i],
       name: c,
-      kind: g.companions[i]?.kind ?? (g.kind === 'coming' ? 'coming' : 'held'),
+      kind: seats[i]?.kind ?? (g.kind === 'coming' ? 'coming' : 'held'),
     })),
   });
   const save = (anyway = false) => {
@@ -301,6 +317,28 @@ export function EditGuest({
         width: ASK_WIDTH,
       }
     : null;
+  const drop = (index: number) => {
+    setRemoved(companions[index] ?? '');
+    setCompanions(companions.filter((_, i) => i !== index));
+    setSeats(seats.filter((_, i) => i !== index));
+  };
+  const seat = removing == null ? null : (seats[removing] ?? null);
+  const seatedName = removing == null ? '' : (companions[removing] ?? '');
+  const removeSeated: AskProps | null =
+    removing != null && seat != null
+      ? {
+          title: say.removeTitle(seatedName),
+          line: say.seatedLine(seatedName, seat.table ?? null, seat.meal === true),
+          keep: { label: W.cancel, testID: 'guest.edit.seatedKeep' },
+          confirm: { label: W.remove, removes: true, testID: 'guest.edit.seatedRemove' },
+          onKeep: () => setRemoving(null),
+          onConfirm: () => {
+            drop(removing);
+            setRemoving(null);
+          },
+          width: ASK_WIDTH,
+        }
+      : null;
   const shown = shownAll || companions.length <= 3 ? companions : companions.slice(0, 3);
 
   return (
@@ -311,7 +349,7 @@ export function EditGuest({
       onCancel={() => (changed ? setDiscarding(true) : onClose())}
       cancelTestID="guest.edit.cancel"
       opener={opener}
-      ask={discard}
+      ask={discard ?? removeSeated}
       over={
         choosing
           ? languageOver(
@@ -440,8 +478,12 @@ export function EditGuest({
               label={W.remove}
               plain
               onPress={() => {
-                setRemoved(c);
-                setCompanions(companions.filter((_, i) => i !== index));
+                const held = seats[index];
+                if (held != null && (held.table != null || held.meal === true)) {
+                  setRemoving(index);
+                  return;
+                }
+                drop(index);
               }}
               accessibilityLabel={`${W.remove} ${c}`}
               testID={`guest.edit.remove.${index}`}
@@ -466,7 +508,10 @@ export function EditGuest({
           <TextAction
             label={W.addCompanion}
             glyph="plus"
-            onPress={() => setCompanions([...companions, ''])}
+            onPress={() => {
+              setCompanions([...companions, '']);
+              setSeats([...seats, null]);
+            }}
             testID="guest.edit.addCompanion"
           />
         )}
