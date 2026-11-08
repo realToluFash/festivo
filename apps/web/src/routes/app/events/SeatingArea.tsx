@@ -392,7 +392,7 @@ function Plan({
           />,
         );
     }
-    const words = { width: lengths(plan.widthCm), length: lengths(plan.lengthCm) };
+    const words = { width: lengths(plan.widthCm), roomLength: lengths(plan.lengthCm) };
     const empty = plan.counts.tables + plan.counts.rows + plan.counts.singleSeats === 0;
 
     canvas = (
@@ -413,12 +413,12 @@ function Plan({
             plan.roomName == null
               ? t('seating.roomGroupUnnamed', {
                   width: lengths(plan.widthCm, 'long'),
-                  length: lengths(plan.lengthCm, 'long'),
+                  roomLength: lengths(plan.lengthCm, 'long'),
                 })
               : t('seating.roomGroup', {
                   name: plan.roomName,
                   width: lengths(plan.widthCm, 'long'),
-                  length: lengths(plan.lengthCm, 'long'),
+                  roomLength: lengths(plan.lengthCm, 'long'),
                 })
           }
         >
@@ -939,7 +939,7 @@ function RoomHead({ ctx, plan }: { ctx: PlanApi; plan: SeatingPlan }) {
   const locale = currentLocale();
   const words = {
     width: lengthWords(t, locale, plan.widthCm, ctx.system),
-    length: lengthWords(t, locale, plan.lengthCm, ctx.system),
+    roomLength: lengthWords(t, locale, plan.lengthCm, ctx.system),
   };
 
   return (
