@@ -27,6 +27,7 @@ export const REDEEM_STATES = [
   'event-in',
   'event-in-view',
   'people-in',
+  'more-in',
 ] as const;
 export type RedeemState = (typeof REDEEM_STATES)[number];
 
@@ -65,6 +66,8 @@ export interface Flow {
   who: string;
   role: CodeRole;
   tries: number;
+  /** Inside the event with More open: Your account and Sign out (`more-in`). */
+  more: boolean;
 }
 
 export const JOAO = { name: 'João Pereira', number: '912 345 412' } as const;
@@ -88,6 +91,7 @@ export function freshFlow(step: RedeemStep = 'welcome'): Flow {
     who: JOAO.name,
     role: BAR.role,
     tries: 0,
+    more: false,
   };
 }
 
@@ -163,6 +167,8 @@ export function flowAt(state: RedeemState): Flow {
       return { ...joao, step: 'inside', role: 'Can view' };
     case 'people-in':
       return { ...joao, step: 'peopleIn' };
+    case 'more-in':
+      return { ...joao, step: 'inside', more: true };
   }
 }
 

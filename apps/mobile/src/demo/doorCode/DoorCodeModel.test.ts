@@ -315,7 +315,7 @@ describe('the demo home’s Door code group', () => {
       ]),
     );
     expect(new Set(hrefs).size).toBe(hrefs.length);
-    expect(hrefs).toHaveLength(14 + 7 + 7 + 25);
+    expect(hrefs).toHaveLength(14 + 7 + 7 + 26);
   });
 
   it('titles each one apart', () => {

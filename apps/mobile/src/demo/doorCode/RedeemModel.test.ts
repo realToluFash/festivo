@@ -55,6 +55,7 @@ describe('joining, every state (spec §5)', () => {
       'event-in': 'inside',
       'event-in-view': 'inside',
       'people-in': 'peopleIn',
+      'more-in': 'inside',
     } satisfies Record<string, RedeemStep>);
   });
 
@@ -83,6 +84,11 @@ describe('joining, every state (spec §5)', () => {
       'That number looks too short for Portugal. Check it and try again.',
     );
     expect(flowAt('used-up')).toMatchObject({ usedUp: true, full: true, name: 'Hugo Faria' });
+  });
+
+  it('opens More inside the event only for more-in', () => {
+    expect(flowAt('more-in').more).toBe(true);
+    expect(REDEEM_STATES.filter((state) => flowAt(state).more)).toEqual(['more-in']);
   });
 
   it('opens inside the event at the code’s role', () => {

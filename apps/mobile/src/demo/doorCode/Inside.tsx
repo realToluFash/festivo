@@ -22,7 +22,10 @@ import {
   seesEveryEvent,
 } from '../people/PeopleSample.ts';
 import { LineIcon } from '../settings/AccountCard.tsx';
-import { Back } from '../../components/SettingsParts.tsx';
+import { Brand } from '../../components/Brand.tsx';
+import { Avatar, Back } from '../../components/SettingsParts.tsx';
+import { SidebarColumn, SidebarPlace, SidebarPlaces } from '../../components/TodaySidebar.tsx';
+import { EventThumb } from '../events/EventCard.tsx';
 import {
   CardSays,
   Line,
@@ -74,12 +77,14 @@ export function InsideEvent({
   role,
   who,
   locale,
+  moreAtStart = false,
   onAt,
   onSignOut,
   onAccount,
 }: {
   at: 'overview' | 'people';
   locale: string;
+  moreAtStart?: boolean;
   code: Redeemable;
   role: CodeRole;
   who: string;
@@ -87,9 +92,11 @@ export function InsideEvent({
   onSignOut: () => void;
   onAccount: () => void;
 }) {
-  const phone = useLayout().kind === 'phone';
+  const kind = useLayout().kind;
+  const phone = kind === 'phone';
+  const side = kind === 'tabletLandscape';
   const insets = useSafeAreaInsets();
-  const [more, setMore] = useState(false);
+  const [more, setMore] = useState(moreAtStart);
   const [told, setTold] = useState<string | null>(null);
   const moreOpener = useRef<ViewInstance>(null);
   const foot = Math.max(insets.bottom - tokens.spaceXxs, tokens.spaceLg);
@@ -115,6 +122,59 @@ export function InsideEvent({
       />
     ) : (
       <PeopleIn onBack={() => onAt('overview')} />
+    );
+
+  const sheet = (
+    <MoreSheet
+      open={more}
+      opener={moreOpener}
+      who={who}
+      title={side ? who : W.more}
+      areas={moreAreas(role, phone)}
+      onClose={() => setMore(false)}
+      onArea={(area) => {
+        setMore(false);
+        go(area);
+      }}
+      onAccount={() => {
+        setMore(false);
+        onAccount();
+      }}
+      onSignOut={() => {
+        setMore(false);
+        onSignOut();
+      }}
+    />
+  );
+  const toast = told != null && (
+    <PageToast
+      words={told}
+      onClose={() => setTold(null)}
+      bottom={phone ? foot + TAB_BAR + tokens.spaceXl : Math.max(insets.bottom, tokens.spaceLg)}
+    />
+  );
+
+  if (side)
+    return (
+      <View style={[styles.chrome, { paddingTop: insets.top }]}>
+        <SideBar
+          areas={areasFor(role)}
+          at={at}
+          who={who}
+          role={role}
+          locale={locale}
+          personRef={moreOpener}
+          onArea={go}
+          onPerson={() => setMore(true)}
+        />
+        <View style={[styles.main, { marginBottom: Math.max(insets.bottom, tokens.spaceMd) }]}>
+          <ScrollView contentContainerStyle={styles.pane} showsVerticalScrollIndicator={false}>
+            {page}
+          </ScrollView>
+        </View>
+        {sheet}
+        {toast}
+      </View>
     );
 
   return (
@@ -155,33 +215,93 @@ export function InsideEvent({
           onTab={onTab}
         />
       )}
-      <MoreSheet
-        open={more}
-        opener={moreOpener}
-        who={who}
-        areas={moreAreas(role, phone)}
-        onClose={() => setMore(false)}
-        onArea={(area) => {
-          setMore(false);
-          go(area);
-        }}
-        onAccount={() => {
-          setMore(false);
-          onAccount();
-        }}
-        onSignOut={() => {
-          setMore(false);
-          onSignOut();
-        }}
-      />
-      {told != null && (
-        <PageToast
-          words={told}
-          onClose={() => setTold(null)}
-          bottom={phone ? foot + TAB_BAR + tokens.spaceXl : Math.max(insets.bottom, tokens.spaceLg)}
-        />
-      )}
+      {sheet}
+      {toast}
     </View>
+  );
+}
+
+/** On its side, the event's sidebar: its level's areas only, and at its foot the person, whose button holds Your account and Sign out (pm and ux, 8 Nov). */
+function SideBar({
+  areas,
+  at,
+  who,
+  role,
+  locale,
+  personRef,
+  onArea,
+  onPerson,
+}: {
+  areas: readonly InsideArea[];
+  at: 'overview' | 'people';
+  who: string;
+  role: CodeRole;
+  locale: string;
+  personRef: RefObject<ViewInstance | null>;
+  onArea: (area: InsideArea) => void;
+  onPerson: () => void;
+}) {
+  const day = dayWords(EVENT.day, locale);
+  const initials = who
+    .split(' ')
+    .map((word) => word.charAt(0))
+    .filter((letter) => letter !== '')
+    .slice(0, 2)
+    .join('');
+
+  return (
+    <SidebarColumn>
+      <View style={styles.logo}>
+        <Brand lockup height={24} />
+      </View>
+      <View style={styles.sideCard} accessible accessibilityLabel={`${EVENT.name}. ${day}`}>
+        <EventThumb
+          event={{ id: EVENT.id, mesh: meshFor(EVENT.id), photo: false }}
+          side={40}
+          radius={12}
+        />
+        <View style={styles.grow}>
+          <Text size={14} weight="bold" numberOfLines={2} accessible={false}>
+            {EVENT.name}
+          </Text>
+          <Text size={12.5} weight="medium" accessible={false} style={styles.secondary}>
+            {day}
+          </Text>
+        </View>
+      </View>
+      <SidebarPlaces>
+        {areas.map((area) => (
+          <SidebarPlace
+            key={area}
+            label={AREA_WORDS[area]}
+            glyph={AREA_GLYPH[area]}
+            on={area === at}
+            onPress={() => onArea(area)}
+            testID={`inside.side.${area}`}
+          />
+        ))}
+      </SidebarPlaces>
+      <View style={styles.grow} />
+      <Pressable
+        ref={personRef}
+        onPress={onPerson}
+        style={({ pressed }) => [styles.person, pressed && styles.pressed]}
+        accessibilityRole="button"
+        accessibilityLabel={`${who}, ${role}`}
+        testID="inside.side.person"
+      >
+        <Avatar initials={initials} side={tokens.space5xl} tone={4} />
+        <View style={styles.grow}>
+          <Text size={14} weight="semibold" accessible={false}>
+            {who}
+          </Text>
+          <Text size={12} weight="medium" accessible={false} style={styles.secondary}>
+            {role}
+          </Text>
+        </View>
+        <Glyph name="updown" size={15} ink={tokens.colorInkSecondary} />
+      </Pressable>
+    </SidebarColumn>
   );
 }
 
@@ -354,6 +474,7 @@ function MoreSheet({
   open,
   opener,
   who,
+  title,
   areas,
   onClose,
   onArea,
@@ -363,6 +484,7 @@ function MoreSheet({
   open: boolean;
   opener: RefObject<ViewInstance | null>;
   who: string;
+  title: string;
   areas: readonly InsideArea[];
   onClose: () => void;
   onArea: (area: InsideArea) => void;
@@ -381,7 +503,7 @@ function MoreSheet({
       <View style={styles.more}>
         <View style={styles.moreHead}>
           <Text size={22} weight="bold" accessibilityRole="header" style={styles.grow}>
-            {W.more}
+            {title}
           </Text>
           <Pressable
             onPress={onClose}
@@ -493,6 +615,33 @@ function Capsule({
 
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: tokens.colorCard },
+  chrome: { flex: 1, flexDirection: 'row', backgroundColor: tokens.colorNeutralFill },
+  main: {
+    flex: 1,
+    marginRight: tokens.spaceMd,
+    borderRadius: tokens.space3xl,
+    borderWidth: 1,
+    borderColor: tokens.colorBorder,
+    backgroundColor: tokens.colorCard,
+    overflow: 'hidden',
+  },
+  pane: { paddingTop: 26, paddingHorizontal: 30, paddingBottom: tokens.space6xl, gap: 18 },
+  logo: { height: 30, justifyContent: 'center', paddingHorizontal: tokens.spaceMd },
+  sideCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spaceMd,
+    padding: tokens.spaceMd,
+    borderRadius: tokens.spaceXl,
+    backgroundColor: tokens.colorCard,
+  },
+  person: {
+    minHeight: 52,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spaceMd,
+    paddingHorizontal: tokens.spaceSm,
+  },
   grow: { flex: 1, minWidth: 0 },
   pressed: { opacity: tokens.opacityPressed },
   secondary: { color: tokens.colorInkSecondary },

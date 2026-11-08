@@ -78,7 +78,7 @@ function RedeemFlow({ start }: { start: Flow }) {
   const [visit, setVisit] = useState(0);
   const locale = formattingLocale('en', getLocales()[0]?.languageTag);
   const go = useCallback<Go>((next) => {
-    setFlow((now) => ({ ...now, held: false, ...next }));
+    setFlow((now) => ({ ...now, held: false, more: false, ...next }));
     setVisit((now) => now + 1);
   }, []);
   const signOut = () => go(freshFlow());
@@ -172,6 +172,7 @@ function RedeemFlow({ start }: { start: Flow }) {
           role={flow.role}
           who={flow.who}
           locale={locale}
+          moreAtStart={flow.more}
           onAt={(at) => go({ step: at === 'overview' ? 'inside' : 'peopleIn' })}
           onSignOut={signOut}
           onAccount={() => router.push('/demo/settings/account?as=noOrg')}

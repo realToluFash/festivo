@@ -67,6 +67,7 @@ const JOINING: Record<RedeemState, readonly [string, string]> = {
   'event-in': ['Inside the event · can check guests in', 'Check guests in on its card'],
   'event-in-view': ['Inside the event · can view', 'The same card with no step'],
   'people-in': ['Inside the event · People', 'Read only, as João reads it'],
+  'more-in': ['Inside the event · More', 'Your account and Sign out'],
 };
 
 function boards<S extends string>(
