@@ -11,7 +11,7 @@ import { setLanguage } from '../i18n/index.ts';
 import { __setSessionState, type Session } from '../session.ts';
 import { routes } from './index.tsx';
 import { membership } from '../test-memberships.ts';
-import { STYLES } from '../test-styles.ts';
+import { STYLES, cssRule } from '../test-styles.ts';
 
 const MEMBERSHIP = membership({ id: 'org_1', name: 'Okonkwo Events' });
 
@@ -642,6 +642,48 @@ describe('the application tree', () => {
       fireEvent.keyDown(document, { key: 'Tab' });
 
       expect(document.activeElement).toBe(dialog.querySelector('button'));
+    });
+  });
+
+  describe('settings at a desk (sc-30190)', () => {
+    beforeEach(() => {
+      vi.spyOn(globalThis, 'fetch').mockReturnValue(new Promise(() => {}));
+    });
+
+    function selectedTile(): string[] {
+      const list = screen.getByRole('navigation', { name: 'Settings' });
+
+      return within(list)
+        .getAllByRole('link')
+        .filter((link) => link.getAttribute('aria-current') === 'page')
+        .map((link) => link.textContent ?? '');
+    }
+
+    it.each([
+      ['/app/account', 'Account'],
+      ['/app/account/security', 'Security'],
+      ['/app/account/notifications', 'Notifications'],
+      ['/app/settings', 'General'],
+      ['/app/settings/members', 'Members'],
+      ['/app/settings/sign-in-rules', 'Sign-in rules'],
+    ])('opens %s with the list beside it and %s selected', (path, name) => {
+      at(path);
+
+      expect(selectedTile()).toEqual([expect.stringMatching(`${name}$`)]);
+    });
+
+    it('opens the account of somebody in no organisation with the list beside it, the page as wide as it was alone', () => {
+      __setSessionState({
+        status: 'signedIn',
+        session: { ...ADA, organisation: null, organisations: [] },
+      });
+
+      at('/app/account/notifications');
+
+      expect(selectedTile()).toEqual(['Notifications']);
+      expect(cssRule('.no-organisation-account:has(> .settings-desk)')).toMatch(
+        /max-width: calc\(47\.5rem \+ 2 \* var\(--space5xl\) \+ 17rem\);/u,
+      );
     });
   });
 

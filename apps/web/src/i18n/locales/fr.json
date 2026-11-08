@@ -493,7 +493,6 @@
   },
   "account": {
     "title": "Votre compte",
-    "sections": "Sections du compte",
     "sectionAccount": "Compte",
     "sectionSecurity": "Sécurité",
     "sectionNotifications": "Notifications"
