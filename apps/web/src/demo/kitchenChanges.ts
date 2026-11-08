@@ -154,6 +154,13 @@ function needLines(
     }
   }
 
+  if (kind === 'diets')
+    for (const code of new Set([...Object.keys(copy.otherDiets), ...Object.keys(now.otherDiets)]))
+      net.set(
+        code,
+        (net.get(code) ?? 0) + (now.otherDiets[code] ?? 0) - (copy.otherDiets[code] ?? 0),
+      );
+
   const counts: Line[] = [];
 
   for (const [code, change] of net) {
@@ -501,6 +508,21 @@ const ERASED_COPY: Figures = counted(
   { 's-burrata': 42, 'm-risotto': 16, 'd-tart': 54 },
 );
 
+export const LONG_NAMES = {
+  dishWas:
+    'Slow-braised goat in Scotch bonnet pepper sauce with smoked plantain, roasted yam purée, ugu leaf oil and crisp shallots',
+  dish: 'Pan-seared Atlantic sea bass with coconut and lemongrass broth, charred okra, sweet potato mash and a suya-spiced crumb',
+  sideWas: 'Whole, on the bone, with lemon, garlic, thyme and red chilli',
+  side: 'Filleted, skin crisped, with scotch bonnet and lime dressing',
+} as const;
+
+const LONG_ITEMS = (dish: string, way: string) =>
+  BASE.items.flatMap((one) =>
+    one.id === 'm-bass'
+      ? [{ ...one, name: dish }, item('m-bass-way', way, 30, 'variant', 'm-bass')]
+      : [one],
+  );
+
 export interface ChangesSample {
   copy: Figures;
   now: Figures;
@@ -517,6 +539,11 @@ export const SAMPLES = {
   },
   person: { copy: PERSON_COPY, now: PERSON_NOW, erased: [] },
   erased: { copy: ERASED_COPY, now: ERASED_NOW, erased: ['g-kwame'] },
+  long: {
+    copy: { ...BASE, items: LONG_ITEMS(LONG_NAMES.dishWas, LONG_NAMES.sideWas) },
+    now: { ...BASE, items: LONG_ITEMS(LONG_NAMES.dish, LONG_NAMES.side) },
+    erased: [],
+  },
 } satisfies Record<string, ChangesSample>;
 
 export type SampleName = keyof typeof SAMPLES;

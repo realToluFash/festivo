@@ -4,6 +4,7 @@ import {
   BASE,
   type Figures,
   type Item,
+  LONG_NAMES,
   SAMPLES,
   type SampleName,
   allergyCounts,
@@ -156,6 +157,23 @@ describe('Changes since: what counts as a change', () => {
       'Chocolate tart 53 to 54',
       'Removed: Pepper soup, was 52',
       'Removed: Burrata with peaches, was 41',
+    ]);
+  });
+
+  it('counts a diet among the guests with no allergy, who are never named', () => {
+    const copy = { ...BASE, otherDiets: { ...BASE.otherDiets, halal: 17, vegan: 5 } };
+
+    expect(texts(copy, BASE)).toEqual(['[1 more halal diet]', '[1 fewer vegan diet]']);
+    expect(texts(copy, BASE, COUNTS)).toEqual(['[1 more halal diet]', '[1 fewer vegan diet]']);
+  });
+
+  it('keeps a 120-character dish and a 60-character variant whole when renamed', () => {
+    expect(LONG_NAMES.dish).toHaveLength(119);
+    expect(LONG_NAMES.dishWas).toHaveLength(120);
+    expect(LONG_NAMES.side).toHaveLength(60);
+    expect(linesFor('long', false, true).map((line) => line.text)).toEqual([
+      `Renamed: ${LONG_NAMES.dishWas}, now ${LONG_NAMES.dish}`,
+      `Renamed: ${LONG_NAMES.dish} · ${LONG_NAMES.sideWas}, now ${LONG_NAMES.side}`,
     ]);
   });
 
