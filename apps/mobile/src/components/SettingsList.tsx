@@ -1,9 +1,9 @@
 import { primaryEmailAddress } from '@soirely/api-client';
+import { initials, roleName } from '@soirely/domain';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Fragment, type ReactNode, useRef } from 'react';
+import { type ReactNode, useRef } from 'react';
 import {
   type LayoutRectangle,
-  Pressable,
   ScrollView,
   type ScrollViewInstance,
   StyleSheet,
@@ -18,8 +18,7 @@ import {
   settingsGroups,
 } from '../kit/appNav.ts';
 import { OPENED_IN_PLACE_OF_SETTINGS, sectionTakesBack } from '../kit/systemBack.ts';
-import { DemoRow, demoHere } from '../demo/DemoEntry.tsx';
-import { breakableEmail } from '../layout/textSize.ts';
+import { demoHere } from '../demo/DemoEntry.tsx';
 import {
   type LayoutKind,
   SETTINGS_LIST_WIDTH,
@@ -29,8 +28,18 @@ import {
 } from '../layout/useLayout.ts';
 import { signOutHere, useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
-import { SmallCapsLabel } from './SmallCapsLabel.tsx';
-import { Text } from './Text.tsx';
+import { Caps } from './SettingsParts.tsx';
+import {
+  type ListedSection,
+  PersonCard,
+  type SettingsPerson,
+  SettingsDemoRow,
+  SettingsGroup,
+  SettingsSignOut,
+  rowSide,
+  settingsHomeStyles,
+  useSectionRows,
+} from './SettingsHome.tsx';
 
 /** The section keeps its place in the tree on every layout, so a rotation keeps what was typed. */
 export function SettingsSplit({
@@ -59,6 +68,7 @@ export function SettingsList({ kind, open }: { kind: LayoutKind; open: SettingsS
   const { account, organisation } = useSignedIn();
   const width = useSideListWidth(SETTINGS_LIST_WIDTH);
   const alone = !settingsListBeside(kind);
+  const dense = !alone;
   const scroll = useRef<ScrollViewInstance>(null);
   // Each section mounts the list afresh at its top, so the open row is brought into view once.
   const seen = useRef<{ viewport?: number; row?: LayoutRectangle; revealed?: boolean }>({});
@@ -74,119 +84,92 @@ export function SettingsList({ kind, open }: { kind: LayoutKind; open: SettingsS
       });
     }
   };
-  const line: Record<SettingsSection, string> = {
-    account: t('settings.accountLine'),
-    security: t('settings.securityLine'),
-    notifications: t('settings.notificationsLine'),
-    organisation: t('settings.organisationLine', { name: organisation?.name ?? '' }),
-    members: t('settings.membersLine', { name: organisation?.name ?? '' }),
-    roles: t('settings.rolesLine', { name: organisation?.name ?? '' }),
-    signInRules: t('settings.signInRulesLine', { name: organisation?.name ?? '' }),
+  const rowOf = useSectionRows(organisation?.name ?? null);
+  const person: SettingsPerson = {
+    name: account?.name ?? '',
+    initials: initials(account?.name ?? ''),
+    email: account == null ? '' : (primaryEmailAddress(account) ?? ''),
+    role: organisation == null ? null : roleName(t, organisation.role),
+    organisation: organisation?.name ?? null,
   };
-  const groups = settingsGroups(organisation).map(({ heading, sections }, group) => ({
-    heading: (
-      <SmallCapsLabel
-        style={[
-          styles.label,
-          !alone && styles.labelTablet,
-          !alone && group > 0 && styles.labelLater,
-        ]}
-      >
-        {t(`settings.${heading}`)}
-      </SmallCapsLabel>
-    ),
-    key: heading,
-    rows: sections.map((section, index) => (
+  const go = (section: SettingsSection) => {
+    if (open === section) return;
+    if (alone) router.push(SECTION_HREF[section]);
+    else
+      router.replace({
+        pathname: SECTION_HREF[section],
+        params: { from: OPENED_IN_PLACE_OF_SETTINGS },
+      });
+  };
+  const groups = settingsGroups(organisation).map(({ heading, sections }) => ({
+    heading: t(`settings.${heading}`),
+    rows: sections
+      .filter((section): section is ListedSection => section !== 'account')
+      .map((section) => rowOf(section, rowSide(dense))),
+  }));
+  const group = ({ heading, rows }: (typeof groups)[number], top: number) =>
+    rows.length === 0 ? null : (
       <View
-        key={section}
+        key={heading}
         onLayout={
-          !alone && open === section
+          dense && rows.some((row) => row.key === open)
             ? (event) => reveal({ row: event.nativeEvent.layout })
             : undefined
         }
       >
-        {alone && index > 0 && <View style={styles.divider} />}
-        <Pressable
-          style={[
-            styles.section,
-            !alone && styles.sectionTablet,
-            open === section && styles.sectionOpen,
-          ]}
-          onPress={() =>
-            alone
-              ? router.push(SECTION_HREF[section])
-              : router.replace({
-                  pathname: SECTION_HREF[section],
-                  params: { from: OPENED_IN_PLACE_OF_SETTINGS },
-                })
-          }
-          accessibilityRole="button"
-          accessibilityState={{ selected: open === section }}
-          testID={`settings.${section}`}
-        >
-          <View style={styles.fill}>
-            <Text
-              size={tokens.typeTitleSection.size}
-              weight="semibold"
-              style={open === section && styles.titleOpen}
-            >
-              {t(`settings.${section}`)}
-            </Text>
-            <Text size={tokens.typeBody.size} muted>
-              {line[section]}
-            </Text>
-          </View>
-          <Text
-            size={tokens.typeTitleDialog.size}
-            muted
-            accessibilityElementsHidden
-            importantForAccessibility="no"
-            accessible={false}
-          >
-            ›
-          </Text>
-        </Pressable>
+        <Caps text={heading} top={top} />
+        <SettingsGroup
+          rows={rows}
+          dense={dense}
+          open={open}
+          onOpen={(key) => go(key as SettingsSection)}
+        />
       </View>
-    )),
-  }));
-  const demo = demoHere() && <DemoRow style={[styles.section, !alone && styles.sectionTablet]} />;
-  const signOut = (
-    <View style={[styles.foot, !alone && styles.footTablet]}>
-      {kind !== 'tabletLandscape' && account != null && (
-        <Text
-          size={tokens.typeBody.size}
-          muted
-          accessibilityLabel={t('settings.signedInAs', {
-            email: primaryEmailAddress(account) ?? '',
-          })}
-        >
-          {t('settings.signedInAs', { email: breakableEmail(primaryEmailAddress(account) ?? '') })}
-        </Text>
-      )}
-      <Pressable
-        style={[styles.signOut, kind === 'tabletLandscape' && styles.signOutDense]}
-        onPress={signOutHere}
-        accessibilityRole="button"
-        testID="settings.signOut"
-      >
-        <Text size={tokens.typeBodyPhone.size} weight="semibold">
-          {t('settings.signOut')}
-        </Text>
-      </Pressable>
-    </View>
+    );
+  const card = (size: 'phone' | 'portrait' | 'column') => (
+    <PersonCard
+      person={person}
+      size={size}
+      open={open === 'account'}
+      onPress={() => go('account')}
+    />
+  );
+  const foot = (height: number) => (
+    <>
+      {demoHere() && <SettingsDemoRow dense={dense} onDemo={() => router.push('/demo')} />}
+      <SettingsSignOut height={height} onSignOut={signOutHere} />
+    </>
   );
 
-  if (alone) {
+  if (kind === 'phone')
     return (
-      <View style={styles.phoneList}>
-        {groups.map(({ key, heading, rows }) => (
-          <Fragment key={key}>
-            {heading}
-            <View style={styles.card}>{rows}</View>
-          </Fragment>
-        ))}
-        {demo !== false && <View style={styles.card}>{demo}</View>}
-        {signOut}
+      <View>
+        {card('phone')}
+        {groups.map((each) => group(each, 26))}
+        <View style={settingsHomeStyles.footPhone}>{foot(tokens.sizeHitPhoneHero)}</View>
+      </View>
+    );
+
+  if (alone) {
+    const [yours, theirs] = groups;
+    const left = (
+      <>
+        {yours != null && group(yours, tokens.space4xl)}
+        <View style={settingsHomeStyles.footPhone}>{foot(tokens.sizeHitPhoneHero)}</View>
+      </>
+    );
+
+    return (
+      <View>
+        {card('portrait')}
+        {theirs == null ? (
+          <View style={settingsHomeStyles.single}>{left}</View>
+        ) : (
+          <View style={settingsHomeStyles.columns}>
+            <View style={styles.fill}>{left}</View>
+            <View style={styles.fill}>{group(theirs, tokens.space4xl)}</View>
+          </View>
+        )}
       </View>
     );
   }
@@ -195,18 +178,13 @@ export function SettingsList({ kind, open }: { kind: LayoutKind; open: SettingsS
     <ScrollView
       ref={scroll}
       style={[styles.tabletList, { width }]}
-      contentContainerStyle={styles.tabletLines}
+      contentContainerStyle={settingsHomeStyles.column}
       onLayout={(event) => reveal({ viewport: event.nativeEvent.layout.height })}
+      showsVerticalScrollIndicator={false}
     >
-      {groups.map(({ key, heading, rows }) => (
-        <Fragment key={key}>
-          {heading}
-          {rows}
-        </Fragment>
-      ))}
-      {demo}
-      <View style={styles.fill} />
-      {signOut}
+      {card('column')}
+      {groups.map((each, index) => group(each, index === 0 ? tokens.spaceXxl : tokens.spaceXl))}
+      <View style={settingsHomeStyles.footColumn}>{foot(tokens.sizeHit)}</View>
     </ScrollView>
   );
 }
@@ -223,100 +201,14 @@ export function useBackToSettings() {
   });
 }
 
-/** What a tablet shows beside the list before a section is chosen. */
-export function ChooseSection() {
-  const { t } = useTranslation();
-  const { organisation } = useSignedIn();
-
-  return (
-    <View style={styles.choose}>
-      <Text size={tokens.typeTitleSection.size} weight="semibold">
-        {t('settings.choose')}
-      </Text>
-      <Text size={tokens.typeBodyPhone.size} muted style={styles.center}>
-        {organisation == null
-          ? t('settings.chooseLine')
-          : t('settings.chooseLineWithOrganisation', { name: organisation.name })}
-      </Text>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   fill: { flex: 1, minWidth: 0 },
   row: { flexDirection: 'row' },
-  center: { textAlign: 'center' },
-  phoneList: { gap: tokens.spaceLg },
-  label: { paddingHorizontal: tokens.spaceXxs },
-  labelTablet: { paddingHorizontal: 14, paddingVertical: tokens.spaceXxs },
-  labelLater: { paddingTop: tokens.spaceLg },
-  card: {
-    overflow: 'hidden',
-    borderRadius: tokens.radiusCardPhone,
-    borderWidth: 1,
-    borderColor: tokens.colorBorder,
-    backgroundColor: tokens.colorCard,
-  },
-  divider: {
-    height: 1,
-    marginHorizontal: tokens.spaceXl,
-    backgroundColor: tokens.colorInsetBorder,
-  },
-  section: {
-    minHeight: 64,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.spaceLg,
-    paddingVertical: tokens.spaceMd,
-    paddingHorizontal: tokens.spaceXl,
-  },
-  sectionTablet: {
-    paddingVertical: tokens.spaceSm,
-    paddingHorizontal: 14,
-    borderRadius: tokens.radiusRow,
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  // [fd]'s selected row, the accent edge on its tint, never a dark or grey fill (sc-23172).
-  sectionOpen: {
-    borderWidth: 2,
-    borderColor: tokens.colorAccent,
-    backgroundColor: tokens.colorRowSelected,
-  },
-  titleOpen: { color: tokens.colorAccentText },
-  foot: { gap: tokens.spaceSm, paddingTop: tokens.spaceSm, paddingHorizontal: tokens.spaceXxs },
-  footTablet: { paddingTop: 0, paddingHorizontal: tokens.spaceHair },
-  signOut: {
-    minHeight: tokens.sizeHitPhonePrimary,
-    paddingVertical: tokens.spaceXxs,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: tokens.sizeHitPhonePrimary / 2,
-    borderWidth: 1,
-    borderColor: tokens.colorControlBorder,
-    backgroundColor: tokens.colorCard,
-  },
-  signOutDense: { minHeight: tokens.sizeHit, borderRadius: tokens.sizeHit / 2 },
   tabletList: {
     flexGrow: 0,
     flexShrink: 0,
     backgroundColor: tokens.colorCard,
     borderRightWidth: 1,
     borderRightColor: tokens.colorBorder,
-  },
-  // A short list still reaches the foot, so signing out sits at the bottom until the list outgrows the screen.
-  tabletLines: {
-    flexGrow: 1,
-    gap: tokens.spaceXs,
-    paddingVertical: tokens.spaceXl,
-    paddingHorizontal: tokens.spaceLg,
-  },
-  choose: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: tokens.spaceSm,
-    paddingVertical: tokens.space6xl,
-    paddingHorizontal: tokens.spaceXl,
   },
 });

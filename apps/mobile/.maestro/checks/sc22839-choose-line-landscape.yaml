@@ -1,4 +1,4 @@
-# Settings' empty tablet pane says what Account holds, in landscape. sc-22839.
+# Settings' empty tablet pane asks for a section, in landscape. sc-22839, sc-30412.
 appId: host.exp.Exponent
 ---
 - setOrientation: LANDSCAPE_LEFT
@@ -10,6 +10,5 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd:
     timeout: 5000
 - assertVisible: '{{t:settings.choose}}'
-- assertVisible: '.*{{t:settings.chooseLine}}.*'
 - takeScreenshot: choose-landscape
 - setOrientation: PORTRAIT

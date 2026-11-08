@@ -1,4 +1,4 @@
-# Settings' empty tablet pane says what Account holds, in portrait. sc-22839.
+# Settings' empty tablet pane asks for a section, in portrait. sc-22839, sc-30412.
 appId: host.exp.Exponent
 ---
 - setOrientation: PORTRAIT
@@ -10,5 +10,4 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd:
     timeout: 5000
 - assertVisible: '{{t:settings.choose}}'
-- assertVisible: '.*{{t:settings.chooseLine}}.*'
 - takeScreenshot: choose-portrait
