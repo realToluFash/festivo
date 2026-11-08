@@ -313,6 +313,7 @@ export function MessagesScreen({
   };
   const talk: Talk = {
     m,
+    closed,
     locale,
     dispatch,
     wide,
@@ -480,6 +481,7 @@ export function MessagesScreen({
       view={reachViewOf(m, of)}
       m={m}
       onSendAgain={sendAgain}
+      closed={closed}
       head={
         <>
           {back}
@@ -642,7 +644,7 @@ export function MessagesScreen({
       <View style={styles.fill}>
         <View style={styles.centred}>
           <Text size={14.5} weight="medium" style={[styles.secondary, styles.middle]}>
-            {m.phase === 'first' ? W.noneLine : W.pickOne}
+            {m.phase === 'first' ? W.noneLine : closed == null ? W.pickOne : W.pickOneClosed}
           </Text>
         </View>
         <MiniComposer
