@@ -1,4 +1,4 @@
-/* General at a desk, in B · Summary first: the app's Organisation, with its tile, its switch and its pickers. */
+/* General at a desk, in B · Summary first: the organisation tile, the switch, the pickers and the bones the product and the demo share. */
 
 .desk-disc.general-tile {
   border-radius: var(--radiusCardPhone);
@@ -178,4 +178,14 @@
   display: flex;
   align-items: center;
   gap: var(--spaceXs);
+}
+
+.general-held {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceLg);
+}
+
+a.desk-step {
+  text-decoration: none;
 }

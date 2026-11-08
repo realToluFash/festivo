@@ -3,10 +3,9 @@ import {
   type OrganisationField,
   organisationChanges,
 } from '@soirely/domain';
-import { useContext, useEffect, useId, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { useRef, useState } from 'react';
 
-import { ActionPair } from '../components/ActionPair.tsx';
+import { Picker } from '../components/GeneralParts.tsx';
 import {
   type Candidate,
   DETAILS_WORDS as W,
@@ -23,7 +22,9 @@ import {
   SEND_MS,
   TRY_AGAIN,
   type TransferProblems,
+  SHOWN_IN,
   changeCount,
+  choicesOf,
   choiceName,
   deleteBody,
   detailProblems,
@@ -32,12 +33,10 @@ import {
   domainRefusal,
   nameMatches,
   savedWords,
-  shownChoices,
   transferProblems,
   transferRefusal,
 } from './general.ts';
 import { Glyph } from '../components/Glyph.tsx';
-import { LayersContext, useDeskDialog } from '../layers.ts';
 import { SAMPLE } from './rules.ts';
 import {
   Ask,
@@ -194,8 +193,12 @@ export function DetailsDialog({
         </div>
       </Dialog>
       {picking != null && (
-        <PickerBox
-          field={picking}
+        <Picker
+          back={W.editTitle}
+          title={W[picking]}
+          search={PICKERS[picking].search}
+          choices={choicesOf(picking)}
+          locale={SHOWN_IN}
           value={values[picking]}
           onBack={() => back(picking)}
           onChoose={(code) => back(picking, code)}
@@ -212,97 +215,6 @@ export function DetailsDialog({
         />
       )}
     </>
-  );
-}
-
-function PickerBox(props: PickerProps) {
-  const { host } = useContext(LayersContext);
-
-  return host == null ? null : createPortal(<PickerList {...props} />, host);
-}
-
-interface PickerProps {
-  field: Picked;
-  value: string;
-  onBack: () => void;
-  onChoose: (code: string) => void;
-}
-
-/** ‹ Organisation details, the field's name, then search and the list, the current choice ticked in Violet. */
-function PickerList({ field, value, onBack, onChoose }: PickerProps) {
-  const id = useId();
-  const box = useRef<HTMLDivElement>(null);
-  const search = useRef<HTMLInputElement>(null);
-  const current = useRef<HTMLButtonElement>(null);
-  const [needle, setNeedle] = useState('');
-  const covered = useDeskDialog(box, search, onBack);
-
-  useEffect(() => {
-    current.current?.scrollIntoView?.({ block: 'center' });
-  }, []);
-
-  return (
-    <div
-      ref={box}
-      className="desk-dialog general-picker"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby={`${id}-title`}
-      tabIndex={-1}
-      inert={covered}
-    >
-      <ActionPair
-        className="desk-nav"
-        dismiss={
-          <button type="button" className="desk-nav-cancel general-back" onClick={onBack}>
-            <Glyph name="back" size={20} weight={2.4} />
-            {W.editTitle}
-          </button>
-        }
-        between={
-          <h2 id={`${id}-title`} className="desk-nav-title">
-            {W[field]}
-          </h2>
-        }
-        confirm={<span className="general-room" aria-hidden="true" />}
-      />
-      <div className="general-search">
-        <div className="desk-box">
-          <Glyph name="search" size={18} weight={2.2} />
-          <input
-            ref={search}
-            type="search"
-            value={needle}
-            aria-label={PICKERS[field].search}
-            placeholder={PICKERS[field].search}
-            spellCheck={false}
-            onChange={(event) => setNeedle(event.target.value)}
-          />
-        </div>
-      </div>
-      <div className="desk-dialog-body general-choices">
-        <ul className="desk-rows">
-          {shownChoices(field, needle).map((choice) => {
-            const on = choice.code === value;
-
-            return (
-              <li key={choice.code}>
-                <button
-                  ref={on ? current : undefined}
-                  type="button"
-                  className={on ? 'desk-row is-picked' : 'desk-row'}
-                  aria-current={on ? 'true' : undefined}
-                  onClick={() => onChoose(choice.code)}
-                >
-                  <RowWords title={choice.name} />
-                  {on && <Glyph name="tick" size={18} weight={2.6} />}
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      </div>
-    </div>
   );
 }
 
