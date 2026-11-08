@@ -2669,6 +2669,14 @@ describe('the flows a batch runs', () => {
       ).toBe(true);
       const session = readFileSync(join(target, 'batch/session.yaml'), 'utf8');
       expect(session).not.toContain('{{t:');
+      expect(session).toMatch(/when:\s+visible:\s+id: 'settings\\\.\.\*'\s+commands:/);
+      for (const code of ['en', 'es', 'fr', 'pt']) {
+        for (const [, condition] of session.matchAll(/when:\s+visible: '(.*)'/g)) {
+          expect(catalogues[code].settings.title).not.toMatch(
+            new RegExp(`^(?:${condition.replaceAll("''", "'")})$`),
+          );
+        }
+      }
       const signedIn = new RegExp(
         `^(?:${[...session.matchAll(/notVisible: '(.*)'/g)].at(-1)[1].replaceAll("''", "'")})$`,
       );
