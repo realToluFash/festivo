@@ -86,6 +86,8 @@ const STATE_WORD: Record<CeilingState, string> = {
 
 export const say = {
   state: (state: CeilingState) => STATE_WORD[state],
+  notPricedLine: (count: number) =>
+    count === 1 ? '1 cost not priced yet.' : `${count} costs not priced yet.`,
   notPriced: (count: number) =>
     count === 1 ? '1 cost not priced yet' : `${count} costs not priced yet`,
   range: (low: string, high: string) => (low === high ? low : `${low} to ${high}`),

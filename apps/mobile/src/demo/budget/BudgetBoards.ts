@@ -4,6 +4,7 @@ import { WEDDING } from './BudgetSample.ts';
 /** The demo home's Budget group: each app ?state= of budget-a-spec.md §9, deep-linked into the wedding. */
 const BOARDS: Record<BudgetState, readonly [string, string]> = {
   populated: ['in use', 'Mark paid on the card, and on each Due next row'],
+  early_on: ['early on', 'Nothing scheduled: the card says 2 costs not priced yet'],
   scrolled: ['scrolled', 'The ceiling, Against plan, Who is paying, the costs'],
   loading: ['loading', 'The card’s place and the rows as shapes'],
   live_update: ['live', 'Dinner goes to £70.00 a head; what it moved washes'],
@@ -11,7 +12,7 @@ const BOARDS: Record<BudgetState, readonly [string, string]> = {
   reconnecting: ['reconnecting', 'Getting the latest figures…'],
   never_loaded: ['never loaded', 'No figures and no zeros'],
   no_lines: ['no costs yet', 'Costs are added on a computer; Who is paying opens'],
-  nothing_due: ['nothing due', 'No step on the card; Nothing is due.'],
+  nothing_due: ['nothing due, near the end', 'The card says the ceiling, no step; Nothing is due.'],
   mark_paid_open: ['Mark paid', 'sc-88’s form, £840.00 filled in'],
   mark_paid_earlier: ['Mark paid, an earlier date', 'Date paid Mon, Nov 2, from the calendar'],
   marked_paid: ['marked paid', 'The row stays with Undo; the card moves on'],

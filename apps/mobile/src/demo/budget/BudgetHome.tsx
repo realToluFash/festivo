@@ -23,6 +23,8 @@ import {
   AS_OF,
   type BudgetModel,
   type Ledger,
+  type Totals,
+  cardThing,
   amountOf,
   canMark,
   categoriesIn,
@@ -33,7 +35,6 @@ import {
   isOverdue,
   money,
   nextDay,
-  nextPayment,
   owed,
   payersOf,
   paymentOf,
@@ -89,9 +90,28 @@ export interface HomeActions {
 }
 
 /** The card's one thing: an overdue payment, else the soonest due, in words (budget-a-spec.md §5). */
-export function cardSays(ledger: Ledger, locale: string): { id: string; words: string } | null {
-  const next = nextPayment(ledger);
-  if (next == null) return null;
+export function ceilingSentence(totals: Totals, locale: string): string {
+  const limit = CEILINGS.whole;
+  const state = ceilingState(limit, totals.settled, totals.ifAll);
+  if (state === 'over') return say.over(whole(totals.settled, locale), whole(limit, locale));
+  if (state === 'overIf')
+    return say.overIf(
+      whole(totals.settled, locale),
+      whole(totals.ifAll, locale),
+      whole(limit, locale),
+    );
+  return say.within(whole(totals.ifAll, locale), whole(limit, locale));
+}
+
+export function cardSays(
+  ledger: Ledger,
+  totals: Totals,
+  locale: string,
+): { id: string | null; words: string } {
+  const thing = cardThing(ledger, totals);
+  if (thing.kind === 'notPriced') return { id: null, words: say.notPricedLine(thing.count) };
+  if (thing.kind === 'ceiling') return { id: null, words: ceilingSentence(totals, locale) };
+  const next = thing.payment;
   const vendor = VENDORS[next.vendor].name;
   const amount = whole(next.amount, locale);
   const date = days.short(next.due, locale);
@@ -104,7 +124,7 @@ export function cardSays(ledger: Ledger, locale: string): { id: string; words: s
 /** A changed figure washes Tint for 1.6 s; with Reduce motion it changes at once (sc-85, sc-93). */
 function Wash({ on, onDone, children }: { on: boolean; onDone: () => void; children: ReactNode }) {
   const reduced = useReducedMotion();
-  const [fade] = useState(() => new Animated.Value(on && !reduced ? 1 : 0));
+  const [fade] = useState(() => new Animated.Value(0));
 
   useEffect(() => {
     if (!on) return undefined;
@@ -112,6 +132,8 @@ function Wash({ on, onDone, children }: { on: boolean; onDone: () => void; child
       onDone();
       return undefined;
     }
+    // A row is on screen before its figure changes, so the wash starts full when the change arrives.
+    fade.setValue(1);
     const run = Animated.timing(fade, {
       toValue: 0,
       delay: WASH_MS,
@@ -121,7 +143,10 @@ function Wash({ on, onDone, children }: { on: boolean; onDone: () => void; child
     run.start(({ finished }) => {
       if (finished) onDone();
     });
-    return () => run.stop();
+    return () => {
+      run.stop();
+      fade.setValue(0);
+    };
   }, [on, reduced, fade, onDone]);
 
   return (
@@ -281,16 +306,7 @@ function Ceiling({
   const totals = totalsOf(m.lines);
   const limit = CEILINGS.whole;
   const state = ceilingState(limit, totals.settled, totals.ifAll);
-  const sentence =
-    state === 'over'
-      ? say.over(whole(totals.settled, locale), whole(limit, locale))
-      : state === 'overIf'
-        ? say.overIf(
-            whole(totals.settled, locale),
-            whole(totals.ifAll, locale),
-            whole(limit, locale),
-          )
-        : say.within(whole(totals.ifAll, locale), whole(limit, locale));
+  const sentence = ceilingSentence(totals, locale);
 
   return (
     <View onLayout={onLayout}>
@@ -526,7 +542,8 @@ export function BudgetHome({
     );
 
   const totals = totalsOf(m.lines);
-  const next = canMark(m) ? cardSays(m.ledger, locale) : null;
+  const next = canMark(m) ? cardSays(m.ledger, totals, locale) : null;
+  const nextId = next?.id ?? null;
   const card = (
     <BudgetCard
       event={event}
@@ -535,11 +552,11 @@ export function BudgetHome({
       range={say.range(whole(totals.settled, locale), whole(totals.ifAll, locale))}
       says={next?.words ?? null}
       step={
-        next == null
+        nextId == null
           ? null
           : {
               label: W.markPaid,
-              onPress: () => actions.onStep(next.id),
+              onPress: () => actions.onStep(nextId),
               ...(actions.stepRef == null ? {} : { ref: actions.stepRef }),
             }
       }

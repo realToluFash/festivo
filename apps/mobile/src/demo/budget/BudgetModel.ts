@@ -28,6 +28,7 @@ import {
 
 export const BUDGET_STATES = [
   'populated',
+  'early_on',
   'scrolled',
   'loading',
   'live_update',
@@ -91,7 +92,6 @@ export function currencySymbol(locale = 'en-US'): string {
   return parts.find((part) => part.type === 'currency')?.value ?? CURRENCY;
 }
 
-/** Only the summary card rounds to whole units (pm, 7 Nov 2026). */
 export function whole(pence: number, locale = 'en-US'): string {
   return new Intl.NumberFormat(locale, {
     style: 'currency',
@@ -220,6 +220,8 @@ export interface Paid {
 export interface Ledger {
   paid: Readonly<Record<string, Paid>>;
   cancelled: readonly string[];
+  /** Early on, quoted but not yet on any schedule: owed by nobody yet. */
+  unscheduled: readonly string[];
 }
 
 export const START_LEDGER: Ledger = {
@@ -227,6 +229,7 @@ export const START_LEDGER: Ledger = {
     Object.entries(PAID_BEFORE).map(([id, { on, by }]) => [id, { amount: amountDue(id), on, by }]),
   ),
   cancelled: [],
+  unscheduled: [],
 };
 
 function amountDue(id: string): number {
@@ -240,7 +243,9 @@ export function paymentOf(id: string): Payment {
 }
 
 export function isOwed(ledger: Ledger, id: string): boolean {
-  return ledger.paid[id] == null && !ledger.cancelled.includes(id);
+  return (
+    ledger.paid[id] == null && !ledger.cancelled.includes(id) && !ledger.unscheduled.includes(id)
+  );
 }
 
 export function owed(ledger: Ledger): Payment[] {
@@ -255,6 +260,20 @@ export function isOverdue(payment: Payment): boolean {
 export function nextPayment(ledger: Ledger): Payment | null {
   const due = owed(ledger);
   return due.find(isOverdue) ?? due[0] ?? null;
+}
+
+export type CardThing =
+  | { kind: 'payment'; payment: Payment }
+  | { kind: 'notPriced'; count: number }
+  | { kind: 'ceiling'; state: CeilingState };
+
+/** The card's one thing (sc-93's pick): a payment due; early on, with nothing scheduled, what is not priced; else the ceiling. */
+export function cardThing(ledger: Ledger, totals: Totals): CardThing {
+  const next = nextPayment(ledger);
+  if (next != null) return { kind: 'payment', payment: next };
+  const early = PAYMENTS.every((payment) => ledger.unscheduled.includes(payment.id));
+  if (early && totals.notPriced > 0) return { kind: 'notPriced', count: totals.notPriced };
+  return { kind: 'ceiling', state: ceilingState(CEILINGS.whole, totals.settled, totals.ifAll) };
 }
 
 export function nextDay(day: string): string {
@@ -286,6 +305,8 @@ export function planOf(ledger: Ledger, totals: Totals = totalsOf()): Plan {
 }
 
 export function ledgerFor(state: BudgetState | null): Ledger {
+  if (state === 'early_on')
+    return { paid: {}, cancelled: [], unscheduled: PAYMENTS.map((payment) => payment.id) };
   if (state === 'nothing_due')
     return {
       ...START_LEDGER,
@@ -470,12 +491,10 @@ export interface BudgetModel {
   told: { words: string; at: number } | null;
 }
 
-const LINKS: Record<PayerKey, LinkState> = {
-  couple: 'notSent',
-  obi: 'opened',
-  bakare: 'sent',
-  funmi: 'notSent',
-};
+const LINKS = Object.fromEntries(PAYERS.map((payer) => [payer.key, payer.link])) as Record<
+  PayerKey,
+  LinkState
+>;
 
 export function startOf(state: BudgetState | null, removed: string): BudgetModel {
   const base: BudgetModel = {
@@ -570,8 +589,14 @@ export function startOf(state: BudgetState | null, removed: string): BudgetModel
     case 'payers':
       return { ...base, view: { page: 'payers' } };
     case 'payer_never_sent':
+      return { ...base, view: { page: 'payer', key: 'couple' } };
     case 'long_name':
-      return { ...base, view: { page: 'payer', key: 'couple' }, longName: state === 'long_name' };
+      return {
+        ...base,
+        view: { page: 'payer', key: 'obi' },
+        longName: true,
+        links: { ...LINKS, obi: 'notSent' },
+      };
     case 'payer_opened':
       return { ...base, view: { page: 'payer', key: 'obi' } };
     case 'no_payers':

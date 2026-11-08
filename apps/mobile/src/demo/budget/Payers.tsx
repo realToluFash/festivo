@@ -192,7 +192,10 @@ export function PayerPage({ m, event, locale, keyOf }: PayersProps & { keyOf: Pa
         <MoneyRow
           title={LONG_NAME.share}
           line={LONG_NAME.shareLine}
-          value={LONG_NAME.amount}
+          value={LONG_NAME.range(
+            money(share.settled, LONG_NAME.locale),
+            money(share.ifAll, LONG_NAME.locale),
+          )}
           quiet
         />
       </>

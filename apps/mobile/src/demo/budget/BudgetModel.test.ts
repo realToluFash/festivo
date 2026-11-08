@@ -14,6 +14,7 @@ import {
   amountOf,
   budgetStateOf,
   canMark,
+  cardThing,
   categoryState,
   ceilingState,
   checkAmount,
@@ -45,6 +46,7 @@ import {
   HEADS_IF_ALL_COME,
   LEAD,
   LINES,
+  LONG_NAME,
   PAYERS,
   PAYMENTS,
   REMOVED_PAYER,
@@ -184,6 +186,24 @@ describe('payments: Due next, Against plan and the card’s one step', () => {
     expect(scheduled('landmark')).toBe(VENDORS.landmark.quote);
     expect(scheduled('lens')).toBe(VENDORS.lens.quote);
     expect(scheduled('bloom')).toBe(VENDORS.bloom.quote);
+  });
+
+  it('says one thing on the card: a payment; early on, what is not priced; else the ceiling', () => {
+    const totals = totalsOf();
+
+    expect(cardThing(START_LEDGER, totals)).toMatchObject({ kind: 'payment' });
+    expect(cardThing(ledgerFor('early_on'), totals)).toEqual({ kind: 'notPriced', count: 2 });
+    expect(cardThing(ledgerFor('nothing_due'), totals)).toEqual({
+      kind: 'ceiling',
+      state: 'overIf',
+    });
+    expect(planOf(ledgerFor('early_on'))).toMatchObject({
+      paid: 0,
+      stillToPay: 0,
+      scheduledCount: 0,
+    });
+    expect(owed(ledgerFor('early_on'))).toEqual([]);
+    expect(say.notPricedLine(2)).toBe('2 costs not priced yet.');
   });
 
   it('steps on the overdue balance first, then the soonest due', () => {
@@ -393,6 +413,21 @@ describe('Who is paying (sc-30200): every share adds up', () => {
     expect(coverAmount('dinner', 0.5)).toEqual({ settled: 326400, ifAll: 452200 });
   });
 
+  it('starts each payer on its own link state, and the long name on Obi’s share, never sent', () => {
+    const start = startOf('payers', REMOVED_PAYER);
+    const long = startOf('long_name', REMOVED_PAYER);
+    const obi = PAYERS.find((payer) => payer.key === 'obi');
+
+    expect(start.links).toEqual(Object.fromEntries(PAYERS.map((payer) => [payer.key, payer.link])));
+    expect(long.view).toEqual({ page: 'payer', key: 'obi' });
+    expect(long.links.obi).toBe('notSent');
+    const share = obi == null ? { settled: 0, ifAll: 0 } : shareOf(obi);
+    expect(
+      LONG_NAME.range(money(share.settled, LONG_NAME.locale), money(share.ifAll, LONG_NAME.locale)),
+    ).toBe(`${money(1062000, 'pt-BR')} a ${money(1228500, 'pt-BR')}`);
+    expect(money(1062000, 'pt-BR')).toMatch(/^£\s?10\.620,00$/u);
+  });
+
   it('sends: busy, then a link, and never sends offline', () => {
     const page = startOf('payer_never_sent', REMOVED_PAYER);
     const busy = reduce(page, { type: 'send', key: 'couple' });
@@ -406,17 +441,65 @@ describe('Who is paying (sc-30200): every share adds up', () => {
   });
 });
 
+/** budget-a-spec.md §9's app names, written out, with the two sc-93 added on 7 Nov (mark_paid_earlier, early_on). */
+const SPEC_STATES = [
+  'populated',
+  'scrolled',
+  'loading',
+  'live_update',
+  'not_live',
+  'reconnecting',
+  'never_loaded',
+  'no_lines',
+  'nothing_due',
+  'mark_paid_open',
+  'marked_paid',
+  'refused_paid',
+  'refused_cancelled',
+  'read_only',
+  'no_budget',
+  'payers',
+  'payer_never_sent',
+  'payer_opened',
+  'no_payers',
+  'no_costs',
+  'payer_removed',
+  'offline',
+  'send_failed',
+  'long_name',
+  'due_now',
+  'due_marked',
+  'due_changed',
+  'due_refused',
+  'due_done',
+  'due_read_only',
+  'mark_paid_earlier',
+  'early_on',
+] as const;
+
 describe('every state the spec names has a link on the demo home', () => {
   it('lists the app’s states, and only those', () => {
+    expect(BUDGET_BOARDS.map((board) => board.state).sort()).toEqual([...SPEC_STATES].sort());
     expect(BUDGET_DEMO_STATES).toHaveLength(
       BUDGET_STATES.length + PAYERS_STATES.length + DUE_NOW_STATES.length,
     );
-    expect(BUDGET_BOARDS.map((board) => board.state)).toEqual([...BUDGET_DEMO_STATES]);
-    for (const board of BUDGET_BOARDS) {
-      expect(board.href).toContain(`/demo/events/evt-wed-4?area=budget&state=${board.state}`);
-      expect(budgetStateOf(board.state)).toBe(board.state);
-    }
+    for (const name of SPEC_STATES) expect(budgetStateOf(name)).toBe(name);
     expect(budgetStateOf('populated ')).toBeNull();
+  });
+
+  it('links each one into the wedding’s Budget, with the spec’s viewer and language', () => {
+    for (const board of BUDGET_BOARDS) {
+      const [path, query = ''] = board.href.split('?');
+      const params = new URLSearchParams(query);
+
+      expect(path).toBe('/demo/events/evt-wed-4');
+      expect(params.get('area')).toBe('budget');
+      expect(params.get('state')).toBe(board.state);
+    }
+    const query = (state: string) =>
+      new URLSearchParams(BUDGET_BOARDS.find((board) => board.state === state)?.href.split('?')[1]);
+    expect(query('no_budget').get('as')).toBe('kemi');
+    expect(query('long_name').get('lang')).toBe('pt');
   });
 
   it('writes no time on a 12-hour clock and no em dash', () => {

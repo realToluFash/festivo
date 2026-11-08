@@ -228,12 +228,13 @@ export const REMOVED_PAYER = 'Uncle Kayode';
 export const REMINDER = { sent: '2026-11-01', payments: ['bloom-balance', 'savour-deposit'] };
 export const CHANGED_SINCE = { paidOn: '2026-11-02' };
 
-/** The iPhone SE frame (sc-30200, sc-1300): a 100-character name and a long note, in Portuguese. */
+/** The iPhone SE frame (sc-30200, sc-1300): Mr and Mrs Obi's share under a 100-character name and a long note, in Portuguese. */
 export const LONG_NAME = {
   name: 'Maria Fernanda de Albuquerque Cavalcanti e Joaquim Henrique de Vasconcelos Bragança, família da noiva',
   note: 'Cobrem o jantar e as bebidas de metade dos convidados, e também o aluguer da sala nos três dias, como combinado com a família na reunião de outubro. Pagam por transferência.',
   share: 'A parte deles',
   shareLine: 'O valor menor está confirmado.',
-  amount: '£10.620,00 a £12.285,00',
+  locale: 'pt-BR',
+  range: (low: string, high: string) => `${low} a ${high}`,
   send: 'Enviar a',
 };
