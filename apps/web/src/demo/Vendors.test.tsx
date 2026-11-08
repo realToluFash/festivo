@@ -44,7 +44,7 @@ describe('Settings › Vendors in A · Summary first (sc-82)', () => {
       .getAllByRole('link')
       .map((one) => one.querySelector('.today-grow')?.textContent);
 
-    expect(sections.slice(-4)).toEqual(['General', 'Members', 'Sign-in rules', 'Vendors']);
+    expect(sections.slice(-5)).toEqual(['General', 'Members', 'Sign-in rules', 'Vendors', 'Data']);
     expect(
       within(screen.getByRole('navigation', { name: 'Soirely' })).queryByRole('link', {
         name: 'Vendors',
