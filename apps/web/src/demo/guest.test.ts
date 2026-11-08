@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import en from '../i18n/locales/en.json';
@@ -98,6 +100,18 @@ describe('the guest’s page states (sc-31306)', () => {
   it('shows the messages only when there are some', () => {
     expect(showsMessages(startOf('coming'))).toBe(false);
     expect(showsMessages(startOf('message'))).toBe(true);
+  });
+});
+
+describe('the frame’s targets at a desk (qa2, #33736: the 44 floor at every width)', () => {
+  const css = readFileSync(join(import.meta.dirname, 'guest.css'), 'utf8');
+  const desk = /\.gp\.is-desk \{([^}]*)\}/u.exec(css)?.[1] ?? '';
+  const px = (name: string) => Number(new RegExp(`${name}: (\\d+)px`, 'u').exec(desk)?.[1]);
+
+  it('draws the language button, its menu’s rows and Terms and Privacy 44 high at 1280', () => {
+    expect(px('--gpLang')).toBe(44);
+    expect(px('--gpItem')).toBe(44);
+    expect(px('--gpFootLink')).toBe(44);
   });
 });
 
