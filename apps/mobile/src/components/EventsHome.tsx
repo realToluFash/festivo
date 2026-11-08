@@ -22,7 +22,6 @@ import { EventCard, EventThumb } from './EventCard.tsx';
 import { EventsEmptyTab, EventsSummaryLine, EventsTabs, Said, SaidLine } from './EventsList.tsx';
 import { Notice } from './Notice.tsx';
 import { Row, RowList, TextAction } from './SummaryRows.tsx';
-import { Text } from './Text.tsx';
 
 export interface HomeLoad {
   unfinished: ListedEvent[];
