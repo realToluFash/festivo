@@ -8,6 +8,7 @@ import { useShell } from '../../components/settingsShell.ts';
 import { ShapeMark, Tag } from '../../components/Summary.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
 import { Text } from '../../components/Text.tsx';
+import { useAccessibilitySizes } from '../../layout/useLayout.ts';
 import { tokens } from '../../theme/tokens.ts';
 import {
   type DataPage,
@@ -90,13 +91,15 @@ export function DataTile({ side }: { side: number }) {
 
 /** A state tag the product's Tag has no shape for: Not proved's cross, and the Enterprise lock. */
 export function DataTag({ tag }: { tag: TagWord | { kind: 'lock'; word: string } }) {
-  if (tag.kind === 'yes' || tag.kind === 'waiting') return <Tag kind={tag.kind} word={tag.word} />;
-  if (tag.kind === 'kept') return <Tag kind="paused" word={tag.word} />;
+  const wraps = useAccessibilitySizes();
+  if (tag.kind === 'yes' || tag.kind === 'waiting')
+    return <Tag kind={tag.kind} word={tag.word} wraps={wraps} />;
+  if (tag.kind === 'kept') return <Tag kind="paused" word={tag.word} wraps={wraps} />;
   const no = tag.kind === 'no';
   const ink = no ? tokens.colorBrokenText : tokens.colorInkSecondary;
 
   return (
-    <View style={[styles.tag, no ? styles.tagNo : styles.tagLock]}>
+    <View style={[styles.tag, no ? styles.tagNo : styles.tagLock, wraps && styles.tagWraps]}>
       <View style={styles.tagMark} {...hidden}>
         <Glyph name={no ? 'x' : 'lock'} size={no ? 12 : 13} ink={ink} weight={no ? 3 : 2.4} />
       </View>
@@ -290,6 +293,7 @@ const styles = StyleSheet.create({
     paddingRight: 9,
     borderRadius: 12,
   },
+  tagWraps: { flexShrink: 1 },
   tagNo: { backgroundColor: tokens.colorBrokenTint },
   tagLock: { backgroundColor: tokens.colorNeutralFill },
   tagMark: { alignItems: 'center', justifyContent: 'center' },

@@ -329,15 +329,15 @@ function MenuButton({
 
   return (
     <>
-      <TextAction
+      <MenuTrigger
         ref={trigger}
-        label={word}
-        after="down"
+        word={word}
+        expanded={open}
         onPress={() => {
           onOpen();
           anchorUnder(trigger, setAt);
         }}
-        accessibilityLabel={`${MENU_NAMES[which]}: ${word}`}
+        label={`${MENU_NAMES[which]}: ${word}`}
         testID={`audit.filter.${which}`}
       />
       <AnchoredMenu
@@ -375,15 +375,47 @@ function DatesButton({
   const trigger = useRef<ViewInstance>(null);
 
   return (
-    <TextAction
+    <MenuTrigger
       ref={trigger}
-      label={word}
-      after="down"
-      figures
+      word={word}
       onPress={() => onPress(trigger.current)}
-      accessibilityLabel={`${MENU_NAMES.dates}: ${word}`}
+      label={`${MENU_NAMES.dates}: ${word}`}
       testID="audit.filter.dates"
     />
+  );
+}
+
+/** A filter's button: its words in Violet and the chevron down, wrapping at the largest text rather than running past the page. */
+function MenuTrigger({
+  word,
+  expanded,
+  onPress,
+  label,
+  testID,
+  ref,
+}: {
+  word: string;
+  expanded?: boolean;
+  onPress: () => void;
+  label: string;
+  testID: string;
+  ref: RefObject<ViewInstance | null>;
+}) {
+  return (
+    <Pressable
+      ref={ref}
+      onPress={onPress}
+      style={({ pressed }) => [styles.trigger, pressed && styles.pressed]}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={expanded == null ? undefined : { expanded }}
+      testID={testID}
+    >
+      <Text size={15} weight="semibold" accessible={false} style={[styles.accent, styles.shrink]}>
+        {word}
+      </Text>
+      <Glyph name="down" size={16} ink={tokens.colorAccentText} weight={2.4} />
+    </Pressable>
   );
 }
 
@@ -434,6 +466,15 @@ const styles = StyleSheet.create({
   },
   none: { gap: tokens.spaceXxs, paddingTop: tokens.spaceXs },
   time: { minWidth: TIME_LEAD, fontVariant: ['tabular-nums'] },
+  shrink: { flexShrink: 1, fontVariant: ['tabular-nums'] },
+  pressed: { opacity: tokens.opacityPressed },
+  trigger: {
+    minHeight: tokens.sizeHit,
+    maxWidth: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
   menuRow: {
     minHeight: 48,
     flexDirection: 'row',
