@@ -252,7 +252,7 @@ export const SETTINGS_PAGES: readonly { name: string; states: readonly DemoLink[
       members('handoverPicked', 'Ana Souza picked'),
       members('handoverLong', 'Julien leads 8: the first 5, then “and 3 more”'),
       members('handoverOne', 'Priya leads 1 event: Hand it to'),
-      members('handoverLongNames', 'A long name, cut; a called-off event looks the same'),
+      members('handoverLongNames', 'A long name, cut; Team offsite, called off, looks the same'),
       members('handoverLoading', 'The work list loading: no verb yet'),
       members('handoverLoadFailed', 'The work list failed: Try again, no Remove'),
       members('handoverRefused', 'Refused: Tom began leading while it stood open'),

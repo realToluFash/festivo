@@ -697,7 +697,7 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
       },
       {
         title: 'Removing · a long name',
-        what: 'Cut to one line; a called-off event looks the same',
+        what: 'Cut to one line; Team offsite, called off, looks the same',
         href: '/demo/settings/members?state=handoverLongNames',
       },
       {

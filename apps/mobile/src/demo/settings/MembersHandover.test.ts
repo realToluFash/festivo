@@ -1,5 +1,7 @@
+import { calledOff } from '@soirely/domain';
 import { describe, expect, it } from 'vitest';
 
+import { EVENTS } from '../events/EventsSample.ts';
 import { matches, SEARCH_ABOVE, startsAWord } from '../OrgSwitcherModel.ts';
 import { firstFew, type LedEvent, ledEvents, searches, soonestFirst } from './MembersHandover.ts';
 import { handedLines, HANDOVER_WORDS as W } from './MembersHandoverWords.ts';
@@ -405,6 +407,7 @@ describe('the states the work list and the refusal add (sc-614)', () => {
 
     expect(led.map(({ id: event }) => event)).toContain(LONG_NAMED);
     expect(names(led).at(-1)).toBe('Team offsite');
+    expect(EVENTS.filter(calledOff).map(({ id: event }) => event)).toContain(led.at(-1)?.id);
   });
 
   it('holds Remove and Leave on the work list', () => {

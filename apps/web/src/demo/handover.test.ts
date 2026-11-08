@@ -1,3 +1,4 @@
+import { calledOff } from '@soirely/domain';
 import { describe, expect, it } from 'vitest';
 
 import { GENERAL_PAGES, generalStart, leaveAsk } from './general.ts';
@@ -218,6 +219,9 @@ describe('handing over a departing member’s work (sc-31311)', () => {
     expect(remove('handoverLoading')).toMatchObject({ kind: 'remove', id: PRIYA });
     expect(names(ledBy(membersStart('handoverOne', folake).leads, PRIYA))).toEqual(['Ireti at 40']);
     expect(ledBy(membersStart('handoverLongNames', folake).leads, PRIYA)).toHaveLength(3);
+    expect(
+      names(ledBy(membersStart('handoverLongNames', folake).leads, PRIYA).filter(calledOff)),
+    ).toEqual(['Team offsite']);
     expect(remove('handoverRefused')).toMatchObject({ kind: 'remove', id: TOM });
     expect(ledBy(membersStart('handoverRefused', folake).leads, TOM)).toHaveLength(2);
     expect(ledBy(membersStart('martaOne', folake).leads, MARTA)).toHaveLength(1);

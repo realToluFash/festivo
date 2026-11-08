@@ -223,12 +223,38 @@ describe('handing over a departing member’s work at a desk (sc-31311)', () => 
     expect(screen.getByRole('heading', { name: 'Leads 2 events' })).toBeDefined();
   });
 
-  it('leaves in the words for 1, and waits for the work list too', async () => {
+  it('leaves in the words for 1', async () => {
     await settings('/demo/settings/general?state=leaveOne&as=ana');
     const dialog = ask('Leave Ire Events?');
 
     expect(within(dialog).getByText('You lead 1 event. Hand it to:')).toBeDefined();
     expect(who().getAttribute('aria-label')).toBe('Hand it to: Nobody: the owners take it');
+  });
+
+  it('offers no Leave while your work list is on its way, and Stay still closes it', async () => {
+    await settings('/demo/settings/general?state=leaveLoading&as=ana');
+    const dialog = ask('Leave Ire Events?');
+
+    expect(within(dialog).getByRole('status').textContent).toBe('Checking what you lead…');
+    expect(within(dialog).queryByRole('button', { name: /^Leave/u })).toBeNull();
+    expect(within(dialog).queryByRole('button', { name: /^Hand / })).toBeNull();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Stay' }));
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+  });
+
+  it('offers Try again, not Leave, when your work list fails, then asks', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    await settings('/demo/settings/general?state=leaveLoadFailed&as=ana');
+    const dialog = ask('Leave Ire Events?');
+
+    expect(within(dialog).getByRole('alert').textContent).toBe(
+      'What you lead did not load. Nothing was changed.',
+    );
+    expect(within(dialog).queryByRole('button', { name: /^Leave/u })).toBeNull();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Try again' }));
+    expect(within(ask('Leave Ire Events?')).getByRole('status')).toBeDefined();
+    await wait(1300);
+    expect(who().getAttribute('aria-label')).toBe('Hand them to: Nobody: the owners take them');
   });
 
   it('searches above 15 people, says how many match, and clears', async () => {
