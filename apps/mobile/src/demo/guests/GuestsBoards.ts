@@ -1,4 +1,5 @@
 import type { DoorState, GuestsState } from './GuestsModel.ts';
+import type { ScanState } from './ScanModel.ts';
 
 type Board = readonly [string, string];
 
@@ -108,6 +109,20 @@ const DOOR: Record<DoorState, Board> = {
   doorEmpty: ['nobody on the list', 'Walk-ins only'],
 };
 
+const SCAN: Record<ScanState, Board> = {
+  scanning: ['scanning', 'The camera, the count, Point at the code; press the code to read it'],
+  valid: ['a valid code', 'Inês Duarte and Rui Duarte, each with Arrived'],
+  arrivedFromScan: ['Arrived pressed', 'Arrived at 18:41, Undo arrival; 42 of 98'],
+  validHeld: ['a held companion', 'Held · until their host is coming'],
+  alreadyArrived: ['scanned twice', 'Arrived at 18:12 · Ana Souza; nothing new recorded'],
+  notComingNow: ['now Not coming', 'Camille Dubois, Not coming, Arrived still there'],
+  notOnList: ['not on the list', 'One answer, with Search by name'],
+  offline: ['offline', 'Offline since 18:31 · 12 arrivals waiting to sync'],
+  offlineNotOnList: ['offline, not on the list', 'The same answer from the list on the device'],
+  offlineNoList: ['offline, no list', 'Connect once to scan codes; no button'],
+  cameraOff: ['the camera not allowed', 'Open Settings, or Search by name'],
+};
+
 const EVENTS: readonly (readonly [string, string, string])[] = [
   [
     'events',
@@ -130,5 +145,20 @@ export const GUESTS_BOARDS: readonly { title: string; what: string; href: string
     what,
     href: `/demo/guests/check-in?state=${state}`,
   })),
+  ...Object.entries(SCAN).map(([state, [title, what]]) => ({
+    title: `Scan a code · ${title}`,
+    what,
+    href: `/demo/guests/scan?state=${state}`,
+  })),
+  {
+    title: 'Scan a code · offline, 1 waiting',
+    what: '1 arrival waiting to sync',
+    href: '/demo/guests/scan?state=offline&waiting=1',
+  },
+  {
+    title: 'Scan a code · offline, nothing waiting',
+    what: 'Offline since 18:31 alone',
+    href: '/demo/guests/scan?state=offline&waiting=0',
+  },
   ...EVENTS.map(([state, title, what]) => ({ title, what, href: `/demo/events?state=${state}` })),
 ];

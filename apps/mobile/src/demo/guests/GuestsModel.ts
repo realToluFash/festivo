@@ -814,6 +814,15 @@ export function counted(kind: DoorPerson['kind']): boolean {
   return kind === 'coming';
 }
 
+/** The door's count after an arrival (1) or its undo (-1), on Check-in and the scanner alike: anyone not counted adds to expected too. */
+export function countAfter(
+  count: { arrived: number; expected: number },
+  kind: DoorPerson['kind'],
+  by: 1 | -1,
+): { arrived: number; expected: number } {
+  return { arrived: count.arrived + by, expected: count.expected + (counted(kind) ? 0 : by) };
+}
+
 export const GUESTS_ON: readonly string[] = [WEDDING, ...Object.values(OWN_SAMPLE)];
 
 export function startStateOf(state: GuestsState | null, event: string): GuestsState | null {
