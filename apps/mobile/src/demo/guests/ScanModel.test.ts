@@ -3,12 +3,12 @@ import { describe, expect, it } from 'vitest';
 import { say } from './GuestsWords.ts';
 import {
   SCAN_STATES,
-  countAfter,
   isOffline,
   nextRead,
   readOf,
   resultOf,
   scanStateOf,
+  scannedOf,
   waitingOf,
 } from './ScanModel.ts';
 
@@ -59,19 +59,17 @@ describe('the scanner’s states, as guests-a-spec §19 names them', () => {
     expect(seen).toEqual(['ines', 'folasade', 'musa', 'camille', null, 'ines']);
   });
 
-  it('counts an arrival as the door does: anyone not Coming adds to expected too', () => {
-    expect(countAfter({ arrived: 41, expected: 98 }, 'coming', 1)).toEqual({
-      arrived: 42,
-      expected: 98,
-    });
-    expect(countAfter({ arrived: 41, expected: 98 }, 'notcoming', 1)).toEqual({
-      arrived: 42,
-      expected: 99,
-    });
-    expect(countAfter({ arrived: 42, expected: 99 }, 'held', -1)).toEqual({
-      arrived: 41,
-      expected: 98,
-    });
+  it('moves on from the code each state shows, from the one table resultOf reads', () => {
+    for (const state of SCAN_STATES) {
+      const shown = resultOf(state);
+      const key = scannedOf(state);
+      if (shown?.kind === 'guest') expect(shown.people[0]?.key).toBe(key);
+      if (shown?.kind === 'notOnList') expect(key).toBeNull();
+      if (shown == null || shown.kind === 'noList' || shown.kind === 'cameraOff')
+        expect(key).toBeUndefined();
+    }
+    expect(nextRead(scannedOf('validHeld'))).toBe('musa');
+    expect(nextRead(scannedOf('scanning'))).toBe('ines');
   });
 
   it('says how many arrivals wait on the device, each count its own words', () => {

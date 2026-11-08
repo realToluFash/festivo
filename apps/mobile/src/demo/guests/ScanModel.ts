@@ -82,33 +82,32 @@ export function readOf(key: string | null): ScanResult {
   return { kind: 'guest', people, twice: people[0]?.arrivedAt != null };
 }
 
+/** The code each state shows read (null: one not on the list); a state with none read yet is absent. The one table resultOf and the next read share. */
+const READ_IN: Partial<Record<ScanState, string | null>> = {
+  valid: 'ines',
+  arrivedFromScan: 'ines',
+  validHeld: 'folasade',
+  alreadyArrived: 'musa',
+  notComingNow: 'camille',
+  notOnList: null,
+  offlineNotOnList: null,
+};
+
+/** The code the state shows read, so Scan the next code moves on from it; undefined while nothing is read yet. */
+export function scannedOf(state: ScanState | null): string | null | undefined {
+  return state != null && Object.hasOwn(READ_IN, state) ? READ_IN[state] : undefined;
+}
+
 export function resultOf(state: ScanState | null): ScanResult | null {
-  switch (state) {
-    case 'valid':
-      return readOf('ines');
-    case 'arrivedFromScan': {
-      const read = readOf('ines');
-      if (read.kind !== 'guest') return read;
-      const [host, ...rest] = read.people;
-      if (host == null) return read;
-      return { ...read, people: [{ ...host, arrivedAt: NOW_AT, by: READER }, ...rest] };
-    }
-    case 'validHeld':
-      return readOf('folasade');
-    case 'alreadyArrived':
-      return readOf('musa');
-    case 'notComingNow':
-      return readOf('camille');
-    case 'notOnList':
-    case 'offlineNotOnList':
-      return { kind: 'notOnList' };
-    case 'offlineNoList':
-      return { kind: 'noList' };
-    case 'cameraOff':
-      return { kind: 'cameraOff' };
-    default:
-      return null;
-  }
+  if (state === 'offlineNoList') return { kind: 'noList' };
+  if (state === 'cameraOff') return { kind: 'cameraOff' };
+  const key = scannedOf(state);
+  if (key === undefined) return null;
+  const read = readOf(key);
+  if (state !== 'arrivedFromScan' || read.kind !== 'guest') return read;
+  const [host, ...rest] = read.people;
+  if (host == null) return read;
+  return { ...read, people: [{ ...host, arrivedAt: NOW_AT, by: READER }, ...rest] };
 }
 
 export function isOffline(state: ScanState | null): boolean {
@@ -119,16 +118,4 @@ export function isOffline(state: ScanState | null): boolean {
 export function nextRead(last: string | null | undefined): string | null {
   const at = last === undefined ? -1 : READS.indexOf(last as (typeof READS)[number]);
   return READS[(at + 1) % READS.length] ?? null;
-}
-
-/** The count after an arrival: anyone not Coming adds one to expected as well (sc-1454, 5 Nov). */
-export function countAfter(
-  count: { arrived: number; expected: number },
-  kind: ReplyKind,
-  by: 1 | -1,
-): { arrived: number; expected: number } {
-  return {
-    arrived: count.arrived + by,
-    expected: count.expected + (kind === 'coming' ? 0 : by),
-  };
 }

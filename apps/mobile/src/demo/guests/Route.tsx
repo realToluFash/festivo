@@ -27,12 +27,12 @@ export function GuestsRoute() {
 
 /** /demo/guests/check-in: the door on the day, by its ?state=. */
 export function CheckInRoute() {
-  const params = useLocalSearchParams<{ state?: string }>();
+  const params = useLocalSearchParams<{ state?: string; focus?: string }>();
   const state = doorStateOf(params.state);
 
   return (
     <EventsShell>
-      <CheckInScreen key={state ?? ''} state={state} />
+      <CheckInScreen key={state ?? ''} state={state} focusSearch={params.focus === 'search'} />
     </EventsShell>
   );
 }

@@ -7,6 +7,7 @@ import { TO_FIGURES } from '../messages/MessagesSample.ts';
 import { SAMPLE_GUESTS } from '../events/GuestCounts.ts';
 import {
   DOOR_STATES,
+  countAfter,
   addedGuest,
   GROUPS,
   GUESTS_ON,
@@ -526,6 +527,27 @@ describe('the door (sc-1454)', () => {
     expect(people.find((p) => p.key === 'musa')).toMatchObject({
       arrivedAt: '18:12',
       by: 'Ana Souza',
+    });
+  });
+});
+
+describe('the door’s count, one rule for Check-in and the scanner (sc-1454, 5 Nov)', () => {
+  it('adds an arrival to attended, and to expected too for anyone not counted', () => {
+    expect(countAfter({ arrived: 41, expected: 98 }, 'coming', 1)).toEqual({
+      arrived: 42,
+      expected: 98,
+    });
+    expect(countAfter({ arrived: 41, expected: 98 }, 'maybe', 1)).toEqual({
+      arrived: 42,
+      expected: 99,
+    });
+    expect(countAfter({ arrived: 41, expected: 98 }, 'walkin', 1)).toEqual({
+      arrived: 42,
+      expected: 99,
+    });
+    expect(countAfter({ arrived: 42, expected: 99 }, 'held', -1)).toEqual({
+      arrived: 41,
+      expected: 98,
     });
   });
 });

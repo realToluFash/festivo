@@ -21,7 +21,7 @@ import { shownEvent } from '../events/EventsModel.ts';
 import { sampleEvent } from '../events/EventsSample.ts';
 import { useCoverStatusBar } from '../Welcome.tsx';
 import { ArrivedButton } from './CheckIn.tsx';
-import { clockOf, replyLine } from './GuestsModel.ts';
+import { clockOf, countAfter, replyLine } from './GuestsModel.ts';
 import { GuestsCard } from './GuestsParts.tsx';
 import { ARRIVALS, GUESTS, READER, WEDDING, replyByOf } from './GuestsSample.ts';
 import { REPLY_WORD, W, say } from './GuestsWords.ts';
@@ -32,11 +32,11 @@ import {
   type ScanResult,
   type ScanState,
   type Scanned,
-  countAfter,
   isOffline,
   nextRead,
   readOf,
   resultOf,
+  scannedOf,
 } from './ScanModel.ts';
 
 const SIDE_PANEL = 420;
@@ -44,19 +44,14 @@ const UP_PANEL = 540;
 /** The held code the stand-in camera shows: a code holds nothing a camera could read out, so the drawn one is a pattern. */
 const HELD = 'K7Q2-M9XR';
 
-/** The code the state shows last read, so the next one read follows it; none read yet while scanning. */
-function lastOf(state: ScanState | null): string | null | undefined {
-  if (state === 'valid' || state === 'arrivedFromScan') return 'ines';
-  if (state === 'validHeld') return 'folasade';
-  if (state === 'alreadyArrived') return 'musa';
-  if (state === 'notComingNow') return 'camille';
-  if (state === 'notOnList' || state === 'offlineNotOnList') return null;
-  return undefined;
-}
-
 function leave(): void {
   if (router.canGoBack()) router.back();
   else router.replace('/demo/guests/check-in?state=door' as Href);
+}
+
+/** Search by name: back on Check-in, in its search, as sc-1301's not-on-list answer says. */
+function toSearch(): void {
+  router.dismissTo('/demo/guests/check-in?state=door&focus=search' as Href);
 }
 
 function lineOf(p: Scanned, locale: string, twice: boolean): string {
@@ -142,8 +137,6 @@ function Result({
   onUndo: (key: string) => void;
   onNext: () => void;
 }) {
-  const said = saidOf(result, locale);
-  useReadOut(said);
   const buttonHeight = big ? tokens.sizeHitPhoneHero : 48;
   const next = (
     <Pill
@@ -173,7 +166,7 @@ function Result({
           label={W.searchByName}
           glyph="search"
           height={buttonHeight}
-          onPress={leave}
+          onPress={toSearch}
           testID="scan.searchByName"
         />
         {next}
@@ -213,7 +206,7 @@ function Result({
               kind="secondary"
               glyph="search"
               height={buttonHeight}
-              onPress={leave}
+              onPress={toSearch}
               testID="scan.searchByName"
             />
           </>
@@ -278,7 +271,7 @@ function Result({
                     {lineOf(p, locale, false)}
                   </Text>
                 </View>
-                {result.twice && p.arrivedAt != null ? null : trailOf(p)}
+                {trailOf(p)}
               </View>
             ),
           })),
@@ -404,11 +397,17 @@ export function ScannerScreen({ state, waiting }: { state: ScanState | null; wai
   }, [now]);
   const offline = isOffline(state);
   const [result, setResult] = useState<ScanResult | null>(() => resultOf(state));
-  const [last, setLast] = useState<string | null | undefined>(() => lastOf(state));
+  const [last, setLast] = useState<string | null | undefined>(() => scannedOf(state));
   const [count, setCount] = useState<{ arrived: number; expected: number }>(() =>
     state === 'arrivedFromScan' ? { arrived: 42, expected: 98 } : ARRIVALS.onTheDay,
   );
   const [kept, setKept] = useState(waiting);
+  const [told, setTold] = useState<string | null>(() => {
+    const first = resultOf(state);
+    if (state === 'arrivedFromScan') return say.arrivedName('Inês Duarte');
+    return first == null ? null : saidOf(first, locale);
+  });
+  useReadOut(told);
   const camera = state !== 'offlineNoList' && state !== 'cameraOff';
   const big = layout === 'phone';
 
@@ -425,12 +424,15 @@ export function ScannerScreen({ state, waiting }: { state: ScanState | null; wai
       ),
     });
     setCount(countAfter(count, p.kind, by));
+    setTold(by === 1 ? say.arrivedName(p.name) : W.arrivalUndone);
     if (offline) setKept(Math.max(0, kept + by));
   };
   const onRead = () => {
     const key = nextRead(last);
+    const read = readOf(key);
     setLast(key);
-    setResult(readOf(key));
+    setResult(read);
+    setTold(saidOf(read, locale));
   };
   const onNext = () => setResult(null);
 
