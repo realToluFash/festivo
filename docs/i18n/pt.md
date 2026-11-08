@@ -43,6 +43,16 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **8 Nov 2026. A sua conta na app** (sc-34175 para sc-30411, `mobile:account.*`,
+  `contacts.promoting`, `removing`). A secção é "Sobre si". As linhas de cada linha da lista
+  não têm sujeito: "Principal · para iniciar sessão", "Para falar consigo, não para iniciar
+  sessão", como `completeProfile.mobileHelp`, nunca "para o contactar", que concorda com um
+  género. O que espera um código é "{{shown}} ainda está por verificar.", como "fica por
+  verificar", e não concorda com endereço nem número. A pergunta ao sair é "Descartar a
+  alteração?", com "Continuar a editar" / "Descartar", como `eventEdit` e `web:eventPeople`;
+  por baixo, "O seu nome continua a ser {{name}}.", "O seu fuso horário continua por definir.",
+  "Nada será adicionado.". As confirmações em curso são "A tornar principal…" e "A remover…",
+  o progressivo de PT-PT.
 - **8 Nov 2026. Os dois fatores ao iniciar sessão na app** (sc-33828 para sc-29072,
   `mobile:twoFactor.signedIn`, `recoveryShape`, `lost`, `lostTwoFactor.waitingFor`, `stayOut`,
   `emailSoirely`). "Sessão iniciada", um estado, como `waysCard.signedInWith`. A forma do
