@@ -957,14 +957,7 @@ function withTomas(people: readonly Unreached[], tomas: 'fixed' | 'sent' | null)
     const rest = person.lines.slice(1);
 
     return tomas === 'fixed'
-      ? {
-          ...person,
-          lines: [
-            { mark: 'delivered', word: `${MW.email} · ${MW.updatedNotSent}`, why: NEW_ADDRESS },
-            ...rest,
-          ],
-          fixes: [],
-        }
+      ? { ...person, fixes: [], updated: MW.emailChangedSince }
       : {
           ...person,
           kind: 'inProgress',
@@ -1033,6 +1026,15 @@ function Person({
             </li>
           ))}
         </ul>
+        {person.updated != null && !fixing && (
+          <p className="mg-person-updated">
+            <DeliveryMark kind="notsent" />
+            <span className="mg-person-updated-words">
+              <strong>{MW.updatedNotSent}</strong>
+              <span>{person.updated}</span>
+            </span>
+          </p>
+        )}
         {fixing ? (
           <form className="mg-fix" onSubmit={save} noValidate>
             <Field

@@ -81,6 +81,8 @@ stopped at its timeout, ten minutes unless it names one, and the bundler goes wi
 mid-batch: start them with the longest timeout the tool allows (7200000 ms). `ios --se`,
 `batch --se` and the other simulator commands run on the tester's iPhone SE
 (`Soirely QA<n> iPhone SE`) instead of the iPhone, as `--ipad` does for the iPad.
+`--clear` starts Metro with an empty cache and stops Expo Go first: without it, a build started
+with different `EXPO_PUBLIC_` values (`EXPO_PUBLIC_SCHEME=violet`, say) shows the last build's.
 
 Expo Go fetches the bundle from Metro and draws its own splash, so a bullet about the app
 offline from first launch, or its own splash screen, needs the app itself.

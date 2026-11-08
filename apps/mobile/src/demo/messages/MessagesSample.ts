@@ -195,6 +195,7 @@ export interface NotReached {
   name: string;
   lines: readonly ReachLine[];
   fixes: readonly string[];
+  updated?: string;
 }
 
 const PAGE_LINE: ReachLine = { mark: 'none', word: W.theirPage, reason: W.notSeenYet };
