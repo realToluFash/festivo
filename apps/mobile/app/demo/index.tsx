@@ -891,6 +891,16 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/events/evt-wed-4?state=datesError',
       },
       {
+        title: 'Dates · onto the reply-by date',
+        what: 'Saving moves Reply by too',
+        href: '/demo/events/evt-wed-4?state=datesReplyBy',
+      },
+      {
+        title: 'Dates · Reply by moved',
+        what: 'The page again, with the new date',
+        href: '/demo/events/evt-wed-4?state=datesReplyBySaved',
+      },
+      {
         title: 'Dates · discard?',
         what: 'Discard your change?',
         href: '/demo/events/evt-wed-4?state=discard',

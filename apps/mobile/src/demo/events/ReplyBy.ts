@@ -1,6 +1,6 @@
 import { formatWallClock, formatWallDay } from '@soirely/domain';
 
-import { COUNTS, WEDDING, replyByOf } from '../guests/GuestsSample.ts';
+import { COUNTS, WEDDING } from '../guests/GuestsSample.ts';
 import { instantOf, wallOf } from './EventsModel.ts';
 import { W, say } from './EventsWords.ts';
 
@@ -8,11 +8,6 @@ import { W, say } from './EventsWords.ts';
 export type ReplyByAsk = 'sooner' | 'now';
 
 export const CLOSES_AT = '23:59';
-
-/** Guests' own sample: only the wedding has a Reply by date, and its No reply count (sc-99). */
-export function startReplyBy(eventId: string): string | null {
-  return replyByOf(eventId);
-}
 
 export function noReplyOf(eventId: string): { guests: number; companions: number } {
   return eventId === WEDDING
@@ -27,16 +22,29 @@ export function notRepliedWords(eventId: string): string {
   return say.notReplied(guests, companions);
 }
 
-function nextDay(date: string): string {
+function dayAfter(date: string, days = 1): string {
   const day = new Date(`${date}T00:00:00Z`);
-  day.setUTCDate(day.getUTCDate() + 1);
+  day.setUTCDate(day.getUTCDate() + days);
 
   return day.toISOString().slice(0, 10);
 }
 
+/** pm, 8 Nov: a start moved onto or before Reply by moves it to the day before the new start. */
+export function replyByAfterStart(replyBy: string | null, startDate: string): string | null {
+  return replyBy != null && startDate <= replyBy ? dayAfter(startDate, -1) : null;
+}
+
+export function replyByMoves(replyBy: string, moved: string, locale: string): string {
+  return say.replyByMoves(formatWallDay(replyBy, locale), formatWallDay(moved, locale));
+}
+
+export function replyByMovedSaved(moved: string, locale: string): string {
+  return say.repliesNowClose(formatWallDay(moved, locale));
+}
+
 /** The last second of the day in the event's zone, whatever the clocks do that night. */
 export function closesAt(date: string, timeZone: string): Date {
-  return new Date(Date.parse(instantOf(nextDay(date), '00:00', timeZone)) - 1000);
+  return new Date(Date.parse(instantOf(dayAfter(date), '00:00', timeZone)) - 1000);
 }
 
 export function todayIn(now: Date, timeZone: string): string {
@@ -108,8 +116,4 @@ export function replyBySaved(date: string | null, timeZone: string, locale: stri
   return date == null
     ? W.replyByRemoved
     : say.replyBySaved(formatWallDay(date, locale), formatWallClock(CLOSES_AT, locale), timeZone);
-}
-
-export function shortDay(date: string, locale: string): string {
-  return formatWallDay(date, locale);
 }

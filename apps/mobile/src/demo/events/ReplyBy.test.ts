@@ -2,18 +2,21 @@ import { describe, expect, it } from 'vitest';
 
 import { editOf, eventStateOf } from './EventsModel.ts';
 import { say } from './EventsWords.ts';
+import { replyByOf } from '../guests/GuestsSample.ts';
 import {
   closesAt,
   noReplyOf,
   notRepliedWords,
   previewsReplyBy,
+  replyByAfterStart,
   replyByAsk,
   replyByHint,
+  replyByMovedSaved,
+  replyByMoves,
   replyByPreview,
   replyByRow,
   replyBySaved,
   replyByWrong,
-  startReplyBy,
   todayIn,
 } from './ReplyBy.ts';
 
@@ -74,10 +77,33 @@ describe('the preview of the guest’s sentence', () => {
   });
 });
 
+describe('a start moved onto Reply by (pm, 8 Nov)', () => {
+  it('moves Reply by to the day before a start on or before it, and leaves it for a later start', () => {
+    expect(replyByAfterStart('2026-11-04', '2026-11-04')).toBe('2026-11-03');
+    expect(replyByAfterStart('2026-11-04', '2026-11-02')).toBe('2026-11-01');
+    expect(replyByAfterStart('2026-11-04', '2026-11-01')).toBe('2026-10-31');
+    expect(replyByAfterStart('2026-11-04', '2026-11-05')).toBeNull();
+    expect(replyByAfterStart('2026-11-04', '2026-11-12')).toBeNull();
+    expect(replyByAfterStart(null, '2026-11-01')).toBeNull();
+  });
+
+  it('says so under the start, then in the toast', () => {
+    expect(replyByMoves('2026-11-04', '2026-11-03', 'en-US')).toBe(
+      'Replies close on Wed, Nov 4, which isn’t before the new start. Saving moves Reply by to Tue, Nov 3.',
+    );
+    expect(replyByMovedSaved('2026-11-03', 'en-US')).toBe('Saved. Replies now close Tue, Nov 3.');
+  });
+
+  it('closes the moved day at 23:59:59 in the event’s zone', () => {
+    const moved = replyByAfterStart('2026-11-04', '2026-11-04');
+    expect(moved && closesAt(moved, LONDON).toISOString()).toBe('2026-11-03T23:59:59.000Z');
+  });
+});
+
 describe('the sample and the words', () => {
   it('gives only the wedding a date, and counts its 21 guests and 4 companions as the card does', () => {
-    expect(startReplyBy('evt-wed-4')).toBe('2026-11-04');
-    expect(startReplyBy('evt-draft-4')).toBeNull();
+    expect(replyByOf('evt-wed-4')).toBe('2026-11-04');
+    expect(replyByOf('evt-draft-4')).toBeNull();
     expect(noReplyOf('evt-wed-4')).toEqual({ guests: 21, companions: 4 });
     expect(noReplyOf('evt-draft-4')).toEqual({ guests: 0, companions: 0 });
   });
@@ -122,5 +148,7 @@ describe('the sample and the words', () => {
       expect(editOf(eventStateOf(state))).toBe('replyBy');
     expect(editOf(eventStateOf('replyBySaved'))).toBeNull();
     expect(editOf(eventStateOf('replyByRemoved'))).toBeNull();
+    expect(editOf(eventStateOf('datesReplyBy'))).toBe('dates');
+    expect(editOf(eventStateOf('datesReplyBySaved'))).toBeNull();
   });
 });

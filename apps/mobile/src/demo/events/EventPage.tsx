@@ -42,7 +42,8 @@ import {
   sampleEvent,
 } from './EventsSample.ts';
 import { W, say } from './EventsWords.ts';
-import { replyByRow, replyBySaved, startReplyBy } from './ReplyBy.ts';
+import { replyByMovedSaved, replyByRow, replyBySaved } from './ReplyBy.ts';
+import { replyByOf } from '../guests/GuestsSample.ts';
 import { useShell } from '../../components/settingsShell.ts';
 import { Row, RowList, Section, TextAction } from '../../components/Summary.tsx';
 import { type MessagesState, reduce, startOf } from '../messages/MessagesModel.ts';
@@ -155,14 +156,18 @@ export function EventScreen({
       ? '2026-11-03'
       : state === 'replyByRemoved'
         ? null
-        : startReplyBy(event.id),
+        : state === 'datesReplyBySaved'
+          ? '2026-11-03'
+          : replyByOf(event.id),
   );
   const [told, setTold] = useState<string | null>(() =>
     state === 'saved'
       ? W.saved
       : state === 'replyBySaved' || state === 'replyByRemoved'
         ? replyBySaved(replyBy, event.timeZone, locale)
-        : null,
+        : state === 'datesReplyBySaved' && replyBy != null
+          ? replyByMovedSaved(replyBy, locale)
+          : null,
   );
   const refs = useRef<Partial<Record<string, ViewInstance | null>>>({});
   const from = useRef('card');
@@ -185,10 +190,14 @@ export function EventScreen({
     setRound((count) => count + 1);
     setEdit(which);
   };
-  const saved = (next: SampleEvent) => {
+  const saved = (next: SampleEvent, movedReplyBy?: string) => {
     setEvent(next);
     setEdit(null);
-    setTold(W.saved);
+    if (movedReplyBy == null) setTold(W.saved);
+    else {
+      setReplyBy(movedReplyBy);
+      setTold(replyByMovedSaved(movedReplyBy, locale));
+    }
     const change =
       part === 'dates' || part === 'venue' ? tellChange(toldEvent, next, locale) : null;
     if (change != null && change.lines.length > 0)

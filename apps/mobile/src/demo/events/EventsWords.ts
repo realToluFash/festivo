@@ -286,6 +286,9 @@ export const say = {
   closeSoonerTitle: (date: string, who: string) => `Close replies sooner, on ${date}, for ${who}?`,
   closeNowTitle: (who: string) => `Close replies now for ${who}?`,
   keepDate: (date: string) => `Keep ${date}`,
+  replyByMoves: (old: string, next: string) =>
+    `Replies close on ${old}, which isn’t before the new start. Saving moves Reply by to ${next}.`,
+  repliesNowClose: (date: string) => `Saved. Replies now close ${date}.`,
   replyBySaved: (date: string, time: string, zone: string) =>
     `Saved. Replies close ${date} at ${time}, ${zone} time.`,
 };

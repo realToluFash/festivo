@@ -4,6 +4,7 @@ import {
   HOSTS_MAXIMUM,
   endMovedLine,
   eventProblems,
+  formatWallDay,
   hostProblems,
   keepsLastHost,
   startMoved,
@@ -31,11 +32,12 @@ import {
   noReplyOf,
   notRepliedWords,
   previewsReplyBy,
+  replyByAfterStart,
   replyByAsk,
   replyByHint,
+  replyByMoves,
   replyByPreview,
   replyByWrong,
-  shortDay,
   todayIn,
 } from './ReplyBy.ts';
 import { SearchField } from './EventsList.tsx';
@@ -71,7 +73,7 @@ export interface EditProps {
   locale: string;
   opener: Opener;
   onClose: () => void;
-  onSaved: (event: SampleEvent) => void;
+  onSaved: (event: SampleEvent, movedReplyBy?: string) => void;
   /** sc-3780: the Reply by part edits the date beside the event, not the event itself. */
   replyBy?: string | null;
   now?: Date;
@@ -314,6 +316,7 @@ function DatesEdit(edit: EditProps) {
   };
   const sample =
     start === 'datesChanged' ||
+    start === 'datesReplyBy' ||
     start === 'discard' ||
     start === 'changedElsewhere' ||
     start === 'showLatest'
@@ -338,12 +341,17 @@ function DatesEdit(edit: EditProps) {
   const [picking, setPicking] = useState<Picking | null>(null);
   const draft = draftOf(event, { start: from, end: to });
   const wrong = eventProblems(draft, zone).some((problem) => problem.problem === 'endBeforeStart');
+  const replyBy = edit.replyBy ?? null;
+  const replyByTo = replyByAfterStart(replyBy, from.date);
+  const replyByLine =
+    replyBy == null || replyByTo == null ? null : replyByMoves(replyBy, replyByTo, locale);
   const changed =
     zone !== event.timeZone ||
     [from.date, from.time, to.date, to.time].join() !==
       [saved.start.date, saved.start.time, saved.end.date, saved.end.time].join();
 
   useReadOut(moved);
+  useReadOut(replyByLine);
 
   const pickStart = (mode: 'date' | 'time') =>
     pick(
@@ -381,12 +389,15 @@ function DatesEdit(edit: EditProps) {
     );
   const save = () => {
     if (wrong) return;
-    edit.onSaved({
-      ...event,
-      timeZone: zone,
-      startsAt: instantOf(from.date, from.time, zone),
-      endsAt: instantOf(to.date, to.time, zone),
-    });
+    edit.onSaved(
+      {
+        ...event,
+        timeZone: zone,
+        startsAt: instantOf(from.date, from.time, zone),
+        endsAt: instantOf(to.date, to.time, zone),
+      },
+      replyByTo ?? undefined,
+    );
   };
 
   return (
@@ -462,6 +473,11 @@ function DatesEdit(edit: EditProps) {
             testID="event.edit.dates.startTime"
           />
         </View>
+        {replyByLine != null && (
+          <Text size={13.5} weight="semibold" style={styles.hint} testID="event.edit.dates.replyBy">
+            {replyByLine}
+          </Text>
+        )}
       </Labelled>
       <Labelled label={W.ends}>
         <View style={styles.pair}>
@@ -555,7 +571,7 @@ function ReplyByEdit(edit: EditProps) {
   const [aim, setAim] = useState(0);
   const next = value === '' ? null : value;
   const wrong = replyByWrong(next, event.startsAt, event.timeZone);
-  const keep = saved == null ? W.keepEditing : say.keepDate(shortDay(saved, locale));
+  const keep = saved == null ? W.keepEditing : say.keepDate(formatWallDay(saved, locale));
   const done = () => {
     setAsking(null);
     edit.onReplyBy?.(next);
@@ -600,7 +616,7 @@ function ReplyByEdit(edit: EditProps) {
           title:
             asking === 'now'
               ? say.closeNowTitle(notRepliedWords(event.id))
-              : say.closeSoonerTitle(shortDay(next, locale), notRepliedWords(event.id)),
+              : say.closeSoonerTitle(formatWallDay(next, locale), notRepliedWords(event.id)),
           line: asking === 'now' ? W.closeNowLine : W.closeSoonerLine,
           keep: { label: keep, testID: 'event.edit.replyBy.keep' },
           confirm: {

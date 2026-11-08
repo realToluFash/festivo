@@ -561,6 +561,8 @@ export const EVENT_STATES = [
   'dates',
   'datesChanged',
   'datesError',
+  'datesReplyBy',
+  'datesReplyBySaved',
   'discard',
   'changedElsewhere',
   'showLatest',
@@ -623,6 +625,7 @@ export function editOf(state: EventDemoState | null): EditPart | null {
     case 'dates':
     case 'datesChanged':
     case 'datesError':
+    case 'datesReplyBy':
     case 'discard':
     case 'changedElsewhere':
     case 'showLatest':
