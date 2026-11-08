@@ -17,27 +17,33 @@ import {
   cardThing,
   categoryState,
   ceilingState,
+  ceilingsAfter,
   checkAmount,
   coverAmount,
   dateTooLate,
   days,
   dueNowSettled,
   ledgerFor,
+  linkWords,
   money,
+  notPricedFor,
   nextPayment,
   openedAt,
   owed,
+  payerOf,
   payerPaid,
   payersOf,
   perHeadOf,
   planOf,
   reduce,
   referenceTooLong,
+  reminderSheet,
   shareOf,
   startOf,
   stillToCome,
   totalsOf,
   whole,
+  wholeState,
   LIVE_CHANGE,
 } from './BudgetModel.ts';
 import {
@@ -50,6 +56,7 @@ import {
   PAYERS,
   PAYMENTS,
   REMOVED_PAYER,
+  RENAMED,
   STILL_TO_ANSWER,
   VENDORS,
 } from './BudgetSample.ts';
@@ -441,6 +448,149 @@ describe('Who is paying (sc-30200): every share adds up', () => {
   });
 });
 
+describe('the gaps of 8 Nov: refusals, ceilings and the reminder on the Budget tab', () => {
+  it('refuses Mark paid in en’s words for another currency and the plan', () => {
+    const currency = new Intl.DisplayNames(['en'], { type: 'currency' }).of('GBP');
+
+    expect(startOf('refused_currency', REMOVED_PAYER).form).toMatchObject({
+      phase: 'refused',
+      refusal: 'currency',
+    });
+    expect(startOf('refused_plan', REMOVED_PAYER).form?.refusal).toBe('plan');
+    expect(W.wrongCurrency).toBe(`Enter the amount in ${currency}, the currency this event uses.`);
+    expect(W.planRefused).toBe(
+      'Payments cannot be marked paid on this organisation’s plan, so nothing has changed.',
+    );
+  });
+
+  it('keeps the category states with no whole-event ceiling, and the card says no ceiling', () => {
+    const m = startOf('ceiling_categories_only', REMOVED_PAYER);
+    const totals = totalsOf(m.lines);
+
+    expect(wholeState(m.ceilings, totals)).toBeNull();
+    expect(categoryState('Catering', m.lines, m.ceilings)).toBe('close');
+    expect(categoryState('Flowers', m.lines, m.ceilings)).toBe('within');
+    expect(cardThing(ledgerFor('nothing_due'), totals, m.ceilings)).toEqual({ kind: 'nothing' });
+  });
+
+  it('takes another person’s ceiling as it arrives, washing what it moved', () => {
+    const totals = totalsOf();
+    const set = startOf('ceiling_live_set', REMOVED_PAYER);
+    const words = say.ceilingChanged('Julien Moreau', '£24,000', 'close');
+    const changed = reduce(startOf('ceiling_live_changed', REMOVED_PAYER), {
+      type: 'ceilingChanged',
+      words,
+    });
+    const cleared = ceilingsAfter('cleared');
+
+    expect(set.ceilings.whole).toBeNull();
+    expect(wholeState(ceilingsAfter('set'), totals)).toBe('overIf');
+    expect(changed).toMatchObject({ wash: true, news: words, ceilingLive: null, showLive: true });
+    expect(wholeState(changed.ceilings, totals)).toBe('close');
+    expect(words).toBe(
+      'Julien Moreau changed the whole event’s ceiling to £24,000, so it is now Close.',
+    );
+    expect(wholeState(cleared, totals)).toBeNull();
+    expect(categoryState('Catering', LINES, cleared)).toBeNull();
+  });
+
+  it('says the reminder overdue first, marked as the last about it, and opens Due now', () => {
+    const mixed = reminderSheet('mixed');
+    const opened = reduce(startOf('reminder_mixed', REMOVED_PAYER), { type: 'openReminder' });
+
+    expect(mixed.ids).toEqual(['bloom-balance', 'savour-deposit', 'landmark-balance']);
+    expect(mixed.lastAbout).toEqual(['bloom-balance']);
+    expect(reminderSheet('overdue').ids).toEqual(['bloom-balance']);
+    expect(say.reminderMixed(1, 2, 3)).toBe('1 payment overdue, 2 due in the next 3 days');
+    expect(say.reminderOverdue(1, 'Adaeze & Tunde’s wedding')).toBe(
+      '1 payment overdue on Adaeze & Tunde’s wedding',
+    );
+    expect(say.lastAbout('Balance', 'Bloom & Co')).toBe(
+      'This is the last reminder about the balance to Bloom & Co.',
+    );
+    expect(opened.reminder).toBeNull();
+    expect(opened.dueNow).toMatchObject({ fromReminder: true, lastAbout: ['bloom-balance'] });
+  });
+});
+
+describe('the gaps of 8 Nov on Who is paying (sc-30200, sc-1300)', () => {
+  it('re-splits Room hire from the web and washes the two shares it moved', () => {
+    const live = reduce(startOf('payers_live', REMOVED_PAYER), {
+      type: 'payersChanged',
+      words: say.whoPaysChanged('Julien Moreau', 'Room hire'),
+    });
+    const share = (key: 'obi' | 'bakare') =>
+      shareOf(payerOf(key, live.payerList), live.lines, live.payerList);
+
+    expect(live.washed).toEqual(['obi', 'bakare']);
+    expect(live.news).toBe('Julien Moreau changed who pays for Room hire.');
+    expect(share('obi')).toEqual({ settled: 747000, ifAll: 913500 });
+    expect(share('bakare')).toEqual({ settled: 747000, ifAll: 913500 });
+    expect(payersOf(live.lines, live.payerList).has).toEqual(payersOf().has);
+    expect(payerPaid(live.ledger, 'obi', live.vendorPayers)).toBe(157500);
+  });
+
+  it('flags a fixed split: Aunt Funmi keeps £400.00, the rest is £0.00, and the range still adds up', () => {
+    const m = startOf('payer_needs_amounts', REMOVED_PAYER);
+    const totals = totalsOf(m.lines);
+    const payers = payersOf(m.lines, m.payerList);
+
+    expect(m.flagged).toEqual(['cars']);
+    expect(shareOf(payerOf('funmi', m.payerList), m.lines, m.payerList)).toEqual({
+      settled: 40000,
+      ifAll: 40000,
+    });
+    expect(shareOf(payerOf('obi', m.payerList), m.lines, m.payerList)).toEqual(
+      shareOf(payerOf('obi')),
+    );
+    expect(payers.has.settled + payers.noPayer).toBe(totals.settled);
+    expect(payers.has.ifAll + payers.noPayer).toBe(totals.ifAll);
+  });
+
+  it('counts a cost with no price on a share, paid past it as nothing still to come, and the rename', () => {
+    const unpriced = startOf('payer_not_priced', REMOVED_PAYER);
+    const past = startOf('payer_paid_past', REMOVED_PAYER);
+    const obi = shareOf(payerOf('obi'));
+    const paid = payerPaid(past.ledger, 'obi', past.vendorPayers);
+
+    expect(notPricedFor(payerOf('couple', unpriced.payerList), unpriced.lines)).toBe(1);
+    expect(notPricedFor(payerOf('couple'))).toBe(0);
+    expect(paid).toBe(1230000);
+    expect(stillToCome(obi, paid)).toEqual({ settled: 0, ifAll: 0 });
+    expect(payerOf('obi', startOf('payer_renamed', REMOVED_PAYER).payerList).name).toBe(RENAMED);
+  });
+
+  it('says a passphrase on the link’s state, none once every link is revoked, and sends anew', () => {
+    const asks = startOf('payer_passphrase', REMOVED_PAYER);
+    const revoked = startOf('payer_all_revoked', REMOVED_PAYER);
+    const sent = reduce(reduce(revoked, { type: 'send', key: 'bakare' }), {
+      type: 'linkMade',
+      key: 'bakare',
+    });
+
+    expect(asks.passphrase).toEqual(['obi']);
+    expect(linkWords('opened', 'en-US', true)).toBe(
+      'Opened 3 times. Last on Monday, Nov 2 at 21:14. Asks for a passphrase.',
+    );
+    expect(revoked.links.bakare).toBe('revoked');
+    expect(linkWords('revoked', 'en-US')).toBeNull();
+    expect(sent.links.bakare).toBe('sent');
+  });
+
+  it('opens loading, never loaded, reconnecting and neither on the payers', () => {
+    expect(startOf('payers_loading', REMOVED_PAYER)).toMatchObject({
+      view: { page: 'payers' },
+      figures: 'loading',
+    });
+    expect(startOf('payers_never_loaded', REMOVED_PAYER)).toMatchObject({ figures: 'never' });
+    expect(startOf('payers_reconnecting', REMOVED_PAYER).link).toBe('reconnecting');
+    expect(startOf('payers_neither', REMOVED_PAYER)).toMatchObject({
+      payers: 'none',
+      costs: false,
+    });
+  });
+});
+
 /** budget-a-spec.md §9's app names, written out, with the two sc-93 added on 7 Nov (mark_paid_earlier, early_on). */
 const SPEC_STATES = [
   'populated',
@@ -475,6 +625,26 @@ const SPEC_STATES = [
   'due_read_only',
   'mark_paid_earlier',
   'early_on',
+  // The gaps of 8 Nov 2026: sc-88, sc-90 and sc-95 on the Budget tab; sc-30200 and sc-1300 on Who is paying.
+  'refused_currency',
+  'refused_plan',
+  'ceiling_categories_only',
+  'ceiling_live_set',
+  'ceiling_live_changed',
+  'ceiling_live_cleared',
+  'reminder_overdue',
+  'reminder_mixed',
+  'payers_loading',
+  'payers_live',
+  'payers_reconnecting',
+  'payers_never_loaded',
+  'payers_neither',
+  'payer_renamed',
+  'payer_needs_amounts',
+  'payer_not_priced',
+  'payer_paid_past',
+  'payer_passphrase',
+  'payer_all_revoked',
 ] as const;
 
 describe('every state the spec names has a link on the demo home', () => {

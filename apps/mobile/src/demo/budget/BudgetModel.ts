@@ -2,10 +2,12 @@ import {
   AS_OF_TIME,
   CATEGORIES,
   CEILINGS,
+  CEILING_CHANGE,
   CHANGED_SINCE,
   COLLEAGUE,
   CURRENCY,
   type Category,
+  type Cover,
   EVENT_NAME,
   GUESTS,
   HEADS_IF_ALL_COME,
@@ -13,6 +15,7 @@ import {
   type Line,
   type LinkState,
   NOW_TIME,
+  OPENED,
   PAID_BEFORE,
   PAYERS,
   PAYMENTS,
@@ -20,11 +23,15 @@ import {
   type PayerKey,
   type Payment,
   REMINDER,
+  REMINDERS,
+  RENAMED,
   TODAY,
   VENDORS,
   VENDOR_PAYERS,
+  type VendorKey,
   ZONE,
 } from './BudgetSample.ts';
+import { W, say } from './BudgetWords.ts';
 
 export const BUDGET_STATES = [
   'populated',
@@ -44,6 +51,14 @@ export const BUDGET_STATES = [
   'refused_cancelled',
   'read_only',
   'no_budget',
+  'refused_currency',
+  'refused_plan',
+  'ceiling_categories_only',
+  'ceiling_live_set',
+  'ceiling_live_changed',
+  'ceiling_live_cleared',
+  'reminder_overdue',
+  'reminder_mixed',
 ] as const;
 
 export const PAYERS_STATES = [
@@ -56,6 +71,17 @@ export const PAYERS_STATES = [
   'offline',
   'send_failed',
   'long_name',
+  'payers_loading',
+  'payers_live',
+  'payers_reconnecting',
+  'payers_never_loaded',
+  'payers_neither',
+  'payer_renamed',
+  'payer_needs_amounts',
+  'payer_not_priced',
+  'payer_paid_past',
+  'payer_passphrase',
+  'payer_all_revoked',
 ] as const;
 
 export const DUE_NOW_STATES = [
@@ -201,11 +227,21 @@ export function categoryTotals(category: Category, lines: readonly Line[] = LINE
   return totalsOf(lines.filter((line) => line.category === category));
 }
 
+export interface Ceilings {
+  whole: number | null;
+  categories: Partial<Record<Category, number>>;
+}
+
+export function wholeState(ceilings: Ceilings, totals: Totals): CeilingState | null {
+  return ceilings.whole == null ? null : ceilingState(ceilings.whole, totals.settled, totals.ifAll);
+}
+
 export function categoryState(
   category: Category,
   lines: readonly Line[] = LINES,
+  ceilings: Ceilings = CEILINGS,
 ): CeilingState | null {
-  const limit = CEILINGS.categories[category];
+  const limit = ceilings.categories[category];
   if (limit == null) return null;
   const totals = categoryTotals(category, lines);
   return ceilingState(limit, totals.settled, totals.ifAll);
@@ -265,15 +301,21 @@ export function nextPayment(ledger: Ledger): Payment | null {
 export type CardThing =
   | { kind: 'payment'; payment: Payment }
   | { kind: 'notPriced'; count: number }
-  | { kind: 'ceiling'; state: CeilingState };
+  | { kind: 'ceiling'; state: CeilingState }
+  | { kind: 'nothing' };
 
 /** The card's one thing (sc-93's pick): a payment due; early on, with nothing scheduled, what is not priced; else the ceiling. */
-export function cardThing(ledger: Ledger, totals: Totals): CardThing {
+export function cardThing(
+  ledger: Ledger,
+  totals: Totals,
+  ceilings: Ceilings = CEILINGS,
+): CardThing {
   const next = nextPayment(ledger);
   if (next != null) return { kind: 'payment', payment: next };
   const early = PAYMENTS.every((payment) => ledger.unscheduled.includes(payment.id));
   if (early && totals.notPriced > 0) return { kind: 'notPriced', count: totals.notPriced };
-  return { kind: 'ceiling', state: ceilingState(CEILINGS.whole, totals.settled, totals.ifAll) };
+  const state = wholeState(ceilings, totals);
+  return state == null ? { kind: 'nothing' } : { kind: 'ceiling', state };
 }
 
 export function nextDay(day: string): string {
@@ -394,20 +436,54 @@ export function coverAmount(lineKey: string, share: number, lines: readonly Line
   return { settled: amount.settled * share, ifAll: amount.ifAll * share };
 }
 
-export function shareOf(payer: Payer, lines: readonly Line[] = LINES): Share {
+/** A payer's part of one cost: a fraction, a fixed amount kept as agreed, or what is left after the fixed ones, never below 0. */
+export function coverPart(
+  cover: Cover,
+  lines: readonly Line[] = LINES,
+  payers: readonly Payer[] = PAYERS,
+): Share {
+  if (cover.fixed != null) return { settled: cover.fixed, ifAll: cover.fixed };
+  if (cover.rest !== true) return coverAmount(cover.line, cover.share, lines);
+  const amount = amountOf(lineOf(cover.line, lines));
+  if (amount.kind !== 'priced') return { settled: 0, ifAll: 0 };
+  const fixed = payers
+    .flatMap((payer) => payer.covers)
+    .reduce((sum, one) => (one.line === cover.line ? sum + (one.fixed ?? 0) : sum), 0);
+  return {
+    settled: Math.max(0, amount.settled - fixed),
+    ifAll: Math.max(0, amount.ifAll - fixed),
+  };
+}
+
+export function shareOf(
+  payer: Payer,
+  lines: readonly Line[] = LINES,
+  payers: readonly Payer[] = PAYERS,
+): Share {
   return payer.covers.reduce<Share>(
     (sum, cover) => {
-      const part = coverAmount(cover.line, cover.share, lines);
+      const part = coverPart(cover, lines, payers);
       return { settled: sum.settled + part.settled, ifAll: sum.ifAll + part.ifAll };
     },
     { settled: 0, ifAll: 0 },
   );
 }
 
-export function payerPaid(ledger: Ledger, key: PayerKey): number {
+export function notPricedFor(payer: Payer, lines: readonly Line[] = LINES): number {
+  return payer.covers.filter((cover) => amountOf(lineOf(cover.line, lines)).kind === 'notPriced')
+    .length;
+}
+
+export type VendorPayers = Record<VendorKey, Partial<Record<PayerKey, number>>>;
+
+export function payerPaid(
+  ledger: Ledger,
+  key: PayerKey,
+  vendorPayers: VendorPayers = VENDOR_PAYERS,
+): number {
   return PAYMENTS.reduce((sum, payment) => {
     const done = ledger.paid[payment.id];
-    const part = VENDOR_PAYERS[payment.vendor][key] ?? 0;
+    const part = vendorPayers[payment.vendor][key] ?? 0;
     return done == null ? sum : sum + Math.round(done.amount * part);
   }, 0);
 }
@@ -422,14 +498,19 @@ export interface Payers {
   noPayerCosts: number;
 }
 
-export function payersOf(lines: readonly Line[] = LINES): Payers {
-  const covered = new Set(PAYERS.flatMap((payer) => payer.covers.map((cover) => cover.line)));
+/** Has a payer counts each cost with a payer at its own amount, so with No payer yet it is the range exactly, a flagged split included. */
+export function payersOf(
+  lines: readonly Line[] = LINES,
+  payers: readonly Payer[] = PAYERS,
+): Payers {
+  const covered = new Set(payers.flatMap((payer) => payer.covers.map((cover) => cover.line)));
   const left = lines.filter((line) => !covered.has(line.key));
-  const has = PAYERS.map((payer) => shareOf(payer, lines)).reduce<Share>(
-    (sum, share) => ({ settled: sum.settled + share.settled, ifAll: sum.ifAll + share.ifAll }),
-    { settled: 0, ifAll: 0 },
-  );
-  return { has, noPayer: totalsOf(left).settled, noPayerCosts: left.length };
+  const totals = totalsOf(lines.filter((line) => covered.has(line.key)));
+  return {
+    has: { settled: totals.settled, ifAll: totals.ifAll },
+    noPayer: totalsOf(left).settled,
+    noPayerCosts: left.length,
+  };
 }
 
 /** sc-93's live change (pm and ux, 7 Nov): a colleague's new rate for Dinner arriving from the web. */
@@ -440,14 +521,26 @@ export function withRate(lines: readonly Line[], key: string, rate: number): Lin
   return lines.map((line) => (line.key === key ? { ...line, rate } : line));
 }
 
-export function payerOf(key: PayerKey): Payer {
-  const found = PAYERS.find((payer) => payer.key === key);
+export function payerOf(key: PayerKey, payers: readonly Payer[] = PAYERS): Payer {
+  const found = payers.find((payer) => payer.key === key);
   if (found == null) throw new Error(`No payer ${key} in the sample.`);
   return found;
 }
 
+/** The link's state in words; none once every link the payer had is revoked or ended (sc-1300). */
+export function linkWords(link: LinkState, locale: string, passphrase = false): string | null {
+  if (link === 'revoked') return null;
+  if (link === 'notSent') return say.notSent;
+  const ask = passphrase ? ` ${W.asksPassphrase}` : '';
+  if (link === 'sent') return `${say.sent}${ask}`;
+  const at = openedAt(OPENED.last, locale);
+  return `${say.opened(OPENED.times, at.day, at.time)}${ask}`;
+}
+
 export type View = { page: 'home' } | { page: 'payers' } | { page: 'payer'; key: PayerKey };
-export type Refusal = 'paid' | 'cancelled';
+export type Refusal = 'paid' | 'cancelled' | 'currency' | 'plan';
+export type CeilingLive = 'set' | 'changed' | 'cleared';
+export type ReminderKind = keyof typeof REMINDERS;
 
 export interface MarkForm {
   id: string;
@@ -462,6 +555,8 @@ export interface DueNowSheet {
   /** The reminder's payments, or everything still owed when Everything due opens it. */
   ids: readonly string[];
   fromReminder: boolean;
+  sent: string;
+  lastAbout: readonly string[];
   marked: readonly string[];
   refused: readonly string[];
   readOnly: boolean;
@@ -489,12 +584,82 @@ export interface BudgetModel {
   longName: boolean;
   scrolled: boolean;
   told: { words: string; at: number } | null;
+  ceilings: Ceilings;
+  ceilingLive: CeilingLive | null;
+  payerList: readonly Payer[];
+  vendorPayers: VendorPayers;
+  /** Costs whose fixed split no longer adds up on the web (sc-91's Needs new amounts). */
+  flagged: readonly string[];
+  passphrase: readonly PayerKey[];
+  news: string | null;
+  washed: readonly PayerKey[];
+  reminder: ReminderKind | null;
 }
 
 const LINKS = Object.fromEntries(PAYERS.map((payer) => [payer.key, payer.link])) as Record<
   PayerKey,
   LinkState
 >;
+
+/** sc-91's flag, as the web board draws it: Cars falls to £350.00 under Aunt Funmi's £400.00 fixed, Mr and Mrs Obi covering the rest. */
+export const FLAG = { line: 'cars', now: 35000, fixed: 40000 } as const;
+
+export function flaggedPayers(): Payer[] {
+  return PAYERS.map((one) => {
+    if (one.key === 'funmi')
+      return { ...one, covers: [{ line: FLAG.line, share: 1, fixed: FLAG.fixed }] };
+    if (one.key === 'obi')
+      return { ...one, covers: [...one.covers, { line: FLAG.line, share: 1, rest: true }] };
+    return one;
+  });
+}
+
+/** Mr and Mrs Obi paid past their share: both venue payments, and Savour Kitchen's second instalment paid at £7,500.00. */
+export const PAID_PAST: readonly (readonly [string, number])[] = [
+  ['landmark-balance', 315000],
+  ['savour-deposit', 450000],
+  ['savour-second', 750000],
+];
+
+export function roomShared(): { payers: Payer[]; vendorPayers: VendorPayers } {
+  return {
+    payers: PAYERS.map((one) => {
+      if (one.key === 'obi')
+        return {
+          ...one,
+          covers: one.covers.map((cover) =>
+            cover.line === 'room' ? { ...cover, share: 0.5 } : cover,
+          ),
+        };
+      if (one.key === 'bakare')
+        return { ...one, covers: [{ line: 'room', share: 0.5 }, ...one.covers] };
+      return one;
+    }),
+    vendorPayers: { ...VENDOR_PAYERS, landmark: { obi: 0.5, bakare: 0.5 } },
+  };
+}
+
+export function ceilingsAfter(live: CeilingLive): Ceilings {
+  if (live === 'set') return { ...CEILINGS, whole: CEILING_CHANGE.set };
+  if (live === 'changed') return { ...CEILINGS, whole: CEILING_CHANGE.changed };
+  return { whole: null, categories: {} };
+}
+
+/** A reminder's Due now: its payments, overdue first, each overdue one marked as the last about it (sc-95). */
+export function reminderSheet(kind: ReminderKind): DueNowSheet {
+  const ids = [...REMINDERS[kind].payments].sort(
+    (a, b) => Number(isOverdue(paymentOf(b))) - Number(isOverdue(paymentOf(a))),
+  );
+  return {
+    ids,
+    fromReminder: true,
+    sent: REMINDERS[kind].sent,
+    lastAbout: ids.filter((id) => isOverdue(paymentOf(id))),
+    marked: [],
+    refused: [],
+    readOnly: false,
+  };
+}
 
 export function startOf(state: BudgetState | null, removed: string): BudgetModel {
   const base: BudgetModel = {
@@ -519,8 +684,32 @@ export function startOf(state: BudgetState | null, removed: string): BudgetModel
     longName: false,
     scrolled: false,
     told: null,
+    ceilings: CEILINGS,
+    ceilingLive: null,
+    payerList: PAYERS,
+    vendorPayers: VENDOR_PAYERS,
+    flagged: [],
+    passphrase: [],
+    news: null,
+    washed: [],
+    reminder: null,
   };
   const bloom = 'bloom-balance';
+  const refused = (refusal: Refusal): BudgetModel => ({
+    ...base,
+    form: { id: bloom, from: 'card', phase: 'refused', refusal, amount: null, on: TODAY },
+  });
+  const sheet = (ids: readonly string[], more: Partial<DueNowSheet> = {}): DueNowSheet => ({
+    ids,
+    fromReminder: true,
+    sent: REMINDER.sent,
+    lastAbout: [],
+    marked: [],
+    refused: [],
+    readOnly: false,
+    ...more,
+  });
+  const payer = (key: PayerKey): BudgetModel['view'] => ({ page: 'payer', key });
 
   switch (state) {
     case 'scrolled':
@@ -614,49 +803,87 @@ export function startOf(state: BudgetState | null, removed: string): BudgetModel
     case 'due_done':
       return {
         ...base,
-        dueNow: {
-          ids: REMINDER.payments,
-          fromReminder: true,
-          marked: [],
-          refused: [],
-          readOnly: false,
-        },
+        dueNow: sheet(REMINDER.payments),
       };
     case 'due_marked':
       return {
         ...base,
         ledger: paidBy(base.ledger, bloom, 'Folake Adeyemi', TODAY, amountDue(bloom)),
-        dueNow: {
-          ids: REMINDER.payments,
-          fromReminder: true,
-          marked: [bloom],
-          refused: [],
-          readOnly: false,
-        },
+        dueNow: sheet(REMINDER.payments, { marked: [bloom] }),
       };
     case 'due_refused':
       return {
         ...base,
-        dueNow: {
-          ids: REMINDER.payments,
-          fromReminder: true,
-          marked: [],
-          refused: ['savour-deposit'],
-          readOnly: false,
-        },
+        dueNow: sheet(REMINDER.payments, { refused: ['savour-deposit'] }),
       };
     case 'due_read_only':
       return {
         ...base,
         vendors: 'readOnly',
-        dueNow: {
-          ids: REMINDER.payments,
-          fromReminder: true,
-          marked: [],
-          refused: [],
-          readOnly: true,
-        },
+        dueNow: sheet(REMINDER.payments, { readOnly: true }),
       };
+    case 'refused_currency':
+      return refused('currency');
+    case 'refused_plan':
+      return refused('plan');
+    case 'ceiling_categories_only':
+      return { ...base, ceilings: { ...CEILINGS, whole: null } };
+    case 'ceiling_live_set':
+      return { ...base, ceilings: { ...CEILINGS, whole: null }, ceilingLive: 'set' };
+    case 'ceiling_live_changed':
+      return { ...base, ceilingLive: 'changed' };
+    case 'ceiling_live_cleared':
+      return { ...base, ceilingLive: 'cleared' };
+    case 'reminder_overdue':
+    case 'reminder_mixed':
+      return { ...base, reminder: state === 'reminder_overdue' ? 'overdue' : 'mixed' };
+    case 'payers_loading':
+      return { ...base, view: { page: 'payers' }, figures: 'loading' };
+    case 'payers_live':
+      return { ...base, view: { page: 'payers' }, showLive: true };
+    case 'payers_reconnecting':
+      return { ...base, view: { page: 'payers' }, link: 'reconnecting' };
+    case 'payers_never_loaded':
+      return { ...base, view: { page: 'payers' }, figures: 'never', link: 'offline' };
+    case 'payers_neither':
+      return { ...base, view: { page: 'payers' }, payers: 'none', costs: false };
+    case 'payer_renamed':
+      return {
+        ...base,
+        view: payer('obi'),
+        payerList: PAYERS.map((one) => (one.key === 'obi' ? { ...one, name: RENAMED } : one)),
+      };
+    case 'payer_needs_amounts':
+      return {
+        ...base,
+        view: payer('funmi'),
+        lines: withRate(LINES, FLAG.line, FLAG.now),
+        payerList: flaggedPayers(),
+        flagged: [FLAG.line],
+      };
+    case 'payer_not_priced':
+      return {
+        ...base,
+        view: payer('couple'),
+        payerList: PAYERS.map((one) =>
+          one.key === 'couple'
+            ? { ...one, covers: [...one.covers, { line: 'arch', share: 1 }] }
+            : one,
+        ),
+      };
+    case 'payer_paid_past':
+      return {
+        ...base,
+        view: payer('obi'),
+        ledger: PAID_PAST.reduce(
+          (ledger, [id, amount]) => paidBy(ledger, id, COLLEAGUE, TODAY, amount),
+          base.ledger,
+        ),
+      };
+    case 'payer_passphrase':
+      return { ...base, view: payer('obi'), passphrase: ['obi'] };
+    case 'payer_all_revoked':
+      return { ...base, view: payer('bakare'), links: { ...LINKS, bakare: 'revoked' } };
     default:
       return base;
   }
@@ -679,7 +906,10 @@ export type BudgetAction =
   | { type: 'view'; view: View }
   | { type: 'send'; key: PayerKey }
   | { type: 'linkMade'; key: PayerKey }
-  | { type: 'told'; words: string | null };
+  | { type: 'told'; words: string | null }
+  | { type: 'ceilingChanged'; words: string }
+  | { type: 'payersChanged'; words: string }
+  | { type: 'openReminder' };
 
 /** Every row on the sheet paid or cancelled elsewhere, none marked here: "Nothing left to pay." heads it (sc-93, 7 Nov). */
 export function dueNowSettled(sheet: DueNowSheet, ledger: Ledger): boolean {
@@ -741,6 +971,8 @@ export function reduce(m: BudgetModel, action: BudgetAction): BudgetModel {
         dueNow: {
           ids: action.ids,
           fromReminder: false,
+          sent: REMINDER.sent,
+          lastAbout: [],
           marked: [],
           refused: [],
           readOnly: m.vendors === 'readOnly',
@@ -770,7 +1002,7 @@ export function reduce(m: BudgetModel, action: BudgetAction): BudgetModel {
     case 'reconnected':
       return { ...m, link: 'live', showLive: true };
     case 'washed':
-      return { ...m, wash: false };
+      return { ...m, wash: false, washed: [] };
     case 'liveChange':
       return {
         ...m,
@@ -789,11 +1021,40 @@ export function reduce(m: BudgetModel, action: BudgetAction): BudgetModel {
         sending: null,
         links: {
           ...m.links,
-          [action.key]: m.links[action.key] === 'notSent' ? 'sent' : m.links[action.key],
+          [action.key]:
+            m.links[action.key] === 'notSent' || m.links[action.key] === 'revoked'
+              ? 'sent'
+              : m.links[action.key],
         },
       };
     case 'told':
       return { ...m, told: action.words == null ? null : told(action.words) };
+    case 'ceilingChanged':
+      return m.ceilingLive == null
+        ? m
+        : {
+            ...m,
+            ceilings: ceilingsAfter(m.ceilingLive),
+            ceilingLive: null,
+            wash: true,
+            showLive: true,
+            news: action.words,
+            told: told(action.words),
+          };
+    case 'payersChanged': {
+      const shared = roomShared();
+      return {
+        ...m,
+        payerList: shared.payers,
+        vendorPayers: shared.vendorPayers,
+        wash: true,
+        washed: ['obi', 'bakare'],
+        news: action.words,
+        told: told(action.words),
+      };
+    }
+    case 'openReminder':
+      return m.reminder == null ? m : { ...m, reminder: null, dueNow: reminderSheet(m.reminder) };
   }
 }
 
