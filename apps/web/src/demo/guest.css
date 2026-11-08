@@ -878,6 +878,18 @@
   border: 3px solid var(--colorAttentionText);
 }
 
+.gp-notice.gp-unsaved {
+  padding-bottom: 4px;
+}
+
+.gp-unsaved-words {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
 .gp-phase {
   display: flex;
   flex-direction: column;
@@ -1331,7 +1343,8 @@
   margin: 0 var(--gpGut);
 }
 
-.is-one .gp-phase {
+.is-one .gp-phase,
+.is-one .gp-unsaved {
   margin-bottom: 16px;
 }
 
@@ -1353,7 +1366,8 @@
   margin-left: calc(var(--gpLeft) + var(--gpGap));
 }
 
-.is-two .gp-phase {
+.is-two .gp-phase,
+.is-two .gp-unsaved {
   margin-bottom: 20px;
 }
 

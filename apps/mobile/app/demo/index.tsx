@@ -1188,6 +1188,11 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/welcome?notice=byRule',
       },
       {
+        title: 'Welcome · Terms pressed',
+        what: 'Under the last button; names what the in-app browser opens',
+        href: '/demo/legal-link?doc=terms',
+      },
+      {
         title: 'Sign in with email',
         what: 'The checks, and the refused shake',
         href: '/demo/sign-in',

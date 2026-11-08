@@ -7,17 +7,28 @@ import {
   type Guest,
   type Invite,
   LINK,
+  ORGANISATION_LANGUAGE,
   WEDDING,
   cardLine,
   companionName,
   dayOf,
+  languageName,
   phoneShown,
   replyByOf,
   replyTail,
   repliesClosed,
   weekdayOf,
 } from './guests.ts';
-import { Cover, IconLead, MarkLead, OkLine, Pill, Refused, ReplyMark } from './GuestsParts.tsx';
+import {
+  ChoseNote,
+  Cover,
+  IconLead,
+  MarkLead,
+  OkLine,
+  Pill,
+  Refused,
+  ReplyMark,
+} from './GuestsParts.tsx';
 import { GW, HOW_INVITED, type HowInvited, REPLY_WORDS } from './guestsWords.ts';
 import { GUESTS as CONVERSATIONS, MESSAGES_AT } from './messages.ts';
 import { CardStep, Chevron, Head, RowWords, TextAction } from '../components/SettingsParts.tsx';
@@ -166,6 +177,19 @@ function Details({
                 title={guest.phone == null ? GW.none : phoneShown(guest.phone)}
                 lines={[GW.mobileNumber]}
               />
+            </li>
+            <li className={guest.language == null ? 'desk-row is-none' : 'desk-row'}>
+              <IconLead name="globe" />
+              <div className="gs-row-words">
+                <RowWords
+                  title={
+                    languageName(guest.language) ??
+                    GW.notSetLine(languageName(ORGANISATION_LANGUAGE) ?? '')
+                  }
+                  lines={[GW.language]}
+                />
+                {guest.chose != null && <ChoseNote chose={guest.chose} />}
+              </div>
             </li>
           </>
         )}

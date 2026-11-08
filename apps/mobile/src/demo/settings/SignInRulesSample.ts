@@ -7,7 +7,7 @@ export const TITLE = 'Sign-in rules';
 const ORG = YOU.organisation;
 const THIS_YEAR = 2026;
 
-export const ASK_OWNER = `Questions? Ask an owner of ${ORG}.`;
+export const ASK_OWNER = `Questions? Ask an owner or admin of ${ORG}.`;
 export const MANAGERS_ARE = 'Managers are owners and admins.';
 
 export type Change = Pick<SignInRuleChange, 'rule' | 'now' | 'was'> & {
@@ -213,7 +213,7 @@ export function rulesCard(rules: readonly RuleRow[], viewer: RulesViewer): Rules
       says: `You meet ${ORG}’ rules`,
       line: viewer.setsRules
         ? 'To change them, use Soirely on the web.'
-        : 'Set by its owners. Only they can change them.',
+        : 'Set by its owners and admins. Only they can change them.',
       step: null,
     };
 

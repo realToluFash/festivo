@@ -109,6 +109,13 @@ export const GW = {
   done: 'Done',
   fullName: 'Full name',
   optional: 'Optional',
+  language: 'Language',
+  notSet: 'Not set',
+  languageHint:
+    'Their page opens in their browser’s language when Soirely offers it, otherwise in this language. Messages use this language. When this is Not set, both use your organisation’s language.',
+  notSetLine: (organisation: string) =>
+    `Not set · their browser’s language, or ${organisation} when Soirely does not offer it`,
+  theyChose: (language: string) => `They chose ${language} on their page, and that wins.`,
   country: 'Country',
   keepsLink: 'Changing the email address or mobile number keeps their invitation link as it is.',
   companions: 'Companions',
