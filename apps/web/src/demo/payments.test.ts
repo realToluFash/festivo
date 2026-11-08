@@ -272,6 +272,10 @@ describe('payments on a vendor’s page, shapes and reminders, in A (sc-88, sc-1
     expect(PW.daysAfter(1)).toBe('1 day after the event');
     expect(PW.daysAfter(14)).toBe('14 days after the event');
     expect(PW.whenReminded(1)).toMatch(/^1 day before a payment is due/u);
+    expect(PW.whenReminded(3)).toMatch(/^3 days before a payment is due/u);
+    expect([PW.saveShapes(1), PW.saveShapes(3)]).toEqual(['Save 1 payment', 'Save 3 payments']);
+    expect(PW.shapeFailed(1)).toMatch(/^This payment was not saved.*Save 1 payment to send it/u);
+    expect(PW.shapeFailed(2)).toMatch(/^None of these payments.*Save 2 payments to send them/u);
   });
 
   it('takes a percentage from 0 to 100 with two decimals, and days from 0 to 730', () => {
