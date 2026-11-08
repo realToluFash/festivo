@@ -28,8 +28,9 @@ import { LifecycleSheet } from '../src/components/LifecycleSheet.tsx';
 import { Notice } from '../src/components/Notice.tsx';
 import { Pending } from '../src/components/Pending.tsx';
 import { readOut } from '../src/components/ReadOut.tsx';
+import { useFocusOnAnswer } from '../src/components/Screen.tsx';
 import { type MarkTone } from '../src/components/StatusMark.tsx';
-import { Text } from '../src/components/Text.tsx';
+import { Text, type TextHandle } from '../src/components/Text.tsx';
 import { dropRecovery, heldRecovery, holdRecovery } from '../src/heldRecovery.ts';
 import { currentLocale } from '../src/i18n/index.ts';
 import { retryAfter } from '../src/kit/code.ts';
@@ -671,6 +672,8 @@ function Codes({
   const [failed, setFailed] = useState<object | null>(null);
   const [foundSpent, setFoundSpent] = useState<object | null>(null);
   const [textingFailed, setTextingFailed] = useState(false);
+  // New with each text-instead that goes, so the line saying it went takes the button's focus (sc-11173).
+  const [texted, setTexted] = useState<object | undefined>(undefined);
   const [cooldown, setCooldown] = useState(codes?.cooldownSeconds ?? 0);
   const lastRoute = useRef(codes?.route ?? null);
 
@@ -829,6 +832,7 @@ function Codes({
 
     try {
       onState(await api.textRecoveryCodeInstead(recovery));
+      setTexted({});
     } catch (refusal) {
       if (replacedElsewhere(refusal)) {
         onReplaced();
@@ -942,11 +946,14 @@ function Codes({
                     testID={`lostTwoFactor.${field}`}
                   />
                   {errors[field] != null && <Says words={errors[field]} />}
-                  <Text size={tokens.typeSmall.size} style={styles.small}>
-                    {field === 'emailCode'
-                      ? t('lostTwoFactor.sentTo', { email: state.email })
-                      : sent}
-                  </Text>
+                  <SentLine
+                    words={
+                      field === 'emailCode'
+                        ? t('lostTwoFactor.sentTo', { email: state.email })
+                        : sent
+                    }
+                    answer={field === 'phoneCode' ? texted : undefined}
+                  />
                 </View>
               );
             })}
@@ -977,6 +984,17 @@ function Codes({
         </>
       )}
     </StepScreen>
+  );
+}
+
+/** Where a code went, under its boxes; with each new `answer`, a screen reader's focus moves onto it. */
+function SentLine({ words, answer }: { words: string; answer: unknown }) {
+  const { read } = useFocusOnAnswer<TextHandle>(answer);
+
+  return (
+    <Text ref={read} size={tokens.typeSmall.size} style={styles.small}>
+      {words}
+    </Text>
   );
 }
 
