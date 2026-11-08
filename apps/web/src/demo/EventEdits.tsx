@@ -33,6 +33,7 @@ import {
   suggestionsFor,
   wallOf,
 } from './events.ts';
+import { writtenTime } from './clock.ts';
 import { Alert, Broken, NotBuilt, Quiet } from './EventParts.tsx';
 import { Glyph } from '../components/Glyph.tsx';
 import { Ask, RedAction, RowWords, TextAction } from '../components/SettingsParts.tsx';
@@ -432,7 +433,7 @@ function movedDay(end: Wall): string {
     timeZone: 'UTC',
   }).format(noon);
 
-  return `${day}, ${end.time}`;
+  return `${day}, ${writtenTime(end.time, LOCALE)}`;
 }
 
 /** Venue: its name and address, suggestions from 3 characters, and the zone it is in when that differs. */

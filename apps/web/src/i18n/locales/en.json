@@ -477,7 +477,8 @@
     "failedBody": "Something went wrong on the way. Try again in a moment.",
     "nameBlank": "Enter your full name.",
     "passwordBlank": "Enter a password.",
-    "tooShort": "Use at least {{count, number}} characters."
+    "tooShort": "Use at least {{count, number}} characters.",
+    "timedOut": "Your sign-up timed out, so we did not keep the password. Enter it again to get a new code."
   },
   "account": {
     "title": "Your account",

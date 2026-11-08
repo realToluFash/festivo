@@ -70,7 +70,7 @@
     "refused": "Cette adresse e-mail et ce mot de passe ne correspondent pas. Vérifiez les deux, ou réinitialisez votre mot de passe.",
     "endedTitle": "Votre session a été fermée",
     "endedBody": "Reconnectez-vous pour continuer.",
-    "codeTimedOutTitle": "That sign-in timed out",
+    "codeTimedOutTitle": "La connexion a expiré",
     "lockedTitle": "Trop de tentatives",
     "withGoogle": "Continuer avec {{provider}}",
     "withApple": "Continuer avec {{provider}}",
@@ -107,7 +107,8 @@
     "failedTitle": "La création du compte n’a pas abouti",
     "failedBody": "Quelque chose s’est mal passé en route. Réessayez dans un instant.",
     "nameBlank": "Saisissez votre nom complet.",
-    "passwordBlank": "Saisissez un mot de passe."
+    "passwordBlank": "Saisissez un mot de passe.",
+    "timedOut": "Votre inscription a expiré, nous n’avons donc pas conservé le mot de passe. Ressaisissez-le pour recevoir un nouveau code."
   },
   "verifyEmail": {
     "title": "Consultez votre boîte mail",

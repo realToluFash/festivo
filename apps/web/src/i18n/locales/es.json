@@ -439,7 +439,7 @@
     "noMatch": "Ese correo electrónico y esa contraseña no coinciden.",
     "endedTitle": "Se ha cerrado su sesión",
     "endedBody": "Inicie sesión de nuevo para continuar.",
-    "codeTimedOutTitle": "That sign-in timed out",
+    "codeTimedOutTitle": "El inicio de sesión ha caducado",
     "lockedTitle": "Demasiados intentos",
     "lockedBody": "Inténtelo de nuevo a las {{time}}.",
     "lockedReset": "Restablecer su contraseña",
@@ -487,7 +487,8 @@
     "failedBody": "Algo ha fallado en el camino. Inténtelo de nuevo en un momento.",
     "nameBlank": "Introduzca su nombre completo.",
     "passwordBlank": "Introduzca una contraseña.",
-    "tooShort": "Use al menos {{count, number}} caracteres."
+    "tooShort": "Use al menos {{count, number}} caracteres.",
+    "timedOut": "Su registro ha caducado, así que no hemos guardado la contraseña. Vuelva a introducirla para recibir un código nuevo."
   },
   "account": {
     "title": "Su cuenta",

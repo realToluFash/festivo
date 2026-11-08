@@ -4,6 +4,7 @@ import { Brand } from '../components/Brand.tsx';
 import { AREAS, type Area, type Card, type SampleEvent, cardOf } from './events.ts';
 import { Thumb } from './EventParts.tsx';
 import { Glyph, type GlyphName } from '../components/Glyph.tsx';
+import { guestsAt, hasGuests } from './guests.ts';
 import { OrgSwitcher } from './OrgSwitcher.tsx';
 import { SAMPLE } from './rules.ts';
 import type { Tell } from '../components/SettingsParts.tsx';
@@ -86,9 +87,11 @@ export function EventSidebar({
                   ? '/demo/people'
                   : one.area === 'overview'
                     ? `/demo/events/${event.id}`
-                    : one.area === 'messages'
-                      ? `/demo/events/${event.id}/messages`
-                      : `/demo/events/${event.id}?area=${one.area}`
+                    : one.area === 'messages' || one.area === 'seating'
+                      ? `/demo/events/${event.id}/${one.area}`
+                      : one.area === 'guests' && hasGuests(event.id)
+                        ? guestsAt(event.id)
+                        : `/demo/events/${event.id}?area=${one.area}`
               }
               aria-current={one.area === area ? 'page' : undefined}
               aria-label={one.area === 'messages' && waiting != null ? waiting.name : undefined}

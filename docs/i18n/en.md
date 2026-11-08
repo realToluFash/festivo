@@ -66,6 +66,31 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **8 Nov 2026. A two-factor sign-in that ran out** (sc-29979, `signIn.codeTimedOutTitle`,
+  web and app). "That sign-in timed out", then `endedBody` "Sign in again to carry on." The
+  app joins the two as one line with a full stop, so the title takes none. "That" names the
+  attempt the person just made, not their session: they were never signed in.
+- **8 Nov 2026. A sign-up that ran out** (sc-32449 for sc-29923, `register.timedOut`, web
+  and app). "Your sign-up timed out, so we did not keep the password. Enter it again to get a
+  new code." Kept as built: "timed out", as the sign-in; "the password", the one just typed;
+  "a new code", as Send a new code. The demos and tests pin this sentence, so a reword waits
+  on [dev].
+- **8 Nov 2026. Guests A: a guest's reply, the two counts, and the 412** (sc-3773, pm's #31841,
+  settled in #32403). The reply state is "Not sure yet" everywhere, the guest's own words,
+  never "Maybe": "Not sure yet · asked to decide by {{date}}", "Not sure yet · replied
+  {{date}}". Two measures: "haven't replied" (everyone without an answer of their own,
+  companions included) and "No reply" (guests only); never swap them. "Companions" is the
+  field and the count's noun, never "plus-ones". The card: "{{coming}} coming of {{invited}}
+  invited", "{{count}} haven't replied ({{guests}} guests and {{companions}} companions).",
+  "Replies close tomorrow, {{date}}.", "Write to them", "Open check-in", "Check-in opened at
+  {{time}}. Anyone on the list can be marked as arrived, whatever their reply." A group's
+  overflow is "Show all {{count}}", with no state slot, because the heading names it. "Their
+  conversation", "Their own page, where they reply." Replacing a link reuses
+  `requestLink.replaceBody`'s "stops working as soon as you replace it". The 412: "Theirs" and
+  "Yours", **Use theirs** and **Keep mine**: "Use theirs fills the form with their version and
+  drops your changes. Keep mine saves your changes over theirs." Each count is its own plural
+  key, and "Replies close" has a whole sentence per case (today, tomorrow, on a date, closed).
+
 - **8 Nov 2026. A payment schedule's shape fields, its sums and its failed save** (sc-1332,
   pm's #32327 from ux's demo, sc-31779 #1485). Field labels: "Percentage of the quote" (won
   over the earlier boards' "Share of the quote": "share" reads as a part of something, not a

@@ -439,7 +439,7 @@
     "noMatch": "Cette adresse e-mail et ce mot de passe ne correspondent pas.",
     "endedTitle": "Votre session a été fermée",
     "endedBody": "Reconnectez-vous pour continuer.",
-    "codeTimedOutTitle": "That sign-in timed out",
+    "codeTimedOutTitle": "La connexion a expiré",
     "lockedTitle": "Trop de tentatives",
     "lockedBody": "Réessayez à {{time}}.",
     "lockedReset": "Réinitialiser votre mot de passe",
@@ -487,7 +487,8 @@
     "failedBody": "Quelque chose s’est mal passé en route. Réessayez dans un instant.",
     "nameBlank": "Saisissez votre nom complet.",
     "passwordBlank": "Saisissez un mot de passe.",
-    "tooShort": "Utilisez au moins {{count, number}} caractères."
+    "tooShort": "Utilisez au moins {{count, number}} caractères.",
+    "timedOut": "Votre inscription a expiré, nous n’avons donc pas conservé le mot de passe. Ressaisissez-le pour recevoir un nouveau code."
   },
   "account": {
     "title": "Votre compte",

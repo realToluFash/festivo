@@ -819,14 +819,32 @@ export function branchForStory(id, remoteBranches) {
 }
 
 // The api container mounts services/api, so its compiled container outlives a checkout
-// and can name a service the new commit removed. The directory itself stays: Docker Desktop
-// leaves a running container holding a cache directory deleted on the host, and every
-// request that needs it answers 500.
-export function clearApiCache(root) {
+// and can name a service the new commit removed. It is emptied through a container: Docker
+// Desktop's VM keeps a directory deleted on the host as a ghost nothing can be written into,
+// and the api answers 500 or never boots.
+export const CACHE_CLEARER = 'busybox:1.36';
+
+export function clearApiCache(root, exec = run) {
   const cache = join(root, 'services/api/var/cache');
   if (!existsSync(cache)) return;
-  for (const name of readdirSync(cache))
-    rmSync(join(cache, name), { recursive: true, force: true });
+  exec('docker', [
+    'run',
+    '--rm',
+    '--volume',
+    `${resolve(cache)}:/cache`,
+    CACHE_CLEARER,
+    'find',
+    '/cache',
+    '-mindepth',
+    '1',
+    '-maxdepth',
+    '1',
+    '-exec',
+    'rm',
+    '-rf',
+    '{}',
+    '+',
+  ]);
 }
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -2980,6 +2998,17 @@ const composeApi = (root, onAndroid) =>
 const within = (ms, promise) =>
   Promise.race([promise.then(() => true), pause(ms).then(() => false)]);
 
+// A picture of the device at the instant a check asks, where takeScreenshot would wait for the
+// screen to settle: Refreshing… while the API is held passes before Maestro takes one.
+function screenshotDevice(device, onAndroid, file) {
+  if (!onAndroid) return run('xcrun', ['simctl', 'io', device, 'screenshot', file]);
+  const tools = androidTools();
+  const onDevice = `/sdcard/qa-shot-${process.pid}.png`;
+  run(tools.adb, ['-s', device, 'shell', 'screencap', '-p', onDevice], { env: tools.env });
+  run(tools.adb, ['-s', device, 'pull', onDevice, file], { env: tools.env });
+  run(tools.adb, ['-s', device, 'shell', 'rm', onDevice], { env: tools.env, optional: true });
+}
+
 // Under ten seconds an answer: batch/helper.js asks again while this says wait. A check that
 // failed while it held the API leaves it held, its last move perhaps still running, so whatever
 // uses the API next queues an 'up' behind it.
@@ -2997,6 +3026,8 @@ export function startHelper({
   open = openOnEmulator,
   reload = reloadOnEmulator,
   portrait = portraitOnEmulator,
+  shoot = (file) => screenshotDevice(device, onAndroid, file),
+  out,
   port = CONFIG.helperPort,
 }) {
   const server = createServer(async (request, response) => {
@@ -3026,6 +3057,16 @@ export function startHelper({
       }
       if (url.pathname === '/portrait') {
         return reply(200, { rotation: onAndroid ? portrait() : null });
+      }
+      if (url.pathname === '/shot') {
+        const name = url.searchParams.get('name') ?? '';
+        if (!/^[\w-]+$/.test(name))
+          throw new Error(`shot what? /shot?name=<letters, digits, -> gave ${name}`);
+        const check = begun.at(-1);
+        if (!check) throw new Error('a shot is taken inside a check, and none has started');
+        const file = join(out, `${check}-${name}.png`);
+        await shoot(file);
+        return reply(200, { shot: `${check}-${name}.png` });
       }
       if (url.pathname === '/running') {
         return reply(200, { running: appRunning(device, onAndroid) });
@@ -3203,6 +3244,7 @@ async function batch(args) {
     device,
     onAndroid,
     changeMembership,
+    out,
   });
   // The secret stays with the helper: no flow is handed it.
   const env = {
