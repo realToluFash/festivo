@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
-import { NO_ORG_PAGE, NO_ORG_STATES } from './noOrg.ts';
+import { NO_ORG, NO_ORG_PAGE, NO_ORG_STATES } from './noOrg.ts';
 
 const tested = config();
 
@@ -48,8 +48,9 @@ describe('inside the event with no organisation, at a desk (sc-71, sc-31775)', (
     expect(areas()).toEqual(['Overview', 'Guests', 'Schedule', 'Seating', 'People']);
     expect(screen.getByText('Can view · Cloakroom · until Sat, Nov 14, 23:30')).toBeDefined();
     expect(screen.queryByRole('button', { name: /Check guests in/u })).toBeNull();
-    expect(screen.getByText('Names and replies, no contact details')).toBeDefined();
-    expect(screen.getByText('21 on this event')).toBeDefined();
+    expect(screen.getByText('Names and replies only, no contact details')).toBeDefined();
+    expect(screen.getByText('21 people on this event')).toBeDefined();
+    expect(NO_ORG.onEvent(1)).toBe('1 person on this event');
     expect(sidebar().getByRole('button', { name: 'Lara Monteiro, Can view' })).toBeDefined();
   });
 
