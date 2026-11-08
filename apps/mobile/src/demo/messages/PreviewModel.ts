@@ -65,12 +65,10 @@ const NAMES: Record<Reader, Record<string, string>> = {
   fr: LANGUAGE_NAMES_FR,
 };
 
-/** A language on its own, as the app names it (`languageNames.*`): Preview as's option. */
 export function languageName(code: string, reader: Reader = 'en'): string {
   return NAMES[reader][`languageNames.${code}`] ?? code;
 }
 
-/** A language inside a sentence (`languageNamesInSentence.*`): the three language lines. */
 export function languageNameInSentence(code: string, reader: Reader = 'en'): string {
   return NAMES[reader][`languageNamesInSentence.${code}`] ?? code;
 }
