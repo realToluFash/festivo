@@ -337,6 +337,9 @@ export function roomLine(m: Seating): string {
 
 export const seatedCount = (items: readonly Item[]): number =>
   items.reduce((n, it) => n + it.chairs.filter((c) => c.state === 'taken').length, 0);
+/** Delete the plan's seated guests: a held chair is a person with a place too (pm and ux, 8 Nov 2026). */
+export const placedCount = (items: readonly Item[]): number =>
+  items.reduce((n, it) => n + filled(it), 0);
 export const freeCount = (items: readonly Item[]): number =>
   items.reduce((n, it) => n + free(it), 0);
 export const tableCount = (items: readonly Item[]): number => items.filter(isTable).length;

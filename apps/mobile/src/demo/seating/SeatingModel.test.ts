@@ -21,6 +21,7 @@ import {
   freeCount,
   itemOf,
   noSectionLine,
+  placedCount,
   roomLine,
   sectionRowLine,
   seatedCount,
@@ -533,10 +534,10 @@ describe('the room and the plan', () => {
     expect(m.outside).toEqual(['t5', 't10', 'bar2']);
   });
 
-  it('asks before deleting the plan with what it deletes, then who loses a seat (pm, 8 Nov)', () => {
+  it('asks before deleting the plan with what it deletes, then who loses a seat, held chairs too (pm, 8 Nov)', () => {
     const m = startOf('deletePlan', 'landscape');
-    expect(say.deletePlanBody(whatGoes(m), seatedCount(m.items))).toBe(
-      'This also deletes 3 sections, 13 tables, 1 row and 2 single seats. 84 seated guests move to Without a seat; the guest list does not change.',
+    expect(say.deletePlanBody(whatGoes(m), placedCount(m.items))).toBe(
+      'This also deletes 3 sections, 13 tables, 1 row and 2 single seats. 85 seated guests move to Without a seat; the guest list does not change.',
     );
     expect(say.deletePlanBody('1 table', 1)).toBe(
       'This also deletes 1 table. 1 seated guest moves to Without a seat; the guest list does not change.',
@@ -548,10 +549,10 @@ describe('the room and the plan', () => {
 
   it('says why the sizes are in metres or feet, and the plan’s other settled words', () => {
     expect(say.startLine('The Landmark', 'London', 'Ire Events')).toBe(
-      'At The Landmark, London. Sizes are in metres, as used in Ire Events’s country.',
+      'At The Landmark, London. Sizes are in metres, the units used where Ire Events is based.',
     );
     expect(say.startLineFeet('The Landmark', 'London', 'Ire Events')).toBe(
-      'At The Landmark, London. Sizes are in feet, as used in Ire Events’s country.',
+      'At The Landmark, London. Sizes are in feet and inches, the units used where Ire Events is based.',
     );
     expect(W.readOnly).toBe('You can view and print this plan, but not change it.');
     expect(W.failed).toBe('Could not load the seating plan.');

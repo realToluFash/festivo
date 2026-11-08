@@ -141,12 +141,12 @@ const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one :
 export const say = {
   roomLine: (room: string, size: string) => `${room} · ${size}`,
   startLineFeet: (venue: string, town: string, org: string) =>
-    `At ${venue}, ${town}. Sizes are in feet, as used in ${org}’s country.`,
+    `At ${venue}, ${town}. Sizes are in feet and inches, the units used where ${org} is based.`,
   roomRangeFeet: (min: number, max: number) =>
     `Use ${min.toLocaleString('en-US')} to ${max.toLocaleString('en-US')} ft.`,
   roomLabel: (room: string, w: string, l: string) => `Floor plan, ${room}, ${w} by ${l}`,
   startLine: (venue: string, town: string, org: string) =>
-    `At ${venue}, ${town}. Sizes are in metres, as used in ${org}’s country.`,
+    `At ${venue}, ${town}. Sizes are in metres, the units used where ${org} is based.`,
   outside: (n: number, w: string, l: string) =>
     `${plural(n, 'item sits', 'items sit')} outside ${w} × ${l}. Move them first.`,
   deletePlanBody: (counts: string, seated: number) => {

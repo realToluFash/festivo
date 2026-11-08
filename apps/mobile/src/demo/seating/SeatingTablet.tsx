@@ -27,7 +27,7 @@ import {
   sectionName,
   sectionOf,
   shapeChoice,
-  seatedCount,
+  placedCount,
   whatGoes,
   SHAPE_CHOICES,
 } from './SeatingModel.ts';
@@ -594,7 +594,7 @@ export function Overlays({ m, go }: { m: Seating; go: Go }) {
       : ask.kind === 'deletePlan'
         ? {
             title: W.deletePlanAsk,
-            line: say.deletePlanBody(whatGoes(m), seatedCount(m.items)),
+            line: say.deletePlanBody(whatGoes(m), placedCount(m.items)),
             keep: W.keepPlan,
             confirm: W.deletePlan,
             removes: true,
