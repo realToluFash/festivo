@@ -50,6 +50,16 @@ export function roleHolds(
   return permission !== '' && membership.permissions.includes(permission);
 }
 
+export type CardStepAction = 'makeLive' | 'changeDates' | 'resume' | 'duplicate';
+
+/** Whether the role can take an event card's step (sc-30413, 8 Nov): Duplicate is creating an event, the rest are managing one. */
+export function takesCardStep(
+  membership: { permissions: readonly string[] },
+  action: CardStepAction,
+): boolean {
+  return roleHolds(membership, action === 'duplicate' ? 'events.create' : 'events.manage');
+}
+
 export type KeptBackBy = 'linking' | 'twoFactor';
 
 /** The sign-in rules keeping back a permission the role itself holds (sc-16265); none means the role is the reason. */

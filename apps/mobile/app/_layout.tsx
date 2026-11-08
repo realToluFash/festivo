@@ -7,6 +7,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 
 import { showPushInForeground } from '../src/appPush.ts';
+import { LandingToast } from '../src/components/LandingToast.tsx';
 import { WindowOrigin } from '../src/components/Screen.tsx';
 import { useStepsInSheet } from '../src/steps/StepScreen.tsx';
 import { Text } from '../src/components/Text.tsx';
@@ -101,6 +102,7 @@ export default function RootLayout() {
                 })}
               />
             </Stack>
+            <LandingToast />
           </UpdateGate>
         </WindowOrigin>
       </ThemeProvider>

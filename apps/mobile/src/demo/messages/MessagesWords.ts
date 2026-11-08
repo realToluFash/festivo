@@ -44,7 +44,8 @@ export const W = {
   previewOn: 'Preview on',
   edit: 'Edit',
   goesOnTheirPage: 'Goes on their page',
-  onlyOurs: 'Only Soirely’s own words are translated. Yours go out exactly as you wrote them.',
+  onlyOurs:
+    'Only Soirely’s own words are translated. Yours show on their page exactly as you wrote them.',
   whatSoirelySends: 'What Soirely sends',
   readOnYourPage: 'Read it on your page',
   toldHow: 'Your message goes on their page. Soirely tells them it is there by email and text.',
@@ -77,6 +78,7 @@ export const W = {
   saved: 'Saved',
   alreadyOnPage: 'The message is already on their page. Soirely tells them again by:',
   filter: 'Filter',
+  closeFilter: 'Close Filter',
   back: 'Back',
   tellWho: 'Invited guests, except those not coming.',
   sentBy: 'Sent by',
@@ -134,6 +136,21 @@ export const W = {
   savedSaid: 'Saved.',
   updatedNotSent: 'Updated · not sent yet',
   emailChangedSince: 'Their email address has changed since. Nothing has been sent to it yet.',
+  emailAddedSince: 'An email address has been added since. Nothing has been sent to it yet.',
+  phoneAddedSince: 'A phone number has been added since. Nothing has been sent to it yet.',
+  mobileNumber: 'Mobile number',
+  phoneShape: 'That does not look like a phone number. Start with + and the country code.',
+  toldInPersonLine: 'Told in person',
+  undo: 'Undo',
+  markedAsTold: 'Marked as told',
+  noneTold: 'Nobody is marked as told yet.',
+  noneLeft: 'Nobody is left to reach.',
+  noneReached: 'Nobody has been reached yet.',
+  showNotReached: 'Show not reached',
+  notReachedWord: 'Not reached',
+  noneCanBeToldLine:
+    'Add an email address or a phone number first, or mark them as told in person.',
+  backToWho: 'Back to Who it reached',
   copyLink: 'Copy their link',
   notYetInvited: 'Not yet invited',
   theirInvitation: 'Their invitation',
@@ -218,13 +235,16 @@ export const say = {
   smsParts: (parts: number) => (parts === 1 ? 'SMS · 1 part' : `SMS · ${parts} parts`),
   whatsAppTemplate: 'WhatsApp · the approved template',
   stopEmails: (org: string) => `Stop emails from ${org}`,
-  cannotUndo: (count: number) => `Sending to ${count} people cannot be undone.`,
+  cannotUndo: (count: number) =>
+    count === 1
+      ? 'Sending to 1 person cannot be undone.'
+      : `Sending to ${count} people cannot be undone.`,
   cantTell: (count: number) => `${count} can’t be told · it is on their page if they open it`,
   credits: (count: number, after: string, whatsApp: boolean) =>
     whatsApp
       ? `Texts and WhatsApp messages use ${count} credits. Credits after sending: ${after}.`
       : `Texts use ${count} credits. Credits after sending: ${after}.`,
-  sendTo: (count: number) => `Send to ${count} people`,
+  sendTo: (count: number) => (count === 1 ? 'Send to 1 person' : `Send to ${count} people`),
   sendingIn: (seconds: number) => `Sending in ${seconds}…`,
   soFar: (reached: number, of: number) => `Reached ${reached} of ${of} so far`,
   queued: (count: number) => `Message queued. Sending to ${count} people now.`,
@@ -234,7 +254,16 @@ export const say = {
   resend: (count: number) => `Resend to the ${count} not reached`,
   wasBounced: (address: string) => `Was ${address}, which bounced.`,
   includesUnconfirmed: (count: number) =>
-    `Includes ${count} guests whose delivery was not confirmed. They may already have this message.`,
+    count === 1
+      ? 'Includes one guest whose delivery was not confirmed. They may already have this message.'
+      : `Includes ${count} guests whose delivery was not confirmed. They may already have this message.`,
+  noneCanBeTold: (count: number) =>
+    count === 1 ? 'They can’t be told yet' : `None of the ${count} can be told yet`,
+  markedBy: (name: string, time: string) => `Marked by ${name} at ${time}`,
+  markedTold: (name: string) => `${name} is marked as told in person.`,
+  unmarkedTold: (name: string) => `${name} is no longer marked as told.`,
+  filterItem: (word: string, count: number) => `${word} · ${count}`,
+  moreReached: (count: number) => `and ${count} more`,
   stillCantTell: (count: number) => `Still can’t be told · ${count}`,
   seeAll: (count: number) => `See all ${count}`,
   tell: (count: number) => `Tell ${count} guests?`,

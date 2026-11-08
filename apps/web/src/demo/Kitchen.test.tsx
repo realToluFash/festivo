@@ -222,7 +222,10 @@ describe('the milestone on the Overview and All dates', () => {
 
     expect(screen.getByText('Next up: Give final numbers to the kitchen')).toBeDefined();
     expect(screen.getByText('Tue, Nov 3, 23:59 · today')).toBeDefined();
-    fireEvent.click(screen.getByRole('link', { name: KW.openSheet }));
+
+    const links = screen.getAllByRole('link', { name: KW.openSheet });
+    expect(links.map((link) => link.getAttribute('href'))).toEqual([AT, AT]);
+    fireEvent.click(links[0]!);
     expect(router.state.location.pathname).toBe(AT);
   });
 

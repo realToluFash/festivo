@@ -141,6 +141,39 @@ describe('switching organisation', () => {
     expect(window.localStorage.getItem('soirely.organisation')).toBe('org_2');
   });
 
+  it('takes Close this notice on a sign-in rules notice above it to "Now working in"', () => {
+    const changed = {
+      ...OKAFOR,
+      signInRules: { ...OKAFOR.signInRules, changedAt: '2026-10-20T09:00:00+00:00' },
+    };
+    __setSessionState({
+      status: 'signedIn',
+      session: {
+        name: 'Folake Adeyemi',
+        email: 'folake@ire.events',
+        verified: true,
+        complete: true,
+        awaiting: null,
+        providers: [],
+        userId: 'u1',
+        needsOrganisation: false,
+        hasPassword: true,
+        organisation: IRE,
+        organisations: [IRE, changed],
+        organisationCountry: null,
+        timezone: null,
+        waitingFor: null,
+      },
+    });
+    at('/app');
+
+    fireEvent.click(screen.getByRole('button', { name: /Switch organisation/ }));
+    fireEvent.click(screen.getByRole('option', { name: /Okafor Family/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Close this notice' }));
+
+    expect(document.activeElement).toBe(screen.getByText('Now working in Okafor Family.'));
+  });
+
   it('opens on the organisation this device chose last time', async () => {
     window.localStorage.setItem('soirely.organisation', 'org_2');
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
@@ -255,7 +288,7 @@ describe('switching away from a paused organisation (sc-564)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Switch organisation' }));
 
     const switched = screen.getByText('Now working in Ìrè Events.');
-    expect(document.activeElement).toBe(switched.closest('.notice'));
+    expect(document.activeElement).toBe(switched.closest('.sw-notice'));
     expect(screen.queryByRole('status')).toBeNull();
   });
 });
@@ -320,7 +353,7 @@ describe('a 100-character name (sc-486)', () => {
 
   it('never lets the frame grow past the viewport, nor the open list', () => {
     expect(cssRule('.shell')).toMatch(
-      /grid-template-columns: var\(--sizeRail\) minmax\(0, 1fr\);/u,
+      /grid-template-columns: var\(--todaySide\) minmax\(0, 1fr\);/u,
     );
     expect(STYLES).toMatch(/\.shell \{[^}]*grid-template-columns: minmax\(0, 1fr\);/u);
     expect(cssRule('.org-switcher-menu')).toMatch(/max-width: calc\(100vw - /u);

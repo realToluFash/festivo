@@ -296,8 +296,9 @@ span {
 
   display: grid;
   flex: 1 0 auto;
-  grid-template-columns: var(--sizeRail) minmax(0, 1fr);
+  grid-template-columns: var(--todaySide) minmax(0, 1fr);
   grid-template-rows: auto 1fr;
+  background: var(--colorNeutralFill);
 }
 
 /* Page 29's header band: the crumb, the bell and the language (sc-26270). */
@@ -307,9 +308,12 @@ span {
   gap: var(--spaceMd);
   min-height: calc(var(--sizeHit) + 2 * var(--spaceSm));
   box-sizing: border-box;
+  margin: var(--spaceMd) var(--spaceMd) 0 0;
   padding: var(--spaceSm) var(--shellInline);
   background: var(--colorHeader);
+  border: 1px solid var(--colorBorder);
   border-bottom: var(--borderHeader);
+  border-radius: var(--radiusCardLarge) var(--radiusCardLarge) 0 0;
 }
 
 .shell-crumb {
@@ -326,14 +330,17 @@ span {
   color: var(--colorInk);
 }
 
+/* Today's desk frame (sc-30410): the sidebar stays in view on the fill while the page scrolls in its card. */
 .shell-sidebar {
+  position: sticky;
+  top: 0;
   grid-row: 1 / span 2;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space3xl);
-  padding: var(--spaceXxl) var(--spaceLg);
-  background: var(--colorCard);
-  border-right: var(--borderCard);
+  align-self: start;
+  height: 100vh;
+}
+
+.shell-sidebar .today-side {
+  width: auto;
 }
 
 .shell-nav {
@@ -368,14 +375,6 @@ span {
   font-weight: 600;
 }
 
-.shell-account {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spaceXxs);
-  margin-top: auto;
-  font: var(--typeSmall);
-}
-
 .shell-menu-button {
   display: none;
 }
@@ -388,8 +387,12 @@ span {
 /* The width is used rather than reserved: a 1200px content column on a 2560px
    monitor is the layout this product exists to avoid. */
 .shell-content {
+  margin: 0 var(--spaceMd) var(--spaceMd) 0;
   padding: var(--shellBlock) var(--shellInline);
-  max-width: 100rem;
+  border: 1px solid var(--colorBorder);
+  border-top: 0;
+  border-radius: 0 0 var(--radiusCardLarge) var(--radiusCardLarge);
+  background: var(--colorCard);
 }
 
 .brand {
@@ -758,17 +761,38 @@ span {
   }
 
   .shell-sidebar {
+    position: static;
     grid-row: auto;
-    border-right: 0;
+    height: auto;
     border-bottom: var(--borderCard);
   }
 
+  .shell-sidebar .today-side {
+    height: auto;
+  }
+
+  .shell-sidebar .today-places,
   .shell-nav {
     flex-flow: row wrap;
   }
 
-  .shell-account {
-    margin-top: 0;
+  .shell-sidebar .today-place {
+    width: auto;
+  }
+
+  .shell-sidebar .today-side-gap {
+    display: none;
+  }
+
+  .shell-band,
+  .shell-content {
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .shell-band {
+    border-bottom: var(--borderHeader);
   }
 
   .public-header {
@@ -800,20 +824,22 @@ span {
     grid-column: 1 / -1;
   }
 
-  .shell-sidebar {
+  .shell-sidebar .today-side {
     flex-direction: row;
     align-items: center;
     gap: var(--spaceMd);
     padding: var(--spaceSm) var(--spaceLg);
+    background: var(--colorCard);
   }
 
-  .shell-sidebar .brand,
+  .shell-sidebar .today-logo,
+  .shell-sidebar .today-side > .today-places,
   .shell-links {
     display: none;
   }
 
   /* An account in no organisation has no switcher, so the bar says whose it is instead. */
-  .shell-sidebar:not(:has(.org-switcher)) .brand {
+  .shell-sidebar .today-side:not(:has(.org-switcher)) .today-logo {
     display: flex;
     flex: 1;
   }
@@ -875,10 +901,6 @@ span {
 
 .shell-menu:focus {
   outline: none;
-}
-
-.shell-menu .shell-account {
-  margin-top: 0;
 }
 
 /* ── Sign in ──────────────────────────────────────────────────────────────── */
@@ -2003,21 +2025,6 @@ span {
   position: relative;
 }
 
-.org-switcher-button {
-  display: flex;
-  align-items: center;
-  gap: var(--spaceMd);
-  width: 100%;
-  min-height: var(--sizeHitPhonePrimary);
-  padding: var(--spaceXxs) var(--spaceMd) var(--spaceXxs) var(--spaceXs);
-  border: var(--borderControl);
-  border-radius: var(--radiusRow);
-  background: var(--colorCard);
-  color: var(--colorInk);
-  text-align: left;
-  cursor: pointer;
-}
-
 .org-tile {
   display: flex;
   flex: none;
@@ -2053,15 +2060,6 @@ span {
 .org-role {
   font: var(--typeMeta);
   color: var(--colorInkSecondary);
-}
-
-.org-switcher-chevron {
-  flex: none;
-  fill: none;
-  stroke: var(--colorInkSecondary);
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
 }
 
 .org-switcher-menu {
@@ -2129,16 +2127,6 @@ span {
   gap: var(--spaceXs);
   font: var(--typeButton);
   color: var(--colorAccentText);
-}
-
-.org-switcher-waiting {
-  display: flex;
-  align-items: center;
-  gap: var(--spaceXs);
-  margin-top: var(--spaceHair);
-  font: var(--typeMeta);
-  font-weight: 600;
-  white-space: nowrap;
 }
 
 .org-switcher-ring {

@@ -21,7 +21,7 @@ import { tokens } from '../../theme/tokens.ts';
 import { Choices } from '../Choices.tsx';
 import { COUNTRIES } from '../countries.ts';
 import { DemoScreen, NavBar } from '../DemoScreen.tsx';
-import { EventThumb } from '../events/EventCard.tsx';
+import { EventThumb } from '../../components/EventCard.tsx';
 import { HELD_MS } from '../people/PeopleSample.ts';
 import { SAMPLE } from '../samples.ts';
 import { SelectRow } from '../SelectRow.tsx';
@@ -218,7 +218,7 @@ function EventTile() {
   return (
     <View style={styles.tile}>
       <EventThumb
-        event={{ id: EVENT.id, mesh: meshFor(EVENT.id), photo: false }}
+        event={{ id: EVENT.id, mesh: meshFor(EVENT.id), photo: null }}
         side={56}
         radius={16}
       />

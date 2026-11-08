@@ -1,4 +1,4 @@
-import { type ReactNode, type RefObject, useRef, useState } from 'react';
+import { type ReactNode, type Ref, type RefObject, useRef, useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -12,7 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TextField, focusChecked } from '../../components/Field.tsx';
 import { ReadOut } from '../../components/ReadOut.tsx';
 import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
-import { Text } from '../../components/Text.tsx';
+import { Text, type TextHandle } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { EventField } from '../events/EventEdits.tsx';
 import { Avatar } from '../../components/SettingsParts.tsx';
@@ -20,38 +20,25 @@ import { FocusedScreen, TextAction } from '../../components/Summary.tsx';
 import { BigButton } from './CheckCard.tsx';
 import { WhyNot } from './Composers.tsx';
 import { DeliveryMark, MessageGlyph } from './MessageMarks.tsx';
-import type { Messages, ReachedOf } from './MessagesModel.ts';
-import {
-  INVITATION,
-  INVITE_GROUPS,
-  NOT_REACHED,
-  type NotReached,
-  PARKING_GROUPS,
-  PARKING_REACH,
-  type PersonKey,
-  REACH,
-  type ReachLine,
-  type ReachPart,
-  SENDING_GROUPS,
-  SENDING_REACH,
-} from './MessagesSample.ts';
-import { CHANNEL_WORD, W, say } from './MessagesWords.ts';
+import type { FixKind } from './MessagesModel.ts';
+import { type ReachView, type ReachPerson, isEmail, isPhone } from './Reach.ts';
+import { W, say } from './MessagesWords.ts';
 import { Legend, ReachBar } from './Stream.tsx';
 
 function Person({
   person,
-  again,
   closed,
   refFor,
   onFix,
   onSendAgain,
+  onNotNow,
 }: {
-  person: NotReached;
-  again: boolean;
+  person: ReachPerson;
   closed: string | null;
   refFor: (key: string) => (node: ViewInstance | null) => void;
-  onFix: (person: NotReached, fix: string) => void;
-  onSendAgain: (person: NotReached) => void;
+  onFix: (person: ReachPerson, fix: string) => void;
+  onSendAgain: (person: ReachPerson) => void;
+  onNotNow: (person: ReachPerson) => void;
 }) {
   return (
     <View style={styles.person} ref={refFor(`person.${person.key}`)}>
@@ -114,7 +101,7 @@ function Person({
             </View>
           </View>
         )}
-        {again && (
+        {person.offer && (
           <View style={styles.again}>
             <Pressable
               ref={refFor(`${person.key}.again`)}
@@ -149,6 +136,13 @@ function Person({
                 {say.sendAgain(person.name)}
               </Text>
             </Pressable>
+            <TextAction
+              ref={refFor(`${person.key}.notNow`)}
+              label={W.notNow}
+              accessibilityLabel={`${W.notNow}, ${person.name}`}
+              onPress={() => onNotNow(person)}
+              testID={`messages.notNow.${person.key}`}
+            />
           </View>
         )}
         <View style={styles.fixes}>
@@ -191,141 +185,31 @@ function GroupHead({ word, count }: { word: string; count: number }) {
   );
 }
 
-export interface ReachView {
-  title: string;
-  line: string;
-  parts: readonly ReachPart[];
-  status: string | null;
-  head: string;
-  filter: boolean;
-  groups: readonly { word: string; count: number; people: readonly NotReached[]; more?: string }[];
-  resend: number;
-}
-
-/** A person after a fix: Bounced kept on its line and Updated · not sent yet on the row until Send again, then Sent once it goes (Messaging-B-Phone-3's fixed and sentAgain). */
-function fixedPerson(person: NotReached, address: string, at: string | undefined): NotReached {
-  if (at == null) return { ...person, fixes: [], updated: W.emailChangedSince };
-
-  const rest = person.lines.filter((line) => !line.word.startsWith(CHANNEL_WORD.email));
-  const email: ReachLine = {
-    mark: 'sent',
-    word: [CHANNEL_WORD.email, W.sent, at].join(' · '),
-    reason: address,
-  };
-
-  return { ...person, lines: [email, ...rest], fixes: [] };
-}
-
-export function reachViewOf(m: Messages, of: ReachedOf): ReachView {
-  if (of === 'invite')
-    return {
-      title: say.reached(INVITATION.reached, INVITATION.of),
-      line: [
-        say.nowInvitedShort(INVITATION.reached),
-        say.seenBy(INVITATION.seen),
-        say.noEmailOrPhoneCount(INVITE_GROUPS[0]?.people.length ?? 0),
-      ].join(' · '),
-      parts: [
-        { mark: 'delivered', word: W.reachedWord, count: INVITATION.reached },
-        { mark: 'none', word: W.noEmailOrPhone, count: INVITATION.of - INVITATION.reached },
-      ],
-      status: null,
-      head: say.notReached(INVITATION.of - INVITATION.reached),
-      filter: false,
-      groups: INVITE_GROUPS.map((group) => ({ ...group, count: group.people.length })),
-      resend: INVITATION.of - INVITATION.reached,
-    };
-  if (of === 'draft')
-    return {
-      title: say.soFar(SENDING_REACH.reached, SENDING_REACH.of),
-      line: [
-        say.inProgressCount(SENDING_REACH.inProgress),
-        say.cantBeToldCount(SENDING_REACH.cantTell),
-        say.seenBy(SENDING_REACH.seen),
-      ].join(' · '),
-      parts: [
-        { mark: 'delivered', word: W.reachedWord, count: SENDING_REACH.reached },
-        { mark: 'sending', word: W.inProgress, count: SENDING_REACH.inProgress },
-        { mark: 'none', word: W.cantBeTold, count: SENDING_REACH.cantTell },
-      ],
-      status: null,
-      head: say.section(W.everyone, SENDING_REACH.of),
-      filter: true,
-      groups: SENDING_GROUPS.map((group, index) => ({
-        ...group,
-        count:
-          [SENDING_REACH.inProgress, SENDING_REACH.reached, SENDING_REACH.cantTell][index] ?? 0,
-        ...(index === 0 ? { more: say.andMore(SENDING_REACH.more) } : {}),
-      })),
-      resend: SENDING_REACH.cantTell,
-    };
-
-  const sent = (Object.keys(m.again) as PersonKey[]).filter((key) => m.again[key] != null);
-  const shown = (person: NotReached) => {
-    const address = m.fixed[person.key];
-    return address == null ? person : fixedPerson(person, address, m.again[person.key]);
-  };
-  const going = NOT_REACHED.filter((person) => sent.includes(person.key)).map(shown);
-  const groups = PARKING_GROUPS.map((group) => {
-    const people = group.people.filter((person) => !sent.includes(person.key)).map(shown);
-    return { word: group.word, count: people.length, people };
-  });
-  const said = m.said == null ? null : NOT_REACHED.find((person) => person.key === m.said);
-  const count = (word: string) => groups.find((group) => group.word === word)?.count ?? 0;
-  const counts = [
-    ...(going.length > 0 ? [say.inProgressCount(going.length)] : []),
-    say.bouncedCount(count(W.bounced3)),
-    say.notConfirmedCount(count(W.notConfirmed2)),
-    say.optedOutCount(count(W.optedOut)),
-    say.noEmailOrPhoneCount(count(W.noEmailOrPhone)),
-  ];
-
-  return {
-    title: say.reached(PARKING_REACH.reached, PARKING_REACH.of),
-    line: `${say.seenByStart(PARKING_REACH.seen)} · ${counts.join(' · ')}`,
-    parts:
-      going.length === 0
-        ? REACH
-        : REACH.flatMap((part) =>
-            part.mark === 'bounced'
-              ? [
-                  { mark: 'sending' as const, word: W.inProgress, count: going.length },
-                  { ...part, count: part.count - going.length },
-                ]
-              : [part],
-          ),
-    status: said == null ? null : say.sentTo(said.name),
-    head: say.notReached(PARKING_REACH.notReached),
-    filter: true,
-    groups: [
-      ...(going.length > 0 ? [{ word: W.inProgress, count: going.length, people: going }] : []),
-      ...groups.filter((group) => group.count > 0),
-    ],
-    resend: PARKING_REACH.notReached - going.length,
-  };
-}
-
 /** Who it reached: the sum, the bar in words, then each person by group with a line per channel and their page, and the fixes beside. */
 export function WhoReached({
   view,
-  m,
   head,
+  headRef,
   refFor,
   onFix,
   onFilter,
+  onShowNotReached,
   onResend,
   onSendAgain,
+  onNotNow,
   closed,
   bottom,
 }: {
   view: ReachView;
-  m: Messages;
   head: ReactNode;
+  headRef: Ref<TextHandle>;
   refFor: (key: string) => (node: ViewInstance | null) => void;
-  onFix: (person: NotReached, fix: string) => void;
+  onFix: (person: ReachPerson, fix: string) => void;
   onFilter: () => void;
+  onShowNotReached: () => void;
   onResend: () => void;
-  onSendAgain: (person: NotReached) => void;
+  onSendAgain: (person: ReachPerson) => void;
+  onNotNow: (person: ReachPerson) => void;
   closed: string | null;
   bottom: number;
 }) {
@@ -366,6 +250,7 @@ export function WhoReached({
         <View>
           <View style={styles.headRow}>
             <Text
+              ref={headRef}
               size={18}
               weight="bold"
               accessibilityRole="header"
@@ -375,13 +260,29 @@ export function WhoReached({
             </Text>
             {view.filter && (
               <TextAction
+                ref={refFor('filter')}
                 label={W.filter}
+                accessibilityLabel={`${W.filter}, ${view.head}`}
                 after="down"
                 onPress={onFilter}
                 testID="messages.reached.filter"
               />
             )}
           </View>
+          {view.empty != null && (
+            <View style={styles.empty}>
+              <Text size={15} weight="medium" style={[styles.secondary, styles.lineText]}>
+                {view.empty}
+              </Text>
+              {view.filterOn !== 'notReached' && (
+                <TextAction
+                  label={W.showNotReached}
+                  onPress={onShowNotReached}
+                  testID="messages.reached.showNotReached"
+                />
+              )}
+            </View>
+          )}
           {view.groups.map((group) => (
             <View key={group.word} style={styles.group}>
               <GroupHead word={group.word} count={group.count} />
@@ -390,11 +291,11 @@ export function WhoReached({
                   {index > 0 && <View style={styles.hairline} />}
                   <Person
                     person={person}
-                    again={m.fixed[person.key] != null && m.again[person.key] == null}
                     closed={closed}
                     refFor={refFor}
                     onFix={onFix}
                     onSendAgain={onSendAgain}
+                    onNotNow={onNotNow}
                   />
                 </View>
               ))}
@@ -407,24 +308,25 @@ export function WhoReached({
           ))}
         </View>
       </ScrollView>
-      <View style={[styles.foot, { paddingBottom: bottom }]}>
-        {closed != null && <WhyNot words={closed} />}
-        <BigButton
-          label={say.resend(view.resend)}
-          onPress={onResend}
-          why={closed}
-          testID="messages.resend"
-        />
-      </View>
+      {view.resend > 0 && (
+        <View style={[styles.foot, { paddingBottom: bottom }]}>
+          {closed != null && <WhyNot words={closed} />}
+          <BigButton
+            label={say.resend(view.resend)}
+            onPress={onResend}
+            why={closed}
+            testID="messages.resend"
+          />
+        </View>
+      )}
     </View>
   );
 }
 
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/u;
-
-/** Fix email address: a focused Cancel and Save screen on the iPhone, a 540 sheet on the iPad; Save waits for an address. */
-export function FixEmail({
+/** Fix email address, Add an email address and Add a phone number: a focused Cancel and Save screen on the iPhone, a 540 sheet on the iPad; Save waits for a valid address. */
+export function ContactEdit({
   open,
+  how,
   name,
   bounced,
   start,
@@ -433,6 +335,7 @@ export function FixEmail({
   onSaved,
 }: {
   open: boolean;
+  how: FixKind;
   name: string;
   bounced: string;
   start: string;
@@ -443,8 +346,11 @@ export function FixEmail({
   const [typed, setTyped] = useState(start);
   const [wrong, setWrong] = useState(false);
   const field = useRef<TextInputInstance>(null);
+  const phone = how === 'addPhone';
+  const valid = phone ? isPhone : isEmail;
+  const label = phone ? W.mobileNumber : W.emailAddress;
   const save = () => {
-    if (!EMAIL.test(typed.trim())) {
+    if (!valid(typed)) {
       setWrong(true);
       focusChecked(field);
       return;
@@ -455,7 +361,7 @@ export function FixEmail({
   return (
     <FocusedScreen
       open={open}
-      title={W.emailAddress}
+      title={label}
       verb={{ label: W.save, on: typed.trim() !== '', onPress: save, testID: 'messages.fix.save' }}
       onCancel={onCancel}
       cancelTestID="messages.fix.cancel"
@@ -466,27 +372,27 @@ export function FixEmail({
         {name}
       </Text>
       <EventField
-        label={W.emailAddress}
-        error={wrong ? W.emailShape : null}
-        help={say.wasBounced(bounced)}
+        label={label}
+        error={wrong ? (phone ? W.phoneShape : W.emailShape) : null}
+        help={how === 'fixEmail' ? say.wasBounced(bounced) : undefined}
       >
         <TextField
           ref={field}
           value={typed}
           onChangeText={(text) => {
             setTyped(text);
-            if (wrong && EMAIL.test(text.trim())) setWrong(false);
+            if (wrong && valid(text)) setWrong(false);
           }}
           wrong={wrong}
           autoFocus
-          keyboardType="email-address"
+          keyboardType={phone ? 'phone-pad' : 'email-address'}
           autoCapitalize="none"
-          autoComplete="email"
-          textContentType="emailAddress"
+          autoComplete={phone ? 'tel' : 'email'}
+          textContentType={phone ? 'telephoneNumber' : 'emailAddress'}
           returnKeyType="done"
           onSubmitEditing={save}
           submitBehavior="submit"
-          accessibilityLabel={W.emailAddress}
+          accessibilityLabel={label}
           testID="messages.fix.field"
         />
       </EventField>
@@ -535,7 +441,14 @@ const styles = StyleSheet.create({
   foot: { paddingTop: tokens.spaceLg, gap: tokens.spaceSm, backgroundColor: tokens.colorCard },
   onAccent: { color: tokens.colorInkOnDark },
   pressed: { opacity: tokens.opacityPressed },
-  again: { alignItems: 'flex-start', marginTop: tokens.spaceSm },
+  again: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    columnGap: tokens.spaceXl,
+    marginTop: tokens.spaceSm,
+  },
+  empty: { alignItems: 'flex-start', gap: tokens.spaceXs, paddingVertical: tokens.spaceLg },
   againOff: { backgroundColor: tokens.colorInsetBorder },
   againPill: {
     minHeight: tokens.sizeHit,
