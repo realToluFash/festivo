@@ -41,7 +41,7 @@ import {
   VenuePart,
 } from './EventEdits.tsx';
 import { EventNeedsYou } from './EventNeedsYou.tsx';
-import type { NeedsState } from './needsYou.ts';
+import { type NeedsState, readerOf } from './needsYou.ts';
 import { Alert, EventCard, EventsShell, NotBuilt, Switch, Thumb } from './EventParts.tsx';
 import { EventSidebar } from './EventSidebar.tsx';
 import { AllDates } from './EventDates.tsx';
@@ -344,10 +344,8 @@ function EventView({
                       needs={
                         <EventNeedsYou
                           timeline={timelineOf(event, now)}
+                          permissions={readerOf(needsStateOf(state))}
                           state={needsStateOf(state)}
-                          open={
-                            event.status !== 'ended' && now.getTime() < Date.parse(event.startsAt)
-                          }
                           now={now}
                           timeZone={event.timeZone}
                         />

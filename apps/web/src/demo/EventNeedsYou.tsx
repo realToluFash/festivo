@@ -4,13 +4,7 @@ import { Link } from 'react-router';
 
 import { Glyph } from '../components/Glyph.tsx';
 import { Head, TextAction } from '../components/SettingsParts.tsx';
-import {
-  type NeedRow,
-  type NeedsState,
-  NEEDS_WORDS as W,
-  needRows,
-  sampleNeeds,
-} from './needsYou.ts';
+import { type NeedRow, type NeedsState, NEEDS_WORDS as W, needRows } from './needsYou.ts';
 
 const LOCALE = 'en-US';
 
@@ -45,25 +39,21 @@ function Count({ count }: { count: number }) {
 /** The Overview's Needs you (sc-32801): the rows Today lists, from the event's dates, this event's only, so a row does not name it. */
 export function EventNeedsYou({
   timeline,
+  permissions,
   state,
-  open,
   now,
   timeZone,
 }: {
   timeline: readonly Milestone[];
+  permissions: readonly string[];
   state: NeedsState | null;
-  open: boolean;
   now: Date;
   timeZone: string;
 }) {
   const [load, setLoad] = useState<'loading' | 'failed' | 'loaded'>(
     state === 'needsYouLoading' ? 'loading' : state === 'needsYouFailed' ? 'failed' : 'loaded',
   );
-  const { milestones, permissions } = sampleNeeds(state);
-  const rows =
-    load === 'loaded' && open
-      ? needRows([...timeline, ...milestones], permissions, now, timeZone, LOCALE)
-      : [];
+  const rows = load === 'loaded' ? needRows(timeline, permissions, now, timeZone, LOCALE) : [];
 
   return (
     <section className="desk-block" aria-labelledby="ev-needs-you">

@@ -106,27 +106,32 @@ const OPEN_THREE = [
 const MANAGES = ['menu.manage', 'budget.manage', 'seating.manage', 'vendors.manage'];
 const ONLY_READS = ['menu.read', 'budget.read', 'seating.read', 'vendors.read'];
 
-/** Each state's reader and its rows beside the wedding's dates, whose kitchen milestone kitchen.ts seeds. */
-export function sampleNeeds(state: NeedsState | null): {
-  milestones: readonly Milestone[];
-  permissions: readonly string[];
-} {
-  switch (state) {
-    case 'needsYou':
-    case 'needsYouGiven':
-      return { milestones: OPEN_THREE, permissions: MANAGES };
-    case 'needsYouOverdue':
-      return {
-        milestones: [
-          other('2026-11-03T09:00:00Z', 'Confirm the cake', 'vendors'),
-          other('2026-11-03T09:00:00Z', 'Agree the toasts', 'seating'),
-          other('2026-11-02T23:59:00Z', 'Pay the band’s balance', 'budget'),
-        ],
-        permissions: MANAGES,
-      };
-    case 'needsYouReadOnly':
-      return { milestones: [], permissions: ONLY_READS };
-    default:
-      return { milestones: [], permissions: MANAGES };
-  }
+/** The wedding's other You milestones as each state link has the server return them; the kitchen's is kitchen.ts's. */
+const OWED: Partial<Record<string, readonly Milestone[]>> = {
+  needsYou: OPEN_THREE,
+  needsYouGiven: OPEN_THREE,
+  needsYouOverdue: [
+    other('2026-11-03T09:00:00Z', 'Confirm the cake', 'vendors'),
+    other('2026-11-03T09:00:00Z', 'Agree the toasts', 'seating'),
+    other('2026-11-02T23:59:00Z', 'Pay the band’s balance', 'budget'),
+  ],
+};
+
+let held: readonly Milestone[] = [];
+
+/** A state link sets them; with no state the demo keeps what it holds, as the kitchen's date does. */
+export function seedNeedsYou(state: string | null): void {
+  if (state != null) held = OWED[state] ?? [];
+}
+
+export function heldNeeds(): readonly Milestone[] {
+  return held;
+}
+
+export function resetNeedsYou(): void {
+  held = [];
+}
+
+export function readerOf(state: NeedsState | null): readonly string[] {
+  return state === 'needsYouReadOnly' ? ONLY_READS : MANAGES;
 }

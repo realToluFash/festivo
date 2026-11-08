@@ -358,6 +358,19 @@ describe('Needs you on the Overview at a desk (sc-32801)', () => {
     },
   );
 
+  it('lists the same rows as All dates', SLOW, async () => {
+    open('/demo/events/evt-wed-4/dates?state=needsYou');
+    await screen.findByRole('heading', { level: 1, name: KW.allDates }, WAIT);
+
+    for (const title of [
+      'Give final numbers to the kitchen',
+      'Pay the band’s balance',
+      'Seat the last 12 guests',
+      'Confirm the cake',
+    ])
+      expect(screen.getByText(title)).toBeDefined();
+  });
+
   it('drops the row once a copy is recorded on Kitchen sheet', SLOW, async () => {
     await page('/demo/events/evt-wed-4?state=finalNumbers');
     fireEvent.click(within(card()).getByRole('link', { name: KW.openSheet }));

@@ -2,8 +2,16 @@ import { type Milestone, wallDay } from '@soirely/domain';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { sampleEvent } from './events.ts';
-import { KITCHEN_EVENT, kitchenAt, resetKitchen, seedFromEvent, timelineOf } from './kitchen.ts';
-import { type NeedsState, dueWords, needRows, sampleNeeds } from './needsYou.ts';
+import {
+  KITCHEN_EVENT,
+  cardMilestone,
+  datesOf,
+  kitchenAt,
+  resetKitchen,
+  seedFromEvent,
+  timelineOf,
+} from './kitchen.ts';
+import { type NeedsState, dueWords, needRows, readerOf } from './needsYou.ts';
 
 const LOCALE = 'en-US';
 const LONDON = 'Europe/London';
@@ -25,21 +33,21 @@ function milestone(over: Partial<Milestone>): Milestone {
   };
 }
 
-/** The card as the page builds it: the event's own dates, then the state's sample rows. */
-function rowsOn(id: string, state: string) {
-  seedFromEvent(state);
+function eventOf(id: string) {
   const event = sampleEvent(id);
 
   if (event == null) throw new Error(`no sample event ${id}`);
-  const needs = sampleNeeds(state.startsWith('needsYou') ? (state as NeedsState) : null);
 
-  return needRows(
-    [...timelineOf(event, NOW), ...needs.milestones],
-    needs.permissions,
-    NOW,
-    event.timeZone,
-    LOCALE,
-  );
+  return event;
+}
+
+/** The card as the page builds it: the event's dates, read by the state's reader. */
+function rowsOn(id: string, state: string) {
+  seedFromEvent(state);
+  const event = eventOf(id);
+  const reader = readerOf(state.startsWith('needsYou') ? (state as NeedsState) : null);
+
+  return needRows(timelineOf(event, NOW), reader, NOW, event.timeZone, LOCALE);
 }
 
 afterEach(() => {
@@ -124,6 +132,30 @@ describe('the rows (sc-32801)', () => {
     expect(count('needsYouGiven')).toBe(3);
     expect(count('needsYouReadOnly')).toBe(0);
     expect(count('live')).toBe(0);
+  });
+
+  it.each(['needsYou', 'needsYouOverdue', 'needsYouGiven', 'finalNumbers'])(
+    'is one list with All dates and Next up at ?state=%s',
+    (state) => {
+      const rows = rowsOn(KITCHEN_EVENT, state);
+      const wedding = eventOf(KITCHEN_EVENT);
+      const allDates = datesOf(wedding, NOW).map(({ milestone }) => milestone.title);
+
+      expect(rows.every((row) => allDates.includes(row.title))).toBe(true);
+      expect(cardMilestone(wedding, NOW)?.title).toBe(`Next up: ${rows[0]?.title ?? ''}`);
+    },
+  );
+
+  it('names the band’s balance Next up once the kitchen has its copy, with no step', () => {
+    rowsOn(KITCHEN_EVENT, 'needsYouGiven');
+
+    expect(cardMilestone(eventOf(KITCHEN_EVENT), NOW)).toEqual({
+      title: 'Next up: Pay the band’s balance',
+      line: 'Tue, Nov 3, 23:59 · today',
+      overdue: false,
+      label: null,
+      link: null,
+    });
   });
 
   it('keys each row by its area, moment and title, so two rows of one title stay apart', () => {
