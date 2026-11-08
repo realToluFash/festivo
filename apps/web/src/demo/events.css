@@ -997,6 +997,17 @@
   font: 500 13.5px/1.4 var(--fontFamily);
 }
 
+/* sc-3780: the guests' sentence with the chosen date, before it is saved */
+.ev-reply-preview {
+  padding: 12px 14px;
+  border: 1px solid var(--colorInsetBorder);
+  border-radius: var(--radiusInset);
+  background: var(--colorInset);
+  color: var(--colorInkSecondary);
+  font: 500 14px/1.45 var(--fontFamily);
+  overflow-wrap: anywhere;
+}
+
 .ev-select {
   position: relative;
   padding: 0;

@@ -40,6 +40,8 @@ import {
   TypePart,
   VenuePart,
 } from './EventEdits.tsx';
+import { ReplyByPart } from './EventReplyBy.tsx';
+import { REPLY_BY_WORDS, replyByOf, rowDay, shortDay } from './replyBy.ts';
 import { Alert, EventCard, EventsShell, NotBuilt, Switch, Thumb } from './EventParts.tsx';
 import { CAL_WORDS } from './calendar.ts';
 import { EventSidebar } from './EventSidebar.tsx';
@@ -82,7 +84,7 @@ interface Arrival {
 
 type Asking = 'pause' | 'callOff' | 'endNow' | 'deleteDraft' | 'delete' | 'duplicate';
 
-const PARTS: Record<Part, ComponentType<PartProps>> = {
+const PARTS: Record<Exclude<Part, 'replyBy'>, ComponentType<PartProps>> = {
   dates: DatesPart,
   venue: VenuePart,
   hosts: HostsPart,
@@ -91,6 +93,18 @@ const PARTS: Record<Part, ComponentType<PartProps>> = {
   name: NamePart,
   cover: CoverPart,
 };
+
+/** Reply by as each state opens it: the sample's, or what was just saved (sc-3780). */
+function replyByStart(state: EventStateName | null, id: string): string | null {
+  if (state === 'replyBySaved') return '2026-11-03';
+  if (state === 'replyByRemoved') return null;
+
+  return replyByOf(id);
+}
+
+function replyBySaid(next: string | null, timeZone: string): string {
+  return next == null ? REPLY_BY_WORDS.savedNone : REPLY_BY_WORDS.saved(shortDay(next), timeZone);
+}
 
 function askingOf(state: EventStateName | null): Asking | null {
   switch (state) {
@@ -218,6 +232,7 @@ function EventView({
   const area = fixedArea ?? areaOf(params.get('area'));
   const [telling, setTelling] = useState<readonly Told[] | null>(tellingFirst);
   const [event, setEvent] = useState(initial);
+  const [replyBy, setReplyBy] = useState(() => replyByStart(state, initial.id));
   const [part, setPart] = useState<Part | null>(partOf(state) ?? arrival.open ?? null);
   const [dirty, setDirty] = useState(false);
   const [leaving, setLeaving] = useState<{ to: Part | null } | null>(null);
@@ -252,7 +267,12 @@ function EventView({
 
   return (
     <EventsShell
-      told={arrival.told ?? null}
+      told={
+        arrival.told ??
+        (state === 'replyBySaved' || state === 'replyByRemoved'
+          ? replyBySaid(replyBy, event.timeZone)
+          : null)
+      }
       renderSide={(tell, covered) => (
         <EventSidebar
           event={event}
@@ -325,6 +345,13 @@ function EventView({
                         else tell(W.saved);
                       }}
                       onLatest={kept}
+                      replyBy={replyBy}
+                      onReplyBy={(next) => {
+                        setReplyBy(next);
+                        setPart(null);
+                        setDirty(false);
+                        tell(replyBySaid(next, event.timeZone));
+                      }}
                     />
                   </div>
                   <div className="ev-right">
@@ -617,6 +644,8 @@ function Details({
   onClose,
   onSave,
   onLatest,
+  replyBy,
+  onReplyBy,
 }: {
   event: SampleEvent;
   now: Date;
@@ -627,12 +656,26 @@ function Details({
   onClose: () => void;
   onSave: (next: SampleEvent) => void;
   onLatest: (latest: SampleEvent) => void;
+  replyBy: string | null;
+  onReplyBy: (next: string | null) => void;
 }) {
   const locked = eventPhase(event, now) === 'finished';
   const days = dayCount(event);
   const maps = mapsLink(event);
   const editing = (one: Part) => {
     if (part !== one) return null;
+    if (one === 'replyBy')
+      return (
+        <ReplyByPart
+          event={event}
+          state={partOf(state) === one ? (state as PartProps['state']) : null}
+          replyBy={replyBy}
+          now={now}
+          onDirty={onDirty}
+          onClose={onClose}
+          onSave={onReplyBy}
+        />
+      );
 
     const Editor = PARTS[one];
 
@@ -654,7 +697,7 @@ function Details({
       title={title}
       line={line}
       open={part === one}
-      locked={one === 'dates' && locked}
+      locked={(one === 'dates' || one === 'replyBy') && locked}
       after={after}
       onOpen={() => onOpen(one)}
     >
@@ -674,6 +717,14 @@ function Details({
             locked
               ? `${W.dates} · ${W.scheduleLocked}`
               : [W.dates, ...(days > 1 ? [W.dayCount(days)] : []), event.timeZone].join(' · '),
+          )}
+          {row(
+            'replyBy',
+            <Lead name="clock" />,
+            replyBy == null ? REPLY_BY_WORDS.rowNone : rowDay(replyBy),
+            replyBy == null
+              ? REPLY_BY_WORDS.replyBy
+              : `${REPLY_BY_WORDS.replyBy} · ${REPLY_BY_WORDS.rowCloses(event.timeZone)}`,
           )}
           {row(
             'venue',
