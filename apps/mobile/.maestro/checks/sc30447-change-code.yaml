@@ -1,0 +1,57 @@
+# Change your mobile number: "Choose a country." edges Code, not the number; choosing a Code clears it; short, long and empty lines edge the number, not Code. Needs no organisation country and a device region that is no listed country. sc-30447.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/phone
+- extendedWaitUntil:
+    visible:
+      id: 'phone.number'
+    timeout: 30000
+- tapOn:
+    id: 'phone.number'
+- inputText: '241234567'
+- hideKeyboard
+- takeScreenshot: change-at-rest
+- tapOn:
+    id: 'phone.send'
+- waitForAnimationToEnd
+- assertVisible: '(Choose a country|Choisissez un pays)\.'
+- takeScreenshot: change-code-refused
+- tapOn:
+    id: 'phone.country'
+- tapOn:
+    id: 'phone.country.search'
+- inputText: 'Royaume'
+- tapOn:
+    id: 'phone.country.GB'
+- waitForAnimationToEnd
+- assertNotVisible: '(Choose a country|Choisissez un pays)\.'
+- takeScreenshot: change-code-chosen
+- longPressOn:
+    id: 'phone.number'
+- eraseText: 60
+- inputText: '74'
+- hideKeyboard
+- tapOn:
+    id: 'phone.send'
+- waitForAnimationToEnd
+- assertVisible: '(That number looks too short|Ce numéro semble trop court).*'
+- takeScreenshot: change-number-short
+- longPressOn:
+    id: 'phone.number'
+- eraseText: 60
+- inputText: '7400123456789012'
+- hideKeyboard
+- tapOn:
+    id: 'phone.send'
+- waitForAnimationToEnd
+- assertVisible: '(That number looks too long|Ce numéro semble trop long).*'
+- takeScreenshot: change-number-long
+- longPressOn:
+    id: 'phone.number'
+- eraseText: 60
+- hideKeyboard
+- tapOn:
+    id: 'phone.send'
+- waitForAnimationToEnd
+- assertVisible: '(Enter your mobile number|Indiquez votre numéro de portable)\.'
+- takeScreenshot: change-number-empty

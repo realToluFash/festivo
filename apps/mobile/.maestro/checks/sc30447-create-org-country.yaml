@@ -1,0 +1,26 @@
+# Create an organisation: a blank Country refused takes the red edge; choosing one clears it. Device region no listed country. sc-30447.
+appId: host.exp.Exponent
+---
+- runFlow: ../open-create-organisation.yaml
+- tapOn:
+    id: 'createOrganisation.name'
+- inputText: 'QA Second Ltd'
+- hideKeyboard
+- takeScreenshot: create-at-rest
+- tapOn:
+    id: 'createOrganisation.create'
+- waitForAnimationToEnd
+- takeScreenshot: create-country-refused
+- assertVisible: '(Choose a country|Choisissez un pays)\.'
+- tapOn:
+    id: 'createOrganisation.country'
+- waitForAnimationToEnd
+- takeScreenshot: create-country-open
+- tapOn:
+    id: 'createOrganisation.country.search'
+- inputText: 'Ghana'
+- tapOn:
+    id: 'createOrganisation.country.GH'
+- waitForAnimationToEnd
+- takeScreenshot: create-country-chosen
+- assertNotVisible: '(Choose a country|Choisissez un pays)\.'

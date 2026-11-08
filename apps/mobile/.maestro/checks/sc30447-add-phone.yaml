@@ -1,0 +1,42 @@
+# Settings > Account > Add a phone number: short and long lines edge the number, not Code; a server refusal edges the number; the Code list opens and chooses. sc-30447.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/account
+- scrollUntilVisible:
+    element:
+      id: 'contacts.phone.add'
+    timeout: 30000
+- tapOn:
+    id: 'contacts.phone.add'
+- waitForAnimationToEnd
+- tapOn:
+    id: 'contacts.phone.field.number'
+- inputText: '74'
+- hideKeyboard
+- takeScreenshot: add-at-rest
+- tapOn:
+    id: 'contacts.phone.send'
+- waitForAnimationToEnd
+- assertVisible: '(That number looks too short|Ce numéro semble trop court).*'
+- takeScreenshot: add-number-short
+- longPressOn:
+    id: 'contacts.phone.field.number'
+- eraseText: 60
+- inputText: '7400123456789012'
+- hideKeyboard
+- tapOn:
+    id: 'contacts.phone.send'
+- waitForAnimationToEnd
+- assertVisible: '(That number looks too long|Ce numéro semble trop long).*'
+- takeScreenshot: add-number-long
+- tapOn:
+    id: 'contacts.phone.field.country'
+- tapOn:
+    id: 'contacts.phone.field.country.search'
+- inputText: 'Ghana'
+- takeScreenshot: add-code-search
+- tapOn:
+    id: 'contacts.phone.field.country.GH'
+- waitForAnimationToEnd
+- assertNotVisible: '(That number looks too long|Ce numéro semble trop long).*'
+- takeScreenshot: add-code-chosen

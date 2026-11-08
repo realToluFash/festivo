@@ -1,0 +1,35 @@
+# Your organisation (sign-up): a blank Country refused with "Choose a country." takes the red edge, beside a refused blank name; choosing a country clears edge and line. Needs an account with no profile on a device whose region is no listed country (en-DG). sc-30447.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/complete-profile
+- extendedWaitUntil:
+    visible:
+      id: 'completeProfile.organisation'
+    timeout: 30000
+- hideKeyboard
+- takeScreenshot: org-at-rest
+- tapOn:
+    id: 'completeProfile.save'
+- waitForAnimationToEnd
+- takeScreenshot: org-both-refused
+- assertVisible: '(Choose a country|Choisissez un pays)\.'
+- tapOn:
+    id: 'completeProfile.organisation'
+- inputText: 'QA Edge Ltd'
+- hideKeyboard
+- tapOn:
+    id: 'completeProfile.save'
+- waitForAnimationToEnd
+- assertVisible: '(Choose a country|Choisissez un pays)\.'
+- takeScreenshot: org-country-refused
+- tapOn:
+    id: 'completeProfile.country'
+- tapOn:
+    id: 'completeProfile.country.search'
+- inputText: 'Ghana'
+- takeScreenshot: org-country-search
+- tapOn:
+    id: 'completeProfile.country.GH'
+- waitForAnimationToEnd
+- assertNotVisible: '(Choose a country|Choisissez un pays)\.'
+- takeScreenshot: org-country-chosen
