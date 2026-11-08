@@ -73,8 +73,6 @@ export const W = {
   guestsLine: 'Names and replies, no contact details',
   people: 'People',
   overview: 'Overview',
-  menu: 'Menu',
-  messages: 'Messages',
   more: 'More',
   yourAccount: 'Your account',
   schedule: 'Schedule',
