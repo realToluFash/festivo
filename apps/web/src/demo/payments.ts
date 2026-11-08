@@ -20,6 +20,7 @@ import {
   type QuotesStart,
   QUOTE_LIMITS,
   SAVOUR,
+  amountProblem,
   draftToMark,
   firstOverdue,
   lengthOf,
@@ -35,6 +36,10 @@ import { QW } from './quotesWords.ts';
 
 export const BLOOM = 'v3';
 
+/** sc-88's {{currency}}: the event currency's name from Intl in the reader's language, never its code. */
+export const CURRENCY_NAME =
+  new Intl.DisplayNames([LOCALE], { type: 'currency' }).of(CURRENCY) ?? CURRENCY;
+
 /** Board Budget-A-Payments' names, each drawn on Bloom & Co's page; `already_cancelled` is sc-88's second refusal, kept beside them. */
 export const PAYMENTS_STATES: readonly string[] = [
   'schedule',
@@ -48,6 +53,12 @@ export const PAYMENTS_STATES: readonly string[] = [
   'cancelled',
   'already_made',
   'made_early',
+  'mark_currency',
+  'mark_plan',
+  'mark_future',
+  'added',
+  'added_deleted',
+  'payments_read_only',
 ];
 
 export const SHAPE_STATES: readonly string[] = [
@@ -59,7 +70,11 @@ export const SHAPE_STATES: readonly string[] = [
   'shape_raced',
 ];
 
-export const REMINDER_STATES: readonly string[] = ['reminders', 'reminders_bad'];
+export const REMINDER_STATES: readonly string[] = [
+  'reminders',
+  'reminders_bad',
+  'reminders_plan_lost',
+];
 
 export function paymentsVendor(state: string, vendor: string | null): string | null {
   if (vendor != null) return vendor;
@@ -179,10 +194,11 @@ export function madeProblems(draft: MadeDraft, quote: Quote | undefined): MadePr
   if (draft.what.trim() === '') problems.what = PW.enterWhatItWasFor;
   else if (lengthOf(draft.what) > QUOTE_LIMITS.what)
     problems.what = PW.descriptionTooLong(QUOTE_LIMITS.what);
-  if (parsedAmount(draft.amount) == null) problems.amount = QW.amountPaidProblem(exampleAmount());
+  if (parsedAmount(draft.amount) == null) problems.amount = amountProblem();
   if (draft.paidOn === '') problems.paidOn = QW.datePaidBlank;
+  else if (draft.paidOn > TODAY) problems.paidOn = PW.datePaidAhead;
   else if (quote != null && draft.paidOn < firstQuoteOn(quote))
-    problems.paidOn = PW.beforeFirstQuote(shortDay(firstQuoteOn(quote)));
+    problems.paidOn = PW.beforeFirstQuote(quote.vendor.name, longDay(firstQuoteOn(quote)));
   if (lengthOf(draft.reference) > QUOTE_LIMITS.reference)
     problems.reference = PW.referenceTooLong(QUOTE_LIMITS.reference);
 
@@ -404,10 +420,10 @@ export function shapeRows(
   });
 }
 
-const SHARE = new Intl.NumberFormat(LOCALE, { maximumFractionDigits: 2 });
+const SHARE = new Intl.NumberFormat(LOCALE, { style: 'percent', maximumFractionDigits: 2 });
 
 export function shareWords(share: number): string {
-  return `${SHARE.format(share)}%`;
+  return SHARE.format(share / 100);
 }
 
 export function shapeLine(row: ShapeRow): string {
@@ -481,6 +497,34 @@ export interface PaymentsStart extends QuotesStart {
   cancelling: Cancelling | null;
   made: MadeOpen | null;
   shaping: Shaping | null;
+  addedPaid: readonly string[];
+  deleted: string | null;
+}
+
+/** Two payments added as already paid at the foot of Bloom & Co's Schedule: one by the reader, one by Julien Moreau. */
+const ADDED: readonly Payment[] = [
+  {
+    id: 'p20',
+    vendorId: BLOOM,
+    what: 'Extra stems',
+    amount: 6000,
+    dueOn: '2026-10-31',
+    paid: { amount: 6000, on: '2026-10-31', by: 'Julien Moreau', reference: '' },
+    cancelled: null,
+  },
+  {
+    id: 'p21',
+    vendorId: BLOOM,
+    what: 'Buttonholes',
+    amount: 12000,
+    dueOn: '2026-11-02',
+    paid: { amount: 12000, on: '2026-11-02', by: READER, reference: '' },
+    cancelled: null,
+  },
+];
+
+export function deletedLine(payment: Payment, vendor: string): string {
+  return PW.deleted(money(payment.amount), vendor, longDay(payment.dueOn), payment.what);
 }
 
 const WHY = 'The venue supplies the arch flowers';
@@ -504,6 +548,8 @@ export function paymentsStart(
     cancelling: null,
     made: null,
     shaping: null,
+    addedPaid: [],
+    deleted: null,
   };
   if (vendorId == null) return start;
   const quote = base.budget.quotes.find((one) => one.vendor.id === vendorId);
@@ -523,6 +569,21 @@ export function paymentsStart(
     shaping,
   });
 
+  if (state === 'added' || state === 'added_deleted') {
+    const kept = state === 'added' ? ADDED : ADDED.slice(0, 1);
+    const gone = ADDED[1];
+
+    return {
+      ...start,
+      budget: { ...base.budget, payments: [...base.budget.payments, ...kept] },
+      addedPaid: kept.map((one) => one.id),
+      deleted:
+        state === 'added_deleted' && gone != null && quote != null
+          ? deletedLine(gone, quote.vendor.name)
+          : null,
+    };
+  }
+  if (state === 'payments_read_only') return { ...start, readOnly: true };
   if (state === 'add_payment') return shaped(shapingOf('rows'));
   if (state === 'shape_deposit') return shaped(shapingOf('deposit'));
   if (state === 'shape_clamped')
@@ -604,6 +665,15 @@ export function paymentsStart(
         budget: change(cancelledOf(due, WHY)),
         marking: marking({ refused: 'cancelled' }),
       };
+    case 'mark_currency':
+      return { ...start, marking: marking({ refused: 'currency' }) };
+    case 'mark_plan':
+      return { ...start, marking: marking({ refused: 'plan' }) };
+    case 'mark_future': {
+      const draft = { ...draftToMark(due), paidOn: '2026-11-04' };
+
+      return { ...start, marking: marking({ draft, problems: markProblems(draft, due) }) };
+    }
     case 'marked':
       return {
         ...start,
@@ -651,6 +721,18 @@ export const PAYMENTS_PAGES: readonly DemoGroup[] = [
         to: bloom('already_cancelled'),
         name: 'Cancelled meanwhile: Close only (already_cancelled)',
       },
+      {
+        to: bloom('mark_currency'),
+        name: 'Refused by the server: another currency, Close only (mark_currency)',
+      },
+      {
+        to: bloom('mark_plan'),
+        name: 'Refused by the server: not on this plan, Close only (mark_plan)',
+      },
+      {
+        to: bloom('mark_future'),
+        name: 'Refused at the field: a date in the future (mark_future)',
+      },
     ],
   },
   {
@@ -661,6 +743,18 @@ export const PAYMENTS_PAGES: readonly DemoGroup[] = [
       { to: bloom('cancelled'), name: 'Cancelled, with Restore (cancelled)' },
       { to: bloom('already_made'), name: 'Add a payment already made: Buttonholes (already_made)' },
       { to: bloom('made_early'), name: 'Dated before the vendor’s first quote (made_early)' },
+      {
+        to: bloom('added'),
+        name: 'Two added as already paid, by you and by Julien Moreau, with Undo (added)',
+      },
+      {
+        to: bloom('added_deleted'),
+        name: 'Undo deleted Buttonholes: the line says so (added_deleted)',
+      },
+      {
+        to: budgetAt('payments_read_only', { vendor: BLOOM, plan: 'downgraded' }),
+        name: 'Read only after a downgrade: the overdue balance is no longer chased (payments_read_only)',
+      },
     ],
   },
   {
@@ -682,7 +776,7 @@ export const PAYMENTS_PAGES: readonly DemoGroup[] = [
       },
       {
         to: savour('shape_failed'),
-        name: 'The save failed: nothing added, rows as filled, Add sends all again (shape_failed)',
+        name: 'The save failed: nothing added, rows as filled, Save 3 payments sends them again (shape_failed)',
       },
       { to: savour('shape_raced'), name: 'Someone got there first: the 409 (shape_raced)' },
     ],
@@ -692,6 +786,10 @@ export const PAYMENTS_PAGES: readonly DemoGroup[] = [
     states: [
       { to: reminders('reminders'), name: 'When reminders go, and who hears (reminders)' },
       { to: reminders('reminders_bad'), name: 'Change, refused: 31 days (reminders_bad)' },
+      {
+        to: `${reminders('reminders_plan_lost')}&plan=downgraded`,
+        name: 'After a downgrade: reminders are off, and why (reminders_plan_lost)',
+      },
       { to: reminders('reminders', 'ana'), name: 'A Member: refused, as Vendors refuses one' },
     ],
   },

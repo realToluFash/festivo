@@ -153,7 +153,7 @@ describe('payments on a vendor’s page, shapes and the reminder setting, in A (
       expect(amount.getAttribute('aria-invalid')).toBe('true');
       expect(reference.getAttribute('aria-invalid')).toBe('true');
       expect(
-        within(marking).getByText('Enter the amount paid, above 0, like 840.00.'),
+        within(marking).getByText('Enter the amount as a number above 0, like 3,500.50.'),
       ).toBeDefined();
       expect(
         within(marking).getByText('Shorten the reference to 100 characters or fewer.'),
@@ -240,20 +240,29 @@ describe('payments on a vendor’s page, shapes and the reminder setting, in A (
     const made = dialog('Add a payment already made');
     expect((within(made).getByLabelText('Vendor') as HTMLSelectElement).value).toBe('v3');
     expect(within(made).getByText('Only vendors quoted on this event.')).toBeDefined();
-    fireEvent.click(within(made).getByRole('button', { name: 'Add' }));
+    fireEvent.click(within(made).getByRole('button', { name: 'Add as paid' }));
     expect(within(made).getByText('Enter what it was for.')).toBeDefined();
     type(made, 'What it was for', 'Buttonholes');
     type(made, 'Amount paid', '120.00');
     fireEvent.change(within(made).getByLabelText('Date paid'), { target: { value: '2026-11-02' } });
-    fireEvent.click(within(made).getByRole('button', { name: 'Add' }));
+    fireEvent.click(within(made).getByRole('button', { name: 'Add as paid' }));
     await settle();
 
     expect(rowOf('Buttonholes').textContent).toBe(
-      'ButtonholesPaid £120.00 on Mon, Nov 2 · Marked by Folake AdeyemiUndo',
+      'ButtonholesPaid Monday, November 2. Added by you as already paid, so Undo deletes it.£120.00Undo',
     );
     expect(within(main()).getByText('Marked paid: £120.00 on Monday, November 2.')).toBeDefined();
     fireEvent.click(within(rowOf('Buttonholes')).getByRole('button', { name: 'Undo' }));
-    expect(within(section('Schedule')).queryByText('Buttonholes')).toBeNull();
+    expect(
+      within(section('Schedule'))
+        .queryAllByRole('listitem')
+        .find((item) => item.textContent?.startsWith('Buttonholes')),
+    ).toBeUndefined();
+    expect(
+      within(section('Schedule')).getByText(
+        'Deleted the payment of £120.00 to Bloom & Co on Monday, November 2: Buttonholes.',
+      ),
+    ).toBeDefined();
   });
 
   it('refuses a payment already made dated before the vendor’s first quote', SLOW, async () => {
@@ -263,7 +272,7 @@ describe('payments on a vendor’s page, shapes and the reminder setting, in A (
     expect(date.getAttribute('aria-invalid')).toBe('true');
     expect(
       within(made).getByText(
-        'A payment cannot be dated before the vendor’s first quote, Tue, Oct 6.',
+        'The date paid cannot be before the quote from Bloom & Co on Tuesday, October 6. Choose that date or a later one.',
       ),
     ).toBeDefined();
     fireEvent.change(date, { target: { value: '2026-10-06' } });
@@ -305,7 +314,7 @@ describe('payments on a vendor’s page, shapes and the reminder setting, in A (
           'Each row is saved as an ordinary payment; change any of them after saving.',
         ),
       ).toBeDefined();
-      fireEvent.click(within(add).getByRole('button', { name: 'Add' }));
+      fireEvent.click(within(add).getByRole('button', { name: 'Save 2 payments' }));
       await settle();
 
       expect(screen.queryByRole('dialog')).toBeNull();
@@ -331,7 +340,7 @@ describe('payments on a vendor’s page, shapes and the reminder setting, in A (
       ).toBeDefined();
       expect(
         within(add).getByText(
-          'The percentages come to 95%. The schedule is £450.00 short of the quote; it saves, and the vendor’s page says so.',
+          'The percentages come to 95%, so £450.00 of the quote is not scheduled. You can still save these payments, and the vendor’s page will show the difference.',
         ),
       ).toBeDefined();
       cleanup();
@@ -341,7 +350,7 @@ describe('payments on a vendor’s page, shapes and the reminder setting, in A (
       const raced =
         'Payments were added to this vendor’s schedule while you were filling this in, so none of yours were saved. Check the payments it has now before adding more.';
       expect(within(add).getByRole('alert').textContent).toBe(raced);
-      fireEvent.click(within(add).getByRole('button', { name: 'Add' }));
+      fireEvent.click(within(add).getByRole('button', { name: 'Save 2 payments' }));
       await settle();
       expect(within(dialog('Add a payment')).getByRole('alert').textContent).toBe(raced);
       fireEvent.click(within(dialog('Add a payment')).getByRole('button', { name: 'Cancel' }));
@@ -374,10 +383,10 @@ describe('payments on a vendor’s page, shapes and the reminder setting, in A (
         within(add).getByText('Shorten what the payment is for to 100 characters or fewer.'),
       ).toBeDefined();
       expect(
-        within(add).getByText('Enter a percentage from 0 to 100, with up to two decimals.'),
+        within(add).getByText('Enter a percentage from 0 to 100, with up to two decimal places.'),
       ).toBeDefined();
       expect(within(add).getByText('Enter a whole number of days from 0 to 730.')).toBeDefined();
-      fireEvent.click(within(add).getByRole('button', { name: 'Add' }));
+      fireEvent.click(within(add).getByRole('button', { name: 'Save 3 payments' }));
       await settle();
       expect(dialog('Add a payment')).toBeDefined();
       expect(document.activeElement).toBe(what[0]);
@@ -390,7 +399,7 @@ describe('payments on a vendor’s page, shapes and the reminder setting, in A (
       const before = within(add).getAllByRole('textbox', { name: 'Days before the event' });
       fireEvent.change(before[1]!, { target: { value: '14' } });
       expect(add.querySelector('[aria-invalid="true"]')).toBeNull();
-      fireEvent.click(within(add).getByRole('button', { name: 'Add' }));
+      fireEvent.click(within(add).getByRole('button', { name: 'Save 3 payments' }));
       await settle();
       expect(screen.queryByRole('dialog')).toBeNull();
       expect(rowOf('Second instalment').textContent).toContain('£2,700.00');
@@ -399,14 +408,14 @@ describe('payments on a vendor’s page, shapes and the reminder setting, in A (
       await open(`${SAVOUR}&state=shape_failed`);
       add = dialog('Add a payment');
       expect(within(add).getByRole('alert').textContent).toBe(
-        'None of these payments were saved, because they could not be sent. The rows are as you filled them; press Add to send all of them again.',
+        'None of these payments were saved, because they could not be sent. Your rows are kept as you filled them in; select Save 3 payments to send them again.',
       );
       expect(
         within(section('Schedule'))
           .queryAllByRole('listitem')
           .filter((one) => one.hasAttribute('data-payment')),
       ).toEqual([]);
-      fireEvent.click(within(add).getByRole('button', { name: 'Add' }));
+      fireEvent.click(within(add).getByRole('button', { name: 'Save 3 payments' }));
       await settle();
       expect(screen.queryByRole('dialog')).toBeNull();
       expect(
@@ -454,7 +463,9 @@ describe('payments on a vendor’s page, shapes and the reminder setting, in A (
       ) as HTMLInputElement;
       expect(days.value).toBe('3');
       expect(
-        within(change).getByText('From 1 to 30. A change applies to reminders not yet sent.'),
+        within(change).getByText(
+          'From 1 to 30. Counted in each event’s own time zone. A change applies to reminders not sent yet.',
+        ),
       ).toBeDefined();
       fireEvent.change(days, { target: { value: '31' } });
       fireEvent.click(within(change).getByRole('button', { name: 'Save' }));
