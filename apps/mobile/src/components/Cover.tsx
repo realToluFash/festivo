@@ -1,7 +1,15 @@
-import { createContext, type ReactNode, useId } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { createContext, type ReactNode, useId, useState } from 'react';
+import { type LayoutChangeEvent, StyleSheet, View } from 'react-native';
 import Svg, { Defs, LinearGradient, RadialGradient, Rect, Stop } from 'react-native-svg';
 
+import {
+  type Box,
+  clearOfWords,
+  pieceBounds,
+  pieceSize,
+  type Shape,
+  type Size,
+} from '../kit/confettiClearance.ts';
 import { tokens } from '../theme/tokens.ts';
 
 /** True for what sits on the cover, which draws in white. */
@@ -10,7 +18,7 @@ export const OnCover = createContext(false);
 export type Piece = readonly [
   x: number,
   y: number,
-  shape: 'half' | 'bar',
+  shape: Shape,
   size: number,
   turn: number,
   tone: Tone,
@@ -157,9 +165,16 @@ export function Mesh({
   );
 }
 
-export function Hidden({ children }: { children: ReactNode }) {
+export function Hidden({
+  children,
+  onLayout,
+}: {
+  children: ReactNode;
+  onLayout?: ((event: LayoutChangeEvent) => void) | undefined;
+}) {
   return (
     <View
+      onLayout={onLayout}
       style={StyleSheet.absoluteFill}
       pointerEvents="none"
       accessibilityElementsHidden
@@ -175,29 +190,56 @@ export function Cover({
   scale = 1,
   pieces = PIECES,
   shade = 'band',
+  words,
 }: {
   scale?: number;
   pieces?: readonly Piece[];
   shade?: Shade;
+  words?: Box | null | undefined;
 }) {
   return (
     <Hidden>
       <Mesh base={tokens.colorAccent} glows={GLOWS} shade={shade} />
-      <Confetti pieces={pieces} scale={scale} />
+      <Confetti pieces={pieces} scale={scale} words={words} />
     </Hidden>
   );
 }
 
-/** The pieces alone, placed by share of the box they are given. */
-export function Confetti({ pieces, scale = 1 }: { pieces: readonly Piece[]; scale?: number }) {
+/** The pieces alone, placed by share of the box they are given; with `words`, only those clear of them, and none until the words are measured. */
+export function Confetti({
+  pieces,
+  scale = 1,
+  words,
+}: {
+  pieces: readonly Piece[];
+  scale?: number;
+  words?: Box | null | undefined;
+}) {
+  const [cover, setCover] = useState<Size | null>(null);
+  const shown =
+    words === undefined
+      ? pieces
+      : words == null || cover == null
+        ? []
+        : pieces.filter(([x, y, shape, size, turn]) =>
+            clearOfWords(pieceBounds({ x, y, shape, size, turn }, cover, scale), words),
+          );
+
   return (
-    <Hidden>
-      {pieces.map(([x, y, shape, size, turn, tone]) => {
-        const n = Math.round(size * scale);
+    <Hidden
+      onLayout={
+        words === undefined
+          ? undefined
+          : ({ nativeEvent }) =>
+              setCover({ width: nativeEvent.layout.width, height: nativeEvent.layout.height })
+      }
+    >
+      {shown.map(([x, y, shape, size, turn, tone]) => {
+        const { width: n, height } = pieceSize(shape, size, scale);
         const piece =
           shape === 'half'
-            ? { width: n, height: n / 2, borderTopLeftRadius: n / 2, borderTopRightRadius: n / 2 }
-            : { width: n, height: Math.max(8, Math.round(n * 0.24)), borderRadius: n };
+            ? { width: n, height, borderTopLeftRadius: n / 2, borderTopRightRadius: n / 2 }
+            : { width: n, height, borderRadius: n };
 
         return (
           <View
