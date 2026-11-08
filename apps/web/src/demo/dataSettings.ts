@@ -1,5 +1,6 @@
 import { writtenTime } from './clock.ts';
 import type { Load } from './members.ts';
+import { SAMPLE } from './rules.ts';
 import { type DemoLink, VIEWERS, type Viewer, settingsPath } from './settings.ts';
 
 export const PERIODS = ['Off', '30 days', '90 days', '180 days', '365 days'] as const;
@@ -50,6 +51,14 @@ export const SAMPLE_HOLD: Hold = {
   at: '2026-10-16T11:05:00+01:00',
   reason: 'The caterer’s claim is still open.',
 };
+
+export const LONG_HOLD: Hold = {
+  ...SAMPLE_HOLD,
+  reason:
+    'Mesa Viva Catering’s claim MV-2026-0412 for Tola & Seun’s wedding is still open. Their lawyer has asked us to keep the whole guest list, with every name, email address and mobile number, until the claim is settled, because the dispute turns on who was served at the second sitting and which guests were moved to the overflow tables. Our insurer, Atlântico Seguros, wants the same records for its own review, reference ATS-88213. Please keep everything until both are closed.',
+};
+
+export const TOO_LONG_REASON = `${LONG_HOLD.reason.replace('Tola & Seun’s', 'Adunni & Femi’s')} Ask Folake before anyone releases it.`;
 
 /** Each run is one instant: the instant its notice is sent, plus 7 × 24 hours. */
 export function runAfter(noticeAt: string): string {
@@ -134,8 +143,11 @@ export const DATA_WORDS = {
   holdTitle: 'Hold back?',
   holdLine: 'It stays out of every run until an Owner or an Admin releases it.',
   reason: 'Reason',
-  reasonHelp: 'Owners and Admins see who held it, when and why.',
+  reasonHelp: 'Owners and Admins see who held it, when and why. Up to 500 characters.',
   reasonBlank: 'Enter a reason. Nothing is held back without one.',
+  reasonLong: 'Keep the reason to 500 characters or fewer.',
+  keptFoot: 'Switched off and kept as it was. It comes back on with Enterprise.',
+  heldKept: 'Kept as they were. Release comes back with Enterprise.',
   discard: 'Discard your reason?',
   keepEditing: 'Keep editing',
   discardVerb: 'Discard',
@@ -149,14 +161,14 @@ export function heldLine(hold: Hold, zone: ReaderZone, locale: string): string {
   return `Held by ${hold.by} · ${instantWords(hold.at, zone, locale)}`;
 }
 
-/** The question's sentence, in its three wordings. */
+/** The question's sentence, in its three wordings, true as of the run: an event can cross the period in the notice's week (pm, 8 Nov). */
 export function firstRunLine(count: number, period: OnPeriod, when: string): string {
-  if (count === 0)
-    return `No event ended more than ${period} ago, so the first run, on ${when}, erases nothing yet.`;
-  if (count === 1)
-    return `1 event ended more than ${period} ago, so its guests are in the first run, on ${when}.`;
+  const before = `at least ${period} before the first run, on ${when}`;
 
-  return `${count} events ended more than ${period} ago, so their guests are in the first run, on ${when}.`;
+  if (count === 0) return `No event will have ended ${before}, so it erases nothing yet.`;
+  if (count === 1) return `1 event will have ended ${before}, so its guests are in it.`;
+
+  return `${count} events will have ended ${before}, so their guests are in it.`;
 }
 
 export interface Question {
@@ -191,6 +203,7 @@ export function questionOf(
 
 export interface DataPage {
   plan: 'enterprise' | 'free';
+  leftEnterpriseAt: string | null;
   period: Period;
   clock: string;
   runAt: string | null;
@@ -225,6 +238,14 @@ export function turnedOff(page: DataPage): DataPage {
 
 export function isBlank(reason: string): boolean {
   return reason.trim() === '';
+}
+
+export const REASON_MOST = 500;
+
+export function reasonFault(reason: string): 'blank' | 'long' | null {
+  if (isBlank(reason)) return 'blank';
+
+  return [...reason.trim()].length > REASON_MOST ? 'long' : null;
 }
 
 export function heldBack(page: DataPage, event: PastEvent, reason: string, by: string): DataPage {
@@ -262,7 +283,18 @@ function runCount(count: number): string {
   return count === 1 ? '1 event is in the next run.' : `${count} events are in the next run.`;
 }
 
-export function cardOf(page: DataPage, viewer: Pick<Viewer, 'owns'>): CardWords {
+export function cardOf(
+  page: DataPage,
+  viewer: Pick<Viewer, 'owns'>,
+  zone: ReaderZone,
+  locale: string,
+): CardWords {
+  if (page.plan !== 'enterprise' && page.leftEnterpriseAt != null)
+    return {
+      says: 'Guests’ details are kept after an event',
+      line: `Switched off on ${dayWords(page.leftEnterpriseAt, zone, locale)}, when ${SAMPLE.organisation} moved to the free plan. Its period and held events are kept as they were, and come back on with Enterprise.`,
+      step: 'contact',
+    };
   if (page.plan !== 'enterprise')
     return {
       says: 'Available on Enterprise',
@@ -299,7 +331,8 @@ export interface DataStart {
   page: DataPage;
   asking: OnPeriod | null;
   holding: PastEvent | null;
-  blank: boolean;
+  reason: string;
+  pressed: boolean;
   refusal: Refusal | null;
   zone: ReaderZone;
 }
@@ -307,9 +340,11 @@ export interface DataStart {
 const OFF_CLOCK = '2026-10-17T14:20:00+01:00';
 const ON_CLOCK = '2026-10-19T10:12:00+01:00';
 const NOTICE_AT = '2026-10-17T14:20:00+01:00';
+const LEFT_AT = '2026-10-18T09:30:00+01:00';
 
 const OFF_PAGE: DataPage = {
   plan: 'enterprise',
+  leftEnterpriseAt: null,
   period: 'Off',
   clock: OFF_CLOCK,
   runAt: null,
@@ -356,10 +391,15 @@ export const DATA_STATES = [
   'rt_on_utc',
   'rt_hold',
   'rt_hold_blank',
+  'rt_hold_long',
   'rt_held',
+  'rt_held_long',
   'not_owner',
   'rt_released',
   'rt_turned_off',
+  'rt_off_held',
+  'rt_off_released',
+  'rt_downgraded',
   'rt_refused_owner',
   'rt_refused_plan',
   'loading',
@@ -372,12 +412,14 @@ export function dataStart(state: string, viewer: Pick<Viewer, 'key'>, locale: st
     load: 'loaded',
     asking: null,
     holding: null,
-    blank: false,
+    reason: '',
+    pressed: false,
     refusal: null,
     zone,
   } as const;
   const on = onPage('90 days', []);
   const held = onPage('90 days', [SAMPLE_HOLD]);
+  const offHeld = { ...turnedOff(held), said: null };
 
   switch (state) {
     case 'rt_locked':
@@ -398,14 +440,33 @@ export function dataStart(state: string, viewer: Pick<Viewer, 'key'>, locale: st
     case 'rt_hold':
       return { ...rest, page: on, holding: PAST_EVENTS[0] ?? null };
     case 'rt_hold_blank':
-      return { ...rest, page: on, holding: PAST_EVENTS[0] ?? null, blank: true };
+      return { ...rest, page: on, holding: PAST_EVENTS[0] ?? null, pressed: true };
+    case 'rt_hold_long':
+      return {
+        ...rest,
+        page: on,
+        holding: PAST_EVENTS[0] ?? null,
+        reason: TOO_LONG_REASON,
+        pressed: true,
+      };
     case 'rt_held':
     case 'not_owner':
       return { ...rest, page: held };
+    case 'rt_held_long':
+      return { ...rest, page: onPage('90 days', [LONG_HOLD]) };
     case 'rt_released':
       return { ...rest, page: released(held, SAMPLE_HOLD, zone, locale) };
     case 'rt_turned_off':
       return { ...rest, page: turnedOff(on) };
+    case 'rt_off_held':
+      return { ...rest, page: offHeld };
+    case 'rt_off_released':
+      return { ...rest, page: released(offHeld, SAMPLE_HOLD, zone, locale) };
+    case 'rt_downgraded':
+      return {
+        ...rest,
+        page: { ...held, plan: 'free', leftEnterpriseAt: LEFT_AT, runAt: null, run: [] },
+      };
     case 'rt_refused_owner':
       return { ...rest, page: OFF_PAGE, asking: '90 days', refusal: 'owner_required' };
     case 'rt_refused_plan':
@@ -428,8 +489,10 @@ export const DATA_PAGES: readonly { name: string; states: readonly DemoLink[] }[
     states: [
       data('rt_off', 'Off, an owner'),
       data('rt_off', 'Off, an admin reads it', VIEWERS.julien),
-      data('rt_locked', 'Locked, not on Enterprise, an owner'),
-      data('rt_locked', 'Locked, not on Enterprise, an admin', VIEWERS.julien),
+      data('rt_locked', 'Locked, never on Enterprise, an owner'),
+      data('rt_locked', 'Locked, never on Enterprise, an admin', VIEWERS.julien),
+      data('rt_downgraded', 'Left Enterprise: the period and a hold kept, read only, an owner'),
+      data('rt_downgraded', 'Left Enterprise, an admin sees the same', VIEWERS.julien),
       data(undefined, 'A member has no Data', VIEWERS.ana),
       data('rt_turned_off', 'Turned off: asked nothing, next run cancelled'),
       data('loading', 'Loading'),
@@ -456,6 +519,7 @@ export const DATA_PAGES: readonly { name: string; states: readonly DemoLink[] }[
       data('rt_on', 'On, an admin in London', VIEWERS.julien),
       data('rt_hold', 'Holding an event back'),
       data('rt_hold_blank', 'A blank reason holds nothing'),
+      data('rt_hold_long', 'A reason over 500 characters holds nothing, cut off nowhere'),
       data('rt_hold', 'An admin holding an event back', VIEWERS.julien),
     ],
   },
@@ -463,8 +527,11 @@ export const DATA_PAGES: readonly { name: string; states: readonly DemoLink[] }[
     name: 'Held back',
     states: [
       data('rt_held', 'Held events, an owner'),
+      data('rt_held_long', 'A long reason, in full and wrapped'),
       data('not_owner', 'Held events, an admin: period read only', VIEWERS.julien),
       data('rt_released', 'Released'),
+      data('rt_off_held', 'Off: a hold kept, with Release'),
+      data('rt_off_released', 'Off: released, no longer held back'),
     ],
   },
 ];

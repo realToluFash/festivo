@@ -41,6 +41,7 @@ import {
   isBlank,
   nextRunLine,
   questionOf,
+  reasonFault,
   released,
   turnedOff,
   withPeriod,
@@ -87,7 +88,8 @@ export function DataSettings({
     );
 
   const locked = page.plan !== 'enterprise';
-  const card = cardOf(page, viewer);
+  const kept = locked && page.leftEnterpriseAt != null;
+  const card = cardOf(page, viewer, zone, locale);
   const changes = viewer.owns && !locked;
   const toSaid = () =>
     focusWhenFree(() => document.querySelector<HTMLElement>('.desk-main .desk-said-lines'));
@@ -134,6 +136,7 @@ export function DataSettings({
           )}
         </Head>
         <p className="desk-foot">{W.counted}</p>
+        {kept && <p className="desk-foot">{W.keptFoot}</p>}
         {!changes && !locked && <p className="desk-foot">{W.ownerOnly}</p>}
       </section>
       {!locked && page.runAt != null && (
@@ -148,19 +151,23 @@ export function DataSettings({
           {page.run.length > 0 && <p className="desk-foot">{W.holdFoot}</p>}
         </section>
       )}
-      {!locked && page.held.length > 0 && (
+      {(!locked || kept) && page.held.length > 0 && (
         <section className="desk-block">
           <Head title={W.held} />
           <HeldBack
             held={page.held}
             zone={zone}
             locale={locale}
-            onRelease={(hold) => {
-              setPage(released(page, hold, zone, locale));
-              toSaid();
-            }}
+            onRelease={
+              locked
+                ? null
+                : (hold) => {
+                    setPage(released(page, hold, zone, locale));
+                    toSaid();
+                  }
+            }
           />
-          <p className="desk-foot">{W.releaseFoot}</p>
+          <p className="desk-foot">{locked ? W.heldKept : W.releaseFoot}</p>
         </section>
       )}
       {asking != null && (
@@ -187,7 +194,8 @@ export function DataSettings({
       {holding != null && (
         <HoldDialog
           event={holding}
-          startsBlank={start.blank}
+          startsWith={start.reason}
+          startsPressed={start.pressed}
           zone={zone}
           locale={locale}
           onCancel={() => setHolding(null)}
@@ -362,7 +370,8 @@ function HeldBack({
   held: readonly Hold[];
   zone: ReaderZone;
   locale: string;
-  onRelease: (hold: Hold) => void;
+  /** Null once it has left Enterprise: the holds are kept, read only. */
+  onRelease: ((hold: Hold) => void) | null;
 }) {
   return (
     <ul className="desk-rows">
@@ -372,14 +381,16 @@ function HeldBack({
             title={hold.event.name}
             lines={[heldLine(hold, zone, locale), `Reason: ${hold.reason}`]}
           />
-          <button
-            type="button"
-            className="desk-text"
-            aria-label={`${W.release} ${hold.event.name}`}
-            onClick={() => onRelease(hold)}
-          >
-            {W.release}
-          </button>
+          {onRelease != null && (
+            <button
+              type="button"
+              className="desk-text"
+              aria-label={`${W.release} ${hold.event.name}`}
+              onClick={() => onRelease(hold)}
+            >
+              {W.release}
+            </button>
+          )}
         </li>
       ))}
     </ul>
@@ -462,27 +473,30 @@ function QuestionDialog({
   );
 }
 
-/** A blank reason sends nothing: the field says so beside it and takes the focus. */
+/** A blank or too long reason sends nothing: the field says so beside it and takes the focus, and keeps every character. */
 function HoldDialog({
   event,
-  startsBlank,
+  startsWith,
+  startsPressed,
   zone,
   locale,
   onCancel,
   onHold,
 }: {
   event: PastEvent;
-  startsBlank: boolean;
+  startsWith: string;
+  startsPressed: boolean;
   zone: ReaderZone;
   locale: string;
   onCancel: () => void;
   onHold: (reason: string) => void;
 }) {
   const input = useRef<HTMLInputElement>(null);
-  const [reason, setReason] = useState('');
-  const [pressed, setPressed] = useState(startsBlank);
+  const [reason, setReason] = useState(startsWith);
+  const [pressed, setPressed] = useState(startsPressed);
   const [discarding, setDiscarding] = useState(false);
   const blank = isBlank(reason);
+  const fault = reasonFault(reason);
 
   return (
     <>
@@ -492,7 +506,7 @@ function HoldDialog({
         first={input}
         onDismiss={() => (blank ? onCancel() : setDiscarding(true))}
         onConfirm={() => {
-          if (blank) {
+          if (fault != null) {
             setPressed(true);
             input.current?.focus();
           } else onHold(reason);
@@ -509,7 +523,7 @@ function HoldDialog({
           onChange={setReason}
           inputRef={input}
           help={W.reasonHelp}
-          error={pressed && blank ? W.reasonBlank : null}
+          error={!pressed || fault == null ? null : fault === 'long' ? W.reasonLong : W.reasonBlank}
         />
       </Dialog>
       {discarding && (
