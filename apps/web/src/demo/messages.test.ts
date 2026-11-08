@@ -36,10 +36,10 @@ import {
 const ids = (rows: readonly { id: string }[]) => rows.map((row) => row.id);
 
 describe('Messaging B · Conversations, the rules (sc-31371)', () => {
-  it('has the spec’s 42 states, the notice’s 3, sc-3942’s 2, and sc-3960’s 10, in order, each linked once from the demo home', () => {
+  it('has the spec’s 42 states, the notice’s 3, sc-3942’s 2, sc-3960’s 10 and sc-3963’s 4, in order, each linked once from the demo home', () => {
     const keys = MESSAGE_STATES.map((one) => one.key);
 
-    expect(keys).toHaveLength(57);
+    expect(keys).toHaveLength(61);
     expect(keys.slice(0, 3)).toEqual(['first', 'loading', 'inUse']);
     expect(keys.slice(6, 10)).toEqual([
       'channelReply',
@@ -49,7 +49,7 @@ describe('Messaging B · Conversations, the rules (sc-31371)', () => {
     ]);
     expect(keys.slice(26, 29)).toEqual(['bell', 'invitedReached', 'sentReached']);
     expect(keys.slice(44, 47)).toEqual(['tellPlace', 'closedDraft', 'closedEnded']);
-    expect(keys.slice(keys.indexOf('insert'), keys.indexOf('insert') + 10)).toEqual([
+    expect(keys.slice(keys.indexOf('insert'), keys.indexOf('insert') + 14)).toEqual([
       'insert',
       'previewAs',
       'previewGreetAs',
@@ -60,8 +60,12 @@ describe('Messaging B · Conversations, the rules (sc-31371)', () => {
       'previewBraces',
       'noTokens',
       'previewNobody',
+      'editConflict',
+      'editSent',
+      'editCancelled',
+      'editTooLate',
     ]);
-    expect(new Set(keys).size).toBe(57);
+    expect(new Set(keys).size).toBe(61);
     expect(MESSAGES_PAGES.flatMap((page) => page.states.map((one) => one.to))).toEqual(
       keys.map((key) => `/demo/events/evt-wed-4/messages?state=${key}`),
     );
