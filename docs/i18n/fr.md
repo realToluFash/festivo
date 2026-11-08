@@ -71,6 +71,17 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **8 nov. 2026. Votre compte dans l’app** (sc-34175 pour sc-30411, `mobile:account.*`,
+  `contacts.promoting`, `removing`). La section est « À propos de vous ». La ligne de l’adresse
+  principale s’accorde avec l’adresse, « Principale · pour vous connecter », celle du numéro avec
+  le numéro, « Principal · sur votre profil » ; les autres disent « Pour vous joindre, pas pour
+  vous connecter ». Ce qui attend un code est « {{shown}} reste à vérifier. », comme le
+  glossaire, car {{shown}} est une adresse ou un numéro. La question en quittant est
+  « Abandonner votre modification ? », avec « Continuer à modifier » / « Abandonner », comme
+  `eventEdit` et `web:eventPeople` ; dessous, « Votre nom reste {{name}}. », « Rien ne sera
+  ajouté. ». Les confirmations en cours sont « Changement en cours… », qui ne s’accorde avec
+  rien (« Définition comme principale… » s’accorderait et ne tient pas), et « Retrait en cours… »,
+  comme le web.
 - **8 nov. 2026. La double authentification à la connexion dans l’app** (sc-33828 pour
   sc-29072, `mobile:twoFactor.signedIn`, `recoveryShape`, `lost`, `lostTwoFactor.waitingFor`,
   `stayOut`, `emailSoirely`). « Connexion réussie », groupe nominal, car « Connecté » s’accorde
