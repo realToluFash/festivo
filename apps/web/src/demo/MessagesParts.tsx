@@ -285,3 +285,13 @@ export function LeadMark({ lead, size = 40 }: { lead: Lead; size?: 40 | 44 }) {
     </span>
   );
 }
+
+/** Why New is unavailable: the mark and the reason in the secondary ink, never colour alone (sc-3942). */
+export function WhyNot({ id, words }: { id?: string; words: string }) {
+  return (
+    <p id={id} className="mg-why" data-testid="messages-closed">
+      <Glyph name="info" size={16} weight={2.2} />
+      <span>{words}</span>
+    </p>
+  );
+}

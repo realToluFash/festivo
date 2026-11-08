@@ -54,6 +54,25 @@
   min-height: var(--sizeHit);
 }
 
+.mg-why {
+  display: flex;
+  gap: var(--spaceSm);
+  align-items: flex-start;
+  color: var(--colorInkSecondary);
+  font: 500 14px/1.4 var(--fontFamily);
+}
+
+.mg-why > svg {
+  flex: none;
+  margin-top: 1px;
+}
+
+.mg-new[data-off] {
+  background: var(--colorBorder);
+  color: var(--colorInkSecondary);
+  cursor: default;
+}
+
 .mg-title {
   flex: 1;
   margin: 0;
@@ -953,6 +972,10 @@
   background: transparent;
   color: var(--colorInk);
   font: 500 16px/1.4 var(--fontFamily);
+}
+
+.mg-mini-field:disabled {
+  cursor: default;
 }
 
 .desk .mg-mini-field:focus-visible,

@@ -65,7 +65,7 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
       .parentElement as HTMLElement;
     const links = within(group).getAllByRole('link');
 
-    expect(links).toHaveLength(42);
+    expect(links).toHaveLength(45);
     expect(links[0]?.getAttribute('href')).toBe(`${AT}?state=first`);
     expect(links[23]?.getAttribute('href')).toBe(`${AT}?state=bell`);
     expect(links[41]?.getAttribute('href')).toBe(`${AT}?state=tellPlace`);
@@ -855,4 +855,41 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
       expect(optional()?.parentElement?.className).toBe('desk-unseen');
     },
   );
+
+  it.each([
+    ['closedDraft', 'This event is a draft. Make it live to write to your guests.'],
+    ['closedDeleted', 'This event was deleted, so nothing can be sent from it.'],
+    ['closedEnded', 'This event finished more than 30 days ago, so nothing can be sent from it.'],
+  ])(
+    'keeps New unavailable on %s, its one reason beside it, and C opens nothing (sc-3942)',
+    SLOW,
+    async (state, reason) => {
+      await messages(state);
+
+      const shown = screen.getByTestId('messages-closed');
+      expect(shown.textContent).toBe(reason);
+      const add = within(list()).getByRole('button', { name: 'New' });
+      expect(add.getAttribute('aria-disabled')).toBe('true');
+      expect(add.getAttribute('aria-keyshortcuts')).toBeNull();
+      expect(document.getElementById(add.getAttribute('aria-describedby')!)).toBe(shown);
+
+      fireEvent.click(add);
+      press('c');
+      expect(screen.queryByRole('textbox', { name: 'Subject' })).toBeNull();
+      const field = screen.getByRole('textbox', { name: 'Write to your guests' });
+      expect((field as HTMLInputElement).disabled).toBe(true);
+      expect(document.getElementById(field.getAttribute('aria-describedby')!)?.textContent).toBe(
+        reason,
+      );
+    },
+  );
+
+  it('shows no reason on an event that can send', SLOW, async () => {
+    await messages('inUse');
+
+    expect(screen.queryByTestId('messages-closed')).toBeNull();
+    expect(within(list()).getByRole('button', { name: 'New' }).getAttribute('aria-disabled')).toBe(
+      'false',
+    );
+  });
 });

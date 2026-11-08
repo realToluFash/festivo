@@ -81,9 +81,26 @@ export const MESSAGE_STATES = [
   { key: 'noSubject', name: 'No subject' },
   { key: 'followUp', name: 'A follow-up' },
   { key: 'tellPlace', name: 'Tell guests, a new place' },
+  { key: 'closedDraft', name: 'New unavailable, a draft' },
+  { key: 'closedDeleted', name: 'New unavailable, deleted' },
+  { key: 'closedEnded', name: 'New unavailable, finished over 30 days ago' },
 ] as const;
 
 export type MessagesState = (typeof MESSAGE_STATES)[number]['key'];
+
+/** Why New is unavailable on an event that can't send (sc-3942, Decided 8 Nov), one sentence per reason, the app's too. */
+export function closedOf(state: MessagesState | null): string | null {
+  switch (state) {
+    case 'closedDraft':
+      return MW.closedDraft;
+    case 'closedDeleted':
+      return MW.closedDeleted;
+    case 'closedEnded':
+      return MW.closedEnded;
+    default:
+      return null;
+  }
+}
 
 export function messagesStateOf(raw: string | null): MessagesState | null {
   return MESSAGE_STATES.find((one) => one.key === raw)?.key ?? null;

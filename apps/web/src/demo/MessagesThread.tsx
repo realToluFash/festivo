@@ -37,6 +37,7 @@ import {
   chipWords,
   countOf,
   dayWords,
+  closedOf,
   draftOf,
   filled,
   fixWord,
@@ -102,20 +103,25 @@ export function ConversationPane({
       ) : pane.kind === 'convo' ? (
         <Thread key={pane.id} id={pane.id} state={state} onDone={onDone} />
       ) : (
-        <Idle />
+        <Idle closed={closedOf(state)} />
       )}
     </section>
   );
 }
 
-function Idle() {
+function Idle({ closed }: { closed: string | null }) {
   const { inbox } = useInbox();
 
   return (
     <div className="mg-in is-idle">
       <h2 className="desk-unseen">{MW.newMessage}</h2>
       <p className="mg-idle-line">{inbox.present.length === 0 ? MW.noneLine : MW.pickOne}</p>
-      <MiniComposer to={{ kind: 'all' }} placeholder={MW.writeToGuests} thread={freshId(inbox)} />
+      <MiniComposer
+        to={{ kind: 'all' }}
+        placeholder={MW.writeToGuests}
+        thread={freshId(inbox)}
+        closed={closed}
+      />
     </div>
   );
 }
@@ -125,14 +131,20 @@ function MiniComposer({
   to,
   placeholder,
   thread,
+  closed = null,
 }: {
   to: Audience;
   placeholder: string;
   thread: ConvoId;
+  /** Why this event can't send: shown once beside New, and read out here for the unavailable composer. */
+  closed?: string | null;
 }) {
   const { act, focus, inbox } = useInbox();
+  const whyId = useId();
+  const why = closed == null ? undefined : whyId;
 
   function open(text: string, toPick: boolean): void {
+    if (closed != null) return;
     act({
       kind: 'compose',
       draft: {
@@ -147,6 +159,11 @@ function MiniComposer({
 
   return (
     <div className="mg-mini">
+      {closed != null && (
+        <p id={whyId} className="desk-unseen">
+          {closed}
+        </p>
+      )}
       <div className="mg-mini-to">
         <span>{MW.to}</span>
         <button
@@ -154,7 +171,9 @@ function MiniComposer({
           className="mg-to-chip"
           aria-haspopup="dialog"
           aria-expanded="false"
+          aria-describedby={why}
           onClick={() => open('', true)}
+          {...offButton(closed != null)}
         >
           {chipWords(to)}
           <Glyph name="chevdown" size={14} weight={2.6} />
@@ -165,7 +184,9 @@ function MiniComposer({
           className="mg-mini-field"
           placeholder={placeholder}
           aria-label={placeholder}
+          aria-describedby={why}
           data-focus="follow"
+          disabled={closed != null}
           value=""
           onChange={(event) => open(event.target.value, false)}
         />
