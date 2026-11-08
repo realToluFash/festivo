@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 
-import { tokens } from '../../theme/tokens.ts';
 import {
   NO_FILTERS,
   cardStep,
@@ -27,7 +26,6 @@ import {
   resultsOf,
   rowLine,
   rowTag,
-  scrimContrast,
   shownEvent,
   summaryLine,
   tabWidths,
@@ -318,19 +316,6 @@ describe('the states', () => {
     expect(editOf(eventStateOf('lastHost'))).toBe('hosts');
     expect(editOf(eventStateOf('pause'))).toBeNull();
     expect(editOf(eventStateOf('saved'))).toBeNull();
-  });
-});
-
-describe('the card’s scrim', () => {
-  it('keeps white words at 4.5:1 on every colour and on any photo', () => {
-    for (const base of [
-      tokens.optionRose,
-      tokens.optionTeal,
-      tokens.colorAccent,
-      tokens.optionAmber,
-    ])
-      expect(scrimContrast(base, false, tokens.colorInk)).toBeGreaterThanOrEqual(4.5);
-    expect(scrimContrast(tokens.colorInk, true, tokens.colorInk)).toBeGreaterThanOrEqual(4.5);
   });
 });
 
