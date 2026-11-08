@@ -70,7 +70,6 @@ export function AccountPage({
   onChanged,
 }: {
   account: Account;
-  /** Reads the account again once something on it changed. */
   onChanged: () => Promise<void>;
 }) {
   const { t } = useTranslation();
@@ -511,7 +510,6 @@ function VerifyStep({
   row: Contact;
   opener: RefObject<ScreenReaderTarget | null>;
   onClose: () => void;
-  /** With whether the server made the row primary. */
   onVerified: (primary: boolean) => Promise<void>;
 }) {
   const { t } = useTranslation();
