@@ -52,15 +52,25 @@ export interface RuleRow {
   ask: { consequence: string; step: string; opens: 'link' | 'twoFactor' } | null;
 }
 
-export function dayIn(at: string, locale: string, now: Date, weekday = false): string {
-  const day = new Date(`${at.slice(0, 10)}T12:00Z`);
+/** A day as the locale writes it in the reader's zone, the year only outside this one; a bare date is that calendar day. */
+export function dayIn(
+  at: string,
+  locale: string,
+  now: Date,
+  { weekday = false, timeZone }: { weekday?: boolean; timeZone?: string } = {},
+): string {
+  const bare = /^\d{4}-\d{2}-\d{2}$/.test(at);
+  const day = new Date(bare ? `${at}T12:00Z` : at);
+  const zone = bare ? 'UTC' : timeZone;
+  const year = (date: Date) =>
+    new Intl.DateTimeFormat('en', { year: 'numeric', timeZone: zone }).format(date);
 
   return new Intl.DateTimeFormat(locale, {
     ...(weekday ? { weekday: 'long' as const } : {}),
     month: 'short',
     day: 'numeric',
-    ...(day.getUTCFullYear() === now.getFullYear() ? {} : { year: 'numeric' as const }),
-    timeZone: 'UTC',
+    ...(year(day) === year(now) ? {} : { year: 'numeric' as const }),
+    timeZone: zone,
   }).format(day);
 }
 
@@ -148,7 +158,9 @@ function twoFactor(
     const title = t('signInRules.stand.everyoneTitle');
     if (on) return row('met', title, t('signInRules.stand.yoursOn'));
     const by =
-      rules.twoFactorDeadline == null ? '' : dayIn(rules.twoFactorDeadline, locale, now, true);
+      rules.twoFactorDeadline == null
+        ? ''
+        : dayIn(rules.twoFactorDeadline, locale, now, { weekday: true });
 
     return row(
       'needs',
@@ -234,7 +246,9 @@ export function rulesCard(t: TFunction, rules: readonly RuleRow[], viewer: Stand
   };
 }
 
-type Change = Pick<SignInRuleChange, 'rule' | 'now' | 'was' | 'at'> & { by: { name: string } };
+export type Change = Pick<SignInRuleChange, 'rule' | 'now' | 'was' | 'at'> & {
+  by: { name: string };
+};
 
 function onOff(t: TFunction, value: Change['now']): string {
   return t(value === true ? 'signInRules.stand.on' : 'signInRules.stand.off');
