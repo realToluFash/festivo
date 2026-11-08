@@ -30,6 +30,7 @@ import {
   ZOOMS,
   bounds,
   copyOf,
+  deletePlanWords,
   detailOf,
   filled,
   firstFree,
@@ -45,7 +46,6 @@ import {
   overlap,
   peopleIn,
   percentOf,
-  planCounts,
   readRoom,
   readingOrder,
   say,
@@ -185,6 +185,7 @@ function Seating({ first, event, tell }: { first: Ui; event: SampleEvent; tell: 
   const [setCanvas, size] = useSize();
   const canvas = useRef<HTMLDivElement | null>(null);
   const press = useRef<Press | null>(null);
+  const held = useRef<string | null>(null);
   const [focusId, setFocusId] = useState<string | null>(null);
   const [keyboard, setKeyboard] = useState(first.focus?.startsWith('item:') === true);
   const [placingAt, setPlacingAt] = useState<Point | null>(
@@ -696,6 +697,11 @@ function Seating({ first, event, tell }: { first: Ui; event: SampleEvent; tell: 
     );
   }, []);
 
+  /** A field refused as a press on the room left it: that press keeps the item chosen (sc-5033, 8 Nov 2026). */
+  const hold = useCallback((key: string) => {
+    held.current = press.current != null && ui$.current.chosen.length > 0 ? key : null;
+  }, []);
+
   const api = useMemo<SeatingApi>(
     () => ({
       ui,
@@ -703,6 +709,7 @@ function Seating({ first, event, tell }: { first: Ui; event: SampleEvent; tell: 
       commit,
       edit,
       choose,
+      hold,
       open: (mode) =>
         set((now) => ({
           ...now,
@@ -741,6 +748,7 @@ function Seating({ first, event, tell }: { first: Ui; event: SampleEvent; tell: 
       duplicate,
       markChair,
       focusField,
+      hold,
       tell,
     ],
   );
@@ -952,8 +960,13 @@ function Seating({ first, event, tell }: { first: Ui; event: SampleEvent; tell: 
 
       if (now == null || now.pointer !== event.pointerId) return;
       press.current = null;
+      const kept = held.current;
+
+      held.current = null;
       if (now.kind === 'drag') {
         if (now.moved) settle(now.ids, now.lead);
+        else if (kept != null && !now.shift && !ui$.current.chosen.includes(now.lead))
+          focusField(kept);
         else if (now.shift)
           set((ui_) => ({
             ...ui_,
@@ -968,7 +981,8 @@ function Seating({ first, event, tell }: { first: Ui; event: SampleEvent; tell: 
       } else if (now.kind === 'resize') {
         if (now.moved) settle([now.id], now.id);
       } else if (now.kind === 'pan') {
-        if (!now.moved) {
+        if (!now.moved && kept != null) focusField(kept);
+        else if (!now.moved) {
           set((ui_) => ({
             ...ui_,
             chosen: [],
@@ -2021,9 +2035,7 @@ function Asking() {
     return (
       <Ask
         title={SW.deletePlanAsk}
-        line={say(SW.deletePlanBody, {
-          counts: planCounts(ui.plan).replace(/^./u, (c) => c.toUpperCase()),
-        })}
+        line={deletePlanWords(ui.plan)}
         keep={SW.keepPlan}
         go={SW.deletePlan}
         onKeep={keep}

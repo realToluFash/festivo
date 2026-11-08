@@ -293,6 +293,31 @@ describe('Guests, Edit in place (sc-3773)', () => {
     expect(screen.queryByRole('button', { name: 'Add a companion' })).toBeNull();
   });
 
+  it('asks before removing a companion with a seat and a meal', SLOW, async () => {
+    await guests('editSeated');
+    const ask = await screen.findByRole('alertdialog', { name: 'Remove Rui Duarte?' });
+    const companions = () =>
+      within(column()).queryAllByRole('textbox', { name: /^Companion’s full name/u });
+
+    expect(
+      within(ask).getByText(
+        'Rui Duarte has a seat at Table 4 and a meal chosen. Removing this companion frees the seat and drops the meal.',
+      ),
+    ).toBeDefined();
+
+    fireEvent.click(within(ask).getByRole('button', { name: 'Cancel' }));
+
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(companions()).toHaveLength(1);
+
+    fireEvent.click(within(column()).getByRole('button', { name: 'Remove Rui Duarte' }));
+    const again = await screen.findByRole('alertdialog', { name: 'Remove Rui Duarte?' });
+    fireEvent.click(within(again).getByRole('button', { name: 'Remove' }));
+
+    expect(screen.getByText('Rui Duarte removed. Save to keep the change.')).toBeDefined();
+    expect(companions()).toHaveLength(0);
+  });
+
   it('asks before throwing a change away', SLOW, async () => {
     await guests('edit');
 
@@ -428,6 +453,99 @@ describe('Guests, Add guest in place (sc-1468)', () => {
       screen.getByText('That number looks too short for United Kingdom. Check it and try again.'),
     ).toBeDefined();
   });
+});
+
+describe('Guests, the guest’s Language (sc-3790)', () => {
+  const HINT =
+    'Their page opens in their browser’s language when Soirely offers it, otherwise in this language. Messages use this language. When this is Not set, both use your organisation’s language.';
+
+  it(
+    'puts Language after the contact fields, Not set, each language in its own name',
+    SLOW,
+    async () => {
+      await guests('add');
+      const field = within(column()).getByRole('combobox', { name: /^Language/u });
+      const options = within(field).getAllByRole('option');
+
+      expect((field as HTMLSelectElement).value).toBe('');
+      expect(options.map((one) => one.textContent)).toEqual([
+        'Not set',
+        'English',
+        'Español',
+        'Français',
+        'Português',
+      ]);
+      expect(options.slice(1).map((one) => one.getAttribute('lang'))).toEqual([
+        'en',
+        'es',
+        'fr',
+        'pt',
+      ]);
+      expect(screen.getByText(HINT)).toBeDefined();
+    },
+  );
+
+  it('adds a guest with the language chosen', SLOW, async () => {
+    await guests('languageAdd');
+
+    expect(
+      (within(column()).getByRole('combobox', { name: /^Language/u }) as HTMLSelectElement).value,
+    ).toBe('fr');
+    fireEvent.click(within(column()).getByRole('button', { name: 'Add guest' }));
+
+    expect(screen.getByText('Lucas Moreau added.')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'No reply · 21' }));
+    fireEvent.click(screen.getByRole('menuitemradio', { name: /^Not yet invited\s*15/u }));
+    fireEvent.click(screen.getByRole('link', { name: /^Lucas Moreau, Not yet invited/u }));
+
+    expect(
+      await within(column()).findByRole('heading', { name: 'Lucas Moreau' }, WAIT),
+    ).toBeDefined();
+    expect(within(column()).getByText('Français')).toBeDefined();
+  });
+
+  it('says in Details what Not set falls back to', SLOW, async () => {
+    await guests('languageNotSet');
+
+    expect(
+      within(column()).getByText(
+        'Not set · their browser’s language, or English when Soirely does not offer it',
+      ),
+    ).toBeDefined();
+  });
+
+  it('shows the host’s language, and the guest’s own choice when they made one', SLOW, async () => {
+    await guests('languageGuestChose');
+
+    expect(within(column()).getByText('Español')).toBeDefined();
+    expect(
+      within(column()).getByText('They chose Português on their page, and that wins.'),
+    ).toBeDefined();
+  });
+
+  it(
+    'keeps the host’s select set and enabled when the guest chose, and saves a change',
+    SLOW,
+    async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      await guests('languageEdit');
+      const field = within(column()).getByRole('combobox', {
+        name: /^Language/u,
+      }) as HTMLSelectElement;
+
+      expect(field.value).toBe('es');
+      expect(field.disabled).toBe(false);
+      expect(field.getAttribute('aria-describedby')?.split(' ')).toHaveLength(2);
+      fireEvent.change(field, { target: { value: 'fr' } });
+      fireEvent.click(within(column()).getByRole('button', { name: 'Save' }));
+
+      expect(await within(column()).findByText('Français', {}, WAIT)).toBeDefined();
+      expect(
+        within(column()).getByText('They chose Português on their page, and that wins.'),
+      ).toBeDefined();
+      vi.useRealTimers();
+    },
+  );
 });
 
 describe('Guests, the link and Mark as invited (sc-1526, sc-3788)', () => {
