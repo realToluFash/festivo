@@ -125,9 +125,7 @@ export function GuestView({
           )}
         </section>
       )}
-      {(manages || guest.companions.length > 0) && (
-        <Details guest={guest} manages={manages} heading={heading} onEdit={actions.onEdit} />
-      )}
+      <Details guest={guest} manages={manages} heading={heading} onEdit={actions.onEdit} />
       {manages && !draft && guest.reply !== 'walkIn' && (
         <Invitation
           guest={guest}
@@ -165,6 +163,13 @@ function Details({
         )}
       </Head>
       <ul className="desk-rows gs-rows">
+        <li className={guest.greetAs == null ? 'desk-row is-none' : 'desk-row'}>
+          <IconLead name="message" />
+          <RowWords
+            title={guest.greetAs == null ? GW.greetsByName : GW.greetsThemAs(guest.greetAs)}
+            lines={[GW.greetAs]}
+          />
+        </li>
         {manages && (
           <>
             <li className={guest.email == null ? 'desk-row is-none' : 'desk-row'}>

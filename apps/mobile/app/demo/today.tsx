@@ -13,7 +13,7 @@ import { createStateOf } from '../../src/demo/createOrg/CreateWalk.ts';
 import { NoOrganisation } from '../../src/demo/createOrg/NoOrganisation.tsx';
 import { OrgSwitcherProvider, useCurrentPlace } from '../../src/demo/OrgSwitcher.tsx';
 import { switcherStateOf } from '../../src/demo/OrgSwitcherModel.ts';
-import { INVITES_NOT_SENT, MOMENTS, momentOf, sayIn } from '../../src/demo/today.ts';
+import { INVITES_NOT_SENT, isNeedsState, MOMENTS, momentOf, sayIn } from '../../src/demo/today.ts';
 import { ArrivedTodayScreen } from '../../src/demo/today/ArrivedToday.tsx';
 import {
   ARRIVED_AT,
@@ -25,6 +25,7 @@ import {
   LIVE,
   withArrived,
 } from '../../src/demo/today/arrived.ts';
+import { NeedsTodayScreen } from '../../src/demo/today/NeedsToday.tsx';
 import { RunTodayScreen } from '../../src/demo/today/RunToday.tsx';
 import { isRunState, withRun } from '../../src/demo/today/runOfShow.ts';
 import type { MomentName } from '../../src/kit/today.ts';
@@ -87,6 +88,7 @@ export default function DemoTodayScreen() {
     arrived?: string;
     numbers?: string;
     invites?: string;
+    needs?: string;
   }>();
   const place = useCurrentPlace();
   // An organisation made in the walk has no events yet.
@@ -98,9 +100,10 @@ export default function DemoTodayScreen() {
   // Nobody arrived and arrivals coming in are day 1, at Guests A's door; the rest are day 2.
   const at = name === 'dayNow' && arrivedState != null ? ARRIVED_AT[arrivedState] : undefined;
   const guests = name === 'plan' && params.invites === 'none' ? INVITES_NOT_SENT : undefined;
+  const needing = name === 'plan' && isNeedsState(params.needs) ? params.needs : undefined;
   const moment = useMemo(
-    () => momentOf(name, say, i18n.getFixedT('en'), { at, guests }),
-    [name, say, i18n, at, guests],
+    () => momentOf(name, say, i18n.getFixedT('en'), { at, guests, needing }),
+    [name, say, i18n, at, guests, needing],
   );
   const numbers = useMemo(() => numbersIn(params.numbers), [params.numbers]);
   const live = useLive(arrivedState === 'live');
@@ -180,6 +183,8 @@ export default function DemoTodayScreen() {
             <RunTodayScreen moment={run} onTab={onTab} notices={notices} />
           ) : arrived != null ? (
             <ArrivedTodayScreen moment={arrived} onTab={onTab} notices={notices} />
+          ) : moment.needs != null ? (
+            <NeedsTodayScreen moment={moment} onTab={onTab} notices={notices} />
           ) : (
             <TodayScreen moment={moment} onTab={onTab} notices={notices} />
           )}

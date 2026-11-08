@@ -84,7 +84,8 @@ export function OwnershipSection({
   const [visit, setVisit] = useState(0);
   const [leaveVisit, setLeaveVisit] = useState(0);
   // Whoever is looking leaves: Ana in Leave's states, Priya on a member's page at rest (sc-614).
-  const events = start.leadsAny ? ledEvents(SAMPLE_LEADS[looking.email] ?? []) : [];
+  const led = ledEvents(SAMPLE_LEADS[looking.email] ?? []);
+  const events = start.leadsAny ? (start.leadsOne ? led.slice(0, 1) : led) : [];
   const handsOver = role !== 'Owner' && events.length > 0;
   const [ask, setAsk] = useState<'leave' | 'onlyOwner' | null>(
     start.ask === 'leave' || start.ask === 'onlyOwner' ? start.ask : null,

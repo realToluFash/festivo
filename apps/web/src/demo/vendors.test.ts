@@ -293,12 +293,13 @@ describe('the vendor directory’s rules (sc-82)', () => {
     expect(pageOf(vendors, 'v4')).toBe(1);
   });
 
-  it('puts Vendors after Sign-in rules, for an owner or an admin only', () => {
+  it('puts Vendors after Sign-in rules, then Data, for an owner or an admin only', () => {
     expect(groupsFor(VIEWERS.folake)[1]?.sections).toEqual([
       'general',
       'members',
       'signInRules',
       'vendors',
+      'data',
     ]);
     expect(groupsFor(VIEWERS.ana)[1]?.sections).toEqual(['general', 'signInRules']);
   });

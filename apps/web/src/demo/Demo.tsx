@@ -22,6 +22,7 @@ import { EventPage } from './EventPage.tsx';
 import { Events } from './Events.tsx';
 import { EVENTS_PAGES } from './events.ts';
 import { ACCOUNT_PAGES } from './account.ts';
+import { DATA_PAGES } from './dataSettings.ts';
 import { GENERAL_PAGES } from './general.ts';
 import { MESSAGES_PAGES } from './messages.ts';
 import { SeatingPage } from './Seating.tsx';
@@ -32,6 +33,8 @@ import { GUEST_PAGES } from './guest.ts';
 import { GUEST_KITCHEN_PAGES } from './guestKitchen.ts';
 import { Guests } from './Guests.tsx';
 import { GUESTS_PAGES } from './guests.ts';
+import { KitchenPage } from './Kitchen.tsx';
+import { KITCHEN_PAGES } from './kitchen.ts';
 import { LegalPage } from './Legal.tsx';
 import { LEGAL_PAGES } from './legal.ts';
 import { NewAccountBoard } from './NewAccount.tsx';
@@ -59,6 +62,8 @@ import { ShareRecipient } from './ShareRecipient.tsx';
 import { TEMPLATES_PAGES } from './templates.ts';
 import { Today } from './Today.tsx';
 import { TwoFactorBoard } from './TwoFactor.tsx';
+import { Unsubscribe } from './Unsubscribe.tsx';
+import { UNSUBSCRIBE_PAGES } from './unsubscribe.ts';
 import { VendorsMoved } from './Vendors.tsx';
 import { VENDORS_PAGES } from './vendors.ts';
 import { WaysInBoard } from './WaysIn.tsx';
@@ -169,6 +174,7 @@ export default function Demo() {
       <Route path="events/:id/dates" element={<EventPage dates />} />
       <Route path="events/:id/messages" element={<EventPage messages />} />
       <Route path="events/:id/seating" element={<SeatingPage />} />
+      <Route path="events/:id/kitchen" element={<KitchenPage />} />
       <Route path="calendar" element={<Calendar />} />
       <Route path="settings" element={<Settings />} />
       <Route path="settings/members" element={<Settings />} />
@@ -178,12 +184,14 @@ export default function Demo() {
       <Route path="settings/personalisation" element={<Settings open="personalisation" />} />
       <Route path="settings/general" element={<Settings open="general" />} />
       <Route path="settings/sign-in-rules" element={<Settings open="signInRules" />} />
+      <Route path="settings/data" element={<Settings open="data" />} />
       <Route path="settings/vendors" element={<Settings open="vendors" />} />
       <Route path="settings/payment-reminders" element={<Settings open="vendors" reminders />} />
       <Route path="people" element={<People />} />
       <Route path="redeem" element={<Redeem />} />
       <Route path="vendors" element={<VendorsMoved />} />
       <Route path="share/:scope" element={<ShareRecipient />} />
+      <Route path="unsubscribe" element={<Unsubscribe />} />
       <Route path="guest" element={<GuestPage />} />
       <Route path="guests" element={<Guests />} />
       <Route path="later" element={<Later />} />
@@ -244,6 +252,8 @@ function DemoHome({ from }: { from: string }) {
         <h2 id="demo-page-30">30 · Guests · the planner’s side</h2>
         <h3>Guests in A · Summary first · desktop</h3>
         <BoardPages pages={GUESTS_PAGES} />
+        <h3>Final numbers due and the kitchen’s copies, in Guests A · desktop</h3>
+        <BoardPages pages={KITCHEN_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-81">
@@ -280,6 +290,8 @@ function DemoHome({ from }: { from: string }) {
         <h2 id="demo-page-36">36 · Messaging · Messages on an event</h2>
         <h3>Messaging in B · Conversations · desktop</h3>
         <BoardPages pages={MESSAGES_PAGES} />
+        <h3>The unsubscribe page, signed out · phone, tablet and desk</h3>
+        <BoardPages pages={UNSUBSCRIBE_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-31">
@@ -304,6 +316,8 @@ function DemoHome({ from }: { from: string }) {
         <BoardPages pages={GENERAL_PAGES} />
         <h3>Sign-in rules in B · Where you stand · desktop</h3>
         <BoardPages pages={SIGN_IN_RULES_PAGES} />
+        <h3>Data in B · Summary first · desktop</h3>
+        <BoardPages pages={DATA_PAGES} />
         <h3>People on an event · desktop</h3>
         <BoardPages pages={PEOPLE_PAGES} />
         <h3>Working an event without joining in A · The door code · desktop</h3>

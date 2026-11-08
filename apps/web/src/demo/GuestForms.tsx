@@ -8,6 +8,7 @@ import {
   type AddStart,
   type Answer,
   type EditStart,
+  GREET_AS_MOST,
   type Guest,
   type Lines,
   MOST_COMPANIONS,
@@ -16,6 +17,7 @@ import {
   THEIRS,
   type Values,
   dayOf,
+  greetAsLength,
   linesOf,
   phoneShown,
   sameName,
@@ -42,6 +44,7 @@ const SHOWN_COMPANIONS = 3;
 /** Where a refusal sends the focus: the first field that failed, in the form's order. */
 function firstFailing(lines: Lines): string | null {
   if (lines.name != null) return 'name';
+  if (lines.greetAs != null) return 'greet-as';
   if (lines.email != null) return 'email';
   if (lines.number != null) return 'number';
 
@@ -207,6 +210,31 @@ function CompanionFields({
   );
 }
 
+/** sc-3960's Greet as, under Full name on Edit guest and Add guest: counted in code points after trimming, no maxlength. */
+function GreetAsField({
+  value,
+  error,
+  onChange,
+}: {
+  value: string;
+  error: string | undefined;
+  onChange: (next: Partial<Values>) => void;
+}) {
+  return (
+    <GuestField
+      label={GW.greetAs}
+      value={value}
+      optional
+      error={error}
+      help={GW.greetAsHint}
+      counter={GW.ofMost(greetAsLength(value), GREET_AS_MOST)}
+      focusKey="greet-as"
+      autoComplete="off"
+      onChange={(greetAs) => onChange({ greetAs })}
+    />
+  );
+}
+
 /** Edit (sc-3773), in place in the guest's column: refused before sending, a duplicate asked about, a colleague's change (412) held at the top. */
 export function EditForm({
   guest,
@@ -355,6 +383,7 @@ export function EditForm({
           autoComplete="off"
           onChange={(name) => change({ name })}
         />
+        <GreetAsField value={values.greetAs} error={lines.greetAs} onChange={change} />
         <GuestField
           label={GW.emailAddress}
           value={values.email}
@@ -655,6 +684,7 @@ export function AddForm({
           autoComplete="off"
           onChange={(name) => change({ name })}
         />
+        <GreetAsField value={values.greetAs} error={lines.greetAs} onChange={change} />
         <GuestField
           label={GW.emailAddress}
           value={values.email}

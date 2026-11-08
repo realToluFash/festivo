@@ -50,6 +50,7 @@ import {
 } from './messages.ts';
 import { ConversationPane } from './MessagesThread.tsx';
 import { InboxContext, type InboxApi } from './messagesContext.ts';
+import { type Group, useTo } from './messagesTo.ts';
 import { LeadMark, WhyNot } from './MessagesParts.tsx';
 import { UntoldBanner } from './MessagesTell.tsx';
 import { MESSAGES_WORD } from './messagesWords.ts';
@@ -76,6 +77,11 @@ function firstFocus(state: MessagesState | null): string | null {
     case 'scheduledEdit':
     case 'followUp':
       return state === 'followUp' ? 'follow' : 'body';
+    case 'editConflict':
+    case 'editSent':
+    case 'editCancelled':
+    case 'editTooLate':
+      return 'refused-save';
     case 'sendNow':
     case 'checkAll':
     case 'checkNotReplied':
@@ -91,7 +97,10 @@ function firstFocus(state: MessagesState | null): string | null {
       return 'heading';
     case 'write':
     case 'cancelled':
+    case 'typedBraces':
       return 'body';
+    case 'previewNobody':
+      return 'preview';
     case 'check':
       return 'check';
     case 'countdown':
@@ -102,6 +111,8 @@ function firstFocus(state: MessagesState | null): string | null {
       return 'check';
     case 'to':
       return 'to-pick';
+    case 'whoNoneSend':
+      return 'refused';
     default:
       return null;
   }
@@ -185,7 +196,9 @@ function Messages({
   }, []);
   const { stack } = useContext(LayersContext);
   const titleId = useId();
-  const sections = useMemo(() => sectionsOf(inbox), [inbox]);
+  const to = useTo(state);
+  const groups = to.book.groups;
+  const sections = useMemo(() => sectionsOf(inbox, groups), [inbox, groups]);
   const lit = litOf(inbox);
 
   const say = useCallback((words: string) => {
@@ -290,7 +303,7 @@ function Messages({
   }
 
   function startNew(): void {
-    if (closed != null) return;
+    if (closed != null || !to.manage) return;
     if (inbox.pane.kind !== 'compose')
       act({
         kind: 'compose',
@@ -331,7 +344,7 @@ function Messages({
       if (next == null) return;
       openRow(next.id, false);
       focus(`row:${next.id}`);
-    } else if (key === 'e' && (inList || inMessages) && lit != null) {
+    } else if (key === 'e' && to.manage && (inList || inMessages) && lit != null) {
       if (!isGuest(lit) && lit !== 'unknown') return;
       event.preventDefault();
       if (inbox.done.includes(lit)) act({ kind: 'waiting', id: lit });
@@ -339,6 +352,7 @@ function Messages({
     } else if (
       key === 'r' &&
       closed == null &&
+      to.manage &&
       inbox.pane.kind === 'convo' &&
       isGuest(inbox.pane.id)
     ) {
@@ -375,6 +389,7 @@ function Messages({
     keys,
     whyOff: closed == null ? undefined : whyId,
     bell: { read: bellRead, markRead: () => setBellRead(true), takeFirst },
+    to,
   };
   const empty = inbox.present.length === 0 && sections.top.length === 0;
 
@@ -386,17 +401,19 @@ function Messages({
             <h1 id={titleId} className="mg-title" tabIndex={-1} data-focus="title">
               {MESSAGES_WORD}
             </h1>
-            <button
-              type="button"
-              className="mg-new"
-              aria-keyshortcuts={keys && closed == null ? 'C' : undefined}
-              aria-describedby={closed == null ? undefined : whyId}
-              onClick={startNew}
-              {...offButton(closed != null)}
-            >
-              <Glyph name="plus" size={18} weight={2.4} />
-              {MW.new}
-            </button>
+            {to.manage && (
+              <button
+                type="button"
+                className="mg-new"
+                aria-keyshortcuts={keys && closed == null ? 'C' : undefined}
+                aria-describedby={closed == null ? undefined : whyId}
+                onClick={startNew}
+                {...offButton(closed != null)}
+              >
+                <Glyph name="plus" size={18} weight={2.4} />
+                {MW.new}
+              </button>
+            )}
           </div>
           {closed != null && <WhyNot id={whyId} words={closed} />}
           <div ref={list} className="mg-list-body">
@@ -409,7 +426,7 @@ function Messages({
               </div>
             ) : (
               <>
-                {inbox.untold.length > 0 && <UntoldBanner />}
+                {inbox.untold.length > 0 && to.manage && <UntoldBanner />}
                 {sections.top.length > 0 && <Rows rows={sections.top} lit={lit} onOpen={openRow} />}
                 <Section name={MW.needsYou} rows={sections.needs} lit={lit} onOpen={openRow} />
                 <Section name={MW.scheduled} rows={sections.scheduled} lit={lit} onOpen={openRow} />
@@ -432,18 +449,22 @@ function Messages({
                     <kbd>K</kbd>
                     {MW.move}
                   </span>
-                  <span>
-                    <kbd>E</kbd>
-                    {MW.markAsDone}
-                  </span>
-                  <span>
-                    <kbd>R</kbd>
-                    {MW.reply}
-                  </span>
-                  <span>
-                    <kbd>C</kbd>
-                    {MW.new}
-                  </span>
+                  {to.manage && (
+                    <>
+                      <span>
+                        <kbd>E</kbd>
+                        {MW.markAsDone}
+                      </span>
+                      <span>
+                        <kbd>R</kbd>
+                        {MW.reply}
+                      </span>
+                      <span>
+                        <kbd>C</kbd>
+                        {MW.new}
+                      </span>
+                    </>
+                  )}
                 </p>
                 <button
                   type="button"
@@ -479,7 +500,7 @@ function Messages({
           {said}
         </p>
         <p className="desk-unseen" role="status">
-          {sendingSaid(inbox)}
+          {sendingSaid(inbox, groups)}
         </p>
       </div>
     </InboxContext>
@@ -487,12 +508,12 @@ function Messages({
 }
 
 /** What the ten seconds and the send say, once each (WCAG 2.2 SC 4.1.3): 10, 5, then queued, then the result. */
-function sendingSaid(inbox: Inbox): string {
+function sendingSaid(inbox: Inbox, groups: readonly Group[]): string {
   const out = inbox.outs.find((one) => one.stage === 'countdown') ?? inbox.outs.at(-1);
 
   if (out == null) return '';
 
-  const reach = outReach(out);
+  const reach = outReach(out, groups);
 
   switch (out.stage) {
     case 'countdown':

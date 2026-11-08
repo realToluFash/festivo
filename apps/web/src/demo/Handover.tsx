@@ -1,5 +1,6 @@
 import {
   type KeyboardEvent,
+  useContext,
   useEffect,
   useId,
   useLayoutEffect,
@@ -7,7 +8,10 @@ import {
   useRef,
   useState,
 } from 'react';
+import { createPortal } from 'react-dom';
 
+import { ActionPair } from '../components/ActionPair.tsx';
+import { LayersContext, useDeskDialog } from '../layers.ts';
 import { offButton } from '../offButton.ts';
 import type { SampleEvent } from './events.ts';
 import { Glyph } from '../components/Glyph.tsx';
@@ -18,6 +22,7 @@ import {
   HELD_MS,
   LISTED,
   matching,
+  RETRY_MS,
   SEARCH_ABOVE,
   SEND_MS,
   whoWords,
@@ -84,6 +89,25 @@ export function HandoverAsk({
     return () => clearTimeout(timer);
   }, [held, start.to]);
 
+  if (phase === 'checking')
+    return <CheckingAsk title={words.title} words={words} onKeep={onKeep} />;
+  if (phase === 'notLoaded')
+    return (
+      <Ask
+        title={words.title}
+        line={words.last}
+        keep={words.keep}
+        go={H.tryAgain}
+        red={false}
+        failed={words.notLoaded}
+        onKeep={onKeep}
+        onGo={() => {
+          setPhase('checking');
+          later(RETRY_MS, () => setPhase('asking'));
+        }}
+      />
+    );
+
   return (
     <Ask
       title={words.title}
@@ -92,7 +116,9 @@ export function HandoverAsk({
       go={words.go}
       red={words.red}
       busy={sending ? words.busy : undefined}
-      failed={phase === 'failed' ? words.failed : undefined}
+      failed={
+        phase === 'failed' ? words.failed : phase === 'refused' ? H.chooseRecipient : undefined
+      }
       first={start.menu ? first : undefined}
       onKeep={onKeep}
       onGo={() => {
@@ -117,6 +143,67 @@ export function HandoverAsk({
   );
 }
 
+/** The confirm while the work list is on its way: the way back and no verb, since there is nothing to confirm yet. */
+function CheckingAsk(props: { title: string; words: AskWords; onKeep: () => void }) {
+  const { host } = useContext(LayersContext);
+
+  return host == null ? null : createPortal(<CheckingBox {...props} />, host);
+}
+
+function CheckingBox({
+  title,
+  words,
+  onKeep,
+}: {
+  title: string;
+  words: AskWords;
+  onKeep: () => void;
+}) {
+  const id = useId();
+  const box = useRef<HTMLDivElement>(null);
+  const keep = useRef<HTMLButtonElement>(null);
+
+  useDeskDialog(box, keep, onKeep, false);
+
+  return (
+    <>
+      <div className="dialog-scrim is-over" aria-hidden="true" />
+      <div
+        ref={box}
+        className="desk-ask"
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby={`${id}-title`}
+        aria-describedby={`${id}-line`}
+      >
+        <h2 id={`${id}-title`}>{title}</h2>
+        <div className="desk-ask-body">
+          <p id={`${id}-line`}>{words.last}</p>
+          <Checking words={words.checking} />
+        </div>
+        <ActionPair
+          className="desk-ask-pair"
+          dismiss={
+            <button ref={keep} type="button" className="desk-text" onClick={onKeep}>
+              {words.keep}
+            </button>
+          }
+          confirm={null}
+        />
+      </div>
+    </>
+  );
+}
+
+function Checking({ words }: { words: string }) {
+  return (
+    <p className="handover-checking" role="status">
+      <span className="pending-spinner desk-turning" aria-hidden="true" />
+      {words}
+    </p>
+  );
+}
+
 /** What will move: the first five, soonest first, then how many more. The confirm never scrolls inside itself. */
 function Moves({ events }: { events: readonly SampleEvent[] }) {
   const more = events.length - LISTED;
@@ -127,7 +214,9 @@ function Moves({ events }: { events: readonly SampleEvent[] }) {
         {events.slice(0, LISTED).map((event) => (
           <li key={event.id}>
             <span className={`handover-tile today-cover is-${event.mesh}`} aria-hidden="true" />
-            {event.name}
+            <span className="handover-move-name" title={event.name}>
+              {event.name}
+            </span>
           </li>
         ))}
       </ul>
@@ -414,6 +503,31 @@ function HandTo({
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+/** A suspended member's page before their work list is in: it can say nothing of what they lead, and Hand over now waits. */
+export function LeadsNotIn({
+  name,
+  failed,
+  onRetry,
+}: {
+  name: string;
+  failed: boolean;
+  onRetry: () => void;
+}) {
+  if (!failed) return <Checking words={H.checking(name)} />;
+
+  return (
+    <div className="handover-not-in">
+      <p role="alert" className="handover-not-in-line">
+        <span className="handover-not-in-mark">
+          <Glyph name="alert" size={18} weight={2.2} />
+        </span>
+        {H.notLoaded(name)}
+      </p>
+      <TextAction label={H.tryAgain} onClick={onRetry} />
     </div>
   );
 }

@@ -418,6 +418,6 @@ describe('the Calendar in B, weeks as lanes, at a desk (sc-30329)', () => {
     expect(
       await screen.findByRole('heading', { level: 1, name: CAL_WORDS.allDates }, WAIT),
     ).toBeDefined();
-    expect(screen.getByText(CAL_WORDS.allDatesComing)).toBeDefined();
+    expect(screen.getByText('Ireti at 40 starts')).toBeDefined();
   });
 });
