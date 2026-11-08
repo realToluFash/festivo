@@ -810,22 +810,94 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
     expect(screen.getByRole('heading', { level: 3, name: 'Opted out · 4' })).toBeDefined();
   });
 
-  it('sends an added address again: Sent on its line, In progress, and says so', SLOW, async () => {
-    await messages('added');
+  it(
+    'sends an added address again: the Filter kept, then Sent on its line under In progress',
+    SLOW,
+    async () => {
+      await messages('added');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Send to Joaquín Ruiz again' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Send to Joaquín Ruiz again' }));
 
-    const progress = await screen.findByRole('region', { name: 'In progress · 1' });
+      const heading = screen.getByRole('heading', { level: 3, name: 'No email or phone · 1' });
 
-    expect(within(progress).getByText('Joaquín Ruiz')).toBeDefined();
-    expect(within(progress).getByText('Email · Sent · 09:44')).toBeDefined();
-    expect(within(progress).getByText(/joaquin\.ruiz@gmail\.com/u)).toBeDefined();
-    expect(within(progress).queryByText('Updated · not sent yet')).toBeNull();
-    expect(screen.getByRole('region', { name: 'No email or phone · 1' })).toBeDefined();
-    expect(said()).toContain('Sent to Joaquín Ruiz.');
-    await vi.waitFor(() =>
-      expect(document.activeElement).toBe(within(progress).getByText('Joaquín Ruiz')),
+      expect(screen.queryByText('Joaquín Ruiz')).toBeNull();
+      expect(said()).toContain('Sent to Joaquín Ruiz.');
+      await vi.waitFor(() => expect(document.activeElement).toBe(heading));
+
+      fireEvent.click(screen.getByRole('button', { name: 'Filter' }));
+      fireEvent.click(screen.getByRole('menuitemradio', { name: 'Not reached · 11' }));
+      const progress = screen.getByRole('region', { name: 'In progress · 1' });
+
+      expect(within(progress).getByText('Joaquín Ruiz')).toBeDefined();
+      expect(within(progress).getByText('Email · Sent · 09:44')).toBeDefined();
+      expect(within(progress).getByText(/joaquin\.ruiz@gmail\.com/u)).toBeDefined();
+      expect(within(progress).queryByText('Updated · not sent yet')).toBeNull();
+      expect(
+        within(progress).getByRole('button', { name: 'Mark as told in person' }),
+      ).toBeDefined();
+    },
+  );
+
+  it(
+    'keeps the Filter while the group shown has someone, then gives way to Not reached',
+    SLOW,
+    async () => {
+      await messages('reached');
+      const tell = (name: string) =>
+        fireEvent.click(
+          within(screen.getByText(name).closest('li') as HTMLElement).getByRole('button', {
+            name: 'Mark as told in person',
+          }),
+        );
+
+      fireEvent.click(screen.getByRole('button', { name: 'Filter' }));
+      fireEvent.click(screen.getByRole('menuitemradio', { name: 'Not confirmed · 2' }));
+      tell('Amaka Eze');
+
+      const one = screen.getByRole('heading', { level: 3, name: 'Not confirmed · 1' });
+
+      await vi.waitFor(() => expect(document.activeElement).toBe(one));
+      tell('Priyanka Nair');
+      expect(screen.getByRole('heading', { level: 3, name: 'Not reached · 9' })).toBeDefined();
+      expect(screen.getByRole('region', { name: 'Bounced · 3' })).toBeDefined();
+      expect(screen.queryByText(/^Nobody/u)).toBeNull();
+    },
+  );
+
+  it('offers Mark as told in person on a Bounced row', SLOW, async () => {
+    await messages('filtered');
+
+    fireEvent.click(
+      within(screen.getByText('Yuki Tanaka').closest('li') as HTMLElement).getByRole('button', {
+        name: 'Mark as told in person',
+      }),
     );
+    expect(screen.getByRole('heading', { level: 2, name: 'Reached 132 of 142' })).toBeDefined();
+    expect(screen.getByRole('heading', { level: 3, name: 'Bounced · 2' })).toBeDefined();
+    expect(said()).toContain('Yuki Tanaka is marked as told in person.');
+  });
+
+  it('counts a saved address in the resend before Send again or Not now', SLOW, async () => {
+    await messages('fixed');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Resend to the 11 not reached' }));
+    const check = await screen.findByRole('alertdialog', { name: 'Check it before it goes' });
+
+    expect(within(check).getByText('Still can’t be told · 7')).toBeDefined();
+  });
+
+  it('gives an invitation’s Who it reached the Filter, its Reached drawn', SLOW, async () => {
+    await messages('invitedReached');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Filter' }));
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'Reached · 140' }));
+    const all = screen.getByRole('region', { name: 'Reached · 140' });
+
+    expect(within(all).getByText('Inês Duarte')).toBeDefined();
+    expect(within(all).getByText('Kwame Mensah')).toBeDefined();
+    expect(
+      within(all).getByText('and 138 more, filling in as their deliveries come back'),
+    ).toBeDefined();
   });
 
   it(

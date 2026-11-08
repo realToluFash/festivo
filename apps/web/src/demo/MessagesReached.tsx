@@ -15,6 +15,7 @@ import { ADD_WORDS } from './account.ts';
 import { Glyph } from '../components/Glyph.tsx';
 import {
   type AddressFix,
+  type Change,
   type ConvoId,
   type Fix,
   type MessagesState,
@@ -26,12 +27,14 @@ import {
   NEW_ADDRESS,
   PARKING,
   TICKS,
+  changed,
   filled,
   fixWord,
   many,
   outTitle,
   outsIn,
   phoneProblem,
+  showAfter,
   showItems,
   shownOf,
   whoOf,
@@ -92,13 +95,22 @@ export function ReachedView({
           : outTitle(first);
   const resend = who.waiting.length;
 
+  /** The host's own action: the Filter stays unless the group shown is left with nobody, the status says what was done, and focus goes to the list's heading. */
+  function hostDid(change: Change, said: string): void {
+    act(change);
+    setShow(showAfter(whoOf(changed(inbox, change), of, thread, to.book.groups), show));
+    setStatus(said);
+    focus('not-reached');
+  }
+
   function onFix(person: Unreached, fix: Fix): void {
     if (fix === 'copyLink') tell(`${fixWord(fix)} has its own design.`);
-    else if (fix === 'toldInPerson') {
-      act({ kind: 'toldInPerson', id: person.id, thread });
-      setStatus(filled(MW.markedSaid, { name: person.name }));
-      focus('not-reached');
-    } else
+    else if (fix === 'toldInPerson')
+      hostDid(
+        { kind: 'toldInPerson', id: person.id, thread },
+        filled(MW.markedSaid, { name: person.name }),
+      );
+    else
       setFixing({
         id: person.id,
         fix,
@@ -150,23 +162,23 @@ export function ReachedView({
           <h3 id={headId} tabIndex={-1} data-focus="not-reached">
             {shown.heading}
           </h3>
-          {of !== 'invite' && (
-            <ShowMenu
-              items={showItems(who)}
-              show={show}
-              open={menu}
-              onOpen={() => setMenu(true)}
-              onClose={() => setMenu(false)}
-              onShow={setShow}
-            />
-          )}
+          <ShowMenu
+            items={showItems(who)}
+            show={show}
+            open={menu}
+            onOpen={() => setMenu(true)}
+            onClose={() => setMenu(false)}
+            onShow={setShow}
+          />
         </div>
-        {show === 'told' && shown.groups.every((group) => group.count === 0) && (
+        {shown.empty != null && (
           <div className="mg-told-none">
-            <p>{MW.nobodyMarked}</p>
-            <button type="button" className="desk-text" onClick={() => onShow('notReached')}>
-              {MW.showNotReached}
-            </button>
+            <p>{shown.empty}</p>
+            {show !== 'notReached' && (
+              <button type="button" className="desk-text" onClick={() => onShow('notReached')}>
+                {MW.showNotReached}
+              </button>
+            )}
           </div>
         )}
         {shown.groups
@@ -203,17 +215,18 @@ export function ReachedView({
                       act({ kind: 'notNow', id: person.id, thread });
                       focus(`person:${person.id}`);
                     }}
-                    onAgain={() => {
-                      act({ kind: 'sendAgain', id: person.id, thread });
-                      if (show !== 'everyone') setShow('notReached');
-                      setStatus(filled(MW.sentToSaid, { name: person.name }));
-                      focus(`person:${person.id}`);
-                    }}
-                    onUndo={() => {
-                      act({ kind: 'undoTold', id: person.id, thread });
-                      setStatus(filled(MW.unmarkedSaid, { name: person.name }));
-                      focus('not-reached');
-                    }}
+                    onAgain={() =>
+                      hostDid(
+                        { kind: 'sendAgain', id: person.id, thread },
+                        filled(MW.sentToSaid, { name: person.name }),
+                      )
+                    }
+                    onUndo={() =>
+                      hostDid(
+                        { kind: 'undoTold', id: person.id, thread },
+                        filled(MW.unmarkedSaid, { name: person.name }),
+                      )
+                    }
                   />
                 ))}
               </ul>

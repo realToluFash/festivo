@@ -525,12 +525,27 @@ export interface Unreached {
   offer?: boolean;
 }
 
-/** A person's address saved in Who it reached: `later` once Not now is taken, `sent` once sent again. */
+/** An address saved in Who it reached, the guest's own, so every message sees it; Send again and Not now are per message. */
 export interface Update {
+  fix: AddressFix;
+  address: string;
+  sentOn: readonly ConvoId[];
+  laterOn: readonly ConvoId[];
+}
+
+interface Saved {
   fix: AddressFix;
   address: string;
   sent: boolean;
   later: boolean;
+}
+
+function savedOn(inbox: Inbox, id: string, thread: ConvoId): readonly Saved[] {
+  return (inbox.updates[id] ?? []).map(({ sentOn, laterOn, ...one }) => ({
+    ...one,
+    sent: sentOn.includes(thread),
+    later: laterOn.includes(thread),
+  }));
 }
 
 const PAGE_LINE: Line = { mark: 'none', word: MW.theirPage, why: MW.notSeenYet };
@@ -586,7 +601,7 @@ export const PARKING_UNREACHED: readonly Unreached[] = [
       'Tomás Ferreira',
       'bounced',
       [bounced(`${MW.doesntExist} (5.1.1)`), NO_PHONE],
-      ['fixEmail', 'addPhone'],
+      ['fixEmail', 'addPhone', 'toldInPerson'],
     ),
     address: OLD_ADDRESS,
   },
@@ -596,7 +611,7 @@ export const PARKING_UNREACHED: readonly Unreached[] = [
       'Yuki Tanaka',
       'bounced',
       [bounced(`${MW.inboxFull} (4.2.2)`), NO_PHONE],
-      ['fixEmail', 'addPhone'],
+      ['fixEmail', 'addPhone', 'toldInPerson'],
     ),
     address: 'yuki.tanaka@icloud.com',
   },
@@ -606,7 +621,7 @@ export const PARKING_UNREACHED: readonly Unreached[] = [
       'Oluwaseun Adebayo',
       'bounced',
       [bounced(`${MW.refusedIt} (5.7.1)`), NO_PHONE],
-      ['fixEmail', 'addPhone'],
+      ['fixEmail', 'addPhone', 'toldInPerson'],
     ),
     address: 'seun.adebayo@yahoo.com',
   },
@@ -672,14 +687,14 @@ export const SO_FAR = {
         { mark: 'sending', word: MW.email, why: MW.sending },
         { mark: 'sent', word: `${MW.sms} · ${MW.sent}`, why: NOW },
       ],
-      [],
+      ['toldInPerson'],
     ),
     person(
       'marta',
       'Marta Silva',
       'inProgress',
       [{ mark: 'sent', word: `${MW.email} · ${MW.sent}`, why: NOW }],
-      [],
+      ['toldInPerson'],
     ),
   ],
   done: [
@@ -706,7 +721,7 @@ export const SO_FAR = {
           { mark: 'notsent', word: `${MW.email} · ${MW.notSent}`, why: MW.addressBouncing },
           NO_PHONE,
         ],
-        ['fixEmail', 'addPhone'],
+        ['fixEmail', 'addPhone', 'toldInPerson'],
       ),
       address: OLD_ADDRESS,
     },
@@ -714,7 +729,6 @@ export const SO_FAR = {
   ],
 };
 
-/** Parking's Reached, drawn: two of them, the rest counted. */
 export const PARKING_REACHED: readonly Unreached[] = [
   person(
     'ines',
@@ -730,6 +744,25 @@ export const PARKING_REACHED: readonly Unreached[] = [
     'none',
     [{ mark: 'delivered', word: `${MW.sms} · ${MW.delivered}`, why: '09:13' }],
     [],
+  ),
+];
+
+export const INVITE_REACHED: readonly Unreached[] = [
+  person(
+    'ines',
+    'Inês Duarte',
+    'none',
+    [{ mark: 'delivered', word: `${MW.email} · ${MW.delivered}`, why: '10:02' }],
+    [],
+    { mark: 'delivered', word: MW.theirInvitation, why: filled(MW.seen, { time: '10:15' }) },
+  ),
+  person(
+    'kwame',
+    'Kwame Mensah',
+    'none',
+    [{ mark: 'delivered', word: `${MW.sms} · ${MW.delivered}`, why: '10:03' }],
+    [],
+    { mark: 'none', word: MW.theirInvitation, why: MW.notSeenYet },
   ),
 ];
 
@@ -832,10 +865,6 @@ export const PARKING_OF = GUESTS_N;
 export const PARKING_SEEN = 87;
 export const INVITE_REACH = { reached: 140, of: GUESTS_N, seen: 121 };
 
-export function whoKey(thread: ConvoId, id: string): string {
-  return `${thread}:${id}`;
-}
-
 export function reachedOfThread(thread: ConvoId): ReachedOf {
   return thread === 'parking' || thread === 'invite' ? thread : 'new';
 }
@@ -852,7 +881,7 @@ const UPDATED_WORDS: Record<AddressFix, string> = {
   addPhone: MW.phoneAddedSince,
 };
 
-function sentOver(lines: readonly Line[], update: Update): readonly Line[] {
+function sentOver(lines: readonly Line[], update: Saved): readonly Line[] {
   const phone = update.fix === 'addPhone';
   const channel = phone ? MW.sms : MW.email;
   const sent: Line = {
@@ -868,14 +897,14 @@ function sentOver(lines: readonly Line[], update: Update): readonly Line[] {
 }
 
 /** A person as their saved addresses leave them: each channel's line kept until it is sent again, then In progress. */
-export function updatedPerson(person: Unreached, updates: readonly Update[]): Unreached {
+export function updatedPerson(person: Unreached, updates: readonly Saved[]): Unreached {
   if (updates.length === 0) return person;
   if (updates.every((one) => one.sent))
     return {
       ...person,
       kind: 'inProgress',
       lines: updates.reduce(sentOver, person.lines),
-      fixes: [],
+      fixes: ['toldInPerson'],
     };
 
   const used = updates.map((one) => one.fix);
@@ -914,7 +943,7 @@ function baseOf(of: ReachedOf): readonly Unreached[] {
 /** Who it reached for one message: its summary, its groups in Everyone's order, and who a resend is for; `groups` are the event's own. */
 export function whoOf(inbox: Inbox, of: ReachedOf, thread: ConvoId, groups: readonly Group[]): Who {
   const marks = inbox.marked[thread] ?? [];
-  const mine = (one: Unreached) => updatedPerson(one, inbox.updates[whoKey(thread, one.id)] ?? []);
+  const mine = (one: Unreached) => updatedPerson(one, savedOn(inbox, one.id, thread));
   const people = baseOf(of)
     .filter((one) => !marks.includes(one.id))
     .map(mine);
@@ -923,9 +952,15 @@ export function whoOf(inbox: Inbox, of: ReachedOf, thread: ConvoId, groups: read
     word: MW.toldInPersonLine,
     why: filled(MW.markedBy, { name: READER, time: SENT_AGAIN_AT }),
   };
+  const markable = of === 'new' ? [...SO_FAR.progress, ...baseOf(of)] : baseOf(of);
   const marked = marks
-    .flatMap((id) => baseOf(of).filter((one) => one.id === id))
-    .map((one) => ({ ...one, lines: [...one.lines, toldLine], fixes: [] }));
+    .flatMap((id) => markable.filter((one) => one.id === id))
+    .map(mine)
+    .map(({ updated: _updated, offer: _offer, ...one }) => ({
+      ...one,
+      lines: [...one.lines, toldLine],
+      fixes: [],
+    }));
   const told: ReachGroup = {
     key: 'told',
     name: MW.markedAsTold,
@@ -937,8 +972,9 @@ export function whoOf(inbox: Inbox, of: ReachedOf, thread: ConvoId, groups: read
 
   if (of === 'new') {
     const sent = people.filter((one) => one.kind === 'inProgress');
-    const progress = [...SO_FAR.progress, ...sent];
-    const inProgress = SO_FAR.inProgress + sent.length;
+    const left = SO_FAR.progress.filter((one) => !marks.includes(one.id));
+    const progress = [...left, ...sent];
+    const inProgress = SO_FAR.inProgress - (SO_FAR.progress.length - left.length) + sent.length;
     const reached = SO_FAR.reached + marked.length;
     const reach: Reach = {
       reached,
@@ -985,6 +1021,7 @@ export function whoOf(inbox: Inbox, of: ReachedOf, thread: ConvoId, groups: read
       ? reachFrom(PARKING_OF, PARKING_SEEN, people)
       : reachFrom(INVITE_REACH.of, INVITE_REACH.seen, people);
   const delivered = reach.reached - marked.length;
+  const drawn = of === 'parking' ? PARKING_REACHED : INVITE_REACHED;
 
   return {
     reach,
@@ -1002,17 +1039,13 @@ export function whoOf(inbox: Inbox, of: ReachedOf, thread: ConvoId, groups: read
         return { key: kind, name: legendWord(kind), people: these, count: these.length, more: 0 };
       }),
       told,
-      ...(of === 'parking'
-        ? [
-            {
-              key: 'reached' as const,
-              name: MW.legendReached,
-              people: PARKING_REACHED,
-              count: delivered,
-              more: delivered - PARKING_REACHED.length,
-            },
-          ]
-        : []),
+      {
+        key: 'reached',
+        name: MW.legendReached,
+        people: drawn,
+        count: delivered,
+        more: delivered - drawn.length,
+      },
     ],
     waiting,
   };
@@ -1051,7 +1084,29 @@ export function showItems(who: Who): readonly ShowItem[] {
   ];
 }
 
-export function shownOf(who: Who, show: Show): { heading: string; groups: readonly ReachGroup[] } {
+export const EMPTY_LINE: Partial<Record<Show, string>> = {
+  notReached: MW.nobodyLeft,
+  reached: MW.nobodyReached,
+  told: MW.nobodyMarked,
+};
+
+const ALWAYS: readonly Show[] = ['everyone', 'notReached', 'reached', 'told'];
+
+/** The one time the Filter moves on its own (sc-3966's AC): a group offered only while it has someone, left with nobody, gives way to Not reached, or to Everyone once nobody is left not reached. */
+export function showAfter(who: Who, show: Show): Show {
+  const items = showItems(who);
+
+  if (ALWAYS.includes(show) || items.some((item) => item.key === show)) return show;
+
+  return (items.find((item) => item.key === 'notReached')?.count ?? 0) > 0
+    ? 'notReached'
+    : 'everyone';
+}
+
+export function shownOf(
+  who: Who,
+  show: Show,
+): { heading: string; groups: readonly ReachGroup[]; empty: string | null } {
   const item = showItems(who).find((one) => one.key === show);
   const count = item?.count ?? 0;
   const heading =
@@ -1068,8 +1123,9 @@ export function shownOf(who: Who, show: Show): { heading: string; groups: readon
         return group.key === show;
     }
   });
+  const empty = groups.every((group) => group.count === 0) ? (EMPTY_LINE[show] ?? null) : null;
 
-  return { heading, groups };
+  return { heading, groups, empty };
 }
 
 const TELLABLE_NOW: readonly string[] = ['yuki', 'amaka', 'priyanka'];
@@ -1093,10 +1149,9 @@ export function resendOf(
 ): ResendCheck {
   const of = reachedOfThread(thread);
   const { waiting } = whoOf(inbox, of, thread, groups);
-  const updates = (id: string) => inbox.updates[whoKey(thread, id)] ?? [];
-  const later = (id: string) => updates(id).filter((one) => one.later && !one.sent);
+  const unsent = (id: string) => savedOn(inbox, id, thread).filter((one) => !one.sent);
   const tellable = waiting.filter(
-    (one) => (of === 'parking' && TELLABLE_NOW.includes(one.id)) || later(one.id).length > 0,
+    (one) => (of === 'parking' && TELLABLE_NOW.includes(one.id)) || unsent(one.id).length > 0,
   );
   const still = waiting.filter((one) => !tellable.includes(one));
   const shown =
@@ -1108,7 +1163,7 @@ export function resendOf(
       : still;
   const phones = tellable.filter(
     (one) =>
-      one.kind === 'notConfirmed' || later(one.id).some((update) => update.fix === 'addPhone'),
+      one.kind === 'notConfirmed' || unsent(one.id).some((update) => update.fix === 'addPhone'),
   ).length;
 
   return {
@@ -1206,7 +1261,7 @@ export interface Inbox {
   outs: readonly Out[];
   scheds: readonly Sched[];
   unreached: readonly Unreached[];
-  /** Keyed by `whoKey(thread, id)`: what Who it reached saved for each person, per message. */
+  /** Keyed by guest id: the addresses Who it reached saved for each guest, seen by every message. */
   updates: Readonly<Record<string, readonly Update[]>>;
   marked: Readonly<Partial<Record<ConvoId, readonly string[]>>>;
   resend: { thread: ConvoId; ticks: Ticks } | null;
@@ -1380,7 +1435,7 @@ export function seedOf(state: MessagesState | null): Inbox {
   const saved = (id: string, fix: AddressFix, address: string, more: Partial<Update> = {}) => ({
     ...base,
     pane: parkingReached,
-    updates: { [whoKey('parking', id)]: [{ fix, address, sent: false, later: false, ...more }] },
+    updates: { [id]: [{ fix, address, sentOn: [], laterOn: [], ...more }] },
   });
 
   switch (state) {
@@ -1466,9 +1521,9 @@ export function seedOf(state: MessagesState | null): Inbox {
     case 'fixed':
       return saved('tomas', 'fixEmail', NEW_ADDRESS);
     case 'sentAgain':
-      return saved('tomas', 'fixEmail', NEW_ADDRESS, { sent: true });
+      return saved('tomas', 'fixEmail', NEW_ADDRESS, { sentOn: ['parking'] });
     case 'notNow':
-      return saved('tomas', 'fixEmail', NEW_ADDRESS, { later: true });
+      return saved('tomas', 'fixEmail', NEW_ADDRESS, { laterOn: ['parking'] });
     case 'added':
       return saved('joaquin', 'addEmail', 'joaquin.ruiz@gmail.com');
     case 'addedPhone':
@@ -2128,20 +2183,20 @@ export function changed(inbox: Inbox, change: Change): Inbox {
     case 'fixed':
     case 'notNow':
     case 'sendAgain': {
-      const key = whoKey(change.thread, change.id);
-      const now = inbox.updates[key] ?? [];
+      const { id, thread } = change;
+      const now = inbox.updates[id] ?? [];
       const next =
         change.kind === 'fixed'
-          ? [...now, { fix: change.fix, address: change.address, sent: false, later: false }]
+          ? [...now, { fix: change.fix, address: change.address, sentOn: [], laterOn: [] }]
           : now.map((one) =>
-              one.sent
+              one.sentOn.includes(thread)
                 ? one
                 : change.kind === 'notNow'
-                  ? { ...one, later: true }
-                  : { ...one, sent: true },
+                  ? { ...one, laterOn: [...one.laterOn, thread] }
+                  : { ...one, sentOn: [...one.sentOn, thread] },
             );
 
-      return { ...inbox, updates: { ...inbox.updates, [key]: next } };
+      return { ...inbox, updates: { ...inbox.updates, [id]: next } };
     }
     case 'resend':
       return {

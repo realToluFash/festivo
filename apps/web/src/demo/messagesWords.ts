@@ -285,6 +285,8 @@ export const MW = {
   markedSaid: '{{name}} is marked as told in person.',
   unmarkedSaid: '{{name}} is no longer marked as told.',
   nobodyMarked: 'Nobody is marked as told yet.',
+  nobodyLeft: 'Nobody is left to reach.',
+  nobodyReached: 'Nobody has been reached yet.',
   showNotReached: 'Show not reached',
   noneTellable_one: 'They can’t be told yet',
   noneTellable_other: 'None of the {{count, number}} can be told yet',

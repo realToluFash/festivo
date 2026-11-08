@@ -292,7 +292,7 @@ export const PARKING_GROUPS: readonly ReachGroup[] = [
         name: 'Tomás Ferreira',
         bounced: 'tomas.ferreira@gmial.com',
         lines: bounced(W.doesntExist),
-        fixes: [W.fixEmail, W.addPhone],
+        fixes: [W.fixEmail, W.addPhone, W.toldInPerson],
       },
       {
         key: 'yuki',
@@ -301,7 +301,7 @@ export const PARKING_GROUPS: readonly ReachGroup[] = [
         tellable: true,
         bounced: 'yuki.tanaka@docomo.ne.jp',
         lines: bounced(W.inboxFull),
-        fixes: [W.fixEmail, W.addPhone],
+        fixes: [W.fixEmail, W.addPhone, W.toldInPerson],
       },
       {
         key: 'seun',
@@ -309,7 +309,7 @@ export const PARKING_GROUPS: readonly ReachGroup[] = [
         name: 'Oluwaseun Adebayo',
         bounced: 'seun.adebayo@yahoo.com',
         lines: bounced(W.serviceRefused),
-        fixes: [W.fixEmail, W.addPhone],
+        fixes: [W.fixEmail, W.addPhone, W.toldInPerson],
       },
     ],
   },
@@ -429,6 +429,30 @@ const NOT_INVITED: readonly ReachLine[] = [
   { mark: 'none', word: W.theirInvitation, reason: W.notYetInvited },
 ];
 
+/** Two of the invitation's 140 reached, drawn under Filter: Reached; the rest are counted. */
+export const INVITE_REACHED: readonly NotReached[] = [
+  {
+    key: 'ines',
+    initials: 'ID',
+    name: 'Inês Duarte',
+    lines: [
+      { mark: 'delivered', word: say.where(CHANNEL_WORD.email, W.delivered), reason: '10:02' },
+      { mark: 'delivered', word: W.theirInvitation, reason: say.seenAt('10:15') },
+    ],
+    fixes: [],
+  },
+  {
+    key: 'kwame',
+    initials: 'KM',
+    name: 'Kwame Mensah',
+    lines: [
+      { mark: 'delivered', word: say.where(CHANNEL_WORD.sms, W.delivered), reason: '10:03' },
+      { mark: 'none', word: W.theirInvitation, reason: W.notSeenYet },
+    ],
+    fixes: [],
+  },
+];
+
 export const INVITE_GROUPS: readonly ReachGroup[] = [
   {
     key: 'none',
@@ -468,7 +492,7 @@ export const SENDING_GROUPS: readonly ReachGroup[] = [
           { mark: 'sent', word: say.where(CHANNEL_WORD.sms, W.sent), reason: '09:41' },
           PAGE_LINE,
         ],
-        fixes: [],
+        fixes: [W.toldInPerson],
       },
       {
         key: 'marta',
@@ -478,7 +502,7 @@ export const SENDING_GROUPS: readonly ReachGroup[] = [
           { mark: 'sent', word: say.where(CHANNEL_WORD.email, W.sent), reason: '09:41' },
           PAGE_LINE,
         ],
-        fixes: [],
+        fixes: [W.toldInPerson],
       },
     ],
   },
@@ -518,7 +542,7 @@ export const SENDING_GROUPS: readonly ReachGroup[] = [
           { mark: 'none', word: CHANNEL_WORD.sms, reason: W.noPhone },
           PAGE_LINE,
         ],
-        fixes: [W.fixEmail, W.addPhone],
+        fixes: [W.fixEmail, W.addPhone, W.toldInPerson],
       },
       {
         key: 'joaquin',

@@ -142,6 +142,8 @@ export const W = {
   undo: 'Undo',
   markedAsTold: 'Marked as told',
   noneTold: 'Nobody is marked as told yet.',
+  noneLeft: 'Nobody is left to reach.',
+  noneReached: 'Nobody has been reached yet.',
   showNotReached: 'Show not reached',
   notReachedWord: 'Not reached',
   noneCanBeToldLine:

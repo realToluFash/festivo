@@ -910,7 +910,6 @@ export function reduce(m: Messages, action: Action): Messages {
         again: { ...m.again, [at]: SENT_AGAIN_AT },
         waiting: m.waiting.filter((one) => one !== at),
         said: at,
-        filter: m.filter === 'everyone' ? m.filter : null,
       };
     }
     case 'notNowFor': {

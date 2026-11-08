@@ -4,6 +4,7 @@ import { sampleEvent } from './events.ts';
 import {
   type Audience,
   COMING,
+  EMPTY_LINE,
   MESSAGE_STATES,
   MESSAGES_PAGES,
   MW,
@@ -30,6 +31,7 @@ import {
   resendOf,
   rowsInOrder,
   showItems,
+  showAfter,
   shownOf,
   whoOf,
   sectionsOf,
@@ -442,7 +444,7 @@ describe('Who it reached, its fixes, the filter and a resend (sc-3966)', () => {
   it('sends a saved address again: its channel’s line Sent, and the person In progress', () => {
     const sent = changed(seedOf('added'), { kind: 'sendAgain', id: 'joaquin', thread: 'parking' });
 
-    expect(joaquin(sent)).toMatchObject({ kind: 'inProgress', fixes: [] });
+    expect(joaquin(sent)).toMatchObject({ kind: 'inProgress', fixes: ['toldInPerson'] });
     expect(joaquin(sent)?.lines[0]).toEqual({
       mark: 'sent',
       word: 'Email · Sent · 09:44',
@@ -531,5 +533,105 @@ describe('Who it reached, its fixes, the filter and a resend (sc-3966)', () => {
         GROUPS,
       ).waiting,
     ).toBe(1);
+  });
+
+  it('counts a person in a resend once a new address is saved, Send again or Not now or neither', () => {
+    for (const state of ['fixed', 'notNow', 'added', 'addedPhone'] as const)
+      expect(resendOf(seedOf(state), 'parking', TICKS, GROUPS)).toMatchObject({
+        waiting: 11,
+        count: 4,
+        still: 7,
+      });
+  });
+
+  it('keeps a saved address the guest’s on every message, sent again on one message only', () => {
+    const saved = changed(seedOf('invitedReached'), {
+      kind: 'fixed',
+      id: 'joaquin',
+      thread: 'parking',
+      fix: 'addEmail',
+      address: 'joaquin.ruiz@gmail.com',
+    });
+    const onInvite = (inbox: typeof saved) =>
+      whoOf(inbox, 'invite', 'invite', GROUPS).groups.flatMap((group) =>
+        group.people.filter((one) => one.id === 'joaquin'),
+      )[0];
+
+    expect(onInvite(saved)).toMatchObject({ offer: true, updated: [MW.emailAddedSince] });
+    expect(resendOf(saved, 'invite', TICKS, GROUPS)).toMatchObject({ count: 1, still: 1 });
+
+    const sent = changed(saved, { kind: 'sendAgain', id: 'joaquin', thread: 'parking' });
+
+    expect(joaquin(sent)?.kind).toBe('inProgress');
+    expect(onInvite(sent)).toMatchObject({ kind: 'none', offer: true });
+  });
+
+  it('offers Mark as told in person on every not-reached row, Bounced and In progress included', () => {
+    const rows = [
+      ...shownOf(whoOf(reached, 'parking', 'parking', GROUPS), 'notReached').groups,
+      ...shownOf(whoOf(seedOf('sentReached'), 'new', 'new', GROUPS), 'notReached').groups,
+    ].flatMap((group) => group.people);
+
+    expect(rows.map((one) => one.name)).toContain('Yuki Tanaka');
+    expect(rows.filter((one) => !one.fixes.includes('toldInPerson'))).toEqual([]);
+
+    const kwame = changed(seedOf('sentReached'), {
+      kind: 'toldInPerson',
+      id: 'kwame',
+      thread: 'new',
+    });
+    const who = whoOf(kwame, 'new', 'new', GROUPS);
+
+    expect(who.reach.reached).toBe(39);
+    expect(shownOf(who, 'inProgress').heading).toBe('In progress · 55');
+    expect(shownOf(who, 'told').groups[0]?.people.map((one) => one.name)).toEqual(['Kwame Mensah']);
+  });
+
+  it('keeps the Filter until the group shown is left with nobody, then Not reached, then Everyone', () => {
+    const tell = (inbox: typeof reached, ...ids: string[]) =>
+      ids.reduce((now, id) => changed(now, { kind: 'toldInPerson', id, thread: 'parking' }), inbox);
+    const after = (inbox: typeof reached, show: Parameters<typeof showAfter>[1]) =>
+      showAfter(whoOf(inbox, 'parking', 'parking', GROUPS), show);
+
+    expect(after(tell(reached, 'amaka'), 'notConfirmed')).toBe('notConfirmed');
+    expect(after(tell(reached, 'amaka', 'priyanka'), 'notConfirmed')).toBe('notReached');
+    expect(after(tell(reached, 'amaka', 'priyanka'), 'told')).toBe('told');
+
+    const all = tell(reached, ...PARKING_UNREACHED.map((one) => one.id));
+
+    expect(after(all, 'bounced')).toBe('everyone');
+    expect(shownOf(whoOf(all, 'parking', 'parking', GROUPS), 'notReached')).toEqual({
+      heading: 'Not reached · 0',
+      groups: [],
+      empty: 'Nobody is left to reach.',
+    });
+  });
+
+  it('says in each always-offered choice’s own words that nobody is in it', () => {
+    const who = whoOf(reached, 'parking', 'parking', GROUPS);
+
+    expect(shownOf(who, 'told')).toMatchObject({
+      heading: 'Marked as told · 0',
+      empty: 'Nobody is marked as told yet.',
+    });
+    expect(shownOf(who, 'bounced').empty).toBeNull();
+    expect(EMPTY_LINE).toEqual({
+      notReached: 'Nobody is left to reach.',
+      reached: 'Nobody has been reached yet.',
+      told: 'Nobody is marked as told yet.',
+    });
+  });
+
+  it('gives an invitation the Filter, with its Reached drawn', () => {
+    const who = whoOf(seedOf('invitedReached'), 'invite', 'invite', GROUPS);
+
+    expect(showItems(who).map((item) => `${item.word} · ${item.count}`)).toEqual([
+      'Everyone · 142',
+      'Not reached · 2',
+      'No email or phone · 2',
+      'Reached · 140',
+      'Marked as told · 0',
+    ]);
+    expect(shownOf(who, 'reached').groups[0]).toMatchObject({ count: 140, more: 138 });
   });
 });

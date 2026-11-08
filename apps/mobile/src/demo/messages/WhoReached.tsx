@@ -244,16 +244,18 @@ export function WhoReached({
               />
             )}
           </View>
-          {view.empty && (
+          {view.empty != null && (
             <View style={styles.empty}>
               <Text size={15} weight="medium" style={[styles.secondary, styles.lineText]}>
-                {W.noneTold}
+                {view.empty}
               </Text>
-              <TextAction
-                label={W.showNotReached}
-                onPress={onShowNotReached}
-                testID="messages.reached.showNotReached"
-              />
+              {view.filterOn !== 'notReached' && (
+                <TextAction
+                  label={W.showNotReached}
+                  onPress={onShowNotReached}
+                  testID="messages.reached.showNotReached"
+                />
+              )}
             </View>
           )}
           {view.groups.map((group) => (

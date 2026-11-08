@@ -1,14 +1,17 @@
 import {
+  type Action,
   type FixKind,
   type Messages,
   type ReachFilter,
   type ReachedOf,
   personAt,
+  reduce,
 } from './MessagesModel.ts';
 import {
   type GroupKey,
   INVITATION,
   INVITE_GROUPS,
+  INVITE_REACHED,
   type MarkKey,
   type NotReached,
   PARKING_GROUPS,
@@ -97,7 +100,7 @@ function shownPerson(m: Messages, of: ReachedOf, person: NotReached): ReachPerso
       ? [sent, ...person.lines]
       : person.lines.map((line, place) => (place === index ? sent : line));
 
-  return { ...person, lines, fixes: [], offer: false };
+  return { ...person, lines, fixes: [W.toldInPerson], offer: false };
 }
 
 function toldPerson({ updated: _updated, ...person }: ReachPerson, time: string): ReachPerson {
@@ -138,7 +141,8 @@ export interface ReachView {
   filterOn: ReachFilter;
   options: readonly FilterOption[];
   groups: readonly GroupView[];
-  empty: boolean;
+  /** The line a filter left with nobody shows, its own for each. */
+  empty: string | null;
   resend: number;
 }
 
@@ -156,7 +160,7 @@ function baseOf(of: ReachedOf): Base {
       reached: INVITATION.reached,
       of: INVITATION.of,
       groups: INVITE_GROUPS,
-      reachedRows: [],
+      reachedRows: INVITE_REACHED,
       progress: 0,
     };
   if (of === 'draft')
@@ -207,14 +211,18 @@ function counted(m: Messages, of: ReachedOf): Counted {
 
     return { ...group, people };
   });
-  const progressDrawn = groups.find((group) => group.key === 'inProgress')?.people.length ?? 0;
+  const drawn = base.groups.find((group) => group.key === 'inProgress')?.people ?? [];
+  const progressLeft = drawn.filter((person) => m.toldIn[personAt(of, person.key)] == null);
+  const progress = base.progress - (drawn.length - progressLeft.length);
   const inProgress: GroupView = {
     key: 'inProgress',
     mark: 'sending',
     word: W.inProgress,
-    count: base.progress + going.length,
+    count: progress + going.length,
     people: [...(groups.find((group) => group.key === 'inProgress')?.people ?? []), ...going],
-    ...(base.progress > progressDrawn ? { more: say.andMore(base.progress - progressDrawn) } : {}),
+    ...(progress > progressLeft.length
+      ? { more: say.andMore(progress - progressLeft.length) }
+      : {}),
   };
   const rest: GroupView[] = groups
     .filter((group) => group.key !== 'inProgress')
@@ -259,6 +267,15 @@ function shownGroups(c: Counted, filter: ReachFilter): readonly GroupView[] {
       return c.notReached.filter((group) => group.key === filter);
   }
 }
+
+const ALWAYS: readonly ReachFilter[] = ['everyone', 'notReached', 'reached', 'told'];
+
+/** The filters offered whatever their count say so in their own words when nobody is in them; Everyone always has someone. */
+export const EMPTY_LINE: Partial<Record<ReachFilter, string>> = {
+  notReached: W.noneLeft,
+  reached: W.noneReached,
+  told: W.noneTold,
+};
 
 const COUNT_WORDS: Partial<Record<GroupKey, (count: number) => string>> = {
   inProgress: say.inProgressCount,
@@ -323,11 +340,11 @@ export function reachViewOf(m: Messages, of: ReachedOf): ReachView {
       filterOn === 'notReached'
         ? say.notReached(notReached)
         : say.section(chosen?.word ?? '', chosen?.count ?? 0),
-    filter: of !== 'invite',
+    filter: true,
     filterOn,
     options,
     groups,
-    empty: groups.length === 0,
+    empty: groups.length === 0 ? (EMPTY_LINE[filterOn] ?? null) : null,
     resend: c.notReached
       .filter((group) => group.key !== 'inProgress')
       .reduce((sum, group) => sum + group.count, 0),
@@ -370,4 +387,20 @@ export function resendOf(m: Messages, of: ReachedOf): ResendView {
     still: n - count,
     names: of === 'parking' && sample.length === 2 ? RESEND.names : cant.slice(0, 2).map(whyNot),
   };
+}
+
+/** The one time the filter moves on its own (sc-3966's AC): a group offered only while it has someone, left with nobody, gives way to Not reached, or to Everyone once nobody is left not reached. */
+export function keptFilter(m: Messages): Messages {
+  const { filter, open } = m;
+  if (open?.kind !== 'reached' || filter == null || ALWAYS.includes(filter)) return m;
+
+  const c = counted(m, open.of);
+  if (c.notReached.some((group) => group.key === filter)) return m;
+
+  return { ...m, filter: c.base.of > c.reachedCount ? 'notReached' : 'everyone' };
+}
+
+/** The screen's reducer: the model's, then the filter's rule. */
+export function reduceReach(m: Messages, action: Action): Messages {
+  return keptFilter(reduce(m, action));
 }

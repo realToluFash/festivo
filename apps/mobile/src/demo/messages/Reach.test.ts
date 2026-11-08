@@ -1,9 +1,25 @@
 import { describe, expect, it } from 'vitest';
 
-import { type Action, type Messages, reduce, startOf } from './MessagesModel.ts';
-import { isEmail, isPhone, reachViewOf, resendOf } from './Reach.ts';
+import { type Action, type Messages, startOf } from './MessagesModel.ts';
+import type { PersonKey } from './MessagesSample.ts';
+import { EMPTY_LINE, isEmail, isPhone, reachViewOf, reduceReach, resendOf } from './Reach.ts';
 
-const run = (m: Messages, ...actions: Action[]) => actions.reduce(reduce, m);
+const run = (m: Messages, ...actions: Action[]) => actions.reduce(reduceReach, m);
+const ELEVEN = [
+  'tomas',
+  'yuki',
+  'seun',
+  'amaka',
+  'priyanka',
+  'sophie',
+  'lars',
+  'fatima',
+  'diego',
+  'joaquin',
+  'mei',
+] as const satisfies readonly PersonKey[];
+const told = (...keys: readonly PersonKey[]): Action[] =>
+  keys.map((key) => ({ type: 'markTold', key }));
 const personOf = (m: Messages, key: string) => {
   const view = reachViewOf(m, m.open?.kind === 'reached' ? m.open.of : 'parking');
   return view.groups.flatMap((group) => group.people).find((person) => person.key === key);
@@ -35,6 +51,11 @@ describe('after a fix or an add', () => {
       'Their email address has changed since. Nothing has been sent to it yet.',
     );
     expect(fixed?.offer).toBe(true);
+    expect(resendOf(startOf('fixed', false), 'parking')).toMatchObject({
+      n: 11,
+      count: 4,
+      still: 7,
+    });
 
     expect(personOf(startOf('added', false), 'joaquin')?.updated).toBe(
       'An email address has been added since. Nothing has been sent to it yet.',
@@ -51,13 +72,15 @@ describe('after a fix or an add', () => {
     const tomas = personOf(m, 'tomas');
     expect(tomas?.offer).toBe(false);
     expect(tomas?.updated).toContain('changed since');
-    expect(tomas?.fixes).toEqual(['Add a phone number']);
+    expect(tomas?.fixes).toEqual(['Add a phone number', 'Mark as told in person']);
     expect(groupsOf(m)).toContainEqual(['Bounced', 3]);
     expect(resendOf(m, 'parking')).toMatchObject({ n: 11, count: 4, still: 7 });
   });
 
   it('after Send again reads Sent on the new channel and moves them to In progress', () => {
-    const m = run(startOf('addedPhone', false), { type: 'sendAgain', key: 'lars' });
+    const sent = run(startOf('addedPhone', false), { type: 'sendAgain', key: 'lars' });
+    expect(groupsOf(sent)).toEqual([['Opted out', 3]]);
+    const m = run(sent, { type: 'filter', filter: 'notReached' });
     const lars = personOf(m, 'lars');
     expect(lars?.lines[1]).toEqual({
       mark: 'sent',
@@ -65,6 +88,7 @@ describe('after a fix or an add', () => {
       reason: '+46 70 123 45 67',
     });
     expect(lars?.updated).toBeUndefined();
+    expect(lars?.fixes).toEqual(['Mark as told in person']);
     expect(groupsOf(m)[0]).toEqual(['In progress', 1]);
     expect(reachViewOf(m, 'parking')).toMatchObject({
       resend: 10,
@@ -72,14 +96,15 @@ describe('after a fix or an add', () => {
     });
   });
 
-  it('opens each added state on the row’s own group, and Send again goes back to Not reached', () => {
+  it('opens each added state on the row’s own group, and keeps it after Send again', () => {
     expect(startOf('added', false).filter).toBe('none');
     expect(startOf('addedPhone', false).filter).toBe('optedOut');
-    expect(run(startOf('added', false), { type: 'sendAgain', key: 'joaquin' }).filter).toBeNull();
-    expect(
-      run({ ...startOf('added', false), filter: 'everyone' }, { type: 'sendAgain', key: 'joaquin' })
-        .filter,
-    ).toBe('everyone');
+    const m = run(startOf('added', false), { type: 'sendAgain', key: 'joaquin' });
+    expect(reachViewOf(m, 'parking')).toMatchObject({
+      filterOn: 'none',
+      head: 'No email or phone · 1',
+      status: 'Sent to Joaquín Ruiz.',
+    });
   });
 
   it('keeps a person sent again on one message unsent on another', () => {
@@ -93,6 +118,27 @@ describe('after a fix or an add', () => {
 });
 
 describe('told in person', () => {
+  it('is offered on every not-reached row, Bounced and In progress included', () => {
+    const rows = (m: Messages, of: 'parking' | 'draft') =>
+      reachViewOf(run(m, { type: 'filter', filter: 'notReached' }), of).groups.flatMap(
+        (group) => group.people,
+      );
+    const all = [
+      ...rows(startOf('reached', false), 'parking'),
+      ...rows(startOf('sentReached', false), 'draft'),
+    ];
+    expect(all.map((person) => person.name)).toContain('Yuki Tanaka');
+    expect(all.filter((person) => !person.fixes.includes('Mark as told in person'))).toEqual([]);
+
+    const bounced = run(startOf('filtered', false), ...told('yuki'));
+    expect(reachViewOf(bounced, 'parking')).toMatchObject({
+      title: 'Reached 132 of 142',
+      head: 'Bounced · 2',
+    });
+    const kwame = run(startOf('sentReached', false), ...told('kwame'));
+    expect(reachViewOf(kwame, 'draft')).toMatchObject({ title: 'Reached 39 of 96 so far' });
+  });
+
   it('counts them reached, lists them under Marked as told with who and when, and Undo puts them back', () => {
     const m = startOf('told', false);
     const view = reachViewOf(m, 'parking');
@@ -132,13 +178,49 @@ describe('the filter', () => {
     ]);
   });
 
-  it('shows only the group chosen, and says so when nobody is marked as told', () => {
+  it('shows only the group chosen', () => {
     const m = startOf('filtered', false);
     expect(reachViewOf(m, 'parking').head).toBe('Bounced · 3');
     expect(groupsOf(m)).toEqual([['Bounced', 3]]);
+  });
 
-    const told = reachViewOf(run(m, { type: 'filter', filter: 'told' }), 'parking');
-    expect(told).toMatchObject({ head: 'Marked as told · 0', empty: true });
+  it('stays where the host put it while the group shown has someone, then gives way to Not reached', () => {
+    const one = run(
+      startOf('reached', false),
+      { type: 'filter', filter: 'notConfirmed' },
+      ...told('amaka'),
+    );
+    expect(reachViewOf(one, 'parking')).toMatchObject({ head: 'Not confirmed · 1', empty: null });
+
+    const none = run(one, ...told('priyanka'));
+    expect(reachViewOf(none, 'parking')).toMatchObject({
+      filterOn: 'notReached',
+      head: 'Not reached · 9',
+      empty: null,
+    });
+    expect(run(none, { type: 'undoTold', key: 'priyanka' }).filter).toBe('notReached');
+  });
+
+  it('gives way to Everyone once nobody is left not reached', () => {
+    const m = run(startOf('filtered', false), ...told(...ELEVEN.slice(3)));
+    expect(m.filter).toBe('bounced');
+    expect(run(m, ...told('tomas', 'yuki', 'seun')).filter).toBe('everyone');
+  });
+
+  it('says in each filter’s own words that nobody is in it, the heading keeping its 0', () => {
+    const m = startOf('filtered', false);
+    expect(reachViewOf(run(m, { type: 'filter', filter: 'told' }), 'parking')).toMatchObject({
+      head: 'Marked as told · 0',
+      empty: 'Nobody is marked as told yet.',
+    });
+    expect(
+      reachViewOf(run(m, ...told(...ELEVEN), { type: 'filter', filter: 'notReached' }), 'parking'),
+    ).toMatchObject({ head: 'Not reached · 0', empty: 'Nobody is left to reach.', groups: [] });
+    expect(EMPTY_LINE).toEqual({
+      notReached: 'Nobody is left to reach.',
+      reached: 'Nobody has been reached yet.',
+      told: 'Nobody is marked as told yet.',
+    });
   });
 
   it('lists the reached two drawn and counts the rest', () => {

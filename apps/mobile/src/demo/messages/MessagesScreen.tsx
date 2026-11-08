@@ -471,7 +471,7 @@ export function MessagesScreen({
     setTimeout(() => moveScreenReaderFocus(refs.current[`person.${person.key}`] ?? null), 350);
   const sendAgain = (person: ReachPerson) => {
     dispatch({ type: 'sendAgain', key: person.key });
-    focusPerson(person);
+    setTimeout(() => moveScreenReaderFocus(reachedHeadRef.current), 350);
   };
   const notNow = (person: ReachPerson) => {
     dispatch({ type: 'notNowFor', key: person.key });
