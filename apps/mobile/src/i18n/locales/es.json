@@ -2009,9 +2009,9 @@
     "inDays_one": "dentro de {{count, number}} día",
     "inDays_other": "dentro de {{count, number}} días",
     "inDays_many": "dentro de {{count, number}} de días",
-    "inDaysCapital_one": "Dentro de {{count, number}} día",
-    "inDaysCapital_other": "Dentro de {{count, number}} días",
-    "inDaysCapital_many": "Dentro de {{count, number}} de días",
+    "inDaysCapital_one": "En {{count, number}} día",
+    "inDaysCapital_other": "En {{count, number}} días",
+    "inDaysCapital_many": "En {{count, number}} de días",
     "days_one": "{{count, number}} día",
     "days_other": "{{count, number}} días",
     "days_many": "{{count, number}} de días",
@@ -2019,7 +2019,7 @@
       "today": "Hoy",
       "events": "Eventos",
       "calendar": "Calendario",
-      "settings": "Configuración"
+      "settings": "Ajustes"
     },
     "switchOrganisation": "{{name}}. Cambiar de organización",
     "notifications": "Notificaciones",
