@@ -297,7 +297,8 @@ def holding_now(c, story):
 
 def drawn_before_its_demo(c, story, state):
     """The designer hands a story on by the same Demo: line a developer's claim reads."""
-    if c.role != "ux" or c.state_id(state)[1] != "Ready For Dev":
+    if c.role != "ux" or c.state_id(state)[1] != "Ready For Dev" \
+            or story["state"] not in R.MOVES["ux"]["Ready For Dev"]:
         return
     missing = demo_missing(story)
     if missing:

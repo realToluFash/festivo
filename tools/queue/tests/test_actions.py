@@ -482,6 +482,21 @@ class DemoFirst(Base):
             actions.move(self.as_("ux"), args(story="sc-1", state="Ready For Dev"))
         self.assertEqual(self.state(1), "Ready For Dev")
 
+    def test_the_designer_hears_the_from_state_before_the_demo(self):
+        self.drawn("**Demo:** being built.")
+        self.fake.update(1, workflow_state_id=IDS["Backlog"])
+        with mock.patch("soirely_queue.github.live", side_effect=AssertionError), \
+                self.assertRaisesRegex(actions.Refused, "only from Needs Design"):
+            actions.move(self.as_("ux"), args(story="sc-1", state="Ready For Dev"))
+        self.assertEqual(self.state(1), "Backlog")
+
+    def test_the_designer_leaves_a_story_already_ready_without_asking_github(self):
+        self.drawn("**Demo:** the app's `It` · PR #1387")
+        self.fake.update(1, workflow_state_id=IDS["Ready For Dev"])
+        with mock.patch("soirely_queue.github.live", side_effect=AssertionError):
+            actions.move(self.as_("ux"), args(story="sc-1", state="Ready For Dev"))
+        self.assertEqual(self.state(1), "Ready For Dev")
+
     def test_the_product_manager_still_moves_a_story_on_without_its_demo(self):
         self.drawn("**Demo:** being built.")
         self.fake.update(1, workflow_state_id=IDS["Needs Design"])
