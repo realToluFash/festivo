@@ -66,6 +66,38 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **8 Nov 2026. A payment schedule's shape fields, its sums and its failed save** (sc-1332,
+  pm's #32327 from ux's demo, sc-31779 #1485). Field labels: "Percentage of the quote" (won
+  over the earlier boards' "Share of the quote": "share" reads as a part of something, not a
+  number to type, and es, fr and pt say percentage anyway), "Days before the event", "Days
+  after the event", labels with no full stop. Help: "From 0 to 100, with up to two decimal
+  places." and "A whole number from 0 to 730." Refusals: "Enter a percentage from 0 to 100,
+  with up to two decimal places." and "Enter a whole number of days from 0 to 730." "Decimal
+  places", the house term since sc-83, not the demo's bare "decimals". A row with no
+  description yet, in its amount line: "No description yet", a label with no full stop.
+  Before saving, when the percentages do not come to 100, one key each: "The percentages come
+  to {{total}}, so {{gap}} of the quote is not scheduled. You can still add these payments,
+  and the vendor's page will show the difference."; "The percentages come to {{total}}, so
+  the schedule is {{gap}} over the quote. You can still add these payments, and the vendor's
+  page will show the difference." They mirror the vendor page's "{{amount}} of the quote is
+  not scheduled yet." and "The schedule is {{amount}} over the quote.", and name the
+  button's verb. Won over the demo's "it saves, and the vendor’s page says so", where "it"
+  had no clear subject. `{{total}}` from `Intl.NumberFormat` with `style: 'percent'`, never a
+  "%" typed into the string; `{{gap}}` an amount in the event's currency. The failed save,
+  all or nothing: "None of these payments were saved, because they could not be sent. Your
+  rows are kept as you filled them in; select Add to send them again." "Select", not
+  "press", which is a key's verb and wrong for a tap or a screen reader; "send them again",
+  not "all of them", because nothing was saved, so there is no part to leave out. The row's
+  timing, a plural family on `{{count}}` with its own wording for 0 (a `_zero` key, as two
+  catalogues already have, so French, which counts 0 as one, still reads it): before,
+  "On the event's start date" (0), "1 day before the event" (one), "{{count}} days before
+  the event" (other); after, "On the event's end date" (0), "1 day after the event",
+  "{{count}} days after the event". For 0, "start date" and "end date", not "on the day of
+  the event", because a multi-day event has two days that 0 can mean, and before counts from
+  its start, after from its end. Capitalised, as every segment after a "·" in a row line is
+  ("Set to the date quoted", "Marked by"). A description over 100 characters reuses sc-87's
+  "Shorten what the payment is for to {{count}} characters or fewer."
+
 - **7 Nov 2026. The app's Today screen** (`mobile:todayScreen.*`, sc-31788 for sc-29090). Kept
   as sc-29090 wrote it. A lower-case key (`tomorrow`, `dayOf`, `inDays`) sits after a date or
   inside a line; its capitalised twin (`tomorrowCapital`, `dayOfCapital`, `inDaysCapital`) opens
