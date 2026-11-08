@@ -224,7 +224,7 @@ describe('quotes and payment schedules’ rules on the wedding (sc-87)', () => {
     const draft = draftToMark(balance);
     expect(draft).toEqual({ amount: '840.00', paidOn: TODAY, reference: '' });
     expect(markProblems({ ...draft, amount: '0' }, balance)).toEqual({
-      amount: 'Enter the amount paid, above 0, like 840.00.',
+      amount: 'Enter the amount as a number above 0, like 3,500.50.',
     });
     expect(markedPaid(balance, draft, 'Julien Moreau').paid).toEqual({
       amount: 84000,

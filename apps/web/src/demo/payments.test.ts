@@ -120,7 +120,8 @@ describe('payments on a vendor’s page, shapes and reminders, in A (sc-88, sc-1
       paidOn: '2026-11-02',
     });
     expect(startOf('made_early').made?.problems).toEqual({
-      paidOn: 'A payment cannot be dated before the vendor’s first quote, Tue, Oct 6.',
+      paidOn:
+        'The date paid cannot be before the quote from Bloom & Co on Tuesday, October 6. Choose that date or a later one.',
     });
     for (const state of [
       'add_payment',
@@ -138,7 +139,7 @@ describe('payments on a vendor’s page, shapes and reminders, in A (sc-88, sc-1
       { what: 'Enter what the payment is for.' },
       {
         what: 'Shorten what the payment is for to 100 characters or fewer.',
-        share: 'Enter a percentage from 0 to 100, with up to two decimals.',
+        share: 'Enter a percentage from 0 to 100, with up to two decimal places.',
       },
       { days: 'Enter a whole number of days from 0 to 730.' },
     ]);
@@ -207,8 +208,9 @@ describe('payments on a vendor’s page, shapes and reminders, in A (sc-88, sc-1
       madeProblems({ ...draft, what: '  ', amount: '0', paidOn: '2026-10-05' }, bloom),
     ).toEqual({
       what: 'Enter what it was for.',
-      amount: 'Enter the amount paid, above 0, like 3,500.50.',
-      paidOn: 'A payment cannot be dated before the vendor’s first quote, Tue, Oct 6.',
+      amount: 'Enter the amount as a number above 0, like 3,500.50.',
+      paidOn:
+        'The date paid cannot be before the quote from Bloom & Co on Tuesday, October 6. Choose that date or a later one.',
     });
     expect(madeProblems({ ...draft, vendorId: 'v4', paidOn: '2026-09-21' }, SAVOUR_QUOTE)).toEqual(
       {},
@@ -250,7 +252,7 @@ describe('payments on a vendor’s page, shapes and reminders, in A (sc-88, sc-1
     const short = shapeRows(terms, SAVOUR_QUOTE, WEDDING);
     expect(short.map((row) => row.amount)).toEqual([450000, 270000, 135000]);
     expect(sharesLine(short, SAVOUR_QUOTE.amount)).toBe(
-      'The percentages come to 95%. The schedule is £450.00 short of the quote; it saves, and the vendor’s page says so.',
+      'The percentages come to 95%, so £450.00 of the quote is not scheduled. You can still save these payments, and the vendor’s page will show the difference.',
     );
 
     expect(shapeLine(shapeRows(SHAPE_TERMS.before, SAVOUR_QUOTE, WEDDING)[0]!)).toBe(
@@ -306,7 +308,7 @@ describe('payments on a vendor’s page, shapes and reminders, in A (sc-88, sc-1
     const rows = shapeRows(typedTerms(shaping), SAVOUR_QUOTE, WEDDING);
     expect(rows.map((row) => row.amount)).toEqual([450000, 360000]);
     expect(sharesLine(rows, SAVOUR_QUOTE.amount)).toBe(
-      'The percentages come to 90%. The schedule is £900.00 short of the quote; it saves, and the vendor’s page says so.',
+      'The percentages come to 90%, so £900.00 of the quote is not scheduled. You can still save these payments, and the vendor’s page will show the difference.',
     );
     const typed = typedTerms({
       ...shapingOf('deposit'),

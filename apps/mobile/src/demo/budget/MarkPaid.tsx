@@ -124,7 +124,7 @@ export function MarkFields({
         value={money(payment.amount, locale)}
       />
       {form.phase === 'refused' ? (
-        <AlertBox text={form.refusal === 'paid' ? W.alreadyPaid(COLLEAGUE) : W.cancelled} />
+        <AlertBox text={refusalWords(form.refusal)} />
       ) : (
         <>
           <Field label={W.amountPaid} error={input.amountError}>
@@ -182,6 +182,14 @@ export function MarkFields({
       )}
     </View>
   );
+}
+
+/** The server's answer, as en settled it (en.md, 17 Oct 2026, "Marking paid refused"): Close only. */
+function refusalWords(refusal: MarkForm['refusal']): string {
+  if (refusal === 'paid') return W.alreadyPaid(COLLEAGUE);
+  if (refusal === 'currency') return W.wrongCurrency;
+  if (refusal === 'plan') return W.planRefused;
+  return W.cancelled;
 }
 
 function asDate(day: string): Date {

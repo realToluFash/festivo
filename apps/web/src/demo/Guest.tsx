@@ -40,6 +40,7 @@ import {
   Foot,
   Gone,
   LanguageMenu,
+  LanguageUnsaved,
   Line,
   Mark,
   Messages,
@@ -50,7 +51,15 @@ import {
   Unreachable,
   Waiting,
 } from './GuestParts.tsx';
+import {
+  GuestKitchenCheck,
+  GuestKitchenSaved,
+  GuestKitchenStep,
+  GUEST_KITCHEN_SAVED_ID,
+} from './GuestKitchen.tsx';
+import { type GuestKitchenActions, useGuestKitchen } from './useGuestKitchen.ts';
 import { useLater } from '../useLater.ts';
+import { legalPath } from './legal.ts';
 import './today.css';
 import './settings.css';
 import './events.css';
@@ -78,6 +87,7 @@ type Change = (was: Visit) => Partial<Visit>;
 function Visitor({ state }: { state: string | null }) {
   const [visit, setVisit] = useState(() => startOf(state));
   const [retrying, setRetrying] = useState(false);
+  const [saving, setSaving] = useState(false);
   const layout = useLayout();
   const words = useMemo(() => wordsFor(visit.lang), [visit.lang]);
   const later = useLater();
@@ -93,9 +103,20 @@ function Visitor({ state }: { state: string | null }) {
   }, []);
 
   useEffect(() => {
+    const was = document.documentElement.lang;
+    document.documentElement.lang = visit.lang;
+
+    return () => {
+      document.documentElement.lang = was;
+    };
+  }, [visit.lang]);
+
+  useEffect(() => {
     if (visit.want == null) return;
     document.querySelector<HTMLElement>(`.gp [data-focus="${visit.want}"]`)?.focus();
   }, [visit.want, visit.wantId]);
+
+  const kitchen = useGuestKitchen(visit, state, go);
 
   const record = useCallback(
     (answer: Answer) =>
@@ -152,11 +173,7 @@ function Visitor({ state }: { state: string | null }) {
 
     if (view.kind !== 'answer' && view.kind !== 'changing') return;
     if (chosen === 'coming') {
-      const from = view.kind === 'changing' ? 'changing' : 'answer';
-      go(
-        () => ({ view: { kind: 'check', busy: false, failed: false, refused: false, from } }),
-        'checkHead',
-      );
+      kitchen.open(view.kind === 'changing' ? 'changing' : 'answer');
       return;
     }
 
@@ -207,6 +224,14 @@ function Visitor({ state }: { state: string | null }) {
     });
   }
 
+  function saveAgain(): void {
+    setSaving(true);
+    later(SEND_MS, () => {
+      setSaving(false);
+      go(() => ({ unsaved: false }), 'lang');
+    });
+  }
+
   const closeMenu = useCallback(() => go(() => ({ menuOpen: false })), [go]);
   const two = twoColumns(layout);
 
@@ -214,6 +239,7 @@ function Visitor({ state }: { state: string | null }) {
     <Under
       visit={visit}
       words={words}
+      kitchen={kitchen}
       onAnswer={answer}
       onSend={send}
       onBack={back}
@@ -239,9 +265,14 @@ function Visitor({ state }: { state: string | null }) {
             words={words}
             onOpen={() => go(() => ({ menuOpen: true }))}
             onClose={closeMenu}
-            onChoose={(lang) => go(() => ({ lang, menuOpen: false }), 'lang')}
+            onChoose={(lang) =>
+              go((was) => ({ lang, menuOpen: false, unsaved: false, said: was.said + 1 }), 'lang')
+            }
           />
         </header>
+        <p className="visually-hidden" aria-live="polite" aria-atomic="true">
+          {visit.said > 0 && <span key={visit.said}>{words.switched}</span>}
+        </p>
         <main id="content" className={two ? 'gp-main is-two' : 'gp-main is-one'}>
           <Body
             visit={visit}
@@ -250,6 +281,8 @@ function Visitor({ state }: { state: string | null }) {
             under={under}
             retrying={retrying}
             onRetry={retry}
+            saving={saving}
+            onSaveAgain={saveAgain}
             onTell={() =>
               go(
                 (was) => ({ view: { kind: 'tellUs', busy: false, result: null, back: was.view } }),
@@ -261,8 +294,8 @@ function Visitor({ state }: { state: string | null }) {
         <footer className="gp-footer">
           <span>{words.copyright}</span>
           <span className="gp-footer-links">
-            <Link to="/demo/later?screen=terms">{LEGAL[visit.lang].terms}</Link>
-            <Link to="/demo/later?screen=privacy">{LEGAL[visit.lang].privacy}</Link>
+            <Link to={legalPath('terms', visit.lang)}>{LEGAL[visit.lang].terms}</Link>
+            <Link to={legalPath('privacy', visit.lang)}>{LEGAL[visit.lang].privacy}</Link>
           </span>
         </footer>
       </div>
@@ -282,6 +315,8 @@ function Body({
   under,
   retrying,
   onRetry,
+  saving,
+  onSaveAgain,
   onTell,
 }: {
   visit: Visit;
@@ -290,6 +325,8 @@ function Body({
   under: ReactNode;
   retrying: boolean;
   onRetry: () => void;
+  saving: boolean;
+  onSaveAgain: () => void;
   onTell: () => void;
 }) {
   const [box, setBox] = useState<HTMLDivElement | null>(null);
@@ -349,6 +386,7 @@ function Body({
   return (
     <div ref={setBox} className="gp-columns">
       <PhaseNotice phase={visit.phase} words={words} />
+      {visit.unsaved && <LanguageUnsaved words={words} busy={saving} onRetry={onSaveAgain} />}
       <Cover visit={visit} words={words} ended={ended} />
       {under}
       {details && <Details visit={visit} words={words} hosts={hosts} />}
@@ -360,6 +398,7 @@ function Body({
 function Under({
   visit,
   words,
+  kitchen,
   onAnswer,
   onSend,
   onBack,
@@ -372,6 +411,7 @@ function Under({
 }: {
   visit: Visit;
   words: Words;
+  kitchen: GuestKitchenActions;
   onAnswer: (answer: Answer) => void;
   onSend: () => void;
   onBack: () => void;
@@ -392,6 +432,7 @@ function Under({
         view={view}
         visit={visit}
         words={words}
+        kitchen={kitchen}
         onAnswer={onAnswer}
         onSend={onSend}
         onBack={onBack}
@@ -417,6 +458,7 @@ function Shown({
   view,
   visit,
   words,
+  kitchen,
   onAnswer,
   onSend,
   onBack,
@@ -428,6 +470,7 @@ function Shown({
   view: View;
   visit: Visit;
   words: Words;
+  kitchen: GuestKitchenActions;
   onAnswer: (answer: Answer) => void;
   onSend: () => void;
   onBack: () => void;
@@ -453,7 +496,12 @@ function Shown({
           <AnswerRows words={words} busy={view.busy} onAnswer={onAnswer} />
         </section>
       );
+    case 'kitchen':
+      return <GuestKitchenStep visit={visit} words={words} actions={kitchen} />;
     case 'check':
+      if (visit.kitchen != null)
+        return <GuestKitchenCheck visit={visit} words={words} actions={kitchen} />;
+
       return (
         <section className="gp-check" aria-labelledby="gp-check-h">
           {view.refused ? (
@@ -529,7 +577,7 @@ function Shown({
         </section>
       );
     case 'closed':
-      return <Closed visit={visit} words={words} />;
+      return <Closed visit={visit} words={words} onKitchen={() => kitchen.open('closed')} />;
     case 'tellUs':
       return view.result === 'thanks' ? (
         <div className="gp-told" role="status" aria-live="polite">
@@ -564,7 +612,15 @@ function Shown({
 }
 
 /** Answers closed: by the date to answer by, at the start, by a pause, or with the event over. */
-function Closed({ visit, words }: { visit: Visit; words: Words }) {
+function Closed({
+  visit,
+  words,
+  onKitchen,
+}: {
+  visit: Visit;
+  words: Words;
+  onKitchen: () => void;
+}) {
   const { recorded, phase, lang } = visit;
   const said =
     recorded == null
@@ -602,6 +658,7 @@ function Closed({ visit, words }: { visit: Visit; words: Words }) {
   }
 
   const by = dayOf(visit.replyBy ?? '', lang);
+  const saved = visit.kitchen?.saved === true;
   const line = visit.started
     ? words.closed
     : recorded?.answer === 'notSure'
@@ -613,12 +670,17 @@ function Closed({ visit, words }: { visit: Visit; words: Words }) {
       <h2 id="gp-closed-h" className="gp-h2 is-19">
         {said}
       </h2>
+      {saved && <GuestKitchenSaved lang={lang} />}
       <p className="gp-sub">{line}</p>
       {!visit.started && recorded?.answer === 'coming' && (
-        <Link className="gp-text" to="/demo/later?screen=kitchen">
-          <Line name="pencil" size={18} weight={2.2} />
-          <span>{words.kitchen}</span>
-        </Link>
+        <TextAction
+          focus="kitchen"
+          {...(saved ? { describedBy: GUEST_KITCHEN_SAVED_ID } : {})}
+          icon={<Line name="pencil" size={18} weight={2.2} />}
+          onClick={onKitchen}
+        >
+          {words.kitchen}
+        </TextAction>
       )}
     </section>
   );

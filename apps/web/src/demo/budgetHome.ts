@@ -44,6 +44,14 @@ export const WEB_STATES = [
   'add_cost_fixed',
   'add_cost_staff',
   'add_cost_failed',
+  'add_cost_long_name',
+  'add_cost_long_note',
+  'add_cost_refused',
+  'add_cost_negative',
+  'add_cost_nan',
+  'add_cost_decimals',
+  'add_cost_adding',
+  'add_cost_added',
 ] as const;
 
 export const CEILING_STATES = [
@@ -61,6 +69,16 @@ export const CEILING_STATES = [
   'ceiling_saved',
   'ceiling_cleared',
   'rate_warning',
+  'ceiling_categories_only',
+  'ceiling_live_set',
+  'ceiling_live_changed',
+  'ceiling_live_cleared',
+  'ceiling_saving',
+  'ceiling_refused',
+  'ceiling_cleared_one',
+  'ceiling_no_costs',
+  'rate_warning_category',
+  'rate_down_while_over',
 ] as const;
 
 export const MARGIN_STATES = [
@@ -70,6 +88,11 @@ export const MARGIN_STATES = [
   'markup_negative',
   'markup_cap',
   'markup_decimals',
+  'markup_nan',
+  'margin_zero_price',
+  'price_negative',
+  'price_decimals',
+  'margin_live',
   'free',
 ] as const;
 
@@ -154,6 +177,8 @@ export function linesOf(state: string): CostLine[] {
   if (state === 'removed_not_priced') return lines.filter((one) => one.id !== 'arch');
   if (state === 'removed_nothing_yet') return lines.filter((one) => one.id !== 'centre');
   if (state === 'first_time' || state === 'nothing_to_start') return [];
+  if (state === 'ceiling_refused') return lines.filter((one) => one.category !== GONE_CATEGORY);
+  if (state === 'add_cost_added') return [...lines, { ...WELCOME_DRINKS }];
 
   return lines;
 }
@@ -164,8 +189,15 @@ export function ceilingsOf(state: string): Partial<Record<CeilingKey, number>> {
     state as 'ceiling_within' | 'ceiling_close' | 'ceiling_over'
   ];
 
-  if (state === 'ceiling_none' || state === 'ceiling_set' || state === 'ceiling_cleared') return {};
+  if (['ceiling_none', 'ceiling_set', 'ceiling_cleared', 'ceiling_live_cleared'].includes(state))
+    return {};
   if (state === 'ceiling_saved') return { ...CEILINGS, hire: 0 };
+  if (state === 'ceiling_categories_only') return { catering: 1300000, flowers: 150000 };
+  if (state === 'ceiling_cleared_one' || state === 'ceiling_refused')
+    return { whole: 2200000, catering: 1300000 };
+  if (state === 'ceiling_no_costs') return { ...CEILINGS, hire: 0, other: 50000 };
+  if (state === 'ceiling_live_changed') return { ...CEILINGS, whole: 2400000 };
+  if (state === 'rate_warning_category') return { ...CEILINGS, whole: 2600000 };
   if (whole != null) return { ...CEILINGS, whole };
 
   return { ...CEILINGS };
@@ -216,6 +248,54 @@ export function rateProblem(
   return 'Enter a rate of 0 or more, in numbers only.';
 }
 
+/** A client price (sc-92): 0 or more, sc-83's decimals key; never a markup's words. */
+export function priceProblem(typed: string, currency = CURRENCY): string | null {
+  const found = typedMinor(typed, currency);
+
+  if ('minor' in found) return null;
+  if (found.wrong === 'decimals')
+    return `That has too many decimal places for this event’s currency. Enter the price like ${exampleIn(12, currency)}.`;
+
+  return 'Enter a price of 0 or more, in numbers only.';
+}
+
+export const WHAT_MAX = 100;
+export const NOTE_MAX = 500;
+
+/** Add a cost's two text checks (sc-85), the house over-limit shape. */
+export function whatProblem(typed: string): string | null {
+  if (typed.trim() === '') return 'Enter what it is.';
+
+  return [...typed.trim()].length > WHAT_MAX
+    ? `Shorten what it is to ${WHAT_MAX} characters or fewer.`
+    : null;
+}
+
+export function noteProblem(typed: string): string | null {
+  return [...typed.trim()].length > NOTE_MAX
+    ? `Shorten the note to ${NOTE_MAX} characters or fewer.`
+    : null;
+}
+
+/** sc-90's one refusal only the server gives (pm, 8 Nov): a category removed by someone else since the page opened. */
+export const GONE_CATEGORY: Category = 'flowers';
+
+export function categoryGone(name: string): string {
+  return `${name} was removed, so its ceiling wasn’t saved.`;
+}
+
+/** The cost Add a cost's sample adds: Welcome drinks, £12.00 a head (Budget-A-Web-More, frame 34). */
+export const WELCOME_DRINKS: CostLine = {
+  id: 'new-welcome-drinks',
+  name: 'Welcome drinks',
+  category: 'catering',
+  basis: 'perHead',
+  rate: 1200,
+};
+
+export const STAFF_REFUSED =
+  'The budget already has a staff-time cost. Choose another way it is counted.';
+
 export function ceilingProblem(typed: string, currency = CURRENCY): string | null {
   const text = typed.trim();
   const example = exampleIn(20000, currency);
@@ -240,7 +320,7 @@ export function markupProblem(typed: string): string | null {
 
   if (/^[-−]/.test(text))
     return 'A markup cannot be below 0. To sell below cost, enter the price instead.';
-  if (!/^\d+(\.\d+)?$/.test(text)) return 'Enter a markup of 999.9% or less.';
+  if (!/^\d+(\.\d+)?$/.test(text)) return 'Enter the markup as a number, like 12.5.';
   if (decimalsOf(text) > 1) return 'Enter a markup with at most one decimal place.';
   if (Number(text) > 999.9) return 'Enter a markup of 999.9% or less.';
 
@@ -259,10 +339,13 @@ export function categoryCeilingsLine(ceilings: Partial<Record<CeilingKey, number
 
   if (whole_ == null || parts.length === 0) return null;
   const sum = parts.reduce((total, [, amount]) => total + (amount ?? 0), 0);
+  const gap = Math.abs(whole_ - sum);
+  if (gap === 0) return null;
+  const said = gap < 100 ? money : whole;
 
-  return `The category ceilings come to ${money(sum)}, ${money(Math.abs(whole_ - sum))} ${
-    sum <= whole_ ? 'less' : 'more'
-  } than the whole event’s.`;
+  return `The category ceilings come to ${said(sum)}, ${said(gap)} ${
+    sum < whole_ ? 'less' : 'more'
+  } than the event’s ceiling.`;
 }
 
 export function removedWords(line: CostLine, settled: number): string {
@@ -318,6 +401,17 @@ export const BUDGET_PAGES: readonly DemoGroup[] = [
       { to: at('add_cost_fixed'), name: 'A fixed amount' },
       { to: at('add_cost_staff'), name: 'Staff time, already in the budget' },
       { to: at('add_cost_failed'), name: 'Not saved' },
+      { to: at('add_cost_long_name'), name: 'Refused: what it is over 100 characters' },
+      { to: at('add_cost_long_note'), name: 'Refused: a note over 500 characters' },
+      {
+        to: at('add_cost_refused'),
+        name: 'Refused by the server: staff time added in another tab',
+      },
+      { to: at('add_cost_negative'), name: 'Refused: a rate below 0' },
+      { to: at('add_cost_nan'), name: 'Refused: a rate that is not a number' },
+      { to: at('add_cost_decimals'), name: 'Refused: too many decimal places' },
+      { to: at('add_cost_adding'), name: 'Adding…, a second press does nothing' },
+      { to: at('add_cost_added'), name: 'Added: the sheet closes, the new cost lit, Saved.' },
     ],
   },
   {
@@ -339,6 +433,19 @@ export const BUDGET_PAGES: readonly DemoGroup[] = [
       { to: at('ceiling_saved'), name: 'Saved, each category in the column' },
       { to: at('ceiling_cleared'), name: 'Cleared' },
       { to: at('rate_warning'), name: 'A rate that takes the event over its ceiling' },
+      { to: at('rate_warning_category'), name: 'A rate that takes Catering over its ceiling' },
+      { to: at('rate_down_while_over'), name: 'A rate lowered while over: no warning' },
+      { to: at('ceiling_categories_only'), name: 'Category ceilings only, no whole event' },
+      { to: at('ceiling_live_set'), name: 'Live: set in another tab' },
+      { to: at('ceiling_live_changed'), name: 'Live: changed in another tab' },
+      { to: at('ceiling_live_cleared'), name: 'Live: cleared in another tab' },
+      { to: at('ceiling_saving'), name: 'Saving' },
+      {
+        to: at('ceiling_refused'),
+        name: 'Refused by the server: Flowers was removed since the page opened',
+      },
+      { to: at('ceiling_cleared_one'), name: 'One ceiling cleared: Flowers' },
+      { to: at('ceiling_no_costs'), name: 'A ceiling on a category with no costs' },
     ],
   },
   {
@@ -361,6 +468,11 @@ export const BUDGET_PAGES: readonly DemoGroup[] = [
       { to: at('markup_negative'), name: 'Refused: below 0' },
       { to: at('markup_cap'), name: 'Refused: over 999.9%' },
       { to: at('markup_decimals'), name: 'Refused: two decimal places' },
+      { to: at('markup_nan'), name: 'Refused: not a number' },
+      { to: at('margin_zero_price'), name: 'A price of 0: no margin figure' },
+      { to: at('price_negative'), name: 'A price refused: below 0' },
+      { to: at('price_decimals'), name: 'A price refused: too many decimal places' },
+      { to: at('margin_live'), name: 'Live: a markup changed in another tab' },
       { to: at('free', { plan: 'free' }), name: 'A Free organisation: no margin' },
     ],
   },
@@ -425,6 +537,7 @@ export function marginOf(
   lines: readonly CostLine[],
   heads: Heads,
   markups: Markups,
+  fee = PLANNING_FEE,
 ): {
   client: [number, number];
   cost: [number, number];
@@ -444,7 +557,7 @@ export function marginOf(
         cost: [sum.cost[0] + each.cost[0], sum.cost[1] + each.cost[1]] as [number, number],
       };
     },
-    { client: [PLANNING_FEE, PLANNING_FEE] as [number, number], cost: [0, 0] as [number, number] },
+    { client: [fee, fee] as [number, number], cost: [0, 0] as [number, number] },
   );
   const margin: [number, number] = [sums.client[0] - sums.cost[0], sums.client[1] - sums.cost[1]];
 

@@ -88,7 +88,7 @@ describe('Sign-in rules: where you stand', () => {
     expect(rules[1]!.line).toBe('After 30 days without Soirely, you sign in again.');
     expect(card).toEqual({
       says: 'You meet Ire Events’ rules',
-      line: 'Set by its owners. Only they can change them.',
+      line: 'Set by its owners and admins. Only they can change them.',
       step: null,
     });
     expect(viewer.setsRules).toBe(false);
@@ -188,7 +188,7 @@ describe('Sign-in rules: where you stand', () => {
     expect(MANAGERS_ARE).toBe('Managers are owners and admins.');
     expect(standFoot(seen('everyone').page)).toBeUndefined();
     expect(standFoot(seen('noChanges').page)).toBeUndefined();
-    expect(ASK_OWNER).toBe('Questions? Ask an owner of Ire Events.');
+    expect(ASK_OWNER).toBe('Questions? Ask an owner or admin of Ire Events.');
   });
 });
 

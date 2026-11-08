@@ -1,3 +1,5 @@
+import { LOCALES } from '@soirely/domain';
+
 import type { ReplyKind } from './GuestsWords.ts';
 
 /** The boards' sample (guests-a-spec.md §17), not spec: the wedding counted as Messaging B counts it. */
@@ -24,6 +26,21 @@ export const COUNTS = {
 export interface Companion {
   name: string;
   kind: ReplyKind;
+  /** Their seat and meal pick (epics 31, 32): removing them says what goes first (sc-3773). */
+  table?: string;
+  meal?: boolean;
+}
+
+/** sc-3790: a guest's language; null is Not set. The host's and the guest's own are the AC, not yet built. */
+export type GuestLanguage = 'en' | 'es' | 'fr' | 'pt';
+export const GUEST_LANGUAGES: readonly { code: GuestLanguage; name: string }[] = LOCALES.map(
+  (one) => ({ code: one.code as GuestLanguage, name: one.nativeName }),
+);
+/** The organisation's language, for the Not set line: Ire Events' in the sample. */
+export const ORGANISATION_LANGUAGE: GuestLanguage = 'en';
+
+export function languageName(code: GuestLanguage | null | undefined): string | null {
+  return GUEST_LANGUAGES.find((one) => one.code === code)?.name ?? null;
 }
 
 export interface Invited {
@@ -44,6 +61,8 @@ export interface SampleGuest {
   /** A reply a host recorded for them (sc-3787): how they told, and the day. */
   recorded?: { how: string; day: string } | null;
   arrived?: string;
+  language?: GuestLanguage | null;
+  chose?: GuestLanguage | null;
 }
 
 const SOIRELY: Invited = { by: 'Soirely’s message', how: null, day: '2026-10-12' };
@@ -94,7 +113,9 @@ export const GUESTS: readonly SampleGuest[] = [
   guest('ines', 'Inês Duarte', 'coming', {
     when: '2026-10-13',
     email: 'ines.duarte@sapo.pt',
-    companions: [{ name: 'Rui Duarte', kind: 'coming' }],
+    companions: [{ name: 'Rui Duarte', kind: 'coming', table: 'Table 4', meal: true }],
+    language: 'es',
+    chose: 'pt',
   }),
   guest('joaquin', 'Joaquín Ruiz', 'noreply', {
     invited: { by: READER, how: 'in person', day: '2026-10-09' },
@@ -119,6 +140,7 @@ export const GUESTS: readonly SampleGuest[] = [
     when: '2026-10-12',
     email: 'sophie.laurent@orange.fr',
     companions: [{ name: 'Marc Laurent', kind: 'coming' }],
+    language: 'fr',
   }),
   guest('tomas', 'Tomás Ferreira', 'noreply', { email: 'tomas.ferreira@gmial.com' }),
   guest('yusuf', 'Yusuf Ibrahim', 'notyet', { phone: '+234 809 221 4410' }),

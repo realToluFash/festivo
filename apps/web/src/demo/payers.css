@@ -226,3 +226,7 @@
     gap: 32px;
   }
 }
+
+.py-shared-link {
+  overflow-wrap: anywhere;
+}

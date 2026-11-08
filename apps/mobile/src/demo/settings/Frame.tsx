@@ -1,28 +1,22 @@
 import { type ReactNode, type Ref, useMemo, useRef } from 'react';
-import {
-  Pressable,
-  ScrollView,
-  type ScrollViewInstance,
-  StyleSheet,
-  View,
-  type ViewInstance,
-} from 'react-native';
+import { useTranslation } from 'react-i18next';
+import { ScrollView, StyleSheet, View, type ViewInstance } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
-import { Glyph } from '../../components/Glyph.tsx';
-import { OpenerWords, OPENER, OrgMark, useOrgOpener } from '../OrgSwitcher.tsx';
+import { useOrgOpener } from '../OrgSwitcher.tsx';
+import { SW } from '../OrgSwitcherModel.ts';
+import { OrgPill as ProductOrgPill } from '../../components/OrgPill.tsx';
 import { type EventKey, sample } from '../today.ts';
-import { PHONE_TAB_BAR, PhoneTabBar, type Tab, TABS } from '../../components/TodayCover.tsx';
+import { type Tab, TABS, WhiteCapsule } from '../../components/TodayCover.tsx';
 import type { Tell } from '../../components/TodayParts.tsx';
 import { TodaySidebar } from '../../components/TodaySidebar.tsx';
 import { TodayShellProvider } from '../../components/todayShell.ts';
 import { demoShell } from '../demoShell.ts';
 import { viewerOfRole } from './sample.ts';
 import { type Looking, ShellContext, useShell } from '../../components/settingsShell.ts';
-import { Back, RoundButton, TYPE } from '../../components/SettingsParts.tsx';
+import { Back, RoundButton } from '../../components/SettingsParts.tsx';
 
 /** A page whose sample someone else sees: the Settings card, its rows and the sidebar's foot follow them. */
 export function SeenBy({ looking, children }: { looking: Looking; children: ReactNode }) {
@@ -36,122 +30,6 @@ export function SeenBy({ looking, children }: { looking: Looking; children: Reac
 }
 
 const SIDEBAR_EVENTS = (['wed', 'ireti', 'party', 'draft'] as const).map(sample);
-
-/** A Settings page in B: on its side, `column` takes the Settings list's place, as givesWay does in the app. */
-export function SettingsPage({
-  title,
-  back,
-  right,
-  children,
-  dock,
-  overlay,
-  column,
-  scrollRef,
-}: {
-  title: string;
-  back?: { label: string; onPress: () => void } | null;
-  right?: ReactNode;
-  children: ReactNode;
-  dock?: ReactNode;
-  overlay?: ReactNode;
-  column?: ReactNode;
-  scrollRef?: Ref<ScrollViewInstance>;
-}) {
-  const shell = useShell();
-  const insets = useSafeAreaInsets();
-  const backTo = back === undefined ? { label: 'Settings', onPress: shell.toSettings } : back;
-
-  if (shell.layout === 'landscape')
-    return (
-      <Landscape column={column ?? shell.listColumn} overlay={overlay}>
-        <ScrollView
-          ref={scrollRef}
-          style={styles.grow}
-          contentContainerStyle={styles.pane}
-          keyboardShouldPersistTaps="handled"
-          automaticallyAdjustKeyboardInsets
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={styles.titleRow}>
-            <Text
-              size={TYPE.titlePane}
-              weight="bold"
-              accessibilityRole="header"
-              style={[styles.grow, styles.title]}
-            >
-              {title}
-            </Text>
-            {right}
-          </View>
-          <View style={styles.cardsPane}>{children}</View>
-        </ScrollView>
-        {dock != null && <View style={styles.dockTablet}>{dock}</View>}
-      </Landscape>
-    );
-
-  const phone = shell.layout === 'phone';
-  const foot = Math.max(insets.bottom - tokens.spaceXxs, tokens.spaceLg);
-
-  return (
-    <View style={styles.page}>
-      {!phone && <PortraitTop />}
-      <ScrollView
-        ref={scrollRef}
-        style={styles.grow}
-        contentContainerStyle={
-          phone
-            ? {
-                paddingTop: insets.top + tokens.spaceXxs,
-                paddingHorizontal: tokens.spaceXxl,
-                paddingBottom: foot + PHONE_TAB_BAR + tokens.space6xl * 2,
-              }
-            : {
-                paddingHorizontal: tokens.space5xl,
-                paddingBottom: insets.bottom + tokens.space6xl * 2,
-              }
-        }
-        keyboardShouldPersistTaps="handled"
-        automaticallyAdjustKeyboardInsets
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={phone ? styles.headPhone : styles.headPortrait}>
-          {backTo != null && <Back label={backTo.label} onPress={backTo.onPress} />}
-          <View style={styles.titleRow}>
-            <Text
-              size={phone ? TYPE.titlePhone : TYPE.titlePortrait}
-              weight="bold"
-              accessibilityRole="header"
-              style={[styles.grow, styles.title]}
-            >
-              {title}
-            </Text>
-            {right}
-            {phone && <Bell tell={shell.tell} />}
-          </View>
-        </View>
-        <View style={phone ? styles.cardsPhone : styles.cardsPortrait}>{children}</View>
-      </ScrollView>
-      {phone ? (
-        <>
-          <Fade />
-          {dock != null && (
-            <View style={[styles.dockPhone, { bottom: foot + PHONE_TAB_BAR + tokens.spaceMd }]}>
-              {dock}
-            </View>
-          )}
-          <PhoneTabBar bottom={foot} onTab={shell.onTab} at="Settings" />
-        </>
-      ) : (
-        dock != null && (
-          <View style={[styles.dockTablet, { bottom: Math.max(insets.bottom, tokens.spaceXl) }]}>
-            {dock}
-          </View>
-        )
-      )}
-      {overlay}
-    </View>
-  );
-}
 
 /** On its side: the app's sidebar, or an area's own in its place, beside the main card. */
 export function Landscape({
@@ -193,49 +71,6 @@ export function Landscape({
       </View>
       {overlay}
     </View>
-  );
-}
-
-export function SectionColumn({
-  title,
-  sub,
-  right,
-  children,
-}: {
-  title: string;
-  sub?: string;
-  right?: ReactNode;
-  children: ReactNode;
-}) {
-  const shell = useShell();
-
-  return (
-    <ScrollView
-      contentContainerStyle={styles.sectionColumn}
-      keyboardShouldPersistTaps="handled"
-      showsVerticalScrollIndicator={false}
-    >
-      <Back label="Settings" onPress={() => shell.toSettings()} />
-      <View style={styles.columnHead}>
-        <View style={styles.titleRow}>
-          <Text
-            size={26}
-            weight="bold"
-            accessibilityRole="header"
-            style={[styles.grow, styles.title]}
-          >
-            {title}
-          </Text>
-          {right}
-        </View>
-        {sub != null && (
-          <Text size={TYPE.line} weight="medium" style={styles.secondary}>
-            {sub}
-          </Text>
-        )}
-      </View>
-      {children}
-    </ScrollView>
   );
 }
 
@@ -304,18 +139,20 @@ export function Bell({
   onPress?: (() => void) | undefined;
   ref?: Ref<ViewInstance> | undefined;
 }) {
+  const { t } = useTranslation();
+
   return (
     <RoundButton
       ref={ref}
       glyph="bell"
-      label="Notifications, 3 unread"
+      label={t('notifications.bellUnread', { count: 3 })}
       dot
       onPress={onPress ?? (() => tell('Notifications have their own design.'))}
     />
   );
 }
 
-/** The organisation switcher on white, at the top of every top-level page. */
+/** The product's pill, opening the demo's switcher. */
 export function OrgPill() {
   const { viewer } = useShell();
   const ref = useRef<ViewInstance>(null);
@@ -324,23 +161,16 @@ export function OrgPill() {
   if (viewer === 'noOrg') return null;
 
   return (
-    <Pressable
+    <ProductOrgPill
       ref={ref}
+      id={org.place.id}
+      name={org.place.name}
+      waiting={org.waiting > 0 ? SW.count(org.waiting) : null}
+      label={org.label}
+      expanded={org.expanded}
       onPress={org.onPress}
-      style={({ pressed }) => [
-        styles.org,
-        org.waiting > 0 && styles.orgWaiting,
-        pressed && styles.orgPressed,
-      ]}
-      accessibilityRole="button"
-      accessibilityLabel={org.label}
-      accessibilityState={{ expanded: org.expanded }}
       testID="org.switch"
-    >
-      <OrgMark id={org.place.id} name={org.place.name} side={28} />
-      <OpenerWords opener={org} />
-      <Glyph name="updown" size={14} ink={tokens.colorInkSecondary} />
-    </Pressable>
+    />
   );
 }
 
@@ -354,46 +184,8 @@ export function PortraitTop({ at = 'Settings' }: { at?: Tab }) {
       <View style={styles.grow} />
       <Bell tell={shell.tell} />
       <View style={[styles.capsuleAt, { top: insets.top + 7 }]} pointerEvents="box-none">
-        <View style={styles.capsule} accessibilityRole="tablist">
-          {TABS.map(([label, glyph]) => {
-            const on = label === at;
-            const ink = on ? tokens.colorAccent : tokens.colorInkSecondary;
-
-            return (
-              <Pressable
-                key={label}
-                onPress={() => shell.onTab(label)}
-                hitSlop={tokens.spaceXxs}
-                style={[styles.capsuleTab, on && styles.capsuleOn]}
-                accessibilityRole="tab"
-                accessibilityState={{ selected: on }}
-                accessibilityLabel={label}
-              >
-                <Glyph name={glyph} ink={ink} />
-                <Text size={TYPE.body} weight="semibold" accessible={false} style={{ color: ink }}>
-                  {label}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
+        <WhiteCapsule tabs={TABS} at={at} onTab={shell.onTab} />
       </View>
-    </View>
-  );
-}
-
-export function Fade() {
-  return (
-    <View style={styles.fade} pointerEvents="none">
-      <Svg width="100%" height="100%">
-        <Defs>
-          <LinearGradient id="settingsFade" x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0" stopColor={tokens.colorCard} stopOpacity={0} />
-            <Stop offset="0.62" stopColor={tokens.colorCard} stopOpacity={1} />
-          </LinearGradient>
-        </Defs>
-        <Rect width="100%" height="100%" fill="url(#settingsFade)" />
-      </Svg>
     </View>
   );
 }
@@ -403,26 +195,7 @@ const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: tokens.colorCard },
   title: { letterSpacing: -0.5 },
   secondary: { color: tokens.colorInkSecondary },
-  titleRow: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceLg },
-  headPhone: { gap: tokens.spaceMd, paddingBottom: tokens.spaceXxl },
-  headPortrait: { gap: tokens.spaceLg, paddingTop: 26, paddingBottom: tokens.space3xl },
   cardsPhone: { gap: tokens.spaceXl },
-  cardsPortrait: { gap: 18 },
-  cardsPane: { gap: tokens.spaceXl, marginTop: tokens.spaceXl },
-  pane: {
-    paddingTop: 26,
-    paddingHorizontal: 30,
-    paddingBottom: tokens.space6xl * 2,
-    gap: tokens.spaceXs,
-  },
-  fade: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 150 },
-  dockPhone: { position: 'absolute', left: tokens.spaceLg, right: tokens.spaceLg },
-  dockTablet: {
-    position: 'absolute',
-    left: tokens.space3xl,
-    right: tokens.space3xl,
-    bottom: tokens.space3xl,
-  },
   chrome: { flex: 1, flexDirection: 'row', backgroundColor: tokens.colorNeutralFill },
   main: {
     flex: 1,
@@ -435,14 +208,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   column: { width: 360, borderRightWidth: 1, borderRightColor: tokens.colorBorder },
-  sectionColumn: {
-    paddingTop: tokens.spaceXl,
-    paddingLeft: tokens.spaceXl,
-    paddingRight: 14,
-    paddingBottom: tokens.space6xl,
-    gap: 14,
-  },
-  columnHead: { gap: tokens.spaceXxs },
   task: { paddingHorizontal: tokens.space3xl, gap: tokens.spaceXl },
   taskTablet: { width: '100%', maxWidth: 560, alignSelf: 'center' },
   taskHead: { gap: tokens.spaceMd, paddingTop: tokens.spaceMd, paddingBottom: tokens.spaceSm },
@@ -452,37 +217,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: tokens.space3xl,
     paddingBottom: tokens.spaceXxs,
   },
-  org: {
-    height: OPENER.rest,
-    flexShrink: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.spaceSm,
-    paddingLeft: tokens.spaceSm,
-    paddingRight: tokens.spacePillEnd,
-    borderRadius: OPENER.rest / 2,
-    backgroundColor: tokens.colorInset,
-  },
-  orgWaiting: { height: OPENER.waiting, borderRadius: OPENER.waiting / 2 },
-  orgPressed: { backgroundColor: tokens.colorNeutralFill },
   capsuleAt: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
-  capsule: {
-    height: 46,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.spaceHair,
-    paddingHorizontal: tokens.spaceXxs,
-    borderRadius: 23,
-    backgroundColor: tokens.colorInset,
-  },
-  capsuleTab: {
-    height: 38,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.spaceSm,
-    paddingLeft: 13,
-    paddingRight: tokens.spaceXl,
-    borderRadius: 19,
-  },
-  capsuleOn: { backgroundColor: tokens.colorCard, ...tokens.elevationNative.raised.ios },
 });

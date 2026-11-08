@@ -104,16 +104,21 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   places", the house term since sc-83, not the demo's bare "decimals". A row with no
   description yet, in its amount line: "No description yet", a label with no full stop.
   Before saving, when the percentages do not come to 100, one key each: "The percentages come
-  to {{total}}, so {{gap}} of the quote is not scheduled. You can still add these payments,
+  to {{total}}, so {{gap}} of the quote is not scheduled. You can still save these payments,
   and the vendor's page will show the difference."; "The percentages come to {{total}}, so
-  the schedule is {{gap}} over the quote. You can still add these payments, and the vendor's
+  the schedule is {{gap}} over the quote. You can still save these payments, and the vendor's
   page will show the difference." They mirror the vendor page's "{{amount}} of the quote is
   not scheduled yet." and "The schedule is {{amount}} over the quote.", and name the
   button's verb. Won over the demo's "it saves, and the vendor’s page says so", where "it"
   had no clear subject. `{{total}}` from `Intl.NumberFormat` with `style: 'percent'`, never a
   "%" typed into the string; `{{gap}}` an amount in the event's currency. The failed save,
-  all or nothing: "None of these payments were saved, because they could not be sent. Your
-  rows are kept as you filled them in; select Add to send them again." "Select", not
+  all or nothing, a plural family on `{{count}}`, the rows on the form: "None of these
+  payments were saved, because they could not be sent. Your rows are kept as you filled them
+  in; select Save {{count}} payments to send them again." (other) and "This payment was not
+  saved, because it could not be sent. Your row is kept as you filled it in; select Save 1
+  payment to send it again." (one). The button reads "Save {{count}} payments" / "Save 1
+  payment" (pm, 8 Nov, ux's #33189), so both lines name it as it reads and say "save", not
+  the earlier "Add". "Select", not
   "press", which is a key's verb and wrong for a tap or a screen reader; "send them again",
   not "all of them", because nothing was saved, so there is no part to leave out. The row's
   timing, a plural family on `{{count}}` with its own wording for 0 (a `_zero` key, as two
@@ -848,6 +853,12 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   host connects the two. Won over "… from this organisation …", which every reason the host
   sees already implies and which overruns a phone row. Other skip reasons read as short
   phrases in the same row: "No email address", "Address is bouncing".
+- **8 Nov 2026. Messages' empty pane on an event that cannot send** (sc-3942, sc-32077, on
+  pm's #33225; web and app). A Draft, or an event finished more than 30 days ago, reads "Pick a
+  conversation." It keeps the verb of the live line, "Pick a conversation, or write to your
+  guests below.", so the two states of one pane differ only in what is off. It carries no
+  reason: the reason already shows once, under **New** on the web and above the composer in
+  the app. es, fr and pt write both lines with one verb, as English does.
 - **27 Oct 2026. Events Home's tabs and empty states** (sc-15981 for sc-3594, `events.tab*|empty*|
 startedToday|calledOffOn|showMore|moreShown|moreFailed`, `eventsScreen.*` the same plus
   `nextUp|showingMore`). Kept as sc-3594 wrote it. The tabs are **Upcoming**, **Drafts** and

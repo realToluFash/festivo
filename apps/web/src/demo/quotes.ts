@@ -434,14 +434,14 @@ export function draftToMark(payment: Payment, today = TODAY): MarkDraft {
   return { amount: typedAmount(payment.amount), paidOn: today, reference: '' };
 }
 
-export function markProblems(draft: MarkDraft, payment: Payment): MarkProblems {
+export function markProblems(draft: MarkDraft, _payment: Payment): MarkProblems {
   const problems: MarkProblems = {};
 
-  if (parsedAmount(draft.amount) == null)
-    problems.amount = QW.amountPaidProblem(typedAmount(payment.amount));
+  if (parsedAmount(draft.amount) == null) problems.amount = amountProblem();
   if (lengthOf(draft.reference) > QUOTE_LIMITS.reference)
     problems.reference = PW.referenceTooLong(QUOTE_LIMITS.reference);
   if (draft.paidOn === '') problems.paidOn = QW.datePaidBlank;
+  else if (draft.paidOn > TODAY) problems.paidOn = PW.datePaidAhead;
 
   return problems;
 }
@@ -477,7 +477,7 @@ export interface Amending extends PaymentOpen {
   id: string;
 }
 
-export type MarkRefusal = 'paid' | 'cancelled';
+export type MarkRefusal = 'paid' | 'cancelled' | 'currency' | 'plan';
 
 export interface Marking {
   id: string;

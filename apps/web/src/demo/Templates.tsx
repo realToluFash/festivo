@@ -6,6 +6,7 @@ import { Chevron, Head, RowWords, TextAction } from '../components/SettingsParts
 import {
   Amount,
   BudgetDialog,
+  BudgetLoading,
   BudgetRow,
   BudgetShell,
   Columns,
@@ -56,24 +57,46 @@ export function TemplatesPage({ event, state }: { event: SampleEvent; state: str
     >
       {() =>
         calibrating ? (
-          <Calibration kind={calibrationOf(state)} />
+          <Calibration first={calibrationOf(state)} />
         ) : (
-          <StartFrom first={sourceOf(state)} />
+          <StartFrom
+            first={sourceOf(state)}
+            typeless={state === 'start_no_type'}
+            margin={state === 'start_margin'}
+          />
         )
       }
     </BudgetShell>
   );
 }
 
-function StartFrom({ first }: { first: SourceId }) {
+function StartFrom({
+  first,
+  typeless = false,
+  margin = false,
+}: {
+  first: SourceId;
+  typeless?: boolean;
+  margin?: boolean;
+}) {
   const navigate = useNavigate();
   const [picked, setPicked] = useState<SourceId>(first);
   const source = SOURCES.find((one) => one.id === picked);
-  const preview = previewOf(picked);
-  const groups = [
-    { name: W.weddings, sources: SOURCES.filter((one) => one.wedding) },
-    { name: W.otherEvents, sources: SOURCES.filter((one) => !one.wedding) },
-  ];
+  const preview = previewOf(picked, margin);
+  const groups = typeless
+    ? [
+        {
+          name: null,
+          sources: SOURCES.filter((one) => !one.template).sort((a, b) =>
+            (b.on ?? '').localeCompare(a.on ?? ''),
+          ),
+        },
+        { name: W.templates, sources: SOURCES.filter((one) => one.template) },
+      ]
+    : [
+        { name: W.weddings, sources: SOURCES.filter((one) => one.wedding) },
+        { name: W.otherEvents, sources: SOURCES.filter((one) => !one.wedding) },
+      ];
 
   return (
     <>
@@ -82,9 +105,10 @@ function StartFrom({ first }: { first: SourceId }) {
         left={
           <>
             <p className="tpl-intro">{W.startLine}</p>
+            {typeless && <p className="tpl-intro">{W.noType}</p>}
             {groups.map((group) => (
               <SourceGroup
-                key={group.name}
+                key={group.name ?? 'events'}
                 name={group.name}
                 sources={group.sources}
                 picked={picked}
@@ -131,7 +155,7 @@ function SourceGroup({
   picked,
   onPick,
 }: {
-  name: string;
+  name: string | null;
   sources: readonly Source[];
   picked: SourceId;
   onPick: (id: SourceId) => void;
@@ -139,10 +163,15 @@ function SourceGroup({
   const id = useId();
 
   return (
-    <section className="tpl-group" aria-labelledby={id}>
-      <h2 id={id} className="tpl-caps">
-        {name}
-      </h2>
+    <section
+      className="tpl-group"
+      {...(name == null ? { 'aria-label': W.startTitle } : { 'aria-labelledby': id })}
+    >
+      {name != null && (
+        <h2 id={id} className="tpl-caps">
+          {name}
+        </h2>
+      )}
       <ul className="desk-rows bud-rows">
         {sources.map((source) => (
           <li key={source.id}>
@@ -165,13 +194,37 @@ function SourceGroup({
   );
 }
 
-function Calibration({ kind }: { kind: CalibrationKind }) {
+function Calibration({ first }: { first: CalibrationKind }) {
+  const [kind, setKind] = useState(first);
+  const [retried, setRetried] = useState(false);
+  const timer = useRef<number | undefined>(undefined);
+  const title = useRef<HTMLHeadingElement>(null);
   const blocks = calibrationBlocks(kind);
+
+  useEffect(() => () => window.clearTimeout(timer.current), []);
+
+  useEffect(() => {
+    if (retried && kind !== 'loading') title.current?.focus();
+  }, [retried, kind]);
 
   return (
     <>
-      <PageTitle title={W.calibrationTitle} />
-      {blocks.length === 0 ? (
+      <PageTitle title={W.calibrationTitle} titleRef={title} />
+      {kind === 'loading' ? (
+        <BudgetLoading words={W.calibrationLoading} card={false} />
+      ) : kind === 'failed' ? (
+        <>
+          <p className="desk-line is-ink">{W.calibrationFailed}</p>
+          <TextAction
+            label={W.tryAgain}
+            onClick={() => {
+              setKind('loading');
+              setRetried(true);
+              timer.current = window.setTimeout(() => setKind('few'), SEND_MS);
+            }}
+          />
+        </>
+      ) : blocks.length === 0 ? (
         <p className="tpl-empty">{W.nothingToLearn}</p>
       ) : (
         blocks.map((block) => <CurrencyPart key={block.currency} block={block} />)

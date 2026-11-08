@@ -16,7 +16,7 @@ export const SHARE_WORDS = {
   ends: (day: string) => `Ends ${day}`,
   endedOn: (day: string) => `Ended ${day}`,
   asksPassphrase: 'Asks for a passphrase',
-  notOpened: 'Not opened yet',
+  notOpened: 'Never opened',
   openedOnce: (day: string) => `Opened once, on ${day}`,
   openedTwice: 'Opened twice',
   opened: (n: number, day: string) => `Opened ${n} times, last on ${day}`,
@@ -35,6 +35,8 @@ export const SHARE_WORDS = {
   passphraseOptional: 'Passphrase · Optional',
   passphraseHelp: '8 to 64 characters. Pass it on by other means.',
   noCategory: 'Choose a category.',
+  noPayer: 'Choose a payer.',
+  choosePayer: 'Choose a payer',
   pastDate: 'Choose a date after today.',
   shortPassphrase: 'Make the passphrase at least 8 characters long, or leave it empty.',
   longPassphrase: 'Shorten the passphrase to 64 characters or fewer.',
@@ -84,6 +86,8 @@ export const SHARE_WORDS = {
   wrongPassphrase: 'That passphrase is not right. Check it and try again.',
   tooMany: (time: string) =>
     `Too many wrong passphrases have been tried on this link. Try again at ${time}.`,
+  tooManySoon:
+    'Too many wrong passphrases have been tried on this link. Wait a moment, then try again.',
   goneTitle: 'This link does not open anything',
   goneLine: 'It may have been revoked or have ended. Ask the person who sent it for a new one.',
   endedTitle: 'This link has ended.',

@@ -60,6 +60,27 @@ export function CancelledMark() {
   );
 }
 
+/** A bin, drawn here: the line that says an added payment was deleted (sc-88). The product's set has none. */
+export function BinMark() {
+  return (
+    <svg
+      className="pay-bin"
+      width={16}
+      height={16}
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      focusable="false"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2.2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v6M14 11v6" />
+    </svg>
+  );
+}
+
 /** Cancel payment, 540: why it is not owed, optional and kept in its history; Keep it at the left. */
 export function CancelDialog({
   cancelling,
@@ -173,7 +194,7 @@ export function MadeDialog({
   return (
     <BudgetDialog
       title={PW.alreadyMade}
-      verb={busy ? BW.saving : QW.add}
+      verb={busy ? BW.saving : PW.addAsPaid}
       on={!busy}
       first={first}
       onDismiss={onClose}
@@ -223,9 +244,7 @@ export function MadeDialog({
           value={draft.paidOn}
           max={TODAY}
           error={problems.paidOn ?? null}
-          onChange={(paidOn) => {
-            if (paidOn <= TODAY) set({ paidOn });
-          }}
+          onChange={(paidOn) => set({ paidOn })}
         />
         <TextField
           id={`${id}-reference`}
@@ -249,6 +268,7 @@ function Reminders({ viewer, state }: { viewer: Viewer; state: string }) {
   const [start] = useState(() => remindersStart(state));
   const [days, setDays] = useState(start.days);
   const [changing, setChanging] = useState<Changing | null>(start.changing);
+  const off = state === 'reminders_plan_lost';
 
   return (
     <div className="desk-page">
@@ -256,16 +276,18 @@ function Reminders({ viewer, state }: { viewer: Viewer; state: string }) {
         <Card>
           <div className="desk-said-lines">
             <h1 className="desk-says pay-says" tabIndex={-1}>
-              {PW.paymentReminders}
+              {off ? PW.remindersOff : PW.paymentReminders}
             </h1>
             <p className="desk-on-card" aria-live="polite">
-              {PW.whenReminded(days)}
+              {off ? PW.remindersOffLine : PW.whenReminded(days)}
             </p>
           </div>
-          <CardStep
-            label={PW.change}
-            onClick={() => setChanging({ typed: String(days), problem: null })}
-          />
+          {!off && (
+            <CardStep
+              label={PW.change}
+              onClick={() => setChanging({ typed: String(days), problem: null })}
+            />
+          )}
         </Card>
         <Rows>
           <li>
@@ -279,6 +301,7 @@ function Reminders({ viewer, state }: { viewer: Viewer; state: string }) {
             />
           </li>
         </Rows>
+        <p className="pay-note">{PW.stopsReminders}</p>
       </div>
       {changing != null && (
         <DaysDialog

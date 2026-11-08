@@ -645,9 +645,6 @@
   },
   "frame": {
     "home": "Home",
-    "events": "Events",
-    "calendar": "Calendar",
-    "settings": "Settings",
     "organisation": "Organisation",
     "backTo": "Back to {{place}}",
     "cancel": "Cancel",
@@ -1855,7 +1852,6 @@
     "bell": "Notifications",
     "bellUnread_one": "Notifications, {{count, number}} unread",
     "bellUnread_other": "Notifications, {{count, number}} unread",
-    "overNinetyNine": "99+",
     "heading": "Notifications",
     "markAllRead": "Mark all read",
     "allRead": "All read.",

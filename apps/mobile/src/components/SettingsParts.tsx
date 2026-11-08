@@ -203,12 +203,14 @@ export function RoundButton({
   label,
   onPress,
   dot = false,
+  testID,
   ref,
 }: {
   glyph: GlyphName;
   label: string;
   onPress: () => void;
   dot?: boolean;
+  testID?: string;
   ref?: Ref<ViewInstance> | undefined;
 }) {
   return (
@@ -219,6 +221,7 @@ export function RoundButton({
       style={({ pressed }) => [styles.round, pressed && styles.pressed]}
       accessibilityRole="button"
       accessibilityLabel={label}
+      testID={testID}
     >
       <Glyph name={glyph} size={19} ink={tokens.colorInk} />
       {dot && <View style={styles.unread} />}

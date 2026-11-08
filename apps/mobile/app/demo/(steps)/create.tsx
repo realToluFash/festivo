@@ -5,6 +5,7 @@ import { StyleSheet, type TextInputInstance, View } from 'react-native';
 import { PrimaryButton } from '../../../src/components/Buttons.tsx';
 import { useReadOut } from '../../../src/components/ReadOut.tsx';
 import { DemoScreen, NavBar } from '../../../src/demo/DemoScreen.tsx';
+import { LegalLinks } from '../../../src/demo/LegalLinks.tsx';
 import { createOpening } from '../../../src/demo/signUp.ts';
 import { FieldLine, InsideField } from '../../../src/steps/InsideField.tsx';
 import { Heading, Says } from '../../../src/steps/Lines.tsx';
@@ -62,7 +63,12 @@ export default function CreateAccount() {
   return (
     <DemoScreen
       nav={<NavBar step={[1, 4]} />}
-      foot={<PrimaryButton label="Create account" onPress={create} testID="demo.createAccount" />}
+      foot={
+        <View>
+          <PrimaryButton label="Create account" onPress={create} testID="demo.createAccount" />
+          <LegalLinks style={styles.legal} />
+        </View>
+      }
     >
       <Heading title="Create your account" {...(line != null && { intro: line })} />
       <View style={styles.first}>
@@ -129,4 +135,5 @@ export default function CreateAccount() {
 const styles = StyleSheet.create({
   first: { marginTop: tokens.space3xl },
   next: { marginTop: tokens.spaceXl },
+  legal: { marginTop: tokens.spaceXxs },
 });

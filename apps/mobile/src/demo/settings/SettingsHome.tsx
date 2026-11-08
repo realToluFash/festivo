@@ -5,8 +5,8 @@ import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { CARD_PIECES, Confetti, Cover } from '../../components/Cover.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
-import { Glass, PHONE_TAB_BAR, PhoneTabBar } from '../../components/TodayCover.tsx';
-import { Bell, Fade, Landscape, OrgPill, PortraitTop } from './Frame.tsx';
+import { Glass, PHONE_TAB_BAR, PhoneTabBar, TabBarFade } from '../../components/TodayCover.tsx';
+import { Bell, Landscape, OrgPill, PortraitTop } from './Frame.tsx';
 import { WORDS as PERSONALISATION } from './PersonalisationModel.ts';
 import { SchemeTile } from './PersonalisationParts.tsx';
 import { demoGroups, YOU } from './sample.ts';
@@ -14,6 +14,7 @@ import { type ShellSection, useShell, type Viewer } from '../../components/setti
 import { Caps, Pill, Tile, TYPE } from '../../components/SettingsParts.tsx';
 import { SwitchedNotice } from '../../components/SwitchedNotice.tsx';
 import { SELECTED_ROW } from '../../components/SummaryRows.tsx';
+import { LegalLinks } from '../LegalLinks.tsx';
 
 type Listed = Exclude<ShellSection, 'account'>;
 
@@ -284,9 +285,21 @@ function DemoRow({ dense, onDemo }: { dense: boolean; onDemo: () => void }) {
   );
 }
 
-function SignOut({ height, onSignOut }: { height: number; onSignOut: () => void }) {
+function SignOut({
+  height,
+  onSignOut,
+  legal = true,
+}: {
+  height: number;
+  onSignOut: () => void;
+  /** Terms · Privacy under it; upright with two columns they go under both instead. */
+  legal?: boolean;
+}) {
   return (
-    <Pill label="Sign out" kind="secondary" glyph="signOut" height={height} onPress={onSignOut} />
+    <View>
+      <Pill label="Sign out" kind="secondary" glyph="signOut" height={height} onPress={onSignOut} />
+      {legal && <LegalLinks style={styles.legal} />}
+    </View>
   );
 }
 
@@ -348,7 +361,7 @@ export function SettingsHome({ onSignOut, onDemo }: Handlers) {
           </View>
         </ScrollView>
         <View style={[styles.statusStrip, { height: insets.top }]} pointerEvents="none" />
-        <Fade />
+        <TabBarFade />
         <PhoneTabBar bottom={foot} onTab={shell.onTab} at="Settings" />
       </View>
     );
@@ -365,7 +378,11 @@ export function SettingsHome({ onSignOut, onDemo }: Handlers) {
       )}
       <View style={styles.footPhone}>
         <DemoRow dense={false} onDemo={onDemo} />
-        <SignOut height={tokens.sizeHitPhoneHero} onSignOut={onSignOut} />
+        <SignOut
+          height={tokens.sizeHitPhoneHero}
+          onSignOut={onSignOut}
+          legal={organisation == null}
+        />
       </View>
     </>
   );
@@ -394,13 +411,16 @@ export function SettingsHome({ onSignOut, onDemo }: Handlers) {
         {organisation == null ? (
           <View style={styles.single}>{left}</View>
         ) : (
-          <View style={styles.columns}>
-            <View style={styles.grow}>{left}</View>
-            <View style={styles.grow}>
-              <Caps text={organisation.heading} top={tokens.space4xl} />
-              <Group sections={organisation.sections} dense={false} open={null} />
+          <>
+            <View style={styles.columns}>
+              <View style={styles.grow}>{left}</View>
+              <View style={styles.grow}>
+                <Caps text={organisation.heading} top={tokens.space4xl} />
+                <Group sections={organisation.sections} dense={false} open={null} />
+              </View>
             </View>
-          </View>
+            <LegalLinks style={styles.legalUnder} />
+          </>
         )}
       </ScrollView>
     </View>
@@ -530,6 +550,8 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colorCard,
   },
   footPhone: { marginTop: 26, gap: 22 },
+  legal: { marginTop: tokens.spaceXs },
+  legalUnder: { marginTop: tokens.spaceXl },
   footColumn: { marginTop: tokens.spaceXl, gap: tokens.spaceLg },
   columns: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.space3xl },
   single: { maxWidth: 520 },

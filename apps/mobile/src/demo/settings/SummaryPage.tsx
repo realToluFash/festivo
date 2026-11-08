@@ -6,9 +6,9 @@ import { Back } from '../../components/SettingsParts.tsx';
 import { useShell } from '../../components/settingsShell.ts';
 import { PageToast, type PageToastProps } from '../../components/Summary.tsx';
 import { Text } from '../../components/Text.tsx';
-import { PHONE_TAB_BAR, PhoneTabBar } from '../../components/TodayCover.tsx';
+import { PHONE_TAB_BAR, PhoneTabBar, TabBarFade } from '../../components/TodayCover.tsx';
 import { tokens } from '../../theme/tokens.ts';
-import { Bell, Fade, Landscape, OrgPill, PortraitTop } from './Frame.tsx';
+import { Bell, Landscape, OrgPill, PortraitTop } from './Frame.tsx';
 
 /** A section page in B, summary first: back and the bell on top, the title, then the card and the lists. */
 export function SummaryPage({
@@ -20,7 +20,7 @@ export function SummaryPage({
   children,
 }: {
   title?: string;
-  back?: { label: string; onPress: () => void } | null;
+  back?: { label?: string; onPress: () => void } | null;
   column?: ReactNode;
   scrollRef?: Ref<ScrollViewInstance>;
   toast?: PageToastProps | null | undefined;
@@ -28,7 +28,7 @@ export function SummaryPage({
 }) {
   const shell = useShell();
   const insets = useSafeAreaInsets();
-  const backTo = back === undefined ? { label: 'Settings', onPress: shell.toSettings } : back;
+  const backTo = back === undefined ? { onPress: shell.toSettings } : back;
 
   if (shell.layout === 'landscape')
     return (
@@ -73,7 +73,7 @@ export function SummaryPage({
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.top}>
-          {backTo != null && <Back label={backTo.label} onPress={backTo.onPress} />}
+          {backTo != null && <Back {...backTo} />}
           {phone && backTo == null && <OrgPill />}
           <View style={styles.grow} />
           {phone && <Bell tell={shell.tell} />}
@@ -84,7 +84,7 @@ export function SummaryPage({
       {phone && (
         <>
           <View style={[styles.statusStrip, { height: insets.top }]} pointerEvents="none" />
-          <Fade />
+          <TabBarFade />
           <PhoneTabBar bottom={foot} onTab={shell.onTab} at="Settings" />
         </>
       )}
