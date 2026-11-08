@@ -30,6 +30,7 @@ export const CREATE_STATES = [
   'failed',
   'discard',
   'created',
+  'managed',
 ] as const;
 
 export type CreateState = (typeof CREATE_STATES)[number];
@@ -58,6 +59,8 @@ export interface Walk {
   asking: boolean;
   landing: Landing;
   inList: boolean;
+  /** An account its home organisation manages (sc-563): the refusal in the first step's place. */
+  managed: boolean;
 }
 
 export const NEW_ORG = { id: 'org-lumen-feiras-pt', name: 'Lumen Feiras' } as const;
@@ -117,6 +120,7 @@ export const CREATE_WORDS = {
   limitedTitle: 'Too many new organisations for now.',
   failed: 'Creating the organisation did not work. Nothing was created. Try again in a moment.',
   cancel: 'Cancel',
+  close: 'Close',
   back: 'Back',
   continue: 'Continue',
   create: 'Create organisation',
@@ -248,6 +252,7 @@ export function freshWalk(none = false): Walk {
     asking: false,
     landing: 'field',
     inList: false,
+    managed: false,
   };
 }
 
@@ -300,6 +305,8 @@ export function walkOf(state: CreateState): Walk | null {
       return { ...named, asking: true };
     case 'created':
       return null;
+    case 'managed':
+      return { ...freshWalk(), managed: true, landing: 'dialog' };
   }
 }
 
@@ -363,6 +370,7 @@ export const CREATE_PAGES: readonly { name: string; states: readonly DemoLink[] 
     states: [
       createLink('discard', 'Discard this organisation?, over step 1'),
       createLink('created', 'Created: Lumen Feiras’ Events'),
+      createLink('managed', 'Managed by Ire Events: refused, Close'),
     ],
   },
   {

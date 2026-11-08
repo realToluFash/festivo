@@ -1,6 +1,7 @@
 import { createContext, type ReactNode, useContext } from 'react';
 
 import type { SettingsSection } from '../kit/appNav.ts';
+import { type LayoutKind, useLayout } from '../layout/useLayout.ts';
 import type { CoverLayout, Tab } from './TodayCover.tsx';
 import type { Tell } from './TodayParts.tsx';
 
@@ -33,6 +34,18 @@ export interface Shell {
 }
 
 export const ShellContext = createContext<Shell | null>(null);
+
+export function layoutOf(kind: LayoutKind): CoverLayout {
+  return kind === 'phone' ? 'phone' : kind === 'tabletPortrait' ? 'portrait' : 'landscape';
+}
+
+/** The layout a Settings part draws for: its shell's, or the device's in the app, which gives none. */
+export function useShellLayout(): CoverLayout {
+  const shell = useContext(ShellContext);
+  const { kind } = useLayout();
+
+  return shell?.layout ?? layoutOf(kind);
+}
 
 export function useShell(): Shell {
   const shell = useContext(ShellContext);

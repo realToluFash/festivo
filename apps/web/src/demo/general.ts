@@ -85,6 +85,7 @@ export const DOMAIN_WORDS = {
   notYours: 'Add a domain your own address is at.',
   added: 'Added. People whose main email address is at it can now ask to join.',
   removed: (domain: string) => `${domain} removed.`,
+  proved: 'Proved',
 } as const;
 
 export const LINK_WORDS = {
@@ -210,6 +211,7 @@ export const GENERAL_STATES = [
   'heldLinked',
   'domainStopped',
   'deleteUncounted',
+  'domainBoth',
 ] as const;
 
 export type GeneralState = (typeof GENERAL_STATES)[number];
@@ -263,6 +265,8 @@ export type CardSaid = { kind: 'saved'; words: string } | { kind: 'transferred';
 export interface Domain {
   name: string;
   stopped: boolean;
+  /** Also proved in Data and control › Email domains (sc-560): the row carries the Proved tag. */
+  proved?: boolean;
 }
 
 export interface GeneralStart {
@@ -348,6 +352,8 @@ export function generalStart(
       return { ...page, link: 'turnedOff' };
     case 'domainStopped':
       return { ...page, domains: [{ name: YOUR_DOMAIN, stopped: true }] };
+    case 'domainBoth':
+      return { ...page, domains: [{ name: YOUR_DOMAIN, stopped: false, proved: true }] };
     case 'transfer':
       return owner ? { ...page, dialog: 'transfer', transferPicked: true } : page;
     case 'transferred':
@@ -539,6 +545,10 @@ const PUBLIC_DOMAINS = new Set([
   'zoho.com',
 ]);
 
+export function isPublicDomain(domain: string): boolean {
+  return PUBLIC_DOMAINS.has(domain);
+}
+
 export function domainProblem(typed: string): string | null {
   const problem = companyDomainProblem(typed);
 
@@ -687,6 +697,7 @@ export const GENERAL_PAGES: readonly { name: string; states: readonly DemoLink[]
       general('addDomain', 'Add a domain'),
       general('removeDomain', 'Remove ire.events'),
       general('domainStopped', 'A domain stopped'),
+      general('domainBoth', 'ire.events on both lists: Proved'),
       general('cardsLoading', 'Domains loading, the link not loaded'),
       general('replaceLink', 'Replace the link'),
       general('linkOff', 'The link turned off'),

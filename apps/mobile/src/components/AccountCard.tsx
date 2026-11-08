@@ -1,12 +1,11 @@
-import { type ZoneRow, zoneLabel } from '@soirely/domain';
 import type { Ref } from 'react';
 import { StyleSheet, View, type ViewInstance } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
-import { useReadOut } from '../../components/ReadOut.tsx';
-import { type TextHandle, Text } from '../../components/Text.tsx';
-import { tokens } from '../../theme/tokens.ts';
-import { Glyph, type GlyphName } from '../../components/Glyph.tsx';
-import { type CardLine, WORDS, zoneLine } from './AccountModel.ts';
+import type { CardLine } from '../kit/accountPage.ts';
+import { tokens } from '../theme/tokens.ts';
+import { Glyph, type GlyphName } from './Glyph.tsx';
+import { useReadOut } from './ReadOut.tsx';
 import {
   CardFace,
   OnCard,
@@ -16,7 +15,8 @@ import {
   ShapeMark,
   type StepProps,
   SummaryCard,
-} from '../../components/Summary.tsx';
+} from './Summary.tsx';
+import { type TextHandle, Text } from './Text.tsx';
 
 /** Where a row's hairline starts: past its 28 pt icon and the gap beside it. */
 export const LEAD_INSET = 40;
@@ -85,6 +85,7 @@ export function LineIcon({ name }: { name: GlyphName }) {
   );
 }
 
+/** Your name and your time zone, each opening its own screen. */
 export function AboutSection({
   name,
   zone,
@@ -94,14 +95,16 @@ export function AboutSection({
   onZone,
 }: {
   name: string;
-  zone: ZoneRow;
+  zone: { title: string; line: string };
   nameRef: Ref<ViewInstance>;
   zoneRef: Ref<ViewInstance>;
   onName: () => void;
   onZone: () => void;
 }) {
+  const { t } = useTranslation();
+
   return (
-    <Section title={WORDS.aboutYou}>
+    <Section title={t('account.aboutYou')}>
       <RowList
         items={[
           {
@@ -111,7 +114,7 @@ export function AboutSection({
               <Row
                 ref={nameRef}
                 title={name}
-                line={WORDS.yourName}
+                line={t('account.yourName')}
                 lead={<LineIcon name="user" />}
                 opens
                 onPress={onName}
@@ -125,8 +128,8 @@ export function AboutSection({
             row: (
               <Row
                 ref={zoneRef}
-                title={zoneLabel(zone)}
-                line={zoneLine(zone)}
+                title={zone.title}
+                line={zone.line}
                 lead={<LineIcon name="globe" />}
                 opens
                 onPress={onZone}

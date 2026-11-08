@@ -1,6 +1,7 @@
 import { formatCountdown, meetsPasswordLength } from '@soirely/domain';
 import { type RefObject, useRef, useState } from 'react';
 import { StyleSheet, type TextInputInstance, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import {
   CodeField,
@@ -14,9 +15,10 @@ import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { SAMPLE } from '../samples.ts';
+import { discardAsk } from '../../components/AccountName.tsx';
+import { CodeExpired } from '../../components/AccountVerify.tsx';
 import { COUNTDOWN_SECONDS, WORDS as ACCOUNT } from './AccountModel.ts';
-import { discardAsk } from './AccountName.tsx';
-import { CodeExpired, useCountdown } from './AccountParts.tsx';
+import { useCountdown } from './AccountParts.tsx';
 import { sentCodeProblem } from './AccountSample.ts';
 import { SentBody } from './SecurityForgot.tsx';
 import {
@@ -80,6 +82,7 @@ export function ChangePasswordScreen({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const { t } = useTranslation();
   const [stage, setStage] = useState(start);
   const current = useRef('');
   const next = useRef('');
@@ -190,6 +193,7 @@ export function ChangePasswordScreen({
         WORDS.changeStays,
         { keep: () => setDiscarding(false), discard: onClose },
         'security.change.discard',
+        t,
       )}
       testID="security.change.screen"
     >
@@ -260,6 +264,7 @@ export function SetPasswordScreen({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const { t } = useTranslation();
   const [stage, setStage] = useState<'code' | 'choose'>('code');
   const code = useRef('');
   const chosen = useRef('');
@@ -302,6 +307,7 @@ export function SetPasswordScreen({
           WORDS.nothingAdded,
           { keep: () => setDiscarding(false), discard: onClose },
           'security.choose.discard',
+          t,
         )}
         testID="security.choose.screen"
       >
@@ -347,7 +353,7 @@ export function SetPasswordScreen({
     >
       <Line text={WORDS.codeLead} />
       {expired ? (
-        <CodeExpired channel="email" />
+        <CodeExpired title={ACCOUNT.expiredTitle} line={ACCOUNT.expiredEmail} />
       ) : (
         <Field label={WORDS.codeLabel} error={codeSays}>
           <CodeField

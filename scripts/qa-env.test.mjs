@@ -2815,7 +2815,7 @@ describe('the flows a batch runs', () => {
         "'Seguridad'",
       );
       expect(readFileSync(join(target, '_checks/sign-in-rules.fr.yaml'), 'utf8')).toContain(
-        "'Règles de connexion|Règles de connexion de .*'",
+        "'Règles de connexion'",
       );
       expect(readFileSync(join(target, '_checks/sc23267-start-cold.fr.yaml'), 'utf8')).toContain(
         'file: sc23267-start-cold.fr.sc23267-start-cold-once.flow.yaml',

@@ -6,7 +6,7 @@ import { Text } from '../../components/Text.tsx';
 import { type Channel, isSaving } from '../../kit/notificationSettings.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { Glyph, type GlyphName } from '../../components/Glyph.tsx';
-import { LEAD_INSET, LineIcon } from './AccountCard.tsx';
+import { LEAD_INSET, LineIcon } from '../../components/AccountCard.tsx';
 import {
   CATEGORY_NAMES,
   CHANNEL_NAMES,

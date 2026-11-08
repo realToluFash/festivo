@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { DATA_CONTROL_PAGES } from './dataControlPages.ts';
 import {
-  DATA_PAGES,
   DATA_STATES,
   LONG_HOLD,
   PAST_EVENTS,
@@ -103,14 +103,14 @@ describe('retention’s rules (sc-30194)', () => {
     );
   });
 
-  it('says Owners and Admins are emailed now only when the first run has events to name', () => {
+  it('says owners and admins are emailed now only when the first run has events to name', () => {
     const off = page('rt_off');
 
     expect(questionOf(off, '90 days', 'Africa/Lagos', LOCALE).emailed).toBe(
-      'Owners and Admins are emailed now.',
+      'Owners and admins are emailed now.',
     );
     expect(questionOf(off, '365 days', 'Africa/Lagos', LOCALE).emailed).toBe(
-      'Owners and Admins are emailed 7 days before any run with events in it.',
+      'Owners and admins are emailed 7 days before any run with events in it.',
     );
   });
 
@@ -202,7 +202,7 @@ describe('retention’s rules (sc-30194)', () => {
     for (const viewer of [VIEWERS.folake, VIEWERS.julien])
       expect(cardOf(left, viewer, LAGOS, LOCALE)).toEqual({
         says: 'Guests’ details are kept after an event',
-        line: 'Switched off on Sunday, Oct 18, when Ire Events moved to the free plan. Its period and held events are kept as they were, and come back on with Enterprise.',
+        line: 'Switched off on Sunday, Oct 18, when Ire Events left Enterprise. The period and the held events are kept as they were, and retention comes back on with Enterprise.',
         step: 'contact',
       });
     expect(page('rt_locked')).toMatchObject({ leftEnterpriseAt: null, period: 'Off', held: [] });
@@ -223,7 +223,7 @@ describe('retention’s rules (sc-30194)', () => {
   it('says what each viewer can do on the card', () => {
     expect(cardOf(page('rt_off'), VIEWERS.folake, LAGOS, LOCALE).step).toBe('choose');
     expect(cardOf(page('rt_off'), VIEWERS.julien, LAGOS, LOCALE)).toMatchObject({
-      line: 'Only an Owner can turn this on.',
+      line: 'Only an owner can turn this on.',
       step: null,
     });
     expect(cardOf(page('rt_locked'), VIEWERS.julien, LAGOS, LOCALE)).toMatchObject({
@@ -246,8 +246,10 @@ describe('retention’s rules (sc-30194)', () => {
     expect(dataViewerKey('ana', 'rt_on')).toBe('ana');
   });
 
-  it('links every state from the demo’s home', () => {
-    const linked = DATA_PAGES.flatMap((one) => one.states.map((state) => state.to));
+  it('links every state from the demo’s home, at its place under Data and control', () => {
+    const linked = DATA_CONTROL_PAGES.flatMap((one) => one.states.map((state) => state.to)).filter(
+      (to) => to.startsWith('/demo/settings/data-and-control/delete-guest-data'),
+    );
 
     for (const state of DATA_STATES)
       expect(linked.some((to) => to.includes(`state=${state}`))).toBe(true);

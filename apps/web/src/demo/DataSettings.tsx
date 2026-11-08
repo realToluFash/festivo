@@ -5,6 +5,7 @@ import { type ReactNode, type RefObject, useEffect, useId, useMemo, useRef, useS
 import { Glyph } from '../components/Glyph.tsx';
 import {
   Ask,
+  BackRow,
   Card,
   CardStep,
   Choices,
@@ -46,21 +47,24 @@ import {
   turnedOff,
   withPeriod,
 } from './dataSettings.ts';
+import { SHARED_WORDS } from './dataControl.ts';
 import type { Load } from './members.ts';
 import type { Viewer } from './settings.ts';
 import './dataSettings.css';
 
 const RETRY_MS = 1200;
 
-/** Settings > Data at a desk in B · Summary first (DataSettings.dc.html), the retention part; sc-612's export joins above it. */
+/** Data and control › Delete guest data after an event at a desk, in B (DataSettings.dc.html, one level down). */
 export function DataSettings({
   viewer,
   state,
   tell,
+  onBack,
 }: {
   viewer: Viewer;
   state: string;
   tell: Tell;
+  onBack: () => void;
 }) {
   const locale = useMemo(() => formattingLocale('en', navigator.language), []);
   const [start] = useState(() => dataStart(state, viewer, locale));
@@ -79,10 +83,17 @@ export function DataSettings({
     return () => clearTimeout(timer);
   }, [load]);
 
+  const top = (
+    <>
+      <BackRow to={SHARED_WORDS.back} onBack={onBack} bell={<DemoBell tell={tell} />} />
+      <TitleRow title={W.title} />
+    </>
+  );
+
   if (load !== 'loaded')
     return (
       <Page>
-        <TitleRow title={W.title} bell={<DemoBell tell={tell} />} />
+        {top}
         {load === 'failed' ? <Failed onRetry={() => setLoad('retrying')} /> : <Loading />}
       </Page>
     );
@@ -103,7 +114,7 @@ export function DataSettings({
 
   return (
     <Page>
-      <TitleRow title={W.title} bell={<DemoBell tell={tell} />} />
+      {top}
       <Card>
         <div className="desk-said-lines" tabIndex={-1} aria-live="polite">
           <Says>{card.says}</Says>
@@ -115,7 +126,7 @@ export function DataSettings({
         {card.step === 'choose' && <CardStep label={W.choose} onClick={() => setMenu(true)} />}
       </Card>
       <section className="desk-block">
-        <Head title={W.setting}>
+        <Head title={W.howLong}>
           {locked && (
             <span className="desk-tag">
               <Glyph name="lock" size={13} weight={2.4} />

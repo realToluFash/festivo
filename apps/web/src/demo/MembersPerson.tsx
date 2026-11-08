@@ -5,6 +5,7 @@ import type { Handed } from './handover.ts';
 import { LeadsBlock, LeadsNotIn } from './Handover.tsx';
 import { focusWhenFree } from '../layers.ts';
 import {
+  alsoMemberLine,
   firstName,
   grantable,
   historyRows,
@@ -61,6 +62,7 @@ export function PersonPage({
   onHandOver,
   leadsLoad,
   onLoadLeads,
+  alsoMember = null,
 }: {
   person: Person;
   people: readonly Person[];
@@ -78,6 +80,8 @@ export function PersonPage({
   onHandOver: () => void;
   leadsLoad: 'loaded' | 'loading' | 'failed' | 'retrying';
   onLoadLeads: () => void;
+  /** How many other organisations they are also in, when the state shows it. */
+  alsoMember?: number | null;
 }) {
   const view = personView({ person, people, viewer, event, handed, say });
   const tag = tagOf(person);
@@ -126,6 +130,7 @@ export function PersonPage({
           />
         )}
       </Card>
+      {alsoMember != null && <Note>{alsoMemberLine(alsoMember)}</Note>}
       {seesLeads && leadsLoad !== 'loaded' && (
         <LeadsNotIn name={person.name} failed={leadsLoad === 'failed'} onRetry={onLoadLeads} />
       )}
