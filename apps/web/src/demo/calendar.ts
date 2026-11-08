@@ -374,11 +374,18 @@ export function agendaOf(
   return entries;
 }
 
-/** Where Tab enters Agenda (sc-31222): the first day with a row on or after the day the list was sent to, else the last one. */
-export function agendaStop(entries: readonly AgendaEntry[], from: string): AgendaEntry | undefined {
+/** Where Tab enters Agenda (sc-31222): the first row on or after the day the list was sent to; sent past the last row, that last row. */
+export function agendaStop(
+  entries: readonly AgendaEntry[],
+  from: string,
+): { entry: AgendaEntry; row: number } | undefined {
   const listed = entries.filter((entry) => entry.items.length > 0);
+  const next = listed.find((entry) => entry.day >= from);
+  const last = listed.at(-1);
 
-  return listed.find((entry) => entry.day >= from) ?? listed.at(-1);
+  if (next != null) return { entry: next, row: 0 };
+
+  return last == null ? undefined : { entry: last, row: last.items.length - 1 };
 }
 
 export function monthHasItems(month: CalendarMonth, days: ReadonlyMap<string, Item[]>): boolean {

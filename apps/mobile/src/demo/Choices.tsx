@@ -3,6 +3,8 @@ import { Platform, StyleSheet, View } from 'react-native';
 import { PrimaryButton, QuietButton } from '../components/Buttons.tsx';
 import { ProviderButton } from '../components/ProviderSignIn.tsx';
 import { tokens } from '../theme/tokens.ts';
+import { BoldAppleButton } from './boldText/BoldAppleButton.tsx';
+import { useBoldText } from './boldText/boldTextStore.ts';
 
 /** Email leads; Apple then Google on iPhone and Google then Apple on Android, each as large as email; Create an account under them. */
 export function Choices({
@@ -19,15 +21,24 @@ export function Choices({
   /** The door code's way in, under Create an account (sc-31774). */
   onJoinCode?: () => void;
 }) {
-  const apple = (
-    <ProviderButton
-      key="apple"
-      provider="apple"
-      label="Continue with Apple"
-      onPress={onApple}
-      testID="demo.apple"
-    />
-  );
+  const bold = useBoldText();
+  const apple =
+    bold && Platform.OS === 'ios' ? (
+      <BoldAppleButton
+        key="apple"
+        label="Continue with Apple"
+        onPress={onApple}
+        testID="demo.apple"
+      />
+    ) : (
+      <ProviderButton
+        key="apple"
+        provider="apple"
+        label="Continue with Apple"
+        onPress={onApple}
+        testID="demo.apple"
+      />
+    );
   const google = (
     <ProviderButton
       key="google"
