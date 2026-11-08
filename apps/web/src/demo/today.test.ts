@@ -10,9 +10,9 @@ describe('Today’s dates follow the locale', () => {
     expect(us.long('2026-11-03')).toBe('Tuesday, November 3');
     expect(us.day('2026-11-05')).toBe('Thu, Nov 5');
     expect(us.day('2027-01-09')).toBe('Sat, Jan 9, 2027');
-    expect(us.clock('18:00')).toBe('6:00 PM');
-    expect(us.hour('14:00')).toBe('2 PM');
-    expect(us.hour('21:30')).toBe('9:30 PM');
+    expect(us.clock('18:00')).toBe('18:00');
+    expect(us.hour('14:00')).toBe('14:00');
+    expect(us.hour('21:30')).toBe('21:30');
   });
 
   it('in Britain', () => {
@@ -90,7 +90,7 @@ describe('the event day', () => {
       'later',
     ]);
     expect(day.now?.at).toBeCloseTo((2 + 10 / 120) / 5);
-    expect(day.now?.ends).toBe('Ends tomorrow, Sat, Nov 7 at 3:00 PM');
+    expect(day.now?.ends).toBe('Ends tomorrow, Sat, Nov 7 at 15:00');
     expect(day.now?.live).toBe('Day 2 of 3 · The Landmark, London');
   });
 

@@ -1,3 +1,4 @@
+import { writtenTime } from './clock.ts';
 import type { SampleEvent } from './events.ts';
 import { demoWords } from './demoWords.ts';
 import { MESSAGES_WORD, MW } from './messagesWords.ts';
@@ -82,7 +83,7 @@ export const ORGANISATION = 'Ire Events';
 export const GUESTS_N = 142;
 export const BALANCE = 1500;
 export const THEIR_LINK = '[their own link]';
-export const PAGE_WHEN = 'Thu, Nov 5 · 6:00 PM · The Landmark';
+export const PAGE_WHEN = `Thu, Nov 5 · ${writtenTime('18:00', 'en')} · The Landmark`;
 export const ZONE = 'London time (GMT)';
 export const ZONE_SHORT = 'London time';
 export const ENDS = { date: 'Sat, Nov 7', time: '15:00', at: '2026-11-07T15:00:00Z' };
@@ -851,8 +852,7 @@ function wall(iso: string, timeZone: string, parts: Intl.DateTimeFormatOptions):
 export function toldOf(was: SampleEvent, now: SampleEvent): Told[] {
   const day = (iso: string) =>
     wall(iso, now.timeZone, { weekday: 'short', month: 'short', day: 'numeric' });
-  const time = (iso: string) =>
-    wall(iso, now.timeZone, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+  const time = (iso: string) => writtenTime(iso, 'en-US', now.timeZone);
   const told: Told[] = [];
 
   if (day(was.startsAt) !== day(now.startsAt))
@@ -877,7 +877,7 @@ export function toldOf(was: SampleEvent, now: SampleEvent): Told[] {
 
 export const STARTS_LATER: Told = {
   item: MW.newStartTime,
-  line: filled(MW.startMoved, { new: '17:30', old: '18:00' }),
+  line: filled(MW.startMoved, { new: writtenTime('17:30', 'en'), old: writtenTime('18:00', 'en') }),
 };
 
 export const ROSEWOOD = {
