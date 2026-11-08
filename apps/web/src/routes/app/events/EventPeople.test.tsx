@@ -98,7 +98,7 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
-type Answer = (body: unknown) => Response;
+type Answer = (body: unknown) => Response | Promise<Response>;
 
 async function onPeople(
   people: ReturnType<typeof person>[],
@@ -224,7 +224,6 @@ describe('People on an event, at a desk (sc-29915)', () => {
     });
     const row = within(people()).getByRole('button', { name: /Tom Becker/ });
 
-    row.focus();
     fireEvent.click(row);
     const dialog = screen.getByRole('dialog', { name: 'Role on this event' });
     const group = within(dialog).getByRole('group', { name: 'Tom Becker’s role on this event' });
@@ -278,10 +277,14 @@ describe('People on an event, at a desk (sc-29915)', () => {
     ).toBe(true);
   });
 
-  it('asks before removing, then says the person is off this event', async () => {
+  it('asks before removing, shows it removing, then says the person is off this event', async () => {
     signedIn();
+    let answer: (done: Response) => void = () => {};
     const sent = await onPeople([PRIYA, TOM], {
-      'DELETE /api/events/ev_1/people/p_tom': () => new Response(null, { status: 204 }),
+      'DELETE /api/events/ev_1/people/p_tom': () =>
+        new Promise<Response>((resolve) => {
+          answer = resolve;
+        }),
     });
 
     fireEvent.click(within(people()).getByRole('button', { name: /Tom Becker/ }));
@@ -296,6 +299,13 @@ describe('People on an event, at a desk (sc-29915)', () => {
     );
 
     fireEvent.click(within(ask).getByRole('button', { name: 'Remove' }));
+    const removing = await within(ask).findByRole('button', { name: 'Removing…' });
+
+    expect(removing.getAttribute('aria-busy')).toBe('true');
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.getByRole('alertdialog', { name: /Remove Tom Becker/ })).toBe(ask);
+
+    answer(new Response(null, { status: 204 }));
 
     expect(await screen.findByText('Tom Becker is off this event.')).toBeDefined();
     expect(sent.some((one) => one.line === 'DELETE /api/events/ev_1/people/p_tom')).toBe(true);
@@ -515,24 +525,43 @@ describe('People on an event, at a desk (sc-29915)', () => {
 
     fireEvent.click(await within(people()).findByRole('button', { name: 'Add by name' }));
     const dialog = screen.getByRole('dialog', { name: 'Add people' });
-    const add = within(dialog).getByRole('button', { name: 'Add' });
-    add.focus();
+    const cancel = within(dialog).getByRole('button', { name: 'Cancel' });
+    const last = within(dialog).getByRole('checkbox', { name: /Sade Bello/ });
+    last.focus();
     fireEvent.keyDown(document, { key: 'Tab' });
 
-    expect(dialog.contains(document.activeElement)).toBe(true);
+    expect(document.activeElement).toBe(cancel);
+
+    fireEvent.keyDown(document, { key: 'Tab', shiftKey: true });
+
+    expect(document.activeElement).toBe(last);
 
     fireEvent.click(within(dialog).getByRole('checkbox', { name: /Kofi Mensah/ }));
     fireEvent.keyDown(document, { key: 'Escape' });
 
     const ask = screen.getByRole('alertdialog', { name: 'Discard your changes?' });
-    for (const shiftKey of [false, true]) {
-      within(ask)
-        .getByRole('button', { name: shiftKey ? 'Keep adding' : 'Discard' })
-        .focus();
-      fireEvent.keyDown(document, { key: 'Tab', shiftKey });
+    const keep = within(ask).getByRole('button', { name: 'Keep adding' });
+    const discard = within(ask).getByRole('button', { name: 'Discard' });
+    discard.focus();
+    fireEvent.keyDown(document, { key: 'Tab' });
 
-      expect(ask.contains(document.activeElement)).toBe(true);
-    }
+    expect(document.activeElement).toBe(keep);
+
+    fireEvent.keyDown(document, { key: 'Tab', shiftKey: true });
+
+    expect(document.activeElement).toBe(discard);
+  });
+
+  it('asks before discarding a role picked and nothing else', async () => {
+    signedIn();
+    await onPeople([TOM]);
+
+    fireEvent.click(await within(people()).findByRole('button', { name: 'Add by name' }));
+    const dialog = screen.getByRole('dialog', { name: 'Add people' });
+    fireEvent.click(within(dialog).getByRole('radio', { name: /Can edit/ }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+
+    expect(screen.getByRole('alertdialog', { name: 'Discard your changes?' })).toBeDefined();
   });
 
   it('keeps Tab inside the ask before removing, never in the dialog behind it', async () => {
@@ -548,14 +577,16 @@ describe('People on an event, at a desk (sc-29915)', () => {
         within(ask).getByRole('button', { name: 'Keep Tom Becker' }),
       ),
     );
-    for (const shiftKey of [false, true]) {
-      within(ask)
-        .getByRole('button', { name: shiftKey ? 'Keep Tom Becker' : 'Remove' })
-        .focus();
-      fireEvent.keyDown(document, { key: 'Tab', shiftKey });
+    const keep = within(ask).getByRole('button', { name: 'Keep Tom Becker' });
+    const remove = within(ask).getByRole('button', { name: 'Remove' });
+    remove.focus();
+    fireEvent.keyDown(document, { key: 'Tab' });
 
-      expect(ask.contains(document.activeElement)).toBe(true);
-    }
+    expect(document.activeElement).toBe(keep);
+
+    fireEvent.keyDown(document, { key: 'Tab', shiftKey: true });
+
+    expect(document.activeElement).toBe(remove);
   });
 
   it('says it could not load, and loads again on Try again', async () => {

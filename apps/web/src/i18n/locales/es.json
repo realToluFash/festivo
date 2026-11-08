@@ -2182,6 +2182,7 @@
     "removeLine": "Esta persona perderá el acceso a este evento en su próxima acción. Seguirá en {{organisation}}.",
     "keep": "Mantener a {{name}}",
     "removeConfirm": "Quitar",
+    "removing": "Removing…",
     "removeFailed": "No se ha podido quitar. Esta persona sigue en el evento. Vuelva a intentarlo en un momento.",
     "removed": "{{name}} ya no está en este evento.",
     "addTitle": "Añadir personas",

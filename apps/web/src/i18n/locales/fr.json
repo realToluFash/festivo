@@ -2182,6 +2182,7 @@
     "removeLine": "Cette personne perdra l’accès à cet événement à sa prochaine action. Elle reste dans {{organisation}}.",
     "keep": "Garder {{name}}",
     "removeConfirm": "Retirer",
+    "removing": "Removing…",
     "removeFailed": "Le retrait n’a pas abouti. Cette personne participe toujours à l’événement. Réessayez dans un instant.",
     "removed": "{{name}} ne participe plus à cet événement.",
     "addTitle": "Ajouter des personnes",

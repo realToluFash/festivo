@@ -369,6 +369,7 @@ function RoleDialog({
   const [failed, setFailed] = useState<string | null>(null);
   const [removing, setRemoving] = useState(false);
   const [refused, setRefused] = useState<string | null>(null);
+  const [removingNow, setRemovingNow] = useState(false);
   const name = person.user.name;
   const held = useRef<EventRole>(person.role);
   const byArrow = useRef(false);
@@ -450,6 +451,7 @@ function RoleDialog({
   async function remove(): Promise<void> {
     if (removal.current) return;
     removal.current = true;
+    setRemovingNow(true);
     setRefused(null);
 
     try {
@@ -459,6 +461,7 @@ function RoleDialog({
       setRefused(refusal(error, t('eventPeople.removeFailed')));
     } finally {
       removal.current = false;
+      setRemovingNow(false);
     }
   }
 
@@ -532,6 +535,7 @@ function RoleDialog({
           line={t('eventPeople.removeLine', { organisation: organisationName })}
           keep={t('eventPeople.keep', { name })}
           go={t('eventPeople.removeConfirm')}
+          busy={removingNow ? t('eventPeople.removing') : undefined}
           failed={refused ?? undefined}
           onKeep={() => {
             setRefused(null);
@@ -576,7 +580,7 @@ function AddDialog({
         ticked.includes(member.membershipId) ||
         member.name.toLocaleLowerCase(currentLocale()).includes(wording),
     );
-  const touched = ticked.length > 0 || typed.trim() !== '';
+  const touched = ticked.length > 0 || typed.trim() !== '' || role !== 'can_view';
   const cancel = useCallback(() => (touched ? setDiscarding(true) : onClose()), [touched, onClose]);
   const inOrganisation = t('eventPeople.inOrganisation', { organisation: organisationName });
 

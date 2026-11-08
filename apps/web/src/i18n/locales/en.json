@@ -2127,6 +2127,7 @@
     "removeLine": "They lose this event on their next request. They stay in {{organisation}}.",
     "keep": "Keep {{name}}",
     "removeConfirm": "Remove",
+    "removing": "Removing…",
     "removeFailed": "Removing did not work. They are still on this event. Try again in a moment.",
     "removed": "{{name}} is off this event.",
     "addTitle": "Add people",
