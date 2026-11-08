@@ -22,6 +22,8 @@ import { EVENTS_PAGES } from './events.ts';
 import { ACCOUNT_PAGES } from './account.ts';
 import { GENERAL_PAGES } from './general.ts';
 import { MESSAGES_PAGES } from './messages.ts';
+import { SeatingPage } from './Seating.tsx';
+import { SEATING_PAGES } from './seating.ts';
 import { GetBackInBoard } from './GetBackIn.tsx';
 import { GuestPage } from './Guest.tsx';
 import { GUEST_PAGES } from './guest.ts';
@@ -146,6 +148,7 @@ export default function Demo() {
       <Route path="events/:id" element={<EventPage />} />
       <Route path="events/:id/dates" element={<EventPage dates />} />
       <Route path="events/:id/messages" element={<EventPage messages />} />
+      <Route path="events/:id/seating" element={<SeatingPage />} />
       <Route path="calendar" element={<Calendar />} />
       <Route path="settings" element={<Settings />} />
       <Route path="settings/members" element={<Settings />} />
@@ -219,6 +222,12 @@ function DemoHome({ from }: { from: string }) {
         <h2 id="demo-page-36">36 · Messaging · Messages on an event</h2>
         <h3>Messaging in B · Conversations · desktop</h3>
         <BoardPages pages={MESSAGES_PAGES} />
+      </section>
+
+      <section className="demo-home-page" aria-labelledby="demo-page-31">
+        <h2 id="demo-page-31">31 · Venue and seating · Seating on an event</h2>
+        <h3>Seating in A · The room · desktop</h3>
+        <BoardPages pages={SEATING_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-28">
