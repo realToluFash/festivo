@@ -10,6 +10,7 @@ use Psl\Str;
 enum RealtimeTopic: string
 {
     case UserNotifications = 'users/{id}/notifications';
+    case EventSeating = 'events/{id}/seating';
 
     public function for(string $id): string
     {

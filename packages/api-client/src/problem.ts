@@ -44,6 +44,8 @@ export interface Problem {
   provider?: string;
   /** On `organisation_two_factor_required`: the permission kept back. */
   permission?: string;
+  /** On a seating plan's `precondition_failed`: who changed it since (sc-3998). */
+  changedBy?: string;
 }
 
 /**

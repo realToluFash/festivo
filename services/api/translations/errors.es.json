@@ -24,6 +24,8 @@
     "event_concluded": "El evento ya ha terminado.",
     "event_host_required": "El evento necesita al menos un anfitrión.",
     "plan_limit": "Se ha alcanzado el límite del plan.",
+    "seating_plan_exists": "Este evento ya tiene un plano de mesas.",
+    "seating_section_limit": "Un plano de mesas puede tener hasta 30 secciones. Elimine una para añadir otra.",
     "unauthenticated": "Inicie sesión para continuar.",
     "invalid_credentials": "Ese correo electrónico y esa contraseña no coinciden.",
     "invalid_refresh_token": "Su sesión ha finalizado. Inicie sesión de nuevo.",
