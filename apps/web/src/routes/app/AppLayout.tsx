@@ -423,11 +423,11 @@ function Destination() {
   if (inside != null) return eventName ?? t(`eventNav.${inside.area}`);
   if (pathname.startsWith('/app/account')) return t('nav.account');
 
-  const section = ['events', 'calendar', 'guests', 'settings'].find((name) =>
+  const section = ['events', 'calendar', 'settings'].find((name) =>
     pathname.startsWith(`/app/${name}`),
   );
 
-  return t(`nav.${section ?? 'dashboard'}`);
+  return t(`nav.${section ?? 'today'}`);
 }
 
 /** `AppShell-Phone`'s sheet: a modal dialog, so focus goes back to Menu when it closes. */
