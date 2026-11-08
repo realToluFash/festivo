@@ -108,7 +108,7 @@
     "failedBody": "Algo ha fallado en el camino. Inténtelo de nuevo en un momento.",
     "nameBlank": "Introduzca su nombre completo.",
     "passwordBlank": "Introduzca una contraseña.",
-    "timedOut": "Your sign-up timed out, so we did not keep the password. Enter it again to get a new code."
+    "timedOut": "Su registro ha caducado, así que no hemos guardado la contraseña. Vuelva a introducirla para recibir un código nuevo."
   },
   "verifyEmail": {
     "title": "Revise su correo",

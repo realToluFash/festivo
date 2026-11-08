@@ -55,6 +55,10 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   `endedBody` «Inicie sesión de nuevo para continuar.». «Caducar», como las solicitudes; no
   «se ha agotado el tiempo», que alarga el título sin decir más. No «su sesión»: la persona
   aún no había entrado. La app une los dos en una línea con punto, así que el título no lo lleva.
+- **8 Nov 2026. Un registro que ha caducado** (sc-32449 para sc-29923, `register.timedOut`,
+  web y app). «Su registro ha caducado, así que no hemos guardado la contraseña. Vuelva a
+  introducirla para recibir un código nuevo.». "Sign-up" es «registro», como `limitedTitle`;
+  «caducar», como el inicio de sesión; «un código nuevo», como `resend`.
 - **8 Nov 2026. Invitados A: la respuesta, los dos recuentos y el 412** (sc-3773, #32403).
   "Not sure yet" es «Por confirmar», en la página del invitado y en la del anfitrión: no
   marca género, como sí harían «indeciso» o «no está seguro». «Por confirmar · plazo hasta el
@@ -65,6 +69,9 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   «Mostrar los {{count}}». "Their conversation" es «Conversación», sin posesivo: «su» se lee
   como usted. Por lo mismo, en el 412 "Theirs · Yours" es «Versión guardada · Su versión», y los
   botones «Usar la guardada» y «Mantener la mía».
+  El cierre (#32762): «El plazo para responder termina hoy.», «… termina mañana, {{date}}.»,
+  «… termina el {{date}}.», «El plazo para responder terminó el {{date}}.». Sin nadie por
+  responder: «Ya han respondido todos.».
 
 - **7 Nov 2026. La pantalla Hoy de la app** (`mobile:todayScreen.*`, sc-31788 para sc-29090).
   "Live now" y "Live · …" son «En curso», como `eventsScreen.happeningNow`, nunca «Publicado»,

@@ -70,6 +70,11 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   web and app). "That sign-in timed out", then `endedBody` "Sign in again to carry on." The
   app joins the two as one line with a full stop, so the title takes none. "That" names the
   attempt the person just made, not their session: they were never signed in.
+- **8 Nov 2026. A sign-up that ran out** (sc-32449 for sc-29923, `register.timedOut`, web
+  and app). "Your sign-up timed out, so we did not keep the password. Enter it again to get a
+  new code." Kept as built: "timed out", as the sign-in; "the password", the one just typed;
+  "a new code", as Send a new code. The demos and tests pin this sentence, so a reword waits
+  on [dev].
 - **8 Nov 2026. Guests A: a guest's reply, the two counts, and the 412** (sc-3773, pm's #31841,
   settled in #32403). The reply state is "Not sure yet" everywhere, the guest's own words,
   never "Maybe": "Not sure yet · asked to decide by {{date}}", "Not sure yet · replied
@@ -85,6 +90,9 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   "Yours", **Use theirs** and **Keep mine**: "Use theirs fills the form with their version and
   drops your changes. Keep mine saves your changes over theirs." Each count is its own plural
   key, and "Replies close" has a whole sentence per case (today, tomorrow, on a date, closed).
+  When replies close (#32762): "Replies close today." with no date, "Replies close tomorrow,
+  {{date}}.", "Replies close on {{date}}.", "Replies closed on {{date}}.", the day reckoned in
+  the event's zone. Nobody left to reply is "Everyone has replied.", companions included.
 
 - **8 Nov 2026. A payment schedule's shape fields, its sums and its failed save** (sc-1332,
   pm's #32327 from ux's demo, sc-31779 #1485). Field labels: "Percentage of the quote" (won
