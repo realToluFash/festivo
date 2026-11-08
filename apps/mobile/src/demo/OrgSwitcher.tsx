@@ -66,6 +66,7 @@ import {
 } from './createOrg/CreateWalk.ts';
 import { CreateWalkWindow, type WalkOpening, deviceNow } from './createOrg/CreateWalkWindow.tsx';
 import { DraftTile } from './createOrg/WalkParts.tsx';
+import { ManagedBanner } from './Managed.tsx';
 import {
   CELL_GAP,
   type DropFrame,
@@ -863,6 +864,11 @@ function DropDown({
                           <InvitationPanel
                             invite={opened.invite}
                             joined={opened.kind === 'joined'}
+                            managed={session.managed === opened.invite.id}
+                            onChange={() => {
+                              onClose();
+                              setTimeout(() => router.push('/demo/settings/account'), SETTLED_MS);
+                            }}
                             outcome={
                               opened.kind === 'invitation' ? opened.outcome?.kind : undefined
                             }
@@ -1187,6 +1193,8 @@ function PanelButtons({ children }: { children: ReactNode }) {
 function InvitationPanel({
   invite,
   joined,
+  managed,
+  onChange,
   outcome,
   sizes,
   locale,
@@ -1196,6 +1204,8 @@ function InvitationPanel({
 }: {
   invite: Invite;
   joined: boolean;
+  managed: boolean;
+  onChange: () => void;
   outcome: 'failed' | 'declined' | 'busy' | 'accepted' | 'refused' | undefined;
   sizes: Sizes;
   locale: string;
@@ -1255,7 +1265,11 @@ function InvitationPanel({
           {SW.until(untilIn(locale, invite.until))}
         </Text>
       </View>
-      {outcome === 'declined' ? (
+      {managed ? (
+        <View style={styles.answerUnder}>
+          <ManagedBanner onChange={onChange} testID={`switcher.invitation.${invite.id}.managed`} />
+        </View>
+      ) : outcome === 'declined' ? (
         <View style={styles.answerUnder}>
           <Notice
             tone="quiet"

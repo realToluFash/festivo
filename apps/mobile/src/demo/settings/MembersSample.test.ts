@@ -305,6 +305,7 @@ describe('Requests to get back in, in the app’s Members (sc-30893)', () => {
       'handoverNowFailed',
       'handoverNowDone',
       'handoverReadOnly',
+      'alsoMember',
       'recovery',
       'recoveryApprove',
       'recoveryTurnDown',

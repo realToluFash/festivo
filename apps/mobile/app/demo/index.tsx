@@ -6,6 +6,7 @@ import { Text } from '../../src/components/Text.tsx';
 import { DemoScreen, NavBar } from '../../src/demo/DemoScreen.tsx';
 import { BOLD_TEXT_BOARDS } from '../../src/demo/boldText/BoldTextBoards.ts';
 import { BUDGET_BOARDS } from '../../src/demo/budget/BudgetBoards.ts';
+import { DATA_BOARDS } from '../../src/demo/settings/DataBoards.ts';
 import { Heading } from '../../src/steps/Lines.tsx';
 import { SAMPLE } from '../../src/demo/samples.ts';
 import { DOOR_CODE_BOARDS } from '../../src/demo/doorCode/DoorCodeBoards.ts';
@@ -691,6 +692,10 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/settings/sign-in-rules?state=failed',
       },
     ],
+  },
+  {
+    page: 'Data and control · B · One place',
+    boards: DATA_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
   },
   {
     page: 'Members · handing over · A One person',
