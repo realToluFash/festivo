@@ -11,3 +11,4 @@ export * from './problem.ts';
 export * from './oauth.ts';
 export * from './proofRefusal.ts';
 export * from './topics.ts';
+export * from './seating.ts';
