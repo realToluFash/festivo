@@ -37,6 +37,8 @@ export interface Session {
   expanded: string | null;
   query: string;
   large: boolean;
+  /** sc-563: the invitation whose Join is refused, the address being managed by Ire Events. */
+  managed?: string;
 }
 
 export const VIEWER = { name: 'Folake Adeyemi', email: 'folake@ire.events' } as const;
@@ -157,6 +159,7 @@ export const SWITCHER_STATES = [
   'declined',
   'failed',
   'large',
+  'managed',
 ] as const;
 
 export type SwitcherState = (typeof SWITCHER_STATES)[number];
@@ -215,6 +218,8 @@ export function sessionFor(state: SwitcherState): Session {
       return { ...populated, outcomes: { [BLUEBIRD]: { kind: 'failed' } }, expanded: BLUEBIRD };
     case 'large':
       return { ...populated, large: true };
+    case 'managed':
+      return { ...populated, expanded: CELEBRACIONES, managed: CELEBRACIONES };
     case 'populated':
       return populated;
   }

@@ -325,6 +325,7 @@ export const MEMBERS_STATES = [
   'handoverNowFailed',
   'handoverNowDone',
   'handoverReadOnly',
+  'alsoMember',
   ...RECOVERY_STATES,
 ] as const;
 
@@ -397,6 +398,8 @@ export interface MembersStart {
   recoveryAsk: RecoveryAsk | null;
   recoveryAnswer: RecoveryAnswer | null;
   answering: Answering;
+  /** sc-563: how many other organisations the open person is also a member of, never which. */
+  otherOrganisations: number | null;
 }
 
 export type ClaimState = 'unclaimed' | 'open' | 'withdrawn';
@@ -697,6 +700,7 @@ export function membersStart(
     recoveryAsk: null,
     recoveryAnswer: null,
     answering: 'answers',
+    otherOrganisations: null,
   };
   const removing: MembersStart = {
     ...base,
@@ -774,6 +778,8 @@ export function membersStart(
       };
     case 'priya':
       return { ...base, open: PRIYA };
+    case 'alsoMember':
+      return { ...base, open: PRIYA, otherOrganisations: 2 };
     case 'removing':
     case 'handover':
     case 'handoverMenu':
