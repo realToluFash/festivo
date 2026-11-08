@@ -25,6 +25,7 @@ import {
   type Answer,
   type EditState,
   type RecordState,
+  companionsAfterEdit,
   emailCheck,
   nameProblem,
   phoneCheck,
@@ -32,8 +33,15 @@ import {
   recorded,
   sameNameAs,
 } from './GuestsModel.ts';
+import { LanguageChoices, LanguageField } from './GuestLanguage.tsx';
 import { Amber, AmberLine, Choices, DoneLine } from './GuestsParts.tsx';
-import { type SampleGuest, THEIRS, TODAY } from './GuestsSample.ts';
+import {
+  type Companion,
+  type GuestLanguage,
+  type SampleGuest,
+  THEIRS,
+  TODAY,
+} from './GuestsSample.ts';
 import { HOW_INVITED, HOW_TOLD, REPLY_WORD, W, say } from './GuestsWords.ts';
 import { ReplyMark } from './ReplyMark.tsx';
 
@@ -173,6 +181,24 @@ export function Legend({ text, line }: { text: string; line?: string | null }) {
 
 const MAX = 10;
 
+/** Language's sheet over the focused screen (sc-3790): a tap picks and closes it, as a select does. */
+export function languageOver(
+  value: GuestLanguage | null,
+  onPick: (code: GuestLanguage | null) => void,
+  onClose: () => void,
+): { layer: ReactNode; onClose: () => void } {
+  return {
+    layer: (
+      <SheetLayer onClose={onClose} label={W.cancel}>
+        <SheetBody title={W.language} close={W.cancel} onClose={onClose}>
+          <LanguageChoices value={value} onPick={onPick} />
+        </SheetBody>
+      </SheetLayer>
+    ),
+    onClose,
+  };
+}
+
 function startCompanions(state: EditState | null, g: SampleGuest): string[] {
   if (state === 'editCompanions') return ['Hauwa Bello'];
   if (state === 'editMax')
@@ -181,6 +207,13 @@ function startCompanions(state: EditState | null, g: SampleGuest): string[] {
       ...Array.from({ length: MAX - 1 }, (_, i) => `Guest of ${g.name} · ${i + 2}`),
     ];
   return g.companions.map((c) => c.name);
+}
+
+/** Each field's companion as the guest has them, so a seat or a meal is known; a field added or prefilled here has none. */
+function startSeats(state: EditState | null, g: SampleGuest): (Companion | null)[] {
+  return state === 'editCompanions' || state === 'editMax'
+    ? startCompanions(state, g).map(() => null)
+    : [...g.companions];
 }
 
 /** Edit guest (sc-3773): sc-1468's fields filled in; every refusal under its field before anything is sent. */
@@ -215,6 +248,8 @@ export function EditGuest({
   const [country, setCountry] = useState(phone.country);
   const [number, setNumber] = useState(start === 'edit' ? '7700 9004' : phone.number);
   const [companions, setCompanions] = useState(() => startCompanions(start, g));
+  const [seats, setSeats] = useState(() => startSeats(start, g));
+  const [removing, setRemoving] = useState<number | null>(start === 'editSeated' ? 0 : null);
   const [shownAll, setShownAll] = useState(false);
   const [removed, setRemoved] = useState<string | null>(
     start === 'editCompanions' ? `${g.companions[0]?.name ?? ''} · 2` : null,
@@ -226,6 +261,8 @@ export function EditGuest({
     start === 'editNotSaved' ? 'notSaved' : start === 'editOffline' ? 'offline' : null,
   );
   const [discarding, setDiscarding] = useState(start === 'editDiscard');
+  const [language, setLanguage] = useState<GuestLanguage | null>(g.language ?? null);
+  const [choosing, setChoosing] = useState(false);
   const nameRef = useRef<TextInputInstance>(null);
   const emailRef = useRef<TextInputInstance>(null);
   const numberRef = useRef<TextInputInstance>(null);
@@ -238,6 +275,7 @@ export function EditGuest({
     name !== g.name ||
     email !== (g.email ?? '') ||
     joinPhone(country, number) !== g.phone ||
+    language !== (g.language ?? null) ||
     companions.join() !== g.companions.map((c) => c.name).join();
 
   const next = (): SampleGuest => ({
@@ -245,10 +283,8 @@ export function EditGuest({
     name: name.trim(),
     email: email.trim() === '' ? null : email.trim(),
     phone: joinPhone(country, number),
-    companions: companions.map((c, i) => ({
-      name: c,
-      kind: g.companions[i]?.kind ?? (g.kind === 'coming' ? 'coming' : 'held'),
-    })),
+    language,
+    companions: companionsAfterEdit(companions, seats, g.kind),
   });
   const save = (anyway = false) => {
     const problems = {
@@ -278,6 +314,28 @@ export function EditGuest({
         width: ASK_WIDTH,
       }
     : null;
+  const drop = (index: number) => {
+    setRemoved(companions[index] ?? '');
+    setCompanions(companions.filter((_, i) => i !== index));
+    setSeats(seats.filter((_, i) => i !== index));
+  };
+  const seat = removing == null ? null : (seats[removing] ?? null);
+  const seatedName = removing == null ? '' : (companions[removing] ?? '');
+  const removeSeated: AskProps | null =
+    removing != null && seat != null
+      ? {
+          title: say.removeTitle(seatedName),
+          line: say.seatedLine(seatedName, seat.table ?? null, seat.meal === true),
+          keep: { label: W.cancel, testID: 'guest.edit.seatedKeep' },
+          confirm: { label: W.remove, removes: true, testID: 'guest.edit.seatedRemove' },
+          onKeep: () => setRemoving(null),
+          onConfirm: () => {
+            drop(removing);
+            setRemoving(null);
+          },
+          width: ASK_WIDTH,
+        }
+      : null;
   const shown = shownAll || companions.length <= 3 ? companions : companions.slice(0, 3);
 
   return (
@@ -288,7 +346,19 @@ export function EditGuest({
       onCancel={() => (changed ? setDiscarding(true) : onClose())}
       cancelTestID="guest.edit.cancel"
       opener={opener}
-      ask={discard}
+      ask={discard ?? removeSeated}
+      over={
+        choosing
+          ? languageOver(
+              language,
+              (code) => {
+                setLanguage(code);
+                setChoosing(false);
+              },
+              () => setChoosing(false),
+            )
+          : null
+      }
       testID="guest.edit"
     >
       {conflict && (
@@ -378,6 +448,12 @@ export function EditGuest({
         fieldRef={numberRef}
         testID="guest.edit.phone"
       />
+      <LanguageField
+        value={language}
+        chose={g.chose ?? null}
+        onOpen={() => setChoosing(true)}
+        testID="guest.edit.language"
+      />
       <View style={styles.companions}>
         <Legend
           text={W.companions}
@@ -399,8 +475,12 @@ export function EditGuest({
               label={W.remove}
               plain
               onPress={() => {
-                setRemoved(c);
-                setCompanions(companions.filter((_, i) => i !== index));
+                const held = seats[index];
+                if (held != null && (held.table != null || held.meal === true)) {
+                  setRemoving(index);
+                  return;
+                }
+                drop(index);
               }}
               accessibilityLabel={`${W.remove} ${c}`}
               testID={`guest.edit.remove.${index}`}
@@ -425,7 +505,10 @@ export function EditGuest({
           <TextAction
             label={W.addCompanion}
             glyph="plus"
-            onPress={() => setCompanions([...companions, ''])}
+            onPress={() => {
+              setCompanions([...companions, '']);
+              setSeats([...seats, null]);
+            }}
             testID="guest.edit.addCompanion"
           />
         )}

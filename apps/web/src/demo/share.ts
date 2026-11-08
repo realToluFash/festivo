@@ -49,6 +49,7 @@ export const SHARE_STATES: readonly string[] = [
   'long_passphrase',
   'revoke',
   'created',
+  'no_payer',
 ];
 
 export const RECIPIENT_STATES = [
@@ -59,6 +60,7 @@ export const RECIPIENT_STATES = [
   'passphrase',
   'wrong_passphrase',
   'too_many_attempts',
+  'too_many_soon',
   'ended',
   'gone',
 ] as const;
@@ -185,7 +187,7 @@ export interface Draft {
   passphrase: string;
 }
 
-export type DraftField = 'category' | 'endsOn' | 'passphrase';
+export type DraftField = 'category' | 'payer' | 'endsOn' | 'passphrase';
 export type DraftProblems = Partial<Record<DraftField, string>>;
 
 export const BLANK_DRAFT: Draft = {
@@ -209,6 +211,7 @@ export function draftProblems(draft: Draft, today = TODAY): DraftProblems {
   const length = lengthOf(draft.passphrase);
 
   if (draft.scope === 'category' && draft.category === '') problems.category = W.noCategory;
+  if (draft.scope === 'payer' && draft.payer === '') problems.payer = W.noPayer;
   if (draft.endsOn !== '' && draft.endsOn <= today) problems.endsOn = W.pastDate;
   if (length > 0 && length < PASSPHRASE_FEWEST) problems.passphrase = W.shortPassphrase;
   if (length > PASSPHRASE_MOST) problems.passphrase = W.longPassphrase;
@@ -253,6 +256,8 @@ export function deskStart(state: string): Desk {
       return { ...desk, links: [] };
     case 'no_category':
       return tried({ scope: 'category' });
+    case 'no_payer':
+      return tried({ scope: 'payer', payer: '' });
     case 'past_date':
       return tried({ endsOn: '2026-11-02' });
     case 'short_passphrase':
@@ -495,7 +500,8 @@ export function sharedView(scope: Scope, marked = false): Shared {
   };
 }
 
-export type Answer = 'open' | 'wrong' | 'locked';
+/** `locked` came with a usable Retry-After; `lockedSoon` did not (sc-94's two 429 lines). */
+export type Answer = 'open' | 'wrong' | 'locked' | 'lockedSoon';
 
 export type Visit =
   | { page: 'shown'; scope: Scope; marked: boolean }
@@ -512,15 +518,21 @@ export function visitOf(path: string | undefined, state: string | null): Visit {
   if (state === 'passphrase') return { page: 'gate', scope, wrong: 0, answer: null, tried: '' };
   if (state === 'wrong_passphrase')
     return { page: 'gate', scope, wrong: 1, answer: 'wrong', tried: 'marigold' };
-  if (state === 'too_many_attempts')
-    return { page: 'gate', scope, wrong: MOST_WRONG, answer: 'locked', tried: 'marigold' };
+  if (state === 'too_many_attempts' || state === 'too_many_soon')
+    return {
+      page: 'gate',
+      scope,
+      wrong: MOST_WRONG,
+      answer: state === 'too_many_soon' ? 'lockedSoon' : 'locked',
+      tried: 'marigold',
+    };
 
   return { page: 'shown', scope, marked: false };
 }
 
 /** The server's answer to a passphrase: locked after 10 wrong, the right one refused too. */
-export function answerTo(typed: string, wrong: number): Answer {
-  if (wrong >= MOST_WRONG) return 'locked';
+export function answerTo(typed: string, wrong: number, retry = true): Answer {
+  if (wrong >= MOST_WRONG) return retry ? 'locked' : 'lockedSoon';
 
   return typed === PASSPHRASE ? 'open' : 'wrong';
 }
@@ -534,6 +546,7 @@ const ORGANISER: Record<string, string> = {
   long_passphrase: 'A passphrase over 64 characters',
   revoke: 'Revoke, asked once in the row',
   created: 'Link created, with Copy the link',
+  no_payer: 'One payer’s share, with none chosen',
 };
 
 const RECIPIENT: Record<RecipientState, { scope: Scope; name: string }> = {
@@ -547,6 +560,7 @@ const RECIPIENT: Record<RecipientState, { scope: Scope; name: string }> = {
   },
   wrong_passphrase: { scope: 'whole', name: 'A wrong passphrase' },
   too_many_attempts: { scope: 'whole', name: 'Too many wrong passphrases' },
+  too_many_soon: { scope: 'whole', name: 'Too many wrong passphrases, with no time to wait for' },
   ended: { scope: 'whole', name: 'Revoked or ended: who to ask for a new one' },
   gone: { scope: 'whole', name: 'Never made, or a removed payer’s: one answer' },
 };

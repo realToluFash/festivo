@@ -20,7 +20,7 @@ export function SummaryPage({
   children,
 }: {
   title?: string;
-  back?: { label: string; onPress: () => void } | null;
+  back?: { label?: string; onPress: () => void } | null;
   column?: ReactNode;
   scrollRef?: Ref<ScrollViewInstance>;
   toast?: PageToastProps | null | undefined;
@@ -28,7 +28,7 @@ export function SummaryPage({
 }) {
   const shell = useShell();
   const insets = useSafeAreaInsets();
-  const backTo = back === undefined ? { label: 'Settings', onPress: shell.toSettings } : back;
+  const backTo = back === undefined ? { onPress: shell.toSettings } : back;
 
   if (shell.layout === 'landscape')
     return (
@@ -73,7 +73,7 @@ export function SummaryPage({
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.top}>
-          {backTo != null && <Back label={backTo.label} onPress={backTo.onPress} />}
+          {backTo != null && <Back {...backTo} />}
           {phone && backTo == null && <OrgPill />}
           <View style={styles.grow} />
           {phone && <Bell tell={shell.tell} />}

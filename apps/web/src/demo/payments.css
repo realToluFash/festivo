@@ -106,3 +106,20 @@
 .pay-refused .desk-text:not(:hover) {
   text-decoration: none;
 }
+
+.pay-deleted {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin: 0 0 8px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--colorInset);
+  color: var(--colorInkSecondary);
+  font: 500 14px/1.45 var(--fontFamily);
+}
+
+.pay-bin {
+  flex: none;
+  margin-top: 2px;
+}

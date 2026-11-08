@@ -30,11 +30,15 @@ import {
   TurningMark,
 } from '../../components/Summary.tsx';
 import {
+  ASK_OWNER_STATES,
   type AddState,
+  OVER_LIMIT_STATES,
   type ReviewRow,
   type ReviewState,
+  addedGuest,
   countryName,
   emailCheck,
+  isIn,
   nameProblem,
   phoneCheck,
   planRoom,
@@ -42,7 +46,15 @@ import {
   sameNameAs,
 } from './GuestsModel.ts';
 import { Amber, AmberLine, Choices, DoneLine } from './GuestsParts.tsx';
-import { CONTACTS, PICKED, PICKED_COUNT, PLAN_SAMPLES, type SampleGuest } from './GuestsSample.ts';
+import { LanguageField } from './GuestLanguage.tsx';
+import {
+  CONTACTS,
+  type GuestLanguage,
+  PICKED,
+  PICKED_COUNT,
+  PLAN_SAMPLES,
+  type SampleGuest,
+} from './GuestsSample.ts';
 import { W, say } from './GuestsWords.ts';
 import {
   CheckRow,
@@ -52,6 +64,7 @@ import {
   SheetBody,
   SheetLayer,
   joinPhone,
+  languageOver,
 } from './GuestEdit.tsx';
 
 type Opener = RefObject<ScreenReaderTarget | null>;
@@ -147,6 +160,7 @@ function OrType() {
 }
 
 const BIMPE = { name: 'Bimpe Adeyemi', email: 'bimpe.adeyemi@gmail.com', number: '7700 900877' };
+const LUCAS = { name: 'Lucas Moreau', email: 'lucas.moreau@orange.fr', language: 'fr' } as const;
 
 /** Add guest (sc-1468): From contacts first, then the four fields, Add guest pinned at the foot. */
 export function AddGuest({
@@ -174,12 +188,15 @@ export function AddGuest({
   onPickClose: () => void;
 }) {
   const kept = start === 'addNotAdded' || start === 'addOffline';
+  const lucas = start === 'languageAdd';
   const [name, setName] = useState(
-    start === 'addDuplicate' ? 'Marta Silva' : kept ? BIMPE.name : '',
+    start === 'addDuplicate' ? 'Marta Silva' : kept ? BIMPE.name : lucas ? LUCAS.name : '',
   );
   const [email, setEmail] = useState(
-    start === 'addDuplicate' ? 'm.silva@gmail.com' : kept ? BIMPE.email : '',
+    start === 'addDuplicate' ? 'm.silva@gmail.com' : kept ? BIMPE.email : lucas ? LUCAS.email : '',
   );
+  const [language, setLanguage] = useState<GuestLanguage | null>(lucas ? LUCAS.language : null);
+  const [choosing, setChoosing] = useState(false);
   const [country, setCountry] = useState('GB');
   const [number, setNumber] = useState(
     start === 'addRefused' ? '7700 90' : kept ? BIMPE.number : '',
@@ -211,22 +228,20 @@ export function AddGuest({
     }
     setFailed(null);
     setSame(false);
-    onAdded({
-      key: `added-${Date.now()}`,
-      name: name.trim(),
-      kind: 'notyet',
-      when: null,
-      email: email.trim() === '' ? null : email.trim(),
-      phone: joinPhone(country, number),
-      companions: companions
-        .filter((c) => c.trim() !== '')
-        .map((c) => ({ name: c.trim(), kind: 'notyet' })),
-      invited: null,
-    });
+    onAdded(
+      addedGuest(`added-${Date.now()}`, {
+        name,
+        email,
+        phone: joinPhone(country, number),
+        language,
+        companions,
+      }),
+    );
     setAdded(name.trim());
     setName('');
     setEmail('');
     setNumber('');
+    setLanguage(null);
     setCompanions([]);
     setChecked(false);
     focusChecked(nameRef);
@@ -241,7 +256,16 @@ export function AddGuest({
       over={
         picking
           ? { layer: <IosPicker onClose={onPickClose} onDone={onPicked} />, onClose: onPickClose }
-          : null
+          : choosing
+            ? languageOver(
+                language,
+                (code) => {
+                  setLanguage(code);
+                  setChoosing(false);
+                },
+                () => setChoosing(false),
+              )
+            : null
       }
       foot={<Pill label={W.addGuest} onPress={() => add()} testID="guests.add.do" />}
       testID="guests.add"
@@ -293,6 +317,12 @@ export function AddGuest({
         error={errors.phone}
         fieldRef={numberRef}
         testID="guests.add.phone"
+      />
+      <LanguageField
+        value={language}
+        chose={null}
+        onOpen={() => setChoosing(true)}
+        testID="guests.add.language"
       />
       <View style={styles.tight}>
         <Legend text={W.companions} />
@@ -362,20 +392,31 @@ function IosPicker({ onClose, onDone }: { onClose: () => void; onDone: () => voi
 /** Android, after the Contacts permission: Choose people, each ticked one sent, Review pinned at the foot. */
 export function ChoosePeople({
   open,
+  start,
   opener,
   onClose,
   onReview,
 }: {
   open: boolean;
+  start: AddState | null;
   opener: Opener;
   onClose: () => void;
   onReview: () => void;
 }) {
+  const none = start === 'androidNone';
   const [typed, setTyped] = useState('');
-  const [ticked, setTicked] = useState<boolean[]>(() => CONTACTS.map((c) => c.ticked));
-  const count =
-    PICKED_COUNT - CONTACTS.filter((c) => c.ticked).length + ticked.filter(Boolean).length;
+  const [ticked, setTicked] = useState<boolean[]>(() => CONTACTS.map((c) => !none && c.ticked));
+  const [tried, setTried] = useState(none);
+  const offScreen = none ? 0 : PICKED_COUNT - CONTACTS.filter((c) => c.ticked).length;
+  const count = offScreen + ticked.filter(Boolean).length;
   useReadOut(say.picked(count));
+  const review = () => {
+    if (count === 0) {
+      setTried(true);
+      return;
+    }
+    onReview();
+  };
 
   return (
     <PinnedScreen
@@ -383,7 +424,12 @@ export function ChoosePeople({
       title={W.choosePeople}
       opener={opener}
       onCancel={onClose}
-      foot={<Pill label={say.review(count)} onPress={onReview} testID="guests.android.review" />}
+      foot={
+        <View style={styles.footParts}>
+          {tried && count === 0 && <AlertLine text={W.tickOne} />}
+          <Pill label={say.review(count)} onPress={review} testID="guests.android.review" />
+        </View>
+      }
       testID="guests.android"
     >
       <SearchField
@@ -434,9 +480,26 @@ function startRows(): ReviewRow[] {
   }));
 }
 
+/** Past the limit: the person's way past the plan, by whether they can change it (sc-3930). */
+function PlanWay({ asks, asked, onAsk }: { asks: boolean; asked: boolean; onAsk: () => void }) {
+  if (!asks) return <AmberLine text={W.planInApp} />;
+  if (asked) return <DoneLine text={W.ownerAsked} size={14.5} />;
+
+  return (
+    <Pill
+      label={W.askOwner}
+      kind="secondary"
+      height={tokens.sizeHit}
+      full={false}
+      onPress={onAsk}
+      testID="guests.review.askOwner"
+    />
+  );
+}
+
 function pickedCount(start: ReviewState | null): number {
   if (start === 'roomLeft') return PLAN_SAMPLES.roomLeft.picked;
-  if (start === 'overLimit' || start === 'limitRefused') return PLAN_SAMPLES.overLimit.picked;
+  if (isIn(OVER_LIMIT_STATES, start)) return PLAN_SAMPLES.overLimit.picked;
   if (start === 'over250') return 250;
   return PICKED_COUNT;
 }
@@ -539,6 +602,8 @@ export function ReviewList({
   const [refused, setRefused] = useState(start === 'limitRefused');
   const [choosing, setChoosing] = useState<string | null>(start === 'chooseNumber' ? 'kofi' : null);
   const [discarding, setDiscarding] = useState(start === 'contactsDiscard');
+  const asks = isIn(ASK_OWNER_STATES, start);
+  const [asked, setAsked] = useState(start === 'ownerAsked');
   const fields = useRef<Partial<Record<string, TextInputInstance | null>>>({});
   const cards = useRef<Partial<Record<string, ViewInstance | null>>>({});
   const scroll = useRef<ScrollViewInstance>(null);
@@ -546,7 +611,7 @@ export function ReviewList({
   const sample =
     start === 'roomLeft'
       ? PLAN_SAMPLES.roomLeft
-      : start === 'overLimit' || start === 'limitRefused'
+      : isIn(OVER_LIMIT_STATES, start)
         ? PLAN_SAMPLES.overLimit
         : null;
   const places = rows.reduce((sum, row) => sum + row.places, 0) + (sample?.places ?? 0);
@@ -616,7 +681,7 @@ export function ReviewList({
             <AmberLine ink text={say.makeRoom(sample?.listed ?? 0, plan.after - 100)} />
             <AmberLine ink text={`· ${W.removeRows}`} />
             <AmberLine ink text={`· ${W.removeOnWeb}`} />
-            <AmberLine text={W.plansOnWeb} />
+            <PlanWay asks={asks} asked={asked} onAsk={() => setAsked(true)} />
           </Amber>
         )}
         {adding ? (
@@ -723,6 +788,7 @@ export function ReviewList({
                         people={count}
                         companions={places}
                         listed={sample?.listed ?? 0}
+                        way={<PlanWay asks={asks} asked={asked} onAsk={() => setAsked(true)} />}
                       />
                       <Pill
                         label={W.backToList}
@@ -905,11 +971,13 @@ function Refused({
   people,
   companions,
   listed,
+  way,
 }: {
   after: number;
   people: number;
   companions: number;
   listed: number;
+  way: ReactNode;
 }) {
   useReadOut(say.notAddedLine(people, companions, listed));
 
@@ -924,7 +992,7 @@ function Refused({
       <DoneLine text={W.listKept} size={14.5} />
       <AmberLine ink text={`· ${W.removeRows}`} />
       <AmberLine ink text={`· ${W.removeOnWeb}`} />
-      <AmberLine text={W.plansOnWeb} />
+      {way}
     </View>
   );
 }

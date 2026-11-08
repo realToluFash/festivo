@@ -32,6 +32,8 @@ import {
   tellNowBy,
   tellingBy,
   toChip,
+  lengthOf,
+  overOf,
 } from './MessagesModel.ts';
 import { MESSAGES_BOARDS } from './MessagesBoards.ts';
 import { sampleEvent } from '../events/EventsSample.ts';
@@ -59,8 +61,8 @@ beforeAll(() =>
 const nameOf = (id: RowId) => (id.kind === 'draft' ? id.id : id.key);
 
 describe('the states', () => {
-  it('are the spec’s 42 and the notice’s three, by the names both demos use, §7 then §7b', () => {
-    expect(MESSAGES_STATES).toHaveLength(45);
+  it('are the spec’s 42 and the notice’s three, by the names both demos use, §7 then §7b, then sc-32077’s six', () => {
+    expect(MESSAGES_STATES).toHaveLength(51);
     expect(MESSAGES_STATES.slice(6, 10)).toEqual([
       'channelReply',
       'noticeCost',
@@ -87,6 +89,12 @@ describe('the states', () => {
       'noSubject',
       'followUp',
       'tellPlace',
+      'nobody',
+      'longSubject',
+      'longMessage',
+      'closedDraft',
+      'closedEnded',
+      'forbidden',
     ]);
   });
 
@@ -188,7 +196,7 @@ describe('the list', () => {
 describe('the To groups', () => {
   it('are the app’s three, with pm’s Hasn’t replied, and their counts', () => {
     expect(TO_ORDER.map((to) => TO_WORD[to])).toEqual(['All guests', 'Coming', 'Hasn’t replied']);
-    expect(TO_ORDER.map(toChip)).toEqual([
+    expect(TO_ORDER.map((to) => toChip(to))).toEqual([
       'All guests · 142',
       'Coming · 96',
       'Hasn’t replied · 25',
@@ -782,5 +790,66 @@ describe('the notice’s cost, before Send (pm on bm’s #31518)', () => {
       open: { kind: 'guest', key: 'lucia' },
     });
     expect(m.done).not.toContain('lucia');
+  });
+});
+
+describe('sc-32077’s four states', () => {
+  it('keeps a choice that matches nobody, and Send opens no check', () => {
+    const m = startOf('nobody', false);
+    expect(m.draft?.to).toBe('coming');
+    expect(toChip('coming', m.draft?.zero)).toBe('Coming · 0');
+    expect(reduce(m, { type: 'send' }).draft?.step).toBe('write');
+    const all = run(m, { type: 'chooseTo', to: 'all' }, { type: 'send' });
+    expect(all.draft?.step).toBe('check');
+  });
+
+  it('counts the limits trimmed, and keeps text past them', () => {
+    expect(lengthOf('  héllo  ')).toBe(5);
+    expect(lengthOf(' 👍 ')).toBe(1);
+    expect(overOf({ ...sampleDraft('write'), subject: '👍'.repeat(150) })).toEqual([]);
+    expect(overOf({ ...sampleDraft('write'), subject: '👍'.repeat(151) })).toEqual(['subject']);
+    const fine = { ...sampleDraft('write'), subject: `${'a'.repeat(150)}   ` };
+    expect(overOf(fine)).toEqual([]);
+    const long = reduce(
+      { ...startOf('write', false), draft: { ...fine, subject: 'a'.repeat(151) } },
+      { type: 'send' },
+    );
+    expect(long.draft).toMatchObject({ step: 'write', over: ['subject'] });
+    expect(long.draft?.subject).toHaveLength(151);
+    const shorter = reduce(long, { type: 'subject', text: 'a'.repeat(150) });
+    expect(shorter.draft?.over).toEqual([]);
+    expect(reduce(shorter, { type: 'send' }).draft?.step).toBe('check');
+  });
+
+  it('opens each limit’s state over its limit, with the field named', () => {
+    const subject = startOf('longSubject', false).draft;
+    const body = startOf('longMessage', false).draft;
+    expect(subject == null ? 0 : lengthOf(subject.subject)).toBeGreaterThan(150);
+    expect(subject?.over).toEqual(['subject']);
+    expect(body == null ? 0 : lengthOf(body.body)).toBeGreaterThan(10_000);
+    expect(body?.over).toEqual(['body']);
+  });
+
+  it('offers no send from an event that can’t send', () => {
+    expect(startOf('closedDraft', false)).toMatchObject({ closed: 'draft', phase: 'first' });
+    const ended = startOf('closedEnded', false);
+    expect(ended.closed).toBe('ended');
+    const tried = run(
+      { ...ended, draft: sampleDraft('write'), open: { kind: 'draft' } },
+      { type: 'send' },
+    );
+    expect(tried.draft?.step).toBe('write');
+  });
+
+  it('refuses without messages.read: no count', () => {
+    const m = startOf('forbidden', true);
+    expect(m.forbidden).toBe(true);
+    expect(badgeOf(m)).toBeNull();
+  });
+
+  it('opens nothing over the refusal, from the bell or anywhere', () => {
+    const m = startOf('forbidden', false);
+    const opened = reduce(m, { type: 'open', open: { kind: 'reached', of: 'parking' } });
+    expect(opened.open).toBeNull();
   });
 });

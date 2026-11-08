@@ -30,6 +30,7 @@ import {
 } from '../../kit/eventsList.ts';
 import { CLOCKS, READER_ZONE, type SampleEvent, TYPE_WORDS } from './EventsSample.ts';
 import { W, say } from './EventsWords.ts';
+import { FINAL_NUMBERS_STATES, FINAL_WORDS, finalNumbersDue } from './FinalNumbers.ts';
 
 export type {
   CardStep,
@@ -52,7 +53,7 @@ export function shownEvent(event: SampleEvent, now: Date): Shown {
         ...event,
         place: event.venue?.place ?? null,
         photo: event.photo ? 'standIn' : null,
-        milestones: milestonesOf(event),
+        milestones: [...milestonesOf(event), ...finalNumbersOf(event, now)],
       },
       eventPhase(event, now),
     ),
@@ -131,6 +132,25 @@ export function milestonesOf(event: SampleEvent): Milestone[] {
   return [
     { ...own, at: event.startsAt, title: say.starts(event.name) },
     { ...own, at: event.endsAt, title: say.ends(event.name) },
+  ];
+}
+
+/** The timeline's You milestone while a date is set and no copy recorded (sc-30812), gone at the start and once Ended. */
+export function finalNumbersOf(event: SampleEvent, now: Date): Milestone[] {
+  const due = finalNumbersDue(event.id);
+
+  if (due == null || event.status === 'ended' || now.getTime() >= Date.parse(event.startsAt))
+    return [];
+
+  return [
+    {
+      at: instantOf(due, '23:59', event.timeZone),
+      title: FINAL_WORDS.milestone,
+      note: null,
+      owner: 'you',
+      area: 'menu',
+      action: null,
+    },
   ];
 }
 
@@ -473,6 +493,7 @@ export const EVENT_STATES = [
   'muteNotLoaded',
   'muteNotSaved',
   'more',
+  ...FINAL_NUMBERS_STATES,
 ] as const;
 export type EventDemoState = (typeof EVENT_STATES)[number];
 

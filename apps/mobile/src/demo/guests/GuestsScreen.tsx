@@ -416,6 +416,7 @@ export function GuestsScreen({
           <ChoosePeople
             key={`android:${round}`}
             open={overlay === 'android'}
+            start={first != null && isIn(ADD_STATES, first) ? first : null}
             opener={opener}
             onClose={() => setOverlay('add')}
             onReview={() => setOverlay('review')}

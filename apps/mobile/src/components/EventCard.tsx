@@ -271,14 +271,35 @@ function CardFoot({
   onStep: (step: Extract<CardStep, { kind: 'button' }>) => void;
   testID: string;
 }) {
+  const { t } = useTranslation();
+
   if (step.kind === 'next')
     return (
       <View
         style={styles.foot}
         pointerEvents="none"
         accessible
-        accessibilityLabel={`${step.title}. ${step.when}`}
+        accessibilityLabel={[
+          ...(step.you ? [t('timeline.owner_you')] : []),
+          ...(step.overdue ? [t('timeline.overdue')] : []),
+          step.title,
+          step.when,
+        ].join('. ')}
       >
+        {step.you && (
+          <View style={styles.tags}>
+            <GlassTag
+              word={t('timeline.owner_you')}
+              shape={<Glyph name="user" size={13} ink={tokens.colorInkOnDark} weight={2.4} />}
+            />
+            {step.overdue && (
+              <GlassTag
+                word={t('timeline.overdue')}
+                shape={<Glyph name="alert" size={13} ink={tokens.colorInkOnDark} weight={2.4} />}
+              />
+            )}
+          </View>
+        )}
         <Text size={15.5} weight="bold" accessible={false} style={[styles.white, styles.next]}>
           {step.title}
         </Text>

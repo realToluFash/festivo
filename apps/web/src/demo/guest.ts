@@ -3,6 +3,8 @@ import i18next from 'i18next';
 
 import { writtenTime } from './clock.ts';
 import { type SampleEvent, sampleEvent } from './events.ts';
+import { BOARD_SAMPLES } from './guestLanguages.ts';
+import { type GuestKitchen, isGuestKitchenState, guestKitchenStarts } from './guestKitchen.ts';
 import type { DemoLink } from './settings.ts';
 
 /** The guest's own page in A · The cover card (sc-31306), on the boards' sample: main's evt-wed-4 and one guest. */
@@ -79,6 +81,7 @@ export type Page = 'event' | 'gone' | 'unreachable' | 'loading';
 export type View =
   | { kind: 'answer'; busy: Answer | null; note: 'unsent' | 'notSentTap' | null }
   | { kind: 'check'; busy: boolean; failed: boolean; refused: boolean; from: 'answer' | 'changing' }
+  | { kind: 'kitchen' }
   | { kind: 'recorded'; same: boolean }
   | { kind: 'changing'; busy: Answer | null }
   | { kind: 'closed' }
@@ -109,8 +112,13 @@ export interface Visit {
   draftFailed: boolean;
   draftTried: boolean;
   arrival: boolean;
+  /** sc-3790: the switch said once in the new language, and a choice the guest's record did not take. */
+  said: number;
+  unsaved: boolean;
   want: string | null;
   wantId: number;
+  /** sc-3778's step, once Yes has led to it; null for sc-1439's Check and send on its own. */
+  kitchen: GuestKitchen | null;
 }
 
 export const OPEN: View = { kind: 'answer', busy: null, note: null };
@@ -136,8 +144,11 @@ const BASE: Visit = {
   draftFailed: false,
   draftTried: false,
   arrival: false,
+  said: 0,
+  unsaved: false,
   want: null,
   wantId: 0,
+  kitchen: null,
 };
 
 const COMING = { answer: 'coming', on: TODAY } as const;
@@ -267,6 +278,19 @@ const STATES = {
     name: 'In French, the language menu open',
     starts: { lang: 'fr', menuOpen: true },
   },
+  en: { name: 'In English, as today', starts: {} },
+  menuOpen: { name: 'The language menu open', starts: { menuOpen: true } },
+  switched: {
+    name: 'Switched to French, the switch said',
+    starts: { lang: 'fr', said: 1, want: 'lang' },
+  },
+  fr: { name: 'In French', starts: { lang: 'fr' } },
+  pt: { name: 'In Portuguese', starts: { lang: 'pt' } },
+  es: { name: 'In Spanish', starts: { lang: 'es' } },
+  notSaved: {
+    name: 'Switched to French, the choice not saved',
+    starts: { lang: 'fr', said: 1, unsaved: true },
+  },
   photo: { name: 'An organiser’s cover photo', starts: { photo: true } },
   tellUs: {
     name: 'Not {full name}? Tell us',
@@ -328,6 +352,9 @@ export function isGuestState(value: string | null): value is GuestStateName {
 }
 
 export function startOf(value: string | null): Visit {
+  if (isGuestKitchenState(value))
+    return { ...BASE, ...guestKitchenStarts(value, { earlier: EARLIER, companions: COMPANIONS }) };
+
   const state = isGuestState(value) ? value : 'open';
 
   return { ...BASE, ...(STATES[state].starts as Partial<Visit>) };
@@ -402,6 +429,10 @@ export const GUEST_PAGES: readonly { name: string; states: readonly DemoLink[] }
     ).map(link),
   },
   {
+    name: 'In the guest’s own language (sc-3790)',
+    states: (['en', 'menuOpen', 'switched', 'fr', 'pt', 'es', 'notSaved'] as const).map(link),
+  },
+  {
     name: 'The hosts’ messages and the guest’s own',
     states: (
       [
@@ -422,7 +453,7 @@ export const GUEST_PAGES: readonly { name: string; states: readonly DemoLink[] }
 ];
 
 export function shows(visit: Visit): { details: boolean; foot: boolean; hosts: boolean } {
-  const alone = visit.view.kind === 'check' || visit.view.kind === 'tellUs';
+  const alone = ['check', 'tellUs', 'kitchen'].includes(visit.view.kind);
 
   return { details: !alone, foot: !alone, hosts: visit.phase !== 'calledOff' };
 }
@@ -605,27 +636,18 @@ const BOARD_ENGLISH = {
   messageFailed: 'Your message wasn’t sent. Your words are still here. Try again.',
   messageCount: '{{count}} of {{most}} characters',
   messageTooLong: 'Shorten your message to {{most}} characters or fewer.',
+  switched: 'This page is now in English.',
+  notSaved:
+    'Your language wasn’t saved. This page stays in English on this device, but another device may open it in another language.',
 } as const;
 
-type BoardKey = keyof typeof BOARD_ENGLISH;
-
-/** French as the board writes it: #5535's settled words, and [bracketed] proposals l10n has not settled. */
-const BOARD_FRENCH: Partial<Record<BoardKey, string>> = {
-  yourAnswer: '[Votre réponse]',
-  replyBy: '[Merci de répondre avant le {{date}}. Vous pourrez modifier votre réponse d’ici là.]',
-  yes: '[Oui, je serai là]',
-  no: '[Je ne pourrai pas venir]',
-  maybe: '[Je ne sais pas encore]',
-  closing:
-    'Cette invitation est pour vous et votre famille. Les autres invités ne voient pas votre réponse.',
-  tell: 'Vous n’êtes pas {{name}} ? Dites-le-nous',
-};
+export type BoardKey = keyof typeof BOARD_ENGLISH;
 
 export const LEGAL: Record<Lang, { terms: string; privacy: string }> = {
   en: { terms: 'Terms', privacy: 'Privacy' },
-  es: { terms: 'Terms', privacy: 'Privacy' },
+  es: { terms: '[Términos]', privacy: '[Privacidad]' },
   fr: { terms: '[Conditions]', privacy: '[Confidentialité]' },
-  pt: { terms: 'Terms', privacy: 'Privacy' },
+  pt: { terms: '[Termos]', privacy: '[Privacidade]' },
 };
 
 type Slots = Record<string, string | number>;
@@ -634,7 +656,7 @@ export function wordsFor(lang: Lang) {
   const t = i18next.getFixedT(lang);
   const numbers = new Intl.NumberFormat(TAGS[lang]);
   const board = (key: BoardKey, slots: Slots = {}): string =>
-    ((lang === 'fr' ? BOARD_FRENCH[key] : undefined) ?? BOARD_ENGLISH[key]).replaceAll(
+    ((lang === 'en' ? undefined : BOARD_SAMPLES[lang][key]) ?? BOARD_ENGLISH[key]).replaceAll(
       /\{\{(\w+)\}\}/gu,
       (whole, slot: string) => {
         const value = slots[slot];
@@ -735,6 +757,8 @@ export function wordsFor(lang: Lang) {
     messageTooLong: board('messageTooLong', { most: MESSAGE_MOST }),
     sent: board('sent'),
     messageFailed: board('messageFailed'),
+    switched: board('switched'),
+    notSaved: board('notSaved'),
   };
 }
 

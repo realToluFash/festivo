@@ -29,8 +29,13 @@ import { SEATING_PAGES } from './seating.ts';
 import { GetBackInBoard } from './GetBackIn.tsx';
 import { GuestPage } from './Guest.tsx';
 import { GUEST_PAGES } from './guest.ts';
+import { GUEST_KITCHEN_PAGES } from './guestKitchen.ts';
 import { Guests } from './Guests.tsx';
 import { GUESTS_PAGES } from './guests.ts';
+import { KitchenPage } from './Kitchen.tsx';
+import { KITCHEN_PAGES } from './kitchen.ts';
+import { LegalPage } from './Legal.tsx';
+import { LEGAL_PAGES } from './legal.ts';
 import { NewAccountBoard } from './NewAccount.tsx';
 import { NOTIFICATIONS_PAGES } from './notifications.ts';
 import { leave } from './chosenScheme.ts';
@@ -156,6 +161,8 @@ export default function Demo() {
       <Route path="get-back-in" element={<GetBackInBoard />} />
       <Route path="two-factor" element={<TwoFactorBoard />} />
       <Route path="ways-in" element={<WaysInBoard />} />
+      <Route path="terms" element={<LegalPage doc="terms" />} />
+      <Route path="privacy" element={<LegalPage doc="privacy" />} />
       {/* Kept so a link to /demo/signed-in opens Today rather than the not-found page. */}
       <Route path="signed-in" element={<Navigate to="/demo/today" replace />} />
       <Route path="today" element={<Today />} />
@@ -164,6 +171,7 @@ export default function Demo() {
       <Route path="events/:id/dates" element={<EventPage dates />} />
       <Route path="events/:id/messages" element={<EventPage messages />} />
       <Route path="events/:id/seating" element={<SeatingPage />} />
+      <Route path="events/:id/kitchen" element={<KitchenPage />} />
       <Route path="calendar" element={<Calendar />} />
       <Route path="settings" element={<Settings />} />
       <Route path="settings/members" element={<Settings />} />
@@ -231,12 +239,16 @@ function DemoHome({ from }: { from: string }) {
         <BoardPages pages={CREATE_PAGES} />
         <h3>Guest’s page in A · The cover card · phone, tablet and desk</h3>
         <BoardPages pages={GUEST_PAGES} />
+        <h3>The kitchen step on the guest’s page · sc-3778 · phone, tablet and desk</h3>
+        <BoardPages pages={GUEST_KITCHEN_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-30">
         <h2 id="demo-page-30">30 · Guests · the planner’s side</h2>
         <h3>Guests in A · Summary first · desktop</h3>
         <BoardPages pages={GUESTS_PAGES} />
+        <h3>Final numbers due and the kitchen’s copies, in Guests A · desktop</h3>
+        <BoardPages pages={KITCHEN_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-81">
@@ -327,6 +339,9 @@ function DemoHome({ from }: { from: string }) {
 
         <h3>Two-factor · desktop</h3>
         <BoardPages pages={TWO_FACTOR_PAGES} />
+
+        <h3>Terms and Privacy · desktop and a phone’s width · sample text</h3>
+        <BoardPages pages={LEGAL_PAGES} />
 
         <h3>Other ways in · desktop</h3>
         <p className="demo-home-line">
@@ -618,17 +633,26 @@ function SignInForm({ state }: { state: string }) {
 }
 
 const LATER: Record<string, string> = {
-  terms: 'Terms',
-  privacy: 'Privacy',
   security: 'Your account › Security',
-  kitchen: 'Update what the kitchen should know',
   calendar: 'Add to calendar',
+  meals: 'Your meals · sc-3907',
+};
+
+/** The guest's page a stand-in goes back to: the meals to the kitchen step's refusal, the calendar to Coming. */
+const GUEST_BACK: Record<string, string> = {
+  calendar: '/demo/guest?state=coming',
+  meals: '/demo/guest?state=meal_ruled_out',
 };
 
 function Later() {
   const [params] = useSearchParams();
-  const screen = LATER[params.get('screen') ?? ''] ?? 'Terms';
-  const guest = params.get('screen') === 'kitchen' || params.get('screen') === 'calendar';
+  const asked = params.get('screen') ?? '';
+
+  // The stand-ins' old addresses open the pages themselves (sc-28982).
+  if (asked === 'terms' || asked === 'privacy') return <Navigate to={`/demo/${asked}`} replace />;
+
+  const screen = LATER[asked] ?? 'Your account › Security';
+  const guest = GUEST_BACK[asked];
 
   // Opened from any footer, signed in or not, so its header offers neither way (sc-29561).
   return (
@@ -637,8 +661,8 @@ function Later() {
         <h1>{screen}</h1>
         <p className="demo-muted">A stand-in: this page comes to the demo at its own step.</p>
       </div>
-      <Link className="button demo-wide" to={guest ? '/demo/guest?state=coming' : '/demo/sign-in'}>
-        {guest ? 'Back to the guest’s page' : 'Back to sign in'}
+      <Link className="button demo-wide" to={guest ?? '/demo/sign-in'}>
+        {guest != null ? 'Back to the guest’s page' : 'Back to sign in'}
       </Link>
     </BoardPage>
   );

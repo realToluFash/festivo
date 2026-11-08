@@ -213,7 +213,7 @@ export type StepAction = 'makeLive' | 'changeDates' | 'resume' | 'duplicate';
 
 export type CardStep =
   | { kind: 'button'; line: string; label: string; action: StepAction }
-  | { kind: 'next'; title: string; when: string };
+  | { kind: 'next'; title: string; when: string; you: boolean; overdue: boolean };
 
 /** The card's one step, by the domain's nextStep: what the phase asks for, else the next thing that happens; Duplicate once it is over. */
 export function cardStep(event: Shown, now: Date, locale: string, t: TFunction): CardStep {
@@ -249,6 +249,8 @@ export function cardStep(event: Shown, now: Date, locale: string, t: TFunction):
           date: formatEventMoment(step.milestone.at, event.timeZone, locale),
           far: distanceWords(step.milestone.at, event.timeZone, now, t),
         }),
+        you: step.milestone.owner === 'you',
+        overdue: step.milestone.owner === 'you' && Date.parse(step.milestone.at) < now.getTime(),
       };
     case undefined: {
       const line =

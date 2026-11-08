@@ -6,6 +6,7 @@ import { Glyph } from '../components/Glyph.tsx';
 import { useMatches } from '../phoneWidth.ts';
 import { LAYOUT_MEDIA, LEGAL, type Lang, layoutOf, twoColumns, wordsFor } from './guest.ts';
 import { LanguageMenu, TextAction } from './GuestParts.tsx';
+import { legalPath } from './legal.ts';
 import {
   EVENT_NAME,
   LOCKED_UNTIL,
@@ -94,7 +95,7 @@ function Recipient({ path, state }: { path: string | undefined; state: string | 
             <Gate
               visit={visit}
               onAnswer={(typed) => {
-                const answer = answerTo(typed, visit.wrong);
+                const answer = answerTo(typed, visit.wrong, visit.answer !== 'lockedSoon');
                 if (answer === 'open') {
                   setVisit({ page: 'shown', scope: visit.scope, marked: false });
                   setOpened(true);
@@ -115,8 +116,8 @@ function Recipient({ path, state }: { path: string | undefined; state: string | 
         <footer className="gp-footer">
           <span>{frame.copyright}</span>
           <span className="gp-footer-links">
-            <Link to="/demo/later?screen=terms">{LEGAL[lang].terms}</Link>
-            <Link to="/demo/later?screen=privacy">{LEGAL[lang].privacy}</Link>
+            <Link to={legalPath('terms', lang)}>{LEGAL[lang].terms}</Link>
+            <Link to={legalPath('privacy', lang)}>{LEGAL[lang].privacy}</Link>
           </span>
         </footer>
       </div>
@@ -217,7 +218,9 @@ function Gate({
       ? W.wrongPassphrase
       : visit.answer === 'locked'
         ? W.tooMany(timeOf(LOCKED_UNTIL))
-        : null;
+        : visit.answer === 'lockedSoon'
+          ? W.tooManySoon
+          : null;
 
   useEffect(() => field.current?.focus(), []);
 

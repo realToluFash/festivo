@@ -6,8 +6,11 @@ import {
   PAYMENTS,
   type Payment,
   QUOTES,
+  READER,
+  TODAY,
   amounts,
   categoriesOf,
+  lineState,
   money,
   totals,
 } from './budget.ts';
@@ -21,6 +24,7 @@ export interface PayerEntry {
   name: string;
   note: string;
   link: LinkState;
+  passphrase?: boolean;
 }
 
 export interface Part {
@@ -234,6 +238,7 @@ export interface Cover {
   name: string;
   how: string;
   part: Range;
+  notPriced: boolean;
 }
 
 function howWords(book: Book, split: Split, payerId: string): string {
@@ -262,9 +267,22 @@ export function coversOf(book: Book, payerId: string): Cover[] {
 
       return split == null || part == null
         ? []
-        : [{ lineId: line.id, name: line.name, how: howWords(book, split, payerId), part }];
+        : [
+            {
+              lineId: line.id,
+              name: line.name,
+              how: howWords(book, split, payerId),
+              part,
+              notPriced: lineState(line) === 'notPriced',
+            },
+          ];
     })
     .sort((a, b) => b.part[0] - a.part[0]);
+}
+
+/** A Not priced cost adds nothing to a share, so the share says how many it leaves out and is never read as complete. */
+export function notPricedFor(book: Book, payerId: string): number {
+  return coversOf(book, payerId).filter((one) => one.notPriced).length;
 }
 
 export function splitWords(book: Book, line: CostLine): string {
@@ -321,6 +339,10 @@ export function coveredBy(book: Book, payerId: string): string[] {
 }
 
 export const canAddPayer = (payers: readonly PayerEntry[]): boolean => payers.length < PAYER_CAP;
+
+export function noteProblem(note: string): string | null {
+  return [...note.trim()].length > NOTE_MAX ? W.noteLong : null;
+}
 
 export function nameProblem(
   name: string,
@@ -379,11 +401,12 @@ export function percentOf(text: string): number | null {
   return Number(whole === '' ? '0' : whole) * 100 + Number(`${part}00`.slice(0, 2));
 }
 
-export const PERCENT_TYPED = /^-?\d{0,4}(\.\d{0,2})?$/;
+export const PERCENT_TYPED = /^[-−]?\d{0,4}(\.\d{0,4})?$/;
 
 export function percentProblem(text: string): string | null {
   const typed = text.trim();
   if (typed === '') return null;
+  if (/^\d*\.\d{3,}$/.test(typed) && Number(typed) <= WHOLE / 100) return W.percentDecimals;
   const value = percentOf(typed);
 
   return value == null || value > WHOLE ? W.percentRange : null;
@@ -523,6 +546,9 @@ export const SAMPLE_PAYERS: readonly PayerEntry[] = SAMPLE.map(({ id, name, note
   link,
 }));
 
+/** Mr and Mrs Obi as Edit renames them (Budget-A-Payers-More, frames 35 and 36). */
+export const RENAMED = 'Chidi and Ngozi Obi';
+
 export const KAYODE: PayerEntry = {
   id: 'kayode',
   name: 'Uncle Kayode',
@@ -563,6 +589,21 @@ const FLAGGED: Book = {
   },
 };
 
+const NOT_PRICED: Book = {
+  ...SAMPLE_BOOK,
+  splits: { ...SAMPLE_SPLITS, arch: { kind: 'one', payerId: 'couple' } },
+};
+
+const paidAt =
+  (id: string, amount: number, on: string) =>
+  (payment: Payment): Payment =>
+    payment.id === id ? { ...payment, paid: { amount, on, by: READER, reference: '' } } : payment;
+
+/** Both venue payments, and Savour Kitchen's deposit and second instalment, the second at £7,500.00: Mr and Mrs Obi's half takes them past their share. */
+const PAID_PAST: readonly Payment[] = PAYMENTS.map(paidAt('p2', 315000, TODAY))
+  .map(paidAt('p7', 450000, TODAY))
+  .map(paidAt('p8', 750000, TODAY));
+
 const STATE_NAMES = [
   'payers',
   'no_payers',
@@ -582,6 +623,29 @@ const STATE_NAMES = [
   'link_copied',
   'copy_refused',
   'send_failed',
+  'payer_not_priced',
+  'payer_paid_past',
+  'payer_share_alone',
+  'payers_loading',
+  'payers_neither',
+  'note_too_long',
+  'payers_stale',
+  'payers_live',
+  'payers_not_live',
+  'choose_no_payer',
+  'choose_no_rest',
+  'link_passphrase',
+  'link_all_revoked',
+  'web_share',
+  'payer_blank',
+  'payer_long_name',
+  'payer_edit',
+  'payer_renamed',
+  'choose_percent_range',
+  'choose_percent_decimals',
+  'choose_fixed_blank',
+  'choose_fixed_decimals',
+  'choose_fixed_over',
 ] as const;
 
 export type PayersState = (typeof STATE_NAMES)[number];
@@ -596,6 +660,7 @@ export interface ChooseStart {
   amounts?: Readonly<Record<string, string>>;
   rest?: string;
   checked?: boolean;
+  stale?: string;
 }
 
 export type Notice =
@@ -603,13 +668,14 @@ export type Notice =
   | { kind: 'refused'; payerId: string; count: number }
   | { kind: 'removed'; payer: PayerEntry; index: number };
 
-export type SendKind = 'busy' | 'copied' | 'refused' | 'failed';
+export type SendKind = 'busy' | 'copied' | 'refused' | 'failed' | 'shared';
 
 export interface FormStart {
   id: string | null;
   name: string;
   note: string;
   error: string | null;
+  noteError?: string | null;
 }
 
 export interface PayersStart {
@@ -619,6 +685,10 @@ export interface PayersStart {
   form: FormStart | null;
   send: { payerId: string; kind: SendKind } | null;
   choose: ChooseStart | null;
+  payments: readonly Payment[];
+  /** Paid and Still to come show only with `vendors` or a payment marked paid (sc-91). */
+  paidShown: boolean;
+  shares: boolean;
 }
 
 /** Which payer the pane opens on: the one asked for, else Mr and Mrs Obi as the board draws, else the first. */
@@ -653,13 +723,48 @@ const CHOOSE: Partial<Record<PayersState, ChooseStart>> = {
   },
   choose_fixed: { ticked: ['cars'], mode: 'fixed', amounts: { funmi: '400.00' }, rest: 'obi' },
   choose_several: { ticked: ['dj', 'cars', 'photo'], mode: 'one', payer: 'couple' },
+  choose_no_payer: { ticked: ['dj'], mode: 'one', checked: true },
+  choose_no_rest: { ticked: ['cars'], mode: 'fixed', amounts: { funmi: '400.00' }, checked: true },
+  payers_stale: { ticked: ['dj'], mode: 'one', stale: KAYODE.name },
+  choose_percent_range: {
+    ticked: ['dinner'],
+    mode: 'percent',
+    percents: { obi: '−5', bakare: '105' },
+    checked: true,
+  },
+  choose_percent_decimals: {
+    ticked: ['dinner'],
+    mode: 'percent',
+    percents: { obi: '33.333', bakare: '66.67' },
+    checked: true,
+  },
+  choose_fixed_blank: { ticked: ['cars'], mode: 'fixed', rest: 'obi', checked: true },
+  choose_fixed_decimals: {
+    ticked: ['cars'],
+    mode: 'fixed',
+    amounts: { funmi: '400.505' },
+    rest: 'obi',
+    checked: true,
+  },
+  choose_fixed_over: {
+    ticked: ['dinner'],
+    mode: 'fixed',
+    amounts: { funmi: '6,800.00' },
+    rest: 'obi',
+    checked: true,
+  },
 };
+
+const LONG_NOTE =
+  'Adaeze’s grandparents, who asked to cover the dinner and the drinks for the family table and the cars on both days, paid in two parts, the first before the end of the month and the rest after the event.';
+const LONG_NAME = 'Mr and Mrs Adeyemi-Okonkwo, on behalf of the whole family in Lagos';
 
 const SENT: Partial<Record<PayersState, SendKind>> = {
   send_busy: 'busy',
   link_copied: 'copied',
   copy_refused: 'refused',
   send_failed: 'failed',
+  web_share: 'shared',
 };
 
 export function startOf(state: string, asked: string | null = null): PayersStart {
@@ -670,8 +775,22 @@ export function startOf(state: string, asked: string | null = null): PayersStart
   let book = SAMPLE_BOOK;
 
   if (name === 'no_payers') book = { ...SAMPLE_BOOK, payers: [], splits: {} };
-  if (name === 'no_costs') book = { lines: [], payers: [], splits: {} };
+  if (name === 'no_costs') book = { lines: [], payers: SAMPLE_PAYERS, splits: {} };
+  if (name === 'payers_neither') book = { lines: [], payers: [], splits: {} };
+  if (name === 'payers_live')
+    book = {
+      ...SAMPLE_BOOK,
+      splits: { ...SAMPLE_SPLITS, room: half('obi', 'bakare') },
+    };
+  if (name === 'link_passphrase')
+    book = {
+      ...SAMPLE_BOOK,
+      payers: SAMPLE_PAYERS.map((one) => (one.id === 'obi' ? { ...one, passphrase: true } : one)),
+    };
+  if (name === 'link_all_revoked') book = withLink(SAMPLE_BOOK, 'bakare', 'revoked');
+  if (name === 'payer_renamed') book = editPayer(SAMPLE_BOOK, 'obi', RENAMED, 'Adaeze’s parents');
   if (name === 'split_flag') book = FLAGGED;
+  if (name === 'payer_not_priced') book = NOT_PRICED;
   if (name === 'payer_cap')
     book = {
       ...SAMPLE_BOOK,
@@ -686,7 +805,8 @@ export function startOf(state: string, asked: string | null = null): PayersStart
         })),
       ],
     };
-  if (sent === 'copied' || sent === 'refused') book = withLink(book, 'couple', 'sent');
+  if (sent === 'copied' || sent === 'refused' || sent === 'shared')
+    book = withLink(book, 'couple', 'sent');
 
   const notice: Notice | null =
     name === 'payer_cap'
@@ -701,11 +821,29 @@ export function startOf(state: string, asked: string | null = null): PayersStart
       ? { id: null, name: KAYODE.name, note: KAYODE.note, error: null }
       : name === 'payer_duplicate'
         ? { id: null, name: 'Aunt Funmi', note: '', error: nameProblem('Aunt Funmi', book.payers) }
-        : null;
+        : name === 'note_too_long'
+          ? {
+              id: null,
+              name: 'Grandma Ada',
+              note: LONG_NOTE,
+              error: null,
+              noteError: noteProblem(LONG_NOTE),
+            }
+          : name === 'payer_blank'
+            ? { id: null, name: '', note: '', error: nameProblem('', book.payers) }
+            : name === 'payer_long_name'
+              ? { id: null, name: LONG_NAME, note: '', error: nameProblem(LONG_NAME, book.payers) }
+              : name === 'payer_edit'
+                ? { id: 'obi', name: RENAMED, note: 'Adaeze’s parents', error: null }
+                : null;
+  const pane = name === 'link_all_revoked' ? 'bakare' : name === 'web_share' ? 'couple' : null;
 
   return {
     book,
-    open: openFirst(book.payers, asked ?? (sent == null ? null : 'couple')),
+    open: openFirst(
+      book.payers,
+      asked ?? pane ?? (sent != null || name === 'payer_not_priced' ? 'couple' : null),
+    ),
     notice,
     form,
     send:
@@ -713,6 +851,9 @@ export function startOf(state: string, asked: string | null = null): PayersStart
         ? null
         : { payerId: openFirst(book.payers, asked ?? 'couple') ?? '', kind: sent },
     choose: CHOOSE[name] ?? null,
+    payments: name === 'payer_paid_past' ? PAID_PAST : PAYMENTS,
+    paidShown: name !== 'payer_share_alone',
+    shares: name === 'web_share',
   };
 }
 
@@ -777,6 +918,69 @@ export const PAYERS_PAGES: readonly DemoGroup[] = [
       { to: at('link_copied'), name: 'Link copied, said as a status (link_copied)' },
       { to: at('copy_refused'), name: 'The copy refused: the link selected (copy_refused)' },
       { to: at('send_failed'), name: 'The link not created (send_failed)' },
+      {
+        to: at('link_passphrase'),
+        name: 'A live link that asks for a passphrase (link_passphrase)',
+      },
+      {
+        to: at('link_all_revoked'),
+        name: 'Every link revoked or ended: Send to, no state line (link_all_revoked)',
+      },
+      {
+        to: at('web_share'),
+        name: 'A browser with a share sheet: Send opens it (web_share)',
+      },
+    ],
+  },
+  {
+    name: 'Loading, live, and the refusals still to draw',
+    states: [
+      { to: at('payers_loading'), name: 'Loading (payers_loading)' },
+      { to: at('payers_neither'), name: 'No costs and no payers (payers_neither)' },
+      { to: at('note_too_long'), name: 'A note over 200 characters (note_too_long)' },
+      { to: at('payers_stale'), name: 'Saved after a payer was removed elsewhere (payers_stale)' },
+      { to: at('payers_live'), name: 'A split changed in another tab (payers_live)' },
+      { to: at('payers_not_live'), name: 'Not live, with Try now (payers_not_live)' },
+      { to: at('choose_no_payer'), name: 'One payer, none chosen (choose_no_payer)' },
+      { to: at('choose_no_rest'), name: 'Fixed, no one covers what is left (choose_no_rest)' },
+      { to: at('payer_blank'), name: 'A name left blank (payer_blank)' },
+      { to: at('payer_long_name'), name: 'A name over 60 characters (payer_long_name)' },
+      { to: at('payer_edit'), name: 'Edit Mr and Mrs Obi (payer_edit)' },
+      { to: at('payer_renamed'), name: 'Renamed: Chidi and Ngozi Obi everywhere (payer_renamed)' },
+      {
+        to: at('choose_percent_range'),
+        name: 'Percentages below 0 and above 100 (choose_percent_range)',
+      },
+      {
+        to: at('choose_percent_decimals'),
+        name: 'A percentage with three decimal places (choose_percent_decimals)',
+      },
+      { to: at('choose_fixed_blank'), name: 'Fixed, with no amount (choose_fixed_blank)' },
+      {
+        to: at('choose_fixed_decimals'),
+        name: 'Fixed, an amount with too many decimal places (choose_fixed_decimals)',
+      },
+      {
+        to: at('choose_fixed_over'),
+        name: 'Fixed amounts over the least Dinner can cost (choose_fixed_over)',
+      },
+    ],
+  },
+  {
+    name: 'A payer’s share',
+    states: [
+      {
+        to: at('payer_not_priced'),
+        name: '1 cost not priced yet on Adaeze and Tunde’s share (payer_not_priced)',
+      },
+      {
+        to: at('payer_paid_past'),
+        name: 'Paid past the share: Nothing still to come (payer_paid_past)',
+      },
+      {
+        to: at('payer_share_alone'),
+        name: 'No vendors and nothing paid: the share alone (payer_share_alone)',
+      },
     ],
   },
 ];

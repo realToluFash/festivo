@@ -36,6 +36,7 @@ import {
   whenSpan,
 } from './EventsModel.ts';
 import { CLOCKS, EVENTS, type SampleEvent, sampleEvent } from './EventsSample.ts';
+import { seedFinalNumbers } from './FinalNumbers.ts';
 
 const LOCALE = 'en-US';
 const reader = new Date(CLOCKS.reader);
@@ -138,12 +139,43 @@ describe('the card’s one step, by nextStep', () => {
       kind: 'next',
       title: 'Next up: Adaeze & Tunde’s wedding starts',
       when: 'Thu, Nov 5, 18:00 · in 2 days',
+      you: false,
+      overdue: false,
     });
     expect(step('evt-wed-4', happening)).toEqual({
       kind: 'next',
       title: 'Next up: Adaeze & Tunde’s wedding ends',
       when: 'Sat, Nov 7, 15:00 · in 1 day',
+      you: false,
+      overdue: false,
     });
+  });
+
+  it('shows final numbers due as Next up, marked You, with no action, until a copy (sc-30812)', () => {
+    seedFinalNumbers('finalNumbers');
+    expect(step('evt-wed-4')).toEqual({
+      kind: 'next',
+      title: 'Next up: Give final numbers to the kitchen',
+      when: 'Tue, Nov 3, 23:59 · today',
+      you: true,
+      overdue: false,
+    });
+    expect(step('evt-ireti-2')).toMatchObject({ you: false });
+
+    seedFinalNumbers('finalNumbersOverdue');
+    expect(step('evt-wed-4')).toMatchObject({
+      when: 'Mon, Nov 2, 23:59 · 1 day ago',
+      you: true,
+      overdue: true,
+    });
+    expect(step('evt-wed-4', happening)).toMatchObject({ you: false });
+
+    seedFinalNumbers('finalNumbersGiven');
+    expect(step('evt-wed-4')).toMatchObject({
+      title: 'Next up: Adaeze & Tunde’s wedding starts',
+      you: false,
+    });
+    seedFinalNumbers(null);
   });
 
   it('resumes a paused event, and duplicates one that is over', () => {

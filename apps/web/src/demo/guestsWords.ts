@@ -109,6 +109,13 @@ export const GW = {
   done: 'Done',
   fullName: 'Full name',
   optional: 'Optional',
+  language: 'Language',
+  notSet: 'Not set',
+  languageHint:
+    'Their page opens in their browser’s language when Soirely offers it, otherwise in this language. Messages use this language. When this is Not set, both use your organisation’s language.',
+  notSetLine: (organisation: string) =>
+    `Not set · their browser’s language, or ${organisation} when Soirely does not offer it`,
+  theyChose: (language: string) => `They chose ${language} on their page, and that wins.`,
   country: 'Country',
   keepsLink: 'Changing the email address or mobile number keeps their invitation link as it is.',
   companions: 'Companions',
@@ -120,6 +127,14 @@ export const GW = {
   remove: 'Remove',
   removeNamed: (name: string) => `Remove ${name}`,
   removed: (name: string) => `${name} removed. Save to keep the change.`,
+  removeTitle: (name: string) => `Remove ${name}?`,
+  /** The AC's line (sc-3773, 21 Oct): full name, what goes, no pronoun; a seat or a meal alone is a proposal for [en]. */
+  seatedLine: (name: string, table: string | null, meal: boolean) =>
+    table != null && meal
+      ? `${name} has a seat at ${table} and a meal chosen. Removing this companion frees the seat and drops the meal.`
+      : table != null
+        ? `${name} has a seat at ${table}. Removing this companion frees the seat.`
+        : `${name} has a meal chosen. Removing this companion drops the meal.`,
   moreCompanions: (count: number) =>
     count === 1 ? '1 more companion' : `${figure(count)} more companions`,
   mostCompanions: (most: number) => `${figure(most)} companions is the most one guest can bring.`,

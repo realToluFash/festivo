@@ -64,7 +64,8 @@ export function BudgetCard({
   step,
 }: {
   event: Shown;
-  state: CeilingState;
+  /** None while the event has no ceiling of its own (sc-90). */
+  state: CeilingState | null;
   notPriced: number;
   range: string;
   says: string | null;
@@ -75,10 +76,12 @@ export function BudgetCard({
   return (
     <Card event={event} step={says == null ? null : step} testID="budget.card">
       <View style={styles.tags}>
-        <GlassTag
-          word={say.state(state)}
-          shape={<CeilingMark state={state} side={13} ink={tokens.colorInkOnDark} />}
-        />
+        {state != null && (
+          <GlassTag
+            word={say.state(state)}
+            shape={<CeilingMark state={state} side={13} ink={tokens.colorInkOnDark} />}
+          />
+        )}
         {notPriced > 0 && (
           <GlassTag
             word={say.notPriced(notPriced)}
@@ -130,11 +133,13 @@ export function PayerCard({
   note,
   share,
   line,
+  notPriced = 0,
 }: {
   event: Shown;
   note: string;
   share: string;
   line: string;
+  notPriced?: number;
 }) {
   return (
     <Card event={event} height={180} testID="budget.payer.card">
@@ -143,6 +148,7 @@ export function PayerCard({
       </View>
       <OnCard text={W.theirShare} />
       <Figure text={share} size={28} />
+      {notPriced > 0 && <OnCard text={say.notPriced(notPriced)} strong />}
       <OnCard text={line} />
     </Card>
   );
