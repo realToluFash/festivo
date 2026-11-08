@@ -30,6 +30,7 @@ import {
   type MakeForm,
   type MakeStart,
   W,
+  clockOf,
   countLine,
   dayLabel,
   endDays,
@@ -47,7 +48,6 @@ import {
   nextCode,
   printLine,
   printWhen,
-  qrPath,
   qrSaid,
   renewed,
   roleLine,
@@ -56,6 +56,7 @@ import {
 } from './doorCode.ts';
 import { focusWhenFree, LayersContext, useDeskDialog } from '../layers.ts';
 import { type OnEvent, ROLE_LINES } from './people.ts';
+import { qrPath, qrSeed } from './security.ts';
 import {
   Ask,
   Card,
@@ -67,6 +68,8 @@ import {
 } from '../components/SettingsParts.tsx';
 import './doorCode.css';
 
+const QR_MODULES = 29;
+const QR_QUIET = 3;
 const STEP = (index: number) => `.dc-card[data-index="${index}"] .desk-step`;
 
 /** The door codes on People: a card each, its actions under it, and what they open (sc-71, sc-72). */
@@ -459,7 +462,8 @@ function HoldBox({
 }
 
 export function Qr({ code, size, label = true }: { code: string; size: number; label?: boolean }) {
-  const { path, size: box } = qrPath(code);
+  const path = qrPath(QR_MODULES, qrSeed(code), QR_QUIET);
+  const box = QR_MODULES + 2 * QR_QUIET;
 
   return (
     <svg
@@ -473,7 +477,7 @@ export function Qr({ code, size, label = true }: { code: string; size: number; l
       shapeRendering="crispEdges"
     >
       <rect className="dc-qr-ground" width={box} height={box} />
-      <path className="dc-qr-ink" d={path} />
+      <path className="dc-qr-ink" d={path} fillRule="evenodd" />
     </svg>
   );
 }
@@ -771,7 +775,7 @@ function EndsChoice({
             value={earlier.time}
             selectRef={timeRef}
             told={told}
-            options={endTimes(earlier.day).map((time) => ({ value: time, word: time }))}
+            options={endTimes(earlier.day).map((time) => ({ value: time, word: clockOf(time) }))}
             onChange={(time) => onPick({ ...earlier, time })}
           />
         </div>

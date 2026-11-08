@@ -3,7 +3,10 @@ import { describe, expect, it } from 'vitest';
 import {
   BAR,
   capLine,
+  clockOf,
   countLine,
+  dayLabel,
+  READER,
   DOOR_PAGES,
   DOOR_STATES,
   doorStartOf,
@@ -20,7 +23,6 @@ import {
   newLine,
   nextCode,
   normalCode,
-  qrPath,
   renewed,
   roleLine,
   saidCode,
@@ -29,6 +31,7 @@ import {
   untilWords,
 } from './doorCode.ts';
 import { listed, rowLine } from './people.ts';
+import { qrPath, qrSeed } from './security.ts';
 
 const start = (query: Partial<Record<'state' | 'code' | 'hold' | 'print', string>>) =>
   doorStartOf({ state: null, code: null, hold: null, print: null, ...query });
@@ -108,12 +111,28 @@ describe('the door code’s words and checks (sc-72)', () => {
     expect(formFrom(ranOut).ends).toEqual({ kind: 'event' });
   });
 
-  it('draws the same stand-in QR for a code every time, with its finders', () => {
-    const one = qrPath('Q7KM4XP2');
-    expect(one.size).toBe(35);
-    expect(qrPath('Q7KM4XP2').path).toBe(one.path);
-    expect(qrPath('H3WD9RN6').path).not.toBe(one.path);
-    expect(one.path.startsWith('M3 3h7v1h-7z')).toBe(true);
+  it('draws each code with the demo’s one stand-in QR, the same every time, inside its quiet zone', () => {
+    const one = qrPath(29, qrSeed('Q7KM4XP2'), 3);
+    expect(qrPath(29, qrSeed('Q7KM4XP2'), 3)).toBe(one);
+    expect(qrPath(29, qrSeed('H3WD9RN6'), 3)).not.toBe(one);
+    expect(one).toContain('M3 3h7v7h-7z');
+    expect(one).toContain('M25 3h7v7h-7z');
+    expect(one).not.toMatch(/M[0-2] /u);
+    expect(qrPath()).toBe(qrPath(21, 4, 0));
+  });
+
+  it('writes the day in the reader’s locale, and every time on the 24-hour clock', () => {
+    const reader = (locale: string) =>
+      new Intl.DateTimeFormat(locale, {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        timeZone: 'Europe/Lisbon',
+      }).format(new Date('2026-11-14T12:00:00Z'));
+    expect(dayLabel('2026-11-14')).toBe(reader(READER));
+    expect(reader('en-US')).toBe('Sat, Nov 14');
+    expect(reader('en-GB')).toBe('Sat 14 Nov');
+    expect(clockOf('2026-11-14T23:30:00Z')).toBe('23:30');
   });
 });
 

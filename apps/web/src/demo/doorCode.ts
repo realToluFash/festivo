@@ -1,3 +1,4 @@
+import { writtenTime } from './clock.ts';
 import type { EventPlace, OnEvent, OrgMember, PeopleStart } from './people.ts';
 import type { DemoLink } from './settings.ts';
 
@@ -86,23 +87,26 @@ export interface DoorCode {
   endedAt: string | null;
 }
 
-const DAY = new Intl.DateTimeFormat('en-US', {
+/** The reader's locale (CLDR): en-US reads "Sat, Nov 14", en-GB "Sat 14 Nov". */
+export const READER = new Intl.DateTimeFormat().resolvedOptions().locale;
+const DAY = new Intl.DateTimeFormat(READER, {
   weekday: 'short',
   month: 'short',
   day: 'numeric',
   timeZone: DOOR_ZONE,
 });
-const CLOCK = new Intl.DateTimeFormat('en-US', {
+const ISO_DAY = new Intl.DateTimeFormat('en-CA', { timeZone: DOOR_ZONE });
+const ISO_TIME = new Intl.DateTimeFormat('en-GB', {
   hour: '2-digit',
   minute: '2-digit',
   hourCycle: 'h23',
   timeZone: DOOR_ZONE,
 });
-const ISO_DAY = new Intl.DateTimeFormat('en-CA', { timeZone: DOOR_ZONE });
 
 export const dayOf = (at: string | Date) => DAY.format(new Date(at));
-export const clockOf = (at: string | Date) => CLOCK.format(new Date(at));
+export const clockOf = (at: string | Date) => writtenTime(at, READER, DOOR_ZONE);
 const isoDayOf = (at: string | Date) => ISO_DAY.format(new Date(at));
+const isoTimeOf = (at: string | Date) => ISO_TIME.format(new Date(at));
 
 export function dayLabel(day: string): string {
   return dayOf(`${day}T12:00:00Z`);
@@ -116,13 +120,13 @@ function instantOf(day: string, time: string): number {
 export function untilWords(ends: Ends): string {
   return ends.kind === 'event'
     ? `${clockOf(EVENT_ENDS)} on ${dayOf(EVENT_ENDS)}`
-    : `${ends.time} on ${dayLabel(ends.day)}`;
+    : `${clockOf(ends.time)} on ${dayLabel(ends.day)}`;
 }
 
 export function endsWords(ends: Ends): string {
   return ends.kind === 'event'
     ? `${W.whenEventEnds} · ${eventEndWords()}`
-    : `${W.earlier} · ${dayLabel(ends.day)}, ${ends.time}`;
+    : `${W.earlier} · ${dayLabel(ends.day)}, ${clockOf(ends.time)}`;
 }
 
 export function eventEndWords(): string {
@@ -147,7 +151,7 @@ export function endTimes(day: string): string[] {
     return `${hours}:${half % 2 === 0 ? '00' : '30'}`;
   });
 
-  return day === isoDayOf(EVENT_ENDS) ? times.filter((t) => t < clockOf(EVENT_ENDS)) : times;
+  return day === isoDayOf(EVENT_ENDS) ? times.filter((t) => t < isoTimeOf(EVENT_ENDS)) : times;
 }
 
 export const EARLIER_START: Ends = { kind: 'earlier', day: isoDayOf(EVENT_ENDS), time: '18:00' };
@@ -246,7 +250,7 @@ export function countLine(code: DoorCode): string {
         ? '1 person came in with it. They keep their access.'
         : `${code.used} people came in with it. They keep their access.`;
     case 'ranOut':
-      return `${code.used} of ${code.cap} used · ended at ${code.endedAt ?? ''}`;
+      return `${code.used} of ${code.cap} used · ended at ${code.endedAt == null ? '' : clockOf(code.endedAt)}`;
     default:
       return `${code.used} of ${code.cap} used · until ${untilWords(code.ends)}`;
   }
@@ -269,7 +273,7 @@ export function stopLine(code: DoorCode): string {
 }
 
 export const inWithLine = (door: { code: string; at: string }) =>
-  `In with the door code ${shownCode(door.code)} at ${door.at}.`;
+  `In with the door code ${shownCode(door.code)} at ${clockOf(door.at)}.`;
 
 export function printLine(code: DoorCode): string {
   return `Scan it with your phone’s camera, or open ${DOOR_ADDRESS} and type the code. It works until ${untilWords(code.ends)}.`;
@@ -769,61 +773,3 @@ export const DOOR_PAGES: readonly { name: string; states: readonly DemoLink[] }[
     ],
   },
 ];
-
-/** A stand-in QR, as the boards draw one: 29 modules with finders, timing and an alignment mark, the rest from the code; not an encoding. */
-export function qrPath(code: string): { path: string; size: number } {
-  const n = 29;
-  const quiet = 3;
-  let seed = [...code].reduce(
-    (hash, char) => Math.imul(hash ^ char.charCodeAt(0), 16777619) >>> 0,
-    2166136261,
-  );
-  const next = (): boolean => {
-    seed = (seed + 0x6d2b79f5) | 0;
-    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296 < 0.5;
-  };
-  const grid = Array.from({ length: n }, () => Array.from({ length: n }, next));
-  const set = (r: number, c: number, on: boolean): void => {
-    const row = grid[r];
-    if (row != null && c >= 0 && c < n) row[c] = on;
-  };
-  for (const [top, left] of [
-    [0, 0],
-    [0, n - 7],
-    [n - 7, 0],
-  ] as const) {
-    for (let r = -1; r < 8; r += 1) {
-      for (let c = -1; c < 8; c += 1) {
-        const ring = Math.max(Math.abs(r - 3), Math.abs(c - 3));
-        set(top + r, left + c, ring === 0 || ring === 1 || ring === 3);
-      }
-    }
-  }
-  for (let k = 8; k < n - 8; k += 1) {
-    set(6, k, k % 2 === 0);
-    set(k, 6, k % 2 === 0);
-  }
-  for (let r = -2; r <= 2; r += 1) {
-    for (let c = -2; c <= 2; c += 1)
-      set(n - 9 + r, n - 9 + c, Math.max(Math.abs(r), Math.abs(c)) !== 1);
-  }
-  const runs = grid.flatMap((row, r) => {
-    const out: string[] = [];
-    for (let c = 0; c < n;) {
-      if (!row[c]) {
-        c += 1;
-        continue;
-      }
-      const from = c;
-      while (c < n && row[c]) c += 1;
-      out.push(`M${from + quiet} ${r + quiet}h${c - from}v1h-${c - from}z`);
-    }
-
-    return out;
-  });
-
-  return { path: runs.join(''), size: n + 2 * quiet };
-}
