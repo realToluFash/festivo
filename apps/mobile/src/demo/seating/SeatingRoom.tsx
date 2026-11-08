@@ -36,8 +36,9 @@ import {
 import {
   type Seating,
   accName,
+  arrangeable,
   chairWord,
-  editable,
+  handlesLive,
   hexOf,
   itemOf,
   length,
@@ -690,7 +691,7 @@ export function looksOf(
   if (m.chosen != null)
     add(m.chosen, {
       lit: true,
-      ...(handles != null && editable(m) && m.tab === 'Arrange' ? { handles } : {}),
+      ...(handles != null && handlesLive(m) ? { handles } : {}),
     });
   Object.entries(m.rings).forEach(([id, person]) => !person.viewer && add(id, { ring: person }));
   m.outside.forEach((id) => add(id, { overlap: true }));
@@ -755,11 +756,10 @@ function roomGestures(dispatch: (action: Action) => void, show: (live: Live | nu
       mid: { x: (a.pageX + b.pageX) / 2 - origin.x, y: (a.pageY + b.pageY) / 2 - origin.y },
     };
   };
-  const canEdit = (mm: Seating) => editable(mm) && mm.view === 'Floor plan' && mm.picked == null;
   const handleAt = (p: Point): number | null => {
     const it = m == null ? null : itemOf(m, m.chosen);
     const view = m?.shown;
-    if (m == null || it == null || view == null || !canEdit(m) || m.tab !== 'Arrange') return null;
+    if (m == null || it == null || view == null || !handlesLive(m)) return null;
     if (!hasHandles(it)) return null;
     const cx = view.ox + it.x * view.s;
     const cy = view.oy + it.y * view.s;
@@ -780,7 +780,7 @@ function roomGestures(dispatch: (action: Action) => void, show: (live: Live | nu
     if (two != null) {
       const chosen = itemOf(m, m.chosen);
       const turns =
-        chosen != null && (chosen.kind === 'rect' || chosen.kind === 'head') && canEdit(m);
+        chosen != null && (chosen.kind === 'rect' || chosen.kind === 'head') && arrangeable(m);
       gesture = {
         kind: 'pinch',
         view,
@@ -800,7 +800,7 @@ function roomGestures(dispatch: (action: Action) => void, show: (live: Live | nu
     }
     const it = itemAt(m.items, toRoom(p, view), 22 / view.s);
     gesture =
-      it != null && canEdit(m)
+      it != null && arrangeable(m)
         ? { kind: 'move', id: it.id, from: { x: it.x, y: it.y }, start: p }
         : { kind: 'pan', view, start: p };
   };
@@ -915,12 +915,14 @@ export function RoomSurface({
   width,
   height,
   viewsEnd = 0,
+  printStart = 0,
 }: {
   m: Seating;
   dispatch: (action: Action) => void;
   width: number;
   height: number;
   viewsEnd?: number;
+  printStart?: number;
 }) {
   const box = useRef<ViewInstance>(null);
   const [live, setLive] = useState<Live | null>(null);
@@ -946,7 +948,7 @@ export function RoomSurface({
     ? {
         left: viewsEnd + tokens.spaceMd,
         top: tokens.spaceXl + 14,
-        maxWidth: width - viewsEnd - tokens.spaceMd - 140,
+        maxWidth: (printStart > 0 ? printStart : width) - viewsEnd - 2 * tokens.spaceMd,
       }
     : { left: v.ox, top: v.oy - 26 };
   return (
