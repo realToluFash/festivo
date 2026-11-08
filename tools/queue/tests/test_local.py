@@ -334,9 +334,9 @@ class Worktrees(unittest.TestCase):
         (path / "pnpm-workspace.yaml").write_text("x")
         return path, branch
 
-    def sweep(self, cwds=()):
+    def sweep(self, cwds=(), later=2 * 60 * 60):
         local.sweep_worktrees(self.db, self.config, store.stories(self.db), self.said.append,
-                              {pathlib.Path(c).resolve() for c in cwds})
+                              {pathlib.Path(c) for c in cwds}, time.time() + later)
 
     def branches(self):
         return subprocess.run(["git", "-C", str(self.place), "branch", "--format=%(refname:short)"],
@@ -370,6 +370,29 @@ class Worktrees(unittest.TestCase):
         path, _ = self.tree("box", 10118, "Done")
         self.sweep(cwds=[path / "apps"])
         self.assertTrue(path.exists())
+
+    def test_a_session_that_reached_it_by_another_path_keeps_it(self):
+        path, _ = self.tree("box", 10118, "Done")
+        other = self.root / "same-disk"
+        other.symlink_to(self.root)
+        self.sweep(cwds=[other / path.relative_to(self.root) / "apps"])
+        self.assertTrue(path.exists())
+
+    def test_a_worktree_used_in_the_last_hour_keeps_it(self):
+        path, _ = self.tree("box", 10118, "Done")
+        self.sweep(later=10 * 60)
+        self.assertTrue(path.exists())
+
+    def test_a_worktree_whose_story_the_store_does_not_know_is_kept_and_named(self):
+        path, _ = self.tree("box", 10118, "Done")
+        self.db.execute("DELETE FROM stories")
+        self.sweep()
+        self.assertTrue(path.exists())
+        self.assertEqual(store.get_meta(self.db, "worktrees_unknown"), [str(path)])
+        found = local.checks(self.db, self.config, DAY * 10, cache=lambda: 1.0,
+                             free=lambda c: 100.0, largest=lambda c, start: "")
+        reason = next(f["reason"] for f in found if f["key"] == "worktrees-left")
+        self.assertIn("does not know", reason)
 
     def test_a_story_in_review_keeps_it(self):
         path, _ = self.tree("box", 10118, "In Review")

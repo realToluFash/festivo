@@ -15,7 +15,7 @@ import time
 import urllib.error
 import urllib.request
 
-from . import machine, roles as R, store
+from . import checkout, machine, roles as R, store
 
 DOCKER_EVERY_SECONDS = 30 * 60
 BUILD_CACHE_GB = 20
@@ -26,6 +26,7 @@ UNITS = {"b": 1e-9, "kb": 1e-6, "mb": 1e-3, "gb": 1, "tb": 1e3}
 SCRATCH_DAYS = 3
 SMALL_DAYS = 14
 SMALL_BYTES = 1_000_000
+RECENT_SECONDS = 60 * 60
 NEVER_SWEPT = "untracked-before-main-"
 HARNESS = ("bin", "state.json")
 RECORDS = {"release": ("installed",)}
@@ -179,7 +180,7 @@ def sweep_scratch(db, config, now=None, say=print, cwds=None):
             freed, gone = freed + size, gone + 1
         if gone:
             say(f"swept {amount(freed)} from {scratch}: {gone} entries")
-    sweep_worktrees(db, config, stories, say, cwds)
+    sweep_worktrees(db, config, stories, say, cwds, now)
     return True
 
 
@@ -212,29 +213,65 @@ def live_cwds(platform=sys.platform, proc="/proc", run=subprocess.run):
     return found
 
 
-def git(place, *args):
-    return subprocess.run(["git", "-C", str(place), *args], capture_output=True, text=True,
-                          timeout=120)
+def held_folders(cwds):
+    """Each working folder and its parents, by device and inode: a folder reached through a
+    bind mount or a second mount of the same disk is still the same folder."""
+    held, seen = set(), set()
+    for cwd in cwds:
+        for path in (cwd, *cwd.parents):
+            if path in seen:
+                break
+            seen.add(path)
+            try:
+                found = path.stat()
+            except OSError:
+                continue
+            held.add((found.st_dev, found.st_ino))
+    return held
 
 
-def worktree_keeps(tree, stories, cwds):
-    """Why a worktree stays, or None when it may go. `changes` marks the one ops is told
-    about: work left on a story that has moved on."""
-    resolved = tree.resolve()
-    if any(c == resolved or resolved in c.parents for c in cwds):
+def last_used(tree):
+    """When the worktree last saw a commit, a checkout, a staged change or a file added at its
+    top; a session whose shell has exited between commands still leaves these."""
+    gitdir = checkout.git(tree, "rev-parse", "--absolute-git-dir", check=False,
+                          timeout=120).stdout.strip()
+    paths = [tree] + [pathlib.Path(gitdir) / name for name in ("HEAD", "index", "logs/HEAD")
+                      if gitdir]
+    times = []
+    for path in paths:
+        try:
+            times.append(path.stat().st_mtime)
+        except OSError:
+            continue
+    return max(times, default=0)
+
+
+def worktree_keeps(tree, stories, held, now):
+    """Why a worktree stays, or None when it may go. `changes` and `story unknown` mark the
+    ones ops is told about."""
+    found = tree.stat()
+    if (found.st_dev, found.st_ino) in held:
         return "in use"
-    branch = git(tree, "branch", "--show-current").stdout.strip()
+    if now - last_used(tree) < RECENT_SECONDS:
+        return "used in the last hour"
+    branch = checkout.git(tree, "branch", "--show-current", check=False,
+                          timeout=120).stdout.strip()
     numbers = set(STORY_REF.findall(f"{tree.name} {branch}"))
+    known = {str(story["id"]) for story in stories}
+    if numbers and not numbers <= known:
+        return "story unknown"
     if not finished(stories, numbers, WORKTREE_DONE):
         return "story not merged"
-    status = git(tree, "status", "--porcelain")
+    status = checkout.git(tree, "--no-optional-locks", "status", "--porcelain", check=False,
+                          timeout=120)
     if status.returncode:
         return "git status failed"
     for line in status.stdout.splitlines():
         path = line[3:].rstrip("/")
         if not (line.startswith("??") and path.rsplit("/", 1)[-1] in GENERATED):
             return "changes"
-    unpushed = git(tree, "log", "HEAD", "--not", "--remotes", "--oneline")
+    unpushed = checkout.git(tree, "log", "HEAD", "--not", "--remotes", "--oneline",
+                            check=False, timeout=120)
     if unpushed.returncode or unpushed.stdout.strip():
         return "changes"
     return None
@@ -249,25 +286,30 @@ def du_bytes(path):
         return 0
 
 
-def sweep_worktrees(db, config, stories, say=print, cwds=None):
-    """Removes a worktree whose story has merged, with nothing uncommitted or unpushed and no
-    process working in it. Its branch stays. One with work left on a merged story is kept and
-    named for ops."""
-    cwds = live_cwds() if cwds is None else cwds
-    left = []
+def sweep_worktrees(db, config, stories, say=print, cwds=None, now=None):
+    """Removes a worktree whose story has merged, with nothing uncommitted or unpushed, no
+    process working in it and nothing done in it for an hour. Its branch stays. One with work
+    left on a merged story, or whose story the store does not know, is kept and named for
+    ops."""
+    held = held_folders(live_cwds() if cwds is None else cwds)
+    now = now or time.time()
+    left, unknown = [], []
     for place, folder in worktree_folders(config):
         freed, gone = 0, 0
         for tree in sorted(p for p in folder.iterdir() if p.is_dir() and not p.is_symlink()):
             try:
-                why = worktree_keeps(tree, stories, cwds)
+                why = worktree_keeps(tree, stories, held, now)
             except (OSError, subprocess.TimeoutExpired) as error:
                 why = f"could not read it ({error})"
             if why == "changes":
                 left.append(str(tree))
+            if why == "story unknown":
+                unknown.append(str(tree))
             if why:
                 continue
             size = du_bytes(tree)
-            removed = git(place, "worktree", "remove", "--force", str(tree))
+            removed = checkout.git(place, "worktree", "remove", "--force", str(tree),
+                                   check=False, timeout=120)
             if removed.returncode:
                 say(f"warning: could not remove {tree}: {removed.stderr.strip()}")
                 continue
@@ -275,6 +317,7 @@ def sweep_worktrees(db, config, stories, say=print, cwds=None):
         if gone:
             say(f"removed {gone} worktrees from {folder}, {amount(freed)} freed")
     store.set_meta(db, "worktrees_left", left)
+    store.set_meta(db, "worktrees_unknown", unknown)
 
 
 def amount(size):
@@ -388,12 +431,18 @@ def checks(db, config, now=None, cache=None, free=None, largest=None, dry_run=Fa
                       "reason": f"Docker's build cache is {seen['gb']:.0f} GB on {name}: "
                                 "`just prune-build-cache`"})
     left = store.get_meta(db, "worktrees_left") or []
+    unknown = store.get_meta(db, "worktrees_unknown") or []
+    reasons = []
     if left:
+        reasons.append(f"{len(left)} worktrees on {name} hold uncommitted or unpushed work on "
+                       "a story already merged, so the sweep kept them: " + ", ".join(left))
+    if unknown:
+        reasons.append(f"{len(unknown)} worktrees on {name} name a story the store does not "
+                       "know (not updated in the last 14 days), so the sweep kept them: "
+                       + ", ".join(unknown))
+    if reasons:
         found.append({"key": "worktrees-left", "urgent": False,
-                      "period": int(now // SWEEP_SECONDS),
-                      "reason": f"{len(left)} worktrees on {name} hold uncommitted or unpushed "
-                                "work on a story already merged, so the sweep kept them: "
-                                + ", ".join(left)})
+                      "period": int(now // SWEEP_SECONDS), "reason": "; ".join(reasons)})
     found.append({"key": "sweep", "urgent": False, "period": int(now // SWEEP_SECONDS),
                   "reason": f"the daily sweep of {name}: disk, Docker, the role stacks and "
                             "the manager"})
