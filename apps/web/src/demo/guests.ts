@@ -591,17 +591,20 @@ export function replyLine(one: Guest, replyBy: string | null): string {
     case 'walkIn':
       return GW.walkIn(one.arrived ?? '');
     default:
-      if (one.recorded != null)
-        return GW.recordedBy(
-          word,
-          one.recorded.by ?? READER,
-          midSentence(one.recorded.how ?? 'Other'),
-          dayOf(one.recorded.on),
-        );
-      if (one.reply === 'notSure' && replyBy != null) return GW.askedBy(dayOf(replyBy));
-
-      return GW.replied(word, dayOf(one.replied ?? ADDED.on));
+      return GW.withWord(word, replyTail(one, replyBy));
   }
+}
+
+export function replyTail(one: Guest, replyBy: string | null): string {
+  if (one.recorded != null)
+    return GW.recordedOn(
+      one.recorded.by ?? READER,
+      midSentence(one.recorded.how ?? 'Other'),
+      dayOf(one.recorded.on),
+    );
+  if (one.reply === 'notSure' && replyBy != null) return GW.askedOn(dayOf(replyBy));
+
+  return GW.repliedOn(dayOf(one.replied ?? ADDED.on));
 }
 
 function lowerFirst(text: string): string {
@@ -626,7 +629,13 @@ function rowOf(person: Person, indent: boolean, mode: 'all' | Choice, replyBy: s
   const word = REPLY_WORDS[person.reply];
   let line: string;
 
-  if (person.companion != null) line = person.reply === 'held' ? GW.heldLine : word;
+  if (person.companion != null)
+    line =
+      person.reply === 'held'
+        ? GW.heldLine
+        : !indent && person.companion.name != null
+          ? GW.guestOf(person.guest.name)
+          : word;
   else if (mode === 'noReply') line = invitedLine(person.guest.invited ?? BY_MESSAGE);
   else {
     const short =
@@ -648,6 +657,7 @@ export interface ListGroup {
   count: number;
   rows: ListRow[];
   collapsed: boolean;
+  next: string | null;
 }
 
 export type ListView = { kind: 'groups'; groups: ListGroup[] } | { kind: 'rows'; rows: ListRow[] };
@@ -676,7 +686,11 @@ function flatRows(people: readonly Person[], mode: Choice, replyBy: string | nul
   );
 }
 
-/** What the list shows for a choice and a search: groups by reply for All and Invited, the rows themselves for one reply or a search (sc-3772). */
+/** A companion stays under their guest while they share the guest's reply or wait on it; otherwise they sit in their own reply's group (sc-3773, 8 Nov). */
+function withHost(person: Person): boolean {
+  return person.reply === person.guest.reply || person.reply === 'held';
+}
+
 export function viewOf(
   list: readonly Guest[],
   choice: Choice,
@@ -701,24 +715,25 @@ export function viewOf(
   const groups = order
     .filter((reply) => inChoice(reply, choice))
     .map((reply) => {
-      const hosts = sorted(list).filter((one) => one.reply === reply);
-      const open = expanded.has(reply) || hosts.length <= FIRST_ROWS;
-      const rows = (open ? hosts : hosts.slice(0, FIRST_ROWS)).flatMap((one) => {
-        const host = people.find((person) => person.id === one.id) as Person;
-
-        return [
-          rowOf(host, false, 'all', replyBy),
-          ...people
-            .filter((person) => person.companion != null && person.guest.id === one.id)
-            .map((person) => rowOf(person, true, 'all', replyBy)),
-        ];
-      });
+      const heads = people
+        .filter((one) => one.reply === reply && (one.companion == null || !withHost(one)))
+        .sort((a, b) => compareGuestNames(a, b));
+      const open = expanded.has(reply) || heads.length <= FIRST_ROWS;
+      const rows = (open ? heads : heads.slice(0, FIRST_ROWS)).flatMap((head) => [
+        rowOf(head, false, 'all', replyBy),
+        ...(head.companion != null
+          ? []
+          : people
+              .filter((one) => one.companion != null && one.guest.id === head.id && withHost(one))
+              .map((one) => rowOf(one, true, 'all', replyBy))),
+      ]);
 
       return {
         reply,
         count: people.filter((one) => one.reply === reply).length,
         rows,
         collapsed: !open,
+        next: open ? null : (heads[FIRST_ROWS]?.id ?? null),
       };
     })
     .filter((group) => group.rows.length > 0);

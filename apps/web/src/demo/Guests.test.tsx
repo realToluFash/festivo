@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
@@ -322,6 +322,49 @@ describe('Guests, Edit in place (sc-3773)', () => {
 });
 
 describe('Guests, Record a reply in place (sc-3787)', () => {
+  it(
+    'puts a companion whose reply differs in their own group, so each group shows what it counts',
+    SLOW,
+    async () => {
+      await guests('guest');
+
+      fireEvent.click(within(column()).getByRole('button', { name: 'Record a reply' }));
+      fireEvent.click(await screen.findByRole('radio', { name: 'Coming' }));
+      fireEvent.click(screen.getByRole('radio', { name: 'By phone' }));
+      fireEvent.click(screen.getByRole('checkbox', { name: 'Adanna Nwosu' }));
+      fireEvent.click(within(column()).getByRole('button', { name: 'Save' }));
+      await screen.findByText('Reply recorded. It counts like any other reply.', {}, SLOW);
+      fireEvent.click(within(main()).getAllByRole('button', { name: 'Clear' })[0] as HTMLElement);
+      for (const more of screen.queryAllByRole('button', { name: /^Show all/u }))
+        fireEvent.click(more);
+
+      const group = (name: RegExp) =>
+        screen.getByRole('heading', { level: 2, name }).closest('section') as HTMLElement;
+
+      expect(screen.getByRole('heading', { level: 2, name: 'Coming · 97' })).toBeDefined();
+      expect(screen.getByRole('heading', { level: 2, name: 'Not coming · 10' })).toBeDefined();
+      expect(
+        within(group(/^Not coming/u)).getByRole('link', {
+          name: 'Adanna Nwosu, Not coming, Guest of Dr Emeka Nwosu',
+        }),
+      ).toBeDefined();
+      expect(
+        within(group(/^Coming/u)).getByRole('link', {
+          name: /^Dr Emeka Nwosu, Coming · recorded by Folake Adeyemi/u,
+        }),
+      ).toBeDefined();
+      expect(within(group(/^Coming/u)).queryByRole('link', { name: /^Adanna Nwosu/u })).toBeNull();
+      for (const heading of screen.getAllByRole('heading', { level: 2, name: / · \d+$/u })) {
+        const count = Number(/(\d+)$/u.exec(heading.textContent ?? '')?.[1]);
+        const rows = within(heading.closest('section') as HTMLElement)
+          .getAllByRole('link')
+          .filter((row) => !/, Held · /u.test(row.getAttribute('aria-label') ?? ''));
+
+        expect(rows).toHaveLength(count);
+      }
+    },
+  );
+
   it('refuses with nothing chosen, then records and counts it straight away', SLOW, async () => {
     await guests('record');
 
@@ -429,6 +472,36 @@ describe('Guests, the link and Mark as invited (sc-1526, sc-3788)', () => {
       await within(column()).findByText('Invited by Folake Adeyemi, WhatsApp, Nov 3'),
     ).toBeDefined();
     expect(within(column()).getByRole('button', { name: 'Record a reply' })).toBeDefined();
+  });
+});
+
+describe('Guests on sample data (sc-31781)', () => {
+  it('sends nothing to the API', SLOW, async () => {
+    const fetched = vi.spyOn(globalThis, 'fetch');
+
+    await guests('guest');
+    fireEvent.click(within(column()).getByRole('button', { name: 'Record a reply' }));
+    fireEvent.click(await screen.findByRole('radio', { name: 'Not coming' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'In person' }));
+    fireEvent.click(within(column()).getByRole('button', { name: 'Save' }));
+    await screen.findByText('Reply recorded. It counts like any other reply.', {}, SLOW);
+
+    fireEvent.click(within(column()).getByRole('button', { name: 'Edit' }));
+    fireEvent.change(await screen.findByRole('textbox', { name: /Email address/u }), {
+      target: { value: 'emeka@nwosu.co.uk' },
+    });
+    fireEvent.click(within(column()).getByRole('button', { name: 'Save' }));
+    await screen.findByText('emeka@nwosu.co.uk', {}, SLOW);
+
+    fireEvent.click(within(main()).getByRole('button', { name: 'Add guest' }));
+    fireEvent.change(await screen.findByRole('textbox', { name: 'Full name' }), {
+      target: { value: 'Bimpe Adeyemi' },
+    });
+    fireEvent.click(within(column()).getByRole('button', { name: 'Add guest' }));
+
+    expect(screen.getByText('Bimpe Adeyemi added.')).toBeDefined();
+    expect(fetched).not.toHaveBeenCalled();
+    fetched.mockRestore();
   });
 });
 

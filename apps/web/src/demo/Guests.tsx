@@ -18,7 +18,6 @@ import { AddForm, EditForm, RecordForm } from './GuestForms.tsx';
 import { type GuestActions, GuestView } from './GuestColumn.tsx';
 import {
   CHOICES,
-  FIRST_ROWS,
   LINK,
   type Choice,
   type Guest,
@@ -40,7 +39,6 @@ import {
   replaceLink,
   replyByOf,
   saveGuest,
-  sorted,
   todayOf,
   viewOf,
 } from './guests.ts';
@@ -398,13 +396,9 @@ function GuestsPage({
                             open={open}
                             event={event.id}
                             onOpen={openGuest}
-                            onAll={(reply) => {
-                              const next = sorted(list).filter((one) => one.reply === reply)[
-                                FIRST_ROWS
-                              ];
-
-                              setExpanded((was) => new Set([...was, reply]));
-                              focus(`row:${next?.id ?? ''}`);
+                            onAll={() => {
+                              setExpanded((was) => new Set([...was, group.reply]));
+                              focus(`row:${group.next ?? ''}`);
                             }}
                           />
                         ))
@@ -634,7 +628,7 @@ function Group({
   open: string | null;
   event: string;
   onOpen: (id: string) => void;
-  onAll: (reply: Reply) => void;
+  onAll: () => void;
 }) {
   const id = useId();
   const word = REPLY_WORDS[reply];
@@ -646,9 +640,7 @@ function Group({
         <span className="gs-group-count"> · {figure(count)}</span>
       </h2>
       <Rows rows={rows} open={open} event={event} onOpen={onOpen} />
-      {collapsed && (
-        <TextAction label={GW.showAll(count, SHOW_ALL_WORDS[reply])} onClick={() => onAll(reply)} />
-      )}
+      {collapsed && <TextAction label={GW.showAll(count, SHOW_ALL_WORDS[reply])} onClick={onAll} />}
     </section>
   );
 }

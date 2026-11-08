@@ -46,10 +46,10 @@ export const GW = {
   loadFailedLine: 'Check your connection and try again.',
   retry: 'Try again',
 
-  replied: (word: string, date: string) => `${word} · replied ${date}`,
-  askedBy: (date: string) => `Not sure yet · asked to decide by ${date}`,
-  recordedBy: (word: string, name: string, how: string, date: string) =>
-    `${word} · recorded by ${name}, ${how}, ${date}`,
+  repliedOn: (date: string) => `replied ${date}`,
+  askedOn: (date: string) => `asked to decide by ${date}`,
+  recordedOn: (name: string, how: string, date: string) => `recorded by ${name}, ${how}, ${date}`,
+  withWord: (word: string, rest: string) => `${word} · ${rest}`,
   invitedBy: (name: string, how: string, date: string) => `Invited by ${name}, ${how}, ${date}`,
   invitedByMessage: (date: string) => `Invited by Soirely’s message, ${date}`,
   companionCount: (count: number) => (count === 1 ? '1 companion' : `${figure(count)} companions`),

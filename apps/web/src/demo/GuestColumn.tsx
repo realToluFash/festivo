@@ -13,7 +13,7 @@ import {
   dayOf,
   phoneShown,
   replyByOf,
-  replyLine,
+  replyTail,
   repliesClosed,
   weekdayOf,
 } from './guests.ts';
@@ -99,10 +99,7 @@ export function GuestView({
           <ul className="desk-rows gs-rows">
             <li className="desk-row">
               <MarkLead reply={guest.reply} />
-              <RowWords
-                title={REPLY_WORDS[guest.reply]}
-                lines={[replyLine(guest, replyBy).split(' · ').slice(1).join(' · ')]}
-              />
+              <RowWords title={REPLY_WORDS[guest.reply]} lines={[replyTail(guest, replyBy)]} />
             </li>
           </ul>
           {manages && !closed && (

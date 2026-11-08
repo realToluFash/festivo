@@ -156,6 +156,31 @@ describe('the list (sc-3772)', () => {
   });
 });
 
+describe('a split family (sc-3773, Decided 8 Nov)', () => {
+  it('shows each group exactly the people it counts after a recorded reply', () => {
+    const list = recordReply(
+      sampleGuests(WEDDING),
+      'emeka',
+      'coming',
+      'By phone',
+      NONE,
+      '2026-11-03',
+    );
+    const all = new Set(['coming', 'notSure', 'noReply', 'notComing', 'notYet'] as const);
+    const { view } = viewOf(list, 'all', '', all, replyByOf(WEDDING));
+
+    if (view.kind !== 'groups') throw new Error('groups');
+    for (const group of view.groups)
+      expect(group.rows.filter((row) => row.person.reply !== 'held')).toHaveLength(group.count);
+    const notComing = view.groups.find((group) => group.reply === 'notComing');
+
+    expect(notComing?.rows.find((row) => row.person.name === 'Adanna Nwosu')).toMatchObject({
+      indent: false,
+      line: 'Guest of Dr Emeka Nwosu',
+    });
+  });
+});
+
 describe('the card (spec §4)', () => {
   const wedding = sampleEvent(WEDDING);
 
