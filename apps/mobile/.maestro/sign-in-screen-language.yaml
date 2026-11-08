@@ -1,0 +1,23 @@
+# The signed-out app in LANGUAGE, by the language button's sheet on welcome (English, Español, Français,
+# Português), which keeps the device's last choice, then Sign in with email. Run before sign-in-any-language.yaml. sc-2939, sc-29076.
+appId: host.exp.Exponent
+---
+- launchApp:
+    appId: host.exp.Exponent
+    stopApp: true
+- openLink: ${METRO_URL}/--/welcome
+- extendedWaitUntil:
+    visible:
+      id: 'welcome.email'
+    timeout: 90000
+- tapOn:
+    id: 'language.open'
+- tapOn:
+    id: 'language\.(en|es|fr|pt)'
+    text: '${LANGUAGE}'
+- tapOn:
+    id: 'welcome.email'
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.email'
+    timeout: 20000

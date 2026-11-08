@@ -1,0 +1,8 @@
+# Types a name into Organisation name, on an open Create an organisation. sc-13408.
+appId: host.exp.Exponent
+---
+- tapOn:
+    id: 'createOrganisation.name'
+- eraseText: 60
+- inputText: 'QA Sin Pais'
+- takeScreenshot: mobile-13408-org-name

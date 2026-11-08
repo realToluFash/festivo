@@ -1,0 +1,16 @@
+# Home, where signing in lands, and whose session it is: Today names no account, so
+# the account is read in Settings. sc-30091.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible: '{{t:todayScreen.tab.today}}'
+    timeout: 30000
+- takeScreenshot: home
+- runFlow:
+    file: ../batch/to-settings.yaml
+- scrollUntilVisible:
+    element:
+      text: '{{t:settings.signedInAs|email}}'
+    direction: DOWN
+    timeout: 30000

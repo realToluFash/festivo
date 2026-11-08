@@ -1,0 +1,24 @@
+# sc-18648 on an iPhone: ' Ball' typed onto the name of ${EVENT_ID} lands as typed, and the event saves. Pass EVENT_ID, a fresh event per run, and NAME, its name as it stands.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}/edit
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.name'
+    timeout: 30000
+- tapOn:
+    id: 'eventForm.name'
+- inputText: ' Ball'
+- assertVisible: '${NAME} Ball'
+- takeScreenshot: ios-event-name-typed
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.send'
+- tapOn:
+    id: 'eventForm.send'
+- extendedWaitUntil:
+    notVisible:
+      id: 'eventForm.send'
+    timeout: 30000
+- takeScreenshot: ios-event-saved
