@@ -3533,15 +3533,27 @@ export function rerunHints(name, failures, { args, email, secret, rest = {} }) {
 }
 
 // --ready finishes Complete your profile and founds one organisation; --two-factor also turns it on.
+// --no-organisation founds one too, since the profile is only completed by founding, then deletes it.
+export function accountKind(args) {
+  const asked = (flag) => args.includes(flag);
+  const clash = ['--ready', '--two-factor'].filter(asked);
+  if (asked('--no-organisation') && clash.length > 0) {
+    throw new Error(`--no-organisation cannot go with ${clash.join(' or ')}: pick one`);
+  }
+  const passed = args.filter((a) => !['--ready', '--two-factor', '--no-organisation'].includes(a));
+  if (asked('--no-organisation')) return { kind: 'no-organisation', passed };
+  if (asked('--two-factor')) return { kind: 'two-factor', passed };
+  return { kind: asked('--ready') ? 'ready' : 'plain', passed };
+}
+
 async function account(args) {
   const root = qaWorktree();
   const env = { SOIRELY_API_URL: CONFIG.urls.api, MAILPIT_URL: CONFIG.urls.mailpit };
-  const twoFactor = args.includes('--two-factor');
-  if (!twoFactor && !args.includes('--ready')) {
+  const { kind, passed } = accountKind(args);
+  if (kind === 'plain') {
     run('node', ['scripts/qa-account.mjs', ...args], { cwd: root, env });
     return;
   }
-  const passed = args.filter((a) => a !== '--two-factor' && a !== '--ready');
   const {
     email,
     password,
@@ -3549,12 +3561,23 @@ async function account(args) {
     sessionId,
   } = await founder(root, ACCOUNT_ORGANISATION, passed);
   let secret = null;
-  if (twoFactor) {
+  if (kind === 'two-factor') {
     ({ secret } = await api('/api/auth/two-factor/enrol', { token }));
     const code = await nextCode(email, secret);
     await api('/api/auth/two-factor/activate', { token, body: { code } });
   }
-  console.log(readyReport({ email, password, secret, accessToken: token, sessionId }));
+  const organisation = kind !== 'no-organisation';
+  if (!organisation) {
+    // The founded organisation held the profile's zone; the account keeps it once that is gone.
+    await api('/api/auth/timezone', { method: 'PUT', token, body: { timezone: 'Europe/London' } });
+    const { organisations } = await api('/api/orgs', { method: 'GET', token });
+    for (const { id, name } of organisations) {
+      await api(`/api/orgs/${id}`, { method: 'DELETE', token, body: { name } });
+    }
+  }
+  console.log(
+    readyReport({ email, password, secret, accessToken: token, sessionId, organisation }),
+  );
 }
 
 // Kept across batches too: a run of batches that each registered an owner met the sign-up limit.
@@ -3606,7 +3629,14 @@ async function founder(root, organisationName, args = []) {
 }
 
 // The session it signed in with is printed, so a flow can end it from outside the phone.
-export function readyReport({ email, password, secret, accessToken, sessionId }) {
+export function readyReport({
+  email,
+  password,
+  secret,
+  accessToken,
+  sessionId,
+  organisation = true,
+}) {
   const lines = [
     `  email        ${email}`,
     `  password     ${password}`,
@@ -3615,7 +3645,8 @@ export function readyReport({ email, password, secret, accessToken, sessionId })
     `  sessionId    ${sessionId}`,
   ];
   return (
-    `\n▸ registered, profile complete, owning QA Organisation${secret ? ', two-factor on' : ''}` +
+    `\n▸ registered, profile complete, ${organisation ? 'owning QA Organisation' : 'in no organisation'}` +
+    `${secret ? ', two-factor on' : ''}` +
     `\n\n${lines.join('\n')}\n\nbatch <name> <check>… EMAIL=${email} PASSWORD=${password}` +
     `${secret ? ` TOTP_SECRET=${secret}` : ''}\n`
   );
