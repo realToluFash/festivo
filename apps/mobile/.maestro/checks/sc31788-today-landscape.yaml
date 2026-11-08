@@ -1,7 +1,7 @@
-# sc-31788: the Today tab in the account's language on the landscape-native tablet, where Maestro's PORTRAIT draws landscape (sc-23471).
+# sc-31788: the Today tab in the account's language on a tablet in landscape, at ${ORIENT}: LANDSCAPE_LEFT, or PORTRAIT on a landscape-native tablet such as Soirely_QA2_Tablet (sc-23471).
 appId: host.exp.Exponent
 ---
-- setOrientation: PORTRAIT
+- setOrientation: ${ORIENT}
 - openLink: ${METRO_URL}/--/
 - extendedWaitUntil:
     visible: '{{t:todayScreen.tab.today}}'
