@@ -1,3 +1,4 @@
+import type { Milestone } from '@soirely/domain';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
@@ -12,6 +13,7 @@ import {
   NEEDS_WORDS as W,
   headingLabel,
   needRows,
+  rowLabel,
   sampleNeeds,
 } from './NeedsYouModel.ts';
 
@@ -20,7 +22,7 @@ function Row({ need, last }: { need: NeedRow; last: boolean }) {
     <View
       style={[styles.row, !last && styles.ruled]}
       accessible
-      accessibilityLabel={`${need.title}, ${need.due}`}
+      accessibilityLabel={rowLabel(need)}
       testID="event.needsYou.row"
     >
       <Text size={16} weight="semibold">
@@ -40,14 +42,16 @@ function Row({ need, last }: { need: NeedRow; last: boolean }) {
   );
 }
 
-/** The Overview's Needs you (sc-32801): the rows Today lists, this event's only. No row presses or has a button. */
+/** The Overview's Needs you (sc-32801): the rows Today lists, from the event's dates, this event's only. No row presses or has a button. */
 export function EventNeedsYou({
+  timeline,
   state,
   open,
   now,
   timeZone,
   locale,
 }: {
+  timeline: readonly Milestone[];
   state: NeedsState | null;
   open: boolean;
   now: Date;
@@ -59,7 +63,9 @@ export function EventNeedsYou({
   );
   const { milestones, permissions } = sampleNeeds(state);
   const rows =
-    load === 'loaded' && open ? needRows(milestones, permissions, now, timeZone, locale) : [];
+    load === 'loaded' && open
+      ? needRows([...timeline, ...milestones], permissions, now, timeZone, locale)
+      : [];
 
   return (
     <View testID="event.needsYou">
@@ -99,7 +105,7 @@ export function EventNeedsYou({
           </View>
         )}
         {rows.map((need, index) => (
-          <Row key={need.title} need={need} last={index === rows.length - 1} />
+          <Row key={need.key} need={need} last={index === rows.length - 1} />
         ))}
       </Panel>
     </View>

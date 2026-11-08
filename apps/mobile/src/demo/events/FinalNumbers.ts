@@ -20,6 +20,14 @@ const DUE: Record<FinalNumbersState, string | null> = {
   finalNumbersGiven: null,
 };
 
+/** The Overview's Needs you states (sc-32801) give the wedding the same milestone, so every card agrees. */
+const NEEDS_YOU_DUE: Partial<Record<string, string>> = {
+  needsYou: '2026-11-01',
+  needsYouOne: '2026-11-04',
+  needsYouOverdue: '2026-11-01',
+  needsYouReadOnly: '2026-11-04',
+};
+
 let due: string | null = null;
 
 export function isFinalNumbersState(value: string | null): value is FinalNumbersState {
@@ -28,7 +36,7 @@ export function isFinalNumbersState(value: string | null): value is FinalNumbers
 
 /** A state link sets the wedding's date as the server would return it: a copy recorded means no milestone. */
 export function seedFinalNumbers(state: string | null): void {
-  due = isFinalNumbersState(state) ? DUE[state] : null;
+  due = isFinalNumbersState(state) ? DUE[state] : ((state && NEEDS_YOU_DUE[state]) ?? null);
 }
 
 export function finalNumbersDue(eventId: string): string | null {

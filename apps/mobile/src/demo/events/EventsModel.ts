@@ -147,7 +147,7 @@ export function howSoon(event: Shown, now: Date): string | null {
 
 const DAY = 86_400_000;
 
-export function dayNumber(moment: string | Date, timeZone: string): number {
+function dayNumber(moment: string | Date, timeZone: string): number {
   return Date.parse(`${wallDay(moment, timeZone)}T00:00:00Z`) / DAY;
 }
 

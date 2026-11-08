@@ -1,61 +1,55 @@
-import { describe, expect, it } from 'vitest';
+import { type Milestone, wallDay } from '@soirely/domain';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { finalNumbersOf, milestonesOf, shownEvent } from './EventsModel.ts';
+import { CLOCKS, sampleEvent } from './EventsSample.ts';
+import { seedFinalNumbers } from './FinalNumbers.ts';
 import {
-  type SampleMilestone,
-  dueWords,
+  type NeedsState,
   headingLabel,
   needRows,
   needsStateOf,
+  rowLabel,
   sampleNeeds,
 } from './NeedsYouModel.ts';
 
 const LOCALE = 'en-US';
 const LONDON = 'Europe/London';
-const NOW = new Date('2026-11-03T09:41:00Z');
+const NOW = new Date(CLOCKS.reader);
 
-function words(at: string, now = NOW, zone = LONDON): string {
-  return dueWords(at, now, zone, LOCALE).words;
-}
-
-function milestone(over: Partial<SampleMilestone>): SampleMilestone {
+function milestone(over: Partial<Milestone>): Milestone {
   return {
     at: '2026-11-04T23:59:00Z',
     title: 'Give final numbers to the kitchen',
+    note: null,
     owner: 'you',
     area: 'menu',
+    action: null,
     ...over,
   };
 }
 
-describe('the due words (sc-32801, in sc-29884’s forms)', () => {
-  it('says today, tomorrow or the date before the moment', () => {
-    expect(words('2026-11-03T23:59:00Z')).toBe('Due today');
-    expect(words('2026-11-04T23:59:00Z')).toBe('Due tomorrow');
-    expect(words('2026-11-13T23:59:00Z')).toBe('Due Fri, Nov 13');
-  });
+/** The card as the page builds it: the event's own dates, then the state's sample rows. */
+function rowsOn(id: string, state: string | null) {
+  seedFinalNumbers(state);
+  const found = sampleEvent(id);
 
-  it('adds the year only in another year than today', () => {
-    expect(words('2027-01-13T23:59:00Z')).toBe('Due Wed, Jan 13, 2027');
-  });
+  if (found == null) throw new Error(`no sample event ${id}`);
+  const shown = shownEvent(found, NOW);
+  const needs = sampleNeeds(needsStateOf(state as NeedsState | null));
 
-  it('says it is overdue on the day, then counts the days', () => {
-    expect(dueWords('2026-11-03T09:00:00Z', NOW, LONDON, LOCALE)).toEqual({
-      words: 'Overdue',
-      late: true,
-    });
-    expect(words('2026-11-02T23:59:00Z')).toBe('1 day overdue');
-    expect(words('2026-11-01T23:59:00Z')).toBe('2 days overdue');
-  });
+  return needRows(
+    [...milestonesOf(shown), ...finalNumbersOf(shown, NOW), ...needs.milestones],
+    needs.permissions,
+    NOW,
+    shown.timeZone,
+    LOCALE,
+  );
+}
 
-  it('counts in the event’s zone, read from Los Angeles across Lagos’s midnight', () => {
-    const lagos = 'Africa/Lagos';
-    const justAfterMidnightInLagos = new Date('2026-11-04T00:30:00+01:00');
-
-    expect(words('2026-11-04T23:59:00+01:00', justAfterMidnightInLagos, lagos)).toBe('Due today');
-    expect(words('2026-11-03T23:59:00+01:00', justAfterMidnightInLagos, lagos)).toBe(
-      '1 day overdue',
-    );
-  });
+afterEach(() => {
+  seedFinalNumbers(null);
+  vi.unstubAllEnvs();
 });
 
 describe('the rows (sc-32801)', () => {
@@ -74,11 +68,16 @@ describe('the rows (sc-32801)', () => {
     expect(needRows(others, manages, NOW, LONDON, LOCALE)).toEqual([]);
   });
 
-  it('puts the earliest first, so overdue rows lead, and breaks a tie by title', () => {
-    const { milestones, permissions } = sampleNeeds('needsYouOverdue');
-    const rows = needRows(milestones, permissions, NOW, LONDON, LOCALE);
+  it('lists the kitchen milestone the wedding’s dates give, as Next up does, and no other event’s', () => {
+    expect(rowsOn('evt-wed-4', 'finalNumbers').map((row) => [row.title, row.due])).toEqual([
+      ['Give final numbers to the kitchen', 'Due today'],
+    ]);
+    expect(rowsOn('evt-ireti-2', 'finalNumbers')).toEqual([]);
+    expect(rowsOn('evt-wed-4', 'finalNumbersGiven')).toEqual([]);
+  });
 
-    expect(rows.map((row) => [row.title, row.due])).toEqual([
+  it('puts the earliest first, in Today’s words, and breaks a tie by title', () => {
+    expect(rowsOn('evt-wed-4', 'needsYouOverdue').map((row) => [row.title, row.due])).toEqual([
       ['Give final numbers to the kitchen', '2 days overdue'],
       ['Pay the band’s balance', '1 day overdue'],
       ['Agree the toasts', 'Overdue'],
@@ -86,12 +85,8 @@ describe('the rows (sc-32801)', () => {
     ]);
   });
 
-  it('gives each state its sample', () => {
-    const count = (state: Parameters<typeof sampleNeeds>[0]) => {
-      const { milestones, permissions } = sampleNeeds(state);
-
-      return needRows(milestones, permissions, NOW, LONDON, LOCALE).length;
-    };
+  it('gives each state its rows', () => {
+    const count = (state: string | null) => rowsOn('evt-wed-4', state).length;
 
     expect(count('needsYou')).toBe(4);
     expect(count('needsYouOne')).toBe(1);
@@ -100,10 +95,49 @@ describe('the rows (sc-32801)', () => {
     expect(count(null)).toBe(0);
   });
 
+  it('keys each row by its area, moment and title, so two rows of one title stay apart', () => {
+    const twice = [
+      milestone({ title: 'Pay the balance', area: 'budget', at: '2026-11-04T09:00:00Z' }),
+      milestone({ title: 'Pay the balance', area: 'budget', at: '2026-11-04T23:59:00Z' }),
+    ];
+    const keys = needRows(twice, ['budget.manage'], NOW, LONDON, LOCALE).map((row) => row.key);
+
+    expect(new Set(keys).size).toBe(2);
+  });
+});
+
+describe('a device in another zone than the event', () => {
+  it('counts the days in the event’s zone: an event in Lagos read from Los Angeles across midnight', () => {
+    vi.stubEnv('TZ', 'America/Los_Angeles');
+    const lagos = 'Africa/Lagos';
+    const acrossMidnight = new Date('2026-11-03T23:30:00Z');
+    const rows = needRows(
+      [milestone({ at: '2026-11-04T23:59:00+01:00' })],
+      ['menu.manage'],
+      acrossMidnight,
+      lagos,
+      LOCALE,
+    );
+
+    expect(acrossMidnight.getDate()).toBe(3);
+    expect(wallDay(acrossMidnight, lagos)).toBe('2026-11-04');
+    expect(rows.map((row) => row.due)).toEqual(['Due today']);
+  });
+});
+
+describe('what a screen reader says', () => {
   it('reads the heading with its count, and no count with no rows', () => {
     expect(headingLabel(0)).toBe('Needs you');
     expect(headingLabel(1)).toBe('Needs you, 1 thing');
     expect(headingLabel(4)).toBe('Needs you, 4 things');
+  });
+
+  it('reads a row as its title and due words, with no event and no button', () => {
+    const [row] = rowsOn('evt-wed-4', 'needsYou');
+
+    expect(row == null ? '' : rowLabel(row)).toBe(
+      'Give final numbers to the kitchen, 2 days overdue',
+    );
   });
 
   it('takes only its own states from the page', () => {

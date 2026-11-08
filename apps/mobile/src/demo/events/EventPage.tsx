@@ -30,9 +30,11 @@ import {
   clockOf,
   datesRow,
   editOf,
+  finalNumbersOf,
   hostsRow,
   instantOf,
   manageOf,
+  milestonesOf,
   needsName,
   scheduleLocked,
   shownEvent,
@@ -275,6 +277,7 @@ export function EventScreen({
   );
   const needsYou = (
     <EventNeedsYou
+      timeline={[...milestonesOf(shown), ...finalNumbersOf(shown, now)]}
       state={needsStateOf(state)}
       open={event.status !== 'ended' && now.getTime() < Date.parse(event.startsAt)}
       now={now}
