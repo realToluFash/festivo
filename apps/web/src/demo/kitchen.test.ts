@@ -6,7 +6,9 @@ import {
   allergenCounts,
   apiRefuses,
   cardMilestone,
+  changeLines,
   copyLine,
+  datesOf,
   dueError,
   fileName,
   keepKitchen,
@@ -16,6 +18,7 @@ import {
   picksLine,
   resetKitchen,
   seedFromEvent,
+  sinceSlots,
   startOf,
   timelineOf,
 } from './kitchen.ts';
@@ -165,5 +168,82 @@ describe('the milestone on the timeline', () => {
     startOf('set');
     expect(startOf('unknown').kitchen).toEqual({ due: null, copies: [] });
     expect(startOf(null).kitchen).toEqual({ due: null, copies: [] });
+  });
+});
+
+describe('Give the changes to the kitchen (sc-30692)', () => {
+  const since = [{ id: 2, at: '2026-11-02T17:00:00Z', by: 'Ana Souza' }];
+  const held = (due: string | null, changedAt: string | null) => ({
+    due,
+    copies: since,
+    sample: 'named' as const,
+    changedAt,
+  });
+  const changes = 'Give the changes to the kitchen';
+
+  it('comes back with a change, due at 23:59 on the date when it came back by then', () => {
+    expect(kitchenMilestone(wedding, held('2026-11-03', '2026-11-02T20:30:00Z'), now)).toEqual({
+      at: '2026-11-03T23:59:00Z',
+      title: changes,
+      note: null,
+      owner: 'you',
+      area: 'menu',
+      action: { label: 'Open the kitchen sheet', link: '/demo/events/evt-wed-4/kitchen' },
+    });
+  });
+
+  it('is due at the start when it came back after the date, or with no date, and never overdue', () => {
+    expect(kitchenMilestone(wedding, held('2026-11-02', '2026-11-03T08:00:00Z'), now)?.at).toBe(
+      wedding.startsAt,
+    );
+    expect(kitchenMilestone(wedding, held(null, '2026-11-02T20:30:00Z'), now)?.at).toBe(
+      wedding.startsAt,
+    );
+    keepKitchen(held('2026-11-02', '2026-11-03T08:00:00Z'));
+    expect(datesOf(wedding, now).some((one) => one.standing === 'overdue')).toBe(false);
+    resetKitchen();
+  });
+
+  it('is overdue once the date passes with the change in no copy', () => {
+    keepKitchen(held('2026-11-02', '2026-11-02T18:30:00Z'));
+    const marked = datesOf(wedding, now).find((one) => one.milestone.title === changes);
+    expect(marked?.standing).toBe('overdue');
+    resetKitchen();
+  });
+
+  it('reads a moved or cleared date against when it came back', () => {
+    expect(kitchenMilestone(wedding, held('2026-11-04', '2026-11-02T18:30:00Z'), now)?.at).toBe(
+      '2026-11-04T23:59:00Z',
+    );
+    expect(kitchenMilestone(wedding, held(null, '2026-11-02T18:30:00Z'), now)?.at).toBe(
+      wedding.startsAt,
+    );
+  });
+
+  it('ends on a copy holding every change, at the start, and on an Ended event', () => {
+    const off = { ...wedding, status: 'ended' as const, concludedAt: '2026-11-02T10:00:00Z' };
+    const back = held('2026-11-03', '2026-11-02T20:30:00Z');
+
+    expect(kitchenMilestone(wedding, held('2026-11-03', null), now)).toBeNull();
+    expect(kitchenMilestone(wedding, back, CLOCKS.now)).toBeNull();
+    expect(kitchenMilestone(off, back, now)).toBeNull();
+  });
+
+  it('marks a copy made with changes as opening with its changes page', () => {
+    expect(madeCopy(since, '2026-11-03T09:41:00Z', 'Folake Adeyemi', true)).toEqual({
+      id: 3,
+      at: '2026-11-03T09:41:00Z',
+      by: 'Folake Adeyemi',
+      changes: true,
+    });
+  });
+
+  it('heads the list with the latest copy’s moment, 24-hour, in the event’s zone', () => {
+    expect(sinceSlots(since[0]!, wedding.timeZone)).toEqual({
+      date: 'Monday, Nov 2',
+      time: '17:00',
+    });
+    expect(changeLines(held('2026-11-03', null), true)).toEqual([]);
+    expect(changeLines({ due: null, copies: [] }, true)).toEqual([]);
   });
 });

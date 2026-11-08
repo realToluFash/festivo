@@ -1234,6 +1234,21 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         what: 'A copy recorded: gone',
         href: '/demo/events/evt-wed-4?state=finalNumbersGiven',
       },
+      {
+        title: 'Give the changes · Next up',
+        what: 'Back after a copy, due at the date, no action',
+        href: '/demo/events/evt-wed-4?state=changes_due',
+      },
+      {
+        title: 'Give the changes · overdue',
+        what: 'The date passed, still not in a copy',
+        href: '/demo/events/evt-wed-4?state=changes_overdue',
+      },
+      {
+        title: 'Give the changes · at the start',
+        what: 'Back after the date: due at the start',
+        href: '/demo/events/evt-wed-4?state=changes_late',
+      },
     ],
   },
   {

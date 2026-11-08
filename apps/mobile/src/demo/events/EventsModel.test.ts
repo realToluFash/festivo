@@ -11,6 +11,7 @@ import {
   datesRow,
   dayTiles,
   editOf,
+  finalNumbersOf,
   emptyTabOf,
   eventHref,
   eventStateOf,
@@ -177,6 +178,35 @@ describe('the card’s one step, by nextStep', () => {
       title: 'Next up: Adaeze & Tunde’s wedding starts',
       you: false,
     });
+    seedFinalNumbers(null);
+  });
+
+  it('brings back Give the changes to the kitchen after a copy, due at the date or at the start, never with an action (sc-30692)', () => {
+    seedFinalNumbers('changes_due');
+    expect(step('evt-wed-4')).toEqual({
+      kind: 'next',
+      title: 'Next up: Give the changes to the kitchen',
+      when: 'Tue, Nov 3, 23:59 · today',
+      you: true,
+      overdue: false,
+    });
+
+    seedFinalNumbers('changes_overdue');
+    expect(step('evt-wed-4')).toMatchObject({
+      title: 'Next up: Give the changes to the kitchen',
+      when: 'Mon, Nov 2, 23:59 · 1 day ago',
+      overdue: true,
+    });
+    expect(step('evt-wed-4', happening)).toMatchObject({ you: false });
+
+    seedFinalNumbers('changes_late');
+    expect(finalNumbersOf(sampleEvent('evt-wed-4') as SampleEvent, reader)).toEqual([
+      expect.objectContaining({
+        title: 'Give the changes to the kitchen',
+        at: (sampleEvent('evt-wed-4') as SampleEvent).startsAt,
+        action: null,
+      }),
+    ]);
     seedFinalNumbers(null);
   });
 

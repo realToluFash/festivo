@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -6,6 +9,7 @@ import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
 import { resetSample } from './events.ts';
 import { KW, resetKitchen } from './kitchen.ts';
+import { LONG_NAMES } from './kitchenChanges.ts';
 
 const tested = config();
 const SLOW = { timeout: 20000 };
@@ -312,5 +316,165 @@ describe('nothing leaves the demo', () => {
 
     expect(fetched.mock.calls).toEqual([]);
     fetched.mockRestore();
+  });
+});
+
+describe('Changes since on the kitchen sheet (sc-30692)', () => {
+  const SINCE = 'Since Monday, Nov 2 at 17:00';
+  const GIVE = 'Give the changes…';
+
+  function changes(): HTMLElement {
+    return screen.getByRole('region', { name: /since/iu });
+  }
+
+  function lines(): string[] {
+    return within(within(changes()).getByRole('list'))
+      .getAllByRole('listitem')
+      .map((one) => one.textContent ?? '');
+  }
+
+  it(
+    'opens the sheet with the list, names with guests.manage, ending with Give the changes…',
+    SLOW,
+    async () => {
+      await kitchen('changes_named');
+
+      expect(within(changes()).getByRole('heading', { level: 2 }).textContent).toBe(SINCE);
+      expect(lines()).toEqual([
+        'New allergy: sesame (Yusuf Ibrahim)',
+        '[New diet: halal (Ngozi Eze)]',
+        '2 more coming',
+        'Pepper soup 50 to 52',
+        'Jollof rice with chicken 45 to 48',
+        'Grilled sea bass 31 to 30',
+        'Chocolate tart 51 to 53',
+      ]);
+      expect(within(changes()).getByRole('button', { name: GIVE })).toBeDefined();
+      expect(screen.getByRole('heading', { level: 2, name: /^Allergies/u }).textContent).toBe(
+        'Allergies · 7',
+      );
+    },
+  );
+
+  it('keeps a long dish and variant whole, and lets the row break anywhere', SLOW, async () => {
+    await kitchen('changes_long');
+
+    expect(lines()).toEqual([
+      `Renamed: ${LONG_NAMES.dishWas}, now ${LONG_NAMES.dish}`,
+      `Renamed: ${LONG_NAMES.dish} · ${LONG_NAMES.sideWas}, now ${LONG_NAMES.side}`,
+    ]);
+    expect(lines().join('')).not.toContain('…');
+    expect(readFileSync(join(import.meta.dirname, 'kitchen.css'), 'utf8')).toMatch(
+      /\.kitchen-changes \.desk-row-name \{\s*overflow-wrap: anywhere;\s*\}/u,
+    );
+  });
+
+  it('gives counts and no name without guests.manage', SLOW, async () => {
+    await kitchen('changes_counts');
+
+    expect(lines().slice(0, 2)).toEqual(['1 more sesame allergy', '[1 more halal diet]']);
+    expect(changes().textContent).not.toContain('Yusuf');
+  });
+
+  it('shows a renamed dish before its count, with the sheet under it renamed', SLOW, async () => {
+    await kitchen('changes_menu');
+
+    expect(lines()).toContain('Renamed: Grilled sea bass, now Pan-seared sea bass');
+    expect(lines()).toContain('Removed: Mushroom risotto, was 15');
+    expect(screen.getByRole('region', { name: /^Main/u }).textContent).toContain(
+      'Pan-seared sea bass32',
+    );
+  });
+
+  it('counts an erased guest for every reader', SLOW, async () => {
+    await kitchen('changes_erased');
+
+    expect(lines()).toContain('[1 fewer shellfish allergy]');
+    expect(changes().textContent).not.toContain('Kwame');
+  });
+
+  it('says no changes, with no Give the changes…', SLOW, async () => {
+    await kitchen('no_changes');
+
+    expect(within(changes()).getByRole('heading', { level: 2 }).textContent).toBe(
+      'No changes since Monday, Nov 2 at 17:00.',
+    );
+    expect(screen.queryByRole('button', { name: GIVE })).toBeNull();
+  });
+
+  it('has no list without a copy', SLOW, async () => {
+    await kitchen('no_copy');
+
+    expect(screen.queryByRole('region', { name: /since/iu })).toBeNull();
+  });
+
+  it(
+    'shows the list and nothing to give without menu.manage, and after the start',
+    SLOW,
+    async () => {
+      await kitchen('view_only');
+      expect(lines()).toHaveLength(7);
+      expect(screen.queryByRole('button', { name: GIVE })).toBeNull();
+
+      await kitchen('started');
+      expect(lines()).toHaveLength(7);
+      expect(screen.queryByRole('button', { name: GIVE })).toBeNull();
+    },
+  );
+
+  it(
+    'records the next copy through sc-30812’s dialog, then reads no changes since it',
+    SLOW,
+    async () => {
+      await kitchen('changes_named');
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      fireEvent.click(screen.getByRole('button', { name: GIVE }));
+
+      const dialog = screen.getByRole('alertdialog', { name: KW.giveTitle });
+      expect(within(dialog).getByText(KW.giveBody)).toBeDefined();
+      fireEvent.click(within(dialog).getByRole('button', { name: KW.download }));
+      await act(() => vi.advanceTimersByTimeAsync(1000));
+
+      expect(screen.getByText(KW.given)).toBeDefined();
+      expect(within(changes()).getByRole('heading', { level: 2 }).textContent).toBe(
+        'No changes since Tuesday, Nov 3 at 09:41.',
+      );
+      expect(screen.queryByRole('button', { name: GIVE })).toBeNull();
+    },
+  );
+
+  it('says a copy with changes opens with its changes page when downloaded', SLOW, async () => {
+    await kitchen('changes_copies');
+    const downloads = within(block()).getAllByRole('button', { name: KW.copyDownload });
+    fireEvent.click(downloads[0]!);
+
+    expect(await screen.findByText(new RegExp(KW.changesPage, 'u'))).toBeDefined();
+  });
+});
+
+describe('Give the changes to the kitchen on the Overview and All dates', () => {
+  it('is Next up with Open the kitchen sheet, and Overdue once the date passes', SLOW, async () => {
+    open('/demo/events/evt-wed-4?state=changes_due');
+    await screen.findByRole('heading', { level: 1, name: 'Adaeze & Tunde’s wedding' }, WAIT);
+    expect(screen.getByText('Next up: Give the changes to the kitchen')).toBeDefined();
+
+    open('/demo/events/evt-wed-4/dates?state=changes_overdue');
+    await screen.findByRole('heading', { level: 1, name: KW.allDates }, WAIT);
+    const list = screen.getByRole('heading', { level: 1, name: KW.allDates }).parentElement!;
+    const rows = within(list.querySelector('ol')!).getAllByRole('listitem');
+    const row = rows.find((one) => one.textContent?.includes('Give the changes to the kitchen'));
+    expect(within(row!).getByText(KW.overdue)).toBeDefined();
+    expect(within(row!).getByRole('link', { name: KW.openSheet })).toBeDefined();
+  });
+
+  it('is due at the start, never Overdue, once it came back after the date', SLOW, async () => {
+    open('/demo/events/evt-wed-4/dates?state=changes_late');
+    await screen.findByRole('heading', { level: 1, name: KW.allDates }, WAIT);
+
+    const row = screen
+      .getAllByRole('listitem')
+      .find((one) => one.textContent?.includes('Give the changes to the kitchen'));
+    expect(row?.textContent).toContain('You · Thu, Nov 5, 18:00');
+    expect(within(row!).queryByText(KW.overdue)).toBeNull();
   });
 });
