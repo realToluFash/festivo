@@ -21,7 +21,6 @@ export interface SettingsPerson {
   organisation: string | null;
 }
 
-/** A row of the Settings list: Your account is the card above them, not a row. */
 export interface SettingsRow {
   key: string;
   title: string;
@@ -272,48 +271,6 @@ export function SettingsGroup({
   );
 }
 
-/** The design demo's row, in development and QA builds only, in English as the demo is. */
-export function SettingsDemoRow({ dense, onDemo }: { dense: boolean; onDemo: () => void }) {
-  return (
-    <View style={styles.group}>
-      <Pressable
-        onPress={onDemo}
-        style={({ pressed }) => [
-          styles.row,
-          dense && styles.rowDense,
-          pressed && styles.rowPressed,
-        ]}
-        accessibilityRole="button"
-        accessibilityLabel="Design demo, in development and QA builds. The designs, working on sample data"
-        testID="settings.designDemo"
-      >
-        <Tile of="demo" side={rowSide(dense)} />
-        <View style={styles.rowWords}>
-          <View style={styles.demoTitle}>
-            <Text size={dense ? 15.5 : TYPE.row} weight="semibold" accessible={false}>
-              Design demo
-            </Text>
-            <View style={styles.tag}>
-              <Text size={12} weight="semibold" accessible={false} style={styles.secondary}>
-                Dev and QA
-              </Text>
-            </View>
-          </View>
-          <Text
-            size={dense ? 13 : TYPE.small}
-            weight="medium"
-            accessible={false}
-            style={styles.secondary}
-          >
-            The designs, working on sample data
-          </Text>
-        </View>
-        <Glyph name="chevron" size={18} ink={tokens.colorInkTertiary} weight={2.2} />
-      </Pressable>
-    </View>
-  );
-}
-
 export function SettingsSignOut({
   height,
   onSignOut,
@@ -425,16 +382,6 @@ const styles = StyleSheet.create({
   rowPressed: { backgroundColor: tokens.colorNeutralFill },
   rule: { position: 'absolute', right: 0, top: 0, height: 1, backgroundColor: tokens.colorBorder },
   rowWords: { flex: 1, minWidth: 0, gap: 2 },
-  demoTitle: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: tokens.spaceSm },
-  tag: {
-    minHeight: 22,
-    justifyContent: 'center',
-    paddingHorizontal: tokens.spaceSm,
-    borderRadius: 11,
-    borderWidth: 1,
-    borderColor: tokens.colorBorder,
-    backgroundColor: tokens.colorCard,
-  },
   choose: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 18 },
   chooseMark: {
     width: 72,
@@ -445,3 +392,12 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colorAccentTint,
   },
 });
+
+export const settingsRowStyles = {
+  group: styles.group,
+  row: styles.row,
+  rowDense: styles.rowDense,
+  rowPressed: styles.rowPressed,
+  rowWords: styles.rowWords,
+  secondary: styles.secondary,
+};

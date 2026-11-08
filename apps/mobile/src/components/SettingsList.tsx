@@ -19,6 +19,7 @@ import {
 } from '../kit/appNav.ts';
 import { OPENED_IN_PLACE_OF_SETTINGS, sectionTakesBack } from '../kit/systemBack.ts';
 import { demoHere } from '../demo/DemoEntry.tsx';
+import { SettingsDemoRow } from '../demo/settings/SettingsDemoRow.tsx';
 import {
   type LayoutKind,
   SETTINGS_LIST_WIDTH,
@@ -33,7 +34,6 @@ import {
   type ListedSection,
   PersonCard,
   type SettingsPerson,
-  SettingsDemoRow,
   SettingsGroup,
   SettingsSignOut,
   rowSide,

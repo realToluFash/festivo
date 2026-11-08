@@ -6,6 +6,7 @@ import { tokens } from '../../theme/tokens.ts';
 import { PHONE_TAB_BAR, PhoneTabBar, TabBarFade } from '../../components/TodayCover.tsx';
 import { Bell, Landscape, OrgPill, PortraitTop } from './Frame.tsx';
 import { WORDS as PERSONALISATION } from './PersonalisationModel.ts';
+import { SettingsDemoRow } from './SettingsDemoRow.tsx';
 import { SchemeTile } from './PersonalisationParts.tsx';
 import { demoGroups, YOU } from './sample.ts';
 import { type ShellSection, useShell, type Viewer } from '../../components/settingsShell.ts';
@@ -13,7 +14,6 @@ import { Caps, TYPE } from '../../components/SettingsParts.tsx';
 import {
   ChooseASection,
   PersonCard as ProductPersonCard,
-  SettingsDemoRow,
   SettingsGroup,
   SettingsSignOut,
   rowSide,
