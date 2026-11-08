@@ -15,6 +15,7 @@ const IMPORTS = [
   'import com.facebook.react.bridge.LifecycleEventListener',
   'import com.facebook.react.uimanager.DisplayMetricsHolder',
   'import com.th3rdwave.safeareacontext.SafeAreaProvider',
+  'import android.os.Build',
 ];
 
 // React Native measures text against the display metrics it last read, and caches each measurement under the font scale the activity's resources had when the root view was measured.
@@ -25,7 +26,17 @@ const IMPORTS = [
 // React Native tells JavaScript about a new font scale only on resume, and DeviceInfo reads both scale and density from the application, so the forward waits until the application has the activity's current ones, however many changes it is behind, then lays out again for the root view to send the new dimensions.
 // DeviceInfo is internal to React Native, so a debug build fails here on the first upgrade that renames it or drops the interface.
 // The safe-area frame, which picks the tablet layout, is sent only when it moves in pixels, and a display-size change keeps the window's pixels, so its last frame is forgotten to send it again at the new density.
+// Android draws a field's own text one heavier with Bold text by itself, and React Native's text not at all, so the activity's views take no adjustment and the app draws its heavier faces for both (sc-19877).
+// The zero is the activity's own override because AppCompat drops one passed to super; every native view, the date picker too, loses Android's bold, pending pm on sc-19877.
+// The application keeps the phone's adjustment, where the bold-text module reads it.
 const OVERRIDE = `
+  override fun attachBaseContext(newBase: Context) {
+    super.attachBaseContext(newBase)
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+      applyOverrideConfiguration(Configuration().apply { fontWeightAdjustment = 0 })
+    }
+  }
+
   private val applicationChanges = object : ComponentCallbacks {
     override fun onConfigurationChanged(applicationConfig: Configuration) {
       takeSizeChanges()
@@ -154,7 +165,7 @@ const OVERRIDE = `
   }
 `;
 
-// Android's own text views draw bold text again on the change, and React Native's text ignores the setting, so a weight change needs nothing laid out.
+// A weight change reaches JavaScript through the bold-text module, which draws the new faces in place, so it needs nothing laid out here.
 const TEXT_CHANGES = ['fontScale', 'density', 'fontWeightAdjustment'];
 
 /** The activity's configChanges with font size, display size and bold text among them, so Android hands each change to the app instead of recreating it. */
@@ -167,10 +178,12 @@ export function withTextChangesHandled(configChanges: string | undefined): strin
 /** MainActivity.kt, passing a configuration change on to JavaScript at once. */
 export function withFontScaleForwarded(source: string): string {
   if (
-    /override fun (onConfigurationChanged|onPostCreate|onDestroy|setContentView)\b/.test(source)
+    /override fun (onConfigurationChanged|onPostCreate|onDestroy|setContentView|attachBaseContext)\b/.test(
+      source,
+    )
   ) {
     throw new Error(
-      'MainActivity already handles configuration changes, its content view, its creation or its destruction; merge the font-scale forward into it.',
+      'MainActivity already handles configuration changes, its base context, its content view, its creation or its destruction; merge the font-scale forward into it.',
     );
   }
   const missing = IMPORTS.filter((line) => !source.includes(line));

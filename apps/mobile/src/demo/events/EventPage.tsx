@@ -9,9 +9,11 @@ import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { LineIcon } from '../settings/AccountCard.tsx';
 import { SwitchTrack } from '../settings/NotificationsSwitch.tsx';
-import { EventCard, EventThumb } from './EventCard.tsx';
+import { EventCard, EventThumb } from '../../components/EventCard.tsx';
 import { AcPill, AlertLine, CHANGED, EditScreen } from './EventEdits.tsx';
 import { AreaPage, EventFrame } from './EventFrame.tsx';
+import { EventNeedsYou } from './EventNeedsYou.tsx';
+import { needsStateOf, readerOf } from './NeedsYouModel.ts';
 import {
   type DeleteStart,
   DeleteScreen,
@@ -27,6 +29,7 @@ import {
   type Shown,
   clockOf,
   datesRow,
+  datesOf,
   editOf,
   hostsRow,
   instantOf,
@@ -48,7 +51,8 @@ import { datesSaveSays, replyByInTell, replyByRow, replyBySaved } from './ReplyB
 import { replyByOf } from '../guests/GuestsSample.ts';
 import { useShell } from '../../components/settingsShell.ts';
 import { Row, RowList, Section, TextAction } from '../../components/Summary.tsx';
-import { type MessagesState, reduce, startOf } from '../messages/MessagesModel.ts';
+import { type MessagesState, startOf } from '../messages/MessagesModel.ts';
+import { reduceReach } from '../messages/Reach.ts';
 import { TellGuests } from '../messages/MessagesOverlays.tsx';
 import { LONG_FINISHED, PLACE, SAMPLE_EVENT_ID, TELL } from '../messages/MessagesSample.ts';
 import { tellChange } from '../messages/TellChange.ts';
@@ -146,12 +150,12 @@ export function EventScreen({
         : area,
   );
   const [guestsFrom, setGuestsFrom] = useState<FilterKey | null>(null);
-  const [m, dispatch] = useReducer(reduce, null, () => {
+  const [m, dispatch] = useReducer(reduceReach, null, () => {
     const begun = startOf(messages, shell.layout !== 'phone');
     if (state !== 'datesReplyBySaved') return begun;
     const change = tellChange(sampleEvent(id) ?? event, event, locale);
 
-    return reduce(begun, { type: 'offerTell', change });
+    return reduceReach(begun, { type: 'offerTell', change });
   });
   const [messagesSeen, setMessagesSeen] = useState(messages != null || at === 'messages');
   if (at === 'messages' && !messagesSeen) setMessagesSeen(true);
@@ -270,6 +274,7 @@ export function EventScreen({
       now={now}
       locale={locale}
       wide={shell.layout !== 'phone'}
+      takes={() => true}
       onStep={onStep}
       testID="event.card"
     />
@@ -282,6 +287,16 @@ export function EventScreen({
       refFor={refFor}
       onEdit={openEdit}
       onMaps={() => shell.tell(W.mapsHandOff)}
+    />
+  );
+  const needsYou = (
+    <EventNeedsYou
+      timeline={datesOf(shown, now)}
+      permissions={readerOf(needsStateOf(state))}
+      state={needsStateOf(state)}
+      now={now}
+      timeZone={event.timeZone}
+      locale={locale}
     />
   );
   const nameCover = <NameAndCover shown={shown} refFor={refFor} onEdit={openEdit} />;
@@ -419,6 +434,7 @@ export function EventScreen({
         <View style={styles.columns}>
           <View style={styles.left}>
             {details}
+            {needsYou}
             {nameCover}
           </View>
           <View style={styles.right}>
@@ -436,6 +452,7 @@ export function EventScreen({
         {card}
         {numbers}
         {details}
+        {needsYou}
         {nameCover}
         {guestsPage}
         {forYou}

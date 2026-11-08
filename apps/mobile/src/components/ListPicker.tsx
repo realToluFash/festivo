@@ -18,6 +18,7 @@ import { fieldName, refusedHint, withInvalid } from '../kit/fields.ts';
 import { searchBesideTitle } from '../kit/keyboard.ts';
 import { TURNS_WITH_THE_APP } from '../layout/orientations.ts';
 import { useLayout } from '../layout/useLayout.ts';
+import { useBoldText } from '../theme/boldText.ts';
 import { inputFaced } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
 import { useModalOpen } from '../updateRequired.ts';
@@ -77,6 +78,7 @@ export function ListPicker({
   const searchNameID = useId();
   const searching = useHeld(false, search, undefined, setSearch);
   const searchEdge = useFocusEdge();
+  const bold = useBoldText();
   const fieldEdge = useFocusEdge();
   const refused = useRefused(wrong, line);
   const { kind, width, height } = useLayout();
@@ -96,7 +98,7 @@ export function ListPicker({
       {/* TalkBack reads no placeholder once the search holds text, so these words name it then. */}
       <UnseenName nativeID={searchNameID}>{searchLabel}</UnseenName>
       <TextInput
-        style={inputFaced([styles.search, focusEdge(searchEdge.focused, false)])}
+        style={inputFaced([styles.search, focusEdge(searchEdge.focused, false)], 'sans', bold)}
         {...searching}
         {...searchEdge.edging}
         placeholder={searchLabel}

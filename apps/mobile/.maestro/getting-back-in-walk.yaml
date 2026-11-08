@@ -18,8 +18,7 @@ appId: host.exp.Exponent
 - inputText: ${EMAIL}
 - tapOn: { point: '50%,6%' }
 - tapOn: { id: 'recovery.send' }
-- extendedWaitUntil:
-    { visible: { id: 'recovery.sendAgain|recovery.signIn|recovery.backToSignIn' }, timeout: 15000 }
+- extendedWaitUntil: { visible: { id: 'recovery.sendAgain|recovery.send' }, timeout: 15000 }
 - tapOn: { point: '50%,6%' }
 - takeScreenshot: ${P}-04-forgot-sent
 - openLink: ${METRO_URL}/--/reset-password?token=${TOKEN}
@@ -49,12 +48,9 @@ appId: host.exp.Exponent
 - extendedWaitUntil: { visible: { id: 'twoFactor.code' }, timeout: 30000 }
 - tapOn: { point: '50%,6%' }
 - takeScreenshot: ${P}-11-code
-- tapOn: { id: 'twoFactor.verify' }
-- takeScreenshot: ${P}-12-code-blank
 - tapOn: { id: 'twoFactor.code' }
 - inputText: '000000'
 - tapOn: { point: '50%,6%' }
-- tapOn: { id: 'twoFactor.verify' }
 - waitForAnimationToEnd
 - takeScreenshot: ${P}-13-code-wrong
 - tapOn: { id: 'twoFactor.switch' }

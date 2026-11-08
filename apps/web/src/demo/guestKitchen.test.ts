@@ -53,6 +53,7 @@ describe('the kitchen step’s states (sc-3778)', () => {
     expect(STATES).toEqual([
       'kitchen',
       'kitchen_alone',
+      'kitchen_one_guest',
       'kitchen_picked',
       'kitchen_say_which',
       'kitchen_returning',

@@ -295,11 +295,24 @@ def holding_now(c, story):
     return W.holding(story, {b: c.story(b) for b in W.blockers(story)})
 
 
+def drawn_before_its_demo(c, story, state):
+    """The designer hands a story on by the same Demo: line a developer's claim reads."""
+    if c.role != "ux" or c.state_id(state)[1] != "Ready For Dev" \
+            or story["state"] not in R.MOVES["ux"]["Ready For Dev"]:
+        return
+    missing = demo_missing(story)
+    if missing:
+        raise Refused(f"sc-{story['id']} is not ready to build without its demo: {missing}. "
+                      f"It stays {story['state']}: move it once every pull request on the "
+                      "Demo: line has merged")
+
+
 def move(c, a):
     guard(c, "move")
     story = c.story(a.story)
     ops_only(c, story)
     linguists_own(c, story, a.state)
+    drawn_before_its_demo(c, story, a.state)
     state = set_state(c, story, a.state, check=c.role != "pm")
     moved = c.refresh(story["id"])
     holders = holding_now(c, moved) if state == "Ready For Dev" else []

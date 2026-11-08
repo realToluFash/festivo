@@ -4,6 +4,7 @@ import Svg, { Path } from 'react-native-svg';
 
 import { Text } from '../../src/components/Text.tsx';
 import { DemoScreen, NavBar } from '../../src/demo/DemoScreen.tsx';
+import { BOLD_TEXT_BOARDS } from '../../src/demo/boldText/BoldTextBoards.ts';
 import { BUDGET_BOARDS } from '../../src/demo/budget/BudgetBoards.ts';
 import { Heading } from '../../src/steps/Lines.tsx';
 import { SAMPLE } from '../../src/demo/samples.ts';
@@ -21,6 +22,10 @@ interface Board {
 
 /** Every board in the design artifact, by its page, working on sample data. */
 const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
+  {
+    page: 'Bold text · the weight map',
+    boards: BOLD_TEXT_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
   {
     page: 'Today · where signing in lands',
     boards: [
@@ -895,6 +900,26 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
       },
       { title: 'Events · a first run', what: 'No events yet', href: '/demo/events?state=first' },
       {
+        title: 'Events · a first run, without Create events',
+        what: 'The ask-an-owner notice, no Create an event',
+        href: '/demo/events?state=firstAsk',
+      },
+      {
+        title: 'Events · nothing on Upcoming',
+        what: 'Events elsewhere, this tab empty',
+        href: '/demo/events?state=emptyUpcoming',
+      },
+      {
+        title: 'Events · no drafts',
+        what: 'Events elsewhere, this tab empty',
+        href: '/demo/events?state=emptyDrafts',
+      },
+      {
+        title: 'Events · nothing on Past',
+        what: 'Events elsewhere, this tab empty',
+        href: '/demo/events?state=emptyPast',
+      },
+      {
         title: 'Events · nobody invited yet',
         what: 'The guest counts at 0',
         href: '/demo/events?state=noGuests',
@@ -908,6 +933,41 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         title: 'An event · draft, dates gone',
         what: 'Change the dates',
         href: '/demo/events/evt-shower-2?state=draftPast',
+      },
+      {
+        title: 'Needs you · rows',
+        what: 'An overdue one first, no button on any row',
+        href: '/demo/events/evt-wed-4?state=needsYou',
+      },
+      {
+        title: 'Needs you · one row',
+        what: 'Its count at 1',
+        href: '/demo/events/evt-wed-4?state=needsYouOne',
+      },
+      {
+        title: 'Needs you · overdue',
+        what: 'On the day, 1 day and 2 days, a tie by title',
+        href: '/demo/events/evt-wed-4?state=needsYouOverdue',
+      },
+      {
+        title: 'Needs you · a copy recorded',
+        what: 'Its row gone',
+        href: '/demo/events/evt-wed-4?state=needsYouGiven',
+      },
+      {
+        title: 'Needs you · reads only',
+        what: 'A member who only reads the menu',
+        href: '/demo/events/evt-wed-4?state=needsYouReadOnly',
+      },
+      {
+        title: 'Needs you · not loaded yet',
+        what: 'No row, no count, no tick',
+        href: '/demo/events/evt-wed-4?state=needsYouLoading',
+      },
+      {
+        title: 'Needs you · the read failed',
+        what: 'No row, no count, no tick',
+        href: '/demo/events/evt-wed-4?state=needsYouFailed',
       },
       { title: 'An event · live', what: 'The wedding, in 2 days', href: '/demo/events/evt-wed-4' },
       {

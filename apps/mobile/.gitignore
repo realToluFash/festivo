@@ -2,4 +2,6 @@
 dist
 ios
 android
+# A local module's native code is source, not a prebuild.
+!/modules/*/android
 expo-env.d.ts

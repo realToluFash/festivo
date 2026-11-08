@@ -43,6 +43,20 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **8 Nov 2026. Os dois fatores ao iniciar sessão na app** (sc-33828 para sc-29072,
+  `mobile:twoFactor.signedIn`, `recoveryShape`, `lost`, `lostTwoFactor.waitingFor`, `stayOut`,
+  `emailSoirely`). "Sessão iniciada", um estado, como `waysCard.signedInWith`. A forma do
+  código: "Maiúsculas ou minúsculas; o hífen aparece sozinho.". O título de espera é "À espera
+  de {{organisations}}". `stayOut` diz "Não pode iniciar sessão até alguém responder", nunca "a
+  sua sessão continua encerrada": a pessoa ainda não tinha entrado. O botão é "Escrever ao apoio
+  ao cliente da Soirely", com o nome do guia.
+- **8 Nov 2026. O ecrã da ligação enviada na app, e o seu aviso** (sc-33809 para sc-29071,
+  `mobile:recovery.*`). O botão é "Abrir o e-mail", não "Abrir o Mail": no Android abre a
+  aplicação de e-mail da pessoa. `spam` segue a web, "Veja a pasta de spam e depois envie de
+  novo.", como o botão "Enviar de novo". `sentAgain` diz "Voltámos a enviar a ligação. Use o
+  e-mail mais recente.", com o objeto dito, porque "enviámo-la" soa forçado. O aviso `changed`:
+  "Palavra-passe alterada. A sessão foi encerrada nos seus outros dispositivos.", com "encerrar"
+  do glossário.
 - **8 Nov 2026. Um início de sessão com dois fatores que expirou** (sc-29979,
   `signIn.codeTimedOutTitle`, web e app). "O início de sessão expirou", seguido de
   `endedBody` "Inicie sessão novamente para continuar.". "Expirou", como um prazo que passa;
@@ -712,3 +726,4 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   ao inglês. O botão de idioma lê-se "Idioma: {{language}}".
 - **Cancelar um pedido para voltar a entrar** (sc-29979): "Cancelar o seu pedido?"; a saída é "Continuar à espera", nunca "Cancelar", e a confirmação reutiliza "Cancelar o pedido".
 - **O estado de um campo recusado, só para o leitor de ecrã** (`mobile:forms.invalid`, sc-31909): "Dados inválidos", depois do nome do campo ("Palavra-passe, Dados inválidos"). É o que o VoiceOver diz na web; não concorda com o género do nome, masculino ou feminino.
+- **O plano de mesas** (sc-33304 para sc-3998, `seating.*`, `messages:seating.*`): a área é "Mesas" e o que se desenha, "o plano de mesas" ("o plano" dentro da área); "Floor plan" é "Planta da sala". Uma "section" é uma **zona**, nunca "secção", que na Soirely é uma parte das definições: "Adicionar uma zona", "Sem zona", "Manter a zona". O local abre a linha das unidades como etiqueta, "Local: {{venue}}.", para que nenhuma preposição tenha de concordar com o nome ("no/na"). "Seated" não concorda com o género: "convidados com lugar passam para Sem lugar". As cores: Azul, Roxo, Ameixa, Vinho, Rosa, Castanho, Verde-azeitona, Verde-petróleo. A ajuda em pés usa a vírgula decimal e as abreviaturas CLDR que o campo lê: "12 ft 4 pol., 12,5 ft ou 148 pol.".

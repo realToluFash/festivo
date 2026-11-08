@@ -1,45 +1,62 @@
 import {
-  type EventPhase,
-  type EventType,
   type Milestone,
-  calledOff,
+  type EventType,
   endLabel,
   eventAllows,
-  eventDays,
   eventPhase,
   eventsHome,
-  formatEventDate,
-  formatEventMoment,
   formatEventRange,
-  formatEventShortDay,
-  formatEventWeekday,
   formatWallDay,
   hostsLine,
-  milestoneDistance,
-  nextStep,
   wallDay,
 } from '@soirely/domain';
+import { t } from 'i18next';
 
-import { CLOCKS, READER_ZONE, type SampleEvent, TYPE_WORDS } from './EventsSample.ts';
-import { meshFor, type MeshKey } from '../../kit/today.ts';
-import { W, say } from './EventsWords.ts';
-import { FINAL_NUMBERS_STATES, FINAL_WORDS, finalNumbersDue } from './FinalNumbers.ts';
 import type { RowTag } from '../../components/SummaryRows.tsx';
+import {
+  type CardStep,
+  type CardTag,
+  type ListTab,
+  type Shown as ListShown,
+  TAB_WORD,
+  cardStep as productCardStep,
+  cardTags as productCardTags,
+  dayCount,
+  daysWords as productDaysWords,
+  howSoon as productHowSoon,
+  rowLine as productRowLine,
+  rowTag as productRowTag,
+  shownEvent as productShownEvent,
+} from '../../kit/eventsList.ts';
+import { CLOCKS, READER_ZONE, type SampleEvent, TYPE_WORDS } from './EventsSample.ts';
+import { W, say } from './EventsWords.ts';
+import { FINAL_NUMBERS_STATES, FINAL_WORDS, finalNumbersDue, othersOwed } from './FinalNumbers.ts';
 
-export type ListTab = 'upcoming' | 'drafts' | 'past';
+export type {
+  CardStep,
+  CardTag,
+  DayTile,
+  ListTab,
+  PhaseMark,
+  StepAction,
+} from '../../kit/eventsList.ts';
+export { dayCount, dayTiles, tabWidths } from '../../kit/eventsList.ts';
 
-export interface Shown extends SampleEvent {
-  phase: EventPhase;
-  calledOff: boolean;
-  mesh: MeshKey;
-}
+/** A sample event as the product's Events draws it, with its own fields for the rest of the demo. */
+export interface Shown extends Omit<SampleEvent, 'photo'>, ListShown {}
 
 export function shownEvent(event: SampleEvent, now: Date): Shown {
   return {
     ...event,
-    phase: eventPhase(event, now),
-    calledOff: calledOff(event),
-    mesh: meshFor(event.id),
+    ...productShownEvent(
+      {
+        ...event,
+        place: event.venue?.place ?? null,
+        photo: event.photo ? 'standIn' : null,
+        milestones: datesOf(event, now),
+      },
+      eventPhase(event, now),
+    ),
   };
 }
 
@@ -86,136 +103,30 @@ export function summaryLine(home: Home): string | null {
 export const PAST_PAGE = 10;
 
 export function daysWords(event: SampleEvent, locale: string, list: boolean): string {
-  const days = eventDays(event);
-
-  if (days.kind === 'calledOffOn') {
-    if (list) return say.calledOffOn(formatEventShortDay(days.concludedAt, event.timeZone, locale));
-
-    return say.days(
-      formatEventWeekday(event.startsAt, event.timeZone, locale),
-      formatEventWeekday(event.endsAt, event.timeZone, locale),
-    );
-  }
-
-  const first = formatEventWeekday(days.startsAt, event.timeZone, locale);
-
-  return days.kind === 'oneDay'
-    ? first
-    : say.days(first, formatEventWeekday(days.endsAt, event.timeZone, locale));
+  return productDaysWords(event, locale, list, t);
 }
 
 export function placeWords(event: SampleEvent): string {
   return event.venue?.place ?? W.venueToBeConfirmed;
 }
 
-export function rowLine(event: SampleEvent, locale: string, list = true): string {
-  return `${daysWords(event, locale, list)} · ${placeWords(event)}`;
+export function rowLine(event: Shown, locale: string, list = true): string {
+  return productRowLine(event, locale, t, list);
 }
 
 export function rowTag(event: Shown, everyPhase: boolean): RowTag | null {
-  if (event.phase === 'happening_now') return { kind: 'now', word: W.happeningNow };
-  if (event.phase === 'paused') return { kind: 'paused', word: W.paused };
-  if (event.calledOff) return { kind: 'ended', word: W.calledOff };
-  if (!everyPhase) return null;
-  if (event.phase === 'draft') return { kind: 'notyet', word: W.draft };
-  if (event.phase === 'live') return { kind: 'yes', word: W.live };
-
-  return { kind: 'ended', word: W.finished };
-}
-
-function distanceWords(at: string, timeZone: string, now: Date): string {
-  const distance = milestoneDistance(at, timeZone, now);
-
-  switch (distance.kind) {
-    case 'inDays':
-      return say.inDays(distance.count);
-    case 'daysAgo':
-      return say.daysAgo(distance.count);
-    case 'today':
-      return 'today';
-    case 'now':
-      return 'now';
-  }
+  return productRowTag(event, everyPhase, t);
 }
 
 export function howSoon(event: Shown, now: Date): string | null {
-  if (event.phase === 'finished' || event.phase === 'happening_now') return null;
-  if (Date.parse(event.startsAt) <= now.getTime()) return null;
-
-  return distanceWords(event.startsAt, event.timeZone, now);
-}
-
-const DAY = 86_400_000;
-
-function dayNumber(moment: string | Date, timeZone: string): number {
-  return Date.parse(`${wallDay(moment, timeZone)}T00:00:00Z`) / DAY;
-}
-
-export function dayCount(event: SampleEvent): number {
-  return dayNumber(event.endsAt, event.timeZone) - dayNumber(event.startsAt, event.timeZone) + 1;
-}
-
-export interface DayTile {
-  weekday: string;
-  day: string;
-  today: boolean;
-}
-
-export function dayTiles(event: Shown, now: Date, locale: string): DayTile[] | null {
-  const count = dayCount(event);
-
-  if (count < 2 || event.phase === 'finished') return null;
-
-  const first = dayNumber(event.startsAt, event.timeZone);
-  const today = dayNumber(now, event.timeZone);
-  const weekday = new Intl.DateTimeFormat(locale, { weekday: 'short', timeZone: 'UTC' });
-  const number = new Intl.DateTimeFormat(locale, { day: 'numeric', timeZone: 'UTC' });
-
-  return Array.from({ length: count }, (_, index) => {
-    const day = new Date((first + index) * DAY);
-
-    return {
-      weekday: weekday.format(day),
-      day: number.format(day),
-      today: first + index === today,
-    };
-  });
-}
-
-export type PhaseMark = 'draft' | 'live' | 'now' | 'paused' | 'finished' | 'calledOff';
-
-export interface CardTag {
-  word: string;
-  mark?: PhaseMark;
+  return productHowSoon(event, now, t);
 }
 
 export function cardTags(event: Shown, now: Date): CardTag[] {
-  const soon = howSoon(event, now);
-  const soonTag = soon == null ? [] : [{ word: soon }];
-
-  switch (event.phase) {
-    case 'draft':
-      return [{ word: W.draft, mark: 'draft' }, ...soonTag];
-    case 'live':
-      return [{ word: W.live, mark: 'live' }, ...soonTag];
-    case 'paused':
-      return [{ word: W.paused, mark: 'paused' }, ...soonTag];
-    case 'happening_now': {
-      const day = dayNumber(now, event.timeZone) - dayNumber(event.startsAt, event.timeZone) + 1;
-      const count = dayCount(event);
-
-      return count > 1
-        ? [{ word: W.happeningNow, mark: 'now' }, { word: say.dayOf(day, count) }]
-        : [{ word: W.happeningNow, mark: 'now' }];
-    }
-    case 'finished':
-      return event.calledOff
-        ? [{ word: W.calledOff, mark: 'calledOff' }]
-        : [{ word: W.finished, mark: 'finished' }];
-  }
+  return productCardTags(event, now, t);
 }
 
-export function milestonesOf(event: SampleEvent): Milestone[] {
+export function milestonesOf(event: Omit<SampleEvent, 'photo'>): Milestone[] {
   const own = { note: null, owner: 'event', area: 'events', action: null } as const;
 
   return [
@@ -225,7 +136,7 @@ export function milestonesOf(event: SampleEvent): Milestone[] {
 }
 
 /** The timeline's You milestone while a date is set and no copy recorded (sc-30812), gone at the start and once Ended. */
-export function finalNumbersOf(event: Shown, now: Date): Milestone[] {
+export function finalNumbersOf(event: Omit<SampleEvent, 'photo'>, now: Date): Milestone[] {
   const due = finalNumbersDue(event.id);
 
   if (due == null || event.status === 'ended' || now.getTime() >= Date.parse(event.startsAt))
@@ -243,45 +154,19 @@ export function finalNumbersOf(event: Shown, now: Date): Milestone[] {
   ];
 }
 
-export type StepAction = 'makeLive' | 'changeDates' | 'resume' | 'duplicate';
+/** The event's dates as the server returns them, which Next up, the card's step and the Overview's Needs you all read (sc-32801). */
+export function datesOf(event: Omit<SampleEvent, 'photo'>, now: Date): Milestone[] {
+  const before = event.status !== 'ended' && now.getTime() < Date.parse(event.startsAt);
 
-export type CardStep =
-  | { kind: 'button'; line: string; label: string; action: StepAction }
-  | { kind: 'next'; title: string; when: string; you: boolean; overdue: boolean };
+  return [
+    ...milestonesOf(event),
+    ...finalNumbersOf(event, now),
+    ...(before ? othersOwed(event.id) : []),
+  ];
+}
 
-/** The card's one step, by main's nextStep: what the phase asks for, else the next thing that happens; Duplicate once it is over. */
 export function cardStep(event: Shown, now: Date, locale: string): CardStep {
-  const milestones = [...milestonesOf(event), ...finalNumbersOf(event, now)];
-  const step = nextStep({ ...event, milestones }, event.phase, now);
-
-  switch (step?.kind) {
-    case 'makeLive':
-      return { kind: 'button', line: W.guestsBlocked, label: W.makeLive, action: 'makeLive' };
-    case 'changeDates':
-      return { kind: 'button', line: W.endPassed, label: W.changeDates, action: 'changeDates' };
-    case 'resume':
-      return { kind: 'button', line: W.pausedNotice, label: W.resume, action: 'resume' };
-    case 'nextUp':
-      return {
-        kind: 'next',
-        title: say.nextUp(step.milestone.title),
-        when: `${formatEventMoment(step.milestone.at, event.timeZone, locale)} · ${distanceWords(
-          step.milestone.at,
-          event.timeZone,
-          now,
-        )}`,
-        you: step.milestone.owner === 'you',
-        overdue: step.milestone.owner === 'you' && Date.parse(step.milestone.at) < now.getTime(),
-      };
-    case undefined: {
-      const line =
-        event.calledOff && event.concludedAt != null
-          ? say.calledOffNotice(formatEventDate(event.concludedAt, event.timeZone, locale))
-          : W.timelineFinished;
-
-      return { kind: 'button', line, label: W.duplicate, action: 'duplicate' };
-    }
-  }
+  return productCardStep(event, now, locale, t);
 }
 
 export type ManageKey = 'duplicate' | 'pause' | 'callOff' | 'endNow' | 'delete';
@@ -313,7 +198,10 @@ export function datesRow(event: Shown, locale: string): { title: string; line: s
   return { title: range, line: parts.join(' · ') };
 }
 
-export function hostsRow(event: SampleEvent, locale: string): { title: string; line: string } {
+export function hostsRow(
+  event: Omit<SampleEvent, 'photo'>,
+  locale: string,
+): { title: string; line: string } {
   return event.hosts.length === 0
     ? { title: W.noHosts, line: `${W.hostedBy} · ${W.noHostsLine}` }
     : { title: hostsLine(event.hosts, locale), line: W.hostedBy };
@@ -352,6 +240,8 @@ export function matchesSearch(event: SampleEvent, typed: string): boolean {
 
   return [event.name, event.venue?.name ?? ''].some((name) => folded(name).includes(q));
 }
+
+const DAY = 86_400_000;
 
 function addMonths(day: string, months: number): string {
   const [year = 0, month = 1, date = 1] = day.split('-').map(Number);
@@ -512,14 +402,16 @@ export function eventHref(id: string, query: Readonly<Record<string, string>> = 
   return `/demo/events/${id}${search === '' ? '' : `?${search}`}`;
 }
 
-export const TAB_WORDS: Record<ListTab, string> = {
-  upcoming: W.upcoming,
-  drafts: W.drafts,
-  past: W.past,
-};
+export function tabWord(tab: ListTab): string {
+  return t(TAB_WORD[tab]);
+}
 
 export const LIST_STATES = [
   'first',
+  'firstAsk',
+  'emptyUpcoming',
+  'emptyDrafts',
+  'emptyPast',
   'drafts',
   'past',
   'pastMore',
@@ -540,6 +432,28 @@ export function listStateOf(value: string | undefined): ListState | null {
   return LIST_STATES.find((state) => state === value) ?? null;
 }
 
+const EMPTY_TAB_OF: Partial<Record<ListState, ListTab>> = {
+  emptyUpcoming: 'upcoming',
+  emptyDrafts: 'drafts',
+  emptyPast: 'past',
+};
+
+export function emptyTabOf(state: ListState | null): ListTab | null {
+  return state == null ? null : (EMPTY_TAB_OF[state] ?? null);
+}
+
+/** The organisation's events with none on one tab, so the other tabs, the counts and the summary stay true. */
+export function withoutTab(
+  events: readonly SampleEvent[],
+  tab: ListTab,
+  now: Date,
+  locale: string,
+): SampleEvent[] {
+  const gone = new Set(homeOf(events, now, locale)[tab].map((event) => event.id));
+
+  return events.filter((event) => !gone.has(event.id));
+}
+
 export function listStart(state: ListState | null): {
   tab: ListTab;
   typed: string;
@@ -556,8 +470,10 @@ export function listStart(state: ListState | null): {
   switch (state) {
     case 'drafts':
     case 'eventsZero':
+    case 'emptyDrafts':
       return { ...start, tab: 'drafts' };
     case 'past':
+    case 'emptyPast':
       return { ...start, tab: 'past' };
     case 'pastMore':
       return { ...start, tab: 'past', pastShown: PAST_PAGE * 2 };
@@ -626,6 +542,13 @@ export const EVENT_STATES = [
   'muteNotLoaded',
   'muteNotSaved',
   'more',
+  'needsYou',
+  'needsYouOne',
+  'needsYouOverdue',
+  'needsYouGiven',
+  'needsYouReadOnly',
+  'needsYouLoading',
+  'needsYouFailed',
   ...FINAL_NUMBERS_STATES,
 ] as const;
 export type EventDemoState = (typeof EVENT_STATES)[number];
@@ -686,20 +609,5 @@ export function editOf(state: EventDemoState | null): EditPart | null {
       return 'cover';
     default:
       return null;
-  }
-}
-
-/** Each tab's width as CSS shares a row: an equal share of the room, or the tab's own words where they need more. */
-export function tabWidths(room: number, mins: readonly number[]): number[] {
-  const fixed = mins.map(() => false);
-
-  for (;;) {
-    const free = fixed.filter((f) => !f).length;
-    const left = room - mins.reduce((sum, min, i) => (fixed[i] ? sum + min : sum), 0);
-    const share = free > 0 ? left / free : 0;
-    const grown = mins.findIndex((min, i) => !fixed[i] && min > share);
-
-    if (grown < 0) return mins.map((min, i) => (fixed[i] ? min : share));
-    fixed[grown] = true;
   }
 }

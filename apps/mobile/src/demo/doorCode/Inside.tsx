@@ -26,7 +26,7 @@ import { Brand } from '../../components/Brand.tsx';
 import { Initials } from '../../components/Initials.tsx';
 import { Back } from '../../components/SettingsParts.tsx';
 import { SidebarColumn, SidebarPlace, SidebarPlaces } from '../../components/TodaySidebar.tsx';
-import { EventThumb } from '../events/EventCard.tsx';
+import { EventThumb } from '../../components/EventCard.tsx';
 import {
   CardSays,
   Line,
@@ -255,7 +255,7 @@ function SideBar({
       </View>
       <View style={styles.sideCard} accessible accessibilityLabel={`${EVENT.name}. ${day}`}>
         <EventThumb
-          event={{ id: EVENT.id, mesh: meshFor(EVENT.id), photo: false }}
+          event={{ id: EVENT.id, mesh: meshFor(EVENT.id), photo: null }}
           side={40}
           radius={12}
         />

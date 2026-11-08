@@ -208,7 +208,7 @@ export function StreamItems({ thread }: { thread: ConvoId }) {
           body={<Words body={PARKING.body} />}
           bits={[{ words: MW.onTheirPage }, { words: `${READER} · ${PARKING.at}` }]}
         >
-          {inbox.resend == null && (
+          {inbox.resend?.thread !== 'parking' && (
             <Receipt
               reach={reachFrom(PARKING_OF, PARKING_SEEN, inbox.unreached)}
               onWho={() => {

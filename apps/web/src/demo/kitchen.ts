@@ -10,6 +10,7 @@ import { milestonesOf } from './calendar.ts';
 import { writtenTime } from './clock.ts';
 import { demoWords } from './demoWords.ts';
 import { CLOCKS, type SampleEvent, instantOf, localDay, shownOf } from './events.ts';
+import { heldNeeds, resetNeedsYou, seedNeedsYou } from './needsYou.ts';
 import type { DemoLink } from './settings.ts';
 
 /** Final numbers due and the kitchen's copies (sc-30812) in Guests A's language, on the wedding: board/guests-a-spec.md §21. */
@@ -130,6 +131,7 @@ export function keepKitchen(next: Kitchen): void {
 
 export function resetKitchen(): void {
   kept = NOTHING;
+  resetNeedsYou();
 }
 
 const BASE: KitchenStart = {
@@ -209,17 +211,23 @@ export function startOf(value: string | null): KitchenStart {
   return start;
 }
 
-/** The Overview's and All dates' own links: the milestone as due, overdue, or gone with a copy. */
+/** The Overview's and All dates' own links, and the Overview's Needs you (sc-32801): the milestone as due, overdue, or gone with a copy. */
 const DATES_STATES = {
   finalNumbers: SET,
   finalNumbersOverdue: { due: '2026-11-02', copies: [] },
   finalNumbersGiven: { due: SET.due, copies: [FIRST] },
+  needsYou: { due: '2026-11-01', copies: [] },
+  needsYouOne: { due: '2026-11-04', copies: [] },
+  needsYouOverdue: { due: '2026-11-01', copies: [] },
+  needsYouGiven: { due: SET.due, copies: [FIRST] },
+  needsYouReadOnly: { due: '2026-11-04', copies: [] },
 } satisfies Record<string, Kitchen>;
 
 export type KitchenDatesState = keyof typeof DATES_STATES;
 
 /** Any other state link draws its own board, so the kitchen starts empty; with no state the demo keeps what it holds. */
 export function seedFromEvent(value: string | null): boolean {
+  seedNeedsYou(value);
   if (value == null) return false;
   if (!Object.hasOwn(DATES_STATES, value)) {
     kept = NOTHING;
@@ -327,8 +335,10 @@ export function kitchenMilestone(
 
 export function timelineOf(event: SampleEvent, now: Date): Milestone[] {
   const kitchen = kitchenMilestone(event, kept, now);
+  const before = !ended(event, now) && now.getTime() < Date.parse(event.startsAt);
+  const owed = event.id === KITCHEN_EVENT && before ? heldNeeds() : [];
 
-  return [...milestonesOf(event), ...(kitchen == null ? [] : [kitchen])];
+  return [...milestonesOf(event), ...(kitchen == null ? [] : [kitchen]), ...owed];
 }
 
 export function ended(event: SampleEvent, now: Date): boolean {
@@ -364,22 +374,22 @@ export interface CardMilestone {
   title: string;
   line: string;
   overdue: boolean;
-  label: string;
-  link: string;
+  label: string | null;
+  link: string | null;
 }
 
-/** The Overview card's Next up when it is a milestone with an action: the step it carries (Events A has no Coming up). */
+/** The Overview card's Next up when it is the reader's own milestone, with its action as the step (Events A has no Coming up). */
 export function cardMilestone(event: SampleEvent, now: Date): CardMilestone | null {
   const next = nextUp(timelineOf(event, now), now, ended(event, now));
 
-  if (next?.action == null) return null;
+  if (next?.owner !== 'you') return null;
 
   return {
     title: filled(KW.nextUp, { title: next.title }),
     line: `${momentOf(next.at, event.timeZone)} · ${distanceOf(next.at, event.timeZone, now)}`,
-    overdue: next.owner === 'you' && Date.parse(next.at) < now.getTime(),
-    label: next.action.label,
-    link: next.action.link,
+    overdue: Date.parse(next.at) < now.getTime(),
+    label: next.action?.label ?? null,
+    link: next.action?.link ?? null,
   };
 }
 

@@ -77,17 +77,20 @@ and turns off the retry, for a button whose request is held.
 
 Signing in, each on its own outcome:
 
-| Flow                   | Needs                                         | Leaves the app on                             |
-| ---------------------- | --------------------------------------------- | --------------------------------------------- |
-| `register-check-email` | `NAME`, `EMAIL` (a fresh address), `PASSWORD` | Check your email, after a sign-up on Register |
-| `register-back`        | nothing                                       | welcome pushed, sign-in linked                |
-| `verify-email`         | the same                                      | A few details, verified with the newest code  |
-| `verify-email-refused` | the same                                      | Check your email, a new code counting down    |
-| `sign-in-locked`       | `EMAIL`, a fresh address                      | sign-in, past the limit                       |
-| `signed-out-elsewhere` | a session ended from another client           | sign-in, with "You were signed out"           |
+| Flow                          | Needs                                                              | Leaves the app on                                        |
+| ----------------------------- | ------------------------------------------------------------------ | -------------------------------------------------------- |
+| `register-check-email`        | `NAME`, `EMAIL` (a fresh address), `PASSWORD`, optional `LANGUAGE` | Check your email, after a sign-up on Register            |
+| `sign-up-held-any-language`   | `LANGUAGE`, `NAME`, `EMAIL` (fresh), `PASSWORD`                    | Check your email, through `register-check-email`         |
+| `sign-up-timed-out-at-launch` | `SHOT`, after a held sign-up whose hold has run out                | Create your account, relaunched, with the timed-out line |
+| `register-back`               | nothing                                                            | welcome pushed, sign-in linked                           |
+| `verify-email`                | the same                                                           | A few details, verified with the newest code             |
+| `verify-email-refused`        | the same                                                           | Check your email, a new code counting down               |
+| `sign-in-locked`              | `EMAIL`, a fresh address                                           | sign-in, past the limit                                  |
+| `signed-out-elsewhere`        | a session ended from another client                                | sign-in, with "You were signed out"                      |
 
 Every new account starts from a sign-up (sc-512), so the verify-email flows register `EMAIL`
-themselves through `register-check-email`, which switches the app to English first. The address
+themselves through `register-check-email`, which switches the app to English first, or to
+`LANGUAGE` when one is passed. The address
 must be fresh: one an account already holds is sent no code, and `verify-email` fails.
 `sign-in-locked` and `signed-out-elsewhere` match English text, so the phone must be in English
 first (`sign-in-screen-english`).
@@ -170,7 +173,9 @@ Two-factor sign-in is `sign-in-two-factor.yaml`. It asks the harness for each co
 (`batch/helper.js`), so it runs inside a batch, which holds the account's `TOTP_SECRET`.
 
 To test the code step itself, outside a batch, three flows stop on it and send a code you pass
-(sc-22740). Each opening flow starts with `sign-in-screen-language`:
+(sc-22740). Each opening flow starts with `sign-in-screen-language`. The sign-in step has no
+send button for an authenticator code, whose sixth digit sends it (sc-29072); a recovery code and
+the reset link's step still send with the button:
 
 | Flow                     | Needs                                     | Leaves the app on                       |
 | ------------------------ | ----------------------------------------- | --------------------------------------- |

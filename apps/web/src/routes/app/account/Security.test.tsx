@@ -93,9 +93,13 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
-/** The Password row alone: the last way in offers Set a password too. */
+/** The Password row alone: the last way in offers Set a password too. The Settings list's rows are not the page's. */
 function passwordRow() {
-  return within(within(screen.getByRole('main')).getAllByRole('listitem')[0]!);
+  return within(
+    within(screen.getByRole('main'))
+      .getAllByRole('listitem')
+      .filter((item) => item.closest('nav') == null)[0]!,
+  );
 }
 
 function openSecurity() {
@@ -1116,7 +1120,10 @@ describe('changing the password', () => {
 
     openSecurity();
 
-    const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
+    const headings = screen
+      .getAllByRole('heading', { level: 2 })
+      .filter((h) => h.closest('nav') == null)
+      .map((h) => h.textContent);
     expect(headings[0]).toBe('Ways to sign in');
     expect(passwordRow().getByText('Password')).toBeDefined();
     expect(

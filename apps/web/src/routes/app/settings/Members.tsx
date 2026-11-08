@@ -46,7 +46,6 @@ import { api } from '../../../api.ts';
 import { ConfirmItsYou } from '../../../components/ConfirmItsYou.tsx';
 import { FieldError } from '../../../components/FieldError.tsx';
 import { OwnerClaimBanner } from '../../../components/OwnerClaimBanner.tsx';
-import { SettingsSections } from '../../../components/SettingsSections.tsx';
 import { StatusChip } from '../../../components/StatusChip.tsx';
 import { useFormChecks } from '../../../formChecks.ts';
 import { offButton } from '../../../offButton.ts';
@@ -148,7 +147,6 @@ export function Members() {
 
   return (
     <div className="settings settings-wide">
-      <SettingsSections />
       {refreshing && <Refreshing />}
       {load.kind === 'loading' && (
         <div className="members">

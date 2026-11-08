@@ -21,7 +21,7 @@ type Status =
   | { kind: 'paused'; time: string; liftsAt: number }
   | { kind: 'failed' };
 
-/** "Enter your code", for any step a second factor guards: a sign-in, or a password reset. */
+/** "Enter your code" in a password reset, until the reset moves onto TwoFactorStep (sc-29071). */
 export function SecondFactorStep({
   title,
   intro,
@@ -30,7 +30,6 @@ export function SecondFactorStep({
   pausedNote,
   failedTitle,
   failedBody,
-  onLostBoth,
   onVerify,
   onExpired,
 }: {
@@ -41,8 +40,6 @@ export function SecondFactorStep({
   pausedNote?: string;
   failedTitle: string;
   failedBody: string;
-  /** Only where a sign-in asks: the way back in for somebody who has neither (sc-509). */
-  onLostBoth?: (from: CodeMode) => void;
   onVerify: (factor: SecondFactor) => Promise<void>;
   onExpired: () => void;
 }) {
@@ -218,25 +215,15 @@ export function SecondFactorStep({
           testID="twoFactor.switch"
         />
 
-        {onLostBoth != null && (
-          <QuietButton
-            label={t('twoFactor.lostBoth')}
-            onPress={() => onLostBoth(mode)}
-            testID="twoFactor.lostBoth"
-          />
-        )}
-
         <QuietButton
           label={t('twoFactor.back')}
           onPress={() => router.replace('/sign-in')}
           testID="twoFactor.back"
         />
 
-        {onLostBoth == null && (
-          <Text size={tokens.typeSmall.size} style={styles.secondary}>
-            {t('twoFactor.lostBoth')}
-          </Text>
-        )}
+        <Text size={tokens.typeSmall.size} style={styles.secondary}>
+          {t('twoFactor.lostBoth')}
+        </Text>
       </>
     </AuthFrame>
   );

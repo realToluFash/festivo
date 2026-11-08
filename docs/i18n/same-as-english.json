@@ -85,7 +85,10 @@
     "web:eventNav.budget",
     "mobile:eventNav.budget",
     "web:auth.copyright",
-    "mobile:todayScreen.notifications"
+    "mobile:todayScreen.notifications",
+    "web:seating.countTables_one",
+    "web:seating.countTables_other",
+    "web:seating.colours.rose"
   ],
   "pt": [
     "web:nav.menu",

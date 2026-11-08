@@ -43,14 +43,23 @@ export const FONT_FACES = {
 } as Record<string, number>;
 
 /**
- * The one place a family is chosen, from the weight the whole style asks for.
+ * The one place a family is chosen, from the weight the whole style asks for
+ * and the phone's Bold text (`useBoldText()`).
  * Text and every field put their style through this.
  */
-export function faced(style: StyleProp<TextStyle>, family: Family = 'sans'): TextStyle {
-  return faceStyle(StyleSheet.flatten(style) ?? {}, family);
+export function faced(
+  style: StyleProp<TextStyle>,
+  family: Family = 'sans',
+  bold = false,
+): TextStyle {
+  return faceStyle(StyleSheet.flatten(style) ?? {}, family, bold);
 }
 
 /** faced() for a TextInput, which every field puts its style through. */
-export function inputFaced(style: StyleProp<TextStyle>, family: Family = 'sans'): TextStyle {
-  return inputFaceStyle(StyleSheet.flatten(style) ?? {}, family, Platform.OS);
+export function inputFaced(
+  style: StyleProp<TextStyle>,
+  family: Family = 'sans',
+  bold = false,
+): TextStyle {
+  return inputFaceStyle(StyleSheet.flatten(style) ?? {}, family, Platform.OS, bold);
 }

@@ -18,11 +18,11 @@ export function declaredTemplates(generated) {
   return [...generated.matchAll(/^ {2}\w+: '([^']+)',$/gm)].map(([, template]) => template);
 }
 
-/** A pattern for each template matching it written with any id, a literal or an interpolation. */
+/** A pattern for each template written as a whole string with any id, a literal or an interpolation. */
 export function patternFor(template) {
   const literal = template.split('{id}').map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
 
-  return new RegExp(literal.join('[^\'"`\\s]+'));
+  return new RegExp(`['"\`]${literal.join('(?!:)[^\'"`\\s]+')}['"\`]`);
 }
 
 /** @param {Array<{ path: string, contents: string }>} files */

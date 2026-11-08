@@ -23,7 +23,6 @@ import { CompanyDomainsCard } from './CompanyDomainsCard.tsx';
 import { OwnershipCard } from './OwnershipCard.tsx';
 import { RecoveryRequestsCard } from './RecoveryRequestsCard.tsx';
 import { RequestLinkCard } from './RequestLinkCard.tsx';
-import { SettingsSections } from '../../../components/SettingsSections.tsx';
 import { currentLocale } from '../../../i18n/index.ts';
 import { focusWhereSent, offField } from '../../../offField.ts';
 import { useOffline } from '../../../offline.ts';
@@ -80,7 +79,6 @@ export function General() {
 
   return (
     <div className="settings settings-wide settings-general">
-      <SettingsSections />
       {refreshing && <Refreshing />}
       <div className="settings-heading">
         <h1 ref={title} tabIndex={-1}>

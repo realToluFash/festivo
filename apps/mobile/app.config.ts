@@ -46,6 +46,8 @@ const config: ExpoConfig = {
     usesAppleSignIn: true,
     // Event day pushes are time-sensitive, so they break through Focus (sc-13214).
     entitlements: { 'com.apple.developer.usernotifications.time-sensitive': true },
+    // Asked before Open Mail is shown, which iOS answers only for a scheme listed here (sc-29071).
+    infoPlist: { LSApplicationQueriesSchemes: ['message'] },
   },
   android: {
     package: 'com.soirely.app',

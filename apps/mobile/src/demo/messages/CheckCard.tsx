@@ -11,6 +11,7 @@ import { ChannelTick } from './Composers.tsx';
 import { MessageGlyph } from './MessageMarks.tsx';
 import { type Draft, checkOf, dayWords } from './MessagesModel.ts';
 import { RESEND, formatCount, BALANCE } from './MessagesSample.ts';
+import type { ResendView } from './Reach.ts';
 import { CHANNEL_WORD, type ChannelKey, W, say } from './MessagesWords.ts';
 
 /** The one filled button in the check: 48 tall, growing with its words. */
@@ -250,15 +251,19 @@ export function CancelAsk({
 
 /** Resend to those not reached: the message is on their page already, so only Soirely's notice goes again. */
 export function ResendCheck({
+  check,
   headRef,
   onGo,
   onChange,
   onSeeAll,
+  onBack,
 }: {
+  check: ResendView;
   headRef?: Ref<TextHandle>;
   onGo: () => void;
   onChange: () => void;
   onSeeAll: () => void;
+  onBack: () => void;
 }) {
   const [ticks, setTicks] = useState<Record<ChannelKey, boolean>>({
     email: true,
@@ -266,6 +271,47 @@ export function ResendCheck({
     wa: false,
   });
   const credits = ticks.sms ? RESEND.credits : 0;
+  const stillCant = (
+    <View style={styles.cant}>
+      <Text size={14} weight="semibold" style={styles.figures}>
+        {say.stillCantTell(check.still)}
+      </Text>
+      {check.names.map((name) => (
+        <Text key={name} size={13.5} weight="medium" style={[styles.secondary, styles.small]}>
+          {name}
+        </Text>
+      ))}
+      {check.still > check.names.length && (
+        <TextAction
+          label={say.seeAll(check.still)}
+          onPress={onSeeAll}
+          testID="messages.resend.seeAll"
+        />
+      )}
+    </View>
+  );
+
+  if (check.count === 0)
+    return (
+      <Rising>
+        <Text
+          ref={headRef}
+          size={18}
+          weight="bold"
+          accessibilityRole="header"
+          style={styles.sentence}
+        >
+          {say.noneCanBeTold(check.n)}
+        </Text>
+        <Text size={14} weight="medium" style={[styles.secondary, styles.line]}>
+          {W.noneCanBeToldLine}
+        </Text>
+        {stillCant}
+        <View style={styles.actions}>
+          <TextAction label={W.backToWho} onPress={onBack} testID="messages.resend.back" />
+        </View>
+      </Rising>
+    );
 
   return (
     <Rising>
@@ -276,7 +322,7 @@ export function ResendCheck({
         accessibilityRole="header"
         style={styles.sentence}
       >
-        {say.cannotUndo(RESEND.count)}
+        {say.cannotUndo(check.count)}
       </Text>
       <Text size={14} weight="medium" style={[styles.secondary, styles.line]}>
         {W.alreadyOnPage}
@@ -292,31 +338,19 @@ export function ResendCheck({
           />
         ))}
       </View>
-      <Text size={14} weight="medium" style={styles.line}>
-        {say.includesUnconfirmed(RESEND.unconfirmed)}
-      </Text>
-      <View style={styles.cant}>
-        <Text size={14} weight="semibold" style={styles.figures}>
-          {say.stillCantTell(RESEND.stillCant)}
+      {check.unconfirmed > 0 && (
+        <Text size={14} weight="medium" style={styles.line}>
+          {say.includesUnconfirmed(check.unconfirmed)}
         </Text>
-        {RESEND.names.map((name) => (
-          <Text key={name} size={13.5} weight="medium" style={[styles.secondary, styles.small]}>
-            {name}
-          </Text>
-        ))}
-        <TextAction
-          label={say.seeAll(RESEND.stillCant)}
-          onPress={onSeeAll}
-          testID="messages.resend.seeAll"
-        />
-      </View>
+      )}
+      {check.still > 0 && stillCant}
       {credits > 0 && (
         <Text size={13.5} weight="medium" style={[styles.small, styles.figures]}>
           {say.credits(credits, formatCount(BALANCE - credits), false)}
         </Text>
       )}
       <View style={styles.actions}>
-        <BigButton label={say.sendTo(RESEND.count)} onPress={onGo} testID="messages.resend.go" />
+        <BigButton label={say.sendTo(check.count)} onPress={onGo} testID="messages.resend.go" />
         <TextAction label={W.changeIt} onPress={onChange} testID="messages.resend.change" />
       </View>
     </Rising>

@@ -1,6 +1,5 @@
 import {
   type EventState,
-  type NextStep,
   eventDays,
   formatEventClock,
   formatEventShortDay,
@@ -79,20 +78,4 @@ export function eventDatesWords(
       timeZone: event.timeZone,
     }),
   };
-}
-
-/** A card's last line: what its phase asks for next, else its next milestone. */
-export function nextStepWords(step: NextStep | null, t: TFunction): string | null {
-  switch (step?.kind) {
-    case undefined:
-      return null;
-    case 'makeLive':
-      return t('eventsScreen.nextMakeLive');
-    case 'changeDates':
-      return t('eventsScreen.nextChangeDates');
-    case 'resume':
-      return t('eventsScreen.nextResume');
-    case 'nextUp':
-      return t('eventsScreen.nextUp', { title: step.milestone.title });
-  }
 }

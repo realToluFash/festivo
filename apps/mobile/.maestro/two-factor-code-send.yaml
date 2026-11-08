@@ -12,19 +12,31 @@ appId: host.exp.Exponent
     id: 'twoFactor.code'
 - eraseText: 30
 - inputText: ${CODE}
-# Return sends the form on iOS; hideKeyboard fails on an iPhone (sc-19584).
+# The sixth digit sends the sign-in step's authenticator code (sc-29072). A step with a send
+# button, a recovery code or the reset step, sends with Return on iOS, where hideKeyboard fails on
+# an iPhone (sc-19584), and with the button on Android.
 - runFlow:
     when:
       platform: iOS
     commands:
-      - pressKey: Enter
+      - runFlow:
+          when:
+            visible:
+              id: 'twoFactor.verify'
+          commands:
+            - pressKey: Enter
 - runFlow:
     when:
       platform: Android
     commands:
       - hideKeyboard
-      - tapOn:
-          id: 'twoFactor.verify'
+      - runFlow:
+          when:
+            visible:
+              id: 'twoFactor.verify'
+          commands:
+            - tapOn:
+                id: 'twoFactor.verify'
 - waitForAnimationToEnd:
     timeout: 6000
 - takeScreenshot: ${SHOT}
