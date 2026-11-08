@@ -234,6 +234,10 @@ const STATES = {
     name: 'A guest erased since the copy: counts only',
     starts: { kitchen: changed('erased') },
   },
+  changes_long: {
+    name: 'A 120-character dish and a 60-character variant, renamed: whole, wrapping',
+    starts: { kitchen: changed('long') },
+  },
   no_changes: {
     name: 'No changes since the copy',
     starts: { kitchen: { ...changed('named'), changedAt: null } },
@@ -702,6 +706,7 @@ export const CHANGES_PAGES: readonly { name: string; states: readonly DemoLink[]
         'changes_variant_side',
         'changes_person',
         'changes_erased',
+        'changes_long',
       ] as const
     ).map(link),
   },

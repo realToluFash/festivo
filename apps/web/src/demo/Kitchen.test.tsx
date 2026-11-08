@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -6,6 +9,7 @@ import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
 import { resetSample } from './events.ts';
 import { KW, resetKitchen } from './kitchen.ts';
+import { LONG_NAMES } from './kitchenChanges.ts';
 
 const tested = config();
 const SLOW = { timeout: 20000 };
@@ -351,6 +355,19 @@ describe('Changes since on the kitchen sheet (sc-30692)', () => {
       );
     },
   );
+
+  it('keeps a long dish and variant whole, and lets the row break anywhere', SLOW, async () => {
+    await kitchen('changes_long');
+
+    expect(lines()).toEqual([
+      `Renamed: ${LONG_NAMES.dishWas}, now ${LONG_NAMES.dish}`,
+      `Renamed: ${LONG_NAMES.dish} · ${LONG_NAMES.sideWas}, now ${LONG_NAMES.side}`,
+    ]);
+    expect(lines().join('')).not.toContain('…');
+    expect(readFileSync(join(import.meta.dirname, 'kitchen.css'), 'utf8')).toMatch(
+      /\.kitchen-changes \.desk-row-name \{\s*overflow-wrap: anywhere;\s*\}/u,
+    );
+  });
 
   it('gives counts and no name without guests.manage', SLOW, async () => {
     await kitchen('changes_counts');
