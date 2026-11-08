@@ -106,9 +106,13 @@ function QuotesBody({
     if (state !== '') forgetBudget();
     return quotesStart(state, vendorId, longDay);
   });
-  const [budget, setBudget] = useState<Budget>(() => keptBudget() ?? start.budget);
+  const [budget, setBudget] = useState<Budget>(
+    () => (state === '' ? keptBudget() : null) ?? start.budget,
+  );
 
-  useEffect(() => keepBudget(budget), [budget]);
+  useEffect(() => {
+    if (budget !== start.budget) keepBudget(budget);
+  }, [budget, start.budget]);
   const [quote, setQuote] = useState<Opened | null>(start.quote);
   const [payment, setPayment] = useState<PaymentOpen | null>(start.payment);
   const [amending, setAmending] = useState<Amending | null>(start.amending);

@@ -350,6 +350,55 @@ describe('Quotes and what is due on the wedding’s Budget, in A (sc-87, sc-88)'
     },
   );
 
+  it(
+    'opens a plain link on the sample after a state, and the demo home forgets a visit',
+    SLOW,
+    async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      let router = await open(`${BUDGET}&state=nothing_due`);
+      await act(async () => {
+        await router.navigate(`${BUDGET}&vendor=v3`);
+      });
+      expect(
+        await within(main()).findByRole('heading', { level: 1, name: 'Bloom & Co' }),
+      ).toBeDefined();
+      expect(within(main()).getAllByRole('button', { name: 'Mark paid' }).length).toBeGreaterThan(
+        0,
+      );
+      cleanup();
+
+      router = await open(`${BUDGET}&state=no_quotes`);
+      await act(async () => {
+        await router.navigate(`${BUDGET}&view=due`);
+      });
+      await within(main()).findByRole('heading', { level: 1, name: 'Everything due' });
+      expect(within(main()).queryByText('Nothing is due.')).toBeNull();
+      cleanup();
+
+      router = await open(`${BUDGET}&state=line_taken`);
+      fireEvent.click(
+        within(screen.getByRole('dialog', { name: 'Add a quote' })).getByRole('button', {
+          name: 'Add',
+        }),
+      );
+      await settle();
+      expect(
+        within(section('Vendors quoted')).getByRole('link', { name: /^Beat Collective/ }),
+      ).toBeDefined();
+      await act(async () => {
+        await router.navigate('/demo');
+      });
+      await screen.findByRole('heading', { name: 'Design demo' }, SLOW);
+      await act(async () => {
+        await router.navigate(BUDGET);
+      });
+      await within(main()).findByRole('heading', { level: 1, name: 'Budget' });
+      expect(
+        within(section('Vendors quoted')).queryByRole('link', { name: /^Beat Collective/ }),
+      ).toBeNull();
+    },
+  );
+
   it('offers vendors by name, one already quoted that cannot be chosen', SLOW, async () => {
     await open(`${BUDGET}&state=add`);
     const dialog = screen.getByRole('dialog', { name: 'Add a quote' });
