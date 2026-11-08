@@ -70,7 +70,7 @@
     "refused": "Ese correo electrónico y esa contraseña no coinciden. Compruebe ambos o restablezca su contraseña.",
     "endedTitle": "Se ha cerrado su sesión",
     "endedBody": "Inicie sesión de nuevo para continuar.",
-    "codeTimedOutTitle": "That sign-in timed out",
+    "codeTimedOutTitle": "El inicio de sesión ha caducado",
     "lockedTitle": "Demasiados intentos",
     "withGoogle": "Continuar con {{provider}}",
     "withApple": "Continuar con {{provider}}",

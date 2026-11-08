@@ -1852,10 +1852,9 @@ describe('a check that holds the API', () => {
     expect(unguarded).toEqual([]);
   });
 
-  // sc-30216 moves sc27096-ipad-side-refreshing.yaml off its own 18999 trigger onto /api?to=.
   it('reaches the harness through batch/helper.js, never a literal port', () => {
     const literal = checks.filter(([, flow]) => /127\.0\.0\.1:\d+/.test(flow)).map(([n]) => n);
-    expect(literal).toEqual(['sc27096-ipad-side-refreshing.yaml']);
+    expect(literal).toEqual([]);
   });
 });
 
@@ -1915,6 +1914,27 @@ describe('the batch helper', () => {
       expect(await ask('/api?to=paused')).toEqual({ api: 'paused' });
       expect(await ask('/language?to=es')).toEqual({ language: 'es' });
       expect(ran).toEqual(['pause api', 'unpause api', 'locale es']);
+    } finally {
+      server.close();
+    }
+  });
+
+  it('pictures the device under the running check and language, and only by a plain name', async () => {
+    const shots = [];
+    const shoot = async (file) => shots.push(file);
+    const { server, ask } = await helperFor('running', undefined, { shoot, out: '/out' });
+    try {
+      expect(await ask('/shot?name=held-1')).toEqual({
+        error: 'a shot is taken inside a check, and none has started',
+      });
+      await ask('/started?check=sc27096-ipad-side-refreshing.en');
+      expect(await ask('/shot?name=held-1')).toEqual({
+        shot: 'sc27096-ipad-side-refreshing.en-held-1.png',
+      });
+      expect(await ask('/shot?name=..%2Fheld')).toEqual({
+        error: 'shot what? /shot?name=<letters, digits, -> gave ../held',
+      });
+      expect(shots).toEqual(['/out/sc27096-ipad-side-refreshing.en-held-1.png']);
     } finally {
       server.close();
     }
