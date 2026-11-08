@@ -29,7 +29,8 @@ class FakeShortcut:
         if "workflow_state_id" in filters:
             self.searches.append(f'state:"{roles.QUEUE_STATES[filters["workflow_state_id"] - 1]}"')
         else:
-            self.searches.append(f"updated:{filters['updated_at_start']}")
+            archived = "archived " if filters.get("archived") else ""
+            self.searches.append(f"{archived}updated:{filters['updated_at_start']}")
         return []
 
     def story(self, story_id):
@@ -92,6 +93,24 @@ class Since(unittest.TestCase):
         with self.assertRaises(sync.OutOfTime):
             sync.sync_shortcut(db, Late(), NOW + 60)
         self.assertEqual(self.since(db, NOW + 120), [self.at(NOW - sync.OVERLAP_SECONDS)])
+
+    def test_a_story_archived_since_is_asked_for_and_stored_archived(self):
+        db = store.connect(":memory:")
+        store.put_story(db, {"id": 7, "state": "Done", "done": True, "labels": [],
+                             "links": [], "updated_at": "t0", "archived": False})
+
+        class Archived(FakeShortcut):
+            def find(self, **filters):
+                super().find(**filters)
+                return [{"id": 7, "updated_at": "t1"}] if filters.get("archived") else []
+
+            def story(self, story_id):
+                return {"id": story_id, "name": "old", "workflow_state_id": 1,
+                        "updated_at": "t1", "archived": True}
+        shortcut = Archived()
+        sync.sync_shortcut(db, shortcut, NOW)
+        self.assertIn("archived " + self.at(NOW - sync.INBOX_DAYS * 86400), shortcut.searches)
+        self.assertTrue(store.story(db, 7)["archived"])
 
     def test_never_further_back_than_a_day_between_full_syncs(self):
         db = store.connect(":memory:")
@@ -158,16 +177,15 @@ class PullRequestStories(unittest.TestCase):
 class Blockers(unittest.TestCase):
     """A story's blockers are fetched whatever state they are in, so each is judged by it."""
 
-    def test_a_blocker_no_search_found_is_fetched_and_one_still_holding_again_in_full(self):
-        db, asked, archived = store.connect(":memory:"), [], []
+    def test_a_blocker_no_search_found_is_fetched_once(self):
+        db, asked = store.connect(":memory:"), []
 
         class Shortcut(FakeShortcut):
             def story(self, story_id):
                 asked.append(story_id)
                 if story_id == 404:
                     raise sync.ShortcutError("Shortcut 404 on GET /api/v3/stories/404: gone")
-                return {"id": story_id, "name": "blocker", "workflow_state_id": 1,
-                        "archived": bool(archived)}
+                return {"id": story_id, "name": "blocker", "workflow_state_id": 1}
 
         links = [{"verb": "blocks", "subject": b, "object": 1} for b in (7, 404)]
         store.put_story(db, {"id": 1, "state": "Ready For Dev", "done": False, "labels": [],
@@ -176,12 +194,6 @@ class Blockers(unittest.TestCase):
         sync.sync_blockers(db, Shortcut(), {"1": "In Review"}, {})
         self.assertEqual(asked, [7, 404])
         self.assertEqual(store.story(db, 7)["state"], "In Review")
-        archived.append(True)
-        sync.sync_blockers(db, Shortcut(), {"1": "In Review"}, {}, full=True)
-        self.assertEqual(asked, [7, 404, 7])
-        self.assertTrue(store.story(db, 7)["archived"])
-        sync.sync_blockers(db, Shortcut(), {"1": "In Review"}, {}, full=True)
-        self.assertEqual(asked, [7, 404, 7])
 
 
 class OutOfTimeInAPart(unittest.TestCase):

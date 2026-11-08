@@ -62,8 +62,10 @@ def sync_shortcut(db, shortcut, now, full=False):
         max(store.get_meta(db, "shortcut_at", 0) - OVERLAP_SECONDS, now - 24 * 60 * 60)
     ready = full or now - store.get_meta(db, "ready_at", 0) >= READY_EVERY_SECONDS
     ids = {name: int(state_id) for state_id, name in states.items()}
-    asks = [{"updated_at_start": datetime.datetime.fromtimestamp(since, datetime.UTC)
-             .isoformat()}]
+    changed = datetime.datetime.fromtimestamp(since, datetime.UTC).isoformat()
+    # Search leaves archived stories out, so the archived are asked for apart: archiving a
+    # story updates it.
+    asks = [{"updated_at_start": changed}, {"updated_at_start": changed, "archived": True}]
     asks += [{"workflow_state_id": ids[state]}
              for state in (roles.QUEUE_STATES if full else ["Ready For Dev"] if ready else [])
              if state in ids]
@@ -75,7 +77,7 @@ def sync_shortcut(db, shortcut, now, full=False):
                  if (store.story(db, story_id) or {}).get("updated_at") != hit.get("updated_at")]
         for raw in pool.map(shortcut.story, stale):
             store.put_story(db, slim(raw, states, epics))
-    fetched = len(stale) + sync_blockers(db, shortcut, states, epics, full)
+    fetched = len(stale) + sync_blockers(db, shortcut, states, epics)
     store.set_meta(db, "shortcut_at", now)
     if full:
         store.set_meta(db, "full_at", now)
@@ -84,19 +86,18 @@ def sync_shortcut(db, shortcut, now, full=False):
     return fetched
 
 
-def sync_blockers(db, shortcut, states, epics, full=False):
+def sync_blockers(db, shortcut, states, epics):
     """The stories that block one not yet claimed, since a blocker the searches miss (Done
-    long ago, or in a state no queue reads) still decides whether the story is held. Search
-    leaves archived stories out, so a full sync fetches each blocker still holding again, to
-    see it archived. One Shortcut does not have is not asked for again."""
+    long ago, or in a state no queue reads) still decides whether the story is held. Once
+    stored, a blocker is kept current by the searches for what changed, archived or not.
+    One Shortcut does not have is not asked for again."""
     missing = set(store.get_meta(db, "missing_stories") or [])
     wanted = set()
     for story in store.stories(db):
         if story["done"] or story["state"] not in work.HOLDABLE:
             continue
         for blocker_id in work.blockers(story):
-            known = store.story(db, blocker_id)
-            if blocker_id not in missing and (not known or full and not work.merged(known)):
+            if blocker_id not in missing and not store.story(db, blocker_id):
                 wanted.add(blocker_id)
     def fetch(blocker_id):
         try:
