@@ -13,6 +13,7 @@ import {
 } from '../kit/accountPage.ts';
 import { tokens } from '../theme/tokens.ts';
 import { LEAD_INSET, LineIcon } from './AccountCard.tsx';
+import { FieldError } from './Field.tsx';
 import { Line, OpenRow, Row, RowList, Section, TextAction } from './Summary.tsx';
 
 interface OfferRefs {
@@ -178,7 +179,7 @@ function Offers({
         )}
       </View>
       <Line size={14} text={t('contacts.removeBody')} />
-      {error != null && <Line size={14} text={error} />}
+      {error != null && <FieldError message={error} answer={error} />}
     </>
   );
 }

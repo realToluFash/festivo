@@ -4,7 +4,7 @@ import { StyleSheet, type TextInputInstance, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { tokens } from '../theme/tokens.ts';
-import { CodeField, Field, focusChecked, focusRefused, keysStayDown } from './Field.tsx';
+import { CodeField, Field, FieldError, focusChecked, focusRefused, keysStayDown } from './Field.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import { FocusedScreen, Line, TextAction } from './Summary.tsx';
 import { Text } from './Text.tsx';
@@ -161,7 +161,7 @@ export function VerifyScreen({
           testID="account.verify.text"
         />
       )}
-      {note != null && <Line size={14} text={note} />}
+      {note != null && <FieldError message={note} />}
     </FocusedScreen>
   );
 }
