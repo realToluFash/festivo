@@ -11,7 +11,9 @@ import {
   dayOf,
   plusDays,
   when,
+  zoneFor,
 } from './dataControl.ts';
+import type { ReaderZone } from './dataSettings.ts';
 import { isPublicDomain } from './general.ts';
 import type { Viewer } from './settings.ts';
 
@@ -118,29 +120,29 @@ export function putBackBy(domain: Pick<Domain, 'at'>): string {
   return plusDays(domain.at, PUT_BACK_DAYS);
 }
 
-export function domainLine(domain: Domain, locale: string): string {
+export function domainLine(domain: Domain, locale: string, zone: ReaderZone): string {
   switch (domain.status) {
     case 'proved':
-      return `Proved ${when(domain.at, locale)}`;
+      return `Proved ${when(domain.at, locale, zone)}`;
     case 'waiting':
-      return `We check every hour until ${when(checksEnd(domain), locale)}`;
+      return `We check every hour until ${when(checksEnd(domain), locale, zone)}`;
     case 'failed':
-      return `We stopped checking on ${when(checksEnd(domain), locale)}. Verify still works.`;
+      return `We stopped checking on ${when(checksEnd(domain), locale, zone)}. Verify still works.`;
     case 'missing':
-      return `Put it back by ${when(putBackBy(domain), locale)}`;
+      return `Put it back by ${when(putBackBy(domain), locale, zone)}`;
   }
 }
 
 /** The record's own last line: the hourly check, or where its row says it stands. */
-export function recordFoot(domain: Domain, locale: string): string {
-  const line = domainLine(domain, locale);
+export function recordFoot(domain: Domain, locale: string, zone: ReaderZone): string {
+  const line = domainLine(domain, locale, zone);
 
   return line.endsWith('.') ? line : `${line}.`;
 }
 
 export function onlyLine(
   domain: Domain,
-  viewer: Pick<Viewer, 'owns'>,
+  viewer: Pick<Viewer, 'key' | 'owns'>,
   plan: Plan,
   locale: string,
 ): string {
@@ -148,9 +150,9 @@ export function onlyLine(
 
   const line =
     domain.only === 'scheduled' && domain.onAt != null
-      ? `Starts ${when(domain.onAt, locale)}`
+      ? `Starts ${when(domain.onAt, locale, zoneFor(viewer))}`
       : domain.only === 'on' && domain.onAt != null
-        ? `On since ${dayOf(domain.onAt, locale)}`
+        ? `On since ${dayOf(domain.onAt, locale, zoneFor(viewer))}`
         : `People at ${domain.name} can still be members of other organisations.`;
 
   if (viewer.owns) return line;
@@ -175,10 +177,14 @@ export interface DomainsCard {
   step: CardStep | null;
 }
 
-function onlyCard(domain: Domain, viewer: Pick<Viewer, 'owns'>, locale: string): DomainsCard {
+function onlyCard(
+  domain: Domain,
+  viewer: Pick<Viewer, 'key' | 'owns'>,
+  locale: string,
+): DomainsCard {
   if (domain.only === 'scheduled' && domain.onAt != null)
     return {
-      says: `Only our organisation starts on ${when(domain.onAt, locale)}`,
+      says: `Only our organisation starts on ${when(domain.onAt, locale, zoneFor(viewer))}`,
       line: viewer.owns
         ? `Everyone at ${domain.name} was emailed. You can cancel until then.`
         : 'Only an owner can cancel it.',
@@ -201,7 +207,7 @@ function onlyCard(domain: Domain, viewer: Pick<Viewer, 'owns'>, locale: string):
 function saidCard(
   view: DomainsView,
   said: NonNullable<DomainsView['said']>,
-  viewer: Pick<Viewer, 'owns'>,
+  viewer: Pick<Viewer, 'key' | 'owns'>,
   locale: string,
 ): DomainsCard | null {
   const domain = view.domains.find((one) => one.name === said.domain);
@@ -219,7 +225,7 @@ function saidCard(
         ? null
         : {
             says: `${domain.name} is proved`,
-            line: `Proved ${when(domain.at, locale)}.`,
+            line: `Proved ${when(domain.at, locale, zoneFor(viewer))}.`,
             step:
               viewer.owns && domain.only === 'off' ? { does: 'keep', domain: domain.name } : null,
           };
@@ -243,7 +249,7 @@ function saidCard(
 /** The card: what was just done, or else the domain most at risk, a lapsing proof before a failed or waiting one. */
 export function domainsCard(
   view: DomainsView,
-  viewer: Pick<Viewer, 'owns'>,
+  viewer: Pick<Viewer, 'key' | 'owns'>,
   locale: string,
 ): DomainsCard {
   if (view.plan === 'free')
@@ -254,7 +260,7 @@ export function domainsCard(
     };
   if (view.plan === 'left')
     return {
-      says: `Switched off on ${dayOf(CLOCK.left, locale)}`,
+      says: `Switched off on ${dayOf(CLOCK.left, locale, zoneFor(viewer))}`,
       line: `${ORG} left Enterprise. Its domains are kept as they were, and come back on with Enterprise.`,
       step: { does: 'contact' },
     };
@@ -271,19 +277,19 @@ export function domainsCard(
   if (missing != null)
     return {
       says: `The record for ${missing.name} is missing`,
-      line: `Put it back by ${when(putBackBy(missing), locale)}, or ${missing.name} stops being proved and Only our organisation stops with it.`,
+      line: `Put it back by ${when(putBackBy(missing), locale, zoneFor(viewer))}, or ${missing.name} stops being proved and Only our organisation stops with it.`,
       step: { does: 'record', domain: missing.name },
     };
   if (failed != null)
     return {
       says: `${failed.name} was not proved`,
-      line: `We stopped checking on ${when(checksEnd(failed), locale)}. Add the record, then Verify.`,
+      line: `We stopped checking on ${when(checksEnd(failed), locale, zoneFor(viewer))}. Add the record, then Verify.`,
       step: { does: 'record', domain: failed.name },
     };
   if (waiting != null)
     return {
       says: `${waiting.name} is waiting for its record`,
-      line: `We check every hour until ${when(checksEnd(waiting), locale)}.`,
+      line: `We check every hour until ${when(checksEnd(waiting), locale, zoneFor(viewer))}.`,
       step: { does: 'record', domain: waiting.name },
     };
   if (proved != null) return onlyCard(proved, viewer, locale);
@@ -295,13 +301,17 @@ export function domainsCard(
   };
 }
 
-export function confirmWords(domain: string, locale: string): { title: string; lines: string[] } {
+export function confirmWords(
+  domain: string,
+  locale: string,
+  zone: ReaderZone,
+): { title: string; lines: string[] } {
   const starts = plusDays(CLOCK.now, ONLY_DAYS);
 
   return {
     title: `Keep ${domain} accounts to ${ORG}?`,
     lines: [
-      `From ${when(starts, locale)}, ${ONLY_DAYS} days from now, an account whose main email address is at ${domain} can only be a member of ${ORG}.`,
+      `From ${when(starts, locale, zone)}, ${ONLY_DAYS} days from now, an account whose main email address is at ${domain} can only be a member of ${ORG}.`,
       `Everyone at ${domain} is emailed now. Access to a single event still works. You can cancel until then.`,
     ],
   };

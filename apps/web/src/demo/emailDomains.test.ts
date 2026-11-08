@@ -17,6 +17,7 @@ import {
 import { VIEWERS } from './settings.ts';
 
 const LOCALE = 'en-US';
+const LAGOS = 'Africa/Lagos';
 const view = (state: string) => domainsStart(state).view;
 const card = (state: string, viewer = VIEWERS.folake) => domainsCard(view(state), viewer, LOCALE);
 const named = (state: string, name: string): Domain => {
@@ -50,17 +51,27 @@ describe('Email domains (sc-560, sc-563)', () => {
   });
 
   it('says where each domain stands, from its own instant', () => {
-    expect(domainLine(named('domains', 'ire.events'), LOCALE)).toBe(
+    expect(domainLine(named('domains', 'ire.events'), LOCALE, LAGOS)).toBe(
       'Proved Tuesday, Oct 6 at 11:02 WAT',
     );
-    expect(domainLine(named('domains', 'ireevents.com'), LOCALE)).toBe(
+    expect(domainLine(named('domains', 'ireevents.com'), LOCALE, LAGOS)).toBe(
       'We check every hour until Friday, Oct 23 at 16:45 WAT',
     );
-    expect(domainLine(named('ed_failed', 'ireevents.com'), LOCALE)).toBe(
+    expect(domainLine(named('ed_failed', 'ireevents.com'), LOCALE, LAGOS)).toBe(
       'We stopped checking on Monday, Oct 12 at 09:30 WAT. Verify still works.',
     );
-    expect(domainLine(named('ed_lapsing', 'ire.events'), LOCALE)).toBe(
+    expect(domainLine(named('ed_lapsing', 'ire.events'), LOCALE, LAGOS)).toBe(
       'Put it back by Saturday, Oct 31 at 14:20 WAT',
+    );
+  });
+
+  it('shows the lapse instant in a Lagos and a London admin’s own zones as the same instant', () => {
+    expect(card('ed_lapsing').line).toContain('Put it back by Saturday, Oct 31 at 14:20 WAT,');
+    expect(card('ed_lapsing', VIEWERS.julien).line).toContain(
+      'Put it back by Saturday, Oct 31 at 13:20 GMT,',
+    );
+    expect(domainLine(named('ed_lapsing', 'ire.events'), LOCALE, 'Europe/London')).toBe(
+      'Put it back by Saturday, Oct 31 at 13:20 GMT',
     );
   });
 
@@ -77,7 +88,7 @@ describe('Email domains (sc-560, sc-563)', () => {
       'On since Saturday, Oct 3',
     );
     expect(onlyLine(named('oo_scheduled', 'ire.events'), VIEWERS.julien, plan, LOCALE)).toBe(
-      'Starts Monday, Nov 2 at 10:12 WAT. Only an owner can change this.',
+      'Starts Monday, Nov 2 at 09:12 GMT. Only an owner can change this.',
     );
     expect(onlyLine(named('oo_off', 'ire.events'), VIEWERS.julien, plan, LOCALE)).toBe(
       'People at ire.events can still be members of other organisations. Only an owner can change this.',
@@ -129,7 +140,7 @@ describe('Email domains (sc-560, sc-563)', () => {
   });
 
   it('keeps accounts to Ire Events from 14 days on, cancelled or turned off at once', () => {
-    expect(confirmWords('ire.events', LOCALE)).toEqual({
+    expect(confirmWords('ire.events', LOCALE, LAGOS)).toEqual({
       title: 'Keep ire.events accounts to Ire Events?',
       lines: [
         'From Monday, Nov 2 at 10:12 WAT, 14 days from now, an account whose main email address is at ire.events can only be a member of Ire Events.',

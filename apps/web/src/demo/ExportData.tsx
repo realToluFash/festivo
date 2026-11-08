@@ -13,6 +13,7 @@ import {
 import { focusWhenFree } from '../layers.ts';
 import { PageFailed, PageLoading, StatusLine, SubPage } from './DataControlParts.tsx';
 import { useLoad } from './useDataControl.ts';
+import { zoneFor } from './dataControl.ts';
 import {
   EXPORT_WORDS as W,
   type ExportState,
@@ -30,6 +31,7 @@ const PREPARING_MS = 2000;
 /** Data and control › Export all data (sc-612): one archive, asked by an owner, downloaded once by them. */
 export function ExportData({ viewer, state, tell }: { viewer: Viewer; state: string; tell: Tell }) {
   const locale = useMemo(() => formattingLocale('en', navigator.language), []);
+  const zone = zoneFor(viewer);
   const [start] = useState(() => exportStateOf(state));
   const [load, retry] = useLoad(start === 'loading' || start === 'failed' ? start : 'loaded');
   const [now, setNow] = useState<ExportState>(() =>
@@ -56,7 +58,7 @@ export function ExportData({ viewer, state, tell }: { viewer: Viewer; state: str
       </SubPage>
     );
 
-  const card = exportCard(now, locale);
+  const card = exportCard(now, locale, zone);
   const labels: Record<ExportStep, string> = {
     export: W.export,
     download: W.download,
@@ -68,7 +70,7 @@ export function ExportData({ viewer, state, tell }: { viewer: Viewer; state: str
       {now === 'ex_used_link' && <StatusLine kind="ended">{W.usedLink}</StatusLine>}
       {now === 'ex_limited' && (
         <StatusLine kind="refused" alert>
-          {limitedLine(locale)}
+          {limitedLine(locale, zone)}
         </StatusLine>
       )}
       <Card>

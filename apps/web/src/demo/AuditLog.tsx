@@ -42,7 +42,8 @@ import {
   rangeWords,
   timeOf,
 } from './auditLog.ts';
-import { SHARED_WORDS as S } from './dataControl.ts';
+import { SHARED_WORDS as S, zoneFor } from './dataControl.ts';
+import type { ReaderZone } from './dataSettings.ts';
 import { PageFailed, PageLoading, StatusLine, SubPage } from './DataControlParts.tsx';
 import { useLoad } from './useDataControl.ts';
 import type { Viewer } from './settings.ts';
@@ -55,6 +56,7 @@ interface MenuChoice {
 /** Data and control › Audit log (sc-611): who did what, by day, with four filters and the entry one level in. */
 export function AuditLog({ viewer, state, tell }: { viewer: Viewer; state: string; tell: Tell }) {
   const locale = useMemo(() => formattingLocale('en', navigator.language), []);
+  const zone = zoneFor(viewer);
   const [start] = useState(() => auditStart(state));
   const [load, retry] = useLoad(start.load);
   const [filters, setFilters] = useState<Filters>(start.filters);
@@ -93,7 +95,7 @@ export function AuditLog({ viewer, state, tell }: { viewer: Viewer; state: strin
       </SubPage>
     );
 
-  const shown = matching(ENTRIES, filters);
+  const shown = matching(ENTRIES, filters, zone);
   const entry = ENTRIES.find((one) => one.id === detail) ?? null;
   const clear = () => setFilters(NO_FILTERS);
   const pick = (next: Partial<Filters>) => setFilters((now) => ({ ...now, ...next }));
@@ -172,7 +174,7 @@ export function AuditLog({ viewer, state, tell }: { viewer: Viewer; state: strin
           <TextAction label={W.clear} onClick={clear} />
         </div>
       ) : (
-        byDay(shown, locale).map((day) => (
+        byDay(shown, locale, zone).map((day) => (
           <section key={day.day} className="desk-block">
             <Head title={day.heading} />
             <ul className="desk-rows dc-entries">
@@ -184,7 +186,7 @@ export function AuditLog({ viewer, state, tell }: { viewer: Viewer; state: strin
                     data-entry={one.id}
                     onClick={() => setDetail(one.id)}
                   >
-                    <span className="dc-time">{timeOf(one, locale)}</span>
+                    <span className="dc-time">{timeOf(one, locale, zone)}</span>
                     <RowWords title={one.what} lines={[`${one.who} · ${one.type}`]} />
                     <Chevron />
                   </button>
@@ -215,7 +217,7 @@ export function AuditLog({ viewer, state, tell }: { viewer: Viewer; state: strin
         />
       )}
       {entry != null && (
-        <EntryDialog entry={entry} locale={locale} onDone={() => setDetail(null)} />
+        <EntryDialog entry={entry} locale={locale} zone={zone} onDone={() => setDetail(null)} />
       )}
       {exporting != null && (
         <ExportDialog
@@ -467,16 +469,18 @@ function DateField({
 function EntryDialog({
   entry,
   locale,
+  zone,
   onDone,
 }: {
   entry: Entry;
   locale: string;
+  zone: ReaderZone;
   onDone: () => void;
 }) {
   return (
     <Dialog title={W.entry} verb={W.done} cancel={false} onDismiss={onDone} onConfirm={onDone}>
       <dl className="desk-rows dc-facts">
-        {factsOf(entry, locale).map((fact) => (
+        {factsOf(entry, locale, zone).map((fact) => (
           <div key={fact.label} className="desk-row is-plain">
             <dt className="desk-row-line">{fact.label}</dt>
             <dd className={fact.code === true ? 'desk-row-name dc-code' : 'desk-row-name'}>

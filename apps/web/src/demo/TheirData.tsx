@@ -3,6 +3,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { Ask, Head, Note, RowWords, Tag, TextAction } from '../components/SettingsParts.tsx';
 import { meshFor } from '../mesh.ts';
 import { StatusLine, Turning } from './DataControlParts.tsx';
+import type { ReaderZone } from './dataSettings.ts';
 import {
   CHANGED,
   COVERED,
@@ -24,12 +25,14 @@ const ERASING_MS = 1500;
 export function TheirData({
   start,
   locale,
+  zone,
   level = 2,
   onErasing,
   onErased,
 }: {
   start: TheirStart;
   locale: string;
+  zone: ReaderZone;
   level?: 2 | 3;
   onErasing: () => void;
   onErased: () => void;
@@ -76,7 +79,7 @@ export function TheirData({
       <Turning words={W.preparing} />
     ) : phase === 'ready' ? (
       <div className="desk-after">
-        <Note>{readyLine(locale)}</Note>
+        <Note>{readyLine(locale, zone)}</Note>
         <TextAction label={W.download} onClick={() => setPhase('actions')} />
       </div>
     ) : phase === 'failed' ? (

@@ -5,6 +5,7 @@ import { Glyph } from '../components/Glyph.tsx';
 import { Note, type Tell } from '../components/SettingsParts.tsx';
 import { PageFailed, PageLoading, SubPage } from './DataControlParts.tsx';
 import { useLoad } from './useDataControl.ts';
+import { zoneFor } from './dataControl.ts';
 import {
   REQUEST_WORDS as W,
   answerOf,
@@ -27,6 +28,7 @@ export function GuestRequest({
   tell: Tell;
 }) {
   const locale = useMemo(() => formattingLocale('en', navigator.language), []);
+  const zone = zoneFor(viewer);
   const id = useId();
   const [start] = useState(() => requestStart(state));
   const [load, retry] = useLoad(start.load);
@@ -100,13 +102,14 @@ export function GuestRequest({
       {answer === 'found' &&
         (erased ? (
           <p className="desk-line is-ink" role="status">
-            {erasedLine(locale)}
+            {erasedLine(locale, zone)}
           </p>
         ) : (
           <TheirData
             key={finds}
             start={theirStart('covered')}
             locale={locale}
+            zone={zone}
             onErasing={() => undefined}
             onErased={() => setErased(true)}
           />

@@ -1,4 +1,4 @@
-import { instantWords, LEFT_ENTERPRISE_AT, runAfter } from './dataSettings.ts';
+import { instantWords, LEFT_ENTERPRISE_AT, type ReaderZone, runAfter } from './dataSettings.ts';
 import { SAMPLE } from './rules.ts';
 import { type DemoLink, VIEWERS, type Viewer } from './settings.ts';
 
@@ -62,18 +62,22 @@ export const NEXT_EXPORT = plusDays(CLOCK.asked, 1);
 export const ORG = SAMPLE.organisation;
 export const ASKER = VIEWERS.folake;
 
-/** Every instant on these pages is read in Lagos, where the reader is, and named WAT. */
-export function when(at: string, locale: string): string {
-  return instantWords(at, 'Africa/Lagos', locale);
+/** The reader's own zone (sc-868): Julien, an admin, reads in London, as #1544's admin does. */
+export function zoneFor(viewer: Pick<Viewer, 'key'>): ReaderZone {
+  return viewer.key === VIEWERS.julien.key ? 'Europe/London' : 'Africa/Lagos';
 }
 
-export function dayOf(at: string, locale: string, year = false): string {
+export function when(at: string, locale: string, zone: ReaderZone): string {
+  return instantWords(at, zone, locale);
+}
+
+export function dayOf(at: string, locale: string, zone: ReaderZone, year = false): string {
   return new Intl.DateTimeFormat(locale, {
     weekday: 'long',
     month: 'short',
     day: 'numeric',
     ...(year ? { year: 'numeric' } : {}),
-    timeZone: 'Africa/Lagos',
+    timeZone: zone ?? 'UTC',
   }).format(new Date(at));
 }
 
@@ -152,7 +156,7 @@ export const PROVED_DOMAIN = 'ire.events';
 interface Ask {
   at: string;
   mayAct: (viewer: Pick<Viewer, 'key' | 'manages'>) => boolean;
-  card: (locale: string) => HubCard;
+  card: (locale: string, zone: ReaderZone) => HubCard;
 }
 
 /** What asks something of somebody now, each at the instant it stops waiting. */
@@ -162,26 +166,26 @@ export function asksOf(view: HubView): Ask[] {
   const download: Ask = {
     at: LINK_UNTIL,
     mayAct: (viewer) => viewer.key === ASKER.key,
-    card: (locale) => ({
+    card: (locale, zone) => ({
       says: 'Your export is ready',
-      line: `It downloads once, until ${when(LINK_UNTIL, locale)}, and only for you, signed in.`,
+      line: `It downloads once, until ${when(LINK_UNTIL, locale, zone)}, and only for you, signed in.`,
       step: 'download',
     }),
   };
   const record: Ask = {
     at: plusDays(CLOCK.added, CHECK_DAYS),
     mayAct: (viewer) => viewer.manages,
-    card: (locale) => ({
+    card: (locale, zone) => ({
       says: `${WAITING_DOMAIN} is waiting for its record`,
-      line: `We check every hour until ${when(plusDays(CLOCK.added, CHECK_DAYS), locale)}.`,
+      line: `We check every hour until ${when(plusDays(CLOCK.added, CHECK_DAYS), locale, zone)}.`,
       step: 'seeRecord',
     }),
   };
   const run: Ask = {
     at: RUN_AT,
     mayAct: (viewer) => viewer.manages,
-    card: (locale) => ({
-      says: `Next run · ${when(RUN_AT, locale)}`,
+    card: (locale, zone) => ({
+      says: `Next run · ${when(RUN_AT, locale, zone)}`,
       line: `${RUN_COUNT} events are in the next run.`,
       step: 'checkRun',
     }),
@@ -215,7 +219,7 @@ export function hubCard(
     };
   if (view.plan === 'left')
     return {
-      says: `${ORG} left Enterprise on ${dayOf(CLOCK.left, locale)}`,
+      says: `${ORG} left Enterprise on ${dayOf(CLOCK.left, locale, zoneFor(viewer))}`,
       line: 'Email domains, the audit log and deleting guest data are switched off and kept as they were. They come back on with Enterprise.',
       step: 'contact',
     };
@@ -229,7 +233,7 @@ export function hubCard(
   const ask = soonestAsk(asksOf(view), viewer);
 
   return (
-    ask?.card(locale) ?? {
+    ask?.card(locale, zoneFor(viewer)) ?? {
       says: 'Nothing needs you',
       line: `${PROVED_DOMAIN} is proved. Deleting guest data is off.`,
       step: null,
@@ -256,7 +260,9 @@ function exportRow(view: HubView, viewer: Pick<Viewer, 'key' | 'owns'>, locale: 
 
   if (view.exported === 'ready')
     return {
-      line: asker ? `Ready until ${when(LINK_UNTIL, locale)}` : `Ready · asked by ${ASKER.name}`,
+      line: asker
+        ? `Ready until ${when(LINK_UNTIL, locale, zoneFor(viewer))}`
+        : `Ready · asked by ${ASKER.name}`,
       tag: 'ready' as const,
       state: asker ? 'ex_ready' : 'ex_ready_other',
     };
@@ -313,7 +319,7 @@ export function hubRows(
         ? row('deleteGuestData', 'Off', 'rt_off')
         : row(
             'deleteGuestData',
-            `After 90 days · next run ${when(RUN_AT, locale)}, ${RUN_COUNT} events`,
+            `After 90 days · next run ${when(RUN_AT, locale, zoneFor(viewer))}, ${RUN_COUNT} events`,
             'rt_held',
           );
 

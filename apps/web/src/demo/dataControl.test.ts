@@ -10,11 +10,13 @@ import {
   hubStart,
   soonestAsk,
   when,
+  zoneFor,
 } from './dataControl.ts';
 import { DATA_CONTROL_PAGES } from './dataControlPages.ts';
 import { VIEWERS, groupsFor, settingsPath } from './settings.ts';
 
 const LOCALE = 'en-US';
+const LAGOS = 'Africa/Lagos';
 const view = (state: string) => hubStart(state).view;
 
 describe('Data and control, the hub (sc-560, enterprise-b-spec §4)', () => {
@@ -34,8 +36,15 @@ describe('Data and control, the hub (sc-560, enterprise-b-spec §4)', () => {
     );
   });
 
-  it('reads the sample’s instants in Lagos', () => {
-    expect(when(RUN_AT, LOCALE)).toBe('Saturday, Oct 24 at 14:20 WAT');
+  it('reads each instant in the reader’s own zone, the same instant in Lagos and London', () => {
+    expect(when(RUN_AT, LOCALE, LAGOS)).toBe('Saturday, Oct 24 at 14:20 WAT');
+    expect(when(RUN_AT, LOCALE, zoneFor(VIEWERS.julien))).toBe('Saturday, Oct 24 at 14:20 BST');
+    expect(hubCard(view('hub'), VIEWERS.julien, LOCALE).line).toBe(
+      'We check every hour until Friday, Oct 23 at 16:45 BST.',
+    );
+    expect(hubRows(view('hub'), VIEWERS.julien, LOCALE).data[1]?.line).toBe(
+      'After 90 days · next run Saturday, Oct 24 at 14:20 BST, 2 events',
+    );
   });
 
   it('puts the soonest instant asking the person something on the card', () => {
@@ -46,7 +55,7 @@ describe('Data and control, the hub (sc-560, enterprise-b-spec §4)', () => {
     });
     expect(hubCard(view('hub'), VIEWERS.julien, LOCALE)).toEqual({
       says: 'ireevents.com is waiting for its record',
-      line: 'We check every hour until Friday, Oct 23 at 16:45 WAT.',
+      line: 'We check every hour until Friday, Oct 23 at 16:45 BST.',
       step: 'seeRecord',
     });
     expect(hubCard({ ...view('hub'), exported: 'used' }, VIEWERS.folake, LOCALE).step).toBe(
@@ -58,7 +67,7 @@ describe('Data and control, the hub (sc-560, enterprise-b-spec §4)', () => {
     const asks = asksOf(view('hub'));
     const run = asks.filter((ask) => ask.at === RUN_AT);
 
-    expect(soonestAsk(run, VIEWERS.julien)?.card(LOCALE)).toEqual({
+    expect(soonestAsk(run, VIEWERS.julien)?.card(LOCALE, LAGOS)).toEqual({
       says: 'Next run · Saturday, Oct 24 at 14:20 WAT',
       line: '2 events are in the next run.',
       step: 'checkRun',

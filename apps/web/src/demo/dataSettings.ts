@@ -83,7 +83,7 @@ export function eventsInRun(
 /** The reader's own zone by sc-868's rule, or labelled UTC for an account with none. */
 export type ReaderZone = 'Africa/Lagos' | 'Europe/London' | null;
 
-function zoneWord(at: string, zone: ReaderZone): string {
+export function zoneWord(at: string, zone: ReaderZone): string {
   if (zone == null) return 'UTC';
   if (zone === 'Africa/Lagos') return 'WAT';
 
@@ -115,13 +115,15 @@ export function nextRunLine(runAt: string, zone: ReaderZone, locale: string): st
   return `Next run · ${instantWords(runAt, zone, locale)}`;
 }
 
+export const REASON_MOST = 500;
+
 export const DATA_WORDS = {
   title: 'Delete guest data after an event',
   setting: 'Delete guest data after an event',
   howLong: 'How long',
   counted:
     'Counted from the event’s end: when it was ended, or its scheduled end if nobody ended it.',
-  ownerOnly: 'Only an Owner can change this.',
+  ownerOnly: 'Only an owner can change this.',
   locked: 'Locked',
   contact: 'Contact Soirely about Enterprise',
   contactTold: 'Contacting Soirely has its own design.',
@@ -130,25 +132,25 @@ export const DATA_WORDS = {
   turnOn: 'Turn on',
   change: 'Change',
   samePeriod: 'This is the period in force. Nothing changes.',
-  emailedNow: 'Owners and Admins are emailed now.',
-  emailedLater: 'Owners and Admins are emailed 7 days before any run with events in it.',
+  emailedNow: 'Owners and admins are emailed now.',
+  emailedLater: 'Owners and admins are emailed 7 days before any run with events in it.',
   gone: 'Erased details can’t come back.',
   emptyRun: 'No event is in this run.',
   emptyRunLine: 'It sends no notice and erases nothing.',
   holdFoot:
-    'Holding an event back keeps it out of every run until an Owner or an Admin releases it.',
+    'Holding an event back keeps it out of every run until an owner or an admin releases it.',
   holdBack: 'Hold back',
   held: 'Held back',
   release: 'Release',
   releaseFoot: 'A released event is named in the next notice and erased in that run.',
   holdTitle: 'Hold back?',
-  holdLine: 'It stays out of every run until an Owner or an Admin releases it.',
+  holdLine: 'It stays out of every run until an owner or an admin releases it.',
   reason: 'Reason',
-  reasonHelp: 'Owners and Admins see who held it, when and why. Up to 500 characters.',
+  reasonHelp: `Owners and admins see who held it, when and why. Up to ${REASON_MOST} characters.`,
   reasonBlank: 'Enter a reason. Nothing is held back without one.',
-  reasonLong: 'Keep the reason to 500 characters or fewer.',
+  reasonLong: `Shorten the reason to ${REASON_MOST} characters or fewer.`,
   keptFoot: 'Switched off and kept as it was. It comes back on with Enterprise.',
-  heldKept: 'Kept as they were. Release comes back with Enterprise.',
+  heldKept: 'Kept as they were, and can be released again on Enterprise.',
   discard: 'Discard your reason?',
   keepEditing: 'Keep editing',
   discardVerb: 'Discard',
@@ -241,8 +243,6 @@ export function isBlank(reason: string): boolean {
   return reason.trim() === '';
 }
 
-export const REASON_MOST = 500;
-
 export function reasonFault(reason: string): 'blank' | 'long' | null {
   if (isBlank(reason)) return 'blank';
 
@@ -254,7 +254,7 @@ export function heldBack(page: DataPage, event: PastEvent, reason: string, by: s
     ...page,
     run: page.run.filter((one) => one.id !== event.id),
     held: [...page.held, { event, by, at: page.clock, reason: reason.trim() }],
-    said: `Held back. ${event.name} stays out of every run until an Owner or an Admin releases it.`,
+    said: `Held back. ${event.name} stays out of every run until an owner or an admin releases it.`,
   };
 }
 
@@ -293,13 +293,13 @@ export function cardOf(
   if (page.plan !== 'enterprise' && page.leftEnterpriseAt != null)
     return {
       says: 'Guests’ details are kept after an event',
-      line: `Switched off on ${dayWords(page.leftEnterpriseAt, zone, locale)}, when ${SAMPLE.organisation} moved to the free plan. Its period and held events are kept as they were, and come back on with Enterprise.`,
+      line: `Switched off on ${dayWords(page.leftEnterpriseAt, zone, locale)}, when ${SAMPLE.organisation} left Enterprise. The period and the held events are kept as they were, and retention comes back on with Enterprise.`,
       step: 'contact',
     };
   if (page.plan !== 'enterprise')
     return {
       says: 'Available on Enterprise',
-      line: 'On Enterprise, an Owner sets how long guests’ details are kept after an event, and Soirely erases them on time.',
+      line: 'On Enterprise, an owner sets how long guests’ details are kept after an event, and Soirely erases them on time.',
       step: 'contact',
     };
   if (page.period === 'Off')
@@ -309,7 +309,7 @@ export function cardOf(
         page.said ??
         (viewer.owns
           ? 'Choose how long, and Soirely erases them on time, after a week’s notice.'
-          : 'Only an Owner can turn this on.'),
+          : 'Only an owner can turn this on.'),
       step: viewer.owns ? 'choose' : null,
     };
 
@@ -323,7 +323,7 @@ export function cardOf(
 export type Refusal = 'owner_required' | 'plan_required';
 
 export const REFUSALS: Record<Refusal, { title: string; line: string }> = {
-  owner_required: { title: 'Only an Owner can change this.', line: 'Nothing changed.' },
+  owner_required: { title: 'Only an owner can change this.', line: 'Nothing changed.' },
   plan_required: { title: 'Available on Enterprise', line: 'Nothing changed.' },
 };
 

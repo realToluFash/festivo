@@ -184,7 +184,7 @@ describe('Data and control › Email domains (sc-560, sc-563)', () => {
     expect(screen.getByText('Only an owner can cancel it.')).toBeDefined();
     expect(
       within(onlyRow()).getByText(
-        'Starts Monday, Nov 2 at 10:12 WAT. Only an owner can change this.',
+        'Starts Monday, Nov 2 at 09:12 GMT. Only an owner can change this.',
       ),
     ).toBeDefined();
     expect(within(onlyRow()).queryByRole('button')).toBeNull();

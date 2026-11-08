@@ -1,4 +1,5 @@
 import { ASKER, CLOCK, LINK_UNTIL, NEXT_EXPORT, ORG, when } from './dataControl.ts';
+import type { ReaderZone } from './dataSettings.ts';
 import { SAMPLE } from './rules.ts';
 
 export type ExportState =
@@ -55,15 +56,15 @@ export interface ExportCard {
 }
 
 /** The card for each state; the next export's line follows any export that ended this day. */
-export function exportCard(state: ExportState, locale: string): ExportCard {
-  const next = `The next export can start on ${when(NEXT_EXPORT, locale)}.`;
+export function exportCard(state: ExportState, locale: string, zone: ReaderZone): ExportCard {
+  const next = `The next export can start on ${when(NEXT_EXPORT, locale, zone)}.`;
 
   switch (state) {
     case 'ex_preparing':
       return {
         says: 'Preparing your export',
         lines: [
-          `Asked by you, ${when(CLOCK.asked, locale)}. We’ll email ${SAMPLE.email} when it’s ready, and it shows here.`,
+          `Asked by you, ${when(CLOCK.asked, locale, zone)}. We’ll email ${SAMPLE.email} when it’s ready, and it shows here.`,
         ],
         step: null,
       };
@@ -71,7 +72,7 @@ export function exportCard(state: ExportState, locale: string): ExportCard {
       return {
         says: 'Your export is ready',
         lines: [
-          `We emailed a link to ${SAMPLE.email}. It downloads once, until ${when(LINK_UNTIL, locale)}, and only for you, signed in.`,
+          `We emailed a link to ${SAMPLE.email}. It downloads once, until ${when(LINK_UNTIL, locale, zone)}, and only for you, signed in.`,
           next,
         ],
         step: 'download',
@@ -80,7 +81,7 @@ export function exportCard(state: ExportState, locale: string): ExportCard {
       return {
         says: `${ORG}’ export is ready`,
         lines: [
-          `Asked by ${ASKER.name}, ${when(CLOCK.asked, locale)}. Only they can download it, until ${when(LINK_UNTIL, locale)}.`,
+          `Asked by ${ASKER.name}, ${when(CLOCK.asked, locale, zone)}. Only they can download it, until ${when(LINK_UNTIL, locale, zone)}.`,
         ],
         step: null,
       };
@@ -89,14 +90,14 @@ export function exportCard(state: ExportState, locale: string): ExportCard {
     case 'ex_limited':
       return {
         says: 'Your export was downloaded',
-        lines: [`Downloaded ${when(CLOCK.used, locale)}. Its link is used up.`, next],
+        lines: [`Downloaded ${when(CLOCK.used, locale, zone)}. Its link is used up.`, next],
         step: null,
       };
     case 'ex_expired':
       return {
         says: 'Your export’s link has ended',
         lines: [
-          `It ended on ${when(LINK_UNTIL, locale)} without a download. You can export again.`,
+          `It ended on ${when(LINK_UNTIL, locale, zone)} without a download. You can export again.`,
         ],
         step: 'export',
       };
@@ -122,8 +123,8 @@ export function exportCard(state: ExportState, locale: string): ExportCard {
 }
 
 /** The 429: the next export's instant, said above the card, and nothing started. */
-export function limitedLine(locale: string): string {
-  return `The next export can start on ${when(NEXT_EXPORT, locale)}. Nothing was started.`;
+export function limitedLine(locale: string, zone: ReaderZone): string {
+  return `The next export can start on ${when(NEXT_EXPORT, locale, zone)}. Nothing was started.`;
 }
 
 export function exportStateOf(raw: string): ExportState | 'loading' | 'failed' {

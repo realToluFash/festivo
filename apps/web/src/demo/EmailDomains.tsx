@@ -18,7 +18,8 @@ import {
   TextAction,
 } from '../components/SettingsParts.tsx';
 import { focusWhenFree } from '../layers.ts';
-import { SHARED_WORDS as S } from './dataControl.ts';
+import { SHARED_WORDS as S, zoneFor } from './dataControl.ts';
+import type { ReaderZone } from './dataSettings.ts';
 import { NoTag, PageFailed, PageLoading, StatusLine, SubPage } from './DataControlParts.tsx';
 import { useLoad } from './useDataControl.ts';
 import {
@@ -59,6 +60,7 @@ export function EmailDomains({
   tell: Tell;
 }) {
   const locale = useMemo(() => formattingLocale('en', navigator.language), []);
+  const zone = zoneFor(viewer);
   const [start] = useState(() => domainsStart(state));
   const [load, retry] = useLoad(start.load);
   const [view, setView] = useState<DomainsView>(start.view);
@@ -131,6 +133,7 @@ export function EmailDomains({
                   domain={domain}
                   plan={view.plan}
                   locale={locale}
+                  zone={zone}
                   onRecord={() => setRecord(domain.name)}
                   onRemove={() => {
                     if (isProved(domain)) setRemoving(domain.name);
@@ -167,6 +170,7 @@ export function EmailDomains({
           domain={recordOf}
           check={firstCheck}
           locale={locale}
+          zone={zone}
           tell={tell}
           onClose={() => {
             setRecord(null);
@@ -209,6 +213,7 @@ export function EmailDomains({
         <ConfirmAsk
           domain={confirming}
           locale={locale}
+          zone={zone}
           onKeep={() => setConfirming(null)}
           onGo={() => {
             setView((now) => scheduled(now, confirming));
@@ -225,12 +230,14 @@ function DomainRow({
   domain,
   plan,
   locale,
+  zone,
   onRecord,
   onRemove,
 }: {
   domain: Domain;
   plan: Plan;
   locale: string;
+  zone: ReaderZone;
   onRecord: () => void;
   onRemove: () => void;
 }) {
@@ -250,7 +257,7 @@ function DomainRow({
       <span className="dc-lead" aria-hidden="true">
         <Glyph name="globe" size={22} />
       </span>
-      <RowWords title={domain.name} tag={tag} lines={[domainLine(domain, locale)]} />
+      <RowWords title={domain.name} tag={tag} lines={[domainLine(domain, locale, zone)]} />
       {!kept && (
         <span className="dc-actions">
           {domain.status !== 'proved' && (
@@ -330,15 +337,17 @@ function OnlyRow({
 function ConfirmAsk({
   domain,
   locale,
+  zone,
   onKeep,
   onGo,
 }: {
   domain: string;
   locale: string;
+  zone: ReaderZone;
   onKeep: () => void;
   onGo: () => void;
 }) {
-  const words = confirmWords(domain, locale);
+  const words = confirmWords(domain, locale, zone);
 
   return (
     <Ask
@@ -360,6 +369,7 @@ function RecordDialog({
   domain,
   check: startCheck,
   locale,
+  zone,
   tell,
   onClose,
   onFound,
@@ -367,6 +377,7 @@ function RecordDialog({
   domain: Domain;
   check: 'idle' | 'checking' | 'notFound';
   locale: string;
+  zone: ReaderZone;
   tell: Tell;
   onClose: () => void;
   onFound: () => void;
@@ -426,7 +437,7 @@ function RecordDialog({
         ))}
       </ul>
       {check === 'notFound' && <StatusLine kind="waiting">{W.notFound}</StatusLine>}
-      <Note>{recordFoot(domain, locale)}</Note>
+      <Note>{recordFoot(domain, locale, zone)}</Note>
     </Dialog>
   );
 }

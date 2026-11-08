@@ -54,6 +54,7 @@ import {
   theirStateOf,
   theirViewerKey,
 } from './guestRequest.ts';
+import { zoneFor } from './dataControl.ts';
 import { type Viewer, viewerOf } from './settings.ts';
 import { TheirData } from './TheirData.tsx';
 import { GW, SHOW_ALL_WORDS, REPLY_WORDS, figure } from './guestsWords.ts';
@@ -466,7 +467,7 @@ function GuestsPage({
                       invite={pane.invite}
                       actions={actions(paneGuest.id)}
                       erase={paneGuest.id === EMEKA.id ? erase : null}
-                      erasedLine={erasedLine(locale)}
+                      erasedLine={erasedLine(locale, zoneFor(their.viewer))}
                       theirData={
                         paneGuest.id === EMEKA.id &&
                         manages &&
@@ -475,6 +476,7 @@ function GuestsPage({
                           <TheirData
                             start={theirStart(their.state)}
                             locale={locale}
+                            zone={zoneFor(their.viewer)}
                             level={3}
                             onErasing={() => setErase('erasing')}
                             onErased={() => {

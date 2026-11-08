@@ -4,22 +4,23 @@ import { DATA_CONTROL_PAGES } from './dataControlPages.ts';
 import { EXPORT_STATES, afterStep, exportCard, exportFor, limitedLine } from './exportData.ts';
 
 const LOCALE = 'en-US';
+const LAGOS = 'Africa/Lagos';
 
 describe('Export all data (sc-612)', () => {
   it('says each state of the one export on its card, with its one step', () => {
-    expect(exportCard('ex_idle', LOCALE)).toEqual({
+    expect(exportCard('ex_idle', LOCALE, LAGOS)).toEqual({
       says: 'Take everything Ire Events holds',
       lines: ['One archive, on every plan. Only an owner exports it.'],
       step: 'export',
     });
-    expect(exportCard('ex_preparing', LOCALE)).toEqual({
+    expect(exportCard('ex_preparing', LOCALE, LAGOS)).toEqual({
       says: 'Preparing your export',
       lines: [
         'Asked by you, Monday, Oct 19 at 09:30 WAT. We’ll email folake@ire.events when it’s ready, and it shows here.',
       ],
       step: null,
     });
-    expect(exportCard('ex_ready', LOCALE)).toEqual({
+    expect(exportCard('ex_ready', LOCALE, LAGOS)).toEqual({
       says: 'Your export is ready',
       lines: [
         'We emailed a link to folake@ire.events. It downloads once, until Tuesday, Oct 20 at 09:52 WAT, and only for you, signed in.',
@@ -27,10 +28,13 @@ describe('Export all data (sc-612)', () => {
       ],
       step: 'download',
     });
-    expect(exportCard('ex_ready_other', LOCALE).lines).toEqual([
+    expect(exportCard('ex_ready_other', LOCALE, 'Europe/London').lines).toEqual([
+      'Asked by Folake Adeyemi, Monday, Oct 19 at 09:30 BST. Only they can download it, until Tuesday, Oct 20 at 09:52 BST.',
+    ]);
+    expect(exportCard('ex_ready_other', LOCALE, LAGOS).lines).toEqual([
       'Asked by Folake Adeyemi, Monday, Oct 19 at 09:30 WAT. Only they can download it, until Tuesday, Oct 20 at 09:52 WAT.',
     ]);
-    expect(exportCard('ex_used', LOCALE)).toEqual({
+    expect(exportCard('ex_used', LOCALE, LAGOS)).toEqual({
       says: 'Your export was downloaded',
       lines: [
         'Downloaded Monday, Oct 19 at 10:05 WAT. Its link is used up.',
@@ -38,16 +42,16 @@ describe('Export all data (sc-612)', () => {
       ],
       step: null,
     });
-    expect(exportCard('ex_expired', LOCALE)).toEqual({
+    expect(exportCard('ex_expired', LOCALE, LAGOS)).toEqual({
       says: 'Your export’s link has ended',
       lines: ['It ended on Tuesday, Oct 20 at 09:52 WAT without a download. You can export again.'],
       step: 'export',
     });
-    expect(exportCard('ex_failed', LOCALE)).toMatchObject({
+    expect(exportCard('ex_failed', LOCALE, LAGOS)).toMatchObject({
       says: 'Your export didn’t finish',
       step: 'retry',
     });
-    expect(exportCard('not_owner', LOCALE)).toEqual({
+    expect(exportCard('not_owner', LOCALE, LAGOS)).toEqual({
       says: 'Only an owner exports Ire Events’ data',
       lines: ['An owner can take everything Ire Events holds in one archive.'],
       step: null,
@@ -55,7 +59,7 @@ describe('Export all data (sc-612)', () => {
   });
 
   it('refuses a second export on a stale page with the next one’s instant', () => {
-    expect(limitedLine(LOCALE)).toBe(
+    expect(limitedLine(LOCALE, LAGOS)).toBe(
       'The next export can start on Tuesday, Oct 20 at 09:30 WAT. Nothing was started.',
     );
   });

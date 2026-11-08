@@ -1,5 +1,6 @@
 import { CLOCK, ORG, dayOf } from './dataControl.ts';
 import { writtenTime } from './clock.ts';
+import { type ReaderZone, zoneWord } from './dataSettings.ts';
 import { SAMPLE } from './rules.ts';
 import { VIEWERS } from './settings.ts';
 
@@ -234,23 +235,27 @@ export function downloading(format: Format): string {
   return `Downloading ${ORG}’ audit log as ${format}.`;
 }
 
-/** The day in Lagos an instant falls on, as YYYY-MM-DD. */
-export function lagosDay(at: string): string {
-  return new Date(new Date(at).getTime() + 60 * 60 * 1000).toISOString().slice(0, 10);
+/** The day an instant falls on in the reader's zone, as YYYY-MM-DD. */
+export function dayIn(at: string, zone: ReaderZone): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: zone ?? 'UTC' }).format(new Date(at));
 }
 
 export function datesFault(from: string, to: string): string | null {
   return from !== '' && to !== '' && from > to ? AUDIT_WORDS.backwards : null;
 }
 
-export function matching(entries: readonly Entry[], filters: Filters): Entry[] {
+export function matching(
+  entries: readonly Entry[],
+  filters: Filters,
+  zone: ReaderZone = 'Africa/Lagos',
+): Entry[] {
   return entries.filter(
     (entry) =>
       (filters.person == null || entry.who === filters.person) &&
       (filters.type == null || entry.type === filters.type) &&
       (filters.event == null || entry.on?.name === filters.event) &&
-      (filters.from === '' || lagosDay(entry.at) >= filters.from) &&
-      (filters.to === '' || lagosDay(entry.at) <= filters.to),
+      (filters.from === '' || dayIn(entry.at, zone) >= filters.from) &&
+      (filters.to === '' || dayIn(entry.at, zone) <= filters.to),
   );
 }
 
@@ -271,19 +276,22 @@ export interface Day {
 }
 
 /** The entries by day, newest first, today's heading saying so. */
-export function byDay(entries: readonly Entry[], locale: string): Day[] {
-  const today = lagosDay(CLOCK.now);
+export function byDay(entries: readonly Entry[], locale: string, zone: ReaderZone): Day[] {
+  const today = dayIn(CLOCK.now, zone);
   const days: Day[] = [];
 
   for (const entry of entries) {
-    const day = lagosDay(entry.at);
+    const day = dayIn(entry.at, zone);
     const last = days.at(-1);
 
     if (last?.day === day) last.entries.push(entry);
     else
       days.push({
         day,
-        heading: day === today ? `Today · ${dayOf(entry.at, locale)}` : dayOf(entry.at, locale),
+        heading:
+          day === today
+            ? `Today · ${dayOf(entry.at, locale, zone)}`
+            : dayOf(entry.at, locale, zone),
         entries: [entry],
       });
   }
@@ -291,8 +299,8 @@ export function byDay(entries: readonly Entry[], locale: string): Day[] {
   return days;
 }
 
-export function timeOf(entry: Entry, locale: string): string {
-  return writtenTime(entry.at, locale, 'Africa/Lagos');
+export function timeOf(entry: Entry, locale: string, zone: ReaderZone): string {
+  return writtenTime(entry.at, locale, zone ?? 'UTC');
 }
 
 export function rangeWords(filters: Pick<Filters, 'from' | 'to'>, locale: string): string {
@@ -314,9 +322,9 @@ export interface Fact {
 }
 
 /** An entry's detail: what it records, and only what it records. */
-export function factsOf(entry: Entry, locale: string): Fact[] {
+export function factsOf(entry: Entry, locale: string, zone: ReaderZone): Fact[] {
   const seconds = String(new Date(entry.at).getUTCSeconds()).padStart(2, '0');
-  const stamp = `${dayOf(entry.at, locale, true)} at ${timeOf(entry, locale)}:${seconds} WAT`;
+  const stamp = `${dayOf(entry.at, locale, zone, true)} at ${timeOf(entry, locale, zone)}:${seconds} ${zoneWord(entry.at, zone)}`;
   const person = PEOPLE.find((one) => one.name === entry.who);
   const facts: Fact[] = [
     { label: AUDIT_WORDS.when, value: stamp },

@@ -17,6 +17,7 @@ import {
 import { DATA_CONTROL_PAGES } from './dataControlPages.ts';
 
 const LOCALE = 'en-US';
+const LAGOS = 'Africa/Lagos';
 const entry = (id: string) => {
   const found = ENTRIES.find((one) => one.id === id);
   if (found == null) throw new Error(id);
@@ -24,18 +25,18 @@ const entry = (id: string) => {
   return found;
 };
 const facts = (id: string) =>
-  Object.fromEntries(factsOf(entry(id), LOCALE).map((fact) => [fact.label, fact.value]));
+  Object.fromEntries(factsOf(entry(id), LOCALE, LAGOS).map((fact) => [fact.label, fact.value]));
 
 describe('Audit log (sc-611)', () => {
   it('lists the entries by day, newest first, today’s day saying so', () => {
-    expect(byDay(ENTRIES, LOCALE).map((day) => [day.heading, day.entries.length])).toEqual([
+    expect(byDay(ENTRIES, LOCALE, LAGOS).map((day) => [day.heading, day.entries.length])).toEqual([
       ['Today · Monday, Oct 19', 3],
       ['Saturday, Oct 17', 2],
       ['Friday, Oct 16', 4],
       ['Tuesday, Oct 6', 2],
     ]);
-    expect(timeOf(entry('download'), LOCALE)).toBe('10:05');
-    expect(timeOf(entry('invited'), LOCALE)).toBe('18:05');
+    expect(timeOf(entry('download'), LOCALE, LAGOS)).toBe('10:05');
+    expect(timeOf(entry('invited'), LOCALE, LAGOS)).toBe('18:05');
   });
 
   it('filters by person, type, event and dates, together', () => {
@@ -80,11 +81,11 @@ describe('Audit log (sc-611)', () => {
       'Type and action': 'Events · event.made_live',
       Reference: 'c41e9a7b-2f6d-4b1e-9a53-7d0e6c2b8f14',
     });
-    expect(factsOf(entry('live'), LOCALE).find((fact) => fact.label === 'On')?.link).toBe(
+    expect(factsOf(entry('live'), LOCALE, LAGOS).find((fact) => fact.label === 'On')?.link).toBe(
       '/demo/events/evt-ireti-2',
     );
     expect(facts('deleted').On).toBe('Bisi & Kola’s engagement · no longer exists');
-    expect(factsOf(entry('deleted'), LOCALE).find((fact) => fact.label === 'On')?.link).toBe(
+    expect(factsOf(entry('deleted'), LOCALE, LAGOS).find((fact) => fact.label === 'On')?.link).toBe(
       undefined,
     );
     expect(facts('signIn')).toMatchObject({

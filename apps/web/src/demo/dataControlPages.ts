@@ -26,7 +26,7 @@ export const DATA_CONTROL_PAGES: PageLinks = [
     name: 'The list and Data and control',
     states: [
       hub(undefined, 'An owner: your export is ready, Download'),
-      hub(undefined, 'An admin: ireevents.com waiting, See the record', VIEWERS.julien),
+      hub(undefined, 'An admin in London: ireevents.com waiting, See the record', VIEWERS.julien),
       hub('quiet', 'Nothing needs you'),
       hub('new', 'Nothing set up yet: Prove a domain'),
       hub('locked', 'Never on Enterprise: three of these locked'),
@@ -53,6 +53,7 @@ export const DATA_CONTROL_PAGES: PageLinks = [
       domains('ed_proved', 'ireevents.com proved'),
       domains('ed_failed', 'ireevents.com not proved'),
       domains('ed_lapsing', 'The record for ire.events is missing'),
+      domains('ed_lapsing', 'The record missing, an admin in London', VIEWERS.julien),
       domains('ed_remove', 'Remove ire.events?'),
       domains('ed_removed', 'ire.events removed'),
       domains('ed_locked', 'Never on Enterprise'),

@@ -60,7 +60,7 @@ describe('Data and control › Delete guest data after an event at a desk (sc-30
 
     expect(router.state.location.pathname).toBe(AT);
     expect(router.state.location.search).toBe('?state=rt_on&as=julien');
-    expect(screen.getByText('Only an Owner can change this.')).toBeDefined();
+    expect(screen.getByText('Only an owner can change this.')).toBeDefined();
   });
 
   it('gives a member nothing at its address', async () => {
@@ -96,7 +96,7 @@ describe('Data and control › Delete guest data after an event at a desk (sc-30
         /^2 events will have ended at least 90 days before the first run, on .* at 14:20 WAT, so their guests are in it\.$/u,
       ),
     ).toBeDefined();
-    expect(within(dialog).getByText('Owners and Admins are emailed now.')).toBeDefined();
+    expect(within(dialog).getByText('Owners and admins are emailed now.')).toBeDefined();
     expect(within(dialog).getByText('Erased details can’t come back.')).toBeDefined();
     expect(within(dialog).getByText('Adunni & Femi’s wedding')).toBeDefined();
 
@@ -111,10 +111,10 @@ describe('Data and control › Delete guest data after an event at a desk (sc-30
     ).toBeDefined();
     expect(
       within(dialog).getByText(
-        'Owners and Admins are emailed 7 days before any run with events in it.',
+        'Owners and admins are emailed 7 days before any run with events in it.',
       ),
     ).toBeDefined();
-    expect(within(dialog).queryByText('Owners and Admins are emailed now.')).toBeNull();
+    expect(within(dialog).queryByText('Owners and admins are emailed now.')).toBeNull();
     expect(within(dialog).queryByRole('radio', { name: 'Off' })).toBeNull();
   });
 
@@ -181,7 +181,9 @@ describe('Data and control › Delete guest data after an event at a desk (sc-30
     fireEvent.change(field, { target: { value: long } });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Hold back' }));
 
-    expect(within(dialog).getByText('Keep the reason to 500 characters or fewer.')).toBeDefined();
+    expect(
+      within(dialog).getByText('Shorten the reason to 500 characters or fewer.'),
+    ).toBeDefined();
     expect(field.getAttribute('aria-invalid')).toBe('true');
     expect(field.value).toBe(long);
     expect(field.getAttribute('maxlength')).toBeNull();
@@ -200,10 +202,12 @@ describe('Data and control › Delete guest data after an event at a desk (sc-30
     const field = within(dialog).getByLabelText('Reason') as HTMLInputElement;
 
     expect(field.value).toMatch(/Ask Folake before anyone releases it\.$/u);
-    expect(within(dialog).getByText('Keep the reason to 500 characters or fewer.')).toBeDefined();
+    expect(
+      within(dialog).getByText('Shorten the reason to 500 characters or fewer.'),
+    ).toBeDefined();
     expect(
       within(dialog).getByText(
-        'Owners and Admins see who held it, when and why. Up to 500 characters.',
+        'Owners and admins see who held it, when and why. Up to 500 characters.',
       ),
     ).toBeDefined();
   });
@@ -256,7 +260,7 @@ describe('Data and control › Delete guest data after an event at a desk (sc-30
 
       expect(
         screen.getByText(
-          'Switched off on Sunday, Oct 18, when Ire Events moved to the free plan. Its period and held events are kept as they were, and come back on with Enterprise.',
+          'Switched off on Sunday, Oct 18, when Ire Events left Enterprise. The period and the held events are kept as they were, and retention comes back on with Enterprise.',
         ),
       ).toBeDefined();
       expect(screen.getByText('Locked')).toBeDefined();
@@ -274,7 +278,7 @@ describe('Data and control › Delete guest data after an event at a desk (sc-30
       ).toBeDefined();
       expect(within(held).getByText('Reason: The caterer’s claim is still open.')).toBeDefined();
       expect(
-        within(held).getByText('Kept as they were. Release comes back with Enterprise.'),
+        within(held).getByText('Kept as they were, and can be released again on Enterprise.'),
       ).toBeDefined();
       expect(within(held).queryByRole('button')).toBeNull();
       expect(screen.queryByRole('heading', { level: 2, name: /^Next run/u })).toBeNull();
@@ -329,7 +333,7 @@ describe('Data and control › Delete guest data after an event at a desk (sc-30
     expect(
       screen.queryByRole('button', { name: /^Delete guest data after an event: /u }),
     ).toBeNull();
-    expect(screen.getByText('Only an Owner can change this.')).toBeDefined();
+    expect(screen.getByText('Only an owner can change this.')).toBeDefined();
     expect(block(/^Next run · .* at 14:20 BST$/u)).toBeDefined();
 
     fireEvent.click(screen.getByRole('button', { name: 'Release Tola & Seun’s wedding' }));
@@ -370,7 +374,7 @@ describe('Data and control › Delete guest data after an event at a desk (sc-30
   it('turns a refusal into the question’s own alert, with the verb off', async () => {
     await data(`${AT}?state=rt_refused_owner`);
 
-    expect(screen.getByRole('alert').textContent).toContain('Only an Owner can change this.');
+    expect(screen.getByRole('alert').textContent).toContain('Only an owner can change this.');
     expect(screen.getByRole('button', { name: 'Turn on' }).getAttribute('aria-disabled')).toBe(
       'true',
     );

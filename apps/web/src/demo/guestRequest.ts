@@ -1,4 +1,5 @@
 import { CLOCK, ORG, plusDays, when } from './dataControl.ts';
+import type { ReaderZone } from './dataSettings.ts';
 import type { Guest } from './guests.ts';
 
 export const EMEKA = {
@@ -96,12 +97,12 @@ export function coversLine(records: readonly Covered[]): string {
   return `A request covers every record of theirs in ${ORG}: ${records.length} records on ${events} events.`;
 }
 
-export function readyLine(locale: string): string {
-  return `Their export is ready. It downloads once, until ${when(plusDays(THEIR_READY_AT, 1), locale)}, and only for you.`;
+export function readyLine(locale: string, zone: ReaderZone): string {
+  return `Their export is ready. It downloads once, until ${when(plusDays(THEIR_READY_AT, 1), locale, zone)}, and only for you.`;
 }
 
-export function erasedLine(locale: string): string {
-  return `Erased ${when(CLOCK.now, locale)}. Their reply, seat and place in the counts stay.`;
+export function erasedLine(locale: string, zone: ReaderZone): string {
+  return `Erased ${when(CLOCK.now, locale, zone)}. Their reply, seat and place in the counts stay.`;
 }
 
 export function eraseTitle(name: string): string {

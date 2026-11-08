@@ -20,6 +20,7 @@ import {
 import { sampleGuests } from './guests.ts';
 
 const LOCALE = 'en-US';
+const LAGOS = 'Africa/Lagos';
 
 describe('A guest’s request and Their data (sc-30193)', () => {
   it('checks what was typed before it looks: blank, then an address or a number with its code', () => {
@@ -66,10 +67,10 @@ describe('A guest’s request and Their data (sc-30193)', () => {
   });
 
   it('says how long their export lasts, and when they were erased', () => {
-    expect(readyLine(LOCALE)).toBe(
+    expect(readyLine(LOCALE, LAGOS)).toBe(
       'Their export is ready. It downloads once, until Tuesday, Oct 20 at 10:20 WAT, and only for you.',
     );
-    expect(erasedLine(LOCALE)).toBe(
+    expect(erasedLine(LOCALE, LAGOS)).toBe(
       'Erased Monday, Oct 19 at 10:12 WAT. Their reply, seat and place in the counts stay.',
     );
   });
