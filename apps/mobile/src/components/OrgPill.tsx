@@ -115,7 +115,18 @@ export function OrgPill({
       accessibilityState={onPress == null || expanded == null ? undefined : { expanded }}
       testID={testID}
     >
-      {(tileAlone || !bare) && (mark ?? <OrgMark id={id} name={name} side={28} />)}
+      {tileAlone ? (
+        <View>
+          {mark ?? <OrgMark id={id} name={name} side={28} />}
+          {waiting != null && (
+            <View style={styles.tileRingHalo}>
+              <View style={[styles.waitingRing, { borderColor: tokens.colorInk }]} />
+            </View>
+          )}
+        </View>
+      ) : (
+        !bare && (mark ?? <OrgMark id={id} name={name} side={28} />)
+      )}
       {!tileAlone && (
         <OpenerWords name={name} waiting={waiting} wrap={wrap} lines={lines} grow={sidebar} />
       )}
@@ -132,6 +143,14 @@ const styles = StyleSheet.create({
   name: { lineHeight: 15 * 1.25 },
   waitingLine: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXs },
   waitingRing: { width: 11, height: 11, borderRadius: 5.5, borderWidth: 2 },
+  tileRingHalo: {
+    position: 'absolute',
+    top: -10,
+    end: -10,
+    padding: 2,
+    borderRadius: 7.5,
+    backgroundColor: tokens.colorInset,
+  },
   waitingWords: { lineHeight: 12.5 * 1.3 },
   org: {
     minHeight: OPENER.rest,
