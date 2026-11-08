@@ -50,6 +50,14 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **8 Nov 2026. La pantalla Hoy, a 360 de ancho** (sc-31788, tras #32963). La pestaña
+  Settings del teléfono es «Ajustes», la palabra del iPhone y de Android en España, porque
+  «Configuración» no cabe en un cuarto de 360; el título de la pantalla y `frame.settings`
+  siguen siendo «Configuración». La etiqueta de cuenta atrás de las tarjetas es «En 2 días»
+  (`todayScreen.inDaysCapital`), para que quepa junto a «Última semana»; dentro de una frase
+  sigue «dentro de 2 días». «Todo el día» no cabe en la columna de la hora: pedidas al dev dos
+  líneas, nunca «Todo el d…».
+
 - **8 Nov 2026. Un inicio de sesión con doble factor que ha caducado** (sc-29979,
   `signIn.codeTimedOutTitle`, web y app). «El inicio de sesión ha caducado», y después
   `endedBody` «Inicie sesión de nuevo para continuar.». «Caducar», como las solicitudes; no
