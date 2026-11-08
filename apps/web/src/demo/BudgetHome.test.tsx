@@ -216,4 +216,57 @@ describe('the Budget page at a desk in A (sc-31779)', () => {
     );
     expect(await screen.findByRole('dialog', {}, SLOW)).toBeTruthy();
   });
+
+  it(
+    'says the card’s one thing: a payment due, else early on Add a price, else the ceiling',
+    SLOW,
+    async () => {
+      await open(at('populated'));
+      let card = screen.getByRole('region', { name: 'Budget' });
+      expect(within(card).getByRole('button', { name: /Mark paid/ })).toBeTruthy();
+      cleanup();
+
+      await open(at('early_on'));
+      card = screen.getByRole('region', { name: 'Budget' });
+      expect(card.textContent).toContain('2 costs not priced yet.');
+      fireEvent.click(within(card).getByRole('button', { name: /Add a price/ }));
+      expect(screen.getByLabelText('Amount for Aisle arch')).toBeTruthy();
+      cleanup();
+
+      await open(at('nothing_due'));
+      card = screen.getByRole('region', { name: 'Budget' });
+      expect(card.textContent).toContain(
+        'Settled, it is £19,730. If everyone comes, it would be £23,060 against £22,000.',
+      );
+      expect(within(card).queryByRole('button')).toBeNull();
+    },
+  );
+
+  it(
+    'says a saved template and applies a saved markup to the card and the rows',
+    SLOW,
+    async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      await open(at('save_blank'));
+      let dialog = await screen.findByRole('dialog', {}, SLOW);
+      fireEvent.change(within(dialog).getByLabelText('Name'), {
+        target: { value: 'Garden wedding' },
+      });
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+      await act(async () => {
+        vi.advanceTimersByTime(1500);
+      });
+      expect(screen.getByText('Template saved.')).toBeTruthy();
+      cleanup();
+
+      await open(at('markup'));
+      dialog = await screen.findByRole('dialog', {}, SLOW);
+      fireEvent.change(within(dialog).getByLabelText('Markup'), { target: { value: '25' } });
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+      expect(screen.getByText('Markup saved.')).toBeTruthy();
+      const card = screen.getByRole('region', { name: 'Budget' }).textContent ?? '';
+      expect(card).toContain('£25,848 to £30,010');
+      expect(section('Costs').textContent).toContain('25% markup, the event’s');
+    },
+  );
 });

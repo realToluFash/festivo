@@ -13,6 +13,7 @@ import { type CeilingKey, CEILINGS, budgetAt, ceilingState } from './budgetSampl
 import { type DemoGroup } from './budgetSample.ts';
 import { type CeilingState } from './BudgetParts.tsx';
 import { type Category } from './vendors.ts';
+import { exampleIn, typedMinor } from './quotes.ts';
 import { CATEGORY_WORDS } from './vendorsWords.ts';
 
 /** The Budget home's states (spec §9: the Web board, the Ceiling board, and the margin and templates states drawn on the home). */
@@ -194,48 +195,44 @@ export function ceilingName(key: CeilingKey): string {
 }
 
 // The checks that run on Save, at the field, before anything is sent (sc-83, sc-90, sc-92).
-const DIGITS = /^\d{1,3}(,\d{3})*(\.\d+)?$|^\d+(\.\d+)?$/;
+export function minorOf(typed: string, currency = CURRENCY): number {
+  const found = typedMinor(typed.trim().replace(/^£/, ''), currency);
 
-function decimalsOf(typed: string): number {
-  return typed.includes('.') ? (typed.split('.')[1]?.length ?? 0) : 0;
+  return 'minor' in found ? found.minor : 0;
 }
 
-export function minorOf(typed: string): number {
-  return Math.round(Number(typed.trim().replace(/,/g, '')) * 100);
-}
+export function rateProblem(
+  typed: string,
+  label: 'rate' | 'amount' = 'rate',
+  currency = CURRENCY,
+): string | null {
+  const found = typedMinor(typed, currency);
 
-export function rateProblem(typed: string, label: 'rate' | 'amount' = 'rate'): string | null {
-  const text = typed.trim();
+  if ('minor' in found) return null;
+  if (found.wrong === 'blank') return label === 'rate' ? 'Enter the rate.' : 'Enter the amount.';
+  if (found.wrong === 'decimals')
+    return `That has too many decimal places for this event’s currency. Enter the ${label} like ${exampleIn(12, currency)}.`;
 
-  if (text === '') return label === 'rate' ? 'Enter the rate.' : 'Enter the amount.';
-  if (!DIGITS.test(text)) return 'Enter a rate of 0 or more, in numbers only.';
-  if (decimalsOf(text) > 2)
-    return `That has too many decimal places for this event’s currency. Enter the ${label} like 12.50.`;
-
-  return null;
-}
-
-export function ceilingExample(currency: string): string {
-  const digits = currency === 'JPY' ? 0 : currency === 'KWD' ? 3 : 2;
-
-  return digits === 0 ? '20,000' : `20,000.${'5'.padEnd(digits, '0')}`;
+  return 'Enter a rate of 0 or more, in numbers only.';
 }
 
 export function ceilingProblem(typed: string, currency = CURRENCY): string | null {
   const text = typed.trim();
-  const example = ceilingExample(currency);
-  const allowed = currency === 'JPY' ? 0 : currency === 'KWD' ? 3 : 2;
+  const example = exampleIn(20000, currency);
 
-  if (text === '') return null;
-  if (/^[-−]/.test(text)) return 'The ceiling cannot be below 0. Enter 0 or more.';
   if (/[€$¥£₦]/.test(text) && !text.startsWith(currency === 'GBP' ? '£' : '\u0000'))
     return `Enter the ceiling in ${currency}, the currency this event uses.`;
-  const bare = text.replace(/^£/, '');
-  if (!DIGITS.test(bare)) return `Enter the ceiling as a number, like ${example}.`;
-  if (decimalsOf(bare) > allowed)
+  const found = typedMinor(text.replace(/^£/, ''), currency);
+  if ('minor' in found || found.wrong === 'blank') return null;
+  if (found.wrong === 'negative') return 'The ceiling cannot be below 0. Enter 0 or more.';
+  if (found.wrong === 'decimals')
     return `That has too many decimal places for this event’s currency. Enter the ceiling like ${example}.`;
 
-  return null;
+  return `Enter the ceiling as a number, like ${example}.`;
+}
+
+function decimalsOf(typed: string): number {
+  return typed.includes('.') ? (typed.split('.')[1]?.length ?? 0) : 0;
 }
 
 export function markupProblem(typed: string): string | null {
@@ -293,6 +290,8 @@ export const BUDGET_PAGES: readonly DemoGroup[] = [
       { to: at('failed'), name: 'Did not load' },
       { to: at('not_found', { as: 'kemi' }), name: 'Can edit: not available (as Kemi)' },
       { to: at('read_only'), name: 'Read only after a downgrade' },
+      { to: at('early_on'), name: 'Early on: costs not priced, nothing scheduled, Add a price' },
+      { to: at('nothing_due'), name: 'Near the end: nothing due, the ceiling’s sentence' },
     ],
   },
   {
@@ -370,3 +369,88 @@ export const BUDGET_PAGES: readonly DemoGroup[] = [
     states: [{ to: at('nothing_to_start'), name: 'First time with nothing to start from' }],
   },
 ];
+
+export interface Markups {
+  event: number;
+  categories: Partial<Record<Category, number>>;
+  costs: Readonly<Record<string, number>>;
+  prices: Readonly<Record<string, number>>;
+}
+
+/** sc-92's sample: 20% on the event, Photography at 15%, Venue at cost (chosen), and a planning fee at its own price. */
+export const MARKUPS: Markups = {
+  event: 20,
+  categories: { photography: 15, venue: 0 },
+  costs: {},
+  prices: {},
+};
+
+export const PLANNING_FEE = 300000;
+
+const percentWords = (n: number): string => `${n}%`;
+
+export function markupWords(line: CostLine, markups: Markups): string {
+  if (markups.prices[line.id] != null) return 'its own price';
+  const own = markups.costs[line.id];
+  if (own != null) return own === 0 ? 'at cost, chosen' : `${percentWords(own)} markup, its own`;
+  const category = markups.categories[line.category];
+  if (category != null)
+    return category === 0
+      ? 'at cost, chosen'
+      : `${percentWords(category)} markup, ${CATEGORY_WORDS[line.category]}’s`;
+
+  return `${percentWords(markups.event)} markup, the event’s`;
+}
+
+export function chargedOf(
+  line: CostLine,
+  heads: Heads,
+  markups: Markups,
+): { cost: readonly [number, number]; charged: readonly [number, number] } {
+  const each = lineAmounts(line, heads);
+  const price = markups.prices[line.id];
+  const percent = markups.costs[line.id] ?? markups.categories[line.category] ?? markups.event;
+  const up = (minor: number) => Math.round((minor * (1000 + percent * 10)) / 1000);
+
+  return {
+    cost: [each.settled, each.ifAll],
+    charged: price != null ? [price, price] : [up(each.settled), up(each.ifAll)],
+  };
+}
+
+const shareOf = (margin: number, client: number): string =>
+  `${client === 0 ? '0.0' : ((margin / client) * 100).toFixed(1)}%`;
+
+export function marginOf(
+  lines: readonly CostLine[],
+  heads: Heads,
+  markups: Markups,
+): {
+  client: [number, number];
+  cost: [number, number];
+  margin: [number, number];
+  share: [string, string];
+} {
+  const priced = lines.filter((line) => lineState(line) === 'priced');
+  const sums = priced.reduce(
+    (sum, line) => {
+      const each = chargedOf(line, heads, markups);
+
+      return {
+        client: [sum.client[0] + each.charged[0], sum.client[1] + each.charged[1]] as [
+          number,
+          number,
+        ],
+        cost: [sum.cost[0] + each.cost[0], sum.cost[1] + each.cost[1]] as [number, number],
+      };
+    },
+    { client: [PLANNING_FEE, PLANNING_FEE] as [number, number], cost: [0, 0] as [number, number] },
+  );
+  const margin: [number, number] = [sums.client[0] - sums.cost[0], sums.client[1] - sums.cost[1]];
+
+  return {
+    ...sums,
+    margin,
+    share: [shareOf(margin[0], sums.client[0]), shareOf(margin[1], sums.client[1])],
+  };
+}

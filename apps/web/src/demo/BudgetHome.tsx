@@ -1,4 +1,12 @@
-import { type ReactNode, type RefObject, useEffect, useId, useRef, useState } from 'react';
+import {
+  type ReactNode,
+  type RefObject,
+  createRef,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+} from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 
 import { Glyph } from '../components/Glyph.tsx';
@@ -48,6 +56,12 @@ import {
   rateProblem,
   removedWords,
   sumLines,
+  type Markups,
+  MARKUPS,
+  PLANNING_FEE,
+  chargedOf,
+  marginOf,
+  markupWords,
 } from './budgetHome.ts';
 import {
   AlertInset,
@@ -213,6 +227,7 @@ export function BudgetHomeContent({
   const heads = headsOf(first);
   const [ceilings, setCeilings] = useState(() => ceilingsOf(first));
   const [listed, setListed] = useState(first === 'ceiling_saved');
+  const [markups, setMarkups] = useState<Markups>(MARKUPS);
   const [opened, setOpened] = useState<string | null>(() => openedOf(first));
   const [removed, setRemoved] = useState<Removed | null>(() => removedOf(first, heads));
   const [dialog, setDialog] = useState<Dialog>(() => dialogOf(first));
@@ -298,7 +313,11 @@ export function BudgetHomeContent({
           onStart={() => void navigate(budgetAt('start_from'))}
         />
       ) : margin || (enterprise && first === 'margin_before_paid') ? (
-        <MarginCard event={event} paid={first !== 'margin_before_paid'} />
+        <MarginCard
+          event={event}
+          paid={first !== 'margin_before_paid'}
+          figures={marginOf(lines, heads, markups)}
+        />
       ) : (
         <SummaryCard
           event={event}
@@ -308,12 +327,27 @@ export function BudgetHomeContent({
           ceiling={
             ceilings.whole == null ? null : ceilingOf('whole', ceilings.whole, lines, heads).state
           }
-          next={live && !readOnly ? next : null}
+          next={next}
+          step={live && !readOnly}
+          early={payments.length === 0 && sum.notPriced > 0}
+          ceilingLine={
+            ceilings.whole == null
+              ? null
+              : ceilingSentence(
+                  ceilingOf('whole', ceilings.whole, lines, heads).settled,
+                  ceilingOf('whole', ceilings.whole, lines, heads).ifAll,
+                  ceilings.whole,
+                )
+          }
           onMark={(payment) =>
             onMark != null
               ? onMark(payment)
               : void navigate(budgetAt('mark_paid', { vendor: payment.vendorId }))
           }
+          onPrice={() => {
+            const unpriced = lines.find((one) => lineState(one) === 'notPriced');
+            if (unpriced != null) setOpened(unpriced.id);
+          }}
         />
       )}
       {empty ? (
@@ -344,7 +378,16 @@ export function BudgetHomeContent({
         <Columns
           left={
             margin ? (
-              <MarginCosts lines={lines} heads={heads} first={first} />
+              <MarginCosts
+                lines={lines}
+                heads={heads}
+                first={first}
+                markups={markups}
+                onPrice={(id, price) => {
+                  setMarkups((now) => ({ ...now, prices: { ...now.prices, [id]: price } }));
+                  tell('Saved.');
+                }}
+              />
             ) : (
               <Costs
                 lines={lines}
@@ -387,7 +430,7 @@ export function BudgetHomeContent({
           }
           right={
             margin ? (
-              <MarginBlocks />
+              <MarginBlocks markups={markups} lines={lines} />
             ) : (
               <>
                 {dueNext}
@@ -426,6 +469,10 @@ export function BudgetHomeContent({
           ceilings={ceilings}
           onDismiss={() => setDialog(null)}
           onSaved={(next_) => {
+            if (currency !== CURRENCY) {
+              setDialog(null);
+              return;
+            }
             setCeilings(next_);
             setListed(true);
             setDialog(null);
@@ -433,7 +480,24 @@ export function BudgetHomeContent({
           }}
         />
       )}
-      {dialog === 'markup' && <MarkupDialog first={first} onDismiss={() => setDialog(null)} />}
+      {dialog === 'markup' && (
+        <MarkupDialog
+          first={first}
+          lines={lines}
+          onDismiss={() => setDialog(null)}
+          onSaved={(scope, key, percent) => {
+            setMarkups((now) =>
+              scope === 'event'
+                ? { ...now, event: percent }
+                : scope === 'category'
+                  ? { ...now, categories: { ...now.categories, [key]: percent } }
+                  : { ...now, costs: { ...now.costs, [key]: percent } },
+            );
+            setDialog(null);
+            tell('Markup saved.');
+          }}
+        />
+      )}
       {dialog === 'save' && (
         <SaveTemplateDialog
           start={
@@ -446,7 +510,10 @@ export function BudgetHomeContent({
                   : null
           }
           onDismiss={() => setDialog(null)}
-          onSaved={() => setDialog(null)}
+          onSaved={() => {
+            setDialog(null);
+            tell('Template saved.');
+          }}
         />
       )}
       {dialog === 'dueNow' && (
@@ -509,7 +576,11 @@ function SummaryCard({
   washed,
   ceiling,
   next,
+  step,
+  early,
+  ceilingLine,
   onMark,
+  onPrice,
 }: {
   event: SampleEvent;
   sum: { settled: number; ifAll: number; notPriced: number };
@@ -517,7 +588,11 @@ function SummaryCard({
   washed: boolean;
   ceiling: ReturnType<typeof ceilingOf>['state'] | null;
   next: Payment | null;
+  step: boolean;
+  early: boolean;
+  ceilingLine: string | null;
   onMark: (payment: Payment) => void;
+  onPrice: () => void;
 }) {
   const tags = [
     ...(ceiling == null
@@ -549,11 +624,18 @@ function SummaryCard({
           },
         ]}
       />
-      {next != null && (
+      {step && next != null ? (
         <div className="bud-card-foot">
           <CardStrong>{needsYou(next)}</CardStrong>
           <CardStep label={W.markPaid} onClick={() => onMark(next)} />
         </div>
+      ) : step && early ? (
+        <div className="bud-card-foot">
+          <CardStrong>{`${W.notPricedCount(sum.notPriced)}.`}</CardStrong>
+          <CardStep label="Add a price" onClick={onPrice} />
+        </div>
+      ) : (
+        step && ceilingLine != null && <CardStrong>{ceilingLine}</CardStrong>
       )}
     </BudgetCard>
   );
@@ -582,7 +664,15 @@ function FirstCard({
   );
 }
 
-function MarginCard({ event, paid }: { event: SampleEvent; paid: boolean }) {
+function MarginCard({
+  event,
+  paid,
+  figures,
+}: {
+  event: SampleEvent;
+  paid: boolean;
+  figures: ReturnType<typeof marginOf>;
+}) {
   return (
     <BudgetCard event={event} label={W.budget}>
       <GlassTags
@@ -595,14 +685,14 @@ function MarginCard({ event, paid }: { event: SampleEvent; paid: boolean }) {
         pairs={[
           {
             label: 'Client total',
-            figure: wholeRange(...MARGIN.client),
+            figure: wholeRange(...figures.client),
             sub: 'What the client pays',
           },
-          { label: 'Internal cost', figure: wholeRange(...MARGIN.cost), sub: 'What it costs you' },
+          { label: 'Internal cost', figure: wholeRange(...figures.cost), sub: 'What it costs you' },
           {
             label: 'Margin',
-            figure: wholeRange(...MARGIN.margin),
-            sub: `${MARGIN.marginShare[0]} to ${MARGIN.marginShare[1]} of the client total`,
+            figure: wholeRange(...figures.margin),
+            sub: `${figures.share[0]} to ${figures.share[1]} of the client total`,
           },
           ...(paid
             ? [
@@ -950,23 +1040,21 @@ function warningOf(
   return null;
 }
 
-function MarginCosts({ lines, heads, first }: { lines: CostLine[]; heads: Heads; first: string }) {
+function MarginCosts({
+  lines,
+  heads,
+  first,
+  markups,
+  onPrice,
+}: {
+  lines: CostLine[];
+  heads: Heads;
+  first: string;
+  markups: Markups;
+  onPrice: (id: string, price: number) => void;
+}) {
   const [opened, setOpened] = useState<string | null>(first === 'margin' ? 'dj' : null);
   const [charged, setCharged] = useState('800');
-  const markup: Partial<Record<Category, number>> = {
-    catering: 20,
-    venue: 0,
-    flowers: 20,
-    photography: 15,
-    music: 20,
-    transport: 20,
-  };
-  const how = (category: Category) =>
-    category === 'venue'
-      ? 'at cost, chosen'
-      : category === 'photography'
-        ? '15% markup, Photography’s'
-        : '20% markup, the event’s';
   const priced = lines.filter((one) => lineState(one) === 'priced');
   const groups = (Object.keys(CATEGORY_WORDS) as Category[]).filter((category) =>
     priced.some((one) => one.category === category),
@@ -981,8 +1069,8 @@ function MarginCosts({ lines, heads, first }: { lines: CostLine[]; heads: Heads;
             {priced
               .filter((one) => one.category === category)
               .map((one) => {
-                const cost = lineAmounts(one, heads).settled;
-                const price = Math.round(cost * (1 + (markup[category] ?? 0) / 100));
+                const each = chargedOf(one, heads, markups);
+                const [cost, price] = [each.cost[0], each.charged[0]];
                 const share = price === 0 ? 0 : ((price - cost) / price) * 100;
 
                 return (
@@ -1004,17 +1092,27 @@ function MarginCosts({ lines, heads, first }: { lines: CostLine[]; heads: Heads;
                         )}
                         <div className="bud-opened-actions">
                           <TextAction label={W.cancel} onClick={() => setOpened(null)} />
-                          <TextAction label={W.save} onClick={() => setOpened(null)} />
+                          <TextAction
+                            label={W.save}
+                            onClick={() => {
+                              if (rateProblem(charged, 'amount') != null) return;
+                              onPrice(one.id, minorOf(charged));
+                              setOpened(null);
+                            }}
+                          />
                         </div>
                       </Opened>
                     ) : (
                       <BudgetRow
                         title={one.name}
                         lines={[
-                          `Cost ${money(cost)} · Charged at ${money(price)} · ${how(category)}`,
+                          `Cost ${money(cost)} · Charged at ${money(price)} · ${markupWords(one, markups)}`,
                         ]}
                         end={<Amount value={`${share.toFixed(1)}%`} />}
-                        onOpen={() => setOpened(one.id)}
+                        onOpen={() => {
+                          setCharged((price / 100).toFixed(2));
+                          setOpened(one.id);
+                        }}
                       />
                     )}
                   </li>
@@ -1029,9 +1127,8 @@ function MarginCosts({ lines, heads, first }: { lines: CostLine[]; heads: Heads;
           <li>
             <BudgetRow
               title="Planning fee"
-              lines={['Cost £0.00 · Charged at £3,000.00 · its own price']}
+              lines={[`Cost £0.00 · Charged at ${money(PLANNING_FEE)} · its own price`]}
               end={<Amount value="100.0%" />}
-              onOpen={() => undefined}
             />
           </li>
         </Rows>
@@ -1040,17 +1137,31 @@ function MarginCosts({ lines, heads, first }: { lines: CostLine[]; heads: Heads;
   );
 }
 
-function MarginBlocks() {
+function MarginBlocks({ markups, lines }: { markups: Markups; lines: readonly CostLine[] }) {
+  const rows: [string, string][] = [
+    ['Whole event', `${markups.event}% markup`],
+    ...(Object.entries(markups.categories) as [Category, number][]).map(
+      ([category, percent]): [string, string] => [
+        CATEGORY_WORDS[category],
+        percent === 0 ? 'At cost, chosen' : `${percent}% markup`,
+      ],
+    ),
+    ...Object.entries(markups.costs).map(([id, percent]): [string, string] => [
+      lines.find((one) => one.id === id)?.name ?? id,
+      percent === 0 ? 'At cost, chosen' : `${percent}% markup`,
+    ]),
+    ...Object.keys(markups.prices).map((id): [string, string] => [
+      lines.find((one) => one.id === id)?.name ?? id,
+      'Its own price',
+    ]),
+    ['Planning fee', 'Its own price'],
+  ];
+
   return (
     <>
       <Block title="Markup">
         <Rows>
-          {[
-            ['Whole event', '20% markup'],
-            ['Photography', '15% markup'],
-            ['Venue', 'At cost, chosen'],
-            ['Planning fee', 'Its own price'],
-          ].map(([name, how]) => (
+          {rows.map(([name, how]) => (
             <li key={name}>
               <BudgetRow title={name} lines={[how]} to={budgetAt('markup')} />
             </li>
@@ -1443,6 +1554,9 @@ function CeilingSheet({
   ].includes(first);
   const [tried, setTried] = useState(refused);
   const [busy, setBusy] = useState(false);
+  const [fields] = useState(() =>
+    Object.fromEntries(CEILING_KEYS.map((key) => [key, createRef<HTMLInputElement>()])),
+  );
   const symbol = currency === 'JPY' ? '¥' : currency === 'KWD' ? 'KWD' : '£';
   const problems = Object.fromEntries(
     CEILING_KEYS.map((key) => [key, ceilingProblem(values[key], currency)]),
@@ -1452,7 +1566,7 @@ function CeilingSheet({
   const typed = Object.fromEntries(
     CEILING_KEYS.filter((key) => values[key].trim() !== '' && problems[key] == null).map((key) => [
       key,
-      minorOf(values[key].replace(/^£/, '')),
+      minorOf(values[key], currency),
     ]),
   ) as Partial<Record<CeilingKey, number>>;
   const said = categoryCeilingsLine(typed);
@@ -1462,7 +1576,7 @@ function CeilingSheet({
     setTried(true);
     const wrong = CEILING_KEYS.find((key) => problems[key] != null);
     if (wrong != null) {
-      document.getElementById(`ceil-${wrong}`)?.focus();
+      fields[wrong]?.current?.focus();
       return;
     }
     setBusy(true);
@@ -1485,26 +1599,26 @@ function CeilingSheet({
         </p>
       )}
       <div className="bud-ceiling-whole">
-        <CeilingField
-          id="ceil-whole"
+        <MoneyField
           label="Whole event"
           symbol={symbol}
           value={values.whole}
           help="Optional. 0 is allowed."
           error={shown('whole')}
+          {...(fields.whole == null ? {} : { inputRef: fields.whole })}
           onChange={(value) => setValues((now) => ({ ...now, whole: value }))}
         />
       </div>
       <p className="bud-caps">Each category, optional</p>
       <div className="bud-ceiling-grid">
         {CEILING_KEYS.filter((key) => key !== 'whole').map((key) => (
-          <CeilingField
+          <MoneyField
             key={key}
-            id={`ceil-${key}`}
             label={ceilingName(key)}
             symbol={symbol}
             value={values[key]}
             error={shown(key)}
+            {...(fields[key] == null ? {} : { inputRef: fields[key] })}
             onChange={(value) => setValues((now) => ({ ...now, [key]: value }))}
           />
         ))}
@@ -1514,69 +1628,27 @@ function CeilingSheet({
   );
 }
 
-function CeilingField({
-  id,
-  label,
-  symbol,
-  value,
-  help,
-  error,
-  onChange,
-}: {
-  id: string;
-  label: string;
-  symbol: string;
-  value: string;
-  help?: string;
-  error: string | null;
-  onChange: (value: string) => void;
-}) {
-  return (
-    <div className="desk-field bud-money">
-      <label htmlFor={id} className="desk-label">
-        {label}
-      </label>
-      <div className={error == null ? 'desk-box' : 'desk-box is-wrong'}>
-        <span className="bud-symbol" aria-hidden="true">
-          {symbol}
-        </span>
-        <input
-          id={id}
-          type="text"
-          inputMode="decimal"
-          value={value}
-          aria-invalid={error != null}
-          aria-describedby={
-            [help == null ? null : `${id}-help`, error == null ? null : `${id}-error`]
-              .filter(Boolean)
-              .join(' ') || undefined
-          }
-          onChange={(event) => onChange(event.target.value)}
-        />
-      </div>
-      {help != null && (
-        <p id={`${id}-help`} className="desk-help">
-          {help}
-        </p>
-      )}
-      {error != null && (
-        <p id={`${id}-error`} className="desk-error">
-          <Glyph name="alert" size={15} weight={2.2} />
-          {error}
-        </p>
-      )}
-    </div>
-  );
-}
-
 const SCOPES = [
   { key: 'event', word: 'The whole event', line: 'Every cost without its own markup or price' },
   { key: 'category', word: 'A category', line: 'Overrides the event’s' },
   { key: 'cost', word: 'One cost', line: 'Overrides both, or set at cost' },
 ] as const;
 
-function MarkupDialog({ first, onDismiss }: { first: string; onDismiss: () => void }) {
-  const [scope, setScope] = useState<string>('event');
+function MarkupDialog({
+  first,
+  lines,
+  onDismiss,
+  onSaved,
+}: {
+  first: string;
+  lines: readonly CostLine[];
+  onDismiss: () => void;
+  onSaved: (scope: 'event' | 'category' | 'cost', key: string, percent: number) => void;
+}) {
+  const [scope, setScope] = useState<'event' | 'category' | 'cost'>('event');
+  const priced = lines.filter((one) => lineState(one) === 'priced');
+  const [category, setCategory] = useState<Category>('catering');
+  const [cost, setCost] = useState<string>(priced[0]?.id ?? '');
   const [typed, setTyped] = useState(
     { markup_negative: '−5', markup_cap: '1200', markup_decimals: '20.25' }[
       first as 'markup_cap'
@@ -1595,7 +1667,11 @@ function MarkupDialog({ first, onDismiss }: { first: string; onDismiss: () => vo
       onConfirm={() => {
         setTried(true);
         if (markupProblem(typed) != null) return field.current?.focus();
-        onDismiss();
+        onSaved(
+          scope,
+          scope === 'category' ? category : scope === 'cost' ? cost : '',
+          Number(typed.trim()),
+        );
       }}
     >
       <fieldset className="bud-bases">
@@ -1617,6 +1693,48 @@ function MarkupDialog({ first, onDismiss }: { first: string; onDismiss: () => vo
           ))}
         </ul>
       </fieldset>
+      {scope === 'category' && (
+        <div className="desk-field">
+          <label htmlFor={`${id}-category`} className="desk-label">
+            Category
+          </label>
+          <div className="desk-box">
+            <select
+              id={`${id}-category`}
+              className="bud-select"
+              value={category}
+              onChange={(event) => setCategory(event.target.value as Category)}
+            >
+              {(Object.keys(CATEGORY_WORDS) as Category[]).map((one) => (
+                <option key={one} value={one}>
+                  {CATEGORY_WORDS[one]}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      )}
+      {scope === 'cost' && (
+        <div className="desk-field">
+          <label htmlFor={`${id}-cost`} className="desk-label">
+            Cost
+          </label>
+          <div className="desk-box">
+            <select
+              id={`${id}-cost`}
+              className="bud-select"
+              value={cost}
+              onChange={(event) => setCost(event.target.value)}
+            >
+              {priced.map((one) => (
+                <option key={one.id} value={one.id}>
+                  {one.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      )}
       <MoneyField
         label="Markup"
         symbol=""

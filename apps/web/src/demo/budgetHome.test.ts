@@ -11,6 +11,8 @@ import {
   ceilingOf,
   ceilingProblem,
   ceilingsOf,
+  MARKUPS,
+  marginOf,
   headsOf,
   lineAmounts,
   linesOf,
@@ -121,5 +123,23 @@ describe('the Budget home’s states (spec §9)', () => {
     expect(removedWords(line('centre'), 0)).toBe(
       'Centrepieces removed. Nothing was counted for it yet, so the total is the same.',
     );
+  });
+
+  it('reads a currency’s own minor unit through the one parser, and works the margin out', () => {
+    expect(ceilingProblem('20,000.555', 'KWD')).toBeNull();
+    expect(ceilingProblem('20,000.5555', 'KWD')).toBe(
+      'That has too many decimal places for this event’s currency. Enter the ceiling like 20,000.500.',
+    );
+    expect(ceilingProblem('640.5', 'JPY')).toContain('Enter the ceiling like 20,000.');
+    expect(rateProblem('12.5', 'rate', 'JPY')).toContain('Enter the rate like 12.');
+    const lines = linesOf('margin');
+    const heads = headsOf('margin');
+    expect(marginOf(lines, heads, MARKUPS)).toEqual({
+      client: [2529600, 2929200],
+      cost: [1973000, 2306000],
+      margin: [556600, 623200],
+      share: ['22.0%', '21.3%'],
+    });
+    expect(marginOf(lines, heads, { ...MARKUPS, event: 25 }).client).toEqual([2584750, 3001000]);
   });
 });
