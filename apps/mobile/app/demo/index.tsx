@@ -1516,6 +1516,11 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         what: 'Soirely could not be reached',
         href: '/demo/waiting?state=notCancelled',
       },
+      {
+        title: 'Waiting · nobody left to confirm',
+        what: 'The approvers left; Email Soirely support',
+        href: '/demo/waiting?state=nobody',
+      },
       { title: 'Two-factor is off', what: 'Confirmed', href: '/demo/ending?kind=approved' },
       { title: 'Turned down', what: 'An ending', href: '/demo/ending?kind=turnedDown' },
       { title: 'Ended', what: 'Nobody answered in 7 days', href: '/demo/ending?kind=ended' },
