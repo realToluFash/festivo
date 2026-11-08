@@ -235,7 +235,13 @@ export const GET_BACK_IN_PAGES: { name: string; states: { name: string; to: stri
       { name: 'Cannot reach Soirely', to: backIn('link', 'offline') },
     ],
   },
-  { name: 'A code first', states: [{ name: 'Enter your code', to: backIn('code') }] },
+  {
+    name: 'A code first',
+    states: [
+      { name: 'Enter your code', to: backIn('code') },
+      { name: 'Contact Soirely support', to: backIn('support') },
+    ],
+  },
 ];
 
 /** A page of the two-factor board, and one of its states. */
