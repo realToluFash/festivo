@@ -1,0 +1,13 @@
+# Sign up, then a wrong code on Check your email: the code boxes are refused. Leaves them on screen for a screen-reader pass. EMAIL fresh. sc-31323.
+appId: host.exp.Exponent
+---
+- runFlow: register-check-email.yaml
+- tapOn:
+    id: 'verifyEmail.code'
+- eraseText: 20
+- inputText: '000000'
+- extendedWaitUntil:
+    visible: 'That code does not match.*'
+    timeout: 15000
+- hideKeyboard
+- takeScreenshot: code-refused
