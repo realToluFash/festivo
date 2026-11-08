@@ -154,7 +154,7 @@ describe('Seating at a desk (sc-3998)', () => {
     expect(screen.getByText('The room must be between 2 m and 500 m.')).toBeDefined();
     expect(sent.some((one) => one.line === 'POST /api/events/ev_1/seating-plan')).toBe(false);
 
-    fireEvent.change(screen.getByLabelText('Room name Optional'), {
+    fireEvent.change(screen.getByLabelText(/^Room name/), {
       target: { value: 'Main hall' },
     });
     fireEvent.change(screen.getByLabelText('Width'), { target: { value: '24' } });
