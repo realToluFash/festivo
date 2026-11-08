@@ -255,8 +255,10 @@ jobs:
         # PHP's SAPI adds X-Powered-By below Symfony, so no test in the suite
         # can see it. A route that does not exist is a 404 whatever the
         # database is doing, so this cannot flake on anything but the header.
+        # A container still starting can reset the connection (exit 56), which
+        # --retry-connrefused alone does not retry.
         run: |
-          curl -sS --retry 10 --retry-connrefused --retry-delay 1 \
+          curl -sS --retry 10 --retry-all-errors --retry-delay 1 \
             -D "$RUNNER_TEMP/api-headers" -o /dev/null http://localhost:8080/api/no-such-thing
           if grep -i '^x-powered-by:' "$RUNNER_TEMP/api-headers"; then
             echo "::error::The API sends X-Powered-By; expose_php is on again (services/api/Dockerfile)"
