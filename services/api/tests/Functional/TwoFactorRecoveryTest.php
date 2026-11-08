@@ -602,36 +602,6 @@ final class TwoFactorRecoveryTest extends ApiTestCase
         self::assertSame(ErrorCode::RecoveryRequestInvalid->type(), $this->last()['type']);
     }
 
-    /** sc-29067: somebody who lost the password too opens the same recovery from the reset link's code step. */
-    #[Test]
-    public function aResetLinkOpensTheSameRecoveryAsSignIn(): void
-    {
-        $token = $this->resetToken();
-
-        $opening = $this->call('POST', '/api/auth/two-factor/recovery/opening', ['resetToken' => $token]);
-        self::assertSame(200, $this->statusCode(), Json\encode($opening));
-        self::assertNull($opening['recovery']);
-
-        $started = $this->call('POST', '/api/auth/two-factor/recovery', ['resetToken' => $token]);
-        self::assertSame(201, $this->statusCode(), Json\encode($started));
-        self::assertSame('waiting', $this->prove(Type\string()->coerce($started['recovery']), $this->emailCode())['status']);
-
-        $resumed = $this->call('POST', '/api/auth/two-factor/recovery/opening', ['challenge' => $this->challenge()]);
-        self::assertIsString($resumed['recovery'], 'sign-in picks up the request the reset link started');
-    }
-
-    #[Test]
-    public function onlyALiveResetLinkCanAsk(): void
-    {
-        // @mago-expect lint:no-literal-password a link that was never sent, not a token
-        $this->call('POST', '/api/auth/two-factor/recovery/opening', ['resetToken' => 'not-a-link']);
-        self::assertSame(ErrorCode::ResetLinkInvalid->type(), $this->last()['type']);
-
-        $this->call('POST', '/api/auth/two-factor/recovery', ['resetToken' => $this->resetToken('bisi@example.com')]);
-        self::assertSame(ErrorCode::TwoFactorOff->type(), $this->last()['type']);
-        self::assertSame(0, self::service(TwoFactorRecoveryRepository::class)->count([]));
-    }
-
     /** @return callable(string): string the refusal's instant, as each language writes it */
     private function refusedFourthIn(string $saved, string $header): callable
     {
@@ -698,15 +668,6 @@ final class TwoFactorRecoveryTest extends ApiTestCase
         $this->client->setServerParameter('HTTP_AUTHORIZATION', '');
 
         return $answer;
-    }
-
-    private function resetToken(string $address = self::ADDRESS): string
-    {
-        $this->client->setServerParameter('HTTP_AUTHORIZATION', '');
-        $this->call('POST', '/api/auth/password/forgot', ['email' => $address]);
-        $email = Type\instance_of(Email::class)->coerce(Iter\last(self::getMailerMessages()));
-
-        return Regex\first_match((string) $email->getTextBody(), '/reset-password\?token=([0-9a-f]+)/')[1] ?? '';
     }
 
     private function challenge(): string

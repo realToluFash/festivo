@@ -1,6 +1,5 @@
 import {
   ApiError,
-  type RecoveryEntry,
   type RecoveryOpening,
   type RecoveryState,
   type TwoFactorChallenge,
@@ -19,7 +18,6 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
-  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -56,43 +54,20 @@ type View =
   | { kind: 'replaced' }
   | { kind: 'signIn' }
   | { kind: 'timedOut' }
-  | { kind: 'linkAgain' }
   | { kind: 'failed' };
-
-/** Reached from a reset link's code step rather than sign-in's (sc-29067). */
-type FromReset = { resetToken: string };
-
-/** Why the proof that opened the page no longer opens it: back to the sign-in, or to the reset link that says why. */
-function lapsed(refusal: unknown, entry: RecoveryEntry | null): View | null {
-  if (!(refusal instanceof ApiError)) return null;
-
-  if (entry != null && typeof entry !== 'string') {
-    const dead = ['reset_link_used', 'reset_link_expired', 'reset_link_invalid', 'two_factor_off'];
-
-    return dead.some((code) => refusal.is(code)) ? { kind: 'linkAgain' } : null;
-  }
-
-  return refusal.is('two_factor_challenge_invalid') ? { kind: 'timedOut' } : null;
-}
 
 /** Lost both the authenticator and the recovery codes (sc-509): nothing on this page signs anybody in. */
 export function LostTwoFactor() {
   const navigate = useNavigate();
-  const carried = useLocation().state as TwoFactorChallenge | FromReset | null;
-  const signingIn = carried != null && 'challenge' in carried ? carried : null;
-  const resetToken = carried != null && 'resetToken' in carried ? carried.resetToken : null;
-  const signInChallenge = signingIn?.challenge ?? null;
-  const entry = useMemo<RecoveryEntry | null>(
-    () => (resetToken != null ? { resetToken } : signInChallenge),
-    [resetToken, signInChallenge],
-  );
+  const signingIn = useLocation().state as TwoFactorChallenge | null;
+  const challenge = signingIn?.challenge ?? null;
   const [view, setView] = useState<View>({ kind: 'loading' });
   const starting = useOneAtATime();
 
   const load = useCallback(async (): Promise<View> => {
     const held = heldRecovery();
 
-    if (recoveryFirstStep(signInChallenge ?? resetToken, held) === 'held' && held != null) {
+    if (recoveryFirstStep(challenge, held) === 'held' && held != null) {
       try {
         return { kind: 'request', recovery: held, state: await api.recoveryState(held) };
       } catch (refusal) {
@@ -104,11 +79,11 @@ export function LostTwoFactor() {
       }
     }
 
-    if (entry == null) return { kind: 'signIn' };
+    if (challenge == null) return { kind: 'signIn' };
     if (held != null) dropRecovery();
 
     try {
-      const opening = await api.recoveryOpening(entry);
+      const opening = await api.recoveryOpening(challenge);
 
       if (opening.open != null) {
         holdRecovery(opening.open.recovery);
@@ -119,9 +94,11 @@ export function LostTwoFactor() {
         ? { kind: 'nobody', supportAddress: opening.supportAddress }
         : { kind: 'start', opening, limitedUntil: null, sending: false };
     } catch (refusal) {
-      return lapsed(refusal, entry) ?? { kind: 'failed' };
+      return refusal instanceof ApiError && refusal.is('two_factor_challenge_invalid')
+        ? { kind: 'timedOut' }
+        : { kind: 'failed' };
     }
-  }, [entry, signInChallenge, resetToken]);
+  }, [challenge]);
 
   useEffect(() => {
     let live = true;
@@ -141,16 +118,20 @@ export function LostTwoFactor() {
 
   /** "Start again" from a replaced request: the start screen, never the newer request another device holds. */
   async function startAgain(): Promise<void> {
-    if (entry == null) {
+    if (challenge == null) {
       setView({ kind: 'signIn' });
       return;
     }
 
     try {
-      const opening = await api.recoveryOpening(entry);
+      const opening = await api.recoveryOpening(challenge);
       setView({ kind: 'start', opening, limitedUntil: null, sending: false });
     } catch (refusal) {
-      setView(lapsed(refusal, entry) ?? { kind: 'failed' });
+      setView(
+        refusal instanceof ApiError && refusal.is('two_factor_challenge_invalid')
+          ? { kind: 'timedOut' }
+          : { kind: 'failed' },
+      );
     }
   }
 
@@ -163,7 +144,7 @@ export function LostTwoFactor() {
       return;
     }
 
-    if (entry == null) {
+    if (challenge == null) {
       setView({ kind: 'signIn' });
       return;
     }
@@ -171,7 +152,7 @@ export function LostTwoFactor() {
     setView({ kind: 'start', opening, limitedUntil: null, sending: true });
 
     try {
-      const started = await api.startRecovery(entry);
+      const started = await api.startRecovery(challenge);
       holdRecovery(started.recovery);
       setView({ kind: 'request', opening, ...started });
     } catch (refusal) {
@@ -184,17 +165,15 @@ export function LostTwoFactor() {
         });
       } else if (refusal instanceof ApiError && refusal.is('recovery_nobody_to_approve')) {
         setView({ kind: 'nobody', supportAddress: opening.supportAddress });
+      } else if (refusal instanceof ApiError && refusal.is('two_factor_challenge_invalid')) {
+        setView({ kind: 'timedOut' });
       } else {
-        setView(lapsed(refusal, entry) ?? { kind: 'failed' });
+        setView({ kind: 'failed' });
       }
     }
   }
 
   if (view.kind === 'signIn') return <Navigate to="/sign-in" replace />;
-  if (view.kind === 'linkAgain')
-    return (
-      <Navigate to={`/reset-password?token=${encodeURIComponent(resetToken ?? '')}`} replace />
-    );
   if (view.kind === 'timedOut')
     return (
       <Navigate to="/sign-in" replace state={{ email: signingIn?.email, codeTimedOut: true }} />
@@ -209,11 +188,7 @@ export function LostTwoFactor() {
           limitedUntil={view.limitedUntil}
           sending={view.sending}
           onSend={() => void start(view.opening, view.asked)}
-          onBack={() =>
-            resetToken != null
-              ? void navigate(-1)
-              : void navigate('/sign-in/code', { state: signingIn })
-          }
+          onBack={() => void navigate('/sign-in/code', { state: signingIn })}
         />
       )}
       {view.kind === 'nobody' && <Nobody supportAddress={view.supportAddress} />}
