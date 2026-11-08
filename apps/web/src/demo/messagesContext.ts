@@ -12,6 +12,8 @@ export interface InboxApi {
   focus: (key: string) => void;
   mesh: Mesh;
   keys: boolean;
+  /** The id of the sentence under New on an event that can't send: every composer and send control is off and points at it. */
+  whyOff: string | undefined;
   bell: { read: boolean; markRead: () => void; takeFirst: () => boolean };
 }
 
