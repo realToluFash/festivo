@@ -117,13 +117,14 @@ export const W = {
   endsHint: 'An event can run past midnight. Choose the day it ends.',
   endBeforeStart: 'The end is before the start. Choose a later end.',
   replyBy: 'Reply by',
-  replyByNone: 'Replies stay open until the event starts',
+  replyByNone: 'Replies stay open until the event starts.',
   replyByNotBefore: 'Choose a date before the event starts.',
   removeTheDate: 'Remove the date',
   closeSooner: 'Close replies sooner',
-  closeSoonerLine: 'After that day they can’t answer, unless you let them change their reply.',
+  closeSoonerLine: 'After that day they can’t reply, unless you let them change their reply.',
   closeNow: 'Close replies now',
-  closeNowLine: 'They can’t answer from now on, unless you let them change their reply.',
+  closeNowLine: 'From now on they can’t reply, unless you let them change their reply.',
+  closeNowTitle: 'Close replies now?',
   replyByRemoved: 'Saved. Replies stay open until the event starts.',
   timeZone: 'Time zone',
   venueName: 'Venue name',
@@ -270,27 +271,27 @@ export const say = {
   deleted: (name: string) => `${name} was deleted.`,
   duplicateTitle: (name: string) => `Duplicate ${name}`,
   ownDesign: (what: string) => `${what} has its own design.`,
-  repliesCloseAt: (time: string, zone: string) => `Replies close at ${time}, ${zone} time`,
+  repliesCloseAt: (time: string, zone: string) => `Replies close at ${time}, ${zone} time.`,
   replyByHint: (time: string, zone: string) =>
     `Replies close at the end of this day, ${time} ${zone} time. Leave it empty and replies stay open until the event starts.`,
   onGuestsPage: (sentence: string) => `On the guests’ page: “${sentence}”`,
   pleaseAnswerBy: (date: string) =>
     `Please answer by ${date}. You can change your answer any time before then.`,
-  notReplied: (guests: number, companions: number) => {
-    const named = guests === 1 ? '1 guest' : `${guests} guests`;
-
-    if (companions > 0) return `${named} and ${companions} of their companions who haven’t replied`;
-
-    return guests === 1 ? '1 guest who hasn’t replied' : `${guests} guests who haven’t replied`;
-  },
-  closeSoonerTitle: (date: string, who: string) => `Close replies sooner, on ${date}, for ${who}?`,
-  closeNowTitle: (who: string) => `Close replies now for ${who}?`,
+  havent: (count: number) => (count === 1 ? '1 hasn’t replied' : `${count} haven’t replied`),
+  guestsCount: (count: number) => (count === 1 ? '1 guest' : `${count} guests`),
+  companionsCount: (count: number) =>
+    count === 1 ? '1 of their companions' : `${count} of their companions`,
+  notRepliedLine: (guests: number, companions: number) =>
+    companions === 0
+      ? `${say.havent(guests)}.`
+      : `${say.havent(guests + companions)} (${say.guestsCount(guests)} and ${say.companionsCount(companions)}).`,
+  closeSoonerTitle: (date: string) => `Close replies sooner, on ${date}?`,
   keepDate: (date: string) => `Keep ${date}`,
   replyByMoves: (old: string, next: string) =>
     `Replies close on ${old}, which isn’t before the new start. Saving moves Reply by to ${next}.`,
   repliesNowClose: (date: string) => `Saved. Replies now close ${date}.`,
   replyBySaved: (date: string, time: string, zone: string) =>
-    `Saved. Replies close ${date} at ${time}, ${zone} time.`,
+    `Saved. Replies close on ${date} at ${time}, ${zone} time.`,
 };
 
 const KEYED: Record<string, (values: Record<string, string | number>) => string> = {

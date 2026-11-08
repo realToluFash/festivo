@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
 import { editOf, eventStateOf } from './EventsModel.ts';
-import { say } from './EventsWords.ts';
+import { W, say } from './EventsWords.ts';
 import { replyByOf } from '../guests/GuestsSample.ts';
 import {
   closesAt,
   noReplyOf,
-  notRepliedWords,
+  notRepliedLine,
   previewsReplyBy,
   replyByAfterStart,
   replyByAsk,
@@ -108,25 +108,30 @@ describe('the sample and the words', () => {
     expect(noReplyOf('evt-draft-4')).toEqual({ guests: 0, companions: 0 });
   });
 
-  it('asks in the card’s measure (pm, 8 Nov)', () => {
-    expect(say.closeSoonerTitle('Tue, Nov 3', notRepliedWords('evt-wed-4'))).toBe(
-      'Close replies sooner, on Tue, Nov 3, for 21 guests and 4 of their companions who haven’t replied?',
+  it('asks a question, then counts as the card does (l10n, #33419)', () => {
+    expect(say.closeSoonerTitle('Tue, Nov 3')).toBe('Close replies sooner, on Tue, Nov 3?');
+    expect(W.closeNowTitle).toBe('Close replies now?');
+    expect(notRepliedLine('evt-wed-4')).toBe(
+      '25 haven’t replied (21 guests and 4 of their companions).',
     );
-    expect(say.closeNowTitle(notRepliedWords('evt-wed-4'))).toBe(
-      'Close replies now for 21 guests and 4 of their companions who haven’t replied?',
+    expect(say.notRepliedLine(21, 0)).toBe('21 haven’t replied.');
+    expect(say.notRepliedLine(1, 0)).toBe('1 hasn’t replied.');
+    expect(say.notRepliedLine(1, 1)).toBe('2 haven’t replied (1 guest and 1 of their companions).');
+    expect(W.closeSoonerLine).toBe(
+      'After that day they can’t reply, unless you let them change their reply.',
     );
-    expect(say.notReplied(1, 0)).toBe('1 guest who hasn’t replied');
-    expect(say.notReplied(3, 0)).toBe('3 guests who haven’t replied');
-    expect(say.notReplied(1, 2)).toBe('1 guest and 2 of their companions who haven’t replied');
+    expect(W.closeNowLine).toBe(
+      'From now on they can’t reply, unless you let them change their reply.',
+    );
   });
 
   it('writes the row, the hint, the preview and the saved line at 24 hours', () => {
     expect(replyByRow('2026-11-04', LONDON, 'en-US')).toEqual({
       title: 'Wed, Nov 4, 2026',
-      line: 'Reply by · Replies close at 23:59, Europe/London time',
+      line: 'Reply by · Replies close at 23:59, Europe/London time.',
     });
     expect(replyByRow(null, LONDON, 'en-US')).toEqual({
-      title: 'Replies stay open until the event starts',
+      title: 'Replies stay open until the event starts.',
       line: 'Reply by',
     });
     expect(replyByHint(LONDON, 'en-US')).toBe(
@@ -136,7 +141,7 @@ describe('the sample and the words', () => {
       'On the guests’ page: “Please answer by Wednesday, November 4. You can change your answer any time before then.”',
     );
     expect(replyBySaved('2026-11-03', LONDON, 'en-US')).toBe(
-      'Saved. Replies close Tue, Nov 3 at 23:59, Europe/London time.',
+      'Saved. Replies close on Tue, Nov 3 at 23:59, Europe/London time.',
     );
     expect(replyBySaved(null, LONDON, 'en-US')).toBe(
       'Saved. Replies stay open until the event starts.',

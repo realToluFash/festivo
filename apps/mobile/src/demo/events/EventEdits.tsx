@@ -30,7 +30,7 @@ import { type EditPart, type EventDemoState, folded, instantOf, wallOf } from '.
 import {
   CLOSES_AT,
   noReplyOf,
-  notRepliedWords,
+  notRepliedLine,
   previewsReplyBy,
   replyByAfterStart,
   replyByAsk,
@@ -614,10 +614,8 @@ function ReplyByEdit(edit: EditProps) {
       ? null
       : {
           title:
-            asking === 'now'
-              ? say.closeNowTitle(notRepliedWords(event.id))
-              : say.closeSoonerTitle(formatWallDay(next, locale), notRepliedWords(event.id)),
-          line: asking === 'now' ? W.closeNowLine : W.closeSoonerLine,
+            asking === 'now' ? W.closeNowTitle : say.closeSoonerTitle(formatWallDay(next, locale)),
+          line: `${notRepliedLine(event.id)} ${asking === 'now' ? W.closeNowLine : W.closeSoonerLine}`,
           keep: { label: keep, testID: 'event.edit.replyBy.keep' },
           confirm: {
             label: asking === 'now' ? W.closeNow : W.closeSooner,

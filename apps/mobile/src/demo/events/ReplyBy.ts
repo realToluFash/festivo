@@ -15,11 +15,11 @@ export function noReplyOf(eventId: string): { guests: number; companions: number
     : { guests: 0, companions: 0 };
 }
 
-/** As Guests' card counts it: the guests with no answer, and the companions held behind them. */
-export function notRepliedWords(eventId: string): string {
+/** Guests' card's own count sentence (l10n, #33419): the guests with no answer, and the companions held behind them. */
+export function notRepliedLine(eventId: string): string {
   const { guests, companions } = noReplyOf(eventId);
 
-  return say.notReplied(guests, companions);
+  return say.notRepliedLine(guests, companions);
 }
 
 function dayAfter(date: string, days = 1): string {
