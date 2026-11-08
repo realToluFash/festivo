@@ -243,6 +243,27 @@ describe('the milestone on the Overview and All dates', () => {
     expect(screen.getByText('Adaeze & Tunde’s wedding starts')).toBeDefined();
   });
 
+  it(
+    'leaves Events A’s own states as their boards draw them after a visit to the sheet',
+    SLOW,
+    async () => {
+      await kitchen('set');
+      open('/demo/events/evt-wed-4?state=live');
+      await screen.findByRole('heading', { level: 1, name: 'Adaeze & Tunde’s wedding' }, WAIT);
+
+      expect(screen.queryByText('Next up: Give final numbers to the kitchen')).toBeNull();
+      expect(screen.getByText('Next up: Adaeze & Tunde’s wedding starts')).toBeDefined();
+    },
+  );
+
+  it('keeps what the demo holds when the Overview opens with no state', SLOW, async () => {
+    await kitchen('set');
+    open('/demo/events/evt-wed-4');
+    await screen.findByRole('heading', { level: 1, name: 'Adaeze & Tunde’s wedding' }, WAIT);
+
+    expect(screen.getByText('Next up: Give final numbers to the kitchen')).toBeDefined();
+  });
+
   it('opens the kitchen sheet from the event’s Menu', SLOW, async () => {
     const router = open('/demo/events/evt-wed-4?area=menu');
     fireEvent.click(await screen.findByRole('link', { name: KW.title }, WAIT));

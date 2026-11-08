@@ -144,6 +144,17 @@ describe('the milestone on the timeline', () => {
     expect(seedFromEvent('finalNumbersOverdue')).toBe(true);
     expect(startOf(null).kitchen.due).toBe('2026-11-02');
     expect(seedFromEvent('live')).toBe(false);
+    expect(startOf(null).kitchen).toEqual({ due: null, copies: [] });
     resetKitchen();
+  });
+
+  it('starts empty from any other state link, on the event or the sheet', () => {
+    startOf('set');
+    seedFromEvent('venue');
+    expect(cardMilestone(wedding, now)).toBeNull();
+
+    startOf('set');
+    expect(startOf('unknown').kitchen).toEqual({ due: null, copies: [] });
+    expect(startOf(null).kitchen).toEqual({ due: null, copies: [] });
   });
 });

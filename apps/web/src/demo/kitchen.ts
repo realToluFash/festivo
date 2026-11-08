@@ -195,7 +195,12 @@ export function isKitchenState(value: string | null): value is KitchenStateName 
 }
 
 export function startOf(value: string | null): KitchenStart {
-  if (!isKitchenState(value)) return { ...BASE, kitchen: kept };
+  if (value == null) return { ...BASE, kitchen: kept };
+  if (!isKitchenState(value)) {
+    kept = NOTHING;
+
+    return BASE;
+  }
 
   const start = { ...BASE, ...(STATES[value].starts as Partial<KitchenStart>) };
   kept = start.kitchen;
@@ -212,8 +217,14 @@ const DATES_STATES = {
 
 export type KitchenDatesState = keyof typeof DATES_STATES;
 
+/** Any other state link draws its own board, so the kitchen starts empty; with no state the demo keeps what it holds. */
 export function seedFromEvent(value: string | null): boolean {
-  if (value == null || !Object.hasOwn(DATES_STATES, value)) return false;
+  if (value == null) return false;
+  if (!Object.hasOwn(DATES_STATES, value)) {
+    kept = NOTHING;
+
+    return false;
+  }
 
   kept = DATES_STATES[value as KitchenDatesState];
 
@@ -293,10 +304,7 @@ export function kitchenMilestone(
 ): Milestone | null {
   if (event.id !== KITCHEN_EVENT || kitchen.due == null || kitchen.copies.length > 0) return null;
 
-  const shown = shownOf(event, now);
-
-  if (shown === 'calledOff' || shown === 'finished' || now.getTime() >= Date.parse(event.startsAt))
-    return null;
+  if (ended(event, now) || now.getTime() >= Date.parse(event.startsAt)) return null;
 
   const at = instantOf(kitchen.due, '23:59', event.timeZone);
 
@@ -455,7 +463,6 @@ export const COURSES: readonly { name: string; dishes: readonly [string, number]
   },
 ];
 
-/** Without guests.manage the sheet counts each allergen and names nobody (sc-3911). */
 export function allergenCounts(): [string, number][] {
   const counts = new Map<string, number>();
 
