@@ -10,7 +10,7 @@ import type { Shown } from '../events/EventsModel.ts';
 import { LineIcon } from '../settings/AccountCard.tsx';
 import { Pill } from '../../components/SettingsParts.tsx';
 import { Row, RowList, TextAction } from '../../components/Summary.tsx';
-import { type Role, dayWords, invitedWords, replyLine } from './GuestsModel.ts';
+import { type Role, dayWords, invitedWords, replyLine, replyParts } from './GuestsModel.ts';
 import { BlockHead, DoneLine, GuestCover, type Layout } from './GuestsParts.tsx';
 import { COLLEAGUE, READER, type SampleGuest, TODAY } from './GuestsSample.ts';
 import { REPLY_WORD, W, say } from './GuestsWords.ts';
@@ -103,8 +103,7 @@ export function GuestPage({
   const card = cardOf(g, role, replies, locale, actions, invites);
   const kind = g.kind === 'walkin' ? 'walkin' : g.kind;
   const replied = g.kind === 'coming' || g.kind === 'maybe' || g.kind === 'notcoming';
-  const line = replyLine(g, locale);
-  const [word, ...rest] = line.split(' · ');
+  const { word, detail } = replyParts(g, locale);
 
   return (
     <View style={styles.blocks} testID={`guest.${g.key}`}>
@@ -124,8 +123,8 @@ export function GuestPage({
         <View>
           <BlockHead title={W.reply} />
           <Row
-            title={word ?? ''}
-            line={rest.join(' · ')}
+            title={word}
+            line={detail ?? undefined}
             lead={<MarkSlot kind={kind} />}
             testID="guest.reply"
           />

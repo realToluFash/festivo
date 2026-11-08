@@ -273,13 +273,15 @@ export function GuestsScreen({
   const groups: Partial<Record<GroupKey, Person[]>> = {};
   if (!looking)
     for (const group of GROUPS)
-      groups[group] =
-        event.id === WEDDING && !expanded.includes(group)
-          ? groupRows(guests, group, locale)
-          : rowsOf(guests, group, '', locale);
+      groups[group] = groupRows(
+        guests,
+        group,
+        locale,
+        event.id !== WEDDING || expanded.includes(group),
+      );
   const showAll = (group: GroupKey) => {
     const before = new Set((groups[group] ?? []).map((p) => p.key));
-    const next = rowsOf(guests, group, '', locale).find((p) => !before.has(p.key));
+    const next = groupRows(guests, group, locale, true).find((p) => !before.has(p.key));
     setExpanded((was) => [...was, group]);
     if (next != null)
       setTimeout(() => moveScreenReaderFocus(refs.current[next.key] ?? null), FOCUS_AFTER_MS);

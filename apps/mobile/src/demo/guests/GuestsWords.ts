@@ -199,8 +199,9 @@ export const say = {
   filterLabel: (word: string, count: number) => `Filter: ${word}, ${count}`,
   menuItem: (word: string, count: number) => `${word} · ${count}`,
   group: (word: string, count: number) => `${word} · ${count}`,
-  replied: (word: string, when: string) => `${word} · replied ${when}`,
-  askedBy: (date: string) => `Not sure yet · asked to decide by ${date}`,
+  repliedOn: (when: string) => `replied ${when}`,
+  askedBy: (date: string) => `asked to decide by ${date}`,
+  guestOf: (host: string) => `Guest of ${host}`,
   companions: (count: number) => (count === 1 ? '1 companion' : `${count} companions`),
   companionOf: (word: string) => `${W.companion} · ${word}`,
   ofTen: (count: number) => `${count} of 10`,
@@ -214,8 +215,8 @@ export const say = {
     `It counts in the numbers straight away and goes in the activity log. ${name} can still change it from their link.`,
   replacedThemselves: (name: string, reply: string, date: string) =>
     `${name} replied ${reply} themselves on ${date}. Replace it?`,
-  recordedBy: (reply: string, who: string, how: string, date: string) =>
-    `${reply} · recorded by ${who}, ${how.toLowerCase()}, ${date}`,
+  recordedBy: (who: string, how: string, date: string) =>
+    `recorded by ${who}, ${how.toLowerCase()}, ${date}`,
   invitedBy: (who: string, how: string, date: string) => `Invited by ${who}, ${how}, ${date}`,
   closed: (date: string) =>
     `Replies closed on ${date}. Record a reply opens again if you let them change their reply.`,
@@ -261,7 +262,7 @@ export const say = {
   arrivedAt: (time: string, who: string) => `Arrived at ${time} · ${who}`,
   arrivedName: (name: string) => `${name} arrived`,
   arrivedButton: (name: string) => `${name} arrived`,
-  walkInArrived: (time: string) => `Walk-in · Arrived ${time}`,
+  arrivedTime: (time: string) => `Arrived ${time}`,
   numbersLead: (says: string) => `${says}. Each number opens the guests it counts.`,
   notYetInvited: (count: number) => `${count} not yet invited`,
   opens: (word: string) => `opens ${word}`,

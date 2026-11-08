@@ -19,7 +19,6 @@ import {
 } from './GuestsSample.ts';
 import { REPLY_WORD, type ReplyKind, W, say } from './GuestsWords.ts';
 
-/** Every state of the app's Guests, by guests-a-spec.md §15's names: the same in both demos. */
 export const LIST_STATES = [
   'first',
   'inUse',
@@ -340,31 +339,45 @@ export function invitedWords(g: SampleGuest, locale: string): string {
     : say.invitedBy(g.invited.by, g.invited.how, when);
 }
 
-/** sc-3780: a Not sure yet guest is asked to decide by the Reply by date, when the event has one. */
-export function replyLine(g: SampleGuest, locale: string, short = false): string {
-  if (g.kind === 'walkin') return say.walkInArrived(g.arrived ?? '');
-  if (g.recorded != null && g.kind !== 'noreply' && g.kind !== 'notyet')
-    return recordedLine(g.kind, g.recorded.how, g.recorded.day, locale);
-  if (g.kind === 'noreply')
-    return short
-      ? REPLY_WORD.noreply
-      : `${REPLY_WORD.noreply} · ${invitedWords(g, locale).replace(/^I/u, 'i')}`;
-  if (g.kind === 'notyet') return REPLY_WORD.notyet;
-  if (g.kind === 'maybe' && g.when != null) return say.askedBy(dayWords(REPLY_BY, locale));
-  return say.replied(REPLY_WORD[g.kind], g.when == null ? '' : dayWords(g.when, locale));
+export function joined(parts: readonly (string | null | undefined)[]): string {
+  return parts.filter((part): part is string => part != null && part !== '').join(' · ');
 }
 
-function companionLine(c: Companion): string {
-  return c.kind === 'held' ? W.heldLine : REPLY_WORD[c.kind];
+/** A reply as its word and what follows it; sc-3780: Not sure yet is asked to decide by the Reply by date. */
+export function replyParts(
+  g: SampleGuest,
+  locale: string,
+  short = false,
+): { word: string; detail: string | null } {
+  const word = REPLY_WORD[g.kind];
+  if (g.kind === 'walkin') return { word, detail: say.arrivedTime(g.arrived ?? '') };
+  if (g.recorded != null && g.kind !== 'noreply' && g.kind !== 'notyet')
+    return {
+      word,
+      detail: say.recordedBy(READER, g.recorded.how, dayWords(g.recorded.day, locale)),
+    };
+  if (g.kind === 'noreply')
+    return { word, detail: short ? null : lowerFirst(invitedWords(g, locale)) };
+  if (g.kind === 'notyet') return { word, detail: null };
+  if (g.kind === 'maybe' && g.when != null)
+    return { word, detail: say.askedBy(dayWords(REPLY_BY, locale)) };
+  return { word, detail: g.when == null ? null : say.repliedOn(dayWords(g.when, locale)) };
+}
+
+export function replyLine(g: SampleGuest, locale: string, short = false): string {
+  const { word, detail } = replyParts(g, locale, short);
+  return joined([word, detail]);
+}
+
+function lowerFirst(text: string): string {
+  return text.charAt(0).toLowerCase() + text.slice(1);
 }
 
 function rowLine(g: SampleGuest, locale: string, filter: FilterKey): string {
   if (filter === 'noreply' && g.kind === 'noreply') return capital(invitedWords(g, locale));
   const short = g.kind === 'noreply' || g.kind === 'notyet';
   const count = g.companions.length;
-  return [replyLine(g, locale, short), count > 0 ? say.companions(count) : null]
-    .filter(Boolean)
-    .join(' · ');
+  return joined([replyLine(g, locale, short), count > 0 ? say.companions(count) : null]);
 }
 
 function hostRow(g: SampleGuest, locale: string, filter: FilterKey): Person {
@@ -384,9 +397,23 @@ function companionRow(g: SampleGuest, c: Companion, index: number): Person {
     guest: g.key,
     name: c.name,
     kind: c.kind,
-    line: companionLine(c),
+    line: c.kind === 'held' ? W.heldLine : REPLY_WORD[c.kind],
     companion: true,
   };
+}
+
+/** sc-3773 (ux, 8 Nov): a companion whose reply differs from their guest's is a row of their own in their own reply. */
+function ownRow(g: SampleGuest, c: Companion, index: number): Person {
+  const unnamed = c.name.startsWith(say.guestOf(g.name));
+  return {
+    ...companionRow(g, c, index),
+    line: c.kind === 'held' || unnamed ? companionRow(g, c, index).line : say.guestOf(g.name),
+    companion: false,
+  };
+}
+
+function shares(g: SampleGuest, c: Companion): boolean {
+  return c.kind === g.kind || c.kind === 'held';
 }
 
 function inFilter(kind: SampleGuest['kind'], filter: FilterKey): boolean {
@@ -420,14 +447,12 @@ export function rowsOf(
 ): Person[] {
   const out: Person[] = [];
   for (const g of guests) {
-    const hostIn = inFilter(g.kind, filter);
-    const hostMatch = hostIn && matchesGuest(g.name, g, typed, contacts);
-    const comps = g.companions
-      .map((c, index) => ({ c, index }))
-      .filter(({ c }) => inFilter(c.kind, filter))
-      .filter(({ c }) => hostMatch || matchesGuest(c.name, null, typed));
-    if (hostMatch || (hostIn && comps.length > 0)) out.push(hostRow(g, locale, filter));
-    for (const { c, index } of comps) out.push(companionRow(g, c, index));
+    const hostMatch = inFilter(g.kind, filter) && matchesGuest(g.name, g, typed, contacts);
+    if (hostMatch) out.push(hostRow(g, locale, filter));
+    g.companions.forEach((c, index) => {
+      if (!inFilter(c.kind, filter) || !(hostMatch || matchesGuest(c.name, null, typed))) return;
+      out.push(hostMatch && shares(g, c) ? companionRow(g, c, index) : ownRow(g, c, index));
+    });
   }
   return out;
 }
@@ -436,15 +461,19 @@ export function groupRows(
   guests: readonly SampleGuest[],
   group: GroupKey,
   locale: string,
+  all = false,
 ): Person[] {
   const first = FIRST_ROWS[group];
   const original = new Map(GUESTS.map((g) => [g.key, g.kind]));
   const out: Person[] = [];
   for (const g of guests) {
-    if (g.kind !== group) continue;
-    if (!first.includes(g.key) && original.get(g.key) === g.kind) continue;
-    out.push(hostRow(g, locale, 'all'));
-    g.companions.forEach((c, index) => out.push(companionRow(g, c, index)));
+    const shown =
+      g.kind === group && (all || first.includes(g.key) || original.get(g.key) !== g.kind);
+    if (shown) out.push(hostRow(g, locale, 'all'));
+    g.companions.forEach((c, index) => {
+      if (shown && shares(g, c)) out.push(companionRow(g, c, index));
+      else if (c.kind === group && !shares(g, c)) out.push(ownRow(g, c, index));
+    });
   }
   return out;
 }
@@ -593,7 +622,7 @@ export function recorded(
 }
 
 export function recordedLine(answer: ReplyKind, how: string, day: string, locale: string): string {
-  return say.recordedBy(REPLY_WORD[answer], READER, how, dayWords(day, locale));
+  return joined([REPLY_WORD[answer], say.recordedBy(READER, how, dayWords(day, locale))]);
 }
 
 export function markedInvited(g: SampleGuest, how: string, today: string): SampleGuest {

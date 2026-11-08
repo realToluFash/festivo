@@ -1,9 +1,13 @@
-import { describe, expect, it } from 'vitest';
+import { readFileSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
+
+import { describe, expect, it, vi } from 'vitest';
 
 import { TO_FIGURES } from '../messages/MessagesSample.ts';
 import { SAMPLE_GUESTS } from '../events/GuestCounts.ts';
 import {
   DOOR_STATES,
+  GROUPS,
   FILTERS,
   GUESTS_STATES,
   areaStart,
@@ -220,6 +224,69 @@ describe('on the day and for view-only roles', () => {
       'Dr Emeka Nwosu',
       'Adanna Nwosu',
     ]);
+  });
+});
+
+describe('a split family (sc-3773, ux, 8 Nov): each group shows the people it counts', () => {
+  const emeka = byKey('emeka');
+  const walk = () =>
+    GUESTS.map((g) =>
+      g.key === 'emeka' ? recorded(g, 'coming', 'By phone', [false], '2026-11-03') : g,
+    );
+
+  it('Record a reply for Dr Emeka Nwosu, Coming, Adanna unticked: Coming gains Emeka only', () => {
+    const after = walk();
+    const coming = groupRows(after, 'coming', EN).map((row) => row.name);
+    expect(coming).toContain(emeka.name);
+    expect(coming).not.toContain('Adanna Nwosu');
+    const notComing = groupRows(after, 'notcoming', EN);
+    expect(notComing.map((row) => [row.name, row.line, row.companion])).toContainEqual([
+      'Adanna Nwosu',
+      'Guest of Dr Emeka Nwosu',
+      false,
+    ]);
+    expect(groupRows(after, 'noreply', EN).map((row) => row.name)).not.toContain(emeka.name);
+    expect(countsOf(after)).toMatchObject({
+      coming: 97,
+      notcoming: 10,
+      noreply: 20,
+      held: 5,
+      invited: 142,
+    });
+  });
+
+  it('counts every row it shows, held companions under their guest apart', () => {
+    for (const people of [GUESTS, walk()])
+      for (const group of GROUPS) {
+        const rows = groupRows(people, group, EN, true);
+        expect(rows.filter((row) => row.kind === group)).toHaveLength(
+          people.filter((g) => g.kind === group).length +
+            people.flatMap((g) => g.companions).filter((c) => c.kind === group).length,
+        );
+        expect(
+          rows
+            .filter((row) => row.kind !== group)
+            .every((row) => row.kind === 'held' && row.companion),
+        ).toBe(true);
+      }
+  });
+
+  it('sends nothing anywhere: no request, and no file of Guests reaches for the network', () => {
+    const fetched = vi.spyOn(globalThis, 'fetch');
+    const after = walk();
+    countsOf(after);
+    GROUPS.forEach((group) => groupRows(after, group, EN));
+    expect(fetched).not.toHaveBeenCalled();
+    fetched.mockRestore();
+    const folder = join('src', 'demo', 'guests');
+    const reaching = readdirSync(folder)
+      .filter((file) => /\.tsx?$/u.test(file) && !file.endsWith('.test.ts'))
+      .filter((file) =>
+        /\bfetch\(|@soirely\/api-client|XMLHttpRequest/u.test(
+          readFileSync(join(folder, file), 'utf8'),
+        ),
+      );
+    expect(reaching).toEqual([]);
   });
 });
 
