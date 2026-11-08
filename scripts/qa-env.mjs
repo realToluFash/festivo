@@ -2366,12 +2366,12 @@ async function maestro(args) {
   spawnSync('rm', ['-rf', out]);
   mkdirSync(out, { recursive: true });
 
-  let flows = join(root, 'apps/mobile/.maestro');
-  if (onAndroid) {
-    const copy = join(root, '.qa/.maestro-android');
-    androidFlows(flows, copy);
-    flows = copy;
-  }
+  const flows = join(root, onAndroid ? '.qa/.maestro-android' : '.qa/.maestro');
+  aloneFlows(join(root, 'apps/mobile/.maestro'), flows, {
+    catalogues: catalogues(root),
+    email: vars.find((v) => v.startsWith('EMAIL='))?.slice('EMAIL='.length),
+    onAndroid,
+  });
   const file = join(flows, `${flow}.yaml`);
 
   const ok = await runAsync(
@@ -2440,7 +2440,9 @@ export function localise(flow, catalogues, language, values = {}) {
         .map((part) => {
           const name = /^\{\{(\w+)\}\}$/.exec(part)?.[1];
           if (name === undefined) return escapeRegex(part);
-          return filled.includes(name) ? filledPattern(name, values[name] ?? '') : '.*';
+          return filled.includes(name) && values[name] != null
+            ? filledPattern(name, values[name])
+            : '.*';
         })
         .join('');
     });
@@ -2497,6 +2499,20 @@ export function batchFlow({ checks, languages, cold, runs = batchRuns(checks, la
     lines.push('- runFlow:', `    file: _checks/${runId(run)}.yaml`, '    optional: true');
   });
   return `${lines.join('\n')}\n`;
+}
+
+// A flow run alone has no batch language, so every `{{t:…}}` in it matches any language.
+export function aloneFlows(source, target, { catalogues, email, onAndroid }) {
+  if (onAndroid) androidFlows(source, target);
+  else {
+    rmSync(target, { recursive: true, force: true });
+    cpSync(source, target, { recursive: true });
+  }
+  for (const entry of readdirSync(target, { recursive: true })) {
+    if (!/\.ya?ml$/.test(entry)) continue;
+    const path = join(target, entry);
+    writeFileSync(path, localise(readFileSync(path, 'utf8'), catalogues, 'any', { email }));
+  }
 }
 
 export function composeBatch(
