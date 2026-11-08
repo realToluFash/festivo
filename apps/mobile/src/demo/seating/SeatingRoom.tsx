@@ -57,6 +57,10 @@ const hidden = {
 const TINT = tokens.colorAccentTint;
 const VIOLET = tokens.colorAccent;
 const AMBER = tokens.colorAttention;
+const HANDLE_DRAWN = 24;
+const HANDLE_HIT = 48;
+const CHAIR_HIT = 48;
+const VIEWS_BAND = tokens.spaceXl + 48;
 
 export interface Look {
   lit?: boolean;
@@ -110,8 +114,8 @@ export function hasHandles(it: Item): boolean {
   return it.kind === 'round' || it.kind === 'cocktail' || it.kind === 'rect' || it.kind === 'head';
 }
 
-/** One item at s px a cm (seating-a-spec §2 and §3): its lit Tint, body, chairs in their states, and the marks of a colleague, overlap and handles. */
-function ItemShape({
+/** One item at s px a cm (seating-a-spec §2 and §3): its lit Tint, body, chairs in their states, and the marks of a colleague, overlap and handles. A plain call, not a component: it fills `labels` before the overlay reads them. */
+function itemShape({
   m,
   it,
   v,
@@ -603,16 +607,17 @@ export function RoomDrawing({
       );
   }
   const shapes = items.map((it) => (
-    <ItemShape
-      key={it.id}
-      m={m}
-      it={it}
-      v={v}
-      detail={detail}
-      look={looks[it.id] ?? {}}
-      chosenChair={m.chosen === it.id ? m.chair : null}
-      labels={labels}
-    />
+    <G key={it.id}>
+      {itemShape({
+        m,
+        it,
+        v,
+        detail,
+        look: looks[it.id] ?? {},
+        chosenChair: m.chosen === it.id ? m.chair : null,
+        labels,
+      })}
+    </G>
   ));
   return (
     <>
@@ -683,7 +688,10 @@ export function looksOf(
   m.lit.forEach((id) => add(id, { lit: true }));
   if (hover != null) add(hover, { lit: true });
   if (m.chosen != null)
-    add(m.chosen, { lit: true, ...(handles != null && editable(m) ? { handles } : {}) });
+    add(m.chosen, {
+      lit: true,
+      ...(handles != null && editable(m) && m.tab === 'Arrange' ? { handles } : {}),
+    });
   Object.entries(m.rings).forEach(([id, person]) => !person.viewer && add(id, { ring: person }));
   m.outside.forEach((id) => add(id, { overlap: true }));
   const chosen = itemOf(m, m.chosen);
@@ -751,11 +759,13 @@ function roomGestures(dispatch: (action: Action) => void, show: (live: Live | nu
   const handleAt = (p: Point): number | null => {
     const it = m == null ? null : itemOf(m, m.chosen);
     const view = m?.shown;
-    if (m == null || it == null || view == null || !canEdit(m) || !hasHandles(it)) return null;
+    if (m == null || it == null || view == null || !canEdit(m) || m.tab !== 'Arrange') return null;
+    if (!hasHandles(it)) return null;
     const cx = view.ox + it.x * view.s;
     const cy = view.oy + it.y * view.s;
     const i = handlePoints(it, view.s).findIndex(
-      (h) => Math.abs(cx + h.x - p.x) <= 24 && Math.abs(cy + h.y - p.y) <= 24,
+      (h) =>
+        Math.abs(cx + h.x - p.x) <= HANDLE_HIT / 2 && Math.abs(cy + h.y - p.y) <= HANDLE_HIT / 2,
     );
     return i < 0 ? null : i;
   };
@@ -904,11 +914,13 @@ export function RoomSurface({
   dispatch,
   width,
   height,
+  viewsEnd = 0,
 }: {
   m: Seating;
   dispatch: (action: Action) => void;
   width: number;
   height: number;
+  viewsEnd?: number;
 }) {
   const box = useRef<ViewInstance>(null);
   const [live, setLive] = useState<Live | null>(null);
@@ -925,10 +937,18 @@ export function RoomSurface({
     ...(ghost == null ? [] : [ghost]),
     ...m.items.map((it) => (shown != null && it.id === shown.id ? shown : it)),
   ];
-  const looks = looksOf({ ...m, items }, hover, 48);
+  const looks = looksOf({ ...m, items }, hover, HANDLE_DRAWN);
   if (ghost != null) looks[ghost.id] = { faint: true };
   const tip = live?.tip ?? m.tip;
   const detail = detailOf(v.s);
+  const beside = viewsEnd > 0 && v.oy - 26 < VIEWS_BAND + 4 && v.ox < viewsEnd + tokens.spaceMd;
+  const caption = beside
+    ? {
+        left: viewsEnd + tokens.spaceMd,
+        top: tokens.spaceXl + 14,
+        maxWidth: width - viewsEnd - tokens.spaceMd - 140,
+      }
+    : { left: v.ox, top: v.oy - 26 };
   return (
     <View ref={box} style={styles.fill} onLayout={measure} {...gestures.panHandlers}>
       <RoomDrawing m={m} v={v} width={width} height={height} items={items} looks={looks}>
@@ -937,7 +957,8 @@ export function RoomSurface({
           weight="semibold"
           accessibilityRole="header"
           accessibilityLabel={say.roomLabel(m.room.name, length(m, m.room.w), length(m, m.room.l))}
-          style={[styles.roomLine, { left: v.ox, top: v.oy - 26 }]}
+          numberOfLines={1}
+          style={[styles.roomLine, caption]}
         >
           {roomLine(m)}
         </Text>
@@ -978,7 +999,10 @@ export function RoomSurface({
                   style={[
                     styles.hit,
                     styles.chair,
-                    { left: v.ox + (it.x + p.x) * v.s - 22, top: v.oy + (it.y + p.y) * v.s - 22 },
+                    {
+                      left: v.ox + (it.x + p.x) * v.s - CHAIR_HIT / 2,
+                      top: v.oy + (it.y + p.y) * v.s - CHAIR_HIT / 2,
+                    },
                   ]}
                   accessibilityRole="button"
                   accessibilityLabel={`${it.name}, ${say.chairName(i + 1, chairWord(it, i))}`}
@@ -1030,16 +1054,9 @@ export function MiniMap({
       <Svg width={m.room.w * s} height={m.room.l * s}>
         <Rect x={0} y={0} width={m.room.w * s} height={m.room.l * s} fill={tokens.colorCard} />
         {m.items.map((it) => (
-          <ItemShape
-            key={it.id}
-            m={m}
-            it={it}
-            v={map}
-            detail="out"
-            look={{}}
-            chosenChair={null}
-            labels={[]}
-          />
+          <G key={it.id}>
+            {itemShape({ m, it, v: map, detail: 'out', look: {}, chosenChair: null, labels: [] })}
+          </G>
         ))}
         <Rect
           x={0.75}
@@ -1109,7 +1126,7 @@ const styles = StyleSheet.create({
   figures: { fontVariant: ['tabular-nums'] },
   roomLine: { position: 'absolute', color: tokens.colorInkSecondary },
   hit: { position: 'absolute' },
-  chair: { width: 44, height: 44, borderRadius: 22 },
+  chair: { width: CHAIR_HIT, height: CHAIR_HIT, borderRadius: CHAIR_HIT / 2 },
   tip: {
     position: 'absolute',
     paddingHorizontal: tokens.spaceMd,
