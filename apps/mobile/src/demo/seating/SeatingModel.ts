@@ -397,18 +397,18 @@ export function sameName(a: string, b: string): boolean {
   return plain(a) === plain(b);
 }
 
-/** "13 tables, 1 row and 2 single seats", for Delete the plan, as the web's demo names what goes (sc-5033). */
+/** "3 sections, 13 tables, 1 row and 2 single seats", what Delete the plan deletes (pm, 8 Nov 2026); "" when there is nothing. */
 export function whatGoes(m: Seating): string {
   const count = (n: number, one: string, many: string) =>
     n === 0 ? [] : [`${n} ${n === 1 ? one : many}`];
   const parts = [
+    ...count(m.sections.length, 'section', 'sections'),
     ...count(tableCount(m.items), 'table', 'tables'),
     ...count(m.items.filter((it) => it.kind === 'row').length, 'row', 'rows'),
     ...count(m.items.filter((it) => it.kind === 'single').length, 'single seat', 'single seats'),
   ];
   const last = parts.pop() ?? '';
-  const words = parts.length === 0 ? last : `${parts.join(', ')} and ${last}`;
-  return words.charAt(0).toLocaleUpperCase() + words.slice(1);
+  return parts.length === 0 ? last : `${parts.join(', ')} and ${last}`;
 }
 
 export function trayShown(m: Seating): Party[] {

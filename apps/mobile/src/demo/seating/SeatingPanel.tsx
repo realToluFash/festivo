@@ -255,7 +255,7 @@ function StartForm({ m, go }: { m: Seating; go: Go }) {
         title={W.startPlan}
         line={
           m.units === 'us'
-            ? say.startLineFeet(VENUE.name, VENUE.town)
+            ? say.startLineFeet(VENUE.name, VENUE.town, ORG)
             : say.startLine(VENUE.name, VENUE.town, ORG)
         }
       />
