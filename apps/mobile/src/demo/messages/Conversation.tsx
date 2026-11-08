@@ -45,6 +45,7 @@ import {
 } from './MessagesSample.ts';
 import { CHANNEL_IN_LINE, CHANNEL_WORD, type ChannelKey, W, say } from './MessagesWords.ts';
 import { Preview } from './Preview.tsx';
+import { previewOf } from './PreviewModel.ts';
 import {
   type Bit,
   CountdownLine,
@@ -496,7 +497,15 @@ function ownParts(talk: Talk, followUp: string): Own {
   if (draft.step === 'preview')
     return {
       bare: true,
-      stream: <Preview draft={draft} columns={talk.columns} />,
+      stream: (
+        <Preview
+          draft={draft}
+          columns={talk.columns}
+          phone={!talk.wide}
+          as={previewOf(m)}
+          dispatch={dispatch}
+        />
+      ),
       align: 'start',
       foot: (
         <PreviewBar

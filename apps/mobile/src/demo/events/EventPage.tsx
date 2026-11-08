@@ -345,7 +345,11 @@ export function EventScreen({
         start={{
           fix: messages === 'fix',
           push: messages === 'bell',
-          keys: messages === 'write' || messages === 'cancelled' || messages === 'scheduledEdit',
+          keys:
+            messages === 'write' ||
+            messages === 'cancelled' ||
+            messages === 'scheduledEdit' ||
+            messages === 'typedBraces',
         }}
         extra={tell}
       />

@@ -48,6 +48,15 @@ const BOARDS: Record<MessagesState, readonly [string, string]> = {
   noSubject: ['no subject', 'Named by its first line, shortened'],
   followUp: ['a follow-up', 'Under the first message, to the same 96'],
   tellPlace: ['tell guests, a new place', 'The venue is now Rosewood London'],
+  insert: ['Insert', 'A menu on the iPad, a sheet on the phone: four tokens, each with its line'],
+  previewAs: ['Preview as', 'Open on the five people in To, A to Z'],
+  previewGreetAs: ['previewed as Bisi Adewale', 'Greeted as “Auntie Bisi”, their Greet as'],
+  previewChose: ['previewed as Camille Dubois', 'The Date in French, the language they chose'],
+  previewLoading: ['filling it in', 'Filling it in for Camille Dubois… over the shapes'],
+  previewMarkup: ['a Greet as with markup', 'Kemi Bankole’s Greet as shown as text'],
+  typedBraces: ['a typed {Greeting}', 'An inserted Greeting, and later {Greeting} typed'],
+  previewBraces: ['typed braces, previewed', 'The typed {Greeting} as typed, and the braces line'],
+  noTokens: ['nothing to fill in', 'No token: no Greeted line, the nothing-to-fill-in line'],
 };
 
 export const MESSAGES_BOARDS = MESSAGES_STATES.map((state) => ({

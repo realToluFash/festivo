@@ -34,6 +34,8 @@ import {
   formatCount,
 } from './MessagesSample.ts';
 import { CHANNEL_WORD, type ChannelKey, W, say } from './MessagesWords.ts';
+import { type Previewing, previewStart } from './PreviewModel.ts';
+import { BRACED_BODY, DATED_BODY, PLAIN_BODY } from './PreviewSample.ts';
 import { EDGE } from './TokenText.ts';
 
 /** Every state of Messaging B, each a `?state=` in both demos (spec §7 and §7b), in the spec's order. */
@@ -83,6 +85,15 @@ export const MESSAGES_STATES = [
   'noSubject',
   'followUp',
   'tellPlace',
+  'insert',
+  'previewAs',
+  'previewGreetAs',
+  'previewChose',
+  'previewLoading',
+  'previewMarkup',
+  'typedBraces',
+  'previewBraces',
+  'noTokens',
 ] as const;
 
 export type MessagesState = (typeof MESSAGES_STATES)[number];
@@ -194,6 +205,8 @@ export interface Messages {
   resending: boolean;
   bell: boolean;
   told: string | null;
+  preview?: Previewing;
+  inserting?: boolean;
 }
 
 export function blankDraft(): Draft {
@@ -283,6 +296,15 @@ const DRAFTED: Partial<Record<MessagesState, Draft>> = {
   checkNotReplied: { ...sampleDraft('check'), to: 'notReplied' },
   checkChannels: { ...sampleDraft('check'), channels: { email: true, sms: false, wa: false } },
   noSubject: { ...sampleDraft('sent'), subject: '', seen: 12 },
+  insert: sampleDraft('write'),
+  previewAs: { ...sampleDraft('preview'), body: DATED_BODY },
+  previewGreetAs: { ...sampleDraft('preview'), body: DATED_BODY },
+  previewChose: { ...sampleDraft('preview'), body: DATED_BODY },
+  previewLoading: { ...sampleDraft('preview'), body: DATED_BODY },
+  previewMarkup: { ...sampleDraft('preview'), body: DATED_BODY },
+  typedBraces: { ...sampleDraft('write'), body: BRACED_BODY },
+  previewBraces: { ...sampleDraft('preview'), body: BRACED_BODY },
+  noTokens: { ...sampleDraft('preview'), body: PLAIN_BODY },
 };
 
 const SCHEDULED_AS: Partial<Record<MessagesState, Partial<Draft>>> = {
@@ -311,6 +333,7 @@ export function startOf(state: MessagesState | null, wide: boolean): Messages {
       thread: NEW_THREAD,
       draft: drafted,
       told: state === 'cancelled' && !wide ? W.cancelled : null,
+      ...previewStart(state),
     };
   const scheduled = state == null ? undefined : SCHEDULED_AS[state];
   if (scheduled != null) return scheduledStart(scheduled);
@@ -472,7 +495,9 @@ export type Action =
   | { type: 'resending'; open: boolean }
   | { type: 'resent' }
   | { type: 'bell'; open: boolean }
-  | { type: 'told'; words: string | null };
+  | { type: 'told'; words: string | null }
+  | { type: 'previewing'; previewing: Previewing }
+  | { type: 'inserting'; open: boolean };
 
 function withDraft(m: Messages, change: (draft: Draft) => Draft): Messages {
   return m.draft == null ? m : { ...m, draft: change(m.draft) };
@@ -754,6 +779,10 @@ export function reduce(m: Messages, action: Action): Messages {
       return { ...m, bell: action.open };
     case 'told':
       return { ...m, told: action.words };
+    case 'previewing':
+      return { ...m, preview: action.previewing };
+    case 'inserting':
+      return { ...m, inserting: action.open };
   }
 }
 

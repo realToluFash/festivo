@@ -43,7 +43,8 @@ export const W = {
   previewOn: 'Preview on',
   edit: 'Edit',
   goesOnTheirPage: 'Goes on their page',
-  onlyOurs: 'Only Soirely’s own words are translated. Yours go out exactly as you wrote them.',
+  onlyOurs:
+    'Only Soirely’s own words are translated. Yours show on their page exactly as you wrote them.',
   whatSoirelySends: 'What Soirely sends',
   readOnYourPage: 'Read it on your page',
   toldHow: 'Your message goes on their page. Soirely tells them it is there by email and text.',

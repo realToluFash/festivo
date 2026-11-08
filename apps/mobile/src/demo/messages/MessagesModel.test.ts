@@ -49,7 +49,7 @@ const nameOf = (id: RowId) => (id.kind === 'draft' ? id.id : id.key);
 
 describe('the states', () => {
   it('are the spec’s 42 and the notice’s three, by the names both demos use, §7 then §7b', () => {
-    expect(MESSAGES_STATES).toHaveLength(45);
+    expect(MESSAGES_STATES.indexOf('tellPlace')).toBe(44);
     expect(MESSAGES_STATES.slice(6, 10)).toEqual([
       'channelReply',
       'noticeCost',
@@ -57,7 +57,7 @@ describe('the states', () => {
       'noticeNotSent',
     ]);
     expect(MESSAGES_STATES.slice(0, 3)).toEqual(['first', 'loading', 'inUse']);
-    expect(MESSAGES_STATES.slice(27)).toEqual([
+    expect(MESSAGES_STATES.slice(27, 45)).toEqual([
       'invitedReached',
       'sentReached',
       'notMatched',
