@@ -3,6 +3,7 @@ import type { TextInputInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { CodeField, Field, focusChecked, focusRefused, keysStayDown } from './Field.tsx';
+import { Notice } from './Notice.tsx';
 import { PasswordField } from './PasswordField.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import { FocusedScreen, Line } from './Summary.tsx';
@@ -11,6 +12,8 @@ import { FocusedScreen, Line } from './Summary.tsx';
 export interface ProofAsks {
   lead: string;
   note?: string | undefined;
+  /** The proof the provider gave has run out: drawn as the attention notice, read out with each new `answer`. */
+  expired?: { text: string; answer: unknown } | undefined;
   password: boolean;
   code: boolean;
   codeHelp: string | readonly string[];
@@ -83,6 +86,9 @@ export function ConfirmScreen({
       testID={`${testID}.screen`}
     >
       <Line text={asks.lead} />
+      {asks.expired != null && (
+        <Notice tone="attention" mark="!" body={asks.expired.text} answer={asks.expired.answer} />
+      )}
       {asks.note != null && <Line size={14} text={asks.note} />}
       {says.other != null && <Line size={14} text={says.other} />}
       {asks.password && (

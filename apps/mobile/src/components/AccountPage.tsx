@@ -470,9 +470,12 @@ function ConfirmStep({
           provider == null || proving.codeAsked
             ? t('contacts.proveIntro')
             : t('waysCard.proveWithProvider', { provider }),
-        note:
+        expired:
           proving.expired != null && provider != null
-            ? t('waysCard.proofExpired', { provider, count: PROOF_MINUTES })
+            ? {
+                text: t('waysCard.proofExpired', { provider, count: PROOF_MINUTES }),
+                answer: proving.expired,
+              }
             : undefined,
         password: via === 'password',
         code: proving.codeAsked,
