@@ -75,6 +75,11 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   « Reconnectez-vous pour continuer. ». « La connexion », la tentative en cours, et non
   « Votre session », que la personne n'a jamais ouverte. L'app joint les deux sur une ligne
   avec un point : le titre n'en prend pas.
+- **8 nov. 2026. Une inscription qui a expiré** (sc-32449 pour sc-29923, `register.timedOut`,
+  web et app). « Votre inscription a expiré, nous n’avons donc pas conservé le mot de passe.
+  Ressaisissez-le pour recevoir un nouveau code. ». "Sign-up" est « inscription », comme
+  `limitedTitle` ; « expirer », comme la connexion ; « Ressaisissez-le » plutôt que « Saisissez-le
+  de nouveau », qui heurte « nouveau code », lui-même repris de `resend`.
 - **8 nov. 2026. Invités A : la réponse, les deux décomptes et le 412** (sc-3773, #32403).
   "Not sure yet" est « À confirmer », sur la page de l’invité comme sur celle de l’hôte : rien
   ne s’accorde, quand « pas encore sûr » ou « indécis » imposeraient un genre. « À confirmer ·
@@ -85,6 +90,10 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   check-in", « Ouvrir l’accueil ». "Show all {{count}}" est « Afficher les {{count}} ». "Their
   conversation" est « Conversation ». Le 412 : « La sienne · La vôtre », « Prendre la sienne »
   et « Garder la mienne » ; « sienne » s’accorde avec la version, pas avec la personne.
+  La clôture (#32762) : « Fin des réponses aujourd’hui. », « Fin des réponses demain, le
+  {{date}}. », « Fin des réponses le {{date}}. », et, une fois passée, « Les réponses sont
+  closes depuis le {{date}}. », car « Fin des réponses le … » ne distingue pas le passé du
+  futur. Plus personne à attendre : « Tout le monde a répondu. ».
 
 - **7 nov. 2026. L’écran Aujourd’hui de l’app** (`mobile:todayScreen.*`, sc-31788 pour
   sc-29090). "Live now" et "Live · …" sont « En cours », comme `eventsScreen.happeningNow`,

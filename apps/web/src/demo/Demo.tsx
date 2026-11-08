@@ -41,7 +41,7 @@ import { Settings } from './Settings.tsx';
 import { SETTINGS_PAGES } from './settings.ts';
 import { SIGN_IN_RULES_PAGES } from './signInRules.ts';
 import { SWITCHER_PAGES } from './switcher.ts';
-import { QUOTES_PAGES } from './quotes.ts';
+import { QUOTES_PAGES, forgetBudget } from './quotes.ts';
 import { BUDGET_PAGES } from './budgetPages.ts';
 import { DECIDE_PAGES } from './decide.ts';
 import { PAYERS_PAGES } from './payers.ts';
@@ -184,6 +184,8 @@ export default function Demo() {
 
 function DemoHome({ from }: { from: string }) {
   const navigate = useNavigate();
+
+  useEffect(() => forgetBudget(), []);
 
   return (
     <main id="content" className="demo-home">
