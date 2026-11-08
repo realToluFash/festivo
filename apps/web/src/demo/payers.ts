@@ -42,7 +42,7 @@ export interface Book {
 }
 
 export const PAYER_CAP = 20;
-export const NAME_MAX = 100;
+export const NAME_MAX = 60;
 export const NOTE_MAX = 200;
 export const WHOLE = 10000;
 export const SEND_MS = 500;
@@ -326,6 +326,8 @@ export function nameProblem(
   payers: readonly PayerEntry[],
   exceptId: string | null = null,
 ): string | null {
+  if (name.trim() === '') return W.nameBlank;
+  if ([...name.trim()].length > NAME_MAX) return W.nameLong;
   const typed = name.trim().toLocaleLowerCase('en');
   const same = payers.find(
     (one) => one.id !== exceptId && one.name.trim().toLocaleLowerCase('en') === typed,
@@ -376,7 +378,15 @@ export function percentOf(text: string): number | null {
   return Number(whole === '' ? '0' : whole) * 100 + Number(`${part}00`.slice(0, 2));
 }
 
-export const PERCENT_TYPED = /^\d{0,3}(\.\d{0,2})?$/;
+export const PERCENT_TYPED = /^-?\d{0,4}(\.\d{0,2})?$/;
+
+export function percentProblem(text: string): string | null {
+  const typed = text.trim();
+  if (typed === '') return null;
+  const value = percentOf(typed);
+
+  return value == null || value > WHOLE ? W.percentRange : null;
+}
 
 /** An amount typed in the event's currency, in the minor unit, or null when it is not a number above 0 with at most 2 decimals. */
 export function amountOf(text: string): number | null {
@@ -410,6 +420,7 @@ export interface PercentCheck {
   total: number;
   parts: Map<string, Range>;
   error: string | null;
+  fields: Readonly<Record<string, string>>;
   split: Split | null;
 }
 
@@ -431,12 +442,19 @@ export function checkPercents(
       parts.set(one.id, [now[0] + (lows[index] ?? 0), now[1] + (highs[index] ?? 0)]);
     });
   }
+  const fields = Object.fromEntries(
+    book.payers
+      .map((one) => [one.id, percentProblem(typed[one.id] ?? '')] as const)
+      .filter(([, problem]) => problem != null),
+  ) as Record<string, string>;
   const error = total === WHOLE ? null : W.notHundred(percentText(total));
   const shares = book.payers
     .map((one, index) => ({ payerId: one.id, value: values[index] ?? 0 }))
     .filter((one) => one.value > 0);
 
-  return { total, parts, error, split: error == null ? { kind: 'percent', shares } : null };
+  const right = error == null && Object.keys(fields).length === 0;
+
+  return { total, parts, error, fields, split: right ? { kind: 'percent', shares } : null };
 }
 
 export interface FixedCheck {

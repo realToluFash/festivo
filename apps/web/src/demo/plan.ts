@@ -231,10 +231,16 @@ export function planRows(
     };
     const shown = SHOWN[category] ?? ['committed', 'paid', 'stillToPay', 'variance'];
 
+    const elsewhere = notPricedIn(own);
+
     return {
       ...base,
       vendorId: quote.vendorId,
-      facts: [vendor, ...shown.map((one) => ({ words: said[one] }))],
+      facts: [
+        vendor,
+        ...shown.map((one) => ({ words: said[one] })),
+        ...(elsewhere === 0 ? [] : [{ words: BUDGET_WORDS.notPricedCount(elsewhere) }]),
+      ],
     };
   });
 }

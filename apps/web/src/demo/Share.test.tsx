@@ -325,4 +325,10 @@ describe('the share a link opens, signed out (sc-94, sc-1300)', () => {
     for (const state of SHARE_PAGES.flatMap((page) => page.states))
       expect(hrefs).toContain(state.to);
   });
+
+  it('tells a stopped link who to ask for a new one', async () => {
+    await open('/demo/share/whole?state=ended');
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('This link has ended.');
+    expect(screen.getByText('Ask Folake Adeyemi for a new one.')).toBeDefined();
+  });
 });

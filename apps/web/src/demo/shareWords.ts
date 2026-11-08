@@ -57,8 +57,7 @@ export const SHARE_WORDS = {
   between: (low: string, high: string, still: number) =>
     `Between ${low} and ${high}, depending on how many of the ${still} people still to reply say yes.`,
   repliesDoNot: 'Replies do not change this.',
-  notPricedYet: (n: number) =>
-    n === 1 ? '1 cost is not priced yet.' : `${n} costs are not priced yet.`,
+  notPricedYet: (n: number) => (n === 1 ? '1 cost not priced yet.' : `${n} costs not priced yet.`),
   perHeadSettled: 'Per head, settled',
   perHeadIfAll: 'Per head, if all come',
   coming: (n: number) => `${n} coming`,
@@ -87,5 +86,7 @@ export const SHARE_WORDS = {
     `Too many wrong passphrases have been tried on this link. Try again at ${time}.`,
   goneTitle: 'This link does not open anything',
   goneLine: 'It may have been revoked or have ended. Ask the person who sent it for a new one.',
+  endedTitle: 'This link has ended.',
+  endedLine: (name: string) => `Ask ${name} for a new one.`,
   allStates: 'All states in the demo',
 } as const;

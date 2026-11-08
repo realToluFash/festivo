@@ -173,7 +173,8 @@ export function madeProblems(draft: MadeDraft, quote: Quote | undefined): MadePr
   else if (lengthOf(draft.what) > QUOTE_LIMITS.what)
     problems.what = PW.descriptionTooLong(QUOTE_LIMITS.what);
   if (parsedAmount(draft.amount) == null) problems.amount = QW.amountPaidProblem(exampleAmount());
-  if (quote != null && draft.paidOn < firstQuoteOn(quote))
+  if (draft.paidOn === '') problems.paidOn = QW.datePaidBlank;
+  else if (quote != null && draft.paidOn < firstQuoteOn(quote))
     problems.paidOn = PW.beforeFirstQuote(shortDay(firstQuoteOn(quote)));
   if (lengthOf(draft.reference) > QUOTE_LIMITS.reference)
     problems.reference = PW.referenceTooLong(QUOTE_LIMITS.reference);

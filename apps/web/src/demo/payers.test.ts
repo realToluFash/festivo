@@ -22,6 +22,7 @@ import {
   flaggedLines,
   hasPayer,
   nameProblem,
+  percentProblem,
   nextNoPayer,
   noPayer,
   paidOf,
@@ -351,5 +352,15 @@ describe('the demo’s states (budget-a-spec.md §9)', () => {
     expect(startOf('send_failed').book.payers[0]?.link).toBe('notSent');
     expect(startOf('no_costs').book.lines).toHaveLength(0);
     expect(startOf('no_payers').book.payers).toHaveLength(0);
+  });
+
+  it('refuses a blank or long payer name and a percentage outside 0 to 100, in the settled words', () => {
+    expect(nameProblem('  ', [])).toBe('Enter a name.');
+    expect(nameProblem('a'.repeat(61), [])).toBe('Use 60 characters or fewer.');
+    expect(nameProblem('a'.repeat(60), [])).toBeNull();
+    expect(percentProblem('-5')).toBe('Use a number from 0 to 100.');
+    expect(percentProblem('100.01')).toBe('Use a number from 0 to 100.');
+    expect(percentProblem('100')).toBeNull();
+    expect(percentProblem('')).toBeNull();
   });
 });

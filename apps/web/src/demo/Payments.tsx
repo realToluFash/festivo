@@ -224,7 +224,7 @@ export function MadeDialog({
           max={TODAY}
           error={problems.paidOn ?? null}
           onChange={(paidOn) => {
-            if (paidOn !== '' && paidOn <= TODAY) set({ paidOn });
+            if (paidOn <= TODAY) set({ paidOn });
           }}
         />
         <TextField

@@ -58,6 +58,7 @@ export const RECIPIENT_STATES = [
   'passphrase',
   'wrong_passphrase',
   'too_many_attempts',
+  'ended',
   'gone',
 ] as const;
 export type RecipientState = (typeof RECIPIENT_STATES)[number];
@@ -505,11 +506,13 @@ export type Answer = 'open' | 'wrong' | 'locked';
 export type Visit =
   | { page: 'shown'; scope: Scope; marked: boolean }
   | { page: 'gate'; scope: Scope; wrong: number; answer: Answer | null; tried: string }
+  | { page: 'ended'; by: string }
   | { page: 'gone' };
 
 export function visitOf(path: string | undefined, state: string | null): Visit {
   const scope = isScope(state) ? state : isScope(path) ? path : null;
 
+  if (scope != null && state === 'ended') return { page: 'ended', by: READER };
   if (scope == null || state === 'gone') return { page: 'gone' };
   if (state === 'marked_up') return { page: 'shown', scope: 'whole', marked: true };
   if (state === 'passphrase') return { page: 'gate', scope, wrong: 0, answer: null, tried: '' };
@@ -550,7 +553,8 @@ const RECIPIENT: Record<RecipientState, { scope: Scope; name: string }> = {
   },
   wrong_passphrase: { scope: 'whole', name: 'A wrong passphrase' },
   too_many_attempts: { scope: 'whole', name: 'Too many wrong passphrases' },
-  gone: { scope: 'whole', name: 'Revoked, ended or never made: one answer' },
+  ended: { scope: 'whole', name: 'Revoked or ended: who to ask for a new one' },
+  gone: { scope: 'whole', name: 'Never made, or a removed payer’s: one answer' },
 };
 
 export function recipientAt(state: RecipientState): string {

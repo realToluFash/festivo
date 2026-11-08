@@ -170,7 +170,7 @@ describe('the page a link opens, signed out (sc-94, sc-1300)', () => {
       'Flowers',
       'Flowers will cost',
       '£850',
-      'Replies do not change this. 1 cost is not priced yet.',
+      'Replies do not change this. 1 cost not priced yet.',
     ]);
     expect(view.blocks[1]?.rows.map((row) => [row.title, row.line, row.value])).toEqual([
       ['Paid', null, '£360.00'],

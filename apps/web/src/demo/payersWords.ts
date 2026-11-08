@@ -58,6 +58,9 @@ export const PAYERS_WORDS = {
   note: 'Note · Optional',
   noteHelp: 'For example, Covering the cars. At most 200 characters.',
   sameName: (name: string) => `Another payer on this event is already called ${name}.`,
+  nameBlank: 'Enter a name.',
+  nameLong: 'Use 60 characters or fewer.',
+  percentRange: 'Use a number from 0 to 100.',
   cap: 'An event can have up to 20 payers.',
   coversCosts: (name: string, n: number) =>
     `${name} covers ${many(n, 'cost', 'costs')}. Choose who pays for them first.`,

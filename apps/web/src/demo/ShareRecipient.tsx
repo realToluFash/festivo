@@ -80,7 +80,12 @@ function Recipient({ path, state }: { path: string | undefined; state: string | 
           />
         </header>
         <main id="content" lang="en" className={two ? 'gp-main is-two' : 'gp-main is-one'}>
-          {visit.page === 'gone' ? (
+          {visit.page === 'ended' ? (
+            <div className="gp-alone-wrap">
+              <h1 className="sh-gone-title">{W.endedTitle}</h1>
+              <p className="sh-gone-line">{W.endedLine(visit.by)}</p>
+            </div>
+          ) : visit.page === 'gone' ? (
             <div className="gp-alone-wrap">
               <h1 className="sh-gone-title">{W.goneTitle}</h1>
               <p className="sh-gone-line">{W.goneLine}</p>

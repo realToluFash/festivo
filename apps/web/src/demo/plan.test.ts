@@ -37,7 +37,7 @@ describe('Against plan (sc-89, Budget-A-Plan)', () => {
     expect(said()).toEqual([
       ['Catering', 'Savour Kitchen · committed £9,000.00 · paid £0.00 · still to pay £7,500.00'],
       ['Venue', 'The Landmark · committed £6,300.00 · paid £3,150.00 · still to pay £3,150.00'],
-      ['Flowers', 'Bloom & Co · committed £1,200.00 · £350.00 over, 41.2%'],
+      ['Flowers', 'Bloom & Co · committed £1,200.00 · £350.00 over, 41.2% · 1 cost not priced yet'],
       ['Photography', 'Lens & Light · committed £2,400.00 · paid £800.00 · matches'],
       ['Music', 'No quote'],
       ['Transport', 'No quote · 1 cost not priced yet'],

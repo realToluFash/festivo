@@ -353,4 +353,12 @@ describe('Who is paying at a desk (sc-91, sc-1300)', () => {
       ).toBe('/demo/events/evt-wed-4?area=budget');
     },
   );
+
+  it('refuses Add a payer with no name, at the field, sending nothing', SLOW, async () => {
+    await open('add_payer');
+    const dialog = screen.getByRole('dialog', { name: 'Add a payer' });
+    fireEvent.change(within(dialog).getByLabelText('Name'), { target: { value: '' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Add' }));
+    expect(within(dialog).getByText('Enter a name.')).toBeDefined();
+  });
 });

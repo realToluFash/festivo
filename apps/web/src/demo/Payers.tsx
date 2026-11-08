@@ -41,7 +41,6 @@ import {
   type ChooseStart,
   type FormStart,
   type Mode,
-  NAME_MAX,
   NOTE_MAX,
   type Notice,
   PERCENT_TYPED,
@@ -570,7 +569,6 @@ function PayerDialog({
     <BudgetDialog
       title={form.id == null ? W.addTitle : W.editTitle}
       verb={form.id == null ? W.add : W.save}
-      on={form.name.trim() !== ''}
       first={name}
       onDismiss={onDismiss}
       onConfirm={() => onConfirm(name)}
@@ -582,7 +580,7 @@ function PayerDialog({
           inputRef={name}
           error={form.error}
           autoComplete="off"
-          onChange={(value) => onChange({ ...form, name: value.slice(0, NAME_MAX), error: null })}
+          onChange={(value) => onChange({ ...form, name: value, error: null })}
         />
         <Field
           label={W.note}
@@ -642,7 +640,7 @@ function ChooseWhoPays({
   const fixed = checkFixed(book, ticked[0] ?? '', amounts, rest);
   const note = replacesNote(book, ticked);
   const off = ticked.length === 0;
-  const percentWrong = checked && percent.error != null;
+  const percentWrong = checked && percent.error != null && Object.keys(percent.fields).length === 0;
 
   function save(): void {
     if (off) return;
@@ -740,6 +738,7 @@ function ChooseWhoPays({
                             : moneyRange(...part)
                         }
                         errorId={percentWrong ? totalError : null}
+                        error={checked ? (percent.fields[one.id] ?? null) : null}
                         onChange={(value) => {
                           if (PERCENT_TYPED.test(value))
                             setPercents((now) => ({ ...now, [one.id]: value }));
@@ -855,30 +854,34 @@ function PercentField({
   value,
   help,
   errorId,
+  error = null,
   onChange,
 }: {
   label: string;
   value: string;
   help: string | null;
   errorId: string | null;
+  error?: string | null;
   onChange: (value: string) => void;
 }) {
   const id = useId();
-  const told = [help == null ? null : `${id}-help`, errorId].filter(Boolean).join(' ');
+  const told = [help == null ? null : `${id}-help`, errorId, error == null ? null : `${id}-error`]
+    .filter(Boolean)
+    .join(' ');
 
   return (
     <div className="desk-field">
       <label htmlFor={id} className="desk-label">
         {label}
       </label>
-      <div className="desk-box">
+      <div className={error == null ? 'desk-box' : 'desk-box is-wrong'}>
         <input
           id={id}
           type="text"
           inputMode="decimal"
           value={value}
           spellCheck={false}
-          aria-invalid={errorId != null}
+          aria-invalid={errorId != null || error != null}
           aria-describedby={told === '' ? undefined : told}
           onChange={(event) => onChange(event.target.value)}
         />
@@ -886,6 +889,12 @@ function PercentField({
       {help != null && (
         <p id={`${id}-help`} className="desk-help py-figure">
           {help}
+        </p>
+      )}
+      {error != null && (
+        <p id={`${id}-error`} className="desk-error">
+          <Glyph name="alert" size={15} weight={2.2} />
+          {error}
         </p>
       )}
     </div>
