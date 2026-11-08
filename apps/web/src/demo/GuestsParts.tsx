@@ -5,12 +5,15 @@ import { Link } from 'react-router';
 import type { Mesh } from '../mesh.ts';
 import { Glyph, type GlyphName } from '../components/Glyph.tsx';
 import {
+  GUEST_LANGUAGES,
+  type GuestLanguage,
   type GuestsCard,
   type NumbersState,
   type Reply,
   type Values,
   countsOf,
   guestsAt,
+  languageName,
   sampleGuests,
 } from './guests.ts';
 import { GW, REPLY_WORDS, figure } from './guestsWords.ts';
@@ -368,6 +371,63 @@ export function PhoneField({
           {help}
         </p>
       )}
+    </div>
+  );
+}
+
+/** The guest's own choice, under the host's Language: the info mark and the words, never colour alone (sc-3790). */
+export function ChoseNote({ chose, id }: { chose: GuestLanguage; id?: string }) {
+  return (
+    <p id={id} className="gs-chose">
+      <Glyph name="info" size={16} weight={2.2} />
+      <span>{GW.theyChose(languageName(chose) ?? '')}</span>
+    </p>
+  );
+}
+
+/** sc-3790: Language after the contact fields, optional, Not set first, each language in its own name and lang. */
+export function LanguageField({
+  value,
+  chose,
+  onChange,
+}: {
+  value: GuestLanguage | null;
+  chose: GuestLanguage | null;
+  onChange: (language: GuestLanguage | null) => void;
+}) {
+  const id = useId();
+  const told = [chose == null ? null : `${id}-chose`, `${id}-help`].filter(Boolean).join(' ');
+
+  return (
+    <div className="desk-field">
+      <label htmlFor={id} className="desk-label gs-label">
+        {GW.language}
+        <span className="gs-optional">{GW.optional}</span>
+      </label>
+      <div className="desk-box gs-select">
+        <span aria-hidden="true">{languageName(value) ?? GW.notSet}</span>
+        <Glyph name="chevdown" size={15} weight={2.4} />
+        <select
+          id={id}
+          value={value ?? ''}
+          data-focus="language"
+          aria-describedby={told}
+          onChange={(event) =>
+            onChange(GUEST_LANGUAGES.find((one) => one.code === event.target.value)?.code ?? null)
+          }
+        >
+          <option value="">{GW.notSet}</option>
+          {GUEST_LANGUAGES.map((one) => (
+            <option key={one.code} value={one.code} lang={one.code}>
+              {one.name}
+            </option>
+          ))}
+        </select>
+      </div>
+      {chose != null && <ChoseNote chose={chose} id={`${id}-chose`} />}
+      <p id={`${id}-help`} className="desk-help">
+        {GW.languageHint}
+      </p>
     </div>
   );
 }
