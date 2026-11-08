@@ -529,7 +529,6 @@ function paidBy(payment: Payment): Payment {
 
 let kept: Budget | null = null;
 
-/** What the budget is after this visit's changes, so a page reached by a link opens on it, as the Events demo keeps its sample. */
 export function keepBudget(budget: Budget): void {
   kept = budget;
 }
