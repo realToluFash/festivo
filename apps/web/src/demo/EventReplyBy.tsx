@@ -1,7 +1,7 @@
 import { formatWallDay } from '@soirely/domain';
 import { useEffect, useId, useRef, useState } from 'react';
 
-import { type EditState, type SampleEvent, EVENT_WORDS as W } from './events.ts';
+import { type EditState, type SampleEvent, EVENT_WORDS as W, localDay } from './events.ts';
 import { Opened } from './EventEdits.tsx';
 import { dayOf, wordsFor } from './guest.ts';
 import {
@@ -10,6 +10,7 @@ import {
   haventRepliedOf,
   replyByCheck,
   showsPreview,
+  haventCountOf,
 } from './replyBy.ts';
 import { Glyph } from '../components/Glyph.tsx';
 import { Ask, TextAction } from '../components/SettingsParts.tsx';
@@ -69,6 +70,7 @@ export function ReplyByPart({
     startsAt: event.startsAt,
     now,
     timeZone: event.timeZone,
+    noReply: haventCountOf(event.id),
   });
   const wrong = tried && check === 'tooLate';
   const changed = next !== replyBy;
@@ -132,7 +134,7 @@ export function ReplyByPart({
           />
         )}
       </div>
-      {next != null && showsPreview(next, check) && (
+      {next != null && showsPreview(next, check, localDay(now.toISOString(), event.timeZone)) && (
         <p className="ev-reply-preview">{R.preview(GUEST_WORDS.replyBy(dayOf(next, 'en')))}</p>
       )}
       {asking != null && next != null && (

@@ -6,6 +6,7 @@ import {
   REPLY_BY_WORDS as R,
   datesAsk,
   datesSaveSays,
+  haventCountOf,
   replyBySays,
   haventRepliedOf,
   replyByAfterStart,
@@ -76,14 +77,43 @@ describe('the date to reply by (sc-3780)', () => {
     ['2026-11-04', '2026-11-03', 'save'],
     [null, '2026-11-04', 'save'],
   ] as const)('%s over %s is %s', (next, was, verdict) => {
-    expect(replyByCheck({ next, was, startsAt: STARTS, now: NOW, timeZone: ZONE })).toBe(verdict);
+    expect(
+      replyByCheck({ next, was, startsAt: STARTS, now: NOW, timeZone: ZONE, noReply: 25 }),
+    ).toBe(verdict);
   });
 
   it('has Dates ask before moving Reply by sooner, while anyone hasn’t replied (pm, 8 Nov)', () => {
-    expect(datesAsk('2026-11-03', 'evt-wed-4', NOW, ZONE)).toBe('sooner');
-    expect(datesAsk('2026-11-02', 'evt-wed-4', NOW, ZONE)).toBe('now');
-    expect(datesAsk(null, 'evt-wed-4', NOW, ZONE)).toBeNull();
-    expect(datesAsk('2026-11-03', 'evt-draft-4', NOW, ZONE)).toBeNull();
+    const wedding = {
+      was: '2026-11-04',
+      now: NOW,
+      timeZone: ZONE,
+      noReply: haventCountOf('evt-wed-4'),
+    };
+
+    expect(wedding.noReply).toBe(25);
+    expect(datesAsk({ ...wedding, moved: '2026-11-03', startsAt: '2026-11-04T18:00:00Z' })).toBe(
+      'sooner',
+    );
+    expect(datesAsk({ ...wedding, moved: '2026-11-02', startsAt: '2026-11-03T18:00:00Z' })).toBe(
+      'now',
+    );
+    expect(datesAsk({ ...wedding, moved: null, startsAt: STARTS })).toBeNull();
+  });
+
+  it('saves with no question when nobody is left to reply, from either part (lead, #1558)', () => {
+    const gala = {
+      was: '2026-11-04',
+      now: NOW,
+      timeZone: ZONE,
+      noReply: haventCountOf('evt-gala-4'),
+    };
+
+    expect(gala.noReply).toBe(0);
+    expect(replyByCheck({ ...gala, next: '2026-11-02', startsAt: STARTS })).toBe('save');
+    expect(replyByCheck({ ...gala, next: '2026-11-03', startsAt: STARTS })).toBe('save');
+    expect(replyByCheck({ ...gala, next: '2026-11-05', startsAt: STARTS })).toBe('tooLate');
+    expect(datesAsk({ ...gala, moved: '2026-11-02', startsAt: '2026-11-03T18:00:00Z' })).toBeNull();
+    expect(datesAsk({ ...gala, moved: '2026-11-03', startsAt: '2026-11-04T18:00:00Z' })).toBeNull();
   });
 
   it('answers a Dates save with Tell guests when it opens, the move inside it, else with the toast (ux, 8 Nov)', () => {
@@ -109,11 +139,14 @@ describe('the date to reply by (sc-3780)', () => {
   });
 
   it('shows the guests’ sentence only for a date they can still answer by', () => {
-    expect(showsPreview('2026-11-04', 'save')).toBe(true);
-    expect(showsPreview('2026-11-03', 'sooner')).toBe(true);
-    expect(showsPreview('2026-11-02', 'now')).toBe(false);
-    expect(showsPreview('2026-11-05', 'tooLate')).toBe(false);
-    expect(showsPreview(null, 'save')).toBe(false);
+    const today = '2026-11-03';
+
+    expect(showsPreview('2026-11-04', 'save', today)).toBe(true);
+    expect(showsPreview('2026-11-03', 'sooner', today)).toBe(true);
+    expect(showsPreview('2026-11-02', 'now', today)).toBe(false);
+    expect(showsPreview('2026-11-02', 'save', today)).toBe(false);
+    expect(showsPreview('2026-11-05', 'tooLate', today)).toBe(false);
+    expect(showsPreview(null, 'save', today)).toBe(false);
   });
 
   it('writes the dates and the words as the boards do', () => {
