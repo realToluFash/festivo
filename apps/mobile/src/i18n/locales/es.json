@@ -227,6 +227,7 @@
     "sentAgain": "Se lo hemos enviado de nuevo. Use el correo más reciente.",
     "openMail": "Abrir el correo",
     "sendAgain": "Enviarlo de nuevo",
+    "sendAgainIn": "Send it again in {{time}}",
     "limitedLine": "Demasiadas solicitudes. Inténtelo de nuevo a las {{time}}. Cualquier enlace ya enviado sigue funcionando.",
     "failedTitle": "Eso no ha funcionado",
     "failedBody": "Algo ha fallado por el camino. Inténtelo de nuevo en un momento.",
