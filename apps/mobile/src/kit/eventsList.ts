@@ -1,4 +1,4 @@
-import type { EventCover } from '@soirely/api-client';
+import type { EventCover, ListedEvent } from '@soirely/api-client';
 import {
   type EventPhase,
   type EventState,
@@ -55,6 +55,15 @@ export interface Shown extends ListEvent {
 
 export function shownEvent(event: ListEvent, phase: EventPhase): Shown {
   return { ...event, phase, calledOff: calledOff(event), mesh: meshFor(event.id) };
+}
+
+/** A loaded event as Events draws it: its venue's name or address for the place, and its photo once it has one. */
+export function listEventOf(event: ListedEvent): ListEvent {
+  return {
+    ...event,
+    place: event.venue?.name ?? event.venue?.address?.formatted ?? null,
+    photo: event.cover == null ? null : { cover: event.cover, type: event.type },
+  };
 }
 
 export function daysWords(

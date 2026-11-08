@@ -21,8 +21,9 @@ import { afterFailedLoad } from '../offlineLoad.ts';
 import { useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
 import { AppFrame } from './AppFrame.tsx';
-import { EventsFailed, NoEvents } from './Events.tsx';
+import { EventsFailed } from './Events.tsx';
 import { EventsHome, EventsSummary, type HomeLoad } from './EventsHome.tsx';
+import { EventsFirstRun } from './EventsList.tsx';
 import { type ListAndPageSpacing, ListAndPage, useListAndPageLayout } from './ListAndPage.tsx';
 import { Notice } from './Notice.tsx';
 import { ReadOut } from './ReadOut.tsx';
@@ -46,6 +47,7 @@ export function EventsScreen() {
   const organisationId = organisation?.id;
   const reads = organisation != null && roleHolds(organisation, 'events.read');
   const creates = organisation != null && roleHolds(organisation, 'events.create');
+  const manages = organisation != null && roleHolds(organisation, 'events.manage');
   const [deleted, setDeleted] = useState<string | null>(null);
 
   const [held, setHeld] = useState<{ in: string | undefined; load: Load }>({
@@ -198,7 +200,7 @@ export function EventsScreen() {
         </AnswerInView>
       )}
       {hasNoEvents(load) ? (
-        <NoEvents kind={kind} onCreate={creates ? newEvent : undefined} />
+        <EventsFirstRun wide={kind !== 'phone'} onCreate={creates ? newEvent : undefined} />
       ) : (
         <EventsHome
           kind={kind}
@@ -209,6 +211,19 @@ export function EventsScreen() {
             setTab({ in: organisationId, tab: next });
           }}
           onOpen={openEvent}
+          onStep={(event, step) => {
+            const id = encodeURIComponent(event.id);
+
+            if (step.action === 'changeDates' && manages) {
+              setDeleted(null);
+              router.push(`/events/${id}/edit?at=starts`);
+            } else if (step.action === 'duplicate' && creates) {
+              setDeleted(null);
+              router.push(`/events/${id}/duplicate`);
+            } else {
+              openEvent(event.id, event.phase === 'happening_now');
+            }
+          }}
           more={more}
           shown={moreShown}
           onShowMore={showMore}
@@ -266,9 +281,9 @@ export function EventsScreen() {
 const styles = StyleSheet.create({
   stack: { gap: tokens.spaceMd },
   phone: {
-    gap: tokens.spaceLg,
+    gap: 18,
     paddingTop: tokens.spaceXl,
-    paddingHorizontal: tokens.spaceXl,
+    paddingHorizontal: tokens.spaceXxl,
     paddingBottom: tokens.space3xl,
   },
   portrait: {
