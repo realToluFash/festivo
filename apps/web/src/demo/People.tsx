@@ -6,13 +6,22 @@ import { Brand } from '../components/Brand.tsx';
 import { Toast } from '../components/Toast.tsx';
 import { Glyph, type GlyphName } from '../components/Glyph.tsx';
 import { LayersContext, useDeskLayers } from '../layers.ts';
-import { SAMPLE } from './rules.ts';
+import { DoorArea, PrintPreview } from './DoorCode.tsx';
+import {
+  BAR,
+  BUSY_MS,
+  type DoorStart,
+  doorPeopleStart,
+  doorStartOf,
+  HOLD_MS,
+  W as DOOR_WORDS,
+} from './doorCode.ts';
 import {
   ADD_PROMPT,
   addedToast,
   EMPTY_LINE,
   EMPTY_TITLE,
-  EVENT,
+  type EventPlace,
   FAILED_LINE,
   FAILED_TITLE,
   LIT_MS,
@@ -22,7 +31,7 @@ import {
   ON_EVENT,
   type OnEvent,
   opens,
-  OUTSIDE_TAG,
+  outsideTag,
   type PeopleStart,
   type PeopleViewer,
   peopleStart,
@@ -30,7 +39,6 @@ import {
   READ_ONLY,
   removedToast,
   rowLine,
-  sampleMembers,
   seesEveryEvent,
   withAdded,
   without,
@@ -60,26 +68,43 @@ const AREAS: readonly (readonly [string, GlyphName])[] = [
   ['Reports', 'reports'],
 ];
 
-/** People on an event at a desk (Web-People.dc.html, page 28): one list, the role in a dialog, on sample data. */
+/** People on an event at a desk (Web-People.dc.html, page 28): one list, the role in a dialog, on sample data; the door code's states add its card (Access-A-Web, page e28). */
 export function People() {
   const [params] = useSearchParams();
+  const door = doorStartOf({
+    state: params.get('state'),
+    code: params.get('code'),
+    hold: params.get('show') ?? params.get('hold'),
+    print: params.get('print'),
+  });
+
+  if (door?.print === true) return <PrintPreview code={BAR} />;
+  if (door != null) {
+    return <PeopleScreen key={params.toString()} start={doorPeopleStart(door)} door={door} />;
+  }
   const name = peopleStateOf(params.get('state'));
 
-  return <PeopleScreen key={name} start={peopleStart(name)} />;
+  return <PeopleScreen key={name} start={peopleStart(name)} door={null} />;
 }
 
 type Opened = { id: string; visit: number } | null;
 
-function PeopleScreen({ start }: { start: PeopleStart }) {
+function PeopleScreen({ start, door }: { start: PeopleStart; door: DoorStart | null }) {
   const { layers, covered, setHost } = useDeskLayers();
-  const [told, setTold] = useState<string | null>(null);
+  const [told, setTold] = useState<string | null>(door?.toast ?? null);
   const tell = useCallback<Tell>((words) => setTold(words), []);
   const [load, setLoad] = useState<PeopleStart['load'] | 'retrying'>(start.load);
-  const [members] = useState(sampleMembers);
+  const [members] = useState(start.members);
   const [onEvent, setOnEvent] = useState(start.onEvent);
-  const [opened, setOpened] = useState<Opened>(null);
+  const [opened, setOpened] = useState<Opened>(
+    door?.person == null ? null : { id: door.person, visit: 0 },
+  );
   const [adding, setAdding] = useState(false);
-  const [lit, setLit] = useState<{ id: string; held: boolean } | null>(null);
+  const [lit, setLit] = useState<{ id: string; held: boolean } | null>(
+    door?.person == null ? null : { id: door.person, held: true },
+  );
+  const joined = useCallback((one: OnEvent) => setOnEvent((was) => [...was, one]), []);
+  const place = start.place;
   const [refocus, setRefocus] = useState(0);
   const addBox = useRef<HTMLButtonElement>(null);
   const viewer = start.viewer;
@@ -150,6 +175,7 @@ function PeopleScreen({ start }: { start: PeopleStart }) {
             {ADD_PROMPT}
           </button>
         )}
+        {canChange && door != null && <DoorArea start={door} onJoin={joined} tell={tell} />}
         {shown.length === 0 ? (
           <div className="people-nobody">
             <p className="desk-empty-title">{EMPTY_TITLE}</p>
@@ -166,6 +192,7 @@ function PeopleScreen({ start }: { start: PeopleStart }) {
                   <PersonRow
                     person={one}
                     viewer={viewer}
+                    organisation={place.organisation}
                     lit={lit?.id === one.id}
                     onOpen={opens(one, viewer, onEvent) ? () => openRole(one) : null}
                   />
@@ -176,7 +203,7 @@ function PeopleScreen({ start }: { start: PeopleStart }) {
         )}
         <div className="people-foot">
           {!canChange && <p className="desk-foot">{READ_ONLY}</p>}
-          <p className="desk-foot">{seesEveryEvent(members)}</p>
+          <p className="desk-foot">{seesEveryEvent(members, place.organisation)}</p>
         </div>
       </>
     );
@@ -184,7 +211,7 @@ function PeopleScreen({ start }: { start: PeopleStart }) {
   return (
     <LayersContext value={layers}>
       <div className="today desk">
-        <EventSidebar viewer={viewer} tell={tell} inert={covered} />
+        <EventSidebar viewer={viewer} place={place} tell={tell} inert={covered} />
         <main id="content" className="desk-main" inert={covered}>
           <div className="desk-page">
             <div className="desk-column">
@@ -193,7 +220,7 @@ function PeopleScreen({ start }: { start: PeopleStart }) {
                   <h1 className="desk-title" tabIndex={-1}>
                     People
                   </h1>
-                  <p className="desk-line">{EVENT}</p>
+                  <p className="desk-line">{place.event}</p>
                 </div>
                 <DemoBell tell={tell} />
               </header>
@@ -207,6 +234,17 @@ function PeopleScreen({ start }: { start: PeopleStart }) {
             key={opened.visit}
             person={person}
             roleFails={start.roleFails}
+            organisation={place.organisation}
+            removing={
+              door == null
+                ? undefined
+                : {
+                    words: DOOR_WORDS.removing,
+                    ms: BUSY_MS,
+                    start: opened.visit === 0 ? door.remove : null,
+                    heldMs: HOLD_MS,
+                  }
+            }
             onSaved={(role) => setOnEvent((was) => withRole(was, person.id, role))}
             onLost={setTold}
             onClose={closeRole}
@@ -224,6 +262,7 @@ function PeopleScreen({ start }: { start: PeopleStart }) {
             members={members}
             onEvent={onEvent}
             viewer={viewer}
+            organisation={place.organisation}
             onClose={() => setAdding(false)}
             onAdd={(role, added) => {
               setOnEvent((was) => withAdded(was, role, added));
@@ -247,11 +286,13 @@ function PeopleScreen({ start }: { start: PeopleStart }) {
 function PersonRow({
   person,
   viewer,
+  organisation,
   lit,
   onOpen,
 }: {
   person: OnEvent;
   viewer: PeopleViewer;
+  organisation: string;
   lit: boolean;
   onOpen: (() => void) | null;
 }) {
@@ -261,7 +302,7 @@ function PersonRow({
       <Avatar initials={person.initials} tone={person.tone} />
       <RowWords
         title={person.name}
-        tag={person.outside && <Tag kind="now" word={OUTSIDE_TAG} />}
+        tag={person.outside && <Tag kind="now" word={outsideTag(organisation)} />}
         lines={[line]}
       />
     </>
@@ -305,28 +346,30 @@ function Loading() {
 /** The event's sidebar at a desk (EventView-B): ‹ Events, the event, its areas with People selected, and who is looking. */
 function EventSidebar({
   viewer,
+  place,
   tell,
   inert,
 }: {
   viewer: PeopleViewer;
+  place: EventPlace;
   tell: Tell;
   inert: boolean;
 }) {
   return (
-    <nav className="today-side people-side" aria-label="Adaeze & Tunde’s wedding" inert={inert}>
+    <nav className="today-side people-side" aria-label={place.event} inert={inert}>
       <div className="today-logo">
         <Brand lockup />
       </div>
       <button
         type="button"
         className="today-org"
-        aria-label={`${SAMPLE.organisation}. Switch organisation`}
+        aria-label={`${place.organisation}. Switch organisation`}
         onClick={() => tell('Switching organisation has its own design.')}
       >
         <span className="today-org-tile" aria-hidden="true">
-          IE
+          {place.initials}
         </span>
-        <span className="today-grow">{SAMPLE.organisation}</span>
+        <span className="today-grow">{place.organisation}</span>
         <Glyph name="updown" size={15} />
       </button>
       <button
@@ -347,8 +390,8 @@ function EventSidebar({
         <div className="people-event-card">
           <span className="today-cover is-wed people-event-cover" aria-hidden="true" />
           <span className="today-grow">
-            <span className="people-event-name">{EVENT}</span>
-            <span className="people-event-when">Live · in 3 days</span>
+            <span className="people-event-name">{place.event}</span>
+            <span className="people-event-when">{place.when}</span>
           </span>
         </div>
       </div>

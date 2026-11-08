@@ -16,6 +16,8 @@ import { BoardPage, OrLine, Providers } from './BoardPage.tsx';
 import { Calendar } from './Calendar.tsx';
 import { CALENDAR_PAGES } from './calendar.ts';
 import { CREATE_PAGES } from './createOrg.ts';
+import { DOOR_PAGES } from './doorCode.ts';
+import { NO_ORG_PAGE } from './noOrg.ts';
 import { EventPage } from './EventPage.tsx';
 import { Events } from './Events.tsx';
 import { EVENTS_PAGES } from './events.ts';
@@ -37,6 +39,8 @@ import { SECURITY_PAGES } from './security.ts';
 import { Notice } from './parts.tsx';
 import { People } from './People.tsx';
 import { PEOPLE_PAGES } from './people.ts';
+import { Redeem } from './Redeem.tsx';
+import { REDEEM_PAGES } from './redeem.ts';
 import { Settings } from './Settings.tsx';
 import { SETTINGS_PAGES } from './settings.ts';
 import { SIGN_IN_RULES_PAGES } from './signInRules.ts';
@@ -163,6 +167,7 @@ export default function Demo() {
       <Route path="settings/sign-in-rules" element={<Settings open="signInRules" />} />
       <Route path="settings/vendors" element={<Settings open="vendors" />} />
       <Route path="people" element={<People />} />
+      <Route path="redeem" element={<Redeem />} />
       <Route path="vendors" element={<VendorsMoved />} />
       <Route path="guest" element={<GuestPage />} />
       <Route path="guests" element={<Guests />} />
@@ -266,6 +271,10 @@ function DemoHome({ from }: { from: string }) {
         <BoardPages pages={SIGN_IN_RULES_PAGES} />
         <h3>People on an event · desktop</h3>
         <BoardPages pages={PEOPLE_PAGES} />
+        <h3>Working an event without joining in A · The door code · desktop</h3>
+        <BoardPages pages={[...DOOR_PAGES, NO_ORG_PAGE]} />
+        <h3>The door code’s redeem pages, signed out · phone, tablet and desk</h3>
+        <BoardPages pages={REDEEM_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-27">

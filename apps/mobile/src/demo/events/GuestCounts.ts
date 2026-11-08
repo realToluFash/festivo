@@ -26,6 +26,21 @@ export const SAMPLE_GUESTS: Readonly<Record<string, Guests>> = {
 
 const COUNTED = new Set(['live', 'happening_now', 'paused']);
 
+export function countsGuests(phase: string): boolean {
+  return COUNTED.has(phase);
+}
+
+/** An event's row on Events (sc-3786): the figures the tiles add up, or none for an event they leave out. */
+export function rowGuests(
+  event: SampleEvent,
+  guests: Readonly<Record<string, Guests>>,
+  now: Date,
+): { coming: number; notReplied: number } | null {
+  const one = guests[event.id];
+  if (one == null || !countsGuests(eventPhase(event, now))) return null;
+  return { coming: one.coming, notReplied: one.invited - one.replied };
+}
+
 /** sc-23284: over the organisation's Live, Happening now and Paused events; a finished or called-off one drops out. */
 export function guestCountsOf(
   events: readonly SampleEvent[],
@@ -33,7 +48,7 @@ export function guestCountsOf(
   now: Date,
 ): GuestCounts {
   const total = events
-    .filter((event) => COUNTED.has(eventPhase(event, now)))
+    .filter((event) => countsGuests(eventPhase(event, now)))
     .reduce(
       (sum, event) => {
         const one = guests[event.id];

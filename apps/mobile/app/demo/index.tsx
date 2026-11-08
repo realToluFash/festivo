@@ -8,6 +8,7 @@ import { BUDGET_BOARDS } from '../../src/demo/budget/BudgetBoards.ts';
 import { Heading } from '../../src/steps/Lines.tsx';
 import { SAMPLE } from '../../src/demo/samples.ts';
 import { DOOR_CODE_BOARDS } from '../../src/demo/doorCode/DoorCodeBoards.ts';
+import { GUESTS_BOARDS } from '../../src/demo/guests/GuestsBoards.ts';
 import { MESSAGES_BOARDS } from '../../src/demo/messages/MessagesBoards.ts';
 import { tokens } from '../../src/theme/tokens.ts';
 
@@ -1072,6 +1073,10 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
   {
     page: 'Messages · B Conversations',
     boards: MESSAGES_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
+    page: 'Guests · A Summary first',
+    boards: GUESTS_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
   },
   {
     page: 'Calendar · A Weeks as lanes',
