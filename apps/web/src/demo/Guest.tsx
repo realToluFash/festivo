@@ -40,6 +40,7 @@ import {
   Foot,
   Gone,
   LanguageMenu,
+  LanguageUnsaved,
   Line,
   Mark,
   Messages,
@@ -78,6 +79,7 @@ type Change = (was: Visit) => Partial<Visit>;
 function Visitor({ state }: { state: string | null }) {
   const [visit, setVisit] = useState(() => startOf(state));
   const [retrying, setRetrying] = useState(false);
+  const [saving, setSaving] = useState(false);
   const layout = useLayout();
   const words = useMemo(() => wordsFor(visit.lang), [visit.lang]);
   const later = useLater();
@@ -91,6 +93,15 @@ function Visitor({ state }: { state: string | null }) {
       ...(want == null ? {} : { want, wantId: was.wantId + 1 }),
     }));
   }, []);
+
+  useEffect(() => {
+    const was = document.documentElement.lang;
+    document.documentElement.lang = visit.lang;
+
+    return () => {
+      document.documentElement.lang = was;
+    };
+  }, [visit.lang]);
 
   useEffect(() => {
     if (visit.want == null) return;
@@ -207,6 +218,14 @@ function Visitor({ state }: { state: string | null }) {
     });
   }
 
+  function saveAgain(): void {
+    setSaving(true);
+    later(SEND_MS, () => {
+      setSaving(false);
+      go((was) => ({ unsaved: false, said: was.said + 1 }), 'lang');
+    });
+  }
+
   const closeMenu = useCallback(() => go(() => ({ menuOpen: false })), [go]);
   const two = twoColumns(layout);
 
@@ -239,9 +258,14 @@ function Visitor({ state }: { state: string | null }) {
             words={words}
             onOpen={() => go(() => ({ menuOpen: true }))}
             onClose={closeMenu}
-            onChoose={(lang) => go(() => ({ lang, menuOpen: false }), 'lang')}
+            onChoose={(lang) =>
+              go((was) => ({ lang, menuOpen: false, unsaved: false, said: was.said + 1 }), 'lang')
+            }
           />
         </header>
+        <p className="visually-hidden" aria-live="polite" aria-atomic="true">
+          {visit.said > 0 && <span key={visit.said}>{words.switched}</span>}
+        </p>
         <main id="content" className={two ? 'gp-main is-two' : 'gp-main is-one'}>
           <Body
             visit={visit}
@@ -250,6 +274,8 @@ function Visitor({ state }: { state: string | null }) {
             under={under}
             retrying={retrying}
             onRetry={retry}
+            saving={saving}
+            onSaveAgain={saveAgain}
             onTell={() =>
               go(
                 (was) => ({ view: { kind: 'tellUs', busy: false, result: null, back: was.view } }),
@@ -282,6 +308,8 @@ function Body({
   under,
   retrying,
   onRetry,
+  saving,
+  onSaveAgain,
   onTell,
 }: {
   visit: Visit;
@@ -290,6 +318,8 @@ function Body({
   under: ReactNode;
   retrying: boolean;
   onRetry: () => void;
+  saving: boolean;
+  onSaveAgain: () => void;
   onTell: () => void;
 }) {
   const [box, setBox] = useState<HTMLDivElement | null>(null);
@@ -349,6 +379,7 @@ function Body({
   return (
     <div ref={setBox} className="gp-columns">
       <PhaseNotice phase={visit.phase} words={words} />
+      {visit.unsaved && <LanguageUnsaved words={words} busy={saving} onRetry={onSaveAgain} />}
       <Cover visit={visit} words={words} ended={ended} />
       {under}
       {details && <Details visit={visit} words={words} hosts={hosts} />}
