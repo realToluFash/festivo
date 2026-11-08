@@ -155,6 +155,20 @@ export const W = {
   nobodyYet: 'Nobody is on the list yet',
   nobodyYetLine: 'Anyone who arrives can be added as a walk-in.',
   doorOpened: 'Check-in opened at 16:00.',
+  // the door code, scanned (sc-1301; [l10n] #5334, #5854)
+  scanCode: 'Scan a code',
+  pointAtCode: 'Point at the code',
+  scanNext: 'Scan the next code',
+  companionHeld: 'Held · until their host is coming',
+  nothingNew: 'Nothing new was recorded. You decide what happens next.',
+  notOnList: 'This code is not on this event’s guest list. Search by name instead.',
+  noListTitle: 'Connect once to scan codes',
+  noListBody:
+    'This device needs the guest list before it can check codes. It downloads as soon as the device is back online, and the scanner opens by itself.',
+  cameraOffTitle: 'Soirely can’t use the camera',
+  cameraOffBody:
+    'Allow the camera for Soirely in Settings to scan codes. Searching by name works without it.',
+  openSettings: 'Open Settings',
   // the numbers
   openGuestList: 'Open the guest list',
   numbersFailed: 'Guest numbers didn’t load.',
@@ -263,6 +277,12 @@ export const say = {
   arrivedName: (name: string) => `${name} arrived`,
   arrivedButton: (name: string) => `${name} arrived`,
   arrivedTime: (time: string) => `Arrived ${time}`,
+  offlineSince: (time: string, waiting: number) =>
+    waiting === 0
+      ? `Offline since ${time}`
+      : waiting === 1
+        ? `Offline since ${time} · 1 arrival waiting to sync`
+        : `Offline since ${time} · ${waiting} arrivals waiting to sync`,
   numbersLead: (says: string) => `${says}. Each number opens the guests it counts.`,
   notYetInvited: (count: number) => `${count} not yet invited`,
   opens: (word: string) => `opens ${word}`,

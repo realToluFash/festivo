@@ -131,7 +131,7 @@ function leave(): void {
   else router.replace('/demo/guests?state=onTheDay' as Href);
 }
 
-function ArrivedButton({
+export function ArrivedButton({
   name,
   big,
   onPress,
@@ -302,8 +302,8 @@ export function CheckInScreen({ state }: { state: DoorState | null }) {
           event={event}
           words={cardOf(phase, count, state === 'doorEmpty')}
           layout={layout}
-          onStep={() => undefined}
-          stepLabel={null}
+          onStep={() => router.push('/demo/guests/scan?state=scanning' as Href)}
+          stepLabel={open ? W.scanCode : null}
         />
       ) : null}
       <SearchField
