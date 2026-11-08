@@ -57,7 +57,7 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   es «A la espera de {{organisations}}». `stayOut` dice «No podrá iniciar sesión hasta que…»,
   nunca «su sesión sigue cerrada»: la persona aún no ha entrado. El botón es «Escribir al
   servicio de asistencia», sin «de Soirely», que no cabe en un botón de teléfono en una línea;
-  el título y la introducción de la pantalla ya nombran el servicio entero.
+  el título y la introducción de la pantalla ya nombran a Soirely.
 - **8 Nov 2026. La pantalla de enlace enviado en la app y su aviso** (sc-33809 para sc-29071,
   `mobile:recovery.*`). El botón es «Abrir el correo», no «Abrir Mail»: en Android abre la
   aplicación de correo que tenga la persona. `spam` termina en «envíelo de nuevo», como el botón
