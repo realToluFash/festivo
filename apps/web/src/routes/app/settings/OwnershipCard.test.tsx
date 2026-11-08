@@ -135,6 +135,23 @@ afterEach(() => {
 });
 
 describe('Settings > General, ownership and leaving', () => {
+  it('offers a held owner only Leave, as the server refuses the other two (sc-30191)', async () => {
+    signedIn(
+      membership({
+        id: 'org_1',
+        name: 'Ìrè Events',
+        permissions: ['events.read'],
+        withheldUntilTwoFactor: ['organisation.manage', 'members.manage'],
+      }),
+    );
+    answering({});
+    settings();
+
+    expect(await screen.findByRole('button', { name: 'Leave Ìrè Events…' })).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Transfer ownership' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Delete organisation…' })).toBeNull();
+  });
+
   it('asks who and the password before a transfer sends anything', async () => {
     signedIn();
     const sent = answering({ 'GET /api/orgs/org_1/members': () => json(MEMBERS) });
