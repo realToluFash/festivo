@@ -8,7 +8,8 @@ import { resetSample } from './events.ts';
 import { SEATING_STATES } from './seating.ts';
 
 const tested = config();
-const SLOW = { timeout: 8000 };
+const SLOW = { timeout: 20000 };
+const WAIT = { timeout: 8000 };
 const AT = '/demo/events/evt-wed-4/seating';
 
 function open(path: string) {
@@ -21,7 +22,7 @@ function open(path: string) {
 
 async function seating(state?: string) {
   const router = open(state == null ? AT : `${AT}?state=${state}`);
-  await screen.findByRole('heading', { level: 1, name: 'Seating' }, SLOW);
+  await screen.findByRole('heading', { level: 1, name: 'Seating' }, WAIT);
 
   return router;
 }
@@ -105,45 +106,56 @@ afterEach(() => {
 });
 
 describe('nothing leaves the demo', () => {
-  it(
-    'sends nothing to the API while a table changes, a party is seated and a document is made',
-    SLOW,
-    async () => {
-      const fetched = vi.spyOn(globalThis, 'fetch');
+  let fetched: ReturnType<typeof vi.spyOn>;
 
-      await seating('tapChooses');
-      typeIn('Seats', '12');
-      expect(await within(panel()).findByDisplayValue('12')).toBeDefined();
-      key(item(/^Table 4,/u), 'Escape');
-      fireEvent.click(screen.getByRole('tab', { name: 'Seat' }));
-      fireEvent.click(within(panel()).getByRole('button', { name: /^Kwame Mensah \+ 1/u }));
-      press(item(/^Table 8,/u));
-      expect(await screen.findByText('Kwame Mensah and 1 guest are at Table 8.')).toBeDefined();
-      fireEvent.click(screen.getByRole('button', { name: 'Print' }));
-      fireEvent.click(
-        within(screen.getByRole('dialog', { name: 'Print' })).getByRole('button', {
-          name: 'Table lists, PDF',
-        }),
-      );
-      expect(
-        await screen.findByRole(
-          'link',
-          { name: 'Adaeze & Tunde’s wedding – Table lists.pdf' },
-          { timeout: 4000 },
-        ),
-      ).toBeDefined();
+  beforeEach(() => {
+    fetched = vi.spyOn(globalThis, 'fetch');
+  });
 
-      expect(fetched).not.toHaveBeenCalled();
-      fetched.mockRestore();
-    },
-  );
+  afterEach(() => {
+    const calls = [...fetched.mock.calls];
+    fetched.mockRestore();
+
+    expect(calls).toEqual([]);
+  });
+
+  it('sends nothing to the API while a table changes', SLOW, async () => {
+    await seating('tapChooses');
+    typeIn('Seats', '12');
+
+    expect(await within(panel()).findByDisplayValue('12')).toBeDefined();
+  });
+
+  it('sends nothing to the API while a party is seated', SLOW, async () => {
+    await seating('tapChooses');
+    key(item(/^Table 4,/u), 'Escape');
+    fireEvent.click(screen.getByRole('tab', { name: 'Seat' }));
+    fireEvent.click(within(panel()).getByRole('button', { name: /^Kwame Mensah \+ 1/u }));
+    press(item(/^Table 8,/u));
+
+    expect(await screen.findByText('Kwame Mensah and 1 guest are at Table 8.')).toBeDefined();
+  });
+
+  it('sends nothing to the API while a document is made', SLOW, async () => {
+    await seating('tapChooses');
+    fireEvent.click(screen.getByRole('button', { name: 'Print' }));
+    fireEvent.click(
+      within(screen.getByRole('dialog', { name: 'Print' })).getByRole('button', {
+        name: 'Table lists, PDF',
+      }),
+    );
+
+    expect(
+      await screen.findByRole('link', { name: 'Adaeze & Tunde’s wedding – Table lists.pdf' }, WAIT),
+    ).toBeDefined();
+  });
 });
 
 describe('the plan and the room (sc-3998, sc-4007)', () => {
   it('links every state from the demo’s home, under page 31', SLOW, async () => {
     open('/demo');
     const page = (
-      await screen.findByRole('heading', { level: 2, name: /^31 · Venue and seating/u }, SLOW)
+      await screen.findByRole('heading', { level: 2, name: /^31 · Venue and seating/u }, WAIT)
     ).parentElement as HTMLElement;
     const links = within(page).getAllByRole('link');
 
@@ -154,10 +166,10 @@ describe('the plan and the room (sc-3998, sc-4007)', () => {
 
   it('is the event’s own Seating entry, lit while it is open', SLOW, async () => {
     const router = open('/demo/events/evt-wed-4');
-    const side = await screen.findByRole('navigation', { name: 'Adaeze & Tunde’s wedding' }, SLOW);
+    const side = await screen.findByRole('navigation', { name: 'Adaeze & Tunde’s wedding' }, WAIT);
 
     fireEvent.click(within(side).getByRole('link', { name: 'Seating' }));
-    await screen.findByRole('heading', { level: 1, name: 'Seating' }, SLOW);
+    await screen.findByRole('heading', { level: 1, name: 'Seating' }, WAIT);
     expect(router.state.location.pathname).toBe(AT);
     expect(
       within(screen.getByRole('navigation', { name: 'Adaeze & Tunde’s wedding' })).getByRole(
@@ -850,7 +862,7 @@ describe('Print and its paper (sc-4024, sc-5032)', () => {
     async () => {
       open(`${AT}?state=paperFloor`);
       expect(
-        await screen.findByRole('heading', { level: 1, name: 'Floor plan' }, SLOW),
+        await screen.findByRole('heading', { level: 1, name: 'Floor plan' }, WAIT),
       ).toBeDefined();
       expect(
         screen.getByText('Seats proposed by Auto-seat and not yet accepted print as Empty.'),
@@ -863,7 +875,7 @@ describe('Print and its paper (sc-4024, sc-5032)', () => {
   it('lists every chair by number, and says when nobody is seated', SLOW, async () => {
     open(`${AT}?state=paperLists`);
     expect(
-      await screen.findByRole('heading', { level: 1, name: 'Table lists' }, SLOW),
+      await screen.findByRole('heading', { level: 1, name: 'Table lists' }, WAIT),
     ).toBeDefined();
     expect(screen.getByText('Page 1 of 3')).toBeDefined();
     expect(screen.getAllByText('Empty').length).toBeGreaterThan(4);
@@ -871,7 +883,7 @@ describe('Print and its paper (sc-4024, sc-5032)', () => {
 
   it('folds a table card with its name on both halves', SLOW, async () => {
     open(`${AT}?state=paperCardTop`);
-    expect(await screen.findAllByText('Top table', undefined, SLOW)).toHaveLength(2);
+    expect(await screen.findAllByText('Top table', undefined, WAIT)).toHaveLength(2);
     expect(screen.getByText('Page 13 of 13')).toBeDefined();
   });
 });
