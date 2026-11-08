@@ -5,6 +5,7 @@ import { RouterProvider, createMemoryRouter } from 'react-router';
 import { __setSessionState, type Session } from '../../../session.ts';
 import { membership } from '../../../test-memberships.ts';
 import { routes } from '../../index.tsx';
+import { atPhoneWidth } from '../../../test-widths.ts';
 
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
 
@@ -64,7 +65,10 @@ function answering(answer: (body: unknown) => Response) {
   return sent;
 }
 
-beforeEach(() => signedIn());
+beforeEach(() => {
+  atPhoneWidth();
+  signedIn();
+});
 
 afterEach(() => {
   vi.restoreAllMocks();

@@ -8,18 +8,24 @@ import {
   keptBackBy,
   languageChoices,
   organisationChanges,
-  organisationProblem,
   roleName,
   timezoneLabel,
 } from '@soirely/domain';
 import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
-import { type TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
 import { api } from '../../../api.ts';
+import { usePhoneWidth } from '../../../phoneWidth.ts';
 import { CompanyDomainsCard } from './CompanyDomainsCard.tsx';
+import { GeneralDesk } from './GeneralDesk.tsx';
+import {
+  checkBeforeSending,
+  languageName,
+  languageNameInSentence,
+  rereadOrganisation,
+} from './organisationDetails.ts';
 import { OwnershipCard } from './OwnershipCard.tsx';
 import { RecoveryRequestsCard } from './RecoveryRequestsCard.tsx';
 import { RequestLinkCard } from './RequestLinkCard.tsx';
@@ -42,7 +48,12 @@ type Status =
 
 type Refusal = 'refused' | 'refusedByRule';
 
+/** At a desk, the desk page; in a phone's browser, sc-13348's page as it was (sc-30191). */
 export function General() {
+  return usePhoneWidth() ? <PhoneGeneral /> : <GeneralDesk />;
+}
+
+function PhoneGeneral() {
   const { t } = useTranslation();
   const session = useSession();
   const organisation = session.organisation;
@@ -390,25 +401,6 @@ function WhyReadOnly({ organisation }: { organisation: Membership }) {
   ));
 }
 
-/** In the reader's language alone, as a row names it. */
-function languageName(t: TFunction, code: string): string {
-  return t(`languageNames.${code}`, { defaultValue: code });
-}
-
-/** Mid-sentence, where es, fr and pt write a language's name in lowercase. */
-function languageNameInSentence(t: TFunction, code: string): string {
-  return t(`languageNamesInSentence.${code}`, { defaultValue: code });
-}
-
-/** The page's load, and the reread after a refusal: the session catches up so every other screen does too. */
-async function rereadOrganisation(
-  id: string,
-  watch: <T>(load: Promise<T>) => Promise<T> = (load) => load,
-): Promise<void> {
-  const fresh = (await watch(api.organisations())).find((membership) => membership.id === id);
-  if (fresh != null) replaceOrganisation(fresh);
-}
-
 function DefaultsNote() {
   const { t } = useTranslation();
 
@@ -539,15 +531,4 @@ function FieldError({ id, message }: { id: string; message: string }) {
 function focusFirst(errors: Errors, focus: (id: string) => void): void {
   const first = ORGANISATION_FIELDS.find((field) => errors[field] != null);
   if (first != null) focus(`organisation-${first}`);
-}
-
-function checkBeforeSending(values: Record<Field, string>, t: (key: string) => string): Errors {
-  const errors: Errors = {};
-
-  for (const field of ORGANISATION_FIELDS) {
-    const problem = organisationProblem(field, values[field]);
-    if (problem != null) errors[field] = t(`orgGeneral.${problem}`);
-  }
-
-  return errors;
 }
