@@ -257,6 +257,7 @@ export function EventScreen({
       now={now}
       locale={locale}
       wide={shell.layout !== 'phone'}
+      takes={() => true}
       onStep={onStep}
       testID="event.card"
     />

@@ -4,6 +4,7 @@ import {
   rememberedEventsTab,
   roleHolds,
   serverClock,
+  takesCardStep,
   withPastPage,
 } from '@soirely/domain';
 import { Redirect, router, useFocusEffect } from 'expo-router';
@@ -47,7 +48,6 @@ export function EventsScreen() {
   const organisationId = organisation?.id;
   const reads = organisation != null && roleHolds(organisation, 'events.read');
   const creates = organisation != null && roleHolds(organisation, 'events.create');
-  const manages = organisation != null && roleHolds(organisation, 'events.manage');
   const [deleted, setDeleted] = useState<string | null>(null);
 
   const [held, setHeld] = useState<{ in: string | undefined; load: Load }>({
@@ -211,7 +211,7 @@ export function EventsScreen() {
             setTab({ in: organisationId, tab: next });
           }}
           onOpen={openEvent}
-          takes={(action) => (action === 'duplicate' ? creates : manages)}
+          takes={(action) => organisation != null && takesCardStep(organisation, action)}
           onStep={(event, step) => {
             const id = encodeURIComponent(event.id);
 

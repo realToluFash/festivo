@@ -264,6 +264,7 @@ export function EventsList({
               locale={locale}
               wide={wide}
               onOpen={() => openEvent(card.id)}
+              takes={() => true}
               onStep={(step) => stepFrom(card, step, shell.tell)}
               testID="events.card"
             />

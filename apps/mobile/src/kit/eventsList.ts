@@ -1,5 +1,6 @@
 import type { EventCover, ListedEvent } from '@soirely/api-client';
 import {
+  type CardStepAction,
   type EventPhase,
   type EventState,
   type EventType,
@@ -209,7 +210,7 @@ export function cardTags(event: Shown, now: Date, t: TFunction): CardTag[] {
   }
 }
 
-export type StepAction = 'makeLive' | 'changeDates' | 'resume' | 'duplicate';
+export type StepAction = CardStepAction;
 
 export type CardStep =
   | { kind: 'button'; line: string; label: string; action: StepAction }

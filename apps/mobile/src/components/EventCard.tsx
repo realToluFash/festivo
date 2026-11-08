@@ -330,7 +330,7 @@ export function EventCard({
   wide,
   height = 200,
   onOpen,
-  takes = () => true,
+  takes,
   onStep,
   guests = null,
   testID,
@@ -346,7 +346,7 @@ export function EventCard({
   /** On the list the card opens the event, its name the link. */
   onOpen?: () => void;
   /** Whether the viewer's role can take the step: one it cannot keeps the step's line and loses the button. */
-  takes?: (action: StepAction) => boolean;
+  takes: (action: StepAction) => boolean;
   onStep: (step: Extract<CardStep, { kind: 'button' }>) => void;
   testID: string;
   openTestID?: string;
