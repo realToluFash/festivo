@@ -1263,6 +1263,15 @@ const passwordAutoFillIsOff = (udid) =>
       'false',
   );
 
+// An -insert fails on a key that already exists, which is the usual case, so its output is
+// dropped; a -replace that fails still prints.
+function applyPlistSteps(steps) {
+  for (const step of steps) {
+    if (step[0] === '-insert') capture('plutil', step);
+    else run('plutil', step, { optional: true });
+  }
+}
+
 function withoutPasswordAutoFill(udid) {
   if (passwordAutoFillIsOff(udid)) return;
   const files = deviceFiles(udid);
@@ -1270,7 +1279,7 @@ function withoutPasswordAutoFill(udid) {
   for (const file of files) {
     mkdirSync(dirname(file), { recursive: true });
     if (!existsSync(file)) run('plutil', ['-create', 'xml1', file]);
-    for (const step of passwordAutoFillOff(file)) run('plutil', step, { optional: true });
+    applyPlistSteps(passwordAutoFillOff(file));
   }
 }
 
@@ -1303,7 +1312,7 @@ function withSoftwareKeyboard(udids) {
   try {
     if (!run('defaults', ['export', SIMULATOR_PREFERENCES, file], { optional: true }))
       run('plutil', ['-create', 'xml1', file]);
-    for (const step of hardwareKeyboardOff(file, udids)) run('plutil', step, { optional: true });
+    applyPlistSteps(hardwareKeyboardOff(file, udids));
     run('defaults', ['import', SIMULATOR_PREFERENCES, file]);
   } finally {
     rmSync(dir, { recursive: true, force: true });

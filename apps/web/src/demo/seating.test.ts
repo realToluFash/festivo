@@ -11,6 +11,7 @@ import {
   SW,
   bounds,
   chairsOf,
+  deletePlanWords,
   extent,
   feet,
   filled,
@@ -25,6 +26,7 @@ import {
   percentOf,
   planCounts,
   readFeet,
+  readItemSize,
   readMetres,
   readRoom,
   readingOrder,
@@ -107,7 +109,7 @@ describe('the sample (seating-a-spec §8)', () => {
     expect(sectionLine(plan, 'garden')).toBe('Teal · 5 tables · 48 seats');
     expect(sectionLine(plan, 'bar')).toBe('Olive · 2 tables · 8 seats');
     expect(sectionLine(plan, null)).toBe('1 table · 1 row · 2 single seats · 16 seats');
-    expect(planCounts(plan)).toBe('13 tables, 1 row and 2 single seats');
+    expect(planCounts(plan)).toBe('3 sections, 13 tables, 1 row and 2 single seats');
     expect(readRoom('5', 'width', 'us')).toEqual({ refused: 'Use 7 to 1,640 ft.' });
     expect(readRoom('80 ft', 'width', 'us')).toEqual({ cm: 2438 });
   });
@@ -248,6 +250,58 @@ describe('sizes in the organisation’s units', () => {
     expect(readRoom('', 'length')).toEqual({ refused: SW.enterLength });
     expect(readRoom('1.5', 'width')).toEqual({ refused: SW.roomRange });
     expect(readRoom('24', 'width')).toEqual({ cm: 2400 });
+  });
+
+  it('refuses a table’s size it can’t read or under 30 cm or 1 ft, beside its field', () => {
+    expect(readItemSize('180', 'metric')).toEqual({ cm: 180 });
+    expect(readItemSize('29', 'metric')).toEqual({ refused: 'Use 30 cm or more.' });
+    expect(readItemSize('wide', 'metric')).toEqual({ refused: 'Use 30 cm or more.' });
+    expect(readItemSize('1 ft', 'us')).toEqual({ cm: 30.48 });
+    expect(readItemSize('11 in', 'us')).toEqual({ refused: 'Use 1 ft or more.' });
+    expect(readItemSize('wide', 'us')).toEqual({
+      refused: 'Type 12′ 4″, 12 ft 4 in, 12.5 ft or 148 in.',
+    });
+  });
+});
+
+describe('Delete the plan’s ask (pm, 8 Nov 2026)', () => {
+  it('names what it deletes, sections counted, then who loses a seat, a held chair too', () => {
+    const plan = samplePlan();
+
+    expect(deletePlanWords(plan)).toBe(
+      'This also deletes 3 sections, 13 tables, 1 row and 2 single seats. 85 seated guests move to Without a seat; the guest list does not change.',
+    );
+    expect(deletePlanWords({ ...plan, items: [byId('t7')], sections: [] })).toBe(
+      'This also deletes 1 table. 8 seated guests move to Without a seat; the guest list does not change.',
+    );
+    const heldOnly = {
+      ...byId('t7'),
+      chairs: byId('t7').chairs.map((chair) =>
+        chair.state === 'held' ? chair : { state: 'empty' as const },
+      ),
+    };
+
+    expect(deletePlanWords({ ...plan, items: [heldOnly], sections: [] })).toBe(
+      'This also deletes 1 table. 1 seated guest moves to Without a seat; the guest list does not change.',
+    );
+    expect(deletePlanWords({ ...plan, items: plan.items.slice(0, 1) })).toBe(
+      'This also deletes 3 sections and 1 table. 6 seated guests move to Without a seat; the guest list does not change.',
+    );
+  });
+
+  it('leaves out a sentence with nothing to say', () => {
+    const plan = samplePlan();
+    const nobody = plan.items.map((item) => ({
+      ...item,
+      chairs: item.chairs.map(() => ({ state: 'empty' as const })),
+    }));
+
+    expect(deletePlanWords({ ...plan, items: nobody, sections: [] })).toBe(
+      'This also deletes 13 tables, 1 row and 2 single seats. The guest list does not change.',
+    );
+    expect(deletePlanWords({ ...plan, items: [], sections: [] })).toBe(
+      'The guest list does not change.',
+    );
   });
 });
 
