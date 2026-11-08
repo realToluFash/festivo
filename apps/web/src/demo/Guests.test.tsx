@@ -651,6 +651,70 @@ describe('Guests, Greet as (sc-3960)', () => {
     expect(within(column()).queryByRole('button')).toBeNull();
     expect(within(column()).queryByText('bisi.adewale@yahoo.com')).toBeNull();
   });
+
+  /** Add guest's Greet as, from the list's Not yet invited filter once it is added. */
+  async function openAdded(name: string): Promise<void> {
+    fireEvent.click(screen.getByRole('button', { name: 'No reply · 21' }));
+    fireEvent.click(screen.getByRole('menuitemradio', { name: /^Not yet invited\s*15/u }));
+    fireEvent.click(
+      screen.getByRole('link', { name: new RegExp(`^${name}, Not yet invited`, 'u') }),
+    );
+    expect(await within(column()).findByRole('heading', { name }, WAIT)).toBeDefined();
+  }
+
+  it('puts Greet as under Full name on Add guest, and adds it', SLOW, async () => {
+    await guests('greetAsAdd');
+    const boxes = within(column()).getAllByRole('textbox');
+
+    expect(boxes[0]?.getAttribute('data-focus')).toBe('name');
+    expect(boxes[1]).toBe(greetAs());
+    expect(greetAs().value).toBe('Auntie Bisi');
+    expect(told(greetAs())).toEqual([HINT, '11 of 60']);
+    await vi.waitFor(() => expect(document.activeElement).toBe(greetAs()));
+
+    fireEvent.click(within(column()).getByRole('button', { name: 'Add guest' }));
+    expect(screen.getByText('Olabisi Martins added.')).toBeDefined();
+    expect(greetAs().value).toBe('');
+    await openAdded('Olabisi Martins');
+    expect(within(column()).getByText('Messages greet them as “Auntie Bisi”.')).toBeDefined();
+  });
+
+  it('refuses a Greet as over 60 on Add guest, the focus on it', SLOW, async () => {
+    await guests('add');
+
+    fireEvent.change(within(column()).getByRole('textbox', { name: 'Full name' }), {
+      target: { value: 'Olabisi Martins' },
+    });
+    fireEvent.change(greetAs(), { target: { value: LONG } });
+    expect(told(greetAs())).toEqual([HINT, '61 of 60']);
+    within(column()).getByRole('textbox', { name: 'Full name' }).focus();
+    fireEvent.click(within(column()).getByRole('button', { name: 'Add guest' }));
+
+    expect(greetAs().getAttribute('aria-invalid')).toBe('true');
+    expect(greetAs().closest('.desk-box')?.classList.contains('is-wrong')).toBe(true);
+    expect(told(greetAs())).toEqual([
+      HINT,
+      '61 of 60',
+      'Shorten Greet as to 60 characters or fewer.',
+    ]);
+    await vi.waitFor(() => expect(document.activeElement).toBe(greetAs()));
+    expect(screen.queryByText('Olabisi Martins added.')).toBeNull();
+  });
+
+  it('adds a guest whose Greet as is only spaces as greeted by their full name', SLOW, async () => {
+    await guests('add');
+
+    fireEvent.change(within(column()).getByRole('textbox', { name: 'Full name' }), {
+      target: { value: 'Olabisi Martins' },
+    });
+    fireEvent.change(greetAs(), { target: { value: '    ' } });
+    expect(told(greetAs())).toEqual([HINT, '0 of 60']);
+    fireEvent.click(within(column()).getByRole('button', { name: 'Add guest' }));
+
+    expect(screen.getByText('Olabisi Martins added.')).toBeDefined();
+    await openAdded('Olabisi Martins');
+    expect(within(column()).getByText('Messages greet them by their full name.')).toBeDefined();
+  });
 });
 
 describe('Guests, the link and Mark as invited (sc-1526, sc-3788)', () => {

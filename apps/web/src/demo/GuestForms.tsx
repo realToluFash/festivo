@@ -196,6 +196,31 @@ function CompanionFields({
   );
 }
 
+/** sc-3960's Greet as, under Full name on Edit guest and Add guest: counted in code points after trimming, no maxlength. */
+function GreetAsField({
+  value,
+  error,
+  onChange,
+}: {
+  value: string;
+  error: string | undefined;
+  onChange: (next: Partial<Values>) => void;
+}) {
+  return (
+    <GuestField
+      label={GW.greetAs}
+      value={value}
+      optional
+      error={error}
+      help={GW.greetAsHint}
+      counter={GW.ofMost(greetAsLength(value), GREET_AS_MOST)}
+      focusKey="greet-as"
+      autoComplete="off"
+      onChange={(greetAs) => onChange({ greetAs })}
+    />
+  );
+}
+
 /** Edit (sc-3773), in place in the guest's column: refused before sending, a duplicate asked about, a colleague's change (412) held at the top. */
 export function EditForm({
   guest,
@@ -344,17 +369,7 @@ export function EditForm({
           autoComplete="off"
           onChange={(name) => change({ name })}
         />
-        <GuestField
-          label={GW.greetAs}
-          value={values.greetAs}
-          optional
-          error={lines.greetAs}
-          help={GW.greetAsHint}
-          counter={GW.ofMost(greetAsLength(values.greetAs), GREET_AS_MOST)}
-          focusKey="greet-as"
-          autoComplete="off"
-          onChange={(greetAs) => change({ greetAs })}
-        />
+        <GreetAsField value={values.greetAs} error={lines.greetAs} onChange={change} />
         <GuestField
           label={GW.emailAddress}
           value={values.email}
@@ -655,6 +670,7 @@ export function AddForm({
           autoComplete="off"
           onChange={(name) => change({ name })}
         />
+        <GreetAsField value={values.greetAs} error={lines.greetAs} onChange={change} />
         <GuestField
           label={GW.emailAddress}
           value={values.email}
