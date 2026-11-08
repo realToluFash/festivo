@@ -1,0 +1,13 @@
+# sc-30119: an invited new account, signed in, reopened in LANGUAGE on Your organisation with one invitation waiting. Pass API, LANGUAGE, EMAIL, PASSWORD, SHOT.
+appId: host.exp.Exponent
+---
+- evalScript: "${output.token = json(http.post(API + '/api/auth/login', {headers: {'Content-Type': 'application/json'}, body: JSON.stringify({email: EMAIL, password: PASSWORD})}).body).accessToken}"
+- evalScript: "${output.locale = http.request(API + '/api/auth/locale', {method: 'PUT', headers: {Authorization: 'Bearer ' + output.token, 'Content-Type': 'application/json'}, body: JSON.stringify({locale: LANGUAGE})}).status}"
+- stopApp
+- openLink: ${METRO_URL}
+- extendedWaitUntil:
+    visible:
+      id: 'completeProfile.join'
+    timeout: 60000
+- waitForAnimationToEnd
+- takeScreenshot: ${SHOT}

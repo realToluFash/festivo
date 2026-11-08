@@ -1,0 +1,13 @@
+# sc-30119: an invited new account on Your organisation, one invitation waiting: title, intro, the invitation line, Join <organisation> and Start my own instead. Pass EMAIL and PASSWORD of the invited account.
+appId: host.exp.Exponent
+---
+- extendedWaitUntil:
+    visible:
+      id: 'completeProfile.join'
+    timeout: 30000
+- takeScreenshot: invited-top
+- scrollUntilVisible:
+    element:
+      id: 'completeProfile.startOwn'
+    centerElement: true
+- takeScreenshot: invited-foot

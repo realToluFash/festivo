@@ -1,0 +1,13 @@
+# sc-30119: a join link opened signed in: Ask to join and the message field's label. Pass LINK, the token after /join/.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/join/${LINK}
+- extendedWaitUntil:
+    visible:
+      id: requestToJoin.message
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: requestToJoin.message
+    centerElement: true
+- takeScreenshot: join-signed-in
