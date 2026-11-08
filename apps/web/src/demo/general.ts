@@ -160,6 +160,8 @@ export function leaveAsk(count: number): AskWords {
     red: true,
     busy: H.busy.leave,
     failed: H.failed.leave,
+    checking: H.checking(null),
+    notLoaded: H.notLoaded(null),
   };
 }
 
@@ -200,6 +202,9 @@ export const GENERAL_STATES = [
   'leaveSending',
   'leaveFailed',
   'leaveNoWork',
+  'leaveOne',
+  'leaveLoading',
+  'leaveLoadFailed',
   'delete',
   'heldTwoFactor',
   'heldLinked',
@@ -216,6 +221,9 @@ const LEAVES = [
   'leaveSending',
   'leaveFailed',
   'leaveNoWork',
+  'leaveOne',
+  'leaveLoading',
+  'leaveLoadFailed',
 ] as const;
 
 type Leave = (typeof LEAVES)[number];
@@ -235,6 +243,10 @@ function leaveStart(name: Leave): HandStart {
       return handStart(null, { phase: 'held' });
     case 'leaveFailed':
       return handStart(null, { phase: 'failed' });
+    case 'leaveLoading':
+      return handStart(null, { phase: 'checking' });
+    case 'leaveLoadFailed':
+      return handStart(null, { phase: 'notLoaded' });
     default:
       return handStart(null);
   }
@@ -296,7 +308,8 @@ export function generalStart(
 ): GeneralStart {
   const role = roleOf(viewer);
   const name = generalStateOf(state);
-  const leads = name === 'leaveNoWork' ? [] : (sampleLeads()[viewer.id] ?? []);
+  const led = sampleLeads()[viewer.id] ?? [];
+  const leads = name === 'leaveNoWork' ? [] : name === 'leaveOne' ? led.slice(0, 1) : led;
   const page: GeneralStart = { ...AT_REST, role, hand: handStart(null), leads };
   const owner = role === 'Owner';
 
@@ -691,6 +704,9 @@ export const GENERAL_PAGES: readonly { name: string; states: readonly DemoLink[]
       general('leaveSending', 'Leave, Leaving…', VIEWERS.ana),
       general('leaveFailed', 'Leave, Leaving did not work', VIEWERS.ana),
       general('leaveNoWork', 'Leave, a member who leads nothing', VIEWERS.ana),
+      general('leaveOne', 'Leave, a member who leads 1 event', VIEWERS.ana),
+      general('leaveLoading', 'Leave, the work list loading', VIEWERS.ana),
+      general('leaveLoadFailed', 'Leave, the work list failed', VIEWERS.ana),
       general('leave', 'Leave, an admin who leads nothing', VIEWERS.julien),
       general('delete', 'Delete, the name mistyped'),
       general('deleteUncounted', 'Delete, not counted'),

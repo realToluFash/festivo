@@ -65,7 +65,13 @@ import {
   useRowClear,
 } from '../../components/Summary.tsx';
 
-const PLAIN: PersonOpening = { step: 'resting', picked: null, handover: null, said: null };
+const PLAIN: PersonOpening = {
+  step: 'resting',
+  picked: null,
+  handover: null,
+  leadsLoad: 'loaded',
+  said: null,
+};
 
 /** Members in B, summary first: the card, who waits, the people, a member's page and the owner claim, on sample data. */
 export function MembersSection() {
