@@ -36,7 +36,16 @@ import {
   renewed,
   underCard,
 } from './DoorCodeModel.ts';
-import { cameIn, codeSaid, doorCodeSaid, newLine, qrSaid, stopLine, W } from './DoorCodeWords.ts';
+import {
+  cameIn,
+  codeSaid,
+  doorCodeSaid,
+  newLine,
+  onEventCount,
+  qrSaid,
+  stopLine,
+  W,
+} from './DoorCodeWords.ts';
 import { REDEEM_STATES } from './RedeemModel.ts';
 
 const LOCALE = 'en-US';
@@ -102,7 +111,7 @@ describe('People with a door code, by state (spec §5)', () => {
     expect(opened('code-full').codes.map((code) => code.code)).toEqual(['M4TB 7KQ8']);
     expect(lines(opened('code-full'))).toEqual(['5 of 5 used · until 23:30']);
     expect(lines(opened('code-stopped'))).toEqual([
-      '14 people came in with it. They keep their access.',
+      '14 people came in with this code. They keep their access.',
     ]);
     expect(lines(opened('code-expired'))).toEqual(['14 of 30 used · ended at 15:00']);
   });
@@ -286,16 +295,22 @@ describe('holding it up, a new code and stopping (spec §2.3, §2.4)', () => {
       failed: true,
     });
     expect(newLine('Q7KM 4XP2', 14)).toBe(
-      'Q7KM 4XP2 stops working. The 14 people already in keep their access.',
+      'Q7KM 4XP2 stops working. 14 people are already in and keep their access.',
     );
-    expect(stopLine(14)).toBe('Nobody new can use it. The 14 people already in keep their access.');
+    expect(stopLine(14)).toBe(
+      'Nobody new can use it. 14 people are already in and keep their access.',
+    );
   });
 
   it('says one person in the singular, and at nought that nobody has used it (pm, 8 Nov)', () => {
-    expect(stopLine(1)).toBe('Nobody new can use it. The 1 person already in keeps their access.');
+    expect(stopLine(1)).toBe(
+      'Nobody new can use it. 1 person is already in and keeps their access.',
+    );
     expect(newLine('H3WD 9RN6', 0)).toBe('H3WD 9RN6 stops working. Nobody has used it yet.');
     expect(stopLine(0)).toBe('Nobody new can use it. Nobody has used it yet.');
-    expect(cameIn(1)).toBe('1 person came in with it. They keep their access.');
+    expect(cameIn(1)).toBe('1 person came in with this code. They keep their access.');
+    expect(onEventCount(1)).toBe('1 person on this event');
+    expect(onEventCount(21)).toBe('21 people on this event');
   });
 
   it('says a stopped or ran-out card nobody used came in with nobody (pm, 7 Nov)', () => {
@@ -304,9 +319,11 @@ describe('holding it up, a new code and stopping (spec §2.3, §2.4)', () => {
     const day = '2026-11-14';
     const expired = { ...BAR_CODE, ends: { kind: 'earlier', date: day, time: '15:00' } } as const;
 
-    expect(cardLine({ ...unused, stopped: true }, LOCALE, day)).toBe('Nobody came in with it.');
+    expect(cardLine({ ...unused, stopped: true }, LOCALE, day)).toBe(
+      'Nobody came in with this code.',
+    );
     expect(cardLine({ ...expired, used: 0, endedAt: '15:00' }, LOCALE, day)).toBe(
-      'Nobody came in with it.',
+      'Nobody came in with this code.',
     );
     expect(cardLine({ ...expired, endedAt: '15:00' }, LOCALE, day)).toBe(
       '14 of 30 used · ended at 15:00',

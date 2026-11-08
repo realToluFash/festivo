@@ -75,6 +75,16 @@ export const W = {
   sendNeedsConnection: 'Sending a link needs a connection.',
   notCreated: 'The link was not created, so nothing has been sent. Try again.',
   shareSheet: 'Send hands the link to your phone’s share sheet, with its message.',
+  wrongCurrency: 'Enter the amount in British Pound, the currency this event uses.',
+  planRefused:
+    'Payments cannot be marked paid on this organisation’s plan, so nothing has changed.',
+  noLongerChased: 'No longer chased.',
+  loadingPayers: 'Loading who is paying…',
+  needsNewAmounts: 'Needs new amounts',
+  asksPassphrase: 'Asks for a passphrase.',
+  overdueLast: 'Overdue · last reminder',
+  app: 'Soirely',
+  justNow: 'now',
 } as const;
 
 const STATE_WORD: Record<CeilingState, string> = {
@@ -149,4 +159,19 @@ export const say = {
   due: (date: string) => `Due ${date}`,
   rateChanged: (who: string, cost: string, rate: string, amount: string, up: boolean) =>
     `${who} changed ${cost} to ${rate}, so the settled total went ${up ? 'up' : 'down'} by ${amount}.`,
+  ceilingSet: (who: string, amount: string) =>
+    `${who} set a ceiling of ${amount} for the whole event.`,
+  ceilingChanged: (who: string, amount: string, state: CeilingState) =>
+    `${who} changed the whole event’s ceiling to ${amount}, so it is now ${STATE_WORD[state]}.`,
+  ceilingsCleared: (who: string) => `${who} cleared the ceilings.`,
+  whoPaysChanged: (who: string, cost: string) => `${who} changed who pays for ${cost}.`,
+  reminderOverdue: (count: number, event: string) =>
+    `${count === 1 ? '1 payment' : `${count} payments`} overdue on ${event}`,
+  reminderMixed: (overdue: number, due: number, days: number) =>
+    `${overdue === 1 ? '1 payment' : `${overdue} payments`} overdue, ${due} due in the next ${days} days`,
+  reminderRow: (vendor: string, amount: string, when: string) => `${vendor} · ${amount} · ${when}`,
+  wasDue: (date: string) => `was due ${date}`,
+  dueWhen: (date: string) => `due ${date}`,
+  lastAbout: (what: string, vendor: string) =>
+    `This is the last reminder about the ${what.toLowerCase()} to ${vendor}.`,
 };

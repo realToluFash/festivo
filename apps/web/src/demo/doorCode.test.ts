@@ -93,18 +93,27 @@ describe('the door code’s words and checks (sc-72)', () => {
   it('says what a new code and Stop keep, for everyone already in', () => {
     expect(roleLine(BAR)).toBe('Door code · Can check guests in · Bar and drinks');
     expect(newLine(BAR)).toBe(
-      'Q7KM 4XP2 stops working. The 14 people already in keep their access.',
+      'Q7KM 4XP2 stops working. 14 people are already in and keep their access.',
     );
     expect(stopLine(BAR)).toBe(
-      'Nobody new can use it. The 14 people already in keep their access.',
+      'Nobody new can use it. 14 people are already in and keep their access.',
     );
     expect(countLine({ ...BAR, state: 'stopped' })).toBe(
-      '14 people came in with it. They keep their access.',
+      '14 people came in with this code. They keep their access.',
     );
     expect(countLine({ ...BAR, state: 'ranOut', endedAt: '15:00' })).toBe(
       '14 of 30 used · ended at 15:00',
     );
-    expect(countLine({ ...BAR, state: 'stopped', used: 0 })).toBe('Nobody came in with it.');
+    expect(countLine({ ...BAR, state: 'stopped', used: 1 })).toBe(
+      '1 person came in with this code. They keep their access.',
+    );
+    expect(countLine({ ...BAR, state: 'stopped', used: 0 })).toBe('Nobody came in with this code.');
+    expect(countLine({ ...BAR, state: 'ranOut', used: 0, endedAt: '15:00' })).toBe(
+      'Nobody came in with this code.',
+    );
+    expect(stopLine({ ...BAR, used: 1 })).toBe(
+      'Nobody new can use it. 1 person is already in and keeps their access.',
+    );
     expect(newLine({ ...BAR, used: 0 })).toBe('Q7KM 4XP2 stops working. Nobody has used it yet.');
     expect(stopLine({ ...BAR, used: 0 })).toBe('Nobody new can use it. Nobody has used it yet.');
   });
