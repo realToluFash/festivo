@@ -17,7 +17,7 @@ export const W = {
   saved: 'Saved',
   saving: 'Saving…',
   retrying: 'Couldn’t save. Trying again…',
-  notSaved: 'This change wasn’t saved.',
+  notSaved: 'This change was not saved.',
   tryAgain: 'Try again',
   room: 'Room',
   roomSettings: 'Room settings',
@@ -63,9 +63,9 @@ export const W = {
   keepIt: 'Keep it',
   enterSectionName: 'Enter a name for the section.',
   sectionLimit: 'A plan can have up to 30 sections. Delete one to add another.',
-  failed: 'Couldn’t load the seating plan.',
-  failedLine: 'Check your connection, then try again. Nothing on the plan has changed.',
-  readOnly: 'You can see and print this plan, not change it.',
+  failed: 'Could not load the seating plan.',
+  failedLine: 'Check your connection and try again. Nothing on the plan has changed.',
+  readOnly: 'You can view and print this plan, but not change it.',
   placeCentre: 'Place at the centre',
   stopPlacing: 'Stop placing',
   placeAnother: 'Place another',
@@ -140,18 +140,23 @@ const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one :
 
 export const say = {
   roomLine: (room: string, size: string) => `${room} · ${size}`,
-  startLineFeet: (venue: string, town: string) =>
-    `At ${venue}, ${town}. In feet. Change it in Room settings.`,
+  startLineFeet: (venue: string, town: string, org: string) =>
+    `At ${venue}, ${town}. Sizes are in feet and inches, the units used where ${org} is based.`,
   roomRangeFeet: (min: number, max: number) =>
     `Use ${min.toLocaleString('en-US')} to ${max.toLocaleString('en-US')} ft.`,
   roomLabel: (room: string, w: string, l: string) => `Floor plan, ${room}, ${w} by ${l}`,
   startLine: (venue: string, town: string, org: string) =>
-    `At ${venue}, ${town}. Sizes in metres, from ${org}${org.endsWith('s') ? '’' : '’s'} country.`,
+    `At ${venue}, ${town}. Sizes are in metres, the units used where ${org} is based.`,
   outside: (n: number, w: string, l: string) =>
     `${plural(n, 'item sits', 'items sit')} outside ${w} × ${l}. Move them first.`,
-  deletePlanBody: (counts: string) =>
-    `${counts} go. Everyone seated goes back to Without a seat; the guest list is not touched.`,
-  justChanged: (name: string) => `${name} just changed this. Your change wasn’t saved.`,
+  deletePlanBody: (counts: string, seated: number) => {
+    const guests =
+      seated === 0
+        ? 'The guest list does not change.'
+        : `${plural(seated, 'seated guest moves', 'seated guests move')} to Without a seat; the guest list does not change.`;
+    return counts === '' ? guests : `This also deletes ${counts}. ${guests}`;
+  },
+  justChanged: (name: string) => `${name} just changed this. Your change was not saved.`,
   sectionLine: (colour: string, tables: number, seats: number) =>
     `${colour} · ${plural(tables, 'table', 'tables')} · ${plural(seats, 'seat', 'seats')}`,
   sectionTaken: (name: string) => `This plan already has a section called ${name}.`,
@@ -180,7 +185,7 @@ export const say = {
       ? 'Nobody is seated here.'
       : `${plural(n, 'guest is', 'guests are')} seated here. They go back to Without a seat.`,
   deleteVerb: (name: string) => `Delete ${name}`,
-  tableChanged: (name: string) => `${name} just changed this table. Your change wasn’t saved.`,
+  tableChanged: (name: string) => `${name} just changed this table. Your change was not saved.`,
   rowSeat: (label: string, n: number, word: string) => `Row ${label}, seat ${n} · ${word}`,
   takenBy: (name: string) => `Taken by ${name}`,
   moreRight: (n: number) => `+${n} to the right`,
@@ -192,7 +197,7 @@ export const say = {
   overlaps: (name: string) => `Overlaps ${name}`,
   outsideRoom: (name: string) => `${name} would sit outside the room.`,
   stepRefused: (name: string, table: string) =>
-    `${name} just moved ${table}. Your change wasn’t saved.`,
+    `${name} just moved ${table}. Your change was not saved.`,
   where: (across: string, down: string) => `${across} across · ${down} down`,
   widthTip: (size: string) => `Width ${size}`,
   moreOnPlan: (n: number) => `${n} more on this plan`,

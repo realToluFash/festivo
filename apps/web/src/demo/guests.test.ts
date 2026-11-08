@@ -17,9 +17,12 @@ import {
   recordReply,
   replyByOf,
   sampleGuests,
+  saveGuest,
+  seatedOf,
   valuesOf,
   viewOf,
 } from './guests.ts';
+import { GW } from './guestsWords.ts';
 import { COMING, GUESTS_N, NOT_REPLIED, countOf } from './messages.ts';
 
 const NONE = new Set<never>();
@@ -242,6 +245,35 @@ describe('refused before sending (sc-1468)', () => {
       number: 'That number looks too short for United Kingdom. Check it and try again.',
     });
     expect(linesOf({ ...valuesOf(null), name: 'Bimpe Adeyemi' })).toEqual({});
+  });
+});
+
+describe('a companion with a seat and a meal (sc-3773)', () => {
+  const list = sampleGuests(WEDDING);
+  const ines = list.find((one) => one.id === 'ines');
+  const musa = list.find((one) => one.id === 'musa');
+
+  it('says what removing them takes, in the AC’s words', () => {
+    if (ines == null || musa == null)
+      throw new Error('the sample has Inês Duarte and Alhaji Musa Bello');
+    const seat = seatedOf(ines, 'ines-c1');
+
+    expect(seat).toEqual({ table: 'Table 4', meal: true });
+    expect(GW.seatedLine('Rui Duarte', 'Table 4', true)).toBe(
+      'Rui Duarte has a seat at Table 4 and a meal chosen. Removing this companion frees the seat and drops the meal.',
+    );
+    expect(seatedOf(musa, 'musa-c1')).toBeNull();
+    expect(seatedOf(ines, null)).toBeNull();
+  });
+
+  it('keeps the seat on a companion who stays when the guest is saved', () => {
+    const saved = saveGuest(list, 'ines', { ...valuesOf(ines ?? null), email: 'ines@sapo.pt' });
+
+    expect(saved.find((one) => one.id === 'ines')?.companions[0]).toMatchObject({
+      name: 'Rui Duarte',
+      table: 'Table 4',
+      meal: true,
+    });
   });
 });
 

@@ -29,6 +29,7 @@ import {
   MW,
   NOW,
   changed,
+  closedOf,
   freshId,
   isNew,
   outReach,
@@ -49,9 +50,10 @@ import {
 } from './messages.ts';
 import { ConversationPane } from './MessagesThread.tsx';
 import { InboxContext, type InboxApi } from './messagesContext.ts';
-import { LeadMark } from './MessagesParts.tsx';
+import { LeadMark, WhyNot } from './MessagesParts.tsx';
 import { UntoldBanner } from './MessagesTell.tsx';
 import { MESSAGES_WORD } from './messagesWords.ts';
+import { offButton } from '../offButton.ts';
 import { Tag } from '../components/SettingsParts.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
 import './messages.css';
@@ -168,6 +170,8 @@ function Messages({
   const root = useRef<HTMLDivElement>(null);
   const list = useRef<HTMLDivElement>(null);
   const pending = useRef<string | null>(firstFocus(state));
+  const closed = closedOf(state);
+  const whyId = useId();
   const [said, setSaid] = useState('');
   const [keys, setKeys] = useState(singleKeys);
   const [keysSaid, setKeysSaid] = useState('');
@@ -286,6 +290,7 @@ function Messages({
   }
 
   function startNew(): void {
+    if (closed != null) return;
     if (inbox.pane.kind !== 'compose')
       act({
         kind: 'compose',
@@ -331,7 +336,12 @@ function Messages({
       event.preventDefault();
       if (inbox.done.includes(lit)) act({ kind: 'waiting', id: lit });
       else markDone(lit);
-    } else if (key === 'r' && inbox.pane.kind === 'convo' && isGuest(inbox.pane.id)) {
+    } else if (
+      key === 'r' &&
+      closed == null &&
+      inbox.pane.kind === 'convo' &&
+      isGuest(inbox.pane.id)
+    ) {
       event.preventDefault();
       focus('answer');
     } else if (key === 'c') {
@@ -363,6 +373,7 @@ function Messages({
     focus,
     mesh,
     keys,
+    whyOff: closed == null ? undefined : whyId,
     bell: { read: bellRead, markRead: () => setBellRead(true), takeFirst },
   };
   const empty = inbox.present.length === 0 && sections.top.length === 0;
@@ -378,13 +389,16 @@ function Messages({
             <button
               type="button"
               className="mg-new"
-              aria-keyshortcuts={keys ? 'C' : undefined}
+              aria-keyshortcuts={keys && closed == null ? 'C' : undefined}
+              aria-describedby={closed == null ? undefined : whyId}
               onClick={startNew}
+              {...offButton(closed != null)}
             >
               <Glyph name="plus" size={18} weight={2.4} />
               {MW.new}
             </button>
           </div>
+          {closed != null && <WhyNot id={whyId} words={closed} />}
           <div ref={list} className="mg-list-body">
             {inbox.loading ? (
               <Loading />

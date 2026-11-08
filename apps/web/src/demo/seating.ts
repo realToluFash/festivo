@@ -848,6 +848,17 @@ export function readSize(text: string, units: Units): number | null {
   return /^\d+(?:\.\d+)?$/u.test(typed) ? Number(typed) : null;
 }
 
+/** A table's or a row's size (sc-5033, 8 Nov 2026): one that can't be read or is too small is refused beside its field, never reverted in silence. */
+export function readItemSize(text: string, units: Units): { cm: number } | { refused: string } {
+  const cm = readSize(text, units);
+
+  if (units === 'us') {
+    if (cm == null) return { refused: SW.usHint };
+    return cm < 30.48 - 1e-6 ? { refused: SW.sizeMinFeet } : { cm };
+  }
+  return cm == null || cm < 30 ? { refused: SW.sizeMin } : { cm };
+}
+
 export function readCount(text: string): number | null {
   const typed = text.trim();
 
@@ -1038,17 +1049,28 @@ export function seatedIn(items: readonly Item[]): number {
 }
 
 export function planCounts(plan: Plan): string {
+  const sections = plan.sections.length;
   const tables = plan.items.filter(isTable).length;
   const rows = plan.items.filter((item) => item.kind === 'row').length;
   const singles = plan.items.filter((item) => item.kind === 'single').length;
 
   return listed(
     [
+      sections > 0 ? many('sections', sections) : null,
       tables > 0 ? many('tables', tables) : null,
       rows > 0 ? many('rows', rows) : null,
       singles > 0 ? many('singles', singles) : null,
     ].filter((part): part is string => part != null),
   );
+}
+
+/** Delete the plan's ask (pm, 8 Nov 2026): what it deletes, sections counted, then who loses a seat, held chairs too; a sentence with nothing to say is left out. */
+export function deletePlanWords(plan: Plan): string {
+  const counts = planCounts(plan);
+  const seated = plan.items.reduce((sum, item) => sum + filled(item), 0);
+  const guests = seated === 0 ? SW.deletePlanNobody : many('deletePlanSeated', seated);
+
+  return counts === '' ? guests : `${say(SW.deletePlanDeletes, { counts })} ${guests}`;
 }
 
 /** Free chairs side by side, round a table or along a row, for a party of n: the first run that fits, else null. */
@@ -1111,7 +1133,7 @@ export const SEATING_STATES = [
   { key: 'startRange', name: 'Start the plan, out of range', group: 'The plan' },
   { key: 'newPlan', name: 'A new plan, an empty room', group: 'The plan' },
   { key: 'loading', name: 'Loading', group: 'The plan' },
-  { key: 'failed', name: 'Couldn’t load', group: 'The plan' },
+  { key: 'failed', name: 'Could not load', group: 'The plan' },
   { key: 'readOnly', name: 'Read only, Can view', group: 'The plan' },
   { key: 'zoomOut', name: 'Zoomed out, 40%', group: 'The plan' },
   { key: 'corner', name: 'One corner at 200%, seat 9 chosen', group: 'The plan' },

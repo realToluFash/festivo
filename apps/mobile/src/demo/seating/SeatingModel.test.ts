@@ -21,6 +21,7 @@ import {
   freeCount,
   itemOf,
   noSectionLine,
+  placedCount,
   roomLine,
   sectionRowLine,
   seatedCount,
@@ -28,11 +29,13 @@ import {
   summaryLine,
   tableCount,
   trayCount,
+  whatGoes,
   withSpace,
 } from './SeatingModel.ts';
 import { COMING, ROOM } from './SeatingSample.ts';
 import { blank, startOf } from './SeatingStart.ts';
 import { SEATING_BOARDS } from './SeatingBoards.ts';
+import { W, say } from './SeatingWords.ts';
 
 const run = (m: Seating, ...actions: Action[]) => actions.reduce(reduce, m);
 const moved = (m: Seating, id: string, change: Partial<Seating['items'][number]>): Seating => ({
@@ -259,7 +262,7 @@ describe('seating a party', () => {
 
   it('a step refused is one table, snapped to where the colleague put it', () => {
     const m = startOf('stepRefused', 'landscape');
-    expect(m.bar?.words).toBe('Priya Shah just moved Table 8. Your change wasn’t saved.');
+    expect(m.bar?.words).toBe('Priya Shah just moved Table 8. Your change was not saved.');
     expect(m.chosen).toBe('t8');
     expect(item(m, 't8').y).toBe(980);
   });
@@ -529,6 +532,33 @@ describe('the room and the plan', () => {
     const m = startOf('shrinkRefused', 'landscape');
     expect(m.roomDraft.error).toBe('3 items sit outside 20 m × 18 m. Move them first.');
     expect(m.outside).toEqual(['t5', 't10', 'bar2']);
+  });
+
+  it('asks before deleting the plan with what it deletes, then who loses a seat, held chairs too (pm, 8 Nov)', () => {
+    const m = startOf('deletePlan', 'landscape');
+    expect(say.deletePlanBody(whatGoes(m), placedCount(m.items))).toBe(
+      'This also deletes 3 sections, 13 tables, 1 row and 2 single seats. 85 seated guests move to Without a seat; the guest list does not change.',
+    );
+    expect(say.deletePlanBody('1 table', 1)).toBe(
+      'This also deletes 1 table. 1 seated guest moves to Without a seat; the guest list does not change.',
+    );
+    expect(say.deletePlanBody(whatGoes({ ...m, sections: [], items: [] }), 0)).toBe(
+      'The guest list does not change.',
+    );
+  });
+
+  it('says why the sizes are in metres or feet, and the plan’s other settled words', () => {
+    expect(say.startLine('The Landmark', 'London', 'Ire Events')).toBe(
+      'At The Landmark, London. Sizes are in metres, the units used where Ire Events is based.',
+    );
+    expect(say.startLineFeet('The Landmark', 'London', 'Ire Events')).toBe(
+      'At The Landmark, London. Sizes are in feet and inches, the units used where Ire Events is based.',
+    );
+    expect(W.readOnly).toBe('You can view and print this plan, but not change it.');
+    expect(W.failed).toBe('Could not load the seating plan.');
+    expect(W.failedLine).toBe(
+      'Check your connection and try again. Nothing on the plan has changed.',
+    );
   });
 
   it('deletes the plan, everyone seated back to Without a seat', () => {
