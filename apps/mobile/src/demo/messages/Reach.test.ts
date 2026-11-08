@@ -277,3 +277,23 @@ describe('the resend', () => {
     expect(resendOf(added, 'invite')).toMatchObject({ n: 2, count: 1, still: 1 });
   });
 });
+
+describe('on an event that can’t send (?state=closedEnded)', () => {
+  it('refuses Send again and Resend, and still saves an address, Not now, marks and undoes', () => {
+    const ended = run(
+      startOf('closedEnded', false),
+      { type: 'open', open: { kind: 'reached', of: 'parking' } },
+      { type: 'fixed', key: 'tomas', address: 'tomas.ferreira@gmail.com' },
+    );
+    expect(personOf(ended, 'tomas')).toMatchObject({ offer: true });
+    expect(run(ended, { type: 'sendAgain', key: 'tomas' }).again).toEqual({});
+    expect(run(ended, { type: 'resending', open: true }).resending).toBe(false);
+    expect(personOf(run(ended, { type: 'notNowFor', key: 'tomas' }), 'tomas')?.offer).toBe(false);
+
+    const marked = run(ended, ...told('yuki'));
+    expect(reachViewOf(marked, 'parking').title).toBe('Reached 132 of 142');
+    expect(reachViewOf(run(marked, { type: 'undoTold', key: 'yuki' }), 'parking').title).toBe(
+      'Reached 131 of 142',
+    );
+  });
+});
