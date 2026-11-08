@@ -185,6 +185,9 @@ function PersonMenu({
       event.preventDefault();
       const next = at + (event.key === 'ArrowDown' ? 1 : -1);
       all[(next + all.length) % all.length]?.focus();
+    } else if (event.key === 'Home' || event.key === 'End') {
+      event.preventDefault();
+      (event.key === 'Home' ? all[0] : all.at(-1))?.focus();
     }
   }
 

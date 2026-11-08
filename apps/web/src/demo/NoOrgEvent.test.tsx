@@ -83,6 +83,10 @@ describe('inside the event with no organisation, at a desk (sc-71, sc-31775)', (
     await waitFor(() =>
       expect(document.activeElement).toBe(menu.getByRole('menuitem', { name: 'Your account' })),
     );
+    fireEvent.keyDown(document.activeElement ?? document.body, { key: 'End' });
+    expect(document.activeElement).toBe(menu.getByRole('menuitem', { name: 'Sign out' }));
+    fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Home' });
+    expect(document.activeElement).toBe(menu.getByRole('menuitem', { name: 'Your account' }));
     fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' });
     expect(screen.queryByRole('menu')).toBeNull();
     expect(document.activeElement).toBe(person);
