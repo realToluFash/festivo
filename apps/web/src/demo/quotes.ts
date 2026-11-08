@@ -16,6 +16,7 @@ import {
   whole,
 } from './budget.ts';
 import { sampleEvent } from './events.ts';
+import { PW } from './paymentsWords.ts';
 import { QW } from './quotesWords.ts';
 import { type Vendor, inNameOrder, nameMatches, sampleVendors } from './vendors.ts';
 import { CATEGORY_WORDS } from './vendorsWords.ts';
@@ -130,16 +131,34 @@ export function minorDigits(currency: string): number {
   );
 }
 
-/** A number as the reader types it in English: digits, optional grouping commas, a point. Null when it is not one. */
-export function parsedAmount(typed: string, currency = CURRENCY): number | null {
+export type Typed = { minor: number } | { wrong: 'blank' | 'negative' | 'number' | 'decimals' };
+
+/** The demo's one parser of a typed amount, in English: digits, optional grouping commas, a point, at most the currency's minor digits. */
+export function typedMinor(typed: string, currency = CURRENCY): Typed {
   const plain = typed.trim().replace(/\s/g, '');
-  if (!/^(\d{1,3}(,\d{3})+|\d+)(\.\d+)?$/.test(plain)) return null;
+  if (plain === '') return { wrong: 'blank' };
+  if (/^[-−]/.test(plain)) return { wrong: 'negative' };
+  if (!/^(\d{1,3}(,\d{3})+|\d+)(\.\d+)?$/.test(plain)) return { wrong: 'number' };
   const [whole = '', fraction = ''] = plain.replace(/,/g, '').split('.');
   const digits = minorDigits(currency);
-  if (fraction.length > digits) return null;
-  const minor = Number(whole) * 10 ** digits + Number(fraction.padEnd(digits, '0') || '0');
+  if (fraction.length > digits) return { wrong: 'decimals' };
 
-  return minor > 0 ? minor : null;
+  return { minor: Number(whole) * 10 ** digits + Number(fraction.padEnd(digits, '0') || '0') };
+}
+
+export function parsedAmount(typed: string, currency = CURRENCY): number | null {
+  const found = typedMinor(typed, currency);
+
+  return 'minor' in found && found.minor > 0 ? found.minor : null;
+}
+
+export function exampleIn(whole: number, currency = CURRENCY): string {
+  const digits = minorDigits(currency);
+
+  return new Intl.NumberFormat('en', {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  }).format(digits === 0 ? whole : whole + 0.5);
 }
 
 export function typedAmount(minor: number, currency = CURRENCY): string {
@@ -166,7 +185,7 @@ export function lengthOf(typed: string): number {
   return [...typed.trim()].length;
 }
 
-export const QUOTE_LIMITS = { covers: 500, number: 64, what: 100 } as const;
+export const QUOTE_LIMITS = { covers: 500, number: 64, what: 100, reference: 100 } as const;
 
 export type QuoteForm = 'add' | 'revise' | 'correct';
 
@@ -409,19 +428,22 @@ export interface MarkDraft {
   reference: string;
 }
 
-export type MarkProblems = Partial<Record<'amount' | 'paidOn', string>>;
+export type MarkProblems = Partial<Record<'amount' | 'paidOn' | 'reference', string>>;
 
 export function draftToMark(payment: Payment, today = TODAY): MarkDraft {
   return { amount: typedAmount(payment.amount), paidOn: today, reference: '' };
 }
 
 export function markProblems(draft: MarkDraft, payment: Payment): MarkProblems {
-  return {
-    ...(parsedAmount(draft.amount) == null
-      ? { amount: QW.amountPaidProblem(typedAmount(payment.amount)) }
-      : {}),
-    ...(draft.paidOn === '' ? { paidOn: QW.datePaidBlank } : {}),
-  };
+  const problems: MarkProblems = {};
+
+  if (parsedAmount(draft.amount) == null)
+    problems.amount = QW.amountPaidProblem(typedAmount(payment.amount));
+  if (lengthOf(draft.reference) > QUOTE_LIMITS.reference)
+    problems.reference = PW.referenceTooLong(QUOTE_LIMITS.reference);
+  if (draft.paidOn === '') problems.paidOn = QW.datePaidBlank;
+
+  return problems;
 }
 
 export function markedPaid(payment: Payment, draft: MarkDraft, by: string): Payment {
@@ -455,10 +477,13 @@ export interface Amending extends PaymentOpen {
   id: string;
 }
 
+export type MarkRefusal = 'paid' | 'cancelled';
+
 export interface Marking {
   id: string;
   draft: MarkDraft;
   problems: MarkProblems;
+  refused: MarkRefusal | null;
 }
 
 export interface QuotesStart {
@@ -578,6 +603,7 @@ export function quotesStart(
 
   switch (state) {
     case 'no_quotes':
+    case 'early_on':
       return { ...start, budget: { quotes: [], payments: [] } };
     case 'nothing_due':
       return { ...start, budget: { ...full, payments: full.payments.map(paidBy) } };

@@ -1,0 +1,228 @@
+/* Who is paying at a desk (sc-91, sc-1300): the payer's pane, sending a link, and Choose who pays. */
+.py-name {
+  font: 700 22px/1.2 var(--fontFamily);
+  overflow-wrap: anywhere;
+}
+
+.py-note {
+  color: var(--colorInkSecondary);
+  font: 500 15px/1.4 var(--fontFamily);
+  overflow-wrap: anywhere;
+}
+
+.py-empty {
+  max-width: 560px;
+  color: var(--colorInkSecondary);
+  font: 500 16px/1.5 var(--fontFamily);
+}
+
+.py-alert {
+  font: 500 14px/1.45 var(--fontFamily);
+}
+
+.py-alert svg {
+  margin-top: 2px;
+}
+
+.py-refused {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.py-flag {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  border-radius: 18px;
+  background: var(--budAmberTint);
+}
+
+.py-flag-title {
+  color: var(--budAmber);
+  font: 700 16px/1.35 var(--fontFamily);
+}
+
+.py-flag-line {
+  color: var(--colorInk);
+  font: 500 15px/1.45 var(--fontFamily);
+}
+
+.py-send-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.py-said:empty {
+  margin-bottom: -14px;
+}
+
+.py-copied {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  color: var(--budGreen);
+  font: 600 14px/1.4 var(--fontFamily);
+}
+
+.py-copied svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.py-link {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  color: var(--colorInkSecondary);
+  font: 500 14px/1.45 var(--fontFamily);
+}
+
+.py-link-mark {
+  display: flex;
+  flex: none;
+  margin-top: 3px;
+}
+
+.py-link-mark :is(.desk-mark, .bud-open) {
+  width: 14px;
+  height: 14px;
+}
+
+.py-send {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 20px;
+  border-radius: 24px;
+  background: var(--colorCard);
+  box-shadow: inset 0 0 0 1.5px var(--colorBorder);
+  color: var(--colorInk);
+  font: 600 16px/1.3 var(--fontFamily);
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.py-send:hover {
+  background: var(--deskHover);
+}
+
+.py-send.is-busy {
+  color: var(--colorInkTertiary);
+  cursor: default;
+}
+
+.py-send.is-busy:hover {
+  background: var(--colorCard);
+}
+
+.py-refused-line {
+  color: var(--colorInk);
+  font: 500 14px/1.45 var(--fontFamily);
+}
+
+.py-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--spaceSm);
+  margin-inline: calc(-1 * var(--spaceSm));
+}
+
+.py-actions .desk-text {
+  margin-inline: 0;
+}
+
+.ev .desk-text.py-leave:not(.is-off) {
+  color: var(--colorInkSecondary);
+}
+
+.py-choose {
+  display: grid;
+  grid-template-columns: minmax(0, 470px) minmax(0, 420px);
+  gap: 48px;
+  align-items: start;
+}
+
+.py-choose-side {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.py-choose-side .desk-rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.py-pick {
+  gap: var(--spaceLg);
+}
+
+.py-check {
+  display: grid;
+  flex: none;
+  place-content: center;
+  box-sizing: border-box;
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  border: 2px solid var(--colorFieldBorder);
+  border-radius: 6px;
+  background: var(--colorCard);
+  color: var(--colorInkOnDark);
+  appearance: none;
+}
+
+.py-check:checked {
+  border-color: var(--colorAccent);
+  background: var(--colorAccent);
+}
+
+.py-check:checked::after {
+  width: 10px;
+  height: 5px;
+  margin-top: -2px;
+  border-bottom: 2.4px solid currentcolor;
+  border-left: 2.4px solid currentcolor;
+  transform: rotate(-45deg);
+  content: '';
+}
+
+.py-choices {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.py-legend {
+  padding: 0 0 4px;
+  font: 700 15px/1.3 var(--fontFamily);
+}
+
+.py-total {
+  font: 700 15px/1.4 var(--fontFamily);
+  font-variant-numeric: tabular-nums;
+}
+
+.py-total.is-wrong {
+  color: var(--budRed);
+}
+
+.py-figure {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (width <= 720px) {
+  .py-choose {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 32px;
+  }
+}

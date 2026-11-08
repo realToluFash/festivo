@@ -45,8 +45,8 @@ import { CAL_WORDS } from './calendar.ts';
 import { EventSidebar } from './EventSidebar.tsx';
 import { Glyph, type GlyphName } from '../components/Glyph.tsx';
 import { LayersContext } from '../layers.ts';
-import { BudgetArea } from './Quotes.tsx';
 import { BUDGET_EVENT } from './budget.ts';
+import { BudgetEntry } from './BudgetRoutes.tsx';
 import { type NumbersState, guestsAt, hasGuests, numbersStateOf } from './guests.ts';
 import { GuestNumbers } from './GuestsParts.tsx';
 import {
@@ -228,7 +228,7 @@ function EventView({
   const away = useLeaveAsk(dirty);
 
   if (area === 'people') return <Navigate to="/demo/people" replace />;
-  if (area === 'budget' && initial.id === BUDGET_EVENT) return <BudgetArea event={initial} />;
+  if (area === 'budget' && initial.id === BUDGET_EVENT) return <BudgetEntry event={initial} />;
   if (area === 'guests' && hasGuests(initial.id))
     return <Navigate to={guestsAt(initial.id)} replace />;
   if (area === 'messages' && fixedArea == null)

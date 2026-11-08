@@ -26,6 +26,24 @@ import {
 import { BUDGET_WORDS as BW } from './budgetWords.ts';
 import { Alert } from './EventParts.tsx';
 import {
+  type EventDays,
+  SHAPES,
+  type ShapeRow,
+  type Shaping,
+  anyShapeProblem,
+  keptOf,
+  retyped,
+  shapeLine,
+  shapeRows,
+  shapingOf,
+  shapingProblems,
+  sharesLine,
+  sharesTyped,
+  typedDifference,
+  typedTerms,
+} from './payments.ts';
+import { PW } from './paymentsWords.ts';
+import {
   type Amending,
   type Budget,
   type BudgetViewer,
@@ -64,20 +82,6 @@ function focusFirstWrong(): void {
     () => document.querySelector<HTMLElement>('.desk-dialog [aria-invalid="true"]')?.focus(),
     0,
   );
-}
-
-/** Only the problems already showing are kept, each as the draft now reads, so a field clears once it is fixed. */
-function keptOf<K extends string>(
-  shown: Partial<Record<K, string>>,
-  now: Partial<Record<K, string>>,
-): Partial<Record<K, string>> {
-  const kept: Partial<Record<K, string>> = {};
-  for (const key of Object.keys(shown) as K[]) {
-    const line = now[key];
-    if (line != null) kept[key] = line;
-  }
-
-  return kept;
 }
 
 function refusalWords(refusal: Refusal, budget: Budget): string {
@@ -564,21 +568,33 @@ function LinesField({
 export function PaymentDialog({
   opened,
   quote,
+  shaping = null,
+  days,
   onOpened,
+  onShaping,
   onClose,
   onSaved,
+  onShaped,
 }: {
   opened: PaymentOpen;
   quote: Quote;
+  shaping?: Shaping | null;
+  days?: EventDays;
   onOpened: (next: PaymentOpen) => void;
+  onShaping?: (next: Shaping) => void;
   onClose: () => void;
   onSaved: (draft: PaymentDraft) => void;
+  onShaped?: (rows: readonly ShapeRow[]) => void;
 }) {
   const id = useId();
   const { draft, problems } = opened;
   const [busy, setBusy] = useState(false);
   const first = useRef<HTMLInputElement>(null);
+  const picked = useRef<HTMLInputElement>(null);
   const pending = useRef<number | undefined>(undefined);
+  const shaped = shaping != null && shaping.shape !== 'rows';
+  const rows = shaped && days != null ? shapeRows(typedTerms(shaping), quote, days) : [];
+  const short = shaped && sharesTyped(shaping) ? sharesLine(rows, quote.amount) : null;
 
   useEffect(() => () => window.clearTimeout(pending.current), []);
 
@@ -591,6 +607,20 @@ export function PaymentDialog({
   };
   const save = () => {
     if (busy) return;
+    if (shaped) {
+      const found = shapingProblems(shaping);
+      onShaping?.({ ...shaping, problems: found });
+      if (anyShapeProblem(found)) {
+        focusFirstWrong();
+        return;
+      }
+      setBusy(true);
+      pending.current = window.setTimeout(() => {
+        setBusy(false);
+        onShaped?.(rows);
+      }, BUSY_MS);
+      return;
+    }
     const found = paymentProblems(draft, quote, longDay);
     onOpened({ draft, problems: found });
     if (Object.keys(found).length > 0) {
@@ -610,13 +640,105 @@ export function PaymentDialog({
       title={QW.addAPayment}
       verb={busy ? BW.saving : QW.add}
       on={!busy}
-      first={first}
+      first={shaping == null ? first : picked}
       onDismiss={onClose}
       onConfirm={save}
     >
       <div className="desk-fields">
-        <Fixed label={QW.vendor} value={quote.vendor.name} />
-        <PaymentFields id={id} draft={draft} problems={problems} first={first} onSet={set} />
+        {shaping?.raced === true && <AlertInset>{PW.raced}</AlertInset>}
+        {shaping?.raced !== true && shaping?.failed === true && (
+          <AlertInset>{PW.shapeFailed}</AlertInset>
+        )}
+        {shaping != null && (
+          <fieldset className="pay-shapes">
+            <legend className="pay-legend">{PW.howItIsPaid}</legend>
+            <ul className="desk-rows bud-rows">
+              {SHAPES.map((shape) => (
+                <li key={shape}>
+                  <label
+                    className={
+                      shape === shaping.shape
+                        ? 'desk-row pay-shape is-chosen'
+                        : 'desk-row pay-shape'
+                    }
+                  >
+                    <input
+                      ref={shape === shaping.shape ? picked : undefined}
+                      type="radio"
+                      className="desk-radio"
+                      name={`${id}-shape`}
+                      checked={shape === shaping.shape}
+                      onChange={() => onShaping?.(shapingOf(shape, shaping.raced))}
+                    />
+                    <RowWords title={PW.shapes[shape]} />
+                  </label>
+                </li>
+              ))}
+            </ul>
+          </fieldset>
+        )}
+        {shaped ? (
+          <>
+            <Rows>
+              {rows.map((row, index) => {
+                const typed = shaping.typed[index];
+                const problems = shaping.problems[index] ?? {};
+                const at = `${id}-row-${index}`;
+
+                return (
+                  <li key={at} className="pay-shape-row">
+                    <BudgetRow
+                      title={row.what === '' ? PW.noDescription : row.what}
+                      lines={[shapeLine(row)]}
+                      end={<Amount value={money(row.amount)} />}
+                    />
+                    {typed != null && (
+                      <div className="desk-fields">
+                        <TextField
+                          id={`${at}-what`}
+                          label={QW.whatFor}
+                          value={typed.what}
+                          error={problems.what ?? null}
+                          onChange={(what) => onShaping?.(retyped(shaping, index, { what }))}
+                        />
+                        <div className="qt-two">
+                          <TextField
+                            id={`${at}-share`}
+                            label={PW.shareField}
+                            value={typed.share}
+                            help={PW.shareHelp}
+                            error={problems.share ?? null}
+                            onChange={(share) => onShaping?.(retyped(shaping, index, { share }))}
+                          />
+                          {row.from !== 'quoted' && (
+                            <TextField
+                              id={`${at}-days`}
+                              label={row.from === 'before' ? PW.daysBeforeField : PW.daysAfterField}
+                              value={typed.days}
+                              help={PW.shapeDaysHelp}
+                              error={problems.days ?? null}
+                              onChange={(days) => onShaping?.(retyped(shaping, index, { days }))}
+                            />
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
+            </Rows>
+            {short == null ? (
+              <p className="pay-note">{PW.eachRowSaved}</p>
+            ) : (
+              <p className="pay-note is-amber">{short}</p>
+            )}
+          </>
+        ) : (
+          <>
+            <Fixed label={QW.vendor} value={quote.vendor.name} />
+            <PaymentFields id={id} draft={draft} problems={problems} first={first} onSet={set} />
+          </>
+        )}
       </div>
     </BudgetDialog>
   );
@@ -779,10 +901,12 @@ export function MarkPaidDialog({
   onSaved: (draft: MarkDraft) => void;
 }) {
   const id = useId();
-  const { draft, problems } = marking;
+  const { draft, problems, refused } = marking;
   const [busy, setBusy] = useState(false);
+  const [told, setTold] = useState('');
   const first = useRef<HTMLInputElement>(null);
   const pending = useRef<number | undefined>(undefined);
+  const difference = typedDifference(payment, draft.amount);
 
   useEffect(() => () => window.clearTimeout(pending.current), []);
 
@@ -793,8 +917,10 @@ export function MarkPaidDialog({
   const save = () => {
     if (busy) return;
     const found = markProblems(draft, payment);
+    const wrong = Object.keys(found).length;
     onMarking({ ...marking, problems: found });
-    if (Object.keys(found).length > 0) {
+    setTold(wrong === 0 ? '' : wrong === 1 ? BW.oneFieldWrong : BW.fieldsWrong(wrong));
+    if (wrong > 0) {
       focusFirstWrong();
       return;
     }
@@ -805,6 +931,39 @@ export function MarkPaidDialog({
     }, BUSY_MS);
   };
 
+  const about = (
+    <>
+      <p className="desk-line">{QW.markPaidAbout(vendor, payment.what, event)}</p>
+      <Rows>
+        <li>
+          <BudgetRow
+            title={QW.scheduled}
+            lines={[BW.due(shortDay(payment.dueOn))]}
+            end={<Amount value={money(payment.amount)} />}
+          />
+        </li>
+      </Rows>
+    </>
+  );
+
+  if (refused != null)
+    return (
+      <BudgetDialog
+        title={BW.markPaid}
+        verb={PW.close}
+        cancel={false}
+        onDismiss={onClose}
+        onConfirm={onClose}
+      >
+        <div className="desk-fields">
+          {about}
+          <AlertInset>
+            {refused === 'paid' ? PW.alreadyPaid(payment.paid?.by ?? '') : PW.alreadyCancelled}
+          </AlertInset>
+        </div>
+      </BudgetDialog>
+    );
+
   return (
     <BudgetDialog
       title={BW.markPaid}
@@ -814,22 +973,14 @@ export function MarkPaidDialog({
       onDismiss={onClose}
       onConfirm={save}
     >
-      <div className="desk-fields">
-        <p className="desk-line">{QW.markPaidAbout(vendor, payment.what, event)}</p>
-        <Rows>
-          <li>
-            <BudgetRow
-              title={QW.scheduled}
-              lines={[BW.due(shortDay(payment.dueOn))]}
-              end={<Amount value={money(payment.amount)} />}
-            />
-          </li>
-        </Rows>
+      <div className="desk-fields pay-mark">
+        {about}
         <MoneyField
           label={QW.amountPaid}
           value={draft.amount}
           error={problems.amount ?? null}
           inputRef={first}
+          {...(difference == null ? {} : { help: difference })}
           onChange={(amount) => set({ amount })}
         />
         <DateField
@@ -847,10 +998,13 @@ export function MarkPaidDialog({
           id={`${id}-reference`}
           label={QW.reference}
           value={draft.reference}
-          error={null}
+          error={problems.reference ?? null}
           optional
           onChange={(reference) => set({ reference })}
         />
+        <p className="visually-hidden" role="status">
+          {told}
+        </p>
       </div>
     </BudgetDialog>
   );
@@ -897,7 +1051,7 @@ function Label({ id, label, optional }: { id: string; label: string; optional: b
   );
 }
 
-function TextField({
+export function TextField({
   id,
   label,
   value,
@@ -955,7 +1109,7 @@ function TextField({
   );
 }
 
-function DateField({
+export function DateField({
   id,
   label,
   value,

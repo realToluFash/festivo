@@ -34,6 +34,7 @@ export function EventSidebar({
   tell,
   inert,
   waiting = null,
+  without = [],
 }: {
   event: SampleEvent;
   area: Area;
@@ -41,6 +42,7 @@ export function EventSidebar({
   tell: Tell;
   inert: boolean;
   waiting?: { line: string; name: string } | null;
+  without?: readonly Area[];
 }) {
   return (
     <nav className="today-side ev-side" aria-label={event.name} inert={inert}>
@@ -72,7 +74,7 @@ export function EventSidebar({
         </div>
       </div>
       <ul className="today-places">
-        {AREAS.map((one) => (
+        {AREAS.filter((one) => !without.includes(one.area)).map((one) => (
           <li key={one.area}>
             <Link
               className={[

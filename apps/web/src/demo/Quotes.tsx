@@ -20,11 +20,29 @@ import {
   RingMark,
   Rows,
 } from './BudgetParts.tsx';
-import { type Payment, longDay, money, overdue, shortDay, whole } from './budget.ts';
+import { type Payment, TODAY, longDay, money, overdue, shortDay, whole } from './budget.ts';
 import { BUDGET_WORDS as BW } from './budgetWords.ts';
 import { NotBuilt } from './EventParts.tsx';
 import { EVENT_WORDS, type SampleEvent } from './events.ts';
 import { AmendInPlace, MarkPaidDialog, PaymentDialog, QuoteDialog } from './QuoteForms.tsx';
+import { CancelDialog, CancelledMark, MadeDialog } from './Payments.tsx';
+import {
+  type Cancelling,
+  type MadeOpen,
+  type Shaping,
+  cancelledLine,
+  cancelledOf,
+  eventDays,
+  madePayment,
+  offersShapes,
+  paidLineOf,
+  paymentsStart,
+  paymentsVendor,
+  scheduleOf,
+  shapePayments,
+  shapingOf,
+} from './payments.ts';
+import { PW } from './paymentsWords.ts';
 import {
   type Amending,
   BLANK_PAYMENT,
@@ -54,7 +72,6 @@ import {
   linesWords,
   markedPaid,
   nextPaymentId,
-  pageVendor,
   parsedAmount,
   quotesStart,
   scheduledFor,
@@ -63,6 +80,7 @@ import {
   keepBudget,
   keptBudget,
 } from './quotes.ts';
+import { BudgetHomeContent } from './BudgetHome.tsx';
 import { QW } from './quotesWords.ts';
 import './quotes.css';
 
@@ -73,7 +91,7 @@ export function BudgetArea({ event }: { event: SampleEvent }) {
   const [params] = useSearchParams();
   const state = params.get('state') ?? '';
   const viewer = budgetViewerOf(params.get('as'), state);
-  const vendorId = pageVendor(state, params.get('vendor'));
+  const vendorId = paymentsVendor(state, params.get('vendor'));
   const page: BudgetPage =
     vendorId != null ? 'vendor' : params.get('view') === 'due' ? 'due' : 'home';
 
@@ -104,7 +122,7 @@ function QuotesBody({
 }) {
   const [start] = useState(() => {
     if (state !== '') forgetBudget();
-    return quotesStart(state, vendorId, longDay);
+    return paymentsStart(quotesStart(state, vendorId, longDay), state, vendorId);
   });
   const [budget, setBudget] = useState<Budget>(
     () => (state === '' ? keptBudget() : null) ?? start.budget,
@@ -118,9 +136,13 @@ function QuotesBody({
   const [amending, setAmending] = useState<Amending | null>(start.amending);
   const [removing, setRemoving] = useState<string | null>(start.removing);
   const [earlier, setEarlier] = useState(start.earlier);
-  const [marking, setMarking] = useState<Marking | null>(null);
-  const [marked, setMarked] = useState<string | null>(null);
-  const [said, setSaid] = useState('');
+  const [marking, setMarking] = useState<Marking | null>(start.marking);
+  const [marked, setMarked] = useState<string | null>(start.marked);
+  const [said, setSaid] = useState(start.said);
+  const [cancelling, setCancelling] = useState<Cancelling | null>(start.cancelling);
+  const [made, setMade] = useState<MadeOpen | null>(start.made);
+  const [shaping, setShaping] = useState<Shaping | null>(start.shaping);
+  const [addedPaid, setAddedPaid] = useState<readonly string[]>([]);
   const [focusOn, setFocusOn] = useState<{ id: string } | null>(null);
   const title = useRef<HTMLHeadingElement>(null);
   const opened = useRef(false);
@@ -128,6 +150,8 @@ function QuotesBody({
   const at = budgetAt(event.id, viewer, readOnly);
   const open = page === 'vendor' ? budget.quotes.find((one) => one.vendor.id === vendorId) : null;
   const marks = marking == null ? null : budget.payments.find((one) => one.id === marking.id);
+  const cancels =
+    cancelling == null ? null : budget.payments.find((one) => one.id === cancelling.id);
   const vendorOf = (id: string) => budget.quotes.find((one) => one.vendor.id === id)?.vendor.name;
   const markVendor = marks == null ? undefined : vendorOf(marks.vendorId);
   const markedPayment = marked == null ? null : budget.payments.find((one) => one.id === marked);
@@ -171,14 +195,21 @@ function QuotesBody({
   }, [focusOn]);
 
   const markPaid = (one: Payment) =>
-    setMarking({ id: one.id, draft: draftToMark(one), problems: {} });
-  const undo = (id: string) => {
+    setMarking({ id: one.id, draft: draftToMark(one), problems: {}, refused: null });
+  const changeOne = (id: string, change: (one: Payment) => Payment) =>
     setBudget((now) => ({
       ...now,
-      payments: now.payments.map((one) => (one.id === id ? { ...one, paid: null } : one)),
+      payments: now.payments.map((one) => (one.id === id ? change(one) : one)),
     }));
+  const undo = (id: string) => {
     setMarked(null);
     setSaid('');
+    if (addedPaid.includes(id)) {
+      setBudget((now) => ({ ...now, payments: now.payments.filter((one) => one.id !== id) }));
+      title.current?.focus();
+      return;
+    }
+    changeOne(id, (one) => ({ ...one, paid: null }));
     setFocusOn({ id });
   };
 
@@ -210,9 +241,29 @@ function QuotesBody({
                   list: false,
                 })
               }
-              onAddPayment={() => setPayment({ draft: BLANK_PAYMENT, problems: {} })}
+              onAddPayment={() => {
+                setPayment({ draft: BLANK_PAYMENT, problems: {} });
+                setShaping(offersShapes(budget, open.vendor.id) ? shapingOf('rows') : null);
+              }}
               onMarkPaid={markPaid}
               onUndo={undo}
+              onCancel={(one) => setCancelling({ id: one.id, why: '', problem: null })}
+              onRestore={(id) => {
+                changeOne(id, (one) => ({ ...one, cancelled: null }));
+                setFocusOn({ id });
+              }}
+              onAlreadyMade={() =>
+                setMade({
+                  draft: {
+                    vendorId: open.vendor.id,
+                    what: '',
+                    amount: '',
+                    paidOn: TODAY,
+                    reference: '',
+                  },
+                  problems: {},
+                })
+              }
               onAmending={setAmending}
               onAmended={(id, draft) => {
                 const amount = parsedAmount(draft.amount) ?? 0;
@@ -247,24 +298,38 @@ function QuotesBody({
               titleRef={title}
             />
           ) : (
-            <BudgetHome
-              budget={budget}
-              marked={homeMarked}
-              onMark={markPaid}
-              onUndo={undo}
-              viewer={viewer}
-              readOnly={readOnly}
-              titleRef={title}
-              at={at}
+            <BudgetHomeContent
+              event={event}
+              state={state}
               tell={tell}
-              onAdd={() =>
-                setQuote({
-                  form: 'add',
-                  draft: BLANK_QUOTE,
-                  problems: {},
-                  refusal: null,
-                  list: false,
-                })
+              titleRef={title}
+              payments={budget.payments}
+              onMark={readOnly ? undefined : markPaid}
+              dueNext={
+                <DueNext
+                  due={everythingDue(budget)}
+                  more={at.due}
+                  marked={homeMarked}
+                  {...(readOnly ? {} : { onMark: markPaid, onUndo: undo })}
+                />
+              }
+              vendorsQuoted={
+                <VendorsQuoted
+                  budget={budget}
+                  vendorAt={at.vendor}
+                  onAdd={
+                    readOnly
+                      ? undefined
+                      : () =>
+                          setQuote({
+                            form: 'add',
+                            draft: BLANK_QUOTE,
+                            problems: {},
+                            refusal: null,
+                            list: false,
+                          })
+                  }
+                />
               }
             />
           )}
@@ -293,8 +358,28 @@ function QuotesBody({
             <PaymentDialog
               opened={payment}
               quote={open}
+              shaping={shaping}
+              days={eventDays(event)}
               onOpened={setPayment}
+              onShaping={setShaping}
               onClose={() => setPayment(null)}
+              onShaped={(rows) => {
+                if (!offersShapes(budget, open.vendor.id)) {
+                  setShaping((now) => now && { ...now, raced: true });
+                  return;
+                }
+                setBudget((now) => ({
+                  ...now,
+                  payments: [...now.payments, ...shapePayments(rows, open.vendor.id, now.payments)],
+                }));
+                setPayment(null);
+                setShaping(null);
+                tell(
+                  rows
+                    .map((row) => QW.paymentAdded(row.what, money(row.amount), longDay(row.dueOn)))
+                    .join(' '),
+                );
+              }}
               onSaved={(draft: PaymentDraft) => {
                 const amount = parsedAmount(draft.amount) ?? 0;
                 setBudget((now) => ({
@@ -327,15 +412,43 @@ function QuotesBody({
               onClose={() => setMarking(null)}
               onSaved={(draft) => {
                 const next = markedPaid(marks, draft, viewer.name);
-                setBudget((now) => ({
-                  ...now,
-                  payments: now.payments.map((one) => (one.id === next.id ? next : one)),
-                }));
+                changeOne(next.id, () => next);
                 setMarking(null);
                 setAmending((now) => (now?.id === next.id ? null : now));
                 setRemoving((now) => (now === next.id ? null : now));
                 setMarked(next.id);
                 setSaid(QW.markedPaid(money(next.paid?.amount ?? 0), longDay(draft.paidOn)));
+                setFocusOn({ id: next.id });
+              }}
+            />
+          )}
+          {cancelling != null && cancels != null && open != null && (
+            <CancelDialog
+              cancelling={cancelling}
+              payment={cancels}
+              vendor={open.vendor.name}
+              onCancelling={setCancelling}
+              onClose={() => setCancelling(null)}
+              onSaved={(why) => {
+                changeOne(cancels.id, (one) => cancelledOf(one, why));
+                setCancelling(null);
+                setFocusOn({ id: cancels.id });
+              }}
+            />
+          )}
+          {made != null && open != null && (
+            <MadeDialog
+              made={made}
+              quotes={budget.quotes}
+              onMade={setMade}
+              onClose={() => setMade(null)}
+              onSaved={(draft) => {
+                const next = madePayment(draft, budget.payments, viewer.name);
+                setBudget((now) => ({ ...now, payments: [...now.payments, next] }));
+                setMade(null);
+                setMarked(next.id);
+                setAddedPaid((now) => [...now, next.id]);
+                setSaid(QW.markedPaid(money(next.amount), longDay(draft.paidOn)));
                 setFocusOn({ id: next.id });
               }}
             />
@@ -627,6 +740,9 @@ export function VendorPage({
   onAddPayment,
   onMarkPaid,
   onUndo,
+  onCancel,
+  onRestore,
+  onAlreadyMade,
   onAmending,
   onAmended,
   onRemoving,
@@ -649,13 +765,16 @@ export function VendorPage({
   onAddPayment: () => void;
   onMarkPaid: (payment: Payment) => void;
   onUndo: (id: string) => void;
+  onCancel: (payment: Payment) => void;
+  onRestore: (id: string) => void;
+  onAlreadyMade: () => void;
   onAmending: (next: Amending | null) => void;
   onAmended: (id: string, draft: PaymentDraft) => void;
   onRemoving: (id: string | null) => void;
   onRemove: (id: string) => void;
 }) {
-  const payments = scheduledFor(budget, quote.vendor.id);
-  const scheduled = sum(payments);
+  const payments = scheduleOf(budget, quote.vendor.id);
+  const scheduled = sum(scheduledFor(budget, quote.vendor.id));
   const late = firstOverdue(budget, quote.vendor.id);
   const { vendor } = quote;
 
@@ -722,6 +841,8 @@ export function VendorPage({
                       lit={marked === one.id}
                       onMarkPaid={() => onMarkPaid(one)}
                       onUndo={() => onUndo(one.id)}
+                      onCancel={() => onCancel(one)}
+                      onRestore={() => onRestore(one.id)}
                       onChange={() =>
                         onAmending({ id: one.id, draft: draftOfPayment(one), problems: {} })
                       }
@@ -742,6 +863,11 @@ export function VendorPage({
                   </li>
                 </Rows>
               </>
+            )}
+            {!readOnly && (
+              <div className="pay-made">
+                <TextAction label={PW.alreadyMade} before="plus" onClick={onAlreadyMade} />
+              </div>
             )}
           </Block>
         }
@@ -804,6 +930,8 @@ function ScheduleRow({
   lit,
   onMarkPaid,
   onUndo,
+  onCancel,
+  onRestore,
   onChange,
   onAmending,
   onAmended,
@@ -818,6 +946,8 @@ function ScheduleRow({
   lit: boolean;
   onMarkPaid: () => void;
   onUndo: () => void;
+  onCancel: () => void;
+  onRestore: () => void;
   onChange: () => void;
   onAmending: (next: Amending | null) => void;
   onAmended: (draft: PaymentDraft) => void;
@@ -837,9 +967,7 @@ function ScheduleRow({
         <BudgetRow
           lead={<PaidMark large />}
           title={payment.what}
-          lines={[
-            QW.paidLine(money(payment.paid.amount), shortDay(payment.paid.on), payment.paid.by),
-          ]}
+          lines={[paidLineOf(payment)]}
           lit={lit}
           end={
             lit && !readOnly ? (
@@ -848,6 +976,24 @@ function ScheduleRow({
                 {BW.undo}
               </button>
             ) : undefined
+          }
+        />
+      </li>
+    );
+
+  if (payment.cancelled != null)
+    return (
+      <li data-payment={payment.id}>
+        <BudgetRow
+          lead={<CancelledMark />}
+          title={payment.what}
+          lines={[cancelledLine(payment)]}
+          end={
+            readOnly ? undefined : (
+              <button type="button" className="desk-text" onClick={onRestore}>
+                {PW.restore}
+              </button>
+            )
           }
         />
       </li>
@@ -893,6 +1039,9 @@ function ScheduleRow({
         <div className="bud-row-actions">
           <button type="button" className="desk-text" onClick={onMarkPaid}>
             {BW.markPaid}
+          </button>
+          <button type="button" className="desk-text pay-quiet" onClick={onCancel}>
+            {PW.cancelPayment}
           </button>
           <button ref={change} type="button" className="desk-text" onClick={onChange}>
             {QW.change}

@@ -46,6 +46,14 @@ import { SETTINGS_PAGES } from './settings.ts';
 import { SIGN_IN_RULES_PAGES } from './signInRules.ts';
 import { SWITCHER_PAGES } from './switcher.ts';
 import { QUOTES_PAGES, forgetBudget } from './quotes.ts';
+import { BUDGET_PAGES } from './budgetPages.ts';
+import { DECIDE_PAGES } from './decide.ts';
+import { PAYERS_PAGES } from './payers.ts';
+import { PAYMENTS_PAGES } from './payments.ts';
+import { PLAN_PAGES } from './plan.ts';
+import { SHARE_PAGES } from './share.ts';
+import { ShareRecipient } from './ShareRecipient.tsx';
+import { TEMPLATES_PAGES } from './templates.ts';
 import { Today } from './Today.tsx';
 import { TwoFactorBoard } from './TwoFactor.tsx';
 import { VendorsMoved } from './Vendors.tsx';
@@ -166,9 +174,11 @@ export default function Demo() {
       <Route path="settings/general" element={<Settings open="general" />} />
       <Route path="settings/sign-in-rules" element={<Settings open="signInRules" />} />
       <Route path="settings/vendors" element={<Settings open="vendors" />} />
+      <Route path="settings/payment-reminders" element={<Settings open="vendors" reminders />} />
       <Route path="people" element={<People />} />
       <Route path="redeem" element={<Redeem />} />
       <Route path="vendors" element={<VendorsMoved />} />
+      <Route path="share/:scope" element={<ShareRecipient />} />
       <Route path="guest" element={<GuestPage />} />
       <Route path="guests" element={<Guests />} />
       <Route path="later" element={<Later />} />
@@ -239,6 +249,24 @@ function DemoHome({ from }: { from: string }) {
         <h2 id="demo-page-81-quotes">81 · Budget and costs · quotes and what is due</h2>
         <h3>Quotes in A · Summary first · desktop</h3>
         <BoardPages pages={QUOTES_PAGES} />
+      </section>
+
+      <section className="demo-home-page" aria-labelledby="demo-page-81-budget">
+        <h2 id="demo-page-81-budget">81 · Budget and costs · Budget in A · Summary first</h2>
+        <h3>The Budget page, the ceiling, payments and margin · desktop</h3>
+        <BoardPages pages={BUDGET_PAGES} />
+        <h3>Payments on a vendor’s page, the reminder setting and the shapes · desktop</h3>
+        <BoardPages pages={PAYMENTS_PAGES} />
+        <h3>Who is paying · desktop</h3>
+        <BoardPages pages={PAYERS_PAGES} />
+        <h3>Against plan · desktop and A4</h3>
+        <BoardPages pages={PLAN_PAGES} />
+        <h3>Templates and calibration · desktop</h3>
+        <BoardPages pages={TEMPLATES_PAGES} />
+        <h3>What a decision costs, in Add guest · desktop</h3>
+        <BoardPages pages={DECIDE_PAGES} />
+        <h3>Share links, and the signed-out share · desktop, phone and tablet</h3>
+        <BoardPages pages={SHARE_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-36">

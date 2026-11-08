@@ -31,8 +31,6 @@ export const QW = {
   overShort: (gap: string) => `${gap} over the quote`,
   addAPayment: 'Add a payment',
   noPayments: 'No payments scheduled yet.',
-  paidLine: (amount: string, day: string, by: string) =>
-    `Paid ${amount} on ${day} · Marked by ${by}`,
   change: 'Change',
   removeAsk: 'Remove this payment?',
   vendor: 'Vendor',

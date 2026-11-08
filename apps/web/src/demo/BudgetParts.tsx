@@ -33,10 +33,12 @@ export function BudgetShell({
   area = 'budget',
   trail = [],
   told = null,
+  without = [],
   children,
 }: {
   event: SampleEvent;
   area?: Area;
+  without?: readonly Area[];
   trail?: readonly { label: string; to?: string }[];
   told?: string | null;
   children: (tell: Tell) => ReactNode;
@@ -45,7 +47,14 @@ export function BudgetShell({
     <EventsShell
       told={told}
       renderSide={(tell, covered) => (
-        <EventSidebar event={event} area={area} now={NOW} tell={tell} inert={covered} />
+        <EventSidebar
+          event={event}
+          area={area}
+          now={NOW}
+          tell={tell}
+          inert={covered}
+          without={without}
+        />
       )}
     >
       {(tell) => (
