@@ -177,7 +177,6 @@ export function linesOf(state: string): CostLine[] {
   if (state === 'removed_not_priced') return lines.filter((one) => one.id !== 'arch');
   if (state === 'removed_nothing_yet') return lines.filter((one) => one.id !== 'centre');
   if (state === 'first_time' || state === 'nothing_to_start') return [];
-  if (state === 'ceiling_refused') return lines.filter((one) => one.category !== GONE_CATEGORY);
   if (state === 'add_cost_added') return [...lines, { ...WELCOME_DRINKS }];
 
   return lines;
@@ -193,8 +192,7 @@ export function ceilingsOf(state: string): Partial<Record<CeilingKey, number>> {
     return {};
   if (state === 'ceiling_saved') return { ...CEILINGS, hire: 0 };
   if (state === 'ceiling_categories_only') return { catering: 1300000, flowers: 150000 };
-  if (state === 'ceiling_cleared_one' || state === 'ceiling_refused')
-    return { whole: 2200000, catering: 1300000 };
+  if (state === 'ceiling_cleared_one') return { whole: 2200000, catering: 1300000 };
   if (state === 'ceiling_no_costs') return { ...CEILINGS, hire: 0, other: 50000 };
   if (state === 'ceiling_live_changed') return { ...CEILINGS, whole: 2400000 };
   if (state === 'rate_warning_category') return { ...CEILINGS, whole: 2600000 };
@@ -275,13 +273,6 @@ export function noteProblem(typed: string): string | null {
   return [...typed.trim()].length > NOTE_MAX
     ? `Shorten the note to ${NOTE_MAX} characters or fewer.`
     : null;
-}
-
-/** sc-90's one refusal only the server gives (pm, 8 Nov): a category removed by someone else since the page opened. */
-export const GONE_CATEGORY: Category = 'flowers';
-
-export function categoryGone(name: string): string {
-  return `${name} was removed, so its ceiling wasn’t saved.`;
 }
 
 /** The cost Add a cost's sample adds: Welcome drinks, £12.00 a head (Budget-A-Web-More, frame 34). */
@@ -440,10 +431,7 @@ export const BUDGET_PAGES: readonly DemoGroup[] = [
       { to: at('ceiling_live_changed'), name: 'Live: changed in another tab' },
       { to: at('ceiling_live_cleared'), name: 'Live: cleared in another tab' },
       { to: at('ceiling_saving'), name: 'Saving' },
-      {
-        to: at('ceiling_refused'),
-        name: 'Refused by the server: Flowers was removed since the page opened',
-      },
+      { to: at('ceiling_refused'), name: 'Refused by the server on its field' },
       { to: at('ceiling_cleared_one'), name: 'One ceiling cleared: Flowers' },
       { to: at('ceiling_no_costs'), name: 'A ceiling on a category with no costs' },
     ],

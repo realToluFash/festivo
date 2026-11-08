@@ -34,7 +34,7 @@ const PATHS: Record<Drawn, string> = {
   members: 'members',
   signInRules: 'sign-in-rules',
   vendors: 'vendors',
-  data: 'data',
+  data: 'data-and-control',
 };
 
 export const SECTION_NAMES: Record<Section, string> = {
@@ -46,7 +46,7 @@ export const SECTION_NAMES: Record<Section, string> = {
   members: 'Members',
   signInRules: 'Sign-in rules',
   vendors: 'Vendors',
-  data: 'Data',
+  data: 'Data and control',
 };
 
 export interface SectionGroup {
@@ -109,7 +109,7 @@ export function viewerOf(name: string | null): Viewer {
   return Object.values(VIEWERS).find((viewer) => viewer.key === name) ?? VIEWERS.folake;
 }
 
-/** Members, Vendors and Data only for an owner or an admin: a member sees General and Sign-in rules, read only. */
+/** Members, Vendors and Data and control only for an owner or an admin: a member sees General and Sign-in rules, read only. */
 export function groupsFor(viewer: Pick<Viewer, 'manages'>): SectionGroup[] {
   return GROUPS.map((group) => ({
     ...group,

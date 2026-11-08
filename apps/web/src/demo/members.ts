@@ -1039,6 +1039,7 @@ export const MEMBERS_STATES = [
   'removed',
   'former',
   'priya',
+  'alsoMember',
   'role',
   'roleAdmin',
   'roleDiscard',
@@ -1279,6 +1280,7 @@ function dialogOf(state: MembersState, viewer: Pick<Viewer, 'id'>): MembersDialo
 function openOf(state: MembersState, viewer: Pick<Viewer, 'id'>): string | null {
   switch (state) {
     case 'priya':
+    case 'alsoMember':
     case 'role':
     case 'roleAdmin':
     case 'roleDiscard':
@@ -1480,3 +1482,12 @@ export function membersStart(name: string, viewer: Pick<Viewer, 'id' | 'manages'
     handed: handedOf(state, viewer),
   };
 }
+
+/** How many other organisations a person is in, said under their card with no names (sc-563); the sample has Priya in 2. */
+export function alsoMemberLine(count: number): string {
+  return count === 1
+    ? 'Also a member of 1 other organisation'
+    : `Also a member of ${count} other organisations`;
+}
+
+export const ALSO_MEMBER: Readonly<Record<string, number>> = { [PRIYA]: 2 };

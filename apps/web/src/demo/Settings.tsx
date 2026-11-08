@@ -15,8 +15,9 @@ import {
   viewerOf,
 } from './settings.ts';
 import { Account } from './Account.tsx';
-import { DataSettings } from './DataSettings.tsx';
-import { dataViewerKey } from './dataSettings.ts';
+import { DataControl } from './DataControl.tsx';
+import { type DataControlPage, dataControlViewerKey } from './dataControl.ts';
+import { DrawnGlyph } from './DataControlParts.tsx';
 import { General } from './General.tsx';
 import { LayersContext } from '../layers.ts';
 import { Members } from './Members.tsx';
@@ -38,23 +39,24 @@ import '../components/SettingsList.css';
 import './settings.css';
 
 const TILES: Record<
-  Exclude<Section, 'account' | 'general' | 'personalisation' | 'vendors'>,
+  Exclude<Section, 'account' | 'general' | 'personalisation' | 'vendors' | 'data'>,
   GlyphName
 > = {
   security: 'shield',
   notifications: 'bell',
   members: 'users',
   signInRules: 'lock',
-  data: 'page',
 };
 
 /** Settings at a desk in B · Summary first (Web-Settings.dc.html, page 29), on sample data. */
 export function Settings({
   open = 'members',
   reminders = false,
+  page = 'hub',
 }: {
   open?: Drawn;
   reminders?: boolean;
+  page?: DataControlPage;
 }) {
   const [params] = useSearchParams();
   const state = params.get('state') ?? '';
@@ -63,7 +65,7 @@ export function Settings({
     open === 'vendors'
       ? vendorsViewerKey(as, state)
       : open === 'data'
-        ? dataViewerKey(as, state)
+        ? dataControlViewerKey(page, as, state)
         : as,
   );
   useSwitcherStart();
@@ -142,8 +144,9 @@ export function Settings({
                   tell={tell}
                 />
               ) : open === 'data' && viewer.manages ? (
-                <DataSettings
-                  key={`${viewer.key}:${state}`}
+                <DataControl
+                  key={`${page}:${viewer.key}:${state}`}
+                  page={page}
                   viewer={viewer}
                   state={state}
                   tell={tell}
@@ -233,6 +236,12 @@ function Tile({ section, viewer }: { section: Section; viewer: Viewer }) {
     return (
       <span className="desk-tile is-vendors" aria-hidden="true">
         <StorefrontGlyph size={17} />
+      </span>
+    );
+  if (section === 'data')
+    return (
+      <span className="desk-tile is-data" aria-hidden="true">
+        <DrawnGlyph name="data" size={17} />
       </span>
     );
 

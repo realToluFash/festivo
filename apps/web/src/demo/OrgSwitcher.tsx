@@ -23,6 +23,7 @@ import { focusWhenFree } from '../layers.ts';
 import { Notice } from '../components/Notice.tsx';
 import { OrgPill } from '../components/OrgPill.tsx';
 import { Switched as ProductSwitched } from '../components/Switched.tsx';
+import { ManagedBanner } from './managed.tsx';
 import { SAMPLE } from './rules.ts';
 import {
   BLUEBIRD,
@@ -289,7 +290,9 @@ function Menu({
     const answer = where.answers[invitation.id];
     if (answer === 'joined' || !holds(invitation.name, typed)) return false;
 
-    return answer == null || answer === 'failed' || kept.includes(invitation.id);
+    return (
+      answer == null || answer === 'failed' || answer === 'managed' || kept.includes(invitation.id)
+    );
   });
   const tiles: Tile[] = [
     ...places.map((place): Tile => ({ kind: 'place', id: place.id, place })),
@@ -663,7 +666,9 @@ function Answer({
         </p>
         <p className="sw-until">Works until {dayOf(invitation.until)}</p>
       </div>
-      {answer === 'declined' ? (
+      {answer === 'managed' ? (
+        <ManagedBanner level={3} />
+      ) : answer === 'declined' ? (
         <Notice kind="quiet" lands>
           You declined. {invitation.inviter} will see that you said no.
         </Notice>
