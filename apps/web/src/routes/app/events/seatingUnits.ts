@@ -20,10 +20,7 @@ function unit(
   }).format(value);
 }
 
-/**
- * A room's side as the page shows it: "24 m", or "12 ft 6 in" with the inches left out at 0 (sc-3998).
- * Without grouping it is what readRoomSide reads back, which takes "," and "." as the decimal point.
- */
+/** "24 m" or "12 ft 6 in"; readRoomSide reads "," as a decimal point, so a field's value has no grouping. */
 export function lengthWords(
   t: TFunction,
   locale: string,

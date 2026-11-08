@@ -402,9 +402,21 @@ describe('Seating at a desk (sc-3998)', () => {
 });
 
 describe.each([
-  { locale: 'en', largest: '1640 ft 5 in', shown: '1148 ft 4 in', typed: '1148 ft 6 in' },
-  { locale: 'fr', largest: '1640 pi 5 po', shown: '1148 pi 4 po', typed: '1148 pi 6 po' },
-])('A room over 1,000 ft, in $locale (sc-3998)', ({ locale, largest, shown, typed }) => {
+  {
+    locale: 'en',
+    least: '6 ft 7 in',
+    largest: '1640 ft 5 in',
+    shown: '1148 ft 4 in',
+    typed: '1148 ft 6 in',
+  },
+  {
+    locale: 'fr',
+    least: '6 pi 7 po',
+    largest: '1640 pi 5 po',
+    shown: '1148 pi 4 po',
+    typed: '1148 pi 6 po',
+  },
+])('A room over 1,000 ft, in $locale (sc-3998)', ({ locale, least, largest, shown, typed }) => {
   const spaced = (text: string) => text.replace(/\s+/gu, ' ');
 
   afterEach(async () => {
@@ -426,7 +438,7 @@ describe.each([
     fireEvent.change(screen.getByLabelText('Length'), { target: { value: '20' } });
     fireEvent.click(screen.getByRole('button', { name: 'Start the plan' }));
     const refusal = screen.getByText(/^The room must be between/u).textContent ?? '';
-    expect(spaced(refusal).endsWith(`and ${largest}.`)).toBe(true);
+    expect(spaced(refusal)).toBe(`The room must be between ${least} and ${largest}.`);
 
     fireEvent.change(screen.getByLabelText('Width'), { target: { value: largest } });
     fireEvent.click(screen.getByRole('button', { name: 'Start the plan' }));
