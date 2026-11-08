@@ -121,7 +121,7 @@ async function onSeating(
       router={createMemoryRouter(routes, { initialEntries: ['/app/events/ev_1/seating'] })}
     />,
   );
-  await screen.findByRole('heading', { level: 1, name: 'Seating' });
+  await screen.findByRole('heading', { level: 1, name: i18next.t('seating.area') });
 
   return sent;
 }
@@ -418,6 +418,11 @@ describe.each([
   },
 ])('A room over 1,000 ft, in $locale (sc-3998)', ({ locale, least, largest, shown, typed }) => {
   const spaced = (text: string) => text.replace(/\s+/gu, ' ');
+  const t = (key: string, values: Record<string, string> = {}) => i18next.t(key, values);
+  const refusalOpening = () =>
+    t('seating.roomRange', { min: '\u0000', max: '' }).split('\u0000')[0] ?? '';
+  const refusalShown = () =>
+    screen.queryByText((text) => text.startsWith(refusalOpening()), { selector: '*' });
 
   afterEach(async () => {
     await i18next.changeLanguage('en');
@@ -433,15 +438,15 @@ describe.each([
         json({ seating: { measurementSystem: 'us', plan: { ...plan(), widthCm: 50_000 } } }, 201),
     });
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Start the plan' }));
-    fireEvent.change(screen.getByLabelText('Width'), { target: { value: '2000 ft' } });
-    fireEvent.change(screen.getByLabelText('Length'), { target: { value: '20' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Start the plan' }));
-    const refusal = screen.getByText(/^The room must be between/u).textContent ?? '';
-    expect(spaced(refusal)).toBe(`The room must be between ${least} and ${largest}.`);
+    fireEvent.click(await screen.findByRole('button', { name: t('seating.startPlan') }));
+    fireEvent.change(screen.getByLabelText(t('seating.width')), { target: { value: '2000 ft' } });
+    fireEvent.change(screen.getByLabelText(t('seating.length')), { target: { value: '20' } });
+    fireEvent.click(screen.getByRole('button', { name: t('seating.startPlan') }));
+    const refusal = refusalShown()?.textContent ?? '';
+    expect(spaced(refusal)).toBe(spaced(t('seating.roomRange', { min: least, max: largest })));
 
-    fireEvent.change(screen.getByLabelText('Width'), { target: { value: largest } });
-    fireEvent.click(screen.getByRole('button', { name: 'Start the plan' }));
+    fireEvent.change(screen.getByLabelText(t('seating.width')), { target: { value: largest } });
+    fireEvent.click(screen.getByRole('button', { name: t('seating.startPlan') }));
 
     await waitFor(() =>
       expect(
@@ -461,8 +466,8 @@ describe.each([
         json({ seating: { measurementSystem: 'us', plan: { ...hall, widthCm: 35_006 } } }),
     });
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Room settings' }));
-    const width = screen.getByLabelText<HTMLInputElement>('Width');
+    fireEvent.click(await screen.findByRole('button', { name: t('seating.roomSettings') }));
+    const width = screen.getByLabelText<HTMLInputElement>(t('seating.width'));
     expect(spaced(width.value)).toBe(shown);
     fireEvent.change(width, { target: { value: typed } });
     fireEvent.blur(width);
@@ -472,7 +477,7 @@ describe.each([
         widthCm: 35_006,
       }),
     );
-    expect(screen.queryByText(/^The room must be between/u)).toBeNull();
+    expect(refusalShown()).toBeNull();
   });
 });
 
