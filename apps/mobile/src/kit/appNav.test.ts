@@ -311,16 +311,12 @@ describe('The bell in [fd] (sc-23233)', () => {
     );
   });
 
-  it('builds the badge to the frame, at the size and place the web has', () => {
+  it('draws the bell as the demos do: a dot while anything is unread, the count in its name', () => {
     const button = source(join(SRC, 'components', 'BellButton.tsx'));
 
-    expect(button).toMatch(/const BADGE_SIDE = 18;/u);
-    expect(button).toMatch(
-      /badge: \{\s*position: 'absolute',\s*top: tokens\.spaceXxs,\s*right: tokens\.spaceXxs,\s*minWidth: BADGE_SIDE,\s*minHeight: BADGE_SIDE,\s*paddingHorizontal: tokens\.spaceXxs,[\s\S]*?justifyContent: 'center',/u,
-    );
-    expect(button).toMatch(
-      /<Text\s+size=\{tokens\.typePill\.size\}\s+weight="semibold"\s+numberOfLines=\{1\}\s+maxFontSizeMultiplier=\{BADGE_TEXT_SCALE\}/u,
-    );
+    expect(button).toMatch(/<RoundButton\s+glyph="bell"/u);
+    expect(button).toMatch(/t\('notifications\.bellUnread', \{ count: unread \}\)/u);
+    expect(button).toMatch(/dot=\{unread > 0\}/u);
   });
 
   it('insets the skeleton once, its rules running to the card edge and its words with its rows', () => {
