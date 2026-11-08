@@ -796,6 +796,16 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
     },
   );
 
+  it('opens each added state on the row’s own group', SLOW, async () => {
+    await messages('added');
+    expect(screen.getByRole('heading', { level: 3, name: 'No email or phone · 2' })).toBeDefined();
+    cleanup();
+    resetInbox();
+
+    await messages('addedPhone');
+    expect(screen.getByRole('heading', { level: 3, name: 'Opted out · 4' })).toBeDefined();
+  });
+
   it('sends an added address again: Sent on its line, In progress, and says so', SLOW, async () => {
     await messages('added');
 

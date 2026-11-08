@@ -49,6 +49,8 @@ interface Fixing {
 function showFirst(state: MessagesState | null, of: ReachedOf): Show {
   if (state === 'filtered') return 'bounced';
   if (state === 'told') return 'told';
+  if (state === 'added') return 'none';
+  if (state === 'addedPhone') return 'optedOut';
 
   return of === 'new' ? 'everyone' : 'notReached';
 }
@@ -202,6 +204,7 @@ export function ReachedView({
                     }}
                     onAgain={() => {
                       act({ kind: 'sendAgain', id: person.id, thread });
+                      if (show !== 'everyone') setShow('notReached');
                       setStatus(filled(MW.sentToSaid, { name: person.name }));
                       focus(`person:${person.id}`);
                     }}

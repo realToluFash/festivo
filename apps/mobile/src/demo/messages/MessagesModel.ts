@@ -410,9 +410,16 @@ export function startOf(state: MessagesState | null, wide: boolean): Messages {
         open: parking,
         fixed: { joaquin: ADDED.email },
         how: { joaquin: 'addEmail' },
+        filter: 'none',
       };
     case 'addedPhone':
-      return { ...BASE, open: parking, fixed: { lars: ADDED.phone }, how: { lars: 'addPhone' } };
+      return {
+        ...BASE,
+        open: parking,
+        fixed: { lars: ADDED.phone },
+        how: { lars: 'addPhone' },
+        filter: 'optedOut',
+      };
     case 'notNow':
       return {
         ...BASE,
@@ -836,6 +843,7 @@ export function reduce(m: Messages, action: Action): Messages {
         again: { ...m.again, [at]: SENT_AGAIN_AT },
         waiting: m.waiting.filter((one) => one !== at),
         said: at,
+        filter: m.filter === 'everyone' ? m.filter : null,
       };
     }
     case 'notNowFor': {

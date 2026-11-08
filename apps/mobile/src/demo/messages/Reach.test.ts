@@ -72,6 +72,16 @@ describe('after a fix or an add', () => {
     });
   });
 
+  it('opens each added state on the row’s own group, and Send again goes back to Not reached', () => {
+    expect(startOf('added', false).filter).toBe('none');
+    expect(startOf('addedPhone', false).filter).toBe('optedOut');
+    expect(run(startOf('added', false), { type: 'sendAgain', key: 'joaquin' }).filter).toBeNull();
+    expect(
+      run({ ...startOf('added', false), filter: 'everyone' }, { type: 'sendAgain', key: 'joaquin' })
+        .filter,
+    ).toBe('everyone');
+  });
+
   it('keeps a person sent again on one message unsent on another', () => {
     const m = run(
       startOf('fixed', false),
