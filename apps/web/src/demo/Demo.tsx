@@ -17,6 +17,7 @@ import { Calendar } from './Calendar.tsx';
 import { CALENDAR_PAGES } from './calendar.ts';
 import { CREATE_PAGES } from './createOrg.ts';
 import { DOOR_PAGES } from './doorCode.ts';
+import { NO_ORG_PAGE } from './noOrg.ts';
 import { EventPage } from './EventPage.tsx';
 import { Events } from './Events.tsx';
 import { EVENTS_PAGES } from './events.ts';
@@ -262,7 +263,7 @@ function DemoHome({ from }: { from: string }) {
         <h3>People on an event · desktop</h3>
         <BoardPages pages={PEOPLE_PAGES} />
         <h3>Working an event without joining in A · The door code · desktop</h3>
-        <BoardPages pages={DOOR_PAGES} />
+        <BoardPages pages={[...DOOR_PAGES, NO_ORG_PAGE]} />
         <h3>The door code’s redeem pages, signed out · phone, tablet and desk</h3>
         <BoardPages pages={REDEEM_PAGES} />
       </section>

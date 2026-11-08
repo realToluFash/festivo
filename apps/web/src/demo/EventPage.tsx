@@ -62,6 +62,9 @@ import {
   waitingLine,
 } from './messages.ts';
 import { MessagesPage } from './Messages.tsx';
+import { DOOR_EVENT_ID } from './doorCode.ts';
+import { noOrgStateOf } from './noOrg.ts';
+import { NoOrgEvent } from './NoOrgEvent.tsx';
 import { TellDialog } from './MessagesTell.tsx';
 import { Ask, Chevron, Head, RowWords, TextAction } from '../components/SettingsParts.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
@@ -116,6 +119,9 @@ export function EventPage({
   const [params] = useSearchParams();
   const raw = params.get('state');
   useSwitcherStart();
+  const noOrg = noOrgStateOf(raw);
+
+  if (noOrg != null && id === DOOR_EVENT_ID) return <NoOrgEvent key={noOrg} state={noOrg} />;
 
   return (
     <EventAt
