@@ -10,7 +10,6 @@ const AREA_OF: Record<string, Area> = {
   organisation: 'security',
 };
 
-/** The administrative areas a role holds, counting what two-factor keeps back. */
 export function managedAreas(permissions: readonly string[]): Area[] {
   const areas = new Set<Area>();
   for (const permission of permissions) {
