@@ -71,6 +71,11 @@ describe('todayMoment', () => {
       ['Sat 7 Nov', 'in 4 days', ['Wedding continues']],
       ['Sun 8 Nov', 'in 5 days', ['Wedding ends']],
     ]);
+    expect(plan.agenda.flatMap(({ items }) => items.map(({ allDay }) => allDay))).toEqual([
+      false,
+      true,
+      false,
+    ]);
     expect(plan.events.map(({ count, stage, draft }) => [count, stage, draft])).toEqual([
       ['In 3 days', 'Final week', false],
       ['Draft', null, true],

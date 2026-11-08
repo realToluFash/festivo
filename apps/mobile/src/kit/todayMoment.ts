@@ -57,12 +57,14 @@ function agendaItem(item: CalendarItem<ListedEvent>, reader: Reader, t: TFunctio
   if (item.kind === 'milestone')
     return {
       time: clock(item.milestone.at),
+      allDay: false,
       title: item.milestone.title,
       event: shownEvent(event),
       note: item.milestone.note ?? '',
     };
 
   const day = daysFrom(wallDay(event.startsAt, event.timeZone), item.day) + 1;
+  const allDay = !item.first && !item.last;
   const time = item.first
     ? clock(event.startsAt)
     : item.last
@@ -76,6 +78,7 @@ function agendaItem(item: CalendarItem<ListedEvent>, reader: Reader, t: TFunctio
 
   return {
     time,
+    allDay,
     title,
     event: shownEvent(event),
     note: item.multiDay ? t('todayScreen.dayOf', { day, total: event.dayCount }) : '',

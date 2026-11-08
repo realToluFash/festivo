@@ -1922,6 +1922,7 @@
   },
   "todayScreen": {
     "today": "Today",
+    "todayShort": "Today",
     "tomorrow": "tomorrow",
     "allDay": "All day",
     "starts": "{{name}} starts",
