@@ -84,6 +84,7 @@ const { filled, many } = demoWords(KW);
 export { filled as kw, many as kwMany };
 
 export interface Copy {
+  id: number;
   at: string;
   by: string;
 }
@@ -107,11 +108,11 @@ export interface KitchenStart {
   told: string | null;
 }
 
-const FIRST: Copy = { at: '2026-11-03T09:41:00Z', by: READER };
+const FIRST: Copy = { id: 3, at: '2026-11-03T09:41:00Z', by: READER };
 const COPIES: readonly Copy[] = [
   FIRST,
-  { at: '2026-11-02T17:00:00Z', by: 'Ana Souza' },
-  { at: '2026-10-30T12:15:00Z', by: READER },
+  { id: 2, at: '2026-11-02T17:00:00Z', by: 'Ana Souza' },
+  { id: 1, at: '2026-10-30T12:15:00Z', by: READER },
 ];
 
 const NOTHING: Kitchen = { due: null, copies: [] };
@@ -288,12 +289,16 @@ export function copyLine(copy: Copy, timeZone: string): string {
   return filled(KW.copy, { date, time: writtenTime(copy.at, LOCALE, timeZone), name: copy.by });
 }
 
-export function fileName(event: SampleEvent, copy: Copy): string {
+export function fileName(event: SampleEvent, copy: Pick<Copy, 'at'>): string {
   return `${event.name} kitchen sheet ${localDay(copy.at, event.timeZone)}.pdf`;
 }
 
 export function newestFirst(copies: readonly Copy[]): Copy[] {
-  return [...copies].sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
+  return [...copies].sort((a, b) => Date.parse(b.at) - Date.parse(a.at) || b.id - a.id);
+}
+
+export function madeCopy(copies: readonly Copy[], at: string, by: string): Copy {
+  return { id: Math.max(0, ...copies.map((copy) => copy.id)) + 1, at, by };
 }
 
 /** The timeline's You milestone: a date set and no copy recorded, gone at the start and on an Ended event. */

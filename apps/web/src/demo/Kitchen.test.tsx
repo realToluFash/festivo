@@ -157,6 +157,30 @@ describe('Give final numbers…', () => {
     ).toBeDefined();
   });
 
+  it('lists two copies given in one visit, newest first', SLOW, async () => {
+    await kitchen('copies');
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    for (const round of [1, 2]) {
+      fireEvent.click(screen.getByRole('button', { name: KW.give }));
+      fireEvent.click(
+        within(screen.getByRole('alertdialog')).getByRole('button', { name: KW.download }),
+      );
+      await act(() => vi.advanceTimersByTimeAsync(1000));
+      expect(within(block()).getAllByText(/^Given to the kitchen on/u)).toHaveLength(3 + round);
+    }
+
+    const lines = within(block())
+      .getAllByText(/^Given to the kitchen on/u)
+      .map((one) => one.textContent);
+    expect(lines.slice(0, 3)).toEqual(
+      Array(3).fill('Given to the kitchen on Tuesday, Nov 3 at 09:41 by Folake Adeyemi'),
+    );
+    expect(lines.slice(3)).toEqual([
+      'Given to the kitchen on Monday, Nov 2 at 17:00 by Ana Souza',
+      'Given to the kitchen on Friday, Oct 30 at 12:15 by Folake Adeyemi',
+    ]);
+  });
+
   it('records nothing on Cancel', SLOW, async () => {
     await kitchen('giveNoDate');
     fireEvent.click(screen.getByRole('button', { name: KW.cancel }));

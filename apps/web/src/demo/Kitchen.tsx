@@ -11,7 +11,6 @@ import { EventSidebar } from './EventSidebar.tsx';
 import { type SampleEvent, localDay, sampleEvent } from './events.ts';
 import { Cover, OkLine } from './GuestsParts.tsx';
 import {
-  type Copy,
   type Dialog,
   type KitchenStart,
   ALLERGIC,
@@ -32,6 +31,7 @@ import {
   keptKitchen,
   kw,
   apiRefuses,
+  madeCopy,
   newestFirst,
   picksLine,
   sheetLine,
@@ -103,7 +103,7 @@ function Kitchen({ first, event, tell }: { first: KitchenStart; event: SampleEve
     if (dialog !== 'making' || !pressed) return undefined;
 
     const timer = window.setTimeout(() => {
-      const copy: Copy = { at: now.toISOString(), by: READER };
+      const copy = madeCopy(keptKitchen().copies, now.toISOString(), READER);
       const next = { ...keptKitchen(), copies: [copy, ...keptKitchen().copies] };
 
       keepKitchen(next);
@@ -155,7 +155,7 @@ function Kitchen({ first, event, tell }: { first: KitchenStart; event: SampleEve
               type="button"
               className="desk-text"
               onClick={() =>
-                tell(kw(KW.noPdf, { file: fileName(event, { at: now.toISOString(), by: READER }) }))
+                tell(kw(KW.noPdf, { file: fileName(event, { at: now.toISOString() }) }))
               }
             >
               <DownloadMark />
@@ -209,7 +209,7 @@ function Kitchen({ first, event, tell }: { first: KitchenStart; event: SampleEve
                   }}
                 />
                 {copies.map((copy) => (
-                  <li key={copy.at} className="ev-part">
+                  <li key={copy.id} className="ev-part">
                     <div className="desk-row ev-detail is-locked">
                       <span className="ev-lead" aria-hidden="true">
                         <Glyph name="page" size={22} weight={2} />

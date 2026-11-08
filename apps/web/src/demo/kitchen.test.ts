@@ -11,6 +11,7 @@ import {
   fileName,
   keepKitchen,
   kitchenMilestone,
+  madeCopy,
   newestFirst,
   picksLine,
   resetKitchen,
@@ -58,8 +59,8 @@ describe('Final numbers due, checked before sending (sc-30812)', () => {
 describe('the copies', () => {
   it('lists newest first, each with who and when on the 24-hour clock in the event’s zone', () => {
     const copies = newestFirst([
-      { at: '2026-10-30T12:15:00Z', by: 'Folake Adeyemi' },
-      { at: '2026-11-02T17:00:00Z', by: 'Ana Souza' },
+      { id: 1, at: '2026-10-30T12:15:00Z', by: 'Folake Adeyemi' },
+      { id: 2, at: '2026-11-02T17:00:00Z', by: 'Ana Souza' },
     ]);
 
     expect(copies.map((copy) => copyLine(copy, wedding.timeZone))).toEqual([
@@ -69,6 +70,14 @@ describe('the copies', () => {
     expect(fileName(wedding, copies[0]!)).toBe(
       'Adaeze & Tunde’s wedding kitchen sheet 2026-11-02.pdf',
     );
+  });
+
+  it('numbers each copy as it is made, so two at the same moment are two, newest first', () => {
+    const first = madeCopy([], '2026-11-03T09:41:00Z', 'Folake Adeyemi');
+    const second = madeCopy([first], '2026-11-03T09:41:00Z', 'Folake Adeyemi');
+
+    expect([first.id, second.id]).toEqual([1, 2]);
+    expect(newestFirst([first, second]).map((copy) => copy.id)).toEqual([2, 1]);
   });
 
   it('counts each allergen, naming nobody, without guests.manage', () => {
@@ -94,7 +103,7 @@ describe('the milestone on the timeline', () => {
   });
 
   it('is gone with a copy, with no date, at the start, and on another event', () => {
-    const copy = { at: '2026-11-03T09:41:00Z', by: 'Folake Adeyemi' };
+    const copy = { id: 1, at: '2026-11-03T09:41:00Z', by: 'Folake Adeyemi' };
 
     expect(kitchenMilestone(wedding, { due: '2026-11-03', copies: [copy] }, now)).toBeNull();
     expect(kitchenMilestone(wedding, { due: null, copies: [] }, now)).toBeNull();
