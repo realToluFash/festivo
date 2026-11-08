@@ -94,10 +94,19 @@ describe('the states Budget A still lacked (sc-85, sc-88, sc-90, sc-91, sc-92, s
 
       await open(at('ceiling_refused'));
       const dialog = await screen.findByRole('dialog', {}, SLOW);
-      expect(
-        within(dialog).getByText('One field needs fixing, so nothing was saved.'),
-      ).toBeTruthy();
-      expect(within(dialog).getByLabelText('Catering').getAttribute('aria-invalid')).toBe('true');
+      expect(within(dialog).getByRole('alert').textContent).toBe(
+        'Flowers was removed, so its ceiling wasn’t saved.',
+      );
+      expect(within(dialog).queryByLabelText('Flowers')).toBeNull();
+      expect(within(dialog).getByLabelText('Catering')).toHaveProperty('value', '13,000.00');
+      expect(within(section('Costs')).queryByText('Bridal flowers')).toBeNull();
+      cleanup();
+
+      await open(at('ceiling_decimals'));
+      const fieldLevel = await screen.findByRole('dialog', {}, SLOW);
+      expect(within(fieldLevel).getByLabelText('Transport').getAttribute('aria-invalid')).toBe(
+        'true',
+      );
       cleanup();
 
       await open(at('ceiling_no_costs'));
