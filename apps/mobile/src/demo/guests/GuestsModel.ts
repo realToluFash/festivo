@@ -56,6 +56,7 @@ export const GUEST_STATES = [
   'guestLoading',
   'notFound',
   'repliesClosed',
+  'repliesClosedViewer',
   'reopened',
   'saved',
   'linkCopied',
@@ -209,6 +210,7 @@ export function roleOf(state: GuestsState | null): Role {
   if (
     state === 'viewer' ||
     state === 'guestViewer' ||
+    state === 'repliesClosedViewer' ||
     state === 'overviewViewer' ||
     state === 'greetAsViewer'
   )
@@ -984,6 +986,7 @@ export function guestOf(state: GuestsState | null): string | null {
     case 'guest':
     case 'recorded':
     case 'repliesClosed':
+    case 'repliesClosedViewer':
     case 'reopened':
     case 'record':
     case 'recordRefused':
@@ -1065,6 +1068,7 @@ export function areaStart(state: GuestsState | null): AreaStart {
     case 'recorded':
       return { ...base, recorded: true };
     case 'repliesClosed':
+    case 'repliesClosedViewer':
       return { ...base, replies: 'closed' };
     case 'reopened':
       return { ...base, replies: 'reopened' };

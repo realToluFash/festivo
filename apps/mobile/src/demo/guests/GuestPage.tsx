@@ -52,7 +52,9 @@ function cardOf(
   const owner = role === 'owner';
   if (replies === 'closed' && replyBy != null)
     return {
-      line: say.closed(dayWords(replyBy, locale, true)),
+      line: owner
+        ? say.closed(dayWords(replyBy, locale, true))
+        : say.closedOn(dayWords(replyBy, locale, true)),
       step: owner ? { label: W.letThemChange, onPress: actions.onLetChange } : null,
     };
   if (replies === 'reopened')

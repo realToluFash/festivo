@@ -115,6 +115,7 @@ export function replyByRow(
   date: string | null,
   timeZone: string,
   locale: string,
+  now: Date,
 ): { title: string; line: string } {
   if (date == null) return { title: W.replyByNone, line: W.replyBy };
 
@@ -126,7 +127,10 @@ export function replyByRow(
       year: 'numeric',
       timeZone: 'UTC',
     }).format(new Date(`${date}T12:00:00Z`)),
-    line: `${W.replyBy} · ${say.repliesCloseAt(formatWallClock(CLOSES_AT, locale), timeZone)}`,
+    line:
+      now >= closesAt(date, timeZone)
+        ? `${W.replyBy} · ${W.repliesClosed}`
+        : `${W.replyBy} · ${say.repliesCloseAt(formatWallClock(CLOSES_AT, locale), timeZone)}`,
   };
 }
 

@@ -118,6 +118,7 @@ export const W = {
   endBeforeStart: 'The end is before the start. Choose a later end.',
   replyBy: 'Reply by',
   replyByNone: 'Replies stay open until the event starts.',
+  repliesClosed: 'Replies closed.',
   replyByNotBefore: 'Choose a date before the event starts.',
   removeTheDate: 'Remove the date',
   closeSooner: 'Close replies sooner',
