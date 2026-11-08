@@ -32,7 +32,7 @@ export function countsGuests(phase: string): boolean {
 
 /** An event's row on Events (sc-3786): the figures the tiles add up, or none for an event they leave out. */
 export function rowGuests(
-  event: SampleEvent,
+  event: Omit<SampleEvent, 'photo'>,
   guests: Readonly<Record<string, Guests>>,
   now: Date,
 ): { coming: number; notReplied: number } | null {
@@ -43,7 +43,7 @@ export function rowGuests(
 
 /** sc-23284: over the organisation's Live, Happening now and Paused events; a finished or called-off one drops out. */
 export function guestCountsOf(
-  events: readonly SampleEvent[],
+  events: readonly Omit<SampleEvent, 'photo'>[],
   guests: Readonly<Record<string, Guests>>,
   now: Date,
 ): GuestCounts {

@@ -11,6 +11,7 @@ import {
   keptBackBy,
   roleHolds,
   roleName,
+  takesCardStep,
   withCurrent,
 } from './organisations.ts';
 
@@ -201,5 +202,25 @@ describe('keptBackBy', () => {
 
     expect(keptBackBy(both, 'organisation.manage')).toEqual(['linking', 'twoFactor']);
     expect(keptBackBy(both, 'members.manage')).toEqual(['twoFactor']);
+  });
+});
+
+describe('takesCardStep', () => {
+  it('offers Duplicate to a role that creates events, and only to it', () => {
+    expect(takesCardStep({ permissions: ['events.create'] }, 'duplicate')).toBe(true);
+    expect(takesCardStep({ permissions: ['events.manage'] }, 'duplicate')).toBe(false);
+  });
+
+  it('offers every other step to a role that manages events, and only to it', () => {
+    for (const action of ['makeLive', 'changeDates', 'resume'] as const) {
+      expect(takesCardStep({ permissions: ['events.manage'] }, action)).toBe(true);
+      expect(takesCardStep({ permissions: ['events.create'] }, action)).toBe(false);
+    }
+  });
+
+  it('offers a viewer no step', () => {
+    for (const action of ['makeLive', 'changeDates', 'resume', 'duplicate'] as const) {
+      expect(takesCardStep({ permissions: ['events.read'] }, action)).toBe(false);
+    }
   });
 });

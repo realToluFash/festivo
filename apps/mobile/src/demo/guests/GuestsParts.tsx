@@ -6,7 +6,7 @@ import { Glyph } from '../../components/Glyph.tsx';
 import { useReadOut } from '../../components/ReadOut.tsx';
 import { type TextHandle, Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
-import { CardBackdrop, PhaseShape } from '../events/EventCard.tsx';
+import { CardBackdrop, PhaseShape } from '../../components/EventCard.tsx';
 import type { Shown } from '../events/EventsModel.ts';
 import { useShell } from '../../components/settingsShell.ts';
 import { Pill } from '../../components/SettingsParts.tsx';

@@ -4,6 +4,7 @@ import {
   rememberedEventsTab,
   roleHolds,
   serverClock,
+  takesCardStep,
   withPastPage,
 } from '@soirely/domain';
 import { Redirect, router, useFocusEffect } from 'expo-router';
@@ -21,8 +22,9 @@ import { afterFailedLoad } from '../offlineLoad.ts';
 import { useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
 import { AppFrame } from './AppFrame.tsx';
-import { EventsFailed, NoEvents } from './Events.tsx';
+import { EventsFailed } from './Events.tsx';
 import { EventsHome, EventsSummary, type HomeLoad } from './EventsHome.tsx';
+import { EventsFirstRun } from './EventsList.tsx';
 import { type ListAndPageSpacing, ListAndPage, useListAndPageLayout } from './ListAndPage.tsx';
 import { Notice } from './Notice.tsx';
 import { ReadOut } from './ReadOut.tsx';
@@ -198,7 +200,7 @@ export function EventsScreen() {
         </AnswerInView>
       )}
       {hasNoEvents(load) ? (
-        <NoEvents kind={kind} onCreate={creates ? newEvent : undefined} />
+        <EventsFirstRun wide={kind !== 'phone'} onCreate={creates ? newEvent : undefined} />
       ) : (
         <EventsHome
           kind={kind}
@@ -209,6 +211,20 @@ export function EventsScreen() {
             setTab({ in: organisationId, tab: next });
           }}
           onOpen={openEvent}
+          takes={(action) => organisation != null && takesCardStep(organisation, action)}
+          onStep={(event, step) => {
+            const id = encodeURIComponent(event.id);
+
+            if (step.action === 'changeDates') {
+              setDeleted(null);
+              router.push(`/events/${id}/edit?at=starts`);
+            } else if (step.action === 'duplicate') {
+              setDeleted(null);
+              router.push(`/events/${id}/duplicate`);
+            } else {
+              openEvent(event.id, event.phase === 'happening_now');
+            }
+          }}
           more={more}
           shown={moreShown}
           onShowMore={showMore}
@@ -266,9 +282,9 @@ export function EventsScreen() {
 const styles = StyleSheet.create({
   stack: { gap: tokens.spaceMd },
   phone: {
-    gap: tokens.spaceLg,
+    gap: 18,
     paddingTop: tokens.spaceXl,
-    paddingHorizontal: tokens.spaceXl,
+    paddingHorizontal: tokens.spaceXxl,
     paddingBottom: tokens.space3xl,
   },
   portrait: {
