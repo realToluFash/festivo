@@ -488,7 +488,7 @@
     "nameBlank": "Introduza o seu nome completo.",
     "passwordBlank": "Introduza uma palavra-passe.",
     "tooShort": "Use pelo menos {{count, number}} caracteres.",
-    "timedOut": "Your sign-up timed out, so we did not keep the password. Enter it again to get a new code."
+    "timedOut": "O seu registo expirou, por isso não guardámos a palavra-passe. Introduza-a novamente para receber um novo código."
   },
   "account": {
     "title": "A sua conta",
