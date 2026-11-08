@@ -527,6 +527,21 @@ function paidBy(payment: Payment): Payment {
   return { ...payment, paid: { amount: payment.amount, on, by: READER, reference: '' } };
 }
 
+let kept: Budget | null = null;
+
+/** What the budget is after this visit's changes, so a page reached by a link opens on it, as the Events demo keeps its sample. */
+export function keepBudget(budget: Budget): void {
+  kept = budget;
+}
+
+export function keptBudget(): Budget | null {
+  return kept;
+}
+
+export function forgetBudget(): void {
+  kept = null;
+}
+
 export function quotesStart(
   state: string,
   vendorId: string | null,
