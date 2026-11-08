@@ -6,8 +6,11 @@ import {
   PAYMENTS,
   type Payment,
   QUOTES,
+  READER,
+  TODAY,
   amounts,
   categoriesOf,
+  lineState,
   money,
   totals,
 } from './budget.ts';
@@ -234,6 +237,7 @@ export interface Cover {
   name: string;
   how: string;
   part: Range;
+  notPriced: boolean;
 }
 
 function howWords(book: Book, split: Split, payerId: string): string {
@@ -262,9 +266,22 @@ export function coversOf(book: Book, payerId: string): Cover[] {
 
       return split == null || part == null
         ? []
-        : [{ lineId: line.id, name: line.name, how: howWords(book, split, payerId), part }];
+        : [
+            {
+              lineId: line.id,
+              name: line.name,
+              how: howWords(book, split, payerId),
+              part,
+              notPriced: lineState(line) === 'notPriced',
+            },
+          ];
     })
     .sort((a, b) => b.part[0] - a.part[0]);
+}
+
+/** A Not priced cost adds nothing to a share, so the share says how many it leaves out and is never read as complete. */
+export function notPricedFor(book: Book, payerId: string): number {
+  return coversOf(book, payerId).filter((one) => one.notPriced).length;
 }
 
 export function splitWords(book: Book, line: CostLine): string {
@@ -563,6 +580,21 @@ const FLAGGED: Book = {
   },
 };
 
+const NOT_PRICED: Book = {
+  ...SAMPLE_BOOK,
+  splits: { ...SAMPLE_SPLITS, arch: { kind: 'one', payerId: 'couple' } },
+};
+
+const paidAt =
+  (id: string, amount: number, on: string) =>
+  (payment: Payment): Payment =>
+    payment.id === id ? { ...payment, paid: { amount, on, by: READER, reference: '' } } : payment;
+
+/** Both venue payments, and Savour Kitchen's deposit and second instalment, the second at £7,500.00: Mr and Mrs Obi's half takes them past their share. */
+const PAID_PAST: readonly Payment[] = PAYMENTS.map(paidAt('p2', 315000, TODAY))
+  .map(paidAt('p7', 450000, TODAY))
+  .map(paidAt('p8', 750000, TODAY));
+
 const STATE_NAMES = [
   'payers',
   'no_payers',
@@ -582,6 +614,9 @@ const STATE_NAMES = [
   'link_copied',
   'copy_refused',
   'send_failed',
+  'payer_not_priced',
+  'payer_paid_past',
+  'payer_share_alone',
 ] as const;
 
 export type PayersState = (typeof STATE_NAMES)[number];
@@ -619,6 +654,9 @@ export interface PayersStart {
   form: FormStart | null;
   send: { payerId: string; kind: SendKind } | null;
   choose: ChooseStart | null;
+  payments: readonly Payment[];
+  /** Paid and Still to come show only with `vendors` or a payment marked paid (sc-91). */
+  paidShown: boolean;
 }
 
 /** Which payer the pane opens on: the one asked for, else Mr and Mrs Obi as the board draws, else the first. */
@@ -672,6 +710,7 @@ export function startOf(state: string, asked: string | null = null): PayersStart
   if (name === 'no_payers') book = { ...SAMPLE_BOOK, payers: [], splits: {} };
   if (name === 'no_costs') book = { lines: [], payers: [], splits: {} };
   if (name === 'split_flag') book = FLAGGED;
+  if (name === 'payer_not_priced') book = NOT_PRICED;
   if (name === 'payer_cap')
     book = {
       ...SAMPLE_BOOK,
@@ -705,7 +744,10 @@ export function startOf(state: string, asked: string | null = null): PayersStart
 
   return {
     book,
-    open: openFirst(book.payers, asked ?? (sent == null ? null : 'couple')),
+    open: openFirst(
+      book.payers,
+      asked ?? (sent != null || name === 'payer_not_priced' ? 'couple' : null),
+    ),
     notice,
     form,
     send:
@@ -713,6 +755,8 @@ export function startOf(state: string, asked: string | null = null): PayersStart
         ? null
         : { payerId: openFirst(book.payers, asked ?? 'couple') ?? '', kind: sent },
     choose: CHOOSE[name] ?? null,
+    payments: name === 'payer_paid_past' ? PAID_PAST : PAYMENTS,
+    paidShown: name !== 'payer_share_alone',
   };
 }
 
@@ -777,6 +821,23 @@ export const PAYERS_PAGES: readonly DemoGroup[] = [
       { to: at('link_copied'), name: 'Link copied, said as a status (link_copied)' },
       { to: at('copy_refused'), name: 'The copy refused: the link selected (copy_refused)' },
       { to: at('send_failed'), name: 'The link not created (send_failed)' },
+    ],
+  },
+  {
+    name: 'A payer’s share',
+    states: [
+      {
+        to: at('payer_not_priced'),
+        name: '1 cost not priced yet on Adaeze and Tunde’s share (payer_not_priced)',
+      },
+      {
+        to: at('payer_paid_past'),
+        name: 'Paid past the share: Nothing still to come (payer_paid_past)',
+      },
+      {
+        to: at('payer_share_alone'),
+        name: 'No vendors and nothing paid: the share alone (payer_share_alone)',
+      },
     ],
   },
 ];
