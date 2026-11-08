@@ -125,7 +125,7 @@ export const MESSAGE_MOST = 10_000;
 
 export type LongField = 'subject' | 'body';
 
-/** Why an event can't send (sc-3942's 409): a Draft, deleted, or finished more than 30 days ago. */
+/** Why an event can't send (sc-3942's 409): a Draft, or finished more than 30 days ago. */
 export type Closed = 'draft' | 'ended';
 export const SENDING_SECONDS = 3;
 
