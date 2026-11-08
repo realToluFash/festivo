@@ -1,0 +1,13 @@
+# sc-31724: the design demo's Settings on a tablet on its side, personalisation: the open row lit by Tint alone, no ring.
+appId: host.exp.Exponent
+---
+# A landscape-native Android tablet draws Maestro PORTRAIT (rotation 0) on its side (sc-23471).
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/demo/settings/personalisation
+- extendedWaitUntil:
+    visible:
+      id: 'settings.organisation'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: side-personalisation

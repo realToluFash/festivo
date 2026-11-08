@@ -1,0 +1,17 @@
+# sc-31724: the design demo's Settings on a tablet on its side, members: Members takes the column itself; a picked person lit by Tint alone, no ring.
+appId: host.exp.Exponent
+---
+# A landscape-native Android tablet draws Maestro PORTRAIT (rotation 0) on its side (sc-23471).
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/demo/settings/members
+- extendedWaitUntil:
+    visible:
+      text: '.*people.*waiting.*'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: side-members
+- tapOn:
+    text: 'Julien Moreau'
+- waitForAnimationToEnd
+- takeScreenshot: side-members-person
