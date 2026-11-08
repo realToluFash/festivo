@@ -7,6 +7,7 @@ import {
   approved,
   handedOver,
   LEAVER,
+  LONG_NAMED,
   MEMBERS_STATES,
   membersCard,
   membersSayIn,
@@ -374,5 +375,62 @@ describe('the words, each count in its plural family (sc-614, Settled 7 Nov)', (
     );
     expect(W.noMatch('kemi')).toBe('Nobody in Ire Events matches “kemi”.');
     expect(W.yours('Folake Adeyemi')).toBe('Folake Adeyemi · you');
+  });
+
+  it('says what the work list is doing, for someone else and for the one leaving', () => {
+    expect(W.checking('Priya Shah')).toBe('Checking what Priya Shah leads…');
+    expect(W.checking(null)).toBe('Checking what you lead…');
+    expect(W.notLoaded('Priya Shah')).toBe(
+      'What Priya Shah leads did not load. Nothing was changed.',
+    );
+    expect(W.notLoaded(null)).toBe('What you lead did not load. Nothing was changed.');
+    expect(W.chooseRecipient).toBe('Choose who takes over their events.');
+  });
+});
+
+describe('the states the work list and the refusal add (sc-614)', () => {
+  const PRIYA = id('Priya Shah');
+  const TOM = id('Tom Becker');
+  const MARTA = id('Marta Silva');
+
+  it('opens Remove in the words for 1', () => {
+    const start = membersStart('handoverOne');
+
+    expect(start).toMatchObject({ open: PRIYA, step: 'removing' });
+    expect(start.leads[PRIYA]).toHaveLength(1);
+  });
+
+  it('carries the long name beside a called-off event', () => {
+    const led = ledEvents(membersStart('handoverLongNames').leads[PRIYA] ?? []);
+
+    expect(led.map(({ id: event }) => event)).toContain(LONG_NAMED);
+    expect(names(led).at(-1)).toBe('Team offsite');
+  });
+
+  it('holds Remove and Leave on the work list', () => {
+    expect(membersStart('handoverLoading').handover?.phase).toBe('checking');
+    expect(membersStart('handoverLoadFailed').handover?.phase).toBe('notLoaded');
+    expect(organisationStart('leaveLoading', 'Member').leaving?.phase).toBe('checking');
+    expect(organisationStart('leaveLoadFailed', 'Member').leaving?.phase).toBe('notLoaded');
+    expect(organisationStart('leaveOne', 'Member')).toMatchObject({
+      ask: 'leave',
+      leadsAny: true,
+      leadsOne: true,
+    });
+  });
+
+  it('refuses a removal that named nobody, once Tom has come to lead two events', () => {
+    const start = membersStart('handoverRefused');
+
+    expect(start.handover?.phase).toBe('refused');
+    expect(start).toMatchObject({ open: TOM, step: 'removing' });
+    expect(start.leads[TOM]).toHaveLength(2);
+  });
+
+  it('holds a suspended member’s block on the work list', () => {
+    expect(membersStart('martaOne').leads[MARTA]).toHaveLength(1);
+    expect(membersStart('martaLoading')).toMatchObject({ open: MARTA, leadsLoad: 'loading' });
+    expect(membersStart('martaLoadFailed')).toMatchObject({ open: MARTA, leadsLoad: 'failed' });
+    expect(membersStart('marta').leadsLoad).toBe('loaded');
   });
 });
