@@ -33,6 +33,7 @@ import {
 import {
   AT,
   dataSayIn,
+  zoneFor,
   DERIVED,
   type Domain,
   IRE_EVENTS,
@@ -468,5 +469,17 @@ describe('Email domains in Play', () => {
     expect(
       domainsCard(withOnly(domainsStart('oo_on', true), 'ire.events', 'off'), true, say),
     ).toEqual(card('oo_turned_off'));
+  });
+});
+
+describe('each reader in their own zone (sc-868)', () => {
+  it('shows the lapse instant in a Lagos and a London admin’s zones as the same instant', () => {
+    const lapse = '2026-10-31T13:20:00Z';
+
+    expect(dataSayIn('en-US', zoneFor('folake')).at(lapse)).toBe('Saturday, Oct 31 at 14:20 WAT');
+    expect(dataSayIn('en-US', zoneFor('julien')).at(lapse)).toBe('Saturday, Oct 31 at 13:20 GMT');
+    expect(dataSayIn('en-US', zoneFor('julien')).at('2026-10-23T15:45:00Z')).toBe(
+      'Friday, Oct 23 at 16:45 BST',
+    );
   });
 });

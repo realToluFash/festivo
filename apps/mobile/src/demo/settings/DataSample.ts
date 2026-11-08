@@ -70,7 +70,26 @@ export const WAITING_IRE_EVENTS: Domain = {
   onlyAt: null,
 };
 
-/** Dates as the server writes them for Ire Events, on Lagos' clock and named WAT. */
+export type DataZone = typeof ZONE | 'Europe/London';
+
+export function zoneFor(viewer: string): DataZone {
+  return viewer === 'julien' ? 'Europe/London' : ZONE;
+}
+
+function zoneWord(iso: string, zone: DataZone): string {
+  if (zone === ZONE) return 'WAT';
+
+  const at = new Date(iso);
+  const lastSunday = (month: number) => {
+    const end = new Date(Date.UTC(at.getUTCFullYear(), month + 1, 0, 1));
+
+    return end.getTime() - end.getUTCDay() * DAY_MS;
+  };
+
+  return at.getTime() >= lastSunday(2) && at.getTime() < lastSunday(9) ? 'BST' : 'GMT';
+}
+
+/** Dates in the reader's own zone, named (sc-868): Julien, an admin, reads in London. */
 export interface DataSay {
   at(iso: string): string;
   day(iso: string): string;
@@ -79,39 +98,41 @@ export interface DataSay {
   dayKey(iso: string): string;
 }
 
-export function dataSayIn(locale: string): DataSay {
+export function dataSayIn(locale: string, zone: DataZone = ZONE): DataSay {
   const day = new Intl.DateTimeFormat(locale, {
     weekday: 'long',
     month: 'short',
     day: 'numeric',
-    timeZone: ZONE,
+    timeZone: zone,
   });
   const dated = new Intl.DateTimeFormat(locale, {
     weekday: 'long',
     month: 'short',
     day: 'numeric',
     year: 'numeric',
-    timeZone: ZONE,
+    timeZone: zone,
   });
   const clock = new Intl.DateTimeFormat(locale, {
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
     hourCycle: 'h23',
-    timeZone: ZONE,
+    timeZone: zone,
   });
   const key = new Intl.DateTimeFormat('en-CA', {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
-    timeZone: ZONE,
+    timeZone: zone,
   });
 
   return {
-    at: (iso) => `${day.format(new Date(iso))} at ${writtenTime(new Date(iso), locale, ZONE)} WAT`,
+    at: (iso) =>
+      `${day.format(new Date(iso))} at ${writtenTime(new Date(iso), locale, zone)} ${zoneWord(iso, zone)}`,
     day: (iso) => day.format(new Date(iso)),
-    exact: (iso) => `${dated.format(new Date(iso))} at ${clock.format(new Date(iso))} WAT`,
-    time: (iso) => writtenTime(new Date(iso), locale, ZONE),
+    exact: (iso) =>
+      `${dated.format(new Date(iso))} at ${clock.format(new Date(iso))} ${zoneWord(iso, zone)}`,
+    time: (iso) => writtenTime(new Date(iso), locale, zone),
     dayKey: (iso) => key.format(new Date(iso)),
   };
 }

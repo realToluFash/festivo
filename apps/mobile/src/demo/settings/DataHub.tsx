@@ -31,7 +31,7 @@ import {
   hubStepOpens,
 } from './DataModel.ts';
 import { LOCK_TAG, Lead, TagRow, useDataNav } from './DataParts.tsx';
-import { dataSayIn } from './DataSample.ts';
+import { dataSayIn, zoneFor } from './DataSample.ts';
 import { DATA_WORDS as H } from './DataWords.ts';
 import { SummaryPage } from './SummaryPage.tsx';
 
@@ -52,9 +52,9 @@ export function DataHubSection() {
 
 function HubPage({ state, start }: { state: HubState; start: HubStart }) {
   const shell = useShell();
-  const { open } = useDataNav();
+  const { open, viewer } = useDataNav();
   const { load, retry } = useLoad(start.load);
-  const say = dataSayIn(formattingLocale('en', getLocales()[0]?.languageTag));
+  const say = dataSayIn(formattingLocale('en', getLocales()[0]?.languageTag), zoneFor(viewer));
   const pane = shell.layout === 'landscape';
 
   if (load !== 'loaded')

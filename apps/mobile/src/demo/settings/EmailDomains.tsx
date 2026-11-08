@@ -43,7 +43,7 @@ import {
   withVerified,
 } from './DataModel.ts';
 import { DataSubPage, Lead, TagRow, useDataNav } from './DataParts.tsx';
-import { dataSayIn, type Domain, DERIVED } from './DataSample.ts';
+import { dataSayIn, type Domain, DERIVED, zoneFor } from './DataSample.ts';
 import { DATA_WORDS as H, DOMAINS_WORDS as D } from './DataWords.ts';
 import { ProveScreen, RecordScreen } from './EmailDomainsScreens.tsx';
 
@@ -80,7 +80,8 @@ type From = 'card' | 'prove' | string;
 function DomainsPage({ start, owns, held }: { start: DomainsModel; owns: boolean; held: boolean }) {
   const shell = useShell();
   const pane = shell.layout === 'landscape';
-  const say = dataSayIn(formattingLocale('en', getLocales()[0]?.languageTag));
+  const { viewer } = useDataNav();
+  const say = dataSayIn(formattingLocale('en', getLocales()[0]?.languageTag), zoneFor(viewer));
   const { load, retry } = useLoad(start.load);
   const [model, setModel] = useState(start);
   const [tries, setTries] = useState<Record<string, number>>({});

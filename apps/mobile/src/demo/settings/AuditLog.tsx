@@ -49,7 +49,7 @@ import type { AuditEntry } from './AuditSample.ts';
 import { DatesScreen, EntryRows, EntrySheet, ExportScreen } from './AuditScreens.tsx';
 import { DATA_PEOPLE } from './DataModel.ts';
 import { DataSubPage, useDataNav } from './DataParts.tsx';
-import { type DataSay, dataSayIn } from './DataSample.ts';
+import { type DataSay, dataSayIn, zoneFor } from './DataSample.ts';
 import { AUDIT_WORDS as A, DATA_WORDS as H } from './DataWords.ts';
 import { SeenBy } from './Frame.tsx';
 import { useLoad } from './MembersLoading.tsx';
@@ -80,7 +80,9 @@ function AuditPage({ start }: { start: AuditStart }) {
   const phone = shell.layout === 'phone';
   const pane = shell.layout === 'landscape';
   const locale = formattingLocale('en', getLocales()[0]?.languageTag);
-  const say = dataSayIn(locale);
+  const { viewer } = useDataNav();
+  const zone = zoneFor(viewer);
+  const say = dataSayIn(locale, zone);
   const { load, retry } = useLoad(start.load);
   const [filters, setFilters] = useState<Filters>(start.filters);
   const [menu, setMenu] = useState<Menu | null>(start.menu);
@@ -120,7 +122,7 @@ function AuditPage({ start }: { start: AuditStart }) {
       </SummaryPage>
     );
 
-  const shown = matching(filters);
+  const shown = matching(filters, undefined, zone);
   const words = buttonWords(filters, locale);
   const card = start.locked
     ? { says: A.locked, line: A.lockedLine, step: H.contact }

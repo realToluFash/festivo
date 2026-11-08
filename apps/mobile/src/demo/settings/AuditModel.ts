@@ -6,7 +6,7 @@ import {
   AUDIT_TYPES,
   ENTRIES,
 } from './AuditSample.ts';
-import { type DataSay, NOW, plusDays, ZONE } from './DataSample.ts';
+import { type DataSay, type DataZone, NOW, plusDays, ZONE } from './DataSample.ts';
 import { AUDIT_WORDS as A } from './DataWords.ts';
 import type { Load } from './RolesSample.ts';
 
@@ -146,21 +146,25 @@ export function filtered(filters: Filters): boolean {
   );
 }
 
-export function dayKeyIn(iso: string): string {
+export function dayKeyIn(iso: string, zone: DataZone = ZONE): string {
   return new Intl.DateTimeFormat('en-CA', {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
-    timeZone: ZONE,
+    timeZone: zone,
   }).format(new Date(iso));
 }
 
 /** Kept for 365 days: the default range is the last 365 days to now. */
-export function matching(filters: Filters, entries: readonly AuditEntry[] = ENTRIES): AuditEntry[] {
+export function matching(
+  filters: Filters,
+  entries: readonly AuditEntry[] = ENTRIES,
+  zone: DataZone = ZONE,
+): AuditEntry[] {
   const oldest = plusDays(NOW, -365);
 
   return entries.filter((entry) => {
-    const day = dayKeyIn(entry.at);
+    const day = dayKeyIn(entry.at, zone);
     if (filters.range == null && entry.at < oldest) return false;
     if (filters.range != null && (day < filters.range.from || day > filters.range.to)) return false;
     if (filters.person != null && entry.who !== filters.person) return false;
@@ -177,10 +181,10 @@ export interface Day {
 }
 
 export function byDay(entries: readonly AuditEntry[], say: DataSay): Day[] {
-  const today = dayKeyIn(NOW);
+  const today = say.dayKey(NOW);
   const days: Day[] = [];
   for (const entry of entries) {
-    const key = dayKeyIn(entry.at);
+    const key = say.dayKey(entry.at);
     const last = days[days.length - 1];
     if (last?.key === key) last.entries.push(entry);
     else {
