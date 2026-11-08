@@ -28,7 +28,7 @@ import { Glyph } from '../../components/Glyph.tsx';
 import { PHONE_TAB_BAR, PhoneTabBar, TabBarFade } from '../../components/TodayCover.tsx';
 import { Bell, Landscape, OrgPill, PortraitTop } from '../settings/Frame.tsx';
 import { EventCard, EventThumb } from '../../components/EventCard.tsx';
-import { EventsFirstRun, EventsTabs, Said } from '../../components/EventsList.tsx';
+import { EventsFirstRun, EventsTabs, Said, SaidLine } from '../../components/EventsList.tsx';
 import { EventsFilterMenu, FilterButton } from './EventsFilter.tsx';
 import {
   type CardStep,
@@ -277,9 +277,7 @@ export function EventsList({
             />
           )}
           {shownMore > 0 && <Said words={say.moreShown(shownMore)} />}
-          <Text size={14} weight="medium" style={[styles.secondary, styles.figures, styles.said]}>
-            {say.footer(tabEvents.length)}
-          </Text>
+          <SaidLine words={say.footer(tabEvents.length)} />
         </>
       ) : (
         <Results

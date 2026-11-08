@@ -1480,7 +1480,6 @@
     "emptyDrafts": "Os eventos novos ficam como rascunho, visíveis apenas para a sua equipa, até os publicar.",
     "emptyPastTitle": "Ainda não terminou nenhum evento",
     "emptyPast": "Os eventos terminados ficam aqui, para que os possa rever ou usar como base do próximo.",
-    "typeAndPlace": "{{type}} · {{place}}",
     "calledOffOn": "Cancelado a {{date}}",
     "nextUp": "A seguir: {{title}}",
     "showMore": "Mostrar mais",
@@ -1500,8 +1499,6 @@
     "summaryDrafts_many": "{{count, number}} rascunhos",
     "summaryJoin": "{{first}} · {{rest}}",
     "comingSoon": "Brevemente",
-    "arrived": "Chegaram",
-    "course": "Prato",
     "days": "De {{first}} até {{last}}",
     "timeAndZone": "{{time}} · {{timeZone}}",
     "nextMakeLive": "Só é possível convidar pessoas depois de publicar este evento.",
@@ -1509,9 +1506,7 @@
     "nextResume": "Em pausa. Os convidados não podem responder nem alterar nada até retomar o evento.",
     "footer_one": "{{count, number}} evento · Ordenado por data",
     "footer_other": "{{count, number}} eventos · Ordenados por data",
-    "footer_many": "{{count, number}} eventos · Ordenados por data",
-    "endsIn": "Termina {{time}}",
-    "thenSoon": "{{when}} ·"
+    "footer_many": "{{count, number}} eventos · Ordenados por data"
   },
   "eventPage": {
     "venue": "Local",
