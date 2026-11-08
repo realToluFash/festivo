@@ -1,6 +1,7 @@
 import { LOCALES, hostsLine } from '@soirely/domain';
 import i18next from 'i18next';
 
+import { writtenTime } from './clock.ts';
 import { type SampleEvent, sampleEvent } from './events.ts';
 import type { DemoLink } from './settings.ts';
 
@@ -37,7 +38,7 @@ export const MESSAGES: readonly Message[] = [
     id: 'm-1',
     at: '2026-10-31T10:05:00Z',
     words:
-      'We’re so glad you’re coming! The ceremony starts at 6:00 PM, so please be at The Landmark by 5:30 PM.',
+      'We’re so glad you’re coming! The ceremony starts at 18:00, so please be at The Landmark by 17:30.',
   },
   {
     id: 'm-2',
@@ -501,7 +502,7 @@ export function eventDay(lang: Lang): string {
 }
 
 export function eventTime(lang: Lang): string {
-  return format(EVENT.startsAt, lang, EVENT.timeZone, { hour: 'numeric', minute: '2-digit' });
+  return writtenTime(EVENT.startsAt, TAGS[lang], EVENT.timeZone);
 }
 
 export function shortDay(at: string, lang: Lang, zone: string): string {
@@ -509,7 +510,7 @@ export function shortDay(at: string, lang: Lang, zone: string): string {
 }
 
 export function timeIn(at: string, lang: Lang, zone: string): string {
-  return format(at, lang, zone, { hour: 'numeric', minute: '2-digit' });
+  return writtenTime(at, TAGS[lang], zone);
 }
 
 export function sentWhen(at: string, lang: Lang, zone: string): string {

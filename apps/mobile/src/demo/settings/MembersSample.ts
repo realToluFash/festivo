@@ -1,5 +1,7 @@
 import { memberStanding, type MemberStanding } from '@soirely/domain';
 
+import { writtenTime } from '../clock.ts';
+
 import { handedLines, HANDOVER_WORDS } from './MembersHandoverWords.ts';
 import {
   type Answering,
@@ -112,14 +114,12 @@ export function membersSayIn(locale: string): MembersSay {
   const date = format({ month: 'short', day: 'numeric', year: 'numeric' });
   const dayOnly = format({ month: 'short', day: 'numeric' });
   const day = format({ weekday: 'long', month: 'short', day: 'numeric' });
-  const clock = format({ hour: 'numeric', minute: '2-digit' });
 
   return {
     date: (at) => date.format(new Date(`${at}T00:00Z`)),
     day: (at) => dayOnly.format(new Date(`${at}T00:00Z`)),
     // The sample's deadlines are wall clock in Lagos, so they are read in UTC and named WAT.
-    deadline: (at) =>
-      `${day.format(new Date(`${at}Z`))} at ${clock.format(new Date(`${at}Z`))} WAT`,
+    deadline: (at) => `${day.format(new Date(`${at}Z`))} at ${writtenTime(at, locale)} WAT`,
   };
 }
 

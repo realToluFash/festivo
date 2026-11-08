@@ -2696,6 +2696,16 @@ describe('the flows a batch runs', () => {
       expect(reset.match(/file: developer-menu\.yaml\s+env:\s+SETTLED: '(.*)'/)[1]).toBe(
         reset.match(/notVisible: '(.*)'/)[1],
       );
+      const resetSettled = new RegExp(
+        `^(?:${reset.match(/extendedWaitUntil:\s+visible: '(.*)'/)[1].replaceAll("''", "'")})$`,
+      );
+      expect(reset.match(/extendedWaitUntil:\s+visible: '(.*)'/)[1]).toBe(
+        reset.match(/notVisible: '(.*)'/)[1],
+      );
+      for (const code of ['en', 'es', 'fr', 'pt']) {
+        expect(catalogues[code].steps.invitedTitle).toMatch(resetSettled);
+        expect(catalogues[code].steps.organisationTitle).toMatch(resetSettled);
+      }
       expect(reset).toContain('ASK: /running');
       expect(reset).toMatch(
         /ASK: \/reload(?:\s|#.*)+- runFlow:\s+when:\s+true: \$\{!output\.helper\.reloaded\}\s+file: reopen\.yaml[\s\S]*openLink: \$\{METRO_URL\}\/--\//,

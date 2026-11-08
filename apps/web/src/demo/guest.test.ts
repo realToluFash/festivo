@@ -120,7 +120,7 @@ describe('the words and dates', () => {
     expect(en.answered('notSure', dayOf('2026-10-27', 'en'))).toBe(
       'You answered Not sure yet on Tuesday, October 27.',
     );
-    expect(en.timeInZone('6:00 PM', 'Europe/London')).toBe('6:00 PM Europe/London');
+    expect(en.timeInZone('18:00', 'Europe/London')).toBe('18:00 Europe/London');
     expect(en.greeting('notSure')).toBe(
       'Thanks for letting us know, Maria Fernanda Albuquerque Santos.',
     );
@@ -149,11 +149,11 @@ describe('the words and dates', () => {
 
   it('dates the event in its own zone and the reader’s language', () => {
     expect(eventDay('en')).toBe('Thursday, November 5, 2026');
-    expect(eventTime('en').replace(/\s/u, ' ')).toBe('6:00 PM');
+    expect(eventTime('en').replace(/\s/u, ' ')).toBe('18:00');
     expect(eventDay('fr')).toBe('jeudi 5 novembre 2026');
     expect(eventTime('fr')).toBe('18:00');
     expect(sentWhen('2026-11-02T21:14:00Z', 'en', 'Europe/London').replace(/\s/gu, ' ')).toBe(
-      'Mon, Nov 2 · 9:14 PM',
+      'Mon, Nov 2 · 21:14',
     );
   });
 

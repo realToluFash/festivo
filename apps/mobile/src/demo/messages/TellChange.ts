@@ -1,3 +1,4 @@
+import { writtenTime } from '../clock.ts';
 import { dayCount, daysWords, wallOf } from '../events/EventsModel.ts';
 import type { SampleEvent, SampleVenue } from '../events/EventsSample.ts';
 import type { TellChange } from './MessagesModel.ts';
@@ -37,7 +38,7 @@ export function tellChange(told: SampleEvent, now: SampleEvent, locale: string):
   const startWas = wallOf(told.startsAt, told.timeZone).time;
   const startIs = wallOf(now.startsAt, now.timeZone).time;
   if (startWas !== startIs) {
-    lines.push(say.startMoved(startIs, startWas));
+    lines.push(say.startMoved(writtenTime(startIs, locale), writtenTime(startWas, locale)));
     what.push(W.newStartTime);
   }
   const venue = venueLine(told.venue, now.venue);
