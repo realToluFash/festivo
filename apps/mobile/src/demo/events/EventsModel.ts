@@ -126,7 +126,7 @@ export function cardTags(event: Shown, now: Date): CardTag[] {
   return productCardTags(event, now, t);
 }
 
-export function milestonesOf(event: SampleEvent): Milestone[] {
+export function milestonesOf(event: Omit<SampleEvent, 'photo'>): Milestone[] {
   const own = { note: null, owner: 'event', area: 'events', action: null } as const;
 
   return [
@@ -136,7 +136,7 @@ export function milestonesOf(event: SampleEvent): Milestone[] {
 }
 
 /** The timeline's You milestone while a date is set and no copy recorded (sc-30812), gone at the start and once Ended. */
-export function finalNumbersOf(event: SampleEvent, now: Date): Milestone[] {
+export function finalNumbersOf(event: Omit<SampleEvent, 'photo'>, now: Date): Milestone[] {
   const due = finalNumbersDue(event.id);
 
   if (due == null || event.status === 'ended' || now.getTime() >= Date.parse(event.startsAt))
@@ -155,7 +155,7 @@ export function finalNumbersOf(event: SampleEvent, now: Date): Milestone[] {
 }
 
 /** The event's dates as the server returns them, which Next up, the card's step and the Overview's Needs you all read (sc-32801). */
-export function datesOf(event: SampleEvent, now: Date): Milestone[] {
+export function datesOf(event: Omit<SampleEvent, 'photo'>, now: Date): Milestone[] {
   const before = event.status !== 'ended' && now.getTime() < Date.parse(event.startsAt);
 
   return [
