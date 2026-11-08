@@ -9,6 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Toast } from '../../src/components/Toast.tsx';
 import { useSystemBack } from '../../src/components/useSystemBack.ts';
 import { useLayout } from '../../src/layout/useLayout.ts';
+import { withBoldText } from '../../src/demo/boldText/BoldTextSwitch.tsx';
 import { createStateOf } from '../../src/demo/createOrg/CreateWalk.ts';
 import { NoOrganisation } from '../../src/demo/createOrg/NoOrganisation.tsx';
 import { OrgSwitcherProvider, useCurrentPlace } from '../../src/demo/OrgSwitcher.tsx';
@@ -76,7 +77,7 @@ function isMoment(name: string | undefined): name is MomentName {
   return MOMENTS.some((moment) => moment === name);
 }
 
-export default function DemoTodayScreen() {
+function DemoTodayScreen() {
   const params = useLocalSearchParams<{
     moment?: string;
     toast?: string;
@@ -206,6 +207,8 @@ function Told({ words, phone, onClose }: { words: string; phone: boolean; onClos
     </View>
   );
 }
+
+export default withBoldText(DemoTodayScreen);
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
