@@ -657,7 +657,8 @@ describe('Who gets it: To with its conditions, at a desk (sc-3957)', () => {
           expect(screen.queryByRole('button', { name }), String(name)).toBeNull();
       };
 
-      none(['Mark as done', 'Mark as waiting']);
+      none(['Mark as done', 'Mark as waiting', 'Tell them', 'Dismiss']);
+      expect(screen.queryByRole('heading', { name: 'Guests have not been told yet' })).toBeNull();
       press('e');
       expect(within(list).getByRole('heading', { name: 'Needs you · 5' })).toBeDefined();
       expect(
@@ -666,6 +667,14 @@ describe('Who gets it: To with its conditions, at a desk (sc-3957)', () => {
 
       await open(/^Marta Silva/, 'Marta Silva');
       none(['Mark as done', 'Mark as waiting']);
+
+      await open(/^m\.dubois@orange\.fr/, 'm.dubois@orange.fr');
+      expect(
+        screen.getByText(
+          'Soirely could not match m.dubois@orange.fr to a guest. Choose the guest to answer them.',
+        ),
+      ).toBeDefined();
+      none(['Choose the guest', 'Change guest', 'Mark as done']);
 
       await open(/^On the day: where to find us/, 'On the day: where to find us');
       none(['Edit', 'Send now', 'Cancel…']);

@@ -82,6 +82,8 @@ describe('Who gets it: conditions, counted live (sc-3957)', () => {
 
     expect(keys.slice(at, at + KEYS.length)).toEqual([...KEYS]);
     for (const key of KEYS) expect(seedOf(key), key).toBeDefined();
+    expect(seedOf('noManage').untold).toHaveLength(1);
+    expect(seedOf('resolvedRow').untold).toHaveLength(0);
     for (const key of KEYS.filter((one) => one !== 'noManage')) {
       expect(toSeedOf(key), key).not.toBeNull();
     }

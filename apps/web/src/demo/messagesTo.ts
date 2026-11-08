@@ -567,7 +567,7 @@ export const SENT_TO: readonly SentToId[] = ['reminder', 'replyBy'];
 
 export type ToSeed =
   | { kind: 'compose'; to: Audience; open: boolean }
-  | { kind: 'convo'; id: ConvoId; more: readonly ConvoId[] };
+  | { kind: 'convo'; id: ConvoId; more: readonly ConvoId[]; untold?: boolean };
 
 const writing = (conditions: readonly Condition[], pick: ToPick = 'who', open = true): ToSeed => ({
   kind: 'compose',
@@ -611,7 +611,7 @@ export function toSeedOf(state: MessagesState | null): ToSeed | null {
     case 'deletedPicked':
       return writing(['coming', 'hasMobile']);
     case 'noManage':
-      return { kind: 'convo', id: 'ines', more: [] };
+      return { kind: 'convo', id: 'ines', more: [], untold: true };
     case 'resolvedRow':
       return { kind: 'convo', id: 'replyBy', more: SENT_TO };
     case 'nobodyDue':

@@ -425,7 +425,7 @@ function Messages({
               </div>
             ) : (
               <>
-                {inbox.untold.length > 0 && <UntoldBanner />}
+                {inbox.untold.length > 0 && to.manage && <UntoldBanner />}
                 {sections.top.length > 0 && <Rows rows={sections.top} lit={lit} onOpen={openRow} />}
                 <Section name={MW.needsYou} rows={sections.needs} lit={lit} onOpen={openRow} />
                 <Section name={MW.scheduled} rows={sections.scheduled} lit={lit} onOpen={openRow} />

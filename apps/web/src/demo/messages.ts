@@ -1165,7 +1165,12 @@ export function seedOf(state: MessagesState | null): Inbox {
           draft: { ...draftOf(seed.to), openTo: seed.open },
         };
       if (seed?.kind === 'convo')
-        return { ...base, present: [...ALL, ...seed.more], pane: open(seed.id) };
+        return {
+          ...base,
+          present: [...ALL, ...seed.more],
+          pane: open(seed.id),
+          untold: seed.untold === true ? [STARTS_LATER] : [],
+        };
 
       return base;
     }

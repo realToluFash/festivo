@@ -294,7 +294,7 @@ function GuestThread({
   const doneAt = inbox.doneAt[id];
   const toldBy = guest?.toldBy ?? 'email';
   const action =
-    id === 'unknown' && match != null ? (
+    to.manage && id === 'unknown' && match != null ? (
       <button type="button" className="desk-text" onClick={() => setPicking(true)}>
         {MW.changeGuest}
       </button>
@@ -383,14 +383,16 @@ function GuestThread({
             {match == null ? (
               <li className="mg-match">
                 <p>{filled(MW.couldntMatch, { address: UNKNOWN.address })}</p>
-                <button
-                  type="button"
-                  className="button button-primary mg-choose"
-                  data-focus="choose"
-                  onClick={() => setPicking(true)}
-                >
-                  {MW.chooseGuest}
-                </button>
+                {to.manage && (
+                  <button
+                    type="button"
+                    className="button button-primary mg-choose"
+                    data-focus="choose"
+                    onClick={() => setPicking(true)}
+                  >
+                    {MW.chooseGuest}
+                  </button>
+                )}
               </li>
             ) : (
               <SystemLine glyph="tick">
