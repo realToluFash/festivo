@@ -319,13 +319,21 @@ export function GuestKitchenStep({
   const say = useSay(visit);
   const kitchen = visit.kitchen;
   if (kitchen == null) return null;
+  const closed = kitchen.from === 'closed';
+  const busy = visit.view.kind === 'kitchen' && visit.view.busy === true;
 
   return (
-    <section className="gk" aria-labelledby="gk-h">
-      <TextAction ink icon={<Glyph name="back" size={18} weight={2.2} />} onClick={actions.back}>
+    <section className="gk" aria-labelledby="gk-h" aria-busy={busy}>
+      <TextAction
+        ink
+        off={busy}
+        icon={<Glyph name="back" size={18} weight={2.2} />}
+        onClick={actions.back}
+      >
         {words.back}
       </TextAction>
       <div className="gk-head">
+        {closed && <p className="gk-label">{say.say('row')}</p>}
         <h2
           id="gk-h"
           className="gp-h2 gk-h2"
@@ -336,7 +344,7 @@ export function GuestKitchenStep({
           {say.say('title')}
         </h2>
         <p className="gk-text is-quiet">
-          {say.say(kitchen.people.length > 1 ? 'intro' : 'introAlone')}
+          {say.say(closed ? 'stays' : kitchen.people.length > 1 ? 'intro' : 'introAlone')}
         </p>
       </div>
       <div className="gk-consent">
@@ -355,10 +363,15 @@ export function GuestKitchenStep({
         />
       ))}
       <div className="gk-actions">
-        <Filled focus="kitchenNext" onClick={actions.next}>
-          {say.say('next')}
+        <Filled busy={busy} focus="kitchenNext" onClick={closed ? actions.save : actions.next}>
+          {say.say(closed ? 'save' : 'next')}
         </Filled>
-        <button className="gp-outlined" type="button" onClick={actions.skip}>
+        <button
+          className="gp-outlined"
+          type="button"
+          {...offButton(busy, { dim: false })}
+          onClick={actions.skip}
+        >
           {say.say(kitchen.record == null ? 'nothing' : 'leave')}
         </button>
       </div>

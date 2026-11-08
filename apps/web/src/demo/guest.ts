@@ -4,7 +4,12 @@ import i18next from 'i18next';
 import { writtenTime } from './clock.ts';
 import { type SampleEvent, sampleEvent } from './events.ts';
 import { BOARD_SAMPLES } from './guestLanguages.ts';
-import { type GuestKitchen, isGuestKitchenState, guestKitchenStarts } from './guestKitchen.ts';
+import {
+  type GuestKitchen,
+  closedKitchen,
+  isGuestKitchenState,
+  guestKitchenStarts,
+} from './guestKitchen.ts';
 import type { DemoLink } from './settings.ts';
 
 /** The guest's own page in A · The cover card (sc-31306), on the boards' sample: main's evt-wed-4 and one guest. */
@@ -15,6 +20,8 @@ export const COMPANIONS = 2;
 export const TODAY = '2026-10-27';
 export const EARLIER = '2026-10-20';
 export const REPLY_BY = '2026-10-30';
+/** sc-3787: the member who recorded a reply for the guest, the Guests demo's own on evt-wed-4. */
+export const RECORDER = 'Folake Adeyemi';
 
 /** The reader's zone is the browser's; the sample reads in London, and the zone state from São Paulo. */
 export const READER_ZONE = 'Europe/London';
@@ -81,11 +88,23 @@ export type Page = 'event' | 'gone' | 'unreachable' | 'loading';
 export type View =
   | { kind: 'answer'; busy: Answer | null; note: 'unsent' | 'notSentTap' | null }
   | { kind: 'check'; busy: boolean; failed: boolean; refused: boolean; from: 'answer' | 'changing' }
-  | { kind: 'kitchen' }
+  | { kind: 'kitchen'; busy?: boolean }
   | { kind: 'recorded'; same: boolean }
   | { kind: 'changing'; busy: Answer | null }
   | { kind: 'closed' }
   | { kind: 'tellUs'; busy: boolean; result: 'failed' | 'limited' | 'thanks' | null; back: View };
+
+/** An answer on the guest's record; `by` names the member who recorded it for them (sc-3787). */
+export interface Recorded {
+  answer: Answer;
+  on: string;
+  by?: string;
+}
+
+/** The guest's own answer, sent again unchanged; one a host recorded is never the same as theirs. */
+export function sameAnswer(recorded: Recorded | null, answer: Answer): boolean {
+  return recorded != null && recorded.by == null && recorded.answer === answer;
+}
 
 export interface Mine {
   words: string;
@@ -99,7 +118,7 @@ export interface Visit {
   started: boolean;
   replyBy: string | null;
   replyByPassed: boolean;
-  recorded: { answer: Answer; on: string } | null;
+  recorded: Recorded | null;
   companionsComing: number;
   view: View;
   photo: boolean;
@@ -202,6 +221,22 @@ const STATES = {
     name: 'Answered Not sure yet, with companions',
     starts: { recorded: { answer: 'notSure', on: TODAY }, view: RECORDED, want: 'greeting' },
   },
+  hostRecorded: {
+    name: 'Down as coming, recorded by a host',
+    starts: {
+      recorded: { answer: 'coming', on: EARLIER, by: RECORDER },
+      view: RECORDED,
+      want: 'greeting',
+    },
+  },
+  hostRecordedMaybe: {
+    name: 'Down as not sure yet, recorded by a host',
+    starts: {
+      recorded: { answer: 'notSure', on: EARLIER, by: RECORDER },
+      view: RECORDED,
+      want: 'greeting',
+    },
+  },
   changing: {
     name: 'Changing the answer',
     starts: {
@@ -229,6 +264,34 @@ const STATES = {
   replyByClosedNotSure: {
     name: 'After the date to answer by, Not sure yet',
     starts: { replyByPassed: true, recorded: { answer: 'notSure', on: TODAY }, view: CLOSED },
+  },
+  replyByClosedNotComing: {
+    name: 'After the date to answer by, Not coming',
+    starts: { replyByPassed: true, recorded: { answer: 'notComing', on: TODAY }, view: CLOSED },
+  },
+  replyByClosedNever: {
+    name: 'After the date to answer by, never answered',
+    starts: { replyByPassed: true, view: CLOSED },
+  },
+  replyByClosedKitchen: {
+    name: 'After the date: the kitchen step on its own',
+    starts: {
+      replyByPassed: true,
+      recorded: COMING,
+      view: { kind: 'kitchen' },
+      kitchen: closedKitchen(COMPANIONS, EARLIER, false),
+      want: 'kitchenHead',
+    },
+  },
+  replyByClosedSaved: {
+    name: 'After the date: the kitchen needs saved',
+    starts: {
+      replyByPassed: true,
+      recorded: COMING,
+      view: CLOSED,
+      kitchen: closedKitchen(COMPANIONS, EARLIER, true),
+      want: 'kitchen',
+    },
   },
   closedRefused: {
     name: 'Answers closed while sending (409)',
@@ -386,6 +449,8 @@ export const GUEST_PAGES: readonly { name: string; states: readonly DemoLink[] }
         'comingAlone',
         'notComing',
         'notSure',
+        'hostRecorded',
+        'hostRecordedMaybe',
         'changing',
       ] as const
     ).map(link),
@@ -398,6 +463,10 @@ export const GUEST_PAGES: readonly { name: string; states: readonly DemoLink[] }
         'unsentReturn',
         'replyByClosed',
         'replyByClosedNotSure',
+        'replyByClosedNotComing',
+        'replyByClosedNever',
+        'replyByClosedKitchen',
+        'replyByClosedSaved',
         'closedRefused',
         'closed',
         'closedNever',
@@ -573,7 +642,13 @@ const BOARD_ENGLISH = {
   coming: 'Coming',
   notComing: 'Not coming',
   notSure: 'Not sure yet',
-  answered: 'You answered {{answer}} on {{date}}.',
+  answeredComing: 'You answered Coming on {{date}}.',
+  answeredNotComing: 'You answered Not coming on {{date}}.',
+  answeredNotSure: 'You answered Not sure yet on {{date}}.',
+  downComing: 'You’re down as coming.',
+  downNotComing: 'You’re down as not coming.',
+  downNotSure: 'You’re down as not sure yet.',
+  recordedFor: '{{name}} recorded this for you on {{date}}. If it isn’t right, change it here.',
   greetComing: 'See you there, {{name}}.',
   greetNotComing: 'We’ll miss you, {{name}}.',
   greetNotSure: 'Thanks for letting us know, {{name}}.',
@@ -700,7 +775,23 @@ export function wordsFor(lang: Lang) {
       board(({ coming: 'yes', notComing: 'no', notSure: 'maybe' } as const)[answer]),
     answerWord,
     answered: (answer: Answer, date: string) =>
-      board('answered', { answer: answerWord(answer), date }),
+      board(
+        (
+          {
+            coming: 'answeredComing',
+            notComing: 'answeredNotComing',
+            notSure: 'answeredNotSure',
+          } as const
+        )[answer],
+        { date },
+      ),
+    downAs: (answer: Answer): string =>
+      board(
+        ({ coming: 'downComing', notComing: 'downNotComing', notSure: 'downNotSure' } as const)[
+          answer
+        ],
+      ),
+    recordedFor: (name: string, date: string) => board('recordedFor', { name, date }),
     greeting: (answer: Answer): string =>
       board(
         (

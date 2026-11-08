@@ -24,6 +24,7 @@ import {
   dayOf,
   forTheDay,
   layoutOf,
+  sameAnswer,
   shows,
   showsMessages,
   startOf,
@@ -122,8 +123,8 @@ function Visitor({ state }: { state: string | null }) {
     (answer: Answer) =>
       go(
         (was) => ({
-          recorded: was.recorded?.answer === answer ? was.recorded : { answer, on: TODAY },
-          view: { kind: 'recorded', same: was.recorded?.answer === answer },
+          recorded: sameAnswer(was.recorded, answer) ? was.recorded : { answer, on: TODAY },
+          view: { kind: 'recorded', same: sameAnswer(was.recorded, answer) },
         }),
         'greeting',
       ),
@@ -534,17 +535,24 @@ function Shown({
       );
     case 'recorded': {
       if (recorded == null) return null;
+      const day = dayOf(recorded.on, lang);
 
       return (
         <section className="gp-recorded" aria-labelledby="gp-greeting">
           <div className="gp-greet">
             <Mark answer={recorded.answer} />
             <h2 id="gp-greeting" className="gp-h2" tabIndex={-1} data-focus="greeting">
-              {words.greeting(recorded.answer)}
+              {recorded.by == null
+                ? words.greeting(recorded.answer)
+                : words.downAs(recorded.answer)}
             </h2>
           </div>
           <div className="gp-indent">
-            <p className="gp-sub">{words.answered(recorded.answer, dayOf(recorded.on, lang))}</p>
+            {recorded.by == null ? (
+              <p className="gp-sub">{words.answered(recorded.answer, day)}</p>
+            ) : (
+              <p className="gp-sub is-small">{words.recordedFor(recorded.by, day)}</p>
+            )}
             {view.same && <p className="gp-sub is-ink">{words.same(recorded.answer)}</p>}
             {recorded.answer === 'notSure' && COMPANIONS > 0 && (
               <p className="gp-sub">{words.companions}</p>
@@ -560,7 +568,11 @@ function Shown({
       return (
         <section className="gp-changing" aria-labelledby="gp-new-h">
           {recorded != null && (
-            <p className="gp-sub">{words.answered(recorded.answer, dayOf(recorded.on, lang))}</p>
+            <p className="gp-sub">
+              {recorded.by == null
+                ? words.answered(recorded.answer, dayOf(recorded.on, lang))
+                : words.downAs(recorded.answer)}
+            </p>
           )}
           <h2 id="gp-new-h" className="gp-h2" tabIndex={-1} data-focus="newHead">
             {words.newAnswer}
@@ -661,7 +673,7 @@ function Closed({
   const saved = visit.kitchen?.saved === true;
   const line = visit.started
     ? words.closed
-    : recorded?.answer === 'notSure'
+    : recorded == null || recorded.answer === 'notSure'
       ? words.closedByNotSure(by)
       : words.closedBy(by);
 

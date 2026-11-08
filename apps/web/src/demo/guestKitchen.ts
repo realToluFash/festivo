@@ -100,6 +100,22 @@ export function recorded(companions: number, earlier: string): Person[] {
   ];
 }
 
+/** After the date to answer by, Update what the kitchen should know opens the record on its own (sc-3780). */
+export function closedKitchen(companions: number, earlier: string, saved: boolean): GuestKitchen {
+  const record = recorded(companions, earlier);
+
+  return {
+    people: fromRecord(record),
+    record,
+    tried: false,
+    alert: null,
+    meals: false,
+    refuses: false,
+    from: 'closed',
+    saved,
+  };
+}
+
 export function errorsOf(one: Person): Record<Field, 'empty' | 'long' | null> {
   const long = (text: string) => (Array.from(text.trim()).length > MOST ? 'long' : null);
   const other = one.allergies.includes('other')
@@ -315,6 +331,7 @@ export function ruledOut(kitchen: GuestKitchen): string | null {
 const GUEST_KITCHEN_STATES = {
   kitchen: 'Anything the kitchen must know?, a first reply, nothing picked',
   kitchen_alone: 'Coming alone: one card, “You”',
+  kitchen_one_guest: 'One companion the host never named: “Your guest”',
   kitchen_picked: 'Allergies and a diet picked',
   kitchen_say_which: 'Next pressed: Say which, and over 100 characters',
   kitchen_returning: 'Coming back: what is recorded, the hosts’ picks included',
@@ -399,7 +416,7 @@ export function guestKitchenStarts(
   state: GuestKitchenState,
   { earlier, companions: invited }: { earlier: string; companions: number },
 ): Partial<Visit> {
-  const companions = state === 'kitchen_alone' ? 0 : invited;
+  const companions = state === 'kitchen_alone' ? 0 : state === 'kitchen_one_guest' ? 1 : invited;
   const returning = RETURNING.includes(state);
   const record = returning ? recorded(companions, earlier) : null;
   const picks: Partial<Record<string, Partial<Person>>> = SEEDS[state] ?? {};

@@ -740,6 +740,12 @@
   color: var(--colorInk);
 }
 
+/* sc-3787: who recorded a reply for the guest, in the page's row-line size */
+.gp-sub.is-small {
+  font-size: 14px;
+  line-height: 1.4;
+}
+
 .gp-small {
   margin-top: 10px;
   color: var(--colorInkSecondary);

@@ -13,6 +13,7 @@ import {
   forTheDay,
   isGuestState,
   layoutOf,
+  sameAnswer,
   sentWhen,
   shows,
   showsMessages,
@@ -33,8 +34,8 @@ describe('the guest’s page states (sc-31306)', () => {
       'In the guest’s own language (sc-3790)',
       'The hosts’ messages and the guest’s own',
     ]);
-    expect(STATES).toHaveLength(54);
-    expect(new Set(STATES).size).toBe(54);
+    expect(STATES).toHaveLength(60);
+    expect(new Set(STATES).size).toBe(60);
     expect(STATES.every(isGuestState)).toBe(true);
     expect(LINKED.find((one) => one.to.includes('messageArrival'))?.to).toBe(
       '/demo/guest?state=messageArrival#m-3',
@@ -63,6 +64,10 @@ describe('the guest’s page states (sc-31306)', () => {
     expect(forTheDay(startOf('coming'))).toBe(true);
     expect(forTheDay(startOf('closed'))).toBe(true);
     expect(forTheDay(startOf('replyByClosed'))).toBe(true);
+    expect(forTheDay(startOf('replyByClosedSaved'))).toBe(true);
+    expect(forTheDay(startOf('hostRecorded'))).toBe(true);
+    expect(forTheDay(startOf('replyByClosedNotComing'))).toBe(false);
+    expect(forTheDay(startOf('replyByClosedNever'))).toBe(false);
     expect(forTheDay(startOf('paused'))).toBe(false);
     expect(forTheDay(startOf('notComing'))).toBe(false);
     expect(forTheDay(startOf('finished'))).toBe(false);
@@ -156,6 +161,41 @@ describe('the words and dates', () => {
     expect(sentWhen('2026-11-02T21:14:00Z', 'en', 'Europe/London').replace(/\s/gu, ' ')).toBe(
       'Mon, Nov 2 · 21:14',
     );
+  });
+
+  it('writes one closed heading per answer, with no slot (l10n, sc-30739)', () => {
+    const en = wordsFor('en');
+    const day = dayOf('2026-10-27', 'en');
+
+    expect(en.answered('coming', day)).toBe('You answered Coming on Tuesday, October 27.');
+    expect(en.answered('notComing', day)).toBe('You answered Not coming on Tuesday, October 27.');
+    expect(wordsFor('fr').answered('notComing', dayOf('2026-10-27', 'fr'))).toBe(
+      '[Vous avez répondu Absent le mardi 27 octobre.]',
+    );
+  });
+
+  it('says who recorded a reply for the guest, and only them (sc-3787)', () => {
+    const en = wordsFor('en');
+
+    expect(en.downAs('coming')).toBe('You’re down as coming.');
+    expect(en.downAs('notComing')).toBe('You’re down as not coming.');
+    expect(en.downAs('notSure')).toBe('You’re down as not sure yet.');
+    expect(en.recordedFor('Folake Adeyemi', dayOf('2026-10-20', 'en'))).toBe(
+      'Folake Adeyemi recorded this for you on Tuesday, October 20. If it isn’t right, change it here.',
+    );
+    expect(startOf('hostRecorded').recorded).toEqual({
+      answer: 'coming',
+      on: '2026-10-20',
+      by: 'Folake Adeyemi',
+    });
+  });
+
+  it('never counts a reply a host recorded as the guest’s own answer sent again', () => {
+    expect(sameAnswer({ answer: 'coming', on: '2026-10-20' }, 'coming')).toBe(true);
+    expect(sameAnswer({ answer: 'coming', on: '2026-10-20', by: 'Folake Adeyemi' }, 'coming')).toBe(
+      false,
+    );
+    expect(sameAnswer(null, 'coming')).toBe(false);
   });
 
   it('names the four languages in their own names', () => {
