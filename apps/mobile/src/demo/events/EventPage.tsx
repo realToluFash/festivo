@@ -60,6 +60,8 @@ import {
 } from '../guests/GuestsModel.ts';
 import { GuestsScreen } from '../guests/GuestsScreen.tsx';
 import { GUESTS as TALKS, type GuestKey } from '../messages/MessagesSample.ts';
+import type { BudgetState } from '../budget/BudgetModel.ts';
+import { BudgetScreen } from '../budget/BudgetScreen.tsx';
 
 type Mute = 'ok' | 'notLoaded' | 'notSaved';
 
@@ -100,6 +102,8 @@ export function EventScreen({
   area,
   messages = null,
   guests = null,
+  budget = null,
+  without,
 }: {
   id: string | undefined;
   state: EventDemoState | null;
@@ -107,6 +111,8 @@ export function EventScreen({
   messages?: MessagesState | null;
   /** With Guests' own states, Guests opens on one, or Overview on its counts. */
   guests?: GuestsState | null;
+  budget?: BudgetState | null;
+  without?: AreaKey | undefined;
 }) {
   const shell = useShell();
   const locale = formattingLocale('en', getLocales()[0]?.languageTag);
@@ -299,6 +305,19 @@ export function EventScreen({
       />
     );
 
+  if (at === 'budget' && messagesHere)
+    return (
+      <BudgetScreen
+        state={budget}
+        event={shown}
+        now={now}
+        locale={locale}
+        more={more}
+        onMore={setMore}
+        onArea={setAt}
+      />
+    );
+
   if (at === 'messages' && messagesHere)
     return (
       <MessagesScreen
@@ -361,6 +380,7 @@ export function EventScreen({
       more={more}
       onMore={setMore}
       badge={messagesHere && messagesSeen ? badgeFor(m) : null}
+      without={without}
       toast={told == null ? null : { words: told, onClose: () => setTold(null) }}
       overlay={
         <>

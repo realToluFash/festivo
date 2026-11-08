@@ -392,7 +392,7 @@ export type Load = 'loaded' | 'loading' | 'failed';
 
 export type VendorsDialog =
   | { kind: 'add'; draft: Draft; problems: Problems }
-  | { kind: 'edit'; id: string; draft: Draft; problems: Problems };
+  | { kind: 'edit'; id: string; draft: Draft; problems: Problems; refused?: boolean };
 
 export interface VendorsStart {
   load: Load;
@@ -477,6 +477,17 @@ export function vendorsStart(state: string, vendor: string | null = null): Vendo
         ...start,
         dialog: { kind: 'edit', id: BLOOM, draft: bloomDraft(vendors), problems: {} },
       };
+    case 'archive_refused':
+      return {
+        ...start,
+        dialog: {
+          kind: 'edit',
+          id: BLOOM,
+          draft: bloomDraft(vendors),
+          problems: {},
+          refused: true,
+        },
+      };
     case 'archived_toast': {
       const name = vendors.find((one) => one.id === BLOOM)?.name ?? '';
       return { ...start, vendors: archived(vendors, BLOOM), told: VW.archivedToast(name) };
@@ -531,6 +542,10 @@ export const VENDORS_PAGES: readonly { name: string; states: readonly DemoLink[]
       { to: at('too_long'), name: 'A name over 100 characters (too_long)' },
       { to: at('edit'), name: 'Edit Bloom & Co, with Archive this vendor (edit)' },
       { to: at('archived_toast'), name: 'Bloom & Co archived (archived_toast)' },
+      {
+        to: at('archive_refused'),
+        name: 'Archive refused: two events still owe Bloom & Co (archive_refused, sc-87)',
+      },
     ],
   },
   {

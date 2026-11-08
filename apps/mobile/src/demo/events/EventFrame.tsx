@@ -85,6 +85,8 @@ export function EventFrame({
   onBell,
   bellRef,
   back: pushed,
+  phoneBack,
+  without,
   children,
 }: {
   event: Shown;
@@ -102,6 +104,10 @@ export function EventFrame({
   bellRef?: Ref<ViewInstance> | undefined;
   /** A page an area pushes in its own column: ‹ and the area it goes back to. */
   back?: { label: string; onPress: () => void } | null;
+  /** On the phone, a way back other than Overview, as Seating's ‹ More. */
+  phoneBack?: { label: string; onPress: () => void } | undefined;
+  /** An area this viewer has no part in, as Budget for Can edit: gone from More, the pills and the sidebar. */
+  without?: AreaKey | undefined;
   children: ReactNode;
 }) {
   const shell = useShell();
@@ -124,7 +130,16 @@ export function EventFrame({
     return (
       <Landscape
         column={null}
-        sidebar={<EventSidebar event={event} now={now} area={area} onArea={onArea} badge={badge} />}
+        sidebar={
+          <EventSidebar
+            event={event}
+            now={now}
+            area={area}
+            onArea={onArea}
+            badge={badge}
+            without={without}
+          />
+        }
         overlay={
           <>
             {overlay}
@@ -150,9 +165,11 @@ export function EventFrame({
 
   const back =
     pushed ??
-    (phone && area !== 'overview'
-      ? { label: W.overview, onPress: () => onArea('overview') }
-      : { label: W.backToEvents, onPress: backToEvents });
+    (phone && phoneBack != null
+      ? phoneBack
+      : phone && area !== 'overview'
+        ? { label: W.overview, onPress: () => onArea('overview') }
+        : { label: W.backToEvents, onPress: backToEvents });
   const at = PHONE_TABS.includes(area) ? AREA_WORDS[area] : W.more;
 
   return (
@@ -169,7 +186,7 @@ export function EventFrame({
         <View style={styles.grow} />
         <Bell tell={shell.tell} onPress={onBell} ref={bellRef} />
       </View>
-      {!phone && <AreaPills area={area} onArea={onArea} badge={badge} />}
+      {!phone && <AreaPills area={area} onArea={onArea} badge={badge} without={without} />}
       {fill ? (
         <View style={styles.grow}>{children}</View>
       ) : (
@@ -217,7 +234,13 @@ export function EventFrame({
               onTab={(chosen) => (chosen == null ? onMore(true) : onArea(chosen))}
             />
           )}
-          <MoreSheet open={more} onClose={() => onMore(false)} area={area} onArea={onArea} />
+          <MoreSheet
+            open={more}
+            onClose={() => onMore(false)}
+            area={area}
+            onArea={onArea}
+            without={without}
+          />
         </>
       )}
       {overlay}
@@ -231,11 +254,13 @@ function MoreSheet({
   onClose,
   area,
   onArea,
+  without,
 }: {
   open: boolean;
   onClose: () => void;
   area: AreaKey;
   onArea: (area: AreaKey) => void;
+  without: AreaKey | undefined;
 }) {
   const opener = useRef<ViewInstance>(null);
   const insets = useSafeAreaInsets();
@@ -269,7 +294,7 @@ function MoreSheet({
           </Pressable>
         </View>
         <RowList
-          items={MORE_AREAS.map((one) => ({
+          items={MORE_AREAS.filter((one) => one !== without).map((one) => ({
             key: one,
             inset: 40,
             selected: one === area,
@@ -353,10 +378,12 @@ function AreaPills({
   area,
   onArea,
   badge,
+  without,
 }: {
   area: AreaKey;
   onArea: (area: AreaKey) => void;
   badge: AreaBadge | null;
+  without: AreaKey | undefined;
 }) {
   return (
     <View style={styles.pillsAt}>
@@ -367,7 +394,7 @@ function AreaPills({
         contentContainerStyle={styles.pills}
         accessibilityRole="tablist"
       >
-        {AREAS.map((one) => {
+        {AREAS.filter((one) => one !== without).map((one) => {
           const on = one === area;
           const ink = on ? tokens.colorAccentText : tokens.colorInkSecondary;
           const counted = one === 'messages' && badge != null;
@@ -411,12 +438,14 @@ function EventSidebar({
   area,
   onArea,
   badge,
+  without,
 }: {
   event: Shown;
   now: Date;
   area: AreaKey;
   onArea: (area: AreaKey) => void;
   badge: AreaBadge | null;
+  without: AreaKey | undefined;
 }) {
   const shell = useShell();
   const tags = cardTags(event, now).map((tag) => tag.word);
@@ -453,7 +482,7 @@ function EventSidebar({
           </View>
         </View>
         <SidebarPlaces>
-          {AREAS.map((one) =>
+          {AREAS.filter((one) => one !== without).map((one) =>
             one === 'messages' && badge != null ? (
               <CountedPlace
                 key={one}
