@@ -81,7 +81,6 @@ export const CAL_WORDS = {
   barLabel: (name: string, status: string, time: string, days: string) =>
     `${name}, ${status}, ${time}, ${days}`,
   markLabel: (title: string, time: string) => `${title}, ${time}`,
-  allDatesComing: 'All dates for this event are coming.',
 } as const;
 
 const W = CAL_WORDS;

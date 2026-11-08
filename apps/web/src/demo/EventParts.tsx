@@ -17,6 +17,7 @@ import {
   tagKind,
 } from './events.ts';
 import { Glyph } from '../components/Glyph.tsx';
+import { type CardMilestone, KW } from './kitchen.ts';
 import { LayersContext } from '../layers.ts';
 import { Chevron, CardStep, RowWords, Tag } from '../components/SettingsParts.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
@@ -24,6 +25,7 @@ import './today.css';
 import '../components/SettingsParts.css';
 import './settings.css';
 import './events.css';
+import './kitchen.css';
 
 /** The desk Events sits in: a sidebar, the main card, the layers dialogs open on, and a toast. */
 export function EventsShell({
@@ -111,6 +113,7 @@ export function EventCard({
   now,
   level,
   guests = null,
+  milestone = null,
   onStep,
 }: {
   event: SampleEvent;
@@ -118,6 +121,8 @@ export function EventCard({
   level: 1 | 2;
   /** Its guests in the tiles' measure, on Events (sc-3786). */
   guests?: string | null;
+  /** Next up when it is a You milestone with an action, which becomes the card's one step (sc-30812). */
+  milestone?: CardMilestone | null;
   onStep: (does: Extract<Card['step'], { kind: 'button' }>['does']) => void;
 }) {
   const card = cardOf(event, now);
@@ -170,7 +175,28 @@ export function EventCard({
           </ul>
         )}
         <div className="ev-card-foot">
-          {card.step.kind === 'next' ? (
+          {milestone != null && card.step.kind === 'next' ? (
+            <>
+              <ul className="kitchen-glass">
+                <li className="desk-glass">
+                  <Glyph name="user" size={14} weight={2.4} />
+                  {KW.you}
+                </li>
+                {milestone.overdue && (
+                  <li className="desk-glass">
+                    <Glyph name="alert" size={14} weight={2.4} />
+                    {KW.overdue}
+                  </li>
+                )}
+              </ul>
+              <p className="ev-card-next">{milestone.title}</p>
+              <p className="desk-on-card">{milestone.line}</p>
+              <Link className="desk-step" to={milestone.link}>
+                {milestone.label}
+                <Glyph name="arrow" size={16} weight={2.4} />
+              </Link>
+            </>
+          ) : card.step.kind === 'next' ? (
             <>
               <p className="ev-card-next">{card.step.title}</p>
               <p className="desk-on-card">{card.step.line}</p>
