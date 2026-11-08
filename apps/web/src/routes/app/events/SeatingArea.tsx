@@ -10,7 +10,7 @@ import {
   asSeating,
   realtimeTopic,
 } from '@soirely/api-client';
-import { readRoomSide } from '@soirely/domain';
+import { leastUsedColour, readRoomSide, sectionHoldingName } from '@soirely/domain';
 import {
   type KeyboardEvent,
   type ReactNode,
@@ -55,23 +55,6 @@ type Asking = { kind: 'deletePlan' } | { kind: 'deleteSection'; id: string };
 const RETRY_MS = 5_000;
 const RENEW_BEFORE_MS = 60_000;
 const FIT_PAD = { top: 84, right: 16, bottom: 84, left: 16 } as const;
-
-/** Same as the API's SectionNameNormaliser: case and accents do not make two names different. */
-function nameKey(name: string): string {
-  return name
-    .normalize('NFKD')
-    .replace(/\p{Mn}/gu, '')
-    .toLowerCase()
-    .trim()
-    .replace(/\s+/gu, ' ');
-}
-
-function leastUsed(plan: SeatingPlan): SectionColour {
-  const used = (colour: SectionColour) =>
-    plan.sections.filter((section) => section.colour === colour).length;
-
-  return SECTION_COLOURS.reduce((best, colour) => (used(colour) < used(best) ? colour : best));
-}
 
 /** The room as the API holds it, published to every page open on it (sc-3998). */
 function useLiveSeating(eventId: string, onSeating: (seating: Seating) => void, onGap: () => void) {
@@ -268,6 +251,8 @@ interface PlanApi {
   readOnly: boolean;
   /** Sends one change; a 412 reloads the plan and says who changed it first. Returns the field's refusal, if any. */
   send: (change: () => Promise<Seating>, field?: string) => Promise<string | null>;
+  /** True once deleted; otherwise the notice says why, on the panel the ask was opened from. */
+  remove: (change: () => Promise<Seating>) => Promise<boolean>;
   adopt: (seating: Seating) => void;
   /** Counts the 412s: a form keyed on it reloads what a colleague saved. */
   reloads: number;
@@ -314,11 +299,14 @@ function Plan({
     setSectionsRefused(false);
   };
 
-  const send = async (change: () => Promise<Seating>, field?: string): Promise<string | null> => {
+  const attempt = async (
+    change: () => Promise<Seating>,
+    field?: string,
+  ): Promise<{ saved: boolean; refused: string | null }> => {
     try {
       onSeating(await change());
       setNotice(null);
-      return null;
+      return { saved: true, refused: null };
     } catch (error) {
       if (error instanceof ApiError && error.status === 412) {
         const name = error.problem.changedBy;
@@ -326,22 +314,27 @@ function Plan({
         setNotice(name == null ? t('seating.notSaved') : t('seating.changedFirst', { name }));
         setReloads((n) => n + 1);
         reload();
-        return null;
+        return { saved: false, refused: null };
       }
       if (error instanceof ApiError && error.is('seating_section_limit')) {
         setPanel(null);
         setSectionsRefused(true);
-        return null;
+        return { saved: false, refused: null };
       }
       if (error instanceof ApiError && field != null) {
         const refused = error.fieldErrors()[field];
 
-        if (refused != null) return refused;
+        if (refused != null) return { saved: false, refused };
       }
       setNotice(t('seating.notSaved'));
-      return null;
+      return { saved: false, refused: null };
     }
   };
+
+  const send = async (change: () => Promise<Seating>, field?: string) =>
+    (await attempt(change, field)).refused;
+
+  const remove = async (change: () => Promise<Seating>) => (await attempt(change)).saved;
 
   const ctx: PlanApi = {
     event,
@@ -349,6 +342,7 @@ function Plan({
     plan,
     readOnly,
     send,
+    remove,
     adopt: onSeating,
     reloads,
     notice,
@@ -357,7 +351,7 @@ function Plan({
   };
 
   const lengths = (cm: number, display: 'short' | 'long' = 'short') =>
-    lengthWords(t, locale, cm, system, display);
+    lengthWords(t, locale, cm, system, { display });
 
   let canvas: ReactNode = null;
 
@@ -733,8 +727,8 @@ function useRoomSide(system: MeasurementSystem) {
       return { refused: t(side === 'width' ? 'seating.enterWidth' : 'seating.enterLength') };
     return {
       refused: t('seating.roomRange', {
-        min: lengthWords(t, locale, SEATING_LIMITS.roomMinimumCm, system),
-        max: lengthWords(t, locale, SEATING_LIMITS.roomMaximumCm, system),
+        min: lengthWords(t, locale, SEATING_LIMITS.roomMinimumCm, system, { grouping: false }),
+        max: lengthWords(t, locale, SEATING_LIMITS.roomMaximumCm, system, { grouping: false }),
       }),
     };
   };
@@ -1129,7 +1123,13 @@ function SectionsBlock({
 function SectionForm({ ctx, plan, id }: { ctx: PlanApi; plan: SeatingPlan; id: string | null }) {
   const { t } = useTranslation();
   const section = id == null ? null : (plan.sections.find((one) => one.id === id) ?? null);
-  const [colour, setColour] = useState<SectionColour>(section?.colour ?? leastUsed(plan));
+  const [colour, setColour] = useState<SectionColour>(
+    section?.colour ??
+      leastUsedColour(
+        SECTION_COLOURS,
+        plan.sections.map((one) => one.colour),
+      ),
+  );
   const [addError, setAddError] = useState<string | null>(null);
   const [typed, setTyped] = useState('');
   const group = useId();
@@ -1140,9 +1140,9 @@ function SectionForm({ ctx, plan, id }: { ctx: PlanApi; plan: SeatingPlan; id: s
 
     if (name === '') return t('seating.sectionBlank');
     if (name.length > SEATING_LIMITS.sectionNameMaximum) return t('seating.sectionLong');
-    if (plan.sections.some((one) => one.id !== id && nameKey(one.name) === nameKey(name)))
-      return t('seating.sectionTaken', { name });
-    return null;
+    const holder = sectionHoldingName(plan.sections, name, id);
+
+    return holder == null ? null : t('seating.sectionTaken', { name: holder.name });
   }
 
   async function add(): Promise<void> {
@@ -1329,7 +1329,9 @@ function AskFor({
         onKeep={onKeep}
         onGo={() => {
           setBusy(true);
-          void ctx.send(() => api.deleteSeatingPlan(ctx.event.id)).then(onDone);
+          void ctx
+            .remove(() => api.deleteSeatingPlan(ctx.event.id))
+            .then((deleted) => (deleted ? onDone() : onKeep()));
         }}
       />
     );
@@ -1348,7 +1350,9 @@ function AskFor({
       onKeep={onKeep}
       onGo={() => {
         setBusy(true);
-        void ctx.send(() => api.deleteSeatingSection(ctx.event.id, section.id)).then(onDone);
+        void ctx
+          .remove(() => api.deleteSeatingSection(ctx.event.id, section.id))
+          .then((deleted) => (deleted ? onDone() : onKeep()));
       }}
     />
   );

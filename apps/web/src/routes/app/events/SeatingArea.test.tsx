@@ -189,7 +189,7 @@ describe('Seating at a desk (sc-3998)', () => {
     fireEvent.change(screen.getByLabelText('Width'), { target: { value: '6 ft 6 in' } });
     fireEvent.change(screen.getByLabelText('Length'), { target: { value: '20' } });
     fireEvent.click(screen.getByRole('button', { name: 'Start the plan' }));
-    expect(screen.getByText('The room must be between 6 ft 7 in and 1,640 ft 5 in.')).toBeDefined();
+    expect(screen.getByText('The room must be between 6 ft 7 in and 1640 ft 5 in.')).toBeDefined();
 
     fireEvent.change(screen.getByLabelText('Width'), { target: { value: '12\' 6"' } });
     fireEvent.click(screen.getByRole('button', { name: 'Start the plan' }));
@@ -270,7 +270,7 @@ describe('Seating at a desk (sc-3998)', () => {
 
     fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'TÉRRACE' } });
     fireEvent.click(screen.getByRole('button', { name: 'Add section' }));
-    expect(screen.getByText('This plan already has a section called TÉRRACE.')).toBeDefined();
+    expect(screen.getByText('This plan already has a section called Terrace.')).toBeDefined();
 
     fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Main floor' } });
     fireEvent.click(screen.getByRole('button', { name: 'Add section' }));
@@ -359,21 +359,108 @@ describe('Seating at a desk (sc-3998)', () => {
     ).toBe(true);
   });
 
+  it('keeps the section and says so when its delete is not saved', async () => {
+    signedIn();
+    await onSeating({
+      'GET /api/events/ev_1/seating-plan': () =>
+        json({
+          seating: {
+            measurementSystem: 'metric',
+            plan: plan([{ id: 's1', name: 'Terrace', colour: 'teal' }]),
+          },
+        }),
+      'DELETE /api/events/ev_1/seating-plan/sections/s1': () => problem('internal_error', 500),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit Terrace' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete section…' }));
+    const ask = await screen.findByRole('alertdialog', { name: 'Delete Terrace?' });
+    fireEvent.click(within(ask).getByRole('button', { name: 'Delete section' }));
+
+    expect(await screen.findByText('This change was not saved.')).toBeDefined();
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(screen.getByLabelText('Name')).toHaveProperty('value', 'Terrace');
+  });
+
   it('is not shown without seating.read', async () => {
     signedIn();
-    vi.spyOn(globalThis, 'fetch').mockImplementation(async () =>
-      json({ event: { ...EVENT, permissions: ['events.read'] } }),
-    );
+    const fetched = vi
+      .spyOn(globalThis, 'fetch')
+      .mockImplementation(async () => json({ event: { ...EVENT, permissions: ['events.read'] } }));
     render(
       <RouterProvider
         router={createMemoryRouter(routes, { initialEntries: ['/app/events/ev_1/seating'] })}
       />,
     );
 
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'This page does not exist' }),
+    ).toBeDefined();
+    expect(screen.queryByRole('heading', { level: 1, name: 'Seating' })).toBeNull();
+    expect(fetched.mock.calls.some(([url]) => String(url).includes('/seating-plan'))).toBe(false);
+  });
+});
+
+describe.each([
+  { locale: 'en', largest: '1640 ft 5 in', shown: '1148 ft 4 in', typed: '1148 ft 6 in' },
+  { locale: 'fr', largest: '1640 pi 5 po', shown: '1148 pi 4 po', typed: '1148 pi 6 po' },
+])('A room over 1,000 ft, in $locale (sc-3998)', ({ locale, largest, shown, typed }) => {
+  const spaced = (text: string) => text.replace(/\s+/gu, ' ');
+
+  afterEach(async () => {
+    await i18next.changeLanguage('en');
+  });
+
+  it('starts at the largest size its refusal names', async () => {
+    await i18next.changeLanguage(locale);
+    signedIn();
+    const sent = await onSeating({
+      'GET /api/events/ev_1/seating-plan': () =>
+        json({ seating: { measurementSystem: 'us', plan: null } }),
+      'POST /api/events/ev_1/seating-plan': () =>
+        json({ seating: { measurementSystem: 'us', plan: { ...plan(), widthCm: 50_000 } } }, 201),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Start the plan' }));
+    fireEvent.change(screen.getByLabelText('Width'), { target: { value: '2000 ft' } });
+    fireEvent.change(screen.getByLabelText('Length'), { target: { value: '20' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Start the plan' }));
+    const refusal = screen.getByText(/^The room must be between/u).textContent ?? '';
+    expect(spaced(refusal).endsWith(`and ${largest}.`)).toBe(true);
+
+    fireEvent.change(screen.getByLabelText('Width'), { target: { value: largest } });
+    fireEvent.click(screen.getByRole('button', { name: 'Start the plan' }));
+
     await waitFor(() =>
-      expect(screen.queryByRole('heading', { level: 1, name: 'Seating' })).toBeNull(),
+      expect(
+        sent.find((one) => one.line === 'POST /api/events/ev_1/seating-plan')?.body,
+      ).toMatchObject({ widthCm: 50_000 }),
     );
-    expect(await screen.findByRole('heading', { level: 1 })).toBeDefined();
+  });
+
+  it('takes back the size Room settings shows, with only the inches changed', async () => {
+    await i18next.changeLanguage(locale);
+    signedIn();
+    const hall = { ...plan(), widthCm: 35_000 };
+    const sent = await onSeating({
+      'GET /api/events/ev_1/seating-plan': () =>
+        json({ seating: { measurementSystem: 'us', plan: hall } }),
+      'PATCH /api/events/ev_1/seating-plan': () =>
+        json({ seating: { measurementSystem: 'us', plan: { ...hall, widthCm: 35_006 } } }),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Room settings' }));
+    const width = screen.getByLabelText<HTMLInputElement>('Width');
+    expect(spaced(width.value)).toBe(shown);
+    fireEvent.change(width, { target: { value: typed } });
+    fireEvent.blur(width);
+
+    await waitFor(() =>
+      expect(sent.find((one) => one.line === 'PATCH /api/events/ev_1/seating-plan')?.body).toEqual({
+        widthCm: 35_006,
+      }),
+    );
+    expect(screen.queryByText(/^The room must be between/u)).toBeNull();
   });
 });
 
