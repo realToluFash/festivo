@@ -1483,16 +1483,16 @@ describe("Inside an event, the navigation menu is the event's (sc-22103)", () =>
     at('/app/events/ev_1');
     await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
 
-    fireEvent.click(eventNav().getByRole('link', { name: 'Seating' }));
+    fireEvent.click(eventNav().getByRole('link', { name: 'Menu' }));
 
-    const panel = (await screen.findByRole('heading', { level: 2, name: 'Seating' })).closest(
+    const panel = (await screen.findByRole('heading', { level: 2, name: 'Menu' })).closest(
       'section',
     )!;
-    expect(within(panel).getByText('The seating plan for this event is coming.')).toBeDefined();
+    expect(within(panel).getByText('The menu for this event is coming.')).toBeDefined();
     expect(within(panel).queryAllByRole('button')).toHaveLength(0);
     expect(within(panel).queryAllByRole('link')).toHaveLength(0);
     expect(screen.getByRole('heading', { level: 1, name: 'Adaeze and Tunde' })).toBeDefined();
-    expect(current()).toBe('Seating');
+    expect(current()).toBe('Menu');
   });
 
   it.each([
