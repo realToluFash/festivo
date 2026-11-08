@@ -22,6 +22,7 @@ import {
   SAMPLE_GUESTS,
   figureOf,
   guestCountsOf,
+  rowGuests,
 } from './GuestCounts.ts';
 import { Cover } from '../../components/Cover.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
@@ -160,10 +161,10 @@ export function EventsList({
     setSearched('');
   };
   const guestLine = (event: Shown) => {
-    const one = state === 'noGuests' ? null : SAMPLE_GUESTS[event.id];
-    return one == null || !['live', 'happening_now', 'paused'].includes(event.phase)
+    const one = state === 'noGuests' ? null : rowGuests(event, SAMPLE_GUESTS, now);
+    return one == null
       ? null
-      : `${G.coming(one.coming, locale)} · ${G.notReplied(one.invited - one.replied, locale)}`;
+      : `${G.coming(one.coming, locale)} · ${G.notReplied(one.notReplied, locale)}`;
   };
   const row = (event: Shown, everyPhase: boolean) => ({
     key: event.id,
