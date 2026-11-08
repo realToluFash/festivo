@@ -52,6 +52,26 @@ export const LANGUAGE_NAMES: Record<string, string> = {
   'languageNames.pt': 'Portuguese',
 };
 
+/** The app's `languageNamesInSentence.*` (en.json): a language named inside a sentence. */
+export const LANGUAGE_NAMES_IN_SENTENCE: Record<string, string> = {
+  'languageNamesInSentence.en': 'English',
+  'languageNamesInSentence.es': 'Spanish',
+  'languageNamesInSentence.fr': 'French',
+  'languageNamesInSentence.pt': 'Portuguese',
+};
+
+/** Both keys as the app's fr.json has them, for a French reader: on its own capitalised, in a sentence not. */
+export const LANGUAGE_NAMES_FR: Record<string, string> = {
+  'languageNames.en': 'Anglais',
+  'languageNames.es': 'Espagnol',
+  'languageNames.fr': 'Français',
+  'languageNames.pt': 'Portugais',
+  'languageNamesInSentence.en': 'anglais',
+  'languageNamesInSentence.es': 'espagnol',
+  'languageNamesInSentence.fr': 'français',
+  'languageNamesInSentence.pt': 'portugais',
+};
+
 const ADDED_NEXT = 'People whose main email address is at it can now ask to join.';
 
 export const DOMAIN_WORDS = {

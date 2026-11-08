@@ -18,6 +18,7 @@ import { EventField } from '../events/EventEdits.tsx';
 import { Avatar } from '../../components/SettingsParts.tsx';
 import { FocusedScreen, TextAction } from '../../components/Summary.tsx';
 import { BigButton } from './CheckCard.tsx';
+import { WhyNot } from './Composers.tsx';
 import { DeliveryMark, MessageGlyph } from './MessageMarks.tsx';
 import type { FixKind } from './MessagesModel.ts';
 import { type ReachView, type ReachPerson, isEmail, isPhone } from './Reach.ts';
@@ -26,12 +27,14 @@ import { Legend, ReachBar } from './Stream.tsx';
 
 function Person({
   person,
+  closed,
   refFor,
   onFix,
   onSendAgain,
   onNotNow,
 }: {
   person: ReachPerson;
+  closed: string | null;
   refFor: (key: string) => (node: ViewInstance | null) => void;
   onFix: (person: ReachPerson, fix: string) => void;
   onSendAgain: (person: ReachPerson) => void;
@@ -102,14 +105,34 @@ function Person({
           <View style={styles.again}>
             <Pressable
               ref={refFor(`${person.key}.again`)}
-              onPress={() => onSendAgain(person)}
-              style={({ pressed }) => [styles.againPill, pressed && styles.pressed]}
+              onPress={closed == null ? () => onSendAgain(person) : undefined}
+              disabled={closed != null}
+              style={({ pressed }) => [
+                styles.againPill,
+                closed != null && styles.againOff,
+                pressed && styles.pressed,
+              ]}
               accessibilityRole="button"
-              accessibilityLabel={say.sendAgain(person.name)}
+              accessibilityLabel={
+                closed == null
+                  ? say.sendAgain(person.name)
+                  : `${say.sendAgain(person.name)}, ${closed}`
+              }
+              accessibilityState={{ disabled: closed != null }}
               testID={`messages.again.${person.key}`}
             >
-              <MessageGlyph name="send" size={17} ink={tokens.colorInkOnDark} weight={2.4} />
-              <Text size={15} weight="semibold" accessible={false} style={styles.onAccent}>
+              <MessageGlyph
+                name="send"
+                size={17}
+                ink={closed == null ? tokens.colorInkOnDark : tokens.colorInkSecondary}
+                weight={2.4}
+              />
+              <Text
+                size={15}
+                weight="semibold"
+                accessible={false}
+                style={closed == null ? styles.onAccent : styles.secondary}
+              >
                 {say.sendAgain(person.name)}
               </Text>
             </Pressable>
@@ -174,6 +197,7 @@ export function WhoReached({
   onResend,
   onSendAgain,
   onNotNow,
+  closed,
   bottom,
 }: {
   view: ReachView;
@@ -186,6 +210,7 @@ export function WhoReached({
   onResend: () => void;
   onSendAgain: (person: ReachPerson) => void;
   onNotNow: (person: ReachPerson) => void;
+  closed: string | null;
   bottom: number;
 }) {
   return (
@@ -266,6 +291,7 @@ export function WhoReached({
                   {index > 0 && <View style={styles.hairline} />}
                   <Person
                     person={person}
+                    closed={closed}
                     refFor={refFor}
                     onFix={onFix}
                     onSendAgain={onSendAgain}
@@ -284,7 +310,13 @@ export function WhoReached({
       </ScrollView>
       {view.resend > 0 && (
         <View style={[styles.foot, { paddingBottom: bottom }]}>
-          <BigButton label={say.resend(view.resend)} onPress={onResend} testID="messages.resend" />
+          {closed != null && <WhyNot words={closed} />}
+          <BigButton
+            label={say.resend(view.resend)}
+            onPress={onResend}
+            why={closed}
+            testID="messages.resend"
+          />
         </View>
       )}
     </View>
@@ -406,7 +438,7 @@ const styles = StyleSheet.create({
     marginTop: tokens.spaceHair,
   },
   hairline: { height: 1, marginLeft: 52, backgroundColor: tokens.colorBorder },
-  foot: { paddingTop: tokens.spaceLg, backgroundColor: tokens.colorCard },
+  foot: { paddingTop: tokens.spaceLg, gap: tokens.spaceSm, backgroundColor: tokens.colorCard },
   onAccent: { color: tokens.colorInkOnDark },
   pressed: { opacity: tokens.opacityPressed },
   again: {
@@ -417,6 +449,7 @@ const styles = StyleSheet.create({
     marginTop: tokens.spaceSm,
   },
   empty: { alignItems: 'flex-start', gap: tokens.spaceXs, paddingVertical: tokens.spaceLg },
+  againOff: { backgroundColor: tokens.colorInsetBorder },
   againPill: {
     minHeight: tokens.sizeHit,
     flexDirection: 'row',

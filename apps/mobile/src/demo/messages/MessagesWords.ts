@@ -8,6 +8,7 @@ export const W = {
   noneLine:
     'What you write appears on each guest’s own page. Each guest who answers gets a conversation here.',
   pickOne: 'Pick a conversation, or write to your guests below.',
+  pickOneClosed: 'Pick a conversation.',
   writeToGuests: 'Write to your guests',
   onTheirPage: 'On their page',
   theirPage: 'Their page',
@@ -43,7 +44,8 @@ export const W = {
   previewOn: 'Preview on',
   edit: 'Edit',
   goesOnTheirPage: 'Goes on their page',
-  onlyOurs: 'Only Soirely’s own words are translated. Yours go out exactly as you wrote them.',
+  onlyOurs:
+    'Only Soirely’s own words are translated. Yours show on their page exactly as you wrote them.',
   whatSoirelySends: 'What Soirely sends',
   readOnYourPage: 'Read it on your page',
   toldHow: 'Your message goes on their page. Soirely tells them it is there by email and text.',

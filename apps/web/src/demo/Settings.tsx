@@ -15,6 +15,8 @@ import {
   viewerOf,
 } from './settings.ts';
 import { Account } from './Account.tsx';
+import { DataSettings } from './DataSettings.tsx';
+import { dataViewerKey } from './dataSettings.ts';
 import { General } from './General.tsx';
 import { LayersContext } from '../layers.ts';
 import { Members } from './Members.tsx';
@@ -42,6 +44,7 @@ const TILES: Record<
   notifications: 'bell',
   members: 'users',
   signInRules: 'lock',
+  data: 'page',
 };
 
 /** Settings at a desk in B · Summary first (Web-Settings.dc.html, page 29), on sample data. */
@@ -55,7 +58,13 @@ export function Settings({
   const [params] = useSearchParams();
   const state = params.get('state') ?? '';
   const as = params.get('as');
-  const viewer = viewerOf(open === 'vendors' ? vendorsViewerKey(as, state) : as);
+  const viewer = viewerOf(
+    open === 'vendors'
+      ? vendorsViewerKey(as, state)
+      : open === 'data'
+        ? dataViewerKey(as, state)
+        : as,
+  );
   useSwitcherStart();
   const paused = usePaused();
   const [told, setTold] = useState<string | null>(null);
@@ -101,7 +110,11 @@ export function Settings({
           ) : (
             <>
               <SettingsList
-                open={(open !== 'members' && open !== 'vendors') || viewer.manages ? open : null}
+                open={
+                  (open !== 'members' && open !== 'vendors' && open !== 'data') || viewer.manages
+                    ? open
+                    : null
+                }
                 viewer={viewer}
                 tell={tell}
               />
@@ -122,6 +135,13 @@ export function Settings({
                 <General key={`${viewer.key}:${state}`} viewer={viewer} state={state} tell={tell} />
               ) : open === 'signInRules' ? (
                 <SignInRules
+                  key={`${viewer.key}:${state}`}
+                  viewer={viewer}
+                  state={state}
+                  tell={tell}
+                />
+              ) : open === 'data' && viewer.manages ? (
+                <DataSettings
                   key={`${viewer.key}:${state}`}
                   viewer={viewer}
                   state={state}

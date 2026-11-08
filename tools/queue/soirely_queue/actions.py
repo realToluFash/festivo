@@ -371,8 +371,8 @@ SHOWS_NOTHING = re.compile(r"^[\s*_>-]*demo[*_]*:[\s*_]*none(?:\s*[:.]|[\s*_]*$)
 
 
 def demo_missing(story):
-    """Why a story the designer drew is not ready to build: its Demo line names no merged
-    demo. A story with no Design section, or whose Demo line reads `none`, shows nothing,
+    """Why a story the designer drew is not ready to build: a pull request its Demo line
+    names is still open, or none of them merged. A closed one was superseded. A story with no Design section, or whose Demo line reads `none`, shows nothing,
     so nothing is missing."""
     design = T.find(story.get("description"), "Design")
     if not design:
@@ -387,15 +387,16 @@ def demo_missing(story):
         return None
     if not numbers:
         return "its Demo: line names no pull request"
-    states = {}
-    for n in numbers:
-        states[n] = pr_state(n)
-        if states[n] == "MERGED":
-            return None
+    states = {n: pr_state(n) for n in dict.fromkeys(numbers)}
     unread = [f"#{n}" for n, state in states.items() if state is None]
     if unread:
         return f"GitHub did not answer for {', '.join(unread)}, so its demo is not known merged"
-    return f"its demo {', '.join(f'#{n}' for n in numbers)} is not merged yet"
+    open_ = [f"#{n}" for n, state in states.items() if state not in ("MERGED", "CLOSED")]
+    if open_:
+        return f"its demo {', '.join(open_)} is not merged yet"
+    if "MERGED" not in states.values():
+        return f"its demo {', '.join(f'#{n}' for n in states)} was closed without merging"
+    return None
 
 
 def pr_state(number):

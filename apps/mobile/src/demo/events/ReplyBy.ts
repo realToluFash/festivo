@@ -35,12 +35,42 @@ export function replyByAfterStart(replyBy: string | null, startDate: string): st
   return replyBy != null && startDate <= replyBy ? dayAfter(startDate, -1) : null;
 }
 
-export function replyByMoves(replyBy: string, moved: string, locale: string): string {
-  return say.replyByMoves(formatWallDay(replyBy, locale), formatWallDay(moved, locale));
+/** pm, 8 Nov: Dates asks with the part's own rule before a moved Reply by closes replies sooner. */
+export function datesAsk(
+  replyBy: string | null,
+  moved: string | null,
+  now: Date,
+  timeZone: string,
+  eventId: string,
+): ReplyByAsk | null {
+  return moved == null
+    ? null
+    : replyByAsk(replyBy, moved, todayIn(now, timeZone), noReplyOf(eventId));
 }
 
-export function replyByMovedSaved(moved: string, locale: string): string {
-  return say.repliesNowClose(formatWallDay(moved, locale));
+/** After Dates saves: Tell guests is the answer when it opens, with the moved Reply by in it; else the toast (ux, 8 Nov). */
+export function datesSaveSays(
+  moved: string | null,
+  tellOpens: boolean,
+): { toast: 'saved' | 'moved' | null; inTell: boolean } {
+  if (tellOpens) return { toast: null, inTell: moved != null };
+
+  return { toast: moved == null ? 'saved' : 'moved', inTell: false };
+}
+
+/** l10n, #33572: inside Tell guests, the toast's own words without "Saved."; closed at the save, no date. */
+export function replyByInTell(moved: string, timeZone: string, locale: string, now: Date): string {
+  if (moved < todayIn(now, timeZone)) return W.repliesClosedNow;
+
+  return say.repliesCloseOn(
+    formatWallDay(moved, locale),
+    formatWallClock(CLOSES_AT, locale),
+    timeZone,
+  );
+}
+
+export function replyByMoves(replyBy: string, moved: string, locale: string): string {
+  return say.replyByMoves(formatWallDay(replyBy, locale), formatWallDay(moved, locale));
 }
 
 /** The last second of the day in the event's zone, whatever the clocks do that night. */
@@ -113,8 +143,19 @@ export function replyByPreview(date: string, locale: string): string {
   return say.onGuestsPage(say.pleaseAnswerBy(longDay(date, locale)));
 }
 
-export function replyBySaved(date: string | null, timeZone: string, locale: string): string {
-  return date == null
-    ? W.replyByRemoved
-    : say.replyBySaved(formatWallDay(date, locale), formatWallClock(CLOSES_AT, locale), timeZone);
+/** One toast wherever the save came from (l10n, #33572): a past day closed replies at the save. */
+export function replyBySaved(
+  date: string | null,
+  timeZone: string,
+  locale: string,
+  now: Date,
+): string {
+  if (date == null) return W.replyByRemoved;
+  if (date < todayIn(now, timeZone)) return W.savedClosedNow;
+
+  return say.replyBySaved(
+    formatWallDay(date, locale),
+    formatWallClock(CLOSES_AT, locale),
+    timeZone,
+  );
 }

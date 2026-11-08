@@ -18,24 +18,35 @@ import { CHANNEL_WORD, type ChannelKey, W, say } from './MessagesWords.ts';
 export function BigButton({
   label,
   onPress,
+  why = null,
   ref,
   testID,
 }: {
   label: string;
   onPress: () => void;
+  why?: string | null | undefined;
   ref?: Ref<ViewInstance> | undefined;
   testID: string;
 }) {
+  const off = why != null;
+
   return (
     <Pressable
       ref={ref}
-      onPress={onPress}
-      style={({ pressed }) => [styles.big, pressed && styles.pressed]}
+      onPress={off ? undefined : onPress}
+      disabled={off}
+      style={({ pressed }) => [styles.big, off && styles.bigOff, pressed && styles.pressed]}
       accessibilityRole="button"
-      accessibilityLabel={label}
+      accessibilityLabel={off ? `${label}, ${why}` : label}
+      accessibilityState={{ disabled: off }}
       testID={testID}
     >
-      <Text size={16} weight="semibold" accessible={false} style={styles.onAccent}>
+      <Text
+        size={16}
+        weight="semibold"
+        accessible={false}
+        style={off ? styles.offInk : styles.onAccent}
+      >
         {label}
       </Text>
     </Pressable>
@@ -400,6 +411,8 @@ const styles = StyleSheet.create({
     columnGap: 18,
   },
   actions: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 18 },
+  bigOff: { backgroundColor: tokens.colorInsetBorder },
+  offInk: { color: tokens.colorInkSecondary, textAlign: 'center' },
   big: {
     minHeight: tokens.sizeHitPhonePrimary,
     alignItems: 'center',
