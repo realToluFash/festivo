@@ -224,6 +224,7 @@ function EventView({
     return <Navigate to={guestsAt(initial.id)} replace />;
   if (area === 'messages' && fixedArea == null)
     return <Navigate to={`/demo/events/${initial.id}/messages`} replace />;
+  if (area === 'seating') return <Navigate to={`/demo/events/${initial.id}/seating`} replace />;
 
   function kept(next: SampleEvent): void {
     keepChange(next);

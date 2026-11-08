@@ -1,43 +1,15 @@
 import { writtenTime } from './clock.ts';
 import type { SampleEvent } from './events.ts';
+import { demoWords } from './demoWords.ts';
 import { MESSAGES_WORD, MW } from './messagesWords.ts';
 import type { DemoLink } from './settings.ts';
 
 /** Messaging B · Conversations (page e36, board/messaging-b-spec.md): the sample and the inbox's rules; the words are in messagesWords.ts. */
 export { MW };
 
-type Words = typeof MW;
-type PluralBase = {
-  [K in keyof Words]: K extends `${infer Base}_one` ? Base : never;
-}[keyof Words];
-
 const NUMBER = new Intl.NumberFormat('en-US');
-const PLURAL = new Intl.PluralRules('en-US');
-const LIST = new Intl.ListFormat('en-US', { style: 'long', type: 'conjunction' });
 
-export function filled(words: string, slots: Readonly<Record<string, string | number>>): string {
-  return words.replaceAll(/\{\{(\w+)(?:, number)?\}\}/gu, (whole, slot: string) => {
-    const value = slots[slot];
-
-    if (value == null) return whole;
-
-    return typeof value === 'number' ? NUMBER.format(value) : value;
-  });
-}
-
-export function many(
-  base: PluralBase,
-  count: number,
-  slots: Readonly<Record<string, string | number>> = {},
-): string {
-  const form = PLURAL.select(count) === 'one' ? 'one' : 'other';
-
-  return filled(MW[`${base}_${form}`], { count, ...slots });
-}
-
-export function listed(words: readonly string[]): string {
-  return LIST.format(words);
-}
+export const { filled, many, listed } = demoWords(MW);
 
 export const MESSAGE_STATES = [
   { key: 'first', name: 'Messages, first time' },
