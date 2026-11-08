@@ -5,6 +5,7 @@ import type { Person } from './members.ts';
 import { fold } from './switcher.ts';
 
 export const SEND_MS = 500;
+export const RETRY_MS = 1200;
 export const HELD_MS = 8000;
 export const SEARCH_ABOVE = 15;
 export const LISTED = 5;
@@ -58,6 +59,14 @@ export const HANDOVER_WORDS = {
   } satisfies Record<HandKind, string>,
   search: 'Search members',
   clearSearch: 'Clear search',
+  /** The work list on its way, and failing to come: nothing can be confirmed until it has. */
+  checking: (name: string | null) =>
+    name == null ? 'Checking what you lead…' : `Checking what ${name} leads…`,
+  notLoaded: (name: string | null) =>
+    `${name == null ? 'What you lead' : `What ${name} leads`} did not load. Nothing was changed.`,
+  tryAgain: 'Try again',
+  /** The server's refusal, handover.choose_recipient: the person began leading something while the confirm stood open. */
+  chooseRecipient: 'Choose who takes over their events.',
   matches: (count: number) => byCount(count, '1 member matches', `${count} members match`),
   /** Who leads them now; handing them to yourself sends you no email (pm, 7 Nov). */
   ledBy: (count: number, who: string | null) =>
@@ -93,8 +102,24 @@ export function soonestFirst(events: readonly SampleEvent[], now = SAMPLE_NOW): 
   ];
 }
 
+/** A state's sample: the longest name the confirm has to hold, which it cuts to one line. */
+export const LONG_NAMED = 'evt-long-name';
+
+function ledEvent(id: string): SampleEvent | null {
+  if (id !== LONG_NAMED) return sampleEvent(id);
+  const like = sampleEvent('evt-ireti-2');
+
+  return (
+    like && {
+      ...like,
+      id,
+      name: 'Festa de encerramento da conferência anual das associações de antigos alunos de Lisboa',
+    }
+  );
+}
+
 export function ledBy(leads: Leads, id: string): SampleEvent[] {
-  return soonestFirst((leads[id] ?? []).flatMap((event) => sampleEvent(event) ?? []));
+  return soonestFirst((leads[id] ?? []).flatMap((event) => ledEvent(event) ?? []));
 }
 
 export function handedOver(leads: Leads, from: string, to: string): Leads {
@@ -124,6 +149,8 @@ export interface AskWords {
   red: boolean;
   busy: string;
   failed: string;
+  checking: string;
+  notLoaded: string;
 }
 
 /** Who takes them, as the button and the menu say it: "Nobody: the owners take them" for nobody. */
@@ -146,7 +173,8 @@ export function ledByLine(handed: Handed, name: string, viewer: string): string 
   return H.ledBy(handed.count, handed.to === viewer ? null : name);
 }
 
-export type HandPhase = 'asking' | 'held' | 'failed';
+/** `checking` and `notLoaded` are the work list on its way and failing to come; `refused` is the server's handover.choose_recipient. */
+export type HandPhase = 'checking' | 'notLoaded' | 'asking' | 'held' | 'failed' | 'refused';
 
 /** Where a handover's confirm starts: who is picked, the menu, what is typed, and an answer held on its way or failed. */
 export interface HandStart {

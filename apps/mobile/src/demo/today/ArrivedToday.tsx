@@ -22,7 +22,8 @@ import {
   type Tab,
   TabBarFade,
 } from '../../components/TodayCover.tsx';
-import { NeedsYou, ThisWeek, YourEvents } from '../../components/TodayParts.tsx';
+import { ThisWeek, YourEvents } from '../../components/TodayParts.tsx';
+import { NeedsYou } from './NeedsYou.tsx';
 import { TodaySidebar } from '../../components/TodaySidebar.tsx';
 import { ArrivedCover } from './ArrivedCover.tsx';
 import type { ArrivedMoment } from './arrived.ts';
