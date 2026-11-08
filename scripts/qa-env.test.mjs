@@ -44,6 +44,8 @@ import {
   startParts,
   iosExpoGoStops,
   batchReset,
+  androidToolsReset,
+  toolsSwitch,
   expoGoPrefs,
   TOOLS_BUTTON,
   SCREEN_READER_OFF,
@@ -671,6 +673,54 @@ describe('what a batch resets before it signs in', () => {
   it("reads Expo Go's preferences from its data container", () => {
     expect(expoGoPrefs('/c')).toBe('/c/Library/Preferences/host.exp.Exponent');
     expect(expoGoPrefs(null)).toBeNull();
+  });
+});
+
+describe("Expo Go's Tools button on Android", () => {
+  // From Expo Go 58's menu on an API 35 Play image: label, track, thumb.
+  const menu = (thumb) =>
+    [
+      '<hierarchy>',
+      '<node index="1" text="Fast Refresh" class="android.widget.TextView" bounds="[179,1220][382,1265]" />',
+      '<node index="0" text="" class="android.view.View" content-desc="Toggle Dev Menu" bounds="[105,1385][158,1438]" />',
+      '<node index="1" text="Tools button" class="android.widget.TextView" bounds="[179,1389][380,1434]" />',
+      '<node index="2" text="" class="android.view.View" bounds="[838,1348][975,1474]">',
+      `<node index="0" text="" class="android.view.View" bounds="${thumb}" />`,
+      '</hierarchy>',
+    ].join('\n');
+  const on = toolsSwitch(menu('[870,1348][996,1474]'));
+  const off = toolsSwitch(menu('[817,1348][943,1474]'));
+
+  it("reads the switch's state from where its thumb sits", () => {
+    expect(on.on).toBe(true);
+    expect(off.on).toBe(false);
+  });
+
+  it("taps the switch's thumb", () => {
+    expect(on.tap).toEqual(['shell', 'input', 'tap', '933', '1411']);
+  });
+
+  it('finds no switch when the menu is not on screen', () => {
+    expect(toolsSwitch('<hierarchy><node text="Sign in with email" /></hierarchy>')).toBeNull();
+    expect(toolsSwitch(null)).toBeNull();
+  });
+
+  it('turns the Tools button off when it was left on, and says so', () => {
+    expect(androidToolsReset(on, off)).toEqual({
+      tap: on.tap,
+      say: "  Expo Go's Tools button turned off for the batch.",
+    });
+  });
+
+  it('leaves the Tools button alone when it is already off, and says so', () => {
+    expect(androidToolsReset(off, off)).toEqual({ say: "  Expo Go's Tools button is off." });
+  });
+
+  it("points the tester to Expo Go's menu when the switch cannot be read or stays on", () => {
+    const failed = "  Could not turn Expo Go's Tools button off: turn it off in Expo Go's menu.";
+    expect(androidToolsReset(null, null).say).toBe(failed);
+    expect(androidToolsReset(on, on).say).toBe(failed);
+    expect(androidToolsReset(on, null).say).toBe(failed);
   });
 });
 
