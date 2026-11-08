@@ -51,7 +51,8 @@ import { datesSaveSays, replyByInTell, replyByRow, replyBySaved } from './ReplyB
 import { replyByOf } from '../guests/GuestsSample.ts';
 import { useShell } from '../../components/settingsShell.ts';
 import { Row, RowList, Section, TextAction } from '../../components/Summary.tsx';
-import { type MessagesState, reduce, startOf } from '../messages/MessagesModel.ts';
+import { type MessagesState, startOf } from '../messages/MessagesModel.ts';
+import { reduceReach } from '../messages/Reach.ts';
 import { TellGuests } from '../messages/MessagesOverlays.tsx';
 import { LONG_FINISHED, PLACE, SAMPLE_EVENT_ID, TELL } from '../messages/MessagesSample.ts';
 import { tellChange } from '../messages/TellChange.ts';
@@ -149,12 +150,12 @@ export function EventScreen({
         : area,
   );
   const [guestsFrom, setGuestsFrom] = useState<FilterKey | null>(null);
-  const [m, dispatch] = useReducer(reduce, null, () => {
+  const [m, dispatch] = useReducer(reduceReach, null, () => {
     const begun = startOf(messages, shell.layout !== 'phone');
     if (state !== 'datesReplyBySaved') return begun;
     const change = tellChange(sampleEvent(id) ?? event, event, locale);
 
-    return reduce(begun, { type: 'offerTell', change });
+    return reduceReach(begun, { type: 'offerTell', change });
   });
   const [messagesSeen, setMessagesSeen] = useState(messages != null || at === 'messages');
   if (at === 'messages' && !messagesSeen) setMessagesSeen(true);

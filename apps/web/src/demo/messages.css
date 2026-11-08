@@ -2038,6 +2038,20 @@
   font: 500 13.5px/1.45 var(--fontFamily);
 }
 
+.mg-told-none {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceXxs);
+  padding: var(--spaceLg) 0;
+  color: var(--colorInkSecondary);
+  font: 500 14px/1.45 var(--fontFamily);
+}
+
+.mg .mg-show-menu {
+  width: 280px;
+}
+
 .mg-pick,
 .mg-later {
   display: flex;

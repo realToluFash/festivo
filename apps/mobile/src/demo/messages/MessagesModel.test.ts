@@ -51,8 +51,8 @@ const run = (m: Messages, ...actions: Action[]) => actions.reduce(reduce, m);
 const nameOf = (id: RowId) => (id.kind === 'draft' ? id.id : id.key);
 
 describe('the states', () => {
-  it('are the spec’s 42 and the notice’s three, by the names both demos use, §7 then §7b, then sc-32077’s six', () => {
-    expect(MESSAGES_STATES).toHaveLength(64);
+  it('are the spec’s 42, the notice’s three, Who it reached’s eight, sc-32077’s six and sc-3960’s and sc-3963’s, by both demos’ names', () => {
+    expect(MESSAGES_STATES).toHaveLength(72);
     expect(MESSAGES_STATES.indexOf('tellPlace')).toBe(44);
     expect(MESSAGES_STATES.slice(6, 10)).toEqual([
       'channelReply',
@@ -61,7 +61,7 @@ describe('the states', () => {
       'noticeNotSent',
     ]);
     expect(MESSAGES_STATES.slice(0, 3)).toEqual(['first', 'loading', 'inUse']);
-    expect(MESSAGES_STATES.slice(27, 51)).toEqual([
+    expect(MESSAGES_STATES.slice(27, 59)).toEqual([
       'invitedReached',
       'sentReached',
       'notMatched',
@@ -80,6 +80,14 @@ describe('the states', () => {
       'noSubject',
       'followUp',
       'tellPlace',
+      'added',
+      'addedPhone',
+      'notNow',
+      'told',
+      'filterMenu',
+      'filtered',
+      'resendInvited',
+      'resendSent',
       'nobody',
       'longSubject',
       'longMessage',
@@ -501,8 +509,11 @@ describe('Who it reached', () => {
     expect(fixed.fixed.tomas).toBe('tomas.ferreira@gmail.com');
 
     const again = reduce(fixed, { type: 'sendAgain', key: 'tomas' });
-    expect(again).toMatchObject({ again: { tomas: '09:44' }, said: 'tomas' });
-    expect(startOf('sentAgain', false)).toMatchObject({ again: { tomas: '09:44' }, said: 'tomas' });
+    expect(again).toMatchObject({ again: { 'parking.tomas': '09:44' }, said: 'parking.tomas' });
+    expect(startOf('sentAgain', false)).toMatchObject({
+      again: { 'parking.tomas': '09:44' },
+      said: 'parking.tomas',
+    });
   });
 
   it('opens for an invitation and for a message just sent, and goes back to each', () => {

@@ -1,8 +1,6 @@
-import { emailProblem } from '@soirely/domain';
-import { type FormEvent, type ReactNode, useEffect, useId, useRef, useState } from 'react';
+import { type FormEvent, type ReactNode, useEffect, useId, useState } from 'react';
 
 import { offButton } from '../offButton.ts';
-import { ADD_WORDS } from './account.ts';
 import { Glyph } from '../components/Glyph.tsx';
 import {
   type Answer,
@@ -12,25 +10,14 @@ import {
   type Draft,
   type GuestId,
   type MessagesState,
-  type ReachedOf,
   type Sched,
-  type Unreached,
   ANSWERS,
   GUESTS,
   HELD_TOO_LONG,
-  INVITE_REACH,
-  INVITE_UNREACHED,
-  KIND_ORDER,
   MATCHES,
   MW,
-  NEW_ADDRESS,
-  OLD_ADDRESS,
   PARKING,
-  PARKING_OF,
-  PARKING_SEEN,
   READER,
-  SENT_AGAIN_AT,
-  SO_FAR,
   TICKS,
   UNKNOWN,
   ZONE_SHORT,
@@ -41,18 +28,14 @@ import {
   dayWords,
   draftOf,
   filled,
-  fixWord,
   freshId,
   isGuest,
   isSched,
-  legendWord,
   listed,
   many,
   noticeOf,
   outTitle,
   outsIn,
-  reachFrom,
-  reachLine,
   toLine,
   toldWords,
 } from './messages.ts';
@@ -64,17 +47,15 @@ import { type Bit, useInbox, whereBits } from './messagesContext.ts';
 import { LaterDialog, MatchPicker } from './MessagesDialogs.tsx';
 import {
   DayRule,
-  DeliveryMark,
   GuestBubble,
   HostBubble,
   LeadMark,
-  Legend,
-  ReachBar,
   Stub,
   SystemLine,
   Words,
   WhereGlyph,
 } from './MessagesParts.tsx';
+import { ReachedView } from './MessagesReached.tsx';
 import { RefusedSave } from './MessagesScheduled.tsx';
 import {
   endBits,
@@ -87,7 +68,6 @@ import {
 } from './messagesScheduled.ts';
 import { StreamItems } from './MessagesStream.tsx';
 import { MessagesBell } from './MessagesTell.tsx';
-import { Field } from '../components/SettingsParts.tsx';
 
 export function ConversationPane({
   state,
@@ -114,7 +94,7 @@ export function ConversationPane({
       {pane.kind === 'compose' ? (
         <ComposePane opening={state === 'to'} later={state === 'later'} />
       ) : pane.kind === 'reached' ? (
-        <ReachedView key={pane.of} of={pane.of} thread={pane.thread} fixing={state === 'fix'} />
+        <ReachedView key={pane.thread} of={pane.of} thread={pane.thread} state={state} />
       ) : pane.kind === 'convo' ? (
         <Thread key={pane.id} id={pane.id} state={state} onDone={onDone} />
       ) : (
@@ -593,6 +573,7 @@ function AnswerBox({
 function ManyThread({ id }: { id: ConvoId }) {
   const { inbox, to: event } = useInbox();
   const first = outsIn(inbox, id)[0];
+  const resending = inbox.resend?.thread === id;
   const fixed = id === 'parking' || id === 'invite';
   const to: Audience = fixed ? { kind: 'all' } : (first?.to ?? { kind: 'all' });
   const title = fixed
@@ -615,13 +596,13 @@ function ManyThread({ id }: { id: ConvoId }) {
       <Head lead={<LeadMark lead={{ kind: 'many' }} size={44} />} title={title} line={line} />
       <ol className="mg-stream" role="log" aria-label={title}>
         <StreamItems thread={id} />
-        {id === 'parking' && inbox.resend != null && (
+        {resending && (
           <li className="mg-said is-host">
             <ResendCard />
           </li>
         )}
       </ol>
-      {(id !== 'parking' || inbox.resend == null) && (
+      {!resending && (
         <MiniComposer
           to={to}
           placeholder={id === 'invite' ? MW.writeToThem : MW.writeFollowUp}
@@ -890,348 +871,5 @@ function CancelAsk({
         </button>
       </div>
     </div>
-  );
-}
-
-/** Who it reached, per person and grouped as sc-3966 counts them: a line per channel for Soirely's notice, its fix beside a failure, and their page. */
-function ReachedView({
-  of,
-  thread,
-  fixing: fixingFirst,
-}: {
-  of: ReachedOf;
-  thread: ConvoId;
-  fixing: boolean;
-}) {
-  const { inbox, act, focus, say, tell, whyOff, to } = useInbox();
-  const [fixing, setFixing] = useState<string | null>(fixingFirst ? 'tomas' : null);
-  const headId = useId();
-  const people = of === 'parking' ? withTomas(inbox.unreached, inbox.tomas) : INVITE_UNREACHED;
-  const reach =
-    of === 'parking'
-      ? reachFrom(PARKING_OF, PARKING_SEEN, people)
-      : of === 'invite'
-        ? reachFrom(INVITE_REACH.of, INVITE_REACH.seen, people)
-        : {
-            reached: SO_FAR.reached,
-            of: countOf(outsIn(inbox, thread)[0]?.to ?? { kind: 'all' }, to.book.groups) ?? 0,
-            seen: 3,
-            parts: [
-              { kind: 'reached', count: SO_FAR.reached } as const,
-              { kind: 'inProgress', count: SO_FAR.inProgress } as const,
-              { kind: 'cant', count: SO_FAR.cant.length } as const,
-            ],
-          };
-  const first = outsIn(inbox, thread)[0];
-  const back =
-    of === 'parking'
-      ? PARKING.subject
-      : of === 'invite'
-        ? MW.invitation
-        : first == null
-          ? MW.newMessage
-          : outTitle(first);
-  const summary =
-    of === 'new'
-      ? filled(MW.reachedSoFar, { count: reach.reached, total: reach.of })
-      : filled(MW.reached, { count: reach.reached, total: reach.of });
-  const line =
-    of === 'invite'
-      ? reachLine(
-          reach,
-          `${many('nowInvitedCount', INVITE_REACH.reached)} · ${filled(MW.seenBy, { count: INVITE_REACH.seen })}`,
-        )
-      : of === 'new'
-        ? [
-            many('inProgressCount', SO_FAR.inProgress),
-            many('cantBeToldCount', SO_FAR.cant.length),
-            filled(MW.seenBy, { count: 3 }),
-          ].join(' · ')
-        : reachLine(reach);
-  const waiting = people.filter((one) => one.kind !== 'inProgress').length;
-  const resend = of === 'new' ? SO_FAR.cant.length : waiting;
-
-  function onFix(person: Unreached, fix: Unreached['fixes'][number]): void {
-    if (fix === 'fixEmail' && of === 'parking' && person.id === 'tomas') setFixing(person.id);
-    else if (fix === 'toldInPerson' && of === 'parking') {
-      act({ kind: 'toldInPerson', id: person.id });
-      say(filled(MW.reached, { count: reach.reached + 1, total: reach.of }));
-      focus('not-reached');
-    } else tell(`${fixWord(fix)} has its own design.`);
-  }
-
-  const groups =
-    of === 'new'
-      ? [
-          {
-            name: MW.legendInProgress,
-            people: SO_FAR.progress,
-            count: SO_FAR.progress.length,
-            more: true,
-          },
-          { name: MW.legendReached, people: SO_FAR.done, count: SO_FAR.done.length, more: false },
-          {
-            name: MW.legendCantBeTold,
-            people: SO_FAR.cant,
-            count: SO_FAR.cant.length,
-            more: false,
-          },
-        ]
-      : KIND_ORDER.map((kind) => {
-          const these = people.filter((one) => one.kind === kind);
-
-          return { name: legendWord(kind), people: these, count: these.length, more: false };
-        }).filter((group) => group.count > 0);
-
-  return (
-    <div className="mg-in is-reached">
-      <div className="mg-reached-top">
-        <button
-          type="button"
-          className="desk-back"
-          onClick={() => {
-            act({ kind: 'open', id: thread });
-            focus('heading');
-          }}
-        >
-          <Glyph name="back" size={17} weight={2.4} />
-          {back}
-        </button>
-        <span className="today-grow" />
-        <MessagesBell />
-      </div>
-      <div className="mg-reached-body">
-        {of === 'parking' && inbox.tomas === 'sent' && (
-          <p className="mg-status" role="status">
-            <Glyph name="info" size={15} weight={2.2} />
-            {filled(MW.sentToSaid, { name: 'Tomás Ferreira' })}
-          </p>
-        )}
-        <h2 className="mg-reached-sum" tabIndex={-1} data-focus="heading">
-          {summary}
-        </h2>
-        <p className="mg-reached-line">{line}</p>
-        <ReachBar reach={reach} size="big" />
-        <Legend reach={reach} />
-        <div className="mg-reached-head">
-          <h3 id={headId} tabIndex={-1} data-focus="not-reached">
-            {of === 'new'
-              ? `${MW.everyone} · ${reach.of}`
-              : filled(MW.notReached, { count: people.length })}
-          </h3>
-          {of !== 'invite' && (
-            <button
-              type="button"
-              className="desk-filter"
-              aria-haspopup="menu"
-              onClick={() => tell(`${MW.filter} has its own design.`)}
-            >
-              {MW.filter}
-              <Glyph name="chevdown" size={16} weight={2.4} />
-            </button>
-          )}
-        </div>
-        {groups.map((group) => (
-          <section
-            key={group.name}
-            className="mg-group-of"
-            aria-label={`${group.name} · ${group.count}`}
-          >
-            <h4 className="mg-group-head">
-              {group.name}
-              <span className="mg-section-count"> · {group.count}</span>
-            </h4>
-            <ul className="mg-people">
-              {group.people.map((person) => (
-                <Person
-                  key={person.id}
-                  person={person}
-                  fixing={fixing === person.id}
-                  again={of === 'parking' && person.id === 'tomas' && inbox.tomas === 'fixed'}
-                  onFix={(fix) => onFix(person, fix)}
-                  onSaved={() => {
-                    setFixing(null);
-                    act({ kind: 'tomas', tomas: 'fixed' });
-                    focus('again');
-                  }}
-                  onCancel={() => {
-                    setFixing(null);
-                    focus(`fix:${person.id}`);
-                  }}
-                  onAgain={() => {
-                    act({ kind: 'tomas', tomas: 'sent' });
-                    say(filled(MW.sentToSaid, { name: person.name }));
-                    focus(`person:${person.id}`);
-                  }}
-                />
-              ))}
-            </ul>
-            {group.more && <p className="mg-more">{many('andMore', SO_FAR.more)}</p>}
-          </section>
-        ))}
-      </div>
-      {resend > 0 && to.manage && (
-        <button
-          type="button"
-          className="button button-primary mg-resend"
-          data-focus="resend"
-          aria-describedby={whyOff}
-          {...offButton(whyOff != null)}
-          onClick={() => {
-            if (of !== 'parking') {
-              tell(`${many('resend', resend)} has its own design.`);
-              return;
-            }
-            act({ kind: 'open', id: 'parking' });
-            act({ kind: 'resend', resend: TICKS });
-            focus('check');
-          }}
-        >
-          {many('resend', resend)}
-        </button>
-      )}
-    </div>
-  );
-}
-
-function withTomas(people: readonly Unreached[], tomas: 'fixed' | 'sent' | null): Unreached[] {
-  return people.map((person) => {
-    if (person.id !== 'tomas' || tomas == null) return person;
-
-    const rest = person.lines.slice(1);
-
-    return tomas === 'fixed'
-      ? { ...person, fixes: [], updated: MW.emailChangedSince }
-      : {
-          ...person,
-          kind: 'inProgress',
-          lines: [
-            { mark: 'sent', word: `${MW.email} · ${MW.sent} · ${SENT_AGAIN_AT}`, why: NEW_ADDRESS },
-            ...rest,
-          ],
-          fixes: [],
-        };
-  });
-}
-
-function Person({
-  person,
-  fixing,
-  again,
-  onFix,
-  onSaved,
-  onCancel,
-  onAgain,
-}: {
-  person: Unreached;
-  fixing: boolean;
-  again: boolean;
-  onFix: (fix: Unreached['fixes'][number]) => void;
-  onSaved: () => void;
-  onCancel: () => void;
-  onAgain: () => void;
-}) {
-  const { whyOff, to } = useInbox();
-  const [address, setAddress] = useState(fixing ? NEW_ADDRESS : OLD_ADDRESS);
-  const [wrong, setWrong] = useState<string | null>(null);
-  const field = useRef<HTMLInputElement>(null);
-  const lines = fixing ? person.lines.slice(0, 1) : person.lines;
-
-  useEffect(() => {
-    if (!fixing) return;
-    window.setTimeout(() => field.current?.focus(), 0);
-  }, [fixing]);
-
-  function save(event: FormEvent): void {
-    event.preventDefault();
-    if (emailProblem(address) != null) {
-      setWrong(ADD_WORDS.shape);
-      return;
-    }
-    onSaved();
-  }
-
-  return (
-    <li className="mg-person">
-      <span className="mg-avatar is-40" aria-hidden="true">
-        {person.initials}
-      </span>
-      <div className="mg-person-words">
-        <p className="mg-person-name" tabIndex={-1} data-focus={`person:${person.id}`}>
-          {person.name}
-        </p>
-        <ul className="mg-person-lines">
-          {lines.map((line) => (
-            <li key={line.word}>
-              <DeliveryMark kind={line.mark} />
-              <span>
-                <strong>{line.word}</strong>
-                {line.why != null && ` · ${line.why}`}
-              </span>
-            </li>
-          ))}
-        </ul>
-        {person.updated != null && !fixing && (
-          <p className="mg-person-updated">
-            <DeliveryMark kind="notsent" />
-            <span className="mg-person-updated-words">
-              <strong>{MW.updatedNotSent}</strong>
-              <span>{person.updated}</span>
-            </span>
-          </p>
-        )}
-        {fixing ? (
-          <form className="mg-fix" onSubmit={save} noValidate>
-            <Field
-              label={MW.emailAddress}
-              value={address}
-              inputRef={field}
-              onChange={(value) => {
-                setAddress(value);
-                setWrong(null);
-              }}
-              inputMode="email"
-              autoComplete="off"
-              help={filled(MW.wasAddress, { address: OLD_ADDRESS })}
-              error={wrong}
-            />
-            <div className="mg-acts">
-              <button type="submit" className="button button-primary mg-save">
-                {MW.save}
-              </button>
-              <button type="button" className="desk-text" onClick={onCancel}>
-                {MW.cancel}
-              </button>
-            </div>
-          </form>
-        ) : !to.manage ? null : again ? (
-          <button
-            type="button"
-            className="button button-primary mg-again"
-            data-focus="again"
-            aria-describedby={whyOff}
-            onClick={onAgain}
-            {...offButton(whyOff != null)}
-          >
-            <Glyph name="send" size={17} weight={2.4} />
-            {filled(MW.sendAgain, { name: person.name })}
-          </button>
-        ) : (
-          <div className="mg-acts">
-            {person.fixes.map((fix) => (
-              <button
-                key={fix}
-                type="button"
-                className="desk-text"
-                data-focus={`fix:${person.id}`}
-                onClick={() => onFix(fix)}
-              >
-                {fixWord(fix)}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-    </li>
   );
 }
