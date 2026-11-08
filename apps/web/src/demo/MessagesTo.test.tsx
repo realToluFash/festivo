@@ -636,11 +636,55 @@ describe('Who gets it: To with its conditions, at a desk (sc-3957)', () => {
     expect(
       screen.getByText('[Sending messages is for members who manage messages.]'),
     ).toBeDefined();
-    expect(document.querySelector('.mg-keys-list')?.textContent).toBe('JKMoveEMark as done');
+    expect(document.querySelector('.mg-keys-list')?.textContent).toBe('JKMove');
     press('c');
     expect(screen.queryByRole('dialog', { name: 'To' })).toBeNull();
     expect(screen.queryByRole('textbox', { name: 'Subject' })).toBeNull();
   });
+
+  it(
+    'is read only throughout without messages.manage: no done, no scheduled actions, no fixes (noManage)',
+    SLOW,
+    async () => {
+      await messages('noManage');
+      const list = screen.getByRole('region', { name: 'Messages' });
+      const open = async (name: RegExp, heading: string) => {
+        fireEvent.click(within(list).getByRole('link', { name }));
+        await screen.findByRole('heading', { level: 2, name: heading }, WAIT);
+      };
+      const none = (names: readonly (string | RegExp)[]) => {
+        for (const name of names)
+          expect(screen.queryByRole('button', { name }), String(name)).toBeNull();
+      };
+
+      none(['Mark as done', 'Mark as waiting']);
+      press('e');
+      expect(within(list).getByRole('heading', { name: 'Needs you · 5' })).toBeDefined();
+      expect(
+        screen.getAllByText('[Sending messages is for members who manage messages.]'),
+      ).toHaveLength(1);
+
+      await open(/^Marta Silva/, 'Marta Silva');
+      none(['Mark as done', 'Mark as waiting']);
+
+      await open(/^On the day: where to find us/, 'On the day: where to find us');
+      none(['Edit', 'Send now', 'Cancel…']);
+      expect(screen.getByText(/^Goes Thu, Nov 5, 09:00 London time\./)).toBeDefined();
+
+      await open(/^Parking at The Landmark/, 'Parking at The Landmark');
+      fireEvent.click(screen.getByRole('button', { name: 'Who it reached' }));
+      await screen.findByRole('heading', { level: 2, name: 'Reached 131 of 142' }, WAIT);
+      expect(screen.getByText('Tomás Ferreira')).toBeDefined();
+      none([
+        'Fix email address',
+        'Add an email address',
+        'Add a phone number',
+        'Mark as told in person',
+        /^Send to .* again$/,
+        /^Resend to the /,
+      ]);
+    },
+  );
 
   it(
     'shows a message sent to conditions with who it was worked out to (resolvedRow)',

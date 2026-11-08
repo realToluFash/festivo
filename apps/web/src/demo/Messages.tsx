@@ -343,7 +343,7 @@ function Messages({
       if (next == null) return;
       openRow(next.id, false);
       focus(`row:${next.id}`);
-    } else if (key === 'e' && (inList || inMessages) && lit != null) {
+    } else if (key === 'e' && to.manage && (inList || inMessages) && lit != null) {
       if (!isGuest(lit) && lit !== 'unknown') return;
       event.preventDefault();
       if (inbox.done.includes(lit)) act({ kind: 'waiting', id: lit });
@@ -448,12 +448,12 @@ function Messages({
                     <kbd>K</kbd>
                     {MW.move}
                   </span>
-                  <span>
-                    <kbd>E</kbd>
-                    {MW.markAsDone}
-                  </span>
                   {to.manage && (
                     <>
+                      <span>
+                        <kbd>E</kbd>
+                        {MW.markAsDone}
+                      </span>
                       <span>
                         <kbd>R</kbd>
                         {MW.reply}

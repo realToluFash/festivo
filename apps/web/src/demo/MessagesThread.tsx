@@ -284,7 +284,7 @@ function GuestThread({
   state: MessagesState | null;
   onDone: (id: ConvoId) => void;
 }) {
-  const { inbox, act, keys, focus, say } = useInbox();
+  const { inbox, act, keys, focus, say, to } = useInbox();
   const [picking, setPicking] = useState(state === 'matchPicker' && id === 'unknown');
   const done = inbox.done.includes(id);
   const match = id === 'unknown' ? MATCHES.find((one) => one.name === inbox.matched) : null;
@@ -298,7 +298,7 @@ function GuestThread({
       <button type="button" className="desk-text" onClick={() => setPicking(true)}>
         {MW.changeGuest}
       </button>
-    ) : done ? (
+    ) : !to.manage ? null : done ? (
       <button
         type="button"
         className="desk-text"
@@ -641,7 +641,7 @@ function modeOf(state: MessagesState | null): SchedMode {
 
 /** A message scheduled for later (sc-3963): dashed until it goes, edited in the box, sent now through the check, or cancelled after asking. */
 function ScheduledThread({ sched, state }: { sched: Sched; state: MessagesState | null }) {
-  const { act, focus, say, tell } = useInbox();
+  const { act, focus, say, tell, to: event } = useInbox();
   const [refused, setRefused] = useState(refusalOf(state));
   const [mode, setMode] = useState<SchedMode>(refused == null ? modeOf(state) : 'edit');
   const [words, setWords] = useState<Pick<Draft, 'subject' | 'body' | 'seed'>>({
@@ -692,32 +692,34 @@ function ScheduledThread({ sched, state }: { sched: Sched; state: MessagesState 
               <p className="mg-goes">
                 {filled(MW.goesAt, { when: `${when.date}, ${when.time} ${ZONE_SHORT}` })}
               </p>
-              <div className="mg-acts is-end">
-                <button
-                  type="button"
-                  className="desk-text"
-                  data-focus="edit"
-                  onClick={() => to('edit', 'body')}
-                >
-                  {MW.edit}
-                </button>
-                <button
-                  type="button"
-                  className="desk-text"
-                  data-focus="send-now"
-                  onClick={() => to('sendNow', 'check')}
-                >
-                  {MW.sendNow}
-                </button>
-                <button
-                  type="button"
-                  className="desk-text is-red"
-                  data-focus="cancel-ask"
-                  onClick={() => to('cancelAsk', 'keep')}
-                >
-                  {MW.cancelEllipsis}
-                </button>
-              </div>
+              {event.manage && (
+                <div className="mg-acts is-end">
+                  <button
+                    type="button"
+                    className="desk-text"
+                    data-focus="edit"
+                    onClick={() => to('edit', 'body')}
+                  >
+                    {MW.edit}
+                  </button>
+                  <button
+                    type="button"
+                    className="desk-text"
+                    data-focus="send-now"
+                    onClick={() => to('sendNow', 'check')}
+                  >
+                    {MW.sendNow}
+                  </button>
+                  <button
+                    type="button"
+                    className="desk-text is-red"
+                    data-focus="cancel-ask"
+                    onClick={() => to('cancelAsk', 'keep')}
+                  >
+                    {MW.cancelEllipsis}
+                  </button>
+                </div>
+              )}
             </>
           ) : null}
         </HostBubble>
@@ -893,7 +895,7 @@ function ReachedView({
   thread: ConvoId;
   fixing: boolean;
 }) {
-  const { inbox, act, focus, say, tell, whyOff } = useInbox();
+  const { inbox, act, focus, say, tell, whyOff, to } = useInbox();
   const [fixing, setFixing] = useState<string | null>(fixingFirst ? 'tomas' : null);
   const headId = useId();
   const people = of === 'parking' ? withTomas(inbox.unreached, inbox.tomas) : INVITE_UNREACHED;
@@ -1060,7 +1062,7 @@ function ReachedView({
           </section>
         ))}
       </div>
-      {resend > 0 && (
+      {resend > 0 && to.manage && (
         <button
           type="button"
           className="button button-primary mg-resend"
@@ -1121,7 +1123,7 @@ function Person({
   onCancel: () => void;
   onAgain: () => void;
 }) {
-  const { whyOff } = useInbox();
+  const { whyOff, to } = useInbox();
   const [address, setAddress] = useState(fixing ? NEW_ADDRESS : OLD_ADDRESS);
   const [wrong, setWrong] = useState<string | null>(null);
   const field = useRef<HTMLInputElement>(null);
@@ -1194,7 +1196,7 @@ function Person({
               </button>
             </div>
           </form>
-        ) : again ? (
+        ) : !to.manage ? null : again ? (
           <button
             type="button"
             className="button button-primary mg-again"
