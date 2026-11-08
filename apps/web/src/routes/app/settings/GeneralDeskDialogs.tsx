@@ -9,7 +9,7 @@ import {
   normaliseDomain,
   organisationChanges,
 } from '@soirely/domain';
-import { useMemo, useRef, useState } from 'react';
+import { type RefObject, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 
@@ -76,6 +76,7 @@ export function DetailsDialog({
   const inputs = useRef<Partial<Record<OrganisationField, HTMLElement | null>>>({});
   const nameRef = useRef<HTMLInputElement>(null);
   const contactRef = useRef<HTMLInputElement>(null);
+  const alertRef = useRef<HTMLParagraphElement>(null);
   const changes = Object.keys(organisationChanges(saved, values)).length;
 
   const choices = useMemo<Record<Picked, PickerChoice[]>>(
@@ -139,7 +140,8 @@ export function DetailsDialog({
         (error.is('oauth_only_unlinked') || error.is('organisation_two_factor_required'));
 
       if (byRule || (error instanceof ApiError && error.is('permission_required'))) {
-        setRefused(byRule ? 'refusedByRule' : 'refused');
+        flushSync(() => setRefused(byRule ? 'refusedByRule' : 'refused'));
+        alertRef.current?.focus();
         void rereadOrganisation(organisation.id).catch(() => {});
         return;
       }
@@ -212,20 +214,19 @@ export function DetailsDialog({
         }}
         onConfirm={() => void save()}
       >
-        {failed && <DialogAlert>{t('orgGeneral.failed')}</DialogAlert>}
+        {refused != null && (
+          <DialogAlert alertRef={alertRef}>{t(`orgGeneral.${refused}`)}</DialogAlert>
+        )}
+        {refused == null && failed && <DialogAlert>{t('orgGeneral.failed')}</DialogAlert>}
         <div className="desk-fields">
-          {refused == null ? (
-            <Field
-              label={t('orgGeneral.name')}
-              value={values.name}
-              autoComplete="organization"
-              inputRef={nameRef}
-              error={errors.name ?? null}
-              onChange={(value) => typed('name', value)}
-            />
-          ) : (
-            <DialogAlert>{t(`orgGeneral.${refused}`)}</DialogAlert>
-          )}
+          <Field
+            label={t('orgGeneral.name')}
+            value={values.name}
+            autoComplete="organization"
+            inputRef={nameRef}
+            error={errors.name ?? null}
+            onChange={(value) => typed('name', value)}
+          />
           {pickerRow('countryCode')}
           <Field
             label={t('orgGeneral.contact')}
@@ -377,9 +378,20 @@ export function AddDomainDialog({
 }
 
 /** What stops the dialog's answer, in its body, where the reader starts. */
-export function DialogAlert({ children }: { children: string }) {
+export function DialogAlert({
+  children,
+  alertRef,
+}: {
+  children: string;
+  alertRef?: RefObject<HTMLParagraphElement | null>;
+}) {
   return (
-    <p className="desk-ask-alert" role="alert">
+    <p
+      ref={alertRef}
+      className="desk-ask-alert"
+      role="alert"
+      tabIndex={alertRef == null ? undefined : -1}
+    >
       <Glyph name="alert" size={18} weight={2.2} />
       {children}
     </p>

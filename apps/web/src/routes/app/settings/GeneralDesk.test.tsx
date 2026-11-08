@@ -305,11 +305,13 @@ describe('Settings > General at a desk (sc-30191)', () => {
     fireEvent.change(within(details).getByLabelText('Name'), { target: { value: 'Ìrè' } });
     fireEvent.click(within(details).getByRole('button', { name: 'Save' }));
 
-    expect(
-      await within(details).findByText(
-        'Nothing was saved. Your role does not include the permission this needs.',
-      ),
-    ).toBeDefined();
+    const refusal = await within(details).findByText(
+      'Nothing was saved. Your role does not include the permission this needs.',
+    );
+    const name = within(details).getByLabelText('Name');
+    expect((name as HTMLInputElement).value).toBe('Ìrè');
+    expect(refusal.compareDocumentPosition(name) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(document.activeElement).toBe(within(details).getByRole('alert'));
     expect(
       within(details).getByRole('button', { name: 'Save' }).getAttribute('aria-disabled'),
     ).toBe('true');
@@ -320,6 +322,29 @@ describe('Settings > General at a desk (sc-30191)', () => {
       expect(screen.queryByRole('dialog', { name: 'Organisation details' })).toBeNull(),
     );
     expect(screen.queryByRole('alertdialog')).toBeNull();
+  });
+
+  it('says a failed save above Name, Save still on and keeping focus', async () => {
+    signedIn();
+    answering({ 'PATCH /api/orgs/org_1': () => problem('internal_error', 500) });
+    settings();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit details' }));
+    const details = await screen.findByRole('dialog', { name: 'Organisation details' });
+    fireEvent.change(within(details).getByLabelText('Name'), { target: { value: 'Ìrè' } });
+    const save = within(details).getByRole('button', { name: 'Save' });
+    save.focus();
+    fireEvent.click(save);
+
+    const alert = await within(details).findByRole('alert');
+    const name = within(details).getByLabelText('Name');
+    expect(alert.compareDocumentPosition(name) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    await waitFor(() =>
+      expect(
+        within(details).getByRole('button', { name: 'Save' }).getAttribute('aria-disabled'),
+      ).not.toBe('true'),
+    );
+    expect(document.activeElement).toBe(within(details).getByRole('button', { name: 'Save' }));
   });
 
   it('asks for the code only once the server does, after the password', async () => {
