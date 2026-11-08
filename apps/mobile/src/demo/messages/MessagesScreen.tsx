@@ -124,7 +124,6 @@ function reachedTitle(m: Messages, of: ReachedOf): string {
 
 const CLOSED_WORDS: Record<Closed, string> = {
   draft: W.closedDraft,
-  deleted: W.closedDeleted,
   ended: W.closedEnded,
 };
 
@@ -738,6 +737,7 @@ function PhoneList({
   const insets = useSafeAreaInsets();
   const foot = Math.max(insets.bottom - tokens.spaceXxs, tokens.spaceLg);
   const pinned = foot + PHONE_TAB_BAR + tokens.spaceXl;
+  const [composer, setComposer] = useState(116);
 
   return (
     <View style={styles.fill}>
@@ -745,13 +745,16 @@ function PhoneList({
         style={styles.fill}
         contentContainerStyle={[
           styles.phoneList,
-          { paddingBottom: pinned + 116 + tokens.space3xl + (closed == null ? 0 : 48) },
+          { paddingBottom: pinned + composer + tokens.space3xl },
         ]}
         showsVerticalScrollIndicator={false}
       >
         {list}
       </ScrollView>
-      <View style={[styles.pinned, { bottom: pinned }]}>
+      <View
+        style={[styles.pinned, { bottom: pinned }]}
+        onLayout={(event) => setComposer(event.nativeEvent.layout.height)}
+      >
         <MiniComposer
           to={toChip('all')}
           placeholder={W.writeToGuests}

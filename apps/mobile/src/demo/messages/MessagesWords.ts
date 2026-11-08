@@ -151,8 +151,8 @@ export const W = {
   noEmailOrPhone: 'No email or phone',
   nobodyMatches: 'Nobody matches',
   closedDraft: 'This event is a draft. Make it live to write to your guests.',
-  closedDeleted: 'This event was deleted, so nothing can be sent from it.',
-  closedEnded: 'This event finished more than 30 days ago, so nothing can be sent from it.',
+  closedEnded:
+    'This event finished more than 30 days ago, so you can no longer write to its guests.',
   forbiddenTitle: 'You do not have access to this',
   forbiddenBody:
     'Your account does not have permission for this page. If you believe it should, ask an admin of this organisation.',

@@ -29,7 +29,6 @@ import {
   tellNowBy,
   tellingBy,
   toChip,
-  checks,
   lengthOf,
   overOf,
 } from './MessagesModel.ts';
@@ -51,8 +50,8 @@ const run = (m: Messages, ...actions: Action[]) => actions.reduce(reduce, m);
 const nameOf = (id: RowId) => (id.kind === 'draft' ? id.id : id.key);
 
 describe('the states', () => {
-  it('are the spec’s 42 and the notice’s three, by the names both demos use, §7 then §7b, then sc-32077’s seven', () => {
-    expect(MESSAGES_STATES).toHaveLength(52);
+  it('are the spec’s 42 and the notice’s three, by the names both demos use, §7 then §7b, then sc-32077’s six', () => {
+    expect(MESSAGES_STATES).toHaveLength(51);
     expect(MESSAGES_STATES.slice(6, 10)).toEqual([
       'channelReply',
       'noticeCost',
@@ -83,7 +82,6 @@ describe('the states', () => {
       'longSubject',
       'longMessage',
       'closedDraft',
-      'closedDeleted',
       'closedEnded',
       'forbidden',
     ]);
@@ -789,7 +787,6 @@ describe('sc-32077’s four states', () => {
     const m = startOf('nobody', false);
     expect(m.draft?.to).toBe('coming');
     expect(toChip('coming', m.draft?.zero)).toBe('Coming · 0');
-    expect(m.draft == null ? null : checks(m.draft)).toBe(false);
     expect(reduce(m, { type: 'send' }).draft?.step).toBe('write');
     const all = run(m, { type: 'chooseTo', to: 'all' }, { type: 'send' });
     expect(all.draft?.step).toBe('check');
@@ -797,6 +794,9 @@ describe('sc-32077’s four states', () => {
 
   it('counts the limits trimmed, and keeps text past them', () => {
     expect(lengthOf('  héllo  ')).toBe(5);
+    expect(lengthOf(' 👍 ')).toBe(1);
+    expect(overOf({ ...sampleDraft('write'), subject: '👍'.repeat(150) })).toEqual([]);
+    expect(overOf({ ...sampleDraft('write'), subject: '👍'.repeat(151) })).toEqual(['subject']);
     const fine = { ...sampleDraft('write'), subject: `${'a'.repeat(150)}   ` };
     expect(overOf(fine)).toEqual([]);
     const long = reduce(
@@ -821,7 +821,6 @@ describe('sc-32077’s four states', () => {
 
   it('offers no send from an event that can’t send', () => {
     expect(startOf('closedDraft', false)).toMatchObject({ closed: 'draft', phase: 'first' });
-    expect(startOf('closedDeleted', true).closed).toBe('deleted');
     const ended = startOf('closedEnded', false);
     expect(ended.closed).toBe('ended');
     const tried = run(
@@ -835,5 +834,11 @@ describe('sc-32077’s four states', () => {
     const m = startOf('forbidden', true);
     expect(m.forbidden).toBe(true);
     expect(badgeOf(m)).toBeNull();
+  });
+
+  it('opens nothing over the refusal, from the bell or anywhere', () => {
+    const m = startOf('forbidden', false);
+    const opened = reduce(m, { type: 'open', open: { kind: 'reached', of: 'parking' } });
+    expect(opened.open).toBeNull();
   });
 });

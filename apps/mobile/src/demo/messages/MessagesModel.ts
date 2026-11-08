@@ -89,7 +89,6 @@ export const MESSAGES_STATES = [
   'longSubject',
   'longMessage',
   'closedDraft',
-  'closedDeleted',
   'closedEnded',
   'forbidden',
 ] as const;
@@ -127,7 +126,7 @@ export const MESSAGE_MOST = 10_000;
 export type LongField = 'subject' | 'body';
 
 /** Why an event can't send (sc-3942's 409): a Draft, deleted, or finished more than 30 days ago. */
-export type Closed = 'draft' | 'deleted' | 'ended';
+export type Closed = 'draft' | 'ended';
 export const SENDING_SECONDS = 3;
 
 export interface Moment {
@@ -333,7 +332,6 @@ const DRAFTED: Partial<Record<MessagesState, Draft>> = {
 
 const CLOSED: Partial<Record<MessagesState, Closed>> = {
   closedDraft: 'draft',
-  closedDeleted: 'deleted',
   closedEnded: 'ended',
 };
 
@@ -543,11 +541,6 @@ export function canSend(draft: Draft): boolean {
   return draft.body.trim() !== '';
 }
 
-/** Whether Send goes on to the check: words to send, someone to send them to, and both fields within their limits. */
-export function checks(draft: Draft): boolean {
-  return canSend(draft) && !matchesNobody(draft) && overOf(draft).length === 0;
-}
-
 function stillOver(draft: Draft): Draft {
   const now = overOf(draft);
 
@@ -654,7 +647,7 @@ function back(open: Open): Open {
 export function reduce(m: Messages, action: Action): Messages {
   switch (action.type) {
     case 'open':
-      return opened(m, action.open);
+      return m.forbidden ? m : opened(m, action.open);
     case 'back':
       return opened(m, back(m.open));
     case 'newMessage': {
