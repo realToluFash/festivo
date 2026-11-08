@@ -52,6 +52,14 @@ export const HANDOVER_WORDS = {
   } satisfies Record<HandoverKind, string>,
   search: 'Search members',
   clearSearch: 'Clear search',
+  /** The work list on its way, and failing to come: nothing can be confirmed until it has. */
+  checking: (name: string | null) =>
+    name == null ? 'Checking what you lead…' : `Checking what ${name} leads…`,
+  notLoaded: (name: string | null) =>
+    `${name == null ? 'What you lead' : `What ${name} leads`} did not load. Nothing was changed.`,
+  tryAgain: 'Try again',
+  /** The server's refusal, handover.choose_recipient: the person began leading something while the Ask stood open. */
+  chooseRecipient: 'Choose who takes over their events.',
   noMatch: (text: string) => `Nobody in ${ORGANISATION} matches “${text}”.`,
   matches: (count: number) => byCount(count, '1 member matches', `${count} members match`),
   /** Who leads them now; handing them to yourself sends you no email (sc-614, Settled 7 Nov). */

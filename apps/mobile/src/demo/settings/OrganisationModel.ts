@@ -35,6 +35,9 @@ export const ORGANISATION_STATES = [
   'leaveSending',
   'leaveFailed',
   'leaveNoWork',
+  'leaveOne',
+  'leaveLoading',
+  'leaveLoadFailed',
   'delete',
 ] as const;
 
@@ -64,6 +67,8 @@ export interface OrganisationStart {
   /** Leave's handover (sc-614): where its Ask opens, and whether the one leaving leads anything in this state's sample. */
   leaving: HandoverStart | null;
   leadsAny: boolean;
+  /** The one leaving leads a single event: Leave's words for 1. */
+  leadsOne: boolean;
 }
 
 /** Leave's states, as Ana Souza: the Ask with her two events, or today's when she leads none. */
@@ -74,6 +79,9 @@ export const LEAVE_STATES: readonly OrganisationState[] = [
   'leaveSending',
   'leaveFailed',
   'leaveNoWork',
+  'leaveOne',
+  'leaveLoading',
+  'leaveLoadFailed',
 ];
 
 const JULIEN = 'julien@ire.events';
@@ -88,6 +96,10 @@ function leavingStart(state: OrganisationState): HandoverStart {
       return { ...ASKING, phase: 'sending' };
     case 'leaveFailed':
       return { ...ASKING, phase: 'failed' };
+    case 'leaveLoading':
+      return { ...ASKING, phase: 'checking' };
+    case 'leaveLoadFailed':
+      return { ...ASKING, phase: 'notLoaded' };
     default:
       return ASKING;
   }
@@ -108,6 +120,7 @@ const AT_REST: Omit<OrganisationStart, 'role'> = {
   deleteMistyped: false,
   leaving: null,
   leadsAny: true,
+  leadsOne: false,
 };
 
 /** What a state link opens on; an owner's states open on the page at rest for a member, who has no way to them. */
@@ -124,6 +137,7 @@ export function organisationStart(
           ask: 'leave',
           leaving: leavingStart(state),
           leadsAny: state !== 'leaveNoWork',
+          leadsOne: state === 'leaveOne',
         };
   if (role !== 'Owner' || state == null) return page;
 
@@ -157,6 +171,9 @@ export function organisationStart(
     case 'leaveSending':
     case 'leaveFailed':
     case 'leaveNoWork':
+    case 'leaveOne':
+    case 'leaveLoading':
+    case 'leaveLoadFailed':
       return page;
     case 'transfer':
       return { ...page, screen: 'transfer', transferPicked: true };

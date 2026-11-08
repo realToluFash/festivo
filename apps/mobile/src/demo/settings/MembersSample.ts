@@ -298,6 +298,9 @@ export const MEMBERS_STATES = [
   'removing',
   'makingOwner',
   'marta',
+  'martaOne',
+  'martaLoading',
+  'martaLoadFailed',
   'self',
   'selfOwner',
   'claim',
@@ -306,6 +309,11 @@ export const MEMBERS_STATES = [
   'handoverMenu',
   'handoverPicked',
   'handoverLong',
+  'handoverOne',
+  'handoverLongNames',
+  'handoverLoading',
+  'handoverLoadFailed',
+  'handoverRefused',
   'handoverSearch',
   'handoverSearchNobody',
   'removingNoWork',
@@ -356,7 +364,8 @@ export interface HandoverStart {
   taker: string | null;
   menu: boolean;
   query: string;
-  phase: 'asking' | 'sending' | 'failed';
+  /** `checking` and `notLoaded` are the work list on its way and failing to come; `refused` is the server's handover.choose_recipient. */
+  phase: 'checking' | 'notLoaded' | 'asking' | 'sending' | 'failed' | 'refused';
 }
 
 export const ASKING: HandoverStart = { taker: null, menu: false, query: '', phase: 'asking' };
@@ -380,6 +389,8 @@ export interface MembersStart {
   withdrawing: boolean;
   leads: Leads;
   handover: HandoverStart | null;
+  /** The work list a suspended member's page waits on. */
+  leadsLoad: Load;
   gone: Removal | null;
   said: readonly string[] | null;
   recovery: string[];
@@ -579,6 +590,9 @@ const JULIEN = VIEWERS.julien.id;
 /** Leave's states are Ana Souza's, who leads two events (handover-a-spec.md §6). */
 export const LEAVER = ANA;
 
+/** A state's sample: the longest name the Ask has to hold, which it cuts to one line. */
+export const LONG_NAMED = 'evt-long-name';
+
 const WEDDING = 'evt-wed-4';
 const IRETI = 'evt-ireti-2';
 const GALA = 'evt-gala-4';
@@ -646,6 +660,12 @@ function handoverStart(state: MembersState): HandoverStart {
     case 'handoverFailed':
     case 'handoverNowFailed':
       return { ...ASKING, phase: 'failed' };
+    case 'handoverLoading':
+      return { ...ASKING, phase: 'checking' };
+    case 'handoverLoadFailed':
+      return { ...ASKING, phase: 'notLoaded' };
+    case 'handoverRefused':
+      return { ...ASKING, phase: 'refused' };
     default:
       return ASKING;
   }
@@ -670,6 +690,7 @@ export function membersStart(
     withdrawing: false,
     leads: SAMPLE_LEADS,
     handover: null,
+    leadsLoad: 'loaded',
     gone: null,
     said: null,
     recovery: [],
@@ -759,9 +780,17 @@ export function membersStart(
     case 'handoverPicked':
     case 'handoverSending':
     case 'handoverFailed':
+    case 'handoverLoading':
+    case 'handoverLoadFailed':
       return removing;
     case 'handoverLong':
       return { ...removing, open: JULIEN, leads: { ...SAMPLE_LEADS, [JULIEN]: EIGHT } };
+    case 'handoverOne':
+      return { ...removing, leads: { ...SAMPLE_LEADS, [PRIYA]: [IRETI] } };
+    case 'handoverLongNames':
+      return { ...removing, leads: { ...SAMPLE_LEADS, [PRIYA]: [WEDDING, LONG_NAMED, OFFSITE] } };
+    case 'handoverRefused':
+      return { ...removing, open: TOM, leads: { ...SAMPLE_LEADS, [TOM]: [GALA, ENGAGEMENT] } };
     case 'handoverSearch':
     case 'handoverSearchNobody':
       return { ...removing, people: withMorePeople(people) };
@@ -799,6 +828,12 @@ export function membersStart(
       return { ...base, open: ANA, step: 'proving', picked: 'Owner' };
     case 'marta':
       return { ...base, open: MARTA };
+    case 'martaOne':
+      return { ...base, open: MARTA, leads: { ...SAMPLE_LEADS, [MARTA]: [PARTY] } };
+    case 'martaLoading':
+      return { ...base, open: MARTA, leadsLoad: 'loading' };
+    case 'martaLoadFailed':
+      return { ...base, open: MARTA, leadsLoad: 'failed' };
     case 'self':
       return { ...base, viewer: VIEWERS.julien, open: VIEWERS.julien.id };
     case 'selfOwner':

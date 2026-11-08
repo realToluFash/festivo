@@ -691,6 +691,31 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/settings/members?state=handoverLong',
       },
       {
+        title: 'Removing · one event',
+        what: 'Priya leads 1 event: Hand it to',
+        href: '/demo/settings/members?state=handoverOne',
+      },
+      {
+        title: 'Removing · a long name',
+        what: 'Cut to one line; Team offsite, called off, looks the same',
+        href: '/demo/settings/members?state=handoverLongNames',
+      },
+      {
+        title: 'Removing · the work list loading',
+        what: 'Keep Priya only: nothing to confirm yet',
+        href: '/demo/settings/members?state=handoverLoading',
+      },
+      {
+        title: 'Removing · the work list failed',
+        what: 'Try again, no Remove',
+        href: '/demo/settings/members?state=handoverLoadFailed',
+      },
+      {
+        title: 'Removing · refused',
+        what: 'Tom began leading while it stood open',
+        href: '/demo/settings/members?state=handoverRefused',
+      },
+      {
         title: 'Removing · the menu’s search',
         what: '18 members, “jo” finds 3',
         href: '/demo/settings/members?state=handoverSearch',
@@ -751,9 +776,39 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/settings/organisation?state=leaveNoWork&as=member',
       },
       {
+        title: 'Leaving · one event',
+        what: 'Nobody: the owners take it',
+        href: '/demo/settings/organisation?state=leaveOne&as=member',
+      },
+      {
+        title: 'Leaving · the work list loading',
+        what: 'Stay only: nothing to confirm yet',
+        href: '/demo/settings/organisation?state=leaveLoading&as=member',
+      },
+      {
+        title: 'Leaving · the work list failed',
+        what: 'Try again, no Leave',
+        href: '/demo/settings/organisation?state=leaveLoadFailed&as=member',
+      },
+      {
         title: 'A suspended member',
         what: 'Marta leads 2 events, Hand over now',
         href: '/demo/settings/members?state=marta',
+      },
+      {
+        title: 'A suspended member · one event',
+        what: 'Marta leads 1 event',
+        href: '/demo/settings/members?state=martaOne',
+      },
+      {
+        title: 'A suspended member · the work list loading',
+        what: 'No Hand over now yet',
+        href: '/demo/settings/members?state=martaLoading',
+      },
+      {
+        title: 'A suspended member · the work list failed',
+        what: 'Try again on her page',
+        href: '/demo/settings/members?state=martaLoadFailed',
       },
       {
         title: 'Hand over now · the Ask',
