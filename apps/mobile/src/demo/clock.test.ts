@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { formatTimeOfDay } from '@soirely/domain';
 import { describe, expect, it } from 'vitest';
 
-import { writtenTime } from './clock.ts';
+import { writtenSecond, writtenTime } from './clock.ts';
 
 const TWELVE_HOUR = /\b(AM|PM)\b|a\.m\.|p\.m\./u;
 
@@ -56,6 +56,13 @@ describe('every time in the app’s demo, on the 24-hour clock (sc-31722)', () =
   it('reads a moment on the clock of the zone it names: 10:15 in Lagos', () => {
     expect(writtenTime(new Date('2026-11-04T09:15:00Z'), 'en-US', 'Africa/Lagos')).toBe('10:15');
     expect(writtenTime('2026-11-04T20:05:00Z', 'en-US', 'Africa/Lagos')).toBe('21:05');
+  });
+
+  it('reads a moment to the second on the 24-hour clock of the zone it names: 09:12:44 in Lagos', () => {
+    for (const locale of ['en-US', 'en-GB', 'fr-FR']) {
+      expect(writtenSecond('2026-10-17T08:12:44Z', locale, 'Africa/Lagos')).toBe('09:12:44');
+    }
+    expect(writtenSecond('2026-10-17T20:12:44Z', 'en-US', 'Africa/Lagos')).toBe('21:12:44');
   });
 
   it('reads a moment with no zone on the reader’s own clock, as the product’s formatTimeOfDay does', () => {

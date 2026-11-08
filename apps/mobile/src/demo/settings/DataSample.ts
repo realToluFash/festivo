@@ -1,4 +1,4 @@
-import { exactTime, writtenTime } from '../clock.ts';
+import { writtenSecond, writtenTime } from '../clock.ts';
 
 /** One "now" for every page: Monday, Oct 19, 2026 at 10:12 in Lagos (enterprise-b-spec.md §2). */
 export const NOW = '2026-10-19T09:12:00Z';
@@ -124,7 +124,7 @@ export function dataSayIn(locale: string, zone: DataZone = ZONE): DataSay {
       `${day.format(new Date(iso))} at ${writtenTime(new Date(iso), locale, zone)} ${zoneWord(iso, zone)}`,
     day: (iso) => day.format(new Date(iso)),
     exact: (iso) =>
-      `${dated.format(new Date(iso))} at ${exactTime(new Date(iso), locale, zone)} ${zoneWord(iso, zone)}`,
+      `${dated.format(new Date(iso))} at ${writtenSecond(iso, locale, zone)} ${zoneWord(iso, zone)}`,
     time: (iso) => writtenTime(new Date(iso), locale, zone),
     dayKey: (iso) => key.format(new Date(iso)),
   };
