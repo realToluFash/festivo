@@ -778,6 +778,7 @@
     "dismiss": "Fermer"
   },
   "recovery": {
+    "lostBothIntro": "Your organisation can confirm it’s you only once you’ve signed in with your password. If you’ve lost your password too, contact Soirely support.",
     "forgot": "Mot de passe oublié ?",
     "title": "Réinitialisez votre mot de passe",
     "intro": "Saisissez l’adresse e-mail avec laquelle vous vous connectez. Si elle a un compte, nous lui envoyons un lien pour choisir un nouveau mot de passe.",

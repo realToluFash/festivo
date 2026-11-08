@@ -501,7 +501,7 @@ describe('setting a new password from the link', () => {
       screen
         .getByRole('link', { name: 'Lost your authenticator and your recovery codes?' })
         .getAttribute('href'),
-    ).toBe('/two-factor/recovery');
+    ).toBe('/reset-password?token=t1');
 
     fireEvent.change(screen.getByRole('textbox'), { target: { value: '123456' } });
     fireEvent.click(screen.getByRole('button', { name: 'Continue to a new password' }));
@@ -528,6 +528,43 @@ describe('setting a new password from the link', () => {
       '/api/orgs',
     ]);
     expect(sent[1]?.body).toEqual({ token: 't1', code: '123456' });
+  });
+
+  it('sends somebody who has lost both to Soirely support, asks the API nothing, and ‹ Back keeps the code step working (Decided, 8 Nov)', async () => {
+    const sent = answering({
+      'POST /api/auth/password/reset/check': () =>
+        json({ email: 'folake@ire.events', twoFactor: true }),
+      'POST /api/auth/password/reset/code': () => new Response(null, { status: 204 }),
+    });
+    at('/reset-password?token=t1');
+
+    fireEvent.click(
+      await screen.findByRole('link', { name: 'Lost your authenticator and your recovery codes?' }),
+    );
+
+    await screen.findByRole('heading', { level: 1, name: 'Contact Soirely support' });
+    expect(
+      screen.getByText(
+        'Your organisation can confirm it’s you only once you’ve signed in with your password. If you’ve lost your password too, contact Soirely support.',
+      ),
+    ).toBeDefined();
+    expect(screen.queryByText(/Nobody in your organisation can confirm this/)).toBeNull();
+    expect(
+      screen.getByRole('link', { name: 'Email support@soirely.test' }).getAttribute('href'),
+    ).toBe('mailto:support@soirely.test');
+    expect(sent.map((request) => request.path)).toEqual(['/api/auth/password/reset/check']);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+
+    await screen.findByRole('heading', { level: 1, name: 'Enter your code' });
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: '123456' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Continue to a new password' }));
+
+    await screen.findByRole('heading', { level: 1, name: 'Set a new password' });
+    expect(sent.map((request) => request.path)).toEqual([
+      '/api/auth/password/reset/check',
+      '/api/auth/password/reset/code',
+    ]);
   });
 
   it.each([

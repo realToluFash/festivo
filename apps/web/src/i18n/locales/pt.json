@@ -778,6 +778,7 @@
     "dismiss": "Fechar"
   },
   "recovery": {
+    "lostBothIntro": "Your organisation can confirm it’s you only once you’ve signed in with your password. If you’ve lost your password too, contact Soirely support.",
     "forgot": "Esqueceu-se da palavra-passe?",
     "title": "Reponha a sua palavra-passe",
     "intro": "Introduza o e-mail com que inicia sessão. Se tiver uma conta, enviamos-lhe uma ligação para definir uma nova palavra-passe.",

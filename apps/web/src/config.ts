@@ -28,6 +28,8 @@ export interface Config {
   apple: { authorizeUrl: string; clientId: string } | null;
   /** One of B Confetti's colour schemes, laid over the base by tokens.css; a name with no block keeps the base. */
   scheme: string;
+  /** Soirely support's address, the API's SUPPORT_EMAIL, for a page that asks the API nothing (sc-29067). */
+  supportAddress: string;
 }
 
 const CONFIG_URL = '/config.json';
@@ -93,6 +95,10 @@ function parse(raw: unknown): Config {
     google: providerFrom(candidate.google),
     apple: providerFrom(candidate.apple),
     scheme: schemeFrom(candidate.scheme),
+    supportAddress:
+      typeof candidate.supportAddress === 'string' && candidate.supportAddress !== ''
+        ? candidate.supportAddress
+        : 'support@soirely.com',
   };
 }
 

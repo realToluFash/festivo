@@ -756,6 +756,7 @@
     "dismiss": "Dismiss"
   },
   "recovery": {
+    "lostBothIntro": "Your organisation can confirm it’s you only once you’ve signed in with your password. If you’ve lost your password too, contact Soirely support.",
     "forgot": "Forgot your password?",
     "title": "Reset your password",
     "intro": "Enter the email you sign in with. If it has an account, we send it a link to set a new password.",

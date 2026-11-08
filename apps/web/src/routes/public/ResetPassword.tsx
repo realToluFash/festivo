@@ -2,7 +2,7 @@ import { type Account, ApiError, ApiUnreachableError, awaiting } from '@soirely/
 import { PASSWORD_MINIMUM_LENGTH, meetsPasswordLength } from '@soirely/domain';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate, useSearchParams } from 'react-router';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router';
 
 import { api } from '../../api.ts';
 import { AuthPage } from '../../components/AuthPage.tsx';
@@ -14,12 +14,14 @@ import { PendingPage } from '../../components/Pending.tsx';
 import { SecondFactorStep } from '../../components/SecondFactorStep.tsx';
 import { StillSignedIn } from '../../components/StillSignedIn.tsx';
 import { Unreachable } from '../../components/Unreachable.tsx';
+import { config } from '../../config.ts';
 import { useFormChecks } from '../../formChecks.ts';
 import { useLinkRetry } from '../../linkRetry.ts';
 import { focusWhereSent } from '../../offField.ts';
 import { adoptAccount, landingFor, providerOnlyBy } from '../../session.ts';
 import { useSignOut } from '../../signOut.ts';
 import { useStepFocus } from '../../stepFocus.ts';
+import { Nobody } from './LostTwoFactor.tsx';
 
 type Dead = 'used' | 'expired' | 'invalid';
 
@@ -40,6 +42,7 @@ export function ResetPassword() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [params] = useSearchParams();
+  const lostBoth = (useLocation().state as { lostBoth?: boolean } | null)?.lostBoth === true;
   const token = params.get('token') ?? '';
   const [status, setStatus] = useState<Status>({ kind: 'checking' });
   const [password, setPassword] = useState('');
@@ -152,6 +155,19 @@ export function ResetPassword() {
     );
   }
 
+  // A reset link proves only the inbox, so it starts no recovery: that asks for the password first (Decided, 8 Nov).
+  if (status.kind === 'code' && lostBoth) {
+    return (
+      <AuthPage bare end={null}>
+        <Nobody
+          supportAddress={config().supportAddress}
+          intro={t('recovery.lostBothIntro')}
+          onBack={() => void navigate(`?token=${encodeURIComponent(token)}`, { replace: true })}
+        />
+      </AuthPage>
+    );
+  }
+
   if (status.kind === 'code') {
     const email = status.email;
 
@@ -164,7 +180,7 @@ export function ResetPassword() {
           pausedNote={t('recovery.nothingChanged')}
           failedTitle={t('recovery.failedTitle')}
           failedBody={t('recovery.failedBody')}
-          lostBoth={{ to: '/two-factor/recovery' }}
+          lostBoth={{ to: `?token=${encodeURIComponent(token)}`, state: { lostBoth: true } }}
           onVerify={async (factor) => {
             try {
               await api.passResetCode(token, factor);
