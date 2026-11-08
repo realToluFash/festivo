@@ -12,6 +12,7 @@ import {
 import {
   Animated,
   Easing,
+  Keyboard,
   KeyboardAvoidingView,
   ScrollView,
   type ScrollViewInstance,
@@ -66,14 +67,7 @@ import {
   spokenAt,
   toChip,
 } from './MessagesModel.ts';
-import {
-  BellPlace,
-  InsertMenu,
-  MatchPicker,
-  ToPicker,
-  TopToast,
-  WhenItGoes,
-} from './MessagesOverlays.tsx';
+import { BellPlace, MatchPicker, ToPicker, TopToast, WhenItGoes } from './MessagesOverlays.tsx';
 import {
   FIXED_ADDRESS,
   GUESTS,
@@ -88,8 +82,10 @@ import {
   RESEND,
 } from './MessagesSample.ts';
 import { CHANNEL_WORD, type ChannelKey, W, say } from './MessagesWords.ts';
+import { SW, refusalLine } from './ScheduledSave.ts';
 import { outsideToken, tokenText } from './TokenText.ts';
 import { FixEmail, WhoReached, reachViewOf } from './WhoReached.tsx';
+import { type Anchored, InsertMenu, anchorAt } from './WriteItOnce.tsx';
 
 const SAMPLE_CHANNELS: readonly ChannelKey[] = ['email', 'sms'];
 
@@ -188,7 +184,7 @@ export function MessagesScreen({
   const closed = m.closed == null ? null : CLOSED_WORDS[m.closed];
   const [typed, setTyped] = useState<Partial<Record<GuestKey, string>>>(m.typed);
   const [toAt, setToAt] = useState<Anchor | null>(null);
-  const [insertAt, setInsertAt] = useState<Anchor | null>(null);
+  const [insertAt, setInsertAt] = useState<Anchored | null>(null);
   const [bellAt, setBellAt] = useState<Anchor | null>(null);
   const [fix, setFix] = useState(() => {
     const person = NOT_REACHED[0];
@@ -239,6 +235,17 @@ export function MessagesScreen({
     return () => clearTimeout(later);
   }, [step]);
 
+  // A refused save (sc-3963) is said at once and takes focus, so the keys go down.
+  const refused = m.refusedSave;
+  useEffect(() => {
+    if (refused == null) return undefined;
+    Keyboard.dismiss();
+    readOut(`${refusalLine(refused)} ${SW.textStillHere}`, { interrupts: true });
+    const later = setTimeout(() => moveScreenReaderFocus(refs.current.refused ?? null), 500);
+
+    return () => clearTimeout(later);
+  }, [refused]);
+
   const asking = m.draft?.asking === true;
   useEffect(() => {
     if (!asking) return undefined;
@@ -280,6 +287,13 @@ export function MessagesScreen({
 
     return () => clearTimeout(later);
   }, [m.picking, phone]);
+
+  useEffect(() => {
+    if (!m.inserting || phone) return undefined;
+    const later = setTimeout(() => anchorAt(refs.current.insert, setInsertAt), 300);
+
+    return () => clearTimeout(later);
+  }, [m.inserting, phone]);
 
   useEffect(() => {
     if (!m.bell || phone) return undefined;
@@ -342,8 +356,7 @@ export function MessagesScreen({
     },
     onInsert: () => {
       from('insert');
-      const node = refs.current.insert;
-      if (node != null) anchorUnder({ current: node }, setInsertAt);
+      dispatch({ type: 'inserting', open: true });
     },
     onCaret: (at) => {
       caret.current = at;
@@ -367,6 +380,11 @@ export function MessagesScreen({
       dispatch({ type: 'when', open: true });
     },
     onSaveScheduled: () => {
+      if (refused != null) {
+        Keyboard.dismiss();
+        moveScreenReaderFocus(refs.current.refused ?? null);
+        return;
+      }
       if (draft == null || draft.body.trim() === '') return;
       dispatch({ type: 'saveScheduled' });
       readOut(W.savedSaid);
@@ -422,6 +440,7 @@ export function MessagesScreen({
     caret.current = after;
     opener.current = bodyRef.current;
     setInsertAt(null);
+    dispatch({ type: 'inserting', open: false });
     setTimeout(() => {
       bodyRef.current?.focus();
       bodyRef.current?.setSelection(after, after);
@@ -508,10 +527,15 @@ export function MessagesScreen({
         onClose={() => dispatch({ type: 'picking', open: false })}
       />
       <InsertMenu
-        at={insertAt}
+        open={m.inserting === true && (phone || insertAt != null)}
+        phone={phone}
+        at={m.inserting === true ? insertAt : null}
         opener={openerRef}
         onInsert={insert}
-        onClose={() => setInsertAt(null)}
+        onClose={() => {
+          setInsertAt(null);
+          dispatch({ type: 'inserting', open: false });
+        }}
       />
       <FixEmail
         key={`${fix.name}:${fix.start}:${String(m.fixing)}`}

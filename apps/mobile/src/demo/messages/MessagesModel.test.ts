@@ -40,9 +40,10 @@ import {
   TO_FIGURES,
   TO_ORDER,
   TO_WORD,
-  filledFor,
   piecesOf,
 } from './MessagesSample.ts';
+import { filledAs } from './PreviewModel.ts';
+import { PREVIEW_PEOPLE } from './PreviewSample.ts';
 import { tellChange } from './TellChange.ts';
 import { keepWhole, outsideToken, tokenText } from './TokenText.ts';
 
@@ -51,7 +52,8 @@ const nameOf = (id: RowId) => (id.kind === 'draft' ? id.id : id.key);
 
 describe('the states', () => {
   it('are the spec’s 42 and the notice’s three, by the names both demos use, §7 then §7b, then sc-32077’s six', () => {
-    expect(MESSAGES_STATES).toHaveLength(51);
+    expect(MESSAGES_STATES).toHaveLength(64);
+    expect(MESSAGES_STATES.indexOf('tellPlace')).toBe(44);
     expect(MESSAGES_STATES.slice(6, 10)).toEqual([
       'channelReply',
       'noticeCost',
@@ -59,7 +61,7 @@ describe('the states', () => {
       'noticeNotSent',
     ]);
     expect(MESSAGES_STATES.slice(0, 3)).toEqual(['first', 'loading', 'inUse']);
-    expect(MESSAGES_STATES.slice(27)).toEqual([
+    expect(MESSAGES_STATES.slice(27, 51)).toEqual([
       'invitedReached',
       'sentReached',
       'notMatched',
@@ -347,14 +349,14 @@ describe('the rest of the flow', () => {
       { token: true, text: 'Greeting' },
       { token: false, text: ', hello' },
     ]);
-    expect(filledFor(`${tokenText('Greeting')}, hello`, 'Kwame Mensah')).toBe(
+    expect(filledAs(`${tokenText('Greeting')}, hello`, PREVIEW_PEOPLE.kwame)).toBe(
       'Kwame Mensah, hello',
     );
   });
 
   it('keeps braces the host types as text, in the field and on the page', () => {
     expect(piecesOf('{Greeting}, hello')).toEqual([{ token: false, text: '{Greeting}, hello' }]);
-    expect(filledFor('{Greeting}, hello', 'Kwame Mensah')).toBe('{Greeting}, hello');
+    expect(filledAs('{Greeting}, hello', PREVIEW_PEOPLE.kwame)).toBe('{Greeting}, hello');
   });
 });
 

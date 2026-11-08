@@ -54,6 +54,19 @@ const BOARDS: Record<MessagesState, readonly [string, string]> = {
   closedDraft: ['new unavailable, a draft', 'This event is a draft; New is off'],
   closedEnded: ['new unavailable, long finished', 'Finished more than 30 days ago; New is off'],
   forbidden: ['no access', 'Without messages.read: the refusal, no list, no count'],
+  insert: ['Insert', 'A menu on the iPad, a sheet on the phone: four tokens, each with its line'],
+  previewAs: ['Preview as', 'Open on the five people in To, A to Z'],
+  previewGreetAs: ['previewed as Bisi Adewale', 'Greeted as “Auntie Bisi”, their Greet as'],
+  previewChose: ['previewed as Camille Dubois', 'The Date in French, the language they chose'],
+  previewLoading: ['filling it in', 'Filling it in for Camille Dubois… over the shapes'],
+  previewMarkup: ['a Greet as with markup', 'Kemi Bankole’s Greet as shown as text'],
+  typedBraces: ['a typed {Greeting}', 'An inserted Greeting, and later {Greeting} typed'],
+  previewBraces: ['typed braces, previewed', 'The typed {Greeting} as typed, and the braces line'],
+  noTokens: ['nothing to fill in', 'No token: no Greeted line, the nothing-to-fill-in line'],
+  editConflict: ['a refused save, changed', 'Bisi Okafor changed it; Reload shows 17:00'],
+  editSent: ['a refused save, sent', 'Already sent; Reload shows it as sent at 09:00'],
+  editCancelled: ['a refused save, cancelled', 'Cancelled; Reload shows Cancelled by Bisi Okafor'],
+  editTooLate: ['a refused save, too late', 'Too late to send; Reload shows Not sent: too late'],
 };
 
 export const MESSAGES_BOARDS = MESSAGES_STATES.map((state) => ({

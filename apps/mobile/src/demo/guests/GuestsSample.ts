@@ -63,6 +63,8 @@ export interface SampleGuest {
   arrived?: string;
   language?: GuestLanguage | null;
   chose?: GuestLanguage | null;
+  /** sc-3960: how messages greet them; none is their full name. */
+  greetAs?: string | null;
 }
 
 const SOIRELY: Invited = { by: 'Soirely’s message', how: null, day: '2026-10-12' };
@@ -94,7 +96,10 @@ export const GUESTS: readonly SampleGuest[] = [
     companions: [{ name: 'Guest of Alhaji Musa Bello', kind: 'coming' }],
   }),
   guest('amaka', 'Amaka Eze', 'coming', { when: '2026-10-13', phone: '+234 803 555 0142' }),
-  guest('bisi', 'Bisi Adewale', 'notyet', { email: 'bisi.adewale@yahoo.com' }),
+  guest('bisi', 'Bisi Adewale', 'notyet', {
+    email: 'bisi.adewale@yahoo.com',
+    greetAs: 'Auntie Bisi',
+  }),
   guest('camille', 'Camille Dubois', 'notcoming', {
     when: '2026-10-20',
     email: 'camille.dubois@free.fr',
