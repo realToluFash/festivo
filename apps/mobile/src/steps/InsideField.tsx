@@ -27,6 +27,7 @@ import {
   withInvalid,
 } from '../kit/fields.ts';
 import { glide } from '../motion.ts';
+import { useBoldText } from '../theme/boldText.ts';
 import { inputFaced } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
 
@@ -73,6 +74,7 @@ export function InsideField({
   const refused = line == null ? null : { word: t('forms.invalid'), line, nameID: invalidNameID };
   const { fontScale } = useWindowDimensions();
   const [focused, setFocused] = useState(false);
+  const bold = useBoldText();
   const [revealed, setRevealed] = useState(false);
   const [typed, setTyped] = useState(value ?? defaultValue ?? '');
   const raised = focused || (value ?? typed) !== '' || multiline;
@@ -130,12 +132,16 @@ export function InsideField({
           setFocused(false);
           rest.onBlur?.(event);
         }}
-        style={inputFaced([
-          styles.input,
-          { paddingTop: tokens.spaceSm + labelLine },
-          multiline && styles.inputTall,
-          password && styles.inputBeside,
-        ])}
+        style={inputFaced(
+          [
+            styles.input,
+            { paddingTop: tokens.spaceSm + labelLine },
+            multiline && styles.inputTall,
+            password && styles.inputBeside,
+          ],
+          'sans',
+          bold,
+        )}
         aria-invalid={state !== 'plain'}
         testID={testID}
       />

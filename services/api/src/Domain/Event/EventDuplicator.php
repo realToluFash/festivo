@@ -6,6 +6,7 @@ namespace App\Domain\Event;
 
 use App\Audit\Auditor;
 use App\Domain\Event\Cover\EventCoverEditor;
+use App\Domain\Seating\SeatingPlanCopier;
 use App\Entity\Event;
 use App\Entity\User;
 use App\Enum\Actor;
@@ -20,6 +21,7 @@ final readonly class EventDuplicator
     public function __construct(
         private EventRules $eventRules,
         private EventCoverEditor $eventCoverEditor,
+        private SeatingPlanCopier $seatingPlanCopier,
         private EntityManagerInterface $entityManager,
         private Auditor $auditor,
     ) {
@@ -37,6 +39,7 @@ final readonly class EventDuplicator
         EventVenue::write($copy, EventVenue::of($original));
         $this->entityManager->persist($copy);
         $cover = $this->eventCoverEditor->copy($original, $copy);
+        $this->seatingPlanCopier->copy($original, $copy, $by);
 
         $this->auditor->record(EventCreator::CREATED, 'Event', $copy->getId(), Actor::User, $by->getId(), $by->getName(), [
             ...EventCreator::recorded($copy),

@@ -40,6 +40,7 @@ import {
   valueHanded,
   withInvalid,
 } from '../kit/fields.ts';
+import { useBoldText } from '../theme/boldText.ts';
 import { inputFaced } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
 import { fieldChecked, fieldFocused, fieldLeft } from './focusedField.ts';
@@ -381,6 +382,7 @@ export function TextField({
   const labelID = useFieldLabel();
   const refused = useRefused(wrong);
   const { focused, edging } = useFocusEdge(rest.onFocus, rest.onBlur);
+  const bold = useBoldText();
 
   return (
     <TextInput
@@ -390,7 +392,7 @@ export function TextField({
       {...holding}
       ref={ref}
       {...edging}
-      style={inputFaced([styles.input, focusEdge(focused, wrong), style])}
+      style={inputFaced([styles.input, focusEdge(focused, wrong), style], 'sans', bold)}
       maxFontSizeMultiplier={useUnderTitle(
         StyleSheet.flatten(style)?.fontSize ?? CONTROL_TEXT_SIZE,
         rest.maxFontSizeMultiplier,
@@ -418,6 +420,7 @@ export function CodeField({
   const labelID = useFieldLabel();
   const refused = useRefused(wrong);
   const { focused, edging } = useFocusEdge(rest.onFocus, rest.onBlur);
+  const bold = useBoldText();
 
   return (
     <TextInput
@@ -428,7 +431,7 @@ export function CodeField({
       {...holding}
       ref={ref}
       {...edging}
-      style={inputFaced([styles.code, focusEdge(focused, wrong), style])}
+      style={inputFaced([styles.code, focusEdge(focused, wrong), style], 'sans', bold)}
       maxFontSizeMultiplier={useUnderTitle(
         StyleSheet.flatten(style)?.fontSize ?? tokens.typeTitleDialog.size,
         rest.maxFontSizeMultiplier,

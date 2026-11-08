@@ -71,6 +71,14 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **8 nov. 2026. La double authentification à la connexion dans l’app** (sc-33828 pour
+  sc-29072, `mobile:twoFactor.signedIn`, `recoveryShape`, `lost`, `lostTwoFactor.waitingFor`,
+  `stayOut`, `emailSoirely`). « Connexion réussie », groupe nominal, car « Connecté » s’accorde
+  avec la personne. Le titre d’attente est une étiquette, « En attente : {{organisations}} » :
+  « En attente de » obligerait à élider devant un nom à voyelle (« d’Ire Events »), ce que le
+  code ne sait pas faire. `stayOut` dit « Vous ne pourrez pas vous connecter tant que personne
+  n’aura répondu », jamais « Vous restez déconnecté », qui s’accorde au masculin. Le bouton est
+  « Écrire à l’assistance Soirely ».
 - **8 Nov 2026. L’écran du lien envoyé dans l’app, et son toast** (sc-33809 pour sc-29071,
   `mobile:recovery.*`). Le bouton est « Ouvrir la boîte mail », comme « Consultez votre boîte
   mail », et non « Ouvrir Mail » : sous Android, il ouvre l’application d’e-mail de la personne.

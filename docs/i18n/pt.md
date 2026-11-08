@@ -43,6 +43,13 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **8 Nov 2026. Os dois fatores ao iniciar sessão na app** (sc-33828 para sc-29072,
+  `mobile:twoFactor.signedIn`, `recoveryShape`, `lost`, `lostTwoFactor.waitingFor`, `stayOut`,
+  `emailSoirely`). "Sessão iniciada", um estado, como `waysCard.signedInWith`. A forma do
+  código: "Maiúsculas ou minúsculas; o hífen aparece sozinho.". O título de espera é "À espera
+  de {{organisations}}". `stayOut` diz "Não pode iniciar sessão até alguém responder", nunca "a
+  sua sessão continua encerrada": a pessoa ainda não tinha entrado. O botão é "Escrever ao apoio
+  ao cliente da Soirely", com o nome do guia.
 - **8 Nov 2026. O ecrã da ligação enviada na app, e o seu aviso** (sc-33809 para sc-29071,
   `mobile:recovery.*`). O botão é "Abrir o e-mail", não "Abrir o Mail": no Android abre a
   aplicação de e-mail da pessoa. `spam` segue a web, "Veja a pasta de spam e depois envie de

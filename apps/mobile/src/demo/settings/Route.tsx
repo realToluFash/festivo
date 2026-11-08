@@ -7,7 +7,7 @@ import { Toast } from '../../components/Toast.tsx';
 import { SECTION_HREF } from '../../kit/appNav.ts';
 import { useLayout } from '../../layout/useLayout.ts';
 import { tokens } from '../../theme/tokens.ts';
-import { useBoldText } from '../boldText/boldTextStore.ts';
+import { useBoldTextSwitch } from '../boldText/boldTextStore.ts';
 import { OrgSwitcherProvider } from '../OrgSwitcher.tsx';
 import { switcherStateOf } from '../OrgSwitcherModel.ts';
 import { type CoverLayout, PHONE_TAB_BAR, type Tab } from '../../components/TodayCover.tsx';
@@ -95,7 +95,7 @@ export function SettingsRoute({
   const shown = section != null && sectionsFor(viewer).includes(section) ? section : null;
   const dataShown = data != null && managesOrganisation(viewer) ? data : null;
   const seed = schemeOf(params.scheme);
-  const bold = useBoldText();
+  const bold = useBoldTextSwitch();
 
   useCoverStatusBar('dark', false);
 
