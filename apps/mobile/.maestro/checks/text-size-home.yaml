@@ -1,9 +1,9 @@
-# home, top to bottom, at whatever text size the simulator is set to. sc-13281.
+# home, top to bottom, at whatever text size the simulator is set to: Today, where signing in lands. sc-13281, sc-30091.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/
 - extendedWaitUntil:
-    visible: '{{t:settings.signedInAs|email}}'
+    visible: '{{t:todayScreen.tab.today}}'
     timeout: 30000
 - waitForAnimationToEnd:
     timeout: 5000

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { VIEWERS, groupsFor, settingsPath, settingsSayIn, viewerOf } from './settings.ts';
 
 describe('the Settings list at a desk (sc-29708)', () => {
-  it('lists your account’s four sections, then the organisation’s three, with no Roles', () => {
+  it('lists your account’s four sections, then the organisation’s four, with no Roles', () => {
     expect(groupsFor(VIEWERS.folake)).toEqual([
       {
         name: 'Your account',
@@ -11,7 +11,7 @@ describe('the Settings list at a desk (sc-29708)', () => {
       },
       {
         name: 'Organisation settings',
-        sections: ['general', 'members', 'signInRules'],
+        sections: ['general', 'members', 'signInRules', 'vendors'],
       },
     ]);
   });
@@ -40,7 +40,7 @@ describe('the Settings list at a desk (sc-29708)', () => {
 
     expect(say.date('2026-11-02')).toBe('Nov 2, 2026');
     expect(say.day('2026-11-02')).toBe('Nov 2');
-    expect(say.deadline('2026-11-16T09:12')).toBe('Monday, Nov 16 at 9:12 AM WAT');
+    expect(say.deadline('2026-11-16T09:12')).toBe('Monday, Nov 16 at 09:12 WAT');
     expect(settingsSayIn('en-GB').date('2026-11-02')).toBe('2 Nov 2026');
   });
 });

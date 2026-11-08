@@ -3,7 +3,7 @@
 # sc-29126. EMAIL must be fresh. STEP1 and STEP4 are the language's "Step 1 of 4" and "Step 4 of 4".
 # More than ten sign-ups an hour hits the registration limit: bin/console cache:pool:clear cache.rate_limiter.
 #
-#   node .qa/bin/qa-env.mjs maestro sc29126-steps-language --android LANGUAGE=Español L=es NAME=… EMAIL=… PASSWORD=… SHOW='Mostrar contraseña' HIDE='Ocultar contraseña' STEP1='Paso 1 de 4' STEP4='Paso 4 de 4' COUNTRY='Reino Unido' PHONE=7700900123
+#   node .qa/bin/qa-env.mjs maestro sc29126-steps-language --android LANGUAGE=Español L=es NAME=… EMAIL=… PASSWORD=… SHOW='Mostrar contraseña' HIDE='Ocultar contraseña' STEP1='Paso 1 de 4' STEP4='Paso 4 de 4' COUNTRY='Reino Unido' PHONE=7400123456
 appId: host.exp.Exponent
 ---
 - launchApp:

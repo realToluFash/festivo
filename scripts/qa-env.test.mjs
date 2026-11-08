@@ -40,12 +40,15 @@ import {
   physicalSize,
   portraitRotation,
   ANDROID_START,
+  startParts,
+  iosExpoGoStops,
   batchReset,
   expoGoPrefs,
   TOOLS_BUTTON,
   SCREEN_READER_OFF,
   driverBuilds,
   driverPids,
+  bundlerArgs,
   bundlerEnv,
   commitTarget,
   checkId,
@@ -63,6 +66,7 @@ import {
   runBudgetMs,
   startHelper,
   membershipChanges,
+  keptOwner,
   domainPause,
   STEP_MS,
   totp,
@@ -70,6 +74,7 @@ import {
   androidPackage,
   androidSdk,
   branchForStory,
+  CACHE_CLEARER,
   clearApiCache,
   defaultNetwork,
   COMPOSE_PROJECT,
@@ -444,6 +449,53 @@ describe('the stack a person tests on', () => {
   it('is the tester of its own worktree', () => {
     expect(testerOf('/home/me/soirely-qa-lan')).toBe(LAN);
     expect(testerOf('/home/me/soirely-qa2')).toBe(2);
+  });
+});
+
+describe('the bundler command', () => {
+  it("clears Metro's cache only when --clear asks", () => {
+    expect(bundlerArgs(18081, ['--tablet'])).toEqual(['expo', 'start', '--port', '18081']);
+    expect(bundlerArgs(18081, ['--clear'])).toEqual([
+      'expo',
+      'start',
+      '--port',
+      '18081',
+      '--clear',
+    ]);
+  });
+});
+
+describe('Expo Go on android --clear', () => {
+  const at = (name) => ANDROID_START.findIndex((part) => part.name === name);
+  const stopped = ANDROID_START[at('Expo Go stopped')];
+
+  it('is force-stopped, and only on --clear', () => {
+    expect(stopped.when).toBe('--clear');
+    expect(stopped.adb).toEqual([['shell', 'am', 'force-stop', 'host.exp.exponent']]);
+  });
+
+  it('is stopped before the bundler starts', () => {
+    expect(at('Expo Go stopped')).toBeGreaterThanOrEqual(0);
+    expect(at('Expo Go stopped')).toBeLessThan(at('bundler started'));
+  });
+
+  it('runs on android --clear, and a plain start runs every other part as before', () => {
+    const names = (args) => startParts(args).map((part) => part.name);
+    expect(names(['--clear'])).toContain('Expo Go stopped');
+    expect(names([])).not.toContain('Expo Go stopped');
+    expect(names([])).toEqual(
+      ANDROID_START.filter((part) => part.name !== 'Expo Go stopped').map((part) => part.name),
+    );
+  });
+});
+
+describe('Expo Go on ios --clear', () => {
+  it('is terminated on every opened simulator, and only on --clear', () => {
+    expect(iosExpoGoStops(['--clear'], ['A', 'B'])).toEqual([
+      ['simctl', 'terminate', 'A', 'host.exp.Exponent'],
+      ['simctl', 'terminate', 'B', 'host.exp.Exponent'],
+    ]);
+    expect(iosExpoGoStops([], ['A', 'B'])).toEqual([]);
   });
 });
 
@@ -1108,6 +1160,7 @@ describe("a flow's URLs", () => {
     expect(flowUrls(urls)).toEqual({
       METRO_URL: `exp://127.0.0.1:${ports.METRO_PORT}`,
       MAILPIT_URL: `http://127.0.0.1:${ports.MAILPIT_UI_PORT}`,
+      SMOCKER_URL: `http://127.0.0.1:${ports.SMOCKER_UI_PORT}`,
       API_URL: `http://127.0.0.1:${ports.API_PORT}`,
       WEB_URL: `http://127.0.0.1:${ports.WEB_PORT}`,
     });
@@ -1419,21 +1472,54 @@ describe('handing a provider redirect to Expo Go', () => {
 });
 
 describe('the API cache a checkout leaves behind', () => {
-  it('is emptied, its directory and the rest of var stay', () => {
+  const withCache = () => {
     const root = mkdtempSync(join(tmpdir(), 'qa-cache-'));
     mkdirSync(join(root, 'services/api/var/cache/dev'), { recursive: true });
     writeFileSync(join(root, 'services/api/var/cache/dev/App_KernelDevDebugContainer.php'), '');
-    writeFileSync(join(root, 'services/api/var/cache/.gitkeep'), '');
-    mkdirSync(join(root, 'services/api/var/log'), { recursive: true });
+    return root;
+  };
+  const calls = () => {
+    const seen = [];
+    return { seen, exec: (command, args) => seen.push([command, ...args]) };
+  };
 
-    clearApiCache(root);
+  it('is emptied through a container that mounts only the cache', () => {
+    const root = withCache();
+    const { seen, exec } = calls();
 
-    expect(readdirSync(join(root, 'services/api/var/cache'))).toEqual([]);
-    expect(existsSync(join(root, 'services/api/var/log'))).toBe(true);
+    clearApiCache(root, exec);
+
+    expect(seen).toHaveLength(1);
+    const [command, ...args] = seen[0];
+    expect(command).toBe('docker');
+    expect(args.slice(0, 5)).toEqual([
+      'run',
+      '--rm',
+      '--volume',
+      `${join(root, 'services/api/var/cache')}:/cache`,
+      CACHE_CLEARER,
+    ]);
+    expect(args.slice(5).join(' ')).toBe('find /cache -mindepth 1 -maxdepth 1 -exec rm -rf {} +');
   });
 
-  it('is no error when there is none', () => {
-    expect(() => clearApiCache(mkdtempSync(join(tmpdir(), 'qa-cache-')))).not.toThrow();
+  it('deletes nothing from the host itself', () => {
+    const root = withCache();
+
+    clearApiCache(root, calls().exec);
+
+    expect(readdirSync(join(root, 'services/api/var/cache'))).toEqual(['dev']);
+  });
+
+  it('runs nothing when there is no cache', () => {
+    const { seen, exec } = calls();
+
+    clearApiCache(mkdtempSync(join(tmpdir(), 'qa-cache-')), exec);
+
+    expect(seen).toEqual([]);
+  });
+
+  it('pins the image it clears with', () => {
+    expect(CACHE_CLEARER).toMatch(/^busybox:\d+\.\d+$/);
   });
 });
 
@@ -1767,10 +1853,9 @@ describe('a check that holds the API', () => {
     expect(unguarded).toEqual([]);
   });
 
-  // sc-30216 moves sc27096-ipad-side-refreshing.yaml off its own 18999 trigger onto /api?to=.
   it('reaches the harness through batch/helper.js, never a literal port', () => {
     const literal = checks.filter(([, flow]) => /127\.0\.0\.1:\d+/.test(flow)).map(([n]) => n);
-    expect(literal).toEqual(['sc27096-ipad-side-refreshing.yaml']);
+    expect(literal).toEqual([]);
   });
 });
 
@@ -1830,6 +1915,27 @@ describe('the batch helper', () => {
       expect(await ask('/api?to=paused')).toEqual({ api: 'paused' });
       expect(await ask('/language?to=es')).toEqual({ language: 'es' });
       expect(ran).toEqual(['pause api', 'unpause api', 'locale es']);
+    } finally {
+      server.close();
+    }
+  });
+
+  it('pictures the device under the running check and language, and only by a plain name', async () => {
+    const shots = [];
+    const shoot = async (file) => shots.push(file);
+    const { server, ask } = await helperFor('running', undefined, { shoot, out: '/out' });
+    try {
+      expect(await ask('/shot?name=held-1')).toEqual({
+        error: 'a shot is taken inside a check, and none has started',
+      });
+      await ask('/started?check=sc27096-ipad-side-refreshing.en');
+      expect(await ask('/shot?name=held-1')).toEqual({
+        shot: 'sc27096-ipad-side-refreshing.en-held-1.png',
+      });
+      expect(await ask('/shot?name=..%2Fheld')).toEqual({
+        error: 'shot what? /shot?name=<letters, digits, -> gave ../held',
+      });
+      expect(shots).toEqual(['/out/sc27096-ipad-side-refreshing.en-held-1.png']);
     } finally {
       server.close();
     }
@@ -2479,6 +2585,50 @@ describe('the time a Maestro run is given', () => {
 });
 
 describe('the flows a batch runs', () => {
+  it('reaches a file from every path a composed check names, on iOS and Android', () => {
+    const root = join(import.meta.dirname, '..');
+    const source = join(root, 'apps/mobile/.maestro');
+    const checks = readdirSync(join(source, 'checks'))
+      .filter((file) => file.endsWith('.yaml'))
+      .map((file) => file.slice(0, -'.yaml'.length));
+    const named =
+      /^[ \t]*(?:-[ \t]*runFlow|-[ \t]*runScript|file):[ \t]*(['"]?)([^'"\s]+)\1[ \t]*$/gm;
+    for (const onAndroid of [false, true]) {
+      const target = mkdtempSync(join(tmpdir(), 'qa-batch-'));
+      try {
+        composeBatch(source, target, {
+          checks,
+          languages: ['en'],
+          cold: false,
+          catalogues: {
+            en: JSON.parse(
+              readFileSync(join(root, 'apps/mobile/src/i18n/locales/en.json'), 'utf8'),
+            ),
+          },
+          email: 'qa@soirely.test',
+          onAndroid,
+        });
+        const unreached = [];
+        const seen = new Set();
+        const follow = (file) => {
+          if (seen.has(file)) return;
+          seen.add(file);
+          for (const [, , path] of readFileSync(file, 'utf8').matchAll(named)) {
+            if (path.includes('${')) continue;
+            const reached = join(dirname(file), path);
+            if (!existsSync(reached)) unreached.push(`${file.slice(target.length + 1)} → ${path}`);
+            else if (/\.ya?ml$/.test(path)) follow(reached);
+          }
+        };
+        for (const file of readdirSync(join(target, '_checks')))
+          follow(join(target, '_checks', file));
+        expect(unreached).toEqual([]);
+      } finally {
+        rmSync(target, { recursive: true, force: true });
+      }
+    }
+  });
+
   it("composes the repository's checks in all four languages", () => {
     const root = join(import.meta.dirname, '..');
     const dir = join(root, 'apps/mobile/src/i18n/locales');
@@ -2519,6 +2669,14 @@ describe('the flows a batch runs', () => {
       ).toBe(true);
       const session = readFileSync(join(target, 'batch/session.yaml'), 'utf8');
       expect(session).not.toContain('{{t:');
+      expect(session).toMatch(/when:\s+visible:\s+id: 'settings\\\.\.\*'\s+commands:/);
+      for (const code of ['en', 'es', 'fr', 'pt']) {
+        for (const [, condition] of session.matchAll(/when:\s+visible: '(.*)'/g)) {
+          expect(catalogues[code].settings.title).not.toMatch(
+            new RegExp(`^(?:${condition.replaceAll("''", "'")})$`),
+          );
+        }
+      }
       const signedIn = new RegExp(
         `^(?:${[...session.matchAll(/notVisible: '(.*)'/g)].at(-1)[1].replaceAll("''", "'")})$`,
       );
@@ -2554,6 +2712,22 @@ describe('the flows a batch runs', () => {
       for (const code of ['en', 'es', 'fr', 'pt']) {
         expect(catalogues[code].steps.organisationTitle).toMatch(onDetails);
         expect(catalogues[code].steps.organisationTitle).not.toMatch(someoneSignedIn);
+        expect(catalogues[code].steps.invitedTitle).toMatch(homeSettled);
+        expect(catalogues[code].steps.invitedTitle).toMatch(onDetails);
+        expect(catalogues[code].steps.invitedTitle).not.toMatch(someoneSignedIn);
+      }
+      const signInForm = readFileSync(join(target, 'batch/sign-in-form.yaml'), 'utf8');
+      const landed = new RegExp(
+        `^(?:${signInForm.match(/extendedWaitUntil:\s+visible: '(.*)'\s+timeout: 30000\s+optional: true/)[1].replaceAll("''", "'")})$`,
+      );
+      const namesAccount = new RegExp(
+        `^(?:${signInForm.match(/scrollUntilVisible:\s+element:\s+text: '(.*)'/)[1].replaceAll("''", "'")})$`,
+      );
+      for (const code of ['en', 'es', 'fr', 'pt']) {
+        const invitation = catalogues[code].steps.invitationFor;
+        expect(catalogues[code].steps.invitedTitle).toMatch(landed);
+        expect(invitation.replace('{{email}}', 'qa@\u200Bsoirely.test')).toMatch(namesAccount);
+        expect(invitation.replace('{{email}}', 'other@soirely.test')).not.toMatch(namesAccount);
       }
       const detailsAt = signOut.indexOf('file: ../sign-out-from-complete-profile.yaml');
       expect(detailsAt).toBeGreaterThan(-1);
@@ -2629,6 +2803,16 @@ describe('the flows a batch runs', () => {
       expect(reset.match(/file: developer-menu\.yaml\s+env:\s+SETTLED: '(.*)'/)[1]).toBe(
         reset.match(/notVisible: '(.*)'/)[1],
       );
+      const resetSettled = new RegExp(
+        `^(?:${reset.match(/extendedWaitUntil:\s+visible: '(.*)'/)[1].replaceAll("''", "'")})$`,
+      );
+      expect(reset.match(/extendedWaitUntil:\s+visible: '(.*)'/)[1]).toBe(
+        reset.match(/notVisible: '(.*)'/)[1],
+      );
+      for (const code of ['en', 'es', 'fr', 'pt']) {
+        expect(catalogues[code].steps.invitedTitle).toMatch(resetSettled);
+        expect(catalogues[code].steps.organisationTitle).toMatch(resetSettled);
+      }
       expect(reset).toContain('ASK: /running');
       expect(reset).toMatch(
         /ASK: \/reload(?:\s|#.*)+- runFlow:\s+when:\s+true: \$\{!output\.helper\.reloaded\}\s+file: reopen\.yaml[\s\S]*openLink: \$\{METRO_URL\}\/--\//,
@@ -3050,6 +3234,7 @@ describe('a membership change a check asks for', () => {
     const statements = [];
     let made = 0;
     let owners = 0;
+    const asked = [];
     let refusing = false;
     const invited = [];
     const ownerNumbered =
@@ -3089,7 +3274,8 @@ describe('a membership change a check asks for', () => {
     const change = membershipChanges({
       email: 'qa@soirely.test',
       member: async (path) => calls.push(`member ${path}`),
-      ownerOf: async () => {
+      ownerOf: async ({ fresh }) => {
+        asked.push(fresh);
         owners += 1;
         return ownerNumbered(owners);
       },
@@ -3098,7 +3284,7 @@ describe('a membership change a check asks for', () => {
     const refuseNextCreate = () => {
       refusing = true;
     };
-    return { change, calls, statements, invited, owners: () => owners, refuseNextCreate };
+    return { change, calls, statements, invited, owners: () => owners, refuseNextCreate, asked };
   };
 
   it('makes the organisation and the batch account an administrator in it', async () => {
@@ -3159,11 +3345,12 @@ describe('a membership change a check asks for', () => {
   });
 
   it('hands over to a new owner once one may make no more organisations', async () => {
-    const { change, calls, owners, refuseNextCreate } = changesFor();
+    const { change, calls, owners, refuseNextCreate, asked } = changesFor();
     await change('join', 'Alpha Hall');
     refuseNextCreate();
     await change('join', 'Bravo');
     expect(owners()).toBe(2);
+    expect(asked).toEqual([false, true]);
     calls.length = 0;
     await change('suspend', 'Alpha Hall');
     await change('suspend', 'Bravo');
@@ -3198,6 +3385,73 @@ describe('a membership change a check asks for', () => {
       'not a membership id',
     );
     expect(() => domainPause(MEMBERSHIP, "qa@x'; --")).toThrow('no domain');
+  });
+});
+
+describe('the owner a batch makes organisations as', () => {
+  const ownerWith = ({ kept, signIn = async () => {} }) => {
+    const registered = [];
+    const keptNow = [];
+    const asOwner = (fresh) =>
+      keptOwner({
+        fresh,
+        kept,
+        signIn,
+        register: async () => {
+          registered.push(true);
+          return { email: `owner-${registered.length}@soirely.test`, password: 'p' };
+        },
+        keep: (owner) => keptNow.push(owner.email),
+      });
+    return { asOwner, registered, keptNow };
+  };
+  const kept = { email: 'kept@soirely.test', password: 'p' };
+
+  it('is the one an earlier batch registered, while it still signs in', async () => {
+    const { asOwner, registered } = ownerWith({ kept });
+    expect(await asOwner(false)).toBe(kept);
+    expect(registered).toEqual([]);
+  });
+
+  it('is registered and kept when none was, or the kept one no longer signs in', async () => {
+    const first = ownerWith({ kept: null });
+    expect((await first.asOwner(false)).email).toBe('owner-1@soirely.test');
+    expect(first.keptNow).toEqual(['owner-1@soirely.test']);
+    const refused = Object.assign(new Error('refused'), { status: 401 });
+    const gone = ownerWith({
+      kept,
+      signIn: async () => {
+        throw refused;
+      },
+    });
+    expect((await gone.asOwner(false)).email).toBe('owner-1@soirely.test');
+  });
+
+  it('is a new one when the batch asks for fresh, and an unreachable API is no reason to register', async () => {
+    const fresh = ownerWith({ kept });
+    expect((await fresh.asOwner(true)).email).toBe('owner-1@soirely.test');
+    const down = ownerWith({
+      kept,
+      signIn: async () => {
+        throw new Error('fetch failed');
+      },
+    });
+    await expect(down.asOwner(false)).rejects.toThrow('fetch failed');
+    expect(down.registered).toEqual([]);
+  });
+
+  it('is no reason to register when the API refuses for any reason but a bad sign-in', async () => {
+    for (const status of [429, 503]) {
+      const refused = ownerWith({
+        kept,
+        signIn: async () => {
+          throw Object.assign(new Error(`answered ${status}`), { status });
+        },
+      });
+      await expect(refused.asOwner(false)).rejects.toThrow(`answered ${status}`);
+      expect(refused.registered).toEqual([]);
+      expect(refused.keptNow).toEqual([]);
+    }
   });
 });
 
