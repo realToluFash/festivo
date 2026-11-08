@@ -1,4 +1,4 @@
-import { callingCode, compareGuestNames, emailProblem } from '@soirely/domain';
+import { LOCALES, callingCode, compareGuestNames, emailProblem } from '@soirely/domain';
 
 import { CLOCKS, type SampleEvent, cardOf, localDay } from './events.ts';
 import { GUEST_WORDS, SAMPLE_GUESTS } from './guestCounts.ts';
@@ -63,6 +63,18 @@ export interface Companion {
   reply: Reply;
 }
 
+/** sc-3790: a guest's language, en, es, fr or pt; null is Not set. The host's and the guest's own are the AC, not yet built. */
+export type GuestLanguage = 'en' | 'es' | 'fr' | 'pt';
+export const GUEST_LANGUAGES: readonly { code: GuestLanguage; name: string }[] = LOCALES.map(
+  (one) => ({ code: one.code as GuestLanguage, name: one.nativeName }),
+);
+/** The organisation's language, for the Not set line; Ire Events' in the sample. */
+export const ORGANISATION_LANGUAGE: GuestLanguage = 'en';
+
+export function languageName(code: GuestLanguage | null): string | null {
+  return GUEST_LANGUAGES.find((one) => one.code === code)?.name ?? null;
+}
+
 export interface Guest {
   id: string;
   name: string;
@@ -77,6 +89,8 @@ export interface Guest {
   added: Said;
   replaced: string | null;
   arrived: string | null;
+  language: GuestLanguage | null;
+  chose: GuestLanguage | null;
 }
 
 const ADDED: Said = { by: COLLEAGUE, how: null, on: '2026-09-14' };
@@ -97,6 +111,8 @@ function guest(id: string, name: string, reply: Reply, extra: Partial<Guest> = {
     added: ADDED,
     replaced: null,
     arrived: null,
+    language: null,
+    chose: null,
     ...extra,
   };
 }
@@ -284,6 +300,8 @@ function wedding(): Guest[] {
       replied: '2026-10-13',
       email: 'ines.duarte@sapo.pt',
       companions: companions('ines', ['Rui Duarte'], 'coming'),
+      language: 'es',
+      chose: 'pt',
     }),
     guest('joaquin', 'Joaquín Ruiz', 'noReply', {
       invited: { by: READER, how: 'In person', on: '2026-10-09' },
@@ -306,6 +324,7 @@ function wedding(): Guest[] {
       replied: '2026-10-12',
       email: 'sophie.laurent@orange.fr',
       companions: companions('sophie', ['Marc Laurent'], 'coming'),
+      language: 'fr',
     }),
     guest('tomas', 'Tomás Ferreira', 'noReply', { email: 'tomas.ferreira@gmial.com' }),
     guest('yusuf', 'Yusuf Ibrahim', 'notYet', { phone: { country: 'NG', number: '809 221 4410' } }),
@@ -753,6 +772,7 @@ export interface Values {
   email: string;
   country: string;
   number: string;
+  language: GuestLanguage | null;
   companions: readonly { id: string | null; name: string }[];
 }
 
@@ -762,6 +782,7 @@ export function valuesOf(one: Guest | null): Values {
     email: one?.email ?? '',
     country: one?.phone?.country ?? 'GB',
     number: one?.phone?.number ?? '',
+    language: one?.language ?? null,
     companions:
       one?.companions.map((companion) => ({ id: companion.id, name: companion.name ?? '' })) ?? [],
   };
@@ -824,6 +845,7 @@ export function saveGuest(list: readonly Guest[], id: string, values: Values): G
         values.number.trim() === ''
           ? null
           : { country: values.country, number: values.number.trim() },
+      language: values.language,
       companions: kept,
     };
   });
@@ -840,6 +862,7 @@ export function addGuest(list: readonly Guest[], values: Values, on: string): Gu
       values.number.trim() === ''
         ? null
         : { country: values.country, number: values.number.trim() },
+    language: values.language,
     added: { by: READER, how: null, on },
   });
 
@@ -1085,6 +1108,13 @@ const CLOCK_DAY1 = new Date('2026-11-05T18:41:00Z');
 const CLOCK_DAY2 = new Date('2026-11-06T10:30:00Z');
 const TODAY = '2026-11-03';
 
+/** sc-3790's Add guest: a guest from Paris, Language set by the host. */
+const LUCAS: Partial<Values> = {
+  name: 'Lucas Moreau',
+  email: 'lucas.moreau@orange.fr',
+  language: 'fr',
+};
+
 const BIMPE: Partial<Values> = {
   name: 'Bimpe Adeyemi',
   email: 'bimpe.adeyemi@gmail.com',
@@ -1145,6 +1175,11 @@ export const GUESTS_STATES = [
   { key: 'markRefused', name: 'Mark as invited with nothing chosen' },
   { key: 'marked', name: 'Marked as invited' },
   { key: 'markNotSaved', name: 'Mark as invited failed' },
+  { key: 'languageAdd', name: 'Add guest, Language: Français' },
+  { key: 'languageEdit', name: 'Edit guest, the guest chose their own language' },
+  { key: 'languageNotSet', name: 'Details, Language Not set' },
+  { key: 'languageSet', name: 'Details, Language Français' },
+  { key: 'languageGuestChose', name: 'Details, the guest chose Português' },
 ] as const;
 
 export type GuestsState = (typeof GUESTS_STATES)[number]['key'];
@@ -1334,6 +1369,16 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
       });
     case 'markNotSaved':
       return column(guestPane('bisi', { invite: 'markNotSaved' }));
+    case 'languageAdd':
+      return add({ values: LUCAS });
+    case 'languageEdit':
+      return { ...edit('ines'), choice: 'coming' };
+    case 'languageNotSet':
+      return column(guestPane('kwame'), { choice: 'coming' });
+    case 'languageSet':
+      return column(guestPane('sophie'), { choice: 'coming' });
+    case 'languageGuestChose':
+      return column(guestPane('ines'), { choice: 'coming' });
   }
 }
 
@@ -1421,6 +1466,14 @@ export const GUESTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     'recordNotSaved',
   ]),
   group('Add guest, in place', ['add', 'addRefused', 'addDuplicate', 'added', 'addNotAdded']),
+  group('The guest’s language (sc-3790)', [
+    'add',
+    'languageAdd',
+    'languageEdit',
+    'languageNotSet',
+    'languageSet',
+    'languageGuestChose',
+  ]),
   group('The link and Mark as invited', [
     'linkCopied',
     'clipboardRefused',

@@ -22,6 +22,7 @@ import {
 import {
   Amber,
   GuestField,
+  LanguageField,
   OkLine,
   Pair,
   PhoneField,
@@ -324,6 +325,11 @@ export function EditForm({
           onChange={(email) => change({ email })}
         />
         <PhoneField values={values} error={lines.number} help={GW.keepsLink} onChange={change} />
+        <LanguageField
+          value={values.language}
+          chose={guest.chose}
+          onChange={(language) => change({ language })}
+        />
         <CompanionFields
           host={values.name.trim() === '' ? guest.name : values.name.trim()}
           values={values}
@@ -600,6 +606,11 @@ export function AddForm({
           onChange={(email) => change({ email })}
         />
         <PhoneField values={values} error={lines.number} onChange={change} />
+        <LanguageField
+          value={values.language}
+          chose={null}
+          onChange={(language) => change({ language })}
+        />
         {duplicate && (
           <Amber title={GW.duplicate(values.name.trim())} focusKey="duplicate">
             <Pair>
