@@ -21,6 +21,7 @@ import {
   reachFrom,
 } from './messages.ts';
 import { type Bit, useInbox } from './messagesContext.ts';
+import type { Group } from './messagesTo.ts';
 import { DayRule, HostBubble, ReachBar, SoirelyCard, SystemLine, Words } from './MessagesParts.tsx';
 
 const RING = 2 * Math.PI * 12.5;
@@ -77,8 +78,8 @@ export function Receipt({ reach, onWho }: { reach: Reach; onWho: () => void }) {
   );
 }
 
-function stageBits(out: Out, compact: boolean): Bit[] {
-  const reach = outReach(out);
+function stageBits(out: Out, compact: boolean, groups: readonly Group[]): Bit[] {
+  const reach = outReach(out, groups);
 
   switch (out.stage) {
     case 'sending':
@@ -102,15 +103,15 @@ function stageBits(out: Out, compact: boolean): Bit[] {
 
 /** A message to many as it goes: ten seconds, Sending…, who it reached, or why nothing went; an earlier one keeps its reach in its line. */
 function OutItem({ out, compact }: { out: Out; compact: boolean }) {
-  const { act, focus } = useInbox();
-  const reach = outReach(out);
+  const { act, focus, to } = useInbox();
+  const reach = outReach(out, to.book.groups);
 
   return (
     <>
       <HostBubble
         subject={out.subject}
         body={<Words body={out.body} />}
-        bits={stageBits(out, compact)}
+        bits={stageBits(out, compact, to.book.groups)}
         look={out.stage === 'failed' ? 'faded' : out.stage === 'countdown' ? 'arriving' : 'sent'}
       >
         {out.stage === 'countdown' && (
@@ -175,7 +176,7 @@ function OutItem({ out, compact }: { out: Out; compact: boolean }) {
 
 /** What was sent from here in a thread: a follow-up says it goes to the same guests, under the first message on their page (pm, 7 Nov). */
 function Outs({ thread, follows }: { thread: ConvoId; follows: boolean }) {
-  const { inbox } = useInbox();
+  const { inbox, to } = useInbox();
   const outs = outsIn(inbox, thread);
 
   return outs.map((out, index) => {
@@ -185,7 +186,9 @@ function Outs({ thread, follows }: { thread: ConvoId; follows: boolean }) {
     return (
       <Fragment key={index}>
         {following && (
-          <SystemLine glyph="group">{many('followLine', outReach(out).count)}</SystemLine>
+          <SystemLine glyph="group">
+            {many('followLine', outReach(out, to.book.groups).count)}
+          </SystemLine>
         )}
         <OutItem out={out} compact={compact} />
       </Fragment>

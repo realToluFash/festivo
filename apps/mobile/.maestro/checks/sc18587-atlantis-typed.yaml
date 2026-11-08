@@ -5,4 +5,8 @@ appId: host.exp.Exponent
     file: ../time-zone-typed.yaml
     env:
       QUERY: 'Atlantis'
+# The text itself, so a check whose typing went nowhere fails rather than passing on its screenshot. sc-32521.
+- assertVisible:
+    id: 'timeZone.search'
+    text: 'Atlantis'
 - takeScreenshot: time-zone-atlantis-typed

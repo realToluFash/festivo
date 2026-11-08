@@ -68,12 +68,13 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
       .parentElement as HTMLElement;
     const links = within(group).getAllByRole('link');
 
-    expect(links).toHaveLength(47);
+    expect(links).toHaveLength(86);
     expect(links[0]?.getAttribute('href')).toBe(`${AT}?state=first`);
     expect(links[7]?.getAttribute('href')).toBe(`${AT}?state=noticeCost`);
     expect(links[26]?.getAttribute('href')).toBe(`${AT}?state=bell`);
     expect(links[44]?.getAttribute('href')).toBe(`${AT}?state=tellPlace`);
     expect(links[46]?.getAttribute('href')).toBe(`${AT}?state=closedEnded`);
+    expect(links[71]?.getAttribute('href')).toBe(`${AT}?state=nobodyDue`);
   });
 
   it('is the event’s own Messages entry, with the count under it', SLOW, async () => {
@@ -377,16 +378,13 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
   });
 
   it(
-    'picks who gets it: Guests who… counted, conditions removed and added, Escape back to To',
+    'picks who gets it: Coming chosen, conditions removed and added, Escape back to To',
     SLOW,
     async () => {
       await messages('to');
       const to = screen.getByRole('dialog', { name: 'To' });
 
-      expect(within(to).getByRole('radio', { name: 'Guests who…' })).toHaveProperty(
-        'checked',
-        true,
-      );
+      expect(within(to).getByRole('radio', { name: 'Coming 96' })).toHaveProperty('checked', true);
       expect(within(to).getByText('96 guests')).toBeDefined();
 
       fireEvent.click(within(to).getByRole('button', { name: 'Remove condition: Is coming' }));
@@ -394,11 +392,11 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
 
       fireEvent.click(within(to).getByRole('button', { name: 'Add a condition' }));
       fireEvent.click(within(to).getByRole('button', { name: 'Hasn’t replied' }));
-      expect(within(to).getByText('25 guests')).toBeDefined();
+      expect(await within(to).findByText('25 guests', {}, WAIT)).toBeDefined();
 
       fireEvent.click(within(to).getByRole('button', { name: 'Add a condition' }));
       fireEvent.click(within(to).getByRole('button', { name: 'Is coming' }));
-      expect(within(to).getByText('Nobody matches')).toBeDefined();
+      expect(await within(to).findByText('Nobody matches', {}, WAIT)).toBeDefined();
 
       fireEvent.click(within(to).getByRole('radio', { name: /All guests/ }));
       press('Escape');
@@ -590,7 +588,10 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
     async () => {
       await messages('preview');
 
-      expect(screen.getByText('As Kwame Mensah will see it · English')).toBeDefined();
+      expect(screen.getByRole('heading', { name: 'As Kwame Mensah will see it' })).toBeDefined();
+      expect(
+        screen.getByRole('button', { name: 'Preview as Kwame Mensah · English' }),
+      ).toBeDefined();
       const sends = screen.getByRole('region', { name: 'What Soirely sends' });
 
       expect(
@@ -895,7 +896,7 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
     await messages('checkNotReplied');
     const check = screen.getByRole('alertdialog', { name: 'Check it before it goes' });
 
-    expect(screen.getByRole('button', { name: 'Guests who… Hasn’t replied · 25' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Hasn’t replied · 25' })).toBeDefined();
     expect(within(check).getByText('Sending to 25 people cannot be undone.')).toBeDefined();
     expect(
       within(check).getByText('Mei Lin Chen · No email address · No phone number'),
