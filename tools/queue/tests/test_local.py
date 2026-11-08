@@ -282,3 +282,144 @@ class Scratch(unittest.TestCase):
         (self.root / "soirely-ops").mkdir()
         self.sweep()
         self.assertEqual(self.said, [])
+
+
+class FinishedEvidence(Scratch):
+    def test_a_passed_storys_evidence_goes_the_same_day_and_an_open_storys_stays(self):
+        store.put_story(self.db, {"id": 10118, "state": "Passsed QA", "done": False})
+        store.put_story(self.db, {"id": 10119, "state": "Done", "done": True})
+        store.put_story(self.db, {"id": 10200, "state": "Ready For QA", "done": False})
+        passed, done = self.entry("sc10118-shake", 0), self.entry("sc10119", 0)
+        open_ = self.entry("sc10200", 0)
+        self.sweep()
+        self.assertFalse(passed.exists())
+        self.assertFalse(done.exists())
+        self.assertTrue(open_.exists())
+
+    def test_an_entry_naming_an_unknown_story_waits_for_its_age(self):
+        unknown = self.entry("sc10300", 0)
+        self.sweep()
+        self.assertTrue(unknown.exists())
+
+
+class Worktrees(unittest.TestCase):
+    def setUp(self):
+        self.folder = tempfile.TemporaryDirectory()
+        self.addCleanup(self.folder.cleanup)
+        self.root = pathlib.Path(self.folder.name)
+        self.git("init", "-q", "--bare", "-b", "main", str(self.root / "origin.git"))
+        self.place = self.root / "festivo"
+        self.git("clone", "-q", str(self.root / "origin.git"), str(self.place))
+        self.git("-C", str(self.place), "commit", "-q", "--allow-empty", "-m", "start")
+        self.git("-C", str(self.place), "push", "-q", "origin", "main")
+        self.config = {"machine": "tolu-linux", "workspace": str(self.root),
+                       "mainCheckout": "festivo", "roles": {"dev": {}}}
+        self.db = store.connect(":memory:")
+        self.said = []
+
+    def git(self, *args):
+        subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *args], check=True,
+                       capture_output=True)
+
+    def tree(self, name, story, state, push=True):
+        store.put_story(self.db, {"id": story, "state": state, "done": state == "Done"})
+        path = self.place / ".claude" / "worktrees" / name
+        branch = f"feature/sc-{story}/{name}"
+        self.git("-C", str(self.place), "worktree", "add", "-q", "-b", branch, str(path))
+        self.git("-C", str(path), "commit", "-q", "--allow-empty", "-m", "work")
+        if push:
+            self.git("-C", str(path), "push", "-q", "origin", branch)
+        (path / "node_modules").mkdir()
+        (path / "node_modules" / "x.js").write_text("x")
+        (path / "pnpm-workspace.yaml").write_text("x")
+        return path, branch
+
+    def sweep(self, cwds=(), later=2 * 60 * 60):
+        local.sweep_worktrees(self.db, self.config, store.stories(self.db), self.said.append,
+                              {pathlib.Path(c) for c in cwds}, time.time() + later)
+
+    def branches(self):
+        return subprocess.run(["git", "-C", str(self.place), "branch", "--format=%(refname:short)"],
+                              capture_output=True, text=True).stdout.split()
+
+    def test_a_clean_pushed_worktree_on_a_passed_story_goes_and_its_branch_stays(self):
+        path, branch = self.tree("box", 10118, "Passsed QA")
+        self.sweep()
+        self.assertFalse(path.exists())
+        self.assertIn(branch, self.branches())
+        self.assertIn("removed 1 worktrees", self.said[0])
+        self.assertEqual(store.get_meta(self.db, "worktrees_left"), [])
+
+    def test_uncommitted_changes_keep_it_and_ops_is_told(self):
+        path, _ = self.tree("box", 10118, "Done")
+        (path / "notes.txt").write_text("half done")
+        self.sweep()
+        self.assertTrue(path.exists())
+        self.assertEqual(store.get_meta(self.db, "worktrees_left"), [str(path)])
+        found = local.checks(self.db, self.config, DAY * 10, cache=lambda: 1.0,
+                             free=lambda c: 100.0, largest=lambda c, start: "")
+        self.assertIn("worktrees-left", [f["key"] for f in found])
+
+    def test_an_unpushed_commit_keeps_it(self):
+        path, _ = self.tree("box", 10118, "Done", push=False)
+        self.sweep()
+        self.assertTrue(path.exists())
+        self.assertEqual(store.get_meta(self.db, "worktrees_left"), [str(path)])
+
+    def test_a_live_session_in_it_keeps_it(self):
+        path, _ = self.tree("box", 10118, "Done")
+        self.sweep(cwds=[path / "apps"])
+        self.assertTrue(path.exists())
+
+    def test_a_session_that_reached_it_by_another_path_keeps_it(self):
+        path, _ = self.tree("box", 10118, "Done")
+        other = self.root / "same-disk"
+        other.symlink_to(self.root)
+        self.sweep(cwds=[other / path.relative_to(self.root) / "apps"])
+        self.assertTrue(path.exists())
+
+    def test_a_folder_with_the_worktrees_inode_under_another_path_holds_it(self):
+        path, _ = self.tree("box", 10118, "Done")
+
+        class Elsewhere:
+            parents = ()
+
+            def stat(self):
+                return path.stat()
+
+        held = local.held_folders([Elsewhere()])
+        self.assertEqual(local.worktree_keeps(path, [], held, time.time() + DAY), "in use")
+
+    def test_a_worktree_used_in_the_last_hour_keeps_it(self):
+        path, _ = self.tree("box", 10118, "Done")
+        self.sweep(later=10 * 60)
+        self.assertTrue(path.exists())
+
+    def test_a_worktree_whose_story_the_store_does_not_know_is_kept_and_named(self):
+        path, _ = self.tree("box", 10118, "Done")
+        self.db.execute("DELETE FROM stories")
+        self.sweep()
+        self.assertTrue(path.exists())
+        self.assertEqual(store.get_meta(self.db, "worktrees_unknown"), [str(path)])
+        found = local.checks(self.db, self.config, DAY * 10, cache=lambda: 1.0,
+                             free=lambda c: 100.0, largest=lambda c, start: "")
+        reason = next(f["reason"] for f in found if f["key"] == "worktrees-left")
+        self.assertIn("does not know", reason)
+
+    def test_a_story_in_review_keeps_it(self):
+        path, _ = self.tree("box", 10118, "In Review")
+        self.sweep()
+        self.assertTrue(path.exists())
+        self.assertEqual(store.get_meta(self.db, "worktrees_left"), [])
+
+    def test_the_cwds_of_this_users_processes_are_read(self):
+        here = pathlib.Path.cwd().resolve()
+        self.assertIn(here, local.live_cwds())
+
+    def test_the_sizes_status_shows_split_worktrees_from_qa(self):
+        out = self.root / "litter-sizes"
+        out.write_text(f"2000000\t{self.place}/.claude/worktrees\n"
+                       f"500000\t{self.root}/soirely-qa2/.qa\n")
+        self.assertEqual(local.measure_litter(self.config, False, out),
+                         {"worktrees": 2.0, "qa": 0.5})
+        self.assertIsNone(local.measure_litter(self.config, False, self.root / "none"))
