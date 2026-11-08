@@ -96,7 +96,7 @@ async function atTheStart(answers: Record<string, () => Response | Promise<Respo
   fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
   fireEvent.click(
     await screen.findByRole(
-      'button',
+      'link',
       { name: 'Lost your authenticator and your recovery codes?' },
       THE_WAY_IN,
     ),
@@ -803,7 +803,7 @@ describe('a sign-in that has run out (sc-29956)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
     fireEvent.click(
       await screen.findByRole(
-        'button',
+        'link',
         { name: 'Lost your authenticator and your recovery codes?' },
         THE_WAY_IN,
       ),

@@ -1127,7 +1127,7 @@ describe('changing the password', () => {
     expect(passwordRow().getByRole('button', { name: 'Change password' })).toBeDefined();
   });
 
-  it('names Your account in the back control of Reset your password, and goes back to it (sc-23279)', async () => {
+  it('goes back to Your account from ‹ Back on Reset your password', async () => {
     answering({ 'GET /api/auth/sessions': () => json(SESSIONS) });
     openSecurity();
 
@@ -1135,10 +1135,7 @@ describe('changing the password', () => {
     fireEvent.click(screen.getByRole('link', { name: 'Forgot it?' }));
     await screen.findByRole('heading', { level: 1, name: 'Reset your password' });
 
-    expect(screen.queryByRole('button', { name: 'Back to sign in' })).toBeNull();
-    const back = screen.getByRole('button', { name: 'Your account' });
-    expect(back.textContent).toBe('‹Your account');
-    fireEvent.click(back);
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Your account' })).toBeDefined();
   });

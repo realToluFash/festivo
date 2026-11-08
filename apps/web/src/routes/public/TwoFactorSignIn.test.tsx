@@ -260,11 +260,10 @@ describe('a sign-in that asks for a second factor', () => {
         problem('too_many_attempts', 429, { 'Retry-After': '600' }),
     });
 
-    expect(screen.queryByRole('button', { name: /‹/ })).toBeNull();
     enter('000000');
     fireEvent.click(await screen.findByRole('link', { name: 'Reset your password' }));
     await screen.findByRole('heading', { level: 1, name: 'Reset your password' });
-    fireEvent.click(screen.getByRole('button', { name: 'Enter your code' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Enter your code' })).toBeDefined();
   });

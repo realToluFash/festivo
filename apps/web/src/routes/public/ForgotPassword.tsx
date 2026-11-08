@@ -1,30 +1,31 @@
 import { ApiError } from '@soirely/api-client';
 import { formatTimeOfDay, lockLiftsAt } from '@soirely/domain';
-import { type FormEvent, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { Link, useLocation } from 'react-router';
+import { type FormEvent, type ReactNode, useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
+import { Link, useLocation, useNavigate } from 'react-router';
 
 import { api } from '../../api.ts';
-import type { AuthBackTo } from '../../components/AuthBack.tsx';
 import { AuthPage } from '../../components/AuthPage.tsx';
 import { FieldError } from '../../components/FieldError.tsx';
+import { ColumnBack, HaveAccount } from '../../components/Onboarding.tsx';
 import { emailMessage, useFormChecks } from '../../formChecks.ts';
 import { dateLocale } from '../../i18n/index.ts';
-import type { ForgotFrom } from '../../forgotFrom.ts';
 import { useStepFocus } from '../../stepFocus.ts';
 import { offField } from '../../offField.ts';
 
 type Status =
   | { kind: 'asking' }
   | { kind: 'sending' }
-  | { kind: 'sent'; email: string }
+  | { kind: 'sent'; email: string; again: 'idle' | 'sending' | 'sent' }
   | { kind: 'limited'; time: string; again: boolean }
   | { kind: 'failed'; again: boolean };
 
 /** "Reset your password": an address in, and the same answer whether or not it has an account. */
 export function ForgotPassword() {
   const { t } = useTranslation();
-  const from = useLocation().state as ForgotFrom;
+  const navigate = useNavigate();
+  const location = useLocation();
+  const opened = location.key === 'default';
   const [status, setStatus] = useState<Status>({ kind: 'asking' });
   const [typed, setTyped] = useState('');
   const [sentHeading, arriveAtSent] = useStepFocus();
@@ -35,16 +36,27 @@ export function ForgotPassword() {
     () => document.getElementById('email')?.focus(),
   );
 
-  async function send(email: string, again: boolean): Promise<void> {
+  async function send(email: string): Promise<void> {
     setStatus({ kind: 'sending' });
 
     try {
       await api.forgotPassword(email);
-      setStatus({ kind: 'sent', email });
+      setStatus({ kind: 'sent', email, again: 'idle' });
       arriveAtSent();
     } catch (error) {
-      setStatus(refusalFrom(error, again));
-      if (again) arriveAtRefused();
+      setStatus(refusalFrom(error, false));
+    }
+  }
+
+  async function sendAgain(email: string): Promise<void> {
+    setStatus({ kind: 'sent', email, again: 'sending' });
+
+    try {
+      await api.forgotPassword(email);
+      setStatus({ kind: 'sent', email, again: 'sent' });
+    } catch (error) {
+      setStatus(refusalFrom(error, true));
+      arriveAtRefused();
     }
   }
 
@@ -55,19 +67,15 @@ export function ForgotPassword() {
     const email = typed.trim();
     if (!checks.passes({ email })) return;
 
-    void send(email, false);
+    void send(email);
   }
 
-  const back: AuthBackTo =
-    from == null
-      ? { label: t('signIn.title'), heard: t('twoFactor.back'), fallback: '/sign-in' }
-      : from.back === 'join'
-        ? { label: t('join.registerTitle', { organisation: from.organisation }) }
-        : { label: t(BACK_TITLE[from.back]) };
-
   if (status.kind === 'sent') {
+    const resending = status.again === 'sending';
+
     return (
-      <AuthPage back={back}>
+      <AuthPage bare end={null}>
+        <ColumnBack onClick={() => setStatus({ kind: 'asking' })} />
         <div className="auth-heading">
           <h1 ref={sentHeading} tabIndex={-1}>
             {t('recovery.sentTitle')}
@@ -75,77 +83,68 @@ export function ForgotPassword() {
           <p>{t('recovery.sentBody')}</p>
         </div>
 
-        <div className="notice notice-quiet">
-          <div className="notice-body">
-            <p className="notice-title">{t('recovery.nothingTitle')}</p>
-            <p>{t('recovery.nothingBody')}</p>
-            <p className="notice-action">
-              <button
-                className="link-button"
-                type="button"
-                onClick={() => void send(status.email, true)}
-              >
-                {t('recovery.sendAgain')}
-              </button>
-            </p>
-          </div>
-        </div>
-
-        <p className="field-help">{t('recovery.providerNote')}</p>
-
-        <div className="auth-footnote">
-          <span>{t('recovery.gotIt')}</span>
-          <Link className="link-button" to="/sign-in">
-            {t('recovery.backToSignIn')}
-          </Link>
+        <div className="auth-asides">
+          <p className="auth-aside">
+            <span>
+              <Trans
+                i18nKey="recovery.nothingThere"
+                components={{
+                  send: (
+                    <SendAgain
+                      busy={resending}
+                      onSend={() => {
+                        if (!resending) void sendAgain(status.email);
+                      }}
+                    />
+                  ),
+                }}
+              />
+            </span>
+            <span role="status">{status.again === 'sent' && t('recovery.sentAgain')}</span>
+          </p>
+          <p className="auth-aside">{t('recovery.providerNote')}</p>
+          <p className="auth-aside">
+            <span>{t('recovery.gotIt')}</span>
+            <Link className="link-button" to="/sign-in">
+              {t('recovery.backToSignIn')}
+            </Link>
+          </p>
         </div>
       </AuthPage>
     );
   }
 
+  const refused = status.kind === 'limited' || status.kind === 'failed';
+
   return (
-    <AuthPage back={back}>
+    <AuthPage bare end={<HaveAccount question={t('recovery.remembered')} />}>
+      <ColumnBack
+        onClick={() => (opened ? void navigate('/sign-in', { replace: true }) : void navigate(-1))}
+      />
       <div className="auth-heading">
         <h1>{t('recovery.title')}</h1>
         <p>{t('recovery.intro')}</p>
+        {refused && (
+          <div
+            className="auth-notice"
+            role={status.again ? undefined : 'alert'}
+            ref={refusedNotice}
+            tabIndex={status.again ? -1 : undefined}
+          >
+            <p className="auth-notice-title">
+              {status.kind === 'limited' ? t('recovery.limitedTitle') : t('recovery.failedTitle')}
+            </p>
+            <p>
+              {status.kind === 'limited'
+                ? t('recovery.limitedBody', { time: status.time })
+                : t('recovery.failedBody')}
+            </p>
+          </div>
+        )}
       </div>
 
-      {status.kind === 'limited' && (
-        <div
-          className="notice notice-attention"
-          role={status.again ? undefined : 'alert'}
-          ref={refusedNotice}
-          tabIndex={status.again ? -1 : undefined}
-        >
-          <span className="mark mark-attention" aria-hidden="true">
-            !
-          </span>
-          <div className="notice-body">
-            <p className="notice-title">{t('recovery.limitedTitle')}</p>
-            <p>{t('recovery.limitedBody', { time: status.time })}</p>
-          </div>
-        </div>
-      )}
-
-      {status.kind === 'failed' && (
-        <div
-          className="notice notice-broken"
-          role={status.again ? undefined : 'alert'}
-          ref={refusedNotice}
-          tabIndex={status.again ? -1 : undefined}
-        >
-          <span className="mark mark-broken" aria-hidden="true">
-            ✕
-          </span>
-          <div className="notice-body">
-            <p className="notice-title">{t('recovery.failedTitle')}</p>
-            <p>{t('recovery.failedBody')}</p>
-          </div>
-        </div>
-      )}
-
       <form className="auth-form" noValidate onSubmit={submit}>
-        <div className="field">
+        <div className={checks.errors.email == null ? 'field' : 'field field-wrong'}>
           <label htmlFor="email">{t('recovery.email')}</label>
           <input
             className={checks.errors.email == null ? 'input' : 'input input-wrong'}
@@ -179,24 +178,28 @@ export function ForgotPassword() {
           {status.kind === 'sending' ? t('recovery.sending') : t('recovery.send')}
         </button>
       </form>
-
-      <div className="auth-footnote">
-        <span>{t('recovery.remembered')}</span>
-        <Link className="link-button" to="/sign-in">
-          {t('recovery.signIn')}
-        </Link>
-      </div>
     </AuthPage>
   );
 }
 
-const BACK_TITLE = {
-  code: 'twoFactor.title',
-  used: 'recovery.usedTitle',
-  expired: 'recovery.expiredTitle',
-  invalid: 'recovery.invalidTitle',
-  account: 'account.title',
-} as const;
+/** "send it again", the link inside its sentence; its words are the sentence's own, or Sending… while it sends. */
+function SendAgain({
+  busy,
+  onSend,
+  children,
+}: {
+  busy: boolean;
+  onSend: () => void;
+  children?: ReactNode;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <button className="link-button" type="button" aria-busy={busy} onClick={onSend}>
+      {busy ? t('recovery.sending') : children}
+    </button>
+  );
+}
 
 function refusalFrom(error: unknown, again: boolean): Status {
   if (error instanceof ApiError && error.is('too_many_attempts')) {

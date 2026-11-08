@@ -1,5 +1,5 @@
-import { type Account, ApiError, awaiting } from '@soirely/api-client';
-import { meetsPasswordLength } from '@soirely/domain';
+import { type Account, ApiError, ApiUnreachableError, awaiting } from '@soirely/api-client';
+import { PASSWORD_MINIMUM_LENGTH, meetsPasswordLength } from '@soirely/domain';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useSearchParams } from 'react-router';
@@ -7,20 +7,25 @@ import { Link, useNavigate, useSearchParams } from 'react-router';
 import { api } from '../../api.ts';
 import { AuthPage } from '../../components/AuthPage.tsx';
 import { FieldError } from '../../components/FieldError.tsx';
+import { SignedInAs, Tick } from '../../components/Onboarding.tsx';
 import { PasswordField } from '../../components/PasswordField.tsx';
-import { PasswordRule } from '../../components/PasswordRule.tsx';
-import { Pending } from '../../components/Pending.tsx';
+import { PasswordRuleLine } from '../../components/PasswordRule.tsx';
+import { PendingPage } from '../../components/Pending.tsx';
 import { SecondFactorStep } from '../../components/SecondFactorStep.tsx';
+import { StillSignedIn } from '../../components/StillSignedIn.tsx';
+import { Unreachable } from '../../components/Unreachable.tsx';
 import { useFormChecks } from '../../formChecks.ts';
-import type { ForgotFrom } from '../../forgotFrom.ts';
+import { useLinkRetry } from '../../linkRetry.ts';
 import { focusWhereSent } from '../../offField.ts';
 import { adoptAccount, landingFor, providerOnlyBy } from '../../session.ts';
+import { useSignOut } from '../../signOut.ts';
 import { useStepFocus } from '../../stepFocus.ts';
 
 type Dead = 'used' | 'expired' | 'invalid';
 
 type Status =
   | { kind: 'checking' }
+  | { kind: 'unreachable' }
   | { kind: 'ready'; email: string }
   | { kind: 'saving'; email: string }
   | { kind: 'failed'; email: string }
@@ -39,6 +44,10 @@ export function ResetPassword() {
   const [status, setStatus] = useState<Status>({ kind: 'checking' });
   const [password, setPassword] = useState('');
   const [refusal, setRefusal] = useState<string | null>(null);
+  const [short, setShort] = useState(false);
+  const [reads, setReads] = useState(0);
+  const retry = useLinkRetry(status, () => setReads((count) => count + 1));
+  const { signOut, unreached } = useSignOut(() => navigate('/sign-in', { replace: true }));
   const passwordInput = useRef<HTMLInputElement>(null);
   const [stepHeading, arriveAtStep] = useStepFocus();
   const checks = useFormChecks(
@@ -57,13 +66,19 @@ export function ResetPassword() {
         if (live) setStatus({ kind: twoFactor ? 'code' : 'ready', email });
       })
       .catch((error: unknown) => {
-        if (live) setStatus({ kind: deadFrom(error) ?? 'invalid' });
+        if (!live) return;
+        // A link that could not be read is not a dead one: reading it again may work.
+        setStatus(
+          error instanceof ApiUnreachableError
+            ? { kind: 'unreachable' }
+            : { kind: deadFrom(error) ?? 'invalid' },
+        );
       });
 
     return () => {
       live = false;
     };
-  }, [token]);
+  }, [token, reads]);
 
   async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -73,6 +88,7 @@ export function ResetPassword() {
 
     // The rule is stated before submit, so a short password is never sent.
     if (!meetsPasswordLength(password)) {
+      setShort(true);
       passwordInput.current?.focus();
       return;
     }
@@ -111,30 +127,27 @@ export function ResetPassword() {
     }
   }
 
-  if (status.kind === 'checking') return <Pending />;
+  if (status.kind === 'checking') return <PendingPage />;
+  if (status.kind === 'unreachable') return <Unreachable signedIn={false} retry={retry} bare />;
 
   if (status.kind === 'used' || status.kind === 'expired' || status.kind === 'invalid') {
     return (
-      <AuthPage>
+      <AuthPage bare end={null}>
         <div className="auth-heading">
           <h1 ref={stepHeading} tabIndex={-1}>
             {t(`recovery.${status.kind}Title`)}
           </h1>
           <p>{t(`recovery.${status.kind}Body`)}</p>
         </div>
-        <Link
-          className="button button-primary"
-          to="/forgot-password"
-          state={{ back: status.kind } satisfies ForgotFrom}
-        >
+        <Link className="button button-primary" to="/forgot-password">
           {t('recovery.sendNew')}
         </Link>
-        <div className="auth-footnote">
-          {status.kind === 'expired' && <span>{t('recovery.rememberedAfterAll')}</span>}
+        <p className="auth-aside">
+          <span>{t('recovery.rememberedAfterAll')}</span>
           <Link className="link-button" to="/sign-in">
             {t('recovery.signIn')}
           </Link>
-        </div>
+        </p>
       </AuthPage>
     );
   }
@@ -143,7 +156,7 @@ export function ResetPassword() {
     const email = status.email;
 
     return (
-      <AuthPage>
+      <AuthPage bare end={null}>
         <SecondFactorStep
           intro={t('recovery.codeIntro', { email })}
           recoveryIntro={t('recovery.codeRecoveryIntro')}
@@ -151,6 +164,7 @@ export function ResetPassword() {
           pausedNote={t('recovery.nothingChanged')}
           failedTitle={t('recovery.failedTitle')}
           failedBody={t('recovery.failedBody')}
+          lostBoth={{ to: '/two-factor/recovery' }}
           onVerify={async (factor) => {
             try {
               await api.passResetCode(token, factor);
@@ -175,14 +189,14 @@ export function ResetPassword() {
 
   if (status.kind === 'done') {
     return (
-      <AuthPage>
-        <span className="verified-mark" aria-hidden="true">
-          ✓
-        </span>
+      <AuthPage bare end={<SignedInAs email={status.email} onSignOut={() => void signOut()} />}>
         <div className="auth-heading">
-          <h1 ref={stepHeading} tabIndex={-1}>
-            {t('recovery.doneTitle')}
-          </h1>
+          <div className="auth-done">
+            <Tick size={26} />
+            <h1 ref={stepHeading} tabIndex={-1}>
+              {t('recovery.doneTitle')}
+            </h1>
+          </div>
           <p>{t('recovery.doneBody', { email: status.email })}</p>
         </div>
         <button
@@ -192,36 +206,34 @@ export function ResetPassword() {
         >
           {t('recovery.continue')}
         </button>
+        {unreached && <StillSignedIn />}
       </AuthPage>
     );
   }
 
   const saving = status.kind === 'saving';
-  const error = checks.errors.password ?? refusal;
+  const error =
+    checks.errors.password ??
+    refusal ??
+    (short ? t('recovery.tooShort', { count: PASSWORD_MINIMUM_LENGTH }) : null);
 
   return (
-    <AuthPage>
+    <AuthPage bare end={null}>
       <div className="auth-heading">
         <h1 ref={stepHeading} tabIndex={-1}>
           {t('recovery.newTitle')}
         </h1>
         <p>{t('recovery.newFor', { email: status.email })}</p>
-      </div>
-
-      {status.kind === 'failed' && (
-        <div className="notice notice-broken" role="alert">
-          <span className="mark mark-broken" aria-hidden="true">
-            ✕
-          </span>
-          <div className="notice-body">
-            <p className="notice-title">{t('recovery.failedTitle')}</p>
+        {status.kind === 'failed' && (
+          <div className="auth-notice" role="alert">
+            <p className="auth-notice-title">{t('recovery.failedTitle')}</p>
             <p>{t('recovery.failedBody')}</p>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       <form className="auth-form" noValidate onSubmit={(event) => void submit(event)}>
-        <div className="field">
+        <div className={error == null ? 'field' : 'field field-wrong'}>
           <label htmlFor="password">{t('recovery.newPassword')}</label>
           <PasswordField
             id="password"
@@ -231,6 +243,7 @@ export function ResetPassword() {
             onChange={(value) => {
               setPassword(value);
               setRefusal(null);
+              if (meetsPasswordLength(value)) setShort(false);
               checks.edited('password', value);
             }}
             onBlur={(value) => checks.left('password', value)}
@@ -240,18 +253,10 @@ export function ResetPassword() {
             describedBy={error == null ? 'password-rule' : 'password-error password-rule'}
           />
           {error != null && <FieldError id="password-error" message={error} />}
+          <PasswordRuleLine met={meetsPasswordLength(password)} id="password-rule" />
         </div>
 
-        <PasswordRule met={meetsPasswordLength(password)} id="password-rule" />
-
-        <div className="notice notice-quiet">
-          <span className="mark mark-info" aria-hidden="true">
-            i
-          </span>
-          <div className="notice-body">
-            <p>{t('recovery.signsOut')}</p>
-          </div>
-        </div>
+        <p className="auth-aside">{t('recovery.signsOut')}</p>
 
         <button className="button button-primary" type="submit" aria-busy={saving}>
           {saving ? t('recovery.saving') : t('recovery.save')}

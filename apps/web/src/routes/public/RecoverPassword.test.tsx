@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
@@ -76,21 +76,28 @@ describe('asking for a reset link', () => {
     );
   });
 
-  it('goes back to sign-in from ‹ Sign in, heard as Back to sign in (sc-23279)', async () => {
+  it('keeps the lockup in the header, with ‹ Back first in the column and Sign in beside Remembered it?', async () => {
+    const { container } = at('/forgot-password');
+
+    expect(container.querySelector('.auth-header .brand')).not.toBeNull();
+    const column = container.querySelector('.auth-column');
+    expect(column?.firstElementChild?.textContent).toBe('Back');
+    expect(container.querySelector('.auth-header')?.textContent).toMatch(/Remembered it\?Sign in/);
+  });
+
+  it('goes back to the page it was opened from with ‹ Back', async () => {
     at('/sign-in');
 
     fireEvent.click(screen.getByRole('link', { name: 'Forgot your password?' }));
-    const back = await screen.findByRole('button', { name: 'Back to sign in' });
-    expect(back.textContent).toBe('‹Sign in');
-    fireEvent.click(back);
+    fireEvent.click(await screen.findByRole('button', { name: 'Back' }));
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Sign in' })).toBeDefined();
   });
 
-  it('goes to sign-in from ‹ Sign in when the page was opened on its own', async () => {
+  it('goes to sign-in from ‹ Back when the page was opened on its own', async () => {
     at('/forgot-password');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Back to sign in' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Sign in' })).toBeDefined();
   });
@@ -160,17 +167,30 @@ describe('asking for a reset link', () => {
 
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'folake@ire.events' } });
     fireEvent.click(screen.getByRole('button', { name: 'Send the link' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Send it again' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'send it again' }));
   }
 
-  it('takes focus back to Check your email once Send it again has sent', async () => {
+  it('sends again from the link in its sentence, stays on Check your email and says Sent again', async () => {
     await sentOnce(() => json({}, 202));
 
-    await waitFor(() =>
-      expect(document.activeElement).toBe(
-        screen.getByRole('heading', { level: 1, name: 'Check your email' }),
-      ),
+    await waitFor(() => expect(screen.getByRole('status').textContent).toBe('Sent again.'));
+    expect(screen.getByRole('heading', { level: 1, name: 'Check your email' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'send it again' }).closest('p')?.textContent).toMatch(
+      /^Nothing there\? Check your spam folder first, then send it again\./,
     );
+  });
+
+  it('goes back to the form from ‹ Back on Check your email, with the address kept', async () => {
+    answering({ 'POST /api/auth/password/forgot': () => json({}, 202) });
+    at('/forgot-password');
+
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'folake@ire.events' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Send the link' }));
+    await screen.findByRole('heading', { level: 1, name: 'Check your email' });
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Reset your password' }));
+    expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe('folake@ire.events');
   });
 
   it('takes focus to the notice when Send it again fails, read once rather than announced too', async () => {
@@ -179,7 +199,7 @@ describe('asking for a reset link', () => {
     });
 
     const notice = await screen.findByText('That did not work');
-    await waitFor(() => expect(document.activeElement).toBe(notice.closest('.notice')));
+    await waitFor(() => expect(document.activeElement).toBe(notice.closest('.auth-notice')));
     expect(document.activeElement?.textContent).toMatch(/Something went wrong on the way/);
     expect(screen.queryByRole('alert')).toBeNull();
   });
@@ -188,7 +208,7 @@ describe('asking for a reset link', () => {
     await sentOnce(() => problem('too_many_attempts', 429, { 'Retry-After': '600' }));
 
     const notice = await screen.findByText('Too many requests');
-    await waitFor(() => expect(document.activeElement).toBe(notice.closest('.notice')));
+    await waitFor(() => expect(document.activeElement).toBe(notice.closest('.auth-notice')));
     expect(screen.queryByRole('alert')).toBeNull();
   });
 });
@@ -208,7 +228,7 @@ describe('sending the link again', () => {
   }
 
   async function sendAgain(): Promise<void> {
-    fireEvent.click(await screen.findByRole('button', { name: 'Send it again' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'send it again' }));
   }
 
   it('keeps the address as it was typed when the send fails', async () => {
@@ -229,14 +249,16 @@ describe('sending the link again', () => {
     expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe('Folake@ire.events');
   });
 
-  it('shows the address while it sends again', async () => {
-    sentOnce(() => new Promise<never>(() => {}));
+  it('says Sending… in the link while it sends again, to the same address', async () => {
+    const sent = sentOnce(() => new Promise<never>(() => {}));
     await sendAgain();
 
-    await waitFor(() =>
-      expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe('Folake@ire.events'),
-    );
-    expect(screen.getByRole('button', { name: 'Sending…' })).toBeDefined();
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Sending…' })).toBeDefined());
+    expect(screen.getByRole('heading', { level: 1, name: 'Check your email' })).toBeDefined();
+    expect(sent.map(({ body }) => body)).toEqual([
+      { email: 'Folake@ire.events' },
+      { email: 'Folake@ire.events' },
+    ]);
   });
 
   it('sends to the address the field shows, unchanged, and to a changed one instead of the earlier', async () => {
@@ -305,8 +327,33 @@ describe('setting a new password from the link', () => {
 
     fireEvent.change(screen.getByLabelText('New password'), { target: { value: 'too short' } });
     fireEvent.click(screen.getByRole('button', { name: 'Set password and sign in' }));
+    expect(screen.getByText('Use at least 15 characters.')).toBeDefined();
+    expect(document.activeElement).toBe(screen.getByLabelText('New password'));
 
     expect(sent.filter((request) => request.path === '/api/auth/password/reset')).toEqual([]);
+  });
+
+  it('says Cannot reach Soirely when the link cannot be read, and Try again reads it again', async () => {
+    let reads = 0;
+    answering({
+      'POST /api/auth/password/reset/check': () => {
+        if (++reads === 1) throw new TypeError('Failed to fetch');
+        return json({ email: 'folake@ire.events' });
+      },
+    });
+    at('/reset-password?token=t1');
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Cannot reach Soirely' }),
+    ).toBeDefined();
+    expect(screen.queryByText("This link doesn't work")).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Set a new password' }),
+    ).toBeDefined();
+    expect(reads).toBe(2);
   });
 
   it('says a breached password is breached, in the design’s words', async () => {
@@ -368,6 +415,9 @@ describe('setting a new password from the link', () => {
     expect(
       screen.getByText(/We have emailed folake@ire.events to say it was changed/),
     ).toBeDefined();
+    const header = document.querySelector('.auth-header');
+    expect(header?.textContent).toMatch(/folake@ire\.events/);
+    expect(within(header as HTMLElement).getByRole('button', { name: 'Sign out' })).toBeDefined();
     expect(sent.find((request) => request.path === '/api/auth/password/reset')?.body).toMatchObject(
       {
         token: 't1',
@@ -428,6 +478,11 @@ describe('setting a new password from the link', () => {
     await screen.findByRole('heading', { level: 1, name: 'Enter your code' });
     expect(screen.getByText(/Nothing changes until it passes\./)).toBeDefined();
     expect(screen.queryByLabelText('New password')).toBeNull();
+    expect(
+      screen
+        .getByRole('link', { name: 'Lost your authenticator and your recovery codes?' })
+        .getAttribute('href'),
+    ).toBe('/two-factor/recovery');
 
     fireEvent.change(screen.getByRole('textbox'), { target: { value: '123456' } });
     fireEvent.click(screen.getByRole('button', { name: 'Continue to a new password' }));
@@ -470,11 +525,12 @@ describe('setting a new password from the link', () => {
     expect(screen.getByRole('link', { name: 'Send a new link' }).getAttribute('href')).toBe(
       '/forgot-password',
     );
+    expect(screen.getByText('Remembered it after all?')).toBeDefined();
     // Shown as the page opens: nobody clicked, so focus is not moved.
     expect(document.activeElement).toBe(document.body);
   });
 
-  it('names the dead link in the back control of the page it sends to, and goes back to it (sc-23279)', async () => {
+  it('goes back to the dead link from ‹ Back on the page it sends to, labelled Back, not its title', async () => {
     answering({
       'POST /api/auth/password/reset/check': () => problem('reset_link_expired', 410),
     });
@@ -482,7 +538,7 @@ describe('setting a new password from the link', () => {
 
     fireEvent.click(await screen.findByRole('link', { name: 'Send a new link' }));
     await screen.findByRole('heading', { level: 1, name: 'Reset your password' });
-    fireEvent.click(screen.getByRole('button', { name: 'This link has expired' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
 
     expect(
       await screen.findByRole('heading', { level: 1, name: 'This link has expired' }),

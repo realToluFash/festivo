@@ -21,13 +21,13 @@ export function SignedInAs({ email, onSignOut }: { email: string; onSignOut: () 
   );
 }
 
-/** `onSignIn` runs before the way to sign-in, as an invitation holds its link there. */
-export function HaveAccount({ onSignIn }: { onSignIn?: () => void }) {
+/** `onSignIn` runs before the way to sign-in, as an invitation holds its link there; `question` replaces "Already have an account?". */
+export function HaveAccount({ onSignIn, question }: { onSignIn?: () => void; question?: string }) {
   const { t } = useTranslation();
 
   return (
     <div className="auth-new">
-      <span>{t('register.haveAccount')}</span>
+      <span>{question ?? t('register.haveAccount')}</span>
       <Link className="button auth-new-button" to="/sign-in" onClick={onSignIn}>
         {t('register.signIn')}
       </Link>
