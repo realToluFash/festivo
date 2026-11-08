@@ -1,12 +1,22 @@
-# Home, where signing in lands: Today for an account in an organisation, which names no
-# account and is evidence enough of the session, or the no-organisation screen, which names
-# it. Signed out shows neither, so the wait fails. sc-32726.
+# Home, where signing in lands, in one of three ways: Today for an account in an
+# organisation, which names no account and is evidence enough of the session; the signed-in
+# card for a role that cannot read events; or the no-organisation screen. The last two name
+# the account, so the check reads it. Signed out shows none of them, so the wait fails. sc-32726.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/
 - extendedWaitUntil:
-    visible: '{{t:todayScreen.tab.today}}|{{t:noOrganisation.title}}'
+    visible: '{{t:home.signedInTo}}|{{t:todayScreen.tab.today}}|{{t:noOrganisation.title}}'
     timeout: 30000
+- runFlow:
+    when:
+      visible: '{{t:home.signedInTo}}'
+    commands:
+      - scrollUntilVisible:
+          element:
+            text: '{{t:settings.signedInAs|email}}'
+          direction: DOWN
+          timeout: 30000
 - runFlow:
     when:
       visible: '{{t:noOrganisation.title}}'
