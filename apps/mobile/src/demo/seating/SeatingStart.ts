@@ -83,6 +83,7 @@ export function blank(layout: Layout): Seating {
     spoken: null,
     guest: null,
     held: true,
+    serial: 1,
   };
 }
 
@@ -375,7 +376,7 @@ function tablet(state: SeatingState, b: Seating): Seating {
     case 'resize':
       return chosen(moved(b, 't9', { w: 300 }), 't9', {
         zoom: at(0.5, 1590, 1020),
-        tip: { words: say.widthTip(300), at: { x: 1740, y: 1020 } },
+        tip: { words: say.widthTip('300 cm'), at: { x: 1740, y: 1020 } },
         save: 'saving',
       });
     case 'turn':

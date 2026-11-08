@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { type Action, reduce, tight } from './SeatingActs.ts';
 import {
   chairSides,
+  inside,
   detailOf,
   feetInches,
   fit,
@@ -34,6 +35,10 @@ import { blank, startOf } from './SeatingStart.ts';
 import { SEATING_BOARDS } from './SeatingBoards.ts';
 
 const run = (m: Seating, ...actions: Action[]) => actions.reduce(reduce, m);
+const moved = (m: Seating, id: string, change: Partial<Seating['items'][number]>): Seating => ({
+  ...m,
+  items: m.items.map((it) => (it.id === id ? { ...it, ...change } : it)),
+});
 const pad = startOf(null, 'landscape');
 const phone = startOf(null, 'phone');
 const item = (m: Seating, id: string) => {
@@ -205,7 +210,7 @@ describe('seating a party', () => {
     expect(m.pop).toEqual({ kind: 'short', id: 't4' });
     const just = run(m, { type: 'seatJust' });
     expect(just.bar?.words).toBe('Amaka Eze is at Table 4.');
-    expect(just.tray.find((p) => p.guestOf === 'Amaka Eze')).toMatchObject({ plus: 1 });
+    expect(just.tray.find((p) => p.lead === 'Guest of Amaka Eze')).toMatchObject({ plus: 1 });
   });
 
   it('a party seated apart says so', () => {
@@ -257,6 +262,30 @@ describe('seating a party', () => {
     expect(m.bar?.words).toBe('Priya Shah just moved Table 8. Your change wasn’t saved.');
     expect(m.chosen).toBe('t8');
     expect(item(m, 't8').y).toBe(980);
+  });
+
+  it('gives each guest sent back an id of their own, so seating one seats only that one', () => {
+    const amaka = run(pad, { type: 'pick', id: 'amaka' }, { type: 'seatAt', id: 't10' });
+    const back = run(amaka, { type: 'unseatAll', id: 't10' });
+    const twins = back.tray.filter((p) => p.lead === 'Guest of Amaka Eze');
+    expect(twins).toHaveLength(2);
+    expect(new Set(back.tray.map((p) => p.id)).size).toBe(back.tray.length);
+    const one = run(back, { type: 'pick', id: twins[0]?.id ?? '' }, { type: 'seatAt', id: 't8' });
+    expect(one.tray.filter((p) => p.lead === 'Guest of Amaka Eze')).toHaveLength(1);
+    expect(seatedCount(one.items) + trayCount(one.tray)).toBe(COMING);
+  });
+
+  it('Undo undoes the seating only until the next change', () => {
+    const seated = run(pad, { type: 'pick', id: 'kwame' }, { type: 'seatAt', id: 't8' });
+    const moved = run(seated, { type: 'moved', id: 't5', at: { x: 1980, y: 1380 } });
+    expect(moved.undo).toBeNull();
+    expect(moved.bar).toBeNull();
+    const after = run(moved, { type: 'undo' });
+    expect(item(after, 't5').y).toBe(1380);
+    expect(item(after, 't8').chairs[5]?.who).toBe('Kwame Mensah');
+    const undone = run(seated, { type: 'undo' });
+    expect(undone.items).toEqual(pad.items);
+    expect(undone.save).toBe('saving');
   });
 
   it('everyone seated empties the tray', () => {
@@ -319,6 +348,36 @@ describe('a table’s fields apply as each is entered', () => {
     );
   });
 
+  it('take sizes in feet and inches where the organisation is US customary', () => {
+    const us = { ...pad, units: 'us' as const };
+    const t9 = run(
+      us,
+      { type: 'tapItem', id: 't9' },
+      { type: 'draft', key: 'Width', text: '9 ft' },
+      { type: 'apply', key: 'Width' },
+    );
+    expect(item(t9, 't9').w).toBe(274);
+    const t4 = run(
+      us,
+      { type: 'tapItem', id: 't4' },
+      { type: 'draft', key: 'Diameter', text: '6 ft' },
+      { type: 'apply', key: 'Diameter' },
+    );
+    expect(item(t4, 't4').d).toBe(183);
+  });
+
+  it('apply what was typed when another table is chosen', () => {
+    const m = run(
+      pad,
+      { type: 'tapItem', id: 't4' },
+      { type: 'draft', key: 'Name', text: 'Family' },
+      { type: 'tapItem', id: 't5' },
+    );
+    expect(item(m, 't4').name).toBe('Family');
+    expect(m.chosen).toBe('t5');
+    expect(m.fields.drafts).toEqual({});
+  });
+
   it('refuse a taken chair marked unusable', () => {
     expect(startOf('unusableRefused', 'landscape').fields.errors.chair).toBe(
       'Chidi Obi is in this seat. Move them first.',
@@ -338,6 +397,45 @@ describe('adding, placing and deleting', () => {
     expect(run(pad, { type: 'addRow' }).fields.added).toBe(
       'Row B added in the nearest free space, with 10 seats.',
     );
+  });
+
+  it('never gives two items one id, even after a delete', () => {
+    const one = run(pad, { type: 'tapItem', id: 't1' }, { type: 'duplicate' });
+    const gone = run(
+      one,
+      { type: 'tapItem', id: 't10' },
+      { type: 'ask', ask: { kind: 'deleteItem', id: 't10' } },
+      { type: 'confirm' },
+    );
+    const two = run(
+      gone,
+      { type: 'tapItem', id: 't3' },
+      { type: 'duplicate' },
+      { type: 'addRow' },
+      { type: 'addSeat' },
+    );
+    expect(new Set(two.items.map((it) => it.id)).size).toBe(two.items.length);
+    const sections = run(
+      two,
+      { type: 'arrange', shows: 'sectionAdd' },
+      { type: 'sectionName', name: 'Terrace' },
+      { type: 'sectionAdd' },
+    );
+    expect(new Set(sections.sections.map((s) => s.key)).size).toBe(4);
+  });
+
+  it('holds a resize and a turn inside the walls, and refuses a turn that cannot fit', () => {
+    const wide = run(pad, { type: 'resized', id: 't5', d: 400 });
+    expect(inside(item(wide, 't5'), ROOM)).toBe(true);
+    const near = moved(pad, 'top', { y: 120 });
+    const turned = run(near, { type: 'turned', id: 'top', rot: 90 });
+    expect(inside(item(turned, 'top'), ROOM)).toBe(true);
+    const field = run(
+      { ...near, chosen: 'top' },
+      { type: 'choose', field: 'Rotation', value: '90°' },
+    );
+    expect(field.fields.errors.Rotation).toBe('Top table would sit outside the room.');
+    expect(item(field, 'top').rot).toBe(0);
   });
 
   it('deletes a table and sends its guests back to Without a seat', () => {

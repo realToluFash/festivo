@@ -550,7 +550,7 @@ function PanelBody({ m, go }: { m: Seating; go: Go }) {
         />
       )}
       {m.tab === 'Arrange' || m.load === 'start' ? (
-        <ArrangePanel m={m} go={go} />
+        <ArrangePanel key={m.chosen ?? 'none'} m={m} go={go} />
       ) : (
         <SeatPanel m={m} go={go} />
       )}

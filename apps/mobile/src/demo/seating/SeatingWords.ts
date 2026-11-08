@@ -188,7 +188,7 @@ export const say = {
   stepRefused: (name: string, table: string) =>
     `${name} just moved ${table}. Your change wasn’t saved.`,
   where: (across: string, down: string) => `${across} across · ${down} down`,
-  widthTip: (cm: number) => `Width ${cm} cm`,
+  widthTip: (size: string) => `Width ${size}`,
   moreOnPlan: (n: number) => `${n} more on this plan`,
   onPlan: (first: string, others: number) =>
     others === 0 ? `${first} is on this plan` : `${first} and ${plural(others, 'other', 'others')}`,

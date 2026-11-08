@@ -27,7 +27,6 @@ import {
   heldInside,
   isCircle,
   itemAt,
-  metres,
   overlapping,
   snapped,
   turn,
@@ -41,12 +40,14 @@ import {
   editable,
   hexOf,
   itemOf,
+  length,
   ofWords,
   roomLine,
   sectionOf,
 } from './SeatingModel.ts';
 import { NO_SECTION_EDGE, type Item, type Person } from './SeatingSample.ts';
 import { EMPTY_EDGE, OFF_EDGE, OFF_FILL, SUNK, TAKEN_FILL } from './SeatingParts.tsx';
+import { PROPOSED } from './SeatingTokens.ts';
 import { say } from './SeatingWords.ts';
 
 const hidden = {
@@ -584,7 +585,7 @@ export function RoomDrawing({
           y1={v.oy}
           x2={v.ox + i * 100 * v.s}
           y2={v.oy + rl}
-          stroke={i % 5 === 0 ? '#E3E3EA' : '#F0F0F4'}
+          stroke={i % 5 === 0 ? PROPOSED.roomGridFive : PROPOSED.roomGrid}
           strokeWidth={1}
         />,
       );
@@ -596,7 +597,7 @@ export function RoomDrawing({
           y1={v.oy + j * 100 * v.s}
           x2={v.ox + rw}
           y2={v.oy + j * 100 * v.s}
-          stroke={j % 5 === 0 ? '#E3E3EA' : '#F0F0F4'}
+          stroke={j % 5 === 0 ? PROPOSED.roomGridFive : PROPOSED.roomGrid}
           strokeWidth={1}
         />,
       );
@@ -689,7 +690,7 @@ export function looksOf(
   if (chosen != null) {
     const over = overlapping(
       chosen,
-      m.items.filter((it) => it.id !== m.ghost?.id),
+      m.items.filter((it) => !it.id.startsWith('ghost-')),
     );
     if (over.length > 0) [chosen, ...over].forEach((it) => add(it.id, { overlap: true }));
   }
@@ -716,6 +717,10 @@ interface Live {
   item?: Item;
   tip?: { words: string; at: Point };
   ghost?: Item;
+}
+
+function sizeOf(m: Seating, cm: number): string {
+  return m.units === 'us' ? length(m, cm) : `${cm} cm`;
 }
 
 /** The finger's part of the room, made once: it reads the latest plan the screen hands it, never during a render. */
@@ -759,7 +764,7 @@ function roomGestures(dispatch: (action: Action) => void, show: (live: Live | nu
     y: (p.y - view.oy) / view.s,
   });
   const begin = (e: GestureResponderEvent) => {
-    const view = m?.shown;
+    const view = live?.view ?? m?.shown;
     if (m == null || view == null) return;
     const two = twoOf(e);
     if (two != null) {
@@ -823,7 +828,10 @@ function roomGestures(dispatch: (action: Action) => void, show: (live: Live | nu
       setLive({
         item: held,
         ghost: { ...it, id: `ghost-${it.id}` },
-        tip: { words: say.where(metres(held.x), metres(held.y)), at: { x: held.x, y: held.y } },
+        tip: {
+          words: say.where(length(mm, held.x), length(mm, held.y)),
+          at: { x: held.x, y: held.y },
+        },
       });
       return;
     }
@@ -844,7 +852,7 @@ function roomGestures(dispatch: (action: Action) => void, show: (live: Live | nu
     const across = round ? next.d : next.w;
     setLive({
       item: next,
-      tip: { words: say.widthTip(across), at: { x: it.x + across / 2, y: it.y } },
+      tip: { words: say.widthTip(sizeOf(mm, across)), at: { x: it.x + across / 2, y: it.y } },
     });
   };
   const end = (_: GestureResponderEvent, g: PanResponderGestureState) => {
@@ -928,15 +936,15 @@ export function RoomSurface({
           size={12.5}
           weight="semibold"
           accessibilityRole="header"
-          accessibilityLabel={say.roomLabel(m.room.name, metres(m.room.w), metres(m.room.l))}
+          accessibilityLabel={say.roomLabel(m.room.name, length(m, m.room.w), length(m, m.room.l))}
           style={[styles.roomLine, { left: v.ox, top: v.oy - 26 }]}
         >
           {roomLine(m)}
         </Text>
         {m.items.map((it) => {
           const b = bounds(it);
-          const w = Math.max(44, 2 * b.x * v.s);
-          const h = Math.max(44, 2 * b.y * v.s);
+          const w = Math.max(48, 2 * b.x * v.s);
+          const h = Math.max(48, 2 * b.y * v.s);
           return (
             <Pressable
               key={it.id}
@@ -1070,7 +1078,7 @@ export function RoomCard({ m, lit }: { m: Seating; lit: readonly string[] }) {
     <View
       accessible
       accessibilityRole="image"
-      accessibilityLabel={`${say.roomLabel(m.room.name, metres(m.room.w), metres(m.room.l))}${freeTables.length > 0 ? `. ${freeTables.join(', ')}` : ''}`}
+      accessibilityLabel={`${say.roomLabel(m.room.name, length(m, m.room.w), length(m, m.room.l))}${freeTables.length > 0 ? `. ${freeTables.join(', ')}` : ''}`}
       style={styles.card}
       onLayout={(e) => setWidth(Math.round(e.nativeEvent.layout.width))}
     >

@@ -6,6 +6,7 @@ import {
   firstEmpty,
   fit,
   free,
+  feetInches,
   heldInside,
   inside,
   nearestFree,
@@ -116,11 +117,38 @@ export type Action =
   | { type: 'fromGuest'; sheet: string | null; chair: number | null; pick: string | null };
 
 const TIMERS = new Set<Action['type']>(['saved', 'printed', 'loaded', 'refreshed', 'laid']);
+const LOOKS = new Set<Action['type']>([
+  ...TIMERS,
+  'view',
+  'fit',
+  'zoomStep',
+  'setView',
+  'tab',
+  'listTab',
+  'listOpen',
+  'tableFilter',
+  'trayOpen',
+  'search',
+  'group',
+  'notYet',
+  'clearSearch',
+  'sheet',
+  'sheetChair',
+  'pop',
+  'paper',
+  'draft',
+  'dismissBar',
+]);
 
-/** A deep link holds its moment (Saving…, Preparing…) until the first thing the person does. */
+/** A deep link holds its moment (Saving…, Preparing…) until the first thing the person does; Undo lasts until the next thing they do. */
 export function reduce(m: Seating, a: Action): Seating {
   const next = act(TIMERS.has(a.type) ? m : { ...m, held: false }, a);
-  return next;
+  if (LOOKS.has(a.type) || a.type === 'undo' || next.undo !== m.undo || m.undo == null) return next;
+  return { ...next, undo: null, bar: next.bar?.undo === true ? null : next.bar };
+}
+
+function serial(m: Seating, prefix: string): [string, Seating] {
+  return [`${prefix}-${m.serial}`, { ...m, serial: m.serial + 1 }];
 }
 
 function saving(m: Seating): Seating {
@@ -135,7 +163,8 @@ function patch(m: Seating, id: string, change: (it: Item) => Item): Seating {
   return { ...m, items: m.items.map((it) => (it.id === id ? change(it) : it)) };
 }
 
-function letGo(m: Seating): Seating {
+function letGo(m0: Seating): Seating {
+  const m = flush(m0, null);
   return {
     ...m,
     chosen: null,
@@ -149,7 +178,25 @@ function letGo(m: Seating): Seating {
   };
 }
 
-function choose(m: Seating, id: string, tab: Tab = 'Arrange'): Seating {
+/** Choosing something else is leaving the field: what was typed applies first (pm, 7 Nov 2026). */
+function flush(m: Seating, id: string | null): Seating {
+  if (m.chosen == null || m.chosen === id) return m;
+  return Object.keys(m.fields.drafts).reduce(applyField, m);
+}
+
+/** A resize or a turn by finger is held inside the walls, as a drag is; one that cannot fit is refused. */
+function heldAtWall(m: Seating, id: string, change: (it: Item) => Item): Seating {
+  const it = itemOf(m, id);
+  if (it == null) return m;
+  const next = change(it);
+  const held = { ...next, ...heldInside(next, m.room) };
+  if (!inside(held, m.room))
+    return { ...m, bar: { kind: 'amber', words: say.outsideRoom(it.name) } };
+  return saving(patch(m, id, () => held));
+}
+
+function choose(m0: Seating, id: string, tab: Tab = 'Arrange'): Seating {
+  const m = flush(m0, id);
   return {
     ...letGo(m),
     chosen: id,
@@ -159,14 +206,12 @@ function choose(m: Seating, id: string, tab: Tab = 'Arrange'): Seating {
   };
 }
 
-function personBack(who: string): Party {
-  return { id: `back-${who}`, lead: who, plus: 0, group: '', reply: null, guestOf: null };
+function personBack(who: string, id: string): Party {
+  return { id, lead: who, plus: 0, group: '', reply: null, companions: [] };
 }
 
 function namesOf(party: Party): string[] {
-  const lead = party.guestOf == null ? party.lead : say.guestOf(party.guestOf);
-  const companion = say.guestOf(party.guestOf ?? party.lead);
-  return [lead, ...Array.from({ length: party.plus }, () => companion)];
+  return [party.lead, ...party.companions];
 }
 
 /** Seats `n` of the party in `chairs`; anyone left stays without a seat as "Guest of …". */
@@ -174,27 +219,37 @@ function placeParty(m: Seating, party: Party, id: string, chairs: number[]): Sea
   const names = namesOf(party);
   const seatedNames = names.slice(0, chairs.length);
   const left = names.length - seatedNames.length;
+  const [restId, counted] = serial(m, `${party.id}-rest`);
+  const restNames = names.slice(seatedNames.length);
   const rest: Party[] =
     left > 0
-      ? [{ ...party, id: `${party.id}-rest`, plus: left - 1, guestOf: party.guestOf ?? party.lead }]
+      ? [
+          {
+            ...party,
+            id: restId,
+            lead: restNames[0] ?? '',
+            companions: restNames.slice(1),
+            plus: left - 1,
+          },
+        ]
       : [];
   const tray = m.tray.flatMap((p) => (p.id === party.id ? rest : [p]));
   return {
-    ...patch(m, id, (it) => ({
+    ...counted,
+    items: patch(m, id, (it) => ({
       ...it,
       chairs: it.chairs.map((c, i) => {
         const k = chairs.indexOf(i);
         return k < 0 ? c : { state: 'taken', who: seatedNames[k] ?? null };
       }),
-    })),
+    })).items,
     tray,
     picked: null,
   };
 }
 
 function seatedBar(party: Party, table: string, count: number, apart: boolean): Bar {
-  const lead = party.guestOf == null ? party.lead : say.guestOf(party.guestOf);
-  return { kind: 'white', words: say.seatedParty(lead, count - 1, table, apart), undo: true };
+  return { kind: 'white', words: say.seatedParty(party.lead, count - 1, table, apart), undo: true };
 }
 
 function seatAt(m: Seating, id: string, at?: number): Seating {
@@ -242,20 +297,25 @@ function swapDo(m: Seating, id: string, chair: number): Seating {
     ...one,
     chairs: one.chairs.map((c, i) => (i === chair ? { state: 'empty', who: null } : c)),
   }));
-  const placed = placeParty({ ...cleared, tray: [...cleared.tray, personBack(who)] }, party, id, [
-    chair,
-  ]);
+  const [backId, counted] = serial(cleared, 'back');
+  const placed = placeParty(
+    { ...counted, tray: [...counted.tray, personBack(who, backId)] },
+    party,
+    id,
+    [chair],
+  );
   return { ...placed, lit: [id], pop: null, ask: null, bar: seatedBar(party, it.name, 1, false) };
 }
 
 function unseatChairs(m: Seating, id: string, which: (c: Chair, i: number) => boolean): Seating {
   const it = itemOf(m, id);
   if (it == null) return m;
-  const back = it.chairs.flatMap((c, i) =>
-    which(c, i) && c.state === 'taken' ? [personBack(c.who ?? W.taken)] : [],
+  const going = it.chairs.flatMap((c, i) =>
+    which(c, i) && c.state === 'taken' ? [c.who ?? W.taken] : [],
   );
+  const back = going.map((who, k) => personBack(who, `back-${m.serial + k}`));
   return {
-    ...patch(m, id, (one) => ({
+    ...patch({ ...m, serial: m.serial + going.length }, id, (one) => ({
       ...one,
       chairs: one.chairs.map((c, i) =>
         which(c, i) && c.state === 'taken' ? { state: 'empty', who: null } : c,
@@ -353,8 +413,10 @@ const SHAPE_ADJECTIVE: Record<Kind, string> = {
   single: 'seat',
 };
 
-export function sizeWords(it: Item): string {
-  return it.kind === 'round' || it.kind === 'cocktail' ? `${it.d} cm` : `${it.w} × ${it.l} cm`;
+export function sizeWords(it: Item, units: Seating['units'] = 'metric'): string {
+  const us = units === 'us';
+  if (it.kind === 'round' || it.kind === 'cocktail') return us ? feetInches(it.d) : `${it.d} cm`;
+  return us ? `${feetInches(it.w)} × ${feetInches(it.l)}` : `${it.w} × ${it.l} cm`;
 }
 
 /** A chair needs about 55 cm of edge; under that the seats are tight (sc-4000), saved all the same. */
@@ -367,8 +429,8 @@ export function tight(it: Item): boolean {
   return it.w / Math.max(1, longest) < 55 || (it.ends > 0 && it.l / Math.ceil(it.ends / 2) < 55);
 }
 
-function squeezeWarn(it: Item): string | null {
-  return tight(it) ? say.squeeze(it.chairs.length, sizeWords(it)) : null;
+function squeezeWarn(it: Item, units: Seating['units']): string | null {
+  return tight(it) ? say.squeeze(it.chairs.length, sizeWords(it, units)) : null;
 }
 
 function resizeChairs(chairs: readonly Chair[], n: number): Chair[] {
@@ -414,9 +476,14 @@ function applyField(m: Seating, key: string): Seating {
   const done = (change: Partial<Item>, extra: Partial<Seating['fields']> = {}) => {
     const next = patch(cleared(m, key), it.id, (one) => ({ ...one, ...change }));
     const now = itemOf(next, it.id) ?? it;
-    return saving({ ...next, fields: { ...next.fields, warn: squeezeWarn(now), ...extra } });
+    if (!inside(now, m.room)) return refuse(m, key, say.outsideRoom(it.name));
+    return saving({
+      ...next,
+      fields: { ...next.fields, warn: squeezeWarn(now, m.units), ...extra },
+    });
   };
   const whole = parseWhole(text);
+  const size = m.units === 'us' && key !== 'Ends' ? length(m, text) : whole;
   switch (key) {
     case 'Name':
     case 'Label': {
@@ -459,11 +526,11 @@ function applyField(m: Seating, key: string): Seating {
     case 'Length':
     case 'Spacing':
     case 'Ends': {
-      if (whole == null || (key !== 'Ends' && whole < 30)) return cleared(m, key);
+      if (size == null || (key !== 'Ends' && size < 30)) return cleared(m, key);
       const field = { Diameter: 'd', Width: 'w', Length: 'l', Spacing: 'spacing', Ends: 'ends' }[
         key
       ];
-      return done({ [field]: key === 'Ends' ? Math.min(whole, it.chairs.length) : whole });
+      return done({ [field]: key === 'Ends' ? Math.min(size, it.chairs.length) : size });
     }
     case 'Across':
     case 'Down': {
@@ -486,8 +553,11 @@ function chooseField(m: Seating, field: 'Section' | 'Shape' | 'Rotation', value:
     const sec = m.sections.find((s) => s.name === value)?.key ?? null;
     return saving(patch(base, it.id, (one) => ({ ...one, sec })));
   }
-  if (field === 'Rotation')
-    return saving(patch(base, it.id, (one) => ({ ...one, rot: parseWhole(value) ?? 0 })));
+  if (field === 'Rotation') {
+    const rot = parseWhole(value) ?? 0;
+    if (!inside({ ...it, rot }, m.room)) return refuse(base, 'Rotation', say.outsideRoom(it.name));
+    return saving(patch(base, it.id, (one) => ({ ...one, rot })));
+  }
   const kind = SHAPE_KIND[value as (typeof SHAPE_CHOICES)[number]];
   if (kind == null || kind === it.kind) return base;
   const changed = {
@@ -496,10 +566,15 @@ function chooseField(m: Seating, field: 'Section' | 'Shape' | 'Rotation', value:
     rot: kind === 'rect' || kind === 'head' ? it.rot : 0,
     ...SHAPE_DEFAULT[kind],
   };
-  const note = say.shapeReset(SHAPE_ADJECTIVE[kind], sizeWords(changed), changed.chairs.length);
+  if (!inside(changed, m.room)) return refuse(base, 'Shape', say.outsideRoom(it.name));
+  const note = say.shapeReset(
+    SHAPE_ADJECTIVE[kind],
+    sizeWords(changed, m.units),
+    changed.chairs.length,
+  );
   return saving({
     ...patch(base, it.id, () => changed),
-    fields: { ...NO_FIELDS, note, warn: squeezeWarn(changed) },
+    fields: { ...NO_FIELDS, note, warn: squeezeWarn(changed, m.units) },
   });
 }
 
@@ -513,7 +588,7 @@ function newItem(m: Seating, kind: Kind, at: Point): Item {
         ? nextSeatName(m.items)
         : nextTableName(m.items);
   const it: Item = {
-    id: `new-${m.items.length}-${name}`,
+    id: `item-${m.serial}`,
     kind,
     name,
     label,
@@ -536,7 +611,7 @@ function add(m: Seating, kind: Kind, at: Point): Seating {
   const it = newItem(m, kind, at);
   const words = kind === 'row' ? say.rowAdded(it.label, it.chairs.length) : say.added(it.name);
   const keep = kind !== 'row' && kind !== 'single' && m.placeAnother && m.placing != null;
-  const next = saving({ ...m, items: [...m.items, it], pop: null });
+  const next = saving({ ...m, items: [...m.items, it], serial: m.serial + 1, pop: null });
   if (keep) return next;
   return {
     ...choose({ ...next, placing: null, bar: null }, it.id),
@@ -600,9 +675,10 @@ function sectionSubmit(m: Seating): Seating {
   if ([...name].length > 40) return { ...m, sectionForm: { ...f, error: W.sectionTooLong } };
   if (m.sections.some((s) => sameName(s.name, name)))
     return { ...m, sectionForm: { ...f, error: say.sectionTaken(name) } };
-  const key = `sec-${m.sections.length}-${name}`;
+  const key = `sec-${m.serial}`;
   return saving({
     ...m,
+    serial: m.serial + 1,
     sections: [...m.sections, { key, name, colour: f.colour }],
     arrange: 'room',
     sectionForm: { name: '', colour: f.colour, error: null },
@@ -629,11 +705,12 @@ function confirm(m: Seating): Seating {
   const ask = m.ask;
   if (ask == null) return m;
   if (ask.kind === 'deletePlan') {
-    const back = m.items.flatMap((it) =>
-      it.chairs.flatMap((c) => (c.state === 'taken' ? [personBack(c.who ?? W.taken)] : [])),
+    const going = m.items.flatMap((it) =>
+      it.chairs.flatMap((c) => (c.state === 'taken' ? [c.who ?? W.taken] : [])),
     );
+    const back = going.map((who, k) => personBack(who, `back-${m.serial + k}`));
     return {
-      ...letGo(m),
+      ...letGo({ ...m, serial: m.serial + going.length }),
       ask: null,
       load: 'noPlan',
       items: [],
@@ -735,21 +812,17 @@ function act(m: Seating, a: Action): Seating {
       );
     }
     case 'resized':
-      return saving(
-        patch(m, a.id, (one) => ({
-          ...one,
-          d: a.d != null ? snapped(a.d, true) : one.d,
-          w: a.w != null ? snapped(a.w, true) : one.w,
-          l: a.l != null ? snapped(a.l, true) : one.l,
-        })),
-      );
+      return heldAtWall(m, a.id, (one) => ({
+        ...one,
+        d: a.d != null ? snapped(a.d, true) : one.d,
+        w: a.w != null ? snapped(a.w, true) : one.w,
+        l: a.l != null ? snapped(a.l, true) : one.l,
+      }));
     case 'turned':
-      return saving(
-        patch(m, a.id, (one) => ({
-          ...one,
-          rot: (((Math.round(a.rot / 15) * 15) % 360) + 360) % 360,
-        })),
-      );
+      return heldAtWall(m, a.id, (one) => ({
+        ...one,
+        rot: (((Math.round(a.rot / 15) * 15) % 360) + 360) % 360,
+      }));
     case 'saved':
       return m.save === 'saving' ? { ...m, save: 'saved' } : m;
     case 'draft':
@@ -765,7 +838,7 @@ function act(m: Seating, a: Action): Seating {
       if (it == null) return m;
       const copy: Item = {
         ...it,
-        id: `copy-${m.items.length}`,
+        id: `copy-${m.serial}`,
         name: isTable(it)
           ? nextTableName(m.items)
           : it.kind === 'row'
@@ -775,7 +848,7 @@ function act(m: Seating, a: Action): Seating {
         chairs: it.chairs.map((c) => (c.state === 'unusable' ? c : { state: 'empty', who: null })),
       };
       const placed = { ...copy, ...nearestFree(copy, m.items, m.room, { x: it.x, y: it.y + 400 }) };
-      const next = saving({ ...m, items: [...m.items, placed] });
+      const next = saving({ ...m, items: [...m.items, placed], serial: m.serial + 1 });
       return {
         ...choose(next, placed.id),
         fields: { ...NO_FIELDS, added: say.copied(placed.name, it.name) },
@@ -862,7 +935,7 @@ function act(m: Seating, a: Action): Seating {
       if (m.picked === a.id) return { ...m, picked: null, bar: null, lit: [] };
       const party = partyOf(m, a.id);
       if (party == null) return m;
-      const lead = party.guestOf == null ? party.lead : say.guestOf(party.guestOf);
+      const lead = party.lead;
       return {
         ...m,
         picked: a.id,
@@ -893,7 +966,7 @@ function act(m: Seating, a: Action): Seating {
       if (m.undoRefuses) return { ...m, bar: { kind: 'amber', words: W.undidRefused }, undo: null };
       return m.undo == null
         ? m
-        : { ...m, items: m.undo.items, tray: m.undo.tray, undo: null, bar: null, lit: [] };
+        : saving({ ...m, items: m.undo.items, tray: m.undo.tray, undo: null, bar: null, lit: [] });
     case 'unseat':
       return unseatOne(m, a.id, a.chair);
     case 'moveTo':

@@ -14,12 +14,13 @@ import { ShapeMark } from '../../components/StatusMark.tsx';
 import { TextAction, TurningMark } from '../../components/SummaryRows.tsx';
 import type { Bar, SaveLine } from './SeatingModel.ts';
 import type { ChairState, Kind, Person } from './SeatingSample.ts';
+import { PROPOSED } from './SeatingTokens.ts';
 import { W, say } from './SeatingWords.ts';
 
-export const TAKEN_FILL = '#34343F';
-export const EMPTY_EDGE = '#8B8B9A';
-export const OFF_FILL = '#D3D3DB';
-export const OFF_EDGE = '#6E6E7E';
+export const TAKEN_FILL = PROPOSED.seatTaken;
+export const EMPTY_EDGE = PROPOSED.seatEdge;
+export const OFF_FILL = PROPOSED.seatUnusable;
+export const OFF_EDGE = PROPOSED.seatUnusableEdge;
 export const SUNK = tokens.colorNeutralFill;
 const hidden = {
   accessibilityElementsHidden: true,

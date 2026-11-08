@@ -574,10 +574,16 @@ function TableFields({ m, go, it }: { m: Seating; go: Go; it: Item }) {
           testID="seating.select.rotation"
         />
       )}
+      <Refused m={m} keys={['Shape', 'Rotation']} />
       <Overlap m={m} it={it} />
       {!off && <ItemActions go={go} it={it} remove={W.deleteTable} />}
     </>
   );
+}
+
+function Refused({ m, keys }: { m: Seating; keys: readonly string[] }) {
+  const words = keys.map((key) => m.fields.errors[key]).find((w) => w != null);
+  return words == null ? null : <Notice words={words} tone="red" />;
 }
 
 function Overlap({ m, it }: { m: Seating; it: Item }) {
@@ -709,6 +715,7 @@ function RowFields({ m, go, it }: { m: Seating; go: Go; it: Item }) {
         onOpen={() => go({ type: 'pop', pop: { kind: 'select', field: 'Rotation' } })}
         testID="seating.select.rotation"
       />
+      <Refused m={m} keys={['Rotation']} />
       {!off && <ItemActions go={go} it={it} remove={W.deleteRow} />}
     </>
   );

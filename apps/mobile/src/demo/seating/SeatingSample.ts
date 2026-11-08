@@ -1,3 +1,5 @@
+import { PROPOSED, SECTION_COLOURS } from './SeatingTokens.ts';
+
 /** Seating A's sample, as seating-a-spec §8 has it: the wedding at The Landmark, counted as Messaging B counts it (142 invited, 96 coming). */
 export type Kind = 'round' | 'rect' | 'head' | 'cocktail' | 'row' | 'single';
 export type ChairState = 'taken' | 'held' | 'empty' | 'unusable';
@@ -24,16 +26,7 @@ export interface Item {
   chairs: Chair[];
 }
 
-export const COLOURS = [
-  ['Blue', '#3B7DD8'],
-  ['Purple', '#8B6CD6'],
-  ['Plum', '#B0479A'],
-  ['Wine', '#8E3B5E'],
-  ['Rose', '#D96C8A'],
-  ['Brown', '#8A5A3C'],
-  ['Olive', '#6B8E23'],
-  ['Teal', '#2A9D8F'],
-] as const;
+export const COLOURS = SECTION_COLOURS;
 
 export type ColourName = (typeof COLOURS)[number][0];
 
@@ -49,8 +42,8 @@ export interface Party {
   plus: number;
   group: string;
   reply: 'Not sure yet' | 'No reply' | null;
-  /** A guest left behind when only part of the party was seated: "Guest of {name}", as Guests A says. */
-  guestOf: string | null;
+  /** Who comes with the lead, by name or as "Guest of {name}" (Guests A), as the web's demo has them. */
+  companions: readonly string[];
 }
 
 export interface Person {
@@ -66,7 +59,7 @@ export const EVENT_NAME = 'Adaeze & Tunde’s wedding';
 export const COMING = 96;
 export const NOT_SURE_OR_NO_REPLY = 31;
 export const OFFLINE_AT = '18:42';
-export const NO_SECTION_EDGE = '#8B8B9A';
+export const NO_SECTION_EDGE = PROPOSED.seatEdge;
 
 export const SECTIONS: readonly Section[] = [
   { key: 'stage', name: 'Stage side', colour: 'Plum' },
@@ -74,7 +67,7 @@ export const SECTIONS: readonly Section[] = [
   { key: 'bar', name: 'By the bar', colour: 'Olive' },
 ];
 
-const PRESENCE = ['#0369A1', '#6D28D9', '#86198F', '#9F1239', '#155E75', '#3730A3'] as const;
+const PRESENCE = PROPOSED.presence;
 
 export const READER = 'Folake Adeyemi';
 export const PRIYA: Person = { name: 'Priya Shah', colour: PRESENCE[0], viewer: false };
@@ -89,6 +82,7 @@ export const SIX: readonly Person[] = [
   { name: 'Tom Baker', colour: PRESENCE[5], viewer: false },
 ];
 
+/** Who sits where, as the web's demo seats them (seatingSeed); the last names at Tables 3, 4, 6, 7 and 9 are the iPhone's on the day only. */
 const NAMES: Record<string, readonly string[]> = {
   top: [
     'Adaeze Obi',
@@ -122,6 +116,17 @@ const NAMES: Record<string, readonly string[]> = {
     'Emma Clarke',
     'James Clarke',
   ],
+  t3: [
+    'Ifeoma Uche',
+    'Chuka Uche',
+    'Rosa Lima',
+    'Tiago Lima',
+    'Aisha Bello',
+    'Sani Bello',
+    'Nkem Obi',
+    'Dapo Obi',
+    'Lucía Ortega',
+  ],
   t4: [
     'Ada Obi',
     'Chidi Obi',
@@ -131,6 +136,7 @@ const NAMES: Record<string, readonly string[]> = {
     'Yemi Bakare',
     'Grace Mensah',
     'Daniel Mensah',
+    'Tomás Ferreira',
   ],
   t5: [
     'Inês Costa',
@@ -144,6 +150,18 @@ const NAMES: Record<string, readonly string[]> = {
     'Hana Sato',
     'Kenji Sato',
   ],
+  t6: [
+    'Elena Rossi',
+    'Marco Rossi',
+    'Ama Owusu',
+    'Kwesi Owusu',
+    'Lina Haddad',
+    'Sami Haddad',
+    'Zara Khan',
+    'Imran Khan',
+    'Lea Martin',
+    'Sophie Laurent',
+  ],
   t7: [
     'Tola Bakare',
     'Femi Bakare',
@@ -152,6 +170,8 @@ const NAMES: Record<string, readonly string[]> = {
     'Bayo Bakare',
     'Lola Bakare',
     'Seun Bakare',
+    'Inês Duarte',
+    'Rui Duarte',
   ],
   t8: [
     'Amara Diallo',
@@ -162,6 +182,15 @@ const NAMES: Record<string, readonly string[]> = {
     'Kwame Mensah',
     'Efua Mensah',
     'Yaw Mensah',
+  ],
+  t9: [
+    'Sofia Rossi',
+    'Luca Rossi',
+    'Yaa Mensah',
+    'Kojo Mensah',
+    'Nia Okafor',
+    'Obi Okafor',
+    'Marc Laurent',
   ],
   rowA: ['Priyanka Nair', 'Yuki Tanaka', 'Emeka Obi', 'Lars Johansson'],
   door: ['Grace Obi'],
@@ -338,36 +367,36 @@ export function sampleItems(day: boolean): Item[] {
 
 export const GROUPS = ['Adaeze’s family', 'Friends', 'Work'] as const;
 
-const party = (id: string, lead: string, plus: number, group: string): Party => ({
+const party = (id: string, lead: string, companions: readonly string[], group: string): Party => ({
   id,
   lead,
-  plus,
+  plus: companions.length,
   group,
   reply: null,
-  guestOf: null,
+  companions,
 });
 
 /** Without a seat: 12 people planning, 3 on the day (Joaquín Ruiz + 1, Marta Silva). */
 export function sampleTray(day: boolean): Party[] {
   if (day)
     return [
-      party('joaquin', 'Joaquín Ruiz', 1, 'Friends'),
-      party('marta', 'Marta Silva', 0, 'Work'),
+      party('joaquin', 'Joaquín Ruiz', ['Guest of Joaquín Ruiz'], 'Friends'),
+      party('marta', 'Marta Silva', [], 'Work'),
     ];
 
   return [
-    party('kwame', 'Kwame Mensah', 1, 'Friends'),
-    party('ines', 'Inês Duarte', 1, 'Friends'),
-    party('lucia', 'Lucía Ortega', 0, 'Friends'),
-    party('tomas', 'Tomás Ferreira', 0, 'Friends'),
-    party('amaka', 'Amaka Eze', 2, 'Adaeze’s family'),
-    party('sophie', 'Sophie Laurent', 1, 'Work'),
-    party('marta', 'Marta Silva', 0, 'Work'),
+    party('kwame', 'Kwame Mensah', ['Guest of Kwame Mensah'], 'Friends'),
+    party('ines', 'Inês Duarte', ['Rui Duarte'], 'Friends'),
+    party('lucia', 'Lucía Ortega', [], 'Friends'),
+    party('tomas', 'Tomás Ferreira', [], 'Friends'),
+    party('amaka', 'Amaka Eze', ['Guest of Amaka Eze', 'Guest of Amaka Eze'], 'Adaeze’s family'),
+    party('sophie', 'Sophie Laurent', ['Marc Laurent'], 'Work'),
+    party('marta', 'Marta Silva', [], 'Work'),
   ];
 }
 
 /** With Show Not sure yet and no reply too: two of the 31, each with their reply in their own words. */
 export const NOT_YET: readonly Party[] = [
-  { ...party('hugo', 'Hugo Lambert', 0, 'Work'), reply: 'Not sure yet' },
-  { ...party('nadia', 'Nadia Rahman', 1, 'Friends'), reply: 'No reply' },
+  { ...party('hugo', 'Hugo Lambert', [], 'Work'), reply: 'Not sure yet' },
+  { ...party('nadia', 'Nadia Rahman', ['Guest of Nadia Rahman'], 'Friends'), reply: 'No reply' },
 ];

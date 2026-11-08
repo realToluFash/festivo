@@ -11,6 +11,7 @@ import {
 import {
   COLOURS,
   type ColourName,
+  NO_SECTION_EDGE,
   type Item,
   type Kind,
   type Party,
@@ -240,6 +241,8 @@ export interface Seating {
   spoken: string | null;
   guest: 'seat' | 'noSeat' | null;
   held: boolean;
+  /** The next id for anything made in the demo (an item, a section, a guest sent back), so no two share one. */
+  serial: number;
 }
 
 export const NO_FIELDS: Fields = {
@@ -253,7 +256,7 @@ export const NO_FIELDS: Fields = {
 };
 
 export function hexOf(colour: ColourName): string {
-  return COLOURS.find(([name]) => name === colour)?.[1] ?? '#8B8B9A';
+  return COLOURS.find(([name]) => name === colour)?.[1] ?? NO_SECTION_EDGE;
 }
 
 export function sectionOf(m: Seating, key: string | null): Section | null {
@@ -274,7 +277,7 @@ export function partyOf(m: Seating, id: string | null): Party | null {
 
 export const isTable = (it: Item): boolean => it.kind !== 'row' && it.kind !== 'single';
 export const partySize = (p: Party): number => 1 + p.plus;
-export const partyWho = (p: Party): string => (p.guestOf == null ? p.lead : say.guestOf(p.guestOf));
+export const partyWho = (p: Party): string => p.lead;
 
 const SHAPE: Record<Kind, string> = {
   round: 'Round table',
