@@ -58,6 +58,8 @@ import { ShareRecipient } from './ShareRecipient.tsx';
 import { TEMPLATES_PAGES } from './templates.ts';
 import { Today } from './Today.tsx';
 import { TwoFactorBoard } from './TwoFactor.tsx';
+import { Unsubscribe } from './Unsubscribe.tsx';
+import { UNSUBSCRIBE_PAGES } from './unsubscribe.ts';
 import { VendorsMoved } from './Vendors.tsx';
 import { VENDORS_PAGES } from './vendors.ts';
 import { WaysInBoard } from './WaysIn.tsx';
@@ -183,6 +185,7 @@ export default function Demo() {
       <Route path="redeem" element={<Redeem />} />
       <Route path="vendors" element={<VendorsMoved />} />
       <Route path="share/:scope" element={<ShareRecipient />} />
+      <Route path="unsubscribe" element={<Unsubscribe />} />
       <Route path="guest" element={<GuestPage />} />
       <Route path="guests" element={<Guests />} />
       <Route path="later" element={<Later />} />
@@ -277,6 +280,8 @@ function DemoHome({ from }: { from: string }) {
         <h2 id="demo-page-36">36 · Messaging · Messages on an event</h2>
         <h3>Messaging in B · Conversations · desktop</h3>
         <BoardPages pages={MESSAGES_PAGES} />
+        <h3>The unsubscribe page, signed out · phone, tablet and desk</h3>
+        <BoardPages pages={UNSUBSCRIBE_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-31">
