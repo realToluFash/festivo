@@ -1,23 +1,7 @@
 import { DemoBell } from './DemoBell.tsx';
 import { eventPhase, formatEventRange, hostsLine } from '@soirely/domain';
-import {
-  type ComponentType,
-  type ReactNode,
-  useCallback,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
-import {
-  Link,
-  Navigate,
-  useBlocker,
-  useLocation,
-  useNavigate,
-  useParams,
-  useSearchParams,
-} from 'react-router';
+import { type ComponentType, type ReactNode, useContext, useEffect, useRef, useState } from 'react';
+import { Link, Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router';
 
 import {
   type Area,
@@ -63,6 +47,8 @@ import { Glyph, type GlyphName } from '../components/Glyph.tsx';
 import { LayersContext } from '../layers.ts';
 import { BudgetArea } from './Quotes.tsx';
 import { BUDGET_EVENT } from './budget.ts';
+import { type NumbersState, guestsAt, hasGuests, numbersStateOf } from './guests.ts';
+import { GuestNumbers } from './GuestsParts.tsx';
 import {
   type Told,
   NEW_PLACE,
@@ -82,6 +68,7 @@ import { TellDialog } from './MessagesTell.tsx';
 import { Ask, Chevron, Head, RowWords, TextAction } from '../components/SettingsParts.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
 import { useSwitcherStart } from './switcher.ts';
+import { useLeaveAsk } from './useLeaveAsk.ts';
 
 const LOCALE = 'en-US';
 
@@ -193,6 +180,7 @@ function EventAt({
             : first.event
       }
       state={first.state}
+      numbers={messages ? null : numbersStateOf(raw)}
       arrival={arrival}
       dates={dates}
       fixedArea={messages && !telling ? 'messages' : null}
@@ -204,6 +192,7 @@ function EventAt({
 function EventView({
   initial,
   state,
+  numbers,
   arrival,
   dates,
   fixedArea = null,
@@ -211,6 +200,7 @@ function EventView({
 }: {
   initial: SampleEvent;
   state: EventStateName | null;
+  numbers: NumbersState | null;
   arrival: Arrival;
   dates: boolean;
   fixedArea?: Area | null;
@@ -233,6 +223,8 @@ function EventView({
 
   if (area === 'people') return <Navigate to="/demo/people" replace />;
   if (area === 'budget' && initial.id === BUDGET_EVENT) return <BudgetArea event={initial} />;
+  if (area === 'guests' && hasGuests(initial.id))
+    return <Navigate to={guestsAt(initial.id)} replace />;
   if (area === 'messages' && fixedArea == null)
     return <Navigate to={`/demo/events/${initial.id}/messages`} replace />;
   if (area === 'seating') return <Navigate to={`/demo/events/${initial.id}/seating`} replace />;
@@ -330,6 +322,7 @@ function EventView({
                     />
                   </div>
                   <div className="ev-right">
+                    {hasGuests(event.id) && <GuestNumbers eventId={event.id} state={numbers} />}
                     <GuestsPage />
                     <JustForYou
                       muted={muted}
@@ -432,35 +425,6 @@ function EventView({
       )}
     </EventsShell>
   );
-}
-
-/** While a part has a change, every way off the page asks first, as main's `useLeaveGuard` does: the router's own ways in the demo's dialog, reload and the address bar in the browser's. */
-function useLeaveAsk(dirty: boolean): {
-  blocked: boolean;
-  stay: () => void;
-  go: () => void;
-  release: () => void;
-} {
-  const released = useRef(false);
-  const blocker = useBlocker(useCallback(() => dirty && !released.current, [dirty]));
-
-  useEffect(() => {
-    if (!dirty) return;
-
-    const ask = (event: BeforeUnloadEvent): void => event.preventDefault();
-    window.addEventListener('beforeunload', ask);
-
-    return () => window.removeEventListener('beforeunload', ask);
-  }, [dirty]);
-
-  return {
-    blocked: blocker.state === 'blocked',
-    stay: () => blocker.reset?.(),
-    go: () => blocker.proceed?.(),
-    release: () => {
-      released.current = true;
-    },
-  };
 }
 
 function Asks({
