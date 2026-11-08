@@ -100,6 +100,13 @@ describe('the states Budget A still lacked (sc-85, sc-88, sc-90, sc-91, sc-92, s
       expect(within(dialog).getByLabelText('Catering').getAttribute('aria-invalid')).toBe('true');
       cleanup();
 
+      await open(at('ceiling_decimals'));
+      const fieldLevel = await screen.findByRole('dialog', {}, SLOW);
+      expect(within(fieldLevel).getByLabelText('Transport').getAttribute('aria-invalid')).toBe(
+        'true',
+      );
+      cleanup();
+
       await open(at('ceiling_no_costs'));
       expect(section('Ceiling').textContent).toContain('Nothing is costed here yet.');
     },
