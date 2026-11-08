@@ -1,3 +1,4 @@
+import { writtenTime } from './clock.ts';
 import {
   COST_LINES,
   HEADS,
@@ -252,16 +253,10 @@ const PRINT_DAY = new Intl.DateTimeFormat(LOCALE, {
   year: 'numeric',
   timeZone: 'Europe/London',
 });
-const PRINT_TIME = new Intl.DateTimeFormat(LOCALE, {
-  hour: '2-digit',
-  minute: '2-digit',
-  hourCycle: 'h23',
-  timeZone: 'Europe/London',
-});
 
 /** When the sheet was printed, in the event's time zone, on the 24-hour clock. */
 export function printedLine(at: Date = NOW): string {
-  return W.printed(PRINT_DAY.format(at), PRINT_TIME.format(at));
+  return W.printed(PRINT_DAY.format(at), writtenTime(at, LOCALE, 'Europe/London'));
 }
 
 export function sheetFigures(): { label: string; amount: string }[] {

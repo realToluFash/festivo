@@ -1,3 +1,4 @@
+import { writtenTime } from './clock.ts';
 import {
   BUDGET_EVENT,
   COST_LINES,
@@ -411,15 +412,8 @@ function payments(category: Category | null): Row[] {
   ];
 }
 
-const UPDATED = new Intl.DateTimeFormat(LOCALE, {
-  hour: '2-digit',
-  minute: '2-digit',
-  hourCycle: 'h23',
-  timeZone: ZONE,
-});
-
 export function timeOf(at: Date): string {
-  return UPDATED.format(at);
+  return writtenTime(at, LOCALE, ZONE);
 }
 
 export const UPDATED_LINE = W.sharedBy(ORGANISATION, shortDay(TODAY), timeOf(NOW));
