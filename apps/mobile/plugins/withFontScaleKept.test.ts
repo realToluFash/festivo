@@ -141,7 +141,7 @@ describe('withFontScaleForwarded', () => {
 
   it('stops listening to the application when the activity is destroyed', () => {
     expect(forwarded).toMatch(
-      /override fun onDestroy\(\) \{\n\s+application\.unregisterComponentCallbacks\(applicationChanges\)\n\s+super\.onDestroy\(\)/,
+      /override fun onDestroy\(\) \{\n\s+application\.unregisterComponentCallbacks\(applicationChanges\)\n\s+window\.decorView\.viewTreeObserver\.removeOnGlobalLayoutListener\(modalsShown\)\n\s+super\.onDestroy\(\)/,
     );
   });
 
@@ -176,6 +176,28 @@ describe('withFontScaleForwarded', () => {
     expect(forwarded).toMatch(
       /override fun dispatchConfigurationChanged\(newConfig: Configuration\) \{\n\s+super\.dispatchConfigurationChanged\(\n\s+if \(Build\.VERSION\.SDK_INT >= Build\.VERSION_CODES\.S\) \{\n\s+Configuration\(newConfig\)\.apply \{ fontWeightAdjustment = 0 \}\n\s+\} else \{\n\s+newConfig\n/,
     );
+  });
+
+  it("hands a Modal's window each change again without Bold text's adjustment before it draws, from Android 12", () => {
+    expect(forwarded).toContain(
+      'window.decorView.viewTreeObserver.addOnGlobalLayoutListener(modalsShown)',
+    );
+    expect(forwarded).toMatch(/takeSizeChanges\(\)\n\s+keepModalsWithoutBold\(settled = false\)\n/);
+    expect(forwarded).toMatch(
+      /if \(Build\.VERSION\.SDK_INT < Build\.VERSION_CODES\.S\) return\n\s+for \(root in WindowInspector\.getGlobalWindowViews\(\)\) \{\n\s+val observer = root\.viewTreeObserver\n\s+if \(observer in modalsKept \|\| !isModal\(root\)\) continue\n\s+modalsKept\[observer\] = Unit\n\s+observer\.addOnPreDrawListener\(ModalWithoutBold\(root, settled\)\)/,
+    );
+    expect(forwarded).toContain('is ReactModalHostView.DialogRootViewGroup');
+    expect(forwarded).toMatch(
+      /if \(config == handled\) return true\n\s+handled = Configuration\(config\)\n\s+if \(config\.fontWeightAdjustment == 0\) return true\n\s+root\.dispatchConfigurationChanged\(Configuration\(config\)\.apply \{ fontWeightAdjustment = 0 \}\)\n\s+return false/,
+    );
+    for (const line of [
+      'import android.view.ViewTreeObserver',
+      'import android.view.inspector.WindowInspector',
+      'import com.facebook.react.views.modal.ReactModalHostView',
+      'import java.util.WeakHashMap',
+    ]) {
+      expect(forwarded).toContain(line);
+    }
   });
 
   it('refuses an activity that already overrides loadApp', () => {

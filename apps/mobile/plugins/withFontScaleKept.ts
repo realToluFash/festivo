@@ -17,6 +17,10 @@ const IMPORTS = [
   'import com.facebook.react.uimanager.DisplayMetricsHolder',
   'import com.th3rdwave.safeareacontext.SafeAreaProvider',
   'import android.os.Build',
+  'import android.view.ViewTreeObserver',
+  'import android.view.inspector.WindowInspector',
+  'import com.facebook.react.views.modal.ReactModalHostView',
+  'import java.util.WeakHashMap',
 ];
 
 // React Native measures text against the display metrics it last read, and caches each measurement under the font scale the activity's resources had when the root view was measured.
@@ -29,6 +33,7 @@ const IMPORTS = [
 // The safe-area frame, which picks the tablet layout, is sent only when it moves in pixels, and a display-size change keeps the window's pixels, so its last frame is forgotten to send it again at the new density.
 // Android draws a field's own text one heavier with Bold text by itself, and React Native's text not at all, so the app draws its heavier faces for both and its own views take no adjustment (sc-19877).
 // A view reads the adjustment from its context when it is made and from the configuration its window hands down on a change, so the root view's parent hands every change down without it.
+// A Modal is a window of its own that hands down the activity's configuration, adjustment and all, so before it draws after a change its views are handed the change again without it.
 const OVERRIDE = `
   private val applicationChanges = object : ComponentCallbacks {
     override fun onConfigurationChanged(applicationConfig: Configuration) {
@@ -40,6 +45,24 @@ const OVERRIDE = `
   private var lastFontScale = 0f
   private var lastDensityDpi = 0
   private var forwardPending = false
+  private val modalsKept = WeakHashMap<ViewTreeObserver, Unit>()
+  private val modalsShown = ViewTreeObserver.OnGlobalLayoutListener { keepModalsWithoutBold(settled = true) }
+
+  private class ModalWithoutBold(
+    private val root: View,
+    settled: Boolean,
+  ) : ViewTreeObserver.OnPreDrawListener {
+    private var handled: Configuration? = if (settled) Configuration(root.resources.configuration) else null
+
+    override fun onPreDraw(): Boolean {
+      val config = root.resources.configuration
+      if (config == handled) return true
+      handled = Configuration(config)
+      if (config.fontWeightAdjustment == 0) return true
+      root.dispatchConfigurationChanged(Configuration(config).apply { fontWeightAdjustment = 0 })
+      return false
+    }
+  }
 
   private class MetricsReadFirst(
     context: Context,
@@ -104,16 +127,34 @@ const OVERRIDE = `
     lastFontScale = resources.configuration.fontScale
     lastDensityDpi = resources.configuration.densityDpi
     application.registerComponentCallbacks(applicationChanges)
+    window.decorView.viewTreeObserver.addOnGlobalLayoutListener(modalsShown)
   }
 
   override fun onConfigurationChanged(newConfig: Configuration) {
     super.onConfigurationChanged(newConfig)
     takeSizeChanges()
+    keepModalsWithoutBold(settled = false)
   }
 
   override fun onDestroy() {
     application.unregisterComponentCallbacks(applicationChanges)
+    window.decorView.viewTreeObserver.removeOnGlobalLayoutListener(modalsShown)
     super.onDestroy()
+  }
+
+  private fun keepModalsWithoutBold(settled: Boolean) {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return
+    for (root in WindowInspector.getGlobalWindowViews()) {
+      val observer = root.viewTreeObserver
+      if (observer in modalsKept || !isModal(root)) continue
+      modalsKept[observer] = Unit
+      observer.addOnPreDrawListener(ModalWithoutBold(root, settled))
+    }
+  }
+
+  private fun isModal(root: View): Boolean {
+    val frame = root.findViewById<ViewGroup>(android.R.id.content)?.getChildAt(0) as? ViewGroup
+    return frame?.getChildAt(0) is ReactModalHostView.DialogRootViewGroup
   }
 
   private fun takeSizeChanges() {
