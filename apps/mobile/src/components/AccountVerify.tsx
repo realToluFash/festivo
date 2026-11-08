@@ -4,7 +4,14 @@ import { StyleSheet, type TextInputInstance, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { tokens } from '../theme/tokens.ts';
-import { CodeField, Field, FieldError, focusChecked, focusRefused, keysStayDown } from './Field.tsx';
+import {
+  CodeField,
+  Field,
+  FieldError,
+  focusChecked,
+  focusRefused,
+  keysStayDown,
+} from './Field.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import { FocusedScreen, Line, TextAction } from './Summary.tsx';
 import { Text } from './Text.tsx';
@@ -62,7 +69,6 @@ export function VerifyScreen({
   onClose: () => void;
   /** Resolves to why the code was not taken, or null once it is. */
   onVerify: (code: string) => Promise<CodeSays | null>;
-  /** Resolves to whether a new code is on its way. */
   onResend: () => Promise<boolean>;
   /** Offered while the code went by WhatsApp. */
   onTextInstead: (() => Promise<void>) | null;
