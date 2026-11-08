@@ -49,7 +49,7 @@ interface Handlers {
 /** How far the Tint reaches past the open card on its side, as a lit row's does. */
 const LIT_PAST = tokens.spaceMd;
 
-/** You, as the Confetti card at the top of Settings: it opens Your account, and is lit in Tint while open, with no ring. */
+/** You, as the Confetti card at the top of Settings: it opens Your account. */
 export function PersonCard({
   size,
   open = false,
@@ -514,7 +514,7 @@ const styles = StyleSheet.create({
     borderRadius: tokens.spaceXl,
   },
   rowDense: { minHeight: tokens.sizeListRow, gap: 12, paddingVertical: 9 },
-  // Lit as Members' person row is, with no ring: the owner found a ring around the picked thing weird (6 Nov 2026).
+  // No ring: sc-31724.
   rowOpen: SELECTED_ROW,
   rowPressed: { backgroundColor: tokens.colorNeutralFill },
   rule: { position: 'absolute', right: 0, top: 0, height: 1, backgroundColor: tokens.colorBorder },
