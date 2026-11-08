@@ -3,7 +3,7 @@ import type { Token } from './MessagesSample.ts';
 /** sc-3960's English for Insert and the preview ('English copy (l10n)', 27 Oct, reworded 7 Nov); a bracketed line has no string yet. */
 export const PW = {
   previewAs: 'Preview as',
-  braces: '[Braces you type go out as typed. To fill something in for each guest, use Insert.]',
+  braces: '[Braces you type stay as typed. To fill something in for each guest, use Insert.]',
   noTokens: 'Nothing to fill in, so every guest gets exactly these words.',
 } as const;
 
