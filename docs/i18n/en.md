@@ -853,6 +853,12 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   host connects the two. Won over "… from this organisation …", which every reason the host
   sees already implies and which overruns a phone row. Other skip reasons read as short
   phrases in the same row: "No email address", "Address is bouncing".
+- **8 Nov 2026. Messages' empty pane on an event that cannot send** (sc-3942, sc-32077, on
+  pm's #33225; web and app). A Draft, or an event finished more than 30 days ago, reads "Pick a
+  conversation." It keeps the verb of the live line, "Pick a conversation, or write to your
+  guests below.", so the two states of one pane differ only in what is off. It carries no
+  reason: the reason already shows once, under **New** on the web and above the composer in
+  the app. es, fr and pt write both lines with one verb, as English does.
 - **27 Oct 2026. Events Home's tabs and empty states** (sc-15981 for sc-3594, `events.tab*|empty*|
 startedToday|calledOffOn|showMore|moreShown|moreFailed`, `eventsScreen.*` the same plus
   `nextUp|showingMore`). Kept as sc-3594 wrote it. The tabs are **Upcoming**, **Drafts** and
