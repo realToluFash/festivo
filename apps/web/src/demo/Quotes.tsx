@@ -141,6 +141,13 @@ function QuotesBody({
   const marks = marking == null ? null : budget.payments.find((one) => one.id === marking.id);
   const cancels =
     cancelling == null ? null : budget.payments.find((one) => one.id === cancelling.id);
+  const vendorOf = (id: string) => budget.quotes.find((one) => one.vendor.id === id)?.vendor.name;
+  const markVendor = marks == null ? undefined : vendorOf(marks.vendorId);
+  const markedPayment = marked == null ? null : budget.payments.find((one) => one.id === marked);
+  const homeMarked =
+    markedPayment == null
+      ? null
+      : { payment: markedPayment, vendor: vendorOf(markedPayment.vendorId) ?? '' };
   const trail =
     page === 'home'
       ? [{ label: BW.budget }]
@@ -161,7 +168,9 @@ function QuotesBody({
     let tries = 20;
     // The page is inert until the dialog's layer goes, and the dialog hands focus back first.
     const go = () => {
-      const to = document.querySelector<HTMLElement>(`[data-payment="${focusOn.id}"] .desk-text`);
+      const to = document.querySelector<HTMLElement>(
+        `[data-payment="${focusOn.id}"] :is(.desk-text, button.desk-row)`,
+      );
       if (to != null && to.closest('[inert]') == null)
         timer = window.setTimeout(() => to.focus(), 0);
       else if (tries-- > 0) frame = window.requestAnimationFrame(go);
@@ -283,7 +292,16 @@ function QuotesBody({
               state={state}
               tell={tell}
               titleRef={title}
-              dueNext={<DueNext due={everythingDue(budget)} more={at.due} />}
+              payments={budget.payments}
+              onMark={readOnly ? undefined : markPaid}
+              dueNext={
+                <DueNext
+                  due={everythingDue(budget)}
+                  more={at.due}
+                  marked={homeMarked}
+                  {...(readOnly ? {} : { onMark: markPaid, onUndo: undo })}
+                />
+              }
               vendorsQuoted={
                 <VendorsQuoted
                   budget={budget}
@@ -373,11 +391,11 @@ function QuotesBody({
               }}
             />
           )}
-          {marking != null && marks != null && open != null && (
+          {marking != null && marks != null && markVendor != null && (
             <MarkPaidDialog
               marking={marking}
               payment={marks}
-              vendor={open.vendor.name}
+              vendor={markVendor}
               event={event.name}
               onMarking={setMarking}
               onClose={() => setMarking(null)}
@@ -448,7 +466,10 @@ export function BudgetHome({
   at,
   tell,
   left = <CostsComing />,
+  marked = null,
   onAdd,
+  onMark,
+  onUndo,
 }: {
   budget: Budget;
   viewer: BudgetViewer;
@@ -457,7 +478,10 @@ export function BudgetHome({
   at: BudgetAddresses;
   tell: Tell;
   left?: ReactNode;
+  marked?: { payment: Payment; vendor: string } | null;
   onAdd: () => void;
+  onMark: (payment: Payment) => void;
+  onUndo: (id: string) => void;
 }) {
   return (
     <>
@@ -471,7 +495,12 @@ export function BudgetHome({
         left={left}
         right={
           <>
-            <DueNext due={everythingDue(budget)} more={at.due} />
+            <DueNext
+              due={everythingDue(budget)}
+              more={at.due}
+              marked={marked}
+              {...(readOnly ? {} : { onMark, onUndo })}
+            />
             <VendorsQuoted
               budget={budget}
               vendorAt={at.vendor}
@@ -484,7 +513,7 @@ export function BudgetHome({
   );
 }
 
-function DueRow({ due, to }: { due: Due; to?: string }) {
+function DueRow({ due, to, onMark }: { due: Due; to?: string; onMark?: () => void }) {
   return (
     <BudgetRow
       title={due.vendor.name}
@@ -492,11 +521,30 @@ function DueRow({ due, to }: { due: Due; to?: string }) {
       tag={due.overdue ? <OverdueTag /> : undefined}
       end={<Amount value={money(due.payment.amount)} />}
       {...(to == null ? {} : { to })}
+      {...(onMark == null
+        ? {}
+        : {
+            onOpen: onMark,
+            label: QW.markRow(due.vendor.name, due.payment.what, money(due.payment.amount)),
+          })}
     />
   );
 }
 
-export function DueNext({ due, more }: { due: readonly Due[]; more: string }) {
+/** Due next: the soonest owed, each row opening its own Mark paid; one just marked stays lit with Undo, as the app's does. */
+export function DueNext({
+  due,
+  more,
+  marked = null,
+  onMark,
+  onUndo,
+}: {
+  due: readonly Due[];
+  more: string;
+  marked?: { payment: Payment; vendor: string } | null;
+  onMark?: (payment: Payment) => void;
+  onUndo?: (id: string) => void;
+}) {
   return (
     <Block
       title={BW.dueNext}
@@ -509,13 +557,40 @@ export function DueNext({ due, more }: { due: readonly Due[]; more: string }) {
         )
       }
     >
-      {due.length === 0 ? (
+      {due.length === 0 && marked == null ? (
         <p className="desk-line">{BW.nothingDue}</p>
       ) : (
         <Rows>
+          {marked != null && marked.payment.paid != null && (
+            <li data-payment={marked.payment.id}>
+              <BudgetRow
+                lead={<PaidMark large />}
+                title={marked.vendor}
+                lines={[
+                  QW.markedPaid(money(marked.payment.paid.amount), longDay(marked.payment.paid.on)),
+                ]}
+                lit
+                end={
+                  onUndo != null && (
+                    <button
+                      type="button"
+                      className="desk-text"
+                      onClick={() => onUndo(marked.payment.id)}
+                    >
+                      <Glyph name="undo" size={16} weight={2.4} />
+                      {BW.undo}
+                    </button>
+                  )
+                }
+              />
+            </li>
+          )}
           {due.slice(0, DUE_NEXT).map((one) => (
-            <li key={one.payment.id}>
-              <DueRow due={one} />
+            <li key={one.payment.id} data-payment={one.payment.id}>
+              <DueRow
+                due={one}
+                {...(onMark == null ? {} : { onMark: () => onMark(one.payment) })}
+              />
             </li>
           ))}
         </Rows>

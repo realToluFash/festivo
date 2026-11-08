@@ -284,6 +284,41 @@ describe('Quotes and what is due on the wedding’s Budget, in A (sc-87, sc-88)'
     expect(await within(main()).findByRole('link', { name: 'Everything due · 4' })).toBeDefined();
   });
 
+  it('opens Mark paid from a Due next row; the row stays lit with Undo', SLOW, async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    await open(BUDGET);
+    fireEvent.click(
+      within(section('Due next')).getByRole('button', {
+        name: 'Mark paid: Bloom & Co, Balance, £840.00',
+      }),
+    );
+    const dialog = screen.getByRole('dialog', { name: 'Mark paid' });
+    expect(within(dialog).getByText(/Bloom & Co · Balance/)).toBeDefined();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Mark paid' }));
+    await settle();
+    expect(section('Due next').textContent).toContain(
+      'Marked paid: £840.00 on Tuesday, November 3.',
+    );
+    expect(
+      within(section('Due next')).getByRole('link', { name: 'Everything due · 4' }),
+    ).toBeDefined();
+    fireEvent.click(within(section('Due next')).getByRole('button', { name: 'Undo' }));
+    expect(
+      within(section('Due next')).getByRole('link', { name: 'Everything due · 5' }),
+    ).toBeDefined();
+  });
+
+  it('refuses a blank date paid at its field, sending nothing', SLOW, async () => {
+    await open(BUDGET);
+    fireEvent.click(
+      within(section('Due next')).getByRole('button', { name: /^Mark paid: Savour Kitchen/ }),
+    );
+    const dialog = screen.getByRole('dialog', { name: 'Mark paid' });
+    fireEvent.change(within(dialog).getByLabelText('Date paid'), { target: { value: '' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Mark paid' }));
+    expect(within(dialog).getByText('Enter the date it was paid.')).toBeDefined();
+  });
+
   it('offers vendors by name, one already quoted that cannot be chosen', SLOW, async () => {
     await open(`${BUDGET}&state=add`);
     const dialog = screen.getByRole('dialog', { name: 'Add a quote' });

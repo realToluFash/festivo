@@ -67,10 +67,11 @@ export const VW = {
   chooseCountry: 'Choose a country',
   archive: 'Archive this vendor',
 
-  nameBlank: 'Enter a name.',
-  categoryBlank: 'Choose a category.',
-  emailShape: 'Enter an email address like name@example.com.',
-  websiteScheme: 'Enter a website that starts with http:// or https://.',
+  nameBlank: "Enter the vendor's name.",
+  categoryBlank: 'Choose the category.',
+  emailShape: 'That does not look like an email address. Check it has an @ and a domain.',
+  websiteScheme:
+    'Enter a web address that starts with https:// or http://, or leave that part off.',
   countryBlank: 'Choose a country.',
   phoneLength: (problem: 'short' | 'long', country: string) =>
     `That number looks too ${problem} for ${country}. Check it and try again.`,

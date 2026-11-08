@@ -23,6 +23,7 @@ import {
   lineState,
   money,
   overdue,
+  owed,
   plan,
   rateWords,
   shortDay,
@@ -185,6 +186,8 @@ export function BudgetHomeContent({
   titleRef,
   dueNext,
   vendorsQuoted,
+  payments = PAYMENTS,
+  onMark,
 }: {
   event: SampleEvent;
   state: string;
@@ -192,6 +195,8 @@ export function BudgetHomeContent({
   titleRef: RefObject<HTMLHeadingElement | null>;
   dueNext: ReactNode;
   vendorsQuoted: ReactNode;
+  payments?: readonly Payment[];
+  onMark?: ((payment: Payment) => void) | undefined;
 }) {
   const [params] = useSearchParams();
   const navigate = useNavigate();
@@ -245,7 +250,7 @@ export function BudgetHomeContent({
     );
 
   const sum = sumLines(lines, heads);
-  const due = dueList(PAYMENTS, vendorName);
+  const due = dueList(payments, vendorName);
   const next = due[0] ?? null;
 
   return (
@@ -299,7 +304,11 @@ export function BudgetHomeContent({
             ceilings.whole == null ? null : ceilingOf('whole', ceilings.whole, lines, heads).state
           }
           next={live && !readOnly ? next : null}
-          onMark={(payment) => void navigate(budgetAt('mark_paid', { vendor: payment.vendorId }))}
+          onMark={(payment) =>
+            onMark != null
+              ? onMark(payment)
+              : void navigate(budgetAt('mark_paid', { vendor: payment.vendorId }))
+          }
         />
       )}
       {empty ? (
@@ -384,7 +393,7 @@ export function BudgetHomeContent({
                   heads={heads}
                   onChange={() => setDialog('ceiling')}
                 />
-                <AgainstPlan lines={lines} />
+                <AgainstPlan lines={lines} payments={payments} />
                 <WhoIsPaying />
                 {vendorsQuoted}
                 <FromOtherEvents onSave={() => setDialog('save')} />
@@ -1118,14 +1127,23 @@ function CeilingBlock({
   );
 }
 
-function AgainstPlan({ lines }: { lines: readonly CostLine[] }) {
-  const figures = plan(lines);
+const count = (n: number, said: string): string =>
+  `${n} ${n === 1 ? 'payment' : 'payments'} ${said}`;
+
+function AgainstPlan({
+  lines,
+  payments,
+}: {
+  lines: readonly CostLine[];
+  payments: readonly Payment[];
+}) {
+  const figures = plan(lines, QUOTES, payments);
   const notPriced = lines.filter((one) => lineState(one) === 'notPriced').length;
   const rows: readonly [string, string, number][] = [
     ['Planned', W.notPricedCount(notPriced), figures.planned],
     ['Committed', 'What the vendors quoted', figures.committed],
-    ['Paid', '3 payments marked paid', figures.paid],
-    ['Still to pay', '5 payments scheduled', figures.stillToPay],
+    ['Paid', count(payments.filter((one) => one.paid != null).length, 'marked paid'), figures.paid],
+    ['Still to pay', count(payments.filter(owed).length, 'scheduled'), figures.stillToPay],
   ];
 
   return (

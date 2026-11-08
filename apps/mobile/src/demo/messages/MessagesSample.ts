@@ -1,4 +1,5 @@
 import { CHANNEL_WORD, type ChannelKey, W, say } from './MessagesWords.ts';
+import { TOKEN_RUN, TOKEN_SPLIT, tokenText } from './TokenText.ts';
 
 /** Events A's shared sample, with the guests and counts the Messaging B boards made up (spec §8); nothing here is spec. */
 export const EVENT = 'Adaeze & Tunde’s wedding';
@@ -113,15 +114,12 @@ export const ANSWERS: Partial<Record<GuestKey, string>> = {
 export const PARKING = 'Parking at The Landmark';
 export const PARKING_TIME = '18:20';
 export const INVITE_TIME = '10:00';
-export const PARKING_BODY =
-  '{Greeting}, parking is on Marylebone Road. The car park entrance is on Melcombe Place.';
+export const PARKING_BODY = `${tokenText('Greeting')}, parking is on Marylebone Road. The car park entrance is on Melcombe Place.`;
 export const SCHEDULED = 'On the day: where to find us';
-export const SCHEDULED_BODY =
-  '{Greeting}, we start at 18:00 at The Landmark, 222 Marylebone Road. The doors open at 17:30.';
+export const SCHEDULED_BODY = `${tokenText('Greeting')}, we start at 18:00 at The Landmark, 222 Marylebone Road. The doors open at 17:30.`;
 export const SCHEDULED_AT = 'Thu, Nov 5, 09:00';
 export const SUBJECT = 'Parking and the dress code';
-export const BODY =
-  '{Greeting}, a few things before Thursday. Parking is on Marylebone Road, and the dress code is formal. If anything changes for you, answer here.';
+export const BODY = `${tokenText('Greeting')}, a few things before Thursday. Parking is on Marylebone Road, and the dress code is formal. If anything changes for you, answer here.`;
 
 export const TO_WORD: Record<ToGroup, string> = {
   all: W.allGuests,
@@ -518,16 +516,16 @@ export function formatCount(count: number): string {
   return count.toLocaleString('en-US');
 }
 
-/** A message's words with each `{Token}` named, so a bubble can draw the token as a chip. */
+/** A message's words with each inserted token named, so a bubble can draw it as a chip; typed braces stay words. */
 export function piecesOf(text: string): { token: boolean; text: string }[] {
   return text
-    .split(/(\{[A-Za-z]+\})/u)
+    .split(TOKEN_SPLIT)
     .filter((piece) => piece !== '')
-    .map((piece) => {
-      const token = /^\{([A-Za-z]+)\}$/u.exec(piece)?.[1];
-
-      return token == null ? { token: false, text: piece } : { token: true, text: token };
-    });
+    .map((piece) =>
+      TOKEN_SPLIT.test(piece)
+        ? { token: true, text: piece.slice(1, -1) }
+        : { token: false, text: piece },
+    );
 }
 
 const FILLED: Record<Token, (name: string) => string> = {
@@ -539,7 +537,5 @@ const FILLED: Record<Token, (name: string) => string> = {
 
 /** As one guest's page shows it: each token filled in for them. */
 export function filledFor(text: string, name: string): string {
-  return text.replace(/\{(Greeting|Event|Date|Hosts)\}/gu, (_, token: Token) =>
-    FILLED[token](name),
-  );
+  return text.replace(TOKEN_RUN, (_, token: Token) => FILLED[token](name));
 }

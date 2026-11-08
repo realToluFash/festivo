@@ -399,7 +399,7 @@ export interface MarkDraft {
   reference: string;
 }
 
-export type MarkProblems = Partial<Record<'amount' | 'reference', string>>;
+export type MarkProblems = Partial<Record<'amount' | 'paidOn' | 'reference', string>>;
 
 export function draftToMark(payment: Payment, today = TODAY): MarkDraft {
   return { amount: typedAmount(payment.amount), paidOn: today, reference: '' };
@@ -412,6 +412,7 @@ export function markProblems(draft: MarkDraft, payment: Payment): MarkProblems {
     problems.amount = QW.amountPaidProblem(typedAmount(payment.amount));
   if (lengthOf(draft.reference) > QUOTE_LIMITS.reference)
     problems.reference = PW.referenceTooLong(QUOTE_LIMITS.reference);
+  if (draft.paidOn === '') problems.paidOn = QW.datePaidBlank;
 
   return problems;
 }
