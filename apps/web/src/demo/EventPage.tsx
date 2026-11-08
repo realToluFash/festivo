@@ -40,6 +40,8 @@ import {
   TypePart,
   VenuePart,
 } from './EventEdits.tsx';
+import { EventNeedsYou } from './EventNeedsYou.tsx';
+import type { NeedsState } from './needsYou.ts';
 import { Alert, EventCard, EventsShell, NotBuilt, Switch, Thumb } from './EventParts.tsx';
 import { CAL_WORDS } from './calendar.ts';
 import { EventSidebar } from './EventSidebar.tsx';
@@ -91,6 +93,10 @@ const PARTS: Record<Part, ComponentType<PartProps>> = {
   name: NamePart,
   cover: CoverPart,
 };
+
+function needsStateOf(state: EventStateName | null): NeedsState | null {
+  return state != null && state.startsWith('needsYou') ? (state as NeedsState) : null;
+}
 
 function askingOf(state: EventStateName | null): Asking | null {
   switch (state) {
@@ -325,6 +331,17 @@ function EventView({
                         else tell(W.saved);
                       }}
                       onLatest={kept}
+                      needs={
+                        <EventNeedsYou
+                          state={needsStateOf(state)}
+                          open={
+                            event.status !== 'ended' && now.getTime() < Date.parse(event.startsAt)
+                          }
+                          now={now}
+                          timeZone={event.timeZone}
+                          tell={tell}
+                        />
+                      }
                     />
                   </div>
                   <div className="ev-right">
@@ -617,6 +634,7 @@ function Details({
   onClose,
   onSave,
   onLatest,
+  needs,
 }: {
   event: SampleEvent;
   now: Date;
@@ -627,6 +645,7 @@ function Details({
   onClose: () => void;
   onSave: (next: SampleEvent) => void;
   onLatest: (latest: SampleEvent) => void;
+  needs: ReactNode;
 }) {
   const locked = eventPhase(event, now) === 'finished';
   const days = dayCount(event);
@@ -707,6 +726,7 @@ function Details({
           )}
         </ul>
       </section>
+      {needs}
       <section className="desk-block" aria-labelledby="ev-name-cover">
         <Head title={<span id="ev-name-cover">{W.nameAndCover}</span>} />
         <ul className="desk-rows ev-details">

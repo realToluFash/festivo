@@ -296,3 +296,65 @@ describe('the guest counts on Events (sc-23284)', () => {
     expect(within(main()).queryByRole('list', { name: 'Guests across your events' })).toBeNull();
   });
 });
+
+describe('Needs you on the Overview at a desk (sc-32801)', () => {
+  beforeEach(() => {
+    __setConfig({ ...tested, environment: 'development' });
+    resetSample();
+  });
+
+  function card(): HTMLElement {
+    return screen.getByRole('region', { name: /^Needs you/ });
+  }
+
+  it(
+    'lists the rows, overdue first, with the button only where there is an action',
+    SLOW,
+    async () => {
+      await page('/demo/events/evt-wed-4?state=needsYou');
+
+      const rows = within(card()).getAllByRole('listitem');
+
+      expect(
+        screen.getByRole('heading', { level: 2, name: /^Needs you\s*, 4 things$/ }),
+      ).toBeDefined();
+      expect(rows.map((row) => row.textContent)).toEqual([
+        'Give final numbers to the kitchen2 days overdueOpen the kitchen sheet',
+        'Pay the band’s balanceDue today',
+        'Seat the last 12 guestsDue tomorrow',
+        'Confirm the cakeDue Thu, Nov 5',
+      ]);
+      expect(within(card()).getAllByRole('button')).toHaveLength(1);
+      expect(within(card()).queryByText(WEDDING)).toBeNull();
+    },
+  );
+
+  it(
+    'says nothing needs you, with no count, on an event with no row and once it has started',
+    SLOW,
+    async () => {
+      await page('/demo/events/evt-wed-4?state=now');
+
+      expect(screen.getByRole('heading', { level: 2, name: 'Needs you' })).toBeDefined();
+      expect(within(card()).getByText('Nothing needs you')).toBeDefined();
+    },
+  );
+
+  it('shows a member who only reads no row', SLOW, async () => {
+    await page('/demo/events/evt-wed-4?state=needsYouReadOnly');
+
+    expect(within(card()).getByText('Nothing needs you')).toBeDefined();
+    expect(within(card()).queryByRole('listitem')).toBeNull();
+  });
+
+  it('shows no row, count or tick until the load answers, or when it fails', SLOW, async () => {
+    await page('/demo/events/evt-wed-4?state=needsYouFailed');
+
+    expect(screen.getByRole('heading', { level: 2, name: 'Needs you' })).toBeDefined();
+    expect(within(card()).queryByText('Nothing needs you')).toBeNull();
+
+    fireEvent.click(within(card()).getByRole('button', { name: 'Try again' }));
+
+    expect(within(card()).getByText('Nothing needs you')).toBeDefined();
+  });
+});

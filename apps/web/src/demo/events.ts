@@ -1,3 +1,4 @@
+import type { NeedsState } from './needsYou.ts';
 import {
   EVENT_TYPES,
   type EventPhase,
@@ -1247,7 +1248,7 @@ export type LifeState =
   | 'muteNotLoaded'
   | 'muteNotSaved';
 
-export type EventStateName = PhaseState | EditState | LifeState;
+export type EventStateName = PhaseState | EditState | LifeState | NeedsState;
 
 export const EVENT_STATES: Record<EventStateName, string> = {
   draft: 'evt-draft-4',
@@ -1291,6 +1292,13 @@ export const EVENT_STATES: Record<EventStateName, string> = {
   muted: 'evt-wed-4',
   muteNotLoaded: 'evt-wed-4',
   muteNotSaved: 'evt-wed-4',
+  needsYou: 'evt-wed-4',
+  needsYouOne: 'evt-wed-4',
+  needsYouOverdue: 'evt-wed-4',
+  needsYouGiven: 'evt-wed-4',
+  needsYouReadOnly: 'evt-wed-4',
+  needsYouLoading: 'evt-wed-4',
+  needsYouFailed: 'evt-wed-4',
 };
 
 export function eventStateOf(value: string | null): EventStateName | null {
@@ -1451,6 +1459,20 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
       on('finished', 'Finished'),
       on('calledOff', 'Called off'),
       on('photo', 'Live, with a cover photo'),
+    ],
+  },
+  {
+    name: 'Needs you, on the Overview',
+    states: [
+      on('needsYou', 'Rows, an overdue one first, with and without its button'),
+      on('needsYouOne', 'One row'),
+      on('needsYouOverdue', 'Overdue on the day, 1 day and 2 days, and a tie by title'),
+      on('needsYouGiven', 'A copy recorded, its row gone'),
+      on('live', 'Nothing needs you'),
+      on('now', 'Nothing needs you, the event started'),
+      on('needsYouReadOnly', 'Nothing needs you, a member who only reads the menu'),
+      on('needsYouLoading', 'Not loaded yet'),
+      on('needsYouFailed', 'The read failed'),
     ],
   },
   {
