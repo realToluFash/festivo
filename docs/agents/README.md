@@ -202,6 +202,18 @@ through `notify-send`), not once a minute.
 - **Disk.** Under `minFreeGb` free (15 by default) on the workspace's disk, no worker
   starts. BuildKit's cache has filled this disk before; `just prune-build-cache` is the
   usual way back.
+- **What the daily sweep clears** (sc-30467), on each machine for its own checkouts, once a
+  day with no model; the journal says what went and how much it freed, and `sq status`
+  shows the worktrees' and the testers' `.qa/` size beside free space:
+  - **A worktree** under a role checkout's `.claude/worktrees` goes once its story (the
+    `sc-N` in its name or branch) is Ready For QA, In QA, Passed QA or Done, no process has
+    its working folder in it, `git status` shows nothing but `node_modules` and
+    `pnpm-workspace.yaml`, and `git log HEAD --not --remotes` is empty. Its branch stays.
+    One with work left on a merged story is kept and named to `ops@<machine>`.
+  - **A tester's `.qa/sc<N>*`** goes once sc-N is Passed QA or Done, whatever its age;
+    the evidence is on Shortcut by then. Older entries go by age (`machines.md`).
+  - **Frames pulled from a video** are written under the run's `$SQ_RUN_DIR`, so they go
+    when the run ends; the video stays in `.qa/` until the story passes.
 - **Daily cap.** When the run log's spend for today reaches `dailyBudgetUsd`, no worker
   starts until midnight. Unset by default, like the per-run ceiling.
 - **The claude version.** `claudeVersion` pins the CLI the workers were tested on. When the
