@@ -1,12 +1,12 @@
-# Signs ${EMAIL} back in from Welcome, with or without You were signed out, and settles on
-# Home as reset.yaml does. Decided by notVisible on Welcome alone, which returns within half a
-# second when Welcome is absent, the usual case, where a visible lookup waits out seven. sc-32521.
+# Signs ${EMAIL} back in from Welcome, or from Sign in when a check ended the session on the
+# server, and settles on Home as reset.yaml does. Decided by notVisible, which returns within half
+# a second when neither is there, the usual case, where a visible lookup waits out seven. sc-32521.
 appId: host.exp.Exponent
 ---
 - evalScript: ${output.signedOut = true}
 - runFlow:
     when:
-      notVisible: '{{t:any:welcome.withEmail}}'
+      notVisible: '{{t:any:welcome.withEmail}}|{{t:any:signIn.title}}'
     commands:
       - evalScript: ${output.signedOut = false}
 - runFlow:

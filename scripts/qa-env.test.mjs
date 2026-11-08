@@ -2977,6 +2977,7 @@ describe('the flows a batch runs', () => {
       expect(reset.trimEnd().endsWith('- runFlow: signed-out.yaml')).toBe(true);
       for (const code of ['en', 'es', 'fr', 'pt']) {
         expect(catalogues[code].welcome.withEmail).toMatch(resetSettled);
+        expect(catalogues[code].signIn.title).toMatch(resetSettled);
       }
       const signedOut = readFileSync(join(target, 'batch/signed-out.yaml'), 'utf8');
       expect(signedOut).not.toMatch(/when:\s+visible/);
