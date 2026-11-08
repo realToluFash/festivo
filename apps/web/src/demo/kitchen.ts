@@ -32,10 +32,8 @@ export interface Kitchen {
   refuses: boolean;
   fails: boolean;
   from: From;
+  saved: boolean;
 }
-
-/** The two companions named on the sample's invitation (the board draws one, Chidi Okonkwo-Williams). */
-export const COMPANION_NAMES = ['Ana Paula Albuquerque', 'Rafael Albuquerque Santos'] as const;
 
 const LONG =
   'Raw tomato and raw pepper, and anything fried in the same oil as the prawns, even when there are no prawns in it';
@@ -61,8 +59,17 @@ function person(key: string, name: string | null, extra: Partial<Person> = {}): 
 export function blankParty(companions: number): Person[] {
   return [
     person('me', null),
-    ...COMPANION_NAMES.slice(0, companions).map((name, at) => person(`c${at + 1}`, name)),
+    ...Array.from({ length: companions }, (_, at) => person(`c${at + 1}`, null)),
   ];
+}
+
+/** You, a companion's name, or for one the host never named "Your guest", "Your first guest", … (pm and ux, 8 Nov). */
+export function whoOf(one: Person, people: readonly Person[], words: KitchenWords): string {
+  if (one.key === 'me') return words.say('you');
+  if (one.name != null) return one.name;
+  const companions = people.filter((each) => each.key !== 'me');
+
+  return companions.length === 1 ? words.say('yourGuest') : words.nth(companions.indexOf(one) + 1);
 }
 
 export function fromRecord(record: readonly Person[]): Person[] {
@@ -231,7 +238,7 @@ export function kitchenLines(
     }
     if (kept.access !== '') lines.push(line(words.say('gettingIn', { text: kept.access })));
 
-    return { who: one.name ?? words.say('you'), lines };
+    return { who: whoOf(one, kitchen.people, words), lines };
   });
   const nothing = line(words.say('nothingRow'), { quiet: true });
 
@@ -264,17 +271,18 @@ export function mealRows(kitchen: Kitchen, words: KitchenWords): MealRow[] {
   if (!kitchen.meals) return [];
 
   return kitchen.people.map((one) => {
-    const row =
-      one.name == null ? words.say('yourMeals') : words.say('theirMeals', { name: one.name });
+    const you = one.key === 'me';
+    const name = whoOf(one, kitchen.people, words);
+    const row = you ? words.say('yourMeals') : words.say('theirMeals', { name });
     const dishes = (MEALS[one.key] ?? MEALS.me ?? []).map((dish) => {
       const hit = dish.allergens.filter((code) => one.allergies.includes(code));
       const list = words.list(hit.map((code) => words.lower(words.allergen(code))));
       const reason =
         hit.length === 0
           ? null
-          : one.name == null
+          : you
             ? words.say('reasonYou', { list })
-            : words.say('reason', { name: one.name, list });
+            : words.say('reason', { name, list });
 
       return { name: dish.name, reason };
     });
@@ -385,9 +393,9 @@ const FOCUS: Partial<Record<KitchenState, string>> = {
 
 export function kitchenStarts(
   state: KitchenState,
-  { earlier }: { earlier: string },
+  { earlier, companions: invited }: { earlier: string; companions: number },
 ): Partial<Visit> {
-  const companions = state === 'kitchen_alone' ? 0 : COMPANION_NAMES.length;
+  const companions = state === 'kitchen_alone' ? 0 : invited;
   const returning = RETURNING.includes(state);
   const record = returning ? recorded(companions, earlier) : null;
   const picks: Partial<Record<string, Partial<Person>>> = SEEDS[state] ?? {};
@@ -413,6 +421,7 @@ export function kitchenStarts(
     refuses: state === 'refused',
     fails: false,
     from,
+    saved: false,
   };
   const view: View = CHECK_STATES.includes(state)
     ? {

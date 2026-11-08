@@ -16,6 +16,7 @@ import {
   mealRows,
   mealsId,
   ruledOut,
+  whoOf,
 } from './kitchen.ts';
 import { ALLERGENS, DIETS, type KitchenWords, kitchenWordsFor } from './kitchenWords.ts';
 import type { KitchenActions } from './useKitchen.ts';
@@ -203,7 +204,7 @@ function Card({
 
   return (
     <fieldset className="gk-card">
-      <legend className="gk-who">{one.name ?? say.say('you')}</legend>
+      <legend className="gk-who">{whoOf(one, kitchen.people, say)}</legend>
       <div className="gk-card-body">
         {kitchen.record != null && one.by != null && (
           <p className="gk-text is-quiet">
@@ -357,6 +358,20 @@ export function KitchenStep({
         </button>
       </div>
     </section>
+  );
+}
+
+export const SAVED_ID = 'gk-saved';
+
+/** After the date to answer by, under the reply once the kitchen needs are sent (sc-3780's line). */
+export function KitchenSaved({ lang }: { lang: Visit['lang'] }) {
+  const say = useMemo(() => kitchenWordsFor(lang), [lang]);
+
+  return (
+    <p className="gk-saved" role="status">
+      <Glyph name="tick" size={16} weight={2.6} />
+      <span id={SAVED_ID}>{say.say('saved')}</span>
+    </p>
   );
 }
 

@@ -50,6 +50,12 @@ const ENGLISH = {
   introAlone: 'Choose anything that applies to you.',
   consent: 'Only {{hosts}} and the people who cook and serve your meal will see this.',
   you: 'You',
+  yourGuest: 'Your guest',
+  guestNth_ordinal_one: 'Your first guest',
+  guestNth_ordinal_two: 'Your second guest',
+  guestNth_ordinal_few: 'Your third guest',
+  guestNth_ordinal_other: 'Your {{count}}th guest',
+  saved: 'Saved. The kitchen will see this.',
   allergies: 'Allergies',
   diet: 'Diet',
   allergyWord: 'Allergy',
@@ -240,6 +246,8 @@ export function kitchenWordsFor(lang: KitchenLang) {
   const table: Record<Key, string> = { ...ENGLISH, ...(lang === 'fr' ? FRENCH : {}) };
   const { filled, many, listed } = demoWords(table, { locale });
   const names = NAMES[lang === 'fr' ? 'fr' : 'en'];
+  // English only so far, so its ordinal rules pick the form; with at most ten companions, one, two and few are 1, 2 and 3.
+  const ordinal = new Intl.PluralRules('en-US', { type: 'ordinal' });
 
   return {
     locale,
@@ -248,6 +256,8 @@ export function kitchenWordsFor(lang: KitchenLang) {
       many(base, count, slots),
     list: listed,
     lower: (name: string) => lowered(name, locale),
+    nth: (position: number) =>
+      filled(table[`guestNth_ordinal_${ordinal.select(position)}` as Key], { count: position }),
     allergen: (code: Allergen) => names.allergens[code],
     diet: (code: Diet) => names.diets[code],
     access: (code: Access) => names.access[code],

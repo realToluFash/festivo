@@ -50,7 +50,7 @@ import {
   Unreachable,
   Waiting,
 } from './GuestParts.tsx';
-import { KitchenCheck, KitchenStep } from './Kitchen.tsx';
+import { KitchenCheck, KitchenSaved, KitchenStep, SAVED_ID } from './Kitchen.tsx';
 import { type KitchenActions, useKitchen } from './useKitchen.ts';
 import { useLater } from '../useLater.ts';
 import './today.css';
@@ -621,6 +621,7 @@ function Closed({
   }
 
   const by = dayOf(visit.replyBy ?? '', lang);
+  const saved = visit.kitchen?.saved === true;
   const line = visit.started
     ? words.closed
     : recorded?.answer === 'notSure'
@@ -632,10 +633,12 @@ function Closed({
       <h2 id="gp-closed-h" className="gp-h2 is-19">
         {said}
       </h2>
+      {saved && <KitchenSaved lang={lang} />}
       <p className="gp-sub">{line}</p>
       {!visit.started && recorded?.answer === 'coming' && (
         <TextAction
           focus="kitchen"
+          {...(saved ? { describedBy: SAVED_ID } : {})}
           icon={<Line name="pencil" size={18} weight={2.2} />}
           onClick={onKitchen}
         >

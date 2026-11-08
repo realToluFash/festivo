@@ -52,6 +52,7 @@ function fresh(from: From, companions: number): Kitchen {
     refuses: false,
     fails: false,
     from,
+    saved: false,
   };
 }
 
@@ -69,8 +70,9 @@ function landed(was: Visit): Partial<Visit> {
 
   const record = saved(kitchen, TODAY);
   const kept = { ...kitchen, record, people: fromRecord(record), tried: false, alert: null };
-  if (kitchen.from === 'closed')
-    return { view: { kind: 'closed' }, kitchen: kept, ...focus('kitchen') };
+  if (kitchen.from === 'closed') {
+    return { view: { kind: 'closed' }, kitchen: { ...kept, saved: true }, ...focus('kitchen') };
+  }
   const coming = was.recorded?.answer === 'coming';
 
   return {
@@ -118,7 +120,7 @@ export function useKitchen(visit: Visit, state: string | null, go: Go): KitchenA
           kitchen:
             was.kitchen == null
               ? fresh(opened, was.companionsComing)
-              : { ...was.kitchen, from: opened, alert: null },
+              : { ...was.kitchen, from: opened, alert: null, saved: false },
         }),
         'kitchenHead',
       ),

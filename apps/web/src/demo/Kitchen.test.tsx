@@ -8,8 +8,8 @@ import { KITCHEN_PAGES } from './kitchen.ts';
 
 const tested = config();
 const NAME = 'Maria Fernanda Albuquerque Santos';
-const ANA = 'Ana Paula Albuquerque';
-const RAFAEL = 'Rafael Albuquerque Santos';
+const FIRST = 'Your first guest';
+const SECOND = 'Your second guest';
 const REFUSED =
   'Not saved. This page is out of date. Reload it, then choose again. What you chose stays on screen until you do.';
 const plain = window.matchMedia;
@@ -103,7 +103,7 @@ const SAYS: [string, () => void][] = [
     () =>
       screen.getByText('Your answer wasn’t sent. Everything you chose is still here. Try again.'),
   ],
-  ['meal_ruled_out', () => screen.getByText('Ana Paula Albuquerque is allergic to: milk.')],
+  ['meal_ruled_out', () => screen.getByText('Your first guest is allergic to: milk.')],
   ['refused', () => expect(screen.getByRole('alert').textContent).toBe(REFUSED)],
 ];
 
@@ -144,7 +144,7 @@ describe('the step: after Yes, before Check and send', () => {
       (one) => one.textContent,
     );
 
-    expect(legends).toEqual(['You', ANA, RAFAEL]);
+    expect(legends).toEqual(['You', FIRST, SECOND]);
     const you = card('You');
     expect(within(you).getAllByRole('button', { pressed: false })).toHaveLength(15 + 8);
     expect(within(you).getByRole('group', { name: 'Allergies' })).toBeDefined();
@@ -206,16 +206,16 @@ describe('the step: after Yes, before Check and send', () => {
 
   it('refuses over 100 characters in any of the three, focus on the first, and Next stays enabled', async () => {
     await guest('kitchen_say_which');
-    const ana = card(ANA);
+    const ana = card(FIRST);
 
     expect(within(ana).getByText('Shorten it to 100 characters or fewer.')).toBeDefined();
     fireEvent.change(within(card('You')).getByLabelText('Which allergy?'), {
       target: { value: 'Kiwi' },
     });
-    const words = within(card(RAFAEL)).getByLabelText(/^Anything else/u);
+    const words = within(card(SECOND)).getByLabelText(/^Anything else/u);
     fireEvent.change(words, { target: { value: 'x'.repeat(101) } });
     expect(
-      within(card(RAFAEL)).queryByText('Shorten it to 100 characters or fewer.'),
+      within(card(SECOND)).queryByText('Shorten it to 100 characters or fewer.'),
     ).not.toBeNull();
 
     fireEvent.click(button('Next'));
@@ -266,13 +266,15 @@ describe('a returning guest', () => {
       ),
     ).toBeDefined();
     expect(
-      within(card(ANA)).getByText('Last changed by you on Tuesday, October 20.'),
+      within(card(FIRST)).getByText('Last changed by you on Tuesday, October 20.'),
     ).toBeDefined();
-    expect(within(card(RAFAEL)).queryByText(/^Last changed/u)).toBeNull();
+    expect(within(card(SECOND)).queryByText(/^Last changed/u)).toBeNull();
     expect(
       within(card('You')).getByRole('group', { name: 'Adaeze Obi and Tunde Bakare also noted:' }),
     ).toBeDefined();
-    expect(within(card(ANA)).getByDisplayValue('A seat I can reach without stairs')).toBeDefined();
+    expect(
+      within(card(FIRST)).getByDisplayValue('A seat I can reach without stairs'),
+    ).toBeDefined();
   });
 
   it('Remove turns the row into its line with Keep it focused and described by it; Keep it puts it back', async () => {
@@ -382,12 +384,12 @@ describe('meal_ruled_out (sc-3907’s rule)', () => {
   it('refuses Send before anything goes, focus on the marked row’s Change; unpicking clears it', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     await guest('meal_ruled_out');
-    const change = screen.getByRole('link', { name: `Change ${ANA}’s meals` });
+    const change = screen.getByRole('link', { name: `Change ${FIRST}’s meals` });
 
     expect(document.activeElement).toBe(change);
     expect(
       document.getElementById(change.getAttribute('aria-describedby') ?? '')?.textContent,
-    ).toBe('Ana Paula Albuquerque is allergic to: milk.');
+    ).toBe('Your first guest is allergic to: milk.');
     fireEvent.click(button('Send my answer'));
     expect(button('Send my answer').getAttribute('aria-busy')).toBe('false');
     expect(screen.getByRole('alert').textContent).toBe(
@@ -395,7 +397,7 @@ describe('meal_ruled_out (sc-3907’s rule)', () => {
     );
 
     fireEvent.click(button('Change what the kitchen must know'));
-    fireEvent.click(within(card(ANA)).getByRole('button', { name: /^Milk/u }));
+    fireEvent.click(within(card(FIRST)).getByRole('button', { name: /^Milk/u }));
     fireEvent.click(button('Next'));
     expect(screen.queryByText(/is allergic to/u)).toBeNull();
     fireEvent.click(button('Send my answer'));
@@ -424,6 +426,34 @@ describe('after the date to answer by (sc-3780)', () => {
 
     expect(document.activeElement).toBe(update());
     expect(screen.getByText(/^Answers closed on Friday, October 30\./u)).toBeDefined();
+  });
+
+  it('once sent, says “Saved. The kitchen will see this.” under the reply, Update focused and described by it', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    await guest('replyByClosed');
+    const update = () => button('Update what the kitchen should know');
+
+    expect(screen.queryByText('Saved. The kitchen will see this.')).toBeNull();
+    fireEvent.click(update());
+    fireEvent.click(button('Nothing to add'));
+    fireEvent.click(button('Send my answer'));
+    await wait();
+
+    const saved = screen.getByRole('status');
+    expect(saved.textContent).toBe('Saved. The kitchen will see this.');
+    const reply = screen.getByRole('heading', {
+      name: 'You answered Coming on Tuesday, October 27.',
+    });
+    expect(reply.nextElementSibling).toBe(saved);
+    expect(document.activeElement).toBe(update());
+    expect(
+      document.getElementById(update().getAttribute('aria-describedby') ?? '')?.textContent,
+    ).toBe('Saved. The kitchen will see this.');
+
+    fireEvent.click(update());
+    fireEvent.click(button('Back'));
+    expect(screen.queryByText('Saved. The kitchen will see this.')).toBeNull();
+    expect(update().hasAttribute('aria-describedby')).toBe(false);
   });
 });
 

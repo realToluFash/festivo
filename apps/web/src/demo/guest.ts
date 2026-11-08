@@ -333,7 +333,8 @@ export function isGuestState(value: string | null): value is GuestStateName {
 }
 
 export function startOf(value: string | null): Visit {
-  if (isKitchenState(value)) return { ...BASE, ...kitchenStarts(value, { earlier: EARLIER }) };
+  if (isKitchenState(value))
+    return { ...BASE, ...kitchenStarts(value, { earlier: EARLIER, companions: COMPANIONS }) };
 
   const state = isGuestState(value) ? value : 'open';
 

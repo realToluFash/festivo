@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 
 import { startOf } from './guest.ts';
 import {
-  COMPANION_NAMES,
   KITCHEN_PAGES,
   type Kitchen,
   type Person,
@@ -16,6 +15,7 @@ import {
   mealRows,
   ruledOut,
   saved,
+  whoOf,
 } from './kitchen.ts';
 import { kitchenWordsFor } from './kitchenWords.ts';
 
@@ -61,10 +61,7 @@ describe('the kitchen step’s states (sc-3778)', () => {
 
   it('opens each on the step or on Check and send, with one card per person coming', () => {
     expect(startOf('kitchen')).toMatchObject({ view: { kind: 'kitchen' }, recorded: null });
-    expect(startOf('kitchen').kitchen?.people.map((one) => one.name)).toEqual([
-      null,
-      ...COMPANION_NAMES,
-    ]);
+    expect(startOf('kitchen').kitchen?.people.map((one) => one.key)).toEqual(['me', 'c1', 'c2']);
     expect(startOf('kitchen_alone').kitchen?.people).toHaveLength(1);
     expect(startOf('kitchen_alone').companionsComing).toBe(0);
     expect(startOf('check_and_send').view.kind).toBe('check');
@@ -86,7 +83,45 @@ describe('the kitchen step’s states (sc-3778)', () => {
 
   it('opens sc-1439’s own Check and send with no kitchen row', () => {
     expect(startOf('check').kitchen).toBeNull();
-    expect(kitchenStarts('kitchen', { earlier: '2026-10-20' }).view).toEqual({ kind: 'kitchen' });
+    expect(kitchenStarts('kitchen', { earlier: '2026-10-20', companions: 2 }).view).toEqual({
+      kind: 'kitchen',
+    });
+  });
+});
+
+describe('who each card is for (pm and ux, 8 Nov)', () => {
+  it('names a companion the host never named by an ordinal, never an invented name', () => {
+    const two = blankParty(2);
+    const four = blankParty(4);
+
+    expect(two.map((one) => whoOf(one, two, EN))).toEqual([
+      'You',
+      'Your first guest',
+      'Your second guest',
+    ]);
+    expect(four.map((one) => whoOf(one, four, EN)).slice(3)).toEqual([
+      'Your third guest',
+      'Your 4th guest',
+    ]);
+    expect(
+      blankParty(10)
+        .map((one, _, all) => whoOf(one, all, EN))
+        .at(-1),
+    ).toBe('Your 10th guest');
+    expect(whoOf(blankParty(1)[1]!, blankParty(1), EN)).toBe('Your guest');
+    expect(startOf('kitchen').kitchen?.people.every((one) => one.name == null)).toBe(true);
+  });
+
+  it('keeps a name the host gave', () => {
+    const party = blankParty(2).map((one) =>
+      one.key === 'c2' ? { ...one, name: 'Rafael Santos' } : one,
+    );
+
+    expect(party.map((one) => whoOf(one, party, EN))).toEqual([
+      'You',
+      'Your first guest',
+      'Rafael Santos',
+    ]);
   });
 });
 
@@ -144,7 +179,7 @@ describe('For the kitchen on Check and send', () => {
 
   it('says Nothing to add for a person with nothing, and once when nobody has anything', () => {
     expect(kitchenLines(kitchenOf('check_and_send'), EN)[2]).toEqual({
-      who: COMPANION_NAMES[1],
+      who: 'Your second guest',
       lines: [{ text: 'Nothing to add', allergy: false, quiet: true }],
     });
     expect(kitchenLines(kitchenOf('kitchen_nothing'), EN)).toEqual([
@@ -161,23 +196,23 @@ describe('what Send records', () => {
   });
 
   it('drops removed rows and empty Others, and dates only the people whose picks changed', () => {
-    const [me, ana, rafael] = saved(kitchenOf('check_and_send'), '2026-10-27');
+    const [me, first, second] = saved(kitchenOf('check_and_send'), '2026-10-27');
 
     expect(me).toMatchObject({ host: ['near_exit'], removed: [], by: 'you', on: '2026-10-27' });
-    expect(ana).toMatchObject({ by: 'you', on: '2026-10-20' });
-    expect(rafael).toMatchObject({ by: null, words: '', access: '' });
+    expect(first).toMatchObject({ by: 'you', on: '2026-10-20' });
+    expect(second).toMatchObject({ by: null, words: '', access: '' });
   });
 });
 
 describe('meal_ruled_out (sc-3907’s rule)', () => {
   it('marks the dish the new allergy rules out, and lets Send go once it is unpicked', () => {
     const kitchen = kitchenOf('meal_ruled_out');
-    const ana = mealRows(kitchen, EN).find((row) => row.key === 'c1');
+    const first = mealRows(kitchen, EN).find((row) => row.key === 'c1');
 
-    expect(ana?.row).toBe('Ana Paula Albuquerque’s meals');
-    expect(ana?.dishes[0]).toEqual({
+    expect(first?.row).toBe('Your first guest’s meals');
+    expect(first?.dishes[0]).toEqual({
       name: 'Canapé selection',
-      reason: 'Ana Paula Albuquerque is allergic to: milk.',
+      reason: 'Your first guest is allergic to: milk.',
     });
     expect(ruledOut(kitchen)).toBe('k-meals-c1');
     expect(

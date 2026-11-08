@@ -361,6 +361,21 @@
   gap: 10px;
 }
 
+.gk-saved {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: 6px;
+  font: 500 15px/1.45 var(--fontFamily);
+  animation: gp-drop 120ms var(--gpEase);
+}
+
+.gk-saved svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--colorAccent);
+}
+
 /* ── Check and send: Your answer, For the kitchen, sc-3907's meal rows; flat rows on white ── */
 
 .gk-rows {
@@ -461,7 +476,8 @@
   }
 
   .gk-error,
-  .gk-line {
+  .gk-line,
+  .gk-saved {
     animation-name: gp-fade;
   }
 
