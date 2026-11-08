@@ -362,6 +362,18 @@ export function GuestKitchenStep({
           actions={actions}
         />
       ))}
+      {closed && kitchen.alert === 'net' && (
+        <Notice
+          kind="broken"
+          action={
+            <TextAction off={busy} focus="kitchenRetry" onClick={actions.save}>
+              {busy ? words.retrying : words.retry}
+            </TextAction>
+          }
+        >
+          {say.say('saveFailed')}
+        </Notice>
+      )}
       <div className="gk-actions">
         <Filled busy={busy} focus="kitchenNext" onClick={closed ? actions.save : actions.next}>
           {say.say(closed ? 'save' : 'next')}

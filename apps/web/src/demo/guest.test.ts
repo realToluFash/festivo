@@ -34,8 +34,8 @@ describe('the guest’s page states (sc-31306)', () => {
       'In the guest’s own language (sc-3790)',
       'The hosts’ messages and the guest’s own',
     ]);
-    expect(STATES).toHaveLength(60);
-    expect(new Set(STATES).size).toBe(60);
+    expect(STATES).toHaveLength(61);
+    expect(new Set(STATES).size).toBe(61);
     expect(STATES.every(isGuestState)).toBe(true);
     expect(LINKED.find((one) => one.to.includes('messageArrival'))?.to).toBe(
       '/demo/guest?state=messageArrival#m-3',

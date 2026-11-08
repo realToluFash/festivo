@@ -1,16 +1,20 @@
 import { instantOf, localDay } from './events.ts';
 
-/** sc-3780's date to reply by, per event: the wedding's Wed, Nov 4 (as the Guests demo has it) and its No reply count (sc-99). */
-export const REPLY_BY_SAMPLE: Readonly<Record<string, { date: string | null; noReply: number }>> = {
-  'evt-wed-4': { date: '2026-11-04', noReply: 21 },
+/** sc-3780's date to reply by, per event: the wedding's Wed, Nov 4 (as the Guests demo has it), and who hasn't replied as its card counts them. */
+export const REPLY_BY_SAMPLE: Readonly<
+  Record<string, { date: string | null; noReply: number; held: number }>
+> = {
+  'evt-wed-4': { date: '2026-11-04', noReply: 21, held: 4 },
 };
 
 export function replyByOf(id: string): string | null {
   return REPLY_BY_SAMPLE[id]?.date ?? null;
 }
 
-export function noReplyOf(id: string): number {
-  return REPLY_BY_SAMPLE[id]?.noReply ?? 0;
+export function noReplyOf(id: string): { guests: number; companions: number } {
+  const one = REPLY_BY_SAMPLE[id];
+
+  return { guests: one?.noReply ?? 0, companions: one?.held ?? 0 };
 }
 
 export const CLOSES_AT = '23:59';
@@ -88,6 +92,13 @@ export function shortDay(date: string): string {
 
 /** The board's English for Reply by (sc-3780's Design, 7 Nov), held in the demo until the product's screen puts it in the catalogues. */
 export const REPLY_BY_WORDS = {
+  /** As the Guests card counts them: "21 guests and 4 of their companions" (pm, 8 Nov). */
+  who: ({ guests, companions }: { guests: number; companions: number }) => {
+    const figure = new Intl.NumberFormat(LOCALE);
+    const said = `${figure.format(guests)} ${guests === 1 ? 'guest' : 'guests'}`;
+
+    return companions === 0 ? said : `${said} and ${figure.format(companions)} of their companions`;
+  },
   replyBy: 'Reply by',
   rowCloses: (zone: string) => `Replies close at ${CLOSES_AT}, ${zone} time`,
   rowNone: 'Replies stay open until the event starts',
@@ -96,12 +107,11 @@ export const REPLY_BY_WORDS = {
   remove: 'Remove the date',
   preview: (sentence: string) => `On the guests’ page: “${sentence}”`,
   tooLate: 'Choose a date before the event starts.',
-  soonerTitle: (date: string, count: number) =>
-    `Close replies sooner, on ${date}, for ${new Intl.NumberFormat(LOCALE).format(count)} guests who haven’t replied?`,
+  soonerTitle: (date: string, who: string) =>
+    `Close replies sooner, on ${date}, for ${who} who haven’t replied?`,
   soonerLine: 'After that day they can’t answer, unless you let them change their reply.',
   sooner: 'Close replies sooner',
-  nowTitle: (count: number) =>
-    `Close replies now for ${new Intl.NumberFormat(LOCALE).format(count)} guests who haven’t replied?`,
+  nowTitle: (who: string) => `Close replies now for ${who} who haven’t replied?`,
   nowLine: 'They can’t answer from now on, unless you let them change their reply.',
   now: 'Close replies now',
   keep: (date: string) => `Keep ${date}`,

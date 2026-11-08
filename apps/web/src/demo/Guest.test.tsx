@@ -72,7 +72,7 @@ describe('the guest’s own page, A · The cover card (sc-31306)', () => {
     );
 
     expect(guestLinks).toEqual(GUEST_PAGES.flatMap((one) => one.states).map((one) => one.to));
-    expect(guestLinks).toHaveLength(60);
+    expect(guestLinks).toHaveLength(61);
   });
 
   it('opens on the cover card: the invitation, the guest, the event, when and where', async () => {
@@ -157,6 +157,10 @@ const SAYS: [string, () => void][] = [
       ),
   ],
   ['replyByClosedKitchen', () => screen.getByRole('button', { name: 'Save' })],
+  [
+    'replyByClosedNotSaved',
+    () => screen.getByText('Not saved. Check your connection and try again.'),
+  ],
   ['replyByClosedSaved', () => screen.getByText('Saved. The kitchen will see this.')],
   ['closedRefused', () => screen.getByText(/^Answers closed before this was sent\./u)],
   [

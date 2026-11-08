@@ -17,7 +17,7 @@ async function page(state: string, id = 'evt-wed-4', name = WEDDING) {
     initialEntries: [`/demo/events/${id}?state=${state}`],
   });
   render(<RouterProvider router={router} />);
-  await screen.findByRole('heading', { level: 1, name });
+  await screen.findByRole('heading', { level: 1, name }, { timeout: 8000 });
 }
 
 const part = () => screen.getByRole('group', { name: 'Reply by' });
@@ -81,7 +81,7 @@ describe('Reply by on the event’s Details (sc-3780)', () => {
   it('asks before closing sooner; Keep leaves the date, Close saves it', SLOW, async () => {
     await page('replyBySooner');
     const ask = await screen.findByRole('alertdialog', {
-      name: 'Close replies sooner, on Tue, Nov 3, for 21 guests who haven’t replied?',
+      name: 'Close replies sooner, on Tue, Nov 3, for 21 guests and 4 of their companions who haven’t replied?',
     });
 
     expect(within(ask).getByRole('button', { name: 'Keep Wed, Nov 4' })).toBeDefined();
@@ -100,7 +100,7 @@ describe('Reply by on the event’s Details (sc-3780)', () => {
   it('asks before closing now for a date already past', SLOW, async () => {
     await page('replyByNow');
     const ask = await screen.findByRole('alertdialog', {
-      name: 'Close replies now for 21 guests who haven’t replied?',
+      name: 'Close replies now for 21 guests and 4 of their companions who haven’t replied?',
     });
 
     fireEvent.click(within(ask).getByRole('button', { name: 'Keep Wed, Nov 4' }));

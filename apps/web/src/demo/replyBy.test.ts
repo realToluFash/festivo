@@ -17,9 +17,9 @@ const NOW = new Date('2026-11-03T09:41:00Z');
 const ZONE = 'Europe/London';
 
 describe('the date to reply by (sc-3780)', () => {
-  it('holds the wedding’s Wed, Nov 4 and its 21 guests with no reply; others have none', () => {
+  it('holds the wedding’s Wed, Nov 4 and who hasn’t replied, as its card counts; others have none', () => {
     expect(replyByOf('evt-wed-4')).toBe('2026-11-04');
-    expect(noReplyOf('evt-wed-4')).toBe(21);
+    expect(noReplyOf('evt-wed-4')).toEqual({ guests: 21, companions: 4 });
     expect(replyByOf('evt-draft-4')).toBeNull();
   });
 
@@ -61,10 +61,16 @@ describe('the date to reply by (sc-3780)', () => {
   it('writes the dates and the words as the boards do', () => {
     expect(rowDay('2026-11-04')).toBe('Wed, Nov 4, 2026');
     expect(shortDay('2026-11-03')).toBe('Tue, Nov 3');
-    expect(R.soonerTitle(shortDay('2026-11-03'), 21)).toBe(
-      'Close replies sooner, on Tue, Nov 3, for 21 guests who haven’t replied?',
+    const who = R.who(noReplyOf('evt-wed-4'));
+
+    expect(R.soonerTitle(shortDay('2026-11-03'), who)).toBe(
+      'Close replies sooner, on Tue, Nov 3, for 21 guests and 4 of their companions who haven’t replied?',
     );
-    expect(R.nowTitle(21)).toBe('Close replies now for 21 guests who haven’t replied?');
+    expect(R.nowTitle(who)).toBe(
+      'Close replies now for 21 guests and 4 of their companions who haven’t replied?',
+    );
+    expect(R.who({ guests: 1, companions: 0 })).toBe('1 guest');
+    expect(R.who({ guests: 3, companions: 1 })).toBe('3 guests and 1 of their companions');
     expect(R.keep(shortDay('2026-11-04'))).toBe('Keep Wed, Nov 4');
     expect(R.saved(shortDay('2026-11-03'), ZONE)).toBe(
       'Saved. Replies close Tue, Nov 3 at 23:59, Europe/London time.',

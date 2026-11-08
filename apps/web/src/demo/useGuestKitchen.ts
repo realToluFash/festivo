@@ -102,7 +102,14 @@ export function savedClosed(was: Visit): Partial<Visit> {
 
   return {
     view: { kind: 'closed' },
-    kitchen: { ...kitchen, record, people: fromRecord(record), tried: false, saved: true },
+    kitchen: {
+      ...kitchen,
+      record,
+      people: fromRecord(record),
+      tried: false,
+      alert: null,
+      saved: true,
+    },
     want: 'kitchen',
     wantId: was.wantId + 1,
   };

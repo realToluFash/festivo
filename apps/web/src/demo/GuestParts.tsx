@@ -220,10 +220,12 @@ export function Filled({
 export function Notice({
   kind,
   alert = kind === 'broken',
+  action,
   children,
 }: {
   kind: 'broken' | 'attention';
   alert?: boolean;
+  action?: ReactNode;
   children: ReactNode;
 }) {
   return (
@@ -231,7 +233,14 @@ export function Notice({
       <span className="gp-notice-mark" aria-hidden="true">
         {kind === 'broken' && <Glyph name="clear" size={14} weight={3} />}
       </span>
-      <p>{children}</p>
+      {action == null ? (
+        <p>{children}</p>
+      ) : (
+        <div className="gp-unsaved-words">
+          <p>{children}</p>
+          {action}
+        </div>
+      )}
     </div>
   );
 }

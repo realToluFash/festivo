@@ -551,7 +551,7 @@ function Shown({
             {recorded.by == null ? (
               <p className="gp-sub">{words.answered(recorded.answer, day)}</p>
             ) : (
-              <p className="gp-sub is-small">{words.recordedFor(recorded.by, day)}</p>
+              <p className="gp-sub is-recorded">{words.recordedFor(recorded.by, day)}</p>
             )}
             {view.same && <p className="gp-sub is-ink">{words.same(recorded.answer)}</p>}
             {recorded.answer === 'notSure' && COMPANIONS > 0 && (

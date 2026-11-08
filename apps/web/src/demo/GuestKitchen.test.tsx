@@ -541,6 +541,29 @@ describe('after the date to answer by (sc-3780)', () => {
   });
 });
 
+describe('a Save after the date that fails (pm, 8 Nov)', () => {
+  it('says so with Try again, keeps what was typed, and Try again saves it', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    await guest('replyByClosedNotSaved');
+    const alert = screen.getByRole('alert');
+
+    expect(
+      within(alert).getByText('Not saved. Check your connection and try again.'),
+    ).toBeDefined();
+    expect(document.activeElement).toBe(within(alert).getByRole('button', { name: 'Try again' }));
+    expect(within(card('You')).getByDisplayValue('No raw onion, please.')).toBeDefined();
+    expect(screen.queryByText('Saved. The kitchen will see this.')).toBeNull();
+
+    fireEvent.click(within(alert).getByRole('button', { name: 'Try again' }));
+    expect(button('Save').getAttribute('aria-busy')).toBe('true');
+    await wait();
+
+    expect(screen.getByRole('status').textContent).toBe('Saved. The kitchen will see this.');
+    expect(document.activeElement).toBe(button('Update what the kitchen should know'));
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+});
+
 describe('a companion the host never named (sc-3778, 8 Nov)', () => {
   it('is “Your guest” alone, and “Your guest 1”, “Your guest 2” when there are more', async () => {
     await guest('kitchen_one_guest');

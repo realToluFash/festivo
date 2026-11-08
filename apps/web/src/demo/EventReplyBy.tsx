@@ -138,8 +138,8 @@ export function ReplyByPart({
         <Ask
           title={
             asking === 'sooner'
-              ? R.soonerTitle(shortDay(next), noReplyOf(event.id))
-              : R.nowTitle(noReplyOf(event.id))
+              ? R.soonerTitle(shortDay(next), R.who(noReplyOf(event.id)))
+              : R.nowTitle(R.who(noReplyOf(event.id)))
           }
           line={asking === 'sooner' ? R.soonerLine : R.nowLine}
           keep={replyBy == null ? W.cancel : R.keep(shortDay(replyBy))}

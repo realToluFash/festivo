@@ -101,14 +101,21 @@ export function recorded(companions: number, earlier: string): Person[] {
 }
 
 /** After the date to answer by, Update what the kitchen should know opens the record on its own (sc-3780). */
-export function closedKitchen(companions: number, earlier: string, saved: boolean): GuestKitchen {
+export function closedKitchen(
+  companions: number,
+  earlier: string,
+  { saved = false, failed = false }: { saved?: boolean; failed?: boolean } = {},
+): GuestKitchen {
   const record = recorded(companions, earlier);
+  const people = fromRecord(record).map((one) =>
+    failed && one.key === 'me' ? { ...one, words: 'No raw onion, please.' } : one,
+  );
 
   return {
-    people: fromRecord(record),
+    people,
     record,
     tried: false,
-    alert: null,
+    alert: failed ? 'net' : null,
     meals: false,
     refuses: false,
     from: 'closed',
