@@ -469,6 +469,14 @@ describe('Guests, the guest’s Language (sc-3790)', () => {
     fireEvent.click(within(column()).getByRole('button', { name: 'Add guest' }));
 
     expect(screen.getByText('Lucas Moreau added.')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'No reply · 21' }));
+    fireEvent.click(screen.getByRole('menuitemradio', { name: /^Not yet invited\s*15/u }));
+    fireEvent.click(screen.getByRole('link', { name: /^Lucas Moreau, Not yet invited/u }));
+
+    expect(
+      await within(column()).findByRole('heading', { name: 'Lucas Moreau' }, WAIT),
+    ).toBeDefined();
+    expect(within(column()).getByText('Français')).toBeDefined();
   });
 
   it('says in Details what Not set falls back to', SLOW, async () => {

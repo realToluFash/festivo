@@ -222,7 +222,7 @@ function Visitor({ state }: { state: string | null }) {
     setSaving(true);
     later(SEND_MS, () => {
       setSaving(false);
-      go((was) => ({ unsaved: false, said: was.said + 1 }), 'lang');
+      go(() => ({ unsaved: false }), 'lang');
     });
   }
 

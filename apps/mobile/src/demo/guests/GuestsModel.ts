@@ -18,6 +18,7 @@ import {
   TODAY,
   WALK_IN,
   type Companion,
+  type GuestLanguage,
   type SampleGuest,
   WEDDING,
   replyByOf,
@@ -617,6 +618,32 @@ export function phoneCheck(typed: string, country: string): string | null {
   if (problem === 'tooShort') return say.tooShort(countryName(country));
   if (problem === 'tooLong') return say.tooLong(countryName(country));
   return null;
+}
+
+/** A guest typed on Add guest: Not yet invited, with the Language the host chose (sc-3790). */
+export function addedGuest(
+  key: string,
+  typed: {
+    name: string;
+    email: string;
+    phone: string | null;
+    language: GuestLanguage | null;
+    companions: readonly string[];
+  },
+): SampleGuest {
+  return {
+    key,
+    name: typed.name.trim(),
+    kind: 'notyet',
+    when: null,
+    email: typed.email.trim() === '' ? null : typed.email.trim(),
+    phone: typed.phone,
+    language: typed.language,
+    companions: typed.companions
+      .filter((c) => c.trim() !== '')
+      .map((c) => ({ name: c.trim(), kind: 'notyet' })),
+    invited: null,
+  };
 }
 
 export function sameNameAs(

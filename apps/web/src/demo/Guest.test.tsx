@@ -622,12 +622,16 @@ describe('the page in the guest’s own language (sc-3790)', () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     await guest('notSaved');
     const notice = screen.getByRole('alert');
+    const switchSaid = document.querySelector('.gp [aria-live="polite"][aria-atomic="true"] span');
 
     expect(notice.textContent).toContain('[Votre langue n’a pas été enregistrée.');
     fireEvent.click(within(notice).getByRole('button', { name: 'Réessayer' }));
     await wait();
 
     expect(screen.queryByRole('alert')).toBeNull();
+    expect(document.querySelector('.gp [aria-live="polite"][aria-atomic="true"] span')).toBe(
+      switchSaid,
+    );
     expect(document.activeElement).toBe(
       screen.getByRole('button', { name: /^Langue\s:\sFrançais$/u }),
     );

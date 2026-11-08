@@ -7,6 +7,7 @@ import { TO_FIGURES } from '../messages/MessagesSample.ts';
 import { SAMPLE_GUESTS } from '../events/GuestCounts.ts';
 import {
   DOOR_STATES,
+  addedGuest,
   GROUPS,
   GUESTS_ON,
   guestsOpening,
@@ -114,6 +115,19 @@ describe('the guest’s Language (sc-3790)', () => {
     expect(areaStart('languageEdit').overlay).toBe('edit');
     expect(areaStart('languageAdd').overlay).toBe('add');
     expect(areaStart('languageSet').overlay).toBeNull();
+  });
+
+  it('keeps the Language chosen on Add guest on the guest it adds', () => {
+    const added = addedGuest('added-1', {
+      name: ' Lucas Moreau ',
+      email: 'lucas.moreau@orange.fr',
+      phone: null,
+      language: 'fr',
+      companions: ['', 'Chloé Moreau'],
+    });
+
+    expect(added).toMatchObject({ name: 'Lucas Moreau', kind: 'notyet', language: 'fr' });
+    expect(added.companions).toEqual([{ name: 'Chloé Moreau', kind: 'notyet' }]);
   });
 
   it('holds the host’s Language and the guest’s own choice on the sample', () => {

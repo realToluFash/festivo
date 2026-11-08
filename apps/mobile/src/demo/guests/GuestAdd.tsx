@@ -33,6 +33,7 @@ import {
   type AddState,
   type ReviewRow,
   type ReviewState,
+  addedGuest,
   countryName,
   emailCheck,
   nameProblem,
@@ -224,19 +225,15 @@ export function AddGuest({
     }
     setFailed(null);
     setSame(false);
-    onAdded({
-      key: `added-${Date.now()}`,
-      name: name.trim(),
-      kind: 'notyet',
-      when: null,
-      email: email.trim() === '' ? null : email.trim(),
-      phone: joinPhone(country, number),
-      language,
-      companions: companions
-        .filter((c) => c.trim() !== '')
-        .map((c) => ({ name: c.trim(), kind: 'notyet' })),
-      invited: null,
-    });
+    onAdded(
+      addedGuest(`added-${Date.now()}`, {
+        name,
+        email,
+        phone: joinPhone(country, number),
+        language,
+        companions,
+      }),
+    );
     setAdded(name.trim());
     setName('');
     setEmail('');
