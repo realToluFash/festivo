@@ -253,9 +253,9 @@ describe('Events in A at a desk (sc-30304)', () => {
   );
 
   it('shows an area that is coming, and opens People from the event’s sidebar', SLOW, async () => {
-    await page('/demo/events/evt-wed-4?area=guests', 'Guests');
+    await page('/demo/events/evt-wed-4?area=menu', 'Menu');
 
-    expect(screen.getByText('The guest list for this event is coming.')).toBeDefined();
+    expect(screen.getByText('The menu for this event is coming.')).toBeDefined();
     expect(
       within(screen.getByRole('navigation', { name: WEDDING }))
         .getByRole('link', { name: 'People' })
