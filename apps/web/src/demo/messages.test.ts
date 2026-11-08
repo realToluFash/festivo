@@ -39,7 +39,7 @@ describe('Messaging B · Conversations, the rules (sc-31371)', () => {
   it('has the spec’s 42 states, the notice’s 3 and sc-3942’s 2, in order, each linked once from the demo home', () => {
     const keys = MESSAGE_STATES.map((one) => one.key);
 
-    expect(keys).toHaveLength(47);
+    expect(keys).toHaveLength(72);
     expect(keys.slice(0, 3)).toEqual(['first', 'loading', 'inUse']);
     expect(keys.slice(6, 10)).toEqual([
       'channelReply',
@@ -48,8 +48,8 @@ describe('Messaging B · Conversations, the rules (sc-31371)', () => {
       'noticeNotSent',
     ]);
     expect(keys.slice(26, 29)).toEqual(['bell', 'invitedReached', 'sentReached']);
-    expect(keys.slice(-3)).toEqual(['tellPlace', 'closedDraft', 'closedEnded']);
-    expect(new Set(keys).size).toBe(47);
+    expect(keys.slice(44, 47)).toEqual(['tellPlace', 'closedDraft', 'closedEnded']);
+    expect(new Set(keys).size).toBe(72);
     expect(MESSAGES_PAGES.flatMap((page) => page.states.map((one) => one.to))).toEqual(
       keys.map((key) => `/demo/events/evt-wed-4/messages?state=${key}`),
     );
@@ -102,8 +102,8 @@ describe('Messaging B · Conversations, the rules (sc-31371)', () => {
     const both: Audience = { kind: 'who', conditions: ['coming', 'notReplied'] };
 
     expect(chipWords({ kind: 'all' })).toBe('All guests · 142');
-    expect(chipWords(COMING)).toBe('Guests who… Is coming · 96');
-    expect(chipWords(NOT_REPLIED)).toBe('Guests who… Hasn’t replied · 25');
+    expect(chipWords(COMING)).toBe('Coming · 96');
+    expect(chipWords(NOT_REPLIED)).toBe('Hasn’t replied · 25');
     expect(countOf(none)).toBeNull();
     expect(countOf(both)).toBe(0);
     expect(refusalOf(none)).toBe(MW.noCondition);

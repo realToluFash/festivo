@@ -2,12 +2,22 @@ import { writtenTime } from './clock.ts';
 import type { SampleEvent } from './events.ts';
 import { demoWords } from './demoWords.ts';
 import { MESSAGES_WORD, MW } from './messagesWords.ts';
+import {
+  type Audience,
+  type SentToId,
+  COMING,
+  NOT_REPLIED,
+  SENT_TO,
+  countOf,
+  isSentTo,
+  sentToRow,
+  toLine,
+  toSeedOf,
+} from './messagesTo.ts';
 import type { DemoLink } from './settings.ts';
 
 /** Messaging B · Conversations (page e36, board/messaging-b-spec.md): the sample and the inbox's rules; the words are in messagesWords.ts. */
 export { MW };
-
-const NUMBER = new Intl.NumberFormat('en-US');
 
 export const { filled, many, listed } = demoWords(MW);
 
@@ -59,6 +69,31 @@ export const MESSAGE_STATES = [
   { key: 'tellPlace', name: 'Tell guests, a new place' },
   { key: 'closedDraft', name: 'New unavailable, a draft' },
   { key: 'closedEnded', name: 'New unavailable, finished over 30 days ago' },
+  { key: 'whoAdded', name: 'A quick pick, then a condition' },
+  { key: 'whoNone', name: 'Guests who…, no condition' },
+  { key: 'whoNoneSend', name: 'Send with no condition' },
+  { key: 'whoMany', name: 'Several conditions' },
+  { key: 'whoGroup', name: 'Is in group: which group?' },
+  { key: 'whoCounting', name: 'The count refreshing' },
+  { key: 'seeWho', name: 'See who' },
+  { key: 'whoNobody', name: 'Nobody matches' },
+  { key: 'whoRenamed', name: 'A renamed group' },
+  { key: 'whoDeleted', name: 'A deleted group' },
+  { key: 'saveName', name: 'Save this audience' },
+  { key: 'saveBlank', name: 'A blank name' },
+  { key: 'saveLong', name: 'A name over 60' },
+  { key: 'saveTaken', name: 'A used name' },
+  { key: 'saveFull', name: 'The 21st' },
+  { key: 'saved', name: 'Saved' },
+  { key: 'savedChanged', name: 'A saved audience, changed' },
+  { key: 'audienceMenu', name: 'More actions' },
+  { key: 'rename', name: 'Rename' },
+  { key: 'renamed', name: 'Renamed, accents only' },
+  { key: 'deleteAsk', name: 'Delete…, asked' },
+  { key: 'deletedPicked', name: 'Deleted, the picked one' },
+  { key: 'noManage', name: 'Without messages.manage' },
+  { key: 'resolvedRow', name: 'Sent to conditions' },
+  { key: 'nobodyDue', name: 'Nobody matched when it was due' },
 ] as const;
 
 export type MessagesState = (typeof MESSAGE_STATES)[number]['key'];
@@ -110,7 +145,7 @@ export type Channel = 'email' | 'sms' | 'whatsApp';
 export type Where = 'page' | Channel;
 export type GuestId = 'ines' | 'lucia' | 'kwame' | 'marta';
 export type ConvoId =
-  GuestId | 'unknown' | 'parking' | 'invite' | `sched${string}` | `new${string}`;
+  GuestId | 'unknown' | 'parking' | 'invite' | SentToId | `sched${string}` | `new${string}`;
 
 export interface SampleGuest {
   initials: string;
@@ -333,52 +368,19 @@ export function blank(body: readonly Segment[]): boolean {
   return body.every((part) => part.kind === 'text' && part.text.trim() === '');
 }
 
-export type Condition = 'coming' | 'notReplied';
-export type Audience = { kind: 'all' } | { kind: 'who'; conditions: readonly Condition[] };
-
-export const CONDITIONS: readonly Condition[] = ['coming', 'notReplied'];
-export const COMING: Audience = { kind: 'who', conditions: ['coming'] };
-export const NOT_REPLIED: Audience = { kind: 'who', conditions: ['notReplied'] };
-
-export function conditionWord(condition: Condition): string {
-  return condition === 'coming' ? MW.isComing : MW.hasntReplied;
-}
-
-export function countOf(audience: Audience): number | null {
-  if (audience.kind === 'all') return GUESTS_N;
-  if (audience.conditions.length === 0) return null;
-  if (audience.conditions.length > 1) return 0;
-
-  return audience.conditions[0] === 'coming' ? 96 : 25;
-}
-
-export function audienceWords(audience: Audience): string {
-  if (audience.kind === 'all') return MW.allGuests;
-
-  return [MW.guestsWho, audience.conditions.map(conditionWord).join(', ')]
-    .filter(Boolean)
-    .join(' ');
-}
-
-export function chipWords(audience: Audience): string {
-  const count = countOf(audience);
-
-  return count == null || count === 0
-    ? audienceWords(audience)
-    : `${audienceWords(audience)} · ${NUMBER.format(count)}`;
-}
-
-export function toLine(audience: Audience): string {
-  return audience.kind === 'all'
-    ? MW.toAll
-    : filled(MW.toAudience, { audience: audienceWords(audience) });
-}
-
-export function refusalOf(audience: Audience): string | null {
-  if (audience.kind === 'who' && audience.conditions.length === 0) return MW.noCondition;
-
-  return countOf(audience) === 0 ? MW.nobodyLine : null;
-}
+export {
+  type Audience,
+  type Condition,
+  CONDITIONS,
+  COMING,
+  NOT_REPLIED,
+  audienceWords,
+  chipWords,
+  conditionWord,
+  countOf,
+  refusalOf,
+  toLine,
+} from './messagesTo.ts';
 
 export interface Untellable {
   name: string;
@@ -1120,8 +1122,20 @@ export function seedOf(state: MessagesState | null): Inbox {
         pane: open('sched'),
         scheds: [{ ...SCHEDULED, cancelledAt: '09:46' }],
       };
-    default:
+    default: {
+      const seed = toSeedOf(state);
+
+      if (seed?.kind === 'compose')
+        return {
+          ...base,
+          pane: { kind: 'compose' },
+          draft: { ...draftOf(seed.to), openTo: seed.open },
+        };
+      if (seed?.kind === 'convo')
+        return { ...base, present: [...ALL, ...seed.more], pane: open(seed.id) };
+
       return base;
+    }
   }
 }
 
@@ -1283,6 +1297,7 @@ function schedRow(sched: Sched): Row {
 export function rowOf(inbox: Inbox, id: ConvoId): Row {
   if (isGuest(id)) return guestRow(inbox, id);
   if (id === 'unknown') return unknownRow(inbox);
+  if (isSentTo(id)) return sentToRow(id);
 
   const outs = outsIn(inbox, id);
   const last = outs.at(-1);
@@ -1410,6 +1425,7 @@ export function sectionsOf(inbox: Inbox): Sections {
 
   done.push(...scheds.filter((one) => one.cancelledAt != null).map(schedRow));
   done.push(...inbox.done.filter(here).map((id) => rowOf(inbox, id)));
+  done.push(...SENT_TO.filter((id) => here(id) && outsIn(inbox, id).length === 0).map(sentToRow));
   if (here('parking') && inbox.unreached.length === 0) done.push(rowOf(inbox, 'parking'));
   if (here('invite')) done.push(rowOf(inbox, 'invite'));
 

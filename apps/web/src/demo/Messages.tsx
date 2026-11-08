@@ -50,6 +50,7 @@ import {
 } from './messages.ts';
 import { ConversationPane } from './MessagesThread.tsx';
 import { InboxContext, type InboxApi } from './messagesContext.ts';
+import { useTo } from './messagesTo.ts';
 import { LeadMark, WhyNot } from './MessagesParts.tsx';
 import { UntoldBanner } from './MessagesTell.tsx';
 import { MESSAGES_WORD } from './messagesWords.ts';
@@ -102,6 +103,8 @@ function firstFocus(state: MessagesState | null): string | null {
       return 'check';
     case 'to':
       return 'to-pick';
+    case 'whoNoneSend':
+      return 'refused';
     default:
       return null;
   }
@@ -187,6 +190,7 @@ function Messages({
   const titleId = useId();
   const sections = useMemo(() => sectionsOf(inbox), [inbox]);
   const lit = litOf(inbox);
+  const to = useTo(state);
 
   const say = useCallback((words: string) => {
     window.setTimeout(() => setSaid(''), 0);
@@ -290,7 +294,7 @@ function Messages({
   }
 
   function startNew(): void {
-    if (closed != null) return;
+    if (closed != null || !to.manage) return;
     if (inbox.pane.kind !== 'compose')
       act({
         kind: 'compose',
@@ -339,6 +343,7 @@ function Messages({
     } else if (
       key === 'r' &&
       closed == null &&
+      to.manage &&
       inbox.pane.kind === 'convo' &&
       isGuest(inbox.pane.id)
     ) {
@@ -375,6 +380,7 @@ function Messages({
     keys,
     whyOff: closed == null ? undefined : whyId,
     bell: { read: bellRead, markRead: () => setBellRead(true), takeFirst },
+    to,
   };
   const empty = inbox.present.length === 0 && sections.top.length === 0;
 
@@ -386,17 +392,19 @@ function Messages({
             <h1 id={titleId} className="mg-title" tabIndex={-1} data-focus="title">
               {MESSAGES_WORD}
             </h1>
-            <button
-              type="button"
-              className="mg-new"
-              aria-keyshortcuts={keys && closed == null ? 'C' : undefined}
-              aria-describedby={closed == null ? undefined : whyId}
-              onClick={startNew}
-              {...offButton(closed != null)}
-            >
-              <Glyph name="plus" size={18} weight={2.4} />
-              {MW.new}
-            </button>
+            {to.manage && (
+              <button
+                type="button"
+                className="mg-new"
+                aria-keyshortcuts={keys && closed == null ? 'C' : undefined}
+                aria-describedby={closed == null ? undefined : whyId}
+                onClick={startNew}
+                {...offButton(closed != null)}
+              >
+                <Glyph name="plus" size={18} weight={2.4} />
+                {MW.new}
+              </button>
+            )}
           </div>
           {closed != null && <WhyNot id={whyId} words={closed} />}
           <div ref={list} className="mg-list-body">
@@ -436,14 +444,18 @@ function Messages({
                     <kbd>E</kbd>
                     {MW.markAsDone}
                   </span>
-                  <span>
-                    <kbd>R</kbd>
-                    {MW.reply}
-                  </span>
-                  <span>
-                    <kbd>C</kbd>
-                    {MW.new}
-                  </span>
+                  {to.manage && (
+                    <>
+                      <span>
+                        <kbd>R</kbd>
+                        {MW.reply}
+                      </span>
+                      <span>
+                        <kbd>C</kbd>
+                        {MW.new}
+                      </span>
+                    </>
+                  )}
                 </p>
                 <button
                   type="button"

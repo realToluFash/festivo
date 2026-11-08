@@ -57,6 +57,8 @@ import {
   toldWords,
 } from './messages.ts';
 import { Composer, ComposePane, ResendCard } from './MessagesCompose.tsx';
+import { NoManage, SentToThread } from './MessagesSentTo.tsx';
+import { isSentTo } from './messagesTo.ts';
 import { type Bit, useInbox, whereBits } from './messagesContext.ts';
 import { LaterDialog, MatchPicker } from './MessagesDialogs.tsx';
 import {
@@ -124,7 +126,7 @@ function Idle() {
 }
 
 /** The composer waiting at the foot: its To, and a field that opens the full composer on the first key. */
-function MiniComposer({
+export function MiniComposer({
   to,
   placeholder,
   thread,
@@ -133,7 +135,9 @@ function MiniComposer({
   placeholder: string;
   thread: ConvoId;
 }) {
-  const { act, focus, inbox, whyOff } = useInbox();
+  const { act, focus, inbox, whyOff, to: event } = useInbox();
+
+  if (!event.manage) return <NoManage />;
 
   function open(text: string, toPick: boolean): void {
     act({
@@ -161,7 +165,7 @@ function MiniComposer({
           onClick={() => open('', true)}
           {...offButton(whyOff != null)}
         >
-          {chipWords(to)}
+          {chipWords(to, event.book)}
           <Glyph name="chevdown" size={14} weight={2.6} />
         </button>
       </div>
@@ -190,7 +194,7 @@ function MiniComposer({
   );
 }
 
-function Head({
+export function Head({
   lead,
   title,
   line,
@@ -228,6 +232,7 @@ function Thread({
   const { inbox } = useInbox();
 
   if (isGuest(id) || id === 'unknown') return <GuestThread id={id} state={state} onDone={onDone} />;
+  if (isSentTo(id)) return <SentToThread id={id} />;
   if (isSched(id) && outsIn(inbox, id).length === 0) {
     const sched = inbox.scheds.find((one) => one.id === id);
 
@@ -476,9 +481,12 @@ function AnswerBox({
   canAlso: readonly Channel[];
   typed: string;
 }) {
-  const { inbox, act, keys, tell, say, focus, whyOff } = useInbox();
+  const { inbox, act, keys, tell, say, focus, whyOff, to } = useInbox();
   const [text, setText] = useState(typed);
   const [by, setBy] = useState<Channel>(toldBy);
+
+  if (!to.manage) return <NoManage />;
+
   const blank = text.trim() === '';
   const notice = noticeOf(id, by, inbox.balance, canAlso);
 

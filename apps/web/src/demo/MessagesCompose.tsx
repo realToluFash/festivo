@@ -1,6 +1,5 @@
 import {
   type KeyboardEvent,
-  type RefObject,
   useEffect,
   useEffectEvent,
   useId,
@@ -12,17 +11,13 @@ import {
 import { offButton } from '../offButton.ts';
 import { Glyph } from '../components/Glyph.tsx';
 import {
-  type Audience,
-  type Condition,
   type Draft,
   type Segment,
   type Ticks,
   type Token,
   CHANNELS,
-  CONDITIONS,
   SCHEDULED,
   EVENT_NAME,
-  GUESTS_N,
   HOSTS,
   MW,
   ORGANISATION,
@@ -35,8 +30,6 @@ import {
   checkOf,
   chipWords,
   dayWords,
-  conditionWord,
-  countOf,
   fill,
   filled,
   isNew,
@@ -49,6 +42,7 @@ import { useInbox } from './messagesContext.ts';
 import { LaterDialog } from './MessagesDialogs.tsx';
 import { WhereGlyph } from './MessagesParts.tsx';
 import { StreamItems } from './MessagesStream.tsx';
+import { ToPopover } from './MessagesTo.tsx';
 
 function commandEnter(event: KeyboardEvent, then: () => void): void {
   if (event.key !== 'Enter' || !(event.metaKey || event.ctrlKey)) return;
@@ -59,13 +53,16 @@ function commandEnter(event: KeyboardEvent, then: () => void): void {
 
 /** Writing to many: To and Let them know by at the head, the check or the preview in the stream, the composer at the foot. */
 export function ComposePane({ opening, later: laterFirst }: { opening: boolean; later: boolean }) {
-  const { inbox, act, focus, say } = useInbox();
+  const { inbox, act, focus, say, to: event } = useInbox();
   const draft = inbox.draft;
   const [toOpen, setToOpen] = useState(opening || draft?.openTo === true);
   const [later, setLater] = useState(laterFirst);
-  const [refused, setRefused] = useState<string | null>(null);
+  const [refused, setRefused] = useState(() => event.refused(draft?.to));
+  const { viewed } = event;
   const chip = useRef<HTMLButtonElement>(null);
   const byId = useId();
+
+  useEffect(() => viewed(), [viewed]);
 
   if (draft == null) return null;
 
@@ -75,7 +72,7 @@ export function ComposePane({ opening, later: laterFirst }: { opening: boolean; 
   function send(): void {
     if (blank(current.body)) return;
 
-    const why = refusalOf(current.to);
+    const why = refusalOf(current.to, event.book.groups);
 
     if (why != null) {
       setRefused(why);
@@ -109,7 +106,7 @@ export function ComposePane({ opening, later: laterFirst }: { opening: boolean; 
                 data-focus="to-chip"
                 onClick={() => setToOpen((open) => !open)}
               >
-                {chipWords(draft.to)}
+                {chipWords(draft.to, event.book)}
                 <Glyph name="chevdown" size={14} weight={2.6} />
               </button>
               {toOpen && (
@@ -254,192 +251,6 @@ export function TickChip({
   );
 }
 
-function ToPopover({
-  to,
-  chip,
-  onPick,
-  onClose,
-}: {
-  to: Audience;
-  chip: RefObject<HTMLButtonElement | null>;
-  onPick: (to: Audience) => void;
-  onClose: (back: boolean) => void;
-}) {
-  const { tell } = useInbox();
-  const box = useRef<HTMLDivElement>(null);
-  const add = useRef<HTMLButtonElement>(null);
-  const [kept, setKept] = useState<readonly Condition[]>(
-    to.kind === 'who' ? to.conditions : ['coming'],
-  );
-  const [adding, setAdding] = useState(false);
-  const titleId = useId();
-  const name = useId();
-  const count = countOf(to);
-  const who = to.kind === 'who' ? to.conditions : null;
-  const left = CONDITIONS.filter((condition) => !(who ?? []).includes(condition));
-
-  useEffect(() => {
-    box.current?.querySelector<HTMLInputElement>('input:checked')?.focus();
-  }, []);
-
-  useEffect(() => {
-    const keys = (event: globalThis.KeyboardEvent) => {
-      if (event.key !== 'Escape') return;
-
-      event.preventDefault();
-      if (adding) {
-        setAdding(false);
-        add.current?.focus();
-      } else onClose(true);
-    };
-    const outside = (event: PointerEvent) => {
-      const target = event.target as Node;
-
-      if (!box.current?.contains(target) && !chip.current?.contains(target)) onClose(false);
-    };
-
-    document.addEventListener('keydown', keys);
-    document.addEventListener('pointerdown', outside);
-
-    return () => {
-      document.removeEventListener('keydown', keys);
-      document.removeEventListener('pointerdown', outside);
-    };
-  }, [adding, chip, onClose]);
-
-  function conditions(next: readonly Condition[]): void {
-    setKept(next);
-    onPick({ kind: 'who', conditions: next });
-  }
-
-  return (
-    <div ref={box} className="mg-pop mg-to-pop" role="dialog" aria-labelledby={titleId}>
-      <div className="mg-pop-head">
-        <h3 id={titleId} className="mg-to-title">
-          {MW.to}
-        </h3>
-        <button
-          type="button"
-          className="mg-close"
-          aria-label={MW.closeTo}
-          onClick={() => onClose(true)}
-        >
-          <Glyph name="clear" size={18} weight={2.4} />
-        </button>
-      </div>
-      <fieldset className="mg-radios">
-        <legend className="desk-unseen">{MW.to}</legend>
-        <label className="mg-radio-row">
-          <input
-            type="radio"
-            name={name}
-            className="desk-radio"
-            data-focus="to-pick"
-            checked={to.kind === 'all'}
-            onChange={() => onPick({ kind: 'all' })}
-          />
-          <span className="today-grow">{MW.allGuests}</span>
-          <span className="mg-radio-count">{GUESTS_N}</span>
-        </label>
-        <label className="mg-radio-row">
-          <input
-            type="radio"
-            name={name}
-            className="desk-radio"
-            checked={false}
-            onChange={() => tell(`${MW.chooseGuests} has its own design.`)}
-          />
-          <span className="today-grow">{MW.chooseGuests}</span>
-        </label>
-        <label className="mg-radio-row">
-          <input
-            type="radio"
-            name={name}
-            className="desk-radio"
-            checked={who != null}
-            onChange={() => onPick({ kind: 'who', conditions: kept })}
-          />
-          <span className="today-grow">{MW.guestsWho}</span>
-        </label>
-      </fieldset>
-      {who != null && (
-        <div className="mg-who-block">
-          <ul className="mg-conds">
-            {who.map((condition) => (
-              <li key={condition} className="mg-cond">
-                {conditionWord(condition)}
-                <button
-                  type="button"
-                  aria-label={filled(MW.removeCondition, { condition: conditionWord(condition) })}
-                  onClick={() => {
-                    conditions(who.filter((one) => one !== condition));
-                    add.current?.focus();
-                  }}
-                >
-                  <Glyph name="clear" size={13} weight={2.6} />
-                </button>
-              </li>
-            ))}
-            {left.length > 0 && (
-              <li className="mg-add-at">
-                <button
-                  ref={add}
-                  type="button"
-                  className="desk-text"
-                  aria-expanded={adding}
-                  onClick={() => setAdding((open) => !open)}
-                >
-                  <Glyph name="plus" size={17} weight={2.3} />
-                  {MW.addCondition}
-                </button>
-                {adding && (
-                  <ul className="mg-add-list">
-                    {left.map((condition) => (
-                      <li key={condition}>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            conditions([...who, condition]);
-                            setAdding(false);
-                          }}
-                        >
-                          {conditionWord(condition)}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </li>
-            )}
-          </ul>
-          <p className="mg-pop-line">{MW.matchEvery}</p>
-          <div className="mg-pop-count">
-            <p role="status">
-              {count == null ? '' : count === 0 ? MW.nobodyMatches : many('guests', count)}
-            </p>
-            {count != null && count > 0 && (
-              <button
-                type="button"
-                className="desk-text"
-                onClick={() => tell(`${MW.seeWho} has its own design.`)}
-              >
-                {MW.seeWho}
-              </button>
-            )}
-          </div>
-          <button
-            type="button"
-            className="desk-text"
-            onClick={() => tell(`${MW.saveAudience} has its own design.`)}
-          >
-            {MW.saveAudience}
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
 function nodeOf(part: Segment): Node {
   if (part.kind === 'text') return document.createTextNode(part.text);
 
@@ -549,6 +360,7 @@ export function Composer({
 }) {
   const [inserting, setInserting] = useState(false);
   const optionalId = useId();
+  const refusedId = useId();
   const empty = blank(draft.body);
 
   function insert(token: Token): void {
@@ -601,6 +413,12 @@ export function Composer({
         onChange={(body) => onDraft({ body })}
         onSubmit={onSend}
       />
+      {refused != null && (
+        <p id={refusedId} className="desk-error" role="alert" tabIndex={-1} data-focus="refused">
+          <Glyph name="alert" size={15} weight={2.2} />
+          {refused}
+        </p>
+      )}
       {tools && (
         <div className="mg-tools">
           <div className="mg-insert-at">
@@ -641,6 +459,7 @@ export function Composer({
                 className={empty ? 'mg-send is-off' : 'mg-send'}
                 aria-label={MW.send}
                 aria-keyshortcuts="Meta+Enter Control+Enter"
+                aria-describedby={refused == null ? undefined : refusedId}
                 data-focus="send"
                 {...offButton(empty, { dim: false })}
               >
@@ -663,12 +482,6 @@ export function Composer({
             </>
           )}
         </div>
-      )}
-      {refused != null && (
-        <p className="desk-error" role="alert" tabIndex={-1} data-focus="refused">
-          <Glyph name="alert" size={15} weight={2.2} />
-          {refused}
-        </p>
       )}
     </form>
   );
