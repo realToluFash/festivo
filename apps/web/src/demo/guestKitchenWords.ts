@@ -41,7 +41,7 @@ export const ACCESS = [
 ] as const;
 export type Access = (typeof ACCESS)[number];
 
-export type KitchenLang = 'en' | 'es' | 'fr' | 'pt';
+export type GuestKitchenLang = 'en' | 'es' | 'fr' | 'pt';
 
 /** The board's English (GuestPage.dc.html, page e30, v373): the AC's lines, [en]'s (#4791, #29905) and pm's 422 line (#29942). */
 const ENGLISH = {
@@ -231,7 +231,12 @@ const NAMES: Record<
   },
 };
 
-const TAGS: Record<KitchenLang, string> = { en: 'en-US', es: 'es-ES', fr: 'fr-FR', pt: 'pt-PT' };
+const TAGS: Record<GuestKitchenLang, string> = {
+  en: 'en-US',
+  es: 'es-ES',
+  fr: 'fr-FR',
+  pt: 'pt-PT',
+};
 
 /** A name inside a list, lower case ("peanuts"); a [bracketed] proposal keeps its bracket. */
 export function lowered(name: string, locale: string): string {
@@ -241,7 +246,7 @@ export function lowered(name: string, locale: string): string {
 }
 
 /** The kitchen step's words in the reader's language: the board's English, its French, and English for es and pt, which the board does not draw. */
-export function kitchenWordsFor(lang: KitchenLang) {
+export function guestKitchenWordsFor(lang: GuestKitchenLang) {
   const locale = TAGS[lang];
   const table: Record<Key, string> = { ...ENGLISH, ...(lang === 'fr' ? FRENCH : {}) };
   const { filled, many, listed } = demoWords(table, { locale });
@@ -264,4 +269,4 @@ export function kitchenWordsFor(lang: KitchenLang) {
   };
 }
 
-export type KitchenWords = ReturnType<typeof kitchenWordsFor>;
+export type GuestKitchenWords = ReturnType<typeof guestKitchenWordsFor>;

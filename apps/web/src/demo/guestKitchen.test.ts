@@ -2,37 +2,37 @@ import { describe, expect, it } from 'vitest';
 
 import { startOf } from './guest.ts';
 import {
-  KITCHEN_PAGES,
-  type Kitchen,
+  GUEST_KITCHEN_PAGES,
+  type GuestKitchen,
   type Person,
   blankParty,
   changes,
   errorsOf,
   firstError,
-  isKitchenState,
-  kitchenLines,
-  kitchenStarts,
+  isGuestKitchenState,
+  guestKitchenLines,
+  guestKitchenStarts,
   mealRows,
   ruledOut,
   saved,
   whoOf,
-} from './kitchen.ts';
-import { kitchenWordsFor } from './kitchenWords.ts';
+} from './guestKitchen.ts';
+import { guestKitchenWordsFor } from './guestKitchenWords.ts';
 
-const EN = kitchenWordsFor('en');
-const FR = kitchenWordsFor('fr');
-const STATES = KITCHEN_PAGES.flatMap((page) => page.states).map(
+const EN = guestKitchenWordsFor('en');
+const FR = guestKitchenWordsFor('fr');
+const STATES = GUEST_KITCHEN_PAGES.flatMap((page) => page.states).map(
   (one) => /state=(\w+)/u.exec(one.to)?.[1] ?? '',
 );
 
-function kitchenOf(state: string): Kitchen {
+function kitchenOf(state: string): GuestKitchen {
   const kitchen = startOf(state).kitchen;
   if (kitchen == null) throw new Error(`${state} has no kitchen`);
 
   return kitchen;
 }
 
-function party(...people: Partial<Person>[]): Kitchen {
+function party(...people: Partial<Person>[]): GuestKitchen {
   return {
     ...kitchenOf('kitchen'),
     people: blankParty(people.length - 1).map((one, at) => ({ ...one, ...people[at] })),
@@ -55,8 +55,8 @@ describe('the kitchen step’s states (sc-3778)', () => {
       'meal_ruled_out',
       'refused',
     ]);
-    expect(STATES.every(isKitchenState)).toBe(true);
-    expect(isKitchenState('check')).toBe(false);
+    expect(STATES.every(isGuestKitchenState)).toBe(true);
+    expect(isGuestKitchenState('check')).toBe(false);
   });
 
   it('opens each on the step or on Check and send, with one card per person coming', () => {
@@ -93,7 +93,7 @@ describe('the kitchen step’s states (sc-3778)', () => {
 
   it('opens sc-1439’s own Check and send with no kitchen row', () => {
     expect(startOf('check').kitchen).toBeNull();
-    expect(kitchenStarts('kitchen', { earlier: '2026-10-20', companions: 2 }).view).toEqual({
+    expect(guestKitchenStarts('kitchen', { earlier: '2026-10-20', companions: 2 }).view).toEqual({
       kind: 'kitchen',
     });
   });
@@ -156,7 +156,7 @@ describe('the free texts and the 100 characters', () => {
 
 describe('For the kitchen on Check and send', () => {
   it('writes Allergy for one and Allergies for more, as a list in the reader’s language', () => {
-    const lines = kitchenLines(
+    const lines = guestKitchenLines(
       party(
         { allergies: ['peanuts'] },
         { allergies: ['peanuts', 'sesame', 'other'], other: 'Kiwi' },
@@ -166,13 +166,13 @@ describe('For the kitchen on Check and send', () => {
 
     expect(lines[0]?.lines[0]).toEqual({ text: 'Allergy: peanuts', allergy: true, quiet: false });
     expect(lines[1]?.lines[0]?.text).toBe('Allergies: peanuts, sesame, and Kiwi');
-    expect(kitchenLines(party({ allergies: ['peanuts', 'sesame'] }), FR)[0]?.lines[0]?.text).toBe(
-      '[Allergies : arachides et sésame]',
-    );
+    expect(
+      guestKitchenLines(party({ allergies: ['peanuts', 'sesame'] }), FR)[0]?.lines[0]?.text,
+    ).toBe('[Allergies : arachides et sésame]');
   });
 
   it('reads in the order a cook does: allergies, diet, the words, the hosts’ access, removed, the access line', () => {
-    const [you] = kitchenLines(kitchenOf('check_and_send'), EN);
+    const [you] = guestKitchenLines(kitchenOf('check_and_send'), EN);
 
     expect(you?.who).toBe('You');
     expect(you?.lines.map((line) => line.text)).toEqual([
@@ -182,17 +182,17 @@ describe('For the kitchen on Check and send', () => {
       'A seat near an exit',
       'Removed: Step-free access',
     ]);
-    expect(kitchenLines(kitchenOf('check_and_send'), EN)[1]?.lines.at(-1)?.text).toBe(
+    expect(guestKitchenLines(kitchenOf('check_and_send'), EN)[1]?.lines.at(-1)?.text).toBe(
       'Getting in and around: A seat I can reach without stairs',
     );
   });
 
   it('says Nothing to add for a person with nothing, and once when nobody has anything', () => {
-    expect(kitchenLines(kitchenOf('check_and_send'), EN)[2]).toEqual({
+    expect(guestKitchenLines(kitchenOf('check_and_send'), EN)[2]).toEqual({
       who: 'Your second guest',
       lines: [{ text: 'Nothing to add', allergy: false, quiet: true }],
     });
-    expect(kitchenLines(kitchenOf('kitchen_nothing'), EN)).toEqual([
+    expect(guestKitchenLines(kitchenOf('kitchen_nothing'), EN)).toEqual([
       { who: null, lines: [{ text: 'Nothing to add', allergy: false, quiet: true }] },
     ]);
   });

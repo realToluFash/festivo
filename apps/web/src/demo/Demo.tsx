@@ -29,7 +29,7 @@ import { SEATING_PAGES } from './seating.ts';
 import { GetBackInBoard } from './GetBackIn.tsx';
 import { GuestPage } from './Guest.tsx';
 import { GUEST_PAGES } from './guest.ts';
-import { KITCHEN_PAGES } from './kitchen.ts';
+import { GUEST_KITCHEN_PAGES } from './guestKitchen.ts';
 import { Guests } from './Guests.tsx';
 import { GUESTS_PAGES } from './guests.ts';
 import { LegalPage } from './Legal.tsx';
@@ -237,7 +237,7 @@ function DemoHome({ from }: { from: string }) {
         <h3>Guest’s page in A · The cover card · phone, tablet and desk</h3>
         <BoardPages pages={GUEST_PAGES} />
         <h3>The kitchen step on the guest’s page · sc-3778 · phone, tablet and desk</h3>
-        <BoardPages pages={KITCHEN_PAGES} />
+        <BoardPages pages={GUEST_KITCHEN_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-30">

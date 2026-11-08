@@ -5,7 +5,7 @@ import { EARLIER, HOLD_MS, OPEN, SEND_MS, TODAY, type View, type Visit } from '.
 import {
   type Field,
   type From,
-  type Kitchen,
+  type GuestKitchen,
   type Person,
   blankParty,
   changes,
@@ -15,12 +15,12 @@ import {
   ruledOut,
   saved,
   toggled,
-} from './kitchen.ts';
-import { ALLERGENS, type Access, type Allergen, DIETS, type Diet } from './kitchenWords.ts';
+} from './guestKitchen.ts';
+import { ALLERGENS, type Access, type Allergen, DIETS, type Diet } from './guestKitchenWords.ts';
 
 type Go = (change: (was: Visit) => Partial<Visit>, want?: string) => void;
 
-export interface KitchenActions {
+export interface GuestKitchenActions {
   open: (from: From) => void;
   allergy: (key: string, code: Allergen) => void;
   diet: (key: string, code: Diet) => void;
@@ -44,7 +44,7 @@ function checkView(from: From): View {
 }
 
 /** A guest recorded as Coming has a record to come back to: the sample `kitchen_returning` opens on. */
-function fresh(from: From, was: Visit): Kitchen {
+function fresh(from: From, was: Visit): GuestKitchen {
   const record = was.recorded?.answer === 'coming' ? recorded(was.companionsComing, EARLIER) : null;
 
   return {
@@ -83,7 +83,7 @@ function landed(was: Visit): Partial<Visit> {
 }
 
 /** sc-3778's step on the guest's page: Yes leads to it, Next to Check and send, Send saves it with the answer. */
-export function useKitchen(visit: Visit, state: string | null, go: Go): KitchenActions {
+export function useGuestKitchen(visit: Visit, state: string | null, go: Go): GuestKitchenActions {
   const later = useLater();
   const land = useCallback(() => go(landed), [go]);
 

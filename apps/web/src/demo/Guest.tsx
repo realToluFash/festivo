@@ -51,8 +51,13 @@ import {
   Unreachable,
   Waiting,
 } from './GuestParts.tsx';
-import { KitchenCheck, KitchenSaved, KitchenStep, SAVED_ID } from './Kitchen.tsx';
-import { type KitchenActions, useKitchen } from './useKitchen.ts';
+import {
+  GuestKitchenCheck,
+  GuestKitchenSaved,
+  GuestKitchenStep,
+  GUEST_KITCHEN_SAVED_ID,
+} from './GuestKitchen.tsx';
+import { type GuestKitchenActions, useGuestKitchen } from './useGuestKitchen.ts';
 import { useLater } from '../useLater.ts';
 import { legalPath } from './legal.ts';
 import './today.css';
@@ -111,7 +116,7 @@ function Visitor({ state }: { state: string | null }) {
     document.querySelector<HTMLElement>(`.gp [data-focus="${visit.want}"]`)?.focus();
   }, [visit.want, visit.wantId]);
 
-  const kitchen = useKitchen(visit, state, go);
+  const kitchen = useGuestKitchen(visit, state, go);
 
   const record = useCallback(
     (answer: Answer) =>
@@ -406,7 +411,7 @@ function Under({
 }: {
   visit: Visit;
   words: Words;
-  kitchen: KitchenActions;
+  kitchen: GuestKitchenActions;
   onAnswer: (answer: Answer) => void;
   onSend: () => void;
   onBack: () => void;
@@ -465,7 +470,7 @@ function Shown({
   view: View;
   visit: Visit;
   words: Words;
-  kitchen: KitchenActions;
+  kitchen: GuestKitchenActions;
   onAnswer: (answer: Answer) => void;
   onSend: () => void;
   onBack: () => void;
@@ -492,10 +497,10 @@ function Shown({
         </section>
       );
     case 'kitchen':
-      return <KitchenStep visit={visit} words={words} actions={kitchen} />;
+      return <GuestKitchenStep visit={visit} words={words} actions={kitchen} />;
     case 'check':
       if (visit.kitchen != null)
-        return <KitchenCheck visit={visit} words={words} actions={kitchen} />;
+        return <GuestKitchenCheck visit={visit} words={words} actions={kitchen} />;
 
       return (
         <section className="gp-check" aria-labelledby="gp-check-h">
@@ -665,12 +670,12 @@ function Closed({
       <h2 id="gp-closed-h" className="gp-h2 is-19">
         {said}
       </h2>
-      {saved && <KitchenSaved lang={lang} />}
+      {saved && <GuestKitchenSaved lang={lang} />}
       <p className="gp-sub">{line}</p>
       {!visit.started && recorded?.answer === 'coming' && (
         <TextAction
           focus="kitchen"
-          {...(saved ? { describedBy: SAVED_ID } : {})}
+          {...(saved ? { describedBy: GUEST_KITCHEN_SAVED_ID } : {})}
           icon={<Line name="pencil" size={18} weight={2.2} />}
           onClick={onKitchen}
         >

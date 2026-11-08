@@ -7,20 +7,25 @@ import { EVENT, type Visit, type Words, dayOf } from './guest.ts';
 import { Filled, Notice, TextAction } from './GuestParts.tsx';
 import {
   type Field,
-  type Kitchen,
+  type GuestKitchen,
   type Person,
   allergyNames,
   errorsOf,
   fieldId,
-  kitchenLines,
+  guestKitchenLines,
   mealRows,
   mealsId,
   ruledOut,
   whoOf,
-} from './kitchen.ts';
-import { ALLERGENS, DIETS, type KitchenWords, kitchenWordsFor } from './kitchenWords.ts';
-import type { KitchenActions } from './useKitchen.ts';
-import './kitchen.css';
+} from './guestKitchen.ts';
+import {
+  ALLERGENS,
+  DIETS,
+  type GuestKitchenWords,
+  guestKitchenWordsFor,
+} from './guestKitchenWords.ts';
+import type { GuestKitchenActions } from './useGuestKitchen.ts';
+import './guestKitchen.css';
 
 function Ring({ kind }: { kind: 'allergy' | 'broken' | 'removed' | 'diet' }) {
   return (
@@ -120,10 +125,10 @@ function HostRows({
   actions,
 }: {
   one: Person;
-  say: KitchenWords;
+  say: GuestKitchenWords;
   hosts: string;
   count: number;
-  actions: KitchenActions;
+  actions: GuestKitchenActions;
 }) {
   const head = `gk-host-${one.key}`;
 
@@ -185,11 +190,11 @@ function Card({
   actions,
 }: {
   one: Person;
-  kitchen: Kitchen;
+  kitchen: GuestKitchen;
   visit: Visit;
   words: Words;
-  say: KitchenWords;
-  actions: KitchenActions;
+  say: GuestKitchenWords;
+  actions: GuestKitchenActions;
 }) {
   const errors = kitchen.tried ? errorsOf(one) : NO_ERRORS;
   const problem = (field: Field) => {
@@ -297,19 +302,19 @@ function Card({
   );
 }
 
-function useSay(visit: Visit): KitchenWords {
-  return useMemo(() => kitchenWordsFor(visit.lang), [visit.lang]);
+function useSay(visit: Visit): GuestKitchenWords {
+  return useMemo(() => guestKitchenWordsFor(visit.lang), [visit.lang]);
 }
 
 /** Anything the kitchen must know?: one card per person coming, the who-sees line first. */
-export function KitchenStep({
+export function GuestKitchenStep({
   visit,
   words,
   actions,
 }: {
   visit: Visit;
   words: Words;
-  actions: KitchenActions;
+  actions: GuestKitchenActions;
 }) {
   const say = useSay(visit);
   const kitchen = visit.kitchen;
@@ -361,16 +366,16 @@ export function KitchenStep({
   );
 }
 
-export const SAVED_ID = 'gk-saved';
+export const GUEST_KITCHEN_SAVED_ID = 'gk-saved';
 
 /** After the date to answer by, under the reply once the kitchen needs are sent (sc-3780's line). */
-export function KitchenSaved({ lang }: { lang: Visit['lang'] }) {
-  const say = useMemo(() => kitchenWordsFor(lang), [lang]);
+export function GuestKitchenSaved({ lang }: { lang: Visit['lang'] }) {
+  const say = useMemo(() => guestKitchenWordsFor(lang), [lang]);
 
   return (
     <p className="gk-saved" role="status">
       <Glyph name="tick" size={16} weight={2.6} />
-      <span id={SAVED_ID}>{say.say('saved')}</span>
+      <span id={GUEST_KITCHEN_SAVED_ID}>{say.say('saved')}</span>
     </p>
   );
 }
@@ -403,14 +408,14 @@ function RowChange({
 }
 
 /** Check and send with For the kitchen after Your answer, and sc-3907's meal rows once the meals exist. */
-export function KitchenCheck({
+export function GuestKitchenCheck({
   visit,
   words,
   actions,
 }: {
   visit: Visit;
   words: Words;
-  actions: KitchenActions;
+  actions: GuestKitchenActions;
 }) {
   const say = useSay(visit);
   const { kitchen, view } = visit;
@@ -454,7 +459,7 @@ export function KitchenCheck({
         <div className="gk-row">
           <div className="gk-row-words">
             <p className="gk-label">{say.say('row')}</p>
-            {kitchenLines(kitchen, say).map(({ who, lines }) => (
+            {guestKitchenLines(kitchen, say).map(({ who, lines }) => (
               <div key={who ?? 'nobody'} className="gk-person">
                 {who != null && <p className="gk-value">{who}</p>}
                 {lines.map((line, at) => (

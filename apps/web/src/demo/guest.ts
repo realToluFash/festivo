@@ -4,7 +4,7 @@ import i18next from 'i18next';
 import { writtenTime } from './clock.ts';
 import { type SampleEvent, sampleEvent } from './events.ts';
 import { BOARD_SAMPLES } from './guestLanguages.ts';
-import { type Kitchen, isKitchenState, kitchenStarts } from './kitchen.ts';
+import { type GuestKitchen, isGuestKitchenState, guestKitchenStarts } from './guestKitchen.ts';
 import type { DemoLink } from './settings.ts';
 
 /** The guest's own page in A · The cover card (sc-31306), on the boards' sample: main's evt-wed-4 and one guest. */
@@ -118,7 +118,7 @@ export interface Visit {
   want: string | null;
   wantId: number;
   /** sc-3778's step, once Yes has led to it; null for sc-1439's Check and send on its own. */
-  kitchen: Kitchen | null;
+  kitchen: GuestKitchen | null;
 }
 
 export const OPEN: View = { kind: 'answer', busy: null, note: null };
@@ -352,8 +352,8 @@ export function isGuestState(value: string | null): value is GuestStateName {
 }
 
 export function startOf(value: string | null): Visit {
-  if (isKitchenState(value))
-    return { ...BASE, ...kitchenStarts(value, { earlier: EARLIER, companions: COMPANIONS }) };
+  if (isGuestKitchenState(value))
+    return { ...BASE, ...guestKitchenStarts(value, { earlier: EARLIER, companions: COMPANIONS }) };
 
   const state = isGuestState(value) ? value : 'open';
 

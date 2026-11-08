@@ -1,5 +1,10 @@
 import type { View, Visit } from './guest.ts';
-import { type Access, type Allergen, type Diet, type KitchenWords } from './kitchenWords.ts';
+import {
+  type Access,
+  type Allergen,
+  type Diet,
+  type GuestKitchenWords,
+} from './guestKitchenWords.ts';
 import type { DemoLink } from './settings.ts';
 
 export const MOST = 100;
@@ -23,7 +28,7 @@ export interface Person {
   on: string | null;
 }
 
-export interface Kitchen {
+export interface GuestKitchen {
   people: readonly Person[];
   record: readonly Person[] | null;
   tried: boolean;
@@ -63,7 +68,7 @@ export function blankParty(companions: number): Person[] {
 }
 
 /** You, a companion's name, or for one the host never named "Your guest", "Your first guest", … (pm and ux, 8 Nov). */
-export function whoOf(one: Person, people: readonly Person[], words: KitchenWords): string {
+export function whoOf(one: Person, people: readonly Person[], words: GuestKitchenWords): string {
   if (one.key === 'me') return words.say('you');
   if (one.name != null) return one.name;
   const companions = people.filter((each) => each.key !== 'me');
@@ -110,7 +115,7 @@ export function fieldId(field: Field, key: string): string {
   return `k-${field}-${key}`;
 }
 
-export function firstError(kitchen: Kitchen): string | null {
+export function firstError(kitchen: GuestKitchen): string | null {
   for (const one of kitchen.people) {
     const errors = errorsOf(one);
     const field = FIELDS.find((each) => errors[each] != null);
@@ -148,7 +153,7 @@ function picksOf(one: Person) {
   ]);
 }
 
-export function changes(kitchen: Kitchen): boolean {
+export function changes(kitchen: GuestKitchen): boolean {
   const before = kitchen.record ?? blankParty(kitchen.people.length - 1);
 
   return kitchen.people.some((one, at) => {
@@ -159,7 +164,7 @@ export function changes(kitchen: Kitchen): boolean {
 }
 
 /** What Send records: each changed person's picks, last changed by the guest today; removed rows gone. */
-export function saved(kitchen: Kitchen, today: string): Person[] {
+export function saved(kitchen: GuestKitchen, today: string): Person[] {
   const before = kitchen.record ?? blankParty(kitchen.people.length - 1);
 
   return kitchen.people.map((one, at) => {
@@ -179,7 +184,7 @@ export function saved(kitchen: Kitchen, today: string): Person[] {
 }
 
 /** The card's line once an allergy is picked: the names in a list, lower case after the first, Other's words as typed. */
-export function allergyNames(one: Person, words: KitchenWords): string[] {
+export function allergyNames(one: Person, words: GuestKitchenWords): string[] {
   const coded = one.allergies
     .filter((code) => code !== 'other')
     .map((code, at) => (at === 0 ? words.allergen(code) : words.lower(words.allergen(code))));
@@ -195,9 +200,9 @@ export interface Line {
 }
 
 /** Check and send's For the kitchen: per person in the order a cook reads it, or Nothing to add once when nobody has anything. */
-export function kitchenLines(
-  kitchen: Kitchen,
-  words: KitchenWords,
+export function guestKitchenLines(
+  kitchen: GuestKitchen,
+  words: GuestKitchenWords,
 ): { who: string | null; lines: Line[] }[] {
   const line = (text: string, extra: Partial<Line> = {}): Line => ({
     text,
@@ -266,7 +271,7 @@ export interface MealRow {
   dishes: { name: string; reason: string | null }[];
 }
 
-export function mealRows(kitchen: Kitchen, words: KitchenWords): MealRow[] {
+export function mealRows(kitchen: GuestKitchen, words: GuestKitchenWords): MealRow[] {
   if (!kitchen.meals) return [];
 
   return kitchen.people.map((one) => {
@@ -294,7 +299,7 @@ export function mealsId(key: string): string {
   return `k-meals-${key}`;
 }
 
-export function ruledOut(kitchen: Kitchen): string | null {
+export function ruledOut(kitchen: GuestKitchen): string | null {
   if (!kitchen.meals) return null;
   for (const one of kitchen.people) {
     const meals = MEALS[one.key] ?? MEALS.me ?? [];
@@ -307,7 +312,7 @@ export function ruledOut(kitchen: Kitchen): string | null {
 }
 
 /** The board's Page states for sc-3778, kitchen to refused, and the step's own: alone, nothing to add, sending and not sent. */
-const KITCHEN_STATES = {
+const GUEST_KITCHEN_STATES = {
   kitchen: 'Anything the kitchen must know?, a first reply, nothing picked',
   kitchen_alone: 'Coming alone: one card, “You”',
   kitchen_picked: 'Allergies and a diet picked',
@@ -322,23 +327,23 @@ const KITCHEN_STATES = {
   refused: 'Not saved: this page is out of date (422)',
 } as const;
 
-export type KitchenState = keyof typeof KITCHEN_STATES;
+export type GuestKitchenState = keyof typeof GUEST_KITCHEN_STATES;
 
-export function isKitchenState(value: string | null): value is KitchenState {
-  return value != null && Object.hasOwn(KITCHEN_STATES, value);
+export function isGuestKitchenState(value: string | null): value is GuestKitchenState {
+  return value != null && Object.hasOwn(GUEST_KITCHEN_STATES, value);
 }
 
-export const KITCHEN_PAGES: readonly { name: string; states: readonly DemoLink[] }[] = [
+export const GUEST_KITCHEN_PAGES: readonly { name: string; states: readonly DemoLink[] }[] = [
   {
     name: 'The kitchen step',
-    states: (Object.keys(KITCHEN_STATES) as KitchenState[]).map((state) => ({
+    states: (Object.keys(GUEST_KITCHEN_STATES) as GuestKitchenState[]).map((state) => ({
       to: `/demo/guest?state=${state}`,
-      name: KITCHEN_STATES[state],
+      name: GUEST_KITCHEN_STATES[state],
     })),
   },
 ];
 
-const RETURNING: readonly KitchenState[] = [
+const RETURNING: readonly GuestKitchenState[] = [
   'kitchen_returning',
   'kitchen_access_removed',
   'check_and_send',
@@ -354,7 +359,7 @@ const SENDING: Record<string, Partial<Person>> = {
 };
 
 /** What each state has picked over the record (or over nothing, for a first reply): the board's kitSeed. */
-const SEEDS: Partial<Record<KitchenState, Record<string, Partial<Person>>>> = {
+const SEEDS: Partial<Record<GuestKitchenState, Record<string, Partial<Person>>>> = {
   kitchen_picked: {
     me: { allergies: ['peanuts', 'sesame'], diet: ['halal'] },
     c1: { diet: ['vegetarian'] },
@@ -371,7 +376,7 @@ const SEEDS: Partial<Record<KitchenState, Record<string, Partial<Person>>>> = {
   meal_ruled_out: { c1: { allergies: ['milk'] } },
 };
 
-const CHECK_STATES: readonly KitchenState[] = [
+const CHECK_STATES: readonly GuestKitchenState[] = [
   'check_and_send',
   'kitchen_nothing',
   'kitchen_sending',
@@ -380,7 +385,7 @@ const CHECK_STATES: readonly KitchenState[] = [
   'refused',
 ];
 
-const FOCUS: Partial<Record<KitchenState, string>> = {
+const FOCUS: Partial<Record<GuestKitchenState, string>> = {
   kitchen_picked: 'chip-me-sesame',
   kitchen_say_which: fieldId('other', 'me'),
   kitchen_access_removed: 'keep-me-step_free',
@@ -390,8 +395,8 @@ const FOCUS: Partial<Record<KitchenState, string>> = {
   refused: 'send',
 };
 
-export function kitchenStarts(
-  state: KitchenState,
+export function guestKitchenStarts(
+  state: GuestKitchenState,
   { earlier, companions: invited }: { earlier: string; companions: number },
 ): Partial<Visit> {
   const companions = state === 'kitchen_alone' ? 0 : invited;
@@ -404,7 +409,7 @@ export function kitchenStarts(
   }));
 
   const from: From = returning ? 'changing' : 'answer';
-  const kitchen: Kitchen = {
+  const kitchen: GuestKitchen = {
     people,
     record,
     tried: state === 'kitchen_say_which',

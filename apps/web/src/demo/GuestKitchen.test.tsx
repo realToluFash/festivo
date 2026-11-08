@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
-import { KITCHEN_PAGES } from './kitchen.ts';
+import { GUEST_KITCHEN_PAGES } from './guestKitchen.ts';
 
 const tested = config();
 const NAME = 'Maria Fernanda Albuquerque Santos';
@@ -77,7 +77,7 @@ describe('the kitchen step in the demo home (sc-3778)', () => {
       .getAllByRole('link')
       .map((one) => one.getAttribute('href'));
 
-    expect(links).toEqual(KITCHEN_PAGES.flatMap((one) => one.states).map((one) => one.to));
+    expect(links).toEqual(GUEST_KITCHEN_PAGES.flatMap((one) => one.states).map((one) => one.to));
     expect(links).toHaveLength(12);
   });
 });
@@ -110,7 +110,9 @@ const SAYS: [string, () => void][] = [
 describe('every kitchen state, deep-linked by ?state=', () => {
   it('covers every state the home links', () => {
     expect(SAYS.map(([state]) => state)).toEqual(
-      KITCHEN_PAGES.flatMap((one) => one.states).map((one) => /state=(\w+)/u.exec(one.to)?.[1]),
+      GUEST_KITCHEN_PAGES.flatMap((one) => one.states).map(
+        (one) => /state=(\w+)/u.exec(one.to)?.[1],
+      ),
     );
   });
 
