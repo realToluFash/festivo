@@ -51,6 +51,7 @@ import {
   Waiting,
 } from './GuestParts.tsx';
 import { useLater } from '../useLater.ts';
+import { legalPath } from './legal.ts';
 import './today.css';
 import './settings.css';
 import './events.css';
@@ -261,8 +262,8 @@ function Visitor({ state }: { state: string | null }) {
         <footer className="gp-footer">
           <span>{words.copyright}</span>
           <span className="gp-footer-links">
-            <Link to="/demo/later?screen=terms">{LEGAL[visit.lang].terms}</Link>
-            <Link to="/demo/later?screen=privacy">{LEGAL[visit.lang].privacy}</Link>
+            <Link to={legalPath('terms', visit.lang)}>{LEGAL[visit.lang].terms}</Link>
+            <Link to={legalPath('privacy', visit.lang)}>{LEGAL[visit.lang].privacy}</Link>
           </span>
         </footer>
       </div>

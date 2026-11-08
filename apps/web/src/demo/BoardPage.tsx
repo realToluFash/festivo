@@ -5,6 +5,7 @@ import { Brand } from '../components/Brand.tsx';
 import { LanguageMenu } from '../components/LanguageMenu.tsx';
 import { AppleMark, GoogleMark } from '../components/ProviderSignIn.tsx';
 import { offButton } from '../offButton.ts';
+import { type LegalLang, PAGE_WORDS, legalPath, sampleLang } from './legal.ts';
 import { SAMPLE } from './rules.ts';
 
 /** The board's page: the lockup and the header's right end, the form's column, the footer, and the way back under it. */
@@ -57,19 +58,8 @@ export function BoardPage({
           {children}
         </section>
       </main>
-      <footer className="demo-page-footer">
-        <span>© 2026 Soirely</span>
-        <nav className="demo-page-links" aria-label="Legal and language">
-          <Link className="link-button demo-link" to="/demo/later?screen=terms">
-            Terms
-          </Link>
-          <Link className="link-button demo-link" to="/demo/later?screen=privacy">
-            Privacy
-          </Link>
-          {/* Choosing renames the button only: the demo's words stay English. */}
-          <LanguageMenu current={language} onChoose={setLanguage} />
-        </nav>
-      </footer>
+      {/* Choosing renames the button only: the demo's words stay English. */}
+      <PageFooter language={language} onChoose={setLanguage} />
       <div className="demo-way-in">
         {controls}
         <Link className="link-button" to="/demo">
@@ -80,7 +70,36 @@ export function BoardPage({
   );
 }
 
-function NewHere() {
+/** Every signed-out page's footer: the copyright, Terms, Privacy and the language, in that order (sc-28982). */
+export function PageFooter({
+  language,
+  onChoose,
+  shown = 'en',
+}: {
+  language: string;
+  onChoose: (code: string) => void;
+  /** The language the page's words are in, which the links keep. */
+  shown?: LegalLang;
+}) {
+  const words = PAGE_WORDS[sampleLang(shown)];
+
+  return (
+    <footer className="demo-page-footer">
+      <span>© 2026 Soirely</span>
+      <nav className="demo-page-links" aria-label="Legal and language">
+        <Link className="link-button demo-link" to={legalPath('terms', shown)}>
+          {words.terms}
+        </Link>
+        <Link className="link-button demo-link" to={legalPath('privacy', shown)}>
+          {words.privacy}
+        </Link>
+        <LanguageMenu current={language} onChoose={onChoose} />
+      </nav>
+    </footer>
+  );
+}
+
+export function NewHere() {
   return (
     <>
       <span>New to Soirely?</span>
