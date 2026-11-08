@@ -14,6 +14,7 @@ import {
   toLine,
   toSeedOf,
 } from './messagesTo.ts';
+import { type PersonId, previewDraftOf } from './messagesPreviewSample.ts';
 import type { DemoLink } from './settings.ts';
 
 /** Messaging B · Conversations (page e36, board/messaging-b-spec.md): the sample and the inbox's rules; the words are in messagesWords.ts. */
@@ -94,6 +95,20 @@ export const MESSAGE_STATES = [
   { key: 'noManage', name: 'Without messages.manage' },
   { key: 'resolvedRow', name: 'Sent to conditions' },
   { key: 'nobodyDue', name: 'Nobody matched when it was due' },
+  { key: 'insert', name: 'Insert' },
+  { key: 'previewAs', name: 'Preview as' },
+  { key: 'previewGreetAs', name: 'Previewed as Bisi Adewale' },
+  { key: 'previewChose', name: 'Previewed as Camille Dubois' },
+  { key: 'previewLoading', name: 'Filling it in' },
+  { key: 'previewMarkup', name: 'A Greet as with markup' },
+  { key: 'typedBraces', name: 'A typed {Greeting}' },
+  { key: 'previewBraces', name: 'Typed braces, previewed' },
+  { key: 'noTokens', name: 'Nothing to fill in' },
+  { key: 'previewNobody', name: 'Nobody to preview' },
+  { key: 'editConflict', name: 'Not saved: Bisi Okafor changed it' },
+  { key: 'editSent', name: 'Not saved: already sent' },
+  { key: 'editCancelled', name: 'Not saved: cancelled' },
+  { key: 'editTooLate', name: 'Not saved: too late to send' },
 ] as const;
 
 export type MessagesState = (typeof MESSAGE_STATES)[number]['key'];
@@ -335,12 +350,6 @@ export const NEW_MESSAGE = {
 } as const;
 
 export const FOLLOW_UP = 'Also: the car park closes at 23:30, so plan your way home.';
-
-export const PREVIEWED = {
-  name: 'Kwame Mensah',
-  language: 'English',
-  has: ['email', 'sms'] as Channel[],
-};
 
 export function fill(body: readonly Segment[], greeting: string): string {
   return body
@@ -793,6 +802,8 @@ export interface Draft {
   step: 'write' | 'preview' | 'check';
   seed: number;
   openTo?: boolean;
+  opens?: 'insert' | 'previewAs' | 'filling' | undefined;
+  previewAs?: PersonId;
 }
 
 export interface Sched {
@@ -804,6 +815,8 @@ export interface Sched {
   day: string;
   time: string;
   cancelledAt: string | null;
+  cancelledBy?: string;
+  outcome?: 'sent' | 'tooLate';
 }
 
 export interface Answer {
@@ -1115,6 +1128,10 @@ export function seedOf(state: MessagesState | null): Inbox {
     case 'scheduledEdit':
     case 'sendNow':
     case 'cancelAsk':
+    case 'editConflict':
+    case 'editSent':
+    case 'editCancelled':
+    case 'editTooLate':
       return { ...base, pane: open('sched') };
     case 'scheduledCancelled':
       return {
@@ -1122,6 +1139,22 @@ export function seedOf(state: MessagesState | null): Inbox {
         pane: open('sched'),
         scheds: [{ ...SCHEDULED, cancelledAt: '09:46' }],
       };
+    case 'insert':
+    case 'previewAs':
+    case 'previewGreetAs':
+    case 'previewChose':
+    case 'previewLoading':
+    case 'previewMarkup':
+    case 'typedBraces':
+    case 'previewBraces':
+    case 'noTokens':
+      return {
+        ...base,
+        pane: { kind: 'compose' },
+        draft: { ...draftOf(COMING), ...previewDraftOf(state) },
+      };
+    case 'previewNobody':
+      return compose(base, { kind: 'who', conditions: [] }, 'write');
     default: {
       const seed = toSeedOf(state);
 
@@ -1275,14 +1308,38 @@ function manyRow(id: ConvoId, title: string, line: string, when: string, tag: Ta
   return { id, title, line, when, lead: { kind: 'many' }, tag, arrived: false };
 }
 
+/** Who cancelled a scheduled message and when: the reader, or (sc-3963's refused save) a colleague. */
+export function cancelledWords(sched: Sched): string {
+  return filled(MW.cancelledBy, {
+    name: sched.cancelledBy ?? READER,
+    time: sched.cancelledAt ?? '',
+  });
+}
+
 function schedRow(sched: Sched): Row {
   if (sched.cancelledAt != null)
     return manyRow(
       sched.id,
       outTitle(sched),
-      filled(MW.cancelledBy, { name: READER, time: sched.cancelledAt }).split('.')[0] ?? '',
+      cancelledWords(sched).split('.')[0] ?? '',
       sched.cancelledAt,
       { kind: 'ended', word: MW.cancelledTag },
+    );
+  if (sched.outcome === 'sent')
+    return manyRow(
+      sched.id,
+      outTitle(sched),
+      `${toLine(sched.to)} · ${toldWords(sched.ticks)}`,
+      sched.time,
+      null,
+    );
+  if (sched.outcome === 'tooLate')
+    return manyRow(
+      sched.id,
+      outTitle(sched),
+      `${toLine(sched.to)} · ${dayWords(sched.day)}, ${sched.time}`,
+      '',
+      { kind: 'ended', word: MW.notSentTooLate },
     );
 
   return manyRow(
@@ -1423,7 +1480,9 @@ export function sectionsOf(inbox: Inbox): Sections {
     (one) => (one.id !== 'sched' || here('sched')) && outsIn(inbox, one.id).length === 0,
   );
 
-  done.push(...scheds.filter((one) => one.cancelledAt != null).map(schedRow));
+  done.push(
+    ...scheds.filter((one) => one.cancelledAt != null || one.outcome != null).map(schedRow),
+  );
   done.push(...inbox.done.filter(here).map((id) => rowOf(inbox, id)));
   done.push(...SENT_TO.filter((id) => here(id) && outsIn(inbox, id).length === 0).map(sentToRow));
   if (here('parking') && inbox.unreached.length === 0) done.push(rowOf(inbox, 'parking'));
@@ -1432,7 +1491,7 @@ export function sectionsOf(inbox: Inbox): Sections {
   return {
     top,
     needs,
-    scheduled: scheds.filter((one) => one.cancelledAt == null).map(schedRow),
+    scheduled: scheds.filter((one) => one.cancelledAt == null && one.outcome == null).map(schedRow),
     done,
   };
 }

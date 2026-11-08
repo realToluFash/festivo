@@ -78,7 +78,9 @@ describe('Who gets it: conditions, counted live (sc-3957)', () => {
   it('appends its 25 states after sc-3942’s, each with a seed', () => {
     const keys = MESSAGE_STATES.map((one) => one.key);
 
-    expect(keys.slice(-KEYS.length)).toEqual([...KEYS]);
+    const at = keys.indexOf(KEYS[0]);
+
+    expect(keys.slice(at, at + KEYS.length)).toEqual([...KEYS]);
     for (const key of KEYS) expect(seedOf(key), key).toBeDefined();
     for (const key of KEYS.filter((one) => one !== 'noManage')) {
       expect(toSeedOf(key), key).not.toBeNull();

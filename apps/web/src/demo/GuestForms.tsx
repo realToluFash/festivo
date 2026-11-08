@@ -7,6 +7,7 @@ import {
   type AddStart,
   type Answer,
   type EditStart,
+  GREET_AS_MOST,
   type Guest,
   type Lines,
   MOST_COMPANIONS,
@@ -14,6 +15,7 @@ import {
   THEIRS,
   type Values,
   dayOf,
+  greetAsLength,
   linesOf,
   phoneShown,
   sameName,
@@ -39,6 +41,7 @@ const SHOWN_COMPANIONS = 3;
 /** Where a refusal sends the focus: the first field that failed, in the form's order. */
 function firstFailing(lines: Lines): string | null {
   if (lines.name != null) return 'name';
+  if (lines.greetAs != null) return 'greet-as';
   if (lines.email != null) return 'email';
   if (lines.number != null) return 'number';
 
@@ -313,6 +316,17 @@ export function EditForm({
           focusKey="name"
           autoComplete="off"
           onChange={(name) => change({ name })}
+        />
+        <GuestField
+          label={GW.greetAs}
+          value={values.greetAs}
+          optional
+          error={lines.greetAs}
+          help={GW.greetAsHint}
+          counter={GW.ofMost(greetAsLength(values.greetAs), GREET_AS_MOST)}
+          focusKey="greet-as"
+          autoComplete="off"
+          onChange={(greetAs) => change({ greetAs })}
         />
         <GuestField
           label={GW.emailAddress}

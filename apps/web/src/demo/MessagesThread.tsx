@@ -74,6 +74,16 @@ import {
   Words,
   WhereGlyph,
 } from './MessagesParts.tsx';
+import { RefusedSave } from './MessagesScheduled.tsx';
+import {
+  endBits,
+  endLine,
+  endedOf,
+  refusalOf,
+  reloaded,
+  statusWord,
+  typedEdit,
+} from './messagesScheduled.ts';
 import { StreamItems } from './MessagesStream.tsx';
 import { MessagesBell } from './MessagesTell.tsx';
 import { Field } from '../components/SettingsParts.tsx';
@@ -632,14 +642,16 @@ function modeOf(state: MessagesState | null): SchedMode {
 /** A message scheduled for later (sc-3963): dashed until it goes, edited in the box, sent now through the check, or cancelled after asking. */
 function ScheduledThread({ sched, state }: { sched: Sched; state: MessagesState | null }) {
   const { act, focus, say, tell } = useInbox();
-  const [mode, setMode] = useState<SchedMode>(modeOf(state));
+  const [refused, setRefused] = useState(refusalOf(state));
+  const [mode, setMode] = useState<SchedMode>(refused == null ? modeOf(state) : 'edit');
   const [words, setWords] = useState<Pick<Draft, 'subject' | 'body' | 'seed'>>({
     subject: sched.subject,
-    body: sched.body,
+    body: refused == null ? sched.body : typedEdit(sched.body),
     seed: 0,
   });
   const [later, setLater] = useState(false);
-  const cancelled = sched.cancelledAt != null;
+  const ended = endedOf(sched);
+  const ending = endLine(sched);
   const title = outTitle(sched);
   const when = { date: dayWords(sched.day), time: sched.time };
   const count = countOf(sched.to) ?? 0;
@@ -655,18 +667,26 @@ function ScheduledThread({ sched, state }: { sched: Sched; state: MessagesState 
       <Head
         lead={<LeadMark lead={{ kind: 'many' }} size={44} />}
         title={title}
-        line={[toLine(sched.to), count, cancelled ? MW.cancelledTag : MW.scheduled].join(' · ')}
+        line={[toLine(sched.to), count, statusWord(sched)].join(' · ')}
       />
       <ol className="mg-stream" role="log" aria-label={title}>
         <DayRule>{when.date}</DayRule>
         <HostBubble
           subject={sched.subject}
           body={<Words body={sched.body} />}
-          bits={[]}
-          look={cancelled ? 'greyed' : mode === 'edit' ? 'dashedFaded' : 'dashed'}
+          bits={endBits(sched)}
+          look={
+            sched.outcome === 'sent'
+              ? 'sent'
+              : ended
+                ? 'greyed'
+                : mode === 'edit'
+                  ? 'dashedFaded'
+                  : 'dashed'
+          }
         >
-          {cancelled ? null : mode === 'edit' ? (
-            <p className="mg-goes">{filled(MW.editing, when)}</p>
+          {ended ? null : mode === 'edit' ? (
+            refused == null && <p className="mg-goes">{filled(MW.editing, when)}</p>
           ) : mode === 'waiting' ? (
             <>
               <p className="mg-goes">
@@ -701,12 +721,10 @@ function ScheduledThread({ sched, state }: { sched: Sched; state: MessagesState 
             </>
           ) : null}
         </HostBubble>
-        {cancelled && (
-          <SystemLine glyph="clear">
-            {filled(MW.cancelledBy, { name: READER, time: sched.cancelledAt ?? '' })}
-          </SystemLine>
+        {ending != null && (
+          <SystemLine glyph={sched.cancelledAt != null ? 'clear' : 'clock'}>{ending}</SystemLine>
         )}
-        {mode === 'sendNow' && !cancelled && (
+        {mode === 'sendNow' && !ended && (
           <li className="mg-said is-host">
             <div className="mg-check" role="alertdialog" aria-label={MW.checkName}>
               <p className="mg-check-sentence" tabIndex={-1} data-focus="check">
@@ -745,7 +763,7 @@ function ScheduledThread({ sched, state }: { sched: Sched; state: MessagesState 
             </div>
           </li>
         )}
-        {mode === 'cancelAsk' && !cancelled && (
+        {mode === 'cancelAsk' && !ended && (
           <li className="mg-said is-host">
             <CancelAsk
               subject={title}
@@ -758,8 +776,25 @@ function ScheduledThread({ sched, state }: { sched: Sched; state: MessagesState 
             />
           </li>
         )}
+        {refused != null && (
+          <RefusedSave
+            refusal={refused}
+            onReload={() => {
+              const now = reloaded(refused, sched);
+
+              act({ kind: 'resched', id: sched.id, sched: now });
+              setRefused(null);
+              setWords({
+                subject: sched.subject,
+                body: now.body ?? sched.body,
+                seed: words.seed + 1,
+              });
+              to('waiting', 'heading');
+            }}
+          />
+        )}
       </ol>
-      {mode === 'edit' && !cancelled && (
+      {mode === 'edit' && !ended && (
         <Composer
           draft={words}
           tools
@@ -767,6 +802,7 @@ function ScheduledThread({ sched, state }: { sched: Sched; state: MessagesState 
           onDraft={(next) => setWords((now) => ({ ...now, ...next }))}
           onPreview={() => tell(`${MW.preview} has its own design.`)}
           onSend={() => {
+            if (refused != null) return focus('refused-save');
             act({
               kind: 'resched',
               id: sched.id,

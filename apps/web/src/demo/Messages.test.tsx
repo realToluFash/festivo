@@ -68,7 +68,7 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
       .parentElement as HTMLElement;
     const links = within(group).getAllByRole('link');
 
-    expect(links).toHaveLength(72);
+    expect(links).toHaveLength(86);
     expect(links[0]?.getAttribute('href')).toBe(`${AT}?state=first`);
     expect(links[7]?.getAttribute('href')).toBe(`${AT}?state=noticeCost`);
     expect(links[26]?.getAttribute('href')).toBe(`${AT}?state=bell`);
@@ -588,7 +588,10 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
     async () => {
       await messages('preview');
 
-      expect(screen.getByText('As Kwame Mensah will see it · English')).toBeDefined();
+      expect(screen.getByRole('heading', { name: 'As Kwame Mensah will see it' })).toBeDefined();
+      expect(
+        screen.getByRole('button', { name: 'Preview as Kwame Mensah · English' }),
+      ).toBeDefined();
       const sends = screen.getByRole('region', { name: 'What Soirely sends' });
 
       expect(

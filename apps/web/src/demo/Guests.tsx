@@ -76,7 +76,7 @@ function firstFocus(start: GuestsStart): string[] {
   if (pane.kind === 'edit') {
     if (pane.start.conflict === true) return ['conflict'];
     if (pane.start.duplicate === true) return ['duplicate'];
-    return ['name'];
+    return [pane.start.at ?? 'name'];
   }
   if (pane.kind === 'record')
     return pane.start.replace === true ? ['replace-heading'] : ['answer-coming'];
