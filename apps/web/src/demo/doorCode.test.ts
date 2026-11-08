@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   BAR,
@@ -6,7 +6,6 @@ import {
   clockOf,
   countLine,
   dayLabel,
-  READER,
   DOOR_PAGES,
   DOOR_STATES,
   doorStartOf,
@@ -32,6 +31,8 @@ import {
 } from './doorCode.ts';
 import { listed, rowLine } from './people.ts';
 import { qrPath, qrSeed } from './security.ts';
+
+afterEach(() => vi.restoreAllMocks());
 
 const start = (query: Partial<Record<'state' | 'code' | 'hold' | 'print', string>>) =>
   doorStartOf({ state: null, code: null, hold: null, print: null, ...query });
@@ -121,17 +122,17 @@ describe('the door code’s words and checks (sc-72)', () => {
     expect(qrPath()).toBe(qrPath(21, 4, 0));
   });
 
-  it('writes the day in the reader’s locale, and every time on the 24-hour clock', () => {
-    const reader = (locale: string) =>
-      new Intl.DateTimeFormat(locale, {
-        weekday: 'short',
-        month: 'short',
-        day: 'numeric',
-        timeZone: 'Europe/Lisbon',
-      }).format(new Date('2026-11-14T12:00:00Z'));
-    expect(dayLabel('2026-11-14')).toBe(reader(READER));
-    expect(reader('en-US')).toBe('Sat, Nov 14');
-    expect(reader('en-GB')).toBe('Sat 14 Nov');
+  it('lets the reader’s region refine the English day, never replace its language', () => {
+    const reading = (tag: string) => {
+      vi.spyOn(navigator, 'language', 'get').mockReturnValue(tag);
+
+      return [dayLabel('2026-11-14'), untilWords({ kind: 'event' })];
+    };
+
+    expect(reading('en-US')).toEqual(['Sat, Nov 14', '23:30 on Sat, Nov 14']);
+    expect(reading('en-GB')).toEqual(['Sat 14 Nov', '23:30 on Sat 14 Nov']);
+    expect(reading('pt-PT')).toEqual(['Sat, Nov 14', '23:30 on Sat, Nov 14']);
+    expect(reading('fr-FR')).toEqual(['Sat, Nov 14', '23:30 on Sat, Nov 14']);
     expect(clockOf('2026-11-14T23:30:00Z')).toBe('23:30');
   });
 });

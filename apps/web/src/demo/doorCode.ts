@@ -1,3 +1,5 @@
+import { formattingLocale } from '@soirely/domain';
+
 import { writtenTime } from './clock.ts';
 import type { EventPlace, OnEvent, OrgMember, PeopleStart } from './people.ts';
 import type { DemoLink } from './settings.ts';
@@ -87,14 +89,22 @@ export interface DoorCode {
   endedAt: string | null;
 }
 
-/** The reader's locale (CLDR): en-US reads "Sat, Nov 14", en-GB "Sat 14 Nov". */
-export const READER = new Intl.DateTimeFormat().resolvedOptions().locale;
-const DAY = new Intl.DateTimeFormat(READER, {
-  weekday: 'short',
-  month: 'short',
-  day: 'numeric',
-  timeZone: DOOR_ZONE,
-});
+/** The reader's region refines the English screen's dates, never replaces them (formattingLocale): en-GB reads "Sat 14 Nov", pt-PT stays "Sat, Nov 14". */
+export const readerLocale = () => formattingLocale('en', navigator.language);
+const DAYS = new Map<string, Intl.DateTimeFormat>();
+const dayFormat = (locale: string): Intl.DateTimeFormat => {
+  const made =
+    DAYS.get(locale) ??
+    new Intl.DateTimeFormat(locale, {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      timeZone: DOOR_ZONE,
+    });
+  DAYS.set(locale, made);
+
+  return made;
+};
 const ISO_DAY = new Intl.DateTimeFormat('en-CA', { timeZone: DOOR_ZONE });
 const ISO_TIME = new Intl.DateTimeFormat('en-GB', {
   hour: '2-digit',
@@ -103,8 +113,8 @@ const ISO_TIME = new Intl.DateTimeFormat('en-GB', {
   timeZone: DOOR_ZONE,
 });
 
-export const dayOf = (at: string | Date) => DAY.format(new Date(at));
-export const clockOf = (at: string | Date) => writtenTime(at, READER, DOOR_ZONE);
+export const dayOf = (at: string | Date) => dayFormat(readerLocale()).format(new Date(at));
+export const clockOf = (at: string | Date) => writtenTime(at, readerLocale(), DOOR_ZONE);
 const isoDayOf = (at: string | Date) => ISO_DAY.format(new Date(at));
 const isoTimeOf = (at: string | Date) => ISO_TIME.format(new Date(at));
 
