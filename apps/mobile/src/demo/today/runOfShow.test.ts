@@ -83,12 +83,12 @@ describe('an item is Now', () => {
   it('says until its actual start plus its length, and the figure from Next', () => {
     expect([on.headline, on.until, on.figure?.words]).toEqual([
       'Drinks reception',
-      'until 5:30 PM',
+      'until 17:30',
       '10 min behind',
     ]);
     expect(on.figure?.said).toBe('10 minutes behind');
-    expect(on.next).toEqual({ time: '5:30 PM', title: 'Guests take their seats' });
-    expect(on.band).toBe('Now · Drinks reception, until 5:30 PM');
+    expect(on.next).toEqual({ time: '17:30', title: 'Guests take their seats' });
+    expect(on.band).toBe('Now · Drinks reception, until 17:30');
   });
 
   it('leaves the skipped item off the rail, and starts it at the item before Now', () => {
@@ -104,7 +104,7 @@ describe('an item is Now', () => {
 
   it('reads the rail as one line, each stop with its state', () => {
     expect(on.railSaid).toBe(
-      '3 PM Photos, done; 4 PM Drinks reception, now; 5:20 PM Guests take their seats, next; 6 PM Dinner is served, still to come; 7:30 PM Speeches, still to come; 9 PM Cake cutting, still to come',
+      '15:00 Photos, done; 16:00 Drinks reception, now; 17:20 Guests take their seats, next; 18:00 Dinner is served, still to come; 19:30 Speeches, still to come; 21:00 Cake cutting, still to come',
     );
   });
 
@@ -114,7 +114,7 @@ describe('an item is Now', () => {
     expect([over.until, over.figure?.words, over.next?.time, over.band]).toEqual([
       '12 min over',
       '22 min behind',
-      '5:42 PM',
+      '17:42',
       'Now · Drinks reception, 12 min over',
     ]);
   });
@@ -142,11 +142,11 @@ describe('the last item is Now', () => {
   it('has no Next, and the figure is the run view’s Last item under way', () => {
     expect([last.headline, last.until, last.next, last.figure?.words]).toEqual([
       'First dance',
-      'until 10:05 PM',
+      'until 22:05',
       null,
       'Last item under way',
     ]);
-    expect(last.band).toBe('Now · First dance, until 10:05 PM');
+    expect(last.band).toBe('Now · First dance, until 22:05');
     expect(last.rail.at(-1)).toMatchObject({ title: 'First dance', state: 'now' });
   });
 });
@@ -173,7 +173,7 @@ describe('a track past midnight, on the event day from 05:00', () => {
     expect([run.until, run.figure?.words, run.next]).toEqual([
       '10 min over',
       '10 min behind',
-      { time: '12:40 AM', title: 'Carriages' },
+      { time: '00:40', title: 'Carriages' },
     ]);
   });
 });
@@ -188,7 +188,7 @@ describe('nothing is Now', () => {
       null,
       '18 min behind',
     ]);
-    expect(between.next).toEqual({ time: '5:38 PM', title: 'Guests take their seats' });
+    expect(between.next).toEqual({ time: '17:38', title: 'Guests take their seats' });
     expect(between.rail[0]).toMatchObject({ title: 'Drinks reception', state: 'done' });
     expect(between.band).toBe('Live · Adaeze & Tunde’s wedding');
   });

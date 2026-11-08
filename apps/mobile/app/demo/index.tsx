@@ -69,7 +69,7 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
       },
       {
         title: 'Now · from the run of show',
-        what: 'Drinks, until 5:30 PM, 10 min behind',
+        what: 'Drinks, until 17:30, 10 min behind',
         href: '/demo/today?moment=day&now=on',
       },
       {
