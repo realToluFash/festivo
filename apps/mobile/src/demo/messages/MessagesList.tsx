@@ -104,9 +104,11 @@ function shownRow(m: Messages, id: RowId, locale: string): Shown {
           ? { kind: 'notyet', word: W.notSent }
           : draft.step === 'cancelled'
             ? { kind: 'ended', word: W.cancelledTag }
-            : isScheduled(draft)
-              ? { kind: 'notyet', word: W.scheduled }
-              : undefined;
+            : draft.outcome === 'tooLate'
+              ? { kind: 'ended', word: W.tooLate }
+              : isScheduled(draft)
+                ? { kind: 'notyet', word: W.scheduled }
+                : undefined;
     return {
       title: own == null ? W.newMessage : draftTitle(own.draft, own.thread),
       titleLines: 1,

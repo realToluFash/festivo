@@ -36,6 +36,7 @@ import {
 import { CHANNEL_WORD, type ChannelKey, W, say } from './MessagesWords.ts';
 import { type Previewing, previewStart } from './PreviewModel.ts';
 import { BRACED_BODY, DATED_BODY, PLAIN_BODY } from './PreviewSample.ts';
+import { type Refusal, TYPED_EDIT, refusalOf, reloaded } from './ScheduledSave.ts';
 import { EDGE } from './TokenText.ts';
 
 /** Every state of Messaging B, each a `?state=` in both demos (spec §7 and §7b), in the spec's order. */
@@ -94,6 +95,10 @@ export const MESSAGES_STATES = [
   'typedBraces',
   'previewBraces',
   'noTokens',
+  'editConflict',
+  'editSent',
+  'editCancelled',
+  'editTooLate',
 ] as const;
 
 export type MessagesState = (typeof MESSAGES_STATES)[number];
@@ -146,6 +151,8 @@ export interface Draft {
   time: string;
   seen: number;
   soFar: number | null;
+  outcome?: 'sent' | 'tooLate';
+  cancelledBy?: string;
 }
 
 /** A conversation of the hosts' own messages: `base` is the sample message it follows up, `earlier` what it already sent. */
@@ -207,6 +214,7 @@ export interface Messages {
   told: string | null;
   preview?: Previewing;
   inserting?: boolean;
+  refusedSave?: Refusal;
 }
 
 export function blankDraft(): Draft {
@@ -334,6 +342,12 @@ export function startOf(state: MessagesState | null, wide: boolean): Messages {
       draft: drafted,
       told: state === 'cancelled' && !wide ? W.cancelled : null,
       ...previewStart(state),
+    };
+  const refused = refusalOf(state);
+  if (refused != null)
+    return {
+      ...scheduledStart({ ...SCHEDULED_AS.scheduledEdit, body: TYPED_EDIT }),
+      refusedSave: refused,
     };
   const scheduled = state == null ? undefined : SCHEDULED_AS[state];
   if (scheduled != null) return scheduledStart(scheduled);
@@ -497,7 +511,8 @@ export type Action =
   | { type: 'bell'; open: boolean }
   | { type: 'told'; words: string | null }
   | { type: 'previewing'; previewing: Previewing }
-  | { type: 'inserting'; open: boolean };
+  | { type: 'inserting'; open: boolean }
+  | { type: 'reload' };
 
 function withDraft(m: Messages, change: (draft: Draft) => Draft): Messages {
   return m.draft == null ? m : { ...m, draft: change(m.draft) };
@@ -516,7 +531,12 @@ export function writing(draft: Draft): boolean {
 }
 
 export function isScheduled(draft: Draft): boolean {
-  return draft.at != null && draft.step !== 'cancelled';
+  return draft.at != null && !ended(draft);
+}
+
+/** Cancelled, or (sc-3963) found sent or too late when a refused save is reloaded. */
+export function ended(draft: Draft): boolean {
+  return draft.step === 'cancelled' || draft.outcome != null;
 }
 
 export function onItsWay(draft: Draft): boolean {
@@ -697,6 +717,7 @@ export function reduce(m: Messages, action: Action): Messages {
           : draft,
       );
     case 'saveScheduled':
+      if (m.refusedSave != null) return m;
       return withDraft(m, (draft) =>
         draft.was != null && canSend(draft) ? { ...draft, step: 'scheduled', was: null } : draft,
       );
@@ -783,6 +804,18 @@ export function reduce(m: Messages, action: Action): Messages {
       return { ...m, preview: action.previewing };
     case 'inserting':
       return { ...m, inserting: action.open };
+    case 'reload': {
+      const { refusedSave, ...rest } = m;
+      if (refusedSave == null) return m;
+      const now = reloaded(refusedSave);
+
+      return withDraft(rest, (draft) => ({
+        ...draft,
+        ...now,
+        subject: draft.was?.subject ?? draft.subject,
+        was: null,
+      }));
+    }
   }
 }
 
@@ -824,7 +857,7 @@ export function sectionsOf(m: Messages): Sections {
   const mine = ownThreads(m);
 
   return {
-    top: mine.filter((one) => !isScheduled(one.draft) && one.draft.step !== 'cancelled').map(own),
+    top: mine.filter((one) => !isScheduled(one.draft) && !ended(one.draft)).map(own),
     needs: [
       ...waiting.filter((key) => !m.done.includes(key)).map(guest),
       ...(m.done.includes('unknown') ? [] : [guest('unknown')]),
@@ -832,7 +865,7 @@ export function sectionsOf(m: Messages): Sections {
     ],
     scheduled: mine.filter((one) => isScheduled(one.draft)).map(own),
     done: [
-      ...mine.filter((one) => one.draft.step === 'cancelled').map(own),
+      ...mine.filter((one) => ended(one.draft)).map(own),
       ...m.done.filter((key) => key !== 'marta').map(guest),
       guest('marta'),
       many('invite'),
@@ -961,7 +994,7 @@ export function channelsWords(keys: readonly ChannelKey[], locale = 'en-US'): st
 export function draftLine(draft: Draft, thread: Thread | null = null, locale = 'en-US'): string {
   const result = resultOf(draft);
   if (draft.step === 'cancelled')
-    return say.cancelledRow(READER, draft.cancelledAt ?? CANCELLED_AT);
+    return say.cancelledRow(draft.cancelledBy ?? READER, draft.cancelledAt ?? CANCELLED_AT);
   if (draft.at != null)
     return `${say.toGroup(TO_WORD[draft.to])} · ${say.dayTime(dayWords(draft.at.date, locale), draft.at.time)}`;
   const line = (() => {

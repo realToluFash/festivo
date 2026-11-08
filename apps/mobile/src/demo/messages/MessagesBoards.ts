@@ -57,6 +57,10 @@ const BOARDS: Record<MessagesState, readonly [string, string]> = {
   typedBraces: ['a typed {Greeting}', 'An inserted Greeting, and later {Greeting} typed'],
   previewBraces: ['typed braces, previewed', 'The typed {Greeting} as typed, and the braces line'],
   noTokens: ['nothing to fill in', 'No token: no Greeted line, the nothing-to-fill-in line'],
+  editConflict: ['a refused save, changed', 'Bisi Okafor changed it; Reload shows 17:00'],
+  editSent: ['a refused save, sent', 'Already sent; Reload shows it as sent at 09:00'],
+  editCancelled: ['a refused save, cancelled', 'Cancelled; Reload shows Cancelled by Bisi Okafor'],
+  editTooLate: ['a refused save, too late', 'Too late to send; Reload shows Not sent: too late'],
 };
 
 export const MESSAGES_BOARDS = MESSAGES_STATES.map((state) => ({

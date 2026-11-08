@@ -12,6 +12,7 @@ import {
 import {
   Animated,
   Easing,
+  Keyboard,
   KeyboardAvoidingView,
   ScrollView,
   type ScrollViewInstance,
@@ -78,6 +79,7 @@ import {
   RESEND,
 } from './MessagesSample.ts';
 import { CHANNEL_WORD, type ChannelKey, W, say } from './MessagesWords.ts';
+import { SW, refusalLine } from './ScheduledSave.ts';
 import { outsideToken, tokenText } from './TokenText.ts';
 import { FixEmail, WhoReached, reachViewOf } from './WhoReached.tsx';
 import { type Anchored, InsertMenu, anchorAt } from './WriteItOnce.tsx';
@@ -222,6 +224,17 @@ export function MessagesScreen({
     return () => clearTimeout(later);
   }, [step]);
 
+  // A refused save (sc-3963) is said at once and takes focus, so the keys go down.
+  const refused = m.refusedSave;
+  useEffect(() => {
+    if (refused == null) return undefined;
+    Keyboard.dismiss();
+    readOut(`${refusalLine(refused)} ${SW.textStillHere}`, { interrupts: true });
+    const later = setTimeout(() => moveScreenReaderFocus(refs.current.refused ?? null), 500);
+
+    return () => clearTimeout(later);
+  }, [refused]);
+
   const asking = m.draft?.asking === true;
   useEffect(() => {
     if (!asking) return undefined;
@@ -350,6 +363,11 @@ export function MessagesScreen({
       dispatch({ type: 'when', open: true });
     },
     onSaveScheduled: () => {
+      if (refused != null) {
+        Keyboard.dismiss();
+        moveScreenReaderFocus(refs.current.refused ?? null);
+        return;
+      }
       if (draft == null || draft.body.trim() === '') return;
       dispatch({ type: 'saveScheduled' });
       readOut(W.savedSaid);
