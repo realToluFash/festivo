@@ -374,24 +374,30 @@ export function MessagesList({
       )}
       {m.phase === 'list' && (
         <>
-          <View>
-            <SectionTitle word={W.needsYou} count={sections.needs.length} />
-            <View style={styles.bleed}>
-              <RowList items={sections.needs.map(item)} gutter={10} />
+          {sections.needs.length > 0 && (
+            <View>
+              <SectionTitle word={W.needsYou} count={sections.needs.length} />
+              <View style={styles.bleed}>
+                <RowList items={sections.needs.map(item)} gutter={10} />
+              </View>
             </View>
-          </View>
-          <View>
-            <SectionTitle word={W.scheduled} count={sections.scheduled.length} />
-            <View style={styles.bleed}>
-              <RowList items={sections.scheduled.map(item)} gutter={10} />
+          )}
+          {sections.scheduled.length > 0 && (
+            <View>
+              <SectionTitle word={W.scheduled} count={sections.scheduled.length} />
+              <View style={styles.bleed}>
+                <RowList items={sections.scheduled.map(item)} gutter={10} />
+              </View>
             </View>
-          </View>
-          <View>
-            <SectionTitle word={W.done} />
-            <View style={styles.bleed}>
-              <RowList items={sections.done.map(item)} gutter={10} />
+          )}
+          {sections.done.length > 0 && (
+            <View>
+              <SectionTitle word={W.done} />
+              <View style={styles.bleed}>
+                <RowList items={sections.done.map(item)} gutter={10} />
+              </View>
             </View>
-          </View>
+          )}
         </>
       )}
     </View>
