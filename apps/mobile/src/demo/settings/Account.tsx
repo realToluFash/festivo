@@ -1,42 +1,54 @@
+import { zoneLabel } from '@soirely/domain';
 import { useLocalSearchParams } from 'expo-router';
 import { createRef, type RefObject, useEffect, useMemo, useRef, useState } from 'react';
 import type { ScrollViewInstance, ViewInstance } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
+import { AddScreen } from '../../components/AccountAdd.tsx';
+import { AboutSection, YouCard } from '../../components/AccountCard.tsx';
+import { ConfirmScreen } from '../../components/AccountConfirm.tsx';
+import { ContactsSection } from '../../components/AccountContacts.tsx';
+import { NameScreen } from '../../components/AccountName.tsx';
+import { VerifyScreen } from '../../components/AccountVerify.tsx';
+import { ZoneScreen } from '../../components/AccountZone.tsx';
 import { SETTLED_MS } from '../../components/Screen.tsx';
 import {
   type ScreenReaderTarget,
   moveScreenReaderFocus,
 } from '../../components/screenReaderFocus.ts';
+import { useShell } from '../../components/settingsShell.ts';
+import { Ask, bringIntoView, useRowClear } from '../../components/Summary.tsx';
 import type { TextHandle } from '../../components/Text.tsx';
+import {
+  cardLine,
+  type Contact,
+  type ContactKind,
+  firstUnverified,
+  KIND_KEYS,
+  primaryOf,
+  promotedWords,
+  verifiedWords,
+  verifyWords,
+  zoneLine,
+} from '../../kit/accountPage.ts';
 import { SAMPLE } from '../samples.ts';
-import { AddScreen } from './AccountAdd.tsx';
-import { AboutSection, YouCard } from './AccountCard.tsx';
-import { ConfirmScreen } from './AccountConfirm.tsx';
-import { ContactsSection } from './AccountContacts.tsx';
 import {
   type AccountScreen,
   type AccountStart,
+  accountProof,
   accountStart,
   accountStateOf,
-  cardLine,
-  type ContactKind,
-  firstUnverified,
-  KIND_WORDS,
-  keepPrimary,
-  primaryOf,
-  promoteLine,
-  RESULTS,
-  verifiedWords,
+  addRefusal,
+  type Channel,
+  CHANNEL_LINE,
+  COUNTDOWN_SECONDS,
+  sampleContinue,
   type Verifying,
-  WORDS,
+  WRONG_CODE,
 } from './AccountModel.ts';
-import { NameScreen } from './AccountName.tsx';
-import { type Contact, HOME_ZONE, PHONE_COUNTRY } from './AccountSample.ts';
-import { VerifyScreen } from './AccountVerify.tsx';
-import { ZoneScreen } from './AccountZone.tsx';
-import { useShell } from '../../components/settingsShell.ts';
+import { useCountdown } from './AccountParts.tsx';
+import { HOME_ZONE, PHONE_COUNTRY, phoneShown, sentCodeProblem, ZONES } from './AccountSample.ts';
 import { SummaryPage } from './SummaryPage.tsx';
-import { Ask, bringIntoView, useRowClear } from '../../components/Summary.tsx';
 
 export { ACCOUNT_STATES } from './AccountModel.ts';
 
@@ -45,13 +57,15 @@ type Target =
 
 /** Settings › Your account in B, summary first, on sample data that stays on the device. */
 export function AccountSection() {
+  const { t } = useTranslation();
   const { state } = useLocalSearchParams<{ state?: string }>();
   const name = accountStateOf(state);
 
-  return <AccountPage key={name} start={accountStart(name)} />;
+  return <AccountPage key={name} start={accountStart(name, t)} />;
 }
 
 function AccountPage({ start }: { start: AccountStart }) {
+  const { t } = useTranslation();
   const shell = useShell();
   const clear = useRowClear();
   const [name, setName] = useState<string>(SAMPLE.name);
@@ -145,15 +159,16 @@ function AccountPage({ start }: { start: AccountStart }) {
     const [rows, setRows] = rowsOf(kind);
     setRows(rows.map((row) => ({ ...row, primary: row.id === id })));
     const shown = rows.find((row) => row.id === id)?.shown ?? '';
-    if (kind === 'email') done(RESULTS.primary(kind, shown));
-    else doneAtOnce(RESULTS.primary(kind, shown));
+    if (kind === 'email') done(promotedWords(kind, shown, t));
+    else doneAtOnce(promotedWords(kind, shown, t));
   }
 
   function remove(kind: ContactKind, row: Contact, atOnce: boolean): void {
     const [rows, setRows] = rowsOf(kind);
     setRows(rows.filter((each) => each.id !== row.id));
-    if (atOnce) doneAtOnce(RESULTS.removed(row.shown));
-    else done(RESULTS.removed(row.shown));
+    const words = t('contacts.removed', { address: row.shown });
+    if (atOnce) doneAtOnce(words);
+    else done(words);
   }
 
   const contacts = (kind: ContactKind) => {
@@ -189,23 +204,23 @@ function AccountPage({ start }: { start: AccountStart }) {
     );
   };
 
-  const verifyRows = verifying == null ? [] : rowsOf(verifying.kind)[0];
   const openedKind: ContactKind = emails.some((row) => row.id === opened) ? 'email' : 'phone';
+  const proof = accountProof(t);
 
   return (
     <>
-      <SummaryPage title={WORDS.title} scrollRef={scroll}>
+      <SummaryPage title={t('account.title')} scrollRef={scroll}>
         <YouCard
           name={name}
           email={primaryEmail}
-          line={cardLine(emails, phones, said)}
+          line={cardLine(emails, phones, said, t)}
           wide={shell.layout === 'portrait'}
           nameRef={targets.card}
           step={
             waiting == null
               ? null
               : {
-                  label: WORDS.sendCode,
+                  label: t('contacts.sendCode'),
                   onPress: () => verify(waiting.kind, waiting.row, 'step'),
                   testID: 'account.step',
                   ref: targets.step,
@@ -214,7 +229,7 @@ function AccountPage({ start }: { start: AccountStart }) {
         />
         <AboutSection
           name={name}
-          zone={zone}
+          zone={{ title: zoneLabel(zone), line: zoneLine(zone.id, t) }}
           nameRef={targets.name}
           zoneRef={targets.zone}
           onName={() => show('name', 'name')}
@@ -226,10 +241,13 @@ function AccountPage({ start }: { start: AccountStart }) {
       <Ask
         open={ask === 'promote' && openedRow != null}
         opener={opener}
-        title={WORDS.promoteTitle}
-        line={promoteLine(primaryEmail)}
-        keep={{ label: keepPrimary(primaryEmail), testID: 'account.promote.keep' }}
-        confirm={{ label: WORDS.makeItPrimary, testID: 'account.promote.confirm' }}
+        title={t('contacts.promoteTitle')}
+        line={t('contacts.promoteBody', { old: primaryEmail })}
+        keep={{
+          label: t('contacts.promoteKeep', { old: primaryEmail }),
+          testID: 'account.promote.keep',
+        }}
+        confirm={{ label: t('contacts.promoteConfirm'), testID: 'account.promote.confirm' }}
         onKeep={() => setAsk(null)}
         onConfirm={() => {
           setAsk(null);
@@ -240,10 +258,14 @@ function AccountPage({ start }: { start: AccountStart }) {
       <Ask
         open={ask === 'remove' && openedRow != null}
         opener={opener}
-        title={KIND_WORDS[openedKind].removeTitle}
-        line={WORDS.removeLine}
-        keep={{ label: WORDS.keepIt, testID: 'account.remove.keep' }}
-        confirm={{ label: WORDS.removeIt, testID: 'account.remove.confirm', removes: true }}
+        title={t(KIND_KEYS[openedKind].removeTitle)}
+        line={t('contacts.removeBody')}
+        keep={{ label: t('contacts.removeKeep'), testID: 'account.remove.keep' }}
+        confirm={{
+          label: t('contacts.removeConfirm'),
+          testID: 'account.remove.confirm',
+          removes: true,
+        }}
         onKeep={() => setAsk(null)}
         onConfirm={() => {
           if (openedRow != null) remove(openedKind, openedRow, false);
@@ -256,21 +278,26 @@ function AccountPage({ start }: { start: AccountStart }) {
         held={name}
         opener={opener}
         onClose={() => setScreen(null)}
-        onSaved={(next) => {
+        onSave={(next) => {
           setName(next);
-          done(RESULTS.name(next));
+          done(t('nameCard.saved', { name: next }));
+
+          return Promise.resolve(null);
         }}
       />
       <ZoneScreen
         key={`zone.${visit}`}
         open={screen === 'zone'}
-        held={zone}
+        zones={ZONES}
+        now={zoneLabel(zone)}
         startTyped={first ? start.typedZone : ''}
         opener={opener}
         onClose={() => setScreen(null)}
-        onSaved={(next) => {
+        onSave={(next) => {
           setZone(next);
-          done(RESULTS.zone(next));
+          done(t('timeZone.saved', { zone: zoneLabel(next) }));
+
+          return Promise.resolve(null);
         }}
       />
       {(['email', 'phone'] as const).map((kind) => (
@@ -278,45 +305,122 @@ function AccountPage({ start }: { start: AccountStart }) {
           key={`${kind}.${visit}`}
           kind={kind}
           open={screen === (kind === 'email' ? 'addEmail' : 'addPhone')}
-          rows={rowsOf(kind)[0]}
           startCountry={first ? start.phoneCountry : PHONE_COUNTRY}
           opener={opener}
           onClose={() => setScreen(null)}
-          onAdded={(row) => {
+          onAdd={({ typed, country }) => {
             const [rows, setRows] = rowsOf(kind);
-            setRows([...rows, row]);
-            done(WORDS.added);
+            const shown = kind === 'email' ? typed : phoneShown(country, typed);
+            const refused = addRefusal(kind, shown, rows, t);
+            if (refused == null) {
+              setRows([
+                ...rows,
+                { id: `${kind}-${shown}`, shown, verified: false, primary: false },
+              ]);
+              done(t('contacts.added'));
+            }
+
+            return Promise.resolve(refused);
           }}
         />
       ))}
       <ConfirmScreen
         key={`confirm.${visit}`}
         open={screen === 'confirm' && openedRow != null}
+        asks={proof}
         opener={opener}
         onClose={() => setScreen(null)}
-        onProved={() => {
-          if (openedRow != null) makePrimary('email', openedRow.id);
-        }}
+        onContinue={(password, code) =>
+          sampleContinue(proof, () => {
+            if (openedRow != null) makePrimary('email', openedRow.id);
+          })(password, code)
+        }
       />
-      <VerifyScreen
-        key={`verify.${verifying?.id ?? ''}.${visit}`}
-        open={screen === 'verify' && verifying != null}
-        kind={verifying?.kind ?? 'email'}
-        shown={verifyRows.find((row) => row.id === verifying?.id)?.shown ?? ''}
-        start={first && verifying != null ? verifying.stage : 'entering'}
-        opener={opener}
-        onClose={() => setScreen(null)}
-        onVerified={() => {
-          if (verifying == null) return;
-          const [rows, setRows] = rowsOf(verifying.kind);
-          const row = rows.find((each) => each.id === verifying.id);
-          setRows(
-            rows.map((each) => (each.id === verifying.id ? { ...each, verified: true } : each)),
-          );
-          done(verifiedWords(row?.shown ?? '', verifying.kind));
-        }}
-      />
+      {verifying != null && (
+        <SampleVerify
+          key={`verify.${verifying.id}.${visit}`}
+          open={screen === 'verify'}
+          verifying={verifying}
+          row={rowsOf(verifying.kind)[0].find((row) => row.id === verifying.id) ?? null}
+          start={first ? verifying.stage : 'entering'}
+          opener={opener}
+          onClose={() => setScreen(null)}
+          onVerified={(row) => {
+            const [rows, setRows] = rowsOf(verifying.kind);
+            setRows(rows.map((each) => (each.id === row.id ? { ...each, verified: true } : each)));
+            done(verifiedWords(row, verifying.kind, t));
+          }}
+        />
+      )}
     </>
+  );
+}
+
+/** The sample's code: only the demo's own passes, and a new one waits the demo's countdown. */
+function SampleVerify({
+  open,
+  verifying,
+  row,
+  start,
+  opener,
+  onClose,
+  onVerified,
+}: {
+  open: boolean;
+  verifying: Verifying;
+  row: Contact | null;
+  start: Verifying['stage'];
+  opener: RefObject<ScreenReaderTarget | null>;
+  onClose: () => void;
+  onVerified: (row: Contact) => void;
+}) {
+  const { t } = useTranslation();
+  const [channel, setChannel] = useState<Channel>(
+    verifying.kind === 'email' ? 'email' : 'whatsApp',
+  );
+  const [expired, setExpired] = useState(start === 'expired');
+  const countdown = useCountdown(COUNTDOWN_SECONDS, start !== 'expired');
+  const words = verifyWords(CHANNEL_LINE[channel], row?.shown ?? '', t);
+
+  return (
+    <VerifyScreen
+      open={open && row != null}
+      title={words.title}
+      lead={words.lead}
+      codeLabel={words.codeLabel}
+      spent={expired ? words.expired : null}
+      wait={countdown.left}
+      prefill={start === 'wrong' ? WRONG_CODE : ''}
+      startError={start === 'wrong' ? words.wrong : null}
+      autoFocus={start === 'entering'}
+      opener={opener}
+      onClose={onClose}
+      onVerify={(typed) => {
+        const problem = sentCodeProblem(typed);
+        if (problem == null) {
+          if (row != null) onVerified(row);
+          return Promise.resolve(null);
+        }
+        const error =
+          problem === 'blank' ? words.blank : problem === 'short' ? words.short : words.wrong;
+
+        return Promise.resolve({ error, checked: problem !== 'wrong' });
+      }}
+      onResend={() => {
+        setExpired(false);
+        countdown.restart();
+
+        return Promise.resolve(true);
+      }}
+      onTextInstead={
+        channel === 'whatsApp'
+          ? () => {
+              setChannel('text');
+              return Promise.resolve();
+            }
+          : null
+      }
+    />
   );
 }
 

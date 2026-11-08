@@ -23,7 +23,7 @@ import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { EventMesh } from '../../components/EventMesh.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
-import { LineIcon } from '../settings/AccountCard.tsx';
+import { LineIcon } from '../../components/AccountCard.tsx';
 import { PhotoFill } from '../../components/EventCard.tsx';
 import { EventNotice } from './EventNotice.tsx';
 import { type EditPart, type EventDemoState, folded, instantOf, wallOf } from './EventsModel.ts';

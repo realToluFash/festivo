@@ -20,7 +20,7 @@ import { tokens } from '../../theme/tokens.ts';
 import { DemoOnly } from '../../steps/Lines.tsx';
 import { ASK_WIDTH, AlertLine } from '../events/EventEdits.tsx';
 import { SearchField } from '../events/EventsList.tsx';
-import { LineIcon } from '../settings/AccountCard.tsx';
+import { LineIcon } from '../../components/AccountCard.tsx';
 import { Pill } from '../../components/SettingsParts.tsx';
 import {
   type AskProps,

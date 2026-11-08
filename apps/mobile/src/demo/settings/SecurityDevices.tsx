@@ -5,7 +5,7 @@ import { StyleSheet, View, type ViewInstance } from 'react-native';
 
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
-import { LEAD_INSET, LineIcon } from './AccountCard.tsx';
+import { LEAD_INSET, LineIcon } from '../../components/AccountCard.tsx';
 import { deviceExpires, deviceLine, deviceSignedIn, WORDS } from './SecurityModel.ts';
 import type { Device } from './SecuritySample.ts';
 import { OpenRow, RowList, Section, TextAction } from '../../components/Summary.tsx';
