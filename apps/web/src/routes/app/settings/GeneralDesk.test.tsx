@@ -50,6 +50,24 @@ const DOMAINS = {
   ownAddress: 'folake@ire.events',
 };
 
+const ME = {
+  id: 'u_folake',
+  name: 'Folake Adeyemi',
+  businessName: null,
+  countryCode: null,
+  locale: 'en',
+  timezone: null,
+  waitingFor: null,
+  verified: true,
+  complete: true,
+  userId: 'u1',
+  needsOrganisation: false,
+  hasPassword: true,
+  providers: [],
+  emailAddresses: [{ id: 'a1', address: 'folake@ire.events', verified: true, primary: true }],
+  phoneNumbers: [],
+};
+
 let signedInTo: Membership = IRE;
 
 function signedIn(organisation: Membership = IRE): void {
@@ -270,6 +288,7 @@ describe('Settings > General at a desk (sc-30191)', () => {
     ).toContain('NGN');
 
     fireEvent.change(within(list).getByRole('searchbox'), { target: { value: 'euro' } });
+    expect(within(list).queryByRole('button', { name: /NGN/u })).toBeNull();
     fireEvent.click(within(list).getByRole('button', { name: /EUR/u }));
 
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Currency' })).toBeNull());
@@ -351,26 +370,7 @@ describe('Settings > General at a desk (sc-30191)', () => {
         return new Response(null, { status: 204 });
       },
       'GET /api/invitations/mine': () => json({ invitations: [] }),
-      'GET /api/auth/me': () =>
-        json({
-          id: 'u_folake',
-          name: 'Folake Adeyemi',
-          businessName: null,
-          countryCode: null,
-          locale: 'en',
-          timezone: null,
-          waitingFor: null,
-          verified: true,
-          complete: true,
-          userId: 'u1',
-          needsOrganisation: false,
-          hasPassword: true,
-          providers: [],
-          emailAddresses: [
-            { id: 'a1', address: 'folake@ire.events', verified: true, primary: true },
-          ],
-          phoneNumbers: [],
-        }),
+      'GET /api/auth/me': () => json(ME),
     });
     settings();
 
@@ -448,5 +448,193 @@ describe('Settings > General at a desk (sc-30191)', () => {
     const link = await screen.findByRole('switch', { name: 'Requests to join' });
     expect(link.getAttribute('aria-checked')).toBe('false');
     expect(link.textContent).toBe('Off');
+  });
+
+  it('says under the field what the server refused, and focus goes to it', async () => {
+    signedIn();
+    answering({
+      'PATCH /api/orgs/org_1': () =>
+        problem('validation_failed', 422, {
+          violations: [
+            { propertyPath: 'contactAddress', message: 'That address cannot receive email.' },
+          ],
+        }),
+    });
+    settings();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit details' }));
+    const details = await screen.findByRole('dialog', { name: 'Organisation details' });
+    const contact = within(details).getByLabelText('Contact address');
+    fireEvent.change(contact, { target: { value: 'team@nowhere.example' } });
+    fireEvent.click(within(details).getByRole('button', { name: 'Save' }));
+
+    expect(await within(details).findByText('That address cannot receive email.')).toBeDefined();
+    expect(document.activeElement).toBe(contact);
+  });
+
+  it('keeps what was typed after a failure, with the alert at the top and Save still on', async () => {
+    signedIn();
+    answering({ 'PATCH /api/orgs/org_1': () => new Response('{}', { status: 500 }) });
+    settings();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit details' }));
+    const details = await screen.findByRole('dialog', { name: 'Organisation details' });
+    fireEvent.change(within(details).getByLabelText('Name'), { target: { value: 'Ìrè Ltd' } });
+    fireEvent.click(within(details).getByRole('button', { name: 'Save' }));
+
+    expect(
+      await within(details).findByText(
+        'Saving did not work. Nothing was changed. Try again in a moment.',
+      ),
+    ).toBeDefined();
+    expect((within(details).getByLabelText('Name') as HTMLInputElement).value).toBe('Ìrè Ltd');
+    expect(
+      within(details).getByRole('button', { name: 'Save' }).getAttribute('aria-disabled'),
+    ).toBe('false');
+  });
+
+  it('asks before leaving, says Leaving… while it goes, and lands on the app', async () => {
+    signedIn(membership({ role: MEMBER, permissions: ['events.read'] }));
+    let answer: (response: Response) => void = () => {};
+    answering({
+      'POST /api/orgs/org_1/leave': () =>
+        new Promise<Response>((resolve) => {
+          answer = resolve;
+        }),
+      'GET /api/invitations/mine': () => json({ invitations: [] }),
+      'GET /api/auth/me': () => json(ME),
+    });
+    const router = settings();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Leave Ìrè Events…' }));
+    const ask = await screen.findByRole('alertdialog', { name: 'Leave Ìrè Events?' });
+    expect(
+      within(ask)
+        .getAllByRole('button')
+        .map((one) => one.textContent),
+    ).toEqual(['Stay', 'Leave Ìrè Events']);
+
+    fireEvent.click(within(ask).getByRole('button', { name: 'Leave Ìrè Events' }));
+    expect(await within(ask).findByText('Leaving…')).toBeDefined();
+
+    answer(new Response(null, { status: 204 }));
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/app'));
+  });
+
+  it('keeps a failed leave in the confirm, with its words', async () => {
+    signedIn(membership({ role: MEMBER, permissions: ['events.read'] }));
+    answering();
+    settings();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Leave Ìrè Events…' }));
+    const ask = await screen.findByRole('alertdialog', { name: 'Leave Ìrè Events?' });
+    fireEvent.click(within(ask).getByRole('button', { name: 'Leave Ìrè Events' }));
+
+    expect(
+      await within(ask).findByText(
+        'That did not go through. Nothing was changed. Try again in a moment.',
+      ),
+    ).toBeDefined();
+    expect(within(ask).getByRole('button', { name: 'Leave Ìrè Events' })).toBeDefined();
+  });
+
+  it('turns the server’s last owner into the only owner’s confirm, whose Transfer opens Transfer', async () => {
+    signedIn();
+    answering({
+      'GET /api/orgs/org_1/members': () =>
+        json({
+          ...MEMBERS,
+          members: [...MEMBERS.members, member('m_tobi', 'Tobi Ade', OWNER)],
+        }),
+      'POST /api/orgs/org_1/leave': () => problem('last_owner', 409),
+    });
+    settings();
+
+    expect(await screen.findByRole('button', { name: 'Remove ire.events' })).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Leave Ìrè Events…' }));
+    const ask = await screen.findByRole('alertdialog', { name: 'Leave Ìrè Events?' });
+    fireEvent.click(within(ask).getByRole('button', { name: 'Leave Ìrè Events' }));
+
+    const only = await screen.findByRole('alertdialog', { name: 'You are the only owner' });
+    expect(
+      within(only)
+        .getAllByRole('button')
+        .map((one) => one.textContent),
+    ).toEqual(['Stay', 'Transfer ownership']);
+    fireEvent.click(within(only).getByRole('button', { name: 'Transfer ownership' }));
+
+    expect(await screen.findByRole('dialog', { name: 'Transfer ownership' })).toBeDefined();
+    expect(screen.queryByRole('alertdialog', { name: 'You are the only owner' })).toBeNull();
+  });
+
+  it('checks a domain’s shape before sending it', async () => {
+    signedIn();
+    const sent = answering();
+    settings();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Add domain' }));
+    const add = await screen.findByRole('dialog', { name: 'Add a domain' });
+    const field = within(add).getByLabelText('Domain');
+    fireEvent.change(field, { target: { value: 'acme' } });
+    fireEvent.click(within(add).getByRole('button', { name: 'Add' }));
+
+    expect(
+      await within(add).findByText('Enter a domain with a dot and no spaces, like ire.events.'),
+    ).toBeDefined();
+    expect(document.activeElement).toBe(field);
+    expect(sent.some((one) => one.line === 'POST /api/orgs/org_1/domains')).toBe(false);
+  });
+
+  it('shows the server’s refusal under the domain field, focus on it', async () => {
+    signedIn();
+    answering({
+      'POST /api/orgs/org_1/domains': () =>
+        problem('validation_failed', 422, {
+          violations: [{ propertyPath: 'domain', message: 'Your address is not at acme.com.' }],
+        }),
+    });
+    settings();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Add domain' }));
+    const add = await screen.findByRole('dialog', { name: 'Add a domain' });
+    const field = within(add).getByLabelText('Domain');
+    fireEvent.change(field, { target: { value: 'acme.com' } });
+    fireEvent.click(within(add).getByRole('button', { name: 'Add' }));
+
+    expect(await within(add).findByText('Your address is not at acme.com.')).toBeDefined();
+    await waitFor(() => expect(document.activeElement).toBe(field));
+  });
+
+  it('adds a domain that fills the list: its Added line, the full line, and Add domain gone', async () => {
+    signedIn();
+    const filled = {
+      ...DOMAINS,
+      most: 2,
+      domains: [...DOMAINS.domains, { domain: 'ire.ng', stopped: false }],
+    };
+    answering({
+      'GET /api/orgs/org_1/domains': () => json({ ...DOMAINS, most: 2 }),
+      'POST /api/orgs/org_1/domains': () => json(filled),
+    });
+    settings();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Add domain' }));
+    const add = await screen.findByRole('dialog', { name: 'Add a domain' });
+    fireEvent.change(within(add).getByLabelText('Domain'), { target: { value: 'ire.ng' } });
+    fireEvent.click(within(add).getByRole('button', { name: 'Add' }));
+
+    expect(
+      await screen.findByText(
+        'Added. People whose main email address is at it can now ask to join.',
+      ),
+    ).toBeDefined();
+    expect(screen.queryByRole('dialog', { name: 'Add a domain' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Add domain' })).toBeNull();
+    expect(
+      screen.getByText(
+        /That is 2 domains, the most the list can hold\. Remove one to add another\./u,
+      ),
+    ).toBeDefined();
   });
 });
