@@ -35,7 +35,7 @@ export function closeBoldTextBoard(): void {
   setBoldText(false);
 }
 
-export function useBoldText(): boolean {
+export function useBoldTextSwitch(): boolean {
   return useSyncExternalStore(subscribe, () => on);
 }
 
