@@ -22,17 +22,7 @@ const EVENT = {
   dayCount: 2,
   currency: 'NGN',
   cover: null,
-  venue: {
-    name: 'The Landmark',
-    address: {
-      formatted: 'Water Corporation Drive, Lagos',
-      line1: null,
-      line2: null,
-      city: 'Lagos',
-      region: null,
-      postalCode: null,
-    },
-  },
+  venue: null,
   hosts: [],
   madeLiveAt: '2026-10-26T15:00:00+00:00',
   pausedAt: null,
