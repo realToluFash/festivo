@@ -474,3 +474,11 @@ export function nextSeatName(items: readonly Item[]): string {
 export function editable(m: Seating): boolean {
   return !m.readOnly && !m.offline && m.load === 'ready';
 }
+
+export function arrangeable(m: Seating): boolean {
+  return editable(m) && m.view === 'Floor plan' && m.picked == null;
+}
+
+export function handlesLive(m: Seating): boolean {
+  return arrangeable(m) && m.tab === 'Arrange';
+}
