@@ -390,14 +390,16 @@ function MembersScreen({ start }: { start: MembersStart }) {
       );
 
     return landscape ? (
-      <Landscape column={<SummaryColumn title="Members">{block}</SummaryColumn>}>{null}</Landscape>
+      <Landscape column={<SummaryColumn title={t('settings.members')}>{block}</SummaryColumn>}>
+        {null}
+      </Landscape>
     ) : (
-      <SummaryPage title="Members">{block}</SummaryPage>
+      <SummaryPage title={t('settings.members')}>{block}</SummaryPage>
     );
   }
 
   const column = landscape ? (
-    <SummaryColumn title="Members" scrollRef={listScroll}>
+    <SummaryColumn title={t('settings.members')} scrollRef={listScroll}>
       {list}
     </SummaryColumn>
   ) : undefined;
@@ -447,7 +449,7 @@ function MembersScreen({ start }: { start: MembersStart }) {
           <NobodyPicked />
         </Landscape>
       ) : (
-        <SummaryPage title="Members" scrollRef={listScroll}>
+        <SummaryPage title={t('settings.members')} scrollRef={listScroll}>
           {list}
         </SummaryPage>
       )}
