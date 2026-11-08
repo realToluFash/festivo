@@ -1,5 +1,7 @@
 /** An event's seating plan as the API answers and the hub publishes it (sc-3998). */
 
+import { ROOM_MAXIMUM_CM, ROOM_MINIMUM_CM } from '@soirely/domain';
+
 export const SECTION_COLOURS = [
   'blue',
   'purple',
@@ -53,8 +55,6 @@ export interface SeatingRoom {
   lengthCm?: number;
 }
 
-const ROOM_MINIMUM_CM = 200;
-const ROOM_MAXIMUM_CM = 50_000;
 const SECTION_NAME_MAXIMUM = 40;
 const SECTIONS_MAXIMUM = 30;
 const ROOM_NAME_MAXIMUM = 60;
