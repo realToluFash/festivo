@@ -14,7 +14,7 @@ export default function LinkSent() {
   const params = useLocalSearchParams<{ email?: string }>();
   const email = params.email ?? SAMPLE.email;
   const [again, setAgain] = useState(false);
-  const { left, restart } = useCountdown(again ? RESEND_SECONDS : 0);
+  const { left, restart } = useCountdown(0);
 
   return (
     <DemoScreen
@@ -27,11 +27,11 @@ export default function LinkSent() {
             testID="demo.openMail"
           />
           <QuietButton
-            label={again && left > 0 ? `Send it again in ${minutesSeconds(left)}` : 'Send it again'}
-            off={again && left > 0}
+            label={left > 0 ? `Send it again in ${minutesSeconds(left)}` : 'Send it again'}
+            off={left > 0}
             onPress={() => {
               setAgain(true);
-              restart();
+              restart(RESEND_SECONDS);
             }}
             testID="demo.again"
           />
