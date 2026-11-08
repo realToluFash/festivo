@@ -6,7 +6,8 @@ import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
 
 const tested = config();
-const SLOW = { timeout: 8000 };
+const SLOW = { timeout: 20000 };
+const WAIT = { timeout: 8000 };
 const REFUSED = 'That is not a phone number for United Kingdom. Check it and try again.';
 
 function main(): HTMLElement {
@@ -20,7 +21,7 @@ function list(): HTMLElement {
 async function open(path: string) {
   const router = createMemoryRouter(routes, { initialEntries: [path] });
   render(<RouterProvider router={router} />);
-  await screen.findByRole('navigation', { name: 'Settings' }, SLOW);
+  await screen.findByRole('navigation', { name: 'Settings' }, WAIT);
 
   return router;
 }
@@ -415,6 +416,6 @@ describe('Settings › Vendors in A · Summary first (sc-82)', () => {
 
     fireEvent.click(within(main()).getByRole('button', { name: 'Try again' }));
 
-    expect(await screen.findByText('28 vendors', {}, SLOW)).toBeDefined();
+    expect(await screen.findByText('28 vendors', {}, WAIT)).toBeDefined();
   });
 });

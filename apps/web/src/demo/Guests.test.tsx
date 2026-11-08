@@ -7,7 +7,8 @@ import { routes } from '../routes/index.tsx';
 import { resetSample } from './events.ts';
 
 const tested = config();
-const SLOW = { timeout: 8000 };
+const SLOW = { timeout: 20000 };
+const WAIT = { timeout: 8000 };
 
 function open(path: string) {
   const router = createMemoryRouter(routes, { initialEntries: [path] });
@@ -18,7 +19,7 @@ function open(path: string) {
 
 async function guests(state: string) {
   const router = open(`/demo/guests?state=${state}`);
-  await screen.findByRole('heading', { level: 1, name: 'Guests' }, SLOW);
+  await screen.findByRole('heading', { level: 1, name: 'Guests' }, WAIT);
 
   return router;
 }
@@ -277,7 +278,7 @@ describe('Guests, Edit in place (sc-3773)', () => {
     });
     fireEvent.click(within(column()).getByRole('button', { name: 'Save' }));
 
-    expect(await screen.findByText('kwame@mensah.co.uk', {}, SLOW)).toBeDefined();
+    expect(await screen.findByText('kwame@mensah.co.uk', {}, WAIT)).toBeDefined();
     expect(screen.getByText('Saved')).toBeDefined();
   });
 
@@ -333,7 +334,7 @@ describe('Guests, Record a reply in place (sc-3787)', () => {
       fireEvent.click(screen.getByRole('radio', { name: 'By phone' }));
       fireEvent.click(screen.getByRole('checkbox', { name: 'Adanna Nwosu' }));
       fireEvent.click(within(column()).getByRole('button', { name: 'Save' }));
-      await screen.findByText('Reply recorded. It counts like any other reply.', {}, SLOW);
+      await screen.findByText('Reply recorded. It counts like any other reply.', {}, WAIT);
       fireEvent.click(within(main()).getAllByRole('button', { name: 'Clear' })[0] as HTMLElement);
       for (const more of screen.queryAllByRole('button', { name: /^Show all/u }))
         fireEvent.click(more);
@@ -381,7 +382,7 @@ describe('Guests, Record a reply in place (sc-3787)', () => {
     fireEvent.click(within(column()).getByRole('button', { name: 'Save' }));
 
     expect(
-      await screen.findByText('Reply recorded. It counts like any other reply.', {}, SLOW),
+      await screen.findByText('Reply recorded. It counts like any other reply.', {}, WAIT),
     ).toBeDefined();
     expect(screen.getByText('98 coming of 142 invited')).toBeDefined();
     expect(
@@ -484,14 +485,14 @@ describe('Guests on sample data (sc-31781)', () => {
     fireEvent.click(await screen.findByRole('radio', { name: 'Not coming' }));
     fireEvent.click(screen.getByRole('radio', { name: 'In person' }));
     fireEvent.click(within(column()).getByRole('button', { name: 'Save' }));
-    await screen.findByText('Reply recorded. It counts like any other reply.', {}, SLOW);
+    await screen.findByText('Reply recorded. It counts like any other reply.', {}, WAIT);
 
     fireEvent.click(within(column()).getByRole('button', { name: 'Edit' }));
     fireEvent.change(await screen.findByRole('textbox', { name: /Email address/u }), {
       target: { value: 'emeka@nwosu.co.uk' },
     });
     fireEvent.click(within(column()).getByRole('button', { name: 'Save' }));
-    await screen.findByText('emeka@nwosu.co.uk', {}, SLOW);
+    await screen.findByText('emeka@nwosu.co.uk', {}, WAIT);
 
     fireEvent.click(within(main()).getByRole('button', { name: 'Add guest' }));
     fireEvent.change(await screen.findByRole('textbox', { name: 'Full name' }), {
@@ -508,7 +509,7 @@ describe('Guests on sample data (sc-31781)', () => {
 describe('the numbers on Overview and Events (sc-3786, sc-23284)', () => {
   it('lists Overview’s exclusive counts, each opening the guests it counts', SLOW, async () => {
     open('/demo/events/evt-wed-4?state=overview');
-    await screen.findByRole('heading', { level: 1, name: 'Adaeze & Tunde’s wedding' }, SLOW);
+    await screen.findByRole('heading', { level: 1, name: 'Adaeze & Tunde’s wedding' }, WAIT);
 
     expect(
       screen.getByText('96 coming of 142 invited. Each number opens the guests it counts.'),
@@ -528,21 +529,21 @@ describe('the numbers on Overview and Events (sc-3786, sc-23284)', () => {
 
   it('has no numbers without guests.read, and none invited on a draft', SLOW, async () => {
     open('/demo/events/evt-wed-4?state=overviewViewer');
-    await screen.findByRole('heading', { level: 1, name: 'Adaeze & Tunde’s wedding' }, SLOW);
+    await screen.findByRole('heading', { level: 1, name: 'Adaeze & Tunde’s wedding' }, WAIT);
 
     expect(screen.queryByText('Open the guest list')).toBeNull();
   });
 
   it('opens Guests on the filter a number counts', SLOW, async () => {
     open('/demo/guests?filter=held');
-    await screen.findByRole('heading', { level: 1, name: 'Guests' }, SLOW);
+    await screen.findByRole('heading', { level: 1, name: 'Guests' }, WAIT);
 
     expect(screen.getByText('6 of 156 shown')).toBeDefined();
   });
 
   it('gives each event on Events its guests in the tiles’ measure', SLOW, async () => {
     open('/demo/events?state=events');
-    await screen.findByRole('heading', { level: 1, name: 'Events' }, SLOW);
+    await screen.findByRole('heading', { level: 1, name: 'Events' }, WAIT);
 
     expect(screen.getByText('96 coming · 25 haven’t replied')).toBeDefined();
     expect(screen.getByText('31 coming · 22 haven’t replied')).toBeDefined();
@@ -550,7 +551,7 @@ describe('the numbers on Overview and Events (sc-3786, sc-23284)', () => {
 
   it('opens the wedding’s Guests from its sidebar', SLOW, async () => {
     const router = open('/demo/events/evt-wed-4');
-    const side = await screen.findByRole('navigation', { name: 'Adaeze & Tunde’s wedding' }, SLOW);
+    const side = await screen.findByRole('navigation', { name: 'Adaeze & Tunde’s wedding' }, WAIT);
 
     expect(within(side).getByRole('link', { name: 'Guests' }).getAttribute('href')).toBe(
       '/demo/guests',

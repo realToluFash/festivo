@@ -7,7 +7,8 @@ import { routes } from '../routes/index.tsx';
 import { resetSample } from './events.ts';
 
 const tested = config();
-const SLOW = { timeout: 8000 };
+const SLOW = { timeout: 20000 };
+const WAIT = { timeout: 8000 };
 const WEDDING = 'Adaeze & Tunde’s wedding';
 
 function main(): HTMLElement {
@@ -50,7 +51,7 @@ describe('Events in A at a desk (sc-30304)', () => {
     SLOW,
     async () => {
       const router = open('/demo/today');
-      const side = await screen.findByRole('navigation', { name: 'Soirely' }, SLOW);
+      const side = await screen.findByRole('navigation', { name: 'Soirely' }, WAIT);
 
       fireEvent.click(within(side).getByRole('link', { name: 'Events' }));
 

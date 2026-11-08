@@ -1,5 +1,10 @@
-# Notifications on an iPad on its side, opened by link (a tap on the bell on its side lands on Expo Go's tools button): the band after a refused Mark all read, then Refreshing… while Try again is held (sc-27096). Needs unread items, and a trigger on 127.0.0.1:18999 that stops (/stop), starts then pauses (/hold) and unpauses (/unpause) the API, and screenshots the iPad (/shot-<name>).
+# Notifications on an iPad on its side, opened by link (a tap on the bell on its side lands on Expo Go's tools button): the band after a refused Mark all read, then Refreshing… while Try again is held (sc-27096). Needs unread items. The harness stops and holds the API, and pictures the held moment (/shot), through batch/helper.js.
 appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
 ---
 - setOrientation: LANDSCAPE_RIGHT
 - openLink: ${METRO_URL}/--/notifications
@@ -17,7 +22,10 @@ appId: host.exp.Exponent
           id: notifications.pushAsk.notNow
 - waitForAnimationToEnd
 - takeScreenshot: side-online
-- evalScript: ${http.get('http://127.0.0.1:18999/stop').body}
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
 - tapOn:
     id: notifications.markAllRead
 - extendedWaitUntil:
@@ -25,13 +33,25 @@ appId: host.exp.Exponent
       id: offline.band
     timeout: 25000
 - takeScreenshot: side-band
-- evalScript: ${http.get('http://127.0.0.1:18999/hold').body}
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=paused
 - tapOn:
     id: offline.retry
-- evalScript: ${http.get('http://127.0.0.1:18999/shot-held-1').body}
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /shot?name=held-1
 - takeScreenshot: side-refreshing
-- evalScript: ${http.get('http://127.0.0.1:18999/shot-held-2').body}
-- evalScript: ${http.get('http://127.0.0.1:18999/unpause').body}
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /shot?name=held-2
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=up
 - extendedWaitUntil:
     notVisible:
       id: offline.band
