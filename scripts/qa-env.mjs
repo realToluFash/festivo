@@ -1949,7 +1949,16 @@ export function androidToolsReset(before, after) {
 }
 
 export const EXPO_GO_MENU = ['shell', 'input', 'keyevent', 'KEYCODE_MENU'];
-export const EXPO_GO_MENU_SCROLL = ['shell', 'input', 'swipe', '540', '1800', '540', '600', '400'];
+
+// Up the middle of the screen as it is drawn, from three quarters of its height to one quarter.
+export function expoGoMenuScroll(wmSize, rotation = 0) {
+  const size = physicalSize(wmSize);
+  if (!size) return null;
+  let { width, height } = size;
+  if (rotation % 2 === 1) [width, height] = [height, width];
+  const [x, from, to] = [width / 2, height * 0.75, height * 0.25].map((n) => String(Math.round(n)));
+  return ['shell', 'input', 'swipe', x, from, x, to, '400'];
+}
 export const EXPO_GO_MENU_CLOSE = ['shell', 'input', 'keyevent', 'KEYCODE_BACK'];
 
 // The menu slides up, so each step waits for it before reading the screen.
@@ -1963,11 +1972,21 @@ async function expoGoMenuSwitch(tools) {
   };
   const shown = await read();
   if (shown) return shown;
-  adbOut(tools, EXPO_GO_MENU_SCROLL);
+  const scroll = expoGoMenuScroll(
+    adbOut(tools, ['shell', 'wm', 'size']),
+    surfaceOrientation(adbOut(tools, ['shell', 'dumpsys', 'input'])),
+  );
+  if (!scroll) return null;
+  adbOut(tools, scroll);
   return read();
 }
 
 async function androidToolsButtonOff(tools) {
+  // Menu and the swipe go to whatever is in front, and on the launcher the swipe opens its drawer.
+  if (!experienceResumed(adbOut(tools, ['shell', 'dumpsys', 'activity', 'activities']) ?? '')) {
+    console.log(androidToolsReset(null, null).say);
+    return;
+  }
   adbOut(tools, EXPO_GO_MENU);
   const before = await expoGoMenuSwitch(tools);
   if (before?.on) adbOut(tools, before.tap);

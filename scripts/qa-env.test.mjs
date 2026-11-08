@@ -45,6 +45,7 @@ import {
   iosExpoGoStops,
   batchReset,
   androidToolsReset,
+  expoGoMenuScroll,
   toolsSwitch,
   expoGoPrefs,
   TOOLS_BUTTON,
@@ -721,6 +722,40 @@ describe("Expo Go's Tools button on Android", () => {
     expect(androidToolsReset(null, null).say).toBe(failed);
     expect(androidToolsReset(on, on).say).toBe(failed);
     expect(androidToolsReset(on, null).say).toBe(failed);
+  });
+
+  it("scrolls Expo Go's menu up the middle of the screen as it is drawn", () => {
+    expect(expoGoMenuScroll('Physical size: 1080x2400\n')).toEqual([
+      'shell',
+      'input',
+      'swipe',
+      '540',
+      '1800',
+      '540',
+      '600',
+      '400',
+    ]);
+    expect(expoGoMenuScroll('Physical size: 2560x1600\n', 0)).toEqual([
+      'shell',
+      'input',
+      'swipe',
+      '1280',
+      '1200',
+      '1280',
+      '400',
+      '400',
+    ]);
+    expect(expoGoMenuScroll('Physical size: 2560x1600\n', 1)).toEqual([
+      'shell',
+      'input',
+      'swipe',
+      '800',
+      '1920',
+      '800',
+      '640',
+      '400',
+    ]);
+    expect(expoGoMenuScroll('error: no devices')).toBeNull();
   });
 });
 
