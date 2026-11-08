@@ -1,0 +1,27 @@
+# Signed out, in LANGUAGE (English, Español, Français, Português), starts Create your account and
+# leaves the app on the email code for EMAIL. The first half of a timed-out sign-up check (sc-32449):
+# age the hold in the database, then run sign-up-timed-out-at-launch.yaml. Pass LANGUAGE, NAME, EMAIL, PASSWORD.
+appId: host.exp.Exponent
+---
+- runFlow: sign-in-screen-language.yaml
+- openLink: ${METRO_URL}/--/register
+- extendedWaitUntil:
+    visible:
+      id: 'register.name'
+    timeout: 60000
+- tapOn:
+    id: 'register.name'
+- eraseText: 120
+- inputText: ${NAME}
+- tapOn:
+    id: 'register.email'
+- eraseText: 120
+- inputText: ${EMAIL}
+- pressKey: Enter
+- eraseText: 120
+- inputText: ${PASSWORD}
+- pressKey: Enter
+- extendedWaitUntil:
+    visible:
+      id: 'verifyEmail.code'
+    timeout: 30000

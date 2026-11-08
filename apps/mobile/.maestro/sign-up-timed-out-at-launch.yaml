@@ -1,0 +1,15 @@
+# Relaunches with a held sign-up whose hold has run out, and stops on Create your account with the
+# timed-out line as the heading's intro (sc-29923, sc-32449). Run after sign-up-held-any-language.yaml
+# and an aged hold. Pass SHOT.
+appId: host.exp.Exponent
+---
+- launchApp:
+    appId: host.exp.Exponent
+    stopApp: true
+- openLink: ${METRO_URL}
+- extendedWaitUntil:
+    visible:
+      id: 'register.password'
+    timeout: 90000
+- waitForAnimationToEnd
+- takeScreenshot: ${SHOT}
