@@ -119,7 +119,7 @@ export const ENTRIES: readonly AuditEntry[] = [
     action: 'sign_in_rules.changed',
     on: { name: 'Ire Events’ sign-in rules', eventId: null, gone: false },
     changes: 'Everyone needs two-factor: Off → On',
-    address: '102.89.34.17',
+    address: '203.0.113.17',
     device: 'Safari on macOS',
     reference: 'a2e7f4c1-5b9d-4a3e-8c6f-1d0b7e4a9c25',
   },
@@ -132,7 +132,7 @@ export const ENTRIES: readonly AuditEntry[] = [
     type: 'Sign-in and security',
     action: 'email_domain.added',
     on: { name: 'ireevents.com', eventId: null, gone: false },
-    address: '102.89.34.17',
+    address: '203.0.113.17',
     reference: 'e8b1c6d3-4f2a-4b7e-a9d0-6c5e3f1b8a72',
   },
   {

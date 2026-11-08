@@ -136,7 +136,7 @@ describe('the audit log’s states (sc-611)', () => {
     );
     const range = { from: '2026-10-16', to: '2026-10-17' };
     expect(matching({ ...NO_FILTERS, range })).toHaveLength(6);
-    expect(buttonWords({ ...NO_FILTERS, range }, 'en-US').dates).toBe('Oct 16 – Oct 17');
+    expect(buttonWords({ ...NO_FILTERS, range }, 'en-US').dates).toBe('Oct 16 to Oct 17');
   });
 
   it('writes Made Ireti at 40 live as the spec has it', () => {
@@ -166,10 +166,10 @@ describe('the audit log’s states (sc-611)', () => {
       On: 'Ire Events’ sign-in rules',
       Changes: 'Everyone needs two-factor: Off → On',
       'Type and action': 'Sign-in and security · sign_in_rules.changed',
-      'Network address': '102.89.34.17',
+      'Network address': '203.0.113.17',
       Device: 'Safari on macOS',
     });
-    expect(detail('detail_old')).toMatchObject({ 'Network address': '102.89.34.17' });
+    expect(detail('detail_old')).toMatchObject({ 'Network address': '203.0.113.17' });
     expect(detail('detail_old')).not.toHaveProperty('Device');
     expect(detail('detail_system')).toMatchObject({ Who: 'System' });
     expect(detail('detail_system')).not.toHaveProperty('Network address');

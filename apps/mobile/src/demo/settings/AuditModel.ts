@@ -229,7 +229,7 @@ export function rangeWords(range: Range | null, locale: string): string {
 
   const day = (key: string) => format.format(new Date(`${key}T12:00:00Z`));
 
-  return `${day(range.from)} – ${day(range.to)}`;
+  return `${day(range.from)} to ${day(range.to)}`;
 }
 
 /** What each menu button reads: its resting words, or what is picked. */
