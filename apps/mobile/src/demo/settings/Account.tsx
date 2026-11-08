@@ -410,7 +410,7 @@ function SampleVerify({
         setExpired(false);
         countdown.restart();
 
-        return Promise.resolve();
+        return Promise.resolve(true);
       }}
       onTextInstead={
         channel === 'whatsApp'
