@@ -40,12 +40,15 @@ import {
   physicalSize,
   portraitRotation,
   ANDROID_START,
+  startParts,
+  iosExpoGoStops,
   batchReset,
   expoGoPrefs,
   TOOLS_BUTTON,
   SCREEN_READER_OFF,
   driverBuilds,
   driverPids,
+  bundlerArgs,
   bundlerEnv,
   commitTarget,
   checkId,
@@ -444,6 +447,53 @@ describe('the stack a person tests on', () => {
   it('is the tester of its own worktree', () => {
     expect(testerOf('/home/me/soirely-qa-lan')).toBe(LAN);
     expect(testerOf('/home/me/soirely-qa2')).toBe(2);
+  });
+});
+
+describe('the bundler command', () => {
+  it("clears Metro's cache only when --clear asks", () => {
+    expect(bundlerArgs(18081, ['--tablet'])).toEqual(['expo', 'start', '--port', '18081']);
+    expect(bundlerArgs(18081, ['--clear'])).toEqual([
+      'expo',
+      'start',
+      '--port',
+      '18081',
+      '--clear',
+    ]);
+  });
+});
+
+describe('Expo Go on android --clear', () => {
+  const at = (name) => ANDROID_START.findIndex((part) => part.name === name);
+  const stopped = ANDROID_START[at('Expo Go stopped')];
+
+  it('is force-stopped, and only on --clear', () => {
+    expect(stopped.when).toBe('--clear');
+    expect(stopped.adb).toEqual([['shell', 'am', 'force-stop', 'host.exp.exponent']]);
+  });
+
+  it('is stopped before the bundler starts', () => {
+    expect(at('Expo Go stopped')).toBeGreaterThanOrEqual(0);
+    expect(at('Expo Go stopped')).toBeLessThan(at('bundler started'));
+  });
+
+  it('runs on android --clear, and a plain start runs every other part as before', () => {
+    const names = (args) => startParts(args).map((part) => part.name);
+    expect(names(['--clear'])).toContain('Expo Go stopped');
+    expect(names([])).not.toContain('Expo Go stopped');
+    expect(names([])).toEqual(
+      ANDROID_START.filter((part) => part.name !== 'Expo Go stopped').map((part) => part.name),
+    );
+  });
+});
+
+describe('Expo Go on ios --clear', () => {
+  it('is terminated on every opened simulator, and only on --clear', () => {
+    expect(iosExpoGoStops(['--clear'], ['A', 'B'])).toEqual([
+      ['simctl', 'terminate', 'A', 'host.exp.Exponent'],
+      ['simctl', 'terminate', 'B', 'host.exp.Exponent'],
+    ]);
+    expect(iosExpoGoStops([], ['A', 'B'])).toEqual([]);
   });
 });
 
@@ -1108,6 +1158,7 @@ describe("a flow's URLs", () => {
     expect(flowUrls(urls)).toEqual({
       METRO_URL: `exp://127.0.0.1:${ports.METRO_PORT}`,
       MAILPIT_URL: `http://127.0.0.1:${ports.MAILPIT_UI_PORT}`,
+      SMOCKER_URL: `http://127.0.0.1:${ports.SMOCKER_UI_PORT}`,
       API_URL: `http://127.0.0.1:${ports.API_PORT}`,
       WEB_URL: `http://127.0.0.1:${ports.WEB_PORT}`,
     });

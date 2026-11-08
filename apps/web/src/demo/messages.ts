@@ -437,6 +437,7 @@ export interface Unreached {
   kind: Kind;
   lines: readonly Line[];
   fixes: readonly Fix[];
+  updated?: string;
 }
 
 const PAGE_LINE: Line = { mark: 'none', word: MW.theirPage, why: MW.notSeenYet };

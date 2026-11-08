@@ -686,6 +686,7 @@ export const expoGoIosClient = (versions, expoRange) =>
 export const flowUrls = (urls) => ({
   METRO_URL: urls.metro,
   MAILPIT_URL: urls.mailpit,
+  SMOCKER_URL: urls.smocker,
   API_URL: urls.api,
   WEB_URL: urls.web,
 });
@@ -1417,7 +1418,8 @@ async function ios(args) {
   withSoftwareKeyboard(qaSimulatorIds());
   run('open', ['-a', 'Simulator'], { optional: true });
 
-  const metro = await startBundler(root);
+  for (const command of iosExpoGoStops(args, devices)) run('xcrun', command, { optional: true });
+  const metro = await startBundler(root, process.env, args);
   for (const udid of devices)
     run('xcrun', ['simctl', 'openurl', udid, CONFIG.urls.metro], { optional: true });
   console.log(`\nBundler on ${CONFIG.urls.metro}, open on the ${open}. Leave it running.`);
@@ -1445,14 +1447,20 @@ export function bundlerEnv(env, app) {
   return { ...env, ...app, EXPO_PUBLIC_ENVIRONMENT: 'qa', CI: '1' };
 }
 
-async function startBundler(root, env = process.env) {
-  const [command, args] = capped('4G', 'npx', [
+// --clear: Metro's cache keeps the EXPO_PUBLIC_ values of the build before.
+export function bundlerArgs(port, args = []) {
+  return [
     'expo',
     'start',
     '--port',
-    String(CONFIG.ports.METRO_PORT),
-  ]);
-  const metro = spawn(command, args, {
+    String(port),
+    ...(args.includes('--clear') ? ['--clear'] : []),
+  ];
+}
+
+async function startBundler(root, env = process.env, args = []) {
+  const [command, bundler] = capped('4G', 'npx', bundlerArgs(CONFIG.ports.METRO_PORT, args));
+  const metro = spawn(command, bundler, {
     cwd: join(root, 'apps/mobile'),
     detached: true,
     stdio: ['ignore', 'inherit', 'inherit'],
@@ -1815,7 +1823,15 @@ export const SCREEN_READER_OFF = [
   ['shell', 'settings', 'put', 'secure', 'accessibility_enabled', '0'],
 ];
 
+// Expo Go keeps the JS it already has until it is stopped.
+export const iosExpoGoStops = (args, devices) =>
+  args.includes('--clear') ? devices.map((udid) => ['simctl', 'terminate', udid, EXPO_GO]) : [];
+
+export const startParts = (args) =>
+  ANDROID_START.filter((part) => !part.when || args.includes(part.when));
+
 // android's start once the emulator is up, in order: nothing swipes or taps before the screen reader is off.
+// A part with `when` runs only when android is given that flag.
 export const ANDROID_START = [
   { name: 'release build removed', run: ({ tools, root }) => removeRelease(tools, root) },
   { name: 'airplane mode off', run: ({ tools }) => airplaneMode(tools, false) },
@@ -1839,10 +1855,15 @@ export const ANDROID_START = [
     },
   },
   {
+    name: 'Expo Go stopped',
+    when: '--clear',
+    adb: [['shell', 'am', 'force-stop', EXPO_GO_ANDROID]],
+  },
+  {
     name: 'bundler started',
     run: async (s) => {
       step('The bundler');
-      s.metro = await startBundler(s.root, s.tools.env);
+      s.metro = await startBundler(s.root, s.tools.env, s.args);
     },
   },
   {
@@ -1915,8 +1936,8 @@ async function android(args) {
 
   step(`The ${open}`);
   await bootEmulator(tools, CONFIG.emulators[open].name);
-  const started = { tools, root };
-  for (const part of ANDROID_START) {
+  const started = { tools, root, args };
+  for (const part of startParts(args)) {
     for (const command of part.adb ?? []) adbOut(tools, command);
     if (part.say) console.log(part.say);
     await part.run?.(started);

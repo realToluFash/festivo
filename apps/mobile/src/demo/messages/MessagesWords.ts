@@ -128,6 +128,7 @@ export const W = {
   cancelledSaid: 'Cancelled.',
   savedSaid: 'Saved.',
   updatedNotSent: 'Updated · not sent yet',
+  emailChangedSince: 'Their email address has changed since. Nothing has been sent to it yet.',
   copyLink: 'Copy their link',
   notYetInvited: 'Not yet invited',
   theirInvitation: 'Their invitation',
