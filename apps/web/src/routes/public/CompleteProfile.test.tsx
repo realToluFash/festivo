@@ -377,8 +377,10 @@ describe('a few details', () => {
       waitingFor: null,
     });
 
-    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Renamed' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Edit details' }));
+    const details = await screen.findByRole('dialog', { name: 'Organisation details' });
+    fireEvent.change(within(details).getByLabelText('Name'), { target: { value: 'Renamed' } });
+    fireEvent.click(within(details).getByRole('button', { name: 'Save' }));
 
     await waitFor(() =>
       expect(screen.getByRole('heading', { level: 1, name: 'A few details' })).toBeDefined(),
