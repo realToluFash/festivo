@@ -1,4 +1,4 @@
-import { type Milestone, milestoneDistance, wallDay } from '@soirely/domain';
+import { type Milestone, levelOf, milestoneDistance, wallDay } from '@soirely/domain';
 
 import type { Need, ShownEvent } from '../../kit/today.ts';
 
@@ -10,14 +10,23 @@ export interface YouEvent {
   milestones: readonly Milestone[];
 }
 
-/** Calendar days in the event's zone. `day` writes a wall day the reader's way, with the year when it is another year's. */
+/** The reader's own milestone, in an area their role changes on this event. */
+export function isYours(
+  { owner, area }: Pick<Milestone, 'owner' | 'area'>,
+  permissions: readonly string[],
+): boolean {
+  return owner === 'you' && levelOf(permissions, area) === 'change';
+}
+
+/** Calendar days in the event's zone. `day` writes a wall day the reader's way, with the year when today's is another. */
 export function dueOf(
   at: string,
   timeZone: string,
   now: Date,
-  day: (date: string) => string,
+  day: (date: string, withYear: boolean) => string,
 ): { words: string; late: boolean } {
   const distance = milestoneDistance(at, timeZone, now);
+  const dueDay = wallDay(at, timeZone);
 
   switch (distance.kind) {
     case 'now':
@@ -31,7 +40,10 @@ export function dueOf(
       return { words: 'Due today', late: false };
     case 'inDays':
       return {
-        words: distance.count === 1 ? 'Due tomorrow' : `Due ${day(wallDay(at, timeZone))}`,
+        words:
+          distance.count === 1
+            ? 'Due tomorrow'
+            : `Due ${day(dueDay, dueDay.slice(0, 4) !== wallDay(now, timeZone).slice(0, 4))}`,
         late: false,
       };
   }
@@ -41,14 +53,12 @@ export function dueOf(
 export function needsOf(
   events: readonly YouEvent[],
   now: Date,
-  day: (date: string) => string,
+  day: (date: string, withYear: boolean) => string,
 ): Need[] {
   return events
     .flatMap((event) =>
       event.milestones
-        .filter(
-          ({ owner, area }) => owner === 'you' && event.permissions.includes(`${area}.manage`),
-        )
+        .filter((milestone) => isYours(milestone, event.permissions))
         .map((milestone) => ({ event, milestone })),
     )
     .sort(

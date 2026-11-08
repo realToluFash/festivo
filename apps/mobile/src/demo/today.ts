@@ -81,7 +81,7 @@ export function sample(key: EventKey): ShownEvent {
 /** Dates as `2026-11-03` and times as `18:00`, written the reader's way. */
 export interface Say {
   long(date: string): string;
-  day(date: string): string;
+  day(date: string, withYear?: boolean): string;
   weekday(date: string): string;
   weekdayLong(date: string): string;
   number(date: string): string;
@@ -102,7 +102,8 @@ export function sayIn(locale: string, thisYear = 2026): Say {
 
   return {
     long: (date) => long.format(at(date)),
-    day: (date) => (Number(date.slice(0, 4)) === thisYear ? day : dayAndYear).format(at(date)),
+    day: (date, withYear = Number(date.slice(0, 4)) !== thisYear) =>
+      (withYear ? dayAndYear : day).format(at(date)),
     weekday: (date) => weekday.format(at(date)),
     weekdayLong: (date) => weekdayLong.format(at(date)),
     number: (date) => number.format(at(date)),

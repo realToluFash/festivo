@@ -57,7 +57,13 @@ function NeedRow({
         {wide ? (
           <View style={styles.inline}>
             {due}
-            <Text size={14} weight="medium" accessible={false} style={styles.inlineName}>
+            <Text
+              size={14}
+              weight="medium"
+              numberOfLines={2}
+              accessible={false}
+              style={styles.inlineName}
+            >
               {` · ${name}`}
             </Text>
           </View>

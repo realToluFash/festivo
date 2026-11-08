@@ -1,5 +1,5 @@
-import type { Milestone } from '@soirely/domain';
-import { describe, expect, it } from 'vitest';
+import { type Milestone, wallDay } from '@soirely/domain';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { sayIn } from '../today.ts';
 import { dueOf, headLabel, needsOf, rowLabel, type YouEvent } from './needsYou.ts';
@@ -86,6 +86,16 @@ describe('the due words', () => {
     expect(due('2027-01-13T23:59:00Z', '2026-11-10T09:00:00Z').words).toBe('Due Wed, Jan 13, 2027');
   });
 
+  it('takes this year from today in the event’s zone', () => {
+    // 01:00 on New Year's Day in Auckland, still noon on the 31st in London.
+    const newYear = new Date('2026-12-31T12:00:00Z');
+
+    expect(dueOf('2027-01-04T10:59:00Z', 'Pacific/Auckland', newYear, day).words).toBe(
+      'Due Mon, Jan 4',
+    );
+    expect(dueOf('2027-01-04T23:59:00Z', LONDON, newYear, day).words).toBe('Due Mon, Jan 4, 2027');
+  });
+
   it('writes the date the reader’s way, in one format', () => {
     const written = dueOf('2026-11-13T23:59:00Z', LONDON, new Date('2026-11-10T09:00:00Z'), gb.day);
 
@@ -106,15 +116,21 @@ describe('the due words', () => {
       late: true,
     });
   });
+});
 
-  it('counts the days in the event’s zone, whatever zone the device is in', () => {
+describe('a device in another zone than the event', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('counts the days in the event’s zone: an event in Lagos read from Los Angeles across midnight', () => {
+    vi.stubEnv('TZ', 'America/Los_Angeles');
     const lagos = 'Africa/Lagos';
-    const at = '2026-11-13T23:59:00+01:00';
-    // 00:30 on the 13th in Lagos, still 15:30 on the 12th in Los Angeles.
     const acrossMidnight = new Date('2026-11-12T23:30:00Z');
 
-    expect(dueOf(at, lagos, acrossMidnight, day).words).toBe('Due today');
-    expect(dueOf(at, 'America/Los_Angeles', acrossMidnight, day).words).toBe('Due tomorrow');
+    expect(acrossMidnight.getDate()).toBe(12);
+    expect(wallDay(acrossMidnight, lagos)).toBe('2026-11-13');
+    expect(dueOf('2026-11-13T23:59:00+01:00', lagos, acrossMidnight, day).words).toBe('Due today');
   });
 });
 
