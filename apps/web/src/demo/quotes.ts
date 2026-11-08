@@ -131,16 +131,34 @@ export function minorDigits(currency: string): number {
   );
 }
 
-/** A number as the reader types it in English: digits, optional grouping commas, a point. Null when it is not one. */
-export function parsedAmount(typed: string, currency = CURRENCY): number | null {
+export type Typed = { minor: number } | { wrong: 'blank' | 'negative' | 'number' | 'decimals' };
+
+/** The demo's one parser of a typed amount, in English: digits, optional grouping commas, a point, at most the currency's minor digits. */
+export function typedMinor(typed: string, currency = CURRENCY): Typed {
   const plain = typed.trim().replace(/\s/g, '');
-  if (!/^(\d{1,3}(,\d{3})+|\d+)(\.\d+)?$/.test(plain)) return null;
+  if (plain === '') return { wrong: 'blank' };
+  if (/^[-−]/.test(plain)) return { wrong: 'negative' };
+  if (!/^(\d{1,3}(,\d{3})+|\d+)(\.\d+)?$/.test(plain)) return { wrong: 'number' };
   const [whole = '', fraction = ''] = plain.replace(/,/g, '').split('.');
   const digits = minorDigits(currency);
-  if (fraction.length > digits) return null;
-  const minor = Number(whole) * 10 ** digits + Number(fraction.padEnd(digits, '0') || '0');
+  if (fraction.length > digits) return { wrong: 'decimals' };
 
-  return minor > 0 ? minor : null;
+  return { minor: Number(whole) * 10 ** digits + Number(fraction.padEnd(digits, '0') || '0') };
+}
+
+export function parsedAmount(typed: string, currency = CURRENCY): number | null {
+  const found = typedMinor(typed, currency);
+
+  return 'minor' in found && found.minor > 0 ? found.minor : null;
+}
+
+export function exampleIn(whole: number, currency = CURRENCY): string {
+  const digits = minorDigits(currency);
+
+  return new Intl.NumberFormat('en', {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  }).format(digits === 0 ? whole : whole + 0.5);
 }
 
 export function typedAmount(minor: number, currency = CURRENCY): string {
@@ -585,6 +603,7 @@ export function quotesStart(
 
   switch (state) {
     case 'no_quotes':
+    case 'early_on':
       return { ...start, budget: { quotes: [], payments: [] } };
     case 'nothing_due':
       return { ...start, budget: { ...full, payments: full.payments.map(paidBy) } };

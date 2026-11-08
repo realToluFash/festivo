@@ -1,3 +1,4 @@
+import { parsedAmount } from './quotes.ts';
 import {
   COST_LINES,
   type CostLine,
@@ -388,14 +389,9 @@ export function percentProblem(text: string): string | null {
   return value == null || value > WHOLE ? W.percentRange : null;
 }
 
-/** An amount typed in the event's currency, in the minor unit, or null when it is not a number above 0 with at most 2 decimals. */
+/** An amount typed in the event's currency: the demo's one parser, above 0. */
 export function amountOf(text: string): number | null {
-  const typed = text.trim().replace(/,(?=\d{3}(\D|$))/g, '');
-  if (!/^\d+(\.\d{1,2})?$/.test(typed)) return null;
-  const [whole = '0', part = ''] = typed.split('.');
-  const value = Number(whole) * 100 + Number(`${part}00`.slice(0, 2));
-
-  return value > 0 ? value : null;
+  return parsedAmount(text);
 }
 
 export function choicesFor(ticked: number): Mode[] {
