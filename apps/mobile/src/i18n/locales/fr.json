@@ -70,7 +70,7 @@
     "refused": "Cette adresse e-mail et ce mot de passe ne correspondent pas. Vérifiez les deux, ou réinitialisez votre mot de passe.",
     "endedTitle": "Votre session a été fermée",
     "endedBody": "Reconnectez-vous pour continuer.",
-    "codeTimedOutTitle": "That sign-in timed out",
+    "codeTimedOutTitle": "La connexion a expiré",
     "lockedTitle": "Trop de tentatives",
     "withGoogle": "Continuer avec {{provider}}",
     "withApple": "Continuer avec {{provider}}",
@@ -107,7 +107,8 @@
     "failedTitle": "La création du compte n’a pas abouti",
     "failedBody": "Quelque chose s’est mal passé en route. Réessayez dans un instant.",
     "nameBlank": "Saisissez votre nom complet.",
-    "passwordBlank": "Saisissez un mot de passe."
+    "passwordBlank": "Saisissez un mot de passe.",
+    "timedOut": "Votre inscription a expiré, nous n’avons donc pas conservé le mot de passe. Ressaisissez-le pour recevoir un nouveau code."
   },
   "verifyEmail": {
     "title": "Consultez votre boîte mail",
@@ -664,11 +665,11 @@
     "calendar": "Calendrier",
     "settings": "Paramètres",
     "organisation": "Organisation",
-    "backTo": "Back to {{place}}",
-    "cancel": "Cancel",
-    "back": "Back",
-    "closeMenu": "Close the menu",
-    "tryAgain": "Try again"
+    "backTo": "Retour à {{place}}",
+    "cancel": "Annuler",
+    "back": "Retour",
+    "closeMenu": "Fermer le menu",
+    "tryAgain": "Réessayer"
   },
   "eventNav": {
     "overview": "Aperçu",
@@ -800,7 +801,8 @@
       "vendors": "Prestataires",
       "members": "Membres et rôles",
       "billing": "Facturation",
-      "organisation": "Organisation"
+      "organisation": "Organisation",
+      "people": "Personnes des événements"
     },
     "means": {
       "events": "Créer, publier, suspendre et clore des événements.",
@@ -815,7 +817,8 @@
       "vendors": "Les prestataires de chaque événement et ce qui a été convenu avec eux.",
       "members": "Inviter, approuver, suspendre, changer les rôles.",
       "billing": "Formule, cartes et factures.",
-      "organisation": "Le nom, le pays, l’adresse de contact et les valeurs avec lesquelles démarrent les nouveaux événements."
+      "organisation": "Le nom, le pays, l’adresse de contact et les valeurs avec lesquelles démarrent les nouveaux événements.",
+      "people": "Qui fait partie de chaque événement, et le rôle que chaque personne y occupe."
     },
     "margin": "Marge",
     "marginMeans": "Ce que {{name}} ajoute aux coûts. Masquée signifie que le budget s’ouvre avec les coûts seuls.",
@@ -2051,7 +2054,7 @@
       "liveTitle": "Publiez-le",
       "liveBody": "Il reste en brouillon jusqu’à sa publication."
     },
-    "startFirst": "Start your first event",
+    "startFirst": "Créer votre premier événement",
     "stepNumber": "{{n, number}}"
   }
 }

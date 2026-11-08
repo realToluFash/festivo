@@ -1,42 +1,15 @@
+import { writtenTime } from './clock.ts';
 import type { SampleEvent } from './events.ts';
+import { demoWords } from './demoWords.ts';
 import { MESSAGES_WORD, MW } from './messagesWords.ts';
 import type { DemoLink } from './settings.ts';
 
 /** Messaging B · Conversations (page e36, board/messaging-b-spec.md): the sample and the inbox's rules; the words are in messagesWords.ts. */
 export { MW };
 
-type Words = typeof MW;
-type PluralBase = {
-  [K in keyof Words]: K extends `${infer Base}_one` ? Base : never;
-}[keyof Words];
-
 const NUMBER = new Intl.NumberFormat('en-US');
-const PLURAL = new Intl.PluralRules('en-US');
-const LIST = new Intl.ListFormat('en-US', { style: 'long', type: 'conjunction' });
 
-export function filled(words: string, slots: Readonly<Record<string, string | number>>): string {
-  return words.replaceAll(/\{\{(\w+)(?:, number)?\}\}/gu, (whole, slot: string) => {
-    const value = slots[slot];
-
-    if (value == null) return whole;
-
-    return typeof value === 'number' ? NUMBER.format(value) : value;
-  });
-}
-
-export function many(
-  base: PluralBase,
-  count: number,
-  slots: Readonly<Record<string, string | number>> = {},
-): string {
-  const form = PLURAL.select(count) === 'one' ? 'one' : 'other';
-
-  return filled(MW[`${base}_${form}`], { count, ...slots });
-}
-
-export function listed(words: readonly string[]): string {
-  return LIST.format(words);
-}
+export const { filled, many, listed } = demoWords(MW);
 
 export const MESSAGE_STATES = [
   { key: 'first', name: 'Messages, first time' },
@@ -110,7 +83,7 @@ export const ORGANISATION = 'Ire Events';
 export const GUESTS_N = 142;
 export const BALANCE = 1500;
 export const THEIR_LINK = '[their own link]';
-export const PAGE_WHEN = 'Thu, Nov 5 · 6:00 PM · The Landmark';
+export const PAGE_WHEN = `Thu, Nov 5 · ${writtenTime('18:00', 'en')} · The Landmark`;
 export const ZONE = 'London time (GMT)';
 export const ZONE_SHORT = 'London time';
 export const ENDS = { date: 'Sat, Nov 7', time: '15:00', at: '2026-11-07T15:00:00Z' };
@@ -437,6 +410,7 @@ export interface Unreached {
   kind: Kind;
   lines: readonly Line[];
   fixes: readonly Fix[];
+  updated?: string;
 }
 
 const PAGE_LINE: Line = { mark: 'none', word: MW.theirPage, why: MW.notSeenYet };
@@ -878,8 +852,7 @@ function wall(iso: string, timeZone: string, parts: Intl.DateTimeFormatOptions):
 export function toldOf(was: SampleEvent, now: SampleEvent): Told[] {
   const day = (iso: string) =>
     wall(iso, now.timeZone, { weekday: 'short', month: 'short', day: 'numeric' });
-  const time = (iso: string) =>
-    wall(iso, now.timeZone, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+  const time = (iso: string) => writtenTime(iso, 'en-US', now.timeZone);
   const told: Told[] = [];
 
   if (day(was.startsAt) !== day(now.startsAt))
@@ -904,7 +877,7 @@ export function toldOf(was: SampleEvent, now: SampleEvent): Told[] {
 
 export const STARTS_LATER: Told = {
   item: MW.newStartTime,
-  line: filled(MW.startMoved, { new: '17:30', old: '18:00' }),
+  line: filled(MW.startMoved, { new: writtenTime('17:30', 'en'), old: writtenTime('18:00', 'en') }),
 };
 
 export const ROSEWOOD = {

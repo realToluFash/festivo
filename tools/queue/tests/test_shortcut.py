@@ -60,6 +60,17 @@ class Retries(unittest.TestCase):
         self.assertEqual(str(said), "Shortcut timed out on POST /api/v3/stories/1")
         self.assertEqual(calls, 1)
 
+    def test_a_find_is_a_post_that_only_reads_so_it_retries(self):
+        with mock.patch("urllib.request.urlopen",
+                        side_effect=[TimeoutError("timed out"), Ok()]) as opened, \
+                mock.patch("time.sleep"):
+            self.assertEqual(Shortcut("t").find(workflow_state_id=7), {"id": 1})
+        self.assertEqual(opened.call_count, 2)
+        sent = opened.call_args.args[0]
+        self.assertEqual((sent.get_method(), sent.full_url.rsplit("/api", 1)[1]),
+                         ("POST", "/v3/stories/search"))
+        self.assertEqual(sent.data, b'{"archived": false, "workflow_state_id": 7}')
+
     def test_a_get_that_always_times_out_names_shortcut(self):
         said, calls = self.call("GET", [TimeoutError("The read operation timed out")] * 3)
         self.assertEqual(str(said), "Shortcut timed out on GET /api/v3/stories/1")

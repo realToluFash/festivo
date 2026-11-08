@@ -1,4 +1,5 @@
 import type { EventArea } from '@soirely/domain';
+import type { Href } from 'expo-router';
 
 import { EVENT_AREA } from './eventNav.ts';
 
@@ -43,7 +44,7 @@ export function areaParams(
   index: number,
   eventId: string,
   area: EventArea,
-): Record<string, string> {
+): Record<string, string> & { id: string } {
   for (let at = index - 1; at >= 0; at -= 1) {
     const params = routes[at]?.params;
 
@@ -61,7 +62,7 @@ export function areaParams(
         if (typeof value === 'string') kept[name] = value;
       }
 
-      return { ...kept, [EVENT_AREA]: area };
+      return { ...kept, id: eventId, [EVENT_AREA]: area };
     }
   }
 
@@ -72,9 +73,7 @@ export function goToArea(
   navigation: {
     getState: () => { routes: readonly { params?: unknown }[]; index: number } | undefined;
   },
-  router: {
-    dismissTo: (href: { pathname: '/events/[id]'; params: Record<string, string> }) => void;
-  },
+  router: { dismissTo: (href: Href) => void },
   eventId: string,
   area: EventArea,
 ): void {

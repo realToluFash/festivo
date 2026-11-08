@@ -7,7 +7,7 @@ import { LayersContext, useDeskLayers } from '../layers.ts';
 import { NoOrganisation } from './NoOrganisation.tsx';
 import { AccessPaused, Switched } from './OrgSwitcher.tsx';
 import { inNone, isFresh, useSwitcherStart, useWhere } from './switcher.ts';
-import { MOMENTS, type MomentName, momentOf, sayIn } from './today.ts';
+import { INVITES_NOT_SENT, MOMENTS, type MomentName, momentOf, sayIn } from './today.ts';
 import { Banner, NowBanner } from './TodayBanner.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
 import { FirstRun, NeedsYou, ThisWeek, YourEvents } from './TodayParts.tsx';
@@ -26,9 +26,13 @@ export function Today() {
   const raw = params.get('moment');
   const name = isFresh(where) ? 'first' : isMoment(raw) ? raw : 'plan';
   // The demo's words are English, so its dates are too, in the browser's own region.
+  const notSent = name === 'plan' && params.get('invites') === 'none';
   const moment = useMemo(
-    () => momentOf(name, sayIn(formattingLocale('en', navigator.language))),
-    [name],
+    () =>
+      momentOf(name, sayIn(formattingLocale('en', navigator.language)), {
+        guests: notSent ? INVITES_NOT_SENT : undefined,
+      }),
+    [name, notSent],
   );
   const [told, setTold] = useState<string | null>(null);
   const tell = useCallback<Tell>((words) => setTold(words), []);

@@ -7,19 +7,29 @@ import {
   type OrganisationEvent,
 } from '@soirely/api-client';
 import { initials } from '@soirely/domain';
-import { type KeyboardEvent, useCallback, useEffect, useRef, useState } from 'react';
+import { type KeyboardEvent, useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
-import { ConfirmDialog } from '../../../components/ConfirmDialog.tsx';
-import { FieldError } from '../../../components/FieldError.tsx';
+import { Glyph } from '../../../components/Glyph.tsx';
 import { ArrivalNotice } from '../../../components/PageArrival.tsx';
+import {
+  Ask,
+  Avatar,
+  Choices,
+  Dialog,
+  Field,
+  Head,
+  RowWords,
+  TextAction,
+} from '../../../components/SettingsParts.tsx';
 import { Skeleton } from '../../../components/Skeleton.tsx';
 import { Toast } from '../../../components/Toast.tsx';
-import { useDialogKeys } from '../../../dialogFocus.ts';
 import { currentLocale } from '../../../i18n/index.ts';
-import { offButton } from '../../../offButton.ts';
+import { focusWhenFree, LayersContext, useDeskLayers } from '../../../layers.ts';
 import { canOn, useSession } from '../../../session.ts';
+import '../../../components/SettingsParts.css';
+import './people.css';
 
 /** `addable` is null for whoever may not change People: the API refuses them that list. */
 type Load =
@@ -33,36 +43,30 @@ type Load =
       addable: AddableMember[] | null;
     };
 
-type Open = { kind: 'person'; id: string } | { kind: 'add' } | null;
+type Open = { kind: 'person'; id: string; visit: number } | { kind: 'add' } | null;
 
 /** A role reached by arrow sends once the arrows rest, so passing over a role on the way sends nothing. */
 const SETTLE_MS = 600;
+/** The row whose dialog closed stays lit this long, then its Tint fades. */
+const LIT_MS = 2000;
 const ARROWS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
 
-/** People on an event (sc-29915): who has which of its four roles, changed by Owners, Admins and its Lead. */
+/** People on an event (sc-29915), as the People demo draws it at a desk: who has which of its four roles, changed by Owners, Admins and its Lead. */
 export function EventPeople({ event }: { event: OrganisationEvent }) {
   const { t } = useTranslation();
   const session = useSession();
+  const { layers, covered, setHost } = useDeskLayers();
   const organisationName = session.organisation?.name ?? '';
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
   const [open, setOpen] = useState<Open>(null);
+  const [lit, setLit] = useState<{ id: string; held: boolean } | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const failedLine = useRef<HTMLParagraphElement>(null);
-  const opener = useRef<HTMLElement | null>(null);
-  const addButton = useRef<HTMLButtonElement>(null);
+  const addBox = useRef<HTMLButtonElement>(null);
   const title = useRef<HTMLHeadingElement>(null);
-  const [refocus, setRefocus] = useState(0);
   const manages = canOn(event, 'people.manage');
   const userId = session.userId;
-
-  // The row it came from has gone, so focus lands on Add once the dialogs have handed it back.
-  useEffect(() => {
-    if (refocus === 0) return;
-    const timer = window.setTimeout(() => (addButton.current ?? title.current)?.focus(), 0);
-
-    return () => window.clearTimeout(timer);
-  }, [refocus]);
 
   useEffect(() => {
     let current = true;
@@ -82,11 +86,18 @@ export function EventPeople({ event }: { event: OrganisationEvent }) {
     };
   }, [event.id, attempt, manages]);
 
-  const close = useCallback(() => {
+  useEffect(() => {
+    if (lit == null || lit.held) return;
+    const timer = window.setTimeout(() => setLit(null), LIT_MS);
+
+    return () => window.clearTimeout(timer);
+  }, [lit]);
+
+  const closeRole = useCallback(() => {
     setOpen(null);
-    const back = opener.current;
-    if (back?.isConnected === true) back.focus();
+    setLit((was) => (was == null ? null : { ...was, held: false }));
   }, []);
+  const closeAdd = useCallback(() => setOpen(null), []);
 
   if (load.kind === 'loading')
     return <Skeleton words={t('eventPeople.loading')} shape="rows" rowHeight={60} />;
@@ -112,6 +123,7 @@ export function EventPeople({ event }: { event: OrganisationEvent }) {
   const addable = loaded.addable;
   const managers = [...loaded.owners, ...loaded.admins];
   const list = new Intl.ListFormat(currentLocale(), { type: 'conjunction' });
+  const count = new Intl.NumberFormat(currentLocale());
   const adds = manages && addable != null;
   const opened = open?.kind === 'person' ? people.find((one) => one.id === open.id) : undefined;
 
@@ -131,142 +143,160 @@ export function EventPeople({ event }: { event: OrganisationEvent }) {
   }
 
   return (
-    <section className="card event-people" aria-labelledby="event-people-title">
-      <h2 id="event-people-title" ref={title} tabIndex={-1}>
-        {t('eventPeople.title')}
-      </h2>
-      {adds && (
-        <button
-          ref={addButton}
-          type="button"
-          className="button event-people-add"
-          onClick={(click) => {
-            opener.current = click.currentTarget;
-            setOpen({ kind: 'add' });
-          }}
+    <LayersContext value={layers}>
+      <div className="desk event-people-desk">
+        <section
+          className="card desk-column event-people"
+          aria-labelledby="event-people-title"
+          inert={covered}
         >
-          {t('eventPeople.add')}
-        </button>
-      )}
+          <h2 id="event-people-title" ref={title} className="desk-title" tabIndex={-1}>
+            {t('eventPeople.title')}
+          </h2>
+          {adds && (
+            <button
+              ref={addBox}
+              type="button"
+              className="people-add"
+              onClick={() => {
+                setToast(null);
+                setOpen({ kind: 'add' });
+              }}
+            >
+              <Glyph name="plus" size={19} weight={2.4} />
+              {t('eventPeople.addPrompt')}
+            </button>
+          )}
 
-      {people.length === 0 ? (
-        <div className="event-people-nobody">
-          <p className="members-row-name">{t('eventPeople.nobody')}</p>
-          <p className="muted">{t('eventPeople.nobodyLine')}</p>
-        </div>
-      ) : (
-        <>
-          <h3 className="event-people-head">
-            <span>{t('eventPeople.onEvent')}</span>
-            <span className="muted">{t('eventPeople.count', { count: people.length })}</span>
-          </h3>
-          <ul className="event-people-list">
-            {people.map((person) => {
-              const yours = person.id === own?.id;
-              const content = (
-                <>
-                  <span className="person-tile" aria-hidden="true">
-                    {initials(person.user.name)}
-                  </span>
-                  <span className="members-row-text">
-                    <span className="members-row-name">{person.user.name}</span>
-                    <span className="muted">
-                      {[
-                        t(`eventPeople.role.${person.role}`),
-                        ...(person.jobLabel == null ? [] : [person.jobLabel]),
-                        ...(yours ? [t('eventPeople.you')] : []),
-                      ].join(' · ')}
-                    </span>
-                  </span>
-                </>
-              );
+          {people.length === 0 ? (
+            <div className="people-nobody">
+              <p className="desk-empty-title">{t('eventPeople.nobody')}</p>
+              <p className="desk-line">{t('eventPeople.nobodyLine')}</p>
+            </div>
+          ) : (
+            <section className="desk-block" aria-labelledby="event-people-on">
+              <Head title={<span id="event-people-on">{t('eventPeople.onEvent')}</span>}>
+                <span className="people-count">{count.format(people.length)}</span>
+              </Head>
+              <ul className="desk-rows has-lead people-rows">
+                {people.map((person, tone) => {
+                  const yours = person.id === own?.id;
+                  const words = (
+                    <>
+                      <Avatar initials={initials(person.user.name)} tone={tone} />
+                      <RowWords
+                        title={person.user.name}
+                        lines={[
+                          [
+                            t(`eventPeople.role.${person.role}`),
+                            ...(person.jobLabel == null ? [] : [person.jobLabel]),
+                            ...(yours ? [t('eventPeople.you')] : []),
+                          ].join(' · '),
+                        ]}
+                      />
+                    </>
+                  );
 
-              return (
-                <li key={person.id}>
-                  {manages && !yours ? (
-                    <button
-                      type="button"
-                      className="members-row"
-                      aria-haspopup="dialog"
-                      onClick={(click) => {
-                        opener.current = click.currentTarget;
-                        setOpen({ kind: 'person', id: person.id });
-                      }}
-                    >
-                      {content}
-                      <span aria-hidden="true">⌄</span>
-                    </button>
-                  ) : (
-                    <div className="members-row">{content}</div>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        </>
-      )}
+                  return (
+                    <li key={person.id}>
+                      {manages && !yours ? (
+                        <button
+                          type="button"
+                          className={lit?.id === person.id ? 'desk-row is-on' : 'desk-row'}
+                          aria-haspopup="dialog"
+                          onClick={() => {
+                            setToast(null);
+                            setLit({ id: person.id, held: true });
+                            setOpen((was) => ({
+                              kind: 'person',
+                              id: person.id,
+                              visit: (was?.kind === 'person' ? was.visit : 0) + 1,
+                            }));
+                          }}
+                        >
+                          {words}
+                          <Glyph name="chevdown" size={18} weight={2.3} className="desk-chevron" />
+                        </button>
+                      ) : (
+                        <div className="desk-row">{words}</div>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          )}
 
-      <div className="event-people-foot">
-        {!manages && <p className="muted">{t('eventPeople.readOnly')}</p>}
-        {managers.length > 0 && (
-          <p className="muted">
-            {t('eventPeople.managers', {
-              count: managers.length,
-              names: list.format(managers),
-              roles: list.format(
-                (['owner', 'admin'] as const)
-                  .map((role) => ({ role, count: loaded[`${role}s`].length }))
-                  .filter(({ count }) => count > 0)
-                  .map(({ role, count }) => t(`eventPeople.managerRole.${role}`, { count })),
-              ),
-              organisation: organisationName,
-            })}
-          </p>
+          <div className="people-foot">
+            {!manages && <p className="desk-foot">{t('eventPeople.readOnly')}</p>}
+            {managers.length > 0 && (
+              <p className="desk-foot">
+                {t('eventPeople.managers', {
+                  count: managers.length,
+                  names: list.format(managers),
+                  roles: list.format(
+                    (['owner', 'admin'] as const)
+                      .map((role) => ({ role, count: loaded[`${role}s`].length }))
+                      .filter(({ count: held }) => held > 0)
+                      .map(({ role, count: held }) =>
+                        t(`eventPeople.managerRole.${role}`, { count: held }),
+                      ),
+                  ),
+                  organisation: organisationName,
+                })}
+              </p>
+            )}
+          </div>
+        </section>
+        <div ref={setHost} className="desk-layers" />
+
+        {opened != null && open?.kind === 'person' && (
+          <RoleDialog
+            key={open.visit}
+            eventId={event.id}
+            person={opened}
+            tone={people.indexOf(opened)}
+            organisationName={organisationName}
+            onChanged={replaced}
+            onRemoved={() => {
+              setLoad({
+                ...loaded,
+                people: people.filter((one) => one.id !== opened.id),
+                addable:
+                  addable == null
+                    ? null
+                    : [...addable, { membershipId: opened.membershipId, name: opened.user.name }],
+              });
+              setOpen(null);
+              setLit(null);
+              setToast(t('eventPeople.removed', { name: opened.user.name }));
+              // The row it came from has gone, so focus lands on Add once the dialogs have handed it back.
+              focusWhenFree(() => addBox.current ?? title.current);
+            }}
+            onClose={closeRole}
+          />
         )}
+        {open?.kind === 'add' && addable != null && (
+          <AddDialog
+            eventId={event.id}
+            organisationName={organisationName}
+            members={addable}
+            onPartlyAdded={joined}
+            onAdded={(added, role) => {
+              joined(added);
+              closeAdd();
+              setToast(
+                added.length === 1
+                  ? t(`eventPeople.nowOne.${role}`, { name: added[0]?.user.name ?? '' })
+                  : t(`eventPeople.nowMany.${role}`, { count: added.length }),
+              );
+            }}
+            onClose={closeAdd}
+          />
+        )}
+        {toast != null && <Toast key={toast} words={toast} onClose={() => setToast(null)} />}
       </div>
-
-      {opened != null && (
-        <RoleDialog
-          eventId={event.id}
-          person={opened}
-          organisationName={organisationName}
-          onChanged={replaced}
-          onRemoved={() => {
-            setLoad({
-              ...loaded,
-              people: people.filter((one) => one.id !== opened.id),
-              addable:
-                addable == null
-                  ? null
-                  : [...addable, { membershipId: opened.membershipId, name: opened.user.name }],
-            });
-            setOpen(null);
-            setToast(t('eventPeople.removed', { name: opened.user.name }));
-            setRefocus((n) => n + 1);
-          }}
-          onClose={close}
-        />
-      )}
-      {open?.kind === 'add' && addable != null && (
-        <AddDialog
-          eventId={event.id}
-          organisationName={organisationName}
-          members={addable}
-          onPartlyAdded={joined}
-          onAdded={(added, role) => {
-            joined(added);
-            close();
-            setToast(
-              added.length === 1
-                ? t(`eventPeople.nowOne.${role}`, { name: added[0]?.user.name ?? '' })
-                : t(`eventPeople.nowMany.${role}`, { count: added.length }),
-            );
-          }}
-          onClose={close}
-        />
-      )}
-      {toast != null && <Toast words={toast} onClose={() => setToast(null)} />}
-    </section>
+    </LayersContext>
   );
 }
 
@@ -286,56 +316,30 @@ function inListOrder(people: readonly EventPerson[]): EventPerson[] {
   );
 }
 
-function RoleChoice({
-  name,
-  legend,
-  picked,
-  disabled,
-  focusFirst,
-  onPick,
-  onKeyDown,
-  saying,
-}: {
-  name: string;
-  legend: string;
-  picked: EventRole;
-  disabled: boolean;
-  focusFirst?: boolean;
-  onPick: (role: EventRole) => void;
-  onKeyDown?: (key: KeyboardEvent<HTMLInputElement>) => void;
-  saying?: (role: EventRole) => string | null;
-}) {
-  const { t } = useTranslation();
-  const focus = useCallback(
-    (input: HTMLInputElement | null) => {
-      if (focusFirst === true) input?.focus();
-    },
-    [focusFirst],
+function Lost({ words }: { words: string }) {
+  return (
+    <p className="desk-error people-lost" role="alert">
+      <Glyph name="alert" size={15} weight={2.2} />
+      {words}
+    </p>
   );
+}
+
+type Saving = 'saving' | 'saved' | null;
+
+function SavingTag({ saving }: { saving: Saving }) {
+  const { t } = useTranslation();
+  if (saving == null) return null;
 
   return (
-    <fieldset className="members-roles">
-      <legend>{legend}</legend>
-      {EVENT_ROLES.map((role) => (
-        <label key={role} className="members-role">
-          <input
-            ref={role === picked ? focus : undefined}
-            type="radio"
-            name={name}
-            value={role}
-            checked={picked === role}
-            disabled={disabled}
-            onKeyDown={onKeyDown}
-            onChange={() => onPick(role)}
-          />
-          <span className="members-role-text">
-            <span className="members-row-name">{t(`eventPeople.role.${role}`)}</span>
-            <span className="muted">{t(`eventPeople.roleMeans.${role}`)}</span>
-            {saying?.(role) != null && <span className="muted">{saying(role)}</span>}
-          </span>
-        </label>
-      ))}
-    </fieldset>
+    <span className={`desk-tag ${saving === 'saving' ? 'is-now' : 'is-yes'}`} aria-hidden="true">
+      {saving === 'saving' ? (
+        <span className="people-spinner" />
+      ) : (
+        <Glyph name="tick" size={14} weight={3} />
+      )}
+      {t(saving === 'saving' ? 'eventPeople.saving' : 'eventPeople.saved')}
+    </span>
   );
 }
 
@@ -343,6 +347,7 @@ function RoleChoice({
 function RoleDialog({
   eventId,
   person,
+  tone,
   organisationName,
   onChanged,
   onRemoved,
@@ -350,19 +355,21 @@ function RoleDialog({
 }: {
   eventId: string;
   person: EventPerson;
+  tone: number;
   organisationName: string;
   onChanged: (person: EventPerson) => void;
   onRemoved: () => void;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
-  const dialog = useRef<HTMLDivElement>(null);
+  const radios = useId();
+  const pickedRadio = useRef<HTMLInputElement>(null);
   const [picked, setPicked] = useState<EventRole>(person.role);
-  const [saving, setSaving] = useState<'saving' | 'saved' | null>(null);
+  const [saving, setSaving] = useState<Saving>(null);
   const [failed, setFailed] = useState<string | null>(null);
   const [removing, setRemoving] = useState(false);
-  const [busy, setBusy] = useState(false);
   const [refused, setRefused] = useState<string | null>(null);
+  const [removingNow, setRemovingNow] = useState(false);
   const name = person.user.name;
   const held = useRef<EventRole>(person.role);
   const byArrow = useRef(false);
@@ -370,9 +377,8 @@ function RoleDialog({
   const asked = useRef(0);
   const answered = useRef(0);
   const inFlight = useRef(0);
+  const removal = useRef(false);
   const flush = useRef<(role: EventRole) => Promise<void>>(async () => {});
-
-  useDialogKeys(dialog, onClose, removing);
 
   async function send(role: EventRole): Promise<void> {
     const ask = ++asked.current;
@@ -443,62 +449,74 @@ function RoleDialog({
   }
 
   async function remove(): Promise<void> {
-    setBusy(true);
+    if (removal.current) return;
+    removal.current = true;
+    setRemovingNow(true);
     setRefused(null);
 
     try {
       await api.removeEventPerson(eventId, person.id);
       onRemoved();
     } catch (error) {
-      setBusy(false);
       setRefused(refusal(error, t('eventPeople.removeFailed')));
+    } finally {
+      removal.current = false;
+      setRemovingNow(false);
     }
   }
 
   return (
     <>
-      <div className="dialog-scrim" aria-hidden="true" />
-      <div
-        ref={dialog}
-        className="dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="event-person-title"
+      <Dialog
+        title={t('eventPeople.roleTitle')}
+        verb={t('eventPeople.done')}
+        cancel={false}
+        first={pickedRadio}
+        onDismiss={onClose}
+        onConfirm={onClose}
       >
-        <div className="dialog-heading">
-          <h2 id="event-person-title">{name}</h2>
-          <p>
-            {[
-              t('eventPeople.memberOf', { organisation: organisationName }),
-              ...(person.jobLabel == null ? [] : [person.jobLabel]),
-            ].join(' · ')}
-          </p>
+        <div className="people-who">
+          <Avatar initials={initials(name)} tone={tone} size="face" />
+          <RowWords
+            title={name}
+            lines={[
+              [
+                t('eventPeople.memberOf', { organisation: organisationName }),
+                ...(person.jobLabel == null ? [] : [person.jobLabel]),
+              ].join(' · '),
+            ]}
+          />
         </div>
-        {failed != null && (
-          <div className="notice notice-broken" role="alert">
-            <span className="mark mark-broken" aria-hidden="true">
-              ✕
-            </span>
-            <p>{failed}</p>
-          </div>
-        )}
-        <RoleChoice
-          name="event-person-role"
-          legend={t('eventPeople.roleFor', { name })}
-          picked={picked}
-          disabled={removing}
-          focusFirst
-          onPick={pick}
-          onKeyDown={(key) => {
-            byArrow.current = ARROWS.has(key.key);
-          }}
-          saying={(role) =>
-            role !== picked || saving == null
-              ? null
-              : t(saving === 'saving' ? 'eventPeople.saving' : 'eventPeople.saved')
-          }
-        />
-        <p className="visually-hidden" role="status">
+        {failed != null && <Lost words={failed} />}
+        <fieldset className="desk-choices">
+          <legend className="desk-unseen">{t('eventPeople.roleFor', { name })}</legend>
+          <ul className="desk-rows">
+            {EVENT_ROLES.map((role) => (
+              <li key={role}>
+                <label className={role === picked ? 'desk-row is-picked' : 'desk-row'}>
+                  <RowWords
+                    title={t(`eventPeople.role.${role}`)}
+                    tag={role === picked && <SavingTag saving={saving} />}
+                    lines={[t(`eventPeople.roleMeans.${role}`)]}
+                  />
+                  <input
+                    ref={role === picked ? pickedRadio : undefined}
+                    type="radio"
+                    className="desk-radio"
+                    name={radios}
+                    value={role}
+                    checked={role === picked}
+                    onKeyDown={(key: KeyboardEvent<HTMLInputElement>) => {
+                      byArrow.current = ARROWS.has(key.key);
+                    }}
+                    onChange={() => pick(role)}
+                  />
+                </label>
+              </li>
+            ))}
+          </ul>
+        </fieldset>
+        <p className="desk-unseen" role="status">
           {saving === 'saving'
             ? t('eventPeople.saving')
             : saving === 'saved'
@@ -507,39 +525,24 @@ function RoleDialog({
                 })
               : ''}
         </p>
-        <div className="dialog-actions">
-          <button
-            type="button"
-            className="button button-danger"
-            disabled={saving === 'saving'}
-            onClick={() => setRemoving(true)}
-          >
-            {t('eventPeople.remove')}
-          </button>
-          <button type="button" className="button button-primary" onClick={onClose}>
-            {t('eventPeople.done')}
-          </button>
+        <div className="people-remove">
+          <TextAction label={t('eventPeople.remove')} red onClick={() => setRemoving(true)} />
         </div>
-      </div>
+      </Dialog>
       {removing && (
-        <ConfirmDialog
-          id="event-person-remove"
+        <Ask
           title={t('eventPeople.removeTitle', { name })}
+          line={t('eventPeople.removeLine', { organisation: organisationName })}
           keep={t('eventPeople.keep', { name })}
           go={t('eventPeople.removeConfirm')}
-          pending={busy}
-          stacks
-          refusal={
-            refused != null && <FieldError id="event-person-remove-refused" message={refused} />
-          }
+          busy={removingNow ? t('eventPeople.removing') : undefined}
+          failed={refused ?? undefined}
           onKeep={() => {
             setRefused(null);
             setRemoving(false);
           }}
           onGo={() => void remove()}
-        >
-          <p>{t('eventPeople.removeLine', { organisation: organisationName })}</p>
-        </ConfirmDialog>
+        />
       )}
     </>
   );
@@ -562,7 +565,7 @@ function AddDialog({
   onClose: () => void;
 }) {
   const { t } = useTranslation();
-  const dialog = useRef<HTMLDivElement>(null);
+  const nameBox = useRef<HTMLInputElement>(null);
   const [role, setRole] = useState<EventRole>('can_view');
   const [typed, setTyped] = useState('');
   const [ticked, setTicked] = useState<readonly string[]>([]);
@@ -577,12 +580,12 @@ function AddDialog({
         ticked.includes(member.membershipId) ||
         member.name.toLocaleLowerCase(currentLocale()).includes(wording),
     );
-  const touched = ticked.length > 0 || typed.trim() !== '';
+  const touched = ticked.length > 0 || role !== 'can_view';
   const cancel = useCallback(() => (touched ? setDiscarding(true) : onClose()), [touched, onClose]);
-
-  useDialogKeys(dialog, cancel, busy || discarding);
+  const inOrganisation = t('eventPeople.inOrganisation', { organisation: organisationName });
 
   async function add(): Promise<void> {
+    if (busy || ticked.length === 0) return;
     setBusy(true);
     setFailed(null);
     const added: EventPerson[] = [];
@@ -602,106 +605,91 @@ function AddDialog({
 
   return (
     <>
-      <div className="dialog-scrim" aria-hidden="true" />
-      <div
-        ref={dialog}
-        className="dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="event-people-add-title"
+      <Dialog
+        title={t('eventPeople.addTitle')}
+        verb={t('eventPeople.addConfirm')}
+        dismiss={t('eventPeople.cancel')}
+        on={ticked.length > 0}
+        locked={busy}
+        first={nameBox}
+        onDismiss={cancel}
+        onConfirm={() => void add()}
       >
-        <div className="dialog-heading">
-          <h2 id="event-people-add-title">{t('eventPeople.addTitle')}</h2>
-        </div>
-        {failed != null && (
-          <div className="notice notice-broken" role="alert">
-            <span className="mark mark-broken" aria-hidden="true">
-              ✕
-            </span>
-            <p>{failed}</p>
-          </div>
-        )}
-        <RoleChoice
-          name="event-people-add-role"
-          legend={t('eventPeople.theirRole')}
-          picked={role}
-          disabled={busy}
-          onPick={setRole}
-        />
-        <div className="field">
-          <label htmlFor="event-people-find">{t('eventPeople.find')}</label>
-          <input
-            id="event-people-find"
-            type="search"
-            autoComplete="off"
-            spellCheck={false}
-            value={typed}
-            disabled={busy}
-            // eslint-disable-next-line jsx-a11y/no-autofocus -- the dialog opens to find somebody
-            autoFocus
-            onChange={(change) => setTyped(change.target.value)}
+        <div className="people-add-body">
+          {failed != null && <Lost words={failed} />}
+          <Choices
+            legend={t('eventPeople.theirRole')}
+            choices={EVENT_ROLES.map((one) => ({
+              name: t(`eventPeople.role.${one}`),
+              line: t(`eventPeople.roleMeans.${one}`),
+            }))}
+            picked={t(`eventPeople.role.${role}`)}
+            onPick={(word) =>
+              setRole(EVENT_ROLES.find((one) => t(`eventPeople.role.${one}`) === word) ?? role)
+            }
           />
+          <Field
+            label={t('eventPeople.find')}
+            value={typed}
+            onChange={setTyped}
+            inputRef={nameBox}
+            autoComplete="off"
+          />
+          <section className="desk-block" aria-label={inOrganisation}>
+            <Head title={inOrganisation} level={3} />
+            {shown.length > 0 && (
+              <ul className="desk-rows has-lead">
+                {shown.map((member, tone) => {
+                  const on = ticked.includes(member.membershipId);
+
+                  return (
+                    <li key={member.membershipId}>
+                      <label className={on ? 'desk-row is-picked' : 'desk-row'}>
+                        <Avatar initials={initials(member.name)} tone={tone} />
+                        <RowWords title={member.name} lines={[]} />
+                        <input
+                          type="checkbox"
+                          className="people-check"
+                          checked={on}
+                          disabled={busy}
+                          onChange={(change) =>
+                            setTicked(
+                              change.target.checked
+                                ? [...ticked, member.membershipId]
+                                : ticked.filter((id) => id !== member.membershipId),
+                            )
+                          }
+                        />
+                      </label>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+            <div role="status">
+              {shown.length === 0 && (
+                <p className="desk-line">
+                  {members.length === 0
+                    ? t('eventPeople.everyoneOn', { organisation: organisationName })
+                    : t('eventPeople.noMatch', {
+                        organisation: organisationName,
+                        typed: typed.trim(),
+                      })}
+                </p>
+              )}
+            </div>
+          </section>
         </div>
-        {shown.length === 0 ? (
-          <div role="status">
-            <p className="members-row-name">
-              {members.length === 0
-                ? t('eventPeople.everyoneOn', { organisation: organisationName })
-                : t('eventPeople.noMatch', { organisation: organisationName, typed: typed.trim() })}
-            </p>
-          </div>
-        ) : (
-          <fieldset className="members-roles">
-            <legend>{t('eventPeople.inOrganisation', { organisation: organisationName })}</legend>
-            {shown.map((member) => (
-              <label key={member.membershipId} className="members-role">
-                <input
-                  type="checkbox"
-                  checked={ticked.includes(member.membershipId)}
-                  disabled={busy}
-                  onChange={(change) =>
-                    setTicked(
-                      change.target.checked
-                        ? [...ticked, member.membershipId]
-                        : ticked.filter((id) => id !== member.membershipId),
-                    )
-                  }
-                />
-                <span className="person-tile" aria-hidden="true">
-                  {initials(member.name)}
-                </span>
-                <span className="members-row-name">{member.name}</span>
-              </label>
-            ))}
-          </fieldset>
-        )}
-        <div className="dialog-actions">
-          <button type="button" className="link-button" disabled={busy} onClick={cancel}>
-            {t('eventPeople.cancel')}
-          </button>
-          <button
-            type="button"
-            className="button button-primary"
-            aria-busy={busy}
-            {...offButton(ticked.length === 0 || busy)}
-            onClick={() => void add()}
-          >
-            {t('eventPeople.addConfirm')}
-          </button>
-        </div>
-      </div>
+      </Dialog>
       {discarding && (
-        <ConfirmDialog
-          id="event-people-discard"
+        <Ask
           title={t('eventPeople.discardTitle')}
+          line={t('eventPeople.discardLine')}
           keep={t('eventPeople.discardKeep')}
           go={t('eventPeople.discard')}
-          pending={false}
           onKeep={() => setDiscarding(false)}
           onGo={onClose}
-        >
-          <p>{t('eventPeople.discardLine')}</p>
-        </ConfirmDialog>
+        />
       )}
     </>
   );

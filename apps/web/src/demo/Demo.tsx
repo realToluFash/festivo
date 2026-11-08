@@ -22,9 +22,13 @@ import { EVENTS_PAGES } from './events.ts';
 import { ACCOUNT_PAGES } from './account.ts';
 import { GENERAL_PAGES } from './general.ts';
 import { MESSAGES_PAGES } from './messages.ts';
+import { SeatingPage } from './Seating.tsx';
+import { SEATING_PAGES } from './seating.ts';
 import { GetBackInBoard } from './GetBackIn.tsx';
 import { GuestPage } from './Guest.tsx';
 import { GUEST_PAGES } from './guest.ts';
+import { Guests } from './Guests.tsx';
+import { GUESTS_PAGES } from './guests.ts';
 import { NewAccountBoard } from './NewAccount.tsx';
 import { NOTIFICATIONS_PAGES } from './notifications.ts';
 import { leave } from './chosenScheme.ts';
@@ -39,6 +43,8 @@ import { SIGN_IN_RULES_PAGES } from './signInRules.ts';
 import { SWITCHER_PAGES } from './switcher.ts';
 import { Today } from './Today.tsx';
 import { TwoFactorBoard } from './TwoFactor.tsx';
+import { VendorsMoved } from './Vendors.tsx';
+import { VENDORS_PAGES } from './vendors.ts';
 import { WaysInBoard } from './WaysIn.tsx';
 import {
   type FieldLines,
@@ -64,6 +70,7 @@ type SignInNotice = { title: string; body: string };
 /** The states the board draws, each opened from the demo's home. */
 const TODAY_MOMENTS: { key: string; name: string }[] = [
   { key: 'plan', name: 'A planning day' },
+  { key: 'plan&invites=none', name: 'A planning day, invitations not sent' },
   { key: 'planNow', name: 'A planning day, built now' },
   { key: 'day', name: 'The event day' },
   { key: 'dayNow', name: 'The event day, built now' },
@@ -143,6 +150,7 @@ export default function Demo() {
       <Route path="events/:id" element={<EventPage />} />
       <Route path="events/:id/dates" element={<EventPage dates />} />
       <Route path="events/:id/messages" element={<EventPage messages />} />
+      <Route path="events/:id/seating" element={<SeatingPage />} />
       <Route path="calendar" element={<Calendar />} />
       <Route path="settings" element={<Settings />} />
       <Route path="settings/members" element={<Settings />} />
@@ -152,8 +160,11 @@ export default function Demo() {
       <Route path="settings/personalisation" element={<Settings open="personalisation" />} />
       <Route path="settings/general" element={<Settings open="general" />} />
       <Route path="settings/sign-in-rules" element={<Settings open="signInRules" />} />
+      <Route path="settings/vendors" element={<Settings open="vendors" />} />
       <Route path="people" element={<People />} />
+      <Route path="vendors" element={<VendorsMoved />} />
       <Route path="guest" element={<GuestPage />} />
+      <Route path="guests" element={<Guests />} />
       <Route path="later" element={<Later />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
@@ -204,10 +215,28 @@ function DemoHome({ from }: { from: string }) {
         <BoardPages pages={GUEST_PAGES} />
       </section>
 
+      <section className="demo-home-page" aria-labelledby="demo-page-30">
+        <h2 id="demo-page-30">30 · Guests · the planner’s side</h2>
+        <h3>Guests in A · Summary first · desktop</h3>
+        <BoardPages pages={GUESTS_PAGES} />
+      </section>
+
+      <section className="demo-home-page" aria-labelledby="demo-page-81">
+        <h2 id="demo-page-81">81 · Budget and costs</h2>
+        <h3>Vendors in A · Summary first · Settings › Vendors · desktop</h3>
+        <BoardPages pages={VENDORS_PAGES} />
+      </section>
+
       <section className="demo-home-page" aria-labelledby="demo-page-36">
         <h2 id="demo-page-36">36 · Messaging · Messages on an event</h2>
         <h3>Messaging in B · Conversations · desktop</h3>
         <BoardPages pages={MESSAGES_PAGES} />
+      </section>
+
+      <section className="demo-home-page" aria-labelledby="demo-page-31">
+        <h2 id="demo-page-31">31 · Venue and seating · Seating on an event</h2>
+        <h3>Seating in A · The room · desktop</h3>
+        <BoardPages pages={SEATING_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-28">

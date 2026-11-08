@@ -40,10 +40,13 @@ class Shortcut:
             raise OutOfTime(f"out of time: {failure}")
         return min(wanted, left)
 
-    def call(self, method, path, body=None, attempts=3, raw=None, content_type=None):
+    def call(self, method, path, body=None, attempts=3, raw=None, content_type=None,
+             safe=None):
         """Retries what Shortcut fails now and then: a 5xx, a dropped connection, a read
         that times out, and on a PUT the 409 a concurrent edit of the same story returns.
-        Only GET and PUT, which are safe to repeat (RFC 9110 section 9.2.2)."""
+        Only GET and PUT, which are safe to repeat (RFC 9110 section 9.2.2), and a `safe`
+        POST that only reads."""
+        safe = method in ("GET", "PUT") if safe is None else safe
         url = path if path.startswith("http") else API + path
         data = raw if raw is not None else (json.dumps(body).encode() if body is not None
                                             else None)
@@ -61,19 +64,19 @@ class Shortcut:
                 detail = error.read().decode(errors="replace")[:200]
                 failure = f"Shortcut {error.code} on {where}: {detail}"
                 transient = error.code >= 500 or (error.code == 409 and method == "PUT")
-                if not transient or method not in ("GET", "PUT"):
+                if not transient or not safe:
                     break
             except urllib.error.URLError as error:
                 failure = f"Shortcut unreachable on {where}: {error.reason}"
-                if method not in ("GET", "PUT"):
+                if not safe:
                     break
             except TimeoutError:
                 failure = f"Shortcut timed out on {where}"
-                if method not in ("GET", "PUT"):
+                if not safe:
                     break
             except (ConnectionError, http.client.HTTPException) as error:
                 failure = f"Shortcut dropped the connection on {where}: {error!r}"
-                if method not in ("GET", "PUT"):
+                if not safe:
                     break
             if attempt + 1 < attempts:
                 time.sleep(self.time_left(failure, 2 ** attempt))
@@ -91,6 +94,12 @@ class Shortcut:
                 break
             path = body["next"]
         return found
+
+    def find(self, **filters):
+        """Unarchived stories matching `filters`, in one call however many: unlike `search`,
+        it is not paged 25 at a time, and `updated_at_start` takes a time, not only a day."""
+        return self.call("POST", "/api/v3/stories/search", {"archived": False, **filters},
+                         safe=True)
 
     def story(self, story_id):
         return self.call("GET", f"/api/v3/stories/{story_id}")

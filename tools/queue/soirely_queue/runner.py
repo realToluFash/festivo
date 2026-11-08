@@ -225,7 +225,8 @@ def tick(db, home, platform, sq, python, now, dry_run, say, remote, config, read
     from .cli import refresh_work
     local.checks(db, config, now, dry_run=dry_run)
     if not dry_run:
-        local.sweep_scratch(db, config, now, say)
+        if local.sweep_scratch(db, config, now, say):
+            local.measure_litter(config, True)
         stop_leftovers(db, home, platform, say)
     phases.mark("local checks")
     refresh_work(db, now)

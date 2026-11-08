@@ -70,7 +70,7 @@
     "refused": "Ese correo electrónico y esa contraseña no coinciden. Compruebe ambos o restablezca su contraseña.",
     "endedTitle": "Se ha cerrado su sesión",
     "endedBody": "Inicie sesión de nuevo para continuar.",
-    "codeTimedOutTitle": "That sign-in timed out",
+    "codeTimedOutTitle": "El inicio de sesión ha caducado",
     "lockedTitle": "Demasiados intentos",
     "withGoogle": "Continuar con {{provider}}",
     "withApple": "Continuar con {{provider}}",
@@ -107,7 +107,8 @@
     "failedTitle": "No se ha podido crear su cuenta",
     "failedBody": "Algo ha fallado en el camino. Inténtelo de nuevo en un momento.",
     "nameBlank": "Introduzca su nombre completo.",
-    "passwordBlank": "Introduzca una contraseña."
+    "passwordBlank": "Introduzca una contraseña.",
+    "timedOut": "Su registro ha caducado, así que no hemos guardado la contraseña. Vuelva a introducirla para recibir un código nuevo."
   },
   "verifyEmail": {
     "title": "Revise su correo",
@@ -664,11 +665,11 @@
     "calendar": "Calendario",
     "settings": "Configuración",
     "organisation": "Organización",
-    "backTo": "Back to {{place}}",
-    "cancel": "Cancel",
-    "back": "Back",
-    "closeMenu": "Close the menu",
-    "tryAgain": "Try again"
+    "backTo": "Volver a {{place}}",
+    "cancel": "Cancelar",
+    "back": "Volver",
+    "closeMenu": "Cerrar el menú",
+    "tryAgain": "Reintentar"
   },
   "eventNav": {
     "overview": "Resumen",
@@ -800,7 +801,8 @@
       "vendors": "Proveedores",
       "members": "Miembros y roles",
       "billing": "Facturación",
-      "organisation": "Organización"
+      "organisation": "Organización",
+      "people": "Personas en los eventos"
     },
     "means": {
       "events": "Crear, publicar, pausar y concluir eventos.",
@@ -815,7 +817,8 @@
       "vendors": "Los proveedores de cada evento y lo acordado con ellos.",
       "members": "Invitar, aprobar, suspender, cambiar roles.",
       "billing": "Plan, tarjetas y facturas.",
-      "organisation": "El nombre, el país, la dirección de contacto y los valores con los que empiezan los eventos nuevos."
+      "organisation": "El nombre, el país, la dirección de contacto y los valores con los que empiezan los eventos nuevos.",
+      "people": "Quién está en cada evento y el rol que tiene allí cada persona."
     },
     "margin": "Margen",
     "marginMeans": "Lo que {{name}} añade sobre los costes. Oculto significa que el presupuesto se abre solo con los costes.",
@@ -2051,7 +2054,7 @@
       "liveTitle": "Publíquelo",
       "liveBody": "Será un borrador hasta que lo publique."
     },
-    "startFirst": "Start your first event",
+    "startFirst": "Crear su primer evento",
     "stepNumber": "{{n, number}}"
   }
 }

@@ -7,7 +7,8 @@ import { routes } from '../routes/index.tsx';
 import { resetSample } from './events.ts';
 
 const tested = config();
-const SLOW = { timeout: 8000 };
+const SLOW = { timeout: 20000 };
+const WAIT = { timeout: 8000 };
 const WEDDING = 'Adaeze & Tunde’s wedding';
 
 function main(): HTMLElement {
@@ -50,7 +51,7 @@ describe('Events in A at a desk (sc-30304)', () => {
     SLOW,
     async () => {
       const router = open('/demo/today');
-      const side = await screen.findByRole('navigation', { name: 'Soirely' }, SLOW);
+      const side = await screen.findByRole('navigation', { name: 'Soirely' }, WAIT);
 
       fireEvent.click(within(side).getByRole('link', { name: 'Events' }));
 
@@ -253,13 +254,45 @@ describe('Events in A at a desk (sc-30304)', () => {
   );
 
   it('shows an area that is coming, and opens People from the event’s sidebar', SLOW, async () => {
-    await page('/demo/events/evt-wed-4?area=guests', 'Guests');
+    await page('/demo/events/evt-wed-4?area=menu', 'Menu');
 
-    expect(screen.getByText('The guest list for this event is coming.')).toBeDefined();
+    expect(screen.getByText('The menu for this event is coming.')).toBeDefined();
     expect(
       within(screen.getByRole('navigation', { name: WEDDING }))
         .getByRole('link', { name: 'People' })
         .getAttribute('href'),
     ).toBe('/demo/people');
+  });
+});
+
+describe('the guest counts on Events (sc-23284)', () => {
+  beforeEach(() => {
+    __setConfig({ ...tested, environment: 'development' });
+    resetSample();
+  });
+
+  it('shows the invited and the replies across the upcoming events', SLOW, async () => {
+    await list();
+    const tiles = within(main()).getByRole('list', { name: 'Guests across your events' });
+
+    expect(within(tiles).getByText('367')).toBeDefined();
+    expect(within(tiles).getByText('211 coming')).toBeDefined();
+    expect(within(tiles).getByText('266')).toBeDefined();
+    expect(within(tiles).getByText('101 haven’t replied')).toBeDefined();
+  });
+
+  it('shows 0 when nobody is invited yet', SLOW, async () => {
+    await list('/demo/events?state=noGuests');
+    const tiles = within(main()).getByRole('list', { name: 'Guests across your events' });
+
+    expect(within(tiles).getAllByText('0')).toHaveLength(2);
+    expect(within(tiles).getByText('0 coming')).toBeDefined();
+    expect(within(tiles).getByText('0 haven’t replied')).toBeDefined();
+  });
+
+  it('has no counts on a first run', SLOW, async () => {
+    await list('/demo/events?state=first');
+
+    expect(within(main()).queryByRole('list', { name: 'Guests across your events' })).toBeNull();
   });
 });

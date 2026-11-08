@@ -1651,6 +1651,29 @@
   font-weight: 600;
 }
 
+.mg .mg-person-updated {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  margin-top: var(--spaceSm);
+  color: var(--colorInkSecondary);
+  font: 500 14px/1.4 var(--fontFamily);
+}
+
+.mg-person-updated .mg-mark {
+  margin-top: 3px;
+}
+
+.mg-person-updated-words {
+  display: flex;
+  flex-direction: column;
+}
+
+.mg-person-updated strong {
+  color: var(--colorInk);
+  font-weight: 600;
+}
+
 .mg-fix {
   display: flex;
   flex-direction: column;

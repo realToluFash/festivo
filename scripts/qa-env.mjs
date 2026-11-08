@@ -686,6 +686,7 @@ export const expoGoIosClient = (versions, expoRange) =>
 export const flowUrls = (urls) => ({
   METRO_URL: urls.metro,
   MAILPIT_URL: urls.mailpit,
+  SMOCKER_URL: urls.smocker,
   API_URL: urls.api,
   WEB_URL: urls.web,
 });
@@ -818,14 +819,32 @@ export function branchForStory(id, remoteBranches) {
 }
 
 // The api container mounts services/api, so its compiled container outlives a checkout
-// and can name a service the new commit removed. The directory itself stays: Docker Desktop
-// leaves a running container holding a cache directory deleted on the host, and every
-// request that needs it answers 500.
-export function clearApiCache(root) {
+// and can name a service the new commit removed. It is emptied through a container: Docker
+// Desktop's VM keeps a directory deleted on the host as a ghost nothing can be written into,
+// and the api answers 500 or never boots.
+export const CACHE_CLEARER = 'busybox:1.36';
+
+export function clearApiCache(root, exec = run) {
   const cache = join(root, 'services/api/var/cache');
   if (!existsSync(cache)) return;
-  for (const name of readdirSync(cache))
-    rmSync(join(cache, name), { recursive: true, force: true });
+  exec('docker', [
+    'run',
+    '--rm',
+    '--volume',
+    `${resolve(cache)}:/cache`,
+    CACHE_CLEARER,
+    'find',
+    '/cache',
+    '-mindepth',
+    '1',
+    '-maxdepth',
+    '1',
+    '-exec',
+    'rm',
+    '-rf',
+    '{}',
+    '+',
+  ]);
 }
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -1417,7 +1436,8 @@ async function ios(args) {
   withSoftwareKeyboard(qaSimulatorIds());
   run('open', ['-a', 'Simulator'], { optional: true });
 
-  const metro = await startBundler(root);
+  for (const command of iosExpoGoStops(args, devices)) run('xcrun', command, { optional: true });
+  const metro = await startBundler(root, process.env, args);
   for (const udid of devices)
     run('xcrun', ['simctl', 'openurl', udid, CONFIG.urls.metro], { optional: true });
   console.log(`\nBundler on ${CONFIG.urls.metro}, open on the ${open}. Leave it running.`);
@@ -1445,14 +1465,20 @@ export function bundlerEnv(env, app) {
   return { ...env, ...app, EXPO_PUBLIC_ENVIRONMENT: 'qa', CI: '1' };
 }
 
-async function startBundler(root, env = process.env) {
-  const [command, args] = capped('4G', 'npx', [
+// --clear: Metro's cache keeps the EXPO_PUBLIC_ values of the build before.
+export function bundlerArgs(port, args = []) {
+  return [
     'expo',
     'start',
     '--port',
-    String(CONFIG.ports.METRO_PORT),
-  ]);
-  const metro = spawn(command, args, {
+    String(port),
+    ...(args.includes('--clear') ? ['--clear'] : []),
+  ];
+}
+
+async function startBundler(root, env = process.env, args = []) {
+  const [command, bundler] = capped('4G', 'npx', bundlerArgs(CONFIG.ports.METRO_PORT, args));
+  const metro = spawn(command, bundler, {
     cwd: join(root, 'apps/mobile'),
     detached: true,
     stdio: ['ignore', 'inherit', 'inherit'],
@@ -1815,7 +1841,15 @@ export const SCREEN_READER_OFF = [
   ['shell', 'settings', 'put', 'secure', 'accessibility_enabled', '0'],
 ];
 
+// Expo Go keeps the JS it already has until it is stopped.
+export const iosExpoGoStops = (args, devices) =>
+  args.includes('--clear') ? devices.map((udid) => ['simctl', 'terminate', udid, EXPO_GO]) : [];
+
+export const startParts = (args) =>
+  ANDROID_START.filter((part) => !part.when || args.includes(part.when));
+
 // android's start once the emulator is up, in order: nothing swipes or taps before the screen reader is off.
+// A part with `when` runs only when android is given that flag.
 export const ANDROID_START = [
   { name: 'release build removed', run: ({ tools, root }) => removeRelease(tools, root) },
   { name: 'airplane mode off', run: ({ tools }) => airplaneMode(tools, false) },
@@ -1839,10 +1873,15 @@ export const ANDROID_START = [
     },
   },
   {
+    name: 'Expo Go stopped',
+    when: '--clear',
+    adb: [['shell', 'am', 'force-stop', EXPO_GO_ANDROID]],
+  },
+  {
     name: 'bundler started',
     run: async (s) => {
       step('The bundler');
-      s.metro = await startBundler(s.root, s.tools.env);
+      s.metro = await startBundler(s.root, s.tools.env, s.args);
     },
   },
   {
@@ -1915,8 +1954,8 @@ async function android(args) {
 
   step(`The ${open}`);
   await bootEmulator(tools, CONFIG.emulators[open].name);
-  const started = { tools, root };
-  for (const part of ANDROID_START) {
+  const started = { tools, root, args };
+  for (const part of startParts(args)) {
     for (const command of part.adb ?? []) adbOut(tools, command);
     if (part.say) console.log(part.say);
     await part.run?.(started);
@@ -2641,8 +2680,8 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 // Owners are registered as few as possible: sign-ups are limited to ten an hour per address.
 export function membershipChanges({ email, member, ownerOf, sql }) {
   let owning = null;
-  const newOwner = () =>
-    (owning = ownerOf().catch((error) => {
+  const newOwner = (fresh = false) =>
+    (owning = ownerOf({ fresh }).catch((error) => {
       owning = null;
       throw error;
     }));
@@ -2654,7 +2693,7 @@ export function membershipChanges({ email, member, ownerOf, sql }) {
       return { owner, ...(await owner('/api/orgs', { body })) };
     } catch (error) {
       if (error.status !== 429) throw error;
-      const next = await newOwner();
+      const next = await newOwner(true);
       return { owner: next, ...(await next('/api/orgs', { body })) };
     }
   };
@@ -2959,6 +2998,17 @@ const composeApi = (root, onAndroid) =>
 const within = (ms, promise) =>
   Promise.race([promise.then(() => true), pause(ms).then(() => false)]);
 
+// A picture of the device at the instant a check asks, where takeScreenshot would wait for the
+// screen to settle: Refreshing… while the API is held passes before Maestro takes one.
+function screenshotDevice(device, onAndroid, file) {
+  if (!onAndroid) return run('xcrun', ['simctl', 'io', device, 'screenshot', file]);
+  const tools = androidTools();
+  const onDevice = `/sdcard/qa-shot-${process.pid}.png`;
+  run(tools.adb, ['-s', device, 'shell', 'screencap', '-p', onDevice], { env: tools.env });
+  run(tools.adb, ['-s', device, 'pull', onDevice, file], { env: tools.env });
+  run(tools.adb, ['-s', device, 'shell', 'rm', onDevice], { env: tools.env, optional: true });
+}
+
 // Under ten seconds an answer: batch/helper.js asks again while this says wait. A check that
 // failed while it held the API leaves it held, its last move perhaps still running, so whatever
 // uses the API next queues an 'up' behind it.
@@ -2976,6 +3026,8 @@ export function startHelper({
   open = openOnEmulator,
   reload = reloadOnEmulator,
   portrait = portraitOnEmulator,
+  shoot = (file) => screenshotDevice(device, onAndroid, file),
+  out,
   port = CONFIG.helperPort,
 }) {
   const server = createServer(async (request, response) => {
@@ -3005,6 +3057,16 @@ export function startHelper({
       }
       if (url.pathname === '/portrait') {
         return reply(200, { rotation: onAndroid ? portrait() : null });
+      }
+      if (url.pathname === '/shot') {
+        const name = url.searchParams.get('name') ?? '';
+        if (!/^[\w-]+$/.test(name))
+          throw new Error(`shot what? /shot?name=<letters, digits, -> gave ${name}`);
+        const check = begun.at(-1);
+        if (!check) throw new Error('a shot is taken inside a check, and none has started');
+        const file = join(out, `${check}-${name}.png`);
+        await shoot(file);
+        return reply(200, { shot: `${check}-${name}.png` });
       }
       if (url.pathname === '/running') {
         return reply(200, { running: appRunning(device, onAndroid) });
@@ -3162,7 +3224,7 @@ async function batch(args) {
   const changeMembership = membershipChanges({
     email,
     member: apiSession(email, password, secret),
-    ownerOf: () => organisationOwner(root),
+    ownerOf: (asked) => organisationOwner(root, asked),
     sql: async (statement) => {
       const psql = ['compose', 'exec', '-T', 'postgres', 'psql', '-U', 'soirely', '-d', 'soirely'];
       const answer = capture('docker', [...psql, '-v', 'ON_ERROR_STOP=1', '-c', statement], {
@@ -3182,6 +3244,7 @@ async function batch(args) {
     device,
     onAndroid,
     changeMembership,
+    out,
   });
   // The secret stays with the helper: no flow is handed it.
   const env = {
@@ -3411,8 +3474,36 @@ async function account(args) {
   console.log(readyReport({ email, password, secret, accessToken: token, sessionId }));
 }
 
-async function organisationOwner(root) {
-  const { email, password } = await founder(root, 'QA Owner');
+// Kept across batches too: a run of batches that each registered an owner met the sign-up limit.
+export async function keptOwner({ fresh, kept, signIn, register, keep }) {
+  if (!fresh && kept) {
+    try {
+      await signIn(kept);
+      return kept;
+    } catch (error) {
+      if (error.status !== 401) throw error;
+    }
+  }
+  const made = await register();
+  keep(made);
+  return made;
+}
+
+async function organisationOwner(root, { fresh }) {
+  const file = join(root, '.qa/qa-owner.json');
+  const { email, password } = await keptOwner({
+    fresh,
+    kept: existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : null,
+    signIn: (owner) => signIn(owner.email, owner.password, null),
+    register: () => founder(root, 'QA Owner'),
+    keep: (owner) => {
+      mkdirSync(dirname(file), { recursive: true });
+      writeFileSync(
+        file,
+        JSON.stringify({ email: owner.email, password: owner.password }, null, 2),
+      );
+    },
+  });
   return apiSession(email, password, null);
 }
 

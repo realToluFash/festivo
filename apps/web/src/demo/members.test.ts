@@ -98,7 +98,7 @@ describe('Members at a desk (sc-29708)', () => {
       step: { does: 'become' },
     });
     expect(card('found', VIEWERS.julien).lines[0]).toBe(
-      'Ownership passes on Friday, Nov 6 at 9:41 AM WAT.',
+      'Ownership passes on Friday, Nov 6 at 09:41 WAT.',
     );
   });
 
@@ -220,7 +220,7 @@ describe('Requests to get back in on Members at a desk (sc-30183)', () => {
       lines: [
         'kofi@ire.events',
         'Asked to turn off two-factor · Proved with codes to their email and phone',
-        'Asked Tuesday, Nov 3 at 6:05 PM WAT · ends Tuesday, Nov 10 at 6:05 PM WAT if nobody answers',
+        'Asked Tuesday, Nov 3 at 18:05 WAT · ends Tuesday, Nov 10 at 18:05 WAT if nobody answers',
       ],
       own: null,
     });
@@ -325,7 +325,7 @@ describe('Requests to get back in on Members at a desk (sc-30183)', () => {
       lines: [
         VIEWERS.julien.id,
         'Asked to turn off two-factor · Proved with codes to your email and phone',
-        'Asked Wednesday, Nov 4 at 7:52 AM WAT · ends Wednesday, Nov 11 at 7:52 AM WAT if nobody answers',
+        'Asked Wednesday, Nov 4 at 07:52 WAT · ends Wednesday, Nov 11 at 07:52 WAT if nobody answers',
       ],
       own: 'This is your own request. Somebody else in Ire Events has to answer it.',
     });
