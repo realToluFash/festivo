@@ -1,4 +1,4 @@
-# New event: a refused submit with nothing filled, to see whether Type, Time zone or Currency take a line and the red edge. sc-30447.
+# New event: a refused submit with nothing filled refuses the blank name. Still open, read from the screenshots: whether Type, Time zone or Currency take a line and the red edge. sc-30447.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/events/new
@@ -6,7 +6,6 @@ appId: host.exp.Exponent
     visible:
       id: 'eventForm.name'
     timeout: 30000
-- hideKeyboard
 - takeScreenshot: event-at-rest
 - scrollUntilVisible:
     element:
@@ -18,6 +17,9 @@ appId: host.exp.Exponent
 - scrollUntilVisible:
     element:
       id: 'eventForm.type'
+    direction: UP
+- scrollUntilVisible:
+    element: '{{t:eventForm.nameBlank}}'
     direction: UP
 - takeScreenshot: event-refused-type
 - tapOn:

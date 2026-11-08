@@ -12,7 +12,7 @@ appId: host.exp.Exponent
     id: 'completeProfile.save'
 - waitForAnimationToEnd
 - takeScreenshot: org-both-refused
-- assertVisible: '(Choose a country|Choisissez un pays)\.'
+- assertVisible: '{{t:forms.countryBlank}}'
 - tapOn:
     id: 'completeProfile.organisation'
 - inputText: 'QA Edge Ltd'
@@ -20,7 +20,7 @@ appId: host.exp.Exponent
 - tapOn:
     id: 'completeProfile.save'
 - waitForAnimationToEnd
-- assertVisible: '(Choose a country|Choisissez un pays)\.'
+- assertVisible: '{{t:forms.countryBlank}}'
 - takeScreenshot: org-country-refused
 - tapOn:
     id: 'completeProfile.country'
@@ -31,5 +31,7 @@ appId: host.exp.Exponent
 - tapOn:
     id: 'completeProfile.country.GH'
 - waitForAnimationToEnd
-- assertNotVisible: '(Choose a country|Choisissez un pays)\.'
+- assertVisible:
+    id: 'completeProfile.country'
+- assertNotVisible: '{{t:forms.countryBlank}}'
 - takeScreenshot: org-country-chosen

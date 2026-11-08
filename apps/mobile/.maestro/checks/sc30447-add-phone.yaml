@@ -17,7 +17,7 @@ appId: host.exp.Exponent
 - tapOn:
     id: 'contacts.phone.send'
 - waitForAnimationToEnd
-- assertVisible: '(That number looks too short|Ce numéro semble trop court).*'
+- assertVisible: '{{t:verifyPhone.tooShort}}'
 - takeScreenshot: add-number-short
 - longPressOn:
     id: 'contacts.phone.field.number'
@@ -27,7 +27,7 @@ appId: host.exp.Exponent
 - tapOn:
     id: 'contacts.phone.send'
 - waitForAnimationToEnd
-- assertVisible: '(That number looks too long|Ce numéro semble trop long).*'
+- assertVisible: '{{t:verifyPhone.tooLong}}'
 - takeScreenshot: add-number-long
 - tapOn:
     id: 'contacts.phone.field.country'
@@ -38,5 +38,7 @@ appId: host.exp.Exponent
 - tapOn:
     id: 'contacts.phone.field.country.GH'
 - waitForAnimationToEnd
-- assertNotVisible: '(That number looks too long|Ce numéro semble trop long).*'
+- assertVisible:
+    id: 'contacts.phone.field.number'
+- assertNotVisible: '{{t:verifyPhone.tooLong}}'
 - takeScreenshot: add-code-chosen

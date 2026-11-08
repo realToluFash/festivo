@@ -11,7 +11,7 @@ appId: host.exp.Exponent
     id: 'createOrganisation.create'
 - waitForAnimationToEnd
 - takeScreenshot: create-country-refused
-- assertVisible: '(Choose a country|Choisissez un pays)\.'
+- assertVisible: '{{t:forms.countryBlank}}'
 - tapOn:
     id: 'createOrganisation.country'
 - waitForAnimationToEnd
@@ -23,4 +23,6 @@ appId: host.exp.Exponent
     id: 'createOrganisation.country.GH'
 - waitForAnimationToEnd
 - takeScreenshot: create-country-chosen
-- assertNotVisible: '(Choose a country|Choisissez un pays)\.'
+- assertVisible:
+    id: 'createOrganisation.country'
+- assertNotVisible: '{{t:forms.countryBlank}}'

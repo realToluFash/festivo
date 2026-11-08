@@ -14,7 +14,7 @@ appId: host.exp.Exponent
 - tapOn:
     id: 'phone.send'
 - waitForAnimationToEnd
-- assertVisible: '(Choose a country|Choisissez un pays)\.'
+- assertVisible: '{{t:forms.countryBlank}}'
 - takeScreenshot: mobile-code-refused
 - tapOn:
     id: 'phone.country'
@@ -24,7 +24,9 @@ appId: host.exp.Exponent
 - tapOn:
     id: 'phone.country.GB'
 - waitForAnimationToEnd
-- assertNotVisible: '(Choose a country|Choisissez un pays)\.'
+- assertVisible:
+    id: 'phone.number'
+- assertNotVisible: '{{t:forms.countryBlank}}'
 - takeScreenshot: mobile-code-chosen
 - longPressOn:
     id: 'phone.number'
@@ -34,7 +36,7 @@ appId: host.exp.Exponent
 - tapOn:
     id: 'phone.send'
 - waitForAnimationToEnd
-- assertVisible: '(That number looks too short|Ce numéro semble trop court).*'
+- assertVisible: '{{t:verifyPhone.tooShort}}'
 - takeScreenshot: mobile-number-short
 - longPressOn:
     id: 'phone.number'
@@ -44,7 +46,7 @@ appId: host.exp.Exponent
 - tapOn:
     id: 'phone.send'
 - waitForAnimationToEnd
-- assertVisible: '(That number looks too long|Ce numéro semble trop long).*'
+- assertVisible: '{{t:verifyPhone.tooLong}}'
 - takeScreenshot: mobile-number-long
 - longPressOn:
     id: 'phone.number'
@@ -53,5 +55,5 @@ appId: host.exp.Exponent
 - tapOn:
     id: 'phone.send'
 - waitForAnimationToEnd
-- assertVisible: '(Enter your mobile number|Indiquez votre numéro de portable)\.'
+- assertVisible: '{{t:verifyPhone.numberBlank}}'
 - takeScreenshot: mobile-number-empty
