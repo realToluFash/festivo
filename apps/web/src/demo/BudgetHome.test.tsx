@@ -177,6 +177,9 @@ describe('the Budget page at a desk in A (sc-31779)', () => {
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe(
       'This event is not available',
     );
+    const sidebar = screen.getByRole('navigation', { name: 'Adaeze & Tunde’s wedding' });
+    expect(within(sidebar).queryByRole('link', { name: 'Budget' })).toBeNull();
+    expect(within(sidebar).getByRole('link', { name: 'Guests' })).toBeTruthy();
   });
 
   it('opens Due now from the reminder: Paid in one tap, with Undo (sc-1331)', SLOW, async () => {

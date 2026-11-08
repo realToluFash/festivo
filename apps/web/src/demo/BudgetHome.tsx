@@ -158,7 +158,12 @@ function removedOf(state: string, heads: Heads): Removed | null {
 /** Not on the event's Budget: Can edit, Can view or Can check guests in see the event's not-found page. */
 export function NotAvailablePage({ event }: { event: SampleEvent }) {
   return (
-    <BudgetShell event={event} area="overview" trail={[{ label: 'Not available' }]}>
+    <BudgetShell
+      event={event}
+      area="overview"
+      trail={[{ label: 'Not available' }]}
+      without={['budget']}
+    >
       {() => <NotAvailable />}
     </BudgetShell>
   );
