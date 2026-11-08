@@ -1,0 +1,46 @@
+# The frame's Back to {{place}}, Try again, Close the menu, Cancel and Back, and Today's Start your first event, in the language the account is in. sc-32097.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/today?moment=first
+- extendedWaitUntil:
+    visible: '(Start your first event|Crear su primer evento|Créer votre premier événement|Criar o seu primeiro evento)'
+    timeout: 30000
+- takeScreenshot: today-first
+- openLink: ${METRO_URL}/--/demo/settings/notifications?state=failed
+- extendedWaitUntil:
+    visible: '(Back to|Volver a|Retour à|Voltar a) .*'
+    timeout: 30000
+- assertVisible: '(Try again|Reintentar|Réessayer|Tentar novamente)'
+- takeScreenshot: notifications-failed
+- openLink: ${METRO_URL}/--/demo/events
+- extendedWaitUntil:
+    visible:
+      id: 'events.filter'
+    timeout: 30000
+- tapOn:
+    id: 'events.filter'
+- extendedWaitUntil:
+    visible:
+      id: 'events.filter.menu'
+    timeout: 10000
+- assertVisible: '(Close the menu|Cerrar el menú|Fermer le menu|Fechar o menu)'
+- takeScreenshot: events-menu
+- openLink: ${METRO_URL}/--/demo/settings/organisation
+- extendedWaitUntil:
+    visible:
+      id: 'organisation.edit'
+    timeout: 30000
+- tapOn:
+    id: 'organisation.edit'
+- extendedWaitUntil:
+    visible:
+      id: 'organisation.details'
+    timeout: 10000
+- takeScreenshot: org-details-sheet
+- tapOn:
+    id: 'organisation.country'
+- extendedWaitUntil:
+    visible:
+      id: 'organisation.country.back'
+    timeout: 10000
+- takeScreenshot: org-country-picker
