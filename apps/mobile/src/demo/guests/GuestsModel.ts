@@ -124,6 +124,24 @@ export const REVIEW_STATES = [
   'over250',
 ] as const;
 
+/** The plan-limit states (sc-7579, sc-3930), drawn on Ireti at 40 as if Ire Events were on Free. */
+export const PLAN_STATES = [
+  'roomLeft',
+  'overLimit',
+  'overLimitAsk',
+  'ownerAsked',
+  'limitRefused',
+] as const;
+/** Past the limit: before pressing, refused, and for someone who can't change the plan. */
+export const OVER_LIMIT_STATES = [
+  'overLimit',
+  'overLimitAsk',
+  'ownerAsked',
+  'limitRefused',
+] as const;
+/** Someone who can't change the plan: Ask an owner in the plan line's place. */
+export const ASK_OWNER_STATES = ['overLimitAsk', 'ownerAsked'] as const;
+
 export const OVERVIEW_STATES = [
   'overview',
   'overviewLoading',
@@ -198,14 +216,7 @@ function ownStateOf(event: string): OwnState | null {
 
 export function eventOf(state: GuestsState | null): string {
   if (state === 'draft' || state === 'paused') return OWN_SAMPLE[state];
-  if (
-    state === 'roomLeft' ||
-    state === 'overLimit' ||
-    state === 'overLimitAsk' ||
-    state === 'ownerAsked' ||
-    state === 'limitRefused'
-  )
-    return PLAN.ireti;
+  if (isIn(PLAN_STATES, state)) return PLAN.ireti;
   return WEDDING;
 }
 
@@ -226,6 +237,19 @@ export function clockOf(state: GuestsState | DoorState | null): Date {
     default:
       return new Date(state != null && isIn(DOOR_STATES, state) ? CLOCKS.onTheDay : CLOCKS.reader);
   }
+}
+
+/** Edit's companions as saved: each field keeps its own companion's reply, seat and meal; a new one comes as its guest does (sc-3773). */
+export function companionsAfterEdit(
+  names: readonly string[],
+  seats: readonly (Companion | null)[],
+  guestKind: SampleGuest['kind'],
+): Companion[] {
+  return names.map((name, at) => ({
+    ...seats[at],
+    name,
+    kind: seats[at]?.kind ?? (guestKind === 'coming' ? 'coming' : 'held'),
+  }));
 }
 
 export function dayWords(day: string, locale: string, weekday = false): string {

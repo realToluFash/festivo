@@ -30,12 +30,15 @@ import {
   TurningMark,
 } from '../../components/Summary.tsx';
 import {
+  ASK_OWNER_STATES,
   type AddState,
+  OVER_LIMIT_STATES,
   type ReviewRow,
   type ReviewState,
   addedGuest,
   countryName,
   emailCheck,
+  isIn,
   nameProblem,
   phoneCheck,
   planRoom,
@@ -478,9 +481,6 @@ function startRows(): ReviewRow[] {
 }
 
 /** Past the limit: the person's way past the plan, by whether they can change it (sc-3930). */
-const ASKS: readonly (ReviewState | null)[] = ['overLimitAsk', 'ownerAsked'];
-const OVER: readonly (ReviewState | null)[] = ['overLimit', 'limitRefused', ...ASKS];
-
 function PlanWay({ asks, asked, onAsk }: { asks: boolean; asked: boolean; onAsk: () => void }) {
   if (!asks) return <AmberLine text={W.planInApp} />;
   if (asked) return <DoneLine text={W.ownerAsked} size={14.5} />;
@@ -499,7 +499,7 @@ function PlanWay({ asks, asked, onAsk }: { asks: boolean; asked: boolean; onAsk:
 
 function pickedCount(start: ReviewState | null): number {
   if (start === 'roomLeft') return PLAN_SAMPLES.roomLeft.picked;
-  if (OVER.includes(start)) return PLAN_SAMPLES.overLimit.picked;
+  if (isIn(OVER_LIMIT_STATES, start)) return PLAN_SAMPLES.overLimit.picked;
   if (start === 'over250') return 250;
   return PICKED_COUNT;
 }
@@ -602,7 +602,7 @@ export function ReviewList({
   const [refused, setRefused] = useState(start === 'limitRefused');
   const [choosing, setChoosing] = useState<string | null>(start === 'chooseNumber' ? 'kofi' : null);
   const [discarding, setDiscarding] = useState(start === 'contactsDiscard');
-  const asks = ASKS.includes(start);
+  const asks = isIn(ASK_OWNER_STATES, start);
   const [asked, setAsked] = useState(start === 'ownerAsked');
   const fields = useRef<Partial<Record<string, TextInputInstance | null>>>({});
   const cards = useRef<Partial<Record<string, ViewInstance | null>>>({});
@@ -611,7 +611,7 @@ export function ReviewList({
   const sample =
     start === 'roomLeft'
       ? PLAN_SAMPLES.roomLeft
-      : OVER.includes(start)
+      : isIn(OVER_LIMIT_STATES, start)
         ? PLAN_SAMPLES.overLimit
         : null;
   const places = rows.reduce((sum, row) => sum + row.places, 0) + (sample?.places ?? 0);

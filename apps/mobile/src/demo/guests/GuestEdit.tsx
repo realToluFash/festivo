@@ -25,6 +25,7 @@ import {
   type Answer,
   type EditState,
   type RecordState,
+  companionsAfterEdit,
   emailCheck,
   nameProblem,
   phoneCheck,
@@ -283,11 +284,7 @@ export function EditGuest({
     email: email.trim() === '' ? null : email.trim(),
     phone: joinPhone(country, number),
     language,
-    companions: companions.map((c, i) => ({
-      ...seats[i],
-      name: c,
-      kind: seats[i]?.kind ?? (g.kind === 'coming' ? 'coming' : 'held'),
-    })),
+    companions: companionsAfterEdit(companions, seats, g.kind),
   });
   const save = (anyway = false) => {
     const problems = {
