@@ -1,5 +1,6 @@
 """Which Shortcut searches a sync makes: no network here."""
 
+import datetime
 import unittest
 from unittest import mock
 
@@ -14,7 +15,8 @@ class FakeShortcut:
         self.epic_reads = 0
 
     def workflows(self):
-        return [{"states": [{"id": 1, "name": "Ready For Dev"}]}]
+        return [{"states": [{"id": i, "name": name}
+                            for i, name in enumerate(roles.QUEUE_STATES, 1)]}]
 
     def epics(self):
         self.epic_reads += 1
@@ -23,8 +25,11 @@ class FakeShortcut:
     def epic_states(self):
         return [{"id": 9, "name": "Waiting for Owner Approval"}]
 
-    def search(self, query):
-        self.searches.append(query)
+    def find(self, **filters):
+        if "workflow_state_id" in filters:
+            self.searches.append(f'state:"{roles.QUEUE_STATES[filters["workflow_state_id"] - 1]}"')
+        else:
+            self.searches.append(f"updated:{filters['updated_at_start']}")
         return []
 
     def story(self, story_id):
@@ -55,6 +60,44 @@ class States(unittest.TestCase):
         self.states(NOW + 5 * 60)
         self.assertEqual(len(self.states(NOW + 15 * 60)), len(roles.QUEUE_STATES))
 
+
+class Since(unittest.TestCase):
+    """A sync asks only for what changed since the last whole one, to the second."""
+
+    def since(self, db, now):
+        shortcut = FakeShortcut()
+        sync.sync_shortcut(db, shortcut, now)
+        return [q for q in shortcut.searches if q.startswith("updated:")]
+
+    def at(self, seconds):
+        return "updated:" + datetime.datetime.fromtimestamp(seconds, datetime.UTC).isoformat()
+
+    def test_a_full_sync_reads_fourteen_days_and_the_next_from_the_last_less_overlap(self):
+        db = store.connect(":memory:")
+        self.assertEqual(self.since(db, NOW), [self.at(NOW - sync.INBOX_DAYS * 86400)])
+        self.assertEqual(self.since(db, NOW + 60),
+                         [self.at(NOW - sync.OVERLAP_SECONDS)])
+
+    def test_a_cut_sync_leaves_the_next_reading_from_the_last_whole_one(self):
+        db = store.connect(":memory:")
+        self.since(db, NOW)
+
+        class Late(FakeShortcut):
+            def story(self, story_id):
+                raise sync.OutOfTime("out of time")
+
+            def find(self, **filters):
+                super().find(**filters)
+                return [{"id": 5, "updated_at": "t1"}]
+        with self.assertRaises(sync.OutOfTime):
+            sync.sync_shortcut(db, Late(), NOW + 60)
+        self.assertEqual(self.since(db, NOW + 120), [self.at(NOW - sync.OVERLAP_SECONDS)])
+
+    def test_never_further_back_than_a_day_between_full_syncs(self):
+        db = store.connect(":memory:")
+        store.set_meta(db, "full_at", NOW)
+        store.set_meta(db, "slim_version", sync.SLIM_VERSION)
+        self.assertEqual(self.since(db, NOW + 60), [self.at(NOW + 60 - 86400)])
 
 class Epics(unittest.TestCase):
     def test_epics_are_read_every_minute_with_their_state_name(self):
@@ -169,7 +212,7 @@ class OutOfTimeInAPart(unittest.TestCase):
 
     def test_a_new_slim_version_cut_after_the_delete_leaves_the_next_sync_full(self):
         class LateSearch(FakeShortcut):
-            def search(self, query):
+            def find(self, **filters):
                 raise sync.OutOfTime("out of time: Shortcut timed out")
 
         db = store.connect(":memory:")
@@ -200,7 +243,7 @@ class Budget(unittest.TestCase):
                 self.deadline = deadline
                 test.made.append(self)
 
-            def search(self, query):
+            def find(self, **filters):
                 if slow:
                     test.clock = self.deadline
                     raise sync.OutOfTime("out of time: Shortcut timed out")
