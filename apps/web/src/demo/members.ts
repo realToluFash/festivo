@@ -10,6 +10,7 @@ import {
   handStart,
   type Leads,
   ledByLine,
+  LONG_NAMED,
 } from './handover.ts';
 import en from '../i18n/locales/en.json';
 import { SAMPLE } from './rules.ts';
@@ -719,6 +720,8 @@ export function handoverAsk(kind: 'remove' | 'hand', name: string, count: number
         red: true,
         busy: H.busy.remove,
         failed: H.failed.remove,
+        checking: H.checking(name),
+        notLoaded: H.notLoaded(name),
       }
     : {
         title: H.handTitle(name, count),
@@ -729,6 +732,8 @@ export function handoverAsk(kind: 'remove' | 'hand', name: string, count: number
         red: false,
         busy: H.busy.hand,
         failed: H.failed.hand,
+        checking: H.checking(name),
+        notLoaded: H.notLoaded(name),
       };
 }
 export const TAKES_EFFECT = 'Takes effect on their next request. Nobody is signed out.';
@@ -1009,6 +1014,8 @@ export interface MembersStart {
   claim: Claim | null;
   dialog: MembersDialog | null;
   leads: Leads;
+  /** The work list a suspended member's page waits on. */
+  leadsLoad: Load;
   handed: Handed | null;
 }
 
@@ -1061,12 +1068,20 @@ export const MEMBERS_STATES = [
   'handoverMenu',
   'handoverPicked',
   'handoverLong',
+  'handoverOne',
+  'handoverLongNames',
+  'handoverLoading',
+  'handoverLoadFailed',
+  'handoverRefused',
   'handoverSearch',
   'handoverSearchNobody',
   'removingNoWork',
   'handoverSending',
   'handoverFailed',
   'handoverDone',
+  'martaOne',
+  'martaLoading',
+  'martaLoadFailed',
   'handoverNow',
   'handoverNowSending',
   'handoverNowFailed',
@@ -1209,6 +1224,15 @@ function dialogOf(state: MembersState, viewer: Pick<Viewer, 'id'>): MembersDialo
       return remove({ phase: 'held' });
     case 'handoverFailed':
       return remove({ phase: 'failed' });
+    case 'handoverOne':
+    case 'handoverLongNames':
+      return remove();
+    case 'handoverLoading':
+      return remove({ phase: 'checking' });
+    case 'handoverLoadFailed':
+      return remove({ phase: 'notLoaded' });
+    case 'handoverRefused':
+      return { ...remove({ phase: 'refused' }), id: TOM };
     case 'handoverNow':
       return handOver();
     case 'handoverNowSending':
@@ -1270,16 +1294,24 @@ function openOf(state: MembersState, viewer: Pick<Viewer, 'id'>): string | null 
     case 'handoverSearchNobody':
     case 'handoverSending':
     case 'handoverFailed':
+    case 'handoverOne':
+    case 'handoverLongNames':
+    case 'handoverLoading':
+    case 'handoverLoadFailed':
       return PRIYA;
     case 'handoverLong':
       return JULIEN;
     case 'removingNoWork':
+    case 'handoverRefused':
       return TOM;
     case 'makeOwner':
     case 'makeOwnerBlank':
     case 'makeOwnerWrong':
       return ANA;
     case 'marta':
+    case 'martaOne':
+    case 'martaLoading':
+    case 'martaLoadFailed':
     case 'handoverNow':
     case 'handoverNowSending':
     case 'handoverNowFailed':
@@ -1351,6 +1383,14 @@ function leadsOf(state: MembersState, viewer: Pick<Viewer, 'id'>): Leads {
   switch (state) {
     case 'handoverLong':
       return { ...leads, [JULIEN]: Object.values(EVENT) };
+    case 'handoverOne':
+      return { ...leads, [PRIYA]: [EVENT.ireti] };
+    case 'handoverLongNames':
+      return { ...leads, [PRIYA]: [EVENT.wed, LONG_NAMED, EVENT.off] };
+    case 'handoverRefused':
+      return { ...leads, [TOM]: [EVENT.gala, EVENT.draft] };
+    case 'martaOne':
+      return { ...leads, [MARTA]: [EVENT.party] };
     case 'removed':
     case 'handoverDone':
       return handedOver(leads, PRIYA, ANA);
@@ -1408,6 +1448,7 @@ export function membersStart(name: string, viewer: Pick<Viewer, 'id' | 'manages'
     claim: null,
     dialog: null,
     leads: sampleLeads(),
+    leadsLoad: 'loaded',
     handed: null,
   };
 
@@ -1419,6 +1460,8 @@ export function membersStart(name: string, viewer: Pick<Viewer, 'id' | 'manages'
   return {
     ...start,
     load: state === 'loading' || state === 'failed' ? state : 'loaded',
+    leadsLoad:
+      state === 'martaLoading' ? 'loading' : state === 'martaLoadFailed' ? 'failed' : 'loaded',
     people: peopleOf(state, viewer),
     invitations:
       state === 'revoked'

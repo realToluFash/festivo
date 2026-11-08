@@ -50,6 +50,12 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **8 Nov 2026. La pantalla de enlace enviado en la app y su aviso** (sc-33809 para sc-29071,
+  `mobile:recovery.*`). El botón es «Abrir el correo», no «Abrir Mail»: en Android abre la
+  aplicación de correo que tenga la persona. `spam` termina en «envíelo de nuevo», como el botón
+  «Enviarlo de nuevo» que tiene debajo, y `sentAgain` es «Se lo hemos enviado de nuevo. Use el
+  correo más reciente.», como `expiredBody`. El aviso `changed` dice «Contraseña cambiada. Se ha
+  cerrado la sesión en sus otros dispositivos.», con «cerrar sesión» del glosario.
 - **8 Nov 2026. La pantalla Hoy, a 360 de ancho** (sc-31788, tras #32963). La pestaña
   Settings del teléfono es «Ajustes», la palabra del iPhone y de Android en España, porque
   «Configuración» no cabe en un cuarto de 360; el título de la pantalla y `frame.settings`

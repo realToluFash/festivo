@@ -12,6 +12,7 @@ import {
 import {
   Animated,
   Easing,
+  Keyboard,
   KeyboardAvoidingView,
   ScrollView,
   type ScrollViewInstance,
@@ -48,6 +49,7 @@ import { MessagesList, rowName } from './MessagesList.tsx';
 import {
   type Action,
   type Closed,
+  type FixKind,
   type Messages,
   type Open,
   type ReachedOf,
@@ -61,6 +63,7 @@ import {
   draftTitle,
   matchesNobody,
   overOf,
+  reachedOf,
   resultOf,
   sectionsOf,
   spokenAt,
@@ -68,7 +71,7 @@ import {
 } from './MessagesModel.ts';
 import {
   BellPlace,
-  InsertMenu,
+  FilterPicker,
   MatchPicker,
   ToPicker,
   TopToast,
@@ -79,17 +82,18 @@ import {
   GUESTS,
   type GuestKey,
   NOT_REACHED,
-  type NotReached,
   PARKING,
   SCHEDULE_AT,
   DAYS,
   INVITE_TIME,
   PARKING_TIME,
-  RESEND,
 } from './MessagesSample.ts';
 import { CHANNEL_WORD, type ChannelKey, W, say } from './MessagesWords.ts';
+import { SW, refusalLine } from './ScheduledSave.ts';
 import { outsideToken, tokenText } from './TokenText.ts';
-import { FixEmail, WhoReached, reachViewOf } from './WhoReached.tsx';
+import { type ReachPerson, fixKindOf, reachViewOf, resendOf } from './Reach.ts';
+import { ContactEdit, WhoReached } from './WhoReached.tsx';
+import { type Anchored, InsertMenu, anchorAt } from './WriteItOnce.tsx';
 
 const SAMPLE_CHANNELS: readonly ChannelKey[] = ['email', 'sms'];
 
@@ -169,6 +173,7 @@ export function MessagesScreen({
   const refs = useRef<Partial<Record<string, ViewInstance | null>>>({});
   const headRef = useRef<TextHandle>(null);
   const checkRef = useRef<TextHandle>(null);
+  const reachedHeadRef = useRef<TextHandle>(null);
   const subjectRef = useRef<TextInputInstance>(null);
   const bodyRef = useRef<TextInputInstance>(null);
   const answerRef = useRef<TextInputInstance>(null);
@@ -188,12 +193,14 @@ export function MessagesScreen({
   const closed = m.closed == null ? null : CLOSED_WORDS[m.closed];
   const [typed, setTyped] = useState<Partial<Record<GuestKey, string>>>(m.typed);
   const [toAt, setToAt] = useState<Anchor | null>(null);
-  const [insertAt, setInsertAt] = useState<Anchor | null>(null);
+  const [insertAt, setInsertAt] = useState<Anchored | null>(null);
   const [bellAt, setBellAt] = useState<Anchor | null>(null);
+  const [filterAt, setFilterAt] = useState<Anchor | null>(null);
   const [fix, setFix] = useState(() => {
     const person = NOT_REACHED[0];
     return {
       key: person?.key ?? ('tomas' as const),
+      how: 'fixEmail' as FixKind,
       name: person?.name ?? '',
       bounced: person?.bounced ?? '',
       start: start.fix ? FIXED_ADDRESS : (person?.bounced ?? ''),
@@ -239,6 +246,17 @@ export function MessagesScreen({
     return () => clearTimeout(later);
   }, [step]);
 
+  // A refused save (sc-3963) is said at once and takes focus, so the keys go down.
+  const refused = m.refusedSave;
+  useEffect(() => {
+    if (refused == null) return undefined;
+    Keyboard.dismiss();
+    readOut(`${refusalLine(refused)} ${SW.textStillHere}`, { interrupts: true });
+    const later = setTimeout(() => moveScreenReaderFocus(refs.current.refused ?? null), 500);
+
+    return () => clearTimeout(later);
+  }, [refused]);
+
   const asking = m.draft?.asking === true;
   useEffect(() => {
     if (!asking) return undefined;
@@ -282,6 +300,23 @@ export function MessagesScreen({
   }, [m.picking, phone]);
 
   useEffect(() => {
+    if (!m.filtering || phone) return undefined;
+    const later = setTimeout(() => {
+      const button = refs.current.filter;
+      if (button != null) anchorUnder({ current: button }, setFilterAt);
+    }, 300);
+
+    return () => clearTimeout(later);
+  }, [m.filtering, phone]);
+
+  useEffect(() => {
+    if (!m.inserting || phone) return undefined;
+    const later = setTimeout(() => anchorAt(refs.current.insert, setInsertAt), 300);
+
+    return () => clearTimeout(later);
+  }, [m.inserting, phone]);
+
+  useEffect(() => {
     if (!m.bell || phone) return undefined;
     const later = setTimeout(() => anchorUnder(bellRef, setBellAt), 300);
 
@@ -313,6 +348,7 @@ export function MessagesScreen({
   };
   const talk: Talk = {
     m,
+    closed,
     locale,
     dispatch,
     wide,
@@ -341,8 +377,7 @@ export function MessagesScreen({
     },
     onInsert: () => {
       from('insert');
-      const node = refs.current.insert;
-      if (node != null) anchorUnder({ current: node }, setInsertAt);
+      dispatch({ type: 'inserting', open: true });
     },
     onCaret: (at) => {
       caret.current = at;
@@ -366,6 +401,11 @@ export function MessagesScreen({
       dispatch({ type: 'when', open: true });
     },
     onSaveScheduled: () => {
+      if (refused != null) {
+        Keyboard.dismiss();
+        moveScreenReaderFocus(refs.current.refused ?? null);
+        return;
+      }
       if (draft == null || draft.body.trim() === '') return;
       dispatch({ type: 'saveScheduled' });
       readOut(W.savedSaid);
@@ -406,8 +446,9 @@ export function MessagesScreen({
       }
     },
     onResent: () => {
+      const sent = resendOf(m, reachedOf(m)).count;
       dispatch({ type: 'resent' });
-      dispatch({ type: 'told', words: say.queued(RESEND.count) });
+      dispatch({ type: 'told', words: say.queued(sent) });
     },
     ownDesign,
   };
@@ -421,6 +462,7 @@ export function MessagesScreen({
     caret.current = after;
     opener.current = bodyRef.current;
     setInsertAt(null);
+    dispatch({ type: 'inserting', open: false });
     setTimeout(() => {
       bodyRef.current?.focus();
       bodyRef.current?.setSelection(after, after);
@@ -451,35 +493,57 @@ export function MessagesScreen({
       closed={closed}
     />
   );
-  const sendAgain = (person: NotReached) => {
-    dispatch({ type: 'sendAgain', key: person.key });
+  const focusPerson = (person: ReachPerson) =>
     setTimeout(() => moveScreenReaderFocus(refs.current[`person.${person.key}`] ?? null), 350);
+  const sendAgain = (person: ReachPerson) => {
+    dispatch({ type: 'sendAgain', key: person.key });
+    setTimeout(() => moveScreenReaderFocus(reachedHeadRef.current), 350);
   };
-  const fixPerson = (person: NotReached, fixing: string) => {
+  const notNow = (person: ReachPerson) => {
+    dispatch({ type: 'notNowFor', key: person.key });
+    focusPerson(person);
+  };
+  const fixPerson = (person: ReachPerson, fixing: string) => {
     from(`${person.key}.${fixing}`);
-    if (fixing === W.fixEmail && person.bounced != null) {
+    const how = fixKindOf(fixing);
+    if (how != null) {
       setFix({
         key: person.key,
+        how,
         name: person.name,
-        bounced: person.bounced,
-        start: person.bounced,
+        bounced: person.bounced ?? '',
+        start: how === 'fixEmail' ? (person.bounced ?? '') : '',
       });
       dispatch({ type: 'fixing', open: true });
+    } else if (fixing === W.toldInPerson) {
+      dispatch({ type: 'markTold', key: person.key });
+      dispatch({ type: 'told', words: say.markedTold(person.name) });
+      setTimeout(() => moveScreenReaderFocus(reachedHeadRef.current), 350);
+    } else if (fixing === W.undo) {
+      dispatch({ type: 'undoTold', key: person.key });
+      dispatch({ type: 'told', words: say.unmarkedTold(person.name) });
+      setTimeout(() => moveScreenReaderFocus(reachedHeadRef.current), 350);
     } else ownDesign(fixing);
   };
+  const openFilter = () => {
+    from('filter');
+    dispatch({ type: 'filtering', open: true });
+  };
   const resendFrom = (of: ReachedOf) => {
-    if (of !== 'parking') {
-      ownDesign(say.resend(reachViewOf(m, of).resend));
-      return;
-    }
-    dispatch({ type: 'open', open: { kind: 'many', key: 'parking' } });
+    dispatch({
+      type: 'open',
+      open: of === 'draft' ? { kind: 'draft' } : { kind: 'many', key: of },
+    });
     dispatch({ type: 'resending', open: true });
   };
+  const view = m.open?.kind === 'reached' ? reachViewOf(m, m.open.of) : null;
   const reached = (of: ReachedOf, back: ReactNode, title: ReactNode, bottom: number) => (
     <WhoReached
       view={reachViewOf(m, of)}
-      m={m}
+      headRef={reachedHeadRef}
       onSendAgain={sendAgain}
+      onNotNow={notNow}
+      closed={closed}
       head={
         <>
           {back}
@@ -489,7 +553,8 @@ export function MessagesScreen({
       refFor={refFor}
       bottom={bottom}
       onFix={fixPerson}
-      onFilter={() => ownDesign(W.filter)}
+      onFilter={openFilter}
+      onShowNotReached={() => dispatch({ type: 'filter', filter: 'notReached' })}
       onResend={() => resendFrom(of)}
     />
   );
@@ -506,21 +571,40 @@ export function MessagesScreen({
         onClose={() => dispatch({ type: 'picking', open: false })}
       />
       <InsertMenu
-        at={insertAt}
+        open={m.inserting === true && (phone || insertAt != null)}
+        phone={phone}
+        at={m.inserting === true ? insertAt : null}
         opener={openerRef}
         onInsert={insert}
-        onClose={() => setInsertAt(null)}
+        onClose={() => {
+          setInsertAt(null);
+          dispatch({ type: 'inserting', open: false });
+        }}
       />
-      <FixEmail
-        key={`${fix.name}:${fix.start}:${String(m.fixing)}`}
+      <FilterPicker
+        open={m.filtering && view != null && (phone || filterAt != null)}
+        options={view?.options ?? []}
+        on={view?.filterOn ?? 'notReached'}
+        phone={phone}
+        at={m.filtering ? filterAt : null}
+        opener={openerRef}
+        onChoose={(filter) => {
+          dispatch({ type: 'filter', filter });
+          setTimeout(() => moveScreenReaderFocus(reachedHeadRef.current), 500);
+        }}
+        onClose={() => dispatch({ type: 'filtering', open: false })}
+      />
+      <ContactEdit
+        key={`${fix.key}:${fix.how}:${fix.start}:${String(m.fixing)}`}
         open={m.fixing}
+        how={fix.how}
         name={fix.name}
         bounced={fix.bounced}
         start={fix.start}
         opener={openerRef}
         onCancel={() => dispatch({ type: 'fixing', open: false })}
         onSaved={(address) => {
-          dispatch({ type: 'fixed', key: fix.key, address });
+          dispatch({ type: 'fixed', key: fix.key, address, how: fix.how });
           setTimeout(() => moveScreenReaderFocus(refs.current[`${fix.key}.again`] ?? null), 500);
         }}
       />
@@ -642,7 +726,7 @@ export function MessagesScreen({
       <View style={styles.fill}>
         <View style={styles.centred}>
           <Text size={14.5} weight="medium" style={[styles.secondary, styles.middle]}>
-            {m.phase === 'first' ? W.noneLine : W.pickOne}
+            {m.phase === 'first' ? W.noneLine : closed == null ? W.pickOne : W.pickOneClosed}
           </Text>
         </View>
         <MiniComposer

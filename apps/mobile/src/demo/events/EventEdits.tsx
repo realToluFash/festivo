@@ -24,11 +24,12 @@ import { tokens } from '../../theme/tokens.ts';
 import { EventMesh } from '../../components/EventMesh.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
 import { LineIcon } from '../settings/AccountCard.tsx';
-import { PhotoFill } from './EventCard.tsx';
+import { PhotoFill } from '../../components/EventCard.tsx';
 import { EventNotice } from './EventNotice.tsx';
 import { type EditPart, type EventDemoState, folded, instantOf, wallOf } from './EventsModel.ts';
 import {
   CLOSES_AT,
+  datesAsk,
   noReplyOf,
   replyByAskCount,
   previewsReplyBy,
@@ -317,6 +318,7 @@ function DatesEdit(edit: EditProps) {
   const sample =
     start === 'datesChanged' ||
     start === 'datesReplyBy' ||
+    start === 'datesReplyByAsk' ||
     start === 'discard' ||
     start === 'changedElsewhere' ||
     start === 'showLatest'
@@ -345,6 +347,8 @@ function DatesEdit(edit: EditProps) {
   const replyByTo = replyByAfterStart(replyBy, from.date);
   const replyByLine =
     replyBy == null || replyByTo == null ? null : replyByMoves(replyBy, replyByTo, locale);
+  const closes = datesAsk(replyBy, replyByTo, edit.now ?? new Date(), zone, event.id);
+  const [asking, setAsking] = useState(start === 'datesReplyByAsk');
   const changed =
     zone !== event.timeZone ||
     [from.date, from.time, to.date, to.time].join() !==
@@ -389,6 +393,11 @@ function DatesEdit(edit: EditProps) {
     );
   const save = () => {
     if (wrong) return;
+    if (closes != null) setAsking(true);
+    else commit();
+  };
+  const commit = () => {
+    setAsking(false);
     edit.onSaved(
       {
         ...event,
@@ -399,6 +408,23 @@ function DatesEdit(edit: EditProps) {
       replyByTo ?? undefined,
     );
   };
+  const closeAsk: AskProps | null =
+    asking && closes != null && replyByTo != null
+      ? {
+          title:
+            closes === 'now'
+              ? W.closeNowTitle
+              : say.closeSoonerTitle(formatWallDay(replyByTo, locale)),
+          line: `${replyByAskCount(noReplyOf(event.id))} ${closes === 'now' ? W.closeNowLine : W.closeSoonerLine}`,
+          keep: { label: W.keepEditing, testID: 'event.edit.dates.replyBy.keep' },
+          confirm: {
+            label: closes === 'now' ? W.closeNow : W.closeSooner,
+            testID: 'event.edit.dates.replyBy.close',
+          },
+          onKeep: () => setAsking(false),
+          onConfirm: commit,
+        }
+      : null;
 
   return (
     <EditShell
@@ -427,7 +453,7 @@ function DatesEdit(edit: EditProps) {
                 setShowing(false);
               },
             }
-          : null
+          : closeAsk
       }
       over={
         picking == null

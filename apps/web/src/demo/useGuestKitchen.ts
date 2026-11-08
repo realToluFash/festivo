@@ -1,7 +1,16 @@
 import { useCallback, useEffect } from 'react';
 
 import { useLater } from '../useLater.ts';
-import { EARLIER, HOLD_MS, OPEN, SEND_MS, TODAY, type View, type Visit } from './guest.ts';
+import {
+  EARLIER,
+  HOLD_MS,
+  OPEN,
+  SEND_MS,
+  TODAY,
+  type View,
+  type Visit,
+  sameAnswer,
+} from './guest.ts';
 import {
   type Field,
   type From,
@@ -28,6 +37,7 @@ export interface GuestKitchenActions {
   host: (key: string, code: Access, remove: boolean) => void;
   back: () => void;
   next: () => void;
+  save: () => void;
   skip: () => void;
   toStep: () => void;
   send: () => void;
@@ -71,10 +81,7 @@ export function landed(was: Visit): Partial<Visit> {
   }
   const record = saved(kitchen, TODAY);
   const kept = { ...kitchen, record, people: fromRecord(record), tried: false, alert: null };
-  if (kitchen.from === 'closed') {
-    return { view: { kind: 'closed' }, kitchen: { ...kept, saved: true }, ...focus('kitchen') };
-  }
-  const coming = was.recorded?.answer === 'coming';
+  const coming = sameAnswer(was.recorded, 'coming');
 
   return {
     recorded: coming ? was.recorded : { answer: 'coming', on: TODAY },
@@ -82,6 +89,36 @@ export function landed(was: Visit): Partial<Visit> {
     kitchen: kept,
     ...focus('greeting'),
   };
+}
+
+/** After the date, Save lands on the closed page with the saved line; only the needs are sent (sc-3780). */
+export function savedClosed(was: Visit): Partial<Visit> {
+  const kitchen = was.kitchen;
+  if (kitchen == null || was.view.kind !== 'kitchen') return {};
+  const record = saved(kitchen, TODAY);
+
+  return {
+    view: { kind: 'closed' },
+    kitchen: {
+      ...kitchen,
+      record,
+      people: fromRecord(record),
+      tried: false,
+      alert: null,
+      saved: true,
+    },
+    want: 'kitchen',
+    wantId: was.wantId + 1,
+  };
+}
+
+/** Back and Leave it as it is, after the date: the record as it was, and focus back on Update. */
+function backToClosed(was: Visit): Partial<Visit> {
+  const kitchen = was.kitchen;
+  if (kitchen == null) return { view: { kind: 'closed' } };
+  const people = kitchen.record == null ? kitchen.people : fromRecord(kitchen.record);
+
+  return { view: { kind: 'closed' }, kitchen: { ...kitchen, people, tried: false, alert: null } };
 }
 
 /** sc-3778's step on the guest's page: Yes leads to it, Next to Check and send, Send saves it with the answer. */
@@ -138,18 +175,15 @@ export function useGuestKitchen(visit: Visit, state: string | null, go: Go): Gue
         `${remove ? 'keep' : 'remove'}-${key}-${code}`,
       ),
     back: () =>
-      go(
-        (was) => ({
-          view:
-            from === 'changing'
-              ? { kind: 'changing', busy: null }
-              : from === 'closed'
-                ? { kind: 'closed' }
-                : OPEN,
-          kitchen: was.kitchen == null ? null : { ...was.kitchen, alert: null },
-        }),
-        from === 'closed' ? 'kitchen' : 'row-coming',
-      ),
+      from === 'closed'
+        ? go(backToClosed, 'kitchen')
+        : go(
+            (was) => ({
+              view: from === 'changing' ? { kind: 'changing', busy: null } : OPEN,
+              kitchen: was.kitchen == null ? null : { ...was.kitchen, alert: null },
+            }),
+            'row-coming',
+          ),
     next: () => {
       if (visit.kitchen == null) return;
       const failing = firstError(visit.kitchen);
@@ -163,25 +197,41 @@ export function useGuestKitchen(visit: Visit, state: string | null, go: Go): Gue
         failing ?? 'checkHead',
       );
     },
+    save: () => {
+      if (visit.kitchen == null || visit.view.kind !== 'kitchen' || visit.view.busy === true)
+        return;
+      const failing = firstError(visit.kitchen);
+      if (failing != null) {
+        go(
+          (was) => (was.kitchen == null ? {} : { kitchen: { ...was.kitchen, tried: true } }),
+          failing,
+        );
+        return;
+      }
+      go(() => ({ view: { kind: 'kitchen', busy: true } }));
+      later(SEND_MS, () => go(savedClosed));
+    },
     skip: () =>
-      go(
-        (was) =>
-          was.kitchen == null
-            ? {}
-            : {
-                view: checkView(from),
-                kitchen: {
-                  ...was.kitchen,
-                  people:
-                    was.kitchen.record == null
-                      ? blankParty(was.kitchen.people.length - 1)
-                      : fromRecord(was.kitchen.record),
-                  tried: false,
-                  alert: null,
-                },
-              },
-        'checkHead',
-      ),
+      from === 'closed'
+        ? go(backToClosed, 'kitchen')
+        : go(
+            (was) =>
+              was.kitchen == null
+                ? {}
+                : {
+                    view: checkView(from),
+                    kitchen: {
+                      ...was.kitchen,
+                      people:
+                        was.kitchen.record == null
+                          ? blankParty(was.kitchen.people.length - 1)
+                          : fromRecord(was.kitchen.record),
+                      tried: false,
+                      alert: null,
+                    },
+                  },
+            'checkHead',
+          ),
     toStep: () =>
       go(
         (was) => ({

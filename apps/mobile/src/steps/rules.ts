@@ -18,16 +18,6 @@ export function codeDigits(text: string): string {
   return text.replace(/\D/gu, '').slice(0, CODE_LENGTH);
 }
 
-/** A recovery code as it was saved, "vtxp-rh7y": capitals or not, and the dash put in once a fifth character comes. */
-export function shapeRecovery(text: string): string {
-  const plain = text
-    .toLowerCase()
-    .replace(/[^a-z0-9]/gu, '')
-    .slice(0, 8);
-
-  return plain.length > 4 ? `${plain.slice(0, 4)}-${plain.slice(4)}` : plain;
-}
-
 export function recoveryComplete(code: string): boolean {
   return /^[a-z0-9]{4}-[a-z0-9]{4}$/u.test(code);
 }

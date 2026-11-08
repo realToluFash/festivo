@@ -1,15 +1,27 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
 import { resetSample } from './events.ts';
+import { KW, kitchenAt, resetKitchen } from './kitchen.ts';
 
 const tested = config();
 const SLOW = { timeout: 20000 };
 const WAIT = { timeout: 8000 };
 const WEDDING = 'Adaeze & Tunde’s wedding';
+const EVENTS_CSS = readFileSync(join(import.meta.dirname, 'events.css'), 'utf8');
+
+function cssValue(selector: string, property: string): string | undefined {
+  const start = EVENTS_CSS.indexOf(`\n${selector} {`);
+  const body = start < 0 ? '' : EVENTS_CSS.slice(start, EVENTS_CSS.indexOf('}', start));
+
+  return new RegExp(`\\s${property}: ([^;]+);`, 'u').exec(body)?.[1];
+}
 
 function main(): HTMLElement {
   return screen.getByRole('main');
@@ -62,6 +74,21 @@ describe('Events in A at a desk (sc-30304)', () => {
       expect(screen.getByText('4 events · Sorted by date')).toBeDefined();
     },
   );
+
+  it('keeps the card’s link over all of the card but its own step', () => {
+    const link = Number(cssValue('.ev-card-link::after', 'z-index'));
+    const step = Number(cssValue('.ev-card-foot :is(a, button)', 'z-index'));
+
+    expect(link).toBeGreaterThan(0);
+    expect(step).toBeGreaterThan(link);
+    expect(cssValue('.ev-card-foot', 'z-index')).toBeUndefined();
+  });
+
+  it('leaves a time field room for 06:00 PM beside its clock', () => {
+    expect(
+      parseInt(cssValue('.ev-when-pair .ev-input.is-time', 'width') ?? '0', 10),
+    ).toBeGreaterThanOrEqual(160);
+  });
 
   it('keeps the search in the address, so Back brings it back', SLOW, async () => {
     const router = await list();
@@ -294,5 +321,126 @@ describe('the guest counts on Events (sc-23284)', () => {
     await list('/demo/events?state=first');
 
     expect(within(main()).queryByRole('list', { name: 'Guests across your events' })).toBeNull();
+  });
+});
+
+describe('Needs you on the Overview at a desk (sc-32801)', () => {
+  beforeEach(() => {
+    __setConfig({ ...tested, environment: 'development' });
+    resetSample();
+    resetKitchen();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  function card(): HTMLElement {
+    return screen.getByRole('region', { name: /^Needs you/ });
+  }
+
+  it(
+    'lists the rows, overdue first, with the button only where there is an action',
+    SLOW,
+    async () => {
+      await page('/demo/events/evt-wed-4?state=needsYou');
+
+      const rows = within(card()).getAllByRole('listitem');
+
+      expect(
+        screen.getByRole('heading', { level: 2, name: /^Needs you\s*, 4 things$/ }),
+      ).toBeDefined();
+      expect(rows.map((row) => row.textContent)).toEqual([
+        'Give final numbers to the kitchen2 days overdueOpen the kitchen sheet',
+        'Pay the band’s balanceDue today',
+        'Seat the last 12 guestsDue tomorrow',
+        'Confirm the cakeDue Thu, Nov 5',
+      ]);
+      expect(within(card()).queryByRole('button')).toBeNull();
+      expect(
+        within(card())
+          .getAllByRole('link')
+          .map((link) => [link.textContent, link.getAttribute('href')]),
+      ).toEqual([[KW.openSheet, kitchenAt('evt-wed-4')]]);
+      expect(within(card()).queryByText(WEDDING)).toBeNull();
+    },
+  );
+
+  it(
+    'lists the kitchen milestone while it is Next up, and opens Kitchen sheet for this event',
+    SLOW,
+    async () => {
+      const router = await page('/demo/events/evt-wed-4?state=finalNumbers');
+
+      expect(screen.getByText('Next up: Give final numbers to the kitchen')).toBeDefined();
+      expect(
+        within(card())
+          .getAllByRole('listitem')
+          .map((row) => row.textContent),
+      ).toEqual([`Give final numbers to the kitchenDue today${KW.openSheet}`]);
+
+      fireEvent.click(within(card()).getByRole('link', { name: KW.openSheet }));
+      expect(router.state.location.pathname).toBe(kitchenAt('evt-wed-4'));
+    },
+  );
+
+  it('lists the same rows as All dates', SLOW, async () => {
+    open('/demo/events/evt-wed-4/dates?state=needsYou');
+    await screen.findByRole('heading', { level: 1, name: KW.allDates }, WAIT);
+
+    for (const title of [
+      'Give final numbers to the kitchen',
+      'Pay the band’s balance',
+      'Seat the last 12 guests',
+      'Confirm the cake',
+    ])
+      expect(screen.getByText(title)).toBeDefined();
+  });
+
+  it('drops the row once a copy is recorded on Kitchen sheet', SLOW, async () => {
+    await page('/demo/events/evt-wed-4?state=finalNumbers');
+    fireEvent.click(within(card()).getByRole('link', { name: KW.openSheet }));
+    await screen.findByRole('heading', { level: 1, name: KW.title }, WAIT);
+
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    fireEvent.click(screen.getByRole('button', { name: KW.give }));
+    fireEvent.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', { name: KW.download }),
+    );
+    await act(() => vi.advanceTimersByTimeAsync(1000));
+    fireEvent.click(screen.getByRole('link', { name: WEDDING }));
+    await screen.findByRole('heading', { level: 1, name: WEDDING }, WAIT);
+
+    expect(within(card()).getByText('Nothing needs you')).toBeDefined();
+    expect(within(card()).queryByRole('listitem')).toBeNull();
+  });
+
+  it(
+    'says nothing needs you, with no count, on an event with no row and once it has started',
+    SLOW,
+    async () => {
+      await page('/demo/events/evt-wed-4?state=now');
+
+      expect(screen.getByRole('heading', { level: 2, name: 'Needs you' })).toBeDefined();
+      expect(within(card()).getByText('Nothing needs you')).toBeDefined();
+    },
+  );
+
+  it('shows a member who only reads no row', SLOW, async () => {
+    await page('/demo/events/evt-wed-4?state=needsYouReadOnly');
+
+    expect(within(card()).getByText('Nothing needs you')).toBeDefined();
+    expect(within(card()).queryByRole('listitem')).toBeNull();
+  });
+
+  it('shows no row, count or tick until the load answers, or when it fails', SLOW, async () => {
+    await page('/demo/events/evt-wed-4?state=needsYouFailed');
+
+    expect(screen.getByRole('heading', { level: 2, name: 'Needs you' })).toBeDefined();
+    expect(within(card()).queryByText('Nothing needs you')).toBeNull();
+
+    fireEvent.click(within(card()).getByRole('button', { name: 'Try again' }));
+
+    expect(within(card()).getByText('Nothing needs you')).toBeDefined();
   });
 });

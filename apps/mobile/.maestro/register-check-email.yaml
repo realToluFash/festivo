@@ -1,10 +1,18 @@
-# A sign-up on Register, in English, that stops on Check your email for EMAIL. sc-18534.
-# The first step of the verify-email flows. EMAIL must be fresh: a taken address is sent no code.
+# A sign-up on Register, in English or in LANGUAGE (Español, Français, Português), that stops on
+# Check your email for EMAIL. sc-18534, sc-32449. The first step of the verify-email flows.
+# EMAIL must be fresh: a taken address is sent no code.
 #
-#   node .qa/bin/qa-env.mjs maestro register-check-email NAME=… EMAIL=… PASSWORD=…
+#   node .qa/bin/qa-env.mjs maestro register-check-email NAME=… EMAIL=… PASSWORD=… [LANGUAGE=…]
 appId: host.exp.Exponent
 ---
-- runFlow: sign-in-screen-english.yaml
+- runFlow:
+    when:
+      true: ${typeof LANGUAGE === 'undefined' || LANGUAGE === 'English'}
+    file: sign-in-screen-english.yaml
+- runFlow:
+    when:
+      true: ${typeof LANGUAGE !== 'undefined' && LANGUAGE !== 'English'}
+    file: sign-in-screen-language.yaml
 - openLink: ${METRO_URL}/--/register
 - extendedWaitUntil:
     visible:
@@ -39,4 +47,8 @@ appId: host.exp.Exponent
     visible:
       id: 'verifyEmail.code'
     timeout: 30000
-- assertVisible: 'We sent a code to .*'
+- runFlow:
+    when:
+      true: ${typeof LANGUAGE === 'undefined' || LANGUAGE === 'English'}
+    commands:
+      - assertVisible: 'We sent a code to .*'

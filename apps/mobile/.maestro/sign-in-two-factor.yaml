@@ -17,9 +17,8 @@ appId: host.exp.Exponent
       ASK: /code
 - tapOn:
     id: 'twoFactor.code'
+# The sixth digit sends the code (sc-29072).
 - inputText: ${output.helper.code}
-- tapOn:
-    id: 'twoFactor.verify'
 - extendedWaitUntil:
     notVisible:
       id: 'twoFactor.code'

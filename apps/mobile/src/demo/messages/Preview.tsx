@@ -1,19 +1,44 @@
-import { StyleSheet, View } from 'react-native';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
+import { StyleSheet, View, type ViewInstance } from 'react-native';
 
 import { EventMesh } from '../../components/EventMesh.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
+import { useReadOut } from '../../components/ReadOut.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { meshFor } from '../../kit/today.ts';
 import { MessageGlyph } from './MessageMarks.tsx';
-import type { Draft } from './MessagesModel.ts';
-import { EVENT, HOSTS, ORG, PREVIEW, SAMPLE_EVENT_ID, filledFor } from './MessagesSample.ts';
+import type { Action, Draft } from './MessagesModel.ts';
+import { EVENT, HOSTS, ORG, PREVIEW, SAMPLE_EVENT_ID } from './MessagesSample.ts';
 import { W, say } from './MessagesWords.ts';
+import {
+  FILLING_MS,
+  type Previewing,
+  chosen,
+  coverFor,
+  filledAs,
+  greetingFor,
+  noticeFor,
+  previewLines,
+} from './PreviewModel.ts';
+import { PREVIEW_PEOPLE, type PreviewPerson } from './PreviewSample.ts';
+import { sayPreview } from './PreviewWords.ts';
+import { type Anchored, PreviewAsChooser, PreviewAsControl, anchorAt } from './WriteItOnce.tsx';
 
 /** The message as the guest's own page shows it (GuestPage-A): the cover, then the hosts' words in a figure, signed. */
-function PagePreview({ draft }: { draft: Draft }) {
+function PagePreview({ draft, person }: { draft: Draft; person: PreviewPerson }) {
+  const subject = draft.subject.trim();
+  const words = filledAs(draft.body, person);
+  const cover = coverFor(person);
+
   return (
-    <View style={styles.page} accessible accessibilityLabel={say.pageAs(PREVIEW.name)}>
+    <View
+      style={styles.page}
+      accessible
+      accessibilityLabel={[say.pageAs(person.name), EVENT, cover, subject, words, HOSTS]
+        .filter((part) => part !== '')
+        .join('. ')}
+    >
       <View style={styles.cover}>
         <EventMesh event={{ mesh: meshFor(SAMPLE_EVENT_ID), photo: null }} shade="band" />
         <View style={styles.coverWords}>
@@ -21,19 +46,19 @@ function PagePreview({ draft }: { draft: Draft }) {
             {EVENT}
           </Text>
           <Text size={13.5} weight="medium" accessible={false} style={styles.white}>
-            {PREVIEW.cover}
+            {cover}
           </Text>
         </View>
       </View>
       <View style={styles.figureAt}>
         <View style={styles.figure}>
-          {draft.subject.trim() !== '' && (
+          {subject !== '' && (
             <Text size={17} weight="bold" accessible={false} style={styles.heading}>
-              {draft.subject.trim()}
+              {subject}
             </Text>
           )}
           <Text size={16} weight="medium" accessible={false} style={styles.words}>
-            {filledFor(draft.body, PREVIEW.name)}
+            {words}
           </Text>
           <Text
             size={15}
@@ -49,7 +74,9 @@ function PagePreview({ draft }: { draft: Draft }) {
   );
 }
 
-function EmailNotice() {
+function EmailNotice({ person }: { person: PreviewPerson }) {
+  const notice = noticeFor(person);
+
   return (
     <View style={styles.email}>
       <View style={styles.from}>
@@ -59,14 +86,14 @@ function EmailNotice() {
         </Text>
       </View>
       <Text size={15} weight="bold" style={styles.noticeSubject}>
-        {say.noticeSubject(EVENT, HOSTS)}
+        {notice.subject}
       </Text>
       <Text size={14} weight="medium" style={styles.body}>
-        {`${say.dear(PREVIEW.name)}\n${say.noticeBody(HOSTS, EVENT)}`}
+        {`${say.dear(greetingFor(person))}\n${notice.body}`}
       </Text>
       <View style={styles.readIt}>
         <Text size={14.5} weight="semibold">
-          {W.readOnYourPage}
+          {notice.button}
         </Text>
       </View>
       <Text size={13} weight="medium" style={[styles.secondary, styles.stop]}>
@@ -94,7 +121,9 @@ function SmsNotice() {
   );
 }
 
-function WhatsAppNotice() {
+function WhatsAppNotice({ person }: { person: PreviewPerson }) {
+  const notice = noticeFor(person);
+
   return (
     <View style={styles.sms}>
       <View style={styles.from}>
@@ -105,11 +134,11 @@ function WhatsAppNotice() {
       </View>
       <View style={styles.waCard}>
         <Text size={14.5} weight="medium" style={[styles.body145, styles.waBody]}>
-          {say.noticeBody(HOSTS, EVENT)}
+          {notice.body}
         </Text>
         <View style={styles.waButton}>
           <Text size={14.5} weight="semibold" style={styles.accent}>
-            {W.readOnYourPage}
+            {notice.button}
           </Text>
         </View>
       </View>
@@ -117,45 +146,138 @@ function WhatsAppNotice() {
   );
 }
 
-/** The preview: the page the guest opens, and what Soirely sends by each ticked channel, never the hosts' words. */
-export function Preview({ draft, columns }: { draft: Draft; columns: boolean }) {
+/** While a newly chosen guest's preview is filled in: the words said once, over the page drawn as Sunk shapes. */
+function Filling({ name, columns }: { name: string; columns: boolean }) {
+  const words = sayPreview.filling(name);
+  useReadOut(words);
+
+  return (
+    <View style={styles.filling} testID="messages.preview.filling">
+      <Text size={14.5} weight="medium" style={styles.secondary}>
+        {words}
+      </Text>
+      <View
+        style={columns ? styles.columns : styles.stacked}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      >
+        <View style={[styles.sunkPage, columns && styles.pageColumn]}>
+          <View style={styles.sunkCover} />
+          <View style={styles.sunkFigure}>
+            {[88, 96, 70, 42].map((width) => (
+              <View key={width} style={[styles.sunkBar, { width: `${width}%` }]} />
+            ))}
+          </View>
+        </View>
+        <View style={[styles.sunkNotice, columns && styles.grow]} />
+      </View>
+    </View>
+  );
+}
+
+/** The preview: Preview as, the page the guest opens, and what Soirely sends by each ticked channel, never the hosts' words. */
+export function Preview({
+  draft,
+  columns,
+  phone,
+  as,
+  dispatch,
+}: {
+  draft: Draft;
+  columns: boolean;
+  phone: boolean;
+  as: Previewing;
+  dispatch: (action: Action) => void;
+}) {
+  const person = PREVIEW_PEOPLE[as.who];
+  const control = useRef<ViewInstance>(null);
+  const [at, setAt] = useState<Anchored | null>(null);
+  const set = (previewing: Previewing) => dispatch({ type: 'previewing', previewing });
+
+  useEffect(() => {
+    if (!as.choosing || phone) return undefined;
+    const later = setTimeout(() => anchorAt(control.current, setAt), 300);
+
+    return () => clearTimeout(later);
+  }, [as.choosing, phone]);
+
+  useEffect(() => {
+    if (!as.filling || as.held) return undefined;
+    const done = setTimeout(
+      () => dispatch({ type: 'previewing', previewing: { ...as, filling: false } }),
+      FILLING_MS,
+    );
+
+    return () => clearTimeout(done);
+  }, [as, dispatch]);
+
   const any = draft.channels.email || draft.channels.sms || draft.channels.wa;
   const notices = any ? (
     <View style={styles.notices}>
       <Text size={14} weight="semibold" accessibilityRole="header">
         {W.whatSoirelySends}
       </Text>
-      {draft.channels.email && <EmailNotice />}
+      {draft.channels.email && <EmailNotice person={person} />}
       {draft.channels.sms && <SmsNotice />}
-      {draft.channels.wa && <WhatsAppNotice />}
+      {draft.channels.wa && <WhatsAppNotice person={person} />}
     </View>
   ) : null;
+  let shown: ReactNode;
+  if (as.filling) shown = <Filling name={person.name} columns={columns} />;
+  else if (columns)
+    shown = (
+      <View style={styles.columns}>
+        <View style={styles.pageColumn}>
+          <PagePreview draft={draft} person={person} />
+        </View>
+        <View style={styles.grow}>{notices}</View>
+      </View>
+    );
+  else
+    shown = (
+      <>
+        <PagePreview draft={draft} person={person} />
+        {notices}
+      </>
+    );
 
   return (
     <View style={styles.preview}>
       <Text size={14} weight="semibold" accessibilityRole="header">
-        {`${say.previewAs(PREVIEW.name)} · ${PREVIEW.language}`}
+        {say.previewAs(person.name)}
       </Text>
-      {columns ? (
-        <View style={styles.columns}>
-          <View style={styles.pageColumn}>
-            <PagePreview draft={draft} />
-          </View>
-          <View style={styles.grow}>{notices}</View>
+      <PreviewAsControl
+        ref={control}
+        person={person}
+        phone={phone}
+        open={as.choosing}
+        onOpen={() => set({ ...as, choosing: true })}
+      />
+      {shown}
+      {!as.filling && (
+        <View style={styles.lines}>
+          {previewLines(draft.body, person).map((line) => (
+            <Text key={line} size={13.5} weight="medium" style={[styles.secondary, styles.small]}>
+              {line}
+            </Text>
+          ))}
         </View>
-      ) : (
-        <>
-          <PagePreview draft={draft} />
-          {notices}
-        </>
       )}
-      <View style={styles.lines}>
-        {[say.greetedAs(PREVIEW.name), say.inLanguage(PREVIEW.language), W.onlyOurs].map((line) => (
-          <Text key={line} size={13.5} weight="medium" style={[styles.secondary, styles.small]}>
-            {line}
-          </Text>
-        ))}
-      </View>
+      <PreviewAsChooser
+        open={as.choosing && (phone || at != null)}
+        phone={phone}
+        at={as.choosing ? at : null}
+        shown={as.who}
+        opener={control}
+        onPick={(who) => {
+          setAt(null);
+          set(chosen(as, who));
+        }}
+        onClose={() => {
+          setAt(null);
+          set({ ...as, choosing: false });
+        }}
+      />
     </View>
   );
 }
@@ -247,4 +369,21 @@ const styles = StyleSheet.create({
     borderTopColor: tokens.colorBorder,
   },
   small: { lineHeight: 13.5 * 1.45 },
+  filling: { gap: tokens.spaceMd },
+  stacked: { gap: 14 },
+  sunkPage: {
+    overflow: 'hidden',
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: tokens.colorBorder,
+    backgroundColor: tokens.colorCard,
+  },
+  sunkCover: { height: 112, backgroundColor: tokens.colorNeutralFill },
+  sunkFigure: { gap: tokens.spaceSm, padding: tokens.spaceXl },
+  sunkBar: { height: 14, borderRadius: 7, backgroundColor: tokens.colorNeutralFill },
+  sunkNotice: {
+    height: 150,
+    borderRadius: tokens.spaceXl,
+    backgroundColor: tokens.colorNeutralFill,
+  },
 });

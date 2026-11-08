@@ -1,4 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { init } from 'i18next';
+import { beforeAll, describe, expect, it } from 'vitest';
+
+import en from '../../i18n/locales/en.json';
 
 import {
   type Action,
@@ -40,18 +43,28 @@ import {
   TO_FIGURES,
   TO_ORDER,
   TO_WORD,
-  filledFor,
   piecesOf,
 } from './MessagesSample.ts';
+import { filledAs } from './PreviewModel.ts';
+import { PREVIEW_PEOPLE } from './PreviewSample.ts';
 import { tellChange } from './TellChange.ts';
 import { keepWhole, outsideToken, tokenText } from './TokenText.ts';
 
 const run = (m: Messages, ...actions: Action[]) => actions.reduce(reduce, m);
+
+beforeAll(() =>
+  init({
+    lng: 'en',
+    resources: { en: { translation: en } },
+    interpolation: { escapeValue: false },
+  }),
+);
 const nameOf = (id: RowId) => (id.kind === 'draft' ? id.id : id.key);
 
 describe('the states', () => {
-  it('are the spec’s 42 and the notice’s three, by the names both demos use, §7 then §7b, then sc-32077’s six', () => {
-    expect(MESSAGES_STATES).toHaveLength(51);
+  it('are the spec’s 42, the notice’s three, Who it reached’s eight, sc-32077’s six and sc-3960’s and sc-3963’s, by both demos’ names', () => {
+    expect(MESSAGES_STATES).toHaveLength(72);
+    expect(MESSAGES_STATES.indexOf('tellPlace')).toBe(44);
     expect(MESSAGES_STATES.slice(6, 10)).toEqual([
       'channelReply',
       'noticeCost',
@@ -59,7 +72,7 @@ describe('the states', () => {
       'noticeNotSent',
     ]);
     expect(MESSAGES_STATES.slice(0, 3)).toEqual(['first', 'loading', 'inUse']);
-    expect(MESSAGES_STATES.slice(27)).toEqual([
+    expect(MESSAGES_STATES.slice(27, 59)).toEqual([
       'invitedReached',
       'sentReached',
       'notMatched',
@@ -78,6 +91,14 @@ describe('the states', () => {
       'noSubject',
       'followUp',
       'tellPlace',
+      'added',
+      'addedPhone',
+      'notNow',
+      'told',
+      'filterMenu',
+      'filtered',
+      'resendInvited',
+      'resendSent',
       'nobody',
       'longSubject',
       'longMessage',
@@ -347,14 +368,14 @@ describe('the rest of the flow', () => {
       { token: true, text: 'Greeting' },
       { token: false, text: ', hello' },
     ]);
-    expect(filledFor(`${tokenText('Greeting')}, hello`, 'Kwame Mensah')).toBe(
+    expect(filledAs(`${tokenText('Greeting')}, hello`, PREVIEW_PEOPLE.kwame)).toBe(
       'Kwame Mensah, hello',
     );
   });
 
   it('keeps braces the host types as text, in the field and on the page', () => {
     expect(piecesOf('{Greeting}, hello')).toEqual([{ token: false, text: '{Greeting}, hello' }]);
-    expect(filledFor('{Greeting}, hello', 'Kwame Mensah')).toBe('{Greeting}, hello');
+    expect(filledAs('{Greeting}, hello', PREVIEW_PEOPLE.kwame)).toBe('{Greeting}, hello');
   });
 });
 
@@ -499,8 +520,11 @@ describe('Who it reached', () => {
     expect(fixed.fixed.tomas).toBe('tomas.ferreira@gmail.com');
 
     const again = reduce(fixed, { type: 'sendAgain', key: 'tomas' });
-    expect(again).toMatchObject({ again: { tomas: '09:44' }, said: 'tomas' });
-    expect(startOf('sentAgain', false)).toMatchObject({ again: { tomas: '09:44' }, said: 'tomas' });
+    expect(again).toMatchObject({ again: { 'parking.tomas': '09:44' }, said: 'parking.tomas' });
+    expect(startOf('sentAgain', false)).toMatchObject({
+      again: { 'parking.tomas': '09:44' },
+      said: 'parking.tomas',
+    });
   });
 
   it('opens for an invitation and for a message just sent, and goes back to each', () => {
@@ -828,6 +852,33 @@ describe('sc-32077’s four states', () => {
       { type: 'send' },
     );
     expect(tried.draft?.step).toBe('write');
+  });
+
+  it('refuses an answer on an event that can’t send: nothing on the page, no credits', () => {
+    const ended = startOf('closedEnded', false);
+    const tried = run(ended, { type: 'answer', key: 'lucia', text: 'See you there' });
+    expect(tried.answers).toEqual({});
+    expect(tried.balance).toBe(ended.balance);
+    expect(noticeCostOf(ended, 'lucia')).toBeNull();
+  });
+
+  it('refuses Resend and Send again on an event that can’t send', () => {
+    const ended = startOf('closedEnded', false);
+    expect(run(ended, { type: 'resending', open: true }).resending).toBe(false);
+    expect(run(ended, { type: 'sendAgain', key: 'tomas' }).again).toEqual({});
+  });
+
+  it('keeps no waiting scheduled message on an event that can’t send', () => {
+    expect(startOf('closedEnded', false).kept).toEqual([]);
+    expect(startOf('closedDraft', false).kept).toEqual([]);
+  });
+
+  it('still marks and matches on an event that can’t send: they send nothing', () => {
+    const ended = startOf('closedEnded', false);
+    const done = run(ended, { type: 'markDone', key: 'lucia' });
+    expect(done.done).toContain('lucia');
+    expect(run(done, { type: 'markWaiting', key: 'lucia' }).done).not.toContain('lucia');
+    expect(run(ended, { type: 'match', name: 'Marie Dubois' }).matched).toBe('Marie Dubois');
   });
 
   it('refuses without messages.read: no count', () => {

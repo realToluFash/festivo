@@ -8,8 +8,9 @@ import { SETTLED_MS } from '../../components/Screen.tsx';
 import { moveScreenReaderFocus } from '../../components/screenReaderFocus.ts';
 import type { TextHandle } from '../../components/Text.tsx';
 import { ledEvents } from './MembersHandover.ts';
-import { HandoverAsk, LeadsBlock } from './MembersHandover.tsx';
+import { HandoverAsk, LeadsBlock, LeadsNotIn } from './MembersHandover.tsx';
 import { handedLines, HANDOVER_WORDS } from './MembersHandoverWords.ts';
+import { useLoad } from './MembersLoading.tsx';
 import { RoleScreen, TAKES_EFFECT } from './MembersRole.tsx';
 import {
   changedRole,
@@ -30,6 +31,7 @@ import {
   statusWord,
   whenWord,
 } from './MembersSample.ts';
+import type { Load } from './RolesSample.ts';
 import { useShell } from '../../components/settingsShell.ts';
 import { SummaryPage } from './SummaryPage.tsx';
 import {
@@ -50,6 +52,7 @@ export interface PersonOpening {
   step: PersonStep;
   picked: string | null;
   handover: HandoverStart | null;
+  leadsLoad: Load;
   said: readonly string[] | null;
 }
 
@@ -128,7 +131,9 @@ function PersonBody({
   const offered = offeredFor(people, person.id);
   const handoverStart = askVisit === 0 ? opening.handover : null;
   // Admins see what a suspended member leads (sc-614); a member reads no events of theirs.
-  const showsLeads = suspendedNow && viewer.manages && events.length > 0;
+  const { load: leadsLoad, retry: loadLeads } = useLoad(opening.leadsLoad);
+  const leadsIn = leadsLoad === 'loaded';
+  const showsLeads = suspendedNow && viewer.manages && leadsIn && events.length > 0;
 
   function tell(lines: readonly string[]): void {
     setSaid(lines);
@@ -193,6 +198,9 @@ function PersonBody({
           <OnCard key={line} ref={index === 0 ? firstLine : undefined} text={line} />
         ))}
       </SummaryCard>
+      {suspendedNow && viewer.manages && !leadsIn && (
+        <LeadsNotIn name={person.name} failed={leadsLoad === 'failed'} onRetry={loadLeads} />
+      )}
       {showsLeads && (
         <LeadsBlock
           events={events}

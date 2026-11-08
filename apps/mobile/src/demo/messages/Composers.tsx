@@ -31,11 +31,13 @@ const INK2 = tokens.colorInkSecondary;
 export function SendButton({
   on,
   onPress,
+  why = null,
   ref,
   testID,
 }: {
   on: boolean;
   onPress?: (() => void) | undefined;
+  why?: string | null | undefined;
   ref?: Ref<ViewInstance> | undefined;
   testID: string;
 }) {
@@ -46,7 +48,7 @@ export function SendButton({
       disabled={!on}
       style={({ pressed }) => [styles.send, !on && styles.sendOff, pressed && styles.pressed]}
       accessibilityRole="button"
-      accessibilityLabel={W.send}
+      accessibilityLabel={why == null ? W.send : `${W.send}, ${why}`}
       accessibilityState={{ disabled: !on }}
       testID={testID}
     >
@@ -424,6 +426,7 @@ export function AnswerBox({
   others = [],
   value,
   autoFocus = false,
+  reason = null,
   fieldRef,
   onChange,
   onTellBy,
@@ -435,16 +438,19 @@ export function AnswerBox({
   others?: readonly ChannelKey[];
   value: string;
   autoFocus?: boolean;
+  reason?: string | null | undefined;
   fieldRef?: RefObject<TextInputInstance | null>;
   onChange: (text: string) => void;
   onTellBy?: (channel: ChannelKey) => void;
   onSend: () => void;
 }) {
-  const on = value.trim() !== '';
+  const closed = reason != null;
+  const on = !closed && value.trim() !== '';
   const [focused, setFocused] = useState(false);
 
   return (
     <View style={styles.answer}>
+      {closed && <WhyNot words={reason} />}
       <View style={styles.answerLine}>
         <View style={styles.markTop}>
           <MessageGlyph name="page" size={15} ink={INK2} />
@@ -512,15 +518,17 @@ export function AnswerBox({
           onBlur={() => setFocused(false)}
           placeholder={W.writeYourAnswer}
           multiline
-          autoFocus={autoFocus}
+          editable={!closed}
+          autoFocus={autoFocus && !closed}
           autoCorrect
           spellCheck
           autoCapitalize="sentences"
           style={[styles.answerField, focused && styles.answerFieldOn]}
-          accessibilityLabel={W.writeYourAnswer}
+          accessibilityLabel={closed ? `${W.writeYourAnswer}, ${reason}` : W.writeYourAnswer}
+          accessibilityState={{ disabled: closed }}
           testID="messages.answer"
         />
-        <SendButton on={on} onPress={onSend} testID="messages.answer.send" />
+        <SendButton on={on} onPress={onSend} why={reason} testID="messages.answer.send" />
       </View>
     </View>
   );
@@ -572,7 +580,7 @@ export function MiniComposer({
   );
 }
 
-/** Why New is unavailable: the mark and the reason, in the secondary ink, never colour alone. */
+/** Why nothing can be sent: the mark and the reason, in the secondary ink, never colour alone. */
 export function WhyNot({ words }: { words: string }) {
   return (
     <View style={styles.whyNot} testID="messages.closed">

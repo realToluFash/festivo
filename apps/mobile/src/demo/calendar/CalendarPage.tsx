@@ -36,7 +36,7 @@ import { motionEase } from '../../motion.ts';
 import { useReducedMotion } from '../../reducedMotion.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { SAMPLE } from '../samples.ts';
-import { CardPieces } from '../events/EventCard.tsx';
+import { CardPieces } from '../../components/EventCard.tsx';
 import { openEvent } from '../events/EventsList.tsx';
 import { CLOCKS, EVENT_OF_KEY, READER_ZONE } from '../events/EventsSample.ts';
 import { W } from '../events/EventsWords.ts';

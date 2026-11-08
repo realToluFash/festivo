@@ -2,7 +2,7 @@ import { type RefObject, useEffect, useRef, useState } from 'react';
 
 import type { SampleEvent } from './events.ts';
 import type { Handed } from './handover.ts';
-import { LeadsBlock } from './Handover.tsx';
+import { LeadsBlock, LeadsNotIn } from './Handover.tsx';
 import { focusWhenFree } from '../layers.ts';
 import {
   firstName,
@@ -59,6 +59,8 @@ export function PersonPage({
   onSuspend,
   onRemove,
   onHandOver,
+  leadsLoad,
+  onLoadLeads,
 }: {
   person: Person;
   people: readonly Person[];
@@ -74,13 +76,16 @@ export function PersonPage({
   onSuspend: () => void;
   onRemove: () => void;
   onHandOver: () => void;
+  leadsLoad: 'loaded' | 'loading' | 'failed' | 'retrying';
+  onLoadLeads: () => void;
 }) {
   const view = personView({ person, people, viewer, event, handed, say });
   const tag = tagOf(person);
   const Name = level === 1 ? 'h1' : 'h2';
   const said = useRef<HTMLDivElement>(null);
   const lines = view.lines.map((line) => <OnCard key={line}>{line}</OnCard>);
-  const leads = suspended(person.status) && viewer.manages && events.length > 0;
+  const seesLeads = suspended(person.status) && viewer.manages;
+  const leads = seesLeads && leadsLoad === 'loaded' && events.length > 0;
 
   useEffect(() => {
     if (event === 'handedOver') focusWhenFree(() => said.current);
@@ -121,6 +126,9 @@ export function PersonPage({
           />
         )}
       </Card>
+      {seesLeads && leadsLoad !== 'loaded' && (
+        <LeadsNotIn name={person.name} failed={leadsLoad === 'failed'} onRetry={onLoadLeads} />
+      )}
       {leads && <LeadsBlock events={events} onHandOver={view.handOver ? onHandOver : null} />}
       {view.kept && <Note>{ROLE_KEPT}</Note>}
       <section className="desk-block">

@@ -72,7 +72,7 @@ describe('the guest’s own page, A · The cover card (sc-31306)', () => {
     );
 
     expect(guestLinks).toEqual(GUEST_PAGES.flatMap((one) => one.states).map((one) => one.to));
-    expect(guestLinks).toHaveLength(54);
+    expect(guestLinks).toHaveLength(62);
   });
 
   it('opens on the cover card: the invitation, the guest, the event, when and where', async () => {
@@ -126,6 +126,17 @@ const SAYS: [string, () => void][] = [
   ['comingAlone', () => screen.getByText('A screenshot works too.')],
   ['notComing', () => screen.getByRole('heading', { name: `We’ll miss you, ${NAME}.` })],
   ['notSure', () => screen.getByText('Your companions are on hold until you decide.')],
+  [
+    'hostRecorded',
+    () =>
+      screen.getByText(
+        'Folake Adeyemi recorded this answer for you on Tuesday, October 20. If it isn’t right, change it here.',
+      ),
+  ],
+  [
+    'hostRecordedMaybe',
+    () => screen.getByRole('heading', { name: 'Your answer is Not sure yet.' }),
+  ],
   ['changing', () => screen.getByRole('heading', { name: 'Your new answer' })],
   ['sameAnswer', () => screen.getByText('You’re already down as Coming. Nothing has changed.')],
   ['unsentReturn', () => screen.getByRole('status', { name: '' })],
@@ -134,6 +145,24 @@ const SAYS: [string, () => void][] = [
     () => screen.getByRole('button', { name: 'Update what the kitchen should know' }),
   ],
   ['replyByClosedNotSure', () => screen.getByText(/if you can still come\.$/u)],
+  [
+    'replyByClosedNotComing',
+    () => screen.getByRole('heading', { name: 'You answered Not coming on Tuesday, October 27.' }),
+  ],
+  [
+    'replyByClosedNever',
+    () =>
+      screen.getByText(
+        'Answers closed on Friday, October 30. Contact your host if you can still come.',
+      ),
+  ],
+  ['replyByClosedRecorded', () => screen.getByRole('heading', { name: 'Your answer is Coming.' })],
+  ['replyByClosedKitchen', () => screen.getByRole('button', { name: 'Save' })],
+  [
+    'replyByClosedNotSaved',
+    () => screen.getByText('Not saved. Check your connection and try again.'),
+  ],
+  ['replyByClosedSaved', () => screen.getByText('Saved. The kitchen will see this.')],
   ['closedRefused', () => screen.getByText(/^Answers closed before this was sent\./u)],
   [
     'closed',
@@ -201,6 +230,86 @@ describe('every state, deep-linked by ?state=', () => {
     await guest(state);
 
     says();
+  });
+});
+
+describe('a reply a host recorded (sc-3787)', () => {
+  it('reads as the guest’s own, names only the recorder, and drops it once they answer themselves', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    await guest('hostRecordedMaybe');
+    const said =
+      'Folake Adeyemi recorded this answer for you on Tuesday, October 20. If it isn’t right, change it here.';
+
+    expect(document.activeElement).toBe(
+      screen.getByRole('heading', { name: 'Your answer is Not sure yet.' }),
+    );
+    expect(screen.getByText(said)).toBeDefined();
+    expect(screen.queryByText(/^You answered/u)).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Change my answer' }));
+    expect(screen.getByText('Your answer is Not sure yet.')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: /^I’m not sure yet/u }));
+    await wait();
+
+    expect(
+      screen.getByRole('heading', { name: `Thanks for letting us know, ${NAME}.` }),
+    ).toBeDefined();
+    expect(screen.getByText('You answered Not sure yet on Tuesday, October 27.')).toBeDefined();
+    expect(screen.queryByText(said)).toBeNull();
+    expect(screen.queryByText(/already down as/u)).toBeNull();
+  });
+
+  it('keeps the door code and Add to calendar for a recorded Coming', async () => {
+    await guest('hostRecorded');
+
+    expect(screen.getByRole('heading', { name: 'Your answer is Coming.' })).toBeDefined();
+    expect(screen.getByRole('heading', { name: 'Show this at the door' })).toBeDefined();
+    expect(screen.getByRole('heading', { name: 'Add to calendar' })).toBeDefined();
+  });
+});
+
+describe('after the date to answer by, an answer a host recorded (sc-3780, ux 8 Nov)', () => {
+  it('keeps “Your answer is Coming.” with who recorded it, never “You answered”', async () => {
+    await guest('replyByClosedRecorded');
+
+    expect(screen.getByRole('heading', { name: 'Your answer is Coming.' })).toBeDefined();
+    expect(
+      screen.getByText('Folake Adeyemi recorded this answer for you on Tuesday, October 20.'),
+    ).toBeDefined();
+    expect(screen.queryByText(/^You answered/u)).toBeNull();
+    expect(
+      screen.getByText(
+        'Answers closed on Friday, October 30. Contact your host if something has changed.',
+      ),
+    ).toBeDefined();
+    expect(
+      screen.getByRole('button', { name: 'Update what the kitchen should know' }),
+    ).toBeDefined();
+  });
+});
+
+describe('after the date to answer by, every answer (sc-3780)', () => {
+  it.each([
+    [
+      'replyByClosedNotComing',
+      'You answered Not coming on Tuesday, October 27.',
+      'Answers closed on Friday, October 30. Contact your host if something has changed.',
+    ],
+    [
+      'replyByClosedNever',
+      'You didn’t answer.',
+      'Answers closed on Friday, October 30. Contact your host if you can still come.',
+    ],
+  ])('%s: the heading and its line, no answer, no kitchen, no code', async (state, head, line) => {
+    await guest(state);
+
+    expect(screen.getByRole('heading', { name: head })).toBeDefined();
+    expect(screen.getByText(line)).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Change my answer' })).toBeNull();
+    expect(
+      screen.queryByRole('button', { name: 'Update what the kitchen should know' }),
+    ).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Show this at the door' })).toBeNull();
   });
 });
 

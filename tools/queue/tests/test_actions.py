@@ -420,12 +420,23 @@ class DemoFirst(Base):
             actions.claim(self.as_("dev"), args(story="sc-1"))
         self.assertEqual(self.state(1), "In Progress")
 
-    def test_one_merged_demo_on_a_line_naming_both_clients_is_enough(self):
+    def test_a_demo_half_merged_across_the_clients_is_refused(self):
         self.drawn("**Demo:** the app's `It` · PR #1387. The web's `It` · PR #1385")
         states = {1387: {"state": "MERGED"}, 1385: {"state": "OPEN"}}
+        self.refused(r"its demo #1385 is not merged yet",
+                     mock.patch("soirely_queue.github.live", side_effect=states.get))
+
+    def test_a_demo_merged_across_both_clients_is_claimed(self):
+        self.drawn("**Demo:** the app's `It` · PR #1387. The web's `It` · PR #1385")
+        states = {1387: {"state": "MERGED"}, 1385: {"state": "MERGED"}}
         with mock.patch("soirely_queue.github.live", side_effect=states.get):
             actions.claim(self.as_("dev"), args(story="sc-1"))
         self.assertEqual(self.state(1), "In Progress")
+
+    def test_a_demo_only_ever_closed_is_refused(self):
+        self.drawn("**Demo:** `It` in the app's demo · PR #1386")
+        self.refused("#1386 was closed without merging",
+                     mock.patch("soirely_queue.github.live", return_value={"state": "CLOSED"}))
 
     def test_a_story_with_no_design_section_is_claimed_without_asking_github(self):
         self.fake.add(1, "Ready For Dev")
@@ -453,6 +464,45 @@ class DemoFirst(Base):
         self.drawn("**Demo:** none merged yet · PR #1386")
         self.refused("#1386 is not merged yet",
                      mock.patch("soirely_queue.github.live", return_value={"state": "OPEN"}))
+
+    def test_the_designer_moves_no_story_on_while_its_demo_is_half_merged(self):
+        self.drawn("**Demo:** the app's `It` · PR #1387. The web's `It` · PR #1385")
+        self.fake.update(1, workflow_state_id=IDS["Needs Design"])
+        states = {1387: {"state": "MERGED"}, 1385: {"state": "OPEN"}}
+        with mock.patch("soirely_queue.github.live", side_effect=states.get), \
+                self.assertRaisesRegex(actions.Refused, "its demo #1385 is not merged yet"):
+            actions.move(self.as_("ux"), args(story="sc-1", state="Ready For Dev"))
+        self.assertEqual(self.state(1), "Needs Design")
+
+    def test_the_designer_moves_a_story_on_once_its_demo_has_merged(self):
+        self.drawn("**Demo:** the app's `It` · PR #1387. The web's `It` · PR #1385")
+        self.fake.update(1, workflow_state_id=IDS["Needs Design"])
+        states = {1387: {"state": "MERGED"}, 1385: {"state": "MERGED"}}
+        with mock.patch("soirely_queue.github.live", side_effect=states.get):
+            actions.move(self.as_("ux"), args(story="sc-1", state="Ready For Dev"))
+        self.assertEqual(self.state(1), "Ready For Dev")
+
+    def test_the_designer_hears_the_from_state_before_the_demo(self):
+        self.drawn("**Demo:** being built.")
+        self.fake.update(1, workflow_state_id=IDS["Backlog"])
+        with mock.patch("soirely_queue.github.live", side_effect=AssertionError), \
+                self.assertRaisesRegex(actions.Refused, "only from Needs Design"):
+            actions.move(self.as_("ux"), args(story="sc-1", state="Ready For Dev"))
+        self.assertEqual(self.state(1), "Backlog")
+
+    def test_the_designer_leaves_a_story_already_ready_without_asking_github(self):
+        self.drawn("**Demo:** the app's `It` · PR #1387")
+        self.fake.update(1, workflow_state_id=IDS["Ready For Dev"])
+        with mock.patch("soirely_queue.github.live", side_effect=AssertionError):
+            actions.move(self.as_("ux"), args(story="sc-1", state="Ready For Dev"))
+        self.assertEqual(self.state(1), "Ready For Dev")
+
+    def test_the_product_manager_still_moves_a_story_on_without_its_demo(self):
+        self.drawn("**Demo:** being built.")
+        self.fake.update(1, workflow_state_id=IDS["Needs Design"])
+        with mock.patch("soirely_queue.github.live", side_effect=AssertionError):
+            actions.move(self.as_("pm"), args(story="sc-1", state="Ready For Dev"))
+        self.assertEqual(self.state(1), "Ready For Dev")
 
     def test_rework_is_claimed_whatever_its_demo_line_says(self):
         self.drawn("**Demo:** being built.")
