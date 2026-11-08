@@ -119,11 +119,11 @@ export function EventsHome({
     <View style={styles.blocks}>
       <EventsTabs tab={tab} counts={counts} onTab={onTab} />
       {events.length === 0 && (
-        <View style={styles.empty}>
-          <Text size={tokens.typeRowTitle.size} weight="semibold" accessibilityRole="header">
+        <View style={styles.empty} testID={`events.empty.${tab}`}>
+          <Text size={18} weight="bold" accessibilityRole="header" style={styles.emptyTitle}>
             {t(EMPTY[tab].title)}
           </Text>
-          <Text size={tokens.typeBody.size} muted style={styles.centred}>
+          <Text size={15} weight="medium" style={styles.emptyLine}>
             {t(EMPTY[tab].line)}
           </Text>
         </View>
@@ -186,15 +186,7 @@ export function EventsHome({
 
 const styles = StyleSheet.create({
   blocks: { gap: 18 },
-  empty: {
-    alignItems: 'center',
-    gap: tokens.spaceXs,
-    paddingVertical: tokens.space5xl,
-    paddingHorizontal: 18,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: tokens.colorBorder,
-    borderRadius: tokens.radiusCardLarge,
-  },
-  centred: { textAlign: 'center' },
+  empty: { gap: tokens.spaceXs, paddingTop: tokens.spaceXxs },
+  emptyTitle: { letterSpacing: -0.18, lineHeight: 18 * 1.25 },
+  emptyLine: { color: tokens.colorInkSecondary, lineHeight: 15 * 1.45 },
 });

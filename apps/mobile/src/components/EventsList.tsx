@@ -130,7 +130,7 @@ function TabWords({ tab, on, count }: { tab: ListTab; on: boolean; count: number
   );
 }
 
-/** No events yet: the cover card that starts the first one, then the three steps it takes. */
+/** No events yet: the cover card that starts the first one, or the ask-an-owner Notice under it, then the three steps. */
 export function EventsFirstRun({
   wide,
   onCreate,
@@ -165,13 +165,6 @@ export function EventsFirstRun({
           </View>
         )}
       </SummaryCard>
-      <RowList
-        items={FIRST_RUN_STEPS.map((step, index) => ({
-          key: step,
-          inset: 52,
-          row: <Row title={t(step)} lead={<StepTile n={index + 1} />} />,
-        }))}
-      />
       {onCreate == null && (
         <Notice
           tone="quiet"
@@ -179,6 +172,13 @@ export function EventsFirstRun({
           body={t('eventsScreen.firstRunAskOwner')}
         />
       )}
+      <RowList
+        items={FIRST_RUN_STEPS.map((step, index) => ({
+          key: step,
+          inset: 52,
+          row: <Row title={t(step)} lead={<StepTile n={index + 1} />} />,
+        }))}
+      />
     </>
   );
 }
