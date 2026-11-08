@@ -3,6 +3,8 @@ import { type ReactNode, useEffect } from 'react';
 // eslint-disable-next-line no-restricted-syntax
 import { Pressable, Text as PlainText, StyleSheet, View } from 'react-native';
 
+import { appleIosSize } from '../../components/appleIosSize.ts';
+import { CONTROL_TEXT_SIZE } from '../../components/Field.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
 import { Text } from '../../components/Text.tsx';
 import { brand } from '../../theme/brand.ts';
@@ -16,6 +18,7 @@ import { closeBoldTextBoard, openBoldTextBoard, useBoldText } from './boldTextSt
 
 const APPLE = 'Continue with Apple';
 const GOOGLE = 'Continue with Google';
+const APPLE_IOS_TEXT = appleIosSize(CONTROL_TEXT_SIZE).text;
 
 /** The weight map as a specimen, and the screens QA checks: every text on them follows the switch. */
 export function BoldTextScreen({ startOn }: { startOn: boolean }) {
@@ -179,8 +182,8 @@ const styles = StyleSheet.create({
   columns: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spaceLg },
   column: { flexGrow: 1, flexBasis: 240, gap: tokens.spaceXs },
   sample: { color: tokens.colorInk },
-  systemMedium: { fontSize: 16, fontWeight: '500' },
-  systemBold: { fontSize: 16, fontWeight: '700' },
+  systemMedium: { fontSize: APPLE_IOS_TEXT, fontWeight: '500' },
+  systemBold: { fontSize: APPLE_IOS_TEXT, fontWeight: '700' },
   secondary: { color: tokens.colorInkSecondary },
   screens: {
     marginTop: tokens.space3xl,
