@@ -69,6 +69,9 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   «Mostrar los {{count}}». "Their conversation" es «Conversación», sin posesivo: «su» se lee
   como usted. Por lo mismo, en el 412 "Theirs · Yours" es «Versión guardada · Su versión», y los
   botones «Usar la guardada» y «Mantener la mía».
+  El cierre (#32762): «El plazo para responder termina hoy.», «… termina mañana, {{date}}.»,
+  «… termina el {{date}}.», «El plazo para responder terminó el {{date}}.». Sin nadie por
+  responder: «Ya han respondido todos.».
 
 - **7 Nov 2026. La pantalla Hoy de la app** (`mobile:todayScreen.*`, sc-31788 para sc-29090).
   "Live now" y "Live · …" son «En curso», como `eventsScreen.happeningNow`, nunca «Publicado»,

@@ -90,6 +90,9 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   "Yours", **Use theirs** and **Keep mine**: "Use theirs fills the form with their version and
   drops your changes. Keep mine saves your changes over theirs." Each count is its own plural
   key, and "Replies close" has a whole sentence per case (today, tomorrow, on a date, closed).
+  When replies close (#32762): "Replies close today." with no date, "Replies close tomorrow,
+  {{date}}.", "Replies close on {{date}}.", "Replies closed on {{date}}.", the day reckoned in
+  the event's zone. Nobody left to reply is "Everyone has replied.", companions included.
 
 - **8 Nov 2026. A payment schedule's shape fields, its sums and its failed save** (sc-1332,
   pm's #32327 from ux's demo, sc-31779 #1485). Field labels: "Percentage of the quote" (won
