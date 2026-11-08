@@ -5,9 +5,11 @@ import { Icon } from './SeatingGlyph.tsx';
 import {
   type Item,
   type Plan,
-  AS_OF,
   CHAIR_R,
-  EVENT_DATE,
+  EVENT_DAY,
+  MADE_AT,
+  asOf,
+  eventDay,
   EVENT_NAME,
   SEATING_AT,
   SW,
@@ -188,6 +190,11 @@ export function PrintPanel({ onClose }: { onClose: () => void }) {
   );
 }
 
+/** The reader's locale, as the browser gives it; dates on paper follow it (CLDR). */
+function readerLocale(): string {
+  return navigator.language === '' ? 'en-US' : navigator.language;
+}
+
 const A4: readonly [number, number] = [595, 842];
 const LETTER: readonly [number, number] = [612, 792];
 
@@ -197,10 +204,14 @@ function PaperHead({ doc }: { doc: string }) {
       <div>
         <h1>{doc}</h1>
         <p>
-          {say(SW.paperHead, { event: EVENT_NAME, date: EVENT_DATE, venue: `${VENUE}, ${CITY}` })}
+          {say(SW.paperHead, {
+            event: EVENT_NAME,
+            date: eventDay(EVENT_DAY, readerLocale()),
+            venue: `${VENUE}, ${CITY}`,
+          })}
         </p>
       </div>
-      <p className="sp-as-of">{say(SW.asOf, { when: AS_OF })}</p>
+      <p className="sp-as-of">{say(SW.asOf, { when: asOf(MADE_AT, readerLocale()) })}</p>
     </header>
   );
 }
@@ -513,7 +524,7 @@ function CardSheet({ name, page }: { name: string; page: string }) {
       <footer className="sp-foot is-card">
         <span className="sp-file">
           {say(SW.paperFile, { event: EVENT_NAME, document: SW.tableCards, ext: 'pdf' })} ·{' '}
-          {say(SW.asOf, { when: AS_OF })}
+          {say(SW.asOf, { when: asOf(MADE_AT, readerLocale()) })}
         </span>
         <span>{page}</span>
       </footer>

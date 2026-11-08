@@ -2,6 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 import {
   type Item,
+  EVENT_DAY,
+  MADE_AT,
+  asOf,
+  eventDay,
   SEATING_PAGES,
   SEATING_STATES,
   SW,
@@ -244,6 +248,14 @@ describe('sizes in the organisation’s units', () => {
     expect(readRoom('', 'length')).toEqual({ refused: SW.enterLength });
     expect(readRoom('1.5', 'width')).toEqual({ refused: SW.roomRange });
     expect(readRoom('24', 'width')).toEqual({ cm: 2400 });
+  });
+});
+
+describe('dates on paper (sc-4024)', () => {
+  it('says when a document was made in the reader’s locale, on the 24-hour clock', () => {
+    expect(asOf(MADE_AT, 'en-US')).toBe('Tuesday, Nov 3, 16:05');
+    expect(asOf(MADE_AT, 'en-GB')).toBe('Tuesday 3 Nov, 16:05');
+    expect(eventDay(EVENT_DAY, 'en-US')).toBe('Thursday, Nov 5, 2026');
   });
 });
 

@@ -1,41 +1,13 @@
+import { demoWords } from './demoWords.ts';
 import { SW } from './seatingWords.ts';
 import type { DemoLink } from './settings.ts';
 
 /** Seating · A · The room (page e31, board/seating-a-spec.md): the sample, the room's geometry and the plan's rules; the words are in seatingWords.ts. */
 export { SW };
 
-type Words = typeof SW;
-type PluralBase = {
-  [K in keyof Words]: K extends `${infer Base}_one` ? Base : never;
-}[keyof Words];
+const WORDS = demoWords(SW, { listLocale: 'en-GB' });
 
-const NUMBER = new Intl.NumberFormat('en-US');
-const PLURAL = new Intl.PluralRules('en-US');
-const LIST = new Intl.ListFormat('en-GB', { style: 'long', type: 'conjunction' });
-
-export function say(words: string, slots: Readonly<Record<string, string | number>> = {}): string {
-  return words.replaceAll(/\{\{(\w+)\}\}/gu, (whole, slot: string) => {
-    const value = slots[slot];
-
-    if (value == null) return whole;
-
-    return typeof value === 'number' ? NUMBER.format(value) : value;
-  });
-}
-
-export function many(
-  base: PluralBase,
-  count: number,
-  slots: Readonly<Record<string, string | number>> = {},
-): string {
-  const form = PLURAL.select(count) === 'one' ? 'one' : 'other';
-
-  return say(SW[`${base}_${form}`], { count, ...slots });
-}
-
-export function listed(words: readonly string[]): string {
-  return LIST.format(words);
-}
+export const { filled: say, many, listed } = WORDS;
 
 export type Kind = 'round' | 'rect' | 'head' | 'cocktail' | 'row' | 'single';
 export type ChairState = 'taken' | 'held' | 'empty' | 'unusable';
@@ -118,8 +90,37 @@ export const EVENT_NAME = 'Adaeze & Tunde’s wedding';
 export const VENUE = 'The Landmark';
 export const CITY = 'London';
 export const ORGANISATION = 'Ire Events';
-export const EVENT_DATE = 'Thursday, Nov 5, 2026';
-export const AS_OF = 'Tuesday, Nov 3, 16:05';
+export const EVENT_DAY = '2026-11-05T17:00:00Z';
+export const MADE_AT = '2026-11-03T16:05:00Z';
+export const TIME_ZONE = 'Europe/London';
+
+export function eventDay(iso: string, locale: string, timeZone = TIME_ZONE): string {
+  return new Intl.DateTimeFormat(locale, {
+    weekday: 'long',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    timeZone,
+  }).format(new Date(iso));
+}
+
+/** When a document was made (sc-4024): the reader's date and the 24-hour time (sc-30243), "Tuesday, Nov 3, 16:05" in en-US. */
+export function asOf(iso: string, locale: string, timeZone = TIME_ZONE): string {
+  const day = new Intl.DateTimeFormat(locale, {
+    weekday: 'long',
+    month: 'short',
+    day: 'numeric',
+    timeZone,
+  }).format(new Date(iso));
+  const time = new Intl.DateTimeFormat(locale, {
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+    timeZone,
+  }).format(new Date(iso));
+
+  return `${day}, ${time}`;
+}
 export const ROOM: Room = { name: 'Main hall', w: 2400, l: 1800 };
 
 export const YOU: Person = { name: 'Folake Adeyemi', initials: 'FA', tone: 2, viewer: false };
@@ -814,7 +815,6 @@ export function sizeWords(item: Item): string {
   return isRound(item) ? `${item.d ?? 0} cm` : `${item.w ?? 0} × ${item.l ?? 0} cm`;
 }
 
-/** Reads "12′ 4″", "12 ft 4 in", "12.5 ft" or "148 in" (sc-5028, US customary); null when it can't be read. */
 export function readFeet(text: string): number | null {
   const typed = text
     .trim()

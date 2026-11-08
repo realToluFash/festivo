@@ -104,6 +104,41 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+describe('nothing leaves the demo', () => {
+  it(
+    'sends nothing to the API while a table changes, a party is seated and a document is made',
+    SLOW,
+    async () => {
+      const fetched = vi.spyOn(globalThis, 'fetch');
+
+      await seating('tapChooses');
+      typeIn('Seats', '12');
+      expect(await within(panel()).findByDisplayValue('12')).toBeDefined();
+      key(item(/^Table 4,/u), 'Escape');
+      fireEvent.click(screen.getByRole('tab', { name: 'Seat' }));
+      fireEvent.click(within(panel()).getByRole('button', { name: /^Kwame Mensah \+ 1/u }));
+      press(item(/^Table 8,/u));
+      expect(await screen.findByText('Kwame Mensah and 1 guest are at Table 8.')).toBeDefined();
+      fireEvent.click(screen.getByRole('button', { name: 'Print' }));
+      fireEvent.click(
+        within(screen.getByRole('dialog', { name: 'Print' })).getByRole('button', {
+          name: 'Table lists, PDF',
+        }),
+      );
+      expect(
+        await screen.findByRole(
+          'link',
+          { name: 'Adaeze & Tunde’s wedding – Table lists.pdf' },
+          { timeout: 4000 },
+        ),
+      ).toBeDefined();
+
+      expect(fetched).not.toHaveBeenCalled();
+      fetched.mockRestore();
+    },
+  );
+});
+
 describe('the plan and the room (sc-3998, sc-4007)', () => {
   it('links every state from the demo’s home, under page 31', SLOW, async () => {
     open('/demo');
