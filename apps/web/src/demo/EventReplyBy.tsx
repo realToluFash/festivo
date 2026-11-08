@@ -1,3 +1,4 @@
+import { formatWallDay } from '@soirely/domain';
 import { useEffect, useId, useRef, useState } from 'react';
 
 import { type EditState, type SampleEvent, EVENT_WORDS as W } from './events.ts';
@@ -6,15 +7,15 @@ import { dayOf, wordsFor } from './guest.ts';
 import {
   REPLY_BY_WORDS as R,
   type ReplyByCheck,
-  noReplyOf,
+  haventRepliedOf,
   replyByCheck,
-  shortDay,
   showsPreview,
 } from './replyBy.ts';
 import { Glyph } from '../components/Glyph.tsx';
 import { Ask, TextAction } from '../components/SettingsParts.tsx';
 
 const GUEST_WORDS = wordsFor('en');
+const LOCALE = 'en-US';
 
 /** What each state has typed into the field, over the event's own date. */
 function typedFor(state: EditState | null, was: string | null): string {
@@ -138,11 +139,11 @@ export function ReplyByPart({
         <Ask
           title={
             asking === 'sooner'
-              ? R.soonerTitle(shortDay(next), R.who(noReplyOf(event.id)))
-              : R.nowTitle(R.who(noReplyOf(event.id)))
+              ? R.soonerTitle(formatWallDay(next, LOCALE), haventRepliedOf(event.id))
+              : R.nowTitle(haventRepliedOf(event.id))
           }
           line={asking === 'sooner' ? R.soonerLine : R.nowLine}
-          keep={replyBy == null ? W.cancel : R.keep(shortDay(replyBy))}
+          keep={replyBy == null ? W.cancel : R.keep(formatWallDay(replyBy, LOCALE))}
           go={asking === 'sooner' ? R.sooner : R.now}
           red={false}
           onKeep={() => setAsking(null)}

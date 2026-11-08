@@ -81,9 +81,6 @@ export function landed(was: Visit): Partial<Visit> {
   }
   const record = saved(kitchen, TODAY);
   const kept = { ...kitchen, record, people: fromRecord(record), tried: false, alert: null };
-  if (kitchen.from === 'closed') {
-    return { view: { kind: 'closed' }, kitchen: { ...kept, saved: true }, ...focus('kitchen') };
-  }
   const coming = sameAnswer(was.recorded, 'coming');
 
   return {

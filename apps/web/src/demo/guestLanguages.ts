@@ -20,6 +20,7 @@ const FRENCH: Samples = {
   downNotSure: '[Vous êtes noté comme pas encore sûr.]',
   recordedFor:
     '[{{name}} a enregistré cette réponse pour vous le {{date}}. Si elle n’est pas exacte, modifiez-la ici.]',
+  recordedOn: '[{{name}} a enregistré cette réponse pour vous le {{date}}.]',
   greetComing: '[À bientôt, {{name}}.]',
   greetNotComing: '[Vous allez nous manquer, {{name}}.]',
   greetNotSure: '[Merci de nous avoir prévenus, {{name}}.]',
@@ -66,6 +67,7 @@ const PORTUGUESE: Samples = {
   downNotSure: '[Está registado como ainda não sabe.]',
   recordedFor:
     '[{{name}} registou esta resposta por si a {{date}}. Se não estiver certa, altere-a aqui.]',
+  recordedOn: '[{{name}} registou esta resposta por si a {{date}}.]',
   greetComing: '[Até breve, {{name}}.]',
   greetNotComing: '[Vamos sentir a sua falta, {{name}}.]',
   greetNotSure: '[Obrigado por nos avisar, {{name}}.]',
@@ -112,6 +114,7 @@ const SPANISH: Samples = {
   downNotSure: '[Consta que aún no lo sabe.]',
   recordedFor:
     '[{{name}} registró esta respuesta por usted el {{date}}. Si no es correcta, cámbiela aquí.]',
+  recordedOn: '[{{name}} registró esta respuesta por usted el {{date}}.]',
   greetComing: '[Hasta pronto, {{name}}.]',
   greetNotComing: '[Le echaremos de menos, {{name}}.]',
   greetNotSure: '[Gracias por avisarnos, {{name}}.]',

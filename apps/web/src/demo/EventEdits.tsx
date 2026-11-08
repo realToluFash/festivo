@@ -13,6 +13,7 @@ import {
   keepsLastHost,
   positionPart,
   startMoved,
+  formatWallDay,
 } from '@soirely/domain';
 import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
 
@@ -34,6 +35,7 @@ import {
   wallOf,
 } from './events.ts';
 import { writtenTime } from './clock.ts';
+import { REPLY_BY_WORDS, replyByAfterStart } from './replyBy.ts';
 import { Alert, Broken, NotBuilt, Quiet } from './EventParts.tsx';
 import { Glyph } from '../components/Glyph.tsx';
 import { Ask, RedAction, RowWords, TextAction } from '../components/SettingsParts.tsx';
@@ -47,6 +49,8 @@ export interface PartProps {
   onClose: () => void;
   onSave: (next: SampleEvent) => void;
   onLatest: (latest: SampleEvent) => void;
+  /** sc-3780: Dates says before saving when a new start moves the event's Reply by. */
+  replyBy?: string | null;
 }
 
 /** An edit open in place at a desk: under a 2 px Violet rule, the part's fields, then Cancel and Save, Save in Ink 3 until something changes. */
@@ -286,7 +290,15 @@ const MOVED = (key: string, values?: Record<string, string | number>) =>
     : key;
 
 /** Dates: when it starts and ends in its zone; a new start carries the end with it. */
-export function DatesPart({ event, state, onDirty, onClose, onSave, onLatest }: PartProps) {
+export function DatesPart({
+  event,
+  state,
+  onDirty,
+  onClose,
+  onSave,
+  onLatest,
+  replyBy = null,
+}: PartProps) {
   const moved = state !== 'dates';
   const startWall = wallOf(event.startsAt, event.timeZone);
   const endWall = wallOf(event.endsAt, event.timeZone);
@@ -324,6 +336,7 @@ export function DatesPart({ event, state, onDirty, onClose, onSave, onLatest }: 
   const startsAt = instantOf(start.date, start.time, zone);
   const endsAt = instantOf(end.date, end.time, zone);
   const backwards = startsAt != null && endsAt != null && endsAt < startsAt;
+  const replyMoved = startsAt == null ? null : replyByAfterStart(replyBy, startsAt, zone);
   const changed =
     start.date !== startWall.date ||
     start.time !== startWall.time ||
@@ -371,6 +384,14 @@ export function DatesPart({ event, state, onDirty, onClose, onSave, onLatest }: 
       }}
     >
       <DateTime legend={W.starts} wall={start} onChange={moveStart} />
+      {replyMoved != null && replyBy != null && (
+        <p className="ev-said" role="status">
+          {REPLY_BY_WORDS.startMoves(
+            formatWallDay(replyBy, LOCALE),
+            formatWallDay(replyMoved, LOCALE),
+          )}
+        </p>
+      )}
       <DateTime
         legend={W.ends}
         wall={end}

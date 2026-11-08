@@ -1214,6 +1214,7 @@ export type EditState =
   | 'dates'
   | 'datesChanged'
   | 'datesError'
+  | 'datesReplyBy'
   | 'discard'
   | 'changedElsewhere'
   | 'showLatest'
@@ -1268,6 +1269,7 @@ export const EVENT_STATES: Record<EventStateName, string> = {
   dates: 'evt-wed-4',
   datesChanged: 'evt-wed-4',
   datesError: 'evt-wed-4',
+  datesReplyBy: 'evt-wed-4',
   discard: 'evt-wed-4',
   changedElsewhere: 'evt-wed-4',
   showLatest: 'evt-wed-4',
@@ -1325,6 +1327,7 @@ export function partOf(state: EventStateName | null): Part | null {
     case 'dates':
     case 'datesChanged':
     case 'datesError':
+    case 'datesReplyBy':
     case 'discard':
     case 'changedElsewhere':
     case 'showLatest':
@@ -1480,6 +1483,7 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
       on('dates', 'Dates, opened'),
       on('datesChanged', 'Dates, the start moved'),
       on('datesError', 'Dates, the end before the start'),
+      on('datesReplyBy', 'Dates, the start on the Reply by day (sc-3780)'),
       on('discard', 'Cancel with a change'),
       on('changedElsewhere', 'Changed elsewhere'),
       on('showLatest', 'Show the latest'),

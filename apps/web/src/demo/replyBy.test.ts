@@ -1,27 +1,51 @@
+import { formatWallDay } from '@soirely/domain';
 import { describe, expect, it } from 'vitest';
 
+import { countsOf, repliesClosed, replyByOf, sampleGuests } from './guests.ts';
 import {
   REPLY_BY_WORDS as R,
-  closingInstant,
-  noReplyOf,
+  haventRepliedOf,
+  replyByAfterStart,
   replyByCheck,
-  replyByOf,
-  repliesOpen,
   rowDay,
-  shortDay,
   showsPreview,
 } from './replyBy.ts';
+import { closingInstant, repliesOpen } from './replyClose.ts';
 
 const STARTS = '2026-11-05T18:00:00Z';
 const NOW = new Date('2026-11-03T09:41:00Z');
 const ZONE = 'Europe/London';
 
 describe('the date to reply by (sc-3780)', () => {
-  it('holds the wedding’s Wed, Nov 4 and who hasn’t replied, as its card counts; others have none', () => {
+  it('reads the wedding’s Wed, Nov 4 and who hasn’t replied from Guests’ own sample', () => {
+    const counts = countsOf(sampleGuests('evt-wed-4'));
+
     expect(replyByOf('evt-wed-4')).toBe('2026-11-04');
-    expect(noReplyOf('evt-wed-4')).toEqual({ guests: 21, companions: 4 });
     expect(replyByOf('evt-draft-4')).toBeNull();
+    expect(haventRepliedOf('evt-wed-4')).toBe(
+      `${counts.haventGuests} guests and ${counts.haventCompanions} of their companions`,
+    );
+    expect(haventRepliedOf('evt-wed-4')).toBe('21 guests and 4 of their companions');
   });
+
+  it('closes Guests by the same instant (sc-3780, one rule)', () => {
+    expect(repliesClosed('evt-wed-4', new Date('2026-11-04T23:59:59Z'))).toBe(false);
+    expect(repliesClosed('evt-wed-4', new Date('2026-11-05T00:00:00Z'))).toBe(true);
+    expect(repliesClosed('evt-draft-4', new Date('2026-12-31T00:00:00Z'))).toBe(false);
+  });
+
+  it.each([
+    ['2026-11-04', '2026-11-04T18:00:00Z', '2026-11-03'],
+    ['2026-11-04', '2026-11-03T18:00:00Z', '2026-11-02'],
+    ['2026-11-04', '2026-11-05T18:00:00Z', null],
+    ['2026-11-04', '2026-11-12T18:00:00Z', null],
+    [null, '2026-11-04T18:00:00Z', null],
+  ] as const)(
+    'Reply by %s, a start at %s: Reply by moves to %s (pm, 8 Nov)',
+    (was, start, moved) => {
+      expect(replyByAfterStart(was, start, ZONE)).toBe(moved);
+    },
+  );
 
   it('closes at 23:59:59 in the event’s zone, either side of a change of clocks', () => {
     expect(closingInstant('2026-10-24', ZONE)).toBe('2026-10-24T22:59:59Z');
@@ -60,19 +84,20 @@ describe('the date to reply by (sc-3780)', () => {
 
   it('writes the dates and the words as the boards do', () => {
     expect(rowDay('2026-11-04')).toBe('Wed, Nov 4, 2026');
-    expect(shortDay('2026-11-03')).toBe('Tue, Nov 3');
-    const who = R.who(noReplyOf('evt-wed-4'));
+    const who = haventRepliedOf('evt-wed-4');
 
-    expect(R.soonerTitle(shortDay('2026-11-03'), who)).toBe(
+    expect(R.soonerTitle(formatWallDay('2026-11-03', 'en-US'), who)).toBe(
       'Close replies sooner, on Tue, Nov 3, for 21 guests and 4 of their companions who haven’t replied?',
     );
     expect(R.nowTitle(who)).toBe(
       'Close replies now for 21 guests and 4 of their companions who haven’t replied?',
     );
-    expect(R.who({ guests: 1, companions: 0 })).toBe('1 guest');
-    expect(R.who({ guests: 3, companions: 1 })).toBe('3 guests and 1 of their companions');
-    expect(R.keep(shortDay('2026-11-04'))).toBe('Keep Wed, Nov 4');
-    expect(R.saved(shortDay('2026-11-03'), ZONE)).toBe(
+    expect(R.keep(formatWallDay('2026-11-04', 'en-US'))).toBe('Keep Wed, Nov 4');
+    expect(R.startMoves('Wed, Nov 4', 'Tue, Nov 3')).toBe(
+      'Replies close on Wed, Nov 4, which isn’t before the new start. Saving moves Reply by to Tue, Nov 3.',
+    );
+    expect(R.savedMoved('Tue, Nov 3')).toBe('Saved. Replies now close Tue, Nov 3.');
+    expect(R.saved(formatWallDay('2026-11-03', 'en-US'), ZONE)).toBe(
       'Saved. Replies close Tue, Nov 3 at 23:59, Europe/London time.',
     );
     expect(R.hint(ZONE)).toBe(

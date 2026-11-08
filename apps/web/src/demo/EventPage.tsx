@@ -1,5 +1,5 @@
 import { DemoBell } from './DemoBell.tsx';
-import { eventPhase, formatEventRange, hostsLine } from '@soirely/domain';
+import { eventPhase, formatEventRange, formatWallDay, hostsLine } from '@soirely/domain';
 import { type ComponentType, type ReactNode, useContext, useEffect, useRef, useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router';
 
@@ -41,7 +41,7 @@ import {
   VenuePart,
 } from './EventEdits.tsx';
 import { ReplyByPart } from './EventReplyBy.tsx';
-import { REPLY_BY_WORDS, replyByOf, rowDay, shortDay } from './replyBy.ts';
+import { REPLY_BY_WORDS, replyByAfterStart, rowDay } from './replyBy.ts';
 import { Alert, EventCard, EventsShell, NotBuilt, Switch, Thumb } from './EventParts.tsx';
 import { CAL_WORDS } from './calendar.ts';
 import { EventSidebar } from './EventSidebar.tsx';
@@ -49,7 +49,7 @@ import { Glyph, type GlyphName } from '../components/Glyph.tsx';
 import { LayersContext } from '../layers.ts';
 import { BUDGET_EVENT } from './budget.ts';
 import { BudgetEntry } from './BudgetRoutes.tsx';
-import { type NumbersState, guestsAt, hasGuests, numbersStateOf } from './guests.ts';
+import { type NumbersState, guestsAt, hasGuests, numbersStateOf, replyByOf } from './guests.ts';
 import { GuestNumbers } from './GuestsParts.tsx';
 import {
   type Told,
@@ -103,7 +103,9 @@ function replyByStart(state: EventStateName | null, id: string): string | null {
 }
 
 function replyBySaid(next: string | null, timeZone: string): string {
-  return next == null ? REPLY_BY_WORDS.savedNone : REPLY_BY_WORDS.saved(shortDay(next), timeZone);
+  return next == null
+    ? REPLY_BY_WORDS.savedNone
+    : REPLY_BY_WORDS.saved(formatWallDay(next, LOCALE), timeZone);
 }
 
 function askingOf(state: EventStateName | null): Asking | null {
@@ -338,11 +340,16 @@ function EventView({
                             ? toldOf(event, next)
                             : [];
 
+                        const moved = replyByAfterStart(replyBy, next.startsAt, next.timeZone);
+
                         kept(next);
                         setPart(null);
                         setDirty(false);
+                        if (moved != null) setReplyBy(moved);
                         if (changes.length > 0) setTelling(changes);
-                        else tell(W.saved);
+                        if (moved != null)
+                          tell(REPLY_BY_WORDS.savedMoved(formatWallDay(moved, LOCALE)));
+                        else if (changes.length === 0) tell(W.saved);
                       }}
                       onLatest={kept}
                       replyBy={replyBy}
@@ -687,6 +694,7 @@ function Details({
         onClose={onClose}
         onSave={onSave}
         onLatest={onLatest}
+        replyBy={replyBy}
       />
     );
   };

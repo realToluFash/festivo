@@ -5,6 +5,7 @@ import en from '../i18n/locales/en.json';
 import {
   EVENT,
   GUEST_PAGES,
+  answersClosedByDate,
   LANGUAGES,
   codePath,
   dayOf,
@@ -34,8 +35,8 @@ describe('the guest’s page states (sc-31306)', () => {
       'In the guest’s own language (sc-3790)',
       'The hosts’ messages and the guest’s own',
     ]);
-    expect(STATES).toHaveLength(61);
-    expect(new Set(STATES).size).toBe(61);
+    expect(STATES).toHaveLength(62);
+    expect(new Set(STATES).size).toBe(62);
     expect(STATES.every(isGuestState)).toBe(true);
     expect(LINKED.find((one) => one.to.includes('messageArrival'))?.to).toBe(
       '/demo/guest?state=messageArrival#m-3',
@@ -58,6 +59,19 @@ describe('the guest’s page states (sc-31306)', () => {
     expect(startOf('french')).toMatchObject({ lang: 'fr', menuOpen: true });
     expect(startOf('replyFailed')).toMatchObject({ draftFailed: true, want: 'sendMessage' });
     expect(startOf('gone').page).toBe('gone');
+  });
+
+  it('closes answers by the date with the same instant as Guests: 23:59:59 in the event’s zone', () => {
+    const open = startOf('open');
+
+    expect(answersClosedByDate(open)).toBe(false);
+    expect(answersClosedByDate({ ...open, now: '2026-10-30T23:59:59Z' })).toBe(false);
+    expect(answersClosedByDate({ ...open, now: '2026-10-31T00:00:00Z' })).toBe(true);
+    expect(answersClosedByDate({ ...open, now: '2026-11-02T00:00:00Z', replyBy: null })).toBe(
+      false,
+    );
+    expect(answersClosedByDate(startOf('replyByClosed'))).toBe(true);
+    expect(answersClosedByDate(startOf('replyByClosedNever'))).toBe(true);
   });
 
   it('keeps the door code and the calendar for Coming while there is something to attend', () => {

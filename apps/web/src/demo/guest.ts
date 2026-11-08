@@ -2,6 +2,7 @@ import { LOCALES, hostsLine } from '@soirely/domain';
 import i18next from 'i18next';
 
 import { writtenTime } from './clock.ts';
+import { repliesOpen } from './replyClose.ts';
 import { type SampleEvent, sampleEvent } from './events.ts';
 import { BOARD_SAMPLES } from './guestLanguages.ts';
 import {
@@ -20,6 +21,9 @@ export const COMPANIONS = 2;
 export const TODAY = '2026-10-27';
 export const EARLIER = '2026-10-20';
 export const REPLY_BY = '2026-10-30';
+/** The visit's clock: before the date to answer by, and after it (sc-3780's rule decides which is closed). */
+export const OPEN_NOW = '2026-10-27T10:00:00Z';
+export const AFTER_REPLY_BY = '2026-10-31T10:00:00Z';
 /** sc-3787: the member who recorded a reply for the guest, the Guests demo's own on evt-wed-4. */
 export const RECORDER = 'Folake Adeyemi';
 
@@ -117,7 +121,7 @@ export interface Visit {
   phase: Phase;
   started: boolean;
   replyBy: string | null;
-  replyByPassed: boolean;
+  now: string;
   recorded: Recorded | null;
   companionsComing: number;
   view: View;
@@ -149,7 +153,7 @@ const BASE: Visit = {
   phase: 'live',
   started: false,
   replyBy: REPLY_BY,
-  replyByPassed: false,
+  now: OPEN_NOW,
   recorded: null,
   companionsComing: COMPANIONS,
   view: OPEN,
@@ -259,24 +263,32 @@ const STATES = {
   },
   replyByClosed: {
     name: 'After the date to answer by, Coming',
-    starts: { replyByPassed: true, recorded: COMING, view: CLOSED },
+    starts: { now: AFTER_REPLY_BY, recorded: COMING, view: CLOSED },
   },
   replyByClosedNotSure: {
     name: 'After the date to answer by, Not sure yet',
-    starts: { replyByPassed: true, recorded: { answer: 'notSure', on: TODAY }, view: CLOSED },
+    starts: { now: AFTER_REPLY_BY, recorded: { answer: 'notSure', on: TODAY }, view: CLOSED },
   },
   replyByClosedNotComing: {
     name: 'After the date to answer by, Not coming',
-    starts: { replyByPassed: true, recorded: { answer: 'notComing', on: TODAY }, view: CLOSED },
+    starts: { now: AFTER_REPLY_BY, recorded: { answer: 'notComing', on: TODAY }, view: CLOSED },
   },
   replyByClosedNever: {
     name: 'After the date to answer by, never answered',
-    starts: { replyByPassed: true, view: CLOSED },
+    starts: { now: AFTER_REPLY_BY, view: CLOSED },
+  },
+  replyByClosedRecorded: {
+    name: 'After the date to answer by, recorded by a host',
+    starts: {
+      now: AFTER_REPLY_BY,
+      recorded: { answer: 'coming', on: EARLIER, by: RECORDER },
+      view: CLOSED,
+    },
   },
   replyByClosedKitchen: {
     name: 'After the date: the kitchen step on its own',
     starts: {
-      replyByPassed: true,
+      now: AFTER_REPLY_BY,
       recorded: COMING,
       view: { kind: 'kitchen' },
       kitchen: closedKitchen(COMPANIONS, EARLIER),
@@ -286,7 +298,7 @@ const STATES = {
   replyByClosedNotSaved: {
     name: 'After the date: the kitchen needs not saved',
     starts: {
-      replyByPassed: true,
+      now: AFTER_REPLY_BY,
       recorded: COMING,
       view: { kind: 'kitchen' },
       kitchen: closedKitchen(COMPANIONS, EARLIER, { failed: true }),
@@ -296,7 +308,7 @@ const STATES = {
   replyByClosedSaved: {
     name: 'After the date: the kitchen needs saved',
     starts: {
-      replyByPassed: true,
+      now: AFTER_REPLY_BY,
       recorded: COMING,
       view: CLOSED,
       kitchen: closedKitchen(COMPANIONS, EARLIER, { saved: true }),
@@ -305,7 +317,7 @@ const STATES = {
   },
   closedRefused: {
     name: 'Answers closed while sending (409)',
-    starts: { replyByPassed: true, view: check({ refused: true }) },
+    starts: { now: AFTER_REPLY_BY, view: check({ refused: true }) },
   },
   closed: {
     name: 'Closed at the start, Coming',
@@ -475,6 +487,7 @@ export const GUEST_PAGES: readonly { name: string; states: readonly DemoLink[] }
         'replyByClosedNotSure',
         'replyByClosedNotComing',
         'replyByClosedNever',
+        'replyByClosedRecorded',
         'replyByClosedKitchen',
         'replyByClosedNotSaved',
         'replyByClosedSaved',
@@ -536,6 +549,11 @@ export function shows(visit: Visit): { details: boolean; foot: boolean; hosts: b
   const alone = ['check', 'tellUs', 'kitchen'].includes(visit.view.kind);
 
   return { details: !alone, foot: !alone, hosts: visit.phase !== 'calledOff' };
+}
+
+/** After the date to answer by: the 23:59:59 instant in the event's zone, the rule Guests uses too (sc-3780). */
+export function answersClosedByDate(visit: Visit): boolean {
+  return visit.replyBy != null && !repliesOpen(new Date(visit.now), visit.replyBy, EVENT.timeZone);
 }
 
 /** The door code and Add to calendar: for Coming, while there is still something to attend (pm, 7 Nov). */
@@ -660,6 +678,7 @@ const BOARD_ENGLISH = {
   downNotComing: 'You’re down as not coming.',
   downNotSure: 'You’re down as not sure yet.',
   recordedFor: '{{name}} recorded this for you on {{date}}. If it isn’t right, change it here.',
+  recordedOn: '{{name}} recorded this for you on {{date}}.',
   greetComing: 'See you there, {{name}}.',
   greetNotComing: 'We’ll miss you, {{name}}.',
   greetNotSure: 'Thanks for letting us know, {{name}}.',
@@ -803,6 +822,7 @@ export function wordsFor(lang: Lang) {
         ],
       ),
     recordedFor: (name: string, date: string) => board('recordedFor', { name, date }),
+    recordedOn: (name: string, date: string) => board('recordedOn', { name, date }),
     greeting: (answer: Answer): string =>
       board(
         (

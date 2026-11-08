@@ -41,6 +41,10 @@ describe('Reply by on the event’s Details (sc-3780)', () => {
       'replyBySaved',
       'replyByRemoved',
     ]);
+    const dates = EVENTS_PAGES.flatMap((one) => one.states).filter((one) =>
+      one.to.endsWith('state=datesReplyBy'),
+    );
+    expect(dates).toHaveLength(1);
   });
 
   it('sits after Dates, the date over its line, and opens in place', SLOW, async () => {
@@ -121,6 +125,38 @@ describe('Reply by on the event’s Details (sc-3780)', () => {
       await screen.findByText('Saved. Replies stay open until the event starts.'),
     ).toBeDefined();
     expect(screen.getByText('Replies stay open until the event starts')).toBeDefined();
+  });
+
+  it(
+    'moves Reply by to the day before a start moved onto it, says so first, then saves (pm, 8 Nov)',
+    SLOW,
+    async () => {
+      await page('datesReplyBy');
+      const dates = screen.getByRole('group', { name: 'Dates' });
+
+      expect(
+        within(dates).getByText(
+          'Replies close on Wed, Nov 4, which isn’t before the new start. Saving moves Reply by to Tue, Nov 3.',
+        ),
+      ).toBeDefined();
+      fireEvent.click(within(dates).getByRole('button', { name: 'Save' }));
+
+      expect(await screen.findByText('Saved. Replies now close Tue, Nov 3.')).toBeDefined();
+      expect(screen.getByText('Tue, Nov 3, 2026')).toBeDefined();
+    },
+  );
+
+  it('leaves Reply by alone when the start moves later', SLOW, async () => {
+    await page('dates');
+    const dates = screen.getByRole('group', { name: 'Dates' });
+    const starts = within(dates).getByLabelText('Starts, Date');
+
+    fireEvent.change(starts, { target: { value: '2026-11-06' } });
+    expect(within(dates).queryByText(/^Replies close on/u)).toBeNull();
+    fireEvent.click(within(dates).getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByText('Wed, Nov 4, 2026')).toBeDefined();
+    expect(screen.queryByText(/^Saved\. Replies now close/u)).toBeNull();
   });
 
   it.each([

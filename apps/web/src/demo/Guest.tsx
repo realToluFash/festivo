@@ -20,6 +20,7 @@ import {
   type View,
   type Visit,
   type Words,
+  answersClosedByDate,
   characters,
   dayOf,
   forTheDay,
@@ -489,7 +490,7 @@ function Shown({
           <h2 id="gp-answer-h" className="gp-h2">
             {words.yourAnswer}
           </h2>
-          {visit.replyBy != null && (
+          {visit.replyBy != null && !answersClosedByDate(visit) && (
             <p className="gp-sub">{words.replyBy(dayOf(REPLY_BY, lang))}</p>
           )}
           {view.note === 'unsent' && <Notice kind="attention">{words.unsent}</Notice>}
@@ -637,7 +638,9 @@ function Closed({
   const said =
     recorded == null
       ? words.didNotAnswer
-      : words.answered(recorded.answer, dayOf(recorded.on, lang));
+      : recorded.by != null
+        ? words.downAs(recorded.answer)
+        : words.answered(recorded.answer, dayOf(recorded.on, lang));
 
   if (phase === 'calledOff') return null;
   if (phase === 'over' || phase === 'finished') {
@@ -671,17 +674,23 @@ function Closed({
 
   const by = dayOf(visit.replyBy ?? '', lang);
   const saved = visit.kitchen?.saved === true;
-  const line = visit.started
-    ? words.closed
-    : recorded == null || recorded.answer === 'notSure'
-      ? words.closedByNotSure(by)
-      : words.closedBy(by);
+  const line =
+    visit.started || !answersClosedByDate(visit)
+      ? words.closed
+      : recorded == null || recorded.answer === 'notSure'
+        ? words.closedByNotSure(by)
+        : words.closedBy(by);
 
   return (
     <section className="gp-closed is-live" aria-labelledby="gp-closed-h">
       <h2 id="gp-closed-h" className="gp-h2 is-19">
         {said}
       </h2>
+      {recorded?.by != null && (
+        <p className="gp-sub is-recorded">
+          {words.recordedOn(recorded.by, dayOf(recorded.on, lang))}
+        </p>
+      )}
       {saved && <GuestKitchenSaved lang={lang} />}
       <p className="gp-sub">{line}</p>
       {!visit.started && recorded?.answer === 'coming' && (

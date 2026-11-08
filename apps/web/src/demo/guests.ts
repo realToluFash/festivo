@@ -1,6 +1,7 @@
 import { LOCALES, callingCode, compareGuestNames, emailProblem } from '@soirely/domain';
 
-import { CLOCKS, type SampleEvent, cardOf, localDay } from './events.ts';
+import { CLOCKS, type SampleEvent, cardOf, localDay, sampleEvent } from './events.ts';
+import { repliesOpen } from './replyClose.ts';
 import { GUEST_WORDS, SAMPLE_GUESTS } from './guestCounts.ts';
 import {
   CHOICE_WORDS,
@@ -488,10 +489,12 @@ export function replyByOf(id: string): string | null {
   return SAMPLES[id]?.replyBy ?? null;
 }
 
+/** sc-3780's one rule: closed after 23:59:59 on the Reply by day, in the event's zone. */
 export function repliesClosed(id: string, clock: Date): boolean {
   const replyBy = replyByOf(id);
+  const zone = sampleEvent(id)?.timeZone ?? 'Europe/London';
 
-  return replyBy != null && replyBy < todayOf(clock);
+  return replyBy != null && !repliesOpen(clock, replyBy, zone);
 }
 
 export function guestsAt(id: string, extra: Readonly<Record<string, string>> = {}): string {

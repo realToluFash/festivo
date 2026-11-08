@@ -72,7 +72,7 @@ describe('the guest’s own page, A · The cover card (sc-31306)', () => {
     );
 
     expect(guestLinks).toEqual(GUEST_PAGES.flatMap((one) => one.states).map((one) => one.to));
-    expect(guestLinks).toHaveLength(61);
+    expect(guestLinks).toHaveLength(62);
   });
 
   it('opens on the cover card: the invitation, the guest, the event, when and where', async () => {
@@ -156,6 +156,7 @@ const SAYS: [string, () => void][] = [
         'Answers closed on Friday, October 30. Contact your host if you can still come.',
       ),
   ],
+  ['replyByClosedRecorded', () => screen.getByRole('heading', { name: 'You’re down as coming.' })],
   ['replyByClosedKitchen', () => screen.getByRole('button', { name: 'Save' })],
   [
     'replyByClosedNotSaved',
@@ -264,6 +265,26 @@ describe('a reply a host recorded (sc-3787)', () => {
     expect(screen.getByRole('heading', { name: 'You’re down as coming.' })).toBeDefined();
     expect(screen.getByRole('heading', { name: 'Show this at the door' })).toBeDefined();
     expect(screen.getByRole('heading', { name: 'Add to calendar' })).toBeDefined();
+  });
+});
+
+describe('after the date to answer by, an answer a host recorded (sc-3780, ux 8 Nov)', () => {
+  it('keeps “You’re down as coming.” with who recorded it, never “You answered”', async () => {
+    await guest('replyByClosedRecorded');
+
+    expect(screen.getByRole('heading', { name: 'You’re down as coming.' })).toBeDefined();
+    expect(
+      screen.getByText('Folake Adeyemi recorded this for you on Tuesday, October 20.'),
+    ).toBeDefined();
+    expect(screen.queryByText(/^You answered/u)).toBeNull();
+    expect(
+      screen.getByText(
+        'Answers closed on Friday, October 30. Contact your host if something has changed.',
+      ),
+    ).toBeDefined();
+    expect(
+      screen.getByRole('button', { name: 'Update what the kitchen should know' }),
+    ).toBeDefined();
   });
 });
 

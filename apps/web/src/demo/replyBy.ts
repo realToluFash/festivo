@@ -1,37 +1,15 @@
-import { instantOf, localDay } from './events.ts';
+import { localDay } from './events.ts';
+import { countsOf, sampleGuests } from './guests.ts';
+import { GW, figure } from './guestsWords.ts';
+import { CLOSES_AT } from './replyClose.ts';
 
-/** sc-3780's date to reply by, per event: the wedding's Wed, Nov 4 (as the Guests demo has it), and who hasn't replied as its card counts them. */
-export const REPLY_BY_SAMPLE: Readonly<
-  Record<string, { date: string | null; noReply: number; held: number }>
-> = {
-  'evt-wed-4': { date: '2026-11-04', noReply: 21, held: 4 },
-};
+/** Who hasn't replied, as the Guests card counts them on the same sample (sc-99): guests, then their companions. */
+export function haventRepliedOf(id: string): string {
+  const counts = countsOf(sampleGuests(id));
 
-export function replyByOf(id: string): string | null {
-  return REPLY_BY_SAMPLE[id]?.date ?? null;
-}
-
-export function noReplyOf(id: string): { guests: number; companions: number } {
-  const one = REPLY_BY_SAMPLE[id];
-
-  return { guests: one?.noReply ?? 0, companions: one?.held ?? 0 };
-}
-
-export const CLOSES_AT = '23:59';
-
-/** Replies close at the end of the day in the event's zone, 23:59:59 local, whatever the clocks do that day. */
-export function closingInstant(date: string, timeZone: string): string | null {
-  const minute = instantOf(date, CLOSES_AT, timeZone);
-
-  return minute == null
-    ? null
-    : new Date(Date.parse(minute) + 59_000).toISOString().replace('.000Z', 'Z');
-}
-
-export function repliesOpen(now: Date, date: string | null, timeZone: string): boolean {
-  const closes = date == null ? null : closingInstant(date, timeZone);
-
-  return closes == null || now.getTime() <= Date.parse(closes);
+  return counts.haventCompanions === 0
+    ? `${figure(counts.haventGuests)} ${counts.haventGuests === 1 ? 'guest' : 'guests'}`
+    : GW.whoHavent(counts.haventGuests, counts.haventCompanions);
 }
 
 export type ReplyByCheck = 'tooLate' | 'sooner' | 'now' | 'save';
@@ -80,25 +58,20 @@ export function rowDay(date: string): string {
   }).format(noon(date));
 }
 
-/** "Wed, Nov 4", in the asks and the saved line. */
-export function shortDay(date: string): string {
-  return new Intl.DateTimeFormat(LOCALE, {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-    timeZone: 'UTC',
-  }).format(noon(date));
+/** pm, 8 Nov: a start moved to or before the Reply by day moves Reply by to the day before it; a later start leaves it. */
+export function replyByAfterStart(
+  replyBy: string | null,
+  startsAt: string,
+  timeZone: string,
+): string | null {
+  const startDay = localDay(startsAt, timeZone);
+  if (replyBy == null || replyBy < startDay) return null;
+
+  return new Date(Date.parse(`${startDay}T12:00:00Z`) - 86_400_000).toISOString().slice(0, 10);
 }
 
 /** The board's English for Reply by (sc-3780's Design, 7 Nov), held in the demo until the product's screen puts it in the catalogues. */
 export const REPLY_BY_WORDS = {
-  /** As the Guests card counts them: "21 guests and 4 of their companions" (pm, 8 Nov). */
-  who: ({ guests, companions }: { guests: number; companions: number }) => {
-    const figure = new Intl.NumberFormat(LOCALE);
-    const said = `${figure.format(guests)} ${guests === 1 ? 'guest' : 'guests'}`;
-
-    return companions === 0 ? said : `${said} and ${figure.format(companions)} of their companions`;
-  },
   replyBy: 'Reply by',
   rowCloses: (zone: string) => `Replies close at ${CLOSES_AT}, ${zone} time`,
   rowNone: 'Replies stay open until the event starts',
@@ -118,4 +91,7 @@ export const REPLY_BY_WORDS = {
   saved: (date: string, zone: string) =>
     `Saved. Replies close ${date} at ${CLOSES_AT}, ${zone} time.`,
   savedNone: 'Saved. Replies stay open until the event starts.',
+  startMoves: (old: string, next: string) =>
+    `Replies close on ${old}, which isn’t before the new start. Saving moves Reply by to ${next}.`,
+  savedMoved: (next: string) => `Saved. Replies now close ${next}.`,
 };
