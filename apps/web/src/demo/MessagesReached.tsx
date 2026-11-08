@@ -66,7 +66,7 @@ export function ReachedView({
   thread: ConvoId;
   state: MessagesState | null;
 }) {
-  const { inbox, act, focus, tell, whyOff } = useInbox();
+  const { inbox, act, focus, tell, whyOff, to } = useInbox();
   const [fixing, setFixing] = useState<Fixing | null>(
     state === 'fix' && of === 'parking'
       ? { id: 'tomas', fix: 'fixEmail', typed: NEW_ADDRESS }
@@ -78,7 +78,7 @@ export function ReachedView({
     state === 'sentAgain' ? filled(MW.sentToSaid, { name: 'Tomás Ferreira' }) : null,
   );
   const headId = useId();
-  const who = whoOf(inbox, of, thread);
+  const who = whoOf(inbox, of, thread, to.book.groups);
   const { reach } = who;
   const shown = shownOf(who, show);
   const first = outsIn(inbox, thread)[0];
@@ -221,7 +221,7 @@ export function ReachedView({
             </section>
           ))}
       </div>
-      {resend > 0 && (
+      {resend > 0 && to.manage && (
         <button
           type="button"
           className="button button-primary mg-resend"
@@ -375,7 +375,7 @@ function Person({
   onAgain: () => void;
   onUndo: () => void;
 }) {
-  const { whyOff } = useInbox();
+  const { whyOff, to } = useInbox();
   const lines = fixing?.fix === 'fixEmail' ? person.lines.slice(0, 1) : person.lines;
 
   return (
@@ -411,7 +411,7 @@ function Person({
         )}
         {fixing != null ? (
           <FixForm person={person} fixing={fixing} onSave={onSave} onCancel={onCancel} />
-        ) : person.offer === true ? (
+        ) : !to.manage ? null : person.offer === true ? (
           <>
             <button
               type="button"

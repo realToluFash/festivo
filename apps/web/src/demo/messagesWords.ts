@@ -105,7 +105,8 @@ export const MW = {
   previewAs: 'As {{name}} will see it',
   inLanguage: 'In {{language}}, the language you set for them.',
   greetedAs: 'Greeted as {{name}}, their full name. They have no Greet as.',
-  onlyOurs: 'Only Soirely’s own words are translated. Yours go out exactly as you wrote them.',
+  onlyOurs:
+    'Only Soirely’s own words are translated. Yours show on their page exactly as you wrote them.',
   whatSoirelySends: 'What Soirely sends',
   emailFrom: 'Email · from {{organisation}} via Soirely',
   noticeSubject: '{{event}}: a message from {{hosts}}',

@@ -1,6 +1,5 @@
 import {
   type KeyboardEvent,
-  type RefObject,
   useEffect,
   useEffectEvent,
   useId,
@@ -12,31 +11,18 @@ import {
 import { offButton } from '../offButton.ts';
 import { Glyph } from '../components/Glyph.tsx';
 import {
-  type Audience,
-  type Condition,
   type Draft,
   type Segment,
   type Token,
   CHANNELS,
-  CONDITIONS,
   SCHEDULED,
-  EVENT_NAME,
-  GUESTS_N,
-  HOSTS,
   MW,
-  ORGANISATION,
-  PAGE_WHEN,
-  PREVIEWED,
-  THEIR_LINK,
-  TOKENS,
   blank,
   channelWord,
   checkOf,
   chipWords,
-  dayWords,
-  conditionWord,
   countOf,
-  fill,
+  dayWords,
   filled,
   isNew,
   outsIn,
@@ -48,8 +34,12 @@ import {
 } from './messages.ts';
 import { useInbox } from './messagesContext.ts';
 import { LaterDialog } from './MessagesDialogs.tsx';
+import { InsertMenu } from './MessagesInsert.tsx';
 import { WhereGlyph } from './MessagesParts.tsx';
+import { Preview } from './MessagesPreview.tsx';
+import { PW } from './messagesPreviewWords.ts';
 import { StreamItems } from './MessagesStream.tsx';
+import { ToPopover } from './MessagesTo.tsx';
 
 function commandEnter(event: KeyboardEvent, then: () => void): void {
   if (event.key !== 'Enter' || !(event.metaKey || event.ctrlKey)) return;
@@ -60,13 +50,16 @@ function commandEnter(event: KeyboardEvent, then: () => void): void {
 
 /** Writing to many: To and Let them know by at the head, the check or the preview in the stream, the composer at the foot. */
 export function ComposePane({ opening, later: laterFirst }: { opening: boolean; later: boolean }) {
-  const { inbox, act, focus, say } = useInbox();
+  const { inbox, act, focus, say, to: event } = useInbox();
   const draft = inbox.draft;
   const [toOpen, setToOpen] = useState(opening || draft?.openTo === true);
   const [later, setLater] = useState(laterFirst);
-  const [refused, setRefused] = useState<string | null>(null);
+  const [refused, setRefused] = useState(() => event.refused(draft?.to));
+  const { viewed } = event;
   const chip = useRef<HTMLButtonElement>(null);
   const byId = useId();
+
+  useEffect(() => viewed(), [viewed]);
 
   if (draft == null) return null;
 
@@ -76,7 +69,7 @@ export function ComposePane({ opening, later: laterFirst }: { opening: boolean; 
   function send(): void {
     if (blank(current.body)) return;
 
-    const why = refusalOf(current.to);
+    const why = refusalOf(current.to, event.book.groups);
 
     if (why != null) {
       setRefused(why);
@@ -110,7 +103,7 @@ export function ComposePane({ opening, later: laterFirst }: { opening: boolean; 
                 data-focus="to-chip"
                 onClick={() => setToOpen((open) => !open)}
               >
-                {chipWords(draft.to)}
+                {chipWords(draft.to, event.book)}
                 <Glyph name="chevdown" size={14} weight={2.6} />
               </button>
               {toOpen && (
@@ -200,6 +193,7 @@ export function ComposePane({ opening, later: laterFirst }: { opening: boolean; 
           draft={draft}
           tools={draft.step === 'write'}
           refused={refused}
+          previewOff={(countOf(draft.to, event.book.groups) ?? 0) === 0 ? PW.nobodyToPreview : null}
           onDraft={(next) => act({ kind: 'draft', draft: next })}
           onSend={send}
           onPreview={() => {
@@ -252,192 +246,6 @@ export function TickChip({
       {on && <Glyph name="tick" size={15} weight={2.8} />}
       {word}
     </button>
-  );
-}
-
-function ToPopover({
-  to,
-  chip,
-  onPick,
-  onClose,
-}: {
-  to: Audience;
-  chip: RefObject<HTMLButtonElement | null>;
-  onPick: (to: Audience) => void;
-  onClose: (back: boolean) => void;
-}) {
-  const { tell } = useInbox();
-  const box = useRef<HTMLDivElement>(null);
-  const add = useRef<HTMLButtonElement>(null);
-  const [kept, setKept] = useState<readonly Condition[]>(
-    to.kind === 'who' ? to.conditions : ['coming'],
-  );
-  const [adding, setAdding] = useState(false);
-  const titleId = useId();
-  const name = useId();
-  const count = countOf(to);
-  const who = to.kind === 'who' ? to.conditions : null;
-  const left = CONDITIONS.filter((condition) => !(who ?? []).includes(condition));
-
-  useEffect(() => {
-    box.current?.querySelector<HTMLInputElement>('input:checked')?.focus();
-  }, []);
-
-  useEffect(() => {
-    const keys = (event: globalThis.KeyboardEvent) => {
-      if (event.key !== 'Escape') return;
-
-      event.preventDefault();
-      if (adding) {
-        setAdding(false);
-        add.current?.focus();
-      } else onClose(true);
-    };
-    const outside = (event: PointerEvent) => {
-      const target = event.target as Node;
-
-      if (!box.current?.contains(target) && !chip.current?.contains(target)) onClose(false);
-    };
-
-    document.addEventListener('keydown', keys);
-    document.addEventListener('pointerdown', outside);
-
-    return () => {
-      document.removeEventListener('keydown', keys);
-      document.removeEventListener('pointerdown', outside);
-    };
-  }, [adding, chip, onClose]);
-
-  function conditions(next: readonly Condition[]): void {
-    setKept(next);
-    onPick({ kind: 'who', conditions: next });
-  }
-
-  return (
-    <div ref={box} className="mg-pop mg-to-pop" role="dialog" aria-labelledby={titleId}>
-      <div className="mg-pop-head">
-        <h3 id={titleId} className="mg-to-title">
-          {MW.to}
-        </h3>
-        <button
-          type="button"
-          className="mg-close"
-          aria-label={MW.closeTo}
-          onClick={() => onClose(true)}
-        >
-          <Glyph name="clear" size={18} weight={2.4} />
-        </button>
-      </div>
-      <fieldset className="mg-radios">
-        <legend className="desk-unseen">{MW.to}</legend>
-        <label className="mg-radio-row">
-          <input
-            type="radio"
-            name={name}
-            className="desk-radio"
-            data-focus="to-pick"
-            checked={to.kind === 'all'}
-            onChange={() => onPick({ kind: 'all' })}
-          />
-          <span className="today-grow">{MW.allGuests}</span>
-          <span className="mg-radio-count">{GUESTS_N}</span>
-        </label>
-        <label className="mg-radio-row">
-          <input
-            type="radio"
-            name={name}
-            className="desk-radio"
-            checked={false}
-            onChange={() => tell(`${MW.chooseGuests} has its own design.`)}
-          />
-          <span className="today-grow">{MW.chooseGuests}</span>
-        </label>
-        <label className="mg-radio-row">
-          <input
-            type="radio"
-            name={name}
-            className="desk-radio"
-            checked={who != null}
-            onChange={() => onPick({ kind: 'who', conditions: kept })}
-          />
-          <span className="today-grow">{MW.guestsWho}</span>
-        </label>
-      </fieldset>
-      {who != null && (
-        <div className="mg-who-block">
-          <ul className="mg-conds">
-            {who.map((condition) => (
-              <li key={condition} className="mg-cond">
-                {conditionWord(condition)}
-                <button
-                  type="button"
-                  aria-label={filled(MW.removeCondition, { condition: conditionWord(condition) })}
-                  onClick={() => {
-                    conditions(who.filter((one) => one !== condition));
-                    add.current?.focus();
-                  }}
-                >
-                  <Glyph name="clear" size={13} weight={2.6} />
-                </button>
-              </li>
-            ))}
-            {left.length > 0 && (
-              <li className="mg-add-at">
-                <button
-                  ref={add}
-                  type="button"
-                  className="desk-text"
-                  aria-expanded={adding}
-                  onClick={() => setAdding((open) => !open)}
-                >
-                  <Glyph name="plus" size={17} weight={2.3} />
-                  {MW.addCondition}
-                </button>
-                {adding && (
-                  <ul className="mg-add-list">
-                    {left.map((condition) => (
-                      <li key={condition}>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            conditions([...who, condition]);
-                            setAdding(false);
-                          }}
-                        >
-                          {conditionWord(condition)}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </li>
-            )}
-          </ul>
-          <p className="mg-pop-line">{MW.matchEvery}</p>
-          <div className="mg-pop-count">
-            <p role="status">
-              {count == null ? '' : count === 0 ? MW.nobodyMatches : many('guests', count)}
-            </p>
-            {count != null && count > 0 && (
-              <button
-                type="button"
-                className="desk-text"
-                onClick={() => tell(`${MW.seeWho} has its own design.`)}
-              >
-                {MW.seeWho}
-              </button>
-            )}
-          </div>
-          <button
-            type="button"
-            className="desk-text"
-            onClick={() => tell(`${MW.saveAudience} has its own design.`)}
-          >
-            {MW.saveAudience}
-          </button>
-        </div>
-      )}
-    </div>
   );
 }
 
@@ -539,17 +347,20 @@ export function Composer({
   onPreview,
   onDraft,
   editing,
+  previewOff = null,
 }: {
-  draft: Pick<Draft, 'subject' | 'body' | 'seed'>;
+  draft: Pick<Draft, 'subject' | 'body' | 'seed' | 'opens'>;
   tools: boolean;
   refused: string | null;
   onSend: () => void;
   onPreview: () => void;
   onDraft: (draft: Partial<Draft>) => void;
   editing?: { onChangeWhen: () => void };
+  previewOff?: string | null;
 }) {
-  const [inserting, setInserting] = useState(false);
   const optionalId = useId();
+  const refusedId = useId();
+  const offId = useId();
   const empty = blank(draft.body);
 
   function insert(token: Token): void {
@@ -564,9 +375,14 @@ export function Composer({
       range.insertNode(chip);
       range.setStartAfter(chip);
     } else field.append(chip);
-    setInserting(false);
     onDraft({ body: read(field) });
     field.focus();
+
+    const after = document.createRange();
+
+    after.setStartAfter(chip);
+    window.getSelection()?.removeAllRanges();
+    window.getSelection()?.addRange(after);
   }
 
   return (
@@ -602,35 +418,27 @@ export function Composer({
         onChange={(body) => onDraft({ body })}
         onSubmit={onSend}
       />
+      {refused != null && (
+        <p id={refusedId} className="desk-error" role="alert" tabIndex={-1} data-focus="refused">
+          <Glyph name="alert" size={15} weight={2.2} />
+          {refused}
+        </p>
+      )}
       {tools && (
         <div className="mg-tools">
-          <div className="mg-insert-at">
-            <button
-              type="button"
-              className="desk-text"
-              aria-expanded={inserting}
-              onClick={() => setInserting((open) => !open)}
-            >
-              <Glyph name="braces" size={17} weight={2.2} />
-              {MW.insert}
-            </button>
-            {inserting && (
-              <ul className="mg-pop mg-insert-list">
-                {TOKENS.map((token) => (
-                  <li key={token}>
-                    <button
-                      type="button"
-                      onMouseDown={(event) => event.preventDefault()}
-                      onClick={() => insert(token)}
-                    >
-                      {tokenWord(token)}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-          <button type="button" className="desk-text" onClick={onPreview}>
+          <InsertMenu
+            first={draft.opens === 'insert'}
+            onFirst={() => onDraft({ opens: undefined })}
+            onPick={insert}
+          />
+          <button
+            type="button"
+            className="desk-text mg-preview-tool"
+            data-focus="preview"
+            aria-describedby={previewOff == null ? undefined : offId}
+            {...offButton(previewOff != null)}
+            onClick={onPreview}
+          >
             <Glyph name="eye" size={17} weight={2.2} />
             {MW.preview}
           </button>
@@ -642,6 +450,7 @@ export function Composer({
                 className={empty ? 'mg-send is-off' : 'mg-send'}
                 aria-label={MW.send}
                 aria-keyshortcuts="Meta+Enter Control+Enter"
+                aria-describedby={refused == null ? undefined : refusedId}
                 data-focus="send"
                 {...offButton(empty, { dim: false })}
               >
@@ -665,98 +474,13 @@ export function Composer({
           )}
         </div>
       )}
-      {refused != null && (
-        <p className="desk-error" role="alert" tabIndex={-1} data-focus="refused">
-          <Glyph name="alert" size={15} weight={2.2} />
-          {refused}
+      {tools && previewOff != null && (
+        <p id={offId} className="mg-why">
+          <Glyph name="info" size={16} weight={2.2} />
+          <span>{previewOff}</span>
         </p>
       )}
     </form>
-  );
-}
-
-function Preview({ draft }: { draft: Draft }) {
-  const { mesh } = useInbox();
-  const shown = CHANNELS.filter(
-    (channel) => draft.ticks[channel] && PREVIEWED.has.includes(channel),
-  );
-  const sendsId = useId();
-
-  return (
-    <div className="mg-preview">
-      <p className="mg-preview-as">
-        {filled(MW.previewAs, { name: PREVIEWED.name })} · {PREVIEWED.language}
-      </p>
-      <div className="mg-preview-cols">
-        <div className="mg-page">
-          <div className={`mg-page-cover today-cover is-${mesh}`}>
-            <span className="desk-piece p1" aria-hidden="true" />
-            <span className="desk-piece p2" aria-hidden="true" />
-            <span className="desk-piece p4" aria-hidden="true" />
-            <p className="mg-page-name">{EVENT_NAME}</p>
-            <p className="mg-page-when">{PAGE_WHEN}</p>
-          </div>
-          <figure className="mg-page-figure">
-            {draft.subject.trim() !== '' && <p className="mg-page-subject">{draft.subject}</p>}
-            <blockquote>{fill(draft.body, PREVIEWED.name)}</blockquote>
-            <figcaption>{HOSTS}</figcaption>
-          </figure>
-        </div>
-        {shown.length > 0 && (
-          <section className="mg-sends" aria-labelledby={sendsId}>
-            <h3 id={sendsId}>{MW.whatSoirelySends}</h3>
-            {shown.includes('email') && (
-              <div className="mg-email">
-                <p className="mg-notice-head">
-                  <WhereGlyph where="email" />
-                  {filled(MW.emailFrom, { organisation: ORGANISATION })}
-                </p>
-                <p className="mg-email-subject">
-                  {filled(MW.noticeSubject, { event: EVENT_NAME, hosts: HOSTS })}
-                </p>
-                <p>
-                  {filled(MW.dear, { greeting: PREVIEWED.name })}
-                  <br />
-                  {filled(MW.noticeBody, { hosts: HOSTS, event: EVENT_NAME })}
-                </p>
-                <span className="mg-email-button">{MW.readOnPage}</span>
-                <span className="mg-email-stop">
-                  {filled(MW.stopEmails, { organisation: ORGANISATION })}
-                </span>
-              </div>
-            )}
-            {shown.includes('sms') && (
-              <div className="mg-notice">
-                <p className="mg-notice-head">
-                  <WhereGlyph where="sms" />
-                  {many('smsParts', 1)}
-                </p>
-                <p className="mg-notice-bubble">
-                  {filled(MW.noticeSms, { hosts: HOSTS, event: EVENT_NAME, link: THEIR_LINK })}
-                </p>
-              </div>
-            )}
-            {shown.includes('whatsApp') && (
-              <div className="mg-notice">
-                <p className="mg-notice-head">
-                  <WhereGlyph where="whatsApp" />
-                  {MW.whatsAppTemplate}
-                </p>
-                <div className="mg-notice-bubble is-wa">
-                  <p>{filled(MW.noticeBody, { hosts: HOSTS, event: EVENT_NAME })}</p>
-                  <span>{MW.readOnPage}</span>
-                </div>
-              </div>
-            )}
-          </section>
-        )}
-      </div>
-      <ul className="mg-preview-lines">
-        <li>{filled(MW.greetedAs, { name: PREVIEWED.name })}</li>
-        <li>{filled(MW.inLanguage, { language: PREVIEWED.language })}</li>
-        <li>{MW.onlyOurs}</li>
-      </ul>
-    </div>
   );
 }
 
@@ -770,8 +494,8 @@ export function CheckCard({
   onChange: () => void;
   onLater: () => void;
 }) {
-  const { act, focus, tell } = useInbox();
-  const check = checkOf(draft.to, draft.ticks);
+  const { act, focus, tell, to } = useInbox();
+  const check = checkOf(draft.to, draft.ticks, to.book.groups);
   const sentenceId = useId();
 
   return (
@@ -871,14 +595,14 @@ export function CheckCard({
 
 /** Resend to those not reached (sc-3966): the message is already on their page, so only the notice goes again. */
 export function ResendCard() {
-  const { inbox, act, focus, tell } = useInbox();
+  const { inbox, act, focus, tell, to } = useInbox();
   const resend = inbox.resend;
   const sentenceId = useId();
 
   if (resend == null) return null;
 
   const { thread, ticks } = resend;
-  const check = resendOf(inbox, thread, ticks);
+  const check = resendOf(inbox, thread, ticks, to.book.groups);
   const none = check.count === 0;
 
   function back(): void {

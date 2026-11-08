@@ -24,6 +24,7 @@ import {
 } from './guests.ts';
 import { GW } from './guestsWords.ts';
 import { COMING, GUESTS_N, NOT_REPLIED, countOf } from './messages.ts';
+import { GROUPS } from './messagesTo.ts';
 
 const NONE = new Set<never>();
 
@@ -58,8 +59,8 @@ describe('the wedding counts as Messaging B counts it (pm, 7 Nov)', () => {
 
   it('agrees with Messaging and with Events’ tiles', () => {
     expect(counts.invited).toBe(GUESTS_N);
-    expect(counts.coming).toBe(countOf(COMING));
-    expect(counts.havent).toBe(countOf(NOT_REPLIED));
+    expect(counts.coming).toBe(countOf(COMING, GROUPS));
+    expect(counts.havent).toBe(countOf(NOT_REPLIED, GROUPS));
     expect(SAMPLE_GUESTS[WEDDING]).toEqual({
       invited: counts.invited,
       coming: counts.coming,

@@ -37,14 +37,15 @@ import {
   toldOf,
   waitingLine,
 } from './messages.ts';
+import { BOOK, GROUPS } from './messagesTo.ts';
 
 const ids = (rows: readonly { id: string }[]) => rows.map((row) => row.id);
 
 describe('Messaging B · Conversations, the rules (sc-31371)', () => {
-  it('has the spec’s 42 states, the notice’s 3, Who it reached’s 8 and sc-3942’s 2, in order, each linked once from the demo home', () => {
+  it('has the spec’s 42 states, the notice’s 3, Who it reached’s 8, sc-3942’s 2, sc-3960’s 10 and sc-3963’s 4, in order, each linked once from the demo home', () => {
     const keys = MESSAGE_STATES.map((one) => one.key);
 
-    expect(keys).toHaveLength(55);
+    expect(keys).toHaveLength(94);
     expect(keys.slice(0, 3)).toEqual(['first', 'loading', 'inUse']);
     expect(keys.slice(6, 10)).toEqual([
       'channelReply',
@@ -53,8 +54,24 @@ describe('Messaging B · Conversations, the rules (sc-31371)', () => {
       'noticeNotSent',
     ]);
     expect(keys.slice(26, 29)).toEqual(['bell', 'invitedReached', 'sentReached']);
-    expect(keys.slice(-3)).toEqual(['tellPlace', 'closedDraft', 'closedEnded']);
-    expect(new Set(keys).size).toBe(55);
+    expect(keys.slice(52, 55)).toEqual(['tellPlace', 'closedDraft', 'closedEnded']);
+    expect(keys.slice(keys.indexOf('insert'), keys.indexOf('insert') + 14)).toEqual([
+      'insert',
+      'previewAs',
+      'previewGreetAs',
+      'previewChose',
+      'previewLoading',
+      'previewMarkup',
+      'typedBraces',
+      'previewBraces',
+      'noTokens',
+      'previewNobody',
+      'editConflict',
+      'editSent',
+      'editCancelled',
+      'editTooLate',
+    ]);
+    expect(new Set(keys).size).toBe(94);
     expect(MESSAGES_PAGES.flatMap((page) => page.states.map((one) => one.to))).toEqual(
       keys.map((key) => `/demo/events/evt-wed-4/messages?state=${key}`),
     );
@@ -72,7 +89,7 @@ describe('Messaging B · Conversations, the rules (sc-31371)', () => {
   });
 
   it('sorts the list into Needs you, Scheduled and Done', () => {
-    const sections = sectionsOf(seedOf('inUse'));
+    const sections = sectionsOf(seedOf('inUse'), GROUPS);
 
     expect(ids(sections.needs)).toEqual(['ines', 'lucia', 'kwame', 'unknown', 'parking']);
     expect(ids(sections.scheduled)).toEqual(['sched']);
@@ -85,7 +102,7 @@ describe('Messaging B · Conversations, the rules (sc-31371)', () => {
     expect(sections.done[0]?.line).toBe(
       'On their page · Thank you, see you Thursday! · Done by Folake Adeyemi',
     );
-    expect(sectionsOf(seedOf('first')).needs).toEqual([]);
+    expect(sectionsOf(seedOf('first'), GROUPS).needs).toEqual([]);
   });
 
   it('counts sc-3976’s waiting and not matched for the sidebar, and a match makes a guest wait', () => {
@@ -95,7 +112,7 @@ describe('Messaging B · Conversations, the rules (sc-31371)', () => {
     });
     expect(waitingLine(seedOf('answered'))?.line).toBe('2 waiting · 1 not matched');
     expect(waitingLine(seedOf('matched'))?.line).toBe('4 waiting');
-    expect(sectionsOf(seedOf('matched')).needs[3]).toMatchObject({
+    expect(sectionsOf(seedOf('matched'), GROUPS).needs[3]).toMatchObject({
       title: 'Camille Dubois',
       tag: null,
     });
@@ -106,21 +123,21 @@ describe('Messaging B · Conversations, the rules (sc-31371)', () => {
     const none: Audience = { kind: 'who', conditions: [] };
     const both: Audience = { kind: 'who', conditions: ['coming', 'notReplied'] };
 
-    expect(chipWords({ kind: 'all' })).toBe('All guests · 142');
-    expect(chipWords(COMING)).toBe('Guests who… Is coming · 96');
-    expect(chipWords(NOT_REPLIED)).toBe('Guests who… Hasn’t replied · 25');
-    expect(countOf(none)).toBeNull();
-    expect(countOf(both)).toBe(0);
-    expect(refusalOf(none)).toBe(MW.noCondition);
-    expect(refusalOf(both)).toBe(MW.nobodyLine);
-    expect(refusalOf(COMING)).toBeNull();
+    expect(chipWords({ kind: 'all' }, BOOK)).toBe('All guests · 142');
+    expect(chipWords(COMING, BOOK)).toBe('Coming · 96');
+    expect(chipWords(NOT_REPLIED, BOOK)).toBe('Hasn’t replied · 25');
+    expect(countOf(none, GROUPS)).toBeNull();
+    expect(countOf(both, GROUPS)).toBe(0);
+    expect(refusalOf(none, GROUPS)).toBe(MW.noCondition);
+    expect(refusalOf(both, GROUPS)).toBe(MW.nobodyLine);
+    expect(refusalOf(COMING, GROUPS)).toBeNull();
   });
 
   it('checks before it goes: who is told and how, who cannot be, and the credits (Web-1, Web-4)', () => {
-    const coming = checkOf(COMING, TICKS);
-    const all = checkOf({ kind: 'all' }, TICKS);
-    const notReplied = checkOf(NOT_REPLIED, TICKS);
-    const smsOff = checkOf(COMING, { email: true, sms: false, whatsApp: false });
+    const coming = checkOf(COMING, TICKS, GROUPS);
+    const all = checkOf({ kind: 'all' }, TICKS, GROUPS);
+    const notReplied = checkOf(NOT_REPLIED, TICKS, GROUPS);
+    const smsOff = checkOf(COMING, { email: true, sms: false, whatsApp: false }, GROUPS);
 
     expect(many('cannotUndo', coming.count)).toBe('Sending to 96 people cannot be undone.');
     expect(coming.pills.map((pill) => pill.count)).toEqual([92, 31]);
@@ -143,7 +160,7 @@ describe('Messaging B · Conversations, the rules (sc-31371)', () => {
       'No email address · SMS is off',
     ]);
     expect(smsOff.credits).toBe('Email uses no credits.');
-    expect(checkOf(COMING, { ...TICKS, whatsApp: true }).credits).toBe(
+    expect(checkOf(COMING, { ...TICKS, whatsApp: true }, GROUPS).credits).toBe(
       'Texts and WhatsApp messages use 34 credits. Credits after sending: 1,466.',
     );
   });
@@ -182,7 +199,7 @@ describe('Messaging B · Conversations, the rules (sc-31371)', () => {
 
     expect(going.outs[0]).toMatchObject({ stage: 'countdown', left: 10 });
     expect(going.pane).toEqual({ kind: 'convo', id: 'new' });
-    expect(rowsInOrder(sectionsOf(going))[0]?.line).toBe('Sending in 10…');
+    expect(rowsInOrder(sectionsOf(going, GROUPS))[0]?.line).toBe('Sending in 10…');
 
     let ticked = going;
 
@@ -205,7 +222,7 @@ describe('Messaging B · Conversations, the rules (sc-31371)', () => {
     expect(
       outTitle({ subject: ' ', body: [{ kind: 'text', text: 'Bring a coat.\nIt is cold.' }] }),
     ).toBe('Bring a coat.');
-    expect(rowsInOrder(sectionsOf(seedOf('followUp')))[0]).toMatchObject({
+    expect(rowsInOrder(sectionsOf(seedOf('followUp'), GROUPS))[0]).toMatchObject({
       title: 'Parking and the dress code',
       line: 'Follow-up · Reached 20 of 96 so far',
       when: '10:05',
@@ -230,16 +247,19 @@ describe('Messaging B · Conversations, the rules (sc-31371)', () => {
   it('schedules, edits, sends now and cancels a message for later', () => {
     const later = changed(seedOf('check'), { kind: 'schedule', day: '2026-11-05', time: '09:00' });
 
-    expect(ids(sectionsOf(later).scheduled)).toEqual(['sched', 'sched2']);
-    expect(sectionsOf(later).scheduled[1]?.line).toBe(
+    expect(ids(sectionsOf(later, GROUPS).scheduled)).toEqual(['sched', 'sched2']);
+    expect(sectionsOf(later, GROUPS).scheduled[1]?.line).toBe(
       'To Guests who… Is coming · Thu, Nov 5, 09:00',
     );
 
     const now = changed(seedOf('sendNow'), { kind: 'sendNow', id: 'sched' });
 
-    expect(sectionsOf(now).scheduled).toEqual([]);
-    expect(rowsInOrder(sectionsOf(now))[0]).toMatchObject({ id: 'sched', line: 'Sending in 10…' });
-    expect(sectionsOf(seedOf('scheduledCancelled')).done[0]).toMatchObject({
+    expect(sectionsOf(now, GROUPS).scheduled).toEqual([]);
+    expect(rowsInOrder(sectionsOf(now, GROUPS))[0]).toMatchObject({
+      id: 'sched',
+      line: 'Sending in 10…',
+    });
+    expect(sectionsOf(seedOf('scheduledCancelled'), GROUPS).done[0]).toMatchObject({
       id: 'sched',
       line: 'Cancelled by Folake Adeyemi at 09:46',
       tag: { kind: 'ended', word: 'Cancelled' },
@@ -270,15 +290,19 @@ describe('Messaging B · Conversations, the rules (sc-31371)', () => {
   it('moves a conversation to Done and back, and a reply that arrives to the top', () => {
     const done = changed(seedOf('inUse'), { kind: 'done', id: 'kwame', at: '09:41' });
 
-    expect(ids(sectionsOf(done).done)).toEqual(['kwame', 'marta', 'invite']);
-    expect(ids(sectionsOf(changed(done, { kind: 'waiting', id: 'kwame' })).needs)).toContain(
-      'kwame',
-    );
+    expect(ids(sectionsOf(done, GROUPS).done)).toEqual(['kwame', 'marta', 'invite']);
+    expect(
+      ids(sectionsOf(changed(done, { kind: 'waiting', id: 'kwame' }), GROUPS).needs),
+    ).toContain('kwame');
 
     const arrived = changed(seedOf('replyArrived'), { kind: 'arrive', id: 'lucia' });
 
-    expect(ids(sectionsOf(seedOf('replyArrived')).needs)).not.toContain('lucia');
-    expect(sectionsOf(arrived).needs[0]).toMatchObject({ id: 'lucia', when: 'now', arrived: true });
+    expect(ids(sectionsOf(seedOf('replyArrived'), GROUPS).needs)).not.toContain('lucia');
+    expect(sectionsOf(arrived, GROUPS).needs[0]).toMatchObject({
+      id: 'lucia',
+      when: 'now',
+      arrived: true,
+    });
   });
 
   it('counts a guest marked as told in person as reached', () => {
@@ -286,7 +310,7 @@ describe('Messaging B · Conversations, the rules (sc-31371)', () => {
 
     expect(told.unreached).toHaveLength(10);
     expect(reachFrom(142, 87, told.unreached).reached).toBe(132);
-    expect(sectionsOf(told).needs.at(-1)?.tag?.word).toBe('Not reached · 10');
+    expect(sectionsOf(told, GROUPS).needs.at(-1)?.tag?.word).toBe('Not reached · 10');
   });
 });
 
@@ -361,7 +385,7 @@ describe('The notice’s cost before Send (sc-3976, pm on bm’s #31518)', () =>
 describe('Who it reached, its fixes, the filter and a resend (sc-3966)', () => {
   const reached = seedOf('reached');
   const joaquin = (inbox: typeof reached) =>
-    whoOf(inbox, 'parking', 'parking').groups.flatMap((group) =>
+    whoOf(inbox, 'parking', 'parking', GROUPS).groups.flatMap((group) =>
       group.people.filter((one) => one.id === 'joaquin'),
     )[0];
 
@@ -390,7 +414,7 @@ describe('Who it reached, its fixes, the filter and a resend (sc-3966)', () => {
     });
     expect(joaquin(added)?.lines[0]?.word).toBe('No email address');
     expect(
-      whoOf(seedOf('addedPhone'), 'parking', 'parking')
+      whoOf(seedOf('addedPhone'), 'parking', 'parking', GROUPS)
         .groups.flatMap((group) => group.people)
         .find((one) => one.id === 'lars')?.updated,
     ).toEqual(['A phone number has been added since. Nothing has been sent to it yet.']);
@@ -401,7 +425,7 @@ describe('Who it reached, its fixes, the filter and a resend (sc-3966)', () => {
 
     expect(joaquin(later)).toMatchObject({ offer: false, fixes: ['addPhone', 'toldInPerson'] });
     expect(joaquin(later)?.updated).toHaveLength(1);
-    expect(resendOf(reached, 'parking', TICKS)).toEqual({
+    expect(resendOf(reached, 'parking', TICKS, GROUPS)).toEqual({
       waiting: 11,
       count: 3,
       unconfirmed: 2,
@@ -412,7 +436,7 @@ describe('Who it reached, its fixes, the filter and a resend (sc-3966)', () => {
       ],
       credits: 2,
     });
-    expect(resendOf(later, 'parking', TICKS)).toMatchObject({ count: 4, still: 7 });
+    expect(resendOf(later, 'parking', TICKS, GROUPS)).toMatchObject({ count: 4, still: 7 });
   });
 
   it('sends a saved address again: its channel’s line Sent, and the person In progress', () => {
@@ -425,12 +449,12 @@ describe('Who it reached, its fixes, the filter and a resend (sc-3966)', () => {
       why: 'joaquin.ruiz@gmail.com',
     });
     expect(joaquin(sent)?.updated).toBeUndefined();
-    expect(resendOf(sent, 'parking', TICKS).waiting).toBe(10);
+    expect(resendOf(sent, 'parking', TICKS, GROUPS).waiting).toBe(10);
   });
 
   it('marks a guest as told in person, reached and in Marked as told, and Undo puts them back', () => {
     const told = seedOf('told');
-    const who = whoOf(told, 'parking', 'parking');
+    const who = whoOf(told, 'parking', 'parking', GROUPS);
 
     expect(who.reach.reached).toBe(132);
     expect(shownOf(who, 'told').groups[0]?.people.map((one) => one.lines.at(-1))).toEqual([
@@ -440,16 +464,16 @@ describe('Who it reached, its fixes, the filter and a resend (sc-3966)', () => {
         why: 'Marked by Folake Adeyemi at 09:44',
       },
     ]);
-    expect(resendOf(told, 'parking', TICKS)).toMatchObject({ count: 2, unconfirmed: 1 });
+    expect(resendOf(told, 'parking', TICKS, GROUPS)).toMatchObject({ count: 2, unconfirmed: 1 });
 
     const undone = changed(told, { kind: 'undoTold', id: 'amaka', thread: 'parking' });
 
     expect(undone.unreached.map((one) => one.id)).toEqual(reached.unreached.map((one) => one.id));
-    expect(whoOf(undone, 'parking', 'parking').reach.reached).toBe(131);
+    expect(whoOf(undone, 'parking', 'parking', GROUPS).reach.reached).toBe(131);
   });
 
   it('filters by group, each choice counted', () => {
-    const who = whoOf(reached, 'parking', 'parking');
+    const who = whoOf(reached, 'parking', 'parking', GROUPS);
 
     expect(showItems(who).map((item) => `${item.word} · ${item.count}`)).toEqual([
       'Everyone · 142',
@@ -466,7 +490,7 @@ describe('Who it reached, its fixes, the filter and a resend (sc-3966)', () => {
     expect(shownOf(who, 'reached').groups[0]).toMatchObject({ count: 131, more: 129 });
     expect(shownOf(who, 'notReached').heading).toBe('Not reached · 11');
     expect(
-      showItems(whoOf(seedOf('sentReached'), 'new', 'new')).map(
+      showItems(whoOf(seedOf('sentReached'), 'new', 'new', GROUPS)).map(
         (item) => `${item.word} · ${item.count}`,
       ),
     ).toEqual([
@@ -480,7 +504,7 @@ describe('Who it reached, its fixes, the filter and a resend (sc-3966)', () => {
   });
 
   it('checks a resend of an invitation or a message just sent with nobody to tell yet', () => {
-    expect(resendOf(seedOf('resendInvited'), 'invite', TICKS)).toEqual({
+    expect(resendOf(seedOf('resendInvited'), 'invite', TICKS, GROUPS)).toEqual({
       waiting: 2,
       count: 0,
       unconfirmed: 0,
@@ -491,7 +515,7 @@ describe('Who it reached, its fixes, the filter and a resend (sc-3966)', () => {
       ],
       credits: 0,
     });
-    expect(resendOf(seedOf('resendSent'), 'new', TICKS)).toMatchObject({
+    expect(resendOf(seedOf('resendSent'), 'new', TICKS, GROUPS)).toMatchObject({
       waiting: 2,
       count: 0,
       cant: [
@@ -504,6 +528,7 @@ describe('Who it reached, its fixes, the filter and a resend (sc-3966)', () => {
         changed(seedOf('resendSent'), { kind: 'toldInPerson', id: 'joaquin', thread: 'new' }),
         'new',
         TICKS,
+        GROUPS,
       ).waiting,
     ).toBe(1);
   });

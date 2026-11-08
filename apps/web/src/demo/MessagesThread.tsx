@@ -40,6 +40,9 @@ import {
   toldWords,
 } from './messages.ts';
 import { Composer, ComposePane, ResendCard } from './MessagesCompose.tsx';
+import { NoManage, SentToThread } from './MessagesSentTo.tsx';
+import { isSentTo } from './messagesTo.ts';
+import { TW } from './messagesToWords.ts';
 import { type Bit, useInbox, whereBits } from './messagesContext.ts';
 import { LaterDialog, MatchPicker } from './MessagesDialogs.tsx';
 import {
@@ -53,6 +56,16 @@ import {
   WhereGlyph,
 } from './MessagesParts.tsx';
 import { ReachedView } from './MessagesReached.tsx';
+import { RefusedSave } from './MessagesScheduled.tsx';
+import {
+  endBits,
+  endLine,
+  endedOf,
+  refusalOf,
+  reloaded,
+  statusWord,
+  typedEdit,
+} from './messagesScheduled.ts';
 import { StreamItems } from './MessagesStream.tsx';
 import { MessagesBell } from './MessagesTell.tsx';
 
@@ -104,7 +117,7 @@ function Idle() {
 }
 
 /** The composer waiting at the foot: its To, and a field that opens the full composer on the first key. */
-function MiniComposer({
+export function MiniComposer({
   to,
   placeholder,
   thread,
@@ -113,7 +126,9 @@ function MiniComposer({
   placeholder: string;
   thread: ConvoId;
 }) {
-  const { act, focus, inbox, whyOff } = useInbox();
+  const { act, focus, inbox, whyOff, to: event } = useInbox();
+
+  if (!event.manage) return <NoManage />;
 
   function open(text: string, toPick: boolean): void {
     act({
@@ -141,7 +156,7 @@ function MiniComposer({
           onClick={() => open('', true)}
           {...offButton(whyOff != null)}
         >
-          {chipWords(to)}
+          {chipWords(to, event.book)}
           <Glyph name="chevdown" size={14} weight={2.6} />
         </button>
       </div>
@@ -170,7 +185,7 @@ function MiniComposer({
   );
 }
 
-function Head({
+export function Head({
   lead,
   title,
   line,
@@ -208,6 +223,7 @@ function Thread({
   const { inbox } = useInbox();
 
   if (isGuest(id) || id === 'unknown') return <GuestThread id={id} state={state} onDone={onDone} />;
+  if (isSentTo(id)) return <SentToThread id={id} />;
   if (isSched(id) && outsIn(inbox, id).length === 0) {
     const sched = inbox.scheds.find((one) => one.id === id);
 
@@ -249,7 +265,7 @@ function GuestThread({
   state: MessagesState | null;
   onDone: (id: ConvoId) => void;
 }) {
-  const { inbox, act, keys, focus, say } = useInbox();
+  const { inbox, act, keys, focus, say, to } = useInbox();
   const [picking, setPicking] = useState(state === 'matchPicker' && id === 'unknown');
   const done = inbox.done.includes(id);
   const match = id === 'unknown' ? MATCHES.find((one) => one.name === inbox.matched) : null;
@@ -259,11 +275,11 @@ function GuestThread({
   const doneAt = inbox.doneAt[id];
   const toldBy = guest?.toldBy ?? 'email';
   const action =
-    id === 'unknown' && match != null ? (
+    to.manage && id === 'unknown' && match != null ? (
       <button type="button" className="desk-text" onClick={() => setPicking(true)}>
         {MW.changeGuest}
       </button>
-    ) : done ? (
+    ) : !to.manage ? null : done ? (
       <button
         type="button"
         className="desk-text"
@@ -347,15 +363,21 @@ function GuestThread({
             <GuestBubble text={UNKNOWN.text} bits={whereBits('email', UNKNOWN.at)} />
             {match == null ? (
               <li className="mg-match">
-                <p>{filled(MW.couldntMatch, { address: UNKNOWN.address })}</p>
-                <button
-                  type="button"
-                  className="button button-primary mg-choose"
-                  data-focus="choose"
-                  onClick={() => setPicking(true)}
-                >
-                  {MW.chooseGuest}
-                </button>
+                <p>
+                  {to.manage
+                    ? filled(MW.couldntMatch, { address: UNKNOWN.address })
+                    : TW.notMatchedYet}
+                </p>
+                {to.manage && (
+                  <button
+                    type="button"
+                    className="button button-primary mg-choose"
+                    data-focus="choose"
+                    onClick={() => setPicking(true)}
+                  >
+                    {MW.chooseGuest}
+                  </button>
+                )}
               </li>
             ) : (
               <SystemLine glyph="tick">
@@ -456,9 +478,12 @@ function AnswerBox({
   canAlso: readonly Channel[];
   typed: string;
 }) {
-  const { inbox, act, keys, tell, say, focus, whyOff } = useInbox();
+  const { inbox, act, keys, tell, say, focus, whyOff, to } = useInbox();
   const [text, setText] = useState(typed);
   const [by, setBy] = useState<Channel>(toldBy);
+
+  if (!to.manage) return <NoManage />;
+
   const blank = text.trim() === '';
   const notice = noticeOf(id, by, inbox.balance, canAlso);
 
@@ -545,7 +570,7 @@ function AnswerBox({
 }
 
 function ManyThread({ id }: { id: ConvoId }) {
-  const { inbox } = useInbox();
+  const { inbox, to: event } = useInbox();
   const first = outsIn(inbox, id)[0];
   const resending = inbox.resend?.thread === id;
   const fixed = id === 'parking' || id === 'invite';
@@ -558,8 +583,8 @@ function ManyThread({ id }: { id: ConvoId }) {
       ? MW.newMessage
       : outTitle(first);
   const line = [
-    toLine(to),
-    countOf(to),
+    toLine(to, event.book.groups),
+    countOf(to, event.book.groups),
     id === 'invite' ? listed([MW.email, MW.sms]) : toldWords(first?.ticks ?? TICKS),
   ]
     .filter((part) => part != null && part !== '')
@@ -604,19 +629,21 @@ function modeOf(state: MessagesState | null): SchedMode {
 
 /** A message scheduled for later (sc-3963): dashed until it goes, edited in the box, sent now through the check, or cancelled after asking. */
 function ScheduledThread({ sched, state }: { sched: Sched; state: MessagesState | null }) {
-  const { act, focus, say, tell } = useInbox();
-  const [mode, setMode] = useState<SchedMode>(modeOf(state));
+  const { act, focus, say, tell, to: event } = useInbox();
+  const [refused, setRefused] = useState(refusalOf(state));
+  const [mode, setMode] = useState<SchedMode>(refused == null ? modeOf(state) : 'edit');
   const [words, setWords] = useState<Pick<Draft, 'subject' | 'body' | 'seed'>>({
     subject: sched.subject,
-    body: sched.body,
+    body: refused == null ? sched.body : typedEdit(sched.body),
     seed: 0,
   });
   const [later, setLater] = useState(false);
-  const cancelled = sched.cancelledAt != null;
+  const ended = endedOf(sched);
+  const ending = endLine(sched);
   const title = outTitle(sched);
   const when = { date: dayWords(sched.day), time: sched.time };
-  const count = countOf(sched.to) ?? 0;
-  const check = checkOf(sched.to, sched.ticks);
+  const count = countOf(sched.to, event.book.groups) ?? 0;
+  const check = checkOf(sched.to, sched.ticks, event.book.groups);
 
   function to(next: SchedMode, key: string): void {
     setMode(next);
@@ -628,58 +655,66 @@ function ScheduledThread({ sched, state }: { sched: Sched; state: MessagesState 
       <Head
         lead={<LeadMark lead={{ kind: 'many' }} size={44} />}
         title={title}
-        line={[toLine(sched.to), count, cancelled ? MW.cancelledTag : MW.scheduled].join(' · ')}
+        line={[toLine(sched.to, event.book.groups), count, statusWord(sched)].join(' · ')}
       />
       <ol className="mg-stream" role="log" aria-label={title}>
         <DayRule>{when.date}</DayRule>
         <HostBubble
           subject={sched.subject}
           body={<Words body={sched.body} />}
-          bits={[]}
-          look={cancelled ? 'greyed' : mode === 'edit' ? 'dashedFaded' : 'dashed'}
+          bits={endBits(sched)}
+          look={
+            sched.outcome === 'sent'
+              ? 'sent'
+              : ended
+                ? 'greyed'
+                : mode === 'edit'
+                  ? 'dashedFaded'
+                  : 'dashed'
+          }
         >
-          {cancelled ? null : mode === 'edit' ? (
-            <p className="mg-goes">{filled(MW.editing, when)}</p>
+          {ended ? null : mode === 'edit' ? (
+            refused == null && <p className="mg-goes">{filled(MW.editing, when)}</p>
           ) : mode === 'waiting' ? (
             <>
               <p className="mg-goes">
                 {filled(MW.goesAt, { when: `${when.date}, ${when.time} ${ZONE_SHORT}` })}
               </p>
-              <div className="mg-acts is-end">
-                <button
-                  type="button"
-                  className="desk-text"
-                  data-focus="edit"
-                  onClick={() => to('edit', 'body')}
-                >
-                  {MW.edit}
-                </button>
-                <button
-                  type="button"
-                  className="desk-text"
-                  data-focus="send-now"
-                  onClick={() => to('sendNow', 'check')}
-                >
-                  {MW.sendNow}
-                </button>
-                <button
-                  type="button"
-                  className="desk-text is-red"
-                  data-focus="cancel-ask"
-                  onClick={() => to('cancelAsk', 'keep')}
-                >
-                  {MW.cancelEllipsis}
-                </button>
-              </div>
+              {event.manage && (
+                <div className="mg-acts is-end">
+                  <button
+                    type="button"
+                    className="desk-text"
+                    data-focus="edit"
+                    onClick={() => to('edit', 'body')}
+                  >
+                    {MW.edit}
+                  </button>
+                  <button
+                    type="button"
+                    className="desk-text"
+                    data-focus="send-now"
+                    onClick={() => to('sendNow', 'check')}
+                  >
+                    {MW.sendNow}
+                  </button>
+                  <button
+                    type="button"
+                    className="desk-text is-red"
+                    data-focus="cancel-ask"
+                    onClick={() => to('cancelAsk', 'keep')}
+                  >
+                    {MW.cancelEllipsis}
+                  </button>
+                </div>
+              )}
             </>
           ) : null}
         </HostBubble>
-        {cancelled && (
-          <SystemLine glyph="clear">
-            {filled(MW.cancelledBy, { name: READER, time: sched.cancelledAt ?? '' })}
-          </SystemLine>
+        {ending != null && (
+          <SystemLine glyph={sched.cancelledAt != null ? 'clear' : 'clock'}>{ending}</SystemLine>
         )}
-        {mode === 'sendNow' && !cancelled && (
+        {mode === 'sendNow' && !ended && (
           <li className="mg-said is-host">
             <div className="mg-check" role="alertdialog" aria-label={MW.checkName}>
               <p className="mg-check-sentence" tabIndex={-1} data-focus="check">
@@ -718,7 +753,7 @@ function ScheduledThread({ sched, state }: { sched: Sched; state: MessagesState 
             </div>
           </li>
         )}
-        {mode === 'cancelAsk' && !cancelled && (
+        {mode === 'cancelAsk' && !ended && (
           <li className="mg-said is-host">
             <CancelAsk
               subject={title}
@@ -731,8 +766,25 @@ function ScheduledThread({ sched, state }: { sched: Sched; state: MessagesState 
             />
           </li>
         )}
+        {refused != null && (
+          <RefusedSave
+            refusal={refused}
+            onReload={() => {
+              const now = reloaded(refused, sched);
+
+              act({ kind: 'resched', id: sched.id, sched: now });
+              setRefused(null);
+              setWords({
+                subject: sched.subject,
+                body: now.body ?? sched.body,
+                seed: words.seed + 1,
+              });
+              to('waiting', 'heading');
+            }}
+          />
+        )}
       </ol>
-      {mode === 'edit' && !cancelled && (
+      {mode === 'edit' && !ended && (
         <Composer
           draft={words}
           tools
@@ -740,6 +792,7 @@ function ScheduledThread({ sched, state }: { sched: Sched; state: MessagesState 
           onDraft={(next) => setWords((now) => ({ ...now, ...next }))}
           onPreview={() => tell(`${MW.preview} has its own design.`)}
           onSend={() => {
+            if (refused != null) return focus('refused-save');
             act({
               kind: 'resched',
               id: sched.id,
