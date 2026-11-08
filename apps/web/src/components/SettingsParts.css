@@ -21,6 +21,25 @@
   --deskSmall: 500 14px/1.45 var(--fontFamily);
 }
 
+:where(.desk) button {
+  margin: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+:where(.desk) :is(h1, h2, h3, p, ul, ol) {
+  margin: 0;
+  padding: 0;
+}
+
+:where(.desk) :is(ul, ol) {
+  list-style: none;
+}
+
 .desk :is(button, a, input, [tabindex='0']):focus-visible {
   outline: none;
   box-shadow: var(--deskRing);
