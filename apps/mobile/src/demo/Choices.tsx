@@ -46,7 +46,7 @@ export function Choices({
       </View>
       <QuietButton label="Create an account" onPress={onCreate} testID="demo.create" />
       {onJoinCode != null && (
-        <QuietButton label="Enter a join code" onPress={onJoinCode} testID="demo.joinCode" />
+        <QuietButton label="Enter a door code" onPress={onJoinCode} testID="demo.joinCode" />
       )}
     </View>
   );

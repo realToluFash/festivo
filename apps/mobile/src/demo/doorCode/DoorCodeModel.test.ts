@@ -1,10 +1,17 @@
 import { describe, expect, it } from 'vitest';
 
-import { inWithLine, listed, rowLine, seesEveryEvent, sheetLine } from '../people/PeopleSample.ts';
+import {
+  joinedWithLine,
+  listed,
+  rowLine,
+  seesEveryEvent,
+  sheetLine,
+} from '../people/PeopleSample.ts';
 import { DOOR_CODE_BOARDS } from './DoorCodeBoards.ts';
 import {
   BAR_CODE,
   capProblem,
+  atWords,
   cardLine,
   cardStep,
   codeStatus,
@@ -29,7 +36,7 @@ import {
   renewed,
   underCard,
 } from './DoorCodeModel.ts';
-import { cameIn, codeSaid, joinCodeSaid, newLine, qrSaid, stopLine, W } from './DoorCodeWords.ts';
+import { cameIn, codeSaid, doorCodeSaid, newLine, qrSaid, stopLine, W } from './DoorCodeWords.ts';
 import { REDEEM_STATES } from './RedeemModel.ts';
 
 const LOCALE = 'en-US';
@@ -41,7 +48,8 @@ function opened(state: string | undefined, code?: string, hold?: string): DoorSt
   return start;
 }
 
-const lines = (start: DoorStart) => start.codes.map((code) => cardLine(code, LOCALE));
+const lines = (start: DoorStart) =>
+  start.codes.map((code) => cardLine(code, LOCALE, start.now.date));
 
 describe('People with a door code, by state (spec §5)', () => {
   it('leaves People’s own states and any other link alone', () => {
@@ -57,7 +65,7 @@ describe('People with a door code, by state (spec §5)', () => {
     expect(start.people.viewer).toEqual(INES);
     expect(start.people.onEvent).toHaveLength(18);
     expect(start.codes.map((code) => code.code)).toEqual(['Q7KM 4XP2']);
-    expect(lines(start)).toEqual(['14 of 30 used · until 23:30 on Sat, Nov 14']);
+    expect(lines(start)).toEqual(['14 of 30 used · until 23:30']);
   });
 
   it('has no code and nobody in by one before a code is made', () => {
@@ -69,8 +77,8 @@ describe('People with a door code, by state (spec §5)', () => {
 
   it('shows a card per code, newest last', () => {
     expect(lines(opened('code-two'))).toEqual([
-      '14 of 30 used · until 23:30 on Sat, Nov 14',
-      '3 of 5 used · until 23:30 on Sat, Nov 14',
+      '14 of 30 used · until 23:30',
+      '3 of 5 used · until 23:30',
     ]);
   });
 
@@ -92,17 +100,17 @@ describe('People with a door code, by state (spec §5)', () => {
   it('says full, stopped and ran out with the card’s own line', () => {
     expect(opened('code-full').codes.map(codeStatus)).toEqual(['full']);
     expect(opened('code-full').codes.map((code) => code.code)).toEqual(['M4TB 7KQ8']);
-    expect(lines(opened('code-full'))).toEqual(['5 of 5 used · until 23:30 on Sat, Nov 14']);
+    expect(lines(opened('code-full'))).toEqual(['5 of 5 used · until 23:30']);
     expect(lines(opened('code-stopped'))).toEqual([
       '14 people came in with it. They keep their access.',
     ]);
-    expect(lines(opened('code-ran-out'))).toEqual(['14 of 30 used · ended at 15:00']);
+    expect(lines(opened('code-expired'))).toEqual(['14 of 30 used · ended at 15:00']);
   });
 
   it('lands a made code at nought used, with the toast', () => {
     const start = opened('code-made');
 
-    expect(lines(start)).toEqual(['0 of 30 used · until 23:30 on Sat, Nov 14']);
+    expect(lines(start)).toEqual(['0 of 30 used · until Sat, Nov 14, 23:30']);
     expect(start.people.toast).toBe('Door code made.');
   });
 
@@ -122,7 +130,7 @@ describe('People with a door code, by state (spec §5)', () => {
 
   it('gives each state its step and what goes under the card', () => {
     expect(cardStep('working')).toBe('hold');
-    expect(['full', 'stopped', 'ranOut'].map((one) => cardStep(one as 'full'))).toEqual([
+    expect(['full', 'stopped', 'expired'].map((one) => cardStep(one as 'full'))).toEqual([
       'makeNew',
       'makeNew',
       'makeNew',
@@ -130,7 +138,7 @@ describe('People with a door code, by state (spec §5)', () => {
     expect(underCard('working')).toEqual(['makeNew', 'stop']);
     expect(underCard('full')).toEqual(['stop']);
     expect(underCard('stopped')).toEqual([]);
-    expect(underCard('ranOut')).toEqual([]);
+    expect(underCard('expired')).toEqual([]);
   });
 });
 
@@ -138,13 +146,16 @@ describe('who is on People, and how they are there', () => {
   const people = everyone();
   const joao = people.find((one) => one.id === JOAO_ID);
 
-  it('ends the line of each person a code let in with “door code”', () => {
-    if (joao == null) throw new Error('João is on the event.');
+  it('ends the line of each person a code let in with “Door code” (l10n, #32341)', () => {
+    if (joao?.byCode == null) throw new Error('João is on the event by the code.');
 
-    expect(rowLine(joao, INES)).toBe('Can check guests in · Bar and drinks · door code');
+    expect(rowLine(joao, INES)).toBe('Can check guests in · Bar and drinks · Door code');
     expect(sheetLine(joao, ORGANISATION)).toBe('From outside Lumen Feiras · Bar and drinks');
-    expect(inWithLine(joao.byCode ?? { code: '', at: '' })).toBe(
-      'In with the door code Q7KM 4XP2 at 13:34.',
+    expect(joinedWithLine(joao.byCode, LOCALE, '2026-11-14')).toBe(
+      'Joined with the door code Q7KM 4XP2 at 13:34.',
+    );
+    expect(joinedWithLine(joao.byCode, LOCALE, '2026-11-07')).toBe(
+      'Joined with the door code Q7KM 4XP2 at Sat, Nov 14, 13:34.',
     );
   });
 
@@ -260,19 +271,24 @@ describe('holding it up, a new code and stopping (spec §2.3, §2.4)', () => {
     expect(stopLine(14)).toBe('Nobody new can use it. The 14 people already in keep their access.');
   });
 
-  it('says one person in the singular, and leaves the sentence out at nought (pm, 7 Nov)', () => {
+  it('says one person in the singular, and at nought that nobody has used it (pm, 8 Nov)', () => {
     expect(stopLine(1)).toBe('Nobody new can use it. The 1 person already in keeps their access.');
-    expect(newLine('H3WD 9RN6', 0)).toBe('H3WD 9RN6 stops working.');
-    expect(stopLine(0)).toBe('Nobody new can use it.');
+    expect(newLine('H3WD 9RN6', 0)).toBe('H3WD 9RN6 stops working. Nobody has used it yet.');
+    expect(stopLine(0)).toBe('Nobody new can use it. Nobody has used it yet.');
     expect(cameIn(1)).toBe('1 person came in with it. They keep their access.');
   });
 
   it('says a stopped or ran-out card nobody used came in with nobody (pm, 7 Nov)', () => {
     const unused = { ...BAR_CODE, used: 0 };
 
-    expect(cardLine({ ...unused, stopped: true }, LOCALE)).toBe('Nobody came in with it.');
-    expect(cardLine({ ...unused, endedAt: '15:00' }, LOCALE)).toBe('Nobody came in with it.');
-    expect(cardLine({ ...BAR_CODE, endedAt: '15:00' }, LOCALE)).toBe(
+    const day = '2026-11-14';
+    const expired = { ...BAR_CODE, ends: { kind: 'earlier', date: day, time: '15:00' } } as const;
+
+    expect(cardLine({ ...unused, stopped: true }, LOCALE, day)).toBe('Nobody came in with it.');
+    expect(cardLine({ ...expired, used: 0, endedAt: '15:00' }, LOCALE, day)).toBe(
+      'Nobody came in with it.',
+    );
+    expect(cardLine({ ...expired, endedAt: '15:00' }, LOCALE, day)).toBe(
       '14 of 30 used · ended at 15:00',
     );
   });
@@ -290,13 +306,43 @@ describe('holding it up, a new code and stopping (spec §2.3, §2.4)', () => {
     });
     expect(start.codes.map((one) => one.code)).toEqual(['H3WD 9RN6']);
     expect(start.hold?.codeId).toBe(code.id);
-    expect(lines(start)).toEqual(['0 of 30 used · until 23:30 on Sat, Nov 14']);
+    expect(lines(start)).toEqual(['0 of 30 used · until 23:30']);
   });
 
   it('reads the code in its groups, and names the QR', () => {
     expect(codeSaid('Q7KM 4XP2')).toBe('Q 7 K M, 4 X P 2');
-    expect(joinCodeSaid('Q7KM 4XP2')).toBe('Join code Q 7 K M, 4 X P 2');
-    expect(qrSaid('Q7KM 4XP2')).toBe('QR code for the join code Q 7 K M, 4 X P 2');
+    expect(doorCodeSaid('Q7KM 4XP2')).toBe('Door code Q 7 K M, 4 X P 2');
+    expect(qrSaid('Q7KM 4XP2')).toBe('QR code for the door code Q 7 K M, 4 X P 2');
+  });
+
+  it('names the day of a time that is not today (pm, 8 Nov)', () => {
+    expect(atWords({ date: '2026-11-14', time: '23:30' }, LOCALE, '2026-11-14')).toBe('23:30');
+    expect(atWords({ date: '2026-11-14', time: '23:30' }, LOCALE, '2026-11-07')).toBe(
+      'Sat, Nov 14, 23:30',
+    );
+    expect(atWords({ date: '2026-11-14', time: '23:30' }, 'en-GB', '2026-11-07')).toBe(
+      'Sat 14 Nov, 23:30',
+    );
+  });
+
+  it('takes l10n’s settled English (#32341)', () => {
+    expect(W.show).toBe('Show the code');
+    expect(W.expired).toBe('Expired');
+    expect(W.stopConfirm).toBe('Stop the code');
+    expect(W.makeFailed).toBe('The door code was not made. Check your connection and try again.');
+    expect(W.stopFailed).toBe(
+      'The code was not stopped, so it still works. Check your connection and try again.',
+    );
+    expect(W.noneLine).toBe(
+      'One code lets a crew in on the day. Each person gives their name and mobile number.',
+    );
+  });
+
+  it('keeps the old links: ran out opens Expired, and ?hold= is ?show=', () => {
+    expect(doorStartOf('code-ran-out', undefined, undefined)?.codes.map(codeStatus)).toEqual([
+      'expired',
+    ]);
+    expect(doorStartOf(undefined, undefined, 'open')?.hold).not.toBeNull();
   });
 });
 
@@ -310,7 +356,7 @@ describe('the demo home’s Door code group', () => {
           (state) => `/demo/people?state=${state}`,
         ),
         ...MAKE_STATES.map((state) => `/demo/people?code=${state}`),
-        ...HOLD_STATES.map((state) => `/demo/people?hold=${state}`),
+        ...HOLD_STATES.map((state) => `/demo/people?show=${state}`),
         ...REDEEM_STATES.map((state) => `/demo/redeem?state=${state}`),
       ]),
     );

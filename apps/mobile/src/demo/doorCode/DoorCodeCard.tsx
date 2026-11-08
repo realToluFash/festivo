@@ -19,12 +19,12 @@ import {
   type DoorCode,
   underCard,
 } from './DoorCodeModel.ts';
-import { cardTop, joinCodeSaid, W } from './DoorCodeWords.ts';
+import { cardTop, doorCodeSaid, W } from './DoorCodeWords.ts';
 
 const TAGS: Record<Exclude<CodeStatus, 'working'>, { word: string; mark: MarkKind }> = {
   full: { word: W.full, mark: 'ended' },
   stopped: { word: W.stopped, mark: 'paused' },
-  ranOut: { word: W.ranOut, mark: 'ended' },
+  expired: { word: W.expired, mark: 'ended' },
 };
 
 /** People's Confetti card with no code yet: what a code does, and the one step. */
@@ -57,6 +57,7 @@ export function NoCodeCard({
 export function DoorCodeCard({
   code,
   locale,
+  today,
   onHold,
   onMakeNew,
   onStop,
@@ -64,6 +65,8 @@ export function DoorCodeCard({
 }: {
   code: DoorCode;
   locale: string;
+  /** The sample's day, so an end on another day names it. */
+  today: string;
   onHold: () => void;
   onMakeNew: () => void;
   onStop: () => void;
@@ -80,7 +83,7 @@ export function DoorCodeCard({
         height={200}
         gap={10}
         step={{
-          label: holds ? W.hold : W.makeNew,
+          label: holds ? W.show : W.makeNew,
           onPress: holds ? onHold : onMakeNew,
           ...(stepRef == null ? {} : { ref: stepRef }),
           testID: `door.step.${code.id}`,
@@ -92,14 +95,14 @@ export function DoorCodeCard({
           <Text
             size={30}
             weight="bold"
-            accessibilityLabel={joinCodeSaid(code.code)}
+            accessibilityLabel={doorCodeSaid(code.code)}
             style={styles.code}
           >
             {code.code}
           </Text>
           {tag != null && <GlassTag word={tag.word} mark={tag.mark} />}
         </View>
-        <OnCard text={cardLine(code, locale)} />
+        <OnCard text={cardLine(code, locale, today)} />
       </SummaryCard>
       {under.length > 0 && (
         <View style={styles.under}>

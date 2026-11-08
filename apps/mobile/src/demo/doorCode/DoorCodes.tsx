@@ -162,7 +162,7 @@ export function DoorCodes({
             line: asking.line,
             keep: { label: W.keepIt, off: asking.sending, testID: 'door.stop.keep' },
             confirm: {
-              label: W.stop,
+              label: W.stopConfirm,
               removes: true,
               busy: asking.sending ? W.stopping : undefined,
               testID: 'door.stop.confirm',
@@ -182,6 +182,7 @@ export function DoorCodes({
             key={code.id}
             code={code}
             locale={locale}
+            today={start.now.date}
             stepRef={(node) => {
               if (node == null) steps.current.delete(code.id);
               else steps.current.set(code.id, node);
@@ -210,6 +211,7 @@ export function DoorCodes({
           key={`hold-${holding.visit}`}
           open={holding.open}
           code={held}
+          today={start.now.date}
           start={
             holding.visit === 1 && start.hold != null
               ? start.hold

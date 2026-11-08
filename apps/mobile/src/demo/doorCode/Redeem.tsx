@@ -304,7 +304,7 @@ function EnterStep({ flow, go }: { flow: Flow; go: Go }) {
       <View style={styles.fields}>
         <InsideField
           ref={field}
-          label={W.joinCode}
+          label={W.doorCode}
           defaultValue={flow.typed}
           onChangeText={(text) => {
             typed.current = text;
@@ -465,7 +465,7 @@ function PhoneCodeStep({ flow, go }: { flow: Flow; go: Go }) {
   const [done, setDone] = useState(false);
   const { left, restart } = useCountdown(RESEND_SECONDS);
   const spent = status === 'expired' || status === 'exhausted';
-  const refusal = refusalOf(status);
+  const refusal = refusalOf(status, texted);
   const shown = `${PORTUGAL?.dial ?? ''} ${flow.number}`.trim();
 
   useEffect(() => {

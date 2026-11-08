@@ -1,16 +1,18 @@
-/** The door code's English, as access-a-spec.md §8 lists it: sc-72's, sc-4235's, People's, the app's, pm's and the new words. */
+/** The door code's English: l10n's settled words (#32341, sc-72 "Decided, 8 Nov 2026 (pm)"), then spec §8, sc-72's, sc-4235's, People's and the app's. */
 export const W = {
   doorCode: 'Door code',
   noneSays: 'No door code yet',
-  noneLine: 'One code lets a crew in on the day. Each person gives their name and number.',
+  noneLine: 'One code lets a crew in on the day. Each person gives their name and mobile number.',
   makeFirst: 'Make a door code',
   another: 'Make another door code',
-  hold: 'Hold it up',
+  show: 'Show the code',
   makeNew: 'Make a new code',
   stop: 'Stop this code',
+  stopConfirm: 'Stop the code',
+  tryAgain: 'Try again',
   full: 'Full',
   stopped: 'Stopped',
-  ranOut: 'Ran out',
+  expired: 'Expired',
   make: 'Make',
   making: 'Making…',
   theirRole: 'Their role',
@@ -30,19 +32,18 @@ export const W = {
   capRange: 'Use a whole number from 1 to 500.',
   past: 'Choose a time that hasn’t passed yet.',
   noEdit: 'A code can’t give edit access. Give that to a named person instead.',
-  makeFailed: 'We couldn’t make the code. Check your connection and try again.',
+  makeFailed: 'The door code was not made. Check your connection and try again.',
   made: 'Door code made.',
   newTitle: 'Make a new code?',
   keepThis: 'Keep this one',
   stopTitle: 'Stop this code?',
   keepIt: 'Keep it',
   stopping: 'Stopping…',
-  stopFailed: 'We couldn’t stop the code, so it still works. Check your connection and try again.',
+  stopFailed: 'The code was not stopped, so it still works. Check your connection and try again.',
   close: 'Close',
-  enterCode: 'Enter a join code',
-  joinCode: 'Join code',
-  codeBlank: 'Enter the join code.',
-  codeShort: 'A join code is 8 letters and numbers.',
+  enterCode: 'Enter a door code',
+  codeBlank: 'Enter the door code.',
+  codeShort: 'A door code is 8 letters and numbers.',
   continue: 'Continue',
   refused: 'That code doesn’t work. Check it with whoever gave it to you.',
   tooMany: 'Too many tries',
@@ -59,11 +60,13 @@ export const W = {
   sendNew: 'Send a new code',
   expiredTitle: 'That code has expired',
   expiredBody: 'Codes only work for a while. Send a new one and use the code in the newest text.',
+  expiredBodyWhatsApp:
+    'Codes only work for a while. Send a new one and use the code in the newest WhatsApp message.',
   exhaustedTitle: 'Too many wrong tries',
   exhaustedBody: 'That code no longer works. Send a new one to carry on.',
   failedTitle: 'That did not work',
   failedBody: 'Something went wrong on the way. Try again in a moment.',
-  memberLine: 'Members reach an event through its People. Ask its lead or an admin to add you.',
+  memberLine: 'Members open an event from its People page. Ask its lead or an admin to add you.',
   openEvents: 'Open Events',
   endsLine: 'Access ends when the event concludes.',
   openEvent: 'Open the event',
@@ -92,12 +95,12 @@ export function codeSaid(code: string): string {
     .join(', ');
 }
 
-export function joinCodeSaid(code: string): string {
-  return `${W.joinCode} ${codeSaid(code)}`;
+export function doorCodeSaid(code: string): string {
+  return `${W.doorCode} ${codeSaid(code)}`;
 }
 
 export function qrSaid(code: string): string {
-  return `QR code for the join code ${codeSaid(code)}`;
+  return `QR code for the door code ${codeSaid(code)}`;
 }
 
 export function usedUntil(used: number, cap: number, until: string): string {
@@ -117,23 +120,21 @@ export function cameIn(people: number): string {
     : `${people} people came in with it. They keep their access.`;
 }
 
-/** pm, 7 Nov (sc-72): at 0 the sentence is left out. */
-function alreadyIn(people: number): string[] {
-  if (people === 0) return [];
+/** At 0 the Asks say so (pm, 8 Nov, sc-72), so a host learns stopping it shuts nobody out. */
+function alreadyIn(people: number): string {
+  if (people === 0) return 'Nobody has used it yet.';
 
-  return [
-    people === 1
-      ? 'The 1 person already in keeps their access.'
-      : `The ${people} people already in keep their access.`,
-  ];
+  return people === 1
+    ? 'The 1 person already in keeps their access.'
+    : `The ${people} people already in keep their access.`;
 }
 
 export function newLine(code: string, people: number): string {
-  return [`${code} stops working.`, ...alreadyIn(people)].join(' ');
+  return `${code} stops working. ${alreadyIn(people)}`;
 }
 
 export function stopLine(people: number): string {
-  return ['Nobody new can use it.', ...alreadyIn(people)].join(' ');
+  return `Nobody new can use it. ${alreadyIn(people)}`;
 }
 
 export function jobCount(job: string): string {

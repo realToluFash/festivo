@@ -1,4 +1,6 @@
-import { formatWallClock, formatWallDay, phoneLengthProblem } from '@soirely/domain';
+import { formatWallDay, phoneLengthProblem } from '@soirely/domain';
+
+import { writtenTime } from '../clock.ts';
 
 import type {
   EventRole,
@@ -22,7 +24,14 @@ export const EVENT = {
   country: 'PT',
   countryName: 'Portugal',
 } as const;
-export const NOW = { date: '2026-11-07', time: '09:41' } as const;
+export interface Moment {
+  date: string;
+  time: string;
+}
+
+export const NOW: Moment = { date: '2026-11-07', time: '09:41' };
+export const ON_THE_DAY: Moment = { date: EVENT.day, time: '13:45' };
+export const AFTER_EXPIRY: Moment = { date: EVENT.day, time: '16:00' };
 export const TRY_AT = '13:32';
 
 export const CODE_ROLES = ['Can view', 'Can check guests in', 'Can edit'] as const;
@@ -47,16 +56,16 @@ export interface DoorCode {
   endedAt: string | null;
 }
 
-export type CodeStatus = 'working' | 'full' | 'stopped' | 'ranOut';
+export type CodeStatus = 'working' | 'full' | 'stopped' | 'expired';
 
 export function codeStatus(code: DoorCode): CodeStatus {
   if (code.stopped) return 'stopped';
-  if (code.endedAt != null) return 'ranOut';
+  if (code.endedAt != null) return 'expired';
 
   return code.used >= code.cap ? 'full' : 'working';
 }
 
-export function endMoment(ends: Ends): { date: string; time: string } {
+export function endMoment(ends: Ends): Moment {
   return ends.kind === 'event' ? { date: EVENT.day, time: EVENT.ends } : ends;
 }
 
@@ -65,14 +74,14 @@ export function dayWords(date: string, locale: string): string {
 }
 
 export function clockWords(time: string, locale: string): string {
-  return formatWallClock(time, locale);
+  return writtenTime(time, locale);
 }
 
-/** "23:30 on Sat, Nov 14": every time on the 24-hour clock, the day in the reader's locale. */
-export function untilWords(ends: Ends, locale: string): string {
-  const { date, time } = endMoment(ends);
+/** "23:30" today, "Sat, Nov 14, 23:30" on another day (pm, 8 Nov): the day and the time from Intl, on the 24-hour clock. */
+export function atWords(at: Moment, locale: string, today: string): string {
+  const time = clockWords(at.time, locale);
 
-  return `${clockWords(time, locale)} on ${dayWords(date, locale)}`;
+  return at.date === today ? time : `${dayWords(at.date, locale)}, ${time}`;
 }
 
 export function endsRowLine(ends: Ends, locale: string): string {
@@ -82,18 +91,18 @@ export function endsRowLine(ends: Ends, locale: string): string {
   return `${which} · ${dayWords(date, locale)}, ${clockWords(time, locale)}`;
 }
 
-export function cardLine(code: DoorCode, locale: string): string {
+export function cardLine(code: DoorCode, locale: string, today: string): string {
+  const end = atWords(endMoment(code.ends), locale, today);
+
   switch (codeStatus(code)) {
     case 'working':
-      return usedUntil(code.used, code.cap, untilWords(code.ends, locale));
+      return usedUntil(code.used, code.cap, end);
     case 'full':
-      return usedUntil(code.cap, code.cap, untilWords(code.ends, locale));
+      return usedUntil(code.cap, code.cap, end);
     case 'stopped':
       return cameIn(code.used);
-    case 'ranOut':
-      return code.used === 0
-        ? cameIn(0)
-        : usedEnded(code.used, code.cap, clockWords(code.endedAt ?? EVENT.ends, locale));
+    case 'expired':
+      return code.used === 0 ? cameIn(0) : usedEnded(code.used, code.cap, end);
   }
 }
 
@@ -315,7 +324,7 @@ export const JOAO_ID = 'p-joao-pereira';
 function joinerBy(by: Redeemable) {
   return ([name, initials, at]: readonly [string, string, string], index: number): OnEvent => ({
     ...outside(`p-${slug(name)}`, name, initials, index % 5, by.role, by.job ?? ''),
-    byCode: { code: by.code, at },
+    byCode: { code: by.code, date: EVENT.day, time: at },
   });
 }
 
@@ -329,7 +338,7 @@ function slug(name: string): string {
 
 export const HUGO: OnEvent = {
   ...outside('p-hugo-faria', 'Hugo Faria', 'HF', 2, BAR.role, BAR.job ?? ''),
-  byCode: { code: BAR.code, at: '13:42' },
+  byCode: { code: BAR.code, date: EVENT.day, time: '13:42' },
 };
 
 export function named(): OnEvent[] {
@@ -362,7 +371,7 @@ export const PEOPLE_DOOR_STATES = [
   'code-two',
   'code-full',
   'code-stopped',
-  'code-ran-out',
+  'code-expired',
   'code-made',
   'code-person',
   'code-remove',
@@ -434,6 +443,7 @@ export interface DoorStart {
   people: PeopleStart;
   codes: DoorCode[];
   had: string[];
+  now: Moment;
   make: MakeStart | null;
   hold: HoldStart | null;
 }
@@ -449,11 +459,17 @@ function people(onEvent: OnEvent[], more: Partial<PeopleStart> = {}): PeopleStar
   };
 }
 
-function start(codes: DoorCode[], more: Partial<PeopleStart> = {}, list = everyone()): DoorStart {
+function start(
+  codes: DoorCode[],
+  more: Partial<PeopleStart> = {},
+  list = everyone(),
+  now = ON_THE_DAY,
+): DoorStart {
   return {
     people: people(list, more),
     codes,
     had: codes.map((one) => one.code),
+    now,
     make: null,
     hold: null,
   };
@@ -462,7 +478,7 @@ function start(codes: DoorCode[], more: Partial<PeopleStart> = {}, list = everyo
 function stateStart(state: PeopleDoorState): DoorStart {
   switch (state) {
     case 'code-none':
-      return start([], {}, named());
+      return start([], {}, named(), NOW);
     case 'code':
       return start([BAR_CODE]);
     case 'code-two':
@@ -474,16 +490,21 @@ function stateStart(state: PeopleDoorState): DoorStart {
       ]);
     case 'code-stopped':
       return start([{ ...BAR_CODE, stopped: true }]);
-    case 'code-ran-out':
-      return start([
-        {
-          ...BAR_CODE,
-          ends: { kind: 'earlier', date: EVENT.day, time: EVENT.starts },
-          endedAt: EVENT.starts,
-        },
-      ]);
+    case 'code-expired':
+      return start(
+        [
+          {
+            ...BAR_CODE,
+            ends: { kind: 'earlier', date: EVENT.day, time: EVENT.starts },
+            endedAt: EVENT.starts,
+          },
+        ],
+        {},
+        everyone(),
+        AFTER_EXPIRY,
+      );
     case 'code-made':
-      return start([{ ...BAR_CODE, used: 0 }], { toast: W.made }, named());
+      return start([{ ...BAR_CODE, used: 0 }], { toast: W.made }, named(), NOW);
     case 'code-person':
       return start([BAR_CODE], { opened: { id: JOAO_ID, removing: null } });
     case 'code-remove':
@@ -580,17 +601,19 @@ function oneOf<T extends string>(list: readonly T[], name: string | undefined): 
   return list.find((one) => one === name) ?? null;
 }
 
-/** `?code=` opens Make on People with no code yet; `?hold=` holds the working code up; `?state=code…` is People with its codes. */
+const OLD_NAMES: Record<string, PeopleDoorState> = { 'code-ran-out': 'code-expired' };
+
+/** `?code=` opens Make on People with no code yet; `?show=` (once `?hold=`) shows the working code; `?state=code…` is People with its codes. */
 export function doorStartOf(
   state: string | undefined,
   code: string | undefined,
-  hold: string | undefined,
+  show: string | undefined,
 ): DoorStart | null {
   const making = oneOf(MAKE_STATES, code);
   if (making != null) return { ...stateStart('code-none'), make: makeStart(making) };
-  const holding = oneOf(HOLD_STATES, hold);
+  const holding = oneOf(HOLD_STATES, show);
   if (holding != null) return holdStart(holding);
-  const shown = oneOf(PEOPLE_DOOR_STATES, state);
+  const shown = oneOf(PEOPLE_DOOR_STATES, OLD_NAMES[state ?? ''] ?? state);
 
   return shown == null ? null : stateStart(shown);
 }

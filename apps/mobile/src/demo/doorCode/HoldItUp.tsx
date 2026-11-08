@@ -20,7 +20,7 @@ import { HELD_MS } from '../people/PeopleSample.ts';
 import { AskLayer, type AskProps, TextAction } from '../../components/Summary.tsx';
 import { cardLine, type DoorCode, type HoldStart } from './DoorCodeModel.ts';
 import { DoorQr } from './DoorQr.tsx';
-import { joinCodeSaid, newLine, stopLine, W } from './DoorCodeWords.ts';
+import { doorCodeSaid, newLine, stopLine, W } from './DoorCodeWords.ts';
 
 export const SEND_MS = 1200;
 const JOIN_MS = 2500;
@@ -37,6 +37,7 @@ export function HoldItUp({
   code,
   start,
   locale,
+  today,
   opener,
   onClose,
   onRenew,
@@ -47,6 +48,7 @@ export function HoldItUp({
   code: DoorCode;
   start: HoldStart;
   locale: string;
+  today: string;
   opener: RefObject<ScreenReaderTarget | null>;
   onClose: () => void;
   onRenew: () => void;
@@ -64,7 +66,7 @@ export function HoldItUp({
   const held = useRef(start.stopping);
   const title = useRef<TextHandle>(null);
   const later = useRef({ onStopped, onJoin });
-  const count = cardLine(code, locale);
+  const count = cardLine(code, locale, today);
   const job = [code.role, code.job].filter((part) => part != null).join(' · ');
 
   useFocusBack(open, opener);
@@ -122,7 +124,7 @@ export function HoldItUp({
             line: stopLine(code.used),
             keep: { label: W.keepIt, off: stopping, testID: 'door.hold.stop.keep' },
             confirm: {
-              label: W.stop,
+              label: failed == null ? W.stopConfirm : W.tryAgain,
               removes: true,
               busy: stopping ? W.stopping : undefined,
               testID: 'door.hold.stop.confirm',
@@ -193,7 +195,7 @@ export function HoldItUp({
               size={size.code}
               weight="bold"
               accessible={covered ? false : undefined}
-              accessibilityLabel={joinCodeSaid(code.code)}
+              accessibilityLabel={doorCodeSaid(code.code)}
               style={[
                 styles.code,
                 { letterSpacing: size.code * 0.04, lineHeight: size.code * 1.1 },

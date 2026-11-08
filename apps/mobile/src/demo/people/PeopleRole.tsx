@@ -13,7 +13,7 @@ import {
   type EventRole,
   firstName,
   HELD_MS,
-  inWithLine,
+  joinedWithLine,
   LEAD_OFF,
   leadOff,
   notChangedLine,
@@ -118,6 +118,8 @@ export function RoleSheet({
   opener,
   organisation = ORGANISATION,
   removingAtStart = null,
+  locale = 'en',
+  today,
   onSaved,
   onClose,
   onRemove,
@@ -128,6 +130,8 @@ export function RoleSheet({
   opener: Opener;
   organisation?: string;
   removingAtStart?: Removing;
+  locale?: string;
+  today?: string | undefined;
   onSaved: (role: EventRole) => void;
   onClose: () => void;
   onRemove: () => void;
@@ -209,7 +213,9 @@ export function RoleSheet({
       </View>
       {person.outside && (
         <View style={styles.outside}>
-          {person.byCode != null && <Line text={inWithLine(person.byCode)} size={14} />}
+          {person.byCode != null && (
+            <Line text={joinedWithLine(person.byCode, locale, today)} size={14} />
+          )}
           <Line text={OUTSIDE_ENDS} size={14} />
         </View>
       )}

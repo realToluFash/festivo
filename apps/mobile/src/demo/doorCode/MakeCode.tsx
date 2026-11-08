@@ -16,7 +16,14 @@ import { HELD_MS, ROLE_LINES } from '../people/PeopleSample.ts';
 import { RoleLayer } from '../people/PeopleAdd.tsx';
 import { DoneAction } from '../people/PeopleRole.tsx';
 import { RoleChoices } from '../settings/MembersRequest.tsx';
-import { FocusedScreen, type Layer, Row, RowList, SectionHead } from '../../components/Summary.tsx';
+import {
+  FocusedScreen,
+  type Layer,
+  Row,
+  RowList,
+  SectionHead,
+  TextAction,
+} from '../../components/Summary.tsx';
 import { RadioMark } from '../../components/RadioMark.tsx';
 import {
   clockWords,
@@ -218,7 +225,12 @@ export function MakeCode({
       over={over}
       testID="door.make"
     >
-      {failed && <Said words={W.makeFailed} interrupts />}
+      {failed && (
+        <View style={styles.failed}>
+          <Said words={W.makeFailed} interrupts />
+          <TextAction label={W.tryAgain} onPress={make} testID="door.make.tryAgain" />
+        </View>
+      )}
       <View>
         <SectionHead title={W.theirRole} />
         <View accessibilityRole="radiogroup">
@@ -296,4 +308,5 @@ const styles = StyleSheet.create({
   layerHead: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceLg },
   moment: { flexDirection: 'row', gap: tokens.spaceLg },
   labelled: { flex: 1, minWidth: 0, gap: tokens.spaceXs },
+  failed: { alignItems: 'flex-start' },
 });

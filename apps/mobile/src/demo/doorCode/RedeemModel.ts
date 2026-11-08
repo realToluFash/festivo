@@ -183,10 +183,13 @@ export function phoneTitle(texted: boolean): string {
   return texted ? W.checkMessages : W.checkWhatsApp;
 }
 
-export function refusalOf(status: PhoneStatus): { title: string; body: string } | null {
+export function refusalOf(
+  status: PhoneStatus,
+  texted: boolean,
+): { title: string; body: string } | null {
   switch (status) {
     case 'expired':
-      return { title: W.expiredTitle, body: W.expiredBody };
+      return { title: W.expiredTitle, body: texted ? W.expiredBody : W.expiredBodyWhatsApp };
     case 'exhausted':
       return { title: W.exhaustedTitle, body: W.exhaustedBody };
     case 'failed':

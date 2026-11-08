@@ -54,16 +54,18 @@ interface Opened {
 
 /** People on an event in A, one list with the role in a sheet, on sample data. */
 export function PeopleSection() {
-  const { state, code, hold } = useLocalSearchParams<{
+  const { state, code, show, hold } = useLocalSearchParams<{
     state?: string;
     code?: string;
+    show?: string;
     hold?: string;
   }>();
-  const door = useMemo(() => doorStartOf(state, code, hold), [state, code, hold]);
+  const shown = show ?? hold;
+  const door = useMemo(() => doorStartOf(state, code, shown), [state, code, shown]);
   const name = peopleStateOf(state);
 
   if (door != null)
-    return <PeopleScreen key={`${state}·${code}·${hold}`} start={door.people} door={door} />;
+    return <PeopleScreen key={`${state}·${code}·${shown}`} start={door.people} door={door} />;
 
   return <PeopleScreen key={name} start={peopleStart(name)} door={null} />;
 }
@@ -266,6 +268,8 @@ function PeopleScreen({ start, door }: { start: PeopleStart; door: DoorStart | n
           roleFails={start.roleFails}
           opener={focusBack}
           organisation={world.organisation}
+          locale={locale}
+          today={door?.now.date}
           removingAtStart={opened.visit === 1 ? (start.opened?.removing ?? null) : null}
           onSaved={(role) => setOnEvent((was) => withRole(was, person.id, role))}
           onClose={closeRole}

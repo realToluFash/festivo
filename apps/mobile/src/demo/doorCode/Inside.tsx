@@ -23,7 +23,8 @@ import {
 } from '../people/PeopleSample.ts';
 import { LineIcon } from '../settings/AccountCard.tsx';
 import { Brand } from '../../components/Brand.tsx';
-import { Avatar, Back } from '../../components/SettingsParts.tsx';
+import { Initials } from '../../components/Initials.tsx';
+import { Back } from '../../components/SettingsParts.tsx';
 import { SidebarColumn, SidebarPlace, SidebarPlaces } from '../../components/TodaySidebar.tsx';
 import { EventThumb } from '../events/EventCard.tsx';
 import {
@@ -39,12 +40,15 @@ import {
 } from '../../components/Summary.tsx';
 import {
   type CodeRole,
+  atWords,
   clockWords,
   dayWords,
   doorMembers,
   everyone,
+  endMoment,
   EVENT,
   JOAO_ID,
+  ON_THE_DAY,
   ORGANISATION,
   type Redeemable,
 } from './DoorCodeModel.ts';
@@ -116,6 +120,7 @@ export function InsideEvent({
         role={role}
         who={who}
         locale={locale}
+        you={!side}
         onPeople={() => onAt('people')}
         onSignOut={onSignOut}
         tell={tell}
@@ -242,12 +247,6 @@ function SideBar({
   onPerson: () => void;
 }) {
   const day = dayWords(EVENT.day, locale);
-  const initials = who
-    .split(' ')
-    .map((word) => word.charAt(0))
-    .filter((letter) => letter !== '')
-    .slice(0, 2)
-    .join('');
 
   return (
     <SidebarColumn>
@@ -290,7 +289,13 @@ function SideBar({
         accessibilityLabel={`${who}, ${role}`}
         testID="inside.side.person"
       >
-        <Avatar initials={initials} side={tokens.space5xl} tone={4} />
+        <View
+          style={styles.face}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        >
+          <Initials name={who} size={12} weight="bold" style={styles.faceInk} />
+        </View>
         <View style={styles.grow}>
           <Text size={14} weight="semibold" accessible={false}>
             {who}
@@ -310,6 +315,7 @@ function Overview({
   role,
   who,
   locale,
+  you,
   onPeople,
   onSignOut,
   tell,
@@ -318,11 +324,13 @@ function Overview({
   role: CodeRole;
   who: string;
   locale: string;
+  /** Signed in as and Sign out at the foot; on its side the person button holds them. */
+  you: boolean;
   onPeople: () => void;
   onSignOut: () => void;
   tell: (words: string) => void;
 }) {
-  const until = clockWords(EVENT.ends, locale);
+  const until = atWords(endMoment({ kind: 'event' }), locale, ON_THE_DAY.date);
   const checks = role === 'Can check guests in';
 
   return (
@@ -389,7 +397,7 @@ function Overview({
           },
         ]}
       />
-      <You who={who} onSignOut={onSignOut} />
+      {you && <You who={who} onSignOut={onSignOut} />}
     </>
   );
 }
@@ -635,6 +643,15 @@ const styles = StyleSheet.create({
     borderRadius: tokens.spaceXl,
     backgroundColor: tokens.colorCard,
   },
+  face: {
+    width: tokens.space5xl,
+    height: tokens.space5xl,
+    borderRadius: tokens.spaceXl,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: tokens.colorAccentTint,
+  },
+  faceInk: { color: tokens.colorAccentText },
   person: {
     minHeight: 52,
     flexDirection: 'row',

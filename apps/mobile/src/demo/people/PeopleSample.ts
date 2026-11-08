@@ -1,3 +1,6 @@
+import { formatWallDay } from '@soirely/domain';
+
+import { writtenTime } from '../clock.ts';
 import { ORGANISATION } from '../settings/MembersSample.ts';
 import type { Load } from '../settings/RolesSample.ts';
 import { MEMBERS } from '../settings/sample.ts';
@@ -38,7 +41,7 @@ export const OUTSIDE_ENDS = 'Their access ends when the event does.';
 export const LEAD_OFF = leadOff(ORGANISATION);
 export const IN_ORGANISATION = inOrganisation(ORGANISATION);
 export const FROM_OUTSIDE = fromOutside(ORGANISATION);
-export const BY_CODE = 'door code';
+export const BY_CODE = 'Door code';
 /** People adds members only, found by name, until sc-71 adds someone from outside by their address (pm, 5 Nov 2026). */
 export const NAME_LABEL = 'Name';
 export const LOADING_WORDS = 'Loading the people on this event…';
@@ -65,8 +68,8 @@ export interface OnEvent {
   role: EventRole;
   outside: boolean;
   label: string | null;
-  /** Came in by a door code (sc-31774): which, and when. */
-  byCode?: { code: string; at: string } | undefined;
+  /** Came in by a door code (sc-31774): which, and the day and time. */
+  byCode?: { code: string; date: string; time: string } | undefined;
 }
 
 export interface PeopleViewer {
@@ -215,8 +218,16 @@ export const SAVE_MS = 600;
 /** A link to a sending state holds it this long, then lands. */
 export const HELD_MS = 8000;
 
-export function inWithLine(byCode: { code: string; at: string }): string {
-  return `In with the door code ${byCode.code} at ${byCode.at}.`;
+/** l10n's line (#32341); a time not on `today` names its day (pm, 8 Nov). */
+export function joinedWithLine(
+  byCode: { code: string; date: string; time: string },
+  locale: string,
+  today: string = byCode.date,
+): string {
+  const time = writtenTime(byCode.time, locale);
+  const at = byCode.date === today ? time : `${formatWallDay(byCode.date, locale)}, ${time}`;
+
+  return `Joined with the door code ${byCode.code} at ${at}.`;
 }
 
 export function savedWords(person: OnEvent, role: EventRole): string {

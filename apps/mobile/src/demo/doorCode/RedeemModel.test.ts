@@ -71,8 +71,8 @@ describe('joining, every state (spec §5)', () => {
   });
 
   it('carries each refusal in the board’s words', () => {
-    expect(flowAt('enter-blank').said).toBe('Enter the join code.');
-    expect(flowAt('enter-short').said).toBe('A join code is 8 letters and numbers.');
+    expect(flowAt('enter-blank').said).toBe('Enter the door code.');
+    expect(flowAt('enter-short').said).toBe('A door code is 8 letters and numbers.');
     expect(flowAt('refused').said).toBe(
       'That code doesn’t work. Check it with whoever gave it to you.',
     );
@@ -97,7 +97,7 @@ describe('joining, every state (spec §5)', () => {
   });
 });
 
-describe('the join code', () => {
+describe('the door code, typed', () => {
   it('ignores case, spaces and hyphens', () => {
     expect(plainCode(' q7km-4xp2 ')).toBe('Q7KM4XP2');
     expect(redeemed('q7km-4xp2')).toEqual(BAR);
@@ -141,12 +141,22 @@ describe('a name and a number, then the phone code (sc-4235)', () => {
     expect(wrongCode(false)).toBe(
       'That code does not match. Check the newest WhatsApp message from Soirely and try again.',
     );
-    expect(refusalOf('expired')?.title).toBe('That code has expired');
-    expect(refusalOf('exhausted')?.body).toBe(
+    expect(refusalOf('expired', true)?.title).toBe('That code has expired');
+    expect(refusalOf('expired', true)?.body).toBe(
+      'Codes only work for a while. Send a new one and use the code in the newest text.',
+    );
+    expect(refusalOf('expired', false)?.body).toBe(
+      'Codes only work for a while. Send a new one and use the code in the newest WhatsApp message.',
+    );
+    expect(refusalOf('exhausted', false)?.body).toBe(
       'That code no longer works. Send a new one to carry on.',
     );
-    expect(refusalOf('failed')?.title).toBe('That did not work');
-    expect(refusalOf('wrong')).toBeNull();
+    expect(refusalOf('failed', false)?.title).toBe('That did not work');
+    expect(refusalOf('wrong', false)).toBeNull();
+    expect(W.memberLine).toBe(
+      'Members open an event from its People page. Ask its lead or an admin to add you.',
+    );
+    expect(W.enterCode).toBe('Enter a door code');
   });
 
   it('lands in, as the name given; a code that filled meanwhile meets the one refusal', () => {
