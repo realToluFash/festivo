@@ -1,5 +1,8 @@
+import { withBoldText } from '../../../src/demo/boldText/BoldTextSwitch.tsx';
 import { SettingsRoute } from '../../../src/demo/settings/Route.tsx';
 
-export default function DemoSettingsScreen() {
+function DemoSettingsScreen() {
   return <SettingsRoute section={null} />;
 }
+
+export default withBoldText(DemoSettingsScreen);

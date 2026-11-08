@@ -7,6 +7,7 @@ import { Toast } from '../../components/Toast.tsx';
 import { SECTION_HREF } from '../../kit/appNav.ts';
 import { useLayout } from '../../layout/useLayout.ts';
 import { tokens } from '../../theme/tokens.ts';
+import { useBoldText } from '../boldText/boldTextStore.ts';
 import { OrgSwitcherProvider } from '../OrgSwitcher.tsx';
 import { switcherStateOf } from '../OrgSwitcherModel.ts';
 import { type CoverLayout, PHONE_TAB_BAR, type Tab } from '../../components/TodayCover.tsx';
@@ -72,6 +73,7 @@ export function SettingsRoute({ section }: { section: ShellSection | null }) {
   const viewer = viewerOf(params.as);
   const shown = section != null && sectionsFor(viewer).includes(section) ? section : null;
   const seed = schemeOf(params.scheme);
+  const bold = useBoldText();
 
   useCoverStatusBar('dark', false);
 
@@ -121,7 +123,9 @@ export function SettingsRoute({ section }: { section: ShellSection | null }) {
       onTab,
       listColumn: <SettingsColumn {...handlers} />,
     }),
-    [layout, viewer, shown, openSection, toSettings, tell, onTab, handlers],
+    // Bold text: the list column is an element held here, so the switch has to make it again.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [layout, viewer, shown, openSection, toSettings, tell, onTab, handlers, bold],
   );
   const Page = shown == null ? null : PAGES[shown];
 
