@@ -1,4 +1,5 @@
 import { type ReactNode, type Ref, useMemo, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, View, type ViewInstance } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -138,11 +139,13 @@ export function Bell({
   onPress?: (() => void) | undefined;
   ref?: Ref<ViewInstance> | undefined;
 }) {
+  const { t } = useTranslation();
+
   return (
     <RoundButton
       ref={ref}
       glyph="bell"
-      label="Notifications, 3 unread"
+      label={t('notifications.bellUnread', { count: 3 })}
       dot
       onPress={onPress ?? (() => tell('Notifications have their own design.'))}
     />
