@@ -1,6 +1,7 @@
-# Relaunches with a held sign-up whose hold has run out, and stops on Create your account with the
-# timed-out line as the heading's intro (sc-29923, sc-32449). Run after sign-up-held-any-language.yaml
-# and an aged hold. Pass SHOT.
+# Stops Expo Go and opens the app again from launch, waiting for Create your account. After
+# sign-up-held-any-language.yaml and an aged hold, that is the timed-out line as the heading's
+# intro (sc-29923, sc-32449). Pass SHOT.
+#   node .qa/bin/qa-env.mjs maestro sign-up-timed-out-at-launch SHOT=…
 appId: host.exp.Exponent
 ---
 - launchApp:
