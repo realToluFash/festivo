@@ -510,9 +510,14 @@
   font-variant-numeric: tabular-nums;
 }
 
-.gs .gs-remove {
+.gs .gs-remove,
+.gs .gs-more {
   margin-inline: 0;
   color: var(--colorInkSecondary);
+}
+
+.gs .gs-more {
+  font-variant-numeric: tabular-nums;
 }
 
 .gs-most {
