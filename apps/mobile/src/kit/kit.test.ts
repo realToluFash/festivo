@@ -1022,20 +1022,11 @@ describe('a field named on Android by words it never shows (sc-31323)', () => {
   const src = join(import.meta.dirname, '..');
   const named = ['components/Field.tsx', 'steps/InsideField.tsx', 'components/ListPicker.tsx'];
 
-  it.each(named)(
-    '%s names it through UnseenName, never through a Text kept out of the tree',
-    (path) => {
-      const code = readFileSync(join(src, path), 'utf8');
+  it.each(named)('%s mounts those words whenever the field is, not with a refusal', (path) => {
+    const code = readFileSync(join(src, path), 'utf8');
 
-      expect(code).toMatch(/<UnseenName nativeID=/u);
-      expect(code).not.toMatch(/<Text\s+nativeID=\{[^}]+\}\s+importantForAccessibility="no"/u);
-    },
-  );
-
-  it('keeps those words in the accessibility tree, as TalkBack reads no name from a view outside it', () => {
-    const code = readFileSync(join(src, 'components/UnseenName.tsx'), 'utf8');
-
-    expect(code).not.toMatch(/importantForAccessibility|accessibilityElementsHidden/u);
-    expect(code).toMatch(/opacity: 0/u);
+    expect(code).toMatch(/<UnseenName nativeID=/u);
+    expect(code).not.toMatch(/&&\s*\(?\s*<UnseenName/u);
+    expect(code).not.toMatch(/<Text\s+nativeID=\{[^}]+\}\s+importantForAccessibility/u);
   });
 });

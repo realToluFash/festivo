@@ -171,9 +171,9 @@ export function Field({
           </Pressable>
         )}
       </View>
-      {error != null && (
-        <UnseenName nativeID={invalidNameID}>{withInvalid(label, t('forms.invalid'))}</UnseenName>
-      )}
+      <UnseenName nativeID={invalidNameID}>
+        {error == null ? label : withInvalid(label, t('forms.invalid'))}
+      </UnseenName>
       <FieldLabel value={{ labelID, line: error, invalidNameID }}>{children}</FieldLabel>
       {error != null && <FieldError message={error} actions={errorActions} answer={errorAnswer} />}
       {(typeof help === 'string' ? [help] : (help ?? [])).map((line, index) => (

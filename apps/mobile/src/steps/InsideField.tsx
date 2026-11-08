@@ -139,9 +139,9 @@ export function InsideField({
         aria-invalid={state !== 'plain'}
         testID={testID}
       />
-      {refused != null && (
-        <UnseenName nativeID={invalidNameID}>{withInvalid(label, refused.word)}</UnseenName>
-      )}
+      <UnseenName nativeID={invalidNameID}>
+        {refused == null ? label : withInvalid(label, refused.word)}
+      </UnseenName>
       <Animated.View
         pointerEvents="none"
         style={[styles.label, { transform: [{ translateY }, { scale }] }]}
