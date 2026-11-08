@@ -225,6 +225,7 @@
     "sentAgain": "We sent it again. Use the newest email.",
     "openMail": "Open Mail",
     "sendAgain": "Send it again",
+    "sendAgainIn": "Send it again in {{time}}",
     "limitedLine": "Too many requests. Try again at {{time}}. Any link already sent still works.",
     "failedTitle": "That did not work",
     "failedBody": "Something went wrong on the way. Try again in a moment.",
