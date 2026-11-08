@@ -649,7 +649,7 @@ export function PaymentDialog({
       <div className="desk-fields">
         {shaping?.raced === true && <AlertInset>{PW.raced}</AlertInset>}
         {shaping?.raced !== true && shaping?.failed === true && (
-          <AlertInset>{PW.shapeFailed(verb)}</AlertInset>
+          <AlertInset>{PW.shapeFailed(shaping.terms.length)}</AlertInset>
         )}
         {shaping != null && (
           <fieldset className="pay-shapes">

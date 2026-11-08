@@ -83,8 +83,10 @@ export const PW = {
   shapeDaysHelp: 'A whole number from 0 to 730.',
   enterShapeDays: 'Enter a whole number of days from 0 to 730.',
   noDescription: 'No description yet',
-  shapeFailed: (verb: string) =>
-    `None of these payments were saved, because they could not be sent. Your rows are kept as you filled them in; select ${verb} to send them again.`,
+  shapeFailed: (count: number) =>
+    count === 1
+      ? 'This payment was not saved, because it could not be sent. Your row is kept as you filled it in; select Save 1 payment to send it again.'
+      : `None of these payments were saved, because they could not be sent. Your rows are kept as you filled them in; select Save ${count} payments to send them again.`,
   raced:
     'Payments were added to this vendor’s schedule while you were filling this in, so none of yours were saved. Check the payments it has now before adding more.',
   paymentReminders: 'Payment reminders',
