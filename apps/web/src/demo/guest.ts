@@ -744,7 +744,7 @@ const BOARD_ENGLISH = {
   messageTooLong: 'Shorten your message to {{most}} characters or fewer.',
   switched: 'This page is now in English.',
   notSaved:
-    'Your language wasn’t saved. This page stays in English on this device, but another device may open it in another language.',
+    'Your language was not saved. This page stays in English on this device, but it may open in another language on other devices.',
 } as const;
 
 export type BoardKey = keyof typeof BOARD_ENGLISH;

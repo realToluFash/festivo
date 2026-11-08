@@ -390,7 +390,7 @@
 
 .ev-when-pair .ev-input.is-time {
   flex: none;
-  width: 104px;
+  width: 160px;
 }
 
 .ev .ev-input:focus-visible {
@@ -615,6 +615,7 @@
 .ev-card-link::after {
   position: absolute;
   inset: 0;
+  z-index: 1;
   content: '';
 }
 
@@ -715,12 +716,15 @@
 }
 
 .ev-card-foot {
-  position: relative;
-  z-index: 3;
   display: flex;
   flex-direction: column;
   gap: var(--spaceSm);
   margin-top: auto;
+}
+
+.ev-card-foot :is(a, button) {
+  position: relative;
+  z-index: 2;
 }
 
 .ev-card-next {

@@ -50,6 +50,20 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **8 Nov 2026. El doble factor al iniciar sesión en la app** (sc-33828 para sc-29072,
+  `mobile:twoFactor.signedIn`, `recoveryShape`, `lost`, `lostTwoFactor.waitingFor`,
+  `stayOut`, `emailSoirely`). «Sesión iniciada», un estado, como `waysCard.signedInWith`. La
+  forma del código: «En mayúsculas o minúsculas; el guion se añade solo.». El título de espera
+  es «A la espera de {{organisations}}». `stayOut` dice «No podrá iniciar sesión hasta que…»,
+  nunca «su sesión sigue cerrada»: la persona aún no ha entrado. El botón es «Escribir al
+  servicio de asistencia», sin «de Soirely», que no cabe en un botón de teléfono en una línea;
+  el título y la introducción de la pantalla ya nombran a Soirely.
+- **8 Nov 2026. La pantalla de enlace enviado en la app y su aviso** (sc-33809 para sc-29071,
+  `mobile:recovery.*`). El botón es «Abrir el correo», no «Abrir Mail»: en Android abre la
+  aplicación de correo que tenga la persona. `spam` termina en «envíelo de nuevo», como el botón
+  «Enviarlo de nuevo» que tiene debajo, y `sentAgain` es «Se lo hemos enviado de nuevo. Use el
+  correo más reciente.», como `expiredBody`. El aviso `changed` dice «Contraseña cambiada. Se ha
+  cerrado la sesión en sus otros dispositivos.», con «cerrar sesión» del glosario.
 - **8 Nov 2026. La pantalla Hoy, a 360 de ancho** (sc-31788, tras #32963). La pestaña
   Settings del teléfono es «Ajustes», la palabra del iPhone y de Android en España, porque
   «Configuración» no cabe en un cuarto de 360; el título de la pantalla y `frame.settings`
@@ -692,3 +706,4 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   igual que en inglés. El botón de idioma se lee «Idioma: {{language}}».
 - **Cancelar una solicitud para volver a entrar** (sc-29979): «¿Cancelar su solicitud?»; la salida es «Seguir esperando», nunca «Cancelar», y la confirmación reutiliza «Cancelar la solicitud».
 - **El estado de un control rechazado, solo para el lector de pantalla** (`mobile:forms.invalid`, sc-31909): «Datos no válidos», tras el nombre del control («País, Datos no válidos»). Es lo que VoiceOver dice en la web; no concuerda con el género del nombre, que puede ser masculino o femenino.
+- **El plano de mesas** (sc-33304 para sc-3998, `seating.*`, `messages:seating.*`): el área es «Mesas» y lo que se dibuja, «el plano de mesas» («el plano» dentro del área); "Floor plan" es «Plano». Una "section" es una **zona**, nunca «sección», que en Soirely es una parte de la configuración: «Añadir una zona», «Sin zona», «Conservarla». Ancho y largo de la sala, como sustantivos. El lugar abre la línea de unidades como etiqueta, «Lugar: {{venue}}.», para que ninguna preposición tenga que concordar con el nombre. "Seated" no concuerda con el género del invitado: «invitados con asiento pasan a Sin asiento». «Esto también elimina {{counts}}.» no concuerda en número con la lista. Los colores: Azul, Morado, Ciruela, Vino, Rosa, Marrón, Verde oliva, Verde petróleo. La pista de pies usa la coma decimal y las abreviaturas de CLDR: «12 ft 4 in, 12,5 ft».

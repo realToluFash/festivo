@@ -4,7 +4,9 @@ import Svg, { Path } from 'react-native-svg';
 
 import { Text } from '../../src/components/Text.tsx';
 import { DemoScreen, NavBar } from '../../src/demo/DemoScreen.tsx';
+import { BOLD_TEXT_BOARDS } from '../../src/demo/boldText/BoldTextBoards.ts';
 import { BUDGET_BOARDS } from '../../src/demo/budget/BudgetBoards.ts';
+import { DATA_BOARDS } from '../../src/demo/settings/DataBoards.ts';
 import { Heading } from '../../src/steps/Lines.tsx';
 import { SAMPLE } from '../../src/demo/samples.ts';
 import { DOOR_CODE_BOARDS } from '../../src/demo/doorCode/DoorCodeBoards.ts';
@@ -21,6 +23,10 @@ interface Board {
 
 /** Every board in the design artifact, by its page, working on sample data. */
 const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
+  {
+    page: 'Bold text · the weight map',
+    boards: BOLD_TEXT_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
   {
     page: 'Today · where signing in lands',
     boards: [
@@ -688,6 +694,10 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
     ],
   },
   {
+    page: 'Data and control · B · One place',
+    boards: DATA_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
     page: 'Members · handing over · A One person',
     boards: [
       {
@@ -894,6 +904,26 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/events?state=offline',
       },
       { title: 'Events · a first run', what: 'No events yet', href: '/demo/events?state=first' },
+      {
+        title: 'Events · a first run, without Create events',
+        what: 'The ask-an-owner notice, no Create an event',
+        href: '/demo/events?state=firstAsk',
+      },
+      {
+        title: 'Events · nothing on Upcoming',
+        what: 'Events elsewhere, this tab empty',
+        href: '/demo/events?state=emptyUpcoming',
+      },
+      {
+        title: 'Events · no drafts',
+        what: 'Events elsewhere, this tab empty',
+        href: '/demo/events?state=emptyDrafts',
+      },
+      {
+        title: 'Events · nothing on Past',
+        what: 'Events elsewhere, this tab empty',
+        href: '/demo/events?state=emptyPast',
+      },
       {
         title: 'Events · nobody invited yet',
         what: 'The guest counts at 0',

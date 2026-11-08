@@ -90,14 +90,14 @@
   --gpLeft: 560px;
   --gpGap: 64px;
   --gpHeadPad: 0 32px 0 40px;
-  --gpLang: 36px;
+  --gpLang: 44px;
   --gpLangFont: 13px;
   --gpLangR: 8px;
-  --gpItem: 36px;
+  --gpItem: 44px;
   --gpItemFont: 14px;
   --gpFootPad: 0 32px 0 40px;
   --gpFootFont: 13px;
-  --gpFootLink: 32px;
+  --gpFootLink: 44px;
   --gpFootLinkPad: 0 8px;
   --gpFootGap: 4px;
 }

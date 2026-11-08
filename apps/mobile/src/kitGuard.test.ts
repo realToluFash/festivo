@@ -735,6 +735,7 @@ describe('a refused submit leaves the keyboard as it was, unless dropsKeysAfter 
     'src/components/AccountZone.tsx',
     'src/components/TwoFactorCard.tsx',
     'src/components/SecondFactorStep.tsx',
+    'src/steps/TwoFactorStep.tsx',
     'src/components/OrganisationDetails.tsx',
     'src/components/CompanyDomainsCard.tsx',
     'src/components/OwnershipCard.tsx',
@@ -1740,7 +1741,7 @@ function unreportable(markup: string, when = ''): boolean {
 
 describe('the code step fails in the words of the flow it is in (sc-22740)', () => {
   it.each([
-    ['app/sign-in-code.tsx', 'signIn'],
+    ['src/steps/SignInSecondFactor.tsx', 'signIn'],
     ['app/reset-password.tsx', 'recovery'],
   ])('%s passes %s failure words', (file, flow) => {
     const text = readFileSync(join(...file.split('/')), 'utf8');

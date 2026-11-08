@@ -6,7 +6,7 @@ import {
   formatPhone,
   recoveryIntroKey,
 } from '@soirely/domain';
-import { Redirect, router, useLocalSearchParams } from 'expo-router';
+import { Redirect, router } from 'expo-router';
 import {
   type ReactNode,
   createContext,
@@ -16,34 +16,21 @@ import {
   useRef,
   useState,
 } from 'react';
-import { Linking, StyleSheet, type TextInputInstance, View, type ViewInstance } from 'react-native';
+import { Linking, StyleSheet, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../src/api.ts';
 import { heldChallenge } from '../src/challenge.ts';
 import { timedOutSignIn } from '../src/kit/signInRules.ts';
-import { type AuthBack, AuthFrame, AuthHeading } from '../src/components/AuthFrame.tsx';
-import {
-  PrimaryButton,
-  QuietButton,
-  SecondaryButton,
-  useAtFoot,
-} from '../src/components/Buttons.tsx';
-import {
-  CodeField,
-  Field,
-  FieldError,
-  focusChecked,
-  focusRefused,
-  keysStayDown,
-} from '../src/components/Field.tsx';
+import { PrimaryButton, QuietButton, SecondaryButton } from '../src/components/Buttons.tsx';
+import { keysStayDown } from '../src/components/Field.tsx';
 import { LifecycleSheet } from '../src/components/LifecycleSheet.tsx';
 import { Notice } from '../src/components/Notice.tsx';
 import { Pending } from '../src/components/Pending.tsx';
-import { useFocusOnAnswer } from '../src/components/Screen.tsx';
 import { readOut } from '../src/components/ReadOut.tsx';
-import { StatusMark, type MarkTone } from '../src/components/StatusMark.tsx';
-import { Text } from '../src/components/Text.tsx';
+import { useFocusOnAnswer } from '../src/components/Screen.tsx';
+import { type MarkTone } from '../src/components/StatusMark.tsx';
+import { Text, type TextHandle } from '../src/components/Text.tsx';
 import { dropRecovery, heldRecovery, holdRecovery } from '../src/heldRecovery.ts';
 import { currentLocale } from '../src/i18n/index.ts';
 import { retryAfter } from '../src/kit/code.ts';
@@ -59,17 +46,18 @@ import {
   wrongRecoveryCodes,
 } from '../src/kit/recovery.ts';
 import { useLayout } from '../src/layout/useLayout.ts';
+import { CodeBoxes, type CodeBoxesHandle, CodeLabel } from '../src/steps/CodeBoxes.tsx';
+import { Heading, Plain, Says, Steps } from '../src/steps/Lines.tsx';
+import { NavBar, StepScreen } from '../src/steps/StepScreen.tsx';
 import { tokens } from '../src/theme/tokens.ts';
-import { useMarkSide } from '../src/components/markSide.ts';
 
 type Shown = RecoveryShown;
 
 /** The tap the step showing answers, for its heading to take screen reader focus (sc-11032). */
 const Tapped = createContext<object | undefined>(undefined);
 
-/** Lost both the authenticator and the recovery codes (sc-509): nothing on this screen signs anybody in. */
+/** Lost both the authenticator and the recovery codes (sc-509): three steps, then an ending; nothing here signs anybody in. */
 export default function LostTwoFactor() {
-  const back = useBackToCode();
   const held = heldChallenge();
   const challenge = held?.challenge ?? null;
   const [view, setShown] = useState<Shown>({ kind: 'loading' });
@@ -173,9 +161,9 @@ export default function LostTwoFactor() {
     if (view.kind === 'timedOut') return <Redirect href={timedOutSignIn(held?.email ?? '')} />;
     if (view.kind === 'loading')
       return (
-        <AuthFrame back={back}>
+        <StepScreen nav={<BackToCode />}>
           <Pending />
-        </AuthFrame>
+        </StepScreen>
       );
     if (view.kind === 'start') {
       return (
@@ -218,76 +206,79 @@ export default function LostTwoFactor() {
   }
 }
 
-function Saying({
+/** Opened from Enter your code, so Back and the system's back return to it as it was left (sc-23279); opened cold, there is nothing to go back to, and Close leaves for sign-in. */
+function BackToCode({ step }: { step?: readonly [number, number] }) {
+  const canGoBack = router.canGoBack();
+
+  return (
+    <NavBar
+      left={canGoBack ? 'back' : 'close'}
+      onLeft={() => (canGoBack ? router.back() : toSignIn())}
+      {...(step != null && { step })}
+      testID="lostTwoFactor"
+    />
+  );
+}
+
+function toSignIn(email?: string): void {
+  router.replace(email == null ? '/sign-in' : { pathname: '/sign-in', params: { email } });
+}
+
+function emailSupport(address: string): void {
+  void Linking.openURL(`mailto:${address}`);
+}
+
+/** Waiting and every ending: Close leaves for sign-in, the request carrying on without the screen. */
+function CloseBar({ step }: { step?: readonly [number, number] }) {
+  return (
+    <NavBar
+      left="close"
+      onLeft={() => toSignIn()}
+      {...(step != null && { step })}
+      testID="lostTwoFactor"
+    />
+  );
+}
+
+/** An ending: the mark, a title, one line and one button. */
+function Ending({
+  mark,
   title,
   intro,
-  mark,
+  note,
+  button,
 }: {
+  mark?: [MarkTone, string];
   title: string;
   intro: string;
-  mark?: { tone: MarkTone; word: string };
+  note?: string;
+  button: { label: string; onPress: () => void; testID: string };
 }) {
   const tapped = useContext(Tapped);
 
   return (
-    <View style={styles.saying}>
-      {mark != null && <StatusMark tone={mark.tone} word={mark.word} />}
-      <AuthHeading title={title} intro={intro} answer={tapped} />
-    </View>
+    <StepScreen nav={<CloseBar />} foot={<PrimaryButton {...button} />}>
+      <Heading {...(mark != null && { mark })} title={title} intro={intro} answer={tapped} />
+      {note != null && <Plain top={tokens.spaceXl}>{note}</Plain>}
+    </StepScreen>
   );
 }
 
 /** A newer request was started on another device (pm #1267): its codes went there, so this one starts again. */
 function Replaced({ onStartAgain }: { onStartAgain: () => void }) {
   const { t } = useTranslation();
-  const back = useBackToCode();
 
   return (
-    <AuthFrame
-      back={back}
-      saying={
-        <Saying
-          title={t('lostTwoFactor.replacedTitle')}
-          intro={t('lostTwoFactor.replacedIntro')}
-          mark={{ tone: 'skipped', word: t('lostTwoFactor.replacedMark') }}
-        />
-      }
-    >
-      <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
-        {t('lostTwoFactor.replacedNote')}
-      </Text>
-      <PrimaryButton
-        label={t('lostTwoFactor.startAgain')}
-        onPress={onStartAgain}
-        testID="lostTwoFactor.startAgain"
-      />
-      <BackToSignIn />
-    </AuthFrame>
-  );
-}
-
-/** Opened from Enter your code, so the system's back returns to it as it was left, from every step (sc-23279). */
-function useBackToCode(): AuthBack | null {
-  const { t } = useTranslation();
-  const { from } = useLocalSearchParams<{ from?: 'app' | 'recovery' }>();
-
-  if (!router.canGoBack()) return null;
-
-  return {
-    label: from === 'recovery' ? t('twoFactor.recoveryTitle') : t('twoFactor.title'),
-    onPress: () => router.back(),
-    testID: 'lostTwoFactor.backToCode',
-  };
-}
-
-function BackToSignIn() {
-  const { t } = useTranslation();
-
-  return (
-    <QuietButton
-      label={t('lostTwoFactor.back')}
-      onPress={() => router.replace('/sign-in')}
-      testID="lostTwoFactor.back"
+    <Ending
+      mark={['skipped', t('lostTwoFactor.replacedMark')]}
+      title={t('lostTwoFactor.replacedTitle')}
+      intro={t('lostTwoFactor.replacedIntro')}
+      note={t('lostTwoFactor.replacedNote')}
+      button={{
+        label: t('lostTwoFactor.startAgain'),
+        onPress: onStartAgain,
+        testID: 'lostTwoFactor.startAgain',
+      }}
     />
   );
 }
@@ -303,9 +294,8 @@ function Start({
   sending: boolean;
   onSend: () => void;
 }) {
-  const markSide = useMarkSide(tokens.sizeMark);
   const { t } = useTranslation();
-  const back = useBackToCode();
+  const tapped = useContext(Tapped);
   const emailOnly = opening.phone == null;
   const steps = [
     opening.phone == null
@@ -318,110 +308,88 @@ function Start({
   ];
 
   return (
-    <AuthFrame
-      back={back}
-      saying={
-        <Saying title={t('lostTwoFactor.startTitle')} intro={t('lostTwoFactor.startIntro')} />
+    <StepScreen
+      nav={<BackToCode step={[1, 3]} />}
+      foot={
+        <PrimaryButton
+          label={
+            emailOnly
+              ? t(sending ? 'lostTwoFactor.sendingEmailOnly' : 'lostTwoFactor.sendEmailOnly')
+              : t(sending ? 'lostTwoFactor.sending' : 'lostTwoFactor.send')
+          }
+          onPress={onSend}
+          busy={sending}
+          off={limitedUntil != null}
+          testID="lostTwoFactor.send"
+        />
       }
     >
-      {limitedUntil != null && (
-        <Notice
-          tone="attention"
-          mark="!"
-          title={t('lostTwoFactor.limitedTitle')}
-          body={
-            limitedUntil === ''
-              ? t('lostTwoFactor.limitedBodyLater')
-              : t('lostTwoFactor.limitedBody', { when: limitedUntil })
-          }
-          answer={limitedUntil}
-        />
-      )}
-      <View style={styles.steps}>
-        {steps.map((step, index) => (
-          <View key={step} style={styles.step}>
-            <View
-              style={[styles.stepMark, markSide]}
-              accessibilityElementsHidden
-              importantForAccessibility="no-hide-descendants"
-            >
-              <Text
-                size={tokens.typePill.size}
-                weight="bold"
-                style={styles.secondary}
-                accessible={false}
-              >
-                {String(index + 1)}
-              </Text>
-            </View>
-            <Text size={tokens.typeBodyPhone.size} style={styles.grow}>
-              {step}
-            </Text>
-          </View>
-        ))}
-      </View>
-      <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
-        {t('lostTwoFactor.startNote')}
-      </Text>
-      <PrimaryButton
-        label={
-          emailOnly
-            ? t(sending ? 'lostTwoFactor.sendingEmailOnly' : 'lostTwoFactor.sendEmailOnly')
-            : t(sending ? 'lostTwoFactor.sending' : 'lostTwoFactor.send')
-        }
-        onPress={onSend}
-        busy={sending}
-        off={limitedUntil != null}
-        testID="lostTwoFactor.send"
+      <Heading
+        title={t('lostTwoFactor.startTitle')}
+        intro={t('lostTwoFactor.startIntro')}
+        answer={tapped}
       />
-      <BackToSignIn />
-    </AuthFrame>
+      {limitedUntil != null && (
+        <View style={styles.notice}>
+          <Notice
+            tone="attention"
+            mark="!"
+            title={t('lostTwoFactor.limitedTitle')}
+            body={
+              limitedUntil === ''
+                ? t('lostTwoFactor.limitedBodyLater')
+                : t('lostTwoFactor.limitedBody', { when: limitedUntil })
+            }
+            answer={limitedUntil}
+          />
+        </View>
+      )}
+      <Steps items={steps} />
+      <Plain top={tokens.space3xl}>{t('lostTwoFactor.startNote')}</Plain>
+    </StepScreen>
   );
 }
 
 function Nobody({ supportAddress }: { supportAddress: string }) {
   const { t } = useTranslation();
-  const back = useBackToCode();
 
   return (
-    <AuthFrame
-      back={back}
-      saying={
-        <Saying title={t('lostTwoFactor.nobodyTitle')} intro={t('lostTwoFactor.nobodyIntro')} />
-      }
-    >
-      <PrimaryButton
-        label={t('lostTwoFactor.emailSupport', { address: supportAddress })}
-        onPress={() => void Linking.openURL(`mailto:${supportAddress}`)}
-        testID="lostTwoFactor.support"
-      />
-      <BackToSignIn />
-    </AuthFrame>
+    <Ending
+      title={t('lostTwoFactor.nobodyTitle')}
+      intro={t('lostTwoFactor.nobodyIntro')}
+      button={{
+        label: t('lostTwoFactor.emailSoirely'),
+        onPress: () => emailSupport(supportAddress),
+        testID: 'lostTwoFactor.support',
+      }}
+    />
   );
 }
 
 function Failed({ failure, onRetry }: { failure: Shown; onRetry: () => void }) {
   const { t } = useTranslation();
-  const back = useBackToCode();
   const tapped = useContext(Tapped);
 
   return (
-    <AuthFrame back={back}>
-      <Notice
-        tone="broken"
-        mark={tokens.marks.broken.glyph}
-        title={t('lostTwoFactor.failedTitle')}
-        body={t('lostTwoFactor.failedBody')}
-        answer={tapped ?? failure}
-        takesFocus={tapped != null}
-      />
-      <SecondaryButton
-        label={t('lostTwoFactor.retry')}
-        onPress={onRetry}
-        testID="lostTwoFactor.retry"
-      />
-      <BackToSignIn />
-    </AuthFrame>
+    <StepScreen nav={<BackToCode />}>
+      <View style={styles.notice}>
+        <Notice
+          tone="broken"
+          mark={tokens.marks.broken.glyph}
+          title={t('lostTwoFactor.failedTitle')}
+          body={t('lostTwoFactor.failedBody')}
+          answer={tapped ?? failure}
+          takesFocus={tapped != null}
+        />
+      </View>
+      <View style={styles.ways}>
+        <SecondaryButton
+          label={t('lostTwoFactor.retry')}
+          onPress={onRetry}
+          testID="lostTwoFactor.retry"
+        />
+      </View>
+    </StepScreen>
   );
 }
 
@@ -445,10 +413,23 @@ function Request({
 }) {
   const supportAddress = state.supportAddress;
   const { t } = useTranslation();
-  const back = useBackToCode();
+  const tapped = useContext(Tapped);
   const waiting = state.status === 'waiting';
   const organisations = listed(state.organisations, 'conjunction');
   const anyOf = listed(state.organisations, 'disjunction');
+  const support =
+    supportAddress === ''
+      ? null
+      : {
+          label: t('lostTwoFactor.emailSoirely'),
+          onPress: () => emailSupport(supportAddress),
+          testID: 'lostTwoFactor.support',
+        };
+  const backToSignIn = {
+    label: t('lostTwoFactor.back'),
+    onPress: () => toSignIn(),
+    testID: 'lostTwoFactor.back',
+  };
 
   // Waiting, the answer arrives on its own; the screen follows it within half a minute.
   useEffect(() => {
@@ -480,137 +461,93 @@ function Request({
 
   if (waiting) {
     return (
-      <AuthFrame
-        back={back}
-        saying={
-          <Saying
-            title={t('lostTwoFactor.waitingTitle')}
-            intro={t(recoveryIntroKey('waiting', state.nobody), { organisations })}
-            mark={{ tone: 'progress', word: t('lostTwoFactor.waitingMark') }}
+      <StepScreen
+        nav={<CloseBar step={[3, 3]} />}
+        foot={
+          <CancelRequest
+            recovery={recovery}
+            onTap={onTap}
+            onState={onState}
+            onReplaced={onReplaced}
           />
         }
       >
-        <Notice
-          tone="quiet"
-          mark="…"
-          body={`${t('lostTwoFactor.asked', { when: state.asked })} ${t('lostTwoFactor.endsBy', { when: state.expires })}`}
+        <Heading
+          mark={['progress', t('lostTwoFactor.waitingMark')]}
+          title={t('lostTwoFactor.waitingFor', { organisations })}
+          intro={t(recoveryIntroKey('waiting', state.nobody), { organisations })}
+          answer={tapped}
         />
-        <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
-          {t('lostTwoFactor.stayOut', { email: state.email })}
-        </Text>
-        {state.nobody && supportAddress !== '' && (
-          <SecondaryButton
-            label={t('lostTwoFactor.emailSupport', { address: supportAddress })}
-            onPress={() => void Linking.openURL(`mailto:${supportAddress}`)}
-            testID="lostTwoFactor.support"
-          />
+        <Plain top={tokens.spaceXxl} ink>
+          {`${t('lostTwoFactor.asked', { when: state.asked })} ${t('lostTwoFactor.endsBy', { when: state.expires })}`}
+        </Plain>
+        <Plain top={tokens.spaceLg}>{t('lostTwoFactor.stayOut', { email: state.email })}</Plain>
+        {state.nobody && support != null && (
+          <View style={styles.ways}>
+            <SecondaryButton {...support} />
+          </View>
         )}
-        <BackToSignIn />
-        <CancelRequest
-          recovery={recovery}
-          onTap={onTap}
-          onState={onState}
-          onReplaced={onReplaced}
-        />
-      </AuthFrame>
+      </StepScreen>
     );
   }
 
   if (state.status === 'approved') {
     return (
-      <AuthFrame
-        back={back}
-        saying={
-          <Saying
-            title={t('lostTwoFactor.approvedTitle')}
-            intro={t(recoveryIntroKey('approved', state.nobody), { organisations: anyOf })}
-            mark={{ tone: 'done', word: t('lostTwoFactor.approvedMark') }}
-          />
-        }
-      >
-        <PrimaryButton
-          label={t('lostTwoFactor.signIn')}
-          onPress={() => {
-            void dropRecovery().then(() => router.replace('/sign-in'));
-          }}
-          testID="lostTwoFactor.signIn"
-        />
-      </AuthFrame>
+      <Ending
+        mark={['done', t('lostTwoFactor.approvedMark')]}
+        title={t('lostTwoFactor.approvedTitle')}
+        intro={t(recoveryIntroKey('approved', state.nobody), { organisations: anyOf })}
+        button={{
+          label: t('lostTwoFactor.signIn'),
+          // The email comes along, so only the password is typed.
+          onPress: () => void dropRecovery().then(() => toSignIn(state.email)),
+          testID: 'lostTwoFactor.signIn',
+        }}
+      />
     );
   }
 
   if (state.status === 'turned_down') {
     return (
-      <AuthFrame
-        back={back}
-        saying={
-          <Saying
-            title={t('lostTwoFactor.turnedDownTitle')}
-            intro={t(recoveryIntroKey('turned_down', state.nobody), { organisations: anyOf })}
-            mark={{ tone: 'broken', word: t('lostTwoFactor.turnedDownMark') }}
-          />
-        }
-      >
-        {supportAddress !== '' && (
-          <SecondaryButton
-            label={t('lostTwoFactor.emailSupport', { address: supportAddress })}
-            onPress={() => void Linking.openURL(`mailto:${supportAddress}`)}
-            testID="lostTwoFactor.support"
-          />
-        )}
-        <BackToSignIn />
-      </AuthFrame>
+      <Ending
+        mark={['broken', t('lostTwoFactor.turnedDownMark')]}
+        title={t('lostTwoFactor.turnedDownTitle')}
+        intro={t(recoveryIntroKey('turned_down', state.nobody), { organisations: anyOf })}
+        button={support ?? backToSignIn}
+      />
     );
   }
 
   if (state.status === 'expired') {
     return (
-      <AuthFrame
-        back={back}
-        saying={
-          <Saying
-            title={t('lostTwoFactor.endedTitle')}
-            intro={t(recoveryIntroKey('expired', state.nobody))}
-            mark={{ tone: 'skipped', word: t('lostTwoFactor.endedMark') }}
-          />
+      <Ending
+        mark={['skipped', t('lostTwoFactor.endedMark')]}
+        title={t('lostTwoFactor.endedTitle')}
+        intro={t(recoveryIntroKey('expired', state.nobody))}
+        button={
+          state.nobody
+            ? (support ?? backToSignIn)
+            : {
+                label: t('lostTwoFactor.askAgain'),
+                onPress: onAskAgain,
+                testID: 'lostTwoFactor.askAgain',
+              }
         }
-      >
-        {state.nobody && supportAddress !== '' && (
-          <SecondaryButton
-            label={t('lostTwoFactor.emailSupport', { address: supportAddress })}
-            onPress={() => void Linking.openURL(`mailto:${supportAddress}`)}
-            testID="lostTwoFactor.support"
-          />
-        )}
-        {!state.nobody && (
-          <PrimaryButton
-            label={t('lostTwoFactor.askAgain')}
-            onPress={onAskAgain}
-            testID="lostTwoFactor.askAgain"
-          />
-        )}
-        <BackToSignIn />
-      </AuthFrame>
+      />
     );
   }
 
   return (
-    <AuthFrame
-      back={back}
-      saying={
-        <Saying
-          title={t('lostTwoFactor.cancelledTitle')}
-          intro={t('lostTwoFactor.cancelledIntro')}
-          mark={{ tone: 'skipped', word: t('lostTwoFactor.cancelledMark') }}
-        />
-      }
-    >
-      <BackToSignIn />
-    </AuthFrame>
+    <Ending
+      mark={['skipped', t('lostTwoFactor.cancelledMark')]}
+      title={t('lostTwoFactor.cancelledTitle')}
+      intro={t('lostTwoFactor.cancelledIntro')}
+      button={backToSignIn}
+    />
   );
 }
 
-/** An answer arriving while the sheet asks replaces the waiting step, sheet and all (sc-29961). */
+/** One quiet button at the foot; an answer arriving while the sheet asks replaces the waiting step, sheet and all (sc-29961). */
 function CancelRequest({
   recovery,
   onTap,
@@ -624,7 +561,6 @@ function CancelRequest({
 }) {
   const { t } = useTranslation();
   const phone = useLayout().kind === 'phone';
-  const atFoot = useAtFoot();
   const opener = useRef<ViewInstance>(null);
   // New with each opening, so the sheet's title takes screen reader focus as it opens.
   const [asked, setAsked] = useState<object | null>(null);
@@ -658,7 +594,7 @@ function CancelRequest({
 
   return (
     <>
-      <View style={[styles.foot, atFoot && styles.atFoot]}>
+      <View style={styles.foot}>
         <Text size={tokens.typeBodyPhone.size} weight="semibold">
           {t('lostTwoFactor.notYou')}
         </Text>
@@ -716,24 +652,27 @@ function Codes({
   onReplaced: () => void;
 }) {
   const { t } = useTranslation();
-  const back = useBackToCode();
+  const tapped = useContext(Tapped);
   const codes = state.codes;
   const wording = codeWording(codes?.route ?? null);
   const hasPhone = state.phone != null;
   const number = state.phone == null ? '' : formatPhone(state.phone);
   const fields: RecoveryField[] = hasPhone ? ['emailCode', 'phoneCode'] : ['emailCode'];
-  const typed = useRef<Record<RecoveryField, string>>({ emailCode: '', phoneCode: '' });
-  const emailInput = useRef<TextInputInstance>(null);
-  const inputs = { emailCode: emailInput, phoneCode: useRef<TextInputInstance>(null) };
+  const [typed, setTyped] = useState<Record<RecoveryField, string>>({
+    emailCode: '',
+    phoneCode: '',
+  });
+  const boxes = {
+    emailCode: useRef<CodeBoxesHandle>(null),
+    phoneCode: useRef<CodeBoxesHandle>(null),
+  };
   const [errors, setErrors] = useState<Partial<Record<RecoveryField, string>>>({});
   const [asking, setAsking] = useState(false);
   // New with each tap that fails, or that finds the codes spent, so the same words are read out again.
   const [failed, setFailed] = useState<object | null>(null);
   const [foundSpent, setFoundSpent] = useState<object | null>(null);
   const [textingFailed, setTextingFailed] = useState(false);
-  // Send new codes in the codes' place brings the fields back, so focus goes to the first (sc-11173).
-  const [resentInPlace, setResentInPlace] = useState<object | undefined>(undefined);
-  const [textedInPlace, setTextedInPlace] = useState<object | undefined>(undefined);
+  const [texted, setTexted] = useState<object | undefined>(undefined);
   const [cooldown, setCooldown] = useState(codes?.cooldownSeconds ?? 0);
   const lastRoute = useRef(codes?.route ?? null);
 
@@ -780,7 +719,7 @@ function Codes({
         note: t('verifyEmail.resendNote'),
       };
 
-  // The line is help under the field, not a live region, so the fallback is read out by hand.
+  // The line is help under the boxes, not a live region, so the fallback is read out by hand.
   useEffect(() => {
     if (lastRoute.current === 'whatsapp' && codes?.route === 'sms_fallback') {
       readOut(sent);
@@ -799,25 +738,24 @@ function Codes({
   async function submit(): Promise<void> {
     if (asking) return;
 
-    const found = recoveryCodeProblems(fields, typed.current, wording.fromWhatsApp);
+    const found = recoveryCodeProblems(fields, typed, wording.fromWhatsApp);
     setErrors(Object.fromEntries(Object.entries(found).map(([field, key]) => [field, t(key)])));
     const first = fields.find((field) => found[field] != null);
 
     if (first != null) {
-      focusChecked(inputs[first]);
+      boxes[first].current?.focusChecked();
       return;
     }
 
     keysStayDown();
     setAsking(true);
     setFailed(null);
-    setResentInPlace(undefined);
 
     try {
       const proved = await api.proveRecovery(
         recovery,
-        cleanCode(typed.current.emailCode),
-        hasPhone ? cleanCode(typed.current.phoneCode) : null,
+        cleanCode(typed.emailCode),
+        hasPhone ? cleanCode(typed.phoneCode) : null,
       );
       onTap();
       onState(proved);
@@ -841,7 +779,8 @@ function Codes({
 
       if (marked != null) {
         setErrors(Object.fromEntries(marked.map((field) => [field, wrong[field]])));
-        if (marked[0] != null) focusRefused(inputs[marked[0]]);
+        for (const field of marked) boxes[field].current?.refuse();
+        if (marked[0] != null) boxes[marked[0]].current?.focusRefused();
         return;
       }
 
@@ -864,9 +803,7 @@ function Codes({
     try {
       const next = await api.resendRecoveryCodes(recovery);
       setFoundSpent(null);
-      typed.current = { emailCode: '', phoneCode: '' };
-      inputs.emailCode.current?.clear();
-      inputs.phoneCode.current?.clear();
+      setTyped({ emailCode: '', phoneCode: '' });
       setErrors({});
       setCooldown(next.codes?.cooldownSeconds ?? 0);
       onState(next);
@@ -894,7 +831,7 @@ function Codes({
 
     try {
       onState(await api.textRecoveryCodeInstead(recovery));
-      setTextedInPlace({});
+      setTexted({});
     } catch (refusal) {
       if (replacedElsewhere(refusal)) {
         onReplaced();
@@ -911,146 +848,161 @@ function Codes({
   }
 
   const spent = codes?.state === 'expired' || codes?.state === 'exhausted';
-  useFocusOnAnswer<TextInputInstance>(spent ? undefined : resentInPlace, emailInput);
 
   return (
-    <AuthFrame
-      back={back}
-      saying={
-        <Saying
-          title={hasPhone ? t('lostTwoFactor.codesTitle') : t('lostTwoFactor.codesTitleEmailOnly')}
-          intro={
-            hasPhone
-              ? t('lostTwoFactor.codesIntro', { email: state.email, phone: number })
-              : t('lostTwoFactor.codesIntroEmailOnly', { email: state.email })
-          }
-        />
-      }
-    >
-      {spent && (
-        <Notice
-          tone="attention"
-          mark="!"
-          title={
-            codes?.state === 'exhausted'
-              ? t('lostTwoFactor.exhaustedTitle')
-              : hasPhone
-                ? t('lostTwoFactor.expiredTitle')
-                : t('verifyEmail.expiredTitle')
-          }
-          body={
-            codes?.state === 'exhausted'
-              ? hasPhone
-                ? t('lostTwoFactor.exhaustedBody')
-                : t('verifyEmail.exhaustedBody')
-              : hasPhone
-                ? t('lostTwoFactor.expiredBody', {
-                    message: wording.fromWhatsApp
-                      ? t('lostTwoFactor.lastWhatsApp')
-                      : t('lostTwoFactor.lastText'),
-                  })
-                : t('lostTwoFactor.expiredBodyEmailOnly')
-          }
-          answer={foundSpent ?? undefined}
-          takesFocus={foundSpent != null}
-        />
-      )}
-      {failed != null && (
-        <Notice
-          tone="broken"
-          mark={tokens.marks.broken.glyph}
-          title={t('lostTwoFactor.failedTitle')}
-          body={t('lostTwoFactor.failedBody')}
-          answer={failed}
-        />
-      )}
-
-      {spent ? (
-        <PrimaryButton
-          label={resendWords.resend}
-          onPress={() => {
-            setResentInPlace({});
-            void resend();
-          }}
-          testID="lostTwoFactor.resend"
-        />
-      ) : (
-        <>
-          {fields.map((field, index) => (
-            <Field
-              key={field}
-              label={t(recoveryCodeLabel(field, wording.fromWhatsApp))}
-              help={
-                field === 'emailCode' ? t('lostTwoFactor.sentTo', { email: state.email }) : sent
-              }
-              helpAnswer={field === 'phoneCode' ? textedInPlace : undefined}
-              error={errors[field] ?? null}
-            >
-              <CodeField
-                ref={inputs[field]}
-                wrong={errors[field] != null}
-                submitting={asking}
-                onChangeText={(text) => {
-                  typed.current = { ...typed.current, [field]: text };
-                  setErrors((now) => ({ ...now, [field]: undefined }));
-                }}
-                returnKeyType={index === fields.length - 1 ? 'go' : 'next'}
-                submitBehavior="submit"
-                onSubmitEditing={() =>
-                  index === fields.length - 1 ? void submit() : inputs.phoneCode.current?.focus()
-                }
-                accessibilityLabel={t(recoveryCodeLabel(field, wording.fromWhatsApp))}
-                testID={`lostTwoFactor.${field}`}
-              />
-            </Field>
-          ))}
+    <StepScreen
+      nav={<BackToCode step={[2, 3]} />}
+      foot={
+        spent ? (
+          <PrimaryButton
+            label={resendWords.resend}
+            onPress={() => void resend()}
+            testID="lostTwoFactor.resend"
+          />
+        ) : (
           <PrimaryButton
             label={asking ? t('lostTwoFactor.asking') : t('lostTwoFactor.ask')}
             onPress={() => void submit()}
             busy={asking}
             testID="lostTwoFactor.ask"
           />
-          <SecondaryButton
-            label={
-              cooldown > 0 ? resendWords.resendIn(formatCountdown(cooldown)) : resendWords.resend
-            }
-            onPress={() => void resend()}
-            off={cooldown > 0}
-            testID="lostTwoFactor.resend"
+        )
+      }
+    >
+      <Heading
+        title={hasPhone ? t('lostTwoFactor.codesTitle') : t('lostTwoFactor.codesTitleEmailOnly')}
+        intro={
+          hasPhone
+            ? t('lostTwoFactor.codesIntro', { email: state.email, phone: number })
+            : t('lostTwoFactor.codesIntroEmailOnly', { email: state.email })
+        }
+        answer={tapped}
+      />
+      {failed != null && (
+        <View style={styles.notice}>
+          <Notice
+            tone="broken"
+            mark={tokens.marks.broken.glyph}
+            title={t('lostTwoFactor.failedTitle')}
+            body={t('lostTwoFactor.failedBody')}
+            answer={failed}
           />
-          <Text size={tokens.typeSmall.size} style={styles.secondary}>
+        </View>
+      )}
+
+      {spent ? (
+        <View style={styles.notice}>
+          <Notice
+            tone="attention"
+            mark="!"
+            title={
+              codes?.state === 'exhausted'
+                ? t('lostTwoFactor.exhaustedTitle')
+                : hasPhone
+                  ? t('lostTwoFactor.expiredTitle')
+                  : t('verifyEmail.expiredTitle')
+            }
+            body={
+              codes?.state === 'exhausted'
+                ? hasPhone
+                  ? t('lostTwoFactor.exhaustedBody')
+                  : t('verifyEmail.exhaustedBody')
+                : hasPhone
+                  ? t('lostTwoFactor.expiredBody', {
+                      message: wording.fromWhatsApp
+                        ? t('lostTwoFactor.lastWhatsApp')
+                        : t('lostTwoFactor.lastText'),
+                    })
+                  : t('lostTwoFactor.expiredBodyEmailOnly')
+            }
+            answer={foundSpent ?? undefined}
+            takesFocus={foundSpent != null}
+          />
+        </View>
+      ) : (
+        <>
+          <View style={styles.codes}>
+            {fields.map((field, index) => {
+              const label = t(recoveryCodeLabel(field, wording.fromWhatsApp));
+
+              return (
+                <View key={field}>
+                  {hasPhone && <CodeLabel words={label} />}
+                  <CodeBoxes
+                    ref={boxes[field]}
+                    label={label}
+                    value={typed[field]}
+                    onChange={(next) => {
+                      setTyped((now) => ({ ...now, [field]: next }));
+                      if (next !== '') setErrors((now) => ({ ...now, [field]: undefined }));
+                    }}
+                    onFull={() => {
+                      if (field === 'emailCode' && hasPhone)
+                        boxes.phoneCode.current?.focusChecked();
+                    }}
+                    line={errors[field] ?? null}
+                    autoFocus={index === 0}
+                    testID={`lostTwoFactor.${field}`}
+                  />
+                  {errors[field] != null && <Says words={errors[field]} />}
+                  <SentLine
+                    words={
+                      field === 'emailCode'
+                        ? t('lostTwoFactor.sentTo', { email: state.email })
+                        : sent
+                    }
+                    answer={field === 'phoneCode' ? texted : undefined}
+                  />
+                </View>
+              );
+            })}
+          </View>
+          <View style={styles.ways}>
+            <QuietButton
+              label={
+                cooldown > 0 ? resendWords.resendIn(formatCountdown(cooldown)) : resendWords.resend
+              }
+              onPress={() => void resend()}
+              off={cooldown > 0}
+              testID="lostTwoFactor.resend"
+            />
+          </View>
+          <Text size={tokens.typeSmall.size} style={styles.small}>
             {resendWords.note}
           </Text>
           {hasPhone && wording.offerText && (
-            <SecondaryButton
-              label={t('lostTwoFactor.textInstead')}
-              onPress={() => void textInstead()}
-              testID="lostTwoFactor.textInstead"
-            />
+            <View style={styles.ways}>
+              <QuietButton
+                label={t('lostTwoFactor.textInstead')}
+                onPress={() => void textInstead()}
+                testID="lostTwoFactor.textInstead"
+              />
+            </View>
           )}
-          {textingFailed && <FieldError message={t('lostTwoFactor.textInsteadFailed')} />}
+          {textingFailed && <Says words={t('lostTwoFactor.textInsteadFailed')} />}
         </>
       )}
-      <BackToSignIn />
-    </AuthFrame>
+    </StepScreen>
+  );
+}
+
+/** Where a code went, under its boxes; with each new `answer`, a screen reader's focus moves onto it. */
+function SentLine({ words, answer }: { words: string; answer: unknown }) {
+  const { read } = useFocusOnAnswer<TextHandle>(answer);
+
+  return (
+    <Text ref={read} size={tokens.typeSmall.size} style={styles.small}>
+      {words}
+    </Text>
   );
 }
 
 const styles = StyleSheet.create({
-  saying: { gap: tokens.spaceSm },
-  steps: { gap: tokens.spaceMd },
-  step: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceMd },
-  stepMark: {
-    borderRadius: tokens.radiusPill,
-    borderWidth: 1.5,
-    borderColor: tokens.colorMarkEmpty,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  grow: { flex: 1 },
-  secondary: { color: tokens.colorInkSecondary },
+  notice: { marginTop: tokens.spaceXl },
+  codes: { marginTop: tokens.spaceXl, gap: tokens.spaceXl },
+  ways: { marginTop: tokens.spaceLg, alignItems: 'flex-start' },
+  small: { marginTop: tokens.spaceSm, color: tokens.colorInkSecondary },
   foot: { alignItems: 'center', gap: tokens.spaceXs },
-  atFoot: { marginTop: 'auto' },
 });
 
 function listed(names: string[], type: 'conjunction' | 'disjunction'): string {

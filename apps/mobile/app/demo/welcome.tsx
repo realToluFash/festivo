@@ -4,6 +4,7 @@ import { StyleSheet, View } from 'react-native';
 import { LanguageChoice } from '../../src/components/LanguageChoice.tsx';
 import { Text } from '../../src/components/Text.tsx';
 import { OnBrand, useLineSize, WelcomeBrand } from '../../src/components/Welcome.tsx';
+import { withBoldText } from '../../src/demo/boldText/BoldTextSwitch.tsx';
 import { Choices } from '../../src/demo/Choices.tsx';
 import { LegalLinks } from '../../src/demo/LegalLinks.tsx';
 import { coverLine, WelcomeFrame } from '../../src/demo/Welcome.tsx';
@@ -17,7 +18,7 @@ const NOTICES = {
   ],
 } as const;
 
-export default function Welcome() {
+function Welcome() {
   const { notice } = useLocalSearchParams<{ notice?: keyof typeof NOTICES }>();
   const said = notice != null ? NOTICES[notice] : undefined;
   const line = useLineSize();
@@ -59,6 +60,8 @@ export default function Welcome() {
     />
   );
 }
+
+export default withBoldText(Welcome, 'left');
 
 const styles = StyleSheet.create({
   onCover: { color: tokens.colorInkOnDark },

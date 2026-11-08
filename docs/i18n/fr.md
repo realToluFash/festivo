@@ -71,6 +71,21 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **8 nov. 2026. La double authentification à la connexion dans l’app** (sc-33828 pour
+  sc-29072, `mobile:twoFactor.signedIn`, `recoveryShape`, `lost`, `lostTwoFactor.waitingFor`,
+  `stayOut`, `emailSoirely`). « Connexion réussie », groupe nominal, car « Connecté » s’accorde
+  avec la personne. Le titre d’attente est une étiquette, « En attente : {{organisations}} » :
+  « En attente de » obligerait à élider devant un nom à voyelle (« d’Ire Events »), ce que le
+  code ne sait pas faire. `stayOut` dit « Vous ne pourrez pas vous connecter tant que personne
+  n’aura répondu », jamais « Vous restez déconnecté », qui s’accorde au masculin. Le bouton est
+  « Écrire à l’assistance Soirely ».
+- **8 Nov 2026. L’écran du lien envoyé dans l’app, et son toast** (sc-33809 pour sc-29071,
+  `mobile:recovery.*`). Le bouton est « Ouvrir la boîte mail », comme « Consultez votre boîte
+  mail », et non « Ouvrir Mail » : sous Android, il ouvre l’application d’e-mail de la personne.
+  `spam` reprend la phrase du web, « Vérifiez vos courriers indésirables, puis renvoyez-le. »,
+  comme le bouton « Le renvoyer ». `sentAgain` est « Nous l’avons renvoyé. Utilisez le dernier
+  e-mail. ». Le toast `changed` : « Mot de passe modifié. Vos autres appareils sont
+  déconnectés. », l’appareil étant ce qu’on déconnecte, comme `devices.everywhere`.
 - **8 nov. 2026. Une connexion à deux facteurs qui a expiré** (sc-29979,
   `signIn.codeTimedOutTitle`, web et app). « La connexion a expiré », puis `endedBody`
   « Reconnectez-vous pour continuer. ». « La connexion », la tentative en cours, et non
@@ -755,3 +770,4 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   « © {{year}} Soirely » reste identique à l’anglais. Le bouton de langue se lit « Langue : {{language}} ».
 - **Annuler une demande pour revenir** (sc-29979) : « Annuler votre demande ? » ; la sortie est « Continuer d’attendre », jamais « Annuler », et la confirmation reprend « Annuler la demande ».
 - **L’état d’un champ refusé, seulement pour le lecteur d’écran** (`mobile:forms.invalid`, sc-31909) : « Données non valides », après le nom du champ (« Adresse e-mail, Données non valides »). C’est ce que dit VoiceOver sur le web ; rien ne s’accorde avec le nom, masculin ou féminin.
+- **Le plan de table** (sc-33304 pour sc-3998, `seating.*`, `messages:seating.*`) : l’espace est « Plan de table », et le dessin « le plan de la salle ». Une "section" est une **zone**, jamais « section », réservée aux parties des paramètres : « Ajouter une zone », « Aucune zone », « La conserver ». Le lieu ouvre la ligne des unités comme une étiquette, « Lieu : {{venue}}. », pour ne jamais écrire « à Le Grand Hôtel » ; « là où se trouve {{organisation}} » évite tout accord avec l’organisation. "Seated" se dit « ayant une place », sans accord : « invités ayant une place passent dans Sans place ». Les couleurs : Bleu, Violet, Prune, Bordeaux, Rose, Marron, Vert olive, Bleu canard. L’aide en pieds reprend les abréviations CLDR françaises que le champ lit : « 12 pi 4 po, 12,5 pi ou 148 po ».

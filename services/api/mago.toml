@@ -154,6 +154,7 @@ domain_user = ["App\\Domain\\User\\**"]
 domain_organisation = ["App\\Domain\\Organisation\\**"]
 domain_event = ["App\\Domain\\Event\\**"]
 domain_messaging = ["App\\Domain\\Messaging\\**"]
+domain_seating = ["App\\Domain\\Seating\\**"]
 
 # Capabilities. Each is its own layer so an edge between two of them has to be
 # declared below rather than appearing by accident.
@@ -288,6 +289,22 @@ permit = [
     "@layer:address",
     "@layer:domain_messaging",
     "@layer:deletion",
+    "@layer:domain_seating",
+]
+
+# Venue & seating: an event's one plan, its room and its sections (sc-3998). Each
+# change goes to the audit trail and out on the plan's topic. A duplicated event
+# copies its plan through this scope (EventDuplicator).
+[[guard.perimeter.rules]]
+namespace = "App\\Domain\\Seating\\"
+permit = [
+    "@layer:native",
+    "@layer:external",
+    "@layer:shared",
+    "@layer:domain_seating",
+    "@layer:repository",
+    "@layer:audit",
+    "@layer:realtime",
 ]
 
 # Messaging is the one machine every scope tells people through (sc-104). It reads members as the

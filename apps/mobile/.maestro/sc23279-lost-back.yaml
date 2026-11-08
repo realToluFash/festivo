@@ -1,7 +1,7 @@
 # From a code step (sign-in-code-step-open), opens Lost your authenticator and your recovery
-# codes?, and checks ‹ BACK on it returns to the step as it was left. BACK is the step's
-# title in the run's language. Pass RECOVERY=true to leave from Enter a recovery code. SHOT
-# names the two screenshots. sc-23279.
+# codes?, and checks ‹ on it returns to the step as it was left. BACK is the step's title in
+# the run's language. Pass RECOVERY=true to leave from Enter a recovery code. SHOT names the
+# two screenshots. sc-23279.
 appId: host.exp.Exponent
 ---
 - runFlow:
@@ -14,18 +14,18 @@ appId: host.exp.Exponent
     id: 'twoFactor.lostBoth'
 - extendedWaitUntil:
     visible:
-      id: 'lostTwoFactor.backToCode'
+      id: 'lostTwoFactor.back'
     timeout: 30000
-- assertVisible:
-    id: 'lostTwoFactor.backToCode'
-    text: ${BACK}
+- assertNotVisible:
+    id: 'lostTwoFactor.close'
 - takeScreenshot: ${SHOT}-lost
 - tapOn:
-    id: 'lostTwoFactor.backToCode'
+    id: 'lostTwoFactor.back'
 - extendedWaitUntil:
     visible:
       id: 'twoFactor.code'
     timeout: 10000
+- assertVisible: ${BACK}
 - assertNotVisible:
-    id: 'lostTwoFactor.backToCode'
+    id: 'lostTwoFactor.back'
 - takeScreenshot: ${SHOT}-back

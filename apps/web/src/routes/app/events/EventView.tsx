@@ -32,6 +32,7 @@ import { MuteEvent } from './MuteEvent.tsx';
 import { PauseButton, PausedRow } from './PauseEvent.tsx';
 import { OutcomeLine } from './OutcomeLine.tsx';
 import { EventPeople } from './EventPeople.tsx';
+import { SeatingArea } from './SeatingArea.tsx';
 import { Placeholder } from './Placeholder.tsx';
 import { typeLabel } from './eventTypes.ts';
 import { ComingUp, AllDates } from './Timeline.tsx';
@@ -143,6 +144,9 @@ function EventOf({
   }, [organisationId, eventId, attempt, refresh, watch]);
   useShowEventName(eventId, load.kind === 'loaded' ? load.event.name : undefined);
 
+  if (page === 'seating' && load.kind === 'loaded')
+    return canOn(load.event, 'seating.read') ? <SeatingArea event={load.event} /> : <NotFound />;
+
   return (
     <div className="event-page">
       <div className="event-crumbs">
@@ -211,7 +215,9 @@ function EventOf({
           {page === 'guests' && <GuestsComing event={load.event} />}
           {page === 'dates' && <AllDatesPage event={load.event} heading={heading} />}
           {page === 'people' && <PeoplePage event={load.event} />}
-          {isPlaceholderEventArea(page) && <AreaComing event={load.event} area={page} />}
+          {isPlaceholderEventArea(page) && page !== 'seating' && (
+            <AreaComing event={load.event} area={page} />
+          )}
         </Arrived>
       )}
     </div>

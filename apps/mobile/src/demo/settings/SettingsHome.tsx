@@ -1,3 +1,5 @@
+import { type Href, router } from 'expo-router';
+import { createContext, type ReactNode, useContext } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -9,7 +11,10 @@ import { Glass, PHONE_TAB_BAR, PhoneTabBar, TabBarFade } from '../../components/
 import { Bell, Landscape, OrgPill, PortraitTop } from './Frame.tsx';
 import { WORDS as PERSONALISATION } from './PersonalisationModel.ts';
 import { SchemeTile } from './PersonalisationParts.tsx';
-import { demoGroups, YOU } from './sample.ts';
+import { dataHref } from './DataModel.ts';
+import { DataTile, useDataNav, useDataOpen } from './DataParts.tsx';
+import { DATA_WORDS } from './DataWords.ts';
+import { demoGroups, managesOrganisation, YOU } from './sample.ts';
 import { type ShellSection, useShell, type Viewer } from '../../components/settingsShell.ts';
 import { Caps, Pill, Tile, TYPE } from '../../components/SettingsParts.tsx';
 import { SwitchedNotice } from '../../components/SwitchedNotice.tsx';
@@ -18,23 +23,45 @@ import { LegalLinks } from '../LegalLinks.tsx';
 
 type Listed = Exclude<ShellSection, 'account'>;
 
-/** The app's rows and lines; the organisation's row carries its name. */
-const ROWS: Record<Listed, { title: string; line: string }> = {
-  security: { title: 'Security', line: 'Password, ways to sign in, two-factor, signed-in devices' },
-  notifications: { title: 'Notifications', line: 'Push and email, for each kind of notification' },
-  personalisation: { title: 'Personalisation', line: PERSONALISATION.listLine },
-  organisation: { title: YOU.organisation, line: 'Name, contact address, currency, time zone' },
-  members: { title: 'Members', line: 'Who is in it, and their roles' },
-  signInRules: { title: 'Sign-in rules', line: 'How people sign in, and for how long' },
+/** Settings' words: the page's title, its headings, the rows and their lines (the organisation's row carries its name), the role on your card and Sign out. */
+export interface SettingsWords {
+  title: string;
+  headings: Record<ReturnType<typeof demoGroups>[number]['heading'], string>;
+  rows: Record<Listed, { title: string; line: string }>;
+  role: (role: string) => string;
+  signOut: string;
+}
+
+export const SETTINGS_WORDS: SettingsWords = {
+  title: 'Settings',
+  headings: { yourAccount: 'Your account', organisationHeading: 'Organisation' },
+  rows: {
+    security: {
+      title: 'Security',
+      line: 'Password, ways to sign in, two-factor, signed-in devices',
+    },
+    notifications: {
+      title: 'Notifications',
+      line: 'Push and email, for each kind of notification',
+    },
+    personalisation: { title: 'Personalisation', line: PERSONALISATION.listLine },
+    organisation: { title: YOU.organisation, line: 'Name, contact address, currency, time zone' },
+    members: { title: 'Members', line: 'Who is in it, and their roles' },
+    signInRules: { title: 'Sign-in rules', line: 'How people sign in, and for how long' },
+  },
+  role: (role) => role,
+  signOut: 'Sign out',
 };
 
-const HEADINGS = { yourAccount: 'Your account', organisationHeading: 'Organisation' } as const;
+/** English unless a state draws the page in another language, as Bold text's Spanish state does. */
+export const SettingsWordsContext = createContext(SETTINGS_WORDS);
 
-/** The sections a viewer sees; Your account is the card at the top. */
-export function groupsFor(viewer: Viewer) {
+/** The sections a viewer sees; Your account is the card at the top. Data and control follows Sign-in rules for whoever manages the organisation (sc-560). */
+export function groupsFor(viewer: Viewer, words: SettingsWords = SETTINGS_WORDS) {
   return demoGroups(viewer).map(({ heading, sections }) => ({
-    heading: HEADINGS[heading],
+    heading: words.headings[heading],
     sections: sections.filter((section): section is Listed => section !== 'account'),
+    data: heading === 'organisationHeading' && managesOrganisation(viewer),
   }));
 }
 
@@ -59,6 +86,7 @@ export function PersonCard({
   open?: boolean;
 }) {
   const shell = useShell();
+  const words = useContext(SettingsWordsContext);
   const you = shell.looking;
   const look = {
     phone: {
@@ -89,7 +117,7 @@ export function PersonCard({
       pad: tokens.spaceLg,
     },
   }[size];
-  const role = you.role == null ? null : `${you.role} · ${YOU.organisation}`;
+  const role = you.role == null ? null : `${words.role(you.role)} · ${YOU.organisation}`;
 
   return (
     <View
@@ -170,12 +198,78 @@ function Row({
   open: boolean;
 }) {
   const shell = useShell();
-  const { title, line } = ROWS[section];
+  const { title, line } = useContext(SettingsWordsContext).rows[section];
   const tile = dense ? 32 : 36;
 
   return (
-    <Pressable
+    <ListRow
+      title={title}
+      line={line}
+      tile={
+        section === 'personalisation' ? (
+          <SchemeTile side={tile} />
+        ) : (
+          <Tile of={section} side={tile} initials={section === 'organisation' ? 'IE' : undefined} />
+        )
+      }
+      dense={dense}
+      first={first}
+      open={open}
       onPress={() => shell.openSection(section)}
+      testID={`settings.${section}`}
+    />
+  );
+}
+
+/** Data and control, a row of the demo's own: on its side it changes the page beside the list. */
+function DataRow({ dense, first }: { dense: boolean; first: boolean }) {
+  const shell = useShell();
+  const lit = useDataOpen();
+  const nav = useDataNav();
+  const href = dataHref('hub', { as: nav.viewer }) as Href;
+
+  return (
+    <ListRow
+      title={DATA_WORDS.title}
+      line={DATA_WORDS.settingsLine}
+      tile={<DataTile side={dense ? 32 : 36} />}
+      dense={dense}
+      first={first}
+      open={lit != null}
+      onPress={() => {
+        if (shell.layout !== 'landscape') router.push(href);
+        else if (lit == null) router.replace(href);
+        else if (lit !== 'hub') nav.toHub();
+      }}
+      testID="settings.dataAndControl"
+    />
+  );
+}
+
+function ListRow({
+  title,
+  line,
+  tile,
+  dense,
+  first,
+  open,
+  onPress,
+  testID,
+}: {
+  title: string;
+  line: string;
+  tile: ReactNode;
+  dense: boolean;
+  first: boolean;
+  open: boolean;
+  onPress: () => void;
+  testID: string;
+}) {
+  const side = dense ? 32 : 36;
+
+  return (
+    <Pressable
+      onPress={onPress}
       style={({ pressed }) => [
         styles.row,
         dense && styles.rowDense,
@@ -185,14 +279,10 @@ function Row({
       accessibilityRole="button"
       accessibilityState={{ selected: open }}
       accessibilityLabel={`${title}. ${line}`}
-      testID={`settings.${section}`}
+      testID={testID}
     >
-      {!first && !open && <View style={[styles.rule, { left: tokens.spaceXl + tile + 12 }]} />}
-      {section === 'personalisation' ? (
-        <SchemeTile side={tile} />
-      ) : (
-        <Tile of={section} side={tile} initials={section === 'organisation' ? 'IE' : undefined} />
-      )}
+      {!first && !open && <View style={[styles.rule, { left: tokens.spaceXl + side + 12 }]} />}
+      {tile}
       <View style={styles.rowWords}>
         <Text
           size={dense ? 15.5 : TYPE.row}
@@ -225,11 +315,15 @@ function Group({
   sections,
   dense,
   open,
+  data = false,
 }: {
   sections: readonly Listed[];
   dense: boolean;
   open: ShellSection | null;
+  data?: boolean;
 }) {
+  const last = sections[sections.length - 1];
+
   return (
     <View style={styles.group}>
       {sections.map((section, index) => (
@@ -241,6 +335,7 @@ function Group({
           open={section === open}
         />
       ))}
+      {data && <DataRow dense={dense} first={last == null || last === open} />}
     </View>
   );
 }
@@ -295,9 +390,11 @@ function SignOut({
   /** Terms · Privacy under it; upright with two columns they go under both instead. */
   legal?: boolean;
 }) {
+  const { signOut } = useContext(SettingsWordsContext);
+
   return (
     <View>
-      <Pill label="Sign out" kind="secondary" glyph="signOut" height={height} onPress={onSignOut} />
+      <Pill label={signOut} kind="secondary" glyph="signOut" height={height} onPress={onSignOut} />
       {legal && <LegalLinks style={styles.legal} />}
     </View>
   );
@@ -307,7 +404,8 @@ function SignOut({
 export function SettingsHome({ onSignOut, onDemo }: Handlers) {
   const shell = useShell();
   const insets = useSafeAreaInsets();
-  const groups = groupsFor(shell.viewer);
+  const words = useContext(SettingsWordsContext);
+  const groups = groupsFor(shell.viewer, words);
 
   if (shell.layout === 'landscape')
     return (
@@ -342,16 +440,16 @@ export function SettingsHome({ onSignOut, onDemo }: Handlers) {
               accessibilityRole="header"
               style={[styles.grow, styles.title]}
             >
-              Settings
+              {words.title}
             </Text>
           </View>
           <SwitchedNotice style={styles.switched} />
           <PersonCard size="phone" />
-          {groups.map(({ heading, sections }) =>
+          {groups.map(({ heading, sections, data }) =>
             sections.length === 0 ? null : (
               <View key={heading}>
                 <Caps text={heading} top={26} />
-                <Group sections={sections} dense={false} open={null} />
+                <Group sections={sections} dense={false} open={null} data={data} />
               </View>
             ),
           )}
@@ -404,7 +502,7 @@ export function SettingsHome({ onSignOut, onDemo }: Handlers) {
           accessibilityRole="header"
           style={[styles.title, styles.portraitTitle]}
         >
-          Settings
+          {words.title}
         </Text>
         <SwitchedNotice style={styles.switched} />
         <PersonCard size="portrait" />
@@ -416,7 +514,12 @@ export function SettingsHome({ onSignOut, onDemo }: Handlers) {
               <View style={styles.grow}>{left}</View>
               <View style={styles.grow}>
                 <Caps text={organisation.heading} top={tokens.space4xl} />
-                <Group sections={organisation.sections} dense={false} open={null} />
+                <Group
+                  sections={organisation.sections}
+                  dense={false}
+                  open={null}
+                  data={organisation.data}
+                />
               </View>
             </View>
             <LegalLinks style={styles.legalUnder} />
@@ -430,16 +533,16 @@ export function SettingsHome({ onSignOut, onDemo }: Handlers) {
 /** On its side, the Settings list stays in its column while a section is open beside it. */
 export function SettingsColumn({ onSignOut, onDemo }: Handlers) {
   const shell = useShell();
-  const groups = groupsFor(shell.viewer);
+  const groups = groupsFor(shell.viewer, useContext(SettingsWordsContext));
 
   return (
     <ScrollView contentContainerStyle={styles.column} showsVerticalScrollIndicator={false}>
       <PersonCard size="column" open={shell.open === 'account'} />
-      {groups.map(({ heading, sections }, index) =>
+      {groups.map(({ heading, sections, data }, index) =>
         sections.length === 0 ? null : (
           <View key={heading}>
             <Caps text={heading} top={index === 0 ? tokens.spaceXxl : tokens.spaceXl} />
-            <Group sections={sections} dense open={shell.open} />
+            <Group sections={sections} dense open={shell.open} data={data} />
           </View>
         ),
       )}
