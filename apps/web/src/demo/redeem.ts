@@ -173,6 +173,7 @@ export const REDEEM_STATES = [
   'code-texted',
   'code-wrong',
   'code-expired',
+  'code-expired-whatsapp',
   'code-exhausted',
   'code-failed',
   'used-up',
@@ -264,6 +265,8 @@ function startOf(state: RedeemState): { step: Step; number: string; name: string
       return { step: code({ via: 'text', digits: '71' }), ...joao };
     case 'code-wrong':
       return { step: code({ digits: '713908', problem: 'wrong', wrongs: 1 }), ...joao };
+    case 'code-expired-whatsapp':
+      return { step: code({ problem: 'expired', resend: 0 }), ...joao };
     case 'code-expired':
       return { step: code({ via: 'text', problem: 'expired', resend: 0 }), ...joao };
     case 'code-exhausted':
@@ -322,6 +325,7 @@ export const REDEEM_PAGES: readonly { name: string; states: readonly DemoLink[] 
       redeem('code-texted', 'Texted instead'),
       redeem('code-wrong', 'A wrong code'),
       redeem('code-expired', 'An expired code'),
+      redeem('code-expired-whatsapp', 'An expired code, on WhatsApp'),
       redeem('code-exhausted', 'The phone code, tried too often'),
       redeem('code-failed', 'It did not go'),
       redeem('used-up', 'Used up'),

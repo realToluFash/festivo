@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
+import { R } from './redeem.ts';
 import { SAMPLE } from './rules.ts';
 
 const tested = config();
@@ -178,6 +179,18 @@ describe('a name, a number and the phone code (sc-4235)', () => {
     await waitFor(() => expect(document.activeElement).toBe(field));
     expect(field.value).toBe('713908');
     expect([field.selectionStart, field.selectionEnd]).toEqual([0, 6]);
+  });
+
+  it('words an expired code on the WhatsApp path for WhatsApp', async () => {
+    await redeem('code-expired-whatsapp');
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Check WhatsApp' })).toBeDefined();
+    expect(screen.getByRole('alert').textContent).toBe(
+      `That code has expired${R.expiredBodyWhatsApp}`,
+    );
+    expect(R.expiredBodyWhatsApp).toBe(
+      'Codes only work for a while. Send a new one and use the code in the newest WhatsApp message.',
+    );
   });
 
   it('offers a new code once one has expired', async () => {

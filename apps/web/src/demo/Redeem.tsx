@@ -60,7 +60,8 @@ function firstFocus(state: RedeemState): Want {
   if (state === 'signed-out') return null;
   if (state === 'event-short') return 'number';
   if (state === 'code-wrong') return 'select';
-  if (state === 'code-expired' || state === 'code-exhausted') return 'title';
+  if (state === 'code-expired' || state === 'code-expired-whatsapp' || state === 'code-exhausted')
+    return 'title';
   if (state.startsWith('enter') || state.startsWith('code') || state === 'event-blank')
     return 'field';
 
