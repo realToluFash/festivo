@@ -18,6 +18,8 @@ import urllib.request
 from . import checkout, machine, roles as R, store
 
 DOCKER_EVERY_SECONDS = 30 * 60
+# About 8s on a healthy daemon; a hung one is asked again in half an hour, not waited on.
+DOCKER_SECONDS = 20
 BUILD_CACHE_GB = 20
 SWEEP_SECONDS = 24 * 60 * 60
 STACK_SECONDS = 30
@@ -50,7 +52,7 @@ def gigabytes(text):
 def build_cache_gb():
     try:
         out = subprocess.run(["docker", "system", "df", "--format", "{{json .}}"],
-                             capture_output=True, text=True, timeout=60).stdout
+                             capture_output=True, text=True, timeout=DOCKER_SECONDS).stdout
     except (OSError, subprocess.TimeoutExpired):
         return None
     for line in out.splitlines():
