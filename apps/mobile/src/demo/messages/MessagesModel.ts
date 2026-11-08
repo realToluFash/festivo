@@ -364,7 +364,7 @@ export function startOf(state: MessagesState | null, wide: boolean): Messages {
     };
   const closed = state == null ? undefined : CLOSED[state];
   if (closed != null)
-    return { ...BASE, closed, ...(closed === 'draft' ? { phase: 'first', kept: [] } : {}) };
+    return { ...BASE, closed, kept: [], ...(closed === 'draft' ? { phase: 'first' } : {}) };
   const scheduled = state == null ? undefined : SCHEDULED_AS[state];
   if (scheduled != null) return scheduledStart(scheduled);
   const ines: Open = { kind: 'guest', key: 'ines' };
@@ -763,6 +763,7 @@ export function reduce(m: Messages, action: Action): Messages {
     case 'match':
       return { ...m, matched: action.name, matching: false };
     case 'answer': {
+      if (m.closed != null) return m;
       const by = tellingBy(m, action.key);
       const cost = noticeCostOf(m, action.key);
 
@@ -812,9 +813,10 @@ export function reduce(m: Messages, action: Action): Messages {
         told: W.saved,
       };
     case 'sendAgain':
+      if (m.closed != null) return m;
       return { ...m, again: { ...m.again, [action.key]: SENT_AGAIN_AT }, said: action.key };
     case 'resending':
-      return { ...m, resending: action.open };
+      return { ...m, resending: action.open && m.closed == null };
     case 'resent':
       return { ...m, resending: false };
     case 'bell':
@@ -1064,6 +1066,7 @@ export function tellingBy(m: Messages, key: GuestKey): ChannelKey {
 }
 
 export function noticeCostOf(m: Messages, key: GuestKey): NoticeCost | null {
+  if (m.closed != null) return null;
   const channel = tellingBy(m, key);
 
   return noticeCost(channel, NOTICE_CREDITS[key]?.[channel] ?? 0, m.balance);

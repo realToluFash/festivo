@@ -144,6 +144,119 @@ describe('handing over a departing member’s work at a desk (sc-31311)', () => 
     expect(within(dialog).getByText('and 3 more')).toBeDefined();
   });
 
+  it('says one event in its words for 1', async () => {
+    await settings('/demo/settings/members?state=handoverOne');
+    const dialog = ask('Remove Priya Shah from Ire Events?');
+
+    expect(within(dialog).getByText('Priya Shah leads 1 event. Hand it to:')).toBeDefined();
+    expect(who().getAttribute('aria-label')).toBe('Hand it to: Folake Adeyemi · you');
+    expect(within(dialog).getByRole('list', { name: 'What will move, 1 event' })).toBeDefined();
+  });
+
+  it('cuts a long name, keeps the whole of it to read, and shows a called-off event like any other', async () => {
+    await settings('/demo/settings/members?state=handoverLongNames');
+    const rows = within(ask('Remove Priya Shah from Ire Events?')).getAllByRole('listitem');
+    const long =
+      'Festa de encerramento da conferência anual das associações de antigos alunos de Lisboa';
+
+    expect(rows.map((row) => row.textContent)).toEqual([
+      'Adaeze & Tunde’s wedding',
+      long,
+      'Team offsite',
+    ]);
+    expect(rows[1]?.querySelector('.handover-move-name')?.getAttribute('title')).toBe(long);
+    expect(rows[2]?.className).toBe(rows[0]?.className);
+  });
+
+  it('offers no verb while the work list is on its way, and Keep still closes it', async () => {
+    await settings('/demo/settings/members?state=handoverLoading');
+    const dialog = ask('Remove Priya Shah from Ire Events?');
+
+    expect(within(dialog).getByRole('status').textContent).toBe('Checking what Priya Shah leads…');
+    expect(within(dialog).queryByRole('button', { name: 'Remove' })).toBeNull();
+    expect(within(dialog).queryByRole('button', { name: /^Hand / })).toBeNull();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Keep Priya' }));
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+  });
+
+  it('offers Try again, not Remove, when the work list fails, then asks', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    await settings('/demo/settings/members?state=handoverLoadFailed');
+    const dialog = ask('Remove Priya Shah from Ire Events?');
+
+    expect(within(dialog).getByRole('alert').textContent).toBe(
+      'What Priya Shah leads did not load. Nothing was changed.',
+    );
+    expect(within(dialog).queryByRole('button', { name: 'Remove' })).toBeNull();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Try again' }));
+    expect(within(ask('Remove Priya Shah from Ire Events?')).getByRole('status')).toBeDefined();
+    await wait(1300);
+    expect(who().getAttribute('aria-label')).toBe('Hand them to: Folake Adeyemi · you');
+  });
+
+  it('says the server’s refusal in its own words, and Remove goes through', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    await settings('/demo/settings/members?state=handoverRefused');
+    const dialog = ask('Remove Tom Becker from Ire Events?');
+
+    expect(within(dialog).getByRole('alert').textContent).toBe(
+      'Choose who takes over their events.',
+    );
+    expect(within(dialog).getByText('Tom Becker leads 2 events. Hand them to:')).toBeDefined();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Remove' }));
+    await wait(600);
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+  });
+
+  it('holds back Hand over now until Marta’s work list is in', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    await settings('/demo/settings/members?state=martaLoadFailed');
+
+    expect(screen.getByRole('alert').textContent).toBe(
+      'What Marta Silva leads did not load. Nothing was changed.',
+    );
+    expect(screen.queryByRole('button', { name: 'Hand over now' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(screen.getByRole('status').textContent).toBe('Checking what Marta Silva leads…');
+    await wait(1300);
+    expect(screen.getByRole('button', { name: 'Hand over now' })).toBeDefined();
+    expect(screen.getByRole('heading', { name: 'Leads 2 events' })).toBeDefined();
+  });
+
+  it('leaves in the words for 1', async () => {
+    await settings('/demo/settings/general?state=leaveOne&as=ana');
+    const dialog = ask('Leave Ire Events?');
+
+    expect(within(dialog).getByText('You lead 1 event. Hand it to:')).toBeDefined();
+    expect(who().getAttribute('aria-label')).toBe('Hand it to: Nobody: the owners take it');
+  });
+
+  it('offers no Leave while your work list is on its way, and Stay still closes it', async () => {
+    await settings('/demo/settings/general?state=leaveLoading&as=ana');
+    const dialog = ask('Leave Ire Events?');
+
+    expect(within(dialog).getByRole('status').textContent).toBe('Checking what you lead…');
+    expect(within(dialog).queryByRole('button', { name: /^Leave/u })).toBeNull();
+    expect(within(dialog).queryByRole('button', { name: /^Hand / })).toBeNull();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Stay' }));
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+  });
+
+  it('offers Try again, not Leave, when your work list fails, then asks', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    await settings('/demo/settings/general?state=leaveLoadFailed&as=ana');
+    const dialog = ask('Leave Ire Events?');
+
+    expect(within(dialog).getByRole('alert').textContent).toBe(
+      'What you lead did not load. Nothing was changed.',
+    );
+    expect(within(dialog).queryByRole('button', { name: /^Leave/u })).toBeNull();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Try again' }));
+    expect(within(ask('Leave Ire Events?')).getByRole('status')).toBeDefined();
+    await wait(1300);
+    expect(who().getAttribute('aria-label')).toBe('Hand them to: Nobody: the owners take them');
+  });
+
   it('searches above 15 people, says how many match, and clears', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     await settings('/demo/settings/members?state=handoverSearch');

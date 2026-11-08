@@ -9,6 +9,7 @@ export const MW = {
   noneLine:
     'What you write appears on each guest’s own page. Each guest who answers gets a conversation here.',
   pickOne: 'Pick a conversation, or write to your guests below.',
+  pickOneClosed: 'Pick a conversation.',
   writeToGuests: 'Write to your guests',
   writeFollowUp: 'Write a follow-up',
   writeToThem: 'Write to them',

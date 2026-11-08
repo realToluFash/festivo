@@ -1,6 +1,7 @@
 import { EVENTS } from '../events/EventsSample.ts';
 import { meshFor, type MeshKey } from '../../kit/today.ts';
 import { SEARCH_ABOVE } from '../OrgSwitcherModel.ts';
+import { LONG_NAMED } from './MembersSample.ts';
 
 /** An event somebody leads, as the work list would carry it: its id and title, and the start and state that order it. */
 export interface LedEvent {
@@ -10,6 +11,16 @@ export interface LedEvent {
   startsAt: string;
   over: boolean;
 }
+
+const LEDGER = [
+  ...EVENTS,
+  {
+    id: LONG_NAMED,
+    name: 'Festa de encerramento da conferência anual das associações de antigos alunos de Lisboa',
+    startsAt: '2026-11-20T18:00:00Z',
+    status: 'planning',
+  },
+];
 
 /** The Ask shows this many, then "and {n} more"; it never scrolls inside itself (sc-614). */
 export const SHOWN_AT_MOST = 5;
@@ -24,7 +35,7 @@ export function soonestFirst(a: LedEvent, b: LedEvent): number {
 
 export function ledEvents(ids: readonly string[]): LedEvent[] {
   return ids
-    .flatMap((id) => EVENTS.filter((event) => event.id === id))
+    .flatMap((id) => LEDGER.filter((event) => event.id === id))
     .map((event) => ({
       id: event.id,
       name: event.name,
