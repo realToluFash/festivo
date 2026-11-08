@@ -81,6 +81,7 @@ describe('the Settings list (sc-30190)', () => {
   it.each([
     ['/app/account', 'Account', 'Account – Your account – Soirely'],
     ['/app/account/security', 'Security', 'Security – Your account – Soirely'],
+    ['/app/account/notifications', 'Notifications', 'Notifications – Your account – Soirely'],
     ['/app/settings', 'General', 'General – Settings – Soirely'],
     ['/app/settings/members', 'Members', 'Members – Settings – Soirely'],
     ['/app/settings/sign-in-rules', 'Sign-in rules', 'Sign-in rules – Settings – Soirely'],

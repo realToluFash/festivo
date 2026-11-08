@@ -3149,6 +3149,11 @@ span {
   margin: 0 auto;
 }
 
+/* The Settings list takes its 272 beside the account page, which keeps the width it had alone. */
+.no-organisation-account:has(> .settings-desk) {
+  max-width: calc(47.5rem + 2 * var(--space5xl) + 17rem);
+}
+
 .no-organisation {
   max-width: 35rem;
   margin: 0 auto;
