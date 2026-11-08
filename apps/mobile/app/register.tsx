@@ -3,7 +3,8 @@ import {
   PASSWORD_MINIMUM_LENGTH,
   meetsPasswordLength,
 } from '@soirely/domain';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams, useNavigation } from 'expo-router';
+import type { NativeStackNavigationProp } from 'expo-router/native-stack';
 import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, type TextInputInstance, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -33,6 +34,7 @@ type Which = 'name' | 'email' | 'password';
 export default function Register() {
   const { t } = useTranslation();
   const params = useLocalSearchParams<{ email?: string; timedOut?: string }>();
+  const navigation = useNavigation<NativeStackNavigationProp<Record<string, object | undefined>>>();
   const [status, setStatus] = useState<RegistrationStatus>({ kind: 'ready' });
   const [name, setName] = useState('');
   const [email, setEmail] = useState(params.email ?? '');
@@ -66,8 +68,22 @@ export default function Register() {
   }
 
   useEffect(() => {
-    if (params.timedOut != null) focusChecked(passwordField);
-  }, [params.timedOut]);
+    if (params.timedOut == null) return;
+
+    focusChecked(passwordField);
+    // Android ignores a focus on this screen while the email code is still sliding off it (sc-29923).
+    const listeners = [
+      navigation.addListener('transitionEnd', (event) => {
+        if (event.data.closing) return;
+        unlisten();
+        focusChecked(passwordField);
+      }),
+      navigation.addListener('blur', () => unlisten()),
+    ];
+    const unlisten = () => listeners.forEach((remove) => remove());
+
+    return unlisten;
+  }, [navigation, params.timedOut]);
 
   useEffect(() => {
     if (liftsAt == null) return;
