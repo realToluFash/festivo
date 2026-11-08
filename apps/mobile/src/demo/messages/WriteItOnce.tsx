@@ -211,7 +211,7 @@ function AsChoices({
           on && styles.lit,
           pressed && styles.pressed,
         ]}
-        accessibilityRole="button"
+        accessibilityRole={inSheet ? 'button' : 'menuitem'}
         accessibilityState={{ selected: on }}
         accessibilityLabel={optionOf(person)}
         testID={`messages.previewAs.${person.key}`}

@@ -13,6 +13,7 @@ import {
   chosen,
   coverFor,
   filledAs,
+  languageLine,
   noticeFor,
   optionOf,
   previewLines,
@@ -117,6 +118,26 @@ describe('Preview as (sc-3960)', () => {
       'Kwame Mensah · English',
       'Lucía Ortega · Spanish',
     ]);
+  });
+
+  it('names a language as the app does: on its own in the option, in a sentence in the line', () => {
+    const camille = PREVIEW_PEOPLE.camille;
+
+    expect(optionOf(camille)).toBe('Camille Dubois · French');
+    expect(languageLine(camille)).toBe('In French, the language they chose on their page.');
+    expect(optionOf(camille, 'fr')).toBe('Camille Dubois · Français');
+    expect(languageLine(camille, 'fr')).toBe('In français, the language they chose on their page.');
+    expect(optionOf(PREVIEW_PEOPLE.lucia, 'fr')).toBe('Lucía Ortega · Espagnol');
+    expect(languageLine(PREVIEW_PEOPLE.lucia, 'fr')).toBe(
+      'In espagnol, the language you set for them.',
+    );
+    expect(source('PreviewModel.ts')).not.toMatch(/DisplayNames/u);
+  });
+
+  it('reads its iPad options as menu items with selected, as Insert’s rows; buttons in the phone’s sheet', () => {
+    expect(source('WriteItOnce.tsx')).toMatch(
+      /accessibilityRole=\{inSheet \? 'button' : 'menuitem'\}\s*accessibilityState=\{\{ selected: on \}\}/u,
+    );
   });
 
   it('opens on Kwame Mensah, as B’s preview did, and previewAs opens on the five', () => {

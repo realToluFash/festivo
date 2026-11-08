@@ -1,4 +1,9 @@
 import { writtenTime } from '../clock.ts';
+import {
+  LANGUAGE_NAMES,
+  LANGUAGE_NAMES_FR,
+  LANGUAGE_NAMES_IN_SENTENCE,
+} from '../settings/OrganisationWords.ts';
 import { DAYS, EVENT, HOSTS, type Token } from './MessagesSample.ts';
 import { W, say } from './MessagesWords.ts';
 import { FRENCH, PREVIEW_PEOPLE, type PreviewKey, type PreviewPerson } from './PreviewSample.ts';
@@ -53,11 +58,24 @@ export function chosen(now: Previewing, who: PreviewKey): Previewing {
   return { who, choosing: false, filling: who !== now.who, held: false };
 }
 
-export function languageName(code: string, reader = 'en'): string {
-  return new Intl.DisplayNames([reader], { type: 'language' }).of(code) ?? code;
+export type Reader = 'en' | 'fr';
+
+const NAMES: Record<Reader, Record<string, string>> = {
+  en: { ...LANGUAGE_NAMES, ...LANGUAGE_NAMES_IN_SENTENCE },
+  fr: LANGUAGE_NAMES_FR,
+};
+
+/** A language on its own, as the app names it (`languageNames.*`): Preview as's option. */
+export function languageName(code: string, reader: Reader = 'en'): string {
+  return NAMES[reader][`languageNames.${code}`] ?? code;
 }
 
-export function optionOf(person: PreviewPerson, reader = 'en'): string {
+/** A language inside a sentence (`languageNamesInSentence.*`): the three language lines. */
+export function languageNameInSentence(code: string, reader: Reader = 'en'): string {
+  return NAMES[reader][`languageNamesInSentence.${code}`] ?? code;
+}
+
+export function optionOf(person: PreviewPerson, reader: Reader = 'en'): string {
   return sayPreview.option(person.name, languageName(person.language, reader));
 }
 
@@ -106,8 +124,8 @@ export function typedBraces(text: string): boolean {
   return /\{[^{}]*\}/u.test(text.replace(TOKEN_RUN, ''));
 }
 
-export function languageLine(person: PreviewPerson, reader = 'en'): string {
-  const language = languageName(person.language, reader);
+export function languageLine(person: PreviewPerson, reader: Reader = 'en'): string {
+  const language = languageNameInSentence(person.language, reader);
   if (person.from === 'chose') return sayPreview.chose(language);
   if (person.from === 'organisation') return sayPreview.organisation(language);
 
