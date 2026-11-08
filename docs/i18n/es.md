@@ -50,6 +50,37 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **8 Nov 2026. La pantalla Hoy, a 360 de ancho** (sc-31788, tras #32963). La pestaña
+  Settings del teléfono es «Ajustes», la palabra del iPhone y de Android en España, porque
+  «Configuración» no cabe en un cuarto de 360; el título de la pantalla y `frame.settings`
+  siguen siendo «Configuración». La etiqueta de cuenta atrás de las tarjetas es «En 2 días»
+  (`todayScreen.inDaysCapital`), para que quepa junto a «Última semana»; dentro de una frase
+  sigue «dentro de 2 días». «Todo el día» no cabe en la columna de la hora: pedidas al dev dos
+  líneas, nunca «Todo el d…».
+
+- **8 Nov 2026. Un inicio de sesión con doble factor que ha caducado** (sc-29979,
+  `signIn.codeTimedOutTitle`, web y app). «El inicio de sesión ha caducado», y después
+  `endedBody` «Inicie sesión de nuevo para continuar.». «Caducar», como las solicitudes; no
+  «se ha agotado el tiempo», que alarga el título sin decir más. No «su sesión»: la persona
+  aún no había entrado. La app une los dos en una línea con punto, así que el título no lo lleva.
+- **8 Nov 2026. Un registro que ha caducado** (sc-32449 para sc-29923, `register.timedOut`,
+  web y app). «Su registro ha caducado, así que no hemos guardado la contraseña. Vuelva a
+  introducirla para recibir un código nuevo.». "Sign-up" es «registro», como `limitedTitle`;
+  «caducar», como el inicio de sesión; «un código nuevo», como `resend`.
+- **8 Nov 2026. Invitados A: la respuesta, los dos recuentos y el 412** (sc-3773, #32403).
+  "Not sure yet" es «Por confirmar», en la página del invitado y en la del anfitrión: no
+  marca género, como sí harían «indeciso» o «no está seguro». «Por confirmar · plazo hasta el
+  {{date}}», «Por confirmar · respondió el {{date}}». "Haven't replied" es «por responder»
+  («Faltan {{count}} por responder»); "No reply" es «Sin respuesta»; nunca se cruzan.
+  "Companions" es «acompañantes». «{{coming}} de {{invited}} invitados vienen». "Write to them"
+  es «Escribirles»; "Open check-in", «Abrir registro de llegada». "Show all {{count}}" es
+  «Mostrar los {{count}}». "Their conversation" es «Conversación», sin posesivo: «su» se lee
+  como usted. Por lo mismo, en el 412 "Theirs · Yours" es «Versión guardada · Su versión», y los
+  botones «Usar la guardada» y «Mantener la mía».
+  El cierre (#32762): «El plazo para responder termina hoy.», «… termina mañana, {{date}}.»,
+  «… termina el {{date}}.», «El plazo para responder terminó el {{date}}.». Sin nadie por
+  responder: «Ya han respondido todos.».
+
 - **7 Nov 2026. La pantalla Hoy de la app** (`mobile:todayScreen.*`, sc-31788 para sc-29090).
   "Live now" y "Live · …" son «En curso», como `eventsScreen.happeningNow`, nunca «Publicado»,
   que es el estado. La agenda pone una etiqueta y dos puntos, «Inicio: {{name}}», «Fin:

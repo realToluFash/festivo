@@ -1,3 +1,4 @@
+import { writtenTime } from '../clock.ts';
 import { CHANNEL_WORD, type ChannelKey, W, say } from './MessagesWords.ts';
 import { TOKEN_RUN, TOKEN_SPLIT, tokenText } from './TokenText.ts';
 
@@ -109,6 +110,30 @@ export const GUESTS: Record<GuestKey, SampleGuest> = {
 export const ANSWERS: Partial<Record<GuestKey, string>> = {
   ines: 'Of course. We will set a place for your son at your table.',
   kwame: 'Formal: suits and long dresses are welcome.',
+  lucia: 'Yes: free parking under the hotel, entrance on Calle Mayor.',
+};
+
+/** What Soirely's notice to each guest costs, by channel: sc-3928's table for their number's country, one SMS part (sc-3946). */
+export const NOTICE_CREDITS: Partial<Record<GuestKey, Partial<Record<ChannelKey, number>>>> = {
+  lucia: { wa: 4, sms: 14 },
+  kwame: { sms: 9 },
+};
+
+/** The channels besides their own that could carry each guest's notice (sc-3976): Lucía has an address and agreed to texts. */
+export const OTHER_CHANNELS: Partial<Record<GuestKey, readonly ChannelKey[]>> = {
+  lucia: ['email', 'sms'],
+};
+
+/** The balance in `noticeWaits` and `noticeNotSent`: under the 4 credits Lucía's WhatsApp notice needs. */
+export const LOW_BALANCE = 2;
+
+/** `noticeNotSent`: Lucía's earlier question, and the answer whose WhatsApp notice was held 48 hours for credits. */
+export const HELD_TOO_LONG = {
+  day: '2026-11-01',
+  asked: 'Is there a vegetarian menu?',
+  askedAt: '08:02',
+  answer: 'Yes. Tell us on your page and the kitchen will plan for it.',
+  answeredAt: '08:30',
 };
 
 export const PARKING = 'Parking at The Landmark';
@@ -504,7 +529,7 @@ export const INVITATION = {
 export const PREVIEW = {
   name: 'Kwame Mensah',
   language: 'English',
-  cover: 'Thu, Nov 5 · 6:00 PM · The Landmark',
+  cover: `Thu, Nov 5 · ${writtenTime('18:00', 'en')} · The Landmark`,
   link: '[their own link]',
 };
 

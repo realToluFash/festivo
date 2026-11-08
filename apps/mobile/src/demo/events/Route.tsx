@@ -17,13 +17,16 @@ import { backToEvents } from './EventFrame.tsx';
 import { EventsList } from './EventsList.tsx';
 import { eventStateOf, listStateOf } from './EventsModel.ts';
 import { messagesStateOf } from '../messages/MessagesModel.ts';
+import { seatingStateOf } from '../seating/SeatingModel.ts';
+import { guestsStateOf } from '../guests/GuestsModel.ts';
+import { budgetStateOf } from '../budget/BudgetModel.ts';
 import { areaOf, sampleEvent } from './EventsSample.ts';
 import { say } from './EventsWords.ts';
 import { type Shell, ShellContext, type ShellSection } from '../../components/settingsShell.ts';
 import { PageToast } from '../../components/Summary.tsx';
 
 /** Events on sample data, in Settings' shell: Today and Settings a tab away, and anything unbuilt said so. */
-function EventsShell({
+export function EventsShell({
   told: start,
   switcher,
   children,
@@ -115,19 +118,29 @@ export function EventRoute() {
     state?: string;
     area?: string;
     switcher?: string;
+    as?: string;
   }>();
-  const state = eventStateOf(params.state);
   const area = areaOf(params.area);
   const messages = area === 'messages' ? messagesStateOf(params.state) : null;
+  const seating = area === 'seating' ? seatingStateOf(params.state) : null;
+  const budget = area === 'budget' ? budgetStateOf(params.state) : null;
+  // Can edit has no Budget: a deep link to it opens the event page, More open without it (sc-93).
+  const noBudget = area === 'budget' && (budget === 'no_budget' || params.as === 'kemi');
+  const state = noBudget ? 'more' : eventStateOf(params.state);
+  const guests = area === 'guests' ? guestsStateOf(params.state) : null;
 
   return (
     <EventsShell switcher={params.switcher}>
       <EventScreen
-        key={`${params.id ?? ''}:${state ?? ''}:${area ?? ''}:${messages ?? ''}`}
+        key={`${params.id ?? ''}:${state ?? ''}:${area ?? ''}:${messages ?? ''}:${seating ?? ''}:${guests ?? ''}:${budget ?? ''}`}
         id={params.id}
         state={state}
-        area={area}
+        area={noBudget ? null : area}
         messages={messages}
+        seating={seating}
+        guests={guests}
+        budget={budget}
+        without={noBudget ? 'budget' : undefined}
       />
     </EventsShell>
   );

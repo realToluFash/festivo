@@ -6,7 +6,7 @@
 appId: host.exp.Exponent
 ---
 - runFlow:
-    file: sc28178/joined.yaml
+    file: ../checks/sc28178/joined.yaml
     env:
       ORG: Alpha
 # A notice from the change before can still show: gone first, or it passes the wait below.
@@ -14,10 +14,10 @@ appId: host.exp.Exponent
     notVisible: '{{t:switcher.switched}}'
     timeout: 20000
 - runFlow:
-    file: sc28178/changed.yaml
+    file: ../checks/sc28178/changed.yaml
     env:
       ORG: Alpha
-      FROM: frame.events
+      FROM: tab-events
       CHANGE: suspend
       MOVE: frame.calendar
 - extendedWaitUntil:
@@ -26,7 +26,7 @@ appId: host.exp.Exponent
 - assertNotVisible: '{{t:accessPaused.since}}'
 - takeScreenshot: suspended-moved-on
 - runFlow:
-    file: sc28178/joined.yaml
+    file: ../checks/sc28178/joined.yaml
     env:
       ORG: Alpha
 # A notice from the change before can still show: gone first, or it passes the wait below.
@@ -34,10 +34,10 @@ appId: host.exp.Exponent
     notVisible: '{{t:switcher.switched}}'
     timeout: 20000
 - runFlow:
-    file: sc28178/changed.yaml
+    file: ../checks/sc28178/changed.yaml
     env:
       ORG: Alpha
-      FROM: frame.events
+      FROM: tab-events
       CHANGE: remove
       MOVE: frame.home
 - extendedWaitUntil:
@@ -46,7 +46,7 @@ appId: host.exp.Exponent
 - assertNotVisible: '{{t:accessPaused.since}}'
 - takeScreenshot: removed-moved-on
 - runFlow:
-    file: sc28178/joined.yaml
+    file: ../checks/sc28178/joined.yaml
     env:
       ORG: Alpha
 # A notice from the change before can still show: gone first, or it passes the wait below.
@@ -54,10 +54,10 @@ appId: host.exp.Exponent
     notVisible: '{{t:switcher.switched}}'
     timeout: 20000
 - runFlow:
-    file: sc28178/changed.yaml
+    file: ../checks/sc28178/changed.yaml
     env:
       ORG: Alpha
-      FROM: frame.events
+      FROM: tab-events
       CHANGE: delete
       MOVE: frame.home
 - extendedWaitUntil:

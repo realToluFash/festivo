@@ -1,8 +1,29 @@
-# Home, saying whose session it is.
+# Home, where signing in lands, in one of three ways: Today for an account in an
+# organisation, which names no account and is evidence enough of the session; the signed-in
+# card for a role that cannot read events; or the no-organisation screen. The last two name
+# the account, so the check reads it. Signed out shows none of them, so the wait fails. sc-32726.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/
 - extendedWaitUntil:
-    visible: '{{t:settings.signedInAs|email}}'
+    visible: '{{t:home.signedInTo}}|{{t:todayScreen.tab.today}}|{{t:noOrganisation.title}}'
     timeout: 30000
+- runFlow:
+    when:
+      visible: '{{t:home.signedInTo}}'
+    commands:
+      - scrollUntilVisible:
+          element:
+            text: '{{t:settings.signedInAs|email}}'
+          direction: DOWN
+          timeout: 30000
+- runFlow:
+    when:
+      visible: '{{t:noOrganisation.title}}'
+    commands:
+      - scrollUntilVisible:
+          element:
+            text: '{{t:noOrganisation.signedInAs|email}}'
+          direction: DOWN
+          timeout: 30000
 - takeScreenshot: home

@@ -1,14 +1,15 @@
-import { type KeyboardEvent, useEffect, useId, useRef, useState } from 'react';
+import { type KeyboardEvent, useEffect, useEffectEvent, useId, useRef, useState } from 'react';
 
 import { Glyph } from '../components/Glyph.tsx';
+import { inWithLine } from './doorCode.ts';
 import {
   EVENT_ROLES,
-  EVERYONE_ON,
+  everyoneOn,
   type EventRole,
   FIRST_ROLE,
   firstName,
-  IN_ORGANISATION,
-  LEAD_OFF,
+  inOrganisation,
+  leadOff,
   noMatchLine,
   notChangedLine,
   offeredMembers,
@@ -41,10 +42,20 @@ const ARROWS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
 
 type Saving = 'idle' | 'saving' | 'saved';
 
+/** Remove's verb turns while it sends: `held` from a deep link, long enough to look at. */
+export interface Removing {
+  words: string;
+  ms: number;
+  start: 'ask' | 'held' | null;
+  heldMs: number;
+}
+
 /** Arrows check each radio they reach (APG Radio Group), so an arrow pick waits for the keys to rest. */
 export function RoleDialog({
   person,
   roleFails,
+  organisation,
+  removing,
   onSaved,
   onLost,
   onClose,
@@ -52,6 +63,8 @@ export function RoleDialog({
 }: {
   person: OnEvent;
   roleFails: boolean;
+  organisation?: string;
+  removing?: Removing | undefined;
   onSaved: (role: EventRole) => void;
   onLost: (words: string) => void;
   onClose: () => void;
@@ -62,7 +75,10 @@ export function RoleDialog({
   const [saving, setSaving] = useState<Saving>('idle');
   const [lost, setLost] = useState<string | null>(null);
   const [live, setLive] = useState('');
-  const [asking, setAsking] = useState(false);
+  const [asking, setAsking] = useState(removing?.start != null);
+  const [gone, setGone] = useState<number | null>(
+    removing?.start === 'held' ? removing.heldMs : null,
+  );
   const held = useRef<EventRole>(person.role);
   const byArrow = useRef(false);
   const settle = useRef<number | undefined>(undefined);
@@ -77,6 +93,15 @@ export function RoleDialog({
       open.current = false;
     };
   }, []);
+
+  const removed = useEffectEvent(onRemove);
+
+  useEffect(() => {
+    if (gone == null) return;
+    const timer = window.setTimeout(removed, gone);
+
+    return () => window.clearTimeout(timer);
+  }, [gone]);
 
   function send(role: EventRole): void {
     sending.current = window.setTimeout(() => {
@@ -133,9 +158,16 @@ export function RoleDialog({
       >
         <div className="people-who">
           <Avatar initials={person.initials} tone={person.tone} size="face" />
-          <RowWords title={person.name} lines={[sheetLine(person)]} />
+          <RowWords title={person.name} lines={[sheetLine(person, organisation)]} />
         </div>
-        {person.outside && <p className="desk-line people-ends">{OUTSIDE_ENDS}</p>}
+        {person.door != null ? (
+          <div className="people-ends dc-door-lines">
+            <p className="desk-line">{inWithLine(person.door)}</p>
+            <p className="desk-line">{OUTSIDE_ENDS}</p>
+          </div>
+        ) : (
+          person.outside && <p className="desk-line people-ends">{OUTSIDE_ENDS}</p>
+        )}
         {lost != null && (
           <p className="desk-error people-lost" role="alert">
             <Glyph name="alert" size={15} weight={2.2} />
@@ -159,7 +191,7 @@ export function RoleDialog({
                     <RowWords
                       title={role}
                       tag={role === picked && <SavingTag saving={saving} />}
-                      lines={[isOff ? LEAD_OFF : ROLE_LINES[role]]}
+                      lines={[isOff ? leadOff(organisation) : ROLE_LINES[role]]}
                     />
                     <input
                       ref={role === picked ? first : undefined}
@@ -187,11 +219,12 @@ export function RoleDialog({
       {asking && (
         <Ask
           title={removeTitle(person)}
-          line={removeLine(person)}
+          line={removeLine(person, organisation)}
           keep={`Keep ${firstName(person)}`}
           go="Remove"
+          busy={gone == null ? undefined : removing?.words}
           onKeep={() => setAsking(false)}
-          onGo={onRemove}
+          onGo={() => (removing == null ? onRemove() : setGone(removing.ms))}
         />
       )}
     </>
@@ -218,12 +251,14 @@ export function AddDialog({
   members,
   onEvent,
   viewer,
+  organisation,
   onClose,
   onAdd,
 }: {
   members: readonly OrgMember[];
   onEvent: readonly OnEvent[];
   viewer: PeopleViewer;
+  organisation?: string;
   onClose: () => void;
   onAdd: (role: EventRole, added: OrgMember[]) => void;
 }) {
@@ -269,8 +304,8 @@ export function AddDialog({
             inputRef={nameBox}
             autoComplete="off"
           />
-          <section className="desk-block" aria-label={IN_ORGANISATION}>
-            <Head title={IN_ORGANISATION} level={3} />
+          <section className="desk-block" aria-label={inOrganisation(organisation)}>
+            <Head title={inOrganisation(organisation)} level={3} />
             {offered.length > 0 && (
               <ul className="desk-rows has-lead">
                 {offered.map((one) => (
@@ -292,7 +327,9 @@ export function AddDialog({
             <div role="status">
               {offered.length === 0 && (
                 <p className="desk-line">
-                  {typed.trim() === '' ? EVERYONE_ON : noMatchLine(typed)}
+                  {typed.trim() === ''
+                    ? everyoneOn(organisation)
+                    : noMatchLine(typed, organisation)}
                 </p>
               )}
             </div>

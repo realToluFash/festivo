@@ -7,9 +7,11 @@ appId: host.exp.Exponent
     env:
       ASK: /membership?change=join&org=${ORG}
 - evalScript: ${output.joined = output.helper.id}
-# A move reads the organisations again, so the switcher lists the one just joined.
+# A move reads the organisations again, so the switcher lists the one just joined. From Today,
+# where a change before may have left Calendar or Events open.
+- runFlow: ../../return-home.yaml
 - tapOn:
-    id: 'frame.events'
+    id: 'tab-events'
 - waitForAnimationToEnd:
     timeout: 5000
 - runFlow:

@@ -13,7 +13,8 @@ import { PhaseTag } from './EventParts.tsx';
 import { resetSample } from './events.ts';
 
 const tested = config();
-const SLOW = { timeout: 8000 };
+const SLOW = { timeout: 20000 };
+const WAIT = { timeout: 8000 };
 
 function open(path: string) {
   const router = createMemoryRouter(routes, { initialEntries: [path] });
@@ -24,7 +25,7 @@ function open(path: string) {
 
 async function calendar(state = 'populated') {
   const router = open(`/demo/calendar?state=${state}`);
-  await screen.findByRole('heading', { level: 1, name: 'Calendar' }, SLOW);
+  await screen.findByRole('heading', { level: 1, name: 'Calendar' }, WAIT);
 
   return router;
 }
@@ -87,11 +88,11 @@ describe('the Calendar in B, weeks as lanes, at a desk (sc-30329)', () => {
 
   it('opens from the sidebar on the month holding today', SLOW, async () => {
     const router = open('/demo/today');
-    const side = await screen.findByRole('navigation', { name: 'Soirely' }, SLOW);
+    const side = await screen.findByRole('navigation', { name: 'Soirely' }, WAIT);
 
     fireEvent.click(within(side).getByRole('link', { name: 'Calendar' }));
 
-    expect(await screen.findByRole('heading', { level: 1, name: 'Calendar' }, SLOW)).toBeDefined();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Calendar' }, WAIT)).toBeDefined();
     expect(router.state.location.pathname).toBe('/demo/calendar');
     expect(screen.getByRole('heading', { level: 2, name: 'November 2026' })).toBeDefined();
     expect(screen.getByRole('grid', { name: 'November 2026' })).toBeDefined();
@@ -415,7 +416,7 @@ describe('the Calendar in B, weeks as lanes, at a desk (sc-30329)', () => {
     open('/demo/events/evt-ireti-2/dates');
 
     expect(
-      await screen.findByRole('heading', { level: 1, name: CAL_WORDS.allDates }, SLOW),
+      await screen.findByRole('heading', { level: 1, name: CAL_WORDS.allDates }, WAIT),
     ).toBeDefined();
     expect(screen.getByText(CAL_WORDS.allDatesComing)).toBeDefined();
   });

@@ -1,5 +1,7 @@
+import { formattingLocale } from '@soirely/domain';
+import { getLocales } from 'expo-localization';
 import { router, useLocalSearchParams } from 'expo-router';
-import { type Ref, useEffect, useRef, useState } from 'react';
+import { type Ref, useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
 
 import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
@@ -7,6 +9,8 @@ import { Text } from '../../components/Text.tsx';
 import { glide } from '../../motion.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { Glyph } from '../../components/Glyph.tsx';
+import { doorStartOf, type DoorStart } from '../doorCode/DoorCodeModel.ts';
+import { DoorCodes } from '../doorCode/DoorCodes.tsx';
 import { useLoad } from '../settings/MembersLoading.tsx';
 import { AddScreen } from './PeopleAdd.tsx';
 import { PeopleLoading, PeoplePage } from './PeopleFrame.tsx';
@@ -18,19 +22,19 @@ import {
   EMPTY_TITLE,
   FAILED_LINE,
   FAILED_TITLE,
+  ireWorld,
   listed,
   manages,
   ON_EVENT,
   type OnEvent,
   opens,
-  OUTSIDE_TAG,
+  outsideTag,
   type PeopleStart,
   peopleStart,
   peopleStateOf,
   READ_ONLY,
   removedToast,
   rowLine,
-  sampleMembers,
   seesEveryEvent,
   withAdded,
   without,
@@ -50,23 +54,43 @@ interface Opened {
 
 /** People on an event in A, one list with the role in a sheet, on sample data. */
 export function PeopleSection() {
-  const { state } = useLocalSearchParams<{ state?: string }>();
+  const { state, code, show, hold } = useLocalSearchParams<{
+    state?: string;
+    code?: string;
+    show?: string;
+    hold?: string;
+  }>();
+  const shown = show ?? hold;
+  const door = useMemo(() => doorStartOf(state, code, shown), [state, code, shown]);
   const name = peopleStateOf(state);
 
-  return <PeopleScreen key={name} start={peopleStart(name)} />;
+  if (door != null)
+    return <PeopleScreen key={`${state}·${code}·${shown}`} start={door.people} door={door} />;
+
+  return <PeopleScreen key={name} start={peopleStart(name)} door={null} />;
 }
 
-function PeopleScreen({ start }: { start: PeopleStart }) {
+function openedAtStart(start: PeopleStart): Opened | null {
+  const person = start.onEvent.find((one) => one.id === start.opened?.id);
+
+  return person == null ? null : { person, open: true, visit: 1 };
+}
+
+function PeopleScreen({ start, door }: { start: PeopleStart; door: DoorStart | null }) {
   const { layout } = useShell();
   const { load, retry } = useLoad(start.load);
   const viewer = start.viewer;
-  const [members] = useState(sampleMembers);
+  const [world] = useState(() => start.world ?? ireWorld());
+  const members = world.members;
+  const locale = formattingLocale('en', getLocales()[0]?.languageTag);
   const [onEvent, setOnEvent] = useState<OnEvent[]>(start.onEvent);
-  const [opened, setOpened] = useState<Opened | null>(null);
+  const [opened, setOpened] = useState<Opened | null>(() => openedAtStart(start));
   const [adding, setAdding] = useState({ open: false, visit: 0 });
-  const [lit, setLit] = useState<{ id: string; held: boolean } | null>(null);
+  const [lit, setLit] = useState<{ id: string; held: boolean } | null>(() =>
+    start.opened == null ? null : { id: start.opened.id, held: true },
+  );
   const [litFade] = useState(() => new Animated.Value(1));
-  const [toast, setToast] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(start.toast ?? null);
   const addBox = useRef<ViewInstance>(null);
   const rows = useRef(new Map<string, ViewInstance>());
   const focusBack = useRef<ScreenReaderTarget | null>(null);
@@ -121,7 +145,7 @@ function PeopleScreen({ start }: { start: PeopleStart }) {
 
   if (load !== 'loaded')
     return (
-      <PeoplePage back={back}>
+      <PeoplePage back={back} event={world.event}>
         {load === 'failed' ? (
           <FailedBlock
             title={FAILED_TITLE}
@@ -141,9 +165,22 @@ function PeopleScreen({ start }: { start: PeopleStart }) {
     <>
       <PeoplePage
         back={back}
+        event={world.event}
         toast={toast == null ? null : { words: toast, onClose: () => setToast(null) }}
       >
         {canChange && <AddBox ref={addBox} onPress={openAdd} />}
+        {canChange && door != null && (
+          <DoorCodes
+            start={door}
+            locale={locale}
+            onToast={setToast}
+            onJoined={(person) =>
+              setOnEvent((was) =>
+                was.some((one) => one.id === person.id) ? was : [...was, person],
+              )
+            }
+          />
+        )}
         {shown.length === 0 ? (
           <View style={styles.nobody}>
             <Text size={16} weight="semibold">
@@ -187,7 +224,9 @@ function PeopleScreen({ start }: { start: PeopleStart }) {
                         title={one.name}
                         line={line}
                         lead={<Face person={one} side={40} />}
-                        tag={one.outside ? { kind: 'now', word: OUTSIDE_TAG } : null}
+                        tag={
+                          one.outside ? { kind: 'now', word: outsideTag(world.organisation) } : null
+                        }
                         trail={
                           opensRow ? (
                             <Glyph
@@ -200,7 +239,11 @@ function PeopleScreen({ start }: { start: PeopleStart }) {
                         }
                         accent={isLit}
                         onPress={opensRow ? () => openRole(one) : undefined}
-                        accessibilityLabel={[one.name, one.outside ? OUTSIDE_TAG : null, line]
+                        accessibilityLabel={[
+                          one.name,
+                          one.outside ? outsideTag(world.organisation) : null,
+                          line,
+                        ]
                           .filter((part) => part != null)
                           .join('. ')}
                         testID={`people.row.${one.id}`}
@@ -214,7 +257,7 @@ function PeopleScreen({ start }: { start: PeopleStart }) {
         )}
         <View style={styles.foot}>
           {!canChange && <Line text={READ_ONLY} size={14} />}
-          <Line text={seesEveryEvent(members)} size={14} />
+          <Line text={seesEveryEvent(members, world.organisation)} size={14} />
         </View>
       </PeoplePage>
       {person != null && opened != null && (
@@ -224,6 +267,10 @@ function PeopleScreen({ start }: { start: PeopleStart }) {
           open={opened.open}
           roleFails={start.roleFails}
           opener={focusBack}
+          organisation={world.organisation}
+          locale={locale}
+          today={door?.now.date}
+          removingAtStart={opened.visit === 1 ? (start.opened?.removing ?? null) : null}
           onSaved={(role) => setOnEvent((was) => withRole(was, person.id, role))}
           onClose={closeRole}
           onRemove={removeOpened}
@@ -236,6 +283,7 @@ function PeopleScreen({ start }: { start: PeopleStart }) {
           members={members}
           onEvent={onEvent}
           viewer={viewer}
+          organisation={world.organisation}
           opener={focusBack}
           onClose={() => setAdding((was) => ({ ...was, open: false }))}
           onAdd={(role, added) => {

@@ -22,7 +22,7 @@ export interface RunStop {
 export interface RunNow {
   happening: boolean;
   headline: string;
-  /** "until 5:30 PM", "12 min over", or null for an item with no length and when nothing is Now. */
+  /** "until 17:30", "12 min over", or null for an item with no length and when nothing is Now. */
   until: string | null;
   figure: { words: string; said: string } | null;
   next: { time: string; title: string } | null;

@@ -43,6 +43,12 @@ export function DeliveryMark({ kind }: { kind: Delivery }) {
           <Glyph name="question" size={12} weight={2.6} />
         </span>
       );
+    case 'held':
+      return (
+        <span className="mg-mark is-held" aria-hidden="true">
+          <Glyph name="clock" size={14} weight={2.4} />
+        </span>
+      );
     case 'optout':
       return (
         <span className="mg-mark is-optout" aria-hidden="true">

@@ -747,6 +747,10 @@
   color: var(--colorInkSecondary);
 }
 
+.mg-mark.is-held {
+  color: var(--colorAttentionText);
+}
+
 .mg-mark.is-optout {
   color: var(--colorInkSecondary);
 }
@@ -882,6 +886,51 @@
   gap: var(--spaceXs);
   color: var(--colorInkSecondary);
   font: 500 13.5px/1.4 var(--fontFamily);
+}
+
+.mg-answer-cost {
+  margin: 0;
+  padding-left: 23px;
+  color: var(--colorInkSecondary);
+  font: 500 13.5px/1.4 var(--fontFamily);
+  font-variant-numeric: tabular-nums;
+}
+
+.mg-answer-wait {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceXs) var(--spaceLg);
+  padding: var(--spaceMd) 14px;
+  border-radius: var(--radiusInset);
+  background: var(--colorAttentionTint);
+}
+
+.mg-answer-waits {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceXs);
+  margin: 0;
+  color: var(--colorAttentionText);
+  font: 600 14px/1.4 var(--fontFamily);
+}
+
+.mg-answer-others {
+  display: flex;
+  flex-basis: 100%;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceSm);
+}
+
+.mg-answer-others p {
+  margin: 0;
+  color: var(--colorInk);
+  font: 500 13.5px/1.4 var(--fontFamily);
+}
+
+.mg .mg-answer-other {
+  padding: var(--spaceXs) var(--spaceLg);
 }
 
 .mg-answer-row,

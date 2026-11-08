@@ -105,7 +105,8 @@
     "failedTitle": "Creating your account did not work",
     "failedBody": "Something went wrong on the way. Try again in a moment.",
     "nameBlank": "Enter your full name.",
-    "passwordBlank": "Enter a password."
+    "passwordBlank": "Enter a password.",
+    "timedOut": "Your sign-up timed out, so we did not keep the password. Enter it again to get a new code."
   },
   "verifyEmail": {
     "title": "Check your email",
@@ -1921,6 +1922,7 @@
   },
   "todayScreen": {
     "today": "Today",
+    "todayShort": "Today",
     "tomorrow": "tomorrow",
     "allDay": "All day",
     "starts": "{{name}} starts",

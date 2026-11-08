@@ -70,7 +70,7 @@
     "refused": "Esse e-mail e essa palavra-passe não correspondem. Verifique ambos ou redefina a sua palavra-passe.",
     "endedTitle": "A sua sessão foi encerrada",
     "endedBody": "Inicie sessão novamente para continuar.",
-    "codeTimedOutTitle": "That sign-in timed out",
+    "codeTimedOutTitle": "O início de sessão expirou",
     "lockedTitle": "Demasiadas tentativas",
     "withGoogle": "Continuar com {{provider}}",
     "withApple": "Continuar com {{provider}}",
@@ -107,7 +107,8 @@
     "failedTitle": "Não foi possível criar a sua conta",
     "failedBody": "Algo falhou pelo caminho. Tente novamente dentro de um momento.",
     "nameBlank": "Introduza o seu nome completo.",
-    "passwordBlank": "Introduza uma palavra-passe."
+    "passwordBlank": "Introduza uma palavra-passe.",
+    "timedOut": "O seu registo expirou, por isso não guardámos a palavra-passe. Introduza-a novamente para receber um novo código."
   },
   "verifyEmail": {
     "title": "Veja o seu e-mail",
@@ -1971,6 +1972,7 @@
   },
   "todayScreen": {
     "today": "Hoje",
+    "todayShort": "Hoje",
     "tomorrow": "amanhã",
     "allDay": "Todo o dia",
     "starts": "Início: {{name}}",

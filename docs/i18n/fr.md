@@ -46,6 +46,7 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 | Try again (button)        | Réessayer                              | Settled 1 Nov, sc-26974          |
 | Owner / Admin / Member    | Propriétaire / Administrateur / Membre | Settled 5 Nov, sc-29914          |
 
+- **8 nov. 2026. L’écran Aujourd’hui à 360 de large** (sc-31788, après #32963). Le compte à rebours des cartes est « J-2 », « J-30 » (`todayScreen.inDaysCapital`), le repère des événements en France, pour tenir à côté de « Dernière semaine » ; dans une phrase, on garde « dans 2 jours ». Le lien de « Vos événements » est « Tout voir » (`todayScreen.allEvents`), car « Tous les événements » coupait le titre sur iPad en portrait. « Aujourd’hui » ne tient pas dans une colonne de la semaine, ni « Toute la journée » dans la colonne des heures : la semaine lit `todayScreen.todayShort` « Auj. » (affiché « AUJ. »), et « Toute la journée » passe sur deux lignes (#1520), jamais « Toute la j… ».
 - **7 nov. 2026. Les Personnes d’un événement, et « Admin » partout** (`web:eventPeople.*`, `eventNav.people`, `membersScreen.eventsFromPeople`, `ownerMakesOwner`, sc-30138 pour sc-29915). La page est « Personnes ». Les rôles sur l’événement sont « Responsable », « Peut modifier », « Peut consulter » et « Peut accueillir les invités » (« l’accueil des invités », comme `eventPause`). Les annonces disent « désormais » : « {{name}} est désormais responsable de cet événement. », sans accord, « responsable » étant épicène. La ligne de celles et ceux qui voient déjà tout donne le rôle en étiquette après deux-points, « voit tous les événements grâce à son rôle dans {{organisation}} : Propriétaire et Administrateur » ; `managerRole.*` est donc le nom du rôle à toutes les formes, et rien ne s’accorde avec un genre. Un rôle cité dans une phrase d’erreur est entre guillemets, « reste « Peut consulter » ». "Owners and admins" est « les personnes ayant le rôle Propriétaire ou Administrateur », et dans un titre « les rôles Propriétaire et Administrateur » ; "an admin of" reste « une personne qui administre ». La personne retirée est « Cette personne … Elle », qui s’accorde avec le nom.
 - **7 nov. 2026. Ce que fait chaque rôle, dans Membres** (`web:membersScreen.roleMeans.*`, sc-30138). Les phrases n’ont pas de sujet, comme `owner`. Les événements d’un Membre sont « les événements qui lui sont confiés » : « lui » n’accorde avec personne, alors que « auxquels il est ajouté » imposerait un genre. Même tournure dans l’app.
 - **7 nov. 2026. Les autres façons d’entrer dans l’app** (`mobile:steps.invited*`, `join`,
@@ -69,6 +70,31 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 ## Decided phrasings
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
+
+- **8 nov. 2026. Une connexion à deux facteurs qui a expiré** (sc-29979,
+  `signIn.codeTimedOutTitle`, web et app). « La connexion a expiré », puis `endedBody`
+  « Reconnectez-vous pour continuer. ». « La connexion », la tentative en cours, et non
+  « Votre session », que la personne n'a jamais ouverte. L'app joint les deux sur une ligne
+  avec un point : le titre n'en prend pas.
+- **8 nov. 2026. Une inscription qui a expiré** (sc-32449 pour sc-29923, `register.timedOut`,
+  web et app). « Votre inscription a expiré, nous n’avons donc pas conservé le mot de passe.
+  Ressaisissez-le pour recevoir un nouveau code. ». "Sign-up" est « inscription », comme
+  `limitedTitle` ; « expirer », comme la connexion ; « Ressaisissez-le » plutôt que « Saisissez-le
+  de nouveau », qui heurte « nouveau code », lui-même repris de `resend`.
+- **8 nov. 2026. Invités A : la réponse, les deux décomptes et le 412** (sc-3773, #32403).
+  "Not sure yet" est « À confirmer », sur la page de l’invité comme sur celle de l’hôte : rien
+  ne s’accorde, quand « pas encore sûr » ou « indécis » imposeraient un genre. « À confirmer ·
+  réponse attendue d’ici le {{date}} », « À confirmer · a répondu le {{date}} ». "Haven't
+  replied" est « n’ont pas répondu » (« {{count}} personnes n’ont pas répondu ») ; "No reply"
+  est « Sans réponse » ; on ne les échange jamais. "Companions" est « accompagnants ».
+  « {{coming}} des {{invited}} invités viennent ». "Write to them" est « Leur écrire » ; "Open
+  check-in", « Ouvrir l’accueil ». "Show all {{count}}" est « Afficher les {{count}} ». "Their
+  conversation" est « Conversation ». Le 412 : « La sienne · La vôtre », « Prendre la sienne »
+  et « Garder la mienne » ; « sienne » s’accorde avec la version, pas avec la personne.
+  La clôture (#32762) : « Fin des réponses aujourd’hui. », « Fin des réponses demain, le
+  {{date}}. », « Fin des réponses le {{date}}. », et, une fois passée, « Les réponses sont
+  closes depuis le {{date}}. », car « Fin des réponses le … » ne distingue pas le passé du
+  futur. Plus personne à attendre : « Tout le monde a répondu. ».
 
 - **7 nov. 2026. L’écran Aujourd’hui de l’app** (`mobile:todayScreen.*`, sc-31788 pour
   sc-29090). "Live now" et "Live · …" sont « En cours », comme `eventsScreen.happeningNow`,

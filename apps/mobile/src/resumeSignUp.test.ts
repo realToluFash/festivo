@@ -7,6 +7,10 @@ const PENDING = { registration: 'the-handle', email: 'folake@ire.events' };
 const OPEN = { cooldownSeconds: 0, codeState: 'live' as const };
 const ON_LAUNCH = () => true;
 const LEFT_LAUNCH = () => false;
+const TIMED_OUT = {
+  pathname: '/register',
+  params: { email: 'folake@ire.events', timedOut: expect.any(String) },
+};
 
 function expired(): ApiError {
   const problem = {
@@ -35,7 +39,7 @@ describe('opening the app mid-sign-up', () => {
     expect(asked).toEqual(['the-handle']);
   });
 
-  it('clears a sign-up that has run out, and opens signed out', async () => {
+  it('clears a sign-up that has run out, and opens Create your account with its email (sc-29923)', async () => {
     let dropped = false;
 
     await expect(
@@ -48,7 +52,7 @@ describe('opening the app mid-sign-up', () => {
           dropped = true;
         },
       }),
-    ).resolves.toBeNull();
+    ).resolves.toMatchObject(TIMED_OUT);
     expect(dropped).toBe(true);
   });
 
@@ -165,5 +169,23 @@ describe('an ended session answered after launch has been left', () => {
         LEFT_LAUNCH,
       ),
     ).resolves.toBe('/sign-in?signedOut=1');
+  });
+});
+
+describe('opening the app on a sign-up that has run out, with no ended session (sc-29923)', () => {
+  const store = {
+    held: async () => PENDING,
+    open: async () => {
+      throw expired();
+    },
+    drop: async () => {},
+  };
+
+  it('opens Create your account saying so, on the first launch', async () => {
+    await expect(launchRoute(false, store, ON_LAUNCH)).resolves.toMatchObject(TIMED_OUT);
+  });
+
+  it('leaves the chosen screen alone once launch has been left', async () => {
+    await expect(launchRoute(false, store, LEFT_LAUNCH)).resolves.toBeNull();
   });
 });

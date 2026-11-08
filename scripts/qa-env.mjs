@@ -819,14 +819,32 @@ export function branchForStory(id, remoteBranches) {
 }
 
 // The api container mounts services/api, so its compiled container outlives a checkout
-// and can name a service the new commit removed. The directory itself stays: Docker Desktop
-// leaves a running container holding a cache directory deleted on the host, and every
-// request that needs it answers 500.
-export function clearApiCache(root) {
+// and can name a service the new commit removed. It is emptied through a container: Docker
+// Desktop's VM keeps a directory deleted on the host as a ghost nothing can be written into,
+// and the api answers 500 or never boots.
+export const CACHE_CLEARER = 'busybox:1.36';
+
+export function clearApiCache(root, exec = run) {
   const cache = join(root, 'services/api/var/cache');
   if (!existsSync(cache)) return;
-  for (const name of readdirSync(cache))
-    rmSync(join(cache, name), { recursive: true, force: true });
+  exec('docker', [
+    'run',
+    '--rm',
+    '--volume',
+    `${resolve(cache)}:/cache`,
+    CACHE_CLEARER,
+    'find',
+    '/cache',
+    '-mindepth',
+    '1',
+    '-maxdepth',
+    '1',
+    '-exec',
+    'rm',
+    '-rf',
+    '{}',
+    '+',
+  ]);
 }
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -1889,24 +1907,99 @@ export const ANDROID_START = [
 // Expo Go's floating Tools button sits over a list's Done, where a tap opens its menu instead.
 export const TOOLS_BUTTON = 'EXDevMenuShowFloatingActionButton';
 
-// What a batch resets on its device before signing in: TalkBack, or Expo Go's Tools button.
+const TOOLS_OFF = "  Expo Go's Tools button is off.";
+const TOOLS_TURNED_OFF = "  Expo Go's Tools button turned off for the batch.";
+const TOOLS_FAILED = "  Could not turn Expo Go's Tools button off: turn it off in Expo Go's menu.";
+
+// What a batch resets on its device before signing in: TalkBack, and Expo Go's Tools button.
 // The button lives in Expo Go's container, which `defaults write host.exp.Exponent` misses.
 export function batchReset(onAndroid, device, { prefs, toolsButton } = {}) {
   if (onAndroid) return { adb: SCREEN_READER_OFF, say: '  TalkBack is off for the batch.' };
   if (!prefs) return { say: '  Expo Go is not installed: run `ios` first.' };
-  if (toolsButton === '0') return { say: "  Expo Go's Tools button is off." };
+  if (toolsButton === '0') return { say: TOOLS_OFF };
   return {
     terminate: ['simctl', 'terminate', device, EXPO_GO],
     write: ['simctl', 'spawn', device, 'defaults', 'write', prefs, TOOLS_BUTTON, '-bool', 'NO'],
-    say: "  Expo Go's Tools button turned off for the batch.",
-    failed: "  Could not turn Expo Go's Tools button off: turn it off in Expo Go's menu.",
+    say: TOOLS_TURNED_OFF,
+    failed: TOOLS_FAILED,
   };
+}
+
+const centre = ([left, top, right, bottom]) => [(left + right) / 2, (top + bottom) / 2];
+
+// On Android the setting is in Expo Go's private storage, which a Play image lets nobody else write,
+// so the batch flips the switch in Expo Go's menu. The switch reports no state to uiautomator:
+// its thumb sits right of the track's centre when on. Row label, then track, then thumb.
+export function toolsSwitch(dump) {
+  const nodes = [...(dump ?? '').matchAll(/<node [^>]*>/g)].map(([node]) => ({
+    text: /\btext="([^"]*)"/.exec(node)?.[1],
+    bounds: /bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"/.exec(node)?.slice(1).map(Number),
+  }));
+  const label = nodes.findIndex((node) => node.text === 'Tools button');
+  const [track, thumb] = [nodes[label + 1]?.bounds, nodes[label + 2]?.bounds];
+  if (label < 0 || !track || !thumb) return null;
+  const [x, y] = centre(thumb);
+  return { on: x > centre(track)[0], tap: ['shell', 'input', 'tap', String(x), String(y)] };
+}
+
+export function androidToolsReset(before, after) {
+  if (!before) return { say: TOOLS_FAILED };
+  if (!before.on) return { say: TOOLS_OFF };
+  return { tap: before.tap, say: after && !after.on ? TOOLS_TURNED_OFF : TOOLS_FAILED };
+}
+
+export const EXPO_GO_MENU = ['shell', 'input', 'keyevent', 'KEYCODE_MENU'];
+
+// Up the middle of the screen as it is drawn, from three quarters of its height to one quarter.
+export function expoGoMenuScroll(wmSize, rotation = 0) {
+  const size = physicalSize(wmSize);
+  if (!size) return null;
+  let { width, height } = size;
+  if (rotation % 2 === 1) [width, height] = [height, width];
+  const [x, from, to] = [width / 2, height * 0.75, height * 0.25].map((n) => String(Math.round(n)));
+  return ['shell', 'input', 'swipe', x, from, x, to, '400'];
+}
+export const EXPO_GO_MENU_CLOSE = ['shell', 'input', 'keyevent', 'KEYCODE_BACK'];
+
+// The menu slides up, so each step waits for it before reading the screen.
+async function expoGoMenuSwitch(tools) {
+  const read = async () => {
+    await pause(1500);
+    const dumped = adbOut(tools, ['shell', 'uiautomator', 'dump', '/sdcard/qa-window.xml']);
+    return dumped === null
+      ? null
+      : toolsSwitch(adbOut(tools, ['exec-out', 'cat', '/sdcard/qa-window.xml']));
+  };
+  const shown = await read();
+  if (shown) return shown;
+  const scroll = expoGoMenuScroll(
+    adbOut(tools, ['shell', 'wm', 'size']),
+    surfaceOrientation(adbOut(tools, ['shell', 'dumpsys', 'input'])),
+  );
+  if (!scroll) return null;
+  adbOut(tools, scroll);
+  return read();
+}
+
+async function androidToolsButtonOff(tools) {
+  // Menu and the swipe go to whatever is in front, and on the launcher the swipe opens its drawer.
+  if (!experienceResumed(adbOut(tools, ['shell', 'dumpsys', 'activity', 'activities']) ?? '')) {
+    console.log(androidToolsReset(null, null).say);
+    return;
+  }
+  adbOut(tools, EXPO_GO_MENU);
+  const before = await expoGoMenuSwitch(tools);
+  if (before?.on) adbOut(tools, before.tap);
+  const after = before?.on ? await expoGoMenuSwitch(tools) : before;
+  // Back with no menu open would leave the app.
+  if (before) adbOut(tools, EXPO_GO_MENU_CLOSE);
+  console.log(androidToolsReset(before, after).say);
 }
 
 export const expoGoPrefs = (container) =>
   container && join(container, 'Library/Preferences', EXPO_GO);
 
-function resetForBatch(onAndroid, device) {
+async function resetForBatch(onAndroid, device) {
   const prefs = onAndroid
     ? null
     : expoGoPrefs(capture('xcrun', ['simctl', 'get_app_container', device, EXPO_GO, 'data']));
@@ -1917,6 +2010,7 @@ function resetForBatch(onAndroid, device) {
   if (reset.terminate) run('xcrun', reset.terminate, { optional: true });
   const written = !reset.write || run('xcrun', reset.write, { optional: true });
   console.log(written ? reset.say : reset.failed);
+  if (onAndroid) await androidToolsButtonOff(androidTools());
 }
 
 async function android(args) {
@@ -2348,12 +2442,12 @@ async function maestro(args) {
   spawnSync('rm', ['-rf', out]);
   mkdirSync(out, { recursive: true });
 
-  let flows = join(root, 'apps/mobile/.maestro');
-  if (onAndroid) {
-    const copy = join(root, '.qa/.maestro-android');
-    androidFlows(flows, copy);
-    flows = copy;
-  }
+  const flows = join(root, onAndroid ? '.qa/.maestro-android' : '.qa/.maestro');
+  aloneFlows(join(root, 'apps/mobile/.maestro'), flows, {
+    catalogues: catalogues(root),
+    email: vars.find((v) => v.startsWith('EMAIL='))?.slice('EMAIL='.length),
+    onAndroid,
+  });
   const file = join(flows, `${flow}.yaml`);
 
   const ok = await runAsync(
@@ -2422,7 +2516,9 @@ export function localise(flow, catalogues, language, values = {}) {
         .map((part) => {
           const name = /^\{\{(\w+)\}\}$/.exec(part)?.[1];
           if (name === undefined) return escapeRegex(part);
-          return filled.includes(name) ? filledPattern(name, values[name] ?? '') : '.*';
+          return filled.includes(name) && values[name] != null
+            ? filledPattern(name, values[name])
+            : '.*';
         })
         .join('');
     });
@@ -2481,22 +2577,27 @@ export function batchFlow({ checks, languages, cold, runs = batchRuns(checks, la
   return `${lines.join('\n')}\n`;
 }
 
-export function composeBatch(
-  source,
-  target,
-  { checks, languages, cold, catalogues, email, onAndroid },
-) {
-  const finish = (flow) => (onAndroid ? forAndroid(flow) : flow);
+// A flow run alone has no batch language, so every `{{t:…}}` in it matches any language.
+export function aloneFlows(source, target, { catalogues, email, onAndroid, skipChecks = false }) {
   if (onAndroid) androidFlows(source, target);
   else {
     rmSync(target, { recursive: true, force: true });
     cpSync(source, target, { recursive: true });
   }
   for (const entry of readdirSync(target, { recursive: true })) {
-    if (!/\.ya?ml$/.test(entry) || entry.startsWith('checks')) continue;
+    if (!/\.ya?ml$/.test(entry) || (skipChecks && entry.startsWith('checks'))) continue;
     const path = join(target, entry);
     writeFileSync(path, localise(readFileSync(path, 'utf8'), catalogues, 'any', { email }));
   }
+}
+
+export function composeBatch(
+  source,
+  target,
+  { checks, languages, cold, catalogues, email, onAndroid },
+) {
+  const finish = (flow) => (onAndroid ? forAndroid(flow) : flow);
+  aloneFlows(source, target, { catalogues, email, onAndroid, skipChecks: true });
   mkdirSync(join(target, '_checks'));
   const subFlows = (flow, language, caller, chain) =>
     flow.replace(
@@ -2662,8 +2763,8 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 // Owners are registered as few as possible: sign-ups are limited to ten an hour per address.
 export function membershipChanges({ email, member, ownerOf, sql }) {
   let owning = null;
-  const newOwner = () =>
-    (owning = ownerOf().catch((error) => {
+  const newOwner = (fresh = false) =>
+    (owning = ownerOf({ fresh }).catch((error) => {
       owning = null;
       throw error;
     }));
@@ -2675,7 +2776,7 @@ export function membershipChanges({ email, member, ownerOf, sql }) {
       return { owner, ...(await owner('/api/orgs', { body })) };
     } catch (error) {
       if (error.status !== 429) throw error;
-      const next = await newOwner();
+      const next = await newOwner(true);
       return { owner: next, ...(await next('/api/orgs', { body })) };
     }
   };
@@ -2980,6 +3081,17 @@ const composeApi = (root, onAndroid) =>
 const within = (ms, promise) =>
   Promise.race([promise.then(() => true), pause(ms).then(() => false)]);
 
+// A picture of the device at the instant a check asks, where takeScreenshot would wait for the
+// screen to settle: Refreshing… while the API is held passes before Maestro takes one.
+function screenshotDevice(device, onAndroid, file) {
+  if (!onAndroid) return run('xcrun', ['simctl', 'io', device, 'screenshot', file]);
+  const tools = androidTools();
+  const onDevice = `/sdcard/qa-shot-${process.pid}.png`;
+  run(tools.adb, ['-s', device, 'shell', 'screencap', '-p', onDevice], { env: tools.env });
+  run(tools.adb, ['-s', device, 'pull', onDevice, file], { env: tools.env });
+  run(tools.adb, ['-s', device, 'shell', 'rm', onDevice], { env: tools.env, optional: true });
+}
+
 // Under ten seconds an answer: batch/helper.js asks again while this says wait. A check that
 // failed while it held the API leaves it held, its last move perhaps still running, so whatever
 // uses the API next queues an 'up' behind it.
@@ -2997,6 +3109,8 @@ export function startHelper({
   open = openOnEmulator,
   reload = reloadOnEmulator,
   portrait = portraitOnEmulator,
+  shoot = (file) => screenshotDevice(device, onAndroid, file),
+  out,
   port = CONFIG.helperPort,
 }) {
   const server = createServer(async (request, response) => {
@@ -3026,6 +3140,16 @@ export function startHelper({
       }
       if (url.pathname === '/portrait') {
         return reply(200, { rotation: onAndroid ? portrait() : null });
+      }
+      if (url.pathname === '/shot') {
+        const name = url.searchParams.get('name') ?? '';
+        if (!/^[\w-]+$/.test(name))
+          throw new Error(`shot what? /shot?name=<letters, digits, -> gave ${name}`);
+        const check = begun.at(-1);
+        if (!check) throw new Error('a shot is taken inside a check, and none has started');
+        const file = join(out, `${check}-${name}.png`);
+        await shoot(file);
+        return reply(200, { shot: `${check}-${name}.png` });
       }
       if (url.pathname === '/running') {
         return reply(200, { running: appRunning(device, onAndroid) });
@@ -3142,7 +3266,7 @@ async function batch(args) {
     );
   }
 
-  resetForBatch(onAndroid, device);
+  await resetForBatch(onAndroid, device);
 
   const out = join(root, '.qa', name);
   rmSync(out, { recursive: true, force: true });
@@ -3183,7 +3307,7 @@ async function batch(args) {
   const changeMembership = membershipChanges({
     email,
     member: apiSession(email, password, secret),
-    ownerOf: () => organisationOwner(root),
+    ownerOf: (asked) => organisationOwner(root, asked),
     sql: async (statement) => {
       const psql = ['compose', 'exec', '-T', 'postgres', 'psql', '-U', 'soirely', '-d', 'soirely'];
       const answer = capture('docker', [...psql, '-v', 'ON_ERROR_STOP=1', '-c', statement], {
@@ -3203,6 +3327,7 @@ async function batch(args) {
     device,
     onAndroid,
     changeMembership,
+    out,
   });
   // The secret stays with the helper: no flow is handed it.
   const env = {
@@ -3432,8 +3557,36 @@ async function account(args) {
   console.log(readyReport({ email, password, secret, accessToken: token, sessionId }));
 }
 
-async function organisationOwner(root) {
-  const { email, password } = await founder(root, 'QA Owner');
+// Kept across batches too: a run of batches that each registered an owner met the sign-up limit.
+export async function keptOwner({ fresh, kept, signIn, register, keep }) {
+  if (!fresh && kept) {
+    try {
+      await signIn(kept);
+      return kept;
+    } catch (error) {
+      if (error.status !== 401) throw error;
+    }
+  }
+  const made = await register();
+  keep(made);
+  return made;
+}
+
+async function organisationOwner(root, { fresh }) {
+  const file = join(root, '.qa/qa-owner.json');
+  const { email, password } = await keptOwner({
+    fresh,
+    kept: existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : null,
+    signIn: (owner) => signIn(owner.email, owner.password, null),
+    register: () => founder(root, 'QA Owner'),
+    keep: (owner) => {
+      mkdirSync(dirname(file), { recursive: true });
+      writeFileSync(
+        file,
+        JSON.stringify({ email: owner.email, password: owner.password }, null, 2),
+      );
+    },
+  });
   return apiSession(email, password, null);
 }
 

@@ -66,6 +66,66 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **8 Nov 2026. A two-factor sign-in that ran out** (sc-29979, `signIn.codeTimedOutTitle`,
+  web and app). "That sign-in timed out", then `endedBody` "Sign in again to carry on." The
+  app joins the two as one line with a full stop, so the title takes none. "That" names the
+  attempt the person just made, not their session: they were never signed in.
+- **8 Nov 2026. A sign-up that ran out** (sc-32449 for sc-29923, `register.timedOut`, web
+  and app). "Your sign-up timed out, so we did not keep the password. Enter it again to get a
+  new code." Kept as built: "timed out", as the sign-in; "the password", the one just typed;
+  "a new code", as Send a new code. The demos and tests pin this sentence, so a reword waits
+  on [dev].
+- **8 Nov 2026. Guests A: a guest's reply, the two counts, and the 412** (sc-3773, pm's #31841,
+  settled in #32403). The reply state is "Not sure yet" everywhere, the guest's own words,
+  never "Maybe": "Not sure yet · asked to decide by {{date}}", "Not sure yet · replied
+  {{date}}". Two measures: "haven't replied" (everyone without an answer of their own,
+  companions included) and "No reply" (guests only); never swap them. "Companions" is the
+  field and the count's noun, never "plus-ones". The card: "{{coming}} coming of {{invited}}
+  invited", "{{count}} haven't replied ({{guests}} guests and {{companions}} companions).",
+  "Replies close tomorrow, {{date}}.", "Write to them", "Open check-in", "Check-in opened at
+  {{time}}. Anyone on the list can be marked as arrived, whatever their reply." A group's
+  overflow is "Show all {{count}}", with no state slot, because the heading names it. "Their
+  conversation", "Their own page, where they reply." Replacing a link reuses
+  `requestLink.replaceBody`'s "stops working as soon as you replace it". The 412: "Theirs" and
+  "Yours", **Use theirs** and **Keep mine**: "Use theirs fills the form with their version and
+  drops your changes. Keep mine saves your changes over theirs." Each count is its own plural
+  key, and "Replies close" has a whole sentence per case (today, tomorrow, on a date, closed).
+  When replies close (#32762): "Replies close today." with no date, "Replies close tomorrow,
+  {{date}}.", "Replies close on {{date}}.", "Replies closed on {{date}}.", the day reckoned in
+  the event's zone. Nobody left to reply is "Everyone has replied.", companions included.
+
+- **8 Nov 2026. A payment schedule's shape fields, its sums and its failed save** (sc-1332,
+  pm's #32327 from ux's demo, sc-31779 #1485). Field labels: "Percentage of the quote" (won
+  over the earlier boards' "Share of the quote": "share" reads as a part of something, not a
+  number to type, and es, fr and pt say percentage anyway), "Days before the event", "Days
+  after the event", labels with no full stop. Help: "From 0 to 100, with up to two decimal
+  places." and "A whole number from 0 to 730." Refusals: "Enter a percentage from 0 to 100,
+  with up to two decimal places." and "Enter a whole number of days from 0 to 730." "Decimal
+  places", the house term since sc-83, not the demo's bare "decimals". A row with no
+  description yet, in its amount line: "No description yet", a label with no full stop.
+  Before saving, when the percentages do not come to 100, one key each: "The percentages come
+  to {{total}}, so {{gap}} of the quote is not scheduled. You can still add these payments,
+  and the vendor's page will show the difference."; "The percentages come to {{total}}, so
+  the schedule is {{gap}} over the quote. You can still add these payments, and the vendor's
+  page will show the difference." They mirror the vendor page's "{{amount}} of the quote is
+  not scheduled yet." and "The schedule is {{amount}} over the quote.", and name the
+  button's verb. Won over the demo's "it saves, and the vendor’s page says so", where "it"
+  had no clear subject. `{{total}}` from `Intl.NumberFormat` with `style: 'percent'`, never a
+  "%" typed into the string; `{{gap}}` an amount in the event's currency. The failed save,
+  all or nothing: "None of these payments were saved, because they could not be sent. Your
+  rows are kept as you filled them in; select Add to send them again." "Select", not
+  "press", which is a key's verb and wrong for a tap or a screen reader; "send them again",
+  not "all of them", because nothing was saved, so there is no part to leave out. The row's
+  timing, a plural family on `{{count}}` with its own wording for 0 (a `_zero` key, as two
+  catalogues already have, so French, which counts 0 as one, still reads it): before,
+  "On the event's start date" (0), "1 day before the event" (one), "{{count}} days before
+  the event" (other); after, "On the event's end date" (0), "1 day after the event",
+  "{{count}} days after the event". For 0, "start date" and "end date", not "on the day of
+  the event", because a multi-day event has two days that 0 can mean, and before counts from
+  its start, after from its end. Capitalised, as every segment after a "·" in a row line is
+  ("Set to the date quoted", "Marked by"). A description over 100 characters reuses sc-87's
+  "Shorten what the payment is for to {{count}} characters or fewer."
+
 - **7 Nov 2026. The app's Today screen** (`mobile:todayScreen.*`, sc-31788 for sc-29090). Kept
   as sc-29090 wrote it. A lower-case key (`tomorrow`, `dayOf`, `inDays`) sits after a date or
   inside a line; its capitalised twin (`tomorrowCapital`, `dayOfCapital`, `inDaysCapital`) opens
