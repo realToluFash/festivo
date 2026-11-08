@@ -172,7 +172,7 @@ describe('the hub in the app: Control only, its card the soonest instant that as
   it('says nothing needs you once ire.events is proved alone', () => {
     expect(hubCard(hubStart('quiet'), say)).toEqual({
       says: 'Nothing needs you',
-      line: 'ire.events is proved. Deleting guest data is off.',
+      line: 'ire.events is proved.',
       step: null,
     });
     expect(hubRows(hubStart('quiet'), 'quiet')[0]?.line).toBe('ire.events proved');
@@ -359,6 +359,7 @@ describe('Email domains: each state’s card and rows (sc-560, sc-563)', () => {
 
   it('asks before removing a proved domain, and says it was removed', () => {
     expect(domainsStart('ed_remove', true).ask).toEqual({ kind: 'remove', domain: 'ire.events' });
+    expect(domainsStart('ed_remove', false).ask).toEqual({ kind: 'remove', domain: 'ire.events' });
     expect(card('ed_removed')).toMatchObject({
       says: 'ire.events was removed',
       line: 'It is no longer proved.',

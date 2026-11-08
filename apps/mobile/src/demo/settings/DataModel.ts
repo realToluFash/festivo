@@ -280,7 +280,7 @@ export const TAKEN = 'lumenfeiras.pt';
 export const PUBLIC_SAMPLE = 'gmail.com';
 export const INVALID_SAMPLE = 'ire events';
 
-/** What a state link opens on; an admin never has the owner's Ask open. */
+/** What a state link opens on; only the Owner has Only our organisation's Ask open, and anyone managing has Remove's. */
 export function domainsStart(state: DomainsState, owns: boolean): DomainsModel {
   const base: DomainsModel = {
     load: 'loaded',
@@ -331,7 +331,7 @@ export function domainsStart(state: DomainsState, owns: boolean): DomainsModel {
     case 'ed_lapsing':
       return { ...base, domains: [MISSING_IRE, WAITING_IRE_EVENTS] };
     case 'ed_remove':
-      return { ...base, ask: owns ? { kind: 'remove', domain: IRE } : null };
+      return { ...base, ask: { kind: 'remove', domain: IRE } };
     case 'ed_removed':
       return { ...base, domains: [WAITING_IRE_EVENTS], said: { kind: 'removed', domain: IRE } };
     case 'ed_locked':
