@@ -672,7 +672,6 @@ function Codes({
   const [failed, setFailed] = useState<object | null>(null);
   const [foundSpent, setFoundSpent] = useState<object | null>(null);
   const [textingFailed, setTextingFailed] = useState(false);
-  // New with each text-instead that goes, so the line saying it went takes the button's focus (sc-11173).
   const [texted, setTexted] = useState<object | undefined>(undefined);
   const [cooldown, setCooldown] = useState(codes?.cooldownSeconds ?? 0);
   const lastRoute = useRef(codes?.route ?? null);
