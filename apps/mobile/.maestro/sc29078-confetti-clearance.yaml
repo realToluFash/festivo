@@ -4,22 +4,16 @@
 #   node .qa/bin/qa-env.mjs maestro sc29078-confetti-clearance LANGUAGE=Français TAG=fr-377 --android
 appId: host.exp.Exponent
 ---
-- launchApp:
-    appId: host.exp.Exponent
-    stopApp: true
-- openLink: ${METRO_URL}/--/welcome
+- runFlow: welcome-signed-out.yaml
 - extendedWaitUntil:
     visible:
       id: 'welcome.email'
-    timeout: 90000
+    timeout: 30000
 - tapOn:
     id: 'language.open'
 - tapOn:
     id: 'language\.(en|es|fr|pt)'
     text: '${LANGUAGE}'
-- tapOn:
-    id: 'language.done'
-    optional: true
 - waitForAnimationToEnd
 - takeScreenshot: ${TAG}-welcome
 - openLink: ${METRO_URL}/--/welcome?signedOut=1
@@ -32,7 +26,7 @@ appId: host.exp.Exponent
 - openLink: ${METRO_URL}/--/unreachable
 - extendedWaitUntil:
     visible:
-      id: 'unreachable.retry'
+      id: 'welcome.notice'
     timeout: 30000
 - waitForAnimationToEnd
 - takeScreenshot: ${TAG}-unreachable
