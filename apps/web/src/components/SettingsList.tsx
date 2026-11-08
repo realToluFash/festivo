@@ -6,6 +6,7 @@ import { NavLink, useLocation } from 'react-router';
 import { pageTitle, usePageTitle } from '../pageTitle.ts';
 import { can, useSession } from '../session.ts';
 import { Glyph } from './Glyph.tsx';
+import { PersonalTile } from './SchemeArt.tsx';
 import './SettingsParts.css';
 import './SettingsList.css';
 
@@ -55,6 +56,12 @@ export function SettingsList() {
           label: t('account.sectionNotifications'),
           look: 'notifications',
           tile: glyph('bell'),
+        },
+        {
+          to: '/app/account/personalisation',
+          label: t('account.sectionPersonalisation'),
+          look: 'personalisation',
+          tile: <PersonalTile />,
         },
       ],
     },
@@ -115,9 +122,13 @@ export function SettingsList() {
                   to={entry.to}
                   end={entry.end ?? false}
                 >
-                  <span className={`desk-tile is-${entry.look}`} aria-hidden="true">
-                    {entry.tile}
-                  </span>
+                  {entry.look === 'personalisation' ? (
+                    entry.tile
+                  ) : (
+                    <span className={`desk-tile is-${entry.look}`} aria-hidden="true">
+                      {entry.tile}
+                    </span>
+                  )}
                   <span className="desk-section-name">{entry.label}</span>
                 </NavLink>
               </li>

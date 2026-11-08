@@ -238,7 +238,6 @@ export const SWATCH_ART: Art = {
   ],
 };
 
-export const TILE_ART: Art = { width: 32, height: 32, pieces: [[22.4, 5.76, 'half', 12, -18, 0]] };
 
 export function nextScheme(key: SchemeKey, by: 1 | -1): SchemeKey {
   const at = SCHEME_ORDER.indexOf(key);

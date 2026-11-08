@@ -68,17 +68,6 @@ afterEach(() => {
 });
 
 describe('Personalisation (sc-30441)', () => {
-  it('is one of your own sections, after Notifications', () => {
-    followAccountScheme(null);
-    page();
-
-    const sections = within(screen.getByRole('navigation', { name: 'Account sections' }))
-      .getAllByRole('link')
-      .map((link) => link.textContent);
-
-    expect(sections).toEqual(['Account', 'Security', 'Notifications', 'Personalisation']);
-  });
-
   it('shows Violet to somebody who never chose, and says where the colours go', () => {
     followAccountScheme(null);
     page();

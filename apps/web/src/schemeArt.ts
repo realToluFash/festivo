@@ -47,3 +47,5 @@ export const SWATCH_ART: Art = {
 export function isLightGround(scheme: Scheme): boolean {
   return confetti[scheme].wash == null;
 }
+
+export const TILE_ART: Art = { width: 32, height: 32, pieces: [[22.4, 5.76, 'half', 12, -18, 0]] };

@@ -1,6 +1,7 @@
 import { createContext, type ReactNode, useContext } from 'react';
 
 import type { SettingsSection } from '../kit/appNav.ts';
+import { useLayout } from '../layout/useLayout.ts';
 import type { CoverLayout, Tab } from './TodayCover.tsx';
 import type { Tell } from './TodayParts.tsx';
 
@@ -39,4 +40,12 @@ export function useShell(): Shell {
   if (shell == null) throw new Error('A Settings page is drawn inside a ShellContext.');
 
   return shell;
+}
+
+/** A phone, as the demo's shell draws it, or as the device is when the product draws the page with no shell. */
+export function usePhone(): boolean {
+  const shell = useContext(ShellContext);
+  const { kind } = useLayout();
+
+  return shell == null ? kind === 'phone' : shell.layout === 'phone';
 }

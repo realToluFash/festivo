@@ -1,19 +1,5 @@
 /* Settings › Personalisation at a desk, A · Swatches (Web-Personalisation-*.dc.html). Each scheme's Confetti is drawn in SVG from personalisation.ts. */
 
-.pers-ground,
-.pers-pieces {
-  position: absolute;
-  top: 0;
-  right: 0;
-  display: block;
-  pointer-events: none;
-}
-
-.pers-ground {
-  width: 100%;
-  height: 100%;
-}
-
 .desk-card.pers-card {
   background: none;
 }
@@ -39,11 +25,6 @@
   width: 16px;
   height: 16px;
   margin-top: var(--spaceHair);
-}
-
-.pers-dots {
-  display: block;
-  flex: none;
 }
 
 .pers-card .pers-step {
@@ -100,21 +81,6 @@
 
 .pers-bone.b3 {
   width: 78%;
-}
-
-.desk-tile.pers-tile {
-  position: relative;
-  overflow: hidden;
-  border-radius: var(--spaceMd);
-  color: var(--colorInkOnDark);
-}
-
-.desk-tile.pers-tile.is-dark {
-  color: var(--colorInk);
-}
-
-.pers-tile > svg:last-child {
-  position: relative;
 }
 
 .desk-nav-cancel.pers-waits {

@@ -1,6 +1,7 @@
 import { useId } from 'react';
 
-import { type Art, isLightGround } from '../schemeArt.ts';
+import { type Art, TILE_ART, isLightGround } from '../schemeArt.ts';
+import { useColourScheme } from '../colourScheme.ts';
 import { type Scheme, confetti } from '../scheme.ts';
 import { schemeTokens } from '../schemeTokens.ts';
 
@@ -139,4 +140,46 @@ export function Dots({ scheme, size }: { scheme: Scheme; size: 20 | 24 }) {
       ))}
     </svg>
   );
+}
+
+/** The palette mark on a scheme's tile: drawn here, since the product's icon set has none. */
+function PaletteGlyph() {
+  return (
+    <svg
+      width={18}
+      height={18}
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      focusable="false"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2.1}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M12 22a1 1 0 0 1 0-20 10 9 0 0 1 10 9 5 5 0 0 1-5 5h-2.25a1.75 1.75 0 0 0-1.4 2.8l.3.4a1.75 1.75 0 0 1-1.4 2.8z" />
+      <circle cx={13.5} cy={6.5} r={0.5} />
+      <circle cx={17.5} cy={10.5} r={0.5} />
+      <circle cx={6.5} cy={12.5} r={0.5} />
+      <circle cx={8.5} cy={7.5} r={0.5} />
+    </svg>
+  );
+}
+
+export function SchemeTile({ scheme }: { scheme: Scheme }) {
+  return (
+    <span
+      className={isLightGround(scheme) ? 'desk-tile scheme-tile is-light' : 'desk-tile scheme-tile'}
+      aria-hidden="true"
+    >
+      <Ground scheme={scheme} wash={false} />
+      <Pieces scheme={scheme} art={TILE_ART} />
+      <PaletteGlyph />
+    </span>
+  );
+}
+
+/** Personalisation's tile in the Settings list: a swatch of the person's own colours. */
+export function PersonalTile() {
+  return <SchemeTile scheme={useColourScheme().shown} />;
 }
