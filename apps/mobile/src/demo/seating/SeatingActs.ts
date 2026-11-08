@@ -473,7 +473,6 @@ function length(m: Seating, text: string): number | null {
   return m.units === 'metric' ? parseMetres(text) : parseFeet(text);
 }
 
-/** Exact centimetres, unrounded, so a floor named in feet takes its own value; round only when storing. */
 function parseFeet(text: string): number | null {
   const ft = /^\s*(\d+(?:\.\d+)?)\s*(?:′|'|ft)\s*(?:(\d+)\s*(?:″|"|in))?\s*$/u.exec(text);
   if (ft?.[1] != null) return (Number(ft[1]) * 12 + Number(ft[2] ?? 0)) * 2.54;
@@ -663,7 +662,6 @@ export function readRoom(
   return cm == null || cm < 200 || cm > 50000 ? { refused: W.roomRange } : { cm };
 }
 
-/** The room's size as Room settings shows it, so an untouched field keeps the stored centimetres. */
 function roomText(m: Seating, cm: number): string {
   return m.units === 'us' ? feetInches(cm) : `${cm / 100}`;
 }
