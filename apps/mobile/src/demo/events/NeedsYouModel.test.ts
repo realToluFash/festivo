@@ -1,5 +1,8 @@
 import { type Milestone, wallDay } from '@soirely/domain';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { init } from 'i18next';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+
+import en from '../../i18n/locales/en.json';
 
 import { cardStep, datesOf, shownEvent } from './EventsModel.ts';
 import { CLOCKS, sampleEvent } from './EventsSample.ts';
@@ -16,6 +19,14 @@ import {
 const LOCALE = 'en-US';
 const LONDON = 'Europe/London';
 const NOW = new Date(CLOCKS.reader);
+
+beforeAll(() =>
+  init({
+    lng: 'en',
+    resources: { en: { translation: en } },
+    interpolation: { escapeValue: false },
+  }),
+);
 
 function milestone(over: Partial<Milestone>): Milestone {
   return {
