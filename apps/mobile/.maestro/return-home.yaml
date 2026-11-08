@@ -31,6 +31,10 @@ appId: host.exp.Exponent
       notVisible:
         id: 'home.openSettings'
     commands:
+      - extendedWaitUntil:
+          visible:
+            id: 'frame.home'
+          timeout: 30000
       - tapOn:
           id: 'frame.home'
 - extendedWaitUntil:
