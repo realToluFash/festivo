@@ -22,7 +22,20 @@ const EVENT = {
   dayCount: 2,
   currency: 'NGN',
   cover: null,
-  venue: null,
+  venue: {
+    name: 'The Landmark',
+    address: {
+      formatted: 'Water Corporation Drive, Lagos',
+      line1: null,
+      line2: null,
+      city: 'Lagos',
+      region: null,
+      postalCode: null,
+      countryCode: null,
+      latitude: null,
+      longitude: null,
+    },
+  },
   hosts: [],
   madeLiveAt: '2026-10-26T15:00:00+00:00',
   pausedAt: null,
@@ -148,7 +161,7 @@ describe('Seating at a desk (sc-3998)', () => {
     fireEvent.change(screen.getByLabelText('Length'), { target: { value: '18,5' } });
     fireEvent.click(screen.getByRole('button', { name: 'Start the plan' }));
 
-    expect(await screen.findByText('Main hall · 24 m × 18 m')).toBeDefined();
+    expect(await screen.findAllByText('Main hall · 24 m × 18 m')).toHaveLength(2);
     expect(sent.find((one) => one.line === 'POST /api/events/ev_1/seating-plan')?.body).toEqual({
       roomName: 'Main hall',
       widthCm: 2400,
@@ -181,7 +194,7 @@ describe('Seating at a desk (sc-3998)', () => {
     fireEvent.change(screen.getByLabelText('Width'), { target: { value: '12\' 6"' } });
     fireEvent.click(screen.getByRole('button', { name: 'Start the plan' }));
 
-    expect(await screen.findByText('Main hall · 12 ft 6 in × 20 ft')).toBeDefined();
+    expect(await screen.findAllByText('Main hall · 12 ft 6 in × 20 ft')).toHaveLength(2);
     expect(sent.find((one) => one.line === 'POST /api/events/ev_1/seating-plan')?.body).toEqual({
       roomName: null,
       widthCm: 381,
@@ -206,7 +219,7 @@ describe('Seating at a desk (sc-3998)', () => {
       screen.getByText('Check your connection and try again. Nothing on the plan has changed.'),
     ).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
-    expect(await screen.findByText('Main hall · 24 m × 18 m')).toBeDefined();
+    expect(await screen.findAllByText('Main hall · 24 m × 18 m')).toHaveLength(2);
   });
 
   it('shows the plan but no way to change it without seating.manage', async () => {
