@@ -1,4 +1,4 @@
-# sc-30119: an invited new account on Your organisation, one invitation waiting: title, intro, the invitation line, Join <organisation> and Start my own instead. Pass EMAIL and PASSWORD of the invited account.
+# sc-30119: an invited new account on Your organisation, one invitation waiting: title, intro, the invitation line, Join <organisation> and Start my own instead. Opens nothing: it starts where complete-profile-invited-language leaves the app, so run it straight after that flow, never in a batch. Needs no variables.
 appId: host.exp.Exponent
 ---
 - extendedWaitUntil:

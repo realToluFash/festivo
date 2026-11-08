@@ -4,7 +4,7 @@ appId: host.exp.Exponent
 - openLink: ${METRO_URL}/--/join/${LINK}
 - extendedWaitUntil:
     visible:
-      id: requestToJoin.message
+      id: requestToJoin.ask
     timeout: 30000
 - scrollUntilVisible:
     element:
