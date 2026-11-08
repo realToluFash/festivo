@@ -14,8 +14,17 @@ export function startReplyBy(eventId: string): string | null {
   return replyByOf(eventId);
 }
 
-export function noReplyOf(eventId: string): number {
-  return eventId === WEDDING ? COUNTS.noreply : 0;
+export function noReplyOf(eventId: string): { guests: number; companions: number } {
+  return eventId === WEDDING
+    ? { guests: COUNTS.noreply, companions: COUNTS.heldBehindNoReply }
+    : { guests: 0, companions: 0 };
+}
+
+/** As Guests' card counts it: the guests with no answer, and the companions held behind them. */
+export function notRepliedWords(eventId: string): string {
+  const { guests, companions } = noReplyOf(eventId);
+
+  return say.notReplied(guests, companions);
 }
 
 function nextDay(date: string): string {
@@ -44,9 +53,9 @@ export function replyByAsk(
   saved: string | null,
   next: string | null,
   today: string,
-  noReply: number,
+  noReply: { guests: number; companions: number },
 ): ReplyByAsk | null {
-  if (next == null || noReply === 0) return null;
+  if (next == null || noReply.guests + noReply.companions === 0) return null;
   if (next < today) return 'now';
   if (saved != null && next < saved) return 'sooner';
 

@@ -276,14 +276,15 @@ export const say = {
   onGuestsPage: (sentence: string) => `On the guests’ page: “${sentence}”`,
   pleaseAnswerBy: (date: string) =>
     `Please answer by ${date}. You can change your answer any time before then.`,
-  closeSoonerTitle: (date: string, count: number) =>
-    count === 1
-      ? `Close replies sooner, on ${date}, for 1 guest who hasn’t replied?`
-      : `Close replies sooner, on ${date}, for ${count} guests who haven’t replied?`,
-  closeNowTitle: (count: number) =>
-    count === 1
-      ? 'Close replies now for 1 guest who hasn’t replied?'
-      : `Close replies now for ${count} guests who haven’t replied?`,
+  notReplied: (guests: number, companions: number) => {
+    const named = guests === 1 ? '1 guest' : `${guests} guests`;
+
+    if (companions > 0) return `${named} and ${companions} of their companions who haven’t replied`;
+
+    return guests === 1 ? '1 guest who hasn’t replied' : `${guests} guests who haven’t replied`;
+  },
+  closeSoonerTitle: (date: string, who: string) => `Close replies sooner, on ${date}, for ${who}?`,
+  closeNowTitle: (who: string) => `Close replies now for ${who}?`,
   keepDate: (date: string) => `Keep ${date}`,
   replyBySaved: (date: string, time: string, zone: string) =>
     `Saved. Replies close ${date} at ${time}, ${zone} time.`,
