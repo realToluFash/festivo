@@ -42,6 +42,35 @@ describe('Who is paying at a desk (sc-91, sc-1300)', () => {
     vi.useRealTimers();
   });
 
+  it('says how many of a share’s costs have no price', SLOW, async () => {
+    await open('payer_not_priced');
+
+    const couple = pane('Adaeze and Tunde');
+    expect(couple.textContent).toContain('1 cost not priced yet');
+    expect(couple.textContent).toContain('£3,250.00');
+    expect(couple.textContent).toContain('Aisle archall of itNot priced');
+    expect(couple.textContent).toContain('Paid');
+  });
+
+  it('reads Nothing still to come once paid past the share, never below 0', SLOW, async () => {
+    await open('payer_paid_past');
+
+    const obi = pane('Mr and Mrs Obi');
+    expect(obi.textContent).toContain('Paid£12,300.00');
+    expect(obi.textContent).toContain('Still to comeNothing still to come');
+    expect(obi.textContent).not.toContain('-£');
+  });
+
+  it('shows the share alone with no vendors and nothing paid', SLOW, async () => {
+    await open('payer_share_alone');
+
+    const obi = pane('Mr and Mrs Obi');
+    expect(obi.textContent).toContain('Their share');
+    expect(obi.textContent).not.toContain('Paid');
+    expect(obi.textContent).not.toContain('Still to come');
+    expect(obi.textContent).toContain('Covers');
+  });
+
   it('leads with the card, a row per payer, and Mr and Mrs Obi in the pane', SLOW, async () => {
     await open('payers');
 
