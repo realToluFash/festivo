@@ -31,6 +31,9 @@ describe('a topic written outside the generated copy', () => {
     ['the generated builder', "realtimeTopic('UserNotifications', user.id);"],
     ['an API path that shares a word', "client.get('/api/users/me/notification-settings');"],
     ['a route with a different end', "navigate('/users/42/profile');"],
+    ['a route that holds a topic', 'navigate(`/app/events/${event.id}/messages`);'],
+    ['a route pattern with a parameter', '<Route path="events/:id/messages" />'],
+    ['an API path that holds a topic', "client.get('/api/events/ev_1/messages-sent');"],
   ])('is not %s', (_name, contents) => {
     expect(strayTopics(declaredTemplates(generated), file(contents))).toEqual([]);
   });
