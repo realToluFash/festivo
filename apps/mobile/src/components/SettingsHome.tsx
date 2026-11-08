@@ -4,9 +4,13 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import type { SettingsSection } from '../kit/appNav.ts';
-import { tokens } from '../theme/tokens.ts';
+import { useAccountChoice } from '../colourScheme.ts';
+import { inUse } from '../kit/personalisation.ts';
+import { schemeOf } from '../kit/schemes.ts';
+import { schemeAtLaunch, tokens } from '../theme/tokens.ts';
 import { CARD_PIECES, Confetti, Cover } from './Cover.tsx';
 import { Glyph } from './Glyph.tsx';
+import { SchemeTile } from './SchemeParts.tsx';
 import { Pill, Tile, TYPE } from './SettingsParts.tsx';
 import { SELECTED_ROW } from './SummaryRows.tsx';
 import { Text } from './Text.tsx';
@@ -167,6 +171,8 @@ function SectionTile({
   side: number;
   organisation: string | null;
 }) {
+  if (section === 'personalisation') return <PersonTile side={side} />;
+
   return (
     <Tile
       of={section}
@@ -176,6 +182,13 @@ function SectionTile({
       }
     />
   );
+}
+
+/** Personalisation's tile: the account's scheme once it has answered, the device's until then. */
+function PersonTile({ side }: { side: number }) {
+  const choice = useAccountChoice();
+
+  return <SchemeTile side={side} scheme={inUse(choice === undefined ? schemeOf(schemeAtLaunch) : choice)} />;
 }
 
 export function rowSide(dense: boolean): number {

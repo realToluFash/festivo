@@ -26,12 +26,20 @@ export function destinations(
 }
 
 export type SettingsSection =
-  'account' | 'security' | 'notifications' | 'organisation' | 'members' | 'roles' | 'signInRules';
+  | 'account'
+  | 'security'
+  | 'notifications'
+  | 'personalisation'
+  | 'organisation'
+  | 'members'
+  | 'roles'
+  | 'signInRules';
 
 export const SECTION_HREF = {
   account: '/settings/account',
   security: '/settings/security',
   notifications: '/settings/notifications',
+  personalisation: '/settings/personalisation',
   organisation: '/settings/organisation',
   members: '/settings/members',
   roles: '/settings/roles',
@@ -67,7 +75,7 @@ export function settingsGroups(
 ): readonly SettingsGroup[] {
   const yours: SettingsGroup = {
     heading: 'yourAccount',
-    sections: ['account', 'security', 'notifications'],
+    sections: ['account', 'security', 'notifications', 'personalisation'],
   };
   if (organisation == null) return [yours];
 

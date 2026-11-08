@@ -15,6 +15,7 @@ import { launchRoute } from '../src/resumeSignUp.ts';
 import { ruleRefusal, signInRoute } from '../src/kit/signInRules.ts';
 import { SKELETON_AFTER_MS } from '../src/kit/skeleton.ts';
 import { launchSignedIn, resumesSession } from '../src/signedIn.ts';
+import { takeLanding } from '../src/theme/deviceScheme.ts';
 import { tokens } from '../src/theme/tokens.ts';
 import { unreachableFrom } from '../src/unreachable.ts';
 
@@ -56,7 +57,11 @@ export default function Home() {
         if (landing !== '/') router.replace(landing);
         else
           void launchSignedIn().then((loaded) => {
-            if (live && loaded) setLaunching('signedIn');
+            if (!live || !loaded) return;
+            // A restart into new colours comes back where it was asked from (sc-30441).
+            const back = takeLanding();
+            if (back != null) router.replace(back);
+            else setLaunching('signedIn');
           });
         return;
       }

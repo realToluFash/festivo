@@ -13,6 +13,7 @@ import {
 import { lookOf, SCHEME_ORDER } from '../kit/schemes.ts';
 import type { Scheme } from '../theme/tokens.ts';
 import { tokens } from '../theme/tokens.ts';
+import { usePhone } from './settingsShell.ts';
 import { FocusedScreen } from './SummaryOverlays.tsx';
 import { Glyph } from './Glyph.tsx';
 import { RadioMark } from './RadioMark.tsx';
@@ -23,10 +24,9 @@ import { moveScreenReaderFocus, type ScreenReaderTarget } from './screenReaderFo
 import { Text } from './Text.tsx';
 import { Tag, TextAction } from './SummaryRows.tsx';
 
-/** Colours: the card in the pick, what the pick means, the restart line and the eight swatches; Cancel leaves without asking. */
+/** Colours: the card in the pick, what the pick means, the restart line, then the lead line as the heading of the eight swatches; Cancel leaves without asking. */
 export function ColoursScreen({
   open,
-  phone,
   colours,
   current,
   opener,
@@ -35,7 +35,6 @@ export function ColoursScreen({
   onCancel,
 }: {
   open: boolean;
-  phone: boolean;
   colours: Colours;
   current: Scheme;
   opener: RefObject<ScreenReaderTarget | null>;
@@ -44,6 +43,7 @@ export function ColoursScreen({
   onCancel: () => void;
 }) {
   const { t } = useTranslation();
+  const phone = usePhone();
   const checked = useRef<ViewInstance>(null);
   const saving = colours.phase === 'saving';
   const refusal = colours.phase === 'failed' || colours.phase === 'offline' ? colours.phase : null;
@@ -78,9 +78,6 @@ export function ColoursScreen({
       gap={tokens.spaceLg}
       testID="personalisation.colours"
     >
-      <Text size={15} weight="medium">
-        {t('personalisation.lead')}
-      </Text>
       <View style={styles.pick}>
         <PreviewCard scheme={colours.picked} />
         {notSaved == null ? (
@@ -116,6 +113,10 @@ export function ColoursScreen({
           {t('personalisation.restart')}
         </Text>
       </View>
+      {/* The swatches' group name: a View that is not accessible has no label a reader speaks, so the heading just before the first swatch names it. */}
+      <Text size={15} weight="medium" accessibilityRole="header">
+        {t('personalisation.lead')}
+      </Text>
       <Swatches
         picked={colours.picked}
         current={current}
