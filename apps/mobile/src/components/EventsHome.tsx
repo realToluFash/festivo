@@ -177,7 +177,9 @@ export function EventsHome({
         />
       )}
       {tab === 'past' && shown != null && <Said key={shown} words={shown} />}
-      <SaidLine words={t('eventsScreen.footer', { count: counts[tab] })} testID="events.footer" />
+      {counts[tab] > 0 && (
+        <SaidLine words={t('eventsScreen.footer', { count: counts[tab] })} testID="events.footer" />
+      )}
     </View>
   );
 }
