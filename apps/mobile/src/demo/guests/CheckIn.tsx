@@ -22,7 +22,7 @@ import {
   type DoorState,
   type GuestsCardWords,
   clockOf,
-  counted,
+  countAfter,
   doorPeople,
   doorShown,
   nameProblem,
@@ -131,7 +131,7 @@ function leave(): void {
   else router.replace('/demo/guests?state=onTheDay' as Href);
 }
 
-function ArrivedButton({
+export function ArrivedButton({
   name,
   big,
   onPress,
@@ -163,7 +163,13 @@ function ArrivedButton({
 }
 
 /** Check-in (sc-1454), opened from Guests on the day: its card, Search by name, everyone A to Z with Arrived. */
-export function CheckInScreen({ state }: { state: DoorState | null }) {
+export function CheckInScreen({
+  state,
+  searchAsk = null,
+}: {
+  state: DoorState | null;
+  searchAsk?: string | null;
+}) {
   const shell = useShell();
   const layout: Layout = shell.layout;
   const insets = useSafeAreaInsets();
@@ -198,6 +204,13 @@ export function CheckInScreen({ state }: { state: DoorState | null }) {
   );
   const [more, setMore] = useState(false);
   const opener = useRef(null);
+  const search = useRef<TextInputInstance>(null);
+
+  useEffect(() => {
+    if (searchAsk == null) return;
+    const wait = setTimeout(() => focusChecked(search), tokens.motionBase);
+    return () => clearTimeout(wait);
+  }, [searchAsk]);
 
   useEffect(() => {
     if (typed === searched) return;
@@ -218,7 +231,7 @@ export function CheckInScreen({ state }: { state: DoorState | null }) {
         one.key === key ? { ...one, arrivedAt: NOW_AT, by: READER, failed: false } : one,
       ),
     );
-    setCount({ arrived: count.arrived + 1, expected: count.expected + (counted(p.kind) ? 0 : 1) });
+    setCount(countAfter(count, p.kind, 1));
     setToast(say.arrivedName(p.name));
   };
   const undo = (key: string) => {
@@ -229,12 +242,12 @@ export function CheckInScreen({ state }: { state: DoorState | null }) {
         ? people.filter((one) => one.key !== key)
         : people.map((one) => (one.key === key ? { ...one, arrivedAt: null, by: null } : one)),
     );
-    setCount({ arrived: count.arrived - 1, expected: count.expected - (counted(p.kind) ? 0 : 1) });
+    setCount(countAfter(count, p.kind, -1));
     setToast(W.arrivalUndone);
   };
   const addWalkIn = (name: string) => {
     setPeople(withWalkIn(people, name));
-    setCount({ arrived: count.arrived + 1, expected: count.expected + 1 });
+    setCount(countAfter(count, 'walkin', 1));
     setWalkIn(null);
     setTyped(name);
     setSearched(name);
@@ -302,8 +315,8 @@ export function CheckInScreen({ state }: { state: DoorState | null }) {
           event={event}
           words={cardOf(phase, count, state === 'doorEmpty')}
           layout={layout}
-          onStep={() => undefined}
-          stepLabel={null}
+          onStep={() => router.push('/demo/guests/scan?state=scanning' as Href)}
+          stepLabel={open ? W.scanCode : null}
         />
       ) : null}
       <SearchField
@@ -321,6 +334,7 @@ export function CheckInScreen({ state }: { state: DoorState | null }) {
         }}
         label={W.searchByName}
         testID="door.search"
+        ref={search}
       />
       {looking && shown.length > 0 && <Matches count={shown.length} />}
       {state === 'doorEmpty' && !looking && people.length === 0 ? (

@@ -43,8 +43,9 @@ import {
 import { EventNeedsYou } from './EventNeedsYou.tsx';
 import type { NeedsState } from './needsYou.ts';
 import { Alert, EventCard, EventsShell, NotBuilt, Switch, Thumb } from './EventParts.tsx';
-import { CAL_WORDS } from './calendar.ts';
 import { EventSidebar } from './EventSidebar.tsx';
+import { AllDates } from './EventDates.tsx';
+import { KITCHEN_EVENT, KW, cardMilestone, kitchenAt, seedFromEvent } from './kitchen.ts';
 import { Glyph, type GlyphName } from '../components/Glyph.tsx';
 import { LayersContext } from '../layers.ts';
 import { BUDGET_EVENT } from './budget.ts';
@@ -159,6 +160,7 @@ function EventAt({
   const [first] = useState(() => {
     if (raw != null) resetSample();
     if (raw != null && messages) resetInbox();
+    seedFromEvent(raw);
 
     const event = sampleEvent(id);
     const named = messages ? null : eventStateOf(raw);
@@ -288,13 +290,14 @@ function EventView({
               <DemoBell tell={tell} />
             </div>
             {dates ? (
-              <AreaPage event={event} name={CAL_WORDS.allDates} line={CAL_WORDS.allDatesComing} />
+              <AllDates event={event} now={now} />
             ) : area === 'overview' ? (
               <>
                 <EventCard
                   event={event}
                   now={now}
                   level={1}
+                  milestone={cardMilestone(event, now)}
                   onStep={(does: CardDoes) => {
                     if (does === 'makeLive') tell('Make live has its own design.');
                     else if (does === 'changeDates') {
@@ -369,11 +372,19 @@ function EventView({
                 </div>
               </>
             ) : (
-              <AreaPage
-                event={event}
-                name={AREAS.find((one) => one.area === area)?.name ?? ''}
-                line={COMING[area]}
-              />
+              <>
+                <AreaPage
+                  event={event}
+                  name={AREAS.find((one) => one.area === area)?.name ?? ''}
+                  line={COMING[area]}
+                />
+                {area === 'menu' && event.id === KITCHEN_EVENT && (
+                  <Link className="desk-text" to={kitchenAt(event.id)}>
+                    {KW.title}
+                    <Glyph name="chevron" size={16} weight={2.4} />
+                  </Link>
+                )}
+              </>
             )}
           </div>
           {leaving != null && (

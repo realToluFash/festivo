@@ -32,6 +32,8 @@ import { GUEST_PAGES } from './guest.ts';
 import { GUEST_KITCHEN_PAGES } from './guestKitchen.ts';
 import { Guests } from './Guests.tsx';
 import { GUESTS_PAGES } from './guests.ts';
+import { KitchenPage } from './Kitchen.tsx';
+import { KITCHEN_PAGES } from './kitchen.ts';
 import { LegalPage } from './Legal.tsx';
 import { LEGAL_PAGES } from './legal.ts';
 import { NewAccountBoard } from './NewAccount.tsx';
@@ -169,6 +171,7 @@ export default function Demo() {
       <Route path="events/:id/dates" element={<EventPage dates />} />
       <Route path="events/:id/messages" element={<EventPage messages />} />
       <Route path="events/:id/seating" element={<SeatingPage />} />
+      <Route path="events/:id/kitchen" element={<KitchenPage />} />
       <Route path="calendar" element={<Calendar />} />
       <Route path="settings" element={<Settings />} />
       <Route path="settings/members" element={<Settings />} />
@@ -244,6 +247,8 @@ function DemoHome({ from }: { from: string }) {
         <h2 id="demo-page-30">30 · Guests · the planner’s side</h2>
         <h3>Guests in A · Summary first · desktop</h3>
         <BoardPages pages={GUESTS_PAGES} />
+        <h3>Final numbers due and the kitchen’s copies, in Guests A · desktop</h3>
+        <BoardPages pages={KITCHEN_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-81">

@@ -250,7 +250,7 @@ describe('Quotes and what is due on the wedding’s Budget, in A (sc-87, sc-88)'
       fireEvent.change(amount, { target: { value: '0' } });
       fireEvent.click(within(dialog).getByRole('button', { name: 'Mark paid' }));
       expect(
-        within(dialog).getByText('Enter the amount paid, above 0, like 840.00.'),
+        within(dialog).getByText('Enter the amount as a number above 0, like 3,500.50.'),
       ).toBeDefined();
 
       fireEvent.change(amount, { target: { value: '840.00' } });
