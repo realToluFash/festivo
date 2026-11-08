@@ -113,7 +113,8 @@ function CompanionFields({
   const count = values.companions.length;
   const placeholder = (at: number) =>
     host === '' ? '' : at === 0 ? GW.guestOf(host) : GW.guestOfNth(host, at + 1);
-  const seen = (at: number) => at < SHOWN_COMPANIONS || values.companions[at]?.id == null;
+  const [all, setAll] = useState(false);
+  const seen = (at: number) => all || at < SHOWN_COMPANIONS || values.companions[at]?.id == null;
   const unseen = values.companions.filter((_, at) => !seen(at)).length;
 
   return (
@@ -171,7 +172,20 @@ function CompanionFields({
           </div>
         );
       })}
-      {unseen > 0 && <p className="gs-count">{GW.moreCompanions(unseen)}</p>}
+      {unseen > 0 && (
+        <button
+          type="button"
+          className="desk-text gs-more"
+          onClick={() => {
+            const next = values.companions.findIndex((_, at) => !seen(at));
+
+            setAll(true);
+            focus(`companion-${next}`);
+          }}
+        >
+          {GW.moreCompanions(unseen)}
+        </button>
+      )}
       {said != null && <OkLine>{said}</OkLine>}
       {count < MOST_COMPANIONS ? (
         <button
