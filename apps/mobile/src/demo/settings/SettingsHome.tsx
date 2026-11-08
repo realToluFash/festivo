@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { type Href, router } from 'expo-router';
 import { createContext, type ReactNode, useContext } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -226,7 +226,7 @@ function DataRow({ dense, first }: { dense: boolean; first: boolean }) {
   const shell = useShell();
   const lit = useDataOpen();
   const nav = useDataNav();
-  const href = dataHref('hub', { as: nav.viewer });
+  const href = dataHref('hub', { as: nav.viewer }) as Href;
 
   return (
     <ListRow

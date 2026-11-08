@@ -1,4 +1,4 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { type Href, router, useLocalSearchParams } from 'expo-router';
 import { createContext, type ReactNode, type Ref, useCallback, useContext } from 'react';
 import { Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
@@ -228,7 +228,7 @@ export function useDataNav() {
 
   const open = useCallback(
     (page: DataPage, state: string | null, from: typeof hub | null = null) => {
-      const href = dataHref(page, { state, as: viewer, from });
+      const href = dataHref(page, { state, as: viewer, from }) as Href;
       // On its side the list stays put, so a page changes beside it rather than stacking.
       if (landscape) router.replace(href);
       else router.push(href);
@@ -236,7 +236,7 @@ export function useDataNav() {
     [landscape, viewer],
   );
   const toHub = useCallback(() => {
-    const href = dataHref('hub', { state: hub === 'hub' ? null : hub, as: viewer });
+    const href = dataHref('hub', { state: hub === 'hub' ? null : hub, as: viewer }) as Href;
     if (landscape) router.replace(href);
     else router.dismissTo(href);
   }, [landscape, hub, viewer]);
