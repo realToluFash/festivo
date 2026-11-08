@@ -212,13 +212,49 @@ describe('handing over a departing member’s work (sc-31311)', () => {
     expect(generalStart('leaveMenu', folake).ask).toBe('onlyOwner');
   });
 
+  it('opens the states the work list and the refusal add (sc-614)', () => {
+    const remove = (state: string) => membersStart(state, folake).dialog;
+
+    expect(remove('handoverLoading')).toMatchObject({ kind: 'remove', id: PRIYA });
+    expect(names(ledBy(membersStart('handoverOne', folake).leads, PRIYA))).toEqual(['Ireti at 40']);
+    expect(ledBy(membersStart('handoverLongNames', folake).leads, PRIYA)).toHaveLength(3);
+    expect(remove('handoverRefused')).toMatchObject({ kind: 'remove', id: TOM });
+    expect(ledBy(membersStart('handoverRefused', folake).leads, TOM)).toHaveLength(2);
+    expect(ledBy(membersStart('martaOne', folake).leads, MARTA)).toHaveLength(1);
+    expect(membersStart('martaLoading', folake).leadsLoad).toBe('loading');
+    expect(membersStart('martaLoadFailed', folake).leadsLoad).toBe('failed');
+    expect(membersStart('marta', folake).leadsLoad).toBe('loaded');
+    expect(generalStart('leaveOne', VIEWERS.ana).leads).toHaveLength(1);
+    expect(generalStart('leaveLoading', VIEWERS.ana).hand.phase).toBe('checking');
+    expect(generalStart('leaveLoadFailed', VIEWERS.ana).hand.phase).toBe('notLoaded');
+  });
+
+  it('says what the work list is doing, for someone else and for the one leaving', () => {
+    expect(H.checking('Priya Shah')).toBe('Checking what Priya Shah leads…');
+    expect(H.checking(null)).toBe('Checking what you lead…');
+    expect(H.notLoaded('Priya Shah')).toBe(
+      'What Priya Shah leads did not load. Nothing was changed.',
+    );
+    expect(H.notLoaded(null)).toBe('What you lead did not load. Nothing was changed.');
+    expect(H.chooseRecipient).toBe('Choose who takes over their events.');
+  });
+
   it('links every handover state from the demo home', () => {
     const linked = [...SETTINGS_PAGES, ...GENERAL_PAGES]
       .flatMap((page) => page.states)
       .map((state) => new URL(state.to, 'http://demo').searchParams.get('state'));
     const handover = MEMBERS_STATES.filter((state) => /^handover|NoWork$/u.test(state));
 
-    for (const state of [...handover, 'marta', 'suspended', 'leave', 'leaveMenu', 'leaveNoWork'])
-      expect(linked).toContain(state);
+    const also = ['marta', 'martaOne', 'martaLoading', 'martaLoadFailed', 'suspended'];
+    const leave = [
+      'leave',
+      'leaveMenu',
+      'leaveNoWork',
+      'leaveOne',
+      'leaveLoading',
+      'leaveLoadFailed',
+    ];
+
+    for (const state of [...handover, ...also, ...leave]) expect(linked).toContain(state);
   });
 });
