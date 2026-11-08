@@ -374,10 +374,15 @@ export function dataViewerKey(as: string | null, state: string): string | null {
   return state === 'not_owner' ? VIEWERS.julien.key : as;
 }
 
+/** The reader's own zone (sc-868): Julien, an admin, reads in London; everyone else here in Lagos. */
+export function zoneFor(viewer: Pick<Viewer, 'key'>): ReaderZone {
+  return viewer.key === VIEWERS.julien.key ? 'Europe/London' : 'Africa/Lagos';
+}
+
 export function zoneOf(viewer: Pick<Viewer, 'key'>, state: string): ReaderZone {
   if (state === 'rt_on_utc') return null;
 
-  return viewer.key === VIEWERS.julien.key ? 'Europe/London' : 'Africa/Lagos';
+  return zoneFor(viewer);
 }
 
 export const DATA_STATES = [

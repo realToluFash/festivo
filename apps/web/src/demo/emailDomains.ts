@@ -62,8 +62,6 @@ export const DOMAIN_WORDS = {
   close: 'Close',
   verify: 'Verify',
   verifying: 'Verifying…',
-  copy: 'Copy',
-  copied: 'Copied.',
   notFound: 'We could not find the record yet. DNS changes can take up to 48 hours.',
   type: 'Type',
   name: 'Name',

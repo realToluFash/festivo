@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
@@ -267,5 +267,23 @@ describe('Data and control › Email domains (sc-560, sc-563)', () => {
     ).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
     expect(screen.getByText('Loading Email domains…')).toBeDefined();
+  });
+
+  it('ticks a copied value in place and says which one was copied', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+
+    try {
+      await domains('?state=ed_record');
+      const record = screen.getByRole('dialog', { name: 'Prove ireevents.com' });
+      fireEvent.click(within(record).getByRole('button', { name: 'Copy Value' }));
+
+      expect(await within(record).findByRole('button', { name: 'Value, copied' })).toBeDefined();
+      expect(writeText).toHaveBeenCalledWith('k7q2m9x4c8rt5bn3wd6jp1hz0ys5gfa');
+      expect(screen.getByText('Value copied.')).toBeDefined();
+      expect(within(record).getByRole('button', { name: 'Copy Name' })).toBeDefined();
+    } finally {
+      Reflect.deleteProperty(navigator, 'clipboard');
+    }
   });
 });

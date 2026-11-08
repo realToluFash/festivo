@@ -1,4 +1,10 @@
-import { instantWords, LEFT_ENTERPRISE_AT, type ReaderZone, runAfter } from './dataSettings.ts';
+import {
+  instantWords,
+  LEFT_ENTERPRISE_AT,
+  type ReaderZone,
+  runAfter,
+  zoneFor,
+} from './dataSettings.ts';
 import { SAMPLE } from './rules.ts';
 import { type DemoLink, VIEWERS, type Viewer } from './settings.ts';
 
@@ -62,10 +68,7 @@ export const NEXT_EXPORT = plusDays(CLOCK.asked, 1);
 export const ORG = SAMPLE.organisation;
 export const ASKER = VIEWERS.folake;
 
-/** The reader's own zone (sc-868): Julien, an admin, reads in London, as #1544's admin does. */
-export function zoneFor(viewer: Pick<Viewer, 'key'>): ReaderZone {
-  return viewer.key === VIEWERS.julien.key ? 'Europe/London' : 'Africa/Lagos';
-}
+export { zoneFor };
 
 export function when(at: string, locale: string, zone: ReaderZone): string {
   return instantWords(at, zone, locale);
