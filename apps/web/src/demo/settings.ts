@@ -10,7 +10,8 @@ export type Section =
   | 'general'
   | 'members'
   | 'signInRules'
-  | 'vendors';
+  | 'vendors'
+  | 'data';
 
 /** The sections the boards draw; the others each have their own design. */
 export type Drawn =
@@ -21,7 +22,8 @@ export type Drawn =
   | 'general'
   | 'members'
   | 'signInRules'
-  | 'vendors';
+  | 'vendors'
+  | 'data';
 
 const PATHS: Record<Drawn, string> = {
   account: 'account',
@@ -32,6 +34,7 @@ const PATHS: Record<Drawn, string> = {
   members: 'members',
   signInRules: 'sign-in-rules',
   vendors: 'vendors',
+  data: 'data',
 };
 
 export const SECTION_NAMES: Record<Section, string> = {
@@ -43,6 +46,7 @@ export const SECTION_NAMES: Record<Section, string> = {
   members: 'Members',
   signInRules: 'Sign-in rules',
   vendors: 'Vendors',
+  data: 'Data',
 };
 
 export interface SectionGroup {
@@ -52,7 +56,10 @@ export interface SectionGroup {
 
 const GROUPS: readonly SectionGroup[] = [
   { name: 'Your account', sections: ['account', 'security', 'notifications', 'personalisation'] },
-  { name: 'Organisation settings', sections: ['general', 'members', 'signInRules', 'vendors'] },
+  {
+    name: 'Organisation settings',
+    sections: ['general', 'members', 'signInRules', 'vendors', 'data'],
+  },
 ];
 
 export type ViewerKey = 'folake' | 'julien' | 'ana';
@@ -102,12 +109,13 @@ export function viewerOf(name: string | null): Viewer {
   return Object.values(VIEWERS).find((viewer) => viewer.key === name) ?? VIEWERS.folake;
 }
 
-/** Members and Vendors only for an owner or an admin: a member sees General and Sign-in rules, read only. */
+/** Members, Vendors and Data only for an owner or an admin: a member sees General and Sign-in rules, read only. */
 export function groupsFor(viewer: Pick<Viewer, 'manages'>): SectionGroup[] {
   return GROUPS.map((group) => ({
     ...group,
     sections: group.sections.filter(
-      (section) => viewer.manages || (section !== 'members' && section !== 'vendors'),
+      (section) =>
+        viewer.manages || (section !== 'members' && section !== 'vendors' && section !== 'data'),
     ),
   }));
 }
@@ -121,7 +129,8 @@ export function isDrawn(section: Section): section is Drawn {
     section === 'general' ||
     section === 'members' ||
     section === 'signInRules' ||
-    section === 'vendors'
+    section === 'vendors' ||
+    section === 'data'
   );
 }
 

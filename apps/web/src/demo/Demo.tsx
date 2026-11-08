@@ -22,6 +22,7 @@ import { EventPage } from './EventPage.tsx';
 import { Events } from './Events.tsx';
 import { EVENTS_PAGES } from './events.ts';
 import { ACCOUNT_PAGES } from './account.ts';
+import { DATA_PAGES } from './dataSettings.ts';
 import { GENERAL_PAGES } from './general.ts';
 import { MESSAGES_PAGES } from './messages.ts';
 import { SeatingPage } from './Seating.tsx';
@@ -177,6 +178,7 @@ export default function Demo() {
       <Route path="settings/personalisation" element={<Settings open="personalisation" />} />
       <Route path="settings/general" element={<Settings open="general" />} />
       <Route path="settings/sign-in-rules" element={<Settings open="signInRules" />} />
+      <Route path="settings/data" element={<Settings open="data" />} />
       <Route path="settings/vendors" element={<Settings open="vendors" />} />
       <Route path="settings/payment-reminders" element={<Settings open="vendors" reminders />} />
       <Route path="people" element={<People />} />
@@ -301,6 +303,8 @@ function DemoHome({ from }: { from: string }) {
         <BoardPages pages={GENERAL_PAGES} />
         <h3>Sign-in rules in B · Where you stand · desktop</h3>
         <BoardPages pages={SIGN_IN_RULES_PAGES} />
+        <h3>Data in B · Summary first · desktop</h3>
+        <BoardPages pages={DATA_PAGES} />
         <h3>People on an event · desktop</h3>
         <BoardPages pages={PEOPLE_PAGES} />
         <h3>Working an event without joining in A · The door code · desktop</h3>
