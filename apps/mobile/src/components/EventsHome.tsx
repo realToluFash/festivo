@@ -19,7 +19,7 @@ import { useServerNow } from '../kit/serverNow.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { EventCard, EventThumb } from './EventCard.tsx';
-import { EventsSummaryLine, EventsTabs, Said, SaidLine } from './EventsList.tsx';
+import { EventsEmptyTab, EventsSummaryLine, EventsTabs, Said, SaidLine } from './EventsList.tsx';
 import { Notice } from './Notice.tsx';
 import { Row, RowList, TextAction } from './SummaryRows.tsx';
 import { Text } from './Text.tsx';
@@ -31,12 +31,6 @@ export interface HomeLoad {
   pastPages: number;
   at: Date;
 }
-
-const EMPTY: Record<EventsTab, { title: string; line: string }> = {
-  upcoming: { title: 'eventsScreen.emptyUpcomingTitle', line: 'eventsScreen.emptyUpcoming' },
-  drafts: { title: 'eventsScreen.emptyDraftsTitle', line: 'eventsScreen.emptyDrafts' },
-  past: { title: 'eventsScreen.emptyPastTitle', line: 'eventsScreen.emptyPast' },
-};
 
 /** Each tab's events as Events draws them: Upcoming holds what is happening now first (sc-22103). */
 function useEventsHome(load: HomeLoad) {
@@ -118,16 +112,7 @@ export function EventsHome({
   return (
     <View style={styles.blocks}>
       <EventsTabs tab={tab} counts={counts} onTab={onTab} />
-      {events.length === 0 && (
-        <View style={styles.empty} testID={`events.empty.${tab}`}>
-          <Text size={18} weight="bold" accessibilityRole="header" style={styles.emptyTitle}>
-            {t(EMPTY[tab].title)}
-          </Text>
-          <Text size={15} weight="medium" style={styles.emptyLine}>
-            {t(EMPTY[tab].line)}
-          </Text>
-        </View>
-      )}
+      {events.length === 0 && <EventsEmptyTab tab={tab} />}
       {card != null && (
         <EventCard
           event={card}
@@ -186,7 +171,4 @@ export function EventsHome({
 
 const styles = StyleSheet.create({
   blocks: { gap: 18 },
-  empty: { gap: tokens.spaceXs, paddingTop: tokens.spaceXxs },
-  emptyTitle: { letterSpacing: -0.18, lineHeight: 18 * 1.25 },
-  emptyLine: { color: tokens.colorInkSecondary, lineHeight: 15 * 1.45 },
 });

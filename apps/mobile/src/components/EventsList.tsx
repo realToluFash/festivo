@@ -130,6 +130,27 @@ function TabWords({ tab, on, count }: { tab: ListTab; on: boolean; count: number
   );
 }
 
+const EMPTY: Record<ListTab, { title: string; line: string }> = {
+  upcoming: { title: 'eventsScreen.emptyUpcomingTitle', line: 'eventsScreen.emptyUpcoming' },
+  drafts: { title: 'eventsScreen.emptyDraftsTitle', line: 'eventsScreen.emptyDrafts' },
+  past: { title: 'eventsScreen.emptyPastTitle', line: 'eventsScreen.emptyPast' },
+};
+
+export function EventsEmptyTab({ tab }: { tab: ListTab }) {
+  const { t } = useTranslation();
+
+  return (
+    <View style={styles.empty} testID={`events.empty.${tab}`}>
+      <Text size={18} weight="bold" accessibilityRole="header" style={styles.emptyTitle}>
+        {t(EMPTY[tab].title)}
+      </Text>
+      <Text size={15} weight="medium" style={styles.emptyLine}>
+        {t(EMPTY[tab].line)}
+      </Text>
+    </View>
+  );
+}
+
 /** No events yet: the cover card that starts the first one, or the ask-an-owner Notice under it, then the three steps. */
 export function EventsFirstRun({
   wide,
@@ -271,6 +292,9 @@ const styles = StyleSheet.create({
   count: { opacity: 0.8, fontVariant: ['tabular-nums'] },
   tabWords: { flexDirection: 'row', alignItems: 'baseline', gap: tokens.spaceXxs },
   cardFoot: { marginTop: 'auto' },
+  empty: { gap: tokens.spaceXs, paddingTop: tokens.spaceXxs },
+  emptyTitle: { letterSpacing: -0.18, lineHeight: 18 * 1.25 },
+  emptyLine: { color: tokens.colorInkSecondary, lineHeight: 15 * 1.45 },
   stepTile: {
     width: 40,
     height: 40,
