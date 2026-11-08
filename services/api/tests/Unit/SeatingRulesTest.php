@@ -84,10 +84,18 @@ final class SeatingRulesTest extends TestCase
     #[Test]
     public function theLimitsAreWrittenInEachSystemToTheWholeInch(): void
     {
-        self::assertSame('2 m', MeasurementSystem::Metric->written(200));
-        self::assertSame('500 m', MeasurementSystem::Metric->written(50_000));
-        self::assertSame('6 ft 7 in', MeasurementSystem::UsCustomary->written(200));
-        self::assertSame('1640 ft 5 in', MeasurementSystem::UsCustomary->written(50_000));
-        self::assertSame('12 ft', MeasurementSystem::UsCustomary->written(366));
+        self::assertSame('2 m', MeasurementSystem::Metric->written(200, 'en'));
+        self::assertSame('500 m', MeasurementSystem::Metric->written(50_000, 'en'));
+        self::assertSame('6 ft 7 in', MeasurementSystem::UsCustomary->written(200, 'en'));
+        self::assertSame('1640 ft 5 in', MeasurementSystem::UsCustomary->written(50_000, 'en'));
+        self::assertSame('12 ft', MeasurementSystem::UsCustomary->written(366, 'en'));
+    }
+
+    #[Test]
+    public function theLimitsAreWrittenInTheReadersLanguageWithNoGrouping(): void
+    {
+        self::assertSame("1640\u{202F}pi 5\u{202F}po", MeasurementSystem::UsCustomary->written(50_000, 'fr'));
+        self::assertSame('1640 ft 5 pol.', MeasurementSystem::UsCustomary->written(50_000, 'pt'));
+        self::assertSame("2,5\u{202F}m", MeasurementSystem::Metric->written(250, 'fr'));
     }
 }

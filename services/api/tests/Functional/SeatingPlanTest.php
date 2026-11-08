@@ -421,8 +421,7 @@ final class SeatingPlanTest extends ApiTestCase
 
         $this->as($member, 'GET', $this->plan());
 
-        self::assertContains($this->statusCode(), [403, 404]);
-        self::assertNotSame(200, $this->statusCode());
+        self::assertSame(404, $this->statusCode());
     }
 
     #[Test]

@@ -35,8 +35,8 @@ final readonly class SeatingRules
                 $violations[] = $this->violation($path, $missing);
             } elseif ($side < SeatingPlan::SIDE_MINIMUM_CM || $side > SeatingPlan::SIDE_MAXIMUM_CM) {
                 $violations[] = $this->violation($path, 'validation.seating_room_between', [
-                    '{min}' => $system->written(SeatingPlan::SIDE_MINIMUM_CM),
-                    '{max}' => $system->written(SeatingPlan::SIDE_MAXIMUM_CM),
+                    '{min}' => $system->written(SeatingPlan::SIDE_MINIMUM_CM, $this->translator->getLocale()),
+                    '{max}' => $system->written(SeatingPlan::SIDE_MAXIMUM_CM, $this->translator->getLocale()),
                 ]);
             }
         }

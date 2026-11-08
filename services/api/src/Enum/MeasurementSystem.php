@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Enum;
 
+use MessageFormatter;
 use Psl\Iter;
 use Psl\Math;
 use Psl\Str;
@@ -22,17 +23,28 @@ enum MeasurementSystem: string
         return Iter\contains(self::US_TERRITORIES, Str\uppercase($countryCode)) ? self::UsCustomary : self::Metric;
     }
 
-    /** The English fallback a refusal carries, "2 m" or "6 ft 7 in", rounded to whole inches; the clients word their own. */
-    public function written(int $centimetres): string
+    /** "2 m" or "6 ft 7 in" in the reader's language, as CLDR words the units and the clients' Intl does: no grouping, so the field reads it back. */
+    public function written(int $centimetres, string $locale): string
     {
         if (self::Metric === $this) {
-            return Str\format('%s m', (string) ($centimetres / 100));
+            return self::unit($locale, 'meter', $centimetres / 100);
         }
 
         $inches = (int) Math\round($centimetres / 2.54);
-        $feet = Math\div($inches, 12);
+        $feet = self::unit($locale, 'foot', Math\div($inches, 12));
         $left = $inches % 12;
 
-        return 0 === $left ? Str\format('%d ft', $feet) : Str\format('%d ft %d in', $feet, $left);
+        return 0 === $left ? $feet : Str\format('%s %s', $feet, self::unit($locale, 'inch', $left));
+    }
+
+    private static function unit(string $locale, string $unit, float|int $value): string
+    {
+        $written = MessageFormatter::formatMessage(
+            $locale,
+            Str\format('{value, number, :: measure-unit/length-%s unit-width-short group-off .##}', $unit),
+            ['value' => $value],
+        );
+
+        return false === $written ? Str\format('%s %s', (string) $value, $unit) : $written;
     }
 }
