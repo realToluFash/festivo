@@ -30,7 +30,7 @@ import {
 } from '../../kit/eventsList.ts';
 import { CLOCKS, READER_ZONE, type SampleEvent, TYPE_WORDS } from './EventsSample.ts';
 import { W, say } from './EventsWords.ts';
-import { FINAL_NUMBERS_STATES, FINAL_WORDS, finalNumbersDue, othersOwed } from './FinalNumbers.ts';
+import { CHANGES_STATES, FINAL_NUMBERS_STATES, kitchenOwed, othersOwed } from './FinalNumbers.ts';
 
 export type {
   CardStep,
@@ -137,15 +137,15 @@ export function milestonesOf(event: Omit<SampleEvent, 'photo'>): Milestone[] {
 
 /** The timeline's You milestone while a date is set and no copy recorded (sc-30812), gone at the start and once Ended. */
 export function finalNumbersOf(event: Omit<SampleEvent, 'photo'>, now: Date): Milestone[] {
-  const due = finalNumbersDue(event.id);
+  const owed = kitchenOwed(event.id);
 
-  if (due == null || event.status === 'ended' || now.getTime() >= Date.parse(event.startsAt))
+  if (owed == null || event.status === 'ended' || now.getTime() >= Date.parse(event.startsAt))
     return [];
 
   return [
     {
-      at: instantOf(due, '23:59', event.timeZone),
-      title: FINAL_WORDS.milestone,
+      at: owed.due == null ? event.startsAt : instantOf(owed.due, '23:59', event.timeZone),
+      title: owed.title,
       note: null,
       owner: 'you',
       area: 'menu',
@@ -550,6 +550,7 @@ export const EVENT_STATES = [
   'needsYouLoading',
   'needsYouFailed',
   ...FINAL_NUMBERS_STATES,
+  ...CHANGES_STATES,
 ] as const;
 export type EventDemoState = (typeof EVENT_STATES)[number];
 

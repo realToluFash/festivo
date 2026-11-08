@@ -1,11 +1,19 @@
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { setStatusBarStyle } from 'expo-status-bar';
 import { type ReactNode, useCallback, useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
+import {
+  type LayoutChangeEvent,
+  type LayoutRectangle,
+  ScrollView,
+  StyleSheet,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Cover, OnCover } from './Cover.tsx';
+import type { Box } from '../kit/confettiClearance.ts';
 import { saidOnWelcome } from '../kit/signInRules.ts';
 import { useLayout } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -118,6 +126,7 @@ export function WelcomeFrame({
   const left = Math.max(insets.left, side);
   const right = Math.max(insets.right, side);
   const foot = Math.max(insets.bottom, tokens.spaceLg);
+  const words = useWordsBox();
   useCoverStatusBar(kind === 'tabletLandscape' ? 'dark' : 'light', kind === 'tabletPortrait');
 
   if (kind === 'tabletLandscape')
@@ -126,9 +135,13 @@ export function WelcomeFrame({
         <View
           style={[styles.cover, styles.coverHalf, { paddingTop: insets.top, paddingLeft: left }]}
         >
-          <Cover scale={1.5} />
+          <Cover scale={1.5} words={words.box} />
           <OnCover.Provider value>
-            <View style={styles.brandBeside}>{brand}</View>
+            <View style={styles.brandBeside} onLayout={words.onArea}>
+              <View style={styles.words} onLayout={words.onWords}>
+                {brand}
+              </View>
+            </View>
           </OnCover.Provider>
         </View>
         <ScrollView
@@ -155,15 +168,20 @@ export function WelcomeFrame({
           tablet ? { height: Math.round(height * COVER_SHARE) } : styles.coverPhone,
         ]}
       >
-        <Cover scale={tablet ? 1.5 : side < tokens.space3xl ? 0.76 : 1} />
+        <Cover scale={tablet ? 1.5 : side < tokens.space3xl ? 0.76 : 1} words={words.box} />
         <OnCover.Provider value>
           <View
             style={[styles.top, { marginTop: insets.top, paddingLeft: left, paddingRight: right }]}
           >
             {top}
           </View>
-          <View style={[styles.brandOnCover, { paddingLeft: left, paddingRight: right }]}>
-            {brand}
+          <View
+            style={[styles.brandOnCover, { paddingLeft: left, paddingRight: right }]}
+            onLayout={words.onArea}
+          >
+            <View style={styles.words} onLayout={words.onWords}>
+              {brand}
+            </View>
           </View>
         </OnCover.Provider>
       </View>
@@ -179,6 +197,22 @@ export function WelcomeFrame({
       </View>
     </ScrollView>
   );
+}
+
+/** The box the brand's words take on the cover, from the area that centres them and their own place in it. */
+function useWordsBox() {
+  const [area, setArea] = useState<LayoutRectangle | null>(null);
+  const [own, setOwn] = useState<LayoutRectangle | null>(null);
+  const box: Box | null =
+    area == null || own == null
+      ? null
+      : { x: area.x + own.x, y: area.y + own.y, width: own.width, height: own.height };
+
+  return {
+    box,
+    onArea: (event: LayoutChangeEvent) => setArea(event.nativeEvent.layout),
+    onWords: (event: LayoutChangeEvent) => setOwn(event.nativeEvent.layout),
+  };
 }
 
 /** React Native keeps the status bar of the screen mounted last, so the cover sets its own on focus; a tablet's steps open over the cover and keep it. */
@@ -311,10 +345,10 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: tokens.spaceXxl,
     paddingBottom: SHEET_RISE + tokens.spaceXxl,
   },
-  brandBeside: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: tokens.spaceXxl },
+  brandBeside: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  words: { alignItems: 'center', gap: tokens.spaceXxl },
   sheet: {
     marginTop: -SHEET_RISE,
     paddingTop: tokens.spaceXxl,

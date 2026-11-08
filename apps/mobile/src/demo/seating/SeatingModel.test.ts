@@ -19,6 +19,7 @@ import {
   SEATING_STATES,
   type Seating,
   freeCount,
+  handlesLive,
   itemOf,
   noSectionLine,
   placedCount,
@@ -177,6 +178,18 @@ describe('a tap', () => {
     expect(
       run(pad, { type: 'tapItem', id: 't4' }, { type: 'tapFloor', at: { x: 10, y: 10 } }).chosen,
     ).toBeNull();
+  });
+});
+
+describe('a chosen table’s handles', () => {
+  it('are live only in Arrange on the floor plan, with nobody picked and the plan writable', () => {
+    const chosen = run(pad, { type: 'tapItem', id: 't4' });
+    expect(handlesLive(chosen)).toBe(true);
+    expect(handlesLive({ ...chosen, tab: 'Seat' })).toBe(false);
+    expect(handlesLive({ ...chosen, view: 'Tables' })).toBe(false);
+    expect(handlesLive({ ...chosen, picked: 'p1' })).toBe(false);
+    expect(handlesLive({ ...chosen, readOnly: true })).toBe(false);
+    expect(handlesLive({ ...chosen, offline: true })).toBe(false);
   });
 });
 

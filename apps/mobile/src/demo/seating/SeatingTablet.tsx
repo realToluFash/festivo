@@ -1,4 +1,4 @@
-import { type ReactNode, useRef } from 'react';
+import { type ReactNode, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View, type ViewInstance } from 'react-native';
 import Svg, { Circle, Rect } from 'react-native-svg';
 
@@ -302,12 +302,25 @@ function Pop({ m, go }: { m: Seating; go: Go }) {
 }
 
 /** The room's floating parts: the View switch and Print at its top, the bars under them, Add's bar and the zoom at its foot, the small map from 200%. */
-function RoomOverlays({ m, go }: { m: Seating; go: Go }) {
+function RoomOverlays({
+  m,
+  go,
+  onViews,
+  onPrint,
+}: {
+  m: Seating;
+  go: Go;
+  onViews: (end: number) => void;
+  onPrint: (start: number) => void;
+}) {
   const plan = m.view === 'Floor plan';
   const p = m.shown == null ? null : pct(m.shown.s);
   return (
     <>
-      <View style={styles.topLeft}>
+      <View
+        style={styles.topLeft}
+        onLayout={(e) => onViews(Math.ceil(e.nativeEvent.layout.x + e.nativeEvent.layout.width))}
+      >
         <Segments
           items={VIEWS}
           on={m.view}
@@ -317,7 +330,7 @@ function RoomOverlays({ m, go }: { m: Seating; go: Go }) {
           testID="seating.view"
         />
       </View>
-      <View style={styles.topRight}>
+      <View style={styles.topRight} onLayout={(e) => onPrint(Math.floor(e.nativeEvent.layout.x))}>
         <Pressable
           onPress={() => go({ type: 'sheet', sheet: { kind: 'print' } })}
           style={({ pressed }) => [styles.print, pressed && styles.pressed]}
@@ -463,6 +476,8 @@ function RoomArea({
   style: object;
 }) {
   const size = m.size;
+  const [viewsEnd, setViewsEnd] = useState(0);
+  const [printStart, setPrintStart] = useState(0);
   let inside: ReactNode;
   if (m.load === 'loading') inside = <Skeleton m={m} />;
   else if (m.load === 'failed') inside = <FailedView onTry={() => go({ type: 'retry' })} />;
@@ -498,7 +513,16 @@ function RoomArea({
   else if (m.view === 'List') inside = <ListView m={m} go={go} top={m.bar == null ? 76 : 140} />;
   else
     inside =
-      size == null ? null : <RoomSurface m={m} dispatch={go} width={size.w} height={size.h} />;
+      size == null ? null : (
+        <RoomSurface
+          m={m}
+          dispatch={go}
+          width={size.w}
+          height={size.h}
+          viewsEnd={viewsEnd}
+          printStart={printStart}
+        />
+      );
   return (
     <View
       style={[styles.room, style]}
@@ -507,7 +531,9 @@ function RoomArea({
       }
     >
       {inside}
-      {m.load === 'ready' && <RoomOverlays m={m} go={go} />}
+      {m.load === 'ready' && (
+        <RoomOverlays m={m} go={go} onViews={setViewsEnd} onPrint={setPrintStart} />
+      )}
       {m.load === 'loading' && (
         <View style={styles.topLeft}>
           <Segments
