@@ -48,6 +48,7 @@ export default function Welcome() {
           onApple={() => router.push('/demo/apple')}
           onGoogle={() => router.push('/demo/organisation?via=google')}
           onCreate={() => router.push('/demo/create')}
+          onJoinCode={() => router.push('/demo/redeem?state=enter')}
         />
       }
     />
