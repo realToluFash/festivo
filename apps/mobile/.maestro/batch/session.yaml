@@ -45,7 +45,7 @@ appId: host.exp.Exponent
     commands:
       - scrollUntilVisible:
           element:
-            text: '{{t:any:settings.signedInAs}}'
+            text: '{{t:any:settings.signedInAs}}|{{t:any:settings.personLabel}}|{{t:any:settings.personLabelWithRole}}'
           direction: DOWN
           timeout: 30000
 - runFlow:
@@ -54,15 +54,15 @@ appId: host.exp.Exponent
     commands:
       - scrollUntilVisible:
           element:
-            text: '{{t:any:settings.signedInAs}}|{{t:any:noOrganisation.signedInAs}}'
+            text: '{{t:any:settings.signedInAs}}|{{t:any:settings.personLabel}}|{{t:any:settings.personLabelWithRole}}|{{t:any:noOrganisation.signedInAs}}'
           direction: DOWN
           timeout: 30000
 - runFlow:
     when:
-      visible: '{{t:any:settings.signedInAs}}|{{t:any:noOrganisation.signedInAs}}'
-      notVisible: '{{t:any:settings.signedInAs|email}}|{{t:any:noOrganisation.signedInAs|email}}'
+      visible: '{{t:any:settings.signedInAs}}|{{t:any:settings.personLabel}}|{{t:any:settings.personLabelWithRole}}|{{t:any:noOrganisation.signedInAs}}'
+      notVisible: '{{t:any:settings.signedInAs|email}}|{{t:any:settings.personLabel|email}}|{{t:any:settings.personLabelWithRole|email}}|{{t:any:noOrganisation.signedInAs|email}}'
     file: sign-out.yaml
 - runFlow:
     when:
-      notVisible: '{{t:any:settings.signedInAs|email}}|{{t:any:noOrganisation.signedInAs|email}}'
+      notVisible: '{{t:any:settings.signedInAs|email}}|{{t:any:settings.personLabel|email}}|{{t:any:settings.personLabelWithRole|email}}|{{t:any:noOrganisation.signedInAs|email}}'
     file: sign-in-form.yaml

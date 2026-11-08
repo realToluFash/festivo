@@ -67,6 +67,6 @@ appId: host.exp.Exponent
 # An account in no organisation with an invitation lands on You're invited, named on its invitation. sc-32120.
 - scrollUntilVisible:
     element:
-      text: '{{t:any:settings.signedInAs|email}}|{{t:any:noOrganisation.signedInAs|email}}|{{t:any:steps.invitationFor|email}}|{{t:any:signInRules.overdueTitle}}'
+      text: '{{t:any:settings.signedInAs|email}}|{{t:any:settings.personLabel|email}}|{{t:any:settings.personLabelWithRole|email}}|{{t:any:noOrganisation.signedInAs|email}}|{{t:any:steps.invitationFor|email}}|{{t:any:signInRules.overdueTitle}}'
     direction: DOWN
     timeout: 30000
