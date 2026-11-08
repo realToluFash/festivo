@@ -1,7 +1,9 @@
+import type { Href } from 'expo-router';
+
 import { SECTION_HREF } from './appNav.ts';
 
 /** The server writes the web's path; the app opens its own screen for it, or stays in the bell when it has none. */
-export function appPlace(place: string | null): string | null {
+export function appPlace(place: string | null): Href | null {
   if (place == null) return null;
 
   const event = /^\/app\/events\/([^/?#]+)$/.exec(place);

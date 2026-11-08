@@ -77,6 +77,7 @@ def snapshot(db, platform, now, home, load=machine.load):
         view["warnings"] += [f"task output past 1 GB: {path} ({local.amount(size)})"
                              for path, size in leftovers.oversized()]
         view["free_gb"] = round(machine.free_gb(config))
+        view["litter"] = local.measure_litter(config, False)
         view["errors"] += problems
         late = runner.drift(config, (store.get_meta(db, "claude_version") or {}).get("version"))
         if late:

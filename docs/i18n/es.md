@@ -50,6 +50,15 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **8 Nov 2026. Un inicio de sesión con doble factor que ha caducado** (sc-29979,
+  `signIn.codeTimedOutTitle`, web y app). «El inicio de sesión ha caducado», y después
+  `endedBody` «Inicie sesión de nuevo para continuar.». «Caducar», como las solicitudes; no
+  «se ha agotado el tiempo», que alarga el título sin decir más. No «su sesión»: la persona
+  aún no había entrado. La app une los dos en una línea con punto, así que el título no lo lleva.
+- **8 Nov 2026. Un registro que ha caducado** (sc-32449 para sc-29923, `register.timedOut`,
+  web y app). «Su registro ha caducado, así que no hemos guardado la contraseña. Vuelva a
+  introducirla para recibir un código nuevo.». "Sign-up" es «registro», como `limitedTitle`;
+  «caducar», como el inicio de sesión; «un código nuevo», como `resend`.
 - **8 Nov 2026. Invitados A: la respuesta, los dos recuentos y el 412** (sc-3773, #32403).
   "Not sure yet" es «Por confirmar», en la página del invitado y en la del anfitrión: no
   marca género, como sí harían «indeciso» o «no está seguro». «Por confirmar · plazo hasta el

@@ -2680,8 +2680,8 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 // Owners are registered as few as possible: sign-ups are limited to ten an hour per address.
 export function membershipChanges({ email, member, ownerOf, sql }) {
   let owning = null;
-  const newOwner = () =>
-    (owning = ownerOf().catch((error) => {
+  const newOwner = (fresh = false) =>
+    (owning = ownerOf({ fresh }).catch((error) => {
       owning = null;
       throw error;
     }));
@@ -2693,7 +2693,7 @@ export function membershipChanges({ email, member, ownerOf, sql }) {
       return { owner, ...(await owner('/api/orgs', { body })) };
     } catch (error) {
       if (error.status !== 429) throw error;
-      const next = await newOwner();
+      const next = await newOwner(true);
       return { owner: next, ...(await next('/api/orgs', { body })) };
     }
   };
@@ -2998,6 +2998,17 @@ const composeApi = (root, onAndroid) =>
 const within = (ms, promise) =>
   Promise.race([promise.then(() => true), pause(ms).then(() => false)]);
 
+// A picture of the device at the instant a check asks, where takeScreenshot would wait for the
+// screen to settle: Refreshing… while the API is held passes before Maestro takes one.
+function screenshotDevice(device, onAndroid, file) {
+  if (!onAndroid) return run('xcrun', ['simctl', 'io', device, 'screenshot', file]);
+  const tools = androidTools();
+  const onDevice = `/sdcard/qa-shot-${process.pid}.png`;
+  run(tools.adb, ['-s', device, 'shell', 'screencap', '-p', onDevice], { env: tools.env });
+  run(tools.adb, ['-s', device, 'pull', onDevice, file], { env: tools.env });
+  run(tools.adb, ['-s', device, 'shell', 'rm', onDevice], { env: tools.env, optional: true });
+}
+
 // Under ten seconds an answer: batch/helper.js asks again while this says wait. A check that
 // failed while it held the API leaves it held, its last move perhaps still running, so whatever
 // uses the API next queues an 'up' behind it.
@@ -3015,6 +3026,8 @@ export function startHelper({
   open = openOnEmulator,
   reload = reloadOnEmulator,
   portrait = portraitOnEmulator,
+  shoot = (file) => screenshotDevice(device, onAndroid, file),
+  out,
   port = CONFIG.helperPort,
 }) {
   const server = createServer(async (request, response) => {
@@ -3044,6 +3057,16 @@ export function startHelper({
       }
       if (url.pathname === '/portrait') {
         return reply(200, { rotation: onAndroid ? portrait() : null });
+      }
+      if (url.pathname === '/shot') {
+        const name = url.searchParams.get('name') ?? '';
+        if (!/^[\w-]+$/.test(name))
+          throw new Error(`shot what? /shot?name=<letters, digits, -> gave ${name}`);
+        const check = begun.at(-1);
+        if (!check) throw new Error('a shot is taken inside a check, and none has started');
+        const file = join(out, `${check}-${name}.png`);
+        await shoot(file);
+        return reply(200, { shot: `${check}-${name}.png` });
       }
       if (url.pathname === '/running') {
         return reply(200, { running: appRunning(device, onAndroid) });
@@ -3201,7 +3224,7 @@ async function batch(args) {
   const changeMembership = membershipChanges({
     email,
     member: apiSession(email, password, secret),
-    ownerOf: () => organisationOwner(root),
+    ownerOf: (asked) => organisationOwner(root, asked),
     sql: async (statement) => {
       const psql = ['compose', 'exec', '-T', 'postgres', 'psql', '-U', 'soirely', '-d', 'soirely'];
       const answer = capture('docker', [...psql, '-v', 'ON_ERROR_STOP=1', '-c', statement], {
@@ -3221,6 +3244,7 @@ async function batch(args) {
     device,
     onAndroid,
     changeMembership,
+    out,
   });
   // The secret stays with the helper: no flow is handed it.
   const env = {
@@ -3450,8 +3474,36 @@ async function account(args) {
   console.log(readyReport({ email, password, secret, accessToken: token, sessionId }));
 }
 
-async function organisationOwner(root) {
-  const { email, password } = await founder(root, 'QA Owner');
+// Kept across batches too: a run of batches that each registered an owner met the sign-up limit.
+export async function keptOwner({ fresh, kept, signIn, register, keep }) {
+  if (!fresh && kept) {
+    try {
+      await signIn(kept);
+      return kept;
+    } catch (error) {
+      if (error.status !== 401) throw error;
+    }
+  }
+  const made = await register();
+  keep(made);
+  return made;
+}
+
+async function organisationOwner(root, { fresh }) {
+  const file = join(root, '.qa/qa-owner.json');
+  const { email, password } = await keptOwner({
+    fresh,
+    kept: existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : null,
+    signIn: (owner) => signIn(owner.email, owner.password, null),
+    register: () => founder(root, 'QA Owner'),
+    keep: (owner) => {
+      mkdirSync(dirname(file), { recursive: true });
+      writeFileSync(
+        file,
+        JSON.stringify({ email: owner.email, password: owner.password }, null, 2),
+      );
+    },
+  });
   return apiSession(email, password, null);
 }
 

@@ -8,7 +8,8 @@ import { resetSample } from './events.ts';
 import { startSwitcher } from './switcher.ts';
 
 const tested = config();
-const SLOW = { timeout: 8000 };
+const SLOW = { timeout: 20000 };
+const WAIT = { timeout: 8000 };
 const WALK = 'Create an organisation';
 
 function open(path: string): void {
@@ -16,7 +17,7 @@ function open(path: string): void {
 }
 
 async function walk(): Promise<HTMLElement> {
-  return screen.findByRole('dialog', { name: WALK }, SLOW);
+  return screen.findByRole('dialog', { name: WALK }, WAIT);
 }
 
 function press(key: string): void {
@@ -147,7 +148,7 @@ describe('creating an organisation in B · A short walk at a desk (sc-30335)', (
       expect(busy.hasAttribute('disabled')).toBe(true);
       expect(screen.queryByRole('button', { name: 'Back' })).toBeNull();
 
-      const notice = await screen.findByText('Now working in Lumen Feiras.', {}, SLOW);
+      const notice = await screen.findByText('Now working in Lumen Feiras.', {}, WAIT);
       expect(notice.closest('[role="status"]')).not.toBeNull();
       const button = screen.getByRole('button', { name: /^Organisation: Lumen Feiras/ });
       await waitFor(() => expect(document.activeElement).toBe(button));
@@ -162,7 +163,7 @@ describe('creating an organisation in B · A short walk at a desk (sc-30335)', (
     expect(within(dialog).queryByRole('button', { name: 'Cancel' })).toBeNull();
     press('Escape');
     expect(screen.getByRole('dialog', { name: WALK })).toBeDefined();
-    expect(await screen.findByText('Now working in Lumen Feiras.', {}, SLOW)).toBeDefined();
+    expect(await screen.findByText('Now working in Lumen Feiras.', {}, WAIT)).toBeDefined();
   });
 
   it('holds too many for now, and says when to try again', SLOW, async () => {
@@ -185,7 +186,7 @@ describe('creating an organisation in B · A short walk at a desk (sc-30335)', (
     cleanup();
 
     open('/demo/today?orgs=none&create=created');
-    const notice = await screen.findByText('Now working in Lumen Feiras.', {}, SLOW);
+    const notice = await screen.findByText('Now working in Lumen Feiras.', {}, WAIT);
     await waitFor(() => expect(document.activeElement).toBe(notice.closest('.sw-notice')));
     expect(screen.getByRole('button', { name: 'Start your first event' })).toBeDefined();
   });

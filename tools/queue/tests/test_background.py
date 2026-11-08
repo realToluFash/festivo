@@ -338,6 +338,30 @@ class Run(unittest.TestCase):
                          ("prompt", None, "the listing had no `needs` (waiting for: "
                                           "permission prompt); the job's state.json was gone"))
 
+    def test_the_held_call_is_read_from_the_live_job_before_stop_clears_it(self):
+        clock = Clock()
+        listing = {"1d923fe2": {"state": "blocked", "waitingFor": "permission prompt",
+                                "pid": 4, "sessionId": SESSION}}
+        with tempfile.TemporaryDirectory() as folder:
+            state = pathlib.Path(folder) / "jobs" / "1d923fe2" / "state.json"
+            state.parent.mkdir(parents=True)
+            state.write_text(json.dumps({"state": "working", "tempo": "blocked", "needs":
+                                         'approve Bash: curl -s -H "Authorization: Bearer '
+                                         'pr0be" https://example.com/x'}))
+
+            def run_command(argv, **_):
+                if argv[:2] == ["claude", "stop"]:
+                    state.write_text(json.dumps({"state": "stopped", "needs": None}))
+                return said("backgrounded · 1d923fe2 · dev item 7\n")
+
+            result, _, why, _ = background.run(
+                VALUES, folder, "dev item 7", "Build.", "/x", lambda: False,
+                run_command=run_command, clock=clock, sleep=clock.sleep,
+                ls=lambda _: listing, rss=lambda _: 0, lines_of=lambda _: [GIVEN])
+        self.assertEqual((why, result["wanted"], result["unnamed"]),
+                         ("prompt", 'Bash: curl -s -H "Authorization: …" https://example.com/x',
+                          None))
+
     def test_an_unanswered_call_in_the_transcript_is_not_read(self):
         clock = Clock()
         listing = {"1d923fe2": {"state": "blocked", "waitingFor": "permission prompt",

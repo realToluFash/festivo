@@ -29,7 +29,7 @@ import {
   wallDay,
   weekdayNames,
 } from '@soirely/domain';
-import { Redirect, router } from 'expo-router';
+import { type Href, Redirect, router } from 'expo-router';
 import { type RefObject, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
 import { type TFunction } from 'i18next';
@@ -687,7 +687,7 @@ function Row({
           to: formatWallDay(addDays(firstDay, event.dayCount - 1), locale),
         })
       : null;
-  const href =
+  const href: Href =
     item.kind === 'event'
       ? `/events/${encodeURIComponent(event.id)}`
       : `/events/${encodeURIComponent(event.id)}/dates`;
