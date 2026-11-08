@@ -896,6 +896,11 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/events/evt-wed-4?state=datesReplyBy',
       },
       {
+        title: 'Dates · asks before closing replies',
+        what: 'Close replies sooner?',
+        href: '/demo/events/evt-wed-4?state=datesReplyByAsk',
+      },
+      {
         title: 'Dates · Reply by moved',
         what: 'The page again, with the new date',
         href: '/demo/events/evt-wed-4?state=datesReplyBySaved',

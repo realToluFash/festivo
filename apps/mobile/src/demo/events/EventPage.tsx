@@ -44,7 +44,13 @@ import {
   sampleEvent,
 } from './EventsSample.ts';
 import { W, say } from './EventsWords.ts';
-import { replyByMovedSaved, replyByRow, replyBySaved } from './ReplyBy.ts';
+import {
+  datesSaveSays,
+  replyByInTell,
+  replyByMovedSaved,
+  replyByRow,
+  replyBySaved,
+} from './ReplyBy.ts';
 import { replyByOf } from '../guests/GuestsSample.ts';
 import { useShell } from '../../components/settingsShell.ts';
 import { Row, RowList, Section, TextAction } from '../../components/Summary.tsx';
@@ -146,7 +152,13 @@ export function EventScreen({
         : area,
   );
   const [guestsFrom, setGuestsFrom] = useState<FilterKey | null>(null);
-  const [m, dispatch] = useReducer(reduce, null, () => startOf(messages, shell.layout !== 'phone'));
+  const [m, dispatch] = useReducer(reduce, null, () => {
+    const begun = startOf(messages, shell.layout !== 'phone');
+    if (state !== 'datesReplyBySaved') return begun;
+    const change = tellChange(sampleEvent(id) ?? event, event, locale);
+
+    return reduce(begun, { type: 'offerTell', change });
+  });
   const [messagesSeen, setMessagesSeen] = useState(messages != null || at === 'messages');
   if (at === 'messages' && !messagesSeen) setMessagesSeen(true);
   const messagesHere = event.id === SAMPLE_EVENT_ID;
@@ -176,9 +188,10 @@ export function EventScreen({
       ? W.saved
       : state === 'replyBySaved' || state === 'replyByRemoved'
         ? replyBySaved(replyBy, event.timeZone, locale)
-        : state === 'datesReplyBySaved' && replyBy != null
-          ? replyByMovedSaved(replyBy, locale)
-          : null,
+        : null,
+  );
+  const [tellMoved, setTellMoved] = useState<string | null>(() =>
+    state === 'datesReplyBySaved' && replyBy != null ? replyByInTell(replyBy, locale) : null,
   );
   const refs = useRef<Partial<Record<string, ViewInstance | null>>>({});
   const from = useRef('card');
@@ -202,17 +215,19 @@ export function EventScreen({
     setEdit(which);
   };
   const saved = (next: SampleEvent, movedReplyBy?: string) => {
-    setEvent(next);
-    setEdit(null);
-    if (movedReplyBy == null) setTold(W.saved);
-    else {
-      setReplyBy(movedReplyBy);
-      setTold(replyByMovedSaved(movedReplyBy, locale));
-    }
+    const moved = movedReplyBy ?? null;
     const change =
       part === 'dates' || part === 'venue' ? tellChange(toldEvent, next, locale) : null;
-    if (change != null && change.lines.length > 0)
-      setTimeout(() => dispatch({ type: 'offerTell', change }), TELL_AFTER_MS);
+    const tellOpens = messagesHere && change != null && change.lines.length > 0;
+    const says = datesSaveSays(moved, tellOpens);
+
+    setEvent(next);
+    setEdit(null);
+    if (moved != null) setReplyBy(moved);
+    setTellMoved(says.inTell && moved != null ? replyByInTell(moved, locale) : null);
+    if (says.toast === 'moved' && moved != null) setTold(replyByMovedSaved(moved, locale));
+    if (says.toast === 'saved') setTold(W.saved);
+    if (tellOpens) setTimeout(() => dispatch({ type: 'offerTell', change }), TELL_AFTER_MS);
   };
   const savedReplyBy = (date: string | null) => {
     setReplyBy(date);
@@ -312,6 +327,7 @@ export function EventScreen({
       onSend={tellSent}
       onNotNow={() => dispatch({ type: 'notNow' })}
       onSeeWho={() => tellHere(sayMessages.ownDesign(MW.seeWho))}
+      before={tellMoved}
     />
   );
 

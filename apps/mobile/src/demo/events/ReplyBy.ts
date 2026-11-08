@@ -35,6 +35,33 @@ export function replyByAfterStart(replyBy: string | null, startDate: string): st
   return replyBy != null && startDate <= replyBy ? dayAfter(startDate, -1) : null;
 }
 
+/** pm, 8 Nov: Dates asks with the part's own rule before a moved Reply by closes replies sooner. */
+export function datesAsk(
+  replyBy: string | null,
+  moved: string | null,
+  now: Date,
+  timeZone: string,
+  eventId: string,
+): ReplyByAsk | null {
+  return moved == null
+    ? null
+    : replyByAsk(replyBy, moved, todayIn(now, timeZone), noReplyOf(eventId));
+}
+
+/** After Dates saves: Tell guests is the answer when it opens, with the moved Reply by in it; else the toast (ux, 8 Nov). */
+export function datesSaveSays(
+  moved: string | null,
+  tellOpens: boolean,
+): { toast: 'saved' | 'moved' | null; inTell: boolean } {
+  if (tellOpens) return { toast: null, inTell: moved != null };
+
+  return { toast: moved == null ? 'saved' : 'moved', inTell: false };
+}
+
+export function replyByInTell(moved: string, locale: string): string {
+  return say.nowClose(formatWallDay(moved, locale));
+}
+
 export function replyByMoves(replyBy: string, moved: string, locale: string): string {
   return say.replyByMoves(formatWallDay(replyBy, locale), formatWallDay(moved, locale));
 }

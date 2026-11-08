@@ -282,6 +282,7 @@ export const say = {
   replyByMoves: (old: string, next: string) =>
     `Replies close on ${old}, which isn’t before the new start. Saving moves Reply by to ${next}.`,
   repliesNowClose: (date: string) => `Saved. Replies now close ${date}.`,
+  nowClose: (date: string) => `Replies now close ${date}.`,
   replyBySaved: (date: string, time: string, zone: string) =>
     `Saved. Replies close on ${date} at ${time}, ${zone} time.`,
 };

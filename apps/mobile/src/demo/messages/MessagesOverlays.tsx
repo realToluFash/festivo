@@ -428,10 +428,13 @@ export function TellGuests({
   onSend,
   onNotNow,
   onSeeWho,
+  before = null,
 }: {
   open: boolean;
   lines: readonly string[];
   address?: boolean;
+  /** A change the save made beside the guests' message (sc-3780: Reply by moved with the start). */
+  before?: string | null;
   phone: boolean;
   opener: Opener;
   onSend: () => void;
@@ -465,6 +468,11 @@ export function TellGuests({
         </View>
         <TextAction label={W.seeWho} onPress={onSeeWho} testID="messages.tell.seeWho" />
       </View>
+      {before != null && (
+        <Text size={15} weight="medium" style={[styles.secondary, styles.line15]}>
+          {before}
+        </Text>
+      )}
       <View style={styles.block}>
         <Text size={14} weight="semibold">
           {W.message}

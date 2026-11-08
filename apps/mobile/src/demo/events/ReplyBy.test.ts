@@ -6,12 +6,15 @@ import { replyByOf } from '../guests/GuestsSample.ts';
 import { type Counts, cardWords } from '../guests/GuestsModel.ts';
 import {
   closesAt,
+  datesAsk,
+  datesSaveSays,
   noReplyOf,
   replyByAskCount,
   previewsReplyBy,
   replyByAfterStart,
   replyByAsk,
   replyByHint,
+  replyByInTell,
   replyByMovedSaved,
   replyByMoves,
   replyByPreview,
@@ -128,6 +131,34 @@ describe('the Ask counts with the Guests card’s own sentence', () => {
   });
 });
 
+describe('Dates closing replies sooner (pm, 8 Nov, #33553)', () => {
+  const now = new Date('2026-11-03T09:41:00Z');
+
+  it('asks with the part’s own rule while anyone hasn’t replied, and not with nobody left', () => {
+    expect(datesAsk('2026-11-04', '2026-11-03', now, LONDON, 'evt-wed-4')).toBe('sooner');
+    expect(datesAsk('2026-11-04', '2026-11-02', now, LONDON, 'evt-wed-4')).toBe('now');
+    expect(datesAsk('2026-11-04', null, now, LONDON, 'evt-wed-4')).toBeNull();
+    expect(datesAsk(null, null, now, LONDON, 'evt-draft-4')).toBeNull();
+    expect(datesAsk('2026-11-04', '2026-11-03', now, LONDON, 'evt-draft-4')).toBeNull();
+  });
+
+  it('asks in the web’s words, with Keep editing as the way back', () => {
+    expect(say.closeSoonerTitle('Tue, Nov 3')).toBe('Close replies sooner, on Tue, Nov 3?');
+    expect(W.closeNowTitle).toBe('Close replies now?');
+    expect(W.keepEditing).toBe('Keep editing');
+    expect(W.closeSooner).toBe('Close replies sooner');
+    expect(W.closeNow).toBe('Close replies now');
+  });
+
+  it('answers the save with Tell guests when it opens, the move inside it, else with the toast (ux, 8 Nov)', () => {
+    expect(datesSaveSays('2026-11-03', true)).toEqual({ toast: null, inTell: true });
+    expect(datesSaveSays(null, true)).toEqual({ toast: null, inTell: false });
+    expect(datesSaveSays('2026-11-03', false)).toEqual({ toast: 'moved', inTell: false });
+    expect(datesSaveSays(null, false)).toEqual({ toast: 'saved', inTell: false });
+    expect(replyByInTell('2026-11-03', 'en-US')).toBe('Replies now close Tue, Nov 3.');
+  });
+});
+
 describe('the sample and the words', () => {
   it('gives only the wedding a date, and counts its 21 guests and 4 companions as the card does', () => {
     expect(replyByOf('evt-wed-4')).toBe('2026-11-04');
@@ -179,6 +210,7 @@ describe('the sample and the words', () => {
     expect(editOf(eventStateOf('replyBySaved'))).toBeNull();
     expect(editOf(eventStateOf('replyByRemoved'))).toBeNull();
     expect(editOf(eventStateOf('datesReplyBy'))).toBe('dates');
+    expect(editOf(eventStateOf('datesReplyByAsk'))).toBe('dates');
     expect(editOf(eventStateOf('datesReplyBySaved'))).toBeNull();
   });
 });
