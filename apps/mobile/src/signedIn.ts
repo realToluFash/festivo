@@ -80,6 +80,7 @@ export function reloadSignedIn(): Promise<void> {
 
 /** The account alone, read again; a failed read rejects and leaves the screen where it is. */
 export async function rereadAccount(): Promise<void> {
+  if (state.account == null) return;
   const account = await api.me();
 
   set({ ...state, account });

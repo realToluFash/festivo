@@ -5,7 +5,7 @@ import { StyleSheet, View, type ViewInstance } from 'react-native';
 import { useReadOut } from '../../components/ReadOut.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
-import { ColoursScreen } from './PersonalisationColours.tsx';
+import { ColoursScreen } from '../../components/ColoursScreen.tsx';
 import {
   cardLine,
   type Colours,
@@ -20,7 +20,7 @@ import {
   sampleClient,
   WORDS,
 } from './PersonalisationModel.ts';
-import { SchemeCard } from './PersonalisationParts.tsx';
+import { SchemeCard } from '../../components/SchemeParts.tsx';
 import { useShell } from '../../components/settingsShell.ts';
 import { SummaryPage } from './SummaryPage.tsx';
 import { FailedBlock } from '../../components/Summary.tsx';

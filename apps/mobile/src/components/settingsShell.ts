@@ -9,7 +9,7 @@ import type { Tell } from './TodayParts.tsx';
 export type Viewer = 'owner' | 'member' | 'noOrg';
 
 /** sc-29859 leaves no Roles section: what each role does is fixed. sc-30441 adds Personalisation, ahead of the app. */
-export type ShellSection = Exclude<SettingsSection, 'roles'> | 'personalisation';
+export type ShellSection = Exclude<SettingsSection, 'roles'>;
 
 /** Who is looking, as the Settings card and the sidebar's foot show them: no role outside an organisation. */
 export interface Looking {

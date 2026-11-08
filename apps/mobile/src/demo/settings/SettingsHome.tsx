@@ -8,8 +8,8 @@ import { CARD_PIECES, Confetti, Cover } from '../../components/Cover.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
 import { Glass, PHONE_TAB_BAR, PhoneTabBar, TabBarFade } from '../../components/TodayCover.tsx';
 import { Bell, Landscape, OrgPill, PortraitTop } from './Frame.tsx';
-import { WORDS as PERSONALISATION } from './PersonalisationModel.ts';
-import { SchemeTile } from './PersonalisationParts.tsx';
+import { SchemeTile } from '../../components/SchemeParts.tsx';
+import { inUse, useHeldChoice, WORDS as PERSONALISATION } from './PersonalisationModel.ts';
 import { demoGroups, YOU } from './sample.ts';
 import { type ShellSection, useShell, type Viewer } from '../../components/settingsShell.ts';
 import { Caps, Pill, Tile, TYPE } from '../../components/SettingsParts.tsx';
@@ -212,7 +212,7 @@ function Row({
     >
       {!first && !open && <View style={[styles.rule, { left: tokens.spaceXl + tile + 12 }]} />}
       {section === 'personalisation' ? (
-        <SchemeTile side={tile} />
+        <HeldTile side={tile} />
       ) : (
         <Tile of={section} side={tile} initials={section === 'organisation' ? 'IE' : undefined} />
       )}
@@ -597,3 +597,8 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colorAccentTint,
   },
 });
+
+/** Personalisation's tile in the demo's list: the demo's own pick, held in memory. */
+function HeldTile({ side }: { side: number }) {
+  return <SchemeTile side={side} scheme={inUse(useHeldChoice())} />;
+}

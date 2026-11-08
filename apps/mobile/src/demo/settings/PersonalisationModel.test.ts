@@ -23,14 +23,15 @@ import {
   swatchName,
   WORDS,
 } from './PersonalisationModel.ts';
-import { dotsOf, lookOf, reachOf, SCHEME_ORDER, stepOf } from './PersonalisationSchemes.ts';
+import en from '../../i18n/locales/en.json';
+import { dotsOf, lookOf, reachOf, SCHEME_ORDER, stepOf } from '../../kit/schemes.ts';
 
 const now = () => Promise.resolve();
 
 describe('the eight schemes', () => {
   it('are the tokens’ schemes, in the boards’ order and by their names', () => {
     expect(SCHEME_ORDER).toEqual(Object.keys(schemes));
-    expect(SCHEME_ORDER.map((scheme) => lookOf(scheme).name)).toEqual([
+    expect(SCHEME_ORDER.map((scheme) => en.personalisation.scheme[scheme])).toEqual([
       'Violet',
       'Cobalt',
       'Garden',
