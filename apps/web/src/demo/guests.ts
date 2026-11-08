@@ -816,6 +816,11 @@ export function greetAsLength(value: string): number {
   return [...value.trim()].length;
 }
 
+/** Saved trimmed; blank or only spaces is saved as empty. */
+function greetAsOf(values: Values): string | null {
+  return values.greetAs.trim() === '' ? null : values.greetAs.trim();
+}
+
 export function linesOf(values: Values): Lines {
   const lines: Lines = {};
   const name = values.name.trim();
@@ -885,7 +890,7 @@ export function saveGuest(list: readonly Guest[], id: string, values: Values): G
           ? null
           : { country: values.country, number: values.number.trim() },
       language: values.language,
-      greetAs: values.greetAs.trim() === '' ? null : values.greetAs.trim(),
+      greetAs: greetAsOf(values),
       companions: kept,
     };
   });
@@ -903,6 +908,7 @@ export function addGuest(list: readonly Guest[], values: Values, on: string): Gu
         ? null
         : { country: values.country, number: values.number.trim() },
     language: values.language,
+    greetAs: greetAsOf(values),
     added: { by: READER, how: null, on },
   });
 
@@ -1118,6 +1124,7 @@ export interface AddStart {
   duplicate?: boolean;
   notAdded?: boolean;
   added?: string;
+  at?: string;
 }
 
 export type Pane =
@@ -1233,6 +1240,7 @@ export const GUESTS_STATES = [
   { key: 'greetAsLong', name: 'Greet as over 60, Save refused' },
   { key: 'greetAsSpaces', name: 'Only spaces saved: their full name' },
   { key: 'greetAsViewer', name: 'Can view: Greet as, no Edit' },
+  { key: 'greetAsAdd', name: 'Add guest, Greet as “Auntie Bisi”' },
 ] as const;
 
 export type GuestsState = (typeof GUESTS_STATES)[number]['key'];
@@ -1456,6 +1464,8 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
       });
     case 'greetAsViewer':
       return column(guestPane('bisi'), { choice: 'notYet', role: 'viewer' });
+    case 'greetAsAdd':
+      return add({ values: { name: 'Olabisi Martins', greetAs: 'Auntie Bisi' }, at: 'greet-as' });
   }
 }
 
@@ -1559,6 +1569,7 @@ export const GUESTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     'greetAsLong',
     'greetAsSpaces',
     'greetAsViewer',
+    'greetAsAdd',
   ]),
   group('The link and Mark as invited', [
     'linkCopied',

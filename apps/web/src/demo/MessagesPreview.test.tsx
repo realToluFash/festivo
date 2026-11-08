@@ -13,8 +13,7 @@ const WAIT = { timeout: 8000 };
 const AT = '/demo/events/evt-wed-4/messages';
 const ONLY_OURS =
   'Only Soirely’s own words are translated. Yours show on their page exactly as you wrote them.';
-const BRACES =
-  '[Braces you type go out as typed. To fill something in for each guest, use Insert.]';
+const BRACES = '[Braces you type stay as typed. To fill something in for each guest, use Insert.]';
 const NOTHING = 'Nothing to fill in, so every guest gets exactly these words.';
 
 async function messages(state: string) {
