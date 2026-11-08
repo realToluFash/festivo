@@ -10,7 +10,13 @@ import {
   asSeating,
   realtimeTopic,
 } from '@soirely/api-client';
-import { leastUsedColour, readRoomSide, sectionHoldingName } from '@soirely/domain';
+import {
+  ROOM_MAXIMUM_CM,
+  ROOM_MINIMUM_CM,
+  leastUsedColour,
+  readRoomSide,
+  sectionHoldingName,
+} from '@soirely/domain';
 import {
   type KeyboardEvent,
   type ReactNode,
@@ -727,8 +733,8 @@ function useRoomSide(system: MeasurementSystem) {
       return { refused: t(side === 'width' ? 'seating.enterWidth' : 'seating.enterLength') };
     return {
       refused: t('seating.roomRange', {
-        min: lengthWords(t, locale, SEATING_LIMITS.roomMinimumCm, system, { grouping: false }),
-        max: lengthWords(t, locale, SEATING_LIMITS.roomMaximumCm, system, { grouping: false }),
+        min: lengthWords(t, locale, ROOM_MINIMUM_CM, system, { grouping: false }),
+        max: lengthWords(t, locale, ROOM_MAXIMUM_CM, system, { grouping: false }),
       }),
     };
   };
