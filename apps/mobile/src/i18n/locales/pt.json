@@ -70,7 +70,7 @@
     "refused": "Esse e-mail e essa palavra-passe não correspondem. Verifique ambos ou redefina a sua palavra-passe.",
     "endedTitle": "A sua sessão foi encerrada",
     "endedBody": "Inicie sessão novamente para continuar.",
-    "codeTimedOutTitle": "That sign-in timed out",
+    "codeTimedOutTitle": "O início de sessão expirou",
     "lockedTitle": "Demasiadas tentativas",
     "withGoogle": "Continuar com {{provider}}",
     "withApple": "Continuar com {{provider}}",

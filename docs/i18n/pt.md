@@ -43,6 +43,11 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **8 Nov 2026. Um início de sessão com dois fatores que expirou** (sc-29979,
+  `signIn.codeTimedOutTitle`, web e app). "O início de sessão expirou", seguido de
+  `endedBody` "Inicie sessão novamente para continuar.". "Expirou", como um prazo que passa;
+  "caducar" fica para os pedidos. Não "a sua sessão": a pessoa ainda não tinha entrado. A app
+  junta os dois numa linha com ponto final, por isso o título não o leva.
 - **8 Nov 2026. Convidados A: a resposta, as duas contagens e o 412** (sc-3773, #32403).
   "Not sure yet" é "Por confirmar", na página do convidado e na do anfitrião: não concorda
   com género, como "indeciso" ou "não tem a certeza" obrigariam. "Por confirmar · resposta
