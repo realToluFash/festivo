@@ -3481,7 +3481,7 @@ export async function keptOwner({ fresh, kept, signIn, register, keep }) {
       await signIn(kept);
       return kept;
     } catch (error) {
-      if (error.status === undefined) throw error;
+      if (error.status !== 401) throw error;
     }
   }
   const made = await register();
@@ -3490,7 +3490,7 @@ export async function keptOwner({ fresh, kept, signIn, register, keep }) {
 }
 
 async function organisationOwner(root, { fresh }) {
-  const file = join(qaWorktree(), '.qa/qa-owner.json');
+  const file = join(root, '.qa/qa-owner.json');
   const { email, password } = await keptOwner({
     fresh,
     kept: existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : null,

@@ -2585,6 +2585,50 @@ describe('the time a Maestro run is given', () => {
 });
 
 describe('the flows a batch runs', () => {
+  it('reaches a file from every path a composed check names, on iOS and Android', () => {
+    const root = join(import.meta.dirname, '..');
+    const source = join(root, 'apps/mobile/.maestro');
+    const checks = readdirSync(join(source, 'checks'))
+      .filter((file) => file.endsWith('.yaml'))
+      .map((file) => file.slice(0, -'.yaml'.length));
+    const named =
+      /^[ \t]*(?:-[ \t]*runFlow|-[ \t]*runScript|file):[ \t]*(['"]?)([^'"\s]+)\1[ \t]*$/gm;
+    for (const onAndroid of [false, true]) {
+      const target = mkdtempSync(join(tmpdir(), 'qa-batch-'));
+      try {
+        composeBatch(source, target, {
+          checks,
+          languages: ['en'],
+          cold: false,
+          catalogues: {
+            en: JSON.parse(
+              readFileSync(join(root, 'apps/mobile/src/i18n/locales/en.json'), 'utf8'),
+            ),
+          },
+          email: 'qa@soirely.test',
+          onAndroid,
+        });
+        const unreached = [];
+        const seen = new Set();
+        const follow = (file) => {
+          if (seen.has(file)) return;
+          seen.add(file);
+          for (const [, , path] of readFileSync(file, 'utf8').matchAll(named)) {
+            if (path.includes('${')) continue;
+            const reached = join(dirname(file), path);
+            if (!existsSync(reached)) unreached.push(`${file.slice(target.length + 1)} → ${path}`);
+            else if (/\.ya?ml$/.test(path)) follow(reached);
+          }
+        };
+        for (const file of readdirSync(join(target, '_checks')))
+          follow(join(target, '_checks', file));
+        expect(unreached).toEqual([]);
+      } finally {
+        rmSync(target, { recursive: true, force: true });
+      }
+    }
+  });
+
   it("composes the repository's checks in all four languages", () => {
     const root = join(import.meta.dirname, '..');
     const dir = join(root, 'apps/mobile/src/i18n/locales');
@@ -3386,6 +3430,20 @@ describe('the owner a batch makes organisations as', () => {
     });
     await expect(down.asOwner(false)).rejects.toThrow('fetch failed');
     expect(down.registered).toEqual([]);
+  });
+
+  it('is no reason to register when the API refuses for any reason but a bad sign-in', async () => {
+    for (const status of [429, 503]) {
+      const refused = ownerWith({
+        kept,
+        signIn: async () => {
+          throw Object.assign(new Error(`answered ${status}`), { status });
+        },
+      });
+      await expect(refused.asOwner(false)).rejects.toThrow(`answered ${status}`);
+      expect(refused.registered).toEqual([]);
+      expect(refused.keptNow).toEqual([]);
+    }
   });
 });
 
