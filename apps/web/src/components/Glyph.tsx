@@ -222,6 +222,11 @@ const GLYPHS = {
     { d: 'M13 17V5' },
     { d: 'M8 17v-3' },
   ],
+  cloudOff: [
+    { d: 'M3 3l18 18' },
+    { d: 'M8.5 6.3A6 6 0 0 1 17.6 10H18a4 4 0 0 1 2.4 7.2' },
+    { d: 'M16 18H7a5 5 0 0 1-1.6-9.7' },
+  ],
 } satisfies Record<string, readonly Shape[]>;
 
 export type GlyphName = keyof typeof GLYPHS;
