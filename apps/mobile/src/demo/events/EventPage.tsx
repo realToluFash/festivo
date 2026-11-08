@@ -34,6 +34,7 @@ import {
   scheduleLocked,
   shownEvent,
 } from './EventsModel.ts';
+import { seedFinalNumbers } from './FinalNumbers.ts';
 import {
   type AreaKey,
   type SampleEvent,
@@ -85,6 +86,7 @@ function startEvent(
 ): SampleEvent {
   const event = sampleEvent(id) ?? sampleEvent('evt-wed-4');
   if (event == null) throw new Error('The sample has the wedding.');
+  seedFinalNumbers(state);
   if (messages === 'tell' || messages === 'untold') return { ...event, startsAt: TELL.startsAt };
   if (messages === 'tellPlace') return { ...event, venue: PLACE };
   if (messages === 'closedDraft') return { ...event, status: 'draft' };

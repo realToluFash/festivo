@@ -1029,6 +1029,21 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         what: 'The switch holds',
         href: '/demo/events/evt-wed-4?state=muteNotSaved',
       },
+      {
+        title: 'Final numbers due · Next up',
+        what: 'Marked You, no action in the app',
+        href: '/demo/events/evt-wed-4?state=finalNumbers',
+      },
+      {
+        title: 'Final numbers due · overdue',
+        what: 'Still Next up, Overdue',
+        href: '/demo/events/evt-wed-4?state=finalNumbersOverdue',
+      },
+      {
+        title: 'Final numbers due · given',
+        what: 'A copy recorded: gone',
+        href: '/demo/events/evt-wed-4?state=finalNumbersGiven',
+      },
     ],
   },
   {
