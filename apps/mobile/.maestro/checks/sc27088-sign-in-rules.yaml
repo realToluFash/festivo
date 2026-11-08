@@ -12,6 +12,6 @@ onFlowComplete:
       SCREEN: sign-in-rules
       REFRESHING: 'signInRules.refreshing'
       LOADED_ID: '.*'
-      LOADED_TEXT: '{{t:signInRules.inForceTitle}}'
-- assertVisible: '{{t:signInRules.inForceTitle}}'
+      LOADED_TEXT: '{{t:signInRules.stand.whereTitle}}'
+- assertVisible: '{{t:signInRules.stand.whereTitle}}'
 - takeScreenshot: reloaded

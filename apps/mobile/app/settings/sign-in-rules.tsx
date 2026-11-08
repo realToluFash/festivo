@@ -1,5 +1,6 @@
-import type { SignInRuleChange, SignInRulesPage } from '@soirely/api-client';
-import { formatDay, formatTimeOfDay, roleName } from '@soirely/domain';
+import type { SignInRulesPage } from '@soirely/api-client';
+import { roleName } from '@soirely/domain';
+import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -9,22 +10,38 @@ import { AnswerHeading } from '../../src/components/AnswerHeading.tsx';
 import { AppFrame, besideRow } from '../../src/components/AppFrame.tsx';
 import { Refreshing } from '../../src/components/Refreshing.tsx';
 import { bodyEdges } from '../../src/components/bodyEdges.ts';
-import { SecondaryButton } from '../../src/components/Buttons.tsx';
-import { Notice } from '../../src/components/Notice.tsx';
 import { Screen } from '../../src/components/Screen.tsx';
 import { SettingsSplit, useBackToSettings } from '../../src/components/SettingsList.tsx';
-import { Text, type TextHandle } from '../../src/components/Text.tsx';
+import { StandChanges, StandRules } from '../../src/components/SignInRulesStand.tsx';
+import {
+  CardSays,
+  FailedBlock,
+  LoadingBlock,
+  OnCard,
+  Section,
+  SummaryCard,
+} from '../../src/components/Summary.tsx';
+import { type TextHandle } from '../../src/components/Text.tsx';
 import { moveScreenReaderFocus } from '../../src/components/screenReaderFocus.ts';
 import { useOffline } from '../../src/offline.ts';
-import { cardFrame } from '../../src/components/cardFrame.ts';
 import { dateLocale, useShownLanguage } from '../../src/i18n/index.ts';
-import { limitFromElsewhere, ruleValue } from '../../src/kit/signInRules.ts';
+import { SECTION_HREF } from '../../src/kit/appNav.ts';
+import { limitFromElsewhere } from '../../src/kit/signInRules.ts';
+import {
+  changeRows,
+  managedAreas,
+  ruleLabel,
+  rulesCard,
+  type StandRules as Rules,
+  type StandViewer,
+  standFoot,
+  whereYouStand,
+} from '../../src/kit/whereYouStand.ts';
 import { type LayoutKind, settingsListBeside, useLayout } from '../../src/layout/useLayout.ts';
-import { markRulesSeen } from '../../src/signInRulesSeen.ts';
+import { PROVIDER_NAMES } from '../../src/providerSignIn.ts';
+import { markRulesSeen, useRulesSeen } from '../../src/signInRulesSeen.ts';
 import { rereadOrganisations, useSignedIn } from '../../src/signedIn.ts';
 import { tokens } from '../../src/theme/tokens.ts';
-import { tracking } from '../../src/theme/tracking.ts';
-import { Arrived, Skeleton } from '../../src/components/Skeleton.tsx';
 
 /** `tapped` when it answers Try again, so focus moves to it (sc-11173). */
 type Load =
@@ -32,12 +49,12 @@ type Load =
   | { kind: 'loaded'; page: SignInRulesPage; tapped: boolean }
   | { kind: 'failed'; tapped: boolean };
 
-/** Settings > Sign-in rules, `PolicySignIn-*` state `policy_changes`: what changed, then what holds (sc-69). */
+/** Settings > Sign-in rules as its demo draws it (sc-30412): where you stand on each rule, then what changed. */
 export default function SignInRules() {
   const { t } = useTranslation();
   const backToSettings = useBackToSettings();
   const { kind } = useLayout();
-  const { organisation } = useSignedIn();
+  const { account, organisation } = useSignedIn();
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
   const alone = !settingsListBeside(kind);
@@ -52,6 +69,16 @@ export default function SignInRules() {
     reload: () => setRefresh((n) => n + 1),
     focusTitle: () => moveScreenReaderFocus(heading.current),
   });
+  // What this device had shown before the page opened, since opening it counts as seeing the change.
+  const seenNow = useRulesSeen(organisationId ?? '');
+  const [seenBefore, setSeenBefore] = useState<{ id: string; at: string | null } | null>(null);
+
+  useEffect(() => {
+    if (organisationId == null || seenNow === undefined) return;
+    setSeenBefore((before) =>
+      before?.id === organisationId ? before : { id: organisationId, at: seenNow },
+    );
+  }, [organisationId, seenNow]);
 
   useEffect(() => {
     if (organisationId == null) return;
@@ -79,213 +106,157 @@ export default function SignInRules() {
   }, [organisationId, attempt, refresh, language, watch]);
 
   useEffect(() => {
-    if (organisation != null) markRulesSeen(organisation);
-  }, [organisation]);
+    if (organisation != null && seenBefore?.id === organisation.id) markRulesSeen(organisation);
+  }, [organisation, seenBefore]);
 
-  const title =
-    organisation == null
-      ? t('settings.signInRules')
-      : t('signInRules.readTitle', { organisation: organisation.name });
-  const elsewhere =
-    load.kind === 'loaded' && organisationId != null
-      ? limitFromElsewhere(load.page.inactivityLimit, organisationId)
-      : null;
+  // On a phone the frame's title is the page's heading, so Try again's answer lands there.
+  useEffect(() => {
+    if (kind === 'phone' && load.kind === 'loaded' && load.tapped)
+      moveScreenReaderFocus(heading.current);
+  }, [kind, load]);
+
+  const title = t('settings.signInRules');
   const refreshingWords = refreshing ? <Refreshing testID="signInRules.refreshing" /> : null;
+  const locale = dateLocale();
+  const now = new Date();
+  const phone = kind === 'phone';
+
+  const body = (() => {
+    if (load.kind === 'loading' || organisation == null)
+      return <LoadingBlock words={t('signInRules.loading')} />;
+    if (load.kind === 'failed')
+      return (
+        <FailedBlock
+          title={t('signInRules.stand.loadFailedTitle')}
+          line={t('signInRules.stand.loadFailedLine')}
+          onRetry={() => {
+            void rereadOrganisations();
+            retried.current = true;
+            setLoad({ kind: 'loading' });
+            setAttempt((n) => n + 1);
+          }}
+          testID="signInRules.retry"
+        />
+      );
+
+    const { page } = load;
+    const held = [...organisation.permissions, ...organisation.withheldUntilTwoFactor];
+    const linked = account?.providers[0]?.provider;
+    const rules: Rules = {
+      providerOnly: page.providerOnly,
+      inactivityTimeoutDays: page.inactivityTimeoutDays,
+      administratorsNeedTwoFactor: page.administratorsNeedTwoFactor,
+      everyoneNeedsTwoFactor: page.everyoneNeedsTwoFactor,
+      twoFactorDeadline: page.twoFactorDeadline?.at ?? null,
+      elsewhere: limitFromElsewhere(page.inactivityLimit, organisation.id),
+      ownTwoFactor: page.ownTwoFactor,
+    };
+    const viewer: StandViewer = {
+      organisation: organisation.name,
+      role: roleName(t, organisation.role),
+      manages: managedAreas(held),
+      setsRules: held.includes('organisation.manage'),
+      linked: page.ownProvider && linked != null ? PROVIDER_NAMES[linked] : null,
+    };
+    const rows = whereYouStand(t, rules, viewer, locale, now);
+    const card = rulesCard(t, rows, viewer);
+
+    return (
+      <>
+        <SummaryCard
+          size={kind === 'tabletPortrait' ? 'wide' : 'page'}
+          height={card.step == null ? 170 : 210}
+          step={
+            card.step == null
+              ? null
+              : {
+                  label: card.step.label,
+                  onPress: () => router.push(SECTION_HREF.security),
+                  testID: 'signInRules.step',
+                }
+          }
+          testID="signInRules.card"
+        >
+          <CardSays text={card.says} size={kind === 'tabletLandscape' ? 26 : 24} heading />
+          <OnCard text={card.line} />
+        </SummaryCard>
+        <Section title={t('signInRules.stand.whereTitle')} foot={standFoot(t, rules)}>
+          <StandRules rules={rows.map((rule) => ({ ...rule, label: ruleLabel(t, rule) }))} />
+        </Section>
+        <Section
+          title={t('signInRules.stand.changedTitle')}
+          foot={
+            viewer.setsRules
+              ? undefined
+              : t('signInRules.askOwner', { organisation: organisation.name })
+          }
+        >
+          <StandChanges
+            changes={changeRows(t, page.changes, seenBefore?.at ?? null, locale, now)}
+            none={{
+              title: t('signInRules.stand.noChangesTitle'),
+              line: t('signInRules.stand.noChangesLine'),
+            }}
+            newWord={t('signInRules.stand.new')}
+          />
+        </Section>
+      </>
+    );
+  })();
 
   return (
     <AppFrame
       current="settings"
       offline={stale}
       besideTitle={alone ? refreshingWords : undefined}
-      title={alone ? t('settings.signInRules') : t('settings.title')}
+      title={alone ? title : t('settings.title')}
+      titleRef={phone ? heading : undefined}
       back={alone ? backToSettings(t('settings.title')) : undefined}
     >
       <SettingsSplit open="signInRules">
         <Screen edges={bodyEdges(kind)} contentStyle={CONTENT[kind]}>
-          <View style={besideRow.row}>
-            <View style={styles.shrink}>
-              <AnswerHeading
-                ref={heading}
-                size={
-                  kind === 'tabletLandscape'
-                    ? tokens.typeTitlePage.size
-                    : tokens.typeTitlePhone.size
-                }
-                weight="bold"
-                answer={load.kind === 'loaded' && load.tapped ? load : undefined}
-              >
-                {title}
-              </AnswerHeading>
-            </View>
-            {!alone && refreshingWords}
-          </View>
-          <Text size={tokens.typeBodyPhone.size} style={styles.intro}>
-            {t('signInRules.readIntro')}
-          </Text>
-
-          {load.kind === 'loading' && (
-            <Skeleton
-              words={t('signInRules.loading')}
-              shape="cards"
-              cards={[{ options: 2 }, { options: 2 }, { fields: 1 }, { lines: 2 }]}
-            />
-          )}
-
-          {load.kind === 'failed' && (
-            <View style={styles.cards}>
-              <Notice
-                tone="broken"
-                mark={tokens.marks.broken.glyph}
-                body={t('signInRules.failedLoad')}
-                answer={load}
-                takesFocus={load.tapped}
-              />
-              <SecondaryButton
-                label={t('signInRules.retry')}
-                onPress={() => {
-                  void rereadOrganisations();
-                  retried.current = true;
-                  setLoad({ kind: 'loading' });
-                  setAttempt((n) => n + 1);
-                }}
-                testID="signInRules.retry"
-              />
-            </View>
-          )}
-
-          {load.kind === 'loaded' && organisation != null && (
-            <Arrived style={styles.cards}>
-              {elsewhere != null && (
-                <Notice
-                  tone="quiet"
-                  mark={tokens.marks.info.glyph}
-                  body={t('signInRules.limitApplies', {
-                    count: elsewhere.days,
-                    organisation: elsewhere.organisation,
-                  })}
-                />
-              )}
-              <Changes kind={kind} changes={load.page.changes} />
-              <View style={[cardFrame(kind), styles.section]}>
-                <Text size={tokens.typeTitleSection.size} weight="bold" accessibilityRole="header">
-                  {t('signInRules.inForceTitle')}
-                </Text>
-                <Rule
-                  label={t('signInRules.methodTitle')}
-                  value={ruleValue(t, 'providerOnly', load.page.providerOnly)}
-                />
-                <Rule
-                  label={t('signInRules.idleTitle')}
-                  value={ruleValue(t, 'inactivityTimeoutDays', load.page.inactivityTimeoutDays)}
-                />
-                <Rule
-                  label={t('signInRules.twoFactorShort')}
-                  value={ruleValue(
-                    t,
-                    'administratorsNeedTwoFactor',
-                    load.page.administratorsNeedTwoFactor,
-                  )}
-                />
-                <Rule
-                  label={t('signInRules.everyoneTitle')}
-                  value={
-                    load.page.everyoneNeedsTwoFactor
-                      ? t('signInRules.everyoneRequiredFrom', {
-                          deadline: load.page.twoFactorDeadline?.written ?? '',
-                        })
-                      : ruleValue(t, 'everyoneNeedsTwoFactor', false)
-                  }
-                />
-                <Text size={tokens.typeBody.size} muted>
-                  {t('signInRules.askOwner', { organisation: organisation.name })}
-                </Text>
+          {!phone && (
+            <View style={besideRow.row}>
+              <View style={styles.shrink}>
+                <AnswerHeading
+                  ref={heading}
+                  size={kind === 'tabletLandscape' ? 28 : 30}
+                  weight="bold"
+                  answer={load.kind === 'loaded' && load.tapped ? load : undefined}
+                >
+                  {title}
+                </AnswerHeading>
               </View>
-            </Arrived>
+              {!alone && refreshingWords}
+            </View>
           )}
+          {body}
         </Screen>
       </SettingsSplit>
     </AppFrame>
   );
 }
 
-function Changes({ kind, changes }: { kind: LayoutKind; changes: SignInRuleChange[] }) {
-  const { t } = useTranslation();
-  const locale = dateLocale();
-
-  return (
-    <View style={[cardFrame(kind), styles.section]}>
-      <Text size={tokens.typeTitleSection.size} weight="bold" accessibilityRole="header">
-        {t('signInRules.changesTitle')}
-      </Text>
-      {changes.length === 0 ? (
-        <Text size={tokens.typeBody.size} muted>
-          {t('signInRules.noChanges')}
-        </Text>
-      ) : (
-        changes.map((change) => (
-          <View key={`${change.entry}-${change.rule}`} style={styles.row}>
-            <Text size={tokens.typeLabel.size} muted>
-              {t('signInRules.changeWhen', {
-                day: formatDay(change.at, locale),
-                time: formatTimeOfDay(change.at, locale),
-                who:
-                  change.by.role == null
-                    ? change.by.name
-                    : t('signInRules.changeWho', {
-                        name: change.by.name,
-                        role: roleName(t, change.by.role),
-                      }),
-              })}
-            </Text>
-            <Text size={tokens.typeBodyPhone.size} weight="semibold">
-              {ruleValue(t, change.rule, change.now)}
-            </Text>
-            <Text size={tokens.typeBody.size} muted>
-              {t('signInRules.changeWas', { was: ruleValue(t, change.rule, change.was) })}
-            </Text>
-          </View>
-        ))
-      )}
-    </View>
-  );
-}
-
-function Rule({ label, value }: { label: string; value: string }) {
-  return (
-    <View style={styles.row}>
-      <Text size={tokens.typeLabel.size} weight="semibold" muted style={styles.ruleLabel}>
-        {label}
-      </Text>
-      <Text size={tokens.typeBodyPhone.size}>{value}</Text>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   shrink: { flexShrink: 1, minWidth: 0 },
   phone: {
-    gap: tokens.spaceLg,
+    gap: 18,
     paddingTop: tokens.spaceXl,
-    paddingHorizontal: tokens.spaceXl,
-    paddingBottom: tokens.space3xl,
+    paddingHorizontal: tokens.spaceXxl,
+    paddingBottom: tokens.space6xl * 2,
   },
-  portrait: { gap: tokens.spaceXl, padding: tokens.space3xl, paddingBottom: tokens.space6xl },
-  landscape: {
-    gap: tokens.spaceXxl,
-    paddingTop: tokens.space4xl,
+  portrait: {
+    gap: 18,
+    paddingTop: tokens.spaceXl,
     paddingHorizontal: tokens.space5xl,
-    paddingBottom: tokens.space6xl,
+    paddingBottom: tokens.space6xl * 2,
   },
-  intro: { color: tokens.colorInkSecondary, maxWidth: 640 },
-  cards: { gap: tokens.spaceLg },
-  section: { gap: tokens.spaceMd },
-  row: {
-    gap: tokens.spaceXxs,
-    paddingTop: tokens.spaceMd,
-    borderTopWidth: 1,
-    borderTopColor: tokens.colorBorder,
+  landscape: {
+    gap: 18,
+    paddingTop: 26,
+    paddingHorizontal: 30,
+    paddingBottom: tokens.space6xl * 2,
   },
-  ruleLabel: { textTransform: 'uppercase', letterSpacing: tracking(tokens.typeLabel) },
 });
 
 const CONTENT: Record<LayoutKind, object> = {

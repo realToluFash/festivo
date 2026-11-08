@@ -2,18 +2,13 @@ import { formattingLocale } from '@soirely/domain';
 import { getLocales } from 'expo-localization';
 import { useLocalSearchParams } from 'expo-router';
 import { useMemo } from 'react';
-import { StyleSheet, View } from 'react-native';
 
-import { tokens } from '../../theme/tokens.ts';
 import { SeenBy } from './Frame.tsx';
 import { useLoad } from './MembersLoading.tsx';
 import { memberLooking } from './sample.ts';
 import {
   ASK_OWNER,
-  type ChangeRow,
   changeRows,
-  type Mark,
-  type RuleRow,
   ruleLabel,
   rulesCard,
   type SignInRulesStart,
@@ -25,24 +20,15 @@ import {
 } from './SignInRulesSample.ts';
 import { useShell } from '../../components/settingsShell.ts';
 import { SummaryPage } from './SummaryPage.tsx';
+import { StandChanges, StandRules } from '../../components/SignInRulesStand.tsx';
 import {
   CardSays,
   FailedBlock,
   LoadingBlock,
   OnCard,
-  Row,
-  RowList,
   Section,
-  ShapeMark,
   SummaryCard,
 } from '../../components/Summary.tsx';
-
-const MARK = 22;
-
-const hidden = {
-  accessibilityElementsHidden: true,
-  importantForAccessibility: 'no-hide-descendants',
-} as const;
 
 /** Sign-in rules in B, where you stand: read only for everyone, each rule with a mark and a line about you, then what changed. */
 export function SignInRulesSection() {
@@ -106,83 +92,18 @@ function SignInRulesPage({ start }: { start: SignInRulesStart }) {
         <OnCard text={card.line} />
       </SummaryCard>
       <Section title="Where you stand" foot={standFoot(page)}>
-        <RowList
-          items={rules.map((rule) => ({
-            key: rule.key,
-            inset: MARK + tokens.spaceLg,
-            row: <RuleLine rule={rule} />,
-          }))}
-        />
+        <StandRules rules={rules.map((rule) => ({ ...rule, label: ruleLabel(rule) }))} />
       </Section>
       <Section title="What changed" foot={viewer.setsRules ? undefined : ASK_OWNER}>
-        <Changes changes={changeRows(page.changes, viewer.seen, locale)} />
+        <StandChanges
+          changes={changeRows(page.changes, viewer.seen, locale)}
+          none={{
+            title: 'No changes yet',
+            line: 'These are the rules every organisation starts with.',
+          }}
+          newWord="New"
+        />
       </Section>
     </SummaryPage>
   );
 }
-
-function RuleLine({ rule }: { rule: RuleRow }) {
-  return (
-    <Row
-      lead={<RuleMark mark={rule.mark} />}
-      title={rule.title}
-      line={rule.line}
-      accessibilityLabel={ruleLabel(rule)}
-      testID={`signInRules.rule.${rule.key}`}
-    />
-  );
-}
-
-/** Met is the green tick, needs you the amber half disc, and doesn't apply a Sunk disc with a bar. */
-function RuleMark({ mark }: { mark: Mark }) {
-  if (mark === 'met') return <ShapeMark kind="yes" side={MARK} ink={tokens.marks.done.ink} />;
-  if (mark === 'needs')
-    return <ShapeMark kind="waiting" side={MARK} ink={tokens.colorAttentionText} />;
-
-  return (
-    <View style={styles.notApplicable} {...hidden}>
-      <View style={styles.bar} />
-    </View>
-  );
-}
-
-function Changes({ changes }: { changes: readonly ChangeRow[] }) {
-  if (changes.length === 0)
-    return (
-      <Row title="No changes yet" line="These are the rules every organisation starts with." />
-    );
-
-  return (
-    <RowList
-      items={changes.map((change) => ({
-        key: change.at,
-        row: (
-          <Row
-            title={change.title}
-            tag={change.isNew ? { kind: 'now', word: 'New' } : null}
-            line={change.line}
-            accessibilityLabel={change.label}
-            testID={`signInRules.change.${change.at}`}
-          />
-        ),
-      }))}
-    />
-  );
-}
-
-const styles = StyleSheet.create({
-  notApplicable: {
-    width: MARK,
-    height: MARK,
-    borderRadius: MARK / 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: tokens.colorNeutralFill,
-  },
-  bar: {
-    width: Math.round(MARK * 0.45),
-    height: 2,
-    borderRadius: 1,
-    backgroundColor: tokens.colorInkSecondary,
-  },
-});
