@@ -65,12 +65,8 @@ export function nameLines(fontScale: number): 1 | 2 {
   return atAccessibilitySizes(fontScale) ? 2 : 1;
 }
 
-const RAIL_WIDTH = 220;
-const RAIL_WIDTH_ACCESSIBLE = 300;
-
-export function railWidth(fontScale: number): number {
-  return atAccessibilitySizes(fontScale) ? RAIL_WIDTH_ACCESSIBLE : RAIL_WIDTH;
-}
+/** iPad landscape's sidebar, at every text size: past its height it scrolls. */
+export const SIDEBAR_WIDTH = 252;
 
 /** A list beside a page on a tablet: its own width, or 40 percent of the content at the accessibility sizes. */
 export function sideListWidth(width: number, contentWidth: number, fontScale: number): number {
