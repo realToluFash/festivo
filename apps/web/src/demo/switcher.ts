@@ -6,7 +6,7 @@ import { type CreateState, NEW_ORG, isCreateState } from './createOrg.ts';
 import type { DemoLink } from './settings.ts';
 
 export type Role = 'Owner' | 'Admin' | 'Member';
-export type Answer = 'joined' | 'declined' | 'failed';
+export type Answer = 'joined' | 'declined' | 'failed' | 'managed';
 export type OfferStanding = 'unasked' | 'asked' | 'unavailable';
 
 export interface Place {
@@ -47,6 +47,7 @@ export const SWITCHER_STATES = [
   'joined',
   'declined',
   'failed',
+  'managed',
   'paused',
 ] as const;
 
@@ -127,7 +128,9 @@ export function whereOf(state: SwitcherState | null): Where {
         ? { [BLUEBIRD]: 'declined' }
         : state === 'failed'
           ? { [BLUEBIRD]: 'failed' }
-          : {};
+          : state === 'managed'
+            ? { [CELEBRACIONES]: 'managed' }
+            : {};
   const many = state === 'many' || state === 'search' || state === 'no-match';
   const alone = state === 'one' || many || state === 'paused';
 
@@ -184,7 +187,7 @@ export function openingOf(state: SwitcherState): { panel: string | null; query: 
   const panel =
     state === 'offer' || state === 'offer-asked' || state === 'offer-unavailable'
       ? OFFER.id
-      : state === 'invitation' || state === 'joined'
+      : state === 'invitation' || state === 'joined' || state === 'managed'
         ? CELEBRACIONES
         : state === 'declined' || state === 'failed'
           ? BLUEBIRD
@@ -201,7 +204,7 @@ export function waiting(where: Where): readonly Invitation[] {
   return where.invitations.filter((one) => {
     const answer = where.answers[one.id];
 
-    return answer == null || answer === 'failed';
+    return answer == null || answer === 'failed' || answer === 'managed';
   });
 }
 
@@ -390,6 +393,7 @@ export const SWITCHER_PAGES: readonly { name: string; states: readonly DemoLink[
       switcherLink('joined', 'An invitation, joined'),
       switcherLink('declined', 'An invitation, declined'),
       switcherLink('failed', 'An invitation, the answer failed'),
+      switcherLink('managed', 'An invitation, managed by Ire Events: refused'),
     ],
   },
   { name: 'Access paused', states: [switcherLink('paused', 'Access paused, none current')] },
