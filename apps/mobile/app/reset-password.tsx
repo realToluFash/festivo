@@ -176,9 +176,7 @@ export default function ResetPassword() {
         intro={t('recovery.newFor', { email: status.email })}
         answer={status.kind === 'ready' && status.tapped === true ? status : undefined}
       />
-      {status.kind === 'failed' && (
-        <Says words={`${t('recovery.failedTitle')}. ${t('recovery.failedBody')}`} />
-      )}
+      {status.kind === 'failed' && <Says words={t('recovery.failedLine')} />}
       <View style={styles.first}>
         <InsideField
           ref={passwordInput}

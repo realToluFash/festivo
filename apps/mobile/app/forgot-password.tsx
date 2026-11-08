@@ -141,14 +141,9 @@ export default function ForgotPassword() {
     >
       <Heading title={t('recovery.title')} intro={t('recovery.intro')} />
       {status.kind === 'limited' && (
-        <Says
-          words={`${t('recovery.limitedTitle')}. ${t('recovery.limitedBody', { time: status.time })}`}
-          quiet
-        />
+        <Says words={t('recovery.limitedLine', { time: status.time })} quiet />
       )}
-      {status.kind === 'failed' && (
-        <Says words={`${t('recovery.failedTitle')}. ${t('recovery.failedBody')}`} />
-      )}
+      {status.kind === 'failed' && <Says words={t('recovery.failedLine')} />}
       <View style={styles.first}>
         <InsideField
           ref={emailInput}
