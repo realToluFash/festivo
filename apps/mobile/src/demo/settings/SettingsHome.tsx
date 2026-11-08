@@ -1,3 +1,4 @@
+import { type Href, router } from 'expo-router';
 import { createContext, useContext } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -9,7 +10,10 @@ import { Bell, Landscape, OrgPill, PortraitTop } from './Frame.tsx';
 import { WORDS as PERSONALISATION } from './PersonalisationModel.ts';
 import { SettingsDemoRow } from './SettingsDemoRow.tsx';
 import { SchemeTile } from './PersonalisationParts.tsx';
-import { demoGroups, YOU } from './sample.ts';
+import { dataHref } from './DataModel.ts';
+import { DataTile, useDataNav, useDataOpen } from './DataParts.tsx';
+import { DATA_WORDS } from './DataWords.ts';
+import { demoGroups, managesOrganisation, YOU } from './sample.ts';
 import { type ShellSection, useShell, type Viewer } from '../../components/settingsShell.ts';
 import { Caps, TYPE } from '../../components/SettingsParts.tsx';
 import {
@@ -25,6 +29,8 @@ import { SwitchedNotice } from '../../components/SwitchedNotice.tsx';
 import { LegalLinks } from '../LegalLinks.tsx';
 
 type Listed = Exclude<ShellSection, 'account'>;
+
+const DATA_ROW = 'dataAndControl';
 
 /** Settings' words: the page's title, its headings, the rows and their lines (the organisation's row carries its name), the role on your card and Sign out. */
 export interface SettingsWords {
@@ -59,11 +65,12 @@ export const SETTINGS_WORDS: SettingsWords = {
 /** English unless a state draws the page in another language, as Bold text's Spanish state does. */
 export const SettingsWordsContext = createContext(SETTINGS_WORDS);
 
-/** The sections a viewer sees; Your account is the card at the top. */
+/** The sections a viewer sees; Your account is the card at the top. Data and control follows Sign-in rules for whoever manages the organisation (sc-560). */
 export function groupsFor(viewer: Viewer, words: SettingsWords = SETTINGS_WORDS) {
   return demoGroups(viewer).map(({ heading, sections }) => ({
     heading: words.headings[heading],
     sections: sections.filter((section): section is Listed => section !== 'account'),
+    data: heading === 'organisationHeading' && managesOrganisation(viewer),
   }));
 }
 
@@ -102,15 +109,40 @@ function PersonCard({
   );
 }
 
+/** Data and control, a row of the demo's own: on its side it changes the page beside the list. */
+function useDataRow(dense: boolean) {
+  const shell = useShell();
+  const lit = useDataOpen();
+  const nav = useDataNav();
+  const href = dataHref('hub', { as: nav.viewer }) as Href;
+
+  return {
+    lit: lit != null,
+    row: {
+      key: DATA_ROW,
+      title: DATA_WORDS.title,
+      line: DATA_WORDS.settingsLine,
+      tile: <DataTile side={rowSide(dense)} />,
+    },
+    open: () => {
+      if (shell.layout !== 'landscape') router.push(href);
+      else if (lit == null) router.replace(href);
+      else if (lit !== 'hub') nav.toHub();
+    },
+  };
+}
+
 /** The product's rows, with Personalisation's ahead of the app. */
 function Group({
   sections,
   dense,
   open,
+  data = false,
 }: {
   sections: readonly Listed[];
   dense: boolean;
   open: ShellSection | null;
+  data?: boolean;
 }) {
   const shell = useShell();
   const words = useContext(SettingsWordsContext).rows;
@@ -122,13 +154,14 @@ function Group({
       : rowOf(section, side)),
     ...words[section],
   }));
+  const dataRow = useDataRow(dense);
 
   return (
     <SettingsGroup
-      rows={rows}
+      rows={data ? [...rows, dataRow.row] : rows}
       dense={dense}
-      open={open}
-      onOpen={(key) => shell.openSection(key as Listed)}
+      open={data && dataRow.lit ? DATA_ROW : open}
+      onOpen={(key) => (key === DATA_ROW ? dataRow.open() : shell.openSection(key as Listed))}
     />
   );
 }
@@ -200,11 +233,11 @@ export function SettingsHome({ onSignOut, onDemo }: Handlers) {
           </View>
           <SwitchedNotice style={styles.switched} />
           <PersonCard size="phone" />
-          {groups.map(({ heading, sections }) =>
+          {groups.map(({ heading, sections, data }) =>
             sections.length === 0 ? null : (
               <View key={heading}>
                 <Caps text={heading} top={26} />
-                <Group sections={sections} dense={false} open={null} />
+                <Group sections={sections} dense={false} open={null} data={data} />
               </View>
             ),
           )}
@@ -269,7 +302,12 @@ export function SettingsHome({ onSignOut, onDemo }: Handlers) {
               <View style={styles.grow}>{left}</View>
               <View style={styles.grow}>
                 <Caps text={organisation.heading} top={tokens.space4xl} />
-                <Group sections={organisation.sections} dense={false} open={null} />
+                <Group
+                  sections={organisation.sections}
+                  dense={false}
+                  open={null}
+                  data={organisation.data}
+                />
               </View>
             </View>
             <LegalLinks style={styles.legalUnder} />
@@ -291,11 +329,11 @@ export function SettingsColumn({ onSignOut, onDemo }: Handlers) {
       showsVerticalScrollIndicator={false}
     >
       <PersonCard size="column" open={shell.open === 'account'} />
-      {groups.map(({ heading, sections }, index) =>
+      {groups.map(({ heading, sections, data }, index) =>
         sections.length === 0 ? null : (
           <View key={heading}>
             <Caps text={heading} top={index === 0 ? tokens.spaceXxl : tokens.spaceXl} />
-            <Group sections={sections} dense open={shell.open} />
+            <Group sections={sections} dense open={shell.open} data={data} />
           </View>
         ),
       )}

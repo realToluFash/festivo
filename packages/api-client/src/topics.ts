@@ -1,6 +1,7 @@
 /** Generated from the API's App\Enum\RealtimeTopic by `npm run generate:topics`: never edit it. */
 export const REALTIME_TOPICS = {
   UserNotifications: 'users/{id}/notifications',
+  EventSeating: 'events/{id}/seating',
 } as const;
 
 export type RealtimeTopicName = keyof typeof REALTIME_TOPICS;

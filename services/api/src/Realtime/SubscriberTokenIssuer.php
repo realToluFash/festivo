@@ -13,8 +13,9 @@ use Lcobucci\JWT\Signer\Key\InMemory;
 use Psl\Type;
 use Psr\Clock\ClockInterface;
 use SensitiveParameter;
+use Symfony\Component\Uid\Uuid;
 
-/** A hub subscriber token naming only the caller's own topics, signed with the key the hub accepts for subscribing and never for publishing. */
+/** A hub subscriber token naming only topics the caller may read, signed with the key the hub accepts for subscribing and never for publishing. */
 final readonly class SubscriberTokenIssuer
 {
     public const int LIFETIME_SECONDS = 900;
@@ -28,6 +29,18 @@ final readonly class SubscriberTokenIssuer
 
     public function issueFor(User $user): IssuedSubscriberToken
     {
+        return $this->issue([RealtimeTopic::UserNotifications->for($user->getId()->toRfc4122())]);
+    }
+
+    /** One event's seating, for someone the route has already found holds seating.read on it (sc-3998). */
+    public function issueForEventSeating(Uuid $eventId): IssuedSubscriberToken
+    {
+        return $this->issue([RealtimeTopic::EventSeating->for($eventId->toRfc4122())]);
+    }
+
+    /** @param list<string> $topics */
+    private function issue(array $topics): IssuedSubscriberToken
+    {
         $configuration = Configuration::forSymmetricSigner(new Sha256(), InMemory::plainText(Type\non_empty_string()->coerce($this->mercureSubscriberKey)));
         $now = DateTimeImmutable::createFromInterface($this->clock->now());
         $expiresAt = $now->modify('+' . self::LIFETIME_SECONDS . ' seconds');
@@ -35,7 +48,7 @@ final readonly class SubscriberTokenIssuer
         $token = $configuration->builder()
             ->issuedAt($now)
             ->expiresAt($expiresAt)
-            ->withClaim('mercure', ['subscribe' => [RealtimeTopic::UserNotifications->for($user->getId()->toRfc4122())]])
+            ->withClaim('mercure', ['subscribe' => $topics])
             ->getToken($configuration->signer(), $configuration->signingKey());
 
         return new IssuedSubscriberToken($token->toString(), $expiresAt);

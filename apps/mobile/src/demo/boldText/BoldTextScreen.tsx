@@ -14,7 +14,7 @@ import { DemoScreen, NavBar } from '../DemoScreen.tsx';
 import { BOLD_TEXT_SCREENS } from './BoldTextBoards.ts';
 import { APPLE_ANDROID, MAP_ROWS, plainFace } from './BoldTextModel.ts';
 import { BoldTextSwitch } from './BoldTextSwitch.tsx';
-import { closeBoldTextBoard, openBoldTextBoard, useBoldText } from './boldTextStore.ts';
+import { closeBoldTextBoard, openBoldTextBoard, useBoldTextSwitch } from './boldTextStore.ts';
 
 const APPLE = 'Continue with Apple';
 const GOOGLE = 'Continue with Google';
@@ -22,7 +22,7 @@ const APPLE_IOS_TEXT = appleIosSize(CONTROL_TEXT_SIZE).text;
 
 /** The weight map as a specimen, and the screens QA checks: every text on them follows the switch. */
 export function BoldTextScreen({ startOn }: { startOn: boolean }) {
-  const on = useBoldText();
+  const on = useBoldTextSwitch();
 
   useEffect(() => {
     openBoldTextBoard(startOn);
