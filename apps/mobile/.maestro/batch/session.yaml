@@ -36,9 +36,21 @@ appId: host.exp.Exponent
     when:
       visible: '{{t:any:todayScreen.tab.today}}'
     file: to-settings.yaml
+# Settings by a section's id, not its title: the signed-out sign-in screen also holds a
+# node labelled Settings, and scrolling there for Signed in as never ends. sc-30091.
 - runFlow:
     when:
-      visible: '{{t:any:home.signedInTo}}|{{t:any:settings.title}}|{{t:any:noOrganisation.title}}'
+      visible:
+        id: 'settings\..*'
+    commands:
+      - scrollUntilVisible:
+          element:
+            text: '{{t:any:settings.signedInAs}}'
+          direction: DOWN
+          timeout: 30000
+- runFlow:
+    when:
+      visible: '{{t:any:home.signedInTo}}|{{t:any:noOrganisation.title}}'
     commands:
       - scrollUntilVisible:
           element:
