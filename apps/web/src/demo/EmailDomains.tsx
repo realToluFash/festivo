@@ -45,7 +45,8 @@ import {
   scheduled,
   verified,
 } from './emailDomains.ts';
-import { type Viewer, copyText } from './settings.ts';
+import { RecordRows } from './RecordRows.tsx';
+import type { Viewer } from './settings.ts';
 
 const CHECK_MS = 1200;
 
@@ -415,27 +416,7 @@ function RecordDialog({
       <Note
         strong
       >{`Add this record where ${domain.name}’s DNS is managed, then press Verify.`}</Note>
-      <ul className="desk-rows">
-        {parts.map((part) => (
-          <li key={part.label} className="desk-row">
-            <RowWords title={<span className="dc-code">{part.value}</span>} lines={[part.label]} />
-            <button
-              type="button"
-              className="desk-text"
-              aria-label={`${W.copy} ${part.label}`}
-              onClick={() =>
-                void copyText(part.value).then(
-                  () => tell(W.copied),
-                  () => undefined,
-                )
-              }
-            >
-              <Glyph name="copy" size={17} weight={2.3} />
-              {W.copy}
-            </button>
-          </li>
-        ))}
-      </ul>
+      <RecordRows parts={parts} tell={tell} />
       {check === 'notFound' && <StatusLine kind="waiting">{W.notFound}</StatusLine>}
       <Note>{recordFoot(domain, locale, zone)}</Note>
     </Dialog>
