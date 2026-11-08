@@ -236,6 +236,29 @@ export function Notice({
   );
 }
 
+/** sc-3790: the page switched, but the guest's record did not take the choice; said once, in the new language, with Try again. */
+export function LanguageUnsaved({
+  words,
+  busy,
+  onRetry,
+}: {
+  words: Words;
+  busy: boolean;
+  onRetry: () => void;
+}) {
+  return (
+    <div className="gp-notice is-attention gp-unsaved" role="alert">
+      <span className="gp-notice-mark" aria-hidden="true" />
+      <div className="gp-unsaved-words">
+        <p>{words.notSaved}</p>
+        <TextAction off={busy} focus="saveAgain" onClick={onRetry}>
+          {busy ? words.retrying : words.retry}
+        </TextAction>
+      </div>
+    </div>
+  );
+}
+
 /** sc-3591: one notice, a polite status region with its chip and its sentence. */
 export function PhaseNotice({ phase, words }: { phase: Visit['phase']; words: Words }) {
   if (phase === 'live') return null;

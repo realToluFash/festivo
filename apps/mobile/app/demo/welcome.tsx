@@ -1,10 +1,11 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { LanguageChoice } from '../../src/components/LanguageChoice.tsx';
 import { Text } from '../../src/components/Text.tsx';
 import { OnBrand, useLineSize, WelcomeBrand } from '../../src/components/Welcome.tsx';
 import { Choices } from '../../src/demo/Choices.tsx';
+import { LegalLinks } from '../../src/demo/LegalLinks.tsx';
 import { coverLine, WelcomeFrame } from '../../src/demo/Welcome.tsx';
 import { tokens } from '../../src/theme/tokens.ts';
 
@@ -43,13 +44,17 @@ export default function Welcome() {
         </>
       }
       choices={
-        <Choices
-          onEmail={() => router.push('/demo/sign-in')}
-          onApple={() => router.push('/demo/apple')}
-          onGoogle={() => router.push('/demo/organisation?via=google')}
-          onCreate={() => router.push('/demo/create')}
-          onJoinCode={() => router.push('/demo/redeem?state=enter')}
-        />
+        <View>
+          <Choices
+            onEmail={() => router.push('/demo/sign-in')}
+            onApple={() => router.push('/demo/apple')}
+            onGoogle={() => router.push('/demo/organisation?via=google')}
+            onCreate={() => router.push('/demo/create')}
+            onJoinCode={() => router.push('/demo/redeem?state=enter')}
+          />
+          {/* Under the last button: Google and Apple make an account from here too (sc-29938). */}
+          <LegalLinks />
+        </View>
       }
     />
   );
