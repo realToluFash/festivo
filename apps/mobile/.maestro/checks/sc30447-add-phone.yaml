@@ -1,4 +1,5 @@
-# Settings > Account > Add a phone number: short and long lines edge the number, not Code; a server refusal edges the number; the Code list opens and chooses. sc-30447.
+# Settings > Account > Add a phone number: short and long lines edge the number, not Code; the Code list opens and chooses. sc-30447.
+# On Android, the edits after the first refusal are done by hand: the second edit drops typed text there.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/settings/account
