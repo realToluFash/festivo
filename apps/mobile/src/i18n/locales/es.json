@@ -254,7 +254,6 @@
     "title": "Introduzca su código",
     "intro": "Abra su aplicación de autenticación e introduzca el código de 6 dígitos de {{email}}.",
     "code": "Código",
-    "verify": "Verificar e iniciar sesión",
     "useRecovery": "Usar un código de recuperación",
     "recoveryTitle": "Introduzca un código de recuperación",
     "recoveryIntro": "Uno de los códigos que guardó al activar la verificación en dos pasos. Cada uno funciona una vez.",
@@ -273,7 +272,11 @@
     "pausedBody": "La introducción de códigos está en pausa hasta las {{time}}. Después, introduzca el código que muestre su aplicación en ese momento.",
     "tryAgainAt": "Vuelva a intentarlo a las {{time}}",
     "notYou": "¿No es usted quien lo intenta?",
-    "resetPassword": "Restablezca su contraseña"
+    "resetPassword": "Restablezca su contraseña",
+    "signedIn": "Signed in",
+    "recoveryShort": "Enter all 8 characters, like vtxp-rh7y.",
+    "recoveryShape": "Like vtxp-rh7y. Capitals or not; the dash goes in by itself.",
+    "lost": "Lost your authenticator?"
   },
   "twoFactorCard": {
     "title": "Verificación en dos pasos",
@@ -491,7 +494,7 @@
     "back": "Volver a iniciar sesión",
     "nobodyTitle": "Póngase en contacto con el soporte de Soirely",
     "nobodyIntro": "Nadie de su organización puede confirmarlo. Póngase en contacto con el soporte de Soirely.",
-    "emailSupport": "Escribir a {{address}}",
+    "emailSoirely": "Email Soirely support",
     "codesTitle": "Introduzca los dos códigos",
     "codesTitleEmailOnly": "Introduzca el código",
     "codesIntro": "Hemos enviado un código a {{email}} y otro al {{phone}}. Necesita los dos.",
@@ -526,7 +529,7 @@
     "exhaustedTitle": "Demasiados intentos fallidos",
     "exhaustedBody": "Esos códigos ya no sirven. Envíe unos nuevos para continuar.",
     "waitingMark": "Esperando una respuesta",
-    "waitingTitle": "Esperando a su organización",
+    "waitingFor": "Waiting for {{organisations}}",
     "waitingIntro": "Hemos pedido a los propietarios y administradores de {{organisations}} que confirmen que es usted. Basta con una respuesta.",
     "asked": "Pedido el {{when}}.",
     "endsBy": "Si nadie responde antes del {{when}}, la solicitud termina.",

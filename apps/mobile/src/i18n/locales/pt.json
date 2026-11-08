@@ -254,7 +254,6 @@
     "title": "Introduza o seu código",
     "intro": "Abra a sua aplicação de autenticação e introduza o código de 6 dígitos para {{email}}.",
     "code": "Código",
-    "verify": "Verificar e iniciar sessão",
     "useRecovery": "Usar antes um código de recuperação",
     "recoveryTitle": "Introduza um código de recuperação",
     "recoveryIntro": "Um dos códigos que guardou ao ativar a autenticação de dois fatores. Cada um funciona uma vez.",
@@ -273,7 +272,11 @@
     "pausedBody": "A introdução de códigos está em pausa até às {{time}}. Depois, introduza o código que a sua aplicação mostrar nesse momento.",
     "tryAgainAt": "Tentar novamente às {{time}}",
     "notYou": "Não é você a tentar?",
-    "resetPassword": "Redefina a sua palavra-passe"
+    "resetPassword": "Redefina a sua palavra-passe",
+    "signedIn": "Signed in",
+    "recoveryShort": "Enter all 8 characters, like vtxp-rh7y.",
+    "recoveryShape": "Like vtxp-rh7y. Capitals or not; the dash goes in by itself.",
+    "lost": "Lost your authenticator?"
   },
   "twoFactorCard": {
     "title": "Autenticação de dois fatores",
@@ -491,7 +494,7 @@
     "back": "Voltar ao início de sessão",
     "nobodyTitle": "Contacte o apoio da Soirely",
     "nobodyIntro": "Ninguém na sua organização pode confirmar isto. Contacte o apoio da Soirely.",
-    "emailSupport": "Escrever para {{address}}",
+    "emailSoirely": "Email Soirely support",
     "codesTitle": "Introduza os dois códigos",
     "codesTitleEmailOnly": "Introduza o código",
     "codesIntro": "Enviámos um código para {{email}} e outro para o {{phone}}. Precisa dos dois.",
@@ -526,7 +529,7 @@
     "exhaustedTitle": "Demasiadas tentativas erradas",
     "exhaustedBody": "Esses códigos já não funcionam. Envie novos para continuar.",
     "waitingMark": "À espera de resposta",
-    "waitingTitle": "À espera da sua organização",
+    "waitingFor": "Waiting for {{organisations}}",
     "waitingIntro": "Pedimos aos proprietários e administradores de {{organisations}} que confirmem que é você. Basta uma resposta.",
     "asked": "Pedido a {{when}}.",
     "endsBy": "Se ninguém responder até {{when}}, o pedido termina.",

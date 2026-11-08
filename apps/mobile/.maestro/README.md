@@ -173,7 +173,9 @@ Two-factor sign-in is `sign-in-two-factor.yaml`. It asks the harness for each co
 (`batch/helper.js`), so it runs inside a batch, which holds the account's `TOTP_SECRET`.
 
 To test the code step itself, outside a batch, three flows stop on it and send a code you pass
-(sc-22740). Each opening flow starts with `sign-in-screen-language`:
+(sc-22740). Each opening flow starts with `sign-in-screen-language`. The sign-in step has no
+send button for an authenticator code, whose sixth digit sends it (sc-29072); a recovery code and
+the reset link's step still send with the button:
 
 | Flow                     | Needs                                     | Leaves the app on                       |
 | ------------------------ | ----------------------------------------- | --------------------------------------- |

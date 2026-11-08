@@ -1,11 +1,22 @@
 import { ApiError } from '@soirely/api-client';
-import { codeProblem, lockLiftsAt } from '@soirely/domain';
+import { codeProblem, lockLiftsAt, shapeRecovery } from '@soirely/domain';
 
 export type CodeMode = 'app' | 'recovery';
 
+/** A recovery code's letters and digits, as it is printed less its dash. */
+export const RECOVERY_LENGTH = 8;
+
 /** The message key a typed code gets before anything is sent, or null when it may go. */
 export function typedCodeProblem(mode: CodeMode, typed: string): string | null {
-  if (mode === 'recovery') return typed.trim() === '' ? 'twoFactor.recoveryBlank' : null;
+  if (mode === 'recovery') {
+    const plain = shapeRecovery(typed).replace('-', '');
+
+    return plain === ''
+      ? 'twoFactor.recoveryBlank'
+      : plain.length < RECOVERY_LENGTH
+        ? 'twoFactor.recoveryShort'
+        : null;
+  }
 
   const found = codeProblem(typed);
 
