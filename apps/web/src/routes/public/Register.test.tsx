@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
@@ -466,5 +466,38 @@ describe('a sign-up that runs out on the email code (sc-29923)', () => {
 
     expect(await screen.findByText('Enter a password.')).toBeDefined();
     expect(screen.queryByText(TIMED_OUT)).toBeNull();
+  });
+  it('keeps the line gone on Back from the new sign-up, and on a reload after a refused check', async () => {
+    answering({
+      'POST /api/auth/register': () =>
+        json({ registration: 'the-handle', email: 'folake@ire.events' }, 202),
+      'GET /api/auth/register/resend': () => json({ cooldownSeconds: 0, codeState: 'live' }),
+      'POST /api/auth/register/verify': () => problem(410, 'registration_expired'),
+    });
+    const router = createMemoryRouter(routes, { initialEntries: ['/register'] });
+    const { unmount } = render(<RouterProvider router={router} />);
+    fillIn();
+
+    fireEvent.change(await screen.findByLabelText('Code from the email'), {
+      target: { value: '123456' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Verify email' }));
+    await timedOut();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Create account' }));
+    expect(await screen.findByText('Enter a password.')).toBeDefined();
+    unmount();
+    render(<RouterProvider router={router} />);
+    await screen.findByRole('heading', { level: 1, name: 'Create your account' });
+    expect(screen.queryByRole('status')).toBeNull();
+    expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe('folake@ire.events');
+
+    typePassword('lagos-evening-air');
+    fireEvent.click(screen.getByRole('button', { name: 'Create account' }));
+    await screen.findByRole('heading', { level: 1, name: 'Check your email' });
+
+    await act(() => router.navigate(-1));
+    await screen.findByRole('heading', { level: 1, name: 'Create your account' });
+    expect(screen.queryByRole('status')).toBeNull();
   });
 });
