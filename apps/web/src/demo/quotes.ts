@@ -534,6 +534,20 @@ function paidBy(payment: Payment): Payment {
   return { ...payment, paid: { amount: payment.amount, on, by: READER, reference: '' } };
 }
 
+let kept: Budget | null = null;
+
+export function keepBudget(budget: Budget): void {
+  kept = budget;
+}
+
+export function keptBudget(): Budget | null {
+  return kept;
+}
+
+export function forgetBudget(): void {
+  kept = null;
+}
+
 export function quotesStart(
   state: string,
   vendorId: string | null,

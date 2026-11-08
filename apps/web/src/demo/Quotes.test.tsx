@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
-import { QUOTES_PAGES } from './quotes.ts';
+import { QUOTES_PAGES, forgetBudget } from './quotes.ts';
 
 const tested = config();
 const SLOW = { timeout: 20000 };
@@ -57,6 +57,7 @@ describe('Quotes and what is due on the wedding’s Budget, in A (sc-87, sc-88)'
   afterEach(() => {
     cleanup();
     vi.useRealTimers();
+    forgetBudget();
   });
 
   it(
@@ -320,6 +321,36 @@ describe('Quotes and what is due on the wedding’s Budget, in A (sc-87, sc-88)'
     fireEvent.click(within(dialog).getByRole('button', { name: 'Mark paid' }));
     expect(within(dialog).getByText('Enter the date it was paid.')).toBeDefined();
   });
+
+  it(
+    'resends line_taken without the line now agreed elsewhere: Aisle arch stays on Bloom & Co',
+    SLOW,
+    async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      await open(`${BUDGET}&state=line_taken`);
+      const dialog = screen.getByRole('dialog', { name: 'Add a quote' });
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Add' }));
+      await settle();
+      expect(screen.queryByRole('dialog', { name: 'Add a quote' })).toBeNull();
+
+      const linesOf = () =>
+        within(section('The quote'))
+          .getAllByRole('listitem')
+          .find((item) => item.textContent?.startsWith('Budget lines'))?.textContent;
+
+      fireEvent.click(within(section('Vendors quoted')).getByRole('link', { name: /^Bloom & Co/ }));
+      await within(main()).findByRole('heading', { level: 1, name: 'Bloom & Co' });
+      expect(linesOf()).toContain('Aisle arch');
+
+      fireEvent.click(within(main()).getAllByRole('link', { name: 'Budget' })[0]!);
+      await within(main()).findByRole('heading', { level: 1, name: 'Budget' });
+      fireEvent.click(
+        within(section('Vendors quoted')).getByRole('link', { name: /^Beat Collective/ }),
+      );
+      await within(main()).findByRole('heading', { level: 1, name: 'Beat Collective' });
+      expect(linesOf()).toBe('Budget linesDJ');
+    },
+  );
 
   it('offers vendors by name, one already quoted that cannot be chosen', SLOW, async () => {
     await open(`${BUDGET}&state=add`);

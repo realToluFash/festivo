@@ -76,6 +76,9 @@ import {
   quotesStart,
   scheduledFor,
   sum,
+  forgetBudget,
+  keepBudget,
+  keptBudget,
 } from './quotes.ts';
 import { BudgetHomeContent } from './BudgetHome.tsx';
 import { QW } from './quotesWords.ts';
@@ -117,10 +120,13 @@ function QuotesBody({
   vendorId: string | null;
   viewer: BudgetViewer;
 }) {
-  const [start] = useState(() =>
-    paymentsStart(quotesStart(state, vendorId, longDay), state, vendorId),
-  );
-  const [budget, setBudget] = useState<Budget>(start.budget);
+  const [start] = useState(() => {
+    if (state !== '') forgetBudget();
+    return paymentsStart(quotesStart(state, vendorId, longDay), state, vendorId);
+  });
+  const [budget, setBudget] = useState<Budget>(() => keptBudget() ?? start.budget);
+
+  useEffect(() => keepBudget(budget), [budget]);
   const [quote, setQuote] = useState<Opened | null>(start.quote);
   const [payment, setPayment] = useState<PaymentOpen | null>(start.payment);
   const [amending, setAmending] = useState<Amending | null>(start.amending);
