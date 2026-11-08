@@ -4,11 +4,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
-import { setBoldText, useBoldText, useBoldTextBoardOpen } from './boldTextStore.ts';
+import { setBoldText, useBoldTextSwitch, useBoldTextBoardOpen } from './boldTextStore.ts';
 
 /** The phone's own setting stands in here: the dashed edge says the product has no such control. */
 export function BoldTextSwitch() {
-  const on = useBoldText();
+  const on = useBoldTextSwitch();
 
   return (
     <Pressable
@@ -32,7 +32,7 @@ export function withBoldText<Props extends object>(
   side: 'left' | 'right' = 'right',
 ) {
   return function WithBoldText(props: Props) {
-    useBoldText();
+    useBoldTextSwitch();
     const open = useBoldTextBoardOpen();
     const { top } = useSafeAreaInsets();
 
