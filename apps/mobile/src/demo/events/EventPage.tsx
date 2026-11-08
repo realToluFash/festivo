@@ -10,7 +10,7 @@ import { tokens } from '../../theme/tokens.ts';
 import { LineIcon } from '../settings/AccountCard.tsx';
 import { SwitchTrack } from '../settings/NotificationsSwitch.tsx';
 import { EventCard, EventThumb } from './EventCard.tsx';
-import { AcPill, AlertLine, EditScreen } from './EventEdits.tsx';
+import { AcPill, AlertLine, CHANGED, EditScreen } from './EventEdits.tsx';
 import { AreaPage, EventFrame } from './EventFrame.tsx';
 import {
   type DeleteStart,
@@ -29,6 +29,7 @@ import {
   datesRow,
   editOf,
   hostsRow,
+  instantOf,
   manageOf,
   needsName,
   scheduleLocked,
@@ -89,6 +90,12 @@ function startEvent(
   if (event == null) throw new Error('The sample has the wedding.');
   if (messages === 'tell' || messages === 'untold') return { ...event, startsAt: TELL.startsAt };
   if (messages === 'tellPlace') return { ...event, venue: PLACE };
+  if (state === 'datesReplyBySaved')
+    return {
+      ...event,
+      startsAt: instantOf(CHANGED.start.date, CHANGED.start.time, event.timeZone),
+      endsAt: instantOf(CHANGED.end.date, CHANGED.end.time, event.timeZone),
+    };
 
   return state === 'photo' ? { ...event, photo: true } : event;
 }

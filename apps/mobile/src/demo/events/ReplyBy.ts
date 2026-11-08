@@ -1,6 +1,7 @@
 import { formatWallClock, formatWallDay } from '@soirely/domain';
 
 import { COUNTS, WEDDING } from '../guests/GuestsSample.ts';
+import { say as guestsSay } from '../guests/GuestsWords.ts';
 import { instantOf, wallOf } from './EventsModel.ts';
 import { W, say } from './EventsWords.ts';
 
@@ -15,11 +16,11 @@ export function noReplyOf(eventId: string): { guests: number; companions: number
     : { guests: 0, companions: 0 };
 }
 
-/** Guests' card's own count sentence (l10n, #33419): the guests with no answer, and the companions held behind them. */
-export function notRepliedLine(eventId: string): string {
-  const { guests, companions } = noReplyOf(eventId);
+/** The Ask counts with Guests' card's own sentence (l10n, #33419), never a copy of it. */
+export function replyByAskCount(noReply: { guests: number; companions: number }): string {
+  const { guests, companions } = noReply;
 
-  return say.notRepliedLine(guests, companions);
+  return guestsSay.havent(guests + companions, guests, companions);
 }
 
 function dayAfter(date: string, days = 1): string {

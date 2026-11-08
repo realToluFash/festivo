@@ -3,10 +3,11 @@ import { describe, expect, it } from 'vitest';
 import { editOf, eventStateOf } from './EventsModel.ts';
 import { W, say } from './EventsWords.ts';
 import { replyByOf } from '../guests/GuestsSample.ts';
+import { type Counts, cardWords } from '../guests/GuestsModel.ts';
 import {
   closesAt,
   noReplyOf,
-  notRepliedLine,
+  replyByAskCount,
   previewsReplyBy,
   replyByAfterStart,
   replyByAsk,
@@ -100,6 +101,33 @@ describe('a start moved onto Reply by (pm, 8 Nov)', () => {
   });
 });
 
+describe('the Ask counts with the Guests card’s own sentence', () => {
+  const counts = (havent: number, noreply: number): Counts => ({
+    list: 0,
+    notyet: 0,
+    invited: 0,
+    coming: 0,
+    maybe: 0,
+    noreply,
+    held: 0,
+    notcoming: 0,
+    havent,
+    walkin: 0,
+  });
+
+  it.each([
+    [25, 21, 4, '25 haven’t replied (21 guests and 4 of their companions).'],
+    [1, 1, 0, '1 hasn’t replied.'],
+    [21, 21, 0, '21 haven’t replied.'],
+    [2, 1, 1, '2 haven’t replied (1 guest and 1 of their companions).'],
+  ])('gives %i/%i/%i as the card does', (all, guests, companions, words) => {
+    const card = cardWords(null, 'owner', counts(all, guests), false, 'en-US', null);
+
+    expect(card.line).toBe(words);
+    expect(replyByAskCount({ guests, companions })).toBe(card.line);
+  });
+});
+
 describe('the sample and the words', () => {
   it('gives only the wedding a date, and counts its 21 guests and 4 companions as the card does', () => {
     expect(replyByOf('evt-wed-4')).toBe('2026-11-04');
@@ -111,12 +139,9 @@ describe('the sample and the words', () => {
   it('asks a question, then counts as the card does (l10n, #33419)', () => {
     expect(say.closeSoonerTitle('Tue, Nov 3')).toBe('Close replies sooner, on Tue, Nov 3?');
     expect(W.closeNowTitle).toBe('Close replies now?');
-    expect(notRepliedLine('evt-wed-4')).toBe(
+    expect(replyByAskCount(noReplyOf('evt-wed-4'))).toBe(
       '25 haven’t replied (21 guests and 4 of their companions).',
     );
-    expect(say.notRepliedLine(21, 0)).toBe('21 haven’t replied.');
-    expect(say.notRepliedLine(1, 0)).toBe('1 hasn’t replied.');
-    expect(say.notRepliedLine(1, 1)).toBe('2 haven’t replied (1 guest and 1 of their companions).');
     expect(W.closeSoonerLine).toBe(
       'After that day they can’t reply, unless you let them change their reply.',
     );

@@ -30,7 +30,7 @@ import { type EditPart, type EventDemoState, folded, instantOf, wallOf } from '.
 import {
   CLOSES_AT,
   noReplyOf,
-  notRepliedLine,
+  replyByAskCount,
   previewsReplyBy,
   replyByAfterStart,
   replyByAsk,
@@ -303,7 +303,7 @@ function Labelled({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-const CHANGED = {
+export const CHANGED = {
   start: { date: '2026-11-04', time: '18:00' },
   end: { date: '2026-11-06', time: '15:00' },
 };
@@ -615,7 +615,7 @@ function ReplyByEdit(edit: EditProps) {
       : {
           title:
             asking === 'now' ? W.closeNowTitle : say.closeSoonerTitle(formatWallDay(next, locale)),
-          line: `${notRepliedLine(event.id)} ${asking === 'now' ? W.closeNowLine : W.closeSoonerLine}`,
+          line: `${replyByAskCount(noReplyOf(event.id))} ${asking === 'now' ? W.closeNowLine : W.closeSoonerLine}`,
           keep: { label: keep, testID: 'event.edit.replyBy.keep' },
           confirm: {
             label: asking === 'now' ? W.closeNow : W.closeSooner,

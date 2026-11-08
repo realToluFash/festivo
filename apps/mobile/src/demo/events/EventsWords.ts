@@ -277,14 +277,6 @@ export const say = {
   onGuestsPage: (sentence: string) => `On the guests’ page: “${sentence}”`,
   pleaseAnswerBy: (date: string) =>
     `Please answer by ${date}. You can change your answer any time before then.`,
-  havent: (count: number) => (count === 1 ? '1 hasn’t replied' : `${count} haven’t replied`),
-  guestsCount: (count: number) => (count === 1 ? '1 guest' : `${count} guests`),
-  companionsCount: (count: number) =>
-    count === 1 ? '1 of their companions' : `${count} of their companions`,
-  notRepliedLine: (guests: number, companions: number) =>
-    companions === 0
-      ? `${say.havent(guests)}.`
-      : `${say.havent(guests + companions)} (${say.guestsCount(guests)} and ${say.companionsCount(companions)}).`,
   closeSoonerTitle: (date: string) => `Close replies sooner, on ${date}?`,
   keepDate: (date: string) => `Keep ${date}`,
   replyByMoves: (old: string, next: string) =>
