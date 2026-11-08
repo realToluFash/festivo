@@ -85,6 +85,25 @@ describe('asking for a reset link', () => {
     expect(container.querySelector('.auth-header')?.textContent).toMatch(/Remembered it\?Sign in/);
   });
 
+  it('starts with the address typed on sign-in', async () => {
+    at('/sign-in');
+
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'folake@ire.events' } });
+    fireEvent.click(screen.getByRole('link', { name: 'Forgot your password?' }));
+
+    await screen.findByRole('heading', { level: 1, name: 'Reset your password' });
+    expect(screen.getByLabelText('Email')).toHaveProperty('value', 'folake@ire.events');
+  });
+
+  it('starts empty when sign-in had no address typed', async () => {
+    at('/sign-in');
+
+    fireEvent.click(screen.getByRole('link', { name: 'Forgot your password?' }));
+
+    await screen.findByRole('heading', { level: 1, name: 'Reset your password' });
+    expect(screen.getByLabelText('Email')).toHaveProperty('value', '');
+  });
+
   it('goes back to the page it was opened from with ‹ Back', async () => {
     at('/sign-in');
 

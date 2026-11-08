@@ -1147,6 +1147,18 @@ describe('changing the password', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Your account' })).toBeDefined();
   });
 
+  it('offers no Sign in on Reset your password to somebody already signed in', async () => {
+    answering({ 'GET /api/auth/sessions': () => json(SESSIONS) });
+    openSecurity();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Change password' }));
+    fireEvent.click(screen.getByRole('link', { name: 'Forgot it?' }));
+    await screen.findByRole('heading', { level: 1, name: 'Reset your password' });
+
+    expect(document.querySelector('.auth-header')?.textContent).not.toMatch(/Remembered it\?/);
+    expect(screen.queryByRole('link', { name: 'Sign in' })).toBeNull();
+  });
+
   it('takes focus to Change your password when it opens', () => {
     answering({ 'GET /api/auth/sessions': () => json(SESSIONS) });
     openSecurity();

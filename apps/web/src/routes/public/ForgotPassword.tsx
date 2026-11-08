@@ -12,6 +12,7 @@ import { emailMessage, useFormChecks } from '../../formChecks.ts';
 import { dateLocale } from '../../i18n/index.ts';
 import { useStepFocus } from '../../stepFocus.ts';
 import { offField } from '../../offField.ts';
+import { useSessionState } from '../../session.ts';
 
 type Status =
   | { kind: 'asking' }
@@ -26,8 +27,10 @@ export function ForgotPassword() {
   const navigate = useNavigate();
   const location = useLocation();
   const opened = location.key === 'default';
+  const carried = location.state as { email?: string } | null;
+  const signedIn = useSessionState().status === 'signedIn';
   const [status, setStatus] = useState<Status>({ kind: 'asking' });
-  const [typed, setTyped] = useState('');
+  const [typed, setTyped] = useState(carried?.email ?? '');
   const [sentHeading, arriveAtSent] = useStepFocus();
   const [refusedNotice, arriveAtRefused] = useStepFocus<HTMLDivElement>();
   const checks = useFormChecks(
@@ -117,7 +120,7 @@ export function ForgotPassword() {
   const refused = status.kind === 'limited' || status.kind === 'failed';
 
   return (
-    <AuthPage bare end={<HaveAccount question={t('recovery.remembered')} />}>
+    <AuthPage bare end={signedIn ? null : <HaveAccount question={t('recovery.remembered')} />}>
       <ColumnBack
         onClick={() => (opened ? void navigate('/sign-in', { replace: true }) : void navigate(-1))}
       />
