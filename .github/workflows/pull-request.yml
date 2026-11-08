@@ -348,7 +348,11 @@ jobs:
       # a developer's machine reports.
       - name: Generate typed routes
         working-directory: apps/mobile
-        run: npx expo customize tsconfig.json
+        # customize swallows a failed TypeScript bootstrap and exits 0, so
+        # check the types were written or the typecheck passes untyped routes.
+        run: |
+          npx expo customize tsconfig.json
+          test -f .expo/types/router.d.ts || { echo "::error::typed routes were not generated"; exit 1; }
       - run: npm run typecheck --workspace @soirely/mobile
       - run: npm run test --workspace @soirely/mobile
       # The web target, because it is the one a runner can build without a
