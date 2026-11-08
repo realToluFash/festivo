@@ -50,6 +50,15 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **8 Nov 2026. Su cuenta en la app** (sc-34175 para sc-30411, `mobile:account.*`,
+  `contacts.promoting`, `removing`). La sección es «Sobre usted». Las líneas de cada fila no
+  tienen sujeto, así que nada concuerda con dirección (f.) ni número (m.): «Principal · para
+  iniciar sesión», «Para contactar con usted, no para iniciar sesión», nunca «contactarle».
+  Lo que falta verificar abre con el verbo, «Falta verificar {{shown}}.», porque {{shown}}
+  puede ser una dirección o un número. La pregunta al salir es «¿Descartar el cambio?», con
+  «Seguir editando» / «Descartar», como `eventEdit` y `web:eventPeople`; debajo, «Su nombre
+  sigue siendo {{name}}.», «Su zona horaria sigue sin definir.», «No se añadirá nada.». Los
+  confirmes en curso son «Haciendo principal…», sin pronombre que concuerde, y «Quitando…».
 - **8 Nov 2026. El doble factor al iniciar sesión en la app** (sc-33828 para sc-29072,
   `mobile:twoFactor.signedIn`, `recoveryShape`, `lost`, `lostTwoFactor.waitingFor`,
   `stayOut`, `emailSoirely`). «Sesión iniciada», un estado, como `waysCard.signedInWith`. La
