@@ -42,6 +42,7 @@ import {
   sampleEvent,
 } from './EventsSample.ts';
 import { W, say } from './EventsWords.ts';
+import { replyByRow, replyBySaved, startReplyBy } from './ReplyBy.ts';
 import { useShell } from '../../components/settingsShell.ts';
 import { Row, RowList, Section, TextAction } from '../../components/Summary.tsx';
 import { type MessagesState, reduce, startOf } from '../messages/MessagesModel.ts';
@@ -149,7 +150,20 @@ export function EventScreen({
   const [mute, setMute] = useState<Mute>(
     state === 'muteNotLoaded' ? 'notLoaded' : state === 'muteNotSaved' ? 'notSaved' : 'ok',
   );
-  const [told, setTold] = useState<string | null>(state === 'saved' ? W.saved : null);
+  const [replyBy, setReplyBy] = useState<string | null>(() =>
+    state === 'replyBySaved'
+      ? '2026-11-03'
+      : state === 'replyByRemoved'
+        ? null
+        : startReplyBy(event.id),
+  );
+  const [told, setTold] = useState<string | null>(() =>
+    state === 'saved'
+      ? W.saved
+      : state === 'replyBySaved' || state === 'replyByRemoved'
+        ? replyBySaved(replyBy, event.timeZone, locale)
+        : null,
+  );
   const refs = useRef<Partial<Record<string, ViewInstance | null>>>({});
   const from = useRef('card');
   const opener = useMemo<RefObject<ScreenReaderTarget | null>>(
@@ -179,6 +193,11 @@ export function EventScreen({
       part === 'dates' || part === 'venue' ? tellChange(toldEvent, next, locale) : null;
     if (change != null && change.lines.length > 0)
       setTimeout(() => dispatch({ type: 'offerTell', change }), TELL_AFTER_MS);
+  };
+  const savedReplyBy = (date: string | null) => {
+    setReplyBy(date);
+    setEdit(null);
+    setTold(replyBySaved(date, event.timeZone, locale));
   };
   const deleteIt = () => {
     setAsk(null);
@@ -225,6 +244,7 @@ export function EventScreen({
   const details = (
     <Details
       shown={shown}
+      replyBy={replyBy}
       locale={locale}
       refFor={refFor}
       onEdit={openEdit}
@@ -410,6 +430,9 @@ export function EventScreen({
               opener={opener}
               onClose={() => setEdit(null)}
               onSaved={saved}
+              replyBy={replyBy}
+              now={now}
+              onReplyBy={savedReplyBy}
             />
           ) : null}
           <LifecycleAsk
@@ -450,12 +473,14 @@ type RefFor = (key: string) => (node: ViewInstance | null) => void;
 
 function Details({
   shown,
+  replyBy,
   locale,
   refFor,
   onEdit,
   onMaps,
 }: {
   shown: Shown;
+  replyBy: string | null;
   locale: string;
   refFor: RefFor;
   onEdit: (part: EditPart) => void;
@@ -464,6 +489,7 @@ function Details({
   const dates = datesRow(shown, locale);
   const hosts = hostsRow(shown, locale);
   const locked = scheduleLocked(shown);
+  const reply = replyByRow(replyBy, shown.timeZone, locale);
 
   return (
     <Section title={W.details}>
@@ -481,6 +507,21 @@ function Details({
                 opens={!locked}
                 onPress={locked ? undefined : () => onEdit('dates')}
                 testID="event.row.dates"
+              />
+            ),
+          },
+          {
+            key: 'replyBy',
+            inset: 40,
+            row: (
+              <Row
+                ref={refFor('replyBy')}
+                title={reply.title}
+                line={reply.line}
+                lead={<LineIcon name="clock" />}
+                opens={!locked}
+                onPress={locked ? undefined : () => onEdit('replyBy')}
+                testID="event.row.replyBy"
               />
             ),
           },

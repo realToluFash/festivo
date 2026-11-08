@@ -910,6 +910,41 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         what: 'The page again, with Saved',
         href: '/demo/events/evt-wed-4?state=saved',
       },
+      {
+        title: 'Reply by',
+        what: 'The date replies close (sc-3780)',
+        href: '/demo/events/evt-wed-4?state=replyBy',
+      },
+      {
+        title: 'Reply by · none yet',
+        what: 'Replies stay open until the start',
+        href: '/demo/events/evt-draft-4?state=replyByEmpty',
+      },
+      {
+        title: 'Reply by · on the day it starts',
+        what: 'Choose a date before the event starts',
+        href: '/demo/events/evt-wed-4?state=replyByError',
+      },
+      {
+        title: 'Reply by · sooner',
+        what: 'Close replies sooner?',
+        href: '/demo/events/evt-wed-4?state=replyBySooner',
+      },
+      {
+        title: 'Reply by · already past',
+        what: 'Close replies now?',
+        href: '/demo/events/evt-wed-4?state=replyByNow',
+      },
+      {
+        title: 'Reply by · saved',
+        what: 'The page again, with the new date',
+        href: '/demo/events/evt-wed-4?state=replyBySaved',
+      },
+      {
+        title: 'Reply by · removed',
+        what: 'Replies stay open until the start',
+        href: '/demo/events/evt-wed-4?state=replyByRemoved',
+      },
       { title: 'Venue', what: 'Name and address', href: '/demo/events/evt-wed-4?state=venue' },
       {
         title: 'Venue · suggestions',

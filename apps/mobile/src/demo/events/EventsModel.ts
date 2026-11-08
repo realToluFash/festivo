@@ -565,6 +565,13 @@ export const EVENT_STATES = [
   'changedElsewhere',
   'showLatest',
   'saved',
+  'replyBy',
+  'replyByEmpty',
+  'replyByError',
+  'replyBySooner',
+  'replyByNow',
+  'replyBySaved',
+  'replyByRemoved',
   'venue',
   'venueSuggestions',
   'venueZone',
@@ -608,7 +615,8 @@ export function clockOf(state: EventDemoState | null): Date {
   return new Date(CLOCKS.reader);
 }
 
-export type EditPart = 'dates' | 'venue' | 'hosts' | 'type' | 'currency' | 'name' | 'cover';
+export type EditPart =
+  'dates' | 'replyBy' | 'venue' | 'hosts' | 'type' | 'currency' | 'name' | 'cover';
 
 export function editOf(state: EventDemoState | null): EditPart | null {
   switch (state) {
@@ -619,6 +627,12 @@ export function editOf(state: EventDemoState | null): EditPart | null {
     case 'changedElsewhere':
     case 'showLatest':
       return 'dates';
+    case 'replyBy':
+    case 'replyByEmpty':
+    case 'replyByError':
+    case 'replyBySooner':
+    case 'replyByNow':
+      return 'replyBy';
     case 'venue':
     case 'venueSuggestions':
     case 'venueZone':
