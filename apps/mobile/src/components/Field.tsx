@@ -48,6 +48,7 @@ import { useFocusOnAnswer } from './Screen.tsx';
 import { moveScreenReaderFocus } from './screenReaderFocus.ts';
 import { capUnderTitle } from '../layout/textSize.ts';
 import { Text, type TextHandle, TitleCap } from './Text.tsx';
+import { UnseenName } from './UnseenName.tsx';
 import { useMarkSide } from './markSide.ts';
 
 /** 16 is the smallest size iOS Safari will not zoom into on focus. */
@@ -170,10 +171,8 @@ export function Field({
           </Pressable>
         )}
       </View>
-      {error != null && Platform.OS === 'android' && (
-        <Text nativeID={invalidNameID} importantForAccessibility="no" style={styles.unseen}>
-          {withInvalid(label, t('forms.invalid'))}
-        </Text>
+      {error != null && (
+        <UnseenName nativeID={invalidNameID}>{withInvalid(label, t('forms.invalid'))}</UnseenName>
       )}
       <FieldLabel value={{ labelID, line: error, invalidNameID }}>{children}</FieldLabel>
       {error != null && <FieldError message={error} actions={errorActions} answer={errorAnswer} />}
@@ -472,7 +471,6 @@ export const fieldStyles = StyleSheet.create({
 
 const styles = StyleSheet.create({
   field: { gap: tokens.spaceSm },
-  unseen: { position: 'absolute', opacity: 0 },
   labelRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: tokens.spaceSm },
   pill: {
     minHeight: tokens.sizePill,

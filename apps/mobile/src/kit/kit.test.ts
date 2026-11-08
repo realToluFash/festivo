@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { tokens } from '../theme/tokens.ts';
@@ -1012,5 +1015,27 @@ describe('a closing step puts the keys down through Gboard swapping them (sc-185
     vi.advanceTimersByTime(2000);
     expect(then).not.toHaveBeenCalled();
     expect(keys.heard.size).toBe(0);
+  });
+});
+
+describe('a field named on Android by words it never shows (sc-31323)', () => {
+  const src = join(import.meta.dirname, '..');
+  const named = ['components/Field.tsx', 'steps/InsideField.tsx', 'components/ListPicker.tsx'];
+
+  it.each(named)(
+    '%s names it through UnseenName, never through a Text kept out of the tree',
+    (path) => {
+      const code = readFileSync(join(src, path), 'utf8');
+
+      expect(code).toMatch(/<UnseenName nativeID=/u);
+      expect(code).not.toMatch(/<Text\s+nativeID=\{[^}]+\}\s+importantForAccessibility="no"/u);
+    },
+  );
+
+  it('keeps those words in the accessibility tree, as TalkBack reads no name from a view outside it', () => {
+    const code = readFileSync(join(src, 'components/UnseenName.tsx'), 'utf8');
+
+    expect(code).not.toMatch(/importantForAccessibility|accessibilityElementsHidden/u);
+    expect(code).toMatch(/opacity: 0/u);
   });
 });
