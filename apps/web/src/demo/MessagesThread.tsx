@@ -365,9 +365,9 @@ function GuestThread({
             {match == null ? (
               <li className="mg-match">
                 <p>
-                  {to.manage
-                    ? filled(MW.couldntMatch, { address: UNKNOWN.address })
-                    : TW.notMatchedYet}
+                  {filled(to.manage ? MW.couldntMatch : TW.notMatchedYet, {
+                    address: UNKNOWN.address,
+                  })}
                 </p>
                 {to.manage && (
                   <button
