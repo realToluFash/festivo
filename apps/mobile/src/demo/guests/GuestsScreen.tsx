@@ -40,26 +40,17 @@ import {
   EDIT_STATES,
   RECORD_STATES,
   REVIEW_STATES,
-  areaStart,
   cardWords,
   countsAt,
-  guestsAt,
-  startStateOf,
+  guestsOpening,
   groupRows,
   isIn,
   markedInvited,
-  roleOf,
   rowsOf,
 } from './GuestsModel.ts';
 import { GuestsFailed, GuestsLoading, GuestsRows } from './GuestsList.tsx';
 import { GuestToast, GuestsCard, GuestsTitle, type Layout } from './GuestsParts.tsx';
-import {
-  FROM_CONTACTS_ADDED,
-  type SampleGuest,
-  TODAY,
-  WEDDING,
-  replyByOf,
-} from './GuestsSample.ts';
+import { type SampleGuest, TODAY, WEDDING } from './GuestsSample.ts';
 import { W, say } from './GuestsWords.ts';
 
 const SEARCH_PAUSE_MS = 300;
@@ -101,13 +92,10 @@ export function GuestsScreen({
   const layout: Layout = shell.layout;
   const insets = useSafeAreaInsets();
   const locale = formattingLocale('en', getLocales()[0]?.languageTag);
-  const state = startStateOf(given, event.id);
-  const start = useMemo(() => areaStart(state), [state]);
-  const role = roleOf(state);
-  const [guests, setGuests] = useState(() => guestsAt(state));
-  const [added, setAdded] = useState(
-    start.added > 0 ? start.added - FROM_CONTACTS_ADDED.length : 0,
-  );
+  const opening = useMemo(() => guestsOpening(given, event.id, locale), [given, event.id, locale]);
+  const { state, start, role, replyBy } = opening;
+  const [guests, setGuests] = useState(opening.guests);
+  const [added, setAdded] = useState(opening.added);
   const [filter, setFilter] = useState<FilterKey>(filterFrom ?? start.filter);
   const [typed, setTyped] = useState(start.typed);
   const [searched, setSearched] = useState(start.typed);
@@ -149,7 +137,6 @@ export function GuestsScreen({
   const counts: Counts = countsAt(state, event.id, guests, added);
   const total = counts.list;
   const contacts = role === 'owner';
-  const replyBy = replyByOf(event.id);
   const owner = role === 'owner';
   const guest = guests.find((g) => g.key === open) ?? null;
   const looking = filter !== 'all' || searched.trim() !== '';

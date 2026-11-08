@@ -9,9 +9,7 @@ import {
   DOOR_STATES,
   GROUPS,
   GUESTS_ON,
-  countsAt,
-  guestsAt,
-  startStateOf,
+  guestsOpening,
   FILTERS,
   GUESTS_STATES,
   areaStart,
@@ -316,12 +314,7 @@ describe('a split family (sc-3773, ux, 8 Nov): each group shows the people it co
 });
 
 describe('Events, then an event, then Guests, with no ?state= (the lead on #1463)', () => {
-  const open = (event: string) => {
-    const state = startStateOf(null, event);
-    const guests = guestsAt(state);
-    const counts = countsAt(state, event, guests, 0);
-    return { state, guests, card: cardWords(state, 'owner', counts, false, EN, replyByOf(event)) };
-  };
+  const open = (event: string) => guestsOpening(null, event, EN);
 
   it('opens each event the sample names on its own guests, card and step', () => {
     expect(GUESTS_ON).toEqual(['evt-wed-4', 'evt-draft-4', 'evt-party-2']);
@@ -354,6 +347,11 @@ describe('Events, then an event, then Guests, with no ?state= (the lead on #1463
       step: 'makeLive',
     });
     for (const one of [party, draft]) expect(one.card.line).not.toContain('Replies close');
+  });
+
+  it('is where the screen starts, from the event it is opened on', () => {
+    const screen = readFileSync(join('src', 'demo', 'guests', 'GuestsScreen.tsx'), 'utf8');
+    expect(screen).toMatch(/guestsOpening\(given, event\.id, locale\)/u);
   });
 
   it('leaves the Reply by sentence out when the event has none', () => {

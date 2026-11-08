@@ -20,6 +20,7 @@ import {
   type Companion,
   type SampleGuest,
   WEDDING,
+  replyByOf,
 } from './GuestsSample.ts';
 import { REPLY_WORD, type ReplyKind, W, say } from './GuestsWords.ts';
 
@@ -177,9 +178,16 @@ export function roleOf(state: GuestsState | null): Role {
   return 'owner';
 }
 
+/** The states that open on an event's own sample, and that event: the one table they all read. */
+const OWN_SAMPLE = { draft: 'evt-draft-4', paused: 'evt-party-2' } as const;
+type OwnState = keyof typeof OWN_SAMPLE;
+
+function ownStateOf(event: string): OwnState | null {
+  return (Object.keys(OWN_SAMPLE) as OwnState[]).find((key) => OWN_SAMPLE[key] === event) ?? null;
+}
+
 export function eventOf(state: GuestsState | null): string {
-  if (state === 'draft') return 'evt-draft-4';
-  if (state === 'paused') return 'evt-party-2';
+  if (state === 'draft' || state === 'paused') return OWN_SAMPLE[state];
   if (state === 'roomLeft' || state === 'overLimit' || state === 'limitRefused') return PLAN.ireti;
   return WEDDING;
 }
@@ -719,7 +727,6 @@ export function doorPeople(): DoorPerson[] {
   return out;
 }
 
-/** "okon fola" finds Chief Mrs Folasade Okonkwo-Williams: each word typed starts a word of the name, in any order. */
 export function doorMatches(name: string, typed: string): boolean {
   const wanted = folded(typed.trim()).split(/\s+/u).filter(Boolean);
   if (wanted.length === 0) return true;
@@ -740,13 +747,10 @@ export function counted(kind: DoorPerson['kind']): boolean {
   return kind === 'coming';
 }
 
-export const GUESTS_ON: readonly string[] = [WEDDING, 'evt-draft-4', 'evt-party-2'];
+export const GUESTS_ON: readonly string[] = [WEDDING, ...Object.values(OWN_SAMPLE)];
 
-/** With no ?state=, the event decides: a Draft opens as `draft`, the Paused party as `paused`. */
 export function startStateOf(state: GuestsState | null, event: string): GuestsState | null {
-  if (state != null) return state;
-  if (event === 'evt-draft-4') return 'draft';
-  return event === 'evt-party-2' ? 'paused' : null;
+  return state ?? ownStateOf(event);
 }
 
 /** The paused party's split is the demo's: the boards give only 20 coming of 45 invited, 48 on the list. */
@@ -804,9 +808,22 @@ export function countsAt(
   guests: readonly SampleGuest[],
   added: number,
 ): Counts {
-  if (event === 'evt-draft-4') return DRAFT;
-  if (event === 'evt-party-2') return PAUSED;
+  const own = ownStateOf(event);
+  if (own != null) return own === 'draft' ? DRAFT : PAUSED;
   return state === 'first' ? countsFrom(guests) : countsOf(guests, added);
+}
+
+/** Guests as it opens on an event: the state, the list, the counts and the card, all from the event when the URL gives no state. */
+export function guestsOpening(given: GuestsState | null, event: string, locale: string) {
+  const state = startStateOf(given, event);
+  const start = areaStart(state);
+  const role = roleOf(state);
+  const guests = guestsAt(state);
+  const added = start.added > 0 ? start.added - FROM_CONTACTS_ADDED.length : 0;
+  const replyBy = replyByOf(event);
+  const counts = countsAt(state, event, guests, added);
+  const card = cardWords(state, role, counts, start.empty, locale, replyBy);
+  return { state, start, role, guests, added, replyBy, counts, card };
 }
 
 export type Overlay =
