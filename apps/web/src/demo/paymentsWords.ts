@@ -1,3 +1,9 @@
+const PLURAL = new Intl.PluralRules('en');
+
+function byCount(count: number, one: string, other: string): string {
+  return PLURAL.select(count) === 'one' ? one : other;
+}
+
 /** sc-88's payments on a vendor's page, sc-1332's shapes and sc-95's reminder setting, in A (budget-a-spec.md §8): [en]'s words and the boards'. */
 export const PW = {
   cancelPayment: 'Cancel payment',
@@ -43,8 +49,10 @@ export const PW = {
   balance: 'Balance',
   inFull: 'Payment in full',
   onTheDateQuoted: 'on the date quoted',
-  daysBefore: (days: number) => `${days} days before the event`,
-  daysAfter: (days: number) => `${days} days after the event`,
+  daysBefore: (days: number) =>
+    byCount(days, '1 day before the event', `${days} days before the event`),
+  daysAfter: (days: number) =>
+    byCount(days, '1 day after the event', `${days} days after the event`),
   shapeLine: (share: string, when: string, day: string, clamped: boolean) =>
     clamped ? `${share} · ${when} · Set to the date quoted, ${day}` : `${share} · ${when} · ${day}`,
   eachRowSaved: 'Each row is saved as an ordinary payment; change any of them after saving.',
@@ -66,7 +74,7 @@ export const PW = {
     'Payments were added to this vendor’s schedule while you were filling this in, so none of yours were saved. Check the payments it has now before adding more.',
   paymentReminders: 'Payment reminders',
   whenReminded: (days: number) =>
-    `${days === 1 ? '1 day' : `${days} days`} before a payment is due, and once the day after, then silence.`,
+    `${byCount(days, '1 day', `${days} days`)} before a payment is due, and once the day after, then silence.`,
   change: 'Change',
   whoHears: 'Who hears',
   whoHearsLine: 'The organisation’s owners and admins, and each event’s lead.',

@@ -32,6 +32,7 @@ import {
   toMark,
   typedDifference,
 } from './payments.ts';
+import { PW } from './paymentsWords.ts';
 import { draftToMark, markProblems, quotesStart, sampleBudget } from './quotes.ts';
 
 const SPEC_NAMES = [
@@ -261,6 +262,14 @@ describe('payments on a vendor’s page, shapes and reminders, in A (sc-88, sc-1
 
     const odd = shapeRows(SHAPE_TERMS.deposit, { amount: 100001, quotedOn: '2026-10-13' }, WEDDING);
     expect(odd.map((row) => row.amount)).toEqual([50001, 50000]);
+  });
+
+  it('says a row’s days in their plural family, one day included', () => {
+    expect(PW.daysBefore(1)).toBe('1 day before the event');
+    expect(PW.daysBefore(30)).toBe('30 days before the event');
+    expect(PW.daysAfter(1)).toBe('1 day after the event');
+    expect(PW.daysAfter(14)).toBe('14 days after the event');
+    expect(PW.whenReminded(1)).toMatch(/^1 day before a payment is due/u);
   });
 
   it('takes a percentage from 0 to 100 with two decimals, and days from 0 to 730', () => {
