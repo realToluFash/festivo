@@ -35,6 +35,7 @@ export function TwoFactorStep({
   failedTitle,
   failedBody,
   onVerify,
+  onPassed,
   onExpired,
   onOtherWay,
   onLostBoth,
@@ -46,6 +47,7 @@ export function TwoFactorStep({
   failedBody: string;
   /** Where the account goes once the code is taken. */
   onVerify: (factor: SecondFactor) => Promise<Href>;
+  onPassed: (next: Href) => void;
   onExpired: () => void;
   /** The authenticator from a recovery code, a recovery code from the authenticator. */
   onOtherWay: () => void;
@@ -94,7 +96,7 @@ export function TwoFactorStep({
     try {
       const next = await onVerify(recovery ? { recoveryCode: typed } : { code: typed });
       setStatus({ kind: 'verified' });
-      setTimeout(() => router.replace(next), NEXT_STEP_MS);
+      setTimeout(() => onPassed(next), NEXT_STEP_MS);
     } catch (error) {
       const refusal = codeRefusal(error, mode);
 
@@ -202,7 +204,6 @@ export function TwoFactorStep({
               autoCapitalize="none"
               autoComplete="off"
               autoCorrect={false}
-              maxLength={9}
               returnKeyType="go"
               submitBehavior="submit"
               onSubmitEditing={() => void submit(code)}

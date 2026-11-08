@@ -27,9 +27,14 @@ export function SignInSecondFactor({ recovery = false }: { recovery?: boolean })
       onVerify={async (factor) =>
         nextAfterSignIn(codePassed(await api.verifyTwoFactor(challenge.challenge, factor)))
       }
+      onPassed={(next) => {
+        // Enter a recovery code sits on Enter your code, and neither is left under the account.
+        if (recovery && router.canDismiss()) router.dismiss();
+        router.replace(next);
+      }}
       onExpired={() => router.replace(timedOutSignIn(challenge.email))}
       onOtherWay={() => (recovery ? back() : router.push('/sign-in-recovery'))}
-      onLostBoth={() => router.push(`/lost-two-factor?from=${recovery ? 'recovery' : 'app'}`)}
+      onLostBoth={() => router.push('/lost-two-factor')}
       onBack={back}
     />
   );

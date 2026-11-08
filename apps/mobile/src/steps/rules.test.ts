@@ -42,6 +42,12 @@ describe('a recovery code takes the shape it was saved in', () => {
     expect(shapeRecovery('vtxp rh7y extra')).toBe('vtxp-rh7y');
   });
 
+  it('keeps a pasted code whole, whatever came with it', () => {
+    expect(shapeRecovery('vtxp--rh7y')).toBe('vtxp-rh7y');
+    expect(shapeRecovery(' vtxp-rh7y')).toBe('vtxp-rh7y');
+    expect(shapeRecovery('  VTXP - RH7Y \n')).toBe('vtxp-rh7y');
+  });
+
   it('lets a dash be deleted with the character before it', () => {
     expect(shapeRecovery('vtxp-')).toBe('vtxp');
   });

@@ -205,14 +205,14 @@ export default function LostTwoFactor() {
   }
 }
 
-/** Opened from Enter your code, so Back and the system's back return to it as it was left (sc-23279); opened cold, there is nothing to go back to. */
+/** Opened from Enter your code, so Back and the system's back return to it as it was left (sc-23279); opened cold, there is nothing to go back to, and Close leaves for sign-in. */
 function BackToCode({ step }: { step?: readonly [number, number] }) {
   const canGoBack = router.canGoBack();
 
   return (
     <NavBar
-      left={canGoBack ? 'back' : null}
-      onLeft={() => router.back()}
+      left={canGoBack ? 'back' : 'close'}
+      onLeft={() => (canGoBack ? router.back() : toSignIn())}
       {...(step != null && { step })}
       testID="lostTwoFactor"
     />
