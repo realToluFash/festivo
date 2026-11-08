@@ -317,6 +317,36 @@ describe('the guest counts on Events (sc-23284)', () => {
     expect(within(tiles).getByText('0 haven’t replied')).toBeDefined();
   });
 
+  it('asks a role without Create events to ask an owner', SLOW, async () => {
+    await list('/demo/events?state=firstAsk');
+
+    expect(within(main()).getByText(/Ask an owner if you need to create one/)).toBeDefined();
+    expect(within(main()).queryByRole('button', { name: 'Create an event' })).toBeNull();
+    expect(within(main()).queryByRole('button', { name: 'New event' })).toBeNull();
+    expect(within(side()).getByRole('button', { name: 'Ana Souza, Member' })).toBeDefined();
+  });
+
+  it('empties the sidebar’s upcoming events with the Upcoming tab', SLOW, async () => {
+    await list('/demo/events?state=emptyUpcoming');
+
+    for (const name of [WEDDING, 'Ireti at 40', 'Ire Events end-of-year party']) {
+      expect(within(side()).queryByRole('link', { name })).toBeNull();
+    }
+    expect(within(side()).getByRole('link', { name: 'Bisi & Kola’s engagement' })).toBeDefined();
+  });
+
+  it.each([
+    ['emptyUpcoming', 'Nothing coming up'],
+    ['emptyDrafts', 'No drafts'],
+    ['emptyPast', 'Nothing finished yet'],
+  ])('draws %s with its title and line, and no footer', SLOW, async (state, title) => {
+    await list(`/demo/events?state=${state}`);
+
+    expect(within(main()).getByRole('heading', { level: 2, name: title })).toBeDefined();
+    expect(within(main()).queryByText(/Sorted by date/)).toBeNull();
+    expect(within(main()).getByRole('button', { name: 'New event' })).toBeDefined();
+  });
+
   it('has no counts on a first run', SLOW, async () => {
     await list('/demo/events?state=first');
 
