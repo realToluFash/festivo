@@ -61,6 +61,9 @@ export interface Companion {
   id: string;
   name: string | null;
   reply: Reply;
+  /** Their seat and meal pick (epics 31, 32): removing them says what goes first (sc-3773). */
+  table?: string;
+  meal?: boolean;
 }
 
 /** sc-3790: a guest's language, en, es, fr or pt; null is Not set. The host's and the guest's own are the AC, not yet built. */
@@ -304,7 +307,11 @@ function wedding(): Guest[] {
     guest('ines', 'Inês Duarte', 'coming', {
       replied: '2026-10-13',
       email: 'ines.duarte@sapo.pt',
-      companions: companions('ines', ['Rui Duarte'], 'coming'),
+      companions: companions('ines', ['Rui Duarte'], 'coming').map((one) => ({
+        ...one,
+        table: 'Table 4',
+        meal: true,
+      })),
       language: 'es',
       chose: 'pt',
     }),
@@ -841,6 +848,20 @@ function placeReply(host: Reply): Reply {
   return host;
 }
 
+export interface Seated {
+  table: string | null;
+  meal: boolean;
+}
+
+/** The seat and meal a companion would lose, or null when removing them takes nothing (sc-3773). */
+export function seatedOf(guest: Guest, companionId: string | null): Seated | null {
+  const one = guest.companions.find((each) => each.id === companionId);
+
+  if (one == null || (one.table == null && one.meal !== true)) return null;
+
+  return { table: one.table ?? null, meal: one.meal === true };
+}
+
 export function saveGuest(list: readonly Guest[], id: string, values: Values): Guest[] {
   return list.map((one) => {
     if (one.id !== id) return one;
@@ -848,6 +869,7 @@ export function saveGuest(list: readonly Guest[], id: string, values: Values): G
       const was = one.companions.find((each) => each.id === companion.id);
 
       return {
+        ...was,
         id: was?.id ?? `${id}-n${index + 1}`,
         name: companion.name.trim() === '' ? null : companion.name.trim(),
         reply: was?.reply ?? placeReply(one.reply),
@@ -1078,6 +1100,8 @@ export interface EditStart {
   discard?: boolean;
   removed?: string;
   at?: string;
+  /** A seated companion's Remove pressed: the Ask is open for them. */
+  removing?: string;
 }
 
 export interface RecordStart {
@@ -1174,6 +1198,7 @@ export const GUESTS_STATES = [
   { key: 'editDuplicate', name: 'The name is already on the list' },
   { key: 'editCompanions', name: 'Companions: named, one removed' },
   { key: 'editMax', name: 'Ten companions, the most' },
+  { key: 'editSeated', name: 'Removing a companion with a seat and a meal' },
   { key: 'editDiscard', name: 'Cancel with a change' },
   { key: 'edit412', name: 'A colleague’s change (412)' },
   { key: 'editNotSaved', name: 'Save failed' },
@@ -1340,6 +1365,8 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
           ],
         },
       });
+    case 'editSeated':
+      return { ...edit('ines', { removing: 'ines-c1' }), choice: 'coming' };
     case 'editDiscard':
       return edit('kwame', { values: { email: 'kwame@mensah.co.uk' }, discard: true });
     case 'edit412':
@@ -1503,6 +1530,7 @@ export const GUESTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     'editDuplicate',
     'editCompanions',
     'editMax',
+    'editSeated',
     'editDiscard',
     'edit412',
     'editNotSaved',

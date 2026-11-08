@@ -45,6 +45,13 @@ function item(name: RegExp): HTMLElement {
   return found[0]!;
 }
 
+/** A press on the room that takes the focus out of a field first, as a browser's does. */
+function tapAway(target: Element): void {
+  fireEvent.pointerDown(target, { button: 0, pointerId: 1, clientX: 100, clientY: 100 });
+  (document.activeElement as HTMLElement | null)?.blur();
+  fireEvent.pointerUp(window, { button: 0, pointerId: 1, clientX: 100, clientY: 100 });
+}
+
 /** A press and a release in the same place: what a click on the room is. */
 function press(target: Element, options: { shiftKey?: boolean } = {}): void {
   fireEvent.pointerDown(target, {
@@ -218,6 +225,11 @@ describe('the plan and the room (sc-3998, sc-4007)', () => {
 
       const start = within(panel()).getByRole('button', { name: 'Start the plan' });
 
+      expect(
+        within(panel()).getByText(
+          'At The Landmark, London. Sizes are in metres, the units used where Ire Events is based.',
+        ),
+      ).toBeDefined();
       fireEvent.click(start);
       expect(within(panel()).getByText('Enter the room’s width.')).toBeDefined();
       expect(within(panel()).getByText('Enter the room’s length.')).toBeDefined();
@@ -240,7 +252,10 @@ describe('the plan and the room (sc-3998, sc-4007)', () => {
 
   it('loads, fails and tries again', SLOW, async () => {
     await seating('failed');
-    expect(screen.getByRole('heading', { name: 'Couldn’t load the seating plan.' })).toBeDefined();
+    expect(screen.getByRole('heading', { name: 'Could not load the seating plan.' })).toBeDefined();
+    expect(
+      screen.getByText('Check your connection and try again. Nothing on the plan has changed.'),
+    ).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
     expect(screen.getByRole('img', { name: 'Loading the seating plan' })).toBeDefined();
     expect(
@@ -254,7 +269,7 @@ describe('the plan and the room (sc-3998, sc-4007)', () => {
     async () => {
       await seating('readOnly');
       expect(
-        within(panel()).getByText('You can see and print this plan, not change it.'),
+        within(panel()).getByText('You can view and print this plan, but not change it.'),
       ).toBeDefined();
       expect(screen.queryByRole('button', { name: /Add table/u })).toBeNull();
       expect(within(panel()).queryByRole('button', { name: 'Room settings' })).toBeNull();
@@ -298,7 +313,7 @@ describe('Room settings and sections (sc-3998)', () => {
     const ask = screen.getByRole('alertdialog', { name: 'Delete the plan?' });
 
     expect(ask.textContent).toContain(
-      '13 tables, 1 row and 2 single seats go. Everyone seated goes back to Without a seat; the guest list is not touched.',
+      'This also deletes 3 sections, 13 tables, 1 row and 2 single seats. 85 seated guests move to Without a seat; the guest list does not change.',
     );
     fireEvent.click(within(ask).getByRole('button', { name: 'Delete the plan' }));
     expect(await screen.findByText('No seating plan yet')).toBeDefined();
@@ -319,6 +334,7 @@ describe('Room settings and sections (sc-3998)', () => {
     press(item(/^Table 4,/u));
     key(item(/^Table 4,/u), 'Escape');
     fireEvent.click(within(panel()).getByRole('button', { name: 'Room settings' }));
+    expect(within(panel()).getByText('Type 12′ 4″, 12 ft 4 in, 12.5 ft or 148 in.')).toBeDefined();
     typeIn('Width', '5');
     expect(await within(panel()).findByText('Use 7 to 1,640 ft.')).toBeDefined();
     fireEvent.click(within(panel()).getByRole('button', { name: 'Delete the plan' }));
@@ -327,14 +343,21 @@ describe('Room settings and sections (sc-3998)', () => {
     );
     fireEvent.click(await screen.findByRole('button', { name: 'Start the plan' }));
     expect(
-      within(panel()).getByText('At The Landmark, London. In feet. Change it in Room settings.'),
+      within(panel()).getByText(
+        'At The Landmark, London. Sizes are in feet and inches, the units used where Ire Events is based.',
+      ),
     ).toBeDefined();
+    expect(within(panel()).getByText('Type 12′ 4″, 12 ft 4 in, 12.5 ft or 148 in.')).toBeDefined();
+    fireEvent.change(within(panel()).getByLabelText('Width'), { target: { value: '80' } });
+    fireEvent.change(within(panel()).getByLabelText('Length'), { target: { value: '59′ 1″' } });
+    fireEvent.click(within(panel()).getByRole('button', { name: 'Start the plan' }));
+    expect(await within(panel()).findByText('Main hall · 80 ft × 59 ft 1 in')).toBeDefined();
   });
 
   it('says a colleague’s change came first', SLOW, async () => {
     await seating('roomChanged');
     expect(
-      within(panel()).getByText('Priya Shah just changed this. Your change wasn’t saved.'),
+      within(panel()).getByText('Priya Shah just changed this. Your change was not saved.'),
     ).toBeDefined();
   });
 
@@ -443,6 +466,49 @@ describe('tables, rows and seats (sc-4000, sc-4003)', () => {
     },
   );
 
+  it(
+    'keeps a refused size beside its field on the first tap away, and drops it on the second',
+    SLOW,
+    async () => {
+      await seating('tapChooses');
+      const diameter = within(panel()).getByLabelText('Diameter');
+
+      diameter.focus();
+      fireEvent.change(diameter, { target: { value: 'wide' } });
+      tapAway(room());
+      expect(await within(panel()).findByText('Use 30 cm or more.')).toBeDefined();
+      expect(within(panel()).getByRole('heading', { name: 'Table 4' })).toBeDefined();
+      await vi.waitFor(() => expect(document.activeElement).toBe(diameter));
+      fireEvent.change(diameter, { target: { value: '20' } });
+      tapAway(item(/^Table 8,/u));
+      expect(within(panel()).getByRole('heading', { name: 'Table 8' })).toBeDefined();
+      press(item(/^Table 4,/u));
+      expect(within(panel()).getByLabelText('Diameter')).toHaveProperty('value', '180');
+    },
+  );
+
+  it('keeps Table 4 chosen when a refused size is left by a press on Table 8', SLOW, async () => {
+    await seating('tapChooses');
+    const diameter = within(panel()).getByLabelText('Diameter');
+
+    diameter.focus();
+    fireEvent.change(diameter, { target: { value: 'wide' } });
+    tapAway(item(/^Table 8,/u));
+    expect(await within(panel()).findByText('Use 30 cm or more.')).toBeDefined();
+    expect(within(panel()).getByRole('heading', { name: 'Table 4' })).toBeDefined();
+    await vi.waitFor(() => expect(document.activeElement).toBe(diameter));
+  });
+
+  it('refuses a size under a foot, or one it can’t read, on a plan in feet', SLOW, async () => {
+    await seating('usCustomary');
+    typeIn('Diameter', '11 in');
+    expect(await within(panel()).findByText('Use 1 ft or more.')).toBeDefined();
+    typeIn('Diameter', 'wide');
+    expect(
+      await within(panel()).findAllByText('Type 12′ 4″, 12 ft 4 in, 12.5 ft or 148 in.'),
+    ).toHaveLength(2);
+  });
+
   it('resets the size on a shape change, and warns when the seats are tight', SLOW, async () => {
     await seating('tapChooses');
     fireEvent.change(within(panel()).getByLabelText('Shape'), { target: { value: 'rect' } });
@@ -525,7 +591,7 @@ describe('tables, rows and seats (sc-4000, sc-4003)', () => {
   it('says a colleague changed the table first (412)', SLOW, async () => {
     await seating('tableChanged');
     expect(
-      within(panel()).getByText('Priya Shah just changed this table. Your change wasn’t saved.'),
+      within(panel()).getByText('Priya Shah just changed this table. Your change was not saved.'),
     ).toBeDefined();
     expect(
       item(/^Table 7, round, 8 of 10 seats taken, Garden side, chosen by Priya Shah$/u),
@@ -620,7 +686,7 @@ describe('moving without dragging, and the save line (sc-5028, WCAG 2.2 SC 2.5.7
   it('refuses a step of three whole when a colleague moved one first', SLOW, async () => {
     await seating('stepRefused');
     expect(
-      screen.getByText('Priya Shah just moved Table 7. Your change wasn’t saved.'),
+      screen.getByText('Priya Shah just moved Table 7. Your change was not saved.'),
     ).toBeDefined();
     expect(within(panel()).getByRole('heading', { name: '3 chosen' })).toBeDefined();
   });
@@ -675,7 +741,7 @@ describe('who else is here (sc-4719)', () => {
     expect(within(panel()).getByText(/^Priya Shah has chosen this too\./u)).toBeDefined();
     typeIn('Across', '9');
     expect(
-      await screen.findByText('Priya Shah just moved Table 7. Your change wasn’t saved.'),
+      await screen.findByText('Priya Shah just moved Table 7. Your change was not saved.'),
     ).toBeDefined();
     expect(within(panel()).getByLabelText('Down')).toHaveProperty('value', '11.20 m');
   });
@@ -851,7 +917,7 @@ describe('Print and its paper (sc-4024, sc-5032)', () => {
     await seating('printReadOnly');
     expect(
       within(screen.getByRole('dialog', { name: 'Print' })).getByText(
-        'You can see and print this plan, not change it.',
+        'You can view and print this plan, but not change it.',
       ),
     ).toBeDefined();
   });
