@@ -65,9 +65,23 @@ export const MESSAGE_STATES = [
   { key: 'noSubject', name: 'No subject' },
   { key: 'followUp', name: 'A follow-up' },
   { key: 'tellPlace', name: 'Tell guests, a new place' },
+  { key: 'closedDraft', name: 'New unavailable, a draft' },
+  { key: 'closedEnded', name: 'New unavailable, finished over 30 days ago' },
 ] as const;
 
 export type MessagesState = (typeof MESSAGE_STATES)[number]['key'];
+
+/** Why nothing can be sent on an event that can't send (sc-3942, Decided 8 Nov), one sentence per reason, the app's too. */
+export function closedOf(state: MessagesState | null): string | null {
+  switch (state) {
+    case 'closedDraft':
+      return MW.closedDraft;
+    case 'closedEnded':
+      return MW.closedEnded;
+    default:
+      return null;
+  }
+}
 
 export function messagesStateOf(raw: string | null): MessagesState | null {
   return MESSAGE_STATES.find((one) => one.key === raw)?.key ?? null;
@@ -1350,7 +1364,10 @@ export function seedOf(state: MessagesState | null): Inbox {
 
   switch (state) {
     case 'first':
+    case 'closedDraft':
       return { ...base, present: [] };
+    case 'closedEnded':
+      return { ...base, present: ALL.filter((id) => id !== 'sched'), scheds: [] };
     case 'loading':
       return { ...base, loading: true };
     case 'conversation':

@@ -10,6 +10,7 @@ import {
   useState,
 } from 'react';
 
+import { offButton } from '../offButton.ts';
 import { ADD_WORDS } from './account.ts';
 import { Glyph } from '../components/Glyph.tsx';
 import {
@@ -65,7 +66,7 @@ export function ReachedView({
   thread: ConvoId;
   state: MessagesState | null;
 }) {
-  const { inbox, act, focus, tell } = useInbox();
+  const { inbox, act, focus, tell, whyOff } = useInbox();
   const [fixing, setFixing] = useState<Fixing | null>(
     state === 'fix' && of === 'parking'
       ? { id: 'tomas', fix: 'fixEmail', typed: NEW_ADDRESS }
@@ -225,6 +226,8 @@ export function ReachedView({
           type="button"
           className="button button-primary mg-resend"
           data-focus="resend"
+          aria-describedby={whyOff}
+          {...offButton(whyOff != null)}
           onClick={() => {
             act({ kind: 'open', id: thread });
             act({ kind: 'resend', resend: TICKS });
@@ -372,6 +375,7 @@ function Person({
   onAgain: () => void;
   onUndo: () => void;
 }) {
+  const { whyOff } = useInbox();
   const lines = fixing?.fix === 'fixEmail' ? person.lines.slice(0, 1) : person.lines;
 
   return (
@@ -413,7 +417,9 @@ function Person({
               type="button"
               className="button button-primary mg-again"
               data-focus="again"
+              aria-describedby={whyOff}
               onClick={onAgain}
+              {...offButton(whyOff != null)}
             >
               <Glyph name="send" size={17} weight={2.4} />
               {filled(MW.sendAgain, { name: person.name })}

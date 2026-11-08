@@ -11,8 +11,16 @@ import { LineIcon } from '../settings/AccountCard.tsx';
 import { Pill } from '../../components/SettingsParts.tsx';
 import { Row, RowList, TextAction } from '../../components/Summary.tsx';
 import { type Role, dayWords, invitedWords, replyLine, replyParts } from './GuestsModel.ts';
+import { ChoseNote } from './GuestLanguage.tsx';
 import { BlockHead, DoneLine, GuestCover, type Layout } from './GuestsParts.tsx';
-import { COLLEAGUE, READER, type SampleGuest, TODAY } from './GuestsSample.ts';
+import {
+  COLLEAGUE,
+  ORGANISATION_LANGUAGE,
+  READER,
+  type SampleGuest,
+  TODAY,
+  languageName,
+} from './GuestsSample.ts';
 import { REPLY_WORD, W, say } from './GuestsWords.ts';
 import { MarkSlot } from './ReplyMark.tsx';
 
@@ -171,6 +179,7 @@ export function GuestPage({
                       inset: 40,
                       row: <ValueRow value={g.phone} label={W.mobileNumber} icon="phone" />,
                     },
+                    { key: 'language', inset: 40, row: <LanguageRow g={g} /> },
                   ]
                 : []),
               ...g.companions.map((c, index) => ({
@@ -317,6 +326,30 @@ function ValueRow({
   );
 }
 
+/** sc-3790: the host's Language, or what Not set falls back to in Ink 2 as None is; the guest's own choice under it. */
+function LanguageRow({ g }: { g: SampleGuest }) {
+  const name = languageName(g.language);
+  const title = name ?? say.notSetLine(languageName(ORGANISATION_LANGUAGE) ?? '');
+
+  return (
+    <View>
+      <Row
+        title={title}
+        line={W.language}
+        lead={<LineIcon name="globe" />}
+        weight={name == null ? 'medium' : 'semibold'}
+        off={name == null}
+        accessibilityLabel={`${W.language}, ${title}`}
+      />
+      {g.chose != null && (
+        <View style={styles.chose}>
+          <ChoseNote chose={g.chose} />
+        </View>
+      )}
+    </View>
+  );
+}
+
 function GuestLoading() {
   useReadOut(W.loading);
 
@@ -364,6 +397,7 @@ function NotFound({ onBack }: { onBack: () => void }) {
 
 const styles = StyleSheet.create({
   blocks: { gap: 18 },
+  chose: { paddingLeft: 40, paddingBottom: 12 },
   secondary: { color: tokens.colorInkSecondary },
   lines: { lineHeight: 15 * 1.45 },
   sunkCard: { height: 190, borderRadius: 26, backgroundColor: tokens.colorNeutralFill },

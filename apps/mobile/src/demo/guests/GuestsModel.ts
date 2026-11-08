@@ -18,6 +18,7 @@ import {
   TODAY,
   WALK_IN,
   type Companion,
+  type GuestLanguage,
   type SampleGuest,
   WEDDING,
   replyByOf,
@@ -65,6 +66,9 @@ export const GUEST_STATES = [
   'markRefused',
   'marked',
   'markNotSaved',
+  'languageNotSet',
+  'languageSet',
+  'languageGuestChose',
 ] as const;
 
 export const EDIT_STATES = [
@@ -77,6 +81,7 @@ export const EDIT_STATES = [
   'edit412',
   'editNotSaved',
   'editOffline',
+  'languageEdit',
 ] as const;
 
 export const RECORD_STATES = [
@@ -97,6 +102,7 @@ export const ADD_STATES = [
   'picker',
   'androidPick',
   'androidRefused',
+  'languageAdd',
 ] as const;
 
 export const REVIEW_STATES = [
@@ -614,6 +620,32 @@ export function phoneCheck(typed: string, country: string): string | null {
   return null;
 }
 
+/** A guest typed on Add guest: Not yet invited, with the Language the host chose (sc-3790). */
+export function addedGuest(
+  key: string,
+  typed: {
+    name: string;
+    email: string;
+    phone: string | null;
+    language: GuestLanguage | null;
+    companions: readonly string[];
+  },
+): SampleGuest {
+  return {
+    key,
+    name: typed.name.trim(),
+    kind: 'notyet',
+    when: null,
+    email: typed.email.trim() === '' ? null : typed.email.trim(),
+    phone: typed.phone,
+    language: typed.language,
+    companions: typed.companions
+      .filter((c) => c.trim() !== '')
+      .map((c) => ({ name: c.trim(), kind: 'notyet' })),
+    invited: null,
+  };
+}
+
 export function sameNameAs(
   guests: readonly SampleGuest[],
   name: string,
@@ -896,6 +928,11 @@ export function guestOf(state: GuestsState | null): string | null {
     case 'editCompanions':
     case 'editMax':
       return 'musa';
+    case 'languageEdit':
+    case 'languageGuestChose':
+      return 'ines';
+    case 'languageSet':
+      return 'sophie';
     default:
       return state != null && (isIn(GUEST_STATES, state) || isIn(EDIT_STATES, state))
         ? 'kwame'

@@ -29,6 +29,10 @@ export const W = {
   emailAddress: 'Email address',
   mobileNumber: 'Mobile number',
   none: 'None',
+  language: 'Language',
+  notSet: 'Not set',
+  languageHint:
+    'Their page opens in their browser’s language when Soirely offers it, otherwise in this language. Messages use this language. When this is Not set, both use your organisation’s language.',
   added: 'Added',
   companion: 'Companion',
   heldLine: 'Held · comes only if their host accepts',
@@ -183,6 +187,9 @@ export const HOW_TOLD = ['By phone', 'In person', 'By message', 'Other'] as cons
 export const HOW_INVITED = ['WhatsApp', 'Text message', 'Email', 'In person', 'Other'] as const;
 
 export const say = {
+  notSetLine: (organisation: string) =>
+    `Not set · their browser’s language, or ${organisation} when Soirely does not offer it`,
+  theyChose: (language: string) => `They chose ${language} on their page, and that wins.`,
   shown: (shown: number, total: number) => `${shown} of ${total} shown`,
   says: (coming: number, invited: number) => `${coming} coming of ${invited} invited`,
   havent: (all: number, guests: number, companions: number) =>

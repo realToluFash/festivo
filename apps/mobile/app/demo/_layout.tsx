@@ -22,6 +22,7 @@ export default function DemoLayout() {
     >
       <Stack.Screen name="(steps)" options={{ presentation: sheet ? 'formSheet' : 'card' }} />
       <Stack.Screen name="today" options={{ gestureEnabled: false }} />
+      <Stack.Screen name="legal-link" options={{ presentation: 'modal' }} />
     </Stack>
   );
 }

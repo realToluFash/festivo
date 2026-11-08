@@ -25,6 +25,7 @@ import { FocusEdge, focusEdge, useFocusEdge, useHeld, useRefused } from './Field
 import { LIFT } from './keyboardWatch.ts';
 import { Screen } from './Screen.tsx';
 import { Text } from './Text.tsx';
+import { UnseenName } from './UnseenName.tsx';
 
 const CONTROL_TEXT_SIZE = 16;
 
@@ -93,11 +94,7 @@ export function ListPicker({
   const searchField = (
     <View style={beside ? styles.searchBeside : undefined}>
       {/* TalkBack reads no placeholder once the search holds text, so these words name it then. */}
-      {Platform.OS === 'android' && (
-        <Text nativeID={searchNameID} importantForAccessibility="no" style={styles.searchName}>
-          {searchLabel}
-        </Text>
-      )}
+      <UnseenName nativeID={searchNameID}>{searchLabel}</UnseenName>
       <TextInput
         style={inputFaced([styles.search, focusEdge(searchEdge.focused, false)])}
         {...searching}
@@ -285,7 +282,6 @@ const styles = StyleSheet.create({
     fontSize: CONTROL_TEXT_SIZE,
   },
   searchBeside: { flex: 1, marginHorizontal: tokens.spaceLg },
-  searchName: { position: 'absolute', opacity: 0 },
   option: {
     minHeight: tokens.sizeHitPhonePrimary,
     flexDirection: 'row',

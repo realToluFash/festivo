@@ -113,7 +113,7 @@ function MiniComposer({
   placeholder: string;
   thread: ConvoId;
 }) {
-  const { act, focus, inbox } = useInbox();
+  const { act, focus, inbox, whyOff } = useInbox();
 
   function open(text: string, toPick: boolean): void {
     act({
@@ -137,7 +137,9 @@ function MiniComposer({
           className="mg-to-chip"
           aria-haspopup="dialog"
           aria-expanded="false"
+          aria-describedby={whyOff}
           onClick={() => open('', true)}
+          {...offButton(whyOff != null)}
         >
           {chipWords(to)}
           <Glyph name="chevdown" size={14} weight={2.6} />
@@ -148,7 +150,9 @@ function MiniComposer({
           className="mg-mini-field"
           placeholder={placeholder}
           aria-label={placeholder}
+          aria-describedby={whyOff}
           data-focus="follow"
+          disabled={whyOff != null}
           value=""
           onChange={(event) => open(event.target.value, false)}
         />
@@ -156,6 +160,7 @@ function MiniComposer({
           type="button"
           className="mg-send is-off"
           aria-label={MW.send}
+          aria-describedby={whyOff}
           {...offButton(true, { dim: false })}
         >
           <Glyph name="send" size={20} weight={2.4} />
@@ -451,7 +456,7 @@ function AnswerBox({
   canAlso: readonly Channel[];
   typed: string;
 }) {
-  const { inbox, act, keys, tell, say, focus } = useInbox();
+  const { inbox, act, keys, tell, say, focus, whyOff } = useInbox();
   const [text, setText] = useState(typed);
   const [by, setBy] = useState<Channel>(toldBy);
   const blank = text.trim() === '';
@@ -476,8 +481,8 @@ function AnswerBox({
         <Glyph name="page" size={15} />
         {filled(MW.answerLine, { name, channel: ANSWER_BY[by] })}
       </p>
-      {notice.cost != null && <p className="mg-answer-cost">{notice.cost}</p>}
-      {notice.waits != null && (
+      {whyOff == null && notice.cost != null && <p className="mg-answer-cost">{notice.cost}</p>}
+      {whyOff == null && notice.waits != null && (
         <div className="mg-answer-wait">
           <p className="mg-answer-waits">
             <Glyph name="clock" size={15} weight={2.2} />
@@ -514,8 +519,10 @@ function AnswerBox({
           rows={1}
           aria-label={MW.yourAnswer}
           placeholder={MW.writeAnswer}
-          aria-keyshortcuts={keys ? 'R' : undefined}
+          aria-keyshortcuts={keys && whyOff == null ? 'R' : undefined}
+          aria-describedby={whyOff}
           data-focus="answer"
+          disabled={whyOff != null}
           value={text}
           onChange={(event) => setText(event.target.value)}
           onKeyDown={(event) => {
@@ -526,7 +533,8 @@ function AnswerBox({
           type="submit"
           className={blank ? 'mg-send is-off' : 'mg-send'}
           aria-label={MW.send}
-          aria-keyshortcuts="Meta+Enter Control+Enter"
+          aria-keyshortcuts={whyOff == null ? 'Meta+Enter Control+Enter' : undefined}
+          aria-describedby={whyOff}
           {...offButton(blank, { dim: false })}
         >
           <Glyph name="send" size={20} weight={2.4} />

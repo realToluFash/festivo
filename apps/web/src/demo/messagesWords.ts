@@ -314,6 +314,9 @@ export const MW = {
     'A follow-up goes to the same {{count, number}} guests, under the first message on their page.',
   followUp: 'Follow-up',
   addressAdded: 'The email adds the new address, with Open in maps.',
+  closedDraft: 'This event is a draft. Make it live to write to your guests.',
+  closedEnded:
+    'This event finished more than 30 days ago, so you can no longer write to its guests.',
 };
 
 /** The event's navigation entry and the bell, as the web already words them. */
