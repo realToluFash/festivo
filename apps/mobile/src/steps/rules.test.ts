@@ -1,3 +1,4 @@
+import { shapeRecovery } from '@soirely/domain';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -7,7 +8,6 @@ import {
   minutesSeconds,
   passwordLongEnough,
   recoveryComplete,
-  shapeRecovery,
 } from './rules.ts';
 
 describe('the demo checks what was typed as the app will', () => {

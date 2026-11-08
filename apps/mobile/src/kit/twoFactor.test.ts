@@ -17,9 +17,15 @@ describe('a typed code', () => {
     expect(typedCodeProblem('app', '123 456')).toBeNull();
   });
 
-  it('is anything but blank as a recovery code', () => {
+  it('takes eight letters and digits as a recovery code', () => {
     expect(typedCodeProblem('recovery', '  ')).toBe('twoFactor.recoveryBlank');
     expect(typedCodeProblem('recovery', 'abcd-efgh')).toBeNull();
+    expect(typedCodeProblem('recovery', 'ABCDEFGH')).toBeNull();
+  });
+
+  it('asks for all eight characters of a recovery code begun', () => {
+    expect(typedCodeProblem('recovery', 'a')).toBe('twoFactor.recoveryShort');
+    expect(typedCodeProblem('recovery', 'abcd-efg')).toBe('twoFactor.recoveryShort');
   });
 });
 
