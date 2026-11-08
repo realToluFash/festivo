@@ -40,9 +40,10 @@ import {
   TO_FIGURES,
   TO_ORDER,
   TO_WORD,
-  filledFor,
   piecesOf,
 } from './MessagesSample.ts';
+import { filledAs } from './PreviewModel.ts';
+import { PREVIEW_PEOPLE } from './PreviewSample.ts';
 import { tellChange } from './TellChange.ts';
 import { keepWhole, outsideToken, tokenText } from './TokenText.ts';
 
@@ -348,14 +349,14 @@ describe('the rest of the flow', () => {
       { token: true, text: 'Greeting' },
       { token: false, text: ', hello' },
     ]);
-    expect(filledFor(`${tokenText('Greeting')}, hello`, 'Kwame Mensah')).toBe(
+    expect(filledAs(`${tokenText('Greeting')}, hello`, PREVIEW_PEOPLE.kwame)).toBe(
       'Kwame Mensah, hello',
     );
   });
 
   it('keeps braces the host types as text, in the field and on the page', () => {
     expect(piecesOf('{Greeting}, hello')).toEqual([{ token: false, text: '{Greeting}, hello' }]);
-    expect(filledFor('{Greeting}, hello', 'Kwame Mensah')).toBe('{Greeting}, hello');
+    expect(filledAs('{Greeting}, hello', PREVIEW_PEOPLE.kwame)).toBe('{Greeting}, hello');
   });
 });
 

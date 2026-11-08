@@ -79,7 +79,7 @@ export function dateFor(person: PreviewPerson): string {
 export function coverFor(person: PreviewPerson): string {
   const day = eventDay(person, { weekday: 'short', month: 'short', day: 'numeric' });
 
-  return `${day} · ${writtenTime('18:00', 'en')} · The Landmark`;
+  return `${day} · ${writtenTime('18:00', person.language)} · The Landmark`;
 }
 
 const FILL: Record<Token, (person: PreviewPerson) => string> = {

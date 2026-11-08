@@ -1,5 +1,5 @@
 import { CHANNEL_WORD, type ChannelKey, W, say } from './MessagesWords.ts';
-import { TOKEN_RUN, TOKEN_SPLIT, tokenText } from './TokenText.ts';
+import { TOKEN_SPLIT, tokenText } from './TokenText.ts';
 
 /** Events A's shared sample, with the guests and counts the Messaging B boards made up (spec §8); nothing here is spec. */
 export const EVENT = 'Adaeze & Tunde’s wedding';
@@ -565,16 +565,4 @@ export function piecesOf(text: string): { token: boolean; text: string }[] {
         ? { token: true, text: piece.slice(1, -1) }
         : { token: false, text: piece },
     );
-}
-
-const FILLED: Record<Token, (name: string) => string> = {
-  Greeting: (name) => name,
-  Event: () => EVENT,
-  Date: () => 'Thursday, Nov 5',
-  Hosts: () => HOSTS,
-};
-
-/** As one guest's page shows it: each token filled in for them. */
-export function filledFor(text: string, name: string): string {
-  return text.replace(TOKEN_RUN, (_, token: Token) => FILLED[token](name));
 }
