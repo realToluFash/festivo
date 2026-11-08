@@ -29,6 +29,7 @@ import { SEATING_PAGES } from './seating.ts';
 import { GetBackInBoard } from './GetBackIn.tsx';
 import { GuestPage } from './Guest.tsx';
 import { GUEST_PAGES } from './guest.ts';
+import { KITCHEN_PAGES } from './kitchen.ts';
 import { Guests } from './Guests.tsx';
 import { GUESTS_PAGES } from './guests.ts';
 import { NewAccountBoard } from './NewAccount.tsx';
@@ -231,6 +232,8 @@ function DemoHome({ from }: { from: string }) {
         <BoardPages pages={CREATE_PAGES} />
         <h3>Guest’s page in A · The cover card · phone, tablet and desk</h3>
         <BoardPages pages={GUEST_PAGES} />
+        <h3>The kitchen step on the guest’s page · sc-3778 · phone, tablet and desk</h3>
+        <BoardPages pages={KITCHEN_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-30">
@@ -621,14 +624,20 @@ const LATER: Record<string, string> = {
   terms: 'Terms',
   privacy: 'Privacy',
   security: 'Your account › Security',
-  kitchen: 'Update what the kitchen should know',
   calendar: 'Add to calendar',
+  meals: 'Your meals · sc-3907',
+};
+
+/** The guest's page a stand-in goes back to: the meals to the kitchen step's refusal, the calendar to Coming. */
+const GUEST_BACK: Record<string, string> = {
+  calendar: '/demo/guest?state=coming',
+  meals: '/demo/guest?state=meal_ruled_out',
 };
 
 function Later() {
   const [params] = useSearchParams();
   const screen = LATER[params.get('screen') ?? ''] ?? 'Terms';
-  const guest = params.get('screen') === 'kitchen' || params.get('screen') === 'calendar';
+  const guest = GUEST_BACK[params.get('screen') ?? ''];
 
   // Opened from any footer, signed in or not, so its header offers neither way (sc-29561).
   return (
@@ -637,8 +646,8 @@ function Later() {
         <h1>{screen}</h1>
         <p className="demo-muted">A stand-in: this page comes to the demo at its own step.</p>
       </div>
-      <Link className="button demo-wide" to={guest ? '/demo/guest?state=coming' : '/demo/sign-in'}>
-        {guest ? 'Back to the guest’s page' : 'Back to sign in'}
+      <Link className="button demo-wide" to={guest ?? '/demo/sign-in'}>
+        {guest != null ? 'Back to the guest’s page' : 'Back to sign in'}
       </Link>
     </BoardPage>
   );

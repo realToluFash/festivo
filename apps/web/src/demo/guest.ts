@@ -3,6 +3,7 @@ import i18next from 'i18next';
 
 import { writtenTime } from './clock.ts';
 import { type SampleEvent, sampleEvent } from './events.ts';
+import { type Kitchen, isKitchenState, kitchenStarts } from './kitchen.ts';
 import type { DemoLink } from './settings.ts';
 
 /** The guest's own page in A · The cover card (sc-31306), on the boards' sample: main's evt-wed-4 and one guest. */
@@ -79,6 +80,7 @@ export type Page = 'event' | 'gone' | 'unreachable' | 'loading';
 export type View =
   | { kind: 'answer'; busy: Answer | null; note: 'unsent' | 'notSentTap' | null }
   | { kind: 'check'; busy: boolean; failed: boolean; refused: boolean; from: 'answer' | 'changing' }
+  | { kind: 'kitchen' }
   | { kind: 'recorded'; same: boolean }
   | { kind: 'changing'; busy: Answer | null }
   | { kind: 'closed' }
@@ -111,6 +113,8 @@ export interface Visit {
   arrival: boolean;
   want: string | null;
   wantId: number;
+  /** sc-3778's step, once Yes has led to it; null for sc-1439's Check and send on its own. */
+  kitchen: Kitchen | null;
 }
 
 export const OPEN: View = { kind: 'answer', busy: null, note: null };
@@ -138,6 +142,7 @@ const BASE: Visit = {
   arrival: false,
   want: null,
   wantId: 0,
+  kitchen: null,
 };
 
 const COMING = { answer: 'coming', on: TODAY } as const;
@@ -328,6 +333,8 @@ export function isGuestState(value: string | null): value is GuestStateName {
 }
 
 export function startOf(value: string | null): Visit {
+  if (isKitchenState(value)) return { ...BASE, ...kitchenStarts(value, { earlier: EARLIER }) };
+
   const state = isGuestState(value) ? value : 'open';
 
   return { ...BASE, ...(STATES[state].starts as Partial<Visit>) };
@@ -422,7 +429,7 @@ export const GUEST_PAGES: readonly { name: string; states: readonly DemoLink[] }
 ];
 
 export function shows(visit: Visit): { details: boolean; foot: boolean; hosts: boolean } {
-  const alone = visit.view.kind === 'check' || visit.view.kind === 'tellUs';
+  const alone = ['check', 'tellUs', 'kitchen'].includes(visit.view.kind);
 
   return { details: !alone, foot: !alone, hosts: visit.phase !== 'calledOff' };
 }

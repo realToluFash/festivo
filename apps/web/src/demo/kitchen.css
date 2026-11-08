@@ -1,0 +1,471 @@
+/* sc-3778's kitchen step on the guest's page, in A's parts. Sizes are GuestPage.dc.html's (page e30): 17 px words, 48 px chips, cards of 20, 16 at a phone and 14 at 320. */
+
+.gk {
+  --gkCard: 20px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+
+.gp.is-phone .gk {
+  --gkCard: 16px;
+}
+
+.gp.is-small .gk {
+  --gkCard: 14px;
+}
+
+.gk-check {
+  gap: 18px;
+}
+
+.gk > .gp-text:first-child {
+  margin-bottom: -10px;
+}
+
+.gk :is(.gp-text, .gp-filled, .gp-outlined) {
+  font-size: 17px;
+}
+
+.gk .gk-h2 {
+  font-size: 24px;
+  overflow-wrap: anywhere;
+}
+
+.gp:is(.is-phone, .is-small) .gk-h2 {
+  font-size: 22px;
+}
+
+.gk-head {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.gk-text {
+  font: 400 17px/1.5 var(--fontFamily);
+  overflow-wrap: anywhere;
+}
+
+.gk-text.is-quiet {
+  color: var(--colorInkSecondary);
+}
+
+/* ── Who will see it: a grey inset with the lock, before anything is picked ── */
+
+.gk-consent {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--colorInsetBorder);
+  border-radius: var(--radiusInset);
+  background: var(--colorInset);
+}
+
+.gk-consent svg {
+  flex: none;
+  margin-top: 3px;
+  color: var(--colorInkSecondary);
+}
+
+.gk-consent p {
+  flex: 1;
+  min-width: 0;
+  font: 400 17px/1.5 var(--fontFamily);
+  overflow-wrap: anywhere;
+}
+
+/* ── One card per person: a fieldset whose legend is the person ── */
+
+.gk-card {
+  min-width: 0;
+  margin: 0;
+  padding: var(--gkCard);
+  border: 1px solid var(--colorBorder);
+  border-radius: 18px;
+  background: var(--colorCard);
+}
+
+.gk-who {
+  float: left;
+  width: 100%;
+  padding: 0;
+  font: 700 20px/1.3 var(--fontFamily);
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+}
+
+.gk-card-body {
+  display: flex;
+  clear: both;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+  padding-top: 8px;
+}
+
+.gk-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.gk-label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: var(--colorInkSecondary);
+  font: 600 17px/1.35 var(--fontFamily);
+  overflow-wrap: anywhere;
+}
+
+.gk-label > span {
+  min-width: 0;
+}
+
+.gk-optional {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 14px;
+  background: var(--colorNeutralFill);
+}
+
+.gk-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+
+.gk-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  box-sizing: border-box;
+  max-width: 100%;
+  min-height: 48px;
+  padding: 7.5px 15.5px;
+  border: 1.5px solid var(--colorControlBorder);
+  border-radius: 24px;
+  background: var(--colorCard);
+  color: var(--colorInk);
+  font: 600 17px/1.3 var(--fontFamily);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 120ms var(--gpEase),
+    background-color 120ms var(--gpEase);
+}
+
+.gk-chip span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.gk-chip.is-allergy,
+.gk-chip.is-diet {
+  padding: 7px 15px;
+  border-width: 2px;
+}
+
+.gk-chip.is-allergy {
+  border-color: var(--colorBroken);
+}
+
+.gk-chip.is-diet {
+  border-color: var(--colorAccent);
+  background: var(--colorAccentTint);
+}
+
+.gk-chip .gk-chip-word {
+  color: var(--colorBrokenText);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.gk-ring {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 22px;
+  height: 22px;
+  border: 1.5px solid;
+  border-radius: 11px;
+  font: 700 13px/1 var(--fontFamily);
+}
+
+.gk-ring.is-allergy,
+.gk-ring.is-broken {
+  border-color: var(--colorBroken);
+  background: var(--colorCard);
+  color: var(--colorBroken);
+}
+
+.gk-ring.is-diet {
+  border-color: var(--colorAccent);
+  background: var(--colorAccent);
+  color: var(--colorInkOnDark);
+}
+
+.gk-ring.is-removed {
+  border-color: var(--colorInkSecondary);
+  color: var(--colorInkSecondary);
+}
+
+/* ── The free texts: Which allergy?, Anything else and the access line, 100 characters each ── */
+
+.gk-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.gk-group > .gk-field {
+  padding-top: 4px;
+}
+
+.gk-input {
+  box-sizing: border-box;
+  width: 100%;
+  height: 48px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 24px;
+  background: var(--colorCard);
+  box-shadow: inset 0 0 0 1.5px var(--colorFieldBorder);
+  color: var(--colorInk);
+  font: 500 17px/1.3 var(--fontFamily);
+}
+
+.gp .gk-input:focus {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--colorAccent);
+}
+
+.gp .gk-input.is-wrong,
+.gp .gk-input.is-wrong:focus {
+  box-shadow: inset 0 0 0 2px var(--colorBroken);
+}
+
+.gk-error,
+.gk-line,
+.gk-host-words,
+.gk-said {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+}
+
+.gk-error {
+  color: var(--colorBrokenText);
+  font: 500 17px/1.45 var(--fontFamily);
+  animation: gp-drop 120ms var(--gpEase);
+}
+
+.gk :is(.gk-error, .gk-line, .gk-said, .gk-host-words) .gk-ring {
+  margin-top: 1px;
+}
+
+.gk :is(.gk-error, .gk-line, .gk-said, .gk-host-words) > span:last-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.gk-live {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.gk-line {
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1.5px solid var(--colorBroken);
+  border-radius: var(--radiusInset);
+  color: var(--colorBrokenText);
+  font: 500 17px/1.45 var(--fontFamily);
+  animation: gp-drop 120ms var(--gpEase);
+}
+
+/* ── The hosts' access needs: a row each, Remove and Keep it ── */
+
+.gk-hosts {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border: 1px solid var(--colorBorder);
+  border-radius: var(--radiusInset);
+}
+
+.gk-host {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  box-sizing: border-box;
+  min-height: 60px;
+  padding: 8px 8px 8px 14px;
+}
+
+.gk-host + .gk-host {
+  border-top: 1px solid var(--colorInsetBorder);
+}
+
+.gk-host-words {
+  flex: 1 1 150px;
+  font: 500 17px/1.4 var(--fontFamily);
+}
+
+.gk-host.is-removed .gk-host-words {
+  color: var(--colorInkSecondary);
+  animation: gp-fade 200ms var(--gpEase);
+}
+
+.gk-small {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 22px;
+  background: var(--colorCard);
+  box-shadow: inset 0 0 0 1.5px var(--colorControlBorder);
+  color: var(--colorInk);
+  font: 600 17px/1.25 var(--fontFamily);
+  cursor: pointer;
+}
+
+.gp .gk-small:focus-visible {
+  box-shadow:
+    inset 0 0 0 1.5px var(--colorControlBorder),
+    var(--deskRing);
+}
+
+.gk-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ── Check and send: Your answer, For the kitchen, sc-3907's meal rows; flat rows on white ── */
+
+.gk-rows {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.gk-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-height: 60px;
+  padding: 12px 0 14px;
+}
+
+.gk-row + .gk-row {
+  border-top: 1px solid var(--colorBorder);
+}
+
+.gk-row-words {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  padding-top: 4px;
+}
+
+.gk-row:first-child .gk-row-words {
+  gap: 3px;
+}
+
+.gk-value {
+  font: 600 17px/1.35 var(--fontFamily);
+  overflow-wrap: anywhere;
+}
+
+.gk-person,
+.gk-dish {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.gk-person > .gk-value {
+  font-weight: 700;
+}
+
+.gk-dish {
+  gap: 6px;
+}
+
+.gk-dish .gk-line {
+  padding: 10px 12px;
+  border-radius: var(--radiusRow);
+  font-size: 17px;
+}
+
+.gk-said {
+  font: 500 17px/1.4 var(--fontFamily);
+}
+
+.gk-said.is-allergy {
+  color: var(--colorBrokenText);
+  font-weight: 600;
+}
+
+.gk-said.is-quiet {
+  color: var(--colorInkSecondary);
+}
+
+.gk-label-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.gk .gk-change {
+  flex: none;
+  padding: 0 6px;
+  border-radius: 10px;
+}
+
+.gk .gp-notice p {
+  font-size: 17px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gp-under > .gk {
+    animation: none;
+  }
+
+  .gk-chip {
+    transition: none;
+  }
+
+  .gk-error,
+  .gk-line {
+    animation-name: gp-fade;
+  }
+
+  .gk-host.is-removed .gk-host-words {
+    animation: none;
+  }
+}
