@@ -48,8 +48,8 @@ const run = (m: Messages, ...actions: Action[]) => actions.reduce(reduce, m);
 const nameOf = (id: RowId) => (id.kind === 'draft' ? id.id : id.key);
 
 describe('the states', () => {
-  it('are the spec’s 42 and the notice’s three, by the names both demos use, §7 then §7b', () => {
-    expect(MESSAGES_STATES).toHaveLength(45);
+  it('are the spec’s 42, the notice’s three and Who it reached’s eight, by the names both demos use', () => {
+    expect(MESSAGES_STATES).toHaveLength(53);
     expect(MESSAGES_STATES.slice(6, 10)).toEqual([
       'channelReply',
       'noticeCost',
@@ -76,6 +76,14 @@ describe('the states', () => {
       'noSubject',
       'followUp',
       'tellPlace',
+      'added',
+      'addedPhone',
+      'notNow',
+      'told',
+      'filterMenu',
+      'filtered',
+      'resendInvited',
+      'resendSent',
     ]);
   });
 
@@ -491,8 +499,11 @@ describe('Who it reached', () => {
     expect(fixed.fixed.tomas).toBe('tomas.ferreira@gmail.com');
 
     const again = reduce(fixed, { type: 'sendAgain', key: 'tomas' });
-    expect(again).toMatchObject({ again: { tomas: '09:44' }, said: 'tomas' });
-    expect(startOf('sentAgain', false)).toMatchObject({ again: { tomas: '09:44' }, said: 'tomas' });
+    expect(again).toMatchObject({ again: { 'parking.tomas': '09:44' }, said: 'parking.tomas' });
+    expect(startOf('sentAgain', false)).toMatchObject({
+      again: { 'parking.tomas': '09:44' },
+      said: 'parking.tomas',
+    });
   });
 
   it('opens for an invitation and for a message just sent, and goes back to each', () => {

@@ -14,6 +14,7 @@ import {
   type Draft,
   type Messages,
   type Open,
+  type ReachedOf,
   channelsWords,
   checkOf,
   dayWords,
@@ -26,6 +27,7 @@ import {
   tellingBy,
   toChip,
 } from './MessagesModel.ts';
+import { resendOf } from './Reach.ts';
 import {
   GUESTS,
   type GuestKey,
@@ -367,6 +369,25 @@ function guestParts(talk: Talk, key: GuestKey): Parts {
   };
 }
 
+/** The resend's check, in the conversation of the message whose Who it reached asked for it. */
+function Resend({ talk, of }: { talk: Talk; of: ReachedOf }) {
+  const check = resendOf(talk.m, of);
+
+  return (
+    <ResendCheck
+      check={check}
+      headRef={talk.checkRef}
+      onGo={talk.onResent}
+      onChange={() => talk.dispatch({ type: 'resending', open: false })}
+      onSeeAll={() => talk.ownDesign(say.seeAll(check.still))}
+      onBack={() => {
+        talk.dispatch({ type: 'resending', open: false });
+        talk.dispatch({ type: 'open', open: { kind: 'reached', of } });
+      }}
+    />
+  );
+}
+
 /** A message the hosts sent: their words, then where it went and what happened (the receipt once it is sent). */
 function SentMessage({
   talk,
@@ -422,6 +443,7 @@ function SentMessage({
       {last && draft.step === 'failed' && (
         <FailedLine retryRef={talk.refFor('retry')} onRetry={talk.onRetry} />
       )}
+      {last && talk.m.resending && <Resend talk={talk} of="draft" />}
     </>
   );
 }
@@ -544,7 +566,7 @@ function ownParts(talk: Talk, followUp: string): Own {
       </>
     ),
     align: 'end',
-    foot: (
+    foot: talk.m.resending ? null : (
       <MiniComposer
         to={toChip(draft.to)}
         placeholder={followUp}
@@ -741,12 +763,7 @@ function manyParts(talk: Talk, key: ManyKey): Parts {
               ]}
             />
             {m.resending ? (
-              <ResendCheck
-                headRef={talk.checkRef}
-                onGo={talk.onResent}
-                onChange={() => talk.dispatch({ type: 'resending', open: false })}
-                onSeeAll={() => talk.ownDesign(say.seeAll(8))}
-              />
+              <Resend talk={talk} of="parking" />
             ) : (
               <Receipt
                 reached={PARKING_REACH.reached}
@@ -784,19 +801,23 @@ function manyParts(talk: Talk, key: ManyKey): Parts {
               lines={INVITATION.lines}
               bits={[{ word: W.soirelysOwn }]}
             />
-            <Receipt
-              reached={INVITATION.reached}
-              of={INVITATION.of}
-              seen={INVITATION.seen}
-              onWho={talk.onWhoInvited}
-            />
+            {m.resending ? (
+              <Resend talk={talk} of="invite" />
+            ) : (
+              <Receipt
+                reached={INVITATION.reached}
+                of={INVITATION.of}
+                seen={INVITATION.seen}
+                onWho={talk.onWhoInvited}
+              />
+            )}
             <SystemLine text={say.nowInvited(INVITATION.reached)} glyph="tick" />
             {today}
             {own?.stream}
           </>
         ),
       align: own?.align ?? 'end',
-      foot: followUp(W.writeToThem),
+      foot: m.resending ? undefined : followUp(W.writeToThem),
     };
   return { title: W.invitation, stream: null, align: 'end' };
 }

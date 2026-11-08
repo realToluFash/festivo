@@ -48,6 +48,20 @@ const BOARDS: Record<MessagesState, readonly [string, string]> = {
   noSubject: ['no subject', 'Named by its first line, shortened'],
   followUp: ['a follow-up', 'Under the first message, to the same 96'],
   tellPlace: ['tell guests, a new place', 'The venue is now Rosewood London'],
+  added: [
+    'after Add an email address',
+    'Joaquín Ruiz: An email address has been added since; Send again or Not now',
+  ],
+  addedPhone: [
+    'after Add a phone number',
+    'Lars Johansson: A phone number has been added since; Send again or Not now',
+  ],
+  notNow: ['after Not now', 'Bounced kept, Updated · not sent yet; counted in the resend'],
+  told: ['marked as told', 'Amaka Eze told in person, with Undo; Reached 132 of 142'],
+  filterMenu: ['the filter', 'Everyone, Not reached, each group, Reached, Marked as told'],
+  filtered: ['filtered: bounced', 'Bounced · 3, and only them'],
+  resendInvited: ['a resend, an invitation', 'None of the 2 can be told yet'],
+  resendSent: ['a resend, just sent', 'None of the 2 can be told yet'],
 };
 
 export const MESSAGES_BOARDS = MESSAGES_STATES.map((state) => ({

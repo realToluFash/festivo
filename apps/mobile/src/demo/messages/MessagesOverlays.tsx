@@ -26,7 +26,8 @@ import {
   TextAction,
 } from '../../components/Summary.tsx';
 import { ChannelPill } from './CheckCard.tsx';
-import { type Moment, dayWords, laterRefused } from './MessagesModel.ts';
+import { type Moment, type ReachFilter, dayWords, laterRefused } from './MessagesModel.ts';
+import type { FilterOption } from './Reach.ts';
 import {
   BELL,
   EVENT,
@@ -158,6 +159,86 @@ export function ToPicker({
       width={360}
       align="start"
       testID="messages.toPopover"
+    >
+      {body}
+    </AnchoredMenu>
+  );
+}
+
+/** Filter on Who it reached, as a radio group with each count: a sheet on the phone, a 360 popover under Filter on the iPad. */
+export function FilterPicker({
+  open,
+  options,
+  on,
+  phone,
+  at,
+  opener,
+  onChoose,
+  onClose,
+}: {
+  open: boolean;
+  options: readonly FilterOption[];
+  on: ReachFilter;
+  phone: boolean;
+  at: Anchor | null;
+  opener: Opener;
+  onChoose: (filter: ReachFilter) => void;
+  onClose: () => void;
+}) {
+  const picked = useRef<ViewInstance>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const later = setTimeout(() => moveScreenReaderFocus(picked.current), 600);
+
+    return () => clearTimeout(later);
+  }, [open]);
+
+  const body = (
+    <View style={phone ? styles.sheetBody : styles.menuBody}>
+      <SheetHead title={W.filter} close={W.closeFilter} onClose={onClose} />
+      <View accessibilityRole="radiogroup">
+        {options.map((option) => (
+          <Row
+            key={option.key}
+            ref={option.key === on ? picked : undefined}
+            title={option.word}
+            lead={<RadioMark on={option.key === on} />}
+            value={String(option.count)}
+            accent={option.key === on}
+            pad={tokens.spaceSm}
+            onPress={() => onChoose(option.key)}
+            accessibilityRole="radio"
+            accessibilityState={{ checked: option.key === on }}
+            accessibilityLabel={`${option.word}, ${option.count}`}
+            testID={`messages.filter.${option.key}`}
+          />
+        ))}
+      </View>
+    </View>
+  );
+
+  if (phone)
+    return (
+      <Sheet
+        open={open}
+        onClose={onClose}
+        scrimLabel={W.closeFilter}
+        opener={opener}
+        testID="messages.filterSheet"
+      >
+        {body}
+      </Sheet>
+    );
+
+  return (
+    <AnchoredMenu
+      at={open ? at : null}
+      onClose={onClose}
+      opener={opener}
+      width={360}
+      align="end"
+      testID="messages.filterPopover"
     >
       {body}
     </AnchoredMenu>

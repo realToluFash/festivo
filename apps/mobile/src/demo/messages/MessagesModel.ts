@@ -1,6 +1,7 @@
 import { instantOf } from '../events/EventsModel.ts';
 import { READER_ZONE } from '../events/EventsSample.ts';
 import {
+  ADDED,
   ANSWERS,
   BALANCE,
   BODY,
@@ -11,6 +12,7 @@ import {
   FIXED_ADDRESS,
   FOLLOW_UP,
   GUESTS,
+  type GroupKey,
   type GuestKey,
   LOW_BALANCE,
   type ManyKey,
@@ -83,6 +85,14 @@ export const MESSAGES_STATES = [
   'noSubject',
   'followUp',
   'tellPlace',
+  'added',
+  'addedPhone',
+  'notNow',
+  'told',
+  'filterMenu',
+  'filtered',
+  'resendInvited',
+  'resendSent',
 ] as const;
 
 export type MessagesState = (typeof MESSAGES_STATES)[number];
@@ -92,6 +102,15 @@ export function messagesStateOf(value: string | undefined): MessagesState | null
 }
 
 export type ReachedOf = 'parking' | 'invite' | 'draft';
+
+export type FixKind = 'fixEmail' | 'addEmail' | 'addPhone';
+
+export type ReachFilter = 'everyone' | 'notReached' | 'told' | GroupKey;
+
+/** A person's mark on one message: sent again, Not now taken or told in person belong to that message, not to the guest. */
+export function personAt(of: ReachedOf, key: PersonKey): string {
+  return `${of}.${key}`;
+}
 
 export type Open =
   | { kind: 'guest'; key: GuestKey }
@@ -189,8 +208,13 @@ export interface Messages {
   change: TellChange;
   fixing: boolean;
   fixed: Partial<Record<PersonKey, string>>;
-  again: Partial<Record<PersonKey, string>>;
-  said: PersonKey | null;
+  how: Partial<Record<PersonKey, FixKind>>;
+  again: Partial<Record<string, string>>;
+  waiting: readonly string[];
+  toldIn: Partial<Record<string, string>>;
+  said: string | null;
+  filter: ReachFilter | null;
+  filtering: boolean;
   resending: boolean;
   bell: boolean;
   told: string | null;
@@ -261,8 +285,13 @@ const BASE: Messages = {
   change: { lines: [say.startMoved(TELL.now, TELL.was)], what: [W.newStartTime] },
   fixing: false,
   fixed: {},
+  how: {},
   again: {},
+  waiting: [],
+  toldIn: {},
   said: null,
+  filter: null,
+  filtering: false,
   resending: false,
   bell: false,
   told: null,
@@ -372,8 +401,40 @@ export function startOf(state: MessagesState | null, wide: boolean): Messages {
         ...BASE,
         open: parking,
         fixed: { tomas: FIXED_ADDRESS },
-        again: { tomas: SENT_AGAIN_AT },
-        said: 'tomas',
+        again: { 'parking.tomas': SENT_AGAIN_AT },
+        said: 'parking.tomas',
+      };
+    case 'added':
+      return {
+        ...BASE,
+        open: parking,
+        fixed: { joaquin: ADDED.email },
+        how: { joaquin: 'addEmail' },
+      };
+    case 'addedPhone':
+      return { ...BASE, open: parking, fixed: { lars: ADDED.phone }, how: { lars: 'addPhone' } };
+    case 'notNow':
+      return {
+        ...BASE,
+        open: parking,
+        fixed: { tomas: FIXED_ADDRESS },
+        waiting: ['parking.tomas'],
+      };
+    case 'told':
+      return { ...BASE, open: parking, toldIn: { 'parking.amaka': SENT_AGAIN_AT }, filter: 'told' };
+    case 'filterMenu':
+      return { ...BASE, open: parking, filtering: true };
+    case 'filtered':
+      return { ...BASE, open: parking, filter: 'bounced' };
+    case 'resendInvited':
+      return { ...BASE, open: { kind: 'many', key: 'invite' }, resending: true };
+    case 'resendSent':
+      return {
+        ...BASE,
+        thread: NEW_THREAD,
+        draft: sampleDraft('sending'),
+        open: { kind: 'draft' },
+        resending: true,
       };
     case 'invitedReached':
       return { ...BASE, open: { kind: 'reached', of: 'invite' } };
@@ -467,7 +528,12 @@ export type Action =
   | { type: 'tellSent' }
   | { type: 'dismissUntold' }
   | { type: 'fixing'; open: boolean }
-  | { type: 'fixed'; key: PersonKey; address: string }
+  | { type: 'fixed'; key: PersonKey; address: string; how?: FixKind }
+  | { type: 'notNowFor'; key: PersonKey }
+  | { type: 'markTold'; key: PersonKey }
+  | { type: 'undoTold'; key: PersonKey }
+  | { type: 'filter'; filter: ReachFilter }
+  | { type: 'filtering'; open: boolean }
   | { type: 'sendAgain'; key: PersonKey }
   | { type: 'resending'; open: boolean }
   | { type: 'resent' }
@@ -536,9 +602,25 @@ function baseOf(open: Open): ManyKey | null {
   return null;
 }
 
+/** The message whose Who it reached is open, or whose conversation is: the draft's for a new message. */
+export function reachedOf(m: Pick<Messages, 'open'>): ReachedOf {
+  const open = m.open;
+  if (open?.kind === 'reached') return open.of;
+  if (open?.kind === 'draft') return 'draft';
+  if (open?.kind === 'many' && open.key === 'invite') return 'invite';
+
+  return 'parking';
+}
+
 function opened(m: Messages, open: Open): Messages {
   const base = baseOf(open);
-  const next = { ...m, open, picking: false };
+  const another = open?.kind === 'reached' && reachedOf(m) !== open.of;
+  const next = {
+    ...m,
+    open,
+    picking: false,
+    ...(another ? { filter: null, filtering: false } : {}),
+  };
 
   return base != null && m.thread?.base !== base
     ? activate(next, (kept) => kept.base === base)
@@ -742,10 +824,39 @@ export function reduce(m: Messages, action: Action): Messages {
         ...m,
         fixing: false,
         fixed: { ...m.fixed, [action.key]: action.address },
+        how: { ...m.how, [action.key]: action.how ?? 'fixEmail' },
+        waiting: m.waiting.filter((at) => at !== personAt(reachedOf(m), action.key)),
         told: W.saved,
       };
-    case 'sendAgain':
-      return { ...m, again: { ...m.again, [action.key]: SENT_AGAIN_AT }, said: action.key };
+    case 'sendAgain': {
+      const at = personAt(reachedOf(m), action.key);
+
+      return {
+        ...m,
+        again: { ...m.again, [at]: SENT_AGAIN_AT },
+        waiting: m.waiting.filter((one) => one !== at),
+        said: at,
+      };
+    }
+    case 'notNowFor': {
+      const at = personAt(reachedOf(m), action.key);
+
+      return { ...m, waiting: [...m.waiting.filter((one) => one !== at), at] };
+    }
+    case 'markTold':
+      return {
+        ...m,
+        toldIn: { ...m.toldIn, [personAt(reachedOf(m), action.key)]: SENT_AGAIN_AT },
+      };
+    case 'undoTold': {
+      const { [personAt(reachedOf(m), action.key)]: _undone, ...rest } = m.toldIn;
+
+      return { ...m, toldIn: rest };
+    }
+    case 'filter':
+      return { ...m, filter: action.filter, filtering: false };
+    case 'filtering':
+      return { ...m, filtering: action.open };
     case 'resending':
       return { ...m, resending: action.open };
     case 'resent':
