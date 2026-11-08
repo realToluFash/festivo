@@ -17,11 +17,13 @@
   },
   "nav": {
     "dashboard": "Panel",
+    "today": "Today",
     "events": "Eventos",
     "calendar": "Calendario",
     "guests": "Invitados",
     "settings": "Configuración",
     "account": "Su cuenta",
+    "person": "{{name}}, {{role}}",
     "menu": "Menú",
     "closeMenu": "Cerrar el menú",
     "organisation": "Organización",
