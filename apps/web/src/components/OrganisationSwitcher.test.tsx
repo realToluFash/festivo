@@ -255,7 +255,7 @@ describe('switching away from a paused organisation (sc-564)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Switch organisation' }));
 
     const switched = screen.getByText('Now working in Ìrè Events.');
-    expect(document.activeElement).toBe(switched.closest('.notice'));
+    expect(document.activeElement).toBe(switched.closest('.sw-notice'));
     expect(screen.queryByRole('status')).toBeNull();
   });
 });
@@ -320,7 +320,7 @@ describe('a 100-character name (sc-486)', () => {
 
   it('never lets the frame grow past the viewport, nor the open list', () => {
     expect(cssRule('.shell')).toMatch(
-      /grid-template-columns: var\(--sizeRail\) minmax\(0, 1fr\);/u,
+      /grid-template-columns: var\(--todaySide\) minmax\(0, 1fr\);/u,
     );
     expect(STYLES).toMatch(/\.shell \{[^}]*grid-template-columns: minmax\(0, 1fr\);/u);
     expect(cssRule('.org-switcher-menu')).toMatch(/max-width: calc\(100vw - /u);

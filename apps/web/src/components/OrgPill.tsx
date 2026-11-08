@@ -44,7 +44,9 @@ export function OrgPill({
         {overTile}
       </span>
       <span className="sw-opener-words">
-        <span className="sw-opener-name">{name}</span>
+        <span className="sw-opener-name" title={name}>
+          {name}
+        </span>
         {waiting != null && (
           <span className="sw-opener-waiting">
             <span className="sw-ring" aria-hidden="true" />
