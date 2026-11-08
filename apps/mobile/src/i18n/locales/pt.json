@@ -107,7 +107,8 @@
     "failedTitle": "Não foi possível criar a sua conta",
     "failedBody": "Algo falhou pelo caminho. Tente novamente dentro de um momento.",
     "nameBlank": "Introduza o seu nome completo.",
-    "passwordBlank": "Introduza uma palavra-passe."
+    "passwordBlank": "Introduza uma palavra-passe.",
+    "timedOut": "Your sign-up timed out, so we did not keep the password. Enter it again to get a new code."
   },
   "verifyEmail": {
     "title": "Veja o seu e-mail",
