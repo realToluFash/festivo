@@ -1,4 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { init } from 'i18next';
+import { beforeAll, describe, expect, it } from 'vitest';
+
+import en from '../../i18n/locales/en.json';
 
 import {
   type Action,
@@ -45,6 +48,14 @@ import { tellChange } from './TellChange.ts';
 import { keepWhole, outsideToken, tokenText } from './TokenText.ts';
 
 const run = (m: Messages, ...actions: Action[]) => actions.reduce(reduce, m);
+
+beforeAll(() =>
+  init({
+    lng: 'en',
+    resources: { en: { translation: en } },
+    interpolation: { escapeValue: false },
+  }),
+);
 const nameOf = (id: RowId) => (id.kind === 'draft' ? id.id : id.key);
 
 describe('the states', () => {

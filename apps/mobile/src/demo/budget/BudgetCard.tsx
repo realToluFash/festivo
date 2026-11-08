@@ -5,7 +5,7 @@ import { useShell } from '../../components/settingsShell.ts';
 import { CardSays, GlassTag, OnCard, SummaryCard } from '../../components/Summary.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
-import { CardBackdrop } from '../events/EventCard.tsx';
+import { CardBackdrop } from '../../components/EventCard.tsx';
 import type { Shown } from '../events/EventsModel.ts';
 import type { CeilingState } from './BudgetModel.ts';
 import { CeilingMark, RingMark } from './BudgetParts.tsx';

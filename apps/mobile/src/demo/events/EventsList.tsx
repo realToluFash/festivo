@@ -28,7 +28,7 @@ import { Cover } from '../../components/Cover.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
 import { PHONE_TAB_BAR, PhoneTabBar, TabBarFade } from '../../components/TodayCover.tsx';
 import { Bell, Landscape, OrgPill, PortraitTop } from '../settings/Frame.tsx';
-import { CardPieces, EventCard, EventThumb } from './EventCard.tsx';
+import { CardPieces, EventCard, EventThumb } from '../../components/EventCard.tsx';
 import { EventsFilterMenu, FilterButton } from './EventsFilter.tsx';
 import {
   type CardStep,
@@ -38,7 +38,7 @@ import {
   NO_FILTERS,
   PAST_PAGE,
   type Shown,
-  TAB_WORDS,
+  tabWord,
   eventHref,
   filterWord,
   filtered,
@@ -351,7 +351,7 @@ export function EventsList({
               {results.groups.map((group) => (
                 <View key={group.tab}>
                   <SectionHead
-                    title={TAB_WORDS[group.tab]}
+                    title={tabWord(group.tab)}
                     right={<HeadCount text={String(group.events.length)} />}
                   />
                   <RowList items={group.events.map((event) => row(event, true))} />
@@ -680,7 +680,7 @@ function Segment({
             ]}
             accessibilityRole="tab"
             accessibilityState={{ selected: on }}
-            accessibilityLabel={`${TAB_WORDS[each]}, ${counts[each]}`}
+            accessibilityLabel={`${tabWord(each)}, ${counts[each]}`}
             testID={`events.tab.${each}`}
           >
             <TabWords tab={each} on={on} count={counts[each]} />
@@ -725,7 +725,7 @@ function TabWords({ tab, on, count }: { tab: ListTab; on: boolean; count: number
           accessible={false}
           style={{ color: ink }}
         >
-          {TAB_WORDS[tab]}
+          {tabWord(tab)}
         </Text>
         <Text size={14.5} weight={weight} accessible={false} style={[{ color: ink }, styles.count]}>
           {String(count)}

@@ -9,7 +9,7 @@ import { Ask, CardSays, OnCard, SummaryCard } from '../../components/Summary.tsx
 import { Text } from '../../components/Text.tsx';
 import { useShell } from '../../components/settingsShell.ts';
 import { tokens } from '../../theme/tokens.ts';
-import { CardBackdrop } from '../events/EventCard.tsx';
+import { CardBackdrop } from '../../components/EventCard.tsx';
 import { EventFrame } from '../events/EventFrame.tsx';
 import type { Shown as EventShown } from '../events/EventsModel.ts';
 import type { AreaKey } from '../events/EventsSample.ts';

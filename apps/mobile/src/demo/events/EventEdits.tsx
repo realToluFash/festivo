@@ -20,7 +20,7 @@ import { tokens } from '../../theme/tokens.ts';
 import { EventMesh } from '../../components/EventMesh.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
 import { LineIcon } from '../settings/AccountCard.tsx';
-import { PhotoFill } from './EventCard.tsx';
+import { PhotoFill } from '../../components/EventCard.tsx';
 import { EventNotice } from './EventNotice.tsx';
 import { type EditPart, type EventDemoState, folded, instantOf, wallOf } from './EventsModel.ts';
 import { SearchField } from './EventsList.tsx';
