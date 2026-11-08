@@ -1,5 +1,4 @@
-import { formatTimeOfDay } from '@soirely/domain';
-
+import { writtenTime } from '../clock.ts';
 import { SAMPLE } from '../samples.ts';
 import { IPS } from './sample.ts';
 
@@ -100,7 +99,7 @@ export function dayOf(when: Date, locale: string): string {
 }
 
 export function dayAtTime(when: Date, locale: string): string {
-  return `${dayOf(when, locale)} at ${formatTimeOfDay(when, locale)}`;
+  return `${dayOf(when, locale)} at ${writtenTime(when, locale)}`;
 }
 
 /** A drawn QR: 21 modules with its three finder squares and a fixed scatter between them. */

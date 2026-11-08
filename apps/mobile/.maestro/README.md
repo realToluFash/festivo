@@ -92,7 +92,8 @@ must be fresh: one an account already holds is sent no code, and `verify-email` 
 `sign-in-locked` and `signed-out-elsewhere` match English text, so the phone must be in English
 first (`sign-in-screen-english`).
 
-`verify-email` reads the code from Mailpit with `scripts/latest-code.js`.
+`verify-email` reads the code from Mailpit with `scripts/latest-code.js`, and a phone check
+reads the newest SMS or WhatsApp code from Smocker with `scripts/latest-sms-code.js`.
 
 A flow a tester writes is posted to `[ops]` on the story they were testing, and ops commits
 it here.
@@ -147,6 +148,10 @@ up, and Soirely answers anything asked in those seconds, so on Android the harne
 API's `adb reverse` away for that move and puts it back once the API is held: the app is refused
 throughout, with no network change announced. `qa-env.mjs ios`, `android` and `release` unpause
 a paused API before starting the stack, so a batch killed mid-hold does not block the next run.
+A picture at a held moment, which `takeScreenshot` would take only once the screen settles, is
+`ASK: /shot?name=<name>`: the harness screenshots the device at once and saves it with the
+batch's screenshots under the same check-and-language prefix, so `held-1` in an English batch
+lands in `.qa/<batch>/<check>.en-held-1.png`. sc27096-ipad-side-refreshing is the example.
 The harness is reached only through `batch/helper.js`, never a literal port.
 
 A check that changes the account's membership from outside the phone asks
@@ -223,7 +228,7 @@ link, which in Expo Go lands on Home (sc-22740): each starts from Home or from a
   failure for two features.
 - **Reach the bundler through `${METRO_URL}`**, never a literal port: the QA stack's
   bundler is on 18081, and both `just qa-mobile` and `qa-env.mjs maestro` pass it in.
-  Mailpit, the same, through `${MAILPIT_URL}`.
+  Mailpit, the same, through `${MAILPIT_URL}`, and Smocker through `${SMOCKER_URL}`.
 - **Pass data in**, with `-e`: an account comes from `node scripts/qa-account.mjs`, so no
   flow holds credentials. A new check's first line names each `${…}` it needs; older ones
   may not, so `grep -o '\${[A-Z_]*}'` the file before passing `-e`. The names differ

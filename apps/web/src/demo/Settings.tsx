@@ -24,6 +24,8 @@ import { Personalisation } from './Personalisation.tsx';
 import { PersonalTile } from './SchemeArt.tsx';
 import { Security } from './Security.tsx';
 import { SignInRules } from './SignInRules.tsx';
+import { StorefrontGlyph, Vendors } from './Vendors.tsx';
+import { vendorsViewerKey } from './vendors.ts';
 import type { Tell } from '../components/SettingsParts.tsx';
 import { TodaySidebar } from './TodaySidebar.tsx';
 import { usePaused, useSwitcherStart } from './switcher.ts';
@@ -31,7 +33,10 @@ import './today.css';
 import '../components/SettingsParts.css';
 import './settings.css';
 
-const TILES: Record<Exclude<Section, 'account' | 'general' | 'personalisation'>, GlyphName> = {
+const TILES: Record<
+  Exclude<Section, 'account' | 'general' | 'personalisation' | 'vendors'>,
+  GlyphName
+> = {
   security: 'shield',
   notifications: 'bell',
   members: 'users',
@@ -41,8 +46,9 @@ const TILES: Record<Exclude<Section, 'account' | 'general' | 'personalisation'>,
 /** Settings at a desk in B · Summary first (Web-Settings.dc.html, page 29), on sample data. */
 export function Settings({ open = 'members' }: { open?: Drawn }) {
   const [params] = useSearchParams();
-  const viewer = viewerOf(params.get('as'));
   const state = params.get('state') ?? '';
+  const as = params.get('as');
+  const viewer = viewerOf(open === 'vendors' ? vendorsViewerKey(as, state) : as);
   useSwitcherStart();
   const paused = usePaused();
   const [told, setTold] = useState<string | null>(null);
@@ -88,7 +94,7 @@ export function Settings({ open = 'members' }: { open?: Drawn }) {
           ) : (
             <>
               <SettingsList
-                open={open !== 'members' || viewer.manages ? open : null}
+                open={(open !== 'members' && open !== 'vendors') || viewer.manages ? open : null}
                 viewer={viewer}
                 tell={tell}
               />
@@ -110,6 +116,13 @@ export function Settings({ open = 'members' }: { open?: Drawn }) {
               ) : open === 'signInRules' ? (
                 <SignInRules
                   key={`${viewer.key}:${state}`}
+                  viewer={viewer}
+                  state={state}
+                  tell={tell}
+                />
+              ) : open === 'vendors' ? (
+                <Vendors
+                  key={`${viewer.key}:${state}:${params.get('vendor') ?? ''}`}
                   viewer={viewer}
                   state={state}
                   tell={tell}
@@ -184,6 +197,12 @@ function Tile({ section, viewer }: { section: Section; viewer: Viewer }) {
     return (
       <span className="desk-tile is-general" aria-hidden="true">
         IE
+      </span>
+    );
+  if (section === 'vendors')
+    return (
+      <span className="desk-tile is-vendors" aria-hidden="true">
+        <StorefrontGlyph size={17} />
       </span>
     );
 

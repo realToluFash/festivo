@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
@@ -241,6 +241,22 @@ describe('creating an account, for real', () => {
     expect(screen.queryByText('Register again with the right one')).toBeNull();
   });
 
+  it('says nothing under the title when Back from the email code reaches it (sc-29923)', async () => {
+    answering({
+      'POST /api/auth/register': () =>
+        json({ registration: 'the-handle', email: 'folake@ire.events' }, 202),
+      'GET /api/auth/register/resend': () => json({ cooldownSeconds: 0 }),
+    });
+
+    at('/register');
+    fillIn();
+    fireEvent.click(await screen.findByRole('button', { name: 'Back' }));
+
+    await screen.findByRole('heading', { level: 1, name: 'Create your account' });
+    expect(screen.getByText(/Next, we email you a code/)).toBeDefined();
+    expect(screen.queryByText(TIMED_OUT)).toBeNull();
+  });
+
   it('keeps Register again with the right one under the resend line, going where Back goes (sc-29065)', async () => {
     answering({
       'POST /api/auth/register': () =>
@@ -355,5 +371,133 @@ describe('creating an account, for real', () => {
       expect(screen.getByRole('alert').textContent).toMatch(/Too many sign-ups from this network/),
     );
     expect(screen.getByRole('alert').textContent).toMatch(/Try again at \d{2}:\d{2}\./);
+  });
+});
+
+const TIMED_OUT =
+  'Your sign-up timed out, so we did not keep the password. Enter it again to get a new code.';
+
+describe('a sign-up that runs out on the email code (sc-29923)', () => {
+  function signUp(answers: Record<string, () => Response>) {
+    const sent = answering({
+      'POST /api/auth/register': () =>
+        json({ registration: 'the-handle', email: 'folake@ire.events' }, 202),
+      'GET /api/auth/register/resend': () => json({ cooldownSeconds: 0, codeState: 'live' }),
+      ...answers,
+    });
+
+    at('/register');
+    fillIn();
+
+    return sent;
+  }
+
+  async function timedOut() {
+    await screen.findByRole('heading', { level: 1, name: 'Create your account' });
+    await waitFor(() => expect(screen.getByRole('status').textContent).toBe(TIMED_OUT));
+    expect(sessionStorage.getItem('soirely.registration')).toBeNull();
+    expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe('folake@ire.events');
+    expect((screen.getByLabelText('Password') as HTMLInputElement).value).toBe('');
+    expect(document.activeElement).toBe(screen.getByLabelText('Password'));
+  }
+
+  it('goes back to Create your account from Verify email, keeping the name and email', async () => {
+    signUp({ 'POST /api/auth/register/verify': () => problem(410, 'registration_expired') });
+
+    fireEvent.change(await screen.findByLabelText('Code from the email'), {
+      target: { value: '123456' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Verify email' }));
+
+    await timedOut();
+    expect((screen.getByLabelText('Full name') as HTMLInputElement).value).toBe('Folake Adeyemi');
+    expect(screen.getByText(TIMED_OUT).className).toBe('auth-notice-title');
+    expect(screen.queryByText(/Next, we email you a code/)).toBeNull();
+  });
+
+  it('sends a short code nowhere, and says so under the field instead', async () => {
+    const sent = signUp({
+      'POST /api/auth/register/verify': () => problem(410, 'registration_expired'),
+    });
+
+    fireEvent.change(await screen.findByLabelText('Code from the email'), {
+      target: { value: '123' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Verify email' }));
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Check your email' }),
+    ).toBeDefined();
+    expect(sent.some((request) => request.path === '/api/auth/register/verify')).toBe(false);
+  });
+
+  it('goes back to Create your account from Send a new code', async () => {
+    signUp({ 'POST /api/auth/register/resend': () => problem(410, 'registration_expired') });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Send a new code' }));
+
+    await timedOut();
+    expect((screen.getByLabelText('Full name') as HTMLInputElement).value).toBe('Folake Adeyemi');
+  });
+
+  it('opens on Create your account, with the name empty, when the tab no longer has it', async () => {
+    sessionStorage.setItem(
+      'soirely.registration',
+      JSON.stringify({ registration: 'the-handle', email: 'folake@ire.events' }),
+    );
+    answering({ 'GET /api/auth/register/resend': () => problem(410, 'registration_expired') });
+
+    at('/verify-email');
+
+    await timedOut();
+    expect((screen.getByLabelText('Full name') as HTMLInputElement).value).toBe('');
+  });
+
+  it('lets the line go once Create account is pressed, even when a field check refuses', async () => {
+    signUp({ 'POST /api/auth/register/verify': () => problem(410, 'registration_expired') });
+
+    fireEvent.change(await screen.findByLabelText('Code from the email'), {
+      target: { value: '123456' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Verify email' }));
+    await timedOut();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Create account' }));
+
+    expect(await screen.findByText('Enter a password.')).toBeDefined();
+    expect(screen.queryByText(TIMED_OUT)).toBeNull();
+  });
+  it('keeps the line gone on Back from the new sign-up, and on a reload after a refused check', async () => {
+    answering({
+      'POST /api/auth/register': () =>
+        json({ registration: 'the-handle', email: 'folake@ire.events' }, 202),
+      'GET /api/auth/register/resend': () => json({ cooldownSeconds: 0, codeState: 'live' }),
+      'POST /api/auth/register/verify': () => problem(410, 'registration_expired'),
+    });
+    const router = createMemoryRouter(routes, { initialEntries: ['/register'] });
+    const { unmount } = render(<RouterProvider router={router} />);
+    fillIn();
+
+    fireEvent.change(await screen.findByLabelText('Code from the email'), {
+      target: { value: '123456' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Verify email' }));
+    await timedOut();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Create account' }));
+    expect(await screen.findByText('Enter a password.')).toBeDefined();
+    unmount();
+    render(<RouterProvider router={router} />);
+    await screen.findByRole('heading', { level: 1, name: 'Create your account' });
+    expect(screen.queryByRole('status')).toBeNull();
+    expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe('folake@ire.events');
+
+    typePassword('lagos-evening-air');
+    fireEvent.click(screen.getByRole('button', { name: 'Create account' }));
+    await screen.findByRole('heading', { level: 1, name: 'Check your email' });
+
+    await act(() => router.navigate(-1));
+    await screen.findByRole('heading', { level: 1, name: 'Create your account' });
+    expect(screen.queryByRole('status')).toBeNull();
   });
 });

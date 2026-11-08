@@ -23,6 +23,11 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
     boards: [
       { title: 'A planning day', what: 'Four things need you', href: '/demo/today' },
       {
+        title: 'A planning day · invitations not sent',
+        what: 'The party with nobody invited, Send late',
+        href: '/demo/today?moment=plan&invites=none',
+      },
+      {
         title: 'A planning day · built now',
         what: 'Only what the events’ dates can say',
         href: '/demo/today?moment=planNow',
@@ -35,7 +40,7 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
       },
       {
         title: 'The event day · guests arriving',
-        what: '141/152 arrived, beside Open the event',
+        what: '87/99 arrived, beside Open the event',
         href: '/demo/today?moment=dayNow&arrived=some',
       },
       {
@@ -55,17 +60,17 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
       },
       {
         title: 'The event day · nobody arrived yet',
-        what: 'The replies line, and no figure',
+        what: 'Day 1 at 15:20: the replies line, no figure',
         href: '/demo/today?moment=dayNow&arrived=none',
       },
       {
         title: 'The event day · arrivals coming in',
-        what: 'From nobody to 3 and back, every 4 seconds',
+        what: 'Day 1 from 16:05: to 3 of 98 and back, every 4 seconds',
         href: '/demo/today?moment=dayNow&arrived=live',
       },
       {
         title: 'Now · from the run of show',
-        what: 'Drinks, until 5:30 PM, 10 min behind',
+        what: 'Drinks, until 17:30, 10 min behind',
         href: '/demo/today?moment=day&now=on',
       },
       {

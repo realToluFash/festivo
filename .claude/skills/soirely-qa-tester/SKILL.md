@@ -348,7 +348,8 @@ turn TalkBack on again after `android` starts, or a missing announcement is the 
 `release` needs no bundler and takes an hour the first time on a machine. The next `android`
 removes it. The emulator has no window, so `release` records the launch's first 15 seconds and
 prints where: judge a splash bullet on that video, frame by frame, never on a screenshot taken
-afterwards. With `--offline` it launches only once the emulator reports no network, and stops
+afterwards. Pull its frames into `"${SQ_RUN_DIR:?export SQ_RUN_DIR=\$(mktemp -d) first}"`, never into `.qa/`: they go when the run
+ends, and the video stays until the story passes. With `--offline` it launches only once the emulator reports no network, and stops
 with an error otherwise. If your worktree says `unknown command` for any command this skill
 names (`release`, `hierarchy`, …), its `.qa/bin` copy predates it, and the start said why it
 kept it: name the missing command in your report. An old `android` neither removes a release

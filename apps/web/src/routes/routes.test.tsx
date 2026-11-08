@@ -239,7 +239,7 @@ describe('the application tree', () => {
     sessionStorage.clear();
   });
 
-  it('clears a sign-up that has run out, and opens on sign in', async () => {
+  it('clears a sign-up that has run out, and opens on Create your account saying so (sc-29923)', async () => {
     __setSessionState({ status: 'signedOut', ended: false });
     sessionStorage.setItem(
       'soirely.registration',
@@ -259,7 +259,11 @@ describe('the application tree', () => {
     at('/app');
 
     await waitFor(() =>
-      expect(screen.getByRole('heading', { level: 1, name: 'Sign in' })).toBeDefined(),
+      expect(screen.getByRole('heading', { level: 1, name: 'Create your account' })).toBeDefined(),
+    );
+    expect(screen.getByLabelText('Email', { exact: false })).toHaveProperty(
+      'value',
+      'ada@example.com',
     );
     expect(sessionStorage.getItem('soirely.registration')).toBeNull();
   });

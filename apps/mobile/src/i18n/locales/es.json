@@ -70,7 +70,7 @@
     "refused": "Ese correo electrónico y esa contraseña no coinciden. Compruebe ambos o restablezca su contraseña.",
     "endedTitle": "Se ha cerrado su sesión",
     "endedBody": "Inicie sesión de nuevo para continuar.",
-    "codeTimedOutTitle": "That sign-in timed out",
+    "codeTimedOutTitle": "El inicio de sesión ha caducado",
     "lockedTitle": "Demasiados intentos",
     "withGoogle": "Continuar con {{provider}}",
     "withApple": "Continuar con {{provider}}",
@@ -107,7 +107,8 @@
     "failedTitle": "No se ha podido crear su cuenta",
     "failedBody": "Algo ha fallado en el camino. Inténtelo de nuevo en un momento.",
     "nameBlank": "Introduzca su nombre completo.",
-    "passwordBlank": "Introduzca una contraseña."
+    "passwordBlank": "Introduzca una contraseña.",
+    "timedOut": "Su registro ha caducado, así que no hemos guardado la contraseña. Vuelva a introducirla para recibir un código nuevo."
   },
   "verifyEmail": {
     "title": "Revise su correo",

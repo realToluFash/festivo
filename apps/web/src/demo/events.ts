@@ -1153,8 +1153,11 @@ const LIST_STATES: readonly ListState[] = [
   'noGuests',
 ];
 
+/** guests-a-spec §15 names Events' first run and its 0 for both demos; `first` and `noGuests` are this page's own. */
 export function listStateOf(value: string | null): ListState | null {
-  return LIST_STATES.find((state) => state === value) ?? null;
+  const named = value === 'eventsFirst' ? 'first' : value === 'eventsZero' ? 'noGuests' : value;
+
+  return LIST_STATES.find((state) => state === named) ?? null;
 }
 
 export interface ListStart {
@@ -1501,7 +1504,7 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
   {
     name: 'The event’s areas',
     states: [
-      { to: '/demo/events/evt-wed-4?area=guests', name: 'Guests, coming' },
+      { to: '/demo/events/evt-wed-4?area=menu', name: 'Menu, coming' },
       { to: '/demo/events/evt-wed-4?area=messages', name: 'Messages, coming' },
       { to: '/demo/events/evt-wed-4?area=budget', name: 'Budget, coming' },
     ],

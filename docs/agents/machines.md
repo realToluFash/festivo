@@ -335,7 +335,9 @@ ops work of its own kind, `machine`, in the queue `ops@<machine>`:
   an entry nothing has changed in for 3 days goes (14 days under a megabyte). Kept: the
   harness (`bin`, `state.json`, dot entries), `untracked-before-main-*`, and an entry whose
   name carries the number of a story still In QA under that tester. The journal says what
-  each sweep freed and where.
+  each sweep freed and where. An entry whose stories have all passed QA or are Done goes
+  at the next sweep, whatever its age; so does a merged story's clean, pushed worktree
+  (`README.md`, Guards and alerts).
 - **This machine's ops takes its machine work whoever holds the ops lease.** A machine
   without the lease runs ops for `ops@<machine>` items only.
 - **A full disk holds every other role, but not this.** The disk guard is the one hold

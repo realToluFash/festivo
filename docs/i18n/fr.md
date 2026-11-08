@@ -70,6 +70,27 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **8 nov. 2026. Une connexion à deux facteurs qui a expiré** (sc-29979,
+  `signIn.codeTimedOutTitle`, web et app). « La connexion a expiré », puis `endedBody`
+  « Reconnectez-vous pour continuer. ». « La connexion », la tentative en cours, et non
+  « Votre session », que la personne n'a jamais ouverte. L'app joint les deux sur une ligne
+  avec un point : le titre n'en prend pas.
+- **8 nov. 2026. Une inscription qui a expiré** (sc-32449 pour sc-29923, `register.timedOut`,
+  web et app). « Votre inscription a expiré, nous n’avons donc pas conservé le mot de passe.
+  Ressaisissez-le pour recevoir un nouveau code. ». "Sign-up" est « inscription », comme
+  `limitedTitle` ; « expirer », comme la connexion ; « Ressaisissez-le » plutôt que « Saisissez-le
+  de nouveau », qui heurte « nouveau code », lui-même repris de `resend`.
+- **8 nov. 2026. Invités A : la réponse, les deux décomptes et le 412** (sc-3773, #32403).
+  "Not sure yet" est « À confirmer », sur la page de l’invité comme sur celle de l’hôte : rien
+  ne s’accorde, quand « pas encore sûr » ou « indécis » imposeraient un genre. « À confirmer ·
+  réponse attendue d’ici le {{date}} », « À confirmer · a répondu le {{date}} ». "Haven't
+  replied" est « n’ont pas répondu » (« {{count}} personnes n’ont pas répondu ») ; "No reply"
+  est « Sans réponse » ; on ne les échange jamais. "Companions" est « accompagnants ».
+  « {{coming}} des {{invited}} invités viennent ». "Write to them" est « Leur écrire » ; "Open
+  check-in", « Ouvrir l’accueil ». "Show all {{count}}" est « Afficher les {{count}} ». "Their
+  conversation" est « Conversation ». Le 412 : « La sienne · La vôtre », « Prendre la sienne »
+  et « Garder la mienne » ; « sienne » s’accorde avec la version, pas avec la personne.
+
 - **7 nov. 2026. L’écran Aujourd’hui de l’app** (`mobile:todayScreen.*`, sc-31788 pour
   sc-29090). "Live now" et "Live · …" sont « En cours », comme `eventsScreen.happeningNow`,
   jamais « Publié », qui est l’état. L’agenda met une étiquette et deux-points,

@@ -10,6 +10,9 @@ from .shortcut import OutOfTime, Shortcut, ShortcutError, slim
 
 FRESH_SECONDS = 60
 FULL_EVERY_SECONDS = 15 * 60
+# A sync reads what changed since the last whole one, from this long before it, so a story
+# updated while that sync ran is not missed.
+OVERLAP_SECONDS = 2 * 60
 # Ready For Dev is searched on its own more often, so a developer is not left idle.
 READY_EVERY_SECONDS = 5 * 60
 INBOX_DAYS = 14
@@ -55,19 +58,27 @@ def sync_shortcut(db, shortcut, now, full=False):
         full = True
     states, epics = _lookups(db, shortcut, now)
     full = full or now - store.get_meta(db, "full_at", 0) >= FULL_EVERY_SECONDS
-    days = INBOX_DAYS if full else 1
-    since = (datetime.datetime.fromtimestamp(now, datetime.UTC)
-             - datetime.timedelta(days=days)).date().isoformat()
-    found = {s["id"]: s for s in shortcut.search(f"updated:{since}..*")}
+    since = now - INBOX_DAYS * 24 * 60 * 60 if full else \
+        max(store.get_meta(db, "shortcut_at", 0) - OVERLAP_SECONDS, now - 24 * 60 * 60)
     ready = full or now - store.get_meta(db, "ready_at", 0) >= READY_EVERY_SECONDS
-    for state in roles.QUEUE_STATES if full else ["Ready For Dev"] if ready else []:
-        found.update({s["id"]: s for s in shortcut.search(f'state:"{state}"')})
-    stale = [story_id for story_id, hit in found.items()
-             if (store.story(db, story_id) or {}).get("updated_at") != hit.get("updated_at")]
+    ids = {name: int(state_id) for state_id, name in states.items()}
+    changed = datetime.datetime.fromtimestamp(since, datetime.UTC).isoformat()
+    # Search leaves archived stories out, so the archived are asked for apart: archiving a
+    # story updates it.
+    asks = [{"updated_at_start": changed}, {"updated_at_start": changed, "archived": True}]
+    asks += [{"workflow_state_id": ids[state]}
+             for state in (roles.QUEUE_STATES if full else ["Ready For Dev"] if ready else [])
+             if state in ids]
+    found = {}
     with ThreadPoolExecutor(max_workers=8) as pool:
+        for hits in pool.map(lambda ask: shortcut.find(**ask), asks):
+            found.update({s["id"]: s for s in hits})
+        stale = [story_id for story_id, hit in found.items()
+                 if (store.story(db, story_id) or {}).get("updated_at") != hit.get("updated_at")]
         for raw in pool.map(shortcut.story, stale):
             store.put_story(db, slim(raw, states, epics))
-    fetched = len(stale) + sync_blockers(db, shortcut, states, epics, full)
+    fetched = len(stale) + sync_blockers(db, shortcut, states, epics)
+    store.set_meta(db, "shortcut_at", now)
     if full:
         store.set_meta(db, "full_at", now)
     if ready:
@@ -75,27 +86,32 @@ def sync_shortcut(db, shortcut, now, full=False):
     return fetched
 
 
-def sync_blockers(db, shortcut, states, epics, full=False):
+def sync_blockers(db, shortcut, states, epics):
     """The stories that block one not yet claimed, since a blocker the searches miss (Done
-    long ago, or in a state no queue reads) still decides whether the story is held. Search
-    leaves archived stories out, so a full sync fetches each blocker still holding again, to
-    see it archived. One Shortcut does not have is not asked for again."""
+    long ago, or in a state no queue reads) still decides whether the story is held. Once
+    stored, a blocker is kept current by the searches for what changed, archived or not.
+    One Shortcut does not have is not asked for again."""
     missing = set(store.get_meta(db, "missing_stories") or [])
     wanted = set()
     for story in store.stories(db):
         if story["done"] or story["state"] not in work.HOLDABLE:
             continue
         for blocker_id in work.blockers(story):
-            known = store.story(db, blocker_id)
-            if blocker_id not in missing and (not known or full and not work.merged(known)):
+            if blocker_id not in missing and not store.story(db, blocker_id):
                 wanted.add(blocker_id)
-    for blocker_id in sorted(wanted):
+    def fetch(blocker_id):
         try:
-            store.put_story(db, slim(shortcut.story(blocker_id), states, epics))
+            return blocker_id, shortcut.story(blocker_id)
         except OutOfTime:
             raise
         except ShortcutError as error:
-            if " 404 " in str(error):
+            return blocker_id, error
+
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        for blocker_id, raw in pool.map(fetch, sorted(wanted)):
+            if not isinstance(raw, ShortcutError):
+                store.put_story(db, slim(raw, states, epics))
+            elif " 404 " in str(raw):
                 missing.add(blocker_id)
     store.set_meta(db, "missing_stories", sorted(missing))
     return len(wanted)
@@ -110,19 +126,14 @@ def refresh_story(db, shortcut, story_id, now=None):
 
 def pr_stories(db, shortcut, now):
     """The story of every open pull request, however long ago it was last updated, so a
-    pull request on an old Done or archived story is still seen. A story Shortcut does not
-    have is remembered as missing and not asked for again. Search leaves archived stories
-    out, so each is fetched again now and then to see it archived from Shortcut itself."""
+    pull request on an old Done or archived story is still seen. Once stored, it is kept
+    current by the searches for what changed, archived or not, as a blocker is. A story
+    Shortcut does not have is remembered as missing and not asked for again."""
     missing = set(store.get_meta(db, "missing_stories") or [])
-    again = now - store.get_meta(db, "pr_stories_at", 0) >= FULL_EVERY_SECONDS
-    wanted = set()
-    for pr in store.prs(db):
-        if pr["state"] != "open" or not pr["story_id"] or pr["story_id"] in missing:
-            continue
-        known = store.story(db, pr["story_id"])
-        if not known or again and not known.get("archived"):
-            wanted.add(pr["story_id"])
-    for story_id in sorted(wanted):
+    wanted = sorted({pr["story_id"] for pr in store.prs(db)
+                     if pr["state"] == "open" and pr["story_id"]
+                     and pr["story_id"] not in missing and not store.story(db, pr["story_id"])})
+    for story_id in wanted:
         try:
             refresh_story(db, shortcut, story_id, now)
         except OutOfTime:
@@ -131,8 +142,6 @@ def pr_stories(db, shortcut, now):
             if " 404 " in str(error):
                 missing.add(story_id)
     store.set_meta(db, "missing_stories", sorted(missing))
-    if again:
-        store.set_meta(db, "pr_stories_at", now)
 
 
 def refresh_lookups(db, shortcut):
@@ -141,8 +150,11 @@ def refresh_lookups(db, shortcut):
 
 
 def sync_github(db):
-    owner, name = store.get_meta(db, "repository") or github.repository()
-    store.set_meta(db, "repository", [owner, name])
+    # Written only once: a write waits on another process's write lock, up to SQLite's
+    # busy timeout, before the deadline is ever checked.
+    if not store.get_meta(db, "repository"):
+        store.set_meta(db, "repository", list(github.repository()))
+    owner, name = store.get_meta(db, "repository")
     known = {pr["number"]: pr for pr in store.prs(db)}
     prs = github.pull_requests(owner, name, known)
     cache, kept = store.get_meta(db, "carried", {}), {}
