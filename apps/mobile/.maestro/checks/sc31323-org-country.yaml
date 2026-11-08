@@ -9,7 +9,11 @@ appId: host.exp.Exponent
 - tapOn:
     id: 'completeProfile.organisation'
 - inputText: 'QA Edge Ltd'
-- hideKeyboard
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
 - tapOn:
     id: 'completeProfile.save'
 - waitForAnimationToEnd

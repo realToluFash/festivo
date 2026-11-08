@@ -9,7 +9,11 @@ appId: host.exp.Exponent
 - tapOn:
     id: 'phone.number'
 - inputText: '241234567'
-- hideKeyboard
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
 - tapOn:
     id: 'phone.send'
 - waitForAnimationToEnd
