@@ -87,14 +87,16 @@ describe('the door code’s card on People (sc-71, sc-72)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Stop this code' }));
     const ask = asked('Stop this code?');
     expect(
-      ask.getByText('Nobody new can use it. The 14 people already in keep their access.'),
+      ask.getByText('Nobody new can use it. 14 people are already in and keep their access.'),
     ).toBeDefined();
     fireEvent.click(ask.getByRole('button', { name: 'Stop the code' }));
     expect(ask.getByRole('button', { name: 'Stopping…' })).toBeDefined();
     await wait(1000);
 
     expect(screen.getByText('Stopped')).toBeDefined();
-    expect(screen.getByText('14 people came in with it. They keep their access.')).toBeDefined();
+    expect(
+      screen.getByText('14 people came in with this code. They keep their access.'),
+    ).toBeDefined();
   });
 });
 
@@ -223,7 +225,7 @@ describe('Show the code, the whole window', () => {
 
     const ask = asked('Make a new code?');
     expect(
-      ask.getByText('Q7KM 4XP2 stops working. The 14 people already in keep their access.'),
+      ask.getByText('Q7KM 4XP2 stops working. 14 people are already in and keep their access.'),
     ).toBeDefined();
     fireEvent.click(ask.getByRole('button', { name: 'Make a new code' }));
     await wait(1000);
