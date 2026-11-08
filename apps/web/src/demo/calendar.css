@@ -962,6 +962,18 @@
   outline: none;
 }
 
+.cal-agenda-day .cal-date:focus-visible {
+  position: relative;
+}
+
+.cal-agenda-day .cal-date:focus-visible::before {
+  position: absolute;
+  inset: 8px 6px -2px;
+  border-radius: 12px;
+  box-shadow: var(--deskRing);
+  content: '';
+}
+
 @media (prefers-reduced-motion: reduce) {
   .cal-spinner {
     animation: none;
