@@ -1,0 +1,17 @@
+# sc-27088, Android only: Settings > sign-in-rules shows the offline band, the automatic rereads are refused with the band still up, Try again's own load shows Refreshing…, then the band goes once Soirely answers.
+appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
+---
+- runFlow:
+    file: ../checks/sc27088/band-refreshing.yaml
+    env:
+      SCREEN: sign-in-rules
+      REFRESHING: 'signInRules.refreshing'
+      LOADED_ID: '.*'
+      LOADED_TEXT: '{{t:signInRules.inForceTitle}}'
+- assertVisible: '{{t:signInRules.inForceTitle}}'
+- takeScreenshot: reloaded

@@ -1,0 +1,24 @@
+# Name on Account focused (green edge), then emptied and saved so it errors (red edge). sc-28849.
+# Change opens the step focused (useStepOpen), and Android's hideKeyboard leaves it focused: no at-rest shot.
+# A blank save focuses the field (focusChecked), so the wrong state is shot focused only: no wrong-at-rest shot.
+# Android only: the unconditional hideKeyboard stops the flow on an iPhone.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/account
+- extendedWaitUntil:
+    visible: '{{t:account.title}}'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'nameCard.change'
+    timeout: 30000
+- tapOn:
+    id: 'nameCard.change'
+- hideKeyboard
+- tapOn:
+    id: 'nameCard.field'
+- takeScreenshot: name-focused
+- eraseText: 80
+- tapOn:
+    id: 'nameCard.save'
+- takeScreenshot: name-wrong-focused

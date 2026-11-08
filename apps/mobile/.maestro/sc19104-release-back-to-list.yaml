@@ -1,0 +1,20 @@
+# sc-19104, Android release build, after the display size moved with a section open: Back shows the Settings list, a second Back shows Home. Pass SECTION.
+appId: com.soirely.app
+---
+- waitForAnimationToEnd
+- takeScreenshot: before-back
+- back
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: 'settings.${SECTION}'
+    timeout: 10000
+- assertNotVisible:
+    id: 'home.openSettings'
+- takeScreenshot: after-back
+- back
+- extendedWaitUntil:
+    visible:
+      id: 'home.openSettings'
+    timeout: 10000
+- takeScreenshot: after-second-back

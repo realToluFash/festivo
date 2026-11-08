@@ -1,0 +1,296 @@
+import { type Ref, useId, useState } from 'react';
+import {
+  FlatList,
+  Modal,
+  Platform,
+  Pressable,
+  StyleSheet,
+  TextInput,
+  View,
+  type ViewInstance,
+} from 'react-native';
+import { useTranslation } from 'react-i18next';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import Svg, { Path } from 'react-native-svg';
+
+import { currentLocale } from '../i18n/index.ts';
+import { fieldName, refusedHint, withInvalid } from '../kit/fields.ts';
+import { searchBesideTitle } from '../kit/keyboard.ts';
+import { TURNS_WITH_THE_APP } from '../layout/orientations.ts';
+import { useLayout } from '../layout/useLayout.ts';
+import { inputFaced } from '../theme/fonts.ts';
+import { tokens } from '../theme/tokens.ts';
+import { useModalOpen } from '../updateRequired.ts';
+import { FocusEdge, focusEdge, useFocusEdge, useHeld, useRefused } from './Field.tsx';
+import { LIFT } from './keyboardWatch.ts';
+import { Screen } from './Screen.tsx';
+import { Text } from './Text.tsx';
+import { UnseenName } from './UnseenName.tsx';
+
+const CONTROL_TEXT_SIZE = 16;
+
+export interface Choice {
+  code: string;
+  name: string;
+}
+
+/** A select, as the artboard draws one: the chosen value in a field, and the whole list one tap away. */
+export function ListPicker({
+  label,
+  placeholder = label,
+  searchLabel,
+  choices,
+  value,
+  onChange,
+  disabled = false,
+  readOnly = false,
+  shown: drawn,
+  wrong = false,
+  line,
+  pickerRef,
+  testID,
+}: {
+  label: string;
+  placeholder?: string;
+  searchLabel: string;
+  choices: readonly Choice[];
+  value: string;
+  onChange: (code: string) => void;
+  disabled?: boolean;
+  /** Drawn and announced as a field that can't change, not as one that is only busy. */
+  readOnly?: boolean;
+  /** Drawn in place of the chosen name, as a phone's "🇬🇧 +44" is; the screen reader still hears the name. */
+  shown?: string | undefined;
+  /** A line about it shows under it: a refused text field's red edge, 2pt with focus (sc-30447). */
+  wrong?: boolean;
+  /** The line about it, where it sits in no Field whose line that is, as a phone's code beside its number does. */
+  line?: string | null | undefined;
+  /** For moving screen-reader focus here when it is the field refused first. */
+  pickerRef?: Ref<ViewInstance> | undefined;
+  testID: string;
+}) {
+  const { t } = useTranslation();
+  const locale = currentLocale();
+  const [open, setOpen] = useState(false);
+  const pickerShown = useModalOpen(open);
+  const [search, setSearch] = useState('');
+  const searchNameID = useId();
+  const searching = useHeld(false, search, undefined, setSearch);
+  const searchEdge = useFocusEdge();
+  const fieldEdge = useFocusEdge();
+  const refused = useRefused(wrong, line);
+  const { kind, width, height } = useLayout();
+  const beside = searchBesideTitle({ os: Platform.OS, phone: kind === 'phone', width, height });
+
+  const chosen = choices.find((choice) => choice.code === value)?.name ?? value;
+  const blank = chosen === '';
+  const name = blank ? label : `${label}: ${chosen}`;
+  const needle = search.trim().toLocaleLowerCase(locale);
+  const shown =
+    needle === ''
+      ? choices
+      : choices.filter((choice) => choice.name.toLocaleLowerCase(locale).includes(needle));
+
+  const searchField = (
+    <View style={beside ? styles.searchBeside : undefined}>
+      {/* TalkBack reads no placeholder once the search holds text, so these words name it then. */}
+      <UnseenName nativeID={searchNameID}>{searchLabel}</UnseenName>
+      <TextInput
+        style={inputFaced([styles.search, focusEdge(searchEdge.focused, false)])}
+        {...searching}
+        {...searchEdge.edging}
+        placeholder={searchLabel}
+        placeholderTextColor={tokens.colorInkTertiary}
+        cursorColor={tokens.colorInk}
+        selectionColor={tokens.colorInk}
+        autoCorrect={false}
+        spellCheck={false}
+        {...fieldName(Platform.OS, searchLabel, {
+          placeholder: searchLabel,
+          filled: { held: search !== '', nameID: searchNameID },
+        })}
+        testID={`${testID}.search`}
+      />
+    </View>
+  );
+
+  return (
+    <>
+      <Pressable
+        ref={pickerRef}
+        style={[
+          styles.field,
+          readOnly && styles.fieldReadOnly,
+          drawn != null && styles.fieldCompact,
+          wrong && styles.fieldWrong,
+        ]}
+        onPress={() => setOpen(true)}
+        {...fieldEdge.edging}
+        disabled={disabled || readOnly}
+        accessibilityRole={readOnly ? undefined : 'button'}
+        accessibilityState={{ disabled: disabled || readOnly }}
+        accessibilityLabel={refused == null ? name : withInvalid(name, refused.word)}
+        accessibilityHint={refusedHint(refused, undefined)}
+        aria-invalid={wrong}
+        testID={testID}
+      >
+        <Text
+          size={CONTROL_TEXT_SIZE}
+          style={[blank ? styles.placeholder : styles.value, drawn != null && styles.valueCompact]}
+        >
+          {blank ? placeholder : (drawn ?? chosen)}
+        </Text>
+        {!readOnly && <Chevron />}
+        {fieldEdge.focused && <FocusEdge wrong={wrong} />}
+      </Pressable>
+
+      <Modal
+        visible={pickerShown}
+        animationType="slide"
+        supportedOrientations={TURNS_WITH_THE_APP}
+        onRequestClose={() => setOpen(false)}
+      >
+        {/* A full-screen modal takes the app's view out of the window, so the app's insets stop turning with it. */}
+        <SafeAreaProvider>
+          <View
+            style={styles.fill}
+            collapsable={false}
+            onAccessibilityEscape={() => setOpen(false)}
+          >
+            <Screen
+              style={styles.page}
+              contentStyle={beside ? { ...styles.sheet, ...styles.sheetBeside } : styles.sheet}
+              scroll={false}
+            >
+              <View style={styles.sheetHeading}>
+                <Text
+                  size={tokens.typeTitleDialog.size}
+                  weight="bold"
+                  accessibilityRole="header"
+                  style={beside ? styles.titleBeside : undefined}
+                >
+                  {label}
+                </Text>
+                {beside && searchField}
+                <Pressable
+                  style={styles.close}
+                  onPress={() => setOpen(false)}
+                  accessibilityRole="button"
+                  testID={`${testID}.close`}
+                >
+                  <Text size={tokens.typeButton.size} weight="semibold" style={styles.accentText}>
+                    {t('countryPicker.close')}
+                  </Text>
+                </Pressable>
+              </View>
+              {!beside && searchField}
+              <FlatList
+                data={shown}
+                keyExtractor={(choice) => choice.code}
+                keyboardShouldPersistTaps="handled"
+                // The modal is its own window, so on iOS only the list's own inset lifts its last row above the keys.
+                automaticallyAdjustKeyboardInsets={LIFT.adjustScrollInsets}
+                renderItem={({ item }) => (
+                  <Pressable
+                    style={[styles.option, item.code === value && styles.optionChosen]}
+                    onPress={() => {
+                      onChange(item.code);
+                      setSearch('');
+                      setOpen(false);
+                    }}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: item.code === value }}
+                    testID={`${testID}.${item.code}`}
+                  >
+                    <Text size={CONTROL_TEXT_SIZE} style={styles.optionName}>
+                      {item.name}
+                    </Text>
+                    {item.code === value && (
+                      <Text
+                        size={tokens.typeButton.size}
+                        weight="semibold"
+                        style={styles.accentText}
+                        accessible={false}
+                        accessibilityElementsHidden
+                        importantForAccessibility="no-hide-descendants"
+                      >
+                        ✓
+                      </Text>
+                    )}
+                  </Pressable>
+                )}
+              />
+            </Screen>
+          </View>
+        </SafeAreaProvider>
+      </Modal>
+    </>
+  );
+}
+
+function Chevron() {
+  return (
+    <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="m6 9 6 6 6-6"
+        stroke={tokens.colorInkSecondary}
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
+const styles = StyleSheet.create({
+  field: {
+    minHeight: tokens.sizeHitPhonePrimary,
+    paddingVertical: tokens.spaceSm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spaceSm,
+    paddingHorizontal: tokens.spaceLg,
+    borderWidth: 1,
+    borderColor: tokens.colorControlBorder,
+    borderRadius: tokens.radiusField,
+    backgroundColor: tokens.colorCard,
+  },
+  fieldReadOnly: { backgroundColor: tokens.colorNeutralFill },
+  fieldCompact: { minHeight: 56, borderColor: tokens.colorFieldBorder },
+  fieldWrong: { borderColor: tokens.colorBroken },
+  value: { flex: 1, color: tokens.colorInk },
+  // A growing value in a field with no width of its own takes the whole row on Android.
+  valueCompact: { flex: 0 },
+  placeholder: { flex: 1, color: tokens.colorInkSecondary },
+  fill: { flex: 1 },
+  page: { backgroundColor: tokens.colorPage },
+  sheet: { flex: 1, gap: tokens.spaceLg, padding: tokens.space3xl },
+  sheetBeside: { paddingVertical: tokens.spaceLg, gap: tokens.spaceSm },
+  sheetHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  titleBeside: { flexShrink: 1 },
+  close: { minHeight: tokens.sizeHit, justifyContent: 'center', paddingHorizontal: tokens.spaceSm },
+  accentText: { color: tokens.colorAccentText },
+  search: {
+    minHeight: tokens.sizeHitPhonePrimary,
+    paddingVertical: tokens.spaceSm,
+    paddingHorizontal: tokens.spaceLg,
+    borderWidth: 1,
+    borderColor: tokens.colorControlBorder,
+    borderRadius: tokens.radiusField,
+    backgroundColor: tokens.colorCard,
+    color: tokens.colorInk,
+    fontSize: CONTROL_TEXT_SIZE,
+  },
+  searchBeside: { flex: 1, marginHorizontal: tokens.spaceLg },
+  option: {
+    minHeight: tokens.sizeHitPhonePrimary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spaceSm,
+    paddingHorizontal: tokens.spaceLg,
+    borderBottomWidth: 1,
+    borderBottomColor: tokens.colorInsetBorder,
+  },
+  optionChosen: { backgroundColor: tokens.colorAccentTint },
+  optionName: { flex: 1 },
+});

@@ -1,0 +1,27 @@
+# sc-17437: a paused event in the future, called off elsewhere while open, then Resume: the amber row says it changed elsewhere and that it has been called off. Pass EVENT_ID, a fresh paused event per run.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- extendedWaitUntil:
+    visible:
+      id: 'events.pausedRow'
+    timeout: 30000
+- runScript:
+    file: ../scripts/call-off-event-elsewhere.js
+- assertTrue:
+    condition: ${output.ended == 200}
+    label: 'Called off elsewhere, answered ${output.ended}'
+- scrollUntilVisible:
+    element:
+      id: 'events.resume'
+- tapOn:
+    id: 'events.resume'
+- extendedWaitUntil:
+    visible:
+      id: 'events.phase.finished'
+    timeout: 15000
+- scrollUntilVisible:
+    element:
+      id: 'events.pausedRow'
+- waitForAnimationToEnd
+- takeScreenshot: resume-called-off

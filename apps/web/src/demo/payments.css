@@ -1,0 +1,108 @@
+/* sc-88's payments on a vendor's page, sc-1332's shapes and sc-95's setting in A (Budget-A-Payments, Budget-A-Quotes). */
+.desk-text.pay-quiet {
+  color: var(--colorInkSecondary);
+}
+
+.pay-made {
+  display: flex;
+  padding-top: var(--spaceSm);
+}
+
+.pay-made .desk-text {
+  margin-inline: 0;
+}
+
+.pay-cancelled {
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  color: var(--colorInkSecondary);
+  box-shadow: inset 0 0 0 2px currentcolor;
+}
+
+.pay-cancelled span {
+  width: 9px;
+  height: 2px;
+  border-radius: 1px;
+  background: currentcolor;
+}
+
+.pay-mark .bud-money .desk-help {
+  color: var(--colorInk);
+  font: 600 14px/1.45 var(--fontFamily);
+}
+
+.pay-shapes {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.pay-legend {
+  padding: 0 0 4px;
+  color: var(--colorInk);
+  font: 700 15px/1.3 var(--fontFamily);
+}
+
+.pay-shape {
+  gap: var(--spaceLg);
+}
+
+.pay-shape .desk-row-name {
+  font-weight: 500;
+}
+
+.pay-shape.is-chosen .desk-row-name {
+  font-weight: 600;
+}
+
+.pay-shape-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceMd);
+  padding-bottom: var(--spaceLg);
+}
+
+.pay-note {
+  color: var(--colorInkSecondary);
+  font: 500 14px/1.45 var(--fontFamily);
+}
+
+.pay-note.is-amber {
+  color: var(--colorAttentionText);
+  font-weight: 600;
+}
+
+.pay-select {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--colorInk);
+  font: 500 16px/1.3 var(--fontFamily);
+}
+
+.pay-says:focus {
+  outline: none;
+}
+
+.pay-refused {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+}
+
+.pay-refused .desk-text {
+  gap: var(--spaceXxs);
+}
+
+.pay-refused .desk-text:not(:hover) {
+  text-decoration: none;
+}

@@ -1,0 +1,17 @@
+# sc-11786: New role's page.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/settings/roles
+- extendedWaitUntil:
+    visible:
+      id: 'roles.new'
+    timeout: 30000
+- tapOn:
+    id: 'roles.new'
+- extendedWaitUntil:
+    visible:
+      id: 'roles.name'
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: role-new

@@ -1,0 +1,37 @@
+# sc-25897 iPhone, as today: An account at its limit: keys up on Organisation name, Create organisation tapped, then the same sent with the return key. After each answer the keys are down and the limit notice is wholly on screen below the title.
+appId: host.exp.Exponent
+---
+- runFlow: ../open-create-organisation.yaml
+- tapOn:
+    id: 'createOrganisation.name'
+- inputText: 'Notice In View'
+- waitForAnimationToEnd
+- assertVisible: '(?i)(shift|delete)'
+- tapOn:
+    id: 'createOrganisation.create'
+- extendedWaitUntil:
+    visible: '.*{{t:createOrganisation.limitedTitle}}.*'
+    timeout: 45000
+- takeScreenshot: answered-early
+- extendedWaitUntil:
+    visible:
+      id: 'sc25897.never'
+    timeout: 3000
+    optional: true
+- takeScreenshot: answered
+- assertNotVisible: '(?i)(shift|delete)'
+- tapOn:
+    id: 'createOrganisation.name'
+- waitForAnimationToEnd
+- pressKey: Enter
+- extendedWaitUntil:
+    visible: '{{t:createOrganisation.create}}'
+    timeout: 45000
+- extendedWaitUntil:
+    visible:
+      id: 'sc25897.never'
+    timeout: 3000
+    optional: true
+- takeScreenshot: returned
+- assertNotVisible: '(?i)(shift|delete)'
+- assertVisible: '.*{{t:createOrganisation.limitedTitle}}.*'
