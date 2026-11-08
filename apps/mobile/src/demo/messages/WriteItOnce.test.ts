@@ -48,7 +48,9 @@ const opened = (state: string, wide = true) => {
 
 describe('sc-3960’s states', () => {
   it('follow the spec’s, each read from ?state= and linked from the demo home', () => {
-    expect(MESSAGES_STATES.slice(45, 54)).toEqual(SC_3960);
+    const at = MESSAGES_STATES.indexOf('insert');
+
+    expect(MESSAGES_STATES.slice(at, at + SC_3960.length)).toEqual(SC_3960);
     for (const state of SC_3960) {
       expect(messagesStateOf(state)).toBe(state);
       expect(MESSAGES_BOARDS.find((board) => board.state === state)?.href).toBe(

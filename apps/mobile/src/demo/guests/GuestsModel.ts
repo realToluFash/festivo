@@ -80,6 +80,7 @@ export const EDIT_STATES = [
   'editDuplicate',
   'editCompanions',
   'editMax',
+  'editSeated',
   'editDiscard',
   'edit412',
   'editNotSaved',
@@ -107,6 +108,7 @@ export const ADD_STATES = [
   'addOffline',
   'picker',
   'androidPick',
+  'androidNone',
   'androidRefused',
   'languageAdd',
 ] as const;
@@ -117,6 +119,8 @@ export const REVIEW_STATES = [
   'chooseNumber',
   'roomLeft',
   'overLimit',
+  'overLimitAsk',
+  'ownerAsked',
   'limitRefused',
   'adding',
   'contactsFailed',
@@ -125,6 +129,24 @@ export const REVIEW_STATES = [
   'allRemoved',
   'over250',
 ] as const;
+
+/** The plan-limit states (sc-7579, sc-3930), drawn on Ireti at 40 as if Ire Events were on Free. */
+export const PLAN_STATES = [
+  'roomLeft',
+  'overLimit',
+  'overLimitAsk',
+  'ownerAsked',
+  'limitRefused',
+] as const;
+/** Past the limit: before pressing, refused, and for someone who can't change the plan. */
+export const OVER_LIMIT_STATES = [
+  'overLimit',
+  'overLimitAsk',
+  'ownerAsked',
+  'limitRefused',
+] as const;
+/** Someone who can't change the plan: Ask an owner in the plan line's place. */
+export const ASK_OWNER_STATES = ['overLimitAsk', 'ownerAsked'] as const;
 
 export const OVERVIEW_STATES = [
   'overview',
@@ -206,7 +228,7 @@ function ownStateOf(event: string): OwnState | null {
 
 export function eventOf(state: GuestsState | null): string {
   if (state === 'draft' || state === 'paused') return OWN_SAMPLE[state];
-  if (state === 'roomLeft' || state === 'overLimit' || state === 'limitRefused') return PLAN.ireti;
+  if (isIn(PLAN_STATES, state)) return PLAN.ireti;
   return WEDDING;
 }
 
@@ -227,6 +249,19 @@ export function clockOf(state: GuestsState | DoorState | null): Date {
     default:
       return new Date(state != null && isIn(DOOR_STATES, state) ? CLOCKS.onTheDay : CLOCKS.reader);
   }
+}
+
+/** Edit's companions as saved: each field keeps its own companion's reply, seat and meal; a new one comes as its guest does (sc-3773). */
+export function companionsAfterEdit(
+  names: readonly string[],
+  seats: readonly (Companion | null)[],
+  guestKind: SampleGuest['kind'],
+): Companion[] {
+  return names.map((name, at) => ({
+    ...seats[at],
+    name,
+    kind: seats[at]?.kind ?? (guestKind === 'coming' ? 'coming' : 'held'),
+  }));
 }
 
 export function dayWords(day: string, locale: string, weekday = false): string {
@@ -809,6 +844,15 @@ export function counted(kind: DoorPerson['kind']): boolean {
   return kind === 'coming';
 }
 
+/** The door's count after an arrival (1) or its undo (-1), on Check-in and the scanner alike: anyone not counted adds to expected too. */
+export function countAfter(
+  count: { arrived: number; expected: number },
+  kind: DoorPerson['kind'],
+  by: 1 | -1,
+): { arrived: number; expected: number } {
+  return { arrived: count.arrived + by, expected: count.expected + (counted(kind) ? 0 : by) };
+}
+
 export const GUESTS_ON: readonly string[] = [WEDDING, ...Object.values(OWN_SAMPLE)];
 
 export function startStateOf(state: GuestsState | null, event: string): GuestsState | null {
@@ -962,6 +1006,7 @@ export function guestOf(state: GuestsState | null): string | null {
       return 'musa';
     case 'languageEdit':
     case 'languageGuestChose':
+    case 'editSeated':
       return 'ines';
     case 'languageSet':
       return 'sophie';
@@ -985,7 +1030,7 @@ export function areaStart(state: GuestsState | null): AreaStart {
   if (state != null && isIn(EDIT_STATES, state)) return { ...base, overlay: 'edit' };
   if (state != null && isIn(RECORD_STATES, state)) return { ...base, overlay: 'record' };
   if (state === 'picker') return { ...base, overlay: 'picker' };
-  if (state === 'androidPick') return { ...base, overlay: 'android' };
+  if (state === 'androidPick' || state === 'androidNone') return { ...base, overlay: 'android' };
   if (state != null && isIn(ADD_STATES, state)) return { ...base, overlay: 'add' };
   if (state != null && isIn(REVIEW_STATES, state)) return { ...base, overlay: 'review' };
 

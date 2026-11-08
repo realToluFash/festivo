@@ -52,7 +52,7 @@ describe('the event’s share links (sc-94, Budget-A-Share)', () => {
       ],
       [
         'Mr and Mrs Bakare’s share',
-        'One payer’s share · No end date · Not opened yet · Made by Folake Adeyemi',
+        'One payer’s share · No end date · Never opened · Made by Folake Adeyemi',
         false,
       ],
       [

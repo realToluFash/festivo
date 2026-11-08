@@ -95,7 +95,7 @@ function Recipient({ path, state }: { path: string | undefined; state: string | 
             <Gate
               visit={visit}
               onAnswer={(typed) => {
-                const answer = answerTo(typed, visit.wrong);
+                const answer = answerTo(typed, visit.wrong, visit.answer !== 'lockedSoon');
                 if (answer === 'open') {
                   setVisit({ page: 'shown', scope: visit.scope, marked: false });
                   setOpened(true);
@@ -218,7 +218,9 @@ function Gate({
       ? W.wrongPassphrase
       : visit.answer === 'locked'
         ? W.tooMany(timeOf(LOCKED_UNTIL))
-        : null;
+        : visit.answer === 'lockedSoon'
+          ? W.tooManySoon
+          : null;
 
   useEffect(() => field.current?.focus(), []);
 

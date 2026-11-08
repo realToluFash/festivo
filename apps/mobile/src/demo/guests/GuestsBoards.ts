@@ -1,4 +1,5 @@
 import type { DoorState, GuestsState } from './GuestsModel.ts';
+import type { ScanState } from './ScanModel.ts';
 
 type Board = readonly [string, string];
 
@@ -52,6 +53,7 @@ const GUESTS: Record<GuestsState, Board> = {
   editDuplicate: ['Edit, a name on the list', 'Save anyway or Change the name'],
   editCompanions: ['Edit, companions', 'One named, one removed'],
   editMax: ['Edit, ten companions', 'Add a companion goes, and why'],
+  editSeated: ['Edit, a seated companion', 'Remove Rui Duarte? The seat and the meal go'],
   editDiscard: ['Edit, Cancel with a change', 'Discard your changes?'],
   edit412: ['Edit, a colleague’s change', 'The 412: Use theirs or Keep mine'],
   editNotSaved: ['Edit failed', 'What was typed stays'],
@@ -73,6 +75,7 @@ const GUESTS: Record<GuestsState, Board> = {
   addOffline: ['Add guest offline', 'Nothing saved, the form kept'],
   picker: ['From contacts, iOS', 'The system picker, many at once'],
   androidPick: ['From contacts, Android', 'Choose people, after the permission'],
+  androidNone: ['Choose people, nobody ticked', 'Tick at least one person'],
   androidRefused: ['contacts refused', 'One person at a time, never asked again'],
   languageAdd: ['Add guest, a language', 'Lucas Moreau, Français'],
   review: ['the review list', '1 to fix and 1 already on the list'],
@@ -80,6 +83,8 @@ const GUESTS: Record<GuestsState, Board> = {
   chooseNumber: ['several numbers', 'Choose a number; only that one kept'],
   roomLeft: ['near the plan limit', 'Room for 6 more on your plan'],
   overLimit: ['past the plan limit', 'sc-3930’s block, before pressing'],
+  overLimitAsk: ['past the limit, no plan rights', 'Ask an owner, for who can’t change the plan'],
+  ownerAsked: ['an owner asked', 'The owner has been sent the link to Compare plans'],
   limitRefused: ['pressed past the limit', 'Refused, nothing added, the list kept'],
   adding: ['adding', 'Adding 23 guests: every row or none'],
   contactsFailed: ['adding failed', 'Nothing created, the list as it was'],
@@ -110,6 +115,20 @@ const DOOR: Record<DoorState, Board> = {
   doorEmpty: ['nobody on the list', 'Walk-ins only'],
 };
 
+const SCAN: Record<ScanState, Board> = {
+  scanning: ['scanning', 'The camera, the count, Point at the code; press the code to read it'],
+  valid: ['a valid code', 'Inês Duarte and Rui Duarte, each with Arrived'],
+  arrivedFromScan: ['Arrived pressed', 'Arrived at 18:41, Undo arrival; 42 of 98'],
+  validHeld: ['a held companion', 'Held · until their host is coming'],
+  alreadyArrived: ['scanned twice', 'Arrived at 18:12 · Ana Souza; nothing new recorded'],
+  notComingNow: ['now Not coming', 'Camille Dubois, Not coming, Arrived still there'],
+  notOnList: ['not on the list', 'One answer, with Search by name'],
+  offline: ['offline', 'Offline since 18:31 · 12 arrivals waiting to sync'],
+  offlineNotOnList: ['offline, not on the list', 'The same answer from the list on the device'],
+  offlineNoList: ['offline, no list', 'Connect once to scan codes; no button'],
+  cameraOff: ['the camera not allowed', 'Open Settings, or Search by name'],
+};
+
 const EVENTS: readonly (readonly [string, string, string])[] = [
   [
     'events',
@@ -132,5 +151,20 @@ export const GUESTS_BOARDS: readonly { title: string; what: string; href: string
     what,
     href: `/demo/guests/check-in?state=${state}`,
   })),
+  ...Object.entries(SCAN).map(([state, [title, what]]) => ({
+    title: `Scan a code · ${title}`,
+    what,
+    href: `/demo/guests/scan?state=${state}`,
+  })),
+  {
+    title: 'Scan a code · offline, 1 waiting',
+    what: '1 arrival waiting to sync',
+    href: '/demo/guests/scan?state=offline&waiting=1',
+  },
+  {
+    title: 'Scan a code · offline, nothing waiting',
+    what: 'Offline since 18:31 alone',
+    href: '/demo/guests/scan?state=offline&waiting=0',
+  },
   ...EVENTS.map(([state, title, what]) => ({ title, what, href: `/demo/events?state=${state}` })),
 ];

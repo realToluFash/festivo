@@ -95,7 +95,7 @@ describe('Share at a desk (sc-94, Budget-A-Share)', () => {
         /^https:\/\/soirely\.com\/s\/Q7v4[\w-]{18}$/u,
       );
       expect(rows()[0]?.textContent).toContain('Aunt Funmi’s share');
-      expect(rows()[0]?.textContent).toContain('Not opened yet');
+      expect(rows()[0]?.textContent).toContain('Never opened');
 
       fireEvent.click(within(made).getByRole('button', { name: 'Done' }));
       expect(document.activeElement).toBe(rows()[0]);

@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
 import { HEADS, amounts, COST_LINES, totals } from './budget.ts';
-import { DECIDE_PAGES, DECIDE_STATES, decideKindOf, headline, linesFor, whatIf } from './decide.ts';
+import {
+  DECIDE_PAGES,
+  DECIDE_STATES,
+  ceilingsFor,
+  decideKindOf,
+  headline,
+  linesFor,
+  whatIf,
+} from './decide.ts';
 
 function ifAllOf(id: string): number {
   const line = COST_LINES.find((one) => one.id === id);
@@ -23,8 +31,8 @@ describe('what a decision costs (sc-86, Budget-A-Ceiling row 4)', () => {
 
     expect(answer.delta).toBe(27000);
     expect(answer.moved).toEqual([
-      { name: 'Dinner', from: 904400, to: 924800, delta: 20400 },
-      { name: 'Drinks package', from: 292600, to: 299200, delta: 6600 },
+      { name: 'Dinner', category: 'catering', from: 904400, to: 924800, delta: 20400 },
+      { name: 'Drinks package', category: 'catering', from: 292600, to: 299200, delta: 6600 },
     ]);
     expect(answer.moved.reduce((sum, one) => sum + one.delta, 0)).toBe(answer.delta);
     for (const one of answer.moved) expect(one.to - one.from).toBe(one.delta);
@@ -35,6 +43,15 @@ describe('what a decision costs (sc-86, Budget-A-Ceiling row 4)', () => {
     expect([answer.headsFrom, answer.headsTo]).toEqual([HEADS.ifAllCome, 136]);
     expect(answer.overCeiling).toBe(true);
     expect(answer.unknown).toEqual([]);
+    expect(answer.categoriesOver).toEqual([]);
+  });
+
+  it('adds the category’s line when the change takes Catering over its ceiling (sc-90)', () => {
+    const answer = whatIf(3, linesFor('category'), ceilingsFor('category'));
+
+    expect(decideKindOf('decide_category', null, null)).toBe('category');
+    expect(answer.overCeiling).toBe(false);
+    expect(answer.categoriesOver).toEqual([{ name: 'Catering', ifAll: 1224000, ceiling: 1200000 }]);
   });
 
   it('says what it can, and names a cost it moves with no price, never as £0', () => {

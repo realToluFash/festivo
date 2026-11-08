@@ -26,14 +26,13 @@ import {
   TextAction,
 } from '../../components/Summary.tsx';
 import { ChannelPill } from './CheckCard.tsx';
-import { type Moment, dayWords, laterRefused } from './MessagesModel.ts';
+import { type Moment, countOf, dayWords, laterRefused } from './MessagesModel.ts';
 import {
   BELL,
   EVENT,
   PARKING,
   PARKING_REACH,
   TELL,
-  TO_FIGURES,
   TO_ORDER,
   TO_WORD,
   type ToGroup,
@@ -88,6 +87,7 @@ function SheetHead({
 export function ToPicker({
   open,
   to,
+  zero = [],
   phone,
   at,
   opener,
@@ -96,6 +96,7 @@ export function ToPicker({
 }: {
   open: boolean;
   to: ToGroup;
+  zero?: readonly ToGroup[];
   phone: boolean;
   at: Anchor | null;
   opener: Opener;
@@ -121,13 +122,13 @@ export function ToPicker({
             ref={group === to ? picked : undefined}
             title={TO_WORD[group]}
             lead={<RadioMark on={group === to} />}
-            value={String(TO_FIGURES[group].count)}
+            value={String(countOf(group, zero))}
             accent={group === to}
             pad={tokens.spaceSm}
             onPress={() => onChoose(group)}
             accessibilityRole="radio"
             accessibilityState={{ checked: group === to }}
-            accessibilityLabel={`${TO_WORD[group]}, ${TO_FIGURES[group].count}`}
+            accessibilityLabel={`${TO_WORD[group]}, ${countOf(group, zero)}`}
             testID={`messages.to.${group}`}
           />
         ))}
