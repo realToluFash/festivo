@@ -36,6 +36,7 @@ import {
   addedGuest,
   countryName,
   emailCheck,
+  greetAsProblem,
   nameProblem,
   phoneCheck,
   planRoom,
@@ -43,6 +44,7 @@ import {
   sameNameAs,
 } from './GuestsModel.ts';
 import { Amber, AmberLine, Choices, DoneLine } from './GuestsParts.tsx';
+import { GreetAsField } from './GuestGreetAs.tsx';
 import { LanguageField } from './GuestLanguage.tsx';
 import {
   CONTACTS,
@@ -192,6 +194,7 @@ export function AddGuest({
   const [email, setEmail] = useState(
     start === 'addDuplicate' ? 'm.silva@gmail.com' : kept ? BIMPE.email : lucas ? LUCAS.email : '',
   );
+  const [greetAs, setGreetAs] = useState('');
   const [language, setLanguage] = useState<GuestLanguage | null>(lucas ? LUCAS.language : null);
   const [choosing, setChoosing] = useState(false);
   const [country, setCountry] = useState('GB');
@@ -207,16 +210,19 @@ export function AddGuest({
   const [added, setAdded] = useState<string | null>(start === 'added' ? BIMPE.name : null);
   const refused = start === 'androidRefused';
   const nameRef = useRef<TextInputInstance>(null);
+  const greetAsRef = useRef<TextInputInstance>(null);
   const emailRef = useRef<TextInputInstance>(null);
   const numberRef = useRef<TextInputInstance>(null);
   const errors = {
     name: checked ? nameProblem(name) : null,
+    greetAs: checked ? greetAsProblem(greetAs) : null,
     email: checked ? emailCheck(email) : null,
     phone: checked ? phoneCheck(number, country) : null,
   };
   const add = (anyway = false) => {
     setChecked(true);
     if (nameProblem(name) != null) return focusChecked(nameRef);
+    if (greetAsProblem(greetAs) != null) return focusChecked(greetAsRef);
     if (emailCheck(email) != null) return focusChecked(emailRef);
     if (phoneCheck(number, country) != null) return focusChecked(numberRef);
     if (!anyway && sameNameAs(guests, name, null) != null) {
@@ -232,10 +238,12 @@ export function AddGuest({
         phone: joinPhone(country, number),
         language,
         companions,
+        greetAs,
       }),
     );
     setAdded(name.trim());
     setName('');
+    setGreetAs('');
     setEmail('');
     setNumber('');
     setLanguage(null);
@@ -295,6 +303,13 @@ export function AddGuest({
         autoFocus={start === 'add' || start === 'added' || start === 'addRefused'}
         fieldRef={nameRef}
         testID="guests.add.name"
+      />
+      <GreetAsField
+        value={greetAs}
+        onChange={setGreetAs}
+        error={errors.greetAs}
+        fieldRef={greetAsRef}
+        testID="guests.add.greetAs"
       />
       <GuestField
         label={W.emailAddress}
