@@ -2,6 +2,7 @@ import { type ReactNode, useEffect, useId, useState } from 'react';
 
 import { offButton } from '../offButton.ts';
 import { Glyph } from '../components/Glyph.tsx';
+import { Ask } from '../components/SettingsParts.tsx';
 import {
   ANSWERS,
   type AddStart,
@@ -11,12 +12,14 @@ import {
   type Lines,
   MOST_COMPANIONS,
   type RecordStart,
+  type Seated,
   THEIRS,
   type Values,
   dayOf,
   linesOf,
   phoneShown,
   sameName,
+  seatedOf,
   valuesOf,
 } from './guests.ts';
 import {
@@ -81,6 +84,11 @@ function Verb({
   );
 }
 
+/** One companion out of the form; a seated one is asked about first (sc-3773). */
+function removeCompanion(values: Values, at: number): Partial<Values> {
+  return { companions: values.companions.filter((_, index) => index !== at) };
+}
+
 /** sc-1468's places, each named or not, removed at once while nothing is seated (sc-3773). */
 function CompanionFields({
   host,
@@ -88,6 +96,8 @@ function CompanionFields({
   said,
   onChange,
   onSaid,
+  onAsk,
+  seated,
   focus,
 }: {
   host: string;
@@ -95,6 +105,8 @@ function CompanionFields({
   said: string | null;
   onChange: (next: Partial<Values>) => void;
   onSaid: (said: string) => void;
+  onAsk?: (at: number, name: string, seat: Seated) => void;
+  seated?: (id: string | null) => Seated | null;
   focus: (...keys: string[]) => void;
 }) {
   const id = useId();
@@ -143,7 +155,13 @@ function CompanionFields({
               className="desk-text gs-remove"
               aria-label={GW.removeNamed(shown)}
               onClick={() => {
-                onChange({ companions: values.companions.filter((_, index) => index !== at) });
+                const seat = seated?.(companion.id) ?? null;
+
+                if (seat != null && onAsk != null) {
+                  onAsk(at, shown, seat);
+                  return;
+                }
+                onChange(removeCompanion(values, at));
                 onSaid(GW.removed(shown));
                 focus(`companion-${at}`, `companion-${at - 1}`, 'add-companion');
               }}
@@ -204,6 +222,15 @@ export function EditForm({
   const [failed, setFailed] = useState(start.notSaved ?? false);
   const [said, setSaid] = useState<string | null>(
     start.removed == null ? null : GW.removed(start.removed),
+  );
+  const [removing, setRemoving] = useState<{ at: number; name: string; seat: Seated } | null>(
+    () => {
+      const at = values.companions.findIndex((one) => one.id === start.removing);
+      const seat = seatedOf(guest, start.removing ?? null);
+      const name = values.companions[at]?.name ?? '';
+
+      return at < 0 || seat == null ? null : { at, name, seat };
+    },
   );
   const [busy, setBusy] = useState(false);
   const lines = tried ? linesOf(values) : {};
@@ -336,9 +363,28 @@ export function EditForm({
           said={said}
           onChange={change}
           onSaid={setSaid}
+          onAsk={(at, name, seat) => setRemoving({ at, name, seat })}
+          seated={(id) => seatedOf(guest, id)}
           focus={focus}
         />
       </div>
+      {removing != null && (
+        <Ask
+          title={GW.removeTitle(removing.name)}
+          line={GW.seatedLine(removing.name, removing.seat.table, removing.seat.meal)}
+          keep={GW.cancel}
+          go={GW.remove}
+          onKeep={() => setRemoving(null)}
+          onGo={() => {
+            const { at, name } = removing;
+
+            setRemoving(null);
+            change(removeCompanion(values, at));
+            setSaid(GW.removed(name));
+            focus(`companion-${at}`, `companion-${at - 1}`, 'add-companion');
+          }}
+        />
+      )}
     </div>
   );
 }
