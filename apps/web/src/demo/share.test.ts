@@ -25,6 +25,8 @@ import {
   timeOf,
   titleInSentence,
   titleOf,
+  readingOf,
+  updatedLine,
   visitOf,
 } from './share.ts';
 
@@ -179,7 +181,7 @@ describe('the page a link opens, signed out (sc-94, sc-1300)', () => {
   });
 
   it('shows client figures only once a line is marked up, and no payments at all', () => {
-    const view = sharedView('whole', true);
+    const view = sharedView('whole', { marked: true });
     const all = words(view);
 
     expect(view.figure).toBe('£25,296 to £29,292');
@@ -195,9 +197,73 @@ describe('the page a link opens, signed out (sc-94, sc-1300)', () => {
     });
   });
 
+  it('says each scope without payments in one row, never £0', () => {
+    const payer = sharedView('payer', { none: true });
+    expect(payer.blocks[0]?.rows.map((row) => [row.title, row.value])).toEqual([
+      ['Paid', 'Nothing yet'],
+      ['Still to come', '£10,620.00 to £12,285.00'],
+    ]);
+    for (const scope of ['whole', 'category'] as const) {
+      const all = words(sharedView(scope, { none: true }));
+      expect(all).toContain('No payments scheduled yet');
+      for (const absent of ['Still to pay', 'Next:', '£0.00']) expect(all).not.toContain(absent);
+    }
+  });
+
+  it('reads in the language chosen, with money and dates in its locale (board 26)', () => {
+    const pt = readingOf('pt', 'en-US');
+    const view = sharedView('payer', { reading: pt });
+
+    expect([view.title, view.label, view.figure]).toEqual([
+      'A sua parte em Adaeze & Tunde’s wedding',
+      'A sua parte',
+      '10\u00a0620\u00a0£ a 12\u00a0285\u00a0£',
+    ]);
+    expect(
+      view.sentence.startsWith('Entre 10\u00a0620\u00a0£ e 12\u00a0285\u00a0£, consoante'),
+    ).toBe(true);
+    expect(view.blocks[0]?.rows.map((row) => [row.title, row.value])).toEqual([
+      ['Pago', '3150,00\u00a0£'],
+      ['Ainda por pagar', '7470,00\u00a0£ a 9135,00\u00a0£'],
+    ]);
+    expect(view.blocks[1]?.rows.map((row) => row.line)).toEqual(['tudo', 'metade', 'metade']);
+    expect(updatedLine(pt)).toBe('Partilhado por Ire Events · Atualizado a 3 de novembro às 09:41');
+
+    for (const lang of ['es', 'fr', 'pt'] as const) {
+      const all = words(sharedView('whole', { reading: readingOf(lang, 'en-US') }));
+      for (const english of ['Paid', 'Still to pay', 'What it is made of', ' to £'])
+        expect(all).not.toContain(english);
+    }
+  });
+
+  it('follows the reader’s region when it speaks the language shown', () => {
+    expect(readingOf('en', 'en-GB').locale).toBe('en-GB');
+    expect(readingOf('en', 'fr-FR').locale).toBe('en-US');
+    expect(readingOf('pt', 'pt-BR').locale).toBe('pt-BR');
+    expect(
+      sharedView('whole', { reading: readingOf('en', 'en-GB') }).blocks[0]?.rows[3]?.line,
+    ).toBe('Next: £840.00 to Bloom & Co, due Fri 30 Oct');
+  });
+
   it('opens each address as its state names, and answers a passphrase until it locks', () => {
-    expect(visitOf('payer', null)).toEqual({ page: 'shown', scope: 'payer', marked: false });
-    expect(visitOf('whole', 'marked_up')).toEqual({ page: 'shown', scope: 'whole', marked: true });
+    expect(visitOf('payer', null)).toEqual({
+      page: 'shown',
+      scope: 'payer',
+      marked: false,
+      none: false,
+    });
+    expect(visitOf('whole', 'marked_up')).toEqual({
+      page: 'shown',
+      scope: 'whole',
+      marked: true,
+      none: false,
+    });
+    expect(visitOf('category', 'category_no_payments')).toMatchObject({
+      scope: 'category',
+      none: true,
+    });
+    expect(visitOf('payer', 'loading')).toEqual({ page: 'loading', scope: 'payer' });
+    expect(visitOf('payer', 'failed')).toEqual({ page: 'failed', scope: 'payer' });
     expect(visitOf('whole', 'gone')).toEqual({ page: 'gone' });
     expect(visitOf('nothing', null)).toEqual({ page: 'gone' });
     expect(visitOf('whole', 'too_many_attempts')).toMatchObject({ page: 'gate', answer: 'locked' });
