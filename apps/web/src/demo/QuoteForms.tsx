@@ -30,12 +30,17 @@ import {
   SHAPES,
   type ShapeRow,
   type Shaping,
+  anyShapeProblem,
   keptOf,
+  retyped,
   shapeLine,
   shapeRows,
   shapingOf,
+  shapingProblems,
   sharesLine,
+  sharesTyped,
   typedDifference,
+  typedTerms,
 } from './payments.ts';
 import { PW } from './paymentsWords.ts';
 import {
@@ -582,8 +587,8 @@ export function PaymentDialog({
   const picked = useRef<HTMLInputElement>(null);
   const pending = useRef<number | undefined>(undefined);
   const shaped = shaping != null && shaping.shape !== 'rows';
-  const rows = shaped && days != null ? shapeRows(shaping.terms, quote, days) : [];
-  const short = shaped ? sharesLine(rows, quote.amount) : null;
+  const rows = shaped && days != null ? shapeRows(typedTerms(shaping), quote, days) : [];
+  const short = shaped && sharesTyped(shaping) ? sharesLine(rows, quote.amount) : null;
 
   useEffect(() => () => window.clearTimeout(pending.current), []);
 
@@ -597,6 +602,12 @@ export function PaymentDialog({
   const save = () => {
     if (busy) return;
     if (shaped) {
+      const found = shapingProblems(shaping);
+      onShaping?.({ ...shaping, problems: found });
+      if (anyShapeProblem(found)) {
+        focusFirstWrong();
+        return;
+      }
       setBusy(true);
       pending.current = window.setTimeout(() => {
         setBusy(false);
@@ -629,6 +640,9 @@ export function PaymentDialog({
     >
       <div className="desk-fields">
         {shaping?.raced === true && <AlertInset>{PW.raced}</AlertInset>}
+        {shaping?.raced !== true && shaping?.failed === true && (
+          <AlertInset>{PW.shapeFailed}</AlertInset>
+        )}
         {shaping != null && (
           <fieldset className="pay-shapes">
             <legend className="pay-legend">{PW.howItIsPaid}</legend>
@@ -660,15 +674,52 @@ export function PaymentDialog({
         {shaped ? (
           <>
             <Rows>
-              {rows.map((row) => (
-                <li key={row.what}>
-                  <BudgetRow
-                    title={row.what}
-                    lines={[shapeLine(row)]}
-                    end={<Amount value={money(row.amount)} />}
-                  />
-                </li>
-              ))}
+              {rows.map((row, index) => {
+                const typed = shaping.typed[index];
+                const problems = shaping.problems[index] ?? {};
+                const at = `${id}-row-${index}`;
+
+                return (
+                  <li key={at} className="pay-shape-row">
+                    <BudgetRow
+                      title={row.what === '' ? PW.noDescription : row.what}
+                      lines={[shapeLine(row)]}
+                      end={<Amount value={money(row.amount)} />}
+                    />
+                    {typed != null && (
+                      <div className="desk-fields">
+                        <TextField
+                          id={`${at}-what`}
+                          label={QW.whatFor}
+                          value={typed.what}
+                          error={problems.what ?? null}
+                          onChange={(what) => onShaping?.(retyped(shaping, index, { what }))}
+                        />
+                        <div className="qt-two">
+                          <TextField
+                            id={`${at}-share`}
+                            label={PW.shareField}
+                            value={typed.share}
+                            help={PW.shareHelp}
+                            error={problems.share ?? null}
+                            onChange={(share) => onShaping?.(retyped(shaping, index, { share }))}
+                          />
+                          {row.from !== 'quoted' && (
+                            <TextField
+                              id={`${at}-days`}
+                              label={row.from === 'before' ? PW.daysBeforeField : PW.daysAfterField}
+                              value={typed.days}
+                              help={PW.shapeDaysHelp}
+                              error={problems.days ?? null}
+                              onChange={(days) => onShaping?.(retyped(shaping, index, { days }))}
+                            />
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
             </Rows>
             {short == null ? (
               <p className="pay-note">{PW.eachRowSaved}</p>
