@@ -3,7 +3,6 @@ import {
   cleanCode,
   codeProblem,
   emailProblem,
-  formatTimeOfDay,
   meetsPasswordLength,
 } from '@soirely/domain';
 
@@ -15,6 +14,7 @@ import {
   WRONG_CODE,
   WRONG_FACTOR,
 } from './account.ts';
+import { writtenTime } from './clock.ts';
 import { SAMPLE } from './rules.ts';
 import { type DemoLink, VIEWERS, type Viewer, settingsPath } from './settings.ts';
 
@@ -393,7 +393,7 @@ export function dayOf(when: Date, locale: string): string {
 }
 
 export function dayAtTime(when: Date, locale: string): string {
-  return `${dayOf(when, locale)} at ${formatTimeOfDay(when, locale)}`;
+  return `${dayOf(when, locale)} at ${writtenTime(when, locale)}`;
 }
 
 export function deviceLine(device: Device, locale: string): string {

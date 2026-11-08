@@ -7,6 +7,7 @@ import {
   organisationProblem,
 } from '@soirely/domain';
 
+import { writtenTime } from '../clock.ts';
 import { SAMPLE } from '../samples.ts';
 import { ASKING, type HandoverStart } from './MembersSample.ts';
 import { DETAILS_WORDS, DOMAIN_WORDS, OWNERSHIP_WORDS } from './OrganisationWords.ts';
@@ -323,14 +324,7 @@ export function restoreDeadline(now: Date, locale: string): string {
     day: 'numeric',
     timeZone: zone,
   });
-  const time = new Intl.DateTimeFormat('en-GB', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23',
-    timeZone: zone,
-  });
-
-  return `${day.format(at)} at ${time.format(at)} WAT`;
+  return `${day.format(at)} at ${writtenTime(at, locale, zone)} WAT`;
 }
 
 export function deleteBody(now: Date, locale: string): string {

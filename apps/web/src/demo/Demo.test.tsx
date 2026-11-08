@@ -1526,7 +1526,7 @@ describe('Today at a desk (sc-29092)', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Drinks reception' })).toBeDefined();
     expect(screen.getByText('Live now')).toBeDefined();
     expect(screen.getByRole('img', { name: '87 of 99 arrived' })).toBeDefined();
-    expect(screen.getByRole('img', { name: /^2 PM Ceremony, 3 PM Photos/ })).toBeDefined();
+    expect(screen.getByRole('img', { name: /^14:00 Ceremony, 15:00 Photos/ })).toBeDefined();
     expect(screen.getByRole('button', { name: 'Open run of show' })).toBeDefined();
   });
 
@@ -1536,7 +1536,7 @@ describe('Today at a desk (sc-29092)', () => {
     expect(
       screen.getByRole('heading', { level: 1, name: 'Adaeze & Tunde’s wedding' }),
     ).toBeDefined();
-    expect(screen.getByText('Ends tomorrow, Sat, Nov 7 at 3:00 PM')).toBeDefined();
+    expect(screen.getByText('Ends tomorrow, Sat, Nov 7 at 15:00')).toBeDefined();
     expect(screen.getByRole('button', { name: 'Open the event' })).toBeDefined();
   });
 
