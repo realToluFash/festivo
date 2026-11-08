@@ -95,7 +95,7 @@ function json(body: unknown, status = 200): Response {
 
 /** The Password row alone: the last way in offers Set a password too. */
 function passwordRow() {
-  return within(screen.getAllByRole('listitem')[0]!);
+  return within(within(screen.getByRole('main')).getAllByRole('listitem')[0]!);
 }
 
 function openSecurity() {
