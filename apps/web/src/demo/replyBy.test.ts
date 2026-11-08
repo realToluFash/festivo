@@ -4,6 +4,8 @@ import { describe, expect, it } from 'vitest';
 import { countsOf, repliesClosed, replyByOf, sampleGuests } from './guests.ts';
 import {
   REPLY_BY_WORDS as R,
+  datesAsk,
+  datesSaveSays,
   haventRepliedOf,
   replyByAfterStart,
   replyByCheck,
@@ -74,6 +76,21 @@ describe('the date to reply by (sc-3780)', () => {
     [null, '2026-11-04', 'save'],
   ] as const)('%s over %s is %s', (next, was, verdict) => {
     expect(replyByCheck({ next, was, startsAt: STARTS, now: NOW, timeZone: ZONE })).toBe(verdict);
+  });
+
+  it('has Dates ask before moving Reply by sooner, while anyone hasn’t replied (pm, 8 Nov)', () => {
+    expect(datesAsk('2026-11-03', 'evt-wed-4', NOW, ZONE)).toBe('sooner');
+    expect(datesAsk('2026-11-02', 'evt-wed-4', NOW, ZONE)).toBe('now');
+    expect(datesAsk(null, 'evt-wed-4', NOW, ZONE)).toBeNull();
+    expect(datesAsk('2026-11-03', 'evt-draft-4', NOW, ZONE)).toBeNull();
+  });
+
+  it('answers a Dates save with Tell guests when it opens, the move inside it, else with the toast (ux, 8 Nov)', () => {
+    expect(datesSaveSays('2026-11-03', true)).toEqual({ toast: null, inTell: true });
+    expect(datesSaveSays(null, true)).toEqual({ toast: null, inTell: false });
+    expect(datesSaveSays('2026-11-03', false)).toEqual({ toast: 'moved', inTell: false });
+    expect(datesSaveSays(null, false)).toEqual({ toast: 'saved', inTell: false });
+    expect(R.nowClose('Tue, Nov 3')).toBe('Replies now close Tue, Nov 3.');
   });
 
   it('shows the guests’ sentence only for a date they can still answer by', () => {

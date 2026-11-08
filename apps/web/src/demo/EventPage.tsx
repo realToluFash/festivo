@@ -41,7 +41,7 @@ import {
   VenuePart,
 } from './EventEdits.tsx';
 import { ReplyByPart } from './EventReplyBy.tsx';
-import { REPLY_BY_WORDS, replyByAfterStart, rowDay } from './replyBy.ts';
+import { REPLY_BY_WORDS, datesSaveSays, replyByAfterStart, rowDay } from './replyBy.ts';
 import { Alert, EventCard, EventsShell, NotBuilt, Switch, Thumb } from './EventParts.tsx';
 import { CAL_WORDS } from './calendar.ts';
 import { EventSidebar } from './EventSidebar.tsx';
@@ -235,6 +235,7 @@ function EventView({
   const [telling, setTelling] = useState<readonly Told[] | null>(tellingFirst);
   const [event, setEvent] = useState(initial);
   const [replyBy, setReplyBy] = useState(() => replyByStart(state, initial.id));
+  const [tellMoved, setTellMoved] = useState<string | null>(null);
   const [part, setPart] = useState<Part | null>(partOf(state) ?? arrival.open ?? null);
   const [dirty, setDirty] = useState(false);
   const [leaving, setLeaving] = useState<{ to: Part | null } | null>(null);
@@ -342,14 +343,19 @@ function EventView({
 
                         const moved = replyByAfterStart(replyBy, next.startsAt, next.timeZone);
 
+                        const says = datesSaveSays(moved, changes.length > 0);
+                        const day = moved == null ? '' : formatWallDay(moved, LOCALE);
+
                         kept(next);
                         setPart(null);
                         setDirty(false);
                         if (moved != null) setReplyBy(moved);
-                        if (changes.length > 0) setTelling(changes);
-                        if (moved != null)
-                          tell(REPLY_BY_WORDS.savedMoved(formatWallDay(moved, LOCALE)));
-                        else if (changes.length === 0) tell(W.saved);
+                        if (changes.length > 0) {
+                          setTellMoved(says.inTell ? REPLY_BY_WORDS.nowClose(day) : null);
+                          setTelling(changes);
+                        }
+                        if (says.toast === 'moved') tell(REPLY_BY_WORDS.savedMoved(day));
+                        if (says.toast === 'saved') tell(W.saved);
                       }}
                       onLatest={kept}
                       replyBy={replyBy}
@@ -446,6 +452,7 @@ function EventView({
             <TellDialog
               tell={tell}
               changes={telling}
+              before={tellMoved}
               onNotNow={() => {
                 const was = keptInbox();
 

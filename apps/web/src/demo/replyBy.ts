@@ -7,6 +7,28 @@ export function haventRepliedOf(id: string): string {
   return haventLine(countsOf(sampleGuests(id)));
 }
 
+/** pm, 8 Nov: Dates asks before a moved Reply by closes replies sooner, while anyone hasn't replied; now when it is already past. */
+export function datesAsk(
+  moved: string | null,
+  id: string,
+  now: Date,
+  timeZone: string,
+): 'sooner' | 'now' | null {
+  if (moved == null || countsOf(sampleGuests(id)).havent === 0) return null;
+
+  return moved < localDay(now.toISOString(), timeZone) ? 'now' : 'sooner';
+}
+
+/** After Dates saves: Tell guests is the answer when it opens, with the moved Reply by in it; otherwise the toast (ux, 8 Nov). */
+export function datesSaveSays(
+  moved: string | null,
+  tellOpens: boolean,
+): { toast: 'saved' | 'moved' | null; inTell: boolean } {
+  if (tellOpens) return { toast: null, inTell: moved != null };
+
+  return { toast: moved == null ? 'saved' : 'moved', inTell: false };
+}
+
 export type ReplyByCheck = 'tooLate' | 'sooner' | 'now' | 'save';
 
 /** Before anything is sent: a date on or after the start is refused; closing sooner or now is asked first. */
@@ -87,5 +109,6 @@ export const REPLY_BY_WORDS = {
   savedNone: 'Saved. Replies stay open until the event starts.',
   startMoves: (old: string, next: string) =>
     `Replies close on ${old}, which isn’t before the new start. Saving moves Reply by to ${next}.`,
+  nowClose: (next: string) => `Replies now close ${next}.`,
   savedMoved: (next: string) => `Saved. Replies now close ${next}.`,
 };

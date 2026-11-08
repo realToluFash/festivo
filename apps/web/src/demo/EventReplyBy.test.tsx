@@ -42,9 +42,9 @@ describe('Reply by on the event’s Details (sc-3780)', () => {
       'replyByRemoved',
     ]);
     const dates = EVENTS_PAGES.flatMap((one) => one.states).filter((one) =>
-      one.to.endsWith('state=datesReplyBy'),
+      /state=datesReplyBy(Ask)?$/u.test(one.to),
     );
-    expect(dates).toHaveLength(1);
+    expect(dates).toHaveLength(2);
   });
 
   it('sits after Dates, the date over its line, and opens in place', SLOW, async () => {
@@ -155,10 +155,38 @@ describe('Reply by on the event’s Details (sc-3780)', () => {
       ).toBeDefined();
       fireEvent.click(within(dates).getByRole('button', { name: 'Save' }));
 
-      expect(await screen.findByText('Saved. Replies now close Tue, Nov 3.')).toBeDefined();
+      const ask = await screen.findByRole('alertdialog', {
+        name: 'Close replies sooner, on Tue, Nov 3?',
+      });
+      expect(document.getElementById(ask.getAttribute('aria-describedby') ?? '')?.textContent).toBe(
+        '25 haven’t replied (21 guests and 4 of their companions).',
+      );
+      expect(within(ask).getByRole('button', { name: 'Keep editing' })).toBeDefined();
+      fireEvent.click(within(ask).getByRole('button', { name: 'Close replies sooner' }));
+
+      const tellGuests = await screen.findByRole('dialog');
+      expect(within(tellGuests).getByText('Replies now close Tue, Nov 3.')).toBeDefined();
+      expect(screen.queryByText('Saved. Replies now close Tue, Nov 3.')).toBeNull();
       expect(screen.getByText('Tue, Nov 3, 2026')).toBeDefined();
     },
   );
+
+  it('?state=datesReplyByAsk opens on the question; Keep editing saves nothing', SLOW, async () => {
+    await page('datesReplyByAsk');
+    const ask = await screen.findByRole('alertdialog', {
+      name: 'Close replies sooner, on Tue, Nov 3?',
+    });
+
+    expect(
+      within(ask).getByText(
+        'After that day they can’t reply, unless you let them change their reply.',
+      ),
+    ).toBeDefined();
+    fireEvent.click(within(ask).getByRole('button', { name: 'Keep editing' }));
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(screen.getByRole('group', { name: 'Dates' })).toBeDefined();
+    expect(screen.getByText('Wed, Nov 4, 2026')).toBeDefined();
+  });
 
   it('leaves Reply by alone when the start moves later', SLOW, async () => {
     await page('dates');

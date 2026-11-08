@@ -25,6 +25,7 @@ import {
   type Wall,
   CURRENCIES,
   EVENT_WORDS as W,
+  clockOf,
   PHOTO_DESCRIPTION,
   SIX_HOSTS,
   TYPE_WORDS,
@@ -35,7 +36,7 @@ import {
   wallOf,
 } from './events.ts';
 import { writtenTime } from './clock.ts';
-import { REPLY_BY_WORDS, replyByAfterStart } from './replyBy.ts';
+import { REPLY_BY_WORDS, datesAsk, haventRepliedOf, replyByAfterStart } from './replyBy.ts';
 import { Alert, Broken, NotBuilt, Quiet } from './EventParts.tsx';
 import { Glyph } from '../components/Glyph.tsx';
 import { Ask, RedAction, RowWords, TextAction } from '../components/SettingsParts.tsx';
@@ -337,6 +338,8 @@ export function DatesPart({
   const endsAt = instantOf(end.date, end.time, zone);
   const backwards = startsAt != null && endsAt != null && endsAt < startsAt;
   const replyMoved = startsAt == null ? null : replyByAfterStart(replyBy, startsAt, zone);
+  const ask = datesAsk(replyMoved, event.id, clockOf(state), zone);
+  const [asking, setAsking] = useState(state === 'datesReplyByAsk');
   const changed =
     start.date !== startWall.date ||
     start.time !== startWall.time ||
@@ -380,10 +383,31 @@ export function DatesPart({
         setTried(true);
         if (startsAt == null || endsAt == null || backwards) return;
         if (refused) return;
+        if (ask != null) return setAsking(true);
         onSave({ ...event, startsAt, endsAt, timeZone: zone });
       }}
     >
       <DateTime legend={W.starts} wall={start} onChange={moveStart} />
+      {asking && ask != null && replyMoved != null && startsAt != null && endsAt != null && (
+        <Ask
+          title={
+            ask === 'sooner'
+              ? REPLY_BY_WORDS.soonerTitle(formatWallDay(replyMoved, LOCALE))
+              : REPLY_BY_WORDS.nowTitle
+          }
+          line={haventRepliedOf(event.id)}
+          keep={W.keepEditing}
+          go={ask === 'sooner' ? REPLY_BY_WORDS.sooner : REPLY_BY_WORDS.now}
+          red={false}
+          onKeep={() => setAsking(false)}
+          onGo={() => {
+            setAsking(false);
+            onSave({ ...event, startsAt, endsAt, timeZone: zone });
+          }}
+        >
+          <p>{ask === 'sooner' ? REPLY_BY_WORDS.soonerLine : REPLY_BY_WORDS.nowLine}</p>
+        </Ask>
+      )}
       {replyMoved != null && replyBy != null && (
         <p className="ev-said" role="status">
           {REPLY_BY_WORDS.startMoves(
