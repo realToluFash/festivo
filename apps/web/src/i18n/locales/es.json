@@ -17,7 +17,7 @@
   },
   "nav": {
     "dashboard": "Panel",
-    "today": "Today",
+    "today": "Hoy",
     "events": "Eventos",
     "calendar": "Calendario",
     "settings": "Configuración",
@@ -493,7 +493,6 @@
   },
   "account": {
     "title": "Su cuenta",
-    "sections": "Secciones de la cuenta",
     "sectionAccount": "Cuenta",
     "sectionSecurity": "Seguridad",
     "sectionNotifications": "Notificaciones"

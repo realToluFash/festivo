@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -11,6 +14,14 @@ const tested = config();
 const SLOW = { timeout: 20000 };
 const WAIT = { timeout: 8000 };
 const WEDDING = 'Adaeze & Tunde’s wedding';
+const EVENTS_CSS = readFileSync(join(import.meta.dirname, 'events.css'), 'utf8');
+
+function cssValue(selector: string, property: string): string | undefined {
+  const start = EVENTS_CSS.indexOf(`\n${selector} {`);
+  const body = start < 0 ? '' : EVENTS_CSS.slice(start, EVENTS_CSS.indexOf('}', start));
+
+  return new RegExp(`\\s${property}: ([^;]+);`, 'u').exec(body)?.[1];
+}
 
 function main(): HTMLElement {
   return screen.getByRole('main');
@@ -63,6 +74,21 @@ describe('Events in A at a desk (sc-30304)', () => {
       expect(screen.getByText('4 events · Sorted by date')).toBeDefined();
     },
   );
+
+  it('keeps the card’s link over all of the card but its own step', () => {
+    const link = Number(cssValue('.ev-card-link::after', 'z-index'));
+    const step = Number(cssValue('.ev-card-foot :is(a, button)', 'z-index'));
+
+    expect(link).toBeGreaterThan(0);
+    expect(step).toBeGreaterThan(link);
+    expect(cssValue('.ev-card-foot', 'z-index')).toBeUndefined();
+  });
+
+  it('leaves a time field room for 06:00 PM beside its clock', () => {
+    expect(
+      parseInt(cssValue('.ev-when-pair .ev-input.is-time', 'width') ?? '0', 10),
+    ).toBeGreaterThanOrEqual(160);
+  });
 
   it('keeps the search in the address, so Back brings it back', SLOW, async () => {
     const router = await list();
@@ -289,6 +315,36 @@ describe('the guest counts on Events (sc-23284)', () => {
     expect(within(tiles).getAllByText('0')).toHaveLength(2);
     expect(within(tiles).getByText('0 coming')).toBeDefined();
     expect(within(tiles).getByText('0 haven’t replied')).toBeDefined();
+  });
+
+  it('asks a role without Create events to ask an owner', SLOW, async () => {
+    await list('/demo/events?state=firstAsk');
+
+    expect(within(main()).getByText(/Ask an owner if you need to create one/)).toBeDefined();
+    expect(within(main()).queryByRole('button', { name: 'Create an event' })).toBeNull();
+    expect(within(main()).queryByRole('button', { name: 'New event' })).toBeNull();
+    expect(within(side()).getByRole('button', { name: 'Ana Souza, Member' })).toBeDefined();
+  });
+
+  it('empties the sidebar’s upcoming events with the Upcoming tab', SLOW, async () => {
+    await list('/demo/events?state=emptyUpcoming');
+
+    for (const name of [WEDDING, 'Ireti at 40', 'Ire Events end-of-year party']) {
+      expect(within(side()).queryByRole('link', { name })).toBeNull();
+    }
+    expect(within(side()).getByRole('link', { name: 'Bisi & Kola’s engagement' })).toBeDefined();
+  });
+
+  it.each([
+    ['emptyUpcoming', 'Nothing coming up'],
+    ['emptyDrafts', 'No drafts'],
+    ['emptyPast', 'Nothing finished yet'],
+  ])('draws %s with its title and line, and no footer', SLOW, async (state, title) => {
+    await list(`/demo/events?state=${state}`);
+
+    expect(within(main()).getByRole('heading', { level: 2, name: title })).toBeDefined();
+    expect(within(main()).queryByText(/Sorted by date/)).toBeNull();
+    expect(within(main()).getByRole('button', { name: 'New event' })).toBeDefined();
   });
 
   it('has no counts on a first run', SLOW, async () => {

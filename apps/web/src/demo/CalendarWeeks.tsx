@@ -338,7 +338,16 @@ function ItemRow({
   );
 }
 
-function Rows({ items, locale, stop }: { items: readonly Item[]; locale: string; stop?: boolean }) {
+function Rows({
+  items,
+  locale,
+  stop,
+}: {
+  items: readonly Item[];
+  locale: string;
+  /** Agenda's one Tab stop: the row that takes it, or false on a day without it. */
+  stop?: number | false;
+}) {
   return (
     <ul className="desk-rows has-lead cal-rows">
       {items.map((item, at) => (
@@ -346,7 +355,7 @@ function Rows({ items, locale, stop }: { items: readonly Item[]; locale: string;
           key={itemKey(item)}
           item={item}
           locale={locale}
-          tabIndex={stop == null ? undefined : stop && at === 0 ? 0 : -1}
+          tabIndex={stop == null ? undefined : stop === at ? 0 : -1}
         />
       ))}
     </ul>
@@ -468,7 +477,11 @@ export function AgendaList({
                   {entry.items.length === 0 ? (
                     <p className="cal-nothing">{W.emptyDay}</p>
                   ) : (
-                    <Rows items={entry.items} locale={locale} stop={entry === stop} />
+                    <Rows
+                      items={entry.items}
+                      locale={locale}
+                      stop={entry === stop?.entry && stop.row}
+                    />
                   )}
                 </>
               )}

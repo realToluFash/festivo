@@ -272,10 +272,12 @@ export function SettingsGroup({
 }
 
 export function SettingsSignOut({
+  label,
   height,
   onSignOut,
   under,
 }: {
+  label?: string;
   height: number;
   onSignOut: () => void;
   /** What sits under the button, as the demo's Terms · Privacy. */
@@ -286,7 +288,7 @@ export function SettingsSignOut({
   return (
     <View>
       <Pill
-        label={t('settings.signOut')}
+        label={label ?? t('settings.signOut')}
         kind="secondary"
         glyph="signOut"
         height={height}

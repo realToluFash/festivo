@@ -28,7 +28,13 @@ import { Glyph } from '../../components/Glyph.tsx';
 import { PHONE_TAB_BAR, PhoneTabBar, TabBarFade } from '../../components/TodayCover.tsx';
 import { Bell, Landscape, OrgPill, PortraitTop } from '../settings/Frame.tsx';
 import { EventCard, EventThumb } from '../../components/EventCard.tsx';
-import { EventsFirstRun, EventsTabs, Said, SaidLine } from '../../components/EventsList.tsx';
+import {
+  EventsEmptyTab,
+  EventsFirstRun,
+  EventsTabs,
+  Said,
+  SaidLine,
+} from '../../components/EventsList.tsx';
 import { EventsFilterMenu, FilterButton } from './EventsFilter.tsx';
 import {
   type CardStep,
@@ -38,6 +44,7 @@ import {
   PAST_PAGE,
   type Shown,
   tabWord,
+  emptyTabOf,
   eventHref,
   filterWord,
   filtered,
@@ -51,6 +58,7 @@ import {
   rowTag,
   searching,
   summaryLine,
+  withoutTab,
 } from './EventsModel.ts';
 import { CLOCKS, EVENTS, EVENT_OF_KEY, OFFLINE_AS_OF } from './EventsSample.ts';
 import { W, say } from './EventsWords.ts';
@@ -107,17 +115,18 @@ export function EventsList({
   const [menuAt, setMenuAt] = useState<Anchor | null>(null);
   const filterRef = useRef<ViewInstance>(null);
   const field = useRef<TextInputInstance>(null);
-  const first = state === 'first' || state === 'eventsFirst';
+  const asks = state === 'firstAsk';
+  const first = state === 'first' || state === 'eventsFirst' || asks;
   const wide = shell.layout !== 'phone';
-  const events = useMemo(
-    () =>
-      first
-        ? []
-        : EVENTS.filter(
-            (event) => event.id !== deleted && (state !== 'eventsZero' || event.status === 'draft'),
-          ),
-    [first, deleted, state],
-  );
+  const events = useMemo(() => {
+    if (first) return [];
+    const all = EVENTS.filter(
+      (event) => event.id !== deleted && (state !== 'eventsZero' || event.status === 'draft'),
+    );
+    const emptied = emptyTabOf(state);
+
+    return emptied == null ? all : withoutTab(all, emptied, now, locale);
+  }, [first, deleted, state, now, locale]);
   const home = useMemo(() => homeOf(events, now, locale), [events, now, locale]);
   const looking = searching(searched) || filtered(filters);
   const guests = useMemo(
@@ -181,7 +190,7 @@ export function EventsList({
         wide={wide}
         bell={shell.layout !== 'portrait'}
         org={shell.layout === 'phone'}
-        onNew={() => shell.tell(say.ownDesign(W.newEvent))}
+        onNew={asks ? null : () => shell.tell(say.ownDesign(W.newEvent))}
         onBell={shell.tell}
       />
       {!first && <GuestTiles counts={guests} locale={locale} />}
@@ -193,7 +202,10 @@ export function EventsList({
     return (
       <ListFrame offline={null}>
         {top}
-        <EventsFirstRun wide={wide} onCreate={() => shell.tell(say.ownDesign(W.firstRunCreate))} />
+        <EventsFirstRun
+          wide={wide}
+          onCreate={asks ? undefined : () => shell.tell(say.ownDesign(W.firstRunCreate))}
+        />
       </ListFrame>
     );
 
@@ -256,6 +268,7 @@ export function EventsList({
             }}
             onTab={setTab}
           />
+          {tabEvents.length === 0 && <EventsEmptyTab tab={tab} />}
           {card != null && (
             <EventCard
               guests={guestLine(card)}
@@ -278,7 +291,7 @@ export function EventsList({
             />
           )}
           {shownMore > 0 && <Said words={say.moreShown(shownMore)} />}
-          <SaidLine words={say.footer(tabEvents.length)} />
+          {tabEvents.length > 0 && <SaidLine words={say.footer(tabEvents.length)} />}
         </>
       ) : (
         <Results
@@ -414,7 +427,8 @@ function ListTop({
   wide: boolean;
   bell: boolean;
   org: boolean;
-  onNew: () => void;
+  /** Absent for a role without Create events. */
+  onNew: (() => void) | null;
   onBell: (words: string) => void;
 }) {
   return (
@@ -435,7 +449,7 @@ function ListTop({
         >
           {W.events}
         </Text>
-        {wide ? (
+        {onNew == null ? null : wide ? (
           <Pill
             label={W.newEvent}
             glyph="plus"

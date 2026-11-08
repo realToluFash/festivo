@@ -285,6 +285,23 @@ describe('the Calendar in B, weeks as lanes, at a desk (sc-30329)', () => {
     expect(rowDay(rows()[rows().indexOf(stop) - 1]) < first).toBe(true);
   });
 
+  it(
+    'enters Agenda from past its last row at that row, the last before February',
+    SLOW,
+    async () => {
+      await calendar('agenda');
+      for (let step = 0; step < 3; step += 1) {
+        fireEvent.click(screen.getByRole('button', { name: CAL_WORDS.next }));
+      }
+
+      const stop = entered();
+
+      expect(stop).toBe(rows().at(-1));
+      expect(stop.textContent).toContain('Bisi & Kola’s engagement starts');
+      expect(rowDay(stop) < '2027-02-01').toBe(true);
+    },
+  );
+
   it('puts Today in Agenda on today’s heading, then Tab on its first row', SLOW, async () => {
     await calendar('agenda');
     fireEvent.click(screen.getByRole('button', { name: CAL_WORDS.next }));

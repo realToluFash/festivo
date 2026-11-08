@@ -1,3 +1,4 @@
+import { shapeRecovery } from '@soirely/domain';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useRef, useState } from 'react';
 import { Animated, StyleSheet, type TextInputInstance, View } from 'react-native';
@@ -7,7 +8,7 @@ import { DemoScreen, NavBar, finish, goBack } from '../../../src/demo/DemoScreen
 import { tap } from '../../../src/steps/haptics.ts';
 import { InsideField } from '../../../src/steps/InsideField.tsx';
 import { Heading, Plain, Says } from '../../../src/steps/Lines.tsx';
-import { recoveryComplete, shapeRecovery } from '../../../src/steps/rules.ts';
+import { recoveryComplete } from '../../../src/steps/rules.ts';
 import { SAMPLE } from '../../../src/demo/samples.ts';
 import { useShake } from '../../../src/steps/shake.ts';
 import { tokens } from '../../../src/theme/tokens.ts';

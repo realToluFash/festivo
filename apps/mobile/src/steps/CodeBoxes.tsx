@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
-import { FocusEdge, useHeld } from '../components/Field.tsx';
+import { FocusEdge, focusChecked, focusRefused, useHeld } from '../components/Field.tsx';
 import { Text } from '../components/Text.tsx';
 import { codeProps, fieldName, refusedHint, refusedName } from '../kit/fields.ts';
 import { inputFaced } from '../theme/fonts.ts';
@@ -24,6 +24,10 @@ export interface CodeBoxesHandle {
   /** Shakes the boxes once with a warning tap, then clears them for the next try. */
   refuse: () => void;
   focus: () => void;
+  /** To the boxes a client check names, the keys up on them. */
+  focusChecked: () => void;
+  /** To the boxes a server refusal names, never raising the keys. */
+  focusRefused: () => void;
 }
 
 /** One field drawn as six boxes, so a paste or the code offered above the keys fills all six; the sixth digit sends it. */
@@ -69,6 +73,8 @@ export function CodeBoxes({
       shake(() => onChange(''));
     },
     focus: () => input.current?.focus(),
+    focusChecked: () => focusChecked(input),
+    focusRefused: () => focusRefused(input),
   }));
 
   useEffect(() => {

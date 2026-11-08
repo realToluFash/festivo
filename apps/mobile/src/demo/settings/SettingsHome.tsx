@@ -1,3 +1,4 @@
+import { createContext, useContext } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -25,12 +26,43 @@ import { LegalLinks } from '../LegalLinks.tsx';
 
 type Listed = Exclude<ShellSection, 'account'>;
 
-const HEADINGS = { yourAccount: 'Your account', organisationHeading: 'Organisation' } as const;
+/** Settings' words: the page's title, its headings, the rows and their lines (the organisation's row carries its name), the role on your card and Sign out. */
+export interface SettingsWords {
+  title: string;
+  headings: Record<ReturnType<typeof demoGroups>[number]['heading'], string>;
+  rows: Record<Listed, { title: string; line: string }>;
+  role: (role: string) => string;
+  signOut: string;
+}
+
+export const SETTINGS_WORDS: SettingsWords = {
+  title: 'Settings',
+  headings: { yourAccount: 'Your account', organisationHeading: 'Organisation' },
+  rows: {
+    security: {
+      title: 'Security',
+      line: 'Password, ways to sign in, two-factor, signed-in devices',
+    },
+    notifications: {
+      title: 'Notifications',
+      line: 'Push and email, for each kind of notification',
+    },
+    personalisation: { title: 'Personalisation', line: PERSONALISATION.listLine },
+    organisation: { title: YOU.organisation, line: 'Name, contact address, currency, time zone' },
+    members: { title: 'Members', line: 'Who is in it, and their roles' },
+    signInRules: { title: 'Sign-in rules', line: 'How people sign in, and for how long' },
+  },
+  role: (role) => role,
+  signOut: 'Sign out',
+};
+
+/** English unless a state draws the page in another language, as Bold text's Spanish state does. */
+export const SettingsWordsContext = createContext(SETTINGS_WORDS);
 
 /** The sections a viewer sees; Your account is the card at the top. */
-export function groupsFor(viewer: Viewer) {
+export function groupsFor(viewer: Viewer, words: SettingsWords = SETTINGS_WORDS) {
   return demoGroups(viewer).map(({ heading, sections }) => ({
-    heading: HEADINGS[heading],
+    heading: words.headings[heading],
     sections: sections.filter((section): section is Listed => section !== 'account'),
   }));
 }
@@ -53,10 +85,16 @@ function PersonCard({
   open?: boolean;
 }) {
   const shell = useShell();
+  const words = useContext(SettingsWordsContext);
+  const you = shell.looking;
 
   return (
     <ProductPersonCard
-      person={{ ...shell.looking, organisation: YOU.organisation }}
+      person={{
+        ...you,
+        role: you.role == null ? null : words.role(you.role),
+        organisation: YOU.organisation,
+      }}
       size={size}
       open={open}
       onPress={() => shell.openSection('account')}
@@ -75,18 +113,15 @@ function Group({
   open: ShellSection | null;
 }) {
   const shell = useShell();
+  const words = useContext(SettingsWordsContext).rows;
   const rowOf = useSectionRows(YOU.organisation);
   const side = rowSide(dense);
-  const rows = sections.map((section) =>
-    section === 'personalisation'
-      ? {
-          key: section,
-          title: 'Personalisation',
-          line: PERSONALISATION.listLine,
-          tile: <SchemeTile side={side} />,
-        }
-      : rowOf(section, side),
-  );
+  const rows = sections.map((section) => ({
+    ...(section === 'personalisation'
+      ? { key: section, tile: <SchemeTile side={side} /> }
+      : rowOf(section, side)),
+    ...words[section],
+  }));
 
   return (
     <SettingsGroup
@@ -108,8 +143,11 @@ function SignOut({
   /** Terms · Privacy under it; upright with two columns they go under both instead. */
   legal?: boolean;
 }) {
+  const { signOut } = useContext(SettingsWordsContext);
+
   return (
     <SettingsSignOut
+      label={signOut}
       height={height}
       onSignOut={onSignOut}
       under={legal ? <LegalLinks style={styles.legal} /> : undefined}
@@ -121,7 +159,8 @@ function SignOut({
 export function SettingsHome({ onSignOut, onDemo }: Handlers) {
   const shell = useShell();
   const insets = useSafeAreaInsets();
-  const groups = groupsFor(shell.viewer);
+  const words = useContext(SettingsWordsContext);
+  const groups = groupsFor(shell.viewer, words);
 
   if (shell.layout === 'landscape')
     return (
@@ -156,7 +195,7 @@ export function SettingsHome({ onSignOut, onDemo }: Handlers) {
               accessibilityRole="header"
               style={[styles.grow, styles.title]}
             >
-              Settings
+              {words.title}
             </Text>
           </View>
           <SwitchedNotice style={styles.switched} />
@@ -218,7 +257,7 @@ export function SettingsHome({ onSignOut, onDemo }: Handlers) {
           accessibilityRole="header"
           style={[styles.title, styles.portraitTitle]}
         >
-          Settings
+          {words.title}
         </Text>
         <SwitchedNotice style={styles.switched} />
         <PersonCard size="portrait" />
@@ -244,7 +283,7 @@ export function SettingsHome({ onSignOut, onDemo }: Handlers) {
 /** On its side, the Settings list stays in its column while a section is open beside it. */
 export function SettingsColumn({ onSignOut, onDemo }: Handlers) {
   const shell = useShell();
-  const groups = groupsFor(shell.viewer);
+  const groups = groupsFor(shell.viewer, useContext(SettingsWordsContext));
 
   return (
     <ScrollView
