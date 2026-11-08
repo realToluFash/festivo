@@ -227,7 +227,7 @@ describe('the plan and the room (sc-3998, sc-4007)', () => {
 
       expect(
         within(panel()).getByText(
-          'At The Landmark, London. Sizes are in metres, as used in Ire Events’s country.',
+          'At The Landmark, London. Sizes are in metres, the units used where Ire Events is based.',
         ),
       ).toBeDefined();
       fireEvent.click(start);
@@ -313,7 +313,7 @@ describe('Room settings and sections (sc-3998)', () => {
     const ask = screen.getByRole('alertdialog', { name: 'Delete the plan?' });
 
     expect(ask.textContent).toContain(
-      'This also deletes 3 sections, 13 tables, 1 row and 2 single seats. 84 seated guests move to Without a seat; the guest list does not change.',
+      'This also deletes 3 sections, 13 tables, 1 row and 2 single seats. 85 seated guests move to Without a seat; the guest list does not change.',
     );
     fireEvent.click(within(ask).getByRole('button', { name: 'Delete the plan' }));
     expect(await screen.findByText('No seating plan yet')).toBeDefined();
@@ -344,7 +344,7 @@ describe('Room settings and sections (sc-3998)', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Start the plan' }));
     expect(
       within(panel()).getByText(
-        'At The Landmark, London. Sizes are in feet, as used in Ire Events’s country.',
+        'At The Landmark, London. Sizes are in feet and inches, the units used where Ire Events is based.',
       ),
     ).toBeDefined();
     expect(within(panel()).getByText('Type 12′ 4″, 12 ft 4 in, 12.5 ft or 148 in.')).toBeDefined();

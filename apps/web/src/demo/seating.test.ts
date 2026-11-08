@@ -265,11 +265,14 @@ describe('sizes in the organisation’s units', () => {
 });
 
 describe('Delete the plan’s ask (pm, 8 Nov 2026)', () => {
-  it('names what it deletes, sections counted, then who loses a seat', () => {
+  it('names what it deletes, sections counted, then who loses a seat, a held chair too', () => {
     const plan = samplePlan();
 
     expect(deletePlanWords(plan)).toBe(
-      'This also deletes 3 sections, 13 tables, 1 row and 2 single seats. 84 seated guests move to Without a seat; the guest list does not change.',
+      'This also deletes 3 sections, 13 tables, 1 row and 2 single seats. 85 seated guests move to Without a seat; the guest list does not change.',
+    );
+    expect(deletePlanWords({ ...plan, items: [byId('t7')], sections: [] })).toBe(
+      'This also deletes 1 table. 8 seated guests move to Without a seat; the guest list does not change.',
     );
     expect(deletePlanWords({ ...plan, items: plan.items.slice(0, 1) })).toBe(
       'This also deletes 3 sections and 1 table. 6 seated guests move to Without a seat; the guest list does not change.',

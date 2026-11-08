@@ -1064,10 +1064,10 @@ export function planCounts(plan: Plan): string {
   );
 }
 
-/** Delete the plan's ask (pm, 8 Nov 2026): what it deletes, sections counted, then who loses a seat; each sentence left out when it has nothing to say. */
+/** Delete the plan's ask (pm, 8 Nov 2026): what it deletes, sections counted, then who loses a seat, held chairs too; a sentence with nothing to say is left out. */
 export function deletePlanWords(plan: Plan): string {
   const counts = planCounts(plan);
-  const seated = seatedIn(plan.items);
+  const seated = plan.items.reduce((sum, item) => sum + filled(item), 0);
   const guests = seated === 0 ? SW.deletePlanNobody : many('deletePlanSeated', seated);
 
   return counts === '' ? guests : `${say(SW.deletePlanDeletes, { counts })} ${guests}`;

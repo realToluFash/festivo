@@ -51,9 +51,10 @@ export const SW = {
   noPlan: 'No seating plan yet',
   noPlanLine: 'Start with the size of the room. You can change it later.',
   startPlan: 'Start the plan',
-  startLine: 'At {{venue}}, {{city}}. Sizes are in metres, as used in {{organisation}}’s country.',
+  startLine:
+    'At {{venue}}, {{city}}. Sizes are in metres, the units used where {{organisation}} is based.',
   startLineFeet:
-    'At {{venue}}, {{city}}. Sizes are in feet, as used in {{organisation}}’s country.',
+    'At {{venue}}, {{city}}. Sizes are in feet and inches, the units used where {{organisation}} is based.',
   roomName: 'Room name',
   optional: 'Optional',
   width: 'Width',
