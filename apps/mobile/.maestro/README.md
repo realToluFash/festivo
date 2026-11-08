@@ -120,6 +120,9 @@ A check is written like a flow, and also:
 - **Subflows may sit in `checks/<story>/`, and are not localised.** Only the check itself
   has its `{{t:}}` filled in, so a subflow there matches by id, and any `{{t:}}` text goes in
   the check that calls it.
+  A flow run alone with `qa-env.mjs maestro` has no batch language: every file in it, subflows
+  in `checks/<story>/` included, matches `{{t:key}}` in any language and fills `|email` from
+  `EMAIL=` (any address without it). So a subflow's `{{t:}}` passing alone still fails in a batch.
 - **`takeScreenshot: <name>`, on one line.** The harness prefixes the check and language, so
   `settings` in a Spanish batch lands in `.qa/<batch>/settings.es-settings.png`.
 

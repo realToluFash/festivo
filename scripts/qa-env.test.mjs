@@ -20,6 +20,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   allowCleartext,
+  aloneFlows,
   answers,
   emulatorJournalArgs,
   emulatorUnitGone,
@@ -2581,6 +2582,75 @@ describe('the time a Maestro run is given', () => {
     clearInterval(beat);
     expect(ok).toBe(true);
     expect(stall.stalled).toBeUndefined();
+  });
+});
+
+describe('a flow run alone', () => {
+  const catalogues = {
+    en: { home: { signedInTo: 'Signed in to {{name}}' }, settings: { signedInAs: 'As {{email}}' } },
+    es: {
+      home: { signedInTo: 'Conectado a {{name}}' },
+      settings: { signedInAs: 'Como {{email}}' },
+    },
+  };
+  const reset =
+    "- assertVisible: '{{t:any:home.signedInTo}}'\n- assertVisible: '{{t:settings.signedInAs|email}}'\n";
+
+  const source = () => {
+    const dir = join(mkdtempSync(join(tmpdir(), 'qa-alone-')), 'source');
+    mkdirSync(join(dir, 'batch'), { recursive: true });
+    mkdirSync(join(dir, 'checks'));
+    writeFileSync(join(dir, 'batch/reset.yaml'), reset);
+    writeFileSync(
+      join(dir, 'checks/alone.yaml'),
+      'appId: host.exp.exponent\n---\n- runFlow: ../batch/reset.yaml\n',
+    );
+    return dir;
+  };
+
+  it("fills its subflow's lines in any language, and leaves the source as it was", () => {
+    const dir = source();
+    try {
+      for (const onAndroid of [false, true]) {
+        const target = join(dir, onAndroid ? '../out-android' : '../out');
+        aloneFlows(dir, target, { catalogues, email: 'qa@soirely.test', onAndroid });
+        expect(readFileSync(join(target, 'batch/reset.yaml'), 'utf8')).toBe(
+          "- assertVisible: '(?:Signed in to .*|Conectado a .*)'\n" +
+            "- assertVisible: '(?:As qa@\\u200B?soirely\\.test|Como qa@\\u200B?soirely\\.test)'\n",
+        );
+      }
+      expect(readFileSync(join(dir, 'batch/reset.yaml'), 'utf8')).toBe(reset);
+    } finally {
+      rmSync(dirname(dir), { recursive: true, force: true });
+    }
+  });
+
+  it('matches any address when none is given', () => {
+    const dir = source();
+    try {
+      aloneFlows(dir, join(dir, '../out'), { catalogues, onAndroid: false });
+      expect(readFileSync(join(dir, '../out/batch/reset.yaml'), 'utf8')).toContain(
+        "'(?:As .*|Como .*)'",
+      );
+    } finally {
+      rmSync(dirname(dir), { recursive: true, force: true });
+    }
+  });
+
+  it('stops on a key one catalogue lacks', () => {
+    const dir = source();
+    try {
+      const { signedInTo, ...rest } = catalogues.es.home;
+      expect(signedInTo).toBeDefined();
+      expect(() =>
+        aloneFlows(dir, join(dir, '../out'), {
+          catalogues: { ...catalogues, es: { ...catalogues.es, home: rest } },
+          onAndroid: false,
+        }),
+      ).toThrow('no home.signedInTo in the es catalogue');
+    } finally {
+      rmSync(dirname(dir), { recursive: true, force: true });
+    }
   });
 });
 
