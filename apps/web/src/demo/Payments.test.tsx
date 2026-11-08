@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
+import { forgetBudget } from './quotes.ts';
 import { budgetAt } from './budgetSample.ts';
 import { PAYMENTS_PAGES } from './payments.ts';
 
@@ -63,6 +64,7 @@ describe('payments on a vendor’s page, shapes and the reminder setting, in A (
   afterEach(() => {
     cleanup();
     vi.useRealTimers();
+    forgetBudget();
   });
 
   it(

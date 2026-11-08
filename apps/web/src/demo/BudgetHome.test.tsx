@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
+import { forgetBudget } from './quotes.ts';
 
 const tested = config();
 const SLOW = { timeout: 15000 };
@@ -31,6 +32,7 @@ describe('the Budget page at a desk in A (sc-31779)', () => {
   afterEach(() => {
     cleanup();
     vi.useRealTimers();
+    forgetBudget();
   });
 
   it(
