@@ -62,7 +62,8 @@ export function VerifyScreen({
   onClose: () => void;
   /** Resolves to why the code was not taken, or null once it is. */
   onVerify: (code: string) => Promise<CodeSays | null>;
-  onResend: () => Promise<void>;
+  /** Resolves to whether a new code is on its way. */
+  onResend: () => Promise<boolean>;
   /** Offered while the code went by WhatsApp. */
   onTextInstead: (() => Promise<void>) | null;
   /** Why the last step went nowhere, as a text that could not be sent. */
@@ -88,9 +89,9 @@ export function VerifyScreen({
   }
 
   async function sendAgain(): Promise<void> {
-    code.current = '';
     setError(null);
-    await onResend();
+    if (!(await onResend())) return;
+    code.current = '';
     setSent((count) => count + 1);
   }
 

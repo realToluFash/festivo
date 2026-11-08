@@ -565,7 +565,10 @@ function VerifyStep({
         return null;
       }}
       onResend={async () => {
-        setResendFailed((await check.resend()) === 'failed');
+        const resent = await check.resend();
+        setResendFailed(resent === 'failed');
+
+        return resent === 'sent';
       }}
       onTextInstead={!email && wording.offerText ? check.textInstead : null}
       note={
