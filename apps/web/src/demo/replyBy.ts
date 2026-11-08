@@ -54,6 +54,11 @@ export function replyByCheck({
   return 'save';
 }
 
+/** The guests' sentence is shown only for a date they can still answer by: today or later, before the start. */
+export function showsPreview(next: string | null, check: ReplyByCheck): boolean {
+  return next != null && (check === 'save' || check === 'sooner');
+}
+
 const LOCALE = 'en-US';
 
 function noon(date: string): Date {

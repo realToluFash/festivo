@@ -105,6 +105,7 @@ describe('Reply by on the event’s Details (sc-3780)', () => {
 
     fireEvent.click(within(ask).getByRole('button', { name: 'Keep Wed, Nov 4' }));
     expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(within(part()).queryByText(/^On the guests’ page/u)).toBeNull();
     expect(screen.getByRole('group', { name: 'Reply by' })).toBeDefined();
   });
 

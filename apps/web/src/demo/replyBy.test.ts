@@ -9,6 +9,7 @@ import {
   repliesOpen,
   rowDay,
   shortDay,
+  showsPreview,
 } from './replyBy.ts';
 
 const STARTS = '2026-11-05T18:00:00Z';
@@ -47,6 +48,14 @@ describe('the date to reply by (sc-3780)', () => {
     [null, '2026-11-04', 'save'],
   ] as const)('%s over %s is %s', (next, was, verdict) => {
     expect(replyByCheck({ next, was, startsAt: STARTS, now: NOW, timeZone: ZONE })).toBe(verdict);
+  });
+
+  it('shows the guests’ sentence only for a date they can still answer by', () => {
+    expect(showsPreview('2026-11-04', 'save')).toBe(true);
+    expect(showsPreview('2026-11-03', 'sooner')).toBe(true);
+    expect(showsPreview('2026-11-02', 'now')).toBe(false);
+    expect(showsPreview('2026-11-05', 'tooLate')).toBe(false);
+    expect(showsPreview(null, 'save')).toBe(false);
   });
 
   it('writes the dates and the words as the boards do', () => {

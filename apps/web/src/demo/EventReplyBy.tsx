@@ -9,6 +9,7 @@ import {
   noReplyOf,
   replyByCheck,
   shortDay,
+  showsPreview,
 } from './replyBy.ts';
 import { Glyph } from '../components/Glyph.tsx';
 import { Ask, TextAction } from '../components/SettingsParts.tsx';
@@ -130,7 +131,7 @@ export function ReplyByPart({
           />
         )}
       </div>
-      {next != null && check !== 'tooLate' && (
+      {next != null && showsPreview(next, check) && (
         <p className="ev-reply-preview">{R.preview(GUEST_WORDS.replyBy(dayOf(next, 'en')))}</p>
       )}
       {asking != null && next != null && (
