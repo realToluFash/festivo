@@ -28,6 +28,7 @@ import {
   startProviderSignIn,
 } from '../../../providerSignIn.ts';
 import { refreshAccount, useSession } from '../../../session.ts';
+import { ownsAndManages } from './organisationDetails.ts';
 import { focusStep, useFocusOnceShown, useStepFocus } from '../../../stepFocus.ts';
 
 type Opener = 'transfer' | 'leave' | 'delete';
@@ -44,7 +45,7 @@ type Step =
 /** General's "Ownership and leaving" (sc-68): hand the organisation on, leave it, or delete it. */
 export function OwnershipCard({ organisation }: { organisation: Membership }) {
   const { t } = useTranslation();
-  const owner = organisation.role.seededAs === 'owner';
+  const owner = ownsAndManages(organisation);
   const { hasPassword, providers } = useSession();
   const via = confirmWith(hasPassword, providers);
   // Back from Google or Apple, started by Transfer ownership in this organisation: once, on arrival.

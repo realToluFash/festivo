@@ -426,7 +426,7 @@ export const SAMPLE_DETAILS: OrganisationDetails = {
 
 export const MALFORMED_CONTACT = 'hello@ireevents';
 
-const SHOWN_IN = 'en';
+export const SHOWN_IN = 'en';
 
 export const LANGUAGE_NAMES: Record<string, string> = {
   'languageNames.en': 'English',
@@ -472,14 +472,6 @@ export const PICKERS: Record<Picked, { search: string }> = {
   timezone: { search: 'Search time zones' },
   locale: { search: 'Search languages' },
 };
-
-export function shownChoices(field: Picked, needle: string): readonly Choice[] {
-  const wanted = needle.trim().toLocaleLowerCase(SHOWN_IN);
-
-  return wanted === ''
-    ? choicesOf(field)
-    : choicesOf(field).filter((choice) => choice.name.toLocaleLowerCase(SHOWN_IN).includes(wanted));
-}
 
 export function detailProblem(field: OrganisationField, value: string): string | null {
   const problem = organisationProblem(field, value);

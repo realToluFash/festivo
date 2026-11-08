@@ -1,10 +1,11 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
 import { __setSessionState, type Session } from '../../../session.ts';
 import { membership } from '../../../test-memberships.ts';
 import { routes } from '../../index.tsx';
+import { atPhoneWidth } from '../../../test-widths.ts';
 
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
 
@@ -59,6 +60,9 @@ function json(body: unknown, status = 200): Response {
 
 const DOMAINS = { domains: [], most: 5, ownAddress: 'folake@ire.events' };
 const URL_ON = 'https://soirely.test/join/' + 'cd'.repeat(16);
+
+// sc-13348's phone page; the desk page is GeneralDesk.test.tsx's.
+beforeEach(() => atPhoneWidth());
 
 afterEach(() => {
   vi.restoreAllMocks();
