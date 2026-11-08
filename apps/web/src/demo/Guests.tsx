@@ -1,9 +1,11 @@
+import { formattingLocale } from '@soirely/domain';
 import {
   useCallback,
   useContext,
   useEffect,
   useEffectEvent,
   useId,
+  useMemo,
   useReducer,
   useRef,
   useState,
@@ -43,6 +45,17 @@ import {
   viewOf,
 } from './guests.ts';
 import { GuestBones, GuestsCardView, ListBones, MarkLead } from './GuestsParts.tsx';
+import {
+  EMEKA,
+  type TheirState,
+  erasedIn,
+  erasedLine,
+  theirStart,
+  theirStateOf,
+  theirViewerKey,
+} from './guestRequest.ts';
+import { type Viewer, viewerOf } from './settings.ts';
+import { TheirData } from './TheirData.tsx';
 import { GW, SHOW_ALL_WORDS, REPLY_WORDS, figure } from './guestsWords.ts';
 import { LayersContext, focusWhenFree } from '../layers.ts';
 import {
@@ -97,7 +110,16 @@ export function Guests() {
 }
 
 function GuestsAt({ params }: { params: URLSearchParams }) {
-  const [start] = useState(() => guestsStart(guestsStateOf(params.get('state')), params));
+  const [their] = useState(() => {
+    const state = theirStateOf(params.get('data'));
+
+    return { state, viewer: viewerOf(theirViewerKey(state, params.get('as'))) };
+  });
+  const [start] = useState(() => {
+    const opened = guestsStart(guestsStateOf(params.get('state')), params);
+
+    return their.state === 'erased' ? { ...opened, list: erasedIn(opened.list, EMEKA.id) } : opened;
+  });
   const event = sampleEvent(start.event);
 
   if (event == null) return <Navigate to="/demo/events" replace />;
@@ -109,7 +131,7 @@ function GuestsAt({ params }: { params: URLSearchParams }) {
         <EventSidebar event={event} area="guests" now={start.clock} tell={tell} inert={covered} />
       )}
     >
-      {(tell) => <GuestsPage event={event} start={start} tell={tell} />}
+      {(tell) => <GuestsPage event={event} start={start} their={their} tell={tell} />}
     </EventsShell>
   );
 }
@@ -119,12 +141,18 @@ type Leaving = { then: 'back' } | { then: 'open'; id: string } | { then: 'add' }
 function GuestsPage({
   event,
   start,
+  their,
   tell,
 }: {
   event: SampleEvent;
   start: GuestsStart;
+  their: { state: TheirState; viewer: Viewer };
   tell: Tell;
 }) {
+  const locale = useMemo(() => formattingLocale('en', navigator.language), []);
+  const [erase, setErase] = useState<'erasing' | 'erased' | null>(
+    their.state === 'erasing' || their.state === 'erased' ? their.state : null,
+  );
   const navigate = useNavigate();
   const root = useRef<HTMLDivElement>(null);
   const column = useRef<HTMLElement>(null);
@@ -437,6 +465,25 @@ function GuestsPage({
                       note={pane.note}
                       invite={pane.invite}
                       actions={actions(paneGuest.id)}
+                      erase={paneGuest.id === EMEKA.id ? erase : null}
+                      erasedLine={erasedLine(locale)}
+                      theirData={
+                        paneGuest.id === EMEKA.id &&
+                        manages &&
+                        their.viewer.manages &&
+                        erase !== 'erased' && (
+                          <TheirData
+                            start={theirStart(their.state)}
+                            locale={locale}
+                            level={3}
+                            onErasing={() => setErase('erasing')}
+                            onErased={() => {
+                              setErase('erased');
+                              setList((was) => erasedIn(was, EMEKA.id));
+                            }}
+                          />
+                        )
+                      }
                     />
                   )}
                   {pane.kind === 'edit' && paneGuest != null && (
