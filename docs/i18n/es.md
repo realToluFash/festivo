@@ -50,6 +50,17 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **8 Nov 2026. Invitados A: la respuesta, los dos recuentos y el 412** (sc-3773, #32403).
+  "Not sure yet" es «Por confirmar», en la página del invitado y en la del anfitrión: no
+  marca género, como sí harían «indeciso» o «no está seguro». «Por confirmar · plazo hasta el
+  {{date}}», «Por confirmar · respondió el {{date}}». "Haven't replied" es «por responder»
+  («Faltan {{count}} por responder»); "No reply" es «Sin respuesta»; nunca se cruzan.
+  "Companions" es «acompañantes». «{{coming}} de {{invited}} invitados vienen». "Write to them"
+  es «Escribirles»; "Open check-in", «Abrir registro de llegada». "Show all {{count}}" es
+  «Mostrar los {{count}}». "Their conversation" es «Conversación», sin posesivo: «su» se lee
+  como usted. Por lo mismo, en el 412 "Theirs · Yours" es «Versión guardada · Su versión», y los
+  botones «Usar la guardada» y «Mantener la mía».
+
 - **7 Nov 2026. La pantalla Hoy de la app** (`mobile:todayScreen.*`, sc-31788 para sc-29090).
   "Live now" y "Live · …" son «En curso», como `eventsScreen.happeningNow`, nunca «Publicado»,
   que es el estado. La agenda pone una etiqueta y dos puntos, «Inicio: {{name}}», «Fin:

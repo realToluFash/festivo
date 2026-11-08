@@ -86,6 +86,31 @@ function Person({
             </View>
           ))}
         </View>
+        {person.updated != null && (
+          <View
+            style={[styles.reachLine, styles.updated]}
+            accessible
+            accessibilityLabel={`${W.updatedNotSent}, ${person.updated}`}
+            testID={`messages.updated.${person.key}`}
+          >
+            <View style={styles.markAt}>
+              <DeliveryMark mark="notsent" side={15} />
+            </View>
+            <View style={styles.grow}>
+              <Text size={14} weight="semibold" accessible={false} style={styles.lineText}>
+                {W.updatedNotSent}
+              </Text>
+              <Text
+                size={14}
+                weight="medium"
+                accessible={false}
+                style={[styles.secondary, styles.lineText]}
+              >
+                {person.updated}
+              </Text>
+            </View>
+          </View>
+        )}
         {again && (
           <View style={styles.again}>
             <Pressable
@@ -154,17 +179,16 @@ export interface ReachView {
   resend: number;
 }
 
-/** A person after a fix: their new address waiting for Send again, then Sent once it goes (Messaging-B-Phone-3's fixed and sentAgain). */
+/** A person after a fix: Bounced kept on its line and Updated · not sent yet on the row until Send again, then Sent once it goes (Messaging-B-Phone-3's fixed and sentAgain). */
 function fixedPerson(person: NotReached, address: string, at: string | undefined): NotReached {
+  if (at == null) return { ...person, fixes: [], updated: W.emailChangedSince };
+
   const rest = person.lines.filter((line) => !line.word.startsWith(CHANNEL_WORD.email));
-  const email: ReachLine =
-    at == null
-      ? { mark: 'delivered', word: say.where(CHANNEL_WORD.email, W.fixedNotSent), reason: address }
-      : {
-          mark: 'sent',
-          word: [CHANNEL_WORD.email, W.sent, at].join(' · '),
-          reason: address,
-        };
+  const email: ReachLine = {
+    mark: 'sent',
+    word: [CHANNEL_WORD.email, W.sent, at].join(' · '),
+    reason: address,
+  };
 
   return { ...person, lines: [email, ...rest], fixes: [] };
 }
@@ -467,6 +491,7 @@ const styles = StyleSheet.create({
   lines: { gap: tokens.spaceXxs, marginTop: tokens.spaceXs },
   reachLine: { flexDirection: 'row', alignItems: 'flex-start', gap: 7 },
   markAt: { paddingTop: tokens.spaceHair },
+  updated: { marginTop: tokens.spaceSm },
   lineWords: { flex: 1, flexDirection: 'row', flexWrap: 'wrap', columnGap: tokens.spaceXxs },
   fixes: {
     flexDirection: 'row',
