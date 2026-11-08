@@ -41,6 +41,8 @@ import { SIGN_IN_RULES_PAGES } from './signInRules.ts';
 import { SWITCHER_PAGES } from './switcher.ts';
 import { Today } from './Today.tsx';
 import { TwoFactorBoard } from './TwoFactor.tsx';
+import { VendorsMoved } from './Vendors.tsx';
+import { VENDORS_PAGES } from './vendors.ts';
 import { WaysInBoard } from './WaysIn.tsx';
 import {
   type FieldLines,
@@ -66,6 +68,7 @@ type SignInNotice = { title: string; body: string };
 /** The states the board draws, each opened from the demo's home. */
 const TODAY_MOMENTS: { key: string; name: string }[] = [
   { key: 'plan', name: 'A planning day' },
+  { key: 'plan&invites=none', name: 'A planning day, invitations not sent' },
   { key: 'planNow', name: 'A planning day, built now' },
   { key: 'day', name: 'The event day' },
   { key: 'dayNow', name: 'The event day, built now' },
@@ -154,7 +157,9 @@ export default function Demo() {
       <Route path="settings/personalisation" element={<Settings open="personalisation" />} />
       <Route path="settings/general" element={<Settings open="general" />} />
       <Route path="settings/sign-in-rules" element={<Settings open="signInRules" />} />
+      <Route path="settings/vendors" element={<Settings open="vendors" />} />
       <Route path="people" element={<People />} />
+      <Route path="vendors" element={<VendorsMoved />} />
       <Route path="guest" element={<GuestPage />} />
       <Route path="guests" element={<Guests />} />
       <Route path="later" element={<Later />} />
@@ -211,6 +216,12 @@ function DemoHome({ from }: { from: string }) {
         <h2 id="demo-page-30">30 · Guests · the planner’s side</h2>
         <h3>Guests in A · Summary first · desktop</h3>
         <BoardPages pages={GUESTS_PAGES} />
+      </section>
+
+      <section className="demo-home-page" aria-labelledby="demo-page-81">
+        <h2 id="demo-page-81">81 · Budget and costs</h2>
+        <h3>Vendors in A · Summary first · Settings › Vendors · desktop</h3>
+        <BoardPages pages={VENDORS_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-36">
