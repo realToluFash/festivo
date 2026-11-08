@@ -7,6 +7,7 @@ import { dateLocale } from '../i18n/index.ts';
 import { summaryWords } from '../kit/eventsHome.ts';
 import {
   type CardStep,
+  type StepAction,
   type Shown,
   howSoon,
   listEventOf,
@@ -82,6 +83,7 @@ export function EventsHome({
   tab,
   onTab,
   onOpen,
+  takes,
   onStep,
   more,
   shown,
@@ -93,6 +95,7 @@ export function EventsHome({
   onTab: (tab: EventsTab) => void;
   /** Opened from Happening now, Back returns to the tab that was showing. */
   onOpen: (id: string, fromHappeningNow: boolean) => void;
+  takes: (action: StepAction) => boolean;
   onStep: (event: Shown, step: Extract<CardStep, { kind: 'button' }>) => void;
   more: 'idle' | 'loading' | 'failed';
   shown: string | null;
@@ -132,6 +135,7 @@ export function EventsHome({
           locale={locale}
           wide={wide}
           onOpen={() => open(card)}
+          takes={takes}
           onStep={(step) => onStep(card, step)}
           testID="events.card"
           openTestID={eventTestID(card)}

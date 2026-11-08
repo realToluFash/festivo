@@ -7,6 +7,7 @@ import {
   type CardStep,
   type PhaseMark,
   type Shown,
+  type StepAction,
   cardStep,
   cardTags,
   dayTiles,
@@ -264,10 +265,12 @@ function DayTiles({ event, now, locale }: { event: Shown; now: Date; locale: str
 
 function CardFoot({
   step,
+  takes,
   onStep,
   testID,
 }: {
   step: CardStep;
+  takes: (action: StepAction) => boolean;
   onStep: (step: Extract<CardStep, { kind: 'button' }>) => void;
   testID: string;
 }) {
@@ -312,7 +315,9 @@ function CardFoot({
       <View pointerEvents="none">
         <OnCard text={step.line} />
       </View>
-      <StepButton label={step.label} onPress={() => onStep(step)} testID={`${testID}.step`} />
+      {takes(step.action) && (
+        <StepButton label={step.label} onPress={() => onStep(step)} testID={`${testID}.step`} />
+      )}
     </View>
   );
 }
@@ -325,6 +330,7 @@ export function EventCard({
   wide,
   height = 200,
   onOpen,
+  takes = () => true,
   onStep,
   guests = null,
   testID,
@@ -339,6 +345,8 @@ export function EventCard({
   guests?: string | null;
   /** On the list the card opens the event, its name the link. */
   onOpen?: () => void;
+  /** Whether the viewer's role can take the step: one it cannot keeps the step's line and loses the button. */
+  takes?: (action: StepAction) => boolean;
   onStep: (step: Extract<CardStep, { kind: 'button' }>) => void;
   testID: string;
   openTestID?: string;
@@ -387,7 +395,12 @@ export function EventCard({
         {guests != null && <OnCard text={guests} />}
       </View>
       <DayTiles event={event} now={now} locale={locale} />
-      <CardFoot step={cardStep(event, now, locale, t)} onStep={onStep} testID={testID} />
+      <CardFoot
+        step={cardStep(event, now, locale, t)}
+        takes={takes}
+        onStep={onStep}
+        testID={testID}
+      />
     </SummaryCard>
   );
 }

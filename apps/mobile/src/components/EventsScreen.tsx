@@ -211,13 +211,14 @@ export function EventsScreen() {
             setTab({ in: organisationId, tab: next });
           }}
           onOpen={openEvent}
+          takes={(action) => (action === 'duplicate' ? creates : manages)}
           onStep={(event, step) => {
             const id = encodeURIComponent(event.id);
 
-            if (step.action === 'changeDates' && manages) {
+            if (step.action === 'changeDates') {
               setDeleted(null);
               router.push(`/events/${id}/edit?at=starts`);
-            } else if (step.action === 'duplicate' && creates) {
+            } else if (step.action === 'duplicate') {
               setDeleted(null);
               router.push(`/events/${id}/duplicate`);
             } else {
