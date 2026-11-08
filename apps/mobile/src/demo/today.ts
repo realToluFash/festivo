@@ -475,6 +475,7 @@ export function momentOf(
       today: date === today,
       items: items.map(([at, title, event, note]) => ({
         time: at === '' ? 'All day' : say.clock(at),
+        allDay: at === '',
         title,
         event: sample(event),
         note,
