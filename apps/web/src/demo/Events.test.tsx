@@ -323,6 +323,16 @@ describe('the guest counts on Events (sc-23284)', () => {
     expect(within(main()).getByText(/Ask an owner if you need to create one/)).toBeDefined();
     expect(within(main()).queryByRole('button', { name: 'Create an event' })).toBeNull();
     expect(within(main()).queryByRole('button', { name: 'New event' })).toBeNull();
+    expect(within(side()).getByRole('button', { name: 'Ana Souza, Member' })).toBeDefined();
+  });
+
+  it('empties the sidebar’s upcoming events with the Upcoming tab', SLOW, async () => {
+    await list('/demo/events?state=emptyUpcoming');
+
+    for (const name of [WEDDING, 'Ireti at 40', 'Ire Events end-of-year party']) {
+      expect(within(side()).queryByRole('link', { name })).toBeNull();
+    }
+    expect(within(side()).getByRole('link', { name: 'Bisi & Kola’s engagement' })).toBeDefined();
   });
 
   it.each([

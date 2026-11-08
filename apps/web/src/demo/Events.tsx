@@ -23,7 +23,6 @@ import {
   rememberTab,
   rememberedTab,
   resetSample,
-  sampleEvent,
   sampleEvents,
   searching,
   withoutTab,
@@ -39,7 +38,8 @@ import { CardStep, Head, TextAction } from '../components/SettingsParts.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
 import { TodaySidebar } from './TodaySidebar.tsx';
 import { AccessPaused, Switched } from './OrgSwitcher.tsx';
-import { SIDEBAR_EVENTS } from './settings.ts';
+import { SIDEBAR_EVENTS, VIEWERS } from './settings.ts';
+import type { EventKey } from './today.ts';
 import { isFresh, usePaused, useSwitcherStart, useWhere } from './switcher.ts';
 
 const TAB_WORDS: Record<Tab, string> = { upcoming: W.upcoming, drafts: W.drafts, past: W.past };
@@ -71,13 +71,10 @@ export function Events() {
       told={told}
       renderSide={(tell, covered) => (
         <TodaySidebar
-          events={
-            start.first || fresh
-              ? []
-              : SIDEBAR_EVENTS.filter((key) => sampleEvent(TODAY_IDS[key]) != null)
-          }
+          events={start.first || fresh ? [] : sidebarEvents(start.emptied)}
           tell={tell}
           listing
+          person={start.asks ? VIEWERS.ana : VIEWERS.folake}
           inert={covered}
         />
       )}
@@ -95,6 +92,14 @@ export function Events() {
       }
     </EventsShell>
   );
+}
+
+/** The sidebar's events as the page has them: an emptied tab's events leave the sidebar too. */
+function sidebarEvents(emptied: Tab | null): EventKey[] {
+  const events = sampleEvents();
+  const kept = emptied == null ? events : withoutTab(events, emptied, CLOCKS.rest);
+
+  return SIDEBAR_EVENTS.filter((key) => kept.some((event) => event.id === TODAY_IDS[key]));
 }
 
 function EventsList({ start, tell }: { start: ReturnType<typeof listStart>; tell: Tell }) {
