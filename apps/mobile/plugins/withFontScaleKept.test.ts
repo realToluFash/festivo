@@ -8,6 +8,17 @@ import android.os.Bundle
 
 class MainActivity : ReactActivity() {
   override fun getMainComponentName(): String = "main"
+
+  override fun createReactActivityDelegate(): ReactActivityDelegate {
+    return ReactActivityDelegateWrapper(
+          this,
+          BuildConfig.IS_NEW_ARCHITECTURE_ENABLED,
+          object : DefaultReactActivityDelegate(
+              this,
+              mainComponentName,
+              fabricEnabled
+          ){})
+  }
 }
 `;
 
@@ -37,7 +48,7 @@ describe('withFontScaleForwarded', () => {
 
   it('imports what the override names, under the package line', () => {
     expect(forwarded).toMatch(
-      /^package com\.soirely\.app\nimport android\.content\.ComponentCallbacks\nimport android\.content\.Context\nimport android\.content\.res\.Configuration\nimport android\.view\.View\nimport android\.view\.ViewGroup\nimport android\.widget\.FrameLayout\nimport com\.facebook\.react\.bridge\.LifecycleEventListener\nimport com\.facebook\.react\.uimanager\.DisplayMetricsHolder\nimport com\.th3rdwave\.safeareacontext\.SafeAreaProvider\n/,
+      /^package com\.soirely\.app\nimport android\.content\.ComponentCallbacks\nimport android\.content\.Context\nimport android\.content\.res\.Configuration\nimport android\.view\.ContextThemeWrapper\nimport android\.view\.View\nimport android\.view\.ViewGroup\nimport android\.widget\.FrameLayout\nimport com\.facebook\.react\.bridge\.LifecycleEventListener\nimport com\.facebook\.react\.uimanager\.DisplayMetricsHolder\nimport com\.th3rdwave\.safeareacontext\.SafeAreaProvider\n/,
     );
   });
 
@@ -130,7 +141,7 @@ describe('withFontScaleForwarded', () => {
 
   it('stops listening to the application when the activity is destroyed', () => {
     expect(forwarded).toMatch(
-      /override fun onDestroy\(\) \{\n\s+application\.unregisterComponentCallbacks\(applicationChanges\)\n\s+super\.onDestroy\(\)/,
+      /override fun onDestroy\(\) \{\n\s+application\.unregisterComponentCallbacks\(applicationChanges\)\n\s+window\.decorView\.viewTreeObserver\.removeOnGlobalLayoutListener\(modalsShown\)\n\s+super\.onDestroy\(\)/,
     );
   });
 
@@ -150,19 +161,56 @@ describe('withFontScaleForwarded', () => {
     expect(() => withFontScaleForwarded(destroying)).toThrow(/already handles/);
   });
 
-  it("keeps Android's Bold text adjustment off the activity's views as the activity's own override, after AppCompat's wrap, from Android 12, so the app draws the heavier faces itself", () => {
+  it("makes the surface in a context without Bold text's adjustment, from Android 12, so the app draws the heavier faces itself and the activity keeps the phone's", () => {
     expect(forwarded).toMatch(
-      /override fun attachBaseContext\(newBase: Context\) \{\n\s+super\.attachBaseContext\(newBase\)\n\s+if \(Build\.VERSION\.SDK_INT >= Build\.VERSION_CODES\.S\) \{\n\s+applyOverrideConfiguration\(Configuration\(\)\.apply \{ fontWeightAdjustment = 0 \}\)/,
+      /object : DefaultReactActivityDelegate\(\n\s+this,\n\s+mainComponentName,\n\s+fabricEnabled\n\s+\)\{\n\s+override fun loadApp\(appKey: String\?\) \{\n/,
     );
+    expect(forwarded).toMatch(
+      /if \(host != null && appKey != null && Build\.VERSION\.SDK_INT >= Build\.VERSION_CODES\.S\) \{\n\s+val withoutBold = ContextThemeWrapper\(this@MainActivity, this@MainActivity\.theme\)\.apply \{\n\s+applyOverrideConfiguration\(Configuration\(\)\.apply \{ fontWeightAdjustment = 0 \}\)\n\s+\}\n\s+setReactSurface\(host\.createSurface\(withoutBold, appKey, composeLaunchOptions\(\)\)\)\n\s+\}\n\s+super\.loadApp\(appKey\)/,
+    );
+    expect(forwarded).not.toContain('attachBaseContext');
     expect(forwarded).toContain('import android.os.Build');
   });
 
-  it('refuses an activity that already overrides attachBaseContext', () => {
-    const based = ACTIVITY.replace(
-      '\n}\n',
-      '\n  override fun attachBaseContext(newBase: Context) {\n    super.attachBaseContext(newBase)\n  }\n}\n',
+  it("hands every configuration change down to the root view without Bold text's adjustment, from Android 12", () => {
+    expect(forwarded).toMatch(
+      /override fun dispatchConfigurationChanged\(newConfig: Configuration\) \{\n\s+super\.dispatchConfigurationChanged\(\n\s+if \(Build\.VERSION\.SDK_INT >= Build\.VERSION_CODES\.S\) \{\n\s+Configuration\(newConfig\)\.apply \{ fontWeightAdjustment = 0 \}\n\s+\} else \{\n\s+newConfig\n/,
     );
-    expect(() => withFontScaleForwarded(based)).toThrow(/already handles/);
+  });
+
+  it("hands a Modal's window each change again without Bold text's adjustment before it draws, from Android 12", () => {
+    expect(forwarded).toContain(
+      'window.decorView.viewTreeObserver.addOnGlobalLayoutListener(modalsShown)',
+    );
+    expect(forwarded).toMatch(/takeSizeChanges\(\)\n\s+keepModalsWithoutBold\(settled = false\)\n/);
+    expect(forwarded).toMatch(
+      /if \(Build\.VERSION\.SDK_INT < Build\.VERSION_CODES\.S\) return\n\s+for \(root in WindowInspector\.getGlobalWindowViews\(\)\) \{\n\s+val observer = root\.viewTreeObserver\n\s+if \(observer in modalsKept \|\| !isModal\(root\)\) continue\n\s+modalsKept\[observer\] = Unit\n\s+observer\.addOnPreDrawListener\(ModalWithoutBold\(root, settled\)\)/,
+    );
+    expect(forwarded).toContain('is ReactModalHostView.DialogRootViewGroup');
+    expect(forwarded).toMatch(
+      /if \(config == handled\) return true\n\s+handled = Configuration\(config\)\n\s+if \(config\.fontWeightAdjustment == 0\) return true\n\s+root\.dispatchConfigurationChanged\(Configuration\(config\)\.apply \{ fontWeightAdjustment = 0 \}\)\n\s+return false/,
+    );
+    for (const line of [
+      'import android.view.ViewTreeObserver',
+      'import android.view.inspector.WindowInspector',
+      'import com.facebook.react.views.modal.ReactModalHostView',
+      'import java.util.WeakHashMap',
+    ]) {
+      expect(forwarded).toContain(line);
+    }
+  });
+
+  it('refuses an activity that already overrides loadApp', () => {
+    const loading = ACTIVITY.replace(
+      '\n}\n',
+      '\n  override fun loadApp(appKey: String?) {\n    super.loadApp(appKey)\n  }\n}\n',
+    );
+    expect(() => withFontScaleForwarded(loading)).toThrow(/already handles/);
+  });
+
+  it("refuses an activity whose delegate is no longer the template's empty one", () => {
+    const own = ACTIVITY.replace('){})', '){ override fun isFabricEnabled() = true })');
+    expect(() => withFontScaleForwarded(own)).toThrow(/no longer the template's/);
   });
 
   it('refuses an activity that already overrides onPostCreate', () => {
