@@ -42,7 +42,15 @@ import {
   sameNameAs,
 } from './GuestsModel.ts';
 import { Amber, AmberLine, Choices, DoneLine } from './GuestsParts.tsx';
-import { CONTACTS, PICKED, PICKED_COUNT, PLAN_SAMPLES, type SampleGuest } from './GuestsSample.ts';
+import { LanguageField } from './GuestLanguage.tsx';
+import {
+  CONTACTS,
+  type GuestLanguage,
+  PICKED,
+  PICKED_COUNT,
+  PLAN_SAMPLES,
+  type SampleGuest,
+} from './GuestsSample.ts';
 import { W, say } from './GuestsWords.ts';
 import {
   CheckRow,
@@ -52,6 +60,7 @@ import {
   SheetBody,
   SheetLayer,
   joinPhone,
+  languageOver,
 } from './GuestEdit.tsx';
 
 type Opener = RefObject<ScreenReaderTarget | null>;
@@ -147,6 +156,7 @@ function OrType() {
 }
 
 const BIMPE = { name: 'Bimpe Adeyemi', email: 'bimpe.adeyemi@gmail.com', number: '7700 900877' };
+const LUCAS = { name: 'Lucas Moreau', email: 'lucas.moreau@orange.fr', language: 'fr' } as const;
 
 /** Add guest (sc-1468): From contacts first, then the four fields, Add guest pinned at the foot. */
 export function AddGuest({
@@ -174,12 +184,15 @@ export function AddGuest({
   onPickClose: () => void;
 }) {
   const kept = start === 'addNotAdded' || start === 'addOffline';
+  const lucas = start === 'languageAdd';
   const [name, setName] = useState(
-    start === 'addDuplicate' ? 'Marta Silva' : kept ? BIMPE.name : '',
+    start === 'addDuplicate' ? 'Marta Silva' : kept ? BIMPE.name : lucas ? LUCAS.name : '',
   );
   const [email, setEmail] = useState(
-    start === 'addDuplicate' ? 'm.silva@gmail.com' : kept ? BIMPE.email : '',
+    start === 'addDuplicate' ? 'm.silva@gmail.com' : kept ? BIMPE.email : lucas ? LUCAS.email : '',
   );
+  const [language, setLanguage] = useState<GuestLanguage | null>(lucas ? LUCAS.language : null);
+  const [choosing, setChoosing] = useState(false);
   const [country, setCountry] = useState('GB');
   const [number, setNumber] = useState(
     start === 'addRefused' ? '7700 90' : kept ? BIMPE.number : '',
@@ -218,6 +231,7 @@ export function AddGuest({
       when: null,
       email: email.trim() === '' ? null : email.trim(),
       phone: joinPhone(country, number),
+      language,
       companions: companions
         .filter((c) => c.trim() !== '')
         .map((c) => ({ name: c.trim(), kind: 'notyet' })),
@@ -227,6 +241,7 @@ export function AddGuest({
     setName('');
     setEmail('');
     setNumber('');
+    setLanguage(null);
     setCompanions([]);
     setChecked(false);
     focusChecked(nameRef);
@@ -241,7 +256,16 @@ export function AddGuest({
       over={
         picking
           ? { layer: <IosPicker onClose={onPickClose} onDone={onPicked} />, onClose: onPickClose }
-          : null
+          : choosing
+            ? languageOver(
+                language,
+                (code) => {
+                  setLanguage(code);
+                  setChoosing(false);
+                },
+                () => setChoosing(false),
+              )
+            : null
       }
       foot={<Pill label={W.addGuest} onPress={() => add()} testID="guests.add.do" />}
       testID="guests.add"
@@ -293,6 +317,12 @@ export function AddGuest({
         error={errors.phone}
         fieldRef={numberRef}
         testID="guests.add.phone"
+      />
+      <LanguageField
+        value={language}
+        chose={null}
+        onOpen={() => setChoosing(true)}
+        testID="guests.add.language"
       />
       <View style={styles.tight}>
         <Legend text={W.companions} />

@@ -65,6 +65,9 @@ export const GUEST_STATES = [
   'markRefused',
   'marked',
   'markNotSaved',
+  'languageNotSet',
+  'languageSet',
+  'languageGuestChose',
 ] as const;
 
 export const EDIT_STATES = [
@@ -77,6 +80,7 @@ export const EDIT_STATES = [
   'edit412',
   'editNotSaved',
   'editOffline',
+  'languageEdit',
 ] as const;
 
 export const RECORD_STATES = [
@@ -97,6 +101,7 @@ export const ADD_STATES = [
   'picker',
   'androidPick',
   'androidRefused',
+  'languageAdd',
 ] as const;
 
 export const REVIEW_STATES = [
@@ -896,6 +901,11 @@ export function guestOf(state: GuestsState | null): string | null {
     case 'editCompanions':
     case 'editMax':
       return 'musa';
+    case 'languageEdit':
+    case 'languageGuestChose':
+      return 'ines';
+    case 'languageSet':
+      return 'sophie';
     default:
       return state != null && (isIn(GUEST_STATES, state) || isIn(EDIT_STATES, state))
         ? 'kwame'

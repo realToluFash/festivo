@@ -39,12 +39,16 @@ import {
 import {
   DRAFT_GUESTS,
   GUESTS,
+  GUEST_LANGUAGES,
+  ORGANISATION_LANGUAGE,
   PAUSED_GUESTS,
   PLAN_SAMPLES,
   REPLY_BY,
   WALK_IN,
+  languageName,
   replyByOf,
 } from './GuestsSample.ts';
+import { say } from './GuestsWords.ts';
 
 const EN = 'en-US';
 const byKey = (key: string) => {
@@ -59,7 +63,7 @@ describe('the states, as guests-a-spec §15 names them', () => {
     expect(
       GUESTS_STATES.filter((state) => (DOOR_STATES as readonly string[]).includes(state)),
     ).toEqual([]);
-    expect(GUESTS_STATES).toHaveLength(77);
+    expect(GUESTS_STATES).toHaveLength(82);
     expect(DOOR_STATES).toHaveLength(13);
   });
 
@@ -98,6 +102,41 @@ describe('the states, as guests-a-spec §15 names them', () => {
     expect(eventOf('paused')).toBe('evt-party-2');
     expect(eventOf('overLimit')).toBe('evt-ireti-2');
     expect(eventOf('inUse')).toBe('evt-wed-4');
+  });
+});
+
+describe('the guest’s Language (sc-3790)', () => {
+  it('opens each language state on the guest the boards draw, the form where it is one', () => {
+    expect(guestOf('languageNotSet')).toBe('kwame');
+    expect(guestOf('languageSet')).toBe('sophie');
+    expect(guestOf('languageGuestChose')).toBe('ines');
+    expect(guestOf('languageEdit')).toBe('ines');
+    expect(areaStart('languageEdit').overlay).toBe('edit');
+    expect(areaStart('languageAdd').overlay).toBe('add');
+    expect(areaStart('languageSet').overlay).toBeNull();
+  });
+
+  it('holds the host’s Language and the guest’s own choice on the sample', () => {
+    const at = (key: string) => GUESTS.find((g) => g.key === key);
+
+    expect(at('kwame')?.language ?? null).toBeNull();
+    expect(at('sophie')?.language).toBe('fr');
+    expect(at('ines')).toMatchObject({ language: 'es', chose: 'pt' });
+  });
+
+  it('names the four languages in their own names, and says what Not set falls back to', () => {
+    expect(GUEST_LANGUAGES.map((one) => one.name)).toEqual([
+      'English',
+      'Español',
+      'Français',
+      'Português',
+    ]);
+    expect(say.notSetLine(languageName(ORGANISATION_LANGUAGE) ?? '')).toBe(
+      'Not set · their browser’s language, or English when Soirely does not offer it',
+    );
+    expect(say.theyChose(languageName('pt') ?? '')).toBe(
+      'They chose Português on their page, and that wins.',
+    );
   });
 });
 
