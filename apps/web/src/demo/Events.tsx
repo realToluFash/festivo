@@ -26,6 +26,7 @@ import {
   sampleEvent,
   sampleEvents,
   searching,
+  withoutTab,
 } from './events.ts';
 import { DuplicateDialog } from './EventDialogs.tsx';
 import { GUEST_WORDS as G, SAMPLE_GUESTS, figureOf, guestCountsOf } from './guestCounts.ts';
@@ -33,6 +34,7 @@ import { guestLineOf } from './guests.ts';
 import { EventCard, EventRow, EventsShell } from './EventParts.tsx';
 import { FilterMenu } from './EventFilter.tsx';
 import { Glyph } from '../components/Glyph.tsx';
+import { Notice } from '../components/Notice.tsx';
 import { CardStep, Head, TextAction } from '../components/SettingsParts.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
 import { TodaySidebar } from './TodaySidebar.tsx';
@@ -99,7 +101,11 @@ function EventsList({ start, tell }: { start: ReturnType<typeof listStart>; tell
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
   const now = CLOCKS.rest;
-  const [events] = useState<SampleEvent[]>(() => (start.first ? [] : sampleEvents()));
+  const [events] = useState<SampleEvent[]>(() => {
+    if (start.first) return [];
+
+    return start.emptied == null ? sampleEvents() : withoutTab(sampleEvents(), start.emptied, now);
+  });
   const [tab, setTab] = useState<Tab>(start.tab ?? rememberedTab());
   const [offline, setOffline] = useState(start.offline);
   const [pastPages, setPastPages] = useState(start.pastPages);
@@ -139,9 +145,9 @@ function EventsList({ start, tell }: { start: ReturnType<typeof listStart>; tell
     return (
       <div className="desk-page">
         <div className="ev-column">
-          <ListTop tell={tell} />
+          <ListTop tell={tell} creates={!start.asks} />
           <Switched />
-          <FirstRun tell={tell} />
+          <FirstRun tell={tell} asks={start.asks} />
         </div>
       </div>
     );
@@ -194,20 +200,27 @@ function EventsList({ start, tell }: { start: ReturnType<typeof listStart>; tell
                   onStep={stepOn(byTab[tab][0])}
                 />
               )}
-              <ul className="desk-rows ev-rows" ref={firstNew}>
-                {(tab === 'past'
-                  ? byTab.past.slice(0, PAST_PAGE * pastPages)
-                  : byTab[tab].slice(1)
-                ).map((event) => (
-                  <EventRow
-                    key={event.id}
-                    event={event}
-                    now={now}
-                    tab={tab}
-                    guests={guestsOf(event)}
-                  />
-                ))}
-              </ul>
+              {byTab[tab].length === 0 ? (
+                <div className="ev-none">
+                  <h2>{W.emptyTab[tab].title}</h2>
+                  <p className="desk-line">{W.emptyTab[tab].line}</p>
+                </div>
+              ) : (
+                <ul className="desk-rows ev-rows" ref={firstNew}>
+                  {(tab === 'past'
+                    ? byTab.past.slice(0, PAST_PAGE * pastPages)
+                    : byTab[tab].slice(1)
+                  ).map((event) => (
+                    <EventRow
+                      key={event.id}
+                      event={event}
+                      now={now}
+                      tab={tab}
+                      guests={guestsOf(event)}
+                    />
+                  ))}
+                </ul>
+              )}
               {tab === 'past' && byTab.past.length > PAST_PAGE * pastPages && (
                 <TextAction
                   label={W.showMore}
@@ -226,7 +239,7 @@ function EventsList({ start, tell }: { start: ReturnType<typeof listStart>; tell
                   {W.moreShown(Math.min(byTab.past.length, PAST_PAGE * pastPages) - PAST_PAGE)}
                 </p>
               )}
-              <p className="desk-foot">{W.footer(byTab[tab].length)}</p>
+              {byTab[tab].length > 0 && <p className="desk-foot">{W.footer(byTab[tab].length)}</p>}
             </div>
           </>
         )}
@@ -271,26 +284,28 @@ function PausedPage() {
   );
 }
 
-function ListTop({ tell }: { tell: Tell }) {
+function ListTop({ tell, creates = true }: { tell: Tell; creates?: boolean }) {
   return (
     <header className="desk-top ev-top">
       <h1 className="desk-title ev-title" tabIndex={-1}>
         {W.title}
       </h1>
-      <button
-        type="button"
-        className="ev-new"
-        onClick={() => tell('Create an event has its own design.')}
-      >
-        <Glyph name="plus" size={18} weight={2.4} />
-        {W.newEvent}
-      </button>
+      {creates && (
+        <button
+          type="button"
+          className="ev-new"
+          onClick={() => tell('Create an event has its own design.')}
+        >
+          <Glyph name="plus" size={18} weight={2.4} />
+          {W.newEvent}
+        </button>
+      )}
       <DemoBell tell={tell} />
     </header>
   );
 }
 
-export function FirstRun({ tell }: { tell: Tell }) {
+export function FirstRun({ tell, asks = false }: { tell: Tell; asks?: boolean }) {
   return (
     <>
       <section className="desk-card ev-first">
@@ -299,12 +314,15 @@ export function FirstRun({ tell }: { tell: Tell }) {
         ))}
         <div className="desk-card-inner">
           <h2 className="ev-card-name">{W.firstRunTitle}</h2>
-          <CardStep
-            label={W.firstRunCreate}
-            onClick={() => tell('Create an event has its own design.')}
-          />
+          {!asks && (
+            <CardStep
+              label={W.firstRunCreate}
+              onClick={() => tell('Create an event has its own design.')}
+            />
+          )}
         </div>
       </section>
+      {asks && <Notice kind="quiet">{W.firstRunAsk}</Notice>}
       <ol className="desk-rows ev-steps">
         {W.firstRunSteps.map((step, index) => (
           <li key={step} className="desk-row">

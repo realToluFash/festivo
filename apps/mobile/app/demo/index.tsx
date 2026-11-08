@@ -820,6 +820,26 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
       },
       { title: 'Events · a first run', what: 'No events yet', href: '/demo/events?state=first' },
       {
+        title: 'Events · a first run, without Create events',
+        what: 'The ask-an-owner notice, no Create an event',
+        href: '/demo/events?state=firstAsk',
+      },
+      {
+        title: 'Events · nothing on Upcoming',
+        what: 'Events elsewhere, this tab empty',
+        href: '/demo/events?state=emptyUpcoming',
+      },
+      {
+        title: 'Events · no drafts',
+        what: 'Events elsewhere, this tab empty',
+        href: '/demo/events?state=emptyDrafts',
+      },
+      {
+        title: 'Events · nothing on Past',
+        what: 'Events elsewhere, this tab empty',
+        href: '/demo/events?state=emptyPast',
+      },
+      {
         title: 'Events · nobody invited yet',
         what: 'The guest counts at 0',
         href: '/demo/events?state=noGuests',

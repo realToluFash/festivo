@@ -520,6 +520,10 @@ export const TAB_WORDS: Record<ListTab, string> = {
 
 export const LIST_STATES = [
   'first',
+  'firstAsk',
+  'emptyUpcoming',
+  'emptyDrafts',
+  'emptyPast',
   'drafts',
   'past',
   'pastMore',
@@ -540,6 +544,28 @@ export function listStateOf(value: string | undefined): ListState | null {
   return LIST_STATES.find((state) => state === value) ?? null;
 }
 
+const EMPTY_TAB_OF: Partial<Record<ListState, ListTab>> = {
+  emptyUpcoming: 'upcoming',
+  emptyDrafts: 'drafts',
+  emptyPast: 'past',
+};
+
+export function emptyTabOf(state: ListState | null): ListTab | null {
+  return state == null ? null : (EMPTY_TAB_OF[state] ?? null);
+}
+
+/** The organisation's events with none on one tab, so the other tabs, the counts and the summary stay true. */
+export function withoutTab(
+  events: readonly SampleEvent[],
+  tab: ListTab,
+  now: Date,
+  locale: string,
+): SampleEvent[] {
+  const gone = new Set(homeOf(events, now, locale)[tab].map((event) => event.id));
+
+  return events.filter((event) => !gone.has(event.id));
+}
+
 export function listStart(state: ListState | null): {
   tab: ListTab;
   typed: string;
@@ -556,8 +582,10 @@ export function listStart(state: ListState | null): {
   switch (state) {
     case 'drafts':
     case 'eventsZero':
+    case 'emptyDrafts':
       return { ...start, tab: 'drafts' };
     case 'past':
+    case 'emptyPast':
       return { ...start, tab: 'past' };
     case 'pastMore':
       return { ...start, tab: 'past', pastShown: PAST_PAGE * 2 };
