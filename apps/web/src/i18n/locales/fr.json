@@ -488,7 +488,7 @@
     "nameBlank": "Saisissez votre nom complet.",
     "passwordBlank": "Saisissez un mot de passe.",
     "tooShort": "Utilisez au moins {{count, number}} caractères.",
-    "timedOut": "Your sign-up timed out, so we did not keep the password. Enter it again to get a new code."
+    "timedOut": "Votre inscription a expiré, nous n’avons donc pas conservé le mot de passe. Ressaisissez-le pour recevoir un nouveau code."
   },
   "account": {
     "title": "Votre compte",
