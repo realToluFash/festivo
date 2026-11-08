@@ -192,7 +192,7 @@ export function ComposePane({ opening, later: laterFirst }: { opening: boolean; 
           draft={draft}
           tools={draft.step === 'write'}
           refused={refused}
-          previewOff={(countOf(draft.to) ?? 0) === 0 ? PW.nobodyToPreview : null}
+          previewOff={(countOf(draft.to, event.book.groups) ?? 0) === 0 ? PW.nobodyToPreview : null}
           onDraft={(next) => act({ kind: 'draft', draft: next })}
           onSend={send}
           onPreview={() => {
@@ -493,8 +493,8 @@ export function CheckCard({
   onChange: () => void;
   onLater: () => void;
 }) {
-  const { act, focus, tell } = useInbox();
-  const check = checkOf(draft.to, draft.ticks);
+  const { act, focus, tell, to } = useInbox();
+  const check = checkOf(draft.to, draft.ticks, to.book.groups);
   const sentenceId = useId();
 
   return (

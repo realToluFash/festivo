@@ -278,7 +278,7 @@ export function addLine(kind: Plain | 'group'): string {
   return kind === 'group' ? TW.isInGroupLine : PLAIN[kind].line;
 }
 
-export function conditionWord(condition: Condition, groups: readonly Group[] = GROUPS): string {
+export function conditionWord(condition: Condition, groups: readonly Group[]): string {
   if (!isGroup(condition)) return PLAIN[condition].word;
 
   const id = groupIdOf(condition);
@@ -294,10 +294,7 @@ export function conditionWord(condition: Condition, groups: readonly Group[] = G
 }
 
 /** The deleted groups a set of conditions names: each matches nobody (Decided, 26 Oct). */
-export function deletedIn(
-  conditions: readonly Condition[],
-  groups: readonly Group[] = GROUPS,
-): Group[] {
+export function deletedIn(conditions: readonly Condition[], groups: readonly Group[]): Group[] {
   return conditions
     .filter(isGroup)
     .map((condition) => groups.find((group) => group.id === groupIdOf(condition)))
@@ -342,7 +339,7 @@ function matches(guest: SampleGuest, condition: Condition, groups: readonly Grou
 
 export function whoMatches(
   conditions: readonly Condition[],
-  groups: readonly Group[] = GROUPS,
+  groups: readonly Group[],
 ): SampleGuest[] {
   if (conditions.length === 0) return [];
 
@@ -351,14 +348,11 @@ export function whoMatches(
   ).sort((a, b) => COLLATOR.compare(a.name, b.name));
 }
 
-export function countIn(
-  conditions: readonly Condition[],
-  groups: readonly Group[] = GROUPS,
-): number | null {
+export function countIn(conditions: readonly Condition[], groups: readonly Group[]): number | null {
   return conditions.length === 0 ? null : whoMatches(conditions, groups).length;
 }
 
-export function countOf(audience: Audience, groups: readonly Group[] = GROUPS): number | null {
+export function countOf(audience: Audience, groups: readonly Group[]): number | null {
   return audience.kind === 'all' ? POPULATION.length : countIn(audience.conditions, groups);
 }
 
@@ -415,7 +409,7 @@ export function changedFrom(audience: Audience, book: Book): boolean {
   );
 }
 
-export function audienceWords(audience: Audience, groups: readonly Group[] = GROUPS): string {
+export function audienceWords(audience: Audience, groups: readonly Group[]): string {
   if (audience.kind === 'all') return MW.allGuests;
 
   return [MW.guestsWho, audience.conditions.map((one) => conditionWord(one, groups)).join(' · ')]
@@ -423,14 +417,14 @@ export function audienceWords(audience: Audience, groups: readonly Group[] = GRO
     .join(' ');
 }
 
-export function toLine(audience: Audience, groups: readonly Group[] = GROUPS): string {
+export function toLine(audience: Audience, groups: readonly Group[]): string {
   return audience.kind === 'all'
     ? MW.toAll
     : mw.filled(MW.toAudience, { audience: audienceWords(audience, groups) });
 }
 
 /** The To chip: a quick pick as "Coming · 96", a saved audience by its name, else Guests who… with its count. */
-export function chipWords(audience: Audience, book: Book = BOOK): string {
+export function chipWords(audience: Audience, book: Book): string {
   if (audience.kind === 'all') return `${MW.allGuests} · ${NUMBER.format(POPULATION.length)}`;
 
   const count = countIn(audience.conditions, book.groups);
@@ -445,7 +439,7 @@ export function chipWords(audience: Audience, book: Book = BOOK): string {
   return count == null ? lead : `${lead} · ${countWords(count)}`;
 }
 
-export function refusalOf(audience: Audience, groups: readonly Group[] = GROUPS): string | null {
+export function refusalOf(audience: Audience, groups: readonly Group[]): string | null {
   if (audience.kind === 'all') return null;
   if (audience.conditions.length === 0) return MW.noCondition;
 
@@ -752,18 +746,18 @@ export function isSentTo(id: string): id is SentToId {
 }
 
 export function resolvedCount(id: SentToId): number {
-  return id === 'reminder' ? 0 : (countOf(SENT_TO_MESSAGES[id].to) ?? 0);
+  return id === 'reminder' ? 0 : (countOf(SENT_TO_MESSAGES[id].to, GROUPS) ?? 0);
 }
 
-export function sentToHead(id: SentToId): string {
+export function sentToHead(id: SentToId, groups: readonly Group[]): string {
   const message = SENT_TO_MESSAGES[id];
 
   return id === 'reminder'
-    ? toLine(message.to)
-    : `${toLine(message.to)} · ${NUMBER.format(resolvedCount(id))}`;
+    ? toLine(message.to, groups)
+    : `${toLine(message.to, groups)} · ${NUMBER.format(resolvedCount(id))}`;
 }
 
-export function sentToRow(id: SentToId): Row {
+export function sentToRow(id: SentToId, groups: readonly Group[]): Row {
   const message = SENT_TO_MESSAGES[id];
   const count = resolvedCount(id);
 
@@ -773,7 +767,7 @@ export function sentToRow(id: SentToId): Row {
     line:
       id === 'reminder'
         ? `${tw.filled(TW.nobodyDueRow, { time: message.at })} · ${TW.sentNothing}`
-        : `${toLine(message.to)} · ${mw.filled(MW.reached, { count, total: count })}`,
+        : `${toLine(message.to, groups)} · ${mw.filled(MW.reached, { count, total: count })}`,
     when: message.row,
     lead: { kind: 'many' },
     tag: null,

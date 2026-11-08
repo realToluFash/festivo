@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -56,6 +56,10 @@ function count(): string {
 
 function press(key: string): void {
   fireEvent.keyDown(document.activeElement ?? document.body, { key });
+}
+
+async function seconds(count: number): Promise<void> {
+  for (let second = 0; second < count; second += 1) await act(() => vi.advanceTimersByTime(1000));
 }
 
 async function focused(element: HTMLElement): Promise<void> {
@@ -299,6 +303,55 @@ describe('Who gets it: To with its conditions, at a desk (sc-3957)', () => {
           .getAllByRole('button')
           .map((one) => one.textContent),
       ).toEqual(['Old school friends', 'Work', 'No group']);
+    },
+  );
+
+  it(
+    'turns Preview off as well when a deleted group leaves nobody (whoDeleted)',
+    SLOW,
+    async () => {
+      await messages('whoDeleted');
+      const preview = screen.getByRole('button', { name: 'Preview' });
+      const why = document.getElementById(preview.getAttribute('aria-describedby') ?? '');
+
+      expect(screen.getByRole('alert').textContent).toBe(
+        'Nobody matches, because Family was deleted. Remove that condition or choose another audience to send it.',
+      );
+      expect(preview.getAttribute('aria-disabled')).toBe('true');
+      expect(why?.textContent).toBe('No guests chosen yet, so there is nobody to preview it as.');
+    },
+  );
+
+  it(
+    'names the renamed group in the list, before and after it goes (whoRenamed)',
+    SLOW,
+    async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      await messages('whoRenamed');
+      const list = screen.getByRole('region', { name: 'Messages' });
+
+      expect(screen.getByRole('button', { name: 'Preview' }).getAttribute('aria-disabled')).toBe(
+        'false',
+      );
+      expect(
+        within(list).getByRole('link', {
+          name: /^New message, To Guests who… Is in group: Bride’s family · Hasn’t replied · not sent yet/,
+        }),
+      ).toBeDefined();
+
+      press('Escape');
+      fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+      fireEvent.click(await screen.findByRole('button', { name: 'Send to 6 people' }));
+      await seconds(14);
+      fireEvent.click(within(list).getByRole('link', { name: /^Inês Duarte/ }));
+      await screen.findByRole('heading', { level: 2, name: 'Inês Duarte' }, WAIT);
+
+      expect(
+        within(list).getByRole('link', {
+          name: /^Parking and the dress code, To Guests who… Is in group: Bride’s family · Hasn’t replied · 2 people didn’t get it/,
+        }),
+      ).toBeDefined();
+      expect(within(list).queryByRole('link', { name: /Is in group: Family/ })).toBeNull();
     },
   );
 

@@ -92,29 +92,29 @@ describe('Who gets it: conditions, counted live (sc-3957)', () => {
   it('counts the sample as STATES.md gives it, every condition matched (AND)', () => {
     expect(POPULATION).toHaveLength(GUESTS_N);
     expect(new Set(POPULATION.map((guest) => guest.name)).size).toBe(GUESTS_N);
-    expect(countOf({ kind: 'all' })).toBe(142);
-    expect(countIn(['coming'])).toBe(96);
-    expect(countIn(['notReplied'])).toBe(25);
-    expect(countIn(['coming', 'hasMobile'])).toBe(31);
-    expect(countIn(['notReplied', 'group:family'])).toBe(6);
-    expect(countIn(['group:family', 'group:work'])).toBe(0);
-    expect(countIn(['coming', 'hasEmail'])).toBe(92);
-    expect(countIn(['group:family'])).toBe(18);
-    expect(countIn(['group:oldSchool'])).toBe(12);
-    expect(countIn(['group:work'])).toBe(22);
-    expect(countIn(['group:none'])).toBe(90);
-    expect(countIn(['replied'])).toBe(115);
-    expect(countIn(['invited'])).toBe(140);
-    expect(countIn(['notInvited'])).toBe(2);
-    expect(countIn(['notInvited', 'notReplied'])).toBe(0);
-    expect(countIn(['group:work', 'notReplied'])).toBe(0);
-    expect(countIn([])).toBeNull();
-    expect(SAVED.map((one) => countIn(one.conditions))).toEqual([31, 12, 6, 25, 20]);
+    expect(countOf({ kind: 'all' }, GROUPS)).toBe(142);
+    expect(countIn(['coming'], GROUPS)).toBe(96);
+    expect(countIn(['notReplied'], GROUPS)).toBe(25);
+    expect(countIn(['coming', 'hasMobile'], GROUPS)).toBe(31);
+    expect(countIn(['notReplied', 'group:family'], GROUPS)).toBe(6);
+    expect(countIn(['group:family', 'group:work'], GROUPS)).toBe(0);
+    expect(countIn(['coming', 'hasEmail'], GROUPS)).toBe(92);
+    expect(countIn(['group:family'], GROUPS)).toBe(18);
+    expect(countIn(['group:oldSchool'], GROUPS)).toBe(12);
+    expect(countIn(['group:work'], GROUPS)).toBe(22);
+    expect(countIn(['group:none'], GROUPS)).toBe(90);
+    expect(countIn(['replied'], GROUPS)).toBe(115);
+    expect(countIn(['invited'], GROUPS)).toBe(140);
+    expect(countIn(['notInvited'], GROUPS)).toBe(2);
+    expect(countIn(['notInvited', 'notReplied'], GROUPS)).toBe(0);
+    expect(countIn(['group:work', 'notReplied'], GROUPS)).toBe(0);
+    expect(countIn([], GROUPS)).toBeNull();
+    expect(SAVED.map((one) => countIn(one.conditions, GROUPS))).toEqual([31, 12, 6, 25, 20]);
   });
 
   it('lists who matches A to Z, each with the channels they have', () => {
     expect(
-      whoMatches(['notReplied', 'group:family']).map(
+      whoMatches(['notReplied', 'group:family'], GROUPS).map(
         (guest) => `${guest.name} · ${channelsOf(guest)}`,
       ),
     ).toEqual([
@@ -130,11 +130,11 @@ describe('Who gets it: conditions, counted live (sc-3957)', () => {
   it('follows its group: a renamed one by its new name, a deleted one matching nobody', () => {
     const renamed = bookOf('whoRenamed').groups;
 
-    expect(conditionWord('group:family')).toBe('Is in group: Family');
+    expect(conditionWord('group:family', GROUPS)).toBe('Is in group: Family');
     expect(conditionWord('group:family', renamed)).toBe('Is in group: Bride’s family');
     expect(countIn(['group:family', 'notReplied'], renamed)).toBe(6);
     expect(conditionWord('group:family', deleted.groups)).toBe('Is in group: Family (deleted)');
-    expect(conditionWord('group:none')).toBe('Is in group: No group');
+    expect(conditionWord('group:none', GROUPS)).toBe('Is in group: No group');
     expect(countIn(['group:family'], deleted.groups)).toBe(0);
     expect(countIn(['group:none'], deleted.groups)).toBe(108);
     expect(refusalOf(who(['group:family', 'notReplied']), deleted.groups)).toBe(
@@ -143,29 +143,31 @@ describe('Who gets it: conditions, counted live (sc-3957)', () => {
   });
 
   it('refuses Send with no condition or nobody, never All guests', () => {
-    expect(refusalOf({ kind: 'all' })).toBeNull();
-    expect(refusalOf(who([]))).toBe(MW.noCondition);
-    expect(refusalOf(who(['group:family', 'group:work']))).toBe(MW.nobodyLine);
-    expect(refusalOf(who(['coming', 'hasMobile']))).toBeNull();
+    expect(refusalOf({ kind: 'all' }, GROUPS)).toBeNull();
+    expect(refusalOf(who([]), GROUPS)).toBe(MW.noCondition);
+    expect(refusalOf(who(['group:family', 'group:work']), GROUPS)).toBe(MW.nobodyLine);
+    expect(refusalOf(who(['coming', 'hasMobile']), GROUPS)).toBeNull();
   });
 
   it('words the chip by what was picked, and Guests who… once a condition changed', () => {
-    expect(chipWords({ kind: 'all' })).toBe('All guests · 142');
-    expect(chipWords(who(['coming'], 'coming'))).toBe('Coming · 96');
-    expect(chipWords(who(['notReplied'], 'notReplied'))).toBe('Hasn’t replied · 25');
-    expect(chipWords(who(['coming', 'hasMobile'], 'coming'))).toBe('Guests who… · 31 guests');
-    expect(chipWords(who(['coming', 'hasMobile'], 'saved:comingMobile'))).toBe(
+    expect(chipWords({ kind: 'all' }, BOOK)).toBe('All guests · 142');
+    expect(chipWords(who(['coming'], 'coming'), BOOK)).toBe('Coming · 96');
+    expect(chipWords(who(['notReplied'], 'notReplied'), BOOK)).toBe('Hasn’t replied · 25');
+    expect(chipWords(who(['coming', 'hasMobile'], 'coming'), BOOK)).toBe('Guests who… · 31 guests');
+    expect(chipWords(who(['coming', 'hasMobile'], 'saved:comingMobile'), BOOK)).toBe(
       'Coming, with a mobile · 31 guests',
     );
-    expect(chipWords(who(['hasMobile', 'coming'], 'saved:comingMobile'))).toBe(
+    expect(chipWords(who(['hasMobile', 'coming'], 'saved:comingMobile'), BOOK)).toBe(
       'Coming, with a mobile · 31 guests',
     );
-    expect(chipWords(who(['coming', 'hasEmail'], 'saved:comingMobile'))).toBe(
+    expect(chipWords(who(['coming', 'hasEmail'], 'saved:comingMobile'), BOOK)).toBe(
       'Guests who… · 92 guests',
     );
-    expect(chipWords(who([]))).toBe('Guests who…');
-    expect(chipWords(who(['group:family', 'group:work']))).toBe('Guests who… · Nobody matches');
-    expect(toLine(who(['notReplied', 'group:family']))).toBe(
+    expect(chipWords(who([]), BOOK)).toBe('Guests who…');
+    expect(chipWords(who(['group:family', 'group:work']), BOOK)).toBe(
+      'Guests who… · Nobody matches',
+    );
+    expect(toLine(who(['notReplied', 'group:family']), GROUPS)).toBe(
       'To Guests who… Hasn’t replied · Is in group: Family',
     );
   });
@@ -251,20 +253,26 @@ describe('Who gets it: conditions, counted live (sc-3957)', () => {
 
   it('keeps a message sent to conditions in Done, with who it resolved to when it went', () => {
     const resolved = seedOf('resolvedRow');
-    const done = sectionsOf(resolved).done.map((row) => row.id);
+    const done = sectionsOf(resolved, GROUPS).done.map((row) => row.id);
 
     expect(done).toContain('replyBy');
     expect(done).toContain('reminder');
     expect(done.indexOf('reminder')).toBeLessThan(done.indexOf('replyBy'));
-    expect(sentToRow('replyBy')).toMatchObject({
+    expect(sentToRow('replyBy', GROUPS)).toMatchObject({
       title: 'Please reply by Friday',
       line: 'To Guests who… Hasn’t replied · Is in group: Family · Reached 6 of 6',
       when: 'Oct 29',
       tag: null,
     });
-    expect(sentToRow('reminder').line).toBe('Nobody matched when it was due, 09:00 · sent nothing');
-    expect(sentToHead('replyBy')).toBe('To Guests who… Hasn’t replied · Is in group: Family · 6');
-    expect(sentToHead('reminder')).toBe('To Guests who… Is in group: Work · Hasn’t replied');
-    expect(sectionsOf(seedOf('inUse')).done.map((row) => row.id)).not.toContain('replyBy');
+    expect(sentToRow('reminder', GROUPS).line).toBe(
+      'Nobody matched when it was due, 09:00 · sent nothing',
+    );
+    expect(sentToHead('replyBy', GROUPS)).toBe(
+      'To Guests who… Hasn’t replied · Is in group: Family · 6',
+    );
+    expect(sentToHead('reminder', GROUPS)).toBe(
+      'To Guests who… Is in group: Work · Hasn’t replied',
+    );
+    expect(sectionsOf(seedOf('inUse'), GROUPS).done.map((row) => row.id)).not.toContain('replyBy');
   });
 });

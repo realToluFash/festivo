@@ -4,6 +4,7 @@ import { demoWords } from './demoWords.ts';
 import { MESSAGES_WORD, MW } from './messagesWords.ts';
 import {
   type Audience,
+  type Group,
   type SentToId,
   COMING,
   NOT_REPLIED,
@@ -448,8 +449,8 @@ export interface Check {
 }
 
 /** The check before it goes (sc-3942, sc-3963): who is told and how, who cannot be, and the credits. */
-export function checkOf(audience: Audience, ticks: Ticks): Check {
-  const count = countOf(audience) ?? 0;
+export function checkOf(audience: Audience, ticks: Ticks, groups: readonly Group[]): Check {
+  const count = countOf(audience, groups) ?? 0;
   const { counts, cantTell, names, smsOff } = figuresOf(audience, ticks);
   const on = CHANNELS.filter((channel) => ticks[channel]);
   const credits = (ticks.sms ? counts.sms : 0) + (ticks.whatsApp ? counts.whatsApp : 0);
@@ -1254,13 +1255,16 @@ function unknownRow(inbox: Inbox): Row {
   };
 }
 
-export function outReach(out: Out): {
+export function outReach(
+  out: Out,
+  groups: readonly Group[],
+): {
   count: number;
   reached: number;
   soFar: number;
   seen: number;
 } {
-  const count = countOf(out.to) ?? 0;
+  const count = countOf(out.to, groups) ?? 0;
 
   return {
     count,
@@ -1270,8 +1274,8 @@ export function outReach(out: Out): {
   };
 }
 
-export function outLine(out: Out): string {
-  const reach = outReach(out);
+export function outLine(out: Out, groups: readonly Group[]): string {
+  const reach = outReach(out, groups);
 
   switch (out.stage) {
     case 'countdown':
@@ -1321,7 +1325,7 @@ export function cancelledWords(sched: Sched): string {
   });
 }
 
-function schedRow(sched: Sched): Row {
+function schedRow(sched: Sched, groups: readonly Group[]): Row {
   if (sched.cancelledAt != null)
     return manyRow(
       sched.id,
@@ -1334,7 +1338,7 @@ function schedRow(sched: Sched): Row {
     return manyRow(
       sched.id,
       outTitle(sched),
-      `${toLine(sched.to)} · ${toldWords(sched.ticks)}`,
+      `${toLine(sched.to, groups)} · ${toldWords(sched.ticks)}`,
       sched.time,
       null,
     );
@@ -1342,7 +1346,7 @@ function schedRow(sched: Sched): Row {
     return manyRow(
       sched.id,
       outTitle(sched),
-      `${toLine(sched.to)} · ${dayWords(sched.day)}, ${sched.time}`,
+      `${toLine(sched.to, groups)} · ${dayWords(sched.day)}, ${sched.time}`,
       '',
       { kind: 'ended', word: MW.notSentTooLate },
     );
@@ -1350,28 +1354,28 @@ function schedRow(sched: Sched): Row {
   return manyRow(
     sched.id,
     outTitle(sched),
-    `${toLine(sched.to)} · ${dayWords(sched.day)}, ${sched.time}`,
+    `${toLine(sched.to, groups)} · ${dayWords(sched.day)}, ${sched.time}`,
     '',
     { kind: 'notyet', word: MW.scheduled },
   );
 }
 
-export function rowOf(inbox: Inbox, id: ConvoId): Row {
+export function rowOf(inbox: Inbox, id: ConvoId, groups: readonly Group[]): Row {
   if (isGuest(id)) return guestRow(inbox, id);
   if (id === 'unknown') return unknownRow(inbox);
-  if (isSentTo(id)) return sentToRow(id);
+  if (isSentTo(id)) return sentToRow(id, groups);
 
   const outs = outsIn(inbox, id);
   const last = outs.at(-1);
   const sched = inbox.scheds.find((one) => one.id === id);
 
-  if (sched != null && last == null) return schedRow(sched);
+  if (sched != null && last == null) return schedRow(sched, groups);
   if (id === 'parking')
     return manyRow(
       id,
       PARKING.subject,
       last != null && busy(last)
-        ? outLine(last)
+        ? outLine(last, groups)
         : `${MW.toAll} · ${many('didntGetIt', inbox.unreached.length)}`,
       last == null ? PARKING.row : last.at,
       inbox.unreached.length === 0
@@ -1383,16 +1387,16 @@ export function rowOf(inbox: Inbox, id: ConvoId): Row {
       id,
       MW.invitation,
       last != null && busy(last)
-        ? outLine(last)
+        ? outLine(last, groups)
         : `${MW.toAll} · ${filled(MW.reached, { count: INVITE_REACH.reached, total: INVITE_REACH.of })}`,
       last == null ? INVITE.row : last.at,
       null,
     );
 
-  return threadRow(inbox, id);
+  return threadRow(inbox, id, groups);
 }
 
-function threadRow(inbox: Inbox, id: ConvoId): Row {
+function threadRow(inbox: Inbox, id: ConvoId, groups: readonly Group[]): Row {
   const outs = outsIn(inbox, id);
   const first = outs[0];
   const last = outs.at(-1);
@@ -1400,19 +1404,28 @@ function threadRow(inbox: Inbox, id: ConvoId): Row {
   if (first == null || last == null) {
     const to = inbox.draft?.to ?? { kind: 'all' };
 
-    return manyRow(id, MW.newMessage, `${toLine(to)} · ${MW.notSentYet}`, NOW, null);
+    return manyRow(id, MW.newMessage, `${toLine(to, groups)} · ${MW.notSentYet}`, NOW, null);
   }
 
   const title = outTitle(first);
   const missed = figuresOf(last.to, last.ticks).cantTell;
 
   if (last.stage === 'sent' && litOf(inbox) !== id && missed > 0)
-    return manyRow(id, title, `${toLine(last.to)} · ${many('didntGetIt', missed)}`, last.at, {
-      kind: 'waiting',
-      word: filled(MW.notReached, { count: missed }),
-    });
+    return manyRow(
+      id,
+      title,
+      `${toLine(last.to, groups)} · ${many('didntGetIt', missed)}`,
+      last.at,
+      {
+        kind: 'waiting',
+        word: filled(MW.notReached, { count: missed }),
+      },
+    );
 
-  const line = outs.length > 1 && busy(last) ? `${MW.followUp} · ${outLine(last)}` : outLine(last);
+  const line =
+    outs.length > 1 && busy(last)
+      ? `${MW.followUp} · ${outLine(last, groups)}`
+      : outLine(last, groups);
 
   return manyRow(
     id,
@@ -1455,7 +1468,7 @@ function threadsOf(inbox: Inbox): ConvoId[] {
   return ids.reverse();
 }
 
-export function sectionsOf(inbox: Inbox): Sections {
+export function sectionsOf(inbox: Inbox, groups: readonly Group[]): Sections {
   const here = (id: ConvoId) => inbox.present.includes(id);
   const lit = litOf(inbox);
   const top: Row[] = [];
@@ -1464,7 +1477,7 @@ export function sectionsOf(inbox: Inbox): Sections {
 
   for (const id of threadsOf(inbox)) {
     const last = outsIn(inbox, id).at(-1);
-    const row = rowOf(inbox, id);
+    const row = rowOf(inbox, id, groups);
 
     if (id === lit || last == null || last.stage === 'countdown' || last.stage === 'sending')
       top.push(row);
@@ -1476,27 +1489,36 @@ export function sectionsOf(inbox: Inbox): Sections {
   const arrived = inbox.arrived;
 
   if (arrived != null && here(arrived) && !inbox.done.includes(arrived))
-    needs.push(rowOf(inbox, arrived));
+    needs.push(rowOf(inbox, arrived, groups));
   for (const id of waiting)
-    if (id !== arrived && here(id) && !inbox.done.includes(id)) needs.push(rowOf(inbox, id));
-  if (here('parking') && inbox.unreached.length > 0) needs.push(rowOf(inbox, 'parking'));
+    if (id !== arrived && here(id) && !inbox.done.includes(id))
+      needs.push(rowOf(inbox, id, groups));
+  if (here('parking') && inbox.unreached.length > 0) needs.push(rowOf(inbox, 'parking', groups));
 
   const scheds = inbox.scheds.filter(
     (one) => (one.id !== 'sched' || here('sched')) && outsIn(inbox, one.id).length === 0,
   );
 
   done.push(
-    ...scheds.filter((one) => one.cancelledAt != null || one.outcome != null).map(schedRow),
+    ...scheds
+      .filter((one) => one.cancelledAt != null || one.outcome != null)
+      .map((one) => schedRow(one, groups)),
   );
-  done.push(...inbox.done.filter(here).map((id) => rowOf(inbox, id)));
-  done.push(...SENT_TO.filter((id) => here(id) && outsIn(inbox, id).length === 0).map(sentToRow));
-  if (here('parking') && inbox.unreached.length === 0) done.push(rowOf(inbox, 'parking'));
-  if (here('invite')) done.push(rowOf(inbox, 'invite'));
+  done.push(...inbox.done.filter(here).map((id) => rowOf(inbox, id, groups)));
+  done.push(
+    ...SENT_TO.filter((id) => here(id) && outsIn(inbox, id).length === 0).map((id) =>
+      sentToRow(id, groups),
+    ),
+  );
+  if (here('parking') && inbox.unreached.length === 0) done.push(rowOf(inbox, 'parking', groups));
+  if (here('invite')) done.push(rowOf(inbox, 'invite', groups));
 
   return {
     top,
     needs,
-    scheduled: scheds.filter((one) => one.cancelledAt == null && one.outcome == null).map(schedRow),
+    scheduled: scheds
+      .filter((one) => one.cancelledAt == null && one.outcome == null)
+      .map((one) => schedRow(one, groups)),
     done,
   };
 }

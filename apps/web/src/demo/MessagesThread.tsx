@@ -590,7 +590,7 @@ function AnswerBox({
 }
 
 function ManyThread({ id }: { id: ConvoId }) {
-  const { inbox } = useInbox();
+  const { inbox, to: event } = useInbox();
   const first = outsIn(inbox, id)[0];
   const fixed = id === 'parking' || id === 'invite';
   const to: Audience = fixed ? { kind: 'all' } : (first?.to ?? { kind: 'all' });
@@ -602,8 +602,8 @@ function ManyThread({ id }: { id: ConvoId }) {
       ? MW.newMessage
       : outTitle(first);
   const line = [
-    toLine(to),
-    countOf(to),
+    toLine(to, event.book.groups),
+    countOf(to, event.book.groups),
     id === 'invite' ? listed([MW.email, MW.sms]) : toldWords(first?.ticks ?? TICKS),
   ]
     .filter((part) => part != null && part !== '')
@@ -661,8 +661,8 @@ function ScheduledThread({ sched, state }: { sched: Sched; state: MessagesState 
   const ending = endLine(sched);
   const title = outTitle(sched);
   const when = { date: dayWords(sched.day), time: sched.time };
-  const count = countOf(sched.to) ?? 0;
-  const check = checkOf(sched.to, sched.ticks);
+  const count = countOf(sched.to, event.book.groups) ?? 0;
+  const check = checkOf(sched.to, sched.ticks, event.book.groups);
 
   function to(next: SchedMode, key: string): void {
     setMode(next);
@@ -674,7 +674,7 @@ function ScheduledThread({ sched, state }: { sched: Sched; state: MessagesState 
       <Head
         lead={<LeadMark lead={{ kind: 'many' }} size={44} />}
         title={title}
-        line={[toLine(sched.to), count, statusWord(sched)].join(' · ')}
+        line={[toLine(sched.to, event.book.groups), count, statusWord(sched)].join(' · ')}
       />
       <ol className="mg-stream" role="log" aria-label={title}>
         <DayRule>{when.date}</DayRule>
@@ -913,7 +913,7 @@ function ReachedView({
         ? reachFrom(INVITE_REACH.of, INVITE_REACH.seen, people)
         : {
             reached: SO_FAR.reached,
-            of: countOf(outsIn(inbox, thread)[0]?.to ?? { kind: 'all' }) ?? 0,
+            of: countOf(outsIn(inbox, thread)[0]?.to ?? { kind: 'all' }, to.book.groups) ?? 0,
             seen: 3,
             parts: [
               { kind: 'reached', count: SO_FAR.reached } as const,

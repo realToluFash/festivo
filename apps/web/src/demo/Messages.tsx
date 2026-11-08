@@ -50,7 +50,7 @@ import {
 } from './messages.ts';
 import { ConversationPane } from './MessagesThread.tsx';
 import { InboxContext, type InboxApi } from './messagesContext.ts';
-import { useTo } from './messagesTo.ts';
+import { type Group, useTo } from './messagesTo.ts';
 import { LeadMark, WhyNot } from './MessagesParts.tsx';
 import { UntoldBanner } from './MessagesTell.tsx';
 import { MESSAGES_WORD } from './messagesWords.ts';
@@ -196,9 +196,10 @@ function Messages({
   }, []);
   const { stack } = useContext(LayersContext);
   const titleId = useId();
-  const sections = useMemo(() => sectionsOf(inbox), [inbox]);
-  const lit = litOf(inbox);
   const to = useTo(state);
+  const groups = to.book.groups;
+  const sections = useMemo(() => sectionsOf(inbox, groups), [inbox, groups]);
+  const lit = litOf(inbox);
 
   const say = useCallback((words: string) => {
     window.setTimeout(() => setSaid(''), 0);
@@ -499,7 +500,7 @@ function Messages({
           {said}
         </p>
         <p className="desk-unseen" role="status">
-          {sendingSaid(inbox)}
+          {sendingSaid(inbox, groups)}
         </p>
       </div>
     </InboxContext>
@@ -507,12 +508,12 @@ function Messages({
 }
 
 /** What the ten seconds and the send say, once each (WCAG 2.2 SC 4.1.3): 10, 5, then queued, then the result. */
-function sendingSaid(inbox: Inbox): string {
+function sendingSaid(inbox: Inbox, groups: readonly Group[]): string {
   const out = inbox.outs.find((one) => one.stage === 'countdown') ?? inbox.outs.at(-1);
 
   if (out == null) return '';
 
-  const reach = outReach(out);
+  const reach = outReach(out, groups);
 
   switch (out.stage) {
     case 'countdown':

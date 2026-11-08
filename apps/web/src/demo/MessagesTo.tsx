@@ -431,7 +431,7 @@ export function ToPopover({
           <label className="mg-radio-row">
             <input {...radio('all')} onChange={() => choose({ kind: 'all' })} />
             <span className="today-grow">{MW.allGuests}</span>
-            <span className="mg-radio-count">{countOf({ kind: 'all' })}</span>
+            <span className="mg-radio-count">{countOf({ kind: 'all' }, groups)}</span>
           </label>
           {(['coming', 'notReplied'] as const).map((quick) => (
             <label key={quick} className="mg-radio-row">

@@ -25,7 +25,7 @@ export function NoManage() {
 
 /** A message whose audience was conditions: who it resolved to when it went, or that nobody matched (an outcome, never a failure). */
 export function SentToThread({ id }: { id: SentToId }) {
-  const { inbox } = useInbox();
+  const { inbox, to } = useInbox();
   const message = SENT_TO_MESSAGES[id];
   const count = resolvedCount(id);
   const nobody = id === 'reminder';
@@ -35,7 +35,7 @@ export function SentToThread({ id }: { id: SentToId }) {
       <Head
         lead={<LeadMark lead={{ kind: 'many' }} size={44} />}
         title={message.subject}
-        line={sentToHead(id)}
+        line={sentToHead(id, to.book.groups)}
       />
       <ol className="mg-stream" role="log" aria-label={message.subject}>
         <DayRule>{message.day}</DayRule>
