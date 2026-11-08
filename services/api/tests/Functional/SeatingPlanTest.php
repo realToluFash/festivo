@@ -487,22 +487,14 @@ final class SeatingPlanTest extends ApiTestCase
         return $this->plan() . '/sections';
     }
 
-    /**
-     * @param array<string, mixed> $body
-     *
-     * @return array<string, mixed>
-     */
-    private function seating(array $body): array
+    /** @return array<string, mixed> */
+    private function seating(mixed $body): array
     {
-        return Type\dict(Type\string(), Type\mixed())->coerce($body['seating'] ?? null);
+        return Type\dict(Type\string(), Type\mixed())->coerce(Type\dict(Type\string(), Type\mixed())->coerce($body)['seating'] ?? null);
     }
 
-    /**
-     * @param array<string, mixed> $seating
-     *
-     * @return array{roomName: ?string, widthCm: int, lengthCm: int, sections: list<array<string, mixed>>, counts: array<string, int>}
-     */
-    private function planOf(array $seating): array
+    /** @return array{roomName: ?string, widthCm: int, lengthCm: int, sections: list<array<string, mixed>>, counts: array<string, int>} */
+    private function planOf(mixed $seating): array
     {
         return Type\shape([
             'roomName' => Type\nullable(Type\string()),
@@ -510,7 +502,7 @@ final class SeatingPlanTest extends ApiTestCase
             'lengthCm' => Type\int(),
             'sections' => Type\vec(Type\dict(Type\string(), Type\mixed())),
             'counts' => Type\dict(Type\string(), Type\int()),
-        ], true)->coerce($seating['plan'] ?? null);
+        ], true)->coerce(Type\dict(Type\string(), Type\mixed())->coerce($seating)['plan'] ?? null);
     }
 
     private function violation(string $path): ?string

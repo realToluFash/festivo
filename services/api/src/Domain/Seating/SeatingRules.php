@@ -20,11 +20,7 @@ final readonly class SeatingRules
     ) {
     }
 
-    /**
-     * Width and length in centimetres, 2 m to 500 m each; a blank room name is no name.
-     *
-     * @return array{roomName: ?string, widthCm: int, lengthCm: int}
-     */
+    /** @return array{roomName: ?string, widthCm: int, lengthCm: int} a blank room name is no name */
     public function room(?string $roomName, ?int $widthCm, ?int $lengthCm, MeasurementSystem $system): array
     {
         $violations = [];
@@ -53,8 +49,6 @@ final readonly class SeatingRules
     }
 
     /**
-     * The name as kept, refused when blank, over 40, or already another section's in this plan, ignoring case and accents.
-     *
      * @param list<SeatingSection> $others the plan's other sections
      *
      * @return array{name: string, nameKey: string}

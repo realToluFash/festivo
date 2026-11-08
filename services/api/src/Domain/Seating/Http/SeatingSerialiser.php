@@ -12,12 +12,7 @@ use App\Repository\SeatingSectionRepository;
 use Psl\Iter;
 use Psl\Vec;
 
-/**
- * An event's seating as the clients read it and the hub publishes it (sc-3998).
- *
- * Tables, rows, single seats and seated guests are counted as none: nothing can be placed on a plan until sc-4000 and
- * sc-4003, and those stories count here, so a section's row and Delete the plan's confirmation already have the slots.
- */
+/** Tables, rows, single seats and seated guests count as none until sc-4000 and sc-4003 can place them (sc-3998). */
 final readonly class SeatingSerialiser
 {
     public function __construct(

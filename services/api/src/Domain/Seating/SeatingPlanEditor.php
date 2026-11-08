@@ -26,12 +26,7 @@ use Psl\Iter;
 use Psl\Str;
 use Psl\Vec;
 
-/**
- * Every change to an event's room and its sections (sc-3998). Each runs under a lock on the plan's row, so two saves
- * sent together queue: the second is refused 412 when it was made against what the first changed, and the 30-section
- * limit and a name's uniqueness are read after the first has landed. The room and each section have their own
- * version, so adding a section never refuses a colleague's Room settings.
- */
+/** Each change runs under a lock on the plan's row, so two saves sent together queue and the second sees the first (sc-3998). */
 final readonly class SeatingPlanEditor
 {
     public const string STARTED = 'seating.plan_started';
@@ -81,11 +76,7 @@ final readonly class SeatingPlanEditor
         return $plan;
     }
 
-    /**
-     * A field left out keeps its value; a room name sent as null or blank removes it.
-     *
-     * @param array{roomName?: ?string, widthCm?: int, lengthCm?: int} $fields
-     */
+    /** @param array{roomName?: ?string, widthCm?: int, lengthCm?: int} $fields a field left out keeps its value */
     public function change(Event $event, SeatingPlan $plan, ?string $ifMatch, User $by, array $fields): SeatingPlan
     {
         $ifMatch = self::versionRequired($ifMatch);
@@ -118,7 +109,6 @@ final readonly class SeatingPlanEditor
         return $plan;
     }
 
-    /** Its sections go with it; the guest list is never touched (sc-3998). */
     public function delete(Event $event, SeatingPlan $plan, User $by): void
     {
         $this->locked($plan, function () use ($plan, $by): void {
@@ -216,8 +206,6 @@ final readonly class SeatingPlanEditor
     }
 
     /**
-     * Runs the change with the plan's row locked, then flushes.
-     *
      * @template T
      *
      * @param callable(): T $change
@@ -244,7 +232,6 @@ final readonly class SeatingPlanEditor
         return $ifMatch;
     }
 
-    /** A save made against a version somebody has since moved on is refused, naming who did when it is known. */
     private static function changedSince(?User $changedBy): ApiException
     {
         $name = $changedBy?->getName();

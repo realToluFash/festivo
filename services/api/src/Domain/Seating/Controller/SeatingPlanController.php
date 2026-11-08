@@ -85,7 +85,6 @@ final readonly class SeatingPlanController
         return $this->seating($event, $plan);
     }
 
-    /** Its sections go with it; nobody leaves the guest list. */
     #[Route('/api/events/{eventId}/seating-plan', name: 'seating_plan_delete', methods: ['DELETE'])]
     #[InEvent(Permission::SeatingManage)]
     public function delete(string $eventId): JsonResponse
@@ -128,7 +127,6 @@ final readonly class SeatingPlanController
         return $this->seating($event, $section->getPlan());
     }
 
-    /** What it labelled keeps its place, with no section. */
     #[Route('/api/events/{eventId}/seating-plan/sections/{sectionId}', name: 'seating_sections_delete', methods: ['DELETE'])]
     #[InEvent(Permission::SeatingManage)]
     public function deleteSection(string $eventId, #[InThisEvent('sectionId')] SeatingSection $section): JsonResponse
