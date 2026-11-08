@@ -3,9 +3,12 @@
 appId: host.exp.Exponent
 ---
 - extendedWaitUntil:
-    visible: 'Send a new code'
+    visible:
+      id: 'verifyEmail.resend'
+      text: 'Send a new code'
     timeout: 120000
-- tapOn: 'Send a new code'
+- tapOn:
+    id: 'verifyEmail.resend'
 - extendedWaitUntil:
     visible:
       id: 'register.password'
