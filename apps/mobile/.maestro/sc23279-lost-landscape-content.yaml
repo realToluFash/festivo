@@ -13,7 +13,7 @@ appId: host.exp.Exponent
     id: 'twoFactor.lostBoth'
 - extendedWaitUntil:
     visible:
-      id: 'lostTwoFactor.backToCode'
+      id: 'lostTwoFactor.back'
     timeout: 30000
 - takeScreenshot: mobile-landscape-lost-at-once
 - extendedWaitUntil:
