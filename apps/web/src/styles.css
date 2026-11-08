@@ -955,7 +955,10 @@ span {
   text-decoration: none;
 }
 
-.auth-header .brand,
+.auth-header .brand {
+  margin-right: auto;
+}
+
 .auth-main {
   display: flex;
   flex: 1;
