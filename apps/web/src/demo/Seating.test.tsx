@@ -113,8 +113,10 @@ describe('nothing leaves the demo', () => {
   });
 
   afterEach(() => {
-    expect(fetched).not.toHaveBeenCalled();
+    const calls = [...fetched.mock.calls];
     fetched.mockRestore();
+
+    expect(calls).toEqual([]);
   });
 
   it('sends nothing to the API while a table changes', SLOW, async () => {

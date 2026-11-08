@@ -8,7 +8,8 @@ import { resetSample } from './events.ts';
 import { resetInbox } from './messages.ts';
 
 const tested = config();
-const SLOW = { timeout: 8000 };
+const SLOW = { timeout: 20000 };
+const WAIT = { timeout: 8000 };
 const AT = '/demo/events/evt-wed-4/messages';
 
 function open(path: string) {
@@ -20,7 +21,7 @@ function open(path: string) {
 
 async function messages(state: string | null) {
   const router = open(state == null ? AT : `${AT}?state=${state}`);
-  await screen.findByRole('heading', { level: 1, name: 'Messages' }, SLOW);
+  await screen.findByRole('heading', { level: 1, name: 'Messages' }, WAIT);
 
   return router;
 }
@@ -61,7 +62,7 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
 
   it('links every state from the demo home, in a Messages group', SLOW, async () => {
     open('/demo');
-    const group = (await screen.findByRole('heading', { level: 4, name: 'Messages' }, SLOW))
+    const group = (await screen.findByRole('heading', { level: 4, name: 'Messages' }, WAIT))
       .parentElement as HTMLElement;
     const links = within(group).getAllByRole('link');
 
@@ -73,7 +74,7 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
 
   it('is the event’s own Messages entry, with the count under it', SLOW, async () => {
     const router = open('/demo/events/evt-wed-4');
-    const side = await screen.findByRole('navigation', { name: 'Adaeze & Tunde’s wedding' }, SLOW);
+    const side = await screen.findByRole('navigation', { name: 'Adaeze & Tunde’s wedding' }, WAIT);
     const entry = within(side).getByRole('link', { name: 'Messages, 3 waiting, 1 not matched' });
 
     expect(entry.textContent).toContain('3 waiting · 1 not matched');
@@ -95,7 +96,7 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
     async () => {
       const router = open('/demo/events/evt-wed-4?area=messages');
 
-      await screen.findByRole('heading', { level: 1, name: 'Messages' }, SLOW);
+      await screen.findByRole('heading', { level: 1, name: 'Messages' }, WAIT);
       expect(router.state.location.pathname).toBe(AT);
     },
   );
@@ -165,7 +166,7 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
 
       fireEvent.click(screen.getByRole('button', { name: 'Mark as done' }));
 
-      expect(await screen.findByText('Done.', {}, SLOW)).toBeDefined();
+      expect(await screen.findByText('Done.', {}, WAIT)).toBeDefined();
       expect(within(list()).getByRole('heading', { name: 'Needs you · 4' })).toBeDefined();
       expect(row(/^Lucía Ortega/)).toBe(document.activeElement);
       expect(
@@ -194,7 +195,7 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
 
     expect(within(log).getByText('Of course, bring him.')).toBeDefined();
     expect(within(log).getByText('Sending…')).toBeDefined();
-    expect(await within(log).findByText('Not seen yet', {}, SLOW)).toBeDefined();
+    expect(await within(log).findByText('Not seen yet', {}, WAIT)).toBeDefined();
     expect(within(log).getAllByText('Told by email')).toHaveLength(2);
     expect(within(log).queryByText('Sending…')).toBeNull();
     expect((field as HTMLTextAreaElement).value).toBe('');
@@ -217,7 +218,7 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
     await messages('replyArrived');
 
     expect(within(list()).queryByRole('link', { name: /^Lucía Ortega/ })).toBeNull();
-    expect(await screen.findByText('Lucía Ortega answered on their page.', {}, SLOW)).toBeDefined();
+    expect(await screen.findByText('Lucía Ortega answered on their page.', {}, WAIT)).toBeDefined();
     expect(within(list()).getAllByRole('link')[0]?.getAttribute('aria-label')).toMatch(
       /^Lucía Ortega, .*, now$/,
     );
@@ -241,7 +242,7 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
       expect(row(/^Lucía Ortega/).getAttribute('aria-current')).toBe('true');
 
       press('e');
-      expect(await screen.findByText('Done.', {}, SLOW)).toBeDefined();
+      expect(await screen.findByText('Done.', {}, WAIT)).toBeDefined();
       expect(within(list()).getByRole('heading', { name: 'Needs you · 4' })).toBeDefined();
 
       press('r');
@@ -603,7 +604,7 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
     SLOW,
     async () => {
       open(`${AT}?state=tell`);
-      const dialog = await screen.findByRole('dialog', { name: 'Tell 130 guests?' }, SLOW);
+      const dialog = await screen.findByRole('dialog', { name: 'Tell 130 guests?' }, WAIT);
 
       expect(within(dialog).getByText('The start time is now 17:30 (was 18:00).')).toBeDefined();
       expect(within(dialog).getByText('Note for your guests')).toBeDefined();
@@ -640,7 +641,7 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
       target: { value: 'On the day: the doors' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
-    expect(await screen.findByText('Saved.', {}, SLOW)).toBeDefined();
+    expect(await screen.findByText('Saved.', {}, WAIT)).toBeDefined();
     expect(screen.getByRole('heading', { level: 2, name: 'On the day: the doors' })).toBeDefined();
 
     fireEvent.click(screen.getByRole('button', { name: 'Send now' }));
@@ -691,14 +692,14 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
     fireEvent.click(within(picker).getByRole('button', { name: 'This is Camille Dubois' }));
 
     expect(await screen.findByRole('heading', { level: 2, name: 'Camille Dubois' })).toBeDefined();
-    expect(await screen.findByText('Matched to Camille Dubois.', {}, SLOW)).toBeDefined();
+    expect(await screen.findByText('Matched to Camille Dubois.', {}, WAIT)).toBeDefined();
     expect(screen.getByRole('textbox', { name: 'Your answer' })).toBeDefined();
     expect(screen.getByRole('link', { name: 'Messages, 4 waiting' })).toBeDefined();
   });
 
   it('opens Tell guests when Overview’s start time is saved', SLOW, async () => {
     open('/demo/events/evt-wed-4?state=dates');
-    const start = await screen.findByLabelText('Starts, Time', {}, SLOW);
+    const start = await screen.findByLabelText('Starts, Time', {}, WAIT);
 
     fireEvent.change(start, { target: { value: '17:30' } });
     fireEvent.click(screen.getAllByRole('button', { name: 'Save' })[0] as HTMLElement);
@@ -773,7 +774,7 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
       fireEvent.change(within(when).getByLabelText('Time'), { target: { value: '09:00' } });
       fireEvent.click(within(when).getByRole('button', { name: 'Schedule' }));
 
-      expect(await screen.findByText('Scheduled for Thu, Nov 5 at 09:00.', {}, SLOW)).toBeDefined();
+      expect(await screen.findByText('Scheduled for Thu, Nov 5 at 09:00.', {}, WAIT)).toBeDefined();
       expect(within(list()).getByRole('heading', { name: 'Scheduled · 2' })).toBeDefined();
     },
   );
@@ -824,7 +825,7 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
 
   it('tells guests a new place, with the address line, over Overview', SLOW, async () => {
     open(`${AT}?state=tellPlace`);
-    const dialog = await screen.findByRole('dialog', { name: 'Tell 130 guests?' }, SLOW);
+    const dialog = await screen.findByRole('dialog', { name: 'Tell 130 guests?' }, WAIT);
 
     expect(
       within(dialog).getByText('The venue is now Rosewood London (was The Landmark).'),

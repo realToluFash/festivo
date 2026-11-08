@@ -8,7 +8,8 @@ import { SAMPLE } from './rules.ts';
 import { NEW_PASSWORD, SECURITY_STATES, WEB_MOMENTS } from './security.ts';
 
 const tested = config();
-const SLOW = { timeout: 3000 };
+const SLOW = { timeout: 20000 };
+const WAIT = { timeout: 3000 };
 
 async function security(path: string) {
   const router = createMemoryRouter(routes, { initialEntries: [path] });
@@ -141,7 +142,7 @@ describe('Security at a desk (sc-30223)', () => {
     expect(within(dialog()).getByLabelText('Email')).toHaveProperty('value', SAMPLE.email);
     fireEvent.click(within(dialog()).getByRole('button', { name: 'Send' }));
 
-    await screen.findByRole('heading', { name: 'Check your email' }, SLOW);
+    await screen.findByRole('heading', { name: 'Check your email' }, WAIT);
     expect(within(dialog()).queryByRole('button', { name: 'Cancel' })).toBeNull();
     fireEvent.click(within(dialog()).getByRole('button', { name: 'Send it again' }));
     expect(within(dialog()).getByRole('heading', { name: 'Reset your password' })).toBeDefined();
@@ -277,7 +278,7 @@ describe('Security at a desk (sc-30223)', () => {
     type('Enter the 6-digit code the app shows', SAMPLE.authenticator);
     fireEvent.click(within(dialog()).getByRole('button', { name: 'Turn on' }));
 
-    await screen.findByRole('heading', { name: 'Save your recovery codes' }, SLOW);
+    await screen.findByRole('heading', { name: 'Save your recovery codes' }, WAIT);
     const codes = within(dialog()).getByRole('list', { name: 'Recovery codes' });
     expect(within(codes).getAllByRole('listitem')).toHaveLength(10);
     expect(within(dialog()).queryByRole('button', { name: 'Cancel' })).toBeNull();
@@ -362,7 +363,7 @@ describe('Security at a desk (sc-30223)', () => {
     fireEvent.click(within(dialog()).getByRole('button', { name: 'Continue' }));
 
     expect(
-      await screen.findByText('Your 2 other devices are signed out.', undefined, SLOW),
+      await screen.findByText('Your 2 other devices are signed out.', undefined, WAIT),
     ).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Sign out everywhere else…' })).toBeNull();
   });

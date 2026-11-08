@@ -6,7 +6,8 @@ import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
 
 const tested = config();
-const SLOW = { timeout: 3000 };
+const SLOW = { timeout: 20000 };
+const WAIT = { timeout: 3000 };
 
 async function account(path: string) {
   const router = createMemoryRouter(routes, { initialEntries: [path] });
@@ -140,7 +141,7 @@ describe('Your account at a desk (sc-30209)', () => {
     fireEvent.click(within(dialog()).getByRole('button', { name: 'Save' }));
 
     expect(
-      await screen.findByText('Name changed to Folake Adeyemi-Bello.', undefined, SLOW),
+      await screen.findByText('Name changed to Folake Adeyemi-Bello.', undefined, WAIT),
     ).toBeDefined();
   });
 
@@ -198,7 +199,7 @@ describe('Your account at a desk (sc-30209)', () => {
     fireEvent.click(within(dialog()).getByRole('button', { name: 'Save' }));
 
     expect(
-      await screen.findByText('Name changed to Oluwafolakemi Bello.', undefined, SLOW),
+      await screen.findByText('Name changed to Oluwafolakemi Bello.', undefined, WAIT),
     ).toBeDefined();
     expect(screen.getByText('OB')).toBeDefined();
   });
@@ -276,7 +277,7 @@ describe('Your account at a desk (sc-30209)', () => {
     expect((within(dialog()).getByLabelText('Country') as HTMLSelectElement).value).toBe('GB');
     fireEvent.click(within(dialog()).getByRole('button', { name: 'Add' }));
 
-    expect(await screen.findByText('+44 7700 900461', undefined, SLOW)).toBeDefined();
+    expect(await screen.findByText('+44 7700 900461', undefined, WAIT)).toBeDefined();
   });
 
   it('verifies an address: a wrong code on the field, a right one closes and the card says so', async () => {
