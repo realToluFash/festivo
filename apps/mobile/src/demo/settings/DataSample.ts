@@ -1,4 +1,4 @@
-import { writtenTime } from '../clock.ts';
+import { exactTime, writtenTime } from '../clock.ts';
 
 /** One "now" for every page: Monday, Oct 19, 2026 at 10:12 in Lagos (enterprise-b-spec.md §2). */
 export const NOW = '2026-10-19T09:12:00Z';
@@ -112,13 +112,6 @@ export function dataSayIn(locale: string, zone: DataZone = ZONE): DataSay {
     year: 'numeric',
     timeZone: zone,
   });
-  const clock = new Intl.DateTimeFormat(locale, {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hourCycle: 'h23',
-    timeZone: zone,
-  });
   const key = new Intl.DateTimeFormat('en-CA', {
     year: 'numeric',
     month: '2-digit',
@@ -131,7 +124,7 @@ export function dataSayIn(locale: string, zone: DataZone = ZONE): DataSay {
       `${day.format(new Date(iso))} at ${writtenTime(new Date(iso), locale, zone)} ${zoneWord(iso, zone)}`,
     day: (iso) => day.format(new Date(iso)),
     exact: (iso) =>
-      `${dated.format(new Date(iso))} at ${clock.format(new Date(iso))} ${zoneWord(iso, zone)}`,
+      `${dated.format(new Date(iso))} at ${exactTime(new Date(iso), locale, zone)} ${zoneWord(iso, zone)}`,
     time: (iso) => writtenTime(new Date(iso), locale, zone),
     dayKey: (iso) => key.format(new Date(iso)),
   };

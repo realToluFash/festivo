@@ -10,3 +10,14 @@ export function writtenTime(at: string | Date, locale: string, timeZone?: string
 
   return formatTimeOfDay(at, locale);
 }
+
+/** To the second, for a record's exact moment, on the 24-hour clock in the zone it is read in. */
+export function exactTime(at: Date, locale: string, timeZone: string): string {
+  return new Intl.DateTimeFormat(locale, {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23',
+    timeZone,
+  }).format(at);
+}
