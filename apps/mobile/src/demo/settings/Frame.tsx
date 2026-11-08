@@ -55,7 +55,7 @@ export function SettingsPage({
   scrollRef,
 }: {
   title: string;
-  back?: { label: string; onPress: () => void } | null;
+  back?: { label?: string; onPress: () => void } | null;
   right?: ReactNode;
   children: ReactNode;
   dock?: ReactNode;
@@ -65,7 +65,7 @@ export function SettingsPage({
 }) {
   const shell = useShell();
   const insets = useSafeAreaInsets();
-  const backTo = back === undefined ? { label: 'Settings', onPress: shell.toSettings } : back;
+  const backTo = back === undefined ? { onPress: shell.toSettings } : back;
 
   if (shell.layout === 'landscape')
     return (
@@ -121,7 +121,7 @@ export function SettingsPage({
         showsVerticalScrollIndicator={false}
       >
         <View style={phone ? styles.headPhone : styles.headPortrait}>
-          {backTo != null && <Back label={backTo.label} onPress={backTo.onPress} />}
+          {backTo != null && <Back {...backTo} />}
           <View style={styles.titleRow}>
             <Text
               size={phone ? TYPE.titlePhone : TYPE.titlePortrait}
@@ -221,7 +221,7 @@ export function SectionColumn({
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
     >
-      <Back label="Settings" onPress={() => shell.toSettings()} />
+      <Back onPress={() => shell.toSettings()} />
       <View style={styles.columnHead}>
         <View style={styles.titleRow}>
           <Text
