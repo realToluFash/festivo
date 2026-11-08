@@ -22,8 +22,13 @@ import {
   scheduleOf,
   shapeLine,
   shapePayments,
+  shapeProblems,
   shapeRows,
+  shapingOf,
   sharesLine,
+  typedShapeDays,
+  typedShare,
+  typedTerms,
   toMark,
   typedDifference,
 } from './payments.ts';
@@ -43,6 +48,9 @@ const SPEC_NAMES = [
   'add_payment',
   'shape_deposit',
   'shape_clamped',
+  'shape_short',
+  'shape_refused',
+  'shape_failed',
   'shape_raced',
   'reminders',
   'reminders_bad',
@@ -113,10 +121,31 @@ describe('payments on a vendor’s page, shapes and reminders, in A (sc-88, sc-1
     expect(startOf('made_early').made?.problems).toEqual({
       paidOn: 'A payment cannot be dated before the vendor’s first quote, Tue, Oct 6.',
     });
-    for (const state of ['add_payment', 'shape_deposit', 'shape_clamped'])
+    for (const state of [
+      'add_payment',
+      'shape_deposit',
+      'shape_clamped',
+      'shape_short',
+      'shape_refused',
+      'shape_failed',
+    ])
       expect(offersShapes(startOf(state).budget, 'v4')).toBe(true);
     expect(startOf('add_payment').shaping?.shape).toBe('rows');
     expect(startOf('shape_clamped').shaping?.terms.map((one) => one.share)).toEqual([50, 30, 15]);
+    expect(startOf('shape_short').shaping?.typed.map((one) => one.share)).toEqual(['50', '40']);
+    expect(startOf('shape_refused').shaping?.problems).toEqual([
+      { what: 'Enter what the payment is for.' },
+      {
+        what: 'Shorten what the payment is for to 100 characters or fewer.',
+        share: 'Enter a percentage from 0 to 100, with up to two decimals.',
+      },
+      { days: 'Enter a whole number of days from 0 to 730.' },
+    ]);
+    expect(startOf('shape_failed').shaping).toMatchObject({
+      shape: 'instalments',
+      failed: true,
+      raced: false,
+    });
     const raced = startOf('shape_raced');
     expect(raced.shaping).toMatchObject({ shape: 'deposit', raced: true });
     expect(offersShapes(raced.budget, 'v4')).toBe(false);
@@ -232,6 +261,55 @@ describe('payments on a vendor’s page, shapes and reminders, in A (sc-88, sc-1
 
     const odd = shapeRows(SHAPE_TERMS.deposit, { amount: 100001, quotedOn: '2026-10-13' }, WEDDING);
     expect(odd.map((row) => row.amount)).toEqual([50001, 50000]);
+  });
+
+  it('takes a percentage from 0 to 100 with two decimals, and days from 0 to 730', () => {
+    for (const [typed, share] of [
+      ['0', 0],
+      ['100', 100],
+      [' 33.33 ', 33.33],
+      ['12.5', 12.5],
+    ] as const)
+      expect(typedShare(typed)).toBe(share);
+    for (const wrong of ['', '100.01', '101', '33.333', '-5', 'half', '1,5'])
+      expect(typedShare(wrong)).toBeNull();
+    for (const [typed, days] of [
+      ['0', 0],
+      ['730', 730],
+      [' 14 ', 14],
+    ] as const)
+      expect(typedShapeDays(typed)).toBe(days);
+    for (const wrong of ['', '731', '1.5', '-1', 'two']) expect(typedShapeDays(wrong)).toBeNull();
+
+    const [deposit, balance] = SHAPE_TERMS.deposit;
+    expect(shapeProblems(deposit!, { what: 'Deposit', share: '50', days: 'any' })).toEqual({});
+    expect(shapeProblems(balance!, { what: '   ', share: '50', days: '14' })).toEqual({
+      what: 'Enter what the payment is for.',
+    });
+    expect(shapeProblems(balance!, { what: 'x'.repeat(101), share: '50', days: '14' })).toEqual({
+      what: 'Shorten what the payment is for to 100 characters or fewer.',
+    });
+    expect(shapeProblems(balance!, { what: 'x'.repeat(100), share: '50', days: '14' })).toEqual({});
+  });
+
+  it('counts a shape from its rows as typed, never adjusting shares that miss 100', () => {
+    const shaping = startOf('shape_short').shaping!;
+    const rows = shapeRows(typedTerms(shaping), SAVOUR_QUOTE, WEDDING);
+    expect(rows.map((row) => row.amount)).toEqual([450000, 360000]);
+    expect(sharesLine(rows, SAVOUR_QUOTE.amount)).toBe(
+      'The percentages come to 90%. The schedule is £900.00 short of the quote; it saves, and the vendor’s page says so.',
+    );
+    const typed = typedTerms({
+      ...shapingOf('deposit'),
+      typed: [
+        { what: ' Deposit ', share: '50', days: '0' },
+        { what: 'Balance', share: '50', days: '30' },
+      ],
+    });
+    expect(typed.map((one) => [one.what, one.days])).toEqual([
+      ['Deposit', 0],
+      ['Balance', 30],
+    ]);
   });
 
   it('saves a shape as ordinary payments, each with its own id', () => {

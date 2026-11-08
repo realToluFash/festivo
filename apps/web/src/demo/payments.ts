@@ -50,7 +50,14 @@ export const PAYMENTS_STATES: readonly string[] = [
   'made_early',
 ];
 
-export const SHAPE_STATES: readonly string[] = ['shape_deposit', 'shape_clamped', 'shape_raced'];
+export const SHAPE_STATES: readonly string[] = [
+  'shape_deposit',
+  'shape_clamped',
+  'shape_short',
+  'shape_refused',
+  'shape_failed',
+  'shape_raced',
+];
 
 export const REMINDER_STATES: readonly string[] = ['reminders', 'reminders_bad'];
 
@@ -225,14 +232,114 @@ export const SHAPE_TERMS: Record<Exclude<Shape, 'rows'>, readonly Term[]> = {
   after: [term(PW.inFull, 100, 'after', 7)],
 };
 
+export interface ShapeDraft {
+  what: string;
+  share: string;
+  days: string;
+}
+
+export type ShapeField = keyof ShapeDraft;
+export type ShapeProblems = Partial<Record<ShapeField, string>>;
+
+/** `terms` are the shape's rows as offered; `typed` is each row as the organiser has it, and only `typed` is saved. */
 export interface Shaping {
   shape: Shape;
   terms: readonly Term[];
+  typed: readonly ShapeDraft[];
+  problems: readonly ShapeProblems[];
   raced: boolean;
+  failed: boolean;
+}
+
+export const SHAPE_LIMITS = { share: 100, days: 730 } as const;
+
+export function draftOfTerm(one: Term): ShapeDraft {
+  return { what: one.what, share: String(one.share), days: String(one.days) };
+}
+
+export function shapingFrom(shape: Shape, terms: readonly Term[], raced = false): Shaping {
+  return {
+    shape,
+    terms,
+    typed: terms.map(draftOfTerm),
+    problems: terms.map(() => ({})),
+    raced,
+    failed: false,
+  };
 }
 
 export function shapingOf(shape: Shape, raced = false): Shaping {
-  return { shape, terms: shape === 'rows' ? [] : SHAPE_TERMS[shape], raced };
+  return shapingFrom(shape, shape === 'rows' ? [] : SHAPE_TERMS[shape], raced);
+}
+
+export function typedShare(typed: string): number | null {
+  const plain = typed.trim();
+  if (!/^\d{1,3}(\.\d{1,2})?$/.test(plain)) return null;
+  const share = Number(plain);
+
+  return share <= SHAPE_LIMITS.share ? share : null;
+}
+
+export function typedShapeDays(typed: string): number | null {
+  const plain = typed.trim();
+  if (!/^\d+$/.test(plain)) return null;
+  const days = Number(plain);
+
+  return days <= SHAPE_LIMITS.days ? days : null;
+}
+
+export function shapeProblems(one: Term, draft: ShapeDraft): ShapeProblems {
+  const problems: ShapeProblems = {};
+
+  if (draft.what.trim() === '') problems.what = QW.enterWhatFor;
+  else if (lengthOf(draft.what) > QUOTE_LIMITS.what)
+    problems.what = QW.whatForTooLong(QUOTE_LIMITS.what);
+  if (typedShare(draft.share) == null) problems.share = PW.enterShare;
+  if (one.from !== 'quoted' && typedShapeDays(draft.days) == null)
+    problems.days = PW.enterShapeDays;
+
+  return problems;
+}
+
+export function shapingProblems(shaping: Shaping): ShapeProblems[] {
+  return shaping.terms.map((one, index) =>
+    shapeProblems(one, shaping.typed[index] ?? draftOfTerm(one)),
+  );
+}
+
+export function anyShapeProblem(problems: readonly ShapeProblems[]): boolean {
+  return problems.some((one) => Object.keys(one).length > 0);
+}
+
+/** The rows as typed; a share or a count of days not yet valid counts as 0 or as offered, and the field says so. */
+export function typedTerms(shaping: Shaping): Term[] {
+  return shaping.terms.map((one, index) => {
+    const draft = shaping.typed[index] ?? draftOfTerm(one);
+
+    return {
+      what: draft.what.trim(),
+      share: typedShare(draft.share) ?? 0,
+      from: one.from,
+      days: typedShapeDays(draft.days) ?? one.days,
+    };
+  });
+}
+
+export function sharesTyped(shaping: Shaping): boolean {
+  return shaping.typed.every((one) => typedShare(one.share) != null);
+}
+
+export function retyped(shaping: Shaping, index: number, change: Partial<ShapeDraft>): Shaping {
+  const next: Shaping = {
+    ...shaping,
+    typed: shaping.typed.map((one, at) => (at === index ? { ...one, ...change } : one)),
+  };
+  const now = shapingProblems(next);
+
+  return {
+    ...next,
+    problems: shaping.problems.map((shown, at) => keptOf(shown, now[at] ?? {})),
+  };
 }
 
 export function offersShapes(budget: Budget, vendorId: string): boolean {
@@ -378,6 +485,8 @@ export interface PaymentsStart extends QuotesStart {
 const WHY = 'The venue supplies the arch flowers';
 const LONG_REFERENCE =
   'Paid by bank transfer on the Tuesday after the meeting with Ngozi, reference given on the phone that evening';
+const TOO_LONG_WHAT =
+  'Second instalment for the wedding breakfast, the canapés on the lawn and the late supper after the band';
 const BALANCE = 'p6';
 const PAID_MORE = 90000;
 
@@ -416,13 +525,31 @@ export function paymentsStart(
   if (state === 'add_payment') return shaped(shapingOf('rows'));
   if (state === 'shape_deposit') return shaped(shapingOf('deposit'));
   if (state === 'shape_clamped')
-    return shaped({
-      shape: 'instalments',
-      terms: SHAPE_TERMS.instalments.map((one, index) =>
-        index === 2 ? { ...one, share: 15 } : one,
+    return shaped(
+      shapingFrom(
+        'instalments',
+        SHAPE_TERMS.instalments.map((one, index) => (index === 2 ? { ...one, share: 15 } : one)),
       ),
-      raced: false,
-    });
+    );
+  if (state === 'shape_short')
+    return shaped(
+      shapingFrom(
+        'deposit',
+        SHAPE_TERMS.deposit.map((one, index) => (index === 1 ? { ...one, share: 40 } : one)),
+      ),
+    );
+  if (state === 'shape_refused') {
+    const offered = shapingOf('instalments');
+    const typed: ShapeDraft[] = [
+      { what: '  ', share: '50', days: '0' },
+      { what: TOO_LONG_WHAT, share: '30.555', days: '60' },
+      { what: PW.balance, share: '20', days: '731' },
+    ];
+    const refused = { ...offered, typed };
+
+    return shaped({ ...refused, problems: shapingProblems(refused) });
+  }
+  if (state === 'shape_failed') return shaped({ ...shapingOf('instalments'), failed: true });
   if (state === 'shape_raced') return shaped(shapingOf('deposit', true), base.budget);
   if (state === 'already_made' || state === 'made_early') {
     const draft: MadeDraft = {
@@ -544,6 +671,18 @@ export const PAYMENTS_PAGES: readonly DemoGroup[] = [
       },
       { to: savour('shape_deposit'), name: 'Deposit and balance, from the quote (shape_deposit)' },
       { to: savour('shape_clamped'), name: 'Set to the date quoted, 95% (shape_clamped)' },
+      {
+        to: savour('shape_short'),
+        name: 'Shares that come to 90%: not adjusted, still saves (shape_short)',
+      },
+      {
+        to: savour('shape_refused'),
+        name: 'Refused at the field: blank, too long, percentage, days (shape_refused)',
+      },
+      {
+        to: savour('shape_failed'),
+        name: 'The save failed: nothing added, rows as filled, Add sends all again (shape_failed)',
+      },
       { to: savour('shape_raced'), name: 'Someone got there first: the 409 (shape_raced)' },
     ],
   },

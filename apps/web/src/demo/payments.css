@@ -60,6 +60,13 @@
   font-weight: 600;
 }
 
+.pay-shape-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceMd);
+  padding-bottom: var(--spaceLg);
+}
+
 .pay-note {
   color: var(--colorInkSecondary);
   font: 500 14px/1.45 var(--fontFamily);

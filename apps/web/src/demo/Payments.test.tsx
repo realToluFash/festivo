@@ -355,6 +355,73 @@ describe('payments on a vendor’s page, shapes and the reminder setting, in A (
   );
 
   it(
+    'refuses a shape row at its field, then saves every row or none, and sends all again',
+    SLOW,
+    async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      await open(`${SAVOUR}&state=shape_refused`);
+      let add = dialog('Add a payment');
+      const what = within(add).getAllByRole('textbox', { name: 'What the payment is for' });
+      expect(what.map((one) => one.getAttribute('aria-invalid'))).toEqual([
+        'true',
+        'true',
+        'false',
+      ]);
+      expect(within(add).getByText('Enter what the payment is for.')).toBeDefined();
+      expect(
+        within(add).getByText('Shorten what the payment is for to 100 characters or fewer.'),
+      ).toBeDefined();
+      expect(
+        within(add).getByText('Enter a percentage from 0 to 100, with up to two decimals.'),
+      ).toBeDefined();
+      expect(within(add).getByText('Enter a whole number of days from 0 to 730.')).toBeDefined();
+      fireEvent.click(within(add).getByRole('button', { name: 'Add' }));
+      await settle();
+      expect(dialog('Add a payment')).toBeDefined();
+      expect(document.activeElement).toBe(what[0]);
+
+      fireEvent.change(what[0]!, { target: { value: 'Deposit' } });
+      expect(within(add).queryByText('Enter what the payment is for.')).toBeNull();
+      fireEvent.change(what[1]!, { target: { value: 'Second instalment' } });
+      const share = within(add).getAllByRole('textbox', { name: 'Percentage of the quote' });
+      fireEvent.change(share[1]!, { target: { value: '30' } });
+      const before = within(add).getAllByRole('textbox', { name: 'Days before the event' });
+      fireEvent.change(before[1]!, { target: { value: '14' } });
+      expect(add.querySelector('[aria-invalid="true"]')).toBeNull();
+      fireEvent.click(within(add).getByRole('button', { name: 'Add' }));
+      await settle();
+      expect(screen.queryByRole('dialog')).toBeNull();
+      expect(rowOf('Second instalment').textContent).toContain('£2,700.00');
+      cleanup();
+
+      await open(`${SAVOUR}&state=shape_failed`);
+      add = dialog('Add a payment');
+      expect(within(add).getByRole('alert').textContent).toBe(
+        'None of these payments were saved, because they could not be sent. The rows are as you filled them; press Add to send all of them again.',
+      );
+      expect(
+        within(section('Schedule'))
+          .queryAllByRole('listitem')
+          .filter((one) => one.hasAttribute('data-payment')),
+      ).toEqual([]);
+      fireEvent.click(within(add).getByRole('button', { name: 'Add' }));
+      await settle();
+      expect(screen.queryByRole('dialog')).toBeNull();
+      expect(
+        within(section('Schedule'))
+          .getAllByRole('listitem')
+          .filter((one) => one.hasAttribute('data-payment')),
+      ).toHaveLength(3);
+      for (const [what, amount] of [
+        ['Deposit', '£4,500.00'],
+        ['Second instalment', '£2,700.00'],
+        ['Balance', '£1,800.00'],
+      ])
+        expect(rowOf(what!).textContent).toContain(amount);
+    },
+  );
+
+  it(
     'shows the reminder setting in Settings with Vendors lit, and changes the days',
     SLOW,
     async () => {

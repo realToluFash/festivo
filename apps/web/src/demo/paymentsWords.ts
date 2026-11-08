@@ -52,6 +52,16 @@ export const PW = {
     `The percentages come to ${total}. The schedule is ${gap} short of the quote; it saves, and the vendor’s page says so.`,
   sharesOver: (total: string, gap: string) =>
     `The percentages come to ${total}. The schedule is ${gap} over the quote; it saves, and the vendor’s page says so.`,
+  shareField: 'Percentage of the quote',
+  shareHelp: 'From 0 to 100, with up to two decimals.',
+  enterShare: 'Enter a percentage from 0 to 100, with up to two decimals.',
+  daysBeforeField: 'Days before the event',
+  daysAfterField: 'Days after the event',
+  shapeDaysHelp: 'A whole number from 0 to 730.',
+  enterShapeDays: 'Enter a whole number of days from 0 to 730.',
+  noDescription: 'No description yet',
+  shapeFailed:
+    'None of these payments were saved, because they could not be sent. The rows are as you filled them; press Add to send all of them again.',
   raced:
     'Payments were added to this vendor’s schedule while you were filling this in, so none of yours were saved. Check the payments it has now before adding more.',
   paymentReminders: 'Payment reminders',
