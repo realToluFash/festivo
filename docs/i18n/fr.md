@@ -70,6 +70,17 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **8 nov. 2026. Invités A : la réponse, les deux décomptes et le 412** (sc-3773, #32403).
+  "Not sure yet" est « À confirmer », sur la page de l’invité comme sur celle de l’hôte : rien
+  ne s’accorde, quand « pas encore sûr » ou « indécis » imposeraient un genre. « À confirmer ·
+  réponse attendue d’ici le {{date}} », « À confirmer · a répondu le {{date}} ». "Haven't
+  replied" est « n’ont pas répondu » (« {{count}} personnes n’ont pas répondu ») ; "No reply"
+  est « Sans réponse » ; on ne les échange jamais. "Companions" est « accompagnants ».
+  « {{coming}} des {{invited}} invités viennent ». "Write to them" est « Leur écrire » ; "Open
+  check-in", « Ouvrir l’accueil ». "Show all {{count}}" est « Afficher les {{count}} ». "Their
+  conversation" est « Conversation ». Le 412 : « La sienne · La vôtre », « Prendre la sienne »
+  et « Garder la mienne » ; « sienne » s’accorde avec la version, pas avec la personne.
+
 - **7 nov. 2026. L’écran Aujourd’hui de l’app** (`mobile:todayScreen.*`, sc-31788 pour
   sc-29090). "Live now" et "Live · …" sont « En cours », comme `eventsScreen.happeningNow`,
   jamais « Publié », qui est l’état. L’agenda met une étiquette et deux-points,

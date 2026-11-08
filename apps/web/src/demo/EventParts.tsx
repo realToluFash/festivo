@@ -110,11 +110,14 @@ export function EventCard({
   event,
   now,
   level,
+  guests = null,
   onStep,
 }: {
   event: SampleEvent;
   now: Date;
   level: 1 | 2;
+  /** Its guests in the tiles' measure, on Events (sc-3786). */
+  guests?: string | null;
   onStep: (does: Extract<Card['step'], { kind: 'button' }>['does']) => void;
 }) {
   const card = cardOf(event, now);
@@ -155,6 +158,7 @@ export function EventCard({
           )}
         </Name>
         <p className="desk-on-card">{lineOf(event, shown === 'calledOff')}</p>
+        {guests != null && <p className="desk-on-card">{guests}</p>}
         {card.tiles.length > 0 && (
           <ul className="ev-tiles" aria-label="Its days">
             {card.tiles.map((tile) => (
@@ -193,7 +197,17 @@ export function PhaseTag({ shown }: { shown: Shown }) {
 }
 
 /** An event in the list: its cover or colour, its name, its days and place, how soon, and a tag where it is off its tab's rule. */
-export function EventRow({ event, now, tab }: { event: SampleEvent; now: Date; tab: Tab | 'all' }) {
+export function EventRow({
+  event,
+  now,
+  tab,
+  guests = null,
+}: {
+  event: SampleEvent;
+  now: Date;
+  tab: Tab | 'all';
+  guests?: string | null;
+}) {
   const shown = shownOf(event, now);
   const soon = soonOf(event, now);
   const tagged = tab === 'all' || offRule(shown, tab);
@@ -205,7 +219,7 @@ export function EventRow({ event, now, tab }: { event: SampleEvent; now: Date; t
         <RowWords
           title={event.name}
           tag={tagged && <PhaseTag shown={shown} />}
-          lines={[lineOf(event)]}
+          lines={guests == null ? [lineOf(event)] : [lineOf(event), guests]}
         />
         {soon != null && <span className="ev-soon">{soon}</span>}
         <Chevron />
