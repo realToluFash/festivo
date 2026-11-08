@@ -112,12 +112,13 @@ export function ConversationPane({
 }
 
 function Idle() {
-  const { inbox } = useInbox();
+  const { inbox, whyOff } = useInbox();
+  const pick = whyOff == null ? MW.pickOne : MW.pickOneClosed;
 
   return (
     <div className="mg-in is-idle">
       <h2 className="desk-unseen">{MW.newMessage}</h2>
-      <p className="mg-idle-line">{inbox.present.length === 0 ? MW.noneLine : MW.pickOne}</p>
+      <p className="mg-idle-line">{inbox.present.length === 0 ? MW.noneLine : pick}</p>
       <MiniComposer to={{ kind: 'all' }} placeholder={MW.writeToGuests} thread={freshId(inbox)} />
     </div>
   );

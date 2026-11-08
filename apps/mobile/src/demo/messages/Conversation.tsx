@@ -63,6 +63,8 @@ import {
 /** What a conversation needs from the screen around it: the model, the refs that take focus, and the overlays it opens. */
 export interface Talk {
   m: Messages;
+  /** Why this event can't send (sc-3942's 409), read out on every way to send. */
+  closed: string | null;
   dispatch: (action: Action) => void;
   wide: boolean;
   columns: boolean;
@@ -214,6 +216,7 @@ function unknownParts(talk: Talk): Parts {
           name={matched}
           channel="email"
           value={talk.typed}
+          reason={talk.closed}
           fieldRef={talk.answerRef}
           onChange={talk.onTyped}
           onSend={() => talk.onAnswer('unknown')}
@@ -358,6 +361,7 @@ function guestParts(talk: Talk, key: GuestKey): Parts {
         cost={noticeCostOf(m, key)}
         others={tellNowBy(m, key)}
         value={talk.typed}
+        reason={talk.closed}
         fieldRef={talk.answerRef}
         autoFocus={key === 'kwame' && talk.typed !== ''}
         onChange={talk.onTyped}
@@ -708,6 +712,7 @@ function manyParts(talk: Talk, key: ManyKey): Parts {
       <MiniComposer
         to={toChip('all')}
         placeholder={placeholder}
+        reason={talk.closed}
         onOpen={() => talk.onFollowUp(key)}
       />
     );

@@ -830,6 +830,33 @@ describe('sc-32077’s four states', () => {
     expect(tried.draft?.step).toBe('write');
   });
 
+  it('refuses an answer on an event that can’t send: nothing on the page, no credits', () => {
+    const ended = startOf('closedEnded', false);
+    const tried = run(ended, { type: 'answer', key: 'lucia', text: 'See you there' });
+    expect(tried.answers).toEqual({});
+    expect(tried.balance).toBe(ended.balance);
+    expect(noticeCostOf(ended, 'lucia')).toBeNull();
+  });
+
+  it('refuses Resend and Send again on an event that can’t send', () => {
+    const ended = startOf('closedEnded', false);
+    expect(run(ended, { type: 'resending', open: true }).resending).toBe(false);
+    expect(run(ended, { type: 'sendAgain', key: 'tomas' }).again).toEqual({});
+  });
+
+  it('keeps no waiting scheduled message on an event that can’t send', () => {
+    expect(startOf('closedEnded', false).kept).toEqual([]);
+    expect(startOf('closedDraft', false).kept).toEqual([]);
+  });
+
+  it('still marks and matches on an event that can’t send: they send nothing', () => {
+    const ended = startOf('closedEnded', false);
+    const done = run(ended, { type: 'markDone', key: 'lucia' });
+    expect(done.done).toContain('lucia');
+    expect(run(done, { type: 'markWaiting', key: 'lucia' }).done).not.toContain('lucia');
+    expect(run(ended, { type: 'match', name: 'Marie Dubois' }).matched).toBe('Marie Dubois');
+  });
+
   it('refuses without messages.read: no count', () => {
     const m = startOf('forbidden', true);
     expect(m.forbidden).toBe(true);
