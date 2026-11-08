@@ -27,16 +27,15 @@ const IMPORTS = [
 // DeviceInfo is internal to React Native, so a debug build fails here on the first upgrade that renames it or drops the interface.
 // The safe-area frame, which picks the tablet layout, is sent only when it moves in pixels, and a display-size change keeps the window's pixels, so its last frame is forgotten to send it again at the new density.
 // Android draws a field's own text one heavier with Bold text by itself, and React Native's text not at all, so the activity's views take no adjustment and the app draws its heavier faces for both (sc-19877).
+// The zero is the activity's own override, which Android applies again on every configuration change. A configuration context passed to super would not hold: AppCompat wraps it, and its delta has no fontWeightAdjustment.
+// Every native view the activity draws loses Android's bold with it, the date picker among them; whether that is kept is pm's call on sc-19877, not an accident.
 // The application keeps the phone's adjustment, where the bold-text module reads it.
 const OVERRIDE = `
   override fun attachBaseContext(newBase: Context) {
-    super.attachBaseContext(
-      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-        newBase.createConfigurationContext(Configuration().apply { fontWeightAdjustment = 0 })
-      } else {
-        newBase
-      },
-    )
+    super.attachBaseContext(newBase)
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+      applyOverrideConfiguration(Configuration().apply { fontWeightAdjustment = 0 })
+    }
   }
 
   private val applicationChanges = object : ComponentCallbacks {

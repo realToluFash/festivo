@@ -150,9 +150,9 @@ describe('withFontScaleForwarded', () => {
     expect(() => withFontScaleForwarded(destroying)).toThrow(/already handles/);
   });
 
-  it("keeps Android's Bold text adjustment off the activity's views, from Android 12, so the app draws the heavier faces itself", () => {
+  it("keeps Android's Bold text adjustment off the activity's views as the activity's own override, after AppCompat's wrap, from Android 12, so the app draws the heavier faces itself", () => {
     expect(forwarded).toMatch(
-      /override fun attachBaseContext\(newBase: Context\) \{\n\s+super\.attachBaseContext\(\n\s+if \(Build\.VERSION\.SDK_INT >= Build\.VERSION_CODES\.S\) \{\n\s+newBase\.createConfigurationContext\(Configuration\(\)\.apply \{ fontWeightAdjustment = 0 \}\)/,
+      /override fun attachBaseContext\(newBase: Context\) \{\n\s+super\.attachBaseContext\(newBase\)\n\s+if \(Build\.VERSION\.SDK_INT >= Build\.VERSION_CODES\.S\) \{\n\s+applyOverrideConfiguration\(Configuration\(\)\.apply \{ fontWeightAdjustment = 0 \}\)/,
     );
     expect(forwarded).toContain('import android.os.Build');
   });
