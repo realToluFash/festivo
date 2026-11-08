@@ -819,14 +819,32 @@ export function branchForStory(id, remoteBranches) {
 }
 
 // The api container mounts services/api, so its compiled container outlives a checkout
-// and can name a service the new commit removed. The directory itself stays: Docker Desktop
-// leaves a running container holding a cache directory deleted on the host, and every
-// request that needs it answers 500.
-export function clearApiCache(root) {
+// and can name a service the new commit removed. It is emptied through a container: Docker
+// Desktop's VM keeps a directory deleted on the host as a ghost nothing can be written into,
+// and the api answers 500 or never boots.
+export const CACHE_CLEARER = 'busybox:1.36';
+
+export function clearApiCache(root, exec = run) {
   const cache = join(root, 'services/api/var/cache');
   if (!existsSync(cache)) return;
-  for (const name of readdirSync(cache))
-    rmSync(join(cache, name), { recursive: true, force: true });
+  exec('docker', [
+    'run',
+    '--rm',
+    '--volume',
+    `${resolve(cache)}:/cache`,
+    CACHE_CLEARER,
+    'find',
+    '/cache',
+    '-mindepth',
+    '1',
+    '-maxdepth',
+    '1',
+    '-exec',
+    'rm',
+    '-rf',
+    '{}',
+    '+',
+  ]);
 }
 
 const HERE = dirname(fileURLToPath(import.meta.url));
