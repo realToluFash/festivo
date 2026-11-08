@@ -71,9 +71,9 @@ describe('Quotes and what is due on the wedding’s Budget, in A (sc-87, sc-88)'
       );
       const due = within(section('Due next')).getAllByRole('listitem');
       expect(due.map((one) => one.textContent)).toEqual([
-        'Bloom & CoOverdueBalance · Due Fri, Oct 30£840.00',
-        'Savour KitchenDeposit · Due Wed, Nov 4£4,500.00',
-        'The LandmarkBalance · Due Thu, Nov 5£3,150.00',
+        'Bloom & CoOverdueBalance · Due Fri, Oct 30£840.00Mark paid',
+        'Savour KitchenDeposit · Due Wed, Nov 4£4,500.00Mark paid',
+        'The LandmarkBalance · Due Thu, Nov 5£3,150.00Mark paid',
       ]);
       expect(
         within(section('Due next'))
@@ -218,6 +218,8 @@ describe('Quotes and what is due on the wedding’s Budget, in A (sc-87, sc-88)'
     expect(within(main()).getByText(line)).toBeDefined();
     expect(within(main()).queryByRole('button', { name: 'See plans' })).toBeNull();
     expect(within(main()).queryByRole('button', { name: 'Add a quote' })).toBeNull();
+    const savour = within(section('Vendors quoted')).getByRole('link', { name: /^Savour Kitchen/ });
+    expect(savour.getAttribute('href')).toBe(`${SAVOUR}&as=julien&state=read_only`);
   });
 
   it(
@@ -289,7 +291,7 @@ describe('Quotes and what is due on the wedding’s Budget, in A (sc-87, sc-88)'
     await open(BUDGET);
     fireEvent.click(
       within(section('Due next')).getByRole('button', {
-        name: 'Mark paid: Bloom & Co, Balance, £840.00',
+        name: 'Bloom & Co Overdue Balance · Due Fri, Oct 30 £840.00 Mark paid',
       }),
     );
     const dialog = screen.getByRole('dialog', { name: 'Mark paid' });
@@ -311,7 +313,7 @@ describe('Quotes and what is due on the wedding’s Budget, in A (sc-87, sc-88)'
   it('refuses a blank date paid at its field, sending nothing', SLOW, async () => {
     await open(BUDGET);
     fireEvent.click(
-      within(section('Due next')).getByRole('button', { name: /^Mark paid: Savour Kitchen/ }),
+      within(section('Due next')).getByRole('button', { name: /^Savour Kitchen Deposit/ }),
     );
     const dialog = screen.getByRole('dialog', { name: 'Mark paid' });
     fireEvent.change(within(dialog).getByLabelText('Date paid'), { target: { value: '' } });

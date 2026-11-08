@@ -7,12 +7,14 @@ import {
   QUOTES_STATES,
   REVISE_UNCHANGED,
   amountProblem,
+  cardGap,
   differenceLine,
   differenceShort,
   draftOfQuote,
   draftToMark,
   everythingDue,
   firstOverdue,
+  linesToSave,
   markProblems,
   markedPaid,
   nextPaymentId,
@@ -260,5 +262,17 @@ describe('quotes and payment schedules’ rules on the wedding (sc-87)', () => {
     });
     expect(at('no_vendors').vendors.every((one) => one.archivedOn != null)).toBe(true);
     expect(at('line_taken').quote?.refusal).toBe('line_taken');
+  });
+
+  it('never rounds a card’s gap to £0, and saves no line agreed in another quote', () => {
+    expect(cardGap(150000)).toBe('£1,500');
+    expect(cardGap(40)).toBe('£0.40');
+    expect(differenceLine(900000, 899960, cardGap)).toBe(
+      '£0.40 of the quote is not scheduled yet.',
+    );
+    const taken = quotesStart('line_taken', null, longDay).budget;
+    const bloom = taken.quotes.find((one) => one.vendor.id === 'v3');
+    expect(bloom?.lines).toContain('arch');
+    expect(linesToSave(taken, 'v2', ['dj', 'arch'])).toEqual(['dj']);
   });
 });

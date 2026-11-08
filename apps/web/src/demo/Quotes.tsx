@@ -59,6 +59,7 @@ import {
   DUE_NEXT,
   budgetAt,
   budgetViewerOf,
+  cardGap,
   differenceLine,
   differenceOf,
   differenceShort,
@@ -136,7 +137,7 @@ function QuotesBody({
   const title = useRef<HTMLHeadingElement>(null);
   const opened = useRef(false);
   const readOnly = start.readOnly;
-  const at = budgetAt(event.id, viewer);
+  const at = budgetAt(event.id, viewer, readOnly);
   const open = page === 'vendor' ? budget.quotes.find((one) => one.vendor.id === vendorId) : null;
   const marks = marking == null ? null : budget.payments.find((one) => one.id === marking.id);
   const cancels =
@@ -403,6 +404,8 @@ function QuotesBody({
                 const next = markedPaid(marks, draft, viewer.name);
                 changeOne(next.id, () => next);
                 setMarking(null);
+                setAmending((now) => (now?.id === next.id ? null : now));
+                setRemoving((now) => (now === next.id ? null : now));
                 setMarked(next.id);
                 setSaid(QW.markedPaid(money(next.paid?.amount ?? 0), longDay(draft.paidOn)));
                 setFocusOn({ id: next.id });
@@ -519,14 +522,14 @@ function DueRow({ due, to, onMark }: { due: Due; to?: string; onMark?: () => voi
       title={due.vendor.name}
       lines={[`${due.payment.what} · ${BW.due(shortDay(due.payment.dueOn))}`]}
       tag={due.overdue ? <OverdueTag /> : undefined}
-      end={<Amount value={money(due.payment.amount)} />}
+      end={
+        <>
+          <Amount value={money(due.payment.amount)} />
+          {onMark != null && <span className="visually-hidden">{BW.markPaid}</span>}
+        </>
+      }
       {...(to == null ? {} : { to })}
-      {...(onMark == null
-        ? {}
-        : {
-            onOpen: onMark,
-            label: QW.markRow(due.vendor.name, due.payment.what, money(due.payment.amount)),
-          })}
+      {...(onMark == null ? {} : { onOpen: onMark })}
     />
   );
 }
@@ -790,7 +793,7 @@ export function VendorPage({
         <OnCard>{QW.quoted}</OnCard>
         <Figure>{whole(quote.amount)}</Figure>
         <OnCard>
-          {QW.quotedOn(shortDay(quote.quotedOn), differenceLine(quote.amount, scheduled, whole))}
+          {QW.quotedOn(shortDay(quote.quotedOn), differenceLine(quote.amount, scheduled, cardGap))}
         </OnCard>
         {late != null && (
           <CardStrong>{QW.wasDue(late.what, money(late.amount), shortDay(late.dueOn))}</CardStrong>

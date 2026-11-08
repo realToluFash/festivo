@@ -69,6 +69,7 @@ import {
   paymentProblems,
   quoteProblems,
   quotedVendorOf,
+  linesToSave,
 } from './quotes.ts';
 import { QW } from './quotesWords.ts';
 import { type Vendor } from './vendors.ts';
@@ -313,7 +314,7 @@ function saved(
       amount,
       quotedOn: draft.quotedOn,
       number: draft.number.trim(),
-      lines: draft.lines,
+      lines: linesToSave(budget, vendor.id, draft.lines),
       earlier: [],
     };
 
@@ -345,7 +346,12 @@ function saved(
   const number = draft.number.trim();
 
   return [
-    replace({ ...current, covers: draft.covers.trim(), number, lines: draft.lines }),
+    replace({
+      ...current,
+      covers: draft.covers.trim(),
+      number,
+      lines: linesToSave(budget, current.vendor.id, draft.lines),
+    }),
     QW.quoteCorrected(current.vendor.name, number),
   ];
 }
@@ -398,7 +404,7 @@ function VendorField({
     } else if (event.key === 'Enter' && showList) {
       event.preventDefault();
       choose(rows[active]);
-    } else if (event.key === 'Escape' && open) {
+    } else if (event.key === 'Escape' && showList) {
       event.preventDefault();
       event.stopPropagation();
       onOpen(false);

@@ -10,8 +10,10 @@ import {
   type Payment,
   type QuoteVersion,
   dueList,
+  money,
   overdue,
   owed,
+  whole,
 } from './budget.ts';
 import { sampleEvent } from './events.ts';
 import { PW } from './paymentsWords.ts';
@@ -261,6 +263,10 @@ export function agreedElsewhere(budget: Budget, lineId: string, vendorId: string
   );
 }
 
+export function linesToSave(budget: Budget, vendorId: string, lines: readonly string[]): string[] {
+  return lines.filter((id) => agreedElsewhere(budget, id, vendorId) == null);
+}
+
 export function scheduledFor(budget: Budget, vendorId: string): Payment[] {
   return budget.payments
     .filter((one) => one.vendorId === vendorId && one.cancelled == null)
@@ -302,6 +308,11 @@ export type Difference = 'matches' | 'short' | 'over';
 
 export function differenceOf(quoted: number, scheduled: number): Difference {
   return scheduled === quoted ? 'matches' : scheduled < quoted ? 'short' : 'over';
+}
+
+/** A card rounds the gap to whole units, but never to £0: a gap under one unit keeps its minor unit. */
+export function cardGap(minor: number): string {
+  return Math.abs(minor) < 100 ? money(minor) : whole(minor);
 }
 
 export function differenceLine(
@@ -678,8 +689,8 @@ export interface BudgetAddresses {
   vendor: (id: string) => string;
 }
 
-export function budgetAt(event: string, viewer: BudgetViewer): BudgetAddresses {
-  const as = viewer.key === 'folake' ? '' : `&as=${viewer.key}`;
+export function budgetAt(event: string, viewer: BudgetViewer, readOnly = false): BudgetAddresses {
+  const as = `${viewer.key === 'folake' ? '' : `&as=${viewer.key}`}${readOnly ? '&state=read_only' : ''}`;
 
   return {
     home: `/demo/events/${event}?area=budget${as}`,

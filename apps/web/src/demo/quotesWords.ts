@@ -102,8 +102,6 @@ export const QW = {
   reference: 'Reference',
   amountPaidProblem: (example: string) => `Enter the amount paid, above 0, like ${example}.`,
   markedPaid: (amount: string, day: string) => `Marked paid: ${amount} on ${day}.`,
-  markRow: (vendor: string, what: string, amount: string) =>
-    `Mark paid: ${vendor}, ${what}, ${amount}`,
   usedOn: (count: number) => (count === 1 ? 'Used on 1 event' : `Used on ${count} events`),
   archiveRefused: (vendor: string) =>
     `${vendor} was not archived, because the events below still have payments to it that are not paid or cancelled. Once each one is paid or cancelled, you can archive the vendor.`,
