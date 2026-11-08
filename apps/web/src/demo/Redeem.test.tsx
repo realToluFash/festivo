@@ -100,6 +100,28 @@ describe('a name, a number and the phone code (sc-4235)', () => {
     expect(screen.getByText('We sent a code to your WhatsApp on +351 912 345 412.')).toBeDefined();
   });
 
+  it('checks the number against the country picked: a +44 mobile sends, a number short for it does not', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    await redeem('event-blank');
+
+    type('Your name', 'Amelia Hart');
+    fireEvent.change(screen.getByLabelText('Country code'), { target: { value: 'US' } });
+    type('Mobile number', '912 345 412');
+    press('Send code');
+    expect(
+      screen.getByText('That number looks too short for United States. Check it and try again.'),
+    ).toBeDefined();
+    expect(screen.getByRole('heading', { level: 1, name: 'Joana & Rui’s wedding' })).toBeDefined();
+
+    fireEvent.change(screen.getByLabelText('Country code'), { target: { value: 'GB' } });
+    type('Mobile number', '7700 900123');
+    press('Send code');
+    await wait(1000);
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Check WhatsApp' })).toBeDefined();
+    expect(screen.getByText('We sent a code to your WhatsApp on +44 7700 900123.')).toBeDefined();
+  });
+
   it('checks the code only on Verify, never as it is typed (WCAG 3.2.2)', async () => {
     await redeem('code');
     const field = screen.getByLabelText('Code from WhatsApp') as HTMLInputElement;

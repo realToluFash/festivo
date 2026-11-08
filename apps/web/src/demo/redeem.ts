@@ -35,7 +35,7 @@ export const R = {
   codeShort: 'A join code is 8 letters and numbers.',
   refused: 'That code doesn’t work. Check it with whoever gave it to you.',
   tooMany: 'Too many tries',
-  tryAt: (time: string) => `Try again at ${time}`,
+  tryAt: (time: string) => `Try again at ${clockOf(time)}`,
   yourName: 'Your name',
   mobile: 'Mobile number',
   countryCode: 'Country code',

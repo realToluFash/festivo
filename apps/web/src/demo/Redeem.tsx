@@ -213,7 +213,7 @@ function RedeemPage({ state }: { state: RedeemState }) {
             onNumber={setNumber}
             onCountry={setCountry}
             onSend={() => {
-              const lines = eventLines(name, number);
+              const lines = eventLines(name, number, country);
               setStep({ ...step, checked: true });
               if (lines.name != null || lines.number != null) {
                 document.getElementById(lines.name != null ? 'rd-name' : 'rd-number')?.focus();
