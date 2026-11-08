@@ -98,12 +98,18 @@ export function GeneralDesk() {
         />
         <RecoveryRequestsCard />
         <Details organisation={organisation} />
-        {joins && <Domains key={organisation.id} organisation={organisation} tell={setTold} />}
         {joins && (
-          <RequestLinkBlock key={organisation.id} organisation={organisation} tell={setTold} />
+          <Domains key={`domains:${organisation.id}`} organisation={organisation} tell={setTold} />
+        )}
+        {joins && (
+          <RequestLinkBlock
+            key={`link:${organisation.id}`}
+            organisation={organisation}
+            tell={setTold}
+          />
         )}
         <Ownership
-          key={organisation.id}
+          key={`ownership:${organisation.id}`}
           organisation={organisation}
           onTransferred={(to) =>
             setSaid({ id: organisation.id, said: { kind: 'transferred', to } })
