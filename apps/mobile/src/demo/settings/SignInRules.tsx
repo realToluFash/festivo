@@ -2,21 +2,19 @@ import { formattingLocale } from '@soirely/domain';
 import { getLocales } from 'expo-localization';
 import { useLocalSearchParams } from 'expo-router';
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { SeenBy } from './Frame.tsx';
 import { useLoad } from './MembersLoading.tsx';
 import { memberLooking } from './sample.ts';
 import {
-  ASK_OWNER,
-  changeRows,
-  ruleLabel,
-  rulesCard,
+  NOW,
+  ORG,
   type SignInRulesStart,
   signInRulesStart,
   signInRulesStateOf,
-  standFoot,
-  TITLE,
-  whereYouStand,
+  standRules,
+  standViewer,
 } from './SignInRulesSample.ts';
 import { useShell } from '../../components/settingsShell.ts';
 import { SummaryPage } from './SummaryPage.tsx';
@@ -29,6 +27,13 @@ import {
   Section,
   SummaryCard,
 } from '../../components/Summary.tsx';
+import {
+  changeRows,
+  ruleLabel,
+  rulesCard,
+  standFoot,
+  whereYouStand,
+} from '../../kit/whereYouStand.ts';
 
 /** Sign-in rules in B, where you stand: read only for everyone, each rule with a mark and a line about you, then what changed. */
 export function SignInRulesSection() {
@@ -45,34 +50,36 @@ export function SignInRulesSection() {
 }
 
 function SignInRulesPage({ start }: { start: SignInRulesStart }) {
+  const { t } = useTranslation();
   const shell = useShell();
   const { load, retry } = useLoad(start.load);
   const locale = formattingLocale('en', getLocales()[0]?.languageTag);
+  const title = t('settings.signInRules');
 
   if (load !== 'loaded')
     return (
-      <SummaryPage title={TITLE}>
+      <SummaryPage title={title}>
         {load === 'failed' ? (
           <FailedBlock
-            title="We could not load the sign-in rules."
-            line="Check your connection and try again."
+            title={t('signInRules.stand.loadFailedTitle')}
+            line={t('signInRules.stand.loadFailedLine')}
             onRetry={retry}
             testID="signInRules.retry"
           />
         ) : (
-          <LoadingBlock words="Loading the sign-in rules…" />
+          <LoadingBlock words={t('signInRules.loading')} />
         )}
       </SummaryPage>
     );
 
-  const { page, viewer } = start;
-  const rules = whereYouStand(page, viewer, locale);
-  const card = rulesCard(rules, viewer);
-  const asking = rules.find((rule) => rule.ask != null)?.key;
+  const rules = standRules(start.page);
+  const viewer = standViewer(start.viewer);
+  const rows = whereYouStand(t, rules, viewer, locale, NOW);
+  const card = rulesCard(t, rows, viewer);
   const pane = shell.layout === 'landscape';
 
   return (
-    <SummaryPage title={TITLE}>
+    <SummaryPage title={title}>
       <SummaryCard
         size={shell.layout === 'portrait' ? 'wide' : 'page'}
         height={card.step == null ? 170 : 210}
@@ -80,9 +87,9 @@ function SignInRulesPage({ start }: { start: SignInRulesStart }) {
           card.step == null
             ? null
             : {
-                label: card.step,
+                label: card.step.label,
                 onPress: () =>
-                  shell.openSection('security', asking === 'method' ? 'linkPick' : 'setup'),
+                  shell.openSection('security', card.step?.opens === 'link' ? 'linkPick' : 'setup'),
                 testID: 'signInRules.step',
               }
         }
@@ -91,17 +98,20 @@ function SignInRulesPage({ start }: { start: SignInRulesStart }) {
         <CardSays text={card.says} size={pane ? 26 : 24} heading />
         <OnCard text={card.line} />
       </SummaryCard>
-      <Section title="Where you stand" foot={standFoot(page)}>
-        <StandRules rules={rules.map((rule) => ({ ...rule, label: ruleLabel(rule) }))} />
+      <Section title={t('signInRules.stand.whereTitle')} foot={standFoot(t, rules)}>
+        <StandRules rules={rows.map((rule) => ({ ...rule, label: ruleLabel(t, rule) }))} />
       </Section>
-      <Section title="What changed" foot={viewer.setsRules ? undefined : ASK_OWNER}>
+      <Section
+        title={t('signInRules.stand.changedTitle')}
+        foot={viewer.setsRules ? undefined : t('signInRules.askOwner', { organisation: ORG })}
+      >
         <StandChanges
-          changes={changeRows(page.changes, viewer.seen, locale)}
+          changes={changeRows(t, start.page.changes, start.viewer.seen, locale, NOW)}
           none={{
-            title: 'No changes yet',
-            line: 'These are the rules every organisation starts with.',
+            title: t('signInRules.stand.noChangesTitle'),
+            line: t('signInRules.stand.noChangesLine'),
           }}
-          newWord="New"
+          newWord={t('signInRules.stand.new')}
         />
       </Section>
     </SummaryPage>
