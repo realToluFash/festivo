@@ -1023,7 +1023,13 @@
   font: 500 16px/1.4 var(--fontFamily);
 }
 
-.mg-mini-field:disabled {
+.mg-mini-field:disabled,
+.mg-answer-field:disabled {
+  cursor: default;
+}
+
+.mg-to-chip[data-off] {
+  color: var(--colorInkSecondary);
   cursor: default;
 }
 

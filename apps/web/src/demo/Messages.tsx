@@ -336,7 +336,12 @@ function Messages({
       event.preventDefault();
       if (inbox.done.includes(lit)) act({ kind: 'waiting', id: lit });
       else markDone(lit);
-    } else if (key === 'r' && inbox.pane.kind === 'convo' && isGuest(inbox.pane.id)) {
+    } else if (
+      key === 'r' &&
+      closed == null &&
+      inbox.pane.kind === 'convo' &&
+      isGuest(inbox.pane.id)
+    ) {
       event.preventDefault();
       focus('answer');
     } else if (key === 'c') {
@@ -368,6 +373,7 @@ function Messages({
     focus,
     mesh,
     keys,
+    whyOff: closed == null ? undefined : whyId,
     bell: { read: bellRead, markRead: () => setBellRead(true), takeFirst },
   };
   const empty = inbox.present.length === 0 && sections.top.length === 0;

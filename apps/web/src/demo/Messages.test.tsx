@@ -11,6 +11,8 @@ const tested = config();
 const SLOW = { timeout: 20000 };
 const WAIT = { timeout: 8000 };
 const AT = '/demo/events/evt-wed-4/messages';
+const ENDED =
+  'This event finished more than 30 days ago, so you can no longer write to its guests.';
 
 function open(path: string) {
   const router = createMemoryRouter(routes, { initialEntries: [path] });
@@ -66,12 +68,12 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
       .parentElement as HTMLElement;
     const links = within(group).getAllByRole('link');
 
-    expect(links).toHaveLength(48);
+    expect(links).toHaveLength(47);
     expect(links[0]?.getAttribute('href')).toBe(`${AT}?state=first`);
     expect(links[7]?.getAttribute('href')).toBe(`${AT}?state=noticeCost`);
     expect(links[26]?.getAttribute('href')).toBe(`${AT}?state=bell`);
     expect(links[44]?.getAttribute('href')).toBe(`${AT}?state=tellPlace`);
-    expect(links[47]?.getAttribute('href')).toBe(`${AT}?state=closedEnded`);
+    expect(links[46]?.getAttribute('href')).toBe(`${AT}?state=closedEnded`);
   });
 
   it('is the event’s own Messages entry, with the count under it', SLOW, async () => {
@@ -955,8 +957,7 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
 
   it.each([
     ['closedDraft', 'This event is a draft. Make it live to write to your guests.'],
-    ['closedDeleted', 'This event was deleted, so nothing can be sent from it.'],
-    ['closedEnded', 'This event finished more than 30 days ago, so nothing can be sent from it.'],
+    ['closedEnded', ENDED],
   ])(
     'keeps New unavailable on %s, its one reason beside it, and C opens nothing (sc-3942)',
     SLOW,
@@ -978,6 +979,111 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
       expect(document.getElementById(field.getAttribute('aria-describedby')!)?.textContent).toBe(
         reason,
       );
+    },
+  );
+
+  it(
+    'starts a draft empty: it has never been live, so nobody has answered it (sc-3942)',
+    SLOW,
+    async () => {
+      await messages('closedDraft');
+
+      expect(within(list()).queryAllByRole('link')).toHaveLength(0);
+      expect(
+        screen.getAllByText(/Each guest who answers gets a conversation here/),
+      ).not.toHaveLength(0);
+      expect(screen.queryByText(/^Pick a conversation/)).toBeNull();
+    },
+  );
+
+  function expectOff(control: HTMLElement): void {
+    expect(control.getAttribute('aria-disabled')).toBe('true');
+    expect(document.getElementById(control.getAttribute('aria-describedby')!)?.textContent).toBe(
+      ENDED,
+    );
+  }
+
+  function expectFieldOff(name: string): void {
+    const field = screen.getByRole('textbox', { name }) as HTMLInputElement;
+
+    expect(field.disabled).toBe(true);
+    expect(document.getElementById(field.getAttribute('aria-describedby')!)?.textContent).toBe(
+      ENDED,
+    );
+  }
+
+  it.each([
+    [/^Parking at The Landmark/, 'Write a follow-up'],
+    [/^Invitation/, 'Write to them'],
+  ])(
+    'turns off the composer under a sent message on closedEnded: %s',
+    SLOW,
+    async (name, field) => {
+      await messages('closedEnded');
+      fireEvent.click(row(name));
+
+      expectFieldOff(field);
+      expectOff(screen.getByRole('button', { name: 'Send' }));
+      const to = document.querySelector<HTMLElement>('.mg-to-chip') as HTMLElement;
+      expectOff(to);
+      fireEvent.click(to);
+      expect(screen.queryByRole('textbox', { name: 'Subject' })).toBeNull();
+      expect(screen.getAllByTestId('messages-closed')).toHaveLength(1);
+    },
+  );
+
+  it('turns off a guest’s answer on closedEnded, and offers no R', SLOW, async () => {
+    await messages('closedEnded');
+    fireEvent.click(row(/^Inês/));
+
+    expectFieldOff('Your answer');
+    expectOff(screen.getByRole('button', { name: 'Send' }));
+    expect(
+      screen.getByRole('textbox', { name: 'Your answer' }).getAttribute('aria-keyshortcuts'),
+    ).toBeNull();
+  });
+
+  it('prices no answer that cannot go on closedEnded', SLOW, async () => {
+    await messages('closedEnded');
+    fireEvent.click(row(/^Lucía/));
+
+    expectFieldOff('Your answer');
+    expect(screen.queryByText(/uses \d+ credit/)).toBeNull();
+  });
+
+  it(
+    'turns off Resend and Send again on closedEnded; the fix itself still saves',
+    SLOW,
+    async () => {
+      await messages('closedEnded');
+      fireEvent.click(row(/^Parking at The Landmark/));
+      fireEvent.click(screen.getByRole('button', { name: 'Who it reached' }));
+
+      const resend = screen.getByRole('button', { name: /^Resend to the / });
+      expectOff(resend);
+      fireEvent.click(resend);
+      expect(screen.queryByRole('alertdialog')).toBeNull();
+
+      fireEvent.click(
+        screen.getAllByRole('button', { name: 'Fix email address' })[0] as HTMLElement,
+      );
+      fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+      const again = await screen.findByRole('button', { name: /^Send to .* again$/ }, WAIT);
+      expectOff(again);
+      fireEvent.click(again);
+      expect(screen.getByRole('button', { name: /^Send to .* again$/ })).toBe(again);
+    },
+  );
+
+  it(
+    'keeps no waiting scheduled message on closedEnded: sc-3963 cancels it when the event finishes',
+    SLOW,
+    async () => {
+      open(`${AT}?state=closedEnded&c=sched`);
+      await screen.findByRole('heading', { level: 1, name: 'Messages' }, WAIT);
+
+      expect(within(list()).queryByRole('link', { name: /On the day/ })).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Send now' })).toBeNull();
     },
   );
 

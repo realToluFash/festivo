@@ -39,7 +39,6 @@ import {
   chipWords,
   countOf,
   dayWords,
-  closedOf,
   draftOf,
   filled,
   fixWord,
@@ -106,25 +105,20 @@ export function ConversationPane({
       ) : pane.kind === 'convo' ? (
         <Thread key={pane.id} id={pane.id} state={state} onDone={onDone} />
       ) : (
-        <Idle closed={closedOf(state)} />
+        <Idle />
       )}
     </section>
   );
 }
 
-function Idle({ closed }: { closed: string | null }) {
+function Idle() {
   const { inbox } = useInbox();
 
   return (
     <div className="mg-in is-idle">
       <h2 className="desk-unseen">{MW.newMessage}</h2>
       <p className="mg-idle-line">{inbox.present.length === 0 ? MW.noneLine : MW.pickOne}</p>
-      <MiniComposer
-        to={{ kind: 'all' }}
-        placeholder={MW.writeToGuests}
-        thread={freshId(inbox)}
-        closed={closed}
-      />
+      <MiniComposer to={{ kind: 'all' }} placeholder={MW.writeToGuests} thread={freshId(inbox)} />
     </div>
   );
 }
@@ -134,20 +128,14 @@ function MiniComposer({
   to,
   placeholder,
   thread,
-  closed = null,
 }: {
   to: Audience;
   placeholder: string;
   thread: ConvoId;
-  /** Why this event can't send: shown once beside New, and read out here for the unavailable composer. */
-  closed?: string | null;
 }) {
-  const { act, focus, inbox } = useInbox();
-  const whyId = useId();
-  const why = closed == null ? undefined : whyId;
+  const { act, focus, inbox, whyOff } = useInbox();
 
   function open(text: string, toPick: boolean): void {
-    if (closed != null) return;
     act({
       kind: 'compose',
       draft: {
@@ -162,11 +150,6 @@ function MiniComposer({
 
   return (
     <div className="mg-mini">
-      {closed != null && (
-        <p id={whyId} className="desk-unseen">
-          {closed}
-        </p>
-      )}
       <div className="mg-mini-to">
         <span>{MW.to}</span>
         <button
@@ -174,9 +157,9 @@ function MiniComposer({
           className="mg-to-chip"
           aria-haspopup="dialog"
           aria-expanded="false"
-          aria-describedby={why}
+          aria-describedby={whyOff}
           onClick={() => open('', true)}
-          {...offButton(closed != null)}
+          {...offButton(whyOff != null)}
         >
           {chipWords(to)}
           <Glyph name="chevdown" size={14} weight={2.6} />
@@ -187,9 +170,9 @@ function MiniComposer({
           className="mg-mini-field"
           placeholder={placeholder}
           aria-label={placeholder}
-          aria-describedby={why}
+          aria-describedby={whyOff}
           data-focus="follow"
-          disabled={closed != null}
+          disabled={whyOff != null}
           value=""
           onChange={(event) => open(event.target.value, false)}
         />
@@ -197,6 +180,7 @@ function MiniComposer({
           type="button"
           className="mg-send is-off"
           aria-label={MW.send}
+          aria-describedby={whyOff}
           {...offButton(true, { dim: false })}
         >
           <Glyph name="send" size={20} weight={2.4} />
@@ -492,7 +476,7 @@ function AnswerBox({
   canAlso: readonly Channel[];
   typed: string;
 }) {
-  const { inbox, act, keys, tell, say, focus } = useInbox();
+  const { inbox, act, keys, tell, say, focus, whyOff } = useInbox();
   const [text, setText] = useState(typed);
   const [by, setBy] = useState<Channel>(toldBy);
   const blank = text.trim() === '';
@@ -517,8 +501,8 @@ function AnswerBox({
         <Glyph name="page" size={15} />
         {filled(MW.answerLine, { name, channel: ANSWER_BY[by] })}
       </p>
-      {notice.cost != null && <p className="mg-answer-cost">{notice.cost}</p>}
-      {notice.waits != null && (
+      {whyOff == null && notice.cost != null && <p className="mg-answer-cost">{notice.cost}</p>}
+      {whyOff == null && notice.waits != null && (
         <div className="mg-answer-wait">
           <p className="mg-answer-waits">
             <Glyph name="clock" size={15} weight={2.2} />
@@ -555,8 +539,10 @@ function AnswerBox({
           rows={1}
           aria-label={MW.yourAnswer}
           placeholder={MW.writeAnswer}
-          aria-keyshortcuts={keys ? 'R' : undefined}
+          aria-keyshortcuts={keys && whyOff == null ? 'R' : undefined}
+          aria-describedby={whyOff}
           data-focus="answer"
+          disabled={whyOff != null}
           value={text}
           onChange={(event) => setText(event.target.value)}
           onKeyDown={(event) => {
@@ -567,7 +553,8 @@ function AnswerBox({
           type="submit"
           className={blank ? 'mg-send is-off' : 'mg-send'}
           aria-label={MW.send}
-          aria-keyshortcuts="Meta+Enter Control+Enter"
+          aria-keyshortcuts={whyOff == null ? 'Meta+Enter Control+Enter' : undefined}
+          aria-describedby={whyOff}
           {...offButton(blank, { dim: false })}
         >
           <Glyph name="send" size={20} weight={2.4} />
@@ -862,7 +849,7 @@ function ReachedView({
   thread: ConvoId;
   fixing: boolean;
 }) {
-  const { inbox, act, focus, say, tell } = useInbox();
+  const { inbox, act, focus, say, tell, whyOff } = useInbox();
   const [fixing, setFixing] = useState<string | null>(fixingFirst ? 'tomas' : null);
   const headId = useId();
   const people = of === 'parking' ? withTomas(inbox.unreached, inbox.tomas) : INVITE_UNREACHED;
@@ -1034,6 +1021,8 @@ function ReachedView({
           type="button"
           className="button button-primary mg-resend"
           data-focus="resend"
+          aria-describedby={whyOff}
+          {...offButton(whyOff != null)}
           onClick={() => {
             if (of !== 'parking') {
               tell(`${many('resend', resend)} has its own design.`);
@@ -1088,6 +1077,7 @@ function Person({
   onCancel: () => void;
   onAgain: () => void;
 }) {
+  const { whyOff } = useInbox();
   const [address, setAddress] = useState(fixing ? NEW_ADDRESS : OLD_ADDRESS);
   const [wrong, setWrong] = useState<string | null>(null);
   const field = useRef<HTMLInputElement>(null);
@@ -1165,7 +1155,9 @@ function Person({
             type="button"
             className="button button-primary mg-again"
             data-focus="again"
+            aria-describedby={whyOff}
             onClick={onAgain}
+            {...offButton(whyOff != null)}
           >
             <Glyph name="send" size={17} weight={2.4} />
             {filled(MW.sendAgain, { name: person.name })}
