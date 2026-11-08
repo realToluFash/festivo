@@ -411,6 +411,19 @@ describe('the states Budget A still lacked (sc-85, sc-88, sc-90, sc-91, sc-92, s
       expect(within(section('Costs')).getByText('Saved.')).toBeTruthy();
       expect(document.querySelector('.bud-figure.is-washed')).not.toBeNull();
       await vi.waitFor(() => expect(document.activeElement).toBe(row), SLOW);
+
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      const before = document.querySelector('.bud-figure');
+      fireEvent.click(within(main()).getByRole('button', { name: 'Add a cost' }));
+      const again = await screen.findByRole('dialog', { name: 'Add a cost' }, SLOW);
+      fireEvent.change(within(again).getByLabelText('What it is'), {
+        target: { value: 'Canapés' },
+      });
+      fireEvent.click(within(again).getByRole('button', { name: 'Add' }));
+      await settle();
+      const after = document.querySelector('.bud-figure');
+      expect(after).not.toBe(before);
+      expect(after?.className).toContain('is-washed');
     },
   );
 
@@ -441,6 +454,12 @@ describe('the states Budget A still lacked (sc-85, sc-88, sc-90, sc-91, sc-92, s
 
       await open(at('choose_percent_range'));
       expect(screen.getAllByText('Use a number from 0 to 100.')).toHaveLength(2);
+      const minus = screen.getByLabelText('Mr and Mrs Obi · %');
+      expect(minus).toHaveProperty('value', '−5');
+      fireEvent.change(minus, { target: { value: '−' } });
+      expect(minus).toHaveProperty('value', '−');
+      fireEvent.change(minus, { target: { value: '' } });
+      expect(minus).toHaveProperty('value', '');
       cleanup();
 
       await open(at('choose_percent_decimals'));

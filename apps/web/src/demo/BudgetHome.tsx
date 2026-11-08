@@ -267,7 +267,7 @@ export function BudgetHomeContent({
           ? { id: addedId, words: 'Saved.', ok: true }
           : null,
   );
-  const [flash, setFlash] = useState(addedId != null);
+  const [flash, setFlash] = useState<string | null>(addedId);
   const [toRow, setToRow] = useState<string | null>(addedId);
 
   useEffect(() => {
@@ -372,10 +372,11 @@ export function BudgetHomeContent({
         />
       ) : (
         <SummaryCard
+          key={flash ?? 'card'}
           event={event}
           sum={sum}
           heads={heads}
-          washed={first === 'live_heads' || first === 'rate_saved' || flash}
+          washed={first === 'live_heads' || first === 'rate_saved' || flash != null}
           tagsWashed={ceilingLive}
           ceiling={wholeCeiling?.state ?? null}
           next={next}
@@ -508,7 +509,7 @@ export function BudgetHomeContent({
             setDialog(null);
             setLit(added.id);
             setLine({ id: added.id, words: 'Saved.', ok: true });
-            setFlash(true);
+            setFlash(added.id);
             setToRow(added.id);
           }}
         />

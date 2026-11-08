@@ -401,7 +401,7 @@ export function percentOf(text: string): number | null {
   return Number(whole === '' ? '0' : whole) * 100 + Number(`${part}00`.slice(0, 2));
 }
 
-export const PERCENT_TYPED = /^-?\d{0,4}(\.\d{0,4})?$/;
+export const PERCENT_TYPED = /^[-−]?\d{0,4}(\.\d{0,4})?$/;
 
 export function percentProblem(text: string): string | null {
   const typed = text.trim();
