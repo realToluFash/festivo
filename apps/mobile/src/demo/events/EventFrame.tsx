@@ -84,6 +84,7 @@ export function EventFrame({
   badge = null,
   onBell,
   bellRef,
+  back: pushed,
   phoneBack,
   without,
   children,
@@ -101,6 +102,8 @@ export function EventFrame({
   badge?: AreaBadge | null;
   onBell?: (() => void) | undefined;
   bellRef?: Ref<ViewInstance> | undefined;
+  /** A page an area pushes in its own column: ‹ and the area it goes back to. */
+  back?: { label: string; onPress: () => void } | null;
   /** On the phone, a way back other than Overview, as Seating's ‹ More. */
   phoneBack?: { label: string; onPress: () => void } | undefined;
   /** An area this viewer has no part in, as Budget for Can edit: gone from More, the pills and the sidebar. */
@@ -161,11 +164,12 @@ export function EventFrame({
     );
 
   const back =
-    phone && phoneBack != null
+    pushed ??
+    (phone && phoneBack != null
       ? phoneBack
       : phone && area !== 'overview'
         ? { label: W.overview, onPress: () => onArea('overview') }
-        : { label: W.backToEvents, onPress: backToEvents };
+        : { label: W.backToEvents, onPress: backToEvents });
   const at = PHONE_TABS.includes(area) ? AREA_WORDS[area] : W.more;
 
   return (

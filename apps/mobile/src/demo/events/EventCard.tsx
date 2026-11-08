@@ -187,7 +187,7 @@ export function CardBackdrop({ event }: { event: Shown }) {
   );
 }
 
-function PhaseShape({ mark }: { mark: PhaseMark }) {
+export function PhaseShape({ mark }: { mark: PhaseMark }) {
   switch (mark) {
     case 'draft':
       return <View style={styles.draftRing} {...hidden} />;
@@ -296,6 +296,7 @@ export function EventCard({
   height = 200,
   onOpen,
   onStep,
+  guests = null,
   testID,
 }: {
   event: Shown;
@@ -303,6 +304,8 @@ export function EventCard({
   locale: string;
   wide: boolean;
   height?: number;
+  /** On Events, the guests it counts (sc-3786): "96 coming · 25 haven't replied". */
+  guests?: string | null;
   /** On the list the card opens the event, its name the link. */
   onOpen?: () => void;
   onStep: (step: Extract<CardStep, { kind: 'button' }>) => void;
@@ -348,6 +351,7 @@ export function EventCard({
       )}
       <View pointerEvents="none">
         <OnCard text={rowLine(event, locale, false)} />
+        {guests != null && <OnCard text={guests} />}
       </View>
       <DayTiles event={event} now={now} locale={locale} />
       <CardFoot step={cardStep(event, now, locale)} onStep={onStep} testID={testID} />
