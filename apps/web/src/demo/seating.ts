@@ -1,3 +1,4 @@
+import { writtenTime } from './clock.ts';
 import { demoWords } from './demoWords.ts';
 import { SW } from './seatingWords.ts';
 import type { DemoLink } from './settings.ts';
@@ -112,15 +113,10 @@ export function asOf(iso: string, locale: string, timeZone = TIME_ZONE): string 
     day: 'numeric',
     timeZone,
   }).format(new Date(iso));
-  const time = new Intl.DateTimeFormat(locale, {
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23',
-    timeZone,
-  }).format(new Date(iso));
 
-  return `${day}, ${time}`;
+  return `${day}, ${writtenTime(iso, locale, timeZone)}`;
 }
+
 export const ROOM: Room = { name: 'Main hall', w: 2400, l: 1800 };
 
 export const YOU: Person = { name: 'Folake Adeyemi', initials: 'FA', tone: 2, viewer: false };
