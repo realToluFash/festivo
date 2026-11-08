@@ -1292,6 +1292,42 @@ span {
   color: var(--colorInkSecondary);
 }
 
+/* ── Settings at a desk (sc-30190) ────────────────────────────────────────── */
+
+/* The list and the page run to the content card's edges, the list's line from top to bottom, as Web-Settings draws them. */
+.settings-desk {
+  display: flex;
+  margin: 0 calc(-1 * var(--shellInline)) calc(-1 * var(--shellBlock));
+}
+
+.shell-content > .settings-desk:first-child {
+  margin-top: calc(-1 * var(--shellBlock));
+}
+
+.settings-desk-page {
+  flex: 1;
+  min-width: 0;
+  padding: var(--shellBlock) var(--shellInline);
+}
+
+/* The reading column stops at 680, so a wider window leaves the room at the right. */
+.settings-desk .settings-desk-page > * > :not(.account-header) {
+  max-width: 42.5rem;
+}
+
+@media (width <= 60rem) {
+  .settings-desk {
+    flex-direction: column;
+  }
+
+  .settings-desk .desk-list {
+    width: auto;
+    padding-bottom: var(--spaceLg);
+    border-right: 0;
+    border-bottom: 1px solid var(--colorBorder);
+  }
+}
+
 /* ── Your account ─────────────────────────────────────────────────────────── */
 
 .account {
@@ -1323,32 +1359,8 @@ span {
     border-bottom: var(--borderHeader);
   }
 
-  .shell-content > .account:first-child > .account-header {
+  .settings-desk-page > .account:first-child > .account-header {
     margin-top: calc(-1 * var(--shellBlock));
-  }
-
-  .account-header .account-sections {
-    flex-wrap: nowrap;
-    align-self: flex-start;
-    gap: var(--spaceHair);
-    min-width: 26.25rem;
-    padding: var(--spaceXxs);
-    border-radius: var(--radiusPill);
-    background: var(--colorHeaderTrack);
-  }
-
-  .account-header .account-section {
-    flex: 1;
-    justify-content: center;
-    border: 0;
-    white-space: nowrap;
-  }
-
-  .account-header .account-section[aria-current='page'] {
-    border: 0;
-    background: var(--colorCard);
-    box-shadow: var(--shadowCard);
-    color: var(--colorInk);
   }
 }
 
@@ -3137,6 +3149,11 @@ span {
   margin: 0 auto;
 }
 
+/* The Settings list takes its 272 beside the account page, which keeps the width it had alone. */
+.no-organisation-account:has(> .settings-desk) {
+  max-width: calc(47.5rem + 2 * var(--space5xl) + 17rem);
+}
+
 .no-organisation {
   max-width: 35rem;
   margin: 0 auto;
@@ -3377,33 +3394,7 @@ span {
   }
 }
 
-/* ── Your account's sections, and the time zone (sc-868) ─────────────────── */
-
-.account-sections {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--spaceSm);
-}
-
-.account-section {
-  display: inline-flex;
-  align-items: center;
-  min-height: var(--sizeHit);
-  padding: 0 var(--spaceLg);
-  border: var(--borderSelected);
-  border-color: transparent;
-  border-radius: var(--radiusPill);
-  color: var(--colorInkSecondary);
-  font-weight: 600;
-  text-decoration: none;
-}
-
-/* [fd]'s selected row: the accent edge and tint, never a dark pill (sc-23172). */
-.account-section[aria-current='page'] {
-  border: var(--borderSelected);
-  background: var(--colorRowSelected);
-  color: var(--colorAccentText);
-}
+/* ── The time zone (sc-868) ─────────────────────────────────────────────────── */
 
 .current-value {
   display: flex;

@@ -426,6 +426,22 @@ export const EVENT_WORDS = {
   today: 'today',
   firstRunTitle: 'Set up your first event',
   firstRunCreate: 'Create an event',
+  firstRunAsk:
+    'Events your organisation creates will show here. Ask an owner if you need to create one.',
+  emptyTab: {
+    upcoming: {
+      title: 'Nothing coming up',
+      line: 'Events you make live show here, with the next thing each one needs.',
+    },
+    drafts: {
+      title: 'No drafts',
+      line: 'New events stay drafts, visible only to your team, until you make them live.',
+    },
+    past: {
+      title: 'Nothing finished yet',
+      line: 'Finished events stay here, so you can look back or start the next one from them.',
+    },
+  },
   firstRunSteps: [
     'Name it and choose when it starts and ends.',
     'Check its time zone and currency.',
@@ -917,6 +933,14 @@ export interface Listed {
   happeningNow: SampleEvent[];
 }
 
+/** The organisation's events with none on one tab, so the other tabs, the counts and the summary stay true. */
+export function withoutTab(events: readonly SampleEvent[], tab: Tab, now: Date): SampleEvent[] {
+  const lists = listed(events, now);
+  const gone = tab === 'upcoming' ? [...lists.happeningNow, ...lists.upcoming] : lists[tab];
+
+  return events.filter((event) => !gone.includes(event));
+}
+
 export function listed(events: readonly SampleEvent[], now: Date): Listed {
   const home = eventsHome(
     {
@@ -1131,6 +1155,10 @@ export function noMatchLine(filters: Filters, now: Date): string {
 
 export type ListState =
   | 'first'
+  | 'firstAsk'
+  | 'emptyUpcoming'
+  | 'emptyDrafts'
+  | 'emptyPast'
   | 'drafts'
   | 'past'
   | 'pastMore'
@@ -1143,6 +1171,10 @@ export type ListState =
 
 const LIST_STATES: readonly ListState[] = [
   'first',
+  'firstAsk',
+  'emptyUpcoming',
+  'emptyDrafts',
+  'emptyPast',
   'drafts',
   'past',
   'pastMore',
@@ -1164,6 +1196,8 @@ export function listStateOf(value: string | null): ListState | null {
 export interface ListStart {
   tab: Tab | null;
   first: boolean;
+  asks: boolean;
+  emptied: Tab | null;
   offline: boolean;
   pastPages: number;
   menu: 'top' | 'type' | null;
@@ -1175,6 +1209,8 @@ export function listStart(state: ListState | null): ListStart {
   const rest: ListStart = {
     tab: null,
     first: false,
+    asks: false,
+    emptied: null,
     offline: false,
     pastPages: 1,
     menu: null,
@@ -1187,6 +1223,14 @@ export function listStart(state: ListState | null): ListStart {
       return rest;
     case 'first':
       return { ...rest, first: true };
+    case 'firstAsk':
+      return { ...rest, first: true, asks: true };
+    case 'emptyUpcoming':
+      return { ...rest, tab: 'upcoming', emptied: 'upcoming' };
+    case 'emptyDrafts':
+      return { ...rest, tab: 'drafts', emptied: 'drafts' };
+    case 'emptyPast':
+      return { ...rest, tab: 'past', emptied: 'past' };
     case 'drafts':
       return { ...rest, tab: 'drafts' };
     case 'past':
@@ -1462,6 +1506,10 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
       list('past', 'Past, a page of ten'),
       list('pastMore', 'Past, after Show more'),
       list('first', 'A first run'),
+      list('firstAsk', 'A first run, without Create events'),
+      list('emptyUpcoming', 'Nothing on Upcoming'),
+      list('emptyDrafts', 'No drafts'),
+      list('emptyPast', 'Nothing on Past'),
       list('offline', 'Offline'),
       list('noGuests', 'Nobody invited yet, the guest counts at 0'),
     ],

@@ -452,7 +452,14 @@ describe('two changes to one rule saved in the same second (sc-13954)', () => {
     });
     open();
 
-    const list = await within(screen.getByRole('main')).findByRole('list');
+    const list = await waitFor(() => {
+      const [history] = within(screen.getByRole('main'))
+        .getAllByRole('list')
+        .filter((each) => each.closest('nav') == null);
+      if (history == null) throw new Error('the history has not loaded');
+
+      return history;
+    });
     const rows = within(list).getAllByRole('listitem');
 
     expect(rows.map((row) => row.textContent)).toEqual([

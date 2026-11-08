@@ -11,6 +11,7 @@ import {
   datesRow,
   dayTiles,
   editOf,
+  emptyTabOf,
   eventHref,
   eventStateOf,
   filterWord,
@@ -34,6 +35,7 @@ import {
   tabWidths,
   wallOf,
   whenSpan,
+  withoutTab,
 } from './EventsModel.ts';
 import { CLOCKS, EVENTS, type SampleEvent, sampleEvent } from './EventsSample.ts';
 import { seedFinalNumbers } from './FinalNumbers.ts';
@@ -349,6 +351,25 @@ describe('the states', () => {
     expect(listStart(listStateOf('search')).typed).toBe('lucia');
     expect(listStart(listStateOf('pastMore'))).toMatchObject({ tab: 'past', pastShown: 20 });
     expect(listStateOf('nonsense')).toBeNull();
+  });
+
+  it.each([
+    ['emptyUpcoming', 'upcoming'],
+    ['emptyDrafts', 'drafts'],
+    ['emptyPast', 'past'],
+  ] as const)('opens %s on %s, with nothing there and events on the other tabs', (state, tab) => {
+    expect(listStart(state).tab).toBe(tab);
+    expect(emptyTabOf(state)).toBe(tab);
+    const home = homeOf(withoutTab(EVENTS, tab, reader, LOCALE), reader, LOCALE);
+
+    expect(home[tab]).toEqual([]);
+    for (const other of (['upcoming', 'drafts', 'past'] as const).filter((each) => each !== tab))
+      expect(home[other].length).toBeGreaterThan(0);
+  });
+
+  it('a state that is not an empty tab empties none', () => {
+    expect(emptyTabOf('drafts')).toBeNull();
+    expect(emptyTabOf(null)).toBeNull();
   });
 
   it('reads the clock and the edit from the event’s state', () => {

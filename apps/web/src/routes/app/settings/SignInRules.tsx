@@ -12,7 +12,6 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
 import { api } from '../../../api.ts';
-import { SettingsSections } from '../../../components/SettingsSections.tsx';
 import { currentLocale, dateLocale, useShownLanguage } from '../../../i18n/index.ts';
 import { can, replaceOrganisation, useSession } from '../../../session.ts';
 import { offButton } from '../../../offButton.ts';
@@ -88,7 +87,6 @@ export function SignInRules() {
 
   return (
     <div className="settings settings-wide">
-      <SettingsSections />
       {refreshing && <Refreshing />}
       <div className="settings-heading">
         <h1 ref={heading} tabIndex={-1}>
