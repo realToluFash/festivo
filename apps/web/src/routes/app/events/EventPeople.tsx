@@ -580,7 +580,7 @@ function AddDialog({
         ticked.includes(member.membershipId) ||
         member.name.toLocaleLowerCase(currentLocale()).includes(wording),
     );
-  const touched = ticked.length > 0 || typed.trim() !== '' || role !== 'can_view';
+  const touched = ticked.length > 0 || role !== 'can_view';
   const cancel = useCallback(() => (touched ? setDiscarding(true) : onClose()), [touched, onClose]);
   const inOrganisation = t('eventPeople.inOrganisation', { organisation: organisationName });
 
