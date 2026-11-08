@@ -138,7 +138,8 @@ export const W = {
   planAllows: 'Your plan allows 100 people per event',
   removeRows: 'Remove rows or places for companions here.',
   removeOnWeb: 'Remove a guest from the list, on the web.',
-  plansOnWeb: 'Plans are managed on the web.',
+  /** sc-3930 in the app, for billing.manage (pm, 8 Nov): no app copy says where plans are changed. */
+  planInApp: 'The plan cannot be changed in the app.',
   /** sc-3930: for someone who can't change the plan; one owner in the sample, so the one-owner line. */
   askOwner: 'Ask an owner',
   ownerAsked: 'The owner has been sent the link to Compare plans.',

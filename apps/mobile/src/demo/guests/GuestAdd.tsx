@@ -482,7 +482,7 @@ const ASKS: readonly (ReviewState | null)[] = ['overLimitAsk', 'ownerAsked'];
 const OVER: readonly (ReviewState | null)[] = ['overLimit', 'limitRefused', ...ASKS];
 
 function PlanWay({ asks, asked, onAsk }: { asks: boolean; asked: boolean; onAsk: () => void }) {
-  if (!asks) return <AmberLine text={W.plansOnWeb} />;
+  if (!asks) return <AmberLine text={W.planInApp} />;
   if (asked) return <DoneLine text={W.ownerAsked} size={14.5} />;
 
   return (

@@ -49,7 +49,7 @@ import {
   languageName,
   replyByOf,
 } from './GuestsSample.ts';
-import { say } from './GuestsWords.ts';
+import { W, say } from './GuestsWords.ts';
 
 const EN = 'en-US';
 const byKey = (key: string) => {
@@ -520,6 +520,7 @@ describe('a companion with a seat and a meal (sc-3773)', () => {
     const [rui] = byKey('ines').companions;
     expect(rui).toMatchObject({ name: 'Rui Duarte', table: 'Table 4', meal: true });
     expect(say.removeTitle('Rui Duarte')).toBe('Remove Rui Duarte?');
+    expect(W.planInApp).toBe('The plan cannot be changed in the app.');
     expect(say.seatedLine('Rui Duarte', 'Table 4', true)).toBe(
       'Rui Duarte has a seat at Table 4 and a meal chosen. Removing this companion frees the seat and drops the meal.',
     );
