@@ -26,6 +26,9 @@ export const COUNTS = {
 export interface Companion {
   name: string;
   kind: ReplyKind;
+  /** Their seat and meal pick (epics 31, 32): removing them says what goes first (sc-3773). */
+  table?: string;
+  meal?: boolean;
 }
 
 /** sc-3790: a guest's language; null is Not set. The host's and the guest's own are the AC, not yet built. */
@@ -115,7 +118,7 @@ export const GUESTS: readonly SampleGuest[] = [
   guest('ines', 'Inês Duarte', 'coming', {
     when: '2026-10-13',
     email: 'ines.duarte@sapo.pt',
-    companions: [{ name: 'Rui Duarte', kind: 'coming' }],
+    companions: [{ name: 'Rui Duarte', kind: 'coming', table: 'Table 4', meal: true }],
     language: 'es',
     chose: 'pt',
   }),
