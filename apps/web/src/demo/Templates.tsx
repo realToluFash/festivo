@@ -196,14 +196,20 @@ function SourceGroup({
 
 function Calibration({ first }: { first: CalibrationKind }) {
   const [kind, setKind] = useState(first);
+  const [retried, setRetried] = useState(false);
   const timer = useRef<number | undefined>(undefined);
+  const title = useRef<HTMLHeadingElement>(null);
   const blocks = calibrationBlocks(kind);
 
   useEffect(() => () => window.clearTimeout(timer.current), []);
 
+  useEffect(() => {
+    if (retried && kind !== 'loading') title.current?.focus();
+  }, [retried, kind]);
+
   return (
     <>
-      <PageTitle title={W.calibrationTitle} />
+      <PageTitle title={W.calibrationTitle} titleRef={title} />
       {kind === 'loading' ? (
         <BudgetLoading words={W.calibrationLoading} card={false} />
       ) : kind === 'failed' ? (
@@ -213,6 +219,7 @@ function Calibration({ first }: { first: CalibrationKind }) {
             label={W.tryAgain}
             onClick={() => {
               setKind('loading');
+              setRetried(true);
               timer.current = window.setTimeout(() => setKind('few'), SEND_MS);
             }}
           />

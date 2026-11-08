@@ -47,6 +47,11 @@ export const WEB_STATES = [
   'add_cost_long_name',
   'add_cost_long_note',
   'add_cost_refused',
+  'add_cost_negative',
+  'add_cost_nan',
+  'add_cost_decimals',
+  'add_cost_adding',
+  'add_cost_added',
 ] as const;
 
 export const CEILING_STATES = [
@@ -173,6 +178,7 @@ export function linesOf(state: string): CostLine[] {
   if (state === 'removed_nothing_yet') return lines.filter((one) => one.id !== 'centre');
   if (state === 'first_time' || state === 'nothing_to_start') return [];
   if (state === 'ceiling_refused') return lines.filter((one) => one.category !== GONE_CATEGORY);
+  if (state === 'add_cost_added') return [...lines, { ...WELCOME_DRINKS }];
 
   return lines;
 }
@@ -277,6 +283,15 @@ export const GONE_CATEGORY: Category = 'flowers';
 export function categoryGone(name: string): string {
   return `${name} was removed, so its ceiling wasn’t saved.`;
 }
+
+/** The cost Add a cost's sample adds: Welcome drinks, £12.00 a head (Budget-A-Web-More, frame 34). */
+export const WELCOME_DRINKS: CostLine = {
+  id: 'new-welcome-drinks',
+  name: 'Welcome drinks',
+  category: 'catering',
+  basis: 'perHead',
+  rate: 1200,
+};
 
 export const STAFF_REFUSED =
   'The budget already has a staff-time cost. Choose another way it is counted.';
@@ -392,6 +407,11 @@ export const BUDGET_PAGES: readonly DemoGroup[] = [
         to: at('add_cost_refused'),
         name: 'Refused by the server: staff time added in another tab',
       },
+      { to: at('add_cost_negative'), name: 'Refused: a rate below 0' },
+      { to: at('add_cost_nan'), name: 'Refused: a rate that is not a number' },
+      { to: at('add_cost_decimals'), name: 'Refused: too many decimal places' },
+      { to: at('add_cost_adding'), name: 'Adding…, a second press does nothing' },
+      { to: at('add_cost_added'), name: 'Added: the sheet closes, the new cost lit, Saved.' },
     ],
   },
   {

@@ -241,11 +241,17 @@ describe('the states Budget A still lacked (sc-85, sc-88, sc-90, sc-91, sc-92, s
       cleanup();
 
       await open(at('payers_live'));
-      expect(
-        screen.getByText(
-          'Julien Moreau changed who pays for Room hire, so Mr and Mrs Obi’s share went down by £3,150.00.',
-        ),
-      ).toBeTruthy();
+      const live =
+        'Julien Moreau changed who pays for Room hire, so Mr and Mrs Obi’s share went down by £3,150.00.';
+      expect(screen.getByText(live)).toBeTruthy();
+      fireEvent.click(
+        within(screen.getByRole('region', { name: 'Has a payer' })).getByRole('button', {
+          name: 'Choose who pays',
+        }),
+      );
+      fireEvent.click(screen.getByRole('button', { name: 'Leave with no payer' }));
+      expect(screen.queryByText(live)).toBeNull();
+      expect(document.querySelector('.is-washed')).toBeNull();
       cleanup();
 
       await open(at('choose_no_payer'));
@@ -301,7 +307,20 @@ describe('the states Budget A still lacked (sc-85, sc-88, sc-90, sc-91, sc-92, s
       const sheet = screen.getByRole('dialog', { name: 'The browser’s share sheet' });
       expect(within(sheet).getByText(/kept up to date\.$/)).toBeTruthy();
       fireEvent.click(within(sheet).getByRole('button', { name: 'Close' }));
-      expect(screen.getByRole('button', { name: 'Send again to Adaeze and Tunde' })).toBeTruthy();
+      expect(screen.queryByRole('dialog', { name: 'The browser’s share sheet' })).toBeNull();
+      fireEvent.click(screen.getByRole('button', { name: /^Aunt Funmi/ }));
+      const funmi = screen.getByRole('region', { name: 'Aunt Funmi' });
+      expect(funmi.textContent).toContain('Not sent yet.');
+      fireEvent.click(within(funmi).getByRole('button', { name: 'Send to Aunt Funmi' }));
+      expect(
+        await screen.findByRole('dialog', { name: 'The browser’s share sheet' }, SLOW),
+      ).toBeTruthy();
+      fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+      expect(screen.queryByRole('dialog', { name: 'The browser’s share sheet' })).toBeNull();
+      expect(screen.getByRole('region', { name: 'Aunt Funmi' }).textContent).toContain(
+        'Sent, not opened yet.',
+      );
+      expect(screen.getByRole('button', { name: 'Send again to Aunt Funmi' })).toBeTruthy();
     },
   );
 
@@ -338,6 +357,9 @@ describe('the states Budget A still lacked (sc-85, sc-88, sc-90, sc-91, sc-92, s
       fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
       await settle();
       expect(screen.getByText('In pounds')).toBeTruthy();
+      expect(document.activeElement).toBe(
+        screen.getByRole('heading', { level: 1, name: 'Calibration' }),
+      );
       cleanup();
 
       await open(at('start_no_type'));
@@ -353,6 +375,96 @@ describe('the states Budget A still lacked (sc-85, sc-88, sc-90, sc-91, sc-92, s
       await open(at('start_margin'));
       expect(screen.getByText('Per head · Charged at £76.80 a head · 20% markup')).toBeTruthy();
       expect(screen.getByText('Per day · At cost, chosen')).toBeTruthy();
+    },
+  );
+
+  it(
+    'gives each of Add a cost’s board frames an address: the three rate refusals, Adding and Added',
+    SLOW,
+    async () => {
+      for (const [state, words] of [
+        ['add_cost_negative', 'Enter a rate of 0 or more, in numbers only.'],
+        ['add_cost_nan', 'Enter a rate of 0 or more, in numbers only.'],
+        [
+          'add_cost_decimals',
+          'That has too many decimal places for this event’s currency. Enter the rate like 12.50.',
+        ],
+      ] as const) {
+        await open(at(state));
+        const dialog = await screen.findByRole('dialog', { name: 'Add a cost' }, SLOW);
+        expect(within(dialog).getByText(words)).toBeTruthy();
+        expect(within(dialog).getByLabelText('Rate').getAttribute('aria-invalid')).toBe('true');
+        cleanup();
+      }
+
+      await open(at('add_cost_adding'));
+      const adding = await screen.findByRole('dialog', { name: 'Add a cost' }, SLOW);
+      const verb = within(adding).getByRole('button', { name: 'Adding…' });
+      fireEvent.click(verb);
+      expect(screen.getByRole('dialog', { name: 'Add a cost' })).toBeTruthy();
+      cleanup();
+
+      await open(at('add_cost_added'));
+      expect(screen.queryByRole('dialog', { name: 'Add a cost' })).toBeNull();
+      const row = within(section('Costs')).getByRole('button', { name: /^Welcome drinks/ });
+      expect(row.className).toContain('is-on');
+      expect(within(section('Costs')).getByText('Saved.')).toBeTruthy();
+      expect(document.querySelector('.bud-figure.is-washed')).not.toBeNull();
+      await vi.waitFor(() => expect(document.activeElement).toBe(row), SLOW);
+    },
+  );
+
+  it(
+    'gives each of Who is paying’s board frames an address: names, Edit, renamed, the choose refusals',
+    SLOW,
+    async () => {
+      await open(at('payer_blank'));
+      let dialog = await screen.findByRole('dialog', { name: 'Add a payer' }, SLOW);
+      expect(within(dialog).getByText('Enter a name.')).toBeTruthy();
+      expect(within(dialog).getByText('One field needs fixing, so nothing was sent.')).toBeTruthy();
+      cleanup();
+
+      await open(at('payer_long_name'));
+      dialog = await screen.findByRole('dialog', { name: 'Add a payer' }, SLOW);
+      expect(within(dialog).getByText('Use 60 characters or fewer.')).toBeTruthy();
+      cleanup();
+
+      await open(at('payer_edit'));
+      dialog = await screen.findByRole('dialog', { name: 'Edit payer' }, SLOW);
+      expect(within(dialog).getByLabelText('Name')).toHaveProperty('value', 'Chidi and Ngozi Obi');
+      cleanup();
+
+      await open(at('payer_renamed'));
+      expect(screen.getByRole('region', { name: 'Chidi and Ngozi Obi' })).toBeTruthy();
+      expect(within(main()).queryByText('Mr and Mrs Obi')).toBeNull();
+      cleanup();
+
+      await open(at('choose_percent_range'));
+      expect(screen.getAllByText('Use a number from 0 to 100.')).toHaveLength(2);
+      cleanup();
+
+      await open(at('choose_percent_decimals'));
+      const obi = screen.getByLabelText('Mr and Mrs Obi · %');
+      expect(obi.getAttribute('aria-invalid')).toBe('true');
+      expect(
+        screen.getByText('Use a number from 0 to 100, with up to two decimal places.'),
+      ).toBeTruthy();
+      expect(obi.closest('.desk-field')?.querySelector('.desk-help')).toBeNull();
+      expect(screen.getByText('Total 66.67%')).toBeTruthy();
+      cleanup();
+
+      for (const state of ['choose_fixed_blank', 'choose_fixed_decimals']) {
+        await open(at(state));
+        expect(screen.getByText('Enter an amount in pounds, like 400 or 400.50.')).toBeTruthy();
+        cleanup();
+      }
+
+      await open(at('choose_fixed_over'));
+      expect(
+        screen.getByText(
+          'The fixed amounts come to £6,800.00, more than £6,528.00, the least this can cost. Lower them so they fit.',
+        ),
+      ).toBeTruthy();
     },
   );
 });

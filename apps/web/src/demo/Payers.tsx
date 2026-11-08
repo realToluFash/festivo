@@ -36,6 +36,7 @@ import {
   Rows,
   UndoBar,
 } from './BudgetParts.tsx';
+import { fieldsWrong } from './budgetHome.ts';
 import { LINK_WORDS, type LinkState, budgetAt } from './budgetSample.ts';
 import { BUDGET_WORDS as B } from './budgetWords.ts';
 import { type SampleEvent } from './events.ts';
@@ -70,6 +71,7 @@ import {
   noPayer,
   noteProblem,
   openFirst,
+  percentProblem,
   paidOf,
   percentText,
   rangeOf,
@@ -118,7 +120,7 @@ export function PayersPage({ event, state }: { event: SampleEvent; state: string
   const title = useRef<HTMLHeadingElement>(null);
   const later = useLater();
   const navigate = useNavigate();
-  const washed = state === 'payers_live';
+  const [washed, setWashed] = useState(state === 'payers_live');
   const link = `${window.location.origin}/demo/share/payer`;
 
   useEffect(() => {
@@ -137,6 +139,7 @@ export function PayersPage({ event, state }: { event: SampleEvent; state: string
   }
 
   function chosen(ticked: readonly string[], split: Split | null): void {
+    setWashed(false);
     setBook((now) => applyChoice(now, ticked, split));
     setChoosing(null);
     moved();
@@ -165,6 +168,7 @@ export function PayersPage({ event, state }: { event: SampleEvent; state: string
 
       return;
     }
+    setWashed(false);
     if (form.id == null) {
       const added = addPayer(book, form.name, form.note);
       setBook(added.book);
@@ -184,6 +188,7 @@ export function PayersPage({ event, state }: { event: SampleEvent; state: string
       return;
     }
     const next = withoutPayer(book, payer.id);
+    setWashed(false);
     setBook(next);
     setNotice({ kind: 'removed', payer, index: book.payers.indexOf(payer) });
     setOpenId(openFirst(next.payers));
@@ -192,6 +197,7 @@ export function PayersPage({ event, state }: { event: SampleEvent; state: string
   }
 
   function undo(payer: PayerEntry, index: number): void {
+    setWashed(false);
     setBook((now) => withPayer(now, payer, index));
     setNotice(null);
     moved();
@@ -634,6 +640,7 @@ function PayerDialog({
 }) {
   const name = useRef<HTMLInputElement>(null);
   const note = useRef<HTMLInputElement>(null);
+  const wrong = [form.error, form.noteError].filter((one) => one != null).length;
 
   return (
     <BudgetDialog
@@ -643,6 +650,12 @@ function PayerDialog({
       onDismiss={onDismiss}
       onConfirm={() => onConfirm(name, note)}
     >
+      {wrong > 0 && (
+        <p className="desk-error" role="alert">
+          <Glyph name="alert" size={15} weight={2.2} />
+          {fieldsWrong(wrong)}
+        </p>
+      )}
       <div className="desk-fields">
         <Field
           label={W.name}
@@ -825,7 +838,10 @@ function ChooseWhoPays({
                         label={W.percentLabel(one.name)}
                         value={percents[one.id] ?? ''}
                         help={
-                          part == null || typed === '' || Number(typed) === 0
+                          part == null ||
+                          typed === '' ||
+                          Number(typed) === 0 ||
+                          percentProblem(typed) != null
                             ? null
                             : moneyRange(...part)
                         }

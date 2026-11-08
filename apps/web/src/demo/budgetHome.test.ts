@@ -33,7 +33,7 @@ const line = (id: string) => COST_LINES.find((one) => one.id === id) ?? COST_LIN
 
 describe('the Budget home’s states (spec §9)', () => {
   it('has every Web and Ceiling name, and the margin ones on the home', () => {
-    expect(WEB_STATES).toHaveLength(29);
+    expect(WEB_STATES).toHaveLength(34);
     expect(CEILING_STATES).toHaveLength(24);
     expect(MARGIN_STATES).toContain('free');
     const linked = [...BUDGET_PAGES, ...TEMPLATES_PAGES].flatMap((group) =>

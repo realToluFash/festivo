@@ -337,6 +337,15 @@ describe('the demo’s states (budget-a-spec.md §9)', () => {
     'link_passphrase',
     'link_all_revoked',
     'web_share',
+    'payer_blank',
+    'payer_long_name',
+    'payer_edit',
+    'payer_renamed',
+    'choose_percent_range',
+    'choose_percent_decimals',
+    'choose_fixed_blank',
+    'choose_fixed_decimals',
+    'choose_fixed_over',
   ];
 
   it('has every name the spec gives, each linked from the demo’s home', () => {
@@ -383,11 +392,24 @@ describe('the demo’s states (budget-a-spec.md §9)', () => {
 
   it('starts the gaps’ states where the boards draw them (sc-91, sc-1300)', () => {
     expect(startOf('note_too_long').form?.noteError).toBe('Use 200 characters or fewer.');
-    expect([...(startOf('note_too_long').form?.note ?? '')]).toHaveLength(214);
+    expect([...(startOf('note_too_long').form?.note ?? '')]).toHaveLength(202);
     expect(startOf('payers_neither').book).toEqual({ lines: [], payers: [], splits: {} });
     expect(startOf('no_costs').book.payers).toHaveLength(4);
     expect(startOf('payers_stale').choose).toMatchObject({ ticked: ['dj'], stale: 'Uncle Kayode' });
-    expect(startOf('payers_stale').book.payers.map((one) => one.id)).not.toContain('kayode');
+    expect(W.stale('Uncle Kayode')).toBe(
+      'Uncle Kayode was removed by someone else while this was open, so nothing was saved. The costs are shown as they are now.',
+    );
+    expect(startOf('payers_stale').book.splits.dj).toBeUndefined();
+    expect(startOf('payers_stale').choose?.payer).toBeUndefined();
+    expect(startOf('payer_blank').form?.error).toBe('Enter a name.');
+    expect(startOf('payer_long_name').form?.error).toBe('Use 60 characters or fewer.');
+    expect(startOf('payer_edit').form).toMatchObject({ id: 'obi', name: 'Chidi and Ngozi Obi' });
+    expect(startOf('payer_renamed').book.payers.find((one) => one.id === 'obi')?.name).toBe(
+      'Chidi and Ngozi Obi',
+    );
+    expect(percentProblem('.333')).toBe(
+      'Use a number from 0 to 100, with up to two decimal places.',
+    );
     expect(startOf('choose_no_payer').choose).toMatchObject({ ticked: ['dj'], checked: true });
     expect(startOf('choose_no_payer').choose?.payer).toBeUndefined();
     expect(startOf('choose_no_rest').choose).toMatchObject({ mode: 'fixed', checked: true });

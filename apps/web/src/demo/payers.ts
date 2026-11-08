@@ -389,7 +389,7 @@ export const PERCENT_TYPED = /^-?\d{0,4}(\.\d{0,4})?$/;
 export function percentProblem(text: string): string | null {
   const typed = text.trim();
   if (typed === '') return null;
-  if (/^\d+\.\d{3,}$/.test(typed) && Number(typed) <= WHOLE / 100) return W.percentDecimals;
+  if (/^\d*\.\d{3,}$/.test(typed) && Number(typed) <= WHOLE / 100) return W.percentDecimals;
   const value = percentOf(typed);
 
   return value == null || value > WHOLE ? W.percentRange : null;
@@ -529,6 +529,9 @@ export const SAMPLE_PAYERS: readonly PayerEntry[] = SAMPLE.map(({ id, name, note
   link,
 }));
 
+/** Mr and Mrs Obi as Edit renames them (Budget-A-Payers-More, frames 35 and 36). */
+export const RENAMED = 'Chidi and Ngozi Obi';
+
 export const KAYODE: PayerEntry = {
   id: 'kayode',
   name: 'Uncle Kayode',
@@ -599,6 +602,15 @@ const STATE_NAMES = [
   'link_passphrase',
   'link_all_revoked',
   'web_share',
+  'payer_blank',
+  'payer_long_name',
+  'payer_edit',
+  'payer_renamed',
+  'choose_percent_range',
+  'choose_percent_decimals',
+  'choose_fixed_blank',
+  'choose_fixed_decimals',
+  'choose_fixed_over',
 ] as const;
 
 export type PayersState = (typeof STATE_NAMES)[number];
@@ -676,10 +688,38 @@ const CHOOSE: Partial<Record<PayersState, ChooseStart>> = {
   choose_no_payer: { ticked: ['dj'], mode: 'one', checked: true },
   choose_no_rest: { ticked: ['cars'], mode: 'fixed', amounts: { funmi: '400.00' }, checked: true },
   payers_stale: { ticked: ['dj'], mode: 'one', stale: KAYODE.name },
+  choose_percent_range: {
+    ticked: ['dinner'],
+    mode: 'percent',
+    percents: { obi: '−5', bakare: '105' },
+    checked: true,
+  },
+  choose_percent_decimals: {
+    ticked: ['dinner'],
+    mode: 'percent',
+    percents: { obi: '33.333', bakare: '66.67' },
+    checked: true,
+  },
+  choose_fixed_blank: { ticked: ['cars'], mode: 'fixed', rest: 'obi', checked: true },
+  choose_fixed_decimals: {
+    ticked: ['cars'],
+    mode: 'fixed',
+    amounts: { funmi: '400.505' },
+    rest: 'obi',
+    checked: true,
+  },
+  choose_fixed_over: {
+    ticked: ['dinner'],
+    mode: 'fixed',
+    amounts: { funmi: '6,800.00' },
+    rest: 'obi',
+    checked: true,
+  },
 };
 
 const LONG_NOTE =
-  'Covering the band for the Saturday, the extra hour they asked for, and the sound engineer who comes with them, as agreed with Adaeze on the phone; he also offered to pay for the dance floor lights if the venue asks';
+  'Adaeze’s grandparents, who asked to cover the dinner and the drinks for the family table and the cars on both days, paid in two parts, the first before the end of the month and the rest after the event.';
+const LONG_NAME = 'Mr and Mrs Adeyemi-Okonkwo, on behalf of the whole family in Lagos';
 
 const SENT: Partial<Record<PayersState, SendKind>> = {
   send_busy: 'busy',
@@ -710,6 +750,7 @@ export function startOf(state: string, asked: string | null = null): PayersStart
       payers: SAMPLE_PAYERS.map((one) => (one.id === 'obi' ? { ...one, passphrase: true } : one)),
     };
   if (name === 'link_all_revoked') book = withLink(SAMPLE_BOOK, 'bakare', 'revoked');
+  if (name === 'payer_renamed') book = editPayer(SAMPLE_BOOK, 'obi', RENAMED, 'Adaeze’s parents');
   if (name === 'split_flag') book = FLAGGED;
   if (name === 'payer_cap')
     book = {
@@ -744,12 +785,18 @@ export function startOf(state: string, asked: string | null = null): PayersStart
         : name === 'note_too_long'
           ? {
               id: null,
-              name: KAYODE.name,
+              name: 'Grandma Ada',
               note: LONG_NOTE,
               error: null,
               noteError: noteProblem(LONG_NOTE),
             }
-          : null;
+          : name === 'payer_blank'
+            ? { id: null, name: '', note: '', error: nameProblem('', book.payers) }
+            : name === 'payer_long_name'
+              ? { id: null, name: LONG_NAME, note: '', error: nameProblem(LONG_NAME, book.payers) }
+              : name === 'payer_edit'
+                ? { id: 'obi', name: RENAMED, note: 'Adaeze’s parents', error: null }
+                : null;
   const pane = name === 'link_all_revoked' ? 'bakare' : name === 'web_share' ? 'couple' : null;
 
   return {
@@ -852,6 +899,27 @@ export const PAYERS_PAGES: readonly DemoGroup[] = [
       { to: at('payers_not_live'), name: 'Not live, with Try now (payers_not_live)' },
       { to: at('choose_no_payer'), name: 'One payer, none chosen (choose_no_payer)' },
       { to: at('choose_no_rest'), name: 'Fixed, no one covers what is left (choose_no_rest)' },
+      { to: at('payer_blank'), name: 'A name left blank (payer_blank)' },
+      { to: at('payer_long_name'), name: 'A name over 60 characters (payer_long_name)' },
+      { to: at('payer_edit'), name: 'Edit Mr and Mrs Obi (payer_edit)' },
+      { to: at('payer_renamed'), name: 'Renamed: Chidi and Ngozi Obi everywhere (payer_renamed)' },
+      {
+        to: at('choose_percent_range'),
+        name: 'Percentages below 0 and above 100 (choose_percent_range)',
+      },
+      {
+        to: at('choose_percent_decimals'),
+        name: 'A percentage with three decimal places (choose_percent_decimals)',
+      },
+      { to: at('choose_fixed_blank'), name: 'Fixed, with no amount (choose_fixed_blank)' },
+      {
+        to: at('choose_fixed_decimals'),
+        name: 'Fixed, an amount with too many decimal places (choose_fixed_decimals)',
+      },
+      {
+        to: at('choose_fixed_over'),
+        name: 'Fixed amounts over the least Dinner can cost (choose_fixed_over)',
+      },
     ],
   },
 ];

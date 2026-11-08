@@ -62,6 +62,7 @@ import {
   whatProblem,
   removedWords,
   sumLines,
+  WELCOME_DRINKS,
   type Markups,
   MARKUPS,
   PLANNING_FEE,
@@ -140,7 +141,7 @@ interface Removed {
 }
 
 function dialogOf(state: string): Dialog {
-  if (state.startsWith('add_cost')) return 'addCost';
+  if (state.startsWith('add_cost') && state !== 'add_cost_added') return 'addCost';
   if (state.startsWith('markup')) return 'markup';
   if (state.startsWith('due_')) return 'dueNow';
   if (state.startsWith('save_')) return 'save';
@@ -255,14 +256,34 @@ export function BudgetHomeContent({
   const [opened, setOpened] = useState<string | null>(() => openedOf(first));
   const [removed, setRemoved] = useState<Removed | null>(() => removedOf(first, heads));
   const [dialog, setDialog] = useState<Dialog>(() => dialogOf(first));
-  const [lit, setLit] = useState<string | null>(first === 'rate_saved' ? 'dinner' : null);
+  const addedId = first === 'add_cost_added' ? WELCOME_DRINKS.id : null;
+  const [lit, setLit] = useState<string | null>(first === 'rate_saved' ? 'dinner' : addedId);
   const [line, setLine] = useState<{ id: string; words: string; ok: boolean } | null>(() =>
     first === 'rate_saved'
       ? { id: 'dinner', words: 'Saved.', ok: true }
       : first === 'rate_failed'
         ? { id: 'dinner', words: 'Not saved. The rate is back to £68.00 a head.', ok: false }
-        : null,
+        : addedId != null
+          ? { id: addedId, words: 'Saved.', ok: true }
+          : null,
   );
+  const [flash, setFlash] = useState(addedId != null);
+  const [toRow, setToRow] = useState<string | null>(addedId);
+
+  useEffect(() => {
+    if (toRow == null) return;
+    let tries = 20;
+    let timer = 0;
+    // The dialog hands focus back to its opener first, so wait until the page is no longer inert.
+    const go = () => {
+      const row = document.querySelector<HTMLElement>(`[data-line="${toRow}"] button`);
+      if (row != null && row.closest('[inert]') == null) row.focus();
+      else if (tries-- > 0) timer = window.setTimeout(go, 50);
+    };
+    timer = window.setTimeout(go, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [toRow]);
   const margin =
     enterprise &&
     (MARGIN_HOME.includes(first) || first.startsWith('markup') || first === 'margin_live');
@@ -354,7 +375,7 @@ export function BudgetHomeContent({
           event={event}
           sum={sum}
           heads={heads}
-          washed={first === 'live_heads' || first === 'rate_saved'}
+          washed={first === 'live_heads' || first === 'rate_saved' || flash}
           tagsWashed={ceilingLive}
           ceiling={wholeCeiling?.state ?? null}
           next={next}
@@ -487,6 +508,8 @@ export function BudgetHomeContent({
             setDialog(null);
             setLit(added.id);
             setLine({ id: added.id, words: 'Saved.', ok: true });
+            setFlash(true);
+            setToRow(added.id);
           }}
         />
       )}
@@ -816,7 +839,7 @@ function Costs({
             {lines
               .filter((one) => one.category === category)
               .map((one) => (
-                <li key={one.id}>
+                <li key={one.id} data-line={one.id}>
                   {opened === one.id ? (
                     <OpenedCost
                       line={one}
@@ -1438,13 +1461,20 @@ function AddCostDialog({
   const [basis, setBasis] = useState<CostLine['basis'] | null>(
     blank || refused ? null : fixedStart ? 'fixed' : 'perHead',
   );
-  const [rate, setRate] = useState(fixedStart ? '450' : blank || refused ? '' : '12');
+  const wrongRate = {
+    add_cost_negative: '−12',
+    add_cost_nan: 'twelve',
+    add_cost_decimals: '12.505',
+  }[first as 'add_cost_nan'];
+  const [rate, setRate] = useState(
+    fixedStart ? '450' : blank || refused ? '' : (wrongRate ?? '12'),
+  );
   const [tried, setTried] = useState(
-    blank || first === 'add_cost_long_name' || first === 'add_cost_long_note',
+    blank || first === 'add_cost_long_name' || first === 'add_cost_long_note' || wrongRate != null,
   );
   const [server, setServer] = useState<string | null>(refused ? STAFF_REFUSED : null);
   const [failed, setFailed] = useState(first === 'add_cost_failed');
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState(first === 'add_cost_adding');
   const whatRef = useRef<HTMLInputElement>(null);
   const categoryRef = useRef<HTMLSelectElement>(null);
   const noteRef = useRef<HTMLInputElement>(null);
@@ -1474,7 +1504,9 @@ function AddCostDialog({
         ? noteRef
         : refused
           ? basisRef
-          : null;
+          : wrongRate != null
+            ? rateRef
+            : null;
 
   function add(): void {
     if (busy) return;
