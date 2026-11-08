@@ -270,6 +270,8 @@ export function BudgetHomeContent({
     );
 
   const sum = sumLines(lines, heads);
+  const wholeCeiling =
+    ceilings.whole == null ? null : ceilingOf('whole', ceilings.whole, lines, heads);
   const due = dueList(payments, vendorName);
   const next = due[0] ?? null;
 
@@ -324,20 +326,14 @@ export function BudgetHomeContent({
           sum={sum}
           heads={heads}
           washed={first === 'live_heads' || first === 'rate_saved'}
-          ceiling={
-            ceilings.whole == null ? null : ceilingOf('whole', ceilings.whole, lines, heads).state
-          }
+          ceiling={wholeCeiling?.state ?? null}
           next={next}
           step={live && !readOnly}
           early={payments.length === 0 && sum.notPriced > 0}
           ceilingLine={
-            ceilings.whole == null
+            wholeCeiling == null || ceilings.whole == null
               ? null
-              : ceilingSentence(
-                  ceilingOf('whole', ceilings.whole, lines, heads).settled,
-                  ceilingOf('whole', ceilings.whole, lines, heads).ifAll,
-                  ceilings.whole,
-                )
+              : ceilingSentence(wholeCeiling.settled, wholeCeiling.ifAll, ceilings.whole)
           }
           onMark={(payment) =>
             onMark != null
@@ -471,6 +467,7 @@ export function BudgetHomeContent({
           onSaved={(next_) => {
             if (currency !== CURRENCY) {
               setDialog(null);
+              tell('The sample stays in pounds, so nothing changed.');
               return;
             }
             setCeilings(next_);
@@ -1055,6 +1052,8 @@ function MarginCosts({
 }) {
   const [opened, setOpened] = useState<string | null>(first === 'margin' ? 'dj' : null);
   const [charged, setCharged] = useState('800');
+  const [chargedTried, setChargedTried] = useState(false);
+  const chargedField = useRef<HTMLInputElement>(null);
   const priced = lines.filter((one) => lineState(one) === 'priced');
   const groups = (Object.keys(CATEGORY_WORDS) as Category[]).filter((category) =>
     priced.some((one) => one.category === category),
@@ -1082,6 +1081,8 @@ function MarginCosts({
                           label="Charged at"
                           value={charged}
                           help={`Cost ${money(cost)}`}
+                          error={chargedTried ? rateProblem(charged, 'amount') : null}
+                          inputRef={chargedField}
                           onChange={setCharged}
                         />
                         {minorOf(charged) < cost && rateProblem(charged) == null && (
@@ -1095,7 +1096,9 @@ function MarginCosts({
                           <TextAction
                             label={W.save}
                             onClick={() => {
-                              if (rateProblem(charged, 'amount') != null) return;
+                              setChargedTried(true);
+                              if (rateProblem(charged, 'amount') != null)
+                                return chargedField.current?.focus();
                               onPrice(one.id, minorOf(charged));
                               setOpened(null);
                             }}
@@ -1110,6 +1113,7 @@ function MarginCosts({
                         ]}
                         end={<Amount value={`${share.toFixed(1)}%`} />}
                         onOpen={() => {
+                          setChargedTried(false);
                           setCharged((price / 100).toFixed(2));
                           setOpened(one.id);
                         }}

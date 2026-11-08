@@ -269,4 +269,35 @@ describe('the Budget page at a desk in A (sc-31779)', () => {
       expect(section('Costs').textContent).toContain('25% markup, the event’s');
     },
   );
+
+  it(
+    'refuses 8OO or an empty Charged at, and says a ceiling saved in another currency changes nothing',
+    SLOW,
+    async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      await open(at('margin'));
+      const field = screen.getByLabelText('Charged at');
+      fireEvent.change(field, { target: { value: '8OO' } });
+      fireEvent.click(within(section('Costs')).getByRole('button', { name: 'Save' }));
+      expect(screen.getByText('Enter a rate of 0 or more, in numbers only.')).toBeTruthy();
+      expect(field.getAttribute('aria-invalid')).toBe('true');
+      expect(document.activeElement).toBe(field);
+      fireEvent.change(field, { target: { value: '' } });
+      fireEvent.click(within(section('Costs')).getByRole('button', { name: 'Save' }));
+      expect(screen.getByText('Enter the amount.')).toBeTruthy();
+      expect(document.activeElement).toBe(field);
+      cleanup();
+
+      await open(at('ceiling_decimals', '&currency=KWD'));
+      const dialog = await screen.findByRole('dialog', {}, SLOW);
+      fireEvent.change(within(dialog).getByLabelText('Transport'), {
+        target: { value: '640.555' },
+      });
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Save the ceiling' }));
+      await act(async () => {
+        vi.advanceTimersByTime(1000);
+      });
+      expect(screen.getByText('The sample stays in pounds, so nothing changed.')).toBeTruthy();
+    },
+  );
 });
