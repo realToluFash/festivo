@@ -1,0 +1,34 @@
+# sc-31788: the Today tab in the account's language on the landscape-native tablet, where Maestro's PORTRAIT draws landscape (sc-23471).
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible: '{{t:todayScreen.tab.today}}'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: top
+- swipe:
+    start: 50%, 80%
+    end: 50%, 35%
+    duration: 500
+- waitForAnimationToEnd
+- takeScreenshot: s1
+- swipe:
+    start: 50%, 80%
+    end: 50%, 35%
+    duration: 500
+- waitForAnimationToEnd
+- takeScreenshot: s2
+- swipe:
+    start: 50%, 80%
+    end: 50%, 35%
+    duration: 500
+- waitForAnimationToEnd
+- takeScreenshot: s3
+- swipe:
+    start: 50%, 80%
+    end: 50%, 35%
+    duration: 500
+- waitForAnimationToEnd
+- takeScreenshot: s4
