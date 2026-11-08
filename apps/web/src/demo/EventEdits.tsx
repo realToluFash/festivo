@@ -50,7 +50,7 @@ export interface PartProps {
 }
 
 /** An edit open in place at a desk: under a 2 px Violet rule, the part's fields, then Cancel and Save, Save in Ink 3 until something changes. */
-function Opened({
+export function Opened({
   label,
   changed,
   verb = W.save,
