@@ -70,6 +70,11 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **8 nov. 2026. Une connexion à deux facteurs qui a expiré** (sc-29979,
+  `signIn.codeTimedOutTitle`, web et app). « La connexion a expiré », puis `endedBody`
+  « Reconnectez-vous pour continuer. ». « La connexion », la tentative en cours, et non
+  « Votre session », que la personne n'a jamais ouverte. L'app joint les deux sur une ligne
+  avec un point : le titre n'en prend pas.
 - **8 nov. 2026. Invités A : la réponse, les deux décomptes et le 412** (sc-3773, #32403).
   "Not sure yet" est « À confirmer », sur la page de l’invité comme sur celle de l’hôte : rien
   ne s’accorde, quand « pas encore sûr » ou « indécis » imposeraient un genre. « À confirmer ·

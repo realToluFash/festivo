@@ -439,7 +439,7 @@
     "noMatch": "Esse e-mail e essa palavra-passe não correspondem.",
     "endedTitle": "A sua sessão foi encerrada",
     "endedBody": "Inicie sessão novamente para continuar.",
-    "codeTimedOutTitle": "That sign-in timed out",
+    "codeTimedOutTitle": "O início de sessão expirou",
     "lockedTitle": "Demasiadas tentativas",
     "lockedBody": "Tente novamente às {{time}}.",
     "lockedReset": "Redefinir a sua palavra-passe",
