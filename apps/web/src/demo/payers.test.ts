@@ -94,15 +94,16 @@ describe('who is paying, worked from the costs (sc-91)', () => {
       expect(parts.reduce((sum, part) => sum + part.part[1], 0)).toBe(rangeOf(one)[1]);
     }
     expect(partsOf(odd, thirds, SAMPLE_BOOK.payers).map((one) => one.part[0])).toEqual([
-      70424, 70424, 70448,
+      70425, 70425, 70446,
     ]);
   });
 
-  it('rounds each part down and gives the cents left over to the largest, the first added between equals', () => {
+  it('rounds each part down and gives the cents left over one each by largest remainder, the first added between equals', () => {
     expect(apportion(10000, [3333, 3333, 3334])).toEqual([3333, 3333, 3334]);
     expect(apportion(1, [5000, 5000])).toEqual([1, 0]);
     expect(apportion(10, [3333, 3333, 3334])).toEqual([3, 3, 4]);
     expect(apportion(100, [5000, 4000], 10000)).toEqual([50, 40]);
+    expect(apportion(123456, [3333, 3333, 3334])).toEqual([41148, 41148, 41160]);
   });
 
   it('never reads Still to come below 0', () => {
