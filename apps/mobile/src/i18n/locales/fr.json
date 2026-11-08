@@ -1972,7 +1972,7 @@
   },
   "todayScreen": {
     "today": "Aujourd’hui",
-    "todayShort": "Today",
+    "todayShort": "Auj.",
     "tomorrow": "demain",
     "allDay": "Toute la journée",
     "starts": "Début : {{name}}",
