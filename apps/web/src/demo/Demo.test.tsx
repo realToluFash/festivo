@@ -187,7 +187,7 @@ describe('the demo', () => {
     expect(screen.queryByRole('menu')).toBeNull();
   });
 
-  it('opens the create-account board from the header, and the footer pages as stand-ins (sc-28981, sc-29061)', async () => {
+  it('opens the create-account board from the header, and the footer’s pages (sc-28981, sc-29061, sc-28982)', async () => {
     await signInBoard();
 
     expect(screen.queryByText('New here?')).toBeNull();
@@ -195,10 +195,10 @@ describe('the demo', () => {
     expect(await screen.findByRole('heading', { name: 'Create your account' })).toBeDefined();
 
     fireEvent.click(screen.getByRole('link', { name: 'Terms' }));
-    expect(await screen.findByRole('heading', { name: 'Terms' })).toBeDefined();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Terms' })).toBeDefined();
 
     fireEvent.click(screen.getByRole('link', { name: 'Privacy' }));
-    expect(await screen.findByRole('heading', { name: 'Privacy' })).toBeDefined();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Privacy notice' })).toBeDefined();
   });
 
   it('returns focus to the language button when a click outside closes the menu', async () => {
@@ -1454,8 +1454,8 @@ describe('the signed-out frame’s foot and ways out (sc-29561)', () => {
     expect(screen.queryByRole('heading', { name: 'Signed in' })).toBeNull();
   });
 
-  it('offers neither way in the Terms and Privacy stand-ins’ header, as any page opens them', async () => {
-    await open('/demo/later?screen=terms', 'Terms');
+  it('offers neither way in a stand-in’s header, as any page opens them', async () => {
+    await open('/demo/later?screen=security', 'Your account › Security');
     expect(screen.queryByText('New to Soirely?')).toBeNull();
     expect(screen.getByRole('link', { name: 'Back to sign in' })).toBeDefined();
   });
