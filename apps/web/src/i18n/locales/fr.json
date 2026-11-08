@@ -439,7 +439,7 @@
     "noMatch": "Cette adresse e-mail et ce mot de passe ne correspondent pas.",
     "endedTitle": "Votre session a été fermée",
     "endedBody": "Reconnectez-vous pour continuer.",
-    "codeTimedOutTitle": "That sign-in timed out",
+    "codeTimedOutTitle": "La connexion a expiré",
     "lockedTitle": "Trop de tentatives",
     "lockedBody": "Réessayez à {{time}}.",
     "lockedReset": "Réinitialiser votre mot de passe",
