@@ -93,7 +93,6 @@ export interface RecoveryState {
   codes: { state: CodeState; cooldownSeconds: number; route: PhoneCodeRoute | null } | null;
 }
 
-/** What the start screen names before anything is sent, and an open request to carry on with. */
 /** What proves the first factor to a recovery: the sign-in's challenge, or a live reset link. */
 export type RecoveryEntry = string | { resetToken: string };
 
@@ -101,6 +100,7 @@ function recoveryEntry(entry: RecoveryEntry): Record<string, string> {
   return typeof entry === 'string' ? { challenge: entry } : entry;
 }
 
+/** What the start screen names before anything is sent, and an open request to carry on with. */
 export interface RecoveryOpening {
   email: string | null;
   phone: string | null;
