@@ -7,7 +7,12 @@ export function UnseenName({ nativeID, children }: { nativeID: string; children:
   if (Platform.OS !== 'android') return null;
 
   return (
-    <Text nativeID={nativeID} importantForAccessibility="no" style={styles.unseen}>
+    <Text
+      nativeID={nativeID}
+      importantForAccessibility="no"
+      pointerEvents="none"
+      style={styles.unseen}
+    >
       {children}
     </Text>
   );

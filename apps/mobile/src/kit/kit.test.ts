@@ -1029,4 +1029,10 @@ describe('a field named on Android by words it never shows (sc-31323)', () => {
     expect(code).not.toMatch(/&&\s*\(?\s*<UnseenName/u);
     expect(code).not.toMatch(/<Text\s+nativeID=\{[^}]+\}\s+importantForAccessibility/u);
   });
+
+  it('never takes a tap meant for what it is drawn over', () => {
+    const code = readFileSync(join(src, 'components/UnseenName.tsx'), 'utf8');
+
+    expect(code).toMatch(/<Text[^>]*\spointerEvents="none"/u);
+  });
 });
