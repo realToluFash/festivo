@@ -45,6 +45,7 @@ import { Settings } from './Settings.tsx';
 import { SETTINGS_PAGES } from './settings.ts';
 import { SIGN_IN_RULES_PAGES } from './signInRules.ts';
 import { SWITCHER_PAGES } from './switcher.ts';
+import { QUOTES_PAGES, forgetBudget } from './quotes.ts';
 import { Today } from './Today.tsx';
 import { TwoFactorBoard } from './TwoFactor.tsx';
 import { VendorsMoved } from './Vendors.tsx';
@@ -179,6 +180,8 @@ export default function Demo() {
 function DemoHome({ from }: { from: string }) {
   const navigate = useNavigate();
 
+  useEffect(() => forgetBudget(), []);
+
   return (
     <main id="content" className="demo-home">
       <header className="demo-home-header">
@@ -230,6 +233,12 @@ function DemoHome({ from }: { from: string }) {
         <h2 id="demo-page-81">81 · Budget and costs</h2>
         <h3>Vendors in A · Summary first · Settings › Vendors · desktop</h3>
         <BoardPages pages={VENDORS_PAGES} />
+      </section>
+
+      <section className="demo-home-page" aria-labelledby="demo-page-81-quotes">
+        <h2 id="demo-page-81-quotes">81 · Budget and costs · quotes and what is due</h2>
+        <h3>Quotes in A · Summary first · desktop</h3>
+        <BoardPages pages={QUOTES_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-36">
