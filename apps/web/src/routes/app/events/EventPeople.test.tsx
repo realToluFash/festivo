@@ -564,6 +564,24 @@ describe('People on an event, at a desk (sc-29915)', () => {
     expect(screen.getByRole('alertdialog', { name: 'Discard your changes?' })).toBeDefined();
   });
 
+  it('closes on Cancel without asking when only a name was typed', async () => {
+    signedIn();
+    await onPeople([TOM]);
+
+    const add = await within(people()).findByRole('button', { name: 'Add by name' });
+    add.focus();
+    fireEvent.click(add);
+    const dialog = screen.getByRole('dialog', { name: 'Add people' });
+    fireEvent.change(within(dialog).getByRole('textbox', { name: 'Name' }), {
+      target: { value: 'Kofi' },
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(screen.queryByRole('dialog')).toBeNull();
+    await waitFor(() => expect(document.activeElement).toBe(add));
+  });
+
   it('keeps Tab inside the ask before removing, never in the dialog behind it', async () => {
     signedIn();
     await onPeople([PRIYA, TOM]);
