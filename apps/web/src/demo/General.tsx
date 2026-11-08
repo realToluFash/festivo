@@ -199,7 +199,13 @@ function Domains({ start, tell }: { start: GeneralStart; tell: Tell }) {
               </span>
               <RowWords
                 title={domain.name}
-                tag={domain.stopped && <Tag kind="waiting" word={D.stopped} />}
+                tag={
+                  domain.stopped ? (
+                    <Tag kind="waiting" word={D.stopped} />
+                  ) : (
+                    domain.proved === true && <Tag kind="yes" word={D.proved} />
+                  )
+                }
                 lines={[domainLine(domain, added)]}
               />
               <button
