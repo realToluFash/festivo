@@ -7,9 +7,16 @@ appId: host.exp.Exponent
 - tapOn:
     id: 'home.switchOrganisation'
 - runFlow:
-    file: scroll-tap.yaml
-    env:
-      ID: switcher.${ORG}
+    when:
+      notVisible:
+        id: switcher.${ORG}
+    commands:
+      - scrollUntilVisible:
+          element:
+            id: switcher.${ORG}
+          timeout: 15000
+- tapOn:
+    id: switcher.${ORG}
 - extendedWaitUntil:
     notVisible:
       id: 'switcher\..+'
