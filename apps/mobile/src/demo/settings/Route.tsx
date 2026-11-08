@@ -9,7 +9,7 @@ import { useLayout } from '../../layout/useLayout.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { OrgSwitcherProvider } from '../OrgSwitcher.tsx';
 import { switcherStateOf } from '../OrgSwitcherModel.ts';
-import { type CoverLayout, PHONE_TAB_BAR, type Tab } from '../../components/TodayCover.tsx';
+import { PHONE_TAB_BAR, type Tab } from '../../components/TodayCover.tsx';
 import type { Tell } from '../../components/TodayParts.tsx';
 import { useCoverStatusBar } from '../Welcome.tsx';
 import { AccountSection } from './Account.tsx';
@@ -23,6 +23,7 @@ import { SecuritySection } from './Security.tsx';
 import { SettingsColumn, SettingsHome, sectionsFor } from './SettingsHome.tsx';
 import { SignInRulesSection } from './SignInRules.tsx';
 import {
+  layoutOf,
   type Shell,
   ShellContext,
   type ShellSection,
@@ -57,10 +58,6 @@ export function settingsHref(viewer: Viewer, section: ShellSection | null, state
   const path = section == null ? '/demo/settings' : `/demo/settings/${slugOf(section)}`;
 
   return `${path}${query === '' ? '' : `?${query}`}` as Href;
-}
-
-export function layoutOf(kind: ReturnType<typeof useLayout>['kind']): CoverLayout {
-  return kind === 'phone' ? 'phone' : kind === 'tabletPortrait' ? 'portrait' : 'landscape';
 }
 
 /** Settings in B, on sample data: the list, and each section's page under it. */

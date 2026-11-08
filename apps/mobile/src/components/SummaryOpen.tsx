@@ -7,7 +7,7 @@ import { Text } from './Text.tsx';
 import { tokens } from '../theme/tokens.ts';
 import { Glyph } from './Glyph.tsx';
 import { Row, type RowProps, type TagKind } from './SummaryRows.tsx';
-import { useShell } from './settingsShell.ts';
+import { useShellLayout } from './settingsShell.ts';
 import { PHONE_TAB_BAR } from './TodayCover.tsx';
 
 const hidden = {
@@ -139,12 +139,12 @@ export function OpenRow({
 
 /** How far above the screen's foot an opened row has to end to be clear of the tab bar. */
 export function useRowClear(): number {
-  const shell = useShell();
+  const layout = useShellLayout();
   const insets = useSafeAreaInsets();
 
   return (
     Math.max(insets.bottom, tokens.spaceLg) +
-    (shell.layout === 'phone' ? PHONE_TAB_BAR + tokens.spaceLg : 0) +
+    (layout === 'phone' ? PHONE_TAB_BAR + tokens.spaceLg : 0) +
     tokens.spaceLg
   );
 }

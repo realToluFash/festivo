@@ -36,7 +36,7 @@ import { useModalOpen } from '../updateRequired.ts';
 import { Glyph } from './Glyph.tsx';
 import { AskLayer, type AskProps } from './AskLayer.tsx';
 import { TextAction, TurningMark } from './SummaryRows.tsx';
-import { useShell } from './settingsShell.ts';
+import { useShellLayout } from './settingsShell.ts';
 
 export { AskLayer, type AskProps } from './AskLayer.tsx';
 
@@ -185,7 +185,7 @@ export function FocusedScreen({
   children: ReactNode;
   testID?: string;
 }) {
-  const { layout } = useShell();
+  const layout = useShellLayout();
   const insets = useSafeAreaInsets();
   const phone = layout === 'phone';
   const asking = ask != null;
