@@ -11,8 +11,15 @@ appId: host.exp.Exponent
     element:
       id: 'timeZone.change'
     timeout: 30000
+# Settled first, or on iOS the tap lands where Change was mid-scroll and the sheet never opens.
+- waitForAnimationToEnd
 - tapOn:
     id: 'timeZone.change'
+# The flow fails here, rather than typing into nothing, when the sheet never opens. sc-32521.
+- extendedWaitUntil:
+    visible:
+      id: 'timeZone.search'
+    timeout: 15000
 - tapOn:
     id: 'timeZone.search'
 - inputText: ${QUERY}

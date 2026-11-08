@@ -2974,6 +2974,15 @@ describe('the flows a batch runs', () => {
         /ASK: \/reload(?:\s|#.*)+- runFlow:\s+when:\s+true: \$\{!output\.helper\.reloaded\}\s+file: reopen\.yaml[\s\S]*openLink: \$\{METRO_URL\}\/--\//,
       );
       expect(reset).not.toMatch(/when:\s+(not)?[vV]isible/);
+      expect(reset.trimEnd().endsWith('- runFlow: signed-out.yaml')).toBe(true);
+      for (const code of ['en', 'es', 'fr', 'pt']) {
+        expect(catalogues[code].welcome.withEmail).toMatch(resetSettled);
+      }
+      const signedOut = readFileSync(join(target, 'batch/signed-out.yaml'), 'utf8');
+      expect(signedOut).not.toMatch(/when:\s+visible/);
+      expect(signedOut).toMatch(
+        /when:\s+true: \$\{output\.signedOut\}\s+commands:\s+- runFlow: sign-in-form\.yaml/,
+      );
       expect(readdirSync(join(target, 'batch')).filter((f) => f.includes('save-password'))).toEqual(
         [],
       );

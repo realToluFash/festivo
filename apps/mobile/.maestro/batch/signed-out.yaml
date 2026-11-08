@@ -1,0 +1,20 @@
+# Signs ${EMAIL} back in from Welcome, with or without You were signed out, and settles on
+# Home as reset.yaml does. Decided by notVisible on Welcome alone, which returns within half a
+# second when Welcome is absent, the usual case, where a visible lookup waits out seven. sc-32521.
+appId: host.exp.Exponent
+---
+- evalScript: ${output.signedOut = true}
+- runFlow:
+    when:
+      notVisible: '{{t:any:welcome.withEmail}}'
+    commands:
+      - evalScript: ${output.signedOut = false}
+- runFlow:
+    when:
+      true: ${output.signedOut}
+    commands:
+      - runFlow: sign-in-form.yaml
+      - openLink: ${METRO_URL}/--/
+      - extendedWaitUntil:
+          visible: '{{t:any:home.signedInTo}}|{{t:any:todayScreen.tab.today}}|{{t:any:noOrganisation.title}}|{{t:any:steps.organisationTitle}}|{{t:any:steps.invitedTitle}}|{{t:any:signInRules.dueSetUp}}|{{t:any:signInRules.unlinkedLink}}|{{t:any:signInRules.gateTitle}}|{{t:any:signInRules.changedSee}}|{{t:any:signInRules.overdueTitle}}'
+          timeout: 30000
