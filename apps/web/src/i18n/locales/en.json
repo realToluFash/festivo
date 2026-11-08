@@ -2119,7 +2119,7 @@
     "changedFirst": "{{name}} just changed this. Your change was not saved.",
     "notSaved": "This change was not saved.",
     "deletePlan": "Delete the plan",
-    "deletePlanLine": "Asks first, and names what goes.",
+    "deletePlanLine": "Asks first, and lists what it deletes.",
     "deletePlanAsk": "Delete the plan?",
     "deletePlanDeletes": "This also deletes {{counts}}.",
     "deletePlanSeated_one": "{{count, number}} seated guest moves to Without a seat; the guest list does not change.",
