@@ -540,7 +540,6 @@ export function linkWords(link: LinkState, locale: string, passphrase = false): 
 export type View = { page: 'home' } | { page: 'payers' } | { page: 'payer'; key: PayerKey };
 export type Refusal = 'paid' | 'cancelled' | 'currency' | 'plan';
 export type CeilingLive = 'set' | 'changed' | 'cleared';
-/** What a live change moved, so only its figures wash Tint (sc-85, sc-93: a changed figure washes, nothing else). */
 export type Washing = 'rate' | 'ceiling' | 'payers';
 export type ReminderKind = keyof typeof REMINDERS;
 
@@ -641,7 +640,7 @@ export function roomShared(): { payers: Payer[]; vendorPayers: VendorPayers } {
   };
 }
 
-/** Whether a part of the Budget tab washes: only what the arriving change moved (a rate moves the totals and the ceiling's sentence). */
+/** Only what an arriving change moved washes Tint (sc-85, sc-93); a rate also moves the ceiling's sentence. */
 export function washes(m: BudgetModel, part: 'totals' | 'ceiling' | 'payer'): boolean {
   if (part === 'totals') return m.wash === 'rate';
   if (part === 'ceiling') return m.wash === 'ceiling' || m.wash === 'rate';
