@@ -801,7 +801,6 @@
     "newFor": "Para {{email}}.",
     "newPassword": "Nueva contraseña",
     "passwordBlank": "Introduzca una nueva contraseña.",
-    "tooShort": "Use at least {{count, number}} characters.",
     "signsOut": "Al establecerla, se cierra la sesión en todos los demás dispositivos. Este sigue conectado.",
     "save": "Establecer contraseña e iniciar sesión",
     "saving": "Estableciéndola…",

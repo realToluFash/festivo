@@ -801,7 +801,6 @@
     "newFor": "Pour {{email}}.",
     "newPassword": "Nouveau mot de passe",
     "passwordBlank": "Saisissez un nouveau mot de passe.",
-    "tooShort": "Use at least {{count, number}} characters.",
     "signsOut": "Le choisir vous déconnecte de tous les autres appareils. Celui-ci reste connecté.",
     "save": "Enregistrer et se connecter",
     "saving": "Enregistrement…",

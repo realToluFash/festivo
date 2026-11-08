@@ -779,7 +779,6 @@
     "newFor": "For {{email}}.",
     "newPassword": "New password",
     "passwordBlank": "Enter a new password.",
-    "tooShort": "Use at least {{count, number}} characters.",
     "signsOut": "Setting it signs you out on every other device. This one stays signed in.",
     "save": "Set password and sign in",
     "saving": "Setting it…",

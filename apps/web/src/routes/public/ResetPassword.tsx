@@ -215,7 +215,7 @@ export function ResetPassword() {
   const error =
     checks.errors.password ??
     refusal ??
-    (short ? t('recovery.tooShort', { count: PASSWORD_MINIMUM_LENGTH }) : null);
+    (short ? t('register.tooShort', { count: PASSWORD_MINIMUM_LENGTH }) : null);
 
   return (
     <AuthPage bare end={null}>

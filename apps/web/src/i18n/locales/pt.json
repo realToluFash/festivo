@@ -801,7 +801,6 @@
     "newFor": "Para {{email}}.",
     "newPassword": "Nova palavra-passe",
     "passwordBlank": "Introduza uma nova palavra-passe.",
-    "tooShort": "Use at least {{count, number}} characters.",
     "signsOut": "Defini-la encerra a sessão em todos os outros dispositivos. Neste, a sessão mantém-se iniciada.",
     "save": "Definir palavra-passe e iniciar sessão",
     "saving": "A defini-la…",
