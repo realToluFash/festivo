@@ -26,7 +26,11 @@ appId: host.exp.Exponent
 - openLink: ${METRO_URL}/--/unreachable
 - extendedWaitUntil:
     visible:
-      id: 'welcome.notice'
+      id: 'unreachable.retry'
     timeout: 30000
+- extendedWaitUntil:
+    visible:
+      id: 'welcome.notice'
+    timeout: 20000
 - waitForAnimationToEnd
 - takeScreenshot: ${TAG}-unreachable
