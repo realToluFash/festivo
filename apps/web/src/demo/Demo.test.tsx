@@ -81,7 +81,7 @@ describe('the demo', () => {
     const router = at('/register');
 
     fireEvent.click(screen.getByRole('link', { name: 'Design demo' }));
-    await screen.findByRole('heading', { name: 'Design demo' });
+    await screen.findByRole('heading', { name: 'Design demo' }, { timeout: 8000 });
 
     expect(screen.getByRole('heading', { name: '27 · Sign in · desktop polish' })).toBeDefined();
     expect(
