@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next';
 import { FocusEdge, focusChecked, focusRefused, useHeld } from '../components/Field.tsx';
 import { Text } from '../components/Text.tsx';
 import { codeProps, fieldName, refusedHint, refusedName } from '../kit/fields.ts';
+import { useBoldText } from '../theme/boldText.ts';
 import { inputFaced } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
 import { tap } from './haptics.ts';
@@ -58,6 +59,7 @@ export function CodeBoxes({
   const input = useRef<TextInputInstance>(null);
   const [focused, setFocused] = useState(false);
   const [wrong, setWrong] = useState(false);
+  const bold = useBoldText();
   const { shaken, shake } = useShake();
   const holding = useHeld(done, value, undefined, (text) => {
     const digits = codeDigits(text);
@@ -120,7 +122,7 @@ export function CodeBoxes({
         selectionColor="transparent"
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
-        style={inputFaced(styles.input)}
+        style={inputFaced(styles.input, 'sans', bold)}
         aria-invalid={wrong}
         testID={testID}
       />
