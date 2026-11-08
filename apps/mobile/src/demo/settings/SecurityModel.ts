@@ -1,7 +1,7 @@
 import { emailProblem, meetsPasswordLength, PASSWORD_MINIMUM_LENGTH } from '@soirely/domain';
 
 import { SAMPLE } from '../samples.ts';
-import { CODE_HELP, CODE_SAYS, type ProofAsks } from './AccountModel.ts';
+import { CODE_HELP, CODE_SAYS, type SampleProofAsks } from './AccountModel.ts';
 import { authenticatorProblem, plural, sentCodeProblem } from './AccountSample.ts';
 import {
   BREACHED_PASSWORD,
@@ -347,7 +347,7 @@ export function proofAsks(
   provider: Provider,
   ways: Ways,
   twoFactor: boolean,
-): ProofAsks {
+): SampleProofAsks {
   const codeOnly = proof === 'turnOff' || proof === 'newCodes';
   const instead = codeOnly || ways.password ? null : (linkedProviders(ways)[0] ?? null);
   const verb = proof === 'link' ? 'link' : 'unlink';

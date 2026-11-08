@@ -25,7 +25,8 @@ import {
 import { SEND_MS } from './general.ts';
 import { ProofFields } from './MembersPerson.tsx';
 import { HOLD_MS } from './notifications.ts';
-import { type SettingsSay, type Viewer, copyText } from './settings.ts';
+import { RecordRows } from './RecordRows.tsx';
+import type { SettingsSay, Viewer } from './settings.ts';
 import {
   Ask,
   Avatar,
@@ -35,7 +36,6 @@ import {
   Head,
   Note,
   RedAction,
-  RowWords,
   TextAction,
 } from '../components/SettingsParts.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
@@ -234,7 +234,6 @@ export function ClaimDialog({
   onClaim: (claim: 'found' | 'withdrawn') => void;
 }) {
   const [check, setCheck] = useState(start.check);
-  const [copied, setCopied] = useState(start.copied);
   const [ask, setAsk] = useState(start.ask);
   const missed = useRef(start.check === 'missing');
   const busy = check === 'checking' || check === 'held';
@@ -274,26 +273,7 @@ export function ClaimDialog({
         <section className="desk-group-in">
           <Head title={`Prove you control ${DOMAIN}`} level={3} />
           <Note>{`Add this TXT record to the DNS for ${DOMAIN}. The value is new for this claim.`}</Note>
-          <ul className="desk-rows">
-            {CLAIM_RECORD.map((part) => (
-              <li key={part.label} className="desk-row">
-                <RowWords title={part.value} lines={[part.label]} />
-                <TextAction
-                  label={copied === part.label ? 'Copied' : 'Copy'}
-                  before={copied === part.label ? 'tick' : 'copy'}
-                  onClick={() =>
-                    void copyText(part.value).then(
-                      () => {
-                        setCopied(part.label);
-                        tell(`${part.label} copied.`);
-                      },
-                      () => undefined,
-                    )
-                  }
-                />
-              </li>
-            ))}
-          </ul>
+          <RecordRows parts={CLAIM_RECORD} tell={tell} copiedFirst={start.copied} />
           <p className="desk-foot">{`We check every hour until ${say.deadline(DEADLINES.claim)}.`}</p>
         </section>
         <div role="status" className="desk-said">

@@ -8,6 +8,7 @@ import { SETTLED_MS } from '../../components/Screen.tsx';
 import { moveScreenReaderFocus } from '../../components/screenReaderFocus.ts';
 import type { TextHandle } from '../../components/Text.tsx';
 import { ledEvents } from './MembersHandover.ts';
+import { MANAGED_WORDS } from './DataWords.ts';
 import { HandoverAsk, LeadsBlock, LeadsNotIn } from './MembersHandover.tsx';
 import { handedLines, HANDOVER_WORDS } from './MembersHandoverWords.ts';
 import { useLoad } from './MembersLoading.tsx';
@@ -54,6 +55,7 @@ export interface PersonOpening {
   handover: HandoverStart | null;
   leadsLoad: Load;
   said: readonly string[] | null;
+  otherOrganisations?: number | null;
 }
 
 /** Somebody's page: the page stays as people are picked beside the list, and what is on it starts afresh. */
@@ -198,6 +200,9 @@ function PersonBody({
           <OnCard key={line} ref={index === 0 ? firstLine : undefined} text={line} />
         ))}
       </SummaryCard>
+      {opening.otherOrganisations != null && (
+        <Line text={MANAGED_WORDS.alsoMember(opening.otherOrganisations)} />
+      )}
       {suspendedNow && viewer.manages && !leadsIn && (
         <LeadsNotIn name={person.name} failed={leadsLoad === 'failed'} onRetry={loadLeads} />
       )}

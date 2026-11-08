@@ -5,6 +5,7 @@ import { Link, useLocation, useNavigate, useSearchParams } from 'react-router';
 import { offButton } from '../offButton.ts';
 import { offField } from '../offField.ts';
 import { BoardPage, HaveAccount, OrLine, Providers, SignedInAs } from './BoardPage.tsx';
+import { ManagedBanner } from './managed.tsx';
 import {
   type Answer,
   Answers,
@@ -466,11 +467,14 @@ export function Details({
   flow,
   arrival,
   offer: offered,
+  managed = false,
 }: {
   state: string;
   flow: Flow;
   arrival?: Arrival;
   offer?: Offer;
+  /** The address's organisation manages it (sc-563): nothing offers to start another. */
+  managed?: boolean;
 }) {
   const navigate = useNavigate();
   const refusedAtOpening = state === 'refused';
@@ -587,7 +591,12 @@ export function Details({
           </div>
 
           {offer === 'company' ? (
-            <DomainOffer busy={busy} onAsk={ask} onStartOwn={() => setOffer(null)} />
+            <DomainOffer
+              busy={busy}
+              managed={managed}
+              onAsk={ask}
+              onStartOwn={() => setOffer(null)}
+            />
           ) : (
             <>
               {offer === 'invitation' && (
@@ -688,10 +697,12 @@ export function Details({
 
 function DomainOffer({
   busy,
+  managed,
   onAsk,
   onStartOwn,
 }: {
   busy: boolean;
+  managed: boolean;
   onAsk: () => void;
   onStartOwn: () => void;
 }) {
@@ -718,9 +729,18 @@ function DomainOffer({
           {busy ? 'Asking…' : 'Ask to join'}
         </button>
       </div>
-      <button className="button demo-wide" type="button" {...offButton(busy)} onClick={onStartOwn}>
-        Start my own organisation
-      </button>
+      {managed ? (
+        <ManagedBanner level={3} />
+      ) : (
+        <button
+          className="button demo-wide"
+          type="button"
+          {...offButton(busy)}
+          onClick={onStartOwn}
+        >
+          Start my own organisation
+        </button>
+      )}
     </section>
   );
 }

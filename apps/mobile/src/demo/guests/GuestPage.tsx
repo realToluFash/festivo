@@ -7,7 +7,7 @@ import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { AlertLine } from '../events/EventEdits.tsx';
 import type { Shown } from '../events/EventsModel.ts';
-import { LineIcon } from '../settings/AccountCard.tsx';
+import { LineIcon } from '../../components/AccountCard.tsx';
 import { Pill } from '../../components/SettingsParts.tsx';
 import { Row, RowList, TextAction } from '../../components/Summary.tsx';
 import { type Role, dayWords, invitedWords, replyLine, replyParts } from './GuestsModel.ts';

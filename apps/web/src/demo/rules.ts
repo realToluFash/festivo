@@ -315,6 +315,7 @@ export const WAYS_IN_PAGES: { name: string; states: { name: string; to: string }
       { name: 'Already a member', to: way('ask', 'member') },
       { name: 'Cooling off', to: way('ask', 'cooling') },
       { name: 'The link does not work', to: way('ask', 'dead') },
+      { name: 'Managed by Ire Events: refused', to: way('ask', 'managed') },
     ],
   },
   {
@@ -336,6 +337,7 @@ export const WAYS_IN_PAGES: { name: string; states: { name: string; to: string }
       { name: 'Your company is here', to: way('details', 'company') },
       { name: 'An invitation waiting', to: way('details', 'invitation') },
       { name: 'Waiting for Ire Events', to: way('waiting') },
+      { name: 'Managed by Ire Events: no Start my own', to: way('details', 'managed') },
     ],
   },
   {

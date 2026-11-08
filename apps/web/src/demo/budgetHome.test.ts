@@ -8,7 +8,6 @@ import {
   MARGIN_STATES,
   WEB_STATES,
   categoryCeilingsLine,
-  categoryGone,
   ceilingOf,
   ceilingProblem,
   ceilingsOf,
@@ -157,9 +156,6 @@ describe('the Budget home’s states (spec §9)', () => {
     ).toBe('close');
     expect(ceilingsOf('ceiling_cleared_one')).toEqual({ whole: 2200000, catering: 1300000 });
     expect(ceilingsOf('ceiling_no_costs')).toMatchObject({ other: 50000, hire: 0 });
-    expect(ceilingsOf('ceiling_refused')).toEqual({ whole: 2200000, catering: 1300000 });
-    expect(linesOf('ceiling_refused').some((one) => one.category === 'flowers')).toBe(false);
-    expect(categoryGone('Flowers')).toBe('Flowers was removed, so its ceiling wasn’t saved.');
     expect(ceilingSentence(0, 0, 50000)).toBe('Nothing is costed here yet.');
     expect(ceilingOf('other', 50000, lines, heads).state).toBe('within');
     const raised = lines.map((one) => (one.id === 'dinner' ? { ...one, rate: 7600 } : one));

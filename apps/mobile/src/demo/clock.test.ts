@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { formatTimeOfDay } from '@soirely/domain';
 import { describe, expect, it } from 'vitest';
 
-import { writtenTime } from './clock.ts';
+import { writtenSecond, writtenTime } from './clock.ts';
 
 const TWELVE_HOUR = /\b(AM|PM)\b|a\.m\.|p\.m\./u;
 
@@ -21,6 +21,18 @@ function twelveHourIn(text: string): string[] {
   const written = [...text.matchAll(/\d[\s\u202f]?(AM|PM)\b/gu)].map((m) => m[0]);
 
   return [...asked, ...written];
+}
+
+/** A time asked of Intl in the reader's locale, which only writtenTime may do; en-GB is a form or comparison value, never read. */
+function timeByHand(text: string): string[] {
+  return [...text.matchAll(/\bhour: ['"]/gu)]
+    .filter(
+      (m) =>
+        !/DateTimeFormat\('en-GB', \{[^}]*$/u.test(
+          text.slice(Math.max(0, (m.index ?? 0) - 120), m.index ?? 0),
+        ),
+    )
+    .map((m) => m[0]);
 }
 
 function sources(dir: string): string[] {
@@ -46,6 +58,13 @@ describe('every time in the app’s demo, on the 24-hour clock (sc-31722)', () =
     expect(writtenTime('2026-11-04T20:05:00Z', 'en-US', 'Africa/Lagos')).toBe('21:05');
   });
 
+  it('reads a moment to the second on the 24-hour clock of the zone it names: 09:12:44 in Lagos', () => {
+    for (const locale of ['en-US', 'en-GB', 'fr-FR']) {
+      expect(writtenSecond('2026-10-17T08:12:44Z', locale, 'Africa/Lagos')).toBe('09:12:44');
+    }
+    expect(writtenSecond('2026-10-17T20:12:44Z', 'en-US', 'Africa/Lagos')).toBe('21:12:44');
+  });
+
   it('reads a moment with no zone on the reader’s own clock, as the product’s formatTimeOfDay does', () => {
     const at = new Date('2026-10-12T09:14:00Z');
 
@@ -65,14 +84,27 @@ describe('every time in the app’s demo, on the 24-hour clock (sc-31722)', () =
     expect(twelveHourIn('Ends at 18:00. PMs and AMs are words.')).toEqual([]);
   });
 
-  it('is the one home: no screen asks Intl for a 12-hour clock or writes AM or PM itself', () => {
+  it('catches a reader’s time formatted outside writtenTime, even on the 24-hour cycle', () => {
+    expect(
+      timeByHand(
+        "new Intl.DateTimeFormat(locale, { timeZone: ZONE, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })",
+      ),
+    ).not.toEqual([]);
+    expect(
+      timeByHand(
+        "new Intl.DateTimeFormat('en-GB', {\n    timeZone,\n    hour: '2-digit',\n    minute: '2-digit',\n    hourCycle: 'h23',\n  })",
+      ),
+    ).toEqual([]);
+  });
+
+  it('is the one home: no screen asks Intl for a reader’s time or writes AM or PM itself', () => {
     const files = [join('src', 'demo'), join('app', 'demo')]
       .flatMap(sources)
       .filter((path) => !path.endsWith('clock.ts'));
     const offenders = files.filter((path) => {
       const text = readFileSync(path, 'utf8');
 
-      return twelveHourIn(text).length > 0;
+      return twelveHourIn(text).length > 0 || timeByHand(text).length > 0;
     });
 
     expect(files.length).toBeGreaterThan(20);

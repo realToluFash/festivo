@@ -71,5 +71,5 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd
 - assertVisible:
     id: 'settings.account'
-- assertVisible: '{{t:signInRules.readIntro}}'
+- assertVisible: '{{t:signInRules.stand.whereTitle}}'
 - takeScreenshot: signInRules-beside

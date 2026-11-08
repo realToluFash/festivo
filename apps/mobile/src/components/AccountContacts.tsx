@@ -1,21 +1,20 @@
 import { contactActions, contactsLeft } from '@soirely/domain';
 import type { Ref } from 'react';
 import { StyleSheet, View, type ViewInstance } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
-import { tokens } from '../../theme/tokens.ts';
-import { LEAD_INSET, LineIcon } from './AccountCard.tsx';
 import {
+  type Contact,
   type ContactKind,
   contactLine,
   contactsFoot,
-  KIND_WORDS,
+  KIND_KEYS,
   primaryFirst,
-  WORDS,
-} from './AccountModel.ts';
-import type { Contact } from './AccountSample.ts';
-import { Line, OpenRow, Row, RowList, Section, TextAction } from '../../components/Summary.tsx';
-
-const UNVERIFIED = { kind: 'notyet', word: 'Unverified' } as const;
+} from '../kit/accountPage.ts';
+import { tokens } from '../theme/tokens.ts';
+import { LEAD_INSET, LineIcon } from './AccountCard.tsx';
+import { FieldError } from './Field.tsx';
+import { Line, OpenRow, Row, RowList, Section, TextAction } from './Summary.tsx';
 
 interface OfferRefs {
   sendRef: Ref<ViewInstance>;
@@ -28,6 +27,7 @@ export function ContactsSection({
   kind,
   rows,
   opened,
+  error,
   addRef,
   sendRef,
   promoteRef,
@@ -42,6 +42,8 @@ export function ContactsSection({
   kind: ContactKind;
   rows: readonly Contact[];
   opened: string | null;
+  /** Why the opened row's last step was refused, under its offers. */
+  error?: string | null | undefined;
   addRef: Ref<ViewInstance>;
   onAdd: () => void;
   onBlock: (id: string, block: ViewInstance | null) => void;
@@ -50,28 +52,30 @@ export function ContactsSection({
   onMakePrimary: (row: Contact) => void;
   onRemove: (row: Contact) => void;
 } & OfferRefs) {
-  const words = KIND_WORDS[kind];
+  const { t } = useTranslation();
+  const keys = KIND_KEYS[kind];
   const lead = <LineIcon name={kind === 'email' ? 'mail' : 'phone'} />;
+  const unverified = { kind: 'notyet', word: t('contacts.unverified') } as const;
 
   return (
     <Section
-      title={words.section}
+      title={t(keys.section)}
       right={
         contactsLeft(rows) > 0 ? (
           <TextAction
             ref={addRef}
-            label={words.addTitle}
+            label={t(keys.add)}
             onPress={onAdd}
             testID={`account.${kind}.add`}
           />
         ) : null
       }
-      foot={contactsFoot(kind, rows)}
+      foot={contactsFoot(kind, rows, t)}
     >
       <RowList
         items={primaryFirst(rows).map((row) => {
-          const line = contactLine(kind, row);
-          const tag = row.verified ? null : UNVERIFIED;
+          const line = contactLine(kind, row, t);
+          const tag = row.verified ? null : unverified;
           const label = [row.shown, tag?.word, line].filter(Boolean).join('. ');
           const open = opened === row.id;
 
@@ -103,7 +107,9 @@ export function ContactsSection({
                   testID={`account.${row.id}`}
                 >
                   <Offers
+                    kind={kind}
                     row={row}
+                    error={open ? (error ?? null) : null}
                     sendRef={sendRef}
                     promoteRef={promoteRef}
                     removeRef={removeRef}
@@ -122,7 +128,9 @@ export function ContactsSection({
 }
 
 function Offers({
+  kind,
   row,
+  error,
   sendRef,
   promoteRef,
   removeRef,
@@ -130,11 +138,14 @@ function Offers({
   onMakePrimary,
   onRemove,
 }: {
+  kind: ContactKind;
   row: Contact;
+  error: string | null;
   onVerify: (row: Contact) => void;
   onMakePrimary: (row: Contact) => void;
   onRemove: (row: Contact) => void;
 } & OfferRefs) {
+  const { t } = useTranslation();
   const offers = contactActions(row);
 
   return (
@@ -143,7 +154,7 @@ function Offers({
         {offers.verify && (
           <TextAction
             ref={sendRef}
-            label={WORDS.sendCode}
+            label={t('contacts.sendCode')}
             onPress={() => onVerify(row)}
             testID={`account.${row.id}.send`}
           />
@@ -151,7 +162,7 @@ function Offers({
         {offers.makePrimary && (
           <TextAction
             ref={promoteRef}
-            label={WORDS.makePrimary}
+            label={t(KIND_KEYS[kind].makePrimary)}
             onPress={() => onMakePrimary(row)}
             testID={`account.${row.id}.primary`}
           />
@@ -159,15 +170,16 @@ function Offers({
         {offers.remove && (
           <TextAction
             ref={removeRef}
-            label={offers.askBeforeRemoving ? WORDS.removeAsking : WORDS.remove}
+            label={t(offers.askBeforeRemoving ? 'contacts.removeAsks' : 'contacts.remove')}
             removes
             onPress={() => onRemove(row)}
-            accessibilityLabel={WORDS.remove}
+            accessibilityLabel={t('contacts.remove')}
             testID={`account.${row.id}.remove`}
           />
         )}
       </View>
-      <Line size={14} text={WORDS.removeLine} />
+      <Line size={14} text={t('contacts.removeBody')} />
+      {error != null && <FieldError message={error} answer={error} />}
     </>
   );
 }

@@ -39,6 +39,7 @@ export const ORGANISATION_STATES = [
   'leaveLoading',
   'leaveLoadFailed',
   'delete',
+  'domainBoth',
 ] as const;
 
 export type OrganisationState = (typeof ORGANISATION_STATES)[number];
@@ -64,6 +65,8 @@ export interface OrganisationStart {
   link: 'on' | 'turnedOff' | 'failed';
   transferPicked: boolean;
   deleteMistyped: boolean;
+  /** Joining's domains also proved in Email domains (sc-560), which carry the Proved tag. */
+  proved: readonly string[];
   /** Leave's handover (sc-614): where its Ask opens, and whether the one leaving leads anything in this state's sample. */
   leaving: HandoverStart | null;
   leadsAny: boolean;
@@ -118,6 +121,7 @@ const AT_REST: Omit<OrganisationStart, 'role'> = {
   link: 'on',
   transferPicked: false,
   deleteMistyped: false,
+  proved: [],
   leaving: null,
   leadsAny: true,
   leadsOne: false,
@@ -181,6 +185,8 @@ export function organisationStart(
       return { ...page, role: 'Admin', said: { kind: 'transferred', to: TRANSFERRED_TO } };
     case 'delete':
       return { ...page, screen: 'delete', deleteMistyped: true };
+    case 'domainBoth':
+      return { ...page, proved: [YOUR_DOMAIN] };
   }
 }
 

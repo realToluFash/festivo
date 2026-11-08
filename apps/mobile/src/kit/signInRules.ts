@@ -1,9 +1,4 @@
-import {
-  ApiError,
-  type Membership,
-  type Problem,
-  type SignInRuleChange,
-} from '@soirely/api-client';
+import { ApiError, type Membership, type Problem } from '@soirely/api-client';
 import { type TwoFactorStanding } from '@soirely/domain';
 import { type TFunction } from 'i18next';
 
@@ -158,18 +153,4 @@ export function limitFromElsewhere(
   if (limit == null || limit.organisationId === organisationId) return null;
 
   return { organisation: limit.organisation, days: limit.days };
-}
-
-/** One rule's value as the member's view words it, for what holds now and for what it was. */
-export function ruleValue(t: TFunction, rule: SignInRuleChange['rule'], value: unknown): string {
-  if (rule === 'providerOnly')
-    return t(value === true ? 'signInRules.valueProviderOnly' : 'signInRules.valueAnyMethod');
-  if (rule === 'inactivityTimeoutDays')
-    return typeof value === 'number'
-      ? t('signInRules.valueIdle', { count: value })
-      : t('signInRules.valueNoLimit');
-  if (rule === 'everyoneNeedsTwoFactor')
-    return t(value === true ? 'signInRules.valueEveryone' : 'signInRules.valueNoEveryone');
-
-  return t(value === true ? 'signInRules.valueTwoFactor' : 'signInRules.valueNoTwoFactor');
 }

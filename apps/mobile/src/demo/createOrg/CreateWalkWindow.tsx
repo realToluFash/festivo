@@ -1,6 +1,6 @@
 import { deviceRegion, formattingLocale } from '@soirely/domain';
 import { getCalendars, getLocales } from 'expo-localization';
-import { useIsFocused } from 'expo-router';
+import { router, useIsFocused } from 'expo-router';
 import { setStatusBarStyle } from 'expo-status-bar';
 import { type RefObject, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -60,6 +60,8 @@ import {
   WideCard,
 } from './WalkSteps.tsx';
 import { AskLayer } from '../../components/AskLayer.tsx';
+import { ManagedBanner } from '../Managed.tsx';
+import { SW } from '../OrgSwitcherModel.ts';
 
 const SEND_MS = 1200;
 /** A deep-linked Creating… holds long enough to be looked at, then lands. */
@@ -351,6 +353,19 @@ export function CreateWalkWindow({
         : t('createOrganisation.create')
       : t('steps.continue');
   const behind = walk.asking ? ('no-hide-descendants' as const) : ('auto' as const);
+  const managed = walk.managed;
+  const refusal = (
+    <View style={[styles.refusal, phone && styles.refusalPhone]}>
+      <ManagedBanner
+        onChange={() => {
+          onCancel();
+          setTimeout(() => router.push('/demo/settings/account'), SETTLED_MS);
+        }}
+        testID="createWalk.managed"
+      />
+    </View>
+  );
+  const closeAction = <NavAction label={SW.close} onPress={onCancel} testID="createWalk.close" />;
   const cancelAction = (
     <NavAction label={t('createOrganisation.cancel')} onPress={cancel} testID="createWalk.cancel" />
   );
@@ -384,19 +399,21 @@ export function CreateWalkWindow({
               ]}
             >
               <View style={styles.navSide}>
-                {!creating &&
-                  (walk.step === 1 ? (
-                    cancelAction
-                  ) : (
-                    <NavAction
-                      label={t('steps.back')}
-                      back
-                      onPress={goBack}
-                      testID="createWalk.back"
-                    />
-                  ))}
+                {managed
+                  ? closeAction
+                  : !creating &&
+                    (walk.step === 1 ? (
+                      cancelAction
+                    ) : (
+                      <NavAction
+                        label={t('steps.back')}
+                        back
+                        onPress={goBack}
+                        testID="createWalk.back"
+                      />
+                    ))}
               </View>
-              {look.large ? (
+              {managed ? null : look.large ? (
                 <Bars step={walk.step} duration={240} reduced={reduced} />
               ) : (
                 <Progress
@@ -411,9 +428,10 @@ export function CreateWalkWindow({
                 {!creating && walk.step > 1 && cancelAction}
               </View>
             </View>
-            <View style={[styles.fill, styles.clip]}>{steps}</View>
+            <View style={[styles.fill, styles.clip]}>{managed ? refusal : steps}</View>
             <View
               style={[
+                managed && styles.hidden,
                 styles.foot,
                 { paddingBottom: keysUp ? tokens.spaceLg : insets.bottom + tokens.spaceSm },
               ]}
@@ -473,14 +491,18 @@ export function CreateWalkWindow({
                   <WideCard walk={walk} email={email} />
                   <View style={styles.side}>
                     <View style={styles.top}>
-                      <Progress
-                        step={walk.step}
-                        words={stepWords(walk)}
-                        align="flex-start"
-                        duration={tokens.motionBase}
-                        reduced={reduced}
-                      />
-                      {!creating && cancelAction}
+                      {managed ? (
+                        <View />
+                      ) : (
+                        <Progress
+                          step={walk.step}
+                          words={stepWords(walk)}
+                          align="flex-start"
+                          duration={tokens.motionBase}
+                          reduced={reduced}
+                        />
+                      )}
+                      {managed ? closeAction : !creating && cancelAction}
                     </View>
                     <View
                       style={[fills ? styles.fill : styles.shrink, styles.clip]}
@@ -489,9 +511,9 @@ export function CreateWalkWindow({
                         setFrame((now) => (now.stage === stage ? now : { ...now, stage }));
                       }}
                     >
-                      {steps}
+                      {managed ? refusal : steps}
                     </View>
-                    <View style={styles.wideFoot}>
+                    <View style={[styles.wideFoot, managed && styles.hidden]}>
                       {!creating && walk.step > 1 && (
                         <WalkButton
                           label={t('steps.back')}
@@ -604,6 +626,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
+  hidden: { display: 'none' },
+  refusal: { paddingTop: tokens.spaceXs },
+  refusalPhone: { paddingTop: tokens.spaceXl, paddingHorizontal: tokens.spaceXxl },
   wideFoot: {
     marginTop: 'auto',
     paddingTop: tokens.spaceXs,

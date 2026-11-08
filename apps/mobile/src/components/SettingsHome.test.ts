@@ -3,12 +3,12 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-const home = readFileSync(join('src', 'demo', 'settings', 'SettingsHome.tsx'), 'utf8');
+const home = readFileSync(join('src', 'components', 'SettingsHome.tsx'), 'utf8');
 const rows = readFileSync(join('src', 'components', 'SummaryRows.tsx'), 'utf8');
 
 function style(name: string): string {
   const at = home.indexOf(`  ${name}: `);
-  if (at < 0) throw new Error(`SettingsHome.tsx has no ${name} style.`);
+  if (at < 0) throw new Error(`SettingsHome.tsx in components has no ${name} style.`);
 
   return home.slice(at, home.indexOf('\n  ', at + 1));
 }

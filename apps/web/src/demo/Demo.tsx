@@ -22,7 +22,7 @@ import { EventPage } from './EventPage.tsx';
 import { Events } from './Events.tsx';
 import { EVENTS_PAGES } from './events.ts';
 import { ACCOUNT_PAGES } from './account.ts';
-import { DATA_PAGES } from './dataSettings.ts';
+import { DATA_CONTROL_PAGES } from './dataControlPages.ts';
 import { GENERAL_PAGES } from './general.ts';
 import { MESSAGES_PAGES } from './messages.ts';
 import { SeatingPage } from './Seating.tsx';
@@ -184,7 +184,31 @@ export default function Demo() {
       <Route path="settings/personalisation" element={<Settings open="personalisation" />} />
       <Route path="settings/general" element={<Settings open="general" />} />
       <Route path="settings/sign-in-rules" element={<Settings open="signInRules" />} />
-      <Route path="settings/data" element={<Settings open="data" />} />
+      <Route
+        path="settings/data"
+        element={<KeepQuery to="settings/data-and-control/delete-guest-data" />}
+      />
+      <Route path="settings/data-and-control" element={<Settings open="data" />} />
+      <Route
+        path="settings/data-and-control/email-domains"
+        element={<Settings open="data" page="emailDomains" />}
+      />
+      <Route
+        path="settings/data-and-control/audit-log"
+        element={<Settings open="data" page="auditLog" />}
+      />
+      <Route
+        path="settings/data-and-control/export"
+        element={<Settings open="data" page="export" />}
+      />
+      <Route
+        path="settings/data-and-control/delete-guest-data"
+        element={<Settings open="data" page="deleteGuestData" />}
+      />
+      <Route
+        path="settings/data-and-control/guest-request"
+        element={<Settings open="data" page="guestRequest" />}
+      />
       <Route path="settings/vendors" element={<Settings open="vendors" />} />
       <Route path="settings/payment-reminders" element={<Settings open="vendors" reminders />} />
       <Route path="people" element={<People />} />
@@ -316,8 +340,8 @@ function DemoHome({ from }: { from: string }) {
         <BoardPages pages={GENERAL_PAGES} />
         <h3>Sign-in rules in B · Where you stand · desktop</h3>
         <BoardPages pages={SIGN_IN_RULES_PAGES} />
-        <h3>Data in B · Summary first · desktop</h3>
-        <BoardPages pages={DATA_PAGES} />
+        <h3>Data and control in B · One place · desktop</h3>
+        <BoardPages pages={DATA_CONTROL_PAGES} />
         <h3>People on an event · desktop</h3>
         <BoardPages pages={PEOPLE_PAGES} />
         <h3>Working an event without joining in A · The door code · desktop</h3>
@@ -364,6 +388,13 @@ function DemoHome({ from }: { from: string }) {
       </section>
     </main>
   );
+}
+
+/** An old address keeps working, its query and all: Data is Data and control's page now (sc-560). */
+function KeepQuery({ to }: { to: string }) {
+  const { search } = useLocation();
+
+  return <Navigate to={`/demo/${to}${search}`} replace />;
 }
 
 function BoardPages({

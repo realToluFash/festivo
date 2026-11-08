@@ -31,6 +31,7 @@ import {
   type VendorKey,
   ZONE,
 } from './BudgetSample.ts';
+import { writtenTime } from '../clock.ts';
 import { W, say } from './BudgetWords.ts';
 
 export const BUDGET_STATES = [
@@ -154,12 +155,7 @@ export function openedAt(iso: string, locale = 'en-US'): { day: string; time: st
       month: 'short',
       day: 'numeric',
     }).format(when),
-    time: new Intl.DateTimeFormat(locale, {
-      timeZone: ZONE,
-      hour: '2-digit',
-      minute: '2-digit',
-      hourCycle: 'h23',
-    }).format(when),
+    time: writtenTime(when, locale, ZONE),
   };
 }
 
