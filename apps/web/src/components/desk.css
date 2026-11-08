@@ -73,6 +73,7 @@
 
 .today-person {
   min-height: 52px;
+  text-decoration: none;
 }
 
 .today-places {
