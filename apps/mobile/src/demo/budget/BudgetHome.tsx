@@ -22,8 +22,11 @@ import type { Shown } from '../events/EventsModel.ts';
 import {
   AS_OF,
   type BudgetModel,
+  type CeilingLive,
+  type Ceilings,
   type Ledger,
   type Totals,
+  ceilingsAfter,
   cardThing,
   amountOf,
   canMark,
@@ -41,10 +44,13 @@ import {
   perHeadOf,
   planOf,
   totalsOf,
+  washes,
   whole,
+  wholeState,
 } from './BudgetModel.ts';
 import {
   CEILINGS,
+  COLLEAGUE,
   GUESTS,
   HEADS_IF_ALL_COME,
   LEAD,
@@ -90,8 +96,11 @@ export interface HomeActions {
 }
 
 /** The card's one thing: an overdue payment, else the soonest due, in words (budget-a-spec.md §5). */
-export function ceilingSentence(totals: Totals, locale: string): string {
-  const limit = CEILINGS.whole;
+export function ceilingSentence(
+  totals: Totals,
+  locale: string,
+  limit: number = CEILINGS.whole,
+): string {
   const state = ceilingState(limit, totals.settled, totals.ifAll);
   if (state === 'over') return say.over(whole(totals.settled, locale), whole(limit, locale));
   if (state === 'overIf')
@@ -107,10 +116,13 @@ export function cardSays(
   ledger: Ledger,
   totals: Totals,
   locale: string,
-): { id: string | null; words: string } {
-  const thing = cardThing(ledger, totals);
+  ceilings: Ceilings = CEILINGS,
+): { id: string | null; words: string | null } {
+  const thing = cardThing(ledger, totals, ceilings);
+  if (thing.kind === 'nothing') return { id: null, words: null };
   if (thing.kind === 'notPriced') return { id: null, words: say.notPricedLine(thing.count) };
-  if (thing.kind === 'ceiling') return { id: null, words: ceilingSentence(totals, locale) };
+  if (thing.kind === 'ceiling')
+    return { id: null, words: ceilingSentence(totals, locale, ceilings.whole ?? CEILINGS.whole) };
   const next = thing.payment;
   const vendor = VENDORS[next.vendor].name;
   const amount = whole(next.amount, locale);
@@ -122,7 +134,15 @@ export function cardSays(
 }
 
 /** A changed figure washes Tint for 1.6 s; with Reduce motion it changes at once (sc-85, sc-93). */
-function Wash({ on, onDone, children }: { on: boolean; onDone: () => void; children: ReactNode }) {
+export function Wash({
+  on,
+  onDone,
+  children,
+}: {
+  on: boolean;
+  onDone: () => void;
+  children: ReactNode;
+}) {
   const reduced = useReducedMotion();
   const [fade] = useState(() => new Animated.Value(0));
 
@@ -167,10 +187,8 @@ function PerHead({
   onWashed: () => void;
 }) {
   const head = perHeadOf(totalsOf(m.lines));
-  const wash = m.wash;
-
   return (
-    <Wash on={wash} onDone={onWashed}>
+    <Wash on={washes(m, 'totals')} onDone={onWashed}>
       <RowList
         items={[
           {
@@ -275,7 +293,11 @@ function DueNext({
                       ? { node: <OverdueTag word={W.overdue} />, word: W.overdue }
                       : undefined
                   }
-                  line={say.dueLine(payment.what, days.short(payment.due, locale))}
+                  line={
+                    m.vendors === 'readOnly' && isOverdue(payment)
+                      ? `${say.dueLine(payment.what, days.short(payment.due, locale))} · ${W.noLongerChased}`
+                      : say.dueLine(payment.what, days.short(payment.due, locale))
+                  }
                   value={money(payment.amount, locale)}
                   opens={canMark(m)}
                   hint={canMark(m) ? W.markPaid : undefined}
@@ -304,14 +326,15 @@ function Ceiling({
   onLayout?: (event: LayoutChangeEvent) => void;
 }) {
   const totals = totalsOf(m.lines);
-  const limit = CEILINGS.whole;
+  const limit = m.ceilings.whole;
+  if (limit == null) return null;
   const state = ceilingState(limit, totals.settled, totals.ifAll);
-  const sentence = ceilingSentence(totals, locale);
+  const sentence = ceilingSentence(totals, locale, limit);
 
   return (
     <View onLayout={onLayout}>
       <Section title={W.ceiling}>
-        <Wash on={m.wash} onDone={onWashed}>
+        <Wash on={washes(m, 'ceiling')} onDone={onWashed}>
           <MoneyRow
             title={say.ceilingRow(money(limit, locale))}
             line={sentence}
@@ -360,7 +383,7 @@ function AgainstPlan({
         items={rows.map(([title, value, line]) => ({
           key: title,
           row: (
-            <Wash on={m.wash && title === W.planned} onDone={onWashed}>
+            <Wash on={washes(m, 'totals') && title === W.planned} onDone={onWashed}>
               <MoneyRow
                 title={title}
                 line={line}
@@ -432,7 +455,7 @@ function Costs({
   return (
     <Section title={W.costs}>
       {categoriesIn(m.lines).map((category) => {
-        const state = categoryState(category, m.lines);
+        const state = categoryState(category, m.lines, m.ceilings);
         return (
           <View key={category}>
             <CapsHead
@@ -467,7 +490,10 @@ function Costs({
                   return {
                     key: line.key,
                     row: (
-                      <Wash on={m.wash && line.key === LIVE_CHANGE.line} onDone={onWashed}>
+                      <Wash
+                        on={washes(m, 'totals') && line.key === LIVE_CHANGE.line}
+                        onDone={onWashed}
+                      >
                         <MoneyRow
                           title={line.name}
                           line={costLine(line, locale)}
@@ -513,6 +539,7 @@ export function BudgetHome({
     />
   );
   const live = m.liveLine ? <LiveLine words={liveWords(m.lines, locale)} /> : null;
+  const news = m.news == null ? null : <LiveLine words={m.news} />;
 
   if (m.figures === 'never')
     return (
@@ -542,12 +569,12 @@ export function BudgetHome({
     );
 
   const totals = totalsOf(m.lines);
-  const next = canMark(m) ? cardSays(m.ledger, totals, locale) : null;
+  const next = canMark(m) ? cardSays(m.ledger, totals, locale, m.ceilings) : null;
   const nextId = next?.id ?? null;
   const card = (
     <BudgetCard
       event={event}
-      state={ceilingState(CEILINGS.whole, totals.settled, totals.ifAll)}
+      state={wholeState(m.ceilings, totals)}
       notPriced={totals.notPriced}
       range={say.range(whole(totals.settled, locale), whole(totals.ifAll, locale))}
       says={next?.words ?? null}
@@ -594,6 +621,7 @@ export function BudgetHome({
         {live}
         {notices}
         {card}
+        {news}
         {after}
         <PerHead m={m} locale={locale} onWashed={onWashed} />
         <DueNext
@@ -617,6 +645,7 @@ export function BudgetHome({
       {live}
       {notices}
       {card}
+      {news}
       {after}
       <View style={[styles.columns, { gap: side ? tokens.space5xl : tokens.space3xl }]}>
         <View style={[styles.right, { width: side ? 340 : 306 }]}>
@@ -652,6 +681,22 @@ export function liveWords(lines: readonly CostLine[], locale: string): string {
     rate,
     money(Math.abs(after - before), locale),
     after >= before,
+  );
+}
+
+/** sc-90 live: what another person did to the ceilings on the web, in the web demo's words. */
+export function ceilingNews(
+  live: CeilingLive,
+  locale: string,
+  totals: Totals = totalsOf(),
+): string {
+  const after = ceilingsAfter(live).whole;
+  if (live === 'cleared' || after == null) return say.ceilingsCleared(COLLEAGUE);
+  if (live === 'set') return say.ceilingSet(COLLEAGUE, whole(after, locale));
+  return say.ceilingChanged(
+    COLLEAGUE,
+    whole(after, locale),
+    ceilingState(after, totals.settled, totals.ifAll),
   );
 }
 
