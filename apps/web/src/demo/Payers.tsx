@@ -1,5 +1,5 @@
 import { type RefObject, useEffect, useId, useRef, useState } from 'react';
-import { Link, useSearchParams } from 'react-router';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 
 import { Glyph } from '../components/Glyph.tsx';
 import {
@@ -19,6 +19,7 @@ import {
   Amount,
   BudgetCard,
   BudgetDialog,
+  BudgetLoading,
   BudgetRow,
   BudgetShell,
   CardStrong,
@@ -26,13 +27,16 @@ import {
   Figure,
   GlassTags,
   InfoLine,
+  LiveLine,
   MoneyField,
+  NotLiveStrip,
   OpenMark,
   PageTitle,
   Pane,
   Rows,
   UndoBar,
 } from './BudgetParts.tsx';
+import { fieldsWrong } from './budgetHome.ts';
 import { LINK_WORDS, type LinkState, budgetAt } from './budgetSample.ts';
 import { BUDGET_WORDS as B } from './budgetWords.ts';
 import { type SampleEvent } from './events.ts';
@@ -41,7 +45,6 @@ import {
   type ChooseStart,
   type FormStart,
   type Mode,
-  NOTE_MAX,
   type Notice,
   PERCENT_TYPED,
   type PayerEntry,
@@ -66,8 +69,10 @@ import {
   nameProblem,
   nextNoPayer,
   noPayer,
+  noteProblem,
   notPricedFor,
   openFirst,
+  percentProblem,
   paidOf,
   percentText,
   rangeOf,
@@ -89,8 +94,15 @@ interface Sending {
   n: number;
 }
 
+const linkWords = (payer: PayerEntry): string =>
+  payer.passphrase === true && payer.link !== 'revoked'
+    ? `${LINK_WORDS[payer.link]} ${W.asksPassphrase}`
+    : LINK_WORDS[payer.link];
+
 const rowLine = (payer: PayerEntry): string =>
-  [payer.note, LINK_WORDS[payer.link]].filter((one) => one !== '').join(' · ');
+  [payer.note, linkWords(payer)].filter((one) => one !== '').join(' · ');
+
+const unsent = (payer: PayerEntry): boolean => payer.link === 'notSent' || payer.link === 'revoked';
 
 /** Who is paying at a desk (sc-91), with sc-1300's Send in the payer's pane; Choose who pays is its own page. */
 export function PayersPage({ event, state }: { event: SampleEvent; state: string }) {
@@ -108,6 +120,8 @@ export function PayersPage({ event, state }: { event: SampleEvent; state: string
   const [toTitle, setToTitle] = useState(0);
   const title = useRef<HTMLHeadingElement>(null);
   const later = useLater();
+  const navigate = useNavigate();
+  const [washed, setWashed] = useState(state === 'payers_live');
   const link = `${window.location.origin}/demo/share/payer`;
 
   useEffect(() => {
@@ -126,6 +140,7 @@ export function PayersPage({ event, state }: { event: SampleEvent; state: string
   }
 
   function chosen(ticked: readonly string[], split: Split | null): void {
+    setWashed(false);
     setBook((now) => applyChoice(now, ticked, split));
     setChoosing(null);
     moved();
@@ -141,15 +156,20 @@ export function PayersPage({ event, state }: { event: SampleEvent; state: string
     setForm({ id: null, name: '', note: '', error: null });
   }
 
-  function confirmForm(name: RefObject<HTMLInputElement | null>): void {
+  function confirmForm(
+    name: RefObject<HTMLInputElement | null>,
+    note: RefObject<HTMLInputElement | null>,
+  ): void {
     if (form == null) return;
     const problem = nameProblem(form.name, book.payers, form.id);
-    if (problem != null) {
-      setForm({ ...form, error: problem });
-      name.current?.focus();
+    const noteError = noteProblem(form.note);
+    if (problem != null || noteError != null) {
+      setForm({ ...form, error: problem, noteError });
+      (problem != null ? name : note).current?.focus();
 
       return;
     }
+    setWashed(false);
     if (form.id == null) {
       const added = addPayer(book, form.name, form.note);
       setBook(added.book);
@@ -169,6 +189,7 @@ export function PayersPage({ event, state }: { event: SampleEvent; state: string
       return;
     }
     const next = withoutPayer(book, payer.id);
+    setWashed(false);
     setBook(next);
     setNotice({ kind: 'removed', payer, index: book.payers.indexOf(payer) });
     setOpenId(openFirst(next.payers));
@@ -177,6 +198,7 @@ export function PayersPage({ event, state }: { event: SampleEvent; state: string
   }
 
   function undo(payer: PayerEntry, index: number): void {
+    setWashed(false);
     setBook((now) => withPayer(now, payer, index));
     setNotice(null);
     moved();
@@ -193,15 +215,19 @@ export function PayersPage({ event, state }: { event: SampleEvent; state: string
 
   function sendPressed(payer: PayerEntry): void {
     if (send?.payerId === payer.id && send.kind === 'busy') return;
-    if (payer.link !== 'notSent') {
-      void copy(payer.id);
+    const share = () =>
+      start.shares
+        ? setSend((now) => ({ payerId: payer.id, kind: 'shared', n: (now?.n ?? 0) + 1 }))
+        : void copy(payer.id);
+    if (!unsent(payer)) {
+      share();
 
       return;
     }
     setSend((now) => ({ payerId: payer.id, kind: 'busy', n: now?.n ?? 0 }));
     later(SEND_MS, () => {
       setBook((now) => withLink(now, payer.id, 'sent'));
-      void copy(payer.id);
+      share();
     });
   }
 
@@ -229,6 +255,11 @@ export function PayersPage({ event, state }: { event: SampleEvent; state: string
               addPressed();
             }}
           />
+        ) : state === 'payers_loading' ? (
+          <>
+            <PageTitle title={W.title} titleRef={title} />
+            <BudgetLoading words={W.loading} />
+          </>
         ) : (
           <>
             <PageTitle title={W.title} titleRef={title}>
@@ -240,6 +271,10 @@ export function PayersPage({ event, state }: { event: SampleEvent; state: string
                 />
               )}
             </PageTitle>
+            {washed && <LiveLine words={W.live} />}
+            {state === 'payers_not_live' && (
+              <NotLiveStrip words={W.notLive} onTry={() => void navigate(budgetAt('payers'))} />
+            )}
             {notice?.kind === 'cap' && (
               <p key={said} className="desk-error py-alert" role="alert">
                 <Glyph name="alert" size={15} weight={2.2} />
@@ -288,7 +323,7 @@ export function PayersPage({ event, state }: { event: SampleEvent; state: string
                   <Glyph name="back" size={17} weight={2.3} />
                   {W.budget}
                 </Link>
-                {book.payers.length > 0 && (
+                {book.payers.length > 0 ? (
                   <Rows>
                     {book.payers.map((one) => (
                       <li key={one.id}>
@@ -296,6 +331,11 @@ export function PayersPage({ event, state }: { event: SampleEvent; state: string
                       </li>
                     ))}
                   </Rows>
+                ) : (
+                  <>
+                    <p className="py-empty">{W.noPayers}</p>
+                    <TextAction label={W.addAPayer} before="plus" onClick={addPressed} />
+                  </>
                 )}
               </>
             ) : open == null ? (
@@ -321,6 +361,7 @@ export function PayersPage({ event, state }: { event: SampleEvent; state: string
                             end={<Amount value={moneyRange(...shareOf(book, one.id))} />}
                             lit={one.id === open.id}
                             open={one.id === open.id}
+                            washed={washed && (one.id === 'obi' || one.id === 'bakare')}
                             onOpen={() => openPayer(one.id)}
                           />
                         </li>
@@ -335,6 +376,16 @@ export function PayersPage({ event, state }: { event: SampleEvent; state: string
                     paid={start.paidShown ? (paidOf(book, start.payments).get(open.id) ?? 0) : null}
                     send={send?.payerId === open.id ? send : null}
                     link={link}
+                    washed={washed}
+                    eventName={event.name}
+                    onShared={() => {
+                      setSend(null);
+                      setBook((now) =>
+                        now.payers.find((one) => one.id === open.id)?.link === 'notSent'
+                          ? withLink(now, open.id, 'sent')
+                          : now,
+                      );
+                    }}
                     onSend={() => sendPressed(open)}
                     onEdit={() =>
                       setForm({ id: open.id, name: open.name, note: open.note, error: null })
@@ -403,6 +454,7 @@ function Flag({ book, line, onChange }: { book: Book; line: CostLine; onChange: 
 }
 
 function LinkMark({ link }: { link: LinkState }) {
+  if (link === 'revoked') return null;
   if (link === 'sent') return <OpenMark />;
 
   return <Mark kind={link === 'opened' ? 'yes' : 'ended'} />;
@@ -414,7 +466,10 @@ function PayerPane({
   paid,
   send,
   link,
+  washed,
+  eventName,
   onSend,
+  onShared,
   onEdit,
   onRemove,
 }: {
@@ -423,7 +478,10 @@ function PayerPane({
   paid: number | null;
   send: Sending | null;
   link: string;
+  washed: boolean;
+  eventName: string;
   onSend: () => void;
+  onShared: () => void;
   onEdit: () => void;
   onRemove: () => void;
 }) {
@@ -434,7 +492,8 @@ function PayerPane({
   const notPriced = notPricedFor(book, payer.id);
   const kind = send?.kind ?? null;
   const busy = kind === 'busy';
-  const first = payer.link === 'notSent';
+  const first = unsent(payer);
+  const moved = washed && (payer.id === 'obi' || payer.id === 'bakare');
 
   return (
     <Pane label={payer.name}>
@@ -449,6 +508,7 @@ function PayerPane({
               ...(notPriced > 0 ? [B.notPricedCount(notPriced)] : []),
             ]}
             end={<Amount value={moneyRange(...share)} />}
+            washed={moved}
           />
         </li>
         {paid != null && still != null && (
@@ -501,12 +561,12 @@ function PayerPane({
           </p>
         )}
         {kind === 'refused' && <LinkField key={send?.n} link={link} />}
-        {kind !== 'failed' && kind !== 'refused' && (
+        {kind !== 'failed' && kind !== 'refused' && payer.link !== 'revoked' && (
           <p className="py-link">
             <span className="py-link-mark">
               <LinkMark link={payer.link} />
             </span>
-            {LINK_WORDS[payer.link]}
+            {linkWords(payer)}
           </p>
         )}
         <button
@@ -524,6 +584,18 @@ function PayerPane({
         <TextAction label={W.edit} onClick={onEdit} />
         <TextAction label={W.remove} red onClick={onRemove} />
       </div>
+      {kind === 'shared' && (
+        <BudgetDialog
+          title={W.browserSheet}
+          verb={W.close}
+          cancel={false}
+          onDismiss={onShared}
+          onConfirm={onShared}
+        >
+          <p className="desk-line is-ink">{W.message(eventName)}</p>
+          <p className="desk-line py-shared-link">{link}</p>
+        </BudgetDialog>
+      )}
     </Pane>
   );
 }
@@ -570,18 +642,29 @@ function PayerDialog({
   form: FormStart;
   onChange: (form: FormStart) => void;
   onDismiss: () => void;
-  onConfirm: (name: RefObject<HTMLInputElement | null>) => void;
+  onConfirm: (
+    name: RefObject<HTMLInputElement | null>,
+    note: RefObject<HTMLInputElement | null>,
+  ) => void;
 }) {
   const name = useRef<HTMLInputElement>(null);
+  const note = useRef<HTMLInputElement>(null);
+  const wrong = [form.error, form.noteError].filter((one) => one != null).length;
 
   return (
     <BudgetDialog
       title={form.id == null ? W.addTitle : W.editTitle}
       verb={form.id == null ? W.add : W.save}
-      first={name}
+      first={form.error == null && form.noteError != null ? note : name}
       onDismiss={onDismiss}
-      onConfirm={() => onConfirm(name)}
+      onConfirm={() => onConfirm(name, note)}
     >
+      {wrong > 0 && (
+        <p className="desk-error" role="alert">
+          <Glyph name="alert" size={15} weight={2.2} />
+          {fieldsWrong(wrong)}
+        </p>
+      )}
       <div className="desk-fields">
         <Field
           label={W.name}
@@ -595,8 +678,16 @@ function PayerDialog({
           label={W.note}
           value={form.note}
           help={W.noteHelp}
+          error={form.noteError ?? null}
+          inputRef={note}
           autoComplete="off"
-          onChange={(value) => onChange({ ...form, note: value.slice(0, NOTE_MAX) })}
+          onChange={(value) =>
+            onChange({
+              ...form,
+              note: value,
+              noteError: form.noteError == null ? null : noteProblem(value),
+            })
+          }
         />
       </div>
     </BudgetDialog>
@@ -626,14 +717,14 @@ function ChooseWhoPays({
   onDone: (ticked: readonly string[], split: Split | null) => void;
   onAdd: () => void;
 }) {
-  const first = book.payers[0]?.id ?? '';
   const [ticked, setTicked] = useState<readonly string[]>(start.ticked);
   const [mode, setMode] = useState<Mode>(start.mode);
-  const [payer, setPayer] = useState(start.payer ?? first);
+  const [payer, setPayer] = useState(start.payer ?? '');
   const [percents, setPercents] = useState<Record<string, string>>({ ...start.percents });
   const [amounts, setAmounts] = useState<Record<string, string>>({ ...start.amounts });
-  const [rest, setRest] = useState(start.rest ?? first);
+  const [rest, setRest] = useState(start.rest ?? '');
   const [checked, setChecked] = useState(start.checked === true);
+  const [stale, setStale] = useState(start.stale ?? null);
   const [tries, setTries] = useState(start.checked === true ? 1 : 0);
   const who = useRef<HTMLDivElement>(null);
   const radios = useId();
@@ -650,15 +741,22 @@ function ChooseWhoPays({
   const note = replacesNote(book, ticked);
   const off = ticked.length === 0;
   const percentWrong = checked && percent.error != null && Object.keys(percent.fields).length === 0;
+  const payerError = checked && picked === 'one' && payer === '' ? W.choosePayer : null;
+  const restError = checked && picked === 'fixed' && rest === '' ? W.chooseRest : null;
 
   function save(): void {
     if (off) return;
+    setStale(null);
     const split: Split | null =
       picked === 'one'
-        ? { kind: 'one', payerId: payer }
+        ? payer === ''
+          ? null
+          : { kind: 'one', payerId: payer }
         : picked === 'percent'
           ? percent.split
-          : fixed.split;
+          : rest === ''
+            ? null
+            : fixed.split;
     if (split == null) {
       setChecked(true);
       setTries((n) => n + 1);
@@ -671,6 +769,7 @@ function ChooseWhoPays({
   return (
     <>
       <PageTitle title={W.chooseTitle} titleRef={titleRef} />
+      {stale != null && <AlertInset>{W.stale(stale)}</AlertInset>}
       <div className="py-choose">
         <section className="py-choose-side" aria-label={B.costs}>
           <TextAction
@@ -728,7 +827,13 @@ function ChooseWhoPays({
                 </ul>
               </fieldset>
               {picked === 'one' && (
-                <PickField label={W.payer} value={payer} payers={book.payers} onChange={setPayer} />
+                <PickField
+                  label={W.payer}
+                  value={payer}
+                  payers={book.payers}
+                  error={payerError}
+                  onChange={setPayer}
+                />
               )}
               {picked === 'percent' && (
                 <>
@@ -742,7 +847,10 @@ function ChooseWhoPays({
                         label={W.percentLabel(one.name)}
                         value={percents[one.id] ?? ''}
                         help={
-                          part == null || typed === '' || Number(typed) === 0
+                          part == null ||
+                          typed === '' ||
+                          Number(typed) === 0 ||
+                          percentProblem(typed) != null
                             ? null
                             : moneyRange(...part)
                         }
@@ -784,6 +892,7 @@ function ChooseWhoPays({
                     value={rest}
                     payers={book.payers}
                     help={W.restNow(moneyRange(...fixed.rest))}
+                    error={restError}
                     onChange={setRest}
                   />
                 </>
@@ -819,28 +928,35 @@ function PickField({
   value,
   payers,
   help,
+  error = null,
   onChange,
 }: {
   label: string;
   value: string;
   payers: readonly PayerEntry[];
   help?: string;
+  error?: string | null;
   onChange: (id: string) => void;
 }) {
   const id = useId();
+  const told = [help == null ? null : `${id}-help`, error == null ? null : `${id}-error`]
+    .filter(Boolean)
+    .join(' ');
 
   return (
     <div className="desk-field">
       <label htmlFor={id} className="desk-label">
         {label}
       </label>
-      <div className="desk-box ev-select">
+      <div className={error == null ? 'desk-box ev-select' : 'desk-box ev-select is-wrong'}>
         <select
           id={id}
           value={value}
-          aria-describedby={help == null ? undefined : `${id}-help`}
+          aria-invalid={error != null}
+          aria-describedby={told === '' ? undefined : told}
           onChange={(event) => onChange(event.target.value)}
         >
+          {value === '' && <option value="">{W.choosePayerOption}</option>}
           {payers.map((one) => (
             <option key={one.id} value={one.id}>
               {one.name}
@@ -852,6 +968,12 @@ function PickField({
       {help != null && (
         <p id={`${id}-help`} className="desk-help">
           {help}
+        </p>
+      )}
+      {error != null && (
+        <p id={`${id}-error`} className="desk-error">
+          <Glyph name="alert" size={15} weight={2.2} />
+          {error}
         </p>
       )}
     </div>

@@ -10,7 +10,7 @@ import { tokens } from '../../theme/tokens.ts';
 import { LineIcon } from '../settings/AccountCard.tsx';
 import { SwitchTrack } from '../settings/NotificationsSwitch.tsx';
 import { EventCard, EventThumb } from './EventCard.tsx';
-import { AcPill, AlertLine, EditScreen } from './EventEdits.tsx';
+import { AcPill, AlertLine, CHANGED, EditScreen } from './EventEdits.tsx';
 import { AreaPage, EventFrame } from './EventFrame.tsx';
 import {
   type DeleteStart,
@@ -29,11 +29,13 @@ import {
   datesRow,
   editOf,
   hostsRow,
+  instantOf,
   manageOf,
   needsName,
   scheduleLocked,
   shownEvent,
 } from './EventsModel.ts';
+import { seedFinalNumbers } from './FinalNumbers.ts';
 import {
   type AreaKey,
   type SampleEvent,
@@ -42,11 +44,13 @@ import {
   sampleEvent,
 } from './EventsSample.ts';
 import { W, say } from './EventsWords.ts';
+import { replyByMovedSaved, replyByRow, replyBySaved } from './ReplyBy.ts';
+import { replyByOf } from '../guests/GuestsSample.ts';
 import { useShell } from '../../components/settingsShell.ts';
 import { Row, RowList, Section, TextAction } from '../../components/Summary.tsx';
 import { type MessagesState, reduce, startOf } from '../messages/MessagesModel.ts';
 import { TellGuests } from '../messages/MessagesOverlays.tsx';
-import { PLACE, SAMPLE_EVENT_ID, TELL } from '../messages/MessagesSample.ts';
+import { LONG_FINISHED, PLACE, SAMPLE_EVENT_ID, TELL } from '../messages/MessagesSample.ts';
 import { tellChange } from '../messages/TellChange.ts';
 import { MessagesScreen, badgeFor } from '../messages/MessagesScreen.tsx';
 import { W as MW, say as sayMessages } from '../messages/MessagesWords.ts';
@@ -85,8 +89,17 @@ function startEvent(
 ): SampleEvent {
   const event = sampleEvent(id) ?? sampleEvent('evt-wed-4');
   if (event == null) throw new Error('The sample has the wedding.');
+  seedFinalNumbers(state);
   if (messages === 'tell' || messages === 'untold') return { ...event, startsAt: TELL.startsAt };
   if (messages === 'tellPlace') return { ...event, venue: PLACE };
+  if (messages === 'closedDraft') return { ...event, status: 'draft' };
+  if (messages === 'closedEnded') return { ...event, ...LONG_FINISHED, status: 'ended' };
+  if (state === 'datesReplyBySaved')
+    return {
+      ...event,
+      startsAt: instantOf(CHANGED.start.date, CHANGED.start.time, event.timeZone),
+      endsAt: instantOf(CHANGED.end.date, CHANGED.end.time, event.timeZone),
+    };
 
   return state === 'photo' ? { ...event, photo: true } : event;
 }
@@ -149,7 +162,24 @@ export function EventScreen({
   const [mute, setMute] = useState<Mute>(
     state === 'muteNotLoaded' ? 'notLoaded' : state === 'muteNotSaved' ? 'notSaved' : 'ok',
   );
-  const [told, setTold] = useState<string | null>(state === 'saved' ? W.saved : null);
+  const [replyBy, setReplyBy] = useState<string | null>(() =>
+    state === 'replyBySaved'
+      ? '2026-11-03'
+      : state === 'replyByRemoved'
+        ? null
+        : state === 'datesReplyBySaved'
+          ? '2026-11-03'
+          : replyByOf(event.id),
+  );
+  const [told, setTold] = useState<string | null>(() =>
+    state === 'saved'
+      ? W.saved
+      : state === 'replyBySaved' || state === 'replyByRemoved'
+        ? replyBySaved(replyBy, event.timeZone, locale)
+        : state === 'datesReplyBySaved' && replyBy != null
+          ? replyByMovedSaved(replyBy, locale)
+          : null,
+  );
   const refs = useRef<Partial<Record<string, ViewInstance | null>>>({});
   const from = useRef('card');
   const opener = useMemo<RefObject<ScreenReaderTarget | null>>(
@@ -171,14 +201,23 @@ export function EventScreen({
     setRound((count) => count + 1);
     setEdit(which);
   };
-  const saved = (next: SampleEvent) => {
+  const saved = (next: SampleEvent, movedReplyBy?: string) => {
     setEvent(next);
     setEdit(null);
-    setTold(W.saved);
+    if (movedReplyBy == null) setTold(W.saved);
+    else {
+      setReplyBy(movedReplyBy);
+      setTold(replyByMovedSaved(movedReplyBy, locale));
+    }
     const change =
       part === 'dates' || part === 'venue' ? tellChange(toldEvent, next, locale) : null;
     if (change != null && change.lines.length > 0)
       setTimeout(() => dispatch({ type: 'offerTell', change }), TELL_AFTER_MS);
+  };
+  const savedReplyBy = (date: string | null) => {
+    setReplyBy(date);
+    setEdit(null);
+    setTold(replyBySaved(date, event.timeZone, locale));
   };
   const deleteIt = () => {
     setAsk(null);
@@ -225,6 +264,7 @@ export function EventScreen({
   const details = (
     <Details
       shown={shown}
+      replyBy={replyBy}
       locale={locale}
       refFor={refFor}
       onEdit={openEdit}
@@ -410,6 +450,9 @@ export function EventScreen({
               opener={opener}
               onClose={() => setEdit(null)}
               onSaved={saved}
+              replyBy={replyBy}
+              now={now}
+              onReplyBy={savedReplyBy}
             />
           ) : null}
           <LifecycleAsk
@@ -450,12 +493,14 @@ type RefFor = (key: string) => (node: ViewInstance | null) => void;
 
 function Details({
   shown,
+  replyBy,
   locale,
   refFor,
   onEdit,
   onMaps,
 }: {
   shown: Shown;
+  replyBy: string | null;
   locale: string;
   refFor: RefFor;
   onEdit: (part: EditPart) => void;
@@ -464,6 +509,7 @@ function Details({
   const dates = datesRow(shown, locale);
   const hosts = hostsRow(shown, locale);
   const locked = scheduleLocked(shown);
+  const reply = replyByRow(replyBy, shown.timeZone, locale);
 
   return (
     <Section title={W.details}>
@@ -481,6 +527,21 @@ function Details({
                 opens={!locked}
                 onPress={locked ? undefined : () => onEdit('dates')}
                 testID="event.row.dates"
+              />
+            ),
+          },
+          {
+            key: 'replyBy',
+            inset: 40,
+            row: (
+              <Row
+                ref={refFor('replyBy')}
+                title={reply.title}
+                line={reply.line}
+                lead={<LineIcon name="clock" />}
+                opens={!locked}
+                onPress={locked ? undefined : () => onEdit('replyBy')}
+                testID="event.row.replyBy"
               />
             ),
           },

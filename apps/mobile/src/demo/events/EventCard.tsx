@@ -17,6 +17,7 @@ import {
 } from './EventsModel.ts';
 import { scrimFor } from '../../kit/scrim.ts';
 import { W } from './EventsWords.ts';
+import { FINAL_WORDS } from './FinalNumbers.ts';
 import { useShell } from '../../components/settingsShell.ts';
 import { CardSays, GlassTag, OnCard, StepButton, SummaryCard } from '../../components/Summary.tsx';
 
@@ -268,8 +269,27 @@ function CardFoot({
         style={styles.foot}
         pointerEvents="none"
         accessible
-        accessibilityLabel={`${step.title}. ${step.when}`}
+        accessibilityLabel={[
+          ...(step.you ? [FINAL_WORDS.you] : []),
+          ...(step.overdue ? [FINAL_WORDS.overdue] : []),
+          step.title,
+          step.when,
+        ].join('. ')}
       >
+        {step.you && (
+          <View style={styles.tags}>
+            <GlassTag
+              word={FINAL_WORDS.you}
+              shape={<Glyph name="user" size={13} ink={tokens.colorInkOnDark} weight={2.4} />}
+            />
+            {step.overdue && (
+              <GlassTag
+                word={FINAL_WORDS.overdue}
+                shape={<Glyph name="alert" size={13} ink={tokens.colorInkOnDark} weight={2.4} />}
+              />
+            )}
+          </View>
+        )}
         <Text size={15.5} weight="bold" accessible={false} style={[styles.white, styles.next]}>
           {step.title}
         </Text>

@@ -25,13 +25,14 @@ import { BUDGET_WORDS as BW } from './budgetWords.ts';
 import { NotBuilt } from './EventParts.tsx';
 import { EVENT_WORDS, type SampleEvent } from './events.ts';
 import { AmendInPlace, MarkPaidDialog, PaymentDialog, QuoteDialog } from './QuoteForms.tsx';
-import { CancelDialog, CancelledMark, MadeDialog } from './Payments.tsx';
+import { BinMark, CancelDialog, CancelledMark, MadeDialog } from './Payments.tsx';
 import {
   type Cancelling,
   type MadeOpen,
   type Shaping,
   cancelledLine,
   cancelledOf,
+  deletedLine,
   eventDays,
   madePayment,
   offersShapes,
@@ -142,7 +143,8 @@ function QuotesBody({
   const [cancelling, setCancelling] = useState<Cancelling | null>(start.cancelling);
   const [made, setMade] = useState<MadeOpen | null>(start.made);
   const [shaping, setShaping] = useState<Shaping | null>(start.shaping);
-  const [addedPaid, setAddedPaid] = useState<readonly string[]>([]);
+  const [addedPaid, setAddedPaid] = useState<readonly string[]>(start.addedPaid);
+  const [deleted, setDeleted] = useState<string | null>(start.deleted);
   const [focusOn, setFocusOn] = useState<{ id: string } | null>(null);
   const title = useRef<HTMLHeadingElement>(null);
   const opened = useRef(false);
@@ -204,8 +206,12 @@ function QuotesBody({
   const undo = (id: string) => {
     setMarked(null);
     setSaid('');
+    setDeleted(null);
     if (addedPaid.includes(id)) {
+      const gone = budget.payments.find((one) => one.id === id);
       setBudget((now) => ({ ...now, payments: now.payments.filter((one) => one.id !== id) }));
+      setAddedPaid((now) => now.filter((one) => one !== id));
+      if (gone != null) setDeleted(deletedLine(gone, vendorOf(gone.vendorId) ?? ''));
       title.current?.focus();
       return;
     }
@@ -228,6 +234,8 @@ function QuotesBody({
               amending={amending}
               removing={removing}
               marked={marked}
+              addedPaid={addedPaid}
+              deleted={deleted}
               back={at.home}
               titleRef={title}
               tell={tell}
@@ -732,6 +740,8 @@ export function VendorPage({
   amending,
   removing,
   marked,
+  addedPaid,
+  deleted,
   back,
   titleRef,
   tell,
@@ -757,6 +767,8 @@ export function VendorPage({
   amending: Amending | null;
   removing: string | null;
   marked: string | null;
+  addedPaid: readonly string[];
+  deleted: string | null;
   back: string;
   titleRef: RefObject<HTMLHeadingElement | null>;
   tell: Tell;
@@ -820,6 +832,12 @@ export function VendorPage({
       <Columns
         left={
           <Block title={QW.schedule}>
+            {deleted != null && (
+              <p className="pay-deleted" role="status">
+                <BinMark />
+                {deleted}
+              </p>
+            )}
             {payments.length === 0 ? (
               <div className="qt-empty">
                 <p className="desk-line">{QW.noPayments}</p>
@@ -839,6 +857,8 @@ export function VendorPage({
                       amending={amending?.id === one.id ? amending : null}
                       removing={removing === one.id}
                       lit={marked === one.id}
+                      added={addedPaid.includes(one.id)}
+                      reader={viewer.name}
                       onMarkPaid={() => onMarkPaid(one)}
                       onUndo={() => onUndo(one.id)}
                       onCancel={() => onCancel(one)}
@@ -928,6 +948,8 @@ function ScheduleRow({
   amending,
   removing,
   lit,
+  added,
+  reader,
   onMarkPaid,
   onUndo,
   onCancel,
@@ -944,6 +966,8 @@ function ScheduleRow({
   amending: Amending | null;
   removing: boolean;
   lit: boolean;
+  added: boolean;
+  reader: string;
   onMarkPaid: () => void;
   onUndo: () => void;
   onCancel: () => void;
@@ -967,15 +991,24 @@ function ScheduleRow({
         <BudgetRow
           lead={<PaidMark large />}
           title={payment.what}
-          lines={[paidLineOf(payment)]}
+          lines={[
+            !added
+              ? paidLineOf(payment)
+              : payment.paid.by === reader
+                ? PW.addedByYou(longDay(payment.paid.on))
+                : PW.addedBy(longDay(payment.paid.on), payment.paid.by),
+          ]}
           lit={lit}
           end={
-            lit && !readOnly ? (
-              <button type="button" className="desk-text" onClick={onUndo}>
-                <Glyph name="undo" size={16} weight={2.4} />
-                {BW.undo}
-              </button>
-            ) : undefined
+            <>
+              {added && <Amount value={money(payment.paid.amount)} />}
+              {(lit || added) && !readOnly && (
+                <button type="button" className="desk-text" onClick={onUndo}>
+                  <Glyph name="undo" size={16} weight={2.4} />
+                  {BW.undo}
+                </button>
+              )}
+            </>
           }
         />
       </li>
@@ -1022,7 +1055,11 @@ function ScheduleRow({
     <li data-payment={payment.id}>
       <BudgetRow
         title={payment.what}
-        lines={[BW.due(shortDay(payment.dueOn))]}
+        lines={[
+          readOnly && overdue(payment)
+            ? `${BW.due(shortDay(payment.dueOn))} · ${PW.noLongerChased}`
+            : BW.due(shortDay(payment.dueOn)),
+        ]}
         tag={overdue(payment) ? <OverdueTag /> : undefined}
         end={<Amount value={money(payment.amount)} />}
       />

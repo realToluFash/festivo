@@ -911,6 +911,16 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/events/evt-wed-4?state=datesError',
       },
       {
+        title: 'Dates · onto the reply-by date',
+        what: 'Saving moves Reply by too',
+        href: '/demo/events/evt-wed-4?state=datesReplyBy',
+      },
+      {
+        title: 'Dates · Reply by moved',
+        what: 'The page again, with the new date',
+        href: '/demo/events/evt-wed-4?state=datesReplyBySaved',
+      },
+      {
         title: 'Dates · discard?',
         what: 'Discard your change?',
         href: '/demo/events/evt-wed-4?state=discard',
@@ -929,6 +939,41 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         title: 'Saved',
         what: 'The page again, with Saved',
         href: '/demo/events/evt-wed-4?state=saved',
+      },
+      {
+        title: 'Reply by',
+        what: 'The date replies close (sc-3780)',
+        href: '/demo/events/evt-wed-4?state=replyBy',
+      },
+      {
+        title: 'Reply by · none yet',
+        what: 'Replies stay open until the start',
+        href: '/demo/events/evt-draft-4?state=replyByEmpty',
+      },
+      {
+        title: 'Reply by · on the day it starts',
+        what: 'Choose a date before the event starts',
+        href: '/demo/events/evt-wed-4?state=replyByError',
+      },
+      {
+        title: 'Reply by · sooner',
+        what: 'Close replies sooner?',
+        href: '/demo/events/evt-wed-4?state=replyBySooner',
+      },
+      {
+        title: 'Reply by · already past',
+        what: 'Close replies now?',
+        href: '/demo/events/evt-wed-4?state=replyByNow',
+      },
+      {
+        title: 'Reply by · saved',
+        what: 'The page again, with the new date',
+        href: '/demo/events/evt-wed-4?state=replyBySaved',
+      },
+      {
+        title: 'Reply by · removed',
+        what: 'Replies stay open until the start',
+        href: '/demo/events/evt-wed-4?state=replyByRemoved',
       },
       { title: 'Venue', what: 'Name and address', href: '/demo/events/evt-wed-4?state=venue' },
       {
@@ -1048,6 +1093,21 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         title: 'Mute · not saved',
         what: 'The switch holds',
         href: '/demo/events/evt-wed-4?state=muteNotSaved',
+      },
+      {
+        title: 'Final numbers due · Next up',
+        what: 'Marked You, no action in the app',
+        href: '/demo/events/evt-wed-4?state=finalNumbers',
+      },
+      {
+        title: 'Final numbers due · overdue',
+        what: 'Still Next up, Overdue',
+        href: '/demo/events/evt-wed-4?state=finalNumbersOverdue',
+      },
+      {
+        title: 'Final numbers due · given',
+        what: 'A copy recorded: gone',
+        href: '/demo/events/evt-wed-4?state=finalNumbersGiven',
       },
     ],
   },

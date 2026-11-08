@@ -100,7 +100,6 @@ export const QW = {
   datePaidHelp: 'Earlier dates are fine.',
   datePaidBlank: 'Enter the date it was paid.',
   reference: 'Reference',
-  amountPaidProblem: (example: string) => `Enter the amount paid, above 0, like ${example}.`,
   markedPaid: (amount: string, day: string) => `Marked paid: ${amount} on ${day}.`,
   usedOn: (count: number) => (count === 1 ? 'Used on 1 event' : `Used on ${count} events`),
   archiveRefused: (vendor: string) =>

@@ -161,13 +161,21 @@ export const PAID_BEFORE: Readonly<Record<string, { on: string; by: string }>> =
 };
 
 export type PayerKey = 'couple' | 'obi' | 'bakare' | 'funmi';
-export type LinkState = 'notSent' | 'sent' | 'opened';
+export type LinkState = 'notSent' | 'sent' | 'opened' | 'revoked';
+
+/** A part of a cost: a fraction of it, a fixed amount in pence, or what is left after the fixed amounts (sc-91). */
+export interface Cover {
+  line: string;
+  share: 1 | 0.5;
+  fixed?: number;
+  rest?: boolean;
+}
 
 export interface Payer {
   key: PayerKey;
   name: string;
   note: string;
-  covers: readonly { line: string; share: 1 | 0.5 }[];
+  covers: readonly Cover[];
   link: LinkState;
 }
 
@@ -226,6 +234,19 @@ export const OPENED = { times: 3, last: '2026-11-02T21:14:00Z' };
 export const REMOVED_PAYER = 'Uncle Kayode';
 
 export const REMINDER = { sent: '2026-11-01', payments: ['bloom-balance', 'savour-deposit'] };
+
+/** sc-95's two reminders as they arrive today: the overdue one alone, and one with what falls due in the next 3 days. */
+export const REMINDERS = {
+  overdue: { sent: TODAY, payments: ['bloom-balance'] },
+  mixed: { sent: TODAY, payments: ['bloom-balance', 'savour-deposit', 'landmark-balance'] },
+} as const;
+export const REMINDER_DAYS = 3;
+
+/** sc-90's ceilings as another person changes them on the web (the web demo's words and figures). */
+export const CEILING_CHANGE = { set: 2200000, changed: 2400000 } as const;
+
+/** Mr and Mrs Obi, renamed on the web while the app reads (sc-30200). */
+export const RENAMED = 'Chidi and Ngozi Obi';
 export const CHANGED_SINCE = { paidOn: '2026-11-02' };
 
 /** The iPhone SE frame (sc-30200, sc-1300): Mr and Mrs Obi's share under a 100-character name and a long note, in Portuguese. */

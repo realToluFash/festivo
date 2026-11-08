@@ -22,6 +22,7 @@ import {
   GUEST,
   decideKindOf,
   headline,
+  ceilingsFor,
   linesFor,
   whatIf,
 } from './decide.ts';
@@ -93,7 +94,7 @@ function AddGuest({ kind, onClose }: { kind: DecideKind; onClose: () => void }) 
   );
   const [updating, setUpdating] = useState(kind === 'updating');
   const toAdded = useRef(false);
-  const answer = whatIf(1 + companions.length, linesFor(kind));
+  const answer = whatIf(1 + companions.length, linesFor(kind), ceilingsFor(kind));
 
   useEffect(() => () => window.clearTimeout(timer.current), []);
 
@@ -254,6 +255,17 @@ function AnswerPanel({ answer, updating }: { answer: Answer; updating: boolean }
               </p>
             </div>
           )}
+          {answer.categoriesOver.map((one) => (
+            <div key={one.name} className="dec-ceiling">
+              <RingMark state="overIfAll" />
+              <p>
+                <span className="dec-ceiling-head">{W.overCategory(one.name)}</span>
+                <span className="dec-ceiling-line">
+                  {W.ifEveryone(whole(one.ifAll), whole(one.ceiling))}
+                </span>
+              </p>
+            </div>
+          ))}
         </>
       )}
     </section>
