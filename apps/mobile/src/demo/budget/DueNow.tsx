@@ -21,7 +21,7 @@ import {
   paymentOf,
 } from './BudgetModel.ts';
 import { EVENT_NAME, REMINDER, VENDORS } from './BudgetSample.ts';
-import { MoneyRow, PlanLine, UndoMark } from './BudgetParts.tsx';
+import { MoneyRow, OverdueTag, PlanLine, UndoMark } from './BudgetParts.tsx';
 import { MarkFields, SheetHead, useMarkForm } from './MarkPaid.tsx';
 import { W, say } from './BudgetWords.ts';
 
@@ -169,7 +169,7 @@ function DueList({
       )}
       {sheet.fromReminder && (
         <Text size={15} weight="medium" style={styles.secondary}>
-          {say.fromReminder(days.month(REMINDER.sent, locale), sheet.ids.length)}
+          {say.fromReminder(days.month(sheet.sent, locale), sheet.ids.length)}
         </Text>
       )}
       {sheet.readOnly && <PlanLine text={W.readOnly} />}
@@ -247,12 +247,16 @@ function DueRow({
         ? W.cancelledWord
         : null;
   const owed = isOwed(ledger, id) && !sheet.readOnly;
+  const last = sheet.lastAbout.includes(id);
+  const chased = sheet.readOnly && isOverdue(payment) ? W.noLongerChased : null;
+  const line = [base, changed, chased].filter(Boolean).join(' · ');
 
   return (
     <View>
       <MoneyRow
         title={vendor}
-        line={changed == null ? base : `${base} · ${changed}`}
+        tag={last ? { node: <OverdueTag word={W.overdueLast} />, word: W.overdueLast } : undefined}
+        line={line}
         value={amount}
       />
       {owed && (

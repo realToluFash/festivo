@@ -1,22 +1,27 @@
 import type { Membership, PausedOrganisation } from '@soirely/api-client';
-import { memberStatusLook, pausedReasonKey, pausedSwitch } from '@soirely/domain';
+import { pausedReasonKey, pausedSwitch } from '@soirely/domain';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
 import { pageTitle, usePageTitle } from '../pageTitle.ts';
+import { Notice } from './Notice.tsx';
 import { PausedOwnerClaim } from './OwnerClaimBanner.tsx';
-import { StatusChip } from './StatusChip.tsx';
+import './desk.css';
+
+type Other = Pick<Membership, 'id' | 'name'>;
 
 /** In place of every page of an organisation the account's access to is paused in (sc-564). */
-export function AccessPaused({
+export function AccessPaused<T extends Other>({
   paused,
   others,
+  account = '/app/account',
   onSwitch,
   onChoose,
 }: {
   paused: PausedOrganisation;
-  others: readonly Membership[];
-  onSwitch: (to: Membership) => void;
+  others: readonly T[];
+  account?: string;
+  onSwitch: (to: T) => void;
   onChoose: () => void;
 }) {
   const { t } = useTranslation();
@@ -28,31 +33,23 @@ export function AccessPaused({
   usePageTitle(pageTitle(t, [t('accessPaused.badge'), paused.name]));
 
   return (
-    <section className="card settings-card access-paused" aria-labelledby="paused-title">
-      <p>
-        <StatusChip look={memberStatusLook({ status: 'suspended' })}>
-          {t('accessPaused.badge')}
-        </StatusChip>
-      </p>
+    <section className="sw-paused access-paused" aria-labelledby="paused-title">
+      <span className="sw-paused-chip">{t('accessPaused.badge')}</span>
       <h1 id="paused-title">{t(pausedReasonKey(suspension.reason), named)}</h1>
-      <p className="muted">{t('accessPaused.since', { when: suspension.since.written })}</p>
+      <p className="sw-paused-since">
+        {t('accessPaused.since', { when: suspension.since.written })}
+      </p>
       <p>{t('accessPaused.kept', named)}</p>
       <p>{t('accessPaused.untouched')}</p>
       {suspension.onlyOwner ? (
-        <div className="notice notice-quiet" role="note">
-          <span className="mark mark-info" aria-hidden="true">
-            i
-          </span>
-          <p>{t('accessPaused.stillOnlyOwner', named)}</p>
-        </div>
+        <Notice kind="quiet" standing>
+          {t('accessPaused.stillOnlyOwner', named)}
+        </Notice>
       ) : (
         suspension.removesAt != null && (
-          <div className="notice notice-attention" role="note">
-            <span className="mark mark-attention" aria-hidden="true">
-              !
-            </span>
-            <p>{t('accessPaused.removedBy', { ...named, when: suspension.removesAt.written })}</p>
-          </div>
+          <Notice kind="attention" standing>
+            {t('accessPaused.removedBy', { ...named, when: suspension.removesAt.written })}
+          </Notice>
         )
       )}
       {paused.ownerClaim != null && (
@@ -66,15 +63,15 @@ export function AccessPaused({
       <p>
         {t(addressGone ? 'accessPaused.nextAddressGone' : 'accessPaused.nextNothingNeeded', named)}
       </p>
-      <div className="actions">
+      <div className="sw-actions is-paused">
         {addressGone && (
-          <Link className="button button-primary" to="/app/account">
+          <Link className="sw-button is-primary" to={account}>
             {t('accessPaused.accountSettings')}
           </Link>
         )}
         {switchTo != null && (
           <button
-            className="button"
+            className="sw-button is-ghost"
             type="button"
             onClick={() => (switchTo === 'switcher' ? onChoose() : onSwitch(switchTo))}
           >

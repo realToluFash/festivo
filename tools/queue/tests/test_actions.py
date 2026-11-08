@@ -420,12 +420,23 @@ class DemoFirst(Base):
             actions.claim(self.as_("dev"), args(story="sc-1"))
         self.assertEqual(self.state(1), "In Progress")
 
-    def test_one_merged_demo_on_a_line_naming_both_clients_is_enough(self):
+    def test_a_demo_half_merged_across_the_clients_is_refused(self):
         self.drawn("**Demo:** the app's `It` · PR #1387. The web's `It` · PR #1385")
         states = {1387: {"state": "MERGED"}, 1385: {"state": "OPEN"}}
+        self.refused(r"its demo #1385 is not merged yet",
+                     mock.patch("soirely_queue.github.live", side_effect=states.get))
+
+    def test_a_demo_merged_across_both_clients_is_claimed(self):
+        self.drawn("**Demo:** the app's `It` · PR #1387. The web's `It` · PR #1385")
+        states = {1387: {"state": "MERGED"}, 1385: {"state": "MERGED"}}
         with mock.patch("soirely_queue.github.live", side_effect=states.get):
             actions.claim(self.as_("dev"), args(story="sc-1"))
         self.assertEqual(self.state(1), "In Progress")
+
+    def test_a_demo_only_ever_closed_is_refused(self):
+        self.drawn("**Demo:** `It` in the app's demo · PR #1386")
+        self.refused("#1386 was closed without merging",
+                     mock.patch("soirely_queue.github.live", return_value={"state": "CLOSED"}))
 
     def test_a_story_with_no_design_section_is_claimed_without_asking_github(self):
         self.fake.add(1, "Ready For Dev")

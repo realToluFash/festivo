@@ -29,6 +29,8 @@ import {
   tellNowBy,
   tellingBy,
   toChip,
+  lengthOf,
+  overOf,
 } from './MessagesModel.ts';
 import { MESSAGES_BOARDS } from './MessagesBoards.ts';
 import { sampleEvent } from '../events/EventsSample.ts';
@@ -38,9 +40,10 @@ import {
   TO_FIGURES,
   TO_ORDER,
   TO_WORD,
-  filledFor,
   piecesOf,
 } from './MessagesSample.ts';
+import { filledAs } from './PreviewModel.ts';
+import { PREVIEW_PEOPLE } from './PreviewSample.ts';
 import { tellChange } from './TellChange.ts';
 import { keepWhole, outsideToken, tokenText } from './TokenText.ts';
 
@@ -48,8 +51,9 @@ const run = (m: Messages, ...actions: Action[]) => actions.reduce(reduce, m);
 const nameOf = (id: RowId) => (id.kind === 'draft' ? id.id : id.key);
 
 describe('the states', () => {
-  it('are the spec’s 42 and the notice’s three, by the names both demos use, §7 then §7b', () => {
-    expect(MESSAGES_STATES).toHaveLength(45);
+  it('are the spec’s 42, the notice’s three, Who it reached’s eight, sc-32077’s six and sc-3960’s and sc-3963’s, by both demos’ names', () => {
+    expect(MESSAGES_STATES).toHaveLength(72);
+    expect(MESSAGES_STATES.indexOf('tellPlace')).toBe(44);
     expect(MESSAGES_STATES.slice(6, 10)).toEqual([
       'channelReply',
       'noticeCost',
@@ -57,7 +61,7 @@ describe('the states', () => {
       'noticeNotSent',
     ]);
     expect(MESSAGES_STATES.slice(0, 3)).toEqual(['first', 'loading', 'inUse']);
-    expect(MESSAGES_STATES.slice(27)).toEqual([
+    expect(MESSAGES_STATES.slice(27, 59)).toEqual([
       'invitedReached',
       'sentReached',
       'notMatched',
@@ -76,6 +80,20 @@ describe('the states', () => {
       'noSubject',
       'followUp',
       'tellPlace',
+      'added',
+      'addedPhone',
+      'notNow',
+      'told',
+      'filterMenu',
+      'filtered',
+      'resendInvited',
+      'resendSent',
+      'nobody',
+      'longSubject',
+      'longMessage',
+      'closedDraft',
+      'closedEnded',
+      'forbidden',
     ]);
   });
 
@@ -177,7 +195,7 @@ describe('the list', () => {
 describe('the To groups', () => {
   it('are the app’s three, with pm’s Hasn’t replied, and their counts', () => {
     expect(TO_ORDER.map((to) => TO_WORD[to])).toEqual(['All guests', 'Coming', 'Hasn’t replied']);
-    expect(TO_ORDER.map(toChip)).toEqual([
+    expect(TO_ORDER.map((to) => toChip(to))).toEqual([
       'All guests · 142',
       'Coming · 96',
       'Hasn’t replied · 25',
@@ -339,14 +357,14 @@ describe('the rest of the flow', () => {
       { token: true, text: 'Greeting' },
       { token: false, text: ', hello' },
     ]);
-    expect(filledFor(`${tokenText('Greeting')}, hello`, 'Kwame Mensah')).toBe(
+    expect(filledAs(`${tokenText('Greeting')}, hello`, PREVIEW_PEOPLE.kwame)).toBe(
       'Kwame Mensah, hello',
     );
   });
 
   it('keeps braces the host types as text, in the field and on the page', () => {
     expect(piecesOf('{Greeting}, hello')).toEqual([{ token: false, text: '{Greeting}, hello' }]);
-    expect(filledFor('{Greeting}, hello', 'Kwame Mensah')).toBe('{Greeting}, hello');
+    expect(filledAs('{Greeting}, hello', PREVIEW_PEOPLE.kwame)).toBe('{Greeting}, hello');
   });
 });
 
@@ -491,8 +509,11 @@ describe('Who it reached', () => {
     expect(fixed.fixed.tomas).toBe('tomas.ferreira@gmail.com');
 
     const again = reduce(fixed, { type: 'sendAgain', key: 'tomas' });
-    expect(again).toMatchObject({ again: { tomas: '09:44' }, said: 'tomas' });
-    expect(startOf('sentAgain', false)).toMatchObject({ again: { tomas: '09:44' }, said: 'tomas' });
+    expect(again).toMatchObject({ again: { 'parking.tomas': '09:44' }, said: 'parking.tomas' });
+    expect(startOf('sentAgain', false)).toMatchObject({
+      again: { 'parking.tomas': '09:44' },
+      said: 'parking.tomas',
+    });
   });
 
   it('opens for an invitation and for a message just sent, and goes back to each', () => {
@@ -771,5 +792,93 @@ describe('the notice’s cost, before Send (pm on bm’s #31518)', () => {
       open: { kind: 'guest', key: 'lucia' },
     });
     expect(m.done).not.toContain('lucia');
+  });
+});
+
+describe('sc-32077’s four states', () => {
+  it('keeps a choice that matches nobody, and Send opens no check', () => {
+    const m = startOf('nobody', false);
+    expect(m.draft?.to).toBe('coming');
+    expect(toChip('coming', m.draft?.zero)).toBe('Coming · 0');
+    expect(reduce(m, { type: 'send' }).draft?.step).toBe('write');
+    const all = run(m, { type: 'chooseTo', to: 'all' }, { type: 'send' });
+    expect(all.draft?.step).toBe('check');
+  });
+
+  it('counts the limits trimmed, and keeps text past them', () => {
+    expect(lengthOf('  héllo  ')).toBe(5);
+    expect(lengthOf(' 👍 ')).toBe(1);
+    expect(overOf({ ...sampleDraft('write'), subject: '👍'.repeat(150) })).toEqual([]);
+    expect(overOf({ ...sampleDraft('write'), subject: '👍'.repeat(151) })).toEqual(['subject']);
+    const fine = { ...sampleDraft('write'), subject: `${'a'.repeat(150)}   ` };
+    expect(overOf(fine)).toEqual([]);
+    const long = reduce(
+      { ...startOf('write', false), draft: { ...fine, subject: 'a'.repeat(151) } },
+      { type: 'send' },
+    );
+    expect(long.draft).toMatchObject({ step: 'write', over: ['subject'] });
+    expect(long.draft?.subject).toHaveLength(151);
+    const shorter = reduce(long, { type: 'subject', text: 'a'.repeat(150) });
+    expect(shorter.draft?.over).toEqual([]);
+    expect(reduce(shorter, { type: 'send' }).draft?.step).toBe('check');
+  });
+
+  it('opens each limit’s state over its limit, with the field named', () => {
+    const subject = startOf('longSubject', false).draft;
+    const body = startOf('longMessage', false).draft;
+    expect(subject == null ? 0 : lengthOf(subject.subject)).toBeGreaterThan(150);
+    expect(subject?.over).toEqual(['subject']);
+    expect(body == null ? 0 : lengthOf(body.body)).toBeGreaterThan(10_000);
+    expect(body?.over).toEqual(['body']);
+  });
+
+  it('offers no send from an event that can’t send', () => {
+    expect(startOf('closedDraft', false)).toMatchObject({ closed: 'draft', phase: 'first' });
+    const ended = startOf('closedEnded', false);
+    expect(ended.closed).toBe('ended');
+    const tried = run(
+      { ...ended, draft: sampleDraft('write'), open: { kind: 'draft' } },
+      { type: 'send' },
+    );
+    expect(tried.draft?.step).toBe('write');
+  });
+
+  it('refuses an answer on an event that can’t send: nothing on the page, no credits', () => {
+    const ended = startOf('closedEnded', false);
+    const tried = run(ended, { type: 'answer', key: 'lucia', text: 'See you there' });
+    expect(tried.answers).toEqual({});
+    expect(tried.balance).toBe(ended.balance);
+    expect(noticeCostOf(ended, 'lucia')).toBeNull();
+  });
+
+  it('refuses Resend and Send again on an event that can’t send', () => {
+    const ended = startOf('closedEnded', false);
+    expect(run(ended, { type: 'resending', open: true }).resending).toBe(false);
+    expect(run(ended, { type: 'sendAgain', key: 'tomas' }).again).toEqual({});
+  });
+
+  it('keeps no waiting scheduled message on an event that can’t send', () => {
+    expect(startOf('closedEnded', false).kept).toEqual([]);
+    expect(startOf('closedDraft', false).kept).toEqual([]);
+  });
+
+  it('still marks and matches on an event that can’t send: they send nothing', () => {
+    const ended = startOf('closedEnded', false);
+    const done = run(ended, { type: 'markDone', key: 'lucia' });
+    expect(done.done).toContain('lucia');
+    expect(run(done, { type: 'markWaiting', key: 'lucia' }).done).not.toContain('lucia');
+    expect(run(ended, { type: 'match', name: 'Marie Dubois' }).matched).toBe('Marie Dubois');
+  });
+
+  it('refuses without messages.read: no count', () => {
+    const m = startOf('forbidden', true);
+    expect(m.forbidden).toBe(true);
+    expect(badgeOf(m)).toBeNull();
+  });
+
+  it('opens nothing over the refusal, from the bell or anywhere', () => {
+    const m = startOf('forbidden', false);
+    const opened = reduce(m, { type: 'open', open: { kind: 'reached', of: 'parking' } });
+    expect(opened.open).toBeNull();
   });
 });

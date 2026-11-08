@@ -23,6 +23,7 @@ import {
 import { CLOCKS, READER_ZONE, type SampleEvent, TYPE_WORDS } from './EventsSample.ts';
 import { meshFor, type MeshKey } from '../../kit/today.ts';
 import { W, say } from './EventsWords.ts';
+import { FINAL_NUMBERS_STATES, FINAL_WORDS, finalNumbersDue, othersOwed } from './FinalNumbers.ts';
 import type { RowTag } from '../../components/SummaryRows.tsx';
 
 export type ListTab = 'upcoming' | 'drafts' | 'past';
@@ -223,15 +224,45 @@ export function milestonesOf(event: SampleEvent): Milestone[] {
   ];
 }
 
+/** The timeline's You milestone while a date is set and no copy recorded (sc-30812), gone at the start and once Ended. */
+export function finalNumbersOf(event: Shown, now: Date): Milestone[] {
+  const due = finalNumbersDue(event.id);
+
+  if (due == null || event.status === 'ended' || now.getTime() >= Date.parse(event.startsAt))
+    return [];
+
+  return [
+    {
+      at: instantOf(due, '23:59', event.timeZone),
+      title: FINAL_WORDS.milestone,
+      note: null,
+      owner: 'you',
+      area: 'menu',
+      action: null,
+    },
+  ];
+}
+
+/** The event's dates as the server returns them, which Next up and the Overview's Needs you both read (sc-32801). */
+export function datesOf(event: Shown, now: Date): Milestone[] {
+  const before = event.status !== 'ended' && now.getTime() < Date.parse(event.startsAt);
+
+  return [
+    ...milestonesOf(event),
+    ...finalNumbersOf(event, now),
+    ...(before ? othersOwed(event.id) : []),
+  ];
+}
+
 export type StepAction = 'makeLive' | 'changeDates' | 'resume' | 'duplicate';
 
 export type CardStep =
   | { kind: 'button'; line: string; label: string; action: StepAction }
-  | { kind: 'next'; title: string; when: string };
+  | { kind: 'next'; title: string; when: string; you: boolean; overdue: boolean };
 
 /** The card's one step, by main's nextStep: what the phase asks for, else the next thing that happens; Duplicate once it is over. */
 export function cardStep(event: Shown, now: Date, locale: string): CardStep {
-  const step = nextStep({ ...event, milestones: milestonesOf(event) }, event.phase, now);
+  const step = nextStep({ ...event, milestones: datesOf(event, now) }, event.phase, now);
 
   switch (step?.kind) {
     case 'makeLive':
@@ -249,6 +280,8 @@ export function cardStep(event: Shown, now: Date, locale: string): CardStep {
           event.timeZone,
           now,
         )}`,
+        you: step.milestone.owner === 'you',
+        overdue: step.milestone.owner === 'you' && Date.parse(step.milestone.at) < now.getTime(),
       };
     case undefined: {
       const line =
@@ -561,10 +594,20 @@ export const EVENT_STATES = [
   'dates',
   'datesChanged',
   'datesError',
+  'datesReplyBy',
+  'datesReplyByAsk',
+  'datesReplyBySaved',
   'discard',
   'changedElsewhere',
   'showLatest',
   'saved',
+  'replyBy',
+  'replyByEmpty',
+  'replyByError',
+  'replyBySooner',
+  'replyByNow',
+  'replyBySaved',
+  'replyByRemoved',
   'venue',
   'venueSuggestions',
   'venueZone',
@@ -593,6 +636,14 @@ export const EVENT_STATES = [
   'muteNotLoaded',
   'muteNotSaved',
   'more',
+  'needsYou',
+  'needsYouOne',
+  'needsYouOverdue',
+  'needsYouGiven',
+  'needsYouReadOnly',
+  'needsYouLoading',
+  'needsYouFailed',
+  ...FINAL_NUMBERS_STATES,
 ] as const;
 export type EventDemoState = (typeof EVENT_STATES)[number];
 
@@ -608,17 +659,26 @@ export function clockOf(state: EventDemoState | null): Date {
   return new Date(CLOCKS.reader);
 }
 
-export type EditPart = 'dates' | 'venue' | 'hosts' | 'type' | 'currency' | 'name' | 'cover';
+export type EditPart =
+  'dates' | 'replyBy' | 'venue' | 'hosts' | 'type' | 'currency' | 'name' | 'cover';
 
 export function editOf(state: EventDemoState | null): EditPart | null {
   switch (state) {
     case 'dates':
     case 'datesChanged':
     case 'datesError':
+    case 'datesReplyBy':
+    case 'datesReplyByAsk':
     case 'discard':
     case 'changedElsewhere':
     case 'showLatest':
       return 'dates';
+    case 'replyBy':
+    case 'replyByEmpty':
+    case 'replyByError':
+    case 'replyBySooner':
+    case 'replyByNow':
+      return 'replyBy';
     case 'venue':
     case 'venueSuggestions':
     case 'venueZone':

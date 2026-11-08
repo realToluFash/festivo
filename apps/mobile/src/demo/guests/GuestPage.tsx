@@ -11,6 +11,7 @@ import { LineIcon } from '../settings/AccountCard.tsx';
 import { Pill } from '../../components/SettingsParts.tsx';
 import { Row, RowList, TextAction } from '../../components/Summary.tsx';
 import { type Role, dayWords, invitedWords, replyLine, replyParts } from './GuestsModel.ts';
+import { GreetAsRow } from './GuestGreetAs.tsx';
 import { ChoseNote } from './GuestLanguage.tsx';
 import { BlockHead, DoneLine, GuestCover, type Layout } from './GuestsParts.tsx';
 import {
@@ -150,68 +151,67 @@ export function GuestPage({
           )}
         </View>
       )}
-      {(owner || g.companions.length > 0) && (
-        <View>
-          <BlockHead
-            title={W.details}
-            right={
-              owner ? (
-                <TextAction
-                  ref={refFor('edit')}
-                  label={W.edit}
-                  onPress={actions.onEdit}
-                  testID="guest.edit"
+      <View>
+        <BlockHead
+          title={W.details}
+          right={
+            owner ? (
+              <TextAction
+                ref={refFor('edit')}
+                label={W.edit}
+                onPress={actions.onEdit}
+                testID="guest.edit"
+              />
+            ) : null
+          }
+        />
+        <RowList
+          items={[
+            { key: 'greetAs', inset: 40, row: <GreetAsRow g={g} /> },
+            ...(owner
+              ? [
+                  {
+                    key: 'email',
+                    inset: 40,
+                    row: <ValueRow value={g.email} label={W.emailAddress} icon="mail" />,
+                  },
+                  {
+                    key: 'phone',
+                    inset: 40,
+                    row: <ValueRow value={g.phone} label={W.mobileNumber} icon="phone" />,
+                  },
+                  { key: 'language', inset: 40, row: <LanguageRow g={g} /> },
+                ]
+              : []),
+            ...g.companions.map((c, index) => ({
+              key: `c${index}`,
+              inset: 40,
+              row: (
+                <Row
+                  title={c.name}
+                  line={say.companionOf(c.kind === 'held' ? W.heldLine : REPLY_WORD[c.kind])}
+                  lead={<MarkSlot kind={c.kind} />}
                 />
-              ) : null
-            }
-          />
-          <RowList
-            items={[
-              ...(owner
-                ? [
-                    {
-                      key: 'email',
-                      inset: 40,
-                      row: <ValueRow value={g.email} label={W.emailAddress} icon="mail" />,
-                    },
-                    {
-                      key: 'phone',
-                      inset: 40,
-                      row: <ValueRow value={g.phone} label={W.mobileNumber} icon="phone" />,
-                    },
-                    { key: 'language', inset: 40, row: <LanguageRow g={g} /> },
-                  ]
-                : []),
-              ...g.companions.map((c, index) => ({
-                key: `c${index}`,
-                inset: 40,
-                row: (
-                  <Row
-                    title={c.name}
-                    line={say.companionOf(c.kind === 'held' ? W.heldLine : REPLY_WORD[c.kind])}
-                    lead={<MarkSlot kind={c.kind} />}
-                  />
-                ),
-              })),
-              ...(owner
-                ? [
-                    {
-                      key: 'added',
-                      inset: 40,
-                      row: (
-                        <Row
-                          title={`${dayWords(ADDED_ON, locale)} by ${COLLEAGUE}`}
-                          line={W.added}
-                          lead={<LineIcon name="user" />}
-                        />
-                      ),
-                    },
-                  ]
-                : []),
-            ]}
-          />
-        </View>
-      )}
+              ),
+            })),
+            ...(owner
+              ? [
+                  {
+                    key: 'added',
+                    inset: 40,
+                    row: (
+                      <Row
+                        title={`${dayWords(ADDED_ON, locale)} by ${COLLEAGUE}`}
+                        line={W.added}
+                        lead={<LineIcon name="user" />}
+                      />
+                    ),
+                  },
+                ]
+              : []),
+          ]}
+        />
+      </View>
       {owner && invites && (
         <View>
           <BlockHead title={W.invitation} />

@@ -48,9 +48,19 @@ import {
   replyBySays,
   rowDay,
 } from './replyBy.ts';
+import { EventNeedsYou } from './EventNeedsYou.tsx';
+import { type NeedsState, readerOf } from './needsYou.ts';
 import { Alert, EventCard, EventsShell, NotBuilt, Switch, Thumb } from './EventParts.tsx';
-import { CAL_WORDS } from './calendar.ts';
 import { EventSidebar } from './EventSidebar.tsx';
+import { AllDates } from './EventDates.tsx';
+import {
+  KITCHEN_EVENT,
+  KW,
+  cardMilestone,
+  kitchenAt,
+  seedFromEvent,
+  timelineOf,
+} from './kitchen.ts';
 import { Glyph, type GlyphName } from '../components/Glyph.tsx';
 import { LayersContext } from '../layers.ts';
 import { BUDGET_EVENT } from './budget.ts';
@@ -106,6 +116,10 @@ function replyByStart(state: EventStateName | null, id: string): string | null {
   if (state === 'replyByRemoved') return null;
 
   return replyByOf(id);
+}
+
+function needsStateOf(state: EventStateName | null): NeedsState | null {
+  return state != null && state.startsWith('needsYou') ? (state as NeedsState) : null;
 }
 
 function askingOf(state: EventStateName | null): Asking | null {
@@ -169,6 +183,7 @@ function EventAt({
   const [first] = useState(() => {
     if (raw != null) resetSample();
     if (raw != null && messages) resetInbox();
+    seedFromEvent(raw);
 
     const event = sampleEvent(id);
     const named = messages ? null : eventStateOf(raw);
@@ -305,13 +320,14 @@ function EventView({
               <DemoBell tell={tell} />
             </div>
             {dates ? (
-              <AreaPage event={event} name={CAL_WORDS.allDates} line={CAL_WORDS.allDatesComing} />
+              <AllDates event={event} now={now} />
             ) : area === 'overview' ? (
               <>
                 <EventCard
                   event={event}
                   now={now}
                   level={1}
+                  milestone={cardMilestone(event, now)}
                   onStep={(does: CardDoes) => {
                     if (does === 'makeLive') tell('Make live has its own design.');
                     else if (does === 'changeDates') {
@@ -365,6 +381,15 @@ function EventView({
                         setDirty(false);
                         tell(replyBySays(next, now, event.timeZone).toast);
                       }}
+                      needs={
+                        <EventNeedsYou
+                          timeline={timelineOf(event, now)}
+                          permissions={readerOf(needsStateOf(state))}
+                          state={needsStateOf(state)}
+                          now={now}
+                          timeZone={event.timeZone}
+                        />
+                      }
                     />
                   </div>
                   <div className="ev-right">
@@ -392,11 +417,19 @@ function EventView({
                 </div>
               </>
             ) : (
-              <AreaPage
-                event={event}
-                name={AREAS.find((one) => one.area === area)?.name ?? ''}
-                line={COMING[area]}
-              />
+              <>
+                <AreaPage
+                  event={event}
+                  name={AREAS.find((one) => one.area === area)?.name ?? ''}
+                  line={COMING[area]}
+                />
+                {area === 'menu' && event.id === KITCHEN_EVENT && (
+                  <Link className="desk-text" to={kitchenAt(event.id)}>
+                    {KW.title}
+                    <Glyph name="chevron" size={16} weight={2.4} />
+                  </Link>
+                )}
+              </>
             )}
           </div>
           {leaving != null && (
@@ -660,6 +693,7 @@ function Details({
   onLatest,
   replyBy,
   onReplyBy,
+  needs,
 }: {
   event: SampleEvent;
   now: Date;
@@ -672,6 +706,7 @@ function Details({
   onLatest: (latest: SampleEvent) => void;
   replyBy: string | null;
   onReplyBy: (next: string | null) => void;
+  needs: ReactNode;
 }) {
   const locked = eventPhase(event, now) === 'finished';
   const days = dayCount(event);
@@ -773,6 +808,7 @@ function Details({
           )}
         </ul>
       </section>
+      {needs}
       <section className="desk-block" aria-labelledby="ev-name-cover">
         <Head title={<span id="ev-name-cover">{W.nameAndCover}</span>} />
         <ul className="desk-rows ev-details">

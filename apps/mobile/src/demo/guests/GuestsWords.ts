@@ -114,6 +114,7 @@ export const W = {
   choosePeople: 'Choose people',
   searchContacts: 'Search contacts',
   onlyTicked: 'Only the people you tick are sent to Soirely.',
+  tickOne: 'Tick at least one person.',
   refusedContacts:
     'Without access to your contacts, you pick one person at a time. Soirely does not ask again; you can allow it in your phone’s settings.',
   chooseAnother: 'Choose another number',
@@ -137,7 +138,11 @@ export const W = {
   planAllows: 'Your plan allows 100 people per event',
   removeRows: 'Remove rows or places for companions here.',
   removeOnWeb: 'Remove a guest from the list, on the web.',
-  plansOnWeb: 'Plans are managed on the web.',
+  /** sc-3930 in the app, for billing.manage (pm, 8 Nov): no app copy says where plans are changed. */
+  planInApp: 'The plan cannot be changed in the app.',
+  /** sc-3930: for someone who can't change the plan; one owner in the sample, so the one-owner line. */
+  askOwner: 'Ask an owner',
+  ownerAsked: 'The owner has been sent the link to Compare plans.',
   listKept: 'The list is kept as you left it.',
   backToList: 'Back to the list',
   notAddedTitle: 'Not added',
@@ -159,6 +164,20 @@ export const W = {
   nobodyYet: 'Nobody is on the list yet',
   nobodyYetLine: 'Anyone who arrives can be added as a walk-in.',
   doorOpened: 'Check-in opened at 16:00.',
+  // the door code, scanned (sc-1301; [l10n] #5334, #5854)
+  scanCode: 'Scan a code',
+  pointAtCode: 'Point at the code',
+  scanNext: 'Scan the next code',
+  companionHeld: 'Held · until their host is coming',
+  nothingNew: 'Nothing new was recorded. You decide what happens next.',
+  notOnList: 'This code is not on this event’s guest list. Search by name instead.',
+  noListTitle: 'Connect once to scan codes',
+  noListBody:
+    'This device needs the guest list before it can check codes. It downloads as soon as the device is back online, and the scanner opens by itself.',
+  cameraOffTitle: 'Soirely can’t use the camera',
+  cameraOffBody:
+    'Allow the camera for Soirely in Settings to scan codes. Searching by name works without it.',
+  openSettings: 'Open Settings',
   // the numbers
   openGuestList: 'Open the guest list',
   numbersFailed: 'Guest numbers didn’t load.',
@@ -168,6 +187,11 @@ export const W = {
   guestsInvited: 'Guests invited',
   repliesIn: 'Replies in',
   pickAGuest: 'Pick a guest to see their details, or add one.',
+  // Greet as (sc-3960's 'English copy (l10n)')
+  greetAs: 'Greet as',
+  greetAsHint:
+    'How messages greet them, such as Auntie Bisi or Dr. Okafor. Leave it blank to use their full name.',
+  greetedByName: 'Messages greet them by their full name.',
 } as const;
 
 export type ReplyKind = 'coming' | 'maybe' | 'notcoming' | 'held' | 'noreply' | 'notyet';
@@ -193,7 +217,9 @@ export const say = {
   shown: (shown: number, total: number) => `${shown} of ${total} shown`,
   says: (coming: number, invited: number) => `${coming} coming of ${invited} invited`,
   havent: (all: number, guests: number, companions: number) =>
-    `${all} haven’t replied (${guests} guests and ${companions} of their companions).`,
+    companions === 0
+      ? `${say.havenShort(all)}.`
+      : `${say.havenShort(all)} (${guests === 1 ? '1 guest' : `${guests} guests`} and ${companions === 1 ? '1 of their companions' : `${companions} of their companions`}).`,
   closesTomorrow: (date: string) => `Replies close tomorrow, ${date}.`,
   onList: (count: number) => `${count} on the list`,
   arrivedOf: (arrived: number, expected: number) => `${arrived} of ${expected}`,
@@ -215,6 +241,14 @@ export const say = {
   noneYet: (count: number) => `None yet · ${count} of 10`,
   moreCompanions: (count: number) => `${count} more companions`,
   removed: (name: string) => `${name} removed. Save to keep the change.`,
+  removeTitle: (name: string) => `Remove ${name}?`,
+  /** The AC's line (sc-3773, 21 Oct): full name, what goes, no pronoun; a seat or a meal alone is a proposal for [en]. */
+  seatedLine: (name: string, table: string | null, meal: boolean) =>
+    table != null && meal
+      ? `${name} has a seat at ${table} and a meal chosen. Removing this companion frees the seat and drops the meal.`
+      : table != null
+        ? `${name} has a seat at ${table}. Removing this companion frees the seat.`
+        : `${name} has a meal chosen. Removing this companion drops the meal.`,
   sameName: (name: string) => `${name} is already on the list`,
   discardLine: (name: string) => `Your changes to ${name} have not been saved.`,
   forName: (name: string) => `For ${name}. It counts as their reply, marked as recorded by you.`,
@@ -270,6 +304,12 @@ export const say = {
   arrivedName: (name: string) => `${name} arrived`,
   arrivedButton: (name: string) => `${name} arrived`,
   arrivedTime: (time: string) => `Arrived ${time}`,
+  offlineSince: (time: string, waiting: number) =>
+    waiting === 0
+      ? `Offline since ${time}`
+      : waiting === 1
+        ? `Offline since ${time} · 1 arrival waiting to sync`
+        : `Offline since ${time} · ${waiting} arrivals waiting to sync`,
   numbersLead: (says: string) => `${says}. Each number opens the guests it counts.`,
   notYetInvited: (count: number) => `${count} not yet invited`,
   opens: (word: string) => `opens ${word}`,
@@ -277,4 +317,7 @@ export const say = {
   havenShort: (count: number) => (count === 1 ? '1 hasn’t replied' : `${count} haven’t replied`),
   eventGuests: (coming: number, havent: number) => `${coming} coming · ${say.havenShort(havent)}`,
   ownDesign: (what: string) => `${what} has its own design.`,
+  greetsAs: (greetAs: string) => `Messages greet them as “${greetAs}”.`,
+  ofMax: (count: number, max: number) => `${count} of ${max}`,
+  greetAsLong: (count: number) => `Shorten Greet as to ${count} characters or fewer.`,
 } as const;

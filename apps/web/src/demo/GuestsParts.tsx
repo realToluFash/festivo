@@ -252,6 +252,7 @@ export function GuestField({
   optional = false,
   error,
   help,
+  counter,
   inputRef,
   focusKey,
   type = 'text',
@@ -263,6 +264,7 @@ export function GuestField({
   optional?: boolean;
   error?: string | undefined;
   help?: string;
+  counter?: string;
   inputRef?: RefObject<HTMLInputElement | null>;
   focusKey: string;
   type?: 'text' | 'email';
@@ -270,7 +272,11 @@ export function GuestField({
   onChange: (value: string) => void;
 }) {
   const id = useId();
-  const told = [help == null ? null : `${id}-help`, error == null ? null : `${id}-error`]
+  const told = [
+    help == null ? null : `${id}-help`,
+    counter == null ? null : `${id}-counter`,
+    error == null ? null : `${id}-error`,
+  ]
     .filter(Boolean)
     .join(' ');
 
@@ -303,6 +309,11 @@ export function GuestField({
       {help != null && (
         <p id={`${id}-help`} className="desk-help">
           {help}
+        </p>
+      )}
+      {counter != null && (
+        <p id={`${id}-counter`} className="desk-help">
+          {counter}
         </p>
       )}
     </div>

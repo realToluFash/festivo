@@ -25,16 +25,26 @@ import {
   type Answer,
   type EditState,
   type RecordState,
+  companionsAfterEdit,
   emailCheck,
   nameProblem,
   phoneCheck,
   dayWords,
+  greetAsProblem,
+  greetAsSaved,
   recorded,
   sameNameAs,
 } from './GuestsModel.ts';
+import { GreetAsField } from './GuestGreetAs.tsx';
 import { LanguageChoices, LanguageField } from './GuestLanguage.tsx';
 import { Amber, AmberLine, Choices, DoneLine } from './GuestsParts.tsx';
-import { type GuestLanguage, type SampleGuest, THEIRS, TODAY } from './GuestsSample.ts';
+import {
+  type Companion,
+  type GuestLanguage,
+  type SampleGuest,
+  THEIRS,
+  TODAY,
+} from './GuestsSample.ts';
 import { HOW_INVITED, HOW_TOLD, REPLY_WORD, W, say } from './GuestsWords.ts';
 import { ReplyMark } from './ReplyMark.tsx';
 
@@ -173,6 +183,12 @@ export function Legend({ text, line }: { text: string; line?: string | null }) {
 }
 
 const MAX = 10;
+const LONG_GREET_AS = 'Auntie Bisi, who taught every one of us to dance at weddings!';
+const GREET_AS_STARTS: readonly (EditState | null)[] = [
+  'greetAsEmpty',
+  'greetAsEdit',
+  'greetAsLong',
+];
 
 /** Language's sheet over the focused screen (sc-3790): a tap picks and closes it, as a select does. */
 export function languageOver(
@@ -200,6 +216,13 @@ function startCompanions(state: EditState | null, g: SampleGuest): string[] {
       ...Array.from({ length: MAX - 1 }, (_, i) => `Guest of ${g.name} · ${i + 2}`),
     ];
   return g.companions.map((c) => c.name);
+}
+
+/** Each field's companion as the guest has them, so a seat or a meal is known; a field added or prefilled here has none. */
+function startSeats(state: EditState | null, g: SampleGuest): (Companion | null)[] {
+  return state === 'editCompanions' || state === 'editMax'
+    ? startCompanions(state, g).map(() => null)
+    : [...g.companions];
 }
 
 /** Edit guest (sc-3773): sc-1468's fields filled in; every refusal under its field before anything is sent. */
@@ -234,11 +257,16 @@ export function EditGuest({
   const [country, setCountry] = useState(phone.country);
   const [number, setNumber] = useState(start === 'edit' ? '7700 9004' : phone.number);
   const [companions, setCompanions] = useState(() => startCompanions(start, g));
+  const [seats, setSeats] = useState(() => startSeats(start, g));
+  const [removing, setRemoving] = useState<number | null>(start === 'editSeated' ? 0 : null);
   const [shownAll, setShownAll] = useState(false);
   const [removed, setRemoved] = useState<string | null>(
     start === 'editCompanions' ? `${g.companions[0]?.name ?? ''} · 2` : null,
   );
-  const [checked, setChecked] = useState(start === 'editErrors');
+  const [greetAs, setGreetAs] = useState(
+    start === 'greetAsLong' ? LONG_GREET_AS : (g.greetAs ?? ''),
+  );
+  const [checked, setChecked] = useState(start === 'editErrors' || start === 'greetAsLong');
   const [same, setSame] = useState(start === 'editDuplicate');
   const [conflict, setConflict] = useState(start === 'edit412');
   const [failed, setFailed] = useState<'notSaved' | 'offline' | null>(
@@ -248,15 +276,18 @@ export function EditGuest({
   const [language, setLanguage] = useState<GuestLanguage | null>(g.language ?? null);
   const [choosing, setChoosing] = useState(false);
   const nameRef = useRef<TextInputInstance>(null);
+  const greetAsRef = useRef<TextInputInstance>(null);
   const emailRef = useRef<TextInputInstance>(null);
   const numberRef = useRef<TextInputInstance>(null);
   const errors = {
     name: checked ? nameProblem(name) : null,
+    greetAs: checked ? greetAsProblem(greetAs) : null,
     email: checked ? emailCheck(email) : null,
     phone: checked ? phoneCheck(number, country) : null,
   };
   const changed =
     name !== g.name ||
+    greetAsSaved(greetAs) !== (g.greetAs ?? null) ||
     email !== (g.email ?? '') ||
     joinPhone(country, number) !== g.phone ||
     language !== (g.language ?? null) ||
@@ -265,22 +296,22 @@ export function EditGuest({
   const next = (): SampleGuest => ({
     ...g,
     name: name.trim(),
+    greetAs: greetAsSaved(greetAs),
     email: email.trim() === '' ? null : email.trim(),
     phone: joinPhone(country, number),
     language,
-    companions: companions.map((c, i) => ({
-      name: c,
-      kind: g.companions[i]?.kind ?? (g.kind === 'coming' ? 'coming' : 'held'),
-    })),
+    companions: companionsAfterEdit(companions, seats, g.kind),
   });
   const save = (anyway = false) => {
     const problems = {
       name: nameProblem(name),
+      greetAs: greetAsProblem(greetAs),
       email: emailCheck(email),
       phone: phoneCheck(number, country),
     };
     setChecked(true);
     if (problems.name != null) return focusChecked(nameRef);
+    if (problems.greetAs != null) return focusChecked(greetAsRef);
     if (problems.email != null) return focusChecked(emailRef);
     if (problems.phone != null) return focusChecked(numberRef);
     if (!anyway && name.trim() !== g.name && sameNameAs(guests, name, g.key) != null) {
@@ -301,6 +332,28 @@ export function EditGuest({
         width: ASK_WIDTH,
       }
     : null;
+  const drop = (index: number) => {
+    setRemoved(companions[index] ?? '');
+    setCompanions(companions.filter((_, i) => i !== index));
+    setSeats(seats.filter((_, i) => i !== index));
+  };
+  const seat = removing == null ? null : (seats[removing] ?? null);
+  const seatedName = removing == null ? '' : (companions[removing] ?? '');
+  const removeSeated: AskProps | null =
+    removing != null && seat != null
+      ? {
+          title: say.removeTitle(seatedName),
+          line: say.seatedLine(seatedName, seat.table ?? null, seat.meal === true),
+          keep: { label: W.cancel, testID: 'guest.edit.seatedKeep' },
+          confirm: { label: W.remove, removes: true, testID: 'guest.edit.seatedRemove' },
+          onKeep: () => setRemoving(null),
+          onConfirm: () => {
+            drop(removing);
+            setRemoving(null);
+          },
+          width: ASK_WIDTH,
+        }
+      : null;
   const shown = shownAll || companions.length <= 3 ? companions : companions.slice(0, 3);
 
   return (
@@ -311,7 +364,7 @@ export function EditGuest({
       onCancel={() => (changed ? setDiscarding(true) : onClose())}
       cancelTestID="guest.edit.cancel"
       opener={opener}
-      ask={discard}
+      ask={discard ?? removeSeated}
       over={
         choosing
           ? languageOver(
@@ -392,6 +445,14 @@ export function EditGuest({
         fieldRef={nameRef}
         testID="guest.edit.name"
       />
+      <GreetAsField
+        value={greetAs}
+        onChange={setGreetAs}
+        error={errors.greetAs}
+        autoFocus={GREET_AS_STARTS.includes(start)}
+        fieldRef={greetAsRef}
+        testID="guest.edit.greetAs"
+      />
       <GuestField
         label={W.emailAddress}
         value={email}
@@ -440,8 +501,12 @@ export function EditGuest({
               label={W.remove}
               plain
               onPress={() => {
-                setRemoved(c);
-                setCompanions(companions.filter((_, i) => i !== index));
+                const held = seats[index];
+                if (held != null && (held.table != null || held.meal === true)) {
+                  setRemoving(index);
+                  return;
+                }
+                drop(index);
               }}
               accessibilityLabel={`${W.remove} ${c}`}
               testID={`guest.edit.remove.${index}`}
@@ -466,7 +531,10 @@ export function EditGuest({
           <TextAction
             label={W.addCompanion}
             glyph="plus"
-            onPress={() => setCompanions([...companions, ''])}
+            onPress={() => {
+              setCompanions([...companions, '']);
+              setSeats([...seats, null]);
+            }}
             testID="guest.edit.addCompanion"
           />
         )}

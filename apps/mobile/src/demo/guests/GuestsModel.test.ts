@@ -7,6 +7,7 @@ import { TO_FIGURES } from '../messages/MessagesSample.ts';
 import { SAMPLE_GUESTS } from '../events/GuestCounts.ts';
 import {
   DOOR_STATES,
+  countAfter,
   addedGuest,
   GROUPS,
   GUESTS_ON,
@@ -14,7 +15,9 @@ import {
   FILTERS,
   GUESTS_STATES,
   areaStart,
+  ASK_OWNER_STATES,
   cardWords,
+  companionsAfterEdit,
   countsFrom,
   countsOf,
   doorMatches,
@@ -26,7 +29,10 @@ import {
   filtersFor,
   groupRows,
   guestOf,
+  isIn,
   markedInvited,
+  OVER_LIMIT_STATES,
+  PLAN_STATES,
   nameProblem,
   phoneCheck,
   planRoom,
@@ -49,7 +55,7 @@ import {
   languageName,
   replyByOf,
 } from './GuestsSample.ts';
-import { say } from './GuestsWords.ts';
+import { W, say } from './GuestsWords.ts';
 
 const EN = 'en-US';
 const byKey = (key: string) => {
@@ -64,7 +70,7 @@ describe('the states, as guests-a-spec §15 names them', () => {
     expect(
       GUESTS_STATES.filter((state) => (DOOR_STATES as readonly string[]).includes(state)),
     ).toEqual([]);
-    expect(GUESTS_STATES).toHaveLength(82);
+    expect(GUESTS_STATES).toHaveLength(92);
     expect(DOOR_STATES).toHaveLength(13);
   });
 
@@ -74,6 +80,7 @@ describe('the states, as guests-a-spec §15 names them', () => {
     expect(guestOf('notYetInvited')).toBe('bisi');
     expect(guestOf('recordReplace')).toBe('ngozi');
     expect(guestOf('editMax')).toBe('musa');
+    expect(guestOf('editSeated')).toBe('ines');
     expect(guestOf('edit412')).toBe('kwame');
     expect(guestOf('inUse')).toBeNull();
   });
@@ -84,6 +91,9 @@ describe('the states, as guests-a-spec §15 names them', () => {
     expect(areaStart('addOffline').overlay).toBe('add');
     expect(areaStart('picker').overlay).toBe('picker');
     expect(areaStart('androidPick').overlay).toBe('android');
+    expect(areaStart('androidNone').overlay).toBe('android');
+    expect(areaStart('editSeated').overlay).toBe('edit');
+    expect(areaStart('ownerAsked').overlay).toBe('review');
     expect(areaStart('over250').overlay).toBe('review');
     expect(areaStart('replaceAsk').overlay).toBe('replace');
     expect(areaStart('markRefused').overlay).toBe('mark');
@@ -102,6 +112,8 @@ describe('the states, as guests-a-spec §15 names them', () => {
     expect(eventOf('draft')).toBe('evt-draft-4');
     expect(eventOf('paused')).toBe('evt-party-2');
     expect(eventOf('overLimit')).toBe('evt-ireti-2');
+    expect(eventOf('overLimitAsk')).toBe('evt-ireti-2');
+    expect(eventOf('ownerAsked')).toBe('evt-ireti-2');
     expect(eventOf('inUse')).toBe('evt-wed-4');
   });
 });
@@ -507,6 +519,44 @@ describe('From contacts and the plan limit (sc-7579, sc-3930)', () => {
     expect(planRoom(40, 10)).toBeNull();
     expect(Object.values(PLAN_SAMPLES).map((one) => one.listed)).toEqual([80, 80, 80]);
   });
+
+  it('opens every plan state on Ireti at 40, the over-limit ones a subset', () => {
+    for (const state of PLAN_STATES) expect(eventOf(state)).toBe('evt-ireti-2');
+    expect(OVER_LIMIT_STATES.every((state) => isIn(PLAN_STATES, state))).toBe(true);
+    expect(ASK_OWNER_STATES.every((state) => isIn(OVER_LIMIT_STATES, state))).toBe(true);
+    expect(isIn(OVER_LIMIT_STATES, 'roomLeft')).toBe(false);
+  });
+
+  it('the app plan line is sc-3930’s (sc-7579)', () => {
+    expect(W.planInApp).toBe('The plan cannot be changed in the app.');
+  });
+});
+
+describe('a companion with a seat and a meal (sc-3773)', () => {
+  it('says what removing them takes, with their full name and no pronoun', () => {
+    const [rui] = byKey('ines').companions;
+    expect(rui).toMatchObject({ name: 'Rui Duarte', table: 'Table 4', meal: true });
+    expect(say.removeTitle('Rui Duarte')).toBe('Remove Rui Duarte?');
+    expect(say.seatedLine('Rui Duarte', 'Table 4', true)).toBe(
+      'Rui Duarte has a seat at Table 4 and a meal chosen. Removing this companion frees the seat and drops the meal.',
+    );
+    expect(byKey('musa').companions.some((one) => one.table != null || one.meal === true)).toBe(
+      false,
+    );
+  });
+
+  it('keeps each companion’s own reply, seat and meal when an earlier one is removed', () => {
+    // Inês Duarte with two companions, Coming and Held, both seated; Edit removes the first, then saves.
+    const rui = { name: 'Rui Duarte', kind: 'coming', table: 'Table 4', meal: true } as const;
+    const beatriz = { name: 'Beatriz Duarte', kind: 'held', table: 'Table 4', meal: true } as const;
+    const [, ...left] = [rui, beatriz];
+
+    expect(companionsAfterEdit(['Beatriz Duarte'], left, byKey('ines').kind)).toEqual([beatriz]);
+    expect(companionsAfterEdit(['Beatriz Duarte', ''], [...left, null], 'coming')[1]).toEqual({
+      name: '',
+      kind: 'coming',
+    });
+  });
 });
 
 describe('the door (sc-1454)', () => {
@@ -526,6 +576,27 @@ describe('the door (sc-1454)', () => {
     expect(people.find((p) => p.key === 'musa')).toMatchObject({
       arrivedAt: '18:12',
       by: 'Ana Souza',
+    });
+  });
+});
+
+describe('the door’s count, one rule for Check-in and the scanner (sc-1454, 5 Nov)', () => {
+  it('adds an arrival to attended, and to expected too for anyone not counted', () => {
+    expect(countAfter({ arrived: 41, expected: 98 }, 'coming', 1)).toEqual({
+      arrived: 42,
+      expected: 98,
+    });
+    expect(countAfter({ arrived: 41, expected: 98 }, 'maybe', 1)).toEqual({
+      arrived: 42,
+      expected: 99,
+    });
+    expect(countAfter({ arrived: 41, expected: 98 }, 'walkin', 1)).toEqual({
+      arrived: 42,
+      expected: 99,
+    });
+    expect(countAfter({ arrived: 42, expected: 99 }, 'held', -1)).toEqual({
+      arrived: 41,
+      expected: 98,
     });
   });
 });

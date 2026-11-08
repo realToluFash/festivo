@@ -1,6 +1,7 @@
 import { instantOf } from '../events/EventsModel.ts';
 import { READER_ZONE } from '../events/EventsSample.ts';
 import {
+  ADDED,
   ANSWERS,
   BALANCE,
   BODY,
@@ -11,7 +12,10 @@ import {
   FIXED_ADDRESS,
   FOLLOW_UP,
   GUESTS,
+  type GroupKey,
   type GuestKey,
+  LONG_BODY,
+  LONG_SUBJECT,
   LOW_BALANCE,
   type ManyKey,
   NOTICE_CREDITS,
@@ -34,6 +38,9 @@ import {
   formatCount,
 } from './MessagesSample.ts';
 import { CHANNEL_WORD, type ChannelKey, W, say } from './MessagesWords.ts';
+import { type Previewing, previewStart } from './PreviewModel.ts';
+import { BRACED_BODY, DATED_BODY, PLAIN_BODY } from './PreviewSample.ts';
+import { type Refusal, TYPED_EDIT, refusalOf, reloaded } from './ScheduledSave.ts';
 import { EDGE } from './TokenText.ts';
 
 /** Every state of Messaging B, each a `?state=` in both demos (spec §7 and §7b), in the spec's order. */
@@ -83,6 +90,33 @@ export const MESSAGES_STATES = [
   'noSubject',
   'followUp',
   'tellPlace',
+  'added',
+  'addedPhone',
+  'notNow',
+  'told',
+  'filterMenu',
+  'filtered',
+  'resendInvited',
+  'resendSent',
+  'nobody',
+  'longSubject',
+  'longMessage',
+  'closedDraft',
+  'closedEnded',
+  'forbidden',
+  'insert',
+  'previewAs',
+  'previewGreetAs',
+  'previewChose',
+  'previewLoading',
+  'previewMarkup',
+  'typedBraces',
+  'previewBraces',
+  'noTokens',
+  'editConflict',
+  'editSent',
+  'editCancelled',
+  'editTooLate',
 ] as const;
 
 export type MessagesState = (typeof MESSAGES_STATES)[number];
@@ -92,6 +126,15 @@ export function messagesStateOf(value: string | undefined): MessagesState | null
 }
 
 export type ReachedOf = 'parking' | 'invite' | 'draft';
+
+export type FixKind = 'fixEmail' | 'addEmail' | 'addPhone';
+
+export type ReachFilter = 'everyone' | 'notReached' | 'told' | GroupKey;
+
+/** A person's mark on one message: sent again, Not now taken or told in person belong to that message, not to the guest. */
+export function personAt(of: ReachedOf, key: PersonKey): string {
+  return `${of}.${key}`;
+}
 
 export type Open =
   | { kind: 'guest'; key: GuestKey }
@@ -112,6 +155,13 @@ export type Step =
   | 'cancelled';
 
 export const COUNTDOWN_SECONDS = 10;
+export const SUBJECT_MOST = 150;
+export const MESSAGE_MOST = 10_000;
+
+export type LongField = 'subject' | 'body';
+
+/** Why an event can't send (sc-3942's 409): a Draft, or finished more than 30 days ago. */
+export type Closed = 'draft' | 'ended';
 export const SENDING_SECONDS = 3;
 
 export interface Moment {
@@ -135,6 +185,12 @@ export interface Draft {
   time: string;
   seen: number;
   soFar: number | null;
+  outcome?: 'sent' | 'tooLate';
+  cancelledBy?: string;
+  /** The To choices that match nobody in this sample. */
+  zero: readonly ToGroup[];
+  /** The fields over their limit at the last Send, kept until each is short enough. */
+  over: readonly LongField[];
 }
 
 /** A conversation of the hosts' own messages: `base` is the sample message it follows up, `earlier` what it already sent. */
@@ -189,11 +245,22 @@ export interface Messages {
   change: TellChange;
   fixing: boolean;
   fixed: Partial<Record<PersonKey, string>>;
-  again: Partial<Record<PersonKey, string>>;
-  said: PersonKey | null;
+  how: Partial<Record<PersonKey, FixKind>>;
+  again: Partial<Record<string, string>>;
+  waiting: readonly string[];
+  toldIn: Partial<Record<string, string>>;
+  said: string | null;
+  filter: ReachFilter | null;
+  filtering: boolean;
   resending: boolean;
   bell: boolean;
   told: string | null;
+  preview?: Previewing;
+  inserting?: boolean;
+  refusedSave?: Refusal;
+  closed: Closed | null;
+  /** Without messages.read: the area opens the refusal, with no list and no count. */
+  forbidden: boolean;
 }
 
 export function blankDraft(): Draft {
@@ -213,7 +280,25 @@ export function blankDraft(): Draft {
     time: NOW,
     seen: 3,
     soFar: null,
+    zero: [],
+    over: [],
   };
+}
+
+/** Counted as on the web: the characters left once spaces at the start and end are trimmed. */
+export function lengthOf(text: string): number {
+  return Array.from(text.trim()).length;
+}
+
+export function overOf(draft: Draft): LongField[] {
+  return [
+    ...(lengthOf(draft.subject) > SUBJECT_MOST ? (['subject'] as const) : []),
+    ...(lengthOf(draft.body) > MESSAGE_MOST ? (['body'] as const) : []),
+  ];
+}
+
+export function matchesNobody(draft: Draft): boolean {
+  return draft.zero.includes(draft.to);
 }
 
 export function sampleDraft(step: Step = 'write'): Draft {
@@ -261,11 +346,18 @@ const BASE: Messages = {
   change: { lines: [say.startMoved(TELL.now, TELL.was)], what: [W.newStartTime] },
   fixing: false,
   fixed: {},
+  how: {},
   again: {},
+  waiting: [],
+  toldIn: {},
   said: null,
+  filter: null,
+  filtering: false,
   resending: false,
   bell: false,
   told: null,
+  closed: null,
+  forbidden: false,
 };
 
 const DRAFTED: Partial<Record<MessagesState, Draft>> = {
@@ -283,6 +375,23 @@ const DRAFTED: Partial<Record<MessagesState, Draft>> = {
   checkNotReplied: { ...sampleDraft('check'), to: 'notReplied' },
   checkChannels: { ...sampleDraft('check'), channels: { email: true, sms: false, wa: false } },
   noSubject: { ...sampleDraft('sent'), subject: '', seen: 12 },
+  insert: sampleDraft('write'),
+  previewAs: { ...sampleDraft('preview'), body: DATED_BODY },
+  previewGreetAs: { ...sampleDraft('preview'), body: DATED_BODY },
+  previewChose: { ...sampleDraft('preview'), body: DATED_BODY },
+  previewLoading: { ...sampleDraft('preview'), body: DATED_BODY },
+  previewMarkup: { ...sampleDraft('preview'), body: DATED_BODY },
+  typedBraces: { ...sampleDraft('write'), body: BRACED_BODY },
+  previewBraces: { ...sampleDraft('preview'), body: BRACED_BODY },
+  noTokens: { ...sampleDraft('preview'), body: PLAIN_BODY },
+  nobody: { ...sampleDraft('write'), zero: ['coming'] },
+  longSubject: { ...sampleDraft('write'), subject: LONG_SUBJECT, over: ['subject'] },
+  longMessage: { ...sampleDraft('write'), body: LONG_BODY, over: ['body'] },
+};
+
+const CLOSED: Partial<Record<MessagesState, Closed>> = {
+  closedDraft: 'draft',
+  closedEnded: 'ended',
 };
 
 const SCHEDULED_AS: Partial<Record<MessagesState, Partial<Draft>>> = {
@@ -311,7 +420,17 @@ export function startOf(state: MessagesState | null, wide: boolean): Messages {
       thread: NEW_THREAD,
       draft: drafted,
       told: state === 'cancelled' && !wide ? W.cancelled : null,
+      ...previewStart(state),
     };
+  const refused = refusalOf(state);
+  if (refused != null)
+    return {
+      ...scheduledStart({ ...SCHEDULED_AS.scheduledEdit, body: TYPED_EDIT }),
+      refusedSave: refused,
+    };
+  const closed = state == null ? undefined : CLOSED[state];
+  if (closed != null)
+    return { ...BASE, closed, kept: [], ...(closed === 'draft' ? { phase: 'first' } : {}) };
   const scheduled = state == null ? undefined : SCHEDULED_AS[state];
   if (scheduled != null) return scheduledStart(scheduled);
   const ines: Open = { kind: 'guest', key: 'ines' };
@@ -372,8 +491,47 @@ export function startOf(state: MessagesState | null, wide: boolean): Messages {
         ...BASE,
         open: parking,
         fixed: { tomas: FIXED_ADDRESS },
-        again: { tomas: SENT_AGAIN_AT },
-        said: 'tomas',
+        again: { 'parking.tomas': SENT_AGAIN_AT },
+        said: 'parking.tomas',
+      };
+    case 'added':
+      return {
+        ...BASE,
+        open: parking,
+        fixed: { joaquin: ADDED.email },
+        how: { joaquin: 'addEmail' },
+        filter: 'none',
+      };
+    case 'addedPhone':
+      return {
+        ...BASE,
+        open: parking,
+        fixed: { lars: ADDED.phone },
+        how: { lars: 'addPhone' },
+        filter: 'optedOut',
+      };
+    case 'notNow':
+      return {
+        ...BASE,
+        open: parking,
+        fixed: { tomas: FIXED_ADDRESS },
+        waiting: ['parking.tomas'],
+      };
+    case 'told':
+      return { ...BASE, open: parking, toldIn: { 'parking.amaka': SENT_AGAIN_AT }, filter: 'told' };
+    case 'filterMenu':
+      return { ...BASE, open: parking, filtering: true };
+    case 'filtered':
+      return { ...BASE, open: parking, filter: 'bounced' };
+    case 'resendInvited':
+      return { ...BASE, open: { kind: 'many', key: 'invite' }, resending: true };
+    case 'resendSent':
+      return {
+        ...BASE,
+        thread: NEW_THREAD,
+        draft: sampleDraft('sending'),
+        open: { kind: 'draft' },
+        resending: true,
       };
     case 'invitedReached':
       return { ...BASE, open: { kind: 'reached', of: 'invite' } };
@@ -423,6 +581,8 @@ export function startOf(state: MessagesState | null, wide: boolean): Messages {
       return { ...BASE, open: { kind: 'many', key: 'invite' } };
     case 'bell':
       return { ...BASE, bell: true, open: wide ? ines : null };
+    case 'forbidden':
+      return { ...BASE, forbidden: true };
     default:
       return BASE;
   }
@@ -467,12 +627,20 @@ export type Action =
   | { type: 'tellSent' }
   | { type: 'dismissUntold' }
   | { type: 'fixing'; open: boolean }
-  | { type: 'fixed'; key: PersonKey; address: string }
+  | { type: 'fixed'; key: PersonKey; address: string; how?: FixKind }
+  | { type: 'notNowFor'; key: PersonKey }
+  | { type: 'markTold'; key: PersonKey }
+  | { type: 'undoTold'; key: PersonKey }
+  | { type: 'filter'; filter: ReachFilter }
+  | { type: 'filtering'; open: boolean }
   | { type: 'sendAgain'; key: PersonKey }
   | { type: 'resending'; open: boolean }
   | { type: 'resent' }
   | { type: 'bell'; open: boolean }
-  | { type: 'told'; words: string | null };
+  | { type: 'told'; words: string | null }
+  | { type: 'previewing'; previewing: Previewing }
+  | { type: 'inserting'; open: boolean }
+  | { type: 'reload' };
 
 function withDraft(m: Messages, change: (draft: Draft) => Draft): Messages {
   return m.draft == null ? m : { ...m, draft: change(m.draft) };
@@ -486,12 +654,23 @@ export function canSend(draft: Draft): boolean {
   return draft.body.trim() !== '';
 }
 
+function stillOver(draft: Draft): Draft {
+  const now = overOf(draft);
+
+  return { ...draft, over: draft.over.filter((field) => now.includes(field)) };
+}
+
 export function writing(draft: Draft): boolean {
   return ['write', 'preview', 'check'].includes(draft.step);
 }
 
 export function isScheduled(draft: Draft): boolean {
-  return draft.at != null && draft.step !== 'cancelled';
+  return draft.at != null && !ended(draft);
+}
+
+/** Cancelled, or (sc-3963) found sent or too late when a refused save is reloaded. */
+export function ended(draft: Draft): boolean {
+  return draft.step === 'cancelled' || draft.outcome != null;
 }
 
 export function onItsWay(draft: Draft): boolean {
@@ -536,9 +715,25 @@ function baseOf(open: Open): ManyKey | null {
   return null;
 }
 
+/** The message whose Who it reached is open, or whose conversation is: the draft's for a new message. */
+export function reachedOf(m: Pick<Messages, 'open'>): ReachedOf {
+  const open = m.open;
+  if (open?.kind === 'reached') return open.of;
+  if (open?.kind === 'draft') return 'draft';
+  if (open?.kind === 'many' && open.key === 'invite') return 'invite';
+
+  return 'parking';
+}
+
 function opened(m: Messages, open: Open): Messages {
   const base = baseOf(open);
-  const next = { ...m, open, picking: false };
+  const another = open?.kind === 'reached' && reachedOf(m) !== open.of;
+  const next = {
+    ...m,
+    open,
+    picking: false,
+    ...(another ? { filter: null, filtering: false } : {}),
+  };
 
   return base != null && m.thread?.base !== base
     ? activate(next, (kept) => kept.base === base)
@@ -586,7 +781,7 @@ function back(open: Open): Open {
 export function reduce(m: Messages, action: Action): Messages {
   switch (action.type) {
     case 'open':
-      return opened(m, action.open);
+      return m.forbidden ? m : opened(m, action.open);
     case 'back':
       return opened(m, back(m.open));
     case 'newMessage': {
@@ -617,15 +812,21 @@ export function reduce(m: Messages, action: Action): Messages {
         channels: { ...draft.channels, [action.key]: !draft.channels[action.key] },
       }));
     case 'subject':
-      return withDraft(m, (draft) => ({ ...draft, subject: action.text }));
+      return withDraft(m, (draft) => stillOver({ ...draft, subject: action.text }));
     case 'body':
-      return withDraft(m, (draft) => ({ ...draft, body: action.text, cancelled: false }));
+      return withDraft(m, (draft) => stillOver({ ...draft, body: action.text, cancelled: false }));
     case 'preview':
       return stepped(m, ['write'], 'preview');
     case 'edit':
       return stepped(m, ['preview'], 'write');
-    case 'send':
-      return m.draft != null && canSend(m.draft) ? stepped(m, ['write', 'preview'], 'check') : m;
+    case 'send': {
+      const draft = m.draft;
+      if (m.closed != null || draft == null || !canSend(draft) || matchesNobody(draft)) return m;
+      const over = overOf(draft);
+      if (over.length > 0) return { ...m, draft: { ...draft, step: 'write', over } };
+
+      return stepped(m, ['write', 'preview'], 'check');
+    }
     case 'changeIt':
       return stepped(m, ['check'], 'write');
     case 'confirm':
@@ -672,6 +873,7 @@ export function reduce(m: Messages, action: Action): Messages {
           : draft,
       );
     case 'saveScheduled':
+      if (m.refusedSave != null) return m;
       return withDraft(m, (draft) =>
         draft.was != null && canSend(draft) ? { ...draft, step: 'scheduled', was: null } : draft,
       );
@@ -696,6 +898,7 @@ export function reduce(m: Messages, action: Action): Messages {
     case 'match':
       return { ...m, matched: action.name, matching: false };
     case 'answer': {
+      if (m.closed != null) return m;
       const by = tellingBy(m, action.key);
       const cost = noticeCostOf(m, action.key);
 
@@ -742,18 +945,64 @@ export function reduce(m: Messages, action: Action): Messages {
         ...m,
         fixing: false,
         fixed: { ...m.fixed, [action.key]: action.address },
+        how: { ...m.how, [action.key]: action.how ?? 'fixEmail' },
+        waiting: m.waiting.filter((at) => at !== personAt(reachedOf(m), action.key)),
         told: W.saved,
       };
-    case 'sendAgain':
-      return { ...m, again: { ...m.again, [action.key]: SENT_AGAIN_AT }, said: action.key };
+    case 'sendAgain': {
+      if (m.closed != null) return m;
+      const at = personAt(reachedOf(m), action.key);
+
+      return {
+        ...m,
+        again: { ...m.again, [at]: SENT_AGAIN_AT },
+        waiting: m.waiting.filter((one) => one !== at),
+        said: at,
+      };
+    }
+    case 'notNowFor': {
+      const at = personAt(reachedOf(m), action.key);
+
+      return { ...m, waiting: [...m.waiting.filter((one) => one !== at), at] };
+    }
+    case 'markTold':
+      return {
+        ...m,
+        toldIn: { ...m.toldIn, [personAt(reachedOf(m), action.key)]: SENT_AGAIN_AT },
+      };
+    case 'undoTold': {
+      const { [personAt(reachedOf(m), action.key)]: _undone, ...rest } = m.toldIn;
+
+      return { ...m, toldIn: rest };
+    }
+    case 'filter':
+      return { ...m, filter: action.filter, filtering: false };
+    case 'filtering':
+      return { ...m, filtering: action.open };
     case 'resending':
-      return { ...m, resending: action.open };
+      return { ...m, resending: action.open && m.closed == null };
     case 'resent':
       return { ...m, resending: false };
     case 'bell':
       return { ...m, bell: action.open };
     case 'told':
       return { ...m, told: action.words };
+    case 'previewing':
+      return { ...m, preview: action.previewing };
+    case 'inserting':
+      return { ...m, inserting: action.open };
+    case 'reload': {
+      const { refusedSave, ...rest } = m;
+      if (refusedSave == null) return m;
+      const now = reloaded(refusedSave);
+
+      return withDraft(rest, (draft) => ({
+        ...draft,
+        ...now,
+        subject: draft.was?.subject ?? draft.subject,
+        was: null,
+      }));
+    }
   }
 }
 
@@ -795,7 +1044,7 @@ export function sectionsOf(m: Messages): Sections {
   const mine = ownThreads(m);
 
   return {
-    top: mine.filter((one) => !isScheduled(one.draft) && one.draft.step !== 'cancelled').map(own),
+    top: mine.filter((one) => !isScheduled(one.draft) && !ended(one.draft)).map(own),
     needs: [
       ...waiting.filter((key) => !m.done.includes(key)).map(guest),
       ...(m.done.includes('unknown') ? [] : [guest('unknown')]),
@@ -803,7 +1052,7 @@ export function sectionsOf(m: Messages): Sections {
     ],
     scheduled: mine.filter((one) => isScheduled(one.draft)).map(own),
     done: [
-      ...mine.filter((one) => one.draft.step === 'cancelled').map(own),
+      ...mine.filter((one) => ended(one.draft)).map(own),
       ...m.done.filter((key) => key !== 'marta').map(guest),
       guest('marta'),
       many('invite'),
@@ -814,7 +1063,7 @@ export function sectionsOf(m: Messages): Sections {
 export function badgeOf(
   m: Messages,
 ): { waiting: number; notMatched: number; total: number } | null {
-  if (m.phase !== 'list') return null;
+  if (m.phase !== 'list' || m.forbidden) return null;
   const guests: GuestKey[] =
     m.matched == null ? ['ines', 'lucia', 'kwame'] : ['ines', 'lucia', 'kwame', 'unknown'];
   const waiting = guests.filter((key) => !m.done.includes(key)).length + (m.arrived ? 1 : 0);
@@ -835,8 +1084,14 @@ export interface Check {
   whatsApp: boolean;
 }
 
+export function countOf(to: ToGroup, zero: readonly ToGroup[] = []): number {
+  return zero.includes(to) ? 0 : TO_FIGURES[to].count;
+}
+
 export function checkOf(draft: Draft): Check {
-  const figures = TO_FIGURES[draft.to];
+  const figures = matchesNobody(draft)
+    ? { count: 0, email: 0, sms: 0, wa: 0, cantTell: 0 }
+    : TO_FIGURES[draft.to];
   const ticked = (['email', 'sms', 'wa'] as const).filter((key) => draft.channels[key]);
   const credits = (draft.channels.sms ? figures.sms : 0) + (draft.channels.wa ? figures.wa : 0);
   const smsOff = draft.channels.sms ? 0 : SMS_ONLY[draft.to].length;
@@ -856,8 +1111,8 @@ export function checkOf(draft: Draft): Check {
   };
 }
 
-export function toChip(to: ToGroup): string {
-  return say.chip(TO_WORD[to], TO_FIGURES[to].count);
+export function toChip(to: ToGroup, zero: readonly ToGroup[] = []): string {
+  return say.chip(TO_WORD[to], countOf(to, zero));
 }
 
 export function resultOf(draft: Draft): {
@@ -932,7 +1187,7 @@ export function channelsWords(keys: readonly ChannelKey[], locale = 'en-US'): st
 export function draftLine(draft: Draft, thread: Thread | null = null, locale = 'en-US'): string {
   const result = resultOf(draft);
   if (draft.step === 'cancelled')
-    return say.cancelledRow(READER, draft.cancelledAt ?? CANCELLED_AT);
+    return say.cancelledRow(draft.cancelledBy ?? READER, draft.cancelledAt ?? CANCELLED_AT);
   if (draft.at != null)
     return `${say.toGroup(TO_WORD[draft.to])} · ${say.dayTime(dayWords(draft.at.date, locale), draft.at.time)}`;
   const line = (() => {
@@ -991,6 +1246,7 @@ export function tellingBy(m: Messages, key: GuestKey): ChannelKey {
 }
 
 export function noticeCostOf(m: Messages, key: GuestKey): NoticeCost | null {
+  if (m.closed != null) return null;
   const channel = tellingBy(m, key);
 
   return noticeCost(channel, NOTICE_CREDITS[key]?.[channel] ?? 0, m.balance);

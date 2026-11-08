@@ -20,6 +20,7 @@ import {
   type ScreenReaderTarget,
 } from '../../components/screenReaderFocus.ts';
 import { Text } from '../../components/Text.tsx';
+import { useAccessibilitySizes } from '../../layout/useLayout.ts';
 import { useReducedMotion } from '../../reducedMotion.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { EventThumb } from '../events/EventCard.tsx';
@@ -39,6 +40,7 @@ import {
   RowList,
   Section,
   TextAction,
+  TurningMark,
 } from '../../components/Summary.tsx';
 
 export const NOBODY = 'nobody';
@@ -47,6 +49,7 @@ export const NOBODY = 'nobody';
 const SEND_MS = 500;
 const HOLD_MS = 8000;
 const MENU_AFTER_MS = 700;
+const RETRY_MS = 1200;
 const FACE = 34;
 
 const stay = () => {};
@@ -150,6 +153,12 @@ export function HandoverAsk({
 
   useEffect(() => () => clearTimeout(answer.current), []);
 
+  function tryLoadingAgain(): void {
+    setPhase('checking');
+    clearTimeout(answer.current);
+    answer.current = setTimeout(() => setPhase('asking'), RETRY_MS);
+  }
+
   useEffect(() => {
     if (!open || start?.menu !== true) return;
     let wait: ReturnType<typeof setTimeout>;
@@ -215,6 +224,29 @@ export function HandoverAsk({
     closeMenu();
   }
 
+  if (phase === 'checking' || phase === 'notLoaded')
+    return (
+      <Ask
+        open={open}
+        opener={opener}
+        title={words.title}
+        line={words.tail}
+        body={phase === 'checking' ? <Checking words={W.checking(departing)} /> : undefined}
+        failed={phase === 'notLoaded' ? W.notLoaded(departing) : null}
+        keep={words.keep}
+        confirm={
+          phase === 'notLoaded'
+            ? { label: W.tryAgain, testID: `${testID}.tryAgain`, removes: false }
+            : null
+        }
+        onKeep={onKeep}
+        onConfirm={tryLoadingAgain}
+        testID={testID}
+      />
+    );
+
+  const failedWords =
+    phase === 'failed' ? W.failed[kind] : phase === 'refused' ? W.chooseRecipient : null;
   const person = (id: string) => offered.find((one) => one.id === id) ?? null;
   const takerName = (id: string) => (id === NOBODY ? W.nobody(count) : (person(id)?.name ?? ''));
   const menu =
@@ -304,18 +336,13 @@ export function HandoverAsk({
           <Text size={15} weight="medium" style={[styles.secondary, styles.line]}>
             {words.tail}
           </Text>
-          {phase === 'failed' && (
-            <ReadOut
-              words={W.failed[kind]}
-              interrupts
-              accessibilityRole="alert"
-              style={styles.failed}
-            >
+          {failedWords != null && (
+            <ReadOut words={failedWords} interrupts accessibilityRole="alert" style={styles.failed}>
               <View style={styles.failedMark}>
                 <Glyph name="alert" size={18} ink={tokens.colorInkSecondary} weight={2.2} />
               </View>
               <Text size={15} weight="medium" style={styles.failedWords}>
-                {W.failed[kind]}
+                {failedWords}
               </Text>
             </ReadOut>
           )}
@@ -332,6 +359,18 @@ export function HandoverAsk({
       over={menu}
       testID={testID}
     />
+  );
+}
+
+/** The work list on its way: the turning mark and its words, read out once. */
+function Checking({ words }: { words: string }) {
+  return (
+    <ReadOut words={words} style={styles.checking}>
+      <TurningMark side={14} />
+      <Text size={15} weight="medium" style={[styles.secondary, styles.failedWords]}>
+        {words}
+      </Text>
+    </ReadOut>
   );
 }
 
@@ -451,6 +490,8 @@ function Choice({
 /** What will move: the first five, soonest first, each its tile and its name, then how many more. */
 function WillMove({ events }: { events: readonly LedEvent[] }) {
   const { shown, more } = firstFew(events);
+  // From the accessibility sizes on a name wraps in full and the whole Ask scrolls (sc-614, sc-13496).
+  const cuts = !useAccessibilitySizes();
 
   return (
     <View>
@@ -464,7 +505,13 @@ function WillMove({ events }: { events: readonly LedEvent[] }) {
           }
         >
           <EventThumb event={{ ...event, photo: false }} side={28} radius={8} />
-          <Text size={15} weight="semibold" accessible={false} style={styles.movingName}>
+          <Text
+            size={15}
+            weight="semibold"
+            accessible={false}
+            numberOfLines={cuts ? 1 : undefined}
+            style={styles.movingName}
+          >
             {event.name}
           </Text>
         </View>
@@ -474,6 +521,33 @@ function WillMove({ events }: { events: readonly LedEvent[] }) {
           {W.more(more)}
         </Text>
       )}
+    </View>
+  );
+}
+
+/** A suspended member's page before their work list is in: it can say nothing of what they lead, and Hand over now waits. */
+export function LeadsNotIn({
+  name,
+  failed,
+  onRetry,
+}: {
+  name: string;
+  failed: boolean;
+  onRetry: () => void;
+}) {
+  if (!failed) return <Checking words={W.checking(name)} />;
+
+  return (
+    <View style={styles.notIn}>
+      <ReadOut words={W.notLoaded(name)} accessibilityRole="alert" style={styles.failed}>
+        <View style={styles.failedMark}>
+          <Glyph name="alert" size={18} ink={tokens.colorInkSecondary} weight={2.2} />
+        </View>
+        <Text size={15} weight="medium" style={styles.failedWords}>
+          {W.notLoaded(name)}
+        </Text>
+      </ReadOut>
+      <TextAction label={W.tryAgain} onPress={onRetry} testID="members.leads.tryAgain" />
     </View>
   );
 }
@@ -564,6 +638,13 @@ const styles = StyleSheet.create({
   more: { paddingTop: tokens.spaceHair, paddingLeft: 28 + tokens.spaceMd, lineHeight: 14 * 1.45 },
   failed: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceSm },
   failedMark: { marginTop: tokens.spaceHair },
+  checking: {
+    minHeight: tokens.sizeHit,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spaceSm,
+  },
+  notIn: { alignItems: 'flex-start', gap: tokens.spaceXxs },
   failedWords: { flex: 1, minWidth: 0, lineHeight: 15 * 1.45 },
   searchHead: { paddingTop: tokens.spaceXs + tokens.spaceXxs, paddingHorizontal: tokens.spaceSm },
   none: {

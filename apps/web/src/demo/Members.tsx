@@ -91,6 +91,7 @@ export function Members({ viewer, state, tell }: { viewer: Viewer; state: string
   const say = useMemo(() => settingsSayIn(formattingLocale('en', navigator.language)), []);
   const [start] = useState(() => membersStart(state, viewer));
   const [load, setLoad] = useState<Load | 'retrying'>(start.load);
+  const [leadsLoad, setLeadsLoad] = useState<Load | 'retrying'>(start.leadsLoad);
   const [people, setPeople] = useState(start.people);
   const [recoveries, setRecoveries] = useState(start.recoveries);
   const [lit, setLit] = useState<string | null>(null);
@@ -109,6 +110,13 @@ export function Members({ viewer, state, tell }: { viewer: Viewer; state: string
   const landsOnCard = start.notice?.kind === 'removed' && start.notice.handed != null;
   const toSays = useRef(landsOnCard);
   const moved = useRef(landsOnCard);
+
+  useEffect(() => {
+    if (leadsLoad !== 'retrying') return;
+    const timer = setTimeout(() => setLeadsLoad('loaded'), RETRY_MS);
+
+    return () => clearTimeout(timer);
+  }, [leadsLoad]);
 
   useEffect(() => {
     if (load !== 'retrying') return;
@@ -267,6 +275,8 @@ export function Members({ viewer, state, tell }: { viewer: Viewer; state: string
         event={event}
         handed={handed}
         events={ledBy(leads, person.id)}
+        leadsLoad={leadsLoad}
+        onLoadLeads={() => setLeadsLoad('retrying')}
         say={say}
         level={split ? 2 : 1}
         tell={tell}

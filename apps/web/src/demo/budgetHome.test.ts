@@ -8,6 +8,7 @@ import {
   MARGIN_STATES,
   WEB_STATES,
   categoryCeilingsLine,
+  categoryGone,
   ceilingOf,
   ceilingProblem,
   ceilingsOf,
@@ -17,9 +18,13 @@ import {
   lineAmounts,
   linesOf,
   markupProblem,
+  noteProblem,
+  priceProblem,
   rateProblem,
   removedWords,
+  STAFF_REFUSED,
   sumLines,
+  whatProblem,
 } from './budgetHome.ts';
 import { ceilingSentence } from './budgetSample.ts';
 import { TEMPLATES_PAGES } from './templates.ts';
@@ -28,8 +33,8 @@ const line = (id: string) => COST_LINES.find((one) => one.id === id) ?? COST_LIN
 
 describe('the Budget home’s states (spec §9)', () => {
   it('has every Web and Ceiling name, and the margin ones on the home', () => {
-    expect(WEB_STATES).toHaveLength(26);
-    expect(CEILING_STATES).toHaveLength(14);
+    expect(WEB_STATES).toHaveLength(34);
+    expect(CEILING_STATES).toHaveLength(24);
     expect(MARGIN_STATES).toContain('free');
     const linked = [...BUDGET_PAGES, ...TEMPLATES_PAGES].flatMap((group) =>
       group.states.map((one) => one.to),
@@ -86,8 +91,17 @@ describe('the Budget home’s states (spec §9)', () => {
     expect(ceilingSentence(0, 0, 0)).toBe('Nothing is costed here; one amount puts it over.');
     expect(ceilingsOf('ceiling_none')).toEqual({});
     expect(categoryCeilingsLine(ceilingsOf('ceiling_saved'))).toBe(
-      'The category ceilings come to £14,500.00, £7,500.00 less than the whole event’s.',
+      'The category ceilings come to £14,500, £7,500 less than the event’s ceiling.',
     );
+    expect(categoryCeilingsLine({ whole: 2200000, catering: 2300000 })).toBe(
+      'The category ceilings come to £23,000, £1,000 more than the event’s ceiling.',
+    );
+    expect(categoryCeilingsLine({ whole: 2200040, catering: 2200000 })).toBe(
+      'The category ceilings come to £22,000.00, £0.40 less than the event’s ceiling.',
+    );
+    expect(categoryCeilingsLine({ whole: 2200000, catering: 2200000 })).toBeNull();
+    expect(categoryCeilingsLine({ catering: 1300000 })).toBeNull();
+    expect(categoryCeilingsLine({ whole: 2200000 })).toBeNull();
   });
 
   it('refuses a rate, a ceiling and a markup at the field, in the boards’ words', () => {
@@ -113,6 +127,51 @@ describe('the Budget home’s states (spec §9)', () => {
     expect(markupProblem('1200')).toBe('Enter a markup of 999.9% or less.');
     expect(markupProblem('20.25')).toBe('Enter a markup with at most one decimal place.');
     expect(markupProblem('20')).toBeNull();
+    expect(markupProblem('twenty')).toBe('Enter the markup as a number, like 12.5.');
+    expect(priceProblem('−50')).toBe('Enter a price of 0 or more, in numbers only.');
+    expect(priceProblem('950.505')).toBe(
+      'That has too many decimal places for this event’s currency. Enter the price like 12.50.',
+    );
+    expect(priceProblem('0')).toBeNull();
+  });
+
+  it('refuses what a cost is over 100 and a note over 500, and words the server’s 422 (sc-85)', () => {
+    expect(whatProblem('a'.repeat(101))).toBe('Shorten what it is to 100 characters or fewer.');
+    expect(whatProblem(` ${'a'.repeat(100)} `)).toBeNull();
+    expect(whatProblem('  ')).toBe('Enter what it is.');
+    expect(noteProblem('a'.repeat(501))).toBe('Shorten the note to 500 characters or fewer.');
+    expect(noteProblem('a'.repeat(500))).toBeNull();
+    expect(STAFF_REFUSED).toBe(
+      'The budget already has a staff-time cost. Choose another way it is counted.',
+    );
+  });
+
+  it('starts each of the ceiling’s gaps on the ceilings its board draws (sc-90)', () => {
+    const lines = linesOf('populated');
+    const heads = headsOf('populated');
+
+    expect(ceilingsOf('ceiling_categories_only')).toEqual({ catering: 1300000, flowers: 150000 });
+    expect(ceilingsOf('ceiling_live_cleared')).toEqual({});
+    expect(
+      ceilingOf('whole', ceilingsOf('ceiling_live_changed').whole ?? 0, lines, heads).state,
+    ).toBe('close');
+    expect(ceilingsOf('ceiling_cleared_one')).toEqual({ whole: 2200000, catering: 1300000 });
+    expect(ceilingsOf('ceiling_no_costs')).toMatchObject({ other: 50000, hire: 0 });
+    expect(ceilingsOf('ceiling_refused')).toEqual({ whole: 2200000, catering: 1300000 });
+    expect(linesOf('ceiling_refused').some((one) => one.category === 'flowers')).toBe(false);
+    expect(categoryGone('Flowers')).toBe('Flowers was removed, so its ceiling wasn’t saved.');
+    expect(ceilingSentence(0, 0, 50000)).toBe('Nothing is costed here yet.');
+    expect(ceilingOf('other', 50000, lines, heads).state).toBe('within');
+    const raised = lines.map((one) => (one.id === 'dinner' ? { ...one, rate: 7600 } : one));
+    expect(
+      sumLines(
+        raised.filter((one) => one.category === 'catering'),
+        heads,
+      ).ifAll,
+    ).toBe(1303400);
+    expect(sumLines(raised, heads).ifAll).toBeLessThan(
+      ceilingsOf('rate_warning_category').whole ?? 0,
+    );
   });
 
   it('says what a removed cost did to the total (sc-85)', () => {

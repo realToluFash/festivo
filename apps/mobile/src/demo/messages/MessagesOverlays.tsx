@@ -26,19 +26,17 @@ import {
   TextAction,
 } from '../../components/Summary.tsx';
 import { ChannelPill } from './CheckCard.tsx';
-import { type Moment, dayWords, laterRefused } from './MessagesModel.ts';
+import { type Moment, type ReachFilter, countOf, dayWords, laterRefused } from './MessagesModel.ts';
+import type { FilterOption } from './Reach.ts';
 import {
   BELL,
   EVENT,
   PARKING,
   PARKING_REACH,
   TELL,
-  TOKENS,
-  TO_FIGURES,
   TO_ORDER,
   TO_WORD,
   type ToGroup,
-  type Token,
   formatCount,
   BALANCE,
   EVENT_ENDS,
@@ -90,6 +88,7 @@ function SheetHead({
 export function ToPicker({
   open,
   to,
+  zero = [],
   phone,
   at,
   opener,
@@ -98,6 +97,7 @@ export function ToPicker({
 }: {
   open: boolean;
   to: ToGroup;
+  zero?: readonly ToGroup[];
   phone: boolean;
   at: Anchor | null;
   opener: Opener;
@@ -123,13 +123,13 @@ export function ToPicker({
             ref={group === to ? picked : undefined}
             title={TO_WORD[group]}
             lead={<RadioMark on={group === to} />}
-            value={String(TO_FIGURES[group].count)}
+            value={String(countOf(group, zero))}
             accent={group === to}
             pad={tokens.spaceSm}
             onPress={() => onChoose(group)}
             accessibilityRole="radio"
             accessibilityState={{ checked: group === to }}
-            accessibilityLabel={`${TO_WORD[group]}, ${TO_FIGURES[group].count}`}
+            accessibilityLabel={`${TO_WORD[group]}, ${countOf(group, zero)}`}
             testID={`messages.to.${group}`}
           />
         ))}
@@ -164,43 +164,82 @@ export function ToPicker({
   );
 }
 
-/** Insert: the tokens Soirely fills in for each guest on their page (sc-3960). */
-export function InsertMenu({
+/** Filter on Who it reached, as a radio group with each count: a sheet on the phone, a 360 popover under Filter on the iPad. */
+export function FilterPicker({
+  open,
+  options,
+  on,
+  phone,
   at,
   opener,
-  onInsert,
+  onChoose,
   onClose,
 }: {
+  open: boolean;
+  options: readonly FilterOption[];
+  on: ReachFilter;
+  phone: boolean;
   at: Anchor | null;
   opener: Opener;
-  onInsert: (token: Token) => void;
+  onChoose: (filter: ReachFilter) => void;
   onClose: () => void;
 }) {
+  const picked = useRef<ViewInstance>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const later = setTimeout(() => moveScreenReaderFocus(picked.current), 600);
+
+    return () => clearTimeout(later);
+  }, [open]);
+
+  const body = (
+    <View style={phone ? styles.sheetBody : styles.menuBody}>
+      <SheetHead title={W.filter} close={W.closeFilter} onClose={onClose} />
+      <View accessibilityRole="radiogroup">
+        {options.map((option) => (
+          <Row
+            key={option.key}
+            ref={option.key === on ? picked : undefined}
+            title={option.word}
+            lead={<RadioMark on={option.key === on} />}
+            value={String(option.count)}
+            accent={option.key === on}
+            pad={tokens.spaceSm}
+            onPress={() => onChoose(option.key)}
+            accessibilityRole="radio"
+            accessibilityState={{ checked: option.key === on }}
+            accessibilityLabel={`${option.word}, ${option.count}`}
+            testID={`messages.filter.${option.key}`}
+          />
+        ))}
+      </View>
+    </View>
+  );
+
+  if (phone)
+    return (
+      <Sheet
+        open={open}
+        onClose={onClose}
+        scrimLabel={W.closeFilter}
+        opener={opener}
+        testID="messages.filterSheet"
+      >
+        {body}
+      </Sheet>
+    );
+
   return (
     <AnchoredMenu
-      at={at}
+      at={open ? at : null}
       onClose={onClose}
       opener={opener}
-      width={220}
-      align="start"
-      testID="messages.insertMenu"
+      width={360}
+      align="end"
+      testID="messages.filterPopover"
     >
-      {TOKENS.map((token) => (
-        <Pressable
-          key={token}
-          onPress={() => onInsert(token)}
-          style={({ pressed }) => [styles.menuRow, pressed && styles.pressed]}
-          accessibilityRole="menuitem"
-          accessibilityLabel={token}
-          testID={`messages.insert.${token}`}
-        >
-          <View style={styles.token}>
-            <Text size={14} weight="semibold" accessible={false} style={styles.accent}>
-              {token}
-            </Text>
-          </View>
-        </Pressable>
-      ))}
+      {body}
     </AnchoredMenu>
   );
 }
@@ -427,10 +466,13 @@ export function TellGuests({
   onSend,
   onNotNow,
   onSeeWho,
+  before = null,
 }: {
   open: boolean;
   lines: readonly string[];
   address?: boolean;
+  /** A change the save made beside the guests' message (sc-3780: Reply by moved with the start). */
+  before?: string | null;
   phone: boolean;
   opener: Opener;
   onSend: () => void;
@@ -464,6 +506,11 @@ export function TellGuests({
         </View>
         <TextAction label={W.seeWho} onPress={onSeeWho} testID="messages.tell.seeWho" />
       </View>
+      {before != null && (
+        <Text size={15} weight="medium" style={[styles.secondary, styles.line15]}>
+          {before}
+        </Text>
+      )}
       <View style={styles.block}>
         <Text size={14} weight="semibold">
           {W.message}
@@ -585,19 +632,6 @@ const styles = StyleSheet.create({
     paddingTop: tokens.spaceMd,
     paddingHorizontal: tokens.spaceXl,
     paddingBottom: tokens.spaceSm,
-  },
-  menuRow: {
-    minHeight: tokens.sizeHit,
-    justifyContent: 'center',
-    paddingHorizontal: tokens.spaceXl,
-  },
-  token: {
-    alignSelf: 'flex-start',
-    minHeight: 24,
-    justifyContent: 'center',
-    paddingHorizontal: tokens.spaceSm,
-    borderRadius: 7,
-    backgroundColor: tokens.colorAccentTint,
   },
   bellItem: {
     flexDirection: 'row',

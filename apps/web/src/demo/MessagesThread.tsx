@@ -1,8 +1,6 @@
-import { emailProblem } from '@soirely/domain';
-import { type FormEvent, type ReactNode, useEffect, useId, useRef, useState } from 'react';
+import { type FormEvent, type ReactNode, useEffect, useId, useState } from 'react';
 
 import { offButton } from '../offButton.ts';
-import { ADD_WORDS } from './account.ts';
 import { Glyph } from '../components/Glyph.tsx';
 import {
   type Answer,
@@ -12,25 +10,14 @@ import {
   type Draft,
   type GuestId,
   type MessagesState,
-  type ReachedOf,
   type Sched,
-  type Unreached,
   ANSWERS,
   GUESTS,
   HELD_TOO_LONG,
-  INVITE_REACH,
-  INVITE_UNREACHED,
-  KIND_ORDER,
   MATCHES,
   MW,
-  NEW_ADDRESS,
-  OLD_ADDRESS,
   PARKING,
-  PARKING_OF,
-  PARKING_SEEN,
   READER,
-  SENT_AGAIN_AT,
-  SO_FAR,
   TICKS,
   UNKNOWN,
   ZONE_SHORT,
@@ -41,40 +28,46 @@ import {
   dayWords,
   draftOf,
   filled,
-  fixWord,
   freshId,
   isGuest,
   isSched,
-  legendWord,
   listed,
   many,
   noticeOf,
   outTitle,
   outsIn,
-  reachFrom,
-  reachLine,
   toLine,
   toldWords,
 } from './messages.ts';
 import { Composer, ComposePane, ResendCard } from './MessagesCompose.tsx';
+import { NoManage, SentToThread } from './MessagesSentTo.tsx';
+import { isSentTo } from './messagesTo.ts';
+import { TW } from './messagesToWords.ts';
 import { type Bit, useInbox, whereBits } from './messagesContext.ts';
 import { LaterDialog, MatchPicker } from './MessagesDialogs.tsx';
 import {
   DayRule,
-  DeliveryMark,
   GuestBubble,
   HostBubble,
   LeadMark,
-  Legend,
-  ReachBar,
   Stub,
   SystemLine,
   Words,
   WhereGlyph,
 } from './MessagesParts.tsx';
+import { ReachedView } from './MessagesReached.tsx';
+import { RefusedSave } from './MessagesScheduled.tsx';
+import {
+  endBits,
+  endLine,
+  endedOf,
+  refusalOf,
+  reloaded,
+  statusWord,
+  typedEdit,
+} from './messagesScheduled.ts';
 import { StreamItems } from './MessagesStream.tsx';
 import { MessagesBell } from './MessagesTell.tsx';
-import { Field } from '../components/SettingsParts.tsx';
 
 export function ConversationPane({
   state,
@@ -101,7 +94,7 @@ export function ConversationPane({
       {pane.kind === 'compose' ? (
         <ComposePane opening={state === 'to'} later={state === 'later'} />
       ) : pane.kind === 'reached' ? (
-        <ReachedView key={pane.of} of={pane.of} thread={pane.thread} fixing={state === 'fix'} />
+        <ReachedView key={pane.thread} of={pane.of} thread={pane.thread} state={state} />
       ) : pane.kind === 'convo' ? (
         <Thread key={pane.id} id={pane.id} state={state} onDone={onDone} />
       ) : (
@@ -112,19 +105,20 @@ export function ConversationPane({
 }
 
 function Idle() {
-  const { inbox } = useInbox();
+  const { inbox, whyOff } = useInbox();
+  const pick = whyOff == null ? MW.pickOne : MW.pickOneClosed;
 
   return (
     <div className="mg-in is-idle">
       <h2 className="desk-unseen">{MW.newMessage}</h2>
-      <p className="mg-idle-line">{inbox.present.length === 0 ? MW.noneLine : MW.pickOne}</p>
+      <p className="mg-idle-line">{inbox.present.length === 0 ? MW.noneLine : pick}</p>
       <MiniComposer to={{ kind: 'all' }} placeholder={MW.writeToGuests} thread={freshId(inbox)} />
     </div>
   );
 }
 
 /** The composer waiting at the foot: its To, and a field that opens the full composer on the first key. */
-function MiniComposer({
+export function MiniComposer({
   to,
   placeholder,
   thread,
@@ -133,7 +127,9 @@ function MiniComposer({
   placeholder: string;
   thread: ConvoId;
 }) {
-  const { act, focus, inbox, whyOff } = useInbox();
+  const { act, focus, inbox, whyOff, to: event } = useInbox();
+
+  if (!event.manage) return <NoManage />;
 
   function open(text: string, toPick: boolean): void {
     act({
@@ -161,7 +157,7 @@ function MiniComposer({
           onClick={() => open('', true)}
           {...offButton(whyOff != null)}
         >
-          {chipWords(to)}
+          {chipWords(to, event.book)}
           <Glyph name="chevdown" size={14} weight={2.6} />
         </button>
       </div>
@@ -190,7 +186,7 @@ function MiniComposer({
   );
 }
 
-function Head({
+export function Head({
   lead,
   title,
   line,
@@ -228,6 +224,7 @@ function Thread({
   const { inbox } = useInbox();
 
   if (isGuest(id) || id === 'unknown') return <GuestThread id={id} state={state} onDone={onDone} />;
+  if (isSentTo(id)) return <SentToThread id={id} />;
   if (isSched(id) && outsIn(inbox, id).length === 0) {
     const sched = inbox.scheds.find((one) => one.id === id);
 
@@ -269,7 +266,7 @@ function GuestThread({
   state: MessagesState | null;
   onDone: (id: ConvoId) => void;
 }) {
-  const { inbox, act, keys, focus, say } = useInbox();
+  const { inbox, act, keys, focus, say, to } = useInbox();
   const [picking, setPicking] = useState(state === 'matchPicker' && id === 'unknown');
   const done = inbox.done.includes(id);
   const match = id === 'unknown' ? MATCHES.find((one) => one.name === inbox.matched) : null;
@@ -279,11 +276,11 @@ function GuestThread({
   const doneAt = inbox.doneAt[id];
   const toldBy = guest?.toldBy ?? 'email';
   const action =
-    id === 'unknown' && match != null ? (
+    to.manage && id === 'unknown' && match != null ? (
       <button type="button" className="desk-text" onClick={() => setPicking(true)}>
         {MW.changeGuest}
       </button>
-    ) : done ? (
+    ) : !to.manage ? null : done ? (
       <button
         type="button"
         className="desk-text"
@@ -367,15 +364,21 @@ function GuestThread({
             <GuestBubble text={UNKNOWN.text} bits={whereBits('email', UNKNOWN.at)} />
             {match == null ? (
               <li className="mg-match">
-                <p>{filled(MW.couldntMatch, { address: UNKNOWN.address })}</p>
-                <button
-                  type="button"
-                  className="button button-primary mg-choose"
-                  data-focus="choose"
-                  onClick={() => setPicking(true)}
-                >
-                  {MW.chooseGuest}
-                </button>
+                <p>
+                  {to.manage
+                    ? filled(MW.couldntMatch, { address: UNKNOWN.address })
+                    : TW.notMatchedYet}
+                </p>
+                {to.manage && (
+                  <button
+                    type="button"
+                    className="button button-primary mg-choose"
+                    data-focus="choose"
+                    onClick={() => setPicking(true)}
+                  >
+                    {MW.chooseGuest}
+                  </button>
+                )}
               </li>
             ) : (
               <SystemLine glyph="tick">
@@ -476,9 +479,12 @@ function AnswerBox({
   canAlso: readonly Channel[];
   typed: string;
 }) {
-  const { inbox, act, keys, tell, say, focus, whyOff } = useInbox();
+  const { inbox, act, keys, tell, say, focus, whyOff, to } = useInbox();
   const [text, setText] = useState(typed);
   const [by, setBy] = useState<Channel>(toldBy);
+
+  if (!to.manage) return <NoManage />;
+
   const blank = text.trim() === '';
   const notice = noticeOf(id, by, inbox.balance, canAlso);
 
@@ -565,8 +571,9 @@ function AnswerBox({
 }
 
 function ManyThread({ id }: { id: ConvoId }) {
-  const { inbox } = useInbox();
+  const { inbox, to: event } = useInbox();
   const first = outsIn(inbox, id)[0];
+  const resending = inbox.resend?.thread === id;
   const fixed = id === 'parking' || id === 'invite';
   const to: Audience = fixed ? { kind: 'all' } : (first?.to ?? { kind: 'all' });
   const title = fixed
@@ -577,8 +584,8 @@ function ManyThread({ id }: { id: ConvoId }) {
       ? MW.newMessage
       : outTitle(first);
   const line = [
-    toLine(to),
-    countOf(to),
+    toLine(to, event.book.groups),
+    countOf(to, event.book.groups),
     id === 'invite' ? listed([MW.email, MW.sms]) : toldWords(first?.ticks ?? TICKS),
   ]
     .filter((part) => part != null && part !== '')
@@ -589,13 +596,13 @@ function ManyThread({ id }: { id: ConvoId }) {
       <Head lead={<LeadMark lead={{ kind: 'many' }} size={44} />} title={title} line={line} />
       <ol className="mg-stream" role="log" aria-label={title}>
         <StreamItems thread={id} />
-        {id === 'parking' && inbox.resend != null && (
+        {resending && (
           <li className="mg-said is-host">
             <ResendCard />
           </li>
         )}
       </ol>
-      {(id !== 'parking' || inbox.resend == null) && (
+      {!resending && (
         <MiniComposer
           to={to}
           placeholder={id === 'invite' ? MW.writeToThem : MW.writeFollowUp}
@@ -623,19 +630,21 @@ function modeOf(state: MessagesState | null): SchedMode {
 
 /** A message scheduled for later (sc-3963): dashed until it goes, edited in the box, sent now through the check, or cancelled after asking. */
 function ScheduledThread({ sched, state }: { sched: Sched; state: MessagesState | null }) {
-  const { act, focus, say, tell } = useInbox();
-  const [mode, setMode] = useState<SchedMode>(modeOf(state));
+  const { act, focus, say, tell, to: event } = useInbox();
+  const [refused, setRefused] = useState(refusalOf(state));
+  const [mode, setMode] = useState<SchedMode>(refused == null ? modeOf(state) : 'edit');
   const [words, setWords] = useState<Pick<Draft, 'subject' | 'body' | 'seed'>>({
     subject: sched.subject,
-    body: sched.body,
+    body: refused == null ? sched.body : typedEdit(sched.body),
     seed: 0,
   });
   const [later, setLater] = useState(false);
-  const cancelled = sched.cancelledAt != null;
+  const ended = endedOf(sched);
+  const ending = endLine(sched);
   const title = outTitle(sched);
   const when = { date: dayWords(sched.day), time: sched.time };
-  const count = countOf(sched.to) ?? 0;
-  const check = checkOf(sched.to, sched.ticks);
+  const count = countOf(sched.to, event.book.groups) ?? 0;
+  const check = checkOf(sched.to, sched.ticks, event.book.groups);
 
   function to(next: SchedMode, key: string): void {
     setMode(next);
@@ -647,58 +656,66 @@ function ScheduledThread({ sched, state }: { sched: Sched; state: MessagesState 
       <Head
         lead={<LeadMark lead={{ kind: 'many' }} size={44} />}
         title={title}
-        line={[toLine(sched.to), count, cancelled ? MW.cancelledTag : MW.scheduled].join(' · ')}
+        line={[toLine(sched.to, event.book.groups), count, statusWord(sched)].join(' · ')}
       />
       <ol className="mg-stream" role="log" aria-label={title}>
         <DayRule>{when.date}</DayRule>
         <HostBubble
           subject={sched.subject}
           body={<Words body={sched.body} />}
-          bits={[]}
-          look={cancelled ? 'greyed' : mode === 'edit' ? 'dashedFaded' : 'dashed'}
+          bits={endBits(sched)}
+          look={
+            sched.outcome === 'sent'
+              ? 'sent'
+              : ended
+                ? 'greyed'
+                : mode === 'edit'
+                  ? 'dashedFaded'
+                  : 'dashed'
+          }
         >
-          {cancelled ? null : mode === 'edit' ? (
-            <p className="mg-goes">{filled(MW.editing, when)}</p>
+          {ended ? null : mode === 'edit' ? (
+            refused == null && <p className="mg-goes">{filled(MW.editing, when)}</p>
           ) : mode === 'waiting' ? (
             <>
               <p className="mg-goes">
                 {filled(MW.goesAt, { when: `${when.date}, ${when.time} ${ZONE_SHORT}` })}
               </p>
-              <div className="mg-acts is-end">
-                <button
-                  type="button"
-                  className="desk-text"
-                  data-focus="edit"
-                  onClick={() => to('edit', 'body')}
-                >
-                  {MW.edit}
-                </button>
-                <button
-                  type="button"
-                  className="desk-text"
-                  data-focus="send-now"
-                  onClick={() => to('sendNow', 'check')}
-                >
-                  {MW.sendNow}
-                </button>
-                <button
-                  type="button"
-                  className="desk-text is-red"
-                  data-focus="cancel-ask"
-                  onClick={() => to('cancelAsk', 'keep')}
-                >
-                  {MW.cancelEllipsis}
-                </button>
-              </div>
+              {event.manage && (
+                <div className="mg-acts is-end">
+                  <button
+                    type="button"
+                    className="desk-text"
+                    data-focus="edit"
+                    onClick={() => to('edit', 'body')}
+                  >
+                    {MW.edit}
+                  </button>
+                  <button
+                    type="button"
+                    className="desk-text"
+                    data-focus="send-now"
+                    onClick={() => to('sendNow', 'check')}
+                  >
+                    {MW.sendNow}
+                  </button>
+                  <button
+                    type="button"
+                    className="desk-text is-red"
+                    data-focus="cancel-ask"
+                    onClick={() => to('cancelAsk', 'keep')}
+                  >
+                    {MW.cancelEllipsis}
+                  </button>
+                </div>
+              )}
             </>
           ) : null}
         </HostBubble>
-        {cancelled && (
-          <SystemLine glyph="clear">
-            {filled(MW.cancelledBy, { name: READER, time: sched.cancelledAt ?? '' })}
-          </SystemLine>
+        {ending != null && (
+          <SystemLine glyph={sched.cancelledAt != null ? 'clear' : 'clock'}>{ending}</SystemLine>
         )}
-        {mode === 'sendNow' && !cancelled && (
+        {mode === 'sendNow' && !ended && (
           <li className="mg-said is-host">
             <div className="mg-check" role="alertdialog" aria-label={MW.checkName}>
               <p className="mg-check-sentence" tabIndex={-1} data-focus="check">
@@ -737,7 +754,7 @@ function ScheduledThread({ sched, state }: { sched: Sched; state: MessagesState 
             </div>
           </li>
         )}
-        {mode === 'cancelAsk' && !cancelled && (
+        {mode === 'cancelAsk' && !ended && (
           <li className="mg-said is-host">
             <CancelAsk
               subject={title}
@@ -750,8 +767,25 @@ function ScheduledThread({ sched, state }: { sched: Sched; state: MessagesState 
             />
           </li>
         )}
+        {refused != null && (
+          <RefusedSave
+            refusal={refused}
+            onReload={() => {
+              const now = reloaded(refused, sched);
+
+              act({ kind: 'resched', id: sched.id, sched: now });
+              setRefused(null);
+              setWords({
+                subject: sched.subject,
+                body: now.body ?? sched.body,
+                seed: words.seed + 1,
+              });
+              to('waiting', 'heading');
+            }}
+          />
+        )}
       </ol>
-      {mode === 'edit' && !cancelled && (
+      {mode === 'edit' && !ended && (
         <Composer
           draft={words}
           tools
@@ -759,6 +793,7 @@ function ScheduledThread({ sched, state }: { sched: Sched; state: MessagesState 
           onDraft={(next) => setWords((now) => ({ ...now, ...next }))}
           onPreview={() => tell(`${MW.preview} has its own design.`)}
           onSend={() => {
+            if (refused != null) return focus('refused-save');
             act({
               kind: 'resched',
               id: sched.id,
@@ -836,348 +871,5 @@ function CancelAsk({
         </button>
       </div>
     </div>
-  );
-}
-
-/** Who it reached, per person and grouped as sc-3966 counts them: a line per channel for Soirely's notice, its fix beside a failure, and their page. */
-function ReachedView({
-  of,
-  thread,
-  fixing: fixingFirst,
-}: {
-  of: ReachedOf;
-  thread: ConvoId;
-  fixing: boolean;
-}) {
-  const { inbox, act, focus, say, tell, whyOff } = useInbox();
-  const [fixing, setFixing] = useState<string | null>(fixingFirst ? 'tomas' : null);
-  const headId = useId();
-  const people = of === 'parking' ? withTomas(inbox.unreached, inbox.tomas) : INVITE_UNREACHED;
-  const reach =
-    of === 'parking'
-      ? reachFrom(PARKING_OF, PARKING_SEEN, people)
-      : of === 'invite'
-        ? reachFrom(INVITE_REACH.of, INVITE_REACH.seen, people)
-        : {
-            reached: SO_FAR.reached,
-            of: countOf(outsIn(inbox, thread)[0]?.to ?? { kind: 'all' }) ?? 0,
-            seen: 3,
-            parts: [
-              { kind: 'reached', count: SO_FAR.reached } as const,
-              { kind: 'inProgress', count: SO_FAR.inProgress } as const,
-              { kind: 'cant', count: SO_FAR.cant.length } as const,
-            ],
-          };
-  const first = outsIn(inbox, thread)[0];
-  const back =
-    of === 'parking'
-      ? PARKING.subject
-      : of === 'invite'
-        ? MW.invitation
-        : first == null
-          ? MW.newMessage
-          : outTitle(first);
-  const summary =
-    of === 'new'
-      ? filled(MW.reachedSoFar, { count: reach.reached, total: reach.of })
-      : filled(MW.reached, { count: reach.reached, total: reach.of });
-  const line =
-    of === 'invite'
-      ? reachLine(
-          reach,
-          `${many('nowInvitedCount', INVITE_REACH.reached)} · ${filled(MW.seenBy, { count: INVITE_REACH.seen })}`,
-        )
-      : of === 'new'
-        ? [
-            many('inProgressCount', SO_FAR.inProgress),
-            many('cantBeToldCount', SO_FAR.cant.length),
-            filled(MW.seenBy, { count: 3 }),
-          ].join(' · ')
-        : reachLine(reach);
-  const waiting = people.filter((one) => one.kind !== 'inProgress').length;
-  const resend = of === 'new' ? SO_FAR.cant.length : waiting;
-
-  function onFix(person: Unreached, fix: Unreached['fixes'][number]): void {
-    if (fix === 'fixEmail' && of === 'parking' && person.id === 'tomas') setFixing(person.id);
-    else if (fix === 'toldInPerson' && of === 'parking') {
-      act({ kind: 'toldInPerson', id: person.id });
-      say(filled(MW.reached, { count: reach.reached + 1, total: reach.of }));
-      focus('not-reached');
-    } else tell(`${fixWord(fix)} has its own design.`);
-  }
-
-  const groups =
-    of === 'new'
-      ? [
-          {
-            name: MW.legendInProgress,
-            people: SO_FAR.progress,
-            count: SO_FAR.progress.length,
-            more: true,
-          },
-          { name: MW.legendReached, people: SO_FAR.done, count: SO_FAR.done.length, more: false },
-          {
-            name: MW.legendCantBeTold,
-            people: SO_FAR.cant,
-            count: SO_FAR.cant.length,
-            more: false,
-          },
-        ]
-      : KIND_ORDER.map((kind) => {
-          const these = people.filter((one) => one.kind === kind);
-
-          return { name: legendWord(kind), people: these, count: these.length, more: false };
-        }).filter((group) => group.count > 0);
-
-  return (
-    <div className="mg-in is-reached">
-      <div className="mg-reached-top">
-        <button
-          type="button"
-          className="desk-back"
-          onClick={() => {
-            act({ kind: 'open', id: thread });
-            focus('heading');
-          }}
-        >
-          <Glyph name="back" size={17} weight={2.4} />
-          {back}
-        </button>
-        <span className="today-grow" />
-        <MessagesBell />
-      </div>
-      <div className="mg-reached-body">
-        {of === 'parking' && inbox.tomas === 'sent' && (
-          <p className="mg-status" role="status">
-            <Glyph name="info" size={15} weight={2.2} />
-            {filled(MW.sentToSaid, { name: 'Tomás Ferreira' })}
-          </p>
-        )}
-        <h2 className="mg-reached-sum" tabIndex={-1} data-focus="heading">
-          {summary}
-        </h2>
-        <p className="mg-reached-line">{line}</p>
-        <ReachBar reach={reach} size="big" />
-        <Legend reach={reach} />
-        <div className="mg-reached-head">
-          <h3 id={headId} tabIndex={-1} data-focus="not-reached">
-            {of === 'new'
-              ? `${MW.everyone} · ${reach.of}`
-              : filled(MW.notReached, { count: people.length })}
-          </h3>
-          {of !== 'invite' && (
-            <button
-              type="button"
-              className="desk-filter"
-              aria-haspopup="menu"
-              onClick={() => tell(`${MW.filter} has its own design.`)}
-            >
-              {MW.filter}
-              <Glyph name="chevdown" size={16} weight={2.4} />
-            </button>
-          )}
-        </div>
-        {groups.map((group) => (
-          <section
-            key={group.name}
-            className="mg-group-of"
-            aria-label={`${group.name} · ${group.count}`}
-          >
-            <h4 className="mg-group-head">
-              {group.name}
-              <span className="mg-section-count"> · {group.count}</span>
-            </h4>
-            <ul className="mg-people">
-              {group.people.map((person) => (
-                <Person
-                  key={person.id}
-                  person={person}
-                  fixing={fixing === person.id}
-                  again={of === 'parking' && person.id === 'tomas' && inbox.tomas === 'fixed'}
-                  onFix={(fix) => onFix(person, fix)}
-                  onSaved={() => {
-                    setFixing(null);
-                    act({ kind: 'tomas', tomas: 'fixed' });
-                    focus('again');
-                  }}
-                  onCancel={() => {
-                    setFixing(null);
-                    focus(`fix:${person.id}`);
-                  }}
-                  onAgain={() => {
-                    act({ kind: 'tomas', tomas: 'sent' });
-                    say(filled(MW.sentToSaid, { name: person.name }));
-                    focus(`person:${person.id}`);
-                  }}
-                />
-              ))}
-            </ul>
-            {group.more && <p className="mg-more">{many('andMore', SO_FAR.more)}</p>}
-          </section>
-        ))}
-      </div>
-      {resend > 0 && (
-        <button
-          type="button"
-          className="button button-primary mg-resend"
-          data-focus="resend"
-          aria-describedby={whyOff}
-          {...offButton(whyOff != null)}
-          onClick={() => {
-            if (of !== 'parking') {
-              tell(`${many('resend', resend)} has its own design.`);
-              return;
-            }
-            act({ kind: 'open', id: 'parking' });
-            act({ kind: 'resend', resend: TICKS });
-            focus('check');
-          }}
-        >
-          {many('resend', resend)}
-        </button>
-      )}
-    </div>
-  );
-}
-
-function withTomas(people: readonly Unreached[], tomas: 'fixed' | 'sent' | null): Unreached[] {
-  return people.map((person) => {
-    if (person.id !== 'tomas' || tomas == null) return person;
-
-    const rest = person.lines.slice(1);
-
-    return tomas === 'fixed'
-      ? { ...person, fixes: [], updated: MW.emailChangedSince }
-      : {
-          ...person,
-          kind: 'inProgress',
-          lines: [
-            { mark: 'sent', word: `${MW.email} · ${MW.sent} · ${SENT_AGAIN_AT}`, why: NEW_ADDRESS },
-            ...rest,
-          ],
-          fixes: [],
-        };
-  });
-}
-
-function Person({
-  person,
-  fixing,
-  again,
-  onFix,
-  onSaved,
-  onCancel,
-  onAgain,
-}: {
-  person: Unreached;
-  fixing: boolean;
-  again: boolean;
-  onFix: (fix: Unreached['fixes'][number]) => void;
-  onSaved: () => void;
-  onCancel: () => void;
-  onAgain: () => void;
-}) {
-  const { whyOff } = useInbox();
-  const [address, setAddress] = useState(fixing ? NEW_ADDRESS : OLD_ADDRESS);
-  const [wrong, setWrong] = useState<string | null>(null);
-  const field = useRef<HTMLInputElement>(null);
-  const lines = fixing ? person.lines.slice(0, 1) : person.lines;
-
-  useEffect(() => {
-    if (!fixing) return;
-    window.setTimeout(() => field.current?.focus(), 0);
-  }, [fixing]);
-
-  function save(event: FormEvent): void {
-    event.preventDefault();
-    if (emailProblem(address) != null) {
-      setWrong(ADD_WORDS.shape);
-      return;
-    }
-    onSaved();
-  }
-
-  return (
-    <li className="mg-person">
-      <span className="mg-avatar is-40" aria-hidden="true">
-        {person.initials}
-      </span>
-      <div className="mg-person-words">
-        <p className="mg-person-name" tabIndex={-1} data-focus={`person:${person.id}`}>
-          {person.name}
-        </p>
-        <ul className="mg-person-lines">
-          {lines.map((line) => (
-            <li key={line.word}>
-              <DeliveryMark kind={line.mark} />
-              <span>
-                <strong>{line.word}</strong>
-                {line.why != null && ` · ${line.why}`}
-              </span>
-            </li>
-          ))}
-        </ul>
-        {person.updated != null && !fixing && (
-          <p className="mg-person-updated">
-            <DeliveryMark kind="notsent" />
-            <span className="mg-person-updated-words">
-              <strong>{MW.updatedNotSent}</strong>
-              <span>{person.updated}</span>
-            </span>
-          </p>
-        )}
-        {fixing ? (
-          <form className="mg-fix" onSubmit={save} noValidate>
-            <Field
-              label={MW.emailAddress}
-              value={address}
-              inputRef={field}
-              onChange={(value) => {
-                setAddress(value);
-                setWrong(null);
-              }}
-              inputMode="email"
-              autoComplete="off"
-              help={filled(MW.wasAddress, { address: OLD_ADDRESS })}
-              error={wrong}
-            />
-            <div className="mg-acts">
-              <button type="submit" className="button button-primary mg-save">
-                {MW.save}
-              </button>
-              <button type="button" className="desk-text" onClick={onCancel}>
-                {MW.cancel}
-              </button>
-            </div>
-          </form>
-        ) : again ? (
-          <button
-            type="button"
-            className="button button-primary mg-again"
-            data-focus="again"
-            aria-describedby={whyOff}
-            onClick={onAgain}
-            {...offButton(whyOff != null)}
-          >
-            <Glyph name="send" size={17} weight={2.4} />
-            {filled(MW.sendAgain, { name: person.name })}
-          </button>
-        ) : (
-          <div className="mg-acts">
-            {person.fixes.map((fix) => (
-              <button
-                key={fix}
-                type="button"
-                className="desk-text"
-                data-focus={`fix:${person.id}`}
-                onClick={() => onFix(fix)}
-              >
-                {fixWord(fix)}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-    </li>
   );
 }

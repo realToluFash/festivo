@@ -50,8 +50,8 @@ function at(path: string): void {
   render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: [path] })} />);
 }
 
-function sidebarLink(name: string): HTMLElement {
-  const sidebar = document.querySelector<HTMLElement>('.shell-nav');
+function sidebarLink(name: string | RegExp): HTMLElement {
+  const sidebar = document.querySelector<HTMLElement>('.shell-sidebar');
 
   if (sidebar == null) throw new Error('No sidebar');
 
@@ -90,12 +90,12 @@ describe('removed from their only organisation while signed in (sc-16229)', () =
     at('/app/events');
     nowIn([]);
 
-    fireEvent.click(sidebarLink('Guests'));
+    fireEvent.click(sidebarLink('Calendar'));
 
     expect(
       await screen.findByRole('heading', { name: 'You are not in an organisation' }),
     ).toBeDefined();
-    expect(screen.queryByRole('link', { name: 'Dashboard' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Today' })).toBeNull();
   });
 
   it('does the same on coming back to the tab, with no click', async () => {
@@ -130,7 +130,7 @@ describe('removed from one of two organisations while signed in (sc-16229)', () 
     at('/app/events');
     nowIn([OKAFOR]);
 
-    fireEvent.click(sidebarLink('Guests'));
+    fireEvent.click(sidebarLink('Calendar'));
 
     expect((await screen.findByRole('status')).textContent).toMatch(
       /Now working in Okafor Family\./,
@@ -154,7 +154,7 @@ describe('removed from one of two organisations while signed in (sc-16229)', () 
     expect((await screen.findByRole('status')).textContent).toMatch(
       /Now working in Okafor Family\./,
     );
-    expect(sidebarLink('Your account').getAttribute('aria-current')).toBe('page');
+    expect(sidebarLink(/^Folake Adeyemi/).getAttribute('aria-current')).toBe('page');
   });
 });
 
@@ -164,7 +164,7 @@ describe('still in their organisation (sc-16229)', () => {
     at('/app/events');
     const read = nowIn([IRE, OKAFOR]);
 
-    fireEvent.click(sidebarLink('Guests'));
+    fireEvent.click(sidebarLink('Calendar'));
     backToTheTab();
 
     await waitFor(() => expect(read).toHaveBeenCalledTimes(2));

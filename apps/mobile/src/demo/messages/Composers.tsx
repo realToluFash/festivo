@@ -7,14 +7,21 @@ import {
   type ViewInstance,
 } from 'react-native';
 
-import { TextField, type TextFieldProps } from '../../components/Field.tsx';
+import { FieldError, TextField, type TextFieldProps } from '../../components/Field.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { Pill } from '../../components/SettingsParts.tsx';
 import { TextAction } from '../../components/Summary.tsx';
 import { DeliveryMark, MessageGlyph } from './MessageMarks.tsx';
-import { type Draft, type NoticeCost, toChip } from './MessagesModel.ts';
+import {
+  type Draft,
+  MESSAGE_MOST,
+  type NoticeCost,
+  SUBJECT_MOST,
+  matchesNobody,
+  toChip,
+} from './MessagesModel.ts';
 import { formatCount, piecesOf } from './MessagesSample.ts';
 import { keepWhole, outsideToken, tokenText } from './TokenText.ts';
 import { CHANNEL_IN_LINE, CHANNEL_WORD, type ChannelKey, W, say } from './MessagesWords.ts';
@@ -24,11 +31,13 @@ const INK2 = tokens.colorInkSecondary;
 export function SendButton({
   on,
   onPress,
+  why = null,
   ref,
   testID,
 }: {
   on: boolean;
   onPress?: (() => void) | undefined;
+  why?: string | null | undefined;
   ref?: Ref<ViewInstance> | undefined;
   testID: string;
 }) {
@@ -39,7 +48,7 @@ export function SendButton({
       disabled={!on}
       style={({ pressed }) => [styles.send, !on && styles.sendOff, pressed && styles.pressed]}
       accessibilityRole="button"
-      accessibilityLabel={W.send}
+      accessibilityLabel={why == null ? W.send : `${W.send}, ${why}`}
       accessibilityState={{ disabled: !on }}
       testID={testID}
     >
@@ -151,7 +160,7 @@ export function ToHead({
           <View
             style={styles.toChip}
             accessible
-            accessibilityLabel={`${W.to}, ${toChip(draft.to)}`}
+            accessibilityLabel={`${W.to}, ${toChip(draft.to, draft.zero)}`}
           >
             <Text
               size={14}
@@ -159,11 +168,19 @@ export function ToHead({
               accessible={false}
               style={[styles.accent, styles.figures]}
             >
-              {toChip(draft.to)}
+              {toChip(draft.to, draft.zero)}
             </Text>
           </View>
         ) : (
-          <ToChip ref={toRef} text={toChip(draft.to)} onPress={onTo} open={picking} />
+          <ToChip ref={toRef} text={toChip(draft.to, draft.zero)} onPress={onTo} open={picking} />
+        )}
+        {matchesNobody(draft) && (
+          <View style={styles.nobody} testID="messages.nobody">
+            <Glyph name="info" size={15} ink={INK2} weight={2.2} />
+            <Text size={14} weight="semibold" style={styles.secondary}>
+              {W.nobodyMatches}
+            </Text>
+          </View>
         )}
       </View>
       <View style={styles.headRow}>
@@ -193,6 +210,8 @@ export function NewComposer({
   draft,
   tools = true,
   autoFocus = false,
+  locale = 'en-US',
+  subjectRef,
   bodyRef,
   sendRef,
   insertRef,
@@ -207,6 +226,8 @@ export function NewComposer({
   draft: Draft;
   tools?: boolean;
   autoFocus?: boolean;
+  locale?: string;
+  subjectRef?: RefObject<TextInputInstance | null>;
   bodyRef?: RefObject<TextInputInstance | null>;
   sendRef?: Ref<ViewInstance> | undefined;
   insertRef?: Ref<ViewInstance> | undefined;
@@ -220,6 +241,9 @@ export function NewComposer({
 }) {
   const [focused, setFocused] = useState(0);
   const on = draft.body.trim() !== '';
+  const most = (count: number) => new Intl.NumberFormat(locale).format(count);
+  const subjectOver = draft.over.includes('subject');
+  const bodyOver = draft.over.includes('body');
   const focus = {
     onFocus: () => setFocused((count) => count + 1),
     onBlur: () => setFocused((count) => Math.max(count - 1, 0)),
@@ -230,6 +254,8 @@ export function NewComposer({
       <View style={styles.subjectRow}>
         <TextField
           {...focus}
+          ref={subjectRef}
+          wrong={subjectOver}
           value={draft.subject}
           onChangeText={onSubject}
           placeholder={W.subject}
@@ -237,14 +263,19 @@ export function NewComposer({
           spellCheck
           autoCapitalize="sentences"
           returnKeyType="next"
-          maxLength={150}
           style={[styles.bare, styles.subject]}
           accessibilityLabel={W.subject}
           testID="messages.subject"
         />
+        {subjectOver && (
+          <View style={styles.bodyError}>
+            <FieldError message={say.subjectTooLong(most(SUBJECT_MOST))} />
+          </View>
+        )}
       </View>
       <TokenField
         {...focus}
+        wrong={bodyOver}
         text={draft.body}
         fieldRef={bodyRef}
         onText={onBody}
@@ -255,11 +286,15 @@ export function NewComposer({
         autoCorrect
         spellCheck
         autoCapitalize="sentences"
-        maxLength={10000}
         style={[styles.bare, styles.body]}
         label={W.message}
         testID="messages.body"
       />
+      {bodyOver && (
+        <View style={styles.bodyError}>
+          <FieldError message={say.messageTooLong(most(MESSAGE_MOST))} />
+        </View>
+      )}
       {tools && (
         <View style={styles.tools}>
           <TextAction
@@ -391,6 +426,7 @@ export function AnswerBox({
   others = [],
   value,
   autoFocus = false,
+  reason = null,
   fieldRef,
   onChange,
   onTellBy,
@@ -402,16 +438,19 @@ export function AnswerBox({
   others?: readonly ChannelKey[];
   value: string;
   autoFocus?: boolean;
+  reason?: string | null | undefined;
   fieldRef?: RefObject<TextInputInstance | null>;
   onChange: (text: string) => void;
   onTellBy?: (channel: ChannelKey) => void;
   onSend: () => void;
 }) {
-  const on = value.trim() !== '';
+  const closed = reason != null;
+  const on = !closed && value.trim() !== '';
   const [focused, setFocused] = useState(false);
 
   return (
     <View style={styles.answer}>
+      {closed && <WhyNot words={reason} />}
       <View style={styles.answerLine}>
         <View style={styles.markTop}>
           <MessageGlyph name="page" size={15} ink={INK2} />
@@ -479,15 +518,17 @@ export function AnswerBox({
           onBlur={() => setFocused(false)}
           placeholder={W.writeYourAnswer}
           multiline
-          autoFocus={autoFocus}
+          editable={!closed}
+          autoFocus={autoFocus && !closed}
           autoCorrect
           spellCheck
           autoCapitalize="sentences"
           style={[styles.answerField, focused && styles.answerFieldOn]}
-          accessibilityLabel={W.writeYourAnswer}
+          accessibilityLabel={closed ? `${W.writeYourAnswer}, ${reason}` : W.writeYourAnswer}
+          accessibilityState={{ disabled: closed }}
           testID="messages.answer"
         />
-        <SendButton on={on} onPress={onSend} testID="messages.answer.send" />
+        <SendButton on={on} onPress={onSend} why={reason} testID="messages.answer.send" />
       </View>
     </View>
   );
@@ -498,29 +539,35 @@ export function MiniComposer({
   to,
   placeholder,
   off = false,
+  reason,
   onOpen,
 }: {
   to: string;
   placeholder: string;
   off?: boolean;
+  /** Why nothing can be sent from this event, shown over the composer it turns off. */
+  reason?: string | null | undefined;
   onOpen: (picking: boolean) => void;
 }) {
+  const closed = reason != null;
+
   return (
     <View style={styles.mini}>
+      {closed && <WhyNot words={reason} />}
       <View style={styles.miniTo}>
         <Text size={13.5} weight="semibold" style={styles.secondary}>
           {W.to}
         </Text>
-        <ToChip text={to} off={off} onPress={() => onOpen(true)} />
+        <ToChip text={to} off={off || closed} onPress={() => onOpen(true)} />
       </View>
       <View style={styles.miniRow}>
         <Pressable
-          onPress={off ? undefined : () => onOpen(false)}
-          disabled={off}
+          onPress={off || closed ? undefined : () => onOpen(false)}
+          disabled={off || closed}
           style={({ pressed }) => [styles.miniField, pressed && styles.pressed]}
           accessibilityRole="button"
-          accessibilityLabel={placeholder}
-          accessibilityState={{ disabled: off }}
+          accessibilityLabel={closed ? `${placeholder}, ${reason}` : placeholder}
+          accessibilityState={{ disabled: off || closed }}
           testID="messages.mini"
         >
           <Text size={16} weight="medium" accessible={false} style={styles.placeholder}>
@@ -529,6 +576,20 @@ export function MiniComposer({
         </Pressable>
         <SendButton on={false} testID="messages.mini.send" />
       </View>
+    </View>
+  );
+}
+
+/** Why nothing can be sent: the mark and the reason, in the secondary ink, never colour alone. */
+export function WhyNot({ words }: { words: string }) {
+  return (
+    <View style={styles.whyNot} testID="messages.closed">
+      <View style={styles.whyMark}>
+        <Glyph name="info" size={16} ink={INK2} weight={2.2} />
+      </View>
+      <Text size={14} weight="medium" style={[styles.secondary, styles.whyWords]}>
+        {words}
+      </Text>
     </View>
   );
 }
@@ -620,6 +681,17 @@ const styles = StyleSheet.create({
   },
   composerOn: { borderWidth: 2, borderColor: tokens.colorAccent },
   subjectRow: { borderBottomWidth: 1, borderBottomColor: tokens.colorBorder },
+  bodyError: { paddingBottom: tokens.spaceXs },
+  whyNot: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceXs },
+  whyMark: { paddingTop: 2 },
+  whyWords: { flex: 1, lineHeight: 14 * 1.4 },
+  nobody: {
+    flexShrink: 1,
+    minHeight: tokens.sizeHit,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spaceXxs,
+  },
   bare: {
     minHeight: tokens.sizeHit,
     paddingHorizontal: 0,

@@ -103,7 +103,9 @@ it here.
 `checks/` holds checks: each opens one screen, asserts what it shows and takes its
 screenshots. `qa-env.mjs batch` runs a list of them in one Maestro run on one signed-in
 session (`batch/session.yaml`), reloading the bundle before each (`batch/reset.yaml`), so a
-check never relaunches Expo Go and never signs in. `--cold` runs each alone from a relaunch.
+check never relaunches Expo Go and never signs in. A check that signed out leaves the next one signed back in:
+reset signs `${EMAIL}` in again from Welcome or Sign in, so a check that wants a signed-out start
+signs out itself rather than counting on running after one that did. `--cold` runs each alone from a relaunch.
 
 A check is written like a flow, and also:
 

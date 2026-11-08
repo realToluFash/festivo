@@ -2,12 +2,24 @@ import { writtenTime } from './clock.ts';
 import type { SampleEvent } from './events.ts';
 import { demoWords } from './demoWords.ts';
 import { MESSAGES_WORD, MW } from './messagesWords.ts';
+import {
+  type Audience,
+  type Group,
+  type SentToId,
+  COMING,
+  NOT_REPLIED,
+  SENT_TO,
+  countOf,
+  isSentTo,
+  sentToRow,
+  toLine,
+  toSeedOf,
+} from './messagesTo.ts';
+import { type PersonId, previewDraftOf } from './messagesPreviewSample.ts';
 import type { DemoLink } from './settings.ts';
 
 /** Messaging B · Conversations (page e36, board/messaging-b-spec.md): the sample and the inbox's rules; the words are in messagesWords.ts. */
 export { MW };
-
-const NUMBER = new Intl.NumberFormat('en-US');
 
 export const { filled, many, listed } = demoWords(MW);
 
@@ -51,6 +63,14 @@ export const MESSAGE_STATES = [
   { key: 'scheduledCancelled', name: 'Cancelled, scheduled' },
   { key: 'fixed', name: 'After a fix' },
   { key: 'sentAgain', name: 'Sent again' },
+  { key: 'added', name: 'After Add an email address' },
+  { key: 'addedPhone', name: 'After Add a phone number' },
+  { key: 'notNow', name: 'After Not now' },
+  { key: 'told', name: 'Marked as told' },
+  { key: 'filterMenu', name: 'The filter, open' },
+  { key: 'filtered', name: 'Filtered: Bounced' },
+  { key: 'resendInvited', name: 'A resend, an invitation' },
+  { key: 'resendSent', name: 'A resend, just sent' },
   { key: 'checkAll', name: 'The check, All guests' },
   { key: 'checkNotReplied', name: 'The check, Not replied' },
   { key: 'checkChannels', name: 'The check, SMS off' },
@@ -59,6 +79,45 @@ export const MESSAGE_STATES = [
   { key: 'tellPlace', name: 'Tell guests, a new place' },
   { key: 'closedDraft', name: 'New unavailable, a draft' },
   { key: 'closedEnded', name: 'New unavailable, finished over 30 days ago' },
+  { key: 'whoAdded', name: 'A quick pick, then a condition' },
+  { key: 'whoNone', name: 'Guests who…, no condition' },
+  { key: 'whoNoneSend', name: 'Send with no condition' },
+  { key: 'whoMany', name: 'Several conditions' },
+  { key: 'whoGroup', name: 'Is in group: which group?' },
+  { key: 'whoCounting', name: 'The count refreshing' },
+  { key: 'seeWho', name: 'See who' },
+  { key: 'whoNobody', name: 'Nobody matches' },
+  { key: 'whoRenamed', name: 'A renamed group' },
+  { key: 'whoDeleted', name: 'A deleted group' },
+  { key: 'saveName', name: 'Save this audience' },
+  { key: 'saveBlank', name: 'A blank name' },
+  { key: 'saveLong', name: 'A name over 60' },
+  { key: 'saveTaken', name: 'A used name' },
+  { key: 'saveFull', name: 'The 21st' },
+  { key: 'saved', name: 'Saved' },
+  { key: 'savedChanged', name: 'A saved audience, changed' },
+  { key: 'audienceMenu', name: 'More actions' },
+  { key: 'rename', name: 'Rename' },
+  { key: 'renamed', name: 'Renamed, accents only' },
+  { key: 'deleteAsk', name: 'Delete…, asked' },
+  { key: 'deletedPicked', name: 'Deleted, the picked one' },
+  { key: 'noManage', name: 'Without messages.manage' },
+  { key: 'resolvedRow', name: 'Sent to conditions' },
+  { key: 'nobodyDue', name: 'Nobody matched when it was due' },
+  { key: 'insert', name: 'Insert' },
+  { key: 'previewAs', name: 'Preview as' },
+  { key: 'previewGreetAs', name: 'Previewed as Bisi Adewale' },
+  { key: 'previewChose', name: 'Previewed as Camille Dubois' },
+  { key: 'previewLoading', name: 'Filling it in' },
+  { key: 'previewMarkup', name: 'A Greet as with markup' },
+  { key: 'typedBraces', name: 'A typed {Greeting}' },
+  { key: 'previewBraces', name: 'Typed braces, previewed' },
+  { key: 'noTokens', name: 'Nothing to fill in' },
+  { key: 'previewNobody', name: 'Nobody to preview' },
+  { key: 'editConflict', name: 'Not saved: Bisi Okafor changed it' },
+  { key: 'editSent', name: 'Not saved: already sent' },
+  { key: 'editCancelled', name: 'Not saved: cancelled' },
+  { key: 'editTooLate', name: 'Not saved: too late to send' },
 ] as const;
 
 export type MessagesState = (typeof MESSAGE_STATES)[number]['key'];
@@ -110,7 +169,7 @@ export type Channel = 'email' | 'sms' | 'whatsApp';
 export type Where = 'page' | Channel;
 export type GuestId = 'ines' | 'lucia' | 'kwame' | 'marta';
 export type ConvoId =
-  GuestId | 'unknown' | 'parking' | 'invite' | `sched${string}` | `new${string}`;
+  GuestId | 'unknown' | 'parking' | 'invite' | SentToId | `sched${string}` | `new${string}`;
 
 export interface SampleGuest {
   initials: string;
@@ -301,12 +360,6 @@ export const NEW_MESSAGE = {
 
 export const FOLLOW_UP = 'Also: the car park closes at 23:30, so plan your way home.';
 
-export const PREVIEWED = {
-  name: 'Kwame Mensah',
-  language: 'English',
-  has: ['email', 'sms'] as Channel[],
-};
-
 export function fill(body: readonly Segment[], greeting: string): string {
   return body
     .map((part) => {
@@ -333,52 +386,19 @@ export function blank(body: readonly Segment[]): boolean {
   return body.every((part) => part.kind === 'text' && part.text.trim() === '');
 }
 
-export type Condition = 'coming' | 'notReplied';
-export type Audience = { kind: 'all' } | { kind: 'who'; conditions: readonly Condition[] };
-
-export const CONDITIONS: readonly Condition[] = ['coming', 'notReplied'];
-export const COMING: Audience = { kind: 'who', conditions: ['coming'] };
-export const NOT_REPLIED: Audience = { kind: 'who', conditions: ['notReplied'] };
-
-export function conditionWord(condition: Condition): string {
-  return condition === 'coming' ? MW.isComing : MW.hasntReplied;
-}
-
-export function countOf(audience: Audience): number | null {
-  if (audience.kind === 'all') return GUESTS_N;
-  if (audience.conditions.length === 0) return null;
-  if (audience.conditions.length > 1) return 0;
-
-  return audience.conditions[0] === 'coming' ? 96 : 25;
-}
-
-export function audienceWords(audience: Audience): string {
-  if (audience.kind === 'all') return MW.allGuests;
-
-  return [MW.guestsWho, audience.conditions.map(conditionWord).join(', ')]
-    .filter(Boolean)
-    .join(' ');
-}
-
-export function chipWords(audience: Audience): string {
-  const count = countOf(audience);
-
-  return count == null || count === 0
-    ? audienceWords(audience)
-    : `${audienceWords(audience)} · ${NUMBER.format(count)}`;
-}
-
-export function toLine(audience: Audience): string {
-  return audience.kind === 'all'
-    ? MW.toAll
-    : filled(MW.toAudience, { audience: audienceWords(audience) });
-}
-
-export function refusalOf(audience: Audience): string | null {
-  if (audience.kind === 'who' && audience.conditions.length === 0) return MW.noCondition;
-
-  return countOf(audience) === 0 ? MW.nobodyLine : null;
-}
+export {
+  type Audience,
+  type Condition,
+  CONDITIONS,
+  COMING,
+  NOT_REPLIED,
+  audienceWords,
+  chipWords,
+  conditionWord,
+  countOf,
+  refusalOf,
+  toLine,
+} from './messagesTo.ts';
 
 export interface Untellable {
   name: string;
@@ -437,8 +457,8 @@ export interface Check {
 }
 
 /** The check before it goes (sc-3942, sc-3963): who is told and how, who cannot be, and the credits. */
-export function checkOf(audience: Audience, ticks: Ticks): Check {
-  const count = countOf(audience) ?? 0;
+export function checkOf(audience: Audience, ticks: Ticks, groups: readonly Group[]): Check {
+  const count = countOf(audience, groups) ?? 0;
   const { counts, cantTell, names, smsOff } = figuresOf(audience, ticks);
   const on = CHANNELS.filter((channel) => ticks[channel]);
   const credits = (ticks.sms ? counts.sms : 0) + (ticks.whatsApp ? counts.whatsApp : 0);
@@ -484,7 +504,8 @@ export type Delivery =
   | 'none';
 export type Kind =
   'inProgress' | 'bounced' | 'notSent' | 'notConfirmed' | 'optedOut' | 'none' | 'cant';
-export type Fix = 'fixEmail' | 'addEmail' | 'addPhone' | 'toldInPerson' | 'copyLink';
+export type AddressFix = 'fixEmail' | 'addEmail' | 'addPhone';
+export type Fix = AddressFix | 'toldInPerson' | 'copyLink';
 
 export interface Line {
   mark: Delivery;
@@ -499,7 +520,32 @@ export interface Unreached {
   kind: Kind;
   lines: readonly Line[];
   fixes: readonly Fix[];
-  updated?: string;
+  address?: string;
+  updated?: readonly string[];
+  offer?: boolean;
+}
+
+/** An address saved in Who it reached, the guest's own, so every message sees it; Send again and Not now are per message. */
+export interface Update {
+  fix: AddressFix;
+  address: string;
+  sentOn: readonly ConvoId[];
+  laterOn: readonly ConvoId[];
+}
+
+interface Saved {
+  fix: AddressFix;
+  address: string;
+  sent: boolean;
+  later: boolean;
+}
+
+function savedOn(inbox: Inbox, id: string, thread: ConvoId): readonly Saved[] {
+  return (inbox.updates[id] ?? []).map(({ sentOn, laterOn, ...one }) => ({
+    ...one,
+    sent: sentOn.includes(thread),
+    later: laterOn.includes(thread),
+  }));
 }
 
 const PAGE_LINE: Line = { mark: 'none', word: MW.theirPage, why: MW.notSeenYet };
@@ -549,27 +595,36 @@ export const SENT_AGAIN_AT = '09:44';
 
 /** Parking at The Landmark's eleven, grouped as sc-3966 counts them (Web-2, rebuilt). */
 export const PARKING_UNREACHED: readonly Unreached[] = [
-  person(
-    'tomas',
-    'Tomás Ferreira',
-    'bounced',
-    [bounced(`${MW.doesntExist} (5.1.1)`), NO_PHONE],
-    ['fixEmail', 'addPhone'],
-  ),
-  person(
-    'yuki',
-    'Yuki Tanaka',
-    'bounced',
-    [bounced(`${MW.inboxFull} (4.2.2)`), NO_PHONE],
-    ['fixEmail', 'addPhone'],
-  ),
-  person(
-    'seun',
-    'Oluwaseun Adebayo',
-    'bounced',
-    [bounced(`${MW.refusedIt} (5.7.1)`), NO_PHONE],
-    ['fixEmail', 'addPhone'],
-  ),
+  {
+    ...person(
+      'tomas',
+      'Tomás Ferreira',
+      'bounced',
+      [bounced(`${MW.doesntExist} (5.1.1)`), NO_PHONE],
+      ['fixEmail', 'addPhone', 'toldInPerson'],
+    ),
+    address: OLD_ADDRESS,
+  },
+  {
+    ...person(
+      'yuki',
+      'Yuki Tanaka',
+      'bounced',
+      [bounced(`${MW.inboxFull} (4.2.2)`), NO_PHONE],
+      ['fixEmail', 'addPhone', 'toldInPerson'],
+    ),
+    address: 'yuki.tanaka@icloud.com',
+  },
+  {
+    ...person(
+      'seun',
+      'Oluwaseun Adebayo',
+      'bounced',
+      [bounced(`${MW.refusedIt} (5.7.1)`), NO_PHONE],
+      ['fixEmail', 'addPhone', 'toldInPerson'],
+    ),
+    address: 'seun.adebayo@yahoo.com',
+  },
   person('amaka', 'Amaka Eze', 'notConfirmed', [unconfirmed, NO_EMAIL], ['toldInPerson']),
   person('priyanka', 'Priyanka Nair', 'notConfirmed', [unconfirmed, NO_EMAIL], ['toldInPerson']),
   person(
@@ -632,14 +687,14 @@ export const SO_FAR = {
         { mark: 'sending', word: MW.email, why: MW.sending },
         { mark: 'sent', word: `${MW.sms} · ${MW.sent}`, why: NOW },
       ],
-      [],
+      ['toldInPerson'],
     ),
     person(
       'marta',
       'Marta Silva',
       'inProgress',
       [{ mark: 'sent', word: `${MW.email} · ${MW.sent}`, why: NOW }],
-      [],
+      ['toldInPerson'],
     ),
   ],
   done: [
@@ -657,16 +712,59 @@ export const SO_FAR = {
     ),
   ],
   cant: [
-    person(
-      'tomas',
-      'Tomás Ferreira',
-      'notSent',
-      [{ mark: 'notsent', word: `${MW.email} · ${MW.notSent}`, why: MW.addressBouncing }, NO_PHONE],
-      ['fixEmail', 'addPhone'],
-    ),
+    {
+      ...person(
+        'tomas',
+        'Tomás Ferreira',
+        'notSent',
+        [
+          { mark: 'notsent', word: `${MW.email} · ${MW.notSent}`, why: MW.addressBouncing },
+          NO_PHONE,
+        ],
+        ['fixEmail', 'addPhone', 'toldInPerson'],
+      ),
+      address: OLD_ADDRESS,
+    },
     person('joaquin', 'Joaquín Ruiz', 'none', NOTHING, ['addEmail', 'addPhone', 'toldInPerson']),
   ],
 };
+
+export const PARKING_REACHED: readonly Unreached[] = [
+  person(
+    'ines',
+    'Inês Duarte',
+    'none',
+    [{ mark: 'delivered', word: `${MW.email} · ${MW.delivered}`, why: '09:12' }],
+    [],
+    { mark: 'delivered', word: MW.theirPage, why: filled(MW.seen, { time: '09:20' }) },
+  ),
+  person(
+    'kwame',
+    'Kwame Mensah',
+    'none',
+    [{ mark: 'delivered', word: `${MW.sms} · ${MW.delivered}`, why: '09:13' }],
+    [],
+  ),
+];
+
+export const INVITE_REACHED: readonly Unreached[] = [
+  person(
+    'ines',
+    'Inês Duarte',
+    'none',
+    [{ mark: 'delivered', word: `${MW.email} · ${MW.delivered}`, why: '10:02' }],
+    [],
+    { mark: 'delivered', word: MW.theirInvitation, why: filled(MW.seen, { time: '10:15' }) },
+  ),
+  person(
+    'kwame',
+    'Kwame Mensah',
+    'none',
+    [{ mark: 'delivered', word: `${MW.sms} · ${MW.delivered}`, why: '10:03' }],
+    [],
+    { mark: 'none', word: MW.theirInvitation, why: MW.notSeenYet },
+  ),
+];
 
 export function fixWord(fix: Fix): string {
   switch (fix) {
@@ -767,6 +865,319 @@ export const PARKING_OF = GUESTS_N;
 export const PARKING_SEEN = 87;
 export const INVITE_REACH = { reached: 140, of: GUESTS_N, seen: 121 };
 
+export function reachedOfThread(thread: ConvoId): ReachedOf {
+  return thread === 'parking' || thread === 'invite' ? thread : 'new';
+}
+
+export function phoneProblem(value: string): string | null {
+  const typed = value.trim();
+
+  return typed.startsWith('+') && typed.replaceAll(/\D/gu, '').length >= 7 ? null : MW.phoneShape;
+}
+
+const UPDATED_WORDS: Record<AddressFix, string> = {
+  fixEmail: MW.emailChangedSince,
+  addEmail: MW.emailAddedSince,
+  addPhone: MW.phoneAddedSince,
+};
+
+function sentOver(lines: readonly Line[], update: Saved): readonly Line[] {
+  const phone = update.fix === 'addPhone';
+  const channel = phone ? MW.sms : MW.email;
+  const sent: Line = {
+    mark: 'sent',
+    word: `${channel} · ${MW.sent} · ${SENT_AGAIN_AT}`,
+    why: update.address,
+  };
+  const at = lines.findIndex(
+    (line) => line.word.startsWith(channel) || line.word === (phone ? MW.noPhone : MW.noEmail),
+  );
+
+  return at < 0 ? [sent, ...lines] : lines.map((line, index) => (index === at ? sent : line));
+}
+
+/** A person as their saved addresses leave them: each channel's line kept until it is sent again, then In progress. */
+export function updatedPerson(person: Unreached, updates: readonly Saved[]): Unreached {
+  if (updates.length === 0) return person;
+  if (updates.every((one) => one.sent))
+    return {
+      ...person,
+      kind: 'inProgress',
+      lines: updates.reduce(sentOver, person.lines),
+      fixes: ['toldInPerson'],
+    };
+
+  const used = updates.map((one) => one.fix);
+  const offer = updates.some((one) => !one.later);
+
+  return {
+    ...person,
+    fixes: offer ? [] : person.fixes.filter((fix) => !(used as readonly Fix[]).includes(fix)),
+    updated: updates.map((one) => UPDATED_WORDS[one.fix]),
+    offer,
+  };
+}
+
+export type Show = 'everyone' | 'notReached' | 'reached' | 'told' | Kind;
+
+export interface ReachGroup {
+  key: 'reached' | 'told' | Kind;
+  name: string;
+  people: readonly Unreached[];
+  count: number;
+  more: number;
+}
+
+export interface Who {
+  reach: Reach;
+  line: string;
+  groups: readonly ReachGroup[];
+  /** Who a resend is for: not reached, not marked as told, and not in progress. */
+  waiting: readonly Unreached[];
+}
+
+function baseOf(of: ReachedOf): readonly Unreached[] {
+  return of === 'parking' ? PARKING_UNREACHED : of === 'invite' ? INVITE_UNREACHED : SO_FAR.cant;
+}
+
+/** Who it reached for one message: its summary, its groups in Everyone's order, and who a resend is for; `groups` are the event's own. */
+export function whoOf(inbox: Inbox, of: ReachedOf, thread: ConvoId, groups: readonly Group[]): Who {
+  const marks = inbox.marked[thread] ?? [];
+  const mine = (one: Unreached) => updatedPerson(one, savedOn(inbox, one.id, thread));
+  const people = baseOf(of)
+    .filter((one) => !marks.includes(one.id))
+    .map(mine);
+  const toldLine: Line = {
+    mark: 'delivered',
+    word: MW.toldInPersonLine,
+    why: filled(MW.markedBy, { name: READER, time: SENT_AGAIN_AT }),
+  };
+  const markable = of === 'new' ? [...SO_FAR.progress, ...baseOf(of)] : baseOf(of);
+  const marked = marks
+    .flatMap((id) => markable.filter((one) => one.id === id))
+    .map(mine)
+    .map(({ updated: _updated, offer: _offer, ...one }) => ({
+      ...one,
+      lines: [...one.lines, toldLine],
+      fixes: [],
+    }));
+  const told: ReachGroup = {
+    key: 'told',
+    name: MW.markedAsTold,
+    people: marked,
+    count: marked.length,
+    more: 0,
+  };
+  const waiting = people.filter((one) => one.kind !== 'inProgress');
+
+  if (of === 'new') {
+    const sent = people.filter((one) => one.kind === 'inProgress');
+    const left = SO_FAR.progress.filter((one) => !marks.includes(one.id));
+    const progress = [...left, ...sent];
+    const inProgress = SO_FAR.inProgress - (SO_FAR.progress.length - left.length) + sent.length;
+    const reached = SO_FAR.reached + marked.length;
+    const reach: Reach = {
+      reached,
+      of: countOf(outsIn(inbox, thread)[0]?.to ?? COMING, groups) ?? 0,
+      seen: 3,
+      parts: [
+        { kind: 'reached', count: reached },
+        { kind: 'inProgress', count: inProgress },
+        ...(waiting.length > 0 ? [{ kind: 'cant' as const, count: waiting.length }] : []),
+      ],
+    };
+
+    return {
+      reach,
+      line: [
+        many('inProgressCount', inProgress),
+        ...(waiting.length > 0 ? [many('cantBeToldCount', waiting.length)] : []),
+        filled(MW.seenBy, { count: reach.seen }),
+      ].join(' · '),
+      groups: [
+        {
+          key: 'inProgress',
+          name: MW.legendInProgress,
+          people: progress,
+          count: inProgress,
+          more: inProgress - progress.length,
+        },
+        { key: 'cant', name: MW.legendCantBeTold, people: waiting, count: waiting.length, more: 0 },
+        told,
+        {
+          key: 'reached',
+          name: MW.legendReached,
+          people: SO_FAR.done,
+          count: SO_FAR.reached,
+          more: SO_FAR.reached - SO_FAR.done.length,
+        },
+      ],
+      waiting,
+    };
+  }
+
+  const reach =
+    of === 'parking'
+      ? reachFrom(PARKING_OF, PARKING_SEEN, people)
+      : reachFrom(INVITE_REACH.of, INVITE_REACH.seen, people);
+  const delivered = reach.reached - marked.length;
+  const drawn = of === 'parking' ? PARKING_REACHED : INVITE_REACHED;
+
+  return {
+    reach,
+    line:
+      of === 'invite'
+        ? reachLine(
+            reach,
+            `${many('nowInvitedCount', INVITE_REACH.reached)} · ${filled(MW.seenBy, { count: INVITE_REACH.seen })}`,
+          )
+        : reachLine(reach),
+    groups: [
+      ...KIND_ORDER.map((kind) => {
+        const these = people.filter((one) => one.kind === kind);
+
+        return { key: kind, name: legendWord(kind), people: these, count: these.length, more: 0 };
+      }),
+      told,
+      {
+        key: 'reached',
+        name: MW.legendReached,
+        people: drawn,
+        count: delivered,
+        more: delivered - drawn.length,
+      },
+    ],
+    waiting,
+  };
+}
+
+function isNotReached(group: ReachGroup): boolean {
+  return group.key !== 'told' && group.key !== 'reached';
+}
+
+export interface ShowItem {
+  key: Show;
+  word: string;
+  count: number;
+}
+
+/** The Filter's choices, each counted: Everyone, Not reached, each group there is, Reached and Marked as told. */
+export function showItems(who: Who): readonly ShowItem[] {
+  const groups = who.groups.filter(isNotReached);
+
+  return [
+    { key: 'everyone', word: MW.everyone, count: who.reach.of },
+    {
+      key: 'notReached',
+      word: MW.notReachedWord,
+      count: groups.reduce((sum, group) => sum + group.count, 0),
+    },
+    ...groups
+      .filter((group) => group.count > 0)
+      .map((group) => ({ key: group.key as Kind, word: group.name, count: group.count })),
+    { key: 'reached', word: MW.legendReached, count: who.reach.reached },
+    {
+      key: 'told',
+      word: MW.markedAsTold,
+      count: who.groups.find((group) => group.key === 'told')?.count ?? 0,
+    },
+  ];
+}
+
+export const EMPTY_LINE: Partial<Record<Show, string>> = {
+  notReached: MW.nobodyLeft,
+  reached: MW.nobodyReached,
+  told: MW.nobodyMarked,
+};
+
+const ALWAYS: readonly Show[] = ['everyone', 'notReached', 'reached', 'told'];
+
+/** The one time the Filter moves on its own (sc-3966's AC): a group offered only while it has someone, left with nobody, gives way to Not reached, or to Everyone once nobody is left not reached. */
+export function showAfter(who: Who, show: Show): Show {
+  const items = showItems(who);
+
+  if (ALWAYS.includes(show) || items.some((item) => item.key === show)) return show;
+
+  return (items.find((item) => item.key === 'notReached')?.count ?? 0) > 0
+    ? 'notReached'
+    : 'everyone';
+}
+
+export function shownOf(
+  who: Who,
+  show: Show,
+): { heading: string; groups: readonly ReachGroup[]; empty: string | null } {
+  const item = showItems(who).find((one) => one.key === show);
+  const count = item?.count ?? 0;
+  const heading =
+    show === 'notReached'
+      ? filled(MW.notReached, { count })
+      : `${item?.word ?? legendWord(show as Kind)} · ${count}`;
+  const groups = who.groups.filter((group) => {
+    switch (show) {
+      case 'everyone':
+        return group.count > 0;
+      case 'notReached':
+        return isNotReached(group) && group.count > 0;
+      default:
+        return group.key === show;
+    }
+  });
+  const empty = groups.every((group) => group.count === 0) ? (EMPTY_LINE[show] ?? null) : null;
+
+  return { heading, groups, empty };
+}
+
+const TELLABLE_NOW: readonly string[] = ['yuki', 'amaka', 'priyanka'];
+const STILL_FIRST: readonly string[] = ['joaquin', 'sophie'];
+
+export interface ResendCheck {
+  waiting: number;
+  count: number;
+  unconfirmed: number;
+  still: number;
+  cant: readonly string[];
+  credits: number;
+}
+
+/** A resend's check, from Who it reached as it is now: who can be told again, and who still can't. */
+export function resendOf(
+  inbox: Inbox,
+  thread: ConvoId,
+  ticks: Ticks,
+  groups: readonly Group[],
+): ResendCheck {
+  const of = reachedOfThread(thread);
+  const { waiting } = whoOf(inbox, of, thread, groups);
+  const unsent = (id: string) => savedOn(inbox, id, thread).filter((one) => !one.sent);
+  const tellable = waiting.filter(
+    (one) => (of === 'parking' && TELLABLE_NOW.includes(one.id)) || unsent(one.id).length > 0,
+  );
+  const still = waiting.filter((one) => !tellable.includes(one));
+  const shown =
+    of === 'parking'
+      ? [
+          ...STILL_FIRST.flatMap((id) => still.filter((one) => one.id === id)),
+          ...still.filter((one) => !STILL_FIRST.includes(one.id)),
+        ].slice(0, 2)
+      : still;
+  const phones = tellable.filter(
+    (one) =>
+      one.kind === 'notConfirmed' || unsent(one.id).some((update) => update.fix === 'addPhone'),
+  ).length;
+
+  return {
+    waiting: waiting.length,
+    count: tellable.length,
+    unconfirmed: tellable.filter((one) => one.kind === 'notConfirmed').length,
+    still: still.length,
+    cant: shown.map((one) =>
+      [one.name, ...one.lines.slice(0, -1).map((line) => line.why ?? line.word)].join(' · '),
+    ),
+    credits: (ticks.sms ? phones : 0) + (ticks.whatsApp && phones > 0 ? 1 : 0),
+  };
+}
+
 export type Stage = 'countdown' | 'sending' | 'sent' | 'failed';
 
 export interface Out {
@@ -791,6 +1202,8 @@ export interface Draft {
   step: 'write' | 'preview' | 'check';
   seed: number;
   openTo?: boolean;
+  opens?: 'insert' | 'previewAs' | 'filling' | undefined;
+  previewAs?: PersonId;
 }
 
 export interface Sched {
@@ -802,6 +1215,8 @@ export interface Sched {
   day: string;
   time: string;
   cancelledAt: string | null;
+  cancelledBy?: string;
+  outcome?: 'sent' | 'tooLate';
 }
 
 export interface Answer {
@@ -846,8 +1261,10 @@ export interface Inbox {
   outs: readonly Out[];
   scheds: readonly Sched[];
   unreached: readonly Unreached[];
-  tomas: 'fixed' | 'sent' | null;
-  resend: Ticks | null;
+  /** Keyed by guest id: the addresses Who it reached saved for each guest, seen by every message. */
+  updates: Readonly<Record<string, readonly Update[]>>;
+  marked: Readonly<Partial<Record<ConvoId, readonly string[]>>>;
+  resend: { thread: ConvoId; ticks: Ticks } | null;
   untold: readonly Told[];
 }
 
@@ -1008,12 +1425,18 @@ export function seedOf(state: MessagesState | null): Inbox {
     outs: [],
     scheds: [SCHEDULED],
     unreached: PARKING_UNREACHED,
-    tomas: null,
+    updates: {},
+    marked: {},
     resend: null,
     untold: [],
   };
   const open = (id: ConvoId) => ({ kind: 'convo', id }) as const;
   const parkingReached = { kind: 'reached', of: 'parking', thread: 'parking' } as const;
+  const saved = (id: string, fix: AddressFix, address: string, more: Partial<Update> = {}) => ({
+    ...base,
+    pane: parkingReached,
+    updates: { [id]: [{ fix, address, sentOn: [], laterOn: [], ...more }] },
+  });
 
   switch (state) {
     case 'first':
@@ -1092,12 +1515,32 @@ export function seedOf(state: MessagesState | null): Inbox {
     case 'reached':
     case 'fix':
       return { ...base, pane: parkingReached };
+    case 'filterMenu':
+    case 'filtered':
+      return { ...base, pane: parkingReached };
     case 'fixed':
-      return { ...base, pane: parkingReached, tomas: 'fixed' };
+      return saved('tomas', 'fixEmail', NEW_ADDRESS);
     case 'sentAgain':
-      return { ...base, pane: parkingReached, tomas: 'sent' };
+      return saved('tomas', 'fixEmail', NEW_ADDRESS, { sentOn: ['parking'] });
+    case 'notNow':
+      return saved('tomas', 'fixEmail', NEW_ADDRESS, { laterOn: ['parking'] });
+    case 'added':
+      return saved('joaquin', 'addEmail', 'joaquin.ruiz@gmail.com');
+    case 'addedPhone':
+      return saved('lars', 'addPhone', '+46 70 123 45 67');
+    case 'told':
+      return changed({ ...base, pane: parkingReached }, { kind: 'toldInPerson', id: 'amaka' });
     case 'resend':
-      return { ...base, pane: open('parking'), resend: TICKS };
+      return { ...base, pane: open('parking'), resend: { thread: 'parking', ticks: TICKS } };
+    case 'resendInvited':
+      return { ...base, pane: open('invite'), resend: { thread: 'invite', ticks: TICKS } };
+    case 'resendSent':
+      return {
+        ...base,
+        pane: open('new'),
+        outs: [outOf('sent')],
+        resend: { thread: 'new', ticks: TICKS },
+      };
     case 'untold':
       return { ...base, pane: open('ines'), untold: [STARTS_LATER] };
     case 'invited':
@@ -1113,6 +1556,10 @@ export function seedOf(state: MessagesState | null): Inbox {
     case 'scheduledEdit':
     case 'sendNow':
     case 'cancelAsk':
+    case 'editConflict':
+    case 'editSent':
+    case 'editCancelled':
+    case 'editTooLate':
       return { ...base, pane: open('sched') };
     case 'scheduledCancelled':
       return {
@@ -1120,8 +1567,41 @@ export function seedOf(state: MessagesState | null): Inbox {
         pane: open('sched'),
         scheds: [{ ...SCHEDULED, cancelledAt: '09:46' }],
       };
-    default:
+    case 'insert':
+    case 'previewAs':
+    case 'previewGreetAs':
+    case 'previewChose':
+    case 'previewLoading':
+    case 'previewMarkup':
+    case 'typedBraces':
+    case 'previewBraces':
+    case 'noTokens':
+      return {
+        ...base,
+        pane: { kind: 'compose' },
+        draft: { ...draftOf(COMING), ...previewDraftOf(state) },
+      };
+    case 'previewNobody':
+      return compose(base, { kind: 'who', conditions: [] }, 'write');
+    default: {
+      const seed = toSeedOf(state);
+
+      if (seed?.kind === 'compose')
+        return {
+          ...base,
+          pane: { kind: 'compose' },
+          draft: { ...draftOf(seed.to), openTo: seed.open },
+        };
+      if (seed?.kind === 'convo')
+        return {
+          ...base,
+          present: [...ALL, ...seed.more],
+          pane: open(seed.id),
+          untold: seed.untold === true ? [STARTS_LATER] : [],
+        };
+
       return base;
+    }
   }
 }
 
@@ -1202,13 +1682,16 @@ function unknownRow(inbox: Inbox): Row {
   };
 }
 
-export function outReach(out: Out): {
+export function outReach(
+  out: Out,
+  groups: readonly Group[],
+): {
   count: number;
   reached: number;
   soFar: number;
   seen: number;
 } {
-  const count = countOf(out.to) ?? 0;
+  const count = countOf(out.to, groups) ?? 0;
 
   return {
     count,
@@ -1218,8 +1701,8 @@ export function outReach(out: Out): {
   };
 }
 
-export function outLine(out: Out): string {
-  const reach = outReach(out);
+export function outLine(out: Out, groups: readonly Group[]): string {
+  const reach = outReach(out, groups);
 
   switch (out.stage) {
     case 'countdown':
@@ -1261,40 +1744,65 @@ function manyRow(id: ConvoId, title: string, line: string, when: string, tag: Ta
   return { id, title, line, when, lead: { kind: 'many' }, tag, arrived: false };
 }
 
-function schedRow(sched: Sched): Row {
+/** Who cancelled a scheduled message and when: the reader, or (sc-3963's refused save) a colleague. */
+export function cancelledWords(sched: Sched): string {
+  return filled(MW.cancelledBy, {
+    name: sched.cancelledBy ?? READER,
+    time: sched.cancelledAt ?? '',
+  });
+}
+
+function schedRow(sched: Sched, groups: readonly Group[]): Row {
   if (sched.cancelledAt != null)
     return manyRow(
       sched.id,
       outTitle(sched),
-      filled(MW.cancelledBy, { name: READER, time: sched.cancelledAt }).split('.')[0] ?? '',
+      cancelledWords(sched).split('.')[0] ?? '',
       sched.cancelledAt,
       { kind: 'ended', word: MW.cancelledTag },
+    );
+  if (sched.outcome === 'sent')
+    return manyRow(
+      sched.id,
+      outTitle(sched),
+      `${toLine(sched.to, groups)} · ${toldWords(sched.ticks)}`,
+      sched.time,
+      null,
+    );
+  if (sched.outcome === 'tooLate')
+    return manyRow(
+      sched.id,
+      outTitle(sched),
+      `${toLine(sched.to, groups)} · ${dayWords(sched.day)}, ${sched.time}`,
+      '',
+      { kind: 'ended', word: MW.notSentTooLate },
     );
 
   return manyRow(
     sched.id,
     outTitle(sched),
-    `${toLine(sched.to)} · ${dayWords(sched.day)}, ${sched.time}`,
+    `${toLine(sched.to, groups)} · ${dayWords(sched.day)}, ${sched.time}`,
     '',
     { kind: 'notyet', word: MW.scheduled },
   );
 }
 
-export function rowOf(inbox: Inbox, id: ConvoId): Row {
+export function rowOf(inbox: Inbox, id: ConvoId, groups: readonly Group[]): Row {
   if (isGuest(id)) return guestRow(inbox, id);
   if (id === 'unknown') return unknownRow(inbox);
+  if (isSentTo(id)) return sentToRow(id, groups);
 
   const outs = outsIn(inbox, id);
   const last = outs.at(-1);
   const sched = inbox.scheds.find((one) => one.id === id);
 
-  if (sched != null && last == null) return schedRow(sched);
+  if (sched != null && last == null) return schedRow(sched, groups);
   if (id === 'parking')
     return manyRow(
       id,
       PARKING.subject,
       last != null && busy(last)
-        ? outLine(last)
+        ? outLine(last, groups)
         : `${MW.toAll} · ${many('didntGetIt', inbox.unreached.length)}`,
       last == null ? PARKING.row : last.at,
       inbox.unreached.length === 0
@@ -1306,16 +1814,16 @@ export function rowOf(inbox: Inbox, id: ConvoId): Row {
       id,
       MW.invitation,
       last != null && busy(last)
-        ? outLine(last)
+        ? outLine(last, groups)
         : `${MW.toAll} · ${filled(MW.reached, { count: INVITE_REACH.reached, total: INVITE_REACH.of })}`,
       last == null ? INVITE.row : last.at,
       null,
     );
 
-  return threadRow(inbox, id);
+  return threadRow(inbox, id, groups);
 }
 
-function threadRow(inbox: Inbox, id: ConvoId): Row {
+function threadRow(inbox: Inbox, id: ConvoId, groups: readonly Group[]): Row {
   const outs = outsIn(inbox, id);
   const first = outs[0];
   const last = outs.at(-1);
@@ -1323,19 +1831,28 @@ function threadRow(inbox: Inbox, id: ConvoId): Row {
   if (first == null || last == null) {
     const to = inbox.draft?.to ?? { kind: 'all' };
 
-    return manyRow(id, MW.newMessage, `${toLine(to)} · ${MW.notSentYet}`, NOW, null);
+    return manyRow(id, MW.newMessage, `${toLine(to, groups)} · ${MW.notSentYet}`, NOW, null);
   }
 
   const title = outTitle(first);
   const missed = figuresOf(last.to, last.ticks).cantTell;
 
   if (last.stage === 'sent' && litOf(inbox) !== id && missed > 0)
-    return manyRow(id, title, `${toLine(last.to)} · ${many('didntGetIt', missed)}`, last.at, {
-      kind: 'waiting',
-      word: filled(MW.notReached, { count: missed }),
-    });
+    return manyRow(
+      id,
+      title,
+      `${toLine(last.to, groups)} · ${many('didntGetIt', missed)}`,
+      last.at,
+      {
+        kind: 'waiting',
+        word: filled(MW.notReached, { count: missed }),
+      },
+    );
 
-  const line = outs.length > 1 && busy(last) ? `${MW.followUp} · ${outLine(last)}` : outLine(last);
+  const line =
+    outs.length > 1 && busy(last)
+      ? `${MW.followUp} · ${outLine(last, groups)}`
+      : outLine(last, groups);
 
   return manyRow(
     id,
@@ -1378,7 +1895,7 @@ function threadsOf(inbox: Inbox): ConvoId[] {
   return ids.reverse();
 }
 
-export function sectionsOf(inbox: Inbox): Sections {
+export function sectionsOf(inbox: Inbox, groups: readonly Group[]): Sections {
   const here = (id: ConvoId) => inbox.present.includes(id);
   const lit = litOf(inbox);
   const top: Row[] = [];
@@ -1387,7 +1904,7 @@ export function sectionsOf(inbox: Inbox): Sections {
 
   for (const id of threadsOf(inbox)) {
     const last = outsIn(inbox, id).at(-1);
-    const row = rowOf(inbox, id);
+    const row = rowOf(inbox, id, groups);
 
     if (id === lit || last == null || last.stage === 'countdown' || last.stage === 'sending')
       top.push(row);
@@ -1399,24 +1916,36 @@ export function sectionsOf(inbox: Inbox): Sections {
   const arrived = inbox.arrived;
 
   if (arrived != null && here(arrived) && !inbox.done.includes(arrived))
-    needs.push(rowOf(inbox, arrived));
+    needs.push(rowOf(inbox, arrived, groups));
   for (const id of waiting)
-    if (id !== arrived && here(id) && !inbox.done.includes(id)) needs.push(rowOf(inbox, id));
-  if (here('parking') && inbox.unreached.length > 0) needs.push(rowOf(inbox, 'parking'));
+    if (id !== arrived && here(id) && !inbox.done.includes(id))
+      needs.push(rowOf(inbox, id, groups));
+  if (here('parking') && inbox.unreached.length > 0) needs.push(rowOf(inbox, 'parking', groups));
 
   const scheds = inbox.scheds.filter(
     (one) => (one.id !== 'sched' || here('sched')) && outsIn(inbox, one.id).length === 0,
   );
 
-  done.push(...scheds.filter((one) => one.cancelledAt != null).map(schedRow));
-  done.push(...inbox.done.filter(here).map((id) => rowOf(inbox, id)));
-  if (here('parking') && inbox.unreached.length === 0) done.push(rowOf(inbox, 'parking'));
-  if (here('invite')) done.push(rowOf(inbox, 'invite'));
+  done.push(
+    ...scheds
+      .filter((one) => one.cancelledAt != null || one.outcome != null)
+      .map((one) => schedRow(one, groups)),
+  );
+  done.push(...inbox.done.filter(here).map((id) => rowOf(inbox, id, groups)));
+  done.push(
+    ...SENT_TO.filter((id) => here(id) && outsIn(inbox, id).length === 0).map((id) =>
+      sentToRow(id, groups),
+    ),
+  );
+  if (here('parking') && inbox.unreached.length === 0) done.push(rowOf(inbox, 'parking', groups));
+  if (here('invite')) done.push(rowOf(inbox, 'invite', groups));
 
   return {
     top,
     needs,
-    scheduled: scheds.filter((one) => one.cancelledAt == null).map(schedRow),
+    scheduled: scheds
+      .filter((one) => one.cancelledAt == null && one.outcome == null)
+      .map((one) => schedRow(one, groups)),
     done,
   };
 }
@@ -1463,8 +1992,11 @@ export type Change =
   | { kind: 'cancel' }
   | { kind: 'stage'; from: Stage; to: Stage }
   | { kind: 'reached'; of: ReachedOf; thread: ConvoId }
-  | { kind: 'toldInPerson'; id: string }
-  | { kind: 'tomas'; tomas: Inbox['tomas'] }
+  | { kind: 'toldInPerson'; id: string; thread?: ConvoId }
+  | { kind: 'undoTold'; id: string; thread: ConvoId }
+  | { kind: 'fixed'; id: string; thread: ConvoId; fix: AddressFix; address: string }
+  | { kind: 'notNow'; id: string; thread: ConvoId }
+  | { kind: 'sendAgain'; id: string; thread: ConvoId }
   | { kind: 'resend'; resend: Ticks | null }
   | { kind: 'untold'; untold: readonly Told[] }
   | { kind: 'match'; name: string }
@@ -1507,7 +2039,7 @@ export function changed(inbox: Inbox, change: Change): Inbox {
         ...inbox,
         pane: { kind: 'convo', id: change.id },
         cancelled: false,
-        resend: change.id === 'parking' ? inbox.resend : null,
+        resend: inbox.resend?.thread === change.id ? inbox.resend : null,
       };
     case 'idle':
       return { ...inbox, pane: { kind: 'idle' }, draft: null, cancelled: false };
@@ -1617,12 +2149,67 @@ export function changed(inbox: Inbox, change: Change): Inbox {
         pane: { kind: 'reached', of: change.of, thread: change.thread },
         resend: null,
       };
-    case 'toldInPerson':
-      return { ...inbox, unreached: inbox.unreached.filter((one) => one.id !== change.id) };
-    case 'tomas':
-      return { ...inbox, tomas: change.tomas };
+    case 'toldInPerson': {
+      const thread = change.thread ?? 'parking';
+      const marks = inbox.marked[thread] ?? [];
+
+      return {
+        ...inbox,
+        unreached:
+          thread === 'parking'
+            ? inbox.unreached.filter((one) => one.id !== change.id)
+            : inbox.unreached,
+        marked: {
+          ...inbox.marked,
+          [thread]: marks.includes(change.id) ? marks : [...marks, change.id],
+        },
+      };
+    }
+    case 'undoTold': {
+      const kept = new Set([...inbox.unreached.map((one) => one.id), change.id]);
+
+      return {
+        ...inbox,
+        unreached:
+          change.thread === 'parking'
+            ? PARKING_UNREACHED.filter((one) => kept.has(one.id))
+            : inbox.unreached,
+        marked: {
+          ...inbox.marked,
+          [change.thread]: (inbox.marked[change.thread] ?? []).filter((id) => id !== change.id),
+        },
+      };
+    }
+    case 'fixed':
+    case 'notNow':
+    case 'sendAgain': {
+      const { id, thread } = change;
+      const now = inbox.updates[id] ?? [];
+      const next =
+        change.kind === 'fixed'
+          ? [...now, { fix: change.fix, address: change.address, sentOn: [], laterOn: [] }]
+          : now.map((one) =>
+              one.sentOn.includes(thread)
+                ? one
+                : change.kind === 'notNow'
+                  ? { ...one, laterOn: [...one.laterOn, thread] }
+                  : { ...one, sentOn: [...one.sentOn, thread] },
+            );
+
+      return { ...inbox, updates: { ...inbox.updates, [id]: next } };
+    }
     case 'resend':
-      return { ...inbox, resend: change.resend };
+      return {
+        ...inbox,
+        resend:
+          change.resend == null
+            ? null
+            : {
+                thread:
+                  inbox.resend?.thread ?? (inbox.pane.kind === 'convo' ? inbox.pane.id : 'parking'),
+                ticks: change.resend,
+              },
+      };
     case 'untold':
       return { ...inbox, untold: change.untold };
     case 'match':
