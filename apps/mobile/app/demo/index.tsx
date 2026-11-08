@@ -834,6 +834,41 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         what: 'Change the dates',
         href: '/demo/events/evt-shower-2?state=draftPast',
       },
+      {
+        title: 'Needs you · rows',
+        what: 'An overdue one first, no button on any row',
+        href: '/demo/events/evt-wed-4?state=needsYou',
+      },
+      {
+        title: 'Needs you · one row',
+        what: 'Its count at 1',
+        href: '/demo/events/evt-wed-4?state=needsYouOne',
+      },
+      {
+        title: 'Needs you · overdue',
+        what: 'On the day, 1 day and 2 days, a tie by title',
+        href: '/demo/events/evt-wed-4?state=needsYouOverdue',
+      },
+      {
+        title: 'Needs you · a copy recorded',
+        what: 'Its row gone',
+        href: '/demo/events/evt-wed-4?state=needsYouGiven',
+      },
+      {
+        title: 'Needs you · reads only',
+        what: 'A member who only reads the menu',
+        href: '/demo/events/evt-wed-4?state=needsYouReadOnly',
+      },
+      {
+        title: 'Needs you · not loaded yet',
+        what: 'No row, no count, no tick',
+        href: '/demo/events/evt-wed-4?state=needsYouLoading',
+      },
+      {
+        title: 'Needs you · the read failed',
+        what: 'No row, no count, no tick',
+        href: '/demo/events/evt-wed-4?state=needsYouFailed',
+      },
       { title: 'An event · live', what: 'The wedding, in 2 days', href: '/demo/events/evt-wed-4' },
       {
         title: 'An event · happening now',

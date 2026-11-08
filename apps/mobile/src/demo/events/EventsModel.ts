@@ -146,7 +146,7 @@ export function howSoon(event: Shown, now: Date): string | null {
 
 const DAY = 86_400_000;
 
-function dayNumber(moment: string | Date, timeZone: string): number {
+export function dayNumber(moment: string | Date, timeZone: string): number {
   return Date.parse(`${wallDay(moment, timeZone)}T00:00:00Z`) / DAY;
 }
 
@@ -593,6 +593,13 @@ export const EVENT_STATES = [
   'muteNotLoaded',
   'muteNotSaved',
   'more',
+  'needsYou',
+  'needsYouOne',
+  'needsYouOverdue',
+  'needsYouGiven',
+  'needsYouReadOnly',
+  'needsYouLoading',
+  'needsYouFailed',
 ] as const;
 export type EventDemoState = (typeof EVENT_STATES)[number];
 
