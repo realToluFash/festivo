@@ -64,6 +64,7 @@ import {
   TODAY,
   WALK_IN,
   WEDDING,
+  replyByOf,
 } from './GuestsSample.ts';
 import { W, say } from './GuestsWords.ts';
 
@@ -209,6 +210,7 @@ export function GuestsScreen({
           : countsOf(guests, added);
   const total = counts.list;
   const contacts = role === 'owner';
+  const replyBy = replyByOf(event.id);
   const owner = role === 'owner';
   const guest = guests.find((g) => g.key === open) ?? null;
   const looking = filter !== 'all' || searched.trim() !== '';
@@ -248,7 +250,7 @@ export function GuestsScreen({
   };
   const close = () => setOverlay(null);
   const onStep = () => {
-    const words = cardWords(state, role, counts, empty);
+    const words = cardWords(state, role, counts, empty, locale);
     if (words.step === 'addGuest') show('add', 'card');
     else if (words.step === 'write') onWrite();
     else if (words.step === 'makeLive') onMakeLive();
@@ -262,14 +264,14 @@ export function GuestsScreen({
   const replace = (g: SampleGuest) =>
     setGuests((all) => all.map((one) => (one.key === g.key ? g : one)));
 
-  const words = cardWords(state, role, counts, empty);
+  const words = cardWords(state, role, counts, empty, locale);
   const stepLabel: Record<NonNullable<typeof words.step>, string> = {
     addGuest: W.addGuest,
     write: W.writeToThem,
     makeLive: W.makeLive,
     openCheckIn: W.openCheckIn,
   };
-  const rows: Person[] = looking ? rowsOf(guests, filter, searched, locale, contacts) : [];
+  const rows: Person[] = looking ? rowsOf(guests, filter, searched, locale, replyBy, contacts) : [];
   const groups: Partial<Record<GroupKey, Person[]>> = {};
   if (!looking)
     for (const group of GROUPS)
@@ -277,11 +279,12 @@ export function GuestsScreen({
         guests,
         group,
         locale,
+        replyBy,
         event.id !== WEDDING || expanded.includes(group),
       );
   const showAll = (group: GroupKey) => {
     const before = new Set((groups[group] ?? []).map((p) => p.key));
-    const next = groupRows(guests, group, locale, true).find((p) => !before.has(p.key));
+    const next = groupRows(guests, group, locale, replyBy, true).find((p) => !before.has(p.key));
     setExpanded((was) => [...was, group]);
     if (next != null)
       setTimeout(() => moveScreenReaderFocus(refs.current[next.key] ?? null), FOCUS_AFTER_MS);
@@ -326,7 +329,7 @@ export function GuestsScreen({
               menu={start.menu}
               rows={rows}
               groups={groups}
-              walkIns={looking ? [] : rowsOf(guests, 'walkin', '', locale)}
+              walkIns={looking ? [] : rowsOf(guests, 'walkin', '', locale, replyBy)}
               expanded={expanded}
               onShowAll={showAll}
               lit={layout === 'landscape' ? open : null}
@@ -343,6 +346,7 @@ export function GuestsScreen({
   const page =
     guest != null || guestPhase !== 'ok' ? (
       <GuestPage
+        replyBy={replyBy}
         event={event}
         guest={guest}
         phase={guestPhase}
@@ -419,6 +423,7 @@ export function GuestsScreen({
             }}
           />
           <RecordReply
+            locale={locale}
             key={`record:${round}`}
             open={overlay === 'record'}
             guest={guest}

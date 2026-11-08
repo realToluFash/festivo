@@ -347,6 +347,7 @@ export function joined(parts: readonly (string | null | undefined)[]): string {
 export function replyParts(
   g: SampleGuest,
   locale: string,
+  replyBy: string | null,
   short = false,
 ): { word: string; detail: string | null } {
   const word = REPLY_WORD[g.kind];
@@ -359,13 +360,18 @@ export function replyParts(
   if (g.kind === 'noreply')
     return { word, detail: short ? null : lowerFirst(invitedWords(g, locale)) };
   if (g.kind === 'notyet') return { word, detail: null };
-  if (g.kind === 'maybe' && g.when != null)
-    return { word, detail: say.askedBy(dayWords(REPLY_BY, locale)) };
+  if (g.kind === 'maybe' && replyBy != null)
+    return { word, detail: say.askedBy(dayWords(replyBy, locale)) };
   return { word, detail: g.when == null ? null : say.repliedOn(dayWords(g.when, locale)) };
 }
 
-export function replyLine(g: SampleGuest, locale: string, short = false): string {
-  const { word, detail } = replyParts(g, locale, short);
+export function replyLine(
+  g: SampleGuest,
+  locale: string,
+  replyBy: string | null,
+  short = false,
+): string {
+  const { word, detail } = replyParts(g, locale, replyBy, short);
   return joined([word, detail]);
 }
 
@@ -373,20 +379,30 @@ function lowerFirst(text: string): string {
   return text.charAt(0).toLowerCase() + text.slice(1);
 }
 
-function rowLine(g: SampleGuest, locale: string, filter: FilterKey): string {
+function rowLine(
+  g: SampleGuest,
+  locale: string,
+  filter: FilterKey,
+  replyBy: string | null,
+): string {
   if (filter === 'noreply' && g.kind === 'noreply') return capital(invitedWords(g, locale));
   const short = g.kind === 'noreply' || g.kind === 'notyet';
   const count = g.companions.length;
-  return joined([replyLine(g, locale, short), count > 0 ? say.companions(count) : null]);
+  return joined([replyLine(g, locale, replyBy, short), count > 0 ? say.companions(count) : null]);
 }
 
-function hostRow(g: SampleGuest, locale: string, filter: FilterKey): Person {
+function hostRow(
+  g: SampleGuest,
+  locale: string,
+  filter: FilterKey,
+  replyBy: string | null,
+): Person {
   return {
     key: g.key,
     guest: g.key,
     name: g.name,
     kind: g.kind,
-    line: rowLine(g, locale, filter),
+    line: rowLine(g, locale, filter, replyBy),
     companion: false,
   };
 }
@@ -443,12 +459,13 @@ export function rowsOf(
   filter: FilterKey,
   typed: string,
   locale: string,
+  replyBy: string | null,
   contacts = true,
 ): Person[] {
   const out: Person[] = [];
   for (const g of guests) {
     const hostMatch = inFilter(g.kind, filter) && matchesGuest(g.name, g, typed, contacts);
-    if (hostMatch) out.push(hostRow(g, locale, filter));
+    if (hostMatch) out.push(hostRow(g, locale, filter, replyBy));
     g.companions.forEach((c, index) => {
       if (!inFilter(c.kind, filter) || !(hostMatch || matchesGuest(c.name, null, typed))) return;
       out.push(hostMatch && shares(g, c) ? companionRow(g, c, index) : ownRow(g, c, index));
@@ -461,6 +478,7 @@ export function groupRows(
   guests: readonly SampleGuest[],
   group: GroupKey,
   locale: string,
+  replyBy: string | null,
   all = false,
 ): Person[] {
   const first = FIRST_ROWS[group];
@@ -469,7 +487,7 @@ export function groupRows(
   for (const g of guests) {
     const shown =
       g.kind === group && (all || first.includes(g.key) || original.get(g.key) !== g.kind);
-    if (shown) out.push(hostRow(g, locale, 'all'));
+    if (shown) out.push(hostRow(g, locale, 'all', replyBy));
     g.companions.forEach((c, index) => {
       if (shown && shares(g, c)) out.push(companionRow(g, c, index));
       else if (c.kind === group && !shares(g, c)) out.push(ownRow(g, c, index));
@@ -493,9 +511,15 @@ export function cardWords(
   role: Role,
   counts: Counts,
   empty: boolean,
+  locale: string,
 ): GuestsCardWords {
   const says = say.says(counts.coming, counts.invited);
-  const havent = say.havent(counts.havent, counts.noreply, counts.havent - counts.noreply);
+  const havent = say.havent(
+    counts.havent,
+    counts.noreply,
+    counts.havent - counts.noreply,
+    dayWords(REPLY_BY, locale, true),
+  );
   const owner = role === 'owner';
 
   if (empty) return { tags: [], says: W.firstTitle, count: null, line: null, step: 'addGuest' };
@@ -551,13 +575,6 @@ export function cardWords(
     default:
       return { tags: [], says, count: null, line: havent, step: owner ? 'write' : null };
   }
-}
-
-/** Open check-in shows on every day of the event, all day, each day counted from 05:00 in its zone (sc-3895). */
-export function onAnEventDay(now: Date, startsAt: string, endsAt: string): boolean {
-  const day = (moment: number) => Math.floor((moment - 5 * 3_600_000) / 86_400_000);
-  const today = day(now.getTime());
-  return today >= day(Date.parse(startsAt)) && today <= day(Date.parse(endsAt));
 }
 
 export function nameProblem(name: string): string | null {

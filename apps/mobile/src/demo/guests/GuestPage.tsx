@@ -38,11 +38,12 @@ function cardOf(
   locale: string,
   actions: GuestActions,
   invites: boolean,
+  replyBy: string | null,
 ): { line: string; step: { label: string; onPress: () => void } | null } {
   const owner = role === 'owner';
-  if (replies === 'closed')
+  if (replies === 'closed' && replyBy != null)
     return {
-      line: say.closed(dayWords('2026-11-04', locale, true)),
+      line: say.closed(dayWords(replyBy, locale, true)),
       step: owner ? { label: W.letThemChange, onPress: actions.onLetChange } : null,
     };
   if (replies === 'reopened')
@@ -60,7 +61,7 @@ function cardOf(
       line: W.copyFirst,
       step: owner && invites ? { label: W.markAsInvited, onPress: actions.onMark } : null,
     };
-  return { line: replyLine(g, locale), step: null };
+  return { line: replyLine(g, locale, replyBy), step: null };
 }
 
 /** A guest's page: the cover card the guest sees, then Reply, Details, Invitation and their conversation. */
@@ -76,6 +77,7 @@ export function GuestPage({
   notReplaced,
   status,
   invites,
+  replyBy,
   nameRef,
   refFor,
   actions,
@@ -92,6 +94,8 @@ export function GuestPage({
   status: string | null;
   /** A Draft offers no link: nobody is invited until it is live. */
   invites: boolean;
+  /** The event's Reply by date, or none (sc-3780). */
+  replyBy: string | null;
   nameRef: Ref<TextHandle>;
   refFor: (key: string) => Ref<ViewInstance>;
   actions: GuestActions;
@@ -100,10 +104,10 @@ export function GuestPage({
     return phase === 'notFound' ? <NotFound onBack={actions.onBack} /> : <GuestLoading />;
 
   const owner = role === 'owner';
-  const card = cardOf(g, role, replies, locale, actions, invites);
+  const card = cardOf(g, role, replies, locale, actions, invites, replyBy);
   const kind = g.kind === 'walkin' ? 'walkin' : g.kind;
   const replied = g.kind === 'coming' || g.kind === 'maybe' || g.kind === 'notcoming';
-  const { word, detail } = replyParts(g, locale);
+  const { word, detail } = replyParts(g, locale, replyBy);
 
   return (
     <View style={styles.blocks} testID={`guest.${g.key}`}>

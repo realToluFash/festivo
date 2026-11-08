@@ -149,7 +149,14 @@ export const PAUSED_GUESTS: readonly SampleGuest[] = [
     email: 'daniel.okafor@ireevents.com',
   }),
   guest('hana', 'Hana Sato', 'coming', { when: '2026-10-22', email: 'hana.sato@ireevents.com' }),
+  guest('yemi', 'Yemi Coker', 'maybe', { when: '2026-10-25', email: 'yemi.coker@ireevents.com' }),
+  guest('zoe', 'Zoë Clarke', 'maybe', { when: '2026-10-27', email: 'zoe.clarke@ireevents.com' }),
 ];
+
+/** Only the wedding has a Reply by date; the Paused party and the Draft have none (as the web demo). */
+export function replyByOf(event: string): string | null {
+  return event === WEDDING ? REPLY_BY : null;
+}
 
 export const DRAFT_COUNTS = { list: 12, notyet: 12 } as const;
 export const PAUSED_COUNTS = { list: 48, invited: 45, coming: 20 } as const;

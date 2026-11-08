@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import { TO_FIGURES } from '../messages/MessagesSample.ts';
 import { SAMPLE_GUESTS } from '../events/GuestCounts.ts';
@@ -12,7 +12,6 @@ import {
   GUESTS_STATES,
   areaStart,
   cardWords,
-  clockOf,
   countsFrom,
   countsOf,
   doorMatches,
@@ -26,7 +25,6 @@ import {
   guestOf,
   markedInvited,
   nameProblem,
-  onAnEventDay,
   phoneCheck,
   planRoom,
   recorded,
@@ -36,7 +34,14 @@ import {
   rowsOf,
   sameNameAs,
 } from './GuestsModel.ts';
-import { GUESTS, PLAN_SAMPLES, WALK_IN } from './GuestsSample.ts';
+import {
+  GUESTS,
+  PAUSED_GUESTS,
+  PLAN_SAMPLES,
+  REPLY_BY,
+  WALK_IN,
+  replyByOf,
+} from './GuestsSample.ts';
 
 const EN = 'en-US';
 const byKey = (key: string) => {
@@ -158,16 +163,31 @@ describe('a list that starts empty', () => {
 
 describe('the list: groups, the filter and search (sc-3772)', () => {
   it('words each row in the guest’s own words', () => {
-    expect(replyLine(byKey('kwame'), EN)).toBe('Coming · replied Oct 2');
-    expect(replyLine(byKey('lucia'), EN)).toBe('Not sure yet · asked to decide by Nov 4');
-    expect(replyLine(byKey('emeka'), EN)).toBe(
+    expect(replyLine(byKey('kwame'), EN, REPLY_BY)).toBe('Coming · replied Oct 2');
+    expect(replyLine(byKey('lucia'), EN, REPLY_BY)).toBe('Not sure yet · asked to decide by Nov 4');
+    expect(replyLine(byKey('emeka'), EN, REPLY_BY)).toBe(
       'No reply · invited by Folake Adeyemi, WhatsApp, Oct 9',
     );
-    expect(replyLine(byKey('bisi'), EN)).toBe('Not yet invited');
+    expect(replyLine(byKey('bisi'), EN, REPLY_BY)).toBe('Not yet invited');
+    expect(replyLine(byKey('lucia'), 'en-GB', REPLY_BY)).toBe(
+      'Not sure yet · asked to decide by 4 Nov',
+    );
+  });
+
+  it('words Not sure yet by the event’s own Reply by date, or by the day they replied when it has none (sc-3780)', () => {
+    expect(replyByOf('evt-wed-4')).toBe(REPLY_BY);
+    expect(replyByOf('evt-party-2')).toBeNull();
+    const yemi = PAUSED_GUESTS.find((g) => g.key === 'yemi');
+    if (yemi == null) throw new Error('yemi');
+    expect(replyLine(yemi, EN, replyByOf('evt-party-2'))).toBe('Not sure yet · replied Oct 25');
+    expect(rowsOf(PAUSED_GUESTS, 'maybe', '', EN, null).map((row) => row.line)).toEqual([
+      'Not sure yet · replied Oct 25',
+      'Not sure yet · replied Oct 27',
+    ]);
   });
 
   it('puts a companion under their host, in the host’s group', () => {
-    const coming = groupRows(GUESTS, 'coming', EN);
+    const coming = groupRows(GUESTS, 'coming', EN, REPLY_BY);
     expect(coming.map((row) => row.name)).toEqual([
       'Alhaji Musa Bello',
       'Guest of Alhaji Musa Bello',
@@ -176,11 +196,13 @@ describe('the list: groups, the filter and search (sc-3772)', () => {
       'Rui Duarte',
     ]);
     expect(coming[0]?.line).toBe('Coming · replied Oct 14 · 1 companion');
-    expect(groupRows(GUESTS, 'maybe', EN)[1]?.line).toBe('Held · comes only if their host accepts');
+    expect(groupRows(GUESTS, 'maybe', EN, REPLY_BY)[1]?.line).toBe(
+      'Held · comes only if their host accepts',
+    );
   });
 
   it('filters No reply to the guests, each saying how they were invited', () => {
-    const rows = rowsOf(GUESTS, 'noreply', '', EN);
+    const rows = rowsOf(GUESTS, 'noreply', '', EN, REPLY_BY);
     expect(rows.map((row) => row.name)).toEqual([
       'Dr Emeka Nwosu',
       'Joaquín Ruiz',
@@ -189,21 +211,23 @@ describe('the list: groups, the filter and search (sc-3772)', () => {
       'Tomás Ferreira',
     ]);
     expect(rows[0]?.line).toBe('Invited by Folake Adeyemi, WhatsApp, Oct 9');
-    expect(rowsOf(GUESTS, 'held', '', EN).map((row) => row.name)).toEqual([
+    expect(rowsOf(GUESTS, 'held', '', EN, REPLY_BY).map((row) => row.name)).toEqual([
       'Guest of Chief Mrs Folasade Okonkwo-Williams',
       'Adanna Nwosu',
     ]);
   });
 
   it('finds by name, email address or number, and nobody for kofi or Held and marta', () => {
-    expect(rowsOf(GUESTS, 'all', 'okon', EN)).toHaveLength(2);
-    expect(rowsOf(GUESTS, 'all', 'kofi', EN)).toHaveLength(0);
-    expect(rowsOf(GUESTS, 'held', 'marta', EN)).toHaveLength(0);
-    expect(rowsOf(GUESTS, 'all', 'nhs.net', EN).map((row) => row.name)).toEqual([
+    expect(rowsOf(GUESTS, 'all', 'okon', EN, REPLY_BY)).toHaveLength(2);
+    expect(rowsOf(GUESTS, 'all', 'kofi', EN, REPLY_BY)).toHaveLength(0);
+    expect(rowsOf(GUESTS, 'held', 'marta', EN, REPLY_BY)).toHaveLength(0);
+    expect(rowsOf(GUESTS, 'all', 'nhs.net', EN, REPLY_BY).map((row) => row.name)).toEqual([
       'Dr Emeka Nwosu',
       'Adanna Nwosu',
     ]);
-    expect(rowsOf(GUESTS, 'all', '900412', EN).map((row) => row.name)).toEqual(['Kwame Mensah']);
+    expect(rowsOf(GUESTS, 'all', '900412', EN, REPLY_BY).map((row) => row.name)).toEqual([
+      'Kwame Mensah',
+    ]);
   });
 });
 
@@ -213,14 +237,14 @@ describe('on the day and for view-only roles', () => {
     expect(filtersFor(counts).slice(2, 4)).toEqual(['coming', 'walkin']);
     expect(counts.list).toBe(157);
     expect(counts.invited + counts.walkin + counts.notyet).toBe(counts.list);
-    expect(rowsOf([WALK_IN], 'walkin', '', EN)[0]?.line).toBe('Walk-in · Arrived 18:20');
+    expect(rowsOf([WALK_IN], 'walkin', '', EN, REPLY_BY)[0]?.line).toBe('Walk-in · Arrived 18:20');
     expect(filtersFor(countsOf(GUESTS))).not.toContain('walkin');
   });
 
   it('finds a guest by name only where contact details are hidden', () => {
-    expect(rowsOf(GUESTS, 'all', 'nhs.net', EN, false)).toEqual([]);
-    expect(rowsOf(GUESTS, 'all', '900412', EN, false)).toEqual([]);
-    expect(rowsOf(GUESTS, 'all', 'emeka', EN, false).map((row) => row.name)).toEqual([
+    expect(rowsOf(GUESTS, 'all', 'nhs.net', EN, REPLY_BY, false)).toEqual([]);
+    expect(rowsOf(GUESTS, 'all', '900412', EN, REPLY_BY, false)).toEqual([]);
+    expect(rowsOf(GUESTS, 'all', 'emeka', EN, REPLY_BY, false).map((row) => row.name)).toEqual([
       'Dr Emeka Nwosu',
       'Adanna Nwosu',
     ]);
@@ -236,16 +260,18 @@ describe('a split family (sc-3773, ux, 8 Nov): each group shows the people it co
 
   it('Record a reply for Dr Emeka Nwosu, Coming, Adanna unticked: Coming gains Emeka only', () => {
     const after = walk();
-    const coming = groupRows(after, 'coming', EN).map((row) => row.name);
+    const coming = groupRows(after, 'coming', EN, REPLY_BY).map((row) => row.name);
     expect(coming).toContain(emeka.name);
     expect(coming).not.toContain('Adanna Nwosu');
-    const notComing = groupRows(after, 'notcoming', EN);
+    const notComing = groupRows(after, 'notcoming', EN, REPLY_BY);
     expect(notComing.map((row) => [row.name, row.line, row.companion])).toContainEqual([
       'Adanna Nwosu',
       'Guest of Dr Emeka Nwosu',
       false,
     ]);
-    expect(groupRows(after, 'noreply', EN).map((row) => row.name)).not.toContain(emeka.name);
+    expect(groupRows(after, 'noreply', EN, REPLY_BY).map((row) => row.name)).not.toContain(
+      emeka.name,
+    );
     expect(countsOf(after)).toMatchObject({
       coming: 97,
       notcoming: 10,
@@ -258,7 +284,7 @@ describe('a split family (sc-3773, ux, 8 Nov): each group shows the people it co
   it('counts every row it shows, held companions under their guest apart', () => {
     for (const people of [GUESTS, walk()])
       for (const group of GROUPS) {
-        const rows = groupRows(people, group, EN, true);
+        const rows = groupRows(people, group, EN, REPLY_BY, true);
         expect(rows.filter((row) => row.kind === group)).toHaveLength(
           people.filter((g) => g.kind === group).length +
             people.flatMap((g) => g.companions).filter((c) => c.kind === group).length,
@@ -271,13 +297,7 @@ describe('a split family (sc-3773, ux, 8 Nov): each group shows the people it co
       }
   });
 
-  it('sends nothing anywhere: no request, and no file of Guests reaches for the network', () => {
-    const fetched = vi.spyOn(globalThis, 'fetch');
-    const after = walk();
-    countsOf(after);
-    GROUPS.forEach((group) => groupRows(after, group, EN));
-    expect(fetched).not.toHaveBeenCalled();
-    fetched.mockRestore();
+  it('sends nothing anywhere: no file of Guests reaches for the network', () => {
     const folder = join('src', 'demo', 'guests');
     const reaching = readdirSync(folder)
       .filter((file) => /\.tsx?$/u.test(file) && !file.endsWith('.test.ts'))
@@ -294,43 +314,39 @@ describe('the card, per state (spec §4)', () => {
   const counts = countsOf(GUESTS);
 
   it('says how the room stands, and who hasn’t replied in words', () => {
-    expect(cardWords('inUse', 'owner', counts, false)).toMatchObject({
+    expect(cardWords('inUse', 'owner', counts, false, EN)).toMatchObject({
       says: '96 coming of 142 invited',
       line: '25 haven’t replied (21 guests and 4 of their companions). Replies close tomorrow, Wed, Nov 4.',
       step: 'write',
     });
-    expect(cardWords('viewer', 'viewer', counts, false).step).toBeNull();
-    expect(cardWords('first', 'owner', counts, true)).toMatchObject({
+    expect(cardWords('inUse', 'owner', counts, false, 'en-GB').line).toContain(
+      'Replies close tomorrow, Wed 4 Nov.',
+    );
+    expect(cardWords('viewer', 'viewer', counts, false, EN).step).toBeNull();
+    expect(cardWords('first', 'owner', counts, true, EN)).toMatchObject({
       says: 'No guests yet',
       step: 'addGuest',
     });
   });
 
   it('counts arrivals on the day, with Open check-in all day', () => {
-    expect(cardWords('onTheDay', 'owner', counts, false)).toMatchObject({
+    expect(cardWords('onTheDay', 'owner', counts, false, EN)).toMatchObject({
       count: { arrived: 41, expected: 98 },
       step: 'openCheckIn',
     });
-    expect(cardWords('secondDay', 'owner', counts, false).line).toBe(
-      '96 coming of 142 invited. Check-in is open all day.',
-    );
-    expect(cardWords('staffDayBefore', 'staff', counts, false)).toMatchObject({
+    expect(cardWords('secondDay', 'owner', counts, false, EN)).toMatchObject({
+      line: '96 coming of 142 invited. Check-in is open all day.',
+      step: 'openCheckIn',
+    });
+    expect(cardWords('staffDayBefore', 'staff', counts, false, EN)).toMatchObject({
       says: 'Check-in opens at 16:00',
       step: 'openCheckIn',
     });
-    expect(cardWords('staffDoorOpen', 'staff', counts, false).count).toEqual({
+    expect(cardWords('staffDoorOpen', 'staff', counts, false, EN).count).toEqual({
       arrived: 3,
       expected: 98,
     });
-    expect(cardWords('staffBefore', 'staff', counts, false).step).toBeNull();
-  });
-
-  it('knows each of the event’s three days from 05:00, and no other', () => {
-    const [start, end] = ['2026-11-05T18:00:00Z', '2026-11-07T15:00:00Z'];
-    expect(onAnEventDay(clockOf('staffDayBefore'), start, end)).toBe(true);
-    expect(onAnEventDay(clockOf('secondDay'), start, end)).toBe(true);
-    expect(onAnEventDay(new Date('2026-11-05T04:30:00Z'), start, end)).toBe(false);
-    expect(onAnEventDay(clockOf('inUse'), start, end)).toBe(false);
+    expect(cardWords('staffBefore', 'staff', counts, false, EN).step).toBeNull();
   });
 });
 

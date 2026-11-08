@@ -28,6 +28,7 @@ import {
   emailCheck,
   nameProblem,
   phoneCheck,
+  dayWords,
   recorded,
   sameNameAs,
 } from './GuestsModel.ts';
@@ -598,12 +599,14 @@ export function RecordReply({
   open,
   guest: g,
   start,
+  locale,
   opener,
   onClose,
   onSaved,
 }: {
   open: boolean;
   guest: SampleGuest;
+  locale: string;
   start: RecordState | null;
   opener: Opener;
   onClose: () => void;
@@ -640,7 +643,7 @@ export function RecordReply({
           title={say.replacedThemselves(
             g.name,
             REPLY_WORD[g.kind === 'walkin' ? 'coming' : g.kind],
-            'Oct 2',
+            dayWords(g.when ?? TODAY, locale),
           )}
           testID="guest.record.replace"
         >

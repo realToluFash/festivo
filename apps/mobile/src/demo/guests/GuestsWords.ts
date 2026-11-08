@@ -30,7 +30,6 @@ export const W = {
   mobileNumber: 'Mobile number',
   none: 'None',
   added: 'Added',
-  addedBy: 'Sep 14 by Ana Souza',
   companion: 'Companion',
   heldLine: 'Held · comes only if their host accepts',
   copyLink: 'Copy invitation link',
@@ -186,8 +185,8 @@ export const HOW_INVITED = ['WhatsApp', 'Text message', 'Email', 'In person', 'O
 export const say = {
   shown: (shown: number, total: number) => `${shown} of ${total} shown`,
   says: (coming: number, invited: number) => `${coming} coming of ${invited} invited`,
-  havent: (all: number, guests: number, companions: number) =>
-    `${all} haven’t replied (${guests} guests and ${companions} of their companions). Replies close tomorrow, Wed, Nov 4.`,
+  havent: (all: number, guests: number, companions: number, closes: string) =>
+    `${all} haven’t replied (${guests} guests and ${companions} of their companions). Replies close tomorrow, ${closes}.`,
   onList: (count: number) => `${count} on the list`,
   arrivedOf: (arrived: number, expected: number) => `${arrived} of ${expected}`,
   arrivedSaid: (arrived: number, expected: number) => `${arrived} of ${expected} arrived`,

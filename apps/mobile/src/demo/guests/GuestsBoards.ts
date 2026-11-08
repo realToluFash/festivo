@@ -100,7 +100,11 @@ const DOOR: Record<DoorState, Board> = {
 };
 
 const EVENTS: readonly (readonly [string, string, string])[] = [
-  ['events', 'Events · the two tiles', 'Guests invited and Replies in, each a link'],
+  [
+    'events',
+    'Events · the two tiles',
+    'Guests invited and Replies in as figures; each row adds its guests',
+  ],
   ['eventsFirst', 'Events · first run', 'The first-run card, no tiles'],
   ['eventsZero', 'Events · only drafts', '0, never blank'],
   ['eventsOffline', 'Events · offline', 'The last figures fetched'],
