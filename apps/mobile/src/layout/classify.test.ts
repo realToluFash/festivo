@@ -109,7 +109,7 @@ describe('a list beside its page', () => {
     ['an iPad mini on its side', 1133, 'tabletPortrait', 'tabletPortrait'],
     ['an 11-inch iPad on its side', 1180, 'tabletPortrait', 'tabletPortrait'],
     ['1240 wide', 1240, 'tabletPortrait', 'tabletPortrait'],
-    ['the Android tablet on its side', 1280, 'tabletLandscape', 'tabletPortrait'],
+    ['the Android tablet on its side', 1280, 'tabletPortrait', 'tabletPortrait'],
     ['a 13-inch iPad on its side', 1376, 'tabletLandscape', 'tabletLandscape'],
   ])('%s in Settings: Roles %s, Members %s', (_name, width, roles, members) => {
     expect(listAndPageKind(side(width), 'settingsList', ROLES)).toBe(roles);
@@ -117,15 +117,15 @@ describe('a list beside its page', () => {
   });
 
   it('keeps a page its 360 at the boundary', () => {
-    expect(listAndPageKind(side(1248), 'settingsList', ROLES)).toBe('tabletLandscape');
-    expect(listAndPageKind(side(1247), 'settingsList', ROLES)).toBe('tabletPortrait');
-    expect(listAndPageKind(side(1300), 'settingsList', MEMBERS)).toBe('tabletLandscape');
-    expect(listAndPageKind(side(1299), 'settingsList', MEMBERS)).toBe('tabletPortrait');
+    expect(listAndPageKind(side(1288), 'settingsList', ROLES)).toBe('tabletLandscape');
+    expect(listAndPageKind(side(1287), 'settingsList', ROLES)).toBe('tabletPortrait');
+    expect(listAndPageKind(side(1340), 'settingsList', MEMBERS)).toBe('tabletLandscape');
+    expect(listAndPageKind(side(1339), 'settingsList', MEMBERS)).toBe('tabletPortrait');
   });
 
   it('gives a section the window less the sidebar, and less the Settings list on its side in Settings', () => {
     expect(sectionWidth(side(1133), 'nothing')).toBe(1133 - 252);
-    expect(sectionWidth(side(1133), 'settingsList')).toBe(1133 - 252 - 320);
+    expect(sectionWidth(side(1133), 'settingsList')).toBe(1133 - 252 - 360);
     expect(sectionWidth({ width: 834, height: 1194, fontScale: 1 }, 'settingsList')).toBe(834);
     expect(sectionWidth({ width: 430, height: 932, fontScale: 1 }, 'settingsList')).toBe(430);
   });
@@ -163,8 +163,8 @@ describe('a list beside its page', () => {
   });
 
   it('decides one at a time from the arithmetic it shows', () => {
-    expect(listFitsBeside(1248 - 252 - 320, ROLES)).toBe(true);
-    expect(listFitsBeside(1247 - 252 - 320, ROLES)).toBe(false);
+    expect(listFitsBeside(1288 - 252 - 360, ROLES)).toBe(true);
+    expect(listFitsBeside(1287 - 252 - 360, ROLES)).toBe(false);
   });
 
   it('leaves the phone and upright layouts as they are', () => {

@@ -167,8 +167,6 @@ function SectionTile({
   side: number;
   organisation: string | null;
 }) {
-  if (section === 'roles') return <View style={{ width: side, height: side }} />;
-
   return (
     <Tile
       of={section}

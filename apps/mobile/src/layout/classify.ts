@@ -64,7 +64,7 @@ export function settingsListBeside(kind: LayoutKind): boolean {
 /** The room a page keeps beside its list: about what the phone frame gives one. */
 export const PAGE_BESIDE_MIN_WIDTH = 360;
 
-export const SETTINGS_LIST_WIDTH = 320;
+export const SETTINGS_LIST_WIDTH = 360;
 
 export interface ScreenWindow extends WindowSize {
   fontScale: number;
