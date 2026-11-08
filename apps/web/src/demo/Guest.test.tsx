@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
 import { GUEST_PAGES, THANK_YOU } from './guest.ts';
+import { GUEST_KITCHEN_PAGES } from './guestKitchen.ts';
 
 const tested = config();
 const NAME = 'Maria Fernanda Albuquerque Santos';
@@ -65,10 +66,13 @@ describe('the guest’s own page, A · The cover card (sc-31306)', () => {
 
     expect(head.textContent).toBe('Guest’s page in A · The cover card · phone, tablet and desk');
     const hrefs = screen.getAllByRole('link').map((one) => one.getAttribute('href'));
-    const guestLinks = hrefs.filter((href) => href?.startsWith('/demo/guest?'));
+    const kitchen = new Set(GUEST_KITCHEN_PAGES.flatMap((one) => one.states).map((one) => one.to));
+    const guestLinks = hrefs.filter(
+      (href) => href?.startsWith('/demo/guest?') && !kitchen.has(href),
+    );
 
     expect(guestLinks).toEqual(GUEST_PAGES.flatMap((one) => one.states).map((one) => one.to));
-    expect(guestLinks).toHaveLength(47);
+    expect(guestLinks).toHaveLength(54);
   });
 
   it('opens on the cover card: the invitation, the guest, the event, when and where', async () => {
@@ -127,7 +131,7 @@ const SAYS: [string, () => void][] = [
   ['unsentReturn', () => screen.getByRole('status', { name: '' })],
   [
     'replyByClosed',
-    () => screen.getByRole('link', { name: 'Update what the kitchen should know' }),
+    () => screen.getByRole('button', { name: 'Update what the kitchen should know' }),
   ],
   ['replyByClosedNotSure', () => screen.getByText(/if you can still come\.$/u)],
   ['closedRefused', () => screen.getByText(/^Answers closed before this was sent\./u)],
@@ -159,6 +163,13 @@ const SAYS: [string, () => void][] = [
     'tellUsThanks',
     () => screen.getByText(/^Thank you\. Adaeze Obi and Tunde Bakare have been told/u),
   ],
+  ['en', () => screen.getByRole('heading', { level: 1, name: 'You are invited' })],
+  ['menuOpen', () => screen.getByRole('menu', { name: 'Language' })],
+  ['switched', () => screen.getByText('[Cette page est maintenant en français.]')],
+  ['fr', () => screen.getByRole('heading', { level: 1, name: 'Vous avez une invitation' })],
+  ['pt', () => screen.getByRole('heading', { level: 1, name: 'Tem um convite' })],
+  ['es', () => screen.getByRole('heading', { level: 1, name: 'Tiene una invitación' })],
+  ['notSaved', () => screen.getByRole('alert')],
   ['message', () => expect(screen.getAllByRole('article')).toHaveLength(1)],
   ['messages', () => expect(screen.getAllByRole('article')).toHaveLength(3)],
   ['messageArrival', () => expect(Element.prototype.scrollIntoView).toHaveBeenCalled()],
@@ -258,12 +269,13 @@ describe('the breakpoints', () => {
 });
 
 describe('answering, by keyboard and pointer, on sample data', () => {
-  it('Yes goes to Check and send with its heading focused; Back returns to Yes', async () => {
+  it('Yes goes to the kitchen step (sc-3778) with its heading focused; Back returns to Yes', async () => {
     await guest();
 
     fireEvent.click(screen.getByRole('button', { name: 'Yes, I’ll be there' }));
-    expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Check and send' }));
-    expect(screen.getByText('Your answer: Coming')).toBeDefined();
+    expect(document.activeElement).toBe(
+      screen.getByRole('heading', { name: 'Anything the kitchen must know?' }),
+    );
     expect(screen.queryByText('Hosted by')).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: 'Back' }));
@@ -348,6 +360,7 @@ describe('answering, by keyboard and pointer, on sample data', () => {
     await guest('changing');
 
     fireEvent.click(screen.getByRole('button', { name: /^Yes, I’ll be there/u }));
+    fireEvent.click(screen.getByRole('button', { name: 'Leave it as it is' }));
     fireEvent.click(screen.getByRole('button', { name: 'Send my answer' }));
     await wait();
 
@@ -545,6 +558,89 @@ describe('the language menu in the header (sc-3790)', () => {
     expect(screen.queryByRole('menu')).toBeNull();
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Language: English' }));
     expect(screen.getByRole('heading', { level: 1, name: 'You are invited' })).toBeDefined();
+  });
+});
+
+describe('the page in the guest’s own language (sc-3790)', () => {
+  function said(): string {
+    return (
+      document.querySelector('.gp [aria-live="polite"][aria-atomic="true"]')?.textContent ?? ''
+    );
+  }
+
+  it('opens in Portuguese with its own words, dates and lang; names stay as typed', async () => {
+    await guest('pt');
+
+    expect(document.documentElement.lang).toBe('pt');
+    expect(page().getAttribute('lang')).toBe('pt');
+    expect(screen.getByRole('heading', { level: 1, name: 'Tem um convite' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Idioma: Português' })).toBeDefined();
+    expect(screen.getByRole('button', { name: '[Sim, vou estar presente]' })).toBeDefined();
+    expect(screen.getByText('quinta-feira, 5 de novembro de 2026')).toBeDefined();
+    expect(screen.getByText(NAME)).toBeDefined();
+    expect(screen.getByText('Adaeze & Tunde’s wedding')).toBeDefined();
+  });
+
+  it('keeps English as today when nothing is chosen', async () => {
+    await guest('en');
+
+    expect(document.documentElement.lang).toBe('en');
+    expect(screen.getByRole('heading', { level: 1, name: 'You are invited' })).toBeDefined();
+    expect(said()).toBe('');
+  });
+
+  it('switches at once, says so in the new language, and gives focus back to the button', async () => {
+    await guest('menuOpen');
+
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'Français' }));
+
+    expect(screen.queryByRole('menu')).toBeNull();
+    expect(document.documentElement.lang).toBe('fr');
+    expect(said()).toBe('[Cette page est maintenant en français.]');
+    expect(document.activeElement).toBe(
+      screen.getByRole('button', { name: /^Langue\s:\sFrançais$/u }),
+    );
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Vous avez une invitation' }),
+    ).toBeDefined();
+  });
+
+  it('closes on Escape without changing the language', async () => {
+    await guest('menuOpen');
+
+    fireEvent.keyDown(screen.getByRole('menuitemradio', { name: 'English' }), { key: 'Escape' });
+
+    expect(screen.queryByRole('menu')).toBeNull();
+    expect(said()).toBe('');
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Language: English' }));
+  });
+
+  it('opens switched with the switch said and focus on the button', async () => {
+    await guest('switched');
+
+    expect(said()).toBe('[Cette page est maintenant en français.]');
+    expect(document.activeElement).toBe(
+      screen.getByRole('button', { name: /^Langue\s:\sFrançais$/u }),
+    );
+  });
+
+  it('says a choice that was not saved, in the new language, and tries again', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    await guest('notSaved');
+    const notice = screen.getByRole('alert');
+    const switchSaid = document.querySelector('.gp [aria-live="polite"][aria-atomic="true"] span');
+
+    expect(notice.textContent).toContain('[Votre langue n’a pas été enregistrée.');
+    fireEvent.click(within(notice).getByRole('button', { name: 'Réessayer' }));
+    await wait();
+
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(document.querySelector('.gp [aria-live="polite"][aria-atomic="true"] span')).toBe(
+      switchSaid,
+    );
+    expect(document.activeElement).toBe(
+      screen.getByRole('button', { name: /^Langue\s:\sFrançais$/u }),
+    );
   });
 });
 

@@ -17,6 +17,7 @@ import { useTranslation } from 'react-i18next';
 import { FocusEdge, useHeld } from '../components/Field.tsx';
 import { fieldFocused, fieldLeft } from '../components/focusedField.ts';
 import { Text } from '../components/Text.tsx';
+import { UnseenName } from '../components/UnseenName.tsx';
 import {
   FIELD_DEFAULTS,
   fieldName,
@@ -138,11 +139,9 @@ export function InsideField({
         aria-invalid={state !== 'plain'}
         testID={testID}
       />
-      {refused != null && Platform.OS === 'android' && (
-        <Text nativeID={invalidNameID} importantForAccessibility="no" style={styles.unseen}>
-          {withInvalid(label, refused.word)}
-        </Text>
-      )}
+      <UnseenName nativeID={invalidNameID}>
+        {refused == null ? label : withInvalid(label, refused.word)}
+      </UnseenName>
       <Animated.View
         pointerEvents="none"
         style={[styles.label, { transform: [{ translateY }, { scale }] }]}
@@ -223,7 +222,6 @@ const LINE = StyleSheet.create({
 });
 
 const styles = StyleSheet.create({
-  unseen: { position: 'absolute', opacity: 0 },
   box: {
     minHeight: HEIGHT,
     borderWidth: 1,

@@ -32,8 +32,9 @@ import {
   recorded,
   sameNameAs,
 } from './GuestsModel.ts';
+import { LanguageChoices, LanguageField } from './GuestLanguage.tsx';
 import { Amber, AmberLine, Choices, DoneLine } from './GuestsParts.tsx';
-import { type SampleGuest, THEIRS, TODAY } from './GuestsSample.ts';
+import { type GuestLanguage, type SampleGuest, THEIRS, TODAY } from './GuestsSample.ts';
 import { HOW_INVITED, HOW_TOLD, REPLY_WORD, W, say } from './GuestsWords.ts';
 import { ReplyMark } from './ReplyMark.tsx';
 
@@ -173,6 +174,24 @@ export function Legend({ text, line }: { text: string; line?: string | null }) {
 
 const MAX = 10;
 
+/** Language's sheet over the focused screen (sc-3790): a tap picks and closes it, as a select does. */
+export function languageOver(
+  value: GuestLanguage | null,
+  onPick: (code: GuestLanguage | null) => void,
+  onClose: () => void,
+): { layer: ReactNode; onClose: () => void } {
+  return {
+    layer: (
+      <SheetLayer onClose={onClose} label={W.cancel}>
+        <SheetBody title={W.language} close={W.cancel} onClose={onClose}>
+          <LanguageChoices value={value} onPick={onPick} />
+        </SheetBody>
+      </SheetLayer>
+    ),
+    onClose,
+  };
+}
+
 function startCompanions(state: EditState | null, g: SampleGuest): string[] {
   if (state === 'editCompanions') return ['Hauwa Bello'];
   if (state === 'editMax')
@@ -226,6 +245,8 @@ export function EditGuest({
     start === 'editNotSaved' ? 'notSaved' : start === 'editOffline' ? 'offline' : null,
   );
   const [discarding, setDiscarding] = useState(start === 'editDiscard');
+  const [language, setLanguage] = useState<GuestLanguage | null>(g.language ?? null);
+  const [choosing, setChoosing] = useState(false);
   const nameRef = useRef<TextInputInstance>(null);
   const emailRef = useRef<TextInputInstance>(null);
   const numberRef = useRef<TextInputInstance>(null);
@@ -238,6 +259,7 @@ export function EditGuest({
     name !== g.name ||
     email !== (g.email ?? '') ||
     joinPhone(country, number) !== g.phone ||
+    language !== (g.language ?? null) ||
     companions.join() !== g.companions.map((c) => c.name).join();
 
   const next = (): SampleGuest => ({
@@ -245,6 +267,7 @@ export function EditGuest({
     name: name.trim(),
     email: email.trim() === '' ? null : email.trim(),
     phone: joinPhone(country, number),
+    language,
     companions: companions.map((c, i) => ({
       name: c,
       kind: g.companions[i]?.kind ?? (g.kind === 'coming' ? 'coming' : 'held'),
@@ -289,6 +312,18 @@ export function EditGuest({
       cancelTestID="guest.edit.cancel"
       opener={opener}
       ask={discard}
+      over={
+        choosing
+          ? languageOver(
+              language,
+              (code) => {
+                setLanguage(code);
+                setChoosing(false);
+              },
+              () => setChoosing(false),
+            )
+          : null
+      }
       testID="guest.edit"
     >
       {conflict && (
@@ -377,6 +412,12 @@ export function EditGuest({
         autoFocus={start === 'edit'}
         fieldRef={numberRef}
         testID="guest.edit.phone"
+      />
+      <LanguageField
+        value={language}
+        chose={g.chose ?? null}
+        onOpen={() => setChoosing(true)}
+        testID="guest.edit.language"
       />
       <View style={styles.companions}>
         <Legend
