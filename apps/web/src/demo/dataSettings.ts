@@ -1,7 +1,7 @@
 import { writtenTime } from './clock.ts';
 import type { Load } from './members.ts';
 import { SAMPLE } from './rules.ts';
-import { type DemoLink, VIEWERS, type Viewer, settingsPath } from './settings.ts';
+import { VIEWERS, type Viewer } from './settings.ts';
 
 export const PERIODS = ['Off', '30 days', '90 days', '180 days', '365 days'] as const;
 export type Period = (typeof PERIODS)[number];
@@ -116,8 +116,9 @@ export function nextRunLine(runAt: string, zone: ReaderZone, locale: string): st
 }
 
 export const DATA_WORDS = {
-  title: 'Data',
+  title: 'Delete guest data after an event',
   setting: 'Delete guest data after an event',
+  howLong: 'How long',
   counted:
     'Counted from the event’s end: when it was ended, or its scheduled end if nobody ended it.',
   ownerOnly: 'Only an Owner can change this.',
@@ -340,7 +341,7 @@ export interface DataStart {
 const OFF_CLOCK = '2026-10-17T14:20:00+01:00';
 const ON_CLOCK = '2026-10-19T10:12:00+01:00';
 const NOTICE_AT = '2026-10-17T14:20:00+01:00';
-const LEFT_AT = '2026-10-18T09:30:00+01:00';
+export const LEFT_ENTERPRISE_AT = '2026-10-18T09:30:00+01:00';
 
 const OFF_PAGE: DataPage = {
   plan: 'enterprise',
@@ -465,7 +466,7 @@ export function dataStart(state: string, viewer: Pick<Viewer, 'key'>, locale: st
     case 'rt_downgraded':
       return {
         ...rest,
-        page: { ...held, plan: 'free', leftEnterpriseAt: LEFT_AT, runAt: null, run: [] },
+        page: { ...held, plan: 'free', leftEnterpriseAt: LEFT_ENTERPRISE_AT, runAt: null, run: [] },
       };
     case 'rt_refused_owner':
       return { ...rest, page: OFF_PAGE, asking: '90 days', refusal: 'owner_required' };
@@ -478,60 +479,3 @@ export function dataStart(state: string, viewer: Pick<Viewer, 'key'>, locale: st
       return { ...rest, page: OFF_PAGE };
   }
 }
-
-function data(state: string | undefined, name: string, viewer: Viewer = VIEWERS.folake): DemoLink {
-  return { to: settingsPath('data', viewer, state), name };
-}
-
-export const DATA_PAGES: readonly { name: string; states: readonly DemoLink[] }[] = [
-  {
-    name: 'Delete guest data after an event',
-    states: [
-      data('rt_off', 'Off, an owner'),
-      data('rt_off', 'Off, an admin reads it', VIEWERS.julien),
-      data('rt_locked', 'Locked, never on Enterprise, an owner'),
-      data('rt_locked', 'Locked, never on Enterprise, an admin', VIEWERS.julien),
-      data('rt_downgraded', 'Left Enterprise: the period and a hold kept, read only, an owner'),
-      data('rt_downgraded', 'Left Enterprise, an admin sees the same', VIEWERS.julien),
-      data(undefined, 'A member has no Data', VIEWERS.ana),
-      data('rt_turned_off', 'Turned off: asked nothing, next run cancelled'),
-      data('loading', 'Loading'),
-      data('failed', 'Failed'),
-    ],
-  },
-  {
-    name: 'The question',
-    states: [
-      data('rt_confirm', 'Turning on, 2 events'),
-      data('rt_confirm_one', 'Turning on, 1 event'),
-      data('rt_confirm_none', 'Turning on, no event'),
-      data('rt_change', 'Changing the period replaces the run'),
-      data('rt_refused_owner', 'Refused, owner_required'),
-      data('rt_refused_plan', 'Refused, plan_required'),
-    ],
-  },
-  {
-    name: 'The next run and holding an event back',
-    states: [
-      data('rt_on', 'On, the next run and its events'),
-      data('rt_on_empty', 'On, a run with no events'),
-      data('rt_on_utc', 'On, an account with no zone: labelled UTC'),
-      data('rt_on', 'On, an admin in London', VIEWERS.julien),
-      data('rt_hold', 'Holding an event back'),
-      data('rt_hold_blank', 'A blank reason holds nothing'),
-      data('rt_hold_long', 'A reason over 500 characters holds nothing, cut off nowhere'),
-      data('rt_hold', 'An admin holding an event back', VIEWERS.julien),
-    ],
-  },
-  {
-    name: 'Held back',
-    states: [
-      data('rt_held', 'Held events, an owner'),
-      data('rt_held_long', 'A long reason, in full and wrapped'),
-      data('not_owner', 'Held events, an admin: period read only', VIEWERS.julien),
-      data('rt_released', 'Released'),
-      data('rt_off_held', 'Off: a hold kept, with Release'),
-      data('rt_off_released', 'Off: released, no longer held back'),
-    ],
-  },
-];

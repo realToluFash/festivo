@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { DATA_CONTROL_PAGES } from './dataControlPages.ts';
 import {
-  DATA_PAGES,
   DATA_STATES,
   LONG_HOLD,
   PAST_EVENTS,
@@ -246,8 +246,10 @@ describe('retention’s rules (sc-30194)', () => {
     expect(dataViewerKey('ana', 'rt_on')).toBe('ana');
   });
 
-  it('links every state from the demo’s home', () => {
-    const linked = DATA_PAGES.flatMap((one) => one.states.map((state) => state.to));
+  it('links every state from the demo’s home, at its place under Data and control', () => {
+    const linked = DATA_CONTROL_PAGES.flatMap((one) => one.states.map((state) => state.to)).filter(
+      (to) => to.startsWith('/demo/settings/data-and-control/delete-guest-data'),
+    );
 
     for (const state of DATA_STATES)
       expect(linked.some((to) => to.includes(`state=${state}`))).toBe(true);
