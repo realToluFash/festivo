@@ -1,11 +1,21 @@
 import { ApiError, type CodeOpening, type PendingRegistration } from '@soirely/api-client';
 
-/** On launch, a sign-up waiting on its code (no session since sc-512) goes back to it; a spent one is cleared. */
+/** Create your account, saying the sign-up timed out, with the email it was held for (sc-29923). */
+export interface TimedOut {
+  pathname: '/register';
+  params: { email: string; timedOut: string };
+}
+
+export function timedOutRoute(email: string): TimedOut {
+  return { pathname: '/register', params: { email, timedOut: String(Date.now()) } };
+}
+
+/** On launch, a sign-up waiting on its code (no session since sc-512) goes back to it; a spent one is cleared and starts again. */
 export async function resumeSignUp(store: {
   held: () => Promise<PendingRegistration | null>;
   open: (registration: string) => Promise<CodeOpening>;
   drop: () => Promise<void>;
-}): Promise<'/verify-email' | null> {
+}): Promise<'/verify-email' | TimedOut | null> {
   const pending = await store.held();
   if (pending == null) return null;
 
@@ -17,7 +27,7 @@ export async function resumeSignUp(store: {
     if (error instanceof ApiError && error.is('registration_expired')) {
       await store.drop();
 
-      return null;
+      return timedOutRoute(pending.email);
     }
 
     // Unreachable or refused for another reason: the screen itself says so, and keeps the handle.
@@ -25,14 +35,15 @@ export async function resumeSignUp(store: {
   }
 }
 
-/** After launch's `me()` is refused: a live held sign-up wins only on launch, an ended session says so anywhere. */
+/** After launch's `me()` is refused: a held sign-up wins only on launch, an ended session says so anywhere. */
 export async function launchRoute(
   ended: boolean,
   store: Parameters<typeof resumeSignUp>[0],
   onLaunch: () => boolean,
-): Promise<'/verify-email' | '/sign-in?signedOut=1' | null> {
+): Promise<'/verify-email' | TimedOut | '/sign-in?signedOut=1' | null> {
   const resumed = await resumeSignUp(store);
-  if (resumed != null) return onLaunch() ? resumed : null;
+  if (resumed === '/verify-email') return onLaunch() ? resumed : null;
+  if (ended) return '/sign-in?signedOut=1';
 
-  return ended ? '/sign-in?signedOut=1' : null;
+  return resumed != null && onLaunch() ? resumed : null;
 }
