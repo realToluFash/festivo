@@ -76,11 +76,12 @@ function firstFocus(start: GuestsStart): string[] {
   if (pane.kind === 'edit') {
     if (pane.start.conflict === true) return ['conflict'];
     if (pane.start.duplicate === true) return ['duplicate'];
-    return ['name'];
+    return [pane.start.at ?? 'name'];
   }
   if (pane.kind === 'record')
     return pane.start.replace === true ? ['replace-heading'] : ['answer-coming'];
-  if (pane.kind === 'add') return pane.start.duplicate === true ? ['duplicate'] : ['name'];
+  if (pane.kind === 'add')
+    return pane.start.duplicate === true ? ['duplicate'] : [pane.start.at ?? 'name'];
   if (pane.kind === 'guest' && pane.invite === 'copied') return ['copy'];
   if (pane.kind === 'guest' && start.list.some((one) => one.replaced != null)) return ['replace'];
 

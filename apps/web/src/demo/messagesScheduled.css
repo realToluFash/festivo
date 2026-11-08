@@ -1,0 +1,36 @@
+/* sc-3963 at a desk: a scheduled message's refused save, the red edge and the mark with the words. */
+
+.mg-refused {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+  box-sizing: border-box;
+  width: min(100%, 520px);
+  padding: 14px 18px;
+  border: 1.5px solid var(--colorBroken);
+  border-radius: var(--radiusCardLarge);
+  background: var(--colorCard);
+  color: var(--colorInk);
+  font: 500 14px/1.45 var(--fontFamily);
+}
+
+.mg-refused:focus-visible {
+  outline: 2px solid var(--colorAccent);
+  outline-offset: 2px;
+}
+
+.mg-refused > svg {
+  flex: none;
+  margin-top: 1px;
+  color: var(--colorBroken);
+}
+
+.mg-refused-words {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXxs);
+}
+
+.mg-refused-head {
+  font-weight: 700;
+}

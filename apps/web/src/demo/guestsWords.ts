@@ -116,6 +116,12 @@ export const GW = {
   notSetLine: (organisation: string) =>
     `Not set · their browser’s language, or ${organisation} when Soirely does not offer it`,
   theyChose: (language: string) => `They chose ${language} on their page, and that wins.`,
+  greetAs: 'Greet as',
+  greetAsHint:
+    'How messages greet them, such as Auntie Bisi or Dr. Okafor. Leave it blank to use their full name.',
+  greetAsTooLong: (most: number) => `Shorten Greet as to ${figure(most)} characters or fewer.`,
+  greetsThemAs: (greetAs: string) => `Messages greet them as “${greetAs}”.`,
+  greetsByName: 'Messages greet them by their full name.',
   country: 'Country',
   keepsLink: 'Changing the email address or mobile number keeps their invitation link as it is.',
   companions: 'Companions',

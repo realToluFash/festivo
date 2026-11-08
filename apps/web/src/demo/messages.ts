@@ -2,12 +2,24 @@ import { writtenTime } from './clock.ts';
 import type { SampleEvent } from './events.ts';
 import { demoWords } from './demoWords.ts';
 import { MESSAGES_WORD, MW } from './messagesWords.ts';
+import {
+  type Audience,
+  type Group,
+  type SentToId,
+  COMING,
+  NOT_REPLIED,
+  SENT_TO,
+  countOf,
+  isSentTo,
+  sentToRow,
+  toLine,
+  toSeedOf,
+} from './messagesTo.ts';
+import { type PersonId, previewDraftOf } from './messagesPreviewSample.ts';
 import type { DemoLink } from './settings.ts';
 
 /** Messaging B · Conversations (page e36, board/messaging-b-spec.md): the sample and the inbox's rules; the words are in messagesWords.ts. */
 export { MW };
-
-const NUMBER = new Intl.NumberFormat('en-US');
 
 export const { filled, many, listed } = demoWords(MW);
 
@@ -59,6 +71,45 @@ export const MESSAGE_STATES = [
   { key: 'tellPlace', name: 'Tell guests, a new place' },
   { key: 'closedDraft', name: 'New unavailable, a draft' },
   { key: 'closedEnded', name: 'New unavailable, finished over 30 days ago' },
+  { key: 'whoAdded', name: 'A quick pick, then a condition' },
+  { key: 'whoNone', name: 'Guests who…, no condition' },
+  { key: 'whoNoneSend', name: 'Send with no condition' },
+  { key: 'whoMany', name: 'Several conditions' },
+  { key: 'whoGroup', name: 'Is in group: which group?' },
+  { key: 'whoCounting', name: 'The count refreshing' },
+  { key: 'seeWho', name: 'See who' },
+  { key: 'whoNobody', name: 'Nobody matches' },
+  { key: 'whoRenamed', name: 'A renamed group' },
+  { key: 'whoDeleted', name: 'A deleted group' },
+  { key: 'saveName', name: 'Save this audience' },
+  { key: 'saveBlank', name: 'A blank name' },
+  { key: 'saveLong', name: 'A name over 60' },
+  { key: 'saveTaken', name: 'A used name' },
+  { key: 'saveFull', name: 'The 21st' },
+  { key: 'saved', name: 'Saved' },
+  { key: 'savedChanged', name: 'A saved audience, changed' },
+  { key: 'audienceMenu', name: 'More actions' },
+  { key: 'rename', name: 'Rename' },
+  { key: 'renamed', name: 'Renamed, accents only' },
+  { key: 'deleteAsk', name: 'Delete…, asked' },
+  { key: 'deletedPicked', name: 'Deleted, the picked one' },
+  { key: 'noManage', name: 'Without messages.manage' },
+  { key: 'resolvedRow', name: 'Sent to conditions' },
+  { key: 'nobodyDue', name: 'Nobody matched when it was due' },
+  { key: 'insert', name: 'Insert' },
+  { key: 'previewAs', name: 'Preview as' },
+  { key: 'previewGreetAs', name: 'Previewed as Bisi Adewale' },
+  { key: 'previewChose', name: 'Previewed as Camille Dubois' },
+  { key: 'previewLoading', name: 'Filling it in' },
+  { key: 'previewMarkup', name: 'A Greet as with markup' },
+  { key: 'typedBraces', name: 'A typed {Greeting}' },
+  { key: 'previewBraces', name: 'Typed braces, previewed' },
+  { key: 'noTokens', name: 'Nothing to fill in' },
+  { key: 'previewNobody', name: 'Nobody to preview' },
+  { key: 'editConflict', name: 'Not saved: Bisi Okafor changed it' },
+  { key: 'editSent', name: 'Not saved: already sent' },
+  { key: 'editCancelled', name: 'Not saved: cancelled' },
+  { key: 'editTooLate', name: 'Not saved: too late to send' },
 ] as const;
 
 export type MessagesState = (typeof MESSAGE_STATES)[number]['key'];
@@ -110,7 +161,7 @@ export type Channel = 'email' | 'sms' | 'whatsApp';
 export type Where = 'page' | Channel;
 export type GuestId = 'ines' | 'lucia' | 'kwame' | 'marta';
 export type ConvoId =
-  GuestId | 'unknown' | 'parking' | 'invite' | `sched${string}` | `new${string}`;
+  GuestId | 'unknown' | 'parking' | 'invite' | SentToId | `sched${string}` | `new${string}`;
 
 export interface SampleGuest {
   initials: string;
@@ -301,12 +352,6 @@ export const NEW_MESSAGE = {
 
 export const FOLLOW_UP = 'Also: the car park closes at 23:30, so plan your way home.';
 
-export const PREVIEWED = {
-  name: 'Kwame Mensah',
-  language: 'English',
-  has: ['email', 'sms'] as Channel[],
-};
-
 export function fill(body: readonly Segment[], greeting: string): string {
   return body
     .map((part) => {
@@ -333,52 +378,19 @@ export function blank(body: readonly Segment[]): boolean {
   return body.every((part) => part.kind === 'text' && part.text.trim() === '');
 }
 
-export type Condition = 'coming' | 'notReplied';
-export type Audience = { kind: 'all' } | { kind: 'who'; conditions: readonly Condition[] };
-
-export const CONDITIONS: readonly Condition[] = ['coming', 'notReplied'];
-export const COMING: Audience = { kind: 'who', conditions: ['coming'] };
-export const NOT_REPLIED: Audience = { kind: 'who', conditions: ['notReplied'] };
-
-export function conditionWord(condition: Condition): string {
-  return condition === 'coming' ? MW.isComing : MW.hasntReplied;
-}
-
-export function countOf(audience: Audience): number | null {
-  if (audience.kind === 'all') return GUESTS_N;
-  if (audience.conditions.length === 0) return null;
-  if (audience.conditions.length > 1) return 0;
-
-  return audience.conditions[0] === 'coming' ? 96 : 25;
-}
-
-export function audienceWords(audience: Audience): string {
-  if (audience.kind === 'all') return MW.allGuests;
-
-  return [MW.guestsWho, audience.conditions.map(conditionWord).join(', ')]
-    .filter(Boolean)
-    .join(' ');
-}
-
-export function chipWords(audience: Audience): string {
-  const count = countOf(audience);
-
-  return count == null || count === 0
-    ? audienceWords(audience)
-    : `${audienceWords(audience)} · ${NUMBER.format(count)}`;
-}
-
-export function toLine(audience: Audience): string {
-  return audience.kind === 'all'
-    ? MW.toAll
-    : filled(MW.toAudience, { audience: audienceWords(audience) });
-}
-
-export function refusalOf(audience: Audience): string | null {
-  if (audience.kind === 'who' && audience.conditions.length === 0) return MW.noCondition;
-
-  return countOf(audience) === 0 ? MW.nobodyLine : null;
-}
+export {
+  type Audience,
+  type Condition,
+  CONDITIONS,
+  COMING,
+  NOT_REPLIED,
+  audienceWords,
+  chipWords,
+  conditionWord,
+  countOf,
+  refusalOf,
+  toLine,
+} from './messagesTo.ts';
 
 export interface Untellable {
   name: string;
@@ -437,8 +449,8 @@ export interface Check {
 }
 
 /** The check before it goes (sc-3942, sc-3963): who is told and how, who cannot be, and the credits. */
-export function checkOf(audience: Audience, ticks: Ticks): Check {
-  const count = countOf(audience) ?? 0;
+export function checkOf(audience: Audience, ticks: Ticks, groups: readonly Group[]): Check {
+  const count = countOf(audience, groups) ?? 0;
   const { counts, cantTell, names, smsOff } = figuresOf(audience, ticks);
   const on = CHANNELS.filter((channel) => ticks[channel]);
   const credits = (ticks.sms ? counts.sms : 0) + (ticks.whatsApp ? counts.whatsApp : 0);
@@ -791,6 +803,8 @@ export interface Draft {
   step: 'write' | 'preview' | 'check';
   seed: number;
   openTo?: boolean;
+  opens?: 'insert' | 'previewAs' | 'filling' | undefined;
+  previewAs?: PersonId;
 }
 
 export interface Sched {
@@ -802,6 +816,8 @@ export interface Sched {
   day: string;
   time: string;
   cancelledAt: string | null;
+  cancelledBy?: string;
+  outcome?: 'sent' | 'tooLate';
 }
 
 export interface Answer {
@@ -1113,6 +1129,10 @@ export function seedOf(state: MessagesState | null): Inbox {
     case 'scheduledEdit':
     case 'sendNow':
     case 'cancelAsk':
+    case 'editConflict':
+    case 'editSent':
+    case 'editCancelled':
+    case 'editTooLate':
       return { ...base, pane: open('sched') };
     case 'scheduledCancelled':
       return {
@@ -1120,8 +1140,41 @@ export function seedOf(state: MessagesState | null): Inbox {
         pane: open('sched'),
         scheds: [{ ...SCHEDULED, cancelledAt: '09:46' }],
       };
-    default:
+    case 'insert':
+    case 'previewAs':
+    case 'previewGreetAs':
+    case 'previewChose':
+    case 'previewLoading':
+    case 'previewMarkup':
+    case 'typedBraces':
+    case 'previewBraces':
+    case 'noTokens':
+      return {
+        ...base,
+        pane: { kind: 'compose' },
+        draft: { ...draftOf(COMING), ...previewDraftOf(state) },
+      };
+    case 'previewNobody':
+      return compose(base, { kind: 'who', conditions: [] }, 'write');
+    default: {
+      const seed = toSeedOf(state);
+
+      if (seed?.kind === 'compose')
+        return {
+          ...base,
+          pane: { kind: 'compose' },
+          draft: { ...draftOf(seed.to), openTo: seed.open },
+        };
+      if (seed?.kind === 'convo')
+        return {
+          ...base,
+          present: [...ALL, ...seed.more],
+          pane: open(seed.id),
+          untold: seed.untold === true ? [STARTS_LATER] : [],
+        };
+
       return base;
+    }
   }
 }
 
@@ -1202,13 +1255,16 @@ function unknownRow(inbox: Inbox): Row {
   };
 }
 
-export function outReach(out: Out): {
+export function outReach(
+  out: Out,
+  groups: readonly Group[],
+): {
   count: number;
   reached: number;
   soFar: number;
   seen: number;
 } {
-  const count = countOf(out.to) ?? 0;
+  const count = countOf(out.to, groups) ?? 0;
 
   return {
     count,
@@ -1218,8 +1274,8 @@ export function outReach(out: Out): {
   };
 }
 
-export function outLine(out: Out): string {
-  const reach = outReach(out);
+export function outLine(out: Out, groups: readonly Group[]): string {
+  const reach = outReach(out, groups);
 
   switch (out.stage) {
     case 'countdown':
@@ -1261,40 +1317,65 @@ function manyRow(id: ConvoId, title: string, line: string, when: string, tag: Ta
   return { id, title, line, when, lead: { kind: 'many' }, tag, arrived: false };
 }
 
-function schedRow(sched: Sched): Row {
+/** Who cancelled a scheduled message and when: the reader, or (sc-3963's refused save) a colleague. */
+export function cancelledWords(sched: Sched): string {
+  return filled(MW.cancelledBy, {
+    name: sched.cancelledBy ?? READER,
+    time: sched.cancelledAt ?? '',
+  });
+}
+
+function schedRow(sched: Sched, groups: readonly Group[]): Row {
   if (sched.cancelledAt != null)
     return manyRow(
       sched.id,
       outTitle(sched),
-      filled(MW.cancelledBy, { name: READER, time: sched.cancelledAt }).split('.')[0] ?? '',
+      cancelledWords(sched).split('.')[0] ?? '',
       sched.cancelledAt,
       { kind: 'ended', word: MW.cancelledTag },
+    );
+  if (sched.outcome === 'sent')
+    return manyRow(
+      sched.id,
+      outTitle(sched),
+      `${toLine(sched.to, groups)} · ${toldWords(sched.ticks)}`,
+      sched.time,
+      null,
+    );
+  if (sched.outcome === 'tooLate')
+    return manyRow(
+      sched.id,
+      outTitle(sched),
+      `${toLine(sched.to, groups)} · ${dayWords(sched.day)}, ${sched.time}`,
+      '',
+      { kind: 'ended', word: MW.notSentTooLate },
     );
 
   return manyRow(
     sched.id,
     outTitle(sched),
-    `${toLine(sched.to)} · ${dayWords(sched.day)}, ${sched.time}`,
+    `${toLine(sched.to, groups)} · ${dayWords(sched.day)}, ${sched.time}`,
     '',
     { kind: 'notyet', word: MW.scheduled },
   );
 }
 
-export function rowOf(inbox: Inbox, id: ConvoId): Row {
+export function rowOf(inbox: Inbox, id: ConvoId, groups: readonly Group[]): Row {
   if (isGuest(id)) return guestRow(inbox, id);
   if (id === 'unknown') return unknownRow(inbox);
+  if (isSentTo(id)) return sentToRow(id, groups);
 
   const outs = outsIn(inbox, id);
   const last = outs.at(-1);
   const sched = inbox.scheds.find((one) => one.id === id);
 
-  if (sched != null && last == null) return schedRow(sched);
+  if (sched != null && last == null) return schedRow(sched, groups);
   if (id === 'parking')
     return manyRow(
       id,
       PARKING.subject,
       last != null && busy(last)
-        ? outLine(last)
+        ? outLine(last, groups)
         : `${MW.toAll} · ${many('didntGetIt', inbox.unreached.length)}`,
       last == null ? PARKING.row : last.at,
       inbox.unreached.length === 0
@@ -1306,16 +1387,16 @@ export function rowOf(inbox: Inbox, id: ConvoId): Row {
       id,
       MW.invitation,
       last != null && busy(last)
-        ? outLine(last)
+        ? outLine(last, groups)
         : `${MW.toAll} · ${filled(MW.reached, { count: INVITE_REACH.reached, total: INVITE_REACH.of })}`,
       last == null ? INVITE.row : last.at,
       null,
     );
 
-  return threadRow(inbox, id);
+  return threadRow(inbox, id, groups);
 }
 
-function threadRow(inbox: Inbox, id: ConvoId): Row {
+function threadRow(inbox: Inbox, id: ConvoId, groups: readonly Group[]): Row {
   const outs = outsIn(inbox, id);
   const first = outs[0];
   const last = outs.at(-1);
@@ -1323,19 +1404,28 @@ function threadRow(inbox: Inbox, id: ConvoId): Row {
   if (first == null || last == null) {
     const to = inbox.draft?.to ?? { kind: 'all' };
 
-    return manyRow(id, MW.newMessage, `${toLine(to)} · ${MW.notSentYet}`, NOW, null);
+    return manyRow(id, MW.newMessage, `${toLine(to, groups)} · ${MW.notSentYet}`, NOW, null);
   }
 
   const title = outTitle(first);
   const missed = figuresOf(last.to, last.ticks).cantTell;
 
   if (last.stage === 'sent' && litOf(inbox) !== id && missed > 0)
-    return manyRow(id, title, `${toLine(last.to)} · ${many('didntGetIt', missed)}`, last.at, {
-      kind: 'waiting',
-      word: filled(MW.notReached, { count: missed }),
-    });
+    return manyRow(
+      id,
+      title,
+      `${toLine(last.to, groups)} · ${many('didntGetIt', missed)}`,
+      last.at,
+      {
+        kind: 'waiting',
+        word: filled(MW.notReached, { count: missed }),
+      },
+    );
 
-  const line = outs.length > 1 && busy(last) ? `${MW.followUp} · ${outLine(last)}` : outLine(last);
+  const line =
+    outs.length > 1 && busy(last)
+      ? `${MW.followUp} · ${outLine(last, groups)}`
+      : outLine(last, groups);
 
   return manyRow(
     id,
@@ -1378,7 +1468,7 @@ function threadsOf(inbox: Inbox): ConvoId[] {
   return ids.reverse();
 }
 
-export function sectionsOf(inbox: Inbox): Sections {
+export function sectionsOf(inbox: Inbox, groups: readonly Group[]): Sections {
   const here = (id: ConvoId) => inbox.present.includes(id);
   const lit = litOf(inbox);
   const top: Row[] = [];
@@ -1387,7 +1477,7 @@ export function sectionsOf(inbox: Inbox): Sections {
 
   for (const id of threadsOf(inbox)) {
     const last = outsIn(inbox, id).at(-1);
-    const row = rowOf(inbox, id);
+    const row = rowOf(inbox, id, groups);
 
     if (id === lit || last == null || last.stage === 'countdown' || last.stage === 'sending')
       top.push(row);
@@ -1399,24 +1489,36 @@ export function sectionsOf(inbox: Inbox): Sections {
   const arrived = inbox.arrived;
 
   if (arrived != null && here(arrived) && !inbox.done.includes(arrived))
-    needs.push(rowOf(inbox, arrived));
+    needs.push(rowOf(inbox, arrived, groups));
   for (const id of waiting)
-    if (id !== arrived && here(id) && !inbox.done.includes(id)) needs.push(rowOf(inbox, id));
-  if (here('parking') && inbox.unreached.length > 0) needs.push(rowOf(inbox, 'parking'));
+    if (id !== arrived && here(id) && !inbox.done.includes(id))
+      needs.push(rowOf(inbox, id, groups));
+  if (here('parking') && inbox.unreached.length > 0) needs.push(rowOf(inbox, 'parking', groups));
 
   const scheds = inbox.scheds.filter(
     (one) => (one.id !== 'sched' || here('sched')) && outsIn(inbox, one.id).length === 0,
   );
 
-  done.push(...scheds.filter((one) => one.cancelledAt != null).map(schedRow));
-  done.push(...inbox.done.filter(here).map((id) => rowOf(inbox, id)));
-  if (here('parking') && inbox.unreached.length === 0) done.push(rowOf(inbox, 'parking'));
-  if (here('invite')) done.push(rowOf(inbox, 'invite'));
+  done.push(
+    ...scheds
+      .filter((one) => one.cancelledAt != null || one.outcome != null)
+      .map((one) => schedRow(one, groups)),
+  );
+  done.push(...inbox.done.filter(here).map((id) => rowOf(inbox, id, groups)));
+  done.push(
+    ...SENT_TO.filter((id) => here(id) && outsIn(inbox, id).length === 0).map((id) =>
+      sentToRow(id, groups),
+    ),
+  );
+  if (here('parking') && inbox.unreached.length === 0) done.push(rowOf(inbox, 'parking', groups));
+  if (here('invite')) done.push(rowOf(inbox, 'invite', groups));
 
   return {
     top,
     needs,
-    scheduled: scheds.filter((one) => one.cancelledAt == null).map(schedRow),
+    scheduled: scheds
+      .filter((one) => one.cancelledAt == null && one.outcome == null)
+      .map((one) => schedRow(one, groups)),
     done,
   };
 }
