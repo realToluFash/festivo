@@ -171,6 +171,11 @@ describe('the door code’s states on People at a desk', () => {
     expect(count('code-removed')).toBe(17);
   });
 
+  it('keeps the old names opening the same states as the app’s new ones', () => {
+    expect(start({ state: 'code-ran-out' })).toEqual(start({ state: 'code-expired' }));
+    expect(start({ state: 'code-expired' })?.codes[0]?.state).toBe('ranOut');
+  });
+
   it('opens every state the spec names', () => {
     for (const state of DOOR_STATES) expect(start({ state }), state).not.toBeNull();
     for (const code of MAKE_STATES) expect(start({ code })?.make, code).not.toBeNull();
@@ -184,7 +189,8 @@ describe('the door code’s states on People at a desk', () => {
     const linked = DOOR_PAGES.flatMap((page) => page.states.map((one) => one.to));
     for (const state of DOOR_STATES) expect(linked).toContain(`/demo/people?state=${state}`);
     for (const code of MAKE_STATES) expect(linked).toContain(`/demo/people?code=${code}`);
-    for (const hold of HOLD_STATES) expect(linked).toContain(`/demo/people?hold=${hold}`);
+    for (const hold of HOLD_STATES) expect(linked).toContain(`/demo/people?show=${hold}`);
+    expect(linked.filter((to) => /hold=|code-ran-out/u.test(to))).toEqual([]);
     for (const state of ['loading', 'failed', 'readOnly', 'print=1']) {
       expect(linked.some((to) => to.endsWith(state))).toBe(true);
     }

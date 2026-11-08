@@ -503,7 +503,7 @@ export const DOOR_STATES = [
   'code-two',
   'code-full',
   'code-stopped',
-  'code-ran-out',
+  'code-expired',
   'code-made',
   'code-keyboard',
   'code-person',
@@ -639,7 +639,8 @@ function codeIn(state: CodeState): DoorCode {
 export function doorStartOf(params: DoorParams): DoorStart | null {
   const make = isMake(params.code) ? params.code : null;
   const hold = isHold(params.hold) ? params.hold : null;
-  const state = isDoor(params.state) ? params.state : null;
+  const named = params.state === 'code-ran-out' ? 'code-expired' : params.state;
+  const state = isDoor(named) ? named : null;
   const print = params.print === '1';
   if (state == null && make == null && hold == null && !print) return null;
 
@@ -704,7 +705,7 @@ export function doorStartOf(params: DoorParams): DoorStart | null {
       };
     case 'code-stopped':
       return { ...start, codes: [codeIn('stopped')] };
-    case 'code-ran-out':
+    case 'code-expired':
       return { ...start, codes: [codeIn('ranOut')] };
     case 'code-made':
       return { ...none, codes: [{ ...BAR, used: 0 }], toast: W.made };
@@ -749,7 +750,7 @@ export const DOOR_PAGES: readonly { name: string; states: readonly DemoLink[] }[
       people('state=code-two', 'Two codes'),
       people('state=code-full', 'Full'),
       people('state=code-stopped', 'Stopped'),
-      people('state=code-ran-out', 'Expired'),
+      people('state=code-expired', 'Expired'),
       people('state=code-made', 'Made, with the toast'),
       people('state=code-keyboard', 'From the keyboard'),
       people('state=loading', 'Loading'),
@@ -772,13 +773,13 @@ export const DOOR_PAGES: readonly { name: string; states: readonly DemoLink[] }[
   {
     name: 'Show the code, the whole window',
     states: [
-      people('hold=open', 'Show the code'),
-      people('hold=counted', 'Someone joins'),
-      people('hold=new-ask', 'Make a new code?'),
-      people('hold=new', 'The new code'),
-      people('hold=stop-ask', 'Stop this code?'),
-      people('hold=stopping', 'Stopping'),
-      people('hold=stop-failed', 'Stopping failed'),
+      people('show=open', 'Show the code'),
+      people('show=counted', 'Someone joins'),
+      people('show=new-ask', 'Make a new code?'),
+      people('show=new', 'The new code'),
+      people('show=stop-ask', 'Stop this code?'),
+      people('show=stopping', 'Stopping'),
+      people('show=stop-failed', 'Stopping failed'),
     ],
   },
   {

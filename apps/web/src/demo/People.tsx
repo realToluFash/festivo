@@ -74,7 +74,7 @@ export function People() {
   const door = doorStartOf({
     state: params.get('state'),
     code: params.get('code'),
-    hold: params.get('hold'),
+    hold: params.get('show') ?? params.get('hold'),
     print: params.get('print'),
   });
 

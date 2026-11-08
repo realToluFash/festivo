@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -181,7 +181,7 @@ describe('making a door code in a 540 dialog', () => {
 
 describe('Show the code, the whole window', () => {
   it('shows the QR and the code, and Escape closes it', async () => {
-    await people('hold=open');
+    await people('show=open');
     const held = dialog('Door code');
 
     expect(
@@ -193,9 +193,21 @@ describe('Show the code, the whole window', () => {
     expect(screen.queryByRole('dialog', { name: 'Door code' })).toBeNull();
   });
 
+  it('opens from the old ?hold= and code-ran-out links too', async () => {
+    await people('hold=open');
+    expect(dialog('Door code').getByRole('status').textContent).toBe(
+      '14 of 30 used · until Sat, Nov 14, 23:30',
+    );
+    cleanup();
+
+    await people('state=code-ran-out');
+    expect(screen.getByText('Expired')).toBeDefined();
+    expect(screen.getByText('14 of 30 used · ended at 15:00')).toBeDefined();
+  });
+
   it('counts someone in as they join, and lists them', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
-    await people('hold=counted');
+    await people('show=counted');
     await wait(1600);
 
     expect(dialog('Door code').getByRole('status').textContent).toBe(
@@ -207,7 +219,7 @@ describe('Show the code, the whole window', () => {
 
   it('makes a new code in place once asked, its count from 0', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
-    await people('hold=new-ask');
+    await people('show=new-ask');
 
     const ask = asked('Make a new code?');
     expect(
@@ -224,7 +236,7 @@ describe('Show the code, the whole window', () => {
 
   it('says a stop did not go, and tries again from the same Ask', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
-    await people('hold=stop-failed');
+    await people('show=stop-failed');
     const ask = asked('Stop this code?');
 
     expect(ask.getByRole('alert').textContent).toBe(
