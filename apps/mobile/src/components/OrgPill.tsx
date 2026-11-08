@@ -67,6 +67,7 @@ export function OrgPill({
   bare = false,
   wrap = false,
   sidebar = false,
+  tileAlone = false,
   lines,
   mark,
   testID,
@@ -82,6 +83,8 @@ export function OrgPill({
   bare?: boolean;
   wrap?: boolean;
   sidebar?: boolean;
+  /** Where the room runs out the pill is its tile, its name kept for the screen reader and the switcher. */
+  tileAlone?: boolean;
   lines?: number | undefined;
   /** The demo's own tile, which plays its arrival. */
   mark?: ReactNode;
@@ -103,6 +106,7 @@ export function OrgPill({
           : [
               styles.org,
               (waiting != null || wrap) && styles.orgWaiting,
+              tileAlone && styles.orgTile,
               pressed && styles.orgPressed,
             ]
       }
@@ -111,9 +115,13 @@ export function OrgPill({
       accessibilityState={onPress == null || expanded == null ? undefined : { expanded }}
       testID={testID}
     >
-      {!bare && (mark ?? <OrgMark id={id} name={name} side={28} />)}
-      <OpenerWords name={name} waiting={waiting} wrap={wrap} lines={lines} grow={sidebar} />
-      {onPress != null && <Glyph name="updown" size={14} ink={tokens.colorInkSecondary} />}
+      {(tileAlone || !bare) && (mark ?? <OrgMark id={id} name={name} side={28} />)}
+      {!tileAlone && (
+        <OpenerWords name={name} waiting={waiting} wrap={wrap} lines={lines} grow={sidebar} />
+      )}
+      {onPress != null && !tileAlone && (
+        <Glyph name="updown" size={14} ink={tokens.colorInkSecondary} />
+      )}
     </Pressable>
   );
 }
@@ -137,6 +145,7 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colorInset,
   },
   orgWaiting: { minHeight: OPENER.waiting, borderRadius: OPENER.waiting / 2 },
+  orgTile: { minHeight: OPENER.rest, paddingRight: tokens.spaceSm, borderRadius: OPENER.rest / 2 },
   orgPressed: { backgroundColor: tokens.colorNeutralFill },
   side: {
     minHeight: OPENER.rest,

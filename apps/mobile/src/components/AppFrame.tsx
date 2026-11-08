@@ -43,7 +43,7 @@ import {
   destinations,
 } from '../kit/appNav.ts';
 import { backRowHiding } from '../kit/backRow.ts';
-import { phonePillAlone } from '../kit/frameBand.ts';
+import { phonePillAlone, pillBesideTabs } from '../kit/frameBand.ts';
 import { EDGE_SWIPE_WIDTH, headerDrawsBack, stackSwipes } from '../kit/systemBack.ts';
 import { leaveThen } from '../leaveHeld.ts';
 import { backLabelSize, frameTitleSize } from '../layout/textSize.ts';
@@ -522,6 +522,9 @@ function FrameHeader({
   const { width, height } = useLayout();
   const titleSize = frameTitleSize(kind !== 'phone', Math.min(width, height));
   const tabs = useFrameTabs(current, organisation);
+  const [rowWidth, setRowWidth] = useState(0);
+  const [tabsWidth, setTabsWidth] = useState(0);
+  const besideTabs = pillBesideTabs(rowWidth, tabsWidth);
 
   if (kind === 'tabletLandscape') {
     return (
@@ -578,12 +581,27 @@ function FrameHeader({
   if (kind === 'tabletPortrait' && !inEvent) {
     return (
       <View style={[styles.header, styles.portraitHeader, top]}>
-        <View style={styles.titleRow}>
-          {pillView}
+        <View
+          style={styles.titleRow}
+          onLayout={(event) => setRowWidth(event.nativeEvent.layout.width)}
+        >
+          {organisation != null && (
+            <View style={[styles.shrink, besideTabs != null && { maxWidth: besideTabs.maxWidth }]}>
+              <OrgPill
+                organisation={organisation}
+                waiting={waiting}
+                onSwitch={onSwitch}
+                tileAlone={besideTabs?.tileAlone ?? false}
+                ref={pill}
+              />
+            </View>
+          )}
           <View style={styles.fill} />
           <BellButton />
           <View style={styles.capsuleAt} pointerEvents="box-none">
-            <WhiteCapsule {...tabs} />
+            <View onLayout={(event) => setTabsWidth(event.nativeEvent.layout.width)}>
+              <WhiteCapsule {...tabs} />
+            </View>
           </View>
         </View>
         {backView}
@@ -1001,12 +1019,14 @@ function OrgPill({
   waiting,
   onSwitch,
   sidebar = false,
+  tileAlone = false,
   ref,
 }: {
   organisation: Membership;
   waiting: number;
   onSwitch: (() => void) | undefined;
   sidebar?: boolean;
+  tileAlone?: boolean;
   ref: Ref<ViewInstance>;
 }) {
   const { t } = useTranslation();
@@ -1031,6 +1051,7 @@ function OrgPill({
       wrap={large}
       lines={lines}
       sidebar={sidebar}
+      tileAlone={tileAlone}
       testID="frame.organisation"
     />
   );
