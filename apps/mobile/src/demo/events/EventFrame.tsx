@@ -14,8 +14,9 @@ import { Sheet } from '../../components/Sheet.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { Glyph, type GlyphName } from '../../components/Glyph.tsx';
-import { PHONE_TAB_BAR, TabBar } from '../../components/TodayCover.tsx';
+import { PHONE_TAB_BAR, TabBar, TabBarFade } from '../../components/TodayCover.tsx';
 import {
+  SidebarBack,
   SidebarColumn,
   SidebarFoot,
   SidebarHead,
@@ -23,9 +24,10 @@ import {
   SidebarPlaces,
 } from '../../components/TodaySidebar.tsx';
 import { TodayShellProvider } from '../../components/todayShell.ts';
+import { AREA_GLYPH } from '../../components/areaGlyph.ts';
 import { demoShell } from '../demoShell.ts';
 import { LineIcon } from '../settings/AccountCard.tsx';
-import { Bell, Fade, Landscape } from '../settings/Frame.tsx';
+import { Bell, Landscape } from '../settings/Frame.tsx';
 import { EventThumb } from './EventCard.tsx';
 import { type Shown, cardTags, rowLine } from './EventsModel.ts';
 import { AREAS, type AreaKey, MORE_AREAS, PHONE_TABS } from './EventsSample.ts';
@@ -33,19 +35,6 @@ import { AREA_WORDS, COMING, W } from './EventsWords.ts';
 import { useShell } from '../../components/settingsShell.ts';
 import { Back } from '../../components/SettingsParts.tsx';
 import { PageToast, Row, RowList } from '../../components/Summary.tsx';
-
-export const AREA_GLYPH: Record<AreaKey, GlyphName> = {
-  overview: 'overview',
-  guests: 'users',
-  menu: 'menu',
-  seating: 'seating',
-  messages: 'chat',
-  schedule: 'clock',
-  staff: 'user',
-  people: 'people',
-  budget: 'wallet',
-  reports: 'reports',
-};
 
 const PHONE_BAR: readonly (readonly [string, GlyphName])[] = [
   ...PHONE_TABS.map((area) => [AREA_WORDS[area], AREA_GLYPH[area]] as const),
@@ -214,7 +203,7 @@ export function EventFrame({
       )}
       {phone && (
         <>
-          <Fade />
+          <TabBarFade />
           {badge == null ? (
             <TabBar
               tabs={PHONE_BAR}
@@ -454,18 +443,12 @@ function EventSidebar({
     <TodayShellProvider value={{ ...demoShell(shell.tell), person: shell.looking }}>
       <SidebarColumn>
         <SidebarHead search={false} />
-        <Pressable
+        <SidebarBack
+          label={W.events}
+          heard={`Back to ${W.events}`}
           onPress={backToEvents}
-          style={({ pressed }) => [styles.sideBack, pressed && styles.pressed]}
-          accessibilityRole="button"
-          accessibilityLabel={`Back to ${W.events}`}
           testID="event.side.back"
-        >
-          <Glyph name="back" size={17} ink={tokens.colorInkSecondary} weight={2.4} />
-          <Text size={14} weight="semibold" accessible={false} style={styles.secondary}>
-            {W.events}
-          </Text>
-        </Pressable>
+        />
         <View
           style={styles.sideCard}
           accessible
@@ -703,13 +686,6 @@ const styles = StyleSheet.create({
     borderRadius: 22,
   },
   pillOn: { backgroundColor: tokens.colorCard, ...tokens.elevationNative.raised.ios },
-  sideBack: {
-    minHeight: tokens.sizeHit,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.spaceXs,
-    paddingHorizontal: tokens.spaceMd,
-  },
   sideCard: {
     flexDirection: 'row',
     alignItems: 'center',

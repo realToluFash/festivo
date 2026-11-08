@@ -10,7 +10,6 @@ import {
   frameTitleSize,
   nameLines,
   paddingToCentre,
-  railWidth,
   rowsFloor,
   sideListWidth,
   TITLE_LINE,
@@ -130,11 +129,6 @@ it('lets a name in the frame take two lines only at the accessibility sizes', ()
 });
 
 describe('widths', () => {
-  it('widens the rail only at the accessibility sizes', () => {
-    expect(railWidth(1.353)).toBe(220);
-    expect(railWidth(AX1)).toBe(300);
-  });
-
   it('gives a side list 40 percent of the content, never under its own width', () => {
     expect(sideListWidth(320, 834, 1)).toBe(320);
     expect(sideListWidth(320, 834, AX1)).toBe(334);

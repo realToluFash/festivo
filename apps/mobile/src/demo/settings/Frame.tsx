@@ -1,6 +1,5 @@
 import { type ReactNode, type Ref, useMemo, useRef } from 'react';
 import {
-  Pressable,
   ScrollView,
   type ScrollViewInstance,
   StyleSheet,
@@ -8,14 +7,21 @@ import {
   type ViewInstance,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
-import { Glyph } from '../../components/Glyph.tsx';
-import { OpenerWords, OPENER, OrgMark, useOrgOpener } from '../OrgSwitcher.tsx';
+import { useOrgOpener } from '../OrgSwitcher.tsx';
+import { SW } from '../OrgSwitcherModel.ts';
+import { OrgPill as ProductOrgPill } from '../../components/OrgPill.tsx';
 import { type EventKey, sample } from '../today.ts';
-import { PHONE_TAB_BAR, PhoneTabBar, type Tab, TABS } from '../../components/TodayCover.tsx';
+import {
+  PHONE_TAB_BAR,
+  PhoneTabBar,
+  type Tab,
+  TABS,
+  TabBarFade,
+  WhiteCapsule,
+} from '../../components/TodayCover.tsx';
 import type { Tell } from '../../components/TodayParts.tsx';
 import { TodaySidebar } from '../../components/TodaySidebar.tsx';
 import { TodayShellProvider } from '../../components/todayShell.ts';
@@ -133,7 +139,7 @@ export function SettingsPage({
       </ScrollView>
       {phone ? (
         <>
-          <Fade />
+          <TabBarFade />
           {dock != null && (
             <View style={[styles.dockPhone, { bottom: foot + PHONE_TAB_BAR + tokens.spaceMd }]}>
               {dock}
@@ -315,7 +321,7 @@ export function Bell({
   );
 }
 
-/** The organisation switcher on white, at the top of every top-level page. */
+/** The product's pill, opening the demo's switcher. */
 export function OrgPill() {
   const { viewer } = useShell();
   const ref = useRef<ViewInstance>(null);
@@ -324,23 +330,16 @@ export function OrgPill() {
   if (viewer === 'noOrg') return null;
 
   return (
-    <Pressable
+    <ProductOrgPill
       ref={ref}
+      id={org.place.id}
+      name={org.place.name}
+      waiting={org.waiting > 0 ? SW.count(org.waiting) : null}
+      label={org.label}
+      expanded={org.expanded}
       onPress={org.onPress}
-      style={({ pressed }) => [
-        styles.org,
-        org.waiting > 0 && styles.orgWaiting,
-        pressed && styles.orgPressed,
-      ]}
-      accessibilityRole="button"
-      accessibilityLabel={org.label}
-      accessibilityState={{ expanded: org.expanded }}
       testID="org.switch"
-    >
-      <OrgMark id={org.place.id} name={org.place.name} side={28} />
-      <OpenerWords opener={org} />
-      <Glyph name="updown" size={14} ink={tokens.colorInkSecondary} />
-    </Pressable>
+    />
   );
 }
 
@@ -354,46 +353,8 @@ export function PortraitTop({ at = 'Settings' }: { at?: Tab }) {
       <View style={styles.grow} />
       <Bell tell={shell.tell} />
       <View style={[styles.capsuleAt, { top: insets.top + 7 }]} pointerEvents="box-none">
-        <View style={styles.capsule} accessibilityRole="tablist">
-          {TABS.map(([label, glyph]) => {
-            const on = label === at;
-            const ink = on ? tokens.colorAccent : tokens.colorInkSecondary;
-
-            return (
-              <Pressable
-                key={label}
-                onPress={() => shell.onTab(label)}
-                hitSlop={tokens.spaceXxs}
-                style={[styles.capsuleTab, on && styles.capsuleOn]}
-                accessibilityRole="tab"
-                accessibilityState={{ selected: on }}
-                accessibilityLabel={label}
-              >
-                <Glyph name={glyph} ink={ink} />
-                <Text size={TYPE.body} weight="semibold" accessible={false} style={{ color: ink }}>
-                  {label}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
+        <WhiteCapsule tabs={TABS} at={at} onTab={shell.onTab} />
       </View>
-    </View>
-  );
-}
-
-export function Fade() {
-  return (
-    <View style={styles.fade} pointerEvents="none">
-      <Svg width="100%" height="100%">
-        <Defs>
-          <LinearGradient id="settingsFade" x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0" stopColor={tokens.colorCard} stopOpacity={0} />
-            <Stop offset="0.62" stopColor={tokens.colorCard} stopOpacity={1} />
-          </LinearGradient>
-        </Defs>
-        <Rect width="100%" height="100%" fill="url(#settingsFade)" />
-      </Svg>
     </View>
   );
 }
@@ -415,7 +376,6 @@ const styles = StyleSheet.create({
     paddingBottom: tokens.space6xl * 2,
     gap: tokens.spaceXs,
   },
-  fade: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 150 },
   dockPhone: { position: 'absolute', left: tokens.spaceLg, right: tokens.spaceLg },
   dockTablet: {
     position: 'absolute',
@@ -452,37 +412,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: tokens.space3xl,
     paddingBottom: tokens.spaceXxs,
   },
-  org: {
-    height: OPENER.rest,
-    flexShrink: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.spaceSm,
-    paddingLeft: tokens.spaceSm,
-    paddingRight: tokens.spacePillEnd,
-    borderRadius: OPENER.rest / 2,
-    backgroundColor: tokens.colorInset,
-  },
-  orgWaiting: { height: OPENER.waiting, borderRadius: OPENER.waiting / 2 },
-  orgPressed: { backgroundColor: tokens.colorNeutralFill },
   capsuleAt: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
-  capsule: {
-    height: 46,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.spaceHair,
-    paddingHorizontal: tokens.spaceXxs,
-    borderRadius: 23,
-    backgroundColor: tokens.colorInset,
-  },
-  capsuleTab: {
-    height: 38,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.spaceSm,
-    paddingLeft: 13,
-    paddingRight: tokens.spaceXl,
-    borderRadius: 19,
-  },
-  capsuleOn: { backgroundColor: tokens.colorCard, ...tokens.elevationNative.raised.ios },
 });

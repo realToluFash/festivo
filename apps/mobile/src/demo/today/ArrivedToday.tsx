@@ -10,7 +10,6 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
 import { useLayout } from '../../layout/useLayout.ts';
 import { tokens } from '../../theme/tokens.ts';
@@ -21,6 +20,7 @@ import {
   PhoneTabBar,
   SHEET_RISE,
   type Tab,
+  TabBarFade,
 } from '../../components/TodayCover.tsx';
 import { NeedsYou, ThisWeek, YourEvents } from '../../components/TodayParts.tsx';
 import { TodaySidebar } from '../../components/TodaySidebar.tsx';
@@ -174,26 +174,10 @@ function Scrolled({
       </Animated.View>
       {phone && (
         <>
-          <Fade />
+          <TabBarFade />
           <PhoneTabBar bottom={foot} onTab={tabs} />
         </>
       )}
-    </View>
-  );
-}
-
-function Fade() {
-  return (
-    <View style={styles.fade} pointerEvents="none">
-      <Svg width="100%" height="100%">
-        <Defs>
-          <LinearGradient id="todayFade" x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0" stopColor={tokens.colorCard} stopOpacity={0} />
-            <Stop offset="0.62" stopColor={tokens.colorCard} stopOpacity={1} />
-          </LinearGradient>
-        </Defs>
-        <Rect width="100%" height="100%" fill="url(#todayFade)" />
-      </Svg>
     </View>
   );
 }
@@ -246,7 +230,6 @@ const styles = StyleSheet.create({
   sheetTablet: { paddingTop: 26, paddingHorizontal: BELOW_HEAD },
   side: { flexDirection: 'row', alignItems: 'flex-start', gap: BELOW_HEAD },
   band: { position: 'absolute', left: 0, right: 0, top: 0 },
-  fade: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 150 },
   chrome: { flex: 1, flexDirection: 'row', backgroundColor: tokens.colorNeutralFill },
   pageCard: {
     flex: 1,
