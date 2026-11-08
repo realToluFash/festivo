@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
 import { Link } from 'react-router';
 
 import type { SampleEvent } from './events.ts';
@@ -31,6 +31,8 @@ import {
 } from './GuestsParts.tsx';
 import { GW, HOW_INVITED, type HowInvited, REPLY_WORDS } from './guestsWords.ts';
 import { GUESTS as CONVERSATIONS, MESSAGES_AT } from './messages.ts';
+import { Turning } from './DataControlParts.tsx';
+import { THEIR_WORDS } from './guestRequest.ts';
 import { CardStep, Chevron, Head, RowWords, TextAction } from '../components/SettingsParts.tsx';
 
 export interface GuestActions {
@@ -54,6 +56,9 @@ export function GuestView({
   note,
   invite,
   actions,
+  erase = null,
+  erasedLine,
+  theirData,
 }: {
   guest: Guest;
   event: SampleEvent;
@@ -62,8 +67,13 @@ export function GuestView({
   note: 'recorded' | 'notReplaced' | undefined;
   invite: Invite | undefined;
   actions: GuestActions;
+  /** sc-30193: while their data is erased nothing changes; once erased, what stays and the line saying so. */
+  erase?: 'erasing' | 'erased' | null;
+  erasedLine?: string;
+  theirData?: ReactNode;
 }) {
   const heading = useId();
+  const acts = manages && erase == null;
   const replyBy = replyByOf(event.id);
   const invited = guest.reply !== 'notYet' && guest.reply !== 'walkIn';
   const closed = invited && repliesClosed(event.id, clock) && guest.reopened == null;
@@ -73,7 +83,8 @@ export function GuestView({
   let line: string | null = draft ? null : cardLine(guest, replyBy);
   let step: Step = null;
 
-  if (closed && replyBy != null) {
+  if (erase === 'erased' && erasedLine != null) line = erasedLine;
+  else if (closed && replyBy != null) {
     line = GW.repliesClosed(weekdayOf(replyBy));
     step = { label: GW.letThemChange, does: actions.onReopen };
   } else if (guest.reopened != null) {
@@ -97,12 +108,13 @@ export function GuestView({
           {guest.name}
         </h2>
         {line != null && <p className="desk-on-card">{line}</p>}
-        {manages && step != null && (
+        {acts && step != null && (
           <div className="ev-card-foot" data-focus="step">
             <CardStep label={step.label} onClick={step.does} />
           </div>
         )}
       </Cover>
+      {erase === 'erasing' && <Turning words={THEIR_WORDS.erasing} />}
       {note === 'notReplaced' && <Refused>{GW.notReplaced}</Refused>}
       {replied && (
         <section className="desk-block" aria-labelledby={`${heading}-reply`}>
@@ -113,7 +125,7 @@ export function GuestView({
               <RowWords title={REPLY_WORDS[guest.reply]} lines={[replyTail(guest, replyBy)]} />
             </li>
           </ul>
-          {manages && !closed && (
+          {acts && !closed && (
             <button
               type="button"
               className="desk-text"
@@ -125,8 +137,15 @@ export function GuestView({
           )}
         </section>
       )}
-      <Details guest={guest} manages={manages} heading={heading} onEdit={actions.onEdit} />
-      {manages && !draft && guest.reply !== 'walkIn' && (
+      <Details
+        guest={guest}
+        manages={manages}
+        edits={acts}
+        erased={erase === 'erased'}
+        heading={heading}
+        onEdit={actions.onEdit}
+      />
+      {acts && !draft && guest.reply !== 'walkIn' && (
         <Invitation
           guest={guest}
           event={event}
@@ -135,9 +154,10 @@ export function GuestView({
           actions={actions}
         />
       )}
-      {manages && invited && event.id === WEDDING && (
+      {manages && invited && event.id === WEDDING && erase !== 'erased' && (
         <Conversation guest={guest} heading={heading} />
       )}
+      {theirData}
     </div>
   );
 }
@@ -145,18 +165,22 @@ export function GuestView({
 function Details({
   guest,
   manages,
+  edits,
+  erased,
   heading,
   onEdit,
 }: {
   guest: Guest;
   manages: boolean;
+  edits: boolean;
+  erased: boolean;
   heading: string;
   onEdit: () => void;
 }) {
   return (
     <section className="desk-block" aria-labelledby={`${heading}-details`}>
       <Head level={3} title={<span id={`${heading}-details`}>{GW.details}</span>}>
-        {manages && (
+        {edits && (
           <button type="button" className="desk-text" data-focus="edit" onClick={onEdit}>
             {GW.edit}
           </button>
@@ -170,7 +194,7 @@ function Details({
             lines={[GW.greetAs]}
           />
         </li>
-        {manages && (
+        {manages && !erased && (
           <>
             <li className={guest.email == null ? 'desk-row is-none' : 'desk-row'}>
               <IconLead name="mail" />

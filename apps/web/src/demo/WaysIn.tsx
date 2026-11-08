@@ -15,6 +15,8 @@ import {
   fieldClass,
   useBusy,
 } from './parts.tsx';
+import { NEW_ORG } from './createOrg.ts';
+import { ManagedBanner } from './managed.tsx';
 import { type AccountLines, BREACHED, SAMPLE, accountLines, way } from './rules.ts';
 
 const FLOW: Flow = { name: SAMPLE.name, email: SAMPLE.email, phone: '' };
@@ -69,6 +71,16 @@ function AskToJoin({ state }: { state: string }) {
   const [busy, after] = useBusy();
   const field = useRef<HTMLTextAreaElement>(null);
   const title = `Ask to join ${SAMPLE.organisation}`;
+
+  if (state === 'managed') {
+    return (
+      <BoardPage end={<SignedInAs />}>
+        <Heading title={`Ask to join ${NEW_ORG.name}`} />
+        <Organisation name={NEW_ORG.name} line="Request link" />
+        <ManagedBanner alert />
+      </BoardPage>
+    );
+  }
 
   if (state === 'dead') {
     return (
@@ -416,6 +428,8 @@ function YourDetails({ state }: { state: string }) {
       return <Details state="" flow={FLOW} offer="invitation" />;
     case 'own':
       return <Details state="" flow={FLOW} />;
+    case 'managed':
+      return <Details state="" flow={FLOW} offer="company" managed />;
     default:
       return <Details state="" flow={FLOW} offer="company" />;
   }

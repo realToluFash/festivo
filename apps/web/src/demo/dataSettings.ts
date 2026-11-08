@@ -1,7 +1,7 @@
 import { writtenTime } from './clock.ts';
 import type { Load } from './members.ts';
 import { SAMPLE } from './rules.ts';
-import { type DemoLink, VIEWERS, type Viewer, settingsPath } from './settings.ts';
+import { VIEWERS, type Viewer } from './settings.ts';
 
 export const PERIODS = ['Off', '30 days', '90 days', '180 days', '365 days'] as const;
 export type Period = (typeof PERIODS)[number];
@@ -83,7 +83,7 @@ export function eventsInRun(
 /** The reader's own zone by sc-868's rule, or labelled UTC for an account with none. */
 export type ReaderZone = 'Africa/Lagos' | 'Europe/London' | null;
 
-function zoneWord(at: string, zone: ReaderZone): string {
+export function zoneWord(at: string, zone: ReaderZone): string {
   if (zone == null) return 'UTC';
   if (zone === 'Africa/Lagos') return 'WAT';
 
@@ -115,12 +115,15 @@ export function nextRunLine(runAt: string, zone: ReaderZone, locale: string): st
   return `Next run · ${instantWords(runAt, zone, locale)}`;
 }
 
+export const REASON_MOST = 500;
+
 export const DATA_WORDS = {
-  title: 'Data',
+  title: 'Delete guest data after an event',
   setting: 'Delete guest data after an event',
+  howLong: 'How long',
   counted:
     'Counted from the event’s end: when it was ended, or its scheduled end if nobody ended it.',
-  ownerOnly: 'Only an Owner can change this.',
+  ownerOnly: 'Only an owner can change this.',
   locked: 'Locked',
   contact: 'Contact Soirely about Enterprise',
   contactTold: 'Contacting Soirely has its own design.',
@@ -129,25 +132,25 @@ export const DATA_WORDS = {
   turnOn: 'Turn on',
   change: 'Change',
   samePeriod: 'This is the period in force. Nothing changes.',
-  emailedNow: 'Owners and Admins are emailed now.',
-  emailedLater: 'Owners and Admins are emailed 7 days before any run with events in it.',
+  emailedNow: 'Owners and admins are emailed now.',
+  emailedLater: 'Owners and admins are emailed 7 days before any run with events in it.',
   gone: 'Erased details can’t come back.',
   emptyRun: 'No event is in this run.',
   emptyRunLine: 'It sends no notice and erases nothing.',
   holdFoot:
-    'Holding an event back keeps it out of every run until an Owner or an Admin releases it.',
+    'Holding an event back keeps it out of every run until an owner or an admin releases it.',
   holdBack: 'Hold back',
   held: 'Held back',
   release: 'Release',
   releaseFoot: 'A released event is named in the next notice and erased in that run.',
   holdTitle: 'Hold back?',
-  holdLine: 'It stays out of every run until an Owner or an Admin releases it.',
+  holdLine: 'It stays out of every run until an owner or an admin releases it.',
   reason: 'Reason',
-  reasonHelp: 'Owners and Admins see who held it, when and why. Up to 500 characters.',
+  reasonHelp: `Owners and admins see who held it, when and why. Up to ${REASON_MOST} characters.`,
   reasonBlank: 'Enter a reason. Nothing is held back without one.',
-  reasonLong: 'Keep the reason to 500 characters or fewer.',
+  reasonLong: `Shorten the reason to ${REASON_MOST} characters or fewer.`,
   keptFoot: 'Switched off and kept as it was. It comes back on with Enterprise.',
-  heldKept: 'Kept as they were. Release comes back with Enterprise.',
+  heldKept: 'Kept as they were, and can be released again on Enterprise.',
   discard: 'Discard your reason?',
   keepEditing: 'Keep editing',
   discardVerb: 'Discard',
@@ -240,8 +243,6 @@ export function isBlank(reason: string): boolean {
   return reason.trim() === '';
 }
 
-export const REASON_MOST = 500;
-
 export function reasonFault(reason: string): 'blank' | 'long' | null {
   if (isBlank(reason)) return 'blank';
 
@@ -253,7 +254,7 @@ export function heldBack(page: DataPage, event: PastEvent, reason: string, by: s
     ...page,
     run: page.run.filter((one) => one.id !== event.id),
     held: [...page.held, { event, by, at: page.clock, reason: reason.trim() }],
-    said: `Held back. ${event.name} stays out of every run until an Owner or an Admin releases it.`,
+    said: `Held back. ${event.name} stays out of every run until an owner or an admin releases it.`,
   };
 }
 
@@ -292,13 +293,13 @@ export function cardOf(
   if (page.plan !== 'enterprise' && page.leftEnterpriseAt != null)
     return {
       says: 'Guests’ details are kept after an event',
-      line: `Switched off on ${dayWords(page.leftEnterpriseAt, zone, locale)}, when ${SAMPLE.organisation} moved to the free plan. Its period and held events are kept as they were, and come back on with Enterprise.`,
+      line: `Switched off on ${dayWords(page.leftEnterpriseAt, zone, locale)}, when ${SAMPLE.organisation} left Enterprise. The period and the held events are kept as they were, and retention comes back on with Enterprise.`,
       step: 'contact',
     };
   if (page.plan !== 'enterprise')
     return {
       says: 'Available on Enterprise',
-      line: 'On Enterprise, an Owner sets how long guests’ details are kept after an event, and Soirely erases them on time.',
+      line: 'On Enterprise, an owner sets how long guests’ details are kept after an event, and Soirely erases them on time.',
       step: 'contact',
     };
   if (page.period === 'Off')
@@ -308,7 +309,7 @@ export function cardOf(
         page.said ??
         (viewer.owns
           ? 'Choose how long, and Soirely erases them on time, after a week’s notice.'
-          : 'Only an Owner can turn this on.'),
+          : 'Only an owner can turn this on.'),
       step: viewer.owns ? 'choose' : null,
     };
 
@@ -322,7 +323,7 @@ export function cardOf(
 export type Refusal = 'owner_required' | 'plan_required';
 
 export const REFUSALS: Record<Refusal, { title: string; line: string }> = {
-  owner_required: { title: 'Only an Owner can change this.', line: 'Nothing changed.' },
+  owner_required: { title: 'Only an owner can change this.', line: 'Nothing changed.' },
   plan_required: { title: 'Available on Enterprise', line: 'Nothing changed.' },
 };
 
@@ -340,7 +341,7 @@ export interface DataStart {
 const OFF_CLOCK = '2026-10-17T14:20:00+01:00';
 const ON_CLOCK = '2026-10-19T10:12:00+01:00';
 const NOTICE_AT = '2026-10-17T14:20:00+01:00';
-const LEFT_AT = '2026-10-18T09:30:00+01:00';
+export const LEFT_ENTERPRISE_AT = '2026-10-18T09:30:00+01:00';
 
 const OFF_PAGE: DataPage = {
   plan: 'enterprise',
@@ -373,10 +374,15 @@ export function dataViewerKey(as: string | null, state: string): string | null {
   return state === 'not_owner' ? VIEWERS.julien.key : as;
 }
 
+/** The reader's own zone (sc-868): Julien, an admin, reads in London; everyone else here in Lagos. */
+export function zoneFor(viewer: Pick<Viewer, 'key'>): ReaderZone {
+  return viewer.key === VIEWERS.julien.key ? 'Europe/London' : 'Africa/Lagos';
+}
+
 export function zoneOf(viewer: Pick<Viewer, 'key'>, state: string): ReaderZone {
   if (state === 'rt_on_utc') return null;
 
-  return viewer.key === VIEWERS.julien.key ? 'Europe/London' : 'Africa/Lagos';
+  return zoneFor(viewer);
 }
 
 export const DATA_STATES = [
@@ -465,7 +471,7 @@ export function dataStart(state: string, viewer: Pick<Viewer, 'key'>, locale: st
     case 'rt_downgraded':
       return {
         ...rest,
-        page: { ...held, plan: 'free', leftEnterpriseAt: LEFT_AT, runAt: null, run: [] },
+        page: { ...held, plan: 'free', leftEnterpriseAt: LEFT_ENTERPRISE_AT, runAt: null, run: [] },
       };
     case 'rt_refused_owner':
       return { ...rest, page: OFF_PAGE, asking: '90 days', refusal: 'owner_required' };
@@ -478,60 +484,3 @@ export function dataStart(state: string, viewer: Pick<Viewer, 'key'>, locale: st
       return { ...rest, page: OFF_PAGE };
   }
 }
-
-function data(state: string | undefined, name: string, viewer: Viewer = VIEWERS.folake): DemoLink {
-  return { to: settingsPath('data', viewer, state), name };
-}
-
-export const DATA_PAGES: readonly { name: string; states: readonly DemoLink[] }[] = [
-  {
-    name: 'Delete guest data after an event',
-    states: [
-      data('rt_off', 'Off, an owner'),
-      data('rt_off', 'Off, an admin reads it', VIEWERS.julien),
-      data('rt_locked', 'Locked, never on Enterprise, an owner'),
-      data('rt_locked', 'Locked, never on Enterprise, an admin', VIEWERS.julien),
-      data('rt_downgraded', 'Left Enterprise: the period and a hold kept, read only, an owner'),
-      data('rt_downgraded', 'Left Enterprise, an admin sees the same', VIEWERS.julien),
-      data(undefined, 'A member has no Data', VIEWERS.ana),
-      data('rt_turned_off', 'Turned off: asked nothing, next run cancelled'),
-      data('loading', 'Loading'),
-      data('failed', 'Failed'),
-    ],
-  },
-  {
-    name: 'The question',
-    states: [
-      data('rt_confirm', 'Turning on, 2 events'),
-      data('rt_confirm_one', 'Turning on, 1 event'),
-      data('rt_confirm_none', 'Turning on, no event'),
-      data('rt_change', 'Changing the period replaces the run'),
-      data('rt_refused_owner', 'Refused, owner_required'),
-      data('rt_refused_plan', 'Refused, plan_required'),
-    ],
-  },
-  {
-    name: 'The next run and holding an event back',
-    states: [
-      data('rt_on', 'On, the next run and its events'),
-      data('rt_on_empty', 'On, a run with no events'),
-      data('rt_on_utc', 'On, an account with no zone: labelled UTC'),
-      data('rt_on', 'On, an admin in London', VIEWERS.julien),
-      data('rt_hold', 'Holding an event back'),
-      data('rt_hold_blank', 'A blank reason holds nothing'),
-      data('rt_hold_long', 'A reason over 500 characters holds nothing, cut off nowhere'),
-      data('rt_hold', 'An admin holding an event back', VIEWERS.julien),
-    ],
-  },
-  {
-    name: 'Held back',
-    states: [
-      data('rt_held', 'Held events, an owner'),
-      data('rt_held_long', 'A long reason, in full and wrapped'),
-      data('not_owner', 'Held events, an admin: period read only', VIEWERS.julien),
-      data('rt_released', 'Released'),
-      data('rt_off_held', 'Off: a hold kept, with Release'),
-      data('rt_off_released', 'Off: released, no longer held back'),
-    ],
-  },
-];
