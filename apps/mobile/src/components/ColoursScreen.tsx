@@ -75,7 +75,6 @@ export function ColoursScreen({
       onCancel={onCancel}
       cancelTestID="personalisation.cancel"
       opener={opener}
-      phone={phone}
       gap={tokens.spaceLg}
       testID="personalisation.colours"
     >

@@ -3,7 +3,7 @@ import { useSyncExternalStore } from 'react';
 
 import en from '../../i18n/locales/en.json';
 import * as kit from '../../kit/personalisation.ts';
-import type { Choice, Phase, Refusal, SaveAnswer } from '../../kit/personalisation.ts';
+import type { Choice, Colours, Phase, Refusal, SaveAnswer } from '../../kit/personalisation.ts';
 import { OWN } from '../../kit/personalisation.ts';
 import type { Scheme } from '../../theme/tokens.ts';
 
