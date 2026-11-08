@@ -29,6 +29,7 @@ import { type EditPart, type EventDemoState, folded, instantOf, wallOf } from '.
 import {
   CLOSES_AT,
   noReplyOf,
+  previewsReplyBy,
   replyByAsk,
   replyByHint,
   replyByPreview,
@@ -660,7 +661,7 @@ function ReplyByEdit(edit: EditProps) {
           <TextAction label={W.removeTheDate} onPress={remove} testID="event.edit.replyBy.remove" />
         </View>
       )}
-      {next != null && !wrong && (
+      {next != null && !wrong && previewsReplyBy(next, todayIn(now, event.timeZone)) && (
         <View style={styles.inset}>
           <Text size={15} weight="medium" style={styles.lines}>
             {replyByPreview(next, locale)}

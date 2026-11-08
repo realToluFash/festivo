@@ -86,7 +86,11 @@ export function replyByHint(timeZone: string, locale: string): string {
   return say.replyByHint(formatWallClock(CLOSES_AT, locale), timeZone);
 }
 
-/** What the guest's page will say, before anything is saved. */
+/** What the guest's page will say, before anything is saved: only for a day still to come, since a past one reads closed. */
+export function previewsReplyBy(date: string | null, today: string): boolean {
+  return date != null && date >= today;
+}
+
 export function replyByPreview(date: string, locale: string): string {
   return say.onGuestsPage(say.pleaseAnswerBy(longDay(date, locale)));
 }

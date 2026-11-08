@@ -4,6 +4,7 @@ import { editOf, eventStateOf } from './EventsModel.ts';
 import {
   closesAt,
   noReplyOf,
+  previewsReplyBy,
   replyByAsk,
   replyByHint,
   replyByPreview,
@@ -56,6 +57,15 @@ describe('which Ask, if any', () => {
     expect(replyByAsk(null, '2026-11-04', today, 21)).toBeNull();
     expect(replyByAsk('2026-11-04', null, today, 21)).toBeNull();
     expect(replyByAsk('2026-11-04', '2026-11-02', today, 0)).toBeNull();
+  });
+});
+
+describe('the preview of the guest’s sentence', () => {
+  it('shows for today or a day still to come, never for a past day or none', () => {
+    expect(previewsReplyBy('2026-11-04', '2026-11-03')).toBe(true);
+    expect(previewsReplyBy('2026-11-03', '2026-11-03')).toBe(true);
+    expect(previewsReplyBy('2026-11-02', '2026-11-03')).toBe(false);
+    expect(previewsReplyBy(null, '2026-11-03')).toBe(false);
   });
 });
 
