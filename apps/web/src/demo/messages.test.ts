@@ -300,7 +300,7 @@ describe('The notice’s cost before Send (sc-3976, pm on bm’s #31518)', () =>
       'This WhatsApp message uses 4 credits. Credits after sending: 1,496.',
     );
     expect(noticeOf('kwame', 'sms', 1500, ['email']).cost).toBe(
-      'This text uses 1 credit. Credits after sending: 1,499.',
+      'This text uses 9 credits. Credits after sending: 1,491.',
     );
     expect(noticeOf('lucia', 'whatsApp', 4, ['email'])).toMatchObject({ waits: null });
   });
@@ -316,6 +316,7 @@ describe('The notice’s cost before Send (sc-3976, pm on bm’s #31518)', () =>
       '1 SMS message will wait for credits.',
     );
     expect(noticeOf('lucia', 'whatsApp', 2, []).others).toEqual([]);
+    expect(noticeOf('lucia', 'whatsApp', 2, ['email', 'sms']).others).toEqual(['email']);
   });
 
   it('takes the credits on Send, and holds the notice when they won’t cover it', () => {
@@ -342,10 +343,12 @@ describe('The notice’s cost before Send (sc-3976, pm on bm’s #31518)', () =>
     expect(byEmail.answers.lucia?.at(-1)?.notice).toBeUndefined();
   });
 
-  it('puts a notice that waited and could not go in Done, Not sent: too late', () => {
+  it('keeps the guest waiting on today’s question when an earlier notice could not go', () => {
     const inbox = seedOf('noticeNotSent');
 
-    expect(inbox.done).toContain('lucia');
-    expect(inbox.answers.lucia?.[0]).toMatchObject({ notice: 'tooLate', stage: 'told' });
+    expect(inbox.heldTooLong).toBe(true);
+    expect(inbox.done).not.toContain('lucia');
+    expect(inbox.answers.lucia).toBeUndefined();
+    expect(inbox.balance).toBe(2);
   });
 });

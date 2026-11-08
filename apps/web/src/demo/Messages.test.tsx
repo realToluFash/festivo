@@ -245,7 +245,7 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
     await messages('channelReply');
 
     expect(
-      screen.getByText('This text uses 1 credit. Credits after sending: 1,499.'),
+      screen.getByText('This text uses 9 credits. Credits after sending: 1,491.'),
     ).toBeDefined();
   });
 
@@ -259,7 +259,7 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
       expect(screen.queryByText(/Credits after sending/)).toBeNull();
       expect(screen.getByRole('button', { name: 'Add credits' })).toBeDefined();
       expect(screen.getByText('Or tell them now by:')).toBeDefined();
-      expect(screen.getByRole('button', { name: 'Email' })).toBeDefined();
+      expect(screen.getByRole('button', { name: 'Tell them now by email' })).toBeDefined();
 
       fireEvent.keyDown(screen.getByRole('textbox', { name: 'Your answer' }), {
         key: 'Enter',
@@ -279,7 +279,7 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
   it('tells them by email instead when Email is chosen, at no cost', SLOW, async () => {
     await messages('noticeWaits');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Email' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Tell them now by email' }));
 
     expect(
       screen.getByText('Your answer goes on Lucía Ortega’s page. Soirely tells them by email.'),
@@ -299,9 +299,12 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
     await messages('noticeNotSent');
     const log = screen.getByRole('log', { name: 'Lucía Ortega' });
 
+    expect(within(log).getByText('Sun, Nov 1')).toBeDefined();
+    expect(within(log).getByText('Is there a vegetarian menu?')).toBeDefined();
     expect(within(log).getByText('WhatsApp · Not sent: too late')).toBeDefined();
-    expect(within(log).getByText('Not seen yet')).toBeDefined();
-    expect(within(log).getByText('Sat, Oct 31')).toBeDefined();
+    expect(within(log).getByText('Is there parking at The Landmark?')).toBeDefined();
+    expect(screen.getByText('1 WhatsApp message will wait for credits.')).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Tell them now by SMS' })).toBeNull();
     expect(within(list()).getByRole('link', { name: /^Lucía Ortega/ })).toBeDefined();
   });
 

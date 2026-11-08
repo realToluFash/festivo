@@ -16,6 +16,8 @@ import {
   type Sched,
   type Unreached,
   ANSWERS,
+  GUESTS,
+  HELD_TOO_LONG,
   INVITE_REACH,
   INVITE_UNREACHED,
   KIND_ORDER,
@@ -32,7 +34,6 @@ import {
   TICKS,
   UNKNOWN,
   ZONE_SHORT,
-  askedOf,
   checkOf,
   channelWord,
   chipWords,
@@ -267,7 +268,7 @@ function GuestThread({
   const [picking, setPicking] = useState(state === 'matchPicker' && id === 'unknown');
   const done = inbox.done.includes(id);
   const match = id === 'unknown' ? MATCHES.find((one) => one.name === inbox.matched) : null;
-  const guest = id === 'unknown' ? null : askedOf(inbox, id);
+  const guest = id === 'unknown' ? null : GUESTS[id];
   const name = guest?.name ?? match?.name ?? UNKNOWN.address;
   const answers = inbox.answers[id] ?? [];
   const doneAt = inbox.doneAt[id];
@@ -379,6 +380,28 @@ function GuestThread({
           </>
         ) : (
           <>
+            {id === 'lucia' && inbox.heldTooLong === true && (
+              <>
+                <DayRule>{HELD_TOO_LONG.day}</DayRule>
+                <GuestBubble
+                  text={HELD_TOO_LONG.asked}
+                  bits={whereBits('page', HELD_TOO_LONG.askedAt)}
+                />
+                <HostBubble
+                  body={HELD_TOO_LONG.answer}
+                  bits={answerBits(
+                    {
+                      text: HELD_TOO_LONG.answer,
+                      at: HELD_TOO_LONG.answeredAt,
+                      stage: 'told',
+                      notice: 'tooLate',
+                    },
+                    toldBy,
+                  )}
+                  look="sent"
+                />
+              </>
+            )}
             {id !== 'kwame' && <DayRule>{guest.day}</DayRule>}
             <GuestBubble
               text={guest.asked}
@@ -495,6 +518,7 @@ function AnswerBox({
                   key={channel}
                   type="button"
                   className="button mg-answer-other"
+                  aria-label={filled(MW.tellNowAs, { channel: ANSWER_BY[channel] })}
                   onClick={() => tellBy(channel)}
                 >
                   {channelWord(channel)}

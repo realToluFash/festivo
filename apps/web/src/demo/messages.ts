@@ -162,7 +162,7 @@ export const GUESTS: Record<GuestId, SampleGuest> = {
     at: '07:58',
     row: '07:58',
     toldBy: 'whatsApp',
-    canAlso: ['email'],
+    canAlso: ['email', 'sms'],
   },
   kwame: {
     initials: 'KM',
@@ -210,13 +210,22 @@ export const ANSWERS: Partial<Record<GuestId, string>> = {
   lucia: 'Yes: free parking under the hotel, entrance on Calle Mayor.',
 };
 
-/** What Soirely's notice costs per guest's number (sc-3928's utility credits; Spain 4), as sc-3929's preview would give it. */
+/** What Soirely's notice costs per guest's number (sc-3928's utility credits for their number's country, one SMS part; the app's `NOTICE_CREDITS`), as sc-3929's preview would give it. */
 const NOTICE_PRICE: Record<GuestId | 'unknown', Partial<Record<Channel, number>>> = {
   ines: {},
-  lucia: { whatsApp: 4 },
-  kwame: { sms: 1 },
+  lucia: { whatsApp: 4, sms: 14 },
+  kwame: { sms: 9 },
   marta: {},
   unknown: {},
+};
+
+/** `noticeNotSent`, as the app's `HELD_TOO_LONG`: Lucía's earlier question, and the answer whose WhatsApp notice waited 48 hours and could not go. */
+export const HELD_TOO_LONG = {
+  day: 'Sun, Nov 1',
+  asked: 'Is there a vegetarian menu?',
+  askedAt: '08:02',
+  answer: 'Yes. Tell us on your page and the kitchen will plan for it.',
+  answeredAt: '08:30',
 };
 
 export function noticePrice(id: GuestId | 'unknown', by: Channel): number {
@@ -839,8 +848,8 @@ export interface Inbox {
   doneAt: Partial<Record<ConvoId, string>>;
   answers: Partial<Record<GuestId | 'unknown', readonly Answer[]>>;
   balance: number;
-  /** When a state moves a guest's question to another day (a notice held 48 hours). */
-  asked?: Partial<Record<GuestId, { day: string; at: string; row: string }>>;
+  /** `noticeNotSent`: Lucía's earlier question, whose answer's notice was held 48 hours for credits. */
+  heldTooLong?: boolean;
   arrived: ConvoId | null;
   matched: string | null;
   pane: Pane;
@@ -1046,16 +1055,7 @@ export function seedOf(state: MessagesState | null): Inbox {
     case 'noticeWaits':
       return { ...base, balance: 2, pane: open('lucia') };
     case 'noticeNotSent':
-      return {
-        ...base,
-        done: ['lucia', 'marta'],
-        doneAt: { lucia: '21:52' },
-        answers: {
-          lucia: [{ text: ANSWERS.lucia ?? '', at: '21:52', stage: 'told', notice: 'tooLate' }],
-        },
-        asked: { lucia: { day: 'Sat, Oct 31', at: '21:40', row: 'Sat' } },
-        pane: open('lucia'),
-      };
+      return { ...base, balance: 2, heldTooLong: true, pane: open('lucia') };
     case 'to':
     case 'write':
       return compose(base, COMING, 'write');
@@ -1170,14 +1170,8 @@ export function whereWord(where: Where): string {
   return where === 'page' ? MW.onTheirPage : channelWord(where);
 }
 
-export function askedOf(inbox: Inbox, id: GuestId): SampleGuest {
-  const moved = inbox.asked?.[id];
-
-  return moved == null ? GUESTS[id] : { ...GUESTS[id], ...moved };
-}
-
 function guestRow(inbox: Inbox, id: GuestId): Row {
-  const guest = askedOf(inbox, id);
+  const guest = GUESTS[id];
   const done = inbox.done.includes(id);
   const answer = inbox.answers[id]?.at(-1);
   const arrived = inbox.arrived === id;

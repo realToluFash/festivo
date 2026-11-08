@@ -61,6 +61,7 @@ export const MW = {
   smsWaits_other: '{{count, number}} SMS messages will wait for credits.',
   addCredits: 'Add credits',
   tellNowBy: 'Or tell them now by:',
+  tellNowAs: 'Tell them now by {{channel}}',
   heldForCredits: 'Held: waiting for credits',
   notSentTooLate: 'Not sent: too late',
   seen: 'Seen {{time}}',
