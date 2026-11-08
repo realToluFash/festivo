@@ -10,7 +10,8 @@ export type Section =
   | 'general'
   | 'members'
   | 'signInRules'
-  | 'vendors';
+  | 'vendors'
+  | 'data';
 
 /** The sections the boards draw; the others each have their own design. */
 export type Drawn =
@@ -21,7 +22,8 @@ export type Drawn =
   | 'general'
   | 'members'
   | 'signInRules'
-  | 'vendors';
+  | 'vendors'
+  | 'data';
 
 const PATHS: Record<Drawn, string> = {
   account: 'account',
@@ -32,6 +34,7 @@ const PATHS: Record<Drawn, string> = {
   members: 'members',
   signInRules: 'sign-in-rules',
   vendors: 'vendors',
+  data: 'data',
 };
 
 export const SECTION_NAMES: Record<Section, string> = {
@@ -43,6 +46,7 @@ export const SECTION_NAMES: Record<Section, string> = {
   members: 'Members',
   signInRules: 'Sign-in rules',
   vendors: 'Vendors',
+  data: 'Data',
 };
 
 export interface SectionGroup {
@@ -52,7 +56,10 @@ export interface SectionGroup {
 
 const GROUPS: readonly SectionGroup[] = [
   { name: 'Your account', sections: ['account', 'security', 'notifications', 'personalisation'] },
-  { name: 'Organisation settings', sections: ['general', 'members', 'signInRules', 'vendors'] },
+  {
+    name: 'Organisation settings',
+    sections: ['general', 'members', 'signInRules', 'vendors', 'data'],
+  },
 ];
 
 export type ViewerKey = 'folake' | 'julien' | 'ana';
@@ -102,12 +109,13 @@ export function viewerOf(name: string | null): Viewer {
   return Object.values(VIEWERS).find((viewer) => viewer.key === name) ?? VIEWERS.folake;
 }
 
-/** Members and Vendors only for an owner or an admin: a member sees General and Sign-in rules, read only. */
+/** Members, Vendors and Data only for an owner or an admin: a member sees General and Sign-in rules, read only. */
 export function groupsFor(viewer: Pick<Viewer, 'manages'>): SectionGroup[] {
   return GROUPS.map((group) => ({
     ...group,
     sections: group.sections.filter(
-      (section) => viewer.manages || (section !== 'members' && section !== 'vendors'),
+      (section) =>
+        viewer.manages || (section !== 'members' && section !== 'vendors' && section !== 'data'),
     ),
   }));
 }
@@ -121,7 +129,8 @@ export function isDrawn(section: Section): section is Drawn {
     section === 'general' ||
     section === 'members' ||
     section === 'signInRules' ||
-    section === 'vendors'
+    section === 'vendors' ||
+    section === 'data'
   );
 }
 
@@ -251,12 +260,20 @@ export const SETTINGS_PAGES: readonly { name: string; states: readonly DemoLink[
       members('handoverMenu', 'The menu of people open'),
       members('handoverPicked', 'Ana Souza picked'),
       members('handoverLong', 'Julien leads 8: the first 5, then “and 3 more”'),
+      members('handoverOne', 'Priya leads 1 event: Hand it to'),
+      members('handoverLongNames', 'A long name, cut; Team offsite, called off, looks the same'),
+      members('handoverLoading', 'The work list loading: no verb yet'),
+      members('handoverLoadFailed', 'The work list failed: Try again, no Remove'),
+      members('handoverRefused', 'Refused: Tom began leading while it stood open'),
       members('handoverSearch', '18 members: “jo” in the search'),
       members('handoverSearchNobody', 'Nobody matches “kemi”'),
       members('removingNoWork', 'Tom leads nothing: today’s confirm'),
       members('handoverSending', 'Removing…'),
       members('handoverFailed', 'Removing did not work'),
       members('handoverDone', 'Removed, the card after'),
+      members('martaOne', 'Marta leads 1 event'),
+      members('martaLoading', 'Marta’s work list loading: no Hand over now yet'),
+      members('martaLoadFailed', 'Marta’s work list failed: Try again'),
       members('handoverNow', 'Hand over now, on Marta’s page'),
       members('handoverNowSending', 'Handing over…'),
       members('handoverNowFailed', 'Handing over did not work'),

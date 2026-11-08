@@ -27,11 +27,14 @@ export function TellDialog({
   changes,
   onNotNow,
   onSent,
+  before = null,
 }: {
   tell: Tell;
   changes: readonly Told[];
   onNotNow: () => void;
   onSent: () => void;
+  /** A change the save made beside the guests' message (sc-3780: Reply by moved with the start). */
+  before?: string | null;
 }) {
   const noteId = useId();
   const hintId = useId();
@@ -74,6 +77,7 @@ export function TellDialog({
             {MW.seeWho}
           </button>
         </div>
+        {before != null && <p className="mg-tell-who">{before}</p>}
         <div className="mg-tell-part">
           <p className="mg-tell-label">{MW.message}</p>
           <p className="mg-tell-box">

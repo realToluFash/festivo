@@ -1,6 +1,5 @@
-import { writtenTime } from '../clock.ts';
 import { CHANNEL_WORD, type ChannelKey, W, say } from './MessagesWords.ts';
-import { TOKEN_RUN, TOKEN_SPLIT, tokenText } from './TokenText.ts';
+import { TOKEN_SPLIT, tokenText } from './TokenText.ts';
 
 /** Events A's shared sample, with the guests and counts the Messaging B boards made up (spec §8); nothing here is spec. */
 export const EVENT = 'Adaeze & Tunde’s wedding';
@@ -238,6 +237,7 @@ export interface NotReached {
   lines: readonly ReachLine[];
   fixes: readonly string[];
   updated?: string;
+  tellable?: boolean;
 }
 
 const PAGE_LINE: ReachLine = { mark: 'none', word: W.theirPage, reason: W.notSeenYet };
@@ -268,7 +268,12 @@ const SMS_OUT: ReachLine = {
   reason: W.textedStop,
 };
 
+export type GroupKey =
+  'inProgress' | 'bounced' | 'notConfirmed' | 'optedOut' | 'none' | 'cant' | 'reached';
+
 export interface ReachGroup {
+  key: GroupKey;
+  mark: MarkKey;
   word: string;
   people: readonly NotReached[];
 }
@@ -276,6 +281,8 @@ export interface ReachGroup {
 /** All eleven not reached, grouped as sc-3966 counts them (Messaging-B-Phone-3). */
 export const PARKING_GROUPS: readonly ReachGroup[] = [
   {
+    key: 'bounced',
+    mark: 'bounced',
     word: W.bounced3,
     people: [
       {
@@ -284,15 +291,16 @@ export const PARKING_GROUPS: readonly ReachGroup[] = [
         name: 'Tomás Ferreira',
         bounced: 'tomas.ferreira@gmial.com',
         lines: bounced(W.doesntExist),
-        fixes: [W.fixEmail, W.addPhone],
+        fixes: [W.fixEmail, W.addPhone, W.toldInPerson],
       },
       {
         key: 'yuki',
         initials: 'YT',
         name: 'Yuki Tanaka',
+        tellable: true,
         bounced: 'yuki.tanaka@docomo.ne.jp',
         lines: bounced(W.inboxFull),
-        fixes: [W.fixEmail, W.addPhone],
+        fixes: [W.fixEmail, W.addPhone, W.toldInPerson],
       },
       {
         key: 'seun',
@@ -300,17 +308,20 @@ export const PARKING_GROUPS: readonly ReachGroup[] = [
         name: 'Oluwaseun Adebayo',
         bounced: 'seun.adebayo@yahoo.com',
         lines: bounced(W.serviceRefused),
-        fixes: [W.fixEmail, W.addPhone],
+        fixes: [W.fixEmail, W.addPhone, W.toldInPerson],
       },
     ],
   },
   {
+    key: 'notConfirmed',
+    mark: 'unconfirmed',
     word: W.notConfirmed2,
     people: [
       {
         key: 'amaka',
         initials: 'AE',
         name: 'Amaka Eze',
+        tellable: true,
         lines: UNCONFIRMED,
         fixes: [W.toldInPerson],
       },
@@ -318,12 +329,15 @@ export const PARKING_GROUPS: readonly ReachGroup[] = [
         key: 'priyanka',
         initials: 'PN',
         name: 'Priyanka Nair',
+        tellable: true,
         lines: UNCONFIRMED,
         fixes: [W.toldInPerson],
       },
     ],
   },
   {
+    key: 'optedOut',
+    mark: 'optout',
     word: W.optedOut,
     people: [
       {
@@ -357,6 +371,8 @@ export const PARKING_GROUPS: readonly ReachGroup[] = [
     ],
   },
   {
+    key: 'none',
+    mark: 'none',
     word: W.noEmailOrPhone,
     people: [
       {
@@ -379,14 +395,67 @@ export const PARKING_GROUPS: readonly ReachGroup[] = [
 
 export const NOT_REACHED: readonly NotReached[] = PARKING_GROUPS.flatMap((group) => group.people);
 
+/** Two of the 131 reached, drawn under Filter: Reached; the rest are counted. */
+export const PARKING_REACHED: readonly NotReached[] = [
+  {
+    key: 'ines',
+    initials: 'ID',
+    name: 'Inês Duarte',
+    lines: [
+      { mark: 'delivered', word: say.where(CHANNEL_WORD.email, W.delivered), reason: '09:12' },
+      { mark: 'delivered', word: W.theirPage, reason: say.seenAt('09:20') },
+    ],
+    fixes: [],
+  },
+  {
+    key: 'kwame',
+    initials: 'KM',
+    name: 'Kwame Mensah',
+    lines: [
+      { mark: 'delivered', word: say.where(CHANNEL_WORD.sms, W.delivered), reason: '09:13' },
+      PAGE_LINE,
+    ],
+    fixes: [],
+  },
+];
+
+/** What Add an email address and Add a phone number save in the states that start after one. */
+export const ADDED = { email: 'joaquin.ruiz@gmail.com', phone: '+46 70 123 45 67' };
+
 const NOT_INVITED: readonly ReachLine[] = [
   { mark: 'none', word: W.noEmail },
   { mark: 'none', word: W.noPhone },
   { mark: 'none', word: W.theirInvitation, reason: W.notYetInvited },
 ];
 
+/** Two of the invitation's 140 reached, drawn under Filter: Reached; the rest are counted. */
+export const INVITE_REACHED: readonly NotReached[] = [
+  {
+    key: 'ines',
+    initials: 'ID',
+    name: 'Inês Duarte',
+    lines: [
+      { mark: 'delivered', word: say.where(CHANNEL_WORD.email, W.delivered), reason: '10:02' },
+      { mark: 'delivered', word: W.theirInvitation, reason: say.seenAt('10:15') },
+    ],
+    fixes: [],
+  },
+  {
+    key: 'kwame',
+    initials: 'KM',
+    name: 'Kwame Mensah',
+    lines: [
+      { mark: 'delivered', word: say.where(CHANNEL_WORD.sms, W.delivered), reason: '10:03' },
+      { mark: 'none', word: W.theirInvitation, reason: W.notSeenYet },
+    ],
+    fixes: [],
+  },
+];
+
 export const INVITE_GROUPS: readonly ReachGroup[] = [
   {
+    key: 'none',
+    mark: 'none',
     word: W.noEmailOrPhone,
     people: [
       {
@@ -409,6 +478,8 @@ export const INVITE_GROUPS: readonly ReachGroup[] = [
 
 export const SENDING_GROUPS: readonly ReachGroup[] = [
   {
+    key: 'inProgress',
+    mark: 'sending',
     word: W.inProgress,
     people: [
       {
@@ -420,7 +491,7 @@ export const SENDING_GROUPS: readonly ReachGroup[] = [
           { mark: 'sent', word: say.where(CHANNEL_WORD.sms, W.sent), reason: '09:41' },
           PAGE_LINE,
         ],
-        fixes: [],
+        fixes: [W.toldInPerson],
       },
       {
         key: 'marta',
@@ -430,11 +501,13 @@ export const SENDING_GROUPS: readonly ReachGroup[] = [
           { mark: 'sent', word: say.where(CHANNEL_WORD.email, W.sent), reason: '09:41' },
           PAGE_LINE,
         ],
-        fixes: [],
+        fixes: [W.toldInPerson],
       },
     ],
   },
   {
+    key: 'reached',
+    mark: 'delivered',
     word: W.reachedWord,
     people: [
       {
@@ -450,6 +523,8 @@ export const SENDING_GROUPS: readonly ReachGroup[] = [
     ],
   },
   {
+    key: 'cant',
+    mark: 'none',
     word: W.cantBeTold,
     people: [
       {
@@ -466,7 +541,7 @@ export const SENDING_GROUPS: readonly ReachGroup[] = [
           { mark: 'none', word: CHANNEL_WORD.sms, reason: W.noPhone },
           PAGE_LINE,
         ],
-        fixes: [W.fixEmail, W.addPhone],
+        fixes: [W.fixEmail, W.addPhone, W.toldInPerson],
       },
       {
         key: 'joaquin',
@@ -544,9 +619,6 @@ export const INVITATION = {
 };
 
 export const PREVIEW = {
-  name: 'Kwame Mensah',
-  language: 'English',
-  cover: `Thu, Nov 5 · ${writtenTime('18:00', 'en')} · The Landmark`,
   link: '[their own link]',
 };
 
@@ -569,16 +641,4 @@ export function piecesOf(text: string): { token: boolean; text: string }[] {
         ? { token: true, text: piece.slice(1, -1) }
         : { token: false, text: piece },
     );
-}
-
-const FILLED: Record<Token, (name: string) => string> = {
-  Greeting: (name) => name,
-  Event: () => EVENT,
-  Date: () => 'Thursday, Nov 5',
-  Hosts: () => HOSTS,
-};
-
-/** As one guest's page shows it: each token filled in for them. */
-export function filledFor(text: string, name: string): string {
-  return text.replace(TOKEN_RUN, (_, token: Token) => FILLED[token](name));
 }

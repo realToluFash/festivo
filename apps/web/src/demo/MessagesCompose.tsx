@@ -13,7 +13,6 @@ import { Glyph } from '../components/Glyph.tsx';
 import {
   type Draft,
   type Segment,
-  type Ticks,
   type Token,
   CHANNELS,
   SCHEDULED,
@@ -28,7 +27,9 @@ import {
   isNew,
   outsIn,
   many,
+  reachedOfThread,
   refusalOf,
+  resendOf,
   tokenWord,
 } from './messages.ts';
 import { useInbox } from './messagesContext.ts';
@@ -592,21 +593,20 @@ export function CheckCard({
   );
 }
 
-const RESEND = { count: 3, unconfirmed: 2, still: 8, balance: 1500 };
-
 /** Resend to those not reached (sc-3966): the message is already on their page, so only the notice goes again. */
 export function ResendCard() {
-  const { inbox, act, focus, tell } = useInbox();
+  const { inbox, act, focus, tell, to } = useInbox();
   const resend = inbox.resend;
   const sentenceId = useId();
 
   if (resend == null) return null;
 
-  const ticks: Ticks = resend;
-  const credits = (ticks.sms ? 2 : 0) + (ticks.whatsApp ? 1 : 0);
+  const { thread, ticks } = resend;
+  const check = resendOf(inbox, thread, ticks, to.book.groups);
+  const none = check.count === 0;
 
   function back(): void {
-    act({ kind: 'reached', of: 'parking', thread: 'parking' });
+    act({ kind: 'reached', of: reachedOfThread(thread), thread });
     focus('resend');
   }
 
@@ -619,57 +619,77 @@ export function ResendCard() {
     >
       <OnEscape then={back} />
       <p id={sentenceId} className="mg-check-sentence" tabIndex={-1} data-focus="check">
-        {many('cannotUndo', RESEND.count)}
+        {none ? many('noneTellable', check.waiting) : many('cannotUndo', check.count)}
       </p>
-      <p className="mg-check-line">{MW.alreadyOnPage}</p>
-      <div className="mg-ticks">
-        {CHANNELS.map((channel) => (
-          <TickChip
-            key={channel}
-            word={channelWord(channel)}
-            on={ticks[channel]}
-            onToggle={() =>
-              act({
-                kind: 'resend',
-                resend: { ...ticks, [channel]: !ticks[channel] },
-              })
-            }
-          />
-        ))}
-      </div>
-      <p className="mg-check-ink">{many('notConfirmedIncluded', RESEND.unconfirmed)}</p>
-      <div className="mg-cant">
-        <p className="mg-cant-head">{filled(MW.stillCant, { count: RESEND.still })}</p>
-        <p>{['Joaquín Ruiz', MW.noEmail, MW.noPhone].join(' · ')}</p>
-        <p>{['Sophie Laurent', MW.unsubscribed, MW.textedStop].join(' · ')}</p>
-        <button
-          type="button"
-          className="desk-text"
-          onClick={() => tell(`${filled(MW.seeAll, { count: RESEND.still })} has its own design.`)}
-        >
-          {filled(MW.seeAll, { count: RESEND.still })}
-        </button>
-      </div>
-      {credits > 0 && (
+      <p className="mg-check-line">{none ? MW.addFirst : MW.alreadyOnPage}</p>
+      {!none && (
+        <div className="mg-ticks">
+          {CHANNELS.map((channel) => (
+            <TickChip
+              key={channel}
+              word={channelWord(channel)}
+              on={ticks[channel]}
+              onToggle={() =>
+                act({
+                  kind: 'resend',
+                  resend: { ...ticks, [channel]: !ticks[channel] },
+                })
+              }
+            />
+          ))}
+        </div>
+      )}
+      {!none && check.unconfirmed > 0 && (
+        <p className="mg-check-ink">{many('notConfirmedIncluded', check.unconfirmed)}</p>
+      )}
+      {check.still > 0 && (
+        <div className="mg-cant">
+          <p className="mg-cant-head">{filled(MW.stillCant, { count: check.still })}</p>
+          {check.cant.map((line) => (
+            <p key={line}>{line}</p>
+          ))}
+          {check.still > check.cant.length && (
+            <button
+              type="button"
+              className="desk-text"
+              onClick={() =>
+                tell(`${filled(MW.seeAll, { count: check.still })} has its own design.`)
+              }
+            >
+              {filled(MW.seeAll, { count: check.still })}
+            </button>
+          )}
+        </div>
+      )}
+      {!none && check.credits > 0 && (
         <p className="mg-credits">
-          {many('textsUse', credits)} {filled(MW.creditsAfter, { count: RESEND.balance - credits })}
+          {many('textsUse', check.credits)}{' '}
+          {filled(MW.creditsAfter, { count: inbox.balance - check.credits })}
         </p>
       )}
       <div className="mg-check-acts">
-        <button
-          type="button"
-          className="button button-primary mg-go"
-          onClick={() => {
-            act({ kind: 'resend', resend: null });
-            tell(many('queued', RESEND.count));
-            focus('heading');
-          }}
-        >
-          {many('sendTo', RESEND.count)}
-        </button>
-        <button type="button" className="desk-text" onClick={back}>
-          {MW.changeIt}
-        </button>
+        {none ? (
+          <button type="button" className="desk-text" onClick={back}>
+            {MW.backToWho}
+          </button>
+        ) : (
+          <>
+            <button
+              type="button"
+              className="button button-primary mg-go"
+              onClick={() => {
+                act({ kind: 'resend', resend: null });
+                tell(many('queued', check.count));
+                focus('heading');
+              }}
+            >
+              {many('sendTo', check.count)}
+            </button>
+            <button type="button" className="desk-text" onClick={back}>
+              {MW.changeIt}
+            </button>
+          </>
+        )}
       </div>
     </div>
   );

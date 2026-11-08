@@ -24,22 +24,26 @@ import {
   guestCountsOf,
   rowGuests,
 } from './GuestCounts.ts';
-import { Cover } from '../../components/Cover.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
-import { Notice } from '../../components/Notice.tsx';
 import { PHONE_TAB_BAR, PhoneTabBar, TabBarFade } from '../../components/TodayCover.tsx';
 import { Bell, Landscape, OrgPill, PortraitTop } from '../settings/Frame.tsx';
-import { CardPieces, EventCard, EventThumb } from './EventCard.tsx';
+import { EventCard, EventThumb } from '../../components/EventCard.tsx';
+import {
+  EventsEmptyTab,
+  EventsFirstRun,
+  EventsTabs,
+  Said,
+  SaidLine,
+} from '../../components/EventsList.tsx';
 import { EventsFilterMenu, FilterButton } from './EventsFilter.tsx';
 import {
   type CardStep,
   type Filters,
   type ListState,
-  type ListTab,
   NO_FILTERS,
   PAST_PAGE,
   type Shown,
-  TAB_WORDS,
+  tabWord,
   emptyTabOf,
   eventHref,
   filterWord,
@@ -54,7 +58,6 @@ import {
   rowTag,
   searching,
   summaryLine,
-  tabWidths,
   withoutTab,
 } from './EventsModel.ts';
 import { CLOCKS, EVENTS, EVENT_OF_KEY, OFFLINE_AS_OF } from './EventsSample.ts';
@@ -64,23 +67,16 @@ import { Pill } from '../../components/SettingsParts.tsx';
 import {
   type Anchor,
   anchorUnder,
-  CardSays,
   HeadCount,
   Row,
   RowList,
   SectionHead,
-  StepButton,
-  SummaryCard,
   TextAction,
 } from '../../components/Summary.tsx';
 import { SwitchedNotice } from '../../components/SwitchedNotice.tsx';
 
 const SEARCH_PAUSE_MS = 300;
 const MENU_AFTER_MS = 700;
-const TABS: readonly ListTab[] = ['upcoming', 'drafts', 'past'];
-const CELL_PAD = 12;
-const TRACK_PAD = 3;
-const TAB_GAP = 2;
 
 export function openEvent(id: string, query?: Readonly<Record<string, string>>): void {
   router.push(eventHref(id, query) as Href);
@@ -206,35 +202,9 @@ export function EventsList({
     return (
       <ListFrame offline={null}>
         {top}
-        <SummaryCard
-          size={wide ? 'wide' : 'page'}
-          height={200}
-          backdrop={
-            <>
-              <Cover shade="side" pieces={[]} />
-              <CardPieces />
-            </>
-          }
-          testID="events.first"
-        >
-          <CardSays text={W.firstRunTitle} size={wide ? 28 : 24} heading />
-          {!asks && (
-            <View style={styles.cardFoot}>
-              <StepButton
-                label={W.firstRunCreate}
-                onPress={() => shell.tell(say.ownDesign(W.firstRunCreate))}
-                testID="events.first.create"
-              />
-            </View>
-          )}
-        </SummaryCard>
-        {asks && <Notice tone="quiet" mark={tokens.marks.info.glyph} body={W.firstRunAsk} />}
-        <RowList
-          items={W.firstRunSteps.map((step, index) => ({
-            key: step,
-            inset: 52,
-            row: <Row title={step} lead={<StepTile n={index + 1} />} />,
-          }))}
+        <EventsFirstRun
+          wide={wide}
+          onCreate={asks ? undefined : () => shell.tell(say.ownDesign(W.firstRunCreate))}
         />
       </ListFrame>
     );
@@ -289,7 +259,7 @@ export function EventsList({
       </View>
       {results == null ? (
         <>
-          <Segment
+          <EventsTabs
             tab={tab}
             counts={{
               upcoming: home.upcoming.length,
@@ -298,7 +268,7 @@ export function EventsList({
             }}
             onTab={setTab}
           />
-          {tabEvents.length === 0 && <EmptyTab tab={tab} />}
+          {tabEvents.length === 0 && <EventsEmptyTab tab={tab} />}
           {card != null && (
             <EventCard
               guests={guestLine(card)}
@@ -307,6 +277,7 @@ export function EventsList({
               locale={locale}
               wide={wide}
               onOpen={() => openEvent(card.id)}
+              takes={() => true}
               onStep={(step) => stepFrom(card, step, shell.tell)}
               testID="events.card"
             />
@@ -320,11 +291,7 @@ export function EventsList({
             />
           )}
           {shownMore > 0 && <Said words={say.moreShown(shownMore)} />}
-          {tabEvents.length > 0 && (
-            <Text size={14} weight="medium" style={[styles.secondary, styles.figures, styles.said]}>
-              {say.footer(tabEvents.length)}
-            </Text>
-          )}
+          {tabEvents.length > 0 && <SaidLine words={say.footer(tabEvents.length)} />}
         </>
       ) : (
         <Results
@@ -361,7 +328,7 @@ export function EventsList({
               {results.groups.map((group) => (
                 <View key={group.tab}>
                   <SectionHead
-                    title={TAB_WORDS[group.tab]}
+                    title={tabWord(group.tab)}
                     right={<HeadCount text={String(group.events.length)} />}
                   />
                   <RowList items={group.events.map((event) => row(event, true))} />
@@ -444,20 +411,6 @@ function ListFrame({
         </>
       )}
       {overlay}
-    </View>
-  );
-}
-
-/** A tab with nothing on it, in the voice of No events match: its title and its line, the tabs still there to move on. */
-function EmptyTab({ tab }: { tab: ListTab }) {
-  return (
-    <View style={styles.noMatch} testID={`events.empty.${tab}`}>
-      <Text size={18} weight="bold" accessibilityRole="header" style={styles.noMatchTitle}>
-        {W.emptyTab[tab].title}
-      </Text>
-      <Text size={15} weight="medium" style={[styles.secondary, styles.noMatchLine]}>
-        {W.emptyTab[tab].line}
-      </Text>
     </View>
   );
 }
@@ -655,111 +608,6 @@ export function SearchField({
   );
 }
 
-/** B's segment: the lit tab white with a tick, each with its count. */
-function Segment({
-  tab,
-  counts,
-  onTab,
-}: {
-  tab: ListTab;
-  counts: Record<ListTab, number>;
-  onTab: (tab: ListTab) => void;
-}) {
-  // Yoga neither keeps a tab's min-content width nor shares the rest as CSS does, so the tabs are sized here,
-  // from copies no tab squeezes.
-  const [words, setWords] = useState<Partial<Record<ListTab, number>>>({});
-  const [track, setTrack] = useState<number>();
-  const mins = TABS.map((each) => words[each]);
-  const sized =
-    track != null && mins.every((w) => w != null)
-      ? tabWidths(
-          track - 2 * TRACK_PAD - (TABS.length - 1) * TAB_GAP,
-          mins.map((w) => (w ?? 0) + 2 * CELL_PAD),
-        )
-      : undefined;
-
-  return (
-    <View
-      style={styles.segment}
-      accessibilityRole="tablist"
-      onLayout={(event) => setTrack(event.nativeEvent.layout.width)}
-    >
-      {TABS.map((each, i) => {
-        const on = each === tab;
-        const width = sized?.[i];
-
-        return (
-          <Pressable
-            key={each}
-            onPress={() => onTab(each)}
-            style={[
-              styles.cell,
-              width != null && {
-                flexBasis: width,
-                minWidth: width,
-                maxWidth: width,
-                flexGrow: 0,
-                flexShrink: 0,
-              },
-              on && styles.cellOn,
-            ]}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: on }}
-            accessibilityLabel={`${TAB_WORDS[each]}, ${counts[each]}`}
-            testID={`events.tab.${each}`}
-          >
-            <TabWords tab={each} on={on} count={counts[each]} />
-          </Pressable>
-        );
-      })}
-      <View
-        style={styles.tabMeasures}
-        pointerEvents="none"
-        accessibilityElementsHidden
-        importantForAccessibility="no-hide-descendants"
-      >
-        {TABS.map((each) => (
-          <View
-            key={each}
-            style={styles.tabMeasure}
-            onLayout={(event) => {
-              const width = Math.ceil(event.nativeEvent.layout.width);
-              setWords((was) => (was[each] === width ? was : { ...was, [each]: width }));
-            }}
-          >
-            <TabWords tab={each} on={each === tab} count={counts[each]} />
-          </View>
-        ))}
-      </View>
-    </View>
-  );
-}
-
-function TabWords({ tab, on, count }: { tab: ListTab; on: boolean; count: number }) {
-  const ink = on ? tokens.colorAccentText : tokens.colorInkSecondary;
-  const weight = on ? 'semibold' : 'medium';
-
-  return (
-    <View style={styles.tabContent}>
-      {on && <Glyph name="tick" size={14} ink={tokens.colorAccent} weight={2.6} />}
-      <View style={styles.tabWords}>
-        <Text
-          size={14.5}
-          weight={weight}
-          numberOfLines={1}
-          accessible={false}
-          style={{ color: ink }}
-        >
-          {TAB_WORDS[tab]}
-        </Text>
-        <Text size={14.5} weight={weight} accessible={false} style={[{ color: ink }, styles.count]}>
-          {String(count)}
-        </Text>
-      </View>
-    </View>
-  );
-}
-
 function Results({
   count,
   onClearFilters,
@@ -793,16 +641,6 @@ function Results({
   );
 }
 
-function Said({ words }: { words: string }) {
-  useReadOut(words);
-
-  return (
-    <Text size={14} weight="medium" style={[styles.secondary, styles.said]}>
-      {words}
-    </Text>
-  );
-}
-
 export function OfflineBand({
   onRetry,
   testID = 'events.offline',
@@ -819,20 +657,6 @@ export function OfflineBand({
         {say.offline(OFFLINE_AS_OF)}
       </Text>
       <TextAction label={W.tryAgain} onPress={onRetry} testID={`${testID}.retry`} />
-    </View>
-  );
-}
-
-function StepTile({ n }: { n: number }) {
-  return (
-    <View
-      style={styles.stepTile}
-      accessibilityElementsHidden
-      importantForAccessibility="no-hide-descendants"
-    >
-      <Text size={16} weight="bold" accessible={false} style={[styles.accent, styles.figures]}>
-        {String(n)}
-      </Text>
     </View>
   );
 }
@@ -918,39 +742,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: tokens.colorInkTertiary,
   },
-  segment: {
-    height: tokens.sizeHit,
-    flexDirection: 'row',
-    gap: TAB_GAP,
-    padding: TRACK_PAD,
-    borderRadius: 22,
-    backgroundColor: tokens.colorInsetBorder,
-  },
-  cell: {
-    flexGrow: 1,
-    flexShrink: 1,
-    flexBasis: 0,
-    height: 38,
-    paddingHorizontal: CELL_PAD,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 19,
-  },
-  cellOn: {
-    backgroundColor: tokens.colorCard,
-    shadowColor: tokens.colorInk,
-    shadowOpacity: 0.12,
-    shadowRadius: 1.5,
-    shadowOffset: { width: 0, height: 1 },
-    elevation: 2,
-  },
-  tabContent: { flexShrink: 0, flexDirection: 'row', alignItems: 'center', gap: 5 },
-  tabMeasures: { position: 'absolute', top: 0, left: 0, right: 0, opacity: 0 },
-  tabMeasure: { position: 'absolute', top: 0, left: 0 },
-  count: { opacity: 0.8, fontVariant: ['tabular-nums'] },
-  tabWords: { flexDirection: 'row', alignItems: 'baseline', gap: tokens.spaceXxs },
-  cardFoot: { marginTop: 'auto' },
   results: { gap: 18 },
   countRow: {
     minHeight: tokens.sizeHit,
@@ -977,13 +768,5 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     backgroundColor: tokens.colorInkSecondary,
     transform: [{ rotate: '45deg' }],
-  },
-  stepTile: {
-    width: 40,
-    height: 40,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: tokens.colorAccentTint,
   },
 });

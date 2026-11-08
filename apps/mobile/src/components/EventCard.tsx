@@ -1,27 +1,36 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
+import { useTranslation } from 'react-i18next';
 
-import { Text } from '../../components/Text.tsx';
-import { tokens } from '../../theme/tokens.ts';
-import { Confetti, type Piece } from '../../components/Cover.tsx';
-import { EventMesh, eventColour } from '../../components/EventMesh.tsx';
-import { Glyph } from '../../components/Glyph.tsx';
 import {
+  type CardPhoto,
   type CardStep,
   type PhaseMark,
   type Shown,
+  type StepAction,
   cardStep,
   cardTags,
   dayTiles,
   rowLine,
-} from './EventsModel.ts';
-import { scrimFor } from '../../kit/scrim.ts';
-import { W } from './EventsWords.ts';
-import { FINAL_WORDS } from './FinalNumbers.ts';
-import { useShell } from '../../components/settingsShell.ts';
-import { CardSays, GlassTag, OnCard, StepButton, SummaryCard } from '../../components/Summary.tsx';
+} from '../kit/eventsList.ts';
+import type { MeshKey } from '../kit/today.ts';
+import { scrimFor } from '../kit/scrim.ts';
+import { useLayout } from '../layout/useLayout.ts';
+import { tokens } from '../theme/tokens.ts';
+import { Confetti, type Piece } from './Cover.tsx';
+import { EventMesh, eventColour } from './EventMesh.tsx';
+import { Glyph } from './Glyph.tsx';
+import { CardSays, GlassTag, OnCard, StepButton, SummaryCard } from './Summary.tsx';
+import { Text } from './Text.tsx';
+import type { CoverLayout } from './TodayCover.tsx';
 
-type Layout = ReturnType<typeof useShell>['layout'];
+type Layout = CoverLayout;
+
+function useCardLayout(): Layout {
+  const { kind } = useLayout();
+
+  return kind === 'phone' ? 'phone' : kind === 'tabletPortrait' ? 'portrait' : 'landscape';
+}
 
 /** The pieces as each layout's board places them, in points from the card's top right, by share of a box that wide and 200 tall. */
 function pieces(width: number, placed: readonly Piece[]) {
@@ -124,13 +133,13 @@ export function EventThumb({
   side = 48,
   radius = 14,
 }: {
-  event: Pick<Shown, 'id' | 'mesh' | 'photo'>;
+  event: { id: string; mesh: MeshKey; photo: CardPhoto | null };
   side?: number;
   radius?: number;
 }) {
   return (
     <View style={[styles.thumb, { width: side, height: side, borderRadius: radius }]} {...hidden}>
-      {event.photo ? (
+      {event.photo === 'standIn' ? (
         <>
           <PhotoFill id={`thumb-${event.id}-${side}`} />
           <Glyph
@@ -141,14 +150,14 @@ export function EventThumb({
           />
         </>
       ) : (
-        <EventMesh event={{ mesh: event.mesh, photo: null }} />
+        <EventMesh event={{ mesh: event.mesh, photo: event.photo }} />
       )}
     </View>
   );
 }
 
 export function CardPieces() {
-  const placed = PIECES[useShell().layout];
+  const placed = PIECES[useCardLayout()];
 
   return (
     <View style={[styles.pieces, { width: placed.width }]} {...hidden}>
@@ -159,12 +168,12 @@ export function CardPieces() {
 
 /** Under the card's words: the cover or the colour, a scrim measured so white keeps 4.5:1, and Confetti on the colour. */
 export function CardBackdrop({ event }: { event: Shown }) {
-  const scrim = scrimFor(eventColour(event), event.photo, tokens.colorInk);
+  const scrim = scrimFor(eventColour(event), event.photo != null, tokens.colorInk);
   const id = `scrim-${event.id}`;
 
   return (
     <>
-      {event.photo ? (
+      {event.photo === 'standIn' ? (
         <>
           <PhotoFill id={`photo-${event.id}`} />
           <View style={styles.photoMark} {...hidden}>
@@ -172,7 +181,7 @@ export function CardBackdrop({ event }: { event: Shown }) {
           </View>
         </>
       ) : (
-        <EventMesh event={{ mesh: event.mesh, photo: null }} />
+        <EventMesh event={{ mesh: event.mesh, photo: event.photo }} />
       )}
       <Fill
         id={id}
@@ -183,7 +192,7 @@ export function CardBackdrop({ event }: { event: Shown }) {
           { at: '1', colour: scrim.ink, opacity: scrim.foot },
         ]}
       />
-      {!event.photo && <CardPieces />}
+      {event.photo == null && <CardPieces />}
     </>
   );
 }
@@ -216,7 +225,9 @@ export function PhaseShape({ mark }: { mark: PhaseMark }) {
 }
 
 function DayTiles({ event, now, locale }: { event: Shown; now: Date; locale: string }) {
+  const { t } = useTranslation();
   const tiles = dayTiles(event, now, locale);
+  const today = t('todayScreen.today');
 
   if (tiles == null) return null;
 
@@ -227,9 +238,7 @@ function DayTiles({ event, now, locale }: { event: Shown; now: Date; locale: str
           key={`${tile.weekday}${tile.day}`}
           style={[styles.tile, tile.today && styles.tileToday]}
           accessible
-          accessibilityLabel={
-            tile.today ? `${W.today}, ${tile.day}` : `${tile.weekday} ${tile.day}`
-          }
+          accessibilityLabel={tile.today ? `${today}, ${tile.day}` : `${tile.weekday} ${tile.day}`}
         >
           {!tile.today && <View style={[StyleSheet.absoluteFill, styles.tileGlass]} />}
           <Text
@@ -238,7 +247,7 @@ function DayTiles({ event, now, locale }: { event: Shown; now: Date; locale: str
             accessible={false}
             style={[styles.tileWeekday, tile.today ? styles.accent : styles.white]}
           >
-            {tile.today ? W.today : tile.weekday}
+            {tile.today ? today : tile.weekday}
           </Text>
           <Text
             size={20}
@@ -256,13 +265,17 @@ function DayTiles({ event, now, locale }: { event: Shown; now: Date; locale: str
 
 function CardFoot({
   step,
+  takes,
   onStep,
   testID,
 }: {
   step: CardStep;
+  takes: (action: StepAction) => boolean;
   onStep: (step: Extract<CardStep, { kind: 'button' }>) => void;
   testID: string;
 }) {
+  const { t } = useTranslation();
+
   if (step.kind === 'next')
     return (
       <View
@@ -270,8 +283,8 @@ function CardFoot({
         pointerEvents="none"
         accessible
         accessibilityLabel={[
-          ...(step.you ? [FINAL_WORDS.you] : []),
-          ...(step.overdue ? [FINAL_WORDS.overdue] : []),
+          ...(step.you ? [t('timeline.owner_you')] : []),
+          ...(step.overdue ? [t('timeline.overdue')] : []),
           step.title,
           step.when,
         ].join('. ')}
@@ -279,12 +292,12 @@ function CardFoot({
         {step.you && (
           <View style={styles.tags}>
             <GlassTag
-              word={FINAL_WORDS.you}
+              word={t('timeline.owner_you')}
               shape={<Glyph name="user" size={13} ink={tokens.colorInkOnDark} weight={2.4} />}
             />
             {step.overdue && (
               <GlassTag
-                word={FINAL_WORDS.overdue}
+                word={t('timeline.overdue')}
                 shape={<Glyph name="alert" size={13} ink={tokens.colorInkOnDark} weight={2.4} />}
               />
             )}
@@ -302,7 +315,9 @@ function CardFoot({
       <View pointerEvents="none">
         <OnCard text={step.line} />
       </View>
-      <StepButton label={step.label} onPress={() => onStep(step)} testID={`${testID}.step`} />
+      {takes(step.action) && (
+        <StepButton label={step.label} onPress={() => onStep(step)} testID={`${testID}.step`} />
+      )}
     </View>
   );
 }
@@ -315,9 +330,11 @@ export function EventCard({
   wide,
   height = 200,
   onOpen,
+  takes,
   onStep,
   guests = null,
   testID,
+  openTestID = `${testID}.open`,
 }: {
   event: Shown;
   now: Date;
@@ -328,9 +345,13 @@ export function EventCard({
   guests?: string | null;
   /** On the list the card opens the event, its name the link. */
   onOpen?: () => void;
+  /** Whether the viewer's role can take the step: one it cannot keeps the step's line and loses the button. */
+  takes: (action: StepAction) => boolean;
   onStep: (step: Extract<CardStep, { kind: 'button' }>) => void;
   testID: string;
+  openTestID?: string;
 }) {
+  const { t } = useTranslation();
   const name = <CardSays text={event.name} heading={onOpen == null} />;
 
   return (
@@ -349,7 +370,7 @@ export function EventCard({
         />
       )}
       <View style={styles.tags} pointerEvents="none">
-        {cardTags(event, now).map((tag) => (
+        {cardTags(event, now, t).map((tag) => (
           <GlassTag
             key={tag.word}
             word={tag.word}
@@ -364,17 +385,22 @@ export function EventCard({
           onPress={onOpen}
           accessibilityRole="link"
           accessibilityLabel={event.name}
-          testID={`${testID}.open`}
+          testID={openTestID}
         >
           {name}
         </Pressable>
       )}
       <View pointerEvents="none">
-        <OnCard text={rowLine(event, locale, false)} />
+        <OnCard text={rowLine(event, locale, t, false)} />
         {guests != null && <OnCard text={guests} />}
       </View>
       <DayTiles event={event} now={now} locale={locale} />
-      <CardFoot step={cardStep(event, now, locale)} onStep={onStep} testID={testID} />
+      <CardFoot
+        step={cardStep(event, now, locale, t)}
+        takes={takes}
+        onStep={onStep}
+        testID={testID}
+      />
     </SummaryCard>
   );
 }

@@ -1,4 +1,6 @@
 import { type Account } from '@soirely/api-client';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
@@ -406,6 +408,12 @@ describe('the application tree', () => {
       expect(crumb()).toBe('Okonkwo Events / Events');
     });
 
+    it("names Today at the sidebar's Today", () => {
+      at('/app');
+
+      expect(crumb()).toBe('Okonkwo Events / Today');
+    });
+
     it('holds only the organisation while the overdue screen stands in', () => {
       const overdue = {
         ...MEMBERSHIP,
@@ -458,6 +466,10 @@ describe('the application tree', () => {
       at('/app/events');
 
       expect(crumb()).toBe('Lagos Weddings');
+      const person = document.querySelector<HTMLAnchorElement>('a.today-person');
+      expect(person?.getAttribute('aria-label')).toBe('Ada Okonkwo');
+      expect(person?.querySelector('.today-avatar')?.textContent).toBe('AO');
+      expect(person?.querySelector('.today-person-role')).toBeNull();
     });
   });
 
@@ -480,20 +492,26 @@ describe('the application tree', () => {
       const dialog = openMenu();
       const links = [...dialog.querySelectorAll('a')];
 
-      expect(links.map((link) => link.textContent)).toEqual([
-        'Dashboard',
+      expect(links.map((link) => link.getAttribute('aria-label') ?? link.textContent)).toEqual([
+        'Today',
         'Events',
         'Calendar',
-        'Guests',
         'Settings',
-        'Your account',
+        'Ada Okonkwo, Owner',
       ]);
-      expect(links[4]!.getAttribute('aria-current')).toBe('page');
-      expect(dialog.textContent).toContain('ada@example.com');
+      expect(links[3]!.getAttribute('aria-current')).toBe('page');
+      expect(dialog.textContent).not.toContain('ada@example.com');
       expect(dialog.querySelector('select[aria-label="Language"]')).not.toBeNull();
       expect(document.activeElement).toBe(
         within(dialog).getByRole('button', { name: 'Close menu' }),
       );
+    });
+
+    it('draws the person at the foot as the demo draws its button, with no underline', () => {
+      const desk = readFileSync(join(import.meta.dirname, '../components/desk.css'), 'utf8');
+      const rules = [...desk.matchAll(/\n\.today-person \{([^}]*)\}/gu)].map((rule) => rule[1]);
+
+      expect(rules.some((rule) => /text-decoration: none;/u.test(rule ?? ''))).toBe(true);
     });
 
     it('closes on a link to another page, focus where that page puts it', async () => {
@@ -543,7 +561,7 @@ describe('the application tree', () => {
 
       expect(screen.queryByRole('dialog', { name: 'Menu' })).toBeNull();
       expect(document.activeElement).toBe(
-        document.querySelector('.shell-sidebar .shell-nav [aria-current="page"]'),
+        document.querySelector('.shell-sidebar [aria-current="page"]'),
       );
       expect(document.activeElement?.textContent).toBe('Settings');
     });
@@ -582,7 +600,7 @@ describe('the application tree', () => {
       fireEvent.change(select, { target: { value: 'fr' } });
 
       await waitFor(() =>
-        expect(within(dialog).getByRole('link', { name: 'Tableau de bord' })).toBeDefined(),
+        expect(within(dialog).getByRole('link', { name: 'Événements' })).toBeDefined(),
       );
       expect(screen.getByRole('dialog')).toBe(dialog);
       expect(document.activeElement).toBe(select);
@@ -647,7 +665,7 @@ describe('the application tree', () => {
     render(<RouterProvider router={router} />);
 
     expect(screen.getByRole('alert')).toBeDefined();
-    expect(screen.getByRole('link', { name: 'Guests' })).toBeDefined();
+    expect(screen.getByRole('link', { name: 'Calendar' })).toBeDefined();
   });
 });
 

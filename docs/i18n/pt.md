@@ -43,6 +43,13 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **8 Nov 2026. O ecrã da ligação enviada na app, e o seu aviso** (sc-33809 para sc-29071,
+  `mobile:recovery.*`). O botão é "Abrir o e-mail", não "Abrir o Mail": no Android abre a
+  aplicação de e-mail da pessoa. `spam` segue a web, "Veja a pasta de spam e depois envie de
+  novo.", como o botão "Enviar de novo". `sentAgain` diz "Voltámos a enviar a ligação. Use o
+  e-mail mais recente.", com o objeto dito, porque "enviámo-la" soa forçado. O aviso `changed`:
+  "Palavra-passe alterada. A sessão foi encerrada nos seus outros dispositivos.", com "encerrar"
+  do glossário.
 - **8 Nov 2026. Um início de sessão com dois fatores que expirou** (sc-29979,
   `signIn.codeTimedOutTitle`, web e app). "O início de sessão expirou", seguido de
   `endedBody` "Inicie sessão novamente para continuar.". "Expirou", como um prazo que passa;

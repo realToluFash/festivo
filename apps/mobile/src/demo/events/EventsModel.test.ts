@@ -1,4 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { init } from 'i18next';
+import { beforeAll, describe, expect, it } from 'vitest';
+
+import en from '../../i18n/locales/en.json';
 
 import {
   NO_FILTERS,
@@ -50,6 +53,14 @@ function event(id: string): SampleEvent {
 }
 
 const shown = (id: string, at = reader) => shownEvent(event(id), at);
+
+beforeAll(() =>
+  init({
+    lng: 'en',
+    resources: { en: { translation: en } },
+    interpolation: { escapeValue: false },
+  }),
+);
 const names = (events: readonly { name: string }[]) => events.map(({ name }) => name);
 
 describe('the counts', () => {
@@ -86,12 +97,12 @@ describe('the counts', () => {
 
 describe('a row', () => {
   it('says main’s days and the place', () => {
-    expect(rowLine(event('evt-wed-4'), LOCALE)).toBe(
+    expect(rowLine(shown('evt-wed-4'), LOCALE)).toBe(
       'Thursday, Nov 5 to Saturday, Nov 7 · The Landmark, London',
     );
-    expect(rowLine(event('evt-gala-4'), LOCALE)).toBe('Saturday, Nov 14 · Casa de América, Madrid');
-    expect(rowLine(event('evt-cena-4'), LOCALE)).toBe('Saturday, Dec 12 · Venue to be confirmed');
-    expect(rowLine(event('evt-off'), LOCALE)).toBe(
+    expect(rowLine(shown('evt-gala-4'), LOCALE)).toBe('Saturday, Nov 14 · Casa de América, Madrid');
+    expect(rowLine(shown('evt-cena-4'), LOCALE)).toBe('Saturday, Dec 12 · Venue to be confirmed');
+    expect(rowLine(shown('evt-off'), LOCALE)).toBe(
       'Called off on Oct 30 · Quinta da Regaleira, Sintra',
     );
   });
@@ -177,7 +188,7 @@ describe('the card’s one step, by nextStep', () => {
     });
     expect(step('evt-off')).toMatchObject({
       action: 'duplicate',
-      line: 'Called off on Fri, Oct 30, 2026, before it started. Guests following their link are told it won’t go ahead.',
+      line: "Called off on Fri, Oct 30, 2026, before it started. Guests following their link are told it won't go ahead.",
     });
   });
 

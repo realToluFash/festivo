@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -78,13 +78,14 @@ describe('the kitchen step in the demo home (sc-3778)', () => {
       .map((one) => one.getAttribute('href'));
 
     expect(links).toEqual(GUEST_KITCHEN_PAGES.flatMap((one) => one.states).map((one) => one.to));
-    expect(links).toHaveLength(12);
+    expect(links).toHaveLength(13);
   });
 });
 
 const SAYS: [string, () => void][] = [
   ['kitchen', () => expect(heading()).toBe(document.activeElement)],
   ['kitchen_alone', () => screen.getByText('Choose anything that applies to you.')],
+  ['kitchen_one_guest', () => card('Your guest')],
   ['kitchen_picked', () => screen.getByText(/^Peanuts and sesame\. The kitchen/u)],
   ['kitchen_say_which', () => screen.getByText('Say which')],
   ['kitchen_returning', () => button('Leave it as it is')],
@@ -447,36 +448,70 @@ describe('meal_ruled_out (sc-3907’s rule)', () => {
 });
 
 describe('after the date to answer by (sc-3780)', () => {
-  it('Update what the kitchen should know opens the step; Back returns to it; Send goes back to the closed page', async () => {
+  it('Update what the kitchen should know opens the step on its own: For the kitchen, Save and Leave it as it is', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     await guest('replyByClosed');
     const update = () => button('Update what the kitchen should know');
 
     fireEvent.click(update());
     expect(document.activeElement).toBe(heading());
+    const step = heading().closest('section')!;
+    expect(within(step).getByText('For the kitchen')).toBeDefined();
+    expect(
+      within(step).getByText(
+        'Your answer stays Coming, and who is coming with you stays the same.',
+      ),
+    ).toBeDefined();
+    expect(within(step).queryByRole('button', { name: 'Next' })).toBeNull();
     fireEvent.click(button('Back'));
     expect(document.activeElement).toBe(update());
 
     fireEvent.click(update());
     fireEvent.click(within(card('You')).getByRole('button', { name: /^Vegan/u }));
-    fireEvent.click(button('Next'));
-    expect(screen.queryByRole('button', { name: 'Change your answer' })).toBeNull();
-    fireEvent.click(button('Send my answer'));
+    fireEvent.click(button('Save'));
+    expect(button('Save').getAttribute('aria-busy')).toBe('true');
+    expect(screen.queryByRole('heading', { name: 'Check and send' })).toBeNull();
     await wait();
 
     expect(document.activeElement).toBe(update());
     expect(screen.getByText(/^Answers closed on Friday, October 30\./u)).toBeDefined();
+    fireEvent.click(update());
+    expect(within(card('You')).getByRole('button', { name: /^Vegan/u })).toHaveProperty(
+      'ariaPressed',
+      'true',
+    );
   });
 
-  it('once sent, says “Saved. The kitchen will see this.” under the reply, Update focused and described by it', async () => {
+  it('Leave it as it is puts the record back and returns to Update; nothing is sent', async () => {
+    await guest('replyByClosedKitchen');
+
+    fireEvent.click(within(card('You')).getByRole('button', { name: /^Vegan/u }));
+    fireEvent.click(button('Leave it as it is'));
+    expect(document.activeElement).toBe(button('Update what the kitchen should know'));
+    expect(screen.queryByText('Saved. The kitchen will see this.')).toBeNull();
+    fireEvent.click(button('Update what the kitchen should know'));
+    expect(within(card('You')).getByRole('button', { name: /^Vegan/u })).toHaveProperty(
+      'ariaPressed',
+      'false',
+    );
+  });
+
+  it('Save keeps the step’s Say which check and sends nothing until it is named', async () => {
+    await guest('replyByClosedKitchen');
+
+    fireEvent.click(within(card('You')).getByRole('button', { name: /^Other allergy/u }));
+    fireEvent.click(button('Save'));
+    expect(screen.getByText('Say which')).toBeDefined();
+    expect(button('Save').getAttribute('aria-busy')).toBe('false');
+  });
+
+  it('once saved, says “Saved. The kitchen will see this.” under the reply, Update focused and described by it', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
-    await guest('replyByClosed');
+    await guest('replyByClosedKitchen');
     const update = () => button('Update what the kitchen should know');
 
     expect(screen.queryByText('Saved. The kitchen will see this.')).toBeNull();
-    fireEvent.click(update());
-    fireEvent.click(button('Leave it as it is'));
-    fireEvent.click(button('Send my answer'));
+    fireEvent.click(button('Save'));
     await wait();
 
     const saved = screen.getByRole('status');
@@ -493,9 +528,52 @@ describe('after the date to answer by (sc-3780)', () => {
     fireEvent.click(update());
     fireEvent.click(button('Back'));
     expect(screen.getByRole('status').textContent).toBe('Saved. The kitchen will see this.');
+    fireEvent.click(update());
+    fireEvent.click(button('Leave it as it is'));
+    expect(screen.getByRole('status').textContent).toBe('Saved. The kitchen will see this.');
+  });
+
+  it('?state=replyByClosedSaved opens on the saved line, Update focused', async () => {
+    await guest('replyByClosedSaved');
+
+    expect(screen.getByRole('status').textContent).toBe('Saved. The kitchen will see this.');
+    expect(document.activeElement).toBe(button('Update what the kitchen should know'));
+  });
+});
+
+describe('a Save after the date that fails (pm, 8 Nov)', () => {
+  it('says so with Try again, keeps what was typed, and Try again saves it', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    await guest('replyByClosedNotSaved');
+    const alert = screen.getByRole('alert');
+
     expect(
-      document.getElementById(update().getAttribute('aria-describedby') ?? '')?.textContent,
-    ).toBe('Saved. The kitchen will see this.');
+      within(alert).getByText('Not saved. Check your connection and try again.'),
+    ).toBeDefined();
+    expect(document.activeElement).toBe(within(alert).getByRole('button', { name: 'Try again' }));
+    expect(within(card('You')).getByDisplayValue('No raw onion, please.')).toBeDefined();
+    expect(screen.queryByText('Saved. The kitchen will see this.')).toBeNull();
+
+    fireEvent.click(within(alert).getByRole('button', { name: 'Try again' }));
+    expect(button('Save').getAttribute('aria-busy')).toBe('true');
+    await wait();
+
+    expect(screen.getByRole('status').textContent).toBe('Saved. The kitchen will see this.');
+    expect(document.activeElement).toBe(button('Update what the kitchen should know'));
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+});
+
+describe('a companion the host never named (sc-3778, 8 Nov)', () => {
+  it('is “Your guest” alone, and “Your guest 1”, “Your guest 2” when there are more', async () => {
+    await guest('kitchen_one_guest');
+    expect(card('Your guest')).toBeDefined();
+    expect(screen.queryByRole('group', { name: 'Your guest 1' })).toBeNull();
+    cleanup();
+
+    await guest('kitchen');
+    expect(card('Your guest 1')).toBeDefined();
+    expect(card('Your guest 2')).toBeDefined();
   });
 });
 

@@ -2,9 +2,15 @@ import { LOCALES, hostsLine } from '@soirely/domain';
 import i18next from 'i18next';
 
 import { writtenTime } from './clock.ts';
+import { repliesOpen } from './replyClose.ts';
 import { type SampleEvent, sampleEvent } from './events.ts';
 import { BOARD_SAMPLES } from './guestLanguages.ts';
-import { type GuestKitchen, isGuestKitchenState, guestKitchenStarts } from './guestKitchen.ts';
+import {
+  type GuestKitchen,
+  closedKitchen,
+  isGuestKitchenState,
+  guestKitchenStarts,
+} from './guestKitchen.ts';
 import type { DemoLink } from './settings.ts';
 
 /** The guest's own page in A · The cover card (sc-31306), on the boards' sample: main's evt-wed-4 and one guest. */
@@ -15,6 +21,11 @@ export const COMPANIONS = 2;
 export const TODAY = '2026-10-27';
 export const EARLIER = '2026-10-20';
 export const REPLY_BY = '2026-10-30';
+/** The visit's clock: before the date to answer by, and after it (sc-3780's rule decides which is closed). */
+export const OPEN_NOW = '2026-10-27T10:00:00Z';
+export const AFTER_REPLY_BY = '2026-10-31T10:00:00Z';
+/** sc-3787: the member who recorded a reply for the guest, the Guests demo's own on evt-wed-4. */
+export const RECORDER = 'Folake Adeyemi';
 
 /** The reader's zone is the browser's; the sample reads in London, and the zone state from São Paulo. */
 export const READER_ZONE = 'Europe/London';
@@ -81,11 +92,23 @@ export type Page = 'event' | 'gone' | 'unreachable' | 'loading';
 export type View =
   | { kind: 'answer'; busy: Answer | null; note: 'unsent' | 'notSentTap' | null }
   | { kind: 'check'; busy: boolean; failed: boolean; refused: boolean; from: 'answer' | 'changing' }
-  | { kind: 'kitchen' }
+  | { kind: 'kitchen'; busy?: boolean }
   | { kind: 'recorded'; same: boolean }
   | { kind: 'changing'; busy: Answer | null }
   | { kind: 'closed' }
   | { kind: 'tellUs'; busy: boolean; result: 'failed' | 'limited' | 'thanks' | null; back: View };
+
+/** An answer on the guest's record; `by` names the member who recorded it for them (sc-3787). */
+export interface Recorded {
+  answer: Answer;
+  on: string;
+  by?: string;
+}
+
+/** The guest's own answer, sent again unchanged; one a host recorded is never the same as theirs. */
+export function sameAnswer(recorded: Recorded | null, answer: Answer): boolean {
+  return recorded != null && recorded.by == null && recorded.answer === answer;
+}
 
 export interface Mine {
   words: string;
@@ -98,8 +121,8 @@ export interface Visit {
   phase: Phase;
   started: boolean;
   replyBy: string | null;
-  replyByPassed: boolean;
-  recorded: { answer: Answer; on: string } | null;
+  now: string;
+  recorded: Recorded | null;
   companionsComing: number;
   view: View;
   photo: boolean;
@@ -130,7 +153,7 @@ const BASE: Visit = {
   phase: 'live',
   started: false,
   replyBy: REPLY_BY,
-  replyByPassed: false,
+  now: OPEN_NOW,
   recorded: null,
   companionsComing: COMPANIONS,
   view: OPEN,
@@ -202,6 +225,22 @@ const STATES = {
     name: 'Answered Not sure yet, with companions',
     starts: { recorded: { answer: 'notSure', on: TODAY }, view: RECORDED, want: 'greeting' },
   },
+  hostRecorded: {
+    name: 'Down as coming, recorded by a host',
+    starts: {
+      recorded: { answer: 'coming', on: EARLIER, by: RECORDER },
+      view: RECORDED,
+      want: 'greeting',
+    },
+  },
+  hostRecordedMaybe: {
+    name: 'Down as not sure yet, recorded by a host',
+    starts: {
+      recorded: { answer: 'notSure', on: EARLIER, by: RECORDER },
+      view: RECORDED,
+      want: 'greeting',
+    },
+  },
   changing: {
     name: 'Changing the answer',
     starts: {
@@ -224,15 +263,61 @@ const STATES = {
   },
   replyByClosed: {
     name: 'After the date to answer by, Coming',
-    starts: { replyByPassed: true, recorded: COMING, view: CLOSED },
+    starts: { now: AFTER_REPLY_BY, recorded: COMING, view: CLOSED },
   },
   replyByClosedNotSure: {
     name: 'After the date to answer by, Not sure yet',
-    starts: { replyByPassed: true, recorded: { answer: 'notSure', on: TODAY }, view: CLOSED },
+    starts: { now: AFTER_REPLY_BY, recorded: { answer: 'notSure', on: TODAY }, view: CLOSED },
+  },
+  replyByClosedNotComing: {
+    name: 'After the date to answer by, Not coming',
+    starts: { now: AFTER_REPLY_BY, recorded: { answer: 'notComing', on: TODAY }, view: CLOSED },
+  },
+  replyByClosedNever: {
+    name: 'After the date to answer by, never answered',
+    starts: { now: AFTER_REPLY_BY, view: CLOSED },
+  },
+  replyByClosedRecorded: {
+    name: 'After the date to answer by, recorded by a host',
+    starts: {
+      now: AFTER_REPLY_BY,
+      recorded: { answer: 'coming', on: EARLIER, by: RECORDER },
+      view: CLOSED,
+    },
+  },
+  replyByClosedKitchen: {
+    name: 'After the date: the kitchen step on its own',
+    starts: {
+      now: AFTER_REPLY_BY,
+      recorded: COMING,
+      view: { kind: 'kitchen' },
+      kitchen: closedKitchen(COMPANIONS, EARLIER),
+      want: 'kitchenHead',
+    },
+  },
+  replyByClosedNotSaved: {
+    name: 'After the date: the kitchen needs not saved',
+    starts: {
+      now: AFTER_REPLY_BY,
+      recorded: COMING,
+      view: { kind: 'kitchen' },
+      kitchen: closedKitchen(COMPANIONS, EARLIER, { failed: true }),
+      want: 'kitchenRetry',
+    },
+  },
+  replyByClosedSaved: {
+    name: 'After the date: the kitchen needs saved',
+    starts: {
+      now: AFTER_REPLY_BY,
+      recorded: COMING,
+      view: CLOSED,
+      kitchen: closedKitchen(COMPANIONS, EARLIER, { saved: true }),
+      want: 'kitchen',
+    },
   },
   closedRefused: {
     name: 'Answers closed while sending (409)',
-    starts: { replyByPassed: true, view: check({ refused: true }) },
+    starts: { now: AFTER_REPLY_BY, view: check({ refused: true }) },
   },
   closed: {
     name: 'Closed at the start, Coming',
@@ -386,6 +471,8 @@ export const GUEST_PAGES: readonly { name: string; states: readonly DemoLink[] }
         'comingAlone',
         'notComing',
         'notSure',
+        'hostRecorded',
+        'hostRecordedMaybe',
         'changing',
       ] as const
     ).map(link),
@@ -398,6 +485,12 @@ export const GUEST_PAGES: readonly { name: string; states: readonly DemoLink[] }
         'unsentReturn',
         'replyByClosed',
         'replyByClosedNotSure',
+        'replyByClosedNotComing',
+        'replyByClosedNever',
+        'replyByClosedRecorded',
+        'replyByClosedKitchen',
+        'replyByClosedNotSaved',
+        'replyByClosedSaved',
         'closedRefused',
         'closed',
         'closedNever',
@@ -456,6 +549,11 @@ export function shows(visit: Visit): { details: boolean; foot: boolean; hosts: b
   const alone = ['check', 'tellUs', 'kitchen'].includes(visit.view.kind);
 
   return { details: !alone, foot: !alone, hosts: visit.phase !== 'calledOff' };
+}
+
+/** After the date to answer by: the 23:59:59 instant in the event's zone, the rule Guests uses too (sc-3780). */
+export function answersClosedByDate(visit: Visit): boolean {
+  return visit.replyBy != null && !repliesOpen(new Date(visit.now), visit.replyBy, EVENT.timeZone);
 }
 
 /** The door code and Add to calendar: for Coming, while there is still something to attend (pm, 7 Nov). */
@@ -573,7 +671,15 @@ const BOARD_ENGLISH = {
   coming: 'Coming',
   notComing: 'Not coming',
   notSure: 'Not sure yet',
-  answered: 'You answered {{answer}} on {{date}}.',
+  answeredComing: 'You answered Coming on {{date}}.',
+  answeredNotComing: 'You answered Not coming on {{date}}.',
+  answeredNotSure: 'You answered Not sure yet on {{date}}.',
+  answerIsComing: 'Your answer is Coming.',
+  answerIsNotComing: 'Your answer is Not coming.',
+  answerIsNotSure: 'Your answer is Not sure yet.',
+  recordedFor:
+    '{{name}} recorded this answer for you on {{date}}. If it isn’t right, change it here.',
+  recordedOn: '{{name}} recorded this answer for you on {{date}}.',
   greetComing: 'See you there, {{name}}.',
   greetNotComing: 'We’ll miss you, {{name}}.',
   greetNotSure: 'Thanks for letting us know, {{name}}.',
@@ -700,7 +806,28 @@ export function wordsFor(lang: Lang) {
       board(({ coming: 'yes', notComing: 'no', notSure: 'maybe' } as const)[answer]),
     answerWord,
     answered: (answer: Answer, date: string) =>
-      board('answered', { answer: answerWord(answer), date }),
+      board(
+        (
+          {
+            coming: 'answeredComing',
+            notComing: 'answeredNotComing',
+            notSure: 'answeredNotSure',
+          } as const
+        )[answer],
+        { date },
+      ),
+    answerIs: (answer: Answer): string =>
+      board(
+        (
+          {
+            coming: 'answerIsComing',
+            notComing: 'answerIsNotComing',
+            notSure: 'answerIsNotSure',
+          } as const
+        )[answer],
+      ),
+    recordedFor: (name: string, date: string) => board('recordedFor', { name, date }),
+    recordedOn: (name: string, date: string) => board('recordedOn', { name, date }),
     greeting: (answer: Answer): string =>
       board(
         (

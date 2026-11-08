@@ -5,7 +5,7 @@ import { Glyph } from '../../components/Glyph.tsx';
 import { Text } from '../../components/Text.tsx';
 import { useReducedMotion } from '../../reducedMotion.ts';
 import { tokens } from '../../theme/tokens.ts';
-import { EventThumb } from '../events/EventCard.tsx';
+import { EventThumb } from '../../components/EventCard.tsx';
 import { meshFor } from '../../kit/today.ts';
 import { Avatar, Pill } from '../../components/SettingsParts.tsx';
 import {
@@ -65,7 +65,7 @@ export function GroupTile({ side = 40 }: { side?: number }) {
   return (
     <View style={{ width: side, height: side }}>
       <EventThumb
-        event={{ id: SAMPLE_EVENT_ID, mesh: meshFor(SAMPLE_EVENT_ID), photo: false }}
+        event={{ id: SAMPLE_EVENT_ID, mesh: meshFor(SAMPLE_EVENT_ID), photo: null }}
         side={side}
         radius={12}
       />
@@ -105,9 +105,11 @@ function shownRow(m: Messages, id: RowId, locale: string): Shown {
           ? { kind: 'notyet', word: W.notSent }
           : draft.step === 'cancelled'
             ? { kind: 'ended', word: W.cancelledTag }
-            : isScheduled(draft)
-              ? { kind: 'notyet', word: W.scheduled }
-              : undefined;
+            : draft.outcome === 'tooLate'
+              ? { kind: 'ended', word: W.tooLate }
+              : isScheduled(draft)
+                ? { kind: 'notyet', word: W.scheduled }
+                : undefined;
     return {
       title: own == null ? W.newMessage : draftTitle(own.draft, own.thread),
       titleLines: 1,

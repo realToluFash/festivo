@@ -30,9 +30,12 @@ import {
   nameProblem,
   phoneCheck,
   dayWords,
+  greetAsProblem,
+  greetAsSaved,
   recorded,
   sameNameAs,
 } from './GuestsModel.ts';
+import { GreetAsField } from './GuestGreetAs.tsx';
 import { LanguageChoices, LanguageField } from './GuestLanguage.tsx';
 import { Amber, AmberLine, Choices, DoneLine } from './GuestsParts.tsx';
 import {
@@ -180,6 +183,12 @@ export function Legend({ text, line }: { text: string; line?: string | null }) {
 }
 
 const MAX = 10;
+const LONG_GREET_AS = 'Auntie Bisi, who taught every one of us to dance at weddings!';
+const GREET_AS_STARTS: readonly (EditState | null)[] = [
+  'greetAsEmpty',
+  'greetAsEdit',
+  'greetAsLong',
+];
 
 /** Language's sheet over the focused screen (sc-3790): a tap picks and closes it, as a select does. */
 export function languageOver(
@@ -254,7 +263,10 @@ export function EditGuest({
   const [removed, setRemoved] = useState<string | null>(
     start === 'editCompanions' ? `${g.companions[0]?.name ?? ''} · 2` : null,
   );
-  const [checked, setChecked] = useState(start === 'editErrors');
+  const [greetAs, setGreetAs] = useState(
+    start === 'greetAsLong' ? LONG_GREET_AS : (g.greetAs ?? ''),
+  );
+  const [checked, setChecked] = useState(start === 'editErrors' || start === 'greetAsLong');
   const [same, setSame] = useState(start === 'editDuplicate');
   const [conflict, setConflict] = useState(start === 'edit412');
   const [failed, setFailed] = useState<'notSaved' | 'offline' | null>(
@@ -264,15 +276,18 @@ export function EditGuest({
   const [language, setLanguage] = useState<GuestLanguage | null>(g.language ?? null);
   const [choosing, setChoosing] = useState(false);
   const nameRef = useRef<TextInputInstance>(null);
+  const greetAsRef = useRef<TextInputInstance>(null);
   const emailRef = useRef<TextInputInstance>(null);
   const numberRef = useRef<TextInputInstance>(null);
   const errors = {
     name: checked ? nameProblem(name) : null,
+    greetAs: checked ? greetAsProblem(greetAs) : null,
     email: checked ? emailCheck(email) : null,
     phone: checked ? phoneCheck(number, country) : null,
   };
   const changed =
     name !== g.name ||
+    greetAsSaved(greetAs) !== (g.greetAs ?? null) ||
     email !== (g.email ?? '') ||
     joinPhone(country, number) !== g.phone ||
     language !== (g.language ?? null) ||
@@ -281,6 +296,7 @@ export function EditGuest({
   const next = (): SampleGuest => ({
     ...g,
     name: name.trim(),
+    greetAs: greetAsSaved(greetAs),
     email: email.trim() === '' ? null : email.trim(),
     phone: joinPhone(country, number),
     language,
@@ -289,11 +305,13 @@ export function EditGuest({
   const save = (anyway = false) => {
     const problems = {
       name: nameProblem(name),
+      greetAs: greetAsProblem(greetAs),
       email: emailCheck(email),
       phone: phoneCheck(number, country),
     };
     setChecked(true);
     if (problems.name != null) return focusChecked(nameRef);
+    if (problems.greetAs != null) return focusChecked(greetAsRef);
     if (problems.email != null) return focusChecked(emailRef);
     if (problems.phone != null) return focusChecked(numberRef);
     if (!anyway && name.trim() !== g.name && sameNameAs(guests, name, g.key) != null) {
@@ -426,6 +444,14 @@ export function EditGuest({
         autoFocus={start === 'editErrors'}
         fieldRef={nameRef}
         testID="guest.edit.name"
+      />
+      <GreetAsField
+        value={greetAs}
+        onChange={setGreetAs}
+        error={errors.greetAs}
+        autoFocus={GREET_AS_STARTS.includes(start)}
+        fieldRef={greetAsRef}
+        testID="guest.edit.greetAs"
       />
       <GuestField
         label={W.emailAddress}

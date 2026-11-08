@@ -66,6 +66,13 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **8 Nov 2026. The app's reset sent screen and its toast** (sc-33809 for sc-29071,
+  `mobile:recovery.intro`, `sentFor`, `spam`, `sentAgain`, `openMail`, `signsOut`, `changed`).
+  Kept as dev2 wrote them, from the board. "Open Mail" names iOS's Mail; on Android the same
+  button opens the default email app, so es, fr and pt say "open your email" rather than an
+  app's name. `spam` ends on "send it again" to match the Send it again button under it, and
+  `sentAgain` replaces it once that button is used. `changed` is a toast: two short sentences,
+  the result first.
 - **8 Nov 2026. A two-factor sign-in that ran out** (sc-29979, `signIn.codeTimedOutTitle`,
   web and app). "That sign-in timed out", then `endedBody` "Sign in again to carry on." The
   app joins the two as one line with a full stop, so the title takes none. "That" names the

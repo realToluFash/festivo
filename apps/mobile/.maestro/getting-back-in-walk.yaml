@@ -18,8 +18,7 @@ appId: host.exp.Exponent
 - inputText: ${EMAIL}
 - tapOn: { point: '50%,6%' }
 - tapOn: { id: 'recovery.send' }
-- extendedWaitUntil:
-    { visible: { id: 'recovery.sendAgain|recovery.signIn|recovery.backToSignIn' }, timeout: 15000 }
+- extendedWaitUntil: { visible: { id: 'recovery.sendAgain|recovery.send' }, timeout: 15000 }
 - tapOn: { point: '50%,6%' }
 - takeScreenshot: ${P}-04-forgot-sent
 - openLink: ${METRO_URL}/--/reset-password?token=${TOKEN}

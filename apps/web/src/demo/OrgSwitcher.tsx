@@ -1,3 +1,4 @@
+import type { PausedOrganisation } from '@soirely/api-client';
 import { initials } from '@soirely/domain';
 import {
   type KeyboardEvent,
@@ -10,15 +11,18 @@ import {
   useRef,
   useState,
 } from 'react';
-import { Link, useLocation, useSearchParams } from 'react-router';
+import { useLocation, useSearchParams } from 'react-router';
 
 import { leaveMenu } from '../leaving.ts';
 import { CreateWalk } from './CreateOrg.tsx';
 import { type Walk, freshWalk, isCreateState, walkOf } from './createOrg.ts';
 import { meshFor } from '../mesh.ts';
+import { AccessPaused as ProductAccessPaused } from '../components/AccessPaused.tsx';
 import { Glyph } from '../components/Glyph.tsx';
 import { focusWhenFree } from '../layers.ts';
 import { Notice } from '../components/Notice.tsx';
+import { OrgPill } from '../components/OrgPill.tsx';
+import { Switched as ProductSwitched } from '../components/Switched.tsx';
 import { SAMPLE } from './rules.ts';
 import {
   BLUEBIRD,
@@ -188,13 +192,20 @@ export function OrgSwitcher({ tell, toast = false }: { tell: Tell; toast?: boole
         if (open && to != null && !event.currentTarget.contains(to)) close(false);
       }}
     >
-      <button
+      <OrgPill
         ref={button}
-        type="button"
-        className={`today-org sw-opener${count > 0 ? ' is-waiting' : ''}${open ? ' is-open' : ''}`}
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        aria-label={openerLabel(current, count)}
+        id={current.id}
+        name={current.name}
+        label={openerLabel(current, count)}
+        waiting={count > 0 ? invitationsLine(count) : null}
+        open={open}
+        overTile={
+          where.arrived === current.id && (
+            <span className="sw-was" onAnimationEnd={colourArrived}>
+              {initials(current.name)}
+            </span>
+          )
+        }
         onClick={() => (open ? close(true) : setOpen(true))}
         onKeyDown={(event) => {
           if (event.key !== 'ArrowDown' || open) return;
@@ -203,26 +214,7 @@ export function OrgSwitcher({ tell, toast = false }: { tell: Tell; toast?: boole
           setOpen(true);
           setInto(true);
         }}
-      >
-        <span className={`sw-tile today-cover is-${meshFor(current.id)}`} aria-hidden="true">
-          {initials(current.name)}
-          {where.arrived === current.id && (
-            <span className="sw-was" onAnimationEnd={colourArrived}>
-              {initials(current.name)}
-            </span>
-          )}
-        </span>
-        <span className="today-grow sw-opener-words">
-          <span className="sw-opener-name">{current.name}</span>
-          {count > 0 && (
-            <span className="sw-opener-waiting">
-              <span className="sw-ring" aria-hidden="true" />
-              {invitationsLine(count)}
-            </span>
-          )}
-        </span>
-        <Glyph name="updown" size={15} />
-      </button>
+      />
       {open && (
         <Menu
           menu={menu}
@@ -759,7 +751,7 @@ function Offer({
   );
 }
 
-/** "Now working in ‹name›." on the page the switch happened on, gone once the person moves on. */
+/** The product's "Now working in" notice, on the page the switch happened on, gone once the person moves on. */
 export function Switched() {
   const where = useWhere();
   const { pathname } = useLocation();
@@ -767,41 +759,43 @@ export function Switched() {
   if (where.switched == null || where.switched.at !== pathname) return null;
 
   return (
-    <div key={where.switched.name} className="sw-switched">
-      <Notice kind="done" takesFocus={where.switched.takesFocus === true}>
-        {switchedLine(where.switched.name)}
-      </Notice>
-    </div>
+    <ProductSwitched
+      key={where.switched.name}
+      name={where.switched.name}
+      takesFocus={where.switched.takesFocus === true}
+    />
   );
 }
 
-/** main's AccessPaused, standing in for the page while access to the organisation is paused. */
+const PAUSED_SAMPLE: PausedOrganisation = {
+  id: PAUSED.id,
+  name: PAUSED.name,
+  countryCode: 'ES',
+  currency: 'EUR',
+  timezone: 'Europe/Madrid',
+  contactAddress: '',
+  locale: 'es',
+  suspension: {
+    reason: 'address_gone',
+    domain: PAUSED.domain,
+    since: { at: PAUSED.since, written: dayOf(PAUSED.since) },
+    removesAt: null,
+    onlyOwner: false,
+  },
+  ownerClaim: null,
+};
+
+/** The product's AccessPaused, standing in for the page while access to the organisation is paused. */
 export function AccessPaused() {
-  const id = useId();
+  const where = useWhere();
 
   return (
-    <section className="sw-paused" aria-labelledby={id}>
-      <span className="sw-paused-chip">Paused</span>
-      <h1 id={id}>
-        Your access to {PAUSED.name} is paused because your {PAUSED.domain} address is no longer on
-        your account.
-      </h1>
-      <p className="sw-paused-since">Paused since {dayOf(PAUSED.since)}.</p>
-      <p>Your work in {PAUSED.name} is kept and still attributed to you.</p>
-      <p>Your other organisations and your access to single events are not affected.</p>
-      <h2>What happens next</h2>
-      <p>
-        Add your {PAUSED.domain} address again in Account settings and make it primary, then ask an
-        admin of {PAUSED.name} to restore your access.
-      </p>
-      <div className="sw-actions is-paused">
-        <Link className="sw-button is-primary" to="/demo/settings/account">
-          Account settings
-        </Link>
-        <button type="button" className="sw-button is-ghost" onClick={askToOpen}>
-          Switch organisation
-        </button>
-      </div>
-    </section>
+    <ProductAccessPaused
+      paused={PAUSED_SAMPLE}
+      others={where.places.filter((place) => place.id !== PAUSED.id)}
+      account="/demo/settings/account"
+      onSwitch={askToOpen}
+      onChoose={askToOpen}
+    />
   );
 }
