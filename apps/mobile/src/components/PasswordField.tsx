@@ -12,6 +12,7 @@ import {
 import { useTranslation } from 'react-i18next';
 
 import { passwordProps } from '../kit/fields.ts';
+import { useBoldText } from '../theme/boldText.ts';
 import { inputFaced } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
 import {
@@ -67,6 +68,7 @@ export function PasswordField({
   const holding = useHeld(submitting, value, rest.defaultValue, onChangeText);
   const labelID = useFieldLabel();
   const { focused, edging } = useFocusEdge(rest.onFocus, rest.onBlur);
+  const bold = useBoldText();
 
   return (
     <View>
@@ -77,12 +79,16 @@ export function PasswordField({
         {...holding}
         ref={ref}
         {...edging}
-        style={inputFaced([
-          fieldStyles.input,
-          focusEdge(focused, wrong),
-          styles.withReveal,
-          focused && styles.withRevealEdge,
-        ])}
+        style={inputFaced(
+          [
+            fieldStyles.input,
+            focusEdge(focused, wrong),
+            styles.withReveal,
+            focused && styles.withRevealEdge,
+          ],
+          'sans',
+          bold,
+        )}
         aria-invalid={wrong}
         testID={testID}
         onSubmitEditing={(event) => {
