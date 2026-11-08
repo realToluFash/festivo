@@ -10,8 +10,7 @@ export const PW = {
   choseLanguage: 'In {{language}}, the language they chose on their page.',
   organisationLanguage:
     'In {{language}}, your organisation’s language, as no language is set for them.',
-  typedBraces:
-    '[Braces you type go out as typed. To fill something in for each guest, use Insert.]',
+  typedBraces: '[Braces you type stay as typed. To fill something in for each guest, use Insert.]',
   nothingToFill: 'Nothing to fill in, so every guest gets exactly these words.',
   nobodyToPreview: 'No guests chosen yet, so there is nobody to preview it as.',
   filling: 'Filling it in for {{name}}…',
