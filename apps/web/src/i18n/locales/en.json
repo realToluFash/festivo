@@ -483,7 +483,6 @@
   },
   "account": {
     "title": "Your account",
-    "sections": "Account sections",
     "sectionAccount": "Account",
     "sectionSecurity": "Security",
     "sectionNotifications": "Notifications"
