@@ -12,18 +12,17 @@ import { type SampleEvent, localDay, sampleEvent } from './events.ts';
 import { Cover, OkLine } from './GuestsParts.tsx';
 import {
   type Dialog,
+  type Kitchen as KitchenHeld,
   type KitchenStart,
-  ALLERGIC,
-  COMING,
-  COURSES,
-  DIETS,
+  CW,
   KITCHEN_EVENT,
   KW,
   READER,
   SHOWN_FIRST,
-  allergenCounts,
+  changeLines,
   clockOfKitchen,
   copyLine,
+  cw,
   dueError,
   errorWords,
   fileName,
@@ -31,13 +30,26 @@ import {
   keptKitchen,
   kw,
   apiRefuses,
+  latestCopy,
   madeCopy,
   newestFirst,
   picksLine,
   sheetLine,
   shortDay,
+  sinceSlots,
   startOf,
 } from './kitchen.ts';
+import {
+  type Figures,
+  type Line,
+  BASE,
+  SAMPLES,
+  allergic,
+  allergyCounts,
+  codeTitle,
+  courseRows,
+  dietCounts,
+} from './kitchenChanges.ts';
 import { keptInbox, waitingLine } from './messages.ts';
 import { useSwitcherStart } from './switcher.ts';
 import './guests.css';
@@ -70,7 +82,7 @@ function KitchenAt({ id, raw }: { id: string | undefined; raw: string | null }) 
         <EventSidebar
           event={event}
           area="menu"
-          now={clockOfKitchen()}
+          now={first.clock ?? clockOfKitchen()}
           tell={tell}
           inert={covered}
           waiting={waitingLine(keptInbox())}
@@ -82,8 +94,12 @@ function KitchenAt({ id, raw }: { id: string | undefined; raw: string | null }) 
   );
 }
 
+function figuresOf(kitchen: KitchenHeld): Figures {
+  return kitchen.sample == null ? BASE : SAMPLES[kitchen.sample].now;
+}
+
 function Kitchen({ first, event, tell }: { first: KitchenStart; event: SampleEvent; tell: Tell }) {
-  const now = clockOfKitchen();
+  const now = first.clock ?? clockOfKitchen();
   const [kitchen, setKitchen] = useState(first.kitchen);
   const [open, setOpen] = useState(first.open);
   const [dialog, setDialog] = useState<Dialog | null>(first.dialog);
@@ -92,7 +108,10 @@ function Kitchen({ first, event, tell }: { first: KitchenStart; event: SampleEve
   const [seed, setSeed] = useState<KitchenStart | null>(first.open ? first : null);
   const [all, setAll] = useState(false);
   const manage = first.manage;
+  const names = first.names ?? manage;
   const copies = newestFirst(kitchen.copies);
+  const figures = figuresOf(kitchen);
+  const started = now.getTime() >= Date.parse(event.startsAt);
 
   function keep(next: typeof kitchen): void {
     keepKitchen(next);
@@ -103,8 +122,14 @@ function Kitchen({ first, event, tell }: { first: KitchenStart; event: SampleEve
     if (dialog !== 'making' || !pressed) return undefined;
 
     const timer = window.setTimeout(() => {
-      const copy = madeCopy(keptKitchen().copies, now.toISOString(), READER);
-      const next = { ...keptKitchen(), copies: [copy, ...keptKitchen().copies] };
+      const held = keptKitchen();
+      const copy = madeCopy(
+        held.copies,
+        now.toISOString(),
+        READER,
+        changeLines(held, names).length > 0,
+      );
+      const next = { ...held, copies: [copy, ...held.copies], changedAt: null };
 
       keepKitchen(next);
       setKitchen(next);
@@ -115,7 +140,7 @@ function Kitchen({ first, event, tell }: { first: KitchenStart; event: SampleEve
     }, MAKE_MS);
 
     return () => window.clearTimeout(timer);
-  }, [dialog, pressed, now, event, tell]);
+  }, [dialog, pressed, now, event, tell, names]);
 
   return (
     <div className="desk-page ev-page gs kitchen">
@@ -172,9 +197,9 @@ function Kitchen({ first, event, tell }: { first: KitchenStart; event: SampleEve
         </div>
         <Cover mesh={event.mesh} size="page" label="kitchen-says">
           <p id="kitchen-says" className="gs-says">
-            {kw(KW.coming, { count: COMING })}
+            {kw(KW.coming, { count: figures.coming })}
           </p>
-          <p className="desk-on-card">{sheetLine(event, now)}</p>
+          <p className="desk-on-card">{sheetLine(event, now, allergic(figures).length)}</p>
           {manage && (
             <div className="ev-card-foot">
               <CardStep label={KW.give} onClick={() => setDialog('rest')} />
@@ -183,7 +208,14 @@ function Kitchen({ first, event, tell }: { first: KitchenStart; event: SampleEve
         </Cover>
         <div className="ev-columns">
           <div className="ev-left">
-            <Sheet names={manage} all={all} onAll={() => setAll(true)} />
+            <Changes
+              kitchen={kitchen}
+              names={names}
+              timeZone={event.timeZone}
+              give={manage && !started}
+              onGive={() => setDialog('rest')}
+            />
+            <Sheet figures={figures} names={names} all={all} onAll={() => setAll(true)} />
           </div>
           <div className="ev-right">
             <section className="desk-block" aria-labelledby="kitchen-final">
@@ -219,7 +251,13 @@ function Kitchen({ first, event, tell }: { first: KitchenStart; event: SampleEve
                     <button
                       type="button"
                       className="desk-text ev-maps"
-                      onClick={() => tell(kw(KW.noPdf, { file: fileName(event, copy) }))}
+                      onClick={() =>
+                        tell(
+                          copy.changes === true
+                            ? `${kw(KW.noPdf, { file: fileName(event, copy) })} ${KW.changesPage}`
+                            : kw(KW.noPdf, { file: fileName(event, copy) }),
+                        )
+                      }
                     >
                       <DownloadMark />
                       {KW.copyDownload}
@@ -425,8 +463,80 @@ function DueEditor({
   );
 }
 
-function Sheet({ names, all, onAll }: { names: boolean; all: boolean; onAll: () => void }) {
-  const shown = all ? ALLERGIC : ALLERGIC.slice(0, SHOWN_FIRST);
+const LEAD: Record<Line['kind'], 'alert' | 'menu' | 'users' | null> = {
+  allergy: 'alert',
+  diet: 'menu',
+  coming: 'users',
+  dish: null,
+};
+
+/** sc-30692: what changed since the latest copy, opening the sheet, in its order; Give the changes… ends it only when there is a change. */
+function Changes({
+  kitchen,
+  names,
+  timeZone,
+  give,
+  onGive,
+}: {
+  kitchen: KitchenHeld;
+  names: boolean;
+  timeZone: string;
+  give: boolean;
+  onGive: () => void;
+}) {
+  const copy = latestCopy(kitchen);
+
+  if (copy == null) return null;
+
+  const lines = changeLines(kitchen, names);
+  const slots = sinceSlots(copy, timeZone);
+
+  return (
+    <section className="desk-block kitchen-changes" aria-labelledby="kitchen-since">
+      <Head
+        title={<span id="kitchen-since">{cw(lines.length === 0 ? CW.none : CW.since, slots)}</span>}
+      />
+      {lines.length > 0 && (
+        <ul className="desk-rows">
+          {lines.map((line) => {
+            const lead = LEAD[line.kind];
+
+            return (
+              <li key={line.key} className="desk-row">
+                {lead != null && (
+                  <span className="ev-lead" aria-hidden="true">
+                    <Glyph name={lead} size={22} weight={2} />
+                  </span>
+                )}
+                <RowWords title={line.text} />
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      {give && lines.length > 0 && (
+        <button type="button" className="desk-text ev-maps" onClick={onGive}>
+          {CW.give}
+          <Glyph name="arrow" size={16} weight={2.4} />
+        </button>
+      )}
+    </section>
+  );
+}
+
+function Sheet({
+  figures,
+  names,
+  all,
+  onAll,
+}: {
+  figures: Figures;
+  names: boolean;
+  all: boolean;
+  onAll: () => void;
+}) {
+  const people = allergic(figures);
+  const shown = all ? people : people.slice(0, SHOWN_FIRST);
 
   return (
     <>
@@ -435,66 +545,65 @@ function Sheet({ names, all, onAll }: { names: boolean; all: boolean; onAll: () 
           title={
             <span id="kitchen-allergies">
               {KW.allergies}
-              <span className="kitchen-count"> · {ALLERGIC.length}</span>
+              <span className="kitchen-count"> · {people.length}</span>
             </span>
           }
         />
         <ul className="desk-rows">
           {names
             ? shown.map((one) => (
-                <li key={one.name} className="desk-row">
+                <li key={one.guest} className="desk-row">
                   <span className="ev-lead" aria-hidden="true">
                     <Glyph name="alert" size={22} weight={2} />
                   </span>
-                  <RowWords title={one.name} lines={[`${one.allergen} · ${one.dishes}`]} />
+                  <RowWords
+                    title={one.name}
+                    lines={[[...one.allergies.map(codeTitle), one.dishes].join(' · ')]}
+                  />
                 </li>
               ))
-            : allergenCounts().map(([allergen, count]) => (
+            : allergyCounts(figures).map(([allergen, count]) => (
                 <li key={allergen} className="desk-row">
                   <span className="ev-lead" aria-hidden="true">
                     <Glyph name="alert" size={22} weight={2} />
                   </span>
-                  <RowWords title={allergen} />
+                  <RowWords title={codeTitle(allergen)} />
                   <span className="kitchen-figure">{count}</span>
                 </li>
               ))}
         </ul>
         {names && !all && (
-          <TextAction label={kw(KW.showAll, { count: ALLERGIC.length })} onClick={onAll} />
+          <TextAction label={kw(KW.showAll, { count: people.length })} onClick={onAll} />
         )}
         {!names && <p className="desk-line">{KW.namesNeed}</p>}
       </section>
       <section className="desk-block" aria-labelledby="kitchen-diets">
         <Head title={<span id="kitchen-diets">{KW.diets}</span>} />
         <ul className="desk-rows">
-          {DIETS.map(([diet, count]) => (
+          {dietCounts(figures).map(([diet, count]) => (
             <li key={diet} className="desk-row">
               <span className="ev-lead" aria-hidden="true">
                 <Glyph name="menu" size={22} weight={2} />
               </span>
-              <RowWords title={diet} />
+              <RowWords title={codeTitle(diet)} />
               <span className="kitchen-figure">{count}</span>
             </li>
           ))}
         </ul>
       </section>
-      {COURSES.map((course) => (
-        <section
-          key={course.name}
-          className="desk-block"
-          aria-labelledby={`kitchen-${course.name}`}
-        >
+      {figures.courses.map((course) => (
+        <section key={course.id} className="desk-block" aria-labelledby={`kitchen-${course.name}`}>
           <Head
             title={
               <span id={`kitchen-${course.name}`}>
                 {course.name}
-                <span className="kitchen-count"> · {COMING}</span>
+                <span className="kitchen-count"> · {figures.coming}</span>
               </span>
             }
           />
           <ul className="desk-rows">
-            {course.dishes.map(([dish, count]) => (
-              <li key={dish} className="desk-row">
+            {courseRows(figures, course.id).map(({ id, name: dish, count }) => (
+              <li key={id} className="desk-row">
                 <RowWords title={dish} />
                 <span className="kitchen-figure">{count}</span>
               </li>
