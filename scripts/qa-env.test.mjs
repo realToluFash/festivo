@@ -73,6 +73,7 @@ import {
   androidPackage,
   androidSdk,
   branchForStory,
+  CACHE_CLEARER,
   clearApiCache,
   defaultNetwork,
   COMPOSE_PROJECT,
@@ -1470,21 +1471,54 @@ describe('handing a provider redirect to Expo Go', () => {
 });
 
 describe('the API cache a checkout leaves behind', () => {
-  it('is emptied, its directory and the rest of var stay', () => {
+  const withCache = () => {
     const root = mkdtempSync(join(tmpdir(), 'qa-cache-'));
     mkdirSync(join(root, 'services/api/var/cache/dev'), { recursive: true });
     writeFileSync(join(root, 'services/api/var/cache/dev/App_KernelDevDebugContainer.php'), '');
-    writeFileSync(join(root, 'services/api/var/cache/.gitkeep'), '');
-    mkdirSync(join(root, 'services/api/var/log'), { recursive: true });
+    return root;
+  };
+  const calls = () => {
+    const seen = [];
+    return { seen, exec: (command, args) => seen.push([command, ...args]) };
+  };
 
-    clearApiCache(root);
+  it('is emptied through a container that mounts only the cache', () => {
+    const root = withCache();
+    const { seen, exec } = calls();
 
-    expect(readdirSync(join(root, 'services/api/var/cache'))).toEqual([]);
-    expect(existsSync(join(root, 'services/api/var/log'))).toBe(true);
+    clearApiCache(root, exec);
+
+    expect(seen).toHaveLength(1);
+    const [command, ...args] = seen[0];
+    expect(command).toBe('docker');
+    expect(args.slice(0, 5)).toEqual([
+      'run',
+      '--rm',
+      '--volume',
+      `${join(root, 'services/api/var/cache')}:/cache`,
+      CACHE_CLEARER,
+    ]);
+    expect(args.slice(5).join(' ')).toBe('find /cache -mindepth 1 -maxdepth 1 -exec rm -rf {} +');
   });
 
-  it('is no error when there is none', () => {
-    expect(() => clearApiCache(mkdtempSync(join(tmpdir(), 'qa-cache-')))).not.toThrow();
+  it('deletes nothing from the host itself', () => {
+    const root = withCache();
+
+    clearApiCache(root, calls().exec);
+
+    expect(readdirSync(join(root, 'services/api/var/cache'))).toEqual(['dev']);
+  });
+
+  it('runs nothing when there is no cache', () => {
+    const { seen, exec } = calls();
+
+    clearApiCache(mkdtempSync(join(tmpdir(), 'qa-cache-')), exec);
+
+    expect(seen).toEqual([]);
+  });
+
+  it('pins the image it clears with', () => {
+    expect(CACHE_CLEARER).toMatch(/^busybox:\d+\.\d+$/);
   });
 });
 
