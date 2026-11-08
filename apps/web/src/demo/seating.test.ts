@@ -274,6 +274,16 @@ describe('Delete the plan’s ask (pm, 8 Nov 2026)', () => {
     expect(deletePlanWords({ ...plan, items: [byId('t7')], sections: [] })).toBe(
       'This also deletes 1 table. 8 seated guests move to Without a seat; the guest list does not change.',
     );
+    const heldOnly = {
+      ...byId('t7'),
+      chairs: byId('t7').chairs.map((chair) =>
+        chair.state === 'held' ? chair : { state: 'empty' as const },
+      ),
+    };
+
+    expect(deletePlanWords({ ...plan, items: [heldOnly], sections: [] })).toBe(
+      'This also deletes 1 table. 1 seated guest moves to Without a seat; the guest list does not change.',
+    );
     expect(deletePlanWords({ ...plan, items: plan.items.slice(0, 1) })).toBe(
       'This also deletes 3 sections and 1 table. 6 seated guests move to Without a seat; the guest list does not change.',
     );

@@ -487,6 +487,18 @@ describe('tables, rows and seats (sc-4000, sc-4003)', () => {
     },
   );
 
+  it('keeps Table 4 chosen when a refused size is left by a press on Table 8', SLOW, async () => {
+    await seating('tapChooses');
+    const diameter = within(panel()).getByLabelText('Diameter');
+
+    diameter.focus();
+    fireEvent.change(diameter, { target: { value: 'wide' } });
+    tapAway(item(/^Table 8,/u));
+    expect(await within(panel()).findByText('Use 30 cm or more.')).toBeDefined();
+    expect(within(panel()).getByRole('heading', { name: 'Table 4' })).toBeDefined();
+    await vi.waitFor(() => expect(document.activeElement).toBe(diameter));
+  });
+
   it('refuses a size under a foot, or one it can’t read, on a plan in feet', SLOW, async () => {
     await seating('usCustomary');
     typeIn('Diameter', '11 in');
