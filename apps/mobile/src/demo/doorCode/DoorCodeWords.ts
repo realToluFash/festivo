@@ -1,4 +1,4 @@
-/** The door code's English: l10n's settled words (#32341, sc-72 "Decided, 8 Nov 2026 (pm)"), then spec §8, sc-72's, sc-4235's, People's and the app's. */
+/** The door code's English: l10n's settled words (#32341, sc-72 "Decided, 8 Nov 2026 (pm)"; #32790), then spec §8, sc-72's, sc-4235's, People's and the app's. */
 export const W = {
   doorCode: 'Door code',
   noneSays: 'No door code yet',
@@ -73,7 +73,7 @@ export const W = {
   signOut: 'Sign out',
   checkIn: 'Check guests in',
   guests: 'Guests',
-  guestsLine: 'Names and replies, no contact details',
+  guestsLine: 'Names and replies only, no contact details',
   people: 'People',
   overview: 'Overview',
   more: 'More',
@@ -113,11 +113,11 @@ export function usedEnded(used: number, cap: number, at: string): string {
 
 /** sc-72's count of who is in, with pm's singular (7 Nov). */
 export function cameIn(people: number): string {
-  if (people === 0) return 'Nobody came in with it.';
+  if (people === 0) return 'Nobody came in with this code.';
 
   return people === 1
-    ? '1 person came in with it. They keep their access.'
-    : `${people} people came in with it. They keep their access.`;
+    ? '1 person came in with this code. They keep their access.'
+    : `${people} people came in with this code. They keep their access.`;
 }
 
 /** At 0 the Asks say so (pm, 8 Nov, sc-72), so a host learns stopping it shuts nobody out. */
@@ -125,8 +125,8 @@ function alreadyIn(people: number): string {
   if (people === 0) return 'Nobody has used it yet.';
 
   return people === 1
-    ? 'The 1 person already in keeps their access.'
-    : `The ${people} people already in keep their access.`;
+    ? '1 person is already in and keeps their access.'
+    : `${people} people are already in and keep their access.`;
 }
 
 export function newLine(code: string, people: number): string {
@@ -180,5 +180,5 @@ export function signedInAs(name: string): string {
 }
 
 export function onEventCount(people: number): string {
-  return `${people} on this event`;
+  return people === 1 ? '1 person on this event' : `${people} people on this event`;
 }

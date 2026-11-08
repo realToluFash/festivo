@@ -14,6 +14,8 @@ import {
   GUESTS,
   type GroupKey,
   type GuestKey,
+  LONG_BODY,
+  LONG_SUBJECT,
   LOW_BALANCE,
   type ManyKey,
   NOTICE_CREDITS,
@@ -93,6 +95,12 @@ export const MESSAGES_STATES = [
   'filtered',
   'resendInvited',
   'resendSent',
+  'nobody',
+  'longSubject',
+  'longMessage',
+  'closedDraft',
+  'closedEnded',
+  'forbidden',
 ] as const;
 
 export type MessagesState = (typeof MESSAGES_STATES)[number];
@@ -131,6 +139,13 @@ export type Step =
   | 'cancelled';
 
 export const COUNTDOWN_SECONDS = 10;
+export const SUBJECT_MOST = 150;
+export const MESSAGE_MOST = 10_000;
+
+export type LongField = 'subject' | 'body';
+
+/** Why an event can't send (sc-3942's 409): a Draft, or finished more than 30 days ago. */
+export type Closed = 'draft' | 'ended';
 export const SENDING_SECONDS = 3;
 
 export interface Moment {
@@ -154,6 +169,10 @@ export interface Draft {
   time: string;
   seen: number;
   soFar: number | null;
+  /** The To choices that match nobody in this sample. */
+  zero: readonly ToGroup[];
+  /** The fields over their limit at the last Send, kept until each is short enough. */
+  over: readonly LongField[];
 }
 
 /** A conversation of the hosts' own messages: `base` is the sample message it follows up, `earlier` what it already sent. */
@@ -218,6 +237,9 @@ export interface Messages {
   resending: boolean;
   bell: boolean;
   told: string | null;
+  closed: Closed | null;
+  /** Without messages.read: the area opens the refusal, with no list and no count. */
+  forbidden: boolean;
 }
 
 export function blankDraft(): Draft {
@@ -237,7 +259,25 @@ export function blankDraft(): Draft {
     time: NOW,
     seen: 3,
     soFar: null,
+    zero: [],
+    over: [],
   };
+}
+
+/** Counted as on the web: the characters left once spaces at the start and end are trimmed. */
+export function lengthOf(text: string): number {
+  return Array.from(text.trim()).length;
+}
+
+export function overOf(draft: Draft): LongField[] {
+  return [
+    ...(lengthOf(draft.subject) > SUBJECT_MOST ? (['subject'] as const) : []),
+    ...(lengthOf(draft.body) > MESSAGE_MOST ? (['body'] as const) : []),
+  ];
+}
+
+export function matchesNobody(draft: Draft): boolean {
+  return draft.zero.includes(draft.to);
 }
 
 export function sampleDraft(step: Step = 'write'): Draft {
@@ -295,6 +335,8 @@ const BASE: Messages = {
   resending: false,
   bell: false,
   told: null,
+  closed: null,
+  forbidden: false,
 };
 
 const DRAFTED: Partial<Record<MessagesState, Draft>> = {
@@ -312,6 +354,14 @@ const DRAFTED: Partial<Record<MessagesState, Draft>> = {
   checkNotReplied: { ...sampleDraft('check'), to: 'notReplied' },
   checkChannels: { ...sampleDraft('check'), channels: { email: true, sms: false, wa: false } },
   noSubject: { ...sampleDraft('sent'), subject: '', seen: 12 },
+  nobody: { ...sampleDraft('write'), zero: ['coming'] },
+  longSubject: { ...sampleDraft('write'), subject: LONG_SUBJECT, over: ['subject'] },
+  longMessage: { ...sampleDraft('write'), body: LONG_BODY, over: ['body'] },
+};
+
+const CLOSED: Partial<Record<MessagesState, Closed>> = {
+  closedDraft: 'draft',
+  closedEnded: 'ended',
 };
 
 const SCHEDULED_AS: Partial<Record<MessagesState, Partial<Draft>>> = {
@@ -341,6 +391,9 @@ export function startOf(state: MessagesState | null, wide: boolean): Messages {
       draft: drafted,
       told: state === 'cancelled' && !wide ? W.cancelled : null,
     };
+  const closed = state == null ? undefined : CLOSED[state];
+  if (closed != null)
+    return { ...BASE, closed, ...(closed === 'draft' ? { phase: 'first', kept: [] } : {}) };
   const scheduled = state == null ? undefined : SCHEDULED_AS[state];
   if (scheduled != null) return scheduledStart(scheduled);
   const ines: Open = { kind: 'guest', key: 'ines' };
@@ -491,6 +544,8 @@ export function startOf(state: MessagesState | null, wide: boolean): Messages {
       return { ...BASE, open: { kind: 'many', key: 'invite' } };
     case 'bell':
       return { ...BASE, bell: true, open: wide ? ines : null };
+    case 'forbidden':
+      return { ...BASE, forbidden: true };
     default:
       return BASE;
   }
@@ -557,6 +612,12 @@ function stepped(m: Messages, from: readonly Step[], step: Step): Messages {
 
 export function canSend(draft: Draft): boolean {
   return draft.body.trim() !== '';
+}
+
+function stillOver(draft: Draft): Draft {
+  const now = overOf(draft);
+
+  return { ...draft, over: draft.over.filter((field) => now.includes(field)) };
 }
 
 export function writing(draft: Draft): boolean {
@@ -675,7 +736,7 @@ function back(open: Open): Open {
 export function reduce(m: Messages, action: Action): Messages {
   switch (action.type) {
     case 'open':
-      return opened(m, action.open);
+      return m.forbidden ? m : opened(m, action.open);
     case 'back':
       return opened(m, back(m.open));
     case 'newMessage': {
@@ -706,15 +767,21 @@ export function reduce(m: Messages, action: Action): Messages {
         channels: { ...draft.channels, [action.key]: !draft.channels[action.key] },
       }));
     case 'subject':
-      return withDraft(m, (draft) => ({ ...draft, subject: action.text }));
+      return withDraft(m, (draft) => stillOver({ ...draft, subject: action.text }));
     case 'body':
-      return withDraft(m, (draft) => ({ ...draft, body: action.text, cancelled: false }));
+      return withDraft(m, (draft) => stillOver({ ...draft, body: action.text, cancelled: false }));
     case 'preview':
       return stepped(m, ['write'], 'preview');
     case 'edit':
       return stepped(m, ['preview'], 'write');
-    case 'send':
-      return m.draft != null && canSend(m.draft) ? stepped(m, ['write', 'preview'], 'check') : m;
+    case 'send': {
+      const draft = m.draft;
+      if (m.closed != null || draft == null || !canSend(draft) || matchesNobody(draft)) return m;
+      const over = overOf(draft);
+      if (over.length > 0) return { ...m, draft: { ...draft, step: 'write', over } };
+
+      return stepped(m, ['write', 'preview'], 'check');
+    }
     case 'changeIt':
       return stepped(m, ['check'], 'write');
     case 'confirm':
@@ -933,7 +1000,7 @@ export function sectionsOf(m: Messages): Sections {
 export function badgeOf(
   m: Messages,
 ): { waiting: number; notMatched: number; total: number } | null {
-  if (m.phase !== 'list') return null;
+  if (m.phase !== 'list' || m.forbidden) return null;
   const guests: GuestKey[] =
     m.matched == null ? ['ines', 'lucia', 'kwame'] : ['ines', 'lucia', 'kwame', 'unknown'];
   const waiting = guests.filter((key) => !m.done.includes(key)).length + (m.arrived ? 1 : 0);
@@ -954,8 +1021,14 @@ export interface Check {
   whatsApp: boolean;
 }
 
+export function countOf(to: ToGroup, zero: readonly ToGroup[] = []): number {
+  return zero.includes(to) ? 0 : TO_FIGURES[to].count;
+}
+
 export function checkOf(draft: Draft): Check {
-  const figures = TO_FIGURES[draft.to];
+  const figures = matchesNobody(draft)
+    ? { count: 0, email: 0, sms: 0, wa: 0, cantTell: 0 }
+    : TO_FIGURES[draft.to];
   const ticked = (['email', 'sms', 'wa'] as const).filter((key) => draft.channels[key]);
   const credits = (draft.channels.sms ? figures.sms : 0) + (draft.channels.wa ? figures.wa : 0);
   const smsOff = draft.channels.sms ? 0 : SMS_ONLY[draft.to].length;
@@ -975,8 +1048,8 @@ export function checkOf(draft: Draft): Check {
   };
 }
 
-export function toChip(to: ToGroup): string {
-  return say.chip(TO_WORD[to], TO_FIGURES[to].count);
+export function toChip(to: ToGroup, zero: readonly ToGroup[] = []): string {
+  return say.chip(TO_WORD[to], countOf(to, zero));
 }
 
 export function resultOf(draft: Draft): {

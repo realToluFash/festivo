@@ -146,6 +146,23 @@ export const SCHEDULED_AT = 'Thu, Nov 5, 09:00';
 export const SUBJECT = 'Parking and the dress code';
 export const BODY = `${tokenText('Greeting')}, a few things before Thursday. Parking is on Marylebone Road, and the dress code is formal. If anything changes for you, answer here.`;
 
+/** The wedding moved back to September, so it finished more than 30 days before the reader's Nov 3. */
+export const LONG_FINISHED = {
+  startsAt: '2026-09-19T14:00:00Z',
+  endsAt: '2026-09-20T01:00:00Z',
+  concludedAt: '2026-09-20T01:00:00Z',
+} as const;
+
+/** Over the Subject's 150: 168 characters, pasted from the hosts' own notes. */
+export const LONG_SUBJECT =
+  'Parking, the dress code, the shuttle from Baker Street, the order of the day on Thursday and Saturday, and what to do if your train is late or the venue is hard to find';
+
+const PROGRAMME_LINE =
+  'Thursday at 18:00 the ceremony begins at The Landmark; the doors open at 17:30, and the shuttle leaves Baker Street every fifteen minutes from 17:00.';
+
+/** Over the Message's 10,000: the programme pasted in, 72 times over. */
+export const LONG_BODY = [BODY, ...Array.from({ length: 72 }, () => PROGRAMME_LINE)].join('\n\n');
+
 export const TO_WORD: Record<ToGroup, string> = {
   all: W.allGuests,
   coming: W.coming,

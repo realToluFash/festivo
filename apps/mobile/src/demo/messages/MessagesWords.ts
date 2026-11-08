@@ -163,6 +163,13 @@ export const W = {
   notConfirmed2: 'Not confirmed',
   optedOut: 'Opted out',
   noEmailOrPhone: 'No email or phone',
+  nobodyMatches: 'Nobody matches',
+  closedDraft: 'This event is a draft. Make it live to write to your guests.',
+  closedEnded:
+    'This event finished more than 30 days ago, so you can no longer write to its guests.',
+  forbiddenTitle: 'You do not have access to this',
+  forbiddenBody:
+    'Your account does not have permission for this page. If you believe it should, ask an admin of this organisation.',
 } as const;
 
 export type ChannelKey = 'email' | 'sms' | 'wa';
@@ -313,5 +320,7 @@ export const say = {
   cantBeToldCount: (count: number) => `${count} can’t be told`,
   inZone: (day: string, time: string, zone: string) => `${day}, ${time} ${zone}`,
   dayTime: (day: string, time: string) => `${day}, ${time}`,
+  subjectTooLong: (most: string) => `Shorten the subject to ${most} characters or fewer.`,
+  messageTooLong: (most: string) => `Shorten the message to ${most} characters or fewer.`,
   ownDesign: (what: string) => `${what.replace(/…$/u, '')} has its own design.`,
 };

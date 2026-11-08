@@ -71,6 +71,7 @@ export interface Talk {
   refFor: (key: string) => (node: ViewInstance | null) => void;
   headRef: RefObject<TextHandle | null>;
   checkRef: RefObject<TextHandle | null>;
+  subjectRef: RefObject<TextInputInstance | null>;
   bodyRef: RefObject<TextInputInstance | null>;
   answerRef: RefObject<TextInputInstance | null>;
   typed: string;
@@ -490,6 +491,8 @@ function ownParts(talk: Talk, followUp: string): Own {
       draft={draft}
       tools={tools}
       autoFocus={draft.cancelled}
+      locale={talk.locale}
+      subjectRef={talk.subjectRef}
       bodyRef={talk.bodyRef}
       sendRef={talk.refFor('send')}
       insertRef={talk.refFor('insert')}

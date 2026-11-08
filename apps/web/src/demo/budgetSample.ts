@@ -3,7 +3,7 @@ import { type CeilingState } from './BudgetParts.tsx';
 import { type Category } from './vendors.ts';
 
 /** The rest of A's sample (spec §1): who is paying, the ceilings and the margin, in the minor unit. */
-export type LinkState = 'notSent' | 'sent' | 'opened';
+export type LinkState = 'notSent' | 'sent' | 'opened' | 'revoked';
 
 export interface Covered {
   lineId: string;
@@ -74,6 +74,7 @@ export const LINK_WORDS: Record<LinkState, string> = {
   notSent: 'Not sent yet.',
   sent: 'Sent, not opened yet.',
   opened: 'Opened 3 times. Last on Monday, Nov 2 at 21:14.',
+  revoked: '',
 };
 
 /** What no payer covers yet: the costs, and their settled amount (Has a payer plus this is the range). */
@@ -117,6 +118,7 @@ export function ceilingState(settled: number, ifAll: number, ceiling: number): C
 
 export function ceilingSentence(settled: number, ifAll: number, ceiling: number): string {
   if (ceiling === 0 && ifAll === 0) return 'Nothing is costed here; one amount puts it over.';
+  if (ifAll === 0) return 'Nothing is costed here yet.';
   switch (ceilingState(settled, ifAll, ceiling)) {
     case 'over':
       return `Settled, it is ${whole(settled)} against ${whole(ceiling)}.`;

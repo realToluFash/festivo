@@ -69,6 +69,7 @@ export const W = {
   failStop: 'The code was not stopped, so it still works. Check your connection and try again.',
   stopGo: 'Stop the code',
   nobodyYet: 'Nobody has used it yet.',
+  nobodyCameIn: 'Nobody came in with this code.',
   removing: 'Removing…',
   close: 'Close',
   esc: 'Esc',
@@ -263,12 +264,14 @@ export function heldLine(code: DoorCode): string {
 export function countLine(code: DoorCode): string {
   switch (code.state) {
     case 'stopped':
-      if (code.used === 0) return 'Nobody came in with it.';
+      if (code.used === 0) return W.nobodyCameIn;
 
       return code.used === 1
-        ? '1 person came in with it. They keep their access.'
-        : `${code.used} people came in with it. They keep their access.`;
+        ? '1 person came in with this code. They keep their access.'
+        : `${code.used} people came in with this code. They keep their access.`;
     case 'ranOut':
+      if (code.used === 0) return W.nobodyCameIn;
+
       return `${code.used} of ${code.cap} used · ended at ${code.endedAt == null ? '' : atWords(`${isoDayOf(DESK_NOW)}T${code.endedAt}:00Z`)}`;
     default:
       return `${code.used} of ${code.cap} used · until ${untilWords(code.ends)}`;
@@ -279,8 +282,8 @@ function keepLine(used: number): string {
   if (used === 0) return ` ${W.nobodyYet}`;
 
   return used === 1
-    ? ' The 1 person already in keeps their access.'
-    : ` The ${used} people already in keep their access.`;
+    ? ' 1 person is already in and keeps their access.'
+    : ` ${used} people are already in and keep their access.`;
 }
 
 export function newLine(code: DoorCode): string {

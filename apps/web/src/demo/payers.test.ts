@@ -22,9 +22,11 @@ import {
   flaggedLines,
   hasPayer,
   nameProblem,
+  noteProblem,
   percentProblem,
   nextNoPayer,
   noPayer,
+  notPricedFor,
   paidOf,
   partsOf,
   percentOf,
@@ -325,7 +327,55 @@ describe('the demo’s states (budget-a-spec.md §9)', () => {
     'link_copied',
     'copy_refused',
     'send_failed',
+    'payer_not_priced',
+    'payer_paid_past',
+    'payer_share_alone',
+    'payers_loading',
+    'payers_neither',
+    'note_too_long',
+    'payers_stale',
+    'payers_live',
+    'payers_not_live',
+    'choose_no_payer',
+    'choose_no_rest',
+    'link_passphrase',
+    'link_all_revoked',
+    'web_share',
+    'payer_blank',
+    'payer_long_name',
+    'payer_edit',
+    'payer_renamed',
+    'choose_percent_range',
+    'choose_percent_decimals',
+    'choose_fixed_blank',
+    'choose_fixed_decimals',
+    'choose_fixed_over',
   ];
+
+  it('counts a Not priced cost on the share and adds nothing for it', () => {
+    const { book, open } = startOf('payer_not_priced');
+
+    expect(open).toBe('couple');
+    expect(notPricedFor(book, 'couple')).toBe(1);
+    expect(notPricedFor(book, 'obi')).toBe(0);
+    expect(notPricedFor(SAMPLE_BOOK, 'couple')).toBe(0);
+    expect(shareOf(book, 'couple')).toEqual(shareOf(SAMPLE_BOOK, 'couple'));
+  });
+
+  it('takes Mr and Mrs Obi past their upper end, and Still to come stops at 0', () => {
+    const { book, payments } = startOf('payer_paid_past');
+    const paid = paidOf(book, payments).get('obi') ?? 0;
+
+    expect(paid).toBe(1230000);
+    expect(paid).toBeGreaterThan(shareOf(book, 'obi')[1]);
+    expect(stillToCome(shareOf(book, 'obi'), paid)).toEqual([0, 0]);
+  });
+
+  it('leaves out Paid and Still to come only on the share alone', () => {
+    expect(startOf('payer_share_alone').paidShown).toBe(false);
+    expect(startOf('payers').paidShown).toBe(true);
+    expect(startOf('payer_paid_past').paidShown).toBe(true);
+  });
 
   it('has every name the spec gives, each linked from the demo’s home', () => {
     const linked = PAYERS_PAGES.flatMap((page) => page.states.map((state) => state.to));
@@ -362,5 +412,47 @@ describe('the demo’s states (budget-a-spec.md §9)', () => {
     expect(percentProblem('100.01')).toBe('Use a number from 0 to 100.');
     expect(percentProblem('100')).toBeNull();
     expect(percentProblem('')).toBeNull();
+    expect(percentProblem('33.333')).toBe(
+      'Use a number from 0 to 100, with up to two decimal places.',
+    );
+    expect(noteProblem('a'.repeat(201))).toBe('Use 200 characters or fewer.');
+    expect(noteProblem(` ${'a'.repeat(200)} `)).toBeNull();
+  });
+
+  it('starts the gaps’ states where the boards draw them (sc-91, sc-1300)', () => {
+    expect(startOf('note_too_long').form?.noteError).toBe('Use 200 characters or fewer.');
+    expect([...(startOf('note_too_long').form?.note ?? '')]).toHaveLength(202);
+    expect(startOf('payers_neither').book).toEqual({ lines: [], payers: [], splits: {} });
+    expect(startOf('no_costs').book.payers).toHaveLength(4);
+    expect(startOf('payers_stale').choose).toMatchObject({ ticked: ['dj'], stale: 'Uncle Kayode' });
+    expect(W.stale('Uncle Kayode')).toBe(
+      'Uncle Kayode was removed by someone else while this was open, so nothing was saved. The costs are shown as they are now.',
+    );
+    expect(startOf('payers_stale').book.splits.dj).toBeUndefined();
+    expect(startOf('payers_stale').choose?.payer).toBeUndefined();
+    expect(startOf('payer_blank').form?.error).toBe('Enter a name.');
+    expect(startOf('payer_long_name').form?.error).toBe('Use 60 characters or fewer.');
+    expect(startOf('payer_edit').form).toMatchObject({ id: 'obi', name: 'Chidi and Ngozi Obi' });
+    expect(startOf('payer_renamed').book.payers.find((one) => one.id === 'obi')?.name).toBe(
+      'Chidi and Ngozi Obi',
+    );
+    expect(percentProblem('.333')).toBe(
+      'Use a number from 0 to 100, with up to two decimal places.',
+    );
+    expect(startOf('choose_no_payer').choose).toMatchObject({ ticked: ['dj'], checked: true });
+    expect(startOf('choose_no_payer').choose?.payer).toBeUndefined();
+    expect(startOf('choose_no_rest').choose).toMatchObject({ mode: 'fixed', checked: true });
+    expect(startOf('choose_no_rest').choose?.rest).toBeUndefined();
+    const live = startOf('payers_live').book;
+    expect(shareOf(SAMPLE_BOOK, 'obi')[0] - shareOf(live, 'obi')[0]).toBe(315000);
+    expect(startOf('link_passphrase').book.payers.find((one) => one.id === 'obi')?.passphrase).toBe(
+      true,
+    );
+    expect(startOf('link_all_revoked')).toMatchObject({ open: 'bakare' });
+    expect(startOf('link_all_revoked').book.payers.find((one) => one.id === 'bakare')?.link).toBe(
+      'revoked',
+    );
+    expect(startOf('web_share')).toMatchObject({ open: 'couple', shares: true });
+    expect(startOf('web_share').send).toEqual({ payerId: 'couple', kind: 'shared' });
   });
 });

@@ -24,6 +24,7 @@ export const DECIDE_WORDS = {
   noChange: 'No change',
   nothingPerGuest: 'Nothing in this budget is counted per guest.',
   overCeiling: 'This would take the event over its ceiling.',
+  overCategory: (category: string) => `This would take ${category} over its ceiling.`,
   ifEveryone: (total: string, ceiling: string) =>
     `If everyone comes, it would be ${total} against ${ceiling}.`,
 } as const;

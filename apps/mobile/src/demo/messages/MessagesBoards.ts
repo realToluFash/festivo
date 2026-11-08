@@ -62,6 +62,12 @@ const BOARDS: Record<MessagesState, readonly [string, string]> = {
   filtered: ['filtered: bounced', 'Bounced · 3, and only them'],
   resendInvited: ['a resend, an invitation', 'None of the 2 can be told yet'],
   resendSent: ['a resend, just sent', 'None of the 2 can be told yet'],
+  nobody: ['nobody matches', 'Coming · 0: Nobody matches, and Send opens no check'],
+  longSubject: ['a subject too long', 'Shorten the subject to 150 characters or fewer'],
+  longMessage: ['a message too long', 'Shorten the message to 10,000 characters or fewer'],
+  closedDraft: ['new unavailable, a draft', 'This event is a draft; New is off'],
+  closedEnded: ['new unavailable, long finished', 'Finished more than 30 days ago; New is off'],
+  forbidden: ['no access', 'Without messages.read: the refusal, no list, no count'],
 };
 
 export const MESSAGES_BOARDS = MESSAGES_STATES.map((state) => ({

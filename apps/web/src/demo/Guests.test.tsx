@@ -282,15 +282,50 @@ describe('Guests, Edit in place (sc-3773)', () => {
     expect(screen.getByText('Saved')).toBeDefined();
   });
 
-  it('shows three companions, then how many more', SLOW, async () => {
-    await guests('editMax');
+  it(
+    'shows three companions, then how many more, a text action that shows the rest',
+    SLOW,
+    async () => {
+      await guests('editMax');
+
+      expect(
+        within(column()).getAllByRole('textbox', { name: /^Companion’s full name/u }),
+      ).toHaveLength(3);
+      expect(screen.getByText('10 companions is the most one guest can bring.')).toBeDefined();
+      expect(screen.queryByRole('button', { name: 'Add a companion' })).toBeNull();
+
+      fireEvent.click(within(column()).getByRole('button', { name: '7 more companions' }));
+      const fields = within(column()).getAllByRole('textbox', { name: /^Companion’s full name/u });
+
+      expect(fields).toHaveLength(10);
+      expect(screen.queryByRole('button', { name: '7 more companions' })).toBeNull();
+      await waitFor(() => expect(document.activeElement).toBe(fields[3]), WAIT);
+    },
+  );
+
+  it('asks before removing a companion with a seat and a meal', SLOW, async () => {
+    await guests('editSeated');
+    const ask = await screen.findByRole('alertdialog', { name: 'Remove Rui Duarte?' });
+    const companions = () =>
+      within(column()).queryAllByRole('textbox', { name: /^Companion’s full name/u });
 
     expect(
-      within(column()).getAllByRole('textbox', { name: /^Companion’s full name/u }),
-    ).toHaveLength(3);
-    expect(screen.getByText('7 more companions')).toBeDefined();
-    expect(screen.getByText('10 companions is the most one guest can bring.')).toBeDefined();
-    expect(screen.queryByRole('button', { name: 'Add a companion' })).toBeNull();
+      within(ask).getByText(
+        'Rui Duarte has a seat at Table 4 and a meal chosen. Removing this companion frees the seat and drops the meal.',
+      ),
+    ).toBeDefined();
+
+    fireEvent.click(within(ask).getByRole('button', { name: 'Cancel' }));
+
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(companions()).toHaveLength(1);
+
+    fireEvent.click(within(column()).getByRole('button', { name: 'Remove Rui Duarte' }));
+    const again = await screen.findByRole('alertdialog', { name: 'Remove Rui Duarte?' });
+    fireEvent.click(within(again).getByRole('button', { name: 'Remove' }));
+
+    expect(screen.getByText('Rui Duarte removed. Save to keep the change.')).toBeDefined();
+    expect(companions()).toHaveLength(0);
   });
 
   it('asks before throwing a change away', SLOW, async () => {

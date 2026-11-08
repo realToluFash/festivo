@@ -12,6 +12,10 @@ export const TEMPLATES_STATES: readonly string[] = [
   'calibration',
   'calibration_three',
   'calibration_empty',
+  'calibration_loading',
+  'calibration_failed',
+  'start_no_type',
+  'start_margin',
 ];
 
 export const TEMPLATES_PAGES: readonly DemoGroup[] = [
@@ -25,6 +29,14 @@ export const TEMPLATES_PAGES: readonly DemoGroup[] = [
         name: 'An event that is over: what it came to (start_actual)',
       },
       { to: budgetAt('start_not_over'), name: 'Not over yet: planned rates (start_not_over)' },
+      {
+        to: budgetAt('start_no_type'),
+        name: 'This event has no type: one list, most recent first (start_no_type)',
+      },
+      {
+        to: budgetAt('start_margin'),
+        name: 'Enterprise, with margin: the template’s client prices (start_margin)',
+      },
     ],
   },
   {
@@ -41,6 +53,8 @@ export const TEMPLATES_PAGES: readonly DemoGroup[] = [
       { to: budgetAt('calibration'), name: 'From 2 events, not a pattern yet (calibration)' },
       { to: budgetAt('calibration_three'), name: 'From 3 events (calibration_three)' },
       { to: budgetAt('calibration_empty'), name: 'Nothing to learn from yet (calibration_empty)' },
+      { to: budgetAt('calibration_loading'), name: 'Loading (calibration_loading)' },
+      { to: budgetAt('calibration_failed'), name: 'Did not load, Try again (calibration_failed)' },
     ],
   },
 ];
@@ -117,7 +131,7 @@ export function sourceLine(source: Source): string {
 }
 
 export function sourceOf(state: string): SourceId {
-  if (state === 'start_template') return 'london';
+  if (state === 'start_template' || state === 'start_margin') return 'london';
   if (state === 'start_actual') return 'chidi';
   if (state === 'start_not_over') return 'summer';
 
@@ -147,7 +161,10 @@ function cameTo(basis: Basis, minor: number): string {
   return unit === '' ? whole(minor) : `${whole(minor)} ${unit}`;
 }
 
-export function previewOf(id: SourceId): Preview {
+/** The template's markups, for an Enterprise caller with budget.margin only (sc-92 in sc-96): 20% on the event, Venue at cost, Photography 15%. */
+const TEMPLATE_MARKUP: Record<string, number> = { dinner: 20, room: 0, photo: 15 };
+
+export function previewOf(id: SourceId, margin = false): Preview {
   const source = SOURCES.find((one) => one.id === id) ?? SOURCES[1];
 
   switch (id) {
@@ -160,11 +177,19 @@ export function previewOf(id: SourceId): Preview {
             ['room', 'perDay', 190000],
             ['photo', 'fixed', 220000],
           ] as const
-        ).map(([line, basis, minor]) => ({
-          name: named(line),
-          line: W.basis[basis],
-          value: rate(basis, minor),
-        })),
+        ).map(([line, basis, minor]) => {
+          const markup = TEMPLATE_MARKUP[line] ?? 0;
+          const priced =
+            markup === 0
+              ? W.atCost
+              : W.chargedAt(rate(basis, Math.round((minor * (100 + markup)) / 100)), markup);
+
+          return {
+            name: named(line),
+            line: margin ? `${W.basis[basis]} · ${priced}` : W.basis[basis],
+            value: rate(basis, minor),
+          };
+        }),
       };
     case 'chidi':
       return {
@@ -200,11 +225,13 @@ export function previewOf(id: SourceId): Preview {
   }
 }
 
-export type CalibrationKind = 'few' | 'three' | 'empty';
+export type CalibrationKind = 'few' | 'three' | 'empty' | 'loading' | 'failed';
 
 export function calibrationOf(state: string): CalibrationKind {
   if (state === 'calibration_three') return 'three';
   if (state === 'calibration_empty') return 'empty';
+  if (state === 'calibration_loading') return 'loading';
+  if (state === 'calibration_failed') return 'failed';
 
   return 'few';
 }
@@ -229,7 +256,7 @@ export interface CurrencyBlock {
 
 /** Concluded events' paid quotes over a single cost, one set per currency (sc-96). */
 export function calibrationBlocks(kind: CalibrationKind): CurrencyBlock[] {
-  if (kind === 'empty') return [];
+  if (kind === 'empty' || kind === 'loading' || kind === 'failed') return [];
   const events = kind === 'three' ? 3 : 2;
 
   return [

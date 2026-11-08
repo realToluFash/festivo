@@ -34,8 +34,14 @@ import { SHARE_WORDS as W } from './shareWords.ts';
 import { CATEGORY_WORDS } from './vendorsWords.ts';
 import './share.css';
 
-const FIELDS: readonly DraftField[] = ['category', 'endsOn', 'passphrase'];
-const REFUSED = new Set(['no_category', 'past_date', 'short_passphrase', 'long_passphrase']);
+const FIELDS: readonly DraftField[] = ['category', 'payer', 'endsOn', 'passphrase'];
+const REFUSED = new Set([
+  'no_category',
+  'no_payer',
+  'past_date',
+  'short_passphrase',
+  'long_passphrase',
+]);
 
 /** On Budget, Share (sc-94): the event's links as rows at the left, Create a link in place at the right. */
 export function SharePage({ event, state }: { event: SampleEvent; state: string }) {
@@ -349,12 +355,16 @@ function CreateForm({
         </Field>
       )}
       {draft.scope === 'payer' && (
-        <Field id={at('payer')} label={W.payer}>
+        <Field id={at('payer')} label={W.payer} error={problems.payer}>
           <select
             id={at('payer')}
             value={draft.payer}
+            data-focus="payer"
+            aria-invalid={problems.payer != null}
+            aria-describedby={described(at('payer'), false, problems.payer)}
             onChange={(event) => onChange({ payer: event.target.value })}
           >
+            {draft.payer === '' && <option value="">{W.choosePayer}</option>}
             {PAYERS.map((payer) => (
               <option key={payer.id} value={payer.id}>
                 {payer.name}

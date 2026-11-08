@@ -51,6 +51,13 @@ import {
   Unreachable,
   Waiting,
 } from './GuestParts.tsx';
+import {
+  GuestKitchenCheck,
+  GuestKitchenSaved,
+  GuestKitchenStep,
+  GUEST_KITCHEN_SAVED_ID,
+} from './GuestKitchen.tsx';
+import { type GuestKitchenActions, useGuestKitchen } from './useGuestKitchen.ts';
 import { useLater } from '../useLater.ts';
 import { legalPath } from './legal.ts';
 import './today.css';
@@ -109,6 +116,8 @@ function Visitor({ state }: { state: string | null }) {
     document.querySelector<HTMLElement>(`.gp [data-focus="${visit.want}"]`)?.focus();
   }, [visit.want, visit.wantId]);
 
+  const kitchen = useGuestKitchen(visit, state, go);
+
   const record = useCallback(
     (answer: Answer) =>
       go(
@@ -164,11 +173,7 @@ function Visitor({ state }: { state: string | null }) {
 
     if (view.kind !== 'answer' && view.kind !== 'changing') return;
     if (chosen === 'coming') {
-      const from = view.kind === 'changing' ? 'changing' : 'answer';
-      go(
-        () => ({ view: { kind: 'check', busy: false, failed: false, refused: false, from } }),
-        'checkHead',
-      );
+      kitchen.open(view.kind === 'changing' ? 'changing' : 'answer');
       return;
     }
 
@@ -234,6 +239,7 @@ function Visitor({ state }: { state: string | null }) {
     <Under
       visit={visit}
       words={words}
+      kitchen={kitchen}
       onAnswer={answer}
       onSend={send}
       onBack={back}
@@ -392,6 +398,7 @@ function Body({
 function Under({
   visit,
   words,
+  kitchen,
   onAnswer,
   onSend,
   onBack,
@@ -404,6 +411,7 @@ function Under({
 }: {
   visit: Visit;
   words: Words;
+  kitchen: GuestKitchenActions;
   onAnswer: (answer: Answer) => void;
   onSend: () => void;
   onBack: () => void;
@@ -424,6 +432,7 @@ function Under({
         view={view}
         visit={visit}
         words={words}
+        kitchen={kitchen}
         onAnswer={onAnswer}
         onSend={onSend}
         onBack={onBack}
@@ -449,6 +458,7 @@ function Shown({
   view,
   visit,
   words,
+  kitchen,
   onAnswer,
   onSend,
   onBack,
@@ -460,6 +470,7 @@ function Shown({
   view: View;
   visit: Visit;
   words: Words;
+  kitchen: GuestKitchenActions;
   onAnswer: (answer: Answer) => void;
   onSend: () => void;
   onBack: () => void;
@@ -485,7 +496,12 @@ function Shown({
           <AnswerRows words={words} busy={view.busy} onAnswer={onAnswer} />
         </section>
       );
+    case 'kitchen':
+      return <GuestKitchenStep visit={visit} words={words} actions={kitchen} />;
     case 'check':
+      if (visit.kitchen != null)
+        return <GuestKitchenCheck visit={visit} words={words} actions={kitchen} />;
+
       return (
         <section className="gp-check" aria-labelledby="gp-check-h">
           {view.refused ? (
@@ -561,7 +577,7 @@ function Shown({
         </section>
       );
     case 'closed':
-      return <Closed visit={visit} words={words} />;
+      return <Closed visit={visit} words={words} onKitchen={() => kitchen.open('closed')} />;
     case 'tellUs':
       return view.result === 'thanks' ? (
         <div className="gp-told" role="status" aria-live="polite">
@@ -596,7 +612,15 @@ function Shown({
 }
 
 /** Answers closed: by the date to answer by, at the start, by a pause, or with the event over. */
-function Closed({ visit, words }: { visit: Visit; words: Words }) {
+function Closed({
+  visit,
+  words,
+  onKitchen,
+}: {
+  visit: Visit;
+  words: Words;
+  onKitchen: () => void;
+}) {
   const { recorded, phase, lang } = visit;
   const said =
     recorded == null
@@ -634,6 +658,7 @@ function Closed({ visit, words }: { visit: Visit; words: Words }) {
   }
 
   const by = dayOf(visit.replyBy ?? '', lang);
+  const saved = visit.kitchen?.saved === true;
   const line = visit.started
     ? words.closed
     : recorded?.answer === 'notSure'
@@ -645,12 +670,17 @@ function Closed({ visit, words }: { visit: Visit; words: Words }) {
       <h2 id="gp-closed-h" className="gp-h2 is-19">
         {said}
       </h2>
+      {saved && <GuestKitchenSaved lang={lang} />}
       <p className="gp-sub">{line}</p>
       {!visit.started && recorded?.answer === 'coming' && (
-        <Link className="gp-text" to="/demo/later?screen=kitchen">
-          <Line name="pencil" size={18} weight={2.2} />
-          <span>{words.kitchen}</span>
-        </Link>
+        <TextAction
+          focus="kitchen"
+          {...(saved ? { describedBy: GUEST_KITCHEN_SAVED_ID } : {})}
+          icon={<Line name="pencil" size={18} weight={2.2} />}
+          onClick={onKitchen}
+        >
+          {words.kitchen}
+        </TextAction>
       )}
     </section>
   );
