@@ -75,6 +75,11 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   « Reconnectez-vous pour continuer. ». « La connexion », la tentative en cours, et non
   « Votre session », que la personne n'a jamais ouverte. L'app joint les deux sur une ligne
   avec un point : le titre n'en prend pas.
+- **8 nov. 2026. Une inscription qui a expiré** (sc-32449 pour sc-29923, `register.timedOut`,
+  web et app). « Votre inscription a expiré, nous n’avons donc pas conservé le mot de passe.
+  Ressaisissez-le pour recevoir un nouveau code. ». "Sign-up" est « inscription », comme
+  `limitedTitle` ; « expirer », comme la connexion ; « Ressaisissez-le » plutôt que « Saisissez-le
+  de nouveau », qui heurte « nouveau code », lui-même repris de `resend`.
 - **8 nov. 2026. Invités A : la réponse, les deux décomptes et le 412** (sc-3773, #32403).
   "Not sure yet" est « À confirmer », sur la page de l’invité comme sur celle de l’hôte : rien
   ne s’accorde, quand « pas encore sûr » ou « indécis » imposeraient un genre. « À confirmer ·

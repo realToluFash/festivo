@@ -48,6 +48,10 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   `endedBody` "Inicie sessão novamente para continuar.". "Expirou", como um prazo que passa;
   "caducar" fica para os pedidos. Não "a sua sessão": a pessoa ainda não tinha entrado. A app
   junta os dois numa linha com ponto final, por isso o título não o leva.
+- **8 Nov 2026. Um registo que expirou** (sc-32449 para sc-29923, `register.timedOut`, web e
+  app). "O seu registo expirou, por isso não guardámos a palavra-passe. Introduza-a novamente
+  para receber um novo código.". "Sign-up" é "registo", como `limitedTitle`, nunca "registro";
+  "expirou", como o início de sessão; "um novo código", como `resend`.
 - **8 Nov 2026. Convidados A: a resposta, as duas contagens e o 412** (sc-3773, #32403).
   "Not sure yet" é "Por confirmar", na página do convidado e na do anfitrião: não concorda
   com género, como "indeciso" ou "não tem a certeza" obrigariam. "Por confirmar · resposta
