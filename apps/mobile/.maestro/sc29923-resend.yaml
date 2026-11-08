@@ -1,0 +1,14 @@
+# On Check your email, waits for Send a new code and presses it. sc-29923.
+#   node .qa/bin/qa-env.mjs maestro sc29923-resend SHOT=…
+appId: host.exp.Exponent
+---
+- extendedWaitUntil:
+    visible: 'Send a new code'
+    timeout: 120000
+- tapOn: 'Send a new code'
+- extendedWaitUntil:
+    visible:
+      id: 'register.password'
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: ${SHOT}
