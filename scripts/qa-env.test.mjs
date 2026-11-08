@@ -66,6 +66,7 @@ import {
   runBudgetMs,
   startHelper,
   membershipChanges,
+  keptOwner,
   domainPause,
   STEP_MS,
   totp,
@@ -3181,6 +3182,7 @@ describe('a membership change a check asks for', () => {
     const statements = [];
     let made = 0;
     let owners = 0;
+    const asked = [];
     let refusing = false;
     const invited = [];
     const ownerNumbered =
@@ -3220,7 +3222,8 @@ describe('a membership change a check asks for', () => {
     const change = membershipChanges({
       email: 'qa@soirely.test',
       member: async (path) => calls.push(`member ${path}`),
-      ownerOf: async () => {
+      ownerOf: async ({ fresh }) => {
+        asked.push(fresh);
         owners += 1;
         return ownerNumbered(owners);
       },
@@ -3229,7 +3232,7 @@ describe('a membership change a check asks for', () => {
     const refuseNextCreate = () => {
       refusing = true;
     };
-    return { change, calls, statements, invited, owners: () => owners, refuseNextCreate };
+    return { change, calls, statements, invited, owners: () => owners, refuseNextCreate, asked };
   };
 
   it('makes the organisation and the batch account an administrator in it', async () => {
@@ -3290,11 +3293,12 @@ describe('a membership change a check asks for', () => {
   });
 
   it('hands over to a new owner once one may make no more organisations', async () => {
-    const { change, calls, owners, refuseNextCreate } = changesFor();
+    const { change, calls, owners, refuseNextCreate, asked } = changesFor();
     await change('join', 'Alpha Hall');
     refuseNextCreate();
     await change('join', 'Bravo');
     expect(owners()).toBe(2);
+    expect(asked).toEqual([false, true]);
     calls.length = 0;
     await change('suspend', 'Alpha Hall');
     await change('suspend', 'Bravo');
@@ -3329,6 +3333,59 @@ describe('a membership change a check asks for', () => {
       'not a membership id',
     );
     expect(() => domainPause(MEMBERSHIP, "qa@x'; --")).toThrow('no domain');
+  });
+});
+
+describe('the owner a batch makes organisations as', () => {
+  const ownerWith = ({ kept, signIn = async () => {} }) => {
+    const registered = [];
+    const keptNow = [];
+    const asOwner = (fresh) =>
+      keptOwner({
+        fresh,
+        kept,
+        signIn,
+        register: async () => {
+          registered.push(true);
+          return { email: `owner-${registered.length}@soirely.test`, password: 'p' };
+        },
+        keep: (owner) => keptNow.push(owner.email),
+      });
+    return { asOwner, registered, keptNow };
+  };
+  const kept = { email: 'kept@soirely.test', password: 'p' };
+
+  it('is the one an earlier batch registered, while it still signs in', async () => {
+    const { asOwner, registered } = ownerWith({ kept });
+    expect(await asOwner(false)).toBe(kept);
+    expect(registered).toEqual([]);
+  });
+
+  it('is registered and kept when none was, or the kept one no longer signs in', async () => {
+    const first = ownerWith({ kept: null });
+    expect((await first.asOwner(false)).email).toBe('owner-1@soirely.test');
+    expect(first.keptNow).toEqual(['owner-1@soirely.test']);
+    const refused = Object.assign(new Error('refused'), { status: 401 });
+    const gone = ownerWith({
+      kept,
+      signIn: async () => {
+        throw refused;
+      },
+    });
+    expect((await gone.asOwner(false)).email).toBe('owner-1@soirely.test');
+  });
+
+  it('is a new one when the batch asks for fresh, and an unreachable API is no reason to register', async () => {
+    const fresh = ownerWith({ kept });
+    expect((await fresh.asOwner(true)).email).toBe('owner-1@soirely.test');
+    const down = ownerWith({
+      kept,
+      signIn: async () => {
+        throw new Error('fetch failed');
+      },
+    });
+    await expect(down.asOwner(false)).rejects.toThrow('fetch failed');
+    expect(down.registered).toEqual([]);
   });
 });
 

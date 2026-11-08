@@ -4,7 +4,7 @@
 appId: host.exp.Exponent
 ---
 - runFlow:
-    file: sc28178/joined.yaml
+    file: ../checks/sc28178/joined.yaml
     env:
       ORG: Alpha
 # A notice from the change before can still show: gone first, or it passes the wait below.
@@ -12,10 +12,10 @@ appId: host.exp.Exponent
     notVisible: '{{t:switcher.switched}}'
     timeout: 20000
 - runFlow:
-    file: sc28178/changed.yaml
+    file: ../checks/sc28178/changed.yaml
     env:
       ORG: Alpha
-      FROM: frame.events
+      FROM: tab-events
       CHANGE: pause
       MOVE: frame.settings
 - extendedWaitUntil:
