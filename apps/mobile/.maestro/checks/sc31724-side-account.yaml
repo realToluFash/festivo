@@ -1,12 +1,12 @@
 # sc-31724: the design demo's Settings on a tablet on its side, account: the open row lit by Tint alone, no ring.
 appId: host.exp.Exponent
 ---
-# A landscape-native Android tablet draws Maestro PORTRAIT (rotation 0) on its side (sc-23471).
-- setOrientation: PORTRAIT
+# At ${ORIENT}: LANDSCAPE_LEFT, or PORTRAIT on a landscape-native tablet such as Soirely_QA2_Tablet (sc-23471).
+- setOrientation: ${ORIENT}
 - openLink: ${METRO_URL}/--/demo/settings/account
 - extendedWaitUntil:
     visible:
-      id: 'settings.organisation'
+      id: 'account.card'
     timeout: 30000
 - waitForAnimationToEnd:
     timeout: 8000
