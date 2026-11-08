@@ -30,7 +30,7 @@ import {
 } from '../../kit/eventsList.ts';
 import { CLOCKS, READER_ZONE, type SampleEvent, TYPE_WORDS } from './EventsSample.ts';
 import { W, say } from './EventsWords.ts';
-import { FINAL_NUMBERS_STATES, FINAL_WORDS, finalNumbersDue } from './FinalNumbers.ts';
+import { FINAL_NUMBERS_STATES, FINAL_WORDS, finalNumbersDue, othersOwed } from './FinalNumbers.ts';
 
 export type {
   CardStep,
@@ -53,7 +53,7 @@ export function shownEvent(event: SampleEvent, now: Date): Shown {
         ...event,
         place: event.venue?.place ?? null,
         photo: event.photo ? 'standIn' : null,
-        milestones: [...milestonesOf(event), ...finalNumbersOf(event, now)],
+        milestones: datesOf(event, now),
       },
       eventPhase(event, now),
     ),
@@ -151,6 +151,17 @@ export function finalNumbersOf(event: SampleEvent, now: Date): Milestone[] {
       area: 'menu',
       action: null,
     },
+  ];
+}
+
+/** The event's dates as the server returns them, which Next up, the card's step and the Overview's Needs you all read (sc-32801). */
+export function datesOf(event: SampleEvent, now: Date): Milestone[] {
+  const before = event.status !== 'ended' && now.getTime() < Date.parse(event.startsAt);
+
+  return [
+    ...milestonesOf(event),
+    ...finalNumbersOf(event, now),
+    ...(before ? othersOwed(event.id) : []),
   ];
 }
 
@@ -462,6 +473,7 @@ export const EVENT_STATES = [
   'datesChanged',
   'datesError',
   'datesReplyBy',
+  'datesReplyByAsk',
   'datesReplyBySaved',
   'discard',
   'changedElsewhere',
@@ -502,6 +514,13 @@ export const EVENT_STATES = [
   'muteNotLoaded',
   'muteNotSaved',
   'more',
+  'needsYou',
+  'needsYouOne',
+  'needsYouOverdue',
+  'needsYouGiven',
+  'needsYouReadOnly',
+  'needsYouLoading',
+  'needsYouFailed',
   ...FINAL_NUMBERS_STATES,
 ] as const;
 export type EventDemoState = (typeof EVENT_STATES)[number];
@@ -527,6 +546,7 @@ export function editOf(state: EventDemoState | null): EditPart | null {
     case 'datesChanged':
     case 'datesError':
     case 'datesReplyBy':
+    case 'datesReplyByAsk':
     case 'discard':
     case 'changedElsewhere':
     case 'showLatest':

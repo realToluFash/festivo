@@ -33,11 +33,9 @@ import {
   PARKING,
   PARKING_REACH,
   TELL,
-  TOKENS,
   TO_ORDER,
   TO_WORD,
   type ToGroup,
-  type Token,
   formatCount,
   BALANCE,
   EVENT_ENDS,
@@ -161,47 +159,6 @@ export function ToPicker({
       testID="messages.toPopover"
     >
       {body}
-    </AnchoredMenu>
-  );
-}
-
-/** Insert: the tokens Soirely fills in for each guest on their page (sc-3960). */
-export function InsertMenu({
-  at,
-  opener,
-  onInsert,
-  onClose,
-}: {
-  at: Anchor | null;
-  opener: Opener;
-  onInsert: (token: Token) => void;
-  onClose: () => void;
-}) {
-  return (
-    <AnchoredMenu
-      at={at}
-      onClose={onClose}
-      opener={opener}
-      width={220}
-      align="start"
-      testID="messages.insertMenu"
-    >
-      {TOKENS.map((token) => (
-        <Pressable
-          key={token}
-          onPress={() => onInsert(token)}
-          style={({ pressed }) => [styles.menuRow, pressed && styles.pressed]}
-          accessibilityRole="menuitem"
-          accessibilityLabel={token}
-          testID={`messages.insert.${token}`}
-        >
-          <View style={styles.token}>
-            <Text size={14} weight="semibold" accessible={false} style={styles.accent}>
-              {token}
-            </Text>
-          </View>
-        </Pressable>
-      ))}
     </AnchoredMenu>
   );
 }
@@ -428,10 +385,13 @@ export function TellGuests({
   onSend,
   onNotNow,
   onSeeWho,
+  before = null,
 }: {
   open: boolean;
   lines: readonly string[];
   address?: boolean;
+  /** A change the save made beside the guests' message (sc-3780: Reply by moved with the start). */
+  before?: string | null;
   phone: boolean;
   opener: Opener;
   onSend: () => void;
@@ -465,6 +425,11 @@ export function TellGuests({
         </View>
         <TextAction label={W.seeWho} onPress={onSeeWho} testID="messages.tell.seeWho" />
       </View>
+      {before != null && (
+        <Text size={15} weight="medium" style={[styles.secondary, styles.line15]}>
+          {before}
+        </Text>
+      )}
       <View style={styles.block}>
         <Text size={14} weight="semibold">
           {W.message}
@@ -586,19 +551,6 @@ const styles = StyleSheet.create({
     paddingTop: tokens.spaceMd,
     paddingHorizontal: tokens.spaceXl,
     paddingBottom: tokens.spaceSm,
-  },
-  menuRow: {
-    minHeight: tokens.sizeHit,
-    justifyContent: 'center',
-    paddingHorizontal: tokens.spaceXl,
-  },
-  token: {
-    alignSelf: 'flex-start',
-    minHeight: 24,
-    justifyContent: 'center',
-    paddingHorizontal: tokens.spaceSm,
-    borderRadius: 7,
-    backgroundColor: tokens.colorAccentTint,
   },
   bellItem: {
     flexDirection: 'row',

@@ -40,10 +40,19 @@ import {
   TypePart,
   VenuePart,
 } from './EventEdits.tsx';
+import { EventNeedsYou } from './EventNeedsYou.tsx';
+import { type NeedsState, readerOf } from './needsYou.ts';
 import { Alert, EventCard, EventsShell, NotBuilt, Switch, Thumb } from './EventParts.tsx';
 import { EventSidebar } from './EventSidebar.tsx';
 import { AllDates } from './EventDates.tsx';
-import { KITCHEN_EVENT, KW, cardMilestone, kitchenAt, seedFromEvent } from './kitchen.ts';
+import {
+  KITCHEN_EVENT,
+  KW,
+  cardMilestone,
+  kitchenAt,
+  seedFromEvent,
+  timelineOf,
+} from './kitchen.ts';
 import { Glyph, type GlyphName } from '../components/Glyph.tsx';
 import { LayersContext } from '../layers.ts';
 import { BUDGET_EVENT } from './budget.ts';
@@ -92,6 +101,10 @@ const PARTS: Record<Part, ComponentType<PartProps>> = {
   name: NamePart,
   cover: CoverPart,
 };
+
+function needsStateOf(state: EventStateName | null): NeedsState | null {
+  return state != null && state.startsWith('needsYou') ? (state as NeedsState) : null;
+}
 
 function askingOf(state: EventStateName | null): Asking | null {
   switch (state) {
@@ -328,6 +341,15 @@ function EventView({
                         else tell(W.saved);
                       }}
                       onLatest={kept}
+                      needs={
+                        <EventNeedsYou
+                          timeline={timelineOf(event, now)}
+                          permissions={readerOf(needsStateOf(state))}
+                          state={needsStateOf(state)}
+                          now={now}
+                          timeZone={event.timeZone}
+                        />
+                      }
                     />
                   </div>
                   <div className="ev-right">
@@ -628,6 +650,7 @@ function Details({
   onClose,
   onSave,
   onLatest,
+  needs,
 }: {
   event: SampleEvent;
   now: Date;
@@ -638,6 +661,7 @@ function Details({
   onClose: () => void;
   onSave: (next: SampleEvent) => void;
   onLatest: (latest: SampleEvent) => void;
+  needs: ReactNode;
 }) {
   const locked = eventPhase(event, now) === 'finished';
   const days = dayCount(event);
@@ -718,6 +742,7 @@ function Details({
           )}
         </ul>
       </section>
+      {needs}
       <section className="desk-block" aria-labelledby="ev-name-cover">
         <Head title={<span id="ev-name-cover">{W.nameAndCover}</span>} />
         <ul className="desk-rows ev-details">

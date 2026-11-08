@@ -452,7 +452,7 @@ describe('two changes to one rule saved in the same second (sc-13954)', () => {
     });
     open();
 
-    const list = await screen.findByRole('list');
+    const list = await within(screen.getByRole('main')).findByRole('list');
     const rows = within(list).getAllByRole('listitem');
 
     expect(rows.map((row) => row.textContent)).toEqual([

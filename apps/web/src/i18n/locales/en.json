@@ -17,11 +17,12 @@
   },
   "nav": {
     "dashboard": "Dashboard",
+    "today": "Today",
     "events": "Events",
     "calendar": "Calendar",
-    "guests": "Guests",
     "settings": "Settings",
     "account": "Your account",
+    "person": "{{name}}, {{role}}",
     "menu": "Menu",
     "closeMenu": "Close menu",
     "organisation": "Organisation",

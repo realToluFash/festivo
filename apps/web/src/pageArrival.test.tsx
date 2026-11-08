@@ -362,7 +362,7 @@ describe('the pages Soirely has, signed in', () => {
   it('takes focus within Your account to the section opened, and back again', async () => {
     const router = at('/app');
 
-    fireEvent.click(screen.getByRole('link', { name: 'Your account' }));
+    fireEvent.click(screen.getByRole('link', { name: /^Folake Adeyemi/ }));
     const heading = await screen.findByRole('heading', { level: 1, name: 'Your account' });
     await waitFor(() => expect(document.activeElement).toBe(heading));
 

@@ -9,6 +9,7 @@ import { leaveMenu } from '../leaving.ts';
 import { offButton } from '../offButton.ts';
 import { focusStep, useFocusOnceShown } from '../stepFocus.ts';
 import { InvitationRows } from './InvitationRows.tsx';
+import { OrgPill } from './OrgPill.tsx';
 
 export function OrganisationSwitcher({
   current,
@@ -108,34 +109,22 @@ export function OrganisationSwitcher({
 
   return (
     <div className="org-switcher" ref={container}>
-      <button
+      <OrgPill
         ref={button}
-        type="button"
-        className="org-switcher-button"
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        aria-label={
+        id={current.id}
+        name={current.name}
+        label={
           count > 0
             ? t('switcher.labelSwitchWaiting', { name: current.name, role, count })
             : t('switcher.labelSwitch', { name: current.name, role })
         }
+        waiting={count > 0 ? t('invitations.count', { count }) : null}
+        open={open}
         onClick={() => {
           returnTo.current = null;
           setOpen((shown) => !shown);
         }}
-      >
-        <Tile name={current.name} />
-        <Naming name={current.name} role={role} waiting={count} />
-        <svg
-          className="org-switcher-chevron"
-          aria-hidden="true"
-          width="14"
-          height="14"
-          viewBox="0 0 24 24"
-        >
-          <path d="m6 9 6 6 6-6" />
-        </svg>
-      </button>
+      />
 
       {open && (
         <div className="org-switcher-menu" ref={menu}>
@@ -334,7 +323,7 @@ function Tile({ name }: { name: string }) {
   );
 }
 
-function Naming({ name, role, waiting = 0 }: { name: string; role: string; waiting?: number }) {
+function Naming({ name, role }: { name: string; role: string }) {
   const { t } = useTranslation();
 
   return (
@@ -343,12 +332,6 @@ function Naming({ name, role, waiting = 0 }: { name: string; role: string; waiti
         {name}
       </span>
       <span className="org-role">{t('switcher.yourRole', { role })}</span>
-      {waiting > 0 && (
-        <span className="org-switcher-waiting">
-          <span className="org-switcher-ring" aria-hidden="true" />
-          <span>{t('invitations.count', { count: waiting })}</span>
-        </span>
-      )}
     </span>
   );
 }

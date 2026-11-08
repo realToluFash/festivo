@@ -77,7 +77,7 @@ const CHIDI_ACCOUNT: Account = {
   phoneNumbers: [],
 };
 
-const PRODUCT_LINKS = ['Dashboard', 'Events', 'Guests', 'Settings'];
+const PRODUCT_LINKS = ['Today', 'Events', 'Calendar', 'Settings'];
 
 afterEach(async () => {
   vi.restoreAllMocks();
@@ -480,7 +480,7 @@ describe('where focus goes on No organisation (sc-11369)', () => {
   });
 
   function nowWorkingIn(name: string): HTMLElement | null {
-    return screen.getByText(`Now working in ${name}.`).closest('.notice');
+    return screen.getByText(`Now working in ${name}.`).closest('.sw-notice');
   }
 
   it('takes Start organisation to "Now working in", read once, above Dashboard', async () => {

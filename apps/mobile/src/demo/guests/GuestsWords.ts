@@ -187,6 +187,11 @@ export const W = {
   guestsInvited: 'Guests invited',
   repliesIn: 'Replies in',
   pickAGuest: 'Pick a guest to see their details, or add one.',
+  // Greet as (sc-3960's 'English copy (l10n)')
+  greetAs: 'Greet as',
+  greetAsHint:
+    'How messages greet them, such as Auntie Bisi or Dr. Okafor. Leave it blank to use their full name.',
+  greetedByName: 'Messages greet them by their full name.',
 } as const;
 
 export type ReplyKind = 'coming' | 'maybe' | 'notcoming' | 'held' | 'noreply' | 'notyet';
@@ -312,4 +317,7 @@ export const say = {
   havenShort: (count: number) => (count === 1 ? '1 hasn’t replied' : `${count} haven’t replied`),
   eventGuests: (coming: number, havent: number) => `${coming} coming · ${say.havenShort(havent)}`,
   ownDesign: (what: string) => `${what} has its own design.`,
+  greetsAs: (greetAs: string) => `Messages greet them as “${greetAs}”.`,
+  ofMax: (count: number, max: number) => `${count} of ${max}`,
+  greetAsLong: (count: number) => `Shorten Greet as to ${count} characters or fewer.`,
 } as const;

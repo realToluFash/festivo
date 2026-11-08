@@ -191,10 +191,12 @@ export function EventCard({
               </ul>
               <p className="ev-card-next">{milestone.title}</p>
               <p className="desk-on-card">{milestone.line}</p>
-              <Link className="desk-step" to={milestone.link}>
-                {milestone.label}
-                <Glyph name="arrow" size={16} weight={2.4} />
-              </Link>
+              {milestone.link != null && (
+                <Link className="desk-step" to={milestone.link}>
+                  {milestone.label}
+                  <Glyph name="arrow" size={16} weight={2.4} />
+                </Link>
+              )}
             </>
           ) : card.step.kind === 'next' ? (
             <>

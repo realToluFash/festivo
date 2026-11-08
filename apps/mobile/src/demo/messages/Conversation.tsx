@@ -1,6 +1,7 @@
 import type { ReactNode, RefObject } from 'react';
 import { StyleSheet, type TextInputInstance, View, type ViewInstance } from 'react-native';
 
+import { moveScreenReaderFocus } from '../../components/screenReaderFocus.ts';
 import { Text, type TextHandle } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { Avatar } from '../../components/SettingsParts.tsx';
@@ -45,6 +46,9 @@ import {
 } from './MessagesSample.ts';
 import { CHANNEL_IN_LINE, CHANNEL_WORD, type ChannelKey, W, say } from './MessagesWords.ts';
 import { Preview } from './Preview.tsx';
+import { previewOf } from './PreviewModel.ts';
+import { RefusedSave } from './RefusedSave.tsx';
+import { SW } from './ScheduledSave.ts';
 import {
   type Bit,
   CountdownLine,
@@ -63,6 +67,8 @@ import {
 /** What a conversation needs from the screen around it: the model, the refs that take focus, and the overlays it opens. */
 export interface Talk {
   m: Messages;
+  /** Why this event can't send (sc-3942's 409), read out on every way to send. */
+  closed: string | null;
   dispatch: (action: Action) => void;
   wide: boolean;
   columns: boolean;
@@ -214,6 +220,7 @@ function unknownParts(talk: Talk): Parts {
           name={matched}
           channel="email"
           value={talk.typed}
+          reason={talk.closed}
           fieldRef={talk.answerRef}
           onChange={talk.onTyped}
           onSend={() => talk.onAnswer('unknown')}
@@ -358,6 +365,7 @@ function guestParts(talk: Talk, key: GuestKey): Parts {
         cost={noticeCostOf(m, key)}
         others={tellNowBy(m, key)}
         value={talk.typed}
+        reason={talk.closed}
         fieldRef={talk.answerRef}
         autoFocus={key === 'kwame' && talk.typed !== ''}
         onChange={talk.onTyped}
@@ -499,7 +507,15 @@ function ownParts(talk: Talk, followUp: string): Own {
   if (draft.step === 'preview')
     return {
       bare: true,
-      stream: <Preview draft={draft} columns={talk.columns} />,
+      stream: (
+        <Preview
+          draft={draft}
+          columns={talk.columns}
+          phone={!talk.wide}
+          as={previewOf(m)}
+          dispatch={dispatch}
+        />
+      ),
       align: 'start',
       foot: (
         <PreviewBar
@@ -559,20 +575,36 @@ function ownParts(talk: Talk, followUp: string): Own {
   };
 }
 
+/** How a scheduled message stands: Scheduled, or how it ended. */
+function scheduledWord(draft: Draft, locale: string): string {
+  if (draft.step === 'cancelled') return W.cancelledTag;
+  if (draft.outcome === 'sent') return say.onPageTold(toldBy(draft.channels, locale));
+
+  return draft.outcome === 'tooLate' ? W.tooLate : W.scheduled;
+}
+
+function endBits(draft: Draft): Bit[] {
+  if (draft.outcome === 'sent')
+    return [{ word: W.onTheirPage, where: 'page' }, { word: say.byAt(READER, draft.time) }];
+
+  return draft.outcome === 'tooLate' ? [{ word: W.tooLate, mark: 'notsent' }] : [];
+}
+
 /** A scheduled message (sc-3963): dashed until it goes, with Edit, Send now and Cancel…, each drawn on Messaging-B-Phone-3. */
 function scheduledParts(talk: Talk, draft: Draft): Parts {
   const { dispatch } = talk;
   const at = draft.at ?? SCHEDULE_AT;
   const day = dayWords(at.date, talk.locale);
   const cancelled = draft.step === 'cancelled';
+  const refused = talk.m.refusedSave;
   const shown = draft.was ?? { subject: draft.subject, body: draft.body };
   const bubble = (
     <HostBubble
       subject={shown.subject}
       text={shown.body}
-      bits={[]}
-      dashed={!cancelled}
-      greyed={cancelled}
+      bits={endBits(draft)}
+      dashed={!cancelled && draft.outcome == null}
+      greyed={cancelled || draft.outcome === 'tooLate'}
       faded={draft.was != null}
     />
   );
@@ -580,13 +612,30 @@ function scheduledParts(talk: Talk, draft: Draft): Parts {
   let foot: ReactNode;
 
   if (cancelled)
-    rest = <SystemLine text={say.cancelledBy(READER, draft.cancelledAt ?? '')} glyph="x" />;
-  else if (draft.was != null) {
     rest = (
-      <Text size={13.5} weight="medium" style={styles.goes}>
-        {say.editing(day, at.time)}
-      </Text>
+      <SystemLine
+        text={say.cancelledBy(draft.cancelledBy ?? READER, draft.cancelledAt ?? '')}
+        glyph="x"
+      />
     );
+  else if (draft.outcome === 'tooLate') rest = <SystemLine text={SW.tooLateWhy} glyph="clock" />;
+  else if (draft.outcome === 'sent') rest = null;
+  else if (draft.was != null) {
+    rest =
+      refused == null ? (
+        <Text size={13.5} weight="medium" style={styles.goes}>
+          {say.editing(day, at.time)}
+        </Text>
+      ) : (
+        <RefusedSave
+          refusal={refused}
+          alertRef={talk.refFor('refused')}
+          onReload={() => {
+            dispatch({ type: 'reload' });
+            setTimeout(() => moveScreenReaderFocus(talk.headRef.current), 350);
+          }}
+        />
+      );
     foot = (
       <NewComposer
         draft={draft}
@@ -658,7 +707,7 @@ function scheduledParts(talk: Talk, draft: Draft): Parts {
   return {
     title: messageName(draft),
     titleLines: 1,
-    line: `${say.toGroup(toChip(draft.to))} · ${cancelled ? W.cancelledTag : W.scheduled}`,
+    line: `${say.toGroup(toChip(draft.to))} · ${scheduledWord(draft, talk.locale)}`,
     lead: <GroupTile side={44} />,
     stream: (
       <>
@@ -708,6 +757,7 @@ function manyParts(talk: Talk, key: ManyKey): Parts {
       <MiniComposer
         to={toChip('all')}
         placeholder={placeholder}
+        reason={talk.closed}
         onOpen={() => talk.onFollowUp(key)}
       />
     );

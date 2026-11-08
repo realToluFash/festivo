@@ -1088,6 +1088,24 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
     },
   );
 
+  it('asks only for a conversation in the empty pane on closedEnded (sc-3942)', SLOW, async () => {
+    await messages('closedEnded');
+
+    expect(screen.getByText('Pick a conversation.')).toBeTruthy();
+    expect(screen.queryByText(/write to your guests below/)).toBeNull();
+  });
+
+  it('still marks and matches on closedEnded: they send nothing (sc-3976)', SLOW, async () => {
+    await messages('closedEnded');
+    fireEvent.click(row(/^Lucía/));
+    fireEvent.click(screen.getByRole('button', { name: 'Mark as done' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Mark as waiting' }, WAIT));
+    await screen.findByRole('button', { name: 'Mark as done' }, WAIT);
+
+    fireEvent.click(row(/m\.dubois@orange\.fr/));
+    expect(screen.getByRole('button', { name: 'Choose the guest' })).toBeTruthy();
+  });
+
   it('shows no reason on an event that can send', SLOW, async () => {
     await messages('inUse');
 

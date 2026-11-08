@@ -69,6 +69,9 @@ export const GUEST_STATES = [
   'languageNotSet',
   'languageSet',
   'languageGuestChose',
+  'greetAs',
+  'greetAsSpaces',
+  'greetAsViewer',
 ] as const;
 
 export const EDIT_STATES = [
@@ -83,6 +86,9 @@ export const EDIT_STATES = [
   'editNotSaved',
   'editOffline',
   'languageEdit',
+  'greetAsEmpty',
+  'greetAsEdit',
+  'greetAsLong',
 ] as const;
 
 export const RECORD_STATES = [
@@ -200,7 +206,13 @@ export function isIn<T extends string>(states: readonly T[], state: string | nul
 export type Role = 'owner' | 'viewer' | 'staff';
 
 export function roleOf(state: GuestsState | null): Role {
-  if (state === 'viewer' || state === 'guestViewer' || state === 'overviewViewer') return 'viewer';
+  if (
+    state === 'viewer' ||
+    state === 'guestViewer' ||
+    state === 'overviewViewer' ||
+    state === 'greetAsViewer'
+  )
+    return 'viewer';
   if (state === 'staffBefore' || state === 'staffDayBefore' || state === 'staffDoorOpen')
     return 'staff';
   return 'owner';
@@ -631,6 +643,22 @@ export function cardWords(
   }
 }
 
+export const GREET_AS_MAX = 60;
+
+/** sc-3960: Greet as is counted in code points after trimming, by the counter and the check alike. */
+export function greetAsCount(typed: string): number {
+  return [...typed.trim()].length;
+}
+
+export function greetAsProblem(typed: string): string | null {
+  return greetAsCount(typed) > GREET_AS_MAX ? say.greetAsLong(GREET_AS_MAX) : null;
+}
+
+/** Only spaces is saved as none, so messages greet them by their full name. */
+export function greetAsSaved(typed: string): string | null {
+  return typed.trim() === '' ? null : typed.trim();
+}
+
 export function nameProblem(name: string): string | null {
   if (name.trim() === '') return W.nameBlank;
   return [...name.trim()].length > 200 ? W.nameLong : null;
@@ -664,6 +692,7 @@ export function addedGuest(
     phone: string | null;
     language: GuestLanguage | null;
     companions: readonly string[];
+    greetAs?: string;
   },
 ): SampleGuest {
   return {
@@ -674,6 +703,7 @@ export function addedGuest(
     email: typed.email.trim() === '' ? null : typed.email.trim(),
     phone: typed.phone,
     language: typed.language,
+    greetAs: greetAsSaved(typed.greetAs ?? ''),
     companions: typed.companions
       .filter((c) => c.trim() !== '')
       .map((c) => ({ name: c.trim(), kind: 'notyet' })),
@@ -870,6 +900,8 @@ export function guestsAt(state: GuestsState | null): SampleGuest[] {
       return swap('bisi', (g) => markedInvited(g, 'WhatsApp', TODAY));
     case 'saved':
       return swap('kwame', (g) => ({ ...g, email: 'kwame@mensah.co.uk' }));
+    case 'greetAsSpaces':
+      return swap('bisi', (g) => ({ ...g, greetAs: greetAsSaved('   ') }));
     case 'onTheDay':
     case 'secondDay':
       return [...GUESTS, WALK_IN].sort((a, b) => a.name.localeCompare(b.name));
@@ -978,6 +1010,12 @@ export function guestOf(state: GuestsState | null): string | null {
       return 'ines';
     case 'languageSet':
       return 'sophie';
+    case 'greetAs':
+    case 'greetAsSpaces':
+    case 'greetAsViewer':
+    case 'greetAsEdit':
+    case 'greetAsLong':
+      return 'bisi';
     default:
       return state != null && (isIn(GUEST_STATES, state) || isIn(EDIT_STATES, state))
         ? 'kwame'
@@ -1031,6 +1069,7 @@ export function areaStart(state: GuestsState | null): AreaStart {
     case 'reopened':
       return { ...base, replies: 'reopened' };
     case 'saved':
+    case 'greetAsSpaces':
       return { ...base, toast: 'saved' };
     case 'linkCopied':
       return { ...base, toast: 'copied' };

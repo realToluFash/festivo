@@ -216,7 +216,7 @@ describe('Events', () => {
     expect((await screen.findByRole('alert')).textContent).toContain(
       'The events did not load. Try again in a moment.',
     );
-    expect(screen.queryAllByRole('listitem')).toHaveLength(0);
+    expect(within(screen.getByRole('main')).queryAllByRole('listitem')).toHaveLength(0);
 
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
     fireEvent.click(await screen.findByRole('tab', { name: /Drafts/ }));
@@ -1459,7 +1459,7 @@ describe("Inside an event, the navigation menu is the event's (sc-22103)", () =>
     return document.querySelector('[aria-current="page"]')?.textContent ?? null;
   }
 
-  it('holds ‹ Events and the nine areas in place of the app’s entries, with Settings and Your account kept', async () => {
+  it('holds ‹ Events and the nine areas in place of the app’s entries, with Settings and the person kept', async () => {
     signedIn();
     answering({ 'GET /api/events/ev_1': () => json({ event: event() }) });
     at('/app/events/ev_1');
@@ -1471,10 +1471,10 @@ describe("Inside an event, the navigation menu is the event's (sc-22103)", () =>
         .map((link) => link.textContent),
     ).toEqual(['‹ Events', ...AREAS]);
     expect(current()).toBe('Overview');
-    expect(screen.queryByRole('link', { name: 'Dashboard' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Today' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'Calendar' })).toBeNull();
     expect(screen.getByRole('link', { name: 'Settings' })).toBeDefined();
-    expect(screen.getByRole('link', { name: 'Your account' })).toBeDefined();
+    expect(screen.getByRole('link', { name: /^Folake Adeyemi/ })).toBeDefined();
   });
 
   it('opens an area that is not built as a panel saying it is coming, with nothing to press, and marks it current', async () => {
