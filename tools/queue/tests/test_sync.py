@@ -1,6 +1,9 @@
 """Which Shortcut searches a sync makes: no network here."""
 
 import datetime
+import sqlite3
+import tempfile
+import time
 import unittest
 from unittest import mock
 
@@ -118,6 +121,7 @@ class Since(unittest.TestCase):
         store.set_meta(db, "slim_version", sync.SLIM_VERSION)
         self.assertEqual(self.since(db, NOW + 60), [self.at(NOW + 60 - 86400)])
 
+
 class Epics(unittest.TestCase):
     def test_epics_are_read_every_minute_with_their_state_name(self):
         db, shortcut = store.connect(":memory:"), FakeShortcut()
@@ -154,24 +158,18 @@ class PullRequestStories(unittest.TestCase):
         self.assertTrue(store.story(db, 11)["archived"])
         self.assertEqual(store.get_meta(db, "missing_stories"), [404])
 
-    def test_the_story_of_an_open_pr_is_fetched_again_to_see_it_archived(self):
-        db, asked, archived = store.connect(":memory:"), [], []
+    def test_a_stored_pr_story_is_not_fetched_again(self):
+        db, asked = store.connect(":memory:"), []
 
         class Shortcut(FakeShortcut):
             def story(self, story_id):
                 asked.append(story_id)
-                return {"id": story_id, "name": "old", "workflow_state_id": 1,
-                        "completed": False, "archived": bool(archived)}
+                return {"id": story_id, "name": "old", "workflow_state_id": 1}
 
         store.put_prs(db, [{"number": 1, "story_id": 10, "state": "open", "head_sha": "a"}])
         sync.pr_stories(db, Shortcut(), NOW)
-        archived.append(True)
-        sync.pr_stories(db, Shortcut(), NOW + 60)
-        self.assertFalse(store.story(db, 10)["archived"])
         sync.pr_stories(db, Shortcut(), NOW + sync.FULL_EVERY_SECONDS)
-        self.assertTrue(store.story(db, 10)["archived"])
-        sync.pr_stories(db, Shortcut(), NOW + 2 * sync.FULL_EVERY_SECONDS)
-        self.assertEqual(asked, [10, 10])
+        self.assertEqual(asked, [10])
 
 
 class Blockers(unittest.TestCase):
@@ -215,12 +213,29 @@ class OutOfTimeInAPart(unittest.TestCase):
         self.assertIsNone(store.get_meta(db, "full_at"))
         self.assertIsNone(store.get_meta(db, "missing_stories"))
 
-    def test_a_pr_story_fetch_out_of_time_leaves_pr_stories_at_unset(self):
+    def test_a_pr_story_fetch_out_of_time_remembers_nothing_missing(self):
         db = store.connect(":memory:")
         store.put_prs(db, [{"number": 1, "story_id": 10, "state": "open", "head_sha": "a"}])
         with self.assertRaises(sync.OutOfTime):
             sync.pr_stories(db, self.Late(), NOW)
-        self.assertIsNone(store.get_meta(db, "pr_stories_at"))
+        self.assertIsNone(store.get_meta(db, "missing_stories"))
+
+    def test_github_out_of_time_stops_without_waiting_on_another_writer(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = f"{folder}/queue.db"
+            db = store.connect(path)
+            store.set_meta(db, "repository", ["o", "n"])
+            other = sqlite3.connect(path, isolation_level=None)
+            other.execute("begin immediate")
+            begun = time.monotonic()
+            try:
+                with github.deadline(begun - 1), self.assertRaises(github.OutOfTime):
+                    sync.sync_github(db)
+            finally:
+                other.execute("rollback")
+                other.close()
+                db.close()
+            self.assertLess(time.monotonic() - begun, 1)
 
     def test_a_new_slim_version_cut_after_the_delete_leaves_the_next_sync_full(self):
         class LateSearch(FakeShortcut):

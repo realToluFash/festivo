@@ -126,19 +126,14 @@ def refresh_story(db, shortcut, story_id, now=None):
 
 def pr_stories(db, shortcut, now):
     """The story of every open pull request, however long ago it was last updated, so a
-    pull request on an old Done or archived story is still seen. A story Shortcut does not
-    have is remembered as missing and not asked for again. Search leaves archived stories
-    out, so each is fetched again now and then to see it archived from Shortcut itself."""
+    pull request on an old Done or archived story is still seen. Once stored, it is kept
+    current by the searches for what changed, archived or not, as a blocker is. A story
+    Shortcut does not have is remembered as missing and not asked for again."""
     missing = set(store.get_meta(db, "missing_stories") or [])
-    again = now - store.get_meta(db, "pr_stories_at", 0) >= FULL_EVERY_SECONDS
-    wanted = set()
-    for pr in store.prs(db):
-        if pr["state"] != "open" or not pr["story_id"] or pr["story_id"] in missing:
-            continue
-        known = store.story(db, pr["story_id"])
-        if not known or again and not known.get("archived"):
-            wanted.add(pr["story_id"])
-    for story_id in sorted(wanted):
+    wanted = sorted({pr["story_id"] for pr in store.prs(db)
+                     if pr["state"] == "open" and pr["story_id"]
+                     and pr["story_id"] not in missing and not store.story(db, pr["story_id"])})
+    for story_id in wanted:
         try:
             refresh_story(db, shortcut, story_id, now)
         except OutOfTime:
@@ -147,8 +142,6 @@ def pr_stories(db, shortcut, now):
             if " 404 " in str(error):
                 missing.add(story_id)
     store.set_meta(db, "missing_stories", sorted(missing))
-    if again:
-        store.set_meta(db, "pr_stories_at", now)
 
 
 def refresh_lookups(db, shortcut):
@@ -157,8 +150,11 @@ def refresh_lookups(db, shortcut):
 
 
 def sync_github(db):
-    owner, name = store.get_meta(db, "repository") or github.repository()
-    store.set_meta(db, "repository", [owner, name])
+    # Written only once: a write waits on another process's write lock, up to SQLite's
+    # busy timeout, before the deadline is ever checked.
+    if not store.get_meta(db, "repository"):
+        store.set_meta(db, "repository", list(github.repository()))
+    owner, name = store.get_meta(db, "repository")
     known = {pr["number"]: pr for pr in store.prs(db)}
     prs = github.pull_requests(owner, name, known)
     cache, kept = store.get_meta(db, "carried", {}), {}
