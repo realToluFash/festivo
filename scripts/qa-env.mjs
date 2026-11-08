@@ -1907,24 +1907,99 @@ export const ANDROID_START = [
 // Expo Go's floating Tools button sits over a list's Done, where a tap opens its menu instead.
 export const TOOLS_BUTTON = 'EXDevMenuShowFloatingActionButton';
 
-// What a batch resets on its device before signing in: TalkBack, or Expo Go's Tools button.
+const TOOLS_OFF = "  Expo Go's Tools button is off.";
+const TOOLS_TURNED_OFF = "  Expo Go's Tools button turned off for the batch.";
+const TOOLS_FAILED = "  Could not turn Expo Go's Tools button off: turn it off in Expo Go's menu.";
+
+// What a batch resets on its device before signing in: TalkBack, and Expo Go's Tools button.
 // The button lives in Expo Go's container, which `defaults write host.exp.Exponent` misses.
 export function batchReset(onAndroid, device, { prefs, toolsButton } = {}) {
   if (onAndroid) return { adb: SCREEN_READER_OFF, say: '  TalkBack is off for the batch.' };
   if (!prefs) return { say: '  Expo Go is not installed: run `ios` first.' };
-  if (toolsButton === '0') return { say: "  Expo Go's Tools button is off." };
+  if (toolsButton === '0') return { say: TOOLS_OFF };
   return {
     terminate: ['simctl', 'terminate', device, EXPO_GO],
     write: ['simctl', 'spawn', device, 'defaults', 'write', prefs, TOOLS_BUTTON, '-bool', 'NO'],
-    say: "  Expo Go's Tools button turned off for the batch.",
-    failed: "  Could not turn Expo Go's Tools button off: turn it off in Expo Go's menu.",
+    say: TOOLS_TURNED_OFF,
+    failed: TOOLS_FAILED,
   };
+}
+
+const centre = ([left, top, right, bottom]) => [(left + right) / 2, (top + bottom) / 2];
+
+// On Android the setting is in Expo Go's private storage, which a Play image lets nobody else write,
+// so the batch flips the switch in Expo Go's menu. The switch reports no state to uiautomator:
+// its thumb sits right of the track's centre when on. Row label, then track, then thumb.
+export function toolsSwitch(dump) {
+  const nodes = [...(dump ?? '').matchAll(/<node [^>]*>/g)].map(([node]) => ({
+    text: /\btext="([^"]*)"/.exec(node)?.[1],
+    bounds: /bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"/.exec(node)?.slice(1).map(Number),
+  }));
+  const label = nodes.findIndex((node) => node.text === 'Tools button');
+  const [track, thumb] = [nodes[label + 1]?.bounds, nodes[label + 2]?.bounds];
+  if (label < 0 || !track || !thumb) return null;
+  const [x, y] = centre(thumb);
+  return { on: x > centre(track)[0], tap: ['shell', 'input', 'tap', String(x), String(y)] };
+}
+
+export function androidToolsReset(before, after) {
+  if (!before) return { say: TOOLS_FAILED };
+  if (!before.on) return { say: TOOLS_OFF };
+  return { tap: before.tap, say: after && !after.on ? TOOLS_TURNED_OFF : TOOLS_FAILED };
+}
+
+export const EXPO_GO_MENU = ['shell', 'input', 'keyevent', 'KEYCODE_MENU'];
+
+// Up the middle of the screen as it is drawn, from three quarters of its height to one quarter.
+export function expoGoMenuScroll(wmSize, rotation = 0) {
+  const size = physicalSize(wmSize);
+  if (!size) return null;
+  let { width, height } = size;
+  if (rotation % 2 === 1) [width, height] = [height, width];
+  const [x, from, to] = [width / 2, height * 0.75, height * 0.25].map((n) => String(Math.round(n)));
+  return ['shell', 'input', 'swipe', x, from, x, to, '400'];
+}
+export const EXPO_GO_MENU_CLOSE = ['shell', 'input', 'keyevent', 'KEYCODE_BACK'];
+
+// The menu slides up, so each step waits for it before reading the screen.
+async function expoGoMenuSwitch(tools) {
+  const read = async () => {
+    await pause(1500);
+    const dumped = adbOut(tools, ['shell', 'uiautomator', 'dump', '/sdcard/qa-window.xml']);
+    return dumped === null
+      ? null
+      : toolsSwitch(adbOut(tools, ['exec-out', 'cat', '/sdcard/qa-window.xml']));
+  };
+  const shown = await read();
+  if (shown) return shown;
+  const scroll = expoGoMenuScroll(
+    adbOut(tools, ['shell', 'wm', 'size']),
+    surfaceOrientation(adbOut(tools, ['shell', 'dumpsys', 'input'])),
+  );
+  if (!scroll) return null;
+  adbOut(tools, scroll);
+  return read();
+}
+
+async function androidToolsButtonOff(tools) {
+  // Menu and the swipe go to whatever is in front, and on the launcher the swipe opens its drawer.
+  if (!experienceResumed(adbOut(tools, ['shell', 'dumpsys', 'activity', 'activities']) ?? '')) {
+    console.log(androidToolsReset(null, null).say);
+    return;
+  }
+  adbOut(tools, EXPO_GO_MENU);
+  const before = await expoGoMenuSwitch(tools);
+  if (before?.on) adbOut(tools, before.tap);
+  const after = before?.on ? await expoGoMenuSwitch(tools) : before;
+  // Back with no menu open would leave the app.
+  if (before) adbOut(tools, EXPO_GO_MENU_CLOSE);
+  console.log(androidToolsReset(before, after).say);
 }
 
 export const expoGoPrefs = (container) =>
   container && join(container, 'Library/Preferences', EXPO_GO);
 
-function resetForBatch(onAndroid, device) {
+async function resetForBatch(onAndroid, device) {
   const prefs = onAndroid
     ? null
     : expoGoPrefs(capture('xcrun', ['simctl', 'get_app_container', device, EXPO_GO, 'data']));
@@ -1935,6 +2010,7 @@ function resetForBatch(onAndroid, device) {
   if (reset.terminate) run('xcrun', reset.terminate, { optional: true });
   const written = !reset.write || run('xcrun', reset.write, { optional: true });
   console.log(written ? reset.say : reset.failed);
+  if (onAndroid) await androidToolsButtonOff(androidTools());
 }
 
 async function android(args) {
@@ -3190,7 +3266,7 @@ async function batch(args) {
     );
   }
 
-  resetForBatch(onAndroid, device);
+  await resetForBatch(onAndroid, device);
 
   const out = join(root, '.qa', name);
   rmSync(out, { recursive: true, force: true });
