@@ -14,7 +14,10 @@ import { Link, Navigate, useLocation, useSearchParams } from 'react-router';
 import { offButton } from '../offButton.ts';
 import { Glyph } from '../components/Glyph.tsx';
 import { focusWhenFree } from '../layers.ts';
+import { AlertInset } from './BudgetParts.tsx';
 import { DemoBell } from './DemoBell.tsx';
+import { owedBy, usedOn } from './quotes.ts';
+import { QW } from './quotesWords.ts';
 import { COUNTRIES, codeChoice } from './rules.ts';
 import { type Viewer, settingsPath } from './settings.ts';
 import {
@@ -276,7 +279,9 @@ function Directory({ state, tell }: { state: string; tell: Tell }) {
                   <li key={one.id}>
                     <VendorRow
                       vendor={one}
-                      line={rowLine(one, locale)}
+                      line={[rowLine(one, locale), one.archivedOn == null ? usedOn(one.id) : null]
+                        .filter(Boolean)
+                        .join(' · ')}
                       lit={one.id === lit}
                       onOpen={() =>
                         setDialog({ kind: 'edit', id: one.id, draft: draftOf(one), problems: {} })
@@ -310,6 +315,10 @@ function Directory({ state, tell }: { state: string; tell: Tell }) {
             tell(added ? VW.added(vendor.name) : VW.saved(vendor.name));
           }}
           onArchive={(vendor) => {
+            if (owedBy(vendor.id).length > 0) {
+              setDialog((now) => (now?.kind === 'edit' ? { ...now, refused: true } : now));
+              return;
+            }
             setVendors((now) => archived(now, vendor.id));
             setLit(null);
             close();
@@ -583,6 +592,20 @@ function VendorForm({
         onConfirm={save}
       >
         <div className="vd-wide">
+          {vendor != null && dialog.kind === 'edit' && dialog.refused === true && (
+            <div className="bud vd-owing">
+              <AlertInset>{QW.archiveRefused(vendor.name)}</AlertInset>
+              {owedBy(vendor.id).map((event) => (
+                <Link
+                  key={event.id}
+                  className="desk-text"
+                  to={`/demo/events/${event.id}?area=budget&vendor=${vendor.id}`}
+                >
+                  {QW.owingLink(vendor.name, event.name)}
+                </Link>
+              ))}
+            </div>
+          )}
           {toFix > 0 && (
             <p className="desk-error vd-to-fix" role="alert">
               <Glyph name="alert" size={15} weight={2.2} />
