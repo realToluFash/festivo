@@ -212,7 +212,9 @@ export const say = {
   shown: (shown: number, total: number) => `${shown} of ${total} shown`,
   says: (coming: number, invited: number) => `${coming} coming of ${invited} invited`,
   havent: (all: number, guests: number, companions: number) =>
-    `${all} haven’t replied (${guests} guests and ${companions} of their companions).`,
+    companions === 0
+      ? `${say.havenShort(all)}.`
+      : `${say.havenShort(all)} (${guests === 1 ? '1 guest' : `${guests} guests`} and ${companions === 1 ? '1 of their companions' : `${companions} of their companions`}).`,
   closesTomorrow: (date: string) => `Replies close tomorrow, ${date}.`,
   onList: (count: number) => `${count} on the list`,
   arrivedOf: (arrived: number, expected: number) => `${arrived} of ${expected}`,
