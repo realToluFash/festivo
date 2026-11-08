@@ -367,7 +367,7 @@ final class SeatingPlanTest extends ApiTestCase
         $body = $this->as($viewer, 'POST', $this->plan() . '/subscriptions');
 
         self::assertSame(200, $this->statusCode());
-        $token = new Parser(new JoseEncoder())->parse(Type\string()->coerce($body['token'] ?? null));
+        $token = new Parser(new JoseEncoder())->parse(Type\non_empty_string()->coerce($body['token'] ?? null));
         self::assertInstanceOf(UnencryptedToken::class, $token);
         self::assertSame(['subscribe' => ['events/' . $this->eventId . '/seating']], $token->claims()->get('mercure'));
     }
@@ -493,7 +493,7 @@ final class SeatingPlanTest extends ApiTestCase
         return Type\dict(Type\string(), Type\mixed())->coerce(Type\dict(Type\string(), Type\mixed())->coerce($body)['seating'] ?? null);
     }
 
-    /** @return array{roomName: ?string, widthCm: int, lengthCm: int, sections: list<array<string, mixed>>, counts: array<string, int>} */
+    /** @return array{roomName: ?string, widthCm: int, lengthCm: int, sections: list<array<string, mixed>>, counts: array<string, int>, ...} */
     private function planOf(mixed $seating): array
     {
         return Type\shape([
