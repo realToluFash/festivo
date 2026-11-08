@@ -165,8 +165,10 @@ describe('Reply by on the event’s Details (sc-3780)', () => {
       fireEvent.click(within(ask).getByRole('button', { name: 'Close replies sooner' }));
 
       const tellGuests = await screen.findByRole('dialog');
-      expect(within(tellGuests).getByText('Replies now close Tue, Nov 3.')).toBeDefined();
-      expect(screen.queryByText('Saved. Replies now close Tue, Nov 3.')).toBeNull();
+      expect(
+        within(tellGuests).getByText('Replies close on Tue, Nov 3 at 23:59, Europe/London time.'),
+      ).toBeDefined();
+      expect(screen.queryByText(/^Saved\./u)).toBeNull();
       expect(screen.getByText('Tue, Nov 3, 2026')).toBeDefined();
     },
   );
@@ -198,8 +200,42 @@ describe('Reply by on the event’s Details (sc-3780)', () => {
     fireEvent.click(within(dates).getByRole('button', { name: 'Save' }));
 
     expect(await screen.findByText('Wed, Nov 4, 2026')).toBeDefined();
-    expect(screen.queryByText(/^Saved\. Replies now close/u)).toBeNull();
+    expect(screen.queryByText(/^Saved\. Replies/u)).toBeNull();
   });
+
+  it(
+    'a start moved to today asks Close replies now?, and Tell guests says replies are now closed',
+    SLOW,
+    async () => {
+      await page('dates');
+      const dates = screen.getByRole('group', { name: 'Dates' });
+
+      fireEvent.change(within(dates).getByLabelText('Starts, Date'), {
+        target: { value: '2026-11-03' },
+      });
+      fireEvent.click(within(dates).getByRole('button', { name: 'Save' }));
+      const ask = await screen.findByRole('alertdialog', { name: 'Close replies now?' });
+      fireEvent.click(within(ask).getByRole('button', { name: 'Close replies now' }));
+
+      const tellGuests = await screen.findByRole('dialog');
+      expect(within(tellGuests).getByText('Replies are now closed.')).toBeDefined();
+      expect(screen.queryByText('Saved. Replies are now closed.')).toBeNull();
+      expect(screen.getByText('Mon, Nov 2, 2026')).toBeDefined();
+    },
+  );
+
+  it(
+    'Close replies now on the Reply by part toasts that replies are now closed',
+    SLOW,
+    async () => {
+      await page('replyByNow');
+      const ask = await screen.findByRole('alertdialog', { name: 'Close replies now?' });
+
+      fireEvent.click(within(ask).getByRole('button', { name: 'Close replies now' }));
+      expect(await screen.findByText('Saved. Replies are now closed.')).toBeDefined();
+      expect(screen.queryByText(/^Saved\. Replies close on/u)).toBeNull();
+    },
+  );
 
   it.each([
     ['replyBySaved', 'Saved. Replies close on Tue, Nov 3 at 23:59, Europe/London time.'],

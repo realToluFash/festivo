@@ -1,3 +1,5 @@
+import { formatWallDay } from '@soirely/domain';
+
 import { localDay } from './events.ts';
 import { countsOf, haventLine, sampleGuests } from './guests.ts';
 import { CLOSES_AT } from './replyClose.ts';
@@ -27,6 +29,23 @@ export function datesSaveSays(
   if (tellOpens) return { toast: null, inTell: moved != null };
 
   return { toast: moved == null ? 'saved' : 'moved', inTell: false };
+}
+
+/** l10n, #33572: one sentence per Reply by state, wherever the save came from; a day already past closed replies at the save. */
+export function replyBySays(
+  next: string | null,
+  now: Date,
+  timeZone: string,
+): { toast: string; line: string } {
+  if (next == null) return { toast: REPLY_BY_WORDS.savedNone, line: REPLY_BY_WORDS.rowNone };
+  if (next < localDay(now.toISOString(), timeZone))
+    return { toast: REPLY_BY_WORDS.savedClosed, line: REPLY_BY_WORDS.nowClosed };
+  const day = formatWallDay(next, LOCALE);
+
+  return {
+    toast: REPLY_BY_WORDS.saved(day, timeZone),
+    line: REPLY_BY_WORDS.closesOn(day, timeZone),
+  };
 }
 
 export type ReplyByCheck = 'tooLate' | 'sooner' | 'now' | 'save';
@@ -109,6 +128,8 @@ export const REPLY_BY_WORDS = {
   savedNone: 'Saved. Replies stay open until the event starts.',
   startMoves: (old: string, next: string) =>
     `Replies close on ${old}, which isn’t before the new start. Saving moves Reply by to ${next}.`,
-  nowClose: (next: string) => `Replies now close ${next}.`,
-  savedMoved: (next: string) => `Saved. Replies now close ${next}.`,
+  savedClosed: 'Saved. Replies are now closed.',
+  closesOn: (date: string, zone: string) =>
+    `Replies close on ${date} at ${CLOSES_AT}, ${zone} time.`,
+  nowClosed: 'Replies are now closed.',
 };

@@ -6,6 +6,7 @@ import {
   REPLY_BY_WORDS as R,
   datesAsk,
   datesSaveSays,
+  replyBySays,
   haventRepliedOf,
   replyByAfterStart,
   replyByCheck,
@@ -90,7 +91,21 @@ describe('the date to reply by (sc-3780)', () => {
     expect(datesSaveSays(null, true)).toEqual({ toast: null, inTell: false });
     expect(datesSaveSays('2026-11-03', false)).toEqual({ toast: 'moved', inTell: false });
     expect(datesSaveSays(null, false)).toEqual({ toast: 'saved', inTell: false });
-    expect(R.nowClose('Tue, Nov 3')).toBe('Replies now close Tue, Nov 3.');
+  });
+
+  it('says one sentence per Reply by state, as the toast and, without “Saved.”, inside Tell guests (l10n, #33572)', () => {
+    expect(replyBySays('2026-11-03', NOW, ZONE)).toEqual({
+      toast: 'Saved. Replies close on Tue, Nov 3 at 23:59, Europe/London time.',
+      line: 'Replies close on Tue, Nov 3 at 23:59, Europe/London time.',
+    });
+    expect(replyBySays('2026-11-02', NOW, ZONE)).toEqual({
+      toast: 'Saved. Replies are now closed.',
+      line: 'Replies are now closed.',
+    });
+    expect(replyBySays(null, NOW, ZONE)).toEqual({
+      toast: 'Saved. Replies stay open until the event starts.',
+      line: 'Replies stay open until the event starts.',
+    });
   });
 
   it('shows the guests’ sentence only for a date they can still answer by', () => {
@@ -117,7 +132,6 @@ describe('the date to reply by (sc-3780)', () => {
     expect(R.startMoves('Wed, Nov 4', 'Tue, Nov 3')).toBe(
       'Replies close on Wed, Nov 4, which isn’t before the new start. Saving moves Reply by to Tue, Nov 3.',
     );
-    expect(R.savedMoved('Tue, Nov 3')).toBe('Saved. Replies now close Tue, Nov 3.');
     expect(R.saved(formatWallDay('2026-11-03', 'en-US'), ZONE)).toBe(
       'Saved. Replies close on Tue, Nov 3 at 23:59, Europe/London time.',
     );

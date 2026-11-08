@@ -1,5 +1,5 @@
 import { DemoBell } from './DemoBell.tsx';
-import { eventPhase, formatEventRange, formatWallDay, hostsLine } from '@soirely/domain';
+import { eventPhase, formatEventRange, hostsLine } from '@soirely/domain';
 import { type ComponentType, type ReactNode, useContext, useEffect, useRef, useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router';
 
@@ -41,7 +41,13 @@ import {
   VenuePart,
 } from './EventEdits.tsx';
 import { ReplyByPart } from './EventReplyBy.tsx';
-import { REPLY_BY_WORDS, datesSaveSays, replyByAfterStart, rowDay } from './replyBy.ts';
+import {
+  REPLY_BY_WORDS,
+  datesSaveSays,
+  replyByAfterStart,
+  replyBySays,
+  rowDay,
+} from './replyBy.ts';
 import { Alert, EventCard, EventsShell, NotBuilt, Switch, Thumb } from './EventParts.tsx';
 import { CAL_WORDS } from './calendar.ts';
 import { EventSidebar } from './EventSidebar.tsx';
@@ -100,12 +106,6 @@ function replyByStart(state: EventStateName | null, id: string): string | null {
   if (state === 'replyByRemoved') return null;
 
   return replyByOf(id);
-}
-
-function replyBySaid(next: string | null, timeZone: string): string {
-  return next == null
-    ? REPLY_BY_WORDS.savedNone
-    : REPLY_BY_WORDS.saved(formatWallDay(next, LOCALE), timeZone);
 }
 
 function askingOf(state: EventStateName | null): Asking | null {
@@ -273,7 +273,7 @@ function EventView({
       told={
         arrival.told ??
         (state === 'replyBySaved' || state === 'replyByRemoved'
-          ? replyBySaid(replyBy, event.timeZone)
+          ? replyBySays(replyBy, now, event.timeZone).toast
           : null)
       }
       renderSide={(tell, covered) => (
@@ -344,17 +344,17 @@ function EventView({
                         const moved = replyByAfterStart(replyBy, next.startsAt, next.timeZone);
 
                         const says = datesSaveSays(moved, changes.length > 0);
-                        const day = moved == null ? '' : formatWallDay(moved, LOCALE);
+                        const said = replyBySays(moved, now, next.timeZone);
 
                         kept(next);
                         setPart(null);
                         setDirty(false);
                         if (moved != null) setReplyBy(moved);
                         if (changes.length > 0) {
-                          setTellMoved(says.inTell ? REPLY_BY_WORDS.nowClose(day) : null);
+                          setTellMoved(says.inTell ? said.line : null);
                           setTelling(changes);
                         }
-                        if (says.toast === 'moved') tell(REPLY_BY_WORDS.savedMoved(day));
+                        if (says.toast === 'moved') tell(said.toast);
                         if (says.toast === 'saved') tell(W.saved);
                       }}
                       onLatest={kept}
@@ -363,7 +363,7 @@ function EventView({
                         setReplyBy(next);
                         setPart(null);
                         setDirty(false);
-                        tell(replyBySaid(next, event.timeZone));
+                        tell(replyBySays(next, now, event.timeZone).toast);
                       }}
                     />
                   </div>
