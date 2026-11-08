@@ -15,7 +15,6 @@ import {
   replyByAsk,
   replyByHint,
   replyByInTell,
-  replyByMovedSaved,
   replyByMoves,
   replyByPreview,
   replyByRow,
@@ -91,11 +90,18 @@ describe('a start moved onto Reply by (pm, 8 Nov)', () => {
     expect(replyByAfterStart(null, '2026-11-01')).toBeNull();
   });
 
-  it('says so under the start, then in the toast', () => {
+  it('says so under the start, then toasts the Reply by part’s own line (l10n, #33572)', () => {
+    const today = new Date('2026-11-03T09:41:00Z');
+
     expect(replyByMoves('2026-11-04', '2026-11-03', 'en-US')).toBe(
       'Replies close on Wed, Nov 4, which isn’t before the new start. Saving moves Reply by to Tue, Nov 3.',
     );
-    expect(replyByMovedSaved('2026-11-03', 'en-US')).toBe('Saved. Replies now close Tue, Nov 3.');
+    expect(replyBySaved('2026-11-03', LONDON, 'en-US', today)).toBe(
+      'Saved. Replies close on Tue, Nov 3 at 23:59, Europe/London time.',
+    );
+    expect(replyBySaved('2026-11-02', LONDON, 'en-US', today)).toBe(
+      'Saved. Replies are now closed.',
+    );
   });
 
   it('closes the moved day at 23:59:59 in the event’s zone', () => {
@@ -131,6 +137,32 @@ describe('the Ask counts with the Guests card’s own sentence', () => {
   });
 });
 
+describe('Close replies now, from either place, has one toast (l10n, #33572)', () => {
+  const now = new Date('2026-11-03T09:41:00Z');
+
+  it('toasts the same key after the part’s Close replies now and after a Dates save into the past', () => {
+    const fromPart = replyBySaved('2026-11-02', LONDON, 'en-US', now);
+    const moved = replyByAfterStart('2026-11-04', '2026-11-03');
+    const fromDates = moved == null ? null : replyBySaved(moved, LONDON, 'en-US', now);
+
+    expect(moved).toBe('2026-11-02');
+    expect(fromPart).toBe(W.savedClosedNow);
+    expect(fromDates).toBe(W.savedClosedNow);
+    expect(W.savedClosedNow).toBe('Saved. Replies are now closed.');
+  });
+
+  it('never says “Replies now close”', () => {
+    const words = [
+      replyBySaved('2026-11-03', LONDON, 'en-US', now),
+      replyBySaved('2026-11-02', LONDON, 'en-US', now),
+      replyByInTell('2026-11-03', LONDON, 'en-US', now),
+      replyByInTell('2026-11-02', LONDON, 'en-US', now),
+    ];
+
+    for (const one of words) expect(one).not.toMatch(/now close /u);
+  });
+});
+
 describe('Dates closing replies sooner (pm, 8 Nov, #33553)', () => {
   const now = new Date('2026-11-03T09:41:00Z');
 
@@ -155,7 +187,10 @@ describe('Dates closing replies sooner (pm, 8 Nov, #33553)', () => {
     expect(datesSaveSays(null, true)).toEqual({ toast: null, inTell: false });
     expect(datesSaveSays('2026-11-03', false)).toEqual({ toast: 'moved', inTell: false });
     expect(datesSaveSays(null, false)).toEqual({ toast: 'saved', inTell: false });
-    expect(replyByInTell('2026-11-03', 'en-US')).toBe('Replies now close Tue, Nov 3.');
+    expect(replyByInTell('2026-11-03', LONDON, 'en-US', now)).toBe(
+      'Replies close on Tue, Nov 3 at 23:59, Europe/London time.',
+    );
+    expect(replyByInTell('2026-11-02', LONDON, 'en-US', now)).toBe('Replies are now closed.');
   });
 });
 
@@ -196,11 +231,16 @@ describe('the sample and the words', () => {
     expect(replyByPreview('2026-11-04', 'en-US')).toBe(
       'On the guests’ page: “Please answer by Wednesday, November 4. You can change your answer any time before then.”',
     );
-    expect(replyBySaved('2026-11-03', LONDON, 'en-US')).toBe(
+    const today = new Date('2026-11-03T09:41:00Z');
+
+    expect(replyBySaved('2026-11-03', LONDON, 'en-US', today)).toBe(
       'Saved. Replies close on Tue, Nov 3 at 23:59, Europe/London time.',
     );
-    expect(replyBySaved(null, LONDON, 'en-US')).toBe(
+    expect(replyBySaved(null, LONDON, 'en-US', today)).toBe(
       'Saved. Replies stay open until the event starts.',
+    );
+    expect(replyBySaved('2026-11-02', LONDON, 'en-US', today)).toBe(
+      'Saved. Replies are now closed.',
     );
   });
 

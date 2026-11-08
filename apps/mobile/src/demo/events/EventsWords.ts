@@ -126,6 +126,8 @@ export const W = {
   closeNowLine: 'From now on they can’t reply, unless you let them change their reply.',
   closeNowTitle: 'Close replies now?',
   replyByRemoved: 'Saved. Replies stay open until the event starts.',
+  savedClosedNow: 'Saved. Replies are now closed.',
+  repliesClosedNow: 'Replies are now closed.',
   timeZone: 'Time zone',
   venueName: 'Venue name',
   address: 'Address',
@@ -281,8 +283,8 @@ export const say = {
   keepDate: (date: string) => `Keep ${date}`,
   replyByMoves: (old: string, next: string) =>
     `Replies close on ${old}, which isn’t before the new start. Saving moves Reply by to ${next}.`,
-  repliesNowClose: (date: string) => `Saved. Replies now close ${date}.`,
-  nowClose: (date: string) => `Replies now close ${date}.`,
+  repliesCloseOn: (date: string, time: string, zone: string) =>
+    `Replies close on ${date} at ${time}, ${zone} time.`,
   replyBySaved: (date: string, time: string, zone: string) =>
     `Saved. Replies close on ${date} at ${time}, ${zone} time.`,
 };

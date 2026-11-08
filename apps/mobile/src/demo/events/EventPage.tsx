@@ -44,13 +44,7 @@ import {
   sampleEvent,
 } from './EventsSample.ts';
 import { W, say } from './EventsWords.ts';
-import {
-  datesSaveSays,
-  replyByInTell,
-  replyByMovedSaved,
-  replyByRow,
-  replyBySaved,
-} from './ReplyBy.ts';
+import { datesSaveSays, replyByInTell, replyByRow, replyBySaved } from './ReplyBy.ts';
 import { replyByOf } from '../guests/GuestsSample.ts';
 import { useShell } from '../../components/settingsShell.ts';
 import { Row, RowList, Section, TextAction } from '../../components/Summary.tsx';
@@ -187,11 +181,13 @@ export function EventScreen({
     state === 'saved'
       ? W.saved
       : state === 'replyBySaved' || state === 'replyByRemoved'
-        ? replyBySaved(replyBy, event.timeZone, locale)
+        ? replyBySaved(replyBy, event.timeZone, locale, now)
         : null,
   );
   const [tellMoved, setTellMoved] = useState<string | null>(() =>
-    state === 'datesReplyBySaved' && replyBy != null ? replyByInTell(replyBy, locale) : null,
+    state === 'datesReplyBySaved' && replyBy != null
+      ? replyByInTell(replyBy, event.timeZone, locale, now)
+      : null,
   );
   const refs = useRef<Partial<Record<string, ViewInstance | null>>>({});
   const from = useRef('card');
@@ -224,15 +220,17 @@ export function EventScreen({
     setEvent(next);
     setEdit(null);
     if (moved != null) setReplyBy(moved);
-    setTellMoved(says.inTell && moved != null ? replyByInTell(moved, locale) : null);
-    if (says.toast === 'moved' && moved != null) setTold(replyByMovedSaved(moved, locale));
+    setTellMoved(
+      says.inTell && moved != null ? replyByInTell(moved, next.timeZone, locale, now) : null,
+    );
+    if (says.toast === 'moved') setTold(replyBySaved(moved, next.timeZone, locale, now));
     if (says.toast === 'saved') setTold(W.saved);
     if (tellOpens) setTimeout(() => dispatch({ type: 'offerTell', change }), TELL_AFTER_MS);
   };
   const savedReplyBy = (date: string | null) => {
     setReplyBy(date);
     setEdit(null);
-    setTold(replyBySaved(date, event.timeZone, locale));
+    setTold(replyBySaved(date, event.timeZone, locale, now));
   };
   const deleteIt = () => {
     setAsk(null);
