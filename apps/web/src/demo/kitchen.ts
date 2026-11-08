@@ -10,6 +10,7 @@ import { milestonesOf } from './calendar.ts';
 import { writtenTime } from './clock.ts';
 import { demoWords } from './demoWords.ts';
 import { CLOCKS, type SampleEvent, instantOf, localDay, shownOf } from './events.ts';
+import { CW, type SampleName, cw, linesFor } from './kitchenChanges.ts';
 import { heldNeeds, resetNeedsYou, seedNeedsYou } from './needsYou.ts';
 import type { DemoLink } from './settings.ts';
 
@@ -58,6 +59,7 @@ export const KW = {
   namesNeed: 'Names need Guests manage.',
   notChosen: 'Not chosen yet',
   noPdf: 'The demo makes no PDF. In the product this downloads “{{file}}”.',
+  changesPage: 'It opens with its changes page, then the whole sheet.',
   printed: 'Print opens the browser’s print. It records nothing.',
   nextUp: 'Next up: {{title}}',
   you: 'You',
@@ -88,6 +90,8 @@ export interface Copy {
   id: number;
   at: string;
   by: string;
+  /** sc-30692: the copy's PDF opens with a page of the changes since the one before it. */
+  changes?: boolean;
 }
 
 export type Dialog = 'rest' | 'making' | 'failed';
@@ -95,6 +99,9 @@ export type Dialog = 'rest' | 'making' | 'failed';
 export interface Kitchen {
   due: string | null;
   copies: readonly Copy[];
+  /** sc-30692: the sheet's sample against its latest copy, and the moment it first differed from it; none while the copy holds every change. */
+  sample?: SampleName;
+  changedAt?: string | null;
 }
 
 export interface KitchenStart {
@@ -107,6 +114,9 @@ export interface KitchenStart {
   dialog: Dialog | null;
   given: boolean;
   told: string | null;
+  /** guests.manage, apart from menu.manage on the changes states (sc-30692); sc-30812's states keep them together. */
+  names?: boolean;
+  clock?: Date;
 }
 
 const FIRST: Copy = { id: 3, at: '2026-11-03T09:41:00Z', by: READER };
@@ -147,6 +157,17 @@ const BASE: KitchenStart = {
 };
 
 const SET: Kitchen = { due: '2026-11-03', copies: [] };
+
+/** The changes states read against Ana's copy of Mon, Nov 2 at 17:00; the first, of Oct 30, had no changes page. */
+const SINCE: readonly Copy[] = [
+  { id: 2, at: '2026-11-02T17:00:00Z', by: 'Ana Souza', changes: true },
+  { id: 1, at: '2026-10-30T12:15:00Z', by: READER },
+];
+const CHANGED_AT = '2026-11-02T20:30:00Z';
+
+function changed(sample: SampleName, due: string | null = SET.due): Kitchen {
+  return { due, copies: SINCE, sample, changedAt: CHANGED_AT };
+}
 
 const STATES = {
   empty: { name: 'Final numbers due not set', starts: {} },
@@ -189,6 +210,70 @@ const STATES = {
     name: 'Several copies, newest first',
     starts: { kitchen: { due: SET.due, copies: COPIES } },
   },
+  changes_named: {
+    name: 'Changes since, with guests.manage: names, in the sheet’s order',
+    starts: { kitchen: changed('named') },
+  },
+  changes_counts: {
+    name: 'Changes since, without guests.manage: a count per code',
+    starts: { kitchen: changed('named'), names: false },
+  },
+  changes_menu: {
+    name: 'A new, a removed and a renamed dish beside a count',
+    starts: { kitchen: changed('menu') },
+  },
+  changes_variant_side: {
+    name: 'A variant and a side, named after their dish',
+    starts: { kitchen: changed('variantSide') },
+  },
+  changes_person: {
+    name: 'One guest stops coming, one starts',
+    starts: { kitchen: changed('person') },
+  },
+  changes_erased: {
+    name: 'A guest erased since the copy: counts only',
+    starts: { kitchen: changed('erased') },
+  },
+  no_changes: {
+    name: 'No changes since the copy',
+    starts: { kitchen: { ...changed('named'), changedAt: null } },
+  },
+  no_copy: { name: 'No copy recorded: no list', starts: { kitchen: SET } },
+  view_only: {
+    name: 'Without menu.manage: the list, and no Give the changes…',
+    starts: { kitchen: changed('named'), manage: false, names: true },
+  },
+  started: {
+    name: 'After the event’s start: the list, nothing asks',
+    starts: { kitchen: changed('named'), clock: CLOCKS.now },
+  },
+  changes_give: {
+    name: 'Give the changes…: sc-30812’s dialog',
+    starts: { kitchen: changed('named'), dialog: 'rest' },
+  },
+  changes_making: {
+    name: 'Making the PDF',
+    starts: { kitchen: changed('named'), dialog: 'making' },
+  },
+  changes_failed: {
+    name: 'The PDF could not be made: Try again',
+    starts: { kitchen: changed('named'), dialog: 'failed' },
+  },
+  changes_given: {
+    name: 'Given: the status, then no changes since the new copy',
+    starts: {
+      kitchen: {
+        ...changed('named'),
+        copies: [{ id: 3, at: CLOCKS.rest.toISOString(), by: READER, changes: true }, ...SINCE],
+        changedAt: null,
+      },
+      given: true,
+    },
+  },
+  changes_copies: {
+    name: 'Download this copy: each as recorded, its changes page included',
+    starts: { kitchen: changed('named') },
+  },
 } satisfies Record<string, { name: string; starts: Partial<KitchenStart> }>;
 
 export type KitchenStateName = keyof typeof STATES;
@@ -221,6 +306,11 @@ const DATES_STATES = {
   needsYouOverdue: { due: '2026-11-01', copies: [] },
   needsYouGiven: { due: SET.due, copies: [FIRST] },
   needsYouReadOnly: { due: '2026-11-04', copies: [] },
+  changes_due: changed('named'),
+  changes_overdue: { ...changed('named', '2026-11-02'), changedAt: '2026-11-02T18:30:00Z' },
+  changes_late: { ...changed('named', '2026-11-02'), changedAt: '2026-11-03T08:00:00Z' },
+  changes_no_date: changed('named', null),
+  changes_in_copy: { ...changed('named'), changedAt: null },
 } satisfies Record<string, Kitchen>;
 
 export type KitchenDatesState = keyof typeof DATES_STATES;
@@ -305,8 +395,40 @@ export function newestFirst(copies: readonly Copy[]): Copy[] {
   return [...copies].sort((a, b) => Date.parse(b.at) - Date.parse(a.at) || b.id - a.id);
 }
 
-export function madeCopy(copies: readonly Copy[], at: string, by: string): Copy {
-  return { id: Math.max(0, ...copies.map((copy) => copy.id)) + 1, at, by };
+export function madeCopy(copies: readonly Copy[], at: string, by: string, changes = false): Copy {
+  return {
+    id: Math.max(0, ...copies.map((copy) => copy.id)) + 1,
+    at,
+    by,
+    ...(changes ? { changes } : {}),
+  };
+}
+
+/** The latest copy's moment, as the copies list writes it: the reader's locale, the event's zone, 24-hour. */
+export function sinceSlots(
+  copy: Pick<Copy, 'at'>,
+  timeZone: string,
+): { date: string; time: string } {
+  return {
+    date: new Intl.DateTimeFormat(LOCALE, {
+      weekday: 'long',
+      month: 'short',
+      day: 'numeric',
+      timeZone,
+    }).format(new Date(copy.at)),
+    time: writtenTime(copy.at, LOCALE, timeZone),
+  };
+}
+
+export function latestCopy(kitchen: Kitchen): Copy | null {
+  return newestFirst(kitchen.copies)[0] ?? null;
+}
+
+/** The sheet against the latest copy: the sample's lines while the copy does not hold them. */
+export function changeLines(kitchen: Kitchen, names: boolean) {
+  if (kitchen.copies.length === 0 || kitchen.sample == null) return [];
+
+  return linesFor(kitchen.sample, kitchen.changedAt == null, names);
 }
 
 /** The timeline's You milestone: a date set and no copy recorded, gone at the start and on an Ended event. */
@@ -315,9 +437,10 @@ export function kitchenMilestone(
   kitchen: Kitchen,
   now: Date,
 ): Milestone | null {
-  if (event.id !== KITCHEN_EVENT || kitchen.due == null || kitchen.copies.length > 0) return null;
-
+  if (event.id !== KITCHEN_EVENT) return null;
   if (ended(event, now) || now.getTime() >= Date.parse(event.startsAt)) return null;
+  if (kitchen.copies.length > 0) return changesMilestone(event, kitchen);
+  if (kitchen.due == null) return null;
 
   const at = instantOf(kitchen.due, '23:59', event.timeZone);
 
@@ -331,6 +454,28 @@ export function kitchenMilestone(
         area: 'menu',
         action: { label: KW.openSheet, link: kitchenAt(event.id) },
       };
+}
+
+/** sc-30692: due at 23:59 on the date if the change came back by then, else at the start, which is never Overdue. */
+export function changesDueAt(event: SampleEvent, due: string | null, changedAt: string): string {
+  const deadline = due == null ? null : instantOf(due, '23:59', event.timeZone);
+
+  return deadline != null && Date.parse(changedAt) <= Date.parse(deadline)
+    ? deadline
+    : event.startsAt;
+}
+
+function changesMilestone(event: SampleEvent, kitchen: Kitchen): Milestone | null {
+  if (kitchen.changedAt == null || changeLines(kitchen, true).length === 0) return null;
+
+  return {
+    at: changesDueAt(event, kitchen.due, kitchen.changedAt),
+    title: CW.milestone,
+    note: null,
+    owner: 'you',
+    area: 'menu',
+    action: { label: KW.openSheet, link: kitchenAt(event.id) },
+  };
 }
 
 export function timelineOf(event: SampleEvent, now: Date): Milestone[] {
@@ -486,9 +631,9 @@ export function allergenCounts(): [string, number][] {
   return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
 }
 
-export function sheetLine(event: SampleEvent, now: Date): string {
+export function sheetLine(event: SampleEvent, now: Date, allergic = ALLERGIC.length): string {
   return filled(KW.sheetLine, {
-    allergic: ALLERGIC.length,
+    allergic,
     courses: COURSES.length,
     at: momentOf(now.toISOString(), event.timeZone),
   });
@@ -540,3 +685,55 @@ export const KITCHEN_PAGES: readonly { name: string; states: readonly DemoLink[]
   },
   { name: 'The milestone on the Overview and All dates', states: DATE_LINKS },
 ];
+
+function dateLink(state: KitchenDatesState, name: string, dates = false): DemoLink {
+  return { to: `/demo/events/${KITCHEN_EVENT}${dates ? '/dates' : ''}?state=${state}`, name };
+}
+
+/** sc-30692's states, beside sc-30812's on the demo's home. */
+export const CHANGES_PAGES: readonly { name: string; states: readonly DemoLink[] }[] = [
+  {
+    name: 'Changes since: the list and its readers',
+    states: (
+      [
+        'changes_named',
+        'changes_counts',
+        'changes_menu',
+        'changes_variant_side',
+        'changes_person',
+        'changes_erased',
+      ] as const
+    ).map(link),
+  },
+  {
+    name: 'No changes, no copy, view only and started',
+    states: (['no_changes', 'no_copy', 'view_only', 'started'] as const).map(link),
+  },
+  {
+    name: 'Give the changes…, and the copies',
+    states: (
+      [
+        'changes_give',
+        'changes_making',
+        'changes_failed',
+        'changes_given',
+        'changes_copies',
+      ] as const
+    ).map(link),
+  },
+  {
+    name: 'Give the changes to the kitchen, on the Overview and All dates',
+    states: [
+      dateLink('changes_due', 'Overview: due at the date'),
+      dateLink('changes_overdue', 'Overview: overdue once the date passes'),
+      dateLink('changes_late', 'Overview: came back after the date, due at the start'),
+      dateLink('changes_in_copy', 'Overview: in a copy, the milestone gone'),
+      dateLink('changes_due', 'All dates: due at the date', true),
+      dateLink('changes_overdue', 'All dates: Overdue, with the word', true),
+      dateLink('changes_late', 'All dates: came back after the date, due at the start', true),
+      dateLink('changes_no_date', 'All dates: no date set, due at the start', true),
+    ],
+  },
+];
+
+export { CW, cw };

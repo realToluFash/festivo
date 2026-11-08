@@ -34,7 +34,7 @@ import { GUEST_KITCHEN_PAGES } from './guestKitchen.ts';
 import { Guests } from './Guests.tsx';
 import { GUESTS_PAGES } from './guests.ts';
 import { KitchenPage } from './Kitchen.tsx';
-import { KITCHEN_PAGES } from './kitchen.ts';
+import { CHANGES_PAGES, KITCHEN_PAGES } from './kitchen.ts';
 import { LegalPage } from './Legal.tsx';
 import { LEGAL_PAGES } from './legal.ts';
 import { NewAccountBoard } from './NewAccount.tsx';
@@ -254,6 +254,8 @@ function DemoHome({ from }: { from: string }) {
         <BoardPages pages={GUESTS_PAGES} />
         <h3>Final numbers due and the kitchen’s copies, in Guests A · desktop</h3>
         <BoardPages pages={KITCHEN_PAGES} />
+        <h3>Changes since the kitchen’s last copy, in Guests A · desktop</h3>
+        <BoardPages pages={CHANGES_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-81">
