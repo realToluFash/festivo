@@ -8,7 +8,6 @@ import {
   StyleSheet,
   type TextInputInstance,
   View,
-  useWindowDimensions,
   type ViewInstance,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -21,6 +20,7 @@ import {
   type ScreenReaderTarget,
 } from '../../components/screenReaderFocus.ts';
 import { Text } from '../../components/Text.tsx';
+import { useAccessibilitySizes } from '../../layout/useLayout.ts';
 import { useReducedMotion } from '../../reducedMotion.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { EventThumb } from '../events/EventCard.tsx';
@@ -51,8 +51,6 @@ const HOLD_MS = 8000;
 const MENU_AFTER_MS = 700;
 const RETRY_MS = 1200;
 const FACE = 34;
-/** From here the sizes are iOS's accessibility sizes: a name wraps, and the whole Ask scrolls (sc-614). */
-const LARGEST_TEXT = 1.35;
 
 const stay = () => {};
 
@@ -492,7 +490,8 @@ function Choice({
 /** What will move: the first five, soonest first, each its tile and its name, then how many more. */
 function WillMove({ events }: { events: readonly LedEvent[] }) {
   const { shown, more } = firstFew(events);
-  const cuts = useWindowDimensions().fontScale < LARGEST_TEXT;
+  // From the accessibility sizes on a name wraps in full and the whole Ask scrolls (sc-614, sc-13496).
+  const cuts = !useAccessibilitySizes();
 
   return (
     <View>
