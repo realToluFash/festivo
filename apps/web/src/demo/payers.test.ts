@@ -22,6 +22,7 @@ import {
   flaggedLines,
   hasPayer,
   nameProblem,
+  noteProblem,
   percentProblem,
   nextNoPayer,
   noPayer,
@@ -325,6 +326,17 @@ describe('the demo’s states (budget-a-spec.md §9)', () => {
     'link_copied',
     'copy_refused',
     'send_failed',
+    'payers_loading',
+    'payers_neither',
+    'note_too_long',
+    'payers_stale',
+    'payers_live',
+    'payers_not_live',
+    'choose_no_payer',
+    'choose_no_rest',
+    'link_passphrase',
+    'link_all_revoked',
+    'web_share',
   ];
 
   it('has every name the spec gives, each linked from the demo’s home', () => {
@@ -362,5 +374,34 @@ describe('the demo’s states (budget-a-spec.md §9)', () => {
     expect(percentProblem('100.01')).toBe('Use a number from 0 to 100.');
     expect(percentProblem('100')).toBeNull();
     expect(percentProblem('')).toBeNull();
+    expect(percentProblem('33.333')).toBe(
+      'Use a number from 0 to 100, with up to two decimal places.',
+    );
+    expect(noteProblem('a'.repeat(201))).toBe('Use 200 characters or fewer.');
+    expect(noteProblem(` ${'a'.repeat(200)} `)).toBeNull();
+  });
+
+  it('starts the gaps’ states where the boards draw them (sc-91, sc-1300)', () => {
+    expect(startOf('note_too_long').form?.noteError).toBe('Use 200 characters or fewer.');
+    expect([...(startOf('note_too_long').form?.note ?? '')]).toHaveLength(214);
+    expect(startOf('payers_neither').book).toEqual({ lines: [], payers: [], splits: {} });
+    expect(startOf('no_costs').book.payers).toHaveLength(4);
+    expect(startOf('payers_stale').choose).toMatchObject({ ticked: ['dj'], stale: 'Uncle Kayode' });
+    expect(startOf('payers_stale').book.payers.map((one) => one.id)).not.toContain('kayode');
+    expect(startOf('choose_no_payer').choose).toMatchObject({ ticked: ['dj'], checked: true });
+    expect(startOf('choose_no_payer').choose?.payer).toBeUndefined();
+    expect(startOf('choose_no_rest').choose).toMatchObject({ mode: 'fixed', checked: true });
+    expect(startOf('choose_no_rest').choose?.rest).toBeUndefined();
+    const live = startOf('payers_live').book;
+    expect(shareOf(SAMPLE_BOOK, 'obi')[0] - shareOf(live, 'obi')[0]).toBe(315000);
+    expect(startOf('link_passphrase').book.payers.find((one) => one.id === 'obi')?.passphrase).toBe(
+      true,
+    );
+    expect(startOf('link_all_revoked')).toMatchObject({ open: 'bakare' });
+    expect(startOf('link_all_revoked').book.payers.find((one) => one.id === 'bakare')?.link).toBe(
+      'revoked',
+    );
+    expect(startOf('web_share')).toMatchObject({ open: 'couple', shares: true });
+    expect(startOf('web_share').send).toEqual({ payerId: 'couple', kind: 'shared' });
   });
 });

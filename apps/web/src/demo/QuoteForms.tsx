@@ -28,6 +28,7 @@ import { Alert } from './EventParts.tsx';
 import {
   type EventDays,
   SHAPES,
+  CURRENCY_NAME,
   type ShapeRow,
   type Shaping,
   anyShapeProblem,
@@ -595,6 +596,7 @@ export function PaymentDialog({
   const shaped = shaping != null && shaping.shape !== 'rows';
   const rows = shaped && days != null ? shapeRows(typedTerms(shaping), quote, days) : [];
   const short = shaped && sharesTyped(shaping) ? sharesLine(rows, quote.amount) : null;
+  const verb = shaped ? PW.saveShapes(shaping.terms.length) : QW.add;
 
   useEffect(() => () => window.clearTimeout(pending.current), []);
 
@@ -638,7 +640,7 @@ export function PaymentDialog({
     <BudgetDialog
       width={700}
       title={QW.addAPayment}
-      verb={busy ? BW.saving : QW.add}
+      verb={busy ? BW.saving : verb}
       on={!busy}
       first={shaping == null ? first : picked}
       onDismiss={onClose}
@@ -647,7 +649,7 @@ export function PaymentDialog({
       <div className="desk-fields">
         {shaping?.raced === true && <AlertInset>{PW.raced}</AlertInset>}
         {shaping?.raced !== true && shaping?.failed === true && (
-          <AlertInset>{PW.shapeFailed}</AlertInset>
+          <AlertInset>{PW.shapeFailed(verb)}</AlertInset>
         )}
         {shaping != null && (
           <fieldset className="pay-shapes">
@@ -958,7 +960,13 @@ export function MarkPaidDialog({
         <div className="desk-fields">
           {about}
           <AlertInset>
-            {refused === 'paid' ? PW.alreadyPaid(payment.paid?.by ?? '') : PW.alreadyCancelled}
+            {refused === 'paid'
+              ? PW.alreadyPaid(payment.paid?.by ?? '')
+              : refused === 'currency'
+                ? PW.wrongCurrency(CURRENCY_NAME)
+                : refused === 'plan'
+                  ? PW.noEntitlement
+                  : PW.alreadyCancelled}
           </AlertInset>
         </div>
       </BudgetDialog>
@@ -990,9 +998,7 @@ export function MarkPaidDialog({
           max={TODAY}
           help={QW.datePaidHelp}
           error={problems.paidOn ?? null}
-          onChange={(paidOn) => {
-            if (paidOn <= TODAY) set({ paidOn });
-          }}
+          onChange={(paidOn) => set({ paidOn })}
         />
         <TextField
           id={`${id}-reference`}

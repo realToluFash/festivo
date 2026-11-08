@@ -53,7 +53,11 @@ import {
   linesOf,
   markupProblem,
   minorOf,
+  noteProblem,
+  priceProblem,
   rateProblem,
+  STAFF_REFUSED,
+  whatProblem,
   removedWords,
   sumLines,
   type Markups,
@@ -140,7 +144,7 @@ function dialogOf(state: string): Dialog {
   if (state.startsWith('save_')) return 'save';
   if (
     ['ceiling_set', 'ceiling_change', 'ceiling_negative', 'ceiling_currency'].includes(state) ||
-    ['ceiling_nan', 'ceiling_decimals'].includes(state)
+    ['ceiling_nan', 'ceiling_decimals', 'ceiling_saving', 'ceiling_refused'].includes(state)
   )
     return 'ceiling';
 
@@ -155,6 +159,18 @@ function openedOf(state: string): string | null {
 
   return null;
 }
+
+const LIVE_WORDS: Readonly<Record<string, string>> = {
+  live_heads: '2 more guests said yes, so the settled total went up by £180.',
+  ceiling_live_set: 'Julien Moreau set a ceiling of £22,000 for the whole event.',
+  ceiling_live_changed:
+    'Julien Moreau changed the whole event’s ceiling to £24,000, so it is now Close.',
+  ceiling_live_cleared: 'Julien Moreau cleared the ceilings.',
+  margin_live: 'Julien Moreau changed Photography’s markup to 25%, so the margin went up by £240.',
+};
+
+const LISTED = ['ceiling_saved', 'ceiling_categories_only', 'ceiling_cleared_one'];
+const MARGIN_HOME = ['margin', 'margin_zero_price', 'price_negative', 'price_decimals'];
 
 function removedOf(state: string, heads: Heads): Removed | null {
   const id = { removed_priced: 'dj', removed_not_priced: 'arch', removed_nothing_yet: 'centre' }[
@@ -226,8 +242,14 @@ export function BudgetHomeContent({
   const [lines, setLines] = useState(() => linesOf(first));
   const heads = headsOf(first);
   const [ceilings, setCeilings] = useState(() => ceilingsOf(first));
-  const [listed, setListed] = useState(first === 'ceiling_saved');
-  const [markups, setMarkups] = useState<Markups>(MARKUPS);
+  const [listed, setListed] = useState(LISTED.includes(first) || first === 'ceiling_no_costs');
+  const [markups, setMarkups] = useState<Markups>(() =>
+    first === 'margin_live'
+      ? { ...MARKUPS, categories: { ...MARKUPS.categories, photography: 25 } }
+      : MARKUPS,
+  );
+  const fee = first === 'margin_zero_price' ? 0 : PLANNING_FEE;
+  const ceilingLive = first.startsWith('ceiling_live');
   const [opened, setOpened] = useState<string | null>(() => openedOf(first));
   const [removed, setRemoved] = useState<Removed | null>(() => removedOf(first, heads));
   const [dialog, setDialog] = useState<Dialog>(() => dialogOf(first));
@@ -239,7 +261,13 @@ export function BudgetHomeContent({
         ? { id: 'dinner', words: 'Not saved. The rate is back to £68.00 a head.', ok: false }
         : null,
   );
-  const margin = enterprise && (first === 'margin' || first.startsWith('markup'));
+  const margin =
+    enterprise &&
+    (MARGIN_HOME.includes(first) || first.startsWith('markup') || first === 'margin_live');
+
+  useEffect(() => {
+    if (first === 'ceiling_cleared_one') tell('Ceiling saved.');
+  }, [first, tell]);
   const readOnly = first === 'read_only';
   const live = first !== 'not_live';
   const empty = lines.length === 0;
@@ -291,9 +319,7 @@ export function BudgetHomeContent({
           </>
         )}
       </PageTitle>
-      {first === 'live_heads' && (
-        <LiveLine words="2 more guests said yes, so the settled total went up by £180." />
-      )}
+      {LIVE_WORDS[first] != null && <LiveLine words={LIVE_WORDS[first]} />}
       {!live && (
         <NotLiveStrip
           words="Not live. Figures as of 09:32, 9 minutes ago."
@@ -318,7 +344,8 @@ export function BudgetHomeContent({
         <MarginCard
           event={event}
           paid={first !== 'margin_before_paid'}
-          figures={marginOf(lines, heads, markups)}
+          washed={first === 'margin_live'}
+          figures={marginOf(lines, heads, markups, fee)}
         />
       ) : (
         <SummaryCard
@@ -326,6 +353,7 @@ export function BudgetHomeContent({
           sum={sum}
           heads={heads}
           washed={first === 'live_heads' || first === 'rate_saved'}
+          tagsWashed={ceilingLive}
           ceiling={wholeCeiling?.state ?? null}
           next={next}
           step={live && !readOnly}
@@ -379,6 +407,7 @@ export function BudgetHomeContent({
                 heads={heads}
                 first={first}
                 markups={markups}
+                fee={fee}
                 onPrice={(id, price) => {
                   setMarkups((now) => ({ ...now, prices: { ...now.prices, [id]: price } }));
                   tell('Saved.');
@@ -433,6 +462,7 @@ export function BudgetHomeContent({
                 <CeilingBlock
                   ceilings={ceilings}
                   listed={listed}
+                  washed={ceilingLive}
                   lines={lines}
                   heads={heads}
                   onChange={() => setDialog('ceiling')}
@@ -571,6 +601,7 @@ function SummaryCard({
   sum,
   heads,
   washed,
+  tagsWashed,
   ceiling,
   next,
   step,
@@ -583,6 +614,7 @@ function SummaryCard({
   sum: { settled: number; ifAll: number; notPriced: number };
   heads: Heads;
   washed: boolean;
+  tagsWashed: boolean;
   ceiling: ReturnType<typeof ceilingOf>['state'] | null;
   next: Payment | null;
   step: boolean;
@@ -602,7 +634,7 @@ function SummaryCard({
 
   return (
     <BudgetCard event={event} label={W.budget}>
-      <GlassTags tags={tags} />
+      <GlassTags tags={tags} washed={tagsWashed} />
       <Figure flash={washed}>{wholeRange(sum.settled, sum.ifAll)}</Figure>
       <OnCard>{W.rangeLine}</OnCard>
       <CardPairs
@@ -664,10 +696,12 @@ function FirstCard({
 function MarginCard({
   event,
   paid,
+  washed,
   figures,
 }: {
   event: SampleEvent;
   paid: boolean;
+  washed: boolean;
   figures: ReturnType<typeof marginOf>;
 }) {
   return (
@@ -679,6 +713,7 @@ function MarginCard({
         ]}
       />
       <CardPairs
+        flash={washed}
         pairs={[
           {
             label: 'Client total',
@@ -842,6 +877,8 @@ function startRate(first: string, line: CostLine): string {
       rate_decimals: '70.505',
       rate_saving: '70',
       rate_warning: '72',
+      rate_warning_category: '76',
+      rate_down_while_over: '66',
     }[first] ?? '68.00'
   );
 }
@@ -1012,29 +1049,37 @@ function warningOf(
   heads: Heads,
   ceilings: Partial<Record<CeilingKey, number>>,
 ): readonly [string, string] | null {
-  const ceiling = ceilings.whole;
-  if (ceiling == null || rateProblem(typed) != null || line.rate == null) return null;
+  if (rateProblem(typed) != null || line.rate == null) return null;
   const rate = minorOf(typed);
   if (rate <= line.rate) return null;
-  const next = sumLines(
-    lines.map((one) => (one.id === line.id ? { ...one, rate } : one)),
-    heads,
+  const changed = lines.map((one) => (one.id === line.id ? { ...one, rate } : one));
+  const said = whole(rate);
+  const over = (what: string, ceiling: number | undefined, mine: readonly CostLine[]) => {
+    if (ceiling == null) return null;
+    const next = sumLines(mine, heads);
+    const figure =
+      next.settled > ceiling
+        ? `Settled, it would be ${whole(next.settled)}`
+        : next.ifAll > ceiling
+          ? `If everyone comes, it would be ${whole(next.ifAll)}`
+          : null;
+
+    return figure == null
+      ? null
+      : ([
+          `${said} takes ${what} over its ceiling.`,
+          `${figure} against ${whole(ceiling)}. You can still save it.`,
+        ] as const);
+  };
+
+  return (
+    over('the event', ceilings.whole, changed) ??
+    over(
+      CATEGORY_WORDS[line.category],
+      ceilings[line.category],
+      changed.filter((one) => one.category === line.category),
+    )
   );
-  const unit = UNIT[line.basis];
-  const said = unit == null ? whole(rate) : whole(rate);
-
-  if (next.settled > ceiling)
-    return [
-      `${said} takes the event over its ceiling.`,
-      `Settled, it would be ${whole(next.settled)} against ${whole(ceiling)}. You can still save it.`,
-    ];
-  if (next.ifAll > ceiling)
-    return [
-      `${said} takes the event over its ceiling.`,
-      `If everyone comes, it would be ${whole(next.ifAll)} against ${whole(ceiling)}. You can still save it.`,
-    ];
-
-  return null;
 }
 
 function MarginCosts({
@@ -1042,18 +1087,29 @@ function MarginCosts({
   heads,
   first,
   markups,
+  fee,
   onPrice,
 }: {
   lines: CostLine[];
   heads: Heads;
   first: string;
   markups: Markups;
+  fee: number;
   onPrice: (id: string, price: number) => void;
 }) {
-  const [opened, setOpened] = useState<string | null>(first === 'margin' ? 'dj' : null);
-  const [charged, setCharged] = useState('800');
-  const [chargedTried, setChargedTried] = useState(false);
+  const refused = first === 'price_negative' || first === 'price_decimals';
+  const [opened, setOpened] = useState<string | null>(
+    first === 'margin' ? 'dj' : refused ? 'bridal' : null,
+  );
+  const [charged, setCharged] = useState(
+    first === 'price_negative' ? '−50' : first === 'price_decimals' ? '950.505' : '800',
+  );
+  const [chargedTried, setChargedTried] = useState(refused);
   const chargedField = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (opened != null) chargedField.current?.focus();
+  }, [opened]);
   const priced = lines.filter((one) => lineState(one) === 'priced');
   const groups = (Object.keys(CATEGORY_WORDS) as Category[]).filter((category) =>
     priced.some((one) => one.category === category),
@@ -1070,7 +1126,7 @@ function MarginCosts({
               .map((one) => {
                 const each = chargedOf(one, heads, markups);
                 const [cost, price] = [each.cost[0], each.charged[0]];
-                const share = price === 0 ? 0 : ((price - cost) / price) * 100;
+                const share = price === 0 ? null : (((price - cost) / price) * 100).toFixed(1);
 
                 return (
                   <li key={one.id}>
@@ -1081,11 +1137,11 @@ function MarginCosts({
                           label="Charged at"
                           value={charged}
                           help={`Cost ${money(cost)}`}
-                          error={chargedTried ? rateProblem(charged, 'amount') : null}
+                          error={chargedTried ? priceProblem(charged) : null}
                           inputRef={chargedField}
                           onChange={setCharged}
                         />
-                        {minorOf(charged) < cost && rateProblem(charged) == null && (
+                        {minorOf(charged) < cost && priceProblem(charged) == null && (
                           <p className="bud-below" role="status">
                             <DownArrow />
                             Below cost: margin {whole(minorOf(charged) - cost)}.
@@ -1097,7 +1153,7 @@ function MarginCosts({
                             label={W.save}
                             onClick={() => {
                               setChargedTried(true);
-                              if (rateProblem(charged, 'amount') != null)
+                              if (priceProblem(charged) != null)
                                 return chargedField.current?.focus();
                               onPrice(one.id, minorOf(charged));
                               setOpened(null);
@@ -1111,7 +1167,7 @@ function MarginCosts({
                         lines={[
                           `Cost ${money(cost)} · Charged at ${money(price)} · ${markupWords(one, markups)}`,
                         ]}
-                        end={<Amount value={`${share.toFixed(1)}%`} />}
+                        end={<Amount value={share == null ? 'No figure' : `${share}%`} />}
                         onOpen={() => {
                           setChargedTried(false);
                           setCharged((price / 100).toFixed(2));
@@ -1131,8 +1187,8 @@ function MarginCosts({
           <li>
             <BudgetRow
               title="Planning fee"
-              lines={[`Cost £0.00 · Charged at ${money(PLANNING_FEE)} · its own price`]}
-              end={<Amount value="100.0%" />}
+              lines={[`Cost £0.00 · Charged at ${money(fee)} · its own price`]}
+              end={<Amount value={fee === 0 ? 'No figure' : '100.0%'} />}
             />
           </li>
         </Rows>
@@ -1200,12 +1256,14 @@ function CeilingBlock({
   lines,
   heads,
   listed,
+  washed = false,
   onChange,
 }: {
   ceilings: Partial<Record<CeilingKey, number>>;
   lines: readonly CostLine[];
   heads: Heads;
   listed: boolean;
+  washed?: boolean;
   onChange: () => void;
 }) {
   const set = CEILING_KEYS.filter((key) => ceilings[key] != null && (listed || key === 'whole'));
@@ -1221,7 +1279,7 @@ function CeilingBlock({
       }
     >
       {set.length === 0 ? (
-        <p className="desk-line">
+        <p className={washed ? 'desk-line is-washed' : 'desk-line'}>
           No ceiling yet. Set one for the whole event, a category, or both.
         </p>
       ) : (
@@ -1237,6 +1295,7 @@ function CeilingBlock({
                   lines={[ceilingSentence(now.settled, now.ifAll, amount)]}
                   lead={<RingMark state={now.state} />}
                   end={<StateTag state={now.state} />}
+                  washed={washed}
                 />
               </li>
             );
@@ -1304,19 +1363,19 @@ function WhoIsPaying() {
 
 function FromOtherEvents({ onSave }: { onSave: () => void }) {
   return (
-    <Block title="From other events">
+    <Block title="Other events">
       <Rows>
         <li>
           <BudgetRow
             title="Save as template"
-            lines={['Its rates, for the next one like it']}
+            lines={['This budget’s rates, for the next event like it']}
             onOpen={onSave}
           />
         </li>
         <li>
           <BudgetRow
             title="Calibration"
-            lines={['What costs came to on events that are over']}
+            lines={['What finished events cost']}
             to={budgetAt('calibration')}
           />
         </li>
@@ -1341,6 +1400,11 @@ const BASES: readonly { key: CostLine['basis']; word: string; line: string }[] =
   { key: 'fixed', word: 'A fixed amount', line: 'Counted once' },
 ];
 
+const LONG_WHAT =
+  'Welcome drinks on the terrace as the guests arrive, with sparkling wine, a fruit punch and alcohol-free cocktails';
+const LONG_NOTE =
+  'Kofi at Savour Kitchen will confirm the final mix a week before. The sparkling wine is the house cava, two glasses for each guest, served from the terrace bar while the photographs are taken. The fruit punch is made on the day with no added sugar, and the alcohol-free cocktails follow the menu we tasted in October: the ginger and lime one, the hibiscus one and the cucumber one. Glasses, ice and two bar staff are included in the rate. Anything left over goes back to the kitchen, and unopened bottles are not charged.';
+
 function AddCostDialog({
   first,
   onDismiss,
@@ -1353,39 +1417,76 @@ function AddCostDialog({
   const blank = first === 'add_cost_blank';
   const fixedStart = first === 'add_cost_fixed';
   const staff = first === 'add_cost_staff';
+  const refused = first === 'add_cost_refused';
   const [what, setWhat] = useState(
-    blank ? '' : fixedStart ? 'Aisle arch' : staff ? 'Service staff' : 'Welcome drinks',
+    blank
+      ? ''
+      : fixedStart
+        ? 'Aisle arch'
+        : staff || refused
+          ? 'Service staff'
+          : first === 'add_cost_long_name'
+            ? LONG_WHAT
+            : 'Welcome drinks',
   );
   const [category, setCategory] = useState<Category | ''>(
-    blank ? '' : fixedStart ? 'flowers' : staff ? 'staffing' : 'catering',
+    blank ? '' : fixedStart ? 'flowers' : staff || refused ? 'staffing' : 'catering',
   );
-  const [note, setNote] = useState('');
+  const [note, setNote] = useState(first === 'add_cost_long_note' ? LONG_NOTE : '');
   const [basis, setBasis] = useState<CostLine['basis'] | null>(
-    blank ? null : fixedStart ? 'fixed' : 'perHead',
+    blank || refused ? null : fixedStart ? 'fixed' : 'perHead',
   );
-  const [rate, setRate] = useState(fixedStart ? '450' : blank ? '' : '12');
-  const [tried, setTried] = useState(blank);
+  const [rate, setRate] = useState(fixedStart ? '450' : blank || refused ? '' : '12');
+  const [tried, setTried] = useState(
+    blank || first === 'add_cost_long_name' || first === 'add_cost_long_note',
+  );
+  const [server, setServer] = useState<string | null>(refused ? STAFF_REFUSED : null);
   const [failed, setFailed] = useState(first === 'add_cost_failed');
   const [busy, setBusy] = useState(false);
   const whatRef = useRef<HTMLInputElement>(null);
+  const categoryRef = useRef<HTMLSelectElement>(null);
+  const noteRef = useRef<HTMLInputElement>(null);
+  const basisRef = useRef<HTMLInputElement>(null);
+  const rateRef = useRef<HTMLInputElement>(null);
   const id = useId();
+  const taken = staff || refused;
   const problems = {
-    what: what.trim() === '' ? 'Enter what it is.' : null,
+    what: whatProblem(what),
     category: category === '' ? 'Choose a category.' : null,
+    note: noteProblem(note),
     basis: basis == null ? 'Choose how it is counted.' : null,
     rate:
       basis == null || basis === 'perStaffHour'
         ? null
         : rateProblem(rate, basis === 'fixed' ? 'amount' : 'rate'),
   };
-  const shown = tried ? problems : { what: null, category: null, basis: null, rate: null };
+  const shown = tried
+    ? problems
+    : { what: null, category: null, note: null, basis: null, rate: null };
   const count = Object.values(shown).filter((one) => one != null).length;
+  const basisSaid = shown.basis ?? server;
+  const startAt =
+    first === 'add_cost_long_name'
+      ? whatRef
+      : first === 'add_cost_long_note'
+        ? noteRef
+        : refused
+          ? basisRef
+          : null;
 
   function add(): void {
     if (busy) return;
     setTried(true);
+    setServer(null);
     if (Object.values(problems).some((one) => one != null)) {
-      if (problems.what != null) whatRef.current?.focus();
+      const order = [
+        [problems.what, whatRef],
+        [problems.category, categoryRef],
+        [problems.note, noteRef],
+        [problems.basis, basisRef],
+        [problems.rate, rateRef],
+      ] as const;
+      order.find(([problem]) => problem != null)?.[1].current?.focus();
       return;
     }
     setBusy(true);
@@ -1412,6 +1513,7 @@ function AddCostDialog({
       title="Add a cost"
       verb={busy ? 'Adding…' : 'Add'}
       locked={busy}
+      {...(startAt == null ? {} : { first: startAt })}
       onDismiss={onDismiss}
       onConfirm={add}
     >
@@ -1441,6 +1543,7 @@ function AddCostDialog({
             </label>
             <div className={shown.category == null ? 'desk-box' : 'desk-box is-wrong'}>
               <select
+                ref={categoryRef}
                 id={`${id}-cat`}
                 className="bud-select"
                 value={category}
@@ -1463,41 +1566,55 @@ function AddCostDialog({
               </p>
             )}
           </div>
-          <Field label="Note · Optional" value={note} onChange={setNote} />
+          <Field
+            label="Note · Optional"
+            value={note}
+            onChange={setNote}
+            error={shown.note}
+            inputRef={noteRef}
+          />
         </div>
         <fieldset
           className="bud-two-right bud-bases"
-          aria-describedby={shown.basis == null ? undefined : `${id}-basis-error`}
+          aria-describedby={basisSaid == null ? undefined : `${id}-basis-error`}
         >
           <legend className="desk-label">How it is counted</legend>
           <ul className="desk-rows">
-            {BASES.map((one) => {
-              const taken = staff && one.key === 'perStaffHour';
+            {BASES.map((one, index) => {
+              const off = taken && one.key === 'perStaffHour';
 
               return (
                 <li key={one.key}>
                   <label className={basis === one.key ? 'desk-row is-picked' : 'desk-row'}>
                     <input
+                      ref={index === 0 ? basisRef : undefined}
                       type="radio"
                       className="desk-radio"
                       name={`${id}-basis`}
                       checked={basis === one.key}
-                      disabled={taken}
-                      onChange={() => setBasis(one.key)}
+                      disabled={off}
+                      onChange={() => {
+                        setBasis(one.key);
+                        setServer(null);
+                      }}
                     />
                     <RowWords
                       title={one.word}
-                      lines={[taken ? 'The budget already has a staff-time cost.' : one.line]}
+                      lines={[off ? 'The budget already has a staff-time cost.' : one.line]}
                     />
                   </label>
                 </li>
               );
             })}
           </ul>
-          {shown.basis != null && (
-            <p id={`${id}-basis-error`} className="desk-error">
+          {basisSaid != null && (
+            <p
+              id={`${id}-basis-error`}
+              className="desk-error"
+              {...(server == null ? {} : { role: 'alert' })}
+            >
               <Glyph name="alert" size={15} weight={2.2} />
-              {shown.basis}
+              {basisSaid}
             </p>
           )}
           {basis != null && basis !== 'perStaffHour' && (
@@ -1506,6 +1623,7 @@ function AddCostDialog({
               value={rate}
               {...(UNIT[basis] == null ? {} : { unit: UNIT[basis] })}
               error={shown.rate}
+              inputRef={rateRef}
               onChange={setRate}
             />
           )}
@@ -1532,6 +1650,7 @@ function startCeilings(first: string): Record<CeilingKey, string> {
     ceiling_decimals: '640.505',
   }[first as 'ceiling_nan'];
   if (bad != null) values.transport = bad;
+  if (first === 'ceiling_refused') values.catering = '13,000.005';
 
   return values;
 }
@@ -1557,7 +1676,12 @@ function CeilingSheet({
     'ceiling_decimals',
   ].includes(first);
   const [tried, setTried] = useState(refused);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState(first === 'ceiling_saving');
+  const [server, setServer] = useState<{ key: CeilingKey; words: string } | null>(() =>
+    first === 'ceiling_refused'
+      ? { key: 'catering', words: ceilingProblem('13,000.005', currency) ?? '' }
+      : null,
+  );
   const [fields] = useState(() =>
     Object.fromEntries(CEILING_KEYS.map((key) => [key, createRef<HTMLInputElement>()])),
   );
@@ -1565,7 +1689,12 @@ function CeilingSheet({
   const problems = Object.fromEntries(
     CEILING_KEYS.map((key) => [key, ceilingProblem(values[key], currency)]),
   ) as Record<CeilingKey, string | null>;
-  const shown = (key: CeilingKey) => (tried ? problems[key] : null);
+  const shown = (key: CeilingKey) =>
+    tried ? problems[key] : server?.key === key ? server.words : null;
+  const change = (key: CeilingKey, value: string) => {
+    setValues((now) => ({ ...now, [key]: value }));
+    if (server?.key === key) setServer(null);
+  };
   const count = tried ? CEILING_KEYS.filter((key) => problems[key] != null).length : 0;
   const typed = Object.fromEntries(
     CEILING_KEYS.filter((key) => values[key].trim() !== '' && problems[key] == null).map((key) => [
@@ -1578,6 +1707,7 @@ function CeilingSheet({
   function save(): void {
     if (busy) return;
     setTried(true);
+    setServer(null);
     const wrong = CEILING_KEYS.find((key) => problems[key] != null);
     if (wrong != null) {
       fields[wrong]?.current?.focus();
@@ -1593,6 +1723,7 @@ function CeilingSheet({
       title={Object.keys(ceilings).length === 0 ? 'Set a ceiling' : 'Change the ceiling'}
       verb={busy ? W.saving : 'Save the ceiling'}
       locked={busy}
+      {...(server == null || fields[server.key] == null ? {} : { first: fields[server.key] })}
       onDismiss={onDismiss}
       onConfirm={save}
     >
@@ -1600,6 +1731,12 @@ function CeilingSheet({
         <p className="desk-error" role="alert">
           <Glyph name="alert" size={15} weight={2.2} />
           {fieldsWrong(count)}
+        </p>
+      )}
+      {server != null && !tried && (
+        <p className="desk-error" role="alert">
+          <Glyph name="alert" size={15} weight={2.2} />
+          One field needs fixing, so nothing was saved.
         </p>
       )}
       <div className="bud-ceiling-whole">
@@ -1610,7 +1747,7 @@ function CeilingSheet({
           help="Optional. 0 is allowed."
           error={shown('whole')}
           {...(fields.whole == null ? {} : { inputRef: fields.whole })}
-          onChange={(value) => setValues((now) => ({ ...now, whole: value }))}
+          onChange={(value) => change('whole', value)}
         />
       </div>
       <p className="bud-caps">Each category, optional</p>
@@ -1623,7 +1760,7 @@ function CeilingSheet({
             value={values[key]}
             error={shown(key)}
             {...(fields[key] == null ? {} : { inputRef: fields[key] })}
-            onChange={(value) => setValues((now) => ({ ...now, [key]: value }))}
+            onChange={(value) => change(key, value)}
           />
         ))}
       </div>
@@ -1654,7 +1791,7 @@ function MarkupDialog({
   const [category, setCategory] = useState<Category>('catering');
   const [cost, setCost] = useState<string>(priced[0]?.id ?? '');
   const [typed, setTyped] = useState(
-    { markup_negative: '−5', markup_cap: '1200', markup_decimals: '20.25' }[
+    { markup_negative: '−5', markup_cap: '1200', markup_decimals: '20.25', markup_nan: 'twenty' }[
       first as 'markup_cap'
     ] ?? '20',
   );

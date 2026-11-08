@@ -21,6 +21,7 @@ export interface PayerEntry {
   name: string;
   note: string;
   link: LinkState;
+  passphrase?: boolean;
 }
 
 export interface Part {
@@ -322,6 +323,10 @@ export function coveredBy(book: Book, payerId: string): string[] {
 
 export const canAddPayer = (payers: readonly PayerEntry[]): boolean => payers.length < PAYER_CAP;
 
+export function noteProblem(note: string): string | null {
+  return [...note.trim()].length > NOTE_MAX ? W.noteLong : null;
+}
+
 export function nameProblem(
   name: string,
   payers: readonly PayerEntry[],
@@ -379,11 +384,12 @@ export function percentOf(text: string): number | null {
   return Number(whole === '' ? '0' : whole) * 100 + Number(`${part}00`.slice(0, 2));
 }
 
-export const PERCENT_TYPED = /^-?\d{0,4}(\.\d{0,2})?$/;
+export const PERCENT_TYPED = /^-?\d{0,4}(\.\d{0,4})?$/;
 
 export function percentProblem(text: string): string | null {
   const typed = text.trim();
   if (typed === '') return null;
+  if (/^\d+\.\d{3,}$/.test(typed) && Number(typed) <= WHOLE / 100) return W.percentDecimals;
   const value = percentOf(typed);
 
   return value == null || value > WHOLE ? W.percentRange : null;
@@ -582,6 +588,17 @@ const STATE_NAMES = [
   'link_copied',
   'copy_refused',
   'send_failed',
+  'payers_loading',
+  'payers_neither',
+  'note_too_long',
+  'payers_stale',
+  'payers_live',
+  'payers_not_live',
+  'choose_no_payer',
+  'choose_no_rest',
+  'link_passphrase',
+  'link_all_revoked',
+  'web_share',
 ] as const;
 
 export type PayersState = (typeof STATE_NAMES)[number];
@@ -596,6 +613,7 @@ export interface ChooseStart {
   amounts?: Readonly<Record<string, string>>;
   rest?: string;
   checked?: boolean;
+  stale?: string;
 }
 
 export type Notice =
@@ -603,13 +621,14 @@ export type Notice =
   | { kind: 'refused'; payerId: string; count: number }
   | { kind: 'removed'; payer: PayerEntry; index: number };
 
-export type SendKind = 'busy' | 'copied' | 'refused' | 'failed';
+export type SendKind = 'busy' | 'copied' | 'refused' | 'failed' | 'shared';
 
 export interface FormStart {
   id: string | null;
   name: string;
   note: string;
   error: string | null;
+  noteError?: string | null;
 }
 
 export interface PayersStart {
@@ -619,6 +638,7 @@ export interface PayersStart {
   form: FormStart | null;
   send: { payerId: string; kind: SendKind } | null;
   choose: ChooseStart | null;
+  shares: boolean;
 }
 
 /** Which payer the pane opens on: the one asked for, else Mr and Mrs Obi as the board draws, else the first. */
@@ -653,13 +673,20 @@ const CHOOSE: Partial<Record<PayersState, ChooseStart>> = {
   },
   choose_fixed: { ticked: ['cars'], mode: 'fixed', amounts: { funmi: '400.00' }, rest: 'obi' },
   choose_several: { ticked: ['dj', 'cars', 'photo'], mode: 'one', payer: 'couple' },
+  choose_no_payer: { ticked: ['dj'], mode: 'one', checked: true },
+  choose_no_rest: { ticked: ['cars'], mode: 'fixed', amounts: { funmi: '400.00' }, checked: true },
+  payers_stale: { ticked: ['dj'], mode: 'one', stale: KAYODE.name },
 };
+
+const LONG_NOTE =
+  'Covering the band for the Saturday, the extra hour they asked for, and the sound engineer who comes with them, as agreed with Adaeze on the phone; he also offered to pay for the dance floor lights if the venue asks';
 
 const SENT: Partial<Record<PayersState, SendKind>> = {
   send_busy: 'busy',
   link_copied: 'copied',
   copy_refused: 'refused',
   send_failed: 'failed',
+  web_share: 'shared',
 };
 
 export function startOf(state: string, asked: string | null = null): PayersStart {
@@ -670,7 +697,19 @@ export function startOf(state: string, asked: string | null = null): PayersStart
   let book = SAMPLE_BOOK;
 
   if (name === 'no_payers') book = { ...SAMPLE_BOOK, payers: [], splits: {} };
-  if (name === 'no_costs') book = { lines: [], payers: [], splits: {} };
+  if (name === 'no_costs') book = { lines: [], payers: SAMPLE_PAYERS, splits: {} };
+  if (name === 'payers_neither') book = { lines: [], payers: [], splits: {} };
+  if (name === 'payers_live')
+    book = {
+      ...SAMPLE_BOOK,
+      splits: { ...SAMPLE_SPLITS, room: half('obi', 'bakare') },
+    };
+  if (name === 'link_passphrase')
+    book = {
+      ...SAMPLE_BOOK,
+      payers: SAMPLE_PAYERS.map((one) => (one.id === 'obi' ? { ...one, passphrase: true } : one)),
+    };
+  if (name === 'link_all_revoked') book = withLink(SAMPLE_BOOK, 'bakare', 'revoked');
   if (name === 'split_flag') book = FLAGGED;
   if (name === 'payer_cap')
     book = {
@@ -686,7 +725,8 @@ export function startOf(state: string, asked: string | null = null): PayersStart
         })),
       ],
     };
-  if (sent === 'copied' || sent === 'refused') book = withLink(book, 'couple', 'sent');
+  if (sent === 'copied' || sent === 'refused' || sent === 'shared')
+    book = withLink(book, 'couple', 'sent');
 
   const notice: Notice | null =
     name === 'payer_cap'
@@ -701,11 +741,20 @@ export function startOf(state: string, asked: string | null = null): PayersStart
       ? { id: null, name: KAYODE.name, note: KAYODE.note, error: null }
       : name === 'payer_duplicate'
         ? { id: null, name: 'Aunt Funmi', note: '', error: nameProblem('Aunt Funmi', book.payers) }
-        : null;
+        : name === 'note_too_long'
+          ? {
+              id: null,
+              name: KAYODE.name,
+              note: LONG_NOTE,
+              error: null,
+              noteError: noteProblem(LONG_NOTE),
+            }
+          : null;
+  const pane = name === 'link_all_revoked' ? 'bakare' : name === 'web_share' ? 'couple' : null;
 
   return {
     book,
-    open: openFirst(book.payers, asked ?? (sent == null ? null : 'couple')),
+    open: openFirst(book.payers, asked ?? pane ?? (sent == null ? null : 'couple')),
     notice,
     form,
     send:
@@ -713,6 +762,7 @@ export function startOf(state: string, asked: string | null = null): PayersStart
         ? null
         : { payerId: openFirst(book.payers, asked ?? 'couple') ?? '', kind: sent },
     choose: CHOOSE[name] ?? null,
+    shares: name === 'web_share',
   };
 }
 
@@ -777,6 +827,31 @@ export const PAYERS_PAGES: readonly DemoGroup[] = [
       { to: at('link_copied'), name: 'Link copied, said as a status (link_copied)' },
       { to: at('copy_refused'), name: 'The copy refused: the link selected (copy_refused)' },
       { to: at('send_failed'), name: 'The link not created (send_failed)' },
+      {
+        to: at('link_passphrase'),
+        name: 'A live link that asks for a passphrase (link_passphrase)',
+      },
+      {
+        to: at('link_all_revoked'),
+        name: 'Every link revoked or ended: Send to, no state line (link_all_revoked)',
+      },
+      {
+        to: at('web_share'),
+        name: 'A browser with a share sheet: Send opens it (web_share)',
+      },
+    ],
+  },
+  {
+    name: 'Loading, live, and the refusals still to draw',
+    states: [
+      { to: at('payers_loading'), name: 'Loading (payers_loading)' },
+      { to: at('payers_neither'), name: 'No costs and no payers (payers_neither)' },
+      { to: at('note_too_long'), name: 'A note over 200 characters (note_too_long)' },
+      { to: at('payers_stale'), name: 'Saved after a payer was removed elsewhere (payers_stale)' },
+      { to: at('payers_live'), name: 'A split changed in another tab (payers_live)' },
+      { to: at('payers_not_live'), name: 'Not live, with Try now (payers_not_live)' },
+      { to: at('choose_no_payer'), name: 'One payer, none chosen (choose_no_payer)' },
+      { to: at('choose_no_rest'), name: 'Fixed, no one covers what is left (choose_no_rest)' },
     ],
   },
 ];
