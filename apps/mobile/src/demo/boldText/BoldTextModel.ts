@@ -1,11 +1,6 @@
-import { SANS } from '../../theme/faceFor.ts';
+import { ONE_STEP_HEAVIER, SANS } from '../../theme/faceFor.ts';
 
 export type Asked = keyof typeof SANS;
-
-const ASKED: readonly Asked[] = [400, 500, 600, 700];
-
-/** One step heavier, capped at Instrument Sans's Bold (sc-19877, decided 8 Nov): lines stay under their titles. */
-const ONE_STEP: Record<Asked, Asked> = { 400: 600, 500: 600, 600: 700, 700: 700 };
 
 const PLAIN: Readonly<Record<Asked, string>> = { ...SANS };
 
@@ -17,17 +12,12 @@ const FACE_NAME: Record<Asked, string> = {
 };
 
 export function drawnWeight(asked: Asked, on: boolean): Asked {
-  return on ? ONE_STEP[asked] : asked;
+  return on ? ONE_STEP_HEAVIER[asked] : asked;
 }
 
 /** A weight's own file, whatever the switch says: the specimen draws both columns at once. */
 export function plainFace(weight: Asked): string {
   return PLAIN[weight];
-}
-
-/** The face table every Text and field reads: the demo moves it, so its screens draw the map as they are. */
-export function drawFaces(on: boolean): void {
-  for (const asked of ASKED) Object.assign(SANS, { [asked]: PLAIN[drawnWeight(asked, on)] });
 }
 
 export interface MapRow {

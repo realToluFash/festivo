@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react';
 
-import { drawFaces } from './BoldTextModel.ts';
+import { holdBoldText } from '../../theme/boldText.ts';
 
 let on = false;
 let open = false;
@@ -20,7 +20,7 @@ function changed(): void {
 
 export function setBoldText(next: boolean): void {
   on = next;
-  drawFaces(on);
+  holdBoldText(open ? on : null);
   changed();
 }
 

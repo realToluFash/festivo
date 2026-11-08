@@ -7,6 +7,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 
+import { useBoldText } from '../theme/boldText.ts';
 import { type Family, WEIGHTS, faced, type WeightName } from '../theme/fonts.ts';
 import { capUnderTitle } from '../layout/textSize.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -50,6 +51,7 @@ export function Text({
   const { fontScale } = useWindowDimensions();
   const cap = useContext(TitleCap);
   const laidOut = useSyncExternalStore(subscribeTextLaidOut, textLayoutsAtNewScale);
+  const bold = useBoldText();
 
   return (
     <RNText
@@ -64,6 +66,7 @@ export function Text({
           style,
         ],
         family,
+        bold,
       )}
       maxFontSizeMultiplier={
         cap == null ? maxFontSizeMultiplier : capUnderTitle(cap, size, maxFontSizeMultiplier)

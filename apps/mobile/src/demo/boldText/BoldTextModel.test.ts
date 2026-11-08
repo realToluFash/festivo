@@ -1,16 +1,6 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
-import { faceFor, inputFaceStyle, facesLoaded } from '../../theme/faceFor.ts';
-import {
-  APPLE_ANDROID,
-  appleIosWeight,
-  drawFaces,
-  drawnWeight,
-  MAP_ROWS,
-  plainFace,
-} from './BoldTextModel.ts';
-
-afterEach(() => drawFaces(false));
+import { APPLE_ANDROID, appleIosWeight, drawnWeight, MAP_ROWS } from './BoldTextModel.ts';
 
 describe('the map, one step and capped at Bold', () => {
   it.each([
@@ -36,50 +26,6 @@ describe('the map, one step and capped at Bold', () => {
     expect(MAP_ROWS.filter((row) => row.on.endsWith('unchanged')).map((row) => row.asked)).toEqual([
       700,
     ]);
-  });
-});
-
-describe('the face table the screens read', () => {
-  it('draws each weight in the face the map gives it, and back', () => {
-    drawFaces(true);
-    expect(faceFor(400)).toBe('InstrumentSans-SemiBold');
-    expect(faceFor(500)).toBe('InstrumentSans-SemiBold');
-    expect(faceFor(600)).toBe('InstrumentSans-Bold');
-    expect(faceFor(700)).toBe('InstrumentSans-Bold');
-
-    drawFaces(false);
-    expect(faceFor(400)).toBe('InstrumentSans-Regular');
-    expect(faceFor(500)).toBe('InstrumentSans-Medium');
-    expect(faceFor(600)).toBe('InstrumentSans-SemiBold');
-    expect(faceFor(700)).toBe('InstrumentSans-Bold');
-  });
-
-  it('does not move on a second turn the same way', () => {
-    drawFaces(true);
-    drawFaces(true);
-    expect(faceFor(400)).toBe('InstrumentSans-SemiBold');
-  });
-
-  it('draws typed text in SemiBold on Android, however often it is drawn', () => {
-    facesLoaded();
-    drawFaces(true);
-
-    for (let drawn = 0; drawn < 3; drawn += 1) {
-      expect(inputFaceStyle({ fontSize: 16 }, 'sans', 'android').fontFamily).toBe(
-        'InstrumentSans-SemiBold',
-      );
-    }
-  });
-
-  it("leaves Google's one face alone", () => {
-    drawFaces(true);
-    expect(faceFor(500, 'googleSans')).toBe('GoogleSans-Medium');
-  });
-
-  it('keeps the plain faces for the specimen while the table is moved', () => {
-    drawFaces(true);
-    expect(plainFace(400)).toBe('InstrumentSans-Regular');
-    expect(plainFace(500)).toBe('InstrumentSans-Medium');
   });
 });
 

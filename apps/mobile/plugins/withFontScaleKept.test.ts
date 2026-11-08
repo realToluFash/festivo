@@ -150,6 +150,21 @@ describe('withFontScaleForwarded', () => {
     expect(() => withFontScaleForwarded(destroying)).toThrow(/already handles/);
   });
 
+  it("keeps Android's Bold text adjustment off the activity's views, from Android 12, so the app draws the heavier faces itself", () => {
+    expect(forwarded).toMatch(
+      /override fun attachBaseContext\(newBase: Context\) \{\n\s+super\.attachBaseContext\(\n\s+if \(Build\.VERSION\.SDK_INT >= Build\.VERSION_CODES\.S\) \{\n\s+newBase\.createConfigurationContext\(Configuration\(\)\.apply \{ fontWeightAdjustment = 0 \}\)/,
+    );
+    expect(forwarded).toContain('import android.os.Build');
+  });
+
+  it('refuses an activity that already overrides attachBaseContext', () => {
+    const based = ACTIVITY.replace(
+      '\n}\n',
+      '\n  override fun attachBaseContext(newBase: Context) {\n    super.attachBaseContext(newBase)\n  }\n}\n',
+    );
+    expect(() => withFontScaleForwarded(based)).toThrow(/already handles/);
+  });
+
   it('refuses an activity that already overrides onPostCreate', () => {
     const created = ACTIVITY.replace(
       '\n}\n',
