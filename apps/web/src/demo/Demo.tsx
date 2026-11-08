@@ -633,11 +633,12 @@ const LATER: Record<string, string> = {
 function Later() {
   const [params] = useSearchParams();
   const asked = params.get('screen') ?? '';
-  const screen = LATER[asked] ?? 'Your account › Security';
 
   // The stand-ins' old addresses open the pages themselves (sc-28982).
   if (asked === 'terms' || asked === 'privacy') return <Navigate to={`/demo/${asked}`} replace />;
-  const guest = params.get('screen') === 'kitchen' || params.get('screen') === 'calendar';
+
+  const screen = LATER[asked] ?? 'Your account › Security';
+  const guest = asked === 'kitchen' || asked === 'calendar';
 
   // Opened from any footer, signed in or not, so its header offers neither way (sc-29561).
   return (

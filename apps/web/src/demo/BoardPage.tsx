@@ -5,7 +5,7 @@ import { Brand } from '../components/Brand.tsx';
 import { LanguageMenu } from '../components/LanguageMenu.tsx';
 import { AppleMark, GoogleMark } from '../components/ProviderSignIn.tsx';
 import { offButton } from '../offButton.ts';
-import { type LegalLang, PAGE_WORDS, legalPath, sampleLang } from './legal.ts';
+import { type LegalLang, legalPath, legalWords } from './legal.ts';
 import { SAMPLE } from './rules.ts';
 
 /** The board's page: the lockup and the header's right end, the form's column, the footer, and the way back under it. */
@@ -81,7 +81,7 @@ export function PageFooter({
   /** The language the page's words are in, which the links keep. */
   shown?: LegalLang;
 }) {
-  const words = PAGE_WORDS[sampleLang(shown)];
+  const words = legalWords(shown);
 
   return (
     <footer className="demo-page-footer">

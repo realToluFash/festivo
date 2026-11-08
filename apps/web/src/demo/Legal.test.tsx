@@ -107,6 +107,31 @@ describe('Terms and Privacy in the signed-out frame (sc-28982)', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Terms' })).toBeDefined();
   });
 
+  it('says Terms and Privacy in French as the guest’s page’s footer does, from one table', async () => {
+    const footerWords = (footer: Element | null) =>
+      [...(footer?.querySelectorAll('a') ?? [])].map((link) => link.textContent);
+
+    const legal = render(
+      <RouterProvider
+        router={createMemoryRouter(routes, { initialEntries: ['/demo/terms?state=fr'] })}
+      />,
+    );
+    await screen.findByRole('heading', { level: 1, name: 'Conditions' });
+    const signedOut = footerWords(document.querySelector('.demo-page-links'));
+    legal.unmount();
+
+    render(
+      <RouterProvider
+        router={createMemoryRouter(routes, { initialEntries: ['/demo/guest?state=french'] })}
+      />,
+    );
+    await screen.findByRole('link', { name: '[Conditions]' });
+    const guest = footerWords(document.querySelector('.gp-footer-links'));
+
+    expect(signedOut).toEqual(['[Conditions]', '[Confidentialité]']);
+    expect(guest).toEqual(signedOut);
+  });
+
   it('opens from the sign-in footer, and the old stand-in’s address opens the page', async () => {
     await open('/demo/sign-in', 'Sign in');
 

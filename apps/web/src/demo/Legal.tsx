@@ -10,7 +10,7 @@ import {
   type Block,
   type LegalDoc,
   type LegalLang,
-  PAGE_WORDS,
+  legalWords,
   SAMPLE_MARK,
   documentFor,
   legalLang,
@@ -32,7 +32,7 @@ function LegalBoard({ doc, state }: { doc: LegalDoc; state: string }) {
   const [lang, setLang] = useState<LegalLang>(state === 'fr' ? 'fr' : 'en');
   const shown = sampleLang(lang);
   const text = documentFor(doc, lang);
-  const words = PAGE_WORDS[shown];
+  const words = legalWords(lang);
   // The footer's own words (the language button's menu) in the page's language, without changing the demo's.
   const local = useMemo(() => i18next.cloneInstance({ lng: lang }), [lang]);
   usePageTitle(pageTitle(i18next.getFixedT(lang), [doc === 'terms' ? words.terms : words.privacy]));

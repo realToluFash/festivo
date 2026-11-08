@@ -1,3 +1,5 @@
+import { LEGAL } from './guest.ts';
+
 /** Terms and Privacy (sc-28982): the page's own words, and sample documents plainly marked as sample. */
 
 export type LegalDoc = 'terms' | 'privacy';
@@ -19,17 +21,10 @@ export interface Document {
 /** The effective date the owner gives a document; the sample's, the same in every language. */
 export const EFFECTIVE = new Date(Date.UTC(2026, 10, 4));
 
-/** The page's own words, the linguist's: settled English, and [bracketed] French until l10n writes it. */
-export const PAGE_WORDS: Record<
-  'en' | 'fr',
-  { terms: string; privacy: string; updated: (date: string) => string }
-> = {
-  en: { terms: 'Terms', privacy: 'Privacy', updated: (date) => `Last updated ${date}` },
-  fr: {
-    terms: '[Conditions]',
-    privacy: '[Confidentialité]',
-    updated: (date) => `[Dernière mise à jour\u00a0: ${date}]`,
-  },
+/** "Last updated {date}", the linguist's: settled English, and [bracketed] French until l10n writes it. */
+const UPDATED: Record<'en' | 'fr', (date: string) => string> = {
+  en: (date) => `Last updated ${date}`,
+  fr: (date) => `[Dernière mise à jour\u00a0: ${date}]`,
 };
 
 /** The demo writes its sample in English and French, the longest; Spanish and Portuguese show the English. */
@@ -43,7 +38,12 @@ export function longDate(lang: LegalLang, date: Date = EFFECTIVE): string {
 }
 
 export function updatedLine(lang: LegalLang): string {
-  return PAGE_WORDS[sampleLang(lang)].updated(longDate(sampleLang(lang)));
+  return UPDATED[sampleLang(lang)](longDate(sampleLang(lang)));
+}
+
+/** Terms and Privacy as every footer says them: the guest's page's table, so the two cannot drift. */
+export function legalWords(lang: LegalLang): { terms: string; privacy: string } {
+  return LEGAL[sampleLang(lang)];
 }
 
 export const SAMPLE_MARK: Record<LegalDoc, string> = {
@@ -345,7 +345,6 @@ export function legalLang(code: string): LegalLang {
   return LEGAL_LANGS.find((lang) => lang === code) ?? 'en';
 }
 
-/** Where a footer's link goes, in the language it is shown in. */
 export function legalPath(doc: LegalDoc, lang: LegalLang = 'en'): string {
   return lang === 'fr' ? `/demo/${doc}?state=fr` : `/demo/${doc}`;
 }
