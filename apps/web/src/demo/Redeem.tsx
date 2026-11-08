@@ -627,7 +627,12 @@ function CodeStep({
   onSendNew: () => void;
 }) {
   const texted = step.via === 'text';
-  const problem = step.problem == null ? undefined : PROBLEMS[step.problem];
+  const problem =
+    step.problem == null
+      ? undefined
+      : step.problem === 'expired' && !texted
+        ? { title: R.expiredTitle, body: R.expiredBodyWhatsApp }
+        : PROBLEMS[step.problem];
   const dead = deadCode(step.problem);
   const busy = step.busy !== 'no';
   const lines = CODE_LINES[step.via];

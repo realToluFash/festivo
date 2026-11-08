@@ -26,16 +26,16 @@ const type = (label: string, value: string) =>
   fireEvent.change(screen.getByLabelText(label), { target: { value } });
 const press = (name: string) => fireEvent.click(screen.getByRole('button', { name }));
 
-describe('typing a join code in the browser (sc-72)', () => {
+describe('typing a door code in the browser (sc-72)', () => {
   it('checks the code before anything is sent, then shows the event first', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     await redeem('enter-blank');
 
-    expect(screen.getByText('Enter the join code.')).toBeDefined();
-    type('Join code', 'q7km 4x');
+    expect(screen.getByText('Enter the door code.')).toBeDefined();
+    type('Door code', 'q7km 4x');
     press('Continue');
-    expect(screen.getByText('A join code is 8 letters and numbers.')).toBeDefined();
-    type('Join code', 'q7km-4xp2');
+    expect(screen.getByText('A door code is 8 letters and numbers.')).toBeDefined();
+    type('Door code', 'q7km-4xp2');
     press('Continue');
     expect(screen.getByRole('button', { name: 'Continue' }).getAttribute('aria-busy')).toBe('true');
     await wait(1000);
@@ -51,14 +51,14 @@ describe('typing a join code in the browser (sc-72)', () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     await redeem('enter');
 
-    type('Join code', 'Q7KM 4XP3');
+    type('Door code', 'Q7KM 4XP3');
     press('Continue');
     await wait(1000);
 
     expect(screen.getByRole('alert').textContent).toBe(
       'That code doesn’t work. Check it with whoever gave it to you.',
     );
-    expect(document.activeElement).toBe(screen.getByLabelText('Join code'));
+    expect(document.activeElement).toBe(screen.getByLabelText('Door code'));
   });
 
   it('stops at ten tries a minute, and says nothing about the event', async () => {
@@ -66,7 +66,7 @@ describe('typing a join code in the browser (sc-72)', () => {
     await redeem('refused');
 
     for (let tries = 1; tries < 10; tries += 1) {
-      type('Join code', `W3NC 6KP${String(tries)}`);
+      type('Door code', `W3NC 6KP${String(tries)}`);
       press('Continue');
       await wait(1000);
     }
@@ -233,7 +233,7 @@ describe('who is not asked again', () => {
     ).toBeDefined();
     expect(
       screen.getByText(
-        'Members reach an event through its People. Ask its lead or an admin to add you.',
+        'Members open an event from its People page. Ask its lead or an admin to add you.',
       ),
     ).toBeDefined();
     expect(screen.getByRole('button', { name: 'Open Events' })).toBeDefined();
@@ -245,7 +245,7 @@ describe('who is not asked again', () => {
     press('Sign out');
 
     expect(screen.getByRole('status').textContent).toBe('Signed out.');
-    expect(screen.getByRole('heading', { level: 1, name: 'Enter a join code' })).toBeDefined();
-    expect((screen.getByLabelText('Join code') as HTMLInputElement).value).toBe('');
+    expect(screen.getByRole('heading', { level: 1, name: 'Enter a door code' })).toBeDefined();
+    expect((screen.getByLabelText('Door code') as HTMLInputElement).value).toBe('');
   });
 });

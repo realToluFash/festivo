@@ -28,11 +28,11 @@ export const DRAWN_RESEND = 54;
 export const LIFTS_AT = '13:32';
 
 export const R = {
-  enterTitle: 'Enter a join code',
-  joinCode: 'Join code',
+  enterTitle: 'Enter a door code',
+  joinCode: 'Door code',
   continue: 'Continue',
-  codeBlank: 'Enter the join code.',
-  codeShort: 'A join code is 8 letters and numbers.',
+  codeBlank: 'Enter the door code.',
+  codeShort: 'A door code is 8 letters and numbers.',
   refused: 'That code doesn’t work. Check it with whoever gave it to you.',
   tooMany: 'Too many tries',
   tryAt: (time: string) => `Try again at ${clockOf(time)}`,
@@ -44,7 +44,7 @@ export const R = {
   joinAs: (name: string) => `Join as ${name}`,
   signOut: 'Sign out',
   memberTitle: `You’re already a member of ${DOOR_ORG}`,
-  memberLine: 'Members reach an event through its People. Ask its lead or an admin to add you.',
+  memberLine: 'Members open an event from its People page. Ask its lead or an admin to add you.',
   openEvents: 'Open Events',
   checkWhatsApp: 'Check WhatsApp',
   sentWhatsApp: (number: string) => `We sent a code to your WhatsApp on ${number}.`,
@@ -64,6 +64,8 @@ export const R = {
   wrongText: 'That code does not match. Check the newest text from Soirely and try again.',
   expiredTitle: 'That code has expired',
   expiredBody: 'Codes only work for a while. Send a new one and use the code in the newest text.',
+  expiredBodyWhatsApp:
+    'Codes only work for a while. Send a new one and use the code in the newest WhatsApp message.',
   exhaustedTitle: 'Too many wrong tries',
   exhaustedBody: 'That code no longer works. Send a new one to carry on.',
   failedTitle: 'That did not work',
@@ -84,7 +86,7 @@ export function sendNewIn(seconds: number): string {
   return `Send a new code in ${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
 }
 
-/** The join code's check before anything is sent: any case, spaces and hyphens ignored (sc-72). */
+/** The door code's check before anything is sent: any case, spaces and hyphens ignored (sc-72). */
 export function joinCodeLine(typed: string): string | null {
   const code = normalCode(typed);
   if (code === '') return R.codeBlank;
@@ -293,7 +295,7 @@ export const REDEEM_PAGES: readonly { name: string; states: readonly DemoLink[] 
   {
     name: 'Joining · typing a code',
     states: [
-      redeem('enter', 'Enter a join code'),
+      redeem('enter', 'Enter a door code'),
       redeem('enter-blank', 'Continue, left blank'),
       redeem('enter-short', 'Too short'),
       redeem('checking', 'Checking'),

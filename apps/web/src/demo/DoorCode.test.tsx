@@ -40,28 +40,28 @@ describe('the door code’s card on People (sc-71, sc-72)', () => {
     expect(screen.getByText('No door code yet')).toBeDefined();
     expect(
       screen.getByText(
-        'One code lets a crew in on the day. Each person gives their name and number.',
+        'One code lets a crew in on the day. Each person gives their name and mobile number.',
       ),
     ).toBeDefined();
     expect(screen.getByRole('button', { name: 'Make a door code' })).toBeDefined();
   });
 
-  it('reads the code in its groups, the count, then Hold it up, with Print first under it', async () => {
+  it('reads the code in its groups, the count, then Show the code, with Print first under it', async () => {
     await people('state=code');
 
     const main = within(screen.getByRole('main'));
     expect(main.getByText('Door code · Can check guests in · Bar and drinks')).toBeDefined();
-    expect(main.getByText('Join code Q 7 K M, 4 X P 2')).toBeDefined();
-    expect(main.getByText('14 of 30 used · until 23:30 on Sat, Nov 14')).toBeDefined();
+    expect(main.getByText('Door code Q 7 K M, 4 X P 2')).toBeDefined();
+    expect(main.getByText('14 of 30 used · until Sat, Nov 14, 23:30')).toBeDefined();
     const order = main
       .getAllByRole('button')
       .map((button) => button.textContent)
       .filter((words) =>
-        ['Hold it up', 'Print', 'Make a new code', 'Stop this code'].includes(words ?? ''),
+        ['Show the code', 'Print', 'Make a new code', 'Stop this code'].includes(words ?? ''),
       );
-    expect(order).toEqual(['Hold it up', 'Print', 'Make a new code', 'Stop this code']);
+    expect(order).toEqual(['Show the code', 'Print', 'Make a new code', 'Stop this code']);
     expect(
-      main.getByRole('button', { name: /^João Pereira.*Bar and drinks · door code$/u }),
+      main.getByRole('button', { name: /^João Pereira.*Bar and drinks · Door code$/u }),
     ).toBeDefined();
   });
 
@@ -69,7 +69,7 @@ describe('the door code’s card on People (sc-71, sc-72)', () => {
     await people('state=code-full');
     expect(screen.getByText('Full')).toBeDefined();
     expect(screen.getByRole('button', { name: 'Make a new code' })).toBeDefined();
-    expect(screen.queryByRole('button', { name: 'Hold it up' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Show the code' })).toBeNull();
   });
 
   it('lands the keyboard on Stop this code', async () => {
@@ -89,7 +89,7 @@ describe('the door code’s card on People (sc-71, sc-72)', () => {
     expect(
       ask.getByText('Nobody new can use it. The 14 people already in keep their access.'),
     ).toBeDefined();
-    fireEvent.click(ask.getByRole('button', { name: 'Stop this code' }));
+    fireEvent.click(ask.getByRole('button', { name: 'Stop the code' }));
     expect(ask.getByRole('button', { name: 'Stopping…' })).toBeDefined();
     await wait(1000);
 
@@ -131,7 +131,7 @@ describe('making a door code in a 540 dialog', () => {
 
     expect(screen.getByText('Door code made.')).toBeDefined();
     expect(screen.getByText('Door code · Can view · Bar and drinks')).toBeDefined();
-    expect(screen.getByText('0 of 30 used · until 23:30 on Sat, Nov 14')).toBeDefined();
+    expect(screen.getByText('0 of 30 used · until Sat, Nov 14, 23:30')).toBeDefined();
   });
 
   it('ends earlier from the menu, and refuses an end that has passed', async () => {
@@ -162,27 +162,32 @@ describe('making a door code in a 540 dialog', () => {
     expect(description(time)).toBe('Choose a time that hasn’t passed yet.');
   });
 
-  it('keeps the form as it was when making fails, with the line at its top', async () => {
+  it('keeps the form as it was when making fails, with the line at its top and Try again', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
     await people('code=failed');
 
     expect(dialog('Door code').getByRole('alert').textContent).toBe(
-      'We couldn’t make the code. Check your connection and try again.',
+      'The door code was not made. Check your connection and try again.',
     );
     expect((dialog('Door code').getByLabelText('How many people') as HTMLInputElement).value).toBe(
       '30',
     );
+    fireEvent.click(dialog('Door code').getByRole('button', { name: 'Try again' }));
+    await wait(1000);
+
+    expect(screen.getByText('Door code made.')).toBeDefined();
   });
 });
 
-describe('Hold it up, the whole window', () => {
+describe('Show the code, the whole window', () => {
   it('shows the QR and the code, and Escape closes it', async () => {
     await people('hold=open');
     const held = dialog('Door code');
 
     expect(
-      held.getByRole('img', { name: 'QR code for the join code Q 7 K M, 4 X P 2' }),
+      held.getByRole('img', { name: 'QR code for the door code Q 7 K M, 4 X P 2' }),
     ).toBeDefined();
-    expect(held.getByRole('status').textContent).toBe('14 of 30 used · until 23:30 on Sat, Nov 14');
+    expect(held.getByRole('status').textContent).toBe('14 of 30 used · until Sat, Nov 14, 23:30');
     fireEvent.keyDown(document, { key: 'Escape' });
 
     expect(screen.queryByRole('dialog', { name: 'Door code' })).toBeNull();
@@ -194,7 +199,7 @@ describe('Hold it up, the whole window', () => {
     await wait(1600);
 
     expect(dialog('Door code').getByRole('status').textContent).toBe(
-      '15 of 30 used · until 23:30 on Sat, Nov 14',
+      '15 of 30 used · until Sat, Nov 14, 23:30',
     );
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(screen.getByRole('button', { name: /^Hugo Faria/u })).toBeDefined();
@@ -211,9 +216,9 @@ describe('Hold it up, the whole window', () => {
     fireEvent.click(ask.getByRole('button', { name: 'Make a new code' }));
     await wait(1000);
 
-    expect(dialog('Door code').getByText('Join code H 3 W D, 9 R N 6')).toBeDefined();
+    expect(dialog('Door code').getByText('Door code H 3 W D, 9 R N 6')).toBeDefined();
     expect(dialog('Door code').getByRole('status').textContent).toBe(
-      '0 of 30 used · until 23:30 on Sat, Nov 14',
+      '0 of 30 used · until Sat, Nov 14, 23:30',
     );
   });
 
@@ -223,9 +228,9 @@ describe('Hold it up, the whole window', () => {
     const ask = asked('Stop this code?');
 
     expect(ask.getByRole('alert').textContent).toBe(
-      'We couldn’t stop the code, so it still works. Check your connection and try again.',
+      'The code was not stopped, so it still works. Check your connection and try again.',
     );
-    fireEvent.click(ask.getByRole('button', { name: 'Stop this code' }));
+    fireEvent.click(ask.getByRole('button', { name: 'Try again' }));
     await wait(1000);
 
     expect(screen.queryByRole('dialog', { name: 'Door code' })).toBeNull();
@@ -239,7 +244,7 @@ describe('who came in by the code, and taking one back', () => {
     await people('state=code-person');
     const role = dialog('Role on this event');
 
-    expect(role.getByText('In with the door code Q7KM 4XP2 at 13:34.')).toBeDefined();
+    expect(role.getByText('Joined with the door code Q7KM 4XP2 at 13:34.')).toBeDefined();
     expect(role.getByText('From outside Lumen Feiras · Bar and drinks')).toBeDefined();
     expect((role.getByRole('radio', { name: /^Lead/u }) as HTMLInputElement).disabled).toBe(true);
     expect(role.getByText('For members of Lumen Feiras only.')).toBeDefined();
@@ -271,7 +276,7 @@ describe('Print', () => {
     ).toBeDefined();
     expect(
       screen.getByText(
-        'Scan it with your phone’s camera, or open soirely.com/join and type the code. It works until 23:30 on Sat, Nov 14.',
+        'Scan it with your phone’s camera, or open soirely.com/join and enter the code. It works until Sat, Nov 14, 23:30.',
       ),
     ).toBeDefined();
   });

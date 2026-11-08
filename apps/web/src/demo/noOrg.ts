@@ -9,6 +9,7 @@ import {
   clockOf,
   dayOf,
   doorStartOf,
+  untilWords,
 } from './doorCode.ts';
 import type { DemoLink } from './settings.ts';
 
@@ -71,7 +72,7 @@ export const whenLine = () =>
   `${dayOf(EVENT_STARTS)} · ${clockOf(EVENT_STARTS)} to ${clockOf(EVENT_ENDS)}`;
 
 export const levelLine = (code: DoorCode) =>
-  [code.role, code.label, `until ${clockOf(EVENT_ENDS)}`].filter(Boolean).join(' · ');
+  [code.role, code.label, `until ${untilWords({ kind: 'event' })}`].filter(Boolean).join(' · ');
 
 export const NO_ORG_VENUE = DOOR_VENUE;
 

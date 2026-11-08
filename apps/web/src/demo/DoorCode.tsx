@@ -40,7 +40,7 @@ import {
   formFrom,
   heldLine,
   jobHelp,
-  joinCodeSaid,
+  doorCodeSaid,
   joiner,
   madeCode,
   makeLines,
@@ -260,7 +260,7 @@ function CodeCard({ code, index, onStep }: { code: DoorCode; index: number; onSt
         <div className="dc-card-code">
           <p className="dc-code-big">
             <span aria-hidden="true">{shownCode(code.code)}</span>
-            <span className="desk-unseen">{joinCodeSaid(code.code)}</span>
+            <span className="desk-unseen">{doorCodeSaid(code.code)}</span>
           </p>
           {tag != null && (
             <span className="desk-glass">
@@ -343,7 +343,7 @@ function CodeAsk({
       title={stop ? W.stopTitle : W.newTitle}
       line={stop ? stopLine(code) : newLine(code)}
       keep={stop ? W.stopKeep : W.newKeep}
-      go={stop ? W.stop : W.makeNew}
+      go={stop ? (phase === 'failed' ? W.tryAgain : W.stopGo) : W.makeNew}
       red={stop}
       busy={waits ? (stop ? W.stopping : W.making) : undefined}
       failed={phase === 'failed' && stop ? W.failStop : undefined}
@@ -353,7 +353,7 @@ function CodeAsk({
   );
 }
 
-/** Hold it up at a desk: the whole window white, the QR at 420 and the code at 56; Esc closes it. */
+/** Show the code at a desk: the whole window white, the QR at 420 and the code at 56; Esc closes it. */
 function HoldUp({
   code,
   onClose,
@@ -445,7 +445,7 @@ function HoldBox({
         <Qr code={code.code} size={420} />
         <p className="dc-hold-code">
           <span aria-hidden="true">{shownCode(code.code)}</span>
-          <span className="desk-unseen">{joinCodeSaid(code.code)}</span>
+          <span className="desk-unseen">{doorCodeSaid(code.code)}</span>
         </p>
         <p className="dc-hold-role">{heldLine(code)}</p>
         <p className="dc-hold-count" role="status">
@@ -558,6 +558,7 @@ function MakeDialog({
           {W.failMake}
         </p>
       )}
+      {phase === 'failed' && <TextAction label={W.tryAgain} onClick={makeIt} />}
       <fieldset className="desk-choices">
         <legend className="desk-legend">{W.theirRole}</legend>
         <ul className="desk-rows">
@@ -847,7 +848,7 @@ export function PrintSheet({ code }: { code: DoorCode }) {
       </div>
       <p className="dc-sheet-code">
         <span aria-hidden="true">{shownCode(code.code)}</span>
-        <span className="desk-unseen">{joinCodeSaid(code.code)}</span>
+        <span className="desk-unseen">{doorCodeSaid(code.code)}</span>
       </p>
       <p className="dc-sheet-role">{heldLine(code)}</p>
       <p className="dc-sheet-line">{printLine(code)}</p>

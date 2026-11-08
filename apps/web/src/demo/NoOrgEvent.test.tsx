@@ -46,7 +46,7 @@ describe('inside the event with no organisation, at a desk (sc-71, sc-31775)', (
     await inside('no-org');
 
     expect(areas()).toEqual(['Overview', 'Guests', 'Schedule', 'Seating', 'People']);
-    expect(screen.getByText('Can view · Cloakroom · until 23:30')).toBeDefined();
+    expect(screen.getByText('Can view · Cloakroom · until Sat, Nov 14, 23:30')).toBeDefined();
     expect(screen.queryByRole('button', { name: /Check guests in/u })).toBeNull();
     expect(screen.getByText('Names and replies, no contact details')).toBeDefined();
     expect(screen.getByText('21 on this event')).toBeDefined();
@@ -67,7 +67,9 @@ describe('inside the event with no organisation, at a desk (sc-71, sc-31775)', (
     expect(
       within(screen.getByRole('main')).getByRole('button', { name: 'Check guests in' }),
     ).toBeDefined();
-    expect(screen.getByText('Can check guests in · Bar and drinks · until 23:30')).toBeDefined();
+    expect(
+      screen.getByText('Can check guests in · Bar and drinks · until Sat, Nov 14, 23:30'),
+    ).toBeDefined();
   });
 
   it('reaches Your account and Sign out from the person button', async () => {

@@ -16,7 +16,7 @@ import {
   formFrom,
   HOLD_STATES,
   inWithLine,
-  joinCodeSaid,
+  doorCodeSaid,
   MAKE_STATES,
   makeLines,
   newLine,
@@ -41,7 +41,7 @@ describe('the door code’s words and checks (sc-72)', () => {
   it('shows the code in two groups, says it one character at a time, and takes it any way typed', () => {
     expect(shownCode('Q7KM4XP2')).toBe('Q7KM 4XP2');
     expect(saidCode('Q7KM4XP2')).toBe('Q 7 K M, 4 X P 2');
-    expect(joinCodeSaid('Q7KM4XP2')).toBe('Join code Q 7 K M, 4 X P 2');
+    expect(doorCodeSaid('Q7KM4XP2')).toBe('Door code Q 7 K M, 4 X P 2');
     expect(normalCode(' q7km-4xp2 ')).toBe('Q7KM4XP2');
   });
 
@@ -78,14 +78,15 @@ describe('the door code’s words and checks (sc-72)', () => {
   });
 
   it('writes every time on the 24-hour clock', () => {
-    expect(untilWords({ kind: 'event' })).toBe('23:30 on Sat, Nov 14');
+    expect(untilWords({ kind: 'event' })).toBe('Sat, Nov 14, 23:30');
+    expect(untilWords({ kind: 'event' }, '2026-11-14T13:31:00Z')).toBe('23:30');
     expect(endsWords({ kind: 'event' })).toBe('When the event ends · Sat, Nov 14, 23:30');
     expect(endsWords({ kind: 'earlier', day: '2026-11-07', time: '09:00' })).toBe(
       'Earlier · Sat, Nov 7, 09:00',
     );
-    expect(countLine(BAR)).toBe('14 of 30 used · until 23:30 on Sat, Nov 14');
+    expect(countLine(BAR)).toBe('14 of 30 used · until Sat, Nov 14, 23:30');
     expect(inWithLine({ code: 'Q7KM4XP2', at: '13:34' })).toBe(
-      'In with the door code Q7KM 4XP2 at 13:34.',
+      'Joined with the door code Q7KM 4XP2 at 13:34.',
     );
   });
 
@@ -103,6 +104,9 @@ describe('the door code’s words and checks (sc-72)', () => {
     expect(countLine({ ...BAR, state: 'ranOut', endedAt: '15:00' })).toBe(
       '14 of 30 used · ended at 15:00',
     );
+    expect(countLine({ ...BAR, state: 'stopped', used: 0 })).toBe('Nobody came in with it.');
+    expect(newLine({ ...BAR, used: 0 })).toBe('Q7KM 4XP2 stops working. Nobody has used it yet.');
+    expect(stopLine({ ...BAR, used: 0 })).toBe('Nobody new can use it. Nobody has used it yet.');
   });
 
   it('gives a new code the same role, label, cap and end, counting from 0', () => {
@@ -129,10 +133,10 @@ describe('the door code’s words and checks (sc-72)', () => {
       return [dayLabel('2026-11-14'), untilWords({ kind: 'event' })];
     };
 
-    expect(reading('en-US')).toEqual(['Sat, Nov 14', '23:30 on Sat, Nov 14']);
-    expect(reading('en-GB')).toEqual(['Sat 14 Nov', '23:30 on Sat 14 Nov']);
-    expect(reading('pt-PT')).toEqual(['Sat, Nov 14', '23:30 on Sat, Nov 14']);
-    expect(reading('fr-FR')).toEqual(['Sat, Nov 14', '23:30 on Sat, Nov 14']);
+    expect(reading('en-US')).toEqual(['Sat, Nov 14', 'Sat, Nov 14, 23:30']);
+    expect(reading('en-GB')).toEqual(['Sat 14 Nov', 'Sat 14 Nov, 23:30']);
+    expect(reading('pt-PT')).toEqual(['Sat, Nov 14', 'Sat, Nov 14, 23:30']);
+    expect(reading('fr-FR')).toEqual(['Sat, Nov 14', 'Sat, Nov 14, 23:30']);
     expect(clockOf('2026-11-14T23:30:00Z')).toBe('23:30');
   });
 });
@@ -155,7 +159,7 @@ describe('the door code’s states on People at a desk', () => {
     ]);
     const joao = people.find((one) => one.name === 'João Pereira');
     if (joao == null) throw new Error('João is in by the code');
-    expect(rowLine(joao, { id: 'ines' })).toBe('Can check guests in · Bar and drinks · door code');
+    expect(rowLine(joao, { id: 'ines' })).toBe('Can check guests in · Bar and drinks · Door code');
     expect(joao.door).toEqual({ code: 'Q7KM4XP2', at: '13:34' });
   });
 

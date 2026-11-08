@@ -17,10 +17,10 @@ import {
 } from './redeem.ts';
 
 describe('the browser’s redeem pages (sc-72, sc-4235)', () => {
-  it('checks the join code before anything is sent: any case, spaces and hyphens ignored', () => {
-    expect(joinCodeLine('')).toBe('Enter the join code.');
-    expect(joinCodeLine(' - ')).toBe('Enter the join code.');
-    expect(joinCodeLine('Q7KM 4X')).toBe('A join code is 8 letters and numbers.');
+  it('checks the door code before anything is sent: any case, spaces and hyphens ignored', () => {
+    expect(joinCodeLine('')).toBe('Enter the door code.');
+    expect(joinCodeLine(' - ')).toBe('Enter the door code.');
+    expect(joinCodeLine('Q7KM 4X')).toBe('A door code is 8 letters and numbers.');
     expect(joinCodeLine('q7km-4xp2')).toBeNull();
     expect(codeOpens('q7km-4xp2')).toBe(true);
     expect(codeOpens('Q7KM 4XP3')).toBe(false);

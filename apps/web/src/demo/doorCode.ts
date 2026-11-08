@@ -30,17 +30,17 @@ export const JOIN_MS = 1500;
 
 export const W = {
   noneSays: 'No door code yet',
-  noneLine: 'One code lets a crew in on the day. Each person gives their name and number.',
+  noneLine: 'One code lets a crew in on the day. Each person gives their name and mobile number.',
   makeFirst: 'Make a door code',
   another: 'Make another door code',
   doorCode: 'Door code',
-  hold: 'Hold it up',
+  hold: 'Show the code',
   print: 'Print',
   makeNew: 'Make a new code',
   stop: 'Stop this code',
   full: 'Full',
   stopped: 'Stopped',
-  ranOut: 'Ran out',
+  ranOut: 'Expired',
   make: 'Make',
   making: 'Making…',
   theirRole: 'Their role',
@@ -58,14 +58,17 @@ export const W = {
   day: 'Day',
   time: 'Time',
   past: 'Choose a time that hasn’t passed yet.',
-  failMake: 'We couldn’t make the code. Check your connection and try again.',
+  failMake: 'The door code was not made. Check your connection and try again.',
+  tryAgain: 'Try again',
   made: 'Door code made.',
   newTitle: 'Make a new code?',
   newKeep: 'Keep this one',
   stopTitle: 'Stop this code?',
   stopKeep: 'Keep it',
   stopping: 'Stopping…',
-  failStop: 'We couldn’t stop the code, so it still works. Check your connection and try again.',
+  failStop: 'The code was not stopped, so it still works. Check your connection and try again.',
+  stopGo: 'Stop the code',
+  nobodyYet: 'Nobody has used it yet.',
   removing: 'Removing…',
   close: 'Close',
   esc: 'Esc',
@@ -127,10 +130,14 @@ function instantOf(day: string, time: string): number {
   return Date.parse(`${day}T${time}:00Z`);
 }
 
-export function untilWords(ends: Ends): string {
+export function atWords(at: string, now = DESK_NOW): string {
+  return isoDayOf(at) === isoDayOf(now) ? clockOf(at) : `${dayOf(at)}, ${clockOf(at)}`;
+}
+
+export function untilWords(ends: Ends, now = DESK_NOW): string {
   return ends.kind === 'event'
-    ? `${clockOf(EVENT_ENDS)} on ${dayOf(EVENT_ENDS)}`
-    : `${clockOf(ends.time)} on ${dayLabel(ends.day)}`;
+    ? atWords(EVENT_ENDS, now)
+    : atWords(new Date(instantOf(ends.day, ends.time)).toISOString(), now);
 }
 
 export function endsWords(ends: Ends): string {
@@ -225,8 +232,8 @@ export function saidCode(code: string): string {
   return `${[...code.slice(0, 4)].join(' ')}, ${[...code.slice(4)].join(' ')}`;
 }
 
-export const joinCodeSaid = (code: string) => `Join code ${saidCode(code)}`;
-export const qrSaid = (code: string) => `QR code for the join code ${saidCode(code)}`;
+export const doorCodeSaid = (code: string) => `Door code ${saidCode(code)}`;
+export const qrSaid = (code: string) => `QR code for the door code ${saidCode(code)}`;
 
 /** The sample's codes in the order a planner makes them: the first, the new one, a second crew's. */
 export const SAMPLE_CODES = [
@@ -256,18 +263,20 @@ export function heldLine(code: DoorCode): string {
 export function countLine(code: DoorCode): string {
   switch (code.state) {
     case 'stopped':
+      if (code.used === 0) return 'Nobody came in with it.';
+
       return code.used === 1
         ? '1 person came in with it. They keep their access.'
         : `${code.used} people came in with it. They keep their access.`;
     case 'ranOut':
-      return `${code.used} of ${code.cap} used · ended at ${code.endedAt == null ? '' : clockOf(code.endedAt)}`;
+      return `${code.used} of ${code.cap} used · ended at ${code.endedAt == null ? '' : atWords(`${isoDayOf(DESK_NOW)}T${code.endedAt}:00Z`)}`;
     default:
       return `${code.used} of ${code.cap} used · until ${untilWords(code.ends)}`;
   }
 }
 
 function keepLine(used: number): string {
-  if (used === 0) return '';
+  if (used === 0) return ` ${W.nobodyYet}`;
 
   return used === 1
     ? ' The 1 person already in keeps their access.'
@@ -283,10 +292,10 @@ export function stopLine(code: DoorCode): string {
 }
 
 export const inWithLine = (door: { code: string; at: string }) =>
-  `In with the door code ${shownCode(door.code)} at ${clockOf(door.at)}.`;
+  `Joined with the door code ${shownCode(door.code)} at ${clockOf(door.at)}.`;
 
 export function printLine(code: DoorCode): string {
-  return `Scan it with your phone’s camera, or open ${DOOR_ADDRESS} and type the code. It works until ${untilWords(code.ends)}.`;
+  return `Scan it with your phone’s camera, or open ${DOOR_ADDRESS} and enter the code. It works until ${untilWords(code.ends)}.`;
 }
 
 export const printWhen = () =>
@@ -740,7 +749,7 @@ export const DOOR_PAGES: readonly { name: string; states: readonly DemoLink[] }[
       people('state=code-two', 'Two codes'),
       people('state=code-full', 'Full'),
       people('state=code-stopped', 'Stopped'),
-      people('state=code-ran-out', 'Ran out'),
+      people('state=code-ran-out', 'Expired'),
       people('state=code-made', 'Made, with the toast'),
       people('state=code-keyboard', 'From the keyboard'),
       people('state=loading', 'Loading'),
@@ -761,9 +770,9 @@ export const DOOR_PAGES: readonly { name: string; states: readonly DemoLink[] }[
     ],
   },
   {
-    name: 'Hold it up, the whole window',
+    name: 'Show the code, the whole window',
     states: [
-      people('hold=open', 'Hold it up'),
+      people('hold=open', 'Show the code'),
       people('hold=counted', 'Someone joins'),
       people('hold=new-ask', 'Make a new code?'),
       people('hold=new', 'The new code'),
