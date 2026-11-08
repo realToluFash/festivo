@@ -1,5 +1,5 @@
-import { type Account, ApiError, awaiting } from '@soirely/api-client';
-import { meetsPasswordLength } from '@soirely/domain';
+import { ApiError, awaiting } from '@soirely/api-client';
+import { PASSWORD_MINIMUM_LENGTH, meetsPasswordLength } from '@soirely/domain';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, type TextInputInstance, View } from 'react-native';
@@ -7,17 +7,17 @@ import { useTranslation } from 'react-i18next';
 
 import { followAccount } from '../src/accountLanguage.ts';
 import { api } from '../src/api.ts';
-import { AuthFrame, AuthHeading } from '../src/components/AuthFrame.tsx';
-import { Footnote, PrimaryButton } from '../src/components/Buttons.tsx';
-import { Field, focusChecked, keysStayDown } from '../src/components/Field.tsx';
-import { Notice } from '../src/components/Notice.tsx';
-import { PasswordField } from '../src/components/PasswordField.tsx';
+import { closeReset } from '../src/closeReset.ts';
+import { PrimaryButton } from '../src/components/Buttons.tsx';
+import { focusChecked, keysStayDown } from '../src/components/Field.tsx';
+import { sayOnLanding } from '../src/components/LandingToast.tsx';
 import { Pending } from '../src/components/Pending.tsx';
-import { PasswordRule } from '../src/components/PasswordRule.tsx';
 import { SecondFactorStep } from '../src/components/SecondFactorStep.tsx';
-import { useFormChecks } from '../src/kit/formChecks.ts';
 import { ruleRefusal, signInRoute } from '../src/kit/signInRules.ts';
 import { landingFor } from '../src/landing.ts';
+import { FieldLine, InsideField } from '../src/steps/InsideField.tsx';
+import { Heading, Plain, Says } from '../src/steps/Lines.tsx';
+import { NavBar, StepScreen } from '../src/steps/StepScreen.tsx';
 import { tokens } from '../src/theme/tokens.ts';
 
 type Status =
@@ -25,7 +25,6 @@ type Status =
   | { kind: 'ready'; email: string; tapped?: boolean }
   | { kind: 'saving'; email: string }
   | { kind: 'failed'; email: string }
-  | { kind: 'done'; email: string; account: Account }
   | { kind: 'code'; email: string }
   | { kind: 'used'; tapped: boolean }
   | { kind: 'expired'; tapped: boolean }
@@ -37,14 +36,10 @@ export default function ResetPassword() {
   const { token = '' } = useLocalSearchParams<{ token?: string }>();
   const [status, setStatus] = useState<Status>({ kind: 'checking' });
   const [lengthMet, setLengthMet] = useState(false);
+  const [short, setShort] = useState(false);
   const [refusal, setRefusal] = useState<string | null>(null);
   const typed = useRef('');
   const passwordInput = useRef<TextInputInstance>(null);
-  const checks = useFormChecks(
-    ['password'] as const,
-    (_field, value) => (value === '' ? t('recovery.passwordBlank') : null),
-    () => focusChecked(passwordInput),
-  );
 
   useEffect(() => {
     let live = true;
@@ -66,10 +61,9 @@ export default function ResetPassword() {
 
   async function submit(): Promise<void> {
     if (status.kind !== 'ready' && status.kind !== 'failed') return;
-    if (!checks.passes({ password: typed.current })) return;
-
-    // The rule is stated before submit, so a short password is never sent.
+    // The rule is stated before submit, so a short password is never sent: the line under the field turns.
     if (!meetsPasswordLength(typed.current)) {
+      setShort(true);
       focusChecked(passwordInput);
       return;
     }
@@ -81,7 +75,8 @@ export default function ResetPassword() {
     try {
       const { account } = await api.resetPassword(token, typed.current);
       await followAccount(account);
-      setStatus({ kind: 'done', email, account });
+      sayOnLanding(t('recovery.changed'));
+      router.replace(landingFor(awaiting(account)));
     } catch (error) {
       const dead = deadFrom(error);
       const refusal = error instanceof ApiError ? ruleRefusal(error.problem) : null;
@@ -107,36 +102,30 @@ export default function ResetPassword() {
 
   if (status.kind === 'checking') {
     return (
-      <AuthFrame>
+      <StepScreen>
         <Pending />
-      </AuthFrame>
+      </StepScreen>
     );
   }
 
   if (status.kind === 'used' || status.kind === 'expired' || status.kind === 'invalid') {
     return (
-      <AuthFrame
-        saying={
-          <AuthHeading
-            title={t(`recovery.${status.kind}Title`)}
-            intro={t(`recovery.${status.kind}Body`)}
-            answer={status.tapped ? status : undefined}
+      <StepScreen
+        nav={<NavBar left="close" onLeft={closeReset} testID="recovery" />}
+        foot={
+          <PrimaryButton
+            label={t('recovery.sendNew')}
+            onPress={() => router.replace('/forgot-password?from=link')}
+            testID="recovery.sendNew"
           />
         }
       >
-        <PrimaryButton
-          label={t('recovery.sendNew')}
-          onPress={() => router.replace('/forgot-password?from=link')}
-          testID="recovery.sendNew"
+        <Heading
+          title={t(`recovery.${status.kind}Title`)}
+          intro={t(`recovery.${status.kind}Body`)}
+          answer={status.tapped ? status : undefined}
         />
-        <Footnote
-          {...(status.kind === 'expired' ? { question: t('recovery.rememberedAfterAll') } : {})}
-          action={t('recovery.signIn')}
-          onPress={() => router.replace('/sign-in')}
-          role="link"
-          testID="recovery.signIn"
-        />
-      </AuthFrame>
+      </StepScreen>
     );
   }
 
@@ -167,88 +156,59 @@ export default function ResetPassword() {
     );
   }
 
-  if (status.kind === 'done') {
-    return (
-      <AuthFrame
-        atFoot
-        saying={
-          <AuthHeading
-            done
-            title={t('recovery.doneTitle')}
-            intro={t('recovery.doneBody', { email: status.email })}
-            answer={status}
-          />
-        }
-      >
-        <PrimaryButton
-          label={t('recovery.continue')}
-          onPress={() => router.replace(landingFor(awaiting(status.account)))}
-          testID="recovery.continue"
-        />
-      </AuthFrame>
-    );
-  }
-
   const saving = status.kind === 'saving';
-  const error = checks.errors.password ?? refusal;
+  const rule = t('register.ruleLength', { count: PASSWORD_MINIMUM_LENGTH });
 
   return (
-    <AuthFrame
-      saying={
-        <AuthHeading
-          title={t('recovery.newTitle')}
-          intro={t('recovery.newFor', { email: status.email })}
-          answer={status.kind === 'ready' && status.tapped === true ? status : undefined}
-        />
-      }
-    >
-      <>
-        {status.kind === 'failed' && (
-          <Notice
-            tone="broken"
-            mark={tokens.marks.broken.glyph}
-            title={t('recovery.failedTitle')}
-            body={t('recovery.failedBody')}
-            answer={status}
-          />
-        )}
-
-        <View style={styles.fields}>
-          <Field label={t('recovery.newPassword')} error={error}>
-            <PasswordField
-              ref={passwordInput}
-              wrong={error != null}
-              submitting={saving}
-              autoComplete="new-password"
-              textContentType="newPassword"
-              onChangeText={(text) => {
-                typed.current = text;
-                setLengthMet(meetsPasswordLength(text));
-                setRefusal(null);
-                checks.edited('password', text);
-              }}
-              onBlur={() => checks.left('password', typed.current)}
-              returnKeyType="done"
-              submitBehavior="submit"
-              onSubmitEditing={() => void submit()}
-              accessibilityLabel={t('recovery.newPassword')}
-              testID="recovery.password"
-            />
-          </Field>
-
-          <PasswordRule met={lengthMet} testID="recovery" />
-        </View>
-
-        <Notice tone="quiet" mark="i" body={t('recovery.signsOut')} />
-
+    <StepScreen
+      nav={<NavBar left="close" onLeft={closeReset} testID="recovery" />}
+      foot={
         <PrimaryButton
           label={saving ? t('recovery.saving') : t('recovery.save')}
           onPress={() => void submit()}
           busy={saving}
           testID="recovery.save"
         />
-      </>
-    </AuthFrame>
+      }
+    >
+      <Heading
+        title={t('recovery.newTitle')}
+        intro={t('recovery.newFor', { email: status.email })}
+        answer={status.kind === 'ready' && status.tapped === true ? status : undefined}
+      />
+      {status.kind === 'failed' && (
+        <Says words={`${t('recovery.failedTitle')}. ${t('recovery.failedBody')}`} />
+      )}
+      <View style={styles.first}>
+        <InsideField
+          ref={passwordInput}
+          label={t('recovery.newPassword')}
+          onChangeText={(text) => {
+            typed.current = text;
+            setLengthMet(meetsPasswordLength(text));
+            setShort(false);
+            setRefusal(null);
+          }}
+          password
+          state={short || refusal != null ? 'blank' : 'plain'}
+          line={refusal ?? rule}
+          submitting={saving}
+          autoComplete="new-password"
+          textContentType="newPassword"
+          returnKeyType="go"
+          submitBehavior="submit"
+          onSubmitEditing={() => void submit()}
+          autoFocus
+          testID="recovery.password"
+        />
+        {refusal != null ? (
+          <Says words={refusal} />
+        ) : (
+          <FieldLine words={rule} tone={lengthMet ? 'met' : short ? 'wrong' : 'unmet'} />
+        )}
+      </View>
+      <Plain top={tokens.spaceXl}>{t('recovery.signsOut')}</Plain>
+    </StepScreen>
   );
 }
 
@@ -262,5 +222,5 @@ function deadFrom(error: unknown): 'used' | 'expired' | 'invalid' | null {
 }
 
 const styles = StyleSheet.create({
-  fields: { gap: tokens.spaceXl },
+  first: { marginTop: tokens.space3xl },
 });
