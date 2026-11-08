@@ -17,6 +17,7 @@ import { backToEvents } from './EventFrame.tsx';
 import { EventsList } from './EventsList.tsx';
 import { eventStateOf, listStateOf } from './EventsModel.ts';
 import { messagesStateOf } from '../messages/MessagesModel.ts';
+import { seatingStateOf } from '../seating/SeatingModel.ts';
 import { guestsStateOf } from '../guests/GuestsModel.ts';
 import { budgetStateOf } from '../budget/BudgetModel.ts';
 import { areaOf, sampleEvent } from './EventsSample.ts';
@@ -121,6 +122,7 @@ export function EventRoute() {
   }>();
   const area = areaOf(params.area);
   const messages = area === 'messages' ? messagesStateOf(params.state) : null;
+  const seating = area === 'seating' ? seatingStateOf(params.state) : null;
   const budget = area === 'budget' ? budgetStateOf(params.state) : null;
   // Can edit has no Budget: a deep link to it opens the event page, More open without it (sc-93).
   const noBudget = area === 'budget' && (budget === 'no_budget' || params.as === 'kemi');
@@ -130,11 +132,12 @@ export function EventRoute() {
   return (
     <EventsShell switcher={params.switcher}>
       <EventScreen
-        key={`${params.id ?? ''}:${state ?? ''}:${area ?? ''}:${messages ?? ''}:${guests ?? ''}:${budget ?? ''}`}
+        key={`${params.id ?? ''}:${state ?? ''}:${area ?? ''}:${messages ?? ''}:${seating ?? ''}:${guests ?? ''}:${budget ?? ''}`}
         id={params.id}
         state={state}
         area={noBudget ? null : area}
         messages={messages}
+        seating={seating}
         guests={guests}
         budget={budget}
         without={noBudget ? 'budget' : undefined}

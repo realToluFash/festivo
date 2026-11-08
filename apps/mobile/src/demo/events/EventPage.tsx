@@ -50,6 +50,8 @@ import { PLACE, SAMPLE_EVENT_ID, TELL } from '../messages/MessagesSample.ts';
 import { tellChange } from '../messages/TellChange.ts';
 import { MessagesScreen, badgeFor } from '../messages/MessagesScreen.tsx';
 import { W as MW, say as sayMessages } from '../messages/MessagesWords.ts';
+import type { SeatingState } from '../seating/SeatingModel.ts';
+import { SeatingScreen } from '../seating/SeatingScreen.tsx';
 import { GuestNumbers } from '../guests/GuestNumbers.tsx';
 import {
   type FilterKey,
@@ -99,6 +101,7 @@ export function EventScreen({
   state,
   area,
   messages = null,
+  seating = null,
   guests = null,
   budget = null,
   without,
@@ -107,6 +110,7 @@ export function EventScreen({
   state: EventDemoState | null;
   area: AreaKey | null;
   messages?: MessagesState | null;
+  seating?: SeatingState | null;
   /** With Guests' own states, Guests opens on one, or Overview on its counts. */
   guests?: GuestsState | null;
   budget?: BudgetState | null;
@@ -270,6 +274,18 @@ export function EventScreen({
       onSeeWho={() => tellHere(sayMessages.ownDesign(MW.seeWho))}
     />
   );
+
+  if (at === 'seating' && messagesHere)
+    return (
+      <SeatingScreen
+        state={seating}
+        event={shown}
+        now={now}
+        more={more}
+        onMore={setMore}
+        onArea={setAt}
+      />
+    );
 
   const writeToThem = () => {
     dispatch({ type: 'newMessage' });

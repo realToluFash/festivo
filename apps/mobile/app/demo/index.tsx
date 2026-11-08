@@ -10,6 +10,7 @@ import { SAMPLE } from '../../src/demo/samples.ts';
 import { DOOR_CODE_BOARDS } from '../../src/demo/doorCode/DoorCodeBoards.ts';
 import { GUESTS_BOARDS } from '../../src/demo/guests/GuestsBoards.ts';
 import { MESSAGES_BOARDS } from '../../src/demo/messages/MessagesBoards.ts';
+import { SEATING_BOARDS } from '../../src/demo/seating/SeatingBoards.ts';
 import { tokens } from '../../src/theme/tokens.ts';
 
 interface Board {
@@ -1073,6 +1074,10 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
   {
     page: 'Messages · B Conversations',
     boards: MESSAGES_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
+    page: 'Seating · A The room',
+    boards: SEATING_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
   },
   {
     page: 'Guests · A Summary first',
