@@ -397,15 +397,18 @@ export function sameName(a: string, b: string): boolean {
   return plain(a) === plain(b);
 }
 
-/** "13 tables, 1 row and 84 seated guests", for Delete the plan. */
+/** "13 tables, 1 row and 2 single seats", for Delete the plan, as the web's demo names what goes (sc-5033). */
 export function whatGoes(m: Seating): string {
-  const tables = tableCount(m.items);
-  const rows = m.items.filter((it) => it.kind === 'row').length;
+  const count = (n: number, one: string, many: string) =>
+    n === 0 ? [] : [`${n} ${n === 1 ? one : many}`];
   const parts = [
-    `${tables} ${tables === 1 ? 'table' : 'tables'}`,
-    ...(rows > 0 ? [`${rows} ${rows === 1 ? 'row' : 'rows'}`] : []),
+    ...count(tableCount(m.items), 'table', 'tables'),
+    ...count(m.items.filter((it) => it.kind === 'row').length, 'row', 'rows'),
+    ...count(m.items.filter((it) => it.kind === 'single').length, 'single seat', 'single seats'),
   ];
-  return `${parts.join(', ')} and ${seatedCount(m.items)} seated guests`;
+  const last = parts.pop() ?? '';
+  const words = parts.length === 0 ? last : `${parts.join(', ')} and ${last}`;
+  return words.charAt(0).toLocaleUpperCase() + words.slice(1);
 }
 
 export function trayShown(m: Seating): Party[] {

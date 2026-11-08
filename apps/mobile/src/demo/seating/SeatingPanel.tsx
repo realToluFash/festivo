@@ -251,7 +251,14 @@ function StartForm({ m, go }: { m: Seating; go: Go }) {
   const s = m.start;
   return (
     <>
-      <Title title={W.startPlan} line={say.startLine(VENUE.name, VENUE.town, ORG)} />
+      <Title
+        title={W.startPlan}
+        line={
+          m.units === 'us'
+            ? say.startLineFeet(VENUE.name, VENUE.town)
+            : say.startLine(VENUE.name, VENUE.town, ORG)
+        }
+      />
       <FieldBox
         label={W.roomName}
         optional
@@ -264,7 +271,7 @@ function StartForm({ m, go }: { m: Seating; go: Go }) {
         <Half>
           <FieldBox
             label={W.width}
-            unit="m"
+            unit={m.units === 'us' ? 'ft' : 'm'}
             numbers
             value={s.width}
             error={s.errors.width || null}
@@ -276,7 +283,7 @@ function StartForm({ m, go }: { m: Seating; go: Go }) {
         <Half>
           <FieldBox
             label={W.length}
-            unit="m"
+            unit={m.units === 'us' ? 'ft' : 'm'}
             numbers
             value={s.length}
             error={s.errors.length || null}
@@ -320,7 +327,7 @@ function RoomSettings({ m, go }: { m: Seating; go: Go }) {
         <Half>
           <FieldBox
             label={W.width}
-            unit="m"
+            unit={m.units === 'us' ? undefined : 'm'}
             numbers
             value={d.width}
             onText={(text) => go({ type: 'roomDraft', key: 'width', text })}
@@ -331,7 +338,7 @@ function RoomSettings({ m, go }: { m: Seating; go: Go }) {
         <Half>
           <FieldBox
             label={W.length}
-            unit="m"
+            unit={m.units === 'us' ? undefined : 'm'}
             numbers
             value={d.length}
             onText={(text) => go({ type: 'roomDraft', key: 'length', text })}
@@ -445,7 +452,7 @@ function Facts({ m, it }: { m: Seating; it: Item }) {
     [W.shape, shapeWord(it)],
     [W.seats, String(it.chairs.length)],
     ...(it.kind === 'round' || it.kind === 'cocktail'
-      ? ([[W.diameter, `${it.d} cm`]] as [string, string][])
+      ? ([[W.diameter, m.units === 'us' ? length(m, it.d) : `${it.d} cm`]] as [string, string][])
       : []),
     [W.across, length(m, it.x)],
     [W.down, length(m, it.y)],
@@ -702,7 +709,7 @@ function RowFields({ m, go, it }: { m: Seating; go: Go; it: Item }) {
       </Two>
       <Two>
         <Half>{field('Seats', W.seats, String(it.chairs.length))}</Half>
-        <Half>{field('Spacing', W.spacing, String(it.spacing), 'cm')}</Half>
+        <Half>{field('Spacing', W.spacing, sizeOf(m, it.spacing), 'cm')}</Half>
       </Two>
       <Two>
         <Half>{field('Across', W.across, length(m, it.x))}</Half>

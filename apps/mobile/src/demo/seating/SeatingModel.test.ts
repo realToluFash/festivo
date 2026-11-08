@@ -366,6 +366,55 @@ describe('a table’s fields apply as each is entered', () => {
     expect(item(t4, 't4').d).toBe(183);
   });
 
+  it('show and take a row’s Spacing in feet and inches on a US plan', () => {
+    const us = run(startOf('usCustomary', 'landscape'), { type: 'tapItem', id: 'rowA' });
+    const m = run(
+      us,
+      { type: 'draft', key: 'Spacing', text: '2 ft' },
+      { type: 'apply', key: 'Spacing' },
+    );
+    expect(item(m, 'rowA').spacing).toBe(61);
+    expect(feetInches(item(m, 'rowA').spacing)).toBe('2 ft 0 in');
+  });
+
+  it('refuse a size it cannot read, or under 30 cm, beside the field', () => {
+    const us = run(
+      startOf('usCustomary', 'landscape'),
+      { type: 'draft', key: 'Diameter', text: '6' },
+      { type: 'apply', key: 'Diameter' },
+    );
+    expect(us.fields.errors.Diameter).toBe('Type 12′ 4″, 12 ft 4 in, 12.5 ft or 148 in.');
+    expect(item(us, 't4').d).toBe(180);
+    const small = run(
+      pad,
+      { type: 'tapItem', id: 't4' },
+      { type: 'draft', key: 'Diameter', text: '20' },
+      { type: 'apply', key: 'Diameter' },
+    );
+    expect(small.fields.errors.Diameter).toBe('Use 30 cm or more.');
+    const unread = run(
+      pad,
+      { type: 'tapItem', id: 't4' },
+      { type: 'draft', key: 'Diameter', text: 'wide' },
+      { type: 'apply', key: 'Diameter' },
+    );
+    expect(unread.fields.errors.Diameter).toBe('Use 30 cm or more.');
+  });
+
+  it('keep a table chosen when what was typed is refused on leaving, then let go on a second tap', () => {
+    const typed = run(
+      pad,
+      { type: 'tapItem', id: 't4' },
+      { type: 'draft', key: 'Name', text: 'Table 5' },
+    );
+    const held = run(typed, { type: 'tapItem', id: 't6' });
+    expect(held.chosen).toBe('t4');
+    expect(held.fields.errors.Name).toBe('This plan already has a table called Table 5.');
+    const left = run(held, { type: 'tapItem', id: 't6' });
+    expect(left.chosen).toBe('t6');
+    expect(item(left, 't4').name).toBe('Table 4');
+  });
+
   it('apply what was typed when another table is chosen', () => {
     const m = run(
       pad,
@@ -486,6 +535,34 @@ describe('the room and the plan', () => {
     const m = run(startOf('deletePlan', 'landscape'), { type: 'confirm' });
     expect(m.load).toBe('noPlan');
     expect(trayCount(m.tray)).toBe(COMING);
+  });
+
+  it('sizes the room in feet on a US plan, in Room settings and Start the plan', () => {
+    const settings = run(startOf('usCustomary', 'landscape'), {
+      type: 'arrange',
+      shows: 'roomSettings',
+    });
+    expect(settings.roomDraft.width).toBe('78 ft 9 in');
+    const wider = run(
+      settings,
+      { type: 'roomDraft', key: 'width', text: '80 ft' },
+      { type: 'roomApply' },
+    );
+    expect(wider.room.w).toBe(2438);
+    const tiny = run(
+      settings,
+      { type: 'roomDraft', key: 'width', text: '5' },
+      { type: 'roomApply' },
+    );
+    expect(tiny.roomDraft.error).toBe('Use 7 to 1,640 ft.');
+    const started = run(
+      { ...blank('landscape'), units: 'us' },
+      { type: 'openStart' },
+      { type: 'startDraft', key: 'width', text: '80' },
+      { type: 'startDraft', key: 'length', text: '60 ft' },
+      { type: 'startPlan' },
+    );
+    expect(started.room).toMatchObject({ w: 2438, l: 1829 });
   });
 
   it('refuses a blank or out-of-range room, then starts the plan', () => {

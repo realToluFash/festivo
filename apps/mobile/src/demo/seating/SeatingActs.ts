@@ -33,6 +33,7 @@ import {
   SHAPE_KIND,
   isTable,
   itemOf,
+  length as shown,
   leastUsed,
   nextRowLabel,
   nextSeatName,
@@ -182,6 +183,14 @@ function letGo(m0: Seating): Seating {
 function flush(m: Seating, id: string | null): Seating {
   if (m.chosen == null || m.chosen === id) return m;
   return Object.keys(m.fields.drafts).reduce(applyField, m);
+}
+
+/** A refusal first met on leaving keeps the item chosen with the refusal beside its field; leaving again drops the typing, nothing saved. */
+function refusedOnLeaving(m: Seating, to: string | null): Seating | null {
+  if (m.chosen == null || m.chosen === to || Object.keys(m.fields.drafts).length === 0) return null;
+  const tried = flush(m, to);
+  const fresh = Object.keys(tried.fields.errors).some((key) => m.fields.errors[key] == null);
+  return fresh ? tried : null;
 }
 
 /** A resize or a turn by finger is held inside the walls, as a drag is; one that cannot fit is refused. */
@@ -461,7 +470,10 @@ function cleared(m: Seating, key: string): Seating {
 }
 
 function length(m: Seating, text: string): number | null {
-  if (m.units === 'metric') return parseMetres(text);
+  return m.units === 'metric' ? parseMetres(text) : parseFeet(text);
+}
+
+function parseFeet(text: string): number | null {
   const ft = /^\s*(\d+(?:\.\d+)?)\s*(?:′|'|ft)\s*(?:(\d+)\s*(?:″|"|in))?\s*$/u.exec(text);
   if (ft?.[1] != null) return Math.round((Number(ft[1]) * 12 + Number(ft[2] ?? 0)) * 2.54);
   const inches = /^\s*(\d+)\s*in\s*$/u.exec(text);
@@ -526,7 +538,11 @@ function applyField(m: Seating, key: string): Seating {
     case 'Length':
     case 'Spacing':
     case 'Ends': {
-      if (size == null || (key !== 'Ends' && size < 30)) return cleared(m, key);
+      const us = m.units === 'us';
+      if (key === 'Ends' && size == null) return cleared(m, key);
+      if (size == null) return refuse(m, key, us ? W.usHint : W.sizeMin);
+      if (key !== 'Ends' && size < (us ? 30.48 : 30))
+        return refuse(m, key, us ? W.sizeMinFeet : W.sizeMin);
       const field = { Diameter: 'd', Width: 'w', Length: 'l', Spacing: 'spacing', Ends: 'ends' }[
         key
       ];
@@ -623,38 +639,57 @@ function centre(m: Seating): Point {
   return { x: m.room.w / 2, y: m.room.l / 2 };
 }
 
+const FEET_RANGE = { min: 7, max: 1640 } as const;
+
+/** The room's width or length in the plan's units, as the web reads it: metres, or feet (a bare number is feet). */
+export function readRoom(
+  text: string,
+  which: 'width' | 'length',
+  units: Seating['units'],
+): { cm: number } | { refused: string } {
+  const typed = text.trim();
+  if (typed === '') return { refused: which === 'width' ? W.enterWidth : W.enterLength };
+  if (units === 'us') {
+    const cm = parseFeet(typed) ?? parseFeet(`${typed} ft`);
+    const ft = cm == null ? null : cm / 30.48;
+    return cm == null || ft == null || ft < FEET_RANGE.min || ft > FEET_RANGE.max + 0.99
+      ? { refused: say.roomRangeFeet(FEET_RANGE.min, FEET_RANGE.max) }
+      : { cm: Math.round(cm) };
+  }
+  const cm = parseMetres(typed);
+  return cm == null || cm < 200 || cm > 50000 ? { refused: W.roomRange } : { cm };
+}
+
 function applyRoom(m: Seating): Seating {
   const d = m.roomDraft;
-  const w = parseMetres(d.width);
-  const l = parseMetres(d.length);
   const name = d.name.trim() === '' ? m.room.name : d.name.trim();
-  if (w == null || l == null)
-    return { ...m, roomDraft: { ...d, error: w == null ? W.enterWidth : W.enterLength } };
-  if (w < 200 || l < 200 || w > 50000 || l > 50000)
-    return { ...m, roomDraft: { ...d, error: W.roomRange } };
-  const room = { name, w, l };
+  const w = readRoom(d.width, 'width', m.units);
+  const l = readRoom(d.length, 'length', m.units);
+  if ('refused' in w) return { ...m, roomDraft: { ...d, error: w.refused } };
+  if ('refused' in l) return { ...m, roomDraft: { ...d, error: l.refused } };
+  const room = { name, w: w.cm, l: l.cm };
   const out = m.items.filter((it) => !inside(it, room));
   if (out.length > 0)
     return {
       ...m,
-      roomDraft: { ...d, error: say.outside(out.length, `${w / 100} m`, `${l / 100} m`) },
+      roomDraft: { ...d, error: say.outside(out.length, shown(m, room.w), shown(m, room.l)) },
       outside: out.map((it) => it.id),
-      wallAt: w < m.room.w ? w : null,
+      wallAt: room.w < m.room.w ? room.w : null,
     };
   return saving({ ...m, room, roomDraft: { ...d, error: null }, outside: [], wallAt: null });
 }
 
 function startPlan(m: Seating): Seating {
   const s = m.start;
-  const errors: Record<string, string> = {};
-  const w = parseMetres(s.width);
-  const l = parseMetres(s.length);
-  if (s.width.trim() === '') errors.width = W.enterWidth;
-  else if (w == null || w < 200 || w > 50000) errors.width = W.roomRange;
-  if (s.length.trim() === '') errors.length = W.enterLength;
-  else if (l == null || l < 200 || l > 50000) errors.length = W.roomRange;
-  if (Object.keys(errors).length > 0 || w == null || l == null)
-    return { ...m, start: { ...s, errors } };
+  const width = readRoom(s.width, 'width', m.units);
+  const length = readRoom(s.length, 'length', m.units);
+  const errors: Record<string, string> = {
+    ...('refused' in width ? { width: width.refused } : {}),
+    ...('refused' in length ? { length: length.refused } : {}),
+  };
+  if ('refused' in width || 'refused' in length) return { ...m, start: { ...s, errors } };
+  const w = width.cm;
+  const l = length.cm;
   return {
     ...m,
     load: 'ready',
@@ -788,15 +823,17 @@ function act(m: Seating, a: Action): Seating {
       return { ...m, tab: a.tab, pop: null };
     case 'tapItem':
       if (m.picked != null) return seatAt(m, a.id);
-      return choose(m, a.id);
+      return refusedOnLeaving(m, a.id) ?? choose(m, a.id);
     case 'tapChair':
       return tapChair(m, a.id, a.chair);
     case 'tapFloor':
       if (m.placing != null)
         return add(m, m.placing, { x: snapped(a.at.x, m.snap), y: snapped(a.at.y, m.snap) });
-      return { ...letGo(m), pop: null, lit: m.picked == null ? [] : m.lit };
+      return (
+        refusedOnLeaving(m, null) ?? { ...letGo(m), pop: null, lit: m.picked == null ? [] : m.lit }
+      );
     case 'letGo':
-      return letGo(m);
+      return refusedOnLeaving(m, null) ?? letGo(m);
     case 'moved': {
       const it = itemOf(m, a.id);
       if (it == null) return m;
@@ -889,8 +926,8 @@ function act(m: Seating, a: Action): Seating {
           ...base,
           roomDraft: {
             name: m.room.name,
-            width: `${m.room.w / 100}`,
-            length: `${m.room.l / 100}`,
+            width: m.units === 'us' ? feetInches(m.room.w) : `${m.room.w / 100}`,
+            length: m.units === 'us' ? feetInches(m.room.l) : `${m.room.l / 100}`,
             error: null,
           },
         };
