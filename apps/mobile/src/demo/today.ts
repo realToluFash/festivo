@@ -17,6 +17,7 @@ import {
 } from '../kit/today.ts';
 import { EVENT_OF_KEY as IDS } from './events/EventsSample.ts';
 import { type Guests, SAMPLE_GUESTS } from './events/GuestCounts.ts';
+import { needsOf, type YouEvent } from './today/needsYou.ts';
 
 export type EventKey = 'wed' | 'ireti' | 'party' | 'draft';
 
@@ -114,16 +115,6 @@ export function howFar(today: string, date: string): string {
   const days = daysFrom(today, date);
 
   return days === 1 ? 'tomorrow' : `in ${days} days`;
-}
-
-export function dueWords(today: string, due: string, say: Say): { words: string; late: boolean } {
-  const days = daysFrom(today, due);
-
-  if (days < 0) return { words: `${-days} ${days === -1 ? 'day' : 'days'} late`, late: true };
-  if (days === 0) return { words: 'Due today', late: false };
-  if (days === 1) return { words: 'Due tomorrow', late: false };
-
-  return { words: `Due ${say.day(due)}`, late: false };
 }
 
 type Item = readonly [time: string, title: string, event: EventKey, note: string];
@@ -357,41 +348,77 @@ const TODAY: Record<MomentName, { date: string; time: string }> = {
   first: { date: '2026-11-03', time: '09:41' },
 };
 
-function needs(name: MomentName, today: string, say: Say, guests: GuestsOf): Need[] | null {
-  const row = (event: EventKey, title: string, due: string, action: string): Need => {
-    const { words, late } = dueWords(today, due, say);
+/** `?needs=`, the planning day with other rows: every overdue form, one row, none, a long title. */
+export const NEEDS_STATES = ['overdue', 'one', 'none', 'long'] as const;
 
-    return { event: sample(event), title, due: words, late, action };
+export type NeedsState = (typeof NEEDS_STATES)[number];
+
+export function isNeedsState(state: string | undefined): state is NeedsState {
+  return NEEDS_STATES.some((one) => one === state);
+}
+
+const KITCHEN = 'Give final numbers to the kitchen';
+const LONG_TITLE = 'Confirm the final numbers with the venue’s kitchen and the outside caterer';
+
+type Owed = readonly [event: EventKey, due: string, title?: string];
+
+/** sc-30812's milestone, one to an event and at 23:59 on its date, while the event has yet to start. */
+const OWED: Record<'plan' | 'day' | NeedsState, readonly Owed[]> = {
+  plan: [
+    ['party', '2026-10-31'],
+    ['wed', '2026-11-04'],
+    ['ireti', '2026-11-06'],
+    ['draft', '2027-01-04'],
+  ],
+  day: [
+    ['ireti', '2026-11-12'],
+    ['party', '2026-11-06'],
+  ],
+  overdue: [
+    ['party', '2026-11-01'],
+    ['ireti', '2026-11-02'],
+    ['draft', '2026-11-03'],
+    ['wed', '2026-11-04'],
+  ],
+  one: [['wed', '2026-11-03']],
+  none: [],
+  long: [['draft', '2027-01-04', LONG_TITLE]],
+};
+
+const SAMPLE_ZONE = 'Europe/London';
+
+/** The due day's "Overdue" shows only once its 23:59 has passed. */
+const DUE_DAY_LAST_MINUTE = { date: '2026-11-03', time: '23:59' };
+
+function owedOn([key, due, title = KITCHEN]: Owed): YouEvent {
+  return {
+    shown: sample(key),
+    startsAt: `${EVENTS[key].first}T12:00:00Z`,
+    timeZone: SAMPLE_ZONE,
+    permissions: ['menu.manage'],
+    milestones: [
+      { at: `${due}T23:59:00Z`, title, note: null, owner: 'you', area: 'menu', action: null },
+    ],
   };
+}
 
-  if (name === 'plan')
-    return [
-      guests[IDS.party]?.invited === 0
-        ? row('party', 'Send the invitations', '2026-10-31', 'Send')
-        : row('party', `Chase ${owedOf('party', guests)} replies`, '2026-10-31', 'Chase'),
-      row('wed', 'Final numbers to the caterer', '2026-11-04', 'Review'),
-      row('wed', 'Seat the last 12 guests', '2026-11-05', 'Seat'),
-      {
-        event: sample('ireti'),
-        title: `Chase ${owedOf('ireti', guests)} replies`,
-        due: `Replies close ${say.day('2026-11-06')}`,
-        late: false,
-        action: 'Chase',
-      },
-    ];
-  if (name === 'day')
-    return [
-      {
-        event: sample('wed'),
-        title: 'Choose meals for 3 guests',
-        due: `Before dinner at ${say.clock('18:00')}`,
-        late: false,
-        action: 'Choose',
-      },
-      row('wed', 'Pay the band’s balance', today, 'Pay'),
-    ];
+function needs(
+  name: MomentName,
+  { date, time }: { date: string; time: string },
+  say: Say,
+  state: NeedsState | undefined,
+): Need[] | null {
+  const owed =
+    name === 'plan'
+      ? OWED[state ?? 'plan']
+      : name === 'day'
+        ? OWED.day
+        : name === 'quiet'
+          ? []
+          : null;
 
-  return name === 'quiet' ? [] : null;
+  // Half a minute into the minute, so a milestone at 23:59 has passed at the demo's 23:59.
+  return owed == null ? null : needsOf(owed.map(owedOn), new Date(`${date}T${time}:30Z`), say.day);
 }
 
 function now(today: string, time: string, say: Say): Now {
@@ -432,16 +459,21 @@ export function momentOf(
   say: Say,
   t: TFunction,
   {
-    at = TODAY[name],
+    needing,
+    at = needing === 'overdue' ? DUE_DAY_LAST_MINUTE : TODAY[name],
     guests = SAMPLE_GUESTS,
-  }: { at?: { date: string; time: string } | undefined; guests?: GuestsOf | undefined } = {},
+  }: {
+    at?: { date: string; time: string } | undefined;
+    guests?: GuestsOf | undefined;
+    needing?: NeedsState | undefined;
+  } = {},
 ): Moment {
   const { date: today, time } = at;
   const kind = name === 'planNow' ? 'plan' : name === 'dayNow' ? 'day' : (name as Moment['kind']);
   const full = name !== 'planNow' && name !== 'dayNow';
   const agenda = name === 'first' ? [] : name === 'dayNow' ? builtNow(today) : AGENDA[name];
   const { days, bars } = week(today, agenda, say);
-  const waiting = needs(name, today, say, guests);
+  const waiting = needs(name, at, say, needing);
   const wedding = EVENTS.wed.first;
   const party = EVENTS.party;
 
@@ -463,7 +495,7 @@ export function momentOf(
       name === 'first'
         ? 'Your first event starts here.'
         : name === 'quiet'
-          ? 'Nothing needs you this week.'
+          ? t('todayScreen.startsOnDate', { name: party.name, date: say.day(party.first) })
           : `The wedding starts on ${say.weekdayLong(wedding)}.`,
     needs: waiting,
     days,
