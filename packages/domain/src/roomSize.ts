@@ -8,10 +8,7 @@ export const ROOM_MAXIMUM_CM = 50_000;
 const CM_PER_INCH = 2.54;
 
 export type RoomSideReading =
-  | { kind: 'cm'; cm: number }
-  | { kind: 'blank' }
-  | { kind: 'unreadable' }
-  | { kind: 'outOfRange' };
+  { kind: 'cm'; cm: number } | { kind: 'blank' } | { kind: 'unreadable' } | { kind: 'outOfRange' };
 
 const NUMBER = '(\\d+(?:[.,]\\d+)?)';
 

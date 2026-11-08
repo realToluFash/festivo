@@ -33,7 +33,13 @@ export interface SeatingPlan {
   changedBy: string | null;
   sections: SeatingSection[];
   withoutSection: { tables: number; seats: number };
-  counts: { sections: number; tables: number; rows: number; singleSeats: number; seatedGuests: number };
+  counts: {
+    sections: number;
+    tables: number;
+    rows: number;
+    singleSeats: number;
+    seatedGuests: number;
+  };
 }
 
 export interface Seating {

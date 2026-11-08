@@ -20,7 +20,7 @@ describe('a room side in metres', () => {
 describe('a room side in feet and inches', () => {
   it.each([
     ['12′ 4″', 148],
-    ["12' 4\"", 148],
+    ['12\' 4"', 148],
     ['12 ft 4 in', 148],
     ['12ft4in', 148],
     ['12.5 ft', 150],
