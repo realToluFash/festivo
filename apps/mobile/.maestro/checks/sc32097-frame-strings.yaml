@@ -1,4 +1,4 @@
-# The frame's Back to {{place}}, Try again, Close the menu, Cancel and Back, and Today's Start your first event, in the language the account is in. sc-32097.
+# The frame's Back to {{place}}, Try again, Close the menu and Cancel, and Today's Start your first event, in the language the account is in; a screenshot of the picker's Back. sc-32097.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/demo/today?moment=first
@@ -36,6 +36,9 @@ appId: host.exp.Exponent
     visible:
       id: 'organisation.details'
     timeout: 10000
+- assertVisible:
+    id: 'organisation.details.cancel'
+    text: '(Cancel|Cancelar|Annuler)'
 - takeScreenshot: org-details-sheet
 - tapOn:
     id: 'organisation.country'
