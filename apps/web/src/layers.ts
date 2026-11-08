@@ -60,6 +60,31 @@ export function useLayer(): boolean {
   return stack.length > 0 && stack.at(-1) !== id;
 }
 
+let pressed: Element | null = null;
+
+// Safari does not focus a button it clicks, so the opener falls back to the control the click landed on.
+if (typeof document !== 'undefined') {
+  document.addEventListener(
+    'click',
+    (event) => {
+      pressed =
+        event.target instanceof Element
+          ? event.target.closest('button, a[href], input, select, textarea, [tabindex]')
+          : null;
+      window.setTimeout(() => {
+        pressed = null;
+      }, 0);
+    },
+    true,
+  );
+}
+
+function openerNow(): Element | null {
+  const active = document.activeElement;
+
+  return active == null || active === document.body ? (pressed ?? active) : active;
+}
+
 /** Focus goes in and comes back to the opener, or to the page's title when the opener has gone; only the top layer hears Escape and Tab. */
 export function useDeskDialog(
   dialog: RefObject<HTMLElement | null>,
@@ -89,7 +114,7 @@ export function useDeskDialog(
   const open = useRef(false);
 
   useLayoutEffect(() => {
-    opener.current ??= document.activeElement;
+    opener.current ??= openerNow();
     open.current = true;
     const back = (tries: number): void => {
       const to = opener.current;

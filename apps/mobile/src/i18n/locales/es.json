@@ -70,7 +70,7 @@
     "refused": "Ese correo electrónico y esa contraseña no coinciden. Compruebe ambos o restablezca su contraseña.",
     "endedTitle": "Se ha cerrado su sesión",
     "endedBody": "Inicie sesión de nuevo para continuar.",
-    "codeTimedOutTitle": "That sign-in timed out",
+    "codeTimedOutTitle": "El inicio de sesión ha caducado",
     "lockedTitle": "Demasiados intentos",
     "withGoogle": "Continuar con {{provider}}",
     "withApple": "Continuar con {{provider}}",
@@ -107,7 +107,8 @@
     "failedTitle": "No se ha podido crear su cuenta",
     "failedBody": "Algo ha fallado en el camino. Inténtelo de nuevo en un momento.",
     "nameBlank": "Introduzca su nombre completo.",
-    "passwordBlank": "Introduzca una contraseña."
+    "passwordBlank": "Introduzca una contraseña.",
+    "timedOut": "Su registro ha caducado, así que no hemos guardado la contraseña. Vuelva a introducirla para recibir un código nuevo."
   },
   "verifyEmail": {
     "title": "Revise su correo",
@@ -1971,6 +1972,7 @@
   },
   "todayScreen": {
     "today": "Hoy",
+    "todayShort": "Hoy",
     "tomorrow": "mañana",
     "allDay": "Todo el día",
     "starts": "Inicio: {{name}}",
@@ -2008,9 +2010,9 @@
     "inDays_one": "dentro de {{count, number}} día",
     "inDays_other": "dentro de {{count, number}} días",
     "inDays_many": "dentro de {{count, number}} de días",
-    "inDaysCapital_one": "Dentro de {{count, number}} día",
-    "inDaysCapital_other": "Dentro de {{count, number}} días",
-    "inDaysCapital_many": "Dentro de {{count, number}} de días",
+    "inDaysCapital_one": "En {{count, number}} día",
+    "inDaysCapital_other": "En {{count, number}} días",
+    "inDaysCapital_many": "En {{count, number}} de días",
     "days_one": "{{count, number}} día",
     "days_other": "{{count, number}} días",
     "days_many": "{{count, number}} de días",
@@ -2018,7 +2020,7 @@
       "today": "Hoy",
       "events": "Eventos",
       "calendar": "Calendario",
-      "settings": "Configuración"
+      "settings": "Ajustes"
     },
     "switchOrganisation": "{{name}}. Cambiar de organización",
     "notifications": "Notificaciones",

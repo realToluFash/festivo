@@ -110,12 +110,12 @@ describe('Requests to get back in, on the app’s Members', () => {
     expect(recoveryFacts(recoveryOf(KOFI), kofi, false, us)).toEqual([
       'kofi@ire.events',
       'Asked to turn off two-factor · Proved with codes to their email and phone',
-      'Asked Tuesday, Nov 3 at 6:05 PM WAT · ends Tuesday, Nov 10 at 6:05 PM WAT if nobody answers',
+      'Asked Tuesday, Nov 3 at 18:05 WAT · ends Tuesday, Nov 10 at 18:05 WAT if nobody answers',
     ]);
     expect(recoveryFacts(recoveryOf(PRIYA), priya, false, us)).toEqual([
       'priya@ire.events',
       'Asked to turn off two-factor · Proved with a code to their email (no verified phone)',
-      'Asked Wednesday, Nov 4 at 8:40 AM WAT · ends Wednesday, Nov 11 at 8:40 AM WAT if nobody answers',
+      'Asked Wednesday, Nov 4 at 08:40 WAT · ends Wednesday, Nov 11 at 08:40 WAT if nobody answers',
     ]);
     expect(recoveryFacts(recoveryOf(KOFI), kofi, false, gb)[2]).toBe(
       'Asked Tuesday 3 Nov at 18:05 WAT · ends Tuesday 10 Nov at 18:05 WAT if nobody answers',
@@ -133,7 +133,7 @@ describe('Requests to get back in, on the app’s Members', () => {
 
   it('reads each request as one group, in the AC’s order, the list’s paragraph with it', () => {
     expect(recoveryHeard(recoveryOf(KOFI), kofi, false, us)).toBe(
-      'Waiting for an answer. Asked to turn off two-factor. They lost their authenticator and their recovery codes, and stay signed out until somebody answers. One answer from an owner or admin is enough. Approve only if you’re sure it’s them, for example by calling them on a number you already have. Kofi Mensah, kofi@ire.events. Proved with codes to their email and phone. Asked Tuesday, Nov 3 at 6:05 PM WAT · ends Tuesday, Nov 10 at 6:05 PM WAT if nobody answers.',
+      'Waiting for an answer. Asked to turn off two-factor. They lost their authenticator and their recovery codes, and stay signed out until somebody answers. One answer from an owner or admin is enough. Approve only if you’re sure it’s them, for example by calling them on a number you already have. Kofi Mensah, kofi@ire.events. Proved with codes to their email and phone. Asked Tuesday, Nov 3 at 18:05 WAT · ends Tuesday, Nov 10 at 18:05 WAT if nobody answers.',
     );
     expect(recoveryHeard(recoveryOf(JULIEN), julien, true, us)).toMatch(
       /have\. Julien Moreau \(you\), julien@ire\.events\. Proved with codes to your email and phone\./u,

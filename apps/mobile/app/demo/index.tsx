@@ -4,9 +4,13 @@ import Svg, { Path } from 'react-native-svg';
 
 import { Text } from '../../src/components/Text.tsx';
 import { DemoScreen, NavBar } from '../../src/demo/DemoScreen.tsx';
+import { BUDGET_BOARDS } from '../../src/demo/budget/BudgetBoards.ts';
 import { Heading } from '../../src/steps/Lines.tsx';
 import { SAMPLE } from '../../src/demo/samples.ts';
+import { DOOR_CODE_BOARDS } from '../../src/demo/doorCode/DoorCodeBoards.ts';
+import { GUESTS_BOARDS } from '../../src/demo/guests/GuestsBoards.ts';
 import { MESSAGES_BOARDS } from '../../src/demo/messages/MessagesBoards.ts';
+import { SEATING_BOARDS } from '../../src/demo/seating/SeatingBoards.ts';
 import { tokens } from '../../src/theme/tokens.ts';
 
 interface Board {
@@ -69,7 +73,7 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
       },
       {
         title: 'Now · from the run of show',
-        what: 'Drinks, until 5:30 PM, 10 min behind',
+        what: 'Drinks, until 17:30, 10 min behind',
         href: '/demo/today?moment=day&now=on',
       },
       {
@@ -1060,8 +1064,24 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
     ],
   },
   {
+    page: 'Door code',
+    boards: DOOR_CODE_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
+    page: 'Budget · A Summary first',
+    boards: BUDGET_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
     page: 'Messages · B Conversations',
     boards: MESSAGES_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
+    page: 'Seating · A The room',
+    boards: SEATING_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
+    page: 'Guests · A Summary first',
+    boards: GUESTS_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
   },
   {
     page: 'Calendar · A Weeks as lanes',

@@ -6,7 +6,7 @@ import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
 
 const tested = config();
-const SLOW = { timeout: 3000 };
+const WAIT = { timeout: 3000 };
 
 async function general(path: string) {
   const router = createMemoryRouter(routes, { initialEntries: [path] });
@@ -123,7 +123,7 @@ describe('General at a desk (sc-30063)', () => {
     fireEvent.click(save);
     expect(within(dialog).getByRole('button', { name: 'Saving…' })).toBeDefined();
 
-    expect(await screen.findByText('Saved', {}, SLOW)).toBeDefined();
+    expect(await screen.findByText('Saved', {}, WAIT)).toBeDefined();
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
@@ -214,13 +214,13 @@ describe('General at a desk (sc-30063)', () => {
     fireEvent.change(field, { target: { value: 'gmail.com' } });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Add' }));
     expect(
-      await within(dialog).findByText('You cannot use a public email domain.', {}, SLOW),
+      await within(dialog).findByText('You cannot use a public email domain.', {}, WAIT),
     ).toBeDefined();
 
     fireEvent.change(field, { target: { value: 'ire.events' } });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Add' }));
     expect(
-      await within(dialog).findByText('ire.events is already on the list.', {}, SLOW),
+      await within(dialog).findByText('ire.events is already on the list.', {}, WAIT),
     ).toBeDefined();
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
@@ -258,7 +258,7 @@ describe('General at a desk (sc-30063)', () => {
     ).toBeDefined();
     fireEvent.click(toggle);
 
-    await waitFor(() => expect(toggle.getAttribute('aria-checked')).toBe('true'), SLOW);
+    await waitFor(() => expect(toggle.getAttribute('aria-checked')).toBe('true'), WAIT);
     expect(screen.getByText('The request link is on.')).toBeDefined();
     expect(screen.getByText('https://soirely.app/join/r/m2w8xd')).toBeDefined();
   });
@@ -286,7 +286,7 @@ describe('General at a desk (sc-30063)', () => {
       'The request link could not be loaded.',
     );
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
-    expect(await screen.findByRole('switch', {}, SLOW)).toBeDefined();
+    expect(await screen.findByRole('switch', {}, WAIT)).toBeDefined();
   });
 
   it('hands ownership over once the password and code are right', async () => {
@@ -299,14 +299,14 @@ describe('General at a desk (sc-30063)', () => {
       await within(dialog).findByText(
         'That code did not work. Check your app and try again.',
         {},
-        SLOW,
+        WAIT,
       ),
     ).toBeDefined();
 
     fireEvent.change(within(dialog).getByLabelText('Code'), { target: { value: '714302' } });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Transfer' }));
 
-    expect(await screen.findByText('Julien Moreau is now the owner', {}, SLOW)).toBeDefined();
+    expect(await screen.findByText('Julien Moreau is now the owner', {}, WAIT)).toBeDefined();
     expect(screen.getByText('You are an Admin. You both have an email saying so.')).toBeDefined();
     expect(steps()).toEqual(['Leave Ire Events…']);
   });
@@ -324,7 +324,7 @@ describe('General at a desk (sc-30063)', () => {
 
     const ask = screen.getByRole('alertdialog', { name: 'Leave Ire Events?' });
     fireEvent.click(within(ask).getByRole('button', { name: 'Leave Ire Events' }));
-    await waitFor(() => expect(router.state.location.pathname).toBe('/demo/today'), SLOW);
+    await waitFor(() => expect(router.state.location.pathname).toBe('/demo/today'), WAIT);
   });
 
   it('deletes only once the name is typed exactly', async () => {
@@ -340,7 +340,7 @@ describe('General at a desk (sc-30063)', () => {
     });
     expect(within(dialog).getByText('That matches.')).toBeDefined();
     fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
-    await waitFor(() => expect(router.state.location.pathname).toBe('/demo/today'), SLOW);
+    await waitFor(() => expect(router.state.location.pathname).toBe('/demo/today'), WAIT);
   });
 
   it('says deleting still takes everything when it could not count, and counts again', async () => {
@@ -353,7 +353,7 @@ describe('General at a desk (sc-30063)', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Try again' }));
     expect(within(dialog).getByText('Counting what it holds…')).toBeDefined();
     expect(
-      await within(dialog).findByText(/^4 events, 512 guests and 8 members/u, {}, SLOW),
+      await within(dialog).findByText(/^4 events, 512 guests and 8 members/u, {}, WAIT),
     ).toBeDefined();
   });
 });

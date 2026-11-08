@@ -70,7 +70,7 @@
     "refused": "Cette adresse e-mail et ce mot de passe ne correspondent pas. Vérifiez les deux, ou réinitialisez votre mot de passe.",
     "endedTitle": "Votre session a été fermée",
     "endedBody": "Reconnectez-vous pour continuer.",
-    "codeTimedOutTitle": "That sign-in timed out",
+    "codeTimedOutTitle": "La connexion a expiré",
     "lockedTitle": "Trop de tentatives",
     "withGoogle": "Continuer avec {{provider}}",
     "withApple": "Continuer avec {{provider}}",
@@ -107,7 +107,8 @@
     "failedTitle": "La création du compte n’a pas abouti",
     "failedBody": "Quelque chose s’est mal passé en route. Réessayez dans un instant.",
     "nameBlank": "Saisissez votre nom complet.",
-    "passwordBlank": "Saisissez un mot de passe."
+    "passwordBlank": "Saisissez un mot de passe.",
+    "timedOut": "Votre inscription a expiré, nous n’avons donc pas conservé le mot de passe. Ressaisissez-le pour recevoir un nouveau code."
   },
   "verifyEmail": {
     "title": "Consultez votre boîte mail",
@@ -1971,6 +1972,7 @@
   },
   "todayScreen": {
     "today": "Aujourd’hui",
+    "todayShort": "Auj.",
     "tomorrow": "demain",
     "allDay": "Toute la journée",
     "starts": "Début : {{name}}",
@@ -2008,9 +2010,9 @@
     "inDays_one": "dans {{count, number}} jour",
     "inDays_other": "dans {{count, number}} jours",
     "inDays_many": "dans {{count, number}} de jours",
-    "inDaysCapital_one": "Dans {{count, number}} jour",
-    "inDaysCapital_other": "Dans {{count, number}} jours",
-    "inDaysCapital_many": "Dans {{count, number}} de jours",
+    "inDaysCapital_one": "J-{{count, number}}",
+    "inDaysCapital_other": "J-{{count, number}}",
+    "inDaysCapital_many": "J-{{count, number}}",
     "days_one": "{{count, number}} jour",
     "days_other": "{{count, number}} jours",
     "days_many": "{{count, number}} de jours",
@@ -2042,7 +2044,7 @@
     "nextUp": "Prochain événement",
     "nextUpLabel": "Prochain événement : {{name}}, {{when}}",
     "yourEvents": "Vos événements",
-    "allEvents": "Tous les événements",
+    "allEvents": "Tout voir",
     "firstTitle": "Préparez votre premier événement",
     "firstIntro": "Donnez-lui un nom, une date et un lieu. Ce qui est à traiter et ce qui arrive s’afficheront ici.",
     "firstStep": {

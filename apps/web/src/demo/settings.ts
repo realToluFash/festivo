@@ -1,3 +1,4 @@
+import { writtenTime } from './clock.ts';
 import { SAMPLE } from './rules.ts';
 import type { EventKey } from './today.ts';
 
@@ -8,7 +9,8 @@ export type Section =
   | 'personalisation'
   | 'general'
   | 'members'
-  | 'signInRules';
+  | 'signInRules'
+  | 'vendors';
 
 /** The sections the boards draw; the others each have their own design. */
 export type Drawn =
@@ -18,7 +20,8 @@ export type Drawn =
   | 'personalisation'
   | 'general'
   | 'members'
-  | 'signInRules';
+  | 'signInRules'
+  | 'vendors';
 
 const PATHS: Record<Drawn, string> = {
   account: 'account',
@@ -28,6 +31,7 @@ const PATHS: Record<Drawn, string> = {
   general: 'general',
   members: 'members',
   signInRules: 'sign-in-rules',
+  vendors: 'vendors',
 };
 
 export const SECTION_NAMES: Record<Section, string> = {
@@ -38,6 +42,7 @@ export const SECTION_NAMES: Record<Section, string> = {
   general: 'General',
   members: 'Members',
   signInRules: 'Sign-in rules',
+  vendors: 'Vendors',
 };
 
 export interface SectionGroup {
@@ -47,7 +52,7 @@ export interface SectionGroup {
 
 const GROUPS: readonly SectionGroup[] = [
   { name: 'Your account', sections: ['account', 'security', 'notifications', 'personalisation'] },
-  { name: 'Organisation settings', sections: ['general', 'members', 'signInRules'] },
+  { name: 'Organisation settings', sections: ['general', 'members', 'signInRules', 'vendors'] },
 ];
 
 export type ViewerKey = 'folake' | 'julien' | 'ana';
@@ -97,11 +102,13 @@ export function viewerOf(name: string | null): Viewer {
   return Object.values(VIEWERS).find((viewer) => viewer.key === name) ?? VIEWERS.folake;
 }
 
-/** Members only for an owner or an admin: a member sees General and Sign-in rules, read only. */
+/** Members and Vendors only for an owner or an admin: a member sees General and Sign-in rules, read only. */
 export function groupsFor(viewer: Pick<Viewer, 'manages'>): SectionGroup[] {
   return GROUPS.map((group) => ({
     ...group,
-    sections: group.sections.filter((section) => viewer.manages || section !== 'members'),
+    sections: group.sections.filter(
+      (section) => viewer.manages || (section !== 'members' && section !== 'vendors'),
+    ),
   }));
 }
 
@@ -113,7 +120,8 @@ export function isDrawn(section: Section): section is Drawn {
     section === 'personalisation' ||
     section === 'general' ||
     section === 'members' ||
-    section === 'signInRules'
+    section === 'signInRules' ||
+    section === 'vendors'
   );
 }
 
@@ -141,14 +149,12 @@ export function settingsSayIn(locale: string): SettingsSay {
   const date = format({ month: 'short', day: 'numeric', year: 'numeric' });
   const dayOnly = format({ month: 'short', day: 'numeric' });
   const weekday = format({ weekday: 'long', month: 'short', day: 'numeric' });
-  const clock = format({ hour: 'numeric', minute: '2-digit' });
 
   return {
     date: (day) => date.format(new Date(`${day}T00:00Z`)),
     day: (day) => dayOnly.format(new Date(`${day}T00:00Z`)),
     // The sample's deadlines are wall clock in Lagos, so they are read in UTC and named WAT.
-    deadline: (at) =>
-      `${weekday.format(new Date(`${at}Z`))} at ${clock.format(new Date(`${at}Z`))} WAT`,
+    deadline: (at) => `${weekday.format(new Date(`${at}Z`))} at ${writtenTime(at, locale)} WAT`,
   };
 }
 

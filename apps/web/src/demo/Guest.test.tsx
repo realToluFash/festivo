@@ -65,7 +65,7 @@ describe('the guest’s own page, A · The cover card (sc-31306)', () => {
 
     expect(head.textContent).toBe('Guest’s page in A · The cover card · phone, tablet and desk');
     const hrefs = screen.getAllByRole('link').map((one) => one.getAttribute('href'));
-    const guestLinks = hrefs.filter((href) => href?.startsWith('/demo/guest'));
+    const guestLinks = hrefs.filter((href) => href?.startsWith('/demo/guest?'));
 
     expect(guestLinks).toEqual(GUEST_PAGES.flatMap((one) => one.states).map((one) => one.to));
     expect(guestLinks).toHaveLength(47);
@@ -77,7 +77,7 @@ describe('the guest’s own page, A · The cover card (sc-31306)', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'You are invited' })).toBeDefined();
     expect(screen.getByText(NAME)).toBeDefined();
     expect(screen.getByText('Adaeze & Tunde’s wedding')).toBeDefined();
-    expect(screen.getByText(/^Thu, Nov 5 · 6:00\sPM · The Landmark$/u)).toBeDefined();
+    expect(screen.getByText(/^Thu, Nov 5 · 18:00 · The Landmark$/u)).toBeDefined();
     expect(screen.getByRole('img', { name: 'Soirely' })).toBeDefined();
     expect(screen.getByRole('button', { name: 'Language: English' })).toBeDefined();
     expect(screen.queryByText('Create an account')).toBeNull();
@@ -139,7 +139,7 @@ const SAYS: [string, () => void][] = [
   ['paused', () => screen.getByText(/^This event is paused\./u)],
   ['pausedNever', () => screen.getByRole('heading', { name: 'You didn’t answer.' })],
   ['pausedAfterStart', () => expect(screen.queryByText('Change my answer')).toBeNull()],
-  ['zone', () => expect(screen.getAllByText(/6:00\sPM Europe\/London/u)).toHaveLength(2)],
+  ['zone', () => expect(screen.getAllByText(/18:00 Europe\/London/u)).toHaveLength(2)],
   ['calledOff', () => screen.getByRole('heading', { level: 1, name: 'Adaeze & Tunde’s wedding' })],
   ['over', () => expect(screen.queryByText(THANK_YOU)).toBeNull()],
   ['overNever', () => screen.getByText('You didn’t answer.')],
@@ -173,7 +173,7 @@ const SAYS: [string, () => void][] = [
   ['messageLong', () => screen.getByText('950 of 1,000 characters')],
   ['messageTooLong', () => screen.getByText('1,042 of 1,000 characters')],
   ['replySending', () => screen.getByText('Sending…')],
-  ['replySent', () => screen.getByText(/^Sent · Tue, Nov 3 · 9:41\sAM$/u)],
+  ['replySent', () => screen.getByText(/^Sent · Tue, Nov 3 · 09:41$/u)],
   ['replyFailed', () => screen.getByText(/^Your message wasn’t sent\./u)],
   ['calledOffMessages', () => expect(screen.getAllByRole('article')).toHaveLength(3)],
   ['finishedMessages', () => screen.getByText(THANK_YOU)],
@@ -556,9 +556,9 @@ describe('the hosts’ messages and the guest’s own (§4a)', () => {
     expect(
       articles.map((one) => one.querySelector('.gp-meta')?.textContent?.replace(/\s/gu, ' ')),
     ).toEqual([
-      'Adaeze Obi and Tunde Bakare · Sat, Oct 31 · 10:05 AM',
-      'Adaeze Obi and Tunde Bakare · Mon, Nov 2 · 9:14 PM',
-      'Adaeze Obi and Tunde Bakare · Tue, Nov 3 · 8:30 AM',
+      'Adaeze Obi and Tunde Bakare · Sat, Oct 31 · 10:05',
+      'Adaeze Obi and Tunde Bakare · Mon, Nov 2 · 21:14',
+      'Adaeze Obi and Tunde Bakare · Tue, Nov 3 · 08:30',
     ]);
     expect(articles.every((one) => one.querySelector('a') == null)).toBe(true);
     expect(screen.getByRole('button', { name: 'Send' }).getAttribute('aria-disabled')).toBe('true');
@@ -581,7 +581,7 @@ describe('the hosts’ messages and the guest’s own (§4a)', () => {
     expect(screen.getByText('See you Thursday!')).toBeDefined();
     await wait();
     expect(screen.getByRole('status').textContent?.replace(/\s/gu, ' ')).toBe(
-      'Sent · Tue, Nov 3 · 9:41 AM',
+      'Sent · Tue, Nov 3 · 09:41',
     );
   });
 

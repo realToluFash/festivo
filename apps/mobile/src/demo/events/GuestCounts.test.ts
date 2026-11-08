@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { TO_FIGURES } from '../messages/MessagesSample.ts';
 import { CLOCKS, EVENTS } from './EventsSample.ts';
-import { GUEST_WORDS, SAMPLE_GUESTS, figureOf, guestCountsOf } from './GuestCounts.ts';
+import { GUEST_WORDS, SAMPLE_GUESTS, figureOf, guestCountsOf, rowGuests } from './GuestCounts.ts';
 
 describe('the guest counts on Events (sc-23284)', () => {
   it('adds up the live, happening now and paused events, as the web demo does', () => {
@@ -20,6 +20,18 @@ describe('the guest counts on Events (sc-23284)', () => {
       coming: TO_FIGURES.coming.count,
       replied: TO_FIGURES.all.count - TO_FIGURES.notReplied.count,
     });
+  });
+
+  it('adds each event’s row up to the tiles, on every clock', () => {
+    for (const clock of Object.values(CLOCKS)) {
+      const now = new Date(clock);
+      const rows = EVENTS.map((event) => rowGuests(event, SAMPLE_GUESTS, now)).filter(
+        (row) => row != null,
+      );
+      const tiles = guestCountsOf(EVENTS, SAMPLE_GUESTS, now);
+      expect(rows.reduce((sum, row) => sum + row.coming, 0)).toBe(tiles.coming);
+      expect(rows.reduce((sum, row) => sum + row.notReplied, 0)).toBe(tiles.notReplied);
+    }
   });
 
   it('drops an event once it is finished', () => {

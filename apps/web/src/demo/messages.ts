@@ -1,42 +1,15 @@
+import { writtenTime } from './clock.ts';
 import type { SampleEvent } from './events.ts';
+import { demoWords } from './demoWords.ts';
 import { MESSAGES_WORD, MW } from './messagesWords.ts';
 import type { DemoLink } from './settings.ts';
 
 /** Messaging B · Conversations (page e36, board/messaging-b-spec.md): the sample and the inbox's rules; the words are in messagesWords.ts. */
 export { MW };
 
-type Words = typeof MW;
-type PluralBase = {
-  [K in keyof Words]: K extends `${infer Base}_one` ? Base : never;
-}[keyof Words];
-
 const NUMBER = new Intl.NumberFormat('en-US');
-const PLURAL = new Intl.PluralRules('en-US');
-const LIST = new Intl.ListFormat('en-US', { style: 'long', type: 'conjunction' });
 
-export function filled(words: string, slots: Readonly<Record<string, string | number>>): string {
-  return words.replaceAll(/\{\{(\w+)(?:, number)?\}\}/gu, (whole, slot: string) => {
-    const value = slots[slot];
-
-    if (value == null) return whole;
-
-    return typeof value === 'number' ? NUMBER.format(value) : value;
-  });
-}
-
-export function many(
-  base: PluralBase,
-  count: number,
-  slots: Readonly<Record<string, string | number>> = {},
-): string {
-  const form = PLURAL.select(count) === 'one' ? 'one' : 'other';
-
-  return filled(MW[`${base}_${form}`], { count, ...slots });
-}
-
-export function listed(words: readonly string[]): string {
-  return LIST.format(words);
-}
+export const { filled, many, listed } = demoWords(MW);
 
 export const MESSAGE_STATES = [
   { key: 'first', name: 'Messages, first time' },
@@ -46,6 +19,9 @@ export const MESSAGE_STATES = [
   { key: 'replyArrived', name: 'A reply arriving' },
   { key: 'answered', name: 'A reply answered' },
   { key: 'channelReply', name: 'A reply that came by a channel' },
+  { key: 'noticeCost', name: 'The notice’s cost before Send' },
+  { key: 'noticeWaits', name: 'Too few credits: the notice waits' },
+  { key: 'noticeNotSent', name: 'A notice that waited and could not go' },
   { key: 'to', name: 'Writing to many: To' },
   { key: 'write', name: 'Writing to many' },
   { key: 'preview', name: 'The preview' },
@@ -110,7 +86,7 @@ export const ORGANISATION = 'Ire Events';
 export const GUESTS_N = 142;
 export const BALANCE = 1500;
 export const THEIR_LINK = '[their own link]';
-export const PAGE_WHEN = 'Thu, Nov 5 · 6:00 PM · The Landmark';
+export const PAGE_WHEN = `Thu, Nov 5 · ${writtenTime('18:00', 'en')} · The Landmark`;
 export const ZONE = 'London time (GMT)';
 export const ZONE_SHORT = 'London time';
 export const ENDS = { date: 'Sat, Nov 7', time: '15:00', at: '2026-11-07T15:00:00Z' };
@@ -132,6 +108,8 @@ export interface SampleGuest {
   at: string;
   row: string;
   toldBy: Channel;
+  /** The guest's other channels that can carry Soirely's notice when theirs can't now. */
+  canAlso: readonly Channel[];
 }
 
 export const GUESTS: Record<GuestId, SampleGuest> = {
@@ -145,17 +123,19 @@ export const GUESTS: Record<GuestId, SampleGuest> = {
     at: '08:12',
     row: '08:12',
     toldBy: 'email',
+    canAlso: [],
   },
   lucia: {
     initials: 'LO',
     name: 'Lucía Ortega',
-    contact: '+34 612 345 678',
+    contact: '+34 612 345 678 · lucia.ortega@gmail.com',
     asked: 'Is there parking at The Landmark?',
     where: 'page',
     day: 'Today',
     at: '07:58',
     row: '07:58',
     toldBy: 'whatsApp',
+    canAlso: ['email', 'sms'],
   },
   kwame: {
     initials: 'KM',
@@ -167,6 +147,7 @@ export const GUESTS: Record<GuestId, SampleGuest> = {
     at: '21:14',
     row: 'Mon',
     toldBy: 'sms',
+    canAlso: ['email'],
   },
   marta: {
     initials: 'MS',
@@ -178,6 +159,7 @@ export const GUESTS: Record<GuestId, SampleGuest> = {
     at: '11:05',
     row: 'Sat',
     toldBy: 'email',
+    canAlso: [],
   },
 };
 
@@ -198,7 +180,65 @@ export const MATCHES: readonly { name: string; initials: string; line: string }[
 export const ANSWERS: Partial<Record<GuestId, string>> = {
   ines: 'Of course. We will set a place for your son at your table.',
   kwame: 'Formal: suits and long dresses are welcome.',
+  lucia: 'Yes: free parking under the hotel, entrance on Calle Mayor.',
 };
+
+/** What Soirely's notice costs per guest's number (sc-3928's utility credits for their number's country, one SMS part; the app's `NOTICE_CREDITS`), as sc-3929's preview would give it. */
+const NOTICE_PRICE: Record<GuestId | 'unknown', Partial<Record<Channel, number>>> = {
+  ines: {},
+  lucia: { whatsApp: 4, sms: 14 },
+  kwame: { sms: 9 },
+  marta: {},
+  unknown: {},
+};
+
+/** `noticeNotSent`, as the app's `HELD_TOO_LONG`: Lucía's earlier question, and the answer whose WhatsApp notice waited 48 hours and could not go. */
+export const HELD_TOO_LONG = {
+  day: 'Sun, Nov 1',
+  asked: 'Is there a vegetarian menu?',
+  askedAt: '08:02',
+  answer: 'Yes. Tell us on your page and the kitchen will plan for it.',
+  answeredAt: '08:30',
+};
+
+export function noticePrice(id: GuestId | 'unknown', by: Channel): number {
+  return by === 'email' ? 0 : (NOTICE_PRICE[id][by] ?? 0);
+}
+
+export interface Notice {
+  credits: number;
+  cost: string | null;
+  waits: string | null;
+  others: readonly Channel[];
+}
+
+/** The composer's line before Send (sc-3976, sc-3931): the cost and the credits after, or the wait line and the channels that can tell them now. */
+export function noticeOf(
+  id: GuestId | 'unknown',
+  by: Channel,
+  balance: number,
+  canAlso: readonly Channel[],
+): Notice {
+  const credits = noticePrice(id, by);
+
+  if (credits === 0) return { credits, cost: null, waits: null, others: [] };
+  if (credits > balance)
+    return {
+      credits,
+      cost: null,
+      waits: many(by === 'sms' ? 'smsWaits' : 'whatsAppWaits', 1),
+      others: canAlso.filter((one) => one !== by && noticePrice(id, one) <= balance),
+    };
+
+  const uses = many(by === 'sms' ? 'noticeTextUses' : 'noticeWhatsAppUses', credits);
+
+  return {
+    credits,
+    cost: `${uses} ${filled(MW.creditsAfter, { count: balance - credits })}`,
+    waits: null,
+    others: [],
+  };
+}
 
 export type Token = 'greeting' | 'event' | 'date' | 'hosts';
 export type Segment = { kind: 'text'; text: string } | { kind: 'token'; token: Token };
@@ -419,7 +459,15 @@ export function toldWords(ticks: Ticks): string {
 }
 
 export type Delivery =
-  'delivered' | 'sent' | 'sending' | 'bounced' | 'notsent' | 'unconfirmed' | 'optout' | 'none';
+  | 'delivered'
+  | 'sent'
+  | 'sending'
+  | 'held'
+  | 'bounced'
+  | 'notsent'
+  | 'unconfirmed'
+  | 'optout'
+  | 'none';
 export type Kind =
   'inProgress' | 'bounced' | 'notSent' | 'notConfirmed' | 'optedOut' | 'none' | 'cant';
 export type Fix = 'fixEmail' | 'addEmail' | 'addPhone' | 'toldInPerson' | 'copyLink';
@@ -437,6 +485,7 @@ export interface Unreached {
   kind: Kind;
   lines: readonly Line[];
   fixes: readonly Fix[];
+  updated?: string;
 }
 
 const PAGE_LINE: Line = { mark: 'none', word: MW.theirPage, why: MW.notSeenYet };
@@ -746,6 +795,10 @@ export interface Answer {
   at: string;
   stage: 'sending' | 'told' | 'seen';
   seen?: string;
+  /** The channel Soirely's notice went by, when it was not the guest's own. */
+  by?: Channel;
+  /** A notice held for credits, or one that waited and could not go. */
+  notice?: 'held' | 'tooLate';
 }
 
 export type ReachedOf = 'parking' | 'invite' | 'new';
@@ -768,6 +821,9 @@ export interface Inbox {
   done: readonly ConvoId[];
   doneAt: Partial<Record<ConvoId, string>>;
   answers: Partial<Record<GuestId | 'unknown', readonly Answer[]>>;
+  balance: number;
+  /** `noticeNotSent`: Lucía's earlier question, whose answer's notice was held 48 hours for credits. */
+  heldTooLong?: boolean;
   arrived: ConvoId | null;
   matched: string | null;
   pane: Pane;
@@ -878,8 +934,7 @@ function wall(iso: string, timeZone: string, parts: Intl.DateTimeFormatOptions):
 export function toldOf(was: SampleEvent, now: SampleEvent): Told[] {
   const day = (iso: string) =>
     wall(iso, now.timeZone, { weekday: 'short', month: 'short', day: 'numeric' });
-  const time = (iso: string) =>
-    wall(iso, now.timeZone, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+  const time = (iso: string) => writtenTime(iso, 'en-US', now.timeZone);
   const told: Told[] = [];
 
   if (day(was.startsAt) !== day(now.startsAt))
@@ -904,7 +959,7 @@ export function toldOf(was: SampleEvent, now: SampleEvent): Told[] {
 
 export const STARTS_LATER: Told = {
   item: MW.newStartTime,
-  line: filled(MW.startMoved, { new: '17:30', old: '18:00' }),
+  line: filled(MW.startMoved, { new: writtenTime('17:30', 'en'), old: writtenTime('18:00', 'en') }),
 };
 
 export const ROSEWOOD = {
@@ -930,6 +985,7 @@ export function seedOf(state: MessagesState | null): Inbox {
     done: ['marta'],
     doneAt: {},
     answers: {},
+    balance: BALANCE,
     arrived: null,
     matched: null,
     pane: { kind: 'idle' },
@@ -967,6 +1023,12 @@ export function seedOf(state: MessagesState | null): Inbox {
       };
     case 'channelReply':
       return { ...base, pane: open('kwame') };
+    case 'noticeCost':
+      return { ...base, pane: open('lucia') };
+    case 'noticeWaits':
+      return { ...base, balance: 2, pane: open('lucia') };
+    case 'noticeNotSent':
+      return { ...base, balance: 2, heldTooLong: true, pane: open('lucia') };
     case 'to':
     case 'write':
       return compose(base, COMING, 'write');
@@ -1375,7 +1437,7 @@ export type Change =
   | { kind: 'settle' }
   | { kind: 'done'; id: ConvoId; at: string }
   | { kind: 'waiting'; id: ConvoId }
-  | { kind: 'answer'; id: GuestId | 'unknown'; text: string }
+  | { kind: 'answer'; id: GuestId | 'unknown'; text: string; by?: Channel }
   | { kind: 'told'; id: GuestId | 'unknown' }
   | { kind: 'compose'; draft: Draft }
   | { kind: 'draft'; draft: Partial<Draft> }
@@ -1450,17 +1512,24 @@ export function changed(inbox: Inbox, change: Change): Inbox {
       };
     case 'waiting':
       return { ...inbox, done: inbox.done.filter((id) => id !== change.id) };
-    case 'answer':
+    case 'answer': {
+      const by = change.by ?? (change.id === 'unknown' ? 'email' : GUESTS[change.id].toldBy);
+      const credits = noticePrice(change.id, by);
+      const held = credits > inbox.balance;
+      const answer: Answer = {
+        text: change.text,
+        at: NOW,
+        stage: 'sending',
+        ...(change.by != null ? { by } : {}),
+        ...(held ? { notice: 'held' as const } : {}),
+      };
+
       return {
         ...inbox,
-        answers: {
-          ...inbox.answers,
-          [change.id]: [
-            ...(inbox.answers[change.id] ?? []),
-            { text: change.text, at: NOW, stage: 'sending' },
-          ],
-        },
+        balance: held ? inbox.balance : inbox.balance - credits,
+        answers: { ...inbox.answers, [change.id]: [...(inbox.answers[change.id] ?? []), answer] },
       };
+    }
     case 'told':
       return {
         ...inbox,

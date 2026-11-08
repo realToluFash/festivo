@@ -14,10 +14,12 @@ import { PageToast, type PageToastProps } from '../../components/Summary.tsx';
 /** A page inside an event, drawn with no event around it in the demo: back, the title over the event's name, then the blocks 18 apart. */
 export function PeoplePage({
   back,
+  event = EVENT,
   toast,
   children,
 }: {
   back: { label: string; onPress: () => void };
+  event?: string;
   toast?: PageToastProps | null | undefined;
   children: ReactNode;
 }) {
@@ -36,7 +38,7 @@ export function PeoplePage({
           People
         </Text>
         <Text size={15} weight="medium" style={styles.secondary}>
-          {EVENT}
+          {event}
         </Text>
       </View>
       <View style={styles.blocks}>{children}</View>

@@ -681,7 +681,10 @@ def status(db, platform, now):
         say(" · ".join([view["machine"],
                         f"manager {'running' if view['manager'] else 'stopped'}"]
                        + ([f"paused since {view['paused']}"] if view["paused"] else [])
-                       + [f"{view['free_gb']} GB free", synced]))
+                       + [f"{view['free_gb']} GB free"]
+                       + ([f"worktrees {view['litter']['worktrees']:.1f} GB",
+                           f".qa {view['litter']['qa']:.1f} GB"] if view.get("litter") else [])
+                       + [synced]))
     else:
         say(synced)
     for error in view["errors"]:

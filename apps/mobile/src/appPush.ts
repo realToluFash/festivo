@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import { AndroidImportance } from 'expo-notifications';
-import { router } from 'expo-router';
+import { type Href, router } from 'expo-router';
 import { useEffect } from 'react';
 import { t } from 'i18next';
 import { AppState, Platform } from 'react-native';
@@ -103,7 +103,7 @@ export function showPushInForeground(): void {
 }
 
 /** The server sends the web's path; a place the app has no screen for opens the bell. */
-export function pushedPlace(response: Notifications.NotificationResponse): string {
+export function pushedPlace(response: Notifications.NotificationResponse): Href {
   const place: unknown = response.notification.request.content.data?.place;
 
   return appPlace(typeof place === 'string' ? place : null) ?? '/notifications';

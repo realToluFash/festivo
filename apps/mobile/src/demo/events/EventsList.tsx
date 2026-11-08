@@ -22,6 +22,7 @@ import {
   SAMPLE_GUESTS,
   figureOf,
   guestCountsOf,
+  rowGuests,
 } from './GuestCounts.ts';
 import { Cover } from '../../components/Cover.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
@@ -111,15 +112,20 @@ export function EventsList({
   const [searched, setSearched] = useState(start.typed);
   const [filters, setFilters] = useState<Filters>(start.filters);
   const [pastShown, setPastShown] = useState(start.pastShown);
-  const [offline, setOffline] = useState(state === 'offline');
+  const [offline, setOffline] = useState(state === 'offline' || state === 'eventsOffline');
   const [menuAt, setMenuAt] = useState<Anchor | null>(null);
   const filterRef = useRef<ViewInstance>(null);
   const field = useRef<TextInputInstance>(null);
-  const first = state === 'first';
+  const first = state === 'first' || state === 'eventsFirst';
   const wide = shell.layout !== 'phone';
   const events = useMemo(
-    () => (first ? [] : EVENTS.filter((event) => event.id !== deleted)),
-    [first, deleted],
+    () =>
+      first
+        ? []
+        : EVENTS.filter(
+            (event) => event.id !== deleted && (state !== 'eventsZero' || event.status === 'draft'),
+          ),
+    [first, deleted, state],
   );
   const home = useMemo(() => homeOf(events, now, locale), [events, now, locale]);
   const looking = searching(searched) || filtered(filters);
@@ -154,13 +160,19 @@ export function EventsList({
     setTyped('');
     setSearched('');
   };
+  const guestLine = (event: Shown) => {
+    const one = state === 'noGuests' ? null : rowGuests(event, SAMPLE_GUESTS, now);
+    return one == null
+      ? null
+      : `${G.coming(one.coming, locale)} · ${G.notReplied(one.notReplied, locale)}`;
+  };
   const row = (event: Shown, everyPhase: boolean) => ({
     key: event.id,
     inset: 60,
     row: (
       <Row
         title={event.name}
-        line={rowLine(event, locale)}
+        line={[rowLine(event, locale), guestLine(event)].filter(Boolean).join('\n')}
         lead={<EventThumb event={event} />}
         tag={rowTag(event, everyPhase)}
         value={wide ? (howSoon(event, now) ?? undefined) : undefined}
@@ -281,6 +293,7 @@ export function EventsList({
           />
           {card != null && (
             <EventCard
+              guests={guestLine(card)}
               event={card}
               now={now}
               locale={locale}
@@ -765,16 +778,22 @@ function Said({ words }: { words: string }) {
   );
 }
 
-function OfflineBand({ onRetry }: { onRetry: () => void }) {
+export function OfflineBand({
+  onRetry,
+  testID = 'events.offline',
+}: {
+  onRetry: () => void;
+  testID?: string;
+}) {
   useReadOut(say.offline(OFFLINE_AS_OF));
 
   return (
-    <View style={styles.band} testID="events.offline">
+    <View style={styles.band} testID={testID}>
       <View style={styles.diamond} />
       <Text size={14.5} weight="semibold" style={[styles.grow, styles.figures]}>
         {say.offline(OFFLINE_AS_OF)}
       </Text>
-      <TextAction label={W.tryAgain} onPress={onRetry} testID="events.offline.retry" />
+      <TextAction label={W.tryAgain} onPress={onRetry} testID={`${testID}.retry`} />
     </View>
   );
 }

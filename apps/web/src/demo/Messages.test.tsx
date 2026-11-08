@@ -8,7 +8,8 @@ import { resetSample } from './events.ts';
 import { resetInbox } from './messages.ts';
 
 const tested = config();
-const SLOW = { timeout: 8000 };
+const SLOW = { timeout: 20000 };
+const WAIT = { timeout: 8000 };
 const AT = '/demo/events/evt-wed-4/messages';
 
 function open(path: string) {
@@ -20,7 +21,7 @@ function open(path: string) {
 
 async function messages(state: string | null) {
   const router = open(state == null ? AT : `${AT}?state=${state}`);
-  await screen.findByRole('heading', { level: 1, name: 'Messages' }, SLOW);
+  await screen.findByRole('heading', { level: 1, name: 'Messages' }, WAIT);
 
   return router;
 }
@@ -61,19 +62,20 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
 
   it('links every state from the demo home, in a Messages group', SLOW, async () => {
     open('/demo');
-    const group = (await screen.findByRole('heading', { level: 4, name: 'Messages' }, SLOW))
+    const group = (await screen.findByRole('heading', { level: 4, name: 'Messages' }, WAIT))
       .parentElement as HTMLElement;
     const links = within(group).getAllByRole('link');
 
-    expect(links).toHaveLength(42);
+    expect(links).toHaveLength(45);
     expect(links[0]?.getAttribute('href')).toBe(`${AT}?state=first`);
-    expect(links[23]?.getAttribute('href')).toBe(`${AT}?state=bell`);
-    expect(links[41]?.getAttribute('href')).toBe(`${AT}?state=tellPlace`);
+    expect(links[7]?.getAttribute('href')).toBe(`${AT}?state=noticeCost`);
+    expect(links[26]?.getAttribute('href')).toBe(`${AT}?state=bell`);
+    expect(links[44]?.getAttribute('href')).toBe(`${AT}?state=tellPlace`);
   });
 
   it('is the event’s own Messages entry, with the count under it', SLOW, async () => {
     const router = open('/demo/events/evt-wed-4');
-    const side = await screen.findByRole('navigation', { name: 'Adaeze & Tunde’s wedding' }, SLOW);
+    const side = await screen.findByRole('navigation', { name: 'Adaeze & Tunde’s wedding' }, WAIT);
     const entry = within(side).getByRole('link', { name: 'Messages, 3 waiting, 1 not matched' });
 
     expect(entry.textContent).toContain('3 waiting · 1 not matched');
@@ -95,7 +97,7 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
     async () => {
       const router = open('/demo/events/evt-wed-4?area=messages');
 
-      await screen.findByRole('heading', { level: 1, name: 'Messages' }, SLOW);
+      await screen.findByRole('heading', { level: 1, name: 'Messages' }, WAIT);
       expect(router.state.location.pathname).toBe(AT);
     },
   );
@@ -165,7 +167,7 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
 
       fireEvent.click(screen.getByRole('button', { name: 'Mark as done' }));
 
-      expect(await screen.findByText('Done.', {}, SLOW)).toBeDefined();
+      expect(await screen.findByText('Done.', {}, WAIT)).toBeDefined();
       expect(within(list()).getByRole('heading', { name: 'Needs you · 4' })).toBeDefined();
       expect(row(/^Lucía Ortega/)).toBe(document.activeElement);
       expect(
@@ -194,7 +196,7 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
 
     expect(within(log).getByText('Of course, bring him.')).toBeDefined();
     expect(within(log).getByText('Sending…')).toBeDefined();
-    expect(await within(log).findByText('Not seen yet', {}, SLOW)).toBeDefined();
+    expect(await within(log).findByText('Not seen yet', {}, WAIT)).toBeDefined();
     expect(within(log).getAllByText('Told by email')).toHaveLength(2);
     expect(within(log).queryByText('Sending…')).toBeNull();
     expect((field as HTMLTextAreaElement).value).toBe('');
@@ -213,11 +215,105 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
     ).toBe('Formal: suits and long dresses are welcome.');
   });
 
+  it('says what a WhatsApp notice costs before Send, and takes it', SLOW, async () => {
+    await messages('noticeCost');
+    const field = screen.getByRole('textbox', { name: 'Your answer' }) as HTMLTextAreaElement;
+
+    expect(field.value).toBe('Yes: free parking under the hotel, entrance on Calle Mayor.');
+    expect(
+      screen.getByText('Your answer goes on Lucía Ortega’s page. Soirely tells them by WhatsApp.'),
+    ).toBeDefined();
+    expect(
+      screen.getByText('This WhatsApp message uses 4 credits. Credits after sending: 1,496.'),
+    ).toBeDefined();
+
+    fireEvent.keyDown(field, { key: 'Enter', metaKey: true });
+    const log = screen.getByRole('log', { name: 'Lucía Ortega' });
+
+    expect(await within(log).findByText('Told by WhatsApp', {}, SLOW)).toBeDefined();
+    expect(
+      screen.getByText('This WhatsApp message uses 4 credits. Credits after sending: 1,492.'),
+    ).toBeDefined();
+  });
+
+  it('shows no cost on an email notice', SLOW, async () => {
+    await messages('conversation');
+
+    expect(screen.queryByText(/credits?\. Credits after sending/)).toBeNull();
+  });
+
+  it('says the text’s cost on an SMS notice', SLOW, async () => {
+    await messages('channelReply');
+
+    expect(
+      screen.getByText('This text uses 9 credits. Credits after sending: 1,491.'),
+    ).toBeDefined();
+  });
+
+  it(
+    'says a notice the credits won’t cover will wait, and holds it when sent anyway',
+    SLOW,
+    async () => {
+      await messages('noticeWaits');
+
+      expect(screen.getByText('1 WhatsApp message will wait for credits.')).toBeDefined();
+      expect(screen.queryByText(/Credits after sending/)).toBeNull();
+      expect(screen.getByRole('button', { name: 'Add credits' })).toBeDefined();
+      expect(screen.getByText('Or tell them now by:')).toBeDefined();
+      expect(screen.getByRole('button', { name: 'Tell them now by email' })).toBeDefined();
+
+      fireEvent.keyDown(screen.getByRole('textbox', { name: 'Your answer' }), {
+        key: 'Enter',
+        metaKey: true,
+      });
+      const log = screen.getByRole('log', { name: 'Lucía Ortega' });
+
+      expect(
+        within(log).getByText('Yes: free parking under the hotel, entrance on Calle Mayor.'),
+      ).toBeDefined();
+      expect(
+        await within(log).findByText('WhatsApp · Held: waiting for credits', {}, SLOW),
+      ).toBeDefined();
+    },
+  );
+
+  it('tells them by email instead when Email is chosen, at no cost', SLOW, async () => {
+    await messages('noticeWaits');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Tell them now by email' }));
+
+    expect(
+      screen.getByText('Your answer goes on Lucía Ortega’s page. Soirely tells them by email.'),
+    ).toBeDefined();
+    expect(screen.queryByText('1 WhatsApp message will wait for credits.')).toBeNull();
+    expect(screen.queryByText(/Credits after sending/)).toBeNull();
+    const field = screen.getByRole('textbox', { name: 'Your answer' });
+
+    expect(document.activeElement).toBe(field);
+    fireEvent.keyDown(field, { key: 'Enter', metaKey: true });
+    const log = screen.getByRole('log', { name: 'Lucía Ortega' });
+
+    expect(await within(log).findByText('Told by email', {}, SLOW)).toBeDefined();
+  });
+
+  it('records a notice that waited and could not go as Not sent: too late', SLOW, async () => {
+    await messages('noticeNotSent');
+    const log = screen.getByRole('log', { name: 'Lucía Ortega' });
+
+    expect(within(log).getByText('Sun, Nov 1')).toBeDefined();
+    expect(within(log).getByText('Is there a vegetarian menu?')).toBeDefined();
+    expect(within(log).getByText('WhatsApp · Not sent: too late')).toBeDefined();
+    expect(within(log).getByText('Is there parking at The Landmark?')).toBeDefined();
+    expect(screen.getByText('1 WhatsApp message will wait for credits.')).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Tell them now by SMS' })).toBeNull();
+    expect(within(list()).getByRole('link', { name: /^Lucía Ortega/ })).toBeDefined();
+  });
+
   it('puts a reply that arrives first, washed, and says it', SLOW, async () => {
     await messages('replyArrived');
 
     expect(within(list()).queryByRole('link', { name: /^Lucía Ortega/ })).toBeNull();
-    expect(await screen.findByText('Lucía Ortega answered on their page.', {}, SLOW)).toBeDefined();
+    expect(await screen.findByText('Lucía Ortega answered on their page.', {}, WAIT)).toBeDefined();
     expect(within(list()).getAllByRole('link')[0]?.getAttribute('aria-label')).toMatch(
       /^Lucía Ortega, .*, now$/,
     );
@@ -241,7 +337,7 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
       expect(row(/^Lucía Ortega/).getAttribute('aria-current')).toBe('true');
 
       press('e');
-      expect(await screen.findByText('Done.', {}, SLOW)).toBeDefined();
+      expect(await screen.findByText('Done.', {}, WAIT)).toBeDefined();
       expect(within(list()).getByRole('heading', { name: 'Needs you · 4' })).toBeDefined();
 
       press('r');
@@ -556,7 +652,15 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
 
     const again = await screen.findByRole('button', { name: 'Send to Tomás Ferreira again' });
 
-    expect(screen.getByText('Email · Updated · not sent yet')).toBeDefined();
+    const tomas = within(screen.getByText('Tomás Ferreira').closest('li') as HTMLElement);
+
+    expect(tomas.getByText('Email · Bounced')).toBeDefined();
+    expect(tomas.getByText('Updated · not sent yet')).toBeDefined();
+    expect(
+      tomas.getByText('Their email address has changed since. Nothing has been sent to it yet.'),
+    ).toBeDefined();
+    expect(screen.queryByText('Email · Updated · not sent yet')).toBeNull();
+    expect(screen.getByRole('region', { name: 'Bounced · 3' })).toBeDefined();
     await vi.waitFor(() => expect(document.activeElement).toBe(again));
     fireEvent.click(again);
 
@@ -595,7 +699,7 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
     SLOW,
     async () => {
       open(`${AT}?state=tell`);
-      const dialog = await screen.findByRole('dialog', { name: 'Tell 130 guests?' }, SLOW);
+      const dialog = await screen.findByRole('dialog', { name: 'Tell 130 guests?' }, WAIT);
 
       expect(within(dialog).getByText('The start time is now 17:30 (was 18:00).')).toBeDefined();
       expect(within(dialog).getByText('Note for your guests')).toBeDefined();
@@ -632,7 +736,7 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
       target: { value: 'On the day: the doors' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
-    expect(await screen.findByText('Saved.', {}, SLOW)).toBeDefined();
+    expect(await screen.findByText('Saved.', {}, WAIT)).toBeDefined();
     expect(screen.getByRole('heading', { level: 2, name: 'On the day: the doors' })).toBeDefined();
 
     fireEvent.click(screen.getByRole('button', { name: 'Send now' }));
@@ -683,14 +787,14 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
     fireEvent.click(within(picker).getByRole('button', { name: 'This is Camille Dubois' }));
 
     expect(await screen.findByRole('heading', { level: 2, name: 'Camille Dubois' })).toBeDefined();
-    expect(await screen.findByText('Matched to Camille Dubois.', {}, SLOW)).toBeDefined();
+    expect(await screen.findByText('Matched to Camille Dubois.', {}, WAIT)).toBeDefined();
     expect(screen.getByRole('textbox', { name: 'Your answer' })).toBeDefined();
     expect(screen.getByRole('link', { name: 'Messages, 4 waiting' })).toBeDefined();
   });
 
   it('opens Tell guests when Overview’s start time is saved', SLOW, async () => {
     open('/demo/events/evt-wed-4?state=dates');
-    const start = await screen.findByLabelText('Starts, Time', {}, SLOW);
+    const start = await screen.findByLabelText('Starts, Time', {}, WAIT);
 
     fireEvent.change(start, { target: { value: '17:30' } });
     fireEvent.click(screen.getAllByRole('button', { name: 'Save' })[0] as HTMLElement);
@@ -765,7 +869,7 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
       fireEvent.change(within(when).getByLabelText('Time'), { target: { value: '09:00' } });
       fireEvent.click(within(when).getByRole('button', { name: 'Schedule' }));
 
-      expect(await screen.findByText('Scheduled for Thu, Nov 5 at 09:00.', {}, SLOW)).toBeDefined();
+      expect(await screen.findByText('Scheduled for Thu, Nov 5 at 09:00.', {}, WAIT)).toBeDefined();
       expect(within(list()).getByRole('heading', { name: 'Scheduled · 2' })).toBeDefined();
     },
   );
@@ -816,7 +920,7 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
 
   it('tells guests a new place, with the address line, over Overview', SLOW, async () => {
     open(`${AT}?state=tellPlace`);
-    const dialog = await screen.findByRole('dialog', { name: 'Tell 130 guests?' }, SLOW);
+    const dialog = await screen.findByRole('dialog', { name: 'Tell 130 guests?' }, WAIT);
 
     expect(
       within(dialog).getByText('The venue is now Rosewood London (was The Landmark).'),

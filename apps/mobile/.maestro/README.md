@@ -120,6 +120,9 @@ A check is written like a flow, and also:
 - **Subflows may sit in `checks/<story>/`, and are not localised.** Only the check itself
   has its `{{t:}}` filled in, so a subflow there matches by id, and any `{{t:}}` text goes in
   the check that calls it.
+  A flow run alone with `qa-env.mjs maestro` has no batch language: every file in it, subflows
+  in `checks/<story>/` included, matches `{{t:key}}` in any language and fills `|email` from
+  `EMAIL=` (any address without it). So a subflow's `{{t:}}` passing alone still fails in a batch.
 - **`takeScreenshot: <name>`, on one line.** The harness prefixes the check and language, so
   `settings` in a Spanish batch lands in `.qa/<batch>/settings.es-settings.png`.
 
@@ -148,6 +151,10 @@ up, and Soirely answers anything asked in those seconds, so on Android the harne
 API's `adb reverse` away for that move and puts it back once the API is held: the app is refused
 throughout, with no network change announced. `qa-env.mjs ios`, `android` and `release` unpause
 a paused API before starting the stack, so a batch killed mid-hold does not block the next run.
+A picture at a held moment, which `takeScreenshot` would take only once the screen settles, is
+`ASK: /shot?name=<name>`: the harness screenshots the device at once and saves it with the
+batch's screenshots under the same check-and-language prefix, so `held-1` in an English batch
+lands in `.qa/<batch>/<check>.en-held-1.png`. sc27096-ipad-side-refreshing is the example.
 The harness is reached only through `batch/helper.js`, never a literal port.
 
 A check that changes the account's membership from outside the phone asks
