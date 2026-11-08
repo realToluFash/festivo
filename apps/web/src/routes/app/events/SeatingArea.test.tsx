@@ -418,9 +418,9 @@ describe.each([
   },
 ])('A room over 1,000 ft, in $locale (sc-3998)', ({ locale, least, largest, shown, typed }) => {
   const spaced = (text: string) => text.replace(/\s+/gu, ' ');
-  const t = (key: string, values?: Record<string, string>) => i18next.t(key, values);
+  const t = (key: string, values: Record<string, string> = {}) => i18next.t(key, values);
   const refusalOpening = () =>
-    t('seating.roomRange', { min: '\u0000', max: '' }).split('\u0000')[0];
+    t('seating.roomRange', { min: '\u0000', max: '' }).split('\u0000')[0] ?? '';
   const refusalShown = () =>
     screen.queryByText((text) => text.startsWith(refusalOpening()), { selector: '*' });
 
