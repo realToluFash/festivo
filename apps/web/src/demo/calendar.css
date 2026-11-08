@@ -730,6 +730,7 @@
 }
 
 .cal-date {
+  position: relative;
   display: flex;
   flex: none;
   flex-direction: column;
@@ -962,14 +963,10 @@
   outline: none;
 }
 
-.cal-agenda-day .cal-date:focus-visible {
-  position: relative;
-}
-
 .cal-agenda-day .cal-date:focus-visible::before {
   position: absolute;
-  inset: 8px 6px -2px;
-  border-radius: 12px;
+  inset: var(--spaceSm) var(--spaceXs) calc(-1 * var(--spaceHair));
+  border-radius: var(--radiusRow);
   box-shadow: var(--deskRing);
   content: '';
 }
