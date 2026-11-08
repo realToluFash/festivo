@@ -157,7 +157,7 @@ export function CardPieces() {
 }
 
 /** Under the card's words: the cover or the colour, a scrim measured so white keeps 4.5:1, and Confetti on the colour. */
-function CardBackdrop({ event }: { event: Shown }) {
+export function CardBackdrop({ event }: { event: Shown }) {
   const scrim = scrimFor(eventColour(event), event.photo, tokens.colorInk);
   const id = `scrim-${event.id}`;
 
