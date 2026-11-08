@@ -20,6 +20,7 @@ import { focusWhereSent, offField } from '../../offField.ts';
 import { dateLocale } from '../../i18n/index.ts';
 import { emailMessage, useFormChecks } from '../../formChecks.ts';
 import { holdRegistration } from '../../pendingRegistration.ts';
+import { useShownAfter } from '../../shownAfter.ts';
 
 type Status =
   | { kind: 'ready' }
@@ -33,7 +34,12 @@ type FieldError = 'breached' | { message: string };
 type FieldErrors = Partial<Record<'name' | 'email' | 'password', FieldError>>;
 
 /** What Back from the email code brings back to the form; never the password. */
-export type Carried = { name?: string; email?: string };
+export type Carried = {
+  name?: string | undefined;
+  email?: string;
+  /** The sign-up held for its email code ran out, and the form says so (sc-29923). */
+  timedOut?: boolean;
+};
 
 export function Register() {
   const { t } = useTranslation();
@@ -43,6 +49,7 @@ export function Register() {
   const [short, setShort] = useState(false);
   const passwordInput = useRef<HTMLInputElement>(null);
   const carried = useLocation().state as Carried | null;
+  const [timedOut, setTimedOut] = useState(carried?.timedOut === true);
 
   const busy = status.kind === 'submitting';
   const locked = status.kind === 'rateLimited';
@@ -70,6 +77,10 @@ export function Register() {
   };
 
   useEffect(() => {
+    if (carried?.timedOut === true) passwordInput.current?.focus();
+  }, [carried]);
+
+  useEffect(() => {
     if (liftsAt == null) return;
 
     const lift = window.setTimeout(
@@ -92,6 +103,7 @@ export function Register() {
     };
 
     setShort(false);
+    setTimedOut(false);
     if (!checks.passes(values)) return;
 
     // The rule is stated before submit, so a short password is never sent.
@@ -131,6 +143,8 @@ export function Register() {
             <p className="auth-notice-title">{t('register.failedTitle')}</p>
             {status.kind === 'failed' && <p>{t('register.failedBody')}</p>}
           </div>
+        ) : timedOut ? (
+          <TimedOut />
         ) : (
           <p>{t('register.intro')}</p>
         )}
@@ -220,6 +234,18 @@ export function Register() {
 
       <ProviderSignIn pair />
     </AuthPage>
+  );
+}
+
+/** Said into a region already on the page, so a screen reader reads it while focus stays on Password. */
+function TimedOut() {
+  const { t } = useTranslation();
+  const said = useShownAfter(0);
+
+  return (
+    <div className="auth-notice" role="status">
+      {said && <p className="auth-notice-title">{t('register.timedOut')}</p>}
+    </div>
   );
 }
 

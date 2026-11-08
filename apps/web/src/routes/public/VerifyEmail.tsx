@@ -102,6 +102,14 @@ function ForRegistration({ pending }: { pending: PendingRegistration }) {
   const [account, setAccount] = useState<Account | null>(null);
   const carried = useLocation().state as Carried | null;
 
+  function timedOut(): void {
+    dropRegistration();
+    navigate('/register', {
+      replace: true,
+      state: { name: carried?.name, email: pending.email, timedOut: true } satisfies Carried,
+    });
+  }
+
   return (
     <CodeScreen
       address={pending.email}
@@ -114,15 +122,16 @@ function ForRegistration({ pending }: { pending: PendingRegistration }) {
         setAccount(signedIn.account);
       }}
       resend={() => api.resendRegistrationCode(pending.registration)}
-      onExpired={() => {
-        dropRegistration();
-        navigate('/register', { replace: true });
-      }}
+      onExpired={timedOut}
       onGone={() => {
-        dropRegistration();
         // A session that ended under the held sign-up says so once the sign-up is gone too (sc-927).
-        const ended = session.status === 'signedOut' && session.ended;
-        navigate(ended ? '/sign-in?signed-out' : '/sign-in', { replace: true });
+        if (session.status === 'signedOut' && session.ended) {
+          dropRegistration();
+          navigate('/sign-in?signed-out', { replace: true });
+          return;
+        }
+
+        timedOut();
       }}
       carryOn={() => {
         if (account == null) return;
@@ -197,7 +206,7 @@ function CodeScreen({
   verify: (code: string) => Promise<void>;
   resend: () => Promise<number>;
   onExpired: () => void;
-  /** The sign-up had already run out when the screen opened: nothing to resume, so signed out. */
+  /** The sign-up had already run out when the screen opened. */
   onGone?: () => void;
   carryOn?: () => void | Promise<void>;
   /** A sign-up's way back to Register, with what was typed there. */

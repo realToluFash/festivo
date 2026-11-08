@@ -487,7 +487,8 @@
     "failedBody": "Algo ha fallado en el camino. Inténtelo de nuevo en un momento.",
     "nameBlank": "Introduzca su nombre completo.",
     "passwordBlank": "Introduzca una contraseña.",
-    "tooShort": "Use al menos {{count, number}} caracteres."
+    "tooShort": "Use al menos {{count, number}} caracteres.",
+    "timedOut": "Your sign-up timed out, so we did not keep the password. Enter it again to get a new code."
   },
   "account": {
     "title": "Su cuenta",
