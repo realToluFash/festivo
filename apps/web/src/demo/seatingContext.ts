@@ -23,6 +23,8 @@ export interface SeatingApi {
   duplicate: (id: string) => void;
   markChair: (id: string, index: number) => void;
   focusField: (key: string) => void;
+  /** A field just refused on leaving it: a tap away on the room keeps the item chosen once (sc-5033). */
+  hold: (fieldKey: string) => void;
   tell: Tell;
 }
 
