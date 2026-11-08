@@ -1,15 +1,10 @@
 import { localDay } from './events.ts';
-import { countsOf, sampleGuests } from './guests.ts';
-import { GW, figure } from './guestsWords.ts';
+import { countsOf, haventLine, sampleGuests } from './guests.ts';
 import { CLOSES_AT } from './replyClose.ts';
 
-/** Who hasn't replied, as the Guests card counts them on the same sample (sc-99): guests, then their companions. */
+/** Who hasn't replied, in the Guests card's own sentence on the same sample (sc-99; l10n, #33419). */
 export function haventRepliedOf(id: string): string {
-  const counts = countsOf(sampleGuests(id));
-
-  return counts.haventCompanions === 0
-    ? `${figure(counts.haventGuests)} ${counts.haventGuests === 1 ? 'guest' : 'guests'}`
-    : GW.whoHavent(counts.haventGuests, counts.haventCompanions);
+  return haventLine(countsOf(sampleGuests(id)));
 }
 
 export type ReplyByCheck = 'tooLate' | 'sooner' | 'now' | 'save';
@@ -73,23 +68,22 @@ export function replyByAfterStart(
 /** The board's English for Reply by (sc-3780's Design, 7 Nov), held in the demo until the product's screen puts it in the catalogues. */
 export const REPLY_BY_WORDS = {
   replyBy: 'Reply by',
-  rowCloses: (zone: string) => `Replies close at ${CLOSES_AT}, ${zone} time`,
-  rowNone: 'Replies stay open until the event starts',
+  rowCloses: (zone: string) => `Replies close at ${CLOSES_AT}, ${zone} time.`,
+  rowNone: 'Replies stay open until the event starts.',
   hint: (zone: string) =>
     `Replies close at the end of this day, ${CLOSES_AT} ${zone} time. Leave it empty and replies stay open until the event starts.`,
   remove: 'Remove the date',
   preview: (sentence: string) => `On the guests’ page: “${sentence}”`,
   tooLate: 'Choose a date before the event starts.',
-  soonerTitle: (date: string, who: string) =>
-    `Close replies sooner, on ${date}, for ${who} who haven’t replied?`,
-  soonerLine: 'After that day they can’t answer, unless you let them change their reply.',
+  soonerTitle: (date: string) => `Close replies sooner, on ${date}?`,
+  soonerLine: 'After that day they can’t reply, unless you let them change their reply.',
   sooner: 'Close replies sooner',
-  nowTitle: (who: string) => `Close replies now for ${who} who haven’t replied?`,
-  nowLine: 'They can’t answer from now on, unless you let them change their reply.',
+  nowTitle: 'Close replies now?',
+  nowLine: 'From now on they can’t reply, unless you let them change their reply.',
   now: 'Close replies now',
   keep: (date: string) => `Keep ${date}`,
   saved: (date: string, zone: string) =>
-    `Saved. Replies close ${date} at ${CLOSES_AT}, ${zone} time.`,
+    `Saved. Replies close on ${date} at ${CLOSES_AT}, ${zone} time.`,
   savedNone: 'Saved. Replies stay open until the event starts.',
   startMoves: (old: string, next: string) =>
     `Replies close on ${old}, which isn’t before the new start. Saving moves Reply by to ${next}.`,

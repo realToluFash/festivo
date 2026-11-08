@@ -137,12 +137,8 @@ export function ReplyByPart({
       )}
       {asking != null && next != null && (
         <Ask
-          title={
-            asking === 'sooner'
-              ? R.soonerTitle(formatWallDay(next, LOCALE), haventRepliedOf(event.id))
-              : R.nowTitle(haventRepliedOf(event.id))
-          }
-          line={asking === 'sooner' ? R.soonerLine : R.nowLine}
+          title={asking === 'sooner' ? R.soonerTitle(formatWallDay(next, LOCALE)) : R.nowTitle}
+          line={haventRepliedOf(event.id)}
           keep={replyBy == null ? W.cancel : R.keep(formatWallDay(replyBy, LOCALE))}
           go={asking === 'sooner' ? R.sooner : R.now}
           red={false}
@@ -151,7 +147,9 @@ export function ReplyByPart({
             setAsking(null);
             onSave(next);
           }}
-        />
+        >
+          <p>{asking === 'sooner' ? R.soonerLine : R.nowLine}</p>
+        </Ask>
       )}
     </Opened>
   );

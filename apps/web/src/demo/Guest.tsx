@@ -545,7 +545,7 @@ function Shown({
             <h2 id="gp-greeting" className="gp-h2" tabIndex={-1} data-focus="greeting">
               {recorded.by == null
                 ? words.greeting(recorded.answer)
-                : words.downAs(recorded.answer)}
+                : words.answerIs(recorded.answer)}
             </h2>
           </div>
           <div className="gp-indent">
@@ -572,7 +572,7 @@ function Shown({
             <p className="gp-sub">
               {recorded.by == null
                 ? words.answered(recorded.answer, dayOf(recorded.on, lang))
-                : words.downAs(recorded.answer)}
+                : words.answerIs(recorded.answer)}
             </p>
           )}
           <h2 id="gp-new-h" className="gp-h2" tabIndex={-1} data-focus="newHead">
@@ -639,7 +639,7 @@ function Closed({
     recorded == null
       ? words.didNotAnswer
       : recorded.by != null
-        ? words.downAs(recorded.answer)
+        ? words.answerIs(recorded.answer)
         : words.answered(recorded.answer, dayOf(recorded.on, lang));
 
   if (phase === 'calledOff') return null;

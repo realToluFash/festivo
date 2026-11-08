@@ -489,6 +489,13 @@ export function replyByOf(id: string): string | null {
   return SAMPLES[id]?.replyBy ?? null;
 }
 
+/** The card's count sentence, which Reply by's asks say too (l10n, #33419 on sc-3780). */
+export function haventLine(counts: Counts): string {
+  return counts.haventCompanions === 0
+    ? `${GW.havent(counts.havent)}.`
+    : `${GW.havent(counts.havent)} (${GW.whoHavent(counts.haventGuests, counts.haventCompanions)}).`;
+}
+
 /** sc-3780's one rule: closed after 23:59:59 on the Reply by day, in the event's zone. */
 export function repliesClosed(id: string, clock: Date): boolean {
   const replyBy = replyByOf(id);
@@ -1033,10 +1040,7 @@ export function guestsCardOf(
   if (counts.invited === 0)
     return { tags: [], says: GW.onList(counts.all), arrived: null, line: null, step: null };
 
-  const who =
-    counts.haventCompanions === 0
-      ? `${GW.havent(counts.havent)}.`
-      : `${GW.havent(counts.havent)} (${GW.whoHavent(counts.haventGuests, counts.haventCompanions)}).`;
+  const who = haventLine(counts);
   const today = todayOf(now);
   const close =
     replyBy == null

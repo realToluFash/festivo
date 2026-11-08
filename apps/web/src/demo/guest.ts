@@ -674,11 +674,12 @@ const BOARD_ENGLISH = {
   answeredComing: 'You answered Coming on {{date}}.',
   answeredNotComing: 'You answered Not coming on {{date}}.',
   answeredNotSure: 'You answered Not sure yet on {{date}}.',
-  downComing: 'You’re down as coming.',
-  downNotComing: 'You’re down as not coming.',
-  downNotSure: 'You’re down as not sure yet.',
-  recordedFor: '{{name}} recorded this for you on {{date}}. If it isn’t right, change it here.',
-  recordedOn: '{{name}} recorded this for you on {{date}}.',
+  answerIsComing: 'Your answer is Coming.',
+  answerIsNotComing: 'Your answer is Not coming.',
+  answerIsNotSure: 'Your answer is Not sure yet.',
+  recordedFor:
+    '{{name}} recorded this answer for you on {{date}}. If it isn’t right, change it here.',
+  recordedOn: '{{name}} recorded this answer for you on {{date}}.',
   greetComing: 'See you there, {{name}}.',
   greetNotComing: 'We’ll miss you, {{name}}.',
   greetNotSure: 'Thanks for letting us know, {{name}}.',
@@ -815,11 +816,15 @@ export function wordsFor(lang: Lang) {
         )[answer],
         { date },
       ),
-    downAs: (answer: Answer): string =>
+    answerIs: (answer: Answer): string =>
       board(
-        ({ coming: 'downComing', notComing: 'downNotComing', notSure: 'downNotSure' } as const)[
-          answer
-        ],
+        (
+          {
+            coming: 'answerIsComing',
+            notComing: 'answerIsNotComing',
+            notSure: 'answerIsNotSure',
+          } as const
+        )[answer],
       ),
     recordedFor: (name: string, date: string) => board('recordedFor', { name, date }),
     recordedOn: (name: string, date: string) => board('recordedOn', { name, date }),

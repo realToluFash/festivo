@@ -54,7 +54,7 @@ describe('Reply by on the event’s Details (sc-3780)', () => {
     );
 
     expect(rows[1]).toContain('Wed, Nov 4, 2026');
-    expect(rows[1]).toContain('Reply by · Replies close at 23:59, Europe/London time');
+    expect(rows[1]).toContain('Reply by · Replies close at 23:59, Europe/London time.');
     expect(document.activeElement).toBe(field());
     expect((field() as HTMLInputElement).value).toBe('2026-11-04');
     expect(within(part()).getByText(SENTENCE)).toBeDefined();
@@ -69,7 +69,7 @@ describe('Reply by on the event’s Details (sc-3780)', () => {
     expect((field() as HTMLInputElement).value).toBe('');
     expect(within(part()).queryByRole('button', { name: 'Remove the date' })).toBeNull();
     expect(within(part()).queryByText(/^On the guests’ page/u)).toBeNull();
-    expect(screen.getAllByText('Replies stay open until the event starts')).toHaveLength(1);
+    expect(screen.getAllByText('Replies stay open until the event starts.')).toHaveLength(1);
   });
 
   it('refuses the day it starts before sending, with focus on the field', SLOW, async () => {
@@ -85,8 +85,18 @@ describe('Reply by on the event’s Details (sc-3780)', () => {
   it('asks before closing sooner; Keep leaves the date, Close saves it', SLOW, async () => {
     await page('replyBySooner');
     const ask = await screen.findByRole('alertdialog', {
-      name: 'Close replies sooner, on Tue, Nov 3, for 21 guests and 4 of their companions who haven’t replied?',
+      name: 'Close replies sooner, on Tue, Nov 3?',
     });
+
+    expect(ask.getAttribute('aria-describedby')).not.toBeNull();
+    expect(document.getElementById(ask.getAttribute('aria-describedby') ?? '')?.textContent).toBe(
+      '25 haven’t replied (21 guests and 4 of their companions).',
+    );
+    expect(
+      within(ask).getByText(
+        'After that day they can’t reply, unless you let them change their reply.',
+      ),
+    ).toBeDefined();
 
     expect(within(ask).getByRole('button', { name: 'Keep Wed, Nov 4' })).toBeDefined();
     expect(
@@ -95,7 +105,7 @@ describe('Reply by on the event’s Details (sc-3780)', () => {
     fireEvent.click(within(ask).getByRole('button', { name: 'Close replies sooner' }));
 
     expect(
-      await screen.findByText('Saved. Replies close Tue, Nov 3 at 23:59, Europe/London time.'),
+      await screen.findByText('Saved. Replies close on Tue, Nov 3 at 23:59, Europe/London time.'),
     ).toBeDefined();
     expect(screen.queryByRole('group', { name: 'Reply by' })).toBeNull();
     expect(screen.getByText('Tue, Nov 3, 2026')).toBeDefined();
@@ -103,9 +113,13 @@ describe('Reply by on the event’s Details (sc-3780)', () => {
 
   it('asks before closing now for a date already past', SLOW, async () => {
     await page('replyByNow');
-    const ask = await screen.findByRole('alertdialog', {
-      name: 'Close replies now for 21 guests and 4 of their companions who haven’t replied?',
-    });
+    const ask = await screen.findByRole('alertdialog', { name: 'Close replies now?' });
+
+    expect(
+      within(ask).getByText(
+        'From now on they can’t reply, unless you let them change their reply.',
+      ),
+    ).toBeDefined();
 
     fireEvent.click(within(ask).getByRole('button', { name: 'Keep Wed, Nov 4' }));
     expect(screen.queryByRole('alertdialog')).toBeNull();
@@ -124,7 +138,7 @@ describe('Reply by on the event’s Details (sc-3780)', () => {
     expect(
       await screen.findByText('Saved. Replies stay open until the event starts.'),
     ).toBeDefined();
-    expect(screen.getByText('Replies stay open until the event starts')).toBeDefined();
+    expect(screen.getByText('Replies stay open until the event starts.')).toBeDefined();
   });
 
   it(
@@ -160,7 +174,7 @@ describe('Reply by on the event’s Details (sc-3780)', () => {
   });
 
   it.each([
-    ['replyBySaved', 'Saved. Replies close Tue, Nov 3 at 23:59, Europe/London time.'],
+    ['replyBySaved', 'Saved. Replies close on Tue, Nov 3 at 23:59, Europe/London time.'],
     ['replyByRemoved', 'Saved. Replies stay open until the event starts.'],
   ])('?state=%s opens on the page with its toast', SLOW, async (state, toast) => {
     await page(state);

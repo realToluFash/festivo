@@ -23,9 +23,11 @@ describe('the date to reply by (sc-3780)', () => {
     expect(replyByOf('evt-wed-4')).toBe('2026-11-04');
     expect(replyByOf('evt-draft-4')).toBeNull();
     expect(haventRepliedOf('evt-wed-4')).toBe(
-      `${counts.haventGuests} guests and ${counts.haventCompanions} of their companions`,
+      `${counts.havent} haven’t replied (${counts.haventGuests} guests and ${counts.haventCompanions} of their companions).`,
     );
-    expect(haventRepliedOf('evt-wed-4')).toBe('21 guests and 4 of their companions');
+    expect(haventRepliedOf('evt-wed-4')).toBe(
+      '25 haven’t replied (21 guests and 4 of their companions).',
+    );
   });
 
   it('closes Guests by the same instant (sc-3780, one rule)', () => {
@@ -84,21 +86,23 @@ describe('the date to reply by (sc-3780)', () => {
 
   it('writes the dates and the words as the boards do', () => {
     expect(rowDay('2026-11-04')).toBe('Wed, Nov 4, 2026');
-    const who = haventRepliedOf('evt-wed-4');
-
-    expect(R.soonerTitle(formatWallDay('2026-11-03', 'en-US'), who)).toBe(
-      'Close replies sooner, on Tue, Nov 3, for 21 guests and 4 of their companions who haven’t replied?',
+    expect(R.soonerTitle(formatWallDay('2026-11-03', 'en-US'))).toBe(
+      'Close replies sooner, on Tue, Nov 3?',
     );
-    expect(R.nowTitle(who)).toBe(
-      'Close replies now for 21 guests and 4 of their companions who haven’t replied?',
+    expect(R.nowTitle).toBe('Close replies now?');
+    expect(R.soonerLine).toBe(
+      'After that day they can’t reply, unless you let them change their reply.',
     );
+    expect(R.nowLine).toBe('From now on they can’t reply, unless you let them change their reply.');
+    expect(R.rowCloses(ZONE)).toBe('Replies close at 23:59, Europe/London time.');
+    expect(R.rowNone).toBe('Replies stay open until the event starts.');
     expect(R.keep(formatWallDay('2026-11-04', 'en-US'))).toBe('Keep Wed, Nov 4');
     expect(R.startMoves('Wed, Nov 4', 'Tue, Nov 3')).toBe(
       'Replies close on Wed, Nov 4, which isn’t before the new start. Saving moves Reply by to Tue, Nov 3.',
     );
     expect(R.savedMoved('Tue, Nov 3')).toBe('Saved. Replies now close Tue, Nov 3.');
     expect(R.saved(formatWallDay('2026-11-03', 'en-US'), ZONE)).toBe(
-      'Saved. Replies close Tue, Nov 3 at 23:59, Europe/London time.',
+      'Saved. Replies close on Tue, Nov 3 at 23:59, Europe/London time.',
     );
     expect(R.hint(ZONE)).toBe(
       'Replies close at the end of this day, 23:59 Europe/London time. Leave it empty and replies stay open until the event starts.',

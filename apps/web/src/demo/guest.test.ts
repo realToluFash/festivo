@@ -191,11 +191,11 @@ describe('the words and dates', () => {
   it('says who recorded a reply for the guest, and only them (sc-3787)', () => {
     const en = wordsFor('en');
 
-    expect(en.downAs('coming')).toBe('You’re down as coming.');
-    expect(en.downAs('notComing')).toBe('You’re down as not coming.');
-    expect(en.downAs('notSure')).toBe('You’re down as not sure yet.');
+    expect(en.answerIs('coming')).toBe('Your answer is Coming.');
+    expect(en.answerIs('notComing')).toBe('Your answer is Not coming.');
+    expect(en.answerIs('notSure')).toBe('Your answer is Not sure yet.');
     expect(en.recordedFor('Folake Adeyemi', dayOf('2026-10-20', 'en'))).toBe(
-      'Folake Adeyemi recorded this for you on Tuesday, October 20. If it isn’t right, change it here.',
+      'Folake Adeyemi recorded this answer for you on Tuesday, October 20. If it isn’t right, change it here.',
     );
     expect(startOf('hostRecorded').recorded).toEqual({
       answer: 'coming',

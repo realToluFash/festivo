@@ -130,12 +130,12 @@ const SAYS: [string, () => void][] = [
     'hostRecorded',
     () =>
       screen.getByText(
-        'Folake Adeyemi recorded this for you on Tuesday, October 20. If it isn’t right, change it here.',
+        'Folake Adeyemi recorded this answer for you on Tuesday, October 20. If it isn’t right, change it here.',
       ),
   ],
   [
     'hostRecordedMaybe',
-    () => screen.getByRole('heading', { name: 'You’re down as not sure yet.' }),
+    () => screen.getByRole('heading', { name: 'Your answer is Not sure yet.' }),
   ],
   ['changing', () => screen.getByRole('heading', { name: 'Your new answer' })],
   ['sameAnswer', () => screen.getByText('You’re already down as Coming. Nothing has changed.')],
@@ -156,7 +156,7 @@ const SAYS: [string, () => void][] = [
         'Answers closed on Friday, October 30. Contact your host if you can still come.',
       ),
   ],
-  ['replyByClosedRecorded', () => screen.getByRole('heading', { name: 'You’re down as coming.' })],
+  ['replyByClosedRecorded', () => screen.getByRole('heading', { name: 'Your answer is Coming.' })],
   ['replyByClosedKitchen', () => screen.getByRole('button', { name: 'Save' })],
   [
     'replyByClosedNotSaved',
@@ -238,16 +238,16 @@ describe('a reply a host recorded (sc-3787)', () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     await guest('hostRecordedMaybe');
     const said =
-      'Folake Adeyemi recorded this for you on Tuesday, October 20. If it isn’t right, change it here.';
+      'Folake Adeyemi recorded this answer for you on Tuesday, October 20. If it isn’t right, change it here.';
 
     expect(document.activeElement).toBe(
-      screen.getByRole('heading', { name: 'You’re down as not sure yet.' }),
+      screen.getByRole('heading', { name: 'Your answer is Not sure yet.' }),
     );
     expect(screen.getByText(said)).toBeDefined();
     expect(screen.queryByText(/^You answered/u)).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: 'Change my answer' }));
-    expect(screen.getByText('You’re down as not sure yet.')).toBeDefined();
+    expect(screen.getByText('Your answer is Not sure yet.')).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: /^I’m not sure yet/u }));
     await wait();
 
@@ -262,19 +262,19 @@ describe('a reply a host recorded (sc-3787)', () => {
   it('keeps the door code and Add to calendar for a recorded Coming', async () => {
     await guest('hostRecorded');
 
-    expect(screen.getByRole('heading', { name: 'You’re down as coming.' })).toBeDefined();
+    expect(screen.getByRole('heading', { name: 'Your answer is Coming.' })).toBeDefined();
     expect(screen.getByRole('heading', { name: 'Show this at the door' })).toBeDefined();
     expect(screen.getByRole('heading', { name: 'Add to calendar' })).toBeDefined();
   });
 });
 
 describe('after the date to answer by, an answer a host recorded (sc-3780, ux 8 Nov)', () => {
-  it('keeps “You’re down as coming.” with who recorded it, never “You answered”', async () => {
+  it('keeps “Your answer is Coming.” with who recorded it, never “You answered”', async () => {
     await guest('replyByClosedRecorded');
 
-    expect(screen.getByRole('heading', { name: 'You’re down as coming.' })).toBeDefined();
+    expect(screen.getByRole('heading', { name: 'Your answer is Coming.' })).toBeDefined();
     expect(
-      screen.getByText('Folake Adeyemi recorded this for you on Tuesday, October 20.'),
+      screen.getByText('Folake Adeyemi recorded this answer for you on Tuesday, October 20.'),
     ).toBeDefined();
     expect(screen.queryByText(/^You answered/u)).toBeNull();
     expect(
