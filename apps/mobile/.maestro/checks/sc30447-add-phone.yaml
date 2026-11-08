@@ -33,7 +33,7 @@ appId: host.exp.Exponent
     id: 'contacts.phone.field.country'
 - tapOn:
     id: 'contacts.phone.field.country.search'
-- inputText: 'Ghana'
+- inputText: '+233'
 - takeScreenshot: add-code-search
 - tapOn:
     id: 'contacts.phone.field.country.GH'

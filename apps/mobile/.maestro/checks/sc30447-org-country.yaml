@@ -26,10 +26,10 @@ appId: host.exp.Exponent
     id: 'completeProfile.country'
 - tapOn:
     id: 'completeProfile.country.search'
-- inputText: 'Ghana'
+- inputText: 'Portugal'
 - takeScreenshot: org-country-search
 - tapOn:
-    id: 'completeProfile.country.GH'
+    id: 'completeProfile.country.PT'
 - waitForAnimationToEnd
 - assertVisible:
     id: 'completeProfile.country'

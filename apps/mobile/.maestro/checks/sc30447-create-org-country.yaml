@@ -18,9 +18,9 @@ appId: host.exp.Exponent
 - takeScreenshot: create-country-open
 - tapOn:
     id: 'createOrganisation.country.search'
-- inputText: 'Ghana'
+- inputText: 'Portugal'
 - tapOn:
-    id: 'createOrganisation.country.GH'
+    id: 'createOrganisation.country.PT'
 - waitForAnimationToEnd
 - takeScreenshot: create-country-chosen
 - assertVisible:

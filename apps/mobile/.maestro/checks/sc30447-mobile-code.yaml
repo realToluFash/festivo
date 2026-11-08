@@ -20,7 +20,7 @@ appId: host.exp.Exponent
     id: 'phone.country'
 - tapOn:
     id: 'phone.country.search'
-- inputText: 'Royaume'
+- inputText: '+44'
 - tapOn:
     id: 'phone.country.GB'
 - waitForAnimationToEnd
