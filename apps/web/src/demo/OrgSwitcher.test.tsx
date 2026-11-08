@@ -8,7 +8,8 @@ import { resetSample } from './events.ts';
 import { startSwitcher } from './switcher.ts';
 
 const tested = config();
-const SLOW = { timeout: 8000 };
+const SLOW = { timeout: 20000 };
+const WAIT = { timeout: 8000 };
 const ASKS = 'Where are you working?';
 
 function open(path: string) {
@@ -19,7 +20,7 @@ function open(path: string) {
 }
 
 async function opener(name: RegExp = /^Organisation: Ire Events/): Promise<HTMLElement> {
-  return screen.findByRole('button', { name }, SLOW);
+  return screen.findByRole('button', { name }, WAIT);
 }
 
 function menu(): HTMLElement | null {

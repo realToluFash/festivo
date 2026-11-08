@@ -77,28 +77,24 @@ describe('the demo opens only where things are tried (sc-28912)', () => {
 describe('the demo', () => {
   beforeEach(() => inEnvironment('development'));
 
-  it(
-    'lists the board under its page, with the sample values, and closes back where it opened',
-    { timeout: 20000 },
-    async () => {
-      const router = at('/register');
+  it('lists the board under its page, with the sample values, and closes back where it opened', async () => {
+    const router = at('/register');
 
-      fireEvent.click(screen.getByRole('link', { name: 'Design demo' }));
-      await screen.findByRole('heading', { name: 'Design demo' }, { timeout: 15000 });
+    fireEvent.click(screen.getByRole('link', { name: 'Design demo' }));
+    await screen.findByRole('heading', { name: 'Design demo' }, { timeout: 8000 });
 
-      expect(screen.getByRole('heading', { name: '27 · Sign in · desktop polish' })).toBeDefined();
-      expect(
-        screen.getByRole('heading', { name: '29 · Today · where signing in lands' }),
-      ).toBeDefined();
-      expect(screen.getByRole('link', { name: /A quiet week/ })).toBeDefined();
-      expect(screen.getByRole('link', { name: /Too many tries/ })).toBeDefined();
-      expect(screen.getByText(SAMPLE.email)).toBeDefined();
-      expect(screen.getByText(SAMPLE.password)).toBeDefined();
+    expect(screen.getByRole('heading', { name: '27 · Sign in · desktop polish' })).toBeDefined();
+    expect(
+      screen.getByRole('heading', { name: '29 · Today · where signing in lands' }),
+    ).toBeDefined();
+    expect(screen.getByRole('link', { name: /A quiet week/ })).toBeDefined();
+    expect(screen.getByRole('link', { name: /Too many tries/ })).toBeDefined();
+    expect(screen.getByText(SAMPLE.email)).toBeDefined();
+    expect(screen.getByText(SAMPLE.password)).toBeDefined();
 
-      fireEvent.click(screen.getByRole('button', { name: 'Close' }));
-      expect(router.state.location.pathname).toBe('/register');
-    },
-  );
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    expect(router.state.location.pathname).toBe('/register');
+  });
 
   it('checks blank fields before anything is sent, and clears a line once the field is right', async () => {
     await signInBoard();

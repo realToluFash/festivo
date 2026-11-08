@@ -66,6 +66,10 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **8 Nov 2026. A two-factor sign-in that ran out** (sc-29979, `signIn.codeTimedOutTitle`,
+  web and app). "That sign-in timed out", then `endedBody` "Sign in again to carry on." The
+  app joins the two as one line with a full stop, so the title takes none. "That" names the
+  attempt the person just made, not their session: they were never signed in.
 - **8 Nov 2026. Guests A: a guest's reply, the two counts, and the 412** (sc-3773, pm's #31841,
   settled in #32403). The reply state is "Not sure yet" everywhere, the guest's own words,
   never "Maybe": "Not sure yet · asked to decide by {{date}}", "Not sure yet · replied

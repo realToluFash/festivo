@@ -148,6 +148,10 @@ up, and Soirely answers anything asked in those seconds, so on Android the harne
 API's `adb reverse` away for that move and puts it back once the API is held: the app is refused
 throughout, with no network change announced. `qa-env.mjs ios`, `android` and `release` unpause
 a paused API before starting the stack, so a batch killed mid-hold does not block the next run.
+A picture at a held moment, which `takeScreenshot` would take only once the screen settles, is
+`ASK: /shot?name=<name>`: the harness screenshots the device at once and saves it with the
+batch's screenshots under the same check-and-language prefix, so `held-1` in an English batch
+lands in `.qa/<batch>/<check>.en-held-1.png`. sc27096-ipad-side-refreshing is the example.
 The harness is reached only through `batch/helper.js`, never a literal port.
 
 A check that changes the account's membership from outside the phone asks
