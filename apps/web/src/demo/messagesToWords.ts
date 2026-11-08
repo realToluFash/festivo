@@ -53,6 +53,7 @@ export const TW = {
   deleteAudience: 'Delete saved audience',
   deletedSaid: '{{name}} deleted.',
   noManage: '[Sending messages is for members who manage messages.]',
+  notMatchedYet: '[Not matched to a guest yet.]',
   workedOut: 'Worked out at {{time}}, when it went: {{guests}}.',
   nobodyDueRow: 'Nobody matched when it was due, {{time}}',
   sentNothing: 'sent nothing',

@@ -669,11 +669,8 @@ describe('Who gets it: To with its conditions, at a desk (sc-3957)', () => {
       none(['Mark as done', 'Mark as waiting']);
 
       await open(/^m\.dubois@orange\.fr/, 'm.dubois@orange.fr');
-      expect(
-        screen.getByText(
-          'Soirely could not match m.dubois@orange.fr to a guest. Choose the guest to answer them.',
-        ),
-      ).toBeDefined();
+      expect(screen.getByText('[Not matched to a guest yet.]')).toBeDefined();
+      expect(screen.queryByText(/Choose the guest to answer them/u)).toBeNull();
       none(['Choose the guest', 'Change guest', 'Mark as done']);
 
       await open(/^On the day: where to find us/, 'On the day: where to find us');

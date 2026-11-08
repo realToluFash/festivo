@@ -59,6 +59,7 @@ import {
 import { Composer, ComposePane, ResendCard } from './MessagesCompose.tsx';
 import { NoManage, SentToThread } from './MessagesSentTo.tsx';
 import { isSentTo } from './messagesTo.ts';
+import { TW } from './messagesToWords.ts';
 import { type Bit, useInbox, whereBits } from './messagesContext.ts';
 import { LaterDialog, MatchPicker } from './MessagesDialogs.tsx';
 import {
@@ -382,7 +383,11 @@ function GuestThread({
             <GuestBubble text={UNKNOWN.text} bits={whereBits('email', UNKNOWN.at)} />
             {match == null ? (
               <li className="mg-match">
-                <p>{filled(MW.couldntMatch, { address: UNKNOWN.address })}</p>
+                <p>
+                  {to.manage
+                    ? filled(MW.couldntMatch, { address: UNKNOWN.address })
+                    : TW.notMatchedYet}
+                </p>
                 {to.manage && (
                   <button
                     type="button"
