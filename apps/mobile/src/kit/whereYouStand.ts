@@ -27,9 +27,7 @@ export interface StandRules {
   inactivityTimeoutDays: number | null;
   administratorsNeedTwoFactor: boolean;
   everyoneNeedsTwoFactor: boolean;
-  /** The day everyone's two-factor is due, as a date. */
   twoFactorDeadline: string | null;
-  /** Another organisation's shorter limit, the one that signs this reader out. */
   elsewhere: { organisation: string; days: number } | null;
   ownTwoFactor: boolean;
 }
@@ -39,9 +37,7 @@ export interface StandViewer {
   organisation: string;
   role: string;
   manages: readonly Area[];
-  /** organisation.manage: may change the rules, on the web. */
   setsRules: boolean;
-  /** The provider linked, by name, or null. */
   linked: string | null;
 }
 
@@ -56,7 +52,6 @@ export interface RuleRow {
   ask: { consequence: string; step: string; opens: 'link' | 'twoFactor' } | null;
 }
 
-/** A day as the locale writes it, short month, with the year only outside this one. */
 export function dayIn(at: string, locale: string, now: Date, weekday = false): string {
   const day = new Date(`${at.slice(0, 10)}T12:00Z`);
 

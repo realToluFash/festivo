@@ -73,12 +73,8 @@ export default function SignInRules() {
   const seenNow = useRulesSeen(organisationId ?? '');
   const [seenBefore, setSeenBefore] = useState<{ id: string; at: string | null } | null>(null);
 
-  useEffect(() => {
-    if (organisationId == null || seenNow === undefined) return;
-    setSeenBefore((before) =>
-      before?.id === organisationId ? before : { id: organisationId, at: seenNow },
-    );
-  }, [organisationId, seenNow]);
+  if (organisationId != null && seenNow !== undefined && seenBefore?.id !== organisationId)
+    setSeenBefore({ id: organisationId, at: seenNow });
 
   useEffect(() => {
     if (organisationId == null) return;
