@@ -1,16 +1,19 @@
 import { formatWallDay, phoneLengthProblem } from '@soirely/domain';
 
 import { writtenTime } from '../clock.ts';
-
-import type {
-  EventRole,
-  OnEvent,
-  OrgMember,
-  PeopleStart,
-  PeopleViewer,
-  PeopleWorld,
+import {
+  atWords,
+  type EventRole,
+  type Moment,
+  type OnEvent,
+  type OrgMember,
+  type PeopleStart,
+  type PeopleViewer,
+  type PeopleWorld,
 } from '../people/PeopleSample.ts';
 import { cameIn, tooShortFor, usedEnded, usedUntil, W } from './DoorCodeWords.ts';
+
+export { atWords, type Moment };
 
 /** The sample, access-a-spec.md §6: Lumen Feiras in Porto and Joana & Rui's wedding. It is not spec. */
 export const ORGANISATION = 'Lumen Feiras';
@@ -24,11 +27,6 @@ export const EVENT = {
   country: 'PT',
   countryName: 'Portugal',
 } as const;
-export interface Moment {
-  date: string;
-  time: string;
-}
-
 export const NOW: Moment = { date: '2026-11-07', time: '09:41' };
 export const ON_THE_DAY: Moment = { date: EVENT.day, time: '13:45' };
 export const AFTER_EXPIRY: Moment = { date: EVENT.day, time: '16:00' };
@@ -75,13 +73,6 @@ export function dayWords(date: string, locale: string): string {
 
 export function clockWords(time: string, locale: string): string {
   return writtenTime(time, locale);
-}
-
-/** "23:30" today, "Sat, Nov 14, 23:30" on another day (pm, 8 Nov): the day and the time from Intl, on the 24-hour clock. */
-export function atWords(at: Moment, locale: string, today: string): string {
-  const time = clockWords(at.time, locale);
-
-  return at.date === today ? time : `${dayWords(at.date, locale)}, ${time}`;
 }
 
 export function endsRowLine(ends: Ends, locale: string): string {

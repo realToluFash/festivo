@@ -218,16 +218,25 @@ export const SAVE_MS = 600;
 /** A link to a sending state holds it this long, then lands. */
 export const HELD_MS = 8000;
 
-/** l10n's line (#32341); a time not on `today` names its day (pm, 8 Nov). */
+export interface Moment {
+  date: string;
+  time: string;
+}
+
+/** "23:30" today, "Sat, Nov 14, 23:30" on another day (pm, 8 Nov): the day and the time from Intl, on the 24-hour clock. */
+export function atWords(at: Moment, locale: string, today: string): string {
+  const time = writtenTime(at.time, locale);
+
+  return at.date === today ? time : `${formatWallDay(at.date, locale)}, ${time}`;
+}
+
+/** l10n's line (#32341), its time in the card's own form. */
 export function joinedWithLine(
-  byCode: { code: string; date: string; time: string },
+  byCode: { code: string } & Moment,
   locale: string,
   today: string = byCode.date,
 ): string {
-  const time = writtenTime(byCode.time, locale);
-  const at = byCode.date === today ? time : `${formatWallDay(byCode.date, locale)}, ${time}`;
-
-  return `Joined with the door code ${byCode.code} at ${at}.`;
+  return `Joined with the door code ${byCode.code} at ${atWords(byCode, locale, today)}.`;
 }
 
 export function savedWords(person: OnEvent, role: EventRole): string {

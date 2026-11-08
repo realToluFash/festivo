@@ -159,6 +159,26 @@ describe('who is on People, and how they are there', () => {
     );
   });
 
+  it('writes the card’s end and João’s joining in one form, today or not', () => {
+    if (joao?.byCode == null) throw new Error('João is on the event by the code.');
+
+    for (const today of ['2026-11-14', '2026-11-07']) {
+      const end = atWords({ date: '2026-11-14', time: '23:30' }, LOCALE, today);
+      const joined = atWords(joao.byCode, LOCALE, today);
+
+      expect(cardLine(BAR_CODE, LOCALE, today)).toBe(`14 of 30 used · until ${end}`);
+      expect(joinedWithLine(joao.byCode, LOCALE, today)).toBe(
+        `Joined with the door code Q7KM 4XP2 at ${joined}.`,
+      );
+    }
+    expect(cardLine(BAR_CODE, LOCALE, '2026-11-07')).toBe(
+      '14 of 30 used · until Sat, Nov 14, 23:30',
+    );
+    expect(joinedWithLine(joao.byCode, LOCALE, '2026-11-07')).toBe(
+      'Joined with the door code Q7KM 4XP2 at Sat, Nov 14, 13:34.',
+    );
+  });
+
   it('lists by role, then name', () => {
     expect(
       listed(people)
