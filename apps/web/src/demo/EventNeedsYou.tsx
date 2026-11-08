@@ -1,8 +1,9 @@
+import type { Milestone } from '@soirely/domain';
 import { useState } from 'react';
+import { Link } from 'react-router';
 
 import { Glyph } from '../components/Glyph.tsx';
 import { Head, TextAction } from '../components/SettingsParts.tsx';
-import type { Tell } from '../components/SettingsParts.tsx';
 import {
   type NeedRow,
   type NeedsState,
@@ -13,7 +14,7 @@ import {
 
 const LOCALE = 'en-US';
 
-function Row({ need, tell }: { need: NeedRow; tell: Tell }) {
+function Row({ need }: { need: NeedRow }) {
   return (
     <li className="ev-need">
       <span className="ev-need-words">
@@ -24,9 +25,9 @@ function Row({ need, tell }: { need: NeedRow; tell: Tell }) {
         </span>
       </span>
       {need.action != null && (
-        <button type="button" className="today-act" onClick={() => tell(W.kitchenHasItsOwnDesign)}>
-          <span className="today-act-pill">{need.action}</span>
-        </button>
+        <Link className="today-act" to={need.action.link}>
+          <span className="today-act-pill">{need.action.label}</span>
+        </Link>
       )}
     </li>
   );
@@ -41,26 +42,28 @@ function Count({ count }: { count: number }) {
   );
 }
 
-/** The Overview's Needs you (sc-32801): the rows Today lists, this event's only, so a row does not name it. */
+/** The Overview's Needs you (sc-32801): the rows Today lists, from the event's dates, this event's only, so a row does not name it. */
 export function EventNeedsYou({
+  timeline,
   state,
   open,
   now,
   timeZone,
-  tell,
 }: {
+  timeline: readonly Milestone[];
   state: NeedsState | null;
   open: boolean;
   now: Date;
   timeZone: string;
-  tell: Tell;
 }) {
   const [load, setLoad] = useState<'loading' | 'failed' | 'loaded'>(
     state === 'needsYouLoading' ? 'loading' : state === 'needsYouFailed' ? 'failed' : 'loaded',
   );
   const { milestones, permissions } = sampleNeeds(state);
   const rows =
-    load === 'loaded' && open ? needRows(milestones, permissions, now, timeZone, LOCALE) : [];
+    load === 'loaded' && open
+      ? needRows([...timeline, ...milestones], permissions, now, timeZone, LOCALE)
+      : [];
 
   return (
     <section className="desk-block" aria-labelledby="ev-needs-you">
@@ -90,7 +93,7 @@ export function EventNeedsYou({
       {rows.length > 0 && (
         <ul className="ev-needs">
           {rows.map((need) => (
-            <Row key={need.title} need={need} tell={tell} />
+            <Row key={need.key} need={need} />
           ))}
         </ul>
       )}

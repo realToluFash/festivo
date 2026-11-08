@@ -1386,10 +1386,15 @@
   --todayActPill: 34px;
 
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--spacePillEnd);
+  gap: 0 var(--spacePillEnd);
   min-height: var(--sizeListRow);
   border-bottom: 1px solid var(--colorBorder);
+}
+
+.ev-need .today-act {
+  text-decoration: none;
 }
 
 .ev-need:last-child {
@@ -1398,7 +1403,7 @@
 
 .ev-need-words {
   display: flex;
-  flex: 1;
+  flex: 1 1 14em;
   flex-direction: column;
   gap: 1px;
   min-width: 0;

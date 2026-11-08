@@ -209,11 +209,16 @@ export function startOf(value: string | null): KitchenStart {
   return start;
 }
 
-/** The Overview's and All dates' own links: the milestone as due, overdue, or gone with a copy. */
+/** The Overview's and All dates' own links, and the Overview's Needs you (sc-32801): the milestone as due, overdue, or gone with a copy. */
 const DATES_STATES = {
   finalNumbers: SET,
   finalNumbersOverdue: { due: '2026-11-02', copies: [] },
   finalNumbersGiven: { due: SET.due, copies: [FIRST] },
+  needsYou: { due: '2026-11-01', copies: [] },
+  needsYouOne: { due: '2026-11-04', copies: [] },
+  needsYouOverdue: { due: '2026-11-01', copies: [] },
+  needsYouGiven: { due: SET.due, copies: [FIRST] },
+  needsYouReadOnly: { due: '2026-11-04', copies: [] },
 } satisfies Record<string, Kitchen>;
 
 export type KitchenDatesState = keyof typeof DATES_STATES;

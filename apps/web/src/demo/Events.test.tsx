@@ -1,10 +1,11 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
 import { resetSample } from './events.ts';
+import { KW, kitchenAt, resetKitchen } from './kitchen.ts';
 
 const tested = config();
 const SLOW = { timeout: 20000 };
@@ -301,6 +302,11 @@ describe('Needs you on the Overview at a desk (sc-32801)', () => {
   beforeEach(() => {
     __setConfig({ ...tested, environment: 'development' });
     resetSample();
+    resetKitchen();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   function card(): HTMLElement {
@@ -324,10 +330,51 @@ describe('Needs you on the Overview at a desk (sc-32801)', () => {
         'Seat the last 12 guestsDue tomorrow',
         'Confirm the cakeDue Thu, Nov 5',
       ]);
-      expect(within(card()).getAllByRole('button')).toHaveLength(1);
+      expect(within(card()).queryByRole('button')).toBeNull();
+      expect(
+        within(card())
+          .getAllByRole('link')
+          .map((link) => [link.textContent, link.getAttribute('href')]),
+      ).toEqual([[KW.openSheet, kitchenAt('evt-wed-4')]]);
       expect(within(card()).queryByText(WEDDING)).toBeNull();
     },
   );
+
+  it(
+    'lists the kitchen milestone while it is Next up, and opens Kitchen sheet for this event',
+    SLOW,
+    async () => {
+      const router = await page('/demo/events/evt-wed-4?state=finalNumbers');
+
+      expect(screen.getByText('Next up: Give final numbers to the kitchen')).toBeDefined();
+      expect(
+        within(card())
+          .getAllByRole('listitem')
+          .map((row) => row.textContent),
+      ).toEqual([`Give final numbers to the kitchenDue today${KW.openSheet}`]);
+
+      fireEvent.click(within(card()).getByRole('link', { name: KW.openSheet }));
+      expect(router.state.location.pathname).toBe(kitchenAt('evt-wed-4'));
+    },
+  );
+
+  it('drops the row once a copy is recorded on Kitchen sheet', SLOW, async () => {
+    await page('/demo/events/evt-wed-4?state=finalNumbers');
+    fireEvent.click(within(card()).getByRole('link', { name: KW.openSheet }));
+    await screen.findByRole('heading', { level: 1, name: KW.title }, WAIT);
+
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    fireEvent.click(screen.getByRole('button', { name: KW.give }));
+    fireEvent.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', { name: KW.download }),
+    );
+    await act(() => vi.advanceTimersByTimeAsync(1000));
+    fireEvent.click(screen.getByRole('link', { name: WEDDING }));
+    await screen.findByRole('heading', { level: 1, name: WEDDING }, WAIT);
+
+    expect(within(card()).getByText('Nothing needs you')).toBeDefined();
+    expect(within(card()).queryByRole('listitem')).toBeNull();
+  });
 
   it(
     'says nothing needs you, with no count, on an event with no row and once it has started',

@@ -1,3 +1,5 @@
+import { type Milestone, levelOf } from '@soirely/domain';
+
 import { localDay } from './events.ts';
 
 export type NeedsState =
@@ -9,29 +11,19 @@ export type NeedsState =
   | 'needsYouLoading'
   | 'needsYouFailed';
 
-export const OPEN_THE_KITCHEN_SHEET = 'Open the kitchen sheet';
-
 export const NEEDS_WORDS = {
   heading: 'Needs you',
   nothing: 'Nothing needs you',
   loading: 'Loading the dates…',
   failed: 'The dates did not load.',
-  kitchenHasItsOwnDesign: 'Kitchen sheet has its own design: sc-30812, PR #1527.',
 } as const;
 
-export interface SampleMilestone {
-  at: string;
-  title: string;
-  owner: 'you' | 'event' | 'automatic';
-  area: string;
-  action: string | null;
-}
-
 export interface NeedRow {
+  key: string;
   title: string;
   due: string;
   late: boolean;
-  action: string | null;
+  action: Milestone['action'];
 }
 
 const DAY = 86_400_000;
@@ -74,9 +66,9 @@ export function dueWords(
   return { words: `Due ${dateWords(at, now, timeZone, locale)}`, late: false };
 }
 
-/** A You milestone the reader's role can act on, earliest first, a tie by title in the shown language. */
+/** A You milestone the reader's role changes, earliest first, a tie by title in the shown language. A milestone has no id, so its key is its area, moment and title. */
 export function needRows(
-  milestones: readonly SampleMilestone[],
+  milestones: readonly Milestone[],
   permissions: readonly string[],
   now: Date,
   timeZone: string,
@@ -85,71 +77,56 @@ export function needRows(
   const byTitle = new Intl.Collator(locale);
 
   return milestones
-    .filter((one) => one.owner === 'you' && permissions.includes(`${one.area}.manage`))
+    .filter((one) => one.owner === 'you' && levelOf(permissions, one.area) === 'change')
     .sort((a, b) => Date.parse(a.at) - Date.parse(b.at) || byTitle.compare(a.title, b.title))
     .map((one) => {
       const { words, late } = dueWords(one.at, now, timeZone, locale);
 
-      return { title: one.title, due: words, late, action: one.action };
+      return {
+        key: `${one.area}|${one.at}|${one.title}`,
+        title: one.title,
+        due: words,
+        late,
+        action: one.action,
+      };
     });
 }
 
-const KITCHEN = 'Give final numbers to the kitchen';
-
-function kitchen(at: string): SampleMilestone {
-  return { at, title: KITCHEN, owner: 'you', area: 'menu', action: OPEN_THE_KITCHEN_SHEET };
+/** No area but the kitchen's returns a You milestone yet: these stand in for its other rows, with no action. */
+function other(at: string, title: string, area: string): Milestone {
+  return { at, title, note: null, owner: 'you', area, action: null };
 }
 
-/** No area but the kitchen's returns a You milestone yet: these stand in for the row with no action. */
-function other(at: string, title: string, area: string): SampleMilestone {
-  return { at, title, owner: 'you', area, action: null };
-}
-
-const OPEN_FOUR = [
+const OPEN_THREE = [
   other('2026-11-03T23:59:00Z', 'Pay the band’s balance', 'budget'),
   other('2026-11-04T23:59:00Z', 'Seat the last 12 guests', 'seating'),
   other('2026-11-05T12:00:00Z', 'Confirm the cake', 'vendors'),
 ];
 
-const OF_EVENT: SampleMilestone = {
-  at: '2026-11-05T18:00:00Z',
-  title: 'Adaeze & Tunde’s wedding starts',
-  owner: 'event',
-  area: 'events',
-  action: null,
-};
-
 const MANAGES = ['menu.manage', 'budget.manage', 'seating.manage', 'vendors.manage'];
 const ONLY_READS = ['menu.read', 'budget.read', 'seating.read', 'vendors.read'];
 
-/** What each state's reader is given on the wedding, before it starts. Every other state has no You milestone. */
+/** Each state's reader and its rows beside the wedding's dates, whose kitchen milestone kitchen.ts seeds. */
 export function sampleNeeds(state: NeedsState | null): {
-  milestones: readonly SampleMilestone[];
+  milestones: readonly Milestone[];
   permissions: readonly string[];
 } {
   switch (state) {
     case 'needsYou':
-      return {
-        milestones: [OF_EVENT, ...OPEN_FOUR, kitchen('2026-11-01T23:59:00Z')],
-        permissions: MANAGES,
-      };
-    case 'needsYouOne':
-      return { milestones: [OF_EVENT, kitchen('2026-11-04T23:59:00Z')], permissions: MANAGES };
+    case 'needsYouGiven':
+      return { milestones: OPEN_THREE, permissions: MANAGES };
     case 'needsYouOverdue':
       return {
         milestones: [
           other('2026-11-03T09:00:00Z', 'Confirm the cake', 'vendors'),
           other('2026-11-03T09:00:00Z', 'Agree the toasts', 'seating'),
           other('2026-11-02T23:59:00Z', 'Pay the band’s balance', 'budget'),
-          kitchen('2026-11-01T23:59:00Z'),
         ],
         permissions: MANAGES,
       };
-    case 'needsYouGiven':
-      return { milestones: [OF_EVENT, ...OPEN_FOUR], permissions: MANAGES };
     case 'needsYouReadOnly':
-      return { milestones: [OF_EVENT, kitchen('2026-11-04T23:59:00Z')], permissions: ONLY_READS };
+      return { milestones: [], permissions: ONLY_READS };
     default:
-      return { milestones: [OF_EVENT], permissions: MANAGES };
+      return { milestones: [], permissions: MANAGES };
   }
 }

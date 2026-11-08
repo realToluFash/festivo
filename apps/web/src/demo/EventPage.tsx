@@ -45,7 +45,14 @@ import type { NeedsState } from './needsYou.ts';
 import { Alert, EventCard, EventsShell, NotBuilt, Switch, Thumb } from './EventParts.tsx';
 import { EventSidebar } from './EventSidebar.tsx';
 import { AllDates } from './EventDates.tsx';
-import { KITCHEN_EVENT, KW, cardMilestone, kitchenAt, seedFromEvent } from './kitchen.ts';
+import {
+  KITCHEN_EVENT,
+  KW,
+  cardMilestone,
+  kitchenAt,
+  seedFromEvent,
+  timelineOf,
+} from './kitchen.ts';
 import { Glyph, type GlyphName } from '../components/Glyph.tsx';
 import { LayersContext } from '../layers.ts';
 import { BUDGET_EVENT } from './budget.ts';
@@ -336,13 +343,13 @@ function EventView({
                       onLatest={kept}
                       needs={
                         <EventNeedsYou
+                          timeline={timelineOf(event, now)}
                           state={needsStateOf(state)}
                           open={
                             event.status !== 'ended' && now.getTime() < Date.parse(event.startsAt)
                           }
                           now={now}
                           timeZone={event.timeZone}
-                          tell={tell}
                         />
                       }
                     />
