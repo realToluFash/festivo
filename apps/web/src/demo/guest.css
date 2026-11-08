@@ -740,6 +740,12 @@
   color: var(--colorInk);
 }
 
+/* sc-3787: who recorded a reply for the guest, at the guest's 17 (pm, 8 Nov) */
+.gp-sub.is-recorded {
+  font-size: 17px;
+  line-height: 1.45;
+}
+
 .gp-small {
   margin-top: 10px;
   color: var(--colorInkSecondary);

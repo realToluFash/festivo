@@ -1215,6 +1215,8 @@ export type EditState =
   | 'dates'
   | 'datesChanged'
   | 'datesError'
+  | 'datesReplyBy'
+  | 'datesReplyByAsk'
   | 'discard'
   | 'changedElsewhere'
   | 'showLatest'
@@ -1233,7 +1235,14 @@ export type EditState =
   | 'nameBlank'
   | 'cover'
   | 'coverRefused'
-  | 'coverPhoto';
+  | 'coverPhoto'
+  | 'replyBy'
+  | 'replyByEmpty'
+  | 'replyByError'
+  | 'replyBySooner'
+  | 'replyByNow'
+  | 'replyBySaved'
+  | 'replyByRemoved';
 
 export type LifeState =
   | 'pause'
@@ -1262,6 +1271,8 @@ export const EVENT_STATES: Record<EventStateName, string> = {
   dates: 'evt-wed-4',
   datesChanged: 'evt-wed-4',
   datesError: 'evt-wed-4',
+  datesReplyBy: 'evt-wed-4',
+  datesReplyByAsk: 'evt-wed-4',
   discard: 'evt-wed-4',
   changedElsewhere: 'evt-wed-4',
   showLatest: 'evt-wed-4',
@@ -1281,6 +1292,13 @@ export const EVENT_STATES: Record<EventStateName, string> = {
   cover: 'evt-wed-4',
   coverRefused: 'evt-wed-4',
   coverPhoto: 'evt-wed-4',
+  replyBy: 'evt-wed-4',
+  replyByEmpty: 'evt-draft-4',
+  replyByError: 'evt-wed-4',
+  replyBySooner: 'evt-wed-4',
+  replyByNow: 'evt-wed-4',
+  replyBySaved: 'evt-wed-4',
+  replyByRemoved: 'evt-wed-4',
   pause: 'evt-wed-4',
   callOff: 'evt-party-2',
   endNow: 'evt-wed-4',
@@ -1312,13 +1330,15 @@ export function clockOf(state: EventStateName | null): Date {
   return CLOCKS.rest;
 }
 
-export type Part = 'dates' | 'venue' | 'hosts' | 'type' | 'currency' | 'name' | 'cover';
+export type Part = 'dates' | 'replyBy' | 'venue' | 'hosts' | 'type' | 'currency' | 'name' | 'cover';
 
 export function partOf(state: EventStateName | null): Part | null {
   switch (state) {
     case 'dates':
     case 'datesChanged':
     case 'datesError':
+    case 'datesReplyBy':
+    case 'datesReplyByAsk':
     case 'discard':
     case 'changedElsewhere':
     case 'showLatest':
@@ -1345,6 +1365,12 @@ export function partOf(state: EventStateName | null): Part | null {
     case 'coverRefused':
     case 'coverPhoto':
       return 'cover';
+    case 'replyBy':
+    case 'replyByEmpty':
+    case 'replyByError':
+    case 'replyBySooner':
+    case 'replyByNow':
+      return 'replyBy';
     default:
       return null;
   }
@@ -1361,7 +1387,8 @@ export function stateFits(state: EventStateName, event: SampleEvent): boolean {
   if (state === 'pause') return manage.includes('pause');
   if (state === 'callOff') return manage.includes('callOff');
   if (state === 'endNow') return manage.includes('endNow');
-  if (partOf(state) === 'dates') return !locked;
+  const part = partOf(state);
+  if (part === 'dates' || part === 'replyBy') return !locked;
 
   return true;
 }
@@ -1481,6 +1508,8 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
       on('dates', 'Dates, opened'),
       on('datesChanged', 'Dates, the start moved'),
       on('datesError', 'Dates, the end before the start'),
+      on('datesReplyBy', 'Dates, the start on the Reply by day (sc-3780)'),
+      on('datesReplyByAsk', 'Dates asks before closing replies sooner (sc-3780)'),
       on('discard', 'Cancel with a change'),
       on('changedElsewhere', 'Changed elsewhere'),
       on('showLatest', 'Show the latest'),
@@ -1505,6 +1534,18 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
       on('cover', 'Cover, the default'),
       on('coverRefused', 'Cover, a photo refused'),
       on('coverPhoto', 'Cover, a photo'),
+    ],
+  },
+  {
+    name: 'Reply by, in place (sc-3780)',
+    states: [
+      on('replyBy', 'Reply by, opened'),
+      on('replyByEmpty', 'Reply by, no date yet'),
+      on('replyByError', 'Reply by, on the day it starts'),
+      on('replyBySooner', 'Reply by, moved sooner'),
+      on('replyByNow', 'Reply by, moved into the past'),
+      on('replyBySaved', 'Reply by, saved'),
+      on('replyByRemoved', 'Reply by, removed'),
     ],
   },
   {
