@@ -903,6 +903,11 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         what: 'As of 09:32, Try again',
         href: '/demo/events?state=offline',
       },
+      {
+        title: 'Events · loading',
+        what: 'The card and rows as shapes, search and Filter off',
+        href: '/demo/events?state=loading',
+      },
       { title: 'Events · a first run', what: 'No events yet', href: '/demo/events?state=first' },
       {
         title: 'Events · a first run, without Create events',

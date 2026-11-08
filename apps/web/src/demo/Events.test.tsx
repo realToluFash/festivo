@@ -317,6 +317,20 @@ describe('the guest counts on Events (sc-23284)', () => {
     expect(within(tiles).getByText('0 haven’t replied')).toBeDefined();
   });
 
+  it('draws the list loading as shapes, with search and Filter off', SLOW, async () => {
+    await list('/demo/events?state=loading');
+
+    expect(within(main()).getByRole('status').textContent).toBe('Loading events…');
+    expect(
+      within(main())
+        .getByRole('searchbox', { name: 'Search events' })
+        .getAttribute('aria-disabled'),
+    ).toBe('true');
+    expect(within(main()).queryByRole('tablist')).toBeNull();
+    expect(within(main()).queryByText('Search needs a connection.')).toBeNull();
+    expect(within(main()).getByRole('button', { name: 'New event' })).toBeDefined();
+  });
+
   it('asks a role without Create events to ask an owner', SLOW, async () => {
     await list('/demo/events?state=firstAsk');
 

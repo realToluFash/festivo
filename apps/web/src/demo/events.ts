@@ -408,6 +408,7 @@ export const DISTINCT_HOSTS: readonly string[] = [
 /** The words main has (events, eventPage, eventLive, eventEnd, eventPause, eventDelete, eventDuplicate, eventEdit, eventHosts, eventCover, eventNav, timeline), then the new ones the boards add, for review. */
 export const EVENT_WORDS = {
   title: 'Events',
+  loading: 'Loading events…',
   newEvent: 'New event',
   upcoming: 'Upcoming',
   drafts: 'Drafts',
@@ -1154,6 +1155,7 @@ export function noMatchLine(filters: Filters, now: Date): string {
 }
 
 export type ListState =
+  | 'loading'
   | 'first'
   | 'firstAsk'
   | 'emptyUpcoming'
@@ -1170,6 +1172,7 @@ export type ListState =
   | 'noGuests';
 
 const LIST_STATES: readonly ListState[] = [
+  'loading',
   'first',
   'firstAsk',
   'emptyUpcoming',
@@ -1194,6 +1197,7 @@ export function listStateOf(value: string | null): ListState | null {
 }
 
 export interface ListStart {
+  loading: boolean;
   tab: Tab | null;
   first: boolean;
   asks: boolean;
@@ -1207,6 +1211,7 @@ export interface ListStart {
 
 export function listStart(state: ListState | null): ListStart {
   const rest: ListStart = {
+    loading: false,
     tab: null,
     first: false,
     asks: false,
@@ -1221,6 +1226,8 @@ export function listStart(state: ListState | null): ListStart {
   switch (state) {
     case null:
       return rest;
+    case 'loading':
+      return { ...rest, loading: true };
     case 'first':
       return { ...rest, first: true };
     case 'firstAsk':
@@ -1505,6 +1512,7 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
       list('drafts', 'Drafts, the soonest with its dates passed'),
       list('past', 'Past, a page of ten'),
       list('pastMore', 'Past, after Show more'),
+      list('loading', 'Loading, the card and rows as shapes'),
       list('first', 'A first run'),
       list('firstAsk', 'A first run, without Create events'),
       list('emptyUpcoming', 'Nothing on Upcoming'),
